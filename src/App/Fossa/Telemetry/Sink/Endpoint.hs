@@ -2,21 +2,38 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module App.Fossa.Telemetry.Sink.Endpoint (sinkTelemetryToEndpoint) where
+module App.Fossa.Telemetry.Sink.Endpoint (sinkTelemetryToEndpoint, sinkToEndpoint, sinkToLocalhost) where
 
 import App.Fossa.Telemetry.Types (TelemetryRecord)
-import Control.Algebra
+import Control.Algebra (Algebra, Has, type (:+:))
 import Control.Carrier.Empty.Maybe (EmptyC, runEmpty)
-import Control.Carrier.Lift
-import Control.Effect.Empty
+import Control.Carrier.Lift (Lift, sendIO)
+import Control.Effect.Empty (Empty, empty)
 import Control.Monad (void)
-import Control.Monad.IO.Class
-import Data.Coerce
+import Control.Monad.IO.Class (MonadIO (..))
+import Data.Coerce (coerce)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (encodeUtf8)
-import Fossa.API.Types hiding (useApiOpts)
-import Network.HTTP.Req
-import Network.HTTP.Req.Extra
+import Fossa.API.Types (
+  ApiKey (unApiKey),
+  ApiOpts (apiOptsApiKey, apiOptsUri),
+ )
+import Network.HTTP.Req (
+  MonadHttp (..),
+  Option,
+  POST (POST),
+  ReqBodyJson (ReqBodyJson),
+  Scheme (Https),
+  Url,
+  header,
+  http,
+  ignoreResponse,
+  port,
+  req,
+  useURI,
+  (/:),
+ )
+import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
 import Text.URI (URI)
 import Text.URI.QQ (uri)
 import Unsafe.Coerce qualified as Unsafe

@@ -7,7 +7,6 @@ module Diag.Diagnostic (
 
 import Control.Exception (SomeException (SomeException))
 import Data.Aeson (ToJSON, object, toJSON, (.=))
-import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Effect.Logger
 

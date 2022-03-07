@@ -5,7 +5,6 @@ module App.Fossa.Config.Container.Parse (
   subcommand,
 ) where
 
-import App.Fossa.Config.Common (CommonOpts)
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import Control.Effect.Lift (Has, Lift, sendIO)

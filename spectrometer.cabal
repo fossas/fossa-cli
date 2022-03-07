@@ -116,6 +116,7 @@ common deps
     , text                         ^>=1.2.3
     , th-lift-instances            ^>=0.1.17
     , time                         >=1.9      && <1.11
+    , timeit                       ^>=2.0
     , tomland                      ^>=1.3.3.0
     , transformers
     , typed-process                ^>=0.2.6
@@ -238,7 +239,6 @@ library
     Control.Carrier.TaskPool
     Control.Carrier.Telemetry
     Control.Carrier.Threaded
-    Control.Concurrent.AsyncQueue
     Control.Effect.AtomicCounter
     Control.Effect.AtomicState
     Control.Effect.ConsoleRegion

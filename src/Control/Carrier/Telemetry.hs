@@ -26,7 +26,6 @@ import App.Fossa.Telemetry.Types (
 import App.Fossa.Telemetry.Utils (
   mkTelemetryCtx,
   mkTelemetryRecord,
-  timeItT,
  )
 import Control.Exception qualified as Exc
 import Data.Time.Clock (getCurrentTime)
@@ -36,6 +35,7 @@ import System.Exit (ExitCode (ExitSuccess))
 import App.Fossa.Telemetry.Sink.Common (emitTelemetry)
 import Control.Algebra (Algebra (alg), Has, type (:+:) (L, R))
 import Control.Carrier.Reader (ReaderC, ask, runReader)
+import System.TimeIt (timeItT)
 
 newtype TelemetryC m a = TelemetryC {runTelemetryC :: ReaderC TelemetryCtx m a}
   deriving (Applicative, Functor, Monad, MonadFail, MonadIO)
