@@ -4,14 +4,19 @@ module App.Fossa.Subcommand (
   runSubCommand,
   EffStack,
   GetSeverity (..),
+  GetCommonOpts (..),
   SubCommand (..),
 ) where
 
+import App.Fossa.Config.Common (CommonOpts, collectTelemetryScope)
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars (envConfigDebug), getEnvVars)
 import Control.Carrier.Diagnostics (DiagnosticsC, context, logWithExit_)
 import Control.Carrier.Stack (StackC, runStack)
-import Data.String.Conversion (toStrict)
+import Control.Carrier.Telemetry (TelemetryC, withTelemetry)
+import Control.Effect.Telemetry (setSink, trackConfig)
+import Data.Aeson (ToJSON)
+import Data.String.Conversion (ToText (toText), toStrict)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (
   LoggerC,
@@ -21,7 +26,6 @@ import Effect.Logger (
   withDefaultLogger,
  )
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
-import Effect.Telemetry
 import Options.Applicative (InfoMod, Parser)
 import Text.Pretty.Simple (pShowNoColor)
 
@@ -34,13 +38,17 @@ data SubCommand cli cfg = SubCommand
   , perform :: cfg -> EffStack ()
   }
 
-type EffStack = TelemetryC (ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC (StackC IO)))))
+type EffStack = ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC (StackC (TelemetryC IO)))))
 
 class GetSeverity a where
   getSeverity :: a -> Severity
   getSeverity = const SevInfo
 
-runSubCommand :: forall cli cfg. (GetSeverity cli, Show cfg) => SubCommand cli cfg -> Parser (IO ())
+class GetCommonOpts a where
+  getCommonOpts :: a -> Maybe CommonOpts
+  getCommonOpts = const Nothing
+
+runSubCommand :: forall cli cfg. (GetCommonOpts cli, GetSeverity cli, Show cfg, ToJSON cfg) => SubCommand cli cfg -> Parser (IO ())
 runSubCommand SubCommand{..} = uncurry (runEffs) . mergeAndRun <$> parser
   where
     -- We have to extract the severity from the options, which is not straightforward
@@ -49,14 +57,23 @@ runSubCommand SubCommand{..} = uncurry (runEffs) . mergeAndRun <$> parser
     mergeAndRun cliOptions = (getSeverity cliOptions,) $ do
       configFile <- context "Loading config file" $ configLoader cliOptions
       envvars <- context "Fetching environment variables" getEnvVars
+
+      -- Telemetry
+      maybeTelSink <- collectTelemetryScope configFile envvars $ getCommonOpts cliOptions
+      case maybeTelSink of
+        Nothing -> pure ()
+        Just ts -> setSink ts
+
       cfg <- context "Validating configuration" $ optMerge configFile envvars cliOptions
+      trackConfig (toText commandName) cfg
+
       if envConfigDebug envvars
         then do
           logInfo "Running in config-debug mode, no action will be performed"
           logStdout (toStrict $ pShowNoColor cfg)
+          logStdout (toText $ show maybeTelSink)
+          logStdout (toText $ show envvars)
         else perform cfg
 
 runEffs :: Severity -> EffStack () -> IO ()
-runEffs sev eff = do
-  withTelemetry $ \tel -> do
-    runStack . withDefaultLogger sev . logWithExit_ . runReadFSIO . runExecIO . runTelemetry tel $ eff
+runEffs sev = withTelemetry . runStack . withDefaultLogger sev . logWithExit_ . runReadFSIO . runExecIO

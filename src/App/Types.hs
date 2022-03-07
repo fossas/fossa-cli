@@ -8,18 +8,24 @@ module App.Types (
   MonorepoAnalysisOpts (..),
 ) where
 
-import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, withObject, (.:))
 import Data.Text (Text)
+import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)
 
-newtype BaseDir = BaseDir {unBaseDir :: Path Abs Dir} deriving (Eq, Ord, Show)
+newtype BaseDir = BaseDir {unBaseDir :: Path Abs Dir} deriving (Eq, Ord, Show, Generic)
+instance ToJSON BaseDir where
+  toEncoding = genericToEncoding defaultOptions
 
 data OverrideProject = OverrideProject
   { overrideName :: Maybe Text
   , overrideRevision :: Maybe Text
   , overrideBranch :: Maybe Text
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON OverrideProject where
+  toEncoding = genericToEncoding defaultOptions
 
 data ProjectMetadata = ProjectMetadata
   { projectTitle :: Maybe Text
@@ -30,13 +36,19 @@ data ProjectMetadata = ProjectMetadata
   , projectPolicy :: Maybe Text
   , projectReleaseGroup :: Maybe ReleaseGroupMetadata
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ProjectMetadata where
+  toEncoding = genericToEncoding defaultOptions
 
 data ReleaseGroupMetadata = ReleaseGroupMetadata
   { releaseGroupName :: Text
   , releaseGroupRelease :: Text
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ReleaseGroupMetadata where
+  toEncoding = genericToEncoding defaultOptions
 
 instance FromJSON ReleaseGroupMetadata where
   parseJSON = withObject "ReleaseGroupMetadata" $ \obj ->
@@ -46,14 +58,20 @@ instance FromJSON ReleaseGroupMetadata where
 newtype MonorepoAnalysisOpts = MonorepoAnalysisOpts
   { monorepoAnalysisType :: Maybe Text
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON MonorepoAnalysisOpts where
+  toEncoding = genericToEncoding defaultOptions
 
 data ProjectRevision = ProjectRevision
   { projectName :: Text
   , projectRevision :: Text
   , projectBranch :: Maybe Text
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ProjectRevision where
+  toEncoding = genericToEncoding defaultOptions
 
 data NinjaGraphCLIOptions = NinjaGraphCLIOptions
   { ninjaBaseDir :: FilePath

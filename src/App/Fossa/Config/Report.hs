@@ -18,16 +18,18 @@ import App.Fossa.Config.Common (
  )
 import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
-import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
+import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Timeout (Duration (Seconds))
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.List (intercalate)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (..))
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
+import GHC.Generics (Generic)
 import Options.Applicative (
   InfoMod,
   Parser,
@@ -44,7 +46,10 @@ import Options.Applicative (
  )
 import Path.IO (getCurrentDir)
 
-data ReportType = Attribution deriving (Eq, Ord, Enum, Bounded)
+data ReportType = Attribution deriving (Eq, Ord, Enum, Bounded, Generic)
+
+instance ToJSON ReportType where
+  toEncoding = genericToEncoding defaultOptions
 
 instance Show ReportType where
   show Attribution = "attribution"
@@ -53,7 +58,10 @@ instance Show ReportType where
 data ReportOutputFormat
   = ReportJson
   -- ReportPretty
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ReportOutputFormat where
+  toEncoding = genericToEncoding defaultOptions
 
 reportInfo :: InfoMod a
 reportInfo = progDesc desc
@@ -97,6 +105,9 @@ data ReportCliOptions = ReportCliOptions
 
 instance GetSeverity ReportCliOptions where
   getSeverity ReportCliOptions{..} = if (optDebug commons) then SevDebug else SevInfo
+
+instance GetCommonOpts ReportCliOptions where
+  getCommonOpts ReportCliOptions{..} = Just commons
 
 loadConfig ::
   ( Has (Lift IO) sig m
@@ -150,4 +161,7 @@ data ReportConfig = ReportConfig
   , reportType :: ReportType
   , revision :: ProjectRevision
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ReportConfig where
+  toEncoding = genericToEncoding defaultOptions

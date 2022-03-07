@@ -51,6 +51,7 @@ import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.Monorepo (monorepoScan)
 import App.Fossa.Subcommand (SubCommand)
+import App.Fossa.Telemetry.Types (CountableCliFeature (ExperimentalGradleSingleConfigurationUsage))
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
 import App.Fossa.VSI.Types qualified as VSI
@@ -78,6 +79,7 @@ import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
+import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent, trackUsage)
 import Control.Monad (join, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
@@ -98,7 +100,6 @@ import Effect.Logger (
   logStdout,
  )
 import Effect.ReadFS (ReadFS)
-import Effect.Telemetry (Telemetry)
 import Fossa.API.Types (ApiOpts (..))
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
@@ -183,10 +184,12 @@ runDependencyAnalysis basedir filters project = do
       output $ SkippedDueToProvidedFilter dpi
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
-      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context "Project Analysis" $ do
-        debugMetadata "DiscoveredProject" project
-        analyzeProject targets (projectData project)
+      graphResult <- trackTimeSpent (toText . show $ projectType project) $
+        Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context "Project Analysis" $ do
+          debugMetadata "DiscoveredProject" project
+          analyzeProject targets (projectData project)
       Diag.flushLogs SevError SevDebug graphResult
+      trackResult graphResult
       output $ Scanned dpi (mkResult basedir project <$> graphResult)
 
 applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
@@ -230,6 +233,7 @@ analyze ::
   m ()
 analyze cfg = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
+  trackUsage ExperimentalGradleSingleConfigurationUsage
 
   let apiOpts = case destination of
         OutputStdout -> Nothing

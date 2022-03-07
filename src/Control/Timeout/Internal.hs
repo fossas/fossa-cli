@@ -7,6 +7,8 @@ module Control.Timeout.Internal (
 ) where
 
 import Control.Concurrent (MVar)
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
+import GHC.Generics (Generic)
 
 -- Opaque wrapper around MVar (sort of like an atomic variable)
 -- Only created by using `timeout'`
@@ -17,7 +19,10 @@ data Duration
   | Minutes Int
   | MilliSeconds Int
   | MicroSeconds Int
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance ToJSON Duration where
+  toEncoding = genericToEncoding defaultOptions
 
 instance Eq Duration where
   a == b = durationToMicro a == durationToMicro b

@@ -50,6 +50,7 @@ import App.Fossa.ProjectInference (
   mergeOverride,
   saveRevision,
  )
+import App.Fossa.Telemetry.Sink.Common (TelemetrySink (TelemetrySinkToEndpoint, TelemetrySinkToFile))
 import App.OptionExtensions (uriOption)
 import App.Types (
   BaseDir (BaseDir),
@@ -64,17 +65,21 @@ import Control.Effect.Diagnostics (
   errCtx,
   fatalText,
   fromMaybeText,
+  recover,
   (<||>),
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Timeout (Duration (Minutes))
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Bifunctor (Bifunctor (first))
+import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
 import Discovery.Filters (targetFilterParser)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts))
+import GHC.Generics (Generic)
 import Options.Applicative (
   Parser,
   ReadM,
@@ -102,7 +107,10 @@ data ScanDestination
   = -- | upload to fossa with provided api key and base url
     UploadScan ApiOpts ProjectMetadata
   | OutputStdout
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ScanDestination where
+  toEncoding = genericToEncoding defaultOptions
 
 data CacheAction
   = ReadOnly
@@ -257,19 +265,34 @@ collectRevisionData' basedir cfg cache override = do
 collectAPIMetadata :: Maybe ConfigFile -> ProjectMetadata -> ProjectMetadata
 collectAPIMetadata cfgfile cliMeta = maybe cliMeta (mergeFileCmdMetadata cliMeta) cfgfile
 
-collectTelemetryScope :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> CommonOpts -> m ConfigTelemetryScope
-collectTelemetryScope maybeConfigFile envvars opts = do
-  let defaultScope = FullTelemetry
-
+collectTelemetryScope :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> Maybe CommonOpts -> m (Maybe TelemetrySink)
+collectTelemetryScope maybeConfigFile envvars maybeOpts = do
   -- Precedence is
   --  (1) command line
   --  (2) environment variable
   --  (3) configuration file
-  case (optTelemetry opts)
-    <|> (envTelemetryScope envvars)
-    <|> (maybeConfigFile >>= configTelemetryScope) of
-    Nothing -> pure defaultScope
-    Just telScope -> pure telScope
+  let telemetryScope =
+        fromMaybe
+          NoTelemetry -- default scope
+          ( (maybeOpts >>= optTelemetry)
+              <|> (envTelemetryScope envvars)
+              <|> (maybeConfigFile >>= configTelemetryScope)
+          )
+
+  let isDebugMode = envTelemetryDebug envvars || (fmap optDebug maybeOpts == Just True)
+  case (isDebugMode, telemetryScope) of
+    (True, _) -> pure $ Just TelemetrySinkToFile
+    (False, NoTelemetry) -> pure Nothing
+    (False, FullTelemetry) -> do
+      let withoutAnyOpts = CommonOpts False Nothing Nothing Nothing Nothing Nothing Nothing
+      let candidateOpts = fromMaybe withoutAnyOpts maybeOpts
+
+      -- Not all commands require api key, if we do not have valid api key
+      -- we cannot sink  telemetry to anywhere!
+      maybeApiOpts <- recover $ collectApiOpts maybeConfigFile envvars candidateOpts
+      case maybeApiOpts of
+        Nothing -> pure Nothing
+        Just opts -> pure . Just $ TelemetrySinkToEndpoint opts
 
 data CommonOpts = CommonOpts
   { optDebug :: Bool

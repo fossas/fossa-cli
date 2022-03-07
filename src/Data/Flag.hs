@@ -6,11 +6,16 @@ module Data.Flag (
   flagOpt,
 ) where
 
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
+import GHC.Generics (Generic)
 import Options.Applicative (FlagFields, Mod, Parser, switch)
 
 -- | A Flag datatype with a phantom type argument. See link above for usage
 newtype Flag a = Flag {getFlag :: Bool}
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON (Flag a) where
+  toEncoding = genericToEncoding defaultOptions
 
 fromFlag :: a -> Flag a -> Bool
 fromFlag _ = getFlag

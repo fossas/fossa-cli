@@ -8,10 +8,13 @@ module App.Fossa.Config.Container.Dump (
   subcommand,
 ) where
 
+import App.Fossa.Config.Analyze (StandardAnalyzeConfig)
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.Container.Common (ImageText, imageTextArg)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import Control.Effect.Lift (Has, Lift, sendIO)
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
+import GHC.Generics (Generic)
 import Options.Applicative (
   CommandFields,
   Mod,
@@ -45,7 +48,10 @@ data ContainerDumpScanConfig = ContainerDumpScanConfig
   { outputFile :: Maybe (Path Abs File)
   , dumpImageLocator :: ImageText
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ContainerDumpScanConfig where
+  toEncoding = genericToEncoding defaultOptions
 
 mergeOpts ::
   Has (Lift IO) sig m =>
