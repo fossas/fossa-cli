@@ -65,6 +65,6 @@ newtype MissingLinuxMetadata = MissingLinuxMetadata (Path Abs File)
 instance ToDiagnostic MissingLinuxMetadata where
   renderDiagnostic (MissingLinuxMetadata path) =
     vsep
-      [ "Could not infer linux package manager, and its metadata for:"
+      [ "Could not determine owning system package for file:"
       , pretty . show $ path
       ]
