@@ -8,7 +8,6 @@ module App.Fossa.Config.Container.Dump (
   subcommand,
 ) where
 
-import App.Fossa.Config.Analyze (StandardAnalyzeConfig)
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.Container.Common (ImageText, imageTextArg)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
