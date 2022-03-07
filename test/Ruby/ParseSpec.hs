@@ -4,7 +4,7 @@ import Data.Char (isSeparator)
 import Data.Foldable (for_)
 import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Strategy.Ruby.Parse (Assignment (Assignment), Symbol (Symbol), parseRubyArray, parseRubyAssignment, parseRubySymbol, parseRubyWordsArray, rubyString)
+import Strategy.Ruby.Parse (Assignment (Assignment), Symbol (Symbol), parseRubyArray, parseRubyAssignment, parseRubyDict, parseRubySymbol, parseRubyWordsArray, rubyString)
 import Test.Hspec (Spec, context, describe, it, shouldBe)
 import Text.Megaparsec (MonadParsec (eof), ParseErrorBundle, Parsec, runParser, takeWhile1P)
 
@@ -100,9 +100,29 @@ assignmentParseSpec =
           parseRubyAssignment rubyString `shouldParse` licenseStr `to` mitLicense
         it "Parses a string with '.freeze' on the end" $
           parseRubyAssignment rubyString `shouldParse` (licenseStr <> ".freeze") `to` mitLicense
+
+-- TODO: Parse when there isn't a space between the fat arrow and the key/value
+multiKeyDict :: Text
+multiKeyDict = "{ :key => \"val\", :\"key\" => \"hello\"}"
+
+expectedMultiKeyDict :: [(Symbol, Text)]
+expectedMultiKeyDict =
+  [ (Symbol "key", "val")
+  , (Symbol "key", "hello")
+  ]
+
+dictLiteralParseSpec :: Spec
+dictLiteralParseSpec =
+  describe "Ruby dictionary literal parse spec" $ do
+    it "Parses a dictionary with a single item" $
+      parseRubyDict rubyString `shouldParse` "{ :key => \"val\"}" `to` [(Symbol "key", "val")]
+    it "Parses a dictionary with a several items" $
+      parseRubyDict rubyString `shouldParse` multiKeyDict `to` expectedMultiKeyDict
+
 spec :: Spec
 spec = context "Ruby GemSpec tests" $ do
   stringParseSpec
   assignmentParseSpec
   arrayParseSpec
   symbolParseSpec
+  dictLiteralParseSpec

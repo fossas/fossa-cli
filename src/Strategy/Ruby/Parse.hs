@@ -8,6 +8,7 @@ module Strategy.Ruby.Parse (
   gemspecLicenseValuesP,
   Symbol (..),
   parseRubySymbol,
+  parseRubyDict,
 ) where
 
 import Control.Applicative ((<|>))
@@ -127,9 +128,9 @@ newtype Symbol = Symbol {unSymbol :: Text}
   deriving (Show, Eq)
 
 -- |Parses a ruby symbol. Ex:
--- :this_is_a_symbole
--- :"this is also a symbol"
--- :'single quote symbol'
+-- > :this_is_a_symbol
+-- > :"this is also a symbol"
+-- > :'single quote symbol'
 parseRubySymbol :: Parser Symbol
 parseRubySymbol =
   Symbol
@@ -143,6 +144,19 @@ parseRubySymbol =
     simpleSymbol = takeWhile1P (Just "symbol") (not . isSpace)
     doubleQuoteSymbol = betweenDelim ('"', '"')
     singleQuoteSymbol = betweenDelim ('\'', '\'')
+
+-- |Parse a dictionary of the form:
+--
+-- > { :key => val, :key2 => val2 }
+--
+-- The keys in the text should be symbols that 'parseRubySymbol' can parse.
+parseRubyDict :: Parser a -> Parser [(Symbol, a)]
+parseRubyDict rhs = between (char '{') (char '}') (sepBy keyValParse $ char ',')
+  where
+    keyValParse =
+      (,)
+        <$> lexeme parseRubySymbol
+        <*> (lexeme (string "=>") *> lexeme rhs)
 
 -- |Ruby has a special syntax for making an array of strings that looks like
 -- these examples:
