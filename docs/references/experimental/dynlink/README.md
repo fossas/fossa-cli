@@ -26,3 +26,28 @@ This could result in the binary being executed instead of being inspected.
 
 For this reason, we strongly recommend against running Dynamic Linked Dependency Detection on an untrusted binary within a trusted environment.
 If you are using Dynamic Linked Dependency Detection on your own binary, we recommend against running the feature on a binary with its own execution loader.
+
+## How to use
+
+When running `fossa analyze`, use the `--experimental-analyze-dynamic-deps <BINARY>` flag.
+Point the `<BINARY>` at the binary that is built from the project.
+
+As an example, if the project is located at `~/projects/my-project`, and results in a binary at `~/projects/my-project/out/project`, the scan invocation would be as follows:
+
+```shell
+fossa analyze ~/projects/my-project --experimental-analyze-dynamic-deps ~/projects/my-project/out/project
+```
+
+This results in the FOSSA reporting both the dependencies discovered inside the project directory and the dependencies discovered by analyzing the binary.
+
+### Quick Example
+
+As an example of this functionality, the analysis can run against a common system binary and an empty project directory.
+For example, this invocation results in reporting only the dynamic dependencies for the `/bin/ls` system binary:
+
+```shell
+mkdir empty
+fossa analyze empty --experimental-analyze-dynamic-deps /bin/ls
+```
+
+**Important:** It's possible to use this method to analyze arbitrary binaries. Keep the guidance in the [Security](#security) section in mind when using this feature.
