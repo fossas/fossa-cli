@@ -422,6 +422,7 @@ test-suite unit-tests
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec
+    Cocoapods.CocoapodsSpec
     Cocoapods.PodfileLockSpec
     Cocoapods.PodfileSpec
     Composer.ComposerJsonSpec

@@ -9,11 +9,15 @@ module Strategy.Ruby.Parse (
   Symbol (..),
   parseRubySymbol,
   parseRubyDict,
+  PodSpecAssignmentValue (..),
+  podspecAssignmentValuesP,
+  findBySymbol,
 ) where
 
 import Control.Applicative ((<|>))
 import Data.Char (isSpace)
 import Data.Functor (($>))
+import Data.List (find)
 import Data.List.Extra (singleton)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -169,6 +173,17 @@ parseRubyDict rhs = between (char '{') (char '}') (sepBy keyValParse $ char ',')
       (,)
         <$> lexeme parseRubySymbol
         <*> (lexeme (string "=>") *> lexeme rhs)
+
+data PodSpecAssignmentValue
+  = PodspecStr Text
+  | PodspecDict [(Symbol, Text)]
+
+findBySymbol :: Symbol -> [(Symbol, Text)] -> Maybe (Symbol, Text)
+findBySymbol sym = find ((== sym) . fst)
+
+podspecAssignmentValuesP :: Parser PodSpecAssignmentValue
+podspecAssignmentValuesP =
+  (PodspecStr <$> rubyString) <|> (PodspecDict <$> parseRubyDict rubyString)
 
 -- |Ruby has a special syntax for making an array of strings that looks like
 -- these examples:

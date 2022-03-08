@@ -7,11 +7,14 @@ module Strategy.Cocoapods (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, warnOnErr, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
 import Data.Aeson (ToJSON)
 import Data.Glob qualified as Glob
+import Data.List (find)
+import Data.Text (isSuffixOf)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Walk (
   WalkStep (WalkContinue),
@@ -19,18 +22,24 @@ import Discovery.Walk (
   findFilesMatchingGlob,
   walk',
  )
-import Effect.ReadFS (Has, ReadFS)
+import Effect.ReadFS (Has, ReadFS, readContentsParser)
 import GHC.Generics (Generic)
-import Path (Abs, Dir, File, Path)
+import Path (Abs, Dir, File, Path, toFilePath)
 import Strategy.Cocoapods.Errors (MissingPodLockFile (MissingPodLockFile))
 import Strategy.Cocoapods.Podfile qualified as Podfile
 import Strategy.Cocoapods.PodfileLock qualified as PodfileLock
+import Strategy.Ruby.Parse (Assignment (Assignment, label, value), PodSpecAssignmentValue (PodspecDict, PodspecStr), Symbol (Symbol), findBySymbol, podspecAssignmentValuesP, readAssignments)
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
   DiscoveredProjectType (CocoapodsProjectType),
   GraphBreadth (Complete, Partial),
+  License (License),
+  LicenseResult (LicenseResult, licenseFile, licensesFound),
+  LicenseType (UnknownType),
  )
+import Data.Maybe (fromMaybe)
+import Data.List.Extra (singleton)
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CocoapodsProject]
 discover dir = context "Cocoapods" $ do
@@ -67,6 +76,25 @@ instance ToJSON CocoapodsProject
 
 instance AnalyzeProject CocoapodsProject where
   analyzeProject _ = getDeps
+
+instance LicenseAnalyzeProject CocoapodsProject where
+  licenseAnalyzeProject = traverse readLicense . cocoaPodsSpecFiles
+
+-- |For now, if the 'license' assignment statement is a dictionary this
+-- code only extracts the value in the `:type` key. It also only looks at
+-- the first `license` assignment it finds in the spec file.
+readLicense :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m LicenseResult
+readLicense specFile = do
+  assignments <- readContentsParser (readAssignments podspecAssignmentValuesP) specFile
+  let maybeLicense = do
+        licenseAssignment <- value <$> find (("license" `isSuffixOf`) . label) assignments
+        case licenseAssignment of
+          PodspecStr s -> Just $ License UnknownType s
+          PodspecDict d -> Just . License UnknownType . snd =<< findBySymbol (Symbol "type") d
+  pure $ LicenseResult
+    { licenseFile = toFilePath specFile
+    , licensesFound = maybe [] singleton maybeLicense
+    }
 
 mkProject :: CocoapodsProject -> DiscoveredProject CocoapodsProject
 mkProject project =
