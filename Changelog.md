@@ -4,6 +4,10 @@
 
 - Handles symlink loops in directory structure. ([#827](https://github.com/fossas/fossa-cli/pull/827))
 
+## v3.1.3
+
+- Adds support for identifying dynamically linked dependencies in an output binary. ([#818](https://github.com/fossas/fossa-cli/pull/818), [#788](https://github.com/fossas/fossa-cli/pull/788), [#780](https://github.com/fossas/fossa-cli/pull/780), [#788](https://github.com/fossas/fossa-cli/pull/778), [#771](https://github.com/fossas/fossa-cli/pull/771), [#770](https://github.com/fossas/fossa-cli/pull/770))
+
 ## v3.1.2
 
 - Fixes a bug which ignored the `server` field in the config file. ([#821](https://github.com/fossas/fossa-cli/pull/821))

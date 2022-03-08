@@ -39,6 +39,7 @@ import App.Fossa.Config.Analyze (
   AnalyzeCliOpts,
   AnalyzeConfig (..),
   BinaryDiscovery (BinaryDiscovery),
+  DynamicLinkInspect (DynamicLinkInspect),
   ExperimentalAnalyzeConfig,
   IATAssertion (IATAssertion),
   IncludeAll (IncludeAll),
@@ -50,6 +51,7 @@ import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.Monorepo (monorepoScan)
 import App.Fossa.Subcommand (SubCommand)
+import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VSIDeps (analyzeVSIDeps)
@@ -244,6 +246,9 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       case (shouldRunVSI, apiOpts) of
         (True, Just apiOpts') -> analyzeVSI apiOpts' basedir revision filters skipResolutionSet
         _ -> pure Nothing
+  dynamicLinkedResults <-
+    Diag.errorBoundaryIO . diagToDebug $
+      Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget $ Config.vsiOptions cfg
   binarySearchResults <-
     Diag.errorBoundaryIO . diagToDebug $
       Diag.context "discover-binaries" $
@@ -258,8 +263,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir apiOpts
   let additionalSourceUnits :: [SourceUnit]
-      additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults]
-  traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults, binarySearchResults, manualSrcUnits]
+      additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults, dynamicLinkedResults]
+  traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults, binarySearchResults, manualSrcUnits, dynamicLinkedResults]
 
   (projectScans, ()) <-
     Diag.context "discovery/analysis tasks"
@@ -280,7 +285,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let projectResults = mapMaybe toProjectResult projectScans
   let filteredProjects = mapMaybe toProjectResult projectScansWithSkippedProdPath
 
-  let analysisResult = AnalysisScanResult projectScansWithSkippedProdPath vsiResults binarySearchResults manualSrcUnits
+  let analysisResult = AnalysisScanResult projectScansWithSkippedProdPath vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults
 
   renderScanSummary (severity cfg) analysisResult
 
@@ -347,6 +352,19 @@ analyzeDiscoverBinaries dir filters = do
 doAssertRevisionBinaries :: (Has Diag.Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => IATAssertion -> ApiOpts -> Locator -> m ()
 doAssertRevisionBinaries (IATAssertion (Just dir)) apiOpts locator = assertRevisionBinaries dir apiOpts locator
 doAssertRevisionBinaries _ _ _ = pure ()
+
+doAnalyzeDynamicLinkedBinary ::
+  ( Has Diag.Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  ) =>
+  Path Abs Dir ->
+  DynamicLinkInspect ->
+  m (Maybe SourceUnit)
+doAnalyzeDynamicLinkedBinary root (DynamicLinkInspect (Just target)) = analyzeDynamicLinkedDeps root target
+doAnalyzeDynamicLinkedBinary _ _ = pure Nothing
 
 data AnalyzeError
   = ErrNoProjectsDiscovered

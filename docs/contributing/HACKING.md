@@ -52,11 +52,22 @@ You'll use this command a lot.
 
 ### Building
 
-In the base directory, run `cabal build`
+In the base directory, run `cabal build`.  if you want to build the full binary, run `./vendor_download.sh` first (requires a FOSSA-org `GITHUB_TOKEN` set in the environment).
+
+#### Note for Non-FOSSA users
+
+Currently, building the full-featured binary requires the use of external binaries fetched from closed-source repos in the FOSSA organization (`fossas`).
+If you build without these binaries, a compiler warning will be emitted.  If ghc's `-Werror` option is enabled, this will fail the build, and is therefore not enabled by default.
+
+There is no supported way for Non-FOSSA users to obtain these binaries, though we are working on a solution to allow this in the future.  As a result, **we cannot accept pull requests from any forked repository**, since those builds will fail in CI.  This means that outside contributions are effectively impossible until we resolve these build limitations.
 
 ### Running tests
 
-In the base directory, run `cabal test`
+Run the unit tests by running `cabal test unit-tests` in the base directory.
+
+Integration tests require you first build test data by running `make build-test-data`.  Then you can run them with `cabal test integration-tests`.  Note that integration tests can take quite a while to run and do not have progress output.
+
+Both test suites will be run when you execute `cabal test`.
 
 ## Tools
 

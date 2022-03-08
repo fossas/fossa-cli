@@ -193,9 +193,9 @@ library
     App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
+    App.Fossa.VSI.DynLinked
     App.Fossa.VSI.DynLinked.Internal.Binary
     App.Fossa.VSI.DynLinked.Internal.Lookup
-    App.Fossa.VSI.DynLinked.Internal.Lookup.APK
     App.Fossa.VSI.DynLinked.Internal.Lookup.DEB
     App.Fossa.VSI.DynLinked.Internal.Lookup.RPM
     App.Fossa.VSI.DynLinked.Internal.Resolve
@@ -364,6 +364,7 @@ library
     Strategy.Ruby.BundleShow
     Strategy.Ruby.Errors
     Strategy.Ruby.GemfileLock
+    Strategy.Ruby.Gemspec
     Strategy.Scala
     Strategy.Swift.Errors
     Strategy.Swift.PackageResolved
@@ -411,12 +412,12 @@ test-suite unit-tests
     App.Fossa.Report.AttributionSpec
     App.Fossa.Report.Log4jReportSpec
     App.Fossa.VSI.DynLinked.Internal.BinarySpec
-    App.Fossa.VSI.DynLinked.Internal.Lookup.APKSpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.DEBSpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.RPMSpec
     App.Fossa.VSI.DynLinked.Internal.ResolveSpec
     App.Fossa.VSI.DynLinked.UtilSpec
     App.Fossa.VSI.FingerprintSpec
+    BundlerSpec
     Cargo.CargoTomlSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
@@ -483,6 +484,7 @@ test-suite unit-tests
     RPM.SpecFileSpec
     Ruby.BundleShowSpec
     Ruby.GemfileLockSpec
+    Ruby.GemspecSpec
     Swift.PackageResolvedSpec
     Swift.PackageSwiftSpec
     Swift.Xcode.PbxprojParserSpec

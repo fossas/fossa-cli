@@ -49,6 +49,7 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS, runReadFSIO)
 import Path (Abs, Dir, Path)
 import Path.IO qualified as PIO
+import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
 import Strategy.Composer qualified as Composer
 import Strategy.Maven qualified as Maven
@@ -90,6 +91,7 @@ runAll basedir = do
   single Composer.discover
   single Cargo.discover
   single Node.discover
+  single Bundler.discover
   where
     single f = withDiscoveredProjects f basedir runSingle
 

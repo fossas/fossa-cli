@@ -48,9 +48,9 @@
   - {name: "Data.Map.!", within: []}
     # TODO: remove the need to special-case this test module.
   - {name: fromJust, within: [App.DocsSpec]}
-  - {name: Test.Hspec.fdescribe, within: []}
+  - {name: Test.Hspec.fdescribe, within: [], message: "May prevent tests from running"}
     # We define fit' in terms of fit,so this is necessary
-  - {name: Test.Hspec.fit, within: [Test.Effect]}
-  - {name: Test.Hspec.focus, within: []}
-  - {name: Test.Hspec.fspecify, within: []}
-  - {name: Test.Hspec.fcontext, within: []}
+  - {name: Test.Hspec.fit, within: [Test.Effect], message: "May prevent tests from running"}
+  - {name: Test.Hspec.focus, within: [], message: "May prevent tests from running"}
+  - {name: Test.Hspec.fspecify, within: [], message: "May prevent tests from running"}
+  - {name: Test.Hspec.fcontext, within: [], message: "May prevent tests from running"}
