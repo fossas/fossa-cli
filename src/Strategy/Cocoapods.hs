@@ -14,6 +14,7 @@ import Control.Effect.Diagnostics qualified as Diag
 import Data.Aeson (ToJSON)
 import Data.Glob qualified as Glob
 import Data.List (find)
+import Data.List.Extra (singleton)
 import Data.Text (isSuffixOf)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Walk (
@@ -28,7 +29,7 @@ import Path (Abs, Dir, File, Path, toFilePath)
 import Strategy.Cocoapods.Errors (MissingPodLockFile (MissingPodLockFile))
 import Strategy.Cocoapods.Podfile qualified as Podfile
 import Strategy.Cocoapods.PodfileLock qualified as PodfileLock
-import Strategy.Ruby.Parse (Assignment (Assignment, label, value), PodSpecAssignmentValue (PodspecDict, PodspecStr), Symbol (Symbol), findBySymbol, podspecAssignmentValuesP, readAssignments)
+import Strategy.Ruby.Parse (Assignment (label, value), PodSpecAssignmentValue (PodspecDict, PodspecStr), Symbol (Symbol), findBySymbol, podspecAssignmentValuesP, readAssignments)
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
@@ -38,8 +39,6 @@ import Types (
   LicenseResult (LicenseResult, licenseFile, licensesFound),
   LicenseType (UnknownType),
  )
-import Data.Maybe (fromMaybe)
-import Data.List.Extra (singleton)
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CocoapodsProject]
 discover dir = context "Cocoapods" $ do
@@ -57,7 +56,7 @@ findProjects = walk' $ \dir _ files -> do
           { cocoapodsPodfile = podfile
           , cocoapodsPodfileLock = podfileLock
           , cocoapodsDir = dir
-          , cocoaPodsSpecFiles = podSpecs
+          , cocoapodsSpecFiles = podSpecs
           }
 
   case podfile <|> podfileLock of
@@ -68,7 +67,7 @@ data CocoapodsProject = CocoapodsProject
   { cocoapodsPodfile :: Maybe (Path Abs File)
   , cocoapodsPodfileLock :: Maybe (Path Abs File)
   , cocoapodsDir :: Path Abs Dir
-  , cocoaPodsSpecFiles :: [Path Abs File]
+  , cocoapodsSpecFiles :: [Path Abs File]
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -78,7 +77,7 @@ instance AnalyzeProject CocoapodsProject where
   analyzeProject _ = getDeps
 
 instance LicenseAnalyzeProject CocoapodsProject where
-  licenseAnalyzeProject = traverse readLicense . cocoaPodsSpecFiles
+  licenseAnalyzeProject = traverse readLicense . cocoapodsSpecFiles
 
 -- |For now, if the 'license' assignment statement is a dictionary this
 -- code only extracts the value in the `:type` key. It also only looks at
@@ -91,10 +90,11 @@ readLicense specFile = do
         case licenseAssignment of
           PodspecStr s -> Just $ License UnknownType s
           PodspecDict d -> Just . License UnknownType . snd =<< findBySymbol (Symbol "type") d
-  pure $ LicenseResult
-    { licenseFile = toFilePath specFile
-    , licensesFound = maybe [] singleton maybeLicense
-    }
+  pure $
+    LicenseResult
+      { licenseFile = toFilePath specFile
+      , licensesFound = maybe [] singleton maybeLicense
+      }
 
 mkProject :: CocoapodsProject -> DiscoveredProject CocoapodsProject
 mkProject project =
