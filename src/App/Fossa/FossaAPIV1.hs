@@ -377,7 +377,7 @@ archiveBuildUpload ::
   ApiOpts ->
   Archive ->
   m (Maybe C.ByteString)
-archiveBuildUpload apiOpts archive= runEmpty $
+archiveBuildUpload apiOpts archive = runEmpty $
   fossaReqAllow401 $ do
     (baseUrl, baseOpts) <- useApiOpts apiOpts
 
