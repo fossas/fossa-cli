@@ -18,7 +18,7 @@ import Data.List.Extra (singleton)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
-import Text.Megaparsec (MonadParsec (eof), Parsec, anySingle, anySingleBut, between, choice, lookAhead, many, optional, sepBy, skipManyTill, takeWhile1P, try)
+import Text.Megaparsec (MonadParsec (eof), Parsec, anySingle, anySingleBut, between, choice, lookAhead, many, manyTill, optional, sepBy, skipManyTill, takeWhile1P, try)
 import Text.Megaparsec.Char (char, space, space1, string)
 
 type Parser = Parsec Void Text
@@ -131,6 +131,11 @@ newtype Symbol = Symbol {unSymbol :: Text}
 -- > :this_is_a_symbol
 -- > :"this is also a symbol"
 -- > :'single quote symbol'
+--
+-- The top-most example stops when a space or '=>' appears. There are likely
+-- other strings that should stop the parsing of a keyword in this case, but
+-- this parser is designed specifically for usages where the keyword is used
+-- as the key in a Ruby dictionary.
 parseRubySymbol :: Parser Symbol
 parseRubySymbol =
   Symbol
@@ -141,7 +146,14 @@ parseRubySymbol =
                )
         )
   where
-    simpleSymbol = takeWhile1P (Just "symbol") (not . isSpace)
+    simpleSymbolStop =
+      choice
+        [ lookAhead space1
+        , lookAhead $ string "=>" $> ()
+        , eof
+        ]
+    simpleSymbol = toText <$> manyTill anySingle simpleSymbolStop
+
     doubleQuoteSymbol = betweenDelim ('"', '"')
     singleQuoteSymbol = betweenDelim ('\'', '\'')
 
@@ -165,7 +177,7 @@ parseRubyDict rhs = between (char '{') (char '}') (sepBy keyValParse $ char ',')
 -- > %W[foo bar baz]
 --
 -- This is interpreted as an array of strings. The delimiter after the 'w' can
--- be arbitrary as with '$q'. The 'W' variant also allows interpolation, but as
+-- be arbitrary as with '%q'. The 'W' variant also allows interpolation, but as
 -- with 'rubyString' these are treated as ordinary text.
 parseRubyWordsArray :: Parser [Text]
 parseRubyWordsArray = do

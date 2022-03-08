@@ -78,6 +78,8 @@ symbolParseSpec =
   describe "Parsing ruby symbols" $ do
     it "Can parse a symbol " $
       parseRubySymbol `shouldParse` ":he1l_o" `to` Symbol "he1l_o"
+    it "Stops when a fat arrow is on the end of a simple symbol" $
+      parseRubySymbol `shouldParse` ":foo=>" `to` Symbol "foo"
     it "Can parse a symbol made from a string literal with '\"'" $
       parseRubySymbol `shouldParse` ":\"f\\\"o o\"" `to` Symbol "f\\\"o o"
     it "Can parse a symbol made from a string literal with \"'\"" $
@@ -103,7 +105,7 @@ assignmentParseSpec =
 
 -- TODO: Parse when there isn't a space between the fat arrow and the key/value
 multiKeyDict :: Text
-multiKeyDict = "{ :key => \"val\", :\"key\" => \"hello\"}"
+multiKeyDict = "{ :key=> \"val\", :\"key\" => \"hello\"}"
 
 expectedMultiKeyDict :: [(Symbol, Text)]
 expectedMultiKeyDict =
