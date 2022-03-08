@@ -99,4 +99,18 @@ someComplexComputation = do
 ```
 
 
+### Future
+
+We can implement `span` and `trace`s to provide capability to continuous profiling, this 
+can be done by using, modifying `trackTimeSpent` to `trackSpan`. 
+
+```
+<---------------------------------> ~ Trace
+<-------> ~ SpanA
+         <----------> ~ SpanB
+                     <------------> ~ SpanC
+```
+
+Ideally, we can leverage existing sdk from apm provider, or open telemetry instead of
+building this capability in-house. 
 

@@ -52,17 +52,15 @@ lookupBool name = do
     Just txt -> not $ any' txt [Text.null, (== "0")]
 
 lookUpTelemetryScope :: Has (Lift IO) sig m => String -> m (Maybe ConfigTelemetryScope)
-lookUpTelemetryScope name = do
-  value <- lookupName name
-  case value of
+lookUpTelemetryScope varName = do
+  telScope <- lookupName varName
+  case telScope of
     Nothing -> pure Nothing
-    Just txt ->
-      if Text.null txt
-        then pure Nothing
-        else case txt of
-          "off" -> pure $ Just NoTelemetry
-          "full" -> pure $ Just FullTelemetry
-          _ -> pure Nothing
+    Just scope ->
+      case Text.toLower . Text.strip $ scope of
+        "off" -> pure $ Just NoTelemetry
+        "full" -> pure $ Just FullTelemetry
+        _ -> pure Nothing
 
 any' :: a -> [a -> Bool] -> Bool
 any' _ [] = False
