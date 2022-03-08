@@ -34,6 +34,7 @@ trackTimeSpent header act = send $ TrackTimeSpent header act
 trackConfig :: (ToJSON cfg, Has Telemetry sig m) => Text -> cfg -> m ()
 trackConfig cmd config = send . TrackConfig cmd $ toJSON config
 
+{-# WARNING trackRawLogMessage "Only use this if absolutely necessary, you likely want to use 'trackResult'" #-}
 trackRawLogMessage :: Has Telemetry sig m => Severity -> Doc AnsiStyle -> m ()
 trackRawLogMessage sev msg = send . TrackRawLogMessage sev $ renderIt msg
 

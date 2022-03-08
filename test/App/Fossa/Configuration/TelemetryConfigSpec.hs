@@ -75,6 +75,11 @@ noOpts = Nothing
 spec :: Spec
 spec = do
   describe "telemetry configuration" $ do
+    -- This needs to be updated when default telemetry model moves to opt-out.
+    it' "by default telemetry sink is nothing" $ do
+      sink <- collectTelemetryScope noConfig defaultEnvVars noOpts
+      sink `shouldBe'` Nothing
+
     describe "command opts" $ do
       it' "should set sink to nothing, when off scope is provided via command opts" $ do
         sink <-

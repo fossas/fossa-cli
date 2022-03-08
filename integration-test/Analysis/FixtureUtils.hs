@@ -21,7 +21,10 @@ import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.Simple (interpret, sendSimple)
 import Control.Carrier.Stack (StackC, runStack)
-import Control.Carrier.Telemetry (IgnoreTelemetryC, withoutTelemetry)
+import Control.Carrier.Telemetry (
+  IgnoreTelemetryC,
+  withoutTelemetry,
+ )
 import Control.Monad (forM)
 import Data.Conduit (runConduitRes, (.|))
 import Data.Conduit.Binary qualified as CB
@@ -41,7 +44,6 @@ import Effect.Exec (
  )
 import Effect.Logger (LoggerC, Severity (SevDebug), withDefaultLogger)
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
-import Effect.Telemetry
 import Network.HTTP.Req (
   GET (GET),
   NoReqBody (NoReqBody),

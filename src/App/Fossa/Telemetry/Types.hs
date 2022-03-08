@@ -1,13 +1,10 @@
 module App.Fossa.Telemetry.Types (
   CliEnvironment (..),
   SystemInfo (..),
-  SystemMemory (..),
   TelemetryRecord (..),
   TimedLogRecord (..),
   TelemetrySink (..),
   TelemetryCtx (..),
-  -- DiagRecord (..),
-  -- ToTelemetry (..),
   TelemetryTimeSpent (..),
   TelemetryCmdConfig (..),
   CountableCliFeature (..),
@@ -23,7 +20,6 @@ import Data.Text (Text)
 import Data.Time (UTCTime)
 import Data.Tracing.Instrument (CounterRegistry)
 import Data.UUID (UUID)
-import Data.Word (Word64)
 import Effect.Logger (Severity)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
@@ -66,7 +62,7 @@ data TelemetryRecord = TelemetryRecord
   , cliSystemInfo :: SystemInfo
   , cliUsageCounter :: Map CountableCliFeature Int
   , cliTimedDurations :: [TelemetryTimeSpent]
-  , rawLogs :: [TimedLogRecord]
+  , cliTelLogs :: [TimedLogRecord]
   }
   deriving (Show, Eq, Ord, Generic)
 
@@ -110,20 +106,10 @@ data SystemInfo = SystemInfo
   , systemInfoArch :: String
   , systemCapabilities :: Int
   , systemProcessors :: Int
-  , systemMemory :: SystemMemory
   }
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON SystemInfo where
-  toEncoding = genericToEncoding defaultOptions
-
-data SystemMemory = SystemMemory
-  { systemMemoryLiveBytes :: Word64
-  , systemMemoryAllocatedBytes :: Word64
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToJSON SystemMemory where
   toEncoding = genericToEncoding defaultOptions
 
 data TelemetryTimeSpent = TelemetryTimeSpent

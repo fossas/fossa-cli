@@ -375,6 +375,28 @@ get_binary_name() {
   echo "$name"
 }
 
+print_telemetry_disclaimer() {
+  log_info ""
+  log_info "------"
+  log_info "Notice"
+  log_info "------"
+  log_info ""
+  log_info "FOSSA collects warnings, errors, and usage data to improve"
+  log_info "fossa-cli and your experience. Currently CLI DOES NOT collect"  
+  log_info "telemetry by default, but this may change in future!"
+  log_info ""
+  log_info "You can pre-emptively opt out of telemetry by setting" 
+  log_info "FOSSA_TELEMETRY_SCOPE environment variable to “off” in your shell."
+  log_info ""
+  log_info "For example:"
+  log_info "   FOSSA_TELEMETRY_SCOPE=off fossa analyze"
+  log_info ""
+  log_info "Read more: https://github.com/fossas/fossa-cli/blob/master/docs/telemetry.md"
+  log_info ""
+}
+
+
+
 PROJECT_NAME="fossa"
 OWNER=fossas
 REPO="fossa-cli"
@@ -390,6 +412,7 @@ log_prefix() {
 }
 PLATFORM="${OS}/${ARCH}"
 GITHUB_DOWNLOAD=https://github.com/${OWNER}/${REPO}/releases/download
+
 
 uname_os_check "$OS"
 uname_arch_check "$ARCH"
@@ -415,4 +438,5 @@ log_info "found fossa-cli ${VERSION} binary for ${PLATFORM} at ${TARBALL_URL}"
 CHECKSUM=${PROJECT_NAME}_${VERSION}_checksums.txt
 CHECKSUM_URL=${GITHUB_DOWNLOAD}/${TAG}/${CHECKSUM}
 
+print_telemetry_disclaimer
 execute
