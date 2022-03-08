@@ -7,7 +7,6 @@ module Control.Carrier.Diagnostics (
   runDiagnostics,
 
   -- * Helpers
-  logDiagnostic,
   logWithExit_,
   runDiagnosticsIO,
   errorBoundaryIO,
@@ -22,6 +21,7 @@ import Control.Carrier.Error.Either
 import Control.Carrier.Stack
 import Control.Effect.Diagnostics as X
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Telemetry (Telemetry, trackResult)
 import Control.Exception (SomeException)
 import Control.Exception.Extra (safeCatch)
 import Control.Monad (void)
@@ -40,9 +40,10 @@ runDiagnostics :: DiagnosticsC m a -> m (Result a)
 runDiagnostics = ResultT.runResultT . runDiagnosticsC
 
 -- | Run a Diagnostic effect into a logger, using the default error/warning renderers.
-logDiagnostic :: (Has (Lift IO) sig m, Has Logger sig m, Has Stack sig m) => DiagnosticsC m a -> m (Maybe a)
+logDiagnostic :: (Has (Lift IO) sig m, Has Logger sig m, Has Stack sig m, Has Telemetry sig m) => DiagnosticsC m a -> m (Maybe a)
 logDiagnostic diag = do
   result <- runDiagnosticsIO diag
+  trackResult result
   case result of
     Failure ws eg -> logError (renderFailure ws eg "An issue occurred") >> pure Nothing
     Success ws a -> do
@@ -55,7 +56,7 @@ logDiagnostic diag = do
 -- | Run a void Diagnostic effect into a logger, using the default error/warning renderers.
 -- Exits with zero if the result is a success, or non-zero if the result is a failure.
 -- Useful for setting up diagnostics from CLI entry points.
-logWithExit_ :: (Has (Lift IO) sig m, Has Logger sig m, Has Stack sig m) => DiagnosticsC m () -> m ()
+logWithExit_ :: (Has (Lift IO) sig m, Has Logger sig m, Has Telemetry sig m, Has Stack sig m) => DiagnosticsC m () -> m ()
 logWithExit_ diag = do
   a <- logDiagnostic diag
   case a of

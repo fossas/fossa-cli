@@ -81,7 +81,7 @@ import Control.Effect.Exception (Lift)
 import Control.Effect.Git (Git)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
-import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent, trackUsage)
+import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent)
 import Control.Monad (join, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
@@ -238,7 +238,6 @@ analyze ::
   m ()
 analyze cfg = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
-  trackUsage ExperimentalGradleSingleConfigurationUsage
 
   let maybeApiOpts = case destination of
         OutputStdout -> Nothing

@@ -59,7 +59,6 @@ runSubCommand SubCommand{..} = uncurry (runEffs) . mergeAndRun <$> parser
       configFile <- context "Loading config file" $ configLoader cliOptions
       envvars <- context "Fetching environment variables" getEnvVars
 
-      -- Telemetry
       maybeTelSink <- collectTelemetryScope configFile envvars $ getCommonOpts cliOptions
       case maybeTelSink of
         Nothing -> pure ()
@@ -72,8 +71,6 @@ runSubCommand SubCommand{..} = uncurry (runEffs) . mergeAndRun <$> parser
         then do
           logInfo "Running in config-debug mode, no action will be performed"
           logStdout (toStrict $ pShowNoColor cfg)
-          logStdout (toText $ show maybeTelSink)
-          logStdout (toText $ show envvars)
         else perform cfg
 
 runEffs :: Severity -> EffStack () -> IO ()

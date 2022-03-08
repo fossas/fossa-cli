@@ -59,7 +59,6 @@ import Effect.Grapher (
   withLabeling,
  )
 import Effect.ReadFS (ReadFS, readContentsToml)
-import Effect.Telemetry (Telemetry, recordFeatureUsage)
 import GHC.Generics (Generic)
 import Graphing (Graphing, stripRoot)
 import Path (Abs, Dir, File, Path, parent, parseRelFile, toFilePath, (</>))

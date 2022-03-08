@@ -114,7 +114,7 @@ bracket' create teardown act =
               _ -> True
         actOnException hadFatalException >> throwIO (e :: Exc.SomeException)
 
-newtype IgnoreTelemetryC m a = IgnoreTelemetryC {runIgnoreTelemetryC :: m a}
+newtype IgnoreTelemetryC m a = IgnoreTelemetryC {runIgnoreTelemetryC :: ReaderC TelemetryCtx m a}
   deriving (Applicative, Functor, Monad, MonadFail, MonadIO)
 
 instance Algebra sig m => Algebra (Telemetry :+: sig) (IgnoreTelemetryC m) where
@@ -126,8 +126,13 @@ instance Algebra sig m => Algebra (Telemetry :+: sig) (IgnoreTelemetryC m) where
         SetTelemetrySink{} -> pure ctx
         TrackRawLogMessage{} -> pure ctx
         (TrackTimeSpent _ act) -> hdl (act <$ ctx)
-    R other -> alg (IgnoreTelemetryC . runIgnoreTelemetryC . hdl) (R other) ctx
+    R other -> IgnoreTelemetryC (alg (runIgnoreTelemetryC . hdl) (R other) ctx)
 
 -- | Ignores all telemetry effects.
-withoutTelemetry :: IgnoreTelemetryC m a -> m a
-withoutTelemetry = runIgnoreTelemetryC
+withoutTelemetry :: Has (Lift IO) sig m => IgnoreTelemetryC m a -> m a
+withoutTelemetry action = bracket'
+  mkTelemetryCtx
+  teardownTelemetry
+  $ \ctx -> runReader ctx . runIgnoreTelemetryC $ action
+  where
+    teardownTelemetry _ _ = pure ()

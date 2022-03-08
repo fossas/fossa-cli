@@ -32,7 +32,7 @@ You can disable telemetry with any of the following options,
 (1) setting environment variable
 
 ```
-$ FOSSA_CLI_TELEMETRY_SCOPE=off fossa analyze
+$ FOSSA_TELEMETRY_SCOPE=off fossa analyze
 ```
 
 (2) using command line flag

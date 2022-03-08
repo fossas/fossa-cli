@@ -77,8 +77,26 @@ $env:Path += ";$extractDir"
 Write-Host "The fossa-cli installation directory has been added to the PATH for this session."
 
 Write-Host "Installed fossa at: $fossa"
+Write-Host ""
+Write-Host "------"
+Write-Host "Notice"
+Write-Host "------"
+Write-Host ""
+Write-Host "FOSSA collects warnings, errors, and usage data to improve"
+Write-Host "fossa-cli and your experience. Currently CLI DOES NOT collect"  
+Write-Host "telemetry by default, but this may change in future!"
+Write-Host ""
+Write-Host "You can pre-emptively opt out of telemetry by setting" 
+Write-Host "FOSSA_TELEMETRY_SCOPE environment variable to 'off' in your shell."
+Write-Host ""
+Write-Host "For example:"
+Write-Host "  `$env:FOSSA_TELEMETRY_SCOPE=off"
+Write-Host "   fossa analyze"
+Write-Host ""
+Write-Host "Read more: https://github.com/fossas/fossa-cli/blob/master/docs/telemetry.md"
+Write-Host ""
 Write-Host "Get started by running: fossa.exe --help"
-
 Write-Host "Running fossa.exe --version"
+
 # Doesn't run without '&', seems to tell PS to treat the output as a command
 & $fossa --version
