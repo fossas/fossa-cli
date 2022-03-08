@@ -11,6 +11,7 @@ module Test.Effect (
   it',
   fit',
   xit',
+  withTempDir,
 ) where
 
 import Control.Effect.Lift (Has, Lift, sendIO)
@@ -31,15 +32,23 @@ import Test.Hspec (
  )
 
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
+import Control.Carrier.Finally (FinallyC, runFinally)
 import Control.Carrier.Stack (StackC, runStack)
+import Control.Effect.Finally (Finally, onExit)
+import Data.Bits (finiteBitSize)
 import Data.String.Conversion (toString)
 import Diag.Result (Result (Failure, Success), renderFailure)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (IgnoreLoggerC, ignoreLogger, renderIt)
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
+import Path
+import Path.IO (createDirIfMissing, removeDirRecur)
 import ResultUtil (expectFailure)
+import System.Directory (getTemporaryDirectory)
+import System.Random (randomIO)
+import Text.Printf (printf)
 
-type EffectStack a = ExecIOC (ReadFSIOC (DiagnosticsC (IgnoreLoggerC (StackC IO)))) a
+type EffectStack a = FinallyC (ExecIOC (ReadFSIOC (DiagnosticsC (IgnoreLoggerC (StackC IO))))) a
 
 -- TODO: add useful describe, naive describe' doesn't work.
 
@@ -56,7 +65,7 @@ runTestEffects' :: EffectStack () -> Spec
 runTestEffects' = runIO . runTestEffects
 
 runTestEffects :: EffectStack () -> IO ()
-runTestEffects = runStack . ignoreLogger . handleDiag . runReadFSIO . runExecIO
+runTestEffects = runStack . ignoreLogger . handleDiag . runReadFSIO . runExecIO . runFinally
   where
     handleDiag :: (Has (Lift IO) sig m) => DiagnosticsC m () -> m ()
     handleDiag diag =
@@ -64,6 +73,18 @@ runTestEffects = runStack . ignoreLogger . handleDiag . runReadFSIO . runExecIO
         Failure ws eg -> do
           expectationFailure' $ toString $ renderIt $ renderFailure ws eg "An issue occurred"
         Success _ _ -> pure ()
+
+-- | Create a temporary directory with the given name.  The directory will be
+-- created in the system temporary directory.  It will be deleted after use.
+withTempDir :: (Has (Lift IO) sig m, Has Finally sig m) => FilePath -> (Path Abs Dir -> m a) -> m a
+withTempDir name f = do
+  systemTempDir <- sendIO (getTemporaryDirectory >>= parseAbsDir)
+  randomJunk :: Word <- sendIO randomIO
+  testRelDir <- sendIO . parseRelDir $ name ++ printf "-%.*x" (finiteBitSize randomJunk `div` 4) randomJunk
+  let testDir = systemTempDir </> testRelDir
+  onExit . sendIO $ removeDirRecur testDir
+  sendIO $ createDirIfMissing True testDir
+  f testDir
 
 expectationFailure' :: (Has (Lift IO) sig m) => String -> m ()
 expectationFailure' = sendIO . expectationFailure

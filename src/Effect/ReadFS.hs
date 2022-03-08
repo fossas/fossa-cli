@@ -38,6 +38,9 @@ module Effect.ReadFS (
 
   -- * File identity information
   contentIsBinary,
+  DirID,
+  getIdentifier,
+  getIdentifier',
   module X,
 ) where
 
@@ -67,9 +70,20 @@ import Path.IO qualified as PIO
 import Prettyprinter (indent, line, pretty, vsep)
 import System.Directory qualified as Directory
 import System.IO (IOMode (ReadMode), withFile)
+import System.PosixCompat.Files qualified as Posix
+import System.PosixCompat.Types (CDev (..), CIno (..))
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Toml qualified
+
+-- | A unique file identifier for a directory.
+-- Uniqueness is guaranteed within a single OS.
+data DirID = DirID {dirFileID :: Integer, dirDeviceID :: Integer} deriving (Show, Eq, Ord, Generic)
+
+instance ToJSON DirID
+instance RecordableValue DirID
+instance FromJSON DirID
+instance ReplayableValue DirID
 
 data ReadFSF a where
   ReadContentsBS' :: SomeBase File -> ReadFSF (Either ReadFSErr ByteString)
@@ -80,6 +94,7 @@ data ReadFSF a where
   ResolveFile' :: Path Abs Dir -> Text -> ReadFSF (Either ReadFSErr (Path Abs File))
   ResolveDir' :: Path Abs Dir -> Text -> ReadFSF (Either ReadFSErr (Path Abs Dir))
   ListDir :: Path Abs Dir -> ReadFSF (Either ReadFSErr ([Path Abs Dir], [Path Abs File]))
+  GetIdentifier :: Path Abs Dir -> ReadFSF (Either ReadFSErr DirID)
 
 type ReadFS = Simple ReadFSF
 
@@ -178,6 +193,16 @@ listDir' = sendSimple . ListDir
 listDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m ([Path Abs Dir], [Path Abs File])
 listDir dir = fromEither =<< listDir' dir
 
+-- | Get a unique identifier for a directory.
+-- This follows symlinks and the identifier will be the same regardless of the path.
+getIdentifier' :: Has ReadFS sig m => Path Abs Dir -> m (Either ReadFSErr DirID)
+getIdentifier' = sendSimple . GetIdentifier
+
+-- | Get a unique identifier for a directory.
+-- This follows symlinks and the identifier will be the same regardless of the path.
+getIdentifier :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m DirID
+getIdentifier path = fromEither =<< getIdentifier' path
+
 -- | Determine if a file is binary using the same method as git:
 -- "is there a zero byte in the first 8000 bytes of the file"
 contentIsBinary :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m Bool
@@ -249,6 +274,16 @@ runReadFSIO = interpret $ \case
   ListDir dir -> do
     PIO.listDir dir
       `catchingIO` ListDirError (toFilePath dir)
+  GetIdentifier dir -> do
+    (extractIdentifier <$> Posix.getFileStatus (toFilePath dir))
+      `catchingIO` FileReadError (toFilePath dir)
+    where
+      extractIdentifier :: Posix.FileStatus -> DirID
+      extractIdentifier status =
+        let (CIno fileID) = Posix.fileID status
+            (CDev devID) = Posix.deviceID status
+         in DirID{dirFileID = toInteger fileID, dirDeviceID = toInteger devID}
+
   -- NB: these never throw
   DoesFileExist file -> sendIO (Directory.doesFileExist (fromSomeFile file))
   DoesDirExist dir -> sendIO (Directory.doesDirectoryExist (fromSomeDir dir))

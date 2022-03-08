@@ -115,10 +115,11 @@ walkDir handler topdir =
                   (MaybeT . walkAvoidLoop traversed)
                   ds
     checkLoop traversed dir = do
+      identifier <- getIdentifier dir
       pure $
-        if Set.member dir traversed
+        if Set.member identifier traversed
           then Nothing
-          else Just (Set.insert dir traversed)
+          else Just (Set.insert identifier traversed)
 
 data WalkAction b
   = -- | Finish the entire walk altogether
