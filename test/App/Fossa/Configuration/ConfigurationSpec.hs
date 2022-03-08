@@ -38,7 +38,7 @@ expectedConfigFile =
     , configTargets = Just expectedConfigTargets
     , configPaths = Nothing
     , configExperimental = Just expectedExperimentalConfig
-    , configTelemetryScope = Nothing
+    , configTelemetry = Nothing
     }
 
 expectedConfigProject :: ConfigProject

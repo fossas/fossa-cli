@@ -9,6 +9,7 @@ module App.Fossa.Config.ConfigFile (
   ConfigRevision (..),
   ConfigTargets (..),
   ConfigPaths (..),
+  ConfigTelemetry (..),
   ConfigTelemetryScope (..),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
@@ -41,7 +42,7 @@ import Data.Functor (($>))
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (ToString (toString), ToText (toText))
-import Data.Text (Text)
+import Data.Text (Text, strip, toLower)
 import Effect.Logger (
   AnsiStyle,
   Doc,
@@ -163,7 +164,7 @@ data ConfigFile = ConfigFile
   , configTargets :: Maybe ConfigTargets
   , configPaths :: Maybe ConfigPaths
   , configExperimental :: Maybe ExperimentalConfigs
-  , configTelemetryScope :: Maybe ConfigTelemetryScope
+  , configTelemetry :: Maybe ConfigTelemetry
   }
   deriving (Eq, Ord, Show)
 
@@ -197,6 +198,11 @@ data ConfigPaths = ConfigPaths
   }
   deriving (Eq, Ord, Show)
 
+newtype ConfigTelemetry = ConfigTelemetry
+  { telemetryScope :: ConfigTelemetryScope
+  }
+  deriving (Eq, Ord, Show)
+
 data ConfigTelemetryScope
   = NoTelemetry
   | FullTelemetry
@@ -220,7 +226,7 @@ instance FromJSON ConfigFile where
       <*> obj .:? "targets"
       <*> obj .:? "paths"
       <*> obj .:? "experimental"
-      <*> obj .:? "telemetry-scope"
+      <*> obj .:? "telemetry"
 
 instance FromJSON ConfigProject where
   parseJSON = withObject "ConfigProject" $ \obj ->
@@ -256,8 +262,13 @@ instance FromJSON ExperimentalGradleConfigs where
   parseJSON = withObject "ExperimentalGradleConfigs" $ \obj ->
     ExperimentalGradleConfigs <$> (obj .: "configurations-only" .!= Set.fromList [])
 
+instance FromJSON ConfigTelemetry where
+  parseJSON = withObject "ExperimentalGradleConfigs" $ \obj ->
+    ConfigTelemetry <$> (obj .: "scope")
+
 instance FromJSON ConfigTelemetryScope where
-  parseJSON = withText "ConfigTelemetryScope" $ \case
-    "full" -> pure FullTelemetry
-    "off" -> pure NoTelemetry
-    notSupported -> fail . toString $ "expected either: full or off for telemetry scope. You provided: " <> notSupported
+  parseJSON = withText "ConfigTelemetryScope" $ \scope ->
+    case toLower . strip $ scope of
+      "full" -> pure FullTelemetry
+      "off" -> pure NoTelemetry
+      notSupported -> fail . toString $ "Expected either: full or off for telemetry scope. You provided: " <> notSupported

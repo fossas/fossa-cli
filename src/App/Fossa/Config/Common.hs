@@ -25,7 +25,7 @@ module App.Fossa.Config.Common (
   collectRevisionOverride,
   collectAPIMetadata,
   collectApiOpts,
-  collectTelemetryScope,
+  collectTelemetrySink,
 
   -- * Configuration Types
   ScanDestination (..),
@@ -36,9 +36,10 @@ module App.Fossa.Config.Common (
 ) where
 
 import App.Fossa.Config.ConfigFile (
-  ConfigFile (configApiKey, configProject, configRevision, configServer, configTelemetryScope),
+  ConfigFile (configApiKey, configProject, configRevision, configServer, configTelemetry),
   ConfigProject (configProjID),
   ConfigRevision (configBranch, configCommit),
+  ConfigTelemetry (telemetryScope),
   ConfigTelemetryScope (..),
   mergeFileCmdMetadata,
  )
@@ -74,7 +75,7 @@ import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Bifunctor (Bifunctor (first))
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToText (toText))
-import Data.Text (Text, null, strip)
+import Data.Text (Text, null, strip, toLower)
 import Discovery.Filters (targetFilterParser)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
@@ -267,22 +268,23 @@ collectRevisionData' basedir cfg cache override = do
 collectAPIMetadata :: Maybe ConfigFile -> ProjectMetadata -> ProjectMetadata
 collectAPIMetadata cfgfile cliMeta = maybe cliMeta (mergeFileCmdMetadata cliMeta) cfgfile
 
-collectTelemetryScope :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> Maybe CommonOpts -> m (Maybe TelemetrySink)
-collectTelemetryScope maybeConfigFile envvars maybeOpts = do
+collectTelemetrySink :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> Maybe CommonOpts -> m (Maybe TelemetrySink)
+collectTelemetrySink maybeConfigFile envvars maybeOpts = do
+  let defaultScope = NoTelemetry
   -- Precedence is
   --  (1) command line
   --  (2) environment variable
   --  (3) configuration file
-  let telemetryScope =
+  let providedScope =
         fromMaybe
-          NoTelemetry -- default scope
+          defaultScope
           ( (maybeOpts >>= optTelemetry)
               <|> (envTelemetryScope envvars)
-              <|> (maybeConfigFile >>= configTelemetryScope)
+              <|> (telemetryScope <$> (configTelemetry =<< maybeConfigFile))
           )
 
   let isDebugMode = envTelemetryDebug envvars || (fmap optDebug maybeOpts == Just True)
-  case (isDebugMode, telemetryScope) of
+  case (isDebugMode, providedScope) of
     (True, _) -> pure $ Just TelemetrySinkToFile
     (False, NoTelemetry) -> pure Nothing
     (False, FullTelemetry) -> do
@@ -290,7 +292,9 @@ collectTelemetryScope maybeConfigFile envvars maybeOpts = do
       let candidateOpts = fromMaybe withoutAnyOpts maybeOpts
 
       -- Not all commands require api key, if we do not have valid api key
-      -- we cannot sink  telemetry to anywhere!
+      -- we do not know which endpoint to sink telemetry, this ensures we
+      -- we do not emit telemetry of on-prem users when they do not have
+      -- api opts configured.
       maybeApiOpts <- recover $ collectApiOpts maybeConfigFile envvars candidateOpts
       case maybeApiOpts of
         Nothing -> pure Nothing
@@ -308,8 +312,8 @@ data CommonOpts = CommonOpts
   deriving (Eq, Ord, Show)
 
 parseTelemetryScope :: ReadM ConfigTelemetryScope
-parseTelemetryScope = eitherReader $ \s ->
-  case s of
+parseTelemetryScope = eitherReader $ \scope ->
+  case toLower . strip . toText $ scope of
     "off" -> Right NoTelemetry
     "full" -> Right FullTelemetry
     _ -> Left "Failed to parse telemetry scope, expected either: full or off"

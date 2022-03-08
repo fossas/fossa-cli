@@ -4,10 +4,11 @@ module App.Fossa.Configuration.TelemetryConfigSpec (
 
 import App.Fossa.Config.Common (
   CommonOpts (..),
-  collectTelemetryScope,
+  collectTelemetrySink,
  )
 import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
+  ConfigTelemetry (ConfigTelemetry),
   ConfigTelemetryScope (FullTelemetry, NoTelemetry),
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
@@ -57,7 +58,7 @@ defaultConfigFile =
     , configTargets = Nothing
     , configPaths = Nothing
     , configExperimental = Nothing
-    , configTelemetryScope = Nothing
+    , configTelemetry = Nothing
     }
 
 mockApiKeyRaw :: Text
@@ -77,13 +78,13 @@ spec = do
   describe "telemetry configuration" $ do
     -- This needs to be updated when default telemetry model moves to opt-out.
     it' "by default telemetry sink is nothing" $ do
-      sink <- collectTelemetryScope noConfig defaultEnvVars noOpts
+      sink <- collectTelemetrySink noConfig defaultEnvVars noOpts
       sink `shouldBe'` Nothing
 
     describe "command opts" $ do
       it' "should set sink to nothing, when off scope is provided via command opts" $ do
         sink <-
-          collectTelemetryScope
+          collectTelemetrySink
             noConfig
             defaultEnvVars
             (Just defaultCommonOpts{optTelemetry = Just NoTelemetry, optAPIKey = Just mockApiKeyRaw})
@@ -91,7 +92,7 @@ spec = do
 
       it' "should set sink to endpoint, when full scope is provided via command opts" $ do
         sink <-
-          collectTelemetryScope
+          collectTelemetrySink
             noConfig
             defaultEnvVars
             (Just defaultCommonOpts{optTelemetry = Just FullTelemetry, optAPIKey = Just mockApiKeyRaw})
@@ -99,14 +100,14 @@ spec = do
 
       it' "should set sink to file, when debug option is provided via command line" $ do
         telFull <-
-          collectTelemetryScope
+          collectTelemetrySink
             noConfig
             defaultEnvVars
             (Just defaultCommonOpts{optTelemetry = Just FullTelemetry, optDebug = True, optAPIKey = Just mockApiKeyRaw})
         telFull `shouldBe'` Just TelemetrySinkToFile
 
         telOff <-
-          collectTelemetryScope
+          collectTelemetrySink
             noConfig
             defaultEnvVars
             (Just defaultCommonOpts{optTelemetry = Just FullTelemetry, optDebug = True, optAPIKey = Just mockApiKeyRaw})
@@ -115,7 +116,7 @@ spec = do
     describe "environment variables" $ do
       it' "should set sink to nothing, when off scope is provided via environment variables" $ do
         sink <-
-          collectTelemetryScope
+          collectTelemetrySink
             noConfig
             defaultEnvVars{envTelemetryScope = Just NoTelemetry, envApiKey = Just mockApiKeyRaw}
             noOpts
@@ -123,7 +124,7 @@ spec = do
 
       it' "should set sink to endpoint, when full scope is provided via environment variables" $ do
         sink <-
-          collectTelemetryScope
+          collectTelemetrySink
             noConfig
             defaultEnvVars{envTelemetryScope = Just FullTelemetry, envApiKey = Just mockApiKeyRaw}
             noOpts
@@ -131,7 +132,7 @@ spec = do
 
       it' "should set sink to file, when debug option is provided via environment variable" $ do
         telFull <-
-          collectTelemetryScope
+          collectTelemetrySink
             noConfig
             defaultEnvVars
               { envTelemetryScope = Just FullTelemetry
@@ -142,7 +143,7 @@ spec = do
         telFull `shouldBe'` Just TelemetrySinkToFile
 
         telOff <-
-          collectTelemetryScope
+          collectTelemetrySink
             noConfig
             defaultEnvVars
               { envTelemetryScope = Just NoTelemetry
@@ -155,8 +156,8 @@ spec = do
     describe "configuration file" $ do
       it' "should set sink to nothing, when off scope is provided via configuration file" $ do
         sink <-
-          collectTelemetryScope
-            ( Just defaultConfigFile{configTelemetryScope = Just NoTelemetry}
+          collectTelemetrySink
+            ( Just defaultConfigFile{configTelemetry = Just $ ConfigTelemetry NoTelemetry}
             )
             defaultEnvVars
             noOpts
@@ -164,8 +165,8 @@ spec = do
 
       it' "should set sink to endpoint, when full scope is provided via configuration file" $ do
         sink <-
-          collectTelemetryScope
-            ( Just defaultConfigFile{configTelemetryScope = Just FullTelemetry}
+          collectTelemetrySink
+            ( Just defaultConfigFile{configTelemetry = Just $ ConfigTelemetry FullTelemetry}
             )
             defaultEnvVars
             noOpts

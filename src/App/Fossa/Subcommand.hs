@@ -8,7 +8,7 @@ module App.Fossa.Subcommand (
   SubCommand (..),
 ) where
 
-import App.Fossa.Config.Common (CommonOpts, collectTelemetryScope)
+import App.Fossa.Config.Common (CommonOpts, collectTelemetrySink)
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars (envConfigDebug), getEnvVars)
 import Control.Carrier.Diagnostics (DiagnosticsC, context, logWithExit_)
@@ -59,7 +59,7 @@ runSubCommand SubCommand{..} = uncurry (runEffs) . mergeAndRun <$> parser
       configFile <- context "Loading config file" $ configLoader cliOptions
       envvars <- context "Fetching environment variables" getEnvVars
 
-      maybeTelSink <- collectTelemetryScope configFile envvars $ getCommonOpts cliOptions
+      maybeTelSink <- collectTelemetrySink configFile envvars $ getCommonOpts cliOptions
       case maybeTelSink of
         Nothing -> pure ()
         Just ts -> setSink ts
