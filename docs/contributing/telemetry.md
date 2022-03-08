@@ -60,12 +60,12 @@ Avoid using this interface, as much as possible, since it produces type-free tel
 Ideally, we want to capture telemetry data that has explicit/strict data shape.
 
 ```haskell
--- >> :t logTelemetry
--- logTelemetry :: Has Telemetry sig m => Severity -> Doc AnsiStyle -> m ()
+-- >> :t trackRawLogMessage
+-- trackRawLogMessage :: Has Telemetry sig m => Severity -> Doc AnsiStyle -> m ()
 
-foo :: (Has Telemetry sig m) => m ()
+foo :: Has Telemetry sig m => m ()
 foo = do
-    logTelemetry SevWarn "some messages explicitly to include in telemetry logs"
+    trackRawLogMessage SevWarn "some messages explicitly to include in telemetry logs"
 ```
 
 3. Captured system and CLI version information
@@ -77,12 +77,12 @@ or branch name. This information is exact as data collected in debug bundle.
 4. Capturing errors and warnings
 
 ```haskell 
--- >> :t flushDiagsToTelemetry
--- flushDiagsToTelemetry :: Has Telemetry sig m => Result -> m ()
+-- >> :t trackResult
+-- trackResult :: Has Telemetry sig m => Result a -> m ()
 
-bar :: (Has Telemetry sig m) => m ()
 bar = do
-    -- logTelemetry SevWarn "some messages explicitly to include in telemetry logs"
+    result <- runDiagnosticsIO (diag :: DiagnosticsC m a)
+    trackResult result
 
 ```
 
