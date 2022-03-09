@@ -86,9 +86,9 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts = do
   archiveLocators <- case maybeApiOpts of
     Nothing -> pure $ archiveNoUploadSourceUnit vendoredDependencies
     Just apiOpts -> 
-      if null vendoredDependencies
-        then pure []
-        else archiveUploadSourceUnit root apiOpts vendoredDependencies
+      case NE.nonEmpty vendoredDependencies of
+        Just nonEmptyVendoredDeps -> NE.toList <$> archiveUploadSourceUnit root apiOpts nonEmptyVendoredDeps
+        Nothing -> pure []
 
   let renderedPath = toText root
       referenceLocators = refToLocator <$> referencedDependencies

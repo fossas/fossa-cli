@@ -26,6 +26,8 @@ import Data.Aeson.Extra
 import Data.ByteString.Lazy qualified as BS
 import Data.Functor.Extra ((<$$>))
 import Data.List (intercalate, nub)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion
@@ -52,7 +54,7 @@ instance FromJSON VendoredDependency where
       <*> (unTextLike <$$> obj .:? "version")
       <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
 
-uploadArchives :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> [VendoredDependency] -> Path Abs Dir -> Path Abs Dir -> m [Archive]
+uploadArchives :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> NonEmpty VendoredDependency -> Path Abs Dir -> Path Abs Dir -> m (NonEmpty Archive)
 uploadArchives apiOpts deps arcDir tmpDir = traverse (compressAndUpload apiOpts arcDir tmpDir) deps
 
 compressAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> Path Abs Dir -> Path Abs Dir -> VendoredDependency -> m Archive
@@ -74,42 +76,40 @@ compressAndUpload apiOpts arcDir tmpDir VendoredDependency{..} = context "compre
 
 -- archiveUploadSourceUnit receives a list of vendored dependencies, a root path, and API settings.
 -- Using this information, it uploads each vendored dependency and queues a build for the dependency.
-archiveUploadSourceUnit :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> [VendoredDependency] -> m [Locator]
-archiveUploadSourceUnit baseDir apiOpts vendoredDeps = 
-  if null vendoredDeps
-    then pure []
-    else do
-      -- Users with many instances of vendored dependencies may accidentally have complete duplicates. Remove them.
-      let uniqDeps = nub vendoredDeps
-      
-      -- However, users may also have vendored dependencies that have duplicate names but are not complete duplicates.
-      -- These aren't valid and can't be automatically handled, so fail the scan with them.
-      let duplicates = duplicateNames uniqDeps
-      unless (null duplicates) $ Diag.fatalText $ duplicateFailureBundle duplicates
+archiveUploadSourceUnit :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> NonEmpty VendoredDependency -> m (NonEmpty Locator)
+archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
+  -- Users with many instances of vendored dependencies may accidentally have complete duplicates. Remove them.
+  let uniqDeps = NonEmpty.nub vendoredDeps
 
-      -- At this point, we have a good list of deps, so go for it.
-      archives <- withSystemTempDir "fossa-temp" (uploadArchives apiOpts uniqDeps baseDir)
+  -- However, users may also have vendored dependencies that have duplicate names but are not complete duplicates.
+  -- These aren't valid and can't be automatically handled, so fail the scan with them.
+  let duplicates = duplicateNames uniqDeps
+  unless (null duplicates) $ Diag.fatalText $ duplicateFailureBundle duplicates
 
-      -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
-      -- We don't care about the response here because if the build has already been queued, we get a 401 response.
-      _ <- Fossa.archiveBuildUpload apiOpts (ArchiveComponents archives)
+  -- At this point, we have a good list of deps, so go for it.
+  archives <- withSystemTempDir "fossa-temp" (uploadArchives apiOpts uniqDeps baseDir)
 
-      -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
-      -- but not when reading from a source unit.
-      Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts
+  -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
+  -- We don't care about the response here because if the build has already been queued, we get a 401 response.
+  _ <- Fossa.archiveBuildUpload apiOpts (ArchiveComponents $ NonEmpty.toList archives)
 
-      let updateArcName :: Text -> Archive -> Archive
-          updateArcName updateText arc = arc{archiveName = updateText <> "/" <> archiveName arc}
-          archivesWithOrganization = updateArcName (toText $ show orgId) <$> archives
+  -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
+  -- but not when reading from a source unit.
+  Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts
 
-      pure $ arcToLocator <$> archivesWithOrganization
+  let updateArcName :: Text -> Archive -> Archive
+      updateArcName updateText arc = arc{archiveName = updateText <> "/" <> archiveName arc}
+      archivesWithOrganization = updateArcName (toText $ show orgId) <$> archives
+
+  pure $ arcToLocator <$> archivesWithOrganization
 
 -- archiveNoUploadSourceUnit exists for when users run `fossa analyze -o` and do not upload their source units.
 archiveNoUploadSourceUnit :: [VendoredDependency] -> [Locator]
 archiveNoUploadSourceUnit = map (arcToLocator . forceVendoredToArchive)
 
-duplicateNames :: [VendoredDependency] -> [Text]
-duplicateNames deps = Map.keys . Map.filter (> 1) . Map.fromListWith (+) $ map pair deps
+-- | List of names that occur more than once in a list of vendored dependencies.
+duplicateNames :: NonEmpty VendoredDependency -> [Text]
+duplicateNames = Map.keys . Map.filter (> 1) . Map.fromListWith (+) . map pair . NonEmpty.toList
   where
     pair :: VendoredDependency -> (Text, Int)
     pair VendoredDependency{vendoredName} = (vendoredName, 1)
