@@ -85,7 +85,10 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts = do
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
   archiveLocators <- case maybeApiOpts of
     Nothing -> pure $ archiveNoUploadSourceUnit vendoredDependencies
-    Just apiOpts -> archiveUploadSourceUnit root apiOpts vendoredDependencies
+    Just apiOpts -> 
+      if null vendoredDependencies
+        then pure []
+        else archiveUploadSourceUnit root apiOpts vendoredDependencies
 
   let renderedPath = toText root
       referenceLocators = refToLocator <$> referencedDependencies
