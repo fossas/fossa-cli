@@ -51,6 +51,7 @@ import Path (Abs, Dir, Path)
 import Path.IO qualified as PIO
 import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
+import Strategy.Cocoapods qualified as Cocaopods
 import Strategy.Composer qualified as Composer
 import Strategy.Maven qualified as Maven
 import Strategy.Node qualified as Node
@@ -92,6 +93,7 @@ runAll basedir = do
   single Cargo.discover
   single Node.discover
   single Bundler.discover
+  single Cocaopods.discover
   where
     single f = withDiscoveredProjects f basedir runSingle
 
