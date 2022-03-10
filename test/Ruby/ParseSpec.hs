@@ -51,8 +51,17 @@ stringParseSpec =
 rubyStringArray :: Text
 rubyStringArray = "[ \"hello\",\"world\" ,\t\"foo\",\"bar\"]"
 
+commentedRubyStringArray :: Text
+commentedRubyStringArray = "[ #cmt\n\"hello\"#cmt\n,\"world\" ,\t\"foo\",\"bar\"]"
+
 rubyWordArray :: Text
 rubyWordArray = "%w( hello world \t foo \nbar)"
+
+commentedRubyWordArray :: Text
+commentedRubyWordArray = "%w( hello #comment world \t foo \nbar)"
+
+commentExpectedArray :: [Text]
+commentExpectedArray = ["hello", "#comment", "world", "foo", "bar"]
 
 expectedArray :: [Text]
 expectedArray = ["hello", "world", "foo", "bar"]
@@ -68,8 +77,12 @@ arrayParseSpec =
   describe "Parsing arrays of items in ruby" $ do
     it "Can parse an array of strings" $
       parseRubyArray rubyString `shouldParse` rubyStringArray `to` expectedArray
+    it "Word arrays should treat interspersed comments as words" $
+      parseRubyArray rubyString `shouldParse` commentedRubyStringArray `to` expectedArray
     it "Can parse an array of words" $
       parseRubyWordsArray `shouldParse` rubyWordArray `to` expectedArray
+    it "Comments in word arrays are treated as words" $
+      parseRubyWordsArray `shouldParse` commentedRubyWordArray `to` commentExpectedArray
     it "Can parse an array of words with escaped ending delimiter" $
       parseRubyWordsArray `shouldParse` escapedRubyWordArray `to` escapedExpectedArray
 
@@ -107,6 +120,9 @@ assignmentParseSpec =
 multiKeyDict :: Text
 multiKeyDict = "{ :key=> \"val\", :\"key\" => \"hello\"}"
 
+commentedMultiKeyDict :: Text
+commentedMultiKeyDict = "{ :key=> #cmt\n\"val\", #cmt\n :\"key\" => \"hello\" #cmt\n}"
+
 expectedMultiKeyDict :: [(Symbol, Text)]
 expectedMultiKeyDict =
   [ (Symbol "key", "val")
@@ -120,6 +136,8 @@ dictLiteralParseSpec =
       parseRubyDict rubyString `shouldParse` "{ :key => \"val\"}" `to` [(Symbol "key", "val")]
     it "Parses a dictionary with a several items" $
       parseRubyDict rubyString `shouldParse` multiKeyDict `to` expectedMultiKeyDict
+    it "Parses a dictionary with interspersed comments" $
+      parseRubyDict rubyString `shouldParse` commentedMultiKeyDict `to` expectedMultiKeyDict
 
 spec :: Spec
 spec = context "Ruby GemSpec tests" $ do

@@ -3,6 +3,8 @@ Pod::Spec.new do |s|
   s.version          = '0.0.0'
   s.summary          = 'fake'
   s.homepage         = 'https://foo.bar'
+  # This next license line should be skipped
+  # s.license          = 'LGPL'
   s.license          = 'MIT'
   s.author           = { 'foo' => 'bar' }
   s.source           = { :git => 'https://github.com', :tag => s.version.to_s }

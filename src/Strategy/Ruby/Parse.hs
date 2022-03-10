@@ -22,8 +22,8 @@ import Data.List.Extra (singleton)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
-import Text.Megaparsec (MonadParsec (eof), Parsec, anySingle, anySingleBut, between, choice, lookAhead, many, manyTill, optional, sepBy, skipManyTill, takeWhile1P, try)
-import Text.Megaparsec.Char (char, space, space1, string)
+import Text.Megaparsec (MonadParsec (eof), Parsec, anySingle, anySingleBut, between, choice, lookAhead, many, manyTill, optional, sepBy, skipManyTill, takeWhile1P, takeWhileP, try)
+import Text.Megaparsec.Char (char, space1, string)
 
 type Parser = Parsec Void Text
 
@@ -115,8 +115,15 @@ parseRubyAssignment rhs = Assignment <$> (labelP <* lexeme (char '=')) <*> value
     labelP = takeWhile1P Nothing (\c -> c /= '=' && not (isSpace c))
     valueP = rhs
 
+-- |Consume 0 or more spaces or comments. A comment in ruby starts with
+-- '#' and extends to the end of the line.
+rubySpc :: Parser ()
+rubySpc = many (space1 <|> commentP) $> ()
+  where
+    commentP = char '#' *> takeWhileP (Just "comment text") (/= '\n') $> ()
+
 lexeme :: Parser a -> Parser a
-lexeme p = space *> p <* space
+lexeme p = rubySpc *> p <* rubySpc
 
 -- | Ruby array literals look like this:
 --
@@ -212,9 +219,6 @@ parseRubyWordsArray = do
                 *> (choice [char 'W', char 'w'])
                 *> lookAhead anySingle
             )
-
--- >>> parse (lexeme (sepBy (string "h") space1)) "" "h h"
--- Right ["h","h"]
 
 -- |Try to parse any value that could potentially be a license.
 -- This parser only works for licenses that are a string literal or an
