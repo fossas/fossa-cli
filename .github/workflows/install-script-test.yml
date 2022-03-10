@@ -32,7 +32,7 @@ jobs:
       
 
   test-windows:
-    runs-on: 'windows-2019'
+    runs-on: 'windows-latest'
     steps:
       - uses: actions/checkout@v2
 
@@ -85,7 +85,9 @@ jobs:
         shell: pwsh
         run: |
           # Get Scoop
-          iwr -useb get.scoop.sh | iex
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+          iwr -useb 'https://raw.githubusercontent.com/scoopinstaller/install/master/install.ps1' -outfile 'install.ps1'
+          .\install.ps1 -RunAsAdmin
 
           # Use Scoop to install fossa
           # Reference: https://github.com/ScoopInstaller/Main/pull/2778/files
