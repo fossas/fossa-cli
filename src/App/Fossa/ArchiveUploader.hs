@@ -25,7 +25,7 @@ import Data.Aeson (
 import Data.Aeson.Extra
 import Data.ByteString.Lazy qualified as BS
 import Data.Functor.Extra ((<$$>))
-import Data.List (intercalate, nub)
+import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict qualified as Map
