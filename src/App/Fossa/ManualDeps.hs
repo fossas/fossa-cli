@@ -85,7 +85,7 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts = do
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
   archiveLocators <- case maybeApiOpts of
     Nothing -> pure $ archiveNoUploadSourceUnit vendoredDependencies
-    Just apiOpts -> 
+    Just apiOpts ->
       case NE.nonEmpty vendoredDependencies of
         Just nonEmptyVendoredDeps -> NE.toList <$> archiveUploadSourceUnit root apiOpts nonEmptyVendoredDeps
         Nothing -> pure []
