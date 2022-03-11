@@ -19,5 +19,7 @@ We'll assume that you want to release all changes currently on `master`.  You sh
     ```
     Replace `vX.Y.Z` with your version number, such as `v3.1.4`.  The tag _must_ start with `v`.
 3. GitHub Actions will take the tag and run some tests before generating a draft release which can be found on the [releases page](https://github.com/fossas/fossa-cli/releases).
-4. If nothing has changed to dissuade you it's time to publish.  Edit the draft release and hit "publish" at the bottom.  You should not need to change anything else about the release.
+4. If nothing has changed to dissuade you it's time to publish.
+    1. Add the notes for this release from [Changelog.md](/Changelog.md) to the release description.
+    2. Hit "publish" at the bottom.
 5. Inform our users!
