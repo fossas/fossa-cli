@@ -1,8 +1,9 @@
 # Fossa CLI Changelog
 
-## Unreleased
+## v3.1.4
 
 - Handles symlink loops in directory structure. ([#827](https://github.com/fossas/fossa-cli/pull/827))
+- No longer crashes when `fossa-deps.yml` exists but has an empty `archived-dependencies` property. ([#832](https://github.com/fossas/fossa-cli/pull/832))
 
 ## v3.1.3
 
