@@ -114,6 +114,8 @@ data LicenseUnitMatchData = LicenseUnitMatchData
   , licenseUnitMatchDataLocation :: Integer
   , licenseUnitMatchDataLength :: Integer
   , licenseUnitMatchDataIndex :: Integer
+  , licenseUnitDataStartLine :: Integer
+  , licenseUnitDataEndLine :: Integer
   }
   deriving (Eq, Ord, Show)
 
@@ -124,6 +126,8 @@ instance ToJSON LicenseUnitMatchData where
       , "location" .= licenseUnitMatchDataLocation
       , "length" .= licenseUnitMatchDataLength
       , "index" .= licenseUnitMatchDataIndex
+      , "start_line" .= licenseUnitDataStartLine
+      , "end_line" .= licenseUnitDataEndLine
       ]
 
 instance FromJSON LicenseUnitMatchData where
@@ -132,6 +136,8 @@ instance FromJSON LicenseUnitMatchData where
       <*> obj .: "location"
       <*> obj .: "length"
       <*> obj .: "index"
+      <*> obj .: "start_line"
+      <*> obj .: "end_line"
 
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
