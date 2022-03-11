@@ -5,9 +5,9 @@ So you've made a change that you want to get out to users.  Great!  Let's get th
 We'll assume that you want to release all changes currently on `master`.  You should not release anything from another branch.
 
 1. First, make sure that you update the release notes.
-    a. Create a PR that updates the [Changelog.md](/Changelog.md).
-    b. Rename the "Unreleased" section and to the next version, incrementing the version number as appropriate.
-    c. Make sure that change makes it to the `master` branch before continuing.
+    1. Create a PR that updates the [Changelog.md](/Changelog.md).
+    2. Rename the "Unreleased" section and to the next version, incrementing the version number as appropriate.
+    3. Make sure that change makes it to the `master` branch before continuing.
 2. Ensure that your local master branch is up to date and then create a _tag_ for the new release.
     The commands would look something like the following.
     ```shell
