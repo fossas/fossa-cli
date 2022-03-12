@@ -2,43 +2,42 @@
 
 ## Overview
 
-Telemetry lifecycle is implemented via `bracket`. We provision `TelemetryCtx` 
-during setup and during teardown we perform sink Telemetry records. We do 
-not employ (producer-consumer threaded) pattern for emitting logs. This is to preserve
-simplicity and limit network requests to minimum. Further, with current requirements 
-of telemetry, we do not need to ship large amount of telemetry, so final payload 
-is of reasonable small (<200kb). 
+The telemetry lifecycle is implemented via `bracket`. We provision `TelemetryCtx` 
+during setup and during teardown and we perform sink Telemetry records. We do 
+not use (producer-consumer threaded) pattern for emitting logs. This is to preserve
+simplicity and limit network requests to a minimum. The current telemetry requirements 
+allow us to ship a reasonably small payload (<200kb). 
 
 Within TelemetryCtx, 
 
-- we use `TBMQueue` for listed logs, results, and measures
-- we use `STM` for atomic counters and data containers
-- we use `TMVar` for setting one time sink, or command information
+- We use `TBMQueue` for listed logs, results, and measures.
+- We use `STM` for atomic counters and data containers.
+- We use `TMVar` for setting a one-time sink or command information.
 
 ## Telemetry Scope and User Interface
 
-Telemetry scope is completely configurable by user. Telemetry scope can be 
-configured via following in order of precedence: 
+Telemetry scope is configurable by the user. Telemetry scope can be 
+configured via the following options in order of precedence: 
 
 1. Command line option (`--with-telemetry-scope=off|full`)
 2. Environment variable (`FOSSA_TELEMETRY_SCOPE=off|full`)
 3. Configuration file (`telemetry-scope:off|full`)
 
-For instance, if both command line option and environment variable provides 
-telemetry scope, scope provided via command line will be used. 
-
-When scope of `off` is used, telemetry result are not captured or emitted. 
-When scope of `full` is used, provided endpoint from configuration is used as base url, to ship telemetry data. 
-
-When we do not have `ApiOpts` (e.g. API Key), we do not emit telemetry to endpoint.
-
+For instance, if both the command-line option and the environment variable are provided
+the telemetry scope provided via the command line will be used. 
+	
+Supported telemetry scopes:
+- `off` - telemetry results are not captured or emitted. 
+- `full` - telemetry results are uploaded to the default or specified endpoint.
+	
+When we do not have `ApiOpts` (e.g. API Key), we do not emit telemetry to an endpoint.
 ## Telemetry Sinks
 
-When environment variable `FOSSA_TELEMETRY_DEBUG=1` or `--debug` flag is provided, 
-telemetry sink is set to file. This will generate `fossa.telemetry.json` file in cwd. 
-
-Otherwise, telemetry is sinked at provided endpoint i.e. `--endpoint` or `server:` in config file. 
-If no such endpoint is provided, base endpoint (`app.fossa.com`) is used.
+When the environment variable `FOSSA_TELEMETRY_DEBUG=1` or `--debug` flag is provided, 
+the telemetry sink is set to file. This will generate the file `fossa.telemetry.json` in the current working directory. 
+	
+Otherwise, telemetry is sunk at provided endpoint i.e. `--endpoint` or `server:` in the config file. 
+If no such endpoint is provided, the base endpoint (`app.fossa.com`) is used.
 
 ## Interfaces and Examples
 
@@ -56,8 +55,8 @@ experimental (SomeProject manifestDir manifestFile) = do
 
 2. Tracking raw telemetry messages
 
-Avoid using this interface, as much as possible, since it produces type-free telemetry data. 
-Ideally, we want to capture telemetry data that has explicit/strict data shape.
+Avoid using this interface as much as possible. It produces type-free telemetry data and 
+we want to capture telemetry data that has explicit/strict data shape.
 
 ```haskell
 -- >> :t trackRawLogMessage
@@ -102,7 +101,7 @@ someComplexComputation = do
 ### Future
 
 We can implement `span` and `trace`s to provide capability to continuous profiling, this 
-can be done by using, modifying `trackTimeSpent` to `trackSpan`. 
+can be done by modifying `trackTimeSpent` to `trackSpan`. 
 
 ```
 <---------------------------------> ~ Trace

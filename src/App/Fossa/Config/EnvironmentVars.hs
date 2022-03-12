@@ -9,6 +9,7 @@ import Data.Functor.Extra ((<$$>))
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Effect.Logger (Logger, Pretty (pretty), logWarn)
 import System.Environment (lookupEnv)
 
 data EnvVars = EnvVars
@@ -33,7 +34,7 @@ telemetryScopeKeyName = "FOSSA_TELEMETRY_SCOPE"
 
 -- Currently, this is overkill, but useful if we add other environment vars
 -- later, like the proposed FOSSA_BINARY_CMD in fossas/team-analysis#799
-getEnvVars :: Has (Lift IO) sig m => m EnvVars
+getEnvVars :: (Has (Lift IO) sig m, Has Logger sig m) => m EnvVars
 getEnvVars =
   EnvVars
     <$> lookupName apiKeyName
@@ -51,7 +52,7 @@ lookupBool name = do
     Nothing -> False
     Just txt -> not $ any' txt [Text.null, (== "0")]
 
-lookUpTelemetryScope :: Has (Lift IO) sig m => String -> m (Maybe ConfigTelemetryScope)
+lookUpTelemetryScope :: (Has (Lift IO) sig m, Has Logger sig m) => String -> m (Maybe ConfigTelemetryScope)
 lookUpTelemetryScope varName = do
   telScope <- lookupName varName
   case telScope of
@@ -60,7 +61,9 @@ lookUpTelemetryScope varName = do
       case Text.toLower . Text.strip $ scope of
         "off" -> pure $ Just NoTelemetry
         "full" -> pure $ Just FullTelemetry
-        _ -> pure Nothing
+        other -> do
+          logWarn $ pretty ("You provided telemetry scope of: " <> other <> " " <> "which is not valid. Please choose between \"full\" or \"off\".")
+          pure Nothing
 
 any' :: a -> [a -> Bool] -> Bool
 any' _ [] = False

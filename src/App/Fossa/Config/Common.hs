@@ -325,4 +325,4 @@ commonOpts =
     <*> optional (strOption (long "revision" <> short 'r' <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
     <*> optional (strOption (long "config" <> short 'c' <> help "Path to configuration file including filename (default: .fossa.yml)"))
-    <*> optional (option parseTelemetryScope (long "with-telemetry-scope" <> help "Scope of telemetry to use (default: full)"))
+    <*> optional (option parseTelemetryScope (long "with-telemetry-scope" <> help "Scope of telemetry to use, the options are \"full\" or \"off\". (default: \"full\")"))
