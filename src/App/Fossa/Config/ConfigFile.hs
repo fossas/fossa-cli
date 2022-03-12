@@ -271,4 +271,4 @@ instance FromJSON ConfigTelemetryScope where
     case toLower . strip $ scope of
       "full" -> pure FullTelemetry
       "off" -> pure NoTelemetry
-      notSupported -> fail . toString $ "Expected either: full or off for telemetry scope. You provided: " <> notSupported
+      notSupported -> fail . toString $ "Expected either: \"full\" or \"off\" for telemetry scope. You provided: " <> notSupported
