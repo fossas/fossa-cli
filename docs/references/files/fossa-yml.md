@@ -64,7 +64,7 @@ The project fields allow you to configure settings for the project you are inter
 > Note: `name`, `team`, `policy`, `link`, and `jiraProjectKey` can only be set when creating a project (running `fossa analyze` for the first time).
 
 ### `project.id:`
-The project ID defines a unique ID that the FOSSA API will use to reference this project. The project ID can be found in the UI on the project settings page listed as the "Project Locator" underneath the "Project Title" setting. PFor example, if the "Project Locator" value of `custom+1/foo` is provided in FOSSA UI, use `foo` for `project.id`.
+The project ID defines a unique ID that the FOSSA API will use to reference this project. The project ID can be found in the UI on the project settings page listed as the "Project Locator" underneath the "Project Title" setting. For example, if the "Project Locator" value of `custom+1/foo` is provided in the FOSSA UI, use `foo` for the `project.id`.
 
 Default: 
 - Git: The CLI will look for a `.git/config` file and set the ID to the project's remote "origin" url. 
