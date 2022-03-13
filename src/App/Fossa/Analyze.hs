@@ -51,7 +51,6 @@ import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.Monorepo (monorepoScan)
 import App.Fossa.Subcommand (SubCommand)
-import App.Fossa.Telemetry.Types (CountableCliFeature (ExperimentalGradleSingleConfigurationUsage))
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
 import App.Fossa.VSI.Types qualified as VSI
