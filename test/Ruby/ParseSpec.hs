@@ -1,3 +1,5 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module Ruby.ParseSpec (spec) where
 
 import Data.Char (isSeparator)
@@ -7,6 +9,7 @@ import Data.Text (Text)
 import Strategy.Ruby.Parse (Assignment (Assignment), Symbol (Symbol), parseRubyArray, parseRubyAssignment, parseRubyDict, parseRubySymbol, parseRubyWordsArray, rubyString)
 import Test.Hspec (Spec, context, describe, it, shouldBe)
 import Text.Megaparsec (MonadParsec (eof), ParseErrorBundle, Parsec, runParser, takeWhile1P)
+import Text.RawString.QQ (r)
 
 -- I'm not sure about these helpers. Get guidance on whether they help readability.
 shouldParse :: Parsec e s a -> s -> Either (ParseErrorBundle s e) a
@@ -43,22 +46,28 @@ stringParseSpec =
         strParse `shouldParse` (baseStr <> ".freeze()") `to` "Hello"
       it "Respects escaped delimiters" $ do
         let expected = "\\" <> d1 <> "Hello" <> "\\" <> d2 <> " world"
-            escapedText = ("\"\\" <> d1 <> "Hello\\" <> d2 <> " world\"")
+            escapedText = ([r|"\|] <> d1 <> "Hello\\" <> d2 <> " world\"")
         strParse `shouldParse` escapedText `to` expected
   where
     strParse = rubyString <* eof -- make sure it consumes all input
 
 rubyStringArray :: Text
-rubyStringArray = "[ \"hello\",\"world\" ,\t\"foo\",\"bar\"]"
+rubyStringArray =
+  [r|[ "hello","world" ,    "foo","bar"]|]
 
 commentedRubyStringArray :: Text
-commentedRubyStringArray = "[ #cmt\n\"hello\"#cmt\n,\"world\" ,\t\"foo\",\"bar\"]"
+commentedRubyStringArray =
+  [r|[ #cmt
+    "hello"#cmt
+    ,"world" ,  "foo","bar"]|]
 
 rubyWordArray :: Text
 rubyWordArray = "%w( hello world \t foo \nbar)"
 
 commentedRubyWordArray :: Text
-commentedRubyWordArray = "%w( hello #comment world \t foo \nbar)"
+commentedRubyWordArray =
+  [r|%w( hello #comment world  foo
+    bar)|]
 
 commentExpectedArray :: [Text]
 commentExpectedArray = ["hello", "#comment", "world", "foo", "bar"]
@@ -67,10 +76,12 @@ expectedArray :: [Text]
 expectedArray = ["hello", "world", "foo", "bar"]
 
 escapedRubyWordArray :: Text
-escapedRubyWordArray = "%w[ [hello\\] world \t foo \nbar]"
+escapedRubyWordArray =
+  [r|%w[ [hello\] world  foo
+    bar]|]
 
 escapedExpectedArray :: [Text]
-escapedExpectedArray = ["[hello\\]", "world", "foo", "bar"]
+escapedExpectedArray = [[r|[hello\]|], "world", "foo", "bar"]
 
 arrayParseSpec :: Spec
 arrayParseSpec =
@@ -94,9 +105,9 @@ symbolParseSpec =
     it "Stops when a fat arrow is on the end of a simple symbol" $
       parseRubySymbol `shouldParse` ":foo=>" `to` Symbol "foo"
     it "Can parse a symbol made from a string literal with '\"'" $
-      parseRubySymbol `shouldParse` ":\"f\\\"o o\"" `to` Symbol "f\\\"o o"
+      parseRubySymbol `shouldParse` [r|:"f\"o o"|] `to` Symbol "f\\\"o o"
     it "Can parse a symbol made from a string literal with \"'\"" $
-      parseRubySymbol `shouldParse` ":\'f\\'o o\'" `to` Symbol "f\\'o o"
+      parseRubySymbol `shouldParse` [r|:'f\'o o'|] `to` Symbol "f\\'o o"
 
 assignmentParseSpec :: Spec
 assignmentParseSpec =
@@ -118,10 +129,14 @@ assignmentParseSpec =
 
 -- TODO: Parse when there isn't a space between the fat arrow and the key/value
 multiKeyDict :: Text
-multiKeyDict = "{ :key=> \"val\", :\"key\" => \"hello\"}"
+multiKeyDict = [r|{ :key=> "val", :"key" => "hello"}|]
 
 commentedMultiKeyDict :: Text
-commentedMultiKeyDict = "{ :key=> #cmt\n\"val\", #cmt\n :\"key\" => \"hello\" #cmt\n}"
+commentedMultiKeyDict =
+  [r|{ :key=> #cmt
+    "val", #cmt
+    :"key" => "hello" #cmt
+    }|]
 
 expectedMultiKeyDict :: [(Symbol, Text)]
 expectedMultiKeyDict =
@@ -133,7 +148,7 @@ dictLiteralParseSpec :: Spec
 dictLiteralParseSpec =
   describe "Ruby dictionary literal parse spec" $ do
     it "Parses a dictionary with a single item" $
-      parseRubyDict rubyString `shouldParse` "{ :key => \"val\"}" `to` [(Symbol "key", "val")]
+      parseRubyDict rubyString `shouldParse` [r|{ :key => "val"}|] `to` [(Symbol "key", "val")]
     it "Parses a dictionary with a several items" $
       parseRubyDict rubyString `shouldParse` multiKeyDict `to` expectedMultiKeyDict
     it "Parses a dictionary with interspersed comments" $

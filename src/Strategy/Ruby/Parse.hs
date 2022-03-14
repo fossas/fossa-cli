@@ -49,7 +49,8 @@ betweenDelim (d1, d2) =
       )
   where
     -- only the close delimiter can stop parsing, so only check
-    -- for escaped versions of that.
+    -- for escaped versions of that. The intent here is to consume the
+    -- escaped ending delimiter before 'between' sees it and stops parsing.
     delimEscape = string $ "\\" <> toText d2
 
 -- |This is a parser for a ruby string literal. The strings it parses could look
