@@ -41,3 +41,6 @@ functions with `hspec` is a nightmare.  In short, `hspec` is `IO`-only, and `fus
 monads (not really, but it does work similarly).  To make this easier for us, we created the `Test.Effect` module,
 and use that to mimic `hspec` for an effectful system.  [More details can be found here.](testing-with-effects.md)
 
+## Releases
+
+We have a release process that manages building our archives and updating our release notes.  [Read more about our releases here](releases.md).
