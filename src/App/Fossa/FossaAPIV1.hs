@@ -520,7 +520,7 @@ instance FromJSON Organization where
   parseJSON = withObject "Organization" $ \obj ->
     Organization <$> obj .: "organizationId"
       <*> obj .:? "usesSAML" .!= False
-      <*> obj .:? "doLocalLicenseScan" .!= False
+      <*> obj .:? "supportsCliLicenseScanning" .!= False
 
 organizationEndpoint :: Url scheme -> Url scheme
 organizationEndpoint baseurl = baseurl /: "api" /: "cli" /: "organization"
