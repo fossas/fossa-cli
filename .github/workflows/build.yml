@@ -153,6 +153,8 @@ jobs:
     - name: Print git stats 2
       run: |
         git log -1
+        git status --porcelain
+        git status
       if: ${{ contains(matrix.os, 'windows') }}
 
     - name: Build
@@ -164,6 +166,13 @@ jobs:
       run: |
         cabal update
         $RUN_CMD || $RUN_CMD
+
+    - name: Print git stats 3
+      run: |
+        git log -1
+        git status --porcelain
+        git status
+      if: ${{ contains(matrix.os, 'windows') }}
 
     - name: Run unit tests
       run: |
