@@ -91,17 +91,16 @@ jobs:
     # TODO: try removing this with GHC >= 9.0.1, once we can actually use it.
     # Potential GHC fix here (version 9.0.1/8.12.1): https://gitlab.haskell.org/ghc/ghc/-/merge_requests/3047
 
-    - name: Print git stats 1
-      run: |
-        git log -1
-      if: ${{ contains(matrix.os, 'windows') }}
-
-
     - uses: al-cheb/configure-pagefile-action@v1.2
       if: ${{ contains(matrix.os, 'windows') }}
 
 
     - uses: actions/checkout@v2
+
+    - name: Print git stats 1
+      run: |
+        git log -1
+      if: ${{ contains(matrix.os, 'windows') }}
 
     # Install tools used in `vendor_download.sh`.
     - name: Install alpine binary dependencies
