@@ -40,7 +40,7 @@ spec = do
   describe "SAML URL builder" $ do
     it "should render simple locators" $ do
       let locator = Locator "fetcher123" "project123" $ Just "revision123"
-          org = Just $ Organization 1 True
+          org = Just $ Organization 1 True False
           revision = ProjectRevision "" "not this revision" $ Just "master123"
           -- Loggers and Diagnostics modify monads, so we need a no-op monad
           actual = stripDiag $ getBuildURLWithOrg org revision apiOpts locator
@@ -49,7 +49,7 @@ spec = do
 
     it "should render git@ locators" $ do
       let locator = Locator "fetcher@123/abc" "git@github.com/user/repo" $ Just "revision@123/abc"
-          org = Just $ Organization 103 True
+          org = Just $ Organization 103 True False
           revision = ProjectRevision "not this project name" "not this revision" $ Just "weird--branch"
           actual = stripDiag $ getBuildURLWithOrg org revision apiOpts locator
 
@@ -57,7 +57,7 @@ spec = do
 
     it "should render full url correctly" $ do
       let locator = Locator "a" "b" $ Just "c"
-          org = Just $ Organization 33 True
+          org = Just $ Organization 33 True False
           revision = ProjectRevision "" "not this revision" $ Just "master"
           actual = stripDiag $ getBuildURLWithOrg org revision apiOpts locator
 
