@@ -74,6 +74,7 @@ import Path (File, Path, Rel)
 import Srclib.Types
 import Text.URI qualified as URI
 import Prelude
+import Effect.FossaAPI (Project(..))
 
 -- | Represents error emitted via FOSSA instance.
 -- This data-shape corresponds to 'PublicFacingError' type in backend,
@@ -279,19 +280,6 @@ mangleError err = case err of
 
 projectEndpoint :: Url scheme -> Int -> Locator -> Url scheme
 projectEndpoint baseurl orgid locator = baseurl /: "api" /: "cli" /: renderLocatorUrl orgid locator /: "project"
-
-data Project = Project
-  { projectId :: Text
-  , projectTitle :: Text
-  , projectIsMonorepo :: Bool
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON Project where
-  parseJSON = withObject "Project" $ \obj ->
-    Project <$> obj .: "id"
-      <*> obj .: "title"
-      <*> obj .: "isMonorepo"
 
 getProject ::
   ( Has (Lift IO) sig m
