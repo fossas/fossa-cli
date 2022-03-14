@@ -18,12 +18,13 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Diagnostics qualified as Diag
 import Data.Aeson (ToJSON)
-import Data.Glob as Glob (matches, toGlob, (</>))
+import Data.Glob as Glob (toGlob, (</>))
 import Data.Text (isSuffixOf)
 import Diag.Common (AllDirectDeps (AllDirectDeps), MissingEdges (MissingEdges))
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
+  findFilesMatchingGlob,
   walk',
  )
 import Effect.Exec (Exec, Has)
@@ -35,7 +36,7 @@ import Strategy.Ruby.Errors (
   BundlerMissingLockFile (..),
  )
 import Strategy.Ruby.GemfileLock qualified as GemfileLock
-import Strategy.Ruby.Gemspec (Assignment (Assignment, label, value), readAssignments, rubyLicenseValuesP)
+import Strategy.Ruby.Parse (Assignment (Assignment, label, value), gemspecLicenseValuesP, readAssignments)
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
@@ -56,7 +57,7 @@ findProjects = walk' $ \dir _ files -> do
   let maybeGemfile = findFileNamed "Gemfile" files
       gemfileLock = findFileNamed "Gemfile.lock" files
       -- Bundler globs for *.gemspec files, so collect all of them for analysis.
-      gemSpecFiles = filter (`Glob.matches` (Glob.toGlob dir </> "*.gemspec")) files
+      gemSpecFiles = findFilesMatchingGlob (Glob.toGlob dir </> "*.gemspec") files
 
   case maybeGemfile of
     Nothing -> pure ([], WalkContinue)
@@ -89,7 +90,7 @@ instance LicenseAnalyzeProject BundlerProject where
 
 findLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m [LicenseResult]
 findLicenses gemspecPath = do
-  assignments <- readContentsParser (readAssignments rubyLicenseValuesP) gemspecPath
+  assignments <- readContentsParser (readAssignments gemspecLicenseValuesP) gemspecPath
   let licenses = foldMap value . filter isLicenseKey $ assignments
 
   -- license keys are recommended to be SPDX, but there isn't any requirement:
