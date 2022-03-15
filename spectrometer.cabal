@@ -177,6 +177,7 @@ library
     App.Fossa.Container.Analyze
     App.Fossa.Container.Scan
     App.Fossa.Container.Test
+    App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
     App.Fossa.FossaAPIV1
     App.Fossa.ListTargets

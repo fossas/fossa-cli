@@ -8,20 +8,15 @@ module App.Fossa.EmbeddedBinary (
   withWigginsBinary,
   withSyftBinary,
   withThemisAndIndex,
-  dumpSubCommand,
+  allBins,
+  dumpEmbeddedBinary,
 ) where
 
-import App.Fossa.Config.DumpBinaries (
-  DumpBinsConfig (..),
-  DumpBinsOpts,
-  mkSubCommand,
- )
-import App.Fossa.Subcommand (SubCommand)
 import Control.Effect.Exception (bracket)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.ByteString (ByteString, writeFile)
 import Data.FileEmbed.Extra (embedFileIfExists)
-import Data.Foldable (for_, traverse_)
+import Data.Foldable (traverse_)
 import Data.Tagged (Tagged, applyTag, unTag)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Path (
@@ -53,12 +48,6 @@ data PackagedBinary
   | Themis
   | ThemisIndex
   deriving (Show, Eq, Enum, Bounded)
-
-dumpSubCommand :: SubCommand DumpBinsOpts DumpBinsConfig
-dumpSubCommand = mkSubCommand dumpBinsMain
-
-dumpBinsMain :: Has (Lift IO) sig m => DumpBinsConfig -> m ()
-dumpBinsMain (DumpBinsConfig dir) = for_ allBins $ dumpEmbeddedBinary dir
 
 allBins :: [PackagedBinary]
 allBins = enumFromTo minBound maxBound
