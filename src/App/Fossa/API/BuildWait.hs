@@ -99,7 +99,7 @@ waitForMonorepoScan ::
   m ()
 waitForMonorepoScan apiOpts revision cancelFlag = do
   checkForTimeout cancelFlag
-  Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts
+  orgId <- Fossa.organizationId <$> Fossa.getOrganization apiOpts
   let locator = VPSCore.createLocator (projectName revision) orgId
 
   logSticky' "[ Getting latest scan ID ]"
