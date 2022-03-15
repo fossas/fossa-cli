@@ -11,6 +11,7 @@ import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars (envConfigDebug), getEnvVars)
 import Control.Carrier.Diagnostics (DiagnosticsC, context, logWithExit_)
 import Control.Carrier.Stack (StackC, runStack)
+import Control.Carrier.FossaAPIClientIO (FossaAPIClientIOC, runFossaAPIClientIO)
 import Data.String.Conversion (toStrict)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (
@@ -33,7 +34,7 @@ data SubCommand cli cfg = SubCommand
   , perform :: cfg -> EffStack ()
   }
 
-type EffStack = ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC (StackC IO))))
+type EffStack = ExecIOC (FossaAPIClientIOC (ReadFSIOC (DiagnosticsC (LoggerC (StackC IO)))))
 
 class GetSeverity a where
   getSeverity :: a -> Severity
@@ -56,4 +57,4 @@ runSubCommand SubCommand{..} = uncurry runEffs . mergeAndRun <$> parser
         else perform cfg
 
 runEffs :: Severity -> EffStack () -> IO ()
-runEffs sev = runStack . withDefaultLogger sev . logWithExit_ . runReadFSIO . runExecIO
+runEffs sev = runStack . withDefaultLogger sev . logWithExit_ . runReadFSIO . runFossaAPIClientIO . runExecIO

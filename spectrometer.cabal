@@ -224,7 +224,7 @@ library
     Control.Carrier.Debug
     Control.Carrier.Diagnostics
     Control.Carrier.Finally
-    Control.Carrier.FossaAPIIO
+    Control.Carrier.FossaAPIClientIO
     Control.Carrier.Output.IO
     Control.Carrier.Simple
     Control.Carrier.Stack
@@ -238,6 +238,7 @@ library
     Control.Effect.Debug
     Control.Effect.Diagnostics
     Control.Effect.Finally
+    Control.Effect.FossaAPIClient
     Control.Effect.Output
     Control.Effect.Path
     Control.Effect.Record
@@ -276,7 +277,6 @@ library
     Effect.Grapher
     Effect.Logger
     Effect.ReadFS
-    Effect.FossaAPI
     Fossa.API.Types
     Graphing
     Graphing.Hydrate

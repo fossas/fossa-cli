@@ -18,11 +18,11 @@ module App.Fossa.FossaAPIV1 (
   BuildStatus (..),
   getIssues,
   Organization (..),
-  Project (..),
   getOrganization,
   getAttribution,
   getAttributionRaw,
   getSignedURL,
+  Project(..),
   getProject,
   archiveUpload,
   archiveBuildUpload,
@@ -64,7 +64,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Word (Word8)
 import Effect.Logger
-import Fossa.API.Types (ApiOpts, ArchiveComponents, Issues, SignedURL, signedURL, useApiOpts)
+import Fossa.API.Types (ApiOpts, ArchiveComponents, Issues, Project(..), SignedURL, signedURL, useApiOpts)
 import Network.HTTP.Client qualified as C
 import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Req
@@ -74,7 +74,6 @@ import Path (File, Path, Rel)
 import Srclib.Types
 import Text.URI qualified as URI
 import Prelude
-import Effect.FossaAPI (Project(..))
 
 -- | Represents error emitted via FOSSA instance.
 -- This data-shape corresponds to 'PublicFacingError' type in backend,
@@ -289,6 +288,7 @@ getProject ::
   ProjectRevision ->
   m Project
 getProject apiopts ProjectRevision{..} = fossaReq $ do
+  sendIO $ putStrLn "Fetching project from API"
   (baseurl, baseopts) <- useApiOpts apiopts
 
   orgid <- organizationId <$> getOrganization apiopts

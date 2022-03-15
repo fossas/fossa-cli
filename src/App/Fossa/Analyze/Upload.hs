@@ -7,10 +7,10 @@ import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
 import App.Fossa.FossaAPIV1 (
   Project (projectIsMonorepo),
   UploadResponse (uploadError, uploadLocator),
-  getProject,
   uploadAnalysis,
   uploadContributors,
  )
+import Control.Effect.FossaAPIClient (FossaAPIClient, getProject)
 import App.Types (
   BaseDir (BaseDir),
   ProjectMetadata,
@@ -55,7 +55,7 @@ import VCS.Git (fetchGitContributors)
 uploadSuccessfulAnalysis ::
   ( Has Diagnostics sig m
   , Has Logger sig m
-  , Has (Lift IO) sig m
+  , Has FossaAPIClient sig m
   ) =>
   BaseDir ->
   ApiOpts ->
@@ -99,7 +99,7 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput revision 
 
   pure locator
 
-dieOnMonorepoUpload :: (Has Diagnostics sig m, Has (Lift IO) sig m) => ApiOpts -> ProjectRevision -> m ()
+dieOnMonorepoUpload :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has FossaAPIClient sig m) => ApiOpts -> ProjectRevision -> m ()
 dieOnMonorepoUpload apiOpts revision = do
   project <- recover $ getProject apiOpts revision
   if maybe False projectIsMonorepo project

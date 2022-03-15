@@ -13,6 +13,7 @@ module Fossa.API.Types (
   SignedURL (..),
   ArchiveComponents (..),
   Archive (..),
+  Project(..),
 ) where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
@@ -176,6 +177,19 @@ instance ToJSON IssueRule where
 
 instance Pretty Issues where
   pretty = renderedIssues
+
+data Project = Project
+  { projectId :: Text
+  , projectTitle :: Text
+  , projectIsMonorepo :: Bool
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON Project where
+  parseJSON = withObject "Project" $ \obj ->
+    Project <$> obj .: "id"
+      <*> obj .: "title"
+      <*> obj .: "isMonorepo"
 
 ---------------
 
