@@ -5,7 +5,7 @@ module App.Fossa.Main (appMain) where
 import App.Fossa.Analyze qualified as Analyze
 import App.Fossa.Analyze.Log4jReport qualified as Log4j
 import App.Fossa.Container qualified as Container
-import App.Fossa.EmbeddedBinary qualified as Embed
+import App.Fossa.DumpBinaries qualified as Dump
 import App.Fossa.ListTargets qualified as ListTargets
 import App.Fossa.Report qualified as Report
 import App.Fossa.Subcommand (GetSeverity, SubCommand (..), runSubCommand)
@@ -66,7 +66,7 @@ subcommands = public <|> private
         mconcat
           [ internal
           , initCommand
-          , decodeSubCommand Embed.dumpSubCommand
+          , decodeSubCommand Dump.dumpSubCommand
           , decodeSubCommand Log4j.log4jSubCommand
           ]
     public =
