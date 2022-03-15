@@ -4,6 +4,7 @@ module Strategy.Go.GoList (
   analyze',
   Require (..),
   GoListModule (..),
+  GoModuleReplacement(..)
 ) where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
@@ -53,11 +54,25 @@ goListJsonCmd =
     , cmdArgs = ["list", "-m", "-json", "all"]
     , cmdAllowErr = Never
     }
+
+data GoModuleReplacement = GoModuleReplacement
+  { replacePath :: Text
+  , replaceVersion :: Text
+  }
+  deriving (Show, Eq, Ord)
+
+instance FromJSON GoModuleReplacement where
+  parseJSON = withObject "GoModuleReplacement" $ \obj ->
+    GoModuleReplacement
+      <$> obj .: "Path"
+      <*> obj .: "Version"
+
 data GoListModule = GoListModule
   { path :: Text
   , version :: Maybe Text
   , isMain :: Bool
   , isIndirect :: Bool
+  , moduleReplacement :: Maybe GoModuleReplacement
   }
   deriving (Show, Eq, Ord)
 
@@ -67,6 +82,7 @@ instance FromJSON GoListModule where
       <*> obj .:? "Version"
       <*> (obj .:? "Main" .!= False)
       <*> (obj .:? "Indirect" .!= False)
+      <*> obj .:? "Replace"
 
 -- | Analyze using `go list`, and build dependency graph.
 --

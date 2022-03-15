@@ -129,25 +129,20 @@ buildGraph fromToMods mainMod selectedMods directMods applyMVS =
     withSelection :: GoGraphMod -> Bool
     withSelection m = not (m `notMember` selectedMods && applyMVS)
 
+    mkDependency :: Text -> Maybe VerConstraint -> Dependency
+    mkDependency name version =
+      Dependency
+        { dependencyType = GoType
+        , dependencyName = name
+        , dependencyVersion = version
+        , dependencyLocations = []
+        , dependencyEnvironments = mempty
+        , dependencyTags = Map.empty
+        }
+
     toDependency :: GoGraphMod -> Dependency
-    toDependency (MainMod name) =
-      Dependency
-        { dependencyType = GoType
-        , dependencyName = name
-        , dependencyVersion = Nothing
-        , dependencyLocations = []
-        , dependencyEnvironments = mempty
-        , dependencyTags = Map.empty
-        }
-    toDependency (OtherMod name pkgVersion) =
-      Dependency
-        { dependencyType = GoType
-        , dependencyName = name
-        , dependencyVersion = Just (toVersion pkgVersion)
-        , dependencyLocations = []
-        , dependencyEnvironments = mempty
-        , dependencyTags = Map.empty
-        }
+    toDependency (MainMod name) = mkDependency name Nothing
+    toDependency (OtherMod name pkgVersion) = mkDependency name (Just $ toVersion pkgVersion)
 
     toVersion :: PackageVersion -> VerConstraint
     toVersion v = case v of
@@ -182,6 +177,7 @@ analyze dir = do
   let graph = buildGraph goModGraphStdout ggm selectedMods directMods filterModsNotUsedInBuild
   pure (graph, Complete)
   where
+    -- TODO: need to convert the version from the replacement into something well-typed
     toGoGraphMod :: GoListModule -> GoGraphMod
     toGoGraphMod GoListModule{..} = case (toGoModVersion =<< version) of
       Nothing -> MainMod path
