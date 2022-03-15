@@ -4,7 +4,7 @@ module Strategy.Go.GoList (
   analyze',
   Require (..),
   GoListModule (..),
-  GoModuleReplacement(..)
+  GoModuleReplacement (..),
 ) where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)

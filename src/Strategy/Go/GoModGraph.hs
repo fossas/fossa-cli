@@ -10,11 +10,20 @@ module Strategy.Go.GoModGraph (
   buildGraph,
 ) where
 
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  fatal,
+  fromMaybeText,
+ )
 import Control.Monad (void)
 import Data.Aeson.Internal (formatError)
+import Data.Bifunctor (Bifunctor (bimap))
 import Data.Foldable (find)
+import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.SemVer qualified as SemVer
 import Data.SemVer.Internal (Version (..))
 import Data.Set (Set, fromList, member, notMember)
@@ -35,8 +44,8 @@ import Effect.Exec (
   execThrow,
  )
 import Graphing qualified
-import Path
-import Strategy.Go.GoList (GoListModule (GoListModule, isIndirect, isMain, path, version))
+import Path (Abs, Dir, Path)
+import Strategy.Go.GoList (GoListModule (GoListModule, isIndirect, isMain, moduleReplacement, path, version), GoModuleReplacement (GoModuleReplacement, replacePath, replaceVersion))
 import Strategy.Go.Gomod (PackageVersion (..), parsePackageVersion)
 import Strategy.Go.Transitive (decodeMany)
 import Text.Megaparsec (
@@ -117,17 +126,20 @@ parseGoModGraph = parseGoModPair `sepEndBy` (symbol "\n" <|> symbol "\r") <* eof
     parseGoModPair = (,) <$> parseGoGraphMod <*> parseGoGraphMod
 
 -- Builds graph from edges, main module, and selected module version set.
-buildGraph :: [(GoGraphMod, GoGraphMod)] -> GoGraphMod -> Set GoGraphMod -> Set GoGraphMod -> Bool -> Graphing.Graphing Dependency
-buildGraph fromToMods mainMod selectedMods directMods applyMVS =
-  Graphing.gmap toDependency
-    . Graphing.filter (withSelection)
+buildGraph :: [(GoGraphMod, GoGraphMod)] -> GoGraphMod -> Set GoGraphMod -> Set GoGraphMod -> Bool -> (Map GoGraphMod GoGraphMod) -> Graphing.Graphing Dependency
+buildGraph fromToMods mainMod selectedMods directMods applyMVS replacements =
+  Graphing.gmap (toDependency . applyReplacement)
+    . Graphing.filter withSelection
     . Graphing.promoteToDirect (`member` directMods)
     . Graphing.shrink (/= mainMod)
     . Graphing.edges
     $ fromToMods
   where
     withSelection :: GoGraphMod -> Bool
-    withSelection m = not (m `notMember` selectedMods && applyMVS)
+    withSelection m = not (applyMVS && m `notMember` selectedMods)
+
+    applyReplacement :: GoGraphMod -> GoGraphMod
+    applyReplacement m = fromMaybe m (Map.lookup m replacements)
 
     mkDependency :: Text -> Maybe VerConstraint -> Dependency
     mkDependency name version =
@@ -150,6 +162,8 @@ buildGraph fromToMods mainMod selectedMods directMods applyMVS =
       Pseudo commitHash -> CEq commitHash
       Semantic semver -> CEq ("v" <> SemVer.toText semver{_versionMeta = []})
 
+newtype GoModReplacement = GoModReplacement {unGoModReplacement :: (GoGraphMod, GoGraphMod)}
+
 analyze ::
   ( Has Exec sig m
   , Has Diagnostics sig m
@@ -160,9 +174,11 @@ analyze dir = do
   -- Get selected module version from mvs selection using `go list`
   -- `go list` reports final versions that will be used in a build for all direct and deep dependencies
   goListStdout <- context ("Getting selected dependencies versions using, " <> toText (show goListJsonCmd)) $ execThrow dir goListJsonCmd
-  (mainMod, selectedMods, directMods) <- case decodeMany goListStdout of
+  (mainMod, selectedMods, directMods, modReplacements) <- case decodeMany goListStdout of
     Left (path, err) -> fatal (CommandParseError goListJsonCmd (toText (formatError path err)))
-    Right (mods :: [GoListModule]) -> pure (onlyMain mods, withoutMain mods, onlyDirects mods)
+    Right (mods :: [GoListModule]) -> do
+      let (selectedMods, replacements) = withoutMain mods -- the MainMod can't have replacements
+      pure (onlyMain mods, selectedMods, onlyDirects mods, replacements)
 
   -- Command 'go mod graph' reports, all module version considered (not just final version selected)
   -- For this reason, we filter out versions of module, not used in build using (versions provided by 'go list')
@@ -174,7 +190,7 @@ analyze dir = do
   goModGraphStdout <- context ("Getting selected dependencies versions using, " <> toText (show goModGraphCmd)) $ execParser parseGoModGraph dir goModGraphCmd
   ggm <- fromMaybeText "expected to find main module, but found no main module!" mainMod
 
-  let graph = buildGraph goModGraphStdout ggm selectedMods directMods filterModsNotUsedInBuild
+  let graph = buildGraph goModGraphStdout ggm selectedMods directMods filterModsNotUsedInBuild modReplacements
   pure (graph, Complete)
   where
     -- TODO: need to convert the version from the replacement into something well-typed
@@ -183,8 +199,24 @@ analyze dir = do
       Nothing -> MainMod path
       Just pv -> OtherMod path pv
 
-    withoutMain :: [GoListModule] -> Set GoGraphMod
-    withoutMain = fromList . map toGoGraphMod . filter (not . isMain)
+    toGraphModWithReplacement :: GoListModule -> (GoGraphMod, Maybe GoModReplacement)
+    toGraphModWithReplacement listMod =
+      case toGoGraphMod listMod of
+        m@(MainMod _) -> (m, Nothing)
+        m@(OtherMod _ _) ->
+          ( m
+          , do
+              GoModuleReplacement{..} <- moduleReplacement listMod
+              version <- toGoModVersion replaceVersion
+              Just $ GoModReplacement (m, OtherMod replacePath version)
+          )
+
+    withoutMain :: [GoListModule] -> (Set GoGraphMod, Map GoGraphMod GoGraphMod)
+    withoutMain =
+      bimap fromList (Map.fromList . map unGoModReplacement . catMaybes)
+        . unzip
+        . map toGraphModWithReplacement
+        . filter (not . isMain)
 
     onlyDirects :: [GoListModule] -> Set GoGraphMod
     onlyDirects = fromList . map toGoGraphMod . filter (not . isIndirect)
