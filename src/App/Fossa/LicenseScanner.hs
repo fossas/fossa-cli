@@ -26,6 +26,7 @@ import Control.Monad (unless, void)
 import Crypto.Hash (Digest, MD5, hash)
 import Data.ByteString qualified as B
 import Data.List (nub)
+import Data.String.Conversion (encodeUtf8, toString, toText)
 import Effect.Exec (Exec, runExecIO)
 import Fossa.API.Types
 import Path
@@ -34,9 +35,6 @@ import Srclib.Types (
   LicenseUnit (..),
   Locator (..),
  )
-
-import Data.String.Conversion (encodeUtf8, toString, toText)
-import Data.Text (Text)
 
 import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)
 
@@ -130,11 +128,13 @@ licenseScanSourceUnit baseDir apiOpts vendoredDeps = do
   -- but not when reading from a source unit.
   Fossa.Organization orgId _ <- Fossa.getOrganization apiOpts
 
-  let updateArcName :: Text -> Archive -> Archive
-      updateArcName updateText arc = arc{archiveName = updateText <> "/" <> archiveName arc}
-      archivesWithOrganization = updateArcName (toText $ show orgId) <$> archives
+  pure $ map arcToLocator (archivesWithOrganization orgId archives)
+  where
+    archivesWithOrganization :: Int -> [Archive] -> [Archive]
+    archivesWithOrganization orgId = map (includeOrgId orgId)
 
-  pure $ arcToLocator <$> archivesWithOrganization
+    includeOrgId :: Int -> Archive -> Archive
+    includeOrgId orgId arc = arc{archiveName = toText (show orgId) <> "/" <> archiveName arc}
 
 -- licenseNoScanSourceUnit exists for when users run `fossa analyze -o` and do not upload their source units.
 licenseNoScanSourceUnit :: [VendoredDependency] -> [Locator]
