@@ -1,7 +1,7 @@
 module Test.Effect (
   expectationFailure',
   expectFailure',
-  expectFails',
+  expectFatal',
   shouldBe',
   shouldSatisfy',
   shouldStartWith',
@@ -111,9 +111,8 @@ shouldMatchList' a b = sendIO $ shouldMatchList a b
 expectFailure' :: Has (Lift IO) sig m => Result a -> m ()
 expectFailure' res = sendIO $ expectFailure res
 
--- TODO: Better naming.
-expectFails' :: (Has Diagnostics sig m, Has (Lift IO) sig m) => m () -> m ()
-expectFails' f = do
+expectFatal' :: (Has Diagnostics sig m, Has (Lift IO) sig m) => m () -> m ()
+expectFatal' f = do
   res <- recover f
   case res of
     Just _ -> expectationFailure' "Expected failure"

@@ -78,7 +78,7 @@ import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
-import Control.Effect.FossaAPIClient (FossaAPIClient)
+import Control.Effect.FossaApiClient (FossaApiClient)
 import Control.Monad (join, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
@@ -116,6 +116,7 @@ import Prettyprinter.Render.Terminal (
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (Locator, SourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
+import Control.Carrier.FossaApiClientIO (runFossaApiClientIO)
 
 debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json.gz"
@@ -129,7 +130,6 @@ dispatch ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
-  , Has FossaAPIClient sig m
   ) =>
   AnalyzeConfig ->
   m ()
@@ -141,7 +141,6 @@ dispatch = \case
 -- The real logic is in the inner analyze
 analyzeMain ::
   ( Has (Lift IO) sig m
-  , Has FossaAPIClient sig m
   , Has Logger sig m
   , Has Diag.Diagnostics sig m
   , Has Exec sig m
@@ -218,7 +217,6 @@ runAnalyzers basedir filters = do
 
 analyze ::
   ( Has (Lift IO) sig m
-  , Has FossaAPIClient sig m
   , Has Logger sig m
   , Has Diag.Diagnostics sig m
   , Has Debug sig m
@@ -300,7 +298,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     FoundSome sourceUnits -> case destination of
       OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult includeAll additionalSourceUnits filteredProjects
       UploadScan opts metadata -> Diag.context "upload-results" $ do
-        locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput revision sourceUnits
+        locator <- runFossaApiClientIO opts $ uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput revision sourceUnits
         doAssertRevisionBinaries iatAssertion opts locator
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult

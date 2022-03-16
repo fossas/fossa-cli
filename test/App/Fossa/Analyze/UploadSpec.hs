@@ -4,11 +4,11 @@ module App.Fossa.Analyze.UploadSpec (spec) where
 
 import App.Fossa.Analyze.Upload (dieOnMonorepoUpload)
 import App.Types (ProjectRevision (..))
-import Control.Carrier.Simple
-import Control.Effect.FossaAPIClient
-import Fossa.API.Types (ApiKey (..), ApiOpts (..), Project (..))
-import Test.Effect
-import Test.Hspec
+import Control.Carrier.Simple ( interpret, SimpleC )
+import Control.Effect.FossaApiClient ( FossaApiClientF(..) )
+import Fossa.API.Types (Project (..))
+import Test.Effect ( it', expectFatal' )
+import Test.Hspec ( describe, SpecWith )
 
 testRevision :: ProjectRevision
 testRevision =
@@ -18,19 +18,12 @@ testRevision =
     , projectBranch = Just "TestProjectBranch"
     }
 
-apiOpts :: ApiOpts
-apiOpts =
-  ApiOpts
-    { apiOptsUri = Nothing
-    , apiOptsApiKey = ApiKey "TestKey"
-    }
-
 spec :: SpecWith ()
-spec = describe "AnalysisUpload" $ do
+spec = describe "AnalysisUpload" $
   describe "dieOnMonorepoUpload" $ do
     it' "succeeds if the result is not a monorepo" $
       withMockApi
-        ( \(GetProject _ _) ->
+        ( \(GetProject _) ->
             pure
               Project
                 { projectId = "TestID"
@@ -38,10 +31,10 @@ spec = describe "AnalysisUpload" $ do
                 , projectIsMonorepo = False
                 }
         )
-        $ dieOnMonorepoUpload apiOpts testRevision
-    it' "fails if the result is a monorepo" $
-      withMockApi
-        ( \(GetProject _ _) ->
+        $ dieOnMonorepoUpload testRevision
+    it' "fails if the result is a monorepo"
+      . withMockApi
+        ( \(GetProject _) ->
             pure
               Project
                 { projectId = "TestID"
@@ -49,7 +42,8 @@ spec = describe "AnalysisUpload" $ do
                 , projectIsMonorepo = True
                 }
         )
-        $ expectFails' $ dieOnMonorepoUpload apiOpts testRevision
+      . expectFatal'
+      $ dieOnMonorepoUpload testRevision
 
-withMockApi :: (forall x. FossaAPIClientF x -> m x) -> SimpleC FossaAPIClientF m a -> m a
+withMockApi :: (forall x. FossaApiClientF x -> m x) -> SimpleC FossaApiClientF m a -> m a
 withMockApi = interpret

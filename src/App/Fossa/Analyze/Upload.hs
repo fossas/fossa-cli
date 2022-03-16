@@ -11,7 +11,7 @@ import App.Fossa.FossaAPIV1 (
   uploadAnalysis,
   uploadContributors,
  )
-import Control.Effect.FossaAPIClient (FossaAPIClient, getProject)
+import Control.Effect.FossaApiClient (FossaApiClient, getProject)
 import App.Types (
   BaseDir (BaseDir),
   ProjectMetadata,
@@ -57,7 +57,7 @@ uploadSuccessfulAnalysis ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
-  , Has FossaAPIClient sig m
+  , Has FossaApiClient sig m
   ) =>
   BaseDir ->
   ApiOpts ->
@@ -73,7 +73,7 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput revision 
   let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
   logInfo ("Using branch: `" <> pretty branchText <> "`")
 
-  dieOnMonorepoUpload apiOpts revision
+  dieOnMonorepoUpload revision
 
   uploadResult <- uploadAnalysis apiOpts revision metadata units
   let locator = parseLocator $ uploadLocator uploadResult
@@ -101,9 +101,9 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput revision 
 
   pure locator
 
-dieOnMonorepoUpload :: (Has Diagnostics sig m, Has FossaAPIClient sig m) => ApiOpts -> ProjectRevision -> m ()
-dieOnMonorepoUpload apiOpts revision = do
-  project <- recover $ getProject apiOpts revision
+dieOnMonorepoUpload :: (Has Diagnostics sig m, Has FossaApiClient sig m) => ProjectRevision -> m ()
+dieOnMonorepoUpload revision = do
+  project <- recover $ getProject revision
   if maybe False projectIsMonorepo project
     then fatalText "This project already exists as a monorepo project. Perhaps you meant to supply '--experimental-enable-monorepo', or meant to run 'fossa vps analyze' instead?"
     else pure ()
