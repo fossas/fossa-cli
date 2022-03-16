@@ -17,6 +17,7 @@ module Srclib.Types (
 ) where
 
 import Data.Aeson
+import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
@@ -24,6 +25,8 @@ import Data.Text qualified as Text
 import Path (File, SomeBase)
 import Types (GraphBreadth (..))
 
+-- | LicenseSourceUnit is the base of the results sent to Core for a CLI-side license scan
+-- licenseSourceUnitLicenseUnits will be empty if you scan an empty directory.
 data LicenseSourceUnit = LicenseSourceUnit
   { licenseSourceUnitName :: Text
   , licenseSourceUnitType :: Text
@@ -45,8 +48,8 @@ data LicenseUnit = LicenseUnit
   { licenseUnitName :: Text
   , licenseUnitType :: Text
   , licenseUnitDir :: Text
-  , licenseUnitFiles :: [Text]
-  , licenseUnitData :: [LicenseUnitData]
+  , licenseUnitFiles :: (NonEmpty Text)
+  , licenseUnitData :: (NonEmpty LicenseUnitData)
   , licenseUnitInfo :: LicenseUnitInfo
   }
   deriving (Eq, Ord, Show)
@@ -83,12 +86,13 @@ instance FromJSON LicenseUnitInfo where
   parseJSON = withObject "LicenseUnitInfo" $ \obj ->
     LicenseUnitInfo <$> obj .: "Description"
 
+-- | LicenseUnitData contains data about a license unit. At least one of licenseUnitDataMatchData or licenseUnitDataCopyrights will be non-empty
 data LicenseUnitData = LicenseUnitData
   { licenseUnitDataPath :: Text
   , licenseUnitDataCopyright :: Maybe Text
   , licenseUnitDataThemisVersion :: Text
-  , licenseUnitDataMatchData :: Maybe [LicenseUnitMatchData]
-  , licenseUnitDataCopyrights :: Maybe [Text]
+  , licenseUnitDataMatchData :: Maybe (NonEmpty LicenseUnitMatchData)
+  , licenseUnitDataCopyrights :: Maybe (NonEmpty Text)
   }
   deriving (Eq, Ord, Show)
 
@@ -109,6 +113,7 @@ instance FromJSON LicenseUnitData where
       <*> obj .: "ThemisVersion"
       <*> obj .:? "match_data"
       <*> obj .:? "Copyrights"
+
 data LicenseUnitMatchData = LicenseUnitMatchData
   { licenseUnitMatchDataMatchString :: Text
   , licenseUnitMatchDataLocation :: Integer
