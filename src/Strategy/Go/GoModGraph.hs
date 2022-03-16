@@ -5,6 +5,7 @@ module Strategy.Go.GoModGraph (
 
   -- * for testing
   GoGraphMod (..),
+  GoModReplacements (..),
   parseGoModGraph,
   parseGoGraphMod,
   buildGraph,
@@ -45,7 +46,7 @@ import Effect.Exec (
  )
 import Graphing qualified
 import Path (Abs, Dir, Path)
-import Strategy.Go.GoList (GoListModule (GoListModule, isIndirect, isMain, moduleReplacement, path, version), GoModuleReplacement (GoModuleReplacement, replacePath, replaceVersion))
+import Strategy.Go.GoList (GoListModule (GoListModule, isIndirect, isMain, moduleReplacement, path, version), GoModuleReplacement (GoModuleReplacement, pathReplacement, versionReplacement))
 import Strategy.Go.Gomod (PackageVersion (..), parsePackageVersion)
 import Strategy.Go.Transitive (decodeMany)
 import Text.Megaparsec (
@@ -126,9 +127,9 @@ parseGoModGraph = parseGoModPair `sepEndBy` (symbol "\n" <|> symbol "\r") <* eof
     parseGoModPair = (,) <$> parseGoGraphMod <*> parseGoGraphMod
 
 -- Builds graph from edges, main module, and selected module version set.
-buildGraph :: [(GoGraphMod, GoGraphMod)] -> GoGraphMod -> Set GoGraphMod -> Set GoGraphMod -> Bool -> (Map GoGraphMod GoGraphMod) -> Graphing.Graphing Dependency
-buildGraph fromToMods mainMod selectedMods directMods applyMVS replacements =
-  Graphing.gmap (toDependency . applyReplacement)
+buildGraph :: [(GoGraphMod, GoGraphMod)] -> GoGraphMod -> Set GoGraphMod -> Set GoGraphMod -> Bool -> GoModReplacements -> Graphing.Graphing Dependency
+buildGraph fromToMods mainMod selectedMods directMods applyMVS (GoModReplacements replacements) =
+  Graphing.gmap (toDependency . tryApplyReplacement)
     . Graphing.filter withSelection
     . Graphing.promoteToDirect (`member` directMods)
     . Graphing.shrink (/= mainMod)
@@ -138,8 +139,8 @@ buildGraph fromToMods mainMod selectedMods directMods applyMVS replacements =
     withSelection :: GoGraphMod -> Bool
     withSelection m = not (applyMVS && m `notMember` selectedMods)
 
-    applyReplacement :: GoGraphMod -> GoGraphMod
-    applyReplacement m = fromMaybe m (Map.lookup m replacements)
+    tryApplyReplacement :: GoGraphMod -> GoGraphMod
+    tryApplyReplacement m = fromMaybe m (Map.lookup m replacements)
 
     mkDependency :: Text -> Maybe VerConstraint -> Dependency
     mkDependency name version =
@@ -162,7 +163,8 @@ buildGraph fromToMods mainMod selectedMods directMods applyMVS replacements =
       Pseudo commitHash -> CEq commitHash
       Semantic semver -> CEq ("v" <> SemVer.toText semver{_versionMeta = []})
 
-newtype GoModReplacement = GoModReplacement {unGoModReplacement :: (GoGraphMod, GoGraphMod)}
+newtype ModWithReplacement = ModWithReplacement {unModWithReplacement :: (GoGraphMod, GoGraphMod)}
+newtype GoModReplacements = GoModReplacements (Map GoGraphMod GoGraphMod)
 
 analyze ::
   ( Has Exec sig m
@@ -177,7 +179,7 @@ analyze dir = do
   (mainMod, selectedMods, directMods, modReplacements) <- case decodeMany goListStdout of
     Left (path, err) -> fatal (CommandParseError goListJsonCmd (toText (formatError path err)))
     Right (mods :: [GoListModule]) -> do
-      let (selectedMods, replacements) = withoutMain mods -- the MainMod can't have replacements
+      let (selectedMods, replacements) = findSelectedMods mods -- the MainMod can't have replacements
       pure (onlyMain mods, selectedMods, onlyDirects mods, replacements)
 
   -- Command 'go mod graph' reports, all module version considered (not just final version selected)
@@ -199,7 +201,7 @@ analyze dir = do
       Nothing -> MainMod path
       Just pv -> OtherMod path pv
 
-    toGraphModWithReplacement :: GoListModule -> (GoGraphMod, Maybe GoModReplacement)
+    toGraphModWithReplacement :: GoListModule -> (GoGraphMod, Maybe ModWithReplacement)
     toGraphModWithReplacement listMod =
       case toGoGraphMod listMod of
         m@(MainMod _) -> (m, Nothing)
@@ -207,13 +209,16 @@ analyze dir = do
           ( m
           , do
               GoModuleReplacement{..} <- moduleReplacement listMod
-              version <- toGoModVersion replaceVersion
-              Just $ GoModReplacement (m, OtherMod replacePath version)
+              version <- toGoModVersion versionReplacement
+              Just $ ModWithReplacement (m, OtherMod pathReplacement version)
           )
 
-    withoutMain :: [GoListModule] -> (Set GoGraphMod, Map GoGraphMod GoGraphMod)
-    withoutMain =
-      bimap fromList (Map.fromList . map unGoModReplacement . catMaybes)
+    mkReplacementMap :: [ModWithReplacement] -> GoModReplacements
+    mkReplacementMap = GoModReplacements . Map.fromList . map unModWithReplacement
+
+    findSelectedMods :: [GoListModule] -> (Set GoGraphMod, GoModReplacements)
+    findSelectedMods =
+      bimap fromList (mkReplacementMap . catMaybes)
         . unzip
         . map toGraphModWithReplacement
         . filter (not . isMain)

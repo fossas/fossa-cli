@@ -56,8 +56,8 @@ goListJsonCmd =
     }
 
 data GoModuleReplacement = GoModuleReplacement
-  { replacePath :: Text
-  , replaceVersion :: Text
+  { pathReplacement :: Text
+  , versionReplacement :: Text
   }
   deriving (Show, Eq, Ord)
 
