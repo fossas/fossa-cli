@@ -84,7 +84,7 @@ specGraph = do
       it "DepAReplaced is now a direct dependency" $
         expectDirect [depAReplaced, depB] graph
 
-    it "should should remove main module, and produce graphing with minimal version selection (MVS)" $ do
+    context "should should remove main module, and produce graphing with minimal version selection (MVS)" $ do
       -- Act
       let graph = buildGraph testEdges (MainMod "Main") testSelectedMods directMods True Map.empty
 
@@ -94,9 +94,12 @@ specGraph = do
       let depC = mkDep "C" "1.4"
       let depD = mkDep "D" "1.2"
 
-      expectDeps [depA, depB, depC, depD] graph
-      expectEdges [(depB, depC), (depC, depD)] graph
-      expectDirect [depA, depB] graph
+      it "Deps A - D are included" $
+        expectDeps [depA, depB, depC, depD] graph
+      it "Edges B-C and C-D are in the graph" $
+        expectEdges [(depB, depC), (depC, depD)] graph
+      it "Direct deps A and B are listed" $
+        expectDirect [depA, depB] graph
 
     it "should should remove main module, and produce graphing with all module versioning" $ do
       -- Act
