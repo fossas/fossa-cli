@@ -399,21 +399,22 @@ archiveBuildUpload apiOpts archiveProjects = runEmpty $
 licenseScanFinalizeUrl :: Url 'Https -> Url 'Https
 licenseScanFinalizeUrl baseUrl = baseUrl /: "api" /: "license_scan" /: "finalize"
 
+-- TODO: /license_scan/finalize just returns a 201 if there's a success. No need to parse the body
 licenseScanFinalize ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   ArchiveComponents ->
-  m (Maybe C.ByteString)
+  m (Maybe ())
 licenseScanFinalize apiOpts archiveProjects = runEmpty $
   fossaReqAllow401 $ do
     (baseUrl, baseOpts) <- useApiOpts apiOpts
 
     let opts = "dependency" =: True <> "rawLicenseScan" =: True
 
-    resp <-
+    _ <-
       context "Queuing a build for all license scan uploads" $
         req POST (licenseScanFinalizeUrl baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
-    pure (responseBody resp)
+    pure ()
 
 ---------- The signed URL endpoint returns a URL endpoint that can be used to directly upload to an S3 bucket.
 
@@ -490,10 +491,11 @@ licenseScanResultUpload signedArcURI licenseScanResult = fossaReq $ do
   validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
 
   context ("Uploading license scan result to " <> signedURL signedArcURI) $ case validatedURI of
-    Left (url, options) -> uploadArchiveRequest url options
-    Right (url, options) -> uploadArchiveRequest url options
+    Left (httpUrl, httpOptions) -> uploadArchiveRequest httpUrl httpOptions
+    Right (httpsUrl, httpsOptions) -> uploadArchiveRequest httpsUrl httpsOptions
   where
     zippedLicenseResult = toStrict $ GZIP.compress $ encode licenseScanResult
+    uploadArchiveRequest :: (MonadHttp m) => Url scheme -> Option scheme -> m LbsResponse
     uploadArchiveRequest url options = reqCb PUT url (ReqBodyBs zippedLicenseResult) lbsResponse options (pure . requestEncoder)
 
 -- requestEncoder properly encodes the Request path.
