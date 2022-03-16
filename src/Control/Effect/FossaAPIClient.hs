@@ -1,13 +1,13 @@
 module Control.Effect.FossaAPIClient (
-  FossaAPIClientF(..),
+  FossaAPIClientF (..),
   FossaAPIClient,
-  getProject
+  getProject,
 ) where
 
 import App.Types
-import Fossa.API.Types
 import Control.Algebra
 import Control.Carrier.Simple
+import Fossa.API.Types
 
 data FossaAPIClientF a where
   GetProject :: ApiOpts -> ProjectRevision -> FossaAPIClientF Project
