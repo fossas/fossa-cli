@@ -408,6 +408,7 @@ test-suite unit-tests
     Android.UtilSpec
     App.DocsSpec
     App.Fossa.AnalyzeSpec
+    App.Fossa.Analyze.UploadSpec
     App.Fossa.API.BuildLinkSpec
     App.Fossa.BinaryDeps.JarSpec
     App.Fossa.Configuration.ConfigurationSpec

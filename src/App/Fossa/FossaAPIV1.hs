@@ -22,7 +22,6 @@ module App.Fossa.FossaAPIV1 (
   getAttribution,
   getAttributionRaw,
   getSignedURL,
-  Project(..),
   getProject,
   archiveUpload,
   archiveBuildUpload,
@@ -288,7 +287,6 @@ getProject ::
   ProjectRevision ->
   m Project
 getProject apiopts ProjectRevision{..} = fossaReq $ do
-  sendIO $ putStrLn "Fetching project from API"
   (baseurl, baseopts) <- useApiOpts apiopts
 
   orgid <- organizationId <$> getOrganization apiopts

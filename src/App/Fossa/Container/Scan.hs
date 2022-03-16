@@ -10,7 +10,7 @@ module App.Fossa.Container.Scan (
   ContainerScan (..),
 ) where
 
-import App.Fossa.Config.Container.Common (ImageText (ImageText))
+import App.Fossa.Config.Container.Common
 import App.Fossa.EmbeddedBinary (
   BinaryPaths,
   toPath,

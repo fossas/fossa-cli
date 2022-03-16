@@ -24,7 +24,7 @@ import Control.Effect.StickyLogger (StickyLogger, logSticky')
 import Control.Timeout (Cancel, checkForCancel)
 import Data.Text (Text)
 import Effect.Logger (Logger, pretty, viaShow)
-import Fossa.API.Types (ApiOpts, Issues (..))
+import Fossa.API.Types (ApiOpts, Issues (..), Project (..))
 
 pollDelaySeconds :: Int
 pollDelaySeconds = 8
@@ -57,7 +57,7 @@ waitForScanCompletion apiopts revision cancelFlag = do
   project <- recover $ Fossa.getProject apiopts revision
 
   -- Try inferring, fallback to standard.
-  let runAsMonorepo = maybe False Fossa.projectIsMonorepo project
+  let runAsMonorepo = maybe False projectIsMonorepo project
 
   if runAsMonorepo
     then waitForMonorepoScan apiopts revision cancelFlag
