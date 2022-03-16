@@ -97,7 +97,7 @@ scanAndUploadVendoredDep apiOpts baseDir VendoredDependency{..} = context "compr
 
   pure $ Archive vendoredName depVersion
 
--- licenseScanSourceUnit receives a list of vendored dependencies, a root path, and API settings.
+-- | licenseScanSourceUnit receives a list of vendored dependencies, a root path, and API settings.
 -- Using this information, it license scans each vendored dependency, uploads the license scan results and then queues a build for the dependency.
 licenseScanSourceUnit ::
   ( Has Diag.Diagnostics sig m
@@ -136,6 +136,6 @@ licenseScanSourceUnit baseDir apiOpts vendoredDeps = do
     includeOrgId :: Int -> Archive -> Archive
     includeOrgId orgId arc = arc{archiveName = toText (show orgId) <> "/" <> archiveName arc}
 
--- licenseNoScanSourceUnit exists for when users run `fossa analyze -o` and do not upload their source units.
+-- | licenseNoScanSourceUnit exists for when users run `fossa analyze -o` and do not upload their source units.
 licenseNoScanSourceUnit :: [VendoredDependency] -> [Locator]
 licenseNoScanSourceUnit = map (arcToLocator . forceVendoredToArchive)
