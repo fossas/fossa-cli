@@ -12,7 +12,7 @@ import DepTypes (
   VerConstraint (CEq),
  )
 import GraphUtil (expectDeps, expectDirect, expectEdges)
-import Strategy.Go.GoModGraph (GoGraphMod (..), GoModReplacements (GoModReplacements), GoProjectModSets (..), MVSOpt (ApplyMVS, NoMVS), buildGraph, parseGoGraphMod, parseGoModGraph)
+import Strategy.Go.GoModGraph (GoBuildGraphCfg (..), GoGraphMod (..), GoModReplacements (GoModReplacements), MVSOpt (ApplyMVS, NoMVS), buildGraph, parseGoGraphMod, parseGoModGraph)
 import Strategy.Go.Gomod (PackageVersion (NonCanonical, Pseudo, Semantic))
 import Test.Hspec (Expectation, Spec, context, describe, it, runIO)
 import Test.Hspec.Megaparsec (shouldParse)
@@ -68,12 +68,14 @@ specGraph = do
             ]
     let directMods = Set.fromList [mkGoMod "A" "1.2", mkGoMod "B" "1.2"]
 
-    let mkModSets replacements =
-          GoProjectModSets
+    let mkModBuildCfg replacements mvs =
+          GoBuildGraphCfg
             { selectedMods = testSelectedMods
             , mainMod = MainMod "Main"
             , directMods = directMods
             , modReplacements = replacements
+            , mvsOption = mvs
+            , goModGraphOutput = testEdges
             }
 
     context "Should generate a graph with replacements applied" $ do
@@ -84,7 +86,7 @@ specGraph = do
                 , (mkGoMod "D" "1.2", mkGoMod "D" "2.0")
                 ]
 
-      let graph = buildGraph testEdges (mkModSets replacements) ApplyMVS
+      let graph = buildGraph (mkModBuildCfg replacements ApplyMVS)
       -- Assert
       let depAReplaced = mkDep "A" "1.6"
       let depB = mkDep "B" "1.2"
@@ -100,7 +102,7 @@ specGraph = do
 
     context "should should remove main module, and produce graphing with minimal version selection (MVS)" $ do
       -- Act
-      let graph = buildGraph testEdges (mkModSets $ GoModReplacements Map.empty) ApplyMVS
+      let graph = buildGraph $ mkModBuildCfg (GoModReplacements Map.empty) ApplyMVS
 
       -- Assert
       let depA = mkDep "A" "1.2"
@@ -117,7 +119,7 @@ specGraph = do
 
     it "should should remove main module, and produce graphing with all module versioning" $ do
       -- Act
-      let graph = buildGraph testEdges (mkModSets $ GoModReplacements Map.empty) NoMVS
+      let graph = buildGraph $ mkModBuildCfg (GoModReplacements Map.empty) NoMVS
 
       -- Assert
       let depA1_1 = mkDep "A" "1.1"

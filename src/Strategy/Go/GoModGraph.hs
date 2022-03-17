@@ -6,7 +6,7 @@ module Strategy.Go.GoModGraph (
   -- * for testing
   GoGraphMod (..),
   GoModReplacements (..),
-  GoProjectModSets (..),
+  GoBuildGraphCfg (..),
   MVSOpt (..),
   parseGoModGraph,
   parseGoGraphMod,
@@ -129,18 +129,18 @@ parseGoModGraph = parseGoModPair `sepEndBy` (symbol "\n" <|> symbol "\r") <* eof
     parseGoModPair = (,) <$> parseGoGraphMod <*> parseGoGraphMod
 
 -- Builds graph from edges, main module, and selected module version set.
-buildGraph :: [(GoGraphMod, GoGraphMod)] -> GoProjectModSets -> MVSOpt -> Graphing.Graphing Dependency
-buildGraph fromToMods GoProjectModSets{..} mvsOpt =
+buildGraph :: GoBuildGraphCfg -> Graphing.Graphing Dependency
+buildGraph GoBuildGraphCfg{..} =
   Graphing.gmap (toDependency . tryApplyReplacement)
     . Graphing.filter withSelection
     . Graphing.promoteToDirect (`member` directMods)
     . Graphing.shrink (/= mainMod)
     . Graphing.edges
-    $ fromToMods
+    $ goModGraphOutput
   where
     GoModReplacements replacements = modReplacements
     withSelection :: GoGraphMod -> Bool
-    withSelection m = case mvsOpt of
+    withSelection m = case mvsOption of
       NoMVS -> True
       _ -> m `member` selectedMods
 
@@ -171,11 +171,13 @@ buildGraph fromToMods GoProjectModSets{..} mvsOpt =
 newtype ModWithReplacement = ModWithReplacement {unModWithReplacement :: (GoGraphMod, GoGraphMod)}
 newtype GoModReplacements = GoModReplacements (Map GoGraphMod GoGraphMod)
 
-data GoProjectModSets = GoProjectModSets
+data GoBuildGraphCfg = GoBuildGraphCfg
   { selectedMods :: Set GoGraphMod
   , mainMod :: GoGraphMod
   , directMods :: Set GoGraphMod
   , modReplacements :: GoModReplacements
+  , goModGraphOutput :: [(GoGraphMod, GoGraphMod)]
+  , mvsOption :: MVSOpt
   }
 
 -- |Whether or not to apply minimal version selection
@@ -191,18 +193,12 @@ analyze dir = do
   -- Get selected module version from mvs selection using `go list`
   -- `go list` reports final versions that will be used in a build for all direct and deep dependencies
   goListStdout <- context ("Getting selected dependencies versions using, " <> toText (show goListJsonCmd)) $ execThrow dir goListJsonCmd
-  modSets <- case decodeMany goListStdout of
+  (selectedMods, mainMod, directMods, replacements) <- case decodeMany goListStdout of
     Left (path, err) -> fatal (CommandParseError goListJsonCmd (toText (formatError path err)))
     Right (mods :: [GoListModule]) -> do
       let (selectedMods, replacements) = findSelectedMods mods -- the MainMod can't have replacements
       mainMod <- fromMaybeText "expected to find main module, but found no main module!" (onlyMain mods)
-      pure
-        GoProjectModSets
-          { selectedMods = selectedMods
-          , mainMod = mainMod
-          , directMods = onlyDirects mods
-          , modReplacements = replacements
-          }
+      pure (selectedMods, mainMod, onlyDirects mods, replacements)
 
   -- Command 'go mod graph' reports, all module version considered (not just final version selected)
   -- For this reason, we filter out versions of module, not used in build using (versions provided by 'go list')
@@ -213,7 +209,16 @@ analyze dir = do
   let filterModsNotUsedInBuild = ApplyMVS
   goModGraphStdout <- context ("Getting selected dependencies versions using, " <> toText (show goModGraphCmd)) $ execParser parseGoModGraph dir goModGraphCmd
 
-  let graph = buildGraph goModGraphStdout modSets filterModsNotUsedInBuild
+  let graph =
+        buildGraph
+          GoBuildGraphCfg
+            { selectedMods = selectedMods
+            , mainMod = mainMod
+            , modReplacements = replacements
+            , goModGraphOutput = goModGraphStdout
+            , mvsOption = filterModsNotUsedInBuild
+            , directMods = directMods
+            }
   pure (graph, Complete)
   where
     toGoGraphMod :: GoListModule -> GoGraphMod
