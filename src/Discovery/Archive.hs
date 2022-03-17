@@ -3,7 +3,6 @@ module Discovery.Archive (
   withArchive,
   withArchive',
   extractRpm,
-  extractLzma,
   extractTar,
   extractTarGz,
   extractTarXz,
@@ -16,7 +15,6 @@ import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Zip qualified as Zip
 import Codec.Compression.BZip qualified as BZip
 import Codec.Compression.GZip qualified as GZip
-import Codec.Compression.Lzma as Lzma
 import Conduit (runConduit, runResourceT, sourceFileBS, (.|))
 import Control.Effect.Diagnostics (Diagnostics, Has, context, fatalOnSomeException)
 import Control.Effect.Finally (Finally, onExit)
