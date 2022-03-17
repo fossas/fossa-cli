@@ -16,7 +16,9 @@ import App.Fossa.Config.DumpBinaries (
   DumpBinsOpts,
   mkSubCommand,
  )
+import Data.String.Conversion (toLazy, toStrict)
 import App.Fossa.Subcommand (SubCommand)
+import Codec.Compression.Lzma qualified as Lzma
 import Control.Effect.Exception (bracket)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.ByteString (ByteString, writeFile)
@@ -24,7 +26,6 @@ import Data.FileEmbed.Extra (embedFileIfExists)
 import Data.Foldable (for_, traverse_)
 import Data.Tagged (Tagged, applyTag, unTag)
 import Data.Time.Clock.POSIX (getPOSIXTime)
-import Discovery.Archive (extractLzma)
 import Path (
   Abs,
   Dir,
@@ -90,14 +91,15 @@ withThemisAndIndex = bracket extractThemisFiles cleanupThemisBins
 -- When running Themis we always need both the themis-cli and the decompressed index.gob
 extractThemisFiles :: Has (Lift IO) sig m => m ThemisBins
 extractThemisFiles = do
-  themisActual <- applyTag @ThemisBinary <$> extractEmbeddedBinary Themis
-  compressedThemisIndex <- extractEmbeddedBinary ThemisIndex
+  themisBin <- extractEmbeddedBinary Themis
+  let themisActual = applyTag @ThemisBinary themisBin
+  -- themisActual <- applyTag @ThemisBinary themisBin
   let decompressedThemisIndex =
         BinaryPaths
-          { binaryPathContainer = binaryPathContainer compressedThemisIndex
+          { binaryPathContainer = binaryPathContainer themisBin
           , binaryFilePath = $(mkRelFile "index.gob")
           }
-  sendIO $ extractLzma (toPath compressedThemisIndex) (toPath decompressedThemisIndex)
+  _ <- pure $ writeFile (show $ toPath decompressedThemisIndex) (toStrict $ Lzma.decompress $ toLazy embeddedBinaryThemisIndex)
   pure $ ThemisBins themisActual $ applyTag @ThemisIndex decompressedThemisIndex
 
 withSyftBinary ::
