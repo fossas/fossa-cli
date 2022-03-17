@@ -3,7 +3,6 @@
 module App.Fossa.API.BuildLinkSpec (spec) where
 
 import App.Fossa.API.BuildLink (getBuildURLWithOrg)
-import App.Fossa.FossaAPIV1 (Organization (Organization))
 import App.Types (ProjectRevision (ProjectRevision))
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Stack (StackC, runStack)

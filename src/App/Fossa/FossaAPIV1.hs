@@ -6,19 +6,12 @@ module App.Fossa.FossaAPIV1 (
   uploadAnalysis,
   uploadContributors,
   uploadContainerScan,
-  UploadResponse (..),
   mkMetadataOpts,
   FossaError (..),
   FossaReq (..),
-  Contributors (..),
   fossaReq,
   getLatestBuild,
-  Build (..),
-  BuildTask (..),
-  BuildStatus (..),
   getIssues,
-  Organization (..),
-  Project (..),
   getOrganization,
   getAttribution,
   getAttributionRaw,
@@ -64,7 +57,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Word (Word8)
 import Effect.Logger
-import Fossa.API.Types (ApiOpts, ArchiveComponents, Issues, SignedURL, signedURL, useApiOpts)
+import Fossa.API.Types
 import Network.HTTP.Client qualified as C
 import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Req
@@ -158,17 +151,6 @@ normalizeGitProjectName project
 
 responseTimeoutSeconds :: Int -> Option scheme
 responseTimeoutSeconds sec = responseTimeout $ sec * 1_000_000
-
-data UploadResponse = UploadResponse
-  { uploadLocator :: Text
-  , uploadError :: Maybe Text
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON UploadResponse where
-  parseJSON = withObject "UploadResponse" $ \obj ->
-    UploadResponse <$> obj .: "locator"
-      <*> obj .:? "error"
 
 data FossaError
   = JsonDeserializeError String
@@ -280,19 +262,6 @@ mangleError err = case err of
 projectEndpoint :: Url scheme -> Int -> Locator -> Url scheme
 projectEndpoint baseurl orgid locator = baseurl /: "api" /: "cli" /: renderLocatorUrl orgid locator /: "project"
 
-data Project = Project
-  { projectId :: Text
-  , projectTitle :: Text
-  , projectIsMonorepo :: Bool
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON Project where
-  parseJSON = withObject "Project" $ \obj ->
-    Project <$> obj .: "id"
-      <*> obj .: "title"
-      <*> obj .: "isMonorepo"
-
 getProject ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
@@ -313,46 +282,6 @@ getProject apiopts ProjectRevision{..} = fossaReq $ do
 
 buildsEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
 buildsEndpoint baseurl orgId locator = baseurl /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "latest_build"
-
-data BuildStatus
-  = StatusSucceeded
-  | StatusFailed
-  | StatusCreated
-  | StatusAssigned
-  | StatusRunning
-  | StatusUnknown Text
-  deriving (Eq, Ord, Show)
-
-data Build = Build
-  { buildId :: Int
-  , buildError :: Maybe Text
-  , buildTask :: BuildTask
-  }
-  deriving (Eq, Ord, Show)
-
-newtype BuildTask = BuildTask
-  { buildTaskStatus :: BuildStatus
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON Build where
-  parseJSON = withObject "Build" $ \obj ->
-    Build <$> obj .: "id"
-      <*> obj .:? "error"
-      <*> obj .: "task"
-
-instance FromJSON BuildTask where
-  parseJSON = withObject "BuildTask" $ \obj ->
-    BuildTask <$> obj .: "status"
-
-instance FromJSON BuildStatus where
-  parseJSON = withText "BuildStatus" $ \case
-    "SUCCEEDED" -> pure StatusSucceeded
-    "FAILED" -> pure StatusFailed
-    "CREATED" -> pure StatusCreated
-    "ASSIGNED" -> pure StatusAssigned
-    "RUNNING" -> pure StatusRunning
-    other -> pure $ StatusUnknown other
 
 getLatestBuild ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
@@ -509,17 +438,6 @@ getAttributionRaw apiOpts ProjectRevision{..} = fossaReq $ do
 
 ----------
 
-data Organization = Organization
-  { organizationId :: Int
-  , orgUsesSAML :: Bool
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON Organization where
-  parseJSON = withObject "Organization" $ \obj ->
-    Organization <$> obj .: "organizationId"
-      <*> obj .:? "usesSAML" .!= False
-
 organizationEndpoint :: Url scheme -> Url scheme
 organizationEndpoint baseurl = baseurl /: "api" /: "cli" /: "organization"
 
@@ -529,10 +447,6 @@ getOrganization apiOpts = fossaReq $ do
   responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse baseOpts
 
 ----------
-
-newtype Contributors = Contributors
-  {unContributors :: Map Text Text}
-  deriving (Eq, Ord, Show, ToJSON)
 
 contributorsEndpoint :: Url scheme -> Url scheme
 contributorsEndpoint baseurl = baseurl /: "api" /: "contributors"

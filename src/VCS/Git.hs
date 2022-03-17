@@ -3,7 +3,7 @@ module VCS.Git (
   fetchGitContributors,
 ) where
 
-import App.Fossa.FossaAPIV1 (Contributors (..))
+import Fossa.API.Types (Contributors (..))
 import Control.Carrier.Diagnostics (errCtx)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Lift (Lift, sendIO)
