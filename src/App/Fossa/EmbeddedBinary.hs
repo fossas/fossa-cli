@@ -16,7 +16,6 @@ import App.Fossa.Config.DumpBinaries (
   DumpBinsOpts,
   mkSubCommand,
  )
-import Data.String.Conversion (toLazy, toStrict)
 import App.Fossa.Subcommand (SubCommand)
 import Codec.Compression.Lzma qualified as Lzma
 import Control.Effect.Exception (bracket)
@@ -24,6 +23,7 @@ import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.ByteString (ByteString, writeFile)
 import Data.FileEmbed.Extra (embedFileIfExists)
 import Data.Foldable (for_, traverse_)
+import Data.String.Conversion (toLazy, toStrict)
 import Data.Tagged (Tagged, applyTag, unTag)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Path (
