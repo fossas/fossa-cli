@@ -25,6 +25,7 @@ import Effect.Exec (
   execJson,
  )
 
+-- TODO: We should log the themis version and index version
 execThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> m [LicenseUnit]
 execThemis themisBins scanDir = do
   execJson @[LicenseUnit] scanDir $ themisCommand themisBins
