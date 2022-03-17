@@ -1,6 +1,7 @@
 module Test.Effect (
   expectationFailure',
   expectFailure',
+  expectFatal',
   shouldBe',
   shouldSatisfy',
   shouldStartWith',
@@ -31,7 +32,7 @@ import Test.Hspec (
   xit,
  )
 
-import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
+import Control.Carrier.Diagnostics (Diagnostics, DiagnosticsC, recover, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
 import Control.Carrier.Stack (StackC, runStack)
 import Control.Effect.Finally (Finally, onExit)
@@ -109,3 +110,10 @@ shouldMatchList' a b = sendIO $ shouldMatchList a b
 
 expectFailure' :: Has (Lift IO) sig m => Result a -> m ()
 expectFailure' res = sendIO $ expectFailure res
+
+expectFatal' :: (Has Diagnostics sig m, Has (Lift IO) sig m) => m () -> m ()
+expectFatal' f = do
+  res <- recover f
+  case res of
+    Just _ -> expectationFailure' "Expected failure"
+    Nothing -> pure ()
