@@ -7,8 +7,6 @@ module App.Fossa.FossaAPIV1 (
   uploadContributors,
   uploadContainerScan,
   mkMetadataOpts,
-  FossaError (..),
-  FossaReq (..),
   fossaReq,
   getLatestBuild,
   getIssues,
