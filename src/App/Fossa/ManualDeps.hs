@@ -90,7 +90,7 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts = do
   -- See https://fossa.atlassian.net/browse/ANE-23
   -- IMPORTANT: Until ANE-23 is implemented, this should always be `ArchiveUpload` on master
   let archiveOrCLI = ArchiveUpload
-  archiveLocators :: [Locator] <- case (maybeApiOpts, defaultArchiveOrCLI) of
+  archiveLocators :: [Locator] <- case (maybeApiOpts, archiveOrCLI) of
     (Just apiOpts, ArchiveUpload) -> archiveUploadSourceUnit root apiOpts vendoredDependencies
     (Just apiOpts, CLILicenseScan) -> licenseScanSourceUnit root apiOpts vendoredDependencies
     (Nothing, ArchiveUpload) -> pure $ archiveNoUploadSourceUnit vendoredDependencies
