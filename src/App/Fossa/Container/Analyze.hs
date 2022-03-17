@@ -18,7 +18,6 @@ import App.Fossa.Config.Container (
 import App.Fossa.Config.Container.Common (ImageText (ImageText))
 import App.Fossa.Container.Scan (extractRevision, runSyft, toContainerScan)
 import App.Fossa.FossaAPIV1 (uploadContainerScan)
-import Fossa.API.Types (UploadResponse(uploadError, uploadLocator))
 import App.Types (ProjectRevision (..))
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, errCtx, renderDiagnostic)
 import Control.Effect.Lift (Lift)
@@ -38,6 +37,7 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
+import Fossa.API.Types (UploadResponse (uploadError, uploadLocator))
 import Prettyprinter (Doc, indent, vsep)
 import Srclib.Types (parseLocator)
 

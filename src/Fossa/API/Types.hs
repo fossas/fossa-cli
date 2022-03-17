@@ -3,23 +3,23 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Fossa.API.Types (
-  Build (..),
-  BuildTask (..),
-  BuildStatus (..),
   ApiKey (..),
   ApiOpts (..),
-  useApiOpts,
-  Issues (..),
+  Archive (..),
+  ArchiveComponents (..),
+  Build (..),
+  BuildStatus (..),
+  BuildTask (..),
+  Contributors (..),
+  Issue (..),
   IssueRule (..),
   IssueType (..),
-  Issue (..),
-  SignedURL (..),
-  ArchiveComponents (..),
-  Archive (..),
-  UploadResponse (..),
-  Contributors (..),
+  Issues (..),
   Organization (..),
   Project (..),
+  SignedURL (..),
+  UploadResponse (..),
+  useApiOpts,
 ) where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)

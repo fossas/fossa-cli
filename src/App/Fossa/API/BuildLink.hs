@@ -14,7 +14,7 @@ import Control.Effect.Lift
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text.Extra (showT)
-import Fossa.API.Types (ApiOpts (..), Organization(..))
+import Fossa.API.Types (ApiOpts (..), Organization (..))
 import Srclib.Types (Locator (..))
 import Text.URI qualified as URI
 import Text.URI.Builder

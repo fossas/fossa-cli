@@ -41,7 +41,7 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
-import Fossa.API.Types (ApiOpts, Project(projectIsMonorepo), UploadResponse(uploadError, uploadLocator))
+import Fossa.API.Types (ApiOpts, Project (projectIsMonorepo), UploadResponse (uploadError, uploadLocator))
 import Path (Abs, Dir, Path)
 import Srclib.Types (
   Locator (locatorProject, locatorRevision),
