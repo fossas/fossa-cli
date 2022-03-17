@@ -231,6 +231,7 @@ instance Pretty Issues where
 data Organization = Organization
   { organizationId :: Int
   , orgUsesSAML :: Bool
+  , orgDoLocalLicenseScan :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -238,6 +239,7 @@ instance FromJSON Organization where
   parseJSON = withObject "Organization" $ \obj ->
     Organization <$> obj .: "organizationId"
       <*> obj .:? "usesSAML" .!= False
+      <*> obj .:? "supportsCliLicenseScanning" .!= False
 
 data Project = Project
   { projectId :: Text

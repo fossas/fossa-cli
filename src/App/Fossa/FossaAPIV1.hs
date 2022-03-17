@@ -270,7 +270,7 @@ getProject ::
 getProject apiopts ProjectRevision{..} = fossaReq $ do
   (baseurl, baseopts) <- useApiOpts apiopts
 
-  Organization orgid _ <- getOrganization apiopts
+  orgid <- organizationId <$> getOrganization apiopts
 
   let endpoint = projectEndpoint baseurl orgid $ Locator "custom" projectName Nothing
 
@@ -289,7 +289,7 @@ getLatestBuild ::
 getLatestBuild apiOpts ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  Organization orgId _ <- getOrganization apiOpts
+  orgId <- organizationId <$> getOrganization apiOpts
 
   response <- req GET (buildsEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
@@ -391,7 +391,7 @@ getIssues ::
 getIssues apiOpts ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  Organization orgId _ <- getOrganization apiOpts
+  orgId <- organizationId <$> getOrganization apiOpts
   response <- req GET (issuesEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
 
@@ -413,7 +413,7 @@ getAttribution apiOpts ProjectRevision{..} = fossaReq $ do
           <> "includeDeepDependencies" =: True
           <> "includeHashAndVersionData" =: True
           <> "includeDownloadUrl" =: True
-  Organization orgId _ <- getOrganization apiOpts
+  orgId <- organizationId <$> getOrganization apiOpts
   response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
@@ -430,7 +430,7 @@ getAttributionRaw apiOpts ProjectRevision{..} = fossaReq $ do
           <> "includeDeepDependencies" =: True
           <> "includeHashAndVersionData" =: True
           <> "includeDownloadUrl" =: True
-  Organization orgId _ <- getOrganization apiOpts
+  orgId <- organizationId <$> getOrganization apiOpts
   response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
   pure (responseBody response)
 
@@ -586,7 +586,7 @@ vsiCreateScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Proj
 vsiCreateScan apiOpts ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  Organization orgId _ <- getOrganization apiOpts
+  orgId <- organizationId <$> getOrganization apiOpts
   let projectID = renderLocator $ Locator "custom" projectName Nothing
   let reqBody = VSICreateScanRequestBody orgId projectRevision projectID
 

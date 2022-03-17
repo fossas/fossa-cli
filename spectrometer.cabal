@@ -177,6 +177,7 @@ library
     App.Fossa.Container.Analyze
     App.Fossa.Container.Scan
     App.Fossa.Container.Test
+    App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
     App.Fossa.FossaAPIV1
     App.Fossa.ListTargets
@@ -364,7 +365,7 @@ library
     Strategy.Ruby.BundleShow
     Strategy.Ruby.Errors
     Strategy.Ruby.GemfileLock
-    Strategy.Ruby.Gemspec
+    Strategy.Ruby.Parse
     Strategy.Scala
     Strategy.Swift.Errors
     Strategy.Swift.PackageResolved
@@ -422,6 +423,7 @@ test-suite unit-tests
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec
+    Cocoapods.CocoapodsSpec
     Cocoapods.PodfileLockSpec
     Cocoapods.PodfileSpec
     Composer.ComposerJsonSpec
@@ -484,7 +486,7 @@ test-suite unit-tests
     RPM.SpecFileSpec
     Ruby.BundleShowSpec
     Ruby.GemfileLockSpec
-    Ruby.GemspecSpec
+    Ruby.ParseSpec
     Swift.PackageResolvedSpec
     Swift.PackageSwiftSpec
     Swift.Xcode.PbxprojParserSpec
