@@ -9,6 +9,7 @@ module Srclib.Types (
   SourceRemoteDep (..),
   Locator (..),
   LicenseSourceUnit (..),
+  LicenseScanType (..),
   LicenseUnit (..),
   LicenseUnitData (..),
   LicenseUnitMatchData (..),
@@ -25,11 +26,21 @@ import Data.Text qualified as Text
 import Path (File, SomeBase)
 import Types (GraphBreadth (..))
 
+data LicenseScanType = CliLicenseScanned
+  deriving (Eq, Ord, Show)
+
+instance ToText LicenseScanType where
+  toText :: LicenseScanType -> Text
+  toText _ = "cli-license-scanned"
+
+instance ToJSON LicenseScanType where
+  toJSON = toJSON . toText
+
 -- | LicenseSourceUnit is the base of the results sent to Core for a CLI-side license scan
 -- licenseSourceUnitLicenseUnits will be empty if you scan an empty directory.
 data LicenseSourceUnit = LicenseSourceUnit
   { licenseSourceUnitName :: Text
-  , licenseSourceUnitType :: Text
+  , licenseSourceUnitType :: LicenseScanType
   , licenseSourceUnitLicenseUnits :: [LicenseUnit]
   }
   deriving (Eq, Ord, Show)

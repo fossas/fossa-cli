@@ -31,6 +31,7 @@ import Effect.Exec (Exec, runExecIO)
 import Fossa.API.Types
 import Path
 import Srclib.Types (
+  LicenseScanType (CliLicenseScanned),
   LicenseSourceUnit (..),
   LicenseUnit (..),
   Locator (..),
@@ -82,7 +83,7 @@ scanAndUploadVendoredDep apiOpts baseDir VendoredDependency{..} = context "compr
   let licenseSourceUnit =
         LicenseSourceUnit
           { licenseSourceUnitName = vendoredPath
-          , licenseSourceUnitType = "cli-license-scanned"
+          , licenseSourceUnitType = CliLicenseScanned
           , licenseSourceUnitLicenseUnits = themisScanResult
           }
 
