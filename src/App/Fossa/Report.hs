@@ -12,8 +12,10 @@ import App.Fossa.API.BuildWait (
 import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), mkSubCommand)
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (ProjectRevision (..))
+import Control.Carrier.FossaApiClientIO (runFossaApiClientIO)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.FossaApiClient (getAttribution)
 import Control.Effect.Lift (Has, Lift)
 import Control.Timeout (timeout')
 import Data.Aeson qualified as Aeson
@@ -26,8 +28,6 @@ import Effect.Logger (
   logInfo,
   logStdout,
  )
-import Control.Carrier.FossaApiClientIO (runFossaApiClientIO)
-import Control.Effect.FossaApiClient (getAttribution)
 
 reportSubCommand :: SubCommand ReportCliOptions ReportConfig
 reportSubCommand = mkSubCommand report
