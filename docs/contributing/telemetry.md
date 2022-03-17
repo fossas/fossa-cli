@@ -21,7 +21,15 @@ configured via the following options in order of precedence:
 
 1. Command line option (`--with-telemetry-scope=off|full`)
 2. Environment variable (`FOSSA_TELEMETRY_SCOPE=off|full`)
-3. Configuration file (`telemetry-scope:off|full`)
+3. Configuration file (`telemetry.scope:off|full`)
+
+```yaml
+# .fossa.yml
+version: 3
+
+telemetry:
+    scope: off
+```
 
 For instance, if both the command-line option and the environment variable are provided
 the telemetry scope provided via the command line will be used. 
@@ -31,13 +39,17 @@ Supported telemetry scopes:
 - `full` - telemetry results are uploaded to the default or specified endpoint.
 	
 When we do not have `ApiOpts` (e.g. API Key), we do not emit telemetry to an endpoint.
+
 ## Telemetry Sinks
 
 When the environment variable `FOSSA_TELEMETRY_DEBUG=1` or `--debug` flag is provided, 
 the telemetry sink is set to file. This will generate the file `fossa.telemetry.json` in the current working directory. 
-	
-Otherwise, telemetry is sunk at provided endpoint i.e. `--endpoint` or `server:` in the config file. 
-If no such endpoint is provided, the base endpoint (`app.fossa.com`) is used.
+
+Telemetry is sunk to the same server as the analysis.
+
+# TODO:Megh
+
+When `--output` is used, 
 
 ## Interfaces and Examples
 
@@ -53,7 +65,39 @@ experimental (SomeProject manifestDir manifestFile) = do
   pure ()
 ```
 
-2. Tracking raw telemetry messages
+2. Captured system and CLI version information
+
+This is automatically done at teardown. If we do not have version identifier, 
+we consider CLI environment to be development. CLI version is set as git tag, 
+or branch name. This information is exact as data collected in debug bundle.
+
+3. Capturing errors and warnings
+
+## teleRunDiagnosticsIO
+
+```haskell 
+-- >> :t trackResult
+-- trackResult :: Has Telemetry sig m => Result a -> m ()
+
+bar = do
+    result <- runDiagnosticsIO (diag :: DiagnosticsC m a)
+    trackResult result
+
+```
+
+4. Capturing cpu time of a computation
+
+```haskell
+-- >> :t trackTimeSpent 
+-- trackTimeSpent :: Has Telemetry sig m => Text -> m a -> m a
+
+someComplexComputation :: Has Telemetry sig m => m ()
+someComplexComputation = do
+  trackTimeSpent "Npm" $ analyzeNpm 10
+  trackTimeSpent "Yarn" $ analyzeYarn 10
+```
+
+5. Tracking raw telemetry messages
 
 Avoid using this interface as much as possible. It produces type-free telemetry data and 
 we want to capture telemetry data that has explicit/strict data shape.
@@ -66,37 +110,6 @@ foo :: Has Telemetry sig m => m ()
 foo = do
     trackRawLogMessage SevWarn "some messages explicitly to include in telemetry logs"
 ```
-
-3. Captured system and CLI version information
-
-This is automatically done at teardown. If we do not have version identifier, 
-we consider CLI environment to be development. CLI version is set as git tag, 
-or branch name. This information is exact as data collected in debug bundle.
-
-4. Capturing errors and warnings
-
-```haskell 
--- >> :t trackResult
--- trackResult :: Has Telemetry sig m => Result a -> m ()
-
-bar = do
-    result <- runDiagnosticsIO (diag :: DiagnosticsC m a)
-    trackResult result
-
-```
-
-5. Capturing cpu time of a computation
-
-```haskell
--- >> :t trackTimeSpent 
--- trackTimeSpent :: Has Telemetry sig m => Text -> m a -> m a
-
-someComplexComputation :: Has Telemetry sig m => m ()
-someComplexComputation = do
-  trackTimeSpent "Npm" $ analyzeNpm 10
-  trackTimeSpent "Yarn" $ analyzeYarn 10
-```
-
 
 ### Future
 

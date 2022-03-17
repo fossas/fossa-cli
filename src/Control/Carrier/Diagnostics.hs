@@ -56,12 +56,8 @@ logDiagnostic diag = do
 -- | Run a void Diagnostic effect into a logger, using the default error/warning renderers.
 -- Exits with zero if the result is a success, or non-zero if the result is a failure.
 -- Useful for setting up diagnostics from CLI entry points.
-logWithExit_ :: (Has (Lift IO) sig m, Has Logger sig m, Has Telemetry sig m, Has Stack sig m) => DiagnosticsC m () -> m ()
-logWithExit_ diag = do
-  a <- logDiagnostic diag
-  case a of
-    Nothing -> sendIO exitFailure
-    Just _ -> sendIO exitSuccess
+logWithExit_ :: (Has (Lift IO) sig m, Has Logger sig m, Has Stack sig m, Has Telemetry sig m) => DiagnosticsC m () -> m ()
+logWithExit_ diag = logDiagnostic diag >>= maybe (sendIO exitFailure) (const (sendIO exitSuccess))
 
 instance Has Stack sig m => Algebra (Diag :+: sig) (DiagnosticsC m) where
   alg hdl sig ctx = DiagnosticsC $ case sig of

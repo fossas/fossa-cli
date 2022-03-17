@@ -18,24 +18,23 @@ import Control.Monad (void, when)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Maybe (isNothing)
 
-import App.Fossa.Telemetry.Types (
+import Control.Carrier.Telemetry.Types (
   TelemetryCtx (..),
   TelemetryTimeSpent (TelemetryTimeSpent),
   TimedLogRecord (TimedLogRecord),
  )
-import App.Fossa.Telemetry.Utils (
+import Control.Carrier.Telemetry.Utils (
   mkTelemetryCtx,
   mkTelemetryRecord,
  )
 import Control.Exception qualified as Exc
-import Data.Time.Clock (getCurrentTime)
+import Data.Time.Clock (diffUTCTime, getCurrentTime, nominalDiffTimeToSeconds)
 import Data.Tracing.Instrument (incCount)
 import System.Exit (ExitCode (ExitSuccess))
 
-import App.Fossa.Telemetry.Sink.Common (emitTelemetry)
 import Control.Algebra (Algebra (alg), Has, type (:+:) (L, R))
 import Control.Carrier.Reader (ReaderC, ask, runReader)
-import System.TimeIt (timeItT)
+import Control.Carrier.Telemetry.Sink.Common (emitTelemetry)
 
 newtype TelemetryC m a = TelemetryC {runTelemetryC :: ReaderC TelemetryCtx m a}
   deriving (Applicative, Functor, Monad, MonadFail, MonadIO)
@@ -58,13 +57,23 @@ instance (Algebra sig m, MonadIO m, Has (Lift IO) sig m) => Algebra (Telemetry :
             Nothing -> ctx <$ sendIO (atomically $ putTMVar (telFossaConfig telCtx) (cmd, cfg))
             Just _ -> ctx <$ pure ()
         TrackTimeSpent computeName act -> do
-          (timeTook, res) <- timeItT (hdl (act <$ ctx))
-          void $ sendIO (atomically $ tryWriteTBMQueue (telTimeSpent telCtx) (TelemetryTimeSpent computeName timeTook))
+          (timeTook, res) <- timeItRealT (hdl (act <$ ctx))
+          void $ sendIO (atomically $ tryWriteTBMQueue (telTimeSpentQ telCtx) (TelemetryTimeSpent computeName timeTook))
           pure res
         TrackRawLogMessage sev msg -> do
           currentTime <- sendIO getCurrentTime
           ctx <$ sendIO (atomically $ tryWriteTBMQueue (telLogsQ telCtx) (TimedLogRecord currentTime sev msg))
     R other -> TelemetryC (alg (runTelemetryC . hdl) (R other) ctx)
+
+-- | Measures elapsed time in seconds to perform an action.
+-- It uses system clock to get the time before and after action.
+timeItRealT :: Has (Lift IO) sig m => m a -> m (Double, a)
+timeItRealT act = do
+  start <- sendIO getCurrentTime
+  acted <- act
+  end <- sendIO getCurrentTime
+  let timeInSecs = realToFrac . nominalDiffTimeToSeconds $ diffUTCTime end start
+  pure (timeInSecs, acted)
 
 -- | Runs Telemetry Effect
 --

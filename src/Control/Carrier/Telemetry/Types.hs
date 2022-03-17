@@ -1,4 +1,4 @@
-module App.Fossa.Telemetry.Types (
+module Control.Carrier.Telemetry.Types (
   CliEnvironment (..),
   SystemInfo (..),
   TelemetryRecord (..),
@@ -12,11 +12,18 @@ module App.Fossa.Telemetry.Types (
 
 import Control.Concurrent.STM (TMVar)
 import Control.Concurrent.STM.TBMQueue (TBMQueue)
-import Data.Aeson
+import Data.Aeson (
+  ToJSON (toEncoding, toJSON),
+  ToJSONKey (toJSONKey),
+  Value (String),
+  defaultOptions,
+  genericToEncoding,
+ )
 import Data.Aeson.Types (toJSONKeyText)
 import Data.Map (Map)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Data.Text.Extra (showT)
 import Data.Time (UTCTime)
 import Data.Tracing.Instrument (CounterRegistry)
 import Data.UUID (UUID)
@@ -33,7 +40,7 @@ data TelemetryCtx = TelemetryCtx
   { telId :: UUID
   , telLogsQ :: TBMQueue TimedLogRecord
   , telSink :: TMVar TelemetrySink
-  , telTimeSpent :: TBMQueue TelemetryTimeSpent
+  , telTimeSpentQ :: TBMQueue TelemetryTimeSpent
   , telFossaConfig :: TMVar (Text, Value)
   , telCounters :: CounterRegistry CountableCliFeature Int
   , telStartUtcTime :: UTCTime
@@ -41,7 +48,6 @@ data TelemetryCtx = TelemetryCtx
 
 data CountableCliFeature
   = ExperimentalGradleSingleConfigurationUsage
-  | SomeOtherFeature
   deriving (Show, Eq, Ord, Generic)
 
 instance ToJSONKey CountableCliFeature where
@@ -51,18 +57,18 @@ instance ToJSON CountableCliFeature where
   toEncoding = genericToEncoding defaultOptions
 
 data TelemetryRecord = TelemetryRecord
-  { cliTelemetryId :: UUID
-  , cliVersion :: Text
-  , cliCommandArgs :: [Text]
+  { cliCommandArgs :: [Text]
   , cliEnvironment :: CliEnvironment
-  , cliStartedAt :: UTCTime
-  , cliTotalDurationInSec :: Double
   , cliExitedFatally :: Bool
   , cliResolvedConfig :: Maybe TelemetryCmdConfig
+  , cliStartedAt :: UTCTime
   , cliSystemInfo :: SystemInfo
-  , cliUsageCounter :: Map CountableCliFeature Int
-  , cliTimedDurations :: [TelemetryTimeSpent]
   , cliTelLogs :: [TimedLogRecord]
+  , cliTelemetryId :: UUID
+  , cliTimedDurations :: [TelemetryTimeSpent]
+  , cliTotalDurationInSec :: Double
+  , cliUsageCounter :: Map CountableCliFeature Int
+  , cliVersion :: Text
   }
   deriving (Show, Eq, Ord, Generic)
 
@@ -98,8 +104,7 @@ instance Show CliEnvironment where
   show CliDevelopmentEnvironment = "dev"
 
 instance ToJSON CliEnvironment where
-  toJSON CliProductionEnvironment = String . toText . show $ CliProductionEnvironment
-  toJSON CliDevelopmentEnvironment = String . toText . show $ CliDevelopmentEnvironment
+  toJSON = String . showT
 
 data SystemInfo = SystemInfo
   { systemInfoOs :: String

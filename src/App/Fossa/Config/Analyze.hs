@@ -104,36 +104,31 @@ import Types (TargetFilter)
 
 -- CLI flags, for use with 'Data.Flag'
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
+data IncludeAll = IncludeAll deriving (Generic)
+data JsonOutput = JsonOutput deriving (Generic)
+data UnpackArchives = UnpackArchives deriving (Generic)
+data VSIAnalysis = VSIAnalysis deriving (Generic)
+
+newtype IATAssertion = IATAssertion {unIATAssertion :: Maybe (Path Abs Dir)} deriving (Eq, Ord, Show, Generic)
+newtype DynamicLinkInspect = DynamicLinkInspect {unDynamicLinkInspect :: Maybe (Path Abs File)} deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON BinaryDiscovery where
   toEncoding = genericToEncoding defaultOptions
 
-data IncludeAll = IncludeAll deriving (Generic)
-
 instance ToJSON IncludeAll where
   toEncoding = genericToEncoding defaultOptions
-
-data JsonOutput = JsonOutput deriving (Generic)
 
 instance ToJSON JsonOutput where
   toEncoding = genericToEncoding defaultOptions
 
-data UnpackArchives = UnpackArchives deriving (Generic)
-
 instance ToJSON UnpackArchives where
   toEncoding = genericToEncoding defaultOptions
-
-data VSIAnalysis = VSIAnalysis deriving (Generic)
-
 instance ToJSON VSIAnalysis where
   toEncoding = genericToEncoding defaultOptions
-
-newtype IATAssertion = IATAssertion {unIATAssertion :: Maybe (Path Abs Dir)} deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON IATAssertion where
   toEncoding = genericToEncoding defaultOptions
 
-newtype DynamicLinkInspect = DynamicLinkInspect {unDynamicLinkInspect :: Maybe (Path Abs File)} deriving (Eq, Ord, Show, Generic)
 instance ToJSON DynamicLinkInspect where
   toEncoding = genericToEncoding defaultOptions
 

@@ -41,7 +41,11 @@ data ApiOpts = ApiOpts
   deriving (Eq, Ord, Show)
 
 instance ToJSON ApiOpts where
-  toJSON opts = object ["uri" .= show (apiOptsUri opts)]
+  toJSON opts =
+    object
+      [ "uri" .= show (apiOptsUri opts)
+      , "apiKey" .= ("<REDACTED>" :: [Char])
+      ]
 
 newtype SignedURL = SignedURL
   { signedURL :: Text

@@ -12,7 +12,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigTelemetryScope (FullTelemetry, NoTelemetry),
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
-import App.Fossa.Telemetry.Sink.Common (
+import Control.Carrier.Telemetry.Sink.Common (
   TelemetrySink (
     TelemetrySinkToEndpoint,
     TelemetrySinkToFile

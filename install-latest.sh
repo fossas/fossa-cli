@@ -395,8 +395,6 @@ print_telemetry_disclaimer() {
   log_info ""
 }
 
-
-
 PROJECT_NAME="fossa"
 OWNER=fossas
 REPO="fossa-cli"
@@ -412,7 +410,6 @@ log_prefix() {
 }
 PLATFORM="${OS}/${ARCH}"
 GITHUB_DOWNLOAD=https://github.com/${OWNER}/${REPO}/releases/download
-
 
 uname_os_check "$OS"
 uname_arch_check "$ARCH"

@@ -1,7 +1,4 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use lambda-case" #-}
 
 module App.Fossa.Config.Common (
   -- * CLI Parsers
@@ -51,7 +48,6 @@ import App.Fossa.ProjectInference (
   mergeOverride,
   saveRevision,
  )
-import App.Fossa.Telemetry.Sink.Common (TelemetrySink (TelemetrySinkToEndpoint, TelemetrySinkToFile))
 import App.OptionExtensions (uriOption)
 import App.Types (
   BaseDir (BaseDir),
@@ -59,6 +55,9 @@ import App.Types (
   ProjectMetadata (ProjectMetadata),
   ProjectRevision,
   ReleaseGroupMetadata (ReleaseGroupMetadata),
+ )
+import Control.Carrier.Telemetry.Types (
+  TelemetrySink (TelemetrySinkToEndpoint, TelemetrySinkToFile),
  )
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -325,4 +324,4 @@ commonOpts =
     <*> optional (strOption (long "revision" <> short 'r' <> help "this repository's current revision hash (default: VCS hash HEAD)"))
     <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
     <*> optional (strOption (long "config" <> short 'c' <> help "Path to configuration file including filename (default: .fossa.yml)"))
-    <*> optional (option parseTelemetryScope (long "with-telemetry-scope" <> help "Scope of telemetry to use, the options are \"full\" or \"off\". (default: \"full\")"))
+    <*> optional (option parseTelemetryScope (long "with-telemetry-scope" <> help "Scope of telemetry to use, the options are 'full' or 'off'. (default: 'full')"))
