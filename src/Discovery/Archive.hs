@@ -144,11 +144,3 @@ removeTarLinks (Tar.Fail e) = Tar.Fail e
 extractZip :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
 extractZip dir zipFile =
   sendIO $ Zip.withArchive (fromAbsFile zipFile) (Zip.unpackInto (fromAbsDir dir))
-
------------ LZMA and XZ files
--- .lzma and .xz files can only contain a single file, not a directory
-extractLzma :: Has (Lift IO) sig m => Path Abs File -> Path Abs File -> m ()
-extractLzma lzmaFile decompressedFile = do
-  lzmaContents <- sendIO $ BL.readFile (fromAbsFile lzmaFile)
-  let decompressedContents = Lzma.decompress lzmaContents
-  sendIO $ BL.writeFile (fromAbsFile decompressedFile) decompressedContents
