@@ -263,7 +263,7 @@ instance FromJSON ExperimentalGradleConfigs where
     ExperimentalGradleConfigs <$> (obj .: "configurations-only" .!= Set.fromList [])
 
 instance FromJSON ConfigTelemetry where
-  parseJSON = withObject "ExperimentalGradleConfigs" $ \obj ->
+  parseJSON = withObject "ConfigTelemetry" $ \obj ->
     ConfigTelemetry <$> (obj .: "scope")
 
 instance FromJSON ConfigTelemetryScope where
@@ -271,4 +271,4 @@ instance FromJSON ConfigTelemetryScope where
     case toLower . strip $ scope of
       "full" -> pure FullTelemetry
       "off" -> pure NoTelemetry
-      notSupported -> fail . toString $ "Expected either: \"full\" or \"off\" for telemetry scope. You provided: " <> notSupported
+      notSupported -> fail . toString $ "Expected either: 'full' or 'off' for telemetry scope. You provided: " <> notSupported

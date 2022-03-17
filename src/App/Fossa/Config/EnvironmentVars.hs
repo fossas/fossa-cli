@@ -32,8 +32,6 @@ telemetryDebugName = "FOSSA_TELEMETRY_DEBUG"
 telemetryScopeKeyName :: [Char]
 telemetryScopeKeyName = "FOSSA_TELEMETRY_SCOPE"
 
--- Currently, this is overkill, but useful if we add other environment vars
--- later, like the proposed FOSSA_BINARY_CMD in fossas/team-analysis#799
 getEnvVars :: (Has (Lift IO) sig m, Has Logger sig m) => m EnvVars
 getEnvVars =
   EnvVars

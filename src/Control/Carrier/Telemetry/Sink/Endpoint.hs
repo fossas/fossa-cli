@@ -2,12 +2,12 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module App.Fossa.Telemetry.Sink.Endpoint (sinkTelemetryToEndpoint, sinkToEndpoint, sinkToLocalhost) where
+module Control.Carrier.Telemetry.Sink.Endpoint (sinkTelemetryToEndpoint, sinkToEndpoint, sinkToLocalhost) where
 
-import App.Fossa.Telemetry.Types (TelemetryRecord)
 import Control.Algebra (Algebra, Has, type (:+:))
 import Control.Carrier.Empty.Maybe (EmptyC, runEmpty)
 import Control.Carrier.Lift (Lift, sendIO)
+import Control.Carrier.Telemetry.Types (TelemetryRecord)
 import Control.Effect.Empty (Empty, empty)
 import Control.Monad (void)
 import Control.Monad.IO.Class (MonadIO (..))
@@ -15,8 +15,8 @@ import Data.Coerce (coerce)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (encodeUtf8)
 import Fossa.API.Types (
-  ApiKey (unApiKey),
-  ApiOpts (apiOptsApiKey, apiOptsUri),
+  ApiKey (ApiKey),
+  ApiOpts (ApiOpts, apiOptsUri),
  )
 import Network.HTTP.Req (
   MonadHttp (..),
@@ -47,29 +47,29 @@ instance Has (Lift IO) sig m => MonadIO (FossaTelemetryReq m) where
 instance (Has (Lift IO) sig m) => MonadHttp (FossaTelemetryReq m) where
   getHttpConfig = pure httpConfigRetryTimeouts
 
-  -- We fire and forget responses (including http exception or connection re issues)
+  -- We fire and forget responses (including http exception or connection related issues)
   -- We do this as _telemetry_ failure should not have any visible or material impact on user experience.
   handleHttpException = FossaTelemetryReq . const empty
 
-useApiOpts :: ApiOpts -> Maybe (Url 'Https, Option 'Https)
+useApiOpts :: Fossa.API.Types.ApiOpts -> Maybe (Url 'Https, Option 'Https)
 useApiOpts opts = case useURI serverURI of
   Nothing -> Nothing -- Do not emit telemetry if user provided endpoint is not valid
-  Just (Left (url, options)) -> Just (Unsafe.unsafeCoerce url, coerce options <> authHeader (apiOptsApiKey opts))
-  Just (Right (url, options)) -> Just (url, options <> authHeader (apiOptsApiKey opts))
+  Just (Left (url, options)) -> Just (Unsafe.unsafeCoerce url, coerce options <> authHeader opts)
+  Just (Right (url, options)) -> Just (url, options <> authHeader opts)
   where
     serverURI :: URI
-    serverURI = fromMaybe [uri|https://app.fossa.com|] (apiOptsUri opts)
+    serverURI = fromMaybe [uri|https://app.fossa.com|] (Fossa.API.Types.apiOptsUri opts)
 
-    authHeader :: ApiKey -> Option 'Https
-    authHeader key = header "Authorization" (encodeUtf8 ("Bearer " <> unApiKey key))
+    authHeader :: Fossa.API.Types.ApiOpts -> Option 'Https
+    authHeader (Fossa.API.Types.ApiOpts _ (Fossa.API.Types.ApiKey key)) = header "Authorization" $ encodeUtf8 $ "Bearer " <> key
 
-sinkTelemetryToEndpoint :: Has (Lift IO) sig m => ApiOpts -> TelemetryRecord -> m ()
-sinkTelemetryToEndpoint = sinkToNothing
+sinkTelemetryToEndpoint :: Has (Lift IO) sig m => Fossa.API.Types.ApiOpts -> TelemetryRecord -> m ()
+sinkTelemetryToEndpoint = sinkToNothing --TODO: FIX THIS BEFORE MERGING TELEMETRY
 
 telemetryUrl :: Url scheme -> Url scheme
 telemetryUrl baseurl = baseurl /: "api" /: "cli" /: "telemetry"
 
-sinkToEndpoint :: Has (Lift IO) sig m => ApiOpts -> TelemetryRecord -> m ()
+sinkToEndpoint :: Has (Lift IO) sig m => Fossa.API.Types.ApiOpts -> TelemetryRecord -> m ()
 sinkToEndpoint apiOpts record =
   void
     . runEmpty
@@ -85,10 +85,10 @@ sinkToEndpoint apiOpts record =
             ignoreResponse
             opts
 
-sinkToNothing :: Has (Lift IO) sig m => ApiOpts -> TelemetryRecord -> m ()
+sinkToNothing :: Has (Lift IO) sig m => Fossa.API.Types.ApiOpts -> TelemetryRecord -> m ()
 sinkToNothing _ _ = pure ()
 
-sinkToLocalhost :: Has (Lift IO) sig m => ApiOpts -> TelemetryRecord -> m ()
+sinkToLocalhost :: Has (Lift IO) sig m => Fossa.API.Types.ApiOpts -> TelemetryRecord -> m ()
 sinkToLocalhost _ record =
   void
     . runEmpty

@@ -1,9 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.Fossa.Telemetry.Sink.File (sinkTelemetryToFile, fossaTelemetryDebugFile) where
+module Control.Carrier.Telemetry.Sink.File (sinkTelemetryToFile, fossaTelemetryDebugFile) where
 
-import App.Fossa.Telemetry.Types (TelemetryRecord)
 import Control.Carrier.Lift (Has, Lift, sendIO)
+import Control.Carrier.Telemetry.Types (TelemetryRecord)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Encode.Pretty (
   Config (
@@ -18,7 +18,8 @@ import Data.Aeson.Encode.Pretty (
   encodePretty',
  )
 import Data.ByteString.Lazy qualified as LazyByteString
-import Path (File, Path, Rel, fromAbsFile, mkRelFile, (</>))
+import Data.String.Conversion (toString)
+import Path (File, Path, Rel, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 
 fossaTelemetryDebugFile :: Path Rel File
@@ -31,7 +32,7 @@ fossaTelemetryDebugFile = $(mkRelFile "fossa.telemetry.json")
 sinkTelemetryToFile :: Has (Lift IO) sig m => TelemetryRecord -> m ()
 sinkTelemetryToFile record = do
   currentDir <- sendIO getCurrentDir
-  sendIO $ encodeFile' (fromAbsFile $ currentDir </> fossaTelemetryDebugFile) record
+  sendIO $ encodeFile' (toString $ currentDir </> fossaTelemetryDebugFile) record
 
 encodeFile' :: forall a. ToJSON a => FilePath -> a -> IO ()
 encodeFile' path val =

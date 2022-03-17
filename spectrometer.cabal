@@ -194,11 +194,6 @@ library
     App.Fossa.Report.Attribution
     App.Fossa.RunThemis
     App.Fossa.Subcommand
-    App.Fossa.Telemetry.Sink.Common
-    App.Fossa.Telemetry.Sink.Endpoint
-    App.Fossa.Telemetry.Sink.File
-    App.Fossa.Telemetry.Types
-    App.Fossa.Telemetry.Utils
     App.Fossa.Test
     App.Fossa.VPS.Scan.Core
     App.Fossa.VPS.Scan.RunWiggins
@@ -244,6 +239,11 @@ library
     Control.Carrier.StickyLogger
     Control.Carrier.TaskPool
     Control.Carrier.Telemetry
+    Control.Carrier.Telemetry.Sink.Common
+    Control.Carrier.Telemetry.Sink.Endpoint
+    Control.Carrier.Telemetry.Sink.File
+    Control.Carrier.Telemetry.Types
+    Control.Carrier.Telemetry.Utils
     Control.Carrier.Threaded
     Control.Effect.AtomicCounter
     Control.Effect.AtomicState
@@ -278,7 +278,6 @@ library
     Data.String.Conversion
     Data.Tagged
     Data.Text.Extra
-    Data.Text.PrettyPrinter.Markdown
     Data.Tracing.Instrument
     DepTypes
     Diag.Common

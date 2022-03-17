@@ -19,7 +19,6 @@ module Effect.Logger (
   logError,
   logStdout,
   renderIt,
-  renderItMd,
   module X,
 ) where
 
@@ -34,7 +33,6 @@ import Control.Monad (when)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Types (Value (String), toJSON)
 import Data.Text (Text)
-import Data.Text.PrettyPrinter.Markdown (renderAnsiToMarkdown)
 import GHC.Generics (Generic)
 import Prettyprinter as X
 import Prettyprinter.Render.Terminal as X
@@ -153,6 +151,3 @@ ignoreLogger = interpret $ \case
 
 renderIt :: Doc AnsiStyle -> Text
 renderIt = renderStrict . layoutPretty defaultLayoutOptions
-
-renderItMd :: Doc AnsiStyle -> Text
-renderItMd doc = renderAnsiToMarkdown $ layoutPretty defaultLayoutOptions doc

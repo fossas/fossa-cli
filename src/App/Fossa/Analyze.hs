@@ -187,10 +187,9 @@ runDependencyAnalysis basedir filters project = do
       output $ SkippedDueToProvidedFilter dpi
     Just targets -> do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
-      graphResult <- trackTimeSpent (toText . show $ projectType project) $
-        Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context "Project Analysis" $ do
-          debugMetadata "DiscoveredProject" project
-          analyzeProject targets (projectData project)
+      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context "Project Analysis" $ do
+        debugMetadata "DiscoveredProject" project
+        trackTimeSpent (toText . show $ projectType project) $ analyzeProject targets (projectData project)
       Diag.flushLogs SevError SevDebug graphResult
       trackResult graphResult
       output $ Scanned dpi (mkResult basedir project <$> graphResult)

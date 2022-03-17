@@ -8,13 +8,12 @@ module Control.Effect.Telemetry (
   trackResult,
 ) where
 
-import App.Fossa.Telemetry.Sink.Common (TelemetrySink)
-import App.Fossa.Telemetry.Types (CountableCliFeature)
 import Control.Algebra (Has, send)
+import Control.Carrier.Telemetry.Types (CountableCliFeature, TelemetrySink)
 import Data.Aeson (ToJSON (toJSON), Value)
 import Data.Text (Text)
 import Diag.Result (Result (Failure, Success), renderFailure, renderSuccess)
-import Effect.Logger (Severity (SevError, SevWarn), renderIt, renderItMd)
+import Effect.Logger (Severity (SevError, SevWarn), renderIt)
 import Prettyprinter (Doc)
 import Prettyprinter.Render.Terminal (AnsiStyle)
 
@@ -34,7 +33,7 @@ trackTimeSpent header act = send $ TrackTimeSpent header act
 trackConfig :: (ToJSON cfg, Has Telemetry sig m) => Text -> cfg -> m ()
 trackConfig cmd config = send . TrackConfig cmd $ toJSON config
 
-{-# WARNING trackRawLogMessage "Only use this if absolutely necessary, you likely want to use 'trackResult'" #-}
+-- | Only use this if absolutely necessary, you likely want to use 'trackResult'
 trackRawLogMessage :: Has Telemetry sig m => Severity -> Doc AnsiStyle -> m ()
 trackRawLogMessage sev msg = send . TrackRawLogMessage sev $ renderIt msg
 
@@ -42,9 +41,9 @@ setSink :: Has Telemetry sig m => TelemetrySink -> m ()
 setSink = send . SetTelemetrySink
 
 trackResult :: Has Telemetry sig m => Result a -> m ()
-trackResult (Failure ew eg) = send . TrackRawLogMessage SevError $ renderItMd $ renderFailure ew eg "Failed"
+trackResult (Failure ew eg) = send . TrackRawLogMessage SevError $ renderIt $ renderFailure ew eg "Failed"
 trackResult (Success ew _) = do
   let doc = renderSuccess ew "An Issue Occurred"
   case doc of
     Nothing -> pure ()
-    Just doc' -> send $ TrackRawLogMessage SevWarn $ renderItMd doc'
+    Just doc' -> send $ TrackRawLogMessage SevWarn $ renderIt doc'
