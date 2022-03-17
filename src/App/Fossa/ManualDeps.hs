@@ -24,8 +24,8 @@ import Data.Aeson (
   (.:?),
  )
 
-import App.Fossa.ArchiveUploader
-import App.Fossa.LicenseScanner
+import App.Fossa.ArchiveUploader (VendoredDependency (..), archiveNoUploadSourceUnit, archiveUploadSourceUnit)
+import App.Fossa.LicenseScanner (licenseNoScanSourceUnit, licenseScanSourceUnit)
 import Control.Effect.Lift
 import Control.Effect.StickyLogger (StickyLogger)
 import Data.Aeson.Extra
