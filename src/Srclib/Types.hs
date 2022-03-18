@@ -41,7 +41,7 @@ instance ToJSON LicenseScanType where
 data LicenseSourceUnit = LicenseSourceUnit
   { licenseSourceUnitName :: Text
   , licenseSourceUnitType :: LicenseScanType
-  , licenseSourceUnitLicenseUnits :: [LicenseUnit]
+  , licenseSourceUnitLicenseUnits :: (NonEmpty LicenseUnit)
   }
   deriving (Eq, Ord, Show)
 

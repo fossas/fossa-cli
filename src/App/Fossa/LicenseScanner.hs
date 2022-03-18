@@ -38,6 +38,8 @@ import Srclib.Types (
  )
 
 import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)
+import Data.List.NonEmpty qualified as NE
+import Data.Maybe (catMaybes)
 
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
@@ -72,14 +74,29 @@ scanAndUploadVendoredDep ::
   ApiOpts ->
   Path Abs Dir ->
   VendoredDependency ->
-  m Archive
-scanAndUploadVendoredDep apiOpts baseDir VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
+  m (Maybe Archive)
+scanAndUploadVendoredDep apiOpts baseDir vendoredDeps@VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
   logSticky $ "License Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
   vendoredDepDir <- case parseRelDir $ toString vendoredPath of
     Left _ -> fatalText "Error constructing scan dir for vendored scan"
     Right val -> pure val
   let cliScanDir = baseDir </> vendoredDepDir
   themisScanResult <- runLicenseScanOnDir cliScanDir
+  -- TODO: log something when we get [] back for themisScanResult
+  case themisScanResult of
+    [] -> pure Nothing
+    _ -> uploadVendoredDep apiOpts vendoredDeps (NE.fromList themisScanResult)
+
+uploadVendoredDep ::
+  ( Has Diag.Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has StickyLogger sig m
+  ) =>
+  ApiOpts ->
+  VendoredDependency ->
+  NE.NonEmpty LicenseUnit ->
+  m (Maybe Archive)
+uploadVendoredDep apiOpts VendoredDependency{..} themisScanResult = do
   let licenseSourceUnit =
         LicenseSourceUnit
           { licenseSourceUnitName = vendoredPath
@@ -96,7 +113,7 @@ scanAndUploadVendoredDep apiOpts baseDir VendoredDependency{..} = context "compr
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
   void $ Fossa.licenseScanResultUpload signedURL licenseSourceUnit
 
-  pure $ Archive vendoredName depVersion
+  pure $ Just $ Archive vendoredName depVersion
 
 -- | licenseScanSourceUnit receives a list of vendored dependencies, a root path, and API settings.
 -- Using this information, it license scans each vendored dependency, uploads the license scan results and then queues a build for the dependency.
@@ -119,7 +136,8 @@ licenseScanSourceUnit baseDir apiOpts vendoredDeps = do
   unless (null duplicates) $ Diag.fatalText $ duplicateFailureBundle duplicates
 
   -- At this point, we have a good list of deps, so go for it.
-  archives <- traverse (scanAndUploadVendoredDep apiOpts baseDir) uniqDeps
+  maybeArchives <- traverse (scanAndUploadVendoredDep apiOpts baseDir) uniqDeps
+  let archives = catMaybes maybeArchives
 
   -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
