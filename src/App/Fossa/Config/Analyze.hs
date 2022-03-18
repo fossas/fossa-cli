@@ -63,7 +63,7 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad (when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
-import Data.Flag (Flag, flagOpt, fromFlag)
+import Data.Flag (Flag, flagOpt)
 import Data.Maybe (isJust)
 import Data.Monoid.Extra (isMempty)
 import Data.Set (Set)
