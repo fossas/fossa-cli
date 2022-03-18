@@ -40,6 +40,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
   ConfigPaths (..),
   ConfigTargets (..),
+  ConfigTelemetryScope (NoTelemetry),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
   mergeFileCmdMetadata,
@@ -63,7 +64,7 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad (when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
-import Data.Flag (Flag, flagOpt)
+import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Maybe (isJust)
 import Data.Monoid.Extra (isMempty)
 import Data.Set (Set)
@@ -171,7 +172,10 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   deriving (Eq, Ord, Show)
 
 instance GetCommonOpts AnalyzeCliOpts where
-  getCommonOpts AnalyzeCliOpts{commons} = Just commons
+  getCommonOpts AnalyzeCliOpts{analyzeOutput, commons} =
+    if analyzeOutput
+      then Just commons{optTelemetry = Just NoTelemetry} -- When `--output` is used don't emit no telemetry.
+      else Just commons
 
 instance GetSeverity AnalyzeCliOpts where
   getSeverity AnalyzeCliOpts{commons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo

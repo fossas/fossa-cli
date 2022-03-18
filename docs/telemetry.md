@@ -33,6 +33,7 @@ You can view collected CLI telemetry data by running cli with environment variab
 This will generate `fossa.telemetry.json` file in your current working directory.
 
 ### How can I disable CLI telemetry?
+
 You can disable telemetry with any of the following options, 
 
 (1) Setting environment variable
@@ -56,6 +57,8 @@ version: 3
 telemetry:
     scope: off
 ```
+
+Also, we do not collect telemetry when `--output` is used with analyze command.
 
 ### I’m an on-prem customer, what telemetry data is collected by FOSSA?
 
