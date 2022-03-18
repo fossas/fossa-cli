@@ -13,6 +13,7 @@ module Test.Effect (
   fit',
   xit',
   withTempDir,
+  withMockApi,
 ) where
 
 import Control.Effect.Lift (Has, Lift, sendIO)
@@ -42,12 +43,14 @@ import Diag.Result (Result (Failure, Success), renderFailure)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (IgnoreLoggerC, ignoreLogger, renderIt)
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
-import Path
+import Path ( Path, Abs, Dir, (</>), parseAbsDir, parseRelDir )
 import Path.IO (createDirIfMissing, removeDirRecur)
 import ResultUtil (expectFailure)
 import System.Directory (getTemporaryDirectory)
 import System.Random (randomIO)
 import Text.Printf (printf)
+import Control.Effect.FossaApiClient (FossaApiClientF)
+import Control.Carrier.Simple (SimpleC, interpret)
 
 type EffectStack a = FinallyC (ExecIOC (ReadFSIOC (DiagnosticsC (IgnoreLoggerC (StackC IO))))) a
 
@@ -111,9 +114,14 @@ shouldMatchList' a b = sendIO $ shouldMatchList a b
 expectFailure' :: Has (Lift IO) sig m => Result a -> m ()
 expectFailure' res = sendIO $ expectFailure res
 
+-- | Succeeds if the action fails and fails otherwise.
 expectFatal' :: (Has Diagnostics sig m, Has (Lift IO) sig m) => m () -> m ()
 expectFatal' f = do
   res <- recover f
   case res of
     Just _ -> expectationFailure' "Expected failure"
     Nothing -> pure ()
+
+-- | Runs a stateless API mock.
+withMockApi :: (forall x. FossaApiClientF x -> m x) -> SimpleC FossaApiClientF m a -> m a
+withMockApi = interpret

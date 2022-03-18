@@ -10,12 +10,11 @@ import App.Fossa.API.BuildWait (
   waitForScanCompletion,
  )
 import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), mkSubCommand)
+import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (ProjectRevision (..))
-import Control.Carrier.FossaApiClientIO (runFossaApiClientIO)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
-import Control.Effect.FossaApiClient (getAttribution)
 import Control.Effect.Lift (Has, Lift)
 import Control.Timeout (timeout')
 import Data.Aeson qualified as Aeson
@@ -50,7 +49,7 @@ report ReportConfig{..} = do
     * Above includes errors, types, and scaffolding
   -}
   runStickyLogger SevInfo $
-    runFossaApiClientIO apiOpts . timeout' timeoutDuration $ \cancelToken -> do
+    timeout' timeoutDuration $ \cancelToken -> do
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
@@ -65,6 +64,6 @@ report ReportConfig{..} = do
 
       logSticky $ "[ Fetching " <> showT reportType <> " report... ]"
 
-      jsonValue <- getAttribution revision
+      jsonValue <- Fossa.getAttribution apiOpts revision
 
       logStdout . decodeUtf8 $ Aeson.encode jsonValue

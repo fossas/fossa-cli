@@ -49,6 +49,7 @@ import Srclib.Types (
   parseLocator,
  )
 import VCS.Git (fetchGitContributors)
+import Control.Carrier.FossaApiClientIO (runFossaApiClientIO)
 
 uploadSuccessfulAnalysis ::
   ( Has Diagnostics sig m
@@ -73,7 +74,7 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput revision 
 
   uploadResult <- uploadAnalysis apiOpts revision metadata units
   let locator = parseLocator $ uploadLocator uploadResult
-  buildUrl <- getFossaBuildUrl revision apiOpts locator
+  buildUrl <- runFossaApiClientIO apiOpts $ getFossaBuildUrl revision locator
   traverse_
     logInfo
     [ "============================================================"
