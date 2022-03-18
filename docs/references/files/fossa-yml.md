@@ -58,6 +58,24 @@ Sets the [FOSSA API key](https://docs.fossa.com/docs/api-reference#api-tokens) t
 
 > Note: FOSSA strongly recommends setting the API key with the `$FOSSA_API_KEY` environment variable and NOT in the configuration file for security purposes.
 
+### `telemetry:`
+Sets the telemetry configurations. 
+
+### `telemetry.scope:`
+Sets the telemetry scope to value. Accepted values are 'full' or 'off'.
+
+- When 'full' is provided - CLI will emit telemetry data to server.
+- When 'off' is provided - CLI will not emit telemetry data to server. 
+
+```yaml
+# Example .fossa.yml
+# Does not emit telemetry to server. 
+
+version: 3
+telemetry:
+  scope: off
+```
+
 ### `project:`
 The project fields allow you to configure settings for the project you are interacting with through the FOSSA API.
 
