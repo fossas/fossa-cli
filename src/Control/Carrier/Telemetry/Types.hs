@@ -119,7 +119,7 @@ instance ToJSON SystemInfo where
 
 data TelemetryTimeSpent = TelemetryTimeSpent
   { computationName :: Text
-  , cpuDurationInSeconds :: Double
+  , durationInSeconds :: Double
   }
   deriving (Show, Eq, Ord, Generic)
 
