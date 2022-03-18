@@ -24,7 +24,15 @@ import Control.Effect.StickyLogger (StickyLogger, logSticky')
 import Control.Timeout (Cancel, checkForCancel)
 import Data.Text (Text)
 import Effect.Logger (Logger, pretty, viaShow)
-import Fossa.API.Types
+import Fossa.API.Types (
+  ApiOpts,
+  Build (buildTask),
+  BuildStatus (StatusFailed, StatusSucceeded),
+  BuildTask (buildTaskStatus),
+  Issues (issuesStatus),
+  Organization (organizationId),
+  Project (projectIsMonorepo),
+ )
 
 pollDelaySeconds :: Int
 pollDelaySeconds = 8
