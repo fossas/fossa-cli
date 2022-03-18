@@ -413,7 +413,7 @@ licenseScanFinalize apiOpts archiveProjects = runEmpty $
 
     _ <-
       context "Queuing a build for all license scan uploads" $
-        req POST (licenseScanFinalizeUrl baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
+        req POST (licenseScanFinalizeUrl baseUrl) (ReqBodyJson archiveProjects) ignoreResponse (baseOpts <> opts)
     pure ()
 
 ---------- The signed URL endpoint returns a URL endpoint that can be used to directly upload to an S3 bucket.
