@@ -93,13 +93,16 @@ extractThemisFiles :: Has (Lift IO) sig m => m ThemisBins
 extractThemisFiles = do
   themisBin <- extractEmbeddedBinary Themis
   let themisActual = applyTag @ThemisBinary themisBin
-  -- themisActual <- applyTag @ThemisBinary themisBin
+  -- decompress index.gob.gz binary and write it to disk
+  let bin = toStrict $ Lzma.decompress $ toLazy embeddedBinaryThemisIndex
+  container <- sendIO extractDir
   let decompressedThemisIndex =
         BinaryPaths
-          { binaryPathContainer = binaryPathContainer themisBin
+          { binaryPathContainer = container
           , binaryFilePath = $(mkRelFile "index.gob")
           }
-  _ <- pure $ writeFile (show $ toPath decompressedThemisIndex) (toStrict $ Lzma.decompress $ toLazy embeddedBinaryThemisIndex)
+  _ <- sendIO $ ensureDir $ parent $ toPath decompressedThemisIndex
+  _ <- sendIO $ writeFile (fromAbsFile $ toPath decompressedThemisIndex) bin
   pure $ ThemisBins themisActual $ applyTag @ThemisIndex decompressedThemisIndex
 
 withSyftBinary ::
