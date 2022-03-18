@@ -35,22 +35,22 @@ import Test.Hspec (
 
 import Control.Carrier.Diagnostics (Diagnostics, DiagnosticsC, recover, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
+import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Carrier.Stack (StackC, runStack)
 import Control.Effect.Finally (Finally, onExit)
+import Control.Effect.FossaApiClient (FossaApiClientF)
 import Data.Bits (finiteBitSize)
 import Data.String.Conversion (toString)
 import Diag.Result (Result (Failure, Success), renderFailure)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (IgnoreLoggerC, ignoreLogger, renderIt)
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
-import Path ( Path, Abs, Dir, (</>), parseAbsDir, parseRelDir )
+import Path (Abs, Dir, Path, parseAbsDir, parseRelDir, (</>))
 import Path.IO (createDirIfMissing, removeDirRecur)
 import ResultUtil (expectFailure)
 import System.Directory (getTemporaryDirectory)
 import System.Random (randomIO)
 import Text.Printf (printf)
-import Control.Effect.FossaApiClient (FossaApiClientF)
-import Control.Carrier.Simple (SimpleC, interpret)
 
 type EffectStack a = FinallyC (ExecIOC (ReadFSIOC (DiagnosticsC (IgnoreLoggerC (StackC IO))))) a
 

@@ -17,7 +17,7 @@ import Fossa.API.Types (ApiOpts, Organization)
 type FossaApiClientIOC m = SimpleC FossaApiClientF (ReaderC ApiOpts m)
 
 -- | Runs FossaAPI effects as IO operations
--- 
+--
 -- TODO: Flexible exception handling.  Currently exceptions are raised as
 -- Diagnostic errors.
 runFossaApiClientIO ::

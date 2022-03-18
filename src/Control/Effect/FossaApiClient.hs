@@ -7,11 +7,11 @@ module Control.Effect.FossaApiClient (
 
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
-import Fossa.API.Types (Organization, ApiOpts)
+import Fossa.API.Types (ApiOpts, Organization)
 
 data FossaApiClientF a where
   GetOrganization :: FossaApiClientF Organization
-  GetApiOpts :: FossaApiClientF ApiOpts 
+  GetApiOpts :: FossaApiClientF ApiOpts
 
 type FossaApiClient = Simple FossaApiClientF
 

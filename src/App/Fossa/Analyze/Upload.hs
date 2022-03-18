@@ -14,6 +14,7 @@ import App.Types (
   ProjectMetadata,
   ProjectRevision (projectBranch, projectName, projectRevision),
  )
+import Control.Carrier.FossaApiClientIO (runFossaApiClientIO)
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
@@ -49,7 +50,6 @@ import Srclib.Types (
   parseLocator,
  )
 import VCS.Git (fetchGitContributors)
-import Control.Carrier.FossaApiClientIO (runFossaApiClientIO)
 
 uploadSuccessfulAnalysis ::
   ( Has Diagnostics sig m
