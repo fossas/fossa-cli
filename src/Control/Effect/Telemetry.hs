@@ -14,7 +14,7 @@ import Data.Aeson (ToJSON (toJSON), Value)
 import Data.Text (Text)
 import Diag.Result (Result (Failure, Success), renderFailure, renderSuccess)
 import Effect.Logger (Severity (SevError, SevWarn), renderIt)
-import Prettyprinter (Doc)
+import Prettyprinter (Doc, unAnnotate)
 import Prettyprinter.Render.Terminal (AnsiStyle)
 
 data Telemetry m a where
@@ -41,9 +41,9 @@ setSink :: Has Telemetry sig m => TelemetrySink -> m ()
 setSink = send . SetTelemetrySink
 
 trackResult :: Has Telemetry sig m => Result a -> m ()
-trackResult (Failure ew eg) = send . TrackRawLogMessage SevError $ renderIt $ renderFailure ew eg "Failed"
+trackResult (Failure ew eg) = send . TrackRawLogMessage SevError $ renderIt . unAnnotate $ renderFailure ew eg "Failed"
 trackResult (Success ew _) = do
   let doc = renderSuccess ew "An Issue Occurred"
   case doc of
     Nothing -> pure ()
-    Just doc' -> send $ TrackRawLogMessage SevWarn $ renderIt doc'
+    Just doc' -> send $ TrackRawLogMessage SevWarn $ renderIt . unAnnotate $ doc'
