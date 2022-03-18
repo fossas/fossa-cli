@@ -95,7 +95,7 @@ archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
   -- but not when reading from a source unit.
-  orgId <- Fossa.organizationId <$> Fossa.getOrganization apiOpts
+  orgId <- organizationId <$> Fossa.getOrganization apiOpts
 
   let updateArcName :: Text -> Archive -> Archive
       updateArcName updateText arc = arc{archiveName = updateText <> "/" <> archiveName arc}

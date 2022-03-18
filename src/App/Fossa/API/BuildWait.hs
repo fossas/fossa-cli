@@ -24,7 +24,15 @@ import Control.Effect.StickyLogger (StickyLogger, logSticky')
 import Control.Timeout (Cancel, checkForCancel)
 import Data.Text (Text)
 import Effect.Logger (Logger, pretty, viaShow)
-import Fossa.API.Types (ApiOpts, Issues (..))
+import Fossa.API.Types (
+  ApiOpts,
+  Build (buildTask),
+  BuildStatus (StatusFailed, StatusSucceeded),
+  BuildTask (buildTaskStatus),
+  Issues (issuesStatus),
+  Organization (organizationId),
+  Project (projectIsMonorepo),
+ )
 
 pollDelaySeconds :: Int
 pollDelaySeconds = 8
@@ -57,7 +65,7 @@ waitForScanCompletion apiopts revision cancelFlag = do
   project <- recover $ Fossa.getProject apiopts revision
 
   -- Try inferring, fallback to standard.
-  let runAsMonorepo = maybe False Fossa.projectIsMonorepo project
+  let runAsMonorepo = maybe False projectIsMonorepo project
 
   if runAsMonorepo
     then waitForMonorepoScan apiopts revision cancelFlag
@@ -78,9 +86,9 @@ waitForBuild apiOpts revision cancelFlag = do
   checkForTimeout cancelFlag
   build <- Fossa.getLatestBuild apiOpts revision
 
-  case Fossa.buildTaskStatus (Fossa.buildTask build) of
-    Fossa.StatusSucceeded -> pure ()
-    Fossa.StatusFailed -> fatal BuildFailed
+  case buildTaskStatus (buildTask build) of
+    StatusSucceeded -> pure ()
+    StatusFailed -> fatal BuildFailed
     otherStatus -> do
       logSticky' $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
       sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
@@ -99,7 +107,7 @@ waitForMonorepoScan ::
   m ()
 waitForMonorepoScan apiOpts revision cancelFlag = do
   checkForTimeout cancelFlag
-  orgId <- Fossa.organizationId <$> Fossa.getOrganization apiOpts
+  orgId <- organizationId <$> Fossa.getOrganization apiOpts
   let locator = VPSCore.createLocator (projectName revision) orgId
 
   logSticky' "[ Getting latest scan ID ]"

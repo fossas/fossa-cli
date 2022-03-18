@@ -6,19 +6,10 @@ module App.Fossa.FossaAPIV1 (
   uploadAnalysis,
   uploadContributors,
   uploadContainerScan,
-  UploadResponse (..),
   mkMetadataOpts,
-  FossaError (..),
-  FossaReq (..),
-  Contributors (..),
   fossaReq,
   getLatestBuild,
-  Build (..),
-  BuildTask (..),
-  BuildStatus (..),
   getIssues,
-  Organization (..),
-  Project (..),
   getOrganization,
   getAttribution,
   getAttributionRaw,
@@ -45,15 +36,30 @@ import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Support (reportDefectMsg)
-import App.Types
+import App.Types (
+  ProjectMetadata (..),
+  ProjectRevision (..),
+  ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
+ )
 import App.Version (versionNumber)
+import Control.Algebra (Algebra, Has, type (:+:))
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fromMaybeText)
 import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception (Exception (displayException), SomeException)
 import Control.Monad.IO.Class (MonadIO (..))
-import Data.Aeson
+import Data.Aeson (
+  FromJSON (parseJSON),
+  KeyValue ((.=)),
+  ToJSON (toJSON),
+  Value,
+  decodeStrict,
+  encode,
+  object,
+  withObject,
+  (.:),
+ )
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as C
 import Data.List.NonEmpty qualified as NE
@@ -63,17 +69,62 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Word (Word8)
-import Effect.Logger
-import Fossa.API.Types (ApiOpts, ArchiveComponents, Issues, SignedURL, signedURL, useApiOpts)
+import Effect.Logger (
+  Pretty (pretty),
+  indent,
+  viaShow,
+  vsep,
+ )
+import Fossa.API.Types (
+  ApiOpts,
+  ArchiveComponents,
+  Build,
+  Contributors,
+  Issues,
+  Organization (organizationId),
+  Project,
+  SignedURL (signedURL),
+  UploadResponse,
+  useApiOpts,
+ )
 import Network.HTTP.Client qualified as C
 import Network.HTTP.Client qualified as HTTP
-import Network.HTTP.Req
+import Network.HTTP.Req (
+  GET (GET),
+  HttpBody (..),
+  HttpException (..),
+  LbsResponse,
+  MonadHttp (..),
+  NoReqBody (NoReqBody),
+  Option,
+  POST (POST),
+  PUT (PUT),
+  ReqBodyFile (ReqBodyFile),
+  ReqBodyJson (ReqBodyJson),
+  Scheme (Https),
+  Url,
+  bsResponse,
+  ignoreResponse,
+  jsonResponse,
+  lbsResponse,
+  req,
+  reqCb,
+  responseBody,
+  responseTimeout,
+  useURI,
+  (/:),
+  (=:),
+ )
 import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
 import Network.HTTP.Types qualified as HTTP
 import Path (File, Path, Rel)
-import Srclib.Types
+import Srclib.Types (
+  Locator (..),
+  SourceUnit,
+  parseLocator,
+  renderLocator,
+ )
 import Text.URI qualified as URI
-import Prelude
 
 -- | Represents error emitted via FOSSA instance.
 -- This data-shape corresponds to 'PublicFacingError' type in backend,
@@ -158,17 +209,6 @@ normalizeGitProjectName project
 
 responseTimeoutSeconds :: Int -> Option scheme
 responseTimeoutSeconds sec = responseTimeout $ sec * 1_000_000
-
-data UploadResponse = UploadResponse
-  { uploadLocator :: Text
-  , uploadError :: Maybe Text
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON UploadResponse where
-  parseJSON = withObject "UploadResponse" $ \obj ->
-    UploadResponse <$> obj .: "locator"
-      <*> obj .:? "error"
 
 data FossaError
   = JsonDeserializeError String
@@ -280,19 +320,6 @@ mangleError err = case err of
 projectEndpoint :: Url scheme -> Int -> Locator -> Url scheme
 projectEndpoint baseurl orgid locator = baseurl /: "api" /: "cli" /: renderLocatorUrl orgid locator /: "project"
 
-data Project = Project
-  { projectId :: Text
-  , projectTitle :: Text
-  , projectIsMonorepo :: Bool
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON Project where
-  parseJSON = withObject "Project" $ \obj ->
-    Project <$> obj .: "id"
-      <*> obj .: "title"
-      <*> obj .: "isMonorepo"
-
 getProject ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
@@ -313,46 +340,6 @@ getProject apiopts ProjectRevision{..} = fossaReq $ do
 
 buildsEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
 buildsEndpoint baseurl orgId locator = baseurl /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "latest_build"
-
-data BuildStatus
-  = StatusSucceeded
-  | StatusFailed
-  | StatusCreated
-  | StatusAssigned
-  | StatusRunning
-  | StatusUnknown Text
-  deriving (Eq, Ord, Show)
-
-data Build = Build
-  { buildId :: Int
-  , buildError :: Maybe Text
-  , buildTask :: BuildTask
-  }
-  deriving (Eq, Ord, Show)
-
-newtype BuildTask = BuildTask
-  { buildTaskStatus :: BuildStatus
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON Build where
-  parseJSON = withObject "Build" $ \obj ->
-    Build <$> obj .: "id"
-      <*> obj .:? "error"
-      <*> obj .: "task"
-
-instance FromJSON BuildTask where
-  parseJSON = withObject "BuildTask" $ \obj ->
-    BuildTask <$> obj .: "status"
-
-instance FromJSON BuildStatus where
-  parseJSON = withText "BuildStatus" $ \case
-    "SUCCEEDED" -> pure StatusSucceeded
-    "FAILED" -> pure StatusFailed
-    "CREATED" -> pure StatusCreated
-    "ASSIGNED" -> pure StatusAssigned
-    "RUNNING" -> pure StatusRunning
-    other -> pure $ StatusUnknown other
 
 getLatestBuild ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
@@ -509,19 +496,6 @@ getAttributionRaw apiOpts ProjectRevision{..} = fossaReq $ do
 
 ----------
 
-data Organization = Organization
-  { organizationId :: Int
-  , orgUsesSAML :: Bool
-  , orgDoLocalLicenseScan :: Bool
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON Organization where
-  parseJSON = withObject "Organization" $ \obj ->
-    Organization <$> obj .: "organizationId"
-      <*> obj .:? "usesSAML" .!= False
-      <*> obj .:? "supportsCliLicenseScanning" .!= False
-
 organizationEndpoint :: Url scheme -> Url scheme
 organizationEndpoint baseurl = baseurl /: "api" /: "cli" /: "organization"
 
@@ -531,10 +505,6 @@ getOrganization apiOpts = fossaReq $ do
   responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse baseOpts
 
 ----------
-
-newtype Contributors = Contributors
-  {unContributors :: Map Text Text}
-  deriving (Eq, Ord, Show, ToJSON)
 
 contributorsEndpoint :: Url scheme -> Url scheme
 contributorsEndpoint baseurl = baseurl /: "api" /: "contributors"

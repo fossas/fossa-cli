@@ -3,7 +3,6 @@ module VCS.Git (
   fetchGitContributors,
 ) where
 
-import App.Fossa.FossaAPIV1 (Contributors (..))
 import Control.Carrier.Diagnostics (errCtx)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Lift (Lift, sendIO)
@@ -17,6 +16,7 @@ import Data.Time
 import Data.Time.Format.ISO8601 (iso8601Show)
 import Diag.Diagnostic (ToDiagnostic)
 import Effect.Exec
+import Fossa.API.Types (Contributors (..))
 import Path
 
 gitLogCmd :: UTCTime -> Command

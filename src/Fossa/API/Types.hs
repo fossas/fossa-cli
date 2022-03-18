@@ -5,14 +5,21 @@
 module Fossa.API.Types (
   ApiKey (..),
   ApiOpts (..),
-  useApiOpts,
-  Issues (..),
+  Archive (..),
+  ArchiveComponents (..),
+  Build (..),
+  BuildStatus (..),
+  BuildTask (..),
+  Contributors (..),
+  Issue (..),
   IssueRule (..),
   IssueType (..),
-  Issue (..),
+  Issues (..),
+  Organization (..),
+  Project (..),
   SignedURL (..),
-  ArchiveComponents (..),
-  Archive (..),
+  UploadResponse (..),
+  useApiOpts,
 ) where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
@@ -72,6 +79,50 @@ instance ToJSON Archive where
       [ "packageSpec" .= archiveName
       , "revision" .= archiveVersion
       ]
+
+data BuildStatus
+  = StatusSucceeded
+  | StatusFailed
+  | StatusCreated
+  | StatusAssigned
+  | StatusRunning
+  | StatusUnknown Text
+  deriving (Eq, Ord, Show)
+
+data Build = Build
+  { buildId :: Int
+  , buildError :: Maybe Text
+  , buildTask :: BuildTask
+  }
+  deriving (Eq, Ord, Show)
+
+newtype BuildTask = BuildTask
+  { buildTaskStatus :: BuildStatus
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON Build where
+  parseJSON = withObject "Build" $ \obj ->
+    Build <$> obj .: "id"
+      <*> obj .:? "error"
+      <*> obj .: "task"
+
+instance FromJSON BuildTask where
+  parseJSON = withObject "BuildTask" $ \obj ->
+    BuildTask <$> obj .: "status"
+
+instance FromJSON BuildStatus where
+  parseJSON = withText "BuildStatus" $ \case
+    "SUCCEEDED" -> pure StatusSucceeded
+    "FAILED" -> pure StatusFailed
+    "CREATED" -> pure StatusCreated
+    "ASSIGNED" -> pure StatusAssigned
+    "RUNNING" -> pure StatusRunning
+    other -> pure $ StatusUnknown other
+
+newtype Contributors = Contributors
+  {unContributors :: Map Text Text}
+  deriving (Eq, Ord, Show, ToJSON)
 
 data Issues = Issues
   { issuesCount :: Int
@@ -176,6 +227,43 @@ instance ToJSON IssueRule where
 
 instance Pretty Issues where
   pretty = renderedIssues
+
+data Organization = Organization
+  { organizationId :: Int
+  , orgUsesSAML :: Bool
+  , orgDoLocalLicenseScan :: Bool
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON Organization where
+  parseJSON = withObject "Organization" $ \obj ->
+    Organization <$> obj .: "organizationId"
+      <*> obj .:? "usesSAML" .!= False
+      <*> obj .:? "supportsCliLicenseScanning" .!= False
+
+data Project = Project
+  { projectId :: Text
+  , projectTitle :: Text
+  , projectIsMonorepo :: Bool
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON Project where
+  parseJSON = withObject "Project" $ \obj ->
+    Project <$> obj .: "id"
+      <*> obj .: "title"
+      <*> obj .: "isMonorepo"
+
+data UploadResponse = UploadResponse
+  { uploadLocator :: Text
+  , uploadError :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON UploadResponse where
+  parseJSON = withObject "UploadResponse" $ \obj ->
+    UploadResponse <$> obj .: "locator"
+      <*> obj .:? "error"
 
 ---------------
 

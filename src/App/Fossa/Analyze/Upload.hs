@@ -5,8 +5,6 @@ module App.Fossa.Analyze.Upload (
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
 import App.Fossa.FossaAPIV1 (
-  Project (projectIsMonorepo),
-  UploadResponse (uploadError, uploadLocator),
   getProject,
   uploadAnalysis,
   uploadContributors,
@@ -43,7 +41,7 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
-import Fossa.API.Types (ApiOpts)
+import Fossa.API.Types (ApiOpts, Project (projectIsMonorepo), UploadResponse (uploadError, uploadLocator))
 import Path (Abs, Dir, Path)
 import Srclib.Types (
   Locator (locatorProject, locatorRevision),

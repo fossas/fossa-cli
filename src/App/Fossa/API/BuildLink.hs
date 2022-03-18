@@ -7,14 +7,14 @@ module App.Fossa.API.BuildLink (
   samlUrlPath,
 ) where
 
-import App.Fossa.FossaAPIV1 (Organization (..), getOrganization)
+import App.Fossa.FossaAPIV1 (getOrganization)
 import App.Types
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text.Extra (showT)
-import Fossa.API.Types (ApiOpts (..))
+import Fossa.API.Types (ApiOpts (..), Organization (..))
 import Srclib.Types (Locator (..))
 import Text.URI qualified as URI
 import Text.URI.Builder
