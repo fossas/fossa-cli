@@ -47,9 +47,7 @@ the telemetry sink is set to file. This will generate the file `fossa.telemetry.
 
 Telemetry is sunk to the same server as the analysis.
 
-# TODO:Megh
-
-When `--output` is used, 
+When `--output` is used, we do not emit telemetry.
 
 ## Interfaces and Examples
 
