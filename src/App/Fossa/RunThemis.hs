@@ -35,7 +35,7 @@ themisCommand :: ThemisBins -> Command
 themisCommand ThemisBins{..} = do
   Command
     { cmdName = toText $ fromAbsFile $ toPath $ unTag themisBinaryPaths
-    , cmdArgs = generateThemisArgs $ indexBinaryPaths
+    , cmdArgs = generateThemisArgs indexBinaryPaths
     , cmdAllowErr = Never
     }
 
