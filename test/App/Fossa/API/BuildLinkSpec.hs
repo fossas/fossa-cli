@@ -44,7 +44,6 @@ spec = do
         let locator = Locator "fetcher123" "project123" $ Just "revision123"
             org = Just $ Organization 1 True False
             revision = ProjectRevision "" "not this revision" $ Just "master123"
-        -- Loggers and Diagnostics modify monads, so we need a no-op monad
         actual <- getBuildURLWithOrg org revision apiOpts locator
 
         actual `shouldBe'` simpleSamlPath
