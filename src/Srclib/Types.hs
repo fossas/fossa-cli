@@ -30,8 +30,7 @@ data LicenseScanType = CliLicenseScanned
   deriving (Eq, Ord, Show)
 
 instance ToText LicenseScanType where
-  toText :: LicenseScanType -> Text
-  toText _ = "cli-license-scanned"
+  toText CliLicenseScanned = "cli-license-scanned"
 
 instance ToJSON LicenseScanType where
   toJSON = toJSON . toText
