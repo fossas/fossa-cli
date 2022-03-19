@@ -24,6 +24,7 @@ import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Timeout (Duration (Seconds))
 import Data.List (intercalate)
+import Data.String.Conversion (toText)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (..))
 import Effect.ReadFS (ReadFS)
@@ -40,6 +41,7 @@ import Options.Applicative (
   option,
   optional,
   progDesc,
+  strOption,
   switch,
  )
 import Path.IO (getCurrentDir)
@@ -52,8 +54,21 @@ instance Show ReportType where
 -- TODO: Add support for text-format reports
 data ReportOutputFormat
   = ReportJson
+  | ReportMarkdown
+  | ReportSPDX
   -- ReportPretty
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Enum, Bounded)
+
+instance Show ReportOutputFormat where
+  show ReportJson = "json"
+  show ReportMarkdown = "markdown"
+  show ReportSPDX = "spdx"
+
+reportOutputFormatList :: String
+reportOutputFormatList = intercalate ", " $ map show allFormats
+  where
+    allFormats :: [ReportOutputFormat]
+    allFormats = enumFromTo minBound maxBound
 
 reportInfo :: InfoMod a
 reportInfo = progDesc desc
@@ -73,7 +88,8 @@ parser :: Parser ReportCliOptions
 parser =
   ReportCliOptions
     <$> commonOpts
-    <*> switch (long "json" <> help "Output the report in JSON format (Currently required).")
+    <*> switch (long "json" <> help "Output the report in JSON format. Equivalent to --format json, and overrides --format.")
+    <*> optional (strOption (long "format" <> help ("Output the report in the specified format. Currently available formats: (" <> reportOutputFormatList <> ")")))
     <*> optional (option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)"))
     <*> reportTypeArg
     <*> baseDirArg
@@ -89,6 +105,7 @@ reportTypeArg = argument (maybeReader parseType) (metavar "REPORT" <> help "The 
 data ReportCliOptions = ReportCliOptions
   { commons :: CommonOpts
   , cliReportJsonOutput :: Bool
+  , cliReportOutputFormat :: Maybe String
   , cliReportTimeout :: Maybe Int
   , cliReportType :: ReportType
   , cliReportBaseDir :: FilePath
@@ -123,7 +140,7 @@ mergeOpts ::
 mergeOpts cfgfile envvars ReportCliOptions{..} = do
   let apiOpts = collectApiOpts cfgfile envvars commons
       basedir = collectBaseDir cliReportBaseDir
-      outputformat = validateOutputFormat cliReportJsonOutput
+      outputformat = validateOutputFormat cliReportJsonOutput cliReportOutputFormat
       timeoutduration = maybe defaultTimeoutDuration Seconds cliReportTimeout
       revision =
         collectRevisionData' basedir cfgfile ReadOnly $
@@ -136,11 +153,13 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
     <*> pure cliReportType
     <*> revision
 
-validateOutputFormat :: Has Diagnostics sig m => Bool -> m ReportOutputFormat
-validateOutputFormat doJson =
-  if doJson
-    then pure ReportJson
-    else fatalText "Plaintext reports are not available for this report."
+validateOutputFormat :: Has Diagnostics sig m => Bool -> Maybe String -> m ReportOutputFormat
+validateOutputFormat True _ = pure ReportJson
+validateOutputFormat False Nothing = fatalText "Plaintext reports are not available for this report."
+validateOutputFormat False (Just format) | format == show ReportJson = pure ReportJson
+validateOutputFormat False (Just format) | format == show ReportMarkdown = pure ReportMarkdown
+validateOutputFormat False (Just format) | format == show ReportSPDX = pure ReportSPDX
+validateOutputFormat False (Just format) = fatalText $ "Report format " <> toText format <> " is not supported"
 
 data ReportConfig = ReportConfig
   { apiOpts :: ApiOpts
