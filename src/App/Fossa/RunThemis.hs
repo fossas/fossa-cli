@@ -7,7 +7,7 @@ module App.Fossa.RunThemis (
 import Control.Carrier.Error.Either (Has)
 import Control.Effect.Diagnostics (Diagnostics)
 import Data.String.Conversion (toText)
-import Data.Tagged (unTag)
+import Data.Tagged (Tagged, unTag)
 import Data.Text (Text)
 import Path (Abs, Dir, Path, fromAbsFile)
 import Srclib.Types (LicenseUnit)
@@ -15,6 +15,7 @@ import Srclib.Types (LicenseUnit)
 import App.Fossa.EmbeddedBinary (
   BinaryPaths (..),
   ThemisBins (..),
+  ThemisIndex,
   toPath,
  )
 
@@ -34,14 +35,14 @@ themisCommand :: ThemisBins -> Command
 themisCommand ThemisBins{..} = do
   Command
     { cmdName = toText $ fromAbsFile $ toPath $ unTag themisBinaryPaths
-    , cmdArgs = generateThemisArgs $ unTag indexBinaryPaths
+    , cmdArgs = generateThemisArgs $ indexBinaryPaths
     , cmdAllowErr = Never
     }
 
-generateThemisArgs :: BinaryPaths -> [Text]
-generateThemisArgs BinaryPaths{..} =
+generateThemisArgs :: Tagged ThemisIndex BinaryPaths -> [Text]
+generateThemisArgs taggedThemisIndex =
   [ "--license-data-dir"
-  , toText binaryPathContainer
+  , toText . binaryPathContainer $ unTag taggedThemisIndex
   , "--srclib-with-matches"
   , "."
   ]

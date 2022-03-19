@@ -3,6 +3,7 @@
 
 module App.Fossa.EmbeddedBinary (
   BinaryPaths (..),
+  ThemisIndex,
   ThemisBins (..),
   toPath,
   withWigginsBinary,
@@ -21,9 +22,10 @@ import Codec.Compression.Lzma qualified as Lzma
 import Control.Effect.Exception (bracket)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.ByteString (ByteString, writeFile)
+import Data.ByteString.Lazy qualified as BL
 import Data.FileEmbed.Extra (embedFileIfExists)
 import Data.Foldable (for_, traverse_)
-import Data.String.Conversion (toLazy, toStrict)
+import Data.String.Conversion (toLazy, toString)
 import Data.Tagged (Tagged, applyTag, unTag)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Path (
@@ -93,8 +95,7 @@ extractThemisFiles :: Has (Lift IO) sig m => m ThemisBins
 extractThemisFiles = do
   themisBin <- extractEmbeddedBinary Themis
   let themisActual = applyTag @ThemisBinary themisBin
-  -- decompress index.gob.gz binary and write it to disk
-  let bin = toStrict $ Lzma.decompress $ toLazy embeddedBinaryThemisIndex
+  -- decompress index.gob.xz binary and write it to disk
   container <- sendIO extractDir
   let decompressedThemisIndex =
         BinaryPaths
@@ -102,7 +103,7 @@ extractThemisFiles = do
           , binaryFilePath = $(mkRelFile "index.gob")
           }
   _ <- sendIO $ ensureDir $ parent $ toPath decompressedThemisIndex
-  _ <- sendIO $ writeFile (fromAbsFile $ toPath decompressedThemisIndex) bin
+  _ <- sendIO $ BL.writeFile (toString $ toPath decompressedThemisIndex) (Lzma.decompress $ toLazy embeddedBinaryThemisIndex)
   pure $ ThemisBins themisActual $ applyTag @ThemisIndex decompressedThemisIndex
 
 withSyftBinary ::
