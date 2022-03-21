@@ -1,10 +1,14 @@
-module VCS.Git (
-  gitLogCmd,
-  fetchGitContributors,
+{-# LANGUAGE GADTs #-}
+
+module Control.Carrier.Git (
+  GitC,
+  runGit,
 ) where
 
 import Control.Carrier.Diagnostics (errCtx)
 import Control.Carrier.Diagnostics qualified as Diag
+import Control.Carrier.Simple (SimpleC, interpret)
+import Control.Effect.Git (Git, GitF (..))
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
@@ -17,7 +21,13 @@ import Data.Time.Format.ISO8601 (iso8601Show)
 import Diag.Diagnostic (ToDiagnostic)
 import Effect.Exec
 import Fossa.API.Types (Contributors (..))
-import Path
+import Path (Abs, Dir, Path)
+
+type GitC = SimpleC GitF
+
+runGit :: (Has (Lift IO) sig m, Has Exec sig m, Has Diag.Diagnostics sig m) => GitC m a -> m a
+runGit = interpret $ \case
+  FetchGitContributors baseDir -> fetchGitContributors baseDir
 
 gitLogCmd :: UTCTime -> Command
 gitLogCmd now =
