@@ -460,7 +460,7 @@ getIssues apiOpts ProjectRevision{..} = fossaReq $ do
 
 attributionEndpoint :: Url 'Https -> Int -> Locator -> ReportOutputFormat -> Url 'Https
 attributionEndpoint baseurl orgId locator ReportJson = baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution" /: "json"
-attributionEndpoint baseurl orgId locator ReportSPDX = baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution" /: "full" /: "spdx"
+attributionEndpoint baseurl orgId locator ReportSpdx = baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution" /: "full" /: "spdx"
 attributionEndpoint baseurl orgId locator ReportMarkdown = baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution" /: "full" /: "MD"
 
 getAttributionJson ::

@@ -57,12 +57,12 @@ instance Show ReportType where
 data ReportOutputFormat
   = ReportJson
   | ReportMarkdown
-  | ReportSPDX
+  | ReportSpdx
   deriving (Eq, Ord, Enum, Bounded)
 
 instance Read ReportOutputFormat where
   readsPrec _ s | s == show ReportJson = [(ReportJson, safeStripPrefix (show ReportJson) s)]
-  readsPrec _ s | s == show ReportSPDX = [(ReportSPDX, safeStripPrefix (show ReportSPDX) s)]
+  readsPrec _ s | s == show ReportSpdx = [(ReportSpdx, safeStripPrefix (show ReportSpdx) s)]
   readsPrec _ s | s == show ReportMarkdown = [(ReportMarkdown, safeStripPrefix (show ReportMarkdown) s)]
   readsPrec _ _ = []
 
@@ -75,7 +75,7 @@ instance ToText ReportOutputFormat where
 instance Show ReportOutputFormat where
   show ReportJson = "json"
   show ReportMarkdown = "markdown"
-  show ReportSPDX = "spdx"
+  show ReportSpdx = "spdx"
 
 reportOutputFormatList :: String
 reportOutputFormatList = intercalate ", " $ map show allFormats
