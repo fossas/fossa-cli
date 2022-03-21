@@ -116,7 +116,7 @@ Following CLI commands are not supported with 3.x:
 - `fossa analyze --options`
 - `fossa test --suppress-issues`
 - `fossa upload` (this is supplemented by `fossa-deps.{yml,json}` file now, refer to "Migrate archive upload targets" section)
-- `fossa report licences` (supplemented by `fossa report attribution --json`)
+- `fossa report licences` (supplemented by `fossa report attribution --format json`)
 - `fossa report dependencies`
 
 ### Language Specific Changes
@@ -221,7 +221,7 @@ If you are integrating a private project and want to share more details, or if y
 
 In 1.x, `fossa report` supported `fossa report dependencies`, `fossa report licenses` and `fossa report attribution`.
 
-In 3.x, only `fossa report attribution --json` is reported. The information in the previously supported v1 commands is contained in the output from `attribution`.
+In 3.x, only `fossa report attribution --format json` is reported. The information in the previously supported v1 commands is contained in the output from `attribution`.
 
 The format for this report has also changed slightly. Until the end of April 2022, FOSSA supports a compatibilty script to convert the format of the report.
 For more information, including usage information, see [FOSSAv1 report compatibility](references/subcommands/report.md#fossav1-report-compatibility) in the user guide.

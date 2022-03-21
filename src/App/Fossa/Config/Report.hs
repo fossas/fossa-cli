@@ -92,7 +92,7 @@ parser :: Parser ReportCliOptions
 parser =
   ReportCliOptions
     <$> commonOpts
-    <*> switch (long "json" <> help "Output the report in JSON format. Equivalent to --format json, and overrides --format.")
+    <*> switch (long "json" <> help "Output the report in JSON format. Equivalent to '--format json', and overrides --format. Deprecated: prefer --format")
     <*> optional (strOption (long "format" <> help ("Output the report in the specified format. Currently available formats: (" <> reportOutputFormatList <> ")")))
     <*> optional (option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)"))
     <*> reportTypeArg

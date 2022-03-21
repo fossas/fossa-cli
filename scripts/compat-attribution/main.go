@@ -1,15 +1,15 @@
 // Using this program
 //
 // This program is meant to be a quick compatibility layer between the output of
-// `fossa report attribution --json` between FOSSAv1 and FOSSAv2.
+// `fossa report attribution --format json` between FOSSAv1 and FOSSAv2.
 //
 // Usage:
 //
 // 1. Build this script and place it somewhere.
 //    For example, `go build -o /usr/local/bin/compat-attribution`.
 //    Alternately, use the built version from the release assets.
-// 2. Run `fossa report attribution --json`, piping its output to this script.
-//    For example, `fossa report attribution --json | /usr/local/bin/compat-attribution`
+// 2. Run `fossa report attribution --format json`, piping its output to this script.
+//    For example, `fossa report attribution --format json | /usr/local/bin/compat-attribution`
 // 3. Parse the resulting output as you would have from FOSSAv1.
 //
 // Support

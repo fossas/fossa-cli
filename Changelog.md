@@ -1,5 +1,9 @@
 # Fossa CLI Changelog
 
+## v3.1.5
+
+- Adds `--format` to `fossa report attribution` and deprecates `--json`. ([#844](https://github.com/fossas/fossa-cli/pull/844))
+
 ## v3.1.4
 
 - Handles symlink loops in directory structure. ([#827](https://github.com/fossas/fossa-cli/pull/827))
