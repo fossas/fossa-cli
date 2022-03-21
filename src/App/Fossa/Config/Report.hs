@@ -163,7 +163,10 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
 
 data NoFormatProvided = NoFormatProvided
 instance ToDiagnostic NoFormatProvided where
-  renderDiagnostic NoFormatProvided = "Provide a format option via '--format' to render this report."
+  renderDiagnostic NoFormatProvided =
+    pretty $
+      "Provide a format option via '--format' to render this report. Supported formats: "
+        <> (toText reportOutputFormatList)
 
 newtype InvalidReportFormat = InvalidReportFormat String
 instance ToDiagnostic InvalidReportFormat where

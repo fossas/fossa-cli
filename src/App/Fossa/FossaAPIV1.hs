@@ -11,7 +11,6 @@ module App.Fossa.FossaAPIV1 (
   getLatestBuild,
   getIssues,
   getOrganization,
-  getAttributionJson,
   getAttribution,
   getSignedURL,
   getProject,
@@ -459,9 +458,12 @@ getIssues apiOpts ProjectRevision{..} = fossaReq $ do
 ---------------
 
 attributionEndpoint :: Url 'Https -> Int -> Locator -> ReportOutputFormat -> Url 'Https
-attributionEndpoint baseurl orgId locator ReportJson = baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution" /: "json"
-attributionEndpoint baseurl orgId locator ReportSpdx = baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution" /: "full" /: "spdx"
-attributionEndpoint baseurl orgId locator ReportMarkdown = baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution" /: "full" /: "MD"
+attributionEndpoint baseurl orgId locator format = appendSegment format $ baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution"
+  where
+    appendSegment :: ReportOutputFormat -> Url a -> Url a
+    appendSegment ReportJson input = input /: "json"
+    appendSegment ReportMarkdown input = input /: "full" /: "MD"
+    appendSegment ReportSpdx input = input /: "full" /: "spdx"
 
 getAttributionJson ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
