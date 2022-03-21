@@ -52,12 +52,10 @@ data ReportType = Attribution deriving (Eq, Ord, Enum, Bounded)
 instance Show ReportType where
   show Attribution = "attribution"
 
--- TODO: Add support for text-format reports
 data ReportOutputFormat
   = ReportJson
   | ReportMarkdown
   | ReportSPDX
-  -- ReportPretty
   deriving (Eq, Ord, Enum, Bounded)
 
 instance ToText ReportOutputFormat where
