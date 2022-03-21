@@ -10,8 +10,8 @@ module App.Fossa.Subcommand (
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars (envConfigDebug), getEnvVars)
 import Control.Carrier.Diagnostics (DiagnosticsC, context, logWithExit_)
-import Control.Carrier.Stack (StackC, runStack)
 import Control.Carrier.Git (GitC, runGit)
+import Control.Carrier.Stack (StackC, runStack)
 import Data.String.Conversion (toStrict)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (
