@@ -24,8 +24,7 @@ import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), fatal, fromMaybe)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Timeout (Duration (Seconds))
-import Data.List (intercalate, stripPrefix)
-import Data.Maybe qualified as M
+import Data.List (intercalate)
 import Data.String.Conversion (ToText, toText)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (..), pretty)
@@ -47,7 +46,6 @@ import Options.Applicative (
   switch,
  )
 import Path.IO (getCurrentDir)
-import Text.Read (readMaybe)
 
 data ReportType = Attribution deriving (Eq, Ord, Enum, Bounded)
 
@@ -60,14 +58,11 @@ data ReportOutputFormat
   | ReportSpdx
   deriving (Eq, Ord, Enum, Bounded)
 
-instance Read ReportOutputFormat where
-  readsPrec _ s | s == show ReportJson = [(ReportJson, safeStripPrefix (show ReportJson) s)]
-  readsPrec _ s | s == show ReportSpdx = [(ReportSpdx, safeStripPrefix (show ReportSpdx) s)]
-  readsPrec _ s | s == show ReportMarkdown = [(ReportMarkdown, safeStripPrefix (show ReportMarkdown) s)]
-  readsPrec _ _ = []
-
-safeStripPrefix :: String -> String -> String
-safeStripPrefix a b = M.fromMaybe "" $ stripPrefix a b
+parseReportOutputFormat :: String -> Maybe ReportOutputFormat
+parseReportOutputFormat s | s == show ReportJson = Just ReportJson
+parseReportOutputFormat s | s == show ReportSpdx = Just ReportSpdx
+parseReportOutputFormat s | s == show ReportMarkdown = Just ReportMarkdown
+parseReportOutputFormat _ = Nothing
 
 instance ToText ReportOutputFormat where
   toText = toText . show
@@ -182,7 +177,7 @@ instance ToDiagnostic InvalidReportFormat where
 validateOutputFormat :: Has Diagnostics sig m => Bool -> Maybe String -> m ReportOutputFormat
 validateOutputFormat True _ = pure ReportJson
 validateOutputFormat False Nothing = fatal NoFormatProvided
-validateOutputFormat False (Just format) = fromMaybe (InvalidReportFormat format) $ readMaybe format
+validateOutputFormat False (Just format) = fromMaybe (InvalidReportFormat format) $ parseReportOutputFormat format
 
 data ReportConfig = ReportConfig
   { apiOpts :: ApiOpts
