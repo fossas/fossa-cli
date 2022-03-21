@@ -17,8 +17,6 @@ import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift)
 import Control.Timeout (timeout')
-import Data.Aeson qualified as Aeson
-import Data.String.Conversion (decodeUtf8)
 import Data.Text.Extra (showT)
 import Effect.Logger (
   Logger,
@@ -64,6 +62,6 @@ report ReportConfig{..} = do
 
       logSticky $ "[ Fetching " <> showT reportType <> " report... ]"
 
-      jsonValue <- Fossa.getAttribution apiOpts revision
+      renderedReport <- Fossa.getAttribution apiOpts revision outputFormat
 
-      logStdout . decodeUtf8 $ Aeson.encode jsonValue
+      logStdout renderedReport

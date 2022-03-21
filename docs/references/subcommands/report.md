@@ -24,17 +24,20 @@ fossa report attribution --timeout 60
 
 Where `60` is the maximum number of seconds to wait for the report to be downloaded.
 
-### Print report as JSON
+### Specifying a report format
 
-By default, `fossa report` displays issues in a human-readable format. To instead print issues as JSON, use:
+`fossa report` supports customizing the format used to render a report via the `--format` flag.
+Available options are:
+- `json`
+- `markdown`
+- `spdx`
 
-```sh
-fossa report attribution --json
-```
+For example, to render the report in JSON format, use `fossa report attribution --format json`.
 
-*NOTE: Currently, text reports are not supported, and the report will be*
-*printed as JSON.  It is recommended to use the `--json` flag anyway, since*
-*the behavior of the command without the flag will change in the future.*
+In earlier versions of the FOSSA CLI, the `--json` flag was used to denote rendering the report in JSON format.
+For backwards compatibility, this flag is still supported and takes precedence over the `--format` flag if present.
+However, it is deprecated, and should be replaced with `--format json` to prevent future changes from breaking this behavior.
+
 ### FOSSAv1 report compatibility
 
 FOSSA supports a compatibility script that converts FOSSAv2 attribution report output to the same format as that in FOSSAv1.
@@ -44,8 +47,8 @@ This script will be supported until the end of April 2022 and is included in the
 To use this compatibility script:
 
 1. Download and extract `compat-attribution` for your platform to the same place as the `fossa` binary.
-2. Run `fossa report attribution --json`, piping its output to `compat-attribution`.
-   For example, `fossa report attribution --json | compat-attribution`
+2. Run `fossa report attribution --format json`, piping its output to `compat-attribution`.
+   For example, `fossa report attribution --format json | compat-attribution`
 3. Parse the resulting output as you would have from FOSSAv1.
 
 ## Common FOSSA Project Flags
