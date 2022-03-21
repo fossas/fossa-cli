@@ -21,13 +21,14 @@ import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
-import Control.Effect.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), fatal, fromMaybe)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Timeout (Duration (Seconds))
-import Data.List (intercalate)
+import Data.List (intercalate, stripPrefix)
+import Data.Maybe qualified as M
 import Data.String.Conversion (ToText, toText)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, Severity (..))
+import Effect.Logger (Logger, Severity (..), pretty)
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import Options.Applicative (
@@ -46,6 +47,7 @@ import Options.Applicative (
   switch,
  )
 import Path.IO (getCurrentDir)
+import Text.Read (readMaybe)
 
 data ReportType = Attribution deriving (Eq, Ord, Enum, Bounded)
 
@@ -57,6 +59,15 @@ data ReportOutputFormat
   | ReportMarkdown
   | ReportSPDX
   deriving (Eq, Ord, Enum, Bounded)
+
+instance Read ReportOutputFormat where
+  readsPrec _ s | s == show ReportJson = [(ReportJson, safeStripPrefix (show ReportJson) s)]
+  readsPrec _ s | s == show ReportSPDX = [(ReportSPDX, safeStripPrefix (show ReportSPDX) s)]
+  readsPrec _ s | s == show ReportMarkdown = [(ReportMarkdown, safeStripPrefix (show ReportMarkdown) s)]
+  readsPrec _ _ = []
+
+safeStripPrefix :: String -> String -> String
+safeStripPrefix a b = M.fromMaybe "" $ stripPrefix a b
 
 instance ToText ReportOutputFormat where
   toText = toText . show
@@ -155,13 +166,23 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
     <*> pure cliReportType
     <*> revision
 
+data NoFormatProvided = NoFormatProvided
+instance ToDiagnostic NoFormatProvided where
+  renderDiagnostic NoFormatProvided = "Provide a format option via '--format' to render this report."
+
+newtype InvalidReportFormat = InvalidReportFormat String
+instance ToDiagnostic InvalidReportFormat where
+  renderDiagnostic (InvalidReportFormat fmt) =
+    pretty $
+      "Report format "
+        <> toText fmt
+        <> " is not supported. Supported formats: "
+        <> (toText reportOutputFormatList)
+
 validateOutputFormat :: Has Diagnostics sig m => Bool -> Maybe String -> m ReportOutputFormat
 validateOutputFormat True _ = pure ReportJson
-validateOutputFormat False Nothing = fatalText "Plaintext reports are not available for this report."
-validateOutputFormat False (Just format) | format == show ReportJson = pure ReportJson
-validateOutputFormat False (Just format) | format == show ReportMarkdown = pure ReportMarkdown
-validateOutputFormat False (Just format) | format == show ReportSPDX = pure ReportSPDX
-validateOutputFormat False (Just format) = fatalText $ "Report format " <> toText format <> " is not supported"
+validateOutputFormat False Nothing = fatal NoFormatProvided
+validateOutputFormat False (Just format) = fromMaybe (InvalidReportFormat format) $ readMaybe format
 
 data ReportConfig = ReportConfig
   { apiOpts :: ApiOpts
