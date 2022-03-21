@@ -32,7 +32,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
-import Effect.Exec (Exec, runExecIO)
 import Effect.Logger (
   Has,
   Logger,

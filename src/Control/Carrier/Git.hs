@@ -8,7 +8,7 @@ module Control.Carrier.Git (
 import Control.Carrier.Diagnostics (errCtx)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Simple (SimpleC, interpret)
-import Control.Effect.Git (Git, GitF (..))
+import Control.Effect.Git (GitF (..))
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
