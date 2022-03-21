@@ -3,6 +3,7 @@
 module App.Fossa.Config.Report (
   ReportConfig (..),
   ReportCliOptions,
+  ReportOutputFormat (..),
   mkSubCommand,
 ) where
 
@@ -24,7 +25,7 @@ import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Timeout (Duration (Seconds))
 import Data.List (intercalate)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (ToText, toText)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (..))
 import Effect.ReadFS (ReadFS)
@@ -58,6 +59,9 @@ data ReportOutputFormat
   | ReportSPDX
   -- ReportPretty
   deriving (Eq, Ord, Enum, Bounded)
+
+instance ToText ReportOutputFormat where
+  toText = toText . show
 
 instance Show ReportOutputFormat where
   show ReportJson = "json"
