@@ -110,6 +110,7 @@ data PackageJson = PackageJson
   , packageDevDeps :: Map Text Text
   , packageLicense :: Maybe PkgJsonLicense
   , packageLicenses :: Maybe [PkgJsonLicenseObj]
+  , packagePeerDeps :: Map Text Text
   }
   deriving (Eq, Ord, Show)
 
@@ -167,6 +168,7 @@ instance FromJSON PackageJson where
       <*> obj .:? "devDependencies" .!= Map.empty
       <*> obj .:? "license"
       <*> obj .:? "licenses"
+      <*> obj .:? "peerDependencies" .!= Map.empty
 
 instance ToJSON PackageJson where
   toJSON PackageJson{..} =
@@ -178,6 +180,7 @@ instance ToJSON PackageJson where
       , "devDependencies" .= packageDevDeps
       , "license" .= packageLicense
       , "licenses" .= packageLicenses
+      , "peerDependencies" .= packagePeerDeps
       ]
 
 newtype Manifest = Manifest {unManifest :: Path Abs File} deriving (Eq, Show, Ord, Generic, ToJSONKey, ToJSON)

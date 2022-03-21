@@ -53,6 +53,7 @@ pkgJsonMock license licenses =
     , packageDevDeps = Map.fromList [("packageTwo", "^2.0.0")]
     , packageLicense = license
     , packageLicenses = licenses
+    , packagePeerDeps = Map.empty
     }
 
 mockInput :: PackageJson
@@ -232,6 +233,7 @@ packageJsonGen = do
   devDeps <- keyValMap
   license <- Gen.maybe licenseGen
   licenses <- Gen.maybe $ Gen.list (Range.linear 0 5) licenseObjGen
+  pkgPeerDeps <- keyValMap
   pure
     PackageJson
       { packageName = name
@@ -241,6 +243,7 @@ packageJsonGen = do
       , packageDevDeps = devDeps
       , packageLicense = license
       , packageLicenses = licenses
+      , packagePeerDeps = pkgPeerDeps
       }
 
 pkgJsonParseSpec :: Spec
