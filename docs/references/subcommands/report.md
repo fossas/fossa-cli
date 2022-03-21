@@ -35,7 +35,7 @@ Available options are:
 For example, to render the report in JSON format, use `fossa report attribution --format json`.
 
 In earlier versions of the FOSSA CLI, the `--json` flag was used to denote rendering the report in JSON format.
-This flag is still supported and takes precedence over the `--format` flag if present, but is considered deprecated.
+For backwards compatibility, this flag is still supported and takes precedence over the `--format` flag if present.  However, it is considered deprecated, and should be replaced with `--format json` to prevent future changes from breaking this behavior.
 
 ### FOSSAv1 report compatibility
 
