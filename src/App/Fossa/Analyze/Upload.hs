@@ -16,6 +16,13 @@ import Control.Effect.Diagnostics (
   fromMaybeText,
   recover,
  )
+import Control.Effect.FossaApiClient (
+  FossaApiClient,
+  getProject,
+  uploadContributors,
+  uploadAnalysis,
+ )
+import Control.Effect.Git (Git, fetchGitContributors)
 import Control.Effect.Lift (Lift)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
@@ -26,7 +33,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
-import Effect.Exec (Exec, runExecIO)
 import Effect.Logger (
   Has,
   Logger,
@@ -43,19 +49,13 @@ import Srclib.Types (
   SourceUnit,
   parseLocator,
  )
-import VCS.Git (fetchGitContributors)
-import Control.Effect.FossaApiClient (
-  FossaApiClient,
-  getProject,
-  uploadContributors,
-  uploadAnalysis,
- )
 
 uploadSuccessfulAnalysis ::
   ( Has Diagnostics sig m
   , Has Logger sig m
   , Has (Lift IO) sig m
   , Has FossaApiClient sig m
+  , Has Git sig m
   ) =>
   BaseDir ->
   ProjectMetadata ->
@@ -87,7 +87,7 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units =
       ]
     traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError uploadResult)
     -- Warn on contributor errors, never fail
-    void . recover . runExecIO $ tryUploadContributors basedir (uploadLocator uploadResult)
+    void . recover $ tryUploadContributors basedir (uploadLocator uploadResult)
 
     if fromFlag JsonOutput jsonOutput
       then do
@@ -108,8 +108,7 @@ dieOnMonorepoUpload revision = do
 
 tryUploadContributors ::
   ( Has Diagnostics sig m
-  , Has Exec sig m
-  , Has (Lift IO) sig m
+  , Has Git sig m
   , Has FossaApiClient sig m
   ) =>
   Path Abs Dir ->
