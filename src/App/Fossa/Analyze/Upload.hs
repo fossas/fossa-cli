@@ -4,17 +4,11 @@ module App.Fossa.Analyze.Upload (
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
-import App.Fossa.FossaAPIV1 (
-  getProject,
-  uploadAnalysis,
-  uploadContributors,
- )
 import App.Types (
   BaseDir (BaseDir),
   ProjectMetadata,
   ProjectRevision (projectBranch, projectName, projectRevision),
  )
-import Control.Carrier.FossaApiClientIO (runFossaApiClientIO)
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
@@ -42,7 +36,7 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
-import Fossa.API.Types (ApiOpts, Project (projectIsMonorepo), UploadResponse (uploadError, uploadLocator))
+import Fossa.API.Types (Project (projectIsMonorepo), UploadResponse (uploadError, uploadLocator))
 import Path (Abs, Dir, Path)
 import Srclib.Types (
   Locator (locatorProject, locatorRevision),
@@ -50,30 +44,36 @@ import Srclib.Types (
   parseLocator,
  )
 import VCS.Git (fetchGitContributors)
+import Control.Effect.FossaApiClient (
+  FossaApiClient,
+  getProject,
+  uploadContributors,
+  uploadAnalysis,
+ )
 
 uploadSuccessfulAnalysis ::
   ( Has Diagnostics sig m
   , Has Logger sig m
   , Has (Lift IO) sig m
+  , Has FossaApiClient sig m
   ) =>
   BaseDir ->
-  ApiOpts ->
   ProjectMetadata ->
   Flag JsonOutput ->
   ProjectRevision ->
   NE.NonEmpty SourceUnit ->
   m Locator
-uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput revision units =
-  context "Uploading analysis" . runFossaApiClientIO apiOpts $ do
+uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units =
+  context "Uploading analysis" $ do
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
     logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
     let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
     logInfo ("Using branch: `" <> pretty branchText <> "`")
 
-    dieOnMonorepoUpload apiOpts revision
+    dieOnMonorepoUpload revision
 
-    uploadResult <- uploadAnalysis apiOpts revision metadata units
+    uploadResult <- uploadAnalysis revision metadata units
     let locator = parseLocator $ uploadLocator uploadResult
     buildUrl <- getFossaBuildUrl revision locator
     traverse_
@@ -87,7 +87,7 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput revision 
       ]
     traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError uploadResult)
     -- Warn on contributor errors, never fail
-    void . recover . runExecIO $ tryUploadContributors basedir apiOpts (uploadLocator uploadResult)
+    void . recover . runExecIO $ tryUploadContributors basedir (uploadLocator uploadResult)
 
     if fromFlag JsonOutput jsonOutput
       then do
@@ -99,9 +99,9 @@ uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput revision 
 
     pure locator
 
-dieOnMonorepoUpload :: (Has Diagnostics sig m, Has (Lift IO) sig m) => ApiOpts -> ProjectRevision -> m ()
-dieOnMonorepoUpload apiOpts revision = do
-  project <- recover $ getProject apiOpts revision
+dieOnMonorepoUpload :: (Has Diagnostics sig m, Has FossaApiClient sig m) => ProjectRevision -> m ()
+dieOnMonorepoUpload revision = do
+  project <- recover $ getProject revision
   if maybe False projectIsMonorepo project
     then fatalText "This project already exists as a monorepo project. Perhaps you meant to supply '--experimental-enable-monorepo', or meant to run 'fossa vps analyze' instead?"
     else pure ()
@@ -110,15 +110,15 @@ tryUploadContributors ::
   ( Has Diagnostics sig m
   , Has Exec sig m
   , Has (Lift IO) sig m
+  , Has FossaApiClient sig m
   ) =>
   Path Abs Dir ->
-  ApiOpts ->
   -- | Locator
   Text ->
   m ()
-tryUploadContributors baseDir apiOpts locator = do
+tryUploadContributors baseDir locator = do
   contributors <- fetchGitContributors baseDir
-  uploadContributors apiOpts locator contributors
+  uploadContributors locator contributors
 
 -- | Build project summary JSON to be output to stdout
 buildProjectSummary :: Has Diagnostics sig m => ProjectRevision -> Text -> Text -> m Aeson.Value

@@ -3,6 +3,7 @@
 module Control.Carrier.FossaApiClientIO (FossaApiClientIOC, runFossaApiClientIO) where
 
 import App.Fossa.FossaAPIV1 qualified as API
+import App.Types (ProjectMetadata, ProjectRevision (projectRevision))
 import Control.Algebra (Has)
 import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.Simple (SimpleC, interpret)
@@ -10,8 +11,12 @@ import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
-import Effect.Logger (Logger, logDebug)
-import Fossa.API.Types (ApiOpts, Organization)
+import Data.List.NonEmpty qualified as NE
+import Data.Text (Text)
+import Data.Text.Extra (showT)
+import Effect.Logger (Logger, logDebug, pretty)
+import Fossa.API.Types (ApiOpts, Contributors, Organization, Project, UploadResponse)
+import Srclib.Types (SourceUnit)
 
 -- | A carrier to run Fossa API functions in the IO monad
 type FossaApiClientIOC m = SimpleC FossaApiClientF (ReaderC ApiOpts m)
@@ -34,6 +39,9 @@ runFossaApiClientIO apiOpts =
       ( \case
           GetOrganization -> getOrganization
           GetApiOpts -> pure apiOpts
+          GetProject rev -> getProject rev
+          UploadAnalysis rev metadata units -> uploadAnalysis rev metadata units
+          UploadContributors locator contributors -> uploadContributors locator contributors
       )
 
 -- Fetches an organization from the API
@@ -45,7 +53,49 @@ getOrganization ::
   ) =>
   m Organization
 getOrganization = do
-  logDebug "Running via FossaApiClientIO"
+  logDebug "Fetching organization"
   apiOpts <- ask
   -- Fall-back to FossaAPIV1 for now until more uses are migrated.
   API.getOrganization apiOpts
+
+getProject ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  ProjectRevision ->
+  m Project
+getProject revision = do
+  logDebug $ "Using revision: `" <> pretty (projectRevision revision) <> "`"
+  apiOpts <- ask
+  API.getProject apiOpts revision
+
+uploadAnalysis ::
+  ( Has (Lift IO) sig m
+  , Has (Reader ApiOpts) sig m
+  , Has Logger sig m
+  , Has Diagnostics sig m
+  ) =>
+  ProjectRevision ->
+  ProjectMetadata ->
+  NE.NonEmpty SourceUnit ->
+  m UploadResponse
+uploadAnalysis revision metadata units = do
+  logDebug $ "Uploading analysis for revision: `" <> pretty (projectRevision revision) <> "`"
+  apiOpts <- ask
+  API.uploadAnalysis apiOpts revision metadata units
+
+uploadContributors ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Text ->
+  Contributors ->
+  m ()
+uploadContributors locator contributors = do
+  logDebug $ "Uploading contributors for: `" <> pretty locator <> "`"
+  apiOpts <- ask
+  API.uploadContributors apiOpts locator contributors
