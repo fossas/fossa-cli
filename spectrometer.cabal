@@ -509,6 +509,7 @@ test-suite unit-tests
     , hspec-expectations-pretty-diff  ^>=0.7.2.5
     , hspec-hedgehog                  ^>=0.0.1.2
     , hspec-megaparsec                ^>=2.2
+    , HUnit                           ^>=1.6.0
     , spectrometer
 
 test-suite integration-tests

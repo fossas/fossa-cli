@@ -1,3 +1,5 @@
+{-# LANGUAGE GADTs #-}
+
 module Control.Effect.FossaApiClient (
   FossaApiClientF (..),
   FossaApiClient,
@@ -30,6 +32,8 @@ data FossaApiClientF a where
     Text ->
     Contributors ->
     FossaApiClientF ()
+
+deriving instance Show (FossaApiClientF a)
 
 type FossaApiClient = Simple FossaApiClientF
 

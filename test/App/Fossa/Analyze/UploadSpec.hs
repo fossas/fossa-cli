@@ -10,14 +10,15 @@ import Control.Carrier.Simple (interpret)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Git (GitF (FetchGitContributors))
-import Control.Monad (void)
 import Data.Flag (toFlag)
 import Fossa.API.Types (Project (..), UploadResponse (..))
 import Srclib.Types (parseLocator)
-import Test.Effect (expectError', it', shouldBe', withMockApi)
+import Test.Effect (assertNotCalled, expectFatal', it', shouldBe', withMockApi)
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (SpecWith, describe)
 
+-- | Mock API for this spec that returns fixture data.
+-- The function under tests uses all of these.
 mockApi :: (Has Diagnostics sig m) => forall a. FossaApiClientF a -> m a
 mockApi (GetProject _) = pure Fixtures.project
 mockApi UploadAnalysis{} = pure Fixtures.uploadResponse
@@ -67,11 +68,10 @@ spec =
       . withMockApi
         ( \case
             GetProject _ -> pure $ Fixtures.project{projectIsMonorepo = True}
-            _ -> fatalText "Unexpected API request: should have aborted"
+            req -> assertNotCalled req
         )
       . withGit mockGit
-      . expectError' "This project already exists as a monorepo project."
-      . void
+      . expectFatal'
       $ uploadSuccessfulAnalysis
         Fixtures.baseDir
         Fixtures.projectMedata
@@ -81,7 +81,7 @@ spec =
     it' "continues if fetching the project fails"
       . withMockApi
         ( \case
-            GetProject{} -> fatalText "Mocked failure of GetProject"
+            GetProject{} -> fatalText "Mocked failure fetching project"
             req -> mockApi req
         )
       . withGit mockGit
@@ -97,7 +97,7 @@ spec =
         locator `shouldBe'` expected
     it' "continues if fetching contributors fails"
       . withMockApi mockApi
-      . withGit (\_ -> fatalText "Mock error fetching contributors from git")
+      . withGit (\_ -> fatalText "Mocked failure of fetching contributors from git")
       $ do
         locator <-
           uploadSuccessfulAnalysis
@@ -111,7 +111,7 @@ spec =
     it' "continues if uploading contributors fails"
       . withMockApi
         ( \case
-            UploadContributors{} -> fatalText "Mock error uploading contributors"
+            UploadContributors{} -> fatalText "Mocked failure uploading contributors"
             req -> mockApi req
         )
       . withGit mockGit

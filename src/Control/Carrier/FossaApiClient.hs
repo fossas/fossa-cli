@@ -3,7 +3,7 @@
 module Control.Carrier.FossaApiClient (FossaApiClientC, runFossaApiClient) where
 
 import App.Fossa.FossaAPIV1 qualified as API
-import App.Types (ProjectMetadata, ProjectRevision (projectRevision))
+import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.Simple (SimpleC, interpret)
