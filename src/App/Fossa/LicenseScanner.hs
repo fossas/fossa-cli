@@ -26,6 +26,8 @@ import Data.ByteString qualified as B
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
+import Data.String.Conversion (encodeUtf8, toString)
+import Data.Text.Extra (showT)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Pretty (pretty), logError)
 import Fossa.API.Types (
@@ -87,12 +89,12 @@ scanAndUploadVendoredDep ::
 scanAndUploadVendoredDep apiOpts baseDir vendoredDeps@VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
   logSticky $ "License Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
   vendoredDepDir <- case parseRelDir $ toString vendoredPath of
-    Left _ -> fatalText "Error constructing scan dir for vendored scan"
+    Left err -> fatalText ("Error constructing scan dir for vendored scan: " <> showT err)
     Right val -> pure val
   let cliScanDir = baseDir </> vendoredDepDir
   themisScanResult <- runLicenseScanOnDir cliScanDir
   case NE.nonEmpty themisScanResult of
-    Nothing -> Nothing <$ logError ("No license results found after scanning " <> pretty (toString cliScanDir))
+    Nothing -> Nothing <$ logError ("No license results found after scanning directory: " <> pretty (toString cliScanDir))
     Just results -> uploadVendoredDep apiOpts vendoredDeps results
 
 uploadVendoredDep ::
@@ -113,7 +115,7 @@ uploadVendoredDep apiOpts VendoredDependency{..} themisScanResult = do
           }
 
   depVersion <- case vendoredVersion of
-    Nothing -> pure $ toText . show . md5 . encodeUtf8 . show $ themisScanResult
+    Nothing -> pure . showT . md5 . encodeUtf8 . show . NE.sort $ themisScanResult
     Just version -> pure version
 
   signedURL <- Fossa.getSignedLicenseScanURL apiOpts depVersion vendoredName
@@ -160,10 +162,10 @@ licenseScanSourceUnit baseDir apiOpts vendoredDeps = do
   pure $ NE.map arcToLocator (archivesWithOrganization orgId archives)
   where
     archivesWithOrganization :: Int -> NonEmpty Archive -> NonEmpty Archive
-    archivesWithOrganization orgId = NE.map (includeOrgId orgId)
+    archivesWithOrganization orgId = NE.map $ includeOrgId orgId
 
     includeOrgId :: Int -> Archive -> Archive
-    includeOrgId orgId arc = arc{archiveName = toText (show orgId) <> "/" <> archiveName arc}
+    includeOrgId orgId arc = arc{archiveName = showT orgId <> "/" <> archiveName arc}
 
 -- | licenseNoScanSourceUnit exists for when users run `fossa analyze -o` and do not upload their source units.
 licenseNoScanSourceUnit :: [VendoredDependency] -> [Locator]
