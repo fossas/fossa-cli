@@ -14,7 +14,10 @@ module Test.Effect (
   xit',
   withTempDir,
   withMockApi,
+<<<<<<< HEAD
   assertNotCalled,
+=======
+>>>>>>> e3be018be79c6fe2cb856c7b7af78ad16ed12ffe
 ) where
 
 import Control.Effect.Lift (Has, Lift, sendIO)

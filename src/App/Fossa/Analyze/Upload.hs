@@ -9,6 +9,7 @@ import App.Types (
   ProjectMetadata,
   ProjectRevision (projectBranch, projectName, projectRevision),
  )
+import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
