@@ -48,7 +48,7 @@ import Path (Abs, Dir, Path)
 import Srclib.Types (
   Locator (locatorProject, locatorRevision),
   SourceUnit,
-  parseLocator,
+  renderLocator,
  )
 
 uploadSuccessfulAnalysis ::
@@ -75,7 +75,7 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units =
     dieOnMonorepoUpload revision
 
     uploadResult <- uploadAnalysis revision metadata units
-    let locator = parseLocator $ uploadLocator uploadResult
+    let locator = uploadLocator uploadResult
     buildUrl <- getFossaBuildUrl revision locator
     traverse_
       logInfo
@@ -113,17 +113,15 @@ tryUploadContributors ::
   , Has FossaApiClient sig m
   ) =>
   Path Abs Dir ->
-  -- | Locator
-  Text ->
+  Locator ->
   m ()
 tryUploadContributors baseDir locator = do
   contributors <- fetchGitContributors baseDir
   uploadContributors locator contributors
 
 -- | Build project summary JSON to be output to stdout
-buildProjectSummary :: Has Diagnostics sig m => ProjectRevision -> Text -> Text -> m Aeson.Value
-buildProjectSummary project projectLocator projectUrl = do
-  let locator = parseLocator projectLocator
+buildProjectSummary :: Has Diagnostics sig m => ProjectRevision -> Locator -> Text -> m Aeson.Value
+buildProjectSummary project locator projectUrl = do
   revision <- fromMaybeText "Server returned an invalid project revision" $ locatorRevision locator
   pure $
     Aeson.object
@@ -131,5 +129,5 @@ buildProjectSummary project projectLocator projectUrl = do
       , "revision" .= revision
       , "branch" .= projectBranch project
       , "url" .= projectUrl
-      , "id" .= projectLocator
+      , "id" .= renderLocator locator
       ]

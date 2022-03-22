@@ -34,6 +34,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Network.HTTP.Req
 import Prettyprinter
+import Srclib.Types (Locator, parseLocator)
 import Text.URI (URI, render)
 import Text.URI.QQ (uri)
 import Unsafe.Coerce qualified as Unsafe
@@ -255,14 +256,14 @@ instance FromJSON Project where
       <*> obj .: "isMonorepo"
 
 data UploadResponse = UploadResponse
-  { uploadLocator :: Text
+  { uploadLocator :: Locator
   , uploadError :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
 instance FromJSON UploadResponse where
   parseJSON = withObject "UploadResponse" $ \obj ->
-    UploadResponse <$> obj .: "locator"
+    UploadResponse <$> (parseLocator <$> obj .: "locator")
       <*> obj .:? "error"
 
 ---------------

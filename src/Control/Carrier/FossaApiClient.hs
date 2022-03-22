@@ -12,9 +12,8 @@ import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Data.List.NonEmpty qualified as NE
-import Data.Text (Text)
 import Fossa.API.Types (ApiOpts, Contributors, Organization, Project, UploadResponse)
-import Srclib.Types (SourceUnit)
+import Srclib.Types (Locator, SourceUnit, renderLocator)
 
 -- | A carrier to run Fossa API functions in the IO monad
 type FossaApiClientC m = SimpleC FossaApiClientF (ReaderC ApiOpts m)
@@ -80,9 +79,9 @@ uploadContributors ::
   , Has Diagnostics sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  Text ->
+  Locator ->
   Contributors ->
   m ()
 uploadContributors locator contributors = do
   apiOpts <- ask
-  API.uploadContributors apiOpts locator contributors
+  API.uploadContributors apiOpts (renderLocator locator) contributors

@@ -14,9 +14,8 @@ import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
 import Data.List.NonEmpty qualified as NE
-import Data.Text (Text)
 import Fossa.API.Types (ApiOpts, Contributors, Organization, Project, UploadResponse)
-import Srclib.Types (SourceUnit)
+import Srclib.Types (Locator, SourceUnit)
 
 data FossaApiClientF a where
   GetOrganization :: FossaApiClientF Organization
@@ -28,8 +27,7 @@ data FossaApiClientF a where
     NE.NonEmpty SourceUnit ->
     FossaApiClientF UploadResponse
   UploadContributors ::
-    -- | Locator
-    Text ->
+    Locator ->
     Contributors ->
     FossaApiClientF ()
 
@@ -55,5 +53,5 @@ uploadAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetada
 uploadAnalysis revision metadata units = sendSimple (UploadAnalysis revision metadata units)
 
 -- | Associates contributors to a specific locator
-uploadContributors :: (Has FossaApiClient sig m) => Text -> Contributors -> m ()
+uploadContributors :: (Has FossaApiClient sig m) => Locator -> Contributors -> m ()
 uploadContributors locator contributors = sendSimple $ UploadContributors locator contributors

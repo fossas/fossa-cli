@@ -12,7 +12,7 @@ import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Git (GitF (FetchGitContributors))
 import Data.Flag (toFlag)
 import Fossa.API.Types (Project (..), UploadResponse (..))
-import Srclib.Types (parseLocator)
+import Srclib.Types (Locator)
 import Test.Effect (assertNotCalled, expectFatal', it', shouldBe', withMockApi)
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (SpecWith, describe)
@@ -32,6 +32,9 @@ withGit = interpret
 mockGit :: Applicative m => GitF a -> m a
 mockGit (FetchGitContributors{}) = pure Fixtures.contributors
 
+expectedLocator :: Locator
+expectedLocator = uploadLocator Fixtures.uploadResponse
+
 spec :: SpecWith ()
 spec =
   describe "uploadSuccessfulAnalysis" $ do
@@ -46,8 +49,7 @@ spec =
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
             Fixtures.sourceUnits
-        let expected = parseLocator $ uploadLocator Fixtures.uploadResponse
-        locator `shouldBe'` expected
+        locator `shouldBe'` expectedLocator
     -- Currently our StdOut logging just writes directly to StdOut, so this is
     -- just checking it doesn't fail.  In the future we should extract that so
     -- we can test it better.
@@ -62,8 +64,7 @@ spec =
             (toFlag (JsonOutput) True)
             Fixtures.projectRevision
             Fixtures.sourceUnits
-        let expected = parseLocator $ uploadLocator Fixtures.uploadResponse
-        locator `shouldBe'` expected
+        locator `shouldBe'` expectedLocator
     it' "aborts when uploading to a monorepo"
       . withMockApi
         ( \case
@@ -93,8 +94,7 @@ spec =
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
             Fixtures.sourceUnits
-        let expected = parseLocator $ uploadLocator Fixtures.uploadResponse
-        locator `shouldBe'` expected
+        locator `shouldBe'` expectedLocator
     it' "continues if fetching contributors fails"
       . withMockApi mockApi
       . withGit (\_ -> fatalText "Mocked failure of fetching contributors from git")
@@ -106,8 +106,7 @@ spec =
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
             Fixtures.sourceUnits
-        let expected = parseLocator $ uploadLocator Fixtures.uploadResponse
-        locator `shouldBe'` expected
+        locator `shouldBe'` expectedLocator
     it' "continues if uploading contributors fails"
       . withMockApi
         ( \case
@@ -123,5 +122,4 @@ spec =
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
             Fixtures.sourceUnits
-        let expected = parseLocator $ uploadLocator Fixtures.uploadResponse
-        locator `shouldBe'` expected
+        locator `shouldBe'` expectedLocator

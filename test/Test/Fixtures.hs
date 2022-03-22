@@ -18,13 +18,13 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Fossa.API.Types qualified as API
 import Path (mkAbsDir)
-import Srclib.Types (SourceUnit (..))
+import Srclib.Types (Locator (..), SourceUnit (..))
 import Text.URI.QQ (uri)
 import Types (GraphBreadth (..))
 
 apiOpts :: API.ApiOpts
 apiOpts =
-  API.ApiOpts (Just [uri|https://app.fossa.com/|]) $ API.ApiKey "apiKey"
+  API.ApiOpts (Just [uri|https://app.fossa.com/|]) $ API.ApiKey "testApiKey"
 
 organization :: API.Organization
 organization = API.Organization 42 True False
@@ -32,22 +32,30 @@ organization = API.Organization 42 True False
 project :: API.Project
 project =
   API.Project
-    { API.projectId = "projectId"
-    , API.projectTitle = "projectTitle"
+    { API.projectId = "testProjectId"
+    , API.projectTitle = "testProjectTitle"
     , API.projectIsMonorepo = False
+    }
+
+locator :: Locator
+locator =
+  Locator
+    { locatorFetcher = "testLocator"
+    , locatorProject = "testProject"
+    , locatorRevision = Just "testRevision"
     }
 
 uploadResponse :: API.UploadResponse
 uploadResponse =
   API.UploadResponse
-    { API.uploadLocator = "locator+project$revision"
+    { API.uploadLocator = locator
     , API.uploadError = Nothing
     }
 
 projectMedata :: App.ProjectMetadata
 projectMedata =
   App.ProjectMetadata
-    { App.projectTitle = Just "project"
+    { App.projectTitle = Just "testProjectTitle"
     , App.projectUrl = Nothing
     , App.projectJiraKey = Nothing
     , App.projectLink = Nothing
@@ -59,18 +67,18 @@ projectMedata =
 projectRevision :: App.ProjectRevision
 projectRevision =
   App.ProjectRevision
-    { App.projectName = "project"
-    , App.projectRevision = "revision"
-    , App.projectBranch = Just "main"
+    { App.projectName = "testProjectName"
+    , App.projectRevision = "testRevision"
+    , App.projectBranch = Just "testBranch"
     }
 
 sourceUnits :: NE.NonEmpty SourceUnit
 sourceUnits =
   NE.fromList
     [ SourceUnit
-        { sourceUnitName = "sourceUnit"
-        , sourceUnitType = "sourceUnitType"
-        , sourceUnitManifest = "sourceUnitManifest"
+        { sourceUnitName = "testSourceUnitName"
+        , sourceUnitType = "testSourceUnitType"
+        , sourceUnitManifest = "testSourceUnitManifest"
         , sourceUnitBuild = Nothing
         , sourceUnitGraphBreadth = Complete
         , sourceUnitOriginPaths = []
@@ -79,11 +87,11 @@ sourceUnits =
     ]
 
 baseDir :: App.BaseDir
-baseDir = App.BaseDir $(mkAbsDir "/not-a-real-dir")
+baseDir = App.BaseDir $(mkAbsDir "/tmp/just-a-test-dir")
 
 contributors :: API.Contributors
 contributors =
   API.Contributors . Map.fromList $
-    [ ("Contributor1", "Contributor1")
-    , ("Contributor2", "Contributor2")
+    [ ("testContributor1", "testContributor1")
+    , ("testContributor2", "testContributor2")
     ]
