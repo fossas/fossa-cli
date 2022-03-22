@@ -19,8 +19,8 @@ import Control.Effect.Diagnostics (
 import Control.Effect.FossaApiClient (
   FossaApiClient,
   getProject,
-  uploadContributors,
   uploadAnalysis,
+  uploadContributors,
  )
 import Control.Effect.Git (Git, fetchGitContributors)
 import Control.Effect.Lift (Lift)

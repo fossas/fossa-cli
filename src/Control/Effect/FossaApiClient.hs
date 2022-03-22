@@ -8,26 +8,28 @@ module Control.Effect.FossaApiClient (
   uploadAnalysis,
 ) where
 
+import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
-import Fossa.API.Types (ApiOpts, Organization, Project, Contributors, UploadResponse)
-import App.Types (ProjectRevision, ProjectMetadata)
-import Data.Text (Text)
-import Srclib.Types (SourceUnit)
 import Data.List.NonEmpty qualified as NE
+import Data.Text (Text)
+import Fossa.API.Types (ApiOpts, Contributors, Organization, Project, UploadResponse)
+import Srclib.Types (SourceUnit)
 
 data FossaApiClientF a where
   GetOrganization :: FossaApiClientF Organization
   GetProject :: ProjectRevision -> FossaApiClientF Project
   GetApiOpts :: FossaApiClientF ApiOpts
-  UploadAnalysis :: 
+  UploadAnalysis ::
     ProjectRevision ->
     ProjectMetadata ->
     NE.NonEmpty SourceUnit ->
     FossaApiClientF UploadResponse
   UploadContributors ::
     -- | Locator
-    Text -> Contributors -> FossaApiClientF ()
+    Text ->
+    Contributors ->
+    FossaApiClientF ()
 
 type FossaApiClient = Simple FossaApiClientF
 

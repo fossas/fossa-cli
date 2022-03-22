@@ -408,6 +408,7 @@ test-suite unit-tests
     AdjacencyMapSpec
     Android.UtilSpec
     App.DocsSpec
+    App.Fossa.Analyze.UploadSpec
     App.Fossa.AnalyzeSpec
     App.Fossa.API.BuildLinkSpec
     App.Fossa.BinaryDeps.JarSpec
@@ -495,6 +496,7 @@ test-suite unit-tests
     Swift.Xcode.PbxprojParserSpec
     Swift.Xcode.PbxprojSpec
     Test.Effect
+    Test.Fixtures
     Yarn.V1.YarnLockV1Spec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec

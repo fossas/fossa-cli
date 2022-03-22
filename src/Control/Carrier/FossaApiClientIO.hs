@@ -13,7 +13,6 @@ import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
-import Data.Text.Extra (showT)
 import Effect.Logger (Logger, logDebug, pretty)
 import Fossa.API.Types (ApiOpts, Contributors, Organization, Project, UploadResponse)
 import Srclib.Types (SourceUnit)

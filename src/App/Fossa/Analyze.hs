@@ -64,6 +64,7 @@ import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally (Finally, Has, runFinally)
+import Control.Carrier.FossaApiClientIO (runFossaApiClientIO)
 import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.Reader (Reader, runReader)
 import Control.Carrier.Stack.StickyLog (stickyLogStack)
@@ -116,7 +117,6 @@ import Prettyprinter.Render.Terminal (
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (Locator, SourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
-import Control.Carrier.FossaApiClientIO (runFossaApiClientIO)
 
 debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json.gz"

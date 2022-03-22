@@ -2,6 +2,7 @@ module Test.Effect (
   expectationFailure',
   expectFailure',
   expectFatal',
+  expectError',
   shouldBe',
   shouldSatisfy',
   shouldStartWith',
@@ -33,17 +34,23 @@ import Test.Hspec (
   xit,
  )
 
+import Control.Algebra (Handler)
 import Control.Carrier.Diagnostics (Diagnostics, DiagnosticsC, recover, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
+import Control.Carrier.Interpret (InterpretC, Interpreter, Reifies, runInterpret)
 import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Carrier.Stack (StackC, runStack)
+import Control.Effect.Diagnostics (Diag (Fatal), errorBoundary, fatalText)
 import Control.Effect.Finally (Finally, onExit)
 import Control.Effect.FossaApiClient (FossaApiClientF)
+import Control.Monad (void)
 import Data.Bits (finiteBitSize)
+import Data.List (intercalate, isInfixOf)
+import Data.List.NonEmpty qualified as NE
 import Data.String.Conversion (toString)
-import Diag.Result (Result (Failure, Success), renderFailure)
+import Diag.Result (ErrGroup (ErrGroup), ErrWithStack (ErrWithStack), Result (Failure, Success), renderFailure)
 import Effect.Exec (ExecIOC, runExecIO)
-import Effect.Logger (IgnoreLoggerC, ignoreLogger, renderIt)
+import Effect.Logger (IgnoreLoggerC, Logger, ignoreLogger, renderIt)
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
 import Path (Abs, Dir, Path, parseAbsDir, parseRelDir, (</>))
 import Path.IO (createDirIfMissing, removeDirRecur)
@@ -121,6 +128,23 @@ expectFatal' f = do
   case res of
     Just _ -> expectationFailure' "Expected failure"
     Nothing -> pure ()
+
+expectError' ::
+  (Has Diagnostics sig m, Has (Lift IO) sig m) =>
+  String ->
+  m () ->
+  m ()
+expectError' expectedError action = do
+  result <- errorBoundary action
+  case result of
+    Success{} -> expectationFailure' $ "Expected action to fail with '" <> expectedError <> "' but it succeeded"
+    Failure warnings1 (ErrGroup warnings2 context errsWithStack) ->
+      let errors = map (\(ErrWithStack stack err) -> err) $ NE.toList errsWithStack
+       in if any ((expectedError `isInfixOf`) . show) errsWithStack
+            then pure ()
+            else
+              expectationFailure' $
+                "Expected action to fail with '" <> expectedError <> "' but it failed with " <> (intercalate ", " . map show $ errors)
 
 -- | Runs a stateless API mock.
 withMockApi :: (forall x. FossaApiClientF x -> m x) -> SimpleC FossaApiClientF m a -> m a
