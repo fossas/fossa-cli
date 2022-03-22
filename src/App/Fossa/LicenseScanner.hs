@@ -17,7 +17,7 @@ import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.RunThemis (
   execThemis,
  )
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, fatalText, fromMaybe)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, fatal, fatalText, fromMaybe, recover)
 import Control.Effect.Lift (Has, Lift)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
 import Control.Monad (unless, void)
@@ -26,10 +26,10 @@ import Data.ByteString qualified as B
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
-import Data.String.Conversion (encodeUtf8, toString)
+import Data.String.Conversion (encodeUtf8, toString, toText)
 import Data.Text.Extra (showT)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, Pretty (pretty), logError)
+import Effect.Logger (Pretty (pretty))
 import Fossa.API.Types (
   ApiOpts,
   Archive (Archive, archiveName),
@@ -48,6 +48,11 @@ data NoSuccessfulScans = NoSuccessfulScans
 
 instance ToDiagnostic NoSuccessfulScans where
   renderDiagnostic _ = "No native license scans were successful"
+
+newtype NoLicenseResults = NoLicenseResults (Path Abs Dir)
+
+instance ToDiagnostic NoLicenseResults where
+  renderDiagnostic (NoLicenseResults path) = "No license results found after scanning directory: " <> pretty (toText path)
 
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
@@ -78,7 +83,6 @@ md5 = hash
 scanAndUploadVendoredDep ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
-  , Has Logger sig m
   , Has StickyLogger sig m
   , Has Exec sig m
   ) =>
@@ -86,7 +90,23 @@ scanAndUploadVendoredDep ::
   Path Abs Dir ->
   VendoredDependency ->
   m (Maybe Archive)
-scanAndUploadVendoredDep apiOpts baseDir vendoredDeps@VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
+scanAndUploadVendoredDep apiOpts baseDir vdep = context "Processing vendored dependency" $ do
+  maybeLicenseUnits <- recover $ scanVendoredDep baseDir vdep
+  case maybeLicenseUnits of
+    Nothing -> pure Nothing
+    Just licenseUnits -> uploadVendoredDep apiOpts vdep licenseUnits
+
+scanVendoredDep ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has StickyLogger sig m
+  , Has Exec sig m
+  ) =>
+  -- ApiOpts ->
+  Path Abs Dir ->
+  VendoredDependency ->
+  m (NonEmpty LicenseUnit)
+scanVendoredDep baseDir VendoredDependency{..} = context "Scanning vendored deps for license data" $ do
   logSticky $ "License Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
   vendoredDepDir <- case parseRelDir $ toString vendoredPath of
     Left err -> fatalText ("Error constructing scan dir for vendored scan: " <> showT err)
@@ -94,8 +114,8 @@ scanAndUploadVendoredDep apiOpts baseDir vendoredDeps@VendoredDependency{..} = c
   let cliScanDir = baseDir </> vendoredDepDir
   themisScanResult <- runLicenseScanOnDir cliScanDir
   case NE.nonEmpty themisScanResult of
-    Nothing -> Nothing <$ logError ("No license results found after scanning directory: " <> pretty (toString cliScanDir))
-    Just results -> uploadVendoredDep apiOpts vendoredDeps results
+    Nothing -> fatal $ NoLicenseResults cliScanDir
+    Just results -> pure results
 
 uploadVendoredDep ::
   ( Has Diagnostics sig m
@@ -130,7 +150,6 @@ uploadVendoredDep apiOpts VendoredDependency{..} themisScanResult = do
 licenseScanSourceUnit ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
-  , Has Logger sig m
   , Has StickyLogger sig m
   , Has Exec sig m
   ) =>
