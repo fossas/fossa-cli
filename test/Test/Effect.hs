@@ -115,12 +115,9 @@ expectFailure' :: Has (Lift IO) sig m => Result a -> m ()
 expectFailure' res = sendIO $ expectFailure res
 
 -- | Succeeds if the action fails and fails otherwise.
-expectFatal' :: (Has Diagnostics sig m, Has (Lift IO) sig m) => m () -> m ()
+expectFatal' :: (Has Diagnostics sig m, Has (Lift IO) sig m) => m a -> m ()
 expectFatal' f = do
-  res <- recover f
-  case res of
-    Just _ -> expectationFailure' "Expected failure"
-    Nothing -> pure ()
+  errorBoundary f >>= expectFailure'
 
 -- | Runs a stateless API mock.
 withMockApi :: (forall x. FossaApiClientF x -> m x) -> SimpleC FossaApiClientF m a -> m a

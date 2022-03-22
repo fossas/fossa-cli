@@ -14,7 +14,7 @@ import App.Types (
   ProjectMetadata,
   ProjectRevision (projectBranch, projectName, projectRevision),
  )
-import Control.Carrier.FossaApiClientIO (runFossaApiClientIO)
+import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
@@ -64,7 +64,7 @@ uploadSuccessfulAnalysis ::
   NE.NonEmpty SourceUnit ->
   m Locator
 uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput revision units =
-  context "Uploading analysis" . runFossaApiClientIO apiOpts $ do
+  context "Uploading analysis" . runFossaApiClient apiOpts $ do
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
     logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
