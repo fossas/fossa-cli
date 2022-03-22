@@ -14,7 +14,11 @@ module App.Fossa.ManualDeps (
   analyzeFossaDepsFile,
 ) where
 
+import App.Fossa.ArchiveUploader (VendoredDependency (..), archiveNoUploadSourceUnit, archiveUploadSourceUnit)
+import App.Fossa.LicenseScanner (licenseNoScanSourceUnit, licenseScanSourceUnit)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
+import Control.Effect.Lift (Has, Lift)
+import Control.Effect.StickyLogger (StickyLogger)
 import Control.Monad (when)
 import Data.Aeson (
   FromJSON (parseJSON),
@@ -23,12 +27,7 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
-
-import App.Fossa.ArchiveUploader (VendoredDependency (..), archiveNoUploadSourceUnit, archiveUploadSourceUnit)
-import App.Fossa.LicenseScanner (licenseNoScanSourceUnit, licenseScanSourceUnit)
-import Control.Effect.Lift
-import Control.Effect.StickyLogger (StickyLogger)
-import Data.Aeson.Extra
+import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers)
 import Data.Aeson.Types (Parser)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty qualified as NE
@@ -37,8 +36,8 @@ import Data.Text (Text)
 import DepTypes (DepType (..))
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
-import Fossa.API.Types
-import Path
+import Fossa.API.Types (ApiOpts)
+import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
