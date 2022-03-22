@@ -187,6 +187,7 @@ toAdditionalData customDeps remoteDeps =
 hasNoDeps :: ManualDependencies -> Bool
 hasNoDeps ManualDependencies{..} = null referencedDependencies && null customDependencies && null vendoredDependencies && null remoteDependencies
 
+-- TODO: Change these to Maybe NonEmpty
 data ManualDependencies = ManualDependencies
   { referencedDependencies :: [ReferencedDependency]
   , customDependencies :: [CustomDependency]
