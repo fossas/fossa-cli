@@ -483,7 +483,9 @@ licenseScanResultUpload signedArcURI licenseScanResult = fossaReq $ do
     Left (httpUrl, httpOptions) -> uploadArchiveRequest httpUrl httpOptions
     Right (httpsUrl, httpsOptions) -> uploadArchiveRequest httpsUrl httpsOptions
   where
+    zippedLicenseResult :: BS.ByteString
     zippedLicenseResult = toStrict $ GZIP.compress $ encode licenseScanResult
+    -- We send gzipped json, so we can't use req's JSON utilities.
     uploadArchiveRequest :: (MonadHttp m) => Url scheme -> Option scheme -> m LbsResponse
     uploadArchiveRequest url options = reqCb PUT url (ReqBodyBs zippedLicenseResult) lbsResponse options (pure . requestEncoder)
 
