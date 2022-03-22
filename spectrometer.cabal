@@ -188,6 +188,7 @@ library
     App.Fossa.ProjectInference
     App.Fossa.Report
     App.Fossa.Report.Attribution
+    App.Fossa.RunThemis
     App.Fossa.Subcommand
     App.Fossa.Test
     App.Fossa.VPS.Scan.Core
