@@ -1,5 +1,8 @@
 # Fossa CLI Changelog
 
+## v3.1.6
+- Respects Go module replacement directives in the Go Mod Graph strategy. ([#841](https://github.com/fossas/fossa-cli/pull/841)) 
+
 ## v3.1.5
 
 - Adds `--format` to `fossa report attribution` and deprecates `--json`. ([#844](https://github.com/fossas/fossa-cli/pull/844))

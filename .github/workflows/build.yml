@@ -85,13 +85,20 @@ jobs:
             ghc: '8.10.7'
 
     steps:
-    # Without this action, The `App.Fossa.Analyze` module won't build.
-    # We run into this error: https://github.community/t/error-the-paging-file-is-too-small-for-this-operation-to-complete/17141
+    # In the past, without this action the `App.Fossa.Analyze` module wouldn't build.
+    # We ran into this error: https://github.community/t/error-the-paging-file-is-too-small-for-this-operation-to-complete/17141
     # Github won't fix it, explanation here: https://github.com/actions/virtual-environments/issues/785#issuecomment-624073544
-    # TODO: try removing this with GHC >= 9.0.1, once we can actually use it.
+    # TODO: try removing the configure-pagefile-action with GHC >= 9.0.1, once
+    # we can actually use it if the OMM error returns.
     # Potential GHC fix here (version 9.0.1/8.12.1): https://gitlab.haskell.org/ghc/ghc/-/merge_requests/3047
-    - uses: al-cheb/configure-pagefile-action@v1.2
-      if: ${{ contains(matrix.os, 'windows') }}
+    #
+    # Having this turned on fixes the OMM issue, but results in flaky windows
+    # builds. If it needs to be re-enabled, check if this PR has been merged:
+    # https://github.com/al-cheb/configure-pagefile-action/pull/11 which should
+    # improve the flakiness.
+    #
+    # - uses: al-cheb/configure-pagefile-action@v1.2
+    #   if: ${{ contains(matrix.os, 'windows') }}
 
     - uses: actions/checkout@v2
 
