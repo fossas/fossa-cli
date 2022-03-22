@@ -8,17 +8,151 @@ module Srclib.Types (
   SourceUserDefDep (..),
   SourceRemoteDep (..),
   Locator (..),
+  LicenseSourceUnit (..),
+  LicenseScanType (..),
+  LicenseUnit (..),
+  LicenseUnitData (..),
+  LicenseUnitMatchData (..),
   renderLocator,
   parseLocator,
 ) where
 
 import Data.Aeson
+import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Path (File, SomeBase)
 import Types (GraphBreadth (..))
+
+data LicenseScanType = CliLicenseScanned
+  deriving (Eq, Ord, Show)
+
+instance ToText LicenseScanType where
+  toText CliLicenseScanned = "cli-license-scanned"
+
+instance ToJSON LicenseScanType where
+  toJSON = toJSON . toText
+
+-- | LicenseSourceUnit is the base of the results sent to Core for a CLI-side license scan
+-- licenseSourceUnitLicenseUnits will be empty if you scan an empty directory.
+data LicenseSourceUnit = LicenseSourceUnit
+  { licenseSourceUnitName :: Text
+  , licenseSourceUnitType :: LicenseScanType
+  , licenseSourceUnitLicenseUnits :: (NonEmpty LicenseUnit)
+  }
+  deriving (Eq, Ord, Show)
+
+instance ToJSON LicenseSourceUnit where
+  toJSON LicenseSourceUnit{..} =
+    object
+      [ "Name" .= licenseSourceUnitName
+      , "Type" .= licenseSourceUnitType
+      , "LicenseUnits" .= licenseSourceUnitLicenseUnits
+      ]
+
+-- There will be one of these for each license type found by Themis
+-- The data returned from themis-cli is an array of these.
+data LicenseUnit = LicenseUnit
+  { licenseUnitName :: Text
+  , licenseUnitType :: Text
+  , licenseUnitDir :: Text
+  , licenseUnitFiles :: (NonEmpty Text)
+  , licenseUnitData :: (NonEmpty LicenseUnitData)
+  , licenseUnitInfo :: LicenseUnitInfo
+  }
+  deriving (Eq, Ord, Show)
+
+instance ToJSON LicenseUnit where
+  toJSON LicenseUnit{..} =
+    object
+      [ "Name" .= licenseUnitName
+      , "Type" .= licenseUnitType
+      , "Dir" .= licenseUnitDir
+      , "Files" .= licenseUnitFiles
+      , "Data" .= licenseUnitData
+      , "Info" .= licenseUnitInfo
+      ]
+
+instance FromJSON LicenseUnit where
+  parseJSON = withObject "LicenseUnit" $ \obj ->
+    LicenseUnit <$> obj .: "Name"
+      <*> obj .: "Type"
+      <*> obj .: "Dir"
+      <*> obj .: "Files"
+      <*> obj .: "Data"
+      <*> obj .: "Info"
+
+newtype LicenseUnitInfo = LicenseUnitInfo
+  {licenseUnitInfoDescription :: Maybe Text}
+  deriving (Eq, Ord, Show)
+
+instance ToJSON LicenseUnitInfo where
+  toJSON LicenseUnitInfo{..} =
+    object ["Description" .= licenseUnitInfoDescription]
+
+instance FromJSON LicenseUnitInfo where
+  parseJSON = withObject "LicenseUnitInfo" $ \obj ->
+    LicenseUnitInfo <$> obj .: "Description"
+
+-- | LicenseUnitData contains data about a license unit. At least one of licenseUnitDataMatchData or licenseUnitDataCopyrights will be non-empty
+data LicenseUnitData = LicenseUnitData
+  { licenseUnitDataPath :: Text
+  , licenseUnitDataCopyright :: Maybe Text
+  , licenseUnitDataThemisVersion :: Text
+  , licenseUnitDataMatchData :: Maybe (NonEmpty LicenseUnitMatchData)
+  , licenseUnitDataCopyrights :: Maybe (NonEmpty Text)
+  }
+  deriving (Eq, Ord, Show)
+
+instance ToJSON LicenseUnitData where
+  toJSON LicenseUnitData{..} =
+    object
+      [ "path" .= licenseUnitDataPath
+      , "Copyright" .= licenseUnitDataCopyright
+      , "ThemisVersion" .= licenseUnitDataThemisVersion
+      , "match_data" .= licenseUnitDataMatchData
+      , "Copyrights" .= licenseUnitDataCopyrights
+      ]
+
+instance FromJSON LicenseUnitData where
+  parseJSON = withObject "LicenseUnitData" $ \obj ->
+    LicenseUnitData <$> obj .: "path"
+      <*> obj .:? "Copyright"
+      <*> obj .: "ThemisVersion"
+      <*> obj .:? "match_data"
+      <*> obj .:? "Copyrights"
+
+data LicenseUnitMatchData = LicenseUnitMatchData
+  { licenseUnitMatchDataMatchString :: Text
+  , licenseUnitMatchDataLocation :: Integer
+  , licenseUnitMatchDataLength :: Integer
+  , licenseUnitMatchDataIndex :: Integer
+  , licenseUnitDataStartLine :: Integer
+  , licenseUnitDataEndLine :: Integer
+  }
+  deriving (Eq, Ord, Show)
+
+instance ToJSON LicenseUnitMatchData where
+  toJSON LicenseUnitMatchData{..} =
+    object
+      [ "match_string" .= licenseUnitMatchDataMatchString
+      , "location" .= licenseUnitMatchDataLocation
+      , "length" .= licenseUnitMatchDataLength
+      , "index" .= licenseUnitMatchDataIndex
+      , "start_line" .= licenseUnitDataStartLine
+      , "end_line" .= licenseUnitDataEndLine
+      ]
+
+instance FromJSON LicenseUnitMatchData where
+  parseJSON = withObject "LicenseUnitMatchData" $ \obj ->
+    LicenseUnitMatchData <$> obj .: "match_string"
+      <*> obj .: "location"
+      <*> obj .: "length"
+      <*> obj .: "index"
+      <*> obj .: "start_line"
+      <*> obj .: "end_line"
 
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
