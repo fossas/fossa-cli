@@ -24,7 +24,8 @@ import Data.Aeson (
   (.:?),
  )
 
-import App.Fossa.ArchiveUploader
+import App.Fossa.ArchiveUploader (VendoredDependency (..), archiveNoUploadSourceUnit, archiveUploadSourceUnit)
+import App.Fossa.LicenseScanner (licenseNoScanSourceUnit, licenseScanSourceUnit)
 import Control.Effect.Lift
 import Control.Effect.StickyLogger (StickyLogger)
 import Data.Aeson.Extra
@@ -46,6 +47,8 @@ import Types (GraphBreadth (..))
 data FoundDepsFile
   = ManualYaml (Path Abs File)
   | ManualJSON (Path Abs File)
+
+data ArchiveUploadType = ArchiveUpload | CLILicenseScan
 
 analyzeFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => Path Abs Dir -> Maybe ApiOpts -> m (Maybe SourceUnit)
 analyzeFossaDepsFile root maybeApiOpts = do
@@ -83,12 +86,18 @@ toSourceUnit :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has StickyLogger si
 toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts = do
   -- If the file exists and we have no dependencies to report, that's a failure.
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
-  archiveLocators <- case maybeApiOpts of
-    Nothing -> pure $ archiveNoUploadSourceUnit vendoredDependencies
-    Just apiOpts ->
-      case NE.nonEmpty vendoredDependencies of
-        Just nonEmptyVendoredDeps -> NE.toList <$> archiveUploadSourceUnit root apiOpts nonEmptyVendoredDeps
-        Nothing -> pure []
+  -- See https://fossa.atlassian.net/browse/ANE-148
+  -- IMPORTANT: Until ANE-148 is implemented, this should always be `ArchiveUpload` on master
+  let archiveOrCLI = ArchiveUpload
+  archiveLocators <- case (maybeApiOpts, archiveOrCLI, NE.nonEmpty vendoredDependencies) of
+    -- Don't do anything if there are no vendered deps.
+    (_, _, Nothing) -> pure []
+    (Just apiOpts, ArchiveUpload, Just vdeps) -> NE.toList <$> archiveUploadSourceUnit root apiOpts vdeps
+    (Just apiOpts, CLILicenseScan, Just vdeps) -> NE.toList <$> licenseScanSourceUnit root apiOpts vdeps
+    -- For consistency, these functions could require NonEmpty, but it offers no real
+    -- benefit, since they're no-ops on empty lists.
+    (Nothing, ArchiveUpload, Just vdeps) -> pure $ archiveNoUploadSourceUnit $ NE.toList vdeps
+    (Nothing, CLILicenseScan, Just vdeps) -> pure $ licenseNoScanSourceUnit $ NE.toList vdeps
 
   let renderedPath = toText root
       referenceLocators = refToLocator <$> referencedDependencies
