@@ -26,8 +26,7 @@ import Data.ByteString qualified as B
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
-import Data.String.Conversion (encodeUtf8, toString, toText)
-import Effect.Exec (Exec, runExecIO)
+import Effect.Exec (Exec)
 import Effect.Logger (Logger, Pretty (pretty), logError)
 import Fossa.API.Types (
   ApiOpts,
@@ -51,6 +50,7 @@ instance ToDiagnostic NoSuccessfulScans where
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
+  , Has Exec sig m
   ) =>
   Path Abs Dir ->
   m [LicenseUnit]
@@ -59,12 +59,12 @@ runLicenseScanOnDir scanDir = withThemisAndIndex $ themisRunner scanDir
 themisRunner ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has Exec sig m
   ) =>
   Path Abs Dir ->
   ThemisBins ->
   m [LicenseUnit]
-themisRunner scanDir themisBins = do
-  runExecIO $ runThemis themisBins scanDir
+themisRunner scanDir themisBins = runThemis themisBins scanDir
 
 runThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> m [LicenseUnit]
 runThemis themisBins scanDir = do
@@ -78,6 +78,7 @@ scanAndUploadVendoredDep ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has StickyLogger sig m
+  , Has Exec sig m
   ) =>
   ApiOpts ->
   Path Abs Dir ->
@@ -129,6 +130,7 @@ licenseScanSourceUnit ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has StickyLogger sig m
+  , Has Exec sig m
   ) =>
   Path Abs Dir ->
   ApiOpts ->
