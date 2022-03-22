@@ -26,9 +26,10 @@ runFossaApiClient ::
 runFossaApiClient apiOpts =
   runReader apiOpts
     . interpret
-    $ \case
-      GetOrganization -> getOrganization
-      GetApiOpts -> pure apiOpts
+      ( \case
+          GetOrganization -> getOrganization
+          GetApiOpts -> pure apiOpts
+      )
 
 -- Fetches an organization from the API
 getOrganization ::

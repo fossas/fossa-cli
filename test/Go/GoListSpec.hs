@@ -1,25 +1,40 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Go.GoListSpec (
   spec,
 ) where
 
-import Control.Algebra
-import Control.Carrier.Diagnostics
-import Control.Carrier.Simple
+import Control.Algebra (run)
+import Control.Carrier.Diagnostics (runDiagnostics)
+import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Carrier.Stack (runStack)
+import Data.Aeson (decode)
 import Data.ByteString.Lazy qualified as BL
 import Data.Function ((&))
 import Data.Map.Strict qualified as Map
-import DepTypes
-import Effect.Exec
-import Effect.Grapher
+import DepTypes (
+  DepType (GoType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
+import Effect.Exec (ExecF (..))
+import Effect.Grapher (deep, direct, evalGrapher)
 import Graphing (Graphing)
 import Path.IO (getCurrentDir)
-import ResultUtil
-import Strategy.Go.GoList
-import Test.Hspec
+import ResultUtil (assertOnSuccess)
+import Strategy.Go.GoList (
+  GoListModule (..),
+  GoModuleReplacement (
+    GoModuleReplacement,
+    pathReplacement,
+    versionReplacement
+  ),
+  analyze',
+ )
+import Test.Hspec (Spec, describe, it, runIO, shouldBe)
+import Text.RawString.QQ (r)
 
 type ConstExecC = SimpleC ExecF
 
@@ -48,8 +63,8 @@ expected = run . evalGrapher $ do
       , dependencyTags = Map.empty
       }
 
-spec :: Spec
-spec = do
+analysisSpec :: Spec
+analysisSpec = do
   outputTrivial <- runIO (BL.readFile "test/Go/testdata/golist-stdout")
   testdir <- runIO getCurrentDir
 
@@ -62,3 +77,43 @@ spec = do
               & runStack
               & run
       assertOnSuccess result $ \_ (graph, _) -> graph `shouldBe` expected
+
+replacedModule :: BL.ByteString
+replacedModule =
+  [r| {
+    "Path": "/foo/bar",
+    "Version": "1.2",
+    "Replace": {
+      "Path": "/foo/bar",
+      "Version": "1.6"
+      }
+    }|]
+
+expectedReplacedModule :: GoListModule
+expectedReplacedModule =
+  GoListModule
+    { path = "/foo/bar"
+    , version = Just "1.2"
+    , isMain = False
+    , isIndirect = False
+    , moduleReplacement =
+        Just
+          GoModuleReplacement
+            { pathReplacement = "/foo/bar"
+            , versionReplacement = "1.6"
+            }
+    }
+
+listParseSpec :: Spec
+listParseSpec = do
+  describe "Parsing json list output" $
+    it "Parses replacements" $ do
+      case decode replacedModule of
+        Just goMod -> goMod `shouldBe` expectedReplacedModule
+        Nothing -> fail "Couldn't parse replacedModule"
+
+spec :: Spec
+spec =
+  do
+    analysisSpec
+    listParseSpec

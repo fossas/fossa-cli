@@ -33,10 +33,11 @@ import Test.Hspec (
   xit,
  )
 
-import Control.Carrier.Diagnostics (Diagnostics, DiagnosticsC, recover, runDiagnostics)
+import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
 import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Carrier.Stack (StackC, runStack)
+import Control.Effect.Diagnostics (Diagnostics, errorBoundary)
 import Control.Effect.Finally (Finally, onExit)
 import Control.Effect.FossaApiClient (FossaApiClientF)
 import Data.Bits (finiteBitSize)

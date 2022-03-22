@@ -225,6 +225,7 @@ library
     Control.Carrier.Diagnostics
     Control.Carrier.Finally
     Control.Carrier.FossaApiClient
+    Control.Carrier.Git
     Control.Carrier.Output.IO
     Control.Carrier.Simple
     Control.Carrier.Stack
@@ -239,6 +240,7 @@ library
     Control.Effect.Diagnostics
     Control.Effect.Finally
     Control.Effect.FossaApiClient
+    Control.Effect.Git
     Control.Effect.Output
     Control.Effect.Path
     Control.Effect.Record
@@ -377,7 +379,6 @@ library
     Strategy.SwiftPM
     Text.URI.Builder
     Types
-    VCS.Git
 
   hs-source-dirs:  src
 

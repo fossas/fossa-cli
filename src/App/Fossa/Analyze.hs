@@ -76,6 +76,7 @@ import Control.Carrier.TaskPool (
  )
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Exception (Lift)
+import Control.Effect.Git (Git)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Monad (join, when)
@@ -125,6 +126,7 @@ analyzeSubCommand = Config.mkSubCommand dispatch
 dispatch ::
   ( Has Diag.Diagnostics sig m
   , Has Exec sig m
+  , Has Git sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
@@ -138,10 +140,11 @@ dispatch = \case
 -- This is just a handler for the Debug effect.
 -- The real logic is in the inner analyze
 analyzeMain ::
-  ( Has (Lift IO) sig m
-  , Has Logger sig m
-  , Has Diag.Diagnostics sig m
+  ( Has Diag.Diagnostics sig m
   , Has Exec sig m
+  , Has Git sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
   , Has ReadFS sig m
   ) =>
   StandardAnalyzeConfig ->
@@ -214,11 +217,12 @@ runAnalyzers basedir filters = do
     single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters)
 
 analyze ::
-  ( Has (Lift IO) sig m
-  , Has Logger sig m
+  ( Has Debug sig m
   , Has Diag.Diagnostics sig m
-  , Has Debug sig m
   , Has Exec sig m
+  , Has Git sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
   , Has ReadFS sig m
   ) =>
   StandardAnalyzeConfig ->
