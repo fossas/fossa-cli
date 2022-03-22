@@ -22,9 +22,10 @@ Discovery: find go.mod files
 1. We execute `go mod graph` to retrieve all edges, and all considered versions of the module.
 2. We execute `go list -m -json all` to identify the main module, selected version of the module, and whether the module is direct dependency (using `Indirect` field from the command response)
 3. We create a dependencies graph from using the result of (1) in the following fashion:
-   1. We remove the main module from the dependency graph
-   2. We label all direct modules, as a direct dependency
-   3. We filter out module versions that were not selected - we know selected module versions from step (2). We do this, since the output of `go mod graph`, does return only the selected version, used in the build list! 
+   a. We remove the main module from the dependency graph
+   b. We label all direct modules, as a direct dependency
+   c. We filter out module versions that were not selected - we know selected module versions from step (2). We do this, since the output of `go mod graph`, does return only the selected version, used in the build list! 
+   d. If replacements were specified in the output of (2) we reflect them in our output as well.
 
 ## Strategy: golist
 

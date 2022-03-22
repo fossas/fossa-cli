@@ -12,7 +12,6 @@ module App.Fossa.FossaAPIV1 (
   getIssues,
   getOrganization,
   getAttribution,
-  getAttributionRaw,
   getSignedURL,
   getProject,
   archiveUpload,
@@ -29,6 +28,7 @@ module App.Fossa.FossaAPIV1 (
 ) where
 
 import App.Docs (fossaSslCertDocsUrl)
+import App.Fossa.Config.Report
 import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Fossa.Report.Attribution qualified as Attr
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
@@ -53,19 +53,19 @@ import Data.Aeson (
   FromJSON (parseJSON),
   KeyValue ((.=)),
   ToJSON (toJSON),
-  Value,
   decodeStrict,
   encode,
   object,
   withObject,
   (.:),
  )
+import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as C
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Word (Word8)
@@ -457,42 +457,46 @@ getIssues apiOpts ProjectRevision{..} = fossaReq $ do
 
 ---------------
 
-attributionEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
-attributionEndpoint baseurl orgId locator = baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution" /: "json"
+attributionEndpoint :: Url 'Https -> Int -> Locator -> ReportOutputFormat -> Url 'Https
+attributionEndpoint baseurl orgId locator format = appendSegment format $ baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution"
+  where
+    appendSegment :: ReportOutputFormat -> Url a -> Url a
+    appendSegment ReportJson input = input /: "json"
+    appendSegment ReportMarkdown input = input /: "full" /: "MD"
+    appendSegment ReportSpdx input = input /: "full" /: "spdx"
+
+getAttributionJson ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  m Attr.Attribution
+getAttributionJson apiOpts ProjectRevision{..} = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts =
+        baseOpts
+          <> "includeDeepDependencies" =: True
+          <> "includeHashAndVersionData" =: True
+          <> "includeDownloadUrl" =: True
+  orgId <- organizationId <$> getOrganization apiOpts
+  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision)) ReportJson) NoReqBody jsonResponse opts
+  pure (responseBody response)
 
 getAttribution ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   ProjectRevision ->
-  m Attr.Attribution
-getAttribution apiOpts ProjectRevision{..} = fossaReq $ do
-  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  ReportOutputFormat ->
+  m Text
+getAttribution apiOpts revision ReportJson = fossaReq $ do
+  jsonValue <- getAttributionJson apiOpts revision
+  pure . decodeUtf8 $ Aeson.encode jsonValue
+getAttribution apiOpts ProjectRevision{..} format = fossaReq $ do
+  (baseUrl, opts) <- useApiOpts apiOpts
 
-  let opts =
-        baseOpts
-          <> "includeDeepDependencies" =: True
-          <> "includeHashAndVersionData" =: True
-          <> "includeDownloadUrl" =: True
   orgId <- organizationId <$> getOrganization apiOpts
-  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
-  pure (responseBody response)
-
-getAttributionRaw ::
-  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
-  ApiOpts ->
-  ProjectRevision ->
-  m Value
-getAttributionRaw apiOpts ProjectRevision{..} = fossaReq $ do
-  (baseUrl, baseOpts) <- useApiOpts apiOpts
-
-  let opts =
-        baseOpts
-          <> "includeDeepDependencies" =: True
-          <> "includeHashAndVersionData" =: True
-          <> "includeDownloadUrl" =: True
-  orgId <- organizationId <$> getOrganization apiOpts
-  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
-  pure (responseBody response)
+  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision)) format) NoReqBody bsResponse opts
+  pure (decodeUtf8 $ responseBody response)
 
 ----------
 

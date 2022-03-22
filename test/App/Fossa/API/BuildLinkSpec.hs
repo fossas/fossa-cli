@@ -15,7 +15,7 @@ import Fossa.API.Types (
   Organization (Organization),
  )
 import Srclib.Types (Locator (Locator))
-import Test.Effect (it', shouldBe', withMockApi)
+import Test.Effect (it', shouldBe', withMockApi, expectationFailure')
 import Test.Hspec (Spec, describe)
 import Text.URI.QQ (uri)
 
@@ -78,6 +78,7 @@ spec = do
           ( \case
               GetApiOpts -> pure apiOpts
               GetOrganization -> pure $ Organization 1 True False
+              _ -> expectationFailure' "Unexpected API call" >> undefined
           )
         $ do
           let locator = Locator "fetcher123" "project123" $ Just "revision123"

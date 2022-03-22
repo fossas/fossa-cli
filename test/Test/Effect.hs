@@ -34,13 +34,12 @@ import Test.Hspec (
   xit,
  )
 
-import Control.Algebra (Handler)
 import Control.Carrier.Diagnostics (Diagnostics, DiagnosticsC, recover, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
 import Control.Carrier.Interpret (InterpretC, Interpreter, Reifies, runInterpret)
 import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Carrier.Stack (StackC, runStack)
-import Control.Effect.Diagnostics (Diag (Fatal), errorBoundary, fatalText)
+import Control.Effect.Diagnostics (Diagnostics, Diag (Fatal), errorBoundary, fatalText)
 import Control.Effect.Finally (Finally, onExit)
 import Control.Effect.FossaApiClient (FossaApiClientF)
 import Control.Monad (void)
@@ -122,12 +121,9 @@ expectFailure' :: Has (Lift IO) sig m => Result a -> m ()
 expectFailure' res = sendIO $ expectFailure res
 
 -- | Succeeds if the action fails and fails otherwise.
-expectFatal' :: (Has Diagnostics sig m, Has (Lift IO) sig m) => m () -> m ()
+expectFatal' :: (Has Diagnostics sig m, Has (Lift IO) sig m) => m a -> m ()
 expectFatal' f = do
-  res <- recover f
-  case res of
-    Just _ -> expectationFailure' "Expected failure"
-    Nothing -> pure ()
+  errorBoundary f >>= expectFailure'
 
 expectError' ::
   (Has Diagnostics sig m, Has (Lift IO) sig m) =>

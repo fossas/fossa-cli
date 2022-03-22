@@ -64,7 +64,7 @@ import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally (Finally, Has, runFinally)
-import Control.Carrier.FossaApiClientIO (runFossaApiClientIO)
+import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.Reader (Reader, runReader)
 import Control.Carrier.Stack.StickyLog (stickyLogStack)
@@ -301,7 +301,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     FoundSome sourceUnits -> case destination of
       OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult includeAll additionalSourceUnits filteredProjects
       UploadScan apiOpts metadata -> Diag.context "upload-results" $ do
-        locator <- runFossaApiClientIO apiOpts $ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision sourceUnits
+        locator <- runFossaApiClient apiOpts $ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision sourceUnits
         doAssertRevisionBinaries iatAssertion apiOpts locator
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult

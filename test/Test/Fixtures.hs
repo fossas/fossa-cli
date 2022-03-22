@@ -1,7 +1,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Test.Fixtures where
+module Test.Fixtures (apiOpts, organization, sourceUnits, project, uploadResponse, projectMedata, Test.Fixtures.projectRevision, baseDir, contributors) where
 
 import App.Types (BaseDir (BaseDir), ProjectMetadata (..), ProjectRevision (..))
 import Data.List.NonEmpty qualified as NE
