@@ -20,7 +20,7 @@ import Effect.Exec (
   Exec,
   execJson,
  )
-import Path (Abs, Dir, Path, fromAbsFile, parent)
+import Path (Abs, Dir, Path, parent)
 import Srclib.Types (LicenseUnit)
 
 -- TODO: We should log the themis version and index version
@@ -31,7 +31,7 @@ execThemis themisBins scanDir = do
 themisCommand :: ThemisBins -> Command
 themisCommand ThemisBins{..} = do
   Command
-    { cmdName = toText $ fromAbsFile $ toPath $ unTag themisBinaryPaths
+    { cmdName = toText . toPath $ unTag themisBinaryPaths
     , cmdArgs = generateThemisArgs indexBinaryPaths
     , cmdAllowErr = Never
     }
