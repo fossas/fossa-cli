@@ -92,7 +92,6 @@ archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
   -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
   res <- traverse (Fossa.archiveBuildUpload apiOpts) (NonEmpty.toList archives)
-  -- res <- traverse (Fossa.archiveBuildUpload apiOpts) archives 
   logDebug $ pretty $ show res
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
