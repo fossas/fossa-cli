@@ -17,10 +17,6 @@ CLI telemetry collects the following data:
 - Feature usage data
 
 CLI telemetry does not collect personally identifiable information or metadata about source code.
-	
-You can view the CLI telemetry data collected by running 
-the FOSSA CLI with the environment variable `FOSSA_TELEMETRY_DEBUG=1` set. 
-This will produce `fossa.telemetry.json` in your current working directory. 
 
 ### How is CLI telemetry data collected and processed?
 
@@ -30,7 +26,7 @@ CLI telemetry data is validated and processed for our logging system.
 ### How can I inspect CLI telemetry data?
 
 You can view collected CLI telemetry data by running cli with environment variable `FOSSA_TELEMETRY_DEBUG=1`. 
-This will generate `fossa.telemetry.json` file in your current working directory.
+This will generate `fossa.telemetry.json` file in your current working directory, and will not send any telemetry data to server.
 
 ### How can I disable CLI telemetry?
 

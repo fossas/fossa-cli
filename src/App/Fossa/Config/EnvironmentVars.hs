@@ -20,16 +20,16 @@ data EnvVars = EnvVars
   }
   deriving (Eq, Ord, Show)
 
-apiKeyName :: [Char]
+apiKeyName :: String
 apiKeyName = "FOSSA_API_KEY"
 
-configDebugName :: [Char]
+configDebugName :: String
 configDebugName = "FOSSA_CONFIG_DEBUG"
 
-telemetryDebugName :: [Char]
+telemetryDebugName :: String
 telemetryDebugName = "FOSSA_TELEMETRY_DEBUG"
 
-telemetryScopeKeyName :: [Char]
+telemetryScopeKeyName :: String
 telemetryScopeKeyName = "FOSSA_TELEMETRY_SCOPE"
 
 getEnvVars :: (Has (Lift IO) sig m, Has Logger sig m) => m EnvVars

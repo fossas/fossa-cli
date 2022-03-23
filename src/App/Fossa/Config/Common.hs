@@ -72,6 +72,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Timeout (Duration (Minutes))
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Bifunctor (Bifunctor (first))
+import Data.Functor.Extra ((<$$>))
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text, null, strip, toLower)
@@ -287,17 +288,13 @@ collectTelemetrySink maybeConfigFile envvars maybeOpts = do
     (True, _) -> pure $ Just TelemetrySinkToFile
     (False, NoTelemetry) -> pure Nothing
     (False, FullTelemetry) -> do
-      let withoutAnyOpts = CommonOpts False Nothing Nothing Nothing Nothing Nothing Nothing
-      let candidateOpts = fromMaybe withoutAnyOpts maybeOpts
+      let candidateOpts = fromMaybe emptyCommonOpts maybeOpts
 
       -- Not all commands require api key, if we do not have valid api key
       -- we do not know which endpoint to sink telemetry, this ensures we
       -- we do not emit telemetry of on-prem users when they do not have
       -- api opts configured.
-      maybeApiOpts <- recover $ collectApiOpts maybeConfigFile envvars candidateOpts
-      case maybeApiOpts of
-        Nothing -> pure Nothing
-        Just opts -> pure . Just $ TelemetrySinkToEndpoint opts
+      TelemetrySinkToEndpoint <$$> recover (collectApiOpts maybeConfigFile envvars candidateOpts)
 
 data CommonOpts = CommonOpts
   { optDebug :: Bool
@@ -309,6 +306,9 @@ data CommonOpts = CommonOpts
   , optTelemetry :: Maybe ConfigTelemetryScope
   }
   deriving (Eq, Ord, Show)
+
+emptyCommonOpts :: CommonOpts
+emptyCommonOpts = CommonOpts False Nothing Nothing Nothing Nothing Nothing Nothing
 
 parseTelemetryScope :: ReadM ConfigTelemetryScope
 parseTelemetryScope = eitherReader $ \scope ->

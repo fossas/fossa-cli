@@ -52,7 +52,7 @@ instance ToJSON ApiOpts where
   toJSON opts =
     object
       [ "uri" .= show (apiOptsUri opts)
-      , "apiKey" .= ("<REDACTED>" :: [Char])
+      , "apiKey" .= ("<REDACTED>" :: String)
       ]
 
 newtype SignedURL = SignedURL

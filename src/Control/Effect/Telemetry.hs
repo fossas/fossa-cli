@@ -28,22 +28,22 @@ trackUsage :: Has Telemetry sig m => CountableCliFeature -> m ()
 trackUsage = send . TrackUsage
 
 trackTimeSpent :: Has Telemetry sig m => Text -> m a -> m a
-trackTimeSpent header act = send $ TrackTimeSpent header act
+trackTimeSpent header = send . TrackTimeSpent header
 
 trackConfig :: (ToJSON cfg, Has Telemetry sig m) => Text -> cfg -> m ()
-trackConfig cmd config = send . TrackConfig cmd $ toJSON config
+trackConfig cmd = send . TrackConfig cmd . toJSON
 
 -- | Only use this if absolutely necessary, you likely want to use 'trackResult'
 trackRawLogMessage :: Has Telemetry sig m => Severity -> Doc AnsiStyle -> m ()
-trackRawLogMessage sev msg = send . TrackRawLogMessage sev $ renderIt msg
+trackRawLogMessage sev = send . TrackRawLogMessage sev . renderIt
 
 setSink :: Has Telemetry sig m => TelemetrySink -> m ()
 setSink = send . SetTelemetrySink
 
 trackResult :: Has Telemetry sig m => Result a -> m ()
-trackResult (Failure ew eg) = send . TrackRawLogMessage SevError $ renderIt . unAnnotate $ renderFailure ew eg "Failed"
+trackResult (Failure ew eg) = send . TrackRawLogMessage SevError . renderIt . unAnnotate $ renderFailure ew eg "Failed"
 trackResult (Success ew _) = do
   let doc = renderSuccess ew "An Issue Occurred"
   case doc of
     Nothing -> pure ()
-    Just doc' -> send $ TrackRawLogMessage SevWarn $ renderIt . unAnnotate $ doc'
+    Just doc' -> send $ TrackRawLogMessage SevWarn . renderIt . unAnnotate $ doc'

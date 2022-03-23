@@ -19,7 +19,7 @@ import Control.Carrier.Telemetry.Types (
  )
 import Control.Concurrent.STM (STM, atomically, newEmptyTMVarIO, tryReadTMVar)
 import Control.Concurrent.STM.TBMQueue (TBMQueue, newTBMQueueIO, tryReadTBMQueue)
-import Control.Monad (replicateM)
+import Control.Monad (join, replicateM)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -33,16 +33,16 @@ import GHC.Conc.Sync qualified as Conc
 import GHC.Environment qualified as Environment
 import System.Info qualified as Info
 
-maxOfThousand :: Int
-maxOfThousand = 1000
+maxQueueSize :: Int
+maxQueueSize = 1000
 
 mkTelemetryCtx :: Has (Lift IO) sig m => m TelemetryCtx
 mkTelemetryCtx = sendIO $ do
   TelemetryCtx
     <$> nextRandom
-    <*> newTBMQueueIO maxOfThousand
+    <*> newTBMQueueIO maxQueueSize
     <*> newEmptyTMVarIO
-    <*> newTBMQueueIO maxOfThousand
+    <*> newTBMQueueIO maxQueueSize
     <*> newEmptyTMVarIO
     <*> atomically mkCounterRegistry
     <*> getCurrentTime
@@ -74,9 +74,7 @@ mkTelemetryRecord seenFatalException ctx = sendIO $ do
       }
   where
     getItems :: TBMQueue a -> STM [a]
-    getItems q = do
-      items <- replicateM maxOfThousand (tryReadTBMQueue q)
-      pure $ catMaybes $ fromMaybe Nothing <$> items
+    getItems q = catMaybes <$> replicateM maxQueueSize (join <$> tryReadTBMQueue q)
 
 getCurrentCliVersion :: Text
 getCurrentCliVersion = versionOrBranch
