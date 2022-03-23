@@ -42,7 +42,8 @@ import Test.Hspec (Spec, describe, it, runIO)
 mockInput :: NpmPackageJson
 mockInput =
   NpmPackageJson
-    { packageDependencies =
+    { packagePackages = Map.empty
+    , packageDependencies =
         Map.fromList
           [
             ( "packageOne"

@@ -27,11 +27,11 @@ import Data.Foldable (asum, traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isNothing)
+import Data.Maybe (isNothing, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Tagged (unTag)
-import Data.Text (Text)
+import Data.Text (Text, splitOn)
 import Data.Text qualified as Text
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
@@ -54,8 +54,25 @@ import Graphing (Graphing)
 import Path (Abs, File, Path)
 import Strategy.Node.PackageJson (Development, FlatDeps (devDeps, directDeps), NodePackage (pkgName), Production)
 
-newtype NpmPackageJson = NpmPackageJson
-  {packageDependencies :: Map Text NpmDep}
+data NpmPackagesPkg = NpmPackagesPkg
+  { pkgPeerDeps :: Map Text Text
+  , pkgResolved :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON NpmPackagesPkg where
+  parseJSON = withObject "NpmPackagesPkg" $ \obj ->
+    -- TODO: should this be changed to exclude the current package with key ""?
+    -- It has a different structure compared to the others that represent dependencies
+    NpmPackagesPkg
+      <$> obj .:? "peerDependencies" .!= Map.empty
+      <*> obj .:? "resolved"
+
+data NpmPackageJson = NpmPackageJson
+  { packageDependencies :: Map Text NpmDep
+  , -- |  Data from the "packages" field of package-json.lock
+    packagePackages :: Map Text NpmPackagesPkg
+  }
   deriving (Eq, Ord, Show)
 
 data NpmDep = NpmDep
@@ -70,7 +87,9 @@ data NpmDep = NpmDep
 
 instance FromJSON NpmPackageJson where
   parseJSON = withObject "NpmPackageJson" $ \obj ->
-    NpmPackageJson <$> obj .: "dependencies"
+    NpmPackageJson
+      <$> obj .: "dependencies"
+      <*> obj .:? "packages" .!= Map.empty
 
 newtype NpmResolved = NpmResolved {unNpmResolved :: Maybe Text}
   deriving (Eq, Ord, Show)
@@ -108,16 +127,60 @@ type NpmGrapher = LabeledGrapher NpmPackage NpmPackageLabel
 data NpmPackageLabel = NpmPackageEnv DepEnvironment | NpmPackageLocation Text
   deriving (Eq, Ord, Show)
 
+-- |The @packages@ object contains keys which are file paths to a package npm
+-- downloaded to @node_modules@. This function will adjust map keys to be names
+-- like in the @dependencies@ key.
+--
+-- It will also eliminate any keys which represent a nested path
+-- e.g. @node_modules\/foo\/node_modules/bar@. This nesting happens when there are
+-- multiple versions of the same package in the dependency tree of the
+-- @package-lock.json@ file because one of the versions gets vendored.
+packagePathsToNames :: Map Text a -> Map Text a
+packagePathsToNames =
+  Map.fromList
+    . mapMaybe fixName
+    . Map.toList
+  where
+    fixName :: (Text, a) -> Maybe (Text, a)
+    fixName (k, v) = case (filter (/= "node_modules") . splitOn "/" $ k) of
+      [k'] -> Just (k', v)
+      _ -> Nothing
+
 buildGraph :: NpmPackageJson -> Set Text -> Graphing Dependency
 buildGraph packageJson directSet =
   run . withLabeling toDependency $
-    void $ Map.traverseWithKey (maybeAddDep False Nothing) (packageDependencies packageJson)
+    void $ Map.traverseWithKey (maybeAddDep False Nothing) packageDeps
   where
+    packageDeps = packageDependencies packageJson
+
+    -- Packages from the `packages` key in package-lock.json. peerDependencies are recorded here
+    lockPackages = packagePathsToNames . packagePackages $ packageJson
+
     -- Skip adding deps if we think it's a workspace package.
     maybeAddDep isRecursive parent name dep@NpmDep{..} =
       if isNothing (unNpmResolved depResolved) || "file:" `Text.isPrefixOf` depVersion
         then pure ()
         else addDep isRecursive parent name dep
+
+    -- Look up if a given npm package has peer dependencies, then add them to
+    -- the graph recursively.
+    addPeerDeps :: Has NpmGrapher sig m => NpmPackage -> m ()
+    addPeerDeps currentPkg =
+      maybe (pure ()) graphPeerDeps (Map.lookup (lockName currentPkg) lockPackages)
+      where
+        addNodeAndEdge :: Has NpmGrapher sig m => Text -> m ()
+        addNodeAndEdge peerDepName =
+          case Map.lookup peerDepName packageDeps of
+            Just npmDep -> maybeAddDep True (Just currentPkg) peerDepName npmDep
+            Nothing -> pure ()
+
+        graphPeerDeps :: Has NpmGrapher sig m => NpmPackagesPkg -> m ()
+        graphPeerDeps =
+          -- ignore the version specified in "peerDependencies", we'll use the
+          -- resolved one from the main list of dependencies.
+          traverse_ (addNodeAndEdge . fst)
+            . Map.toList
+            . pkgPeerDeps
 
     -- If not resolved, then likely a workspace dep, should be ignored.
     -- isRecursive lets us know if we are parsing a top-level or nested dep.
@@ -131,6 +194,9 @@ buildGraph packageJson directSet =
       -- Try marking non-recursively-discovered deps as direct
       when (not isRecursive && Set.member name directSet) $
         direct pkg
+
+      -- If there are peerDeps, add them and process their dependencies as well
+      addPeerDeps pkg
 
       -- LOCATION/ENVIRONMENT
       -- Mark prod/dev
