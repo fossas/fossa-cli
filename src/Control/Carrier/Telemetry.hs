@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -21,15 +22,14 @@ import Control.Carrier.Telemetry.Utils (
   mkTelemetryCtx,
   mkTelemetryRecord,
  )
-import Control.Concurrent.STM (atomically, putTMVar, tryReadTMVar)
+import Control.Concurrent.STM (STM, atomically, tryPutTMVar, tryReadTMVar)
 import Control.Concurrent.STM.TBMQueue (tryWriteTBMQueue)
 import Control.Effect.Exception (Exception (fromException), catch, mask, throwIO)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Telemetry (Telemetry (..))
 import Control.Exception qualified as Exc
-import Control.Monad (void, when)
+import Control.Monad (void)
 import Control.Monad.IO.Class (MonadIO (..))
-import Data.Maybe (isNothing)
 import Data.Time.Clock (diffUTCTime, getCurrentTime, nominalDiffTimeToSeconds)
 import Data.Tracing.Instrument (incCount)
 import System.Exit (ExitCode (ExitSuccess))
@@ -40,28 +40,22 @@ newtype TelemetryC m a = TelemetryC {runTelemetryC :: ReaderC TelemetryCtx m a}
 instance (Algebra sig m, MonadIO m, Has (Lift IO) sig m) => Algebra (Telemetry :+: sig) (TelemetryC m) where
   alg hdl sig ctx = case sig of
     L op -> do
-      telCtx <- TelemetryC (ask @(TelemetryCtx))
+      TelemetryCtx{..} <- TelemetryC (ask @(TelemetryCtx))
       case op of
-        SetTelemetrySink sink -> do
-          maybeSink <- sendIO $ atomically $ tryReadTMVar (telSink telCtx)
-          when (isNothing maybeSink) $
-            sendIO $ atomically $ putTMVar (telSink telCtx) sink
-          ctx <$ pure ()
-        TrackUsage feat -> do
-          ctx <$ (sendIO . atomically $ incCount feat $ telCounters telCtx)
-        TrackConfig cmd cfg -> do
-          maybeCfg <- sendIO $ atomically $ tryReadTMVar (telFossaConfig telCtx)
-          case maybeCfg of
-            Nothing -> ctx <$ sendIO (atomically $ putTMVar (telFossaConfig telCtx) (cmd, cfg))
-            Just _ -> ctx <$ pure ()
+        SetTelemetrySink sink -> sendSTM (ctx <$ tryPutTMVar telSink sink)
+        TrackUsage feat -> sendSTM (ctx <$ incCount feat telCounters)
+        TrackConfig cmd cfg -> sendSTM (ctx <$ tryPutTMVar telFossaConfig (cmd, cfg))
         TrackTimeSpent computeName act -> do
           (timeTook, res) <- timeItRealT (hdl (act <$ ctx))
-          void $ sendIO (atomically $ tryWriteTBMQueue (telTimeSpentQ telCtx) (TelemetryTimeSpent computeName timeTook))
+          void $ sendSTM $ tryWriteTBMQueue telTimeSpentQ $ TelemetryTimeSpent computeName timeTook
           pure res
         TrackRawLogMessage sev msg -> do
           currentTime <- sendIO getCurrentTime
-          ctx <$ sendIO (atomically $ tryWriteTBMQueue (telLogsQ telCtx) (TimedLogRecord currentTime sev msg))
+          ctx <$ sendSTM (tryWriteTBMQueue telLogsQ $ TimedLogRecord currentTime sev msg)
     R other -> TelemetryC (alg (runTelemetryC . hdl) (R other) ctx)
+
+sendSTM :: Has (Lift IO) sig m => STM a -> m a
+sendSTM = sendIO . atomically
 
 -- | Measures elapsed time in seconds to perform an action.
 -- It uses system clock to get the time before and after action.
@@ -98,7 +92,7 @@ withTelemetry action =
     $ \ctx -> runReader ctx . runTelemetryC $ action
   where
     teardownTelemetry ctx hadFatalException = do
-      telSink <- sendIO . atomically $ tryReadTMVar (telSink ctx)
+      telSink <- sendSTM $ tryReadTMVar (telSink ctx)
       case telSink of
         Nothing -> pure ()
         Just sink -> emitTelemetry sink =<< mkTelemetryRecord hadFatalException ctx
