@@ -20,7 +20,7 @@ import Control.Carrier.Telemetry.Types (
 import Control.Concurrent.STM (STM, atomically, newEmptyTMVarIO, tryReadTMVar)
 import Control.Concurrent.STM.TBMQueue (TBMQueue, newTBMQueueIO, tryReadTBMQueue)
 import Control.Monad (join, replicateM)
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (catMaybes)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Time (diffUTCTime, getCurrentTime, nominalDiffTimeToSeconds)
