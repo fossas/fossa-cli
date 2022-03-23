@@ -15,7 +15,8 @@ import Fossa.API.Types (Project (..), UploadResponse (..))
 import Srclib.Types (Locator)
 import Test.Effect (assertNotCalled, expectFatal', it', shouldBe', withMockApi)
 import Test.Fixtures qualified as Fixtures
-import Test.Hspec (SpecWith, describe)
+import Test.Hspec (Spec, describe)
+import Test.Hspec.Core.Spec (runIO)
 
 -- | Mock API for this spec that returns fixture data.
 -- The function under tests uses all of these.
@@ -35,16 +36,17 @@ mockGit (FetchGitContributors{}) = pure Fixtures.contributors
 expectedLocator :: Locator
 expectedLocator = uploadLocator Fixtures.uploadResponse
 
-spec :: SpecWith ()
+spec :: Spec
 spec =
   describe "uploadSuccessfulAnalysis" $ do
+    baseDir <- runIO Fixtures.baseDir
     it' "uploads analysis and git contributors"
       . withMockApi mockApi
       . withGit mockGit
       $ do
         locator <-
           uploadSuccessfulAnalysis
-            Fixtures.baseDir
+            baseDir
             Fixtures.projectMedata
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
@@ -59,7 +61,7 @@ spec =
       $ do
         locator <-
           uploadSuccessfulAnalysis
-            Fixtures.baseDir
+            baseDir
             Fixtures.projectMedata
             (toFlag (JsonOutput) True)
             Fixtures.projectRevision
@@ -74,7 +76,7 @@ spec =
       . withGit mockGit
       . expectFatal'
       $ uploadSuccessfulAnalysis
-        Fixtures.baseDir
+        baseDir
         Fixtures.projectMedata
         (toFlag (JsonOutput) False)
         Fixtures.projectRevision
@@ -89,7 +91,7 @@ spec =
       $ do
         locator <-
           uploadSuccessfulAnalysis
-            Fixtures.baseDir
+            baseDir
             Fixtures.projectMedata
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
@@ -101,7 +103,7 @@ spec =
       $ do
         locator <-
           uploadSuccessfulAnalysis
-            Fixtures.baseDir
+            baseDir
             Fixtures.projectMedata
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
@@ -117,7 +119,7 @@ spec =
       $ do
         locator <-
           uploadSuccessfulAnalysis
-            Fixtures.baseDir
+            baseDir
             Fixtures.projectMedata
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision

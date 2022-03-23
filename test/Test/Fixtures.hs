@@ -17,8 +17,9 @@ import App.Types qualified as App
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Fossa.API.Types qualified as API
-import Path (mkAbsDir)
+import Path (mkRelDir, parseAbsDir, (</>))
 import Srclib.Types (Locator (..), SourceUnit (..))
+import System.Directory (getTemporaryDirectory)
 import Text.URI.QQ (uri)
 import Types (GraphBreadth (..))
 
@@ -86,8 +87,12 @@ sourceUnits =
         }
     ]
 
-baseDir :: App.BaseDir
-baseDir = App.BaseDir $(mkAbsDir "/tmp/just-a-test-dir")
+-- | A base dir for testing.  This directory is not guaranteed to exist.  If you
+-- want a real directory you should use `withTempDir`.
+baseDir :: IO App.BaseDir
+baseDir = do
+  systemTempDir <- getTemporaryDirectory >>= parseAbsDir
+  pure . App.BaseDir $ systemTempDir </> $(mkRelDir "just-a-test-dir")
 
 contributors :: API.Contributors
 contributors =
