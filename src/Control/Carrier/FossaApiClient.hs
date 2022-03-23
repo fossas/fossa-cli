@@ -2,9 +2,9 @@
 
 module Control.Carrier.FossaApiClient (FossaApiClientC, runFossaApiClient) where
 
-import Control.Carrier.FossaApiClient.Internal.ScotlandYard qualified as ScotlandYard
-import Control.Carrier.FossaApiClient.Internal.Core qualified as Core
 import Control.Algebra (Has)
+import Control.Carrier.FossaApiClient.Internal.Core qualified as Core
+import Control.Carrier.FossaApiClient.Internal.ScotlandYard qualified as ScotlandYard
 import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Effect.Diagnostics (Diagnostics)

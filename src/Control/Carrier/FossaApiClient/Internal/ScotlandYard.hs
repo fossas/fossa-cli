@@ -5,12 +5,13 @@ module Control.Carrier.FossaApiClient.Internal.ScotlandYard (
   getLatestScan,
 ) where
 
-import Control.Effect.Reader (Reader, ask)
 import App.Fossa.VPS.Types (runHTTP)
+import App.Types (ProjectRevision (..))
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
+import Control.Effect.Reader (Reader, ask)
 import Control.Effect.Stack (Has)
-import Fossa.API.Types (ScanResponse, useApiOpts, ScanId (ScanId), ApiOpts)
+import Fossa.API.Types (ApiOpts, ScanId (ScanId), ScanResponse, useApiOpts)
 import Network.HTTP.Req (
   GET (GET),
   NoReqBody (NoReqBody),
@@ -24,7 +25,6 @@ import Network.HTTP.Req (
   (=:),
  )
 import Srclib.Types (Locator, renderLocator)
-import App.Types (ProjectRevision(..))
 
 -- Prefix for Core's reverse proxy to SY
 coreProxyPrefix :: Url 'Https -> Url 'Https
@@ -44,7 +44,7 @@ getLatestScan ::
   Locator ->
   ProjectRevision ->
   m ScanResponse
-getLatestScan locator ProjectRevision{projectRevision}  = runHTTP $ do
+getLatestScan locator ProjectRevision{projectRevision} = runHTTP $ do
   apiOpts <- ask
   (baseUrl, baseOptions) <- useApiOpts apiOpts
   let opts =

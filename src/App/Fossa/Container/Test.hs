@@ -20,6 +20,7 @@ import App.Fossa.Container.Scan (
   toContainerScan,
  )
 import App.Types (ProjectRevision (..))
+import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift, sendIO)
@@ -36,7 +37,6 @@ import Effect.Logger (
  )
 import Fossa.API.Types (Issues (..))
 import System.Exit (exitFailure)
-import Control.Carrier.FossaApiClient (runFossaApiClient)
 
 test ::
   ( Has Diagnostics sig m

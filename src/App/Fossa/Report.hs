@@ -13,6 +13,7 @@ import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), mkSubComman
 import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (ProjectRevision (..))
+import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift)
@@ -25,7 +26,6 @@ import Effect.Logger (
   logInfo,
   logStdout,
  )
-import Control.Carrier.FossaApiClient (runFossaApiClient)
 
 reportSubCommand :: SubCommand ReportCliOptions ReportConfig
 reportSubCommand = mkSubCommand report

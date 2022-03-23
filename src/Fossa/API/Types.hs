@@ -19,8 +19,8 @@ module Fossa.API.Types (
   Project (..),
   SignedURL (..),
   UploadResponse (..),
-  ScanId(..),
-  ScanResponse(..),
+  ScanId (..),
+  ScanResponse (..),
   useApiOpts,
 ) where
 

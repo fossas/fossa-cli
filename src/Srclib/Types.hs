@@ -98,11 +98,11 @@ parseLocator raw = Locator fetcher project (if Text.null revision then Nothing e
 
 createCustomLocator :: Text -> Int -> Locator
 createCustomLocator projectName organizationId =
-  Locator {
-    locatorFetcher = "custom",
-    locatorProject = toText (show organizationId) <> "/" <> projectName,
-    locatorRevision = Nothing
-  }
+  Locator
+    { locatorFetcher = "custom"
+    , locatorProject = toText (show organizationId) <> "/" <> projectName
+    , locatorRevision = Nothing
+    }
 
 instance ToJSON SourceUnit where
   toJSON SourceUnit{..} =
