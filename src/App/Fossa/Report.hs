@@ -25,6 +25,7 @@ import Effect.Logger (
   logInfo,
   logStdout,
  )
+import Control.Carrier.FossaApiClient (runFossaApiClient)
 
 reportSubCommand :: SubCommand ReportCliOptions ReportConfig
 reportSubCommand = mkSubCommand report
@@ -47,18 +48,18 @@ report ReportConfig{..} = do
     * Above includes errors, types, and scaffolding
   -}
   runStickyLogger SevInfo $
-    timeout' timeoutDuration $ \cancelToken -> do
+    runFossaApiClient apiOpts . timeout' timeoutDuration $ \cancelToken -> do
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForScanCompletion apiOpts revision cancelToken
+      waitForScanCompletion revision cancelToken
 
       logSticky "[ Waiting for issue scan completion... ]"
 
-      _ <- waitForIssues apiOpts revision cancelToken
+      _ <- waitForIssues revision cancelToken
 
       logSticky $ "[ Fetching " <> showT reportType <> " report... ]"
 

@@ -189,9 +189,7 @@ library
     App.Fossa.Report.Attribution
     App.Fossa.Subcommand
     App.Fossa.Test
-    App.Fossa.VPS.Scan.Core
     App.Fossa.VPS.Scan.RunWiggins
-    App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
     App.Fossa.VSI.DynLinked
@@ -225,6 +223,8 @@ library
     Control.Carrier.Diagnostics
     Control.Carrier.Finally
     Control.Carrier.FossaApiClient
+    Control.Carrier.FossaApiClient.Internal.Core
+    Control.Carrier.FossaApiClient.Internal.ScotlandYard
     Control.Carrier.Git
     Control.Carrier.Output.IO
     Control.Carrier.Simple

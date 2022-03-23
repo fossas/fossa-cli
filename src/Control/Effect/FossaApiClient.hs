@@ -4,17 +4,21 @@ module Control.Effect.FossaApiClient (
   FossaApiClientF (..),
   FossaApiClient,
   getApiOpts,
-  getProject,
+  getIssues,
+  getLatestBuild,
   getOrganization,
-  uploadContributors,
+  getProject,
+  getScan,
+  getLatestScan,
   uploadAnalysis,
+  uploadContributors,
 ) where
 
 import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
 import Data.List.NonEmpty qualified as NE
-import Fossa.API.Types (ApiOpts, Contributors, Organization, Project, UploadResponse)
+import Fossa.API.Types (ApiOpts, Contributors, Organization, Project, UploadResponse, Build, Issues, ScanId, ScanResponse)
 import Srclib.Types (Locator, SourceUnit)
 
 data FossaApiClientF a where
@@ -30,6 +34,10 @@ data FossaApiClientF a where
     Locator ->
     Contributors ->
     FossaApiClientF ()
+  GetLatestBuild :: ProjectRevision -> FossaApiClientF Build
+  GetIssues :: ProjectRevision -> FossaApiClientF Issues
+  GetScan :: Locator -> ScanId -> FossaApiClientF ScanResponse
+  GetLatestScan :: Locator -> ProjectRevision -> FossaApiClientF ScanResponse
 
 deriving instance Show (FossaApiClientF a)
 
@@ -55,3 +63,15 @@ uploadAnalysis revision metadata units = sendSimple (UploadAnalysis revision met
 -- | Associates contributors to a specific locator
 uploadContributors :: (Has FossaApiClient sig m) => Locator -> Contributors -> m ()
 uploadContributors locator contributors = sendSimple $ UploadContributors locator contributors
+
+getLatestBuild :: (Has FossaApiClient sig m) => ProjectRevision -> m Build
+getLatestBuild = sendSimple . GetLatestBuild
+
+getIssues :: (Has FossaApiClient sig m) => ProjectRevision -> m Issues
+getIssues = sendSimple . GetIssues
+
+getScan :: Has FossaApiClient sig m => Locator -> ScanId -> m ScanResponse
+getScan locator scanId = sendSimple $ GetScan locator scanId
+
+getLatestScan :: Has FossaApiClient sig m => Locator -> ProjectRevision -> m ScanResponse
+getLatestScan locator revision = sendSimple $ GetLatestScan locator revision
