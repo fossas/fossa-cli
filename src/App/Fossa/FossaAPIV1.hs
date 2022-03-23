@@ -77,6 +77,7 @@ import Effect.Logger (
  )
 import Fossa.API.Types (
   ApiOpts,
+  Archive,
   ArchiveComponents (ArchiveComponents),
   Build,
   Contributors,
