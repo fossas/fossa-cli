@@ -85,7 +85,17 @@ jobs:
         shell: pwsh
         run: |
           # Get Scoop
-          iwr -useb get.scoop.sh | iex
+
+          # We are installing scoop as admin for workaround, to: 
+          #   https://github.com/fossas/fossa-cli/runs/5503534701?check_suite_focus=true
+          #
+          # Error:
+          #   Running the installer as administrator is disabled by default, use -RunAsAdmin parameter if you know what you are doing.
+          #
+          # Note, github's windows hosted runners by default use admin user without UAC.
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+          iwr -useb 'https://raw.githubusercontent.com/scoopinstaller/install/master/install.ps1' -outfile 'install.ps1'
+          .\install.ps1 -RunAsAdmin
 
           # Use Scoop to install fossa
           # Reference: https://github.com/ScoopInstaller/Main/pull/2778/files

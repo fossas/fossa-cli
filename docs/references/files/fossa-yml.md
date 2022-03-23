@@ -61,10 +61,10 @@ Sets the [FOSSA API key](https://docs.fossa.com/docs/api-reference#api-tokens) t
 ### `project:`
 The project fields allow you to configure settings for the project you are interacting with through the FOSSA API.
 
-> Note: `name`, `team`, `policy`, `link`, `url`, and `jiraProjectKey` can only be set when creating a project (running `fossa analyze` for the first time).
+> Note: `name`, `team`, `policy`, `link`, and `jiraProjectKey` can only be set when creating a project (running `fossa analyze` for the first time).  Otherwise, they will be silently ignored (we would like to make this a visible warning in the future).
 
 ### `project.id:`
-The project ID defines a unique ID that the FOSSA API will use to reference this project. The project ID can be found in the UI on the project settings page listed as the "Project Locator" underneath the "Project Title" setting.
+The project ID defines a unique ID that the FOSSA API will use to reference this project. The project ID can be found in the UI on the project settings page listed as the "Project Locator" underneath the "Project Title" setting. For example, if the "Project Locator" value of `custom+1/foo` is provided in the FOSSA UI, use `foo` for the `project.id`.
 
 Default: 
 - Git: The CLI will look for a `.git/config` file and set the ID to the project's remote "origin" url. 
@@ -167,7 +167,7 @@ The list of paths to exclude from scanning in your directory.
 This section is intended to be used as the inverse to `paths.only`. If you have a certain directory such as `development` you wish to exclude, `paths.exclude` enables you to do this.
 
 ### Analysis target configuration
-Analysis target configuration allows you to select a very specific subset of your directory for scanning. The `target` and `path` sections allow users to configure which targets and directories should be scanned. This is useful if you have a custom test directory or development projects within the root project.
+Analysis target configuration allows you to select a very specific subset of your directory for scanning. The `targets` and `paths` sections allow users to configure which targets and directories should be scanned. This is useful if you have a custom test directory or development projects within the root project.
 
 Analysis target configuration determines which targets should be scanned with the following logic:
 1. Targets that match the `targets.only` and `paths.only` sections are unioned to create a list of targets to be scanned.

@@ -7,17 +7,27 @@ module App.Fossa.API.BuildLink (
   samlUrlPath,
 ) where
 
-import App.Fossa.FossaAPIV1 (Organization (..), getOrganization)
-import App.Types
-import Control.Effect.Diagnostics hiding (fromMaybe)
-import Control.Effect.Lift
+import App.Types (ProjectRevision (..))
+import Control.Effect.Diagnostics (Diagnostics, Has, recover)
+import Control.Effect.FossaApiClient (
+  FossaApiClient,
+  getApiOpts,
+  getOrganization,
+ )
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text.Extra (showT)
-import Fossa.API.Types (ApiOpts (..))
+import Fossa.API.Types (ApiOpts (..), Organization (..))
 import Srclib.Types (Locator (..))
 import Text.URI qualified as URI
-import Text.URI.Builder
+import Text.URI.Builder (
+  PathComponent (PathComponent),
+  Query (Pair),
+  TrailingSlash (TrailingSlash),
+  renderPath,
+  setPath,
+  setQuery,
+ )
 import Text.URI.QQ (uri)
 
 fossaProjectUrlPath :: Locator -> ProjectRevision -> [PathComponent]
@@ -31,14 +41,15 @@ fossaProjectUrlPath Locator{..} ProjectRevision{..} = map PathComponent componen
     -- be made allowing a link to a known revision on an unknown default branch.
     branch = fromMaybe "master" projectBranch
 
-getFossaBuildUrl :: (Has Diagnostics sig m, Has (Lift IO) sig m) => ProjectRevision -> ApiOpts -> Locator -> m Text
-getFossaBuildUrl revision apiopts locator = do
-  maybeOrg <- recover $ getOrganization apiopts
-  getBuildURLWithOrg maybeOrg revision apiopts locator
+getFossaBuildUrl :: (Has Diagnostics sig m, Has FossaApiClient sig m) => ProjectRevision -> Locator -> m Text
+getFossaBuildUrl revision locator = do
+  maybeOrg <- recover getOrganization
+  apiOpts <- getApiOpts
+  getBuildURLWithOrg maybeOrg revision apiOpts locator
 
 getBuildURLWithOrg :: Has Diagnostics sig m => Maybe Organization -> ProjectRevision -> ApiOpts -> Locator -> m Text
-getBuildURLWithOrg maybeOrg revision apiopts locator = do
-  let baseURI = fromMaybe [uri|https://app.fossa.com|] (apiOptsUri apiopts)
+getBuildURLWithOrg maybeOrg revision apiOpts locator = do
+  let baseURI = fromMaybe [uri|https://app.fossa.com|] (apiOptsUri apiOpts)
       projectPath = fossaProjectUrlPath locator revision
 
   (path, query) <- case maybeOrg of

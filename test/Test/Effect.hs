@@ -1,6 +1,7 @@
 module Test.Effect (
   expectationFailure',
   expectFailure',
+  expectFatal',
   shouldBe',
   shouldSatisfy',
   shouldStartWith',
@@ -11,6 +12,8 @@ module Test.Effect (
   it',
   fit',
   xit',
+  withTempDir,
+  withMockApi,
 ) where
 
 import Control.Effect.Lift (Has, Lift, sendIO)
@@ -31,15 +34,26 @@ import Test.Hspec (
  )
 
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
+import Control.Carrier.Finally (FinallyC, runFinally)
+import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Carrier.Stack (StackC, runStack)
+import Control.Effect.Diagnostics (Diagnostics, errorBoundary)
+import Control.Effect.Finally (Finally, onExit)
+import Control.Effect.FossaApiClient (FossaApiClientF)
+import Data.Bits (finiteBitSize)
 import Data.String.Conversion (toString)
 import Diag.Result (Result (Failure, Success), renderFailure)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (IgnoreLoggerC, ignoreLogger, renderIt)
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
+import Path (Abs, Dir, Path, parseAbsDir, parseRelDir, (</>))
+import Path.IO (createDirIfMissing, removeDirRecur)
 import ResultUtil (expectFailure)
+import System.Directory (getTemporaryDirectory)
+import System.Random (randomIO)
+import Text.Printf (printf)
 
-type EffectStack a = ExecIOC (ReadFSIOC (DiagnosticsC (IgnoreLoggerC (StackC IO)))) a
+type EffectStack a = FinallyC (ExecIOC (ReadFSIOC (DiagnosticsC (IgnoreLoggerC (StackC IO))))) a
 
 -- TODO: add useful describe, naive describe' doesn't work.
 
@@ -56,7 +70,7 @@ runTestEffects' :: EffectStack () -> Spec
 runTestEffects' = runIO . runTestEffects
 
 runTestEffects :: EffectStack () -> IO ()
-runTestEffects = runStack . ignoreLogger . handleDiag . runReadFSIO . runExecIO
+runTestEffects = runStack . ignoreLogger . handleDiag . runReadFSIO . runExecIO . runFinally
   where
     handleDiag :: (Has (Lift IO) sig m) => DiagnosticsC m () -> m ()
     handleDiag diag =
@@ -64,6 +78,18 @@ runTestEffects = runStack . ignoreLogger . handleDiag . runReadFSIO . runExecIO
         Failure ws eg -> do
           expectationFailure' $ toString $ renderIt $ renderFailure ws eg "An issue occurred"
         Success _ _ -> pure ()
+
+-- | Create a temporary directory with the given name.  The directory will be
+-- created in the system temporary directory.  It will be deleted after use.
+withTempDir :: (Has (Lift IO) sig m, Has Finally sig m) => FilePath -> (Path Abs Dir -> m a) -> m a
+withTempDir name f = do
+  systemTempDir <- sendIO (getTemporaryDirectory >>= parseAbsDir)
+  randomJunk :: Word <- sendIO randomIO
+  testRelDir <- sendIO . parseRelDir $ name ++ printf "-%.*x" (finiteBitSize randomJunk `div` 4) randomJunk
+  let testDir = systemTempDir </> testRelDir
+  onExit . sendIO $ removeDirRecur testDir
+  sendIO $ createDirIfMissing True testDir
+  f testDir
 
 expectationFailure' :: (Has (Lift IO) sig m) => String -> m ()
 expectationFailure' = sendIO . expectationFailure
@@ -88,3 +114,12 @@ shouldMatchList' a b = sendIO $ shouldMatchList a b
 
 expectFailure' :: Has (Lift IO) sig m => Result a -> m ()
 expectFailure' res = sendIO $ expectFailure res
+
+-- | Succeeds if the action fails and fails otherwise.
+expectFatal' :: (Has Diagnostics sig m, Has (Lift IO) sig m) => m a -> m ()
+expectFatal' f = do
+  errorBoundary f >>= expectFailure'
+
+-- | Runs a stateless API mock.
+withMockApi :: (forall x. FossaApiClientF x -> m x) -> SimpleC FossaApiClientF m a -> m a
+withMockApi = interpret

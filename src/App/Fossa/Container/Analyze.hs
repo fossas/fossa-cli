@@ -17,8 +17,9 @@ import App.Fossa.Config.Container (
  )
 import App.Fossa.Config.Container.Common (ImageText (ImageText))
 import App.Fossa.Container.Scan (extractRevision, runSyft, toContainerScan)
-import App.Fossa.FossaAPIV1 (UploadResponse (uploadError, uploadLocator), uploadContainerScan)
+import App.Fossa.FossaAPIV1 (uploadContainerScan)
 import App.Types (ProjectRevision (..))
+import Control.Carrier.FossaApiClient
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, errCtx, renderDiagnostic)
 import Control.Effect.Lift (Lift)
 import Data.Aeson (encode)
@@ -37,6 +38,7 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
+import Fossa.API.Types (UploadResponse (uploadError, uploadLocator))
 import Prettyprinter (Doc, indent, vsep)
 import Srclib.Types (parseLocator)
 
@@ -52,7 +54,7 @@ analyze ContainerAnalyzeConfig{..} = do
   containerScan <- errCtx (SyftScanFailed imageLocator) (runSyft imageLocator >>= toContainerScan)
   case scanDestination of
     OutputStdout -> logStdout . decodeUtf8 $ encode containerScan
-    UploadScan apiOpts projectMeta -> do
+    UploadScan apiOpts projectMeta -> runFossaApiClient apiOpts $ do
       let revision = extractRevision revisionOverride containerScan
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
@@ -61,7 +63,7 @@ analyze ContainerAnalyzeConfig{..} = do
 
       resp <- uploadContainerScan apiOpts revision projectMeta containerScan
 
-      buildUrl <- getFossaBuildUrl revision apiOpts . parseLocator $ uploadLocator resp
+      buildUrl <- getFossaBuildUrl revision . parseLocator $ uploadLocator resp
       logInfo "View FOSSA Report:"
       logInfo ("  " <> pretty buildUrl)
       -- Report non-critical errors

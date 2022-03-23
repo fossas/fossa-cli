@@ -1,5 +1,21 @@
 # Fossa CLI Changelog
 
+## v3.1.6
+- Respects Go module replacement directives in the Go Mod Graph strategy. ([#841](https://github.com/fossas/fossa-cli/pull/841)) 
+
+## v3.1.5
+
+- Adds `--format` to `fossa report attribution` and deprecates `--json`. ([#844](https://github.com/fossas/fossa-cli/pull/844))
+
+## v3.1.4
+
+- Handles symlink loops in directory structure. ([#827](https://github.com/fossas/fossa-cli/pull/827))
+- No longer crashes when `fossa-deps.yml` exists but has an empty `archived-dependencies` property. ([#832](https://github.com/fossas/fossa-cli/pull/832))
+
+## v3.1.3
+
+- Adds support for identifying dynamically linked dependencies in an output binary. ([#818](https://github.com/fossas/fossa-cli/pull/818), [#788](https://github.com/fossas/fossa-cli/pull/788), [#780](https://github.com/fossas/fossa-cli/pull/780), [#788](https://github.com/fossas/fossa-cli/pull/778), [#771](https://github.com/fossas/fossa-cli/pull/771), [#770](https://github.com/fossas/fossa-cli/pull/770))
+
 ## v3.1.2
 
 - Fixes a bug which ignored the `server` field in the config file. ([#821](https://github.com/fossas/fossa-cli/pull/821))

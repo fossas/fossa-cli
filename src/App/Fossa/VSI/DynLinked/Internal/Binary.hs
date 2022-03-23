@@ -5,8 +5,9 @@ module App.Fossa.VSI.DynLinked.Internal.Binary (
   LocalDependency (..),
 ) where
 
+import App.Fossa.VSI.DynLinked.Util (runningLinux)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, recover)
+import Control.Effect.Diagnostics (Diagnostics)
 import Control.Monad (void)
 import Data.Char (isSpace)
 import Data.Maybe (catMaybes)
@@ -17,21 +18,16 @@ import Data.Text (Text)
 import Data.Void (Void)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
 import Path (Abs, File, Path, parent, parseAbsFile)
-import System.Info qualified as SysInfo
-import Text.Megaparsec (Parsec, between, empty, eof, many, takeWhile1P, try, (<|>))
+import Text.Megaparsec (Parsec, between, empty, eof, many, optional, takeWhile1P, try, (<|>))
 import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 
 -- | Report the list of dynamically linked dependencies of the target executable as a set of file paths.
 -- This is currently a stub for non-linux targets: on these systems an empty set is reported.
 dynamicLinkedDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs File -> m (Set (Path Abs File))
-dynamicLinkedDependencies file | SysInfo.os == "linux" = do
-  -- If the target isn't a dynamically linked dependency, @ldd@ exits with code 1.
-  -- Handle this and any other issues by stashing them in @Diagnostics@ so we can just warn the user about it at the end.
-  deps <- recover . execParser lddParseLocalDependencies (parent file) $ lddCommand file
-  case deps of
-    Nothing -> pure Set.empty
-    Just paths -> pure . Set.fromList $ map localDependencyPath paths
+dynamicLinkedDependencies file | runningLinux = do
+  deps <- execParser lddParseLocalDependencies (parent file) $ lddCommand file
+  pure . Set.fromList $ map localDependencyPath deps
 dynamicLinkedDependencies _ = pure Set.empty
 
 lddCommand :: Path Abs File -> Command
@@ -79,7 +75,7 @@ lddParseLocalDependencies =
           <|> try lddConsumeLinker
           <|> try lddParseDependency
       )
-      <* eof
+    <* eof
 
 lddParseDependency :: Parser (Maybe LocalDependency)
 lddParseDependency = Just <$> (LocalDependency <$> (linePrefix *> ident) <* symbol "=>" <*> path <* printedHex)
@@ -89,12 +85,14 @@ lddParseDependency = Just <$> (LocalDependency <$> (linePrefix *> ident) <* symb
 -- > linux-vdso.so.1 => (0x00007ffc28d59000)
 --
 -- In other words, such libraries are in the format @{name}{literal =>}{memory address}@.
+-- Sometimes, the => is optional. Why this happens isn't well documented and I haven't found anything different
+-- between the cases where => is included and when it's excluded.
 --
 -- We want to ignore these, so just consume them:
 -- this parser always returns @Nothing@ after having consumed the line.
 lddConsumeSyscallLib :: Parser (Maybe LocalDependency)
 lddConsumeSyscallLib = do
-  _ <- linePrefix <* ident <* symbol "=>" <* printedHex
+  _ <- linePrefix <* ident <* optional (symbol "=>") <* printedHex
   pure Nothing
 
 -- | The linker appears as the following in @ldd@ output:

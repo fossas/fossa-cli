@@ -47,6 +47,12 @@ spec = do
       realOutputUbuntu `shouldParseOutputInto` realOutputUbuntuExpected
       realOutputAlpine `shouldParseOutputInto` realOutputAlpineExpected
 
+    Hspec.it "should parse output with multiple lines, ignoring appropriately, with optional => literal" $ do
+      syscallPresentVariant `shouldParseOutputInto` syscallPresentExpected
+      linkerPresent `shouldParseOutputInto` linkerPresentExpected
+      realOutputUbuntu `shouldParseOutputInto` realOutputUbuntuExpected
+      realOutputAlpine `shouldParseOutputInto` realOutputAlpineExpected
+
 parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Hspec.Expectation
 parseMatch parser input expected = parse parser "" input `shouldParse` expected
 
@@ -81,6 +87,12 @@ multipleLineExpected =
 syscallPresent :: Text
 syscallPresent =
   [r|  linux-vdso.so.1 =>  (0x00007ffc28d59000)
+       libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)
+  |]
+
+syscallPresentVariant :: Text
+syscallPresentVariant =
+  [r|  linux-vdso.so.1 (0x00007ffc28d59000)
        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)
   |]
 

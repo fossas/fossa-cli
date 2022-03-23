@@ -118,6 +118,7 @@ common deps
     , tomland                      ^>=1.3.3.0
     , transformers
     , typed-process                ^>=0.2.6
+    , unix-compat                  ^>=0.5.4
     , unordered-containers         ^>=0.2.10
     , vector                       ^>=0.12.0.3
     , versions                     ^>=5.0.0
@@ -176,6 +177,7 @@ library
     App.Fossa.Container.Analyze
     App.Fossa.Container.Scan
     App.Fossa.Container.Test
+    App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
     App.Fossa.FossaAPIV1
     App.Fossa.ListTargets
@@ -192,9 +194,9 @@ library
     App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
+    App.Fossa.VSI.DynLinked
     App.Fossa.VSI.DynLinked.Internal.Binary
     App.Fossa.VSI.DynLinked.Internal.Lookup
-    App.Fossa.VSI.DynLinked.Internal.Lookup.APK
     App.Fossa.VSI.DynLinked.Internal.Lookup.DEB
     App.Fossa.VSI.DynLinked.Internal.Lookup.RPM
     App.Fossa.VSI.DynLinked.Internal.Resolve
@@ -222,6 +224,8 @@ library
     Control.Carrier.Debug
     Control.Carrier.Diagnostics
     Control.Carrier.Finally
+    Control.Carrier.FossaApiClient
+    Control.Carrier.Git
     Control.Carrier.Output.IO
     Control.Carrier.Simple
     Control.Carrier.Stack
@@ -235,6 +239,8 @@ library
     Control.Effect.Debug
     Control.Effect.Diagnostics
     Control.Effect.Finally
+    Control.Effect.FossaApiClient
+    Control.Effect.Git
     Control.Effect.Output
     Control.Effect.Path
     Control.Effect.Record
@@ -363,6 +369,7 @@ library
     Strategy.Ruby.BundleShow
     Strategy.Ruby.Errors
     Strategy.Ruby.GemfileLock
+    Strategy.Ruby.Parse
     Strategy.Scala
     Strategy.Swift.Errors
     Strategy.Swift.PackageResolved
@@ -372,7 +379,6 @@ library
     Strategy.SwiftPM
     Text.URI.Builder
     Types
-    VCS.Git
 
   hs-source-dirs:  src
 
@@ -410,16 +416,17 @@ test-suite unit-tests
     App.Fossa.Report.AttributionSpec
     App.Fossa.Report.Log4jReportSpec
     App.Fossa.VSI.DynLinked.Internal.BinarySpec
-    App.Fossa.VSI.DynLinked.Internal.Lookup.APKSpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.DEBSpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.RPMSpec
     App.Fossa.VSI.DynLinked.Internal.ResolveSpec
     App.Fossa.VSI.DynLinked.UtilSpec
     App.Fossa.VSI.FingerprintSpec
+    BundlerSpec
     Cargo.CargoTomlSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec
+    Cocoapods.CocoapodsSpec
     Cocoapods.PodfileLockSpec
     Cocoapods.PodfileSpec
     Composer.ComposerJsonSpec
@@ -433,6 +440,7 @@ test-suite unit-tests
     Dart.PubSpecSpec
     Discovery.ArchiveSpec
     Discovery.FiltersSpec
+    Discovery.WalkSpec
     Effect.ExecSpec
     Elixir.MixTreeSpec
     Erlang.ConfigParserSpec
@@ -481,6 +489,7 @@ test-suite unit-tests
     RPM.SpecFileSpec
     Ruby.BundleShowSpec
     Ruby.GemfileLockSpec
+    Ruby.ParseSpec
     Swift.PackageResolvedSpec
     Swift.PackageSwiftSpec
     Swift.Xcode.PbxprojParserSpec

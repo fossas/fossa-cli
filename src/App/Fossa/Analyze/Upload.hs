@@ -5,8 +5,6 @@ module App.Fossa.Analyze.Upload (
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
 import App.Fossa.FossaAPIV1 (
-  Project (projectIsMonorepo),
-  UploadResponse (uploadError, uploadLocator),
   getProject,
   uploadAnalysis,
   uploadContributors,
@@ -16,6 +14,7 @@ import App.Types (
   ProjectMetadata,
   ProjectRevision (projectBranch, projectName, projectRevision),
  )
+import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
@@ -23,6 +22,7 @@ import Control.Effect.Diagnostics (
   fromMaybeText,
   recover,
  )
+import Control.Effect.Git (Git, fetchGitContributors)
 import Control.Effect.Lift (Lift)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
@@ -33,7 +33,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
-import Effect.Exec (Exec, runExecIO)
 import Effect.Logger (
   Has,
   Logger,
@@ -43,19 +42,19 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
-import Fossa.API.Types (ApiOpts)
+import Fossa.API.Types (ApiOpts, Project (projectIsMonorepo), UploadResponse (uploadError, uploadLocator))
 import Path (Abs, Dir, Path)
 import Srclib.Types (
   Locator (locatorProject, locatorRevision),
   SourceUnit,
   parseLocator,
  )
-import VCS.Git (fetchGitContributors)
 
 uploadSuccessfulAnalysis ::
   ( Has Diagnostics sig m
   , Has Logger sig m
   , Has (Lift IO) sig m
+  , Has Git sig m
   ) =>
   BaseDir ->
   ApiOpts ->
@@ -64,40 +63,41 @@ uploadSuccessfulAnalysis ::
   ProjectRevision ->
   NE.NonEmpty SourceUnit ->
   m Locator
-uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput revision units = context "Uploading analysis" $ do
-  logInfo ""
-  logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
-  logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
-  let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
-  logInfo ("Using branch: `" <> pretty branchText <> "`")
+uploadSuccessfulAnalysis (BaseDir basedir) apiOpts metadata jsonOutput revision units =
+  context "Uploading analysis" . runFossaApiClient apiOpts $ do
+    logInfo ""
+    logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
+    logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
+    let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
+    logInfo ("Using branch: `" <> pretty branchText <> "`")
 
-  dieOnMonorepoUpload apiOpts revision
+    dieOnMonorepoUpload apiOpts revision
 
-  uploadResult <- uploadAnalysis apiOpts revision metadata units
-  let locator = parseLocator $ uploadLocator uploadResult
-  buildUrl <- getFossaBuildUrl revision apiOpts locator
-  traverse_
-    logInfo
-    [ "============================================================"
-    , ""
-    , "    View FOSSA Report:"
-    , "    " <> pretty buildUrl
-    , ""
-    , "============================================================"
-    ]
-  traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError uploadResult)
-  -- Warn on contributor errors, never fail
-  void . recover . runExecIO $ tryUploadContributors basedir apiOpts (uploadLocator uploadResult)
+    uploadResult <- uploadAnalysis apiOpts revision metadata units
+    let locator = parseLocator $ uploadLocator uploadResult
+    buildUrl <- getFossaBuildUrl revision locator
+    traverse_
+      logInfo
+      [ "============================================================"
+      , ""
+      , "    View FOSSA Report:"
+      , "    " <> pretty buildUrl
+      , ""
+      , "============================================================"
+      ]
+    traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError uploadResult)
+    -- Warn on contributor errors, never fail
+    void . recover $ tryUploadContributors basedir apiOpts (uploadLocator uploadResult)
 
-  if fromFlag JsonOutput jsonOutput
-    then do
-      summary <-
-        context "Analysis ran successfully, but the server returned invalid metadata" $
-          buildProjectSummary revision (uploadLocator uploadResult) buildUrl
-      logStdout . decodeUtf8 $ Aeson.encode summary
-    else pure ()
+    if fromFlag JsonOutput jsonOutput
+      then do
+        summary <-
+          context "Analysis ran successfully, but the server returned invalid metadata" $
+            buildProjectSummary revision (uploadLocator uploadResult) buildUrl
+        logStdout . decodeUtf8 $ Aeson.encode summary
+      else pure ()
 
-  pure locator
+    pure locator
 
 dieOnMonorepoUpload :: (Has Diagnostics sig m, Has (Lift IO) sig m) => ApiOpts -> ProjectRevision -> m ()
 dieOnMonorepoUpload apiOpts revision = do
@@ -108,7 +108,7 @@ dieOnMonorepoUpload apiOpts revision = do
 
 tryUploadContributors ::
   ( Has Diagnostics sig m
-  , Has Exec sig m
+  , Has Git sig m
   , Has (Lift IO) sig m
   ) =>
   Path Abs Dir ->

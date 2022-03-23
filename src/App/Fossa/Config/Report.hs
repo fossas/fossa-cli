@@ -3,6 +3,7 @@
 module App.Fossa.Config.Report (
   ReportConfig (..),
   ReportCliOptions,
+  ReportOutputFormat (..),
   mkSubCommand,
 ) where
 
@@ -20,12 +21,13 @@ import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
-import Control.Effect.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), fatal, fromMaybe)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Timeout (Duration (Seconds))
 import Data.List (intercalate)
+import Data.String.Conversion (ToText, toText)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, Severity (..))
+import Effect.Logger (Logger, Severity (..), pretty)
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import Options.Applicative (
@@ -40,6 +42,7 @@ import Options.Applicative (
   option,
   optional,
   progDesc,
+  strOption,
   switch,
  )
 import Path.IO (getCurrentDir)
@@ -49,11 +52,31 @@ data ReportType = Attribution deriving (Eq, Ord, Enum, Bounded)
 instance Show ReportType where
   show Attribution = "attribution"
 
--- TODO: Add support for text-format reports
 data ReportOutputFormat
   = ReportJson
-  -- ReportPretty
-  deriving (Eq, Ord, Show)
+  | ReportMarkdown
+  | ReportSpdx
+  deriving (Eq, Ord, Enum, Bounded)
+
+parseReportOutputFormat :: String -> Maybe ReportOutputFormat
+parseReportOutputFormat s | s == show ReportJson = Just ReportJson
+parseReportOutputFormat s | s == show ReportSpdx = Just ReportSpdx
+parseReportOutputFormat s | s == show ReportMarkdown = Just ReportMarkdown
+parseReportOutputFormat _ = Nothing
+
+instance ToText ReportOutputFormat where
+  toText = toText . show
+
+instance Show ReportOutputFormat where
+  show ReportJson = "json"
+  show ReportMarkdown = "markdown"
+  show ReportSpdx = "spdx"
+
+reportOutputFormatList :: String
+reportOutputFormatList = intercalate ", " $ map show allFormats
+  where
+    allFormats :: [ReportOutputFormat]
+    allFormats = enumFromTo minBound maxBound
 
 reportInfo :: InfoMod a
 reportInfo = progDesc desc
@@ -73,7 +96,8 @@ parser :: Parser ReportCliOptions
 parser =
   ReportCliOptions
     <$> commonOpts
-    <*> switch (long "json" <> help "Output the report in JSON format (Currently required).")
+    <*> switch (long "json" <> help "Output the report in JSON format. Equivalent to '--format json', and overrides --format. Deprecated: prefer --format")
+    <*> optional (strOption (long "format" <> help ("Output the report in the specified format. Currently available formats: (" <> reportOutputFormatList <> ")")))
     <*> optional (option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)"))
     <*> reportTypeArg
     <*> baseDirArg
@@ -89,6 +113,7 @@ reportTypeArg = argument (maybeReader parseType) (metavar "REPORT" <> help "The 
 data ReportCliOptions = ReportCliOptions
   { commons :: CommonOpts
   , cliReportJsonOutput :: Bool
+  , cliReportOutputFormat :: Maybe String
   , cliReportTimeout :: Maybe Int
   , cliReportType :: ReportType
   , cliReportBaseDir :: FilePath
@@ -123,7 +148,7 @@ mergeOpts ::
 mergeOpts cfgfile envvars ReportCliOptions{..} = do
   let apiOpts = collectApiOpts cfgfile envvars commons
       basedir = collectBaseDir cliReportBaseDir
-      outputformat = validateOutputFormat cliReportJsonOutput
+      outputformat = validateOutputFormat cliReportJsonOutput cliReportOutputFormat
       timeoutduration = maybe defaultTimeoutDuration Seconds cliReportTimeout
       revision =
         collectRevisionData' basedir cfgfile ReadOnly $
@@ -136,11 +161,26 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
     <*> pure cliReportType
     <*> revision
 
-validateOutputFormat :: Has Diagnostics sig m => Bool -> m ReportOutputFormat
-validateOutputFormat doJson =
-  if doJson
-    then pure ReportJson
-    else fatalText "Plaintext reports are not available for this report."
+data NoFormatProvided = NoFormatProvided
+instance ToDiagnostic NoFormatProvided where
+  renderDiagnostic NoFormatProvided =
+    pretty $
+      "Provide a format option via '--format' to render this report. Supported formats: "
+        <> (toText reportOutputFormatList)
+
+newtype InvalidReportFormat = InvalidReportFormat String
+instance ToDiagnostic InvalidReportFormat where
+  renderDiagnostic (InvalidReportFormat fmt) =
+    pretty $
+      "Report format "
+        <> toText fmt
+        <> " is not supported. Supported formats: "
+        <> (toText reportOutputFormatList)
+
+validateOutputFormat :: Has Diagnostics sig m => Bool -> Maybe String -> m ReportOutputFormat
+validateOutputFormat True _ = pure ReportJson
+validateOutputFormat False Nothing = fatal NoFormatProvided
+validateOutputFormat False (Just format) = fromMaybe (InvalidReportFormat format) $ parseReportOutputFormat format
 
 data ReportConfig = ReportConfig
   { apiOpts :: ApiOpts

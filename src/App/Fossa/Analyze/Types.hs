@@ -42,6 +42,7 @@ data AnalysisScanResult = AnalysisScanResult
   , vsiScanResult :: Result (Maybe SourceUnit)
   , binaryDepsScanResult :: Result (Maybe SourceUnit)
   , fossaDepsScanResult :: Result (Maybe SourceUnit)
+  , dynamicLinkingResult :: Result (Maybe SourceUnit)
   }
 
 data DiscoveredProjectScan

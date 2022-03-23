@@ -1,18 +1,22 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE QuasiQuotes #-}
 
 module App.Fossa.API.BuildLinkSpec (spec) where
 
-import App.Fossa.API.BuildLink (getBuildURLWithOrg)
-import App.Fossa.FossaAPIV1 (Organization (Organization))
+import App.Fossa.API.BuildLink (getBuildURLWithOrg, getFossaBuildUrl)
 import App.Types (ProjectRevision (ProjectRevision))
-import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
-import Control.Carrier.Stack (StackC, runStack)
-import Data.Functor.Identity (Identity (runIdentity))
+import Control.Effect.FossaApiClient (
+  FossaApiClientF (GetApiOpts, GetOrganization),
+ )
 import Data.Text (Text)
-import Diag.Result (resultToMaybe)
-import Fossa.API.Types
+import Fossa.API.Types (
+  ApiKey (ApiKey),
+  ApiOpts (ApiOpts),
+  Organization (Organization),
+ )
 import Srclib.Types (Locator (Locator))
-import Test.Hspec (Spec, describe, it, shouldBe)
+import Test.Effect (it', shouldBe', withMockApi)
+import Test.Hspec (Spec, describe)
 import Text.URI.QQ (uri)
 
 simpleSamlPath :: Text
@@ -31,42 +35,53 @@ fullSamlURL = "https://app.fossa.com/account/saml/33?next=/projects/a%252bb/refs
 simpleStandardURL :: Text
 simpleStandardURL = "https://app.fossa.com/projects/haskell%2b89%2fspectrometer/refs/branch/master/revision123"
 
-stripDiag :: DiagnosticsC (StackC Identity) a -> Maybe a
-stripDiag = resultToMaybe . runIdentity . runStack . runDiagnostics
-
 spec :: Spec
 spec = do
-  let apiOpts = ApiOpts (Just [uri|https://app.fossa.com/|]) $ ApiKey ""
-  describe "SAML URL builder" $ do
-    it "should render simple locators" $ do
-      let locator = Locator "fetcher123" "project123" $ Just "revision123"
-          org = Just $ Organization 1 True
-          revision = ProjectRevision "" "not this revision" $ Just "master123"
-          -- Loggers and Diagnostics modify monads, so we need a no-op monad
-          actual = stripDiag $ getBuildURLWithOrg org revision apiOpts locator
+  describe "BuildLink" $ do
+    let apiOpts = ApiOpts (Just [uri|https://app.fossa.com/|]) $ ApiKey ""
+    describe "SAML URL builder" $ do
+      it' "should render simple locators" $ do
+        let locator = Locator "fetcher123" "project123" $ Just "revision123"
+            org = Just $ Organization 1 True False
+            revision = ProjectRevision "" "not this revision" $ Just "master123"
+        actual <- getBuildURLWithOrg org revision apiOpts locator
 
-      actual `shouldBe` Just simpleSamlPath
+        actual `shouldBe'` simpleSamlPath
 
-    it "should render git@ locators" $ do
-      let locator = Locator "fetcher@123/abc" "git@github.com/user/repo" $ Just "revision@123/abc"
-          org = Just $ Organization 103 True
-          revision = ProjectRevision "not this project name" "not this revision" $ Just "weird--branch"
-          actual = stripDiag $ getBuildURLWithOrg org revision apiOpts locator
+      it' "should render git@ locators" $ do
+        let locator = Locator "fetcher@123/abc" "git@github.com/user/repo" $ Just "revision@123/abc"
+            org = Just $ Organization 103 True False
+            revision = ProjectRevision "not this project name" "not this revision" $ Just "weird--branch"
+        actual <- getBuildURLWithOrg org revision apiOpts locator
 
-      actual `shouldBe` Just gitSamlPath
+        actual `shouldBe'` gitSamlPath
 
-    it "should render full url correctly" $ do
-      let locator = Locator "a" "b" $ Just "c"
-          org = Just $ Organization 33 True
-          revision = ProjectRevision "" "not this revision" $ Just "master"
-          actual = stripDiag $ getBuildURLWithOrg org revision apiOpts locator
+      it' "should render full url correctly" $ do
+        let locator = Locator "a" "b" $ Just "c"
+            org = Just $ Organization 33 True False
+            revision = ProjectRevision "" "not this revision" $ Just "master"
+        actual <- getBuildURLWithOrg org revision apiOpts locator
 
-      actual `shouldBe` Just fullSamlURL
+        actual `shouldBe'` fullSamlURL
 
-  describe "Standard URL Builder" $ do
-    it "should render simple links" $ do
-      let locator = Locator "haskell" "89/spectrometer" $ Just "revision123"
-          revision = ProjectRevision "" "not this revision" $ Just "master"
-          actual = stripDiag $ getBuildURLWithOrg Nothing revision apiOpts locator
+    describe "Standard URL Builder" $ do
+      it' "should render simple links" $ do
+        let locator = Locator "haskell" "89/spectrometer" $ Just "revision123"
+            revision = ProjectRevision "" "not this revision" $ Just "master"
+        actual <- getBuildURLWithOrg Nothing revision apiOpts locator
 
-      actual `shouldBe` Just simpleStandardURL
+        actual `shouldBe'` simpleStandardURL
+
+    describe "Fossa URL Builder" $
+      it' "should render from API info"
+        . withMockApi
+          ( \case
+              GetApiOpts -> pure apiOpts
+              GetOrganization -> pure $ Organization 1 True False
+          )
+        $ do
+          let locator = Locator "fetcher123" "project123" $ Just "revision123"
+              revision = ProjectRevision "" "not this revision" $ Just "master123"
+          actual <- getFossaBuildUrl revision locator
+
+          actual `shouldBe'` simpleSamlPath

@@ -7,6 +7,7 @@ module Discovery.Walk (
   -- * Helpers
   fileName,
   findFileNamed,
+  findFilesMatchingGlob,
 ) where
 
 import Control.Carrier.Writer.Church
@@ -15,6 +16,7 @@ import Control.Monad.Trans
 import Control.Monad.Trans.Maybe
 import Data.Foldable (find)
 import Data.Functor (void)
+import Data.Glob qualified as Glob
 import Data.List ((\\))
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
@@ -81,6 +83,9 @@ fileName = toFilePath . filename
 findFileNamed :: String -> [Path a File] -> Maybe (Path a File)
 findFileNamed name = find (\f -> fileName f == name)
 
+findFilesMatchingGlob :: Glob.Glob a -> [Path a File] -> [Path a File]
+findFilesMatchingGlob g = filter (`Glob.matches` g)
+
 -------------- Stolen from path-io; adapted to our own ReadFS effect
 
 walkDir ::
@@ -115,10 +120,11 @@ walkDir handler topdir =
                   (MaybeT . walkAvoidLoop traversed)
                   ds
     checkLoop traversed dir = do
+      identifier <- getIdentifier dir
       pure $
-        if Set.member dir traversed
+        if Set.member identifier traversed
           then Nothing
-          else Just (Set.insert dir traversed)
+          else Just (Set.insert identifier traversed)
 
 data WalkAction b
   = -- | Finish the entire walk altogether

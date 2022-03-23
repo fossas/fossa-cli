@@ -6,22 +6,12 @@ module App.Fossa.FossaAPIV1 (
   uploadAnalysis,
   uploadContributors,
   uploadContainerScan,
-  UploadResponse (..),
   mkMetadataOpts,
-  FossaError (..),
-  FossaReq (..),
-  Contributors (..),
   fossaReq,
   getLatestBuild,
-  Build (..),
-  BuildTask (..),
-  BuildStatus (..),
   getIssues,
-  Organization (..),
-  Project (..),
   getOrganization,
   getAttribution,
-  getAttributionRaw,
   getSignedURL,
   getProject,
   archiveUpload,
@@ -38,6 +28,7 @@ module App.Fossa.FossaAPIV1 (
 ) where
 
 import App.Docs (fossaSslCertDocsUrl)
+import App.Fossa.Config.Report
 import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Fossa.Report.Attribution qualified as Attr
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
@@ -45,35 +36,95 @@ import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Support (reportDefectMsg)
-import App.Types
+import App.Types (
+  ProjectMetadata (..),
+  ProjectRevision (..),
+  ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
+ )
 import App.Version (versionNumber)
+import Control.Algebra (Algebra, Has, type (:+:))
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fromMaybeText)
 import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception (Exception (displayException), SomeException)
 import Control.Monad.IO.Class (MonadIO (..))
-import Data.Aeson
+import Data.Aeson (
+  FromJSON (parseJSON),
+  KeyValue ((.=)),
+  ToJSON (toJSON),
+  decodeStrict,
+  encode,
+  object,
+  withObject,
+  (.:),
+ )
+import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as C
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Word (Word8)
-import Effect.Logger
-import Fossa.API.Types (ApiOpts, Archive, ArchiveComponents (ArchiveComponents), Issues, SignedURL, signedURL, useApiOpts)
+import Effect.Logger (
+  Pretty (pretty),
+  indent,
+  viaShow,
+  vsep,
+ )
+import Fossa.API.Types (
+  ApiOpts,
+  ArchiveComponents,
+  Build,
+  Contributors,
+  Issues,
+  Organization (organizationId),
+  Project,
+  SignedURL (signedURL),
+  UploadResponse,
+  useApiOpts,
+ )
 import Network.HTTP.Client qualified as C
 import Network.HTTP.Client qualified as HTTP
-import Network.HTTP.Req
+import Network.HTTP.Req (
+  GET (GET),
+  HttpBody (..),
+  HttpException (..),
+  LbsResponse,
+  MonadHttp (..),
+  NoReqBody (NoReqBody),
+  Option,
+  POST (POST),
+  PUT (PUT),
+  ReqBodyFile (ReqBodyFile),
+  ReqBodyJson (ReqBodyJson),
+  Scheme (Https),
+  Url,
+  bsResponse,
+  ignoreResponse,
+  jsonResponse,
+  lbsResponse,
+  req,
+  reqCb,
+  responseBody,
+  responseTimeout,
+  useURI,
+  (/:),
+  (=:),
+ )
 import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
 import Network.HTTP.Types qualified as HTTP
 import Path (File, Path, Rel)
-import Srclib.Types
+import Srclib.Types (
+  Locator (..),
+  SourceUnit,
+  parseLocator,
+  renderLocator,
+ )
 import Text.URI qualified as URI
-import Prelude
 
 -- | Represents error emitted via FOSSA instance.
 -- This data-shape corresponds to 'PublicFacingError' type in backend,
@@ -158,17 +209,6 @@ normalizeGitProjectName project
 
 responseTimeoutSeconds :: Int -> Option scheme
 responseTimeoutSeconds sec = responseTimeout $ sec * 1_000_000
-
-data UploadResponse = UploadResponse
-  { uploadLocator :: Text
-  , uploadError :: Maybe Text
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON UploadResponse where
-  parseJSON = withObject "UploadResponse" $ \obj ->
-    UploadResponse <$> obj .: "locator"
-      <*> obj .:? "error"
 
 data FossaError
   = JsonDeserializeError String
@@ -280,19 +320,6 @@ mangleError err = case err of
 projectEndpoint :: Url scheme -> Int -> Locator -> Url scheme
 projectEndpoint baseurl orgid locator = baseurl /: "api" /: "cli" /: renderLocatorUrl orgid locator /: "project"
 
-data Project = Project
-  { projectId :: Text
-  , projectTitle :: Text
-  , projectIsMonorepo :: Bool
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON Project where
-  parseJSON = withObject "Project" $ \obj ->
-    Project <$> obj .: "id"
-      <*> obj .: "title"
-      <*> obj .: "isMonorepo"
-
 getProject ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
@@ -303,7 +330,7 @@ getProject ::
 getProject apiopts ProjectRevision{..} = fossaReq $ do
   (baseurl, baseopts) <- useApiOpts apiopts
 
-  Organization orgid _ <- getOrganization apiopts
+  orgid <- organizationId <$> getOrganization apiopts
 
   let endpoint = projectEndpoint baseurl orgid $ Locator "custom" projectName Nothing
 
@@ -314,46 +341,6 @@ getProject apiopts ProjectRevision{..} = fossaReq $ do
 buildsEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
 buildsEndpoint baseurl orgId locator = baseurl /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "latest_build"
 
-data BuildStatus
-  = StatusSucceeded
-  | StatusFailed
-  | StatusCreated
-  | StatusAssigned
-  | StatusRunning
-  | StatusUnknown Text
-  deriving (Eq, Ord, Show)
-
-data Build = Build
-  { buildId :: Int
-  , buildError :: Maybe Text
-  , buildTask :: BuildTask
-  }
-  deriving (Eq, Ord, Show)
-
-newtype BuildTask = BuildTask
-  { buildTaskStatus :: BuildStatus
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON Build where
-  parseJSON = withObject "Build" $ \obj ->
-    Build <$> obj .: "id"
-      <*> obj .:? "error"
-      <*> obj .: "task"
-
-instance FromJSON BuildTask where
-  parseJSON = withObject "BuildTask" $ \obj ->
-    BuildTask <$> obj .: "status"
-
-instance FromJSON BuildStatus where
-  parseJSON = withText "BuildStatus" $ \case
-    "SUCCEEDED" -> pure StatusSucceeded
-    "FAILED" -> pure StatusFailed
-    "CREATED" -> pure StatusCreated
-    "ASSIGNED" -> pure StatusAssigned
-    "RUNNING" -> pure StatusRunning
-    other -> pure $ StatusUnknown other
-
 getLatestBuild ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   ApiOpts ->
@@ -362,7 +349,7 @@ getLatestBuild ::
 getLatestBuild apiOpts ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  Organization orgId _ <- getOrganization apiOpts
+  orgId <- organizationId <$> getOrganization apiOpts
 
   response <- req GET (buildsEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
@@ -466,61 +453,54 @@ getIssues ::
 getIssues apiOpts ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  Organization orgId _ <- getOrganization apiOpts
+  orgId <- organizationId <$> getOrganization apiOpts
   response <- req GET (issuesEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
 
 ---------------
 
-attributionEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
-attributionEndpoint baseurl orgId locator = baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution" /: "json"
+attributionEndpoint :: Url 'Https -> Int -> Locator -> ReportOutputFormat -> Url 'Https
+attributionEndpoint baseurl orgId locator format = appendSegment format $ baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution"
+  where
+    appendSegment :: ReportOutputFormat -> Url a -> Url a
+    appendSegment ReportJson input = input /: "json"
+    appendSegment ReportMarkdown input = input /: "full" /: "MD"
+    appendSegment ReportSpdx input = input /: "full" /: "spdx"
+
+getAttributionJson ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  m Attr.Attribution
+getAttributionJson apiOpts ProjectRevision{..} = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts =
+        baseOpts
+          <> "includeDeepDependencies" =: True
+          <> "includeHashAndVersionData" =: True
+          <> "includeDownloadUrl" =: True
+  orgId <- organizationId <$> getOrganization apiOpts
+  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision)) ReportJson) NoReqBody jsonResponse opts
+  pure (responseBody response)
 
 getAttribution ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   ProjectRevision ->
-  m Attr.Attribution
-getAttribution apiOpts ProjectRevision{..} = fossaReq $ do
-  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  ReportOutputFormat ->
+  m Text
+getAttribution apiOpts revision ReportJson = fossaReq $ do
+  jsonValue <- getAttributionJson apiOpts revision
+  pure . decodeUtf8 $ Aeson.encode jsonValue
+getAttribution apiOpts ProjectRevision{..} format = fossaReq $ do
+  (baseUrl, opts) <- useApiOpts apiOpts
 
-  let opts =
-        baseOpts
-          <> "includeDeepDependencies" =: True
-          <> "includeHashAndVersionData" =: True
-          <> "includeDownloadUrl" =: True
-  Organization orgId _ <- getOrganization apiOpts
-  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
-  pure (responseBody response)
-
-getAttributionRaw ::
-  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
-  ApiOpts ->
-  ProjectRevision ->
-  m Value
-getAttributionRaw apiOpts ProjectRevision{..} = fossaReq $ do
-  (baseUrl, baseOpts) <- useApiOpts apiOpts
-
-  let opts =
-        baseOpts
-          <> "includeDeepDependencies" =: True
-          <> "includeHashAndVersionData" =: True
-          <> "includeDownloadUrl" =: True
-  Organization orgId _ <- getOrganization apiOpts
-  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse opts
-  pure (responseBody response)
+  orgId <- organizationId <$> getOrganization apiOpts
+  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision)) format) NoReqBody bsResponse opts
+  pure (decodeUtf8 $ responseBody response)
 
 ----------
-
-data Organization = Organization
-  { organizationId :: Int
-  , orgUsesSAML :: Bool
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON Organization where
-  parseJSON = withObject "Organization" $ \obj ->
-    Organization <$> obj .: "organizationId"
-      <*> obj .:? "usesSAML" .!= False
 
 organizationEndpoint :: Url scheme -> Url scheme
 organizationEndpoint baseurl = baseurl /: "api" /: "cli" /: "organization"
@@ -531,10 +511,6 @@ getOrganization apiOpts = fossaReq $ do
   responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse baseOpts
 
 ----------
-
-newtype Contributors = Contributors
-  {unContributors :: Map Text Text}
-  deriving (Eq, Ord, Show, ToJSON)
 
 contributorsEndpoint :: Url scheme -> Url scheme
 contributorsEndpoint baseurl = baseurl /: "api" /: "contributors"
@@ -676,7 +652,7 @@ vsiCreateScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> Proj
 vsiCreateScan apiOpts ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  Organization orgId _ <- getOrganization apiOpts
+  orgId <- organizationId <$> getOrganization apiOpts
   let projectID = renderLocator $ Locator "custom" projectName Nothing
   let reqBody = VSICreateScanRequestBody orgId projectRevision projectID
 
