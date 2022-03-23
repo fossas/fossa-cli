@@ -1,5 +1,8 @@
 # Fossa CLI Changelog
 
+## v3.1.7
+- Queue archive builds individually. ([#826](https://github.com/fossas/fossa-cli/pull/826)) 
+
 ## v3.1.6
 - Respects Go module replacement directives in the Go Mod Graph strategy. ([#841](https://github.com/fossas/fossa-cli/pull/841)) 
 
