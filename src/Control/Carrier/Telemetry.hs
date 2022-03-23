@@ -9,15 +9,9 @@ module Control.Carrier.Telemetry (
   bracket',
 ) where
 
-import Control.Concurrent.STM (atomically, putTMVar, tryReadTMVar)
-import Control.Concurrent.STM.TBMQueue (tryWriteTBMQueue)
-import Control.Effect.Exception (Exception (fromException), catch, mask, throwIO)
-import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Telemetry (Telemetry (..))
-import Control.Monad (void, when)
-import Control.Monad.IO.Class (MonadIO (..))
-import Data.Maybe (isNothing)
-
+import Control.Algebra (Algebra (alg), Has, type (:+:) (L, R))
+import Control.Carrier.Reader (ReaderC, ask, runReader)
+import Control.Carrier.Telemetry.Sink.Common (emitTelemetry)
 import Control.Carrier.Telemetry.Types (
   TelemetryCtx (..),
   TelemetryTimeSpent (TelemetryTimeSpent),
@@ -27,14 +21,18 @@ import Control.Carrier.Telemetry.Utils (
   mkTelemetryCtx,
   mkTelemetryRecord,
  )
+import Control.Concurrent.STM (atomically, putTMVar, tryReadTMVar)
+import Control.Concurrent.STM.TBMQueue (tryWriteTBMQueue)
+import Control.Effect.Exception (Exception (fromException), catch, mask, throwIO)
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Telemetry (Telemetry (..))
 import Control.Exception qualified as Exc
+import Control.Monad (void, when)
+import Control.Monad.IO.Class (MonadIO (..))
+import Data.Maybe (isNothing)
 import Data.Time.Clock (diffUTCTime, getCurrentTime, nominalDiffTimeToSeconds)
 import Data.Tracing.Instrument (incCount)
 import System.Exit (ExitCode (ExitSuccess))
-
-import Control.Algebra (Algebra (alg), Has, type (:+:) (L, R))
-import Control.Carrier.Reader (ReaderC, ask, runReader)
-import Control.Carrier.Telemetry.Sink.Common (emitTelemetry)
 
 newtype TelemetryC m a = TelemetryC {runTelemetryC :: ReaderC TelemetryCtx m a}
   deriving (Applicative, Functor, Monad, MonadFail, MonadIO)

@@ -4,10 +4,9 @@ module Diag.Common (
   AllDirectDeps (..),
 ) where
 
-import Data.Data (Typeable)
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 
-data MissingDeepDeps = MissingDeepDeps deriving (Typeable)
+data MissingDeepDeps = MissingDeepDeps
 instance ToDiagnostic MissingDeepDeps where
   renderDiagnostic (MissingDeepDeps) =
     "Could not analyze deep dependencies."

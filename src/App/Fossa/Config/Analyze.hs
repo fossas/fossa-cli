@@ -124,6 +124,7 @@ instance ToJSON JsonOutput where
 
 instance ToJSON UnpackArchives where
   toEncoding = genericToEncoding defaultOptions
+
 instance ToJSON VSIAnalysis where
   toEncoding = genericToEncoding defaultOptions
 
