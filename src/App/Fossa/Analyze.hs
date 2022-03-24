@@ -64,6 +64,7 @@ import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally (Finally, Has, runFinally)
+import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.Reader (Reader, runReader)
 import Control.Carrier.Stack.StickyLog (stickyLogStack)
@@ -230,7 +231,7 @@ analyze ::
 analyze cfg = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
 
-  let apiOpts = case destination of
+  let maybeApiOpts = case destination of
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
       BaseDir basedir = Config.baseDir cfg
@@ -247,7 +248,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   vsiResults <- Diag.errorBoundaryIO . diagToDebug $
     Diag.context "analyze-vsi" . runStickyLogger SevInfo . runFinally $ do
       let shouldRunVSI = fromFlag Config.VSIAnalysis $ Config.vsiAnalysisEnabled $ Config.vsiOptions cfg
-      case (shouldRunVSI, apiOpts) of
+      case (shouldRunVSI, maybeApiOpts) of
         (True, Just apiOpts') -> analyzeVSI apiOpts' basedir revision filters skipResolutionSet
         _ -> pure Nothing
   dynamicLinkedResults <-
@@ -265,7 +266,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         then do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure Nothing
-        else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir apiOpts
+        else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir maybeApiOpts
   let additionalSourceUnits :: [SourceUnit]
       additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults, dynamicLinkedResults]
   traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults, binarySearchResults, manualSrcUnits, dynamicLinkedResults]
@@ -299,9 +300,9 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     FilteredAll -> Diag.fatal ErrFilteredAllProjects
     FoundSome sourceUnits -> case destination of
       OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult includeAll additionalSourceUnits filteredProjects
-      UploadScan opts metadata -> Diag.context "upload-results" $ do
-        locator <- uploadSuccessfulAnalysis (BaseDir basedir) opts metadata jsonOutput revision sourceUnits
-        doAssertRevisionBinaries iatAssertion opts locator
+      UploadScan apiOpts metadata -> Diag.context "upload-results" $ do
+        locator <- runFossaApiClient apiOpts $ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision sourceUnits
+        doAssertRevisionBinaries iatAssertion apiOpts locator
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
 toProjectResult (SkippedDueToProvidedFilter _) = Nothing

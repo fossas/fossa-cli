@@ -14,9 +14,11 @@ module Test.Effect (
   xit',
   withTempDir,
   withMockApi,
+  assertNotCalled,
 ) where
 
 import Control.Effect.Lift (Has, Lift, sendIO)
+import Test.HUnit (assertFailure)
 import Test.Hspec (
   Spec,
   SpecWith,
@@ -42,7 +44,7 @@ import Control.Effect.Finally (Finally, onExit)
 import Control.Effect.FossaApiClient (FossaApiClientF)
 import Data.Bits (finiteBitSize)
 import Data.String.Conversion (toString)
-import Diag.Result (Result (Failure, Success), renderFailure)
+import Diag.Result (Result (..), renderFailure)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (IgnoreLoggerC, ignoreLogger, renderIt)
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
@@ -123,3 +125,7 @@ expectFatal' f = do
 -- | Runs a stateless API mock.
 withMockApi :: (forall x. FossaApiClientF x -> m x) -> SimpleC FossaApiClientF m a -> m a
 withMockApi = interpret
+
+assertNotCalled :: (Has (Lift IO) sig m) => FossaApiClientF a -> m a
+assertNotCalled eff = do
+  sendIO . assertFailure $ "Unexpected call: " ++ show eff
