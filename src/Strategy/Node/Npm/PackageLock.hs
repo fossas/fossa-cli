@@ -62,8 +62,8 @@ data NpmPackagesPkg = NpmPackagesPkg
 
 instance FromJSON NpmPackagesPkg where
   parseJSON = withObject "NpmPackagesPkg" $ \obj ->
-    -- TODO: should this be changed to exclude the current package with key ""?
-    -- It has a different structure compared to the others that represent dependencies
+    -- Note that the object with a key of "" represents the current project we're
+    -- analyzing. It has a different set of keys/values.
     NpmPackagesPkg
       <$> obj .:? "peerDependencies" .!= Map.empty
       <*> obj .:? "resolved"
@@ -129,11 +129,11 @@ data NpmPackageLabel = NpmPackageEnv DepEnvironment | NpmPackageLocation Text
 
 -- |The @packages@ object contains keys which are file paths to a package npm
 -- downloaded to @node_modules@. This function will adjust map keys to be names
--- like in the @dependencies@ key.
+-- like in the @dependencies@ key by stripping out path components besides the final one..
 --
--- It will also eliminate any keys which represent a nested path
--- e.g. @node_modules\/foo\/node_modules/bar@. This nesting happens when there are
--- multiple versions of the same package in the dependency tree of the
+-- It also eliminates any keys which represent a nested path
+-- e.g. @node_modules\/foo\/node_modules/bar@. This nesting happens when there
+-- are multiple versions of the same package in the dependency tree of the
 -- @package-lock.json@ file because one of the versions gets vendored.
 packagePathsToNames :: Map Text a -> Map Text a
 packagePathsToNames =
@@ -166,7 +166,7 @@ buildGraph packageJson directSet =
     -- the graph recursively. All peer dependencies added via this function will
     -- be added as deep dependencies. If there are direct peer dependencies
     -- those are discovered when reading @package.json@ and added like a regular
-    -- dependency in 'maybeAddDep'.
+    -- direct dependency in 'maybeAddDep'.
     addPeerDeps :: Has NpmGrapher sig m => NpmPackage -> m ()
     addPeerDeps currentPkg =
       maybe (pure ()) graphPeerDeps (Map.lookup (lockName currentPkg) lockPackages)
@@ -179,8 +179,8 @@ buildGraph packageJson directSet =
 
         graphPeerDeps :: Has NpmGrapher sig m => NpmPackagesPkg -> m ()
         graphPeerDeps =
-          -- ignore the version specified in "peerDependencies", we'll use the
-          -- resolved one from the main list of dependencies.
+          -- ignore the version range specified in "peerDependencies", we'll use
+          -- the resolved one from the main list of dependencies.
           traverse_ (addNodeAndEdge . fst)
             . Map.toList
             . pkgPeerDeps
