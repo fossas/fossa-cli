@@ -163,7 +163,10 @@ buildGraph packageJson directSet =
         else addDep isRecursive parent name dep
 
     -- Look up if a given npm package has peer dependencies, then add them to
-    -- the graph recursively.
+    -- the graph recursively. All peer dependencies added via this function will
+    -- be added as deep dependencies. If there are direct peer dependencies
+    -- those are discovered when reading @package.json@ and added like a regular
+    -- dependency in 'maybeAddDep'.
     addPeerDeps :: Has NpmGrapher sig m => NpmPackage -> m ()
     addPeerDeps currentPkg =
       maybe (pure ()) graphPeerDeps (Map.lookup (lockName currentPkg) lockPackages)

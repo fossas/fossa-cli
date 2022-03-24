@@ -313,6 +313,8 @@ buildGraphSpec testDir =
         graph
 
     it' "Should process peer dependencies" $ do
+      -- I stripped this file down manually to have a smaller example to test
+      -- `npm` would generate a much more complicated package-lock.json
       parsed <- readContentsJson $ testDir </> $(mkRelFile "peerdeps-package-json.lock")
       -- Top-level peerDependencies are treated just like direct
       -- dependencies. For this test "winston-mail" is a top-level peer

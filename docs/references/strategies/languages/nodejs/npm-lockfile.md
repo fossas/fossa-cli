@@ -44,3 +44,28 @@ The `requires` field signifies all of the dependencies that are needed by the de
 The `dependencies` field signifies all of the dependencies included in `babel-code-frame`'s `node_modules` folder within the top level `node_modules` folder. Notice that these dependencies are not always included in the `requires` section.
 
 > Note: `npm-shrinkwrap.json` is an identically formatted file that can be used for [publishing packages](https://docs.npmjs.com/cli/shrinkwrap).
+
+### Peer Dependencies
+
+Top-level peer dependencies from `package.json` are treated as if they were direct dependencies of the project. Peer dependencies are for transitive deps are also treated as transitive dependencies.
+
+In newer version of NPM the `package-lock.json` file may also include a `packagages` key which holds similar information to the those under the `dependencies` key. `packages` includes information about
+peer dependencies for each dependency or transitive dependency the project uses. For example, an entry might look like this:
+
+```json
+    "node_modules/chai-dom": {
+        "version": "1.11.0",
+        "resolved": "https://registry.npmjs.org/chai-dom/-/chai-dom-1.11.0.tgz",
+        "integrity": "sha512-ZzGlEfk1UhHH5+N0t9bDqstOxPEXmn3EyXvtsok5rfXVDOFDJbHVy12rED6ZwkJAUDs2w7/Da4Hlq2LB63kltg==",
+        "peer": true,
+        "engines": {
+            "node": ">= 0.12.0"
+        },
+        "peerDependencies": {
+            "chai": ">= 3",
+            "mocha": ">= 2"
+        }
+    }
+```
+
+When `fossa-cli` does analysis of `chai-dom`, it will include `chai` and `mocha` as dependencies`chai-dom`. The transitive deps for `chai` and `mocha` will also be captured.
