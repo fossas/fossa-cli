@@ -77,6 +77,24 @@ waitForScanCompletion revision cancelFlag = do
     then waitForMonorepoScan revision cancelFlag
     else waitForBuild revision cancelFlag
 
+waitForIssues ::
+  ( Has Diagnostics sig m
+  , Has FossaApiClient sig m
+  , Has Logger sig m
+  , Has (Lift IO) sig m
+  ) =>
+  ProjectRevision ->
+  Cancel ->
+  m Issues
+waitForIssues revision cancelFlag = do
+  checkForTimeout cancelFlag
+  issues <- getIssues revision
+  case issuesStatus issues of
+    "WAITING" -> do
+      sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
+      waitForIssues revision cancelFlag
+    _ -> pure issues
+
 -- | Wait for a "normal" (non-VPS) build completion
 waitForBuild ::
   ( Has Diagnostics sig m
@@ -120,28 +138,10 @@ waitForMonorepoScan revision cancelFlag = do
   scan <- getLatestScan locator revision
 
   logSticky' "[ Waiting for monorepo scan... ]"
-  waitForSherlockScan locator cancelFlag (responseScanId scan)
+  waitForScotlandYardScan locator cancelFlag (responseScanId scan)
 
-waitForIssues ::
-  ( Has Diagnostics sig m
-  , Has FossaApiClient sig m
-  , Has Logger sig m
-  , Has (Lift IO) sig m
-  ) =>
-  ProjectRevision ->
-  Cancel ->
-  m Issues
-waitForIssues revision cancelFlag = do
-  checkForTimeout cancelFlag
-  issues <- getIssues revision
-  case issuesStatus issues of
-    "WAITING" -> do
-      sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
-      waitForIssues revision cancelFlag
-    _ -> pure issues
-
--- | Wait for sherlock scan completion (VPS)
-waitForSherlockScan ::
+-- | Wait for Scotland Yard scan completion (VPS)
+waitForScotlandYardScan ::
   ( Has Diagnostics sig m
   , Has FossaApiClient sig m
   , Has Logger sig m
@@ -152,7 +152,7 @@ waitForSherlockScan ::
   Cancel ->
   ScanId ->
   m ()
-waitForSherlockScan locator cancelFlag scanId = do
+waitForScotlandYardScan locator cancelFlag scanId = do
   checkForTimeout cancelFlag
   scan <- getScan locator scanId
   case responseScanStatus scan of
@@ -161,10 +161,10 @@ waitForSherlockScan locator cancelFlag scanId = do
     Just otherStatus -> do
       logSticky' $ "[ Waiting for component scan... last status: " <> pretty otherStatus <> " ]"
       sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
-      waitForSherlockScan locator cancelFlag scanId
+      waitForScotlandYardScan locator cancelFlag scanId
     Nothing -> do
       sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
-      waitForSherlockScan locator cancelFlag scanId
+      waitForScotlandYardScan locator cancelFlag scanId
 
 -- | Specialized version of 'checkForCancel' which represents
 -- a backend build/issue scan timeout.

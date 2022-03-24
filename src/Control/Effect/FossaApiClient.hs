@@ -20,6 +20,7 @@ import Control.Carrier.Simple (Simple, sendSimple)
 import Data.List.NonEmpty qualified as NE
 import Fossa.API.Types (ApiOpts, Build, Contributors, Issues, Organization, Project, ScanId, ScanResponse, UploadResponse)
 import Srclib.Types (Locator, SourceUnit)
+import Data.Data (Typeable)
 
 data FossaApiClientF a where
   GetOrganization :: FossaApiClientF Organization
@@ -40,6 +41,8 @@ data FossaApiClientF a where
   GetLatestScan :: Locator -> ProjectRevision -> FossaApiClientF ScanResponse
 
 deriving instance Show (FossaApiClientF a)
+deriving instance Eq (FossaApiClientF a)
+deriving instance Typeable (FossaApiClientF a)
 
 type FossaApiClient = Simple FossaApiClientF
 

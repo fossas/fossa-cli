@@ -38,6 +38,7 @@ import Test.Hspec (
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
 import Control.Carrier.Simple (SimpleC, interpret)
+import Control.Carrier.StickyLogger (IgnoreStickyLoggerC, ignoreStickyLogger)
 import Control.Carrier.Stack (StackC, runStack)
 import Control.Effect.Diagnostics (Diagnostics, errorBoundary)
 import Control.Effect.Finally (Finally, onExit)
@@ -55,7 +56,7 @@ import System.Directory (getTemporaryDirectory)
 import System.Random (randomIO)
 import Text.Printf (printf)
 
-type EffectStack a = FinallyC (ExecIOC (ReadFSIOC (DiagnosticsC (IgnoreLoggerC (StackC IO))))) a
+type EffectStack a = FinallyC (ExecIOC (ReadFSIOC (DiagnosticsC (IgnoreLoggerC (IgnoreStickyLoggerC (StackC IO)))))) a
 
 -- TODO: add useful describe, naive describe' doesn't work.
 
@@ -72,7 +73,7 @@ runTestEffects' :: EffectStack () -> Spec
 runTestEffects' = runIO . runTestEffects
 
 runTestEffects :: EffectStack () -> IO ()
-runTestEffects = runStack . ignoreLogger . handleDiag . runReadFSIO . runExecIO . runFinally
+runTestEffects = runStack . ignoreStickyLogger . ignoreLogger . handleDiag . runReadFSIO . runExecIO . runFinally
   where
     handleDiag :: (Has (Lift IO) sig m) => DiagnosticsC m () -> m ()
     handleDiag diag =
