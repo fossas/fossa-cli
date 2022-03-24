@@ -21,7 +21,7 @@ import GraphUtil (
   expectEdges,
   expectEdges',
  )
-import Path (mkRelDir, mkRelFile, (</>))
+import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Npm.PackageLock (
   NpmDep (
@@ -230,11 +230,63 @@ sprintf =
     , dependencyTags = mempty
     }
 
-spec :: Spec
-spec = do
-  curdir <- runIO getCurrentDir
-  let testDir = curdir </> $(mkRelDir "test/Node/testdata")
+async :: Dependency
+async =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "async"
+    , dependencyVersion = Just $ CEq "3.2.3"
+    , dependencyLocations = ["https://registry.npmjs.org/async/-/async-3.2.3.tgz"]
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = mempty
+    }
 
+mustache :: Dependency
+mustache =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "mustache"
+    , dependencyVersion = Just $ CEq "2.3.2"
+    , dependencyLocations = ["https://registry.npmjs.org/mustache/-/mustache-2.3.2.tgz"]
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = mempty
+    }
+
+winston :: Dependency
+winston =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "winston"
+    , dependencyVersion = Just $ CEq "3.6.0"
+    , dependencyLocations = ["https://registry.npmjs.org/winston/-/winston-3.6.0.tgz"]
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = mempty
+    }
+
+winstonMail :: Dependency
+winstonMail =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "winston-mail"
+    , dependencyVersion = Just $ CEq "2.0.0"
+    , dependencyLocations = ["https://registry.npmjs.org/winston-mail/-/winston-mail-2.0.0.tgz"]
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = mempty
+    }
+
+underscore :: Dependency
+underscore =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "underscore"
+    , dependencyVersion = Just $ CEq "1.13.2"
+    , dependencyLocations = ["https://registry.npmjs.org/underscore/-/underscore-1.13.2.tgz"]
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = mempty
+    }
+
+buildGraphSpec :: Path Abs Dir -> Spec
+buildGraphSpec testDir =
   describe "buildGraph" $ do
     it "should produce expected output" $ do
       let graph = buildGraph mockInput (Set.fromList ["packageOne", "packageThree", "packageFive"])
@@ -260,6 +312,23 @@ spec = do
         ]
         graph
 
+    it' "Should process peer dependencies" $ do
+      parsed <- readContentsJson $ testDir </> $(mkRelFile "peerdeps-package-json.lock")
+      -- Top-level peerDependencies are treated just like direct
+      -- dependencies. For this test "winston-mail" is a top-level peer
+      -- dependency and "underscore" is a regular top-level dependency.
+      let graph = buildGraph parsed (Set.fromList ["winston-mail", "underscore"])
+      expectDeps' [async, mustache, winston, winstonMail, underscore] graph
+      expectDirect' [winstonMail, underscore] graph
+      expectEdges'
+        [ (winstonMail, mustache)
+        , (winstonMail, winston)
+        , (winston, async)
+        ]
+        graph
+
+packageLockParseSpec :: Path Abs Dir -> Spec
+packageLockParseSpec testDir =
   describe "parsing package-json.lock" $ do
     it' "Should ignore \"resolved\": <bool> in package-lock.json" $ do
       let packageLock = testDir </> $(mkRelFile "boolean-resolved-package-lock.json")
@@ -278,3 +347,11 @@ spec = do
       NpmPackageJson{packageDependencies = packageDependencies} <- readContentsJson packageLock
       let foo = unNpmResolved . depResolved =<< Map.lookup "foo" packageDependencies
       foo `shouldBe'` Nothing
+
+spec :: Spec
+spec = do
+  curdir <- runIO getCurrentDir
+  let testDir = curdir </> $(mkRelDir "test/Node/testdata")
+
+  buildGraphSpec testDir
+  packageLockParseSpec testDir
