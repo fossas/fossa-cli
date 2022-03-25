@@ -47,10 +47,13 @@ The `dependencies` field signifies all of the dependencies included in `babel-co
 
 ### Peer Dependencies
 
-Top-level peer dependencies from `package.json` are treated as if they were direct dependencies of the project. Peer dependencies are for transitive deps are also treated as transitive dependencies.
+Top-level peer dependencies from `package.json` are treated as if they were direct dependencies of the project. Peer dependencies of transitive deps are also treated as transitive dependencies. If a transitive peer dependency also happens to 
+be a direct dependency then it is reported as direct rather than transitive, however. The reason FOSSA does this is because as of `npm` 7+ peer dependencies and transitive peer dependencies are installed by default. 
 
-In newer version of NPM the `package-lock.json` file may also include a `packagages` key which holds similar information to the those under the `dependencies` key. `packages` includes information about
-peer dependencies for each dependency or transitive dependency the project uses. For example, an entry might look like this:
+FOSSA doesn't report peer dependencies in a special way because FOSSA does not model peer dependencies natively. Because direct peer dependencies are defined in the same place as regular direct dependencies (`package.json`) and because NPM installs them by default for FOSSA's purposes they are considered direct. If FOSSA didn't report these dependencies users may potentially miss license information about dependencies that would have implications for the distribution of their projects.
+
+Transitive peer dependencies are found in the `packages` key of `package-lock.json` files produced by recent versions of `npm`.  The `packages` key holds similar information to the those under the `dependencies` key, but `packages`
+includes information about peer dependencies for each dependency or transitive dependency the project uses. For example, an entry might look like this:
 
 ```json
     "node_modules/chai-dom": {
@@ -68,4 +71,4 @@ peer dependencies for each dependency or transitive dependency the project uses.
     }
 ```
 
-When `fossa-cli` does analysis of `chai-dom`, it will include `chai` and `mocha` as dependencies`chai-dom`. The transitive deps for `chai` and `mocha` will also be captured.
+In this example, when `fossa-cli` does analysis of `chai-dom`, it will include `chai` and `mocha` as dependencies`chai-dom`. The transitive deps for `chai` and `mocha` will also be captured.

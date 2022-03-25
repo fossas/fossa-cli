@@ -70,8 +70,7 @@ instance FromJSON NpmPackagesPkg where
 
 data NpmPackageJson = NpmPackageJson
   { packageDependencies :: Map Text NpmDep
-  , -- |  Data from the "packages" field of package-json.lock
-    packagePackages :: Map Text NpmPackagesPkg
+  , packagePackages :: Map Text NpmPackagesPkg
   }
   deriving (Eq, Ord, Show)
 
