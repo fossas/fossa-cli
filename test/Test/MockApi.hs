@@ -3,7 +3,6 @@
 module Test.MockApi (ApiExpectation, returnsOnce, alwaysReturns, runApi) where
 
 import Control.Algebra (Has)
-import Control.Carrier.FossaApiClient (FossaApiClientC)
 import Control.Carrier.Simple (SimpleC, interpretState)
 import Control.Carrier.State.Strict (StateC)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))

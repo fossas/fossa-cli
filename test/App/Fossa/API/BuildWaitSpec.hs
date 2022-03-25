@@ -24,54 +24,6 @@ import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe)
 import Test.MockApi (ApiExpectation, alwaysReturns, returnsOnce, runApi)
 
-testVpsLocator :: Locator
-testVpsLocator = Locator{locatorFetcher = "custom", locatorProject = "42/testProjectName", locatorRevision = Nothing}
-
-getOrganizationExpectation :: ApiExpectation
-getOrganizationExpectation = GetOrganization `alwaysReturns` Fixtures.organization
-getProjectExpectation :: ApiExpectation
-getProjectExpectation = (GetProject Fixtures.projectRevision) `alwaysReturns` Fixtures.project
-getMonorepoProjectExpectation :: ApiExpectation
-getMonorepoProjectExpectation = (GetProject Fixtures.projectRevision) `alwaysReturns` Fixtures.project{projectIsMonorepo = True}
-
-getLatestBuildExpectation :: BuildStatus -> ApiExpectation
-getLatestBuildExpectation status =
-  (GetLatestBuild Fixtures.projectRevision)
-    `returnsOnce` Fixtures.build{buildTask = BuildTask{buildTaskStatus = status}}
-
-getLatestScanExpectation :: ApiExpectation
-getLatestScanExpectation =
-  (GetLatestScan testVpsLocator Fixtures.projectRevision)
-    `returnsOnce` Fixtures.scanResponse
-
-getScanExpectation :: Maybe Text -> ApiExpectation
-getScanExpectation scanStatus =
-  (GetScan testVpsLocator Fixtures.scanId)
-    `returnsOnce` Fixtures.scanResponse{responseScanStatus = scanStatus}
-
-getIssues :: Text -> ApiExpectation
-getIssues issuesStatus =
-  (GetIssues Fixtures.projectRevision)
-    `returnsOnce` Fixtures.issues{issuesStatus = issuesStatus}
-
-scanForever :: ApiExpectation
-scanForever =
-  (GetScan testVpsLocator Fixtures.scanId)
-    `alwaysReturns` Fixtures.scanResponse{responseScanStatus = Nothing}
-
-buildForever :: ApiExpectation
-buildForever =
-  (GetLatestBuild Fixtures.projectRevision)
-    `alwaysReturns` Fixtures.build{buildTask = BuildTask{buildTaskStatus = StatusRunning}}
-
-issuesForeverWaiting :: ApiExpectation
-issuesForeverWaiting =
-  (GetIssues Fixtures.projectRevision)
-    `alwaysReturns` Fixtures.issues{issuesStatus = "WAITING"}
-
-waitConfig :: WaitConfig
-waitConfig = WaitConfig{apiPollDelay = MilliSeconds 1}
-
 runWithApiAndTimeout ::
   (Has (Lift IO) sig m) =>
   [ApiExpectation] ->
@@ -212,3 +164,53 @@ spec =
         expectFatal'
           . runWithApiAndTimeout [buildForever]
           $ waitForBuild Fixtures.projectRevision
+
+testVpsLocator :: Locator
+testVpsLocator = Locator{locatorFetcher = "custom", locatorProject = "42/testProjectName", locatorRevision = Nothing}
+
+waitConfig :: WaitConfig
+waitConfig = WaitConfig{apiPollDelay = MilliSeconds 1}
+
+getOrganizationExpectation :: ApiExpectation
+getOrganizationExpectation = GetOrganization `alwaysReturns` Fixtures.organization
+
+getProjectExpectation :: ApiExpectation
+getProjectExpectation = (GetProject Fixtures.projectRevision) `alwaysReturns` Fixtures.project
+
+getMonorepoProjectExpectation :: ApiExpectation
+getMonorepoProjectExpectation = (GetProject Fixtures.projectRevision) `alwaysReturns` Fixtures.project{projectIsMonorepo = True}
+
+getLatestBuildExpectation :: BuildStatus -> ApiExpectation
+getLatestBuildExpectation status =
+  (GetLatestBuild Fixtures.projectRevision)
+    `returnsOnce` Fixtures.build{buildTask = BuildTask{buildTaskStatus = status}}
+
+getLatestScanExpectation :: ApiExpectation
+getLatestScanExpectation =
+  (GetLatestScan testVpsLocator Fixtures.projectRevision)
+    `returnsOnce` Fixtures.scanResponse
+
+getScanExpectation :: Maybe Text -> ApiExpectation
+getScanExpectation scanStatus =
+  (GetScan testVpsLocator Fixtures.scanId)
+    `returnsOnce` Fixtures.scanResponse{responseScanStatus = scanStatus}
+
+getIssues :: Text -> ApiExpectation
+getIssues issuesStatus =
+  (GetIssues Fixtures.projectRevision)
+    `returnsOnce` Fixtures.issues{issuesStatus = issuesStatus}
+
+scanForever :: ApiExpectation
+scanForever =
+  (GetScan testVpsLocator Fixtures.scanId)
+    `alwaysReturns` Fixtures.scanResponse{responseScanStatus = Nothing}
+
+buildForever :: ApiExpectation
+buildForever =
+  (GetLatestBuild Fixtures.projectRevision)
+    `alwaysReturns` Fixtures.build{buildTask = BuildTask{buildTaskStatus = StatusRunning}}
+
+issuesForeverWaiting :: ApiExpectation
+issuesForeverWaiting =
+  (GetIssues Fixtures.projectRevision)
+    `alwaysReturns` Fixtures.issues{issuesStatus = "WAITING"}
