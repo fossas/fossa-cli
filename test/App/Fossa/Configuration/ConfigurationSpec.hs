@@ -98,6 +98,9 @@ ver2DefaultDir = maintestdir </> $(mkRelDir "ver2-default")
 validDefaultDir :: Path Rel Dir
 validDefaultDir = maintestdir </> $(mkRelDir "valid-default")
 
+validDefaultYamlDir :: Path Rel Dir
+validDefaultYamlDir = maintestdir </> $(mkRelDir "valid-default-yaml")
+
 invalidDefaultDir :: Path Rel Dir
 invalidDefaultDir = maintestdir </> $(mkRelDir "invalid-default")
 
@@ -112,11 +115,16 @@ spec = do
   curdir <- T.runIO getCurrentDir
 
   let runIt :: Path Rel Dir -> Maybe FilePath -> SpecM a (Result (Maybe ConfigFile))
-      runIt dir maybeFile = T.runIO . runStack . ignoreLogger $ Diag.runDiagnostics $ runReadFSIO $ resolveConfigFile (curdir </> dir) maybeFile
+      runIt dir maybeFile =
+        T.runIO . runStack . ignoreLogger $
+          Diag.runDiagnostics $
+            runReadFSIO $
+              resolveConfigFile (curdir </> dir) maybeFile
 
   -- @Nothing@ informs us to search for the default config file in that dir,
   -- so we use ignore/warn semantics, with one exception.
   validDefault <- runIt validDefaultDir Nothing
+  validDefaultYaml <- runIt validDefaultYamlDir Nothing
   missingDefault <- runIt maintestdir Nothing
   ver2Default <- runIt ver2DefaultDir Nothing
   -- If the file exists, but is invalid YAML, that's most likely a real error,
@@ -132,6 +140,8 @@ spec = do
 
   T.describe "config file parser" $ do
     T.it "parses a full config file in the default location" $ expectSuccessfulParse validDefault
+
+    T.it "parses a full config file with the `yaml` extension in the default location" $ expectSuccessfulParse validDefaultYaml
 
     T.it "parses a full config file in a specified location" $ expectSuccessfulParse validSpecified
 

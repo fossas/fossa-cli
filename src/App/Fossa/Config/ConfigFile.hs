@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.Config.ConfigFile (
-  defaultConfigFileName,
+  defaultConfigFileNames,
   resolveConfigFile,
   ConfigFile (..),
   ConfigProject (..),
@@ -34,6 +34,7 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
+import Data.Foldable (asum)
 import Data.Functor (($>))
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -61,8 +62,11 @@ import Path (
  )
 import Types (TargetFilter)
 
-defaultConfigFileName :: Path Rel File
-defaultConfigFileName = $(mkRelFile ".fossa.yml")
+defaultConfigFileNames :: [Path Rel File]
+defaultConfigFileNames =
+  [ $(mkRelFile ".fossa.yml")
+  , $(mkRelFile ".fossa.yaml")
+  ]
 
 -- data ConfigLocation = ConfigLocation
 --   { -- | Did the user specify the path (True/required), or is this default (False/optional)?
@@ -90,18 +94,23 @@ resolveConfigFile base path = do
   loc <- resolveLocation base path
   case loc of
     DefaultConfigLocation dir -> do
-      let realpath = dir </> defaultConfigFileName
-      exists <- doesFileExist realpath
-      if not exists
-        then -- File missing and not requested
-          pure Nothing
-        else do
-          configFile <- readContentsYaml realpath
+      possibleConfigFilePaths <-
+        mapM
+          ( \configFileName -> do
+              let configFilePath = dir </> configFileName
+              exists <- doesFileExist configFilePath
+              pure $ if exists then Just configFilePath else Nothing
+          )
+          defaultConfigFileNames
+      case asum possibleConfigFilePaths of
+        Just actualConfigFilePath -> do
+          configFile <- readContentsYaml actualConfigFilePath
           let version = configVersion configFile
           if version >= 3
             then pure $ Just configFile
             else -- Invalid config found without --config flag: warn and ignore file.
               logWarn (warnMsgForOlderConfig @AnsiStyle version) $> Nothing
+        Nothing -> pure Nothing
     SpecifiedConfigLocation realpath -> do
       exists <- doesFileExist realpath
       if not exists
