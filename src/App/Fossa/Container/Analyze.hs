@@ -40,7 +40,6 @@ import Effect.Logger (
  )
 import Fossa.API.Types (UploadResponse (uploadError, uploadLocator))
 import Prettyprinter (Doc, indent, vsep)
-import Srclib.Types (parseLocator)
 
 analyze ::
   ( Has Diagnostics sig m
@@ -63,7 +62,7 @@ analyze ContainerAnalyzeConfig{..} = do
 
       resp <- uploadContainerScan apiOpts revision projectMeta containerScan
 
-      buildUrl <- getFossaBuildUrl revision . parseLocator $ uploadLocator resp
+      buildUrl <- getFossaBuildUrl revision $ uploadLocator resp
       logInfo "View FOSSA Report:"
       logInfo ("  " <> pretty buildUrl)
       -- Report non-critical errors

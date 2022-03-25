@@ -12,12 +12,15 @@ module App.Fossa.FossaAPIV1 (
   getIssues,
   getOrganization,
   getAttribution,
+  getSignedLicenseScanURL,
   getSignedURL,
   getProject,
   archiveUpload,
   archiveBuildUpload,
   assertUserDefinedBinaries,
   assertRevisionBinaries,
+  licenseScanFinalize,
+  licenseScanResultUpload,
   resolveUserDefinedBinary,
   resolveProjectDependencies,
   vsiCreateScan,
@@ -42,6 +45,7 @@ import App.Types (
   ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
  )
 import App.Version (versionNumber)
+import Codec.Compression.GZip qualified as GZIP
 import Control.Algebra (Algebra, Has, type (:+:))
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fromMaybeText)
@@ -65,7 +69,7 @@ import Data.ByteString.Char8 qualified as C
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
-import Data.String.Conversion (decodeUtf8, toText)
+import Data.String.Conversion (decodeUtf8, toStrict, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Word (Word8)
@@ -100,6 +104,7 @@ import Network.HTTP.Req (
   Option,
   POST (POST),
   PUT (PUT),
+  ReqBodyBs (ReqBodyBs),
   ReqBodyFile (ReqBodyFile),
   ReqBodyJson (ReqBodyJson),
   Scheme (Https),
@@ -120,6 +125,7 @@ import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
 import Network.HTTP.Types qualified as HTTP
 import Path (File, Path, Rel)
 import Srclib.Types (
+  LicenseSourceUnit,
   Locator (..),
   SourceUnit,
   parseLocator,
@@ -380,6 +386,28 @@ archiveBuildUpload apiOpts archive = runEmpty $
         req POST (archiveBuildURL baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
     pure (responseBody resp)
 
+---------- license-scan build queueing. This Endpoint ensures that after a license-scan is uploaded, it is scanned.
+
+licenseScanFinalizeUrl :: Url 'Https -> Url 'Https
+licenseScanFinalizeUrl baseUrl = baseUrl /: "api" /: "license_scan" /: "finalize"
+
+-- TODO: /license_scan/finalize just returns a 201 if there's a success. No need to parse the body
+licenseScanFinalize ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ArchiveComponents ->
+  m (Maybe ())
+licenseScanFinalize apiOpts archiveProjects = runEmpty $
+  fossaReqAllow401 $ do
+    (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+    let opts = "dependency" =: True <> "rawLicenseScan" =: True
+
+    _ <-
+      context "Queuing a build for all license scan uploads" $
+        req POST (licenseScanFinalizeUrl baseUrl) (ReqBodyJson archiveProjects) ignoreResponse (baseOpts <> opts)
+    pure ()
+
 ---------- The signed URL endpoint returns a URL endpoint that can be used to directly upload to an S3 bucket.
 
 signedURLEndpoint :: Url 'Https -> Url 'Https
@@ -401,6 +429,27 @@ getSignedURL apiOpts revision packageName = fossaReq $ do
       req GET (signedURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
   pure (responseBody response)
 
+---------- The signed License Scan URL endpoint returns a URL endpoint that can be used to directly upload the results of a license scan to an S3 bucket.
+
+signedLicenseScanURLEndpoint :: Url 'Https -> Url 'Https
+signedLicenseScanURLEndpoint baseUrl = baseUrl /: "api" /: "license_scan" /: "signed_url"
+
+getSignedLicenseScanURL ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  Text ->
+  Text ->
+  m SignedURL
+getSignedLicenseScanURL apiOpts revision packageName = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts = "packageSpec" =: packageName <> "revision" =: revision
+
+  response <-
+    context ("Retrieving a signed S3 URL for license scan results of " <> packageName) $
+      req GET (signedLicenseScanURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
+  pure (responseBody response)
+
 ---------- The archive upload function uploads the file it is given directly to the signed URL it is provided.
 
 archiveUpload ::
@@ -419,6 +468,29 @@ archiveUpload signedArcURI arcFile = fossaReq $ do
     Right (url, options) -> uploadArchiveRequest url options
   where
     uploadArchiveRequest url options = reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
+
+---------- The license scan result upload function uploads the JSON license result directly to the signed URL it is provided.
+
+licenseScanResultUpload ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  SignedURL ->
+  LicenseSourceUnit ->
+  m LbsResponse
+licenseScanResultUpload signedArcURI licenseScanResult = fossaReq $ do
+  let arcURL = URI.mkURI $ signedURL signedArcURI
+
+  uri <- fromMaybeText ("Invalid URL: " <> signedURL signedArcURI) arcURL
+  validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
+
+  context ("Uploading license scan result to " <> signedURL signedArcURI) $ case validatedURI of
+    Left (httpUrl, httpOptions) -> uploadArchiveRequest httpUrl httpOptions
+    Right (httpsUrl, httpsOptions) -> uploadArchiveRequest httpsUrl httpsOptions
+  where
+    zippedLicenseResult :: BS.ByteString
+    zippedLicenseResult = toStrict $ GZIP.compress $ encode licenseScanResult
+    -- We send gzipped json, so we can't use req's JSON utilities.
+    uploadArchiveRequest :: (MonadHttp m) => Url scheme -> Option scheme -> m LbsResponse
+    uploadArchiveRequest url options = reqCb PUT url (ReqBodyBs zippedLicenseResult) lbsResponse options (pure . requestEncoder)
 
 -- requestEncoder properly encodes the Request path.
 -- The default encoding logic does not encode "+" ot "$" characters which makes AWS very angry.

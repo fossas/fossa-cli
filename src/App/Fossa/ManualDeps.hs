@@ -14,7 +14,11 @@ module App.Fossa.ManualDeps (
   analyzeFossaDepsFile,
 ) where
 
+import App.Fossa.ArchiveUploader (VendoredDependency (..), archiveNoUploadSourceUnit, archiveUploadSourceUnit)
+import App.Fossa.LicenseScanner (licenseNoScanSourceUnit, licenseScanSourceUnit)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
+import Control.Effect.Lift (Has, Lift)
+import Control.Effect.StickyLogger (StickyLogger)
 import Control.Monad (when)
 import Data.Aeson (
   FromJSON (parseJSON),
@@ -23,21 +27,18 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
-
-import App.Fossa.ArchiveUploader
-import Control.Effect.Lift
-import Control.Effect.StickyLogger (StickyLogger)
-import Data.Aeson.Extra
+import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers)
 import Data.Aeson.Types (Parser)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty qualified as NE
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import DepTypes (DepType (..))
+import Effect.Exec (Exec)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
-import Fossa.API.Types
-import Path
+import Fossa.API.Types (ApiOpts)
+import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
@@ -47,7 +48,19 @@ data FoundDepsFile
   = ManualYaml (Path Abs File)
   | ManualJSON (Path Abs File)
 
-analyzeFossaDepsFile :: (Has Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => Path Abs Dir -> Maybe ApiOpts -> m (Maybe SourceUnit)
+data ArchiveUploadType = ArchiveUpload | CLILicenseScan
+
+analyzeFossaDepsFile ::
+  ( Has Diagnostics sig m
+  , Has ReadFS sig m
+  , Has (Lift IO) sig m
+  , Has StickyLogger sig m
+  , Has Logger sig m
+  , Has Exec sig m
+  ) =>
+  Path Abs Dir ->
+  Maybe ApiOpts ->
+  m (Maybe SourceUnit)
 analyzeFossaDepsFile root maybeApiOpts = do
   maybeDepsFile <- findFossaDepsFile root
   case maybeDepsFile of
@@ -79,16 +92,33 @@ findFossaDepsFile root = do
     (_, _, True) -> pure $ Just $ ManualJSON jsonFile
     (False, False, False) -> pure Nothing
 
-toSourceUnit :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has StickyLogger sig m, Has Logger sig m) => Path Abs Dir -> FoundDepsFile -> ManualDependencies -> Maybe ApiOpts -> m SourceUnit
+toSourceUnit ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has StickyLogger sig m
+  , Has Logger sig m
+  , Has Exec sig m
+  ) =>
+  Path Abs Dir ->
+  FoundDepsFile ->
+  ManualDependencies ->
+  Maybe ApiOpts ->
+  m SourceUnit
 toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts = do
   -- If the file exists and we have no dependencies to report, that's a failure.
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
-  archiveLocators <- case maybeApiOpts of
-    Nothing -> pure $ archiveNoUploadSourceUnit vendoredDependencies
-    Just apiOpts ->
-      case NE.nonEmpty vendoredDependencies of
-        Just nonEmptyVendoredDeps -> NE.toList <$> archiveUploadSourceUnit root apiOpts nonEmptyVendoredDeps
-        Nothing -> pure []
+  -- See https://fossa.atlassian.net/browse/ANE-148
+  -- IMPORTANT: Until ANE-148 is implemented, this should always be `ArchiveUpload` on master
+  let archiveOrCLI = ArchiveUpload
+  archiveLocators <- case (maybeApiOpts, archiveOrCLI, NE.nonEmpty vendoredDependencies) of
+    -- Don't do anything if there are no vendered deps.
+    (_, _, Nothing) -> pure []
+    (Just apiOpts, ArchiveUpload, Just vdeps) -> NE.toList <$> archiveUploadSourceUnit root apiOpts vdeps
+    (Just apiOpts, CLILicenseScan, Just vdeps) -> NE.toList <$> licenseScanSourceUnit root apiOpts vdeps
+    -- For consistency, these functions could require NonEmpty, but it offers no real
+    -- benefit, since they're no-ops on empty lists.
+    (Nothing, ArchiveUpload, Just vdeps) -> pure $ archiveNoUploadSourceUnit $ NE.toList vdeps
+    (Nothing, CLILicenseScan, Just vdeps) -> pure $ licenseNoScanSourceUnit $ NE.toList vdeps
 
   let renderedPath = toText root
       referenceLocators = refToLocator <$> referencedDependencies
@@ -157,6 +187,7 @@ toAdditionalData customDeps remoteDeps =
 hasNoDeps :: ManualDependencies -> Bool
 hasNoDeps ManualDependencies{..} = null referencedDependencies && null customDependencies && null vendoredDependencies && null remoteDependencies
 
+-- TODO: Change these to Maybe NonEmpty
 data ManualDependencies = ManualDependencies
   { referencedDependencies :: [ReferencedDependency]
   , customDependencies :: [CustomDependency]

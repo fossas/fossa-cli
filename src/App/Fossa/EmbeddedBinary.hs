@@ -3,6 +3,7 @@
 
 module App.Fossa.EmbeddedBinary (
   BinaryPaths,
+  ThemisIndex,
   ThemisBins (..),
   toPath,
   withWigginsBinary,
@@ -12,11 +13,14 @@ module App.Fossa.EmbeddedBinary (
   dumpEmbeddedBinary,
 ) where
 
+import Codec.Compression.Lzma qualified as Lzma
 import Control.Effect.Exception (bracket)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.ByteString (ByteString, writeFile)
+import Data.ByteString.Lazy qualified as BL
 import Data.FileEmbed.Extra (embedFileIfExists)
 import Data.Foldable (traverse_)
+import Data.String.Conversion (toLazy, toString)
 import Data.Tagged (Tagged, applyTag, unTag)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Path (
@@ -75,13 +79,22 @@ cleanupThemisBins (ThemisBins a b) = traverse_ cleanupExtractedBinaries [unTag a
 withThemisAndIndex :: Has (Lift IO) sig m => (ThemisBins -> m c) -> m c
 withThemisAndIndex = bracket extractThemisFiles cleanupThemisBins
 
+-- When running Themis we always need both the themis-cli and the decompressed index.gob
 extractThemisFiles :: Has (Lift IO) sig m => m ThemisBins
 extractThemisFiles = do
-  themisActual <- applyTag @ThemisBinary <$> extractEmbeddedBinary Themis
-  -- TODO: The gob is still xzipped, unzip it here
-  themisIndex <- applyTag @ThemisIndex <$> extractEmbeddedBinary ThemisIndex
-
-  pure $ ThemisBins themisActual themisIndex
+  themisBin <- extractEmbeddedBinary Themis
+  let themisActual = applyTag @ThemisBinary themisBin
+  -- TODO: refactor into `extractXZippedBinary ThemisIndex`
+  -- decompress index.gob.xz binary and write it to disk
+  container <- sendIO extractDir
+  let decompressedThemisIndex =
+        BinaryPaths
+          { binaryPathContainer = container
+          , binaryFilePath = $(mkRelFile "index.gob")
+          }
+  _ <- sendIO $ ensureDir $ parent $ toPath decompressedThemisIndex
+  _ <- sendIO $ BL.writeFile (toString $ toPath decompressedThemisIndex) (Lzma.decompress $ toLazy embeddedBinaryThemisIndex)
+  pure $ ThemisBins themisActual $ applyTag @ThemisIndex decompressedThemisIndex
 
 withSyftBinary ::
   ( Has (Lift IO) sig m
