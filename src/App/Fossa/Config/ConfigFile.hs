@@ -17,7 +17,8 @@ module App.Fossa.Config.ConfigFile (
 
 import App.Docs (fossaYmlDocUrl)
 import App.Types (ProjectMetadata (..), ReleaseGroupMetadata)
-import Control.Applicative ((<|>))
+import Control.Applicative (Alternative, (<|>))
+import Control.Applicative qualified as Alternative
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -94,23 +95,23 @@ resolveConfigFile base path = do
   loc <- resolveLocation base path
   case loc of
     DefaultConfigLocation dir -> do
-      possibleConfigFilePaths <-
-        mapM
-          ( \configFileName -> do
-              let configFilePath = dir </> configFileName
-              exists <- doesFileExist configFilePath
-              pure $ if exists then Just configFilePath else Nothing
-          )
-          defaultConfigFileNames
-      case asum possibleConfigFilePaths of
-        Just actualConfigFilePath -> do
-          configFile <- readContentsYaml actualConfigFilePath
+      possibleConfigFilePath <-
+        asum
+          <$> traverse
+            ( \configFileName -> do
+                let configFilePath = dir </> configFileName
+                exists <- doesFileExist configFilePath
+                pure $ if exists then Just configFilePath else Nothing
+            )
+            defaultConfigFileNames
+      whenJust possibleConfigFilePath $ \configFilePath ->
+        do
+          configFile <- readContentsYaml configFilePath
           let version = configVersion configFile
           if version >= 3
             then pure $ Just configFile
             else -- Invalid config found without --config flag: warn and ignore file.
               logWarn (warnMsgForOlderConfig @AnsiStyle version) $> Nothing
-        Nothing -> pure Nothing
     SpecifiedConfigLocation realpath -> do
       exists <- doesFileExist realpath
       if not exists
@@ -123,6 +124,9 @@ resolveConfigFile base path = do
             then pure $ Just configFile
             else -- Invalid config with --config specified: fail with message.
               fatal $ warnMsgForOlderConfig @AnsiStyle version
+  where
+    whenJust :: (Monad m, Alternative f) => Maybe a -> (a -> m (f b)) -> m (f b)
+    whenJust = flip $ maybe (pure Alternative.empty)
 
 warnMsgForOlderConfig :: Int -> Doc ann
 warnMsgForOlderConfig foundVersion =
