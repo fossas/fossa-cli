@@ -145,7 +145,7 @@ cabalGenPlanCmd :: Command
 cabalGenPlanCmd =
   Command
     { cmdName = "cabal"
-    , cmdArgs = ["v2-build", "--dry-run"]
+    , cmdArgs = ["v2-build", "all", "--dry-run"]
     , cmdAllowErr = Never
     }
 

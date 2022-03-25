@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Haskell: Generate build plan properly for multi-home Cabal projects
+
 ## v3.2.8
 
 - Filtering: Don't use included paths for discovery exclusion. ([#907](https://github.com/fossas/fossa-cli/pull/907))
