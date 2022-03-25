@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Node.NpmLockSpec (
+module Node.PackageLockSpec (
   spec,
 ) where
 
@@ -24,30 +24,30 @@ import GraphUtil (
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Npm.PackageLock (
-  NpmDep (
-    NpmDep,
+  NpmResolved (NpmResolved, unNpmResolved),
+  PkgLockDependency (
+    PkgLockDependency,
     depDependencies,
     depDev,
     depRequires,
     depResolved,
     depVersion
   ),
-  NpmPackageJson (..),
-  NpmResolved (NpmResolved, unNpmResolved),
+  PkgLockJson (..),
   buildGraph,
  )
 import Test.Effect (it', shouldBe')
 import Test.Hspec (Spec, describe, it, runIO)
 
-mockInput :: NpmPackageJson
+mockInput :: PkgLockJson
 mockInput =
-  NpmPackageJson
-    { packagePackages = Map.empty
-    , packageDependencies =
+  PkgLockJson
+    { lockPackages = Map.empty
+    , lockDependencies =
         Map.fromList
           [
             ( "packageOne"
-            , NpmDep
+            , PkgLockDependency
                 { depVersion = "1.0.0"
                 , depDev = False
                 , depResolved = NpmResolved $ Just "https://example.com/one.tgz"
@@ -56,7 +56,7 @@ mockInput =
                     Map.fromList
                       [
                         ( "packageTwo"
-                        , NpmDep
+                        , PkgLockDependency
                             { depVersion = "2.0.0"
                             , depDev = True
                             , depResolved = NpmResolved $ Just "https://example.com/two.tgz"
@@ -69,7 +69,7 @@ mockInput =
             )
           ,
             ( "packageThree"
-            , NpmDep
+            , PkgLockDependency
                 { depVersion = "3.0.0"
                 , depDev = True
                 , depResolved = NpmResolved $ Just "https://example.com/three.tgz"
@@ -79,7 +79,7 @@ mockInput =
             )
           ,
             ( "packageSeven"
-            , NpmDep
+            , PkgLockDependency
                 { depVersion = "7.0.0"
                 , depDev = False
                 , depResolved = NpmResolved $ Just "https://example.com/seven.tgz"
@@ -89,7 +89,7 @@ mockInput =
             )
           ,
             ( "packageFour"
-            , NpmDep
+            , PkgLockDependency
                 { depVersion = "file:abc/def"
                 , depDev = False
                 , depResolved = NpmResolved Nothing
@@ -99,7 +99,7 @@ mockInput =
             )
           ,
             ( "packageFive"
-            , NpmDep
+            , PkgLockDependency
                 { depVersion = "5.0.0"
                 , depDev = True
                 , depResolved = NpmResolved $ Just "https://example.com/five.tgz"
@@ -109,7 +109,7 @@ mockInput =
             )
           ,
             ( "packageSix"
-            , NpmDep
+            , PkgLockDependency
                 { depVersion = "6.0.0"
                 , depDev = True
                 , depResolved = NpmResolved $ Just "https://example.com/six.tgz"
@@ -334,19 +334,19 @@ packageLockParseSpec testDir =
   describe "parsing package-json.lock" $ do
     it' "Should ignore \"resolved\": <bool> in package-lock.json" $ do
       let packageLock = testDir </> $(mkRelFile "boolean-resolved-package-lock.json")
-      NpmPackageJson{packageDependencies = packageDependencies} <- readContentsJson packageLock
+      PkgLockJson{lockDependencies = packageDependencies} <- readContentsJson packageLock
       let foo = unNpmResolved . depResolved =<< Map.lookup "foo" packageDependencies
       foo `shouldBe'` Nothing
 
     it' "Should parse \"resolved\": <string> in package-lock.json" $ do
       let packageLock = testDir </> $(mkRelFile "string-resolved-package-lock.json")
-      NpmPackageJson{packageDependencies = packageDependencies} <- readContentsJson packageLock
+      PkgLockJson{lockDependencies = packageDependencies} <- readContentsJson packageLock
       let foo = unNpmResolved . depResolved =<< Map.lookup "foo" packageDependencies
       foo `shouldBe'` Just "https://bar.npmjs.org/foo/-/foo-1.0.0.tgz"
 
     it' "Should parse dependency with no \"resolved\" key in package-lock.json" $ do
       let packageLock = testDir </> $(mkRelFile "absent-resolved-package-lock.json")
-      NpmPackageJson{packageDependencies = packageDependencies} <- readContentsJson packageLock
+      PkgLockJson{lockDependencies = packageDependencies} <- readContentsJson packageLock
       let foo = unNpmResolved . depResolved =<< Map.lookup "foo" packageDependencies
       foo `shouldBe'` Nothing
 
