@@ -8,6 +8,7 @@ module App.Fossa.Config.Test (
   mkSubCommand,
 ) where
 
+import App.Fossa.API.BuildWait (WaitConfig (WaitConfig, apiPollDelay), defaultWaitConfig)
 import App.Fossa.Config.Common (
   CacheAction (ReadOnly),
   CommonOpts (..),
@@ -22,6 +23,7 @@ import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
+import Codec.Archive.Tar (extract)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -65,6 +67,7 @@ data TestConfig = TestConfig
   { baseDir :: BaseDir
   , apiOpts :: ApiOpts
   , timeout :: Duration
+  , waitConfig :: WaitConfig
   , outputFormat :: OutputFormat
   , projectRevision :: ProjectRevision
   }
@@ -118,5 +121,6 @@ mergeOpts maybeConfig envvars TestCliOpts{..} = do
     <$> baseDir
     <*> apiOpts
     <*> pure timeout
+    <*> pure defaultWaitConfig
     <*> pure testOutputType
     <*> revision

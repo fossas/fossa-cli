@@ -6,25 +6,29 @@ module Test.Fixtures (
   baseDir,
   build,
   contributors,
+  locator,
   organization,
   project,
   projectMedata,
   projectRevision,
+  scanId,
   scanResponse,
   sourceUnits,
   uploadResponse,
-emptyIssues, issues) where
+  emptyIssues,
+  issues,
+) where
 
 import App.Types qualified as App
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
+import Data.Text.Extra (showT)
 import Fossa.API.Types qualified as API
 import Path (mkRelDir, parseAbsDir, (</>))
 import Srclib.Types (Locator (..), SourceUnit (..))
 import System.Directory (getTemporaryDirectory)
 import Text.URI.QQ (uri)
 import Types (GraphBreadth (..))
-import Data.Text.Extra (showT)
 
 apiOpts :: API.ApiOpts
 apiOpts =
@@ -109,15 +113,19 @@ build =
   API.Build
     { API.buildId = 101
     , API.buildError = Nothing
-    , API.buildTask = API.BuildTask
-      { API.buildTaskStatus = API.StatusSucceeded
-      }
+    , API.buildTask =
+        API.BuildTask
+          { API.buildTaskStatus = API.StatusSucceeded
+          }
     }
 
-scanResponse :: API.ScanResponse 
+scanId :: API.ScanId
+scanId = API.ScanId "TestScanId"
+
+scanResponse :: API.ScanResponse
 scanResponse =
   API.ScanResponse
-    { API.responseScanId = API.ScanId "TestScanId"
+    { API.responseScanId = scanId
     , API.responseScanStatus = Nothing
     }
 
@@ -131,17 +139,16 @@ emptyIssues =
 
 issues :: API.Issues
 issues =
-  let 
-    issueTypes = 
-      [ API.IssuePolicyConflict
-      , API.IssuePolicyFlag
-      , API.IssueVulnerability
-      , API.IssueUnlicensedDependency
-      , API.IssueOutdatedDependency
-      , API.IssueOther "TestIssueOther"
-      ]
-    makeIssue :: Int -> API.IssueType -> API.Issue
-    makeIssue issueId issueType =
+  let issueTypes =
+        [ API.IssuePolicyConflict
+        , API.IssuePolicyFlag
+        , API.IssueVulnerability
+        , API.IssueUnlicensedDependency
+        , API.IssueOutdatedDependency
+        , API.IssueOther "TestIssueOther"
+        ]
+      makeIssue :: Int -> API.IssueType -> API.Issue
+      makeIssue issueId issueType =
         API.Issue
           { API.issueId = 200 + issueId
           , API.issuePriorityString = Nothing
@@ -150,9 +157,9 @@ issues =
           , API.issueType = issueType
           , API.issueRule = Nothing
           }
-    issueList = zipWith makeIssue [1..] issueTypes
-  in API.Issues
-    { API.issuesCount = length issueList
-    , API.issuesIssues = issueList
-    , API.issuesStatus = ""
-    }
+      issueList = zipWith makeIssue [1 ..] issueTypes
+   in API.Issues
+        { API.issuesCount = length issueList
+        , API.issuesIssues = issueList
+        , API.issuesStatus = "AVAILABLE"
+        }

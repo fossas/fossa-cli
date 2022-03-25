@@ -37,9 +37,9 @@ runStickyLogger sev act = withStickyRegion sev $ \region ->
 
 type IgnoreStickyLoggerC = SimpleC StickyLoggerF
 
-ignoreStickyLogger :: (Applicative m) =>
+ignoreStickyLogger ::
+  (Applicative m) =>
   IgnoreStickyLoggerC m a ->
   m a
-ignoreStickyLogger = interpret $ \case 
+ignoreStickyLogger = interpret $ \case
   LogSticky' _ -> pure ()
-

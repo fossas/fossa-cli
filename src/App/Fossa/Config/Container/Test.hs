@@ -9,6 +9,7 @@ module App.Fossa.Config.Container.Test (
   subcommand,
 ) where
 
+import App.Fossa.API.BuildWait (WaitConfig, defaultWaitConfig)
 import App.Fossa.Config.Common (
   CommonOpts (optProjectName, optProjectRevision),
   collectApiOpts,
@@ -57,6 +58,7 @@ data OutputFormat
 data ContainerTestConfig = ContainerTestConfig
   { apiOpts :: ApiOpts
   , timeoutDuration :: Duration
+  , waitConfig :: WaitConfig
   , outputFormat :: OutputFormat
   , testImageLocator :: ImageText
   , testRevisionOverride :: OverrideProject
@@ -93,6 +95,7 @@ mergeOpts cfgfile envvars ContainerTestOptions{..} = do
   ContainerTestConfig
     <$> apiopts
     <*> pure timeout
+    <*> pure defaultWaitConfig
     <*> pure containerTestOutputType
     <*> pure containerTestImage
     <*> pure revOverride

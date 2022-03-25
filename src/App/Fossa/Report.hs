@@ -6,6 +6,7 @@ module App.Fossa.Report (
 ) where
 
 import App.Fossa.API.BuildWait (
+  WaitConfig (WaitConfig),
   waitForIssues,
   waitForScanCompletion,
  )
@@ -14,6 +15,7 @@ import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (ProjectRevision (..))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
+import Control.Carrier.Reader (runReader)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift)
@@ -47,8 +49,11 @@ report ReportConfig{..} = do
   * Waiting for builds and issue scans (separately, but also together)
     * Above includes errors, types, and scaffolding
   -}
-  runStickyLogger SevInfo $
-    runFossaApiClient apiOpts . timeout' timeoutDuration $ \cancelToken -> do
+  runStickyLogger SevInfo
+    . runReader waitConfig
+    . runFossaApiClient apiOpts
+    . timeout' timeoutDuration
+    $ \cancelToken -> do
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")

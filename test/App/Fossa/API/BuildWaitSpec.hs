@@ -1,118 +1,214 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UndecidableInstances #-}
-
 module App.Fossa.API.BuildWaitSpec (spec) where
 
-import App.Fossa.API.BuildWait (waitForBuild, waitForScanCompletion)
+import App.Fossa.API.BuildWait (WaitConfig (WaitConfig, apiPollDelay), waitForBuild, waitForIssues, waitForScanCompletion)
 import Control.Algebra (Has)
-import Control.Effect.FossaApiClient (FossaApiClient, FossaApiClientF (..), getOrganization)
+import Control.Carrier.Reader (ReaderC, runReader)
+import Control.Carrier.Simple (SimpleC)
+import Control.Carrier.State.Strict (StateC)
+import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift)
-import Control.Effect.State (State, get, put)
-import Control.Carrier.State.Strict (runState, StateC)
-import Control.Timeout (Duration (Seconds), timeout')
-import Data.Monoid (First (First, getFirst))
-import Fossa.API.Types (Project (projectIsMonorepo), ScanResponse (responseScanStatus), Issues, Organization)
-import Test.Effect (assertNotCalled, it', withMockApi, shouldBe')
-import Test.Fixtures qualified as Fixtures
-import Test.Hspec (Spec, describe, it, pending, Expectation)
-import Data.Kind (Type)
 import Control.Monad (void)
-import Control.Carrier.Simple (interpretState, interpret)
-import Data.Type.Equality qualified as TE
+import Control.Timeout (Cancel, Duration (MilliSeconds, Seconds), timeout')
+import Data.Text (Text)
+import Fossa.API.Types (
+  Build (..),
+  BuildStatus (StatusCreated, StatusFailed, StatusRunning, StatusSucceeded),
+  BuildTask (..),
+  Issues (issuesStatus),
+  Project (projectIsMonorepo),
+  ScanResponse (responseScanStatus),
+ )
+import Srclib.Types (Locator (..))
+import Test.Effect (expectFatal', it', shouldBe')
+import Test.Fixtures qualified as Fixtures
+import Test.Hspec (Spec, describe)
+import Test.MockApi (ApiExpectation, alwaysReturns, returnsOnce, runApi)
 
-mockApi :: (Has (Lift IO) sig m) => FossaApiClientF a -> m a
-mockApi (GetIssues revision) = pure Fixtures.emptyIssues
-mockApi (GetLatestBuild revision) = pure Fixtures.build
-mockApi (GetLatestScan locator revision) = pure Fixtures.scanResponse
-mockApi (GetOrganization) = pure Fixtures.organization
-mockApi (GetProject revision) = pure Fixtures.project
-mockApi (GetScan locator scanId) = pure Fixtures.scanResponse
-mockApi req = assertNotCalled req
+testVpsLocator :: Locator
+testVpsLocator = Locator{locatorFetcher = "custom", locatorProject = "42/testProjectName", locatorRevision = Nothing}
 
+getOrganizationExpectation :: ApiExpectation
+getOrganizationExpectation = GetOrganization `alwaysReturns` Fixtures.organization
+getProjectExpectation :: ApiExpectation
+getProjectExpectation = (GetProject Fixtures.projectRevision) `alwaysReturns` Fixtures.project
+getMonorepoProjectExpectation :: ApiExpectation
+getMonorepoProjectExpectation = (GetProject Fixtures.projectRevision) `alwaysReturns` Fixtures.project{projectIsMonorepo = True}
 
-data ApiExpectation where
-  GetOrganizationExpectation :: (FossaApiClientF Organization -> Bool) -> Organization -> ApiExpectation
-  GetProjectExpectation :: (FossaApiClientF Project -> Bool) -> Project -> ApiExpectation
+getLatestBuildExpectation :: BuildStatus -> ApiExpectation
+getLatestBuildExpectation status =
+  (GetLatestBuild Fixtures.projectRevision)
+    `returnsOnce` Fixtures.build{buildTask = BuildTask{buildTaskStatus = status}}
 
-data ExpectationApplication
-  = Once
-  | Always
+getLatestScanExpectation :: ApiExpectation
+getLatestScanExpectation =
+  (GetLatestScan testVpsLocator Fixtures.projectRevision)
+    `returnsOnce` Fixtures.scanResponse
 
-data EffectExpectation e = EffectExpectation ExpectationApplication e
+getScanExpectation :: Maybe Text -> ApiExpectation
+getScanExpectation scanStatus =
+  (GetScan testVpsLocator Fixtures.scanId)
+    `returnsOnce` Fixtures.scanResponse{responseScanStatus = scanStatus}
 
-expectedApi :: (Has (Lift IO) sig m, Has (State [EffectExpectation ApiExpectation]) sig m) => [EffectExpectation ApiExpectation] -> forall a. FossaApiClientF a -> m a
-expectedApi [] req =
-  assertNotCalled req
-expectedApi es@(EffectExpectation _ (GetOrganizationExpectation pred org) : rest) req@(GetOrganization{}) =
-  if pred req
-  then do
-    updateExpectations es
-    pure org
-  else expectedApi rest req
-expectedApi es@(EffectExpectation _ (GetProjectExpectation pred proj) : rest) req@(GetProject{}) =
-  if pred req
-  then do
-    updateExpectations es
-    pure proj
-  else expectedApi rest req
-expectedApi (_ : rest) req =
-  expectedApi rest req
+getIssues :: Text -> ApiExpectation
+getIssues issuesStatus =
+  (GetIssues Fixtures.projectRevision)
+    `returnsOnce` Fixtures.issues{issuesStatus = issuesStatus}
 
-updateExpectations [] =
-  pure ()
-updateExpectations (EffectExpectation Once _ : rest) =
-  put rest
-updateExpectations (EffectExpectation Always _ : _) =
-  pure ()
+scanForever :: ApiExpectation
+scanForever =
+  (GetScan testVpsLocator Fixtures.scanId)
+    `alwaysReturns` Fixtures.scanResponse{responseScanStatus = Nothing}
 
+buildForever :: ApiExpectation
+buildForever =
+  (GetLatestBuild Fixtures.projectRevision)
+    `alwaysReturns` Fixtures.build{buildTask = BuildTask{buildTaskStatus = StatusRunning}}
 
-expectedApiState req = do
-  expectations <- get
-  expectedApi expectations req
+issuesForeverWaiting :: ApiExpectation
+issuesForeverWaiting =
+  (GetIssues Fixtures.projectRevision)
+    `alwaysReturns` Fixtures.issues{issuesStatus = "WAITING"}
+
+waitConfig :: WaitConfig
+waitConfig = WaitConfig{apiPollDelay = MilliSeconds 1}
+
+runWithApiAndTimeout ::
+  (Has (Lift IO) sig m) =>
+  [ApiExpectation] ->
+  (Cancel -> SimpleC FossaApiClientF (StateC [ApiExpectation] (ReaderC WaitConfig m)) b) ->
+  m ()
+runWithApiAndTimeout expectations =
+  void
+    . runReader waitConfig
+    . runApi expectations
+    . timeout' (Seconds 1)
 
 spec :: Spec
 spec =
   describe "BuildWait" $ do
     describe "waitForScanCompletion" $ do
       describe "VPS projects" $ do
-        -- let mockApiLocal (GetProject _) = pure $ Fixtures.project{projectIsMonorepo = True}
-        --     mockApiLocal req = mockApi req
+        let commonExpectations =
+              [ getOrganizationExpectation
+              , getMonorepoProjectExpectation
+              , getLatestScanExpectation
+              ]
         it' "should return when the build is complete" $ do
-          void . interpretState 
-            [ EffectExpectation Always (GetOrganizationExpectation (const True) Fixtures.organization)
-            , EffectExpectation Always (GetProjectExpectation (const True) Fixtures.project {projectIsMonorepo = True})
-            ]
-            expectedApiState
-            . timeout' (Seconds 1)
-            $ \cancel ->
-              waitForScanCompletion Fixtures.projectRevision cancel
-        it "should retry periodically if the build is not complete" $ do
-          pending
-        it "should cancel when the timeout expires" $ do
-          pending
+          runWithApiAndTimeout
+            ( commonExpectations
+                <> [ getScanExpectation (Just "AVAILABLE")
+                   ]
+            )
+            $ waitForScanCompletion Fixtures.projectRevision
+        it' "should retry periodically if the build is not complete" $ do
+          runWithApiAndTimeout
+            ( commonExpectations
+                <> [ getScanExpectation (Just "NOT AVAILABLE")
+                   , getScanExpectation Nothing
+                   , getScanExpectation (Just "AVAILABLE")
+                   ]
+            )
+            $ waitForScanCompletion Fixtures.projectRevision
+        it' "should die if the build errors" $ do
+          expectFatal'
+            . runWithApiAndTimeout
+              ( commonExpectations
+                  <> [ getScanExpectation (Just "ERROR")
+                     ]
+              )
+            $ waitForScanCompletion Fixtures.projectRevision
+        it' "should cancel when the timeout expires" $
+          do
+            expectFatal'
+            . runWithApiAndTimeout (scanForever : commonExpectations)
+            $ waitForScanCompletion Fixtures.projectRevision
       describe "Non-VPS projects" $ do
-        it "should return when the build is complete" $ do
-          pending
-        it "should retry periodically if the build is not complete" $ do
-          pending
-        it "should cancel when the timeout expires" $ do
-          pending
+        let commonExpectations = [getProjectExpectation]
+        it' "should return when the build is complete" $
+          do
+            runWithApiAndTimeout
+              ( commonExpectations
+                  <> [ getLatestBuildExpectation StatusSucceeded
+                     ]
+              )
+            $ waitForScanCompletion Fixtures.projectRevision
+        it' "should retry periodically if the build is not complete" $ do
+          runWithApiAndTimeout
+            ( commonExpectations
+                <> [ getLatestBuildExpectation StatusCreated
+                   , getLatestBuildExpectation StatusRunning
+                   , getLatestBuildExpectation StatusSucceeded
+                   ]
+            )
+            $ waitForScanCompletion Fixtures.projectRevision
+        it' "should die if the build fails" $
+          do
+            expectFatal'
+            . runWithApiAndTimeout
+              ( commonExpectations
+                  <> [ getLatestBuildExpectation StatusFailed
+                     ]
+              )
+            $ waitForScanCompletion Fixtures.projectRevision
+        it' "should cancel when the timeout expires" $ do
+          expectFatal'
+            . runWithApiAndTimeout (buildForever : commonExpectations)
+            $ waitForScanCompletion Fixtures.projectRevision
     describe "waitForIssues" $ do
-      it "should return when the issues are avilable" $ do
-        pending
-      it "should retry periodically if the issues are not available" $ do
-        pending
-      it "should cancel when the timeout expires" $ do
-        pending
+      it' "should return when the issues are avilable" $
+        do
+          runWithApiAndTimeout
+            [ getOrganizationExpectation
+            , getProjectExpectation
+            , getIssues "AVAILABLE"
+            ]
+          $ \cancel -> do
+            issues <- waitForIssues Fixtures.projectRevision cancel
+            issues `shouldBe'` Fixtures.issues
+
+      it' "should retry periodically if the issues are not available" $
+        do
+          runWithApiAndTimeout
+            [ getOrganizationExpectation
+            , getProjectExpectation
+            , getIssues "WAITING"
+            , getIssues "AVAILABLE"
+            ]
+          $ \cancel -> do
+            issues <- waitForIssues Fixtures.projectRevision cancel
+            issues `shouldBe'` Fixtures.issues
+
+      it' "should cancel when the timeout expires" $
+        do
+          expectFatal'
+          . runWithApiAndTimeout
+            [ getOrganizationExpectation
+            , getProjectExpectation
+            , issuesForeverWaiting
+            ]
+          $ waitForIssues Fixtures.projectRevision
     describe "waitForBuild" $ do
-      it "should return when the build is complete" $ do
-        pending
-      it "should terminate fatal if the build fails" $ do
-        pending
-      it "should retry periodically if the build is incomplete" $ do
-        pending
-      it "should cancel when the timeout expires" $ do
-        pending
+      it' "should return when the build is complete" $
+        do
+          runWithApiAndTimeout
+            [ getLatestBuildExpectation StatusSucceeded
+            ]
+          $ waitForBuild Fixtures.projectRevision
+      it' "should retry periodically if the build is not complete" $ do
+        runWithApiAndTimeout
+          [ getLatestBuildExpectation StatusCreated
+          , getLatestBuildExpectation StatusRunning
+          , getLatestBuildExpectation StatusSucceeded
+          ]
+          $ waitForBuild Fixtures.projectRevision
+      it' "should die if the build fails" $
+        do
+          expectFatal'
+          . runWithApiAndTimeout
+            [ getLatestBuildExpectation StatusFailed
+            ]
+          $ waitForBuild Fixtures.projectRevision
+      it' "should cancel when the timeout expires" $ do
+        expectFatal'
+          . runWithApiAndTimeout [buildForever]
+          $ waitForBuild Fixtures.projectRevision
