@@ -77,7 +77,7 @@ import Effect.Exec (
   Exec,
  )
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn)
-import Effect.ReadFS (ReadFS)
+import Effect.ReadFS (ReadFS, resolveDir)
 import Fossa.API.Types (ApiOpts)
 import Options.Applicative (
   Alternative (many),
@@ -252,10 +252,10 @@ loadConfig ::
   ) =>
   AnalyzeCliOpts ->
   m (Maybe ConfigFile)
-loadConfig AnalyzeCliOpts{commons = CommonOpts{optConfig}} = do
-  -- FIXME: We eventually want to use the basedir to inform the config file root
-  configRelBase <- sendIO getCurrentDir
-  resolveConfigFile configRelBase optConfig
+loadConfig AnalyzeCliOpts{analyzeBaseDir, commons = CommonOpts{optConfig}} = do
+  cwd <- sendIO getCurrentDir
+  configBaseDir <- resolveDir cwd (toText analyzeBaseDir)
+  resolveConfigFile configBaseDir optConfig
 
 mergeOpts ::
   ( Has Diagnostics sig m
