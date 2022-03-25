@@ -7,9 +7,10 @@ import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
 import Control.Algebra (Has)
 import Control.Carrier.Git (GitC)
 import Control.Carrier.Simple (interpret)
-import Control.Effect.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.Diagnostics (fatalText)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Git (GitF (FetchGitContributors))
+import Control.Effect.Lift (Lift)
 import Data.Flag (toFlag)
 import Fossa.API.Types (Project (..), UploadResponse (..))
 import Srclib.Types (Locator)
@@ -17,15 +18,23 @@ import Test.Effect (assertNotCalled, expectFatal', it', shouldBe', withMockApi)
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe)
 import Test.Hspec.Core.Spec (runIO)
+import Test.MockApi (
+  ApiExpectation,
+  alwaysReturns,
+  returnsOnce,
+  runWithApiExpectations
+ )
 
 -- | Mock API for this spec that returns fixture data.
--- The function under tests uses all of these.
-mockApi :: (Has Diagnostics sig m) => forall a. FossaApiClientF a -> m a
+-- This is here instead of using expectations because the expecctations
+-- currently don't support failure which we need for some of these tests.
+mockApi :: (Has (Lift IO) sig m) => forall a. FossaApiClientF a -> m a
 mockApi (GetProject _) = pure Fixtures.project
 mockApi UploadAnalysis{} = pure Fixtures.uploadResponse
 mockApi UploadContributors{} = pure ()
 mockApi GetApiOpts = pure Fixtures.apiOpts
 mockApi GetOrganization = pure Fixtures.organization
+mockApi req = assertNotCalled req
 
 withGit :: (forall x. GitF x -> m x) -> GitC m a -> m a
 withGit = interpret
@@ -36,18 +45,27 @@ mockGit (FetchGitContributors{}) = pure Fixtures.contributors
 expectedLocator :: Locator
 expectedLocator = uploadLocator Fixtures.uploadResponse
 
+apiExpectations :: [ApiExpectation]
+apiExpectations =
+  [ GetProject Fixtures.projectRevision `alwaysReturns` Fixtures.project
+  , GetOrganization `alwaysReturns` Fixtures.organization
+  , GetApiOpts `alwaysReturns` Fixtures.apiOpts
+  , UploadAnalysis Fixtures.projectRevision Fixtures.projectMetadata Fixtures.sourceUnits `alwaysReturns` Fixtures.uploadResponse
+  , UploadContributors expectedLocator Fixtures.contributors `alwaysReturns` ()
+  ]
+
 spec :: Spec
 spec =
   describe "uploadSuccessfulAnalysis" $ do
     baseDir <- runIO Fixtures.baseDir
     it' "uploads analysis and git contributors"
-      . withMockApi mockApi
+      . runWithApiExpectations apiExpectations
       . withGit mockGit
       $ do
         locator <-
           uploadSuccessfulAnalysis
             baseDir
-            Fixtures.projectMedata
+            Fixtures.projectMetadata
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
             Fixtures.sourceUnits
@@ -56,28 +74,26 @@ spec =
     -- just checking it doesn't fail.  In the future we should extract that so
     -- we can test it better.
     it' "renders JSON output when requested"
-      . withMockApi mockApi
+      . runWithApiExpectations apiExpectations
       . withGit mockGit
       $ do
         locator <-
           uploadSuccessfulAnalysis
             baseDir
-            Fixtures.projectMedata
+            Fixtures.projectMetadata
             (toFlag (JsonOutput) True)
             Fixtures.projectRevision
             Fixtures.sourceUnits
         locator `shouldBe'` expectedLocator
     it' "aborts when uploading to a monorepo"
-      . withMockApi
-        ( \case
-            GetProject _ -> pure $ Fixtures.project{projectIsMonorepo = True}
-            req -> assertNotCalled req
-        )
+      . runWithApiExpectations
+        [ GetProject Fixtures.projectRevision `returnsOnce` Fixtures.project{projectIsMonorepo = True}
+        ]
       . withGit mockGit
       . expectFatal'
       $ uploadSuccessfulAnalysis
         baseDir
-        Fixtures.projectMedata
+        Fixtures.projectMetadata
         (toFlag (JsonOutput) False)
         Fixtures.projectRevision
         Fixtures.sourceUnits
@@ -92,19 +108,19 @@ spec =
         locator <-
           uploadSuccessfulAnalysis
             baseDir
-            Fixtures.projectMedata
+            Fixtures.projectMetadata
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
             Fixtures.sourceUnits
         locator `shouldBe'` expectedLocator
     it' "continues if fetching contributors fails"
-      . withMockApi mockApi
+      . runWithApiExpectations apiExpectations
       . withGit (\_ -> fatalText "Mocked failure of fetching contributors from git")
       $ do
         locator <-
           uploadSuccessfulAnalysis
             baseDir
-            Fixtures.projectMedata
+            Fixtures.projectMetadata
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
             Fixtures.sourceUnits
@@ -120,7 +136,7 @@ spec =
         locator <-
           uploadSuccessfulAnalysis
             baseDir
-            Fixtures.projectMedata
+            Fixtures.projectMetadata
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
             Fixtures.sourceUnits

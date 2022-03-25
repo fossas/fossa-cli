@@ -9,7 +9,7 @@ module Test.Fixtures (
   locator,
   organization,
   project,
-  projectMedata,
+  projectMetadata,
   projectRevision,
   scanId,
   scanResponse,
@@ -60,8 +60,8 @@ uploadResponse =
     , API.uploadError = Nothing
     }
 
-projectMedata :: App.ProjectMetadata
-projectMedata =
+projectMetadata :: App.ProjectMetadata
+projectMetadata =
   App.ProjectMetadata
     { App.projectTitle = Just "testProjectTitle"
     , App.projectUrl = Nothing
@@ -81,9 +81,10 @@ projectRevision =
     }
 
 sourceUnits :: NE.NonEmpty SourceUnit
-sourceUnits =
-  NE.fromList
-    [ SourceUnit
+sourceUnits = unit NE.:| []
+  where
+    unit =
+      SourceUnit
         { sourceUnitName = "testSourceUnitName"
         , sourceUnitType = "testSourceUnitType"
         , sourceUnitManifest = "testSourceUnitManifest"
@@ -92,7 +93,6 @@ sourceUnits =
         , sourceUnitOriginPaths = []
         , additionalData = Nothing
         }
-    ]
 
 -- | A base dir for testing.  This directory is not guaranteed to exist.  If you
 -- want a real directory you should use `withTempDir`.

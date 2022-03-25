@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 
-module Test.MockApi (ApiExpectation, returnsOnce, alwaysReturns, runApi) where
+module Test.MockApi (ApiExpectation, returnsOnce, alwaysReturns, runWithApiExpectations) where
 
 import Control.Algebra (Has)
 import Control.Carrier.Simple (SimpleC, interpretState)
@@ -12,14 +12,18 @@ import Control.Monad (guard)
 import Data.List (intercalate)
 import Test.HUnit (assertFailure)
 
+-- | Specifies how to handle repetition of a request
 data ExpectationRepetition = Once | Always deriving (Eq, Ord, Show)
 
+-- | An expectation of an API call made up of the request and response.
 data ApiExpectation where
   ApiExpectation :: ExpectationRepetition -> FossaApiClientF a -> a -> ApiExpectation
 
+-- | Create an expectation that will only be satisfied once.
 returnsOnce :: FossaApiClientF a -> a -> ApiExpectation
 returnsOnce = ApiExpectation Once
 
+-- | Create an expectation that can be satisfied multiple times.
 alwaysReturns :: FossaApiClientF a -> a -> ApiExpectation
 alwaysReturns = ApiExpectation Always
 
@@ -27,17 +31,24 @@ isSingular :: ApiExpectation -> Bool
 isSingular (ApiExpectation Once _ _) = True
 isSingular (ApiExpectation Always _ _) = False
 
+-- | Matches a request to an expectation.  This function basically exists to
+-- extract and compare the runtime constructor of the two arguments so that
+-- arbitrary ones can be compared even if the types wouldn't match.
 matchExpectation :: FossaApiClientF a -> ApiExpectation -> Maybe a
-matchExpectation a@(GetIssues _) (ApiExpectation _ b@(GetIssues _) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetLatestBuild _) (ApiExpectation _ b@(GetLatestBuild _) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetLatestScan _ _) (ApiExpectation _ b@(GetLatestScan _ _) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetApiOpts) (ApiExpectation _ b@(GetApiOpts) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetIssues{}) (ApiExpectation _ b@(GetIssues{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetLatestBuild{}) (ApiExpectation _ b@(GetLatestBuild{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetLatestScan{}) (ApiExpectation _ b@(GetLatestScan{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetOrganization) (ApiExpectation _ b@(GetOrganization) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetProject _) (ApiExpectation _ b@(GetProject _) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetScan _ _) (ApiExpectation _ b@(GetScan _ _) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetProject{}) (ApiExpectation _ b@(GetProject{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetScan{}) (ApiExpectation _ b@(GetScan{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(UploadAnalysis{}) (ApiExpectation _ b@(UploadAnalysis{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(UploadContributors{}) (ApiExpectation _ b@(UploadContributors{}) resp) = resp <$ guard (a == b)
 matchExpectation _ _ = Nothing
 
-expectedApi :: (Has (Lift IO) sig m, Has (State [ApiExpectation]) sig m) => FossaApiClientF a -> m a
-expectedApi req = do
+-- | Handles a request in the context of the mock API.
+handleRequest :: (Has (Lift IO) sig m, Has (State [ApiExpectation]) sig m) => FossaApiClientF a -> m a
+handleRequest req = do
   expectations <- get
   case testExpectations expectations of
     Just (resp, expectations') -> do
@@ -50,7 +61,7 @@ expectedApi req = do
       sendIO . assertFailure $
         "Unexpected call: \n  " <> show req <> "\n"
           <> "Unsatisfied expectations: \n  "
-          <> intercalate "\n  " (map (\(ApiExpectation _ req _) -> show req) expectations)
+          <> intercalate "\n  " (map (\(ApiExpectation _ expectedReq _) -> show expectedReq) expectations)
   where
     testExpectations [] = Nothing
     testExpectations (expectation : rest) =
@@ -61,14 +72,15 @@ expectedApi req = do
             then Just (resp, rest)
             else Just (resp, expectation : rest)
 
-runApi ::
+-- | Run an action with a mock API client that tracks call expectations
+runWithApiExpectations ::
   ( Has (Lift IO) sig m
   ) =>
   [ApiExpectation] ->
   SimpleC FossaApiClientF (StateC [ApiExpectation] m) a ->
   m a
-runApi expectations f = do
-  (remainingExpectations, result) <- interpretState expectations expectedApi f
+runWithApiExpectations expectations f = do
+  (remainingExpectations, result) <- interpretState expectations handleRequest f
   let unsatisfiedSingleExpectations = filter isSingular remainingExpectations
   if null unsatisfiedSingleExpectations
     then pure result

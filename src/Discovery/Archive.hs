@@ -22,7 +22,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.TaskPool (TaskPool, forkTask)
 import Data.ByteString.Lazy qualified as BL
 import Data.Conduit.Binary (sinkLbs)
-import Data.Conduit.Lzma qualified as Lzma
+import Data.Conduit.Lzma qualified as CLzma
 import Data.Foldable (traverse_)
 import Data.List (isSuffixOf)
 import Data.String.Conversion (toText)
@@ -120,7 +120,7 @@ extractTarGz dir tarGzFile =
 
 extractTarXz :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
 extractTarXz dir tarXzFile = do
-  decompressed <- sendIO (runResourceT . runConduit $ sourceFileBS (toFilePath tarXzFile) .| Lzma.decompress Nothing .| sinkLbs)
+  decompressed <- sendIO (runResourceT . runConduit $ sourceFileBS (toFilePath tarXzFile) .| CLzma.decompress Nothing .| sinkLbs)
   sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read $ decompressed
 
 extractTarBz2 :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()

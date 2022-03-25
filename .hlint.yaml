@@ -17,6 +17,7 @@
 - suggest: {lhs: return, rhs: pure}
 - suggest: {lhs: () <$ x, rhs: Control.Monad.void x}
 - suggest: {lhs: x <&> f, rhs: f <$> x}
+- suggest: {lhs: mapM, rhs: traverse}
 
 - suggest: {lhs: Data.Text.pack, rhs: Data.String.Conversion.toText}
 - ignore: {name: "Use toText", within: ["Data.String.Conversion"]}
@@ -44,6 +45,8 @@
   - {name: Data.Text.tail, within: []}
   - {name: Data.Text.init, within: []}
   - {name: Data.Text.last, within: []}
+    # TODO: remove special-case
+  - {name: Data.List.NonEmpty.fromList, within: [App.Fossa.Analyze.Filter], message: "Pattern-match on nonEmpty instead of forcing the list."}
   - {name: "Prelude.!!", within: []}
   - {name: "Data.Map.!", within: []}
     # TODO: remove the need to special-case this test module.

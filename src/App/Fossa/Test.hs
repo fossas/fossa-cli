@@ -5,7 +5,6 @@ module App.Fossa.Test (
 ) where
 
 import App.Fossa.API.BuildWait (
-  WaitConfig (..),
   waitForIssues,
   waitForScanCompletion,
  )

@@ -22,9 +22,13 @@ import Fossa.API.Types (ApiOpts, Build, Contributors, Issues, Organization, Proj
 import Srclib.Types (Locator, SourceUnit)
 
 data FossaApiClientF a where
+  GetApiOpts :: FossaApiClientF ApiOpts
+  GetIssues :: ProjectRevision -> FossaApiClientF Issues
+  GetLatestBuild :: ProjectRevision -> FossaApiClientF Build
+  GetLatestScan :: Locator -> ProjectRevision -> FossaApiClientF ScanResponse
   GetOrganization :: FossaApiClientF Organization
   GetProject :: ProjectRevision -> FossaApiClientF Project
-  GetApiOpts :: FossaApiClientF ApiOpts
+  GetScan :: Locator -> ScanId -> FossaApiClientF ScanResponse
   UploadAnalysis ::
     ProjectRevision ->
     ProjectMetadata ->
@@ -34,10 +38,6 @@ data FossaApiClientF a where
     Locator ->
     Contributors ->
     FossaApiClientF ()
-  GetLatestBuild :: ProjectRevision -> FossaApiClientF Build
-  GetIssues :: ProjectRevision -> FossaApiClientF Issues
-  GetScan :: Locator -> ScanId -> FossaApiClientF ScanResponse
-  GetLatestScan :: Locator -> ProjectRevision -> FossaApiClientF ScanResponse
 
 deriving instance Show (FossaApiClientF a)
 deriving instance Eq (FossaApiClientF a)

@@ -22,7 +22,7 @@ import Srclib.Types (Locator (..))
 import Test.Effect (expectFatal', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe)
-import Test.MockApi (ApiExpectation, alwaysReturns, returnsOnce, runApi)
+import Test.MockApi (ApiExpectation, alwaysReturns, returnsOnce, runWithApiExpectations)
 
 runWithApiAndTimeout ::
   (Has (Lift IO) sig m) =>
@@ -32,7 +32,7 @@ runWithApiAndTimeout ::
 runWithApiAndTimeout expectations =
   void
     . runReader waitConfig
-    . runApi expectations
+    . runWithApiExpectations expectations
     . timeout' (Seconds 1)
 
 spec :: Spec

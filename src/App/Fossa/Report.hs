@@ -6,7 +6,6 @@ module App.Fossa.Report (
 ) where
 
 import App.Fossa.API.BuildWait (
-  WaitConfig (WaitConfig),
   waitForIssues,
   waitForScanCompletion,
  )

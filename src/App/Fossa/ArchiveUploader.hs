@@ -3,6 +3,11 @@
 module App.Fossa.ArchiveUploader (
   archiveUploadSourceUnit,
   archiveNoUploadSourceUnit,
+  arcToLocator,
+  forceVendoredToArchive,
+  duplicateFailureBundle,
+  duplicateNames,
+  hashFile,
   VendoredDependency (..),
 ) where
 
@@ -91,7 +96,8 @@ archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
 
   -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
-  _ <- Fossa.archiveBuildUpload apiOpts (ArchiveComponents $ NonEmpty.toList archives)
+  res <- traverse (Fossa.archiveBuildUpload apiOpts) (NonEmpty.toList archives)
+  logDebug $ pretty $ show res
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
   -- but not when reading from a source unit.
