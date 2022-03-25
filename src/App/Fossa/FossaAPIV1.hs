@@ -81,7 +81,8 @@ import Effect.Logger (
  )
 import Fossa.API.Types (
   ApiOpts,
-  ArchiveComponents,
+  Archive,
+  ArchiveComponents (ArchiveComponents),
   Build,
   Contributors,
   Issues,
@@ -368,14 +369,16 @@ archiveBuildURL baseUrl = baseUrl /: "api" /: "components" /: "build"
 archiveBuildUpload ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   ApiOpts ->
-  ArchiveComponents ->
+  Archive ->
   m (Maybe C.ByteString)
-archiveBuildUpload apiOpts archiveProjects = runEmpty $
+archiveBuildUpload apiOpts archive = runEmpty $
   fossaReqAllow401 $ do
     (baseUrl, baseOpts) <- useApiOpts apiOpts
 
     let opts = "dependency" =: True <> "rawLicenseScan" =: True
-
+    -- The API route expects an array of archives, but doesn't properly handle multiple archives so we upload
+    -- an array of a single archive.
+    let archiveProjects = ArchiveComponents [archive]
     -- The response appears to either be "Created" for new builds, or an error message for existing builds.
     -- Making the actual return value of "Created" essentially worthless.
     resp <-
