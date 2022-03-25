@@ -91,6 +91,7 @@ common deps
     , hedn                         ^>=0.3.0.1
     , http-client                  ^>=0.7.1
     , http-types                   ^>=0.12.3
+    , lzma                         ^>=0.0.0.3
     , lzma-conduit                 ^>=1.2.1
     , megaparsec                   ^>=9.1.0
     , modern-uri                   ^>=0.3.4
@@ -180,6 +181,7 @@ library
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
     App.Fossa.FossaAPIV1
+    App.Fossa.LicenseScanner
     App.Fossa.ListTargets
     App.Fossa.Main
     App.Fossa.ManualDeps
@@ -187,6 +189,7 @@ library
     App.Fossa.ProjectInference
     App.Fossa.Report
     App.Fossa.Report.Attribution
+    App.Fossa.RunThemis
     App.Fossa.Subcommand
     App.Fossa.Test
     App.Fossa.VPS.Scan.Core
