@@ -1,10 +1,14 @@
-# Fossa CLI Changelog
+# FOSSA CLI Changelog
+
+## Unreleased
+
+- Configuration: Users can now use `.fossa.yaml` as a configuration file name. Previously, only `.fossa.yml` was supported. ([#851](https://github.com/fossas/fossa-cli/pull/851))
 
 ## v3.1.7
-- Fossa-deps: Fixes an archive uploading bug for vendor dependency by queuing archive builds individually. ([#826](https://github.com/fossas/fossa-cli/pull/826)) 
+- fossa-deps: Fixes an archive uploading bug for vendor dependency by queuing archive builds individually. ([#826](https://github.com/fossas/fossa-cli/pull/826))
 
 ## v3.1.6
-- Respects Go module replacement directives in the Go Mod Graph strategy. ([#841](https://github.com/fossas/fossa-cli/pull/841)) 
+- Respects Go module replacement directives in the Go Mod Graph strategy. ([#841](https://github.com/fossas/fossa-cli/pull/841))
 
 ## v3.1.5
 
@@ -48,11 +52,11 @@
 - UX: Improves analysis scan summary rendering. ([#819](https://github.com/fossas/fossa-cli/pull/819))
 
 
-## v3.1.0 
+## v3.1.0
 
-- Fossa API: Uses `SSL_CERT_FILE`, and `SSL_CERT_DIR` environment variable for certificates when provided. ([#760](https://github.com/fossas/fossa-cli/pull/760)) 
+- Fossa API: Uses `SSL_CERT_FILE`, and `SSL_CERT_DIR` environment variable for certificates when provided. ([#760](https://github.com/fossas/fossa-cli/pull/760))
 - UX: Uses error messages received from FOSSA api, when reporting API related errors. ([#792](https://github.com/fossas/fossa-cli/pull/792))
-- UX: Adds scan summary tabulating errors, warnings, project directory, and skipped projects. ([#790](https://github.com/fossas/fossa-cli/pull/790))   
+- UX: Adds scan summary tabulating errors, warnings, project directory, and skipped projects. ([#790](https://github.com/fossas/fossa-cli/pull/790))
 
 ## v3.0.18
 
@@ -74,7 +78,7 @@
 
 ## v3.0.15
 
-- Improve archive upload logging. ([#761](https://github.com/fossas/fossa-cli/pull/761)) 
+- Improve archive upload logging. ([#761](https://github.com/fossas/fossa-cli/pull/761))
 
 ## v3.0.14
 
@@ -82,7 +86,7 @@
 
 ## v3.0.13
 
-- `package-lock.json` parser ignores name field. ([#757](https://github.com/fossas/fossa-cli/pull/757)) 
+- `package-lock.json` parser ignores name field. ([#757](https://github.com/fossas/fossa-cli/pull/757))
 
 ## v3.0.12
 
@@ -148,7 +152,7 @@
 
 # Version 3 Changelog
 
-- Migrates source code from [spectrometer](https://github.com/fossas/spectrometer) into fossa-cli (this repository). 
+- Migrates source code from [spectrometer](https://github.com/fossas/spectrometer) into fossa-cli (this repository).
 
 # Version 2 Changelog
 
@@ -2014,7 +2018,7 @@ Built with go version go1.10 linux/amd64
 - b7dff83 test(sbt): Add first test
 - 920ac9b test(docker): Create docker image with build tools
 - 7897993 doc(readme): update readme
- 
+
 ---
 Automated with [GoReleaser](https://github.com/goreleaser)
 Built with go version go1.10 linux/amd64

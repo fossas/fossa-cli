@@ -1,0 +1,35 @@
+version: 3
+
+server: https://app.fossa.com
+apiKey: "123"
+
+project:
+  id: github.com/fossa-cli
+  name: fossa-cli
+  team: fossa-team
+  policy: license-policy
+  link: fossa.com
+  url: fossa.com
+  releaseGroup:
+    name: test-release
+    release: "123"
+  jiraProjectKey: key
+
+revision:
+  commit: "12345"
+  branch: master
+
+targets:
+  only:
+    - type: maven
+      path: root
+    - type: pip
+    - type: gradle
+      path: .
+      target: specific-target
+
+experimental:
+  gradle:
+    configurations-only:
+      - onlyProdConfigs
+      - onlyProdConfigs2
