@@ -76,8 +76,8 @@ projectRevision =
 sourceUnits :: NE.NonEmpty SourceUnit
 sourceUnits = unit NE.:| []
   where
-    unit = 
-       SourceUnit
+    unit =
+      SourceUnit
         { sourceUnitName = "testSourceUnitName"
         , sourceUnitType = "testSourceUnitType"
         , sourceUnitManifest = "testSourceUnitManifest"
@@ -86,7 +86,6 @@ sourceUnits = unit NE.:| []
         , sourceUnitOriginPaths = []
         , additionalData = Nothing
         }
-    
 
 -- | A base dir for testing.  This directory is not guaranteed to exist.  If you
 -- want a real directory you should use `withTempDir`.
