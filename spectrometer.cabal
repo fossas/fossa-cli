@@ -441,6 +441,7 @@ test-suite unit-tests
     Conda.CondaListSpec
     Conda.EnvironmentYmlSpec
     Control.Carrier.DiagnosticsSpec
+    Control.Carrier.Telemetry.UtilSpec
     Control.Carrier.TelemetrySpec
     Control.TimeoutSpec
     Dart.PubDepsSpec
