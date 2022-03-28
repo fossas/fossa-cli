@@ -62,7 +62,7 @@ import Control.Effect.Diagnostics (
   (<||>),
  )
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Timeout ( Duration(Minutes) )
+import Control.Timeout (Duration (Minutes))
 import Data.Bifunctor (Bifunctor (first))
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text, null, strip)
