@@ -2,7 +2,6 @@
 
 module App.Fossa.ArchiveUploader (
   archiveUploadSourceUnit,
-  archiveNoUploadSourceUnit,
   arcToLocator,
   forceVendoredToArchive,
   duplicateFailureBundle,
@@ -108,10 +107,6 @@ archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
       archivesWithOrganization = updateArcName (toText $ show orgId) <$> archives
 
   pure $ arcToLocator <$> archivesWithOrganization
-
--- archiveNoUploadSourceUnit exists for when users run `fossa analyze -o` and do not upload their source units.
-archiveNoUploadSourceUnit :: [VendoredDependency] -> [Locator]
-archiveNoUploadSourceUnit = map (arcToLocator . forceVendoredToArchive)
 
 -- | List of names that occur more than once in a list of vendored dependencies.
 duplicateNames :: NonEmpty VendoredDependency -> [Text]
