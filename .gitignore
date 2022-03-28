@@ -25,7 +25,5 @@ fossa.debug.json.gz
 integration-test/artifacts/
 
 # One offs
-test/App/Fossa/VSI/DynLinked/testdata/hello_standard
-test/App/Fossa/VSI/DynLinked/testdata/hello_setuid
-test/App/Fossa/VSI/DynLinked/testdata/hello_standard.exe
-test/App/Fossa/VSI/DynLinked/testdata/hello_setuid.exe
+test/App/Fossa/VSI/DynLinked/testdata/hello_standard*
+test/App/Fossa/VSI/DynLinked/testdata/hello_setuid*
