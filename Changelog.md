@@ -3,7 +3,7 @@
 ## Unreleased
 
 - Configuration: Users can now use `.fossa.yaml` as a configuration file name. Previously, only `.fossa.yml` was supported. ([#851](https://github.com/fossas/fossa-cli/pull/851))
-- Warns user when provided API key is an empty string ([#856](https://github.com/fossas/fossa-cli/pull/856))
+- Configuration: Reports an error when provided API key is an empty string ([#856](https://github.com/fossas/fossa-cli/pull/856))
 
 ## v3.1.7
 - fossa-deps: Fixes an archive uploading bug for vendor dependency by queuing archive builds individually. ([#826](https://github.com/fossas/fossa-cli/pull/826))
