@@ -62,10 +62,10 @@ import Control.Effect.Diagnostics (
   (<||>),
  )
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Timeout.Internal ( Duration(Minutes) )
+import Control.Timeout ( Duration(Minutes) )
 import Data.Bifunctor (Bifunctor (first))
 import Data.String.Conversion (ToText (toText))
-import Data.Text (Text, null)
+import Data.Text (Text, null, strip)
 import Discovery.Filters (targetFilterParser)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
@@ -184,7 +184,7 @@ validateApiKey maybeConfigFile EnvVars{envApiKey} CommonOpts{optAPIKey} = do
       optAPIKey
         <|> (maybeConfigFile >>= configApiKey)
         <|> envApiKey
-  if Data.Text.null textkey
+  if Data.Text.null . strip $ textkey
     then 
       fatalText "A FOSSA API key was specified, but it is an empty string"
     else
