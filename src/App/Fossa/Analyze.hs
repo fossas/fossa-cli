@@ -234,6 +234,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let maybeApiOpts = case destination of
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
+      allowNativeLicenseScan = Config.allowNativeLicenseScan cfg
       BaseDir basedir = Config.baseDir cfg
       destination = Config.scanDestination cfg
       filters = Config.filterSet cfg

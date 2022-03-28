@@ -2,6 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Config.Analyze (
+  AllowNativeLicenseScan (..),
   AnalyzeCliOpts,
   AnalyzeConfig (..),
   BinaryDiscovery (..),
@@ -101,6 +102,8 @@ import System.Info qualified as SysInfo
 import Types (TargetFilter)
 
 -- CLI flags, for use with 'Data.Flag'
+data AllowNativeLicenseScan = AllowNativeLicenseScan
+
 data BinaryDiscovery = BinaryDiscovery
 
 data IncludeAll = IncludeAll
@@ -130,6 +133,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeUnpackArchives :: Flag UnpackArchives
   , analyzeJsonOutput :: Flag JsonOutput
   , analyzeIncludeAllDeps :: Flag IncludeAll
+  , analyzeAllowNativeLicenseScan :: Flag AllowNativeLicenseScan
   , analyzeBranch :: Maybe Text
   , analyzeMetadata :: ProjectMetadata
   , analyzeOnlyTargets :: [TargetFilter]
@@ -176,6 +180,7 @@ data StandardAnalyzeConfig = StandardAnalyzeConfig
   , unpackArchives :: Flag UnpackArchives
   , jsonOutput :: Flag JsonOutput
   , includeAllDeps :: Flag IncludeAll
+  , allowNativeLicenseScan :: Flag AllowNativeLicenseScan
   }
   deriving (Eq, Ord, Show)
 
@@ -198,6 +203,8 @@ cliParser =
     <*> flagOpt UnpackArchives (long "unpack-archives" <> help "Recursively unpack and analyze discovered archives")
     <*> flagOpt JsonOutput (long "json" <> help "Output project metadata as json to the console. Useful for communicating with the FOSSA API")
     <*> flagOpt IncludeAll (long "include-unused-deps" <> help "Include all deps found, instead of filtering non-production deps.  Ignored by VSI.")
+    -- Intentionally hidden until some critical bugs are addressed
+    <*> flagOpt AllowNativeLicenseScan (long "experimental-native-license-scan" <> hidden)
     <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> many (option (eitherReader targetOpt) (long "only-target" <> help "Only scan these targets. See targets.only in the fossa.yml spec." <> metavar "PATH"))
@@ -341,6 +348,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure analyzeUnpackArchives
     <*> pure analyzeJsonOutput
     <*> pure analyzeIncludeAllDeps
+    <*> pure analyzeAllowNativeLicenseScan
 
 collectFilters ::
   ( Has Diagnostics sig m
