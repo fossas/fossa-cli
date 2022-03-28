@@ -219,7 +219,7 @@ extractDepLists PkgJsonGraph{..} = foldMap extractSingle $ Map.elems jsonLookup
     extractSingle :: PackageJson -> FlatDeps
     extractSingle PackageJson{..} =
       FlatDeps
-        (applyTag @Production $ mapToSet packageDeps)
+        (applyTag @Production $ mapToSet (packageDeps `Map.union` packagePeerDeps))
         (applyTag @Development $ mapToSet packageDevDeps)
         (Map.keysSet jsonLookup)
 
