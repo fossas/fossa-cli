@@ -150,6 +150,10 @@ jobs:
       run: |
         make build-test-data
 
+    - name: Check git status
+      run: |
+        git status --porcelain
+
     - name: Build
       # Occasionally, we run out of memory on the build process.
       # Since cabal uses incremental compilation, we can retry from where we left off
