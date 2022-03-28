@@ -1,0 +1,103 @@
+{
+    "name": "winston-peerdeps",
+    "version": "1.0.0",
+    "lockfileVersion": 2,
+    "requires": true,
+    "packages": {
+        "": {
+            "name": "winston-peerdeps",
+            "version": "1.0.0",
+            "license": "ISC",
+            "peerDependencies": {
+                "winston-mail": "^2.0.0"
+            }
+        },
+        "node_modules/async": {
+            "version": "3.2.3",
+            "resolved": "https://registry.npmjs.org/async/-/async-3.2.3.tgz",
+            "integrity": "sha512-spZRyzKL5l5BZQrr/6m/SqFdBN0q3OCI0f9rjfBzCMBIP4p75P620rR3gTmaksNOhmzgdxcaxdNfMy6anrbM0g==",
+            "peer": true
+        },
+        "node_modules/mustache": {
+            "version": "2.3.2",
+            "resolved": "https://registry.npmjs.org/mustache/-/mustache-2.3.2.tgz",
+            "integrity": "sha512-KpMNwdQsYz3O/SBS1qJ/o3sqUJ5wSb8gb0pul8CO0S56b9Y2ALm8zCfsjPXsqGFfoNBkDwZuZIAjhsZI03gYVQ==",
+            "peer": true,
+            "bin": {
+                "mustache": "bin/mustache"
+            },
+            "engines": {
+                "npm": ">=1.4.0"
+            }
+        },
+        "node_modules/underscore": {
+            "version": "1.13.2",
+            "resolved": "https://registry.npmjs.org/underscore/-/underscore-1.13.2.tgz",
+            "integrity": "sha512-ekY1NhRzq0B08g4bGuX4wd2jZx5GnKz6mKSqFL4nqBlfyMGiG10gDFhDTMEfYmDL6Jy0FUIZp7wiRB+0BP7J2g=="
+        },
+        "node_modules/winston": {
+            "version": "3.6.0",
+            "resolved": "https://registry.npmjs.org/winston/-/winston-3.6.0.tgz",
+            "integrity": "sha512-9j8T75p+bcN6D00sF/zjFVmPp+t8KMPB1MzbbzYjeN9VWxdsYnTB40TkbNUEXAmILEfChMvAMgidlX64OG3p6w==",
+            "peer": true,
+            "dependencies": {
+                "async": "^3.2.3"
+            },
+            "engines": {
+                "node": ">= 12.0.0"
+            }
+        },
+        "node_modules/winston-mail": {
+            "version": "2.0.0",
+            "resolved": "https://registry.npmjs.org/winston-mail/-/winston-mail-2.0.0.tgz",
+            "integrity": "sha512-Wp+mKiieoV6FAZJNyNMS62Zsf5FBSxe17j0f4fpFYeA+rfW8nEZ2eBGGl7+vq+dr3dEpefV5D+ZI3d9jaqdRfw==",
+            "peer": true,
+            "dependencies": {
+                "mustache": "^2.2.1"
+            },
+            "engines": {
+                "node": ">= 0.6.0"
+            },
+            "peerDependencies": {
+                "winston": ">=0.5.0"
+            }
+        }
+    },
+    "dependencies": {
+        "async": {
+            "version": "3.2.3",
+            "resolved": "https://registry.npmjs.org/async/-/async-3.2.3.tgz",
+            "integrity": "sha512-spZRyzKL5l5BZQrr/6m/SqFdBN0q3OCI0f9rjfBzCMBIP4p75P620rR3gTmaksNOhmzgdxcaxdNfMy6anrbM0g==",
+            "peer": true
+        },
+        "mustache": {
+            "version": "2.3.2",
+            "resolved": "https://registry.npmjs.org/mustache/-/mustache-2.3.2.tgz",
+            "integrity": "sha512-KpMNwdQsYz3O/SBS1qJ/o3sqUJ5wSb8gb0pul8CO0S56b9Y2ALm8zCfsjPXsqGFfoNBkDwZuZIAjhsZI03gYVQ==",
+            "peer": true
+        },
+        "underscore": {
+            "version": "1.13.2",
+            "resolved": "https://registry.npmjs.org/underscore/-/underscore-1.13.2.tgz",
+            "integrity": "sha512-ekY1NhRzq0B08g4bGuX4wd2jZx5GnKz6mKSqFL4nqBlfyMGiG10gDFhDTMEfYmDL6Jy0FUIZp7wiRB+0BP7J2g=="
+        },
+        "winston": {
+            "version": "3.6.0",
+            "resolved": "https://registry.npmjs.org/winston/-/winston-3.6.0.tgz",
+            "integrity": "sha512-9j8T75p+bcN6D00sF/zjFVmPp+t8KMPB1MzbbzYjeN9VWxdsYnTB40TkbNUEXAmILEfChMvAMgidlX64OG3p6w==",
+            "peer": true,
+            "requires": {
+                "async": "^3.2.3"
+            }
+        },
+        "winston-mail": {
+            "version": "2.0.0",
+            "resolved": "https://registry.npmjs.org/winston-mail/-/winston-mail-2.0.0.tgz",
+            "integrity": "sha512-Wp+mKiieoV6FAZJNyNMS62Zsf5FBSxe17j0f4fpFYeA+rfW8nEZ2eBGGl7+vq+dr3dEpefV5D+ZI3d9jaqdRfw==",
+            "peer": true,
+            "requires": {
+                "mustache": "^2.2.1"
+            }
+        }
+    }
+}
