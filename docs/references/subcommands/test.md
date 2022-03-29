@@ -1,7 +1,7 @@
 
 ## `fossa test`
 
-The test command checks whether the most-recent scan of your FOSSA project raised license-policy or vulnerability issues. This command is usually run immediately after `fossa analyze`
+The test command checks whether the most-recent scan of your FOSSA project raised license-policy or vulnerability issues. This command is usually run immediately after `fossa analyze`. Please ensure you have ran `fossa analyze` and the project actually exists in FOSSA.
 
 - If there are issues, it prints them to stdout and fails with an exit code of 1
 - If there are no issues, it prints nothing and succeeds with an exit code of 0
