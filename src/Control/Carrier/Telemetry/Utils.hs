@@ -5,8 +5,11 @@ module Control.Carrier.Telemetry.Utils (
   getCommandArgs,
   mkTelemetryCtx,
   mkTelemetryRecord,
+  -- for testing
+  redactApiKeyFromCmdArgs,
 ) where
 
+import App.Fossa.Config.Common (fossaApiKeyCmdText)
 import App.Version (isDirty, versionOrBranch)
 import Control.Algebra (Has)
 import Control.Carrier.Lift (Lift, sendIO)
@@ -20,9 +23,10 @@ import Control.Carrier.Telemetry.Types (
 import Control.Concurrent.STM (STM, atomically, newEmptyTMVarIO, tryReadTMVar)
 import Control.Concurrent.STM.TBMQueue (TBMQueue, newTBMQueueIO, tryReadTBMQueue)
 import Control.Monad (join, replicateM)
+import Data.List (elemIndex)
 import Data.Maybe (catMaybes)
 import Data.String.Conversion (toText)
-import Data.Text (Text)
+import Data.Text (Text, isPrefixOf)
 import Data.Time (diffUTCTime, getCurrentTime, nominalDiffTimeToSeconds)
 import Data.Tracing.Instrument (
   getCounterRegistry,
@@ -86,7 +90,33 @@ getCurrentCliEnvironment =
     else CliProductionEnvironment
 
 getCommandArgs :: IO [Text]
-getCommandArgs = map toText <$> Environment.getFullArgs
+getCommandArgs = redactApiKeyFromCmdArgs . map toText <$> Environment.getFullArgs
+
+-- | Redacts Api Key from raw command args.
+redactApiKeyFromCmdArgs :: [Text] -> [Text]
+redactApiKeyFromCmdArgs = redactApiKeyWhenDirectlySupplied . redactApiKeyWhenPassedAsArg
+  where
+    -- When provided with --fossa-api-key=someKey
+    redactApiKeyWhenDirectlySupplied :: [Text] -> [Text]
+    redactApiKeyWhenDirectlySupplied =
+      map
+        ( \arg ->
+            if ("--" <> fossaApiKeyCmdText <> "=") `isPrefixOf` arg
+              then ("--" <> fossaApiKeyCmdText <> "=<REDACTED>")
+              else arg
+        )
+
+    -- When provided with --fossa-api-key someKey
+    redactApiKeyWhenPassedAsArg :: [Text] -> [Text]
+    redactApiKeyWhenPassedAsArg args =
+      case elemIndex ("--" <> fossaApiKeyCmdText) args of
+        Nothing -> args
+        Just i -> replaceAtWith args (i + 1) "<REDACTED>"
+
+    replaceAtWith :: [Text] -> Int -> Text -> [Text]
+    replaceAtWith args replaceAt replaceWith = case splitAt replaceAt args of
+      (start, _ : end) -> start ++ replaceWith : end
+      _ -> args
 
 getSystemInfo :: IO SystemInfo
 getSystemInfo =

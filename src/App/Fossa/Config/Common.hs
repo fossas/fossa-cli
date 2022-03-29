@@ -30,6 +30,7 @@ module App.Fossa.Config.Common (
   -- * Global Defaults
   defaultTimeoutDuration,
   collectRevisionData',
+  fossaApiKeyCmdText,
 ) where
 
 import App.Fossa.Config.ConfigFile (
@@ -74,6 +75,7 @@ import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Bifunctor (Bifunctor (first))
 import Data.Functor.Extra ((<$$>))
 import Data.Maybe (fromMaybe)
+import Data.String (IsString)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text, null, strip, toLower)
 import Discovery.Filters (targetFilterParser)
@@ -317,6 +319,9 @@ parseTelemetryScope = eitherReader $ \scope ->
     "full" -> Right FullTelemetry
     _ -> Left "Failed to parse telemetry scope, expected either: full or off"
 
+fossaApiKeyCmdText :: IsString a => a
+fossaApiKeyCmdText = "fossa-api-key"
+
 commonOpts :: Parser CommonOpts
 commonOpts =
   CommonOpts
@@ -324,6 +329,6 @@ commonOpts =
     <*> optional (uriOption (long "endpoint" <> short 'e' <> metavar "URL" <> help "The FOSSA API server base URL (default: https://app.fossa.com)"))
     <*> optional (strOption (long "project" <> short 'p' <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
     <*> optional (strOption (long "revision" <> short 'r' <> help "this repository's current revision hash (default: VCS hash HEAD)"))
-    <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
+    <*> optional (strOption (long fossaApiKeyCmdText <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
     <*> optional (strOption (long "config" <> short 'c' <> help "Path to configuration file including filename (default: .fossa.yml)"))
     <*> optional (option parseTelemetryScope (long "with-telemetry-scope" <> help "Scope of telemetry to use, the options are 'full' or 'off'. (default: 'full')"))
