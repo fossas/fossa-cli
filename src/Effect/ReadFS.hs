@@ -21,6 +21,11 @@ module Effect.ReadFS (
   resolveDir,
   resolveDir',
 
+  -- * Resolving existing paths
+  resolvePath,
+  resolvePath',
+  SomePath (..),
+
   -- * Checking whether files exist
   doesFileExist,
   doesDirExist,
@@ -46,30 +51,56 @@ module Effect.ReadFS (
 
 import App.Support (reportDefectWithFileMsg)
 import Control.Algebra as X
-import Control.Carrier.Simple
-import Control.Effect.Diagnostics
+import Control.Carrier.Simple (
+  Simple,
+  SimpleC,
+  interpret,
+  sendSimple,
+ )
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (..),
+  context,
+  fatal,
+  fromEither,
+ )
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Record
+import Control.Effect.Record (RecordableValue)
 import Control.Effect.Record.TH (deriveRecordable)
-import Control.Effect.Replay
+import Control.Effect.Replay (ReplayableValue)
 import Control.Effect.Replay.TH (deriveReplayable)
 import Control.Exception qualified as E
 import Control.Exception.Extra (safeCatch)
-import Control.Monad ((<=<))
-import Data.Aeson
+import Control.Monad (join, (<=<))
+import Data.Aeson (FromJSON, ToJSON, eitherDecodeStrict)
+import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
+import Data.Text.Extra (showT)
 import Data.Void (Void)
 import Data.Yaml (decodeEither', prettyPrintParseException)
 import GHC.Generics (Generic)
 import Parse.XML (FromXML, parseXML, xmlErrorPretty)
-import Path
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  SomeBase (Abs),
+  fromAbsFile,
+  fromSomeDir,
+  fromSomeFile,
+  parseSomeDir,
+  parseSomeFile,
+ )
 import Path.IO qualified as PIO
 import Prettyprinter (indent, line, pretty, vsep)
 import System.Directory qualified as Directory
 import System.IO (IOMode (ReadMode), withFile)
+import System.PosixCompat (isRegularFile)
+import System.PosixCompat.Files (isDirectory)
 import System.PosixCompat.Files qualified as Posix
 import System.PosixCompat.Types (CDev (..), CIno (..))
 import Text.Megaparsec (Parsec, runParser)
@@ -80,10 +111,19 @@ import Toml qualified
 -- Uniqueness is guaranteed within a single OS.
 data DirID = DirID {dirFileID :: Integer, dirDeviceID :: Integer} deriving (Show, Eq, Ord, Generic)
 
+data SomePath
+  = SomeFile (SomeBase File)
+  | SomeDir (SomeBase Dir)
+  deriving (Eq, Ord, Show, Generic)
+
 instance ToJSON DirID
 instance RecordableValue DirID
 instance FromJSON DirID
 instance ReplayableValue DirID
+instance ToJSON SomePath
+instance RecordableValue SomePath
+instance FromJSON SomePath
+instance ReplayableValue SomePath
 
 data ReadFSF a where
   ReadContentsBS' :: SomeBase File -> ReadFSF (Either ReadFSErr ByteString)
@@ -93,6 +133,7 @@ data ReadFSF a where
   DoesDirExist :: SomeBase Dir -> ReadFSF Bool
   ResolveFile' :: Path Abs Dir -> Text -> ReadFSF (Either ReadFSErr (Path Abs File))
   ResolveDir' :: Path Abs Dir -> Text -> ReadFSF (Either ReadFSErr (Path Abs Dir))
+  ResolvePath :: FilePath -> ReadFSF (Either ReadFSErr SomePath)
   ListDir :: Path Abs Dir -> ReadFSF (Either ReadFSErr ([Path Abs Dir], [Path Abs File]))
   GetIdentifier :: Path Abs Dir -> ReadFSF (Either ReadFSErr DirID)
 
@@ -107,6 +148,10 @@ data ReadFSErr
     ResolveError FilePath FilePath Text
   | -- | An IOException was thrown when listing a directory
     ListDirError FilePath Text
+  | -- | A file had an unknown type (i.e. not a regular file or directory)
+    NotDirOrFile FilePath
+  | -- | A file was found to be BOTH a directory and regular file, and we cannot decide which it really is.
+    UndeterminableFileType FilePath
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON ReadFSErr
@@ -142,6 +187,15 @@ instance ToDiagnostic ReadFSErr where
               ]
           )
     ListDirError dir err -> "Error listing directory contents at " <> pretty dir <> ":" <> line <> indent 2 (pretty err)
+    NotDirOrFile path -> "Path was not a dir or file, unknown type: " <> pretty path
+    UndeterminableFileType path ->
+      vsep
+        [ "Path is both a file and a directory, which should be impossible: " <> pretty path
+        , "Please report this as a bug, and include the following info if possible:"
+        , "- Operating system"
+        , "- File system"
+        , "- Output of 'fossa --version'"
+        ]
 
 -- | Read file contents into a strict 'ByteString'
 readContentsBS' :: Has ReadFS sig m => Path Abs File -> m (Either ReadFSErr ByteString)
@@ -178,6 +232,13 @@ resolveDir' base path = sendSimple (ResolveDir' base path)
 -- | Resolve a relative filepath to a directory
 resolveDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs Dir)
 resolveDir dir path = fromEither =<< resolveDir' dir path
+
+-- | Resolve some path to an existing
+resolvePath :: Has ReadFS sig m => FilePath -> m (Either ReadFSErr SomePath)
+resolvePath = sendSimple . ResolvePath
+
+resolvePath' :: (Has ReadFS sig m, Has Diagnostics sig m) => FilePath -> m SomePath
+resolvePath' = fromEither <=< resolvePath
 
 -- | Check whether a file exists
 doesFileExist :: Has ReadFS sig m => Path Abs File -> m Bool
@@ -283,10 +344,20 @@ runReadFSIO = interpret $ \case
         let (CIno fileID) = Posix.fileID status
             (CDev devID) = Posix.deviceID status
          in DirID{dirFileID = toInteger fileID, dirDeviceID = toInteger devID}
-
+  ResolvePath path -> join <$> ((identifyPath path <$> Posix.getFileStatus path) `catchingIO` FileReadError path)
   -- NB: these never throw
   DoesFileExist file -> sendIO (Directory.doesFileExist (fromSomeFile file))
   DoesDirExist dir -> sendIO (Directory.doesDirectoryExist (fromSomeDir dir))
+
+identifyPath :: FilePath -> Posix.FileStatus -> Either ReadFSErr SomePath
+identifyPath path stat = case (isDirectory stat, isRegularFile stat) of
+  (True, False) -> first mangle (SomeDir <$> parseSomeDir path)
+  (False, True) -> first mangle (SomeFile <$> parseSomeFile path)
+  (False, False) -> Left $ NotDirOrFile path
+  (True, True) -> Left $ UndeterminableFileType path
+  where
+    mangle :: E.SomeException -> ReadFSErr
+    mangle = FileReadError path . showT
 
 readContentsBSLimit' :: SomeBase File -> Int -> IO ByteString
 readContentsBSLimit' file limit = withFile (fromSomeFile file) ReadMode $ \handle -> BS.hGetSome handle limit
