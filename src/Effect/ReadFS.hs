@@ -362,4 +362,4 @@ readContentsBSLimit' :: SomeBase File -> Int -> IO ByteString
 readContentsBSLimit' file limit = withFile (fromSomeFile file) ReadMode $ \handle -> BS.hGetSome handle limit
 
 catchingIO :: Has (Lift IO) sig m => IO a -> (Text -> ReadFSErr) -> m (Either ReadFSErr a)
-catchingIO io mangle = safeCatch (Right <$> sendIO io) (\(e :: E.IOException) -> pure (Left (mangle (toText (show e)))))
+catchingIO io mangle = (Right <$> sendIO io) `safeCatch` (\(e :: E.IOException) -> pure . Left . mangle . toText $ show e)
