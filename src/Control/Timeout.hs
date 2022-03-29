@@ -31,7 +31,7 @@ import Control.Timeout.Internal (
  )
 import Data.Functor (($>))
 
--- | Several time-based functions accept 'Int', which mmakes it difficult to
+-- | Several time-based functions accept 'Int', which makes it difficult to
 -- reason about which subdivision of time that int represents.  To aid this,
 -- our timeout functions accept 'Duration' which provides semantically-obvious
 -- constructors, and is exported to the correct resolution when passed to its
