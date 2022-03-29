@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.1.8
+- Windows: Fixes a --version command for windows release binary. 
+
 ## v3.1.7
 - Configuration: Users can now use `.fossa.yaml` as a configuration file name. Previously, only `.fossa.yml` was supported. ([#851](https://github.com/fossas/fossa-cli/pull/851))
 - fossa-deps: Fixes an archive uploading bug for vendor dependency by queuing archive builds individually. ([#826](https://github.com/fossas/fossa-cli/pull/826))
