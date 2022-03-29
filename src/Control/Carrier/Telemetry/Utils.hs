@@ -90,7 +90,7 @@ getCurrentCliEnvironment =
     else CliProductionEnvironment
 
 getCommandArgs :: IO [Text]
-getCommandArgs = redactApiKeyFromCmdArgs <$> (map toText <$> Environment.getFullArgs)
+getCommandArgs = redactApiKeyFromCmdArgs . map toText <$> Environment.getFullArgs
 
 -- | Redacts Api Key from raw command args.
 redactApiKeyFromCmdArgs :: [Text] -> [Text]
