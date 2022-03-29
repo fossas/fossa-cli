@@ -76,7 +76,7 @@ import Discovery.Filters (AllFilters (AllFilters), comboExclude, comboInclude)
 import Effect.Exec (
   Exec,
  )
-import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn)
+import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logDebug, logWarn, pretty)
 import Effect.ReadFS (ReadFS, resolveDir)
 import Fossa.API.Types (ApiOpts)
 import Options.Applicative (
@@ -255,6 +255,7 @@ loadConfig ::
 loadConfig AnalyzeCliOpts{analyzeBaseDir, commons = CommonOpts{optConfig}} = do
   cwd <- sendIO getCurrentDir
   configBaseDir <- resolveDir cwd (toText analyzeBaseDir)
+  logDebug $ "Loading configuration file from " <> pretty (show configBaseDir)
   resolveConfigFile configBaseDir optConfig
 
 mergeOpts ::
