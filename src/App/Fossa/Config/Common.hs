@@ -185,10 +185,8 @@ validateApiKey maybeConfigFile EnvVars{envApiKey} CommonOpts{optAPIKey} = do
         <|> (maybeConfigFile >>= configApiKey)
         <|> envApiKey
   if Data.Text.null . strip $ textkey
-    then 
-      fatalText "A FOSSA API key was specified, but it is an empty string"
-    else
-      pure $ ApiKey textkey
+    then fatalText "A FOSSA API key was specified, but it is an empty string"
+    else pure $ ApiKey textkey
 
 collectApiOpts :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> CommonOpts -> m ApiOpts
 collectApiOpts maybeconfig envvars globals = do
