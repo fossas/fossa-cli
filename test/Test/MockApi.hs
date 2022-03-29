@@ -11,7 +11,7 @@
 -- expected.  This is due to some limitations on matching types at run time.
 -- Expectations are matched in the order they are set up.  An assertion failure
 -- will be raised if a request is made that doesn't have a matching expectation.
--- 
+--
 -- The result can either be a return value or to die with a fatal diagnostic
 -- error.
 --
@@ -25,14 +25,13 @@
 --
 --     -- Expect get issues to be called and fail, then return successfully when
 --     -- called again.
---     GetIssues revision `fails` "Mock API error" 
+--     GetIssues revision `fails` "Mock API error"
 --     GetIssues revision `returnsOnce` Fixtures.issues
 -- @
 --
 -- An expectation is considered satisfied if it had a limited number of invocations
 -- and it has been matched that many times.  If any expectations are unsatisfied at
 -- the end of the test, an test assertion failure will be raised.
-
 module Test.MockApi (
   ApiExpectation,
   FossaApiClientMockC,
