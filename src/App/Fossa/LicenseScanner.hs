@@ -2,7 +2,6 @@
 
 module App.Fossa.LicenseScanner (
   licenseScanSourceUnit,
-  licenseNoScanSourceUnit,
 ) where
 
 import App.Fossa.ArchiveUploader (
@@ -10,7 +9,6 @@ import App.Fossa.ArchiveUploader (
   arcToLocator,
   duplicateFailureBundle,
   duplicateNames,
-  forceVendoredToArchive,
  )
 import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)
 import App.Fossa.FossaAPIV1 qualified as Fossa
@@ -185,7 +183,3 @@ licenseScanSourceUnit baseDir apiOpts vendoredDeps = do
 
     includeOrgId :: Int -> Archive -> Archive
     includeOrgId orgId arc = arc{archiveName = showT orgId <> "/" <> archiveName arc}
-
--- | licenseNoScanSourceUnit exists for when users run `fossa analyze -o` and do not upload their source units.
-licenseNoScanSourceUnit :: [VendoredDependency] -> [Locator]
-licenseNoScanSourceUnit = map (arcToLocator . forceVendoredToArchive)
