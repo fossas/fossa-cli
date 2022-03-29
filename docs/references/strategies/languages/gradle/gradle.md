@@ -196,13 +196,13 @@ For more details, see the [manual dependencies](../../../../features/manual-depe
 
 ## Configurations For Development and Testing
 
-We classify following configurations are for development:
+We classify any dependencies originating from following configuration as development dependency:
 
 ```
 - compileOnly
 ```
 
-and following are for testing: 
+We classify any dependencies originating from following configuration as test dependency: 
 
 ```
 - testImplementation
@@ -211,6 +211,9 @@ and following are for testing:
 - testCompileClasspath
 - testRuntimeClasspath
 ```
+
+Note, by default we exclude test and development dependencies from analysis.
+
 ## Android Gradle Configurations For Development and Testing
 
 We classify following configurations, and any dependencies originating from it as a test environment dependency:
