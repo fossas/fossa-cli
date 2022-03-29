@@ -3,19 +3,26 @@
 
 module Test.Fixtures (
   apiOpts,
-  organization,
-  sourceUnits,
-  project,
-  uploadResponse,
-  projectMedata,
-  projectRevision,
   baseDir,
+  build,
   contributors,
+  locator,
+  organization,
+  project,
+  projectMetadata,
+  projectRevision,
+  scanId,
+  scanResponse,
+  sourceUnits,
+  uploadResponse,
+  emptyIssues,
+  issues,
 ) where
 
 import App.Types qualified as App
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
+import Data.Text.Extra (showT)
 import Fossa.API.Types qualified as API
 import Path (mkRelDir, parseAbsDir, (</>))
 import Srclib.Types (Locator (..), SourceUnit (..))
@@ -53,8 +60,8 @@ uploadResponse =
     , API.uploadError = Nothing
     }
 
-projectMedata :: App.ProjectMetadata
-projectMedata =
+projectMetadata :: App.ProjectMetadata
+projectMetadata =
   App.ProjectMetadata
     { App.projectTitle = Just "testProjectTitle"
     , App.projectUrl = Nothing
@@ -100,3 +107,59 @@ contributors =
     [ ("testContributor1", "testContributor1")
     , ("testContributor2", "testContributor2")
     ]
+
+build :: API.Build
+build =
+  API.Build
+    { API.buildId = 101
+    , API.buildError = Nothing
+    , API.buildTask =
+        API.BuildTask
+          { API.buildTaskStatus = API.StatusSucceeded
+          }
+    }
+
+scanId :: API.ScanId
+scanId = API.ScanId "TestScanId"
+
+scanResponse :: API.ScanResponse
+scanResponse =
+  API.ScanResponse
+    { API.responseScanId = scanId
+    , API.responseScanStatus = Nothing
+    }
+
+emptyIssues :: API.Issues
+emptyIssues =
+  API.Issues
+    { API.issuesCount = 0
+    , API.issuesIssues = []
+    , API.issuesStatus = ""
+    }
+
+issues :: API.Issues
+issues =
+  let issueTypes =
+        [ API.IssuePolicyConflict
+        , API.IssuePolicyFlag
+        , API.IssueVulnerability
+        , API.IssueUnlicensedDependency
+        , API.IssueOutdatedDependency
+        , API.IssueOther "TestIssueOther"
+        ]
+      makeIssue :: Int -> API.IssueType -> API.Issue
+      makeIssue issueId issueType =
+        API.Issue
+          { API.issueId = 200 + issueId
+          , API.issuePriorityString = Nothing
+          , API.issueResolved = False
+          , API.issueRevisionId = "IssueRevisionId" <> showT issueId
+          , API.issueType = issueType
+          , API.issueRule = Nothing
+          }
+      issueList = zipWith makeIssue [1 ..] issueTypes
+   in API.Issues
+        { API.issuesCount = length issueList
+        , API.issuesIssues = issueList
+        , API.issuesStatus = "AVAILABLE"
+        }

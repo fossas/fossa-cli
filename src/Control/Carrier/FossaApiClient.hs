@@ -2,18 +2,15 @@
 
 module Control.Carrier.FossaApiClient (FossaApiClientC, runFossaApiClient) where
 
-import App.Fossa.FossaAPIV1 qualified as API
-import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
+import Control.Carrier.FossaApiClient.Internal.Core qualified as Core
+import Control.Carrier.FossaApiClient.Internal.ScotlandYard qualified as ScotlandYard
 import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift)
-import Control.Effect.Reader (Reader, ask)
-import Data.List.NonEmpty qualified as NE
-import Fossa.API.Types (ApiOpts, Contributors, Organization, Project, UploadResponse)
-import Srclib.Types (Locator, SourceUnit, renderLocator)
+import Fossa.API.Types (ApiOpts)
 
 -- | A carrier to run Fossa API functions in the IO monad
 type FossaApiClientC m = SimpleC FossaApiClientF (ReaderC ApiOpts m)
@@ -30,58 +27,13 @@ runFossaApiClient apiOpts =
   runReader apiOpts
     . interpret
       ( \case
-          GetOrganization -> getOrganization
           GetApiOpts -> pure apiOpts
-          GetProject rev -> getProject rev
-          UploadAnalysis rev metadata units -> uploadAnalysis rev metadata units
-          UploadContributors locator contributors -> uploadContributors locator contributors
+          GetIssues rev -> Core.getIssues rev
+          GetLatestBuild rev -> Core.getLatestBuild rev
+          GetLatestScan locator rev -> ScotlandYard.getLatestScan locator rev
+          GetOrganization -> Core.getOrganization
+          GetProject rev -> Core.getProject rev
+          GetScan locator scanId -> ScotlandYard.getScan locator scanId
+          UploadAnalysis rev metadata units -> Core.uploadAnalysis rev metadata units
+          UploadContributors locator contributors -> Core.uploadContributors locator contributors
       )
-
--- Fetches an organization from the API
-getOrganization ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has (Reader ApiOpts) sig m
-  ) =>
-  m Organization
-getOrganization = do
-  apiOpts <- ask
-  -- TODO: This is a wrapper around FossaAPIV1 for now until more uses are
-  -- migrated.
-  API.getOrganization apiOpts
-
-getProject ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has (Reader ApiOpts) sig m
-  ) =>
-  ProjectRevision ->
-  m Project
-getProject revision = do
-  apiOpts <- ask
-  API.getProject apiOpts revision
-
-uploadAnalysis ::
-  ( Has (Lift IO) sig m
-  , Has (Reader ApiOpts) sig m
-  , Has Diagnostics sig m
-  ) =>
-  ProjectRevision ->
-  ProjectMetadata ->
-  NE.NonEmpty SourceUnit ->
-  m UploadResponse
-uploadAnalysis revision metadata units = do
-  apiOpts <- ask
-  API.uploadAnalysis apiOpts revision metadata units
-
-uploadContributors ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has (Reader ApiOpts) sig m
-  ) =>
-  Locator ->
-  Contributors ->
-  m ()
-uploadContributors locator contributors = do
-  apiOpts <- ask
-  API.uploadContributors apiOpts (renderLocator locator) contributors

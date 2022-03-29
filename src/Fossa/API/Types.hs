@@ -19,6 +19,8 @@ module Fossa.API.Types (
   Project (..),
   SignedURL (..),
   UploadResponse (..),
+  ScanId (..),
+  ScanResponse (..),
   useApiOpts,
 ) where
 
@@ -265,6 +267,26 @@ instance FromJSON UploadResponse where
   parseJSON = withObject "UploadResponse" $ \obj ->
     UploadResponse <$> (parseLocator <$> obj .: "locator")
       <*> obj .:? "error"
+
+newtype ScanId = ScanId Text deriving (Eq, Ord)
+
+instance Show ScanId where
+  show (ScanId scanId) = show scanId
+
+instance FromJSON ScanId where
+  parseJSON value = ScanId <$> parseJSON value
+
+data ScanResponse = ScanResponse
+  { responseScanId :: ScanId
+  , responseScanStatus :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ScanResponse where
+  parseJSON = withObject "ScanResponse" $ \obj ->
+    ScanResponse
+      <$> obj .: "id"
+      <*> obj .:? "status"
 
 ---------------
 

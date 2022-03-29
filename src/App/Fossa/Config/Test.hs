@@ -8,6 +8,7 @@ module App.Fossa.Config.Test (
   mkSubCommand,
 ) where
 
+import App.Fossa.API.BuildWait (WaitConfig, defaultWaitConfig)
 import App.Fossa.Config.Common (
   CacheAction (ReadOnly),
   CommonOpts (..),
@@ -65,6 +66,7 @@ data TestConfig = TestConfig
   { baseDir :: BaseDir
   , apiOpts :: ApiOpts
   , timeout :: Duration
+  , waitConfig :: WaitConfig
   , outputFormat :: OutputFormat
   , projectRevision :: ProjectRevision
   }
@@ -118,5 +120,6 @@ mergeOpts maybeConfig envvars TestCliOpts{..} = do
     <$> baseDir
     <*> apiOpts
     <*> pure timeout
+    <*> pure defaultWaitConfig
     <*> pure testOutputType
     <*> revision
