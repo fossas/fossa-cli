@@ -8,7 +8,7 @@ module App.Fossa.Config.Test (
   mkSubCommand,
 ) where
 
-import App.Fossa.API.BuildWait (WaitConfig (WaitConfig, apiPollDelay), defaultWaitConfig)
+import App.Fossa.API.BuildWait (WaitConfig, defaultWaitConfig)
 import App.Fossa.Config.Common (
   CacheAction (ReadOnly),
   CommonOpts (..),
@@ -23,7 +23,6 @@ import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
-import Codec.Archive.Tar (extract)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,

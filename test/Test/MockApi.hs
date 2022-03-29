@@ -14,7 +14,7 @@ module Test.MockApi (
 ) where
 
 import Control.Algebra
-import Control.Carrier.Simple (SimpleC, interpret, interpretState)
+import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Carrier.State.Strict (StateC (StateC), runState)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
@@ -38,6 +38,7 @@ data MockApi (m :: Type -> Type) a where
 -- | Specifies how to handle repetition of a request
 data ExpectationRepetition = Once | Always deriving (Eq, Ord, Show)
 
+-- | The result of a call can be either a value or a diagnostic failure
 data ApiResult a = Return a | Die Text deriving (Eq, Ord, Show)
 
 -- | An expectation of an API call made up of the request and response.
@@ -62,20 +63,24 @@ fails req msg =
   -- ApiExpectation Once req (Die msg)
   send $ MockApiFails req msg
 
+-- | Run a request against the expectations
 runExpectations :: Has MockApi sig m => FossaApiClientF a -> m (Maybe (ApiResult a))
 runExpectations =
   send . MockApiRunExpectations
 
+-- | Assert that this call is unexpected
 assertUnexpectedCall :: Has MockApi sig m => FossaApiClientF a -> m a
 assertUnexpectedCall =
   send . AssertUnexpectedCall
 
+-- | Assert that all non-repeating expectations have been satisfied
 assertAllSatisfied :: Has MockApi sig m => m ()
 assertAllSatisfied =
   send AssertAllSatisfied
 
+-- | A carrier for the Mock API that holds expectations in local state
 newtype MockApiC m a = MockApiC
-  { runMockApiC :: StateC [ApiExpectation] m a
+  { runMockApiC :: StateC [ ApiExpectation ] m a
   }
   deriving (Functor, Applicative, Monad, MonadIO)
 
@@ -144,22 +149,11 @@ handleRequest req = do
   expectations <- get
   case testExpectations expectations of
     Just (resp, expectations') -> do
-      -- sendIO . putStrLn $ "Matched expectation: " <> show req
-      -- sendIO . putStrLn $ "Remaining expectations:\n  "
-      --     <> intercalate "\n  " (map (\(ApiExpectation freq req _) -> show freq <> " - " <> show req) expectations')
       put expectations'
       pure (Just resp)
-    -- case resp of
-    --   Return a -> pure a
-    --   Die msg -> fatalText msg
     Nothing ->
       pure Nothing
   where
-    -- sendIO . assertFailure $
-    --   "Unexpected call: \n  " <> show req <> "\n"
-    --     <> "Unsatisfied expectations: \n  "
-    --     <> intercalate "\n  " (map (\(ApiExpectation _ expectedReq _) -> show expectedReq) expectations)
-
     testExpectations [] = Nothing
     testExpectations (expectation : rest) =
       case matchExpectation req expectation of
@@ -178,19 +172,17 @@ runApiWithMock ::
   SimpleC FossaApiClientF m a ->
   m a
 runApiWithMock f = do
-  result <-
-    interpret
-      ( \req -> do
+  result <- interpret runRequest f
+  assertAllSatisfied
+  pure result
+  where
+    runRequest req = do
           apiResult <- runExpectations req
           case apiResult of
             Just (Return resp) -> pure resp
             Just (Die msg) -> fatalText msg
             Nothing ->
               assertUnexpectedCall req
-      )
-      f
-  assertAllSatisfied
-  pure result
 
 runMockApi ::
   ( Has (Lift IO) sig m
