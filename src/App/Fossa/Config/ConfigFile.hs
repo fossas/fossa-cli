@@ -68,13 +68,6 @@ defaultConfigFileNames =
   , $(mkRelFile ".fossa.yaml")
   ]
 
--- data ConfigLocation = ConfigLocation
---   { -- | Did the user specify the path (True/required), or is this default (False/optional)?
---     isRequired :: Bool
---   , -- | What is the absolute file path?
---     configFilePath :: Path Abs File
---   }
-
 data ConfigLocation
   = DefaultConfigLocation (Path Abs Dir)
   | SpecifiedConfigLocation (Path Abs File)
