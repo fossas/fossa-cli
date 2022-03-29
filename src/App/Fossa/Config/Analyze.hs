@@ -2,6 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Config.Analyze (
+  AllowNativeLicenseScan (..),
   AnalyzeCliOpts,
   AnalyzeConfig (..),
   BinaryDiscovery (..),
@@ -75,8 +76,8 @@ import Discovery.Filters (AllFilters (AllFilters), comboExclude, comboInclude)
 import Effect.Exec (
   Exec,
  )
-import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn)
-import Effect.ReadFS (ReadFS)
+import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logDebug, logWarn, pretty)
+import Effect.ReadFS (ReadFS, resolveDir)
 import Fossa.API.Types (ApiOpts)
 import Options.Applicative (
   Alternative (many),
@@ -101,6 +102,8 @@ import System.Info qualified as SysInfo
 import Types (TargetFilter)
 
 -- CLI flags, for use with 'Data.Flag'
+data AllowNativeLicenseScan = AllowNativeLicenseScan
+
 data BinaryDiscovery = BinaryDiscovery
 
 data IncludeAll = IncludeAll
@@ -130,6 +133,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeUnpackArchives :: Flag UnpackArchives
   , analyzeJsonOutput :: Flag JsonOutput
   , analyzeIncludeAllDeps :: Flag IncludeAll
+  , analyzeAllowNativeLicenseScan :: Flag AllowNativeLicenseScan
   , analyzeBranch :: Maybe Text
   , analyzeMetadata :: ProjectMetadata
   , analyzeOnlyTargets :: [TargetFilter]
@@ -176,6 +180,7 @@ data StandardAnalyzeConfig = StandardAnalyzeConfig
   , unpackArchives :: Flag UnpackArchives
   , jsonOutput :: Flag JsonOutput
   , includeAllDeps :: Flag IncludeAll
+  , allowNativeLicenseScan :: Flag AllowNativeLicenseScan
   }
   deriving (Eq, Ord, Show)
 
@@ -198,6 +203,8 @@ cliParser =
     <*> flagOpt UnpackArchives (long "unpack-archives" <> help "Recursively unpack and analyze discovered archives")
     <*> flagOpt JsonOutput (long "json" <> help "Output project metadata as json to the console. Useful for communicating with the FOSSA API")
     <*> flagOpt IncludeAll (long "include-unused-deps" <> help "Include all deps found, instead of filtering non-production deps.  Ignored by VSI.")
+    -- Intentionally hidden until some critical bugs are addressed
+    <*> flagOpt AllowNativeLicenseScan (long "experimental-native-license-scan" <> hidden)
     <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> many (option (eitherReader targetOpt) (long "only-target" <> help "Only scan these targets. See targets.only in the fossa.yml spec." <> metavar "PATH"))
@@ -245,10 +252,11 @@ loadConfig ::
   ) =>
   AnalyzeCliOpts ->
   m (Maybe ConfigFile)
-loadConfig AnalyzeCliOpts{commons = CommonOpts{optConfig}} = do
-  -- FIXME: We eventually want to use the basedir to inform the config file root
-  configRelBase <- sendIO getCurrentDir
-  resolveConfigFile configRelBase optConfig
+loadConfig AnalyzeCliOpts{analyzeBaseDir, commons = CommonOpts{optConfig}} = do
+  cwd <- sendIO getCurrentDir
+  configBaseDir <- resolveDir cwd (toText analyzeBaseDir)
+  logDebug $ "Loading configuration file from " <> pretty (show configBaseDir)
+  resolveConfigFile configBaseDir optConfig
 
 mergeOpts ::
   ( Has Diagnostics sig m
@@ -341,6 +349,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure analyzeUnpackArchives
     <*> pure analyzeJsonOutput
     <*> pure analyzeIncludeAllDeps
+    <*> pure analyzeAllowNativeLicenseScan
 
 collectFilters ::
   ( Has Diagnostics sig m

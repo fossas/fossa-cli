@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -14,9 +15,12 @@ module App.Fossa.ManualDeps (
   analyzeFossaDepsFile,
 ) where
 
-import App.Fossa.ArchiveUploader (VendoredDependency (..), archiveNoUploadSourceUnit, archiveUploadSourceUnit)
-import App.Fossa.LicenseScanner (licenseNoScanSourceUnit, licenseScanSourceUnit)
+import App.Fossa.ArchiveUploader (VendoredDependency (..), arcToLocator, archiveUploadSourceUnit, forceVendoredToArchive)
+import App.Fossa.Config.Analyze (AllowNativeLicenseScan (AllowNativeLicenseScan))
+import App.Fossa.LicenseScanner (licenseScanSourceUnit)
+import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
+import Control.Effect.FossaApiClient (getOrganization)
 import Control.Effect.Lift (Has, Lift)
 import Control.Effect.StickyLogger (StickyLogger)
 import Control.Monad (when)
@@ -29,7 +33,9 @@ import Data.Aeson (
  )
 import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers)
 import Data.Aeson.Types (Parser)
+import Data.Flag (Flag, fromFlag)
 import Data.Functor.Extra ((<$$>))
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -37,7 +43,7 @@ import DepTypes (DepType (..))
 import Effect.Exec (Exec)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
-import Fossa.API.Types (ApiOpts)
+import Fossa.API.Types (ApiOpts, Organization (orgDoLocalLicenseScan))
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
@@ -48,7 +54,10 @@ data FoundDepsFile
   = ManualYaml (Path Abs File)
   | ManualJSON (Path Abs File)
 
-data ArchiveUploadType = ArchiveUpload | CLILicenseScan
+data ArchiveUploadType
+  = ArchiveUpload
+  | CLILicenseScan
+  deriving (Eq, Ord, Show)
 
 analyzeFossaDepsFile ::
   ( Has Diagnostics sig m
@@ -60,14 +69,15 @@ analyzeFossaDepsFile ::
   ) =>
   Path Abs Dir ->
   Maybe ApiOpts ->
+  Flag AllowNativeLicenseScan ->
   m (Maybe SourceUnit)
-analyzeFossaDepsFile root maybeApiOpts = do
+analyzeFossaDepsFile root maybeApiOpts allowNative = do
   maybeDepsFile <- findFossaDepsFile root
   case maybeDepsFile of
     Nothing -> pure Nothing
     Just depsFile -> do
       manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
-      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts
+      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts allowNative
 
 readFoundDeps :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundDepsFile -> m ManualDependencies
 readFoundDeps (ManualJSON path) = readContentsJson path
@@ -103,22 +113,17 @@ toSourceUnit ::
   FoundDepsFile ->
   ManualDependencies ->
   Maybe ApiOpts ->
+  Flag AllowNativeLicenseScan ->
   m SourceUnit
-toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts = do
+toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts allowNative = do
   -- If the file exists and we have no dependencies to report, that's a failure.
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
-  -- See https://fossa.atlassian.net/browse/ANE-148
-  -- IMPORTANT: Until ANE-148 is implemented, this should always be `ArchiveUpload` on master
-  let archiveOrCLI = ArchiveUpload
-  archiveLocators <- case (maybeApiOpts, archiveOrCLI, NE.nonEmpty vendoredDependencies) of
+
+  archiveLocators <- case (maybeApiOpts, NE.nonEmpty vendoredDependencies) of
     -- Don't do anything if there are no vendered deps.
-    (_, _, Nothing) -> pure []
-    (Just apiOpts, ArchiveUpload, Just vdeps) -> NE.toList <$> archiveUploadSourceUnit root apiOpts vdeps
-    (Just apiOpts, CLILicenseScan, Just vdeps) -> NE.toList <$> licenseScanSourceUnit root apiOpts vdeps
-    -- For consistency, these functions could require NonEmpty, but it offers no real
-    -- benefit, since they're no-ops on empty lists.
-    (Nothing, ArchiveUpload, Just vdeps) -> pure $ archiveNoUploadSourceUnit $ NE.toList vdeps
-    (Nothing, CLILicenseScan, Just vdeps) -> pure $ licenseNoScanSourceUnit $ NE.toList vdeps
+    (Just apiOpts, Just vdeps) -> NE.toList <$> scanAndUpload root apiOpts vdeps allowNative
+    (Nothing, Just vdeps) -> pure $ noSourceUnits $ NE.toList vdeps
+    (_, Nothing) -> pure []
 
   let renderedPath = toText root
       referenceLocators = refToLocator <$> referencedDependencies
@@ -137,6 +142,37 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts = do
       , sourceUnitOriginPaths = [originPath]
       , additionalData = additional
       }
+
+-- | Run either archive upload or native license scan.  During the native scan beta, we only allow
+-- native scanning if the @Flag AllowNativeLicenseScan@ is set during config.
+scanAndUpload ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has StickyLogger sig m
+  , Has Logger sig m
+  , Has Exec sig m
+  ) =>
+  Path Abs Dir ->
+  ApiOpts ->
+  NonEmpty VendoredDependency ->
+  Flag AllowNativeLicenseScan ->
+  m (NonEmpty Locator)
+scanAndUpload root apiOpts vdeps allowNative = runFossaApiClient apiOpts $ do
+  archiveOrCLI <-
+    if fromFlag AllowNativeLicenseScan allowNative
+      then do
+        doNative <- orgDoLocalLicenseScan <$> getOrganization
+        pure if not doNative then CLILicenseScan else ArchiveUpload
+      else pure ArchiveUpload
+
+  let scanner = case archiveOrCLI of
+        ArchiveUpload -> archiveUploadSourceUnit
+        CLILicenseScan -> licenseScanSourceUnit
+  scanner root apiOpts vdeps
+
+-- | Used when users run `fossa analyze -o` and do not upload their source units.
+noSourceUnits :: [VendoredDependency] -> [Locator]
+noSourceUnits = map (arcToLocator . forceVendoredToArchive)
 
 toBuildData :: NE.NonEmpty Locator -> SourceUnitBuild
 toBuildData locators =

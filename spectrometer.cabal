@@ -473,8 +473,8 @@ test-suite unit-tests
     Maven.PluginStrategySpec
     Maven.PomStrategySpec
     Nim.NimbleSpec
-    Node.NpmLockSpec
     Node.PackageJsonSpec
+    Node.PackageLockSpec
     NuGet.NuspecSpec
     NuGet.PackageReferenceSpec
     NuGet.PackagesConfigSpec

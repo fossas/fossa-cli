@@ -2,12 +2,21 @@
 
 ## Unreleased
 
-- Configuration: Users can now use `.fossa.yaml` as a configuration file name. Previously, only `.fossa.yml` was supported. ([#851](https://github.com/fossas/fossa-cli/pull/851))
+- Configuration: Fixes a bug where `.fossa.yml` was picked up only in the working directory, not in the analysis directory. ([#854](https://github.com/fossas/fossa-cli/pull/854))
+- Configuration: Reports an error when provided API key is an empty string ([#856](https://github.com/fossas/fossa-cli/pull/856))
+
+## v3.1.8
+
+- Windows: Fixes a --version command for windows release binary.
 
 ## v3.1.7
+
+- Configuration: Users can now use `.fossa.yaml` as a configuration file name. Previously, only `.fossa.yml` was supported. ([#851](https://github.com/fossas/fossa-cli/pull/851))
 - fossa-deps: Fixes an archive uploading bug for vendor dependency by queuing archive builds individually. ([#826](https://github.com/fossas/fossa-cli/pull/826))
+- nodejs: Capture peer dependencies transitively for npm `package-lock.json` files. ([#849](https://github.com/fossas/fossa-cli/pull/849))
 
 ## v3.1.6
+
 - Respects Go module replacement directives in the Go Mod Graph strategy. ([#841](https://github.com/fossas/fossa-cli/pull/841))
 
 ## v3.1.5
