@@ -23,9 +23,12 @@ import Test.Effect (expectFatal', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe)
 import Test.MockApi (ApiExpectation, alwaysReturns, returnsOnce, runWithApiExpectations)
+import Control.Effect.Diagnostics (Diagnostics)
 
 runWithApiAndTimeout ::
-  (Has (Lift IO) sig m) =>
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  ) =>
   [ApiExpectation] ->
   (Cancel -> SimpleC FossaApiClientF (StateC [ApiExpectation] (ReaderC WaitConfig m)) b) ->
   m ()

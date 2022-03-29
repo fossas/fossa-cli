@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 
-module Test.MockApi (ApiExpectation, returnsOnce, alwaysReturns, runWithApiExpectations) where
+module Test.MockApi (ApiExpectation, returnsOnce, alwaysReturns, fails, runWithApiExpectations) where
 
 import Control.Algebra (Has)
 import Control.Carrier.Simple (SimpleC, interpretState)
@@ -11,21 +11,29 @@ import Control.Effect.State (State, get, put)
 import Control.Monad (guard)
 import Data.List (intercalate)
 import Test.HUnit (assertFailure)
+import Data.Text (Text)
+import Control.Effect.Diagnostics (Diagnostics, fatalText)
 
 -- | Specifies how to handle repetition of a request
 data ExpectationRepetition = Once | Always deriving (Eq, Ord, Show)
 
+data ApiResult a = Return a | Die Text deriving (Eq, Ord, Show)
+
 -- | An expectation of an API call made up of the request and response.
 data ApiExpectation where
-  ApiExpectation :: ExpectationRepetition -> FossaApiClientF a -> a -> ApiExpectation
+  ApiExpectation :: ExpectationRepetition -> FossaApiClientF a -> ApiResult a -> ApiExpectation
 
 -- | Create an expectation that will only be satisfied once.
 returnsOnce :: FossaApiClientF a -> a -> ApiExpectation
-returnsOnce = ApiExpectation Once
+returnsOnce req resp = ApiExpectation Once req (Return resp)
 
 -- | Create an expectation that can be satisfied multiple times.
 alwaysReturns :: FossaApiClientF a -> a -> ApiExpectation
-alwaysReturns = ApiExpectation Always
+alwaysReturns req resp = ApiExpectation Once req (Return resp)
+
+-- | Fail with a fatal diagnostic error
+fails :: FossaApiClientF a -> Text -> ApiExpectation
+fails req msg = ApiExpectation Once req (Die msg)
 
 isSingular :: ApiExpectation -> Bool
 isSingular (ApiExpectation Once _ _) = True
@@ -34,7 +42,7 @@ isSingular (ApiExpectation Always _ _) = False
 -- | Matches a request to an expectation.  This function basically exists to
 -- extract and compare the runtime constructor of the two arguments so that
 -- arbitrary ones can be compared even if the types wouldn't match.
-matchExpectation :: FossaApiClientF a -> ApiExpectation -> Maybe a
+matchExpectation :: FossaApiClientF a -> ApiExpectation -> Maybe (ApiResult a)
 matchExpectation a@(GetApiOpts) (ApiExpectation _ b@(GetApiOpts) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetIssues{}) (ApiExpectation _ b@(GetIssues{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetLatestBuild{}) (ApiExpectation _ b@(GetLatestBuild{}) resp) = resp <$ guard (a == b)
@@ -47,7 +55,13 @@ matchExpectation a@(UploadContributors{}) (ApiExpectation _ b@(UploadContributor
 matchExpectation _ _ = Nothing
 
 -- | Handles a request in the context of the mock API.
-handleRequest :: (Has (Lift IO) sig m, Has (State [ApiExpectation]) sig m) => FossaApiClientF a -> m a
+handleRequest ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has (State [ApiExpectation]) sig m
+  ) =>
+  FossaApiClientF a ->
+  m a
 handleRequest req = do
   expectations <- get
   case testExpectations expectations of
@@ -56,7 +70,9 @@ handleRequest req = do
       -- sendIO . putStrLn $ "Remaining expectations:\n  "
       --     <> intercalate "\n  " (map (\(ApiExpectation freq req _) -> show freq <> " - " <> show req) expectations')
       put expectations'
-      pure resp
+      case resp of
+        Return a -> pure a
+        Die msg -> fatalText msg
     Nothing ->
       sendIO . assertFailure $
         "Unexpected call: \n  " <> show req <> "\n"
@@ -75,6 +91,7 @@ handleRequest req = do
 -- | Run an action with a mock API client that tracks call expectations
 runWithApiExpectations ::
   ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
   ) =>
   [ApiExpectation] ->
   SimpleC FossaApiClientF (StateC [ApiExpectation] m) a ->
@@ -86,5 +103,5 @@ runWithApiExpectations expectations f = do
     then pure result
     else
       sendIO . assertFailure $
-        "Unsatisfied expectations: \n  "
+        "Test completed with unsatisfied expectations: \n  "
           <> intercalate "\n  " (map (\(ApiExpectation _ req _) -> show req) unsatisfiedSingleExpectations)

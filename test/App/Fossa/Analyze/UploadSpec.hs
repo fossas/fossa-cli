@@ -21,9 +21,11 @@ import Test.Hspec.Core.Spec (runIO)
 import Test.MockApi (
   ApiExpectation,
   alwaysReturns,
+  fails,
   returnsOnce,
-  runWithApiExpectations
+  runWithApiExpectations,
  )
+import Control.Monad (void)
 
 -- | Mock API for this spec that returns fixture data.
 -- This is here instead of using expectations because the expecctations
@@ -45,21 +47,26 @@ mockGit (FetchGitContributors{}) = pure Fixtures.contributors
 expectedLocator :: Locator
 expectedLocator = uploadLocator Fixtures.uploadResponse
 
-apiExpectations :: [ApiExpectation]
-apiExpectations =
+expectGetSuccess :: [ApiExpectation]
+expectGetSuccess =
   [ GetProject Fixtures.projectRevision `alwaysReturns` Fixtures.project
   , GetOrganization `alwaysReturns` Fixtures.organization
   , GetApiOpts `alwaysReturns` Fixtures.apiOpts
-  , UploadAnalysis Fixtures.projectRevision Fixtures.projectMetadata Fixtures.sourceUnits `alwaysReturns` Fixtures.uploadResponse
-  , UploadContributors expectedLocator Fixtures.contributors `alwaysReturns` ()
   ]
+
+expectAnalysisUploadSuccess :: ApiExpectation
+expectAnalysisUploadSuccess = UploadAnalysis Fixtures.projectRevision Fixtures.projectMetadata Fixtures.sourceUnits `alwaysReturns` Fixtures.uploadResponse
+
+expectContributorUploadSucces :: ApiExpectation
+expectContributorUploadSucces =
+  UploadContributors expectedLocator Fixtures.contributors `alwaysReturns` ()
 
 spec :: Spec
 spec =
   describe "uploadSuccessfulAnalysis" $ do
     baseDir <- runIO Fixtures.baseDir
     it' "uploads analysis and git contributors"
-      . runWithApiExpectations apiExpectations
+      . runWithApiExpectations (expectAnalysisUploadSuccess : expectContributorUploadSucces : expectGetSuccess)
       . withGit mockGit
       $ do
         locator <-
@@ -74,7 +81,7 @@ spec =
     -- just checking it doesn't fail.  In the future we should extract that so
     -- we can test it better.
     it' "renders JSON output when requested"
-      . runWithApiExpectations apiExpectations
+      . runWithApiExpectations (expectAnalysisUploadSuccess : expectContributorUploadSucces : expectGetSuccess)
       . withGit mockGit
       $ do
         locator <-
@@ -86,11 +93,11 @@ spec =
             Fixtures.sourceUnits
         locator `shouldBe'` expectedLocator
     it' "aborts when uploading to a monorepo"
+      . expectFatal'
       . runWithApiExpectations
         [ GetProject Fixtures.projectRevision `returnsOnce` Fixtures.project{projectIsMonorepo = True}
         ]
       . withGit mockGit
-      . expectFatal'
       $ uploadSuccessfulAnalysis
         baseDir
         Fixtures.projectMetadata
@@ -98,11 +105,14 @@ spec =
         Fixtures.projectRevision
         Fixtures.sourceUnits
     it' "continues if fetching the project fails"
-      . withMockApi
-        ( \case
-            GetProject{} -> fatalText "Mocked failure fetching project"
-            req -> mockApi req
-        )
+      . runWithApiExpectations
+        [ GetProject Fixtures.projectRevision `fails` "Mocked failure fetching project"
+        , expectAnalysisUploadSuccess 
+        , expectContributorUploadSucces
+        , GetOrganization `alwaysReturns` Fixtures.organization
+        , GetApiOpts `alwaysReturns` Fixtures.apiOpts
+        ]
+        
       . withGit mockGit
       $ do
         locator <-
@@ -114,7 +124,7 @@ spec =
             Fixtures.sourceUnits
         locator `shouldBe'` expectedLocator
     it' "continues if fetching contributors fails"
-      . runWithApiExpectations apiExpectations
+      . runWithApiExpectations expectGetSuccess
       . withGit (\_ -> fatalText "Mocked failure of fetching contributors from git")
       $ do
         locator <-
@@ -126,10 +136,10 @@ spec =
             Fixtures.sourceUnits
         locator `shouldBe'` expectedLocator
     it' "continues if uploading contributors fails"
-      . withMockApi
-        ( \case
-            UploadContributors{} -> fatalText "Mocked failure uploading contributors"
-            req -> mockApi req
+      . runWithApiExpectations
+        ( UploadContributors expectedLocator Fixtures.contributors `fails` "Mocked failure uploading contributors"
+        : expectAnalysisUploadSuccess
+        : expectGetSuccess
         )
       . withGit mockGit
       $ do
