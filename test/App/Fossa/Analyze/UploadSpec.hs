@@ -11,6 +11,7 @@ import Control.Effect.Diagnostics (fatalText)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Git (GitF (FetchGitContributors))
 import Control.Effect.Lift (Lift)
+import Control.Monad (void)
 import Data.Flag (toFlag)
 import Fossa.API.Types (Project (..), UploadResponse (..))
 import Srclib.Types (Locator)
@@ -20,11 +21,11 @@ import Test.Hspec (Spec, describe)
 import Test.Hspec.Core.Spec (runIO)
 import Test.MockApi (
   ApiExpectation,
+  MockApi,
   alwaysReturns,
   fails,
-  returnsOnce, MockApi
+  returnsOnce,
  )
-import Control.Monad (void)
 
 -- | Mock API for this spec that returns fixture data.
 -- This is here instead of using expectations because the expecctations
@@ -51,7 +52,6 @@ expectGetSuccess = do
   GetProject Fixtures.projectRevision `alwaysReturns` Fixtures.project
   GetOrganization `alwaysReturns` Fixtures.organization
   GetApiOpts `alwaysReturns` Fixtures.apiOpts
-  
 
 expectAnalysisUploadSuccess :: Has MockApi sig m => m ()
 expectAnalysisUploadSuccess = UploadAnalysis Fixtures.projectRevision Fixtures.projectMetadata Fixtures.sourceUnits `alwaysReturns` Fixtures.uploadResponse
@@ -110,11 +110,11 @@ spec =
       . withGit mockGit
       $ do
         GetProject Fixtures.projectRevision `fails` "Mocked failure fetching project"
-        expectAnalysisUploadSuccess 
+        expectAnalysisUploadSuccess
         expectContributorUploadSucces
         GetOrganization `alwaysReturns` Fixtures.organization
         GetApiOpts `alwaysReturns` Fixtures.apiOpts
-        
+
         locator <-
           uploadSuccessfulAnalysis
             baseDir

@@ -54,8 +54,8 @@ import Path.IO (createDirIfMissing, removeDirRecur)
 import ResultUtil (expectFailure)
 import System.Directory (getTemporaryDirectory)
 import System.Random (randomIO)
+import Test.MockApi (MockApiC, runApiWithMock, runMockApi)
 import Text.Printf (printf)
-import Test.MockApi (MockApiC, runMockApi, runApiWithMock)
 
 type EffectStack a = FinallyC (ExecIOC (ReadFSIOC (SimpleC FossaApiClientF (DiagnosticsC (MockApiC (IgnoreLoggerC (IgnoreStickyLoggerC (StackC IO)))))))) a
 

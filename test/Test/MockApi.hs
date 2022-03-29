@@ -21,11 +21,11 @@ import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify, put)
 import Control.Monad (guard)
+import Control.Monad.Trans
 import Data.Kind (Type)
 import Data.List (intercalate)
 import Data.Text (Text)
 import Test.HUnit (assertFailure)
-import Control.Monad.Trans
 
 data MockApi (m :: Type -> Type) a where
   MockApiOnce :: FossaApiClientF a -> a -> MockApi m ()
@@ -80,7 +80,7 @@ assertAllSatisfied =
 
 -- | A carrier for the Mock API that holds expectations in local state
 newtype MockApiC m a = MockApiC
-  { runMockApiC :: StateC [ ApiExpectation ] m a
+  { runMockApiC :: StateC [ApiExpectation] m a
   }
   deriving (Functor, Applicative, Monad, MonadIO)
 
@@ -177,12 +177,12 @@ runApiWithMock f = do
   pure result
   where
     runRequest req = do
-          apiResult <- runExpectations req
-          case apiResult of
-            Just (Return resp) -> pure resp
-            Just (Die msg) -> fatalText msg
-            Nothing ->
-              assertUnexpectedCall req
+      apiResult <- runExpectations req
+      case apiResult of
+        Just (Return resp) -> pure resp
+        Just (Die msg) -> fatalText msg
+        Nothing ->
+          assertUnexpectedCall req
 
 runMockApi ::
   ( Has (Lift IO) sig m
