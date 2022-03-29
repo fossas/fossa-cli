@@ -257,26 +257,26 @@ type ReadFSIOC = SimpleC ReadFSF
 runReadFSIO :: Has (Lift IO) sig m => ReadFSIOC m a -> m a
 runReadFSIO = interpret $ \case
   ReadContentsBS' file -> do
-    BS.readFile (fromSomeFile file)
-      `catchingIO` FileReadError (fromSomeFile file)
+    BS.readFile (toString file)
+      `catchingIO` FileReadError (toString file)
   ReadContentsBSLimit' file limit -> do
     readContentsBSLimit' file limit
-      `catchingIO` FileReadError (fromSomeFile file)
+      `catchingIO` FileReadError (toString file)
   ReadContentsText' file -> do
-    (decodeUtf8 <$> BS.readFile (fromSomeFile file))
-      `catchingIO` FileReadError (fromSomeFile file)
+    (decodeUtf8 <$> BS.readFile (toString file))
+      `catchingIO` FileReadError (toString file)
   ResolveFile' dir path -> do
     PIO.resolveFile dir (toString path)
-      `catchingIO` ResolveError (toFilePath dir) (toString path)
+      `catchingIO` ResolveError (toString dir) (toString path)
   ResolveDir' dir path -> do
     PIO.resolveDir dir (toString path)
-      `catchingIO` ResolveError (toFilePath dir) (toString path)
+      `catchingIO` ResolveError (toString dir) (toString path)
   ListDir dir -> do
     PIO.listDir dir
-      `catchingIO` ListDirError (toFilePath dir)
+      `catchingIO` ListDirError (toString dir)
   GetIdentifier dir -> do
-    (extractIdentifier <$> Posix.getFileStatus (toFilePath dir))
-      `catchingIO` FileReadError (toFilePath dir)
+    (extractIdentifier <$> Posix.getFileStatus (toString dir))
+      `catchingIO` FileReadError (toString dir)
     where
       extractIdentifier :: Posix.FileStatus -> DirID
       extractIdentifier status =
