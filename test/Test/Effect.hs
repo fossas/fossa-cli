@@ -55,8 +55,9 @@ import ResultUtil (expectFailure)
 import System.Directory (getTemporaryDirectory)
 import System.Random (randomIO)
 import Text.Printf (printf)
+import Test.MockApi (MockApiC, runMockApi, runApiWithMock)
 
-type EffectStack a = FinallyC (ExecIOC (ReadFSIOC (DiagnosticsC (IgnoreLoggerC (IgnoreStickyLoggerC (StackC IO)))))) a
+type EffectStack a = FinallyC (ExecIOC (ReadFSIOC (SimpleC FossaApiClientF (DiagnosticsC (MockApiC (IgnoreLoggerC (IgnoreStickyLoggerC (StackC IO)))))))) a
 
 -- TODO: add useful describe, naive describe' doesn't work.
 
@@ -73,7 +74,7 @@ runTestEffects' :: EffectStack () -> Spec
 runTestEffects' = runIO . runTestEffects
 
 runTestEffects :: EffectStack () -> IO ()
-runTestEffects = runStack . ignoreStickyLogger . ignoreLogger . handleDiag . runReadFSIO . runExecIO . runFinally
+runTestEffects = runStack . ignoreStickyLogger . ignoreLogger . runMockApi . handleDiag . runApiWithMock . runReadFSIO . runExecIO . runFinally
   where
     handleDiag :: (Has (Lift IO) sig m) => DiagnosticsC m () -> m ()
     handleDiag diag =

@@ -22,8 +22,7 @@ import Test.MockApi (
   ApiExpectation,
   alwaysReturns,
   fails,
-  returnsOnce,
-  runWithApiExpectations,
+  returnsOnce, MockApi
  )
 import Control.Monad (void)
 
@@ -47,17 +46,17 @@ mockGit (FetchGitContributors{}) = pure Fixtures.contributors
 expectedLocator :: Locator
 expectedLocator = uploadLocator Fixtures.uploadResponse
 
-expectGetSuccess :: [ApiExpectation]
-expectGetSuccess =
-  [ GetProject Fixtures.projectRevision `alwaysReturns` Fixtures.project
-  , GetOrganization `alwaysReturns` Fixtures.organization
-  , GetApiOpts `alwaysReturns` Fixtures.apiOpts
-  ]
+expectGetSuccess :: Has MockApi sig m => m ()
+expectGetSuccess = do
+  GetProject Fixtures.projectRevision `alwaysReturns` Fixtures.project
+  GetOrganization `alwaysReturns` Fixtures.organization
+  GetApiOpts `alwaysReturns` Fixtures.apiOpts
+  
 
-expectAnalysisUploadSuccess :: ApiExpectation
+expectAnalysisUploadSuccess :: Has MockApi sig m => m ()
 expectAnalysisUploadSuccess = UploadAnalysis Fixtures.projectRevision Fixtures.projectMetadata Fixtures.sourceUnits `alwaysReturns` Fixtures.uploadResponse
 
-expectContributorUploadSucces :: ApiExpectation
+expectContributorUploadSucces :: Has MockApi sig m => m ()
 expectContributorUploadSucces =
   UploadContributors expectedLocator Fixtures.contributors `alwaysReturns` ()
 
@@ -66,9 +65,11 @@ spec =
   describe "uploadSuccessfulAnalysis" $ do
     baseDir <- runIO Fixtures.baseDir
     it' "uploads analysis and git contributors"
-      . runWithApiExpectations (expectAnalysisUploadSuccess : expectContributorUploadSucces : expectGetSuccess)
       . withGit mockGit
       $ do
+        expectGetSuccess
+        expectAnalysisUploadSuccess
+        expectContributorUploadSucces
         locator <-
           uploadSuccessfulAnalysis
             baseDir
@@ -81,9 +82,11 @@ spec =
     -- just checking it doesn't fail.  In the future we should extract that so
     -- we can test it better.
     it' "renders JSON output when requested"
-      . runWithApiExpectations (expectAnalysisUploadSuccess : expectContributorUploadSucces : expectGetSuccess)
       . withGit mockGit
       $ do
+        expectAnalysisUploadSuccess
+        expectContributorUploadSucces
+        expectGetSuccess
         locator <-
           uploadSuccessfulAnalysis
             baseDir
@@ -94,27 +97,24 @@ spec =
         locator `shouldBe'` expectedLocator
     it' "aborts when uploading to a monorepo"
       . expectFatal'
-      . runWithApiExpectations
-        [ GetProject Fixtures.projectRevision `returnsOnce` Fixtures.project{projectIsMonorepo = True}
-        ]
-      . withGit mockGit
-      $ uploadSuccessfulAnalysis
-        baseDir
-        Fixtures.projectMetadata
-        (toFlag (JsonOutput) False)
-        Fixtures.projectRevision
-        Fixtures.sourceUnits
-    it' "continues if fetching the project fails"
-      . runWithApiExpectations
-        [ GetProject Fixtures.projectRevision `fails` "Mocked failure fetching project"
-        , expectAnalysisUploadSuccess 
-        , expectContributorUploadSucces
-        , GetOrganization `alwaysReturns` Fixtures.organization
-        , GetApiOpts `alwaysReturns` Fixtures.apiOpts
-        ]
-        
       . withGit mockGit
       $ do
+        GetProject Fixtures.projectRevision `returnsOnce` Fixtures.project{projectIsMonorepo = True}
+        uploadSuccessfulAnalysis
+          baseDir
+          Fixtures.projectMetadata
+          (toFlag (JsonOutput) False)
+          Fixtures.projectRevision
+          Fixtures.sourceUnits
+    it' "continues if fetching the project fails"
+      . withGit mockGit
+      $ do
+        GetProject Fixtures.projectRevision `fails` "Mocked failure fetching project"
+        expectAnalysisUploadSuccess 
+        expectContributorUploadSucces
+        GetOrganization `alwaysReturns` Fixtures.organization
+        GetApiOpts `alwaysReturns` Fixtures.apiOpts
+        
         locator <-
           uploadSuccessfulAnalysis
             baseDir
@@ -124,9 +124,10 @@ spec =
             Fixtures.sourceUnits
         locator `shouldBe'` expectedLocator
     it' "continues if fetching contributors fails"
-      . runWithApiExpectations expectGetSuccess
       . withGit (\_ -> fatalText "Mocked failure of fetching contributors from git")
       $ do
+        expectGetSuccess
+        expectAnalysisUploadSuccess
         locator <-
           uploadSuccessfulAnalysis
             baseDir
@@ -136,13 +137,11 @@ spec =
             Fixtures.sourceUnits
         locator `shouldBe'` expectedLocator
     it' "continues if uploading contributors fails"
-      . runWithApiExpectations
-        ( UploadContributors expectedLocator Fixtures.contributors `fails` "Mocked failure uploading contributors"
-        : expectAnalysisUploadSuccess
-        : expectGetSuccess
-        )
       . withGit mockGit
       $ do
+        UploadContributors expectedLocator Fixtures.contributors `fails` "Mocked failure uploading contributors"
+        expectAnalysisUploadSuccess
+        expectGetSuccess
         locator <-
           uploadSuccessfulAnalysis
             baseDir
