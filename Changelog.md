@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Configuration: Reports an error when provided API key is an empty string ([#856](https://github.com/fossas/fossa-cli/pull/856))
+
 ## v3.1.8
 - Windows: Fixes a --version command for windows release binary. 
 
