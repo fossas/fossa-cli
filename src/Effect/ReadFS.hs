@@ -89,7 +89,6 @@ import Path (
   File,
   Path,
   SomeBase (Abs),
-  fromAbsFile,
   fromSomeDir,
   fromSomeFile,
   parseSomeDir,
@@ -276,41 +275,41 @@ type Parser = Parsec Void Text
 
 -- | Read from a file, parsing its contents
 readContentsParser :: forall a sig m. (Has ReadFS sig m, Has Diagnostics sig m) => Parser a -> Path Abs File -> m a
-readContentsParser parser file = context ("Parsing file '" <> toText (fromAbsFile file) <> "'") $ do
+readContentsParser parser file = context ("Parsing file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsText file
-  case runParser parser (fromAbsFile file) contents of
-    Left err -> fatal $ FileParseError (fromAbsFile file) (toText (errorBundlePretty err))
+  case runParser parser (toString file) contents of
+    Left err -> fatal $ FileParseError (toString file) (toText (errorBundlePretty err))
     Right a -> pure a
 
 -- | Read JSON from a file
 readContentsJson :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
-readContentsJson file = context ("Parsing JSON file '" <> toText (fromAbsFile file) <> "'") $ do
+readContentsJson file = context ("Parsing JSON file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsBS file
   case eitherDecodeStrict contents of
-    Left err -> fatal $ FileParseError (fromAbsFile file) (toText err)
+    Left err -> fatal $ FileParseError (toString file) (toText err)
     Right a -> pure a
 
 readContentsToml :: (Has ReadFS sig m, Has Diagnostics sig m) => Toml.TomlCodec a -> Path Abs File -> m a
-readContentsToml codec file = context ("Parsing TOML file '" <> toText (fromAbsFile file) <> "'") $ do
+readContentsToml codec file = context ("Parsing TOML file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsText file
   case Toml.decode codec contents of
-    Left err -> fatal $ FileParseError (fromAbsFile file) (Toml.prettyTomlDecodeErrors err)
+    Left err -> fatal $ FileParseError (toString file) (Toml.prettyTomlDecodeErrors err)
     Right a -> pure a
 
 -- | Read YAML from a file
 readContentsYaml :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
-readContentsYaml file = context ("Parsing YAML file '" <> toText (fromAbsFile file) <> "'") $ do
+readContentsYaml file = context ("Parsing YAML file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsBS file
   case decodeEither' contents of
-    Left err -> fatal $ FileParseError (fromAbsFile file) (toText $ prettyPrintParseException err)
+    Left err -> fatal $ FileParseError (toString file) (toText $ prettyPrintParseException err)
     Right a -> pure a
 
 -- | Read XML from a file
 readContentsXML :: (FromXML a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
-readContentsXML file = context ("Parsing XML file '" <> toText (fromAbsFile file) <> "'") $ do
+readContentsXML file = context ("Parsing XML file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsText file
   case parseXML contents of
-    Left err -> fatal $ FileParseError (fromAbsFile file) (xmlErrorPretty err)
+    Left err -> fatal $ FileParseError (toString file) (xmlErrorPretty err)
     Right a -> pure a
 
 type ReadFSIOC = SimpleC ReadFSF
