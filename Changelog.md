@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Configuration: Fixes a bug where `.fossa.yml` was picked up only in the working directory, not in the analysis directory. ([#854](https://github.com/fossas/fossa-cli/pull/854))
+- Configuration: Reports an error when provided API key is an empty string ([#856](https://github.com/fossas/fossa-cli/pull/856))
 
 ## v3.1.8
 
