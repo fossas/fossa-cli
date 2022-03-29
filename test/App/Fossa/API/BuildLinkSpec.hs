@@ -15,8 +15,9 @@ import Fossa.API.Types (
   Organization (Organization),
  )
 import Srclib.Types (Locator (Locator))
-import Test.Effect (assertNotCalled, it', shouldBe', withMockApi)
+import Test.Effect (it', shouldBe')
 import Test.Hspec (Spec, describe)
+import Test.MockApi (returnsOnce)
 import Text.URI.QQ (uri)
 
 simpleSamlPath :: Text
@@ -73,16 +74,11 @@ spec = do
         actual `shouldBe'` simpleStandardURL
 
     describe "Fossa URL Builder" $
-      it' "should render from API info"
-        . withMockApi
-          ( \case
-              GetApiOpts -> pure apiOpts
-              GetOrganization -> pure $ Organization 1 True False
-              req -> assertNotCalled req
-          )
-        $ do
-          let locator = Locator "fetcher123" "project123" $ Just "revision123"
-              revision = ProjectRevision "" "not this revision" $ Just "master123"
-          actual <- getFossaBuildUrl revision locator
+      it' "should render from API info" $ do
+        GetApiOpts `returnsOnce` apiOpts
+        GetOrganization `returnsOnce` Organization 1 True False
+        let locator = Locator "fetcher123" "project123" $ Just "revision123"
+            revision = ProjectRevision "" "not this revision" $ Just "master123"
+        actual <- getFossaBuildUrl revision locator
 
-          actual `shouldBe'` simpleSamlPath
+        actual `shouldBe'` simpleSamlPath

@@ -13,12 +13,9 @@ module Test.Effect (
   fit',
   xit',
   withTempDir,
-  withMockApi,
-  assertNotCalled,
 ) where
 
 import Control.Effect.Lift (Has, Lift, sendIO)
-import Test.HUnit (assertFailure)
 import Test.Hspec (
   Spec,
   SpecWith,
@@ -37,7 +34,6 @@ import Test.Hspec (
 
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
-import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Carrier.Stack (StackC, runStack)
 import Control.Carrier.StickyLogger (IgnoreStickyLoggerC, ignoreStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics, errorBoundary)
@@ -54,10 +50,10 @@ import Path.IO (createDirIfMissing, removeDirRecur)
 import ResultUtil (expectFailure)
 import System.Directory (getTemporaryDirectory)
 import System.Random (randomIO)
-import Test.MockApi (MockApiC, runApiWithMock, runMockApi)
+import Test.MockApi (FossaApiClientMockC, MockApiC, runApiWithMock, runMockApi)
 import Text.Printf (printf)
 
-type EffectStack a = FinallyC (ExecIOC (ReadFSIOC (SimpleC FossaApiClientF (DiagnosticsC (MockApiC (IgnoreLoggerC (IgnoreStickyLoggerC (StackC IO)))))))) a
+type EffectStack a = FinallyC (ExecIOC (ReadFSIOC (FossaApiClientMockC (DiagnosticsC (MockApiC (IgnoreLoggerC (IgnoreStickyLoggerC (StackC IO)))))))) a
 
 -- TODO: add useful describe, naive describe' doesn't work.
 
@@ -123,11 +119,3 @@ expectFailure' res = sendIO $ expectFailure res
 expectFatal' :: (Has Diagnostics sig m, Has (Lift IO) sig m) => m a -> m ()
 expectFatal' f = do
   errorBoundary f >>= expectFailure'
-
--- | Runs a stateless API mock.
-withMockApi :: (forall x. FossaApiClientF x -> m x) -> SimpleC FossaApiClientF m a -> m a
-withMockApi = interpret
-
-assertNotCalled :: (Has (Lift IO) sig m) => FossaApiClientF a -> m a
-assertNotCalled eff = do
-  sendIO . assertFailure $ "Unexpected call: " ++ show eff

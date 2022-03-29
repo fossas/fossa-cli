@@ -3,9 +3,6 @@ module App.Fossa.API.BuildWaitSpec (spec) where
 import App.Fossa.API.BuildWait (WaitConfig (WaitConfig, apiPollDelay), waitForBuild, waitForIssues, waitForScanCompletion)
 import Control.Algebra (Has)
 import Control.Carrier.Reader (ReaderC, runReader)
-import Control.Carrier.Simple (SimpleC)
-import Control.Carrier.State.Strict (StateC)
-import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift)
 import Control.Monad (void)
@@ -23,12 +20,10 @@ import Srclib.Types (Locator (..))
 import Test.Effect (expectFatal', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe)
-import Test.MockApi (ApiExpectation, MockApi, alwaysReturns, returnsOnce)
+import Test.MockApi (MockApi, alwaysReturns, returnsOnce)
 
 runWithConfigAndTimeout ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  ) =>
+  Has (Lift IO) sig m =>
   (Cancel -> ReaderC WaitConfig m a) ->
   m ()
 runWithConfigAndTimeout =

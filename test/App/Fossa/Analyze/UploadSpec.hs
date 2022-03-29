@@ -10,33 +10,19 @@ import Control.Carrier.Simple (interpret)
 import Control.Effect.Diagnostics (fatalText)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Git (GitF (FetchGitContributors))
-import Control.Effect.Lift (Lift)
-import Control.Monad (void)
 import Data.Flag (toFlag)
 import Fossa.API.Types (Project (..), UploadResponse (..))
 import Srclib.Types (Locator)
-import Test.Effect (assertNotCalled, expectFatal', it', shouldBe', withMockApi)
+import Test.Effect (expectFatal', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe)
 import Test.Hspec.Core.Spec (runIO)
 import Test.MockApi (
-  ApiExpectation,
   MockApi,
   alwaysReturns,
   fails,
   returnsOnce,
  )
-
--- | Mock API for this spec that returns fixture data.
--- This is here instead of using expectations because the expecctations
--- currently don't support failure which we need for some of these tests.
-mockApi :: (Has (Lift IO) sig m) => forall a. FossaApiClientF a -> m a
-mockApi (GetProject _) = pure Fixtures.project
-mockApi UploadAnalysis{} = pure Fixtures.uploadResponse
-mockApi UploadContributors{} = pure ()
-mockApi GetApiOpts = pure Fixtures.apiOpts
-mockApi GetOrganization = pure Fixtures.organization
-mockApi req = assertNotCalled req
 
 withGit :: (forall x. GitF x -> m x) -> GitC m a -> m a
 withGit = interpret

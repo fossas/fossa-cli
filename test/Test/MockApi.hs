@@ -3,6 +3,7 @@
 
 module Test.MockApi (
   ApiExpectation,
+  FossaApiClientMockC,
   MockApi (..),
   MockApiC (runMockApiC),
   alwaysReturns,
@@ -13,7 +14,7 @@ module Test.MockApi (
   runApiWithMock,
 ) where
 
-import Control.Algebra
+import Control.Algebra (Algebra (..), Has, send, type (:+:) (..))
 import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Carrier.State.Strict (StateC (StateC), runState)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
@@ -21,7 +22,7 @@ import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify, put)
 import Control.Monad (guard)
-import Control.Monad.Trans
+import Control.Monad.Trans (MonadIO)
 import Data.Kind (Type)
 import Data.List (intercalate)
 import Data.Text (Text)
@@ -163,13 +164,15 @@ handleRequest req = do
             then Just (resp, rest)
             else Just (resp, expectation : rest)
 
+type FossaApiClientMockC = SimpleC FossaApiClientF
+
 -- | Run an action with a mock API client that tracks call expectations
 runApiWithMock ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has MockApi sig m
   ) =>
-  SimpleC FossaApiClientF m a ->
+  FossaApiClientMockC m a ->
   m a
 runApiWithMock f = do
   result <- interpret runRequest f
