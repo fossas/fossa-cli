@@ -16,10 +16,9 @@ import App.Fossa.Config.Container (
   ),
  )
 import App.Fossa.Config.Container.Common (ImageText (ImageText))
-import App.Fossa.Container.Scan (extractRevision, runSyft, toContainerScan)
-import App.Fossa.FossaAPIV1 (uploadContainerScan)
-import App.Types (ProjectRevision (..))
-import Control.Carrier.FossaApiClient
+import App.Fossa.Container.Scan (extractRevision, runSyft, toContainerScan, ContainerScan)
+import App.Types (ProjectRevision (..), ProjectMetadata)
+import Control.Carrier.FossaApiClient ( runFossaApiClient )
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, errCtx, renderDiagnostic)
 import Control.Effect.Lift (Lift)
 import Data.Aeson (encode)
@@ -40,6 +39,7 @@ import Effect.Logger (
  )
 import Fossa.API.Types (UploadResponse (uploadError, uploadLocator))
 import Prettyprinter (Doc, indent, vsep)
+import Control.Effect.FossaApiClient (uploadContainerScan, FossaApiClient)
 
 analyze ::
   ( Has Diagnostics sig m
@@ -53,14 +53,24 @@ analyze ContainerAnalyzeConfig{..} = do
   containerScan <- errCtx (SyftScanFailed imageLocator) (runSyft imageLocator >>= toContainerScan)
   case scanDestination of
     OutputStdout -> logStdout . decodeUtf8 $ encode containerScan
-    UploadScan apiOpts projectMeta -> runFossaApiClient apiOpts $ do
+    UploadScan apiOpts projectMeta ->
       let revision = extractRevision revisionOverride containerScan
+      in runFossaApiClient apiOpts $ uploadScan revision projectMeta containerScan
+      
+uploadScan ::
+  ( Has Diagnostics sig m
+  , Has FossaApiClient sig m
+  , Has Logger sig m
+  ) =>
+  ProjectRevision -> ProjectMetadata -> ContainerScan -> m ()
+uploadScan revision projectMeta containerScan =
+    do
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
       let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
       logInfo ("Using branch: `" <> pretty branchText <> "`")
 
-      resp <- uploadContainerScan apiOpts revision projectMeta containerScan
+      resp <- uploadContainerScan revision projectMeta containerScan
 
       buildUrl <- getFossaBuildUrl revision $ uploadLocator resp
       logInfo "View FOSSA Report:"
