@@ -2,7 +2,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Control.Carrier.Telemetry.Sink.Endpoint (sinkTelemetryToEndpoint, sinkToEndpoint, sinkToLocalhost) where
+module Control.Carrier.Telemetry.Sink.Endpoint (sinkTelemetryToEndpoint, sinkToEndpoint) where
 
 import Control.Algebra (Algebra, Has, type (:+:))
 import Control.Carrier.Empty.Maybe (EmptyC, runEmpty)
@@ -26,9 +26,7 @@ import Network.HTTP.Req (
   Scheme (Https),
   Url,
   header,
-  http,
   ignoreResponse,
-  port,
   req,
   useURI,
   (/:),
@@ -64,7 +62,7 @@ useApiOpts opts = case useURI serverURI of
     authHeader (Fossa.API.Types.ApiOpts _ (Fossa.API.Types.ApiKey key)) = header "Authorization" $ encodeUtf8 $ "Bearer " <> key
 
 sinkTelemetryToEndpoint :: Has (Lift IO) sig m => Fossa.API.Types.ApiOpts -> TelemetryRecord -> m ()
-sinkTelemetryToEndpoint = sinkToNothing --TODO: FIX THIS BEFORE MERGING TELEMETRY
+sinkTelemetryToEndpoint = sinkToEndpoint
 
 telemetryUrl :: Url scheme -> Url scheme
 telemetryUrl baseurl = baseurl /: "api" /: "cli" /: "telemetry"
@@ -84,19 +82,3 @@ sinkToEndpoint apiOpts record =
             (ReqBodyJson record)
             ignoreResponse
             opts
-
-sinkToNothing :: Has (Lift IO) sig m => Fossa.API.Types.ApiOpts -> TelemetryRecord -> m ()
-sinkToNothing _ _ = pure ()
-
-sinkToLocalhost :: Has (Lift IO) sig m => Fossa.API.Types.ApiOpts -> TelemetryRecord -> m ()
-sinkToLocalhost _ record =
-  void
-    . runEmpty
-    . unFossaTelemetryReq
-    . void
-    $ req
-      POST
-      (telemetryUrl $ http "localhost")
-      (ReqBodyJson record)
-      ignoreResponse
-      (port 8866)
