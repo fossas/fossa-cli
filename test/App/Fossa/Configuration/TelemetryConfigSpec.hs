@@ -151,7 +151,7 @@ spec = do
               , envTelemetryDebug = True
               }
             noOpts
-        telOff `shouldBe'` Just TelemetrySinkToFile
+        telOff `shouldBe'` Nothing
 
     describe "configuration file" $ do
       it' "should set sink to nothing, when off scope is provided via configuration file" $ do

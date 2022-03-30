@@ -287,7 +287,8 @@ collectTelemetrySink maybeConfigFile envvars maybeOpts = do
 
   let isDebugMode = envTelemetryDebug envvars || (fmap optDebug maybeOpts == Just True)
   case (isDebugMode, providedScope) of
-    (True, _) -> pure $ Just TelemetrySinkToFile
+    (True, FullTelemetry) -> pure $ Just TelemetrySinkToFile
+    (True, NoTelemetry) -> pure Nothing
     (False, NoTelemetry) -> pure Nothing
     (False, FullTelemetry) -> do
       let candidateOpts = fromMaybe emptyCommonOpts maybeOpts
