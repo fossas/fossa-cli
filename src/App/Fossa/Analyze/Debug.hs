@@ -187,6 +187,7 @@ readFSToDebug = interpret $ \case
   cons@DoesDirExist{} -> recording cons
   cons@ResolveFile'{} -> recording cons
   cons@ResolveDir'{} -> recording cons
+  cons@ResolvePath{} -> recording cons
   cons@ListDir{} -> ignoring cons
   cons@GetIdentifier{} -> recording cons
 
