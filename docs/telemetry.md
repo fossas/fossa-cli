@@ -25,8 +25,12 @@ CLI telemetry data is validated and processed for our logging system.
 
 ### How can I inspect CLI telemetry data?
 
-You can view collected CLI telemetry data by running cli with environment variable `FOSSA_TELEMETRY_DEBUG=1`. 
+You can view collected CLI telemetry data by running cli with environment variable `FOSSA_TELEMETRY_DEBUG=1`, with scope of `FOSSA_TELEMETRY_SCOPE=full`. 
 This will generate `fossa.telemetry.json` file in your current working directory, and will not send any telemetry data to server.
+
+```bash
+FOSSA_TELEMETRY_DEBUG=1 FOSSA_TELEMETRY_SCOPE=full fossa analyze sandbox
+```
 
 ### How can I disable CLI telemetry?
 
