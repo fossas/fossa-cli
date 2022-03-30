@@ -9,7 +9,7 @@ module App.Fossa.Config.Container.Test (
   subcommand,
 ) where
 
-import App.Fossa.API.BuildWait (WaitConfig, defaultWaitConfig)
+import App.Fossa.Config.BuildWait (WaitConfig, defaultWaitConfig)
 import App.Fossa.Config.Common (
   CommonOpts (optProjectName, optProjectRevision),
   collectApiOpts,

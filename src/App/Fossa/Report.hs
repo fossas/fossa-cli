@@ -10,7 +10,6 @@ import App.Fossa.API.BuildWait (
   waitForScanCompletion,
  )
 import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), mkSubCommand)
-import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (ProjectRevision (..))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
@@ -27,6 +26,7 @@ import Effect.Logger (
   logInfo,
   logStdout,
  )
+import Control.Effect.FossaApiClient (getAttribution)
 
 reportSubCommand :: SubCommand ReportCliOptions ReportConfig
 reportSubCommand = mkSubCommand report
@@ -67,6 +67,6 @@ report ReportConfig{..} = do
 
       logSticky $ "[ Fetching " <> showT reportType <> " report... ]"
 
-      renderedReport <- Fossa.getAttribution apiOpts revision outputFormat
+      renderedReport <- getAttribution revision outputFormat
 
       logStdout renderedReport

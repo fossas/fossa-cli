@@ -28,6 +28,7 @@ runFossaApiClient apiOpts =
     . interpret
       ( \case
           GetApiOpts -> pure apiOpts
+          GetAttribution rev format -> Core.getAttribution rev format
           GetIssues rev -> Core.getIssues rev
           GetLatestBuild rev -> Core.getLatestBuild rev
           GetLatestScan locator rev -> ScotlandYard.getLatestScan locator rev

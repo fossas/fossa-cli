@@ -1,6 +1,7 @@
 module App.Fossa.API.BuildWaitSpec (spec) where
 
-import App.Fossa.API.BuildWait (WaitConfig (WaitConfig, apiPollDelay), waitForBuild, waitForIssues, waitForScanCompletion)
+import App.Fossa.Config.BuildWait (WaitConfig (..))
+import App.Fossa.API.BuildWait (waitForBuild, waitForIssues, waitForScanCompletion)
 import Control.Algebra (Has)
 import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))

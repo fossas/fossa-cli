@@ -7,11 +7,11 @@ module App.Fossa.FossaAPIV1 (
   uploadContributors,
   uploadContainerScan,
   mkMetadataOpts,
+  FossaReq(FossaReq),
   fossaReq,
   getLatestBuild,
   getIssues,
   getOrganization,
-  getAttribution,
   getSignedLicenseScanURL,
   getSignedURL,
   getProject,
@@ -28,6 +28,7 @@ module App.Fossa.FossaAPIV1 (
   vsiCompleteScan,
   vsiScanAnalysisStatus,
   vsiDownloadInferences,
+  renderLocatorUrl,
 ) where
 
 import App.Docs (fossaSslCertDocsUrl)
@@ -531,49 +532,6 @@ getIssues apiOpts ProjectRevision{..} = fossaReq $ do
   pure (responseBody response)
 
 ---------------
-
-attributionEndpoint :: Url 'Https -> Int -> Locator -> ReportOutputFormat -> Url 'Https
-attributionEndpoint baseurl orgId locator format = appendSegment format $ baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution"
-  where
-    appendSegment :: ReportOutputFormat -> Url a -> Url a
-    appendSegment ReportJson input = input /: "json"
-    appendSegment ReportMarkdown input = input /: "full" /: "MD"
-    appendSegment ReportSpdx input = input /: "full" /: "spdx"
-
-getAttributionJson ::
-  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
-  ApiOpts ->
-  ProjectRevision ->
-  m Attr.Attribution
-getAttributionJson apiOpts ProjectRevision{..} = fossaReq $ do
-  (baseUrl, baseOpts) <- useApiOpts apiOpts
-
-  let opts =
-        baseOpts
-          <> "includeDeepDependencies" =: True
-          <> "includeHashAndVersionData" =: True
-          <> "includeDownloadUrl" =: True
-  orgId <- organizationId <$> getOrganization apiOpts
-  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision)) ReportJson) NoReqBody jsonResponse opts
-  pure (responseBody response)
-
-getAttribution ::
-  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
-  ApiOpts ->
-  ProjectRevision ->
-  ReportOutputFormat ->
-  m Text
-getAttribution apiOpts revision ReportJson = fossaReq $ do
-  jsonValue <- getAttributionJson apiOpts revision
-  pure . decodeUtf8 $ Aeson.encode jsonValue
-getAttribution apiOpts ProjectRevision{..} format = fossaReq $ do
-  (baseUrl, opts) <- useApiOpts apiOpts
-
-  orgId <- organizationId <$> getOrganization apiOpts
-  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision)) format) NoReqBody bsResponse opts
-  pure (decodeUtf8 $ responseBody response)
-
-----------
 
 organizationEndpoint :: Url scheme -> Url scheme
 organizationEndpoint baseurl = baseurl /: "api" /: "cli" /: "organization"

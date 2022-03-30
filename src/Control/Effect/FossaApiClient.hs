@@ -4,6 +4,7 @@ module Control.Effect.FossaApiClient (
   FossaApiClientF (..),
   FossaApiClient,
   getApiOpts,
+  getAttribution, 
   getIssues,
   getLatestBuild,
   getOrganization,
@@ -22,9 +23,12 @@ import Data.List.NonEmpty qualified as NE
 import Fossa.API.Types (ApiOpts, Build, Contributors, Issues, Organization, Project, ScanId, ScanResponse, UploadResponse)
 import Srclib.Types (Locator, SourceUnit)
 import App.Fossa.Container.Scan (ContainerScan (..))
+import Data.Text
+import App.Fossa.Config.Report (ReportOutputFormat)
 
 data FossaApiClientF a where
   GetApiOpts :: FossaApiClientF ApiOpts
+  GetAttribution :: ProjectRevision -> ReportOutputFormat -> FossaApiClientF Text
   GetIssues :: ProjectRevision -> FossaApiClientF Issues
   GetLatestBuild :: ProjectRevision -> FossaApiClientF Build
   GetLatestScan :: Locator -> ProjectRevision -> FossaApiClientF ScanResponse
@@ -87,3 +91,6 @@ getScan locator scanId = sendSimple $ GetScan locator scanId
 
 getLatestScan :: Has FossaApiClient sig m => Locator -> ProjectRevision -> m ScanResponse
 getLatestScan locator revision = sendSimple $ GetLatestScan locator revision
+
+getAttribution :: Has FossaApiClient sig m => ProjectRevision -> ReportOutputFormat -> m Text
+getAttribution revision format = sendSimple $ GetAttribution revision format

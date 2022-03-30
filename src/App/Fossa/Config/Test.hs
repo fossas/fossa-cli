@@ -8,7 +8,7 @@ module App.Fossa.Config.Test (
   mkSubCommand,
 ) where
 
-import App.Fossa.API.BuildWait (WaitConfig, defaultWaitConfig)
+import App.Fossa.Config.BuildWait (WaitConfig, defaultWaitConfig)
 import App.Fossa.Config.Common (
   CacheAction (ReadOnly),
   CommonOpts (..),

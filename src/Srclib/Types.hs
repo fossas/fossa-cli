@@ -18,6 +18,7 @@ module Srclib.Types (
   createCustomLocator,
 ) where
 
+import App.Types (ProjectRevision (..))
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (fromMaybe)
@@ -230,12 +231,12 @@ parseLocator raw = Locator fetcher project (if Text.null revision then Nothing e
     (project, xs') = Text.breakOn "$" (Text.drop 1 xs)
     revision = Text.drop 1 xs'
 
-createCustomLocator :: Text -> Int -> Locator
-createCustomLocator projectName organizationId =
+createCustomLocator :: ProjectRevision -> Locator
+createCustomLocator ProjectRevision{projectName, projectRevision} =
   Locator
     { locatorFetcher = "custom"
-    , locatorProject = toText (show organizationId) <> "/" <> projectName
-    , locatorRevision = Nothing
+    , locatorProject = projectName
+    , locatorRevision = Just projectRevision
     }
 
 instance ToJSON SourceUnit where

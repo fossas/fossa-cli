@@ -2,12 +2,10 @@ module App.Fossa.API.BuildWait (
   waitForScanCompletion,
   waitForIssues,
   waitForBuild,
-  WaitConfig (..),
-  defaultWaitConfig,
-  defaultApiPollDelay,
 ) where
 
 import App.Types (ProjectRevision (projectName))
+import App.Fossa.Config.BuildWait ( WaitConfig(..) ) 
 import Control.Concurrent (threadDelay)
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -30,7 +28,7 @@ import Control.Effect.FossaApiClient (
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Reader (Reader, ask)
 import Control.Effect.StickyLogger (StickyLogger, logSticky')
-import Control.Timeout (Cancel, Duration (..), checkForCancel, durationToMicro)
+import Control.Timeout (Cancel, checkForCancel, durationToMicro)
 import Effect.Logger (Logger, pretty, viaShow)
 import Fossa.API.Types (
   Build (buildTask),
@@ -43,17 +41,6 @@ import Fossa.API.Types (
   ScanResponse (..),
  )
 import Srclib.Types (Locator, createCustomLocator)
-
-newtype WaitConfig = WaitConfig
-  { apiPollDelay :: Duration
-  }
-  deriving (Show, Ord, Eq)
-
-defaultWaitConfig :: WaitConfig
-defaultWaitConfig = WaitConfig defaultApiPollDelay
-
-defaultApiPollDelay :: Duration
-defaultApiPollDelay = Seconds 8
 
 data WaitError
   = -- | We encountered the FAILED status on a build
@@ -148,7 +135,7 @@ waitForMonorepoScan ::
 waitForMonorepoScan revision cancelFlag = do
   checkForTimeout cancelFlag
   orgId <- organizationId <$> getOrganization
-  let locator = createCustomLocator (projectName revision) orgId
+  let locator = createCustomLocator revision
 
   logSticky' "[ Getting latest scan ID ]"
   scan <- getLatestScan locator revision
