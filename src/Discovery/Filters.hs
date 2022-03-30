@@ -18,6 +18,7 @@ module Discovery.Filters (
   Exclude,
 ) where
 
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.List ((\\))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
@@ -27,6 +28,7 @@ import Data.Set.NonEmpty (nonEmpty, toSet)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
+import GHC.Generics (Generic)
 import Path (Dir, Path, Rel, isProperPrefixOf, parseRelDir)
 import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, try),
@@ -54,7 +56,10 @@ data AllFilters = AllFilters
   { includeFilters :: FilterCombination Include
   , excludeFilters :: FilterCombination Exclude
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON AllFilters where
+  toEncoding = genericToEncoding defaultOptions
 
 instance Semigroup AllFilters where
   (AllFilters a1 b1) <> (AllFilters a2 b2) = AllFilters (a1 <> a2) (b1 <> b2)
@@ -66,7 +71,10 @@ data FilterCombination a = FilterCombination
   { _combinedTargets :: [TargetFilter]
   , _combinedPaths :: [Path Rel Dir]
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON (FilterCombination a) where
+  toEncoding = genericToEncoding defaultOptions
 
 type role FilterCombination nominal
 

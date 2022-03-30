@@ -18,7 +18,9 @@ module Types (
 import Data.Aeson (
   FromJSON (parseJSON),
   KeyValue ((.=)),
-  ToJSON (toJSON),
+  ToJSON (toEncoding, toJSON),
+  defaultOptions,
+  genericToEncoding,
   object,
   withObject,
   (.:),
@@ -200,7 +202,10 @@ newtype BuildTarget = BuildTarget {unBuildTarget :: Text}
   and an exact gradle target.
 -}
 data TargetFilter = TypeTarget Text | TypeDirTarget Text (Path Rel Dir) | TypeDirTargetTarget Text (Path Rel Dir) BuildTarget
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON TargetFilter where
+  toEncoding = genericToEncoding defaultOptions
 
 instance FromJSON TargetFilter where
   parseJSON = withObject "TargetFilter" $ \obj -> do

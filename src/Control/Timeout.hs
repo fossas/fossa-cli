@@ -29,7 +29,9 @@ import Control.Monad (when)
 import Control.Timeout.Internal (
   Cancel (..),
  )
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Functor (($>))
+import GHC.Generics (Generic)
 
 -- | Several time-based functions accept 'Int', which makes it difficult to
 -- reason about which subdivision of time that int represents.  To aid this,
@@ -41,7 +43,10 @@ data Duration
   | Minutes Int
   | MilliSeconds Int
   | MicroSeconds Int
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance ToJSON Duration where
+  toEncoding = genericToEncoding defaultOptions
 
 instance Eq Duration where
   a == b = durationToMicro a == durationToMicro b

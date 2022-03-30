@@ -40,13 +40,14 @@ import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
   ConfigPaths (..),
   ConfigTargets (..),
+  ConfigTelemetryScope (NoTelemetry),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
   mergeFileCmdMetadata,
   resolveConfigFile,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars)
-import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
+import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (
   BaseDir,
@@ -62,6 +63,7 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad (when)
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Flag (Flag, flagOpt)
 import Data.Maybe (isJust)
 import Data.Monoid.Extra (isMempty)
@@ -79,6 +81,7 @@ import Effect.Exec (
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logDebug, logWarn, pretty)
 import Effect.ReadFS (ReadFS, resolveDir)
 import Fossa.API.Types (ApiOpts)
+import GHC.Generics (Generic)
 import Options.Applicative (
   Alternative (many),
   InfoMod,
@@ -102,21 +105,37 @@ import System.Info qualified as SysInfo
 import Types (TargetFilter)
 
 -- CLI flags, for use with 'Data.Flag'
-data AllowNativeLicenseScan = AllowNativeLicenseScan
+data AllowNativeLicenseScan = AllowNativeLicenseScan deriving (Generic)
 
-data BinaryDiscovery = BinaryDiscovery
+data BinaryDiscovery = BinaryDiscovery deriving (Generic)
+data IncludeAll = IncludeAll deriving (Generic)
+data JsonOutput = JsonOutput deriving (Generic)
+data UnpackArchives = UnpackArchives deriving (Generic)
+data VSIAnalysis = VSIAnalysis deriving (Generic)
 
-data IncludeAll = IncludeAll
+newtype IATAssertion = IATAssertion {unIATAssertion :: Maybe (Path Abs Dir)} deriving (Eq, Ord, Show, Generic)
+newtype DynamicLinkInspect = DynamicLinkInspect {unDynamicLinkInspect :: Maybe (Path Abs File)} deriving (Eq, Ord, Show, Generic)
 
-data JsonOutput = JsonOutput
+instance ToJSON BinaryDiscovery where
+  toEncoding = genericToEncoding defaultOptions
 
-data UnpackArchives = UnpackArchives
+instance ToJSON IncludeAll where
+  toEncoding = genericToEncoding defaultOptions
 
-data VSIAnalysis = VSIAnalysis
+instance ToJSON JsonOutput where
+  toEncoding = genericToEncoding defaultOptions
 
-newtype IATAssertion = IATAssertion {unIATAssertion :: Maybe (Path Abs Dir)} deriving (Eq, Ord, Show)
+instance ToJSON UnpackArchives where
+  toEncoding = genericToEncoding defaultOptions
 
-newtype DynamicLinkInspect = DynamicLinkInspect {unDynamicLinkInspect :: Maybe (Path Abs File)} deriving (Eq, Ord, Show)
+instance ToJSON VSIAnalysis where
+  toEncoding = genericToEncoding defaultOptions
+
+instance ToJSON IATAssertion where
+  toEncoding = genericToEncoding defaultOptions
+
+instance ToJSON DynamicLinkInspect where
+  toEncoding = genericToEncoding defaultOptions
 
 data VSIModeOptions = VSIModeOptions
   { vsiAnalysisEnabled :: Flag VSIAnalysis
@@ -125,7 +144,10 @@ data VSIModeOptions = VSIModeOptions
   , dynamicLinkingTarget :: DynamicLinkInspect
   , binaryDiscoveryEnabled :: Flag BinaryDiscovery
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON VSIModeOptions where
+  toEncoding = genericToEncoding defaultOptions
 
 data AnalyzeCliOpts = AnalyzeCliOpts
   { commons :: CommonOpts
@@ -150,13 +172,22 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   }
   deriving (Eq, Ord, Show)
 
+instance GetCommonOpts AnalyzeCliOpts where
+  getCommonOpts AnalyzeCliOpts{analyzeOutput, commons} =
+    if analyzeOutput
+      then Just commons{optTelemetry = Just NoTelemetry} -- When `--output` is used don't emit no telemetry.
+      else Just commons
+
 instance GetSeverity AnalyzeCliOpts where
   getSeverity AnalyzeCliOpts{commons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo
 
 data AnalyzeConfig
   = Monorepo MonorepoAnalyzeConfig
   | Standard StandardAnalyzeConfig
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance ToJSON AnalyzeConfig where
+  toEncoding = genericToEncoding defaultOptions
 
 data MonorepoAnalyzeConfig = MonorepoAnalyzeConfig
   { monorepoAnalyzeOpts :: MonorepoAnalysisOpts
@@ -167,7 +198,10 @@ data MonorepoAnalyzeConfig = MonorepoAnalyzeConfig
   , monorepoRevision :: ProjectRevision
   , monorepoSeverity :: Severity
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON MonorepoAnalyzeConfig where
+  toEncoding = genericToEncoding defaultOptions
 
 data StandardAnalyzeConfig = StandardAnalyzeConfig
   { baseDir :: BaseDir
@@ -182,12 +216,18 @@ data StandardAnalyzeConfig = StandardAnalyzeConfig
   , includeAllDeps :: Flag IncludeAll
   , allowNativeLicenseScan :: Flag AllowNativeLicenseScan
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON StandardAnalyzeConfig where
+  toEncoding = genericToEncoding defaultOptions
 
 newtype ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
   { allowedGradleConfigs :: Maybe (Set Text)
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ExperimentalAnalyzeConfig where
+  toEncoding = genericToEncoding defaultOptions
 
 mkSubCommand :: (AnalyzeConfig -> EffStack ()) -> SubCommand AnalyzeCliOpts AnalyzeConfig
 mkSubCommand = SubCommand "analyze" analyzeInfo cliParser loadConfig mergeOpts

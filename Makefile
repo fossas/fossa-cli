@@ -5,7 +5,7 @@ build:
 	cabal build
 
 test:
-	cabal test unit-tests
+	cabal test unit-tests --test-show-details=streaming --test-option=--format=checks --test-option=--times --test-option=--color
 
 test-all:
 	cabal test

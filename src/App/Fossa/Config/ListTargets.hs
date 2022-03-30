@@ -21,12 +21,14 @@ import App.Fossa.Config.ConfigFile (
   ExperimentalGradleConfigs (gradleConfigsOnly),
   resolveConfigFile,
  )
-import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
+import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift, sendIO)
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Effect.Logger (Has, Logger, Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS)
+import GHC.Generics (Generic)
 import Options.Applicative (InfoMod, Parser, progDesc)
 import Path.IO (getCurrentDir)
 
@@ -82,8 +84,14 @@ data ListTargetsCliOpts = ListTargetsCliOpts
 instance GetSeverity ListTargetsCliOpts where
   getSeverity ListTargetsCliOpts{commons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo
 
+instance GetCommonOpts ListTargetsCliOpts where
+  getCommonOpts ListTargetsCliOpts{commons} = Just commons
+
 data ListTargetsConfig = ListTargetsConfig
   { baseDir :: BaseDir
   , experimental :: ExperimentalAnalyzeConfig
   }
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance ToJSON ListTargetsConfig where
+  toEncoding = genericToEncoding defaultOptions

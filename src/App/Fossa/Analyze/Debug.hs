@@ -3,6 +3,8 @@
 
 module App.Fossa.Analyze.Debug (
   collectDebugBundle,
+  collectSystemInfo,
+  SystemInfo (..),
 
   -- * Debug individual effects
   DiagDebugC,
