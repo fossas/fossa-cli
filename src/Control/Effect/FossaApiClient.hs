@@ -46,6 +46,7 @@ data FossaApiClientF a where
     Contributors ->
     FossaApiClientF ()
 
+deriving instance Show (FossaApiClientF a)
 deriving instance Eq (FossaApiClientF a)
 
 type FossaApiClient = Simple FossaApiClientF

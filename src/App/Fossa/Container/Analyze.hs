@@ -51,11 +51,11 @@ analyze ::
 analyze ContainerAnalyzeConfig{..} = do
   logDebug "Running embedded syft binary"
   containerScan <- errCtx (SyftScanFailed imageLocator) (runSyft imageLocator >>= toContainerScan)
+  let revision = extractRevision revisionOverride containerScan
   case scanDestination of
     OutputStdout -> logStdout . decodeUtf8 $ encode containerScan
     UploadScan apiOpts projectMeta ->
-      let revision = extractRevision revisionOverride containerScan
-      in runFossaApiClient apiOpts $ uploadScan revision projectMeta containerScan
+      runFossaApiClient apiOpts $ uploadScan revision projectMeta containerScan
       
 uploadScan ::
   ( Has Diagnostics sig m
