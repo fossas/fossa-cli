@@ -18,7 +18,7 @@ import Data.Text.Encoding qualified as TE
 import Data.Text.Encoding.Error qualified as TE
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TLE
-import GHC.TypeLits
+import GHC.TypeLits (ErrorMessage (Text), TypeError)
 import Path (Path, SomeBase)
 import Path qualified
 
@@ -80,8 +80,8 @@ instance ToText (Path b t) where
 
 instance ToText (SomeBase t) where
   toText path = case path of
-    Path.Abs p -> toText . Path.toFilePath $ p
-    Path.Rel p -> toText . Path.toFilePath $ p
+    Path.Abs p -> toText p
+    Path.Rel p -> toText p
 
 ----- ToLText
 
@@ -125,6 +125,11 @@ instance TypeError ( 'Text "Error: Use decodeUtf8 instead") => ToString BL.ByteS
 
 instance ToString (Path b t) where
   toString = Path.toFilePath
+
+instance ToString (SomeBase t) where
+  toString = \case
+    Path.Rel p -> toString p
+    Path.Abs p -> toString p
 
 ----- LazyStrict
 

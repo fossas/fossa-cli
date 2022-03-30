@@ -21,6 +21,11 @@ module Effect.ReadFS (
   resolveDir,
   resolveDir',
 
+  -- * Resolving existing paths
+  resolvePath,
+  resolvePath',
+  SomePath (..),
+
   -- * Checking whether files exist
   doesFileExist,
   doesDirExist,
@@ -46,30 +51,55 @@ module Effect.ReadFS (
 
 import App.Support (reportDefectWithFileMsg)
 import Control.Algebra as X
-import Control.Carrier.Simple
-import Control.Effect.Diagnostics
+import Control.Carrier.Simple (
+  Simple,
+  SimpleC,
+  interpret,
+  sendSimple,
+ )
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (..),
+  context,
+  fatal,
+  fromEither,
+ )
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Record
+import Control.Effect.Record (RecordableValue)
 import Control.Effect.Record.TH (deriveRecordable)
-import Control.Effect.Replay
+import Control.Effect.Replay (ReplayableValue)
 import Control.Effect.Replay.TH (deriveReplayable)
 import Control.Exception qualified as E
 import Control.Exception.Extra (safeCatch)
-import Control.Monad ((<=<))
-import Data.Aeson
+import Control.Monad (join, (<=<))
+import Data.Aeson (FromJSON, ToJSON, eitherDecodeStrict)
+import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
+import Data.Text.Extra (showT)
 import Data.Void (Void)
 import Data.Yaml (decodeEither', prettyPrintParseException)
 import GHC.Generics (Generic)
 import Parse.XML (FromXML, parseXML, xmlErrorPretty)
-import Path
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  SomeBase (Abs),
+  fromSomeDir,
+  fromSomeFile,
+  parseSomeDir,
+  parseSomeFile,
+ )
 import Path.IO qualified as PIO
 import Prettyprinter (indent, line, pretty, vsep)
 import System.Directory qualified as Directory
 import System.IO (IOMode (ReadMode), withFile)
+import System.PosixCompat (isRegularFile)
+import System.PosixCompat.Files (isDirectory)
 import System.PosixCompat.Files qualified as Posix
 import System.PosixCompat.Types (CDev (..), CIno (..))
 import Text.Megaparsec (Parsec, runParser)
@@ -80,10 +110,19 @@ import Toml qualified
 -- Uniqueness is guaranteed within a single OS.
 data DirID = DirID {dirFileID :: Integer, dirDeviceID :: Integer} deriving (Show, Eq, Ord, Generic)
 
+data SomePath
+  = SomeFile (SomeBase File)
+  | SomeDir (SomeBase Dir)
+  deriving (Eq, Ord, Show, Generic)
+
 instance ToJSON DirID
 instance RecordableValue DirID
 instance FromJSON DirID
 instance ReplayableValue DirID
+instance ToJSON SomePath
+instance RecordableValue SomePath
+instance FromJSON SomePath
+instance ReplayableValue SomePath
 
 data ReadFSF a where
   ReadContentsBS' :: SomeBase File -> ReadFSF (Either ReadFSErr ByteString)
@@ -93,6 +132,7 @@ data ReadFSF a where
   DoesDirExist :: SomeBase Dir -> ReadFSF Bool
   ResolveFile' :: Path Abs Dir -> Text -> ReadFSF (Either ReadFSErr (Path Abs File))
   ResolveDir' :: Path Abs Dir -> Text -> ReadFSF (Either ReadFSErr (Path Abs Dir))
+  ResolvePath :: FilePath -> ReadFSF (Either ReadFSErr SomePath)
   ListDir :: Path Abs Dir -> ReadFSF (Either ReadFSErr ([Path Abs Dir], [Path Abs File]))
   GetIdentifier :: Path Abs Dir -> ReadFSF (Either ReadFSErr DirID)
 
@@ -107,6 +147,10 @@ data ReadFSErr
     ResolveError FilePath FilePath Text
   | -- | An IOException was thrown when listing a directory
     ListDirError FilePath Text
+  | -- | A file had an unknown type (i.e. not a regular file or directory)
+    NotDirOrFile FilePath
+  | -- | A file was found to be BOTH a directory and regular file, and we cannot decide which it really is.
+    UndeterminableFileType FilePath
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON ReadFSErr
@@ -142,6 +186,15 @@ instance ToDiagnostic ReadFSErr where
               ]
           )
     ListDirError dir err -> "Error listing directory contents at " <> pretty dir <> ":" <> line <> indent 2 (pretty err)
+    NotDirOrFile path -> "Path was not a dir or file, unknown type: " <> pretty path
+    UndeterminableFileType path ->
+      vsep
+        [ "Path is both a file and a directory, which should be impossible: " <> pretty path
+        , "Please report this as a bug, and include the following info if possible:"
+        , "- Operating system"
+        , "- File system"
+        , "- Output of 'fossa --version'"
+        ]
 
 -- | Read file contents into a strict 'ByteString'
 readContentsBS' :: Has ReadFS sig m => Path Abs File -> m (Either ReadFSErr ByteString)
@@ -179,6 +232,13 @@ resolveDir' base path = sendSimple (ResolveDir' base path)
 resolveDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs Dir)
 resolveDir dir path = fromEither =<< resolveDir' dir path
 
+-- | Resolve some path to an existing
+resolvePath :: Has ReadFS sig m => FilePath -> m (Either ReadFSErr SomePath)
+resolvePath = sendSimple . ResolvePath
+
+resolvePath' :: (Has ReadFS sig m, Has Diagnostics sig m) => FilePath -> m SomePath
+resolvePath' = fromEither <=< resolvePath
+
 -- | Check whether a file exists
 doesFileExist :: Has ReadFS sig m => Path Abs File -> m Bool
 doesFileExist path = sendSimple (DoesFileExist (Abs path))
@@ -215,41 +275,41 @@ type Parser = Parsec Void Text
 
 -- | Read from a file, parsing its contents
 readContentsParser :: forall a sig m. (Has ReadFS sig m, Has Diagnostics sig m) => Parser a -> Path Abs File -> m a
-readContentsParser parser file = context ("Parsing file '" <> toText (fromAbsFile file) <> "'") $ do
+readContentsParser parser file = context ("Parsing file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsText file
-  case runParser parser (fromAbsFile file) contents of
-    Left err -> fatal $ FileParseError (fromAbsFile file) (toText (errorBundlePretty err))
+  case runParser parser (toString file) contents of
+    Left err -> fatal $ FileParseError (toString file) (toText (errorBundlePretty err))
     Right a -> pure a
 
 -- | Read JSON from a file
 readContentsJson :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
-readContentsJson file = context ("Parsing JSON file '" <> toText (fromAbsFile file) <> "'") $ do
+readContentsJson file = context ("Parsing JSON file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsBS file
   case eitherDecodeStrict contents of
-    Left err -> fatal $ FileParseError (fromAbsFile file) (toText err)
+    Left err -> fatal $ FileParseError (toString file) (toText err)
     Right a -> pure a
 
 readContentsToml :: (Has ReadFS sig m, Has Diagnostics sig m) => Toml.TomlCodec a -> Path Abs File -> m a
-readContentsToml codec file = context ("Parsing TOML file '" <> toText (fromAbsFile file) <> "'") $ do
+readContentsToml codec file = context ("Parsing TOML file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsText file
   case Toml.decode codec contents of
-    Left err -> fatal $ FileParseError (fromAbsFile file) (Toml.prettyTomlDecodeErrors err)
+    Left err -> fatal $ FileParseError (toString file) (Toml.prettyTomlDecodeErrors err)
     Right a -> pure a
 
 -- | Read YAML from a file
 readContentsYaml :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
-readContentsYaml file = context ("Parsing YAML file '" <> toText (fromAbsFile file) <> "'") $ do
+readContentsYaml file = context ("Parsing YAML file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsBS file
   case decodeEither' contents of
-    Left err -> fatal $ FileParseError (fromAbsFile file) (toText $ prettyPrintParseException err)
+    Left err -> fatal $ FileParseError (toString file) (toText $ prettyPrintParseException err)
     Right a -> pure a
 
 -- | Read XML from a file
 readContentsXML :: (FromXML a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
-readContentsXML file = context ("Parsing XML file '" <> toText (fromAbsFile file) <> "'") $ do
+readContentsXML file = context ("Parsing XML file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsText file
   case parseXML contents of
-    Left err -> fatal $ FileParseError (fromAbsFile file) (xmlErrorPretty err)
+    Left err -> fatal $ FileParseError (toString file) (xmlErrorPretty err)
     Right a -> pure a
 
 type ReadFSIOC = SimpleC ReadFSF
@@ -257,39 +317,49 @@ type ReadFSIOC = SimpleC ReadFSF
 runReadFSIO :: Has (Lift IO) sig m => ReadFSIOC m a -> m a
 runReadFSIO = interpret $ \case
   ReadContentsBS' file -> do
-    BS.readFile (fromSomeFile file)
-      `catchingIO` FileReadError (fromSomeFile file)
+    BS.readFile (toString file)
+      `catchingIO` FileReadError (toString file)
   ReadContentsBSLimit' file limit -> do
     readContentsBSLimit' file limit
-      `catchingIO` FileReadError (fromSomeFile file)
+      `catchingIO` FileReadError (toString file)
   ReadContentsText' file -> do
-    (decodeUtf8 <$> BS.readFile (fromSomeFile file))
-      `catchingIO` FileReadError (fromSomeFile file)
+    (decodeUtf8 <$> BS.readFile (toString file))
+      `catchingIO` FileReadError (toString file)
   ResolveFile' dir path -> do
     PIO.resolveFile dir (toString path)
-      `catchingIO` ResolveError (toFilePath dir) (toString path)
+      `catchingIO` ResolveError (toString dir) (toString path)
   ResolveDir' dir path -> do
     PIO.resolveDir dir (toString path)
-      `catchingIO` ResolveError (toFilePath dir) (toString path)
+      `catchingIO` ResolveError (toString dir) (toString path)
   ListDir dir -> do
     PIO.listDir dir
-      `catchingIO` ListDirError (toFilePath dir)
+      `catchingIO` ListDirError (toString dir)
   GetIdentifier dir -> do
-    (extractIdentifier <$> Posix.getFileStatus (toFilePath dir))
-      `catchingIO` FileReadError (toFilePath dir)
+    (extractIdentifier <$> Posix.getFileStatus (toString dir))
+      `catchingIO` FileReadError (toString dir)
     where
       extractIdentifier :: Posix.FileStatus -> DirID
       extractIdentifier status =
         let (CIno fileID) = Posix.fileID status
             (CDev devID) = Posix.deviceID status
          in DirID{dirFileID = toInteger fileID, dirDeviceID = toInteger devID}
-
+  ResolvePath path -> join <$> ((identifyPath path <$> Posix.getFileStatus path) `catchingIO` FileReadError path)
   -- NB: these never throw
   DoesFileExist file -> sendIO (Directory.doesFileExist (fromSomeFile file))
   DoesDirExist dir -> sendIO (Directory.doesDirectoryExist (fromSomeDir dir))
+
+identifyPath :: FilePath -> Posix.FileStatus -> Either ReadFSErr SomePath
+identifyPath path stat = case (isDirectory stat, isRegularFile stat) of
+  (True, False) -> first mangle (SomeDir <$> parseSomeDir path)
+  (False, True) -> first mangle (SomeFile <$> parseSomeFile path)
+  (False, False) -> Left $ NotDirOrFile path
+  (True, True) -> Left $ UndeterminableFileType path
+  where
+    mangle :: E.SomeException -> ReadFSErr
+    mangle = FileReadError path . showT
 
 readContentsBSLimit' :: SomeBase File -> Int -> IO ByteString
 readContentsBSLimit' file limit = withFile (fromSomeFile file) ReadMode $ \handle -> BS.hGetSome handle limit
 
 catchingIO :: Has (Lift IO) sig m => IO a -> (Text -> ReadFSErr) -> m (Either ReadFSErr a)
-catchingIO io mangle = safeCatch (Right <$> sendIO io) (\(e :: E.IOException) -> pure (Left (mangle (toText (show e)))))
+catchingIO io mangle = (Right <$> sendIO io) `safeCatch` (\(e :: E.IOException) -> pure . Left . mangle . toText $ show e)
