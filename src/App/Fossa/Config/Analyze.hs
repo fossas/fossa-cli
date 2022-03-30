@@ -262,7 +262,7 @@ cliParser =
 vsiEnableOpt :: Parser (Flag VSIAnalysis)
 vsiEnableOpt = visible <|> legacy
   where
-    visible = flagOpt VSIAnalysis (long "experimental-enable-vsi" <> help "Analyzes project files on disk to detect vendored open source libraries")
+    visible = flagOpt VSIAnalysis (long "experimental-enable-vsi" <> help "Analyzes project files on disk to detect vendored open source libraries (used for C/C++ support)")
     legacy = flagOpt VSIAnalysis (long "enable-vsi" <> hidden)
 
 skipVSIGraphResolutionOpt :: Parser VSI.Locator
