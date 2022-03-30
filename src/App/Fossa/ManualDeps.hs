@@ -162,7 +162,7 @@ scanAndUpload root apiOpts vdeps allowNative = runFossaApiClient apiOpts $ do
     if fromFlag AllowNativeLicenseScan allowNative
       then do
         doNative <- orgDoLocalLicenseScan <$> getOrganization
-        pure if not doNative then CLILicenseScan else ArchiveUpload
+        pure if doNative then CLILicenseScan else ArchiveUpload
       else pure ArchiveUpload
 
   let scanner = case archiveOrCLI of
