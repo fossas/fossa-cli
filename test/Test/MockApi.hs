@@ -47,7 +47,7 @@ module Test.MockApi (
 
 import Control.Algebra (Algebra (..), Has, send, type (:+:) (..))
 import Control.Carrier.Simple (SimpleC, interpret)
-import Control.Carrier.State.Strict (StateC (StateC), runState)
+import Control.Carrier.State.Strict (StateC (StateC), evalState)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift, sendIO)
@@ -224,4 +224,4 @@ runMockApi ::
   MockApiC m a ->
   m a
 runMockApi =
-  (fmap snd) . runState [] . runMockApiC
+  evalState [] . runMockApiC

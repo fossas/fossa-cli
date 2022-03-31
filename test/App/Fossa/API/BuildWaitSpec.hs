@@ -21,13 +21,8 @@ import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe)
 import Test.MockApi (MockApi, alwaysReturns, returnsOnce)
 
-runWithTimeout ::
-  Has (Lift IO) sig m =>
-  (Cancel -> m a) ->
-  m ()
-runWithTimeout =
-  void
-    . timeout' (Seconds 1)
+runWithTimeout :: Has (Lift IO) sig m => (Cancel -> m a) -> m ()
+runWithTimeout = void . timeout' (Seconds 1)
 
 spec :: Spec
 spec =
