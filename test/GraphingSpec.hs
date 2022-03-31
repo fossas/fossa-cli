@@ -2,9 +2,30 @@ module GraphingSpec (
   spec,
 ) where
 
-import GraphUtil
-import Graphing
-import Test.Hspec
+import GraphUtil (expectDeps, expectDirect, expectEdges)
+import Graphing (
+  Graphing,
+  deep,
+  directs,
+  edge,
+  edges,
+  getRootsOf,
+  hasPredecessors,
+  promoteToDirect,
+  shrink,
+  shrinkRoots,
+  shrinkSingle,
+  shrinkWithoutPromotionToDirect,
+  stripRoot,
+  unfold,
+ )
+import Test.Hspec (
+  Spec,
+  describe,
+  it,
+  shouldBe,
+  shouldContain,
+ )
 import Prelude
 
 spec :: Spec
@@ -115,6 +136,27 @@ spec = do
       expectDirect [1, 8] graph'
       expectDeps [1, 2, 4, 6, 7, 8] graph'
       expectEdges [(1, 2), (2, 4), (2, 6), (2, 7)] graph'
+
+    it "doesn't preserve nodes that reference themselves when shrinking" $ do
+      -- webpack -> ast -> wast-parser -> helper-code-frame -> ast
+      -- underscore
+
+      let graph :: Graphing String
+          graph =
+            Graphing.edges
+              [ ("webpack", "ast")
+              , ("ast", "wast-parser")
+              , ("wast-parser", "helper-code-frame")
+              , ("helper-code-frame", "ast")
+              ]
+              <> Graphing.directs ["webpack", "underscore"]
+
+          graph' :: Graphing String
+          graph' = Graphing.shrinkWithoutPromotionToDirect (== "underscore") graph
+
+      expectDirect ["underscore"] graph'
+      expectDeps ["underscore"] graph'
+      expectEdges [] graph'
 
   describe "stripRoot" $ do
     let graph :: Graphing Int
