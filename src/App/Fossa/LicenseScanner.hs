@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.LicenseScanner (
@@ -15,8 +16,9 @@ import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.RunThemis (
   execThemis,
  )
+import Control.Carrier.Finally (runFinally)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, fatal, fatalText, fromMaybe, recover)
-import Control.Effect.Lift (Has, Lift)
+import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
 import Control.Monad (unless, void)
 import Crypto.Hash (Digest, MD5, hash)
@@ -24,10 +26,18 @@ import Data.ByteString qualified as B
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
+import Data.Semigroup (Any (..))
 import Data.String.Conversion (encodeUtf8, toString, toText)
 import Data.Text.Extra (showT)
+import Discovery.Archive (withArchive')
+import Discovery.Walk (WalkStep (WalkContinue, WalkStop), walk')
 import Effect.Exec (Exec)
-import Effect.Logger (Pretty (pretty))
+import Effect.ReadFS (
+  Has,
+  ReadFS,
+  SomePath (SomeDir, SomeFile),
+  resolvePath',
+ )
 import Fossa.API.Types (
   ApiOpts,
   Archive (Archive, archiveName),
@@ -35,7 +45,8 @@ import Fossa.API.Types (
   OrgId,
   Organization (organizationId),
  )
-import Path (Abs, Dir, Path, parseRelDir, (</>))
+import Path (Abs, Dir, File, Path, SomeBase (Abs, Rel), fileExtension, (</>))
+import Prettyprinter (Pretty (pretty), squotes)
 import Srclib.Types (
   LicenseScanType (CliLicenseScanned),
   LicenseSourceUnit (..),
@@ -90,6 +101,7 @@ scanAndUploadVendoredDep ::
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
   , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
   ApiOpts ->
   Path Abs Dir ->
@@ -106,6 +118,7 @@ scanVendoredDep ::
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
   , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
   -- ApiOpts ->
   Path Abs Dir ->
@@ -157,6 +170,7 @@ licenseScanSourceUnit ::
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
   , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
   ApiOpts ->
