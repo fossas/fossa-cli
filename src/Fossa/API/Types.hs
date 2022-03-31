@@ -258,7 +258,7 @@ data Organization = Organization
 
 instance FromJSON Organization where
   parseJSON = withObject "Organization" $ \obj ->
-    Organization <$> (OrgId <$> obj .: "organizationId")
+    Organization <$> obj .: "organizationId"
       <*> obj .:? "usesSAML" .!= False
       <*> obj .:? "supportsCliLicenseScanning" .!= False
 
