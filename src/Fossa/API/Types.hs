@@ -238,16 +238,10 @@ instance Pretty Issues where
   pretty = renderedIssues
 
 newtype OrgId = OrgId Int
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, FromJSON, ToJSON)
 
 instance Show OrgId where
   show (OrgId orgId) = show orgId
-
-instance FromJSON OrgId where
-  parseJSON = fmap OrgId . parseJSON
-
-instance ToJSON OrgId where
-  toJSON (OrgId orgId) = toJSON orgId
 
 data Organization = Organization
   { organizationId :: OrgId
