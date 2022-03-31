@@ -86,11 +86,12 @@ import Fossa.API.Types (
   Build,
   Contributors,
   Issues,
+  OrgId,
   Organization (organizationId),
   Project,
   SignedURL (signedURL),
   UploadResponse,
-  useApiOpts, OrgId
+  useApiOpts,
  )
 import Network.HTTP.Client qualified as C
 import Network.HTTP.Client qualified as HTTP

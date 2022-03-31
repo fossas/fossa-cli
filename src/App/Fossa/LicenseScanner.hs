@@ -32,7 +32,8 @@ import Fossa.API.Types (
   ApiOpts,
   Archive (Archive, archiveName),
   ArchiveComponents (ArchiveComponents),
-  Organization (organizationId), OrgId
+  OrgId,
+  Organization (organizationId),
  )
 import Path (Abs, Dir, Path, parseRelDir, (</>))
 import Srclib.Types (

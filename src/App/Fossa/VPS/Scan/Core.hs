@@ -8,8 +8,8 @@ module App.Fossa.VPS.Scan.Core (
 import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Prelude
 import Fossa.API.Types (OrgId)
+import Prelude
 
 data SherlockInfo = SherlockInfo
   { sherlockUrl :: Text
