@@ -32,6 +32,8 @@
 -- An expectation is considered satisfied if it had a limited number of invocations
 -- and it has been matched that many times.  If any expectations are unsatisfied at
 -- the end of the test, an test assertion failure will be raised.
+--
+-- See /docs/contributing/api-mocking.md for more information.
 module Test.MockApi (
   ApiExpectation,
   FossaApiClientMockC,
