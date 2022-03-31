@@ -8,6 +8,7 @@ module Control.Timeout (
   durationToMicro,
   timeout',
   timeoutIO,
+  delay,
 ) where
 
 import Control.Carrier.Threaded (fork, kill)
@@ -29,7 +30,9 @@ import Control.Monad (when)
 import Control.Timeout.Internal (
   Cancel (..),
  )
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Functor (($>))
+import GHC.Generics (Generic)
 
 -- | Several time-based functions accept 'Int', which makes it difficult to
 -- reason about which subdivision of time that int represents.  To aid this,
@@ -41,7 +44,10 @@ data Duration
   | Minutes Int
   | MilliSeconds Int
   | MicroSeconds Int
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance ToJSON Duration where
+  toEncoding = genericToEncoding defaultOptions
 
 instance Eq Duration where
   a == b = durationToMicro a == durationToMicro b
@@ -119,3 +125,7 @@ timeoutIO ::
   IO a ->
   IO (Maybe a)
 timeoutIO seconds act = either id id <$> Async.race (Just <$> act) (threadDelay (seconds * 1_000_000) $> Nothing)
+
+-- | Delays the current thread by the given duration
+delay :: Has (Lift IO) sig m => Duration -> m ()
+delay = sendIO . threadDelay . durationToMicro

@@ -20,7 +20,7 @@ import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Types (AnalyzeProject (..), AnalyzeTaskEffs)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
 import App.Fossa.Config.Common (baseDirArg, collectBaseDir)
-import App.Fossa.Subcommand (GetSeverity, SubCommand (SubCommand))
+import App.Fossa.Subcommand (GetCommonOpts, GetSeverity, SubCommand (SubCommand))
 import App.Types (
   BaseDir (..),
  )
@@ -44,6 +44,8 @@ import Control.Effect.Lift (sendIO)
 import Control.Effect.Output (Output)
 import Control.Effect.Reader (Reader)
 import Control.Effect.Stack (Stack, withEmptyStack)
+import Control.Effect.Telemetry (Telemetry)
+import Data.Aeson (ToJSON, defaultOptions, genericToEncoding)
 import Data.Aeson qualified as Aeson
 import Data.Foldable (traverse_)
 import Data.List qualified as List
@@ -66,6 +68,7 @@ import Effect.Logger (
   viaShow,
  )
 import Effect.ReadFS (ReadFS)
+import GHC.Generics (Generic)
 import Graphing (directList, getRootsOf, hasPredecessors, vertexList)
 import Options.Applicative (InfoMod, progDesc)
 import Path (Abs, Dir, File, Path, SomeBase, toFilePath)
@@ -84,9 +87,13 @@ import Types (DiscoveredProject (projectData, projectPath, projectType))
 type Parser = Parsec Void Text
 
 data SimplifiedVersion = SimplifiedVersion Int Int deriving (Show, Eq, Ord)
-newtype Log4jPath = Log4jPath FilePath deriving (Show, Eq, Ord)
+newtype Log4jPath = Log4jPath FilePath deriving (Show, Eq, Ord, Generic)
+
+instance ToJSON Log4jPath where
+  toEncoding = genericToEncoding defaultOptions
 
 instance GetSeverity Log4jPath
+instance GetCommonOpts Log4jPath
 
 parseSimplifiedVersion :: Parser SimplifiedVersion
 parseSimplifiedVersion = SimplifiedVersion <$> decimal <* char '.' <*> decimal
@@ -108,6 +115,7 @@ analyzeForLog4j ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   BaseDir ->
   m ()
@@ -163,6 +171,7 @@ runDependencyAnalysisForLog4j ::
   , Has (Output ProjectResult) sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   , Has Stack sig m
+  , Has Telemetry sig m
   ) =>
   -- | Analysis base directory
   Path Abs Dir ->

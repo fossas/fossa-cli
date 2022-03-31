@@ -16,7 +16,6 @@ import App.Types (
  )
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
-import Control.Carrier.Reader (runReader)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.Lift (Lift)
@@ -46,7 +45,6 @@ testMain ::
   m ()
 testMain config = runStickyLogger SevInfo
   . runFossaApiClient (Config.apiOpts config)
-  . runReader (Config.waitConfig config)
   . timeout' (Config.timeout config)
   $ \cancelFlag -> do
     let revision = Config.projectRevision config

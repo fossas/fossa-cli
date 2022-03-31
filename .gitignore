@@ -20,6 +20,7 @@ vendor-bins/
 
 # Debug output
 fossa.debug.json.gz
+fossa.telemetry.json
 
 # Integration Tests
 integration-test/artifacts/

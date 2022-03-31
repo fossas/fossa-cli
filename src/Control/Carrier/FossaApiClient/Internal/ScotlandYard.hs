@@ -11,7 +11,7 @@ import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Control.Effect.Stack (Has)
-import Fossa.API.Types (ApiOpts, ScanId (ScanId), ScanResponse, useApiOpts, Organization (organizationId))
+import Fossa.API.Types (ApiOpts, ScanId (ScanId), ScanResponse, useApiOpts, Organization (organizationId), OrgId)
 import Network.HTTP.Req (
   GET (GET),
   NoReqBody (NoReqBody),
@@ -31,10 +31,10 @@ import App.Fossa.FossaAPIV1 (renderLocatorUrl, getOrganization)
 coreProxyPrefix :: Url 'Https -> Url 'Https
 coreProxyPrefix baseurl = baseurl /: "api" /: "proxy" /: "scotland-yard"
 
-getScanEndpoint :: Url 'Https -> Int -> Locator -> ScanId -> Url 'Https
+getScanEndpoint :: Url 'Https -> OrgId -> Locator -> ScanId -> Url 'Https
 getScanEndpoint baseurl orgId locator (ScanId scanId) = coreProxyPrefix baseurl /: "projects" /: renderLocatorUrl orgId locator /: "scans" /: scanId
 
-getLatestScanEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
+getLatestScanEndpoint :: Url 'Https -> OrgId -> Locator -> Url 'Https
 getLatestScanEndpoint baseurl orgId locator = coreProxyPrefix baseurl /: "projects" /: renderLocatorUrl orgId locator /: "scans" /: "latest"
 
 getLatestScan ::

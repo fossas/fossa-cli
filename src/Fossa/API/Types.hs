@@ -15,6 +15,7 @@ module Fossa.API.Types (
   IssueRule (..),
   IssueType (..),
   Issues (..),
+  OrgId (..),
   Organization (..),
   Project (..),
   SignedURL (..),
@@ -22,9 +23,11 @@ module Fossa.API.Types (
   ScanId (..),
   ScanResponse (..),
   useApiOpts,
+  defaultApiPollDelay,
 ) where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
+import Control.Timeout (Duration (Seconds))
 import Data.Aeson
 import Data.Coerce (coerce)
 import Data.List.Extra ((!?))
@@ -47,8 +50,19 @@ newtype ApiKey = ApiKey {unApiKey :: Text}
 data ApiOpts = ApiOpts
   { apiOptsUri :: Maybe URI
   , apiOptsApiKey :: ApiKey
+  , apiOptsPollDelay :: Duration
   }
   deriving (Eq, Ord, Show)
+
+instance ToJSON ApiOpts where
+  toJSON opts =
+    object
+      [ "uri" .= show (apiOptsUri opts)
+      , "apiKey" .= ("<REDACTED>" :: String)
+      ]
+
+defaultApiPollDelay :: Duration
+defaultApiPollDelay = Seconds 8
 
 newtype SignedURL = SignedURL
   { signedURL :: Text
@@ -231,8 +245,14 @@ instance ToJSON IssueRule where
 instance Pretty Issues where
   pretty = renderedIssues
 
+newtype OrgId = OrgId Int
+  deriving (Eq, Ord, FromJSON, ToJSON)
+
+instance Show OrgId where
+  show (OrgId orgId) = show orgId
+
 data Organization = Organization
-  { organizationId :: Int
+  { organizationId :: OrgId
   , orgUsesSAML :: Bool
   , orgDoLocalLicenseScan :: Bool
   }
@@ -268,13 +288,10 @@ instance FromJSON UploadResponse where
     UploadResponse <$> (parseLocator <$> obj .: "locator")
       <*> obj .:? "error"
 
-newtype ScanId = ScanId Text deriving (Eq, Ord)
+newtype ScanId = ScanId Text deriving (Eq, Ord, FromJSON, ToJSON)
 
 instance Show ScanId where
   show (ScanId scanId) = show scanId
-
-instance FromJSON ScanId where
-  parseJSON value = ScanId <$> parseJSON value
 
 data ScanResponse = ScanResponse
   { responseScanId :: ScanId

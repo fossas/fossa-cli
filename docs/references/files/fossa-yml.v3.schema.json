@@ -64,6 +64,31 @@
                 }
             }
         },
+        "telemetry": {
+            "type": "object",
+            "description": "The telemetry fields are used to configure telemetry data collection and it's destination.",
+            "properties": {
+                "scope": {
+                    "type": "string",
+                    "oneOf": [
+                        {
+                            "const": "full",
+                            "description": "Collects and sends ends telemetry data to server."
+                        },
+                        {
+                            "const": "off",
+                            "description": "Does not send telemetry data to server."
+                        }
+                    ],
+                    "description": "project branch is an optional setting used for organizing project revisions in the FOSSA UI. The branch field is intended to function similar to how Git defines a branch."
+                },
+                "commit": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The commit is used to identify a specific scan for a project (determined by project.id). This is intended to be used identically to how Git treats commit hashes. If not provided, cli will parse current HEAD state from .git directory. If project does not have version control system, unix timestamp will be used."
+                }
+            }
+        },
         "revision": {
             "type": "object",
             "description": "The revision fields are used to help FOSSA differentiate between one upload for a project and another, just as GitHub uses commit hashes and branch names.",
@@ -258,6 +283,9 @@
         },
         "project": {
             "$ref": "#/$defs/project"
+        },
+        "telemetry": {
+            "$ref": "#/$defs/telemetry"
         },
         "revision": {
             "type": "array",

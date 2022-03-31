@@ -7,7 +7,6 @@ module App.Fossa.Config.Report (
   mkSubCommand,
 ) where
 
-import App.Fossa.Config.BuildWait (WaitConfig, defaultWaitConfig)
 import App.Fossa.Config.Common (
   CacheAction (ReadOnly),
   CommonOpts (..),
@@ -20,17 +19,19 @@ import App.Fossa.Config.Common (
  )
 import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
-import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
+import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), fatal, fromMaybe)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Timeout (Duration (Seconds))
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.List (intercalate)
 import Data.String.Conversion (ToText, toText)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (..), pretty)
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
+import GHC.Generics (Generic)
 import Options.Applicative (
   InfoMod,
   Parser,
@@ -48,7 +49,10 @@ import Options.Applicative (
  )
 import Path.IO (getCurrentDir)
 
-data ReportType = Attribution deriving (Eq, Ord, Enum, Bounded)
+data ReportType = Attribution deriving (Eq, Ord, Enum, Bounded, Generic)
+
+instance ToJSON ReportType where
+  toEncoding = genericToEncoding defaultOptions
 
 instance Show ReportType where
   show Attribution = "attribution"
@@ -57,7 +61,7 @@ data ReportOutputFormat
   = ReportJson
   | ReportMarkdown
   | ReportSpdx
-  deriving (Eq, Ord, Enum, Bounded)
+  deriving (Eq, Ord, Enum, Bounded, Generic)
 
 instance ToText ReportOutputFormat where
   toText = toText . show
@@ -78,6 +82,9 @@ reportOutputFormatList = intercalate ", " $ map show allFormats
   where
     allFormats :: [ReportOutputFormat]
     allFormats = enumFromTo minBound maxBound
+
+instance ToJSON ReportOutputFormat where
+  toEncoding = genericToEncoding defaultOptions
 
 reportInfo :: InfoMod a
 reportInfo = progDesc desc
@@ -124,6 +131,9 @@ data ReportCliOptions = ReportCliOptions
 instance GetSeverity ReportCliOptions where
   getSeverity ReportCliOptions{..} = if (optDebug commons) then SevDebug else SevInfo
 
+instance GetCommonOpts ReportCliOptions where
+  getCommonOpts ReportCliOptions{..} = Just commons
+
 loadConfig ::
   ( Has (Lift IO) sig m
   , Has ReadFS sig m
@@ -159,7 +169,6 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
     <*> basedir
     <*> outputformat
     <*> pure timeoutduration
-    <*> pure defaultWaitConfig
     <*> pure cliReportType
     <*> revision
 
@@ -189,8 +198,10 @@ data ReportConfig = ReportConfig
   , baseDir :: BaseDir
   , outputFormat :: ReportOutputFormat
   , timeoutDuration :: Duration
-  , waitConfig :: WaitConfig
   , reportType :: ReportType
   , revision :: ProjectRevision
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ReportConfig where
+  toEncoding = genericToEncoding defaultOptions

@@ -5,10 +5,12 @@ module App.Fossa.Config.DumpBinaries (
 ) where
 
 import App.Fossa.Config.Common (baseDirArg, validateDir)
-import App.Fossa.Subcommand (EffStack, GetSeverity, SubCommand (SubCommand))
+import App.Fossa.Subcommand (EffStack, GetCommonOpts, GetSeverity, SubCommand (SubCommand))
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift)
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Effect.ReadFS (ReadFS)
+import GHC.Generics (Generic)
 import Options.Applicative (InfoMod, progDesc)
 import Path (Abs, Dir, Path)
 
@@ -24,8 +26,12 @@ mkSubCommand = SubCommand "dump-binaries" dumpInfo cliParser noLoadConfig mergeO
 newtype DumpBinsOpts = DumpBinsOpts FilePath
 
 instance GetSeverity DumpBinsOpts
+instance GetCommonOpts DumpBinsOpts
 
-newtype DumpBinsConfig = DumpBinsConfig (Path Abs Dir) deriving (Show)
+newtype DumpBinsConfig = DumpBinsConfig (Path Abs Dir) deriving (Show, Generic)
+
+instance ToJSON DumpBinsConfig where
+  toEncoding = genericToEncoding defaultOptions
 
 mergeOpts ::
   ( Has Diagnostics sig m

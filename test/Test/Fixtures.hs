@@ -20,6 +20,7 @@ module Test.Fixtures (
 ) where
 
 import App.Types qualified as App
+import Control.Timeout (Duration (MilliSeconds))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Text.Extra (showT)
@@ -32,10 +33,14 @@ import Types (GraphBreadth (..))
 
 apiOpts :: API.ApiOpts
 apiOpts =
-  API.ApiOpts (Just [uri|https://app.fossa.com/|]) $ API.ApiKey "testApiKey"
+  API.ApiOpts
+    { API.apiOptsUri = (Just [uri|https://app.fossa.com/|])
+    , API.apiOptsApiKey = API.ApiKey "testApiKey"
+    , API.apiOptsPollDelay = MilliSeconds 100
+    }
 
 organization :: API.Organization
-organization = API.Organization 42 True False
+organization = API.Organization (API.OrgId 42) True False
 
 project :: API.Project
 project =

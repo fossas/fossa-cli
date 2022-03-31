@@ -13,6 +13,7 @@ import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader)
+import Control.Effect.Telemetry (Telemetry)
 import Data.Set (Set)
 import Data.Text (Text)
 import Diag.Result (Result (Failure, Success))
@@ -35,6 +36,7 @@ type AnalyzeTaskEffs sig m =
   , Has Diagnostics sig m
   , Has Debug sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has Telemetry sig m
   )
 
 data AnalysisScanResult = AnalysisScanResult

@@ -52,7 +52,23 @@ import System.Random (randomIO)
 import Test.MockApi (FossaApiClientMockC, MockApiC, runApiWithMock, runMockApi)
 import Text.Printf (printf)
 
-type EffectStack a = FinallyC (ExecIOC (ReadFSIOC (FossaApiClientMockC (DiagnosticsC (MockApiC (IgnoreLoggerC (IgnoreStickyLoggerC (StackC IO)))))))) a
+type EffectStack a =
+  FinallyC
+    ( ExecIOC
+        ( ReadFSIOC
+            -- The FossaApiClient must be outside of Diagnostics because it
+            -- depends on it.
+            ( FossaApiClientMockC
+                ( DiagnosticsC
+                    -- MockApiC must be inside Diagnostics so its state is not
+                    -- lost when diagnostics short-circuits on an error.
+                    ( MockApiC (IgnoreLoggerC (IgnoreStickyLoggerC (StackC IO)))
+                    )
+                )
+            )
+        )
+    )
+    a
 
 -- TODO: add useful describe, naive describe' doesn't work.
 

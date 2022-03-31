@@ -32,6 +32,7 @@ import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Stack (Stack)
+import Control.Effect.Telemetry (Telemetry)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Extra (encodeJSONToText)
 import Data.Foldable (for_, traverse_)
@@ -63,6 +64,7 @@ listTargetsMain ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   , Has Stack sig m
+  , Has Telemetry sig m
   ) =>
   ListTargetsConfig ->
   m ()
@@ -87,6 +89,7 @@ runAll ::
   , Has Debug sig m
   , Has Stack sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has Telemetry sig m
   ) =>
   Path Abs Dir ->
   m ()
