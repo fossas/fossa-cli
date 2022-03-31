@@ -97,6 +97,7 @@ import Path (
 import Path.IO qualified as PIO
 import Prettyprinter (indent, line, pretty, vsep)
 import System.Directory qualified as Directory
+import System.FilePath qualified as FP
 import System.IO (IOMode (ReadMode), withFile)
 import System.PosixCompat (isRegularFile)
 import System.PosixCompat.Files (isDirectory)
@@ -105,7 +106,6 @@ import System.PosixCompat.Types (CDev (..), CIno (..))
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Toml qualified
-import qualified System.FilePath as FP
 
 -- | A unique file identifier for a directory.
 -- Uniqueness is guaranteed within a single OS.
