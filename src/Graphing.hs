@@ -52,7 +52,7 @@ module Graphing (
   toList,
   unfold,
   unfoldDeep,
-) where
+hasVertex) where
 
 import Algebra.Graph.AdjacencyMap (AdjacencyMap)
 import Algebra.Graph.AdjacencyMap qualified as AM
@@ -208,6 +208,9 @@ shrinkRoots (Graphing gr) = Graphing $ foldr AME.shrinkSingle gr currentDirect
   where
     currentDirect :: [Node ty]
     currentDirect = Set.toList $ AM.postSet Root gr
+
+hasVertex :: Ord ty =>  ty -> Graphing ty -> Bool
+hasVertex ty (Graphing gr) = AM.hasVertex (Node ty) gr
 
 -- | Add a direct node to this Graphing
 direct :: Ord ty => ty -> Graphing ty

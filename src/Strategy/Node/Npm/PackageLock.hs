@@ -47,7 +47,7 @@ import Effect.Grapher (
   direct,
   edge,
   label,
-  withLabeling,
+  withLabeling, hasDep
  )
 import Effect.ReadFS (ReadFS, readContentsJson)
 import Graphing (Graphing)
@@ -157,8 +157,9 @@ buildGraph packageJson directSet =
     pkgJsonPackages = packagePathsToNames . lockPackages $ packageJson
 
     -- Skip adding deps if we think it's a workspace package.
-    maybeAddDep isRecursive parent name dep@PkgLockDependency{..} =
-      if isNothing (unNpmResolved depResolved) || "file:" `Text.isPrefixOf` depVersion
+    maybeAddDep isRecursive parent name dep@PkgLockDependency{..} = do
+      doneAlready <- hasDep (NpmDepVertex name depVersion)
+      if (isNothing (unNpmResolved depResolved) || "file:" `Text.isPrefixOf` depVersion) && doneAlready
         then pure ()
         else addDep isRecursive parent name dep
 

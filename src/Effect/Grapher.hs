@@ -29,7 +29,7 @@ module Effect.Grapher (
 
   -- * Re-exports
   module X,
-) where
+hasDep) where
 
 import Control.Algebra as X
 import Control.Carrier.Diagnostics (ToDiagnostic (..))
@@ -49,6 +49,7 @@ data SGrapher ty k where
   Direct :: ty -> SGrapher ty ()
   Edge :: ty -> ty -> SGrapher ty ()
   Deep :: ty -> SGrapher ty ()
+  HasDep :: ty -> SGrapher ty Bool
 
 type Grapher ty = Simple (SGrapher ty)
 
@@ -61,6 +62,9 @@ edge parent child = sendSimple (Edge parent child)
 deep :: Has (Grapher ty) sig m => ty -> m ()
 deep = sendSimple . Deep
 
+hasDep :: Has (Grapher ty) sig m => ty -> m Bool
+hasDep = sendSimple . HasDep
+
 evalGrapher :: (Ord ty, Algebra sig m) => GrapherC ty m a -> m (G.Graphing ty)
 evalGrapher = fmap fst . runGrapher
 
@@ -71,6 +75,7 @@ runGrapher = interpretState G.empty $ \case
   Direct ty -> modify (G.direct ty <>)
   Edge parent child -> modify (G.edge parent child <>)
   Deep n -> modify (G.deep n <>)
+  HasDep ty -> gets (G.hasVertex ty)
 
 ----- Labeling
 
