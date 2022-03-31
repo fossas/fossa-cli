@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.2.1
+
+- Experimental: native license scanning is now disabled by default. ([#865](https://github.com/fossas/fossa-cli/pull/865))
+
 ## v3.2.0
 - Telemetry: Introduces fossa cli telemetry for fatal errors and warnings. By default, telemetry is disabled. ([#831](https://github.com/fossas/fossa-cli/pull/831))
 Please read for details on telemetry [here](./docs/telemetry.md)
