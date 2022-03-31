@@ -43,15 +43,21 @@ import Srclib.Types (
   Locator (..),
  )
 
-data NoSuccessfulScans = NoSuccessfulScans
+data LicenseScanErr
+  = NoSuccessfulScans
+  | NoLicenseResults (Path Abs Dir)
+  | EmptyDirectory (Path Abs Dir)
+  | EmptyArchive (Path Abs File)
+  | UnsupportedArchive (Path Abs File)
 
-instance ToDiagnostic NoSuccessfulScans where
-  renderDiagnostic _ = "No native license scans were successful"
-
-newtype NoLicenseResults = NoLicenseResults (Path Abs Dir)
-
-instance ToDiagnostic NoLicenseResults where
+instance ToDiagnostic LicenseScanErr where
+  renderDiagnostic NoSuccessfulScans = "No native license scans were successful"
   renderDiagnostic (NoLicenseResults path) = "No license results found after scanning directory: " <> pretty (toText path)
+  renderDiagnostic (EmptyDirectory path) = "vendored-dependencies path has no files and cannot be scanned: " <> pretty (toString path)
+  renderDiagnostic (EmptyArchive path) = "vendored-dependencies archive contains no files and cannot be scanned: " <> pretty (toString path)
+  renderDiagnostic (UnsupportedArchive path) = case fileExtension path of
+    Just ext -> "fossa-cli does not support archives of type " <> squotes (pretty ext) <> ": " <> pretty (toString path)
+    Nothing -> "fossa-cli does not support archives without file extensions: " <> pretty (toString path)
 
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
