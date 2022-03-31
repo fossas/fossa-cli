@@ -90,7 +90,7 @@ import Fossa.API.Types (
   Project,
   SignedURL (signedURL),
   UploadResponse,
-  useApiOpts,
+  useApiOpts, OrgId
  )
 import Network.HTTP.Client qualified as C
 import Network.HTTP.Client qualified as HTTP
@@ -195,7 +195,7 @@ uploadUrl :: Url scheme -> Url scheme
 uploadUrl baseurl = baseurl /: "api" /: "builds" /: "custom"
 
 -- | This renders an organization + locator into a path piece for the fossa API
-renderLocatorUrl :: Int -> Locator -> Text
+renderLocatorUrl :: OrgId -> Locator -> Text
 renderLocatorUrl orgId Locator{..} =
   locatorFetcher <> "+" <> toText (show orgId) <> "/" <> normalizeGitProjectName locatorProject <> "$" <> fromMaybe "" locatorRevision
 
@@ -324,7 +324,7 @@ mangleError err = case err of
 
 -----
 
-projectEndpoint :: Url scheme -> Int -> Locator -> Url scheme
+projectEndpoint :: Url scheme -> OrgId -> Locator -> Url scheme
 projectEndpoint baseurl orgid locator = baseurl /: "api" /: "cli" /: renderLocatorUrl orgid locator /: "project"
 
 getProject ::
@@ -345,7 +345,7 @@ getProject apiopts ProjectRevision{..} = fossaReq $ do
 
 -----
 
-buildsEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
+buildsEndpoint :: Url 'Https -> OrgId -> Locator -> Url 'Https
 buildsEndpoint baseurl orgId locator = baseurl /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "latest_build"
 
 getLatestBuild ::
@@ -515,7 +515,7 @@ slashWord8 = fromIntegral $ fromEnum '/'
 
 ----------
 
-issuesEndpoint :: Url 'Https -> Int -> Locator -> Url 'Https
+issuesEndpoint :: Url 'Https -> OrgId -> Locator -> Url 'Https
 issuesEndpoint baseUrl orgId locator = baseUrl /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "issues"
 
 getIssues ::
@@ -532,7 +532,7 @@ getIssues apiOpts ProjectRevision{..} = fossaReq $ do
 
 ---------------
 
-attributionEndpoint :: Url 'Https -> Int -> Locator -> ReportOutputFormat -> Url 'Https
+attributionEndpoint :: Url 'Https -> OrgId -> Locator -> ReportOutputFormat -> Url 'Https
 attributionEndpoint baseurl orgId locator format = appendSegment format $ baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution"
   where
     appendSegment :: ReportOutputFormat -> Url a -> Url a
@@ -700,7 +700,7 @@ instance ToJSON a => HttpBody (ReqBodyJsonCompat a) where
   getRequestContentType _ = pure "application/json"
 
 data VSICreateScanRequestBody = VSICreateScanRequestBody
-  { vsiCreateScanRequestBodyOrgID :: Int
+  { vsiCreateScanRequestBodyOrgID :: OrgId
   , vsiCreateScanRequestBodyProjectID :: Text
   , vsiCreateScanRequestBodyRevisionID :: Text
   }

@@ -28,7 +28,7 @@ apiOpts =
   API.ApiOpts (Just [uri|https://app.fossa.com/|]) $ API.ApiKey "testApiKey"
 
 organization :: API.Organization
-organization = API.Organization 42 True False
+organization = API.Organization (API.OrgId 42) True False
 
 project :: API.Project
 project =

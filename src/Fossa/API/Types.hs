@@ -15,6 +15,7 @@ module Fossa.API.Types (
   IssueRule (..),
   IssueType (..),
   Issues (..),
+  OrgId (..),
   Organization (..),
   Project (..),
   SignedURL (..),
@@ -236,8 +237,20 @@ instance ToJSON IssueRule where
 instance Pretty Issues where
   pretty = renderedIssues
 
+newtype OrgId = OrgId Int
+  deriving (Eq, Ord)
+
+instance Show OrgId where
+  show (OrgId orgId) = show orgId
+
+instance FromJSON OrgId where
+  parseJSON = fmap OrgId . parseJSON
+
+instance ToJSON OrgId where
+  toJSON (OrgId orgId) = toJSON orgId
+
 data Organization = Organization
-  { organizationId :: Int
+  { organizationId :: OrgId
   , orgUsesSAML :: Bool
   , orgDoLocalLicenseScan :: Bool
   }
@@ -245,7 +258,7 @@ data Organization = Organization
 
 instance FromJSON Organization where
   parseJSON = withObject "Organization" $ \obj ->
-    Organization <$> obj .: "organizationId"
+    Organization <$> (OrgId <$> obj .: "organizationId")
       <*> obj .:? "usesSAML" .!= False
       <*> obj .:? "supportsCliLicenseScanning" .!= False
 

@@ -9,6 +9,7 @@ import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Prelude
+import Fossa.API.Types (OrgId)
 
 data SherlockInfo = SherlockInfo
   { sherlockUrl :: Text
@@ -25,5 +26,5 @@ instance FromJSON SherlockInfo where
 
 newtype Locator = Locator {unLocator :: Text}
 
-createLocator :: Text -> Int -> Locator
+createLocator :: Text -> OrgId -> Locator
 createLocator projectName organizationId = Locator $ "custom+" <> toText (show organizationId) <> "/" <> projectName

@@ -32,7 +32,7 @@ import Fossa.API.Types (
   ApiOpts,
   Archive (Archive, archiveName),
   ArchiveComponents (ArchiveComponents),
-  Organization (organizationId),
+  Organization (organizationId), OrgId
  )
 import Path (Abs, Dir, Path, parseRelDir, (</>))
 import Srclib.Types (
@@ -178,8 +178,8 @@ licenseScanSourceUnit baseDir apiOpts vendoredDeps = do
 
   pure $ NE.map arcToLocator (archivesWithOrganization orgId archives)
   where
-    archivesWithOrganization :: Int -> NonEmpty Archive -> NonEmpty Archive
+    archivesWithOrganization :: OrgId -> NonEmpty Archive -> NonEmpty Archive
     archivesWithOrganization orgId = NE.map $ includeOrgId orgId
 
-    includeOrgId :: Int -> Archive -> Archive
+    includeOrgId :: OrgId -> Archive -> Archive
     includeOrgId orgId arc = arc{archiveName = showT orgId <> "/" <> archiveName arc}
