@@ -8,6 +8,7 @@ module App.Fossa.VPS.Scan.Core (
 import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
 import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Fossa.API.Types (OrgId)
 import Prelude
 
 data SherlockInfo = SherlockInfo
@@ -25,5 +26,5 @@ instance FromJSON SherlockInfo where
 
 newtype Locator = Locator {unLocator :: Text}
 
-createLocator :: Text -> Int -> Locator
+createLocator :: Text -> OrgId -> Locator
 createLocator projectName organizationId = Locator $ "custom+" <> toText (show organizationId) <> "/" <> projectName
