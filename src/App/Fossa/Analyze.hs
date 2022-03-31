@@ -80,6 +80,7 @@ import Control.Effect.Exception (Lift)
 import Control.Effect.Git (Git)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
+import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent)
 import Control.Monad (join, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
@@ -131,6 +132,7 @@ dispatch ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   AnalyzeConfig ->
   m ()
@@ -147,6 +149,7 @@ analyzeMain ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   StandardAnalyzeConfig ->
   m ()
@@ -169,6 +172,7 @@ runDependencyAnalysis ::
   , Has (Output DiscoveredProjectScan) sig m
   , Has Stack sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has Telemetry sig m
   ) =>
   -- | Analysis base directory
   Path Abs Dir ->
@@ -185,8 +189,9 @@ runDependencyAnalysis basedir filters project = do
       logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
       graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context "Project Analysis" $ do
         debugMetadata "DiscoveredProject" project
-        analyzeProject targets (projectData project)
+        trackTimeSpent (toText . show $ projectType project) $ analyzeProject targets (projectData project)
       Diag.flushLogs SevError SevDebug graphResult
+      trackResult graphResult
       output $ Scanned dpi (mkResult basedir project <$> graphResult)
 
 applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
@@ -225,6 +230,7 @@ analyze ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   StandardAnalyzeConfig ->
   m ()

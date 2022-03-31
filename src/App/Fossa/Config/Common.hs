@@ -22,6 +22,7 @@ module App.Fossa.Config.Common (
   collectRevisionOverride,
   collectAPIMetadata,
   collectApiOpts,
+  collectTelemetrySink,
 
   -- * Configuration Types
   ScanDestination (..),
@@ -29,12 +30,15 @@ module App.Fossa.Config.Common (
   -- * Global Defaults
   defaultTimeoutDuration,
   collectRevisionData',
+  fossaApiKeyCmdText,
 ) where
 
 import App.Fossa.Config.ConfigFile (
-  ConfigFile (configApiKey, configProject, configRevision, configServer),
+  ConfigFile (configApiKey, configProject, configRevision, configServer, configTelemetry),
   ConfigProject (configProjID),
   ConfigRevision (configBranch, configCommit),
+  ConfigTelemetry (telemetryScope),
+  ConfigTelemetryScope (..),
   mergeFileCmdMetadata,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
@@ -53,29 +57,41 @@ import App.Types (
   ProjectRevision,
   ReleaseGroupMetadata (ReleaseGroupMetadata),
  )
+import Control.Carrier.Telemetry.Types (
+  TelemetrySink (TelemetrySinkToEndpoint, TelemetrySinkToFile),
+ )
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   errCtx,
   fatalText,
   fromMaybeText,
+  recover,
   (<||>),
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Timeout (Duration (Minutes))
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Bifunctor (Bifunctor (first))
+import Data.Functor.Extra ((<$$>))
+import Data.Maybe (fromMaybe)
+import Data.String (IsString)
 import Data.String.Conversion (ToText (toText))
-import Data.Text (Text, null, strip)
+import Data.Text (Text, null, strip, toLower)
 import Discovery.Filters (targetFilterParser)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
+import GHC.Generics (Generic)
 import Options.Applicative (
   Parser,
+  ReadM,
   argument,
+  eitherReader,
   help,
   long,
   metavar,
+  option,
   optional,
   short,
   str,
@@ -94,7 +110,10 @@ data ScanDestination
   = -- | upload to fossa with provided api key and base url
     UploadScan ApiOpts ProjectMetadata
   | OutputStdout
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ScanDestination where
+  toEncoding = genericToEncoding defaultOptions
 
 data CacheAction
   = ReadOnly
@@ -251,6 +270,35 @@ collectRevisionData' basedir cfg cache override = do
 collectAPIMetadata :: Maybe ConfigFile -> ProjectMetadata -> ProjectMetadata
 collectAPIMetadata cfgfile cliMeta = maybe cliMeta (mergeFileCmdMetadata cliMeta) cfgfile
 
+collectTelemetrySink :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> Maybe CommonOpts -> m (Maybe TelemetrySink)
+collectTelemetrySink maybeConfigFile envvars maybeOpts = do
+  let defaultScope = NoTelemetry
+  -- Precedence is
+  --  (1) command line
+  --  (2) environment variable
+  --  (3) configuration file
+  let providedScope =
+        fromMaybe
+          defaultScope
+          ( (maybeOpts >>= optTelemetry)
+              <|> (envTelemetryScope envvars)
+              <|> (telemetryScope <$> (configTelemetry =<< maybeConfigFile))
+          )
+
+  let isDebugMode = envTelemetryDebug envvars || (fmap optDebug maybeOpts == Just True)
+  case (isDebugMode, providedScope) of
+    (True, FullTelemetry) -> pure $ Just TelemetrySinkToFile
+    (True, NoTelemetry) -> pure Nothing
+    (False, NoTelemetry) -> pure Nothing
+    (False, FullTelemetry) -> do
+      let candidateOpts = fromMaybe emptyCommonOpts maybeOpts
+
+      -- Not all commands require api key, if we do not have valid api key
+      -- we do not know which endpoint to sink telemetry, this ensures we
+      -- we do not emit telemetry of on-prem users when they do not have
+      -- api opts configured.
+      TelemetrySinkToEndpoint <$$> recover (collectApiOpts maybeConfigFile envvars candidateOpts)
+
 data CommonOpts = CommonOpts
   { optDebug :: Bool
   , optBaseUrl :: Maybe URI
@@ -258,8 +306,22 @@ data CommonOpts = CommonOpts
   , optProjectRevision :: Maybe Text
   , optAPIKey :: Maybe Text
   , optConfig :: Maybe FilePath
+  , optTelemetry :: Maybe ConfigTelemetryScope
   }
   deriving (Eq, Ord, Show)
+
+emptyCommonOpts :: CommonOpts
+emptyCommonOpts = CommonOpts False Nothing Nothing Nothing Nothing Nothing Nothing
+
+parseTelemetryScope :: ReadM ConfigTelemetryScope
+parseTelemetryScope = eitherReader $ \scope ->
+  case toLower . strip . toText $ scope of
+    "off" -> Right NoTelemetry
+    "full" -> Right FullTelemetry
+    _ -> Left "Failed to parse telemetry scope, expected either: full or off"
+
+fossaApiKeyCmdText :: IsString a => a
+fossaApiKeyCmdText = "fossa-api-key"
 
 commonOpts :: Parser CommonOpts
 commonOpts =
@@ -268,5 +330,6 @@ commonOpts =
     <*> optional (uriOption (long "endpoint" <> short 'e' <> metavar "URL" <> help "The FOSSA API server base URL (default: https://app.fossa.com)"))
     <*> optional (strOption (long "project" <> short 'p' <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
     <*> optional (strOption (long "revision" <> short 'r' <> help "this repository's current revision hash (default: VCS hash HEAD)"))
-    <*> optional (strOption (long "fossa-api-key" <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
+    <*> optional (strOption (long fossaApiKeyCmdText <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
     <*> optional (strOption (long "config" <> short 'c' <> help "Path to configuration file including filename (default: .fossa.yml)"))
+    <*> optional (option parseTelemetryScope (long "with-telemetry-scope" <> help "Scope of telemetry to use, the options are 'full' or 'off'. (default: 'full')"))

@@ -53,6 +53,13 @@ data ApiOpts = ApiOpts
   }
   deriving (Eq, Ord, Show)
 
+instance ToJSON ApiOpts where
+  toJSON opts =
+    object
+      [ "uri" .= show (apiOptsUri opts)
+      , "apiKey" .= ("<REDACTED>" :: String)
+      ]
+
 defaultApiPollDelay :: Duration
 defaultApiPollDelay = Seconds 8
 

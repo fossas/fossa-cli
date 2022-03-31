@@ -1,6 +1,8 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.2.0
+- Telemetry: Introduces fossa cli telemetry for fatal errors and warnings. By default, telemetry is disabled. ([#831](https://github.com/fossas/fossa-cli/pull/831))
+Please read for details on telemetry [here](./docs/telemetry.md)
 
 - Configuration: Fixes a bug where `.fossa.yml` was picked up only in the working directory, not in the analysis directory. ([#854](https://github.com/fossas/fossa-cli/pull/854))
 - Configuration: Reports an error when provided API key is an empty string ([#856](https://github.com/fossas/fossa-cli/pull/856))

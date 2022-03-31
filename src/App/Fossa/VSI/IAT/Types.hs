@@ -8,8 +8,9 @@ module App.Fossa.VSI.IAT.Types (
 ) where
 
 import App.Fossa.VSI.Types qualified as VSI
-import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, withObject, (.:))
 import Data.Text (Text)
+import GHC.Generics (Generic)
 
 -- | UserDep is the minimal set of data required to lookup a UserDefinedAssertionMeta in FOSSA.
 data UserDep = UserDep
@@ -29,7 +30,10 @@ data UserDefinedAssertionMeta = UserDefinedAssertionMeta
   , assertedDescription :: Maybe Text
   , assertedUrl :: Maybe Text
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON UserDefinedAssertionMeta where
+  toEncoding = genericToEncoding defaultOptions
 
 instance FromJSON UserDefinedAssertionMeta where
   parseJSON = withObject "UserDefinedAssertionMetadata" $ \obj -> do

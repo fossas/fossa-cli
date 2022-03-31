@@ -315,7 +315,6 @@ analyze ::
 analyze (CargoProject manifestDir manifestFile) = do
   _ <- context "Generating lockfile" $ errCtx (FailedToGenLockFile manifestFile) $ execThrow manifestDir cargoGenLockfileCmd
   meta <- errCtx (FailedToRetrieveCargoMetadata manifestFile) $ execJson @CargoMetadata manifestDir cargoMetadataCmd
-  --
   graph <- context "Building dependency graph" $ pure (buildGraph meta)
   pure (graph, Complete)
 

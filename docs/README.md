@@ -19,9 +19,11 @@ Every piece of documentation is accessible via hyperlink from this user manual. 
 ## Table of Contents
 
 <!-- 1. [Concepts](#concepts) -->
-1. [Walkthroughs](#walkthroughs)
-1. [Features](#features)
-1. [References](#references)
+- [User Manual](#user-manual)
+  - [Table of Contents](#table-of-contents)
+  - [Walkthroughs](#walkthroughs)
+  - [Features](#features)
+  - [References](#references)
 
 <!-- ## Concepts
 
@@ -66,4 +68,4 @@ Reference guides provide an exhaustive listing of all CLI functionality. If you 
   - [Experimental options overview](./references/experimental/README.md)
   - CLI Commands
     - [`fossa experimental-link-user-defined-dependency-binary`](./references/experimental/subcommands/experimental-link-user-defined-dependency-binary.md)
-  
+- [CLI Telemetry](./telemetry.md)
