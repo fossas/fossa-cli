@@ -2,13 +2,9 @@ module App.Fossa.API.BuildWait (
   waitForScanCompletion,
   waitForIssues,
   waitForBuild,
-  WaitConfig (..),
-  defaultWaitConfig,
-  defaultApiPollDelay,
 ) where
 
 import App.Types (ProjectRevision (projectName))
-import Control.Concurrent (threadDelay)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -20,6 +16,7 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Exception (Lift)
 import Control.Effect.FossaApiClient (
   FossaApiClient,
+  getApiOpts,
   getIssues,
   getLatestBuild,
   getLatestScan,
@@ -27,33 +24,24 @@ import Control.Effect.FossaApiClient (
   getProject,
   getScan,
  )
-import Control.Effect.Lift (sendIO)
-import Control.Effect.Reader (Reader, ask)
 import Control.Effect.StickyLogger (StickyLogger, logSticky')
-import Control.Timeout (Cancel, Duration (..), checkForCancel, durationToMicro)
+import Control.Timeout (Cancel, checkForCancel, delay)
+import Data.Text (Text)
+import Data.Text.Extra (showT)
 import Effect.Logger (Logger, pretty, viaShow)
 import Fossa.API.Types (
+  ApiOpts (apiOptsPollDelay),
   Build (buildTask),
   BuildStatus (StatusFailed, StatusSucceeded),
   BuildTask (buildTaskStatus),
   Issues (issuesStatus),
+  OrgId,
   Organization (organizationId),
   Project (projectIsMonorepo),
   ScanId,
   ScanResponse (..),
  )
-import Srclib.Types (Locator, createCustomLocator)
-
-newtype WaitConfig = WaitConfig
-  { apiPollDelay :: Duration
-  }
-  deriving (Show, Ord, Eq)
-
-defaultWaitConfig :: WaitConfig
-defaultWaitConfig = WaitConfig defaultApiPollDelay
-
-defaultApiPollDelay :: Duration
-defaultApiPollDelay = Seconds 8
+import Srclib.Types (Locator (..))
 
 data WaitError
   = -- | We encountered the FAILED status on a build
@@ -74,7 +62,6 @@ waitForScanCompletion ::
   , Has StickyLogger sig m
   , Has FossaApiClient sig m
   , Has (Lift IO) sig m
-  , Has (Reader WaitConfig) sig m
   ) =>
   ProjectRevision ->
   Cancel ->
@@ -95,7 +82,6 @@ waitForIssues ::
   , Has FossaApiClient sig m
   , Has Logger sig m
   , Has (Lift IO) sig m
-  , Has (Reader WaitConfig) sig m
   ) =>
   ProjectRevision ->
   Cancel ->
@@ -116,7 +102,6 @@ waitForBuild ::
   , Has StickyLogger sig m
   , Has FossaApiClient sig m
   , Has (Lift IO) sig m
-  , Has (Reader WaitConfig) sig m
   ) =>
   ProjectRevision ->
   Cancel ->
@@ -140,7 +125,6 @@ waitForMonorepoScan ::
   , Has Logger sig m
   , Has StickyLogger sig m
   , Has (Lift IO) sig m
-  , Has (Reader WaitConfig) sig m
   ) =>
   ProjectRevision ->
   Cancel ->
@@ -163,7 +147,6 @@ waitForScotlandYardScan ::
   , Has Logger sig m
   , Has StickyLogger sig m
   , Has (Lift IO) sig m
-  , Has (Reader WaitConfig) sig m
   ) =>
   Locator ->
   Cancel ->
@@ -183,6 +166,14 @@ waitForScotlandYardScan locator cancelFlag scanId = do
       pauseForRetry
       waitForScotlandYardScan locator cancelFlag scanId
 
+createCustomLocator :: Text -> OrgId -> Locator
+createCustomLocator projectName organizationId =
+  Locator
+    { locatorFetcher = "custom"
+    , locatorProject = showT organizationId <> "/" <> projectName
+    , locatorRevision = Nothing
+    }
+
 -- | Specialized version of 'checkForCancel' which represents
 -- a backend build/issue scan timeout.
 checkForTimeout ::
@@ -195,9 +186,9 @@ checkForTimeout = checkForCancel LocalTimeout
 
 pauseForRetry ::
   ( Has (Lift IO) sig m
-  , Has (Reader WaitConfig) sig m
+  , Has FossaApiClient sig m
   ) =>
   m ()
 pauseForRetry = do
-  WaitConfig{apiPollDelay} <- ask
-  sendIO . threadDelay $ durationToMicro apiPollDelay
+  apiOpts <- getApiOpts
+  delay $ apiOptsPollDelay apiOpts

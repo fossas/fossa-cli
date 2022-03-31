@@ -8,7 +8,6 @@ module App.Fossa.Config.Test (
   mkSubCommand,
 ) where
 
-import App.Fossa.API.BuildWait (WaitConfig, defaultWaitConfig)
 import App.Fossa.Config.Common (
   CacheAction (ReadOnly),
   CommonOpts (..),
@@ -21,7 +20,7 @@ import App.Fossa.Config.Common (
  )
 import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
-import App.Fossa.Subcommand (EffStack, GetSeverity (getSeverity), SubCommand (SubCommand))
+import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -29,10 +28,12 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Timeout (Duration (..))
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
+import GHC.Generics (Generic)
 import Options.Applicative (
   InfoMod,
   Parser,
@@ -49,7 +50,10 @@ import Path.IO (getCurrentDir)
 data OutputFormat
   = TestOutputPretty
   | TestOutputJson
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON OutputFormat where
+  toEncoding = genericToEncoding defaultOptions
 
 data TestCliOpts = TestCliOpts
   { commons :: CommonOpts
@@ -62,15 +66,20 @@ data TestCliOpts = TestCliOpts
 instance GetSeverity TestCliOpts where
   getSeverity TestCliOpts{commons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo
 
+instance GetCommonOpts TestCliOpts where
+  getCommonOpts TestCliOpts{commons} = Just commons
+
 data TestConfig = TestConfig
   { baseDir :: BaseDir
   , apiOpts :: ApiOpts
   , timeout :: Duration
-  , waitConfig :: WaitConfig
   , outputFormat :: OutputFormat
   , projectRevision :: ProjectRevision
   }
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance ToJSON TestConfig where
+  toEncoding = genericToEncoding defaultOptions
 
 testInfo :: InfoMod a
 testInfo = progDesc "Check for issues from FOSSA and exit non-zero when issues are found"
@@ -120,6 +129,5 @@ mergeOpts maybeConfig envvars TestCliOpts{..} = do
     <$> baseDir
     <*> apiOpts
     <*> pure timeout
-    <*> pure defaultWaitConfig
     <*> pure testOutputType
     <*> revision

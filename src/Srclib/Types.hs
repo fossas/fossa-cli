@@ -15,7 +15,6 @@ module Srclib.Types (
   LicenseUnitMatchData (..),
   renderLocator,
   parseLocator,
-  createCustomLocator,
 ) where
 
 import Data.Aeson
@@ -229,14 +228,6 @@ parseLocator raw = Locator fetcher project (if Text.null revision then Nothing e
     (fetcher, xs) = Text.breakOn "+" raw
     (project, xs') = Text.breakOn "$" (Text.drop 1 xs)
     revision = Text.drop 1 xs'
-
-createCustomLocator :: Text -> Int -> Locator
-createCustomLocator projectName organizationId =
-  Locator
-    { locatorFetcher = "custom"
-    , locatorProject = toText (show organizationId) <> "/" <> projectName
-    , locatorRevision = Nothing
-    }
 
 instance ToJSON SourceUnit where
   toJSON SourceUnit{..} =

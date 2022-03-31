@@ -32,6 +32,8 @@
 -- An expectation is considered satisfied if it had a limited number of invocations
 -- and it has been matched that many times.  If any expectations are unsatisfied at
 -- the end of the test, an test assertion failure will be raised.
+--
+-- See /docs/contributing/api-mocking.md for more information.
 module Test.MockApi (
   ApiExpectation,
   FossaApiClientMockC,
@@ -47,7 +49,7 @@ module Test.MockApi (
 
 import Control.Algebra (Algebra (..), Has, send, type (:+:) (..))
 import Control.Carrier.Simple (SimpleC, interpret)
-import Control.Carrier.State.Strict (StateC (StateC), runState)
+import Control.Carrier.State.Strict (StateC (StateC), evalState)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift, sendIO)
@@ -68,10 +70,15 @@ data MockApi (m :: Type -> Type) a where
   AssertAllSatisfied :: MockApi m ()
 
 -- | Specifies how to handle repetition of a request
-data ExpectationRepetition = Once | Always deriving (Eq, Ord, Show)
+data ExpectationRepetition
+  = Once
+  | Always
+  deriving (Eq, Ord, Show)
 
 -- | The result of a call can be either a value or a diagnostic failure
-data ApiResult a = Return a | Die Text deriving (Eq, Ord, Show)
+newtype ApiResult a = ApiResult (Either ApiFail a)
+
+newtype ApiFail = ApiFail {unApiFail :: Text}
 
 -- | An expectation of an API call made up of the request and response.
 data ApiExpectation where
@@ -119,15 +126,15 @@ newtype MockApiC m a = MockApiC
 instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (MockApi :+: sig) (MockApiC m) where
   alg hdl sig ctx = MockApiC $ case sig of
     L (MockApiOnce req resp) -> do
-      let expectation = ApiExpectation Once req (Return resp)
+      let expectation = ApiExpectation Once req (ApiResult (Right resp))
       modify (++ [expectation])
       pure ctx
     L (MockApiAlways req resp) -> do
-      let expectation = ApiExpectation Always req (Return resp)
+      let expectation = ApiExpectation Always req (ApiResult (Right resp))
       modify (++ [expectation])
       pure ctx
     L (MockApiFails req msg) -> do
-      let expectation = ApiExpectation Once req (Die msg)
+      let expectation = ApiExpectation Once req (ApiResult (Left (ApiFail msg)))
       modify (++ [expectation])
       pure ctx
     L (MockApiRunExpectations req) -> do
@@ -213,8 +220,7 @@ runApiWithMock f = do
     runRequest req = do
       apiResult <- runExpectations req
       case apiResult of
-        Just (Return resp) -> pure resp
-        Just (Die msg) -> fatalText msg
+        Just (ApiResult result) -> either (fatalText . unApiFail) pure result
         Nothing ->
           assertUnexpectedCall req
 
@@ -224,4 +230,4 @@ runMockApi ::
   MockApiC m a ->
   m a
 runMockApi =
-  (fmap snd) . runState [] . runMockApiC
+  evalState [] . runMockApiC

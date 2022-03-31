@@ -31,6 +31,7 @@ import Control.Effect.Record (RecordableValue)
 import Control.Effect.Record.TH (deriveRecordable)
 import Control.Monad (when)
 import Data.Aeson (ToJSON)
+import Data.Aeson.Types (Value (String), toJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter as X
@@ -55,7 +56,12 @@ data Severity
   | SevError
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON Severity
+instance ToJSON Severity where
+  toJSON SevDebug = String "debug"
+  toJSON SevInfo = String "info"
+  toJSON SevWarn = String "warn"
+  toJSON SevError = String "error"
+
 instance RecordableValue Severity
 
 data LoggerF a where

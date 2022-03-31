@@ -8,6 +8,8 @@ module App.Fossa.Config.Container.Parse (
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import Control.Effect.Lift (Has, Lift, sendIO)
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
+import GHC.Generics (Generic)
 import Options.Applicative (
   CommandFields,
   Mod,
@@ -43,4 +45,7 @@ cliParser = argument str (metavar "FILE" <> help "File to parse")
 newtype ContainerParseFileConfig = ContainerParseFileConfig
   { sourceFile :: Path Abs File
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ContainerParseFileConfig where
+  toEncoding = genericToEncoding defaultOptions

@@ -9,7 +9,6 @@ module App.Fossa.Config.Container.Test (
   subcommand,
 ) where
 
-import App.Fossa.API.BuildWait (WaitConfig, defaultWaitConfig)
 import App.Fossa.Config.Common (
   CommonOpts (optProjectName, optProjectRevision),
   collectApiOpts,
@@ -26,7 +25,9 @@ import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Types (OverrideProject (OverrideProject))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Timeout (Duration (Seconds))
+import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Fossa.API.Types (ApiOpts)
+import GHC.Generics (Generic)
 import Options.Applicative (
   CommandFields,
   Mod,
@@ -53,17 +54,22 @@ subcommand f =
 data OutputFormat
   = TestOutputPretty
   | TestOutputJson
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON OutputFormat where
+  toEncoding = genericToEncoding defaultOptions
 
 data ContainerTestConfig = ContainerTestConfig
   { apiOpts :: ApiOpts
   , timeoutDuration :: Duration
-  , waitConfig :: WaitConfig
   , outputFormat :: OutputFormat
   , testImageLocator :: ImageText
   , testRevisionOverride :: OverrideProject
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ContainerTestConfig where
+  toEncoding = genericToEncoding defaultOptions
 
 data ContainerTestOptions = ContainerTestOptions
   { testCommons :: CommonOpts
@@ -95,7 +101,6 @@ mergeOpts cfgfile envvars ContainerTestOptions{..} = do
   ContainerTestConfig
     <$> apiopts
     <*> pure timeout
-    <*> pure defaultWaitConfig
     <*> pure containerTestOutputType
     <*> pure containerTestImage
     <*> pure revOverride

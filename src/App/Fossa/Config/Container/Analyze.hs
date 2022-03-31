@@ -29,8 +29,11 @@ import App.Types (
   ProjectMetadata,
  )
 import Control.Effect.Diagnostics (Diagnostics, Has)
+import Data.Aeson (ToJSON, defaultOptions, genericToEncoding)
+import Data.Aeson.Types (ToJSON (toEncoding))
 import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Text (Text)
+import GHC.Generics (Generic)
 import Options.Applicative (
   CommandFields,
   Mod,
@@ -52,7 +55,10 @@ data ContainerAnalyzeConfig = ContainerAnalyzeConfig
   , revisionOverride :: OverrideProject
   , imageLocator :: ImageText
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ContainerAnalyzeConfig where
+  toEncoding = genericToEncoding defaultOptions
 
 data ContainerAnalyzeOptions = ContainerAnalyzeOptions
   { analyzeCommons :: CommonOpts
