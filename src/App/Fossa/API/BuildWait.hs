@@ -5,7 +5,6 @@ module App.Fossa.API.BuildWait (
 ) where
 
 import App.Types (ProjectRevision (projectName))
-import Control.Concurrent (threadDelay)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -25,9 +24,8 @@ import Control.Effect.FossaApiClient (
   getProject,
   getScan,
  )
-import Control.Effect.Lift (sendIO)
 import Control.Effect.StickyLogger (StickyLogger, logSticky')
-import Control.Timeout (Cancel, checkForCancel, durationToMicro)
+import Control.Timeout (Cancel, checkForCancel, delay)
 import Effect.Logger (Logger, pretty, viaShow)
 import Fossa.API.Types (
   ApiOpts (apiOptsPollDelay),
@@ -38,9 +36,11 @@ import Fossa.API.Types (
   Organization (organizationId),
   Project (projectIsMonorepo),
   ScanId,
-  ScanResponse (..),
+  ScanResponse (..), OrgId
  )
-import Srclib.Types (Locator, createCustomLocator)
+import Srclib.Types (Locator (..))
+import Data.Text (Text)
+import Data.Text.Extra (showT)
 
 data WaitError
   = -- | We encountered the FAILED status on a build
@@ -164,6 +164,14 @@ waitForScotlandYardScan locator cancelFlag scanId = do
     Nothing -> do
       pauseForRetry
       waitForScotlandYardScan locator cancelFlag scanId
+
+createCustomLocator :: Text -> OrgId -> Locator
+createCustomLocator projectName organizationId =
+  Locator
+    { locatorFetcher = "custom"
+    , locatorProject = showT organizationId <> "/" <> projectName
+    , locatorRevision = Nothing
+    }
 
 -- | Specialized version of 'checkForCancel' which represents
 -- a backend build/issue scan timeout.

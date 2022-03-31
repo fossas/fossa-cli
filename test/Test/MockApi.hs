@@ -75,7 +75,7 @@ data ExpectationRepetition
 
 -- | The result of a call can be either a value or a diagnostic failure
 newtype ApiResult a = ApiResult (Either ApiFail a)
-newtype ApiFail = ApiFail Text
+newtype ApiFail = ApiFail { unApiFail :: Text }
 
 -- | An expectation of an API call made up of the request and response.
 data ApiExpectation where
@@ -123,15 +123,15 @@ newtype MockApiC m a = MockApiC
 instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (MockApi :+: sig) (MockApiC m) where
   alg hdl sig ctx = MockApiC $ case sig of
     L (MockApiOnce req resp) -> do
-      let expectation = ApiExpectation Once req (Return resp)
+      let expectation = ApiExpectation Once req (ApiResult (Right resp))
       modify (++ [expectation])
       pure ctx
     L (MockApiAlways req resp) -> do
-      let expectation = ApiExpectation Always req (Return resp)
+      let expectation = ApiExpectation Always req (ApiResult (Right resp))
       modify (++ [expectation])
       pure ctx
     L (MockApiFails req msg) -> do
-      let expectation = ApiExpectation Once req (Die msg)
+      let expectation = ApiExpectation Once req (ApiResult (Left (ApiFail msg)))
       modify (++ [expectation])
       pure ctx
     L (MockApiRunExpectations req) -> do
@@ -217,7 +217,7 @@ runApiWithMock f = do
     runRequest req = do
       apiResult <- runExpectations req
       case apiResult of
-        Just (ApiResult result) -> either fatalText pure result
+        Just (ApiResult result) -> either (fatalText . unApiFail) pure result
         Nothing ->
           assertUnexpectedCall req
 

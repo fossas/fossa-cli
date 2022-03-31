@@ -9,8 +9,6 @@ import Control.Effect.FossaApiClient (
  )
 import Data.Text (Text)
 import Fossa.API.Types (
-  ApiKey (ApiKey),
-  ApiOpts (ApiOpts),
   OrgId (OrgId),
   Organization (Organization),
  )
