@@ -127,7 +127,7 @@ scanVendoredDep ::
   m (NonEmpty LicenseUnit)
 scanVendoredDep baseDir VendoredDependency{..} = context "Scanning vendored deps for license data" $ do
   logSticky $ "License Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
-  scanPath <- resolvePath' $ toString vendoredPath
+  scanPath <- resolvePath' baseDir $ toString vendoredPath
   case scanPath of
     SomeFile (Abs path) -> scanArchive $ ScannableArchive path
     SomeFile (Rel path) -> scanArchive . ScannableArchive $ baseDir </> path
