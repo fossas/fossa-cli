@@ -71,7 +71,7 @@ import Control.Effect.Replay (ReplayableValue)
 import Control.Effect.Replay.TH (deriveReplayable)
 import Control.Exception qualified as E
 import Control.Exception.Extra (safeCatch)
-import Control.Monad (join, (<=<))
+import Control.Monad ((<=<))
 import Data.Aeson (FromJSON, ToJSON, eitherDecodeStrict)
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
