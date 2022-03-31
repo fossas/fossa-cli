@@ -7,7 +7,6 @@ module App.Fossa.Config.Report (
   mkSubCommand,
 ) where
 
-import App.Fossa.API.BuildWait (WaitConfig, defaultWaitConfig)
 import App.Fossa.Config.Common (
   CacheAction (ReadOnly),
   CommonOpts (..),
@@ -159,7 +158,6 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
     <*> basedir
     <*> outputformat
     <*> pure timeoutduration
-    <*> pure defaultWaitConfig
     <*> pure cliReportType
     <*> revision
 
@@ -189,7 +187,6 @@ data ReportConfig = ReportConfig
   , baseDir :: BaseDir
   , outputFormat :: ReportOutputFormat
   , timeoutDuration :: Duration
-  , waitConfig :: WaitConfig
   , reportType :: ReportType
   , revision :: ProjectRevision
   }

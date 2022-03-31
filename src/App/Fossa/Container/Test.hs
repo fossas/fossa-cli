@@ -21,7 +21,6 @@ import App.Fossa.Container.Scan (
  )
 import App.Types (ProjectRevision (..))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
-import Control.Carrier.Reader (runReader)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift, sendIO)
@@ -46,7 +45,7 @@ test ::
   ) =>
   ContainerTestConfig ->
   m ()
-test ContainerTestConfig{..} = runStickyLogger SevInfo . runReader waitConfig $
+test ContainerTestConfig{..} = runStickyLogger SevInfo $
   runFossaApiClient apiOpts . timeout' timeoutDuration $ \cancelToken -> do
     logSticky "Running embedded syft binary"
 

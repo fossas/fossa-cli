@@ -14,7 +14,6 @@ import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (ProjectRevision (..))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
-import Control.Carrier.Reader (runReader)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift)
@@ -49,7 +48,6 @@ report ReportConfig{..} = do
     * Above includes errors, types, and scaffolding
   -}
   runStickyLogger SevInfo
-    . runReader waitConfig
     . runFossaApiClient apiOpts
     . timeout' timeoutDuration
     $ \cancelToken -> do

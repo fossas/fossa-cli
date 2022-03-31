@@ -1,12 +1,11 @@
 module App.Fossa.API.BuildWaitSpec (spec) where
 
-import App.Fossa.API.BuildWait (WaitConfig (WaitConfig, apiPollDelay), waitForBuild, waitForIssues, waitForScanCompletion)
+import App.Fossa.API.BuildWait (waitForBuild, waitForIssues, waitForScanCompletion)
 import Control.Algebra (Has)
-import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift)
 import Control.Monad (void)
-import Control.Timeout (Cancel, Duration (MilliSeconds, Seconds), timeout')
+import Control.Timeout (Cancel, Duration (Seconds), timeout')
 import Data.Text (Text)
 import Fossa.API.Types (
   Build (..),
@@ -22,13 +21,12 @@ import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe)
 import Test.MockApi (MockApi, alwaysReturns, returnsOnce)
 
-runWithConfigAndTimeout ::
+runWithTimeout ::
   Has (Lift IO) sig m =>
-  (Cancel -> ReaderC WaitConfig m a) ->
+  (Cancel -> m a) ->
   m ()
-runWithConfigAndTimeout =
+runWithTimeout =
   void
-    . runReader waitConfig
     . timeout' (Seconds 1)
 
 spec :: Spec
@@ -37,104 +35,111 @@ spec =
     describe "waitForScanCompletion" $ do
       describe "VPS projects" $ do
         let commonExpectations = do
+              expectGetApiOpts
               expectGetOrganization
               expectGetMonorepoProject
               expectGetLatestScan
         it' "should return when the build is complete" $ do
           commonExpectations
           expectGetScan (Just "AVAILABLE")
-          runWithConfigAndTimeout $
+          runWithTimeout $
             waitForScanCompletion Fixtures.projectRevision
         it' "should retry periodically if the build is not complete" $ do
           commonExpectations
           expectGetScan (Just "NOT AVAILABLE")
           expectGetScan Nothing
           expectGetScan (Just "AVAILABLE")
-          runWithConfigAndTimeout $
+          runWithTimeout $
             waitForScanCompletion Fixtures.projectRevision
         it' "should die if the build errors" $ do
           commonExpectations
           expectGetScan (Just "ERROR")
-          expectFatal' . runWithConfigAndTimeout $
+          expectFatal' . runWithTimeout $
             waitForScanCompletion Fixtures.projectRevision
         it' "should cancel when the timeout expires" $ do
           commonExpectations
           expectScanAlwaysPending
-          expectFatal' . runWithConfigAndTimeout $
+          expectFatal' . runWithTimeout $
             waitForScanCompletion Fixtures.projectRevision
       describe "Non-VPS projects" $ do
-        let commonExpectations = expectGetProject
+        let commonExpectations = expectGetApiOpts >> expectGetProject
         it' "should return when the build is complete" $ do
           commonExpectations
           expectGetLatestBuild StatusSucceeded
-          runWithConfigAndTimeout $
+          runWithTimeout $
             waitForScanCompletion Fixtures.projectRevision
         it' "should retry periodically if the build is not complete" $ do
           commonExpectations
           expectGetLatestBuild StatusCreated
           expectGetLatestBuild StatusRunning
           expectGetLatestBuild StatusSucceeded
-          runWithConfigAndTimeout $
+          runWithTimeout $
             waitForScanCompletion Fixtures.projectRevision
         it' "should die if the build fails" $ do
           commonExpectations
           expectGetLatestBuild StatusFailed
-          expectFatal' . runWithConfigAndTimeout $
+          expectFatal' . runWithTimeout $
             waitForScanCompletion Fixtures.projectRevision
         it' "should cancel when the timeout expires" $ do
           commonExpectations
           expectBuildAlwaysRunning
-          expectFatal' . runWithConfigAndTimeout $
+          expectFatal' . runWithTimeout $
             waitForScanCompletion Fixtures.projectRevision
     describe "waitForIssues" $ do
+      let commonExpectations = do
+            expectGetApiOpts
+            expectGetOrganization
+            expectGetProject
       it' "should return when the issues are avilable" $ do
-        expectGetOrganization
-        expectGetProject
+        commonExpectations
         getIssues "AVAILABLE"
-        runWithConfigAndTimeout $ \cancel -> do
+        runWithTimeout $ \cancel -> do
           issues <- waitForIssues Fixtures.projectRevision cancel
           issues `shouldBe'` Fixtures.issues
 
       it' "should retry periodically if the issues are not available" $ do
-        expectGetOrganization
-        expectGetProject
+        commonExpectations
         getIssues "WAITING"
         getIssues "AVAILABLE"
-        runWithConfigAndTimeout $ \cancel -> do
+        runWithTimeout $ \cancel -> do
           issues <- waitForIssues Fixtures.projectRevision cancel
           issues `shouldBe'` Fixtures.issues
 
       it' "should cancel when the timeout expires" $ do
-        expectGetOrganization
-        expectGetProject
+        commonExpectations
         expectIssuesAlwaysWaiting
-        expectFatal' . runWithConfigAndTimeout $
+        expectFatal' . runWithTimeout $
           waitForIssues Fixtures.projectRevision
     describe "waitForBuild" $ do
       it' "should return when the build is complete" $ do
+        expectGetApiOpts
         expectGetLatestBuild StatusSucceeded
-        runWithConfigAndTimeout $
+        runWithTimeout $
           waitForBuild Fixtures.projectRevision
       it' "should retry periodically if the build is not complete" $ do
+        expectGetApiOpts
         expectGetLatestBuild StatusCreated
         expectGetLatestBuild StatusRunning
         expectGetLatestBuild StatusSucceeded
-        runWithConfigAndTimeout $
+        runWithTimeout $
           waitForBuild Fixtures.projectRevision
       it' "should die if the build fails" $ do
+        expectGetApiOpts
         expectGetLatestBuild StatusFailed
-        expectFatal' . runWithConfigAndTimeout $
+        expectFatal' . runWithTimeout $
           waitForBuild Fixtures.projectRevision
       it' "should cancel when the timeout expires" $ do
+        expectGetApiOpts
         expectBuildAlwaysRunning
-        expectFatal' . runWithConfigAndTimeout $
+        expectFatal' . runWithTimeout $
           waitForBuild Fixtures.projectRevision
 
 testVpsLocator :: Locator
 testVpsLocator = Locator{locatorFetcher = "custom", locatorProject = "42/testProjectName", locatorRevision = Nothing}
 
-waitConfig :: WaitConfig
-waitConfig = WaitConfig{apiPollDelay = MilliSeconds 1}
+expectGetApiOpts :: Has MockApi sig m => m ()
+expectGetApiOpts =
+  GetApiOpts `alwaysReturns` Fixtures.apiOpts
 
 expectGetOrganization :: Has MockApi sig m => m ()
 expectGetOrganization = GetOrganization `alwaysReturns` Fixtures.organization

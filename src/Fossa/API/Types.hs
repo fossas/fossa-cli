@@ -22,9 +22,11 @@ module Fossa.API.Types (
   ScanId (..),
   ScanResponse (..),
   useApiOpts,
+  defaultApiPollDelay,
 ) where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
+import Control.Timeout (Duration (Seconds))
 import Data.Aeson
 import Data.Coerce (coerce)
 import Data.List.Extra ((!?))
@@ -47,8 +49,12 @@ newtype ApiKey = ApiKey {unApiKey :: Text}
 data ApiOpts = ApiOpts
   { apiOptsUri :: Maybe URI
   , apiOptsApiKey :: ApiKey
+  , apiOptsPollDelay :: Duration
   }
   deriving (Eq, Ord, Show)
+
+defaultApiPollDelay :: Duration
+defaultApiPollDelay = Seconds 8
 
 newtype SignedURL = SignedURL
   { signedURL :: Text
