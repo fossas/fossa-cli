@@ -75,7 +75,8 @@ data ExpectationRepetition
 
 -- | The result of a call can be either a value or a diagnostic failure
 newtype ApiResult a = ApiResult (Either ApiFail a)
-newtype ApiFail = ApiFail { unApiFail :: Text }
+
+newtype ApiFail = ApiFail {unApiFail :: Text}
 
 -- | An expectation of an API call made up of the request and response.
 data ApiExpectation where

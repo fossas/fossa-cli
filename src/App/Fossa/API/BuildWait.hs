@@ -26,6 +26,8 @@ import Control.Effect.FossaApiClient (
  )
 import Control.Effect.StickyLogger (StickyLogger, logSticky')
 import Control.Timeout (Cancel, checkForCancel, delay)
+import Data.Text (Text)
+import Data.Text.Extra (showT)
 import Effect.Logger (Logger, pretty, viaShow)
 import Fossa.API.Types (
   ApiOpts (apiOptsPollDelay),
@@ -33,14 +35,13 @@ import Fossa.API.Types (
   BuildStatus (StatusFailed, StatusSucceeded),
   BuildTask (buildTaskStatus),
   Issues (issuesStatus),
+  OrgId,
   Organization (organizationId),
   Project (projectIsMonorepo),
   ScanId,
-  ScanResponse (..), OrgId
+  ScanResponse (..),
  )
 import Srclib.Types (Locator (..))
-import Data.Text (Text)
-import Data.Text.Extra (showT)
 
 data WaitError
   = -- | We encountered the FAILED status on a build

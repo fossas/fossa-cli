@@ -97,7 +97,7 @@ spec = do
             noConfig
             defaultEnvVars
             (Just defaultCommonOpts{optTelemetry = Just FullTelemetry, optAPIKey = Just mockApiKeyRaw})
-        sink `shouldBe'` Just (TelemetrySinkToEndpoint (ApiOpts Nothing mockApiKey defaultApiPollDelay ))
+        sink `shouldBe'` Just (TelemetrySinkToEndpoint (ApiOpts Nothing mockApiKey defaultApiPollDelay))
 
       it' "should set sink to file, when debug option is provided via command line" $ do
         telFull <-
@@ -129,7 +129,7 @@ spec = do
             noConfig
             defaultEnvVars{envTelemetryScope = Just FullTelemetry, envApiKey = Just mockApiKeyRaw}
             noOpts
-        sink `shouldBe'` Just (TelemetrySinkToEndpoint (ApiOpts Nothing mockApiKey defaultApiPollDelay ))
+        sink `shouldBe'` Just (TelemetrySinkToEndpoint (ApiOpts Nothing mockApiKey defaultApiPollDelay))
 
       it' "should set sink to file, when debug option is provided via environment variable" $ do
         telFull <-
