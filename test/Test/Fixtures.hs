@@ -40,7 +40,7 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization 42 True False
+organization = API.Organization (API.OrgId 42) True False
 
 project :: API.Project
 project =
