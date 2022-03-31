@@ -105,6 +105,7 @@ import System.PosixCompat.Types (CDev (..), CIno (..))
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Toml qualified
+import qualified System.FilePath as FP
 
 -- | A unique file identifier for a directory.
 -- Uniqueness is guaranteed within a single OS.
@@ -132,7 +133,7 @@ data ReadFSF a where
   DoesDirExist :: SomeBase Dir -> ReadFSF Bool
   ResolveFile' :: Path Abs Dir -> Text -> ReadFSF (Either ReadFSErr (Path Abs File))
   ResolveDir' :: Path Abs Dir -> Text -> ReadFSF (Either ReadFSErr (Path Abs Dir))
-  ResolvePath :: FilePath -> ReadFSF (Either ReadFSErr SomePath)
+  ResolvePath :: Path Abs Dir -> FilePath -> ReadFSF (Either ReadFSErr SomePath)
   ListDir :: Path Abs Dir -> ReadFSF (Either ReadFSErr ([Path Abs Dir], [Path Abs File]))
   GetIdentifier :: Path Abs Dir -> ReadFSF (Either ReadFSErr DirID)
 
@@ -233,11 +234,11 @@ resolveDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text 
 resolveDir dir path = fromEither =<< resolveDir' dir path
 
 -- | Resolve some path to an existing
-resolvePath :: Has ReadFS sig m => FilePath -> m (Either ReadFSErr SomePath)
-resolvePath = sendSimple . ResolvePath
+resolvePath :: Has ReadFS sig m => Path Abs Dir -> FilePath -> m (Either ReadFSErr SomePath)
+resolvePath root = sendSimple . ResolvePath root
 
-resolvePath' :: (Has ReadFS sig m, Has Diagnostics sig m) => FilePath -> m SomePath
-resolvePath' = fromEither <=< resolvePath
+resolvePath' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> FilePath -> m SomePath
+resolvePath' root = fromEither <=< resolvePath root
 
 -- | Check whether a file exists
 doesFileExist :: Has ReadFS sig m => Path Abs File -> m Bool
@@ -343,7 +344,10 @@ runReadFSIO = interpret $ \case
         let (CIno fileID) = Posix.fileID status
             (CDev devID) = Posix.deviceID status
          in DirID{dirFileID = toInteger fileID, dirDeviceID = toInteger devID}
-  ResolvePath path -> join <$> ((identifyPath path <$> Posix.getFileStatus path) `catchingIO` FileReadError path)
+  ResolvePath root path -> do
+    let fullpath = toString root FP.</> path
+    stat <- Posix.getFileStatus fullpath `catchingIO` ResolveError (toString root) path
+    pure (stat >>= identifyPath fullpath)
   -- NB: these never throw
   DoesFileExist file -> sendIO (Directory.doesFileExist (fromSomeFile file))
   DoesDirExist dir -> sendIO (Directory.doesDirectoryExist (fromSomeDir dir))
