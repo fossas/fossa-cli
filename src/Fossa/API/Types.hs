@@ -281,13 +281,10 @@ instance FromJSON UploadResponse where
     UploadResponse <$> (parseLocator <$> obj .: "locator")
       <*> obj .:? "error"
 
-newtype ScanId = ScanId Text deriving (Eq, Ord)
+newtype ScanId = ScanId Text deriving (Eq, Ord, FromJSON, ToJSON)
 
 instance Show ScanId where
   show (ScanId scanId) = show scanId
-
-instance FromJSON ScanId where
-  parseJSON value = ScanId <$> parseJSON value
 
 data ScanResponse = ScanResponse
   { responseScanId :: ScanId

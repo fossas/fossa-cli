@@ -182,4 +182,4 @@ pauseForRetry ::
   m ()
 pauseForRetry = do
   apiOpts <- getApiOpts
-  sendIO . threadDelay . durationToMicro $ apiOptsPollDelay apiOpts
+  delay $ apiOptsPollDelay apiOpts

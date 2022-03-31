@@ -68,10 +68,14 @@ data MockApi (m :: Type -> Type) a where
   AssertAllSatisfied :: MockApi m ()
 
 -- | Specifies how to handle repetition of a request
-data ExpectationRepetition = Once | Always deriving (Eq, Ord, Show)
+data ExpectationRepetition
+  = Once
+  | Always
+  deriving (Eq, Ord, Show)
 
 -- | The result of a call can be either a value or a diagnostic failure
-data ApiResult a = Return a | Die Text deriving (Eq, Ord, Show)
+newtype ApiResult a = ApiResult (Either ApiFail a)
+newtype ApiFail = ApiFail Text
 
 -- | An expectation of an API call made up of the request and response.
 data ApiExpectation where
@@ -213,8 +217,7 @@ runApiWithMock f = do
     runRequest req = do
       apiResult <- runExpectations req
       case apiResult of
-        Just (Return resp) -> pure resp
-        Just (Die msg) -> fatalText msg
+        Just (ApiResult result) -> either fatalText pure result
         Nothing ->
           assertUnexpectedCall req
 

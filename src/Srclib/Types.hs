@@ -230,7 +230,7 @@ parseLocator raw = Locator fetcher project (if Text.null revision then Nothing e
     (project, xs') = Text.breakOn "$" (Text.drop 1 xs)
     revision = Text.drop 1 xs'
 
-createCustomLocator :: Text -> Int -> Locator
+createCustomLocator :: Text -> OrgId -> Locator
 createCustomLocator projectName organizationId =
   Locator
     { locatorFetcher = "custom"
