@@ -6,6 +6,7 @@ module Strategy.Node.Npm.PackageLock (
   PkgLockJson (..),
   PkgLockDependency (..),
   NpmResolved (..),
+  PkgLockPackage (..),
 ) where
 
 import Control.Effect.Diagnostics (
@@ -46,8 +47,9 @@ import Effect.Grapher (
   deep,
   direct,
   edge,
+  hasVertex,
   label,
-  withLabeling, hasDep
+  withLabeling,
  )
 import Effect.ReadFS (ReadFS, readContentsJson)
 import Graphing (Graphing)
@@ -158,8 +160,7 @@ buildGraph packageJson directSet =
 
     -- Skip adding deps if we think it's a workspace package.
     maybeAddDep isRecursive parent name dep@PkgLockDependency{..} = do
-      doneAlready <- hasDep (NpmDepVertex name depVersion)
-      if (isNothing (unNpmResolved depResolved) || "file:" `Text.isPrefixOf` depVersion) && doneAlready
+      if (isNothing (unNpmResolved depResolved) || "file:" `Text.isPrefixOf` depVersion)
         then pure ()
         else addDep isRecursive parent name dep
 
@@ -175,7 +176,11 @@ buildGraph packageJson directSet =
         addNodeAndEdge :: Has NpmGrapher sig m => Text -> m ()
         addNodeAndEdge peerDepName =
           case Map.lookup peerDepName packageDeps of
-            Just npmDep -> maybeAddDep True (Just currentPkg) peerDepName npmDep
+            Just npmDep -> do
+              doneAlready <- hasVertex $ NpmDepVertex peerDepName $ depVersion npmDep
+              if not doneAlready
+                then maybeAddDep True (Just currentPkg) peerDepName npmDep
+                else edge currentPkg $ NpmDepVertex peerDepName (depVersion npmDep)
             Nothing -> pure ()
 
         graphPeerDeps :: Has NpmGrapher sig m => PkgLockPackage -> m ()
