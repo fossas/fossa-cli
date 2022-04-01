@@ -4,6 +4,11 @@ Testing functions that interact with the API can be complicated because the API 
 
 The solution is mock the API.  This means that we will tell the test harness how to interpret calls to the API so that the code under test can experience different scenarios.  This is not a fake API, which would seek to mimic the API behavior, but rather a collection of requests and responses.
 
+The framework is build around two core parts:
+
+1. Expectations
+2. Mock Effects
+
 ## Expectations
 
 The core of the mocking is `ApiExpectations`.  `ApiExpectations` are both a description of behavior and an assertion about what behavior should occur in the test.
@@ -21,10 +26,28 @@ Expectations consist of:
 
 Expectations are checked and matched in the order in which they are added.
 
-Any unsatisfied expectations at the end of the test will trigger an assertion error.
+Any unsatisfied expectations at the end of the test will trigger an assertion error.  Remember that the requests must match exactly (via `Eq`).
+
+Examples:
+
+```haskell
+-- return the same value every time a call is made.
+GetOrganization `alwaysReturns` Fixtures.organization
+
+-- Simulate an error
+GetProject revision `fails` "Mock HTTP error"
+
+-- Return one value the first time, then another on any subsequent calls
+(GetScan locator scanId)
+  `returnsOnce` Fixtures.scanResponse{responseScanStatus = Nothing}
+(GetScan locator scanId)
+  `alwaysReturns` Fixtures.scanResponse{responseScanStatus = Just "Available"}
+```
 
 ## MockApi Effect
 
-The `MockApi` effect provides the mechanisms to access the expectations.  It can add expectations, run a request against the expectations or trigger assertions.  These should not be used directly.  The exported helpers should be used instead.
+The `FossaApiClient` effects needs to have a carrier in order for the tests to run.  This is provided by the `FossaApiClientMockC` carrier in `MockApi.hs`.  This is a special carrier that implements the API using the expectations.
 
-Internally the `MockApi` keeps track of the expectations and provides an interface to them that `FossaApiClientMockC` can use to implement `FossaApiClient` effects against the expectations.
+The expectations are configured through the `MockApi` effect.  It can add expectations, run a request against the expectations or trigger assertions.  These should not be used directly.  The exported helpers should be used instead.
+
+Internally the `MockApiC` carrier keeps track of the expectations and provides an interface to them that `FossaApiClientMockC` can use to implement `FossaApiClient` effects against the expectations.  These are already configured in `Test.Effect`, so you should not need to set them up manually.  If you do, for some reason, make sure that the `MockApiC` is inside the `Diagnostics` effect so that its state is not lost when `recover` is used.
