@@ -163,7 +163,6 @@ library
     App.Fossa.BinaryDeps
     App.Fossa.BinaryDeps.Jar
     App.Fossa.Config.Analyze
-    App.Fossa.Config.BuildWait
     App.Fossa.Config.Common
     App.Fossa.Config.ConfigFile
     App.Fossa.Config.Container
