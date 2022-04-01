@@ -1,5 +1,3 @@
-{-# LANGUAGE DataKinds #-}
-
 module Control.Carrier.FossaApiClient.Internal.Core (
   getAttribution,
   getIssues,
