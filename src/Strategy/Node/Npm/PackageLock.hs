@@ -159,8 +159,8 @@ buildGraph packageJson directSet =
     pkgJsonPackages = packagePathsToNames . lockPackages $ packageJson
 
     -- Skip adding deps if we think it's a workspace package.
-    maybeAddDep isRecursive parent name dep@PkgLockDependency{..} = do
-      if (isNothing (unNpmResolved depResolved) || "file:" `Text.isPrefixOf` depVersion)
+    maybeAddDep isRecursive parent name dep@PkgLockDependency{..} =
+      if isNothing (unNpmResolved depResolved) || "file:" `Text.isPrefixOf` depVersion
         then pure ()
         else addDep isRecursive parent name dep
 
