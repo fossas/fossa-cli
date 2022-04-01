@@ -177,10 +177,13 @@ buildGraph packageJson directSet =
         addNodeAndEdge peerDepName =
           case Map.lookup peerDepName packageDeps of
             Just npmDep -> do
-              doneAlready <- hasVertex $ NpmDepVertex peerDepName $ depVersion npmDep
-              if not doneAlready
-                then maybeAddDep True (Just currentPkg) peerDepName npmDep
-                else edge currentPkg $ NpmDepVertex peerDepName (depVersion npmDep)
+              -- It's important to not recurse here as there can be cycles
+              -- involving deps and peerDeps.
+              --
+              -- npmDep may never have been seen yet at this point. Because
+              -- it's in packageDeps it will be processed eventually.
+              -- It will be set as direct/deep and labeled then.
+              edge currentPkg $ NpmDepVertex peerDepName (depVersion npmDep)
             Nothing -> pure ()
 
         graphPeerDeps :: Has NpmGrapher sig m => PkgLockPackage -> m ()

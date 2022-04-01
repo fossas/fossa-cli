@@ -4,8 +4,6 @@ module Node.PackageLockSpec (
   spec,
 ) where
 
-import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async (race)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import DepTypes (
@@ -23,7 +21,6 @@ import GraphUtil (
   expectEdges,
   expectEdges',
  )
-import Graphing qualified
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Npm.PackageLock (
@@ -37,51 +34,10 @@ import Strategy.Node.Npm.PackageLock (
     depVersion
   ),
   PkgLockJson (..),
-  PkgLockPackage (..),
   buildGraph,
  )
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Spec, describe, it, runIO, shouldBe)
-
-peerDepCycle :: PkgLockJson
-peerDepCycle =
-  PkgLockJson
-    { lockPackages =
-        Map.fromList
-          [
-            ( "packageTwo"
-            , PkgLockPackage
-                { pkgPeerDeps = Map.fromList [("packageOne", "1.0.0")]
-                , pkgResolved = Just "https://example.com/one.tgz"
-                }
-            )
-          ]
-    , lockDependencies =
-        Map.fromList
-          [
-            ( "packageOne"
-            , PkgLockDependency
-                { depVersion = "1.0.0"
-                , depDev = False
-                , depResolved = NpmResolved $ Just "https://example.com/one.tgz"
-                , depRequires = Map.empty
-                , depDependencies =
-                    Map.fromList
-                      [
-                        ( "packageTwo"
-                        , PkgLockDependency
-                            { depVersion = "2.0.0"
-                            , depDev = True
-                            , depResolved = NpmResolved $ Just "https://example.com/two.tgz"
-                            , depRequires = mempty
-                            , depDependencies = mempty
-                            }
-                        )
-                      ]
-                }
-            )
-          ]
-    }
+import Test.Hspec (Spec, describe, it, runIO)
 
 mockInput :: PkgLockJson
 mockInput =
@@ -372,26 +328,6 @@ buildGraphSpec testDir =
         , (winston, async)
         ]
         graph
-
-    -- What we're really trying to test here is that buildGraph finishes its
-    -- work in a reasonable amount of time. If buildGraph starts to recurse
-    -- infinitely, eventually that thread will be forced to stop and we'll
-    -- signal a failure. This style of test is prone to be flakey, so
-    -- it may need to be removed/turned off in the future.
-    it "Should avoid recursing into peerDep cycles" $
-      do
-        let delaySeconds = 5
-
-            buildWithCycle = do
-              let graph = buildGraph peerDepCycle (Set.fromList ["packageOne"])
-              (Graphing.size graph) `shouldBe` 2
-
-            waitProc = threadDelay (delaySeconds * 1000000)
-
-        result <- race buildWithCycle waitProc
-        case result of
-          Left _ -> pure ()
-          Right _ -> fail "buildGraph didn't finish fast enough"
 
 packageLockParseSpec :: Path Abs Dir -> Spec
 packageLockParseSpec testDir =
