@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.2.2
+
+- nodejs: Fix a bug where cycles involved peer dependencies would cause an infinite loop. ([#870](https://github.com/fossas/fossa-cli/pull/870))
+
 ## v3.2.1
 
 - Experimental: native license scanning is now disabled by default. ([#865](https://github.com/fossas/fossa-cli/pull/865))
