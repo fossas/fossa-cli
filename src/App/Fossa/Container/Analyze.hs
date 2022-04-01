@@ -16,10 +16,11 @@ import App.Fossa.Config.Container (
   ),
  )
 import App.Fossa.Config.Container.Common (ImageText (ImageText))
-import App.Fossa.Container.Scan (extractRevision, runSyft, toContainerScan, ContainerScan)
-import App.Types (ProjectRevision (..), ProjectMetadata)
-import Control.Carrier.FossaApiClient ( runFossaApiClient )
+import App.Fossa.Container.Scan (ContainerScan, extractRevision, runSyft, toContainerScan)
+import App.Types (ProjectMetadata, ProjectRevision (..))
+import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, errCtx, renderDiagnostic)
+import Control.Effect.FossaApiClient (FossaApiClient, uploadContainerScan)
 import Control.Effect.Lift (Lift)
 import Data.Aeson (encode)
 import Data.Foldable (traverse_)
@@ -39,7 +40,6 @@ import Effect.Logger (
  )
 import Fossa.API.Types (UploadResponse (uploadError, uploadLocator))
 import Prettyprinter (Doc, indent, vsep)
-import Control.Effect.FossaApiClient (uploadContainerScan, FossaApiClient)
 
 analyze ::
   ( Has Diagnostics sig m
@@ -56,27 +56,30 @@ analyze ContainerAnalyzeConfig{..} = do
     OutputStdout -> logStdout . decodeUtf8 $ encode containerScan
     UploadScan apiOpts projectMeta ->
       runFossaApiClient apiOpts $ uploadScan revision projectMeta containerScan
-      
+
 uploadScan ::
   ( Has Diagnostics sig m
   , Has FossaApiClient sig m
   , Has Logger sig m
   ) =>
-  ProjectRevision -> ProjectMetadata -> ContainerScan -> m ()
+  ProjectRevision ->
+  ProjectMetadata ->
+  ContainerScan ->
+  m ()
 uploadScan revision projectMeta containerScan =
-    do
-      logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
-      logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
-      let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
-      logInfo ("Using branch: `" <> pretty branchText <> "`")
+  do
+    logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
+    logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
+    let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
+    logInfo ("Using branch: `" <> pretty branchText <> "`")
 
-      resp <- uploadContainerScan revision projectMeta containerScan
+    resp <- uploadContainerScan revision projectMeta containerScan
 
-      buildUrl <- getFossaBuildUrl revision $ uploadLocator resp
-      logInfo "View FOSSA Report:"
-      logInfo ("  " <> pretty buildUrl)
-      -- Report non-critical errors
-      traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
+    buildUrl <- getFossaBuildUrl revision $ uploadLocator resp
+    logInfo "View FOSSA Report:"
+    logInfo ("  " <> pretty buildUrl)
+    -- Report non-critical errors
+    traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
 
 newtype SyftScanFailed = SyftScanFailed ImageText
 

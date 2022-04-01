@@ -11,7 +11,6 @@ import Fossa.API.Types (
   Build (..),
   BuildStatus (StatusCreated, StatusFailed, StatusRunning, StatusSucceeded),
   BuildTask (..),
-  Issues (issuesStatus),
   Project (projectIsMonorepo),
   ScanResponse (responseScanStatus),
  )
@@ -87,18 +86,18 @@ spec =
             expectGetProject
       it' "should return when the issues are avilable" $ do
         commonExpectations
-        getIssues "AVAILABLE"
+        expectIssuesAvailable
         runWithTimeout $ \cancel -> do
           issues <- waitForIssues Fixtures.projectRevision cancel
-          issues `shouldBe'` Fixtures.issues
+          issues `shouldBe'` Fixtures.issuesAvailable
 
       it' "should retry periodically if the issues are not available" $ do
         commonExpectations
-        getIssues "WAITING"
-        getIssues "AVAILABLE"
+        expectIssuesPending
+        expectIssuesAvailable
         runWithTimeout $ \cancel -> do
           issues <- waitForIssues Fixtures.projectRevision cancel
-          issues `shouldBe'` Fixtures.issues
+          issues `shouldBe'` Fixtures.issuesAvailable
 
       it' "should cancel when the timeout expires" $ do
         commonExpectations
@@ -160,10 +159,15 @@ expectGetScan scanStatus =
   (GetScan testVpsLocator Fixtures.scanId)
     `returnsOnce` Fixtures.scanResponse{responseScanStatus = scanStatus}
 
-getIssues :: Has MockApi sig m => Text -> m ()
-getIssues issuesStatus =
+expectIssuesAvailable :: Has MockApi sig m => m ()
+expectIssuesAvailable =
   (GetIssues Fixtures.projectRevision)
-    `returnsOnce` Fixtures.issues{issuesStatus = issuesStatus}
+    `returnsOnce` Fixtures.issuesAvailable
+
+expectIssuesPending :: Has MockApi sig m => m ()
+expectIssuesPending =
+  (GetIssues Fixtures.projectRevision)
+    `returnsOnce` Fixtures.issuesPending
 
 expectScanAlwaysPending :: Has MockApi sig m => m ()
 expectScanAlwaysPending =
@@ -178,4 +182,4 @@ expectBuildAlwaysRunning =
 expectIssuesAlwaysWaiting :: Has MockApi sig m => m ()
 expectIssuesAlwaysWaiting =
   (GetIssues Fixtures.projectRevision)
-    `alwaysReturns` Fixtures.issues{issuesStatus = "WAITING"}
+    `alwaysReturns` Fixtures.issuesPending

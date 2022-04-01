@@ -3,7 +3,7 @@ module App.Fossa.Config.BuildWait (
   defaultWaitConfig,
   defaultApiPollDelay,
 ) where
-   
+
 import Control.Timeout (Duration (Seconds))
 
 newtype WaitConfig = WaitConfig

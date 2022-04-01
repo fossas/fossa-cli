@@ -4,7 +4,7 @@ module Control.Effect.FossaApiClient (
   FossaApiClientF (..),
   FossaApiClient,
   getApiOpts,
-  getAttribution, 
+  getAttribution,
   getIssues,
   getLatestBuild,
   getOrganization,
@@ -16,15 +16,15 @@ module Control.Effect.FossaApiClient (
   uploadContributors,
 ) where
 
+import App.Fossa.Config.Report (ReportOutputFormat)
+import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
 import Data.List.NonEmpty qualified as NE
+import Data.Text (Text)
 import Fossa.API.Types (ApiOpts, Build, Contributors, Issues, Organization, Project, ScanId, ScanResponse, UploadResponse)
 import Srclib.Types (Locator, SourceUnit)
-import App.Fossa.Container.Scan (ContainerScan (..))
-import Data.Text
-import App.Fossa.Config.Report (ReportOutputFormat)
 
 data FossaApiClientF a where
   GetApiOpts :: FossaApiClientF ApiOpts

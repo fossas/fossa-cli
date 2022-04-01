@@ -16,13 +16,18 @@ module Test.Fixtures (
   sourceUnits,
   uploadResponse,
   emptyIssues,
-  issues,
+  issuesAvailable,
+  issuesPending,
+  successfulBuild,
+  pendingBuild,
+  attributionReportAsSerializedJson,
 ) where
 
 import App.Types qualified as App
 import Control.Timeout (Duration (MilliSeconds))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
+import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Fossa.API.Types qualified as API
 import Path (mkRelDir, parseAbsDir, (</>))
@@ -124,6 +129,28 @@ build =
           }
     }
 
+successfulBuild :: API.Build
+successfulBuild =
+  API.Build
+    { API.buildId = 101
+    , API.buildError = Nothing
+    , API.buildTask =
+        API.BuildTask
+          { API.buildTaskStatus = API.StatusSucceeded
+          }
+    }
+
+pendingBuild :: API.Build
+pendingBuild =
+  API.Build
+    { API.buildId = 101
+    , API.buildError = Nothing
+    , API.buildTask =
+        API.BuildTask
+          { API.buildTaskStatus = API.StatusRunning
+          }
+    }
+
 scanId :: API.ScanId
 scanId = API.ScanId "TestScanId"
 
@@ -142,8 +169,8 @@ emptyIssues =
     , API.issuesStatus = ""
     }
 
-issues :: API.Issues
-issues =
+issuesAvailable :: API.Issues
+issuesAvailable =
   let issueTypes =
         [ API.IssuePolicyConflict
         , API.IssuePolicyFlag
@@ -166,5 +193,16 @@ issues =
    in API.Issues
         { API.issuesCount = length issueList
         , API.issuesIssues = issueList
-        , API.issuesStatus = "AVAILABLE"
+        , API.issuesStatus = "SCANNED"
         }
+
+issuesPending :: API.Issues
+issuesPending =
+  API.Issues
+    { API.issuesCount = 0
+    , API.issuesIssues = []
+    , API.issuesStatus = "WAITING"
+    }
+
+attributionReportAsSerializedJson :: Text
+attributionReportAsSerializedJson = "{\"TestReport\": \"TestReportData\"}"

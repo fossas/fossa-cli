@@ -5,13 +5,14 @@ module Control.Carrier.FossaApiClient.Internal.ScotlandYard (
   getLatestScan,
 ) where
 
+import App.Fossa.FossaAPIV1 (getOrganization, renderLocatorUrl)
 import App.Fossa.VPS.Types (runHTTP)
 import App.Types (ProjectRevision (..))
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Control.Effect.Stack (Has)
-import Fossa.API.Types (ApiOpts, ScanId (ScanId), ScanResponse, useApiOpts, Organization (organizationId), OrgId)
+import Fossa.API.Types (ApiOpts, OrgId, Organization (organizationId), ScanId (ScanId), ScanResponse, useApiOpts)
 import Network.HTTP.Req (
   GET (GET),
   NoReqBody (NoReqBody),
@@ -25,7 +26,6 @@ import Network.HTTP.Req (
   (=:),
  )
 import Srclib.Types (Locator)
-import App.Fossa.FossaAPIV1 (renderLocatorUrl, getOrganization)
 
 -- Prefix for Core's reverse proxy to SY
 coreProxyPrefix :: Url 'Https -> Url 'Https

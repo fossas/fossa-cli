@@ -2,6 +2,7 @@
 
 module App.Fossa.Report (
   report,
+  fetchReport,
   reportSubCommand,
 ) where
 
@@ -13,8 +14,9 @@ import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), mkSubComman
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (ProjectRevision (..))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
-import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
+import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.FossaApiClient (FossaApiClient, getAttribution)
 import Control.Effect.Lift (Has, Lift)
 import Control.Timeout (timeout')
 import Data.Text.Extra (showT)
@@ -25,7 +27,6 @@ import Effect.Logger (
   logInfo,
   logStdout,
  )
-import Control.Effect.FossaApiClient (getAttribution)
 
 reportSubCommand :: SubCommand ReportCliOptions ReportConfig
 reportSubCommand = mkSubCommand report
@@ -37,7 +38,7 @@ report ::
   ) =>
   ReportConfig ->
   m ()
-report ReportConfig{..} = do
+report config@ReportConfig{..} = do
   -- TODO: refactor this code duplicate from `fossa test`
   {-
   Most of this module (almost everything below this line) has been copied
@@ -49,8 +50,20 @@ report ReportConfig{..} = do
   -}
   runStickyLogger SevInfo
     . runFossaApiClient apiOpts
-    . timeout' timeoutDuration
-    $ \cancelToken -> do
+    $ fetchReport config
+
+fetchReport ::
+  ( Has Diagnostics sig m
+  , Has FossaApiClient sig m
+  , Has Logger sig m
+  , Has StickyLogger sig m
+  , Has (Lift IO) sig m
+  ) =>
+  ReportConfig ->
+  m ()
+fetchReport ReportConfig{..} =
+  timeout' timeoutDuration $
+    \cancelToken -> do
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
