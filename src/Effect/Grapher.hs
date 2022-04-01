@@ -12,8 +12,6 @@ module Effect.Grapher (
   edge,
   deep,
   evalGrapher,
-  hasEdge,
-  hasVertex,
   runGrapher,
 
   -- * Labeling
@@ -51,8 +49,6 @@ data SGrapher ty k where
   Direct :: ty -> SGrapher ty ()
   Edge :: ty -> ty -> SGrapher ty ()
   Deep :: ty -> SGrapher ty ()
-  HasVertex :: ty -> SGrapher ty Bool
-  HasEdge :: ty -> ty -> SGrapher ty Bool
 
 type Grapher ty = Simple (SGrapher ty)
 
@@ -65,12 +61,6 @@ edge parent child = sendSimple (Edge parent child)
 deep :: Has (Grapher ty) sig m => ty -> m ()
 deep = sendSimple . Deep
 
-hasVertex :: Has (Grapher ty) sig m => ty -> m Bool
-hasVertex = sendSimple . HasVertex
-
-hasEdge :: Has (Grapher ty) sig m => ty -> ty -> m Bool
-hasEdge v1 = sendSimple . HasEdge v1
-
 evalGrapher :: (Ord ty, Algebra sig m) => GrapherC ty m a -> m (G.Graphing ty)
 evalGrapher = fmap fst . runGrapher
 
@@ -81,8 +71,6 @@ runGrapher = interpretState G.empty $ \case
   Direct ty -> modify (G.direct ty <>)
   Edge parent child -> modify (G.edge parent child <>)
   Deep n -> modify (G.deep n <>)
-  HasEdge v1 v2 -> gets (G.hasEdge v1 v2)
-  HasVertex ty -> gets (G.hasVertex ty)
 
 ----- Labeling
 

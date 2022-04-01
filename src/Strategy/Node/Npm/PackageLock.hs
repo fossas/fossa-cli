@@ -47,7 +47,6 @@ import Effect.Grapher (
   deep,
   direct,
   edge,
-  hasVertex,
   label,
   withLabeling,
  )
