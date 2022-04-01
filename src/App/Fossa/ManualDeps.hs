@@ -108,6 +108,7 @@ toSourceUnit ::
   , Has StickyLogger sig m
   , Has Logger sig m
   , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
   FoundDepsFile ->
@@ -151,6 +152,7 @@ scanAndUpload ::
   , Has StickyLogger sig m
   , Has Logger sig m
   , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
   ApiOpts ->

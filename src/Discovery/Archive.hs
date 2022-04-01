@@ -16,7 +16,8 @@ import Codec.Archive.Zip qualified as Zip
 import Codec.Compression.BZip qualified as BZip
 import Codec.Compression.GZip qualified as GZip
 import Conduit (runConduit, runResourceT, sourceFileBS, (.|))
-import Control.Effect.Diagnostics (Diagnostics, Has, context, fatalOnSomeException)
+import Control.Effect.Diagnostics (Diagnostics, Has, ToDiagnostic (renderDiagnostic), context, fatalOnSomeException')
+import Control.Effect.Exception (SomeException)
 import Control.Effect.Finally (Finally, onExit)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.TaskPool (TaskPool, forkTask)
@@ -39,7 +40,18 @@ import Path (
   toFilePath,
  )
 import Path.IO qualified as PIO
+import Prettyprinter (Pretty (pretty), hsep, viaShow, vsep)
 import Prelude hiding (zip)
+
+data ArchiveUnpackFailure = ArchiveUnpackFailure (Path Abs File) SomeException
+
+instance ToDiagnostic ArchiveUnpackFailure where
+  renderDiagnostic (ArchiveUnpackFailure file exc) =
+    vsep
+      [ "An error occurred while attempting to unpack an archive."
+      , hsep ["Archive path:", pretty $ toText file]
+      , hsep ["Error text:", viaShow exc]
+      ]
 
 -- | Given a function to run over unarchived contents, recursively unpack archives
 discover :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has TaskPool sig m) => (Path Abs Dir -> m ()) -> Path Abs Dir -> m ()
@@ -95,7 +107,7 @@ withArchive ::
   -- | Callback
   (Path Abs Dir -> m c) ->
   m c
-withArchive extract file go = fatalOnSomeException "withArchive" $ do
+withArchive extract file go = fatalOnSomeException' (ArchiveUnpackFailure file) "withArchive" $ do
   tmpDir <- mkTempDir (fileName file)
   extract tmpDir file
   go tmpDir
