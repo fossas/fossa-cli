@@ -8,6 +8,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   uploadContributors,
 ) where
 
+import App.Fossa.Container.Scan (ContainerScan)
 import App.Fossa.FossaAPIV1 qualified as API
 import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
@@ -17,7 +18,6 @@ import Control.Effect.Reader (Reader, ask)
 import Data.List.NonEmpty qualified as NE
 import Fossa.API.Types (ApiOpts, Build, Contributors, Issues, Organization, Project, UploadResponse)
 import Srclib.Types (Locator, SourceUnit, renderLocator)
-import App.Fossa.Container.Scan (ContainerScan)
 
 -- Fetches an organization from the API
 getOrganization ::
@@ -60,7 +60,7 @@ uploadContainerScan ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has (Reader ApiOpts) sig m
-  ) => 
+  ) =>
   ProjectRevision ->
   ProjectMetadata ->
   ContainerScan ->
