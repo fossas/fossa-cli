@@ -14,15 +14,11 @@ for Glide is also included, because it's still commonly used.
 
 | Strategy                             | Direct Deps | Deep Deps | Edges |
 | ---                                  | ---         | ---       | ---   |
-| [golist][gomodules] (golang modules) | ✅          | ✅        | 🔶    |
-| [gomod][gomodules] (golang modules)  | ✅          | ❌        | 🔶    |
-| [gopkglock][godep] (dep)             | ✅          | ✅        | 🔶    |
-| [gopkgtoml][godep] (dep)             | ✅          | 🔶        | 🔶    |
-| [glide][glide]                       | ✅          | ✅        | ❌    |
-
-[gomodules](gomodules.md)
-[godep](godep.md)
-[glide](glide.md)
+| [golist](gomodules.md) | ✅          | ✅        | 🔶    |
+| [gomod](gomodules.md)  | ✅          | ❌        | 🔶    |
+| [gopkglock](godep.md)             | ✅          | ✅        | 🔶    |
+| [gopkgtoml](godep.md)             | ✅          | 🔶        | 🔶    |
+| [glide](glide.md)                       | ✅          | ✅        | ❌    |
 
 ## 🔶 Edges and deep dependencies
 

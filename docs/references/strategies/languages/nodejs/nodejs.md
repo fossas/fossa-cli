@@ -4,10 +4,6 @@ The nodejs buildtool ecosystem consists of two major toolchains: the `npm` cli a
 
 | Strategy                   | Direct Deps | Deep Deps | Edges |
 | ---                        | ---         | ---       | ---   |
-| [yarnlock][yarn]           | ✅          | ✅        | ✅    |
-| [npmlock][npm] (npmcli)    | ✅          | ✅        | ✅    |
-| [packagejson][packagejson] | ✅          | ❌        | ❌    |
-
-[yarn](yarn.md)
-[npm](npm-lockfile.md)
-[packagejson](packagejson.md)
+| [yarnlock](yarn.md)           | ✅          | ✅        | ✅    |
+| [npmlock](npm-lockfile.md)   | ✅          | ✅        | ✅    |
+| [packagejson](packagejson.md) | ✅          | ❌        | ❌    |

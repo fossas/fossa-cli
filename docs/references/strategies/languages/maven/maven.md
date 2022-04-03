@@ -4,13 +4,9 @@ For maven projects, we offer a more-accurate strategy (mavenplugin), and a strat
 
 | Strategy    | Direct Deps | Deep Deps | Edges |
 | ---         | ---         | ---       | ---   |
-| [mavenplugin][mavenplugin] | ✅          | ✅        | ✅    |
-| [treecmd][treecmd]         | ✅          | ✅        | ✅    |
-| [pomxml][pomxml]           | ✅          | ❌        | ❌    |
-
-[treecmd](treecmd.md)
-[mavenplugin](mavenplugin.md)
-[pomxml](pomxml.md)
+| [mavenplugin](mavenplugin.md) | ✅          | ✅        | ✅    |
+| [treecmd](treecmd.md)         | ✅          | ✅        | ✅    |
+| [pomxml](pomxml.md)           | ✅          | ❌        | ❌    |
 
 <!--
 
