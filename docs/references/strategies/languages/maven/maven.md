@@ -2,11 +2,11 @@
 
 For maven projects, we offer a more-accurate strategy (mavenplugin), and a strategy with zero requirements (pomxml)
 
-| Strategy    | Direct Deps | Deep Deps | Edges |
-| ---         | ---         | ---       | ---   |
-| [mavenplugin](mavenplugin.md) | ✅          | ✅        | ✅    |
-| [treecmd](treecmd.md)         | ✅          | ✅        | ✅    |
-| [pomxml](pomxml.md)           | ✅          | ❌        | ❌    |
+| Strategy                      | Direct Deps | Deep Deps | Edges |
+| ----------------------------- | ----------- | --------- | ----- |
+| [mavenplugin](mavenplugin.md) | ✅           | ✅         | ✅     |
+| [treecmd](treecmd.md)         | ✅           | ✅         | ✅     |
+| [pomxml](pomxml.md)           | ✅           | ❌         | ❌     |
 
 <!--
 

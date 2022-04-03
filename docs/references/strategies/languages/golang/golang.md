@@ -12,13 +12,13 @@ into maintenance mode, with the notable exception of dep. As such, golang
 analysis in fossa-cli primarily targets Golang 1.11+ modules and dep. Support
 for Glide is also included, because it's still commonly used.
 
-| Strategy                             | Direct Deps | Deep Deps | Edges |
-| ---                                  | ---         | ---       | ---   |
-| [golist](gomodules.md) | ✅          | ✅        | 🔶    |
-| [gomod](gomodules.md)  | ✅          | ❌        | 🔶    |
-| [gopkglock](godep.md)             | ✅          | ✅        | 🔶    |
-| [gopkgtoml](godep.md)             | ✅          | 🔶        | 🔶    |
-| [glide](glide.md)                       | ✅          | ✅        | ❌    |
+| Strategy               | Direct Deps | Deep Deps | Edges |
+| ---------------------- | ----------- | --------- | ----- |
+| [golist](gomodules.md) | ✅           | ✅         | 🔶     |
+| [gomod](gomodules.md)  | ✅           | ❌         | 🔶     |
+| [gopkglock](godep.md)  | ✅           | ✅         | 🔶     |
+| [gopkgtoml](godep.md)  | ✅           | 🔶         | 🔶     |
+| [glide](glide.md)      | ✅           | ✅         | ❌     |
 
 ## 🔶 Edges and deep dependencies
 
