@@ -313,7 +313,8 @@ unfoldDeep = unfold' deeps
 --
 -- A vertex is reachable if there's a path from the "direct" vertices to that vertex
 pruneUnreachable :: forall ty. Ord ty => Graphing ty -> Graphing ty
-pruneUnreachable (Graphing gr) = Graphing (AM.induce keepPredicate gr)
+pruneUnreachable (Graphing gr) =
+  Graphing (AM.induce keepPredicate gr)
   where
     directNodes :: [Node ty]
     directNodes = Set.toList $ AM.postSet Root gr
@@ -335,6 +336,7 @@ fromList = directs
 -- | Wrap an AdjacencyMap as a Graphing
 --
 -- All nodes in the resulting Graphing are considered indirect/"deep"
+-- so @fromAdjacenyMap . toAdjacencyMap@ is not @id@.
 fromAdjacencyMap :: Ord ty => AM.AdjacencyMap ty -> Graphing ty
 fromAdjacencyMap = Graphing . AM.gmap Node
 

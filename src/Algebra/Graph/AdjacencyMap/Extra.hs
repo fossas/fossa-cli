@@ -49,8 +49,8 @@ shrinkSingle vert gr = AM.overlay (AM.removeVertex vert gr) inducedEdges
         , post <- Set.toList . Set.delete vert $ AM.postSet vert gr
         ]
 
--- | Split graph into distinct sibling graphs via nodes that have no incoming edges.
--- Returns 'Nothing' if graph is cyclic.
+-- | Split graph into distinct sibling graphs (unconnected subgraphs) via nodes
+-- that have no incoming edges.  Returns 'Nothing' if graph is cyclic.
 --
 -- @
 -- splitGraph 'edges' [(1, 2), (2, 3), (4, 5)] = ['edges' [(1, 2), (2, 3)], 'edge' 4 5]
