@@ -167,10 +167,10 @@ scanAndUpload root apiOpts vdeps allowNative = runFossaApiClient apiOpts $ do
         doNative <- orgDoLocalLicenseScan <$> getOrganization
         if doNative
           then pure CLILicenseScan
-          -- If they've selected native scanning, but the server doesn't support it,
+          else -- If they've selected native scanning, but the server doesn't support it,
           -- we should let them know.
           -- TODO: Add a --forbid-archive-upload CLI flag
-          else logWarn "Server does not support native license scanning" $> ArchiveUpload
+            logWarn "Server does not support native license scanning" $> ArchiveUpload
       else pure ArchiveUpload
 
   let scanner = case archiveOrCLI of
