@@ -6,9 +6,13 @@ import GraphUtil (expectDeps, expectDirect, expectEdges)
 import Graphing (
   Graphing,
   deep,
+  deeps,
+  direct,
+  directList,
   directs,
   edge,
   edges,
+  edgesList,
   getRootsOf,
   hasPredecessors,
   promoteToDirect,
@@ -18,20 +22,24 @@ import Graphing (
   shrinkWithoutPromotionToDirect,
   stripRoot,
   unfold,
+  unfoldDeep,
+  vertexList,
  )
 import Test.Hspec (
   Spec,
+  context,
   describe,
   it,
   shouldBe,
   shouldContain,
+  shouldMatchList,
  )
 import Prelude
 
-spec :: Spec
-spec = do
-  describe "unfold" $ do
-    it "should unfold deeply" $ do
+unfoldSpec :: Spec
+unfoldSpec = do
+  describe "unfold" $
+    it "Graph children of seed nodes as deep" $ do
       let graph :: Graphing Int
           graph = unfold [10] (\x -> if x > 0 then [x - 2] else []) id
 
@@ -39,6 +47,43 @@ spec = do
       expectDeps [10, 8, 6, 4, 2, 0] graph
       expectEdges [(10, 8), (8, 6), (6, 4), (4, 2), (2, 0)] graph
 
+  describe "unfoldDeep" $
+    it "Graph all nodes, including seeds, as deep" $ do
+      let graph :: Graphing Int
+          graph = unfoldDeep [10] (\x -> if x > 0 then [x - 2] else []) id
+
+      expectDirect [] graph
+      expectDeps [10, 8, 6, 4, 2, 0] graph
+      expectEdges [(10, 8), (8, 6), (6, 4), (4, 2), (2, 0)] graph
+
+accessingElements :: Spec
+accessingElements = describe "Accessing graph elements" $
+  describe "Listing vertices and edges" $
+    do
+      let directNodes = [1, 2, 3] :: [Int]
+          graphEdges =
+            [ (1, 4)
+            , (2, 3)
+            , (3, 3)
+            , (4, 5)
+            ]
+
+          graph :: Graphing Int
+          graph =
+            Graphing.directs directNodes
+              <> Graphing.edges graphEdges
+
+      it "directList should list direct nodes" $ do
+        Graphing.directList graph `shouldMatchList` [1, 2, 3]
+
+      it "vertexList should list all vertices besides Root" $ do
+        Graphing.vertexList graph `shouldMatchList` [1, 2, 3, 4, 5]
+
+      it "edgesList should list all edges" $ do
+        Graphing.edgesList graph `shouldMatchList` graphEdges
+
+addingNodes :: Spec
+addingNodes = context "adding nodes to a Graphing" $ do
   describe "deep" $ do
     it "should add deep node to graphing" $ do
       let graph :: Graphing Int
@@ -46,6 +91,38 @@ spec = do
       expectDirect [] graph
       expectDeps [5, 2, 3] graph
       expectEdges [(2, 3)] graph
+
+  describe "deeps" $ do
+    it "Should add multiple deep nodes to graphing" $ do
+      let graph :: Graphing Int
+          graph = Graphing.deeps [5, 6, 7] <> Graphing.edge 2 3
+      expectDirect [] graph
+      expectDeps [5, 6, 7, 2, 3] graph
+      expectEdges [(2, 3)] graph
+
+  describe "direct" $ do
+    it "Should add a direct node to the graph" $ do
+      let graph :: Graphing Int
+          graph = Graphing.direct 1 <> Graphing.edge 1 2
+      expectDirect [1] graph
+      expectDeps [1, 2] graph
+      expectEdges [(1, 2)] graph
+
+  describe "directs" $ do
+    it "Should add multiple direct nodes to the graph" $ do
+      let graph :: Graphing Int
+          graph = Graphing.directs [1, 2] <> Graphing.edges [(1, 2), (1, 3)]
+      expectDirect [1, 2] graph
+      expectDeps [1, 2, 3] graph
+      expectEdges [(1, 2), (1, 3)] graph
+
+spec :: Spec
+spec = do
+  unfoldSpec
+
+  accessingElements
+
+  addingNodes
 
   describe "promoteToDirect" $ do
     it "should promote nodes to direct" $ do
@@ -140,6 +217,9 @@ spec = do
     it "doesn't preserve nodes that reference themselves when shrinking" $ do
       -- webpack -> ast -> wast-parser -> helper-code-frame -> ast
       -- underscore
+      --
+      -- 1 -> 2 -> 3 -> 4 -> 2
+      -- 5
 
       let graph :: Graphing String
           graph =
