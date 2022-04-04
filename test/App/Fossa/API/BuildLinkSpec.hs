@@ -1,5 +1,4 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE QuasiQuotes #-}
 
 module App.Fossa.API.BuildLinkSpec (spec) where
 
@@ -10,15 +9,14 @@ import Control.Effect.FossaApiClient (
  )
 import Data.Text (Text)
 import Fossa.API.Types (
-  ApiKey (ApiKey),
-  ApiOpts (ApiOpts),
   OrgId (OrgId),
   Organization (Organization),
  )
 import Srclib.Types (Locator (Locator))
-import Test.Effect (assertNotCalled, it', shouldBe', withMockApi)
+import Test.Effect (it', shouldBe')
+import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe)
-import Text.URI.QQ (uri)
+import Test.MockApi (returnsOnce)
 
 simpleSamlPath :: Text
 simpleSamlPath = "https://app.fossa.com/account/saml/1?next=/projects/fetcher123%252bproject123/refs/branch/master123/revision123"
@@ -39,13 +37,12 @@ simpleStandardURL = "https://app.fossa.com/projects/haskell%2b89%2fspectrometer/
 spec :: Spec
 spec = do
   describe "BuildLink" $ do
-    let apiOpts = ApiOpts (Just [uri|https://app.fossa.com/|]) $ ApiKey ""
     describe "SAML URL builder" $ do
       it' "should render simple locators" $ do
         let locator = Locator "fetcher123" "project123" $ Just "revision123"
             org = Just $ Organization (OrgId 1) True False
             revision = ProjectRevision "" "not this revision" $ Just "master123"
-        actual <- getBuildURLWithOrg org revision apiOpts locator
+        actual <- getBuildURLWithOrg org revision Fixtures.apiOpts locator
 
         actual `shouldBe'` simpleSamlPath
 
@@ -53,7 +50,7 @@ spec = do
         let locator = Locator "fetcher@123/abc" "git@github.com/user/repo" $ Just "revision@123/abc"
             org = Just $ Organization (OrgId 103) True False
             revision = ProjectRevision "not this project name" "not this revision" $ Just "weird--branch"
-        actual <- getBuildURLWithOrg org revision apiOpts locator
+        actual <- getBuildURLWithOrg org revision Fixtures.apiOpts locator
 
         actual `shouldBe'` gitSamlPath
 
@@ -61,7 +58,7 @@ spec = do
         let locator = Locator "a" "b" $ Just "c"
             org = Just $ Organization (OrgId 33) True False
             revision = ProjectRevision "" "not this revision" $ Just "master"
-        actual <- getBuildURLWithOrg org revision apiOpts locator
+        actual <- getBuildURLWithOrg org revision Fixtures.apiOpts locator
 
         actual `shouldBe'` fullSamlURL
 
@@ -69,21 +66,16 @@ spec = do
       it' "should render simple links" $ do
         let locator = Locator "haskell" "89/spectrometer" $ Just "revision123"
             revision = ProjectRevision "" "not this revision" $ Just "master"
-        actual <- getBuildURLWithOrg Nothing revision apiOpts locator
+        actual <- getBuildURLWithOrg Nothing revision Fixtures.apiOpts locator
 
         actual `shouldBe'` simpleStandardURL
 
     describe "Fossa URL Builder" $
-      it' "should render from API info"
-        . withMockApi
-          ( \case
-              GetApiOpts -> pure apiOpts
-              GetOrganization -> pure $ Organization (OrgId 1) True False
-              req -> assertNotCalled req
-          )
-        $ do
-          let locator = Locator "fetcher123" "project123" $ Just "revision123"
-              revision = ProjectRevision "" "not this revision" $ Just "master123"
-          actual <- getFossaBuildUrl revision locator
+      it' "should render from API info" $ do
+        GetApiOpts `returnsOnce` Fixtures.apiOpts
+        GetOrganization `returnsOnce` Organization (OrgId 1) True False
+        let locator = Locator "fetcher123" "project123" $ Just "revision123"
+            revision = ProjectRevision "" "not this revision" $ Just "master123"
+        actual <- getFossaBuildUrl revision locator
 
-          actual `shouldBe'` simpleSamlPath
+        actual `shouldBe'` simpleSamlPath

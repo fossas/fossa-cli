@@ -81,7 +81,7 @@ import Data.Text (Text, null, strip, toLower)
 import Discovery.Filters (targetFilterParser)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
-import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts))
+import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
 import GHC.Generics (Generic)
 import Options.Applicative (
   Parser,
@@ -212,7 +212,7 @@ collectApiOpts maybeconfig envvars globals = do
   apikey <- validateApiKey maybeconfig envvars globals
   let configUri = maybeconfig >>= configServer >>= mkURI
       baseuri = optBaseUrl globals <|> configUri
-  pure $ ApiOpts baseuri apikey
+  pure $ ApiOpts baseuri apikey defaultApiPollDelay
 
 collectRevisionOverride :: Maybe ConfigFile -> OverrideProject -> OverrideProject
 collectRevisionOverride maybeConfig OverrideProject{..} = override

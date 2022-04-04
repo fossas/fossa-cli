@@ -8,6 +8,7 @@ module Control.Timeout (
   durationToMicro,
   timeout',
   timeoutIO,
+  delay,
 ) where
 
 import Control.Carrier.Threaded (fork, kill)
@@ -124,3 +125,7 @@ timeoutIO ::
   IO a ->
   IO (Maybe a)
 timeoutIO seconds act = either id id <$> Async.race (Just <$> act) (threadDelay (seconds * 1_000_000) $> Nothing)
+
+-- | Delays the current thread by the given duration
+delay :: Has (Lift IO) sig m => Duration -> m ()
+delay = sendIO . threadDelay . durationToMicro

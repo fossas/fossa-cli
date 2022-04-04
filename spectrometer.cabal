@@ -195,9 +195,7 @@ library
     App.Fossa.RunThemis
     App.Fossa.Subcommand
     App.Fossa.Test
-    App.Fossa.VPS.Scan.Core
     App.Fossa.VPS.Scan.RunWiggins
-    App.Fossa.VPS.Scan.ScotlandYard
     App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
     App.Fossa.VSI.DynLinked
@@ -231,6 +229,8 @@ library
     Control.Carrier.Diagnostics
     Control.Carrier.Finally
     Control.Carrier.FossaApiClient
+    Control.Carrier.FossaApiClient.Internal.Core
+    Control.Carrier.FossaApiClient.Internal.ScotlandYard
     Control.Carrier.Git
     Control.Carrier.Output.IO
     Control.Carrier.Simple
@@ -425,6 +425,7 @@ test-suite unit-tests
     App.Fossa.Analyze.UploadSpec
     App.Fossa.AnalyzeSpec
     App.Fossa.API.BuildLinkSpec
+    App.Fossa.API.BuildWaitSpec
     App.Fossa.BinaryDeps.JarSpec
     App.Fossa.Configuration.ConfigurationSpec
     App.Fossa.Configuration.TelemetryConfigSpec
@@ -514,6 +515,7 @@ test-suite unit-tests
     Swift.Xcode.PbxprojSpec
     Test.Effect
     Test.Fixtures
+    Test.MockApi
     Yarn.V1.YarnLockV1Spec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec

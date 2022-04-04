@@ -22,6 +22,7 @@ import Data.Text (Text)
 import Fossa.API.Types (
   ApiKey (ApiKey),
   ApiOpts (ApiOpts),
+  defaultApiPollDelay,
  )
 import Test.Effect (it', shouldBe')
 import Test.Hspec (Spec, describe)
@@ -96,7 +97,7 @@ spec = do
             noConfig
             defaultEnvVars
             (Just defaultCommonOpts{optTelemetry = Just FullTelemetry, optAPIKey = Just mockApiKeyRaw})
-        sink `shouldBe'` Just (TelemetrySinkToEndpoint (ApiOpts Nothing mockApiKey))
+        sink `shouldBe'` Just (TelemetrySinkToEndpoint (ApiOpts Nothing mockApiKey defaultApiPollDelay))
 
       it' "should set sink to file, when debug option is provided via command line" $ do
         telFull <-
@@ -128,7 +129,7 @@ spec = do
             noConfig
             defaultEnvVars{envTelemetryScope = Just FullTelemetry, envApiKey = Just mockApiKeyRaw}
             noOpts
-        sink `shouldBe'` Just (TelemetrySinkToEndpoint (ApiOpts Nothing mockApiKey))
+        sink `shouldBe'` Just (TelemetrySinkToEndpoint (ApiOpts Nothing mockApiKey defaultApiPollDelay))
 
       it' "should set sink to file, when debug option is provided via environment variable" $ do
         telFull <-
@@ -170,4 +171,4 @@ spec = do
             )
             defaultEnvVars
             noOpts
-        sink `shouldBe'` Just (TelemetrySinkToEndpoint (ApiOpts Nothing mockApiKey))
+        sink `shouldBe'` Just (TelemetrySinkToEndpoint (ApiOpts Nothing mockApiKey defaultApiPollDelay))

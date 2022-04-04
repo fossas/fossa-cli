@@ -20,10 +20,14 @@ module Fossa.API.Types (
   Project (..),
   SignedURL (..),
   UploadResponse (..),
+  ScanId (..),
+  ScanResponse (..),
   useApiOpts,
+  defaultApiPollDelay,
 ) where
 
 import Control.Effect.Diagnostics hiding (fromMaybe)
+import Control.Timeout (Duration (Seconds))
 import Data.Aeson
 import Data.Coerce (coerce)
 import Data.List.Extra ((!?))
@@ -46,6 +50,7 @@ newtype ApiKey = ApiKey {unApiKey :: Text}
 data ApiOpts = ApiOpts
   { apiOptsUri :: Maybe URI
   , apiOptsApiKey :: ApiKey
+  , apiOptsPollDelay :: Duration
   }
   deriving (Eq, Ord, Show)
 
@@ -55,6 +60,9 @@ instance ToJSON ApiOpts where
       [ "uri" .= show (apiOptsUri opts)
       , "apiKey" .= ("<REDACTED>" :: String)
       ]
+
+defaultApiPollDelay :: Duration
+defaultApiPollDelay = Seconds 8
 
 newtype SignedURL = SignedURL
   { signedURL :: Text
@@ -279,6 +287,23 @@ instance FromJSON UploadResponse where
   parseJSON = withObject "UploadResponse" $ \obj ->
     UploadResponse <$> (parseLocator <$> obj .: "locator")
       <*> obj .:? "error"
+
+newtype ScanId = ScanId Text deriving (Eq, Ord, FromJSON, ToJSON)
+
+instance Show ScanId where
+  show (ScanId scanId) = show scanId
+
+data ScanResponse = ScanResponse
+  { responseScanId :: ScanId
+  , responseScanStatus :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ScanResponse where
+  parseJSON = withObject "ScanResponse" $ \obj ->
+    ScanResponse
+      <$> obj .: "id"
+      <*> obj .:? "status"
 
 ---------------
 

@@ -59,7 +59,7 @@ useApiOpts opts = case useURI serverURI of
     serverURI = fromMaybe [uri|https://app.fossa.com|] (Fossa.API.Types.apiOptsUri opts)
 
     authHeader :: Fossa.API.Types.ApiOpts -> Option 'Https
-    authHeader (Fossa.API.Types.ApiOpts _ (Fossa.API.Types.ApiKey key)) = header "Authorization" $ encodeUtf8 $ "Bearer " <> key
+    authHeader (Fossa.API.Types.ApiOpts _ (Fossa.API.Types.ApiKey key) _) = header "Authorization" $ encodeUtf8 $ "Bearer " <> key
 
 sinkTelemetryToEndpoint :: Has (Lift IO) sig m => Fossa.API.Types.ApiOpts -> TelemetryRecord -> m ()
 sinkTelemetryToEndpoint = sinkToEndpoint

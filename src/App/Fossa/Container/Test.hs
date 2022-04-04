@@ -20,6 +20,7 @@ import App.Fossa.Container.Scan (
   toContainerScan,
  )
 import App.Types (ProjectRevision (..))
+import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift, sendIO)
@@ -45,7 +46,7 @@ test ::
   ContainerTestConfig ->
   m ()
 test ContainerTestConfig{..} = runStickyLogger SevInfo $
-  timeout' timeoutDuration $ \cancelToken -> do
+  runFossaApiClient apiOpts . timeout' timeoutDuration $ \cancelToken -> do
     logSticky "Running embedded syft binary"
 
     containerScan <- runSyft testImageLocator >>= toContainerScan
@@ -55,10 +56,10 @@ test ContainerTestConfig{..} = runStickyLogger SevInfo $
     logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
 
     logSticky "[ Waiting for build completion ]"
-    waitForBuild apiOpts revision cancelToken
+    waitForBuild revision cancelToken
 
     logSticky "[ Waiting for issue scan completion ]"
-    issues <- waitForIssues apiOpts revision cancelToken
+    issues <- waitForIssues revision cancelToken
     logSticky ""
 
     case issuesCount issues of

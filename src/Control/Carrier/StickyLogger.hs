@@ -7,6 +7,8 @@
 module Control.Carrier.StickyLogger (
   StickyLoggerC,
   runStickyLogger,
+  IgnoreStickyLoggerC,
+  ignoreStickyLogger,
   module X,
 ) where
 
@@ -16,6 +18,8 @@ import Control.Carrier.Simple
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger as X
 import Effect.Logger (Logger, Severity)
+
+type StickyLoggerC = SimpleC StickyLoggerF
 
 runStickyLogger ::
   (Has (Lift IO) sig m, Has Logger sig m) =>
@@ -31,4 +35,11 @@ runStickyLogger sev act = withStickyRegion sev $ \region ->
     )
     act
 
-type StickyLoggerC = SimpleC StickyLoggerF
+type IgnoreStickyLoggerC = SimpleC StickyLoggerF
+
+ignoreStickyLogger ::
+  (Applicative m) =>
+  IgnoreStickyLoggerC m a ->
+  m a
+ignoreStickyLogger = interpret $ \case
+  LogSticky' _ -> pure ()

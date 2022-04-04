@@ -13,12 +13,9 @@ module Test.Effect (
   fit',
   xit',
   withTempDir,
-  withMockApi,
-  assertNotCalled,
 ) where
 
 import Control.Effect.Lift (Has, Lift, sendIO)
-import Test.HUnit (assertFailure)
 import Test.Hspec (
   Spec,
   SpecWith,
@@ -37,11 +34,10 @@ import Test.Hspec (
 
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
-import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Carrier.Stack (StackC, runStack)
+import Control.Carrier.StickyLogger (IgnoreStickyLoggerC, ignoreStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics, errorBoundary)
 import Control.Effect.Finally (Finally, onExit)
-import Control.Effect.FossaApiClient (FossaApiClientF)
 import Data.Bits (finiteBitSize)
 import Data.String.Conversion (toString)
 import Diag.Result (Result (..), renderFailure)
@@ -53,9 +49,26 @@ import Path.IO (createDirIfMissing, removeDirRecur)
 import ResultUtil (expectFailure)
 import System.Directory (getTemporaryDirectory)
 import System.Random (randomIO)
+import Test.MockApi (FossaApiClientMockC, MockApiC, runApiWithMock, runMockApi)
 import Text.Printf (printf)
 
-type EffectStack a = FinallyC (ExecIOC (ReadFSIOC (DiagnosticsC (IgnoreLoggerC (StackC IO))))) a
+type EffectStack a =
+  FinallyC
+    ( ExecIOC
+        ( ReadFSIOC
+            -- The FossaApiClient must be outside of Diagnostics because it
+            -- depends on it.
+            ( FossaApiClientMockC
+                ( DiagnosticsC
+                    -- MockApiC must be inside Diagnostics so its state is not
+                    -- lost when diagnostics short-circuits on an error.
+                    ( MockApiC (IgnoreLoggerC (IgnoreStickyLoggerC (StackC IO)))
+                    )
+                )
+            )
+        )
+    )
+    a
 
 -- TODO: add useful describe, naive describe' doesn't work.
 
@@ -72,7 +85,7 @@ runTestEffects' :: EffectStack () -> Spec
 runTestEffects' = runIO . runTestEffects
 
 runTestEffects :: EffectStack () -> IO ()
-runTestEffects = runStack . ignoreLogger . handleDiag . runReadFSIO . runExecIO . runFinally
+runTestEffects = runStack . ignoreStickyLogger . ignoreLogger . runMockApi . handleDiag . runApiWithMock . runReadFSIO . runExecIO . runFinally
   where
     handleDiag :: (Has (Lift IO) sig m) => DiagnosticsC m () -> m ()
     handleDiag diag =
@@ -121,11 +134,3 @@ expectFailure' res = sendIO $ expectFailure res
 expectFatal' :: (Has Diagnostics sig m, Has (Lift IO) sig m) => m a -> m ()
 expectFatal' f = do
   errorBoundary f >>= expectFailure'
-
--- | Runs a stateless API mock.
-withMockApi :: (forall x. FossaApiClientF x -> m x) -> SimpleC FossaApiClientF m a -> m a
-withMockApi = interpret
-
-assertNotCalled :: (Has (Lift IO) sig m) => FossaApiClientF a -> m a
-assertNotCalled eff = do
-  sendIO . assertFailure $ "Unexpected call: " ++ show eff
