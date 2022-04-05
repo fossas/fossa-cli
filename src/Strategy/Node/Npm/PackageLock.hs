@@ -6,6 +6,7 @@ module Strategy.Node.Npm.PackageLock (
   PkgLockJson (..),
   PkgLockDependency (..),
   NpmResolved (..),
+  PkgLockPackage (..),
 ) where
 
 import Control.Effect.Diagnostics (
@@ -174,7 +175,14 @@ buildGraph packageJson directSet =
         addNodeAndEdge :: Has NpmGrapher sig m => Text -> m ()
         addNodeAndEdge peerDepName =
           case Map.lookup peerDepName packageDeps of
-            Just npmDep -> maybeAddDep True (Just currentPkg) peerDepName npmDep
+            Just npmDep -> do
+              -- It's important to not recurse here as there can be cycles
+              -- involving deps and peerDeps.
+              --
+              -- npmDep may never have been seen yet at this point. Because
+              -- it's in packageDeps it will be processed eventually.
+              -- It will be set as direct/deep and labeled then.
+              edge currentPkg $ NpmDepVertex peerDepName (depVersion npmDep)
             Nothing -> pure ()
 
         graphPeerDeps :: Has NpmGrapher sig m => PkgLockPackage -> m ()

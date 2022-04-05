@@ -30,6 +30,8 @@ module Graphing (
   edgesList,
   toAdjacencyMap,
   getRootsOf,
+  hasEdge,
+  hasVertex,
   hasPredecessors,
 
   -- * Manipulating a Graphing
@@ -208,6 +210,12 @@ shrinkRoots (Graphing gr) = Graphing $ foldr AME.shrinkSingle gr currentDirect
   where
     currentDirect :: [Node ty]
     currentDirect = Set.toList $ AM.postSet Root gr
+
+hasVertex :: Ord ty => ty -> Graphing ty -> Bool
+hasVertex ty (Graphing gr) = AM.hasVertex (Node ty) gr
+
+hasEdge :: Ord ty => ty -> ty -> Graphing ty -> Bool
+hasEdge v1 v2 (Graphing gr) = AM.hasEdge (Node v1) (Node v2) gr
 
 -- | Add a direct node to this Graphing
 direct :: Ord ty => ty -> Graphing ty

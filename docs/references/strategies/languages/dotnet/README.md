@@ -4,16 +4,9 @@ There are several different methods of .NET analysis, that use both the `NuGet` 
 
 | Strategy                                 | Direct Deps | Deep Deps | Edges |
 | ---------------------------------------- | ----------- | --------- | ----- |
-| [nuspec][nuspec]                         | ✅          | ❌        | ❌    |
-| [PackageReference][packagereference]     | ✅          | ❌        | ❌    |
-| [packages.config][packagesconfig]        | ✅          | ❌        | ❌    |
-| [paket][paket]                           | ✅          | ✅        | ✅    |
-| [project.assets.json][projectassetsjson] | ✅          | ✅        | ✅    |
-| [project.json][projectjson]              | ✅          | ❌        | ❌    |
-
-[nuspec](nuspec.md)
-[packagereference](packagereference.md)
-[packagesconfig](packagesconfig.md)
-[paket](paket.md)
-[projectassetsjson](projectassetsjson.md)
-[projectjson](projectjson.md)
+| [nuspec](nuspec.md)                         | ✅          | ❌        | ❌    |
+| [PackageReference](packagereference.md)     | ✅          | ❌        | ❌    |
+| [packages.config](packagesconfig.md)        | ✅          | ❌        | ❌    |
+| [paket](paket.md)                           | ✅          | ✅        | ✅    |
+| [project.assets.json](projectassetsjson.md) | ✅          | ✅        | ✅    |
+| [project.json](projectjson.md)              | ✅          | ❌        | ❌    |

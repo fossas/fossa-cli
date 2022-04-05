@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.LicenseScanner (
@@ -15,8 +16,9 @@ import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.RunThemis (
   execThemis,
  )
+import Control.Carrier.Finally (runFinally)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, fatal, fatalText, fromMaybe, recover)
-import Control.Effect.Lift (Has, Lift)
+import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
 import Control.Monad (unless, void)
 import Crypto.Hash (Digest, MD5, hash)
@@ -24,10 +26,18 @@ import Data.ByteString qualified as B
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
+import Data.Semigroup (Any (..))
 import Data.String.Conversion (encodeUtf8, toString, toText)
 import Data.Text.Extra (showT)
+import Discovery.Archive (withArchive')
+import Discovery.Walk (WalkStep (WalkContinue, WalkStop), walk')
 import Effect.Exec (Exec)
-import Effect.Logger (Pretty (pretty))
+import Effect.ReadFS (
+  Has,
+  ReadFS,
+  SomePath (SomeDir, SomeFile),
+  resolvePath',
+ )
 import Fossa.API.Types (
   ApiOpts,
   Archive (Archive, archiveName),
@@ -35,7 +45,8 @@ import Fossa.API.Types (
   OrgId,
   Organization (organizationId),
  )
-import Path (Abs, Dir, Path, parseRelDir, (</>))
+import Path (Abs, Dir, File, Path, SomeBase (Abs, Rel), fileExtension, (</>))
+import Prettyprinter (Pretty (pretty), squotes)
 import Srclib.Types (
   LicenseScanType (CliLicenseScanned),
   LicenseSourceUnit (..),
@@ -43,15 +54,23 @@ import Srclib.Types (
   Locator (..),
  )
 
-data NoSuccessfulScans = NoSuccessfulScans
+data LicenseScanErr
+  = NoSuccessfulScans
+  | NoLicenseResults (Path Abs Dir)
+  | EmptyDirectory (Path Abs Dir)
+  | EmptyArchive (Path Abs File)
+  | UnsupportedArchive (Path Abs File)
 
-instance ToDiagnostic NoSuccessfulScans where
-  renderDiagnostic _ = "No native license scans were successful"
-
-newtype NoLicenseResults = NoLicenseResults (Path Abs Dir)
-
-instance ToDiagnostic NoLicenseResults where
+instance ToDiagnostic LicenseScanErr where
+  renderDiagnostic NoSuccessfulScans = "No native license scans were successful"
   renderDiagnostic (NoLicenseResults path) = "No license results found after scanning directory: " <> pretty (toText path)
+  renderDiagnostic (EmptyDirectory path) = "vendored-dependencies path has no files and cannot be scanned: " <> pretty (toString path)
+  renderDiagnostic (EmptyArchive path) = "vendored-dependencies archive contains no files and cannot be scanned: " <> pretty (toString path)
+  renderDiagnostic (UnsupportedArchive path) = case fileExtension path of
+    Just ext -> "fossa-cli does not support archives of type " <> squotes (pretty ext) <> ": " <> pretty (toString path)
+    Nothing -> "fossa-cli does not support archives without file extensions: " <> pretty (toString path)
+
+newtype ScannableArchive = ScannableArchive {scanFile :: Path Abs File} deriving (Eq, Ord, Show)
 
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
@@ -84,6 +103,7 @@ scanAndUploadVendoredDep ::
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
   , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
   ApiOpts ->
   Path Abs Dir ->
@@ -100,21 +120,79 @@ scanVendoredDep ::
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
   , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
-  -- ApiOpts ->
   Path Abs Dir ->
   VendoredDependency ->
   m (NonEmpty LicenseUnit)
 scanVendoredDep baseDir VendoredDependency{..} = context "Scanning vendored deps for license data" $ do
   logSticky $ "License Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
-  vendoredDepDir <- case parseRelDir $ toString vendoredPath of
-    Left err -> fatalText ("Error constructing scan dir for vendored scan: " <> showT err)
-    Right val -> pure val
-  let cliScanDir = baseDir </> vendoredDepDir
+  scanPath <- resolvePath' baseDir $ toString vendoredPath
+  case scanPath of
+    SomeFile (Abs path) -> scanArchive $ ScannableArchive path
+    SomeFile (Rel path) -> scanArchive . ScannableArchive $ baseDir </> path
+    SomeDir (Abs path) -> scanDirectory Nothing path
+    SomeDir (Rel path) -> scanDirectory Nothing $ baseDir </> path
+
+scanDirectory ::
+  ( Has Exec sig m
+  , Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  ) =>
+  Maybe ScannableArchive ->
+  Path Abs Dir ->
+  m (NonEmpty LicenseUnit)
+scanDirectory origin path = do
+  hasFiles <- hasAnyFiles path
+  if hasFiles
+    then scanNonEmptyDirectory path
+    else maybe (fatal $ EmptyDirectory path) (fatal . EmptyArchive . scanFile) origin
+
+hasAnyFiles ::
+  ( Has Diagnostics sig m
+  , Has ReadFS sig m
+  ) =>
+  Path Abs Dir ->
+  m Bool
+hasAnyFiles path = getAny <$> go path
+  where
+    go = walk' $ \_ _ files ->
+      pure
+        if null files
+          then (Any False, WalkContinue)
+          else (Any True, WalkStop)
+
+-- | Runs a themis license scan on a directory.
+-- If the directory has no files (including in subfolders), themis may not return the ideal result.
+-- Callers of this function should verify that this directory contains at least one file BEFORE calling.
+scanNonEmptyDirectory ::
+  ( Has Exec sig m
+  , Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  m (NonEmpty LicenseUnit)
+scanNonEmptyDirectory cliScanDir = do
   themisScanResult <- runLicenseScanOnDir cliScanDir
   case NE.nonEmpty themisScanResult of
     Nothing -> fatal $ NoLicenseResults cliScanDir
     Just results -> pure results
+
+scanArchive ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
+  ) =>
+  ScannableArchive ->
+  m (NonEmpty LicenseUnit)
+scanArchive file = runFinally $ do
+  -- withArchive' emits Nothing when archive type is not supported.
+  result <- withArchive' (scanFile file) (scanDirectory (Just file))
+  case result of
+    Nothing -> fatal . UnsupportedArchive $ scanFile file
+    Just units -> pure units
 
 uploadVendoredDep ::
   ( Has Diagnostics sig m
@@ -151,6 +229,7 @@ licenseScanSourceUnit ::
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
   , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
   ApiOpts ->

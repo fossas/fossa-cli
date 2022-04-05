@@ -24,7 +24,9 @@ module Control.Effect.Diagnostics (
   -- * Diagnostic helpers
   fatalText,
   fatalOnIOException,
+  fatalOnIOException',
   fatalOnSomeException,
+  fatalOnSomeException',
   fromEither,
   fromEitherShow,
   fromMaybe,
@@ -44,7 +46,7 @@ module Control.Effect.Diagnostics (
 import Control.Algebra as X -- intentionally implicit
 import Control.Effect.Lift (Lift)
 import Control.Effect.Stack (Stack, context)
-import Control.Exception (IOException, SomeException (..))
+import Control.Exception (Exception, IOException, SomeException (..))
 import Control.Exception.Extra (safeCatch)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
@@ -150,15 +152,49 @@ tagError _ (Right a) = pure a
 
 -- | Throw a generic error message on IO error, wrapped in a new 'context' using the provided @Text@.
 fatalOnIOException :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> m a -> m a
-fatalOnIOException ctx go = context ctx $ safeCatch go die'
-  where
-    die' (e :: IOException) = fatalText ("io exception: " <> toText (show e))
+fatalOnIOException = fatalOnIOException' (mappend "io exception: " . toText . show)
 
 -- | Throw a generic error message on any exception, wrapped in a new 'context' using the provided @Text@.
 fatalOnSomeException :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Text -> m a -> m a
-fatalOnSomeException ctx go = context ctx $ safeCatch go die'
-  where
-    die' (e :: SomeException) = fatalText ("caught exception: " <> toText (show e))
+fatalOnSomeException = fatalOnSomeException' (mappend "caught exception: " . toText . show)
+
+-- | Throw an error message on IO error, wrapped in a new 'context' using the provided @Text@.
+fatalOnIOException' ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , ToDiagnostic err
+  ) =>
+  (IOException -> err) ->
+  Text ->
+  m a ->
+  m a
+fatalOnIOException' = fatalOnException
+
+-- | Throw an error message on any Exception, wrapped in a new 'context' using the provided @Text@.
+fatalOnSomeException' ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , ToDiagnostic err
+  ) =>
+  (SomeException -> err) ->
+  Text ->
+  m a ->
+  m a
+fatalOnSomeException' = fatalOnException
+
+-- | Throw an error from a generic exception, wrapped in a new 'context' using the provided text.
+fatalOnException ::
+  forall exc err sig m a.
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , ToDiagnostic err
+  , Exception exc
+  ) =>
+  (exc -> err) ->
+  Text ->
+  m a ->
+  m a
+fatalOnException mangle ctx go = context ctx $ safeCatch go (fatal . mangle)
 
 -- | Run a list of actions, combining the results of successful actions.
 --

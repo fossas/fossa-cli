@@ -34,6 +34,7 @@ import Data.Aeson (
 import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers)
 import Data.Aeson.Types (Parser)
 import Data.Flag (Flag, fromFlag)
+import Data.Functor (($>))
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -41,7 +42,7 @@ import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import DepTypes (DepType (..))
 import Effect.Exec (Exec)
-import Effect.Logger (Logger)
+import Effect.Logger (Logger, logWarn)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
 import Fossa.API.Types (ApiOpts, Organization (orgDoLocalLicenseScan))
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
@@ -108,6 +109,7 @@ toSourceUnit ::
   , Has StickyLogger sig m
   , Has Logger sig m
   , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
   FoundDepsFile ->
@@ -151,6 +153,7 @@ scanAndUpload ::
   , Has StickyLogger sig m
   , Has Logger sig m
   , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
   ApiOpts ->
@@ -162,7 +165,12 @@ scanAndUpload root apiOpts vdeps allowNative = runFossaApiClient apiOpts $ do
     if fromFlag AllowNativeLicenseScan allowNative
       then do
         doNative <- orgDoLocalLicenseScan <$> getOrganization
-        pure if doNative then CLILicenseScan else ArchiveUpload
+        if doNative
+          then pure CLILicenseScan
+          else -- If they've selected native scanning, but the server doesn't support it,
+          -- we should let them know.
+          -- TODO: Add a --forbid-archive-upload CLI flag
+            logWarn "Server does not support native license scanning" $> ArchiveUpload
       else pure ArchiveUpload
 
   let scanner = case archiveOrCLI of
