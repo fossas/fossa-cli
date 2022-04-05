@@ -53,6 +53,7 @@ import Srclib.Types (
   LicenseUnit (..),
   Locator (..),
  )
+import Control.Effect.FossaApiClient (FossaApiClient, getApiOpts)
 
 data LicenseScanErr
   = NoSuccessfulScans
@@ -230,12 +231,13 @@ licenseScanSourceUnit ::
   , Has StickyLogger sig m
   , Has Exec sig m
   , Has ReadFS sig m
+  , Has FossaApiClient sig m
   ) =>
   Path Abs Dir ->
-  ApiOpts ->
   NonEmpty VendoredDependency ->
   m (NonEmpty Locator)
-licenseScanSourceUnit baseDir apiOpts vendoredDeps = do
+licenseScanSourceUnit baseDir vendoredDeps = do
+  apiOpts <- getApiOpts
   -- Users with many instances of vendored dependencies may accidentally have complete duplicates. Remove them.
   let uniqDeps = NE.nub vendoredDeps
 

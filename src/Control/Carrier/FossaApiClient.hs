@@ -34,7 +34,9 @@ runFossaApiClient apiOpts =
           GetOrganization -> Core.getOrganization
           GetProject rev -> Core.getProject rev
           GetScan locator scanId -> ScotlandYard.getScan locator scanId
+          GetSignedUploadUrl rev -> Core.getSignedUploadUrl rev
           UploadAnalysis rev metadata units -> Core.uploadAnalysis rev metadata units
+          UploadArchiveBuild archive -> Core.uploadArchiveBuild archive
           UploadContainerScan revision metadata scan -> Core.uploadContainerScan revision metadata scan
           UploadContributors locator contributors -> Core.uploadContributors locator contributors
       )

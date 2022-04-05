@@ -43,6 +43,8 @@ import Path hiding ((</>))
 import Prettyprinter (Pretty (pretty))
 import Srclib.Types (Locator (..))
 import System.FilePath.Posix
+import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, getSignedUploadUrl, uploadArchiveBuild)
+import App.Types (ProjectRevision(ProjectRevision))
 
 data VendoredDependency = VendoredDependency
   { vendoredName :: Text
@@ -58,11 +60,18 @@ instance FromJSON VendoredDependency where
       <*> (unTextLike <$$> obj .:? "version")
       <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
 
-uploadArchives :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> NonEmpty VendoredDependency -> Path Abs Dir -> Path Abs Dir -> m (NonEmpty Archive)
-uploadArchives apiOpts deps arcDir tmpDir = traverse (compressAndUpload apiOpts arcDir tmpDir) deps
+uploadArchives ::
+  (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m,
+  Has FossaApiClient sig m
+  ) => NonEmpty VendoredDependency -> Path Abs Dir -> Path Abs Dir -> m (NonEmpty Archive)
+uploadArchives deps arcDir tmpDir = traverse (compressAndUpload arcDir tmpDir) deps
 
-compressAndUpload :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => ApiOpts -> Path Abs Dir -> Path Abs Dir -> VendoredDependency -> m Archive
-compressAndUpload apiOpts arcDir tmpDir VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
+compressAndUpload ::
+  (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m
+  , Has Logger sig m
+  , Has FossaApiClient sig m
+  ) => Path Abs Dir -> Path Abs Dir -> VendoredDependency -> m Archive
+compressAndUpload arcDir tmpDir VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
   logSticky $ "Compressing '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
   compressedFile <- sendIO $ compressFile tmpDir arcDir (toString vendoredPath)
 
@@ -70,7 +79,7 @@ compressAndUpload apiOpts arcDir tmpDir VendoredDependency{..} = context "compre
     Nothing -> sendIO $ hashFile compressedFile
     Just version -> pure version
 
-  signedURL <- Fossa.getSignedURL apiOpts depVersion vendoredName
+  signedURL <- getSignedUploadUrl $ ProjectRevision vendoredName depVersion Nothing
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
   res <- Fossa.archiveUpload signedURL compressedFile
@@ -80,8 +89,14 @@ compressAndUpload apiOpts arcDir tmpDir VendoredDependency{..} = context "compre
 
 -- archiveUploadSourceUnit receives a list of vendored dependencies, a root path, and API settings.
 -- Using this information, it uploads each vendored dependency and queues a build for the dependency.
-archiveUploadSourceUnit :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m, Has StickyLogger sig m, Has Logger sig m) => Path Abs Dir -> ApiOpts -> NonEmpty VendoredDependency -> m (NonEmpty Locator)
-archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
+archiveUploadSourceUnit ::
+  ( Has Diag.Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has StickyLogger sig m
+  , Has Logger sig m
+  , Has FossaApiClient sig m
+  ) => Path Abs Dir -> NonEmpty VendoredDependency -> m (NonEmpty Locator)
+archiveUploadSourceUnit baseDir vendoredDeps = do
   -- Users with many instances of vendored dependencies may accidentally have complete duplicates. Remove them.
   let uniqDeps = NonEmpty.nub vendoredDeps
 
@@ -91,16 +106,19 @@ archiveUploadSourceUnit baseDir apiOpts vendoredDeps = do
   unless (null duplicates) $ Diag.fatalText $ duplicateFailureBundle duplicates
 
   -- At this point, we have a good list of deps, so go for it.
-  archives <- withSystemTempDir "fossa-temp" (uploadArchives apiOpts uniqDeps baseDir)
+  archives <- withSystemTempDir "fossa-temp" (uploadArchives uniqDeps baseDir)
 
-  -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
-  -- We don't care about the response here because if the build has already been queued, we get a 401 response.
-  res <- traverse (Fossa.archiveBuildUpload apiOpts) (NonEmpty.toList archives)
+  -- uploadArchiveBuild takes archives without Organization information. This
+  -- orgID is appended when creating the build on the backend.  We don't care
+  -- about the response here because if the build has already been queued, we
+  -- get a 401 response.
+  res <- traverse uploadArchiveBuild (NonEmpty.toList archives)
   logDebug $ pretty $ show res
 
-  -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
-  -- but not when reading from a source unit.
-  orgId <- organizationId <$> Fossa.getOrganization apiOpts
+  -- The organizationID is needed to prefix each locator name. The FOSSA API
+  -- automatically prefixes the locator when queuing the build but not when
+  -- reading from a source unit.
+  orgId <- organizationId <$> getOrganization 
 
   let updateArcName :: Text -> Archive -> Archive
       updateArcName updateText arc = arc{archiveName = updateText <> "/" <> archiveName arc}
@@ -144,6 +162,7 @@ compressFile outputDir directory fileToTar = do
 md5 :: BS.ByteString -> Digest MD5
 md5 = hashlazy
 
+-- TODO: change this to use ReadFS
 hashFile :: FilePath -> IO Text
 hashFile fileToHash = do
   fileContent <- BS.readFile fileToHash

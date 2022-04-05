@@ -20,7 +20,7 @@ import App.Fossa.Config.Analyze (AllowNativeLicenseScan (AllowNativeLicenseScan)
 import App.Fossa.LicenseScanner (licenseScanSourceUnit)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
-import Control.Effect.FossaApiClient (getOrganization)
+import Control.Effect.FossaApiClient (getOrganization, FossaApiClient)
 import Control.Effect.Lift (Has, Lift)
 import Control.Effect.StickyLogger (StickyLogger)
 import Control.Monad (when)
@@ -123,7 +123,7 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts allowN
 
   archiveLocators <- case (maybeApiOpts, NE.nonEmpty vendoredDependencies) of
     -- Don't do anything if there are no vendered deps.
-    (Just apiOpts, Just vdeps) -> NE.toList <$> scanAndUpload root apiOpts vdeps allowNative
+    (Just apiOpts, Just vdeps) -> NE.toList <$> runFossaApiClient apiOpts (scanAndUpload root vdeps allowNative)
     (Nothing, Just vdeps) -> pure $ noSourceUnits $ NE.toList vdeps
     (_, Nothing) -> pure []
 
@@ -153,14 +153,14 @@ scanAndUpload ::
   , Has StickyLogger sig m
   , Has Logger sig m
   , Has Exec sig m
+  , Has FossaApiClient sig m
   , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
-  ApiOpts ->
   NonEmpty VendoredDependency ->
   Flag AllowNativeLicenseScan ->
   m (NonEmpty Locator)
-scanAndUpload root apiOpts vdeps allowNative = runFossaApiClient apiOpts $ do
+scanAndUpload root vdeps allowNative = do
   archiveOrCLI <-
     if fromFlag AllowNativeLicenseScan allowNative
       then do
@@ -176,7 +176,7 @@ scanAndUpload root apiOpts vdeps allowNative = runFossaApiClient apiOpts $ do
   let scanner = case archiveOrCLI of
         ArchiveUpload -> archiveUploadSourceUnit
         CLILicenseScan -> licenseScanSourceUnit
-  scanner root apiOpts vdeps
+  scanner root vdeps
 
 -- | Used when users run `fossa analyze -o` and do not upload their source units.
 noSourceUnits :: [VendoredDependency] -> [Locator]

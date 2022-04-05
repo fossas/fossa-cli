@@ -13,14 +13,30 @@ module Control.Effect.FossaApiClient (
   uploadAnalysis,
   uploadContainerScan,
   uploadContributors,
+  getSignedUploadUrl,
+  uploadArchiveBuild,
 ) where
 
 import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
+import Data.ByteString.Char8 qualified as C8
 import Data.List.NonEmpty qualified as NE
-import Fossa.API.Types (ApiOpts, Build, Contributors, Issues, Organization, Project, ScanId, ScanResponse, UploadResponse)
+import Data.Text (Text)
+import Fossa.API.Types (
+  ApiOpts,
+  Archive,
+  Build,
+  Contributors,
+  Issues,
+  Organization,
+  Project,
+  ScanId,
+  ScanResponse,
+  SignedURL,
+  UploadResponse,
+ )
 import Srclib.Types (Locator, SourceUnit)
 
 data FossaApiClientF a where
@@ -31,11 +47,13 @@ data FossaApiClientF a where
   GetOrganization :: FossaApiClientF Organization
   GetProject :: ProjectRevision -> FossaApiClientF Project
   GetScan :: Locator -> ScanId -> FossaApiClientF ScanResponse
+  GetSignedUploadUrl :: ProjectRevision -> FossaApiClientF SignedURL
   UploadAnalysis ::
     ProjectRevision ->
     ProjectMetadata ->
     NE.NonEmpty SourceUnit ->
     FossaApiClientF UploadResponse
+  UploadArchiveBuild :: Archive -> FossaApiClientF (Maybe C8.ByteString)
   UploadContainerScan ::
     ProjectRevision ->
     ProjectMetadata ->
@@ -87,3 +105,9 @@ getScan locator scanId = sendSimple $ GetScan locator scanId
 
 getLatestScan :: Has FossaApiClient sig m => Locator -> ProjectRevision -> m ScanResponse
 getLatestScan locator revision = sendSimple $ GetLatestScan locator revision
+
+getSignedUploadUrl :: Has FossaApiClient sig m => ProjectRevision -> m SignedURL
+getSignedUploadUrl = sendSimple . GetSignedUploadUrl
+
+uploadArchiveBuild :: Has FossaApiClient sig m => Archive -> m (Maybe C8.ByteString)
+uploadArchiveBuild = sendSimple . UploadArchiveBuild
