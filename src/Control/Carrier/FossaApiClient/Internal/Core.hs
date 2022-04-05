@@ -1,22 +1,40 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Control.Carrier.FossaApiClient.Internal.Core (
   getIssues,
   getLatestBuild,
   getOrganization,
   getProject,
+  getSignedUploadUrl,
+  queueArchiveBuild,
   uploadAnalysis,
+  uploadArchive,
   uploadContainerScan,
   uploadContributors,
 ) where
 
 import App.Fossa.Container.Scan (ContainerScan)
 import App.Fossa.FossaAPIV1 qualified as API
-import App.Types (ProjectMetadata, ProjectRevision)
+import App.Types (ProjectMetadata, ProjectRevision (..))
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.FossaApiClient (ArchiveRevision (..))
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
+import Data.ByteString.Char8 qualified as C8
 import Data.List.NonEmpty qualified as NE
-import Fossa.API.Types (ApiOpts, Build, Contributors, Issues, Organization, Project, UploadResponse)
+import Fossa.API.Types (
+  ApiOpts,
+  Archive,
+  Build,
+  Contributors,
+  Issues,
+  Organization,
+  Project,
+  SignedURL,
+  UploadResponse,
+ )
+import Network.HTTP.Req (LbsResponse)
 import Srclib.Types (Locator, SourceUnit, renderLocator)
 
 -- Fetches an organization from the API
@@ -102,3 +120,35 @@ getIssues ::
 getIssues rev = do
   apiOpts <- ask
   API.getIssues apiOpts rev
+
+getSignedUploadUrl ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  ArchiveRevision ->
+  m SignedURL
+getSignedUploadUrl ArchiveRevision{..} = do
+  apiOpts <- ask
+  API.getSignedURL apiOpts archiveRevision archiveName
+
+queueArchiveBuild ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Archive ->
+  m (Maybe C8.ByteString)
+queueArchiveBuild archive = do
+  apiOpts <- ask
+  API.archiveBuildUpload apiOpts archive
+
+uploadArchive ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  ) =>
+  SignedURL ->
+  FilePath ->
+  m LbsResponse
+uploadArchive =
+  API.archiveUpload
