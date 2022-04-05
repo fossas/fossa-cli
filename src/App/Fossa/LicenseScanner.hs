@@ -18,6 +18,7 @@ import App.Fossa.RunThemis (
  )
 import Control.Carrier.Finally (runFinally)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, fatal, fatalText, fromMaybe, recover)
+import Control.Effect.FossaApiClient (FossaApiClient, getApiOpts)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
 import Control.Monad (unless, void)
@@ -230,12 +231,13 @@ licenseScanSourceUnit ::
   , Has StickyLogger sig m
   , Has Exec sig m
   , Has ReadFS sig m
+  , Has FossaApiClient sig m
   ) =>
   Path Abs Dir ->
-  ApiOpts ->
   NonEmpty VendoredDependency ->
   m (NonEmpty Locator)
-licenseScanSourceUnit baseDir apiOpts vendoredDeps = do
+licenseScanSourceUnit baseDir vendoredDeps = do
+  apiOpts <- getApiOpts
   -- Users with many instances of vendored dependencies may accidentally have complete duplicates. Remove them.
   let uniqDeps = NE.nub vendoredDeps
 

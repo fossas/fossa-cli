@@ -1,17 +1,21 @@
 {-# LANGUAGE GADTs #-}
 
 module Control.Effect.FossaApiClient (
+  ArchiveRevision (..),
   FossaApiClientF (..),
   FossaApiClient,
   getApiOpts,
   getAttribution,
   getIssues,
   getLatestBuild,
+  getLatestScan,
   getOrganization,
   getProject,
   getScan,
-  getLatestScan,
+  getSignedUploadUrl,
+  queueArchiveBuild,
   uploadAnalysis,
+  uploadArchive,
   uploadContainerScan,
   uploadContributors,
 ) where
@@ -21,10 +25,30 @@ import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
+import Data.ByteString.Char8 qualified as C8
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
-import Fossa.API.Types (ApiOpts, Build, Contributors, Issues, Organization, Project, ScanId, ScanResponse, UploadResponse)
+import Fossa.API.Types (
+  ApiOpts,
+  Archive,
+  Build,
+  Contributors,
+  Issues,
+  Organization,
+  Project,
+  ScanId,
+  ScanResponse,
+  SignedURL,
+  UploadResponse,
+ )
+import Network.HTTP.Req (LbsResponse)
 import Srclib.Types (Locator, SourceUnit)
+
+data ArchiveRevision = ArchiveRevision
+  { archiveName :: Text
+  , archiveRevision :: Text
+  }
+  deriving (Show, Eq, Ord)
 
 data FossaApiClientF a where
   GetApiOpts :: FossaApiClientF ApiOpts
@@ -35,11 +59,14 @@ data FossaApiClientF a where
   GetOrganization :: FossaApiClientF Organization
   GetProject :: ProjectRevision -> FossaApiClientF Project
   GetScan :: Locator -> ScanId -> FossaApiClientF ScanResponse
+  GetSignedUploadUrl :: ArchiveRevision -> FossaApiClientF SignedURL
+  QueueArchiveBuild :: Archive -> FossaApiClientF (Maybe C8.ByteString)
   UploadAnalysis ::
     ProjectRevision ->
     ProjectMetadata ->
     NE.NonEmpty SourceUnit ->
     FossaApiClientF UploadResponse
+  UploadArchive :: SignedURL -> FilePath -> FossaApiClientF LbsResponse
   UploadContainerScan ::
     ProjectRevision ->
     ProjectMetadata ->
@@ -94,3 +121,12 @@ getLatestScan locator revision = sendSimple $ GetLatestScan locator revision
 
 getAttribution :: Has FossaApiClient sig m => ProjectRevision -> ReportOutputFormat -> m Text
 getAttribution revision format = sendSimple $ GetAttribution revision format
+
+getSignedUploadUrl :: Has FossaApiClient sig m => ArchiveRevision -> m SignedURL
+getSignedUploadUrl = sendSimple . GetSignedUploadUrl
+
+uploadArchive :: Has FossaApiClient sig m => SignedURL -> FilePath -> m LbsResponse
+uploadArchive dest path = sendSimple (UploadArchive dest path)
+
+queueArchiveBuild :: Has FossaApiClient sig m => Archive -> m (Maybe C8.ByteString)
+queueArchiveBuild = sendSimple . QueueArchiveBuild
