@@ -10,6 +10,7 @@ module App.Fossa.ArchiveUploader (
   VendoredDependency (..),
 ) where
 
+import App.Fossa.FossaAPIV1 (archiveUpload)
 import App.Types (ProjectRevision (ProjectRevision))
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
@@ -44,7 +45,6 @@ import Path hiding ((</>))
 import Prettyprinter (Pretty (pretty))
 import Srclib.Types (Locator (..))
 import System.FilePath.Posix
-import App.Fossa.FossaAPIV1 (archiveUpload)
 
 data VendoredDependency = VendoredDependency
   { vendoredName :: Text
