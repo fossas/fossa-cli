@@ -5,6 +5,7 @@ module Control.Carrier.FossaApiClient (FossaApiClientC, runFossaApiClient) where
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.Core qualified as Core
 import Control.Carrier.FossaApiClient.Internal.ScotlandYard qualified as ScotlandYard
+import Control.Carrier.FossaApiClient.Internal.VSI qualified as VSI
 import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Effect.Diagnostics (Diagnostics)
@@ -27,6 +28,7 @@ runFossaApiClient apiOpts =
   runReader apiOpts
     . interpret
       ( \case
+          AssertUserDefinedBinaries meta fingerprints -> VSI.assertUserDefinedBinaries meta fingerprints
           GetApiOpts -> pure apiOpts
           GetIssues rev -> Core.getIssues rev
           GetLatestBuild rev -> Core.getLatestBuild rev
