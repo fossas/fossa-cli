@@ -23,7 +23,6 @@ import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
 import Data.ByteString.Char8 qualified as C8
 import Data.List.NonEmpty qualified as NE
-import Data.Text (Text)
 import Fossa.API.Types (
   ApiOpts,
   Archive,

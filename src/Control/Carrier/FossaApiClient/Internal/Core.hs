@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+
 module Control.Carrier.FossaApiClient.Internal.Core (
   getIssues,
   getLatestBuild,
@@ -13,14 +14,13 @@ module Control.Carrier.FossaApiClient.Internal.Core (
 
 import App.Fossa.Container.Scan (ContainerScan)
 import App.Fossa.FossaAPIV1 qualified as API
-import App.Types (ProjectMetadata, ProjectRevision(..))
+import App.Types (ProjectMetadata, ProjectRevision (..))
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Data.ByteString.Char8 qualified as C8
 import Data.List.NonEmpty qualified as NE
-import Data.Text (Text)
 import Fossa.API.Types (
   ApiOpts,
   Archive,

@@ -18,6 +18,7 @@ import App.Fossa.RunThemis (
  )
 import Control.Carrier.Finally (runFinally)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, fatal, fatalText, fromMaybe, recover)
+import Control.Effect.FossaApiClient (FossaApiClient, getApiOpts)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
 import Control.Monad (unless, void)
@@ -53,7 +54,6 @@ import Srclib.Types (
   LicenseUnit (..),
   Locator (..),
  )
-import Control.Effect.FossaApiClient (FossaApiClient, getApiOpts)
 
 data LicenseScanErr
   = NoSuccessfulScans
