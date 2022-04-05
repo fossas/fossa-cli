@@ -143,6 +143,7 @@ data ContainerScan = ContainerScan
   , imageTag :: Text
   , imageDigest :: Text
   }
+  deriving (Show, Eq)
 
 instance ToJSON ContainerScan where
   toJSON scan = object ["image" .= imageData scan]
@@ -153,6 +154,7 @@ data ContainerImage = ContainerImage
   , imageOsRelease :: Text
   , imageLayers :: [LayerTarget]
   }
+  deriving (Show, Eq)
 
 instance ToJSON ContainerImage where
   toJSON ContainerImage{..} =
@@ -184,6 +186,7 @@ data ContainerArtifact = ContainerArtifact
   , conArtifactMetadataType :: Text
   , conArtifactMetadata :: Map Text Value
   }
+  deriving (Show, Eq)
 
 instance ToJSON ContainerArtifact where
   toJSON ContainerArtifact{..} =

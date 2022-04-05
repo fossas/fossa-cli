@@ -1,12 +1,14 @@
 module Control.Carrier.FossaApiClient.Internal.Core (
+  getIssues,
+  getLatestBuild,
   getOrganization,
   getProject,
   uploadAnalysis,
+  uploadContainerScan,
   uploadContributors,
-  getLatestBuild,
-  getIssues,
 ) where
 
+import App.Fossa.Container.Scan (ContainerScan)
 import App.Fossa.FossaAPIV1 qualified as API
 import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
@@ -53,6 +55,19 @@ uploadAnalysis ::
 uploadAnalysis revision metadata units = do
   apiOpts <- ask
   API.uploadAnalysis apiOpts revision metadata units
+
+uploadContainerScan ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  ProjectRevision ->
+  ProjectMetadata ->
+  ContainerScan ->
+  m UploadResponse
+uploadContainerScan revision metadata scan = do
+  apiOpts <- ask
+  API.uploadContainerScan apiOpts revision metadata scan
 
 uploadContributors ::
   ( Has (Lift IO) sig m

@@ -11,9 +11,11 @@ module Control.Effect.FossaApiClient (
   getScan,
   getLatestScan,
   uploadAnalysis,
+  uploadContainerScan,
   uploadContributors,
 ) where
 
+import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
@@ -33,6 +35,11 @@ data FossaApiClientF a where
     ProjectRevision ->
     ProjectMetadata ->
     NE.NonEmpty SourceUnit ->
+    FossaApiClientF UploadResponse
+  UploadContainerScan ::
+    ProjectRevision ->
+    ProjectMetadata ->
+    ContainerScan ->
     FossaApiClientF UploadResponse
   UploadContributors ::
     Locator ->
@@ -60,6 +67,10 @@ getApiOpts = sendSimple GetApiOpts
 -- | Uploads the results of an analysis and associates it to a project
 uploadAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NE.NonEmpty SourceUnit -> m UploadResponse
 uploadAnalysis revision metadata units = sendSimple (UploadAnalysis revision metadata units)
+
+-- | Uploads results of container analysis to a project
+uploadContainerScan :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> ContainerScan -> m UploadResponse
+uploadContainerScan revision metadata scan = sendSimple (UploadContainerScan revision metadata scan)
 
 -- | Associates contributors to a specific locator
 uploadContributors :: (Has FossaApiClient sig m) => Locator -> Contributors -> m ()
