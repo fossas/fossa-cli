@@ -6,16 +6,16 @@ module Control.Effect.FossaApiClient (
   getApiOpts,
   getIssues,
   getLatestBuild,
+  getLatestScan,
   getOrganization,
   getProject,
   getScan,
-  getLatestScan,
-  uploadAnalysis,
-  uploadContainerScan,
-  uploadContributors,
   getSignedUploadUrl,
   queueArchiveBuild,
+  uploadAnalysis,
   uploadArchive,
+  uploadContainerScan,
+  uploadContributors,
 ) where
 
 import App.Fossa.Container.Scan (ContainerScan (..))
@@ -49,13 +49,13 @@ data FossaApiClientF a where
   GetProject :: ProjectRevision -> FossaApiClientF Project
   GetScan :: Locator -> ScanId -> FossaApiClientF ScanResponse
   GetSignedUploadUrl :: ProjectRevision -> FossaApiClientF SignedURL
+  QueueArchiveBuild :: Archive -> FossaApiClientF (Maybe C8.ByteString)
   UploadAnalysis ::
     ProjectRevision ->
     ProjectMetadata ->
     NE.NonEmpty SourceUnit ->
     FossaApiClientF UploadResponse
   UploadArchive :: SignedURL -> FilePath -> FossaApiClientF LbsResponse
-  QueueArchiveBuild :: Archive -> FossaApiClientF (Maybe C8.ByteString)
   UploadContainerScan ::
     ProjectRevision ->
     ProjectMetadata ->

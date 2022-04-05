@@ -6,11 +6,11 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   getOrganization,
   getProject,
   getSignedUploadUrl,
-  uploadAnalysis,
   queueArchiveBuild,
+  uploadAnalysis,
+  uploadArchive,
   uploadContainerScan,
   uploadContributors,
-  uploadArchive,
 ) where
 
 import App.Fossa.Container.Scan (ContainerScan)
