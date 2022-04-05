@@ -183,25 +183,29 @@ matchExpectation _ _ = Nothing
 handleRequest ::
   ( Has (State [ApiExpectation]) sig m
   ) =>
+  forall a.
   FossaApiClientF a ->
   m (Maybe (ApiResult a))
 handleRequest req = do
   expectations <- get
-  case testExpectations expectations of
+  case testExpectations req expectations of
     Just (resp, expectations') -> do
       put expectations'
       pure (Just resp)
     Nothing ->
       pure Nothing
-  where
-    testExpectations [] = Nothing
-    testExpectations (expectation : rest) =
-      case matchExpectation req expectation of
-        Nothing -> fmap (expectation :) <$> testExpectations rest
-        Just resp ->
-          if isSingular expectation
-            then Just (resp, rest)
-            else Just (resp, expectation : rest)
+
+-- | Tests a request against a list of expectations and returns the result and
+-- remaining expectations.
+testExpectations :: FossaApiClientF a -> [ApiExpectation] -> Maybe (ApiResult a, [ApiExpectation])
+testExpectations _ [] = Nothing
+testExpectations req (expectation : rest) =
+  case matchExpectation req expectation of
+    Nothing -> fmap (expectation :) <$> testExpectations req rest
+    Just resp ->
+      if isSingular expectation
+        then Just (resp, rest)
+        else Just (resp, expectation : rest)
 
 type FossaApiClientMockC = SimpleC FossaApiClientF
 
@@ -218,6 +222,12 @@ runApiWithMock f = do
   assertAllSatisfied
   pure result
   where
+    runRequest ::
+      ( Has Diagnostics sig m
+      , Has MockApi sig m
+      ) =>
+      FossaApiClientF a ->
+      m a
     runRequest req = do
       apiResult <- runExpectations req
       case apiResult of
