@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.2.3
 - nodejs: Fixed a bug where some dev dependencies weren't removed during shrinking. ([#859](https://github.com/fossas/fossa-cli/pull/859))
 
 ## v3.2.2
