@@ -14,8 +14,8 @@ module Control.Effect.FossaApiClient (
   uploadContainerScan,
   uploadContributors,
   getSignedUploadUrl,
-  uploadArchiveBuild,
-) where
+  queueArchiveBuild,
+uploadArchive) where
 
 import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Types (ProjectMetadata, ProjectRevision)
@@ -37,6 +37,7 @@ import Fossa.API.Types (
   UploadResponse,
  )
 import Srclib.Types (Locator, SourceUnit)
+import Network.HTTP.Req (LbsResponse)
 
 data FossaApiClientF a where
   GetApiOpts :: FossaApiClientF ApiOpts
@@ -52,7 +53,8 @@ data FossaApiClientF a where
     ProjectMetadata ->
     NE.NonEmpty SourceUnit ->
     FossaApiClientF UploadResponse
-  UploadArchiveBuild :: Archive -> FossaApiClientF (Maybe C8.ByteString)
+  UploadArchive :: SignedURL -> FilePath -> FossaApiClientF LbsResponse
+  QueueArchiveBuild :: Archive -> FossaApiClientF (Maybe C8.ByteString)
   UploadContainerScan ::
     ProjectRevision ->
     ProjectMetadata ->
@@ -108,5 +110,8 @@ getLatestScan locator revision = sendSimple $ GetLatestScan locator revision
 getSignedUploadUrl :: Has FossaApiClient sig m => ProjectRevision -> m SignedURL
 getSignedUploadUrl = sendSimple . GetSignedUploadUrl
 
-uploadArchiveBuild :: Has FossaApiClient sig m => Archive -> m (Maybe C8.ByteString)
-uploadArchiveBuild = sendSimple . UploadArchiveBuild
+uploadArchive :: Has FossaApiClient sig m => SignedURL -> FilePath -> m LbsResponse 
+uploadArchive dest path = sendSimple (UploadArchive dest path)
+
+queueArchiveBuild :: Has FossaApiClient sig m => Archive -> m (Maybe C8.ByteString)
+queueArchiveBuild = sendSimple . QueueArchiveBuild

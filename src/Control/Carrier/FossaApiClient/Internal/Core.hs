@@ -7,7 +7,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   getProject,
   getSignedUploadUrl,
   uploadAnalysis,
-  uploadArchiveBuild,
+  queueArchiveBuild,
   uploadContainerScan,
   uploadContributors,
 ) where
@@ -129,13 +129,13 @@ getSignedUploadUrl ProjectRevision{..} = do
   apiOpts <- ask
   API.getSignedURL apiOpts projectRevision projectName
 
-uploadArchiveBuild ::
+queueArchiveBuild ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   Archive ->
   m (Maybe C8.ByteString)
-uploadArchiveBuild archive = do
+queueArchiveBuild archive = do
   apiOpts <- ask
   API.archiveBuildUpload apiOpts archive

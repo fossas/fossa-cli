@@ -10,14 +10,13 @@ module App.Fossa.ArchiveUploader (
   VendoredDependency (..),
 ) where
 
-import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Types (ProjectRevision (ProjectRevision))
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.StickyLogger (StickyLogger, logSticky)
 import Control.Effect.Diagnostics (context)
-import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, getSignedUploadUrl, uploadArchiveBuild)
+import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, getSignedUploadUrl, queueArchiveBuild)
 import Control.Effect.Lift
 import Control.Effect.Path (withSystemTempDir)
 import Control.Monad (unless)
@@ -45,6 +44,7 @@ import Path hiding ((</>))
 import Prettyprinter (Pretty (pretty))
 import Srclib.Types (Locator (..))
 import System.FilePath.Posix
+import App.Fossa.FossaAPIV1 (archiveUpload)
 
 data VendoredDependency = VendoredDependency
   { vendoredName :: Text
@@ -95,7 +95,7 @@ compressAndUpload arcDir tmpDir VendoredDependency{..} = context "compressing an
   signedURL <- getSignedUploadUrl $ ProjectRevision vendoredName depVersion Nothing
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
-  res <- Fossa.archiveUpload signedURL compressedFile
+  res <- archiveUpload signedURL compressedFile
   logDebug $ pretty $ show res
 
   pure $ Archive vendoredName depVersion
@@ -124,11 +124,11 @@ archiveUploadSourceUnit baseDir vendoredDeps = do
   -- At this point, we have a good list of deps, so go for it.
   archives <- withSystemTempDir "fossa-temp" (uploadArchives uniqDeps baseDir)
 
-  -- uploadArchiveBuild takes archives without Organization information. This
+  -- queueArchiveBuild takes archives without Organization information. This
   -- orgID is appended when creating the build on the backend.  We don't care
   -- about the response here because if the build has already been queued, we
   -- get a 401 response.
-  res <- traverse uploadArchiveBuild (NonEmpty.toList archives)
+  res <- traverse queueArchiveBuild (NonEmpty.toList archives)
   logDebug $ pretty $ show res
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API
