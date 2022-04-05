@@ -10,14 +10,13 @@ module App.Fossa.ArchiveUploader (
   VendoredDependency (..),
 ) where
 
-import App.Fossa.FossaAPIV1 (archiveUpload)
 import App.Types (ProjectRevision (ProjectRevision))
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.StickyLogger (StickyLogger, logSticky)
 import Control.Effect.Diagnostics (context)
-import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, getSignedUploadUrl, queueArchiveBuild)
+import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, getSignedUploadUrl, queueArchiveBuild, uploadArchive)
 import Control.Effect.Lift
 import Control.Effect.Path (withSystemTempDir)
 import Control.Monad (unless)
@@ -95,7 +94,7 @@ compressAndUpload arcDir tmpDir VendoredDependency{..} = context "compressing an
   signedURL <- getSignedUploadUrl $ ProjectRevision vendoredName depVersion Nothing
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
-  res <- archiveUpload signedURL compressedFile
+  res <- uploadArchive signedURL compressedFile
   logDebug $ pretty $ show res
 
   pure $ Archive vendoredName depVersion

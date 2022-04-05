@@ -10,6 +10,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   queueArchiveBuild,
   uploadContainerScan,
   uploadContributors,
+  uploadArchive,
 ) where
 
 import App.Fossa.Container.Scan (ContainerScan)
@@ -32,6 +33,7 @@ import Fossa.API.Types (
   SignedURL,
   UploadResponse,
  )
+import Network.HTTP.Req (LbsResponse)
 import Srclib.Types (Locator, SourceUnit, renderLocator)
 
 -- Fetches an organization from the API
@@ -139,3 +141,13 @@ queueArchiveBuild ::
 queueArchiveBuild archive = do
   apiOpts <- ask
   API.archiveBuildUpload apiOpts archive
+
+uploadArchive ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  ) =>
+  SignedURL ->
+  FilePath ->
+  m LbsResponse
+uploadArchive =
+  API.archiveUpload

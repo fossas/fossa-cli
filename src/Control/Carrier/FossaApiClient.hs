@@ -39,4 +39,5 @@ runFossaApiClient apiOpts =
           QueueArchiveBuild archive -> Core.queueArchiveBuild archive
           UploadContainerScan revision metadata scan -> Core.uploadContainerScan revision metadata scan
           UploadContributors locator contributors -> Core.uploadContributors locator contributors
+          UploadArchive url path -> Core.uploadArchive url path
       )
