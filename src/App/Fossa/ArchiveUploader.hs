@@ -177,7 +177,6 @@ compressFile outputDir directory fileToTar = do
 md5 :: BS.ByteString -> Digest MD5
 md5 = hashlazy
 
--- TODO: change this to use ReadFS
 hashFile :: FilePath -> IO Text
 hashFile fileToHash = do
   fileContent <- BS.readFile fileToHash
