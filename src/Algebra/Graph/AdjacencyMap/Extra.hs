@@ -39,16 +39,18 @@ shrink f gr = foldr shrinkSingle gr filteredOutVertices
 shrinkSingle :: forall a. Ord a => a -> AM.AdjacencyMap a -> AM.AdjacencyMap a
 shrinkSingle vert gr = AM.overlay (AM.removeVertex vert gr) inducedEdges
   where
+    -- If @vert@ has an edge to itself, it would be added back in by @overlay@
+    -- as an induced edge so delete vert from it's pre/post set
     inducedEdges :: AM.AdjacencyMap a
     inducedEdges =
       AM.edges
         [ (pre, post)
-        | pre <- Set.toList (AM.preSet vert gr)
-        , post <- Set.toList (AM.postSet vert gr)
+        | pre <- Set.toList . Set.delete vert $ AM.preSet vert gr
+        , post <- Set.toList . Set.delete vert $ AM.postSet vert gr
         ]
 
--- | Split graph into distinct sibling graphs via nodes that have no incoming edges.
--- Returns 'Nothing' if graph is cyclic.
+-- | Split graph into distinct sibling graphs (unconnected subgraphs) via nodes
+-- that have no incoming edges.  Returns 'Nothing' if graph is cyclic.
 --
 -- @
 -- splitGraph 'edges' [(1, 2), (2, 3), (4, 5)] = ['edges' [(1, 2), (2, 3)], 'edge' 4 5]
