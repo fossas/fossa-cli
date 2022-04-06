@@ -8,8 +8,10 @@ module App.Fossa.LicenseScanner (
 import App.Fossa.ArchiveUploader (
   VendoredDependency (..),
   arcToLocator,
+  compressFile,
   duplicateFailureBundle,
   duplicateNames,
+  hashFile,
  )
 import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)
 import App.Fossa.FossaAPIV1 qualified as Fossa
@@ -19,16 +21,16 @@ import App.Fossa.RunThemis (
 import Control.Carrier.Finally (runFinally)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, fatal, fatalText, fromMaybe, recover)
 import Control.Effect.FossaApiClient (FossaApiClient, getApiOpts)
-import Control.Effect.Lift (Lift)
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
 import Control.Monad (unless, void)
-import Crypto.Hash (Digest, MD5, hash)
-import Data.ByteString qualified as B
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Semigroup (Any (..))
-import Data.String.Conversion (encodeUtf8, toString, toText)
+import Data.String.Conversion (toString, toText)
+import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Discovery.Archive (withArchive')
 import Discovery.Walk (WalkStep (WalkContinue, WalkStop), walk')
@@ -96,8 +98,10 @@ runThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs D
 runThemis themisBins scanDir = do
   context "Running license scan binary" $ execThemis themisBins scanDir
 
-md5 :: B.ByteString -> Digest MD5
-md5 = hash
+calculateVendoredHash :: Path Abs Dir -> Text -> Path Abs Dir -> IO Text
+calculateVendoredHash baseDir vendoredPath tmpDir = do
+  compressedFilePath <- sendIO $ compressFile tmpDir baseDir (toString vendoredPath)
+  hashFile compressedFilePath
 
 scanAndUploadVendoredDep ::
   ( Has Diagnostics sig m
@@ -114,7 +118,7 @@ scanAndUploadVendoredDep apiOpts baseDir vdep = context "Processing vendored dep
   maybeLicenseUnits <- recover $ scanVendoredDep baseDir vdep
   case maybeLicenseUnits of
     Nothing -> pure Nothing
-    Just licenseUnits -> uploadVendoredDep apiOpts vdep licenseUnits
+    Just licenseUnits -> uploadVendoredDep baseDir apiOpts vdep licenseUnits
 
 scanVendoredDep ::
   ( Has Diagnostics sig m
@@ -200,11 +204,12 @@ uploadVendoredDep ::
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
   ) =>
+  Path Abs Dir ->
   ApiOpts ->
   VendoredDependency ->
   NE.NonEmpty LicenseUnit ->
   m (Maybe Archive)
-uploadVendoredDep apiOpts VendoredDependency{..} themisScanResult = do
+uploadVendoredDep baseDir apiOpts VendoredDependency{..} themisScanResult = do
   let licenseSourceUnit =
         LicenseSourceUnit
           { licenseSourceUnitName = vendoredPath
@@ -213,7 +218,7 @@ uploadVendoredDep apiOpts VendoredDependency{..} themisScanResult = do
           }
 
   depVersion <- case vendoredVersion of
-    Nothing -> pure . showT . md5 . encodeUtf8 . show . NE.sort $ themisScanResult
+    Nothing -> sendIO $ withSystemTempDir "fossa-temp" (calculateVendoredHash baseDir vendoredPath)
     Just version -> pure version
 
   signedURL <- Fossa.getSignedLicenseScanURL apiOpts depVersion vendoredName
