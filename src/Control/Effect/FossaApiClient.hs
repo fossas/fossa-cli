@@ -17,9 +17,12 @@ module Control.Effect.FossaApiClient (
   uploadArchive,
   uploadContainerScan,
   uploadContributors,
+  assertUserDefinedBinaries,
 ) where
 
 import App.Fossa.Container.Scan (ContainerScan (..))
+import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
+import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
@@ -49,6 +52,7 @@ data ArchiveRevision = ArchiveRevision
   deriving (Show, Eq, Ord)
 
 data FossaApiClientF a where
+  AssertUserDefinedBinaries :: IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> FossaApiClientF ()
   GetApiOpts :: FossaApiClientF ApiOpts
   GetIssues :: ProjectRevision -> FossaApiClientF Issues
   GetLatestBuild :: ProjectRevision -> FossaApiClientF Build
@@ -124,3 +128,6 @@ uploadArchive dest path = sendSimple (UploadArchive dest path)
 
 queueArchiveBuild :: Has FossaApiClient sig m => Archive -> m (Maybe C8.ByteString)
 queueArchiveBuild = sendSimple . QueueArchiveBuild
+
+assertUserDefinedBinaries :: Has FossaApiClient sig m => IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> m ()
+assertUserDefinedBinaries meta fprints = sendSimple (AssertUserDefinedBinaries meta fprints)

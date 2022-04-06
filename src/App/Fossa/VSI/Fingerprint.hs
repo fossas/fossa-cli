@@ -37,7 +37,7 @@ import Path (Abs, Dir, File, Path, toFilePath)
 --   @k@ - Kind, the kind of fingerprint computed.
 --
 -- For ease of implementation, the backing representation of a @Fingerprint@ instance is a @Base16@ encoded @Text@.
-newtype Fingerprint k = Fingerprint Text deriving (ToJSON)
+newtype Fingerprint k = Fingerprint Text deriving (Show, Eq, ToJSON)
 
 type role Fingerprint nominal
 

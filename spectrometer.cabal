@@ -231,6 +231,7 @@ library
     Control.Carrier.FossaApiClient
     Control.Carrier.FossaApiClient.Internal.Core
     Control.Carrier.FossaApiClient.Internal.ScotlandYard
+    Control.Carrier.FossaApiClient.Internal.VSI
     Control.Carrier.Git
     Control.Carrier.Output.IO
     Control.Carrier.Simple
