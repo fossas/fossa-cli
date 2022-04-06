@@ -29,6 +29,7 @@ runFossaApiClient apiOpts =
     . interpret
       ( \case
           AssertUserDefinedBinaries meta fingerprints -> VSI.assertUserDefinedBinaries meta fingerprints
+          AssertRevisionBinaries locator fingerprints -> VSI.assertRevisionBinaries locator fingerprints
           GetApiOpts -> pure apiOpts
           GetIssues rev -> Core.getIssues rev
           GetLatestBuild rev -> Core.getLatestBuild rev

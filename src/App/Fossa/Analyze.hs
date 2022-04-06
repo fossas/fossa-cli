@@ -77,6 +77,7 @@ import Control.Carrier.TaskPool (
  )
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Exception (Lift)
+import Control.Effect.FossaApiClient (FossaApiClient)
 import Control.Effect.Git (Git)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
@@ -307,9 +308,12 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     FilteredAll -> Diag.fatal ErrFilteredAllProjects
     FoundSome sourceUnits -> case destination of
       OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult includeAll additionalSourceUnits filteredProjects
-      UploadScan apiOpts metadata -> Diag.context "upload-results" $ do
-        locator <- runFossaApiClient apiOpts $ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision sourceUnits
-        doAssertRevisionBinaries iatAssertion apiOpts locator
+      UploadScan apiOpts metadata ->
+        Diag.context "upload-results"
+          . runFossaApiClient apiOpts
+          $ do
+            locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision sourceUnits
+            doAssertRevisionBinaries iatAssertion locator
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
 toProjectResult (SkippedDueToProvidedFilter _) = Nothing
@@ -361,9 +365,19 @@ analyzeDiscoverBinaries dir filters = do
       logInfo "Discovering binary files as dependencies"
       analyzeBinaryDeps dir filters
 
-doAssertRevisionBinaries :: (Has Diag.Diagnostics sig m, Has ReadFS sig m, Has (Lift IO) sig m, Has Logger sig m) => IATAssertion -> ApiOpts -> Locator -> m ()
-doAssertRevisionBinaries (IATAssertion (Just dir)) apiOpts locator = assertRevisionBinaries dir apiOpts locator
-doAssertRevisionBinaries _ _ _ = pure ()
+doAssertRevisionBinaries ::
+  ( Has Diag.Diagnostics sig m
+  , Has FossaApiClient sig m
+  , Has ReadFS sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  ) =>
+  IATAssertion ->
+  Locator ->
+  m ()
+doAssertRevisionBinaries (IATAssertion (Just dir)) locator =
+  assertRevisionBinaries dir locator
+doAssertRevisionBinaries _ _ = pure ()
 
 doAnalyzeDynamicLinkedBinary ::
   ( Has Diag.Diagnostics sig m

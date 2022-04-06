@@ -18,6 +18,7 @@ module Control.Effect.FossaApiClient (
   uploadContainerScan,
   uploadContributors,
   assertUserDefinedBinaries,
+  assertRevisionBinaries,
 ) where
 
 import App.Fossa.Container.Scan (ContainerScan (..))
@@ -53,6 +54,7 @@ data ArchiveRevision = ArchiveRevision
 
 data FossaApiClientF a where
   AssertUserDefinedBinaries :: IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> FossaApiClientF ()
+  AssertRevisionBinaries :: Locator -> [Fingerprint Raw] -> FossaApiClientF ()
   GetApiOpts :: FossaApiClientF ApiOpts
   GetIssues :: ProjectRevision -> FossaApiClientF Issues
   GetLatestBuild :: ProjectRevision -> FossaApiClientF Build
@@ -131,3 +133,6 @@ queueArchiveBuild = sendSimple . QueueArchiveBuild
 
 assertUserDefinedBinaries :: Has FossaApiClient sig m => IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> m ()
 assertUserDefinedBinaries meta fprints = sendSimple (AssertUserDefinedBinaries meta fprints)
+
+assertRevisionBinaries :: Has FossaApiClient sig m => Locator -> [Fingerprint Raw] -> m ()
+assertRevisionBinaries locator fprints = sendSimple (AssertRevisionBinaries locator fprints)
