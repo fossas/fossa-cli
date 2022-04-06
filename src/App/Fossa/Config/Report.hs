@@ -4,6 +4,7 @@ module App.Fossa.Config.Report (
   ReportConfig (..),
   ReportCliOptions,
   ReportOutputFormat (..),
+  ReportType (..),
   mkSubCommand,
 ) where
 

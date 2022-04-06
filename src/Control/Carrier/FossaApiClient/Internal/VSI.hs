@@ -1,13 +1,13 @@
 module Control.Carrier.FossaApiClient.Internal.VSI (
-  assertUserDefinedBinaries,
   assertRevisionBinaries,
+  assertUserDefinedBinaries,
 ) where
 
 import App.Fossa.FossaAPIV1 qualified as API
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Fossa.API.Types (ApiOpts)

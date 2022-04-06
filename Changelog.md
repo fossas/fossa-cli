@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.2.3
+- nodejs: Fixed a bug where some dev dependencies weren't removed during shrinking. ([#859](https://github.com/fossas/fossa-cli/pull/859))
+
 ## v3.2.2
 
 - nodejs: Fix a bug where cycles involved peer dependencies would cause an infinite loop. ([#870](https://github.com/fossas/fossa-cli/pull/870))

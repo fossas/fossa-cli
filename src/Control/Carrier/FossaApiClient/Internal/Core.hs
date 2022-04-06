@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Control.Carrier.FossaApiClient.Internal.Core (
+  getAttribution,
   getIssues,
   getLatestBuild,
   getOrganization,
@@ -13,6 +14,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   uploadContributors,
 ) where
 
+import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Container.Scan (ContainerScan)
 import App.Fossa.FossaAPIV1 qualified as API
 import App.Types (ProjectMetadata, ProjectRevision (..))
@@ -23,6 +25,7 @@ import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Data.ByteString.Char8 qualified as C8
 import Data.List.NonEmpty qualified as NE
+import Data.Text (Text)
 import Fossa.API.Types (
   ApiOpts,
   Archive,
@@ -120,6 +123,18 @@ getIssues ::
 getIssues rev = do
   apiOpts <- ask
   API.getIssues apiOpts rev
+
+getAttribution ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  ProjectRevision ->
+  ReportOutputFormat ->
+  m Text
+getAttribution revision format = do
+  apiOpts <- ask
+  API.getAttribution apiOpts revision format
 
 getSignedUploadUrl ::
   ( Has (Lift IO) sig m

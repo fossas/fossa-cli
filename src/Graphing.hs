@@ -119,7 +119,7 @@ induce = filter
 induceJust :: Ord a => Graphing (Maybe a) -> Graphing a
 induceJust = Graphing . AM.induceJust . AM.gmap sequenceA . unGraphing
 
--- | Filter Graphing elements
+-- | Filter Graphing elements, Root is always included.
 filter :: forall ty. (ty -> Bool) -> Graphing ty -> Graphing ty
 filter f = Graphing . AM.induce f' . unGraphing
   where
@@ -269,6 +269,21 @@ deep = Graphing . AM.vertex . Node
 deeps :: Ord ty => [ty] -> Graphing ty
 deeps = Graphing . AM.vertices . map Node
 
+unfold' :: forall dep res. Ord res => ([res] -> Graphing res) -> [dep] -> (dep -> [dep]) -> (dep -> res) -> Graphing res
+unfold' storeSeedsAs seed getChildren toVertex = storeSeedsAs directNodes <> edges builtEdges
+  where
+    directNodes :: [res]
+    directNodes = map toVertex seed
+
+    builtEdges :: [(res, res)]
+    builtEdges = map (bimap toVertex toVertex) (edgesFrom seed)
+
+    edgesFrom :: [dep] -> [(dep, dep)]
+    edgesFrom nodes = do
+      node <- nodes
+      let children = getChildren node
+      map (node,) children ++ edgesFrom children
+
 -- | @unfold direct getDeps toDependency@ unfolds a graph, given:
 --
 -- - The @direct@ dependencies in the graph
@@ -279,19 +294,7 @@ deeps = Graphing . AM.vertices . map Node
 --
 -- __Unfold does not work for recursive inputs__
 unfold :: forall dep res. Ord res => [dep] -> (dep -> [dep]) -> (dep -> res) -> Graphing res
-unfold seed getDeps toDependency = directs directNodes <> edges builtEdges
-  where
-    directNodes :: [res]
-    directNodes = map toDependency seed
-
-    builtEdges :: [(res, res)]
-    builtEdges = map (bimap toDependency toDependency) (edgesFrom seed)
-
-    edgesFrom :: [dep] -> [(dep, dep)]
-    edgesFrom nodes = do
-      node <- nodes
-      let children = getDeps node
-      map (node,) children ++ edgesFrom children
+unfold = unfold' directs
 
 -- | @unfoldDeep dep getDeps toDependency@ unfolds a graph, given:
 --
@@ -304,25 +307,14 @@ unfold seed getDeps toDependency = directs directNodes <> edges builtEdges
 -- __unfoldDeep does not work for recursive inputs__
 -- __unfoldDeep marks all dependencies as deeps__
 unfoldDeep :: forall dep res. Ord res => [dep] -> (dep -> [dep]) -> (dep -> res) -> Graphing res
-unfoldDeep seed getDeps toDependency = deeps directNodes <> edges builtEdges
-  where
-    directNodes :: [res]
-    directNodes = map toDependency seed
-
-    builtEdges :: [(res, res)]
-    builtEdges = map (bimap toDependency toDependency) (edgesFrom seed)
-
-    edgesFrom :: [dep] -> [(dep, dep)]
-    edgesFrom nodes = do
-      node <- nodes
-      let children = getDeps node
-      map (node,) children ++ edgesFrom children
+unfoldDeep = unfold' deeps
 
 -- | Remove unreachable vertices from the graph
 --
 -- A vertex is reachable if there's a path from the "direct" vertices to that vertex
 pruneUnreachable :: forall ty. Ord ty => Graphing ty -> Graphing ty
-pruneUnreachable (Graphing gr) = Graphing (AM.induce keepPredicate gr)
+pruneUnreachable (Graphing gr) =
+  Graphing (AM.induce keepPredicate gr)
   where
     directNodes :: [Node ty]
     directNodes = Set.toList $ AM.postSet Root gr
@@ -344,6 +336,7 @@ fromList = directs
 -- | Wrap an AdjacencyMap as a Graphing
 --
 -- All nodes in the resulting Graphing are considered indirect/"deep"
+-- so @fromAdjacenyMap . toAdjacencyMap@ is not @id@.
 fromAdjacencyMap :: Ord ty => AM.AdjacencyMap ty -> Graphing ty
 fromAdjacencyMap = Graphing . AM.gmap Node
 
