@@ -19,12 +19,15 @@ module Control.Effect.FossaApiClient (
   uploadContainerScan,
   uploadContributors,
   assertUserDefinedBinaries,
+  resolveUserDefinedBinary,
+  resolveProjectDependencies,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
 import App.Fossa.VSI.IAT.Types qualified as IAT
+import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
@@ -65,6 +68,8 @@ data FossaApiClientF a where
   GetScan :: Locator -> ScanId -> FossaApiClientF ScanResponse
   GetSignedUploadUrl :: ArchiveRevision -> FossaApiClientF SignedURL
   QueueArchiveBuild :: Archive -> FossaApiClientF (Maybe C8.ByteString)
+  ResolveProjectDependencies :: VSI.Locator -> FossaApiClientF [VSI.Locator]
+  ResolveUserDefinedBinary :: IAT.UserDep -> FossaApiClientF IAT.UserDefinedAssertionMeta
   UploadAnalysis ::
     ProjectRevision ->
     ProjectMetadata ->
@@ -137,3 +142,9 @@ queueArchiveBuild = sendSimple . QueueArchiveBuild
 
 assertUserDefinedBinaries :: Has FossaApiClient sig m => IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> m ()
 assertUserDefinedBinaries meta fprints = sendSimple (AssertUserDefinedBinaries meta fprints)
+
+resolveUserDefinedBinary :: Has FossaApiClient sig m => IAT.UserDep -> m IAT.UserDefinedAssertionMeta
+resolveUserDefinedBinary = sendSimple . ResolveUserDefinedBinary
+
+resolveProjectDependencies :: Has FossaApiClient sig m => VSI.Locator -> m [VSI.Locator]
+resolveProjectDependencies = sendSimple . ResolveProjectDependencies

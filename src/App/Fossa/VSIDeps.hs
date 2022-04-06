@@ -8,6 +8,7 @@ import App.Fossa.VSI.IAT.Resolve (resolveGraph, resolveUserDefined)
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
 import Control.Algebra (Has)
+import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (Diagnostics, fromEither)
 import Control.Effect.Finally (Finally)
 import Control.Effect.Lift (Lift)
@@ -43,11 +44,12 @@ analyzeVSIDeps ::
 analyzeVSIDeps dir projectRevision apiOpts filters skipResolving = do
   (direct, userDeps) <- runVsiAnalysis dir apiOpts projectRevision filters
 
-  resolvedUserDeps <- resolveUserDefined apiOpts userDeps
-  resolvedGraph <- resolveGraph apiOpts direct skipResolving
-  dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
+  runFossaApiClient apiOpts $ do
+    resolvedUserDeps <- resolveUserDefined userDeps
+    resolvedGraph <- resolveGraph direct skipResolving
+    dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
 
-  pure $ toSourceUnit (toProject dir dependencies) resolvedUserDeps
+    pure $ toSourceUnit (toProject dir dependencies) resolvedUserDeps
 
 toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
 toProject dir graph = ProjectResult VsiProjectType dir graph Complete []
