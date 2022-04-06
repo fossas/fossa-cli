@@ -5,6 +5,7 @@ module Control.Effect.FossaApiClient (
   FossaApiClientF (..),
   FossaApiClient,
   getApiOpts,
+  getAttribution,
   getIssues,
   getLatestBuild,
   getLatestScan,
@@ -20,6 +21,7 @@ module Control.Effect.FossaApiClient (
   assertUserDefinedBinaries,
 ) where
 
+import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
 import App.Fossa.VSI.IAT.Types qualified as IAT
@@ -54,6 +56,7 @@ data ArchiveRevision = ArchiveRevision
 data FossaApiClientF a where
   AssertUserDefinedBinaries :: IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> FossaApiClientF ()
   GetApiOpts :: FossaApiClientF ApiOpts
+  GetAttribution :: ProjectRevision -> ReportOutputFormat -> FossaApiClientF Text
   GetIssues :: ProjectRevision -> FossaApiClientF Issues
   GetLatestBuild :: ProjectRevision -> FossaApiClientF Build
   GetLatestScan :: Locator -> ProjectRevision -> FossaApiClientF ScanResponse
@@ -119,6 +122,9 @@ getScan locator scanId = sendSimple $ GetScan locator scanId
 
 getLatestScan :: Has FossaApiClient sig m => Locator -> ProjectRevision -> m ScanResponse
 getLatestScan locator revision = sendSimple $ GetLatestScan locator revision
+
+getAttribution :: Has FossaApiClient sig m => ProjectRevision -> ReportOutputFormat -> m Text
+getAttribution revision format = sendSimple $ GetAttribution revision format
 
 getSignedUploadUrl :: Has FossaApiClient sig m => ArchiveRevision -> m SignedURL
 getSignedUploadUrl = sendSimple . GetSignedUploadUrl

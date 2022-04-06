@@ -5,13 +5,14 @@ module Control.Carrier.FossaApiClient.Internal.ScotlandYard (
   getLatestScan,
 ) where
 
+import App.Fossa.FossaAPIV1 (getOrganization, renderLocatorUrl)
 import App.Fossa.VPS.Types (runHTTP)
 import App.Types (ProjectRevision (..))
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Control.Effect.Stack (Has)
-import Fossa.API.Types (ApiOpts, ScanId (ScanId), ScanResponse, useApiOpts)
+import Fossa.API.Types (ApiOpts, OrgId, Organization (organizationId), ScanId (ScanId), ScanResponse, useApiOpts)
 import Network.HTTP.Req (
   GET (GET),
   NoReqBody (NoReqBody),
@@ -24,17 +25,17 @@ import Network.HTTP.Req (
   (/:),
   (=:),
  )
-import Srclib.Types (Locator, renderLocator)
+import Srclib.Types (Locator)
 
 -- Prefix for Core's reverse proxy to SY
 coreProxyPrefix :: Url 'Https -> Url 'Https
 coreProxyPrefix baseurl = baseurl /: "api" /: "proxy" /: "scotland-yard"
 
-getScanEndpoint :: Url 'Https -> Locator -> ScanId -> Url 'Https
-getScanEndpoint baseurl locator (ScanId scanId) = coreProxyPrefix baseurl /: "projects" /: renderLocator locator /: "scans" /: scanId
+getScanEndpoint :: Url 'Https -> OrgId -> Locator -> ScanId -> Url 'Https
+getScanEndpoint baseurl orgId locator (ScanId scanId) = coreProxyPrefix baseurl /: "projects" /: renderLocatorUrl orgId locator /: "scans" /: scanId
 
-getLatestScanEndpoint :: Url 'Https -> Locator -> Url 'Https
-getLatestScanEndpoint baseurl locator = coreProxyPrefix baseurl /: "projects" /: renderLocator locator /: "scans" /: "latest"
+getLatestScanEndpoint :: Url 'Https -> OrgId -> Locator -> Url 'Https
+getLatestScanEndpoint baseurl orgId locator = coreProxyPrefix baseurl /: "projects" /: renderLocatorUrl orgId locator /: "scans" /: "latest"
 
 getLatestScan ::
   ( Has (Lift IO) sig m
@@ -46,12 +47,13 @@ getLatestScan ::
   m ScanResponse
 getLatestScan locator ProjectRevision{projectRevision} = runHTTP $ do
   apiOpts <- ask
+  orgId <- organizationId <$> getOrganization apiOpts
   (baseUrl, baseOptions) <- useApiOpts apiOpts
   let opts =
         baseOptions
           <> header "Content-Type" "application/json"
           <> "revisionID" =: projectRevision
-  resp <- req GET (getLatestScanEndpoint baseUrl locator) NoReqBody jsonResponse opts
+  resp <- req GET (getLatestScanEndpoint baseUrl orgId locator) NoReqBody jsonResponse opts
   pure (responseBody resp)
 
 getScan ::
@@ -64,9 +66,10 @@ getScan ::
   m ScanResponse
 getScan locator scanId = runHTTP $ do
   apiOpts <- ask
+  orgId <- organizationId <$> getOrganization apiOpts
   (baseUrl, baseOptions) <- useApiOpts apiOpts
   let opts =
         baseOptions
           <> header "Content-Type" "application/json"
-  resp <- req GET (getScanEndpoint baseUrl locator scanId) NoReqBody jsonResponse opts
+  resp <- req GET (getScanEndpoint baseUrl orgId locator scanId) NoReqBody jsonResponse opts
   pure (responseBody resp)

@@ -28,6 +28,7 @@ module App.Fossa.FossaAPIV1 (
   vsiCompleteScan,
   vsiScanAnalysisStatus,
   vsiDownloadInferences,
+  renderLocatorUrl,
 ) where
 
 import App.Docs (fossaSslCertDocsUrl)
