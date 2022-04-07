@@ -4,6 +4,8 @@ module Control.Effect.FossaApiClient (
   ArchiveRevision (..),
   FossaApiClientF (..),
   FossaApiClient,
+  assertRevisionBinaries,
+  assertUserDefinedBinaries,
   getApiOpts,
   getAttribution,
   getIssues,
@@ -14,13 +16,12 @@ module Control.Effect.FossaApiClient (
   getScan,
   getSignedUploadUrl,
   queueArchiveBuild,
+  resolveProjectDependencies,
+  resolveUserDefinedBinary,
   uploadAnalysis,
   uploadArchive,
   uploadContainerScan,
   uploadContributors,
-  assertUserDefinedBinaries,
-  resolveUserDefinedBinary,
-  resolveProjectDependencies,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
@@ -59,6 +60,7 @@ data ArchiveRevision = ArchiveRevision
 -- | The many operations available in the API effect.
 -- Note: If you add an entry here, please add a corresponding entry in @Test.MockApi.matchExpectation@.
 data FossaApiClientF a where
+  AssertRevisionBinaries :: Locator -> [Fingerprint Raw] -> FossaApiClientF ()
   AssertUserDefinedBinaries :: IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> FossaApiClientF ()
   GetApiOpts :: FossaApiClientF ApiOpts
   GetAttribution :: ProjectRevision -> ReportOutputFormat -> FossaApiClientF Text
@@ -141,6 +143,9 @@ uploadArchive dest path = sendSimple (UploadArchive dest path)
 
 queueArchiveBuild :: Has FossaApiClient sig m => Archive -> m (Maybe C8.ByteString)
 queueArchiveBuild = sendSimple . QueueArchiveBuild
+
+assertRevisionBinaries :: Has FossaApiClient sig m => Locator -> [Fingerprint Raw] -> m ()
+assertRevisionBinaries locator fprints = sendSimple (AssertRevisionBinaries locator fprints)
 
 assertUserDefinedBinaries :: Has FossaApiClient sig m => IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> m ()
 assertUserDefinedBinaries meta fprints = sendSimple (AssertUserDefinedBinaries meta fprints)
