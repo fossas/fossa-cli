@@ -25,7 +25,6 @@ import Srclib.Types (
 
 resolveUserDefined :: (Has FossaApiClient sig m, Has Diagnostics sig m) => [UserDep] -> m (Maybe [SourceUserDefDep])
 resolveUserDefined deps = context ("Resolving user defined dependencies " <> toText (show $ map IAT.renderUserDep deps)) $ do
-  -- assertions <- traverse ( Fossa.resolveUserDefinedBinary apiOpts) deps
   assertions <- traverse (resolveUserDefinedBinary) deps
   if null assertions
     then pure Nothing

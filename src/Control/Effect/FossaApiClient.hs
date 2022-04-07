@@ -56,6 +56,8 @@ data ArchiveRevision = ArchiveRevision
   }
   deriving (Show, Eq, Ord)
 
+-- | The many operations available in the API effect.
+-- Note: If you add an entry here, please add a corresponding entry in @Test.MockApi.matchExpectation@.
 data FossaApiClientF a where
   AssertUserDefinedBinaries :: IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> FossaApiClientF ()
   GetApiOpts :: FossaApiClientF ApiOpts
