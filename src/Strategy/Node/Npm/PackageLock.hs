@@ -28,12 +28,13 @@ import Data.Foldable (asum, traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isNothing, mapMaybe)
+import Data.Maybe (isNothing)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Tagged (unTag)
-import Data.Text (Text, splitOn)
+import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Text.Extra qualified as TE
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (NodeJSType),
@@ -132,20 +133,9 @@ data NpmDepVertexLabel = NpmDepVertexEnv DepEnvironment | NpmDepVertexLocation T
 -- downloaded to @node_modules@. This function will adjust map keys to be names
 -- like in the @dependencies@ key by stripping out path components besides the final one..
 --
--- It also eliminates any keys which represent a nested path
--- e.g. @node_modules\/foo\/node_modules/bar@. This nesting happens when there
--- are multiple versions of the same package in the dependency tree of the
--- @package-lock.json@ file because one of the versions gets vendored.
+-- When 
 packagePathsToNames :: Map Text a -> Map Text a
-packagePathsToNames =
-  Map.fromList
-    . mapMaybe fixName
-    . Map.toList
-  where
-    fixName :: (Text, a) -> Maybe (Text, a)
-    fixName (k, v) = case filter (/= "node_modules") . splitOn "/" $ k of
-      [k'] -> Just (k', v)
-      _ -> Nothing
+packagePathsToNames = Map.mapKeys (TE.dropPrefix "node_modules/")
 
 buildGraph :: PkgLockJson -> Set Text -> Graphing Dependency
 buildGraph packageJson directSet =
