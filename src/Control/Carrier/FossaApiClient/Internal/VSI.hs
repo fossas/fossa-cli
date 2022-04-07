@@ -78,7 +78,9 @@ createVsiScan ::
   ) =>
   ProjectRevision ->
   m VSI.ScanID
-createVsiScan rev = fatalText "Not implemented: createVsiScan"
+createVsiScan revision = do
+  apiOpts <- ask
+  API.vsiCreateScan apiOpts revision
 
 addFilesToVsiScan ::
   ( Has (Lift IO) sig m
@@ -88,7 +90,9 @@ addFilesToVsiScan ::
   VSI.ScanID ->
   Map (Path Rel File) Fingerprint.Combined ->
   m ()
-addFilesToVsiScan scanId files = fatalText "Not implemented: addFilesToVsiScan"
+addFilesToVsiScan scanId files = do
+  apiOpts <- ask
+  API.vsiAddFilesToScan apiOpts scanId files
 
 completeVsiScan ::
   ( Has (Lift IO) sig m
@@ -97,7 +101,9 @@ completeVsiScan ::
   ) =>
   VSI.ScanID ->
   m ()
-completeVsiScan scanId = fatalText "Not implemented: completeVsiScan"
+completeVsiScan scanId = do
+  apiOpts <- ask
+  API.vsiCompleteScan apiOpts scanId
 
 getVsiScanAnalysisStatus ::
   ( Has (Lift IO) sig m
@@ -106,7 +112,9 @@ getVsiScanAnalysisStatus ::
   ) =>
   VSI.ScanID ->
   m VSI.AnalysisStatus
-getVsiScanAnalysisStatus scanId = fatalText "Not implemented: getVsiScanAnalysisStatus"
+getVsiScanAnalysisStatus scanId = do
+  apiOpts <- ask
+  API.vsiScanAnalysisStatus apiOpts scanId
 
 getVsiInferences ::
   ( Has (Lift IO) sig m
@@ -115,4 +123,6 @@ getVsiInferences ::
   ) =>
   VSI.ScanID ->
   m [Locator]
-getVsiInferences scanId = fatalText "Not implemented: getVsiInferences"
+getVsiInferences scanId = do
+  apiOpts <- ask
+  API.vsiDownloadInferences apiOpts scanId
