@@ -299,6 +299,7 @@ library
     Fossa.API.Types
     Graphing
     Graphing.Hydrate
+    Graphing.Trace
     Network.HTTP.Req.Extra
     Parse.XML
     Path.Extra
