@@ -14,7 +14,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String (IsString)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Data.Text.Extra (showT)
 import Data.Text.IO qualified as TIO
 import DepTypes (DepEnvironment, Dependency (..), VerConstraint (..))
@@ -31,13 +31,13 @@ instance GraphTrace a => GraphTrace (Node a) where
   toTrace (Node a) = toTrace a
 
 instance GraphTrace Dependency where
-  toTrace Dependency{..} = T.unwords [dependencyName, version, envs]
+  toTrace Dependency{..} = Text.unwords [dependencyName, version, envs]
     where
       version = maybe "*" versionTxt dependencyVersion
       envs = "[" <> envsToText dependencyEnvironments <> "]"
 
 envsToText :: Set DepEnvironment -> Text
-envsToText = T.intercalate ", " . map showT . Set.toList
+envsToText = Text.intercalate ", " . map showT . Set.toList
 
 versionTxt :: VerConstraint -> Text
 versionTxt = \case
@@ -71,8 +71,8 @@ renderGvFile gr = emit graphEdges
       Just ac -> emitDiGraphEdges ac
 
 emit :: EmittedGraph -> Text
-emit (Cyclic edges) = T.unlines (["graph G {"] <> map (indent 4) edges <> ["}"])
-emit (Acyclic edges) = T.unlines (["digraph G {"] <> map (indent 4) edges <> ["}"])
+emit (Cyclic edges) = Text.unlines (["graph G {"] <> map (indent 4) edges <> ["}"])
+emit (Acyclic edges) = Text.unlines (["digraph G {"] <> map (indent 4) edges <> ["}"])
 
 emitDiGraphEdges :: GraphTrace a => Acyclic.AdjacencyMap a -> EmittedGraph
 emitDiGraphEdges = Acyclic . edgesToTexts (Icon "->") . Acyclic.edgeList
@@ -91,7 +91,7 @@ traceTuple = bimap toTrace toTrace
 newtype Icon = Icon Text
 
 renderEdge :: Icon -> (Text, Text) -> Text
-renderEdge (Icon icon) (parent, child) = terminated $ T.unwords [quoted parent, icon, quoted child]
+renderEdge (Icon icon) (parent, child) = terminated $ Text.unwords [quoted parent, icon, quoted child]
 
 quoted :: Text -> Text
 quoted item = "\"" <> item <> "\""
@@ -100,4 +100,4 @@ terminated :: Text -> Text
 terminated = (<> ";")
 
 indent :: Int -> Text -> Text
-indent count txt = T.replicate count " " <> txt
+indent count txt = Text.replicate count " " <> txt
