@@ -133,7 +133,7 @@ data NpmDepVertexLabel = NpmDepVertexEnv DepEnvironment | NpmDepVertexLocation T
 -- downloaded to @node_modules@. This function will adjust map keys to be names
 -- like in the @dependencies@ key by stripping out path components besides the final one..
 --
--- When 
+-- When
 packagePathsToNames :: Map Text a -> Map Text a
 packagePathsToNames = Map.mapKeys (TE.dropPrefix "node_modules/")
 
