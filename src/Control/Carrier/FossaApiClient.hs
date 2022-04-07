@@ -46,4 +46,9 @@ runFossaApiClient apiOpts =
           UploadContainerScan revision metadata scan -> Core.uploadContainerScan revision metadata scan
           UploadContributors locator contributors -> Core.uploadContributors locator contributors
           UploadArchive url path -> Core.uploadArchive url path
+          CreateVsiScan rev -> VSI.createVsiScan rev
+          AddFilesToVsiScan scanId files -> VSI.addFilesToVsiScan scanId files
+          CompleteVsiScan scanId -> VSI.completeVsiScan scanId
+          GetVsiScanAnalysisStatus scanId -> VSI.getVsiScanAnalysisStatus scanId
+          GetVsiInferences scanId -> VSI.getVsiInferences scanId
       )

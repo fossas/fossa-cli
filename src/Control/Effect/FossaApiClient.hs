@@ -4,8 +4,11 @@ module Control.Effect.FossaApiClient (
   ArchiveRevision (..),
   FossaApiClientF (..),
   FossaApiClient,
+  addFilesToVsiScan,
   assertRevisionBinaries,
   assertUserDefinedBinaries,
+  completeVsiScan,
+  createVsiScan,
   getApiOpts,
   getAttribution,
   getIssues,
@@ -15,6 +18,8 @@ module Control.Effect.FossaApiClient (
   getProject,
   getScan,
   getSignedUploadUrl,
+  getVsiInferences,
+  getVsiScanAnalysisStatus,
   queueArchiveBuild,
   resolveProjectDependencies,
   resolveUserDefinedBinary,
@@ -27,6 +32,7 @@ module Control.Effect.FossaApiClient (
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
+import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectMetadata, ProjectRevision)
@@ -34,6 +40,7 @@ import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
 import Data.ByteString.Char8 qualified as C8
 import Data.List.NonEmpty qualified as NE
+import Data.Map (Map)
 import Data.Text (Text)
 import Fossa.API.Types (
   ApiOpts,
@@ -49,6 +56,7 @@ import Fossa.API.Types (
   UploadResponse,
  )
 import Network.HTTP.Req (LbsResponse)
+import Path (File, Path, Rel)
 import Srclib.Types (Locator, SourceUnit)
 
 data ArchiveRevision = ArchiveRevision
@@ -60,8 +68,11 @@ data ArchiveRevision = ArchiveRevision
 -- | The many operations available in the API effect.
 -- Note: If you add an entry here, please add a corresponding entry in @Test.MockApi.matchExpectation@.
 data FossaApiClientF a where
+  AddFilesToVsiScan :: VSI.ScanID -> Map (Path Rel File) Fingerprint.Combined -> FossaApiClientF ()
   AssertRevisionBinaries :: Locator -> [Fingerprint Raw] -> FossaApiClientF ()
   AssertUserDefinedBinaries :: IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> FossaApiClientF ()
+  CompleteVsiScan :: VSI.ScanID -> FossaApiClientF ()
+  CreateVsiScan :: ProjectRevision -> FossaApiClientF VSI.ScanID
   GetApiOpts :: FossaApiClientF ApiOpts
   GetAttribution :: ProjectRevision -> ReportOutputFormat -> FossaApiClientF Text
   GetIssues :: ProjectRevision -> FossaApiClientF Issues
@@ -71,6 +82,8 @@ data FossaApiClientF a where
   GetProject :: ProjectRevision -> FossaApiClientF Project
   GetScan :: Locator -> ScanId -> FossaApiClientF ScanResponse
   GetSignedUploadUrl :: ArchiveRevision -> FossaApiClientF SignedURL
+  GetVsiInferences :: VSI.ScanID -> FossaApiClientF [Locator]
+  GetVsiScanAnalysisStatus :: VSI.ScanID -> FossaApiClientF VSI.AnalysisStatus
   QueueArchiveBuild :: Archive -> FossaApiClientF (Maybe C8.ByteString)
   ResolveProjectDependencies :: VSI.Locator -> FossaApiClientF [VSI.Locator]
   ResolveUserDefinedBinary :: IAT.UserDep -> FossaApiClientF IAT.UserDefinedAssertionMeta
@@ -155,3 +168,18 @@ resolveUserDefinedBinary = sendSimple . ResolveUserDefinedBinary
 
 resolveProjectDependencies :: Has FossaApiClient sig m => VSI.Locator -> m [VSI.Locator]
 resolveProjectDependencies = sendSimple . ResolveProjectDependencies
+
+createVsiScan :: Has FossaApiClient sig m => ProjectRevision -> m VSI.ScanID
+createVsiScan = sendSimple . CreateVsiScan
+
+addFilesToVsiScan :: Has FossaApiClient sig m => VSI.ScanID -> Map (Path Rel File) Fingerprint.Combined -> m ()
+addFilesToVsiScan scanId files = sendSimple (AddFilesToVsiScan scanId files)
+
+completeVsiScan :: Has FossaApiClient sig m => VSI.ScanID -> m ()
+completeVsiScan = sendSimple . CompleteVsiScan
+
+getVsiScanAnalysisStatus :: Has FossaApiClient sig m => VSI.ScanID -> m VSI.AnalysisStatus
+getVsiScanAnalysisStatus = sendSimple . GetVsiScanAnalysisStatus
+
+getVsiInferences :: Has FossaApiClient sig m => VSI.ScanID -> m [Locator]
+getVsiInferences = sendSimple . GetVsiInferences
