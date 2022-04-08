@@ -12,16 +12,15 @@ import App.Fossa.ArchiveUploader (
   duplicateNames,
  )
 import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)
-import App.Fossa.FossaAPIV1 qualified as Fossa
 import App.Fossa.RunThemis (
   execThemis,
  )
 import Control.Carrier.Finally (runFinally)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, fatal, fatalText, fromMaybe, recover)
-import Control.Effect.FossaApiClient (FossaApiClient, getApiOpts)
+import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, getSignedLicenseScanUrl, PackageRevision (PackageRevision, packageVersion, packageName), finalizeLicenseScan, uploadLicenseScanResult)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
-import Control.Monad (unless, void)
+import Control.Monad (unless)
 import Crypto.Hash (Digest, MD5, hash)
 import Data.ByteString qualified as B
 import Data.List.NonEmpty (NonEmpty)
@@ -40,7 +39,6 @@ import Effect.ReadFS (
   resolvePath',
  )
 import Fossa.API.Types (
-  ApiOpts,
   Archive (Archive, archiveName),
   ArchiveComponents (ArchiveComponents),
   OrgId,
@@ -105,16 +103,16 @@ scanAndUploadVendoredDep ::
   , Has StickyLogger sig m
   , Has Exec sig m
   , Has ReadFS sig m
+  , Has FossaApiClient sig m
   ) =>
-  ApiOpts ->
   Path Abs Dir ->
   VendoredDependency ->
   m (Maybe Archive)
-scanAndUploadVendoredDep apiOpts baseDir vdep = context "Processing vendored dependency" $ do
+scanAndUploadVendoredDep baseDir vdep = context "Processing vendored dependency" $ do
   maybeLicenseUnits <- recover $ scanVendoredDep baseDir vdep
   case maybeLicenseUnits of
     Nothing -> pure Nothing
-    Just licenseUnits -> uploadVendoredDep apiOpts vdep licenseUnits
+    Just licenseUnits -> uploadVendoredDep vdep licenseUnits
 
 scanVendoredDep ::
   ( Has Diagnostics sig m
@@ -197,14 +195,13 @@ scanArchive file = runFinally $ do
 
 uploadVendoredDep ::
   ( Has Diagnostics sig m
-  , Has (Lift IO) sig m
   , Has StickyLogger sig m
+  , Has FossaApiClient sig m
   ) =>
-  ApiOpts ->
   VendoredDependency ->
   NE.NonEmpty LicenseUnit ->
   m (Maybe Archive)
-uploadVendoredDep apiOpts VendoredDependency{..} themisScanResult = do
+uploadVendoredDep VendoredDependency{..} themisScanResult = do
   let licenseSourceUnit =
         LicenseSourceUnit
           { licenseSourceUnitName = vendoredPath
@@ -216,10 +213,10 @@ uploadVendoredDep apiOpts VendoredDependency{..} themisScanResult = do
     Nothing -> pure . showT . md5 . encodeUtf8 . show . NE.sort $ themisScanResult
     Just version -> pure version
 
-  signedURL <- Fossa.getSignedLicenseScanURL apiOpts depVersion vendoredName
+  signedURL <- getSignedLicenseScanUrl $ PackageRevision { packageVersion = depVersion, packageName = vendoredName }
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
-  void $ Fossa.licenseScanResultUpload signedURL licenseSourceUnit
+  uploadLicenseScanResult signedURL licenseSourceUnit
 
   pure $ Just $ Archive vendoredName depVersion
 
@@ -237,7 +234,6 @@ licenseScanSourceUnit ::
   NonEmpty VendoredDependency ->
   m (NonEmpty Locator)
 licenseScanSourceUnit baseDir vendoredDeps = do
-  apiOpts <- getApiOpts
   -- Users with many instances of vendored dependencies may accidentally have complete duplicates. Remove them.
   let uniqDeps = NE.nub vendoredDeps
 
@@ -247,16 +243,16 @@ licenseScanSourceUnit baseDir vendoredDeps = do
   unless (null duplicates) $ fatalText $ duplicateFailureBundle duplicates
 
   -- At this point, we have a good list of deps, so go for it.
-  maybeArchives <- traverse (scanAndUploadVendoredDep apiOpts baseDir) uniqDeps
+  maybeArchives <- traverse (scanAndUploadVendoredDep baseDir) uniqDeps
   archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ catMaybes $ NE.toList maybeArchives
 
   -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
-  void $ Fossa.licenseScanFinalize apiOpts $ ArchiveComponents $ NE.toList archives
+  finalizeLicenseScan $ ArchiveComponents $ NE.toList archives
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
   -- but not when reading from a source unit.
-  orgId <- organizationId <$> Fossa.getOrganization apiOpts
+  orgId <- organizationId <$> getOrganization 
 
   pure $ NE.map arcToLocator (archivesWithOrganization orgId archives)
   where

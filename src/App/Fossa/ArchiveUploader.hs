@@ -15,7 +15,7 @@ import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.StickyLogger (StickyLogger, logSticky)
 import Control.Effect.Diagnostics (context)
-import Control.Effect.FossaApiClient (ArchiveRevision (ArchiveRevision), FossaApiClient, getOrganization, getSignedUploadUrl, queueArchiveBuild, uploadArchive)
+import Control.Effect.FossaApiClient (PackageRevision (PackageRevision), FossaApiClient, getOrganization, getSignedUploadUrl, queueArchiveBuild, uploadArchive)
 import Control.Effect.Lift
 import Control.Effect.Path (withSystemTempDir)
 import Control.Monad (unless)
@@ -90,7 +90,7 @@ compressAndUpload arcDir tmpDir VendoredDependency{..} = context "compressing an
     Nothing -> sendIO $ hashFile compressedFile
     Just version -> pure version
 
-  signedURL <- getSignedUploadUrl $ ArchiveRevision vendoredName depVersion
+  signedURL <- getSignedUploadUrl $ PackageRevision vendoredName depVersion
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
   res <- uploadArchive signedURL compressedFile

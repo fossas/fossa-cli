@@ -1,7 +1,7 @@
 {-# LANGUAGE GADTs #-}
 
 module Control.Effect.FossaApiClient (
-  ArchiveRevision (..),
+  PackageRevision (..),
   FossaApiClientF (..),
   FossaApiClient,
   assertRevisionBinaries,
@@ -20,7 +20,7 @@ module Control.Effect.FossaApiClient (
   uploadArchive,
   uploadContainerScan,
   uploadContributors,
-) where
+getSignedLicenseScanUrl, uploadLicenseScanResult, finalizeLicenseScan) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Container.Scan (ContainerScan (..))
@@ -43,14 +43,15 @@ import Fossa.API.Types (
   ScanId,
   ScanResponse,
   SignedURL,
-  UploadResponse,
+  UploadResponse, ArchiveComponents
  )
 import Network.HTTP.Req (LbsResponse)
-import Srclib.Types (Locator, SourceUnit)
+import Srclib.Types (Locator, SourceUnit, LicenseSourceUnit)
 
-data ArchiveRevision = ArchiveRevision
-  { archiveName :: Text
-  , archiveRevision :: Text
+-- | PackageRevisions are like ProjectRevisions, but they never have a branch.
+data PackageRevision = PackageRevision
+  { packageName :: Text
+  , packageVersion :: Text
   }
   deriving (Show, Eq, Ord)
 
@@ -65,7 +66,7 @@ data FossaApiClientF a where
   GetOrganization :: FossaApiClientF Organization
   GetProject :: ProjectRevision -> FossaApiClientF Project
   GetScan :: Locator -> ScanId -> FossaApiClientF ScanResponse
-  GetSignedUploadUrl :: ArchiveRevision -> FossaApiClientF SignedURL
+  GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
   QueueArchiveBuild :: Archive -> FossaApiClientF (Maybe C8.ByteString)
   UploadAnalysis ::
     ProjectRevision ->
@@ -82,6 +83,9 @@ data FossaApiClientF a where
     Locator ->
     Contributors ->
     FossaApiClientF ()
+  GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
+  FinalizeLicenseScan :: ArchiveComponents -> FossaApiClientF ()
+  UploadLicenseScanResult :: SignedURL -> LicenseSourceUnit -> FossaApiClientF ()
 
 deriving instance Show (FossaApiClientF a)
 deriving instance Eq (FossaApiClientF a)
@@ -128,7 +132,7 @@ getLatestScan locator revision = sendSimple $ GetLatestScan locator revision
 getAttribution :: Has FossaApiClient sig m => ProjectRevision -> ReportOutputFormat -> m Text
 getAttribution revision format = sendSimple $ GetAttribution revision format
 
-getSignedUploadUrl :: Has FossaApiClient sig m => ArchiveRevision -> m SignedURL
+getSignedUploadUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
 getSignedUploadUrl = sendSimple . GetSignedUploadUrl
 
 uploadArchive :: Has FossaApiClient sig m => SignedURL -> FilePath -> m LbsResponse
@@ -142,3 +146,12 @@ assertUserDefinedBinaries meta fprints = sendSimple (AssertUserDefinedBinaries m
 
 assertRevisionBinaries :: Has FossaApiClient sig m => Locator -> [Fingerprint Raw] -> m ()
 assertRevisionBinaries locator fprints = sendSimple (AssertRevisionBinaries locator fprints)
+
+getSignedLicenseScanUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
+getSignedLicenseScanUrl = sendSimple . GetSignedLicenseScanUrl
+
+finalizeLicenseScan :: Has FossaApiClient sig m => ArchiveComponents -> m ()
+finalizeLicenseScan = sendSimple . FinalizeLicenseScan
+
+uploadLicenseScanResult :: Has FossaApiClient sig m => SignedURL -> LicenseSourceUnit -> m ()
+uploadLicenseScanResult signedUrl licenseSourceUnit = sendSimple (UploadLicenseScanResult signedUrl licenseSourceUnit)

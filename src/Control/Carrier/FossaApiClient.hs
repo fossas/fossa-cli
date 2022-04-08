@@ -12,6 +12,7 @@ import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift)
 import Fossa.API.Types (ApiOpts)
+import qualified Control.Carrier.FossaApiClient.Internal.LicenseScanning as LicenseScanning
 
 -- | A carrier to run Fossa API functions in the IO monad
 type FossaApiClientC m = SimpleC FossaApiClientF (ReaderC ApiOpts m)
@@ -44,4 +45,7 @@ runFossaApiClient apiOpts =
           UploadContainerScan revision metadata scan -> Core.uploadContainerScan revision metadata scan
           UploadContributors locator contributors -> Core.uploadContributors locator contributors
           UploadArchive url path -> Core.uploadArchive url path
+          GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev
+          FinalizeLicenseScan components -> LicenseScanning.finalizeLicenseScan components
+          UploadLicenseScanResult signedUrl licenseSourceUnit -> LicenseScanning.uploadLicenseScanResult signedUrl licenseSourceUnit
       )
