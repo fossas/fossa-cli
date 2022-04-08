@@ -298,8 +298,8 @@ library
     Effect.ReadFS
     Fossa.API.Types
     Graphing
+    Graphing.Debug
     Graphing.Hydrate
-    Graphing.Trace
     Network.HTTP.Req.Extra
     Parse.XML
     Path.Extra

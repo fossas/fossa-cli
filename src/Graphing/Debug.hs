@@ -1,8 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Graphing.Trace (
-  GraphTrace (toTrace),
-  traceGraph,
+module Graphing.Debug (
+  GraphDebug (toDebug),
+  debugGraph,
   renderGvFile,
 ) where
 
@@ -23,15 +23,15 @@ import Graphing (Graphing (unGraphing), Node (..))
 gvFileName :: (IsString a) => a
 gvFileName = "./fossa.debug.gv"
 
-class Ord a => GraphTrace a where
-  toTrace :: a -> Text
+class Ord a => GraphDebug a where
+  toDebug :: a -> Text
 
-instance GraphTrace a => GraphTrace (Node a) where
-  toTrace Root = "ROOT"
-  toTrace (Node a) = toTrace a
+instance GraphDebug a => GraphDebug (Node a) where
+  toDebug Root = "ROOT"
+  toDebug (Node a) = toDebug a
 
-instance GraphTrace Dependency where
-  toTrace Dependency{..} = Text.unwords [dependencyName, version, envs]
+instance GraphDebug Dependency where
+  toDebug Dependency{..} = Text.unwords [dependencyName, version, envs]
     where
       version = maybe "*" versionTxt dependencyVersion
       envs = "[" <> envsToText dependencyEnvironments <> "]"
@@ -56,13 +56,13 @@ data EmittedGraph
   = Cyclic [Text]
   | Acyclic [Text]
 
-traceGraph :: Has (Lift IO) sig m => GraphTrace a => Graphing a -> m ()
-traceGraph gr = sendIO $ do
+debugGraph :: Has (Lift IO) sig m => GraphDebug a => Graphing a -> m ()
+debugGraph gr = sendIO $ do
   let graphTxt = renderGvFile gr
   TIO.writeFile gvFileName graphTxt
-{-# WARNING traceGraph "This function is for debug purposes only and should not be used in production." #-}
+{-# WARNING debugGraph "This function is for debug purposes only and should not be used in production." #-}
 
-renderGvFile :: GraphTrace a => Graphing a -> Text
+renderGvFile :: GraphDebug a => Graphing a -> Text
 renderGvFile gr = emit graphEdges
   where
     adjMap = unGraphing gr
@@ -74,17 +74,17 @@ emit :: EmittedGraph -> Text
 emit (Cyclic edges) = Text.unlines (["graph G {"] <> map (indent 4) edges <> ["}"])
 emit (Acyclic edges) = Text.unlines (["digraph G {"] <> map (indent 4) edges <> ["}"])
 
-emitDiGraphEdges :: GraphTrace a => Acyclic.AdjacencyMap a -> EmittedGraph
+emitDiGraphEdges :: GraphDebug a => Acyclic.AdjacencyMap a -> EmittedGraph
 emitDiGraphEdges = Acyclic . edgesToTexts (Icon "->") . Acyclic.edgeList
 
-emitGraphEdges :: GraphTrace a => Cyclic.AdjacencyMap a -> EmittedGraph
+emitGraphEdges :: GraphDebug a => Cyclic.AdjacencyMap a -> EmittedGraph
 emitGraphEdges = Cyclic . edgesToTexts (Icon "--") . Cyclic.edgeList
 
-edgesToTexts :: GraphTrace a => Icon -> [(a, a)] -> [Text]
-edgesToTexts icon = map (renderEdge icon . traceTuple)
+edgesToTexts :: GraphDebug a => Icon -> [(a, a)] -> [Text]
+edgesToTexts icon = map (renderEdge icon . debugTuple)
 
-traceTuple :: GraphTrace a => (a, a) -> (Text, Text)
-traceTuple = bimap toTrace toTrace
+debugTuple :: GraphDebug a => (a, a) -> (Text, Text)
+debugTuple = bimap toDebug toDebug
 
 ---------------------- HELPERS ------------------------
 
