@@ -6,6 +6,7 @@ module Control.Effect.FossaApiClient (
   FossaApiClient,
   assertRevisionBinaries,
   assertUserDefinedBinaries,
+  finalizeLicenseScan,
   getApiOpts,
   getAttribution,
   getIssues,
@@ -14,15 +15,14 @@ module Control.Effect.FossaApiClient (
   getOrganization,
   getProject,
   getScan,
+  getSignedLicenseScanUrl,
   getSignedUploadUrl,
   queueArchiveBuild,
   uploadAnalysis,
   uploadArchive,
   uploadContainerScan,
   uploadContributors,
-  getSignedLicenseScanUrl,
   uploadLicenseScanResult,
-  finalizeLicenseScan,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
@@ -62,6 +62,7 @@ data PackageRevision = PackageRevision
 data FossaApiClientF a where
   AssertRevisionBinaries :: Locator -> [Fingerprint Raw] -> FossaApiClientF ()
   AssertUserDefinedBinaries :: IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> FossaApiClientF ()
+  FinalizeLicenseScan :: ArchiveComponents -> FossaApiClientF ()
   GetApiOpts :: FossaApiClientF ApiOpts
   GetAttribution :: ProjectRevision -> ReportOutputFormat -> FossaApiClientF Text
   GetIssues :: ProjectRevision -> FossaApiClientF Issues
@@ -70,6 +71,7 @@ data FossaApiClientF a where
   GetOrganization :: FossaApiClientF Organization
   GetProject :: ProjectRevision -> FossaApiClientF Project
   GetScan :: Locator -> ScanId -> FossaApiClientF ScanResponse
+  GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
   QueueArchiveBuild :: Archive -> FossaApiClientF (Maybe C8.ByteString)
   UploadAnalysis ::
@@ -87,8 +89,6 @@ data FossaApiClientF a where
     Locator ->
     Contributors ->
     FossaApiClientF ()
-  GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
-  FinalizeLicenseScan :: ArchiveComponents -> FossaApiClientF ()
   UploadLicenseScanResult :: SignedURL -> LicenseSourceUnit -> FossaApiClientF ()
 
 deriving instance Show (FossaApiClientF a)

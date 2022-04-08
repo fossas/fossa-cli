@@ -31,6 +31,7 @@ runFossaApiClient apiOpts =
       ( \case
           AssertRevisionBinaries locator fingerprints -> VSI.assertRevisionBinaries locator fingerprints
           AssertUserDefinedBinaries meta fingerprints -> VSI.assertUserDefinedBinaries meta fingerprints
+          FinalizeLicenseScan components -> LicenseScanning.finalizeLicenseScan components
           GetApiOpts -> pure apiOpts
           GetAttribution rev format -> Core.getAttribution rev format
           GetIssues rev -> Core.getIssues rev
@@ -39,13 +40,12 @@ runFossaApiClient apiOpts =
           GetOrganization -> Core.getOrganization
           GetProject rev -> Core.getProject rev
           GetScan locator scanId -> ScotlandYard.getScan locator scanId
+          GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev
           GetSignedUploadUrl rev -> Core.getSignedUploadUrl rev
           QueueArchiveBuild archive -> Core.queueArchiveBuild archive
           UploadAnalysis rev metadata units -> Core.uploadAnalysis rev metadata units
+          UploadArchive url path -> Core.uploadArchive url path
           UploadContainerScan revision metadata scan -> Core.uploadContainerScan revision metadata scan
           UploadContributors locator contributors -> Core.uploadContributors locator contributors
-          UploadArchive url path -> Core.uploadArchive url path
-          GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev
-          FinalizeLicenseScan components -> LicenseScanning.finalizeLicenseScan components
           UploadLicenseScanResult signedUrl licenseSourceUnit -> LicenseScanning.uploadLicenseScanResult signedUrl licenseSourceUnit
       )

@@ -167,6 +167,9 @@ isSingular (ApiExpectation Always _ _) = False
 -- extract and compare the runtime constructor of the two arguments so that
 -- arbitrary ones can be compared even if the types wouldn't match.
 matchExpectation :: FossaApiClientF a -> ApiExpectation -> Maybe (ApiResult a)
+matchExpectation a@(AssertRevisionBinaries{}) (ApiExpectation _ b@(AssertRevisionBinaries{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(AssertUserDefinedBinaries{}) (ApiExpectation _ b@(AssertUserDefinedBinaries{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(FinalizeLicenseScan{}) (ApiExpectation _ b@(FinalizeLicenseScan{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetApiOpts) (ApiExpectation _ b@(GetApiOpts) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetAttribution{}) (ApiExpectation _ b@(GetAttribution{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetIssues{}) (ApiExpectation _ b@(GetIssues{}) resp) = resp <$ guard (a == b)
@@ -175,8 +178,14 @@ matchExpectation a@(GetLatestScan{}) (ApiExpectation _ b@(GetLatestScan{}) resp)
 matchExpectation a@(GetOrganization) (ApiExpectation _ b@(GetOrganization) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetProject{}) (ApiExpectation _ b@(GetProject{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetScan{}) (ApiExpectation _ b@(GetScan{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetSignedLicenseScanUrl{}) (ApiExpectation _ b@(GetSignedLicenseScanUrl{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetSignedUploadUrl{}) (ApiExpectation _ b@(GetSignedUploadUrl{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(QueueArchiveBuild{}) (ApiExpectation _ b@(QueueArchiveBuild{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(UploadAnalysis{}) (ApiExpectation _ b@(UploadAnalysis{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(UploadArchive{}) (ApiExpectation _ b@(UploadArchive{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(UploadContainerScan{}) (ApiExpectation _ b@(UploadContainerScan{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(UploadContributors{}) (ApiExpectation _ b@(UploadContributors{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(UploadLicenseScanResult{}) (ApiExpectation _ b@(UploadLicenseScanResult{}) resp) = resp <$ guard (a == b)
 matchExpectation _ _ = Nothing
 
 -- | Handles a request in the context of the mock API.
