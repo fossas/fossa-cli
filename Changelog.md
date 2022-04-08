@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.2.4
+- nodejs: Fixed a bug where dev deps that only appear in requires were considered production dependencies. ([#884](https://github.com/fossas/fossa-cli/pull/884))
+
 ## v3.2.3
 - nodejs: Fixed a bug where some dev dependencies weren't removed during shrinking. ([#859](https://github.com/fossas/fossa-cli/pull/859))
 
