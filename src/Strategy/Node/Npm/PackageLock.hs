@@ -133,7 +133,10 @@ data NpmDepVertexLabel = NpmDepVertexEnv DepEnvironment | NpmDepVertexLocation T
 -- downloaded to @node_modules@. This function will adjust map keys to be names
 -- like in the @dependencies@ key by stripping out path components besides the final one..
 --
--- When
+-- When npm installs a dep inside of another dep (for version conflicts) we get the string
+-- @node_modules/a/node_modules/b@.  We actually don't want to do sub-package matching here,
+-- so we only drop the first @node_modules/@, and if it has a sub-package, then we just
+-- won't ever query for that key.
 packagePathsToNames :: Map Text a -> Map Text a
 packagePathsToNames = Map.mapKeys (TE.dropPrefix "node_modules/")
 
