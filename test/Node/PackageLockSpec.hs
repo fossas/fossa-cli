@@ -4,6 +4,7 @@ module Node.PackageLockSpec (
   spec,
 ) where
 
+import Algebra.Graph.AdjacencyMap qualified as AM
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import DepTypes (
@@ -21,6 +22,7 @@ import GraphUtil (
   expectEdges,
   expectEdges',
  )
+import Graphing qualified
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Npm.PackageLock (
@@ -37,7 +39,50 @@ import Strategy.Node.Npm.PackageLock (
   buildGraph,
  )
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Spec, describe, it, runIO)
+import Test.Hspec (Spec, describe, it, runIO, shouldSatisfy)
+
+-- This is a package-lock.json that has a dev dependency (packageOne) with a
+-- require, packageTwo, that doesn't exist in either depDependencies or
+-- lockDependencies.
+mockRequiredMissingDep :: PkgLockJson
+mockRequiredMissingDep =
+  PkgLockJson
+    { lockDependencies =
+        Map.fromList
+          [
+            ( "packageOne"
+            , PkgLockDependency
+                { depVersion = "1.0.0"
+                , depDev = True
+                , depResolved = NpmResolved $ Just "https://foo.com"
+                , depRequires = Map.fromList [("packageTwo", "2.0.0")]
+                , depDependencies = Map.empty
+                }
+            )
+          ,
+            ( "packageThree"
+            , PkgLockDependency
+                { depVersion = "3.0.0"
+                , depDev = False
+                , depResolved = NpmResolved $ Just "https://bar.com"
+                , depRequires = Map.empty
+                , depDependencies = Map.empty
+                }
+            )
+          ]
+    , lockPackages = Map.empty
+    }
+
+mockDevRequireMissingDependency :: Dependency
+mockDevRequireMissingDependency =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "packageTwo"
+    , dependencyVersion = Just (CEq "2.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = Set.singleton EnvDevelopment
+    , dependencyTags = Map.empty
+    }
 
 mockInput :: PkgLockJson
 mockInput =
@@ -127,7 +172,7 @@ packageOne =
     , dependencyName = "packageOne"
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = ["https://example.com/one.tgz"]
-    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyEnvironments = Set.fromList [EnvProduction, EnvDevelopment]
     , dependencyTags = Map.empty
     }
 
@@ -328,6 +373,14 @@ buildGraphSpec testDir =
         , (winston, async)
         ]
         graph
+
+    it "label required deps as 'EnvDevelopment' if the parent is dev" $ do
+      let vertexSet =
+            AM.vertexSet
+              . Graphing.toAdjacencyMap
+              . buildGraph mockRequiredMissingDep
+              $ (Set.singleton "packageThree")
+      vertexSet `shouldSatisfy` Set.member mockDevRequireMissingDependency
 
 packageLockParseSpec :: Path Abs Dir -> Spec
 packageLockParseSpec testDir =
