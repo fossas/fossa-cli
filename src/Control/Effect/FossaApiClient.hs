@@ -20,7 +20,10 @@ module Control.Effect.FossaApiClient (
   uploadArchive,
   uploadContainerScan,
   uploadContributors,
-getSignedLicenseScanUrl, uploadLicenseScanResult, finalizeLicenseScan) where
+  getSignedLicenseScanUrl,
+  uploadLicenseScanResult,
+  finalizeLicenseScan,
+) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Container.Scan (ContainerScan (..))
@@ -35,6 +38,7 @@ import Data.Text (Text)
 import Fossa.API.Types (
   ApiOpts,
   Archive,
+  ArchiveComponents,
   Build,
   Contributors,
   Issues,
@@ -43,10 +47,10 @@ import Fossa.API.Types (
   ScanId,
   ScanResponse,
   SignedURL,
-  UploadResponse, ArchiveComponents
+  UploadResponse,
  )
 import Network.HTTP.Req (LbsResponse)
-import Srclib.Types (Locator, SourceUnit, LicenseSourceUnit)
+import Srclib.Types (LicenseSourceUnit, Locator, SourceUnit)
 
 -- | PackageRevisions are like ProjectRevisions, but they never have a branch.
 data PackageRevision = PackageRevision

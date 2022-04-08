@@ -4,6 +4,7 @@ module Control.Carrier.FossaApiClient (FossaApiClientC, runFossaApiClient) where
 
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.Core qualified as Core
+import Control.Carrier.FossaApiClient.Internal.LicenseScanning qualified as LicenseScanning
 import Control.Carrier.FossaApiClient.Internal.ScotlandYard qualified as ScotlandYard
 import Control.Carrier.FossaApiClient.Internal.VSI qualified as VSI
 import Control.Carrier.Reader (ReaderC, runReader)
@@ -12,7 +13,6 @@ import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift)
 import Fossa.API.Types (ApiOpts)
-import qualified Control.Carrier.FossaApiClient.Internal.LicenseScanning as LicenseScanning
 
 -- | A carrier to run Fossa API functions in the IO monad
 type FossaApiClientC m = SimpleC FossaApiClientF (ReaderC ApiOpts m)

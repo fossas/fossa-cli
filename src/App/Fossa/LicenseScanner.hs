@@ -17,7 +17,7 @@ import App.Fossa.RunThemis (
  )
 import Control.Carrier.Finally (runFinally)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, fatal, fatalText, fromMaybe, recover)
-import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, getSignedLicenseScanUrl, PackageRevision (PackageRevision, packageVersion, packageName), finalizeLicenseScan, uploadLicenseScanResult)
+import Control.Effect.FossaApiClient (FossaApiClient, PackageRevision (PackageRevision, packageName, packageVersion), finalizeLicenseScan, getOrganization, getSignedLicenseScanUrl, uploadLicenseScanResult)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
 import Control.Monad (unless)
@@ -213,7 +213,7 @@ uploadVendoredDep VendoredDependency{..} themisScanResult = do
     Nothing -> pure . showT . md5 . encodeUtf8 . show . NE.sort $ themisScanResult
     Just version -> pure version
 
-  signedURL <- getSignedLicenseScanUrl $ PackageRevision { packageVersion = depVersion, packageName = vendoredName }
+  signedURL <- getSignedLicenseScanUrl $ PackageRevision{packageVersion = depVersion, packageName = vendoredName}
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
   uploadLicenseScanResult signedURL licenseSourceUnit
@@ -252,7 +252,7 @@ licenseScanSourceUnit baseDir vendoredDeps = do
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
   -- but not when reading from a source unit.
-  orgId <- organizationId <$> getOrganization 
+  orgId <- organizationId <$> getOrganization
 
   pure $ NE.map arcToLocator (archivesWithOrganization orgId archives)
   where

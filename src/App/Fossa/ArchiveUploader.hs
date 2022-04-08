@@ -15,7 +15,7 @@ import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.StickyLogger (StickyLogger, logSticky)
 import Control.Effect.Diagnostics (context)
-import Control.Effect.FossaApiClient (PackageRevision (PackageRevision), FossaApiClient, getOrganization, getSignedUploadUrl, queueArchiveBuild, uploadArchive)
+import Control.Effect.FossaApiClient (FossaApiClient, PackageRevision (PackageRevision), getOrganization, getSignedUploadUrl, queueArchiveBuild, uploadArchive)
 import Control.Effect.Lift
 import Control.Effect.Path (withSystemTempDir)
 import Control.Monad (unless)
