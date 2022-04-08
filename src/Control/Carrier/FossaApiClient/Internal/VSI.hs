@@ -17,7 +17,7 @@ import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Data.Map (Map)
