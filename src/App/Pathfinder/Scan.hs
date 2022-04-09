@@ -12,6 +12,7 @@ import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Error.Either (Has)
 import Control.Carrier.Finally (runFinally)
 import Control.Carrier.Output.IO (Output, output, runOutput)
+import Control.Carrier.Reader (runReader)
 import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool (
@@ -22,6 +23,7 @@ import Control.Carrier.TaskPool (
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Exception as Exc (Lift)
 import Control.Effect.Lift (sendIO)
+import Control.Effect.Reader (Reader)
 import Control.Effect.Stack (Stack)
 import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO)
@@ -35,6 +37,7 @@ import Data.Bool (bool)
 import Data.ByteString.Lazy qualified as BL
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
+import Discovery.Filters (AllFilters)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec, runExecIO)
 import Effect.Logger (
@@ -82,6 +85,7 @@ runAll ::
   , Has AtomicCounter sig m
   , Has Debug sig m
   , Has Stack sig m
+  , Has (Reader AllFilters) sig m
   , MonadIO m
   ) =>
   Path Abs Dir ->
@@ -134,6 +138,9 @@ scan basedir = runFinally $ do
       . runFinally
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
+      -- Pathfinder does not support filters.  When `fossa analyze` supports declared license scanning,
+      -- we will need to support filters as well.
+      . runReader (mempty :: AllFilters)
       $ runAll basedir
 
   sendIO (BL.putStr (encode projectResults))

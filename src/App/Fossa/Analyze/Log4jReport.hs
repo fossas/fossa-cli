@@ -123,6 +123,7 @@ analyzeForLog4j basedir = do
   capabilities <- sendIO getNumCapabilities
 
   runReader withoutAnyExperimentalPreferences
+    . runReader (mempty :: AllFilters)
     . ignoreDebug
     $ do
       (projectResults, ()) <-
@@ -170,6 +171,7 @@ runDependencyAnalysisForLog4j ::
   , Has Exec sig m
   , Has (Output ProjectResult) sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader AllFilters) sig m
   , Has Stack sig m
   , Has Telemetry sig m
   ) =>

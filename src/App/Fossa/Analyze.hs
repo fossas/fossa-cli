@@ -172,6 +172,7 @@ runDependencyAnalysis ::
   , Has (Output DiscoveredProjectScan) sig m
   , Has Stack sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader AllFilters) sig m
   , Has Telemetry sig m
   ) =>
   -- | Analysis base directory
@@ -288,6 +289,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
       . runReader (Config.experimental cfg)
+      . runReader (Config.filterSet cfg)
       $ do
         runAnalyzers basedir filters
         when (fromFlag UnpackArchives $ Config.unpackArchives cfg) $
