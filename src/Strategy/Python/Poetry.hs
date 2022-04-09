@@ -64,7 +64,14 @@ instance ToJSON PoetryProject
 instance AnalyzeProject PoetryProject where
   analyzeProject _ = getDeps
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PoetryProject]
+discover ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  , Has (Reader AllFilters) sig m
+  ) =>
+  Path Abs Dir ->
+  m [DiscoveredProject PoetryProject]
 discover = simpleDiscover findProjects mkProject PoetryProjectType
 
 -- | Poetry build backend identifier required in [pyproject.toml](https://python-poetry.org/docs/pyproject/#poetry-and-pep-517).
@@ -88,7 +95,14 @@ warnIncorrectBuildBackend currentBackend =
 
 -- | Finds poetry project by searching for pyproject.toml.
 -- If poetry.lock file is also discovered, it is used as a supplement.
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PoetryProject]
+findProjects ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  , Has (Reader AllFilters) sig m
+  ) =>
+  Path Abs Dir ->
+  m [PoetryProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   let poetryLockFile = findFileNamed "poetry.lock" files
   let pyprojectFile = findFileNamed "pyproject.toml" files
