@@ -290,6 +290,7 @@ library
     Discovery.Archive.RPM
     Discovery.Filters
     Discovery.Projects
+    Discovery.Simple
     Discovery.Walk
     Effect.Exec
     Effect.Grapher
