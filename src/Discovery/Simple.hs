@@ -19,8 +19,8 @@ import Types (DiscoveredProject, DiscoveredProjectType)
 -- The type of the @findProjects@ and @mkProject@ fields enforce that only
 -- those discovery functions which actually conform to the simple discovery
 -- model.  In particular, the @a@ in @m [a]@ returned by @findProjects@ must be
--- the same as the final @m [DiscoveredProject a]@, and the type of @mkProject@
--- enforces that.
+-- the same as in the final @m [DiscoveredProject a]@, and the type of
+-- @mkProject@ enforces that.
 --
 -- If you can define a discovery function in terms of @simpleDiscover@, it's
 -- most likely safe to do so.
