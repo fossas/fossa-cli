@@ -15,7 +15,26 @@ module Test.Effect (
   withTempDir,
 ) where
 
+import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
+import Control.Carrier.Finally (FinallyC, runFinally)
+import Control.Carrier.Reader (ReaderC, runReader)
+import Control.Carrier.Stack (StackC, runStack)
+import Control.Carrier.StickyLogger (IgnoreStickyLoggerC, ignoreStickyLogger)
+import Control.Effect.Diagnostics (Diagnostics, errorBoundary)
+import Control.Effect.Finally (Finally, onExit)
 import Control.Effect.Lift (Has, Lift, sendIO)
+import Data.Bits (finiteBitSize)
+import Data.String.Conversion (toString)
+import Diag.Result (Result (..), renderFailure)
+import Discovery.Filters (AllFilters)
+import Effect.Exec (ExecIOC, runExecIO)
+import Effect.Logger (IgnoreLoggerC, ignoreLogger, renderIt)
+import Effect.ReadFS (ReadFSIOC, runReadFSIO)
+import Path (Abs, Dir, Path, parseAbsDir, parseRelDir, (</>))
+import Path.IO (createDirIfMissing, removeDirRecur)
+import ResultUtil (expectFailure)
+import System.Directory (getTemporaryDirectory)
+import System.Random (randomIO)
 import Test.Hspec (
   Spec,
   SpecWith,
@@ -31,44 +50,14 @@ import Test.Hspec (
   shouldStartWith,
   xit,
  )
-
-import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
-import Control.Carrier.Finally (FinallyC, runFinally)
-import Control.Carrier.Stack (StackC, runStack)
-import Control.Carrier.StickyLogger (IgnoreStickyLoggerC, ignoreStickyLogger)
-import Control.Effect.Diagnostics (Diagnostics, errorBoundary)
-import Control.Effect.Finally (Finally, onExit)
-import Data.Bits (finiteBitSize)
-import Data.String.Conversion (toString)
-import Diag.Result (Result (..), renderFailure)
-import Effect.Exec (ExecIOC, runExecIO)
-import Effect.Logger (IgnoreLoggerC, ignoreLogger, renderIt)
-import Effect.ReadFS (ReadFSIOC, runReadFSIO)
-import Path (Abs, Dir, Path, parseAbsDir, parseRelDir, (</>))
-import Path.IO (createDirIfMissing, removeDirRecur)
-import ResultUtil (expectFailure)
-import System.Directory (getTemporaryDirectory)
-import System.Random (randomIO)
 import Test.MockApi (FossaApiClientMockC, MockApiC, runApiWithMock, runMockApi)
 import Text.Printf (printf)
 
-type EffectStack a =
-  FinallyC
-    ( ExecIOC
-        ( ReadFSIOC
-            -- The FossaApiClient must be outside of Diagnostics because it
-            -- depends on it.
-            ( FossaApiClientMockC
-                ( DiagnosticsC
-                    -- MockApiC must be inside Diagnostics so its state is not
-                    -- lost when diagnostics short-circuits on an error.
-                    ( MockApiC (IgnoreLoggerC (IgnoreStickyLoggerC (StackC IO)))
-                    )
-                )
-            )
-        )
-    )
-    a
+-- The FossaApiClient must be outside of Diagnostics because it
+-- depends on it.
+-- MockApiC must be inside Diagnostics so its state is not
+-- lost when diagnostics short-circuits on an error.
+type EffectStack = FinallyC (ReaderC AllFilters (ExecIOC (ReadFSIOC (FossaApiClientMockC (DiagnosticsC (MockApiC (IgnoreLoggerC (IgnoreStickyLoggerC (StackC IO)))))))))
 
 -- TODO: add useful describe, naive describe' doesn't work.
 
@@ -85,7 +74,7 @@ runTestEffects' :: EffectStack () -> Spec
 runTestEffects' = runIO . runTestEffects
 
 runTestEffects :: EffectStack () -> IO ()
-runTestEffects = runStack . ignoreStickyLogger . ignoreLogger . runMockApi . handleDiag . runApiWithMock . runReadFSIO . runExecIO . runFinally
+runTestEffects = runStack . ignoreStickyLogger . ignoreLogger . runMockApi . handleDiag . runApiWithMock . runReadFSIO . runExecIO . runReader mempty . runFinally
   where
     handleDiag :: (Has (Lift IO) sig m) => DiagnosticsC m () -> m ()
     handleDiag diag =

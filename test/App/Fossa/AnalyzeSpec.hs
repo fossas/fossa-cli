@@ -7,12 +7,13 @@ import Control.Carrier.Diagnostics (DiagnosticsC)
 import Control.Carrier.Reader (ReaderC)
 import Control.Carrier.Stack (StackC)
 import Control.Carrier.Telemetry (TelemetryC)
+import Discovery.Filters (AllFilters)
 import Effect.Exec (ExecIOC)
 import Effect.Logger (LoggerC)
 import Effect.ReadFS (ReadFSIOC)
 import Test.Hspec (Spec, describe, it, shouldBe)
 
-type SomeMonad = TelemetryC (ReaderC ExperimentalAnalyzeConfig (DebugC (DiagnosticsC (LoggerC (ExecIOC (ReadFSIOC (StackC IO)))))))
+type SomeMonad = TelemetryC (ReaderC ExperimentalAnalyzeConfig (ReaderC AllFilters (DebugC (DiagnosticsC (LoggerC (ExecIOC (ReadFSIOC (StackC IO))))))))
 
 spec :: Spec
 spec =
