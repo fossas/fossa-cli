@@ -8,25 +8,36 @@ module Strategy.Gomodules (
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
+import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
-import Discovery.Walk
-import Effect.Exec
-import Effect.ReadFS
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (
+  WalkStep (WalkSkipSome),
+  findFileNamed,
+  walkWithFilters',
+ )
+import Effect.Exec (Exec, Has)
+import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path)
 import Strategy.Go.GoList qualified as GoList
 import Strategy.Go.GoModGraph qualified as GoModGraph
 import Strategy.Go.Gomod qualified as Gomod
-import Types
+import Types (
+  Dependency,
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (GomodProjectType),
+  GraphBreadth,
+ )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject GomodulesProject]
-discover dir = context "Gomodules" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject GomodulesProject]
+discover = simpleDiscover findProjects mkProject GomodProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [GomodulesProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GomodulesProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "go.mod" files of
     Nothing -> pure ([], WalkSkipSome ["vendor"])
     Just gomod -> pure ([GomodulesProject gomod dir], WalkSkipSome ["vendor"])

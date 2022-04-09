@@ -11,7 +11,13 @@ module Strategy.NuGet.Paket (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  run,
+ )
+import Control.Effect.Reader (Reader)
 import Control.Monad (guard)
 import Data.Aeson (ToJSON)
 import Data.Char qualified as C
@@ -22,27 +28,55 @@ import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import DepTypes
-import Discovery.Walk
-import Effect.Grapher
-import Effect.ReadFS
+import DepTypes (
+  DepType (NuGetType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  findFileNamed,
+  walkWithFilters',
+ )
+import Effect.Grapher (
+  LabeledGrapher,
+  direct,
+  edge,
+  label,
+  withLabeling,
+ )
+import Effect.ReadFS (ReadFS, readContentsParser)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
-import Path
-import Text.Megaparsec hiding (label)
-import Text.Megaparsec.Char
+import Path (Abs, Dir, File, Path, parent)
+import Text.Megaparsec (
+  MonadParsec (eof, takeWhile1P, takeWhileP, try),
+  Parsec,
+  between,
+  chunk,
+  empty,
+  many,
+  some,
+  (<|>),
+ )
+import Text.Megaparsec.Char (char, eol, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
-import Types
+import Types (
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (PaketProjectType),
+  GraphBreadth (Complete),
+ )
 
 type Parser = Parsec Void Text
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PaketProject]
-discover dir = context "Paket" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PaketProject]
+discover = simpleDiscover findProjects mkProject PaketProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PaketProject]
-findProjects = walk' $ \_ _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PaketProject]
+findProjects = walkWithFilters' $ \_ _ files -> do
   case findFileNamed "paket.lock" files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([PaketProject file], WalkContinue)

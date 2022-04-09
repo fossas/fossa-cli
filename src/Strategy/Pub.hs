@@ -1,32 +1,33 @@
 module Strategy.Pub (discover) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics (Diagnostics, context, errCtx, fatalText, recover, warnOnErr, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, errCtx, fatalText, recover, warnOnErr, (<||>))
+import Control.Effect.Reader (Reader)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
 import Diag.Common (
   MissingDeepDeps (MissingDeepDeps),
   MissingEdges (MissingEdges),
  )
-import Discovery.Walk (WalkStep (WalkContinue), findFileNamed, walk')
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (WalkStep (WalkContinue), findFileNamed, walkWithFilters')
 import Effect.Exec (Exec, Has)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (Abs, Dir, File, Path)
 import Strategy.Dart.Errors (PubspecLimitation (..))
 import Strategy.Dart.PubDeps (analyzeDepsCmd)
 import Strategy.Dart.PubSpec (analyzePubSpecFile)
 import Strategy.Dart.PubSpecLock (analyzePubLockFile)
 import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (PubProjectType))
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PubProject]
-discover dir = context "Pub" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PubProject]
+discover = simpleDiscover findProjects mkProject PubProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PubProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PubProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   -- Note: pub does not support pubspec.yml naming - it must be pubspec.yaml.
   let pubSpecFile = findFileNamed "pubspec.yaml" files
   let pubSpecLockFile = findFileNamed "pubspec.lock" files

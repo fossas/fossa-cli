@@ -10,6 +10,7 @@ module Strategy.Perl (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context)
+import Control.Effect.Reader (Reader)
 import Data.Aeson (Object, ToJSON)
 import Data.Aeson.Types (FromJSONKey, Parser, withObject)
 import Data.Aeson.Types qualified as AesonTypes
@@ -25,16 +26,17 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
-  walk',
+  walkWithFilters',
  )
-import Effect.Exec (Has)
-import Effect.ReadFS (ReadFS, readContentsJson, readContentsYaml)
+import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsYaml)
 import GHC.Generics (Generic)
 import Graphing (Graphing, deeps)
-import Path
+import Path (Abs, Dir, File, Path)
 import Path.Extra (extensionOf)
 import Text.Read (readMaybe)
 import Types (
@@ -44,13 +46,11 @@ import Types (
   GraphBreadth (Partial),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PerlProject]
-discover dir = context "Perl" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PerlProject]
+discover = simpleDiscover findProjects mkProject PerlProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PerlProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PerlProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   -- We prefer MYMETA over META.
   -- Reference: https://metacpan.org/dist/App-mymeta_requires/view/bin/mymeta-requires
   case asum $ map (`findFileNamed` files) ["MYMETA.json", "MYMETA.yml", "META.json", "META.yml"] of

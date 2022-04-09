@@ -11,26 +11,51 @@ module Strategy.NuGet.ProjectJson (
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics
-import Data.Aeson.Types
+import Control.Effect.Diagnostics (Diagnostics, Has)
+import Control.Effect.Reader (Reader)
+import Data.Aeson.Types (
+  FromJSON (parseJSON),
+  Parser,
+  ToJSON,
+  Value,
+  withObject,
+  withText,
+  (.:),
+  (.:?),
+ )
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text
-import DepTypes
-import Discovery.Walk
-import Effect.ReadFS
+import DepTypes (
+  DepType (NuGetType),
+  Dependency (..),
+  VerConstraint (CCompatible, CEq),
+ )
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  findFileNamed,
+  walkWithFilters',
+ )
+import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
-import Path
-import Types
+import Path (Abs, Dir, File, Path, parent)
+import Types (
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (ProjectJsonProjectType),
+  GraphBreadth (Partial),
+ )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject ProjectJsonProject]
-discover dir = map mkProject <$> findProjects dir
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject ProjectJsonProject]
+discover = simpleDiscover findProjects mkProject ProjectJsonProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [ProjectJsonProject]
-findProjects = walk' $ \_ _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [ProjectJsonProject]
+findProjects = walkWithFilters' $ \_ _ files -> do
   case findFileNamed "project.json" files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([ProjectJsonProject file], WalkContinue)

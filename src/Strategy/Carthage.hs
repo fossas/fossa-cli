@@ -12,7 +12,16 @@ module Strategy.Carthage (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  ToDiagnostic (..),
+  context,
+  errCtx,
+  recover,
+  warnOnErr,
+ )
+import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.Char (isSpace)
 import Data.Foldable (for_, traverse_)
@@ -22,26 +31,59 @@ import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text.Extra qualified as Text
 import Data.Void (Void)
-import DepTypes
-import Discovery.Walk
-import Effect.Grapher
-import Effect.ReadFS
+import DepTypes (
+  DepType (CarthageType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (
+  WalkStep (WalkContinue, WalkSkipAll),
+  findFileNamed,
+  walkWithFilters',
+ )
+import Effect.Grapher (Grapher, direct, edge, evalGrapher)
+import Effect.ReadFS (ReadFS, readContentsParser)
 import GHC.Generics (Generic)
 import Graphing qualified as G
-import Path
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  mkRelDir,
+  mkRelFile,
+  parent,
+  parseRelDir,
+  (</>),
+ )
 import Prettyprinter (pretty, viaShow, vsep)
-import Text.Megaparsec
-import Text.Megaparsec.Char
+import Text.Megaparsec (
+  MonadParsec (eof),
+  Parsec,
+  choice,
+  chunk,
+  empty,
+  many,
+  satisfy,
+  some,
+  someTill,
+ )
+import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
-import Types
+import Types (
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (BundlerProjectType, CarthageProjectType),
+  GraphBreadth (Complete),
+ )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CarthageProject]
-discover dir = context "Carthage" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CarthageProject]
+discover = simpleDiscover findProjects mkProject BundlerProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CarthageProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CarthageProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "Cartfile.resolved" files of
     Nothing -> pure ([], WalkContinue)
     Just cartfile -> do

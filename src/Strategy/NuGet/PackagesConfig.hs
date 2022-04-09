@@ -11,28 +11,42 @@ module Strategy.NuGet.PackagesConfig (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (Diagnostics, Has, context)
+import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.Foldable (find)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import DepTypes
-import Discovery.Walk
-import Effect.ReadFS
+import DepTypes (
+  DepType (NuGetType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  fileName,
+  walkWithFilters',
+ )
+import Effect.ReadFS (ReadFS, readContentsXML)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
-import Parse.XML
-import Path
-import Types
+import Parse.XML (FromXML (..), attr, children)
+import Path (Abs, Dir, File, Path, parent)
+import Types (
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (PackagesConfigProjectType),
+  GraphBreadth (Partial),
+ )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PackagesConfigProject]
-discover dir = context "PackagesConfig" $ do
-  projects <- context "Finding Projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PackagesConfigProject]
+discover = simpleDiscover findProjects mkProject PackagesConfigProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PackagesConfigProject]
-findProjects = walk' $ \_ _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PackagesConfigProject]
+findProjects = walkWithFilters' $ \_ _ files -> do
   case find (\f -> fileName f == "packages.config") files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([PackagesConfigProject file], WalkContinue)

@@ -21,12 +21,18 @@ module Strategy.Gradle (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (allowedGradleConfigs))
 import Control.Algebra (Has)
-import Control.Carrier.Diagnostics (warnOnErr)
-import Control.Carrier.Reader (Reader)
-import Control.Effect.Diagnostics (Diagnostics, context, errCtx, fatal, recover, (<||>))
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  context,
+  errCtx,
+  fatal,
+  recover,
+  warnOnErr,
+  (<||>),
+ )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
-import Control.Effect.Reader (asks)
+import Control.Effect.Reader (Reader, asks)
 import Data.Aeson (ToJSON)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
@@ -44,7 +50,9 @@ import Data.Text qualified as Text
 import DepTypes (
   Dependency (..),
  )
-import Discovery.Walk (WalkStep (..), fileName, walk')
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (WalkStep (..), fileName, walkWithFilters')
 import Effect.Exec (AllowErr (..), Command (..), Exec, execThrow)
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, doesFileExist)
@@ -85,12 +93,11 @@ discover ::
   , Has ReadFS sig m
   , Has Diagnostics sig m
   , Has Exec sig m
+  , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject GradleProject]
-discover dir = context "Gradle" $ do
-  found <- context "Finding projects" $ findProjects dir
-  pure $ mkProject <$> found
+discover = simpleDiscover findProjects mkProject GradleProjectType
 
 -- |Run a Gradle command in a specific working directory, while correctly trying
 --Gradle wrappers.
@@ -128,8 +135,8 @@ walkUpDir dir filename = do
 -- This is to avoid invoking Gradle again for each subproject, which would be
 -- slow (because of Gradle's startup time) and possibly wrong (because
 -- subprojects need to resolve dependency constraints together).
-findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [GradleProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GradleProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   let isProjectFile f =
         any
           (`isPrefixOf` fileName f)

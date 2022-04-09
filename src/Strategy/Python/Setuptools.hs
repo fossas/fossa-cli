@@ -7,29 +7,40 @@ module Strategy.Python.Setuptools (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Carrier.Output.IO
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Diagnostics qualified as Diag
+import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.List (isInfixOf, isSuffixOf)
 import Data.Maybe (maybeToList)
 import Data.Text (Text)
-import Discovery.Walk
-import Effect.ReadFS
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  fileName,
+  findFileNamed,
+  walkWithFilters',
+ )
+import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
-import Path
+import Path (Abs, Dir, File, Path)
 import Strategy.Python.ReqTxt qualified as ReqTxt
 import Strategy.Python.SetupPy qualified as SetupPy
-import Types
+import Types (
+  Dependency,
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (SetuptoolsProjectType),
+  GraphBreadth (Partial),
+ )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject SetuptoolsProject]
-discover dir = context "Setuptools" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject SetuptoolsProject]
+discover = simpleDiscover findProjects mkProject SetuptoolsProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [SetuptoolsProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [SetuptoolsProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   let reqTxtFiles =
         filter
           (\f -> "req" `isInfixOf` fileName f && ".txt" `isSuffixOf` fileName f)
