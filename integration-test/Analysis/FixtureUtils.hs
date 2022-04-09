@@ -154,6 +154,7 @@ performDiscoveryAndAnalyses targetDir AnalysisTestFixture{..} = do
             Left err -> fail (show err)
             Right _ -> pure ()
 
+-- TODO: don't use MonadFail here
 withResult :: MonadFail m => Result a -> ([EmittedWarn] -> a -> m b) -> m b
 withResult (Failure ws eg) _ = fail (show (renderFailure ws eg "An issue occurred"))
 withResult (Success ws a) f = f ws a
