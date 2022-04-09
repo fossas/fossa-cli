@@ -184,10 +184,6 @@ instance FromJSON CargoMetadata where
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CargoProject]
 discover = simpleDiscover findProjects mkProject CargoProjectType
 
--- context "Cargo" $ do
---   projects <- context "Finding projects" $ findProjects dir
---   pure (map mkProject projects)
-
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CargoProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "Cargo.toml" files of
