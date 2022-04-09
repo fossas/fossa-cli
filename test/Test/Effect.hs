@@ -52,12 +52,13 @@ import Test.Hspec (
  )
 import Test.MockApi (FossaApiClientMockC, MockApiC, runApiWithMock, runMockApi)
 import Text.Printf (printf)
+import Type.Operator (type ($))
 
 -- The FossaApiClient must be outside of Diagnostics because it
 -- depends on it.
 -- MockApiC must be inside Diagnostics so its state is not
 -- lost when diagnostics short-circuits on an error.
-type EffectStack = FinallyC (ReaderC AllFilters (ExecIOC (ReadFSIOC (FossaApiClientMockC (DiagnosticsC (MockApiC (IgnoreLoggerC (IgnoreStickyLoggerC (StackC IO)))))))))
+type EffectStack = FinallyC $ ReaderC AllFilters $ ExecIOC $ ReadFSIOC $ FossaApiClientMockC $ DiagnosticsC $ MockApiC $ IgnoreLoggerC $ IgnoreStickyLoggerC $ StackC IO
 
 -- TODO: add useful describe, naive describe' doesn't work.
 

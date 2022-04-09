@@ -395,6 +395,7 @@ library
     Strategy.Swift.Xcode.PbxprojParser
     Strategy.SwiftPM
     Text.URI.Builder
+    Type.Operator
     Types
 
   hs-source-dirs:  src

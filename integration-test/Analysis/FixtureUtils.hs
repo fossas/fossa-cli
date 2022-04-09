@@ -69,6 +69,7 @@ import Path (
 import Path.IO qualified as PIO
 import System.Directory.Internal.Prelude (Handle, hClose)
 import Text.URI (mkURI)
+import Type.Operator (type ($))
 import Types (
   DependencyResults,
   DiscoveredProject (projectBuildTargets, projectData),
@@ -100,7 +101,7 @@ data FixtureArtifact = FixtureArtifact
   }
   deriving (Show, Eq, Ord)
 
-type TestC m = ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC (ReaderC AllFilters (ReaderC ExperimentalAnalyzeConfig (FinallyC (StackC (IgnoreTelemetryC m))))))))
+type TestC m = ExecIOC $ ReadFSIOC $ DiagnosticsC $ LoggerC $ ReaderC AllFilters $ ReaderC ExperimentalAnalyzeConfig $ FinallyC $ StackC $ IgnoreTelemetryC m
 
 testRunnerWithLogger :: TestC IO a -> FixtureEnvironment -> IO (Result a)
 testRunnerWithLogger f env =
