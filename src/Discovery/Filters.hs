@@ -105,6 +105,7 @@ withToolFilter tool = withMultiToolFilter [tool]
 toolAllowed :: AllFilters -> DiscoveredProjectType -> Bool
 toolAllowed AllFilters{..} ty = allowedInclude && allowedExclude
   where
+    -- TODO: Use FilterCombination's phantom type to confirm that we aren't mixing these up.
     allowedExclude = not . any (toolMatches ty) $ combinedTargets excludeFilters
     allowedInclude
       -- If the included target array is empty, allow everything
