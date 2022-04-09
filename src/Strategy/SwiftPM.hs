@@ -53,11 +53,6 @@ instance ToJSON SwiftProject
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject SwiftProject]
 discover = simpleDiscover findProjects mkProject SwiftProjectType
 
--- discover dir = context "Swift" $ do
---   swiftPackageProjects <- context "Finding swift package projects" $ findSwiftPackageProjects dir
---   xCodeProjects <- context "Finding xcode projects using swift package manager" $ findXcodeProjects dir
---   pure $ map mkProject (swiftPackageProjects ++ xCodeProjects)
-
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m [SwiftProject]
 findProjects dir = do
   swiftPackageProjects <- context "Finding swift package projects" $ findSwiftPackageProjects dir
