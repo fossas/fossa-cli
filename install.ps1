@@ -15,6 +15,21 @@ $github = "https://github.com"
 $latestUri = "$github/fossas/fossa-cli/releases/$release_v1_upperbound"
 $extractDir = "$env:ALLUSERSPROFILE\fossa-cli"
 
+Write-Host ""
+Write-Host "-------------------"
+Write-Host "Deprecation Warning"
+Write-Host "-------------------"
+Write-Host ""
+Write-Host "You are installing FOSSA CLI v1, which is no longer in active"
+Write-Host "development. FOSSA will not address new defects found in CLI v1."  
+Write-Host ""
+Write-Host "Please upgrade to FOSSA CLI v3 by using install-latest script:" 
+Write-Host "    curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash"
+Write-Host "" 
+Write-Host "Migration guide for FOSSA CLI v3:"
+Write-Host "    https://github.com/fossas/fossa-cli/blob/master/docs/differences-from-v1.md#how-to-upgrade-to-fossa-3x"
+Write-Host ""
+
 Write-Verbose "Looking up latest v1 release..."
 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
