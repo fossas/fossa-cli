@@ -29,8 +29,11 @@ runFossaApiClient apiOpts =
   runReader apiOpts
     . interpret
       ( \case
+          AddFilesToVsiScan scanId files -> VSI.addFilesToVsiScan scanId files
           AssertRevisionBinaries locator fingerprints -> VSI.assertRevisionBinaries locator fingerprints
           AssertUserDefinedBinaries meta fingerprints -> VSI.assertUserDefinedBinaries meta fingerprints
+          CompleteVsiScan scanId -> VSI.completeVsiScan scanId
+          CreateVsiScan rev -> VSI.createVsiScan rev
           FinalizeLicenseScan components -> LicenseScanning.finalizeLicenseScan components
           GetApiOpts -> pure apiOpts
           GetAttribution rev format -> Core.getAttribution rev format
@@ -42,9 +45,11 @@ runFossaApiClient apiOpts =
           GetScan locator scanId -> ScotlandYard.getScan locator scanId
           GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev
           GetSignedUploadUrl rev -> Core.getSignedUploadUrl rev
+          GetVsiInferences scanId -> VSI.getVsiInferences scanId
+          GetVsiScanAnalysisStatus scanId -> VSI.getVsiScanAnalysisStatus scanId
+          QueueArchiveBuild archive -> Core.queueArchiveBuild archive
           ResolveProjectDependencies locator -> VSI.resolveProjectDependencies locator
           ResolveUserDefinedBinary deps -> VSI.resolveUserDefinedBinary deps
-          QueueArchiveBuild archive -> Core.queueArchiveBuild archive
           UploadAnalysis rev metadata units -> Core.uploadAnalysis rev metadata units
           UploadArchive url path -> Core.uploadArchive url path
           UploadContainerScan revision metadata scan -> Core.uploadContainerScan revision metadata scan

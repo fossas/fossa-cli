@@ -10,7 +10,7 @@ import App.Types (ProjectRevision)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, fromEither)
 import Control.Effect.Finally (Finally)
-import Control.Effect.FossaApiClient (FossaApiClient, getApiOpts)
+import Control.Effect.FossaApiClient (FossaApiClient)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger)
 import DepTypes (Dependency)
@@ -41,8 +41,7 @@ analyzeVSIDeps ::
   VSI.SkipResolution ->
   m SourceUnit
 analyzeVSIDeps dir projectRevision filters skipResolving = do
-  apiOpts <- getApiOpts
-  (direct, userDeps) <- runVsiAnalysis dir apiOpts projectRevision filters
+  (direct, userDeps) <- runVsiAnalysis dir projectRevision filters
 
   resolvedUserDeps <- resolveUserDefined userDeps
   resolvedGraph <- resolveGraph direct skipResolving

@@ -55,6 +55,7 @@ data Combined = Combined
   { combinedRaw :: Fingerprint Raw
   , combinedCommentStripped :: Maybe (Fingerprint CommentStripped)
   }
+  deriving (Show, Eq)
 
 instance ToJSON Combined where
   toJSON Combined{..} =
