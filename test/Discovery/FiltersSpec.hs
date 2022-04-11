@@ -28,7 +28,6 @@ import Test.Hspec (
   Spec,
   describe,
   expectationFailure,
-  fdescribe,
   it,
   shouldBe,
  )
