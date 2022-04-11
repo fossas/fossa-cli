@@ -169,8 +169,10 @@ isSingular (ApiExpectation Always _ _) = False
 -- A convenient expression for building these lines is:
 --   s/(\w+) ::.*/matchExpectation a@(\1{}) (ApiExpectation _ b@(\1{}) resp) = resp <$ guard (a == b)/
 matchExpectation :: FossaApiClientF a -> ApiExpectation -> Maybe (ApiResult a)
+matchExpectation a@(AssertRevisionBinaries{}) (ApiExpectation _ b@(AssertRevisionBinaries{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(AssertUserDefinedBinaries{}) (ApiExpectation _ b@(AssertUserDefinedBinaries{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetApiOpts{}) (ApiExpectation _ b@(GetApiOpts{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(FinalizeLicenseScan{}) (ApiExpectation _ b@(FinalizeLicenseScan{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetApiOpts) (ApiExpectation _ b@(GetApiOpts) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetAttribution{}) (ApiExpectation _ b@(GetAttribution{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetIssues{}) (ApiExpectation _ b@(GetIssues{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetLatestBuild{}) (ApiExpectation _ b@(GetLatestBuild{}) resp) = resp <$ guard (a == b)
@@ -178,14 +180,14 @@ matchExpectation a@(GetLatestScan{}) (ApiExpectation _ b@(GetLatestScan{}) resp)
 matchExpectation a@(GetOrganization{}) (ApiExpectation _ b@(GetOrganization{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetProject{}) (ApiExpectation _ b@(GetProject{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetScan{}) (ApiExpectation _ b@(GetScan{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetSignedUploadUrl{}) (ApiExpectation _ b@(GetSignedUploadUrl{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(QueueArchiveBuild{}) (ApiExpectation _ b@(QueueArchiveBuild{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetSignedLicenseScanUrl{}) (ApiExpectation _ b@(GetSignedLicenseScanUrl{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(ResolveProjectDependencies{}) (ApiExpectation _ b@(ResolveProjectDependencies{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(ResolveUserDefinedBinary{}) (ApiExpectation _ b@(ResolveUserDefinedBinary{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(UploadAnalysis{}) (ApiExpectation _ b@(UploadAnalysis{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(UploadArchive{}) (ApiExpectation _ b@(UploadArchive{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(UploadContainerScan{}) (ApiExpectation _ b@(UploadContainerScan{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(UploadContributors{}) (ApiExpectation _ b@(UploadContributors{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(UploadLicenseScanResult{}) (ApiExpectation _ b@(UploadLicenseScanResult{}) resp) = resp <$ guard (a == b)
 matchExpectation _ _ = Nothing
 
 -- | Handles a request in the context of the mock API.

@@ -4,6 +4,7 @@ module Control.Carrier.FossaApiClient (FossaApiClientC, runFossaApiClient) where
 
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.Core qualified as Core
+import Control.Carrier.FossaApiClient.Internal.LicenseScanning qualified as LicenseScanning
 import Control.Carrier.FossaApiClient.Internal.ScotlandYard qualified as ScotlandYard
 import Control.Carrier.FossaApiClient.Internal.VSI qualified as VSI
 import Control.Carrier.Reader (ReaderC, runReader)
@@ -28,8 +29,12 @@ runFossaApiClient apiOpts =
   runReader apiOpts
     . interpret
       ( \case
+          AddFilesToVsiScan scanId files -> VSI.addFilesToVsiScan scanId files
           AssertRevisionBinaries locator fingerprints -> VSI.assertRevisionBinaries locator fingerprints
           AssertUserDefinedBinaries meta fingerprints -> VSI.assertUserDefinedBinaries meta fingerprints
+          CompleteVsiScan scanId -> VSI.completeVsiScan scanId
+          CreateVsiScan rev -> VSI.createVsiScan rev
+          FinalizeLicenseScan components -> LicenseScanning.finalizeLicenseScan components
           GetApiOpts -> pure apiOpts
           GetAttribution rev format -> Core.getAttribution rev format
           GetIssues rev -> Core.getIssues rev
@@ -38,17 +43,16 @@ runFossaApiClient apiOpts =
           GetOrganization -> Core.getOrganization
           GetProject rev -> Core.getProject rev
           GetScan locator scanId -> ScotlandYard.getScan locator scanId
+          GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev
           GetSignedUploadUrl rev -> Core.getSignedUploadUrl rev
+          GetVsiInferences scanId -> VSI.getVsiInferences scanId
+          GetVsiScanAnalysisStatus scanId -> VSI.getVsiScanAnalysisStatus scanId
+          QueueArchiveBuild archive -> Core.queueArchiveBuild archive
           ResolveProjectDependencies locator -> VSI.resolveProjectDependencies locator
           ResolveUserDefinedBinary deps -> VSI.resolveUserDefinedBinary deps
-          QueueArchiveBuild archive -> Core.queueArchiveBuild archive
           UploadAnalysis rev metadata units -> Core.uploadAnalysis rev metadata units
+          UploadArchive url path -> Core.uploadArchive url path
           UploadContainerScan revision metadata scan -> Core.uploadContainerScan revision metadata scan
           UploadContributors locator contributors -> Core.uploadContributors locator contributors
-          UploadArchive url path -> Core.uploadArchive url path
-          CreateVsiScan rev -> VSI.createVsiScan rev
-          AddFilesToVsiScan scanId files -> VSI.addFilesToVsiScan scanId files
-          CompleteVsiScan scanId -> VSI.completeVsiScan scanId
-          GetVsiScanAnalysisStatus scanId -> VSI.getVsiScanAnalysisStatus scanId
-          GetVsiInferences scanId -> VSI.getVsiInferences scanId
+          UploadLicenseScanResult signedUrl licenseSourceUnit -> LicenseScanning.uploadLicenseScanResult signedUrl licenseSourceUnit
       )
