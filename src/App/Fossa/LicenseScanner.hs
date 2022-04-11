@@ -17,7 +17,14 @@ import App.Fossa.RunThemis (
  )
 import Control.Carrier.Finally (runFinally)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, fatal, fatalText, fromMaybe, recover)
-import Control.Effect.FossaApiClient (FossaApiClient, PackageRevision (PackageRevision, packageName, packageVersion), finalizeLicenseScan, getOrganization, getSignedLicenseScanUrl, uploadLicenseScanResult)
+import Control.Effect.FossaApiClient (
+  FossaApiClient,
+  PackageRevision (..),
+  finalizeLicenseScan,
+  getOrganization,
+  getSignedLicenseScanUrl,
+  uploadLicenseScanResult,
+ )
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
 import Control.Monad (unless)
