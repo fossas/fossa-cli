@@ -230,7 +230,7 @@ spec = do
         pathAllowed bigFilters $(mkRelDir "a/b/c") `shouldBe` False
         pathAllowed bigFilters $(mkRelDir "a/b/d") `shouldBe` True
 
-  fdescribe "tool filtering helpers" $ do
+  describe "tool filtering helpers" $ do
     it "should return an empty list when the tool is not allowed" $ do
       let filters = excludeTool CargoProjectType
           result = run . runReader filters $ withToolFilter CargoProjectType $ pure [True]
