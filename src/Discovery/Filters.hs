@@ -121,11 +121,13 @@ toolMatches ty = \case
 pathAllowed :: AllFilters -> Path Rel Dir -> Bool
 pathAllowed AllFilters{..} path = allowedInclude && allowedExclude
   where
-    allowedExclude = notElem path $ combinedPaths excludeFilters
+    allowedExclude = not . any (matchPath path) $ combinedPaths excludeFilters
     allowedInclude
       -- If the included path array is empty, allow everything
-      | combinedPaths includeFilters == (mempty :: [Path Rel Dir]) = True
-      | otherwise = elem path $ combinedPaths includeFilters
+      | combinedPaths includeFilters == mempty = True
+      | otherwise = any (matchPath path) $ combinedPaths includeFilters
+    -- child "hello/world/" matches "hello/" and "hello/world/"
+    matchPath child parent = parent == child || parent `isProperPrefixOf` child
 
 comboInclude :: [TargetFilter] -> [Path Rel Dir] -> FilterCombination Include
 comboInclude = FilterCombination
