@@ -20,6 +20,7 @@ import Control.Effect.Diagnostics (ToDiagnostic, renderDiagnostic)
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, withObject, (.:))
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Data.String (IsString)
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
@@ -29,7 +30,10 @@ import Srclib.Converter (depTypeToFetcher, fetcherToDepType)
 import Srclib.Types qualified as Srclib
 
 -- | The VSI backend returns a scan ID when a scan is created, which is then used to add files to the scan and get inferred OSS dependencies.
-newtype ScanID = ScanID {unScanID :: Text} deriving (ToJSON, FromJSON)
+newtype ScanID = ScanID {unScanID :: Text} deriving (ToJSON, FromJSON, Eq, Ord, IsString)
+
+instance Show ScanID where
+  show (ScanID scanId) = show scanId
 
 -- | The VSI backend returns statuses for tracking which stage analysis is on.
 -- Programmatically we only care about some of these, the rest are informational and can be safely shown to a user to indicate activity.

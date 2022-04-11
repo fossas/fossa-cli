@@ -1,19 +1,28 @@
 module Control.Carrier.FossaApiClient.Internal.VSI (
+  addFilesToVsiScan,
   assertRevisionBinaries,
   assertUserDefinedBinaries,
+  completeVsiScan,
+  createVsiScan,
+  getVsiInferences,
+  getVsiScanAnalysisStatus,
   resolveProjectDependencies,
   resolveUserDefinedBinary,
 ) where
 
 import App.Fossa.FossaAPIV1 qualified as API
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
+import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
+import App.Types (ProjectRevision)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
+import Data.Map (Map)
 import Fossa.API.Types (ApiOpts)
+import Path (File, Path, Rel)
 import Srclib.Types (Locator)
 
 assertRevisionBinaries ::
@@ -61,3 +70,59 @@ resolveProjectDependencies ::
 resolveProjectDependencies locator = do
   apiOpts <- ask
   API.resolveProjectDependencies apiOpts locator
+
+createVsiScan ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  ProjectRevision ->
+  m VSI.ScanID
+createVsiScan revision = do
+  apiOpts <- ask
+  API.vsiCreateScan apiOpts revision
+
+addFilesToVsiScan ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  VSI.ScanID ->
+  Map (Path Rel File) Fingerprint.Combined ->
+  m ()
+addFilesToVsiScan scanId files = do
+  apiOpts <- ask
+  API.vsiAddFilesToScan apiOpts scanId files
+
+completeVsiScan ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  VSI.ScanID ->
+  m ()
+completeVsiScan scanId = do
+  apiOpts <- ask
+  API.vsiCompleteScan apiOpts scanId
+
+getVsiScanAnalysisStatus ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  VSI.ScanID ->
+  m VSI.AnalysisStatus
+getVsiScanAnalysisStatus scanId = do
+  apiOpts <- ask
+  API.vsiScanAnalysisStatus apiOpts scanId
+
+getVsiInferences ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  VSI.ScanID ->
+  m [Locator]
+getVsiInferences scanId = do
+  apiOpts <- ask
+  API.vsiDownloadInferences apiOpts scanId

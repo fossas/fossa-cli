@@ -4,7 +4,6 @@ module App.Fossa.VSI.Analyze (
   runVsiAnalysis,
 ) where
 
-import App.Fossa.FossaAPIV1 (vsiAddFilesToScan, vsiCompleteScan, vsiCreateScan, vsiDownloadInferences, vsiScanAnalysisStatus)
 import App.Fossa.VSI.Fingerprint (Combined, fingerprint)
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types (ScanID (..))
@@ -13,7 +12,6 @@ import App.Types (ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.AtomicCounter (runAtomicCounter)
 import Control.Carrier.Diagnostics (runDiagnosticsIO, withResult)
-import Control.Carrier.Stack (Stack)
 import Control.Carrier.StickyLogger (runStickyLogger)
 import Control.Carrier.TaskPool (Progress (..), withTaskPool)
 import Control.Concurrent (getNumCapabilities, threadDelay)
@@ -21,7 +19,9 @@ import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TBMChan (TBMChan, closeTBMChan, newTBMChanIO, readTBMChan, writeTBMChan)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalOnSomeException, fatalText, fromEither, recover)
 import Control.Effect.Finally (Finally)
+import Control.Effect.FossaApiClient (FossaApiClient, addFilesToVsiScan, completeVsiScan, createVsiScan, getVsiInferences, getVsiScanAnalysisStatus)
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Stack (Stack)
 import Control.Effect.StickyLogger (StickyLogger, logSticky, logSticky')
 import Control.Effect.TaskPool (TaskPool, forkTask)
 import Data.Foldable (traverse_)
@@ -34,7 +34,6 @@ import Discovery.Filters (AllFilters, combinedPaths, excludeFilters, includeFilt
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk)
 import Effect.Logger (Color (..), Logger, Severity (SevError, SevInfo, SevWarn), annotate, color, logDebug, logInfo, plural, pretty)
 import Effect.ReadFS (ReadFS)
-import Fossa.API.Types (ApiOpts)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (Abs, Rel), isProperPrefixOf, toFilePath, (</>))
 import Path qualified as P
 import Path.Extra (tryMakeRelative)
@@ -46,16 +45,16 @@ runVsiAnalysis ::
   , Has ReadFS sig m
   , Has Diagnostics sig m
   , Has StickyLogger sig m
+  , Has FossaApiClient sig m
   ) =>
   Path Abs Dir ->
-  ApiOpts ->
   ProjectRevision ->
   AllFilters ->
   m ([VSI.Locator], [IAT.UserDep])
-runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
+runVsiAnalysis dir projectRevision filters = context "VSI" $ do
   capabilities <- sendIO getNumCapabilities
 
-  scanID <- context "Create scan in backend" $ vsiCreateScan apiOpts projectRevision
+  scanID <- context "Create scan in backend" $ createVsiScan projectRevision
   logInfo . pretty $ "Created Scan ID: " <> unScanID scanID
 
   -- Allow up to 2x the buffer size to be stored:
@@ -67,15 +66,15 @@ runVsiAnalysis dir apiOpts projectRevision filters = context "VSI" $ do
     . runAtomicCounter
     $ do
       context "Discover fingerprints" . forkTask $ runFingerprintDiscovery capabilities files dir filters
-      context "Upload fingerprints" . forkTask $ runBatchUploader files apiOpts scanID
+      context "Upload fingerprints" . forkTask $ runBatchUploader files scanID
 
   logInfo "Finalizing scan"
-  context "Finalize scan" $ vsiCompleteScan apiOpts scanID
+  context "Finalize scan" $ completeVsiScan scanID
 
   logInfo "Waiting for cloud analysis"
-  context "Wait for cloud analysis" $ waitForAnalysis apiOpts scanID
+  context "Wait for cloud analysis" $ waitForAnalysis scanID
 
-  discoveredRawLocators <- context "Download analysis results" $ vsiDownloadInferences apiOpts scanID
+  discoveredRawLocators <- context "Download analysis results" $ getVsiInferences scanID
   parsedLocators <- context "Parse analysis results" . fromEither $ traverse VSI.parseLocator discoveredRawLocators
 
   let userDefinedDeps = map IAT.toUserDep $ filter VSI.isUserDefined parsedLocators
@@ -110,16 +109,15 @@ runFingerprintDiscovery capabilities files dir filters = do
 -- | Collects fingerprinted files coming in over a channel and uploads them to the server in chunks.
 runBatchUploader ::
   ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
   , Has Logger sig m
+  , Has FossaApiClient sig m
   ) =>
   -- | Channel on which new files are collected
   TBMChan (Path Rel File, Combined) ->
   -- | API options used for the upload
-  ApiOpts ->
   ScanID ->
   m ()
-runBatchUploader files apiOpts scanID = runStickyLogger SevInfo $ do
+runBatchUploader files scanID = runStickyLogger SevInfo $ do
   logSticky " > Buffering first chunk..."
   collect (0 :: Int) []
   where
@@ -127,7 +125,7 @@ runBatchUploader files apiOpts scanID = runStickyLogger SevInfo $ do
     upload [] = pure ()
     upload buf = do
       logDebug . pretty $ "Upload chunk of " <> show (length buf) <> " file(s)"
-      vsiAddFilesToScan apiOpts scanID $ Map.fromList buf
+      addFilesToVsiScan scanID $ Map.fromList buf
     collect uploadCount buf | length buf >= uploadBufferSize = do
       logDebug "Upload buffer is full, uploading chunk"
       upload buf
@@ -298,12 +296,12 @@ waitForAnalysis ::
   , Has Diagnostics sig m
   , Has Logger sig m
   , Has StickyLogger sig m
+  , Has FossaApiClient sig m
   ) =>
-  ApiOpts ->
   VSI.ScanID ->
   m ()
-waitForAnalysis apiOpts scanID = do
-  status <- vsiScanAnalysisStatus apiOpts scanID
+waitForAnalysis scanID = do
+  status <- getVsiScanAnalysisStatus scanID
   case status of
     VSI.AnalysisFailed ->
       fatalText "Backend analysis failed. If this persists, please contact FOSSA and provide debug logs (generated with --debug)"
@@ -311,12 +309,12 @@ waitForAnalysis apiOpts scanID = do
       logDebug "Backend analysis complete"
     VSI.AnalysisPending -> do
       logSticky "Backend analysis is enqueued, waiting to start..."
-      waitForAnalysis apiOpts scanID
+      waitForAnalysis scanID
     VSI.AnalysisInformational msg -> do
       logDebug . pretty $ "Backend analysis status: '" <> msg <> "'"
       logSticky "Backend analysis running"
       sendIO $ threadDelay (pollDelaySeconds * 1_000_000)
-      waitForAnalysis apiOpts scanID
+      waitForAnalysis scanID
   where
     pollDelaySeconds = 8
 
