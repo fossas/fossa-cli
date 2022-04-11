@@ -219,10 +219,18 @@ buildGraph packageJson directSet =
       -- Add edges to packages in "requires"
       void $
         Map.traverseWithKey
-          ( \reqName reqVer ->
-              edge pkg $
-                NpmDepVertex reqName $
-                  getResolvedVersion [depDependencies, lockDependencies packageJson] reqName reqVer
+          ( \reqName reqVer -> do
+              let requiredPkg =
+                    NpmDepVertex reqName $
+                      getResolvedVersion [depDependencies, lockDependencies packageJson] reqName reqVer
+              edge pkg requiredPkg
+              -- The below is a safety net for when a required package doesn't
+              -- exist at the top-level dependencies object or in the parent
+              -- package's "dependencies" field. This is safe because a package
+              -- that is labeled both development and prod will be treated as
+              -- prod during pruning and labeling is idempotent
+              when depDev $
+                label requiredPkg (NpmDepVertexEnv EnvDevelopment)
           )
           depRequires
       -- Add edge from parent

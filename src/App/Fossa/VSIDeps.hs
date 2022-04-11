@@ -10,13 +10,13 @@ import App.Types (ProjectRevision)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, fromEither)
 import Control.Effect.Finally (Finally)
+import Control.Effect.FossaApiClient (FossaApiClient, getApiOpts)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger)
 import DepTypes (Dependency)
 import Discovery.Filters (AllFilters)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
-import Fossa.API.Types (ApiOpts)
 import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, Path)
@@ -33,18 +33,19 @@ analyzeVSIDeps ::
   , Has StickyLogger sig m
   , Has ReadFS sig m
   , Has Finally sig m
+  , Has FossaApiClient sig m
   ) =>
   Path Abs Dir ->
   ProjectRevision ->
-  ApiOpts ->
   AllFilters ->
   VSI.SkipResolution ->
   m SourceUnit
-analyzeVSIDeps dir projectRevision apiOpts filters skipResolving = do
+analyzeVSIDeps dir projectRevision filters skipResolving = do
+  apiOpts <- getApiOpts
   (direct, userDeps) <- runVsiAnalysis dir apiOpts projectRevision filters
 
-  resolvedUserDeps <- resolveUserDefined apiOpts userDeps
-  resolvedGraph <- resolveGraph apiOpts direct skipResolving
+  resolvedUserDeps <- resolveUserDefined userDeps
+  resolvedGraph <- resolveGraph direct skipResolving
   dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
 
   pure $ toSourceUnit (toProject dir dependencies) resolvedUserDeps

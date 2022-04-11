@@ -3,6 +3,7 @@
 module App.Fossa.ArchiveUploader (
   archiveUploadSourceUnit,
   arcToLocator,
+  compressFile,
   forceVendoredToArchive,
   duplicateFailureBundle,
   duplicateNames,

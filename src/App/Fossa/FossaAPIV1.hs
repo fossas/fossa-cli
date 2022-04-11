@@ -315,14 +315,33 @@ mkMetadataOpts ProjectMetadata{..} projectName = mconcat $ catMaybes maybes
       ]
 
 mangleError :: HttpException -> FossaError
-mangleError err = case err of
+mangleError err = case errWithoutSensitiveInfo of
   VanillaHttpException (HTTP.HttpExceptionRequest _ (HTTP.InternalException e)) -> InternalException e
   VanillaHttpException (HTTP.HttpExceptionRequest _ (HTTP.StatusCodeException _ respBody)) ->
     case decodeStrict respBody of
       Just pfe -> BackendPublicFacingError pfe
-      Nothing -> OtherError err
+      Nothing -> OtherError errWithoutSensitiveInfo
   JsonHttpException msg -> JsonDeserializeError msg
-  _ -> OtherError err
+  _ -> OtherError errWithoutSensitiveInfo
+  where
+    errWithoutSensitiveInfo :: HttpException
+    errWithoutSensitiveInfo = redactSensitiveInfoFromException err
+
+redactSensitiveInfoFromException :: HttpException -> HttpException
+redactSensitiveInfoFromException (VanillaHttpException (HTTP.HttpExceptionRequest r (HTTP.StatusCodeException resp respBody))) =
+  VanillaHttpException (HTTP.HttpExceptionRequest r (HTTP.StatusCodeException respWithoutCookies respBody))
+  where
+    respWithoutCookies :: HTTP.Response ()
+    respWithoutCookies =
+      resp
+        { HTTP.responseHeaders = map redactCookieHeader $ HTTP.responseHeaders resp -- Don't expose `Set-Cookie`
+        , HTTP.responseCookieJar = HTTP.createCookieJar [] -- Don't expose any cookies
+        }
+
+    redactCookieHeader :: HTTP.Header -> HTTP.Header
+    redactCookieHeader ("Set-Cookie", _) = ("Set-Cookie", "<REDACTED>")
+    redactCookieHeader h = h
+redactSensitiveInfoFromException ex = ex
 
 -----
 

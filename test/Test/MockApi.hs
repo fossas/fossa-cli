@@ -166,6 +166,8 @@ isSingular (ApiExpectation Always _ _) = False
 -- | Matches a request to an expectation.  This function basically exists to
 -- extract and compare the runtime constructor of the two arguments so that
 -- arbitrary ones can be compared even if the types wouldn't match.
+-- A convenient expression for building these lines is:
+--   s/(\w+) ::.*/matchExpectation a@(\1{}) (ApiExpectation _ b@(\1{}) resp) = resp <$ guard (a == b)/
 matchExpectation :: FossaApiClientF a -> ApiExpectation -> Maybe (ApiResult a)
 matchExpectation a@(AssertRevisionBinaries{}) (ApiExpectation _ b@(AssertRevisionBinaries{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(AssertUserDefinedBinaries{}) (ApiExpectation _ b@(AssertUserDefinedBinaries{}) resp) = resp <$ guard (a == b)
@@ -175,12 +177,12 @@ matchExpectation a@(GetAttribution{}) (ApiExpectation _ b@(GetAttribution{}) res
 matchExpectation a@(GetIssues{}) (ApiExpectation _ b@(GetIssues{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetLatestBuild{}) (ApiExpectation _ b@(GetLatestBuild{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetLatestScan{}) (ApiExpectation _ b@(GetLatestScan{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetOrganization) (ApiExpectation _ b@(GetOrganization) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetOrganization{}) (ApiExpectation _ b@(GetOrganization{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetProject{}) (ApiExpectation _ b@(GetProject{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetScan{}) (ApiExpectation _ b@(GetScan{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetSignedLicenseScanUrl{}) (ApiExpectation _ b@(GetSignedLicenseScanUrl{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetSignedUploadUrl{}) (ApiExpectation _ b@(GetSignedUploadUrl{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(QueueArchiveBuild{}) (ApiExpectation _ b@(QueueArchiveBuild{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(ResolveProjectDependencies{}) (ApiExpectation _ b@(ResolveProjectDependencies{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(ResolveUserDefinedBinary{}) (ApiExpectation _ b@(ResolveUserDefinedBinary{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(UploadAnalysis{}) (ApiExpectation _ b@(UploadAnalysis{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(UploadArchive{}) (ApiExpectation _ b@(UploadArchive{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(UploadContainerScan{}) (ApiExpectation _ b@(UploadContainerScan{}) resp) = resp <$ guard (a == b)

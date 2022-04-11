@@ -441,6 +441,7 @@ test-suite unit-tests
     App.Fossa.VSI.DynLinked.Internal.ResolveSpec
     App.Fossa.VSI.DynLinked.UtilSpec
     App.Fossa.VSI.FingerprintSpec
+    App.Fossa.VSI.IAT.ResolveSpec
     BundlerSpec
     Cargo.CargoTomlSpec
     Cargo.MetadataSpec

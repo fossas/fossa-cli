@@ -102,7 +102,6 @@ import Effect.Logger (
   logStdout,
  )
 import Effect.ReadFS (ReadFS)
-import Fossa.API.Types (ApiOpts (..))
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
@@ -257,7 +256,9 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     Diag.context "analyze-vsi" . runStickyLogger SevInfo . runFinally $ do
       let shouldRunVSI = fromFlag Config.VSIAnalysis $ Config.vsiAnalysisEnabled $ Config.vsiOptions cfg
       case (shouldRunVSI, maybeApiOpts) of
-        (True, Just apiOpts') -> analyzeVSI apiOpts' basedir revision filters skipResolutionSet
+        (True, Just apiOpts') ->
+          runFossaApiClient apiOpts' $
+            analyzeVSI basedir revision filters skipResolutionSet
         _ -> pure Nothing
   dynamicLinkedResults <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -327,14 +328,14 @@ analyzeVSI ::
   , Has StickyLogger sig m
   , Has ReadFS sig m
   , Has Finally sig m
+  , Has FossaApiClient sig m
   ) =>
-  ApiOpts ->
   Path Abs Dir ->
   ProjectRevision ->
   AllFilters ->
   VSI.SkipResolution ->
   m (Maybe SourceUnit)
-analyzeVSI apiOpts dir revision filters skipResolving = do
+analyzeVSI dir revision filters skipResolving = do
   logInfo "Running VSI analysis"
 
   let skippedLocators = VSI.unVSISkipResolution skipResolving
@@ -344,7 +345,7 @@ analyzeVSI apiOpts dir revision filters skipResolving = do
       traverse_ (logInfo . pretty . VSI.renderLocator) skippedLocators
     else pure ()
 
-  results <- analyzeVSIDeps dir revision apiOpts filters skipResolving
+  results <- analyzeVSIDeps dir revision filters skipResolving
   pure $ Just results
 
 analyzeDiscoverBinaries ::

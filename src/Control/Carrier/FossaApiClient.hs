@@ -42,6 +42,8 @@ runFossaApiClient apiOpts =
           GetScan locator scanId -> ScotlandYard.getScan locator scanId
           GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev
           GetSignedUploadUrl rev -> Core.getSignedUploadUrl rev
+          ResolveProjectDependencies locator -> VSI.resolveProjectDependencies locator
+          ResolveUserDefinedBinary deps -> VSI.resolveUserDefinedBinary deps
           QueueArchiveBuild archive -> Core.queueArchiveBuild archive
           UploadAnalysis rev metadata units -> Core.uploadAnalysis rev metadata units
           UploadArchive url path -> Core.uploadArchive url path
