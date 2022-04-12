@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.2.5
+
+- debug: Reduce the size of debug bundles. ([#890](https://github.com/fossas/fossa-cli/pull/890))
+
 ## v3.2.4
 - nodejs: Fixed a bug where dev deps that only appear in requires were considered production dependencies. ([#884](https://github.com/fossas/fossa-cli/pull/884))
 
