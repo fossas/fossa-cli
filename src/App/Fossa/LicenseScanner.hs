@@ -81,8 +81,9 @@ runLicenseScanOnDir ::
   , Has Exec sig m
   ) =>
   Path Abs Dir ->
+  Path Abs Dir ->
   m [LicenseUnit]
-runLicenseScanOnDir scanDir = withThemisAndIndex $ themisRunner scanDir
+runLicenseScanOnDir baseDir scanDir = withThemisAndIndex $ themisRunner baseDir scanDir
 
 themisRunner ::
   ( Has (Lift IO) sig m
@@ -90,13 +91,14 @@ themisRunner ::
   , Has Exec sig m
   ) =>
   Path Abs Dir ->
+  Path Abs Dir ->
   ThemisBins ->
   m [LicenseUnit]
-themisRunner scanDir themisBins = runThemis themisBins scanDir
+themisRunner baseDir scanDir themisBins = runThemis themisBins baseDir scanDir
 
-runThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> m [LicenseUnit]
-runThemis themisBins scanDir = do
-  context "Running license scan binary" $ execThemis themisBins scanDir
+runThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> Path Abs Dir -> m [LicenseUnit]
+runThemis themisBins baseDir scanDir = do
+  context "Running license scan binary" $ execThemis themisBins baseDir scanDir
 
 calculateVendoredHash :: Path Abs Dir -> Text -> Path Abs Dir -> IO Text
 calculateVendoredHash baseDir vendoredPath tmpDir = do
@@ -134,10 +136,10 @@ scanVendoredDep baseDir VendoredDependency{..} = context "Scanning vendored deps
   logSticky $ "License Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
   scanPath <- resolvePath' baseDir $ toString vendoredPath
   case scanPath of
-    SomeFile (Abs path) -> scanArchive $ ScannableArchive path
-    SomeFile (Rel path) -> scanArchive . ScannableArchive $ baseDir </> path
-    SomeDir (Abs path) -> scanDirectory Nothing path
-    SomeDir (Rel path) -> scanDirectory Nothing $ baseDir </> path
+    SomeFile (Abs path) -> scanArchive baseDir $ ScannableArchive path
+    SomeFile (Rel path) -> scanArchive baseDir . ScannableArchive $ baseDir </> path
+    SomeDir (Abs path) -> scanDirectory Nothing baseDir path
+    SomeDir (Rel path) -> scanDirectory Nothing baseDir $ baseDir </> path
 
 scanDirectory ::
   ( Has Exec sig m
@@ -147,11 +149,12 @@ scanDirectory ::
   ) =>
   Maybe ScannableArchive ->
   Path Abs Dir ->
+  Path Abs Dir ->
   m (NonEmpty LicenseUnit)
-scanDirectory origin path = do
+scanDirectory origin baseDir path = do
   hasFiles <- hasAnyFiles path
   if hasFiles
-    then scanNonEmptyDirectory path
+    then scanNonEmptyDirectory baseDir path
     else maybe (fatal $ EmptyDirectory path) (fatal . EmptyArchive . scanFile) origin
 
 hasAnyFiles ::
@@ -177,9 +180,10 @@ scanNonEmptyDirectory ::
   , Has Diagnostics sig m
   ) =>
   Path Abs Dir ->
+  Path Abs Dir ->
   m (NonEmpty LicenseUnit)
-scanNonEmptyDirectory cliScanDir = do
-  themisScanResult <- runLicenseScanOnDir cliScanDir
+scanNonEmptyDirectory baseDir cliScanDir = do
+  themisScanResult <- runLicenseScanOnDir baseDir cliScanDir
   case NE.nonEmpty themisScanResult of
     Nothing -> fatal $ NoLicenseResults cliScanDir
     Just results -> pure results
@@ -190,11 +194,12 @@ scanArchive ::
   , Has Exec sig m
   , Has ReadFS sig m
   ) =>
+  Path Abs Dir ->
   ScannableArchive ->
   m (NonEmpty LicenseUnit)
-scanArchive file = runFinally $ do
+scanArchive baseDir file = runFinally $ do
   -- withArchive' emits Nothing when archive type is not supported.
-  result <- withArchive' (scanFile file) (scanDirectory (Just file))
+  result <- withArchive' (scanFile file) (scanDirectory (Just file) baseDir)
   case result of
     Nothing -> fatal . UnsupportedArchive $ scanFile file
     Just units -> pure units
