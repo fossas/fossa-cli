@@ -176,20 +176,20 @@ diagToDebug = runDiagDebugC
 
 type ReadFSDebugC = SimpleC ReadFSF
 
--- | Record most ReadFS constructors, ignoring ListDir because it explodes the
--- size of the debug bundle
+-- | Record ReadFS constructors which are relevant for debugging.
 readFSToDebug :: (Has ReadFS sig m, Has Debug sig m) => ReadFSDebugC m a -> m a
 readFSToDebug = interpret $ \case
   cons@ReadContentsBS'{} -> recording cons
-  cons@ReadContentsBSLimit'{} -> ignoring cons
   cons@ReadContentsText'{} -> recording cons
   cons@DoesFileExist{} -> recording cons
   cons@DoesDirExist{} -> recording cons
   cons@ResolveFile'{} -> recording cons
   cons@ResolveDir'{} -> recording cons
   cons@ResolvePath{} -> recording cons
+  -- Unneeded or excessive for debug bundles
+  cons@ReadContentsBSLimit'{} -> ignoring cons
   cons@ListDir{} -> ignoring cons
-  cons@GetIdentifier{} -> recording cons
+  cons@GetIdentifier{} -> ignoring cons
 
 -----------------------------------------------
 
