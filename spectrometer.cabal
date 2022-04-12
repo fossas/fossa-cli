@@ -183,7 +183,6 @@ library
     App.Fossa.Container.Test
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
-    App.Fossa.FossaAPIV1
     App.Fossa.LicenseScanner
     App.Fossa.ListTargets
     App.Fossa.Main
@@ -230,6 +229,7 @@ library
     Control.Carrier.Finally
     Control.Carrier.FossaApiClient
     Control.Carrier.FossaApiClient.Internal.Core
+    Control.Carrier.FossaApiClient.Internal.FossaAPIV1
     Control.Carrier.FossaApiClient.Internal.LicenseScanning
     Control.Carrier.FossaApiClient.Internal.ScotlandYard
     Control.Carrier.FossaApiClient.Internal.VSI

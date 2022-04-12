@@ -16,9 +16,9 @@ module Control.Carrier.FossaApiClient.Internal.Core (
 
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Container.Scan (ContainerScan)
-import App.Fossa.FossaAPIV1 qualified as API
 import App.Types (ProjectMetadata, ProjectRevision (..))
 import Control.Algebra (Has)
+import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient (PackageRevision (..))
 import Control.Effect.Lift (Lift)

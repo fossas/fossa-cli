@@ -6,8 +6,8 @@ module Control.Carrier.FossaApiClient.Internal.LicenseScanning (
   uploadLicenseScanResult,
 ) where
 
-import App.Fossa.FossaAPIV1 qualified as API
 import Control.Algebra (Has)
+import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient (PackageRevision (..))
 import Control.Effect.Lift (Lift)

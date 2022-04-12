@@ -2,7 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module App.Fossa.FossaAPIV1 (
+module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   uploadAnalysis,
   uploadContributors,
   uploadContainerScan,
