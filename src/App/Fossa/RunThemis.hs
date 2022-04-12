@@ -20,19 +20,13 @@ import Effect.Exec (
   Exec,
   execJson,
  )
-import Path (Abs, Dir, Path, SomeBase (Abs, Rel), parent)
-import Path.Extra (tryMakeRelative)
+import Path (Abs, Dir, Path, parent)
 import Srclib.Types (LicenseUnit)
 
 -- TODO: We should log the themis version and index version
-execThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> Path Abs Dir -> m [LicenseUnit]
-execThemis themisBins baseDir scanDir = do
+execThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Path Abs Dir -> m [LicenseUnit]
+execThemis themisBins pathPrefix scanDir = do
   execJson @[LicenseUnit] scanDir $ themisCommand themisBins pathPrefix
-  where
-    relPath = tryMakeRelative baseDir scanDir
-    pathPrefix = case relPath of
-      Path.Abs _ -> ""
-      Path.Rel path -> toText path
 
 themisCommand :: ThemisBins -> Text -> Command
 themisCommand ThemisBins{..} pathPrefix = do

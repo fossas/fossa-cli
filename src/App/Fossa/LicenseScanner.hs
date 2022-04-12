@@ -48,7 +48,8 @@ import Fossa.API.Types (
   OrgId,
   Organization (organizationId),
  )
-import Path (Abs, Dir, File, Path, SomeBase (Abs, Rel), fileExtension, (</>))
+import Path (Abs, Dir, File, Path, SomeBase (Abs, Rel), fileExtension, parent, (</>))
+import Path.Extra (tryMakeRelative)
 import Prettyprinter (Pretty (pretty), squotes)
 import Srclib.Types (
   LicenseScanType (CliLicenseScanned),
@@ -80,25 +81,25 @@ runLicenseScanOnDir ::
   , Has (Lift IO) sig m
   , Has Exec sig m
   ) =>
-  Path Abs Dir ->
+  Text ->
   Path Abs Dir ->
   m [LicenseUnit]
-runLicenseScanOnDir baseDir scanDir = withThemisAndIndex $ themisRunner baseDir scanDir
+runLicenseScanOnDir pathPrefix scanDir = withThemisAndIndex $ themisRunner pathPrefix scanDir
 
 themisRunner ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has Exec sig m
   ) =>
-  Path Abs Dir ->
+  Text ->
   Path Abs Dir ->
   ThemisBins ->
   m [LicenseUnit]
-themisRunner baseDir scanDir themisBins = runThemis themisBins baseDir scanDir
+themisRunner pathPrefix scanDir themisBins = runThemis themisBins pathPrefix scanDir
 
-runThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> Path Abs Dir -> m [LicenseUnit]
-runThemis themisBins baseDir scanDir = do
-  context "Running license scan binary" $ execThemis themisBins baseDir scanDir
+runThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Path Abs Dir -> m [LicenseUnit]
+runThemis themisBins pathPrefix scanDir = do
+  context "Running license scan binary" $ execThemis themisBins pathPrefix scanDir
 
 calculateVendoredHash :: Path Abs Dir -> Text -> Path Abs Dir -> IO Text
 calculateVendoredHash baseDir vendoredPath tmpDir = do
@@ -138,8 +139,34 @@ scanVendoredDep baseDir VendoredDependency{..} = context "Scanning vendored deps
   case scanPath of
     SomeFile (Abs path) -> scanArchive baseDir $ ScannableArchive path
     SomeFile (Rel path) -> scanArchive baseDir . ScannableArchive $ baseDir </> path
-    SomeDir (Abs path) -> scanDirectory Nothing baseDir path
-    SomeDir (Rel path) -> scanDirectory Nothing baseDir $ baseDir </> path
+    SomeDir (Abs path) -> scanDirectory Nothing (getPathPrefix baseDir path) path
+    SomeDir (Rel path) -> scanDirectory Nothing (toText path) (baseDir </> path)
+
+getPathPrefix :: Path Abs Dir -> Path Abs t -> Text
+getPathPrefix baseDir scanPath = do
+  case tryMakeRelative baseDir scanPath of
+    Path.Abs _ -> ""
+    Path.Rel path -> toText path
+
+scanArchive ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
+  , Has StickyLogger sig m
+  ) =>
+  Path Abs Dir ->
+  ScannableArchive ->
+  m (NonEmpty LicenseUnit)
+scanArchive baseDir file = runFinally $ do
+  -- withArchive' emits Nothing when archive type is not supported.
+  logSticky $ "scanning archive at " <> toText (scanFile file)
+  result <- withArchive' (scanFile file) (scanDirectory (Just file) pathPrefix)
+  case result of
+    Nothing -> fatal . UnsupportedArchive $ scanFile file
+    Just units -> pure units
+  where
+    pathPrefix = getPathPrefix baseDir (parent $ scanFile file)
 
 scanDirectory ::
   ( Has Exec sig m
@@ -148,13 +175,13 @@ scanDirectory ::
   , Has (Lift IO) sig m
   ) =>
   Maybe ScannableArchive ->
-  Path Abs Dir ->
+  Text ->
   Path Abs Dir ->
   m (NonEmpty LicenseUnit)
-scanDirectory origin baseDir path = do
+scanDirectory origin pathPrefix path = do
   hasFiles <- hasAnyFiles path
   if hasFiles
-    then scanNonEmptyDirectory baseDir path
+    then scanNonEmptyDirectory pathPrefix path
     else maybe (fatal $ EmptyDirectory path) (fatal . EmptyArchive . scanFile) origin
 
 hasAnyFiles ::
@@ -179,30 +206,14 @@ scanNonEmptyDirectory ::
   , Has (Lift IO) sig m
   , Has Diagnostics sig m
   ) =>
-  Path Abs Dir ->
+  Text ->
   Path Abs Dir ->
   m (NonEmpty LicenseUnit)
-scanNonEmptyDirectory baseDir cliScanDir = do
-  themisScanResult <- runLicenseScanOnDir baseDir cliScanDir
+scanNonEmptyDirectory pathPrefix cliScanDir = do
+  themisScanResult <- runLicenseScanOnDir pathPrefix cliScanDir
   case NE.nonEmpty themisScanResult of
     Nothing -> fatal $ NoLicenseResults cliScanDir
     Just results -> pure results
-
-scanArchive ::
-  ( Has Diagnostics sig m
-  , Has (Lift IO) sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
-  ) =>
-  Path Abs Dir ->
-  ScannableArchive ->
-  m (NonEmpty LicenseUnit)
-scanArchive baseDir file = runFinally $ do
-  -- withArchive' emits Nothing when archive type is not supported.
-  result <- withArchive' (scanFile file) (scanDirectory (Just file) baseDir)
-  case result of
-    Nothing -> fatal . UnsupportedArchive $ scanFile file
-    Just units -> pure units
 
 uploadVendoredDep ::
   ( Has Diagnostics sig m
