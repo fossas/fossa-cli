@@ -32,10 +32,9 @@ execute when the request is made.
 
 An expectation is considered _satisfied_ when it has been used to fulful the
 minimum number it expects.  An expectation is considered _exhausted_ if has
-fulfulled the maximum number of requests it expects.
-`returnsOnce` and `fails` are both satisfied and exhausted after one matching
-request.  `alwaysReturns` expects zero or more requests so it is always
-satisfied but never exhausted.
+fulfulled the maximum number of requests it expects.  At the end of a test all
+expectations should be satisfied, though they need not be exhausted.  Reusing an
+exhaused expectation is an error.
 
 The helpers are:
 
@@ -58,6 +57,8 @@ satisfied.
 
 ### Examples
 
+Examples of setting up expectations:
+
 ```haskell
 -- return the same value every time a call is made.
 GetOrganization `alwaysReturns` Fixtures.organization
@@ -70,6 +71,43 @@ GetProject revision `fails` "Mock HTTP error"
   `returnsOnce` Fixtures.scanResponse{responseScanStatus = Nothing}
 (GetScan locator scanId)
   `alwaysReturns` Fixtures.scanResponse{responseScanStatus = Just "Available"}
+```
+
+A full test:
+
+```haskell
+-- Checks whether scans have completed, which is different depending on the type
+-- of project
+projectIsReady revision = do
+  project <- getProject revision
+  if projectIsMonorepo project
+    then (== "AVAILABLE") <$> getLatestScan revision
+    else (== StatusSucceeded) . buildTaskStatus . buildTask <$> getLatestBuild revision
+
+spec =
+  describe "projectIsRead" $ do
+    it' "should fetch scans if the project is a monorepo" $ do
+      GetProject Fixtures.projectRevision
+        `returnsOnce` Fixtures.project { projectIsMonorepo = True }
+      GetLatestScan Fixtures.projectRevision
+        `returnsOnce` Fixtures.successfulScan
+
+      isReady <- projectIsReady Fixtures.projectRevision
+      isReady `shouldBe'` True
+
+    it' "should fetch builds if the project is NOT a monorepo" $ do
+      GetProject Fixtures.projectRevision
+        `returnsOnce` Fixtures.project { projectIsMonorepo = False }
+      GetLatestBuild Fixtures.projectRevision
+        `returnsOnce` Fixtures.successfulBuild
+
+      isReady <- projectIsReady Fixtures.projectRevision
+      isReady `shouldBe'` True
+
+    it' "should fail if the project is invalid" $ do
+      GetProject Fixtures.projectRevision `fails` "Mock invalid project error"
+
+      expectFatal $ projectIsReady Fixtures.projectRevision
 ```
 
 ## Implementation
