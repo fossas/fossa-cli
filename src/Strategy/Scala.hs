@@ -12,35 +12,69 @@ module Strategy.Scala (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Carrier.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (..),
+  fatalText,
+  recover,
+  warnOnErr,
+ )
+import Control.Effect.Reader (Reader)
+import Control.Effect.Stack (context)
 import Data.Aeson (ToJSON)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TL
-import Discovery.Walk
-import Effect.Exec
-import Effect.ReadFS
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (
+  WalkStep (WalkContinue, WalkSkipAll),
+  findFileNamed,
+  walkWithFilters',
+ )
+import Effect.Exec (
+  AllowErr (Never),
+  Command (..),
+  Exec,
+  Has,
+  execThrow,
+ )
+import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  parent,
+  parseAbsFile,
+  toFilePath,
+ )
 import Prettyprinter (viaShow)
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures)
 import Strategy.Maven.Pom.Closure qualified as PomClosure
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
-import Types
+import Types (
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (ScalaProjectType),
+  GraphBreadth (Complete),
+ )
 
 discover ::
   ( Has Exec sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject ScalaProject]
-discover dir = context "Scala" $ do
-  projects <- findProjects dir
-  pure (map mkProject projects)
+discover = simpleDiscover findProjects' mkProject ScalaProjectType
+  where
+    findProjects' dir = map ScalaProject <$> findProjects dir
 
 newtype ScalaProject = ScalaProject {unScalaProject :: PomClosure.MavenProjectClosure}
   deriving (Eq, Ord, Show, Generic)
@@ -50,8 +84,8 @@ instance ToJSON ScalaProject
 instance AnalyzeProject ScalaProject where
   analyzeProject _ = pure . getDeps
 
-mkProject :: MavenProjectClosure -> DiscoveredProject ScalaProject
-mkProject closure =
+mkProject :: ScalaProject -> DiscoveredProject ScalaProject
+mkProject (ScalaProject closure) =
   DiscoveredProject
     { projectType = ScalaProjectType
     , projectPath = parent $ PomClosure.closurePath closure
@@ -71,8 +105,15 @@ getDeps (ScalaProject closure) =
 pathToText :: Path ar fd -> Text
 pathToText = toText . toFilePath
 
-findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
-findProjects = walk' $ \dir _ files -> do
+findProjects ::
+  ( Has Exec sig m
+  , Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has (Reader AllFilters) sig m
+  ) =>
+  Path Abs Dir ->
+  m [MavenProjectClosure]
+findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "build.sbt" files of
     Nothing -> pure ([], WalkContinue)
     Just _ -> do

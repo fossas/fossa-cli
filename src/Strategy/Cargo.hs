@@ -24,6 +24,7 @@ import Control.Effect.Diagnostics (
   run,
   warn,
  )
+import Control.Effect.Reader (Reader)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
   Parser,
@@ -39,10 +40,12 @@ import Data.Set (Set)
 import Data.String.Conversion (toText)
 import Data.Text qualified as Text
 import Diag.Diagnostic (renderDiagnostic)
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
   findFileNamed,
-  walk',
+  walkWithFilters',
  )
 import Effect.Exec (
   AllowErr (Never),
@@ -178,13 +181,11 @@ instance FromJSON CargoMetadata where
       <*> (obj .: "workspace_members" >>= traverse parsePkgId)
       <*> obj .: "resolve"
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CargoProject]
-discover dir = context "Cargo" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CargoProject]
+discover = simpleDiscover findProjects mkProject CargoProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CargoProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CargoProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "Cargo.toml" files of
     Nothing -> pure ([], WalkContinue)
     Just toml -> do

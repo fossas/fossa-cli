@@ -172,6 +172,7 @@ runDependencyAnalysis ::
   , Has (Output DiscoveredProjectScan) sig m
   , Has Stack sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader AllFilters) sig m
   , Has Telemetry sig m
   ) =>
   -- | Analysis base directory
@@ -288,6 +289,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
       . runReader (Config.experimental cfg)
+      . runReader (Config.filterSet cfg)
       $ do
         runAnalyzers basedir filters
         when (fromFlag UnpackArchives $ Config.unpackArchives cfg) $
@@ -301,7 +303,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   let analysisResult = AnalysisScanResult projectScansWithSkippedProdPath vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults
 
-  renderScanSummary (severity cfg) analysisResult
+  renderScanSummary (severity cfg) analysisResult $ Config.filterSet cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits of

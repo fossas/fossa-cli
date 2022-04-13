@@ -15,21 +15,39 @@ module Strategy.NuGet.Nuspec (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Applicative (optional)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (Diagnostics, Has, context)
+import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.Foldable (find)
 import Data.List qualified as L
 import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toString)
 import Data.Text (Text)
-import DepTypes
-import Discovery.Walk
-import Effect.ReadFS
+import DepTypes (
+  DepType (NuGetType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  fileName,
+  walkWithFilters',
+ )
+import Effect.ReadFS (ReadFS, readContentsXML)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
-import Parse.XML
-import Path
+import Parse.XML (
+  FromXML (..),
+  attr,
+  child,
+  children,
+  content,
+  defaultsTo,
+ )
+import Path (Abs, Dir, File, Path, parent, toFilePath)
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
@@ -40,13 +58,11 @@ import Types (
   LicenseType (..),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject NuspecProject]
-discover dir = context "Nuspec" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject NuspecProject]
+discover = simpleDiscover findProjects mkProject NuspecProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [NuspecProject]
-findProjects = walk' $ \_ _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NuspecProject]
+findProjects = walkWithFilters' $ \_ _ files -> do
   case find (L.isSuffixOf ".nuspec" . fileName) files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([NuspecProject file], WalkContinue)

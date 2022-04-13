@@ -8,9 +8,12 @@ module Strategy.SwiftPM (
 import App.Fossa.Analyze.Types (AnalyzeProject (..))
 import Control.Carrier.Simple (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
+import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.Functor (($>))
 import Data.Maybe (listToMaybe)
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipSome),
   findFileNamed,
@@ -19,7 +22,7 @@ import Discovery.Walk (
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (Abs, Dir, File, Path, dirname, reldir)
 import Strategy.Swift.PackageSwift (analyzePackageSwift)
 import Strategy.Swift.Xcode.Pbxproj (analyzeXcodeProjForSwiftPkg, hasSomeSwiftDeps)
 import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (SwiftProjectType), GraphBreadth (..))
@@ -47,12 +50,16 @@ instance ToJSON SwiftPackageProject
 instance ToJSON XcodeProjectUsingSwiftPm
 instance ToJSON SwiftProject
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m [DiscoveredProject SwiftProject]
-discover dir = context "Swift" $ do
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject SwiftProject]
+discover = simpleDiscover findProjects mkProject SwiftProjectType
+
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m [SwiftProject]
+findProjects dir = do
   swiftPackageProjects <- context "Finding swift package projects" $ findSwiftPackageProjects dir
   xCodeProjects <- context "Finding xcode projects using swift package manager" $ findXcodeProjects dir
-  pure $ map mkProject (swiftPackageProjects ++ xCodeProjects)
+  pure (swiftPackageProjects <> xCodeProjects)
 
+-- TODO: determine if walkWithFilters' is safe here
 findSwiftPackageProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [SwiftProject]
 findSwiftPackageProjects = walk' $ \dir _ files -> do
   let packageManifestFile = findFileNamed "Package.swift" files
@@ -64,6 +71,7 @@ findSwiftPackageProjects = walk' $ \dir _ files -> do
     -- Package.resolved without Package.swift or Xcode project file is not a valid swift project.
     (Nothing, _) -> pure ([], WalkContinue)
 
+-- TODO: determine if walkWithFilters' is safe here
 findXcodeProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m [SwiftProject]
 findXcodeProjects = walk' $ \dir _ files -> do
   let xcodeProjectFile = findFileNamed "project.pbxproj" files

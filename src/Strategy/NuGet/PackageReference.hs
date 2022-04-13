@@ -14,32 +14,46 @@ module Strategy.NuGet.PackageReference (
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative (optional, (<|>))
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (Diagnostics, Has, context)
+import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.Foldable (find)
 import Data.List qualified as L
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import DepTypes
-import Discovery.Walk
-import Effect.ReadFS
+import DepTypes (
+  DepType (NuGetType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  fileName,
+  walkWithFilters',
+ )
+import Effect.ReadFS (ReadFS, readContentsXML)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
-import Parse.XML
-import Path
-import Types
+import Parse.XML (FromXML (..), attr, child, children)
+import Path (Abs, Dir, File, Path, parent)
+import Types (
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (PackageReferenceProjectType),
+  GraphBreadth (Partial),
+ )
 
 isPackageRefFile :: Path b File -> Bool
 isPackageRefFile file = any (\x -> x `L.isSuffixOf` fileName file) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PackageReferenceProject]
-discover dir = context "PackageReference" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PackageReferenceProject]
+discover = simpleDiscover findProjects mkProject PackageReferenceProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PackageReferenceProject]
-findProjects = walk' $ \_ _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PackageReferenceProject]
+findProjects = walkWithFilters' $ \_ _ files -> do
   case find isPackageRefFile files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([PackageReferenceProject file], WalkContinue)

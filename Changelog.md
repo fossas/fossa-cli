@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.2.6
+
+- Filters: Apply filters during the discvoery phase, reducing end-to-end runtime. ([#877](https://github.com/fossas/fossa-cli/pull/877))
+
 ## v3.2.5
 
 - debug: Reduce the size of debug bundles. ([#890](https://github.com/fossas/fossa-cli/pull/890))

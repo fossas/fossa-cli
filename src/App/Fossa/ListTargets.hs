@@ -38,6 +38,7 @@ import Data.Aeson.Extra (encodeJSONToText)
 import Data.Foldable (for_, traverse_)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (toSet)
+import Discovery.Filters (AllFilters)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec)
 import Effect.Logger (
@@ -49,6 +50,7 @@ import Effect.Logger (
   color,
   logDebug,
   logInfo,
+  logWarn,
  )
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path, toFilePath)
@@ -70,13 +72,16 @@ listTargetsMain ::
   m ()
 listTargetsMain ListTargetsConfig{..} = do
   capabilities <- sendIO getNumCapabilities
-
+  logWarn "fossa list-targets does not apply any filtering, you may see projects which are not present in the final analysis."
   ignoreDebug
     . runStickyLogger SevInfo
     . runFinally
     . withTaskPool capabilities updateProgress
     . runAtomicCounter
     . runReader experimental
+    -- The current version of `fossa list-targets` does not support filters.
+    -- TODO: support both discovery and post-discovery filtering.
+    . runReader (mempty :: AllFilters)
     $ runAll (unBaseDir baseDir)
 
 runAll ::
@@ -89,6 +94,7 @@ runAll ::
   , Has Debug sig m
   , Has Stack sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader AllFilters) sig m
   , Has Telemetry sig m
   ) =>
   Path Abs Dir ->

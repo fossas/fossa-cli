@@ -10,8 +10,11 @@ import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift)
+import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
@@ -28,24 +31,21 @@ discover ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has ReadFS sig m
+  , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject MavenProject]
-discover dir = context "Maven" $ do
-  closures <- context "Finding projects" (PomClosure.findProjects dir)
-  pure (map mkProject closures)
+discover = simpleDiscover findProjects mkProject MavenProjectType
+  where
+    findProjects dir = map MavenProject <$> PomClosure.findProjects dir
 
-mkProject ::
-  PomClosure.MavenProjectClosure ->
-  DiscoveredProject MavenProject
-mkProject closure =
+mkProject :: MavenProject -> DiscoveredProject MavenProject
+mkProject (MavenProject closure) =
   DiscoveredProject
     { projectType = MavenProjectType
     , projectPath = parent $ PomClosure.closurePath closure
     , projectBuildTargets = mempty
     , projectData = MavenProject closure
-    -- , projectDependencyResults = const $ getDeps closure
-    -- , projectLicenses = pure $ Pom.getLicenses basedir closure
     }
 
 newtype MavenProject = MavenProject {unMavenProject :: PomClosure.MavenProjectClosure}

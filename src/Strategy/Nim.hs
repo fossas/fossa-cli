@@ -5,17 +5,20 @@ module Strategy.Nim (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
-import Control.Effect.Diagnostics (Diagnostics, context)
+import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
-  walk',
+  walkWithFilters',
  )
 import Effect.Exec (Exec)
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (Abs, Dir, File, Path)
 import Strategy.Nim.NimbleLock (analyze)
 import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (NimbleProjectType))
 
@@ -30,13 +33,11 @@ instance ToJSON NimbleProject
 instance AnalyzeProject NimbleProject where
   analyzeProject _ = getDeps
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject NimbleProject]
-discover dir = context "Nimble" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject NimbleProject]
+discover = simpleDiscover findProjects mkProject NimbleProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [NimbleProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NimbleProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "nimble.lock" files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([NimbleProject dir file], WalkContinue)

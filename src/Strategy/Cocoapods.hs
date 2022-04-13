@@ -11,17 +11,20 @@ import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, warnOnErr, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
+import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.Glob qualified as Glob
 import Data.List (find)
 import Data.List.Extra (singleton)
 import Data.Text (isSuffixOf)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
   findFilesMatchingGlob,
-  walk',
+  walkWithFilters',
  )
 import Effect.ReadFS (Has, ReadFS, readContentsParser)
 import GHC.Generics (Generic)
@@ -40,13 +43,11 @@ import Types (
   LicenseType (UnknownType),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CocoapodsProject]
-discover dir = context "Cocoapods" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CocoapodsProject]
+discover = simpleDiscover findProjects mkProject CocoapodsProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CocoapodsProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CocoapodsProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   let podfile = findFileNamed "Podfile" files
       podfileLock = findFileNamed "Podfile.lock" files
       podSpecs = findFilesMatchingGlob (Glob.toGlob dir Glob.</> "*.podspec") files

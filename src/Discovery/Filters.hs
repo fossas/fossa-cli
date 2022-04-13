@@ -16,8 +16,13 @@ module Discovery.Filters (
   combinedTargets,
   Include,
   Exclude,
+  pathAllowed,
+  toolAllowed,
+  withMultiToolFilter,
+  withToolFilter,
 ) where
 
+import Control.Effect.Reader (Has, Reader, ask)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.List ((\\))
 import Data.List.NonEmpty qualified as NE
@@ -38,7 +43,7 @@ import Text.Megaparsec (
   (<|>),
  )
 import Text.Megaparsec.Char (alphaNumChar, char)
-import Types (BuildTarget (..), FoundTargets (FoundTargets, ProjectWithoutTargets), TargetFilter (..))
+import Types (BuildTarget (..), DiscoveredProjectType, FoundTargets (FoundTargets, ProjectWithoutTargets), TargetFilter (..))
 
 -- | filterIsVSIOnly is a very naive check for whether the user provided a filter for the VSI target *only*, at the root of the project with no path specified.
 -- This decision was made because predicating VSI only scans is a stopgap until we have more broad support for *preemptive* analysis filtering.
@@ -86,6 +91,43 @@ instance Semigroup (FilterCombination a) where
 
 instance Monoid (FilterCombination a) where
   mempty = FilterCombination mempty mempty
+
+withMultiToolFilter :: Has (Reader AllFilters) sig m => [DiscoveredProjectType] -> m [a] -> m [a]
+withMultiToolFilter tools act = do
+  filters <- ask
+  if any (toolAllowed filters) tools
+    then act
+    else pure mempty
+
+withToolFilter :: Has (Reader AllFilters) sig m => DiscoveredProjectType -> m [a] -> m [a]
+withToolFilter tool = withMultiToolFilter [tool]
+
+toolAllowed :: AllFilters -> DiscoveredProjectType -> Bool
+toolAllowed AllFilters{..} ty = allowedInclude && allowedExclude
+  where
+    -- TODO: Use FilterCombination's phantom type to confirm that we aren't mixing these up.
+    allowedExclude = not . any (toolMatches ty) $ combinedTargets excludeFilters
+    allowedInclude
+      -- If the included target array is empty, allow everything
+      | combinedTargets includeFilters == (mempty :: [TargetFilter]) = True
+      | otherwise = any (toolMatches ty) $ combinedTargets includeFilters
+
+toolMatches :: DiscoveredProjectType -> TargetFilter -> Bool
+toolMatches ty = \case
+  TypeTarget txt -> txt == toText ty
+  TypeDirTarget txt _ -> txt == toText ty
+  TypeDirTargetTarget txt _ _ -> txt == toText ty
+
+pathAllowed :: AllFilters -> Path Rel Dir -> Bool
+pathAllowed AllFilters{..} path = allowedInclude && allowedExclude
+  where
+    allowedExclude = not . any (matchPath path) $ combinedPaths excludeFilters
+    allowedInclude
+      -- If the included path array is empty, allow everything
+      | combinedPaths includeFilters == mempty = True
+      | otherwise = any (matchPath path) $ combinedPaths includeFilters
+    -- child "hello/world/" matches "hello/" and "hello/world/"
+    matchPath child parent = parent == child || parent `isProperPrefixOf` child
 
 comboInclude :: [TargetFilter] -> [Path Rel Dir] -> FilterCombination Include
 comboInclude = FilterCombination

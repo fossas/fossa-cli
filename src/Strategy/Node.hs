@@ -24,10 +24,11 @@ import Control.Effect.Diagnostics (
   recover,
   warnOnErr,
  )
+import Control.Effect.Reader (Reader)
 import Control.Monad (void, (<=<))
 import Data.Glob (Glob)
 import Data.Glob qualified as Glob
-import Data.List.Extra (singleton) -- singleton is in Data.List in base 4.16
+import Data.List.Extra (singleton)
 import Data.Map (Map, toList)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, mapMaybe)
@@ -42,6 +43,7 @@ import Diag.Common (
   MissingDeepDeps (MissingDeepDeps),
   MissingEdges (MissingEdges),
  )
+import Discovery.Filters (AllFilters, withMultiToolFilter)
 import Discovery.Walk (
   WalkStep (WalkSkipSome),
   findFileNamed,
@@ -105,20 +107,22 @@ discover ::
   ( Has Diagnostics sig m
   , Has Logger sig m
   , Has ReadFS sig m
+  , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject NodeProject]
-discover dir = context "NodeJS" $ do
-  manifestList <- context "Finding nodejs projects" $ collectManifests dir
-  manifestMap <- context "Reading package.json files" $ (Map.fromList . catMaybes) <$> traverse loadPackage manifestList
-  if Map.null manifestMap
-    then -- If the map is empty, we found no JS projects, we return early.
-      pure []
-    else do
-      globalGraph <- context "Building global workspace graph" $ pure $ buildManifestGraph manifestMap
-      -- TODO: refactor splitGraph to report which cycle we hit, not just report some unknown cycle
-      graphs <- context "Splitting global graph into chunks" $ fromMaybe CyclicPackageJson $ splitGraph globalGraph
-      context "Converting graphs to analysis targets" $ traverse (mkProject <=< identifyProjectType) graphs
+discover dir = withMultiToolFilter [YarnProjectType, NpmProjectType] $
+  context "NodeJS" $ do
+    manifestList <- context "Finding nodejs projects" $ collectManifests dir
+    manifestMap <- context "Reading package.json files" $ (Map.fromList . catMaybes) <$> traverse loadPackage manifestList
+    if Map.null manifestMap
+      then -- If the map is empty, we found no JS projects, we return early.
+        pure []
+      else do
+        globalGraph <- context "Building global workspace graph" $ pure $ buildManifestGraph manifestMap
+        -- TODO: refactor splitGraph to report which cycle we hit, not just report some unknown cycle
+        graphs <- context "Splitting global graph into chunks" $ fromMaybe CyclicPackageJson $ splitGraph globalGraph
+        context "Converting graphs to analysis targets" $ traverse (mkProject <=< identifyProjectType) graphs
 
 collectManifests :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Manifest]
 collectManifests = walk' $ \_ _ files ->

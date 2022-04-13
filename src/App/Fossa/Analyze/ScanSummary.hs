@@ -21,9 +21,11 @@ import Control.Monad (when)
 import Data.Foldable (traverse_)
 import Data.List (sort)
 import Data.Maybe (catMaybes, mapMaybe, maybeToList)
+import Data.Monoid.Extra (isMempty)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Diag.Result (EmittedWarn (IgnoredErrGroup), Result (Failure, Success), renderFailure, renderSuccess)
+import Discovery.Filters (AllFilters)
 import Effect.Logger (
   AnsiStyle,
   Logger,
@@ -47,6 +49,7 @@ import Prettyprinter (
   Doc,
   annotate,
   defaultLayoutOptions,
+  indent,
   layoutPretty,
   plural,
   unAnnotate,
@@ -123,12 +126,20 @@ instance Pretty ScanCount where
 -- * __poetry__ project in path: succeeded
 -- * __fpm__ project in path: skipped
 -- * __setuptools__ project in path: skipped
-renderScanSummary :: (Has Diag.Diagnostics sig m, Has Logger sig m, Has (Lift IO) sig m) => Severity -> AnalysisScanResult -> m ()
-renderScanSummary severity analysisResults =
+renderScanSummary :: (Has Diag.Diagnostics sig m, Has Logger sig m, Has (Lift IO) sig m) => Severity -> AnalysisScanResult -> AllFilters -> m ()
+renderScanSummary severity analysisResults filters =
   case summarize analysisResults of
     Nothing -> pure ()
     Just summary -> do
+      let someFilters = isMempty filters
       logInfoVsep summary
+      when someFilters $ do
+        logInfoVsep $
+          map
+            (indent 2)
+            [ "Some projects may not appear in the summary if they were filtered during discovery."
+            , "You can run `fossa list-targets` to see all discoverable projects."
+            ]
       logInfo ""
       when (severity /= SevDebug) $ do
         logInfo "You can pass `--debug` option to eagerly show all warning and failure messages."

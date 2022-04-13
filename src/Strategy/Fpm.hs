@@ -1,27 +1,29 @@
 module Strategy.Fpm (discover) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics (Diagnostics, context)
+import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
-import Discovery.Walk (WalkStep (WalkContinue, WalkSkipSome), findFileNamed, walk')
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (WalkStep (WalkContinue, WalkSkipSome), findFileNamed, walkWithFilters')
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (Abs, Dir, File, Path)
 import Strategy.Fortran.FpmToml (analyzeFpmToml)
 import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (FpmProjectType), GraphBreadth (Partial))
 
 discover ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject FpmProject]
-discover dir = context "Fpm" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover = simpleDiscover findProjects mkProject FpmProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [FpmProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [FpmProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   let fmpSpecFile = findFileNamed "fpm.toml" files
   case (fmpSpecFile) of
     Just fpmToml -> pure ([FpmProject fpmToml dir], WalkSkipSome ["build"])

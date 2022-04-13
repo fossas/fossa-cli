@@ -290,6 +290,7 @@ library
     Discovery.Archive.RPM
     Discovery.Filters
     Discovery.Projects
+    Discovery.Simple
     Discovery.Walk
     Effect.Exec
     Effect.Grapher
@@ -394,6 +395,7 @@ library
     Strategy.Swift.Xcode.PbxprojParser
     Strategy.SwiftPM
     Text.URI.Builder
+    Type.Operator
     Types
 
   hs-source-dirs:  src
