@@ -39,17 +39,18 @@ exhaused expectation is an error.
 The helpers are:
 
 - ``req `returnsOnce` a`` - Expects a request of `req` for which it will return
-  `a`.  This is both fulfilled and exhausted after one request.
+  `a`.  This is both satisfied and exhausted after one request.
 - ``req `alwaysReturns` a`` - Expects zero or more requests of `req` for which it
   will always return `a`.  This is always satisfied and never exhausted.
 - ``req `fails` "Mock Error"`` - Expects exactly one request matching `req` for
-  which it will raise a `Diagnostics` error with the text `"Mock Error"`.  This is both fulfilled and exhausted after one request.
+  which it will raise a `Diagnostics` error with the text `"Mock Error"`.  This is both satisfied and exhausted after one request.
 
-Expectations are added to the end of a list of expectations that are checked
+Expectations are appended to a list of expectations that are checked
 whenever a new request comes in.  That means you can specify a series of values
 to be returned on subsequent calls by specifying multiple expectations. Note
 that if you specify that a request should always return the same value it will
-never reach any expectations you add for the request after that.
+never reach any expectations you add for the request after that, and those
+expectations will never be satisfied, causing a test error.
 
 Any unsatisfied expectations at the end of the test will trigger an assertion
 error.  Remember that the requests must match exactly (via `Eq`) in order to be
