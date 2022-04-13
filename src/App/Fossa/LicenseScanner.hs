@@ -126,16 +126,7 @@ runLicenseScanOnDir pathPrefix scanDir = do
 discover :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has Exec sig m) => Text -> Path Abs Dir -> m [LicenseUnit]
 discover pathPrefix dir = flip walk' dir $
   \_ _ files -> do
-    let process ::
-          ( Has (Lift IO) sig m1
-          , Has ReadFS sig m1
-          , Has Diagnostics sig m1
-          , Has Finally sig m1
-          , Has Exec sig m1
-          ) =>
-          Path Abs Dir ->
-          m1 [LicenseUnit]
-        process unpackedDir = do
+    let process unpackedDir = do
           a <- NE.toList <$> scanDirectory Nothing pathPrefix unpackedDir
           b <- discover pathPrefix unpackedDir
           pure $ a <> b
