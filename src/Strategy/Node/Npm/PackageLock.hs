@@ -163,8 +163,16 @@ buildGraph packageJson directSet =
     -- direct dependency in 'maybeAddDep'.
     addPeerDeps :: Has NpmGrapher sig m => NpmDepVertex -> m ()
     addPeerDeps currentPkg =
-      maybe (pure ()) graphPeerDeps (Map.lookup (lockName currentPkg) pkgJsonPackages)
+      traverse_ graphPeerDeps (Map.lookup (lockName currentPkg) pkgJsonPackages)
       where
+        graphPeerDeps :: Has NpmGrapher sig m => PkgLockPackage -> m ()
+        graphPeerDeps =
+          -- ignore the version range specified in "peerDependencies", we'll use
+          -- the resolved one from the main list of dependencies.
+          traverse_ (addNodeAndEdge . fst)
+            . Map.toList
+            . pkgPeerDeps
+
         addNodeAndEdge :: Has NpmGrapher sig m => Text -> m ()
         addNodeAndEdge peerDepName =
           case Map.lookup peerDepName packageDeps of
@@ -177,14 +185,6 @@ buildGraph packageJson directSet =
               -- It will be set as direct/deep and labeled then.
               edge currentPkg $ NpmDepVertex peerDepName (depVersion npmDep)
             Nothing -> pure ()
-
-        graphPeerDeps :: Has NpmGrapher sig m => PkgLockPackage -> m ()
-        graphPeerDeps =
-          -- ignore the version range specified in "peerDependencies", we'll use
-          -- the resolved one from the main list of dependencies.
-          traverse_ (addNodeAndEdge . fst)
-            . Map.toList
-            . pkgPeerDeps
 
     -- If not resolved, then likely a workspace dep, should be ignored.
     -- isRecursive lets us know if we are parsing a top-level or nested dep.
