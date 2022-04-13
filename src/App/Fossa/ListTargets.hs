@@ -49,7 +49,8 @@ import Effect.Logger (
   annotate,
   color,
   logDebug,
-  logInfo, logWarn
+  logInfo,
+  logWarn,
  )
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path, toFilePath)
