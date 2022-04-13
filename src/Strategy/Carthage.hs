@@ -75,12 +75,12 @@ import Text.Megaparsec.Char.Lexer qualified as L
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
-  DiscoveredProjectType (BundlerProjectType, CarthageProjectType),
+  DiscoveredProjectType (CarthageProjectType),
   GraphBreadth (Complete),
  )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CarthageProject]
-discover = simpleDiscover findProjects mkProject BundlerProjectType
+discover = simpleDiscover findProjects mkProject CarthageProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CarthageProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
