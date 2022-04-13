@@ -19,14 +19,12 @@ import App.Fossa.RunThemis (
   execThemis,
  )
 import Control.Carrier.Finally (Finally, runFinally)
-import Control.Carrier.TaskPool (TaskPool, forkTask)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, fatal, fatalText, fromMaybe, recover)
 import Control.Effect.FossaApiClient (FossaApiClient, getApiOpts)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
 import Control.Monad (unless, void)
-import Data.Foldable (traverse_)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
@@ -35,8 +33,7 @@ import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Discovery.Archive (withArchive')
-import Discovery.Archive qualified as Archive
-import Discovery.Walk (WalkStep (WalkContinue, WalkStop), walk, walk')
+import Discovery.Walk (WalkStep (WalkContinue, WalkStop), walk')
 import Effect.Exec (Exec)
 import Effect.ReadFS (
   Has,
@@ -91,47 +88,17 @@ runLicenseScanOnDir ::
 runLicenseScanOnDir pathPrefix scanDir = do
   -- run the scan on the root directory
   rootDirUnits <- withThemisAndIndex $ themisRunner pathPrefix scanDir
-  otherArchiveUnits <- runFinally $ discover pathPrefix scanDir
+  otherArchiveUnits <- runFinally $ discoverArchives pathPrefix scanDir
   pure $ rootDirUnits <> otherArchiveUnits
 
--- pure rootDirUnits
-
--- runLicenseScanOnDir pathPrefix scanDir = withThemisAndIndex $ themisRunner pathPrefix scanDir
-
--- | Given a function to run over unarchived contents, recursively unpack archives
--- discover :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has TaskPool sig m) => (Path Abs Dir -> (Maybe (NonEmpty LicenseUnit))) -> Path Abs Dir -> m (Maybe [LicenseUnit])
--- discover go dir = context "Finding archives" $
---   flip walk' dir $ \_ _ files -> do
---     -- To process an unpacked archive, run the provided function on the archive
---     -- contents, and recursively call discover
---     let process file unpackedDir = context (toText (fileName file)) $ do
---           a <- go unpackedDir
---           discover go unpackedDir
-
---     archives <- traverse (\file -> withArchive' file (process file)) files
---     pure (archives, WalkContinue)
-
--- compiles:
--- discover :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => (Path Abs Dir -> m [Path Abs File]) -> Path Abs Dir -> m [Path Abs File]
--- discover go dir = context "Finding archives" $
---   flip walk' dir $ \_ _ files -> do
---     -- let process :: Path Abs Dir -> m [Path Abs File]
---     let process unpackedDir = do
---           a <- go unpackedDir
---           b <- discover go unpackedDir
---           pure (a ++ b)
---     archives <- traverse (`withArchive'` process) files
---     pure (concat (catMaybes archives), WalkContinue)
-
-discover :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has Exec sig m) => Text -> Path Abs Dir -> m [LicenseUnit]
-discover pathPrefix dir = flip walk' dir $
+discoverArchives :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has Exec sig m) => Text -> Path Abs Dir -> m [LicenseUnit]
+discoverArchives pathPrefix dir = flip walk' dir $
   \_ _ files -> do
-    let process unpackedDir = do
-          a <- NE.toList <$> scanDirectory Nothing pathPrefix unpackedDir
-          b <- discover pathPrefix unpackedDir
+    let process file unpackedDir = do
+          a <- NE.toList <$> scanDirectory (Just $ ScannableArchive file) pathPrefix unpackedDir
+          b <- discoverArchives pathPrefix unpackedDir
           pure $ a <> b
-    -- pure $ NE.fromList $ (NE.toList a) <> (NE.toList b)
-    archives <- traverse (`withArchive'` process) files
+    archives <- traverse (\file -> withArchive' file (process file)) files
     let as = catMaybes archives
         fas = concat as
     pure (fas, WalkContinue)
