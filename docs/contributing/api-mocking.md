@@ -34,7 +34,7 @@ An expectation is considered _satisfied_ when it has been used to fulful the
 minimum number it expects.  An expectation is considered _exhausted_ if has
 fulfulled the maximum number of requests it expects.  At the end of a test all
 expectations should be satisfied, though they need not be exhausted.  Reusing an
-exhaused expectation is an error.
+exhausted expectation is an error.
 
 The helpers are:
 
