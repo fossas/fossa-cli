@@ -6,8 +6,7 @@ module Graphing.Debug (
   renderGvFile,
 ) where
 
-import Algebra.Graph.Acyclic.AdjacencyMap qualified as Acyclic
-import Algebra.Graph.AdjacencyMap qualified as Cyclic
+import Algebra.Graph.AdjacencyMap qualified as AM
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.Bifunctor (Bifunctor (bimap))
 import Data.Set (Set)
@@ -52,9 +51,9 @@ versionTxt = \case
   CGreaterOrEq txt -> txt
   CNot txt -> txt
 
-data EmittedGraph
-  = Cyclic [Text]
-  | Acyclic [Text]
+newtype EdgeText = EdgeText
+  { unEdgeText :: Text
+  }
 
 debugGraph :: Has (Lift IO) sig m => GraphDebug a => Graphing a -> m ()
 debugGraph gr = sendIO $ do
@@ -63,25 +62,16 @@ debugGraph gr = sendIO $ do
 {-# WARNING debugGraph "This function is for debug purposes only and should not be used in production." #-}
 
 renderGvFile :: GraphDebug a => Graphing a -> Text
-renderGvFile gr = emit graphEdges
-  where
-    adjMap = unGraphing gr
-    graphEdges = case Acyclic.toAcyclic adjMap of
-      Nothing -> emitGraphEdges adjMap
-      Just ac -> emitDiGraphEdges ac
+renderGvFile = emit . emitDiGraphEdges . unGraphing
 
-emit :: EmittedGraph -> Text
-emit (Cyclic edges) = Text.unlines (["graph G {"] <> map (indent 4) edges <> ["}"])
-emit (Acyclic edges) = Text.unlines (["digraph G {"] <> map (indent 4) edges <> ["}"])
+emit :: [EdgeText] -> Text
+emit edges = Text.unlines (["digraph G {"] <> map (indent 4 . unEdgeText) edges <> ["}"])
 
-emitDiGraphEdges :: GraphDebug a => Acyclic.AdjacencyMap a -> EmittedGraph
-emitDiGraphEdges = Acyclic . edgesToTexts (Icon "->") . Acyclic.edgeList
+emitDiGraphEdges :: GraphDebug a => AM.AdjacencyMap a -> [EdgeText]
+emitDiGraphEdges = edgesToTexts (Icon "->") . AM.edgeList
 
-emitGraphEdges :: GraphDebug a => Cyclic.AdjacencyMap a -> EmittedGraph
-emitGraphEdges = Cyclic . edgesToTexts (Icon "--") . Cyclic.edgeList
-
-edgesToTexts :: GraphDebug a => Icon -> [(a, a)] -> [Text]
-edgesToTexts icon = map (renderEdge icon . debugTuple)
+edgesToTexts :: GraphDebug a => Icon -> [(a, a)] -> [EdgeText]
+edgesToTexts icon = map (EdgeText . renderEdge icon . debugTuple)
 
 debugTuple :: GraphDebug a => (a, a) -> (Text, Text)
 debugTuple = bimap toDebug toDebug
