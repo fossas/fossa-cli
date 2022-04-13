@@ -49,7 +49,7 @@ import Effect.Logger (
   annotate,
   color,
   logDebug,
-  logInfo,
+  logInfo, logWarn
  )
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path, toFilePath)
@@ -71,7 +71,7 @@ listTargetsMain ::
   m ()
 listTargetsMain ListTargetsConfig{..} = do
   capabilities <- sendIO getNumCapabilities
-
+  logWarn "fossa list-targets does not apply any filtering, you may see projects which are not present in the final analysis."
   ignoreDebug
     . runStickyLogger SevInfo
     . runFinally
