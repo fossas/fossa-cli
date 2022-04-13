@@ -191,20 +191,24 @@ spec = do
       it "should exclude tools correctly" $ do
         toolAllowed (excludeTool CargoProjectType) CargoProjectType `shouldBe` False
         toolAllowed (excludeTool GomodProjectType) CargoProjectType `shouldBe` True
+
       it "should include tools correctly" $ do
         toolAllowed (includeTool CargoProjectType) CargoProjectType `shouldBe` True
         toolAllowed (includeTool GomodProjectType) CargoProjectType `shouldBe` False
+
       -- Multiple filters
       it "should include multiple tools correctly" $ do
         let filts = includeTool CargoProjectType <> includeTool GomodProjectType
         toolAllowed filts CargoProjectType `shouldBe` True
         toolAllowed filts GomodProjectType `shouldBe` True
         toolAllowed filts SetuptoolsProjectType `shouldBe` False
+
       it "should exclude multiple tools correctly" $ do
         let filts = excludeTool CargoProjectType <> excludeTool GomodProjectType
         toolAllowed filts CargoProjectType `shouldBe` False
         toolAllowed filts GomodProjectType `shouldBe` False
         toolAllowed filts SetuptoolsProjectType `shouldBe` True
+
       it "should reject conflicted tools" $ do
         -- Conflicting filters, members of exclude are NEVER allowed
         toolAllowed (includeTool CargoProjectType <> excludeTool CargoProjectType) CargoProjectType `shouldBe` False
@@ -213,16 +217,20 @@ spec = do
       it "should include paths correctly" $ do
         pathAllowed (includePath $(mkRelDir "hello")) $(mkRelDir "hello") `shouldBe` True
         pathAllowed (includePath $(mkRelDir "NOPE")) $(mkRelDir "Yeah") `shouldBe` False
+
       it "should exclude paths correctly" $ do
         pathAllowed (excludePath $(mkRelDir "Nope")) $(mkRelDir "No") `shouldBe` True
         pathAllowed (excludePath $(mkRelDir "Bad")) $(mkRelDir "Bad") `shouldBe` False
+
       it "should match sub-dir paths correctly" $ do
         -- Subdir matching
         pathAllowed (excludePath $(mkRelDir "hello")) $(mkRelDir "hello/world") `shouldBe` False
+
       it "should reject conflicted paths" $ do
         -- Conflicting filters
         let conflict = $(mkRelDir "conflict")
         pathAllowed (excludePath conflict <> includePath conflict) conflict `shouldBe` False
+
       -- Big tests: multiple filters, subdirectory matching
       it "should should handle multi-matching with subdirs" $ do
         let bigFilters = includePath $(mkRelDir "a") <> excludePath $(mkRelDir "a/b/c")
@@ -236,12 +244,14 @@ spec = do
       if null result
         then pure ()
         else expectationFailure "withToolFilter returned non-empty"
+
     it "should return the list continuation when the tool is allowed" $ do
       let filters = excludeTool GomodProjectType
           result = run . runReader filters $ withToolFilter CargoProjectType $ pure [True]
       if null result
         then expectationFailure "withToolFilter returned non-empty"
         else pure ()
+
     it "should return the continuation when the filters are empty" $ do
       let filters = mempty :: AllFilters
           result = run . runReader filters $ withToolFilter CargoProjectType $ pure [True]
