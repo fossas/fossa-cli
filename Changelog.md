@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.2.9
+
+- Container Scanning: supports rpm databases using `ndb` or `sqlite` backend. ([#894](https://github.com/fossas/fossa-cli/pull/894))
+
 ## v3.2.8
 
 - Filtering: add `--debug-no-discovery-exclusion` for client-side filter debugging. (#[901](https://github.com/fossas/fossa-cli/pull/901))
