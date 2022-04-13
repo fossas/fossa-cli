@@ -91,8 +91,8 @@ runLicenseScanOnDir ::
 runLicenseScanOnDir pathPrefix scanDir = do
   -- run the scan on the root directory
   rootDirUnits <- withThemisAndIndex $ themisRunner pathPrefix scanDir
-  otherArchiveUnits <- runFinally $ discover (scanDirectory Nothing pathPrefix) scanDir
-  pure $ rootDirUnits <> NE.toList otherArchiveUnits
+  otherArchiveUnits <- runFinally $ discover pathPrefix scanDir
+  pure $ rootDirUnits <> otherArchiveUnits
 
 -- pure rootDirUnits
 
@@ -123,18 +123,26 @@ runLicenseScanOnDir pathPrefix scanDir = do
 --     archives <- traverse (`withArchive'` process) files
 --     pure (concat (catMaybes archives), WalkContinue)
 
-discover :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m) => (Path Abs Dir -> m (NonEmpty LicenseUnit)) -> Path Abs Dir -> m (NonEmpty LicenseUnit)
-discover go dir = context "Finding archives" $
-  flip walk' dir $ \_ _ files -> do
-    -- let process :: (Monad m) => Path Abs Dir -> m (NonEmpty LicenseUnit)
-    let process unpackedDir = do
-          a <- go unpackedDir
-          b <- discover go unpackedDir
+discover :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has Exec sig m) => Text -> Path Abs Dir -> m [LicenseUnit]
+discover pathPrefix dir = flip walk' dir $
+  \_ _ files -> do
+    let process ::
+          ( Has (Lift IO) sig m1
+          , Has ReadFS sig m1
+          , Has Diagnostics sig m1
+          , Has Finally sig m1
+          , Has Exec sig m1
+          ) =>
+          Path Abs Dir ->
+          m1 [LicenseUnit]
+        process unpackedDir = do
+          a <- NE.toList <$> scanDirectory Nothing pathPrefix unpackedDir
+          b <- discover pathPrefix unpackedDir
           pure $ a <> b
     -- pure $ NE.fromList $ (NE.toList a) <> (NE.toList b)
     archives <- traverse (`withArchive'` process) files
     let as = catMaybes archives
-        fas = NE.fromList $ concatMap NE.toList as
+        fas = concat as
     pure (fas, WalkContinue)
 
 themisRunner ::
@@ -163,7 +171,6 @@ scanAndUploadVendoredDep ::
   , Has StickyLogger sig m
   , Has Exec sig m
   , Has ReadFS sig m
-  , Has Finally sig m
   ) =>
   ApiOpts ->
   Path Abs Dir ->
@@ -181,7 +188,6 @@ scanVendoredDep ::
   , Has StickyLogger sig m
   , Has Exec sig m
   , Has ReadFS sig m
-  , Has Finally sig m
   ) =>
   Path Abs Dir ->
   VendoredDependency ->
@@ -226,7 +232,6 @@ scanDirectory ::
   , Has ReadFS sig m
   , Has Diagnostics sig m
   , Has (Lift IO) sig m
-  , Has Finally sig m
   ) =>
   Maybe ScannableArchive ->
   Text ->
@@ -260,7 +265,6 @@ scanNonEmptyDirectory ::
   , Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has ReadFS sig m
-  , Has Finally sig m
   ) =>
   Text ->
   Path Abs Dir ->
@@ -309,7 +313,6 @@ licenseScanSourceUnit ::
   , Has Exec sig m
   , Has ReadFS sig m
   , Has FossaApiClient sig m
-  , Has Finally sig m
   ) =>
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
