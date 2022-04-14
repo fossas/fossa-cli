@@ -155,7 +155,7 @@ analyzeMain ::
   m ()
 analyzeMain cfg = case Config.severity cfg of
   SevDebug -> do
-    (scope, res) <- collectDebugBundle $ Diag.errorBoundaryIO $ analyze cfg
+    (scope, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
     sendIO . BL.writeFile debugBundlePath . GZip.compress $ Aeson.encode scope
     Diag.rethrow res
   _ -> ignoreDebug $ analyze cfg
