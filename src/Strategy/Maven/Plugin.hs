@@ -34,10 +34,10 @@ pluginArtifact :: Text
 pluginArtifact = "depgraph-maven-plugin"
 
 pluginVersion :: Text
-pluginVersion = "3.3.0"
+pluginVersion = "4.0.1"
 
 pluginJar :: ByteString
-pluginJar = $(embedFile "scripts/depgraph-maven-plugin-3.3.0.jar")
+pluginJar = $(embedFile "scripts/depgraph-maven-plugin-4.0.1.jar")
 
 withUnpackedPlugin ::
   ( Has (Lift IO) sig m
