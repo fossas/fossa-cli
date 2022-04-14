@@ -15,6 +15,10 @@ module Effect.ReadFS (
   readContentsBSLimit,
   readContentsText,
 
+  -- * Get current directory
+  getCurrentDir,
+  getCurrentDir',
+
   -- * Resolving relative filepaths
   resolveFile,
   resolveFile',
@@ -126,6 +130,7 @@ instance FromJSON SomePath
 instance ReplayableValue SomePath
 
 data ReadFSF a where
+  GetCurrentDir :: ReadFSF (Either ReadFSErr (Path Abs Dir))
   ReadContentsBS' :: SomeBase File -> ReadFSF (Either ReadFSErr ByteString)
   ReadContentsBSLimit' :: SomeBase File -> Int -> ReadFSF (Either ReadFSErr ByteString)
   ReadContentsText' :: SomeBase File -> ReadFSF (Either ReadFSErr Text)
@@ -152,6 +157,8 @@ data ReadFSErr
     NotDirOrFile FilePath
   | -- | A file was found to be BOTH a directory and regular file, and we cannot decide which it really is.
     UndeterminableFileType FilePath
+  | -- | An IOException was thrown when resolving the current directory
+    CurrentDirError Text
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON ReadFSErr
@@ -196,6 +203,7 @@ instance ToDiagnostic ReadFSErr where
         , "- File system"
         , "- Output of 'fossa --version'"
         ]
+    CurrentDirError err -> "Error resolving the current directory: " <> pretty err
 
 -- | Read file contents into a strict 'ByteString'
 readContentsBS' :: Has ReadFS sig m => Path Abs File -> m (Either ReadFSErr ByteString)
@@ -271,6 +279,14 @@ contentIsBinary file = do
   attemptedContent <- readContentsBSLimit file 8000
   content <- fromEither attemptedContent
   pure $ BS.elem 0 content
+
+-- | Get the current directory of the process.
+getCurrentDir' :: (Has ReadFS sig m) => m (Either ReadFSErr (Path Abs Dir))
+getCurrentDir' = sendSimple GetCurrentDir
+
+-- | Get the current directory of the process.
+getCurrentDir :: (Has ReadFS sig m, Has Diagnostics sig m) => m (Path Abs Dir)
+getCurrentDir = getCurrentDir' >>= fromEither
 
 type Parser = Parsec Void Text
 
@@ -351,6 +367,9 @@ runReadFSIO = interpret $ \case
   -- NB: these never throw
   DoesFileExist file -> sendIO (Directory.doesFileExist (fromSomeFile file))
   DoesDirExist dir -> sendIO (Directory.doesDirectoryExist (fromSomeDir dir))
+  GetCurrentDir -> do
+    PIO.getCurrentDir
+      `catchingIO` CurrentDirError
 
 identifyPath :: FilePath -> Posix.FileStatus -> Either ReadFSErr SomePath
 identifyPath path stat = case (isDirectory stat, isRegularFile stat) of

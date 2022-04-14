@@ -18,12 +18,12 @@ import App.Fossa.Config.Common (
   commonOpts,
   defaultTimeoutDuration,
  )
-import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
+import App.Fossa.Config.ConfigFile (ConfigFile, resolveLocalConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), fatal, fromMaybe)
-import Control.Effect.Lift (Has, Lift, sendIO)
+import Control.Effect.Lift (Has, Lift)
 import Control.Timeout (Duration (Seconds))
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.List (intercalate)
@@ -48,7 +48,6 @@ import Options.Applicative (
   strOption,
   switch,
  )
-import Path.IO (getCurrentDir)
 
 data ReportType = Attribution deriving (Eq, Ord, Enum, Bounded, Generic)
 
@@ -143,9 +142,8 @@ loadConfig ::
   ) =>
   ReportCliOptions ->
   m (Maybe ConfigFile)
-loadConfig ReportCliOptions{commons = CommonOpts{optConfig}} = do
-  configRelBase <- sendIO getCurrentDir
-  resolveConfigFile configRelBase optConfig
+loadConfig =
+  resolveLocalConfigFile . optConfig . commons
 
 mergeOpts ::
   ( Has (Lift IO) sig m

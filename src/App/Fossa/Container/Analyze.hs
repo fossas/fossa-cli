@@ -27,6 +27,7 @@ import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
+import Effect.Exec (Exec)
 import Effect.Logger (
   AnsiStyle,
   Has,
@@ -38,6 +39,7 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
+import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (UploadResponse (uploadError, uploadLocator))
 import Prettyprinter (Doc, indent, vsep)
 
@@ -45,6 +47,8 @@ analyze ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
   ContainerAnalyzeConfig ->
   m ()

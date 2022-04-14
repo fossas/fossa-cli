@@ -433,6 +433,9 @@ test-suite unit-tests
     App.Fossa.API.BuildLinkSpec
     App.Fossa.API.BuildWaitSpec
     App.Fossa.BinaryDeps.JarSpec
+    App.Fossa.Config.AnalyzeSpec
+    App.Fossa.Config.TestSpec
+    App.Fossa.Config.Utils
     App.Fossa.Configuration.ConfigurationSpec
     App.Fossa.Configuration.TelemetryConfigSpec
     App.Fossa.ManualDepsSpec

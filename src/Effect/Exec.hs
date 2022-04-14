@@ -19,6 +19,7 @@ module Effect.Exec (
   renderCommand,
   module System.Exit,
   module X,
+  execThrow',
 ) where
 
 import App.Support (reportDefectMsg)
@@ -39,9 +40,10 @@ import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
+import Effect.ReadFS (ReadFS, getCurrentDir)
 import GHC.Generics (Generic)
 import Path
-import Path.IO
+import Path.IO (AnyPath (makeAbsolute))
 import Prettyprinter (Doc, indent, line, pretty, viaShow, vsep)
 import Prettyprinter.Render.Terminal (AnsiStyle)
 import System.Exit (ExitCode (..))
@@ -213,6 +215,15 @@ execJson dir cmd = do
 -- | A variant of 'exec' that throws a 'ExecErr' when the command returns a non-zero exit code
 execThrow :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> Command -> m BL.ByteString
 execThrow dir cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
+  result <- exec dir cmd
+  case result of
+    Left failure -> fatal (CommandFailed failure)
+    Right stdout -> pure stdout
+
+-- | A variant of 'execThrow' that runs the command in the currend directory
+execThrow' :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Command -> m BL.ByteString
+execThrow' cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
+  dir <- getCurrentDir
   result <- exec dir cmd
   case result of
     Left failure -> fatal (CommandFailed failure)

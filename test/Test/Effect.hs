@@ -1,4 +1,5 @@
 module Test.Effect (
+  EffectStack,
   expectationFailure',
   expectFailure',
   expectFatal',

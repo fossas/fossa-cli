@@ -6,6 +6,8 @@ module App.Fossa.Config.Test (
   TestConfig (..),
   OutputFormat (..),
   mkSubCommand,
+  parser,
+  loadConfig,
 ) where
 
 import App.Fossa.Config.Common (
@@ -26,12 +28,13 @@ import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
  )
-import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Lift (Lift)
 import Control.Timeout (Duration (..))
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
+import Data.String.Conversion (toText)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
-import Effect.ReadFS (ReadFS)
+import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
 import Options.Applicative (
@@ -45,7 +48,6 @@ import Options.Applicative (
   optional,
   progDesc,
  )
-import Path.IO (getCurrentDir)
 
 data OutputFormat
   = TestOutputPretty
@@ -103,10 +105,10 @@ loadConfig ::
   ) =>
   TestCliOpts ->
   m (Maybe ConfigFile)
-loadConfig TestCliOpts{commons = CommonOpts{optConfig}} = do
-  -- FIXME: We eventually want to use the basedir to inform the config file root
-  configRelBase <- sendIO getCurrentDir
-  resolveConfigFile configRelBase optConfig
+loadConfig TestCliOpts{commons = CommonOpts{optConfig}, testBaseDir} = do
+  cwd <- getCurrentDir
+  configBaseDir <- resolveDir cwd (toText testBaseDir)
+  resolveConfigFile configBaseDir optConfig
 
 mergeOpts ::
   ( Has (Lift IO) sig m
