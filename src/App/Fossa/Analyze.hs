@@ -45,7 +45,7 @@ import App.Fossa.Config.Analyze (
   IncludeAll (IncludeAll),
   ScanDestination (..),
   StandardAnalyzeConfig (severity),
-  UnpackArchives (UnpackArchives),
+  UnpackArchives (UnpackArchives), NoDiscoveryExclusion (NoDiscoveryExclusion)
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
@@ -248,6 +248,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       iatAssertion = Config.iatAssertion $ Config.vsiOptions cfg
       includeAll = Config.includeAllDeps cfg
       jsonOutput = Config.jsonOutput cfg
+      noDiscoveryExclusion = Config.noDiscoveryExclusion cfg
       revision = Config.projectRevision cfg
       skipResolutionSet = Config.vsiSkipSet $ Config.vsiOptions cfg
 
@@ -281,6 +282,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults, dynamicLinkedResults]
   traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults, binarySearchResults, manualSrcUnits, dynamicLinkedResults]
 
+  let discoveryFilters = if fromFlag NoDiscoveryExclusion noDiscoveryExclusion then mempty else filters
   (projectScans, ()) <-
     Diag.context "discovery/analysis tasks"
       . runOutput @DiscoveredProjectScan
@@ -289,7 +291,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
       . runReader (Config.experimental cfg)
-      . runReader (Config.filterSet cfg)
+      . runReader discoveryFilters
       $ do
         runAnalyzers basedir filters
         when (fromFlag UnpackArchives $ Config.unpackArchives cfg) $
