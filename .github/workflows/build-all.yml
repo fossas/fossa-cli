@@ -14,6 +14,10 @@ jobs:
         shell: bash
 
     steps:
+    # This isn't going to run in CI yet, so end early and don't hit the cache, that kills builds for other PR's
+    - name: Fail early
+      run: "false"
+
     - name: Set up Go 1.17.1
       uses: actions/setup-go@v2
       with:
