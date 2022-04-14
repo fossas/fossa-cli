@@ -26,9 +26,20 @@ module Fossa.API.Types (
   defaultApiPollDelay,
 ) where
 
-import Control.Effect.Diagnostics hiding (fromMaybe)
+import Control.Effect.Diagnostics (Diagnostics, Has, fatalText)
 import Control.Timeout (Duration (Seconds))
-import Data.Aeson
+import Data.Aeson (
+  FromJSON (parseJSON),
+  KeyValue ((.=)),
+  ToJSON (toJSON),
+  Value (String),
+  object,
+  withObject,
+  withText,
+  (.!=),
+  (.:),
+  (.:?),
+ )
 import Data.Coerce (coerce)
 import Data.List.Extra ((!?))
 import Data.Map.Strict (Map)
@@ -37,15 +48,35 @@ import Data.Maybe (fromMaybe)
 import Data.String.Conversion (encodeUtf8)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Network.HTTP.Req
-import Prettyprinter
+import Network.HTTP.Req (
+  Option,
+  Scheme (Https),
+  Url,
+  header,
+  useURI,
+ )
+import Prettyprinter (
+  Doc,
+  Pretty (pretty),
+  fill,
+  hsep,
+  line,
+  vsep,
+ )
 import Srclib.Types (Locator, parseLocator)
 import Text.URI (URI, render)
 import Text.URI.QQ (uri)
 import Unsafe.Coerce qualified as Unsafe
 
 newtype ApiKey = ApiKey {unApiKey :: Text}
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+-- We manually define these instances so that we never leak keys in debug/telemetry.
+instance Show ApiKey where
+  show _ = "<REDACTED>"
+
+instance ToJSON ApiKey where
+  toJSON = toJSON . show
 
 data ApiOpts = ApiOpts
   { apiOptsUri :: Maybe URI
@@ -55,10 +86,10 @@ data ApiOpts = ApiOpts
   deriving (Eq, Ord, Show)
 
 instance ToJSON ApiOpts where
-  toJSON opts =
+  toJSON ApiOpts {..} =
     object
-      [ "uri" .= show (apiOptsUri opts)
-      , "apiKey" .= ("<REDACTED>" :: String)
+      [ "uri" .= show apiOptsUri
+      , "apiKey" .= apiOptsApiKey
       ]
 
 defaultApiPollDelay :: Duration
