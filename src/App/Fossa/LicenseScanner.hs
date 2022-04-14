@@ -86,17 +86,23 @@ runLicenseScanOnDir ::
   Path Abs Dir ->
   m [LicenseUnit]
 runLicenseScanOnDir pathPrefix scanDir = do
-  -- run the scan on the root directory
+  -- license scan the root directory
   rootDirUnits <- withThemisAndIndex $ themisRunner pathPrefix scanDir
+  -- recursively unpack archives and license scan them too
   otherArchiveUnits <- runFinally $ discoverArchives pathPrefix scanDir
   pure $ rootDirUnits <> otherArchiveUnits
 
 discoverArchives :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has Exec sig m) => Text -> Path Abs Dir -> m [LicenseUnit]
 discoverArchives pathPrefix dir = flip walk' dir $
-  \_ _ files -> do
+  \rootDir _ files -> do
+    _ <- sendIO . print $ "starting walk with pathPrefix = " ++ toString pathPrefix ++ " and scanDir = " ++ show dir
     let process file unpackedDir = do
-          a <- NE.toList <$> scanDirectory (Just $ ScannableArchive file) pathPrefix unpackedDir
-          b <- discoverArchives pathPrefix unpackedDir
+          let updatedPathPrefix = pathPrefix <> getPathPrefix dir (parent file)
+          _ <- sendIO . print $ "root dir: " ++ show rootDir ++ "file: " ++ show file ++ " unpackedDir: " ++ show unpackedDir ++ "pathPrefix: " ++ toString pathPrefix ++ " updated path prefix = " ++ toString updatedPathPrefix
+          a <- NE.toList <$> scanDirectory (Just $ ScannableArchive file) updatedPathPrefix unpackedDir
+          b <- discoverArchives updatedPathPrefix unpackedDir
+          -- _ <- sendIO . print $ "a: " ++ show a
+          -- _ <- sendIO . print $ "b: " ++ show b
           pure $ a <> b
     archives <- traverse (\file -> withArchive' file (process file)) files
     let as = catMaybes archives
@@ -228,6 +234,7 @@ scanNonEmptyDirectory ::
   Path Abs Dir ->
   m (NonEmpty LicenseUnit)
 scanNonEmptyDirectory pathPrefix cliScanDir = do
+  sendIO . print $ "scanNonEmptyDirectory with pathPrefix = " ++ show pathPrefix ++ " and cliScanDir = " ++ show cliScanDir
   themisScanResult <- runLicenseScanOnDir pathPrefix cliScanDir
   case NE.nonEmpty themisScanResult of
     Nothing -> fatal $ NoLicenseResults cliScanDir
