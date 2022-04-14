@@ -25,6 +25,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
 import Control.Monad (unless, void)
+import Data.HashMap.Strict qualified as HM
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
@@ -91,7 +92,7 @@ runLicenseScanOnDir pathPrefix scanDir = do
   -- recursively unpack archives and license scan them too
   otherArchiveUnits <- runFinally $ recursivelyScanArchives pathPrefix scanDir
   -- TODO: combine the units from the rootDir and from other archives
-  pure $ rootDirUnits <> otherArchiveUnits
+  pure $ combineLicenseUnits (rootDirUnits <> otherArchiveUnits)
 
 recursivelyScanArchives :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has Exec sig m) => Text -> Path Abs Dir -> m [LicenseUnit]
 recursivelyScanArchives pathPrefix dir = flip walk' dir $
@@ -103,6 +104,22 @@ recursivelyScanArchives pathPrefix dir = flip walk' dir $
           pure $ currentDirResults <> recursiveResults
     archives <- traverse (\file -> withArchive' file (process file)) files
     pure (concat (catMaybes archives), WalkContinue)
+
+-- When we recursively scan archives, we end up with an array of LicenseUnits that may have multiple entries
+-- for the same license. I.e. we might end up with an MIT LicenseUnit from scanning foo/bar.tar.gz and another MIT LicenseUnit
+-- from scanning foo/baz.tar.gz.
+-- To combine these, we find LicenseUnits with the same Name and merge them by appending their File and Data lists
+combineLicenseUnits :: [LicenseUnit] -> [LicenseUnit]
+combineLicenseUnits units =
+  HM.elems srcUnitMap
+  where
+    mergeTwoUnits :: LicenseUnit -> LicenseUnit -> LicenseUnit
+    mergeTwoUnits unitA unitB =
+      unitA{licenseUnitFiles = combinedFiles, licenseUnitData = combinedData}
+      where
+        combinedFiles = NE.sort $ NE.nub $ licenseUnitFiles unitA <> licenseUnitFiles unitB
+        combinedData = NE.sort $ NE.nub $ licenseUnitData unitA <> licenseUnitData unitB
+    srcUnitMap = foldr (\unit hm -> (HM.insertWith mergeTwoUnits (licenseUnitName unit) unit hm)) HM.empty units
 
 themisRunner ::
   ( Has (Lift IO) sig m
