@@ -124,7 +124,7 @@ combineLicenseUnits units =
         combinedData = NE.sort $ NE.nub $ licenseUnitData unitA <> licenseUnitData unitB
 
     addUnit :: LicenseUnit -> HM.HashMap Text LicenseUnit -> HM.HashMap Text LicenseUnit
-    addUnit unit hm = HM.insertWith mergeTwoUnits (licenseUnitName unit) unit hm
+    addUnit unit = HM.insertWith mergeTwoUnits (licenseUnitName unit) unit
 
     licenseUnitMap = foldr addUnit HM.empty units
 
