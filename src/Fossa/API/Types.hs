@@ -86,7 +86,7 @@ data ApiOpts = ApiOpts
   deriving (Eq, Ord, Show)
 
 instance ToJSON ApiOpts where
-  toJSON ApiOpts {..} =
+  toJSON ApiOpts{..} =
     object
       [ "uri" .= show apiOptsUri
       , "apiKey" .= apiOptsApiKey
