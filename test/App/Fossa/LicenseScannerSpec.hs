@@ -30,13 +30,13 @@ unitOne =
     , licenseUnitDir = ""
     , licenseUnitData =
         NE.fromList
-          [ standardData{licenseUnitDataPath = "foo/bar/one.txt"}
-          , standardData{licenseUnitDataPath = "foo/bar/LICENSE"}
+          [ standardData{licenseUnitDataPath = "foo/bar/LICENSE"}
+          , standardData{licenseUnitDataPath = "foo/bar/one.txt"}
           ]
     , licenseUnitFiles =
         NE.fromList
-          [ "foo/bar/one.txt"
-          , "foo/bar/LICENSE"
+          [ "foo/bar/LICENSE"
+          , "foo/bar/one.txt"
           ]
     , licenseUnitInfo = info
     }
@@ -49,13 +49,13 @@ unitTwo =
     , licenseUnitDir = ""
     , licenseUnitData =
         NE.fromList
-          [ standardData{licenseUnitDataPath = "foo/bar/baz/two.txt"}
-          , standardData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"}
+          [ standardData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"}
+          , standardData{licenseUnitDataPath = "foo/bar/baz/two.txt"}
           ]
     , licenseUnitFiles =
         NE.fromList
-          [ "foo/bar/baz/two.txt"
-          , "foo/bar/baz/ANOTHER_LICENSE"
+          [ "foo/bar/baz/ANOTHER_LICENSE"
+          , "foo/bar/baz/two.txt"
           ]
     , licenseUnitInfo = info
     }
@@ -85,6 +85,8 @@ expectedCombinedUnit =
 spec :: Spec
 spec =
   -- this test only exists to prevent merging the commented out analyzers
-  describe "combineLicenseUnits" $
-    it "should combine two units" $
+  describe "combineLicenseUnits" $ do
+    it "should combine two MIT units" $
       combineLicenseUnits [unitOne, unitTwo] `shouldBe` [expectedCombinedUnit]
+    it "should not combine two units with different licenses" $
+      combineLicenseUnits [unitOne, unitTwo{licenseUnitName = "AGPL"}] `shouldBe` [unitTwo{licenseUnitName = "AGPL"}, unitOne]
