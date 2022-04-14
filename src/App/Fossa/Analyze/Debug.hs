@@ -20,6 +20,7 @@ module App.Fossa.Analyze.Debug (
   debugEverything,
 ) where
 
+import App.Version (fullVersionDescription)
 import Control.Carrier.Debug (
   Algebra (..),
   Debug,
@@ -73,6 +74,7 @@ collectDebugBundle cfg act = do
         DebugBundle
           { bundleScope = scope
           , bundleSystem = sysInfo
+          , bundleCLIVersion = fullVersionDescription
           , bundleArgs = args
           , bundleConfig = cfg
           , bundleJournals =
@@ -105,6 +107,7 @@ collectSystemInfo = do
 data DebugBundle cfg = DebugBundle
   { bundleScope :: Scope
   , bundleSystem :: SystemInfo
+  , bundleCLIVersion :: Text
   , bundleArgs :: [Text]
   , bundleConfig :: cfg
   , bundleJournals :: BundleJournals
