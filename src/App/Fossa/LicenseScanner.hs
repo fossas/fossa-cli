@@ -92,7 +92,7 @@ runLicenseScanOnDir pathPrefix scanDir = do
   rootDirUnits <- withThemisAndIndex $ themisRunner pathPrefix scanDir
   -- recursively unpack archives and license scan them too
   otherArchiveUnits <- runFinally $ recursivelyScanArchives pathPrefix scanDir
-  -- TODO: combine the units from the rootDir and from other archives
+  -- when we scan multiple archives, we need to combine the results
   pure $ combineLicenseUnits (rootDirUnits <> otherArchiveUnits)
 
 recursivelyScanArchives :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has Exec sig m) => Text -> Path Abs Dir -> m [LicenseUnit]
@@ -106,13 +106,15 @@ recursivelyScanArchives pathPrefix dir = flip walk' dir $
     archives <- traverse (\file -> withArchive' file (process file)) files
     pure (concat (catMaybes archives), WalkContinue)
 
--- When we recursively scan archives, we end up with an array of LicenseUnits that may have multiple entries
--- for the same license. I.e. we might end up with an MIT LicenseUnit from scanning foo/bar.tar.gz and another MIT LicenseUnit
--- from scanning foo/baz.tar.gz.
--- To combine these, we find LicenseUnits with the same Name and merge them by appending their File and Data lists
+-- When we recursively scan archives, we end up with an array of LicenseUnits that may have multiple entries for a single license.
+-- The license is contained in the licenseUnitName field of the LicenseUnit.
+-- E.g. we might end up with an MIT LicenseUnit from scanning foo/bar.tar.gz and another MIT LicenseUnit from scanning foo/baz.tar.gz.
+-- To combine these, we find LicenseUnits with the same licenseUnitName and merge them by concatenating their licenseUnitFile and licenseUnitData lists
+-- This is safe because the licenseUnitType will always be "LicenseUnit", licenseUnitDir will always be ""
+-- and licenseUnitInfo will just contain a LicenseUnitInfo entry with an empty description.
 combineLicenseUnits :: [LicenseUnit] -> [LicenseUnit]
 combineLicenseUnits units =
-  HM.elems srcUnitMap
+  HM.elems licenseUnitMap
   where
     mergeTwoUnits :: LicenseUnit -> LicenseUnit -> LicenseUnit
     mergeTwoUnits unitA unitB =
@@ -120,7 +122,11 @@ combineLicenseUnits units =
       where
         combinedFiles = NE.sort $ NE.nub $ licenseUnitFiles unitA <> licenseUnitFiles unitB
         combinedData = NE.sort $ NE.nub $ licenseUnitData unitA <> licenseUnitData unitB
-    srcUnitMap = foldr (\unit hm -> (HM.insertWith mergeTwoUnits (licenseUnitName unit) unit hm)) HM.empty units
+
+    addUnit :: LicenseUnit -> HM.HashMap Text LicenseUnit -> HM.HashMap Text LicenseUnit
+    addUnit unit hm = HM.insertWith mergeTwoUnits (licenseUnitName unit) unit hm
+
+    licenseUnitMap = foldr addUnit HM.empty units
 
 themisRunner ::
   ( Has (Lift IO) sig m
