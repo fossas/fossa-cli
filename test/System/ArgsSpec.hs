@@ -1,6 +1,6 @@
-module Control.Carrier.Telemetry.UtilSpec (spec) where
+module System.ArgsSpec (spec) where
 
-import Control.Carrier.Telemetry.Utils (redactApiKeyFromCmdArgs)
+import System.Args (redactApiKeyFromCmdArgs)
 import Test.Hspec (Spec, describe, it, shouldBe)
 
 spec :: Spec
