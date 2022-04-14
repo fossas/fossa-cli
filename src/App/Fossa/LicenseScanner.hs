@@ -89,25 +89,25 @@ runLicenseScanOnDir pathPrefix scanDir = do
   -- license scan the root directory
   rootDirUnits <- withThemisAndIndex $ themisRunner pathPrefix scanDir
   -- recursively unpack archives and license scan them too
-  otherArchiveUnits <- runFinally $ discoverArchives pathPrefix scanDir
+  otherArchiveUnits <- runFinally $ recursivelyScanArchives pathPrefix scanDir
+  -- TODO: combine the units from the rootDir and from other archives
   pure $ rootDirUnits <> otherArchiveUnits
 
-discoverArchives :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has Exec sig m) => Text -> Path Abs Dir -> m [LicenseUnit]
-discoverArchives pathPrefix dir = flip walk' dir $
+recursivelyScanArchives :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has Exec sig m) => Text -> Path Abs Dir -> m [LicenseUnit]
+recursivelyScanArchives pathPrefix dir = flip walk' dir $
   \rootDir _ files -> do
-    _ <- sendIO . print $ "starting walk with pathPrefix = " ++ toString pathPrefix ++ " and scanDir = " ++ show dir
+    _ <- sendIO . print $ "recursivelyScanArchives with pathPrefix = " ++ toString pathPrefix ++ " rootDir = " ++ show rootDir ++ " and scanDir = " ++ show dir
     let process file unpackedDir = do
+          _ <- sendIO . print $ "process file = " ++ show file ++ " unpackedDir = " ++ show unpackedDir
           let updatedPathPrefix = pathPrefix <> getPathPrefix dir (parent file)
-          _ <- sendIO . print $ "root dir: " ++ show rootDir ++ "file: " ++ show file ++ " unpackedDir: " ++ show unpackedDir ++ "pathPrefix: " ++ toString pathPrefix ++ " updated path prefix = " ++ toString updatedPathPrefix
+          -- _ <- sendIO . print $ "root dir: " ++ show rootDir ++ "file: " ++ show file ++ " unpackedDir: " ++ show unpackedDir ++ "pathPrefix: " ++ toString pathPrefix ++ " updated path prefix = " ++ toString updatedPathPrefix
           a <- NE.toList <$> scanDirectory (Just $ ScannableArchive file) updatedPathPrefix unpackedDir
-          b <- discoverArchives updatedPathPrefix unpackedDir
+          b <- recursivelyScanArchives updatedPathPrefix unpackedDir
           -- _ <- sendIO . print $ "a: " ++ show a
           -- _ <- sendIO . print $ "b: " ++ show b
           pure $ a <> b
     archives <- traverse (\file -> withArchive' file (process file)) files
-    let as = catMaybes archives
-        fas = concat as
-    pure (fas, WalkContinue)
+    pure (concat (catMaybes archives), WalkContinue)
 
 themisRunner ::
   ( Has (Lift IO) sig m
@@ -237,6 +237,7 @@ scanNonEmptyDirectory pathPrefix cliScanDir = do
   sendIO . print $ "scanNonEmptyDirectory with pathPrefix = " ++ show pathPrefix ++ " and cliScanDir = " ++ show cliScanDir
   themisScanResult <- runLicenseScanOnDir pathPrefix cliScanDir
   case NE.nonEmpty themisScanResult of
+    -- TODO: We don't want to fail when we get no license results from an archive
     Nothing -> fatal $ NoLicenseResults cliScanDir
     Just results -> pure results
 
