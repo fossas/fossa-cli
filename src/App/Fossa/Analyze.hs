@@ -43,9 +43,10 @@ import App.Fossa.Config.Analyze (
   ExperimentalAnalyzeConfig,
   IATAssertion (IATAssertion),
   IncludeAll (IncludeAll),
+  NoDiscoveryExclusion (NoDiscoveryExclusion),
   ScanDestination (..),
   StandardAnalyzeConfig (severity),
-  UnpackArchives (UnpackArchives), NoDiscoveryExclusion (NoDiscoveryExclusion)
+  UnpackArchives (UnpackArchives),
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
