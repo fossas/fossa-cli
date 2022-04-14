@@ -95,17 +95,12 @@ runLicenseScanOnDir pathPrefix scanDir = do
 
 recursivelyScanArchives :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has Exec sig m) => Text -> Path Abs Dir -> m [LicenseUnit]
 recursivelyScanArchives pathPrefix dir = flip walk' dir $
-  \rootDir _ files -> do
-    _ <- sendIO . print $ "recursivelyScanArchives with pathPrefix = " ++ toString pathPrefix ++ " rootDir = " ++ show rootDir ++ " and scanDir = " ++ show dir
+  \_ _ files -> do
     let process file unpackedDir = do
-          _ <- sendIO . print $ "process file = " ++ show file ++ " unpackedDir = " ++ show unpackedDir
           let updatedPathPrefix = pathPrefix <> getPathPrefix dir (parent file)
-          -- _ <- sendIO . print $ "root dir: " ++ show rootDir ++ "file: " ++ show file ++ " unpackedDir: " ++ show unpackedDir ++ "pathPrefix: " ++ toString pathPrefix ++ " updated path prefix = " ++ toString updatedPathPrefix
-          a <- NE.toList <$> scanDirectory (Just $ ScannableArchive file) updatedPathPrefix unpackedDir
-          b <- recursivelyScanArchives updatedPathPrefix unpackedDir
-          -- _ <- sendIO . print $ "a: " ++ show a
-          -- _ <- sendIO . print $ "b: " ++ show b
-          pure $ a <> b
+          currentDirResults <- withThemisAndIndex $ themisRunner updatedPathPrefix unpackedDir
+          recursiveResults <- recursivelyScanArchives updatedPathPrefix unpackedDir
+          pure $ currentDirResults <> recursiveResults
     archives <- traverse (\file -> withArchive' file (process file)) files
     pure (concat (catMaybes archives), WalkContinue)
 
@@ -234,7 +229,6 @@ scanNonEmptyDirectory ::
   Path Abs Dir ->
   m (NonEmpty LicenseUnit)
 scanNonEmptyDirectory pathPrefix cliScanDir = do
-  sendIO . print $ "scanNonEmptyDirectory with pathPrefix = " ++ show pathPrefix ++ " and cliScanDir = " ++ show cliScanDir
   themisScanResult <- runLicenseScanOnDir pathPrefix cliScanDir
   case NE.nonEmpty themisScanResult of
     -- TODO: We don't want to fail when we get no license results from an archive
