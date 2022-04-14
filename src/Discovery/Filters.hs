@@ -99,8 +99,8 @@ instance Monoid (FilterCombination a) where
 withMultiToolFilter :: Has (Reader AllFilters) sig m => [DiscoveredProjectType] -> m [a] -> m [a]
 withMultiToolFilter tools act = do
   filters <- ask
-  let forbidSet = forbiddenTools filters
-  if any (`Set.notMember` forbidSet) tools
+  let allowedSet = allowedTools filters
+  if any (`Set.member` allowedSet) tools
     then act
     else pure mempty
 
@@ -108,11 +108,12 @@ withToolFilter :: Has (Reader AllFilters) sig m => DiscoveredProjectType -> m [a
 withToolFilter tool = withMultiToolFilter [tool]
 
 toolAllowed :: AllFilters -> DiscoveredProjectType -> Bool
-toolAllowed filters tool = tool `Set.notMember` forbiddenTools filters
+toolAllowed filters tool = tool `Set.member` allowedTools filters
 
-forbiddenTools :: AllFilters -> Set DiscoveredProjectType
-forbiddenTools AllFilters{..} = includeSet `Set.difference` excludeSet
+allowedTools :: AllFilters -> Set DiscoveredProjectType
+allowedTools AllFilters{..} = (fullSet `Set.intersection` includeSet) `Set.difference` excludeSet
   where
+    fullSet = Set.fromList allTools
     includedTargets = combinedTargets includeFilters
     excludedTargets = combinedTargets excludeFilters
     excludeSet = Set.fromList $ mapMaybe ((`Map.lookup` toolNameMap) <=< extractPureTool) excludedTargets

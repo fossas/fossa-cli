@@ -29,7 +29,7 @@ import Test.Hspec (
   describe,
   expectationFailure,
   it,
-  shouldBe,
+  shouldBe, fdescribe
  )
 import Types (
   BuildTarget (..),
@@ -186,7 +186,7 @@ spec = do
         , (mvnQuux, ProjectWithoutTargets, Nothing)
         ]
 
-  describe "Matching primitives" $ do
+  fdescribe "Matching primitives" $ do
     describe "Tool-based matching" $ do
       it "should exclude tools correctly" $ do
         toolAllowed (excludeTool CargoProjectType) CargoProjectType `shouldBe` False
