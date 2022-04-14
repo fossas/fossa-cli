@@ -213,6 +213,11 @@ spec = do
         -- Conflicting filters, members of exclude are NEVER allowed
         toolAllowed (includeTool CargoProjectType <> excludeTool CargoProjectType) CargoProjectType `shouldBe` False
 
+      it "should not exclude tools present only in project filters" $ do
+        let filters = excludeProject CargoProjectType $(mkRelDir "no-go") <> excludeTool GomodProjectType
+        toolAllowed filters CargoProjectType `shouldBe` True
+        toolAllowed filters GomodProjectType `shouldBe` False
+
     describe "Path-based matching" $ do
       it "should include paths correctly" $ do
         pathAllowed (includePath $(mkRelDir "hello")) $(mkRelDir "hello") `shouldBe` True
@@ -269,6 +274,9 @@ excludePath path = AllFilters mempty $ comboExclude mempty [path]
 
 excludeTool :: DiscoveredProjectType -> AllFilters
 excludeTool tool = AllFilters mempty $ comboExclude [TypeTarget $ toText tool] mempty
+
+excludeProject :: DiscoveredProjectType -> Path Rel Dir -> AllFilters
+excludeProject ty path = AllFilters mempty $ comboExclude [TypeDirTarget (toText ty) path] mempty
 
 includePath :: Path Rel Dir -> AllFilters
 includePath path = AllFilters include mempty
