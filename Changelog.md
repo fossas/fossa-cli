@@ -3,6 +3,7 @@
 ## v3.2.7
 
 - debug: Redact all known API keys from the debug bundle (#[897](https://github.com/fossas/fossa-cli/pull/897))
+- nodejs: Discover peer deps and transitive deps for name-spaced packages in package-lock.json. ([#882](https://github.com/fossas/fossa-cli/pull/882))
 
 ## v3.2.6
 
