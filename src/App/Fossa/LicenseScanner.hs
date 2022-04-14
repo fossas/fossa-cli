@@ -3,6 +3,7 @@
 
 module App.Fossa.LicenseScanner (
   licenseScanSourceUnit,
+  combineLicenseUnits,
 ) where
 
 import App.Fossa.ArchiveUploader (

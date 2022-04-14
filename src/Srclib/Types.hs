@@ -12,6 +12,7 @@ module Srclib.Types (
   LicenseScanType (..),
   LicenseUnit (..),
   LicenseUnitData (..),
+  LicenseUnitInfo (..),
   LicenseUnitMatchData (..),
   renderLocator,
   parseLocator,
