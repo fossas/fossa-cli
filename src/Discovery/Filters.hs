@@ -23,11 +23,15 @@ module Discovery.Filters (
 ) where
 
 import Control.Effect.Reader (Has, Reader, ask)
+import Control.Monad ((<=<))
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.List ((\\))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe)
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Semigroup (sconcat)
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty, toSet)
 import Data.String.Conversion (toText)
@@ -95,7 +99,8 @@ instance Monoid (FilterCombination a) where
 withMultiToolFilter :: Has (Reader AllFilters) sig m => [DiscoveredProjectType] -> m [a] -> m [a]
 withMultiToolFilter tools act = do
   filters <- ask
-  if any (toolAllowed filters) tools
+  let forbidSet = forbiddenTools filters
+  if any (`Set.notMember` forbidSet) tools
     then act
     else pure mempty
 
@@ -103,20 +108,36 @@ withToolFilter :: Has (Reader AllFilters) sig m => DiscoveredProjectType -> m [a
 withToolFilter tool = withMultiToolFilter [tool]
 
 toolAllowed :: AllFilters -> DiscoveredProjectType -> Bool
-toolAllowed AllFilters{..} ty = allowedInclude && allowedExclude
-  where
-    -- TODO: Use FilterCombination's phantom type to confirm that we aren't mixing these up.
-    allowedExclude = not . any (toolMatches ty) $ combinedTargets excludeFilters
-    allowedInclude
-      -- If the included target array is empty, allow everything
-      | combinedTargets includeFilters == (mempty :: [TargetFilter]) = True
-      | otherwise = any (toolMatches ty) $ combinedTargets includeFilters
+toolAllowed filters tool = tool `Set.notMember` forbiddenTools filters
 
-toolMatches :: DiscoveredProjectType -> TargetFilter -> Bool
-toolMatches ty = \case
-  TypeTarget txt -> txt == toText ty
-  TypeDirTarget txt _ -> txt == toText ty
-  TypeDirTargetTarget txt _ _ -> txt == toText ty
+forbiddenTools :: AllFilters -> Set DiscoveredProjectType
+forbiddenTools AllFilters{..} = includeSet `Set.difference` excludeSet
+  where
+    includedTargets = combinedTargets includeFilters
+    excludedTargets = combinedTargets excludeFilters
+    excludeSet = Set.fromList $ mapMaybe ((`Map.lookup` toolNameMap) <=< extractPureTool) excludedTargets
+    includeSet =
+      Set.fromList $
+        if null includedTargets
+          then allTools -- No includes means "include everything"
+          else mapMaybe ((`Map.lookup` toolNameMap) . extractTool) includedTargets
+
+toolNameMap :: Map Text DiscoveredProjectType
+toolNameMap = Map.fromList $ map (\x -> (toText x, x)) allTools
+
+allTools :: [DiscoveredProjectType]
+allTools = enumFromTo minBound maxBound
+
+extractTool :: TargetFilter -> Text
+extractTool = \case
+  TypeTarget txt -> txt
+  TypeDirTarget txt _ -> txt
+  TypeDirTargetTarget txt _ _ -> txt
+
+extractPureTool :: TargetFilter -> Maybe Text
+extractPureTool = \case
+  TypeTarget txt -> Just txt
+  _ -> Nothing
 
 pathAllowed :: AllFilters -> Path Rel Dir -> Bool
 pathAllowed AllFilters{..} path = allowedInclude && allowedExclude

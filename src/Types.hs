@@ -96,7 +96,7 @@ data DiscoveredProjectType
   | SwiftProjectType
   | VsiProjectType
   | YarnProjectType
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Enum, Bounded)
 
 projectTypeToText :: DiscoveredProjectType -> Text
 projectTypeToText = \case
