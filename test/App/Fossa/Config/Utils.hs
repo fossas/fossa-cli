@@ -7,7 +7,7 @@ import Control.Algebra (Has)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString qualified as BS
 import Options.Applicative (Parser, execParserPure, handleParseResult, header, info, prefs)
-import Path.Posix (mkRelFile, toFilePath, (</>))
+import Path (mkRelFile, toFilePath, (</>))
 import Test.Effect (EffectStack, it', shouldBe', withTempDir)
 import Test.Hspec (Spec)
 
