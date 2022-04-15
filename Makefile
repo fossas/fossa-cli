@@ -1,5 +1,10 @@
 FMT_OPTS = -co -XTypeApplications -o -XImportQualifiedPost
 FIND_OPTS = src test integration-test -type f -name '*.hs'
+GHC_VERSION = 9.0.2
+DEV_TOOLS = ghcr.io/fossas/haskell-dev-tools:${GHC_VERSION}
+
+# Get path to project root: https://stackoverflow.com/questions/18136918
+current_dir := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 build:
 	cabal build
@@ -40,6 +45,16 @@ fmt:
 	@echo "Running cabal-fmt"
 	@cabal-fmt spectrometer.cabal --inplace
 
+# Run the formatter from within a docker image, with the project mounted as a volume
+fmt-ci:
+	docker pull ${DEV_TOOLS}
+	docker run \
+		--rm \
+		--mount "type=bind,source=${current_dir},target=/fossa-cli" \
+		--workdir "/fossa-cli" \
+		${DEV_TOOLS} \
+		make fmt
+
 # Confirm everything is formatted without changing anything
 check-fmt:
 	@echo "Running fourmolu"
@@ -67,7 +82,7 @@ check-links:
 # Docker doesn't always check for new versions during build, so pulling ensures
 # that we always have the latest.
 check-ci:
-	docker pull ghcr.io/fossas/haskell-dev-tools:8.10.4
+	docker pull ${DEV_TOOLS}
 	docker build --tag delete-me -f docker/Dockerfile.lint .
 	docker rmi delete-me
 
