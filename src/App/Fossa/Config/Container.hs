@@ -76,8 +76,7 @@ loadConfig = \case
   ContainerParseFile _ -> pure Nothing
   ContainerDumpScan _ -> pure Nothing
   -- Only parse config file if we're running analyze or test
-  cmd -> do
-    resolveLocalConfigFile $ getCfgFilePath cmd
+  cmd -> resolveLocalConfigFile $ getCfgFilePath cmd
 
 getCfgFilePath :: ContainerCommand -> Maybe FilePath
 getCfgFilePath = \case

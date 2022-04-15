@@ -220,14 +220,11 @@ execThrow dir cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
     Left failure -> fatal (CommandFailed failure)
     Right stdout -> pure stdout
 
--- | A variant of 'execThrow' that runs the command in the currend directory
+-- | A variant of 'execThrow' that runs the command in the current directory
 execThrow' :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Command -> m BL.ByteString
 execThrow' cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
   dir <- getCurrentDir
-  result <- exec dir cmd
-  case result of
-    Left failure -> fatal (CommandFailed failure)
-    Right stdout -> pure stdout
+  execThrow dir cmd
 
 type ExecIOC = SimpleC ExecF
 

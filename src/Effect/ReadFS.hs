@@ -364,12 +364,12 @@ runReadFSIO = interpret $ \case
     let fullpath = toString root FP.</> path
     stat <- Posix.getFileStatus fullpath `catchingIO` ResolveError (toString root) path
     pure (stat >>= identifyPath fullpath)
-  -- NB: these never throw
-  DoesFileExist file -> sendIO (Directory.doesFileExist (fromSomeFile file))
-  DoesDirExist dir -> sendIO (Directory.doesDirectoryExist (fromSomeDir dir))
   GetCurrentDir -> do
     PIO.getCurrentDir
       `catchingIO` CurrentDirError
+  -- NB: these never throw
+  DoesFileExist file -> sendIO (Directory.doesFileExist (fromSomeFile file))
+  DoesDirExist dir -> sendIO (Directory.doesDirectoryExist (fromSomeDir dir))
 
 identifyPath :: FilePath -> Posix.FileStatus -> Either ReadFSErr SomePath
 identifyPath path stat = case (isDirectory stat, isRegularFile stat) of

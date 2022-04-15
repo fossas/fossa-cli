@@ -93,8 +93,7 @@ loadConfig ::
   ) =>
   LinkUserBinsOpts ->
   m (Maybe ConfigFile)
-loadConfig =
-  resolveLocalConfigFile . optConfig . commons
+loadConfig = resolveLocalConfigFile . optConfig . commons
 
 data LinkUserBinsOpts = LinkUserBinsOpts
   { commons :: CommonOpts

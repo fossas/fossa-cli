@@ -42,8 +42,7 @@ loadConfig ::
   ) =>
   ListTargetsCliOpts ->
   m (Maybe ConfigFile)
-loadConfig =
-  resolveLocalConfigFile . optConfig . commons
+loadConfig = resolveLocalConfigFile . optConfig . commons
 
 listTargetsInfo :: InfoMod a
 listTargetsInfo = progDesc "List available analysis-targets in a directory (projects and sub-projects)"

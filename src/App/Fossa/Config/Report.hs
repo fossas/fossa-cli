@@ -142,8 +142,7 @@ loadConfig ::
   ) =>
   ReportCliOptions ->
   m (Maybe ConfigFile)
-loadConfig =
-  resolveLocalConfigFile . optConfig . commons
+loadConfig = resolveLocalConfigFile . optConfig . commons
 
 mergeOpts ::
   ( Has (Lift IO) sig m
