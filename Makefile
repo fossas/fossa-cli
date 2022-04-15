@@ -1,7 +1,12 @@
-FMT_OPTS = -co -XTypeApplications -o -XImportQualifiedPost
-FIND_OPTS = src test integration-test -type f -name '*.hs'
-GHC_VERSION = 9.0.2
-DEV_TOOLS = ghcr.io/fossas/haskell-dev-tools:${GHC_VERSION}
+FMT_OPTS := -co -XTypeApplications -o -XImportQualifiedPost
+FIND_OPTS := src test integration-test -type f -name '*.hs'
+GHC_VERSION := 9.0.2
+DEV_TOOLS := ghcr.io/fossas/haskell-dev-tools:${GHC_VERSION}
+MOUNTED_DEV_TOOLS := docker run ${DEV_TOOLS}
+MOUNTED_DEV_TOOLS += --rm
+MOUNTED_DEV_TOOLS += --mount "type=bind,source=${current_dir},target=/fossa-cli"
+MOUNTED_DEV_TOOLS += --workdir "/fossa-cli"
+MOUNTED_DEV_TOOLS += --
 
 # Get path to project root: https://stackoverflow.com/questions/18136918
 current_dir := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -17,7 +22,7 @@ test-all:
 
 # Dogfood the dev version
 analyze:
-	cabal run fossa -- analyze --output --debug --filter 'cabal@./'
+	cabal run fossa -- analyze --output --debug --only-target cabal
 
 # Copy the built binary into the local root
 install-local: build
@@ -48,12 +53,7 @@ fmt:
 # Run the formatter from within a docker image, with the project mounted as a volume
 fmt-ci:
 	docker pull ${DEV_TOOLS}
-	docker run \
-		--rm \
-		--mount "type=bind,source=${current_dir},target=/fossa-cli" \
-		--workdir "/fossa-cli" \
-		${DEV_TOOLS} \
-		make fmt
+	${MOUNTED_DEV_TOOLS} make fmt
 
 # Confirm everything is formatted without changing anything
 check-fmt:
@@ -83,7 +83,6 @@ check-links:
 # that we always have the latest.
 check-ci:
 	docker pull ${DEV_TOOLS}
-	docker build --tag delete-me -f docker/Dockerfile.lint .
-	docker rmi delete-me
+	${MOUNTED_DEV_TOOLS} make check
 
-.PHONY: build test analyze install-local fmt check check-fmt lint
+.PHONY: build test analyze install-local fmt check check-fmt lint check-ci fmt-ci build-test-data clean-test-data install-dev test-all
