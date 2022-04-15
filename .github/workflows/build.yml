@@ -100,7 +100,7 @@ jobs:
     # - uses: al-cheb/configure-pagefile-action@v1.2
     #   if: ${{ contains(matrix.os, 'windows') }}
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     # Install tools used in `vendor_download.sh`.
     - name: Install alpine binary dependencies
@@ -151,7 +151,9 @@ jobs:
         make build-test-data
 
     - name: Check git status
+      # https://github.com/actions/checkout/issues/760#issuecomment-1099519159
       run: |
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
         git status --porcelain
 
     - name: Build
