@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.2.8
+
+- Filtering: add `--debug-no-discovery-exclusion` for client-side filter debugging. (#[901](https://github.com/fossas/fossa-cli/pull/901))
+
 ## v3.2.7
 
 - debug: Redact all known API keys from the debug bundle (#[897](https://github.com/fossas/fossa-cli/pull/897))
