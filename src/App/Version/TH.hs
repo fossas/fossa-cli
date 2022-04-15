@@ -23,11 +23,11 @@ import Effect.Exec (
   runExecIO,
  )
 import Effect.Logger (ignoreLogger)
+import Effect.ReadFS (ReadFS, getCurrentDir, runReadFSIO)
 import GitHash (giHash, tGitInfoCwd)
 import Instances.TH.Lift ()
 import Language.Haskell.TH (TExpQ)
 import Language.Haskell.TH.Syntax (reportWarning, runIO)
-import Effect.ReadFS (ReadFS, runReadFSIO, getCurrentDir)
 
 gitTagPointCommand :: Text -> Command
 gitTagPointCommand commit =

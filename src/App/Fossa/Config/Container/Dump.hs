@@ -11,8 +11,12 @@ module App.Fossa.Config.Container.Dump (
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.Container.Common (ImageText, imageTextArg)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
-import Control.Effect.Lift (Has, Lift, sendIO)
+import Control.Algebra (Has)
+import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Lift (Lift)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
+import Data.Text (Text)
+import Effect.ReadFS (ReadFS, getCurrentDir, resolveFile)
 import GHC.Generics (Generic)
 import Options.Applicative (
   CommandFields,
@@ -28,9 +32,6 @@ import Options.Applicative (
   strOption,
  )
 import Path (Abs, File, Path)
-import Control.Effect.Diagnostics (Diagnostics)
-import Effect.ReadFS (ReadFS, getCurrentDir, resolveFile)
-import Data.Text (Text)
 
 subcommand :: (ContainerDumpScanOptions -> a) -> Mod CommandFields a
 subcommand f =
@@ -55,7 +56,10 @@ instance ToJSON ContainerDumpScanConfig where
   toEncoding = genericToEncoding defaultOptions
 
 mergeOpts ::
-  (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) =>
+  ( Has (Lift IO) sig m
+  , Has ReadFS sig m
+  , Has Diagnostics sig m
+  ) =>
   Maybe ConfigFile ->
   EnvVars ->
   ContainerDumpScanOptions ->

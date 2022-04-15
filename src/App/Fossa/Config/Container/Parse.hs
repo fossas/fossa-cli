@@ -10,6 +10,7 @@ import App.Fossa.Config.EnvironmentVars (EnvVars)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
+import Data.Text (Text)
 import Effect.ReadFS (ReadFS, getCurrentDir, resolveFile)
 import GHC.Generics (Generic)
 import Options.Applicative (
@@ -25,7 +26,6 @@ import Options.Applicative (
   str,
  )
 import Path (Abs, File, Path)
-import Data.Text (Text)
 
 subcommand :: (Text -> a) -> Mod CommandFields a
 subcommand f =
