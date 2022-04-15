@@ -43,12 +43,7 @@ jobs:
     # Run the formatter
     - name: run fourmolu
       run: |
-        make fmt
-
-    # If git has changes, then the formatter check fails.
-    - name: check git status
-      run: |
-        git diff --exit-code
+        make check-fmt
 
   cabal-format-check:
     name: cabal-format-check
@@ -61,10 +56,5 @@ jobs:
     # Run the formatter
     - name: "run cabal-fmt"
       run: |
-        cabal-fmt -i spectrometer.cabal
-
-    # If git has changes, then the formatter check fails.
-    - name: check git status
-      run: |
-        git diff --exit-code
+        cabal-fmt --check spectrometer.cabal
 
