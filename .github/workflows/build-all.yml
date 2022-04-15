@@ -70,19 +70,19 @@ jobs:
         include:
           - os: ubuntu-latest
             os-name: Linux
-            container: fossa/haskell-static-alpine:ghc-8.10.4
+            container: fossa/haskell-static-alpine:ghc-9.0.2
             project-file: cabal.project.ci.linux
-            ghc: '8.10.5'
+            ghc: '9.0.2'
 
           - os: macos-latest
             os-name: macOS
             project-file: cabal.project.ci.macos
-            ghc: '8.10.7'
+            ghc: '9.0.2'
 
           - os: windows-latest
             os-name: Windows
             project-file: cabal.project.ci.windows
-            ghc: '8.10.7'
+            ghc: '9.0.2'
 
     steps:
     # This isn't going to run in CI yet, so end early and don't hit the cache, that kills builds for other PR's
