@@ -14,7 +14,7 @@ embedFileIfExists inputPath = do
   skipEmbedEnvVar <- runIO $ lookupEnv "FOSSA_SKIP_EMBEDDED_FILES_IN_HLS"
   case (skipEmbedEnvVar, parseRelFile inputPath) of
     (Just _, _) -> do
-      reportWarning $ "FOSSA_SKIP_EMBEDDED_FILES_IN_HLS Environment variable set. Not embedding " <> inputPath
+      -- If you put a warning in here, then you get linter warnings in EmbeddedBinary.hs
       pure (LitE $ StringL "")
     (_, Just path) -> do
       exists <- doesFileExist path
