@@ -28,7 +28,9 @@ import Options.Applicative (
   strOption,
  )
 import Path (Abs, File, Path)
-import Path.IO (getCurrentDir, resolveFile)
+import Control.Effect.Diagnostics (Diagnostics)
+import Effect.ReadFS (ReadFS, getCurrentDir, resolveFile)
+import Data.Text (Text)
 
 subcommand :: (ContainerDumpScanOptions -> a) -> Mod CommandFields a
 subcommand f =
@@ -39,7 +41,7 @@ subcommand f =
     )
 
 data ContainerDumpScanOptions = ContainerDumpScanOptions
-  { dumpScanOutputFile :: Maybe FilePath
+  { dumpScanOutputFile :: Maybe Text
   , dumpScanImage :: ImageText
   }
 
@@ -53,16 +55,16 @@ instance ToJSON ContainerDumpScanConfig where
   toEncoding = genericToEncoding defaultOptions
 
 mergeOpts ::
-  Has (Lift IO) sig m =>
+  (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) =>
   Maybe ConfigFile ->
   EnvVars ->
   ContainerDumpScanOptions ->
   m ContainerDumpScanConfig
 mergeOpts _ _ ContainerDumpScanOptions{..} = do
-  curdir <- sendIO getCurrentDir
+  curdir <- getCurrentDir
   maybeOut <- case dumpScanOutputFile of
     Nothing -> pure Nothing
-    Just fp -> sendIO $ Just <$> resolveFile curdir fp
+    Just fp -> Just <$> resolveFile curdir fp
   pure $ ContainerDumpScanConfig maybeOut dumpScanImage
 
 cliParser :: Parser ContainerDumpScanOptions

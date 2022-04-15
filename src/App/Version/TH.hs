@@ -7,7 +7,6 @@ module App.Version.TH (
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Control.Effect.Diagnostics (Diagnostics, fromEitherShow)
-import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString.Lazy qualified as BSL
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
@@ -28,7 +27,7 @@ import GitHash (giHash, tGitInfoCwd)
 import Instances.TH.Lift ()
 import Language.Haskell.TH (TExpQ)
 import Language.Haskell.TH.Syntax (reportWarning, runIO)
-import Path.IO (getCurrentDir)
+import Effect.ReadFS (ReadFS, runReadFSIO, getCurrentDir)
 
 gitTagPointCommand :: Text -> Command
 gitTagPointCommand commit =
@@ -41,15 +40,15 @@ gitTagPointCommand commit =
 getCurrentTag :: TExpQ (Maybe Text)
 getCurrentTag = do
   let commitHash = giHash $$(tGitInfoCwd)
-  result <- runIO . ignoreLogger . runStack . runDiagnostics . runExecIO . getTags $ toText commitHash
+  result <- runIO . ignoreLogger . runStack . runDiagnostics . runExecIO . runReadFSIO . getTags $ toText commitHash
 
   case result of
     Success _ tags -> filterTags tags
     err -> reportWarning (show err) >> [||Nothing||]
 
-getTags :: (Has (Lift IO) sig m, Has Exec sig m, Has Diagnostics sig m) => Text -> m [Text]
+getTags :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Text -> m [Text]
 getTags hash = do
-  dir <- sendIO getCurrentDir
+  dir <- getCurrentDir
   -- FIXME: boy it would be nice to not shell out during compilation.  So much that could go wrong.
   result <- exec dir $ gitTagPointCommand hash
   bsl <- fromEitherShow result

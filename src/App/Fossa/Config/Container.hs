@@ -43,6 +43,7 @@ import Options.Applicative (
   subparser,
   (<|>),
  )
+import Data.Text (Text)
 
 containerCmdInfo :: InfoMod a
 containerCmdInfo = progDesc "Run in container-scanning mode"
@@ -53,6 +54,7 @@ mkSubCommand = SubCommand "container" containerCmdInfo parser loadConfig mergeOp
 mergeOpts ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
+  , Has ReadFS sig m
   ) =>
   Maybe ConfigFile ->
   EnvVars ->
@@ -88,7 +90,7 @@ getCfgFilePath = \case
 data ContainerCommand
   = ContainerAnalyze ContainerAnalyzeOptions
   | ContainerTest ContainerTestOptions
-  | ContainerParseFile FilePath
+  | ContainerParseFile Text
   | ContainerDumpScan ContainerDumpScanOptions
 
 data ContainerScanConfig
