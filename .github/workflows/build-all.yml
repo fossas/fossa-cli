@@ -85,10 +85,6 @@ jobs:
             ghc: '9.0.2'
 
     steps:
-    # This isn't going to run in CI yet, so end early and don't hit the cache, that kills builds for other PR's
-    - name: Fail early
-      run: "false"
-
     - uses: actions/checkout@v3
 
     # Install tools used in `vendor_download.sh`.
