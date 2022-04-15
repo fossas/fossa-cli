@@ -51,6 +51,7 @@ import Effect.Logger (
   Pretty (pretty),
   logDebug,
   logWarn,
+  viaShow,
   vsep,
  )
 import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir, readContentsYaml)
@@ -101,7 +102,7 @@ resolveConfigFile ::
   Maybe FilePath ->
   m (Maybe ConfigFile)
 resolveConfigFile base path = do
-  logDebug $ "Loading configuration file from " <> pretty (show base)
+  logDebug $ "Loading configuration file from " <> viaShow base
   loc <- resolveLocation base path
   case loc of
     DefaultConfigLocation dir -> do
