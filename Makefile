@@ -1,15 +1,15 @@
+# Get path to project root: https://stackoverflow.com/questions/18136918
+current_dir := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
 FMT_OPTS := -co -XTypeApplications -o -XImportQualifiedPost
 FIND_OPTS := src test integration-test -type f -name '*.hs'
 GHC_VERSION := 9.0.2
 DEV_TOOLS := ghcr.io/fossas/haskell-dev-tools:${GHC_VERSION}
-MOUNTED_DEV_TOOLS := docker run ${DEV_TOOLS}
+MOUNTED_DEV_TOOLS := docker run
 MOUNTED_DEV_TOOLS += --rm
 MOUNTED_DEV_TOOLS += --mount "type=bind,source=${current_dir},target=/fossa-cli"
 MOUNTED_DEV_TOOLS += --workdir "/fossa-cli"
-MOUNTED_DEV_TOOLS += --
-
-# Get path to project root: https://stackoverflow.com/questions/18136918
-current_dir := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+MOUNTED_DEV_TOOLS += ${DEV_TOOLS} 
 
 build:
 	cabal build
