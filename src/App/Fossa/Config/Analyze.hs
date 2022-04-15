@@ -3,7 +3,7 @@
 
 module App.Fossa.Config.Analyze (
   AllowNativeLicenseScan (..),
-  AnalyzeCliOpts,
+  AnalyzeCliOpts (..),
   AnalyzeConfig (..),
   BinaryDiscovery (..),
   ExperimentalAnalyzeConfig (..),
@@ -19,6 +19,8 @@ module App.Fossa.Config.Analyze (
   VSIAnalysis (..),
   VSIModeOptions (..),
   mkSubCommand,
+  loadConfig,
+  cliParser,
 ) where
 
 import App.Fossa.Config.Common (
@@ -62,7 +64,7 @@ import Control.Effect.Diagnostics (
   Has,
   fatalText,
  )
-import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Lift (Lift)
 import Control.Monad (when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Flag (Flag, flagOpt)
@@ -79,8 +81,8 @@ import Discovery.Filters (AllFilters (AllFilters), comboExclude, comboInclude)
 import Effect.Exec (
   Exec,
  )
-import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logDebug, logWarn, pretty)
-import Effect.ReadFS (ReadFS, resolveDir)
+import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn)
+import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
 import Options.Applicative (
@@ -101,7 +103,6 @@ import Options.Applicative (
   (<|>),
  )
 import Path (Abs, Dir, File, Path, Rel)
-import Path.IO (getCurrentDir)
 import System.Info qualified as SysInfo
 import Types (TargetFilter)
 
@@ -301,9 +302,8 @@ loadConfig ::
   AnalyzeCliOpts ->
   m (Maybe ConfigFile)
 loadConfig AnalyzeCliOpts{analyzeBaseDir, commons = CommonOpts{optConfig}} = do
-  cwd <- sendIO getCurrentDir
+  cwd <- getCurrentDir
   configBaseDir <- resolveDir cwd (toText analyzeBaseDir)
-  logDebug $ "Loading configuration file from " <> pretty (show configBaseDir)
   resolveConfigFile configBaseDir optConfig
 
 mergeOpts ::

@@ -15,6 +15,7 @@ module App.Fossa.Config.ConfigFile (
   ExperimentalGradleConfigs (..),
   mergeFileCmdMetadata,
   empty,
+  resolveLocalConfigFile,
 ) where
 
 import App.Docs (fossaYmlDocUrl)
@@ -48,10 +49,12 @@ import Effect.Logger (
   Doc,
   Logger,
   Pretty (pretty),
+  logDebug,
   logWarn,
+  viaShow,
   vsep,
  )
-import Effect.ReadFS (ReadFS, doesFileExist, readContentsYaml)
+import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir, readContentsYaml)
 import Path (
   Abs,
   Dir,
@@ -75,6 +78,18 @@ data ConfigLocation
   = DefaultConfigLocation (Path Abs Dir)
   | SpecifiedConfigLocation (Path Abs File)
 
+resolveLocalConfigFile ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  ) =>
+  Maybe FilePath ->
+  m (Maybe ConfigFile)
+resolveLocalConfigFile path = do
+  cwd <- getCurrentDir
+  resolveConfigFile cwd path
+
 resolveConfigFile ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -87,6 +102,7 @@ resolveConfigFile ::
   Maybe FilePath ->
   m (Maybe ConfigFile)
 resolveConfigFile base path = do
+  logDebug $ "Loading configuration file from " <> viaShow base
   loc <- resolveLocation base path
   case loc of
     DefaultConfigLocation dir -> do

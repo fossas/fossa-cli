@@ -25,7 +25,7 @@ import Control.Effect.Diagnostics (
   context,
   fromMaybeText,
  )
-import Control.Effect.Lift (Has, Lift, sendIO)
+import Control.Effect.Lift (Has, Lift)
 import Data.Aeson (
   FromJSON (parseJSON),
   KeyValue ((.=)),
@@ -47,10 +47,10 @@ import Data.Text.Extra (breakOnAndRemove)
 import Effect.Exec (
   AllowErr (Never),
   Command (..),
+  Exec,
   execJson,
-  runExecIO,
  )
-import Path.IO (getCurrentDir)
+import Effect.ReadFS (ReadFS, getCurrentDir)
 
 -- | The output of the syft binary
 data SyftResponse = SyftResponse
@@ -237,12 +237,14 @@ extractTag tags = do
 
 runSyft ::
   ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
   , Has (Lift IO) sig m
   ) =>
   ImageText ->
   m SyftResponse
-runSyft image = runExecIO . withSyftBinary $ \syftBin -> do
-  dir <- sendIO getCurrentDir
+runSyft image = withSyftBinary $ \syftBin -> do
+  dir <- getCurrentDir
   execJson @SyftResponse dir $ syftCommand syftBin image
 
 -- Scope to all layers, to prevent odd "squashing" that syft does

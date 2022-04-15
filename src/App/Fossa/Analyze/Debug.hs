@@ -199,6 +199,7 @@ readFSToDebug = interpret $ \case
   cons@ReadContentsBSLimit'{} -> ignoring cons
   cons@ListDir{} -> ignoring cons
   cons@GetIdentifier{} -> ignoring cons
+  cons@GetCurrentDir{} -> ignoring cons
 
 -----------------------------------------------
 
