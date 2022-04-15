@@ -72,7 +72,6 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Record (RecordableValue)
 import Control.Effect.Record.TH (deriveRecordable)
 import Control.Effect.Replay (ReplayableValue)
-import Control.Effect.Replay.TH (deriveReplayable)
 import Control.Exception qualified as E
 import Control.Exception.Extra (safeCatch)
 import Control.Monad ((<=<))
@@ -166,7 +165,6 @@ instance RecordableValue ReadFSErr
 instance FromJSON ReadFSErr
 instance ReplayableValue ReadFSErr
 $(deriveRecordable ''ReadFSF)
-$(deriveReplayable ''ReadFSF)
 
 deriving instance Show (ReadFSF a)
 deriving instance Eq (ReadFSF a)

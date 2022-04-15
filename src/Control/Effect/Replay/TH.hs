@@ -73,24 +73,15 @@ decodeSingle keyVal valVal con = do
       constructorTupleP :: PatQ
       constructorTupleP = tupP (constructorNameP : constructorArgsP)
 
-  let argBindingsE :: [StmtQ]
-      argBindingsE =
-        if null constructorArgsP
-          then -- No-arg constructors are meaningless to match
-            []
-          else -- (("MyGadt.Bar" :: String), a, b) <- fromRecordedValue keyVal
-            [bindS constructorTupleP [e|fromRecordedValue $(varE keyVal)|]]
-
   -- do
   doE
-    ( argBindingsE
-        <> [
-             -- decodedResultValue <- fromRecordedValue valVal
-             bindS (sigP (varP resultNm) (getGadtTy con)) [e|fromRecordedValue $(varE valVal)|]
-           , -- pure (EffectResult (Bar a b) decodedResultValue)
-             noBindS [e|pure (EffectResult $(conAppliedE) $(varE resultNm))|]
-           ]
-    )
+    -- (("MyGadt.Bar" :: String), a, b) <- fromRecordedValue keyVal
+    [ bindS constructorTupleP [e|fromRecordedValue $(varE keyVal)|]
+    , -- decodedResultValue <- fromRecordedValue valVal
+      bindS (sigP (varP resultNm) (getGadtTy con)) [e|fromRecordedValue $(varE valVal)|]
+    , -- pure (EffectResult (Bar a b) decodedResultValue)
+      noBindS [e|pure (EffectResult $(conAppliedE) $(varE resultNm))|]
+    ]
 
 -- | Get the Name of a data constructor
 conNm :: Con -> Name
