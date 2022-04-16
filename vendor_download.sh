@@ -104,7 +104,7 @@ echo "themis index downloaded"
 rm $THEMIS_RELEASE_JSON
 echo
 
-SYFT_TAG="v0.14.1-fossa"
+SYFT_TAG="v0.14.2-fossa"
 if $OS_WINDOWS; then
   echo "Skipping syft for Windows builds"
   touch vendor-bins/syft
