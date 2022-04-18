@@ -2,6 +2,7 @@
 
 ## v3.2.8
 
+- Filtering: Don't use included paths for discovery exclusion. ([#907](https://github.com/fossas/fossa-cli/pull/907))
 - Filtering: add `--debug-no-discovery-exclusion` for client-side filter debugging. (#[901](https://github.com/fossas/fossa-cli/pull/901))
 
 ## v3.2.7
