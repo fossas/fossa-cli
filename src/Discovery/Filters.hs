@@ -140,15 +140,12 @@ extractPureTool = \case
   TypeTarget txt -> Just txt
   _ -> Nothing
 
+-- During discovery, we cannot use Include filters to reject invalid paths.
+-- Given @include "a/b" && "a/c"@, we will probably try to skip both of them.
+-- Instead, we only skip over Exclude filters.
 pathAllowed :: AllFilters -> Path Rel Dir -> Bool
-pathAllowed AllFilters{..} path = allowedInclude && allowedExclude
+pathAllowed AllFilters{..} path = not . any (matchPath path) $ combinedPaths excludeFilters
   where
-    allowedExclude = not . any (matchPath path) $ combinedPaths excludeFilters
-    allowedInclude
-      -- If the included path array is empty, allow everything
-      | combinedPaths includeFilters == mempty = True
-      | otherwise = any (matchPath path) $ combinedPaths includeFilters
-    -- child "hello/world/" matches "hello/" and "hello/world/"
     matchPath child parent = parent == child || parent `isProperPrefixOf` child
 
 comboInclude :: [TargetFilter] -> [Path Rel Dir] -> FilterCombination Include
