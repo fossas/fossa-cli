@@ -143,6 +143,8 @@ extractPureTool = \case
 -- During discovery, we cannot use Include filters to reject invalid paths.
 -- Given @include "a/b" && "a/c"@, we will probably try to skip both of them.
 -- Instead, we only skip over Exclude filters.
+-- TODO: we may be able to only allow paths which are proper prefixes of included dirs,
+-- however, this is the safer path.
 pathAllowed :: AllFilters -> Path Rel Dir -> Bool
 pathAllowed AllFilters{..} path = not . any (matchPath path) $ combinedPaths excludeFilters
   where
