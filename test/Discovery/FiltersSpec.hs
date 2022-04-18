@@ -221,7 +221,8 @@ spec = do
     describe "Path-based matching" $ do
       it "should include paths correctly" $ do
         pathAllowed (includePath $(mkRelDir "hello")) $(mkRelDir "hello") `shouldBe` True
-        pathAllowed (includePath $(mkRelDir "NOPE")) $(mkRelDir "Yeah") `shouldBe` False
+        -- We never skip non-included paths during discovery, we only skip excluded paths.
+        pathAllowed (includePath $(mkRelDir "NOPE")) $(mkRelDir "Yeah") `shouldBe` True
 
       it "should exclude paths correctly" $ do
         pathAllowed (excludePath $(mkRelDir "Nope")) $(mkRelDir "No") `shouldBe` True
