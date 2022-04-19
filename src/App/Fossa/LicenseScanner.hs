@@ -260,7 +260,6 @@ scanNonEmptyDirectory ::
 scanNonEmptyDirectory pathPrefix cliScanDir = do
   themisScanResult <- runLicenseScanOnDir pathPrefix cliScanDir
   case NE.nonEmpty themisScanResult of
-    -- TODO: We don't want to fail when we get no license results from an archive
     Nothing -> fatal $ NoLicenseResults cliScanDir
     Just results -> pure results
 
