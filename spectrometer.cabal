@@ -173,6 +173,7 @@ library
     App.Fossa.Config.Container.Test
     App.Fossa.Config.DumpBinaries
     App.Fossa.Config.EnvironmentVars
+    App.Fossa.Config.LicenseScan
     App.Fossa.Config.LinkUserBinaries
     App.Fossa.Config.ListTargets
     App.Fossa.Config.Report
@@ -183,6 +184,7 @@ library
     App.Fossa.Container.Test
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
+    App.Fossa.LicenseScan
     App.Fossa.LicenseScanner
     App.Fossa.ListTargets
     App.Fossa.Main

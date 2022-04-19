@@ -2,6 +2,7 @@
 
 module App.Fossa.RunThemis (
   execThemis,
+  execRawThemis,
 ) where
 
 import App.Fossa.EmbeddedBinary (
@@ -11,6 +12,7 @@ import App.Fossa.EmbeddedBinary (
   toPath,
  )
 import Control.Effect.Diagnostics (Diagnostics, Has)
+import Data.ByteString.Lazy qualified as BL
 import Data.String.Conversion (toText)
 import Data.Tagged (Tagged, unTag)
 import Data.Text (Text)
@@ -19,9 +21,13 @@ import Effect.Exec (
   Command (..),
   Exec,
   execJson,
+  execThrow,
  )
 import Path (Abs, Dir, Path, parent)
 import Srclib.Types (LicenseUnit)
+
+execRawThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> m BL.ByteString
+execRawThemis themisBins scanDir = execThrow scanDir $ themisCommand themisBins
 
 -- TODO: We should log the themis version and index version
 execThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> m [LicenseUnit]
