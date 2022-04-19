@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.2.10
+
+- Haskell: Generate build plan properly for multi-home Cabal projects (h/t [@jmickelin](https://github.com/jmickelin))
+
 ## v3.2.9
 
 - Container Scanning: supports rpm databases using `ndb` or `sqlite` backend. ([#894](https://github.com/fossas/fossa-cli/pull/894))
