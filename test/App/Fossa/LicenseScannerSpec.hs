@@ -28,16 +28,9 @@ unitOne =
     { licenseUnitName = "MIT"
     , licenseUnitType = "LicenseUnit"
     , licenseUnitDir = ""
-    , licenseUnitData =
-        NE.fromList
-          [ standardData{licenseUnitDataPath = "foo/bar/LICENSE"}
-          , standardData{licenseUnitDataPath = "foo/bar/one.txt"}
-          ]
+    , licenseUnitData = standardData{licenseUnitDataPath = "foo/bar/LICENSE"} NE.:| [standardData{licenseUnitDataPath = "foo/bar/one.txt"}]
     , licenseUnitFiles =
-        NE.fromList
-          [ "foo/bar/LICENSE"
-          , "foo/bar/one.txt"
-          ]
+        "foo/bar/LICENSE" NE.:| ["foo/bar/one.txt"]
     , licenseUnitInfo = info
     }
 
@@ -47,16 +40,8 @@ unitTwo =
     { licenseUnitName = "MIT"
     , licenseUnitType = "LicenseUnit"
     , licenseUnitDir = ""
-    , licenseUnitData =
-        NE.fromList
-          [ standardData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"}
-          , standardData{licenseUnitDataPath = "foo/bar/baz/two.txt"}
-          ]
-    , licenseUnitFiles =
-        NE.fromList
-          [ "foo/bar/baz/ANOTHER_LICENSE"
-          , "foo/bar/baz/two.txt"
-          ]
+    , licenseUnitData = standardData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"} NE.:| [standardData{licenseUnitDataPath = "foo/bar/baz/two.txt"}]
+    , licenseUnitFiles = "foo/bar/baz/ANOTHER_LICENSE" NE.:| ["foo/bar/baz/two.txt"]
     , licenseUnitInfo = info
     }
 expectedCombinedUnit :: LicenseUnit
@@ -66,19 +51,17 @@ expectedCombinedUnit =
     , licenseUnitType = "LicenseUnit"
     , licenseUnitDir = ""
     , licenseUnitData =
-        NE.fromList
-          [ standardData{licenseUnitDataPath = "foo/bar/LICENSE"}
-          , standardData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"}
-          , standardData{licenseUnitDataPath = "foo/bar/baz/two.txt"}
-          , standardData{licenseUnitDataPath = "foo/bar/one.txt"}
-          ]
+        standardData{licenseUnitDataPath = "foo/bar/LICENSE"}
+          NE.:| [ standardData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"}
+                , standardData{licenseUnitDataPath = "foo/bar/baz/two.txt"}
+                , standardData{licenseUnitDataPath = "foo/bar/one.txt"}
+                ]
     , licenseUnitFiles =
-        NE.fromList
-          [ "foo/bar/LICENSE"
-          , "foo/bar/baz/ANOTHER_LICENSE"
-          , "foo/bar/baz/two.txt"
-          , "foo/bar/one.txt"
-          ]
+        "foo/bar/LICENSE"
+          NE.:| [ "foo/bar/baz/ANOTHER_LICENSE"
+                , "foo/bar/baz/two.txt"
+                , "foo/bar/one.txt"
+                ]
     , licenseUnitInfo = info
     }
 
