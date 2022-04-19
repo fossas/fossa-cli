@@ -11,7 +11,7 @@ import Prelude
 
 embedFileIfExists :: FilePath -> Q Exp
 embedFileIfExists inputPath = do
-  skipEmbedEnvVar <- runIO $ lookupEnv "FOSSA_SKIP_EMBEDDED_FILES_IN_HLS"
+  skipEmbedEnvVar <- runIO $ lookupEnv "FOSSA_SKIP_EMBED_FILE_IN_HLS"
   case (skipEmbedEnvVar, parseRelFile inputPath) of
     (Just _, _) -> do
       pure (LitE $ StringL "")
