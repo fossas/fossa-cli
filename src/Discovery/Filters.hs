@@ -140,15 +140,27 @@ extractPureTool = \case
   TypeTarget txt -> Just txt
   _ -> Nothing
 
--- During discovery, we cannot use Include filters to reject invalid paths.
--- Given @include "a/b" && "a/c"@, we will probably try to skip both of them.
--- Instead, we only skip over Exclude filters.
--- TODO: we may be able to only allow paths which are proper prefixes of included dirs,
--- however, this is the safer path.
+-- | For path filtering, we follow a few key rules:
+-- * If a path is excluded we reject that path and all of its children.
+-- * If a path is included, we allow that path and all of its parents and children.
+-- * If no paths are specifically included, we only reject explicitly excluded paths and their children.
+-- * If a path is excluded and included, it is rejected.
+-- TODO: Is it possible to allow conflicted items?  If so, is it possible without creating multiple versions of this function?
 pathAllowed :: AllFilters -> Path Rel Dir -> Bool
-pathAllowed AllFilters{..} path = not . any (matchPath path) $ combinedPaths excludeFilters
+pathAllowed AllFilters{..} path = isIncluded && not isExcluded
   where
-    matchPath child parent = parent == child || parent `isProperPrefixOf` child
+    includeIsEmpty = null includedPaths
+    isExcluded = isExcludedMember || isChildOfExcludeMember
+    -- We include parents because our directory scanner will never make it to the included path without the parents
+    -- We include children because our analysis filtering allows children of included members
+    isIncluded = includeIsEmpty || isParentOfIncludeMember || isIncludeMember || isChildOfIncludeMember
+    isIncludeMember = path `elem` includedPaths
+    isExcludedMember = path `elem` excludedPaths
+    isChildOfIncludeMember = any (`isProperPrefixOf` path) includedPaths
+    isChildOfExcludeMember = any (`isProperPrefixOf` path) excludedPaths
+    isParentOfIncludeMember = any (path `isProperPrefixOf`) includedPaths
+    includedPaths = combinedPaths includeFilters
+    excludedPaths = combinedPaths excludeFilters
 
 comboInclude :: [TargetFilter] -> [Path Rel Dir] -> FilterCombination Include
 comboInclude = FilterCombination
