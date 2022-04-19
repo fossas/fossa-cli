@@ -89,6 +89,16 @@ In VSCode:
 
 If you installed HLS in the old, complicated way, you can safely remove it.  HLS now bundles all of its needed tools.
 
+You should also set the `FOSSA_SKIP_EMBED_FILE_IN_HLS` environment variable for HLS. This prevents HLS from embedding binaries, which helps to avoid a giant memory footprint for HLS.
+
+In VSCode, this is done by adding this to your `settings.json`:
+
+```json
+    "haskell.serverEnvironment": {
+        "FOSSA_SKIP_EMBED_FILE_IN_HLS": true,
+    },
+```
+
 ## Linting
 
 `hlint` is built into HLS, and is enabled by default. hlint suggestions appear as warnings in the editor.
