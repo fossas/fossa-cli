@@ -27,7 +27,7 @@ import Path (Abs, Dir, Path, parent)
 import Srclib.Types (LicenseUnit)
 
 execRawThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> m BL.ByteString
-execRawThemis themisBins scanDir = execThrow scanDir $ themisCommand themisBins
+execRawThemis themisBins scanDir = execThrow scanDir $ themisCommand themisBins ""
 
 -- TODO: We should log the themis version and index version
 execThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Path Abs Dir -> m [LicenseUnit]
