@@ -16,11 +16,11 @@ module Control.Carrier.FossaApiClient.Internal.Core (
 
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Container.Scan (ContainerScan)
-import App.Fossa.FossaAPIV1 qualified as API
 import App.Types (ProjectMetadata, ProjectRevision (..))
 import Control.Algebra (Has)
+import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
 import Control.Effect.Diagnostics (Diagnostics)
-import Control.Effect.FossaApiClient (ArchiveRevision (..))
+import Control.Effect.FossaApiClient (PackageRevision (..))
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Data.ByteString.Char8 qualified as C8
@@ -141,11 +141,11 @@ getSignedUploadUrl ::
   , Has Diagnostics sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  ArchiveRevision ->
+  PackageRevision ->
   m SignedURL
-getSignedUploadUrl ArchiveRevision{..} = do
+getSignedUploadUrl PackageRevision{..} = do
   apiOpts <- ask
-  API.getSignedURL apiOpts archiveRevision archiveName
+  API.getSignedURL apiOpts packageVersion packageName
 
 queueArchiveBuild ::
   ( Has (Lift IO) sig m

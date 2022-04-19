@@ -12,8 +12,9 @@ module Strategy.RPM (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Effect.Diagnostics qualified as Diag
+import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.List (isSuffixOf)
 import Data.Map.Strict qualified as Map
@@ -21,14 +22,30 @@ import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Extra (splitOnceOn)
-import DepTypes
-import Discovery.Walk
-import Effect.ReadFS
+import DepTypes (
+  DepEnvironment,
+  DepType (RPMType),
+  Dependency (..),
+  VerConstraint (CEq, CGreater, CGreaterOrEq, CLess, CLessOrEq),
+ )
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  fileName,
+  walkWithFilters',
+ )
+import Effect.ReadFS (ReadFS, readContentsText)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified as G
-import Path
-import Types
+import Path (Abs, Dir, File, Path)
+import Types (
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (RpmProjectType),
+  GraphBreadth (Partial),
+ )
 
 newtype SpecFileLabel
   = RequiresType DepEnvironment
@@ -51,13 +68,11 @@ data Dependencies = Dependencies
   }
   deriving (Eq, Ord, Show)
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject RpmProject]
-discover dir = context "RPM" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject RpmProject]
+discover = simpleDiscover findProjects mkProject RpmProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [RpmProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [RpmProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   let specs = filter (\f -> ".spec" `isSuffixOf` fileName f) files
 
   case specs of

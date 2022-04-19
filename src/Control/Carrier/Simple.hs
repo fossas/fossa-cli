@@ -192,7 +192,7 @@ interpretState s f = runState s . interpret f
 
 -- | A carrier for arbitrary "first-order" effects
 newtype SimpleC eff m a = SimpleC {runSimpleC :: ReaderC (HandlerFor eff m) m a}
-  deriving (Functor, Applicative, Alternative, Monad, MonadFail, MonadIO)
+  deriving (Functor, Applicative, Alternative, Monad, MonadIO)
 
 -- | A wrapper for an effect handler function
 data HandlerFor eff m where

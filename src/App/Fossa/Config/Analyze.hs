@@ -3,7 +3,7 @@
 
 module App.Fossa.Config.Analyze (
   AllowNativeLicenseScan (..),
-  AnalyzeCliOpts,
+  AnalyzeCliOpts (..),
   AnalyzeConfig (..),
   BinaryDiscovery (..),
   ExperimentalAnalyzeConfig (..),
@@ -12,12 +12,15 @@ module App.Fossa.Config.Analyze (
   IncludeAll (..),
   JsonOutput (..),
   MonorepoAnalyzeConfig (..),
+  NoDiscoveryExclusion (..),
   ScanDestination (..),
   StandardAnalyzeConfig (..),
   UnpackArchives (..),
   VSIAnalysis (..),
   VSIModeOptions (..),
   mkSubCommand,
+  loadConfig,
+  cliParser,
 ) where
 
 import App.Fossa.Config.Common (
@@ -61,7 +64,7 @@ import Control.Effect.Diagnostics (
   Has,
   fatalText,
  )
-import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Lift (Lift)
 import Control.Monad (when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Flag (Flag, flagOpt)
@@ -78,8 +81,8 @@ import Discovery.Filters (AllFilters (AllFilters), comboExclude, comboInclude)
 import Effect.Exec (
   Exec,
  )
-import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logDebug, logWarn, pretty)
-import Effect.ReadFS (ReadFS, resolveDir)
+import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn)
+import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
 import Options.Applicative (
@@ -100,7 +103,6 @@ import Options.Applicative (
   (<|>),
  )
 import Path (Abs, Dir, File, Path, Rel)
-import Path.IO (getCurrentDir)
 import System.Info qualified as SysInfo
 import Types (TargetFilter)
 
@@ -110,6 +112,7 @@ data AllowNativeLicenseScan = AllowNativeLicenseScan deriving (Generic)
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
 data IncludeAll = IncludeAll deriving (Generic)
 data JsonOutput = JsonOutput deriving (Generic)
+data NoDiscoveryExclusion = NoDiscoveryExclusion deriving (Generic)
 data UnpackArchives = UnpackArchives deriving (Generic)
 data VSIAnalysis = VSIAnalysis deriving (Generic)
 
@@ -123,6 +126,9 @@ instance ToJSON IncludeAll where
   toEncoding = genericToEncoding defaultOptions
 
 instance ToJSON JsonOutput where
+  toEncoding = genericToEncoding defaultOptions
+
+instance ToJSON NoDiscoveryExclusion where
   toEncoding = genericToEncoding defaultOptions
 
 instance ToJSON UnpackArchives where
@@ -155,6 +161,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeUnpackArchives :: Flag UnpackArchives
   , analyzeJsonOutput :: Flag JsonOutput
   , analyzeIncludeAllDeps :: Flag IncludeAll
+  , analyzeNoDiscoveryExclusion :: Flag NoDiscoveryExclusion
   , analyzeAllowNativeLicenseScan :: Flag AllowNativeLicenseScan
   , analyzeBranch :: Maybe Text
   , analyzeMetadata :: ProjectMetadata
@@ -214,6 +221,7 @@ data StandardAnalyzeConfig = StandardAnalyzeConfig
   , unpackArchives :: Flag UnpackArchives
   , jsonOutput :: Flag JsonOutput
   , includeAllDeps :: Flag IncludeAll
+  , noDiscoveryExclusion :: Flag NoDiscoveryExclusion
   , allowNativeLicenseScan :: Flag AllowNativeLicenseScan
   }
   deriving (Eq, Ord, Show, Generic)
@@ -243,6 +251,7 @@ cliParser =
     <*> flagOpt UnpackArchives (long "unpack-archives" <> help "Recursively unpack and analyze discovered archives")
     <*> flagOpt JsonOutput (long "json" <> help "Output project metadata as json to the console. Useful for communicating with the FOSSA API")
     <*> flagOpt IncludeAll (long "include-unused-deps" <> help "Include all deps found, instead of filtering non-production deps.  Ignored by VSI.")
+    <*> flagOpt NoDiscoveryExclusion (long "debug-no-discovery-exclusion" <> help "Ignore filters during discovery phase.  This is for debugging only and may be removed without warning." <> hidden)
     -- Intentionally hidden until some critical bugs are addressed
     <*> flagOpt AllowNativeLicenseScan (long "experimental-native-license-scan" <> hidden)
     <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
@@ -293,9 +302,8 @@ loadConfig ::
   AnalyzeCliOpts ->
   m (Maybe ConfigFile)
 loadConfig AnalyzeCliOpts{analyzeBaseDir, commons = CommonOpts{optConfig}} = do
-  cwd <- sendIO getCurrentDir
+  cwd <- getCurrentDir
   configBaseDir <- resolveDir cwd (toText analyzeBaseDir)
-  logDebug $ "Loading configuration file from " <> pretty (show configBaseDir)
   resolveConfigFile configBaseDir optConfig
 
 mergeOpts ::
@@ -389,6 +397,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure analyzeUnpackArchives
     <*> pure analyzeJsonOutput
     <*> pure analyzeIncludeAllDeps
+    <*> pure analyzeNoDiscoveryExclusion
     <*> pure analyzeAllowNativeLicenseScan
 
 collectFilters ::

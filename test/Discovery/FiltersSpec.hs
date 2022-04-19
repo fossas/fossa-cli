@@ -4,14 +4,39 @@ module Discovery.FiltersSpec (
   spec,
 ) where
 
+import Control.Carrier.Reader (run, runReader)
 import Data.Foldable (traverse_)
 import Data.Set qualified as Set
-import Data.Set.NonEmpty
+import Data.Set.NonEmpty (nonEmpty)
+import Data.String.Conversion (ToText (toText))
 import Data.Text qualified as Text
-import Discovery.Filters
-import Path
-import Test.Hspec
-import Types (BuildTarget (..), FoundTargets (..), TargetFilter (..))
+import Discovery.Filters (
+  AllFilters (AllFilters),
+  Exclude,
+  FilterCombination,
+  Include,
+  applyFilters,
+  comboExclude,
+  comboInclude,
+  pathAllowed,
+  toolAllowed,
+  withToolFilter,
+ )
+import Path (Dir, Path, Rel, mkRelDir)
+import Test.Hspec (
+  Expectation,
+  Spec,
+  describe,
+  expectationFailure,
+  it,
+  shouldBe,
+ )
+import Types (
+  BuildTarget (..),
+  DiscoveredProjectType (..),
+  FoundTargets (..),
+  TargetFilter (..),
+ )
 
 spec :: Spec
 spec = do
@@ -161,7 +186,105 @@ spec = do
         , (mvnQuux, ProjectWithoutTargets, Nothing)
         ]
 
+  describe "Matching primitives" $ do
+    describe "Tool-based matching" $ do
+      it "should exclude tools correctly" $ do
+        toolAllowed (excludeTool CargoProjectType) CargoProjectType `shouldBe` False
+        toolAllowed (excludeTool GomodProjectType) CargoProjectType `shouldBe` True
+
+      it "should include tools correctly" $ do
+        toolAllowed (includeTool CargoProjectType) CargoProjectType `shouldBe` True
+        toolAllowed (includeTool GomodProjectType) CargoProjectType `shouldBe` False
+
+      -- Multiple filters
+      it "should include multiple tools correctly" $ do
+        let filts = includeTool CargoProjectType <> includeTool GomodProjectType
+        toolAllowed filts CargoProjectType `shouldBe` True
+        toolAllowed filts GomodProjectType `shouldBe` True
+        toolAllowed filts SetuptoolsProjectType `shouldBe` False
+
+      it "should exclude multiple tools correctly" $ do
+        let filts = excludeTool CargoProjectType <> excludeTool GomodProjectType
+        toolAllowed filts CargoProjectType `shouldBe` False
+        toolAllowed filts GomodProjectType `shouldBe` False
+        toolAllowed filts SetuptoolsProjectType `shouldBe` True
+
+      it "should reject conflicted tools" $ do
+        -- Conflicting filters, members of exclude are NEVER allowed
+        toolAllowed (includeTool CargoProjectType <> excludeTool CargoProjectType) CargoProjectType `shouldBe` False
+
+      it "should not exclude tools present only in project filters" $ do
+        let filters = excludeProject CargoProjectType $(mkRelDir "no-go") <> excludeTool GomodProjectType
+        toolAllowed filters CargoProjectType `shouldBe` True
+        toolAllowed filters GomodProjectType `shouldBe` False
+
+    describe "Path-based matching" $ do
+      it "should include paths correctly" $ do
+        pathAllowed (includePath $(mkRelDir "hello")) $(mkRelDir "hello") `shouldBe` True
+        -- We never skip non-included paths during discovery, we only skip excluded paths.
+        pathAllowed (includePath $(mkRelDir "NOPE")) $(mkRelDir "Yeah") `shouldBe` True
+
+      it "should exclude paths correctly" $ do
+        pathAllowed (excludePath $(mkRelDir "Nope")) $(mkRelDir "No") `shouldBe` True
+        pathAllowed (excludePath $(mkRelDir "Bad")) $(mkRelDir "Bad") `shouldBe` False
+
+      it "should match sub-dir paths correctly" $ do
+        -- Subdir matching
+        pathAllowed (excludePath $(mkRelDir "hello")) $(mkRelDir "hello/world") `shouldBe` False
+
+      it "should reject conflicted paths" $ do
+        -- Conflicting filters
+        let conflict = $(mkRelDir "conflict")
+        pathAllowed (excludePath conflict <> includePath conflict) conflict `shouldBe` False
+
+      -- Big tests: multiple filters, subdirectory matching
+      it "should should handle multi-matching with subdirs" $ do
+        let bigFilters = includePath $(mkRelDir "a") <> excludePath $(mkRelDir "a/b/c")
+        pathAllowed bigFilters $(mkRelDir "a/b/c") `shouldBe` False
+        pathAllowed bigFilters $(mkRelDir "a/b/d") `shouldBe` True
+
+  describe "tool filtering helpers" $ do
+    it "should return an empty list when the tool is not allowed" $ do
+      let filters = excludeTool CargoProjectType
+          result = run . runReader filters $ withToolFilter CargoProjectType $ pure [True]
+      if null result
+        then pure ()
+        else expectationFailure "withToolFilter returned non-empty"
+
+    it "should return the list continuation when the tool is allowed" $ do
+      let filters = excludeTool GomodProjectType
+          result = run . runReader filters $ withToolFilter CargoProjectType $ pure [True]
+      if null result
+        then expectationFailure "withToolFilter returned non-empty"
+        else pure ()
+
+    it "should return the continuation when the filters are empty" $ do
+      let filters = mempty :: AllFilters
+          result = run . runReader filters $ withToolFilter CargoProjectType $ pure [True]
+      if null result
+        then expectationFailure "withToolFilter returned non-empty"
+        else pure ()
+
 testHarness :: FilterCombination Include -> FilterCombination Exclude -> [((Text.Text, Path Rel Dir), FoundTargets, Maybe FoundTargets)] -> Expectation
 testHarness include exclude = traverse_ testSingle
   where
     testSingle ((buildtool, dir), targets, expected) = applyFilters (AllFilters include exclude) buildtool dir targets `shouldBe` expected
+
+excludePath :: Path Rel Dir -> AllFilters
+excludePath path = AllFilters mempty $ comboExclude mempty [path]
+
+excludeTool :: DiscoveredProjectType -> AllFilters
+excludeTool tool = AllFilters mempty $ comboExclude [TypeTarget $ toText tool] mempty
+
+excludeProject :: DiscoveredProjectType -> Path Rel Dir -> AllFilters
+excludeProject ty path = AllFilters mempty $ comboExclude [TypeDirTarget (toText ty) path] mempty
+
+includePath :: Path Rel Dir -> AllFilters
+includePath path = AllFilters include mempty
+  where
+    include = comboInclude mempty [path]
+
+includeTool :: DiscoveredProjectType -> AllFilters
+includeTool tool = AllFilters include mempty
+  where
+    include = comboInclude [TypeTarget $ toText tool] mempty

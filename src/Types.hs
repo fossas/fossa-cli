@@ -96,7 +96,7 @@ data DiscoveredProjectType
   | SwiftProjectType
   | VsiProjectType
   | YarnProjectType
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Enum, Bounded)
 
 projectTypeToText :: DiscoveredProjectType -> Text
 projectTypeToText = \case
@@ -201,7 +201,10 @@ newtype BuildTarget = BuildTarget {unBuildTarget :: Text}
   However, many Gradle targets consist of a strategy type, a directory,
   and an exact gradle target.
 -}
-data TargetFilter = TypeTarget Text | TypeDirTarget Text (Path Rel Dir) | TypeDirTargetTarget Text (Path Rel Dir) BuildTarget
+data TargetFilter
+  = TypeTarget Text
+  | TypeDirTarget Text (Path Rel Dir)
+  | TypeDirTargetTarget Text (Path Rel Dir) BuildTarget
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON TargetFilter where

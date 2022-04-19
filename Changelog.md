@@ -1,5 +1,31 @@
 # FOSSA CLI Changelog
 
+## v3.2.10
+
+- Haskell: Generates build plan properly for multi-home Cabal projects (h/t [@jmickelin](https://github.com/jmickelin)) ([#910](https://github.com/fossas/fossa-cli/pull/910))
+
+## v3.2.9
+
+- Container Scanning: supports rpm databases using `ndb` or `sqlite` backend. ([#894](https://github.com/fossas/fossa-cli/pull/894))
+
+## v3.2.8
+
+- Filtering: Don't use included paths for discovery exclusion. ([#907](https://github.com/fossas/fossa-cli/pull/907))
+- Filtering: add `--debug-no-discovery-exclusion` for client-side filter debugging. (#[901](https://github.com/fossas/fossa-cli/pull/901))
+
+## v3.2.7
+
+- debug: Redact all known API keys from the debug bundle (#[897](https://github.com/fossas/fossa-cli/pull/897))
+- nodejs: Discover peer deps and transitive deps for name-spaced packages in package-lock.json. ([#882](https://github.com/fossas/fossa-cli/pull/882))
+
+## v3.2.6
+
+- Filters: Apply filters during the discvoery phase, reducing end-to-end runtime. ([#877](https://github.com/fossas/fossa-cli/pull/877))
+
+## v3.2.5
+
+- debug: Reduce the size of debug bundles. ([#890](https://github.com/fossas/fossa-cli/pull/890))
+
 ## v3.2.4
 - nodejs: Fixed a bug where dev deps that only appear in requires were considered production dependencies. ([#884](https://github.com/fossas/fossa-cli/pull/884))
 

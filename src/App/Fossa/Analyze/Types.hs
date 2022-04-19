@@ -17,10 +17,11 @@ import Control.Effect.Telemetry (Telemetry)
 import Data.Set (Set)
 import Data.Text (Text)
 import Diag.Result (Result (Failure, Success))
+import Discovery.Filters (AllFilters)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
-import Path
+import Path (Abs, Dir, Path)
 import Srclib.Types (SourceUnit)
 import Types (DependencyResults, DiscoveredProjectType, FoundTargets)
 
@@ -36,6 +37,7 @@ type AnalyzeTaskEffs sig m =
   , Has Diagnostics sig m
   , Has Debug sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader AllFilters) sig m
   , Has Telemetry sig m
   )
 

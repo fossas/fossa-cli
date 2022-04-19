@@ -12,7 +12,7 @@ import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text.IO qualified as TIO
 import DepTypes
-import Effect.ReadFS
+import Effect.ReadFS (runReadFSIO)
 import GraphUtil
 import Parse.XML
 import Path

@@ -22,7 +22,16 @@ module Strategy.Leiningen (
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative (optional)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  ToDiagnostic (..),
+  context,
+  errCtx,
+  fatal,
+  run,
+ )
+import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.EDN qualified as EDN
 import Data.EDN.Class.Parser (Parser)
@@ -36,14 +45,43 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TL
 import Data.Vector qualified as V
-import Discovery.Walk
-import Effect.Exec
-import Effect.Grapher
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  findFileNamed,
+  walkWithFilters',
+ )
+import Effect.Exec (
+  AllowErr (Always, Never),
+  Command (..),
+  Exec,
+  ExecErr (CommandParseError),
+  exec,
+  execThrow,
+ )
+import Effect.Grapher (
+  LabeledGrapher,
+  direct,
+  edge,
+  label,
+  withLabeling,
+ )
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
-import Path
-import Types
+import Path (Abs, Dir, File, Path, parent)
+import Types (
+  DepEnvironment (EnvOther, EnvTesting),
+  DepType (MavenType),
+  Dependency (..),
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (LeiningenProjectType),
+  GraphBreadth (Complete),
+  VerConstraint (CEq),
+  insertEnvironment,
+ )
 
 leinDepsCmd :: Command
 leinDepsCmd =
@@ -61,13 +99,11 @@ leinVersionCmd =
     , cmdAllowErr = Always
     }
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject LeiningenProject]
-discover dir = context "Leiningen" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject LeiningenProject]
+discover = simpleDiscover findProjects mkProject LeiningenProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [LeiningenProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [LeiningenProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "project.clj" files of
     Nothing -> pure ([], WalkContinue)
     Just projectClj -> do

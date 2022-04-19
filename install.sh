@@ -352,6 +352,27 @@ End of functions from https://github.com/client9/shlib
 ------------------------------------------------------------------------
 EOF
 
+print_deprecation_warning() {
+  log_crit ""
+  log_crit "-------------------"
+  log_crit "Deprecation Warning"
+  log_crit "-------------------"
+  log_crit ""
+  log_crit "You are installing FOSSA CLI v1, which is no longer in active"
+	log_crit "development. FOSSA will not address new defects found in CLI v1."  
+  log_crit ""
+  log_crit "Please upgrade to the latest Fossa CLI."
+  log_crit ""
+  log_crit "Please upgrade to FOSSA CLI v3 by using install-latest script"
+  log_crit "-------------------------------------------------------------" 
+  log_crit "    curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash"
+  log_crit "" 
+  log_crit "Migration guide for FOSSA CLI v3"
+  log_crit "--------------------------------"
+  log_crit "    https://github.com/fossas/fossa-cli/blob/master/docs/differences-from-v1.md#how-to-upgrade-to-fossa-3x"
+  log_crit ""
+}
+
 PROJECT_NAME="fossa-cli"
 OWNER=fossas
 REPO="fossa-cli"
@@ -366,6 +387,9 @@ RELEASE_V1_LATEST="v1.1.10"
 log_prefix() {
 	echo "$PREFIX"
 }
+
+print_deprecation_warning
+
 PLATFORM="${OS}/${ARCH}"
 GITHUB_DOWNLOAD=https://github.com/${OWNER}/${REPO}/releases/download
 

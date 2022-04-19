@@ -16,13 +16,22 @@ module Discovery.Filters (
   combinedTargets,
   Include,
   Exclude,
+  pathAllowed,
+  toolAllowed,
+  withMultiToolFilter,
+  withToolFilter,
 ) where
 
+import Control.Effect.Reader (Has, Reader, ask)
+import Control.Monad ((<=<))
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.List ((\\))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe)
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Semigroup (sconcat)
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty, toSet)
 import Data.String.Conversion (toText)
@@ -38,7 +47,7 @@ import Text.Megaparsec (
   (<|>),
  )
 import Text.Megaparsec.Char (alphaNumChar, char)
-import Types (BuildTarget (..), FoundTargets (FoundTargets, ProjectWithoutTargets), TargetFilter (..))
+import Types (BuildTarget (..), DiscoveredProjectType, FoundTargets (FoundTargets, ProjectWithoutTargets), TargetFilter (..))
 
 -- | filterIsVSIOnly is a very naive check for whether the user provided a filter for the VSI target *only*, at the root of the project with no path specified.
 -- This decision was made because predicating VSI only scans is a stopgap until we have more broad support for *preemptive* analysis filtering.
@@ -86,6 +95,60 @@ instance Semigroup (FilterCombination a) where
 
 instance Monoid (FilterCombination a) where
   mempty = FilterCombination mempty mempty
+
+withMultiToolFilter :: Has (Reader AllFilters) sig m => [DiscoveredProjectType] -> m [a] -> m [a]
+withMultiToolFilter tools act = do
+  filters <- ask
+  let allowedSet = allowedTools filters
+  if any (`Set.member` allowedSet) tools
+    then act
+    else pure mempty
+
+withToolFilter :: Has (Reader AllFilters) sig m => DiscoveredProjectType -> m [a] -> m [a]
+withToolFilter tool = withMultiToolFilter [tool]
+
+toolAllowed :: AllFilters -> DiscoveredProjectType -> Bool
+toolAllowed filters tool = tool `Set.member` allowedTools filters
+
+allowedTools :: AllFilters -> Set DiscoveredProjectType
+allowedTools AllFilters{..} = (fullSet `Set.intersection` includeSet) `Set.difference` excludeSet
+  where
+    fullSet = Set.fromList allTools
+    includedTargets = combinedTargets includeFilters
+    excludedTargets = combinedTargets excludeFilters
+    excludeSet = Set.fromList $ mapMaybe ((`Map.lookup` toolNameMap) <=< extractPureTool) excludedTargets
+    includeSet =
+      Set.fromList $
+        if null includedTargets
+          then allTools -- No includes means "include everything"
+          else mapMaybe ((`Map.lookup` toolNameMap) . extractTool) includedTargets
+
+toolNameMap :: Map Text DiscoveredProjectType
+toolNameMap = Map.fromList $ map (\x -> (toText x, x)) allTools
+
+allTools :: [DiscoveredProjectType]
+allTools = enumFromTo minBound maxBound
+
+extractTool :: TargetFilter -> Text
+extractTool = \case
+  TypeTarget txt -> txt
+  TypeDirTarget txt _ -> txt
+  TypeDirTargetTarget txt _ _ -> txt
+
+extractPureTool :: TargetFilter -> Maybe Text
+extractPureTool = \case
+  TypeTarget txt -> Just txt
+  _ -> Nothing
+
+-- During discovery, we cannot use Include filters to reject invalid paths.
+-- Given @include "a/b" && "a/c"@, we will probably try to skip both of them.
+-- Instead, we only skip over Exclude filters.
+-- TODO: we may be able to only allow paths which are proper prefixes of included dirs,
+-- however, this is the safer path.
+pathAllowed :: AllFilters -> Path Rel Dir -> Bool
+pathAllowed AllFilters{..} path = not . any (matchPath path) $ combinedPaths excludeFilters
+  where
+    matchPath child parent = parent == child || parent `isProperPrefixOf` child
 
 comboInclude :: [TargetFilter] -> [Path Rel Dir] -> FilterCombination Include
 comboInclude = FilterCombination

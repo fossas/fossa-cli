@@ -11,21 +11,54 @@ module Strategy.Haskell.Stack (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  fromEither,
+ )
+import Control.Effect.Reader (Reader)
 import Control.Monad (when)
-import Data.Aeson.Types
+import Data.Aeson.Types (
+  FromJSON (parseJSON),
+  ToJSON,
+  withObject,
+  (.!=),
+  (.:),
+  (.:?),
+ )
 import Data.Foldable (for_)
 import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Discovery.Walk
-import Effect.Exec
-import Effect.Grapher
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (
+  WalkStep (WalkContinue, WalkSkipAll),
+  findFileNamed,
+  walkWithFilters',
+ )
+import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson)
+import Effect.Grapher (
+  MappedGrapher,
+  direct,
+  edge,
+  mapping,
+  withMapping,
+ )
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing qualified as G
-import Path
-import Types
+import Path (Abs, Dir, File, Path)
+import Types (
+  DepType (HackageType),
+  Dependency (..),
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (StackProjectType),
+  GraphBreadth (Complete),
+  VerConstraint (CEq),
+ )
 import Prelude
 
 newtype PackageName = PackageName {unPackageName :: Text} deriving (FromJSON, Eq, Ord, Show)
@@ -60,13 +93,11 @@ parseLocationType txt
   | txt `elem` ["project package", "archive"] = pure Local
   | otherwise = fail $ "Bad location type: " ++ toString txt
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject StackProject]
-discover dir = context "Stack" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject StackProject]
+discover = simpleDiscover findProjects mkProject StackProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [StackProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [StackProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "stack.yaml" files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([StackProject dir file], WalkSkipAll)

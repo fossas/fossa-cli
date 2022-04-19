@@ -2,6 +2,7 @@ module Discovery.Walk (
   -- * Walking the filetree
   walk,
   walk',
+  walkWithFilters',
   WalkStep (..),
 
   -- * Helpers
@@ -12,6 +13,7 @@ module Discovery.Walk (
 
 import Control.Carrier.Writer.Church
 import Control.Effect.Diagnostics
+import Control.Effect.Reader (Reader, ask)
 import Control.Monad.Trans
 import Control.Monad.Trans.Maybe
 import Data.Foldable (find)
@@ -22,6 +24,7 @@ import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
+import Discovery.Filters (AllFilters, pathAllowed)
 import Effect.ReadFS
 import Path
 
@@ -43,13 +46,14 @@ data WalkStep
 -- You can inspect the names of files and directories with 'dirName' and
 -- 'fileName'
 walk ::
-  (Has ReadFS sig m, Has Diagnostics sig m) =>
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  ) =>
   (Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m WalkStep) ->
   Path Abs Dir ->
   m ()
 walk f = walkDir $ \dir subdirs files -> do
-  -- normally, subdirs and files are _relative to dir_. We want them to be
-  -- relative to the filetree walk
+  -- Check that the path matches the filters
   step <- f dir subdirs files
   case step of
     WalkContinue -> pure $ WalkExclude []
@@ -60,10 +64,32 @@ walk f = walkDir $ \dir subdirs files -> do
     WalkSkipAll -> pure $ WalkExclude subdirs
     WalkStop -> pure WalkFinish
 
+pathFilterIntercept ::
+  ( Applicative m
+  , Monoid o
+  ) =>
+  AllFilters ->
+  Path Abs Dir ->
+  Path Abs Dir ->
+  m (o, WalkStep) ->
+  m (o, WalkStep)
+pathFilterIntercept filters base path act = do
+  -- We know that the two have the same base, but if that invariant is broken,
+  -- we just allow the path during discovery.  It's better than crashing.
+  case stripProperPrefix base path of
+    Nothing -> act
+    Just relative ->
+      if pathAllowed filters relative
+        then act
+        else pure (mempty, WalkSkipAll)
+
 -- |Like @walk@, but collects the output of @f@ in a monoid.
 walk' ::
   forall o sig m.
-  (Has ReadFS sig m, Has Diagnostics sig m, Monoid o) =>
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Monoid o
+  ) =>
   (Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m (o, WalkStep)) ->
   Path Abs Dir ->
   m o
@@ -76,6 +102,21 @@ walk' f base = do
       (res, step) <- lift $ f dir subdirs files
       tell res
       pure step
+
+-- | Like @walk'@, but ignores paths that don't match the provided filters.
+walkWithFilters' ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has (Reader AllFilters) sig m
+  , Monoid o
+  ) =>
+  (Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m (o, WalkStep)) ->
+  Path Abs Dir ->
+  m o
+walkWithFilters' f root = do
+  filters <- ask
+  let f' dir subdirs files = pathFilterIntercept filters root dir $ f dir subdirs files
+  walk' f' root
 
 fileName :: Path a File -> String
 fileName = toFilePath . filename

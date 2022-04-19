@@ -14,36 +14,66 @@ module Strategy.NuGet.ProjectAssetsJson (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics hiding (fromMaybe)
-import Data.Aeson
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  context,
+  run,
+ )
+import Control.Effect.Reader (Reader)
+import Data.Aeson (
+  FromJSON (parseJSON),
+  FromJSONKey (..),
+  FromJSONKeyFunction (FromJSONKeyTextParser),
+  Object,
+  ToJSON,
+  Value,
+  withObject,
+  (.!=),
+  (.:),
+  (.:?),
+ )
 import Data.Aeson.Types (Parser)
 import Data.Foldable (for_)
 import Data.HashMap.Strict qualified as HM
 import Data.Map.Strict qualified as Map
-import Data.Maybe
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Traversable (for)
-import DepTypes
-import Discovery.Walk
+import DepTypes (
+  DepType (NuGetType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (
+  WalkStep (WalkContinue),
+  findFileNamed,
+  walkWithFilters',
+ )
 import Effect.Grapher (Grapher, deep, direct, edge, evalGrapher)
-import Effect.ReadFS
+import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
 import Graphing (Graphing, gmap)
-import Path
+import Path (Abs, Dir, File, Path, parent)
 import Text.Read (readMaybe)
-import Types
+import Types (
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (ProjectAssetsJsonProjectType),
+  GraphBreadth (Complete),
+ )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject ProjectAssetsJsonProject]
-discover dir = context "ProjectAssetsJson" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject ProjectAssetsJsonProject]
+discover = simpleDiscover findProjects mkProject ProjectAssetsJsonProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [ProjectAssetsJsonProject]
-findProjects = walk' $ \_ _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [ProjectAssetsJsonProject]
+findProjects = walkWithFilters' $ \_ _ files -> do
   case findFileNamed "project.assets.json" files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([ProjectAssetsJsonProject file], WalkContinue)

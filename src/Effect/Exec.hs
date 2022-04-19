@@ -18,20 +18,39 @@ module Effect.Exec (
   runExecIO,
   renderCommand,
   module System.Exit,
-  module X,
+  execThrow',
+  Has,
 ) where
 
 import App.Support (reportDefectMsg)
-import Control.Algebra as X
-import Control.Carrier.Simple
-import Control.Effect.Diagnostics
+import Control.Algebra (Has)
+import Control.Carrier.Simple (
+  Simple,
+  SimpleC,
+  interpret,
+  sendSimple,
+ )
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (..),
+  context,
+  fatal,
+ )
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Record
+import Control.Effect.Record (RecordableValue (..))
 import Control.Effect.Record.TH (deriveRecordable)
-import Control.Effect.Replay
+import Control.Effect.Replay (ReplayableValue (..))
 import Control.Effect.Replay.TH (deriveReplayable)
 import Control.Exception (IOException, try)
-import Data.Aeson
+import Data.Aeson (
+  FromJSON (parseJSON),
+  KeyValue ((.=)),
+  ToJSON (toJSON),
+  eitherDecode,
+  object,
+  withObject,
+  (.:),
+ )
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BL
 import Data.String (fromString)
@@ -39,13 +58,18 @@ import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
+import Effect.ReadFS (ReadFS, getCurrentDir)
 import GHC.Generics (Generic)
-import Path
-import Path.IO
+import Path (Abs, Dir, Path, SomeBase (..), fromAbsDir)
+import Path.IO (AnyPath (makeAbsolute))
 import Prettyprinter (Doc, indent, line, pretty, viaShow, vsep)
 import Prettyprinter.Render.Terminal (AnsiStyle)
 import System.Exit (ExitCode (..))
-import System.Process.Typed
+import System.Process.Typed (
+  proc,
+  readProcess,
+  setWorkingDir,
+ )
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 
@@ -217,6 +241,12 @@ execThrow dir cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
   case result of
     Left failure -> fatal (CommandFailed failure)
     Right stdout -> pure stdout
+
+-- | A variant of 'execThrow' that runs the command in the current directory
+execThrow' :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Command -> m BL.ByteString
+execThrow' cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
+  dir <- getCurrentDir
+  execThrow dir cmd
 
 type ExecIOC = SimpleC ExecF
 

@@ -15,6 +15,10 @@ module Effect.ReadFS (
   readContentsBSLimit,
   readContentsText,
 
+  -- * Get current directory
+  getCurrentDir,
+  getCurrentDir',
+
   -- * Resolving relative filepaths
   resolveFile,
   resolveFile',
@@ -68,7 +72,6 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Record (RecordableValue)
 import Control.Effect.Record.TH (deriveRecordable)
 import Control.Effect.Replay (ReplayableValue)
-import Control.Effect.Replay.TH (deriveReplayable)
 import Control.Exception qualified as E
 import Control.Exception.Extra (safeCatch)
 import Control.Monad ((<=<))
@@ -126,6 +129,7 @@ instance FromJSON SomePath
 instance ReplayableValue SomePath
 
 data ReadFSF a where
+  GetCurrentDir :: ReadFSF (Either ReadFSErr (Path Abs Dir))
   ReadContentsBS' :: SomeBase File -> ReadFSF (Either ReadFSErr ByteString)
   ReadContentsBSLimit' :: SomeBase File -> Int -> ReadFSF (Either ReadFSErr ByteString)
   ReadContentsText' :: SomeBase File -> ReadFSF (Either ReadFSErr Text)
@@ -152,6 +156,8 @@ data ReadFSErr
     NotDirOrFile FilePath
   | -- | A file was found to be BOTH a directory and regular file, and we cannot decide which it really is.
     UndeterminableFileType FilePath
+  | -- | An IOException was thrown when resolving the current directory
+    CurrentDirError Text
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON ReadFSErr
@@ -159,7 +165,6 @@ instance RecordableValue ReadFSErr
 instance FromJSON ReadFSErr
 instance ReplayableValue ReadFSErr
 $(deriveRecordable ''ReadFSF)
-$(deriveReplayable ''ReadFSF)
 
 deriving instance Show (ReadFSF a)
 deriving instance Eq (ReadFSF a)
@@ -196,6 +201,7 @@ instance ToDiagnostic ReadFSErr where
         , "- File system"
         , "- Output of 'fossa --version'"
         ]
+    CurrentDirError err -> "Error resolving the current directory: " <> pretty err
 
 -- | Read file contents into a strict 'ByteString'
 readContentsBS' :: Has ReadFS sig m => Path Abs File -> m (Either ReadFSErr ByteString)
@@ -271,6 +277,14 @@ contentIsBinary file = do
   attemptedContent <- readContentsBSLimit file 8000
   content <- fromEither attemptedContent
   pure $ BS.elem 0 content
+
+-- | Get the current directory of the process.
+getCurrentDir' :: (Has ReadFS sig m) => m (Either ReadFSErr (Path Abs Dir))
+getCurrentDir' = sendSimple GetCurrentDir
+
+-- | Get the current directory of the process.
+getCurrentDir :: (Has ReadFS sig m, Has Diagnostics sig m) => m (Path Abs Dir)
+getCurrentDir = getCurrentDir' >>= fromEither
 
 type Parser = Parsec Void Text
 
@@ -348,6 +362,9 @@ runReadFSIO = interpret $ \case
     let fullpath = toString root FP.</> path
     stat <- Posix.getFileStatus fullpath `catchingIO` ResolveError (toString root) path
     pure (stat >>= identifyPath fullpath)
+  GetCurrentDir -> do
+    PIO.getCurrentDir
+      `catchingIO` CurrentDirError
   -- NB: these never throw
   DoesFileExist file -> sendIO (Directory.doesFileExist (fromSomeFile file))
   DoesDirExist dir -> sendIO (Directory.doesDirectoryExist (fromSomeDir dir))

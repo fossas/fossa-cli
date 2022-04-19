@@ -20,28 +20,40 @@ module App.Fossa.Analyze.Debug (
   debugEverything,
 ) where
 
-import Control.Carrier.Debug
-import Control.Carrier.Diagnostics (Diag (Fatal), Diagnostics)
+import App.Version (fullVersionDescription)
+import Control.Carrier.Debug (
+  Algebra (..),
+  Debug,
+  DebugC,
+  Has,
+  Scope,
+  debugError,
+  debugLog,
+  debugScope,
+  ignoring,
+  recording,
+  runDebug,
+  type (:+:) (..),
+ )
 import Control.Carrier.Lift (sendIO)
 import Control.Carrier.Simple (SimpleC, interpret, sendSimple)
-import Control.Carrier.Stack (Stack (Context))
+import Control.Effect.Diagnostics (Diag (Fatal), Diagnostics)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Record (Journal, RecordC, runRecord)
+import Control.Effect.Stack (Stack (Context))
 import Control.Effect.Sum (Member, inj)
-import Control.Exception (IOException, try)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text.IO qualified as TIO
 import Data.Word (Word64)
 import Effect.Exec (Exec, ExecF (..))
 import Effect.Logger (Logger, LoggerF (..))
 import Effect.ReadFS (ReadFS, ReadFSF (..))
 import GHC.Conc qualified as Conc
-import GHC.Environment qualified as Environment
 import GHC.Generics (Generic)
 import GHC.Stats qualified as Stats
+import System.Args (getCommandArgs)
 import System.Info qualified as Info
 
 collectDebugBundle ::
@@ -51,21 +63,20 @@ collectDebugBundle ::
   , Has Logger sig m
   , Has (Lift IO) sig m
   ) =>
+  cfg ->
   DebugEverythingC (RecordC ReadFSF (RecordC ExecF (DebugC m))) a ->
-  m (DebugBundle, a)
-collectDebugBundle act = do
+  m (DebugBundle cfg, a)
+collectDebugBundle cfg act = do
   (scope, (execJournal, (readFSJournal, res))) <- runDebug . runRecord @ExecF . runRecord @ReadFSF . debugEverything $ act
   sysInfo <- sendIO collectSystemInfo
-  -- TODO: collect the config file in command entrypoint and emit "effective
-  -- config", which is config overlayed with CLI options
-  fossaYml <- eitherToMaybe <$> sendIO (try @IOException (TIO.readFile ".fossa.yml"))
-  args <- sendIO Environment.getFullArgs
+  args <- sendIO getCommandArgs
   let bundle =
         DebugBundle
           { bundleScope = scope
           , bundleSystem = sysInfo
+          , bundleCLIVersion = fullVersionDescription
           , bundleArgs = args
-          , bundleFossaYml = fossaYml
+          , bundleConfig = cfg
           , bundleJournals =
               BundleJournals
                 { bundleJournalReadFS = readFSJournal
@@ -73,9 +84,6 @@ collectDebugBundle act = do
                 }
           }
   pure (bundle, res)
-
-eitherToMaybe :: Either e a -> Maybe a
-eitherToMaybe = either (const Nothing) Just
 
 collectSystemInfo :: IO SystemInfo
 collectSystemInfo = do
@@ -96,16 +104,17 @@ collectSystemInfo = do
       processors
       systemMemory
 
-data DebugBundle = DebugBundle
+data DebugBundle cfg = DebugBundle
   { bundleScope :: Scope
   , bundleSystem :: SystemInfo
-  , bundleArgs :: [String]
-  , bundleFossaYml :: Maybe Text
+  , bundleCLIVersion :: Text
+  , bundleArgs :: [Text]
+  , bundleConfig :: cfg
   , bundleJournals :: BundleJournals
   }
   deriving (Show, Generic)
 
-instance ToJSON DebugBundle where
+instance ToJSON cfg => ToJSON (DebugBundle cfg) where
   toEncoding = genericToEncoding defaultOptions
 
 data SystemInfo = SystemInfo
@@ -176,20 +185,21 @@ diagToDebug = runDiagDebugC
 
 type ReadFSDebugC = SimpleC ReadFSF
 
--- | Record most ReadFS constructors, ignoring ListDir because it explodes the
--- size of the debug bundle
+-- | Record ReadFS constructors which are relevant for debugging.
 readFSToDebug :: (Has ReadFS sig m, Has Debug sig m) => ReadFSDebugC m a -> m a
 readFSToDebug = interpret $ \case
   cons@ReadContentsBS'{} -> recording cons
-  cons@ReadContentsBSLimit'{} -> ignoring cons
   cons@ReadContentsText'{} -> recording cons
   cons@DoesFileExist{} -> recording cons
   cons@DoesDirExist{} -> recording cons
   cons@ResolveFile'{} -> recording cons
   cons@ResolveDir'{} -> recording cons
   cons@ResolvePath{} -> recording cons
+  -- Unneeded or excessive for debug bundles
+  cons@ReadContentsBSLimit'{} -> ignoring cons
   cons@ListDir{} -> ignoring cons
-  cons@GetIdentifier{} -> recording cons
+  cons@GetIdentifier{} -> ignoring cons
+  cons@GetCurrentDir{} -> ignoring cons
 
 -----------------------------------------------
 

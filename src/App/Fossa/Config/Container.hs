@@ -15,7 +15,7 @@ import App.Fossa.Config.Common (
  )
 import App.Fossa.Config.ConfigFile (
   ConfigFile,
-  resolveConfigFile,
+  resolveLocalConfigFile,
  )
 import App.Fossa.Config.Container.Analyze (ContainerAnalyzeConfig, ContainerAnalyzeOptions (..))
 import App.Fossa.Config.Container.Analyze qualified as Analyze
@@ -29,7 +29,7 @@ import App.Fossa.Config.Container.Test qualified as Test
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import Control.Effect.Diagnostics (Diagnostics)
-import Control.Effect.Lift (Has, Lift, sendIO)
+import Control.Effect.Lift (Has, Lift)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS)
@@ -43,7 +43,6 @@ import Options.Applicative (
   subparser,
   (<|>),
  )
-import Path.IO (getCurrentDir)
 
 containerCmdInfo :: InfoMod a
 containerCmdInfo = progDesc "Run in container-scanning mode"
@@ -77,9 +76,7 @@ loadConfig = \case
   ContainerParseFile _ -> pure Nothing
   ContainerDumpScan _ -> pure Nothing
   -- Only parse config file if we're running analyze or test
-  cmd -> do
-    curdir <- sendIO getCurrentDir
-    resolveConfigFile curdir $ getCfgFilePath cmd
+  cmd -> resolveLocalConfigFile $ getCfgFilePath cmd
 
 getCfgFilePath :: ContainerCommand -> Maybe FilePath
 getCfgFilePath = \case

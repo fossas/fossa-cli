@@ -25,15 +25,16 @@ import Control.Carrier.Telemetry (
   IgnoreTelemetryC,
   withoutTelemetry,
  )
-import Control.Monad (forM)
 import Data.Conduit (runConduitRes, (.|))
 import Data.Conduit.Binary qualified as CB
 import Data.Function ((&))
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Traversable (for)
 import Diag.Result (EmittedWarn, Result (Failure, Success), renderFailure)
 import Discovery.Archive (selectUnarchiver)
+import Discovery.Filters (AllFilters)
 import Effect.Exec (
   Command (..),
   ExecF (Exec),
@@ -68,6 +69,7 @@ import Path (
 import Path.IO qualified as PIO
 import System.Directory.Internal.Prelude (Handle, hClose)
 import Text.URI (mkURI)
+import Type.Operator (type ($))
 import Types (
   DependencyResults,
   DiscoveredProject (projectBuildTargets, projectData),
@@ -99,7 +101,7 @@ data FixtureArtifact = FixtureArtifact
   }
   deriving (Show, Eq, Ord)
 
-type TestC m a = ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC ((ReaderC ExperimentalAnalyzeConfig) (FinallyC (StackC (IgnoreTelemetryC m))))))) a
+type TestC m = ExecIOC $ ReadFSIOC $ DiagnosticsC $ LoggerC $ ReaderC AllFilters $ ReaderC ExperimentalAnalyzeConfig $ FinallyC $ StackC $ IgnoreTelemetryC m
 
 testRunnerWithLogger :: TestC IO a -> FixtureEnvironment -> IO (Result a)
 testRunnerWithLogger f env =
@@ -108,6 +110,7 @@ testRunnerWithLogger f env =
     & runReadFSIO
     & runDiagnostics
     & withDefaultLogger SevDebug
+    & runReader mempty
     & runReader (ExperimentalAnalyzeConfig Nothing)
     & runFinally
     & runStack
@@ -137,7 +140,7 @@ performDiscoveryAndAnalyses targetDir AnalysisTestFixture{..} = do
   -- Perform discovery
   discoveryResult <- sendIO $ testRunnerWithLogger (discover targetDir) environment
   withResult discoveryResult $ \_ dps ->
-    forM dps $ \dp -> do
+    for dps $ \dp -> do
       analysisResult <- sendIO $ testRunnerWithLogger (ignoreDebug $ analyzeProject (projectBuildTargets dp) (projectData dp)) environment
       withResult analysisResult $ \_ dr -> pure (dp, dr)
   where
@@ -151,6 +154,7 @@ performDiscoveryAndAnalyses targetDir AnalysisTestFixture{..} = do
             Left err -> fail (show err)
             Right _ -> pure ()
 
+-- TODO: don't use MonadFail here
 withResult :: MonadFail m => Result a -> ([EmittedWarn] -> a -> m b) -> m b
 withResult (Failure ws eg) _ = fail (show (renderFailure ws eg "An issue occurred"))
 withResult (Success ws a) f = f ws a

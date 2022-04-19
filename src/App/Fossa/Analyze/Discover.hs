@@ -4,7 +4,9 @@ module App.Fossa.Analyze.Discover (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, AnalyzeTaskEffs)
+import Control.Effect.Reader (Has, Reader)
 import Data.Aeson qualified as Aeson
+import Discovery.Filters (AllFilters)
 import Path (Abs, Dir, Path)
 import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
@@ -97,4 +99,4 @@ discoverFuncs =
 --       [forall a. (AnalyzeProject a, ToJSON a) =>
 --          Path Abs Dir -> m [DiscoveredProject a]]
 data DiscoverFunc m where
-  DiscoverFunc :: (AnalyzeProject a, Aeson.ToJSON a) => (Path Abs Dir -> m [DiscoveredProject a]) -> DiscoverFunc m
+  DiscoverFunc :: (AnalyzeProject a, Aeson.ToJSON a, Has (Reader AllFilters) sig m) => (Path Abs Dir -> m [DiscoveredProject a]) -> DiscoverFunc m
