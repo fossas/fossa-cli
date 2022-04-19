@@ -10,13 +10,13 @@ module Control.Carrier.FossaApiClient.Internal.VSI (
   resolveUserDefinedBinary,
 ) where
 
-import App.Fossa.FossaAPIV1 qualified as API
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
 import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
 import Control.Algebra (Has)
+import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)

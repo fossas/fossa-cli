@@ -5,9 +5,9 @@ module Control.Carrier.FossaApiClient.Internal.ScotlandYard (
   getLatestScan,
 ) where
 
-import App.Fossa.FossaAPIV1 (getOrganization, renderLocatorUrl)
 import App.Fossa.VPS.Types (runHTTP)
 import App.Types (ProjectRevision (..))
+import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (getOrganization, renderLocatorUrl)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)

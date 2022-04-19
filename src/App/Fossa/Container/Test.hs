@@ -27,6 +27,7 @@ import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Timeout (timeout')
 import Data.Aeson qualified as Aeson
 import Data.String.Conversion (decodeUtf8)
+import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
   Pretty (pretty),
@@ -35,6 +36,7 @@ import Effect.Logger (
   logInfo,
   logStdout,
  )
+import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (Issues (..))
 import System.Exit (exitFailure)
 
@@ -42,6 +44,8 @@ test ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
   ContainerTestConfig ->
   m ()

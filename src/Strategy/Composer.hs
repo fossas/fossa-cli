@@ -14,6 +14,7 @@ import Control.Effect.Diagnostics (
   context,
   run,
  )
+import Control.Effect.Reader (Reader)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
   ToJSON,
@@ -37,10 +38,12 @@ import DepTypes (
   VerConstraint (CEq),
   insertEnvironment,
  )
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
-  walk',
+  walkWithFilters',
  )
 import Effect.Grapher (
   LabeledGrapher,
@@ -63,13 +66,11 @@ import Types (
   LicenseType (LicenseSPDX),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject ComposerProject]
-discover dir = context "Composer" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject ComposerProject]
+discover = simpleDiscover findProjects mkProject ComposerProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [ComposerProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [ComposerProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "composer.lock" files of
     Nothing -> pure ([], WalkContinue)
     Just lock -> do

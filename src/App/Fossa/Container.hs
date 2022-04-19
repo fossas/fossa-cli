@@ -26,7 +26,7 @@ import Data.Aeson (FromJSON (parseJSON), Value, encode)
 import Data.Aeson.Types (parseEither)
 import Data.ByteString.Lazy qualified as BL
 import Data.String.Conversion (decodeUtf8, toString)
-import Effect.Exec (Exec, execThrow)
+import Effect.Exec (Exec, execThrow')
 import Effect.Logger (
   Logger,
   logDebug,
@@ -34,7 +34,6 @@ import Effect.Logger (
   logStdout,
  )
 import Effect.ReadFS (ReadFS, readContentsJson)
-import Path.IO (getCurrentDir)
 
 containerSubCommand :: SubCommand ContainerCommand ContainerScanConfig
 containerSubCommand = Config.mkSubCommand dispatch
@@ -77,12 +76,12 @@ dumpSyftScan ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
   ContainerDumpScanConfig ->
   m ()
 dumpSyftScan ContainerDumpScanConfig{..} = withSyftBinary $ \syft -> do
-  dir <- sendIO getCurrentDir
-  syftOutput <- execThrow dir $ syftCommand syft dumpImageLocator
+  syftOutput <- execThrow' $ syftCommand syft dumpImageLocator
   let writer :: BL.ByteString -> IO ()
       writer = maybe BL.putStr (BL.writeFile . toString) outputFile
   sendIO $ writer syftOutput

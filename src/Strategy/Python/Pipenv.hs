@@ -24,6 +24,7 @@ import Control.Effect.Diagnostics (
   run,
   warnOnErr,
  )
+import Control.Effect.Reader (Reader)
 import Data.Aeson (
   FromJSON (parseJSON),
   ToJSON,
@@ -49,10 +50,12 @@ import Diag.Common (
   MissingDeepDeps (MissingDeepDeps),
   MissingEdges (MissingEdges),
  )
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
-  walk',
+  walkWithFilters',
  )
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson)
 import Effect.Grapher (
@@ -74,13 +77,11 @@ import Types (
   GraphBreadth (Complete),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject PipenvProject]
-discover dir = context "Pipenv" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PipenvProject]
+discover = simpleDiscover findProjects mkProject PipenvProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [PipenvProject]
-findProjects = walk' $ \_ _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PipenvProject]
+findProjects = walkWithFilters' $ \_ _ files -> do
   case findFileNamed "Pipfile.lock" files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([PipenvProject file], WalkContinue)

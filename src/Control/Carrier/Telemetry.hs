@@ -35,7 +35,7 @@ import Data.Tracing.Instrument (incCount)
 import System.Exit (ExitCode (ExitSuccess))
 
 newtype TelemetryC m a = TelemetryC {runTelemetryC :: ReaderC TelemetryCtx m a}
-  deriving (Applicative, Functor, Monad, MonadFail, MonadIO)
+  deriving (Applicative, Functor, Monad, MonadIO)
 
 instance (Algebra sig m, MonadIO m, Has (Lift IO) sig m) => Algebra (Telemetry :+: sig) (TelemetryC m) where
   alg hdl sig ctx = case sig of
@@ -116,7 +116,7 @@ bracket' create teardown act =
         actOnException hadFatalException >> throwIO (e :: Exc.SomeException)
 
 newtype IgnoreTelemetryC m a = IgnoreTelemetryC {runIgnoreTelemetryC :: ReaderC TelemetryCtx m a}
-  deriving (Applicative, Functor, Monad, MonadFail, MonadIO)
+  deriving (Applicative, Functor, Monad, MonadIO)
 
 instance Algebra sig m => Algebra (Telemetry :+: sig) (IgnoreTelemetryC m) where
   alg hdl sig ctx = case sig of

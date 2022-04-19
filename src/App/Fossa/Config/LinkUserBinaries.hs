@@ -12,7 +12,7 @@ import App.Fossa.Config.Common (
   collectBaseDir,
   commonOpts,
  )
-import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
+import App.Fossa.Config.ConfigFile (ConfigFile, resolveLocalConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (
   EffStack,
@@ -28,7 +28,7 @@ import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
  )
-import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Lift (Lift)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS)
@@ -47,7 +47,6 @@ import Options.Applicative (
   strOption,
   value,
  )
-import Path.IO (getCurrentDir)
 
 cmdName :: String
 cmdName = "experimental-link-user-defined-dependency-binary"
@@ -94,9 +93,7 @@ loadConfig ::
   ) =>
   LinkUserBinsOpts ->
   m (Maybe ConfigFile)
-loadConfig LinkUserBinsOpts{..} = do
-  curdir <- sendIO getCurrentDir
-  resolveConfigFile curdir $ optConfig commons
+loadConfig = resolveLocalConfigFile . optConfig . commons
 
 data LinkUserBinsOpts = LinkUserBinsOpts
   { commons :: CommonOpts

@@ -5,24 +5,25 @@ module Strategy.Mix (
   MixProject (..),
 ) where
 
-import Control.Effect.Diagnostics (Diagnostics, context)
+import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Reader (Reader)
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipSome),
   findFileNamed,
-  walk',
+  walkWithFilters',
  )
 import Effect.ReadFS (Has, ReadFS)
-import Path
+import Path (Abs, Dir, Path)
 import Strategy.Elixir.MixTree (MixProject (..))
 import Types (DiscoveredProject (..), DiscoveredProjectType (MixProjectType))
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject MixProject]
-discover dir = context "Mix" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject MixProject]
+discover = simpleDiscover findProjects mkProject MixProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MixProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [MixProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "mix.exs" files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([MixProject dir file], WalkSkipSome ["deps", "_build"])

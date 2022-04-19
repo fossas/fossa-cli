@@ -19,18 +19,17 @@ import App.Fossa.Config.ConfigFile (
   ConfigFile (configExperimental),
   ExperimentalConfigs (gradle),
   ExperimentalGradleConfigs (gradleConfigsOnly),
-  resolveConfigFile,
+  resolveLocalConfigFile,
  )
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir)
 import Control.Effect.Diagnostics (Diagnostics)
-import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Lift (Lift)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Effect.Logger (Has, Logger, Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Options.Applicative (InfoMod, Parser, progDesc)
-import Path.IO (getCurrentDir)
 
 mkSubCommand :: (ListTargetsConfig -> EffStack ()) -> SubCommand ListTargetsCliOpts ListTargetsConfig
 mkSubCommand = SubCommand "list-targets" listTargetsInfo parser loadConfig mergeOpts
@@ -43,9 +42,7 @@ loadConfig ::
   ) =>
   ListTargetsCliOpts ->
   m (Maybe ConfigFile)
-loadConfig ListTargetsCliOpts{..} = do
-  curdir <- sendIO getCurrentDir
-  resolveConfigFile curdir $ optConfig commons
+loadConfig = resolveLocalConfigFile . optConfig . commons
 
 listTargetsInfo :: InfoMod a
 listTargetsInfo = progDesc "List available analysis-targets in a directory (projects and sub-projects)"

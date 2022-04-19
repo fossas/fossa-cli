@@ -4,7 +4,6 @@ module Node.PackageLockSpec (
   spec,
 ) where
 
-import Algebra.Graph.AdjacencyMap qualified as AM
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import DepTypes (
@@ -15,6 +14,7 @@ import DepTypes (
  )
 import Effect.ReadFS (readContentsJson)
 import GraphUtil (
+  expectDep,
   expectDeps,
   expectDeps',
   expectDirect,
@@ -22,7 +22,6 @@ import GraphUtil (
   expectEdges,
   expectEdges',
  )
-import Graphing qualified
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Npm.PackageLock (
@@ -36,10 +35,13 @@ import Strategy.Node.Npm.PackageLock (
     depVersion
   ),
   PkgLockJson (..),
+  PkgLockPackage (PkgLockPackage),
   buildGraph,
+  pkgPeerDeps,
+  pkgResolved,
  )
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Spec, describe, it, runIO, shouldSatisfy)
+import Test.Hspec (Spec, describe, it, runIO)
 
 -- This is a package-lock.json that has a dev dependency (packageOne) with a
 -- require, packageTwo, that doesn't exist in either depDependencies or
@@ -81,6 +83,66 @@ mockDevRequireMissingDependency =
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = Set.singleton EnvDevelopment
+    , dependencyTags = Map.empty
+    }
+
+mockNameSpacedPeerDepLock :: PkgLockJson
+mockNameSpacedPeerDepLock =
+  PkgLockJson
+    { lockPackages =
+        Map.fromList
+          [
+            ( "node_modules/@ns/packageOne"
+            , PkgLockPackage
+                { pkgPeerDeps = Map.fromList [("packageTwo", "2.0.0")]
+                , pkgResolved = Just "https://package-one.com/one.tgz"
+                }
+            )
+          ]
+    , lockDependencies =
+        Map.fromList
+          [
+            ( "@ns/packageOne"
+            , PkgLockDependency
+                { depVersion = "1.0.0"
+                , depDev = False
+                , depResolved = NpmResolved $ Just "https://package-one.com/one.tgz"
+                , depRequires = Map.empty -- Map.fromList [("packageThree", "3.0.0")]
+                , depDependencies = Map.empty
+                }
+            )
+          ,
+            ( "packageTwo"
+            , PkgLockDependency
+                { depVersion = "2.0.0"
+                , depDev = False
+                , depResolved = NpmResolved $ Just "https://package-two.com/two.tgz"
+                , depRequires = Map.empty
+                , depDependencies = Map.empty
+                }
+            )
+          ]
+    }
+
+mockNSPeerDepPackageOne :: Dependency
+mockNSPeerDepPackageOne =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "@ns/packageOne"
+    , dependencyVersion = Just (CEq "1.0.0")
+    , dependencyLocations = ["https://package-one.com/one.tgz"]
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = Map.empty
+    }
+
+mockNSPeerDepPackageTwo :: Dependency
+mockNSPeerDepPackageTwo =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "packageTwo"
+    , dependencyVersion = Just (CEq "2.0.0")
+    , dependencyLocations = ["https://package-two.com/two.tgz"]
+    , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.empty
     }
 
@@ -375,12 +437,12 @@ buildGraphSpec testDir =
         graph
 
     it "label required deps as 'EnvDevelopment' if the parent is dev" $ do
-      let vertexSet =
-            AM.vertexSet
-              . Graphing.toAdjacencyMap
-              . buildGraph mockRequiredMissingDep
-              $ (Set.singleton "packageThree")
-      vertexSet `shouldSatisfy` Set.member mockDevRequireMissingDependency
+      let graph = buildGraph mockRequiredMissingDep (Set.singleton "packageThree")
+      expectDep mockDevRequireMissingDependency graph
+
+    it "Should process namespaced peer dependencies" $ do
+      let graph = buildGraph mockNameSpacedPeerDepLock Set.empty
+      expectEdges [(mockNSPeerDepPackageOne, mockNSPeerDepPackageTwo)] graph
 
 packageLockParseSpec :: Path Abs Dir -> Spec
 packageLockParseSpec testDir =

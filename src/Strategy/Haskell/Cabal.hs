@@ -15,9 +15,24 @@ module Strategy.Haskell.Cabal (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  ToDiagnostic (..),
+  context,
+  errCtx,
+  fatal,
+ )
+import Control.Effect.Reader (Reader)
 import Control.Monad (when)
-import Data.Aeson.Types
+import Data.Aeson.Types (
+  FromJSON (parseJSON),
+  ToJSON,
+  withObject,
+  (.!=),
+  (.:),
+  (.:?),
+ )
 import Data.Foldable (for_)
 import Data.List (isSuffixOf)
 import Data.Map.Strict (Map)
@@ -27,15 +42,40 @@ import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Discovery.Walk
-import Effect.Exec
-import Effect.Grapher
-import Effect.ReadFS
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (
+  WalkStep (WalkContinue, WalkSkipAll),
+  fileName,
+  walkWithFilters',
+ )
+import Effect.Exec (
+  AllowErr (Never),
+  Command (..),
+  Exec,
+  execThrow,
+ )
+import Effect.Grapher (
+  MappedGrapher,
+  direct,
+  edge,
+  mapping,
+  withMapping,
+ )
+import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified as G
-import Path
-import Types
+import Path (Abs, Dir, File, Path, Rel, mkRelFile, (</>))
+import Types (
+  DepType (HackageType),
+  Dependency (..),
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (CabalProjectType),
+  GraphBreadth (Complete),
+  VerConstraint (CEq),
+ )
 
 newtype BuildPlan = BuildPlan {installPlans :: [InstallPlan]} deriving (Eq, Ord, Show)
 newtype Component = Component {componentDeps :: Set PlanId} deriving (Eq, Ord, Show)
@@ -105,17 +145,15 @@ cabalGenPlanCmd :: Command
 cabalGenPlanCmd =
   Command
     { cmdName = "cabal"
-    , cmdArgs = ["v2-build", "--dry-run"]
+    , cmdArgs = ["v2-build", "all", "--dry-run"]
     , cmdAllowErr = Never
     }
 
 cabalPlanFilePath :: Path Rel File
 cabalPlanFilePath = $(mkRelFile "dist-newstyle/cache/plan.json")
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CabalProject]
-discover dir = context "Cabal" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CabalProject]
+discover = simpleDiscover findProjects mkProject CabalProjectType
 
 isCabalFile :: Path Abs File -> Bool
 isCabalFile file = isDotCabal || isCabalDotProject
@@ -124,8 +162,8 @@ isCabalFile file = isDotCabal || isCabalDotProject
     isDotCabal = ".cabal" `isSuffixOf` name
     isCabalDotProject = "cabal.project" == name
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CabalProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CabalProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   -- NOTE: the long-term more-accurate version here is to parse the `cabal.project` file and look
   -- for relevant cabal files to mark as manifests.
   let manifestFiles = filter isCabalFile files

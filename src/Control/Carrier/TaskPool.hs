@@ -128,7 +128,7 @@ data Progress = Progress
   deriving (Eq, Ord, Show)
 
 newtype TaskPoolC m a = TaskPoolC {runTaskPoolC :: ReaderC (TVar [m ()]) m a}
-  deriving (Functor, Applicative, Monad, MonadIO, MonadFail)
+  deriving (Functor, Applicative, Monad, MonadIO)
 
 instance MonadTrans TaskPoolC where
   lift = TaskPoolC . lift

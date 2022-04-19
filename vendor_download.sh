@@ -69,7 +69,7 @@ rm $WIGGINS_RELEASE_JSON
 echo "Wiggins download successful"
 echo
 
-THEMIS_TAG="2022-03-18-efb2343"
+THEMIS_TAG="2022-04-14-2ee13e4"
 echo "Downloading themis binary"
 echo "Using themis release: $THEMIS_TAG"
 THEMIS_RELEASE_JSON=vendor-bins/themis-release.json
@@ -104,16 +104,18 @@ echo "themis index downloaded"
 rm $THEMIS_RELEASE_JSON
 echo
 
+SYFT_TAG="v0.14.2-fossa"
 if $OS_WINDOWS; then
   echo "Skipping syft for Windows builds"
   touch vendor-bins/syft
 else
   echo "Downloading forked syft binary"
+  echo "Using forked syft release: $SYFT_TAG"
   SYFT_RELEASE_JSON=vendor-bins/syft-release.json
   curl -sSL \
       -H "Authorization: token $GITHUB_TOKEN" \
       -H "Accept: application/vnd.github.v3.raw" \
-      api.github.com/repos/fossas/syft/releases/latest > $SYFT_RELEASE_JSON
+      api.github.com/repos/fossas/syft/releases/tags/${SYFT_TAG} > $SYFT_RELEASE_JSON
 
   # Remove leading 'v' from version tag
   # 'v123' -> '123'

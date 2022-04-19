@@ -3,22 +3,38 @@ module Strategy.Conda (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Carrier.Diagnostics hiding (fromMaybe)
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  (<||>),
+ )
+import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
-import Discovery.Walk
-import Effect.Exec
-import Effect.ReadFS
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (
+  WalkStep (WalkContinue, WalkSkipAll),
+  findFileNamed,
+  walkWithFilters',
+ )
+import Effect.Exec (Exec)
+import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (Abs, Dir, File, Path)
 import Strategy.Conda.CondaList qualified as CondaList
 import Strategy.Conda.EnvironmentYml qualified as EnvironmentYml
-import Types
+import Types (
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (CondaProjectType),
+  GraphBreadth (Complete),
+ )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject CondaProject]
-discover dir = map mkProject <$> findProjects dir
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CondaProject]
+discover = simpleDiscover findProjects mkProject CondaProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [CondaProject]
-findProjects = walk' $ \dir _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CondaProject]
+findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "environment.yml" files of
     Nothing -> pure ([], WalkContinue)
     Just envYml -> do

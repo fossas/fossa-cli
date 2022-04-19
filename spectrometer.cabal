@@ -173,6 +173,7 @@ library
     App.Fossa.Config.Container.Test
     App.Fossa.Config.DumpBinaries
     App.Fossa.Config.EnvironmentVars
+    App.Fossa.Config.LicenseScan
     App.Fossa.Config.LinkUserBinaries
     App.Fossa.Config.ListTargets
     App.Fossa.Config.Report
@@ -183,7 +184,7 @@ library
     App.Fossa.Container.Test
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
-    App.Fossa.FossaAPIV1
+    App.Fossa.LicenseScan
     App.Fossa.LicenseScanner
     App.Fossa.ListTargets
     App.Fossa.Main
@@ -230,6 +231,8 @@ library
     Control.Carrier.Finally
     Control.Carrier.FossaApiClient
     Control.Carrier.FossaApiClient.Internal.Core
+    Control.Carrier.FossaApiClient.Internal.FossaAPIV1
+    Control.Carrier.FossaApiClient.Internal.LicenseScanning
     Control.Carrier.FossaApiClient.Internal.ScotlandYard
     Control.Carrier.FossaApiClient.Internal.VSI
     Control.Carrier.Git
@@ -289,6 +292,7 @@ library
     Discovery.Archive.RPM
     Discovery.Filters
     Discovery.Projects
+    Discovery.Simple
     Discovery.Walk
     Effect.Exec
     Effect.Grapher
@@ -296,6 +300,7 @@ library
     Effect.ReadFS
     Fossa.API.Types
     Graphing
+    Graphing.Debug
     Graphing.Hydrate
     Network.HTTP.Req.Extra
     Parse.XML
@@ -392,7 +397,9 @@ library
     Strategy.Swift.Xcode.Pbxproj
     Strategy.Swift.Xcode.PbxprojParser
     Strategy.SwiftPM
+    System.Args
     Text.URI.Builder
+    Type.Operator
     Types
 
   hs-source-dirs:  src
@@ -428,6 +435,9 @@ test-suite unit-tests
     App.Fossa.API.BuildLinkSpec
     App.Fossa.API.BuildWaitSpec
     App.Fossa.BinaryDeps.JarSpec
+    App.Fossa.Config.AnalyzeSpec
+    App.Fossa.Config.TestSpec
+    App.Fossa.Config.Utils
     App.Fossa.Configuration.ConfigurationSpec
     App.Fossa.Configuration.TelemetryConfigSpec
     App.Fossa.LicenseScannerSpec
@@ -455,7 +465,6 @@ test-suite unit-tests
     Conda.CondaListSpec
     Conda.EnvironmentYmlSpec
     Control.Carrier.DiagnosticsSpec
-    Control.Carrier.Telemetry.UtilSpec
     Control.Carrier.TelemetrySpec
     Control.TimeoutSpec
     Dart.PubDepsSpec
@@ -517,6 +526,7 @@ test-suite unit-tests
     Swift.PackageSwiftSpec
     Swift.Xcode.PbxprojParserSpec
     Swift.Xcode.PbxprojSpec
+    System.ArgsSpec
     Test.Effect
     Test.Fixtures
     Test.MockApi

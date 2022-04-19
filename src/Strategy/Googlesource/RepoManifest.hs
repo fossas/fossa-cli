@@ -1,8 +1,5 @@
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Strategy.Googlesource.RepoManifest (
   discover,
@@ -18,11 +15,17 @@ module Strategy.Googlesource.RepoManifest (
   ValidatedProject (..),
 ) where
 
-import Prelude
-
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative (optional, (<|>))
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  ToDiagnostic (..),
+  fatal,
+  fatalText,
+  tagError,
+ )
+import Control.Effect.Reader (Reader)
 import Control.Monad (unless)
 import Data.Aeson (ToJSON)
 import Data.Foldable (find)
@@ -31,27 +34,57 @@ import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
-import DepTypes
-import Discovery.Walk
-import Effect.ReadFS
+import DepTypes (
+  DepEnvironment (EnvProduction),
+  DepType (GooglesourceType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
+import Discovery.Filters (AllFilters)
+import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (
+  WalkStep (WalkContinue, WalkSkipAll),
+  fileName,
+  walkWithFilters',
+ )
+import Effect.ReadFS (
+  ReadFS,
+  doesFileExist,
+  readContentsText,
+  readContentsXML,
+ )
 import GHC.Generics (Generic)
 import Graphing (Graphing, unfold)
-import Parse.XML
-import Path
+import Parse.XML (FromXML (..), attr, child, children)
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  dirname,
+  mkRelDir,
+  mkRelFile,
+  parent,
+  parseRelFile,
+  (</>),
+ )
 import Prettyprinter (pretty)
 import Text.GitConfig.Parser (Section (..), parseConfig)
 import Text.Megaparsec (errorBundlePretty)
-import Text.URI
-import Types
+import Text.URI (URI, mkURI, relativeTo, render)
+import Types (
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (RepoManifestProjectType),
+  GraphBreadth (Partial),
+ )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [DiscoveredProject RepoManifestProject]
-discover dir = context "RepoManifest" $ do
-  projects <- context "Finding projects" $ findProjects dir
-  pure (map mkProject projects)
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject RepoManifestProject]
+discover = simpleDiscover findProjects mkProject RepoManifestProjectType
 
 -- We're looking for a file called "manifest.xml" in a directory called ".repo"
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [RepoManifestProject]
-findProjects = walk' $ \_ _ files -> do
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [RepoManifestProject]
+findProjects = walkWithFilters' $ \_ _ files -> do
   case find (\f -> "manifest.xml" == fileName f) files of
     Nothing -> pure ([], WalkContinue)
     Just file ->
