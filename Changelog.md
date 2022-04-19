@@ -2,7 +2,7 @@
 
 ## v3.2.10
 
-- Haskell: Generate build plan properly for multi-home Cabal projects (h/t [@jmickelin](https://github.com/jmickelin)) ([#910](https://github.com/fossas/fossa-cli/pull/910))
+- Haskell: Generates build plan properly for multi-home Cabal projects (h/t [@jmickelin](https://github.com/jmickelin)) ([#910](https://github.com/fossas/fossa-cli/pull/910))
 
 ## v3.2.9
 
