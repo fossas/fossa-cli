@@ -8,15 +8,15 @@ jobs:
   integration-test:
     name: integration-test
     runs-on: ubuntu-latest
-    # container: fossa/haskell-static-alpine:ghc-8.10.4
+    container: fossa/haskell-static-alpine:ghc-8.10.4
 
     steps:
     - uses: actions/checkout@v2
 
-    # - name: Install alpine binary dependencies
-    #   shell: sh
-    #   run: |
-    #     apk add bash xz-dev bzip2-dev bzip2-static upx curl jq
+    - name: Install alpine binary dependencies
+      shell: sh
+      run: |
+        apk add bash xz-dev bzip2-dev bzip2-static upx curl jq
 
     - uses: cachix/install-nix-action@v17
       with:
