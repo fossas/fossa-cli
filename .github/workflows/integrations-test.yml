@@ -59,4 +59,4 @@ jobs:
 
     - name: Run all integration tests
       run: |
-        cabal test --project-file=cabal.project.ci.linux integration-tests --test-show-details=direct --test-option=--times --test-option=--match --test-option="absinthe"
+        cabal test --project-file=cabal.project.ci.linux integration-tests --test-show-details=direct --test-option=--times
