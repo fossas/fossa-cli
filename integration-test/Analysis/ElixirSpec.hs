@@ -15,7 +15,7 @@ elixirEnv :: FixtureEnvironment
 elixirEnv = NixEnv ["elixir"]
 
 mixBuildProjectCmd :: Command
-mixBuildProjectCmd = Command "mix" ["deps.get", "&&", "mix deps.compile"] Never
+mixBuildProjectCmd = Command "mix" ["local.hex", "--force", "--if-missing", "&&", "mix deps.get", "&&", "mix deps.compile"] Never
 
 absinthe :: AnalysisTestFixture (Mix.MixProject)
 absinthe =
