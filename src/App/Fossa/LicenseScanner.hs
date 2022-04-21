@@ -192,15 +192,16 @@ scanVendoredDep ::
   ) =>
   Path Abs Dir ->
   VendoredDependency ->
-  m (NonEmpty LicenseUnit)
+  m LicenseSourceUnit 
 scanVendoredDep baseDir VendoredDependency{..} = context "Scanning vendored deps for license data" $ do
   logSticky $ "License Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
   scanPath <- resolvePath' baseDir $ toString vendoredPath
-  case scanPath of
+  licenseUnits <- case scanPath of
     SomeFile (Abs path) -> scanArchive baseDir $ ScannableArchive path
     SomeFile (Rel path) -> scanArchive baseDir . ScannableArchive $ baseDir </> path
     SomeDir (Abs path) -> scanDirectory Nothing (getPathPrefix baseDir path) path
     SomeDir (Rel path) -> scanDirectory Nothing (toText path) (baseDir </> path)
+  pure $ LicenseSourceUnit vendoredPath CliLicenseScanned  licenseUnits
 
 getPathPrefix :: Path Abs Dir -> Path Abs t -> Text
 getPathPrefix baseDir scanPath = do
@@ -285,16 +286,9 @@ uploadVendoredDep ::
   ) =>
   Path Abs Dir ->
   VendoredDependency ->
-  NE.NonEmpty LicenseUnit ->
+  LicenseSourceUnit ->
   m (Maybe Archive)
-uploadVendoredDep baseDir VendoredDependency{..} themisScanResult = do
-  let licenseSourceUnit =
-        LicenseSourceUnit
-          { licenseSourceUnitName = vendoredPath
-          , licenseSourceUnitType = CliLicenseScanned
-          , licenseSourceUnitLicenseUnits = themisScanResult
-          }
-
+uploadVendoredDep baseDir VendoredDependency{..} licenseSourceUnit = do
   depVersion <- case vendoredVersion of
     Nothing -> sendIO $ withSystemTempDir "fossa-temp" (calculateVendoredHash baseDir vendoredPath)
     Just version -> pure version

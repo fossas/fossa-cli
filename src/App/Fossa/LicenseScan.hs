@@ -11,7 +11,7 @@ import App.Fossa.EmbeddedBinary (withThemisAndIndex)
 import App.Fossa.LicenseScanner (dedupVendoredDeps, scanVendoredDep)
 import App.Fossa.ManualDeps (
   ManualDependencies (vendoredDependencies),
-  VendoredDependency (vendoredPath),
+  VendoredDependency,
   findFossaDepsFile,
   readFoundDeps,
  )
@@ -30,14 +30,13 @@ import Data.Aeson qualified as Aeson
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.String.Conversion (decodeUtf8)
-import Data.Traversable (for)
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (SevInfo), logStdout)
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path)
 import Prettyprinter (vsep)
-import Srclib.Types (LicenseScanType (CliLicenseScanned), LicenseSourceUnit (LicenseSourceUnit))
+import Srclib.Types (LicenseSourceUnit)
 
 data MissingFossaDepsFile = MissingFossaDepsFile
 data NoVendoredDeps = NoVendoredDeps
@@ -99,8 +98,4 @@ runLicenseScan ::
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
   m (NonEmpty LicenseSourceUnit)
-runLicenseScan basedir vdeps = do
-  uniqDeps <- dedupVendoredDeps vdeps
-  for uniqDeps $ \dep ->
-    LicenseSourceUnit (vendoredPath dep) CliLicenseScanned
-      <$> scanVendoredDep basedir dep
+runLicenseScan basedir vdeps = dedupVendoredDeps vdeps >>= traverse (scanVendoredDep basedir)
