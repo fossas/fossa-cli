@@ -28,7 +28,7 @@ jobs:
         ghc --version || echo "no ghc"
         cabal --version || echo "no cabal"
         ghcup --version || echo "no ghcup"
-        
+
     - uses: actions/cache@v2
       name: Cache cabal store
       with:
@@ -52,7 +52,7 @@ jobs:
       run: |
         cabal update
         $RUN_CMD || $RUN_CMD
-    
+
     - name: Run all integration tests
       run: |
         cabal test --project-file=cabal.project.ci.linux integration-tests --test-show-details=direct --test-option=--times
