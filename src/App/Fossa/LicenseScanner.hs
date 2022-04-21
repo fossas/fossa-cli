@@ -100,7 +100,16 @@ runLicenseScanOnDir pathPrefix scanDir = do
   -- when we scan multiple archives, we need to combine the results
   pure $ combineLicenseUnits (rootDirUnits <> otherArchiveUnits)
 
-recursivelyScanArchives :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has Exec sig m) => Text -> Path Abs Dir -> m [LicenseUnit]
+recursivelyScanArchives ::
+  ( Has (Lift IO) sig m
+  , Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has Finally sig m
+  , Has Exec sig m
+  ) =>
+  Text ->
+  Path Abs Dir ->
+  m [LicenseUnit]
 recursivelyScanArchives pathPrefix dir = flip walk' dir $
   \_ _ files -> do
     let process file unpackedDir = do
@@ -108,6 +117,7 @@ recursivelyScanArchives pathPrefix dir = flip walk' dir $
           currentDirResults <- withThemisAndIndex $ themisRunner updatedPathPrefix unpackedDir
           recursiveResults <- recursivelyScanArchives updatedPathPrefix unpackedDir
           pure $ currentDirResults <> recursiveResults
+    -- withArchive' emits Nothing when archive type is not supported.
     archives <- traverse (\file -> withArchive' file (process file)) files
     pure (concat (catMaybes archives), WalkContinue)
 
