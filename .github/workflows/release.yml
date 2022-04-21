@@ -1,0 +1,68 @@
+# Build and test on each commit. Create a release on tagged commits.
+#
+# Binaries on each platform are stripped. This removes debug symbols.
+name: Release
+on:
+  workflow_run:
+    workflows: ["Build", "Integration Tests"]
+    types:
+      - completed
+
+jobs:
+  create-release:
+    name: create-release
+    if: |
+      ${{ startsWith(github.ref, 'refs/tags/v') && }} &&
+      ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    needs: ['build-all', 'build-attribution-compat']
+
+    steps:
+    - uses: actions/download-artifact@v2
+
+    - name: Get version
+      id: get-version
+      # This strips the 'v' prefix from the tag.
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/v/}
+
+    # This uses names compatible with our install script.
+    - name: Bundle binaries
+      run: |
+        mkdir release
+
+        ls -R
+
+        chmod +x Linux-binaries/*
+        zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/fossa
+        zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/pathfinder
+        zip -j release/compat-attribution_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/compat-attribution
+
+        chmod +x macOS-binaries/*
+        zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/fossa
+        zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/pathfinder
+        zip -j release/compat-attribution_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/compat-attribution
+
+        chmod +x Windows-binaries/*
+        zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/fossa.exe
+        zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/pathfinder.exe
+        zip -j release/compat-attribution_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/compat-attribution.exe
+
+    - name: Create checksums
+      # We have to run from within the release dir so that "release" isn't prepended to the relative path of the zip file.
+      run: |
+        cd release
+        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip.sha256"
+        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip.sha256"
+        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip.sha256"
+
+        echo "Sanity-checking the checksums."
+
+        cat *.sha256 | sha256sum --check --status
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release/*
+        draft: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
