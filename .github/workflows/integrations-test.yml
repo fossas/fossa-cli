@@ -8,7 +8,7 @@ jobs:
   integration-test:
     name: integration-test
     runs-on: ubuntu-latest
-    container: fossa/haskell-static-alpine:ghc-8.10.4
+    # container: fossa/haskell-static-alpine:ghc-8.10.4
 
     steps:
     - uses: actions/checkout@v2
