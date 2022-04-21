@@ -319,14 +319,7 @@ licenseScanSourceUnit ::
   NonEmpty VendoredDependency ->
   m (NonEmpty Locator)
 licenseScanSourceUnit baseDir vendoredDeps = do
-  -- Users with many instances of vendored dependencies may accidentally have complete duplicates. Remove them.
-  let uniqDeps = NE.nub vendoredDeps
-
-  -- However, users may also have vendored dependencies that have duplicate names but are not complete duplicates.
-  -- These aren't valid and can't be automatically handled, so fail the scan with them.
-  let duplicates = duplicateNames uniqDeps
-  unless (null duplicates) $ fatalText $ duplicateFailureBundle duplicates
-
+  uniqDeps <- dedupVendoredDeps vendoredDeps
   -- At this point, we have a good list of deps, so go for it.
   maybeArchives <- traverse (scanAndUploadVendoredDep baseDir) uniqDeps
   archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ catMaybes $ NE.toList maybeArchives
@@ -346,3 +339,14 @@ licenseScanSourceUnit baseDir vendoredDeps = do
 
     includeOrgId :: OrgId -> Archive -> Archive
     includeOrgId orgId arc = arc{archiveName = showT orgId <> "/" <> archiveName arc}
+
+dedupVendoredDeps :: (Has Diagnostics sig m) => NonEmpty VendoredDependency -> m (NonEmpty VendoredDependency)
+dedupVendoredDeps vdeps = do
+  -- Users with many instances of vendored dependencies may accidentally have complete duplicates. Remove them.
+  let uniqDeps = NE.nub vdeps
+  let duplicates = duplicateNames uniqDeps
+  case duplicates of
+    [] -> pure uniqDeps
+    -- However, users may also have vendored dependencies that have duplicate names but are not complete duplicates.
+    -- These aren't valid and can't be automatically handled, so fail the scan with them.
+    dups -> fatalText $ duplicateFailureBundle dups
