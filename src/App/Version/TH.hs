@@ -22,7 +22,6 @@ import Effect.Exec (
   exec,
   runExecIO,
  )
-import Effect.Logger (ignoreLogger)
 import Effect.ReadFS (ReadFS, getCurrentDir, runReadFSIO)
 import GitHash (giHash, tGitInfoCwd)
 import Instances.TH.Lift ()
