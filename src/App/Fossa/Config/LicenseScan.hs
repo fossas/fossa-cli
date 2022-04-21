@@ -74,5 +74,5 @@ cliParser = public <|> private
       command
         "direct"
         ( info (DirectScan <$> baseDirArg) $
-            progDesc "Run a license scan directly only the provided path."
+            progDesc "Run a license scan directly on the provided path."
         )
