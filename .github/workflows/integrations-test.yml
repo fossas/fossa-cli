@@ -45,6 +45,10 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
 
+    # workaround permissions issue stated here: https://github.com/actions/checkout/issues/760
+    - name: work around permission issue
+      run: git config --global --add safe.directory /__w/fossa-cli/fossa-cli
+
     - name: Build
       env:
         RUN_CMD: cabal build --project-file=cabal.project.ci.linux all
