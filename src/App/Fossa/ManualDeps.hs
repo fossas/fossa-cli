@@ -1,8 +1,5 @@
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
 
 module App.Fossa.ManualDeps (
   ReferencedDependency (..),
