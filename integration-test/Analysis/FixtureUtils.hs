@@ -43,7 +43,7 @@ import Effect.Exec (
   exec,
   runExecIO,
  )
-import Effect.Logger (LoggerC, Severity (SevDebug), withDefaultLogger)
+import Effect.Logger (LoggerC, Severity (SevWarn), withDefaultLogger)
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
 import Network.HTTP.Req (
   GET (GET),
@@ -109,7 +109,7 @@ testRunnerWithLogger f env =
     & runExecIOWithinEnv env
     & runReadFSIO
     & runDiagnostics
-    & withDefaultLogger SevDebug
+    & withDefaultLogger SevWarn
     & runReader mempty
     & runReader (ExperimentalAnalyzeConfig Nothing)
     & runFinally

@@ -17,9 +17,16 @@ build:
 test:
 	cabal test unit-tests --test-show-details=streaming --test-option=--format=checks --test-option=--times --test-option=--color
 
-integration-test:
-	cabal test integration-tests --test-show-details=streaming --test-option=--format=checks --test-option=--times --test-option=--color
-
+# Runs a integeration test.
+# To run a set of integeration spec matching specific value, use ARGS
+# 	Example: make integeration-test-for ARGS="fd"
+integeration-test:
+ifdef ARGS
+	cabal test integration-tests --test-show-details=streaming --test-option=--format=checks --test-option=--match --test-option="$(ARGS)"
+else
+	cabal test integration-tests --test-show-details=streaming --test-option=--format=checks
+endif
+	
 test-all:
 	cabal test
 
