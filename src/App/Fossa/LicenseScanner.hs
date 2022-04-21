@@ -192,7 +192,7 @@ scanVendoredDep ::
   ) =>
   Path Abs Dir ->
   VendoredDependency ->
-  m LicenseSourceUnit 
+  m LicenseSourceUnit
 scanVendoredDep baseDir VendoredDependency{..} = context "Scanning vendored deps for license data" $ do
   logSticky $ "License Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
   scanPath <- resolvePath' baseDir $ toString vendoredPath
