@@ -12,10 +12,10 @@ import Test.Hspec
 import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
 
 elixirEnv :: FixtureEnvironment
-elixirEnv = NixEnv ["elixir", "rebar3"]
+elixirEnv = NixEnv ["elixir"]
 
 mixBuildProjectCmd :: Command
-mixBuildProjectCmd = Command "mix" ["local.hex", "--force", "--if-missing", "&&", "mix deps.get", "&&", "mix deps.compile"] Never
+mixBuildProjectCmd = Command "mix" ["local.hex --force --if-missing", "&&", "mix local.rebar --force", "&&", "mix deps.get", "&&", "mix deps.compile"] Never
 
 absinthe :: AnalysisTestFixture (Mix.MixProject)
 absinthe =
