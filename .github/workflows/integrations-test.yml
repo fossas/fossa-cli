@@ -2,8 +2,7 @@ name: Integration Tests
 
 # Only run workflow manually
 # Refer to https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#workflow_dispatch
-on:
-  workflow_dispatch:
+on: [push]
 
 jobs:
   integration-test:
