@@ -22,7 +22,7 @@ test-all:
 
 # Dogfood the dev version
 analyze:
-	cabal run fossa -- analyze --output --debug --only-target cabal
+	cabal run fossa -- analyze --output --debug --only-target 'cabal@./'
 
 # Copy the built binary into the local root
 install-local: build
