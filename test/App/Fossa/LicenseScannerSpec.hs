@@ -1,7 +1,7 @@
 module App.Fossa.LicenseScannerSpec (spec) where
 
 import App.Fossa.LicenseScanner (combineLicenseUnits)
-import Data.List.NonEmpty qualified as NE
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Srclib.Types (
   LicenseUnit (..),
   LicenseUnitData (..),
@@ -19,9 +19,9 @@ unitOne =
     { licenseUnitName = "MIT"
     , licenseUnitType = "LicenseUnit"
     , licenseUnitDir = ""
-    , licenseUnitData = emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/LICENSE"} NE.:| [emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/one.txt"}]
+    , licenseUnitData = emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/LICENSE"} :| [emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/one.txt"}]
     , licenseUnitFiles =
-        "foo/bar/LICENSE" NE.:| ["foo/bar/one.txt"]
+        "foo/bar/LICENSE" :| ["foo/bar/one.txt"]
     , licenseUnitInfo = info
     }
 
@@ -31,8 +31,8 @@ unitTwo =
     { licenseUnitName = "MIT"
     , licenseUnitType = "LicenseUnit"
     , licenseUnitDir = ""
-    , licenseUnitData = emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"} NE.:| [emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/two.txt"}]
-    , licenseUnitFiles = "foo/bar/baz/ANOTHER_LICENSE" NE.:| ["foo/bar/baz/two.txt"]
+    , licenseUnitData = emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"} :| [emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/two.txt"}]
+    , licenseUnitFiles = "foo/bar/baz/ANOTHER_LICENSE" :| ["foo/bar/baz/two.txt"]
     , licenseUnitInfo = info
     }
 expectedCombinedUnit :: LicenseUnit
@@ -43,16 +43,16 @@ expectedCombinedUnit =
     , licenseUnitDir = ""
     , licenseUnitData =
         emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/LICENSE"}
-          NE.:| [ emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"}
-                , emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/two.txt"}
-                , emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/one.txt"}
-                ]
+          :| [ emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"}
+             , emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/two.txt"}
+             , emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/one.txt"}
+             ]
     , licenseUnitFiles =
         "foo/bar/LICENSE"
-          NE.:| [ "foo/bar/baz/ANOTHER_LICENSE"
-                , "foo/bar/baz/two.txt"
-                , "foo/bar/one.txt"
-                ]
+          :| [ "foo/bar/baz/ANOTHER_LICENSE"
+             , "foo/bar/baz/two.txt"
+             , "foo/bar/one.txt"
+             ]
     , licenseUnitInfo = info
     }
 
