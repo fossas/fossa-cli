@@ -569,6 +569,7 @@ test-suite integration-tests
     Analysis.Python.SetuptoolsSpec
     Analysis.RubySpec
     Analysis.RustSpec
+    Analysis.LicenseScannerSpec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
   build-depends:
