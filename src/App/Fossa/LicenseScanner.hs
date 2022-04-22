@@ -225,10 +225,7 @@ scanArchive baseDir file = runFinally $ do
     Nothing -> fatal . UnsupportedArchive $ scanFile file
     Just units -> pure units
   where
-<<<<<<< HEAD
-=======
     pathPrefix :: Text
->>>>>>> origin/master
     pathPrefix = getPathPrefix baseDir (parent $ scanFile file)
 
 scanDirectory ::
