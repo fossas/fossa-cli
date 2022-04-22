@@ -11,12 +11,11 @@ import App.Fossa.ArchiveUploader (VendoredDependency (VendoredDependency))
 import App.Fossa.LicenseScanner (scanVendoredDep)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
-import Control.Carrier.StickyLogger (runStickyLogger)
+import Control.Carrier.StickyLogger (ignoreStickyLogger)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Diag.Result (Result (Failure, Success), renderFailure)
 import Effect.Exec (runExecIO)
-import Effect.Logger (Severity (SevDebug), withDefaultLogger)
 import Effect.ReadFS (runReadFSIO)
 import Path (reldir, (</>))
 import Path.IO qualified as PIO
@@ -60,7 +59,7 @@ spec = do
   it "should find licenses in nested archives" $ do
     extractedDir <- getArtifact recursiveArchive
     let scanDir = extractedDir </> [reldir|cli-license-scan-integration-test-fixtures-main/recursive-archive|]
-    units <- runStack $ runDiagnostics $ withDefaultLogger SevDebug $ runStickyLogger SevDebug $ runExecIO $ runReadFSIO $ scanVendoredDep scanDir vendoredDep
+    units <- runStack $ runDiagnostics $ ignoreStickyLogger $ runExecIO $ runReadFSIO $ scanVendoredDep scanDir vendoredDep
     PIO.removeDirRecur extractedDir
     case units of
       Failure ws eg -> fail (show (renderFailure ws eg "An issue occurred"))
