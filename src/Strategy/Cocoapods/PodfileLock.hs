@@ -115,6 +115,9 @@ buildGraphStatic PodLock{lockPods, lockDeps, lockExternalSources} = staticGraph
       where
         pkg = PodfilePkg podName
 
+-- We use this cache to avoid repeated invocations since gtraverse may revisit
+-- nodes. In practice, this saves quite a bit of time (e.g. on example projects,
+-- it has historically turned ~2 minute analyses into ~15 seconds).
 type PodSpecCache = Map Text PodSpecJSON
 
 buildGraph ::
