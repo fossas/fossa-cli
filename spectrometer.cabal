@@ -562,6 +562,7 @@ test-suite integration-tests
     Analysis.FixtureUtils
     Analysis.GoSpec
     Analysis.GradleSpec
+    Analysis.LicenseScannerSpec
     Analysis.MavenSpec
     Analysis.NugetSpec
     Analysis.Python.PipenvSpec
@@ -569,7 +570,6 @@ test-suite integration-tests
     Analysis.Python.SetuptoolsSpec
     Analysis.RubySpec
     Analysis.RustSpec
-    Analysis.LicenseScannerSpec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
   build-depends:
