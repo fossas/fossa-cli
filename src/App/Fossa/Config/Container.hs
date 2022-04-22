@@ -31,6 +31,7 @@ import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverit
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
+import Data.Text (Text)
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
@@ -53,6 +54,7 @@ mkSubCommand = SubCommand "container" containerCmdInfo parser loadConfig mergeOp
 mergeOpts ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
+  , Has ReadFS sig m
   ) =>
   Maybe ConfigFile ->
   EnvVars ->
@@ -88,7 +90,7 @@ getCfgFilePath = \case
 data ContainerCommand
   = ContainerAnalyze ContainerAnalyzeOptions
   | ContainerTest ContainerTestOptions
-  | ContainerParseFile FilePath
+  | ContainerParseFile Text
   | ContainerDumpScan ContainerDumpScanOptions
 
 data ContainerScanConfig

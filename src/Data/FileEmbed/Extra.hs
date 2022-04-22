@@ -3,19 +3,22 @@ module Data.FileEmbed.Extra (
 ) where
 
 import Data.FileEmbed (embedFile)
-import Language.Haskell.TH
-import Path
-import Path.IO
-import Prelude
+import Language.Haskell.TH (Exp (LitE), Lit (StringL), Q, reportWarning, runIO)
+import Path (parseRelFile)
+import Path.IO (doesFileExist)
+import System.Environment (lookupEnv)
 
 embedFileIfExists :: FilePath -> Q Exp
 embedFileIfExists inputPath = do
-  case parseRelFile inputPath of
-    Just path -> do
+  skipEmbedEnvVar <- runIO $ lookupEnv "FOSSA_SKIP_EMBED_FILE_IN_HLS"
+  case (skipEmbedEnvVar, parseRelFile inputPath) of
+    (Just _, _) -> do
+      pure (LitE $ StringL "")
+    (_, Just path) -> do
       exists <- doesFileExist path
       if exists
         then embedFile inputPath
         else do
           reportWarning $ "File " <> inputPath <> " not found"
           pure (LitE $ StringL "")
-    Nothing -> fail "No filepath provided"
+    (_, Nothing) -> fail "No filepath provided"

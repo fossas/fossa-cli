@@ -40,6 +40,7 @@ import Data.Maybe (catMaybes)
 import Data.Semigroup (Any (..))
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Text.Extra (showT)
 import Discovery.Archive (withArchive')
 import Discovery.Walk (WalkStep (WalkContinue, WalkStop), walk')
@@ -203,7 +204,7 @@ scanVendoredDep baseDir VendoredDependency{..} = context "Scanning vendored deps
 getPathPrefix :: Path Abs Dir -> Path Abs t -> Text
 getPathPrefix baseDir scanPath = do
   case tryMakeRelative baseDir scanPath of
-    Path.Abs _ -> ""
+    Path.Abs _ -> Text.empty
     Path.Rel path -> toText path
 
 scanArchive ::
@@ -224,6 +225,10 @@ scanArchive baseDir file = runFinally $ do
     Nothing -> fatal . UnsupportedArchive $ scanFile file
     Just units -> pure units
   where
+<<<<<<< HEAD
+=======
+    pathPrefix :: Text
+>>>>>>> origin/master
     pathPrefix = getPathPrefix baseDir (parent $ scanFile file)
 
 scanDirectory ::
