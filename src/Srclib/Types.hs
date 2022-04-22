@@ -16,10 +16,12 @@ module Srclib.Types (
   LicenseUnitMatchData (..),
   renderLocator,
   parseLocator,
+  emptyLicenseUnit,
+  emptyLicenseUnitData,
 ) where
 
 import Data.Aeson
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
@@ -65,6 +67,16 @@ data LicenseUnit = LicenseUnit
   }
   deriving (Eq, Ord, Show)
 
+emptyLicenseUnit :: LicenseUnit
+emptyLicenseUnit =
+  LicenseUnit
+    { licenseUnitName = "empty"
+    , licenseUnitType = "LicenseUnit"
+    , licenseUnitDir = ""
+    , licenseUnitFiles = "" :| []
+    , licenseUnitData = emptyLicenseUnitData :| []
+    , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Nothing}
+    }
 instance ToJSON LicenseUnit where
   toJSON LicenseUnit{..} =
     object
@@ -106,6 +118,16 @@ data LicenseUnitData = LicenseUnitData
   , licenseUnitDataCopyrights :: Maybe (NonEmpty Text)
   }
   deriving (Eq, Ord, Show)
+
+emptyLicenseUnitData :: LicenseUnitData
+emptyLicenseUnitData =
+  LicenseUnitData
+    { licenseUnitDataPath = ""
+    , licenseUnitDataCopyright = Nothing
+    , licenseUnitDataThemisVersion = ""
+    , licenseUnitDataMatchData = Nothing
+    , licenseUnitDataCopyrights = Nothing
+    }
 
 instance ToJSON LicenseUnitData where
   toJSON LicenseUnitData{..} =

@@ -6,21 +6,12 @@ import Srclib.Types (
   LicenseUnit (..),
   LicenseUnitData (..),
   LicenseUnitInfo (..),
+  emptyLicenseUnitData,
  )
 import Test.Hspec (Spec, describe, it, shouldBe)
 
 info :: LicenseUnitInfo
 info = LicenseUnitInfo{licenseUnitInfoDescription = Just ""}
-
-standardData :: LicenseUnitData
-standardData =
-  LicenseUnitData
-    { licenseUnitDataPath = ""
-    , licenseUnitDataCopyright = Just ""
-    , licenseUnitDataThemisVersion = "123"
-    , licenseUnitDataCopyrights = Nothing
-    , licenseUnitDataMatchData = Nothing
-    }
 
 unitOne :: LicenseUnit
 unitOne =
@@ -28,7 +19,7 @@ unitOne =
     { licenseUnitName = "MIT"
     , licenseUnitType = "LicenseUnit"
     , licenseUnitDir = ""
-    , licenseUnitData = standardData{licenseUnitDataPath = "foo/bar/LICENSE"} NE.:| [standardData{licenseUnitDataPath = "foo/bar/one.txt"}]
+    , licenseUnitData = emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/LICENSE"} NE.:| [emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/one.txt"}]
     , licenseUnitFiles =
         "foo/bar/LICENSE" NE.:| ["foo/bar/one.txt"]
     , licenseUnitInfo = info
@@ -40,7 +31,7 @@ unitTwo =
     { licenseUnitName = "MIT"
     , licenseUnitType = "LicenseUnit"
     , licenseUnitDir = ""
-    , licenseUnitData = standardData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"} NE.:| [standardData{licenseUnitDataPath = "foo/bar/baz/two.txt"}]
+    , licenseUnitData = emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"} NE.:| [emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/two.txt"}]
     , licenseUnitFiles = "foo/bar/baz/ANOTHER_LICENSE" NE.:| ["foo/bar/baz/two.txt"]
     , licenseUnitInfo = info
     }
@@ -51,10 +42,10 @@ expectedCombinedUnit =
     , licenseUnitType = "LicenseUnit"
     , licenseUnitDir = ""
     , licenseUnitData =
-        standardData{licenseUnitDataPath = "foo/bar/LICENSE"}
-          NE.:| [ standardData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"}
-                , standardData{licenseUnitDataPath = "foo/bar/baz/two.txt"}
-                , standardData{licenseUnitDataPath = "foo/bar/one.txt"}
+        emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/LICENSE"}
+          NE.:| [ emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"}
+                , emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/two.txt"}
+                , emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/one.txt"}
                 ]
     , licenseUnitFiles =
         "foo/bar/LICENSE"

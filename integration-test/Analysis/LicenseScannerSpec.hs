@@ -12,14 +12,16 @@ import App.Fossa.LicenseScanner (scanVendoredDep)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (ignoreStickyLogger)
+import Data.List.Extra (head')
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
+import Data.Maybe (fromMaybe)
 import Diag.Result (Result (Failure, Success), renderFailure)
 import Effect.Exec (runExecIO)
 import Effect.ReadFS (runReadFSIO)
 import Path (reldir, (</>))
 import Path.IO qualified as PIO
-import Srclib.Types (LicenseUnit (licenseUnitFiles, licenseUnitName))
+import Srclib.Types (LicenseUnit (licenseUnitFiles, licenseUnitName), emptyLicenseUnit)
 import Test.Hspec (Spec, it, shouldBe)
 
 recursiveArchive :: FixtureArtifact
@@ -70,6 +72,6 @@ spec = do
         NE.sort (licenseUnitFiles apacheUnit) `shouldBe` "vendor/foo/bar/bar_apache.rb" :| ["vendor/foo/bar/baz/something.rb"]
         where
           mitUnit :: LicenseUnit
-          mitUnit = head $ NE.filter (\u -> licenseUnitName u == "mit") us
+          mitUnit = fromMaybe emptyLicenseUnit (head' $ NE.filter (\u -> licenseUnitName u == "mit") us)
           apacheUnit :: LicenseUnit
-          apacheUnit = head $ NE.filter (\u -> licenseUnitName u == "apache-2.0") us
+          apacheUnit = fromMaybe emptyLicenseUnit (head' $ NE.filter (\u -> licenseUnitName u == "apache-2.0") us)
