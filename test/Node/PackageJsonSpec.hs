@@ -8,7 +8,7 @@ import Algebra.Graph.AdjacencyMap qualified as AM
 import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Data.Aeson (decode, encode)
 import Data.Foldable (for_)
-import Data.Glob (toGlob)
+import Data.Glob (toGlob, unsafeGlobRel)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -22,22 +22,25 @@ import GraphUtil (expectDeps, expectDirect, expectEdges)
 import Hedgehog (Gen, forAll, tripping)
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
-import Path (mkRelFile, parseRelDir, toFilePath, (</>))
+import Path (Abs, Dir, Path, mkRelDir, mkRelFile, parseRelDir, toFilePath, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node (NodeProject (NPM, NPMLock, Yarn))
+import Strategy.Node (NodeProject (NPM, NPMLock, Yarn), discover)
 import Strategy.Node.PackageJson (
   Manifest (Manifest, unManifest),
   PackageJson (..),
   PkgJsonGraph (PkgJsonGraph, jsonGraph, jsonLookup),
   PkgJsonLicense (LicenseObj, LicenseText),
   PkgJsonLicenseObj (PkgJsonLicenseObj, licenseType, licenseUrl),
-  PkgJsonWorkspaces (PkgJsonWorkspaces),
+  PkgJsonWorkspaces (PkgJsonWorkspaces, unWorkspaces),
   buildGraph,
  )
 import Test.Effect (it', shouldBe', shouldMatchList')
-import Test.Hspec (Spec, describe, it, runIO)
+import Test.Hspec (Spec, describe, fdescribe, it, runIO)
 import Test.Hspec.Hedgehog (hedgehog, modifyMaxSuccess)
 import Types (
+  DiscoveredProject (DiscoveredProject, projectBuildTargets, projectData, projectPath, projectType),
+  DiscoveredProjectType (NpmProjectType),
+  FoundTargets (ProjectWithoutTargets),
   License (License),
   LicenseResult (LicenseResult, licenseFile, licensesFound),
   LicenseType (LicenseURL, UnknownType),
@@ -83,7 +86,7 @@ packageTwo =
 
 graphSpec :: Spec
 graphSpec =
-  describe "buildGraph" $ do
+  describe "buildGraph" $
     it "should produce expected output" $ do
       let graph = buildGraph mockInput
       expectDeps [packageOne, packageTwo] graph
@@ -173,7 +176,7 @@ licenseSpec = do
           let mockPackageJson = pkgJsonMock mockMIT (Just mockLicensesObjs)
               licenses =
                 mkTestLicenseResult manifestFilePath $
-                  (License UnknownType "MIT") : map (License LicenseURL) [mockUrl1, mockUrl2]
+                  License UnknownType "MIT" : map (License LicenseURL) [mockUrl1, mockUrl2]
 
           foundLicenses <- licenseAnalyzeProject . mkNodeProject nodeConstr $ [(manifest, mockPackageJson)]
           foundLicenses `shouldMatchList'` [licenses]
@@ -188,7 +191,7 @@ licenseSpec = do
               manifestFilePath2 = toFilePath . unManifest $ manifest2
 
               packageJson2 = pkgJsonMock (Just $ LicenseText "MIT") Nothing
-              result2 = mkTestLicenseResult manifestFilePath2 [(License UnknownType "MIT")]
+              result2 = mkTestLicenseResult manifestFilePath2 [License UnknownType "MIT"]
               nodeProjects =
                 NPM $
                   mkMockPkgJsonGraph
@@ -256,8 +259,123 @@ pkgJsonParseSpec =
             pkgJson <- forAll packageJsonGen
             tripping pkgJson encode decode
 
+discoveredWorkSpaceProj :: Path Abs Dir -> DiscoveredProject NodeProject
+discoveredWorkSpaceProj currDir =
+  DiscoveredProject
+    { projectType = NpmProjectType
+    , projectPath = currDir </> $(mkRelDir "test/Node/testdata/workspace-test/")
+    , projectBuildTargets = ProjectWithoutTargets
+    , projectData =
+        NPMLock
+          ( Manifest
+              { unManifest = currDir </> $(mkRelFile "test/Node/testdata/workspace-test/package-lock.json")
+              }
+          )
+          ( PkgJsonGraph
+              { jsonGraph =
+                  AM.edges
+                    [
+                      ( Manifest
+                          { unManifest = workspaceManifest
+                          }
+                      , Manifest
+                          { unManifest = packageBManifest
+                          }
+                      )
+                    ,
+                      ( Manifest
+                          { unManifest = workspaceManifest
+                          }
+                      , Manifest
+                          { unManifest = packageAManifest
+                          }
+                      )
+                    ]
+              , jsonLookup =
+                  Map.fromList
+                    [
+                      ( Manifest
+                          { unManifest = packageBManifest
+                          }
+                      , PackageJson
+                          { packageName = Just "pkg-b"
+                          , packageVersion = Just "1.0.0"
+                          , packageWorkspaces =
+                              PkgJsonWorkspaces
+                                { unWorkspaces = []
+                                }
+                          , packageDeps = Map.empty
+                          , packageDevDeps = Map.empty
+                          , packageLicense =
+                              Just
+                                (LicenseText "ISC")
+                          , packageLicenses = Nothing
+                          , packagePeerDeps = Map.empty
+                          }
+                      )
+                    ,
+                      ( Manifest
+                          { unManifest = workspaceManifest
+                          }
+                      , PackageJson
+                          { packageName = Just "workspace-test"
+                          , packageVersion = Just "1.0.0"
+                          , packageWorkspaces =
+                              PkgJsonWorkspaces
+                                { unWorkspaces =
+                                    [ unsafeGlobRel "pkg-a"
+                                    , unsafeGlobRel "nested/pkg-b"
+                                    ]
+                                }
+                          , packageDeps = Map.empty
+                          , packageDevDeps = Map.empty
+                          , packageLicense =
+                              Just
+                                (LicenseText "ISC")
+                          , packageLicenses = Nothing
+                          , packagePeerDeps = Map.empty
+                          }
+                      )
+                    ,
+                      ( Manifest
+                          { unManifest = packageAManifest
+                          }
+                      , PackageJson
+                          { packageName = Just "pkg-a"
+                          , packageVersion = Just "1.0.0"
+                          , packageWorkspaces =
+                              PkgJsonWorkspaces
+                                { unWorkspaces = []
+                                }
+                          , packageDeps = Map.empty
+                          , packageDevDeps = Map.empty
+                          , packageLicense =
+                              Just
+                                (LicenseText "ISC")
+                          , packageLicenses = Nothing
+                          , packagePeerDeps = Map.empty
+                          }
+                      )
+                    ]
+              }
+          )
+    }
+  where
+    packageAManifest = currDir </> $(mkRelFile "test/Node/testdata/workspace-test/pkg-a/package.json")
+    packageBManifest = currDir </> $(mkRelFile "test/Node/testdata/workspace-test/nested/pkg-b/package.json")
+    workspaceManifest = currDir </> $(mkRelFile "test/Node/testdata/workspace-test/package.json")
+
+pkgJsonWorkspaceSpec :: Spec
+pkgJsonWorkspaceSpec = fdescribe "NPM workspace detection" $ do
+  currDir <- runIO getCurrentDir
+  let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-test")
+  it' "Discovers manifests for workspaces " $ do
+    discoveredManifests <- discover workspaceDir
+    discoveredManifests `shouldBe'` [discoveredWorkSpaceProj currDir]
+
 spec :: Spec
 spec = do
   graphSpec
   licenseSpec
   pkgJsonParseSpec
+  pkgJsonWorkspaceSpec

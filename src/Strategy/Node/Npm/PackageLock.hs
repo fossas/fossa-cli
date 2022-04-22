@@ -152,6 +152,7 @@ buildGraph packageJson directSet =
 
     -- Skip adding deps if we think it's a workspace package.
     maybeAddDep isRecursive parent name dep@PkgLockDependency{..} =
+      -- If not resolved, then likely a workspace dep, should be ignored.
       if isNothing (unNpmResolved depResolved) || "file:" `Text.isPrefixOf` depVersion
         then pure ()
         else addDep isRecursive parent name dep
@@ -186,7 +187,6 @@ buildGraph packageJson directSet =
               edge currentPkg $ NpmDepVertex peerDepName (depVersion npmDep)
             Nothing -> pure ()
 
-    -- If not resolved, then likely a workspace dep, should be ignored.
     -- isRecursive lets us know if we are parsing a top-level or nested dep.
     addDep :: Has NpmGrapher sig m => Bool -> Maybe NpmDepVertex -> Text -> PkgLockDependency -> m ()
     addDep isRecursive parent name PkgLockDependency{..} = do
