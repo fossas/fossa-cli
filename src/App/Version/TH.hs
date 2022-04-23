@@ -22,11 +22,10 @@ import Effect.Exec (
   exec,
   runExecIO,
  )
-import Effect.Logger (ignoreLogger)
 import Effect.ReadFS (ReadFS, getCurrentDir, runReadFSIO)
 import GitHash (giHash, tGitInfoCwd)
 import Instances.TH.Lift ()
-import Language.Haskell.TH (TExpQ)
+import Language.Haskell.TH (Code, Q, bindCode_, joinCode)
 import Language.Haskell.TH.Syntax (reportWarning, runIO)
 
 gitTagPointCommand :: Text -> Command
@@ -37,14 +36,14 @@ gitTagPointCommand commit =
     , cmdAllowErr = Always
     }
 
-getCurrentTag :: TExpQ (Maybe Text)
-getCurrentTag = do
+getCurrentTag :: Code Q (Maybe Text)
+getCurrentTag = joinCode $ do
   let commitHash = giHash $$(tGitInfoCwd)
-  result <- runIO . ignoreLogger . runStack . runDiagnostics . runExecIO . runReadFSIO . getTags $ toText commitHash
+  result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO . getTags $ toText commitHash
 
-  case result of
+  pure $ case result of
     Success _ tags -> filterTags tags
-    err -> reportWarning (show err) >> [||Nothing||]
+    err -> reportWarning (show err) `bindCode_` [||Nothing||]
 
 getTags :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Text -> m [Text]
 getTags hash = do
@@ -65,18 +64,18 @@ getTags hash = do
     should apply to the [] case of the filterTags function below.  Theoretically, we COULD
     do some IO to determine something about github, and execute using `runIO`.
 -}
-filterTags :: [Text] -> TExpQ (Maybe Text)
+filterTags :: [Text] -> Code Q (Maybe Text)
 filterTags [] = [||Nothing||]
 filterTags [x] = validateSingleTag x
-filterTags xs = reportWarning (toString multiTagMesg) >> [||Nothing||]
+filterTags xs = reportWarning (toString multiTagMesg) `bindCode_` [||Nothing||]
   where
     multiTagMesg = header <> Text.intercalate ", " xs
     header = "Multiple tags defined at current commit: "
 
-validateSingleTag :: Text -> TExpQ (Maybe Text)
+validateSingleTag :: Text -> Code Q (Maybe Text)
 validateSingleTag tag = do
   let normalized = fromMaybe tag $ Text.stripPrefix "v" tag
 
   case semver normalized of
-    Left err -> reportWarning (errorBundlePretty err) >> [||Nothing||]
+    Left err -> reportWarning (errorBundlePretty err) `bindCode_` [||Nothing||]
     Right _ -> [||Just normalized||]

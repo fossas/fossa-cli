@@ -6,7 +6,7 @@ jobs:
   linter-check:
     name: linter-check
     runs-on: ubuntu-latest
-    container: ghcr.io/fossas/haskell-dev-tools:8.10.4
+    container: ghcr.io/fossas/haskell-dev-tools:9.0.2
 
     steps:
     - uses: actions/checkout@v2
@@ -35,7 +35,7 @@ jobs:
   format-check:
     name: formatter-check
     runs-on: ubuntu-latest
-    container: ghcr.io/fossas/haskell-dev-tools:8.10.4
+    container: ghcr.io/fossas/haskell-dev-tools:9.0.2
 
     steps:
     - uses: actions/checkout@v2
@@ -48,7 +48,7 @@ jobs:
   cabal-format-check:
     name: cabal-format-check
     runs-on: ubuntu-latest
-    container: ghcr.io/fossas/haskell-dev-tools:8.10.4
+    container: ghcr.io/fossas/haskell-dev-tools:9.0.2
 
     steps:
     - uses: actions/checkout@v2
@@ -57,4 +57,3 @@ jobs:
     - name: "run cabal-fmt"
       run: |
         cabal-fmt --check spectrometer.cabal
-
