@@ -500,6 +500,7 @@ test-suite unit-tests
     Maven.PluginStrategySpec
     Maven.PomStrategySpec
     Nim.NimbleSpec
+    Node.NodeSpec
     Node.PackageJsonSpec
     Node.PackageLockSpec
     NuGet.NuspecSpec
