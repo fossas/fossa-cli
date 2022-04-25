@@ -366,7 +366,7 @@ discoveredWorkSpaceProj currDir =
     workspaceManifest = currDir </> $(mkRelFile "test/Node/testdata/workspace-test/package.json")
 
 pkgJsonWorkspaceSpec :: Spec
-pkgJsonWorkspaceSpec = fdescribe "NPM workspace detection" $ do
+pkgJsonWorkspaceSpec = describe "NPM workspace detection" $ do
   currDir <- runIO getCurrentDir
   let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-test")
   it' "Discovers manifests for workspaces " $ do

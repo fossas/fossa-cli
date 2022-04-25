@@ -83,6 +83,7 @@ import Strategy.Node.PackageJson (
   PkgJsonLicenseObj (licenseUrl),
   PkgJsonWorkspaces (unWorkspaces),
   Production,
+  WorkspacePackageNames (WorkspacePackageNames),
   pkgFileList,
  )
 import Strategy.Node.PackageJson qualified as PackageJson
@@ -166,7 +167,7 @@ getDeps (NPM graph) = analyzeNpm graph
 
 analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> PkgJsonGraph -> m DependencyResults
 analyzeNpmLock (Manifest file) graph = do
-  result <- PackageLock.analyze file $ extractDepLists graph
+  result <- PackageLock.analyze file (extractDepLists graph) (findWorkspaceNames graph)
   pure $ DependencyResults result Complete [file]
 
 analyzeNpm :: (Has Diagnostics sig m) => PkgJsonGraph -> m DependencyResults
@@ -213,6 +214,15 @@ detectYarnVersion yarnfile = do
 data YarnVersion
   = V1
   | V2Compatible
+
+findWorkspaceNames :: PkgJsonGraph -> WorkspacePackageNames
+findWorkspaceNames PkgJsonGraph{..} =
+  WorkspacePackageNames
+    . Set.fromList
+    $ workspaceNames
+  where
+    childManifests = map snd . AM.edgeList $ jsonGraph
+    workspaceNames = mapMaybe (packageName <=< flip Map.lookup jsonLookup) childManifests
 
 extractDepLists :: PkgJsonGraph -> FlatDeps
 extractDepLists PkgJsonGraph{..} = foldMap extractSingle $ Map.elems jsonLookup
