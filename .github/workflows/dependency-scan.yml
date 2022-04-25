@@ -25,10 +25,10 @@ jobs:
 
       - name: Use Spectrometer's GHC and Cabal
         run: |
-          ghcup install ghc 8.10.4
-          ghcup set ghc 8.10.4
-          ghcup install cabal 3.4.0.0
-          ghcup set cabal 3.4.0.0
+          ghcup install ghc 9.0.2
+          ghcup set ghc 9.0.2
+          ghcup install cabal 3.6.2.0
+          ghcup set cabal 3.6.2.0
 
       - name: Run dependency scan on Spectrometer
         env:
