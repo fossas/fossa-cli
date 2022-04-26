@@ -35,7 +35,7 @@ import Data.SemVer qualified as SemVer
 import Data.SemVer.Internal (Version (..))
 import Data.Set (Set)
 import Data.String.Conversion (decodeUtf8, toString, toText)
-import Data.Text (Text)
+import Data.Text (Text, strip)
 import Data.Text.Extra (showT)
 import Data.Void (Void)
 import Data.Yaml ((.:), (.:?))
@@ -154,7 +154,7 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
   case podVersionOutput of
     Left _ -> fatalText "could not analyze vendored pods: `pod --version` was not at least `0.29.0`"
     Right podVersionStdoutRaw -> do
-      let podVersionStdout = decodeUtf8 podVersionStdoutRaw
+      let podVersionStdout = strip $ decodeUtf8 podVersionStdoutRaw
 
       -- `pod ipc spec` is supported for versions 0.29.0 and above. See also:
       -- https://github.com/CocoaPods/CocoaPods/blob/master/CHANGELOG.md#0290-2013-12-25
