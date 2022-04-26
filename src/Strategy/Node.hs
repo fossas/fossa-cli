@@ -6,6 +6,7 @@ module Strategy.Node (
   discover,
   pkgGraph,
   NodeProject (..),
+  getDeps,
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM

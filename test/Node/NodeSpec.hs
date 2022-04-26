@@ -1,22 +1,26 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Node.NodeSpec (spec) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
-import Data.Map qualified as Map
-import Path
-import Path.IO (getCurrentDir)
-import Strategy.Node (NodeProject (NPMLock), discover)
-import Strategy.Node.PackageJson (Manifest (..), PackageJson (PackageJson, packageDeps, packageDevDeps, packageLicense, packageLicenses, packageName, packagePeerDeps, packageVersion, packageWorkspaces), PkgJsonGraph (PkgJsonGraph, jsonGraph, jsonLookup), PkgJsonWorkspaces (PkgJsonWorkspaces, unWorkspaces), PkgJsonLicense (LicenseText))
-import Test.Hspec (Spec, describe, it, runIO)
-import Types (DiscoveredProject (DiscoveredProject, projectBuildTargets, projectData, projectPath, projectType), DiscoveredProjectType (NpmProjectType), FoundTargets (ProjectWithoutTargets))
+import Data.Foldable (for_)
 import Data.Glob (unsafeGlobRel)
+import Data.Map qualified as Map
+import Graphing qualified
+import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
+import Path.IO (getCurrentDir)
+import Strategy.Node (NodeProject (NPMLock), discover, getDeps)
+import Strategy.Node.PackageJson (Manifest (..), PackageJson (PackageJson, packageDeps, packageDevDeps, packageLicense, packageLicenses, packageName, packagePeerDeps, packageVersion, packageWorkspaces), PkgJsonGraph (PkgJsonGraph, jsonGraph, jsonLookup), PkgJsonLicense (LicenseText), PkgJsonWorkspaces (PkgJsonWorkspaces, unWorkspaces))
 import Test.Effect (it', shouldBe')
+import Test.Hspec (Spec, describe, runIO)
+import Types (DependencyResults (DependencyResults, dependencyGraph, dependencyGraphBreadth, dependencyManifestFiles), DiscoveredProject (DiscoveredProject, projectBuildTargets, projectData, projectPath, projectType), DiscoveredProjectType (NpmProjectType), FoundTargets (ProjectWithoutTargets), GraphBreadth (Complete))
 
 spec :: Spec
-spec = do pkgJsonWorkspaceSpec
-
--- npmLockAnalysisSpec
+spec = do
+  currDir <- runIO getCurrentDir
+  pkgJsonWorkspaceSpec currDir
+  npmLockAnalysisSpec currDir
 
 discoveredWorkSpaceProj :: Path Abs Dir -> DiscoveredProject NodeProject
 discoveredWorkSpaceProj currDir =
@@ -124,17 +128,30 @@ discoveredWorkSpaceProj currDir =
     packageBManifest = currDir </> $(mkRelFile "test/Node/testdata/workspace-test/nested/pkg-b/package.json")
     workspaceManifest = currDir </> $(mkRelFile "test/Node/testdata/workspace-test/package.json")
 
-pkgJsonWorkspaceSpec :: Spec
-pkgJsonWorkspaceSpec = describe "NPM workspace detection" $ do
-  currDir <- runIO getCurrentDir
-  let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-test")
-  it' "Discovers manifests for workspaces " $ do
-    discoveredManifests <- discover workspaceDir
-    discoveredManifests `shouldBe'` [discoveredWorkSpaceProj currDir]
+discoveredWorkSpaceProjDeps :: Path Abs Dir -> DependencyResults
+discoveredWorkSpaceProjDeps currDir =
+  DependencyResults
+    { dependencyGraph = Graphing.empty
+    , dependencyGraphBreadth = Complete
+    , dependencyManifestFiles = [currDir </> $(mkRelFile "test/Node/testdata/workspace-test/package-lock.json")]
+    }
 
--- npmLockAnalysisSpec :: Spec
--- npmLockAnalysisSpec = do
---   currDir <- runIO getCurrentDir
---   describe "NPM Lock analysis" $ do
---     it "Ignores workspace packages" $ do
---       res <- analyzeProject ( lockFile :: NodeProject)
+pkgJsonWorkspaceSpec :: Path Abs Dir -> Spec
+pkgJsonWorkspaceSpec currDir = describe "NPM workspace detection" $ do
+  let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-test")
+  it' "Discovers workspace projects for workspaces " $ do
+    discoveredProjects <- discover workspaceDir
+    discoveredProjects `shouldBe'` [discoveredWorkSpaceProj currDir]
+
+npmLockAnalysisSpec :: Path Abs Dir -> Spec
+npmLockAnalysisSpec currDir = do
+  let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-test")
+
+  describe "NPM Lock analysis" $ do
+    it' "Ignores workspace packages" $ do
+      discoveredProjects <- discover workspaceDir
+      for_ discoveredProjects $
+        \DiscoveredProject{..} ->
+          do
+            depGraph <- getDeps projectData
+            depGraph `shouldBe'` discoveredWorkSpaceProjDeps currDir
