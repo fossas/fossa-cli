@@ -14,28 +14,34 @@ import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   context,
+  fatalText,
+  fromEither,
   run,
   (<||>),
  )
 import Control.Effect.State (State, get, put)
+import Control.Monad (when)
 import Data.Aeson (FromJSON (parseJSON))
 import Data.Aeson qualified as JSON
 import Data.Aeson.Types (FromJSONKey)
+import Data.Bifunctor (first)
 import Data.Char qualified as C
 import Data.Foldable (asum, traverse_)
 import Data.Functor (void)
 import Data.HashMap.Lazy qualified as HashMap (toList)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.SemVer qualified as SemVer
+import Data.SemVer.Internal (Version (..))
 import Data.Set (Set)
-import Data.String.Conversion (toString, toText)
+import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Data.Void (Void)
 import Data.Yaml ((.:), (.:?))
 import Data.Yaml qualified as Yaml
 import DepTypes (DepType (GitType, PodType), Dependency (..), VerConstraint (CEq))
-import Effect.Exec (AllowErr (..), Command (..), Exec, execJson)
+import Effect.Exec (AllowErr (..), Command (..), Exec, exec, execJson)
 import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing, gtraverse)
@@ -120,18 +126,51 @@ buildGraphStatic PodLock{lockPods, lockDeps, lockExternalSources} = staticGraph
 -- it has historically turned ~2 minute analyses into ~15 seconds).
 type PodSpecCache = Map Text PodSpecJSON
 
+-- `pod ipc spec` returns the JSON representation of a fully-evaluated Podspec.
+-- See also:
+--
+-- - Command documentation: https://guides.cocoapods.org/terminal/commands.html#pod_ipc_spec
+-- - Implemented in `pod`: https://github.com/CocoaPods/CocoaPods/blob/master/CHANGELOG.md#0290-2013-12-25
+podIpcSpecCmd :: Text -> Command
+podIpcSpecCmd podSpecPath =
+  Command
+    { cmdName = "pod"
+    , cmdArgs = ["ipc", "spec", podSpecPath]
+    , cmdAllowErr = Never
+    }
+
+-- `pod --version` returns a semantic version.
+podVersionCmd :: Command
+podVersionCmd = Command{cmdName = "pod", cmdArgs = ["--version"], cmdAllowErr = Never}
+
 buildGraph ::
   (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) =>
   Path Abs File ->
   PodLock ->
   m (Graphing Dependency)
-buildGraph lockFilePath lockFile@PodLock{lockExternalSources} =
-  -- If `pod` _is_ installed, then we can shell out to `pod ipc spec` to
-  -- convert locally vendored `.podspec` files to JSON and read them for
-  -- their Git locators. We do this because locally vendored `.podspec`
-  -- files are often vendored specifically because they are not available on
-  -- the Cocoapods registry.
-  evalState @PodSpecCache mempty $ gtraverse replaceVendoredPods staticGraph
+buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
+  -- If `pod` is not installed, then the static graph is the best we can do.
+  podVersionOutput <- exec lockFileDir podVersionCmd
+  case podVersionOutput of
+    Left _ -> fatalText "could not analyze vendored pods: `pod --version` was not at least `0.29.0`"
+    Right podVersionStdoutRaw -> do
+      let podVersionStdout = decodeUtf8 podVersionStdoutRaw
+
+      -- `pod ipc spec` is supported for versions 0.29.0 and above. See also:
+      -- https://github.com/CocoaPods/CocoaPods/blob/master/CHANGELOG.md#0290-2013-12-25
+      Version{_versionMajor, _versionMinor} <-
+        fromEither $
+          first ("could not parse `pod --version` output: " <>) $
+            SemVer.fromText podVersionStdout
+      when (_versionMajor == 0 && _versionMinor < 29) $
+        fatalText $ "`pod` version " <> podVersionStdout <> " does not support `pod ipc spec`"
+
+      -- If `pod` _is_ installed, then we can shell out to `pod ipc spec` to
+      -- convert locally vendored `.podspec` files to JSON and read them for
+      -- their Git locators. We do this because locally vendored `.podspec`
+      -- files are often vendored specifically because they are not available on
+      -- the Cocoapods registry.
+      evalState @PodSpecCache mempty $ gtraverse replaceVendoredPods staticGraph
   where
     staticGraph :: Graphing Dependency
     staticGraph = buildGraphStatic lockFile
@@ -171,14 +210,7 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} =
         case Map.lookup podSpecPath podSpecCache of
           Just cached -> pure cached
           Nothing -> do
-            podSpec <-
-              execJson
-                lockFileDir
-                Command
-                  { cmdName = "pod"
-                  , cmdArgs = ["ipc", "spec", podSpecPath]
-                  , cmdAllowErr = Never
-                  }
+            podSpec <- execJson lockFileDir $ podIpcSpecCmd podSpecPath
             put $ Map.insert podSpecPath podSpec podSpecCache
             pure podSpec
       pure
