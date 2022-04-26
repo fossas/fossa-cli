@@ -8,7 +8,7 @@ import Algebra.Graph.AdjacencyMap qualified as AM
 import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Data.Aeson (decode, encode)
 import Data.Foldable (for_)
-import Data.Glob (toGlob, unsafeGlobRel)
+import Data.Glob (toGlob)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -22,25 +22,22 @@ import GraphUtil (expectDeps, expectDirect, expectEdges)
 import Hedgehog (Gen, forAll, tripping)
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
-import Path (Abs, Dir, Path, mkRelDir, mkRelFile, parseRelDir, toFilePath, (</>))
+import Path (mkRelFile, parseRelDir, toFilePath, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node (NodeProject (NPM, NPMLock, Yarn), discover)
+import Strategy.Node (NodeProject (NPM, NPMLock, Yarn))
 import Strategy.Node.PackageJson (
   Manifest (Manifest, unManifest),
   PackageJson (..),
   PkgJsonGraph (PkgJsonGraph, jsonGraph, jsonLookup),
   PkgJsonLicense (LicenseObj, LicenseText),
   PkgJsonLicenseObj (PkgJsonLicenseObj, licenseType, licenseUrl),
-  PkgJsonWorkspaces (PkgJsonWorkspaces, unWorkspaces),
+  PkgJsonWorkspaces (PkgJsonWorkspaces),
   buildGraph,
  )
 import Test.Effect (it', shouldBe', shouldMatchList')
-import Test.Hspec (Spec, describe, fdescribe, it, runIO)
+import Test.Hspec (Spec, describe, it, runIO)
 import Test.Hspec.Hedgehog (hedgehog, modifyMaxSuccess)
 import Types (
-  DiscoveredProject (DiscoveredProject, projectBuildTargets, projectData, projectPath, projectType),
-  DiscoveredProjectType (NpmProjectType),
-  FoundTargets (ProjectWithoutTargets),
   License (License),
   LicenseResult (LicenseResult, licenseFile, licensesFound),
   LicenseType (LicenseURL, UnknownType),
