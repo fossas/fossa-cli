@@ -18,7 +18,7 @@ import Strategy.Cocoapods.PodfileLock (
   ExternalSource (..),
   Pod (Pod),
   PodLock (..),
-  buildGraph,
+  buildGraphStatic,
  )
 import Test.Hspec qualified as T
 
@@ -91,15 +91,15 @@ externalSources =
     [ ("depWithTag", ExternalGitType $ ExternalGitSource "git@github.example.com:ab/cap.git" (Just "v1.2.3") Nothing Nothing)
     , ("depWithBranch", ExternalGitType $ ExternalGitSource "git@github.example.com:ab/cap.git" Nothing Nothing $ Just "main")
     , ("depWithCommit", ExternalGitType $ ExternalGitSource "git@github.example.com:ab/cap.git" Nothing (Just "9a9a9") Nothing)
-    , ("ChatSecure-Push-iOS", ExternalOtherType)
-    , ("ChatSecureCore", ExternalOtherType)
+    , ("ChatSecure-Push-iOS", ExternalPath "../Submodules/ChatSecure-Push-iOS")
+    , ("ChatSecureCore", ExternalPodSpec "ChatSecureCore.podspec")
     ]
 
 spec :: T.Spec
 spec = do
   T.describe "podfile lock analyzer" $
     T.it "produces the expected output" $ do
-      let graph = buildGraph $ PodLock pods dependencies externalSources
+      let graph = buildGraphStatic $ PodLock pods dependencies externalSources
       expectDeps
         [ dependencyOne
         , dependencyTwo

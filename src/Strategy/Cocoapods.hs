@@ -26,6 +26,7 @@ import Discovery.Walk (
   findFilesMatchingGlob,
   walkWithFilters',
  )
+import Effect.Exec (Exec)
 import Effect.ReadFS (Has, ReadFS, readContentsParser)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, toFilePath)
@@ -106,7 +107,7 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m DependencyResults
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig m) => CocoapodsProject -> m DependencyResults
 getDeps project =
   context "Cocoapods" $
     context
@@ -129,7 +130,7 @@ analyzePodfile project = do
       , dependencyManifestFiles = [podFile]
       }
 
-analyzePodfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m DependencyResults
+analyzePodfileLock :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig m) => CocoapodsProject -> m DependencyResults
 analyzePodfileLock project = do
   lockFile <- Diag.fromMaybeText "No Podfile.lock present in the project" (cocoapodsPodfileLock project)
   graph <- PodfileLock.analyze' lockFile

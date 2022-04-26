@@ -1,6 +1,7 @@
 module Strategy.Cocoapods.PodfileLock (
   analyze',
   buildGraph,
+  buildGraphStatic,
   PodLock (..),
   Dep (..),
   Pod (..),
@@ -8,104 +9,219 @@ module Strategy.Cocoapods.PodfileLock (
   ExternalGitSource (..),
 ) where
 
+import Control.Carrier.State.Strict (evalState)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   context,
+  fatalText,
+  fromEither,
   run,
+  (<||>),
  )
+import Control.Effect.State (State, get, put)
+import Control.Monad (when)
 import Data.Aeson (FromJSON (parseJSON))
+import Data.Aeson qualified as JSON
 import Data.Aeson.Types (FromJSONKey)
+import Data.Bifunctor (first)
 import Data.Char qualified as C
 import Data.Foldable (asum, traverse_)
 import Data.Functor (void)
 import Data.HashMap.Lazy qualified as HashMap (toList)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.SemVer qualified as SemVer
+import Data.SemVer.Internal (Version (..))
 import Data.Set (Set)
-import Data.Text (Text)
+import Data.String.Conversion (decodeUtf8, toString, toText)
+import Data.Text (Text, strip)
+import Data.Text.Extra (showT)
 import Data.Void (Void)
 import Data.Yaml ((.:), (.:?))
 import Data.Yaml qualified as Yaml
 import DepTypes (DepType (GitType, PodType), Dependency (..), VerConstraint (CEq))
+import Effect.Exec (AllowErr (..), Command (..), Exec, exec, execJson)
 import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
 import Effect.ReadFS (ReadFS, readContentsYaml)
-import Graphing (Graphing)
+import Graphing (Graphing, gtraverse)
 import Options.Applicative (Alternative ((<|>)))
-import Path
-import Text.Megaparsec (MonadParsec (takeWhileP), Parsec, between, empty, errorBundlePretty, parse, some, takeWhile1P)
+import Path (Abs, Dir, File, Path, parent)
+import System.FilePath ((<.>), (</>))
+import Text.Megaparsec (Parsec, between, empty, errorBundlePretty, parse, some, takeWhile1P, takeWhileP)
 import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer qualified as L
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' file = do
-  podfileLock <- readContentsYaml file
-  context "Building dependency graph" $ pure (buildGraph podfileLock)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' podfileLockFilepath = do
+  podfileLock <- readContentsYaml podfileLockFilepath
+  context "Building dependency graph" $
+    buildGraph podfileLockFilepath podfileLock
+      <||> pure (buildGraphStatic podfileLock)
+
+type PodfileGrapher = LabeledGrapher PodfilePkg PodfileLabel
 
 newtype PodfilePkg = PodfilePkg {pkgName :: Text}
   deriving (Eq, Ord, Show)
 
-type PodfileGrapher = LabeledGrapher PodfilePkg PodfileLabel
-
 newtype PodfileLabel
-  = PodfileVersion (Maybe Text)
+  = PodfileVersion Text
   deriving (Eq, Ord, Show)
 
-toDependency :: Map Text ExternalSource -> PodfilePkg -> Set PodfileLabel -> Dependency
-toDependency externalSrc pkg = foldr applyLabel start
+buildGraphStatic :: PodLock -> Graphing Dependency
+buildGraphStatic PodLock{lockPods, lockDeps, lockExternalSources} = staticGraph
   where
-    start :: Dependency
-    start =
-      Dependency
-        { dependencyType = depType
-        , dependencyName = depName
-        , dependencyVersion = Nothing
-        , dependencyLocations = []
-        , dependencyEnvironments = mempty
-        , dependencyTags = Map.empty
-        }
+    staticGraph :: Graphing Dependency
+    staticGraph =
+      run . withLabeling (toDependency lockExternalSources) $ do
+        -- Add direct dependencies.
+        traverse_ (direct . PodfilePkg . depName) lockDeps
+        -- Add transitive graph.
+        traverse_ addSpec lockPods
 
-    depType :: DepType
-    depType = case Map.lookup (pkgName pkg) externalSrc of
-      Just (ExternalGitType _) -> GitType
-      _ -> PodType
+    toDependency :: Map Text ExternalSource -> PodfilePkg -> Set PodfileLabel -> Dependency
+    toDependency externals PodfilePkg{pkgName} = foldr applyLabel start
+      where
+        start :: Dependency
+        start =
+          Dependency
+            { dependencyType = depType
+            , dependencyName = depName
+            , dependencyVersion = Nothing
+            , dependencyLocations = []
+            , dependencyEnvironments = mempty
+            , dependencyTags = Map.empty
+            }
 
-    depName :: Text
-    depName = case Map.lookup (pkgName pkg) externalSrc of
-      Just (ExternalGitType gitSrc) -> urlOf gitSrc
-      _ -> pkgName pkg
+        depType :: DepType
+        depType = case Map.lookup pkgName externals of
+          Just (ExternalGitType _) -> GitType
+          _ -> PodType
 
-    applyLabel :: PodfileLabel -> Dependency -> Dependency
-    applyLabel (PodfileVersion ver) dep = dep{dependencyVersion = CEq <$> ver}
+        depName :: Text
+        depName = case Map.lookup pkgName externals of
+          Just (ExternalGitType ExternalGitSource{urlOf}) -> urlOf
+          _ -> pkgName
 
-buildGraph :: PodLock -> Graphing Dependency
-buildGraph lockContent =
-  run . withLabeling (toDependency $ lockExternalSources lockContent) $
-    traverse_ addSection sections
-  where
-    sections :: [Section]
-    sections = toSections lockContent
-
-    addSection :: Has PodfileGrapher sig m => Section -> m ()
-    addSection (DependencySection deps) = traverse_ (direct . PodfilePkg . depName) deps
-    addSection (PodSection pods) = traverse_ addSpec pods
+        applyLabel :: PodfileLabel -> Dependency -> Dependency
+        applyLabel (PodfileVersion ver) dep =
+          dep
+            { dependencyVersion =
+                CEq <$> case Map.lookup pkgName externals of
+                  Just (ExternalGitType ExternalGitSource{tagOf, commitOf, branchOf}) -> asum [tagOf, commitOf, branchOf]
+                  _ -> Just ver
+            }
 
     addSpec :: Has PodfileGrapher sig m => Pod -> m ()
-    addSpec pod = do
-      let pkg = PodfilePkg (podName pod)
-      let pkgVersion = case Map.lookup (podName pod) (lockExternalSources lockContent) of
-            Just (ExternalGitType src) ->
-              asum
-                [ tagOf src
-                , commitOf src
-                , branchOf src
-                ]
-            _ -> Just $ podVersion pod
+    addSpec Pod{podName, podVersion, podDeps} = do
+      -- Add edges to transitive dependencies.
+      traverse_ (edge pkg . PodfilePkg . depName) podDeps
+      -- Label pods with versions.
+      label pkg $ PodfileVersion podVersion
+      where
+        pkg = PodfilePkg podName
 
-      -- add edges between spec and specdeps
-      traverse_ (edge pkg . PodfilePkg . depName) $ podSpecs pod
-      -- add a label for version
-      label pkg $ PodfileVersion pkgVersion
+-- We use this cache to avoid repeated invocations since gtraverse may revisit
+-- nodes. In practice, this saves quite a bit of time (e.g. on example projects,
+-- it has historically turned ~2 minute analyses into ~15 seconds).
+type PodSpecCache = Map Text PodSpecJSON
+
+-- `pod ipc spec` returns the JSON representation of a fully-evaluated Podspec.
+-- See also:
+--
+-- - Command documentation: https://guides.cocoapods.org/terminal/commands.html#pod_ipc_spec
+-- - Implemented in `pod`: https://github.com/CocoaPods/CocoaPods/blob/master/CHANGELOG.md#0290-2013-12-25
+podIpcSpecCmd :: Text -> Command
+podIpcSpecCmd podSpecPath =
+  Command
+    { cmdName = "pod"
+    , cmdArgs = ["ipc", "spec", podSpecPath]
+    , cmdAllowErr = Never
+    }
+
+-- `pod --version` returns a semantic version.
+podVersionCmd :: Command
+podVersionCmd = Command{cmdName = "pod", cmdArgs = ["--version"], cmdAllowErr = Never}
+
+buildGraph ::
+  (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) =>
+  Path Abs File ->
+  PodLock ->
+  m (Graphing Dependency)
+buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
+  -- If `pod` is not installed, then the static graph is the best we can do.
+  podVersionOutput <- exec lockFileDir podVersionCmd
+  case podVersionOutput of
+    Left _ -> fatalText "could not analyze vendored pods: `pod --version` was not at least `0.29.0`"
+    Right podVersionStdoutRaw -> do
+      let podVersionStdout = strip $ decodeUtf8 podVersionStdoutRaw
+
+      -- `pod ipc spec` is supported for versions 0.29.0 and above. See also:
+      -- https://github.com/CocoaPods/CocoaPods/blob/master/CHANGELOG.md#0290-2013-12-25
+      Version{_versionMajor, _versionMinor} <-
+        fromEither $
+          first ("could not parse `pod --version` output: " <>) $
+            SemVer.fromText podVersionStdout
+      when (_versionMajor == 0 && _versionMinor < 29) $
+        fatalText $ "`pod` version " <> podVersionStdout <> " does not support `pod ipc spec`"
+
+      -- If `pod` _is_ installed, then we can shell out to `pod ipc spec` to
+      -- convert locally vendored `.podspec` files to JSON and read them for
+      -- their Git locators. We do this because locally vendored `.podspec`
+      -- files are often vendored specifically because they are not available on
+      -- the Cocoapods registry.
+      evalState @PodSpecCache mempty $ gtraverse replaceVendoredPods staticGraph
+  where
+    staticGraph :: Graphing Dependency
+    staticGraph = buildGraphStatic lockFile
+
+    lockFileDir :: Path Abs Dir
+    lockFileDir = parent lockFilePath
+
+    replaceVendoredPods ::
+      ( Has Exec sig m
+      , Has Diagnostics sig m
+      , Has (State PodSpecCache) sig m
+      ) =>
+      Dependency ->
+      m Dependency
+    replaceVendoredPods d@Dependency{dependencyType, dependencyName} = case dependencyType of
+      PodType -> case Map.lookup dependencyName lockExternalSources of
+        Just es -> case es of
+          ExternalPodSpec podSpecPath ->
+            readPodSpecAt podSpecPath <||> pure d
+          ExternalPath podPath ->
+            readPodSpecAt (toText $ toString podPath </> (toString dependencyName <.> "podspec")) <||> pure d
+          ExternalGitType _ -> pure d
+          ExternalOtherType -> pure d
+        Nothing -> pure d
+      _ -> pure d
+
+    readPodSpecAt ::
+      ( Has Exec sig m
+      , Has Diagnostics sig m
+      , Has (State PodSpecCache) sig m
+      ) =>
+      Text ->
+      m Dependency
+    readPodSpecAt podSpecPath = context ("Resolving vendored podspec at " <> showT podSpecPath) $ do
+      podSpecCache :: PodSpecCache <- get
+      (PodSpecJSON ExternalGitSource{urlOf, tagOf, commitOf, branchOf}) <-
+        case Map.lookup podSpecPath podSpecCache of
+          Just cached -> pure cached
+          Nothing -> do
+            podSpec <- execJson lockFileDir $ podIpcSpecCmd podSpecPath
+            put $ Map.insert podSpecPath podSpec podSpecCache
+            pure podSpec
+      pure
+        Dependency
+          { dependencyType = GitType
+          , dependencyName = urlOf
+          , dependencyVersion = CEq <$> asum [tagOf, commitOf, branchOf]
+          , dependencyLocations = []
+          , dependencyEnvironments = mempty
+          , dependencyTags = Map.empty
+          }
 
 type Parser = Parsec Void Text
 
@@ -116,6 +232,8 @@ data Section
 
 data ExternalSource
   = ExternalGitType ExternalGitSource
+  | ExternalPodSpec Text -- This is always a `.podspec` filepath.
+  | ExternalPath Text -- This is a directory containing a `.podspec` with the Pod's name.
   | ExternalOtherType
   deriving (Show, Eq, Ord)
 
@@ -134,12 +252,6 @@ data PodLock = PodLock
   }
   deriving (Show, Eq, Ord)
 
-toSections :: PodLock -> [Section]
-toSections lockContent =
-  [ PodSection $ lockPods lockContent
-  , DependencySection $ lockDeps lockContent
-  ]
-
 newtype Dep = Dep
   { depName :: Text
   }
@@ -148,7 +260,7 @@ newtype Dep = Dep
 data Pod = Pod
   { podName :: Text
   , podVersion :: Text
-  , podSpecs :: [Dep]
+  , podDeps :: [Dep]
   }
   deriving (Eq, Ord, Show)
 
@@ -183,14 +295,18 @@ instance FromJSON Dep where
 
 instance FromJSON ExternalSource where
   parseJSON = Yaml.withObject "External source" $ \obj ->
-    do
-      ExternalGitType
+    ( ExternalGitType
         <$> ( ExternalGitSource
                 <$> obj .: ":git"
                 <*> obj .:? ":tag"
                 <*> obj .:? ":commit"
                 <*> obj .:? ":branch"
             )
+    )
+      -- We don't parse these as filepaths because `path`'s parsing functions do
+      -- not accept `..`.
+      <|> (ExternalPodSpec <$> obj .: ":podspec")
+      <|> (ExternalPath <$> obj .: ":path")
       <|> pure ExternalOtherType
 
 parserPod :: Text -> Maybe Yaml.Value -> Yaml.Parser Pod
@@ -205,3 +321,15 @@ lexeme = L.lexeme sc
 
 sc :: Parser ()
 sc = L.space (void $ some (char ' ')) empty empty
+
+newtype PodSpecJSON = PodSpecJSON ExternalGitSource
+
+instance FromJSON PodSpecJSON where
+  parseJSON = JSON.withObject "PodSpecJSON" $ \o ->
+    PodSpecJSON <$> do
+      source <- o .: "source"
+      ExternalGitSource
+        <$> source .: "git"
+        <*> source .:? "tag"
+        <*> source .:? "commit"
+        <*> source .:? "branch"

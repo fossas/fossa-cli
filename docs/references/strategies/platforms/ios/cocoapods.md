@@ -41,9 +41,10 @@ DEPENDENCIES:
   - "five/+zlib (7.0.0)"
 ```
 
+We also look at the `EXTERNAL SOURCES` section to try and resolve locally vendored Cocoapods. If we see a locally vendored Cocoapod using either `:podspec` or `:path` to a local directory, we'll read the Podspec at that directory and also upload that dependency if it has a supported `source`. We currently only support the `git` source.
+
 ## Limitations
 
-- Pods sourced from local path are not supported (e.g. `pod 'AFNetworking', :path => '~/Documents/AFNetworking'`).
 - Pods sourced from http path are not supported (e.g `pod 'JSONKit', :podspec => 'https://example.com/JSONKit.podspec'`).
 - Pods sourced from subversion, mercurial, and bazaar are not supported.
 - Plugins in Podfiles are ignored.
