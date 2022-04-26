@@ -17,9 +17,17 @@ build:
 test:
 	cabal test unit-tests --test-show-details=streaming --test-option=--format=checks --test-option=--times --test-option=--color
 
+# Runs an integration test.
+# To run a set of integration tests matching a specific value, use ARGS
+# For example, to only run tests whose name matches the wildcard '*fd*':
+# 	make integration-test ARGS="fd"
 integration-test:
-	cabal test integration-tests --test-show-details=streaming --test-option=--format=checks --test-option=--times --test-option=--color
-
+ifdef ARGS
+	cabal test integration-tests --test-show-details=streaming --test-option=--format=checks --test-option=--match --test-option="$(ARGS)"
+else
+	cabal test integration-tests --test-show-details=streaming --test-option=--format=checks
+endif
+	
 test-all:
 	cabal test
 
