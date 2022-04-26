@@ -33,9 +33,9 @@ EXTERNAL SOURCES:
     :git: "git@github.example.com:ab/cap.git"
     :commit: 9a9a9
   ChatSecure-Push-iOS:
-    :path: Submodules/ChatSecure-Push-iOS/ChatSecure-Push-iOS.podspec
+    :path: "../Submodules/ChatSecure-Push-iOS"
   ChatSecureCore:
-    :path: ChatSecureCore.podspec
+    :podspec: ChatSecureCore.podspec
 
 CHECKOUT OPTIONS:
   Mantle:

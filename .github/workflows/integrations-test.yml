@@ -4,6 +4,8 @@ name: Integration Tests
 # Refer to https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#workflow_dispatch
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * *" # At 05:00 on every day. 
 
 jobs:
   integration-test:
@@ -12,12 +14,14 @@ jobs:
     container: fossa/haskell-static-alpine:ghc-9.0.2
 
     steps:
-    - uses: actions/checkout@v2
-
     - name: Install alpine binary dependencies
       shell: sh
       run: |
         apk add bash xz-dev bzip2-dev bzip2-static upx curl jq
+
+    - uses: actions/checkout@v3
+    - name: Ensures git ownership check does not lead to compile error (we run git during compile for version tagging, etc.)
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
     - uses: cachix/install-nix-action@v17
       with:
@@ -28,7 +32,7 @@ jobs:
         ghc --version || echo "no ghc"
         cabal --version || echo "no cabal"
         ghcup --version || echo "no ghcup"
-        
+
     - uses: actions/cache@v2
       name: Cache cabal store
       with:
@@ -52,7 +56,7 @@ jobs:
       run: |
         cabal update
         $RUN_CMD || $RUN_CMD
-    
+
     - name: Run all integration tests
       run: |
         cabal test --project-file=cabal.project.ci.linux integration-tests --test-show-details=direct --test-option=--times

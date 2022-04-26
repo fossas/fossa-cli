@@ -116,7 +116,7 @@ warn = send . Warn
 warnOnErr :: (ToDiagnostic warn, Has Diagnostics sig m) => warn -> m a -> m a
 warnOnErr w m = send (WarnOnErr w m)
 
--- | Analagous to @Alternative@'s @<|>@. Try the provided actions, returning the
+-- | Analogous to @Alternative@'s @<|>@. Try the provided actions, returning the
 -- value of the first to succeed
 (<||>) :: Has Diagnostics sig m => m a -> m a -> m a
 (<||>) ma mb = send (FirstToSucceed ma mb)

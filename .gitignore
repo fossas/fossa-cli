@@ -19,6 +19,7 @@ vendor-bins/
 /release
 
 # Debug output
+fossa.debug.json
 fossa.debug.json.gz
 fossa.telemetry.json
 

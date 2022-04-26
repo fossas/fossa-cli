@@ -39,5 +39,5 @@ fd =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary bat CargoProjectType (DependencyResultsSummary 146 29 269 1 Complete)
-  testSuiteDepResultSummary fd CargoProjectType (DependencyResultsSummary 71 25 137 1 Complete)
+  testSuiteDepResultSummary bat CargoProjectType (DependencyResultsSummary 146 29 270 1 Complete)
+  testSuiteDepResultSummary fd CargoProjectType (DependencyResultsSummary 74 25 145 1 Complete)

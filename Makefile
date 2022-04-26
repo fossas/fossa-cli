@@ -9,7 +9,7 @@ MOUNTED_DEV_TOOLS := docker run
 MOUNTED_DEV_TOOLS += --rm
 MOUNTED_DEV_TOOLS += --mount "type=bind,source=${current_dir},target=/fossa-cli"
 MOUNTED_DEV_TOOLS += --workdir "/fossa-cli"
-MOUNTED_DEV_TOOLS += ${DEV_TOOLS} 
+MOUNTED_DEV_TOOLS += ${DEV_TOOLS}
 
 build:
 	cabal build
@@ -17,6 +17,17 @@ build:
 test:
 	cabal test unit-tests --test-show-details=streaming --test-option=--format=checks --test-option=--times --test-option=--color
 
+# Runs an integration test.
+# To run a set of integration tests matching a specific value, use ARGS
+# For example, to only run tests whose name matches the wildcard '*fd*':
+# 	make integration-test ARGS="fd"
+integration-test:
+ifdef ARGS
+	cabal test integration-tests --test-show-details=streaming --test-option=--format=checks --test-option=--match --test-option="$(ARGS)"
+else
+	cabal test integration-tests --test-show-details=streaming --test-option=--format=checks
+endif
+	
 test-all:
 	cabal test
 
@@ -85,4 +96,4 @@ check-ci:
 	docker pull ${DEV_TOOLS}
 	${MOUNTED_DEV_TOOLS} make check
 
-.PHONY: build test analyze install-local fmt check check-fmt lint check-ci fmt-ci build-test-data clean-test-data install-dev test-all
+.PHONY: build test integration-test analyze install-local fmt check check-fmt lint check-ci fmt-ci build-test-data clean-test-data install-dev test-all
