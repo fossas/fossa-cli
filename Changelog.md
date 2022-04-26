@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## V3.2.11
+
+- nodejs: Refine how workspace packages are recognized/skipped. ([#916](https://github.com/fossas/fossa-cli/pull/916))
+
 ## v3.2.10
 
 - Haskell: Generates build plan properly for multi-home Cabal projects (h/t [@jmickelin](https://github.com/jmickelin)) ([#910](https://github.com/fossas/fossa-cli/pull/910))
