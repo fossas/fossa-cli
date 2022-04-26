@@ -3,6 +3,7 @@ name: Integration Tests
 # Only run workflow manually
 # Refer to https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#workflow_dispatch
 on:
+  push:
   workflow_dispatch:
   schedule:
     - cron: "0 5 * * *" # At 05:00 on every day. 
