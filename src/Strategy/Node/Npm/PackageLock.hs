@@ -151,8 +151,6 @@ buildGraph packageJson directSet (WorkspacePackageNames workspacePackages) =
 
     -- Skip adding deps if we think it's a workspace package.
     maybeAddDep isRecursive parent name dep@PkgLockDependency{..} =
-      -- If not resolved, then likely a workspace dep, should be ignored.
-      -- if isNothing (unNpmResolved depResolved) || "file:" `Text.isPrefixOf` depVersion
       if name `Set.member` workspacePackages || "file:" `Text.isPrefixOf` depVersion
         then pure ()
         else addDep isRecursive parent name dep

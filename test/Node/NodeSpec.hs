@@ -148,7 +148,7 @@ npmLockAnalysisSpec currDir = do
   let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-test")
 
   describe "NPM Lock analysis" $ do
-    it' "Ignores workspace packages" $ do
+    it' "Ignores workspace packages in discovery/analysis of an NPMLock project" $ do
       discoveredProjects <- discover workspaceDir
       for_ discoveredProjects $
         \DiscoveredProject{..} ->

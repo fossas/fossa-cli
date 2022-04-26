@@ -394,9 +394,6 @@ underscore =
     , dependencyTags = mempty
     }
 
-emptyWorkspaceSet :: WorkspacePackageNames
-emptyWorkspaceSet = WorkspacePackageNames Set.empty
-
 mockLockWithWorkspacePkgs :: PkgLockJson
 mockLockWithWorkspacePkgs =
   PkgLockJson
@@ -419,15 +416,14 @@ mockLockWithWorkspacePkgs =
 packageLockWorkspaceSpec :: Spec
 packageLockWorkspaceSpec =
   describe "package-lock.json workspace behavior" $ do
-    it "should exclude workspace packages from analysis by name" $ do
-      let workSpacePackages = WorkspacePackageNames (Set.singleton "packageOne")
-          g = buildGraph mockLockWithWorkspacePkgs Set.empty workSpacePackages
+    it "should exclude workspace packages from dep graph by name" $ do
+      let g = buildGraph mockLockWithWorkspacePkgs Set.empty $ WorkspacePackageNames (Set.singleton "packageOne")
       g `shouldBe` Graphing.empty
 
 buildGraphSpec :: Path Abs Dir -> Spec
 buildGraphSpec testDir =
   describe "buildGraph" $ do
-    let buildGraph' inp directSet = buildGraph inp directSet emptyWorkspaceSet
+    let buildGraph' inp directSet = buildGraph inp directSet $ WorkspacePackageNames Set.empty
     it "should produce expected output" $ do
       let graph = buildGraph' mockInput (Set.fromList ["packageOne", "packageThree", "packageFive"])
       expectDeps [packageOne, packageTwo, packageThree, packageFive, packageSix, packageSeven] graph
