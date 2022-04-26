@@ -15,7 +15,18 @@ elixirEnv :: FixtureEnvironment
 elixirEnv = NixEnv ["elixir"]
 
 mixBuildProjectCmd :: Command
-mixBuildProjectCmd = Command "mix" ["local.hex --force --if-missing", "&&", "mix local.rebar --force", "&&", "mix deps.get", "&&", "mix deps.compile"] Never
+mixBuildProjectCmd =
+  Command
+    "mix"
+    [ "local.hex --force --if-missing" -- install hex package manager
+    , "&&"
+    , "mix local.rebar --force" -- project requires rebar3
+    , "&&"
+    , "mix deps.get"
+    , "&&"
+    , "mix deps.compile"
+    ]
+    Never
 
 absinthe :: AnalysisTestFixture (Mix.MixProject)
 absinthe =
