@@ -25,6 +25,7 @@ import Path (Abs, Dir, File, Path)
 import Strategy.Go.GoList qualified as GoList
 import Strategy.Go.GoModGraph qualified as GoModGraph
 import Strategy.Go.Gomod qualified as Gomod
+import Strategy.Go.Gostd (filterGoStdlibPackages, listGoStdlibPackages)
 import Types (
   Dependency,
   DependencyResults (..),
@@ -65,9 +66,10 @@ mkProject project =
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> m DependencyResults
 getDeps project = do
   (graph, graphBreadth) <- context "Gomodules" $ dynamicAnalysis <||> staticAnalysis
+  stdlib <- context "Collect go standard library information" . listGoStdlibPackages $ gomodulesDir project
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = filterGoStdlibPackages stdlib graph
       , dependencyGraphBreadth = graphBreadth
       , dependencyManifestFiles = [gomodulesGomod project]
       }
