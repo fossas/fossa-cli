@@ -335,6 +335,7 @@ library
     Strategy.Go.GoModGraph
     Strategy.Go.GopkgLock
     Strategy.Go.GopkgToml
+    Strategy.Go.Gostd
     Strategy.Go.Transitive
     Strategy.Go.Types
     Strategy.Godep
@@ -487,6 +488,7 @@ test-suite unit-tests
     Go.GomodSpec
     Go.GopkgLockSpec
     Go.GopkgTomlSpec
+    Go.GostdSpec
     Go.TransitiveSpec
     Googlesource.RepoManifestSpec
     Gradle.CommonSpec
