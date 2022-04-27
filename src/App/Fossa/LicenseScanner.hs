@@ -200,7 +200,7 @@ scanVendoredDep baseDir VendoredDependency{..} = context "Scanning vendored deps
     SomeFile (Rel path) -> scanArchive baseDir . ScannableArchive $ baseDir </> path
     SomeDir (Abs path) -> scanDirectory Nothing (getPathPrefix baseDir path) path
     SomeDir (Rel path) -> scanDirectory Nothing (toText path) (baseDir </> path)
-  pure $ LicenseSourceUnit vendoredPath CliLicenseScanned  licenseUnits
+  pure $ LicenseSourceUnit vendoredPath CliLicenseScanned licenseUnits
 
 getPathPrefix :: Path Abs Dir -> Path Abs t -> Text
 getPathPrefix baseDir scanPath = do
