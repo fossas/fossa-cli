@@ -1,8 +1,5 @@
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
 
 module App.Fossa.ManualDeps (
   ReferencedDependency (..),
@@ -13,6 +10,8 @@ module App.Fossa.ManualDeps (
   ManualDependencies (..),
   FoundDepsFile (..),
   analyzeFossaDepsFile,
+  findFossaDepsFile,
+  readFoundDeps,
 ) where
 
 import App.Fossa.ArchiveUploader (VendoredDependency (..), arcToLocator, archiveUploadSourceUnit, forceVendoredToArchive)

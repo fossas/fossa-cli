@@ -4,6 +4,7 @@
 module App.Fossa.LicenseScanner (
   licenseScanSourceUnit,
   combineLicenseUnits,
+  dedupVendoredDeps,
   scanVendoredDep,
 ) where
 
@@ -32,7 +33,6 @@ import Control.Effect.FossaApiClient (
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
-import Control.Monad (unless)
 import Data.HashMap.Strict qualified as HM
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -191,15 +191,16 @@ scanVendoredDep ::
   ) =>
   Path Abs Dir ->
   VendoredDependency ->
-  m (NonEmpty LicenseUnit)
+  m LicenseSourceUnit
 scanVendoredDep baseDir VendoredDependency{..} = context "Scanning vendored deps for license data" $ do
   logSticky $ "License Scanning '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
   scanPath <- resolvePath' baseDir $ toString vendoredPath
-  case scanPath of
+  licenseUnits <- case scanPath of
     SomeFile (Abs path) -> scanArchive baseDir $ ScannableArchive path
     SomeFile (Rel path) -> scanArchive baseDir . ScannableArchive $ baseDir </> path
     SomeDir (Abs path) -> scanDirectory Nothing (getPathPrefix baseDir path) path
     SomeDir (Rel path) -> scanDirectory Nothing (toText path) (baseDir </> path)
+  pure $ LicenseSourceUnit vendoredPath CliLicenseScanned licenseUnits
 
 getPathPrefix :: Path Abs Dir -> Path Abs t -> Text
 getPathPrefix baseDir scanPath = do
@@ -284,16 +285,9 @@ uploadVendoredDep ::
   ) =>
   Path Abs Dir ->
   VendoredDependency ->
-  NE.NonEmpty LicenseUnit ->
+  LicenseSourceUnit ->
   m (Maybe Archive)
-uploadVendoredDep baseDir VendoredDependency{..} themisScanResult = do
-  let licenseSourceUnit =
-        LicenseSourceUnit
-          { licenseSourceUnitName = vendoredPath
-          , licenseSourceUnitType = CliLicenseScanned
-          , licenseSourceUnitLicenseUnits = themisScanResult
-          }
-
+uploadVendoredDep baseDir VendoredDependency{..} licenseSourceUnit = do
   depVersion <- case vendoredVersion of
     Nothing -> sendIO $ withSystemTempDir "fossa-temp" (calculateVendoredHash baseDir vendoredPath)
     Just version -> pure version
@@ -319,14 +313,7 @@ licenseScanSourceUnit ::
   NonEmpty VendoredDependency ->
   m (NonEmpty Locator)
 licenseScanSourceUnit baseDir vendoredDeps = do
-  -- Users with many instances of vendored dependencies may accidentally have complete duplicates. Remove them.
-  let uniqDeps = NE.nub vendoredDeps
-
-  -- However, users may also have vendored dependencies that have duplicate names but are not complete duplicates.
-  -- These aren't valid and can't be automatically handled, so fail the scan with them.
-  let duplicates = duplicateNames uniqDeps
-  unless (null duplicates) $ fatalText $ duplicateFailureBundle duplicates
-
+  uniqDeps <- dedupVendoredDeps vendoredDeps
   -- At this point, we have a good list of deps, so go for it.
   maybeArchives <- traverse (scanAndUploadVendoredDep baseDir) uniqDeps
   archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ catMaybes $ NE.toList maybeArchives
@@ -346,3 +333,14 @@ licenseScanSourceUnit baseDir vendoredDeps = do
 
     includeOrgId :: OrgId -> Archive -> Archive
     includeOrgId orgId arc = arc{archiveName = showT orgId <> "/" <> archiveName arc}
+
+dedupVendoredDeps :: (Has Diagnostics sig m) => NonEmpty VendoredDependency -> m (NonEmpty VendoredDependency)
+dedupVendoredDeps vdeps = do
+  -- Users with many instances of vendored dependencies may accidentally have complete duplicates. Remove them.
+  let uniqDeps = NE.nub vdeps
+  let duplicates = duplicateNames uniqDeps
+  case duplicates of
+    [] -> pure uniqDeps
+    -- However, users may also have vendored dependencies that have duplicate names but are not complete duplicates.
+    -- These aren't valid and can't be automatically handled, so fail the scan with them.
+    dups -> fatalText $ duplicateFailureBundle dups
