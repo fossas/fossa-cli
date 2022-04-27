@@ -1,8 +1,9 @@
 # FOSSA CLI Changelog
 
-## V3.2.11
+## v3.2.11
 
 - nodejs: Refine how workspace packages are recognized/skipped. ([#916](https://github.com/fossas/fossa-cli/pull/916))
+- Cocoapods - Resolves vendored local podspecs into their source Git repositories when possible. ([#875](https://github.com/fossas/fossa-cli/pull/875))
 
 ## v3.2.10
 

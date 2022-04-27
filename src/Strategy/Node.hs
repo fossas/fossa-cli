@@ -216,13 +216,18 @@ data YarnVersion
   = V1
   | V2Compatible
 
+-- | Find every manifest that is a child of some other package and look
+-- up their @packageName@ in the @jsonLookup@ map.
 findWorkspaceNames :: PkgJsonGraph -> WorkspacePackageNames
 findWorkspaceNames PkgJsonGraph{..} =
   WorkspacePackageNames
     . Set.fromList
     $ workspaceNames
   where
+    childManifests :: [Manifest]
     childManifests = map snd . AM.edgeList $ jsonGraph
+
+    workspaceNames :: [Text]
     workspaceNames = mapMaybe (packageName <=< flip Map.lookup jsonLookup) childManifests
 
 extractDepLists :: PkgJsonGraph -> FlatDeps
