@@ -21,7 +21,11 @@ import Effect.Exec (runExecIO)
 import Effect.ReadFS (runReadFSIO)
 import Path (reldir, (</>))
 import Path.IO qualified as PIO
-import Srclib.Types (LicenseUnit (licenseUnitFiles, licenseUnitName), emptyLicenseUnit, LicenseSourceUnit (licenseSourceUnitLicenseUnits))
+import Srclib.Types (
+  LicenseSourceUnit (licenseSourceUnitLicenseUnits),
+  LicenseUnit (licenseUnitFiles, licenseUnitName),
+  emptyLicenseUnit,
+ )
 import Test.Hspec (Spec, it, shouldBe)
 
 recursiveArchive :: FixtureArtifact
