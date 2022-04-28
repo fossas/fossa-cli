@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.2.12
+
+- Adds `text` as an option to `fossa report attribution --format`. ([#921](https://github.com/fossas/fossa-cli/pull/921))
+
 ## v3.2.11
 
 - nodejs: Refine how workspace packages are recognized/skipped. ([#916](https://github.com/fossas/fossa-cli/pull/916))
