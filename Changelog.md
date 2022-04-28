@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.2.11
+
+- Go: The standard library is no longer reported as a dependency. ([#918](https://github.com/fossas/fossa-cli/pull/918))
+
 ## v3.2.10
 
 - Haskell: Generates build plan properly for multi-home Cabal projects (h/t [@jmickelin](https://github.com/jmickelin)) ([#910](https://github.com/fossas/fossa-cli/pull/910))
