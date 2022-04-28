@@ -560,6 +560,7 @@ attributionEndpoint baseurl orgId locator format = appendSegment format $ baseur
     appendSegment ReportJson input = input /: "json"
     appendSegment ReportMarkdown input = input /: "full" /: "MD"
     appendSegment ReportSpdx input = input /: "full" /: "spdx"
+    appendSegment ReportPlainText input = input /: "full" /: "TXT"
 
 getAttributionJson ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
