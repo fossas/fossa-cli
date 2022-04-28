@@ -57,10 +57,10 @@ filterGoStdlibPackages stdlib = Graphing.filter $ not . shouldFilter
     stdlib' = Set.fromList $ fmap goStdlibDepName stdlib
 
     isStdLib :: Dependency -> Bool
-    isStdLib = flip Set.member stdlib' . dependencyName
+    isStdLib = (`Set.member` stdlib') . dependencyName
 
     isExtra :: Dependency -> Bool
-    isExtra = flip Set.member extraPackageFilters . dependencyName
+    isExtra = (`Set.member` extraPackageFilters) . dependencyName
 
     shouldFilter :: Dependency -> Bool
     shouldFilter dep = isStdLib dep || isExtra dep
