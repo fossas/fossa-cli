@@ -15,6 +15,7 @@ module Strategy.Node.PackageJson (
   PkgJsonWorkspaces (..),
   Production,
   pkgFileList,
+  WorkspacePackageNames (..),
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
@@ -59,6 +60,8 @@ import Effect.Grapher (
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, File, Path, Rel)
+
+newtype WorkspacePackageNames = WorkspacePackageNames (Set Text)
 
 analyze :: (Has Diagnostics sig m) => [PackageJson] -> m (Graphing Dependency)
 analyze manifests = do

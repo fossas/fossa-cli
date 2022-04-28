@@ -6,6 +6,7 @@ module Strategy.Node (
   discover,
   pkgGraph,
   NodeProject (..),
+  getDeps,
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
@@ -83,6 +84,7 @@ import Strategy.Node.PackageJson (
   PkgJsonLicenseObj (licenseUrl),
   PkgJsonWorkspaces (unWorkspaces),
   Production,
+  WorkspacePackageNames (WorkspacePackageNames),
   pkgFileList,
  )
 import Strategy.Node.PackageJson qualified as PackageJson
@@ -166,7 +168,7 @@ getDeps (NPM graph) = analyzeNpm graph
 
 analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> PkgJsonGraph -> m DependencyResults
 analyzeNpmLock (Manifest file) graph = do
-  result <- PackageLock.analyze file $ extractDepLists graph
+  result <- PackageLock.analyze file (extractDepLists graph) (findWorkspaceNames graph)
   pure $ DependencyResults result Complete [file]
 
 analyzeNpm :: (Has Diagnostics sig m) => PkgJsonGraph -> m DependencyResults
@@ -213,6 +215,20 @@ detectYarnVersion yarnfile = do
 data YarnVersion
   = V1
   | V2Compatible
+
+-- | Find every manifest that is a child of some other package and look
+-- up their @packageName@ in the @jsonLookup@ map.
+findWorkspaceNames :: PkgJsonGraph -> WorkspacePackageNames
+findWorkspaceNames PkgJsonGraph{..} =
+  WorkspacePackageNames
+    . Set.fromList
+    $ workspaceNames
+  where
+    childManifests :: [Manifest]
+    childManifests = map snd . AM.edgeList $ jsonGraph
+
+    workspaceNames :: [Text]
+    workspaceNames = mapMaybe (packageName <=< flip Map.lookup jsonLookup) childManifests
 
 extractDepLists :: PkgJsonGraph -> FlatDeps
 extractDepLists PkgJsonGraph{..} = foldMap extractSingle $ Map.elems jsonLookup

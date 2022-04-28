@@ -22,6 +22,7 @@ import GraphUtil (
   expectEdges,
   expectEdges',
  )
+import Graphing qualified
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Npm.PackageLock (
@@ -40,8 +41,9 @@ import Strategy.Node.Npm.PackageLock (
   pkgPeerDeps,
   pkgResolved,
  )
+import Strategy.Node.PackageJson (WorkspacePackageNames (WorkspacePackageNames))
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Spec, describe, it, runIO)
+import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 
 -- This is a package-lock.json that has a dev dependency (packageOne) with a
 -- require, packageTwo, that doesn't exist in either depDependencies or
@@ -392,11 +394,38 @@ underscore =
     , dependencyTags = mempty
     }
 
+mockLockWithWorkspacePkgs :: PkgLockJson
+mockLockWithWorkspacePkgs =
+  PkgLockJson
+    { lockPackages = Map.empty
+    , lockDependencies =
+        Map.fromList
+          [
+            ( "packageOne"
+            , PkgLockDependency
+                { depVersion = "1.0.0"
+                , depDev = False
+                , depResolved = NpmResolved $ Just "https://foo.com"
+                , depRequires = Map.empty
+                , depDependencies = Map.empty
+                }
+            )
+          ]
+    }
+
+packageLockWorkspaceSpec :: Spec
+packageLockWorkspaceSpec =
+  describe "package-lock.json workspace behavior" $ do
+    it "should exclude workspace packages from dep graph by name" $ do
+      let g = buildGraph mockLockWithWorkspacePkgs Set.empty $ WorkspacePackageNames (Set.singleton "packageOne")
+      g `shouldBe` Graphing.empty
+
 buildGraphSpec :: Path Abs Dir -> Spec
 buildGraphSpec testDir =
   describe "buildGraph" $ do
+    let buildGraph' inp directSet = buildGraph inp directSet $ WorkspacePackageNames Set.empty
     it "should produce expected output" $ do
-      let graph = buildGraph mockInput (Set.fromList ["packageOne", "packageThree", "packageFive"])
+      let graph = buildGraph' mockInput (Set.fromList ["packageOne", "packageThree", "packageFive"])
       expectDeps [packageOne, packageTwo, packageThree, packageFive, packageSix, packageSeven] graph
       expectDirect [packageOne, packageThree, packageFive] graph
       expectEdges
@@ -410,7 +439,7 @@ buildGraphSpec testDir =
 
     it' "should process nested dependencies" $ do
       parsed <- readContentsJson (testDir </> $(mkRelFile "nested-deps.json"))
-      let graph = buildGraph parsed (Set.fromList ["argparse", "js-yaml", "sprintf-js"])
+      let graph = buildGraph' parsed (Set.fromList ["argparse", "js-yaml", "sprintf-js"])
       expectDeps' [argparseDeep, argparseDirect, jsyaml, sprintf] graph
       expectDirect' [argparseDirect, jsyaml, sprintf] graph
       expectEdges'
@@ -426,7 +455,7 @@ buildGraphSpec testDir =
       -- Top-level peerDependencies are treated just like direct
       -- dependencies. For this test "winston-mail" is a top-level peer
       -- dependency and "underscore" is a regular top-level dependency.
-      let graph = buildGraph parsed (Set.fromList ["winston-mail", "underscore"])
+      let graph = buildGraph' parsed (Set.fromList ["winston-mail", "underscore"])
       expectDeps' [async, mustache, winston, winstonMail, underscore] graph
       expectDirect' [winstonMail, underscore] graph
       expectEdges'
@@ -437,11 +466,11 @@ buildGraphSpec testDir =
         graph
 
     it "label required deps as 'EnvDevelopment' if the parent is dev" $ do
-      let graph = buildGraph mockRequiredMissingDep (Set.singleton "packageThree")
+      let graph = buildGraph' mockRequiredMissingDep (Set.singleton "packageThree")
       expectDep mockDevRequireMissingDependency graph
 
     it "Should process namespaced peer dependencies" $ do
-      let graph = buildGraph mockNameSpacedPeerDepLock Set.empty
+      let graph = buildGraph' mockNameSpacedPeerDepLock Set.empty
       expectEdges [(mockNSPeerDepPackageOne, mockNSPeerDepPackageTwo)] graph
 
 packageLockParseSpec :: Path Abs Dir -> Spec
@@ -472,3 +501,4 @@ spec = do
 
   buildGraphSpec testDir
   packageLockParseSpec testDir
+  packageLockWorkspaceSpec
