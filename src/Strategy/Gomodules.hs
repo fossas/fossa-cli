@@ -7,7 +7,7 @@ module Strategy.Gomodules (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, context, recover, (<||>))
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Discovery.Filters (AllFilters)
@@ -25,6 +25,7 @@ import Path (Abs, Dir, File, Path)
 import Strategy.Go.GoList qualified as GoList
 import Strategy.Go.GoModGraph qualified as GoModGraph
 import Strategy.Go.Gomod qualified as Gomod
+import Strategy.Go.Gostd (GoStdlibDep, filterGoStdlibPackages, listGoStdlibPackages)
 import Types (
   Dependency,
   DependencyResults (..),
@@ -65,13 +66,18 @@ mkProject project =
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> m DependencyResults
 getDeps project = do
   (graph, graphBreadth) <- context "Gomodules" $ dynamicAnalysis <||> staticAnalysis
+  stdlib <- recover . context "Collect go standard library information" . listGoStdlibPackages $ gomodulesDir project
   pure $
     DependencyResults
-      { dependencyGraph = graph
+      { dependencyGraph = filterGraph stdlib graph
       , dependencyGraphBreadth = graphBreadth
       , dependencyManifestFiles = [gomodulesGomod project]
       }
   where
+    filterGraph :: Maybe [GoStdlibDep] -> Graphing Dependency -> Graphing Dependency
+    filterGraph Nothing deps = deps
+    filterGraph (Just stdlib) deps = filterGoStdlibPackages stdlib deps
+
     staticAnalysis :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => m (Graphing Dependency, GraphBreadth)
     staticAnalysis = context "Static analysis" (Gomod.analyze' (gomodulesGomod project))
 

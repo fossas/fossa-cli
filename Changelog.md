@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.2.12
+
+- Go: The standard library is no longer reported as a dependency. ([#918](https://github.com/fossas/fossa-cli/pull/918))
+
 ## v3.2.11
 
 - nodejs: Refine how workspace packages are recognized/skipped. ([#916](https://github.com/fossas/fossa-cli/pull/916))
