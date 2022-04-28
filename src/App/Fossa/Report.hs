@@ -71,7 +71,7 @@ fetchReport ReportConfig{..} =
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
       when (outputFormat /= ReportJson) $
-        logWarn (pretty $ toText outputFormat <> " format is not guaranteed to be stable and may change without notice.")
+        logWarn (pretty $ "\"" <> toText outputFormat <> "\" format may change independent of CLI version: it is sourced from the FOSSA service.")
 
       logSticky "[ Waiting for build completion... ]"
 
