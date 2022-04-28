@@ -61,12 +61,14 @@ data ReportOutputFormat
   = ReportJson
   | ReportMarkdown
   | ReportSpdx
+  | ReportPlainText
   deriving (Eq, Ord, Enum, Bounded, Generic)
 
 parseReportOutputFormat :: String -> Maybe ReportOutputFormat
 parseReportOutputFormat s | s == show ReportJson = Just ReportJson
 parseReportOutputFormat s | s == show ReportSpdx = Just ReportSpdx
 parseReportOutputFormat s | s == show ReportMarkdown = Just ReportMarkdown
+parseReportOutputFormat s | s == show ReportPlainText = Just ReportPlainText
 parseReportOutputFormat _ = Nothing
 
 instance ToText ReportOutputFormat where
@@ -76,6 +78,7 @@ instance Show ReportOutputFormat where
   show ReportJson = "json"
   show ReportMarkdown = "markdown"
   show ReportSpdx = "spdx"
+  show ReportPlainText = "text"
 
 reportOutputFormatList :: String
 reportOutputFormatList = intercalate ", " $ map show allFormats
