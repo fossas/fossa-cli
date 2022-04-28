@@ -54,6 +54,9 @@ knownTestConfigs =
   , "testRuntimeClasspath"
   , "testFixturesApi"
   , "testFixturesImplementation"
+  , "testFixturesRuntimeClasspath"
+  , "testFixturesCompileClasspath"
+  , "testFixturesApiElements"
   ]
 
 getDebugMessages :: Text -> [Text]
