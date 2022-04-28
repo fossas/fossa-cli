@@ -83,7 +83,7 @@ packageTwo =
 
 graphSpec :: Spec
 graphSpec =
-  describe "buildGraph" $ do
+  describe "buildGraph" $
     it "should produce expected output" $ do
       let graph = buildGraph mockInput
       expectDeps [packageOne, packageTwo] graph
@@ -173,7 +173,7 @@ licenseSpec = do
           let mockPackageJson = pkgJsonMock mockMIT (Just mockLicensesObjs)
               licenses =
                 mkTestLicenseResult manifestFilePath $
-                  (License UnknownType "MIT") : map (License LicenseURL) [mockUrl1, mockUrl2]
+                  License UnknownType "MIT" : map (License LicenseURL) [mockUrl1, mockUrl2]
 
           foundLicenses <- licenseAnalyzeProject . mkNodeProject nodeConstr $ [(manifest, mockPackageJson)]
           foundLicenses `shouldMatchList'` [licenses]
@@ -188,7 +188,7 @@ licenseSpec = do
               manifestFilePath2 = toFilePath . unManifest $ manifest2
 
               packageJson2 = pkgJsonMock (Just $ LicenseText "MIT") Nothing
-              result2 = mkTestLicenseResult manifestFilePath2 [(License UnknownType "MIT")]
+              result2 = mkTestLicenseResult manifestFilePath2 [License UnknownType "MIT"]
               nodeProjects =
                 NPM $
                   mkMockPkgJsonGraph

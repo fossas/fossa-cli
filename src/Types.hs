@@ -167,7 +167,7 @@ data DependencyResults = DependencyResults
   , dependencyGraphBreadth :: GraphBreadth
   , dependencyManifestFiles :: [Path Abs File]
   }
-  deriving (Show)
+  deriving (Show, Eq)
 
 -- | The exhaustiveness or completeness of the graph found during analysis.
 --   Complete - indicates that the dependencies in question are a full, transitive graph, requiring no additional analysis

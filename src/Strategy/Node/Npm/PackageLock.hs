@@ -28,7 +28,6 @@ import Data.Foldable (asum, traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isNothing)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Tagged (unTag)
@@ -54,7 +53,13 @@ import Effect.Grapher (
 import Effect.ReadFS (ReadFS, readContentsJson)
 import Graphing (Graphing)
 import Path (Abs, File, Path)
-import Strategy.Node.PackageJson (Development, FlatDeps (devDeps, directDeps), NodePackage (pkgName), Production)
+import Strategy.Node.PackageJson (
+  Development,
+  FlatDeps (devDeps, directDeps),
+  NodePackage (pkgName),
+  Production,
+  WorkspacePackageNames (WorkspacePackageNames),
+ )
 
 data PkgLockPackage = PkgLockPackage
   { pkgPeerDeps :: Map Text Text
@@ -108,10 +113,10 @@ instance FromJSON PkgLockDependency where
       <*> obj .:? "requires" .!= mempty
       <*> obj .:? "dependencies" .!= mempty
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> FlatDeps -> m (Graphing Dependency)
-analyze file flatdeps = context "Analyzing Npm Lockfile" $ do
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> FlatDeps -> WorkspacePackageNames -> m (Graphing Dependency)
+analyze file flatdeps workspacePackages = context "Analyzing Npm Lockfile" $ do
   packageLockJson <- context "Parsing package-lock.json" $ readContentsJson @PkgLockJson file
-  context "Building dependency graph" $ pure $ buildGraph packageLockJson directDepsSet
+  context "Building dependency graph" $ pure $ buildGraph packageLockJson directDepsSet workspacePackages
   where
     directDepsSet =
       Set.map pkgName $
@@ -140,8 +145,8 @@ data NpmDepVertexLabel = NpmDepVertexEnv DepEnvironment | NpmDepVertexLocation T
 packagePathsToNames :: Map Text a -> Map Text a
 packagePathsToNames = Map.mapKeys (TE.dropPrefix "node_modules/")
 
-buildGraph :: PkgLockJson -> Set Text -> Graphing Dependency
-buildGraph packageJson directSet =
+buildGraph :: PkgLockJson -> Set Text -> WorkspacePackageNames -> Graphing Dependency
+buildGraph packageJson directSet (WorkspacePackageNames workspacePackages) =
   run . withLabeling toDependency $
     void $ Map.traverseWithKey (maybeAddDep False Nothing) packageDeps
   where
@@ -152,7 +157,7 @@ buildGraph packageJson directSet =
 
     -- Skip adding deps if we think it's a workspace package.
     maybeAddDep isRecursive parent name dep@PkgLockDependency{..} =
-      if isNothing (unNpmResolved depResolved) || "file:" `Text.isPrefixOf` depVersion
+      if name `Set.member` workspacePackages || "file:" `Text.isPrefixOf` depVersion
         then pure ()
         else addDep isRecursive parent name dep
 
@@ -186,7 +191,6 @@ buildGraph packageJson directSet =
               edge currentPkg $ NpmDepVertex peerDepName (depVersion npmDep)
             Nothing -> pure ()
 
-    -- If not resolved, then likely a workspace dep, should be ignored.
     -- isRecursive lets us know if we are parsing a top-level or nested dep.
     addDep :: Has NpmGrapher sig m => Bool -> Maybe NpmDepVertex -> Text -> PkgLockDependency -> m ()
     addDep isRecursive parent name PkgLockDependency{..} = do
