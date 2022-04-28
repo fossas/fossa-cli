@@ -43,6 +43,12 @@ and use that to mimic `hspec` for an effectful system.  [More details can be fou
 
 We also have a [mocking framework specifically for API effects](api-mocking.md).
 
+## Filtering
+
+To allow the user to prevent us from including certain sets of results in an analysis, as well as trying to avoid the
+work involved, we allow users to filter at both the discovery level and analysis level.
+[More details can be in the filtering document](filtering.md).
+
 ## Releases
 
 We have a release process that manages building our archives and updating our release notes.  [Read more about our releases here](releases.md).
