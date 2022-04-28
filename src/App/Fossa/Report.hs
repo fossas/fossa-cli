@@ -10,7 +10,7 @@ import App.Fossa.API.BuildWait (
   waitForIssues,
   waitForScanCompletion,
  )
-import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), mkSubCommand)
+import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), ReportOutputFormat (ReportJson), mkSubCommand)
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (ProjectRevision (..))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
@@ -18,7 +18,9 @@ import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient (FossaApiClient, getAttribution)
 import Control.Effect.Lift (Has, Lift)
+import Control.Monad (when)
 import Control.Timeout (timeout')
+import Data.String.Conversion (toText)
 import Data.Text.Extra (showT)
 import Effect.Logger (
   Logger,
@@ -26,6 +28,7 @@ import Effect.Logger (
   Severity (SevInfo),
   logInfo,
   logStdout,
+  logWarn,
  )
 
 reportSubCommand :: SubCommand ReportCliOptions ReportConfig
@@ -67,6 +70,8 @@ fetchReport ReportConfig{..} =
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
       logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
+      when (outputFormat /= ReportJson) $
+        logWarn (pretty $ toText outputFormat <> " format is not guaranteed to be stable and may change without notice.")
 
       logSticky "[ Waiting for build completion... ]"
 
