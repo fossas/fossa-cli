@@ -125,6 +125,40 @@ gradle@foo/baz:subA
 gradle@foo/baz:subB
 ```
 
+## Filtering in General
+
+Because discovery finds everything by default, every filter mechanism is
+intended to **reduce** outputs from one stage to the next.  This comes in
+2 forms:
+
+- `exclude` - Do not include this item.
+- `include` - Do not include anything that _isn't_ this item.
+
+Notably, there is no mechanism for _adding_ items. This is intentional, we
+already include everything by default, so what could be added?  As a result,
+this can lead to some filtering combinations that seem to produce unintuitive
+results: `exclude a/b AND include a/b/c` will remove `a/b/*`, along with the
+"included" `a/b/c`.  However, given the reduction-focused nature of the
+filters, we can reword this using the descriptions above and see if the
+behavior is intuitive there:
+
+```text
+exclude a/b AND include a/b/c
+
+-- rewritten:
+Do not include a/b (or its children)
+AND
+Do not incluse anything that is not a/b/c (or its children)
+```
+
+In this wording, it is clear that we must not include `a/b/c`, because it has
+been excluded from the results.  In fact, given only these filters, we will
+never return anything, since nothing will ever match.  This means that the
+filters themselves are laid out wrong, and what the user probably wanted was
+simply `include a/b/c`, without the exclude clause.  This basic property of
+reduction-only filters leads to a fundamental rule of our filtering: _if an_
+_item is both included and excluded, it will not be included_.
+
 ## Analysis Target Filtering
 
 After discovery, we have a set of analysis targets, which can be rendered to
@@ -239,11 +273,16 @@ needed to filter them out.
 However, the use case for discovery exclusion is STRICTLY performance-related,
 and should have no overall effect on which analysis targets are actually run.
 As a result of this, discovery exclusion must attempt to avoid unnecessary
-discovery where possible, but it mamy also choose to allow discovery and rely
-on the analysis target filtering to prevent unwanted results fromm leaking
-through.
+discovery where possible, but it may also choose to allow discovery and rely on
+the analysis target filtering to prevent unwanted results from leaking through.
 
-At a high-level, discovery exclusion is done via two processes:
+## Discovery Exclusion in Detail
+
+The primary way that discovery exclusion tries to avoid doing work is by avoid
+the filesystem walk itself, or as much of that as possible, as that is the
+largest source of work done in the discovery phase.
+
+At a high-level, discovery exclusion is done via two _separate_ processes:
 
 - Short-circuiting an entire discovery function if the `DiscoveredProjectType`s
 emitted by the function could never match the existing filters.  This short
@@ -252,5 +291,142 @@ circuiting is done by simply emitting zero analysis targets.
 the existing filters.  This is done by instructing the filesystem walker to
 skip all subdirectories at non-matching points.
 
+Both of these processes have subtle implications about when they can be
+applied, and we avoid any analyzer-specific filtering code at all costs.  This
+means that discovery exclusion is not perfect, and there are known, intentional
+gaps in coverage.  These gaps are often gaps that could be solved by
+_combining_ the two processes, but that's not currently possible without being
+error-prone.  **_For now, the two processes are entirely separate, and_**
+**_cannot be combined._**
 
+### Discovery Exclusion by `DiscoveredProjectType`
 
+In the simple case, filtering by type is the simplest filtering mechanism.
+Where we would normally run 30+ analyzers and filesystem walkers, a filter like
+`include cabal` would only run 1 analyzer/filesystem walk.  Note that we still
+fork lightweight tasks for all of the other analyzers, but they terminate
+quickly.
+
+For include-style filters, we can simply enforce that the current tool is a
+member of the set of all included tools across all filters.  For exclusion, we
+can only reject tools that are fully excluded. In other words, we do not
+exclude tools in target filters that have a path component.
+
+#### Examples
+
+Only running a single tool:
+
+```text
+-- Given the following discoverable targets:
+cargo@foo
+gomod@bar
+cabal@baz
+
+-- And the following filter:
+include cabal
+
+-- Discovery will only find the following target: 
+cabal@baz
+```
+
+Excluding a particular tool:
+
+```text
+-- Given the following discoverable targets:
+cargo@foo
+gomod@bar
+cabal@baz
+
+-- And the following filter:
+exclude gomod
+
+-- Discovery will find the following targets:
+cargo@foo
+cabal@baz
+```
+
+Not excluding a tool based on `type@path` filters:
+
+```text
+-- Given the following discoverable targets:
+cargo@foo
+cabal@bar
+
+-- And the following filter:
+exclude cargo@foo
+
+-- Discovery will find the following targets:
+cargo@foo
+cabal@bar
+
+-- And analysis will be run for:
+cabal@bar
+```
+
+Note that the analysis filter caught the `cargo@foo` target and removed it,
+even though the discovery exclusion let it slip through.
+
+### Discovery Exclusion by Path
+
+Path filtering is a straightforward mechanism, with one major caveat: if a path
+is included, it must also include _every parent and child path_, as opposed to
+exclusion, which excludes the path and its children, but not it's parents.
+Including children allows paths to function similar to globs, and including
+parents allows the filesystem walk to actually traverse down to the included
+path without being terminated early.  We rely on analysis target filtering to
+remove unwanted parent targets from the analysis stage.
+
+It's also important to remember the rule of conflicts: if a path is both
+included and excluded, it is excluded by the filters.
+
+Only walking a subset of the tree:
+
+```text
+-- Given the following discoverable targets:
+cargo@root
+gomod@foo/bar
+cabal@foo/bar/baz
+
+-- And the following filter:
+include foo/bar
+
+-- Discovery will only find the following targets: 
+gomod@foo/bar
+cabal@foo/bar/baz
+```
+
+Excluding specific paths:
+
+```text
+-- Given the following discoverable targets:
+cargo@root
+gomod@foo/bar
+cabal@foo/bar/baz
+
+-- And the following filter:
+exclude foo/ 
+
+-- Discovery will only find the following target: 
+cargo@root
+```
+
+Including parents and children:
+
+```text
+-- Given the following discoverable targets:
+cargo@foo
+cabal@foo/bar
+gomod@foo/bar/baz
+
+-- And the following filter:
+include foo/bar
+
+-- Discovery will find the following targets: 
+cargo@foo
+cabal@foo/bar
+gomod@foo/bar/baz
+
+-- And analysis will be run for:
+cabal@foo/bar
+gomod@foo/bar/baz
+```
