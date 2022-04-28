@@ -53,7 +53,13 @@ import Effect.Grapher (
 import Effect.ReadFS (ReadFS, readContentsJson)
 import Graphing (Graphing)
 import Path (Abs, File, Path)
-import Strategy.Node.PackageJson (Development, FlatDeps (devDeps, directDeps), NodePackage (pkgName), Production, WorkspacePackageNames (WorkspacePackageNames))
+import Strategy.Node.PackageJson (
+  Development,
+  FlatDeps (devDeps, directDeps),
+  NodePackage (pkgName),
+  Production,
+  WorkspacePackageNames (WorkspacePackageNames),
+ )
 
 data PkgLockPackage = PkgLockPackage
   { pkgPeerDeps :: Map Text Text

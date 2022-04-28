@@ -11,10 +11,37 @@ import Graphing qualified
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node (NodeProject (NPMLock), discover, getDeps)
-import Strategy.Node.PackageJson (Manifest (..), PackageJson (PackageJson, packageDeps, packageDevDeps, packageLicense, packageLicenses, packageName, packagePeerDeps, packageVersion, packageWorkspaces), PkgJsonGraph (PkgJsonGraph, jsonGraph, jsonLookup), PkgJsonLicense (LicenseText), PkgJsonWorkspaces (PkgJsonWorkspaces, unWorkspaces))
+import Strategy.Node.PackageJson (
+  Manifest (..),
+  PackageJson (
+    PackageJson,
+    packageDeps,
+    packageDevDeps,
+    packageLicense,
+    packageLicenses,
+    packageName,
+    packagePeerDeps,
+    packageVersion,
+    packageWorkspaces
+  ),
+  PkgJsonGraph (PkgJsonGraph, jsonGraph, jsonLookup),
+  PkgJsonLicense (LicenseText),
+  PkgJsonWorkspaces (PkgJsonWorkspaces, unWorkspaces),
+ )
 import Test.Effect (it', shouldBe')
 import Test.Hspec (Spec, describe, runIO)
-import Types (DependencyResults (DependencyResults, dependencyGraph, dependencyGraphBreadth, dependencyManifestFiles), DiscoveredProject (DiscoveredProject, projectBuildTargets, projectData, projectPath, projectType), DiscoveredProjectType (NpmProjectType), FoundTargets (ProjectWithoutTargets), GraphBreadth (Complete))
+import Types (
+  DependencyResults (
+    DependencyResults,
+    dependencyGraph,
+    dependencyGraphBreadth,
+    dependencyManifestFiles
+  ),
+  DiscoveredProject (DiscoveredProject, projectBuildTargets, projectData, projectPath, projectType),
+  DiscoveredProjectType (NpmProjectType),
+  FoundTargets (ProjectWithoutTargets),
+  GraphBreadth (Complete),
+ )
 
 spec :: Spec
 spec = do
@@ -38,48 +65,31 @@ discoveredWorkSpaceProj currDir =
               { jsonGraph =
                   AM.edges
                     [
-                      ( Manifest
-                          { unManifest = workspaceManifest
-                          }
-                      , Manifest
-                          { unManifest = packageBManifest
-                          }
+                      ( Manifest{unManifest = workspaceManifest}
+                      , Manifest{unManifest = packageBManifest}
                       )
                     ,
-                      ( Manifest
-                          { unManifest = workspaceManifest
-                          }
-                      , Manifest
-                          { unManifest = packageAManifest
-                          }
+                      ( Manifest{unManifest = workspaceManifest}
+                      , Manifest{unManifest = packageAManifest}
                       )
                     ]
               , jsonLookup =
                   Map.fromList
                     [
-                      ( Manifest
-                          { unManifest = packageBManifest
-                          }
+                      ( Manifest{unManifest = packageBManifest}
                       , PackageJson
                           { packageName = Just "pkg-b"
                           , packageVersion = Just "1.0.0"
-                          , packageWorkspaces =
-                              PkgJsonWorkspaces
-                                { unWorkspaces = []
-                                }
+                          , packageWorkspaces = PkgJsonWorkspaces{unWorkspaces = []}
                           , packageDeps = Map.empty
                           , packageDevDeps = Map.empty
-                          , packageLicense =
-                              Just
-                                (LicenseText "ISC")
+                          , packageLicense = Just (LicenseText "ISC")
                           , packageLicenses = Nothing
                           , packagePeerDeps = Map.empty
                           }
                       )
                     ,
-                      ( Manifest
-                          { unManifest = workspaceManifest
-                          }
+                      ( Manifest{unManifest = workspaceManifest}
                       , PackageJson
                           { packageName = Just "workspace-test"
                           , packageVersion = Just "1.0.0"
@@ -92,29 +102,20 @@ discoveredWorkSpaceProj currDir =
                                 }
                           , packageDeps = Map.empty
                           , packageDevDeps = Map.empty
-                          , packageLicense =
-                              Just
-                                (LicenseText "ISC")
+                          , packageLicense = Just (LicenseText "ISC")
                           , packageLicenses = Nothing
                           , packagePeerDeps = Map.empty
                           }
                       )
                     ,
-                      ( Manifest
-                          { unManifest = packageAManifest
-                          }
+                      ( Manifest{unManifest = packageAManifest}
                       , PackageJson
                           { packageName = Just "pkg-a"
                           , packageVersion = Just "1.0.0"
-                          , packageWorkspaces =
-                              PkgJsonWorkspaces
-                                { unWorkspaces = []
-                                }
+                          , packageWorkspaces = PkgJsonWorkspaces{unWorkspaces = []}
                           , packageDeps = Map.empty
                           , packageDevDeps = Map.empty
-                          , packageLicense =
-                              Just
-                                (LicenseText "ISC")
+                          , packageLicense = Just (LicenseText "ISC")
                           , packageLicenses = Nothing
                           , packagePeerDeps = Map.empty
                           }
