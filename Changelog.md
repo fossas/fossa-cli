@@ -3,6 +3,7 @@
 ## v3.2.12
 
 - Adds `text` as an option to `fossa report attribution --format`. ([#921](https://github.com/fossas/fossa-cli/pull/921))
+- Go: The standard library is no longer reported as a dependency. ([#918](https://github.com/fossas/fossa-cli/pull/918))
 
 ## v3.2.11
 
