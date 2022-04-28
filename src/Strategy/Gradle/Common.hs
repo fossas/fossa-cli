@@ -54,6 +54,8 @@ knownTestConfigs =
   , "testRuntimeClasspath"
   , "testFixturesApi"
   , "testFixturesImplementation"
+  , "testFixturesRuntimeOnly"
+  , "testFixturesCompileOnly"
   , "testFixturesRuntimeClasspath"
   , "testFixturesCompileClasspath"
   , "testFixturesApiElements"
