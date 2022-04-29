@@ -31,6 +31,7 @@ Available options are:
 - `json`
 - `markdown`
 - `spdx`
+- `text`
 
 For example, to render the report in JSON format, use `fossa report attribution --format json`.
 
