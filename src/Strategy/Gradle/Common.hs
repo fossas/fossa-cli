@@ -40,10 +40,26 @@ configNameToLabel :: Text -> GradleLabel
 configNameToLabel conf =
   case conf of
     "compileOnly" -> Env EnvDevelopment
-    x | x `elem` ["testImplementation", "testCompileOnly", "testRuntimeOnly", "testCompileClasspath", "testRuntimeClasspath"] -> Env EnvTesting
+    x | x `elem` knownTestConfigs -> Env EnvTesting
     x | isDefaultAndroidDevConfig x -> Env EnvDevelopment
     x | isDefaultAndroidTestConfig x -> Env EnvTesting
     x -> Env $ EnvOther x
+
+knownTestConfigs :: [Text]
+knownTestConfigs =
+  [ "testImplementation"
+  , "testCompileOnly"
+  , "testRuntimeOnly"
+  , "testCompileClasspath"
+  , "testRuntimeClasspath"
+  , "testFixturesApi"
+  , "testFixturesImplementation"
+  , "testFixturesRuntimeOnly"
+  , "testFixturesCompileOnly"
+  , "testFixturesRuntimeClasspath"
+  , "testFixturesCompileClasspath"
+  , "testFixturesApiElements"
+  ]
 
 getDebugMessages :: Text -> [Text]
 getDebugMessages text = getLogWithPrefix text "FOSSA-DEBUG"
