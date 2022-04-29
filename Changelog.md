@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.2.13
+
+- Filters: Fixes the disabled path filtering in discovery exclusion. ([#908](https://github.com/fossas/fossa-cli/pull/908))
+
 ## v3.2.12
 
 - Adds `text` as an option to `fossa report attribution --format`. ([#921](https://github.com/fossas/fossa-cli/pull/921))

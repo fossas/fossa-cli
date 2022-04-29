@@ -5,7 +5,7 @@ This is a collection of development-related docs for working on the fossa-cli re
 ## Building and Running the project
 
 The [HACKING](HACKING.md) doc describes our current dev tools and build practices, as well
-as providing som info about our CI setup.
+as providing some info about our CI setup.
 
 ## Style Guide
 
@@ -17,14 +17,6 @@ We are in the process of fully aligning to that guide, but any new contributions
 Parsing in haskell requires a lot less boilerplate than may other languages, but comes with some caveats.
 The [best practices guide](parsing-best-practices.md) illustrates some important information about how to write
 parsers correctly, and links to a few tutorials.
-
-## Record/Replay
-
-Because of magic (not really, [but...][3laws]), we are able to track what files we have read (and their contents),
-as well as the output of any commands executed during analysis.  This is called [`replay logging`](replay-logging.md),
-and is a very useful debugging tool.
-
-[3laws]: https://en.wikipedia.org/wiki/Clarke%27s_three_laws
 
 ## Graph Hydration
 
@@ -42,6 +34,12 @@ monads (not really, but it does work similarly).  To make this easier for us, we
 and use that to mimic `hspec` for an effectful system.  [More details can be found here.](testing-with-effects.md)
 
 We also have a [mocking framework specifically for API effects](api-mocking.md).
+
+## Filtering
+
+To allow the user to prevent us from including certain sets of results in an analysis, as well as trying to avoid the
+work involved, we allow users to filter at both the discovery level and analysis level.
+[More details can be in the filtering document](filtering.md).
 
 ## Releases
 

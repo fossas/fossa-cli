@@ -7,38 +7,31 @@
 Use [ghcup][ghcup] to install the `cabal` cli tool and the ghc version we're using:
 
 ```sh
-$ ghcup install ghc 8.10
+$ ghcup install ghc 9.0
 <long running output, about 4 min on my machine>
-$ ghcup set ghc 8.10
+$ ghcup set ghc 9.0
 $ cabal update
 $ cabal build
 ```
 
 ### Apple Silicon
 
-On Apple silicon, you'll need `llvm` installed. The simplest way to install it is via `brew`:
-
-```sh
-brew install llvm@12
-```
-
-We've observed issues using `llvm@13` (the default installed by Homebrew as of this writing) compiling some libraries,
-so we recommend just starting with `llvm@12`.
+In previous GHC versions (8.10), `llvm` was required
 
 ### Quickstart Explanation
 
 Ok, the quickstart worked for you, but why, and how?
 
-> `ghcup install ghc 8.10`
+> `ghcup install ghc 9.0`
 
 When you install `ghcup`, `ghc` and `cabal-install` are installed automatically as part of the initial installation (see [Tools](#Tools) for descriptions of `ghc` and `cabal-install`).
-The `ghc` version that is automatically installed may not be the correct version we use (though it may work just fine).  So we install the correct version with `ghcup install ghc 8.10`.
+The `ghc` version that is automatically installed may not be the correct version we use (though it may work just fine).  So we install the correct version with `ghcup install ghc 9.0`.
 Currently, the best place to check the correct version is our CI build files (try `.github/workflows/build.yml`).
 
-> `ghcup set ghc 8.10`
+> `ghcup set ghc 9.0`
 
-`ghcup` works by setting symlinks to the "active" version of the tool you're using.  Here, we're telling `ghcup` to set GHC 8.10 as the active GHC version.
-Now, when you run `ghc`, you'll be running GHC 8.10.
+`ghcup` works by setting symlinks to the "active" version of the tool you're using.  Here, we're telling `ghcup` to set GHC 9.0 as the active GHC version.
+Now, when you run `ghc`, you'll be running GHC 9.0.
 
 > `cabal update`
 
@@ -118,6 +111,11 @@ Make sure to run the formatter on any files you modify. Enabling `Editor: Format
 You can run `make fmt` to run the formatter on the entire codebase, or `make check-fmt` to dry-run the formatter.
 
 `make fmt` is run in CI, any formatting errors will prevent merging.
+
+Our makefile also has the ability to run the formatter from the CI image locally against your project.  To do this
+run `make fmt-ci`, which will mount your project into the container used for checking formatting in CI, and then
+run `make fmt` within the container.  This allows you to run the formater locally without having to startup an editor
+or having to install the formatter yourself.  This also makes sure you're using the same version as CI.
 
 ## Docs
 

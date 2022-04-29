@@ -221,8 +221,23 @@ spec = do
     describe "Path-based matching" $ do
       it "should include paths correctly" $ do
         pathAllowed (includePath $(mkRelDir "hello")) $(mkRelDir "hello") `shouldBe` True
-        -- We never skip non-included paths during discovery, we only skip excluded paths.
-        pathAllowed (includePath $(mkRelDir "NOPE")) $(mkRelDir "Yeah") `shouldBe` True
+        pathAllowed (includePath $(mkRelDir "NOPE")) $(mkRelDir "Yeah") `shouldBe` False
+
+      it "should include all parents" $ do
+        let child = includePath $(mkRelDir "a/b/c")
+        pathAllowed child $(mkRelDir "a") `shouldBe` True
+        pathAllowed child $(mkRelDir "a/b") `shouldBe` True
+        pathAllowed child $(mkRelDir "a/b/c") `shouldBe` True
+        pathAllowed child $(mkRelDir "a/d/c") `shouldBe` False
+        pathAllowed child $(mkRelDir "a/c") `shouldBe` False
+
+      it "should include all children" $ do
+        let parent = includePath $(mkRelDir "a/b")
+        pathAllowed parent $(mkRelDir "a/b") `shouldBe` True
+        pathAllowed parent $(mkRelDir "a/b/c") `shouldBe` True
+        pathAllowed parent $(mkRelDir "a/b/r") `shouldBe` True
+        pathAllowed parent $(mkRelDir "a/b/c/d/e/f/g/h") `shouldBe` True
+        pathAllowed parent $(mkRelDir "a/c") `shouldBe` False
 
       it "should exclude paths correctly" $ do
         pathAllowed (excludePath $(mkRelDir "Nope")) $(mkRelDir "No") `shouldBe` True
