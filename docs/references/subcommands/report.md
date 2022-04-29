@@ -40,9 +40,12 @@ However, it is deprecated, and should be replaced with `--format json` to preven
 
 ### FOSSAv1 report compatibility
 
-FOSSA supports a compatibility script that converts FOSSAv2 attribution report output to the same format as that in FOSSAv1.
+FOSSA supported a compatibility script that converts FOSSAv2 attribution report output to the same format as that in FOSSAv1.
 
-This script will be supported until the end of April 2022 and is included in the release assets, under the name `compat-attribution`.
+This script was supported until the end of April 2022 and was included in the release assets, under the name `compat-attribution`.
+After April 2022, it's no longer supported, but can still be found on older releases, for example https://github.com/fossas/fossa-cli/releases/tag/v3.2.12.
+
+**We strongly recommend not trying to use this script, and instead migrating to the new report format.**
 
 To use this compatibility script:
 
