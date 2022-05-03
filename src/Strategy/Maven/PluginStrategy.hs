@@ -26,18 +26,17 @@ import Graphing (Graphing)
 import Path (Abs, Dir, Path)
 import Strategy.Maven.Plugin (
   Artifact (..),
+  DepGraphPlugin,
   Edge (..),
   PluginOutput (..),
-  DepGraphPlugin,
+  depGraphPlugin,
+  depGraphPluginLegacy,
   execPlugin,
   installPlugin,
   parsePluginOutput,
   withUnpackedPlugin,
-  depGraphPlugin,
-  depGraphPluginLegacy,
  )
 import Types (GraphBreadth (..))
-
 
 analyze' ::
   ( Has (Lift IO) sig m
@@ -68,10 +67,10 @@ analyze ::
   Path Abs Dir ->
   DepGraphPlugin ->
   m (Graphing Dependency, GraphBreadth)
-analyze dir plugin  = do
+analyze dir plugin = do
   graph <- withUnpackedPlugin plugin $ \filepath -> do
     context "Installing plugin" $ errCtx MvnPluginInstallFailed $ installPlugin dir filepath plugin
-    context "Running plugin" $ errCtx MvnPluginExecFailed $ execPlugin dir plugin 
+    context "Running plugin" $ errCtx MvnPluginExecFailed $ execPlugin dir plugin
     pluginOutput <- parsePluginOutput dir
     context "Building dependency graph" $ pure (buildGraph pluginOutput)
   pure (graph, Complete)

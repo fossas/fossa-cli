@@ -30,29 +30,31 @@ import Path
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
 import System.FilePath qualified as FP
 
-data DepGraphPlugin = DepGraphPlugin 
+data DepGraphPlugin = DepGraphPlugin
   { group :: Text
-  , artifact :: Text 
-  , version :: Text 
+  , artifact :: Text
+  , version :: Text
   , jar :: ByteString
   }
   deriving (Eq, Ord, Show)
 
 depGraphPlugin :: DepGraphPlugin
-depGraphPlugin = DepGraphPlugin
-  { group = "com.github.ferstl"
-  , artifact = "depgraph-maven-plugin"
-  , version = "4.0.1"
-  , jar = $(embedFile "scripts/depgraph-maven-plugin-4.0.1.jar") 
-  }
+depGraphPlugin =
+  DepGraphPlugin
+    { group = "com.github.ferstl"
+    , artifact = "depgraph-maven-plugin"
+    , version = "4.0.1"
+    , jar = $(embedFile "scripts/depgraph-maven-plugin-4.0.1.jar")
+    }
 
 depGraphPluginLegacy :: DepGraphPlugin
-depGraphPluginLegacy = DepGraphPlugin
-  { group = "com.github.ferstl"
-  , artifact = "depgraph-maven-plugin"
-  , version = "3.3.0"
-  , jar = $(embedFile "scripts/depgraph-maven-plugin-3.3.0.jar") 
-  }
+depGraphPluginLegacy =
+  DepGraphPlugin
+    { group = "com.github.ferstl"
+    , artifact = "depgraph-maven-plugin"
+    , version = "3.3.0"
+    , jar = $(embedFile "scripts/depgraph-maven-plugin-3.3.0.jar")
+    }
 
 withUnpackedPlugin ::
   ( Has (Lift IO) sig m
