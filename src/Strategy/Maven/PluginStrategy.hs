@@ -74,6 +74,7 @@ analyze dir plugin = do
     pluginOutput <- parsePluginOutput dir
     context "Building dependency graph" $ pure (buildGraph pluginOutput)
   pure (graph, Complete)
+
 data MvnPluginInstallFailed = MvnPluginInstallFailed
 instance ToDiagnostic MvnPluginInstallFailed where
   renderDiagnostic (MvnPluginInstallFailed) = "Failed to install maven plugin for analysis."
