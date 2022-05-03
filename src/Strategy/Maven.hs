@@ -88,7 +88,9 @@ getDepsDynamicAnalysis closure =
   context "Dynamic Analysis" $
     warnOnErr MissingEdges
       . warnOnErr MissingDeepDeps
-      $ (getDepsPlugin closure <||> getDepsTreeCmd closure)
+      $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
+
+-- Could pass plugin here
 
 getDepsPlugin ::
   ( Has (Lift IO) sig m
@@ -99,6 +101,16 @@ getDepsPlugin ::
   MavenProjectClosure ->
   m (Graphing Dependency, GraphBreadth)
 getDepsPlugin closure = context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
+
+getDepsPluginLegacy ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  ) =>
+  MavenProjectClosure ->
+  m (Graphing Dependency, GraphBreadth)
+getDepsPluginLegacy closure = context "Plugin analysis" (Plugin.analyzeLegacy' . parent $ PomClosure.closurePath closure)
 
 getDepsTreeCmd ::
   ( Has (Lift IO) sig m

@@ -5,9 +5,12 @@ module Strategy.Maven.Plugin (
   installPlugin,
   execPlugin,
   parsePluginOutput,
-  PluginOutput (..),
+  depGraphPlugin,
+  depGraphPluginLegacy,
   Artifact (..),
+  DepGraphPlugin (..),
   Edge (..),
+  PluginOutput (..),
 ) where
 
 import Control.Algebra
@@ -27,24 +30,37 @@ import Path
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
 import System.FilePath qualified as FP
 
-pluginGroup :: Text
-pluginGroup = "com.github.ferstl"
+data DepGraphPlugin = DepGraphPlugin 
+  { group :: Text
+  , artifact :: Text 
+  , version :: Text 
+  , jar :: ByteString
+  }
+  deriving (Eq, Ord, Show)
 
-pluginArtifact :: Text
-pluginArtifact = "depgraph-maven-plugin"
+depGraphPlugin :: DepGraphPlugin
+depGraphPlugin = DepGraphPlugin
+  { group = "com.github.ferstl"
+  , artifact = "depgraph-maven-plugin"
+  , version = "4.0.1"
+  , jar = $(embedFile "scripts/depgraph-maven-plugin-4.0.1.jar") 
+  }
 
-pluginVersion :: Text
-pluginVersion = "4.0.1"
-
-pluginJar :: ByteString
-pluginJar = $(embedFile "scripts/depgraph-maven-plugin-4.0.1.jar")
+depGraphPluginLegacy :: DepGraphPlugin
+depGraphPluginLegacy = DepGraphPlugin
+  { group = "com.github.ferstl"
+  , artifact = "depgraph-maven-plugin"
+  , version = "3.3.0"
+  , jar = $(embedFile "scripts/depgraph-maven-plugin-3.3.0.jar") 
+  }
 
 withUnpackedPlugin ::
   ( Has (Lift IO) sig m
   ) =>
+  DepGraphPlugin ->
   (FP.FilePath -> m a) ->
   m a
-withUnpackedPlugin act =
+withUnpackedPlugin plugin act =
   bracket
     (sendIO (getTempDir >>= \tmp -> createTempDir tmp "fossa-maven"))
     (sendIO . removeDirRecur)
@@ -52,15 +68,15 @@ withUnpackedPlugin act =
   where
     go tmpDir = do
       let pluginJarFilepath = fromAbsDir tmpDir FP.</> "plugin.jar"
-      sendIO (BS.writeFile pluginJarFilepath pluginJar)
+      sendIO (BS.writeFile pluginJarFilepath $ jar plugin)
 
       act pluginJarFilepath
 
-installPlugin :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> FP.FilePath -> m ()
-installPlugin dir path = void $ execThrow dir (mavenInstallPluginCmd path)
+installPlugin :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> FP.FilePath -> DepGraphPlugin -> m ()
+installPlugin dir path plugin = void $ execThrow dir (mavenInstallPluginCmd path plugin)
 
-execPlugin :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ()
-execPlugin dir = void $ execThrow dir mavenPluginDependenciesCmd
+execPlugin :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
+execPlugin dir plugin = void $ execThrow dir $ mavenPluginDependenciesCmd plugin
 
 outputFile :: Path Rel File
 outputFile = $(mkRelFile "target/dependency-graph.json")
@@ -68,27 +84,27 @@ outputFile = $(mkRelFile "target/dependency-graph.json")
 parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m PluginOutput
 parsePluginOutput dir = readContentsJson (dir </> outputFile)
 
-mavenInstallPluginCmd :: FP.FilePath -> Command
-mavenInstallPluginCmd pluginFilePath =
+mavenInstallPluginCmd :: FP.FilePath -> DepGraphPlugin -> Command
+mavenInstallPluginCmd pluginFilePath plugin =
   Command
     { cmdName = "mvn"
     , cmdArgs =
         [ "install:install-file"
-        , "-DgroupId=" <> pluginGroup
-        , "-DartifactId=" <> pluginArtifact
-        , "-Dversion=" <> pluginVersion
+        , "-DgroupId=" <> group plugin
+        , "-DartifactId=" <> artifact plugin
+        , "-Dversion=" <> version plugin
         , "-Dpackaging=jar"
         , "-Dfile=" <> toText pluginFilePath
         ]
     , cmdAllowErr = Never
     }
 
-mavenPluginDependenciesCmd :: Command
-mavenPluginDependenciesCmd =
+mavenPluginDependenciesCmd :: DepGraphPlugin -> Command
+mavenPluginDependenciesCmd plugin =
   Command
     { cmdName = "mvn"
     , cmdArgs =
-        [ pluginGroup <> ":" <> pluginArtifact <> ":" <> pluginVersion <> ":aggregate"
+        [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":aggregate"
         , "-DgraphFormat=json"
         , "-DmergeScopes"
         , "-DreduceEdges=false"
