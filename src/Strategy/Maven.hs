@@ -90,8 +90,6 @@ getDepsDynamicAnalysis closure =
       . warnOnErr MissingDeepDeps
       $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
 
--- Could pass plugin here
-
 getDepsPlugin ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
