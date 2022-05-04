@@ -7,27 +7,54 @@ module Strategy.Go.Transitive (
   decodeMany,
 ) where
 
-import Control.Algebra
-import Control.Applicative (many)
-import Control.Effect.Diagnostics
+import Control.Algebra (Has)
+import Control.Applicative (Alternative ((<|>)), many)
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (..),
+  context,
+  errCtx,
+  fatal,
+ )
 import Control.Monad (unless)
-import Data.Aeson
+import Data.Aeson (
+  FromJSON (parseJSON),
+  JSONPath,
+  Value (Array),
+  json,
+  withObject,
+  (.:),
+  (.:?),
+ )
 import Data.Aeson.Internal (formatError, iparse)
-import Data.Aeson.Parser
+import Data.Aeson.Parser (eitherDecodeWith)
 import Data.Attoparsec.ByteString qualified as A
 import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Maybe qualified as Maybe
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Vector qualified as V
-import Effect.Exec
-import Effect.Grapher
-import Path
+import Effect.Exec (
+  AllowErr (NonEmptyStdout),
+  Command (..),
+  Exec,
+  ExecErr (CommandParseError),
+  execThrow,
+  renderCommand,
+ )
+import Effect.Grapher (edge, label)
+import Path (Abs, Dir, Path)
 import Prettyprinter (pretty)
-import Strategy.Go.Types
+import Strategy.Go.Types (
+  GolangGrapher,
+  GolangPackage,
+  mkGolangPackage,
+  mkGolangVersion,
+ )
 
 goListCmd :: Command
 goListCmd =
@@ -45,9 +72,22 @@ data Package = Package
   }
   deriving (Eq, Ord, Show)
 
+data GoPackageReplacement = GoPackageReplacement
+  { pathReplacement :: Text
+  , versionReplacement :: Text
+  }
+  deriving (Show, Eq, Ord)
+
+instance FromJSON GoPackageReplacement where
+  parseJSON = withObject "GoPackageReplacement" $ \obj ->
+    GoPackageReplacement
+      <$> obj .: "Path"
+      <*> obj .: "Version"
+
 data Module = Module
   { modPath :: Text
   , modVersion :: Maybe Text
+  , modReplacement :: Maybe GoPackageReplacement
   }
   deriving (Eq, Ord, Show)
 
@@ -62,6 +102,7 @@ instance FromJSON Module where
   parseJSON = withObject "Module" $ \obj ->
     Module <$> obj .: "Path"
       <*> obj .:? "Version"
+      <*> obj .:? "Replace"
 
 -- `go list -json` is dumb: it outputs a bunch of raw json objects:
 --     {
@@ -88,18 +129,32 @@ graphTransitive = void . traverse_ go
   where
     go :: Has GolangGrapher sig m => Package -> m ()
     go package = unless (packageSystem package == Just True) $ do
-      let -- when a gomod field is present, use that for the package import path
-          -- otherwise use the top-level package import path
+      let packMod :: Maybe Module
+          packMod = packageModule package
+
+          modRep :: Maybe GoPackageReplacement
+          modRep = packMod >>= modReplacement
+
+          -- when a gomod field is present, use that or the module replacement
+          -- for the package import path otherwise use the top-level package
+          -- import path
           path :: Text
-          path = maybe (packageImportPath package) modPath (packageModule package)
+          path =
+            fromMaybe
+              (packageImportPath package)
+              ( pathReplacement <$> modRep
+                  <|> modPath <$> packMod
+              )
 
           pkg :: GolangPackage
           pkg = mkGolangPackage path
 
       traverse_ (traverse_ (edge pkg . mkGolangPackage)) (packageImports package)
 
-      -- when we have a gomod, and that gomod has a version, add label for version
-      case modVersion =<< packageModule package of
+      -- When we have a gomod with a replacement or a version use that
+      -- replacement or version
+      case versionReplacement <$> modRep
+        <|> (modVersion =<< packageModule package) of
         Nothing -> pure ()
         Just ver -> label pkg (mkGolangVersion ver)
 

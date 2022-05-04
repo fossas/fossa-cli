@@ -66,6 +66,7 @@ testPackages =
             Module
               { modPath = "github.com/example/bar"
               , modVersion = Nothing
+              , modReplacement = Nothing
               }
       , packageImports =
           Just
@@ -81,6 +82,7 @@ testPackages =
             Module
               { modPath = "github.com/example/baz"
               , modVersion = Nothing
+              , modReplacement = Nothing
               }
       , packageImports = Nothing
       , packageSystem = Nothing
@@ -92,6 +94,7 @@ testPackages =
             Module
               { modPath = "github.com/example/baz"
               , modVersion = Nothing
+              , modReplacement = Nothing
               }
       , packageImports = Nothing
       , packageSystem = Nothing
@@ -116,6 +119,7 @@ normalizedPackages =
             Module
               { modPath = "github.com/example/bar"
               , modVersion = Nothing
+              , modReplacement = Nothing
               }
       , packageImports =
           Just
@@ -131,6 +135,7 @@ normalizedPackages =
             Module
               { modPath = "github.com/example/baz"
               , modVersion = Nothing
+              , modReplacement = Nothing
               }
       , packageImports = Nothing
       , packageSystem = Nothing
@@ -142,6 +147,7 @@ normalizedPackages =
             Module
               { modPath = "github.com/example/baz"
               , modVersion = Nothing
+              , modReplacement = Nothing
               }
       , packageImports = Nothing
       , packageSystem = Nothing

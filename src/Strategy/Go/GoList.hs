@@ -109,6 +109,26 @@ analyze' dir = do
         pure ()
   pure (graph, Complete)
   where
+    -- TODO: Do we need this? It's for modules we receive from go list -m -json
+    -- all. Maybe need a test for output from that command to verify that it
+    -- NOTE: maybe it's necessary for replacements of direct deps
+    -- handle replacements
+    -- modToRequire :: GoListModule -> Require
+    -- modToRequire m =
+    --   let r =
+    --         Require
+    --           (maybe (path m) pathReplacement (moduleReplacement m))
+    --           ( fromMaybe
+    --               "LATEST"
+    --               ( fmap versionReplacement (moduleReplacement m)
+    --                   <|> version m
+    --               )
+    --           )
+    --           (not $ isIndirect m)
+    --    in pTraceShowId r
+
+    -- toRequires src = map modToRequire (withoutMain src)
+
     toRequires :: [GoListModule] -> [Require]
     toRequires src = map (\m -> Require (path m) (fromMaybe "LATEST" $ version m) (not $ isIndirect m)) (withoutMain src)
 
