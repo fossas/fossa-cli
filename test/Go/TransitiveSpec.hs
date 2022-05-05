@@ -1,14 +1,114 @@
 module Go.TransitiveSpec (spec) where
 
 import Control.Algebra (run)
-import DepTypes
-import GraphUtil
-import Strategy.Go.Transitive
+import DepTypes (DepType (GoType), Dependency (..), VerConstraint (CEq))
+import GraphUtil (expectDeps, expectEdges)
+import Strategy.Go.Transitive as Transitive (
+  GoPackageReplacement (..),
+  Module (Module, modPath, modReplacement, modVersion),
+  Package (..),
+  graphTransitive,
+  normalizeImportsToModules,
+ )
+
 import Strategy.Go.Types (graphingGolang)
-import Test.Hspec
+import Test.Hspec (Spec, describe, it, shouldBe)
 
 spec :: Spec
-spec = spec_packageToModule
+spec = do
+  spec_packageToModule
+  performsPackageReplacementSpec
+
+performsPackageReplacementSpec :: Spec
+performsPackageReplacementSpec =
+  describe "Package list module replacements" $ do
+    it "It replaces module name and version when the replacement is a parent" $ do
+      let normalized = normalizeImportsToModules replacedParentPackages
+          graph = run $ graphingGolang (graphTransitive normalized)
+      expectDeps [replacedModuleDep, nonReplacedPackageDep] graph
+      expectEdges [(replacedModuleDep, nonReplacedPackageDep)] graph
+
+    it "It replaces module name and version when the replacement is a child" $ do
+      let normalized = normalizeImportsToModules replacedChildPackages
+          graph = run $ graphingGolang (graphTransitive normalized)
+      expectDeps [replacedModuleDep, nonReplacedPackageDep] graph
+      expectEdges [(nonReplacedPackageDep, replacedModuleDep)] graph
+
+replacedModuleDep :: Dependency
+replacedModuleDep =
+  Dependency
+    { dependencyType = GoType
+    , dependencyName = "github.com/example/bar"
+    , dependencyVersion = Just $ CEq "2.0.0"
+    , dependencyLocations = []
+    , dependencyEnvironments = mempty
+    , dependencyTags = mempty
+    }
+
+nonReplacedPackageDep :: Dependency
+nonReplacedPackageDep =
+  Dependency
+    { dependencyType = GoType
+    , dependencyName = "github.com/example/baz"
+    , dependencyVersion = Nothing
+    , dependencyLocations = []
+    , dependencyEnvironments = mempty
+    , dependencyTags = mempty
+    }
+
+replacedParentPackages :: [Package]
+replacedParentPackages =
+  [ Package
+      { packageImportPath = "github.com/example/foo/inner-package"
+      , packageModule =
+          Just
+            Module
+              { modPath = "github.com/example/foo"
+              , modVersion = Just "1.0.0"
+              , modReplacement =
+                  Just
+                    GoPackageReplacement
+                      { Transitive.pathReplacement = "github.com/example/bar"
+                      , Transitive.versionReplacement = "2.0.0"
+                      }
+              }
+      , packageImports = Just ["github.com/example/baz"]
+      , packageSystem = Nothing
+      }
+  , Package
+      { packageImportPath = "github.com/example/baz"
+      , packageModule = Nothing
+      , packageImports = Nothing
+      , packageSystem = Nothing
+      }
+  ]
+
+replacedChildPackages :: [Package]
+replacedChildPackages =
+  [ Package
+      { packageImportPath = "github.com/example/foo/inner-package"
+      , packageModule =
+          Just
+            Module
+              { modPath = "github.com/example/foo"
+              , modVersion = Just "1.0.0"
+              , modReplacement =
+                  Just
+                    GoPackageReplacement
+                      { Transitive.pathReplacement = "github.com/example/bar"
+                      , Transitive.versionReplacement = "2.0.0"
+                      }
+              }
+      , packageImports = Nothing
+      , packageSystem = Nothing
+      }
+  , Package
+      { packageImportPath = "github.com/example/baz"
+      , packageModule = Nothing
+      , packageImports = Just ["github.com/example/foo/inner-package"]
+      , packageSystem = Nothing
+      }
+  ]
 
 -- HACK(fossas/team-analysis#514) see Strategy.Go.Transitive for more details
 --

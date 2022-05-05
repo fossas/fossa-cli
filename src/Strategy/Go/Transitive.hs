@@ -4,6 +4,7 @@ module Strategy.Go.Transitive (
   normalizeImportsToModules,
   Module (..),
   Package (..),
+  GoPackageReplacement (..),
   decodeMany,
 ) where
 
@@ -33,7 +34,6 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe)
 import Data.Maybe qualified as Maybe
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -124,6 +124,9 @@ decodeMany = eitherDecodeWith parser (iparse parseJSON)
       (objects :: [Value]) <- many json <* skipSpace <* A.endOfInput
       pure (Array (V.fromList objects))
 
+modPathOrReplacedPath :: Module -> Text
+modPathOrReplacedPath m = maybe (modPath m) pathReplacement (modReplacement m)
+
 graphTransitive :: Has GolangGrapher sig m => [Package] -> m ()
 graphTransitive = void . traverse_ go
   where
@@ -132,28 +135,18 @@ graphTransitive = void . traverse_ go
       let packMod :: Maybe Module
           packMod = packageModule package
 
-          modRep :: Maybe GoPackageReplacement
-          modRep = packMod >>= modReplacement
-
           -- when a gomod field is present, use that or the module replacement
           -- for the package import path otherwise use the top-level package
           -- import path
           path :: Text
-          path =
-            fromMaybe
-              (packageImportPath package)
-              ( pathReplacement <$> modRep
-                  <|> modPath <$> packMod
-              )
+          path = maybe (packageImportPath package) modPathOrReplacedPath packMod
 
           pkg :: GolangPackage
           pkg = mkGolangPackage path
 
       traverse_ (traverse_ (edge pkg . mkGolangPackage)) (packageImports package)
 
-      -- When we have a gomod with a replacement or a version use that
-      -- replacement or version
-      case versionReplacement <$> modRep
+      case versionReplacement <$> (packMod >>= modReplacement)
         <|> (modVersion =<< packageModule package) of
         Nothing -> pure ()
         Just ver -> label pkg (mkGolangVersion ver)
@@ -185,6 +178,7 @@ instance ToDiagnostic GoListCmdFailed where
 normalizeImportsToModules :: [Package] -> [Package]
 normalizeImportsToModules packages = map normalizeSingle packages
   where
+    -- TODO: Normalize names to replacements here also
     normalizeSingle :: Package -> Package
     normalizeSingle package = package{packageImports = map replaceImport <$> packageImports package}
 
@@ -195,7 +189,7 @@ normalizeImportsToModules packages = map normalizeSingle packages
     packageNameToModule :: Map.Map Text Text
     packageNameToModule =
       Map.fromList
-        [ (packageImportPath package, modPath gomod)
+        [ (packageImportPath package, modPathOrReplacedPath gomod)
         | package <- packages
         , Just gomod <- [packageModule package]
         ]
