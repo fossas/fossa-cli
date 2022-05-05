@@ -18,6 +18,17 @@ if [ -z "$GITHUB_TOKEN" ]; then
   exit 1
 fi
 
+# Print version of required tools
+echo "curl version"
+echo "------------"
+curl --version
+echo ""
+
+echo "jq version"
+echo "----------"
+jq --version
+echo ""
+
 rm -f vendor-bins/*
 mkdir -p vendor-bins
 
@@ -50,10 +61,10 @@ WIGGINS_TAG="2022-01-19-a647d17"
 echo "Downloading wiggins binary"
 echo "Using wiggins release: $WIGGINS_TAG"
 WIGGINS_RELEASE_JSON=vendor-bins/wiggins-release.json
-curl -sSL \
+curl -sL \
     -H "Authorization: token $GITHUB_TOKEN" \
     -H "Accept: application/vnd.github.v3.raw" \
-    api.github.com/repos/fossas/basis/releases/tags/$WIGGINS_TAG > $WIGGINS_RELEASE_JSON
+    https://api.github.com/repos/fossas/basis/releases/tags/$WIGGINS_TAG > $WIGGINS_RELEASE_JSON
 
 cat $WIGGINS_RELEASE_JSON
 WIGGINS_TAG=$(jq -cr ".name" $WIGGINS_RELEASE_JSON)
@@ -74,10 +85,10 @@ THEMIS_TAG="2022-04-25-ead2cc3"
 echo "Downloading themis binary"
 echo "Using themis release: $THEMIS_TAG"
 THEMIS_RELEASE_JSON=vendor-bins/themis-release.json
-curl -sSL \
+curl -sL \
     -H "Authorization: token $GITHUB_TOKEN" \
     -H "Accept: application/vnd.github.v3.raw" \
-    api.github.com/repos/fossas/basis/releases/tags/$THEMIS_TAG > $THEMIS_RELEASE_JSON
+    https://api.github.com/repos/fossas/basis/releases/tags/$THEMIS_TAG > $THEMIS_RELEASE_JSON
 cat $THEMIS_RELEASE_JSON
 
 THEMIS_TAG=$(jq -cr ".name" $THEMIS_RELEASE_JSON)
@@ -114,10 +125,10 @@ else
   echo "Downloading forked syft binary"
   echo "Using forked syft release: $SYFT_TAG"
   SYFT_RELEASE_JSON=vendor-bins/syft-release.json
-  curl -sSL \
+  curl -sL \
       -H "Authorization: token $GITHUB_TOKEN" \
       -H "Accept: application/vnd.github.v3.raw" \
-      api.github.com/repos/fossas/syft/releases/tags/${SYFT_TAG} > $SYFT_RELEASE_JSON
+      https://api.github.com/repos/fossas/syft/releases/tags/${SYFT_TAG} > $SYFT_RELEASE_JSON
   cat $SYFT_RELEASE_JSON
 
   # Remove leading 'v' from version tag
