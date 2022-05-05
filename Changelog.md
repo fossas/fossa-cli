@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.2.15
+
+- Update Maven depGraph plugin to 4.0.1 and add a fallback ot the legacy 3.3.0 plugin ([#895](https://github.com/fossas/fossa-cli/pull/895))
+
 ## v3.2.14
 
 - Gradle: Considers `testFixturesApi` and `testFixturesImplementation` to be test configuration, and it's dependencies are excluded in analyzed dependency graph. ([#920](https://github.com/fossas/fossa-cli/pull/920))
