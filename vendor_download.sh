@@ -18,7 +18,6 @@ if [ -z "$GITHUB_TOKEN" ]; then
   exit 1
 fi
 
-# Print version of required tools
 echo "curl version"
 echo "------------"
 curl --version
@@ -66,7 +65,6 @@ curl -sL \
     -H "Accept: application/vnd.github.v3.raw" \
     https://api.github.com/repos/fossas/basis/releases/tags/$WIGGINS_TAG > $WIGGINS_RELEASE_JSON
 
-cat $WIGGINS_RELEASE_JSON
 WIGGINS_TAG=$(jq -cr ".name" $WIGGINS_RELEASE_JSON)
 FILTER=".name == \"scotland_yard-wiggins-$BASIS_ASSET_POSTFIX\""
 jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $WIGGINS_RELEASE_JSON | while read ASSET; do
@@ -89,7 +87,6 @@ curl -sL \
     -H "Authorization: token $GITHUB_TOKEN" \
     -H "Accept: application/vnd.github.v3.raw" \
     https://api.github.com/repos/fossas/basis/releases/tags/$THEMIS_TAG > $THEMIS_RELEASE_JSON
-cat $THEMIS_RELEASE_JSON
 
 THEMIS_TAG=$(jq -cr ".name" $THEMIS_RELEASE_JSON)
 FILTER=".name == \"themis-cli-$BASIS_ASSET_POSTFIX\""
@@ -129,7 +126,6 @@ else
       -H "Authorization: token $GITHUB_TOKEN" \
       -H "Accept: application/vnd.github.v3.raw" \
       https://api.github.com/repos/fossas/syft/releases/tags/${SYFT_TAG} > $SYFT_RELEASE_JSON
-  cat $SYFT_RELEASE_JSON
 
   # Remove leading 'v' from version tag
   # 'v123' -> '123'
