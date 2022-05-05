@@ -108,7 +108,7 @@ getDepsPluginLegacy ::
   ) =>
   MavenProjectClosure ->
   m (Graphing Dependency, GraphBreadth)
-getDepsPluginLegacy closure = context "Plugin analysis" (Plugin.analyzeLegacy' . parent $ PomClosure.closurePath closure)
+getDepsPluginLegacy closure = context "Legacy Plugin analysis" (Plugin.analyzeLegacy' . parent $ PomClosure.closurePath closure)
 
 getDepsTreeCmd ::
   ( Has (Lift IO) sig m
