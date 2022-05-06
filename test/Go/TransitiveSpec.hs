@@ -8,7 +8,7 @@ import Strategy.Go.Transitive as Transitive (
   Module (Module, modPath, modReplacement, modVersion),
   Package (..),
   graphTransitive,
-  normalizeImportsToModules,
+  normalizeImportPathsToModules,
  )
 
 import Strategy.Go.Types (graphingGolang)
@@ -23,13 +23,13 @@ performsPackageReplacementSpec :: Spec
 performsPackageReplacementSpec =
   describe "Package list module replacements" $ do
     it "It replaces module name and version when the replacement is a parent" $ do
-      let normalized = normalizeImportsToModules replacedParentPackages
+      let normalized = normalizeImportPathsToModules replacedParentPackages
           graph = run $ graphingGolang (graphTransitive normalized)
       expectDeps [replacedModuleDep, nonReplacedPackageDep] graph
       expectEdges [(replacedModuleDep, nonReplacedPackageDep)] graph
 
     it "It replaces module name and version when the replacement is a child" $ do
-      let normalized = normalizeImportsToModules replacedChildPackages
+      let normalized = normalizeImportPathsToModules replacedChildPackages
           graph = run $ graphingGolang (graphTransitive normalized)
       expectDeps [replacedModuleDep, nonReplacedPackageDep] graph
       expectEdges [(nonReplacedPackageDep, replacedModuleDep)] graph
@@ -116,18 +116,18 @@ replacedChildPackages =
 -- aren't dropped from the dependency graph
 spec_packageToModule :: Spec
 spec_packageToModule =
-  describe "normalizeImportsToModules" $ do
+  describe "normalizeImportPathsToModules" $ do
     it "should map package imports to their modules" $ do
-      let result = normalizeImportsToModules testPackages
+      let result = normalizeImportPathsToModules testPackages
       result `shouldBe` normalizedPackages
 
     it "should prevent packages from appearing in the final graph" $ do
-      let graph = run $ graphingGolang (graphTransitive (normalizeImportsToModules testPackages))
+      let graph = run $ graphingGolang (graphTransitive (normalizeImportPathsToModules testPackages))
       expectDeps [fooDep, barDep, bazDep] graph
       expectEdges [(fooDep, barDep), (barDep, bazDep)] graph
 
     it "should be a no-op for non-module packages" $ do
-      normalizeImportsToModules nonModulePackages `shouldBe` nonModulePackages
+      normalizeImportPathsToModules nonModulePackages `shouldBe` nonModulePackages
 
 nonModulePackages :: [Package]
 nonModulePackages =
@@ -213,7 +213,7 @@ normalizedPackages =
       , packageSystem = Nothing
       }
   , Package
-      { packageImportPath = "github.com/example/bar/some/package"
+      { packageImportPath = "github.com/example/bar"
       , packageModule =
           Just
             Module
@@ -229,7 +229,7 @@ normalizedPackages =
       , packageSystem = Nothing
       }
   , Package
-      { packageImportPath = "github.com/example/baz/other"
+      { packageImportPath = "github.com/example/baz"
       , packageModule =
           Just
             Module
