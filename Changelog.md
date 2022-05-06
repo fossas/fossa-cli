@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.2.16
+- Go: When statically analyzing a project, apply reported replacements. ([#926](https://github.com/fossas/fossa-cli/pull/926))
+
 ## v3.2.15
 
 - Update Maven depGraph plugin to 4.0.1 and add a fallback ot the legacy 3.3.0 plugin ([#895](https://github.com/fossas/fossa-cli/pull/895))
