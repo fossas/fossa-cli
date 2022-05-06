@@ -168,7 +168,7 @@ spec = do
 spec_buildGraph :: Spec
 spec_buildGraph =
   describe "buildGraph" $ do
-    it "constructs a trivial graph and respects overrides" $ do
+    it "constructs a trivial graph and performs overrides" $ do
       let result = buildGraph trivialGomod & graphingGolang & run
       result `shouldBe` trivialGraph
 

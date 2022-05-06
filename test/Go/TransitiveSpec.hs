@@ -10,7 +10,7 @@ import Strategy.Go.Transitive as Transitive (
   NormalizedImportPath (NormalizedImportPath),
   Package (..),
   graphTransitive,
-  normalizeImportPathsToModules,
+  normalizeImportPaths,
  )
 
 import Data.Coerce (coerce)
@@ -25,14 +25,14 @@ spec = do
 performsPackageReplacementSpec :: Spec
 performsPackageReplacementSpec =
   describe "Package list module replacements" $ do
-    it "It replaces module name and version when the replacement is a parent" $ do
-      let normalized = normalizeImportPathsToModules replacedParentPackages
+    it "It replaces module name and version when the replacement isn't in an import list" $ do
+      let normalized = normalizeImportPaths unimportedPackageReplacement
           graph = run $ graphingGolang (graphTransitive normalized)
       expectDeps [replacedModuleDep, nonReplacedPackageDep] graph
       expectEdges [(replacedModuleDep, nonReplacedPackageDep)] graph
 
-    it "It replaces module name and version when the replacement is a child" $ do
-      let normalized = normalizeImportPathsToModules replacedChildPackages
+    it "It replaces module name and version when the replacement is in an import list" $ do
+      let normalized = normalizeImportPaths importedPackageReplacement
           graph = run $ graphingGolang (graphTransitive normalized)
       expectDeps [replacedModuleDep, nonReplacedPackageDep] graph
       expectEdges [(nonReplacedPackageDep, replacedModuleDep)] graph
@@ -59,8 +59,8 @@ nonReplacedPackageDep =
     , dependencyTags = mempty
     }
 
-replacedParentPackages :: [Package GoListPkgImportPath]
-replacedParentPackages =
+unimportedPackageReplacement :: [Package GoListPkgImportPath]
+unimportedPackageReplacement =
   [ Package
       { packageImportPath = "github.com/example/foo/inner-package"
       , packageModule =
@@ -86,8 +86,8 @@ replacedParentPackages =
       }
   ]
 
-replacedChildPackages :: [Package GoListPkgImportPath]
-replacedChildPackages =
+importedPackageReplacement :: [Package GoListPkgImportPath]
+importedPackageReplacement =
   [ Package
       { packageImportPath = "github.com/example/foo/inner-package"
       , packageModule =
@@ -119,18 +119,18 @@ replacedChildPackages =
 -- aren't dropped from the dependency graph
 spec_packageToModule :: Spec
 spec_packageToModule =
-  describe "normalizeImportPathsToModules" $ do
+  describe "normalizeImportPaths" $ do
     it "should map package imports to their modules" $ do
-      let result = normalizeImportPathsToModules testPackages
+      let result = normalizeImportPaths testPackages
       result `shouldBe` normalizedPackages
 
     it "should prevent packages from appearing in the final graph" $ do
-      let graph = run $ graphingGolang (graphTransitive (normalizeImportPathsToModules testPackages))
+      let graph = run $ graphingGolang (graphTransitive (normalizeImportPaths testPackages))
       expectDeps [fooDep, barDep, bazDep] graph
       expectEdges [(fooDep, barDep), (barDep, bazDep)] graph
 
     it "should be a no-op for non-module packages" $ do
-      normalizeImportPathsToModules nonModulePackages `shouldBe` coerce nonModulePackages
+      normalizeImportPaths nonModulePackages `shouldBe` coerce nonModulePackages
 
 nonModulePackages :: [Package GoListPkgImportPath]
 nonModulePackages =

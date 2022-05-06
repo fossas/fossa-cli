@@ -1,7 +1,7 @@
 module Strategy.Go.Transitive (
   fillInTransitive,
   graphTransitive,
-  normalizeImportPathsToModules,
+  normalizeImportPaths,
   Module (..),
   Package (..),
   GoPackageReplacement (..),
@@ -78,7 +78,6 @@ data Package a = Package
 newtype GoListPkgImportPath = GoListPkgImportPath Text
   deriving (Eq, Ord, Show, FromJSON, IsString)
 
--- |We may change a raw package import path into a module name.
 newtype NormalizedImportPath = NormalizedImportPath {unNormalizedImportPath :: Text}
   deriving (Eq, Ord, Show, IsString)
 
@@ -150,7 +149,7 @@ graphTransitive = void . traverse_ go
 
       traverse_ (traverse_ (edge pkg . pathToGolangPackage)) (packageImports package)
 
-      case versionReplacement <$> (packMod >>= modReplacement)
+      case versionReplacement <$> (modReplacement =<< packMod)
         <|> (modVersion =<< packageModule package) of
         Nothing -> pure ()
         Just ver -> label pkg (mkGolangVersion ver)
@@ -168,7 +167,7 @@ fillInTransitive dir = context "Getting deep dependencies" $ do
     Left (path, err) -> fatal (CommandParseError goListCmd (toText (formatError path err)))
     Right (packages :: [Package GoListPkgImportPath]) ->
       context "Adding transitive dependencies" $
-        graphTransitive (normalizeImportPathsToModules packages)
+        graphTransitive (normalizeImportPaths packages)
 
 data GoListCmdFailed = GoListCmdFailed
 instance ToDiagnostic GoListCmdFailed where
@@ -186,8 +185,8 @@ instance ToDiagnostic GoListCmdFailed where
 -- As a workaround, we resolve import paths to their respective module or module
 -- replacement, map package imports to their module or replacement, and use the
 -- modules in the final dependency graph.
-normalizeImportPathsToModules :: [Package GoListPkgImportPath] -> [Package NormalizedImportPath]
-normalizeImportPathsToModules packages = map normalizeSingle packages
+normalizeImportPaths :: [Package GoListPkgImportPath] -> [Package NormalizedImportPath]
+normalizeImportPaths packages = map normalizeSingle packages
   where
     normalizeSingle :: Package GoListPkgImportPath -> Package NormalizedImportPath
     normalizeSingle package =
