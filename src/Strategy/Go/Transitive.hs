@@ -179,19 +179,16 @@ normalizeImportPathsToModules packages = map normalizeSingle packages
     normalizeSingle :: Package -> Package
     normalizeSingle package =
       package
-        { packageImports = map replaceImport <$> packageImports package
+        { packageImports = map normalizeImportPath <$> packageImports package
         , -- when a gomod field is present, use that or the module replacement
           -- for the package import path otherwise use the top-level package
           -- import path
-          packageImportPath = normalizeImportPath package
+          packageImportPath = normalizeImportPath . packageImportPath $ package
         }
 
-    normalizeImportPath :: Package -> Text
-    normalizeImportPath Package{packageImportPath} = Maybe.fromMaybe packageImportPath (Map.lookup packageImportPath packageNameToModule)
-
     -- If a package doesn't have an associated module, use the package name instead
-    replaceImport :: Text -> Text
-    replaceImport packageName = Maybe.fromMaybe packageName (Map.lookup packageName packageNameToModule)
+    normalizeImportPath :: Text -> Text
+    normalizeImportPath packageImportPath = Maybe.fromMaybe packageImportPath (Map.lookup packageImportPath packageNameToModule)
 
     normalizedImportPath :: Module -> Text
     normalizedImportPath m = maybe (modPath m) pathReplacement (modReplacement m)
