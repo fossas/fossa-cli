@@ -4,13 +4,16 @@ import Control.Algebra (run)
 import DepTypes (DepType (GoType), Dependency (..), VerConstraint (CEq))
 import GraphUtil (expectDeps, expectEdges)
 import Strategy.Go.Transitive as Transitive (
+  GoListPkgImportPath (GoListPkgImportPath),
   GoPackageReplacement (..),
   Module (Module, modPath, modReplacement, modVersion),
+  NormalizedImportPath (NormalizedImportPath),
   Package (..),
   graphTransitive,
   normalizeImportPathsToModules,
  )
 
+import Data.Coerce (coerce)
 import Strategy.Go.Types (graphingGolang)
 import Test.Hspec (Spec, describe, it, shouldBe)
 
@@ -56,7 +59,7 @@ nonReplacedPackageDep =
     , dependencyTags = mempty
     }
 
-replacedParentPackages :: [Package]
+replacedParentPackages :: [Package GoListPkgImportPath]
 replacedParentPackages =
   [ Package
       { packageImportPath = "github.com/example/foo/inner-package"
@@ -83,7 +86,7 @@ replacedParentPackages =
       }
   ]
 
-replacedChildPackages :: [Package]
+replacedChildPackages :: [Package GoListPkgImportPath]
 replacedChildPackages =
   [ Package
       { packageImportPath = "github.com/example/foo/inner-package"
@@ -127,9 +130,9 @@ spec_packageToModule =
       expectEdges [(fooDep, barDep), (barDep, bazDep)] graph
 
     it "should be a no-op for non-module packages" $ do
-      normalizeImportPathsToModules nonModulePackages `shouldBe` nonModulePackages
+      normalizeImportPathsToModules nonModulePackages `shouldBe` coerce nonModulePackages
 
-nonModulePackages :: [Package]
+nonModulePackages :: [Package GoListPkgImportPath]
 nonModulePackages =
   [ Package
       { packageImportPath = "github.com/example/foo"
@@ -148,7 +151,7 @@ nonModulePackages =
       }
   ]
 
-testPackages :: [Package]
+testPackages :: [Package GoListPkgImportPath]
 testPackages =
   [ Package
       { packageImportPath = "github.com/example/foo"
@@ -201,7 +204,7 @@ testPackages =
       }
   ]
 
-normalizedPackages :: [Package]
+normalizedPackages :: [Package NormalizedImportPath]
 normalizedPackages =
   [ Package
       { packageImportPath = "github.com/example/foo"
