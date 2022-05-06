@@ -60,7 +60,7 @@ WIGGINS_TAG="2022-01-19-a647d17"
 echo "Downloading wiggins binary"
 echo "Using wiggins release: $WIGGINS_TAG"
 WIGGINS_RELEASE_JSON=vendor-bins/wiggins-release.json
-curl -sL \
+curl -sSL \
     -H "Authorization: token $GITHUB_TOKEN" \
     -H "Accept: application/vnd.github.v3.raw" \
     https://api.github.com/repos/fossas/basis/releases/tags/$WIGGINS_TAG > $WIGGINS_RELEASE_JSON
@@ -83,7 +83,7 @@ THEMIS_TAG="2022-04-25-ead2cc3"
 echo "Downloading themis binary"
 echo "Using themis release: $THEMIS_TAG"
 THEMIS_RELEASE_JSON=vendor-bins/themis-release.json
-curl -sL \
+curl -sSL \
     -H "Authorization: token $GITHUB_TOKEN" \
     -H "Accept: application/vnd.github.v3.raw" \
     https://api.github.com/repos/fossas/basis/releases/tags/$THEMIS_TAG > $THEMIS_RELEASE_JSON
@@ -138,7 +138,7 @@ else
     OUTPUT=vendor-bins/${NAME%"-$ASSET_POSTFIX"}
 
     echo "Downloading '$NAME' to '$OUTPUT'"
-    curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s $URL > $OUTPUT
+    curl -sSL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s $URL > $OUTPUT
     echo "Extracting syft binary from tarball"
     tar xzf $OUTPUT fossa-container-scanning
     mv fossa-container-scanning vendor-bins/syft
