@@ -38,6 +38,7 @@ import Data.Maybe (fromMaybe)
 import Data.String.Conversion
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.UUID.V4 (nextRandom)
 import Effect.Logger (Logger, logDebug)
 import Fossa.API.Types
 import Path hiding ((</>))
@@ -169,7 +170,9 @@ arcToLocator arc =
 
 compressFile :: Path Abs Dir -> Path Abs Dir -> FilePath -> IO FilePath
 compressFile outputDir directory fileToTar = do
-  let finalFile = toString outputDir </> safeSeparators fileToTar
+  suffix <- nextRandom
+  let finalFilename = fileToTar ++ show suffix
+  let finalFile = toString outputDir </> safeSeparators finalFilename
   entries <- Tar.pack (toString directory) [fileToTar]
   BS.writeFile finalFile $ GZip.compress $ Tar.write entries
   pure finalFile
