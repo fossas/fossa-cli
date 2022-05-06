@@ -42,7 +42,7 @@ curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.ps1'))
 ```
-
+<!-- markdown-link-check-disable-next-line -->
 Alternatively, install using [Scoop](https://scoop.sh/):
 
 ```

@@ -2,6 +2,7 @@
 
 module Strategy.Maven.PluginStrategy (
   analyze',
+  analyzeLegacy',
   buildGraph,
 ) where
 
@@ -25,8 +26,11 @@ import Graphing (Graphing)
 import Path (Abs, Dir, Path)
 import Strategy.Maven.Plugin (
   Artifact (..),
+  DepGraphPlugin,
   Edge (..),
   PluginOutput (..),
+  depGraphPlugin,
+  depGraphPluginLegacy,
   execPlugin,
   installPlugin,
   parsePluginOutput,
@@ -42,10 +46,31 @@ analyze' ::
   ) =>
   Path Abs Dir ->
   m (Graphing Dependency, GraphBreadth)
-analyze' dir = do
-  graph <- withUnpackedPlugin $ \filepath -> do
-    context "Installing plugin" $ errCtx MvnPluginInstallFailed $ installPlugin dir filepath
-    context "Running plugin" $ errCtx MvnPluginExecFailed $ execPlugin dir
+analyze' dir = analyze dir depGraphPlugin
+
+analyzeLegacy' ::
+  ( Has (Lift IO) sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  , Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  m (Graphing Dependency, GraphBreadth)
+analyzeLegacy' dir = analyze dir depGraphPluginLegacy
+
+analyze ::
+  ( Has (Lift IO) sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  , Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  DepGraphPlugin ->
+  m (Graphing Dependency, GraphBreadth)
+analyze dir plugin = do
+  graph <- withUnpackedPlugin plugin $ \filepath -> do
+    context "Installing plugin" $ errCtx MvnPluginInstallFailed $ installPlugin dir filepath plugin
+    context "Running plugin" $ errCtx MvnPluginExecFailed $ execPlugin dir plugin
     pluginOutput <- parsePluginOutput dir
     context "Building dependency graph" $ pure (buildGraph pluginOutput)
   pure (graph, Complete)
