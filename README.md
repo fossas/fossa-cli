@@ -51,7 +51,7 @@ scoop install fossa
 
 ### Installing manually
 
-You can install the FOSSA CLI releases manually by downloading the latest release from [GitHub Releases](https://github.com/fossas/fossa-cli/releases) and extracting the binary to your `$PATH`. 
+You can install the FOSSA CLI releases manually by downloading the latest release from [GitHub Releases](https://github.com/fossas/fossa-cli/releases) and extracting the binary to your `$PATH`.
 
 To install FOSSA CLI 1.x with install script please refer to: [installing 1.x guide](./docs/install-v1.md) 
 
