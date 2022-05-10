@@ -25,13 +25,13 @@ spec = do
 performsPackageReplacementSpec :: Spec
 performsPackageReplacementSpec =
   describe "Package list module replacements" $ do
-    it "It replaces module name and version when the replacement isn't in an import list" $ do
+    it "replaces module name and version when the replacement isn't in an import list" $ do
       let normalized = normalizeImportPaths unimportedPackageReplacement
           graph = run $ graphingGolang (graphTransitive normalized)
       expectDeps [replacedModuleDep, nonReplacedPackageDep] graph
       expectEdges [(replacedModuleDep, nonReplacedPackageDep)] graph
 
-    it "It replaces module name and version when the replacement is in an import list" $ do
+    it "replaces module name and version when the replacement is in an import list" $ do
       let normalized = normalizeImportPaths importedPackageReplacement
           graph = run $ graphingGolang (graphTransitive normalized)
       expectDeps [replacedModuleDep, nonReplacedPackageDep] graph
