@@ -29,6 +29,7 @@ monorepoScan ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
+  , Has Exec sig m
   ) =>
   MonorepoAnalyzeConfig ->
   m ()
@@ -44,8 +45,7 @@ monorepoScan MonorepoAnalyzeConfig{..} = withWigginsBinary $ \binaryPaths -> do
           monorepoMetadata
 
   logInfo "Running monorepo scan"
-  stdout <- context "Monorepo" $ runExecIO $ runWiggins binaryPaths wigginsOpts
-  logInfo $ pretty stdout
+  context "Monorepo" $ runWiggins binaryPaths wigginsOpts
 
 runWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
 runWiggins binaryPaths opts = do

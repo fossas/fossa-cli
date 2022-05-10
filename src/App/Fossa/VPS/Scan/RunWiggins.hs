@@ -27,7 +27,7 @@ import Effect.Exec (
   AllowErr (Never),
   Command (..),
   Exec,
-  execThrow,
+  rawExecThrow,
  )
 import Effect.Logger (Severity (SevDebug))
 import Fossa.API.Types (ApiKey (unApiKey), ApiOpts (..))
@@ -90,8 +90,8 @@ optPathAsFilter p = fromMaybe t $ Text.stripSuffix "/" t
   where
     t = toText p
 
-execWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
-execWiggins binaryPaths opts = decodeUtf8 . BL.toStrict <$> execThrow (scanDir opts) (wigginsCommand binaryPaths opts)
+execWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m ()
+execWiggins binaryPaths opts = rawExecThrow (scanDir opts) (wigginsCommand binaryPaths opts)
 
 wigginsCommand :: BinaryPaths -> WigginsOpts -> Command
 wigginsCommand bin WigginsOpts{..} = do

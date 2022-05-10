@@ -68,6 +68,7 @@ import System.Exit (ExitCode (..))
 import System.Process.Typed (
   proc,
   readProcess,
+  runProcess,
   setWorkingDir,
  )
 import Text.Megaparsec (Parsec, runParser)
@@ -145,6 +146,8 @@ data ExecF a where
   -- - a description of the command failure
   Exec :: SomeBase Dir -> Command -> ExecF (Either CmdFailure Stdout)
 
+  RawExec :: SomeBase Dir -> Command -> ExecF (Either IOException ExitCode)
+
 type Exec = Simple ExecF
 
 $(deriveRecordable ''ExecF)
@@ -159,6 +162,10 @@ data ExecErr
     CommandFailed CmdFailure
   | -- | Command output couldn't be parsed. command, err
     CommandParseError Command Text
+  |
+    RawException IOException
+  |
+    RawExitFailure Int
   deriving (Eq, Ord, Show, Generic)
 
 renderCmdFailure :: CmdFailure -> Doc AnsiStyle
@@ -216,6 +223,10 @@ instance ToDiagnostic ExecErr where
 exec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure Stdout)
 exec dir cmd = sendSimple (Exec (Abs dir) cmd)
 
+-- | Execute a command
+rawExec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either IOException ExitCode)
+rawExec dir cmd = sendSimple (RawExec (Abs dir) cmd)
+
 type Parser = Parsec Void Text
 
 -- | Parse the stdout of a command
@@ -247,6 +258,15 @@ execThrow' :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Comma
 execThrow' cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
   dir <- getCurrentDir
   execThrow dir cmd
+
+-- | A variant of 'exec' that throws a 'ExecErr' when the command returns a non-zero exit code
+rawExecThrow :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> Command -> m ()
+rawExecThrow dir cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
+  result <- rawExec dir cmd
+  case result of
+    Left failure -> fatal (RawException failure)
+    Right (ExitFailure exitcode) -> fatal (RawExitFailure exitcode)
+    Right ExitSuccess -> pure ()
 
 type ExecIOC = SimpleC ExecF
 
@@ -285,3 +305,14 @@ runExecIO = interpret $ \case
         result = first ioExceptionToCmdFailure processResult >>= mangleResult
 
     pure result
+
+  RawExec dir cmd -> sendIO $ do
+    absolute <-
+      case dir of
+        Abs absDir -> pure absDir
+        Rel relDir -> makeAbsolute relDir
+
+    let cmdName' = toString $ cmdName cmd
+        cmdArgs' = map toString $ cmdArgs cmd
+
+    try $ runProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs'))
