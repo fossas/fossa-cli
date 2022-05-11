@@ -9,6 +9,7 @@ module Effect.Exec (
   ExecErr (..),
   exec,
   execThrow,
+  rawExecThrow,
   Command (..),
   CmdFailure (..),
   AllowErr (..),
@@ -24,6 +25,7 @@ module Effect.Exec (
 
 import App.Support (reportDefectMsg)
 import Control.Algebra (Has)
+import Control.Arrow (left)
 import Control.Carrier.Simple (
   Simple,
   SimpleC,
@@ -40,7 +42,6 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Record (RecordableValue (..))
 import Control.Effect.Record.TH (deriveRecordable)
 import Control.Effect.Replay (ReplayableValue (..))
-import Control.Effect.Replay.TH (deriveReplayable)
 import Control.Exception (IOException, try)
 import Data.Aeson (
   FromJSON (parseJSON),
@@ -139,6 +140,12 @@ type Stdout = BL.ByteString
 
 type Stderr = BL.ByteString
 
+newtype ExceptionText = ExceptionText Text
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ExceptionText
+instance RecordableValue ExceptionText
+
 -- TODO: add a "shell command" method; this would help in App.Fossa.VPS.NinjaGraph
 data ExecF a where
   -- | Exec runs a command and returns either:
@@ -146,12 +153,14 @@ data ExecF a where
   -- - a description of the command failure
   Exec :: SomeBase Dir -> Command -> ExecF (Either CmdFailure Stdout)
 
-  RawExec :: SomeBase Dir -> Command -> ExecF (Either IOException ExitCode)
+  -- | RawExec runs a command inheriting stdout and stderr and returns either:
+  -- - text describing an error
+  -- - the exit code of the command
+  RawExec :: SomeBase Dir -> Command -> ExecF (Either ExceptionText ExitCode)
 
 type Exec = Simple ExecF
 
 $(deriveRecordable ''ExecF)
-$(deriveReplayable ''ExecF)
 
 deriving instance Show (ExecF a)
 deriving instance Eq (ExecF a)
@@ -163,7 +172,7 @@ data ExecErr
   | -- | Command output couldn't be parsed. command, err
     CommandParseError Command Text
   |
-    RawException IOException
+    RawException ExceptionText
   |
     RawExitFailure Int
   deriving (Eq, Ord, Show, Generic)
@@ -224,7 +233,7 @@ exec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure Stdout
 exec dir cmd = sendSimple (Exec (Abs dir) cmd)
 
 -- | Execute a command
-rawExec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either IOException ExitCode)
+rawExec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either ExceptionText ExitCode)
 rawExec dir cmd = sendSimple (RawExec (Abs dir) cmd)
 
 type Parser = Parsec Void Text
@@ -315,4 +324,9 @@ runExecIO = interpret $ \case
     let cmdName' = toString $ cmdName cmd
         cmdArgs' = map toString $ cmdArgs cmd
 
-    try $ runProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs'))
+    processResult <- try $ runProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs'))
+
+    let result :: Either ExceptionText ExitCode
+        result = left (ExceptionText . Text.pack . show) (processResult :: Either IOException ExitCode)
+
+    pure result

@@ -47,6 +47,6 @@ monorepoScan MonorepoAnalyzeConfig{..} = withWigginsBinary $ \binaryPaths -> do
   logInfo "Running monorepo scan"
   context "Monorepo" $ runWiggins binaryPaths wigginsOpts
 
-runWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
+runWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m ()
 runWiggins binaryPaths opts = do
   context "Running monorepo binary" $ execWiggins binaryPaths opts
