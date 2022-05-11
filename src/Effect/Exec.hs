@@ -227,6 +227,10 @@ instance ToDiagnostic ExecErr where
         , ""
         , reportDefectMsg
         ]
+    RawException (ExceptionText text) -> pretty text
+    RawExitFailure exitcode ->
+        pretty $ "Failed to run command. Exit code: " <> show exitcode <> "."
+
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
 exec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure Stdout)
