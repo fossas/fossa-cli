@@ -152,7 +152,6 @@ data ExecF a where
   -- - stdout when the command succeeds
   -- - a description of the command failure
   Exec :: SomeBase Dir -> Command -> ExecF (Either CmdFailure Stdout)
-
   -- | RawExec runs a command inheriting stdout and stderr and returns either:
   -- - text describing an error
   -- - the exit code of the command
@@ -171,10 +170,8 @@ data ExecErr
     CommandFailed CmdFailure
   | -- | Command output couldn't be parsed. command, err
     CommandParseError Command Text
-  |
-    RawException ExceptionText
-  |
-    RawExitFailure Int
+  | RawException ExceptionText
+  | RawExitFailure Int
   deriving (Eq, Ord, Show, Generic)
 
 renderCmdFailure :: CmdFailure -> Doc AnsiStyle
@@ -229,8 +226,7 @@ instance ToDiagnostic ExecErr where
         ]
     RawException (ExceptionText text) -> pretty text
     RawExitFailure exitcode ->
-        pretty $ "Failed to run command. Exit code: " <> show exitcode <> "."
-
+      pretty $ "Failed to run command. Exit code: " <> show exitcode <> "."
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
 exec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure Stdout)
@@ -318,7 +314,6 @@ runExecIO = interpret $ \case
         result = first ioExceptionToCmdFailure processResult >>= mangleResult
 
     pure result
-
   RawExec dir cmd -> sendIO $ do
     absolute <-
       case dir of
@@ -331,6 +326,6 @@ runExecIO = interpret $ \case
     processResult <- try $ runProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs'))
 
     let result :: Either ExceptionText ExitCode
-        result = left (ExceptionText . Text.pack . show) (processResult :: Either IOException ExitCode)
+        result = left (ExceptionText . toText . show) (processResult :: Either IOException ExitCode)
 
     pure result
