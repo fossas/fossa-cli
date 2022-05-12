@@ -16,12 +16,10 @@ import App.Types (
  )
 import Control.Carrier.Error.Either (Has)
 import Control.Effect.Diagnostics (Diagnostics)
-import Data.ByteString.Lazy qualified as BL
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Text.Encoding (decodeUtf8)
 import Discovery.Filters (AllFilters (..), combinedPaths)
 import Effect.Exec (
   AllowErr (Never),
