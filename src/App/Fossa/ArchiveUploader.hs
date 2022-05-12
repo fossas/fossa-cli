@@ -1,16 +1,15 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.Fossa.ArchiveUploader
-  ( archiveUploadSourceUnit,
-    arcToLocator,
-    compressFile,
-    forceVendoredToArchive,
-    duplicateFailureBundle,
-    duplicateNames,
-    hashFile,
-    VendoredDependency (..),
-  )
-where
+module App.Fossa.ArchiveUploader (
+  archiveUploadSourceUnit,
+  arcToLocator,
+  compressFile,
+  forceVendoredToArchive,
+  duplicateFailureBundle,
+  duplicateNames,
+  hashFile,
+  VendoredDependency (..),
+) where
 
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
@@ -22,12 +21,12 @@ import Control.Effect.Lift
 import Control.Effect.Path (withSystemTempDir)
 import Control.Monad (unless)
 import Crypto.Hash
-import Data.Aeson
-  ( FromJSON (parseJSON),
-    withObject,
-    (.:),
-    (.:?),
-  )
+import Data.Aeson (
+  FromJSON (parseJSON),
+  withObject,
+  (.:),
+  (.:?),
+ )
 import Data.Aeson.Extra
 import Data.ByteString.Lazy qualified as BS
 import Data.Functor.Extra ((<$$>))
@@ -48,9 +47,9 @@ import Srclib.Types (Locator (..))
 import System.FilePath.Posix
 
 data VendoredDependency = VendoredDependency
-  { vendoredName :: Text,
-    vendoredPath :: Text,
-    vendoredVersion :: Maybe Text
+  { vendoredName :: Text
+  , vendoredPath :: Text
+  , vendoredVersion :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -62,11 +61,11 @@ instance FromJSON VendoredDependency where
       <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
 
 uploadArchives ::
-  ( Has Diag.Diagnostics sig m,
-    Has (Lift IO) sig m,
-    Has StickyLogger sig m,
-    Has Logger sig m,
-    Has FossaApiClient sig m
+  ( Has Diag.Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has StickyLogger sig m
+  , Has Logger sig m
+  , Has FossaApiClient sig m
   ) =>
   NonEmpty VendoredDependency ->
   Path Abs Dir ->
@@ -75,17 +74,17 @@ uploadArchives ::
 uploadArchives deps arcDir tmpDir = traverse (compressAndUpload arcDir tmpDir) deps
 
 compressAndUpload ::
-  ( Has Diag.Diagnostics sig m,
-    Has (Lift IO) sig m,
-    Has StickyLogger sig m,
-    Has Logger sig m,
-    Has FossaApiClient sig m
+  ( Has Diag.Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has StickyLogger sig m
+  , Has Logger sig m
+  , Has FossaApiClient sig m
   ) =>
   Path Abs Dir ->
   Path Abs Dir ->
   VendoredDependency ->
   m Archive
-compressAndUpload arcDir tmpDir VendoredDependency {..} = context "compressing and uploading vendored deps" $ do
+compressAndUpload arcDir tmpDir VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
   logSticky $ "Compressing '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
   compressedFile <- sendIO $ compressFile tmpDir arcDir (toString vendoredPath)
 
@@ -104,11 +103,11 @@ compressAndUpload arcDir tmpDir VendoredDependency {..} = context "compressing a
 -- archiveUploadSourceUnit receives a list of vendored dependencies, a root path, and API settings.
 -- Using this information, it uploads each vendored dependency and queues a build for the dependency.
 archiveUploadSourceUnit ::
-  ( Has Diag.Diagnostics sig m,
-    Has (Lift IO) sig m,
-    Has StickyLogger sig m,
-    Has Logger sig m,
-    Has FossaApiClient sig m
+  ( Has Diag.Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has StickyLogger sig m
+  , Has Logger sig m
+  , Has FossaApiClient sig m
   ) =>
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
@@ -138,7 +137,7 @@ archiveUploadSourceUnit baseDir vendoredDeps = do
   orgId <- organizationId <$> getOrganization
 
   let updateArcName :: Text -> Archive -> Archive
-      updateArcName updateText arc = arc {archiveName = updateText <> "/" <> archiveName arc}
+      updateArcName updateText arc = arc{archiveName = updateText <> "/" <> archiveName arc}
       archivesWithOrganization = updateArcName (toText $ show orgId) <$> archives
 
   pure $ arcToLocator <$> archivesWithOrganization
@@ -148,7 +147,7 @@ duplicateNames :: NonEmpty VendoredDependency -> [Text]
 duplicateNames = Map.keys . Map.filter (> 1) . Map.fromListWith (+) . map pair . NonEmpty.toList
   where
     pair :: VendoredDependency -> (Text, Int)
-    pair VendoredDependency {vendoredName} = (vendoredName, 1)
+    pair VendoredDependency{vendoredName} = (vendoredName, 1)
 
 duplicateFailureBundle :: [Text] -> Text
 duplicateFailureBundle names =
@@ -164,9 +163,9 @@ forceVendoredToArchive dep = Archive (vendoredName dep) (fromMaybe "" $ vendored
 arcToLocator :: Archive -> Locator
 arcToLocator arc =
   Locator
-    { locatorFetcher = "archive",
-      locatorProject = archiveName arc,
-      locatorRevision = Just $ archiveVersion arc
+    { locatorFetcher = "archive"
+    , locatorProject = archiveName arc
+    , locatorRevision = Just $ archiveVersion arc
     }
 
 compressFile :: Path Abs Dir -> Path Abs Dir -> FilePath -> IO FilePath

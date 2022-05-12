@@ -1,13 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.Fossa.ArchiveUploaderSpec
-  ( spec,
-  )
-where
+module App.Fossa.ArchiveUploaderSpec (
+  spec,
+) where
 
-import App.Fossa.ArchiveUploader
-  ( compressFile,
-  )
+import App.Fossa.ArchiveUploader (
+  compressFile,
+ )
 import Control.Carrier.Lift (sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Path (Abs, Dir, Path, mkRelDir, (</>))
