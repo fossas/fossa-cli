@@ -208,6 +208,7 @@ type ExecDebugC = SimpleC ExecF
 execToDebug :: (Has Exec sig m, Has Debug sig m) => ExecDebugC m a -> m a
 execToDebug = interpret $ \case
   cons@Exec{} -> recording cons
+  cons@RawExec{} -> recording cons
 
 -----------------------------------------------
 
