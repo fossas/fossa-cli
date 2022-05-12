@@ -12,7 +12,7 @@ import Control.Carrier.Lift (sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Path (Abs, Dir, Path, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
-import Test.Effect (it', shouldBe', shouldContain')
+import Test.Effect (it', shouldContain')
 import Test.Hspec (Spec, describe, runIO)
 
 spec :: Spec
