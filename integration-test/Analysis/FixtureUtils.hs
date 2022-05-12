@@ -37,7 +37,7 @@ import Discovery.Archive (selectUnarchiver)
 import Discovery.Filters (AllFilters)
 import Effect.Exec (
   Command (..),
-  ExecF (Exec),
+  ExecF (Exec, RawExec),
   ExecIOC,
   Has,
   exec,
@@ -119,6 +119,7 @@ testRunnerWithLogger f env =
 runExecIOWithinEnv :: (Has (Lift IO) sig m) => FixtureEnvironment -> ExecIOC m a -> m a
 runExecIOWithinEnv conf = interpret $ \case
   Exec dir cmd -> sendIO $ runExecIO $ sendSimple (Exec dir $ decorateCmdWith conf cmd)
+  RawExec dir cmd -> sendIO $ runExecIO $ sendSimple (RawExec dir $ decorateCmdWith conf cmd)
 
 decorateCmdWith :: FixtureEnvironment -> Command -> Command
 decorateCmdWith LocalEnvironment cmd = cmd

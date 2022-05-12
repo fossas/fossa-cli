@@ -33,6 +33,7 @@ import Strategy.Go.GoList (
   ),
   analyze',
  )
+import System.Exit (ExitCode (ExitSuccess))
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Text.RawString.QQ (r)
 
@@ -41,6 +42,8 @@ type ConstExecC = SimpleC ExecF
 runConstExec :: Applicative m => BL.ByteString -> ConstExecC m a -> m a
 runConstExec output = interpret $ \case
   Exec _ _ -> pure (Right output)
+  -- TODO(enricozb): i'm not sure if this is correct...
+  RawExec _ _ -> pure (Right ExitSuccess)
 
 expected :: Graphing Dependency
 expected = run . evalGrapher $ do
