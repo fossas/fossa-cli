@@ -21,9 +21,8 @@ import Control.Effect.Diagnostics (
   context,
  )
 import Control.Effect.Lift (Lift)
-import Data.Text (Text)
-import Effect.Exec (Exec, runExecIO)
-import Effect.Logger (Has, Logger, Pretty (pretty), logInfo)
+import Effect.Exec (Exec)
+import Effect.Logger (Has, Logger, logInfo)
 
 monorepoScan ::
   ( Has Diagnostics sig m
