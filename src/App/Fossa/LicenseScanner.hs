@@ -312,8 +312,10 @@ licenseScanSourceUnit ::
   m (NonEmpty Locator)
 licenseScanSourceUnit baseDir vendoredDeps = do
   uniqDeps <- dedupVendoredDeps vendoredDeps
+
+  needScanningDeps <- filterToDepsThatNeedScanning baseDir uniqDeps
   -- At this point, we have a good list of deps, so go for it.
-  maybeArchives <- traverse (scanAndUploadVendoredDep baseDir) uniqDeps
+  maybeArchives <- traverse (scanAndUploadVendoredDep baseDir) needScanningDeps
   archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ catMaybes $ NE.toList maybeArchives
 
   -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.

@@ -17,6 +17,7 @@ module Control.Effect.FossaApiClient (
   getLatestScan,
   getOrganization,
   getProject,
+  getRevisionInfo,
   getScan,
   getSignedLicenseScanUrl,
   getSignedUploadUrl,
@@ -32,6 +33,7 @@ module Control.Effect.FossaApiClient (
   uploadLicenseScanResult,
 ) where
 
+import App.Fossa.ArchiveUploader (VendoredDependency)
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
@@ -42,6 +44,7 @@ import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
 import Data.ByteString.Char8 qualified as C8
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Text (Text)
@@ -86,6 +89,7 @@ data FossaApiClientF a where
   GetLatestScan :: Locator -> ProjectRevision -> FossaApiClientF ScanResponse
   GetOrganization :: FossaApiClientF Organization
   GetProject :: ProjectRevision -> FossaApiClientF Project
+  GetRevisionInfo :: (NonEmpty VendoredDependency) -> FossaApiClientF [RevisionInfo]
   GetScan :: Locator -> ScanId -> FossaApiClientF ScanResponse
   GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
@@ -170,6 +174,9 @@ assertRevisionBinaries locator fprints = sendSimple (AssertRevisionBinaries loca
 
 assertUserDefinedBinaries :: Has FossaApiClient sig m => IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> m ()
 assertUserDefinedBinaries meta fprints = sendSimple (AssertUserDefinedBinaries meta fprints)
+
+getRevisionInfo :: Has FossaApiClient sig m => (NonEmpty VendoredDependency) -> m ([RevisionInfo])
+getRevisionInfo = sendSimple . GetRevisionInfo
 
 getSignedLicenseScanUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
 getSignedLicenseScanUrl = sendSimple . GetSignedLicenseScanUrl

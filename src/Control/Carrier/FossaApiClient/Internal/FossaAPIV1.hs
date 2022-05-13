@@ -12,6 +12,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getIssues,
   getOrganization,
   getAttribution,
+  getRevisionInfo,
   getSignedLicenseScanURL,
   getSignedURL,
   getProject,
@@ -32,6 +33,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
 ) where
 
 import App.Docs (fossaSslCertDocsUrl)
+import App.Fossa.ArchiveUploader (VendoredDependency (..))
 import App.Fossa.Config.Report
 import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Fossa.Report.Attribution qualified as Attr
@@ -67,6 +69,7 @@ import Data.Aeson (
 import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as C
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
@@ -366,6 +369,31 @@ getProject apiopts ProjectRevision{..} = fossaReq $ do
 
 -----
 
+revisionsEndpoint :: Url 'Https -> Url 'Https
+revisionsEndpoint baseurl = baseurl /: "api" /: "revisions"
+
+getRevisionInfo ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  NonEmpty VendoredDependency ->
+  m [RevisionInfo]
+getRevisionInfo apiOpts vDeps = fossaReq $ do
+  orgId <- organizationId <$> getOrganization apiOpts
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  let locatorQuery = mconcat $ NE.toList $ constructLocatorQuery orgId vDeps
+  response <- responseBody <$> req GET (revisionsEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> locatorQuery)
+
+constructLocatorQuery :: OrgId -> NonEmpty VendoredDependency -> NonEmpty (Option 'Https)
+constructLocatorQuery orgId = NE.map (constructLocatorOption orgId)
+  where
+    constructLocatorOption :: OrgId -> VendoredDependency -> Option 'Https
+    constructLocatorOption orgId VendoredDependency{..} = do
+      let locator = Locator{locatorFetcher = "archive", locatorProject = vendoredName, locatorRevision = vendoredVersion}
+      let locatorUrl = renderLocatorUrl orgId locator
+      "locator[]" =: locatorUrl
+
+-----
+
 buildsEndpoint :: Url 'Https -> OrgId -> Locator -> Url 'Https
 buildsEndpoint baseurl orgId locator = baseurl /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "latest_build"
 
@@ -653,6 +681,16 @@ instance ToJSON UserDefinedAssertionBody where
       , "url" .= bodyUrl
       , "fingerprints" .= bodyFingerprints
       ]
+
+data RevisionInfo = RevisionInfo
+  { revisionInfoLocator :: Text
+  , revisionInfoResolved :: Boolean
+  }
+
+instance FromJSON RevisionInfo where
+  parseJSON = withObject "RevisionInfo" $ \obj ->
+    RevisionInfo <$> obj .: "locator"
+      <*> obj .: "resolved"
 
 assertUserDefinedBinariesEndpoint :: Url scheme -> Url scheme
 assertUserDefinedBinariesEndpoint baseurl = baseurl /: "api" /: "iat" /: "binary"
