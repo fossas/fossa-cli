@@ -4,7 +4,7 @@ module App.Fossa.ArchiveUploaderSpec (
   spec,
 ) where
 
-import App.Fossa.ArchiveUploader (
+import App.Fossa.VendoredDependency (
   compressFile,
  )
 import Control.Carrier.Lift (sendIO)
