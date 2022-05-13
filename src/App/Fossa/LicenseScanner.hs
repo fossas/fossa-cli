@@ -9,7 +9,6 @@ module App.Fossa.LicenseScanner (
 ) where
 
 import App.Fossa.ArchiveUploader (
-  VendoredDependency (..),
   arcToLocator,
   compressFile,
   duplicateFailureBundle,
@@ -19,6 +18,9 @@ import App.Fossa.ArchiveUploader (
 import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)
 import App.Fossa.RunThemis (
   execThemis,
+ )
+import App.Fossa.VendoredDependency (
+  VendoredDependency (..),
  )
 import Control.Carrier.Finally (Finally, runFinally)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, fatal, fatalText, fromMaybe, recover)

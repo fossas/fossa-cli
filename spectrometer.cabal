@@ -196,6 +196,7 @@ library
     App.Fossa.RunThemis
     App.Fossa.Subcommand
     App.Fossa.Test
+    App.Fossa.VendoredDependency
     App.Fossa.VPS.Scan.RunWiggins
     App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze

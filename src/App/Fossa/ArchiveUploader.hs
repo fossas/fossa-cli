@@ -8,9 +8,9 @@ module App.Fossa.ArchiveUploader (
   duplicateFailureBundle,
   duplicateNames,
   hashFile,
-  VendoredDependency (..),
 ) where
 
+import App.Fossa.VendoredDependency (VendoredDependency (..))
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.Diagnostics qualified as Diag
@@ -21,15 +21,7 @@ import Control.Effect.Lift
 import Control.Effect.Path (withSystemTempDir)
 import Control.Monad (unless)
 import Crypto.Hash
-import Data.Aeson (
-  FromJSON (parseJSON),
-  withObject,
-  (.:),
-  (.:?),
- )
-import Data.Aeson.Extra
 import Data.ByteString.Lazy qualified as BS
-import Data.Functor.Extra ((<$$>))
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -45,20 +37,6 @@ import Path hiding ((</>))
 import Prettyprinter (Pretty (pretty))
 import Srclib.Types (Locator (..))
 import System.FilePath.Posix
-
-data VendoredDependency = VendoredDependency
-  { vendoredName :: Text
-  , vendoredPath :: Text
-  , vendoredVersion :: Maybe Text
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON VendoredDependency where
-  parseJSON = withObject "VendoredDependency" $ \obj ->
-    VendoredDependency <$> obj .: "name"
-      <*> obj .: "path"
-      <*> (unTextLike <$$> obj .:? "version")
-      <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
 
 uploadArchives ::
   ( Has Diag.Diagnostics sig m

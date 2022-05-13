@@ -7,8 +7,8 @@ import Analysis.FixtureUtils (
   FixtureArtifact (FixtureArtifact),
   getArtifact,
  )
-import App.Fossa.ArchiveUploader (VendoredDependency (VendoredDependency))
 import App.Fossa.LicenseScanner (scanVendoredDep)
+import App.Fossa.VendoredDependency (VendoredDependency (VendoredDependency))
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (ignoreStickyLogger)
