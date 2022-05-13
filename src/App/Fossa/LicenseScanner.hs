@@ -316,7 +316,7 @@ licenseScanSourceUnit baseDir vendoredDeps = do
   needScanningDeps <- filterToDepsThatNeedScanning baseDir uniqDeps
   -- At this point, we have a good list of deps, so go for it.
   maybeArchives <- traverse (scanAndUploadVendoredDep baseDir) needScanningDeps
-  archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ catMaybes $ NE.toList maybeArchives
+  archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ catMaybes maybeArchives
 
   -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
@@ -333,3 +333,32 @@ licenseScanSourceUnit baseDir vendoredDeps = do
 
     includeOrgId :: OrgId -> Archive -> Archive
     includeOrgId orgId arc = arc{archiveName = showT orgId <> "/" <> archiveName arc}
+
+-- filterToDepsThatNeedScanning ::
+--   ( Has Diagnostics sig m
+--   , Has FossaApiClient sig m
+--   ) =>
+--   Path Abs Dir ->
+--   NonEmpty VendoredDependency ->
+--   m ([VendoredDependency])
+-- filterToDepsThatNeedScanning baseDir vdeps = do
+--   map (ensureVendoredDepVersion baseDir) vdeps
+
+filterToDepsThatNeedScanning ::
+  (Has (Lift IO) sig m) =>
+  Path Abs Dir ->
+  NonEmpty VendoredDependency ->
+  m [VendoredDependency]
+filterToDepsThatNeedScanning baseDir vdeps = do
+  traverse (ensureVendoredDepVersion baseDir) (NE.toList vdeps)
+
+ensureVendoredDepVersion ::
+  (Has (Lift IO) sig m) =>
+  Path Abs Dir ->
+  VendoredDependency ->
+  m VendoredDependency
+ensureVendoredDepVersion baseDir vdep = do
+  depVersion <- case vendoredVersion vdep of
+    Nothing -> sendIO $ withSystemTempDir "fossa-temp" (calculateVendoredHash baseDir (vendoredPath vdep))
+    Just version -> pure version
+  pure vdep{vendoredVersion = Just depVersion}
