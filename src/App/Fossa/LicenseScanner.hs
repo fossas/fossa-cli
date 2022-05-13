@@ -46,6 +46,7 @@ import Data.Text.Extra (showT)
 import Discovery.Archive (withArchive')
 import Discovery.Walk (WalkStep (WalkContinue, WalkStop), walk')
 import Effect.Exec (Exec)
+import Effect.Logger (Logger, logDebug)
 import Effect.ReadFS (
   Has,
   ReadFS,
@@ -307,6 +308,7 @@ licenseScanSourceUnit ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
+  , Has Logger sig m
   , Has Exec sig m
   , Has ReadFS sig m
   , Has FossaApiClient sig m
@@ -325,7 +327,9 @@ licenseScanSourceUnit baseDir vendoredDeps = do
   needScanningDeps <- filterToDepsThatNeedScanning baseDir uniqDeps orgId
   case needScanningDeps of
     -- If none of the dependencies need scanning, then just return a list of locators you were planning on scanning.
-    [] -> pure $ NE.map (arcToLocator . forceVendoredToArchive) uniqDeps
+    [] -> do
+      _ <- logDebug "All vendored dependencies have already been scanned by FOSSA. Skipping vendored deps."
+      pure $ NE.map (arcToLocator . forceVendoredToArchive) uniqDeps
     _ -> do
       -- At this point, we have a good list of deps, so go for it.
       maybeArchives <- traverse (scanAndUploadVendoredDep baseDir) needScanningDeps
