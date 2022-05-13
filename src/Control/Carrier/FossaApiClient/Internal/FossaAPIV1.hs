@@ -388,9 +388,9 @@ constructLocatorQuery :: OrgId -> NonEmpty VendoredDependency -> NonEmpty (Optio
 constructLocatorQuery orgId = NE.map (constructLocatorOption orgId)
   where
     constructLocatorOption :: OrgId -> VendoredDependency -> Option 'Https
-    constructLocatorOption orgId VendoredDependency{..} = do
+    constructLocatorOption org VendoredDependency{..} = do
       let locator = Locator{locatorFetcher = "archive", locatorProject = vendoredName, locatorRevision = vendoredVersion}
-      let locatorUrl = renderLocatorUrl orgId locator
+      let locatorUrl = renderLocatorUrl org locator
       "locator[]" =: locatorUrl
 
 -----
