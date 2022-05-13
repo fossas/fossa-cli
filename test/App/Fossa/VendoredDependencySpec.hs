@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.Fossa.ArchiveUploaderSpec (
+module App.Fossa.VendoredDependencySpec (
   spec,
 ) where
 
