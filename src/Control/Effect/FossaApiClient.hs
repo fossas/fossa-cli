@@ -33,13 +33,13 @@ module Control.Effect.FossaApiClient (
   uploadLicenseScanResult,
 ) where
 
-import App.Fossa.ArchiveUploader (VendoredDependency)
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
 import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
+import App.Fossa.VendoredDependency (VendoredDependency)
 import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
@@ -57,6 +57,7 @@ import Fossa.API.Types (
   Issues,
   Organization,
   Project,
+  RevisionInfo,
   ScanId,
   ScanResponse,
   SignedURL,

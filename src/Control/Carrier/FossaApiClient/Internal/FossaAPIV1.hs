@@ -33,7 +33,6 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
 ) where
 
 import App.Docs (fossaSslCertDocsUrl)
-import App.Fossa.ArchiveUploader (VendoredDependency (..))
 import App.Fossa.Config.Report
 import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Fossa.Report.Attribution qualified as Attr
@@ -41,6 +40,7 @@ import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
 import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
+import App.Fossa.VendoredDependency (VendoredDependency (..))
 import App.Support (reportDefectMsg)
 import App.Types (
   ProjectMetadata (..),
@@ -93,6 +93,7 @@ import Fossa.API.Types (
   OrgId,
   Organization (organizationId),
   Project,
+  RevisionInfo (..),
   SignedURL (signedURL),
   UploadResponse,
   useApiOpts,
@@ -381,7 +382,7 @@ getRevisionInfo apiOpts vDeps = fossaReq $ do
   orgId <- organizationId <$> getOrganization apiOpts
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   let locatorQuery = mconcat $ NE.toList $ constructLocatorQuery orgId vDeps
-  response <- responseBody <$> req GET (revisionsEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> locatorQuery)
+  responseBody <$> req GET (revisionsEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> locatorQuery)
 
 constructLocatorQuery :: OrgId -> NonEmpty VendoredDependency -> NonEmpty (Option 'Https)
 constructLocatorQuery orgId = NE.map (constructLocatorOption orgId)
@@ -681,16 +682,6 @@ instance ToJSON UserDefinedAssertionBody where
       , "url" .= bodyUrl
       , "fingerprints" .= bodyFingerprints
       ]
-
-data RevisionInfo = RevisionInfo
-  { revisionInfoLocator :: Text
-  , revisionInfoResolved :: Boolean
-  }
-
-instance FromJSON RevisionInfo where
-  parseJSON = withObject "RevisionInfo" $ \obj ->
-    RevisionInfo <$> obj .: "locator"
-      <*> obj .: "resolved"
 
 assertUserDefinedBinariesEndpoint :: Url scheme -> Url scheme
 assertUserDefinedBinariesEndpoint baseurl = baseurl /: "api" /: "iat" /: "binary"

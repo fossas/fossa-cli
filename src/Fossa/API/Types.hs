@@ -20,6 +20,7 @@ module Fossa.API.Types (
   Project (..),
   SignedURL (..),
   UploadResponse (..),
+  RevisionInfo (..),
   ScanId (..),
   ScanResponse (..),
   useApiOpts,
@@ -402,3 +403,14 @@ useApiOpts opts = case useURI serverURI of
 
 authHeader :: ApiKey -> Option 'Https
 authHeader key = header "Authorization" (encodeUtf8 ("Bearer " <> unApiKey key))
+
+data RevisionInfo = RevisionInfo
+  { revisionInfoLocator :: Text
+  , revisionInfoResolved :: Bool
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON RevisionInfo where
+  parseJSON = withObject "RevisionInfo" $ \obj ->
+    RevisionInfo <$> obj .: "locator"
+      <*> obj .: "resolved"
