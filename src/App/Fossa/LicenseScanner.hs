@@ -16,6 +16,7 @@ import App.Fossa.VendoredDependency (
   arcToLocator,
   compressFile,
   dedupVendoredDeps,
+  forceVendoredToArchive,
   hashFile,
  )
 import Control.Carrier.Finally (Finally, runFinally)
@@ -320,22 +321,27 @@ licenseScanSourceUnit baseDir vendoredDeps = do
   -- but not when reading from a source unit.
   orgId <- organizationId <$> getOrganization
 
+  -- Ask Core if any of these deps have already been scanned. If they have, skip scanning them.
   needScanningDeps <- filterToDepsThatNeedScanning baseDir uniqDeps orgId
-  -- At this point, we have a good list of deps, so go for it.
-  maybeArchives <- traverse (scanAndUploadVendoredDep baseDir) needScanningDeps
-  archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ catMaybes maybeArchives
+  case needScanningDeps of
+    -- If none of the dependencies need scanning, then just return a list of locators you were planning on scanning.
+    [] -> pure $ NE.map (arcToLocator . forceVendoredToArchive) uniqDeps
+    _ -> do
+      -- At this point, we have a good list of deps, so go for it.
+      maybeArchives <- traverse (scanAndUploadVendoredDep baseDir) needScanningDeps
+      archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ catMaybes maybeArchives
 
-  -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
-  -- We don't care about the response here because if the build has already been queued, we get a 401 response.
-  finalizeLicenseScan $ ArchiveComponents $ NE.toList archives
+      -- finalizeLicenseScan takes archives without Organization information. This orgID is appended when creating the build on the backend.
+      -- We don't care about the response here because if the build has already been queued, we get a 401 response.
+      finalizeLicenseScan $ ArchiveComponents $ NE.toList archives
 
-  pure $ NE.map arcToLocator (archivesWithOrganization orgId archives)
-  where
-    archivesWithOrganization :: OrgId -> NonEmpty Archive -> NonEmpty Archive
-    archivesWithOrganization orgId = NE.map $ includeOrgId orgId
+      pure $ NE.map arcToLocator (archivesWithOrganization orgId archives)
+      where
+        archivesWithOrganization :: OrgId -> NonEmpty Archive -> NonEmpty Archive
+        archivesWithOrganization org = NE.map $ includeOrgId org
 
-    includeOrgId :: OrgId -> Archive -> Archive
-    includeOrgId orgId arc = arc{archiveName = showT orgId <> "/" <> archiveName arc}
+        includeOrgId :: OrgId -> Archive -> Archive
+        includeOrgId org arc = arc{archiveName = showT org <> "/" <> archiveName arc}
 
 filterToDepsThatNeedScanning ::
   ( Has (Lift IO) sig m
