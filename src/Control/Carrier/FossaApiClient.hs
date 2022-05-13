@@ -42,6 +42,7 @@ runFossaApiClient apiOpts =
           GetLatestScan locator rev -> ScotlandYard.getLatestScan locator rev
           GetOrganization -> Core.getOrganization
           GetProject rev -> Core.getProject rev
+          GetRevisionInfo vdeps -> Core.getRevisionInfo vdeps
           GetScan locator scanId -> ScotlandYard.getScan locator scanId
           GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev
           GetSignedUploadUrl rev -> Core.getSignedUploadUrl rev

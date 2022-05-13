@@ -6,6 +6,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   getLatestBuild,
   getOrganization,
   getProject,
+  getRevisionInfo,
   getSignedUploadUrl,
   queueArchiveBuild,
   uploadAnalysis,
@@ -16,6 +17,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
 
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Container.Scan (ContainerScan)
+import App.Fossa.VendoredDependency (VendoredDependency (..))
 import App.Types (ProjectMetadata, ProjectRevision (..))
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
@@ -34,6 +36,7 @@ import Fossa.API.Types (
   Issues,
   Organization,
   Project,
+  RevisionInfo,
   SignedURL,
   UploadResponse,
  )
@@ -63,6 +66,17 @@ getProject ::
 getProject revision = do
   apiOpts <- ask
   API.getProject apiOpts revision
+
+getRevisionInfo ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  NE.NonEmpty VendoredDependency ->
+  m [RevisionInfo]
+getRevisionInfo vdeps = do
+  apiOpts <- ask
+  API.getRevisionInfo apiOpts vdeps
 
 uploadAnalysis ::
   ( Has (Lift IO) sig m

@@ -19,12 +19,14 @@ import App.Fossa.VendoredDependency (
   hashFile,
  )
 import Control.Carrier.Finally (Finally, runFinally)
+import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (renderLocatorUrl)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, fatal, fromMaybe, recover)
 import Control.Effect.FossaApiClient (
   FossaApiClient,
   PackageRevision (..),
   finalizeLicenseScan,
   getOrganization,
+  getRevisionInfo,
   getSignedLicenseScanUrl,
   uploadLicenseScanResult,
  )
@@ -54,6 +56,7 @@ import Fossa.API.Types (
   ArchiveComponents (ArchiveComponents),
   OrgId,
   Organization (organizationId),
+  RevisionInfo (..),
  )
 import Path (Abs, Dir, File, Path, SomeBase (Abs, Rel), fileExtension, parent, (</>))
 import Path.Extra (tryMakeRelative)
@@ -313,7 +316,11 @@ licenseScanSourceUnit ::
 licenseScanSourceUnit baseDir vendoredDeps = do
   uniqDeps <- dedupVendoredDeps vendoredDeps
 
-  needScanningDeps <- filterToDepsThatNeedScanning baseDir uniqDeps
+  -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
+  -- but not when reading from a source unit.
+  orgId <- organizationId <$> getOrganization
+
+  needScanningDeps <- filterToDepsThatNeedScanning baseDir uniqDeps orgId
   -- At this point, we have a good list of deps, so go for it.
   maybeArchives <- traverse (scanAndUploadVendoredDep baseDir) needScanningDeps
   archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ catMaybes maybeArchives
@@ -321,10 +328,6 @@ licenseScanSourceUnit baseDir vendoredDeps = do
   -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
   finalizeLicenseScan $ ArchiveComponents $ NE.toList archives
-
-  -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
-  -- but not when reading from a source unit.
-  orgId <- organizationId <$> getOrganization
 
   pure $ NE.map arcToLocator (archivesWithOrganization orgId archives)
   where
@@ -334,23 +337,19 @@ licenseScanSourceUnit baseDir vendoredDeps = do
     includeOrgId :: OrgId -> Archive -> Archive
     includeOrgId orgId arc = arc{archiveName = showT orgId <> "/" <> archiveName arc}
 
--- filterToDepsThatNeedScanning ::
---   ( Has Diagnostics sig m
---   , Has FossaApiClient sig m
---   ) =>
---   Path Abs Dir ->
---   NonEmpty VendoredDependency ->
---   m ([VendoredDependency])
--- filterToDepsThatNeedScanning baseDir vdeps = do
---   map (ensureVendoredDepVersion baseDir) vdeps
-
 filterToDepsThatNeedScanning ::
-  (Has (Lift IO) sig m) =>
+  ( Has (Lift IO) sig m
+  , Has FossaApiClient sig m
+  ) =>
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
+  OrgId ->
   m [VendoredDependency]
-filterToDepsThatNeedScanning baseDir vdeps = do
-  traverse (ensureVendoredDepVersion baseDir) (NE.toList vdeps)
+filterToDepsThatNeedScanning baseDir vdeps orgId = do
+  vdepsWithVersions <- traverse (ensureVendoredDepVersion baseDir) vdeps
+  revisionInfos <- getRevisionInfo vdepsWithVersions
+  let vdepsToScan = getVendoredDepsToScan vdepsWithVersions orgId revisionInfos
+  pure vdepsToScan
 
 ensureVendoredDepVersion ::
   (Has (Lift IO) sig m) =>
@@ -362,3 +361,15 @@ ensureVendoredDepVersion baseDir vdep = do
     Nothing -> sendIO $ withSystemTempDir "fossa-temp" (calculateVendoredHash baseDir (vendoredPath vdep))
     Just version -> pure version
   pure vdep{vendoredVersion = Just depVersion}
+
+getVendoredDepsToScan :: NonEmpty VendoredDependency -> OrgId -> [RevisionInfo] -> [VendoredDependency]
+getVendoredDepsToScan vdeps org revisionInfos = NE.filter (shouldScanRevision revisionInfos org) vdeps
+
+shouldScanRevision :: [RevisionInfo] -> OrgId -> VendoredDependency -> Bool
+shouldScanRevision revisionInfos orgId vdep = all (locatorMatches vdep orgId) revisionInfos
+  where
+    locatorMatches VendoredDependency{..} org RevisionInfo{..} =
+      locatorUrl /= revisionInfoLocator || not revisionInfoResolved
+      where
+        locator = Locator{locatorFetcher = "archive", locatorProject = vendoredName, locatorRevision = vendoredVersion}
+        locatorUrl = renderLocatorUrl org locator
