@@ -1,5 +1,4 @@
 {-# LANGUAGE DisambiguateRecordFields #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Node.Npm.PackageLockV3 (
   PackageLockV3 (..),
