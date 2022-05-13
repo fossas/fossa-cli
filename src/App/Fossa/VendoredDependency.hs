@@ -6,10 +6,13 @@ module App.Fossa.VendoredDependency (
   duplicateFailureBundle,
   duplicateNames,
   hashFile,
+  dedupVendoredDeps,
 ) where
 
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
+import Control.Algebra (Has)
+import Control.Carrier.Diagnostics (Diagnostics, fatalText)
 import Crypto.Hash (Digest, MD5, hashlazy)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.:), (.:?))
 import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers)
@@ -17,6 +20,7 @@ import Data.ByteString.Lazy qualified as BS
 import Data.Functor.Extra ((<$$>))
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
@@ -45,6 +49,17 @@ instance FromJSON VendoredDependency where
       <*> obj .: "path"
       <*> (unTextLike <$$> obj .:? "version")
       <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
+
+dedupVendoredDeps :: (Has Diagnostics sig m) => NonEmpty VendoredDependency -> m (NonEmpty VendoredDependency)
+dedupVendoredDeps vdeps = do
+  -- Users with many instances of vendored dependencies may accidentally have complete duplicates. Remove them.
+  let uniqDeps = NE.nub vdeps
+  let duplicates = duplicateNames uniqDeps
+  case duplicates of
+    [] -> pure uniqDeps
+    -- However, users may also have vendored dependencies that have duplicate names but are not complete duplicates.
+    -- These aren't valid and can't be automatically handled, so fail the scan with them.
+    dups -> fatalText $ duplicateFailureBundle dups
 
 -- | List of names that occur more than once in a list of vendored dependencies.
 duplicateNames :: NonEmpty VendoredDependency -> [Text]

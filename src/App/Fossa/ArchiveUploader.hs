@@ -8,8 +8,7 @@ import App.Fossa.VendoredDependency (
   VendoredDependency (..),
   arcToLocator,
   compressFile,
-  duplicateFailureBundle,
-  duplicateNames,
+  dedupVendoredDeps,
   hashFile,
  )
 import Control.Carrier.Diagnostics qualified as Diag
@@ -18,7 +17,6 @@ import Control.Effect.Diagnostics (context)
 import Control.Effect.FossaApiClient (FossaApiClient, PackageRevision (PackageRevision), getOrganization, getSignedUploadUrl, queueArchiveBuild, uploadArchive)
 import Control.Effect.Lift
 import Control.Effect.Path (withSystemTempDir)
-import Control.Monad (unless)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.String.Conversion
@@ -82,13 +80,7 @@ archiveUploadSourceUnit ::
   NonEmpty VendoredDependency ->
   m (NonEmpty Locator)
 archiveUploadSourceUnit baseDir vendoredDeps = do
-  -- Users with many instances of vendored dependencies may accidentally have complete duplicates. Remove them.
-  let uniqDeps = NonEmpty.nub vendoredDeps
-
-  -- However, users may also have vendored dependencies that have duplicate names but are not complete duplicates.
-  -- These aren't valid and can't be automatically handled, so fail the scan with them.
-  let duplicates = duplicateNames uniqDeps
-  unless (null duplicates) $ Diag.fatalText $ duplicateFailureBundle duplicates
+  uniqDeps <- dedupVendoredDeps vendoredDeps
 
   -- At this point, we have a good list of deps, so go for it.
   archives <- withSystemTempDir "fossa-temp" (uploadArchives uniqDeps baseDir)
