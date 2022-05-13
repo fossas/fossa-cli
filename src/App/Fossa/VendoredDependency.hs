@@ -3,8 +3,6 @@ module App.Fossa.VendoredDependency (
   arcToLocator,
   forceVendoredToArchive,
   compressFile,
-  duplicateFailureBundle,
-  duplicateNames,
   hashFile,
   dedupVendoredDeps,
 ) where
