@@ -30,7 +30,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.UUID.V4 (nextRandom)
 import Fossa.API.Types (Archive (..))
-import Path.Posix (Abs, Dir, Path)
+import Path (Abs, Dir, Path)
 import Srclib.Types (Locator (..))
 import System.FilePath.Posix (splitDirectories, (</>))
 
