@@ -11,6 +11,8 @@
   - {name: Data.Text, as: Text, message: "Use complete name for qualified import of Text"}
   # Don't allow unsafe IO
   - {name: System.IO.Unsafe, within: []}
+  # Arrows are more complicated than the problem they solve
+  - {name: Control.Arrow, within: []}
 
 # Styling Preferences
 - suggest: {lhs: "asum [x, y]", rhs: x <|> y}
