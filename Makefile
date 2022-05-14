@@ -96,4 +96,8 @@ check-ci:
 	docker pull ${DEV_TOOLS}
 	docker run ${MOUNTED_DEV_TOOLS} make check
 
+ci-shell:
+	docker pull ${DEV_TOOLS}
+	docker run -it ${MOUNTED_DEV_TOOLS} bash
+
 .PHONY: build test integration-test analyze install-local fmt check check-fmt lint check-ci fmt-ci build-test-data clean-test-data install-dev test-all
