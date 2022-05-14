@@ -142,7 +142,7 @@ buildGraph lockFile nimbleDump =
     applyDirect :: Graphing NimPackage -> Graphing NimPackage
     applyDirect gr = case nimbleDump of
       Nothing -> Graphing.directs (getVerticesWithoutPredecessors gr) <> gr
-      Just nd -> Graphing.directs (catMaybes $ (`Map.lookup` pkgRegistry) <$> map nameOf (requires nd)) <> gr
+      Just nd -> Graphing.directs (mapMaybe ((`Map.lookup` pkgRegistry) . nameOf) (requires nd)) <> gr
 
     toDependency :: NimPackage -> Maybe Dependency
     toDependency nimPkg = case downloadMethod nimPkg of
