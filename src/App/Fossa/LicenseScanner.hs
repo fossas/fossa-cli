@@ -324,14 +324,18 @@ licenseScanSourceUnit baseDir vendoredDeps = do
   orgId <- organizationId <$> getOrganization
 
   -- Ask Core if any of these deps have already been scanned. If they have, skip scanning them.
-  needScanningDeps <- filterToDepsThatNeedScanning baseDir uniqDeps orgId
+  (needScanningDeps, skippedDeps) <- findDepsThatNeedScanning baseDir uniqDeps orgId
   case needScanningDeps of
     -- If none of the dependencies need scanning, then just return a list of locators you were planning on scanning.
     [] -> do
-      _ <- logDebug "All vendored dependencies have already been scanned by FOSSA. Skipping vendored deps."
+      _ <- logDebug "All vendored dependencies have already been scanned by FOSSA. Skipping vendored dependency license scans."
       pure $ NE.map (arcToLocator . forceVendoredToArchive) uniqDeps
     _ -> do
       -- At this point, we have a good list of deps, so go for it.
+      case skippedDeps of
+        [] -> logDebug "All vendored dependencies are un-scanned and require license scanning"
+        _ -> logDebug . pretty $ "Some vendored dependencies have already been scanned by FOSSA. Skipping these vendored dependencies: " <> show skippedDeps
+
       maybeArchives <- traverse (scanAndUploadVendoredDep baseDir) needScanningDeps
       archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ catMaybes maybeArchives
 
@@ -347,19 +351,18 @@ licenseScanSourceUnit baseDir vendoredDeps = do
         includeOrgId :: OrgId -> Archive -> Archive
         includeOrgId org arc = arc{archiveName = showT org <> "/" <> archiveName arc}
 
-filterToDepsThatNeedScanning ::
+findDepsThatNeedScanning ::
   ( Has (Lift IO) sig m
   , Has FossaApiClient sig m
   ) =>
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
   OrgId ->
-  m [VendoredDependency]
-filterToDepsThatNeedScanning baseDir vdeps orgId = do
+  m ([VendoredDependency], [VendoredDependency])
+findDepsThatNeedScanning baseDir vdeps orgId = do
   vdepsWithVersions <- traverse (ensureVendoredDepVersion baseDir) vdeps
   revisionInfos <- getRevisionInfo vdepsWithVersions
-  let vdepsToScan = getVendoredDepsToScan vdepsWithVersions orgId revisionInfos
-  pure vdepsToScan
+  pure $ NE.partition (shouldScanRevision revisionInfos orgId) vdepsWithVersions
 
 ensureVendoredDepVersion ::
   (Has (Lift IO) sig m) =>
@@ -371,9 +374,6 @@ ensureVendoredDepVersion baseDir vdep = do
     Nothing -> sendIO $ withSystemTempDir "fossa-temp" (calculateVendoredHash baseDir (vendoredPath vdep))
     Just version -> pure version
   pure vdep{vendoredVersion = Just depVersion}
-
-getVendoredDepsToScan :: NonEmpty VendoredDependency -> OrgId -> [RevisionInfo] -> [VendoredDependency]
-getVendoredDepsToScan vdeps org revisionInfos = NE.filter (shouldScanRevision revisionInfos org) vdeps
 
 shouldScanRevision :: [RevisionInfo] -> OrgId -> VendoredDependency -> Bool
 shouldScanRevision revisionInfos orgId vdep = all (locatorMatches vdep orgId) revisionInfos
