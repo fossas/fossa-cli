@@ -82,6 +82,27 @@ lint:
 	@hlint src test integration-test --cross --timing -vj
 	@echo "No linter errors found"
 
+# Runs linter on only modified files
+# 
+# When running in docker, we have to tell git that the directory which doesn't belong to us is safe.
+# The two git commands are for staged (cached) and unstaged files.
+# We also succeed if there are no changed filers to lint.  We grep the list of files for non-whitespace,
+# and if we find any non-whitespace characters, then the git search found at least one file.
+fast-lint:
+	@test "${current_dir}" = "/fossa-cli/" && \
+		git config --global --add safe.directory /fossa-cli && \
+		echo "Running in docker, added temp safe.directory entry to git config"
+	@echo Collecting unstaged files
+	@git diff --name-only --diff-filter=AM -- "*.hs" > /tmp/hlint-changed-files
+	@echo Collecting staged files
+	@git diff --name-only --diff-filter=AM --cached -- "*.hs" >> /tmp/hlint-changed-files
+	@if grep -q "[^[:space:]]" /tmp/hlint-changed-files; then \
+			echo "Linting changed files"; \
+			xargs hlint -vj < /tmp/hlint-changed-files; \
+		else \
+			echo "No haskell files changed"; \
+		fi
+
 # Performs markdown lint checks for dead links
 # You will need to install https://github.com/tcort/markdown-link-check
 check-links:
@@ -89,6 +110,10 @@ check-links:
 	find ./docs/ -name \*.md -exec markdown-link-check {} \;
 	@echo "Running markdown-link-check for README.md"
 	markdown-link-check README.md
+
+fast-lint-ci:
+	docker pull ${DEV_TOOLS}
+	docker run ${MOUNTED_DEV_TOOLS} make fast-lint
 
 # Docker doesn't always check for new versions during build, so pulling ensures
 # that we always have the latest.
