@@ -134,7 +134,7 @@ to establish a guideline of "There should only be one right and obvious way to
 do something" (which is a loose goal for the codebase).
 
 If your match guards are any less readable than the introductory examples in
-[Learn you a haskell](guards), then you should stick to `case` and `if`
+[Learn you a haskell][guards], then you should stick to `case` and `if`
 expressions within the function body.
 
 [guards]: http://learnyouahaskell.com/syntax-in-functions#guards-guards
