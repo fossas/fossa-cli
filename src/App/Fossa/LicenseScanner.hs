@@ -325,31 +325,33 @@ licenseScanSourceUnit baseDir vendoredDeps = do
 
   -- Ask Core if any of these deps have already been scanned. If they have, skip scanning them.
   (needScanningDeps, skippedDeps) <- findDepsThatNeedScanning baseDir uniqDeps orgId
-  case needScanningDeps of
-    -- If none of the dependencies need scanning, then just return a list of locators you were planning on scanning.
+  let skippedArchives = NE.map forceVendoredToArchive uniqDeps
+  _ <- case needScanningDeps of
+    -- If none of the dependencies need scanning, then log that, but we still need to do `finalizeLicenseScan` so keep going
     [] -> do
-      _ <- logDebug "All vendored dependencies have already been scanned by FOSSA. Skipping vendored dependency license scans."
-      pure $ NE.map (arcToLocator . forceVendoredToArchive) uniqDeps
+      logDebug "All vendored dependencies have already been scanned by FOSSA. Skipping vendored dependency license scans."
     _ -> do
-      -- At this point, we have a good list of deps, so go for it.
       case skippedDeps of
         [] -> logDebug "All vendored dependencies are un-scanned and require license scanning"
         _ -> logDebug . pretty $ "Some vendored dependencies have already been scanned by FOSSA. Skipping these vendored dependencies: " <> show skippedDeps
 
-      maybeArchives <- traverse (scanAndUploadVendoredDep baseDir) needScanningDeps
-      archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ catMaybes maybeArchives
+  -- At this point, we have a good list of deps, so go for it.
+  maybeScannedArchives <- traverse (scanAndUploadVendoredDep baseDir) needScanningDeps
 
-      -- finalizeLicenseScan takes archives without Organization information. This orgID is appended when creating the build on the backend.
-      -- We don't care about the response here because if the build has already been queued, we get a 401 response.
-      finalizeLicenseScan $ ArchiveComponents $ NE.toList archives
+  -- We need to include both scanned and skipped archives in this list so that they all get included in the build in FOSSA
+  archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ (catMaybes maybeScannedArchives) <> NE.toList skippedArchives
 
-      pure $ NE.map arcToLocator (archivesWithOrganization orgId archives)
-      where
-        archivesWithOrganization :: OrgId -> NonEmpty Archive -> NonEmpty Archive
-        archivesWithOrganization org = NE.map $ includeOrgId org
+  -- finalizeLicenseScan takes archives without Organization information. This orgID is appended when creating the build on the backend.
+  -- We don't care about the response here because if the build has already been queued, we get a 401 response.
+  finalizeLicenseScan $ ArchiveComponents $ NE.toList archives
 
-        includeOrgId :: OrgId -> Archive -> Archive
-        includeOrgId org arc = arc{archiveName = showT org <> "/" <> archiveName arc}
+  pure $ NE.map arcToLocator (archivesWithOrganization orgId archives)
+  where
+    archivesWithOrganization :: OrgId -> NonEmpty Archive -> NonEmpty Archive
+    archivesWithOrganization org = NE.map $ includeOrgId org
+
+    includeOrgId :: OrgId -> Archive -> Archive
+    includeOrgId org arc = arc{archiveName = showT org <> "/" <> archiveName arc}
 
 findDepsThatNeedScanning ::
   ( Has (Lift IO) sig m
