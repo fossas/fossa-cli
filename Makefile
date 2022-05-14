@@ -63,11 +63,6 @@ fmt:
 	@echo "Running cabal-fmt"
 	@cabal-fmt spectrometer.cabal --inplace
 
-# Run the formatter from within a docker image, with the project mounted as a volume
-fmt-ci:
-	docker pull ${DEV_TOOLS}
-	docker run ${MOUNTED_DEV_TOOLS} make fmt
-
 # Confirm everything is formatted without changing anything
 check-fmt:
 	@echo "Running fourmolu"
@@ -112,6 +107,11 @@ check-links:
 	find ./docs/ -name \*.md -exec markdown-link-check {} \;
 	@echo "Running markdown-link-check for README.md"
 	markdown-link-check README.md
+
+# Run the formatter from within a docker image, with the project mounted as a volume
+fmt-ci:
+	docker pull ${DEV_TOOLS}
+	docker run ${MOUNTED_DEV_TOOLS} make fmt
 
 fast-lint-ci:
 	docker pull ${DEV_TOOLS}
