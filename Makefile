@@ -79,7 +79,7 @@ check-fmt:
 lint:
 	@echo "Running hlint"
 	@hlint --version
-	@hlint src test integration-test
+	@hlint src test integration-test --cross --timing -vj
 	@echo "No linter errors found"
 
 # Performs markdown lint checks for dead links
