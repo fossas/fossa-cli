@@ -113,6 +113,7 @@ fmt-ci:
 	docker pull ${DEV_TOOLS}
 	docker run ${MOUNTED_DEV_TOOLS} make fmt
 
+# Run the fast-lint target with the CI docker container
 fast-lint-ci:
 	docker pull ${DEV_TOOLS}
 	docker run ${MOUNTED_DEV_TOOLS} make fast-lint
@@ -123,10 +124,12 @@ check-ci:
 	docker pull ${DEV_TOOLS}
 	docker run ${MOUNTED_DEV_TOOLS} make check
 
+# Run the fast-check target with the CI docker container
 fast-check-ci:
 	docker pull ${DEV_TOOLS}
 	docker run ${MOUNTED_DEV_TOOLS} make fast-check
 
+# Run bash in the CI edocker container.  Useful for debugging make with CI tools.
 ci-shell:
 	docker pull ${DEV_TOOLS}
 	docker run -it ${MOUNTED_DEV_TOOLS} bash
