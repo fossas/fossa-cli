@@ -378,6 +378,7 @@ ensureVendoredDepVersion baseDir vdep = do
 shouldScanRevision :: [RevisionInfo] -> OrgId -> VendoredDependency -> Bool
 shouldScanRevision revisionInfos orgId vdep = all (locatorMatches vdep orgId) revisionInfos
   where
+    locatorMatches :: VendoredDependency -> OrgId -> RevisionInfo -> Bool
     locatorMatches VendoredDependency{..} org RevisionInfo{..} =
       locatorUrl /= revisionInfoLocator || not revisionInfoResolved
       where
