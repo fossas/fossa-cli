@@ -44,6 +44,8 @@ install-dev: build
 
 check: check-fmt lint
 
+fast-check: check-fmt fast-lint
+
 # Run any build scripts required for test data to be generated.
 build-test-data:
 	./test/App/Fossa/VSI/DynLinked/testdata/build.sh
@@ -120,6 +122,10 @@ fast-lint-ci:
 check-ci:
 	docker pull ${DEV_TOOLS}
 	docker run ${MOUNTED_DEV_TOOLS} make check
+
+fast-check-ci:
+	docker pull ${DEV_TOOLS}
+	docker run ${MOUNTED_DEV_TOOLS} make fast-check
 
 ci-shell:
 	docker pull ${DEV_TOOLS}
