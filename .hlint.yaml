@@ -33,10 +33,10 @@
 - functions:
   - {name: error, within: [Data.String.Conversion, Control.Effect.Replay]}
   - {name: undefined, within: []}
-  - {name: Prelude.head, within: [Control.Effect.Replay.TH, Control.Effect.Record.TH, Node.PackageLockV3Spec], message: "Use Data.List.Extra.head' instead."}
+  - {name: Prelude.head, within: [Control.Effect.*.TH, "**.*Spec"], message: "Use Data.List.Extra.head' instead."}
   - {name: Prelude.tail, within: []}
   - {name: Prelude.init, within: []}
-  - {name: Prelude.last, within: [Node.PackageLockV3Spec]}
+  - {name: Prelude.last, within: ["**.*Spec"]}
   - {name: Data.ByteString.head, within: []}
   - {name: Data.Bytestring.tail, within: []}
   - {name: Data.Bytestring.init, within: []}

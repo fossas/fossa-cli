@@ -29,7 +29,7 @@ In `package-lock.json`, `packages` object's key refer to filepath for associated
 
 Generally, we have three types of data shape within `packages` map.
 
-1) Root module
+1) Root module (denoted by having `""` key)
 
 ```json
   "": {
@@ -55,6 +55,8 @@ Generally, we have three types of data shape within `packages` map.
       }
   }
 ```
+
+Workspace module, in essence is type of root module whose parent is top level root module (as shown in (1)).
 
 3) Package Module (these are the dependencies which fossa will report)
 

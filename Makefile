@@ -16,7 +16,7 @@ build:
 
 # Runs units tests.
 # To run a set of unit tests matching a specific value, use ARGS
-# For example, to only run tests whose name matches the wildcard '*fd*':
+# For example, to only run tests whose name matches the wildcard '*Node.PackageLockV3*':
 # 	make test ARGS="Node.PackageLockV3"
 test:
 ifdef ARGS

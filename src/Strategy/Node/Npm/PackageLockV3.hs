@@ -1,5 +1,3 @@
-{-# LANGUAGE DisambiguateRecordFields #-}
-
 module Strategy.Node.Npm.PackageLockV3 (
   PackageLockV3 (..),
   analyze,
@@ -15,7 +13,7 @@ module Strategy.Node.Npm.PackageLockV3 (
 ) where
 
 import Control.Algebra (Has)
-import Control.Carrier.Diagnostics (Diagnostics, context)
+import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Monad (unless)
 import Data.Aeson (
   FromJSON (parseJSON),
@@ -65,7 +63,7 @@ instance FromJSON PackageLockV3 where
     -- Ensure it is v3 compatible file
     -- v2 file by default are v3 compatible
     -- Refer to: https://docs.npmjs.com/cli/v8/configuring-npm/package-lock-json#lockfileversion
-    unless (isV3Compatible lockFileVersion) $
+    unless (maybe False isV3Compatible lockFileVersion) $
       fail "Provided lockfile is not v3 compatible!"
 
     -- If root package is missing, it is likely
@@ -78,8 +76,8 @@ instance FromJSON PackageLockV3 where
 -- Although v2 lockfile is forward compatible
 -- We intentionally mark them incompatible for now, give large blast zone.
 -- TODO: make v2 lockfile also compatible with v3 after this analysis has been used in prod for some time.
-isV3Compatible :: Maybe Int -> Bool
-isV3Compatible = (Just 3 ==)
+isV3Compatible :: Int -> Bool
+isV3Compatible = (3 ==)
 
 -- | Primary identifier in package-lock.json v3 `packages`.
 --
@@ -164,6 +162,11 @@ instance FromJSON NpmLockV3Resolved where
   parseJSON (Bool _) = pure $ NpmLockV3Resolved Nothing
   parseJSON _ = fail "Expected to contain string or boolean value for 'resolved' field!"
 
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze file = context "Analyzing Npm Lockfile (v3)" $ do
+  packageLockJson <- context "Parsing v3 compatible package-lock.json" $ readContentsJson @PackageLockV3 file
+  context "Building dependency graph" $ pure $ buildGraph packageLockJson
+
 -- | Builds a graph for package lock v3.
 --
 -- In summary, when resolving a dependency, npm checks if the version spec of
@@ -246,8 +249,8 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
       PackageLockV3Root -> do
         let directDeps :: [PackagePath]
             directDeps =
-              toTopLevelPackage
-                <$> concatMap
+              map toTopLevelPackage $
+                concatMap
                   Map.keys
                   [ plV3PkgDependencies pkgMetadata
                   , plV3PkgDevDependencies pkgMetadata
@@ -284,8 +287,8 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
       PackageLockV3WorkSpace workspaceRootPath -> do
         let directDeps :: [PackagePath]
             directDeps =
-              (vendoredPathElseTopLevelPath workspaceRootPath)
-                <$> concatMap
+              map (vendoredPathElseTopLevelPath workspaceRootPath) $
+                concatMap
                   Map.keys
                   [ plV3PkgDependencies pkgMetadata
                   , plV3PkgDevDependencies pkgMetadata
@@ -299,7 +302,7 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
 
       -- For typical dependency packages, for instance:
       --
-      -- "node_module/someDirectDep": {
+      -- "node_modules/someDirectDep": {
       --   "version": "1.2.3",
       --   "resolved": "https://registry.npmjs.org/someDirectDep/-/someDirectDep-1.2.3.tgz",
       --   "dependencies": {
@@ -328,8 +331,8 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
 
         let deepDeps :: [PackagePath]
             deepDeps =
-              (vendoredPathElseTopLevelPath vendorPathPrefix)
-                <$> concatMap
+              map (vendoredPathElseTopLevelPath vendorPathPrefix) $
+                concatMap
                   Map.keys
                   [ plV3PkgDependencies pkgMetadata
                   , plV3PkgPeerDependencies pkgMetadata
@@ -341,13 +344,17 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
         case currentDep of
           Nothing -> pure () -- This will never happen, given that we are iterating on same package path.
           Just parentDep -> do
-            for_ resolvedDeepDeps $ \resolvedDeepDep -> do
-              edge parentDep resolvedDeepDep
+            for_ resolvedDeepDeps $ edge parentDep
   where
     -- Prefer resolution path in following order of precedent:
     --  1) {prefix}/node_modules/{pkgName}
     --  2) {root of prefix}/node_modules/{pkgName} (handles workspace root projects)
     --  3) node_modules/{pkgName}
+    --
+    -- Example, for prefix of "workspace-a/node_modules/a/" for 'PackageName b' we will attempt,
+    --  1) workspace-a/node_modules/a/node_modules/b/
+    --  2) workspace-a/node_modules/b/
+    --  3) node_modules/b/
     vendoredPathElseTopLevelPath :: Text -> PackageName -> PackagePath
     vendoredPathElseTopLevelPath prefix pkgName
       | Map.member (toVendoredPackage prefix pkgName) allDependencyPackages = (toVendoredPackage prefix pkgName)
@@ -389,7 +396,7 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
     toTopLevelPackage = PackageLockV3PathKey defaultVendorDir
 
     -- Provides candidate path in as if the package was vendored
-    -- >> toVendoredPackage "node_module/a" pkgName = PackagePath "node_modules/a/node_modules/" pkgName
+    -- >> toVendoredPackage "node_modules/a" pkgName = PackagePath "node_modules/a/node_modules/" pkgName
     toVendoredPackage :: Text -> PackageName -> PackagePath
     toVendoredPackage prefix = PackageLockV3PathKey (prefix <> "/" <> defaultVendorDir)
 
@@ -405,31 +412,20 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
         rootWorkspace :: Text
         rootWorkspace = fromMaybe prefix (getRootWorkspace prefix)
 
-        getRootWorkspace :: Text -> Maybe Text
-        getRootWorkspace pkgPath = case Text.breakOn "/node_modules" pkgPath of
-          ("", "") -> Nothing
-          (firstModule, _)
-            | firstModule == pkgPath -> Nothing
-            | (Map.size (Map.filterWithKey (\k _ -> isWorkSpace firstModule k) (packages pkgLockV3)) > 0) -> Just firstModule
-            | otherwise -> Nothing
+    -- Retrieves root workspace module.
+    --
+    -- >> getRootWorkspace "myWorkspace/myPkg/node_modules/a" = Just "myWorkspace/myPkg"
+    -- >> getRootWorkspace "myWorkspace/myPkg/node_modules/a/node_modules/b" = Just "myWorkspace/myPkg"
+    -- >> getRootWorkspace "node_modules/a" = Nothing
+    -- >> getRootWorkspace "node_modules/a/node_module/b" = Nothing
+    getRootWorkspace :: Text -> Maybe Text
+    getRootWorkspace pkgPath = case Text.breakOn "/node_modules" pkgPath of
+      ("", "") -> Nothing
+      (firstModule, _)
+        | firstModule == pkgPath -> Nothing
+        | (Map.size (Map.filterWithKey (\k _ -> isWorkSpace firstModule k) (packages pkgLockV3)) > 0) -> Just firstModule
+        | otherwise -> Nothing
 
-        isWorkSpace :: Text -> PackagePath -> Bool
-        isWorkSpace name pkgPath = pkgPath == PackageLockV3WorkSpace name
+    isWorkSpace :: Text -> PackagePath -> Bool
+    isWorkSpace name pkgPath = pkgPath == PackageLockV3WorkSpace name
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze file = context "Analyzing Npm Lockfile (v3)" $ do
-  packageLockJson <- context "Parsing v3 compatible package-lock.json" $ readContentsJson @PackageLockV3 file
-  context "Building dependency graph" $ pure $ buildGraph packageLockJson
-
--- | Keeping repl'ble function in tactic for rapid debugging
--- --
--- main :: IO ()
--- main = do
---   currentDir <- getCurrentDir
---   let pkgLockV3Path = currentDir </> $(mkRelFile "test/Node/testdata/lockfileV3/graphing/simple-package-lock.json")
---   maybePkgLockV3 <- eitherDecodeFileStrict' (toString pkgLockV3Path)
---   case maybePkgLockV3 of
---     Left err -> print err
---     Right (g :: PackageLockV3) -> do
---       print $ "parsed packageLock at: " <> (toString pkgLockV3Path)
---       print g

@@ -231,7 +231,7 @@ detectNpmLockVersion ::
   Path Abs File ->
   m NpmLockVersion
 detectNpmLockVersion npmLockFile = do
-  isV3Compatible :: (Maybe PackageLockV3.PackageLockV3) <- recover $ readContentsJson npmLockFile
+  isV3Compatible <- recover $ readContentsJson @PackageLockV3.PackageLockV3 npmLockFile
   if isJust isV3Compatible
     then pure NpmLockV3Compatible
     else pure NpmLockV1Compatible

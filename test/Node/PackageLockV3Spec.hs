@@ -38,8 +38,11 @@ import Strategy.Node.Npm.PackageLockV3 (
 import Test.Effect (it', shouldBe')
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe)
 
-fixturePackageLockPath :: Path Rel File
-fixturePackageLockPath = $(mkRelFile "simple-package-lock.json")
+fixtureSimplePackageLockPath :: Path Rel File
+fixtureSimplePackageLockPath = $(mkRelFile "simple-package-lock.json")
+
+workspaceNestedModulePackageLockPath :: Path Rel File
+workspaceNestedModulePackageLockPath = $(mkRelFile "ws-nested-module-package-lock.json")
 
 spec :: Spec
 spec = do
@@ -55,30 +58,23 @@ spec = do
   parsePathKeySpec
 
   -- Parse and Validate Graphing
-  let filePathToFixture = (graphingFixtureDir </> fixturePackageLockPath)
-  maybePkgLockV3 <- runIO $ eitherDecodeFileStrict' (toString filePathToFixture)
-  case maybePkgLockV3 of
-    Left errMsg -> alwaysFailSpec "should parse fixture" errMsg
-    Right pkgLockV3 -> do
-      buildGraphSpec (buildGraph pkgLockV3)
+  checkGraph (graphingFixtureDir </> fixtureSimplePackageLockPath) simplePackageLockGraphSpec
+  checkGraph (graphingFixtureDir </> workspaceNestedModulePackageLockPath) workspaceNestedModulePackageLockGraphSpec
 
 isV3CompatibleSpec :: Spec
 isV3CompatibleSpec = do
   describe "isV3Compatible" $ do
     it "should return false for version 1" $
-      isV3Compatible (Just 1) `shouldBe` False
+      (isV3Compatible 1) `shouldBe` False
 
     it "should return false for version 2" $
-      isV3Compatible (Just 2) `shouldBe` False
+      (isV3Compatible 2) `shouldBe` False
 
     it "should return true for version 3" $
-      isV3Compatible (Just 3) `shouldBe` True
+      (isV3Compatible 3) `shouldBe` True
 
     it "should return false for version 4" $
-      isV3Compatible (Just 4) `shouldBe` False
-
-    it "should return false for when version is not discoverd" $
-      isV3Compatible Nothing `shouldBe` False
+      (isV3Compatible 4) `shouldBe` False
 
 parsePathKeySpec :: Spec
 parsePathKeySpec = do
@@ -149,8 +145,8 @@ packageLockParseSpec testDir =
                 (packages pkgLockV3)
       foo `shouldBe'` Nothing
 
-buildGraphSpec :: Graphing Dependency -> Spec
-buildGraphSpec graph = do
+simplePackageLockGraphSpec :: Graphing Dependency -> Spec
+simplePackageLockGraphSpec graph = do
   let hasEdge :: Dependency -> Dependency -> Expectation
       hasEdge = expectEdge graph
 
@@ -304,6 +300,34 @@ buildGraphSpec graph = do
       hasEdge (mkProdDep "xml2js@0.4.19") (mkProdDep "sax@1.2.1")
       hasEdge (mkProdDep "xml2js@0.4.19") (mkProdDep "xmlbuilder@9.0.7")
 
+workspaceNestedModulePackageLockGraphSpec :: Graphing Dependency -> Spec
+workspaceNestedModulePackageLockGraphSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  let hasDep :: Dependency -> Expectation
+      hasDep dep = expectDep dep graph
+
+  describe "buildGraph" $ do
+    it "should include dependencies of root and workspace package as direct" $ do
+      -- └─┬ workspace-a-name@2.0.0 -> ./packages/a
+      --   ├── b@2.0.0
+      --   └── c@2.0.0
+      expectDirect
+        [ mkProdDep "b@2.0.0"
+        , mkProdDep "c@2.0.0"
+        ]
+        graph
+
+    it "should correctly graph b@1.0.0's dependencies (nested)" $ do
+      -- └─┬ workspace-a-name@2.0.0 -> ./packages/a
+      --   └─┬ b@2.0.0
+      --     └── c@1.0.0
+
+      hasDep (mkProdDep "b@2.0.0")
+      hasDep (mkProdDep "c@1.0.0")
+      hasEdge (mkProdDep "b@2.0.0") (mkProdDep "c@1.0.0")
+
 mkProdDep :: Text -> Dependency
 mkProdDep nameAtVersion = mkDep nameAtVersion (Just EnvProduction)
 
@@ -323,5 +347,10 @@ mkDep nameAtVersion env = do
     (maybe mempty Set.singleton env)
     mempty
 
-alwaysFailSpec :: String -> String -> Spec
-alwaysFailSpec testMsg errMsg = describe "packageLockV3" $ it testMsg $ expectationFailure errMsg
+checkGraph :: Path Abs File -> (Graphing Dependency -> Spec) -> Spec
+checkGraph pathToFixture buildGraphSpec = do
+  maybePkgLockV3 <- runIO $ eitherDecodeFileStrict' (toString pathToFixture)
+  case maybePkgLockV3 of
+    Left errMsg -> describe "packageLockV3" $ it "should parse lockfile" (expectationFailure errMsg)
+    Right pkgLockV3 -> do
+      buildGraphSpec (buildGraph pkgLockV3)
