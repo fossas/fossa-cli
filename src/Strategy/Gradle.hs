@@ -38,7 +38,7 @@ import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.FileEmbed (embedFile)
-import Data.Foldable (find)
+import Data.Foldable (find, traverse_)
 import Data.List (isPrefixOf)
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
@@ -296,6 +296,6 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
   let graphFromResolutionApi = ResolutionApi.buildGraph resolvedProjects (onlyConfigurations)
 
   -- Log debug messages as seen in gradle script
-  sequence_ $ logDebug . pretty <$> (getDebugMessages text)
+  traverse_ (logDebug . pretty) (getDebugMessages text)
 
   context "Building dependency graph" $ pure graphFromResolutionApi

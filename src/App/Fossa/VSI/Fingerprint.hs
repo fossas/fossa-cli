@@ -214,11 +214,11 @@ basicCStyleCommentStripC =
 -- 2. If the substring was not found, the result is @Nothing@,
 -- instead of one of the options being a blank @ByteString@.
 breakSubstringAndRemove :: ByteString -> ByteString -> Maybe (ByteString, ByteString)
-breakSubstringAndRemove needle haystack
-  | (before, after) <- BS.breakSubstring needle haystack
-    , BS.isPrefixOf needle after =
-    Just (before, BS.drop (BS.length needle) after)
-  | otherwise = Nothing
+breakSubstringAndRemove needle haystack = do
+  let (before, after) = BS.breakSubstring needle haystack
+  if needle `BS.isPrefixOf` after
+    then pure (before, BS.drop (BS.length needle) after)
+    else Nothing
 
 -- | Remove leading and trailing spaces.
 stripSpace :: ByteString -> ByteString
