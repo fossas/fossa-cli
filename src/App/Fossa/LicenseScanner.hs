@@ -323,9 +323,11 @@ licenseScanSourceUnit baseDir vendoredDeps = do
   -- but not when reading from a source unit.
   orgId <- organizationId <$> getOrganization
 
+  -- make sure all revisions have their versions populated
+  uniqDepsWithVersions <- traverse (ensureVendoredDepVersion baseDir) uniqDeps
   -- Ask Core if any of these deps have already been scanned. If they have, skip scanning them.
-  (needScanningDeps, skippedDeps) <- findDepsThatNeedScanning baseDir uniqDeps orgId
-  let skippedArchives = NE.map forceVendoredToArchive uniqDeps
+  (needScanningDeps, skippedDeps) <- findDepsThatNeedScanning uniqDepsWithVersions orgId
+  let skippedArchives = map forceVendoredToArchive skippedDeps
   _ <- case needScanningDeps of
     -- If none of the dependencies need scanning, then log that, but we still need to do `finalizeLicenseScan` so keep going
     [] -> do
@@ -339,7 +341,7 @@ licenseScanSourceUnit baseDir vendoredDeps = do
   maybeScannedArchives <- traverse (scanAndUploadVendoredDep baseDir) needScanningDeps
 
   -- We need to include both scanned and skipped archives in this list so that they all get included in the build in FOSSA
-  archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ (catMaybes maybeScannedArchives) <> NE.toList skippedArchives
+  archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ (catMaybes maybeScannedArchives) <> skippedArchives
 
   -- finalizeLicenseScan takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
@@ -357,14 +359,12 @@ findDepsThatNeedScanning ::
   ( Has (Lift IO) sig m
   , Has FossaApiClient sig m
   ) =>
-  Path Abs Dir ->
   NonEmpty VendoredDependency ->
   OrgId ->
   m ([VendoredDependency], [VendoredDependency])
-findDepsThatNeedScanning baseDir vdeps orgId = do
-  vdepsWithVersions <- traverse (ensureVendoredDepVersion baseDir) vdeps
-  revisionInfos <- getRevisionInfo vdepsWithVersions
-  pure $ NE.partition (shouldScanRevision revisionInfos orgId) vdepsWithVersions
+findDepsThatNeedScanning vdeps orgId = do
+  revisionInfos <- getRevisionInfo vdeps
+  pure $ NE.partition (shouldScanRevision revisionInfos orgId) vdeps
 
 ensureVendoredDepVersion ::
   (Has (Lift IO) sig m) =>
