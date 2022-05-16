@@ -14,8 +14,14 @@ module Strategy.Nim.NimbleLock (
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
-import Control.Carrier.Diagnostics (ToDiagnostic, errCtx, warnOnErr)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, recover)
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (renderDiagnostic),
+  context,
+  errCtx,
+  recover,
+  warnOnErr,
+ )
 import Data.Aeson (
   FromJSON (parseJSON),
   FromJSONKey,
@@ -28,7 +34,7 @@ import Data.Aeson.Types (Parser)
 import Data.HashMap.Strict qualified as HM
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Traversable (for)
@@ -48,7 +54,7 @@ import Graphing (
   toAdjacencyMap,
   unfoldDeep,
  )
-import Path
+import Path (Abs, Dir, File, Path)
 import Types (GraphBreadth (..))
 
 -- | Represents nimble lock file.
@@ -136,7 +142,7 @@ buildGraph lockFile nimbleDump =
     applyDirect :: Graphing NimPackage -> Graphing NimPackage
     applyDirect gr = case nimbleDump of
       Nothing -> Graphing.directs (getVerticesWithoutPredecessors gr) <> gr
-      Just nd -> Graphing.directs (catMaybes $ (`Map.lookup` pkgRegistry) <$> map nameOf (requires nd)) <> gr
+      Just nd -> Graphing.directs (mapMaybe ((`Map.lookup` pkgRegistry) . nameOf) (requires nd)) <> gr
 
     toDependency :: NimPackage -> Maybe Dependency
     toDependency nimPkg = case downloadMethod nimPkg of

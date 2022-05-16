@@ -32,10 +32,10 @@ import Strategy.Swift.Xcode.PbxprojParser (AsciiValue (..), PbxProj (..), lookup
 
 -- | Represents the version rules for a Swift Package as defined in Xcode project file.
 data XCRemoteSwiftPackageReference = XCRemoteSwiftPackageReference
-  { -- | Represents repositoryURL field from project file.
-    urlOf :: Text
-  , -- | Represents requirement field from project file.
-    requirementOf :: SwiftPackageGitDepRequirement
+  { urlOf :: Text
+  -- ^ Represents repositoryURL field from project file.
+  , requirementOf :: SwiftPackageGitDepRequirement
+  -- ^ Represents requirement field from project file.
   }
   deriving (Show, Eq, Ord)
 

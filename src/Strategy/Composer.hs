@@ -135,8 +135,8 @@ data ComposerLock = ComposerLock
 data CompDep = CompDep
   { depName :: Text
   , depVersion :: Text
-  , -- | name to version spec
-    depRequire :: Maybe (Map Text Text)
+  , depRequire :: Maybe (Map Text Text)
+  -- ^ name to version spec
   , depRequireDev :: Maybe (Map Text Text)
   }
   deriving (Eq, Ord, Show)

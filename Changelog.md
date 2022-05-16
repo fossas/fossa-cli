@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Archive upload: Fix a bug when trying to tar to a filename that already exists
 ## v3.2.16
 - Go: When statically analyzing a project, apply reported replacements. ([#926](https://github.com/fossas/fossa-cli/pull/926))
 

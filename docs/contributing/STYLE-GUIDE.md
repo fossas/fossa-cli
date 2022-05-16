@@ -120,6 +120,25 @@ make sure that you have a solid justification for doing so.
 In almost all cases, `map`, `filter`, `fold`, and the `[]` monad are more
 flexible and readable.
 
+### Do not use match guards
+
+While matching data at the function binding is appealing as an idea, but has
+several drawbacks:
+
+- Match guards in function definitions are adding more info into an area
+that may already be cluttered.
+- Match guards with multiple bindings are essentially the same syntax as list
+comprehensions, which are also forbidden.
+- Match guards offer an alternative to `case` and `if`, which makes it harder
+to establish a guideline of "There should only be one right and obvious way to
+do something" (which is a loose goal for the codebase).
+
+If your match guards are any less readable than the introductory examples in
+[Learn you a haskell][guards], then you should stick to `case` and `if`
+expressions within the function body.
+
+[guards]: http://learnyouahaskell.com/syntax-in-functions#guards-guards
+
 ### Don't go crazy with point-free definitions
 
 Point-free style can help or hinder readability, depending on the context. If a
@@ -339,3 +358,6 @@ Use these instead of `decodeUtf8`/`encodeUTF8`/`Text.pack`
   compiles identically, then remove it.
 - Avoid nested `where` blocks.  If you feel that you need them, rethink your
   design.  Consider making an `Internal` module instead.
+- In do-notation, use `let` bindings, otherwise, use `where` clauses.  Don't
+  use `let` expressions (exammple: `let ... in ...`).
+

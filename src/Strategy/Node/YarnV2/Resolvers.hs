@@ -39,12 +39,12 @@ import Strategy.Node.YarnV2.Lockfile
 import Text.Megaparsec
 
 data Resolver = Resolver
-  { -- | Used for error messages
-    resolverName :: Text
-  , -- | Does this resolver support the locator?
-    resolverSupportsLocator :: Locator -> Bool
-  , -- | Convert this locator to a yarn package
-    resolverLocatorToPackage :: Locator -> Either Text Package
+  { resolverName :: Text
+  -- ^ Used for error messages
+  , resolverSupportsLocator :: Locator -> Bool
+  -- ^ Does this resolver support the locator?
+  , resolverLocatorToPackage :: Locator -> Either Text Package
+  -- ^ Convert this locator to a yarn package
   }
 
 data Package

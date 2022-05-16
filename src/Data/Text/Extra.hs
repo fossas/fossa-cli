@@ -37,11 +37,11 @@ splitOnceOnEnd needle haystack = (strippedInitial, end)
 -- >>> breakOnAndRemove "foo" "bar"
 -- Nothing
 breakOnAndRemove :: Text -> Text -> Maybe (Text, Text)
-breakOnAndRemove needle haystack
-  | (before, after) <- Text.breakOn needle haystack
-    , Text.isPrefixOf needle after =
-    Just (before, Text.drop (Text.length needle) after)
-  | otherwise = Nothing
+breakOnAndRemove needle haystack = do
+  let (before, after) = Text.breakOn needle haystack
+  if needle `Text.isPrefixOf` after
+    then pure (before, Text.drop (Text.length needle) after)
+    else Nothing
 
 underBS :: (ByteString -> ByteString) -> Text -> Text
 underBS f = decodeUtf8 . f . encodeUtf8
