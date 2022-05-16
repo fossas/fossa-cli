@@ -36,7 +36,7 @@ import Data.Set qualified as Set
 import Data.Text (Text, breakOnEnd)
 import Data.Text qualified as Text
 import DepTypes (
-  DepEnvironment (EnvDevelopment),
+  DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (NodeJSType),
   Dependency (..),
   VerConstraint (CEq),
@@ -79,16 +79,13 @@ instance FromJSON PackageLockV3 where
 -- We intentionally mark them incompatible for now, give large blast zone.
 -- TODO: make v2 lockfile also compatible with v3 after this analysis has been used in prod for some time.
 isV3Compatible :: Maybe Int -> Bool
-isV3Compatible lockFileVersion =
-  case lockFileVersion of
-    Nothing -> False
-    Just v ->
-      v == 3
+isV3Compatible = (Just 3 ==)
 
 -- | Primary identifier in package-lock.json v3 `packages`.
 --
--- In package-lock v3 file, "packages" key's field value refer to
--- path in filesystem that points to a package.json file.
+-- In package-lock v3 file,  keys in the `packages` object refer to paths in the filesystem that
+-- contain a package.json file. These locations will be any of a workspace, a dependency, or
+-- the root project we are analyzing.
 --
 -- * @PackageLockV3Root@ refers to parent package.json file.
 --
@@ -118,10 +115,10 @@ data PackagePath
   deriving (Show, Eq, Ord)
 
 instance FromJSONKey PackagePath where
-  fromJSONKey = FromJSONKeyTextParser $ \pkgPathText -> pure $ parsePathKey pkgPathText
+  fromJSONKey = FromJSONKeyTextParser $ pure . parsePathKey
 
 instance FromJSON PackagePath where
-  parseJSON = withText "PackageLockV3PackageKey" $ \pkgPathText -> pure $ parsePathKey pkgPathText
+  parseJSON = withText "PackageLockV3PackageKey" $ pure . parsePathKey
 
 -- It is not possible to modify the default vendor dir in npm.
 defaultVendorDir :: Text
@@ -198,10 +195,9 @@ instance FromJSON NpmLockV3Resolved where
 --  So to make a resolution, we work backwards to top level from
 --  a given module,
 --
---  For package's dependency,
---    - We associated resolved version to vendored path if present.
---      If not, we associate it with top-level path if present.
---      If neither are present, we ignore this edge.
+--  For example, to resolve B as a dependency of D in the above example, we first search for a
+--  package like "node_modules/A/node_modules/D". If it doesn't exist, we then search for
+--  "node_modules/A".
 --
 --  Although, this is not precisely what npm does when loading
 --  package-lock.json, this is good approximation without having
@@ -360,26 +356,21 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
 
     toDependency :: PackagePath -> Maybe Dependency
     toDependency pkgPath =
-      case (Map.lookup pkgPath $ packages pkgLockV3) of
-        Just meta -> do
-          case pkgPath of
-            PackageLockV3PathKey _ packageName ->
-              Just $
-                Dependency
-                  { dependencyType = NodeJSType
-                  , dependencyName = unPackageName packageName
-                  , dependencyVersion = CEq <$> (plV3PkgVersion meta)
-                  , dependencyLocations = catMaybes [unNpmLockV3Resolved $ plV3PkgResolved meta]
-                  , dependencyEnvironments =
-                      if plV3PkgDev meta
-                        then Set.singleton EnvDevelopment
-                        else mempty
-                  , dependencyTags = Map.empty
-                  }
-            PackageLockV3WorkSpace _ -> Nothing -- Don't report workspace as dependency!
-            PackageLockV3Root -> Nothing -- Don't report root project as dependency!
-        _ -> Nothing
-
+      case (pkgPath, Map.lookup pkgPath $ packages pkgLockV3) of
+        (PackageLockV3PathKey _ packageName, Just meta) ->
+          Just $
+            Dependency
+              { dependencyType = NodeJSType
+              , dependencyName = unPackageName packageName
+              , dependencyVersion = CEq <$> (plV3PkgVersion meta)
+              , dependencyLocations = catMaybes [unNpmLockV3Resolved $ plV3PkgResolved meta]
+              , dependencyEnvironments =
+                  if plV3PkgDev meta
+                    then Set.singleton EnvDevelopment
+                    else Set.singleton EnvProduction
+              , dependencyTags = Map.empty
+              }
+        _ -> Nothing -- don't report workspace or root project as dependency, or pkg not found
     allDependencyPackages :: Map PackagePath PackageLockV3Package
     allDependencyPackages =
       Map.filterWithKey
@@ -417,13 +408,10 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
         getRootWorkspace :: Text -> Maybe Text
         getRootWorkspace pkgPath = case Text.breakOn "/node_modules" pkgPath of
           ("", "") -> Nothing
-          (firstModule, _) ->
-            if firstModule == pkgPath
-              then Nothing
-              else
-                if (Map.size (Map.filterWithKey (\k _ -> isWorkSpace firstModule k) (packages pkgLockV3)) > 0)
-                  then Just firstModule
-                  else Nothing
+          (firstModule, _)
+            | firstModule == pkgPath -> Nothing
+            | (Map.size (Map.filterWithKey (\k _ -> isWorkSpace firstModule k) (packages pkgLockV3)) > 0) -> Just firstModule
+            | otherwise -> Nothing
 
         isWorkSpace :: Text -> PackagePath -> Bool
         isWorkSpace name pkgPath = pkgPath == PackageLockV3WorkSpace name

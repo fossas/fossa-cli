@@ -11,7 +11,7 @@ import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
-  DepEnvironment (EnvDevelopment),
+  DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (NodeJSType),
   Dependency (..),
   VerConstraint (CEq),
@@ -305,7 +305,7 @@ buildGraphSpec graph = do
       hasEdge (mkProdDep "xml2js@0.4.19") (mkProdDep "xmlbuilder@9.0.7")
 
 mkProdDep :: Text -> Dependency
-mkProdDep nameAtVersion = mkDep nameAtVersion Nothing
+mkProdDep nameAtVersion = mkDep nameAtVersion (Just EnvProduction)
 
 mkDevDep :: Text -> Dependency
 mkDevDep nameAtVersion = mkDep nameAtVersion (Just EnvDevelopment)
