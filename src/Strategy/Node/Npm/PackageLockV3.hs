@@ -428,4 +428,3 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
 
     isWorkSpace :: Text -> PackagePath -> Bool
     isWorkSpace name pkgPath = pkgPath == PackageLockV3WorkSpace name
-
