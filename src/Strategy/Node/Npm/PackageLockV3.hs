@@ -417,7 +417,7 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
         isWorkSpace name pkgPath = pkgPath == PackageLockV3WorkSpace name
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze file = context "Analyzing Npm Lockfile" $ do
+analyze file = context "Analyzing Npm Lockfile (v3)" $ do
   packageLockJson <- context "Parsing v3 compatible package-lock.json" $ readContentsJson @PackageLockV3 file
   context "Building dependency graph" $ pure $ buildGraph packageLockJson
 
