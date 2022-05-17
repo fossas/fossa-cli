@@ -170,8 +170,10 @@ data ExecErr
     CommandFailed CmdFailure
   | -- | Command output couldn't be parsed. command, err
     CommandParseError Command Text
-  | RawException ExceptionText
-  | RawExitFailure Int
+  | -- | Command couldn't be run, err
+    RawException ExceptionText
+  | -- | Command exited with non-zero exitcode, exitcode
+    RawExitFailure Int
   deriving (Eq, Ord, Show, Generic)
 
 renderCmdFailure :: CmdFailure -> Doc AnsiStyle
@@ -232,7 +234,7 @@ instance ToDiagnostic ExecErr where
 exec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure Stdout)
 exec dir cmd = sendSimple (Exec (Abs dir) cmd)
 
--- | Execute a command
+-- | Execute a command and return its exitcode or text describing the error
 rawExec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either ExceptionText ExitCode)
 rawExec dir cmd = sendSimple (RawExec (Abs dir) cmd)
 
@@ -268,7 +270,7 @@ execThrow' cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
   dir <- getCurrentDir
   execThrow dir cmd
 
--- | A variant of 'exec' that throws a 'ExecErr' when the command returns a non-zero exit code
+-- | A variant of 'rawExec' that throws a 'ExecErr' when the command returns a non-zero exit code
 rawExecThrow :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> Command -> m ()
 rawExecThrow dir cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
   result <- rawExec dir cmd
@@ -281,6 +283,7 @@ type ExecIOC = SimpleC ExecF
 
 runExecIO :: Has (Lift IO) sig m => ExecIOC m a -> m a
 runExecIO = interpret $ \case
+  -- run a command returning its stdin and stderr or cmd failure
   Exec dir cmd -> sendIO $ do
     absolute <-
       case dir of
@@ -314,6 +317,8 @@ runExecIO = interpret $ \case
         result = first ioExceptionToCmdFailure processResult >>= mangleResult
 
     pure result
+
+  -- run a command returning its exitcode or text describing the error
   RawExec dir cmd -> sendIO $ do
     absolute <-
       case dir of
