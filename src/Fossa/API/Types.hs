@@ -23,7 +23,6 @@ module Fossa.API.Types (
   RevisionInfo (..),
   ScanId (..),
   ScanResponse (..),
-  VendoredDependencySkippingOption (..),
   useApiOpts,
   defaultApiPollDelay,
 ) where
@@ -284,22 +283,11 @@ newtype OrgId = OrgId Int
 instance Show OrgId where
   show (OrgId orgId) = show orgId
 
-data VendoredDependencySkippingOption = None | CliSideLicenseScan | ArchiveUpload | All
-  deriving (Eq, Ord, Show)
-
-instance FromJSON VendoredDependencySkippingOption where
-  parseJSON = withText "vendoredDependencySkippingOption" $ \case
-    "None" -> pure None
-    "CliSideLicenseScan" -> pure CliSideLicenseScan
-    "ArchiveUpload" -> pure ArchiveUpload
-    "All" -> pure All
-    _ -> pure None
-
 data Organization = Organization
   { organizationId :: OrgId
   , orgUsesSAML :: Bool
   , orgDoLocalLicenseScan :: Bool
-  , orgSupportsVendoredDependencySkipping :: VendoredDependencySkippingOption
+  , orgSupportsVendoredDependencySkipping :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -308,7 +296,7 @@ instance FromJSON Organization where
     Organization <$> obj .: "organizationId"
       <*> obj .:? "usesSAML" .!= False
       <*> obj .:? "supportsCliLicenseScanning" .!= False
-      <*> obj .:? "vendoredDependencySkippingOption" .!= None
+      <*> obj .:? "supportsVendoredDependencySkipping" .!= False
 
 data Project = Project
   { projectId :: Text

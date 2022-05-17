@@ -59,7 +59,6 @@ import Fossa.API.Types (
   OrgId,
   Organization (organizationId),
   RevisionInfo (..),
-  VendoredDependencySkippingOption (..),
  )
 import Path (Abs, Dir, File, Path, SomeBase (Abs, Rel), fileExtension, parent, (</>))
 import Path.Extra (tryMakeRelative)
@@ -314,12 +313,11 @@ licenseScanSourceUnit ::
   , Has ReadFS sig m
   , Has FossaApiClient sig m
   ) =>
-  VendoredDependencySkippingOption ->
+  Bool ->
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
   m (NonEmpty Locator)
-licenseScanSourceUnit skippingOption baseDir vendoredDeps = do
-  let skippingSupported = skippingOption == All || skippingOption == CliSideLicenseScan
+licenseScanSourceUnit skippingSupported baseDir vendoredDeps = do
   uniqDeps <- dedupVendoredDeps vendoredDeps
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
