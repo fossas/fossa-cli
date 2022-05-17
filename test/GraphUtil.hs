@@ -3,6 +3,8 @@ module GraphUtil (
   expectDeps',
   expectDep,
   expectDep',
+  expectEdge,
+  expectEdge',
   expectEdges,
   expectEdges',
   expectDirect,
@@ -58,3 +60,9 @@ expectDirect expected graph = Graphing.directList graph `shouldMatchList` expect
 
 expectDirect' :: (Ord a, Show a, Has (Lift IO) sig m) => [a] -> Graphing a -> m ()
 expectDirect' expected graph = sendIO $ expectDirect expected graph
+
+expectEdge :: (Ord a, Show a) => Graphing a -> a -> a -> Expectation
+expectEdge graph expectedFrom expectedTo = Graphing.edgesList graph `shouldContain` [(expectedFrom, expectedTo)]
+
+expectEdge' :: (Ord a, Show a, Has (Lift IO) sig m) => Graphing a -> a -> a -> m ()
+expectEdge' graph expectedFrom expectedTo = sendIO $ expectEdge graph expectedFrom expectedTo

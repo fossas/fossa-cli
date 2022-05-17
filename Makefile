@@ -14,8 +14,16 @@ SHELL := bash
 build:
 	cabal build
 
+# Runs units tests.
+# To run a set of unit tests matching a specific value, use ARGS
+# For example, to only run tests whose name matches the wildcard '*Node.PackageLockV3*':
+# 	make test ARGS="Node.PackageLockV3"
 test:
+ifdef ARGS
+	cabal test unit-tests --test-show-details=streaming --test-option=--format=checks --test-option=--times --test-option=--color --test-option=--match --test-option="$(ARGS)"
+else
 	cabal test unit-tests --test-show-details=streaming --test-option=--format=checks --test-option=--times --test-option=--color
+endif
 
 # Runs an integration test.
 # To run a set of integration tests matching a specific value, use ARGS

@@ -1,8 +1,9 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.2.17
+- Archive upload: Fix a bug when trying to tar to a filename that already exists. ([#927](https://github.com/fossas/fossa-cli/pull/927))
+- Npm: Supports lockfile v3. ([#932](https://github.com/fossas/fossa-cli/pull/932))
 
-- Archive upload: Fix a bug when trying to tar to a filename that already exists
 ## v3.2.16
 - Go: When statically analyzing a project, apply reported replacements. ([#926](https://github.com/fossas/fossa-cli/pull/926))
 
