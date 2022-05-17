@@ -4,7 +4,6 @@
 module App.Fossa.LicenseScanner.LicenseScannerSpec (spec) where
 
 import App.Fossa.LicenseScanner (combineLicenseUnits, licenseScanSourceUnit)
-import App.Fossa.VendoredDependency (VendoredDependency (..))
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
@@ -15,7 +14,7 @@ import Diag.Result (Result (..))
 import Effect.Exec (runExecIO)
 import Effect.Logger (ignoreLogger)
 import Effect.ReadFS (runReadFSIO)
-import Fossa.API.Types (Archive (Archive), ArchiveComponents (ArchiveComponents, archives), RevisionInfo (..))
+import Fossa.API.Types (Archive, ArchiveComponents (ArchiveComponents, archives), RevisionInfo (..))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
 import Srclib.Types (
@@ -23,7 +22,6 @@ import Srclib.Types (
   LicenseUnit (..),
   LicenseUnitData (..),
   LicenseUnitInfo (..),
-  Locator (Locator),
   emptyLicenseUnitData,
  )
 import Test.Effect (expectationFailure', it', shouldBe')
@@ -78,68 +76,6 @@ expectedCombinedUnit =
     , licenseUnitInfo = info
     }
 
--- Test data for licenseScanSourceUnits tests
-firstVendoredDep :: VendoredDependency
-firstVendoredDep =
-  VendoredDependency
-    "first-archive-test"
-    "vendor/foo"
-    (Just "0.0.1")
-
-secondVendoredDep :: VendoredDependency
-secondVendoredDep =
-  VendoredDependency
-    "second-archive-test"
-    "vendor/bar"
-    (Just "0.0.1")
-
-vendoredDeps :: NonEmpty VendoredDependency
-vendoredDeps = firstVendoredDep :| [secondVendoredDep]
-
-firstLocator :: Locator
-firstLocator =
-  Locator
-    "archive"
-    "42/first-archive-test"
-    (Just "0.0.1")
-
-secondLocator :: Locator
-secondLocator =
-  Locator
-    "archive"
-    "42/second-archive-test"
-    (Just "0.0.1")
-
-firstRevision :: RevisionInfo
-firstRevision =
-  RevisionInfo
-    "archive+42/first-archive-test$0.0.1"
-    True
-
-secondRevision :: RevisionInfo
-secondRevision =
-  RevisionInfo
-    "archive+42/second-archive-test$0.0.1"
-    True
-
-firstArchive :: Archive
-firstArchive =
-  Archive
-    "first-archive-test"
-    "0.0.1"
-
-secondArchive :: Archive
-secondArchive =
-  Archive
-    "second-archive-test"
-    "0.0.1"
-
-arcs :: [Archive]
-arcs = [firstArchive, secondArchive]
-
-expectedLocators :: NonEmpty Locator
-expectedLocators = firstLocator :| [secondLocator]
-
 fixtureDir :: Path Rel Dir
 fixtureDir = $(mkRelDir "test/App/Fossa/LicenseScanner/testdata/repo")
 
@@ -159,12 +95,12 @@ spec = do
       expectGetApiOpts
       expectGetOrganization
       expectEverythingScannedAlready
-      expectFinalizeScan arcs
-      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit scanDir vendoredDeps
+      expectFinalizeScan Fixtures.archives
+      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit scanDir Fixtures.vendoredDeps
       case locators of
         Failure ws eg -> expectationFailure' $ "Could not license scan source unit. Warnings = " <> show ws <> ", error group: " <> show eg
         Success _ ls -> do
-          ls `shouldBe'` expectedLocators
+          ls `shouldBe'` Fixtures.locators
 
     it' "should scan all if Core does not know about the revisions" $ do
       expectGetApiOpts
@@ -174,12 +110,12 @@ spec = do
       expectUploadLicenseScanResult Fixtures.firstLicenseSourceUnit
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
-      expectFinalizeScan arcs
-      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit scanDir vendoredDeps
+      expectFinalizeScan Fixtures.archives
+      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit scanDir Fixtures.vendoredDeps
       case locators of
         Failure ws eg -> expectationFailure' $ "Could not license scan source unit. Warnings = " <> show ws <> ", error group: " <> show eg
         Success _ ls -> do
-          ls `shouldBe'` expectedLocators
+          ls `shouldBe'` Fixtures.locators
 
     it' "should scan all if the revisions are still being scanned" $ do
       expectGetApiOpts
@@ -189,12 +125,12 @@ spec = do
       expectUploadLicenseScanResult Fixtures.firstLicenseSourceUnit
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
-      expectFinalizeScan arcs
-      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit scanDir vendoredDeps
+      expectFinalizeScan Fixtures.archives
+      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit scanDir Fixtures.vendoredDeps
       case locators of
         Failure ws eg -> expectationFailure' $ "Could not license scan source unit. Warnings = " <> show ws <> ", error group: " <> show eg
         Success _ ls -> do
-          ls `shouldBe'` expectedLocators
+          ls `shouldBe'` Fixtures.locators
 
     it' "should scan one if one revision is still being scanned" $ do
       expectGetApiOpts
@@ -202,12 +138,12 @@ spec = do
       expectOneScanInProgress
       expectGetSignedUrl PackageRevision{packageName = "first-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.firstLicenseSourceUnit
-      expectFinalizeScan arcs
-      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit scanDir vendoredDeps
+      expectFinalizeScan Fixtures.archives
+      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit scanDir Fixtures.vendoredDeps
       case locators of
         Failure ws eg -> expectationFailure' $ "Could not license scan source unit. Warnings = " <> show ws <> ", error group: " <> show eg
         Success _ ls -> do
-          ls `shouldBe'` expectedLocators
+          ls `shouldBe'` Fixtures.locators
 
 expectGetApiOpts :: Has MockApi sig m => m ()
 expectGetApiOpts =
@@ -221,23 +157,23 @@ expectGetSignedUrl packageRevision = GetSignedLicenseScanUrl packageRevision `al
 
 expectEverythingScannedAlready :: Has MockApi sig m => m ()
 expectEverythingScannedAlready =
-  (GetRevisionInfo vendoredDeps)
-    `returnsOnce` [firstRevision, secondRevision]
+  (GetRevisionInfo Fixtures.vendoredDeps)
+    `returnsOnce` [Fixtures.firstRevision, Fixtures.secondRevision]
 
 expectNothingScannedYet :: Has MockApi sig m => m ()
 expectNothingScannedYet =
-  (GetRevisionInfo vendoredDeps)
+  (GetRevisionInfo Fixtures.vendoredDeps)
     `returnsOnce` []
 
 expectAllScansInProgress :: Has MockApi sig m => m ()
 expectAllScansInProgress =
-  (GetRevisionInfo vendoredDeps)
-    `returnsOnce` [firstRevision{revisionInfoResolved = False}, secondRevision{revisionInfoResolved = False}]
+  (GetRevisionInfo Fixtures.vendoredDeps)
+    `returnsOnce` [Fixtures.firstRevision{revisionInfoResolved = False}, Fixtures.secondRevision{revisionInfoResolved = False}]
 
 expectOneScanInProgress :: Has MockApi sig m => m ()
 expectOneScanInProgress =
-  (GetRevisionInfo vendoredDeps)
-    `returnsOnce` [firstRevision{revisionInfoResolved = False}, secondRevision]
+  (GetRevisionInfo Fixtures.vendoredDeps)
+    `returnsOnce` [Fixtures.firstRevision{revisionInfoResolved = False}, Fixtures.secondRevision]
 
 expectUploadLicenseScanResult :: Has MockApi sig m => LicenseSourceUnit -> m ()
 expectUploadLicenseScanResult licenseUnit =

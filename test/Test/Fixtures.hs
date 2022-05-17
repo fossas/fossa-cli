@@ -23,17 +23,25 @@ module Test.Fixtures (
   pendingBuild,
   attributionReportAsSerializedJson,
   signedUrl,
+  archives,
+  locators,
+  vendoredDeps,
+  firstRevision,
+  secondRevision,
   firstLicenseSourceUnit,
   secondLicenseSourceUnit,
 ) where
 
+import App.Fossa.VendoredDependency (VendoredDependency (..))
 import App.Types qualified as App
 import Control.Effect.FossaApiClient qualified as App
 import Control.Timeout (Duration (MilliSeconds))
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text.Extra (showT)
+import Fossa.API.Types (Archive (..), RevisionInfo (..))
 import Fossa.API.Types qualified as API
 import Path (mkRelDir, parseAbsDir, (</>))
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), LicenseUnit (..), LicenseUnitData (..), LicenseUnitInfo (..), LicenseUnitMatchData (..), Locator (..), SourceUnit (..))
@@ -221,6 +229,68 @@ attributionReportAsSerializedJson = "{\"TestReport\": \"TestReportData\"}"
 
 signedUrl :: API.SignedURL
 signedUrl = API.SignedURL{API.signedURL = "https://foo.com"}
+
+-- Test data for licenseScanSourceUnits tests
+firstVendoredDep :: VendoredDependency
+firstVendoredDep =
+  VendoredDependency
+    "first-archive-test"
+    "vendor/foo"
+    (Just "0.0.1")
+
+secondVendoredDep :: VendoredDependency
+secondVendoredDep =
+  VendoredDependency
+    "second-archive-test"
+    "vendor/bar"
+    (Just "0.0.1")
+
+vendoredDeps :: NonEmpty VendoredDependency
+vendoredDeps = firstVendoredDep :| [secondVendoredDep]
+
+firstLocator :: Locator
+firstLocator =
+  Locator
+    "archive"
+    "42/first-archive-test"
+    (Just "0.0.1")
+
+secondLocator :: Locator
+secondLocator =
+  Locator
+    "archive"
+    "42/second-archive-test"
+    (Just "0.0.1")
+
+firstRevision :: RevisionInfo
+firstRevision =
+  RevisionInfo
+    "archive+42/first-archive-test$0.0.1"
+    True
+
+secondRevision :: RevisionInfo
+secondRevision =
+  RevisionInfo
+    "archive+42/second-archive-test$0.0.1"
+    True
+
+firstArchive :: Archive
+firstArchive =
+  Archive
+    "first-archive-test"
+    "0.0.1"
+
+secondArchive :: Archive
+secondArchive =
+  Archive
+    "second-archive-test"
+    "0.0.1"
+
+archives :: [Archive]
+archives = [firstArchive, secondArchive]
+
+locators :: NonEmpty Locator
+locators = firstLocator :| [secondLocator]
 
 firstLicenseSourceUnit :: LicenseSourceUnit
 firstLicenseSourceUnit =
