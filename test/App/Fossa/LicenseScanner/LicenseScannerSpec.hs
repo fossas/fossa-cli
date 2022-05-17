@@ -3,17 +3,14 @@
 module App.Fossa.LicenseScanner.LicenseScannerSpec (spec) where
 
 import App.Fossa.LicenseScanner (combineLicenseUnits, licenseScanSourceUnit)
-import App.Fossa.ManualDeps (VendoredDependency (..))
+import App.Fossa.VendoredDependency (VendoredDependency (..))
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (ignoreStickyLogger)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
-import Control.Effect.Lift (Lift)
-import Control.Monad (void)
-import Control.Timeout (Cancel, Duration (Seconds), timeout')
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Diag.Result (Result (..), renderFailure)
+import Diag.Result (Result (..))
 import Effect.Exec (runExecIO)
 import Effect.Logger (ignoreLogger)
 import Effect.ReadFS (runReadFSIO)
@@ -28,6 +25,7 @@ import Srclib.Types (
   emptyLicenseUnitData,
  )
 import Test.Effect (expectationFailure', it', shouldBe')
+import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Test.MockApi (MockApi, alwaysReturns, returnsOnce)
 
@@ -133,15 +131,24 @@ spec = do
   describe "licenseScanSourceUnits" $ do
     currDir <- runIO getCurrentDir
     it' "should skip all if Core knows about all of the revisions" $ do
-      let scanDir = currDir </> [reldir|testdata/repo|]
+      let scanDir = currDir </> [reldir|test/App/Fossa/LicenseScanner/testdata/repo|]
+      expectGetApiOpts
+      expectGetOrganization
       expectEverythingScannedAlready
       locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit scanDir vendoredDeps
       case locators of
-        Failure _ _ -> expectationFailure' "Could not license scan source unit"
+        Failure ws eg -> expectationFailure' $ "Could not license scan source unit. Warnings = " <> show ws <> ", error group: " <> show eg
         Success _ ls -> do
           ls `shouldBe'` expectedLocators
   where
     expectedLocators = firstLocator :| [secondLocator]
+
+expectGetApiOpts :: Has MockApi sig m => m ()
+expectGetApiOpts =
+  GetApiOpts `alwaysReturns` Fixtures.apiOpts
+
+expectGetOrganization :: Has MockApi sig m => m ()
+expectGetOrganization = GetOrganization `alwaysReturns` Fixtures.organization
 
 expectEverythingScannedAlready :: Has MockApi sig m => m ()
 expectEverythingScannedAlready =
