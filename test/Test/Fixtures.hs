@@ -23,6 +23,8 @@ module Test.Fixtures (
   pendingBuild,
   attributionReportAsSerializedJson,
   signedUrl,
+  firstLicenseSourceUnit,
+  secondLicenseSourceUnit,
 ) where
 
 import App.Types qualified as App
@@ -34,7 +36,7 @@ import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Fossa.API.Types qualified as API
 import Path (mkRelDir, parseAbsDir, (</>))
-import Srclib.Types (Locator (..), SourceUnit (..))
+import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), LicenseUnit (..), LicenseUnitData (..), LicenseUnitInfo (..), LicenseUnitMatchData (..), Locator (..), SourceUnit (..))
 import System.Directory (getTemporaryDirectory)
 import Text.URI.QQ (uri)
 import Types (GraphBreadth (..))
@@ -219,3 +221,9 @@ attributionReportAsSerializedJson = "{\"TestReport\": \"TestReportData\"}"
 
 signedUrl :: API.SignedURL
 signedUrl = API.SignedURL{API.signedURL = "https://foo.com"}
+
+firstLicenseSourceUnit :: LicenseSourceUnit
+firstLicenseSourceUnit = LicenseSourceUnit{licenseSourceUnitName = "vendor/foo", licenseSourceUnitType = CliLicenseScanned, licenseSourceUnitLicenseUnits = LicenseUnit{licenseUnitName = "bsd-new", licenseUnitType = "LicenseUnit", licenseUnitDir = "", licenseUnitFiles = "vendor/foo/BSD_NEW_LICENSE" NE.:| [], licenseUnitData = LicenseUnitData{licenseUnitDataPath = "vendor/foo/BSD_NEW_LICENSE", licenseUnitDataCopyright = Nothing, licenseUnitDataThemisVersion = "3332fcd9e1bd34219e4d8452f72df0a38cb4d0bc", licenseUnitDataMatchData = Just (LicenseUnitMatchData{licenseUnitMatchDataMatchString = "Redistribution and use in source and binary forms, with or without modification,\nare permitted provided that the following conditions are met:\n\nRedistributions of source code must retain the above copyright notice, this list\nof conditions and the following disclaimer.\n\nRedistributions in binary form must reproduce the above copyright notice, this\nlist of conditions and the following disclaimer in the documentation and/or\nother materials provided with the distribution.\n\nNeither the name of the ORGANIZATION nor the names of its contributors may be\nused to endorse or promote products derived from this software without specific\nprior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,\nTHE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE\nARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS\nBE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR\nCONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE\nGOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)\nHOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT\nLIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF\nTHE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.", licenseUnitMatchDataLocation = 0, licenseUnitMatchDataLength = 1413, licenseUnitMatchDataIndex = 0, licenseUnitDataStartLine = 1, licenseUnitDataEndLine = 24} NE.:| []), licenseUnitDataCopyrights = Nothing} NE.:| [], licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Just ""}} NE.:| []}
+
+secondLicenseSourceUnit :: LicenseSourceUnit
+secondLicenseSourceUnit = LicenseSourceUnit{licenseSourceUnitName = "vendor/bar", licenseSourceUnitType = CliLicenseScanned, licenseSourceUnitLicenseUnits = LicenseUnit{licenseUnitName = "mit", licenseUnitType = "LicenseUnit", licenseUnitDir = "", licenseUnitFiles = "vendor/bar/MIT_LICENSE" NE.:| [], licenseUnitData = LicenseUnitData{licenseUnitDataPath = "vendor/bar/MIT_LICENSE", licenseUnitDataCopyright = Nothing, licenseUnitDataThemisVersion = "3332fcd9e1bd34219e4d8452f72df0a38cb4d0bc", licenseUnitDataMatchData = Just (LicenseUnitMatchData{licenseUnitMatchDataMatchString = "Permission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\nIN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY\nCLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,\nTORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE\nSOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.", licenseUnitMatchDataLocation = 0, licenseUnitMatchDataLength = 1021, licenseUnitMatchDataIndex = 0, licenseUnitDataStartLine = 1, licenseUnitDataEndLine = 18} NE.:| []), licenseUnitDataCopyrights = Nothing} NE.:| [], licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Just ""}} NE.:| []}
