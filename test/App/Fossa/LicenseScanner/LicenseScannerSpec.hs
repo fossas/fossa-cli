@@ -1,4 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.LicenseScanner.LicenseScannerSpec (spec) where
 
@@ -15,7 +16,7 @@ import Effect.Exec (runExecIO)
 import Effect.Logger (ignoreLogger)
 import Effect.ReadFS (runReadFSIO)
 import Fossa.API.Types (Archive (Archive), ArchiveComponents (ArchiveComponents, archives), RevisionInfo (..))
-import Path (reldir, (</>))
+import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
 import Srclib.Types (
   LicenseSourceUnit,
@@ -139,6 +140,9 @@ arcs = [firstArchive, secondArchive]
 expectedLocators :: NonEmpty Locator
 expectedLocators = firstLocator :| [secondLocator]
 
+fixtureDir :: Path Rel Dir
+fixtureDir = $(mkRelDir "test/App/Fossa/LicenseScanner/testdata/repo")
+
 spec :: Spec
 spec = do
   -- this test only exists to prevent merging the commented out analyzers
@@ -149,9 +153,9 @@ spec = do
       combineLicenseUnits [unitOne, unitTwo{licenseUnitName = "AGPL"}] `shouldBe` [unitTwo{licenseUnitName = "AGPL"}, unitOne]
   describe "licenseScanSourceUnits" $ do
     currDir <- runIO getCurrentDir
+    let scanDir = currDir </> fixtureDir
 
     it' "should skip all if Core knows about all of the revisions" $ do
-      let scanDir = currDir </> [reldir|test/App/Fossa/LicenseScanner/testdata/repo|]
       expectGetApiOpts
       expectGetOrganization
       expectEverythingScannedAlready
@@ -163,7 +167,6 @@ spec = do
           ls `shouldBe'` expectedLocators
 
     it' "should scan all if Core does not know about the revisions" $ do
-      let scanDir = currDir </> [reldir|test/App/Fossa/LicenseScanner/testdata/repo|]
       expectGetApiOpts
       expectGetOrganization
       expectNothingScannedYet
@@ -179,7 +182,6 @@ spec = do
           ls `shouldBe'` expectedLocators
 
     it' "should scan all if the revisions are still being scanned" $ do
-      let scanDir = currDir </> [reldir|test/App/Fossa/LicenseScanner/testdata/repo|]
       expectGetApiOpts
       expectGetOrganization
       expectAllScansInProgress
@@ -195,7 +197,6 @@ spec = do
           ls `shouldBe'` expectedLocators
 
     it' "should scan one if one revision is still being scanned" $ do
-      let scanDir = currDir </> [reldir|test/App/Fossa/LicenseScanner/testdata/repo|]
       expectGetApiOpts
       expectGetOrganization
       expectOneScanInProgress
