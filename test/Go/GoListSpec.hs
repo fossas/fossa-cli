@@ -42,7 +42,6 @@ type ConstExecC = SimpleC ExecF
 runConstExec :: Applicative m => BL.ByteString -> ConstExecC m a -> m a
 runConstExec output = interpret $ \case
   Exec _ _ -> pure (Right output)
-  -- TODO(enricozb): i'm not sure if this is correct...
   RawExec _ _ -> pure (Right ExitSuccess)
 
 expected :: Graphing Dependency
