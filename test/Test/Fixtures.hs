@@ -8,6 +8,7 @@ module Test.Fixtures (
   contributors,
   locator,
   organization,
+  packageRevision,
   project,
   projectMetadata,
   projectRevision,
@@ -21,9 +22,11 @@ module Test.Fixtures (
   successfulBuild,
   pendingBuild,
   attributionReportAsSerializedJson,
+  signedUrl,
 ) where
 
 import App.Types qualified as App
+import Control.Effect.FossaApiClient qualified as App
 import Control.Timeout (Duration (MilliSeconds))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
@@ -88,6 +91,13 @@ projectRevision =
     { App.projectName = "testProjectName"
     , App.projectRevision = "testRevision"
     , App.projectBranch = Just "testBranch"
+    }
+
+packageRevision :: App.PackageRevision
+packageRevision =
+  App.PackageRevision
+    { App.packageName = "testPackageName"
+    , App.packageVersion = "1.0"
     }
 
 sourceUnits :: NE.NonEmpty SourceUnit
@@ -206,3 +216,6 @@ issuesPending =
 
 attributionReportAsSerializedJson :: Text
 attributionReportAsSerializedJson = "{\"TestReport\": \"TestReportData\"}"
+
+signedUrl :: API.SignedURL
+signedUrl = API.SignedURL{API.signedURL = "https://foo.com"}

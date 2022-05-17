@@ -14,7 +14,7 @@ import Diag.Result (Result (..))
 import Effect.Exec (runExecIO)
 import Effect.Logger (ignoreLogger)
 import Effect.ReadFS (runReadFSIO)
-import Fossa.API.Types (RevisionInfo (RevisionInfo))
+import Fossa.API.Types (Archive (Archive), ArchiveComponents (ArchiveComponents, archives), RevisionInfo (RevisionInfo))
 import Path (reldir, (</>))
 import Path.IO (getCurrentDir)
 import Srclib.Types (
@@ -98,27 +98,42 @@ firstLocator :: Locator
 firstLocator =
   Locator
     "archive"
-    "first-archive-test"
+    "42/first-archive-test"
     (Just "0.0.1")
 
 secondLocator :: Locator
 secondLocator =
   Locator
     "archive"
-    "second-archive-test"
+    "42/second-archive-test"
     (Just "0.0.1")
 
 firstRevision :: RevisionInfo
 firstRevision =
   RevisionInfo
-    "archive+1/first-archive-test$0.0.1"
+    "archive+42/first-archive-test$0.0.1"
     True
 
 secondRevision :: RevisionInfo
 secondRevision =
   RevisionInfo
-    "archive+1/second-archive-test$0.0.1"
+    "archive+42/second-archive-test$0.0.1"
     True
+
+firstArchive :: Archive
+firstArchive =
+  Archive
+    "first-archive-test"
+    "0.0.1"
+
+secondArchive :: Archive
+secondArchive =
+  Archive
+    "second-archive-test"
+    "0.0.1"
+
+arcs :: [Archive]
+arcs = [firstArchive, secondArchive]
 
 spec :: Spec
 spec = do
@@ -135,6 +150,8 @@ spec = do
       expectGetApiOpts
       expectGetOrganization
       expectEverythingScannedAlready
+      -- expectGetSignedUrl
+      expectFinalizeScan arcs
       locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit scanDir vendoredDeps
       case locators of
         Failure ws eg -> expectationFailure' $ "Could not license scan source unit. Warnings = " <> show ws <> ", error group: " <> show eg
@@ -150,7 +167,14 @@ expectGetApiOpts =
 expectGetOrganization :: Has MockApi sig m => m ()
 expectGetOrganization = GetOrganization `alwaysReturns` Fixtures.organization
 
+expectGetSignedUrl :: Has MockApi sig m => m ()
+expectGetSignedUrl = GetSignedLicenseScanUrl Fixtures.packageRevision `alwaysReturns` Fixtures.signedUrl
+
 expectEverythingScannedAlready :: Has MockApi sig m => m ()
 expectEverythingScannedAlready =
   (GetRevisionInfo vendoredDeps)
     `returnsOnce` [firstRevision, secondRevision]
+
+expectFinalizeScan :: Has MockApi sig m => [Archive] -> m ()
+expectFinalizeScan as =
+  (FinalizeLicenseScan ArchiveComponents{archives = as}) `returnsOnce` ()
