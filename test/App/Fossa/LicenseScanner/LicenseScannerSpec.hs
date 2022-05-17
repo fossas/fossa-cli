@@ -27,7 +27,7 @@ import Srclib.Types (
   Locator (Locator),
   emptyLicenseUnitData,
  )
-import Test.Effect (it', shouldBe')
+import Test.Effect (expectationFailure', it', shouldBe')
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Test.MockApi (MockApi, alwaysReturns, returnsOnce)
 
@@ -137,7 +137,7 @@ spec = do
       expectEverythingScannedAlready
       locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit scanDir vendoredDeps
       case locators of
-        Failure ws eg -> False `shouldBe'` True -- fail (show (renderFailure ws eg "An issue occurred"))
+        Failure _ _ -> expectationFailure' "Could not license scan source unit"
         Success _ ls -> do
           ls `shouldBe'` expectedLocators
   where
