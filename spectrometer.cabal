@@ -442,7 +442,7 @@ test-suite unit-tests
     App.Fossa.Config.Utils
     App.Fossa.Configuration.ConfigurationSpec
     App.Fossa.Configuration.TelemetryConfigSpec
-    App.Fossa.LicenseScannerSpec
+    App.Fossa.LicenseScanner.LicenseScannerSpec
     App.Fossa.ManualDepsSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.Report.Log4jReportSpec
