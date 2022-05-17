@@ -196,6 +196,7 @@ library
     App.Fossa.RunThemis
     App.Fossa.Subcommand
     App.Fossa.Test
+    App.Fossa.VendoredDependency
     App.Fossa.VPS.Scan.RunWiggins
     App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
@@ -435,7 +436,6 @@ test-suite unit-tests
     App.Fossa.AnalyzeSpec
     App.Fossa.API.BuildLinkSpec
     App.Fossa.API.BuildWaitSpec
-    App.Fossa.ArchiveUploaderSpec
     App.Fossa.BinaryDeps.JarSpec
     App.Fossa.Config.AnalyzeSpec
     App.Fossa.Config.TestSpec
@@ -447,6 +447,7 @@ test-suite unit-tests
     App.Fossa.Report.AttributionSpec
     App.Fossa.Report.Log4jReportSpec
     App.Fossa.ReportSpec
+    App.Fossa.VendoredDependencySpec
     App.Fossa.VSI.DynLinked.Internal.BinarySpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.DEBSpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.RPMSpec

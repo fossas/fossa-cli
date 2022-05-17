@@ -8,15 +8,18 @@ import App.Fossa.Config.LicenseScan (
   mkSubCommand,
  )
 import App.Fossa.EmbeddedBinary (withThemisAndIndex)
-import App.Fossa.LicenseScanner (dedupVendoredDeps, scanVendoredDep)
+import App.Fossa.LicenseScanner (scanVendoredDep)
 import App.Fossa.ManualDeps (
   ManualDependencies (vendoredDependencies),
-  VendoredDependency,
   findFossaDepsFile,
   readFoundDeps,
  )
 import App.Fossa.RunThemis (execRawThemis)
 import App.Fossa.Subcommand (SubCommand)
+import App.Fossa.VendoredDependency (
+  VendoredDependency,
+  dedupVendoredDeps,
+ )
 import App.Types (BaseDir (BaseDir))
 import Control.Carrier.StickyLogger (
   Has,

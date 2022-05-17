@@ -1,10 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.Fossa.ArchiveUploaderSpec (
+module App.Fossa.VendoredDependencySpec (
   spec,
 ) where
 
-import App.Fossa.ArchiveUploader (
+import App.Fossa.VendoredDependency (
   compressFile,
  )
 import Control.Carrier.Lift (sendIO)
