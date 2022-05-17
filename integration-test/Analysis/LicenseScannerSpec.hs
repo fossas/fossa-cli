@@ -9,7 +9,7 @@ import Analysis.FixtureUtils (
  )
 import App.Fossa.LicenseScanner (scanVendoredDep)
 import App.Fossa.VendoredDependency (VendoredDependency (VendoredDependency))
-import Control.Carrier.Diagnostics (Has, runDiagnostics)
+import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (ignoreStickyLogger)
 import Data.List.Extra (head')
