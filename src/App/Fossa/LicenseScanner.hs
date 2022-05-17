@@ -59,6 +59,7 @@ import Fossa.API.Types (
   OrgId,
   Organization (organizationId),
   RevisionInfo (..),
+  VendoredDependencySkippingOption (..),
  )
 import Path (Abs, Dir, File, Path, SomeBase (Abs, Rel), fileExtension, parent, (</>))
 import Path.Extra (tryMakeRelative)
@@ -313,10 +314,12 @@ licenseScanSourceUnit ::
   , Has ReadFS sig m
   , Has FossaApiClient sig m
   ) =>
+  VendoredDependencySkippingOption ->
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
   m (NonEmpty Locator)
-licenseScanSourceUnit baseDir vendoredDeps = do
+licenseScanSourceUnit skippingOption baseDir vendoredDeps = do
+  let skippingSupported = skippingOption == All || skippingOption == CliSideLicenseScan
   uniqDeps <- dedupVendoredDeps vendoredDeps
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
@@ -325,14 +328,20 @@ licenseScanSourceUnit baseDir vendoredDeps = do
 
   -- make sure all revisions have their versions populated
   uniqDepsWithVersions <- traverse (ensureVendoredDepVersion baseDir) uniqDeps
-  -- Ask Core if any of these deps have already been scanned. If they have, skip scanning them.
-  (needScanningDeps, skippedDeps) <- findDepsThatNeedScanning uniqDepsWithVersions orgId
-  let skippedArchives = map forceVendoredToArchive skippedDeps
-  _ <- case needScanningDeps of
-    -- If none of the dependencies need scanning, then log that, but we still need to do `finalizeLicenseScan` so keep going
-    [] -> do
+  -- If skipping is supported, ask Core if any of these deps have already been scanned. If they have, skip scanning them.
+  (needScanningDeps, skippedDeps) <-
+    if skippingSupported
+      then findDepsThatNeedScanning uniqDepsWithVersions orgId
+      else pure (NE.toList uniqDepsWithVersions, [])
+
+  -- Debug logs giving info about which vendored deps were actually scanned
+  -- If none of the dependencies need scanning, then log that, but we still need to do `finalizeLicenseScan` so keep going
+  _ <- case (needScanningDeps, skippingSupported) of
+    (_, False) ->
+      logDebug "Skipping vendored dependency scans not supported on your FOSSA instance. All vendored dependencies will be scanned"
+    ([], True) -> do
       logDebug "All vendored dependencies have already been scanned by FOSSA. Skipping vendored dependency license scans."
-    _ -> do
+    (_, True) -> do
       case skippedDeps of
         [] -> logDebug "All vendored dependencies are un-scanned and require license scanning"
         _ -> logDebug . pretty $ "Some vendored dependencies have already been scanned by FOSSA. Skipping these vendored dependencies: " <> show skippedDeps
@@ -341,6 +350,7 @@ licenseScanSourceUnit baseDir vendoredDeps = do
   maybeScannedArchives <- traverse (scanAndUploadVendoredDep baseDir) needScanningDeps
 
   -- We need to include both scanned and skipped archives in this list so that they all get included in the build in FOSSA
+  let skippedArchives = map forceVendoredToArchive skippedDeps
   archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ (catMaybes maybeScannedArchives) <> skippedArchives
 
   -- finalizeLicenseScan takes archives without Organization information. This orgID is appended when creating the build on the backend.
