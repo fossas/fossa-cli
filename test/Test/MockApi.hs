@@ -87,9 +87,6 @@ newtype ApiResult a = ApiResult (Either ApiFail a)
 
 newtype ApiFail = ApiFail {unApiFail :: Text}
 
-data IgnoreReq = IgnoreReq
-  deriving (Eq, Show)
-
 -- | An expectation of an API call made up of the request and response.
 data ApiExpectation where
   ApiExpectation :: ExpectationRepetition -> ExpectationCheckRequestValue -> FossaApiClientF a -> ApiResult a -> ApiExpectation
