@@ -79,7 +79,7 @@ rm $WIGGINS_RELEASE_JSON
 echo "Wiggins download successful"
 echo
 
-THEMIS_TAG="2022-05-12-3332fcd"
+THEMIS_TAG="2022-05-18-b3b7ffd"
 echo "Downloading themis binary"
 echo "Using themis release: $THEMIS_TAG"
 THEMIS_RELEASE_JSON=vendor-bins/themis-release.json
