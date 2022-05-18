@@ -200,7 +200,7 @@ matchExpectation a@(GetOrganization{}) (ApiExpectation _ _ b@(GetOrganization{})
 matchExpectation a@(GetProject{}) (ApiExpectation _ _ b@(GetProject{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetScan{}) (ApiExpectation _ _ b@(GetScan{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(GetRevisionInfo{}) (ApiExpectation _ Yes b@(GetRevisionInfo{}) resp) = resp <$ guard (a == b)
-matchExpectation GetRevisionInfo{} (ApiExpectation _ No GetRevisionInfo{} resp) = resp <$ guard (True)
+matchExpectation GetRevisionInfo{} (ApiExpectation _ No GetRevisionInfo{} resp) = Just resp
 matchExpectation a@(GetSignedLicenseScanUrl{}) (ApiExpectation _ _ b@(GetSignedLicenseScanUrl{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(ResolveProjectDependencies{}) (ApiExpectation _ _ b@(ResolveProjectDependencies{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(ResolveUserDefinedBinary{}) (ApiExpectation _ _ b@(ResolveUserDefinedBinary{}) resp) = resp <$ guard (a == b)
@@ -209,7 +209,7 @@ matchExpectation a@(UploadArchive{}) (ApiExpectation _ _ b@(UploadArchive{}) res
 matchExpectation a@(UploadContainerScan{}) (ApiExpectation _ _ b@(UploadContainerScan{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(UploadContributors{}) (ApiExpectation _ _ b@(UploadContributors{}) resp) = resp <$ guard (a == b)
 matchExpectation a@(UploadLicenseScanResult{}) (ApiExpectation _ Yes b@(UploadLicenseScanResult{}) resp) = resp <$ guard (a == b)
-matchExpectation UploadLicenseScanResult{} (ApiExpectation _ No UploadLicenseScanResult{} resp) = resp <$ guard (True)
+matchExpectation UploadLicenseScanResult{} (ApiExpectation _ No UploadLicenseScanResult{} resp) = Just resp
 matchExpectation _ _ = Nothing
 
 -- | Handles a request in the context of the mock API.
