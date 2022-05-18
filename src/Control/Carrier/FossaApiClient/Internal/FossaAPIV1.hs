@@ -370,8 +370,8 @@ getProject apiopts ProjectRevision{..} = fossaReq $ do
 
 -----
 
-revisionsEndpoint :: Url 'Https -> Url 'Https
-revisionsEndpoint baseurl = baseurl /: "api" /: "revisions"
+getRevisionInfoEndpoint :: Url 'Https -> Url 'Https
+getRevisionInfoEndpoint baseurl = baseurl /: "api" /: "cli" /: "scannedRevisions"
 
 getRevisionInfo ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
@@ -382,7 +382,7 @@ getRevisionInfo apiOpts vDeps = fossaReq $ do
   orgId <- organizationId <$> getOrganization apiOpts
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   let locatorQuery = mconcat $ NE.toList $ constructLocatorQuery orgId vDeps
-  responseBody <$> req GET (revisionsEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> locatorQuery)
+  responseBody <$> req GET (getRevisionInfoEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> locatorQuery)
 
 constructLocatorQuery :: OrgId -> NonEmpty VendoredDependency -> NonEmpty (Option 'Https)
 constructLocatorQuery orgId = NE.map (constructLocatorOption orgId)
