@@ -27,7 +27,7 @@ import Srclib.Types (
 import Test.Effect (expectationFailure', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
-import Test.MockApi (MockApi, alwaysReturns, returnsOnce)
+import Test.MockApi (MockApi, alwaysReturns, returnsOnce, returnsOnceForAnyRequest)
 
 -- test data for combineLicenseUnits tests
 info :: LicenseUnitInfo
@@ -191,7 +191,7 @@ expectOneScanInProgress =
 
 expectUploadLicenseScanResult :: Has MockApi sig m => LicenseSourceUnit -> m ()
 expectUploadLicenseScanResult licenseUnit =
-  (UploadLicenseScanResult Fixtures.signedUrl licenseUnit) `returnsOnce` ()
+  (UploadLicenseScanResult Fixtures.signedUrl licenseUnit) `returnsOnceForAnyRequest` ()
 
 expectFinalizeScan :: Has MockApi sig m => [Archive] -> m ()
 expectFinalizeScan as =
