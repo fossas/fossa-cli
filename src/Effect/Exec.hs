@@ -11,6 +11,7 @@ module Effect.Exec (
   execThrow,
   rawExecThrow,
   Command (..),
+  RawCommand (..),
   CmdFailure (..),
   AllowErr (..),
   execParser,
@@ -93,6 +94,17 @@ instance ReplayableValue Command
 renderCommand :: Command -> Text
 renderCommand (Command name args _) = Text.intercalate " " $ [name] <> args
 
+data RawCommand = RawCommand
+  { -- | Command name to use. E.g., "pip", "pip3", "./gradlew".
+    rawCmdName :: Text
+  , -- | Arguments for the command
+    rawCmdArgs :: [Text]
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON RawCommand
+instance RecordableValue RawCommand
+
 data CmdFailure = CmdFailure
   { cmdFailureCmd :: Command
   , cmdFailureDir :: FilePath
@@ -155,7 +167,7 @@ data ExecF a where
   -- | RawExec runs a command inheriting stdout and stderr and returns either:
   -- - text describing an error
   -- - the exit code of the command
-  RawExec :: SomeBase Dir -> Command -> ExecF (Either ExceptionText ExitCode)
+  RawExec :: SomeBase Dir -> RawCommand -> ExecF (Either ExceptionText ExitCode)
 
 type Exec = Simple ExecF
 
@@ -235,7 +247,7 @@ exec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure Stdout
 exec dir cmd = sendSimple (Exec (Abs dir) cmd)
 
 -- | Execute a command and return its exitcode or text describing the error
-rawExec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either ExceptionText ExitCode)
+rawExec :: Has Exec sig m => Path Abs Dir -> RawCommand -> m (Either ExceptionText ExitCode)
 rawExec dir cmd = sendSimple (RawExec (Abs dir) cmd)
 
 type Parser = Parsec Void Text
@@ -271,8 +283,8 @@ execThrow' cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
   execThrow dir cmd
 
 -- | A variant of 'rawExec' that throws a 'ExecErr' when the command returns a non-zero exit code
-rawExecThrow :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> Command -> m ()
-rawExecThrow dir cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
+rawExecThrow :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> RawCommand -> m ()
+rawExecThrow dir cmd = context ("Running command '" <> rawCmdName cmd <> "'") $ do
   result <- rawExec dir cmd
   case result of
     Left failure -> fatal (RawException failure)
@@ -325,8 +337,8 @@ runExecIO = interpret $ \case
         Abs absDir -> pure absDir
         Rel relDir -> makeAbsolute relDir
 
-    let cmdName' = toString $ cmdName cmd
-        cmdArgs' = map toString $ cmdArgs cmd
+    let cmdName' = toString $ rawCmdName cmd
+        cmdArgs' = map toString $ rawCmdArgs cmd
 
     processResult <- try $ runProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs'))
 

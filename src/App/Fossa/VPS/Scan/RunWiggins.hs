@@ -22,8 +22,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Filters (AllFilters (..), combinedPaths)
 import Effect.Exec (
-  AllowErr (Never),
-  Command (..),
+  RawCommand (..),
   Exec,
   rawExecThrow,
  )
@@ -91,10 +90,9 @@ optPathAsFilter p = fromMaybe t $ Text.stripSuffix "/" t
 execWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m ()
 execWiggins binaryPaths opts = rawExecThrow (scanDir opts) (wigginsCommand binaryPaths opts)
 
-wigginsCommand :: BinaryPaths -> WigginsOpts -> Command
+wigginsCommand :: BinaryPaths -> WigginsOpts -> RawCommand
 wigginsCommand bin WigginsOpts{..} = do
-  Command
-    { cmdName = toText $ fromAbsFile $ toPath bin
-    , cmdArgs = spectrometerArgs
-    , cmdAllowErr = Never
+  RawCommand
+    { rawCmdName = toText $ fromAbsFile $ toPath bin
+    , rawCmdArgs = spectrometerArgs
     }

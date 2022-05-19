@@ -37,6 +37,7 @@ import Discovery.Archive (selectUnarchiver)
 import Discovery.Filters (AllFilters)
 import Effect.Exec (
   Command (..),
+  RawCommand (..),
   ExecF (Exec, RawExec),
   ExecIOC,
   Has,
@@ -119,7 +120,7 @@ testRunnerWithLogger f env =
 runExecIOWithinEnv :: (Has (Lift IO) sig m) => FixtureEnvironment -> ExecIOC m a -> m a
 runExecIOWithinEnv conf = interpret $ \case
   Exec dir cmd -> sendIO $ runExecIO $ sendSimple (Exec dir $ decorateCmdWith conf cmd)
-  RawExec dir cmd -> sendIO $ runExecIO $ sendSimple (RawExec dir $ decorateCmdWith conf cmd)
+  RawExec dir cmd -> sendIO $ runExecIO $ sendSimple (RawExec dir $ decorateRawCmdWith conf cmd)
 
 decorateCmdWith :: FixtureEnvironment -> Command -> Command
 decorateCmdWith LocalEnvironment cmd = cmd
@@ -128,6 +129,14 @@ decorateCmdWith (NixEnv pkgs) cmd =
     { cmdName = "nix-shell"
     , cmdArgs = ["-p"] <> pkgs <> ["--run"] <> [cmdName cmd <> " " <> Text.intercalate " " (cmdArgs cmd)]
     , cmdAllowErr = cmdAllowErr cmd
+    }
+
+decorateRawCmdWith :: FixtureEnvironment -> RawCommand -> RawCommand
+decorateRawCmdWith LocalEnvironment cmd = cmd
+decorateRawCmdWith (NixEnv pkgs) cmd =
+  RawCommand
+    { rawCmdName = "nix-shell"
+    , rawCmdArgs = ["-p"] <> pkgs <> ["--run"] <> [rawCmdName cmd <> " " <> Text.intercalate " " (rawCmdArgs cmd)]
     }
 
 -- --------------------------------
