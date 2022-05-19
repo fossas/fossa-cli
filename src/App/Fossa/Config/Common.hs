@@ -272,7 +272,7 @@ collectAPIMetadata cfgfile cliMeta = maybe cliMeta (mergeFileCmdMetadata cliMeta
 
 collectTelemetrySink :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> Maybe CommonOpts -> m (Maybe TelemetrySink)
 collectTelemetrySink maybeConfigFile envvars maybeOpts = do
-  let defaultScope = NoTelemetry
+  let defaultScope = FullTelemetry
   -- Precedence is
   --  (1) command line
   --  (2) environment variable

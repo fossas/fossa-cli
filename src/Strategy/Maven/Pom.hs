@@ -191,8 +191,7 @@ interpolate properties text =
 -- find the first maven property in the string, e.g., `${foo}`, returning text
 -- before the property, the property, and the text after the property
 splitMavenProperty :: Text -> Maybe (Text, Text, Text)
-splitMavenProperty text
-  | Just (beforeBegin, afterBegin) <- breakOnAndRemove "${" text
-    , Just (property, afterEnd) <- breakOnAndRemove "}" afterBegin =
-    Just (beforeBegin, property, afterEnd)
-  | otherwise = Nothing
+splitMavenProperty text = do
+  (beforeBegin, afterBegin) <- breakOnAndRemove "${" text
+  (property, afterEnd) <- breakOnAndRemove "}" afterBegin
+  pure (beforeBegin, property, afterEnd)

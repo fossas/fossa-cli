@@ -1,5 +1,20 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- Vendor Dependencies: Considers `licence` and `license` equivalent when performing native license scan.
+
+## v3.3.0
+- Telemetry: CLI collects telemetry by default. ([#936](https://github.com/fossas/fossa-cli/pull/936))
+
+Read more about telemetry: https://github.com/fossas/fossa-cli/blob/master/docs/telemetry.md. To opt-out of telemetry, provide `FOSSA_TELEMETRY_SCOPE` environment variable with value of: `off` in your shell prior to running fossa.
+
+## v3.2.17
+- Archive upload: Fix a bug when trying to tar to a filename that already exists. ([#927](https://github.com/fossas/fossa-cli/pull/927))
+- Npm: Supports lockfile v3. ([#932](https://github.com/fossas/fossa-cli/pull/932))
+
+## v3.2.16
+- Go: When statically analyzing a project, apply reported replacements. ([#926](https://github.com/fossas/fossa-cli/pull/926))
+
 ## v3.2.15
 
 - Update Maven depGraph plugin to 4.0.1 and add a fallback ot the legacy 3.3.0 plugin ([#895](https://github.com/fossas/fossa-cli/pull/895))

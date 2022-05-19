@@ -215,7 +215,11 @@ graphOfFramework projectFrameworkDeps (targetFramework, targetFrameworkDeps) = d
     isDirectDep d = depName d `elem` (getProjectDirectDepsByFramework)
 
     getTransitiveDeps :: NuGetDep -> [NuGetDep]
-    getTransitiveDeps nugetDep = concat $ (\(name, _) -> filter (\d -> depName d == name) allResolvedDeps) <$> Map.toList (completeDeepDeps nugetDep)
+    getTransitiveDeps nugetDep =
+      concatMap
+        (\(name, _) -> filter (\d -> depName d == name) allResolvedDeps)
+        . Map.toList
+        $ completeDeepDeps nugetDep
 
     allResolvedDeps :: [NuGetDep]
     allResolvedDeps = map toNugetDep $ Map.toList targetFrameworkDeps

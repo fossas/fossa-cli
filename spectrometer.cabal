@@ -196,6 +196,7 @@ library
     App.Fossa.RunThemis
     App.Fossa.Subcommand
     App.Fossa.Test
+    App.Fossa.VendoredDependency
     App.Fossa.VPS.Scan.RunWiggins
     App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
@@ -362,6 +363,7 @@ library
     Strategy.Node
     Strategy.Node.Errors
     Strategy.Node.Npm.PackageLock
+    Strategy.Node.Npm.PackageLockV3
     Strategy.Node.PackageJson
     Strategy.Node.YarnV1.YarnLock
     Strategy.Node.YarnV2.Lockfile
@@ -446,6 +448,7 @@ test-suite unit-tests
     App.Fossa.Report.AttributionSpec
     App.Fossa.Report.Log4jReportSpec
     App.Fossa.ReportSpec
+    App.Fossa.VendoredDependencySpec
     App.Fossa.VSI.DynLinked.Internal.BinarySpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.DEBSpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.RPMSpec
@@ -505,6 +508,7 @@ test-suite unit-tests
     Node.NodeSpec
     Node.PackageJsonSpec
     Node.PackageLockSpec
+    Node.PackageLockV3Spec
     NuGet.NuspecSpec
     NuGet.PackageReferenceSpec
     NuGet.PackagesConfigSpec

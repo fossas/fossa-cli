@@ -1,33 +1,63 @@
 module Strategy.Go.Transitive (
   fillInTransitive,
   graphTransitive,
-  normalizeImportsToModules,
+  normalizeImportPaths,
   Module (..),
   Package (..),
+  GoPackageReplacement (..),
+  NormalizedImportPath (..),
+  GoListPkgImportPath (..),
   decodeMany,
 ) where
 
-import Control.Algebra
-import Control.Applicative (many)
-import Control.Effect.Diagnostics
+import Control.Algebra (Has)
+import Control.Applicative (Alternative ((<|>)), many)
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (..),
+  context,
+  errCtx,
+  fatal,
+ )
 import Control.Monad (unless)
-import Data.Aeson
+import Data.Aeson (
+  FromJSON (parseJSON),
+  JSONPath,
+  Value (Array),
+  json,
+  withObject,
+  (.:),
+  (.:?),
+ )
 import Data.Aeson.Internal (formatError, iparse)
-import Data.Aeson.Parser
+import Data.Aeson.Parser (eitherDecodeWith)
 import Data.Attoparsec.ByteString qualified as A
 import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict qualified as Map
 import Data.Maybe qualified as Maybe
+import Data.String (IsString)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Vector qualified as V
-import Effect.Exec
-import Effect.Grapher
-import Path
+import Effect.Exec (
+  AllowErr (NonEmptyStdout),
+  Command (..),
+  Exec,
+  ExecErr (CommandParseError),
+  execThrow,
+  renderCommand,
+ )
+import Effect.Grapher (edge, label)
+import Path (Abs, Dir, Path)
 import Prettyprinter (pretty)
-import Strategy.Go.Types
+import Strategy.Go.Types (
+  GolangGrapher,
+  GolangPackage,
+  mkGolangPackage,
+  mkGolangVersion,
+ )
 
 goListCmd :: Command
 goListCmd =
@@ -37,21 +67,40 @@ goListCmd =
     , cmdAllowErr = NonEmptyStdout
     }
 
-data Package = Package
-  { packageImportPath :: Text
+data Package a = Package
+  { packageImportPath :: a
   , packageModule :: Maybe Module
-  , packageImports :: Maybe [Text]
+  , packageImports :: Maybe [a]
   , packageSystem :: Maybe Bool
   }
   deriving (Eq, Ord, Show)
 
+newtype GoListPkgImportPath = GoListPkgImportPath Text
+  deriving (Eq, Ord, Show, FromJSON, IsString)
+
+newtype NormalizedImportPath = NormalizedImportPath {unNormalizedImportPath :: Text}
+  deriving (Eq, Ord, Show, IsString)
+
+data GoPackageReplacement = GoPackageReplacement
+  { pathReplacement :: Text
+  , versionReplacement :: Text
+  }
+  deriving (Show, Eq, Ord)
+
+instance FromJSON GoPackageReplacement where
+  parseJSON = withObject "GoPackageReplacement" $ \obj ->
+    GoPackageReplacement
+      <$> obj .: "Path"
+      <*> obj .: "Version"
+
 data Module = Module
   { modPath :: Text
   , modVersion :: Maybe Text
+  , modReplacement :: Maybe GoPackageReplacement
   }
   deriving (Eq, Ord, Show)
 
-instance FromJSON Package where
+instance FromJSON a => FromJSON (Package a) where
   parseJSON = withObject "Package" $ \obj ->
     Package <$> obj .: "ImportPath"
       <*> obj .:? "Module"
@@ -62,6 +111,7 @@ instance FromJSON Module where
   parseJSON = withObject "Module" $ \obj ->
     Module <$> obj .: "Path"
       <*> obj .:? "Version"
+      <*> obj .:? "Replace"
 
 -- `go list -json` is dumb: it outputs a bunch of raw json objects:
 --     {
@@ -83,23 +133,24 @@ decodeMany = eitherDecodeWith parser (iparse parseJSON)
       (objects :: [Value]) <- many json <* skipSpace <* A.endOfInput
       pure (Array (V.fromList objects))
 
-graphTransitive :: Has GolangGrapher sig m => [Package] -> m ()
+graphTransitive :: Has GolangGrapher sig m => [Package NormalizedImportPath] -> m ()
 graphTransitive = void . traverse_ go
   where
-    go :: Has GolangGrapher sig m => Package -> m ()
+    go :: Has GolangGrapher sig m => Package NormalizedImportPath -> m ()
     go package = unless (packageSystem package == Just True) $ do
-      let -- when a gomod field is present, use that for the package import path
-          -- otherwise use the top-level package import path
-          path :: Text
-          path = maybe (packageImportPath package) modPath (packageModule package)
+      let packMod :: Maybe Module
+          packMod = packageModule package
+
+          pathToGolangPackage :: NormalizedImportPath -> GolangPackage
+          pathToGolangPackage = mkGolangPackage . unNormalizedImportPath
 
           pkg :: GolangPackage
-          pkg = mkGolangPackage path
+          pkg = pathToGolangPackage (packageImportPath package)
 
-      traverse_ (traverse_ (edge pkg . mkGolangPackage)) (packageImports package)
+      traverse_ (traverse_ (edge pkg . pathToGolangPackage)) (packageImports package)
 
-      -- when we have a gomod, and that gomod has a version, add label for version
-      case modVersion =<< packageModule package of
+      case versionReplacement <$> (modReplacement =<< packMod)
+        <|> (modVersion =<< packageModule package) of
         Nothing -> pure ()
         Just ver -> label pkg (mkGolangVersion ver)
 
@@ -114,33 +165,51 @@ fillInTransitive dir = context "Getting deep dependencies" $ do
   goListOutput <- errCtx GoListCmdFailed $ execThrow dir goListCmd
   case decodeMany goListOutput of
     Left (path, err) -> fatal (CommandParseError goListCmd (toText (formatError path err)))
-    Right (packages :: [Package]) -> context "Adding transitive dependencies" $ graphTransitive (normalizeImportsToModules packages)
+    Right (packages :: [Package GoListPkgImportPath]) ->
+      context "Adding transitive dependencies" $
+        graphTransitive (normalizeImportPaths packages)
 
 data GoListCmdFailed = GoListCmdFailed
 instance ToDiagnostic GoListCmdFailed where
-  renderDiagnostic _ = pretty $ "We could not perform `" <> renderCommand goListCmd <> "` successfully to infer deep dependencies."
+  renderDiagnostic _ =
+    pretty $
+      "We could not perform `"
+        <> renderCommand goListCmd
+        <> "` successfully to infer deep dependencies."
 
 -- HACK(fossas/team-analysis#514) `go list -json all` emits golang dependencies
 -- at the _package_ level; e.g., `github.com/example/foo/some/package`. The
 -- fossa backend handles package-level imports poorly, especially when there are
 -- many of them from the same go module. See the ticket for details.
 --
--- As a workaround, we map package imports to their modules, and use the modules
--- in the final dependency graph.
-normalizeImportsToModules :: [Package] -> [Package]
-normalizeImportsToModules packages = map normalizeSingle packages
+-- As a workaround, we resolve import paths to their respective module or module
+-- replacement, map package imports to their module or replacement, and use the
+-- modules in the final dependency graph.
+normalizeImportPaths :: [Package GoListPkgImportPath] -> [Package NormalizedImportPath]
+normalizeImportPaths packages = map normalizeSingle packages
   where
-    normalizeSingle :: Package -> Package
-    normalizeSingle package = package{packageImports = map replaceImport <$> packageImports package}
+    normalizeSingle :: Package GoListPkgImportPath -> Package NormalizedImportPath
+    normalizeSingle package =
+      package
+        { packageImports = map normalizeImportPath <$> packageImports package
+        , -- when a gomod field is present, use that or the module replacement
+          -- for the package import path otherwise use the top-level package
+          -- import path
+          packageImportPath = normalizeImportPath $ packageImportPath package
+        }
 
     -- If a package doesn't have an associated module, use the package name instead
-    replaceImport :: Text -> Text
-    replaceImport package = Maybe.fromMaybe package (Map.lookup package packageNameToModule)
+    normalizeImportPath :: GoListPkgImportPath -> NormalizedImportPath
+    normalizeImportPath pName@(GoListPkgImportPath pkgImportPath) =
+      Maybe.fromMaybe (NormalizedImportPath pkgImportPath) (Map.lookup pName packageNameToModule)
 
-    packageNameToModule :: Map.Map Text Text
+    getModuleName :: Module -> NormalizedImportPath
+    getModuleName m = NormalizedImportPath $ maybe (modPath m) pathReplacement (modReplacement m)
+
+    packageNameToModule :: Map.Map GoListPkgImportPath NormalizedImportPath
     packageNameToModule =
       Map.fromList
-        [ (packageImportPath package, modPath gomod)
+        [ (packageImportPath package, getModuleName gomod)
         | package <- packages
         , Just gomod <- [packageModule package]
         ]

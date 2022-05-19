@@ -18,7 +18,91 @@ Search for files named `package.json` and check for a corresponding
 > will be combined to determine which dependencies are direct and which ones are
 > development.
 
-## Analysis
+## Analysis (for lockFile version 3)
+
+We consider `package-lock.json` to be version 3 compatible, if and only if, 
+
+- `lockFileVersion` field exists, and is of value 3
+- `packages` field exists in the `package-lock.json`.
+
+In `package-lock.json`, `packages` object's key refer to filepath for associated `package.json`.
+
+Generally, we have three types of data shape within `packages` map.
+
+1) Root module (denoted by having `""` key)
+
+```json
+  "": {
+      "name": "packageLockV3",
+      "version": "1.0.0",
+      "license": "ISC",
+      "dependencies": {
+          "foo": "^1.0.0",
+          "boo": "^1.0.0"
+      }
+  }
+```
+
+2) Workspace module
+
+```json
+  "packages/a": {
+      "name": "packageLockV3PkgA",
+      "version": "2.0.0",
+      "license": "ISC",
+      "dependencies": {
+          "foo": "^2.0.0"
+      }
+  }
+```
+
+Workspace module, in essence is type of root module whose parent is top level root module (as shown in (1)).
+
+3) Package Module (these are the dependencies which fossa will report)
+
+```json
+  "node_modules/foo": {
+      "version": "1.2.0",
+      "resolved": "https://registry.npmjs.org/foo/-/foo-1.2.0.tgz"
+  },
+  "node_modules/bar": {
+      "version": "1.3.0",
+      "resolved": "https://registry.npmjs.org/bar/-/bar-1.3.0.tgz",
+      "dependencies": {
+          "baz": "^1.0.0"
+      }
+  },
+  "node_modules/baz": {
+      "version": "1.9.0",
+      "resolved": "https://registry.npmjs.org/baz/-/baz-1.9.0.tgz"
+  },
+  "packages/a/node_modules/foo": {
+      "version": "2.0.0",
+      "resolved": "https://registry.npmjs.org/foo/-/foo-2.0.0.tgz"
+  }
+```
+
+We will attempt infer the resolved version by looking at package's key. 
+
+For instance, to infer resolved version of `foo@^2.0.0` for `packages/a`,
+we will attempt to see if the dependency was resolved at vendored path, 
+or at top level path. 
+
+If we find, `packages/a/node_modules/foo` key in our packages object, we use it's
+resolved version. If this key does not exist we fallback to `node_modules/foo`.
+
+With this approach, for aforementioned example, we will generate following dependency tree:
+
+```text
+-- foo@2.0.0      (via workspace package a)
+-- foo@1.2.0      (via root package.json)
+-- bar@1.3.0      (via root package.json)
+    \- baz@1.9.0  (transitive dep via bar@1.3.0)
+```
+
+We use `dev` field to infer if the dependency is development dependency or not.
+
+## Analysis (for lockFile version 1)
 
 Opening a `package-lock.json` file reveals the project's dependency tree. This
 dependency tree contains information about a dependency's version, its

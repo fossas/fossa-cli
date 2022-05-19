@@ -78,9 +78,13 @@ spec :: Spec
 spec = do
   describe "telemetry configuration" $ do
     -- This needs to be updated when default telemetry model moves to opt-out.
-    it' "by default telemetry sink is nothing" $ do
+    it' "by default telemetry sink set to nothing, if api key is not provided" $ do
       sink <- collectTelemetrySink noConfig defaultEnvVars noOpts
       sink `shouldBe'` Nothing
+
+    it' "by default telemetry sink set to full telemetry" $ do
+      sink <- collectTelemetrySink noConfig defaultEnvVars (Just defaultCommonOpts{optAPIKey = Just mockApiKeyRaw})
+      sink `shouldBe'` Just (TelemetrySinkToEndpoint (ApiOpts Nothing mockApiKey defaultApiPollDelay))
 
     describe "command opts" $ do
       it' "should set sink to nothing, when off scope is provided via command opts" $ do

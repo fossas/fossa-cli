@@ -14,9 +14,14 @@ module App.Fossa.ManualDeps (
   readFoundDeps,
 ) where
 
-import App.Fossa.ArchiveUploader (VendoredDependency (..), arcToLocator, archiveUploadSourceUnit, forceVendoredToArchive)
+import App.Fossa.ArchiveUploader (archiveUploadSourceUnit)
 import App.Fossa.Config.Analyze (AllowNativeLicenseScan (AllowNativeLicenseScan))
 import App.Fossa.LicenseScanner (licenseScanSourceUnit)
+import App.Fossa.VendoredDependency (
+  VendoredDependency (..),
+  arcToLocator,
+  forceVendoredToArchive,
+ )
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
