@@ -81,7 +81,6 @@ fixtureDir = $(mkRelDir "test/App/Fossa/LicenseScanner/testdata/repo")
 
 spec :: Spec
 spec = do
-  -- this test only exists to prevent merging the commented out analyzers
   describe "combineLicenseUnits" $ do
     it "should combine two MIT units" $
       combineLicenseUnits [unitOne, unitTwo] `shouldBe` [expectedCombinedUnit]
