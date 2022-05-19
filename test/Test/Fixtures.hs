@@ -307,7 +307,7 @@ firstLicenseSourceUnit =
               LicenseUnitData
                 { licenseUnitDataPath = "vendor/foo/BSD_NEW_LICENSE"
                 , licenseUnitDataCopyright = Nothing
-                , licenseUnitDataThemisVersion = "3332fcd9e1bd34219e4d8452f72df0a38cb4d0bc"
+                , licenseUnitDataThemisVersion = "b3b7ffde9f8513584298b94a3cbd4f1951bc412f"
                 , licenseUnitDataMatchData =
                     Just
                       ( LicenseUnitMatchData
@@ -344,7 +344,7 @@ secondLicenseSourceUnit =
               LicenseUnitData
                 { licenseUnitDataPath = "vendor/bar/MIT_LICENSE"
                 , licenseUnitDataCopyright = Nothing
-                , licenseUnitDataThemisVersion = "3332fcd9e1bd34219e4d8452f72df0a38cb4d0bc"
+                , licenseUnitDataThemisVersion = "b3b7ffde9f8513584298b94a3cbd4f1951bc412f"
                 , licenseUnitDataMatchData =
                     Just
                       ( LicenseUnitMatchData
