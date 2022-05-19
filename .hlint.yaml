@@ -11,6 +11,8 @@
   - {name: Data.Text, as: Text, message: "Use complete name for qualified import of Text"}
   # Don't allow unsafe IO
   - {name: System.IO.Unsafe, within: []}
+  # Arrows are more complicated than the problem they solve
+  - {name: Control.Arrow, within: []}
 
 # Styling Preferences
 - suggest: {lhs: "asum [x, y]", rhs: x <|> y}
@@ -33,10 +35,10 @@
 - functions:
   - {name: error, within: [Data.String.Conversion, Control.Effect.Replay]}
   - {name: undefined, within: []}
-  - {name: Prelude.head, within: [Control.Effect.Replay.TH, Control.Effect.Record.TH], message: "Use Data.List.Extra.head' instead."}
+  - {name: Prelude.head, within: [Control.Effect.*.TH, "**.*Spec"], message: "Use Data.List.Extra.head' instead."}
   - {name: Prelude.tail, within: []}
   - {name: Prelude.init, within: []}
-  - {name: Prelude.last, within: []}
+  - {name: Prelude.last, within: ["**.*Spec"]}
   - {name: Data.ByteString.head, within: []}
   - {name: Data.Bytestring.tail, within: []}
   - {name: Data.Bytestring.init, within: []}

@@ -32,7 +32,7 @@ import Data.Glob qualified as Glob
 import Data.List.Extra (singleton)
 import Data.Map (Map, toList)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, mapMaybe)
+import Data.Maybe (catMaybes, isJust, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (decodeUtf8)
@@ -73,6 +73,7 @@ import Path (
  )
 import Strategy.Node.Errors (CyclicPackageJson (CyclicPackageJson), MissingNodeLockFile (MissingNodeLockFile))
 import Strategy.Node.Npm.PackageLock qualified as PackageLock
+import Strategy.Node.Npm.PackageLockV3 qualified as PackageLockV3
 import Strategy.Node.PackageJson (
   Development,
   FlatDeps (FlatDeps),
@@ -167,9 +168,12 @@ getDeps (NPMLock packageLockFile graph) = analyzeNpmLock packageLockFile graph
 getDeps (NPM graph) = analyzeNpm graph
 
 analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> PkgJsonGraph -> m DependencyResults
-analyzeNpmLock (Manifest file) graph = do
-  result <- PackageLock.analyze file (extractDepLists graph) (findWorkspaceNames graph)
-  pure $ DependencyResults result Complete [file]
+analyzeNpmLock (Manifest npmLockFile) graph = do
+  npmLockVersion <- detectNpmLockVersion npmLockFile
+  result <- case npmLockVersion of
+    NpmLockV3Compatible -> PackageLockV3.analyze npmLockFile
+    NpmLockV1Compatible -> PackageLock.analyze npmLockFile (extractDepLists graph) (findWorkspaceNames graph)
+  pure $ DependencyResults result Complete [npmLockFile]
 
 analyzeNpm :: (Has Diagnostics sig m) => PkgJsonGraph -> m DependencyResults
 analyzeNpm wsGraph = do
@@ -215,6 +219,22 @@ detectYarnVersion yarnfile = do
 data YarnVersion
   = V1
   | V2Compatible
+
+data NpmLockVersion
+  = NpmLockV1Compatible
+  | NpmLockV3Compatible
+
+detectNpmLockVersion ::
+  ( Has Diagnostics sig m
+  , Has ReadFS sig m
+  ) =>
+  Path Abs File ->
+  m NpmLockVersion
+detectNpmLockVersion npmLockFile = do
+  isV3Compatible <- recover $ readContentsJson @PackageLockV3.PackageLockV3 npmLockFile
+  if isJust isV3Compatible
+    then pure NpmLockV3Compatible
+    else pure NpmLockV1Compatible
 
 -- | Find every manifest that is a child of some other package and look
 -- up their @packageName@ in the @jsonLookup@ map.
