@@ -335,14 +335,17 @@ licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
   -- Debug logs giving info about which vendored deps were actually scanned
   -- If none of the dependencies need scanning, then log that, but we still need to do `finalizeLicenseScan` so keep going
   _ <- case (needScanningDeps, vendoredDependencyScanMode) of
-    (_, VendoredDependencyScanModeSkippingNotSupported) ->
-      logDebug "Skipping vendored dependency scans not supported on your FOSSA instance. All vendored dependencies will be scanned"
+    (_, VendoredDependencyScanModeSkippingNotSupported) -> do
+      logDebug "This version of the FOSSA service does not support enumerating previously scanned vendored dependencies."
+      logDebug "Performing a full scan of all vendored dependencies even if they have been scanned previously."
     ([], VendoredDependencyScanModeSkipPreviouslyScanned) -> do
-      logDebug "All vendored dependencies have already been scanned by FOSSA. Skipping vendored dependency license scans."
+      logDebug "All of the current vendored dependencies have been previously scanned, reusing previous results."
     (_, VendoredDependencyScanModeSkipPreviouslyScanned) -> do
       case skippedDeps of
-        [] -> logDebug "All vendored dependencies are un-scanned and require license scanning"
-        _ -> logDebug . pretty $ "Some vendored dependencies have already been scanned by FOSSA. Skipping these vendored dependencies: " <> show skippedDeps
+        [] -> logDebug "None of the current vendored dependencies have been previously scanned. License scanning all vendored dependencies"
+        _ -> do
+          logDebug "Some of the current vendored dependencies have already been scanned by FOSSA."
+          logDebug . pretty $ "Reusing previous results for the following vendored dependencies: " <> show skippedDeps
 
   -- At this point, we have a good list of deps, so go for it.
   maybeScannedArchives <- traverse (scanAndUploadVendoredDep baseDir) needScanningDeps
