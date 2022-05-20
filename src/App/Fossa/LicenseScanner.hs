@@ -366,6 +366,14 @@ licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
     includeOrgId :: OrgId -> Archive -> Archive
     includeOrgId org arc = arc{archiveName = showT org <> "/" <> archiveName arc}
 
+-- | Split the supplied vendored dependencies into those that need scanning and those that do not.
+--   We can skip scanning a vendored dependency if an analyzed revision for that vendored dependency already exists on Core.
+
+-- For vendored dependencies with versions supplied by the user in fossa-deps.yml, this means that
+-- we will only rescan when the version supplied by the user changes,
+-- regardless of whether or not the code in the vendored dependency has changed.
+-- This is intentional. Even if we did the scan, an already analyzed revision with this locator already exists on Core
+-- and the build to analyze it would not get queued.
 findDepsThatNeedScanning ::
   ( Has (Lift IO) sig m
   , Has FossaApiClient sig m

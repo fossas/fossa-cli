@@ -383,6 +383,8 @@ getProject apiopts ProjectRevision{..} = fossaReq $ do
 getAnalyzedRevisionsEndpoint :: Url 'Https -> Url 'Https
 getAnalyzedRevisionsEndpoint baseurl = baseurl /: "api" /: "cli" /: "analyzedRevisions"
 
+-- | getAnalyzedRevisions makes a request to Core with a list of locators that we are considering scanning
+--   Core will respond with a list of locators that have already been analyzed
 getAnalyzedRevisions ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   ApiOpts ->
