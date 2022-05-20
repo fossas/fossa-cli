@@ -26,8 +26,8 @@ module Test.Fixtures (
   archives,
   locators,
   vendoredDeps,
-  firstRevision,
-  secondRevision,
+  firstLocator,
+  secondLocator,
   firstLicenseSourceUnit,
   secondLicenseSourceUnit,
 ) where
@@ -261,12 +261,6 @@ secondLocator =
     "archive"
     "42/second-archive-test"
     (Just "0.0.1")
-
-firstRevision :: Text
-firstRevision = "archive+42/first-archive-test$0.0.1"
-
-secondRevision :: Text
-secondRevision = "archive+42/second-archive-test$0.0.1"
 
 firstArchive :: Archive
 firstArchive =

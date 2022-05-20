@@ -10,6 +10,7 @@ import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (ignoreStickyLogger)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (..))
 import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty qualified as NE
 import Diag.Result (Result (..))
 import Effect.Exec (runExecIO)
 import Effect.Logger (ignoreLogger)
@@ -23,6 +24,7 @@ import Srclib.Types (
   LicenseUnitData (..),
   LicenseUnitInfo (..),
   emptyLicenseUnitData,
+  renderLocator,
  )
 import Test.Effect (expectationFailure', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
@@ -171,7 +173,7 @@ expectGetSignedUrl packageRevision = GetSignedLicenseScanUrl packageRevision `al
 expectEverythingScannedAlready :: Has MockApi sig m => m ()
 expectEverythingScannedAlready =
   (GetRevisionInfo Fixtures.vendoredDeps)
-    `returnsOnce` [Fixtures.firstRevision, Fixtures.secondRevision]
+    `returnsOnce` map renderLocator (NE.toList Fixtures.locators)
 
 expectNothingScannedYet :: Has MockApi sig m => m ()
 expectNothingScannedYet =
@@ -186,7 +188,7 @@ expectAllScansInProgress =
 expectOneScanInProgress :: Has MockApi sig m => m ()
 expectOneScanInProgress =
   (GetRevisionInfo Fixtures.vendoredDeps)
-    `returnsOnce` [Fixtures.secondRevision]
+    `returnsOnce` [renderLocator Fixtures.secondLocator]
 
 expectUploadLicenseScanResult :: Has MockApi sig m => LicenseSourceUnit -> m ()
 expectUploadLicenseScanResult licenseUnit =
