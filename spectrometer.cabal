@@ -507,6 +507,7 @@ test-suite unit-tests
     Haskell.CabalSpec
     Haskell.StackSpec
     Maven.DepTreeSpec
+    Maven.PluginSpec
     Maven.PluginStrategySpec
     Maven.PomStrategySpec
     Nim.NimbleSpec

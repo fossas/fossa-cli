@@ -11,6 +11,7 @@ module Strategy.Maven.Plugin (
   DepGraphPlugin (..),
   Edge (..),
   PluginOutput (..),
+  parseArtifact,
 ) where
 
 import Control.Algebra
@@ -21,14 +22,20 @@ import Data.Aeson
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.FileEmbed (embedFile)
-import Data.Functor (void)
+import Data.Functor (void, ($>))
+import Data.List (singleton)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Data.Void (Void)
 import Effect.Exec
 import Effect.ReadFS
 import Path
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
 import System.FilePath qualified as FP
+import Text.Megaparsec (Parsec, takeWhile1P, (<|>), manyTill, eof, label, anySingle, some, tokens, chunk)
+import Text.Megaparsec.Char (space1, char)
+import qualified Text.Megaparsec.Char.Lexer as Lexer
+import Data.Char (isSpace)
 
 data DepGraphPlugin = DepGraphPlugin
   { group :: Text
@@ -127,8 +134,8 @@ data Artifact = Artifact
   , artifactGroupId :: Text
   , artifactArtifactId :: Text
   , artifactVersion :: Text
-  , artifactOptional :: Bool
   , artifactScopes :: [Text]
+  , artifactOptional :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -149,8 +156,8 @@ instance FromJSON Artifact where
       <*> obj .: "groupId"
       <*> obj .: "artifactId"
       <*> obj .: "version"
-      <*> obj .: "optional"
       <*> obj .: "scopes"
+      <*> obj .: "optional"
     where
       offset = subtract 1
 
@@ -158,3 +165,30 @@ instance FromJSON Edge where
   parseJSON = withObject "Edge" $ \obj ->
     Edge <$> obj .: "numericFrom"
       <*> obj .: "numericTo"
+
+type Parser = Parsec Void Text
+
+lexeme :: Parser a -> Parser a
+lexeme = Lexer.lexeme space1
+
+parseArtifact :: Int -> Parser Artifact
+parseArtifact artifactId =
+  Artifact artifactId
+    <$> readThruNextColon "groupId"
+    <*> readThruNextColon "artifactId"
+    <*> readThruNextColon "artifactVersion"
+    -- based on  the maven documentation, it  seems there can be  only one scope
+    -- for a given rtifact even though maven-depgraph-plugin returns an array
+    -- of strings in the json output
+    <*> (singleton <$> scopeParse)
+    <*> isOptional
+  where
+    readThruNextColon :: String -> Parser Text
+    readThruNextColon name = takeWhile1P (Just name) (/= ':') <* char ':'
+
+    scopeParse :: Parser Text
+    scopeParse = lexeme (takeWhile1P (Just "scopes") (not . isSpace))
+
+    isOptional :: Parser Bool
+    isOptional = (chunk "(optional)" $> True)
+                 <|> pure False
