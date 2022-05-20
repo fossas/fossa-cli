@@ -13,6 +13,7 @@ import App.Fossa.RunThemis (
  )
 import App.Fossa.VendoredDependency (
   VendoredDependency (..),
+  VendoredDependencyScanMode (..),
   arcToLocator,
   compressFile,
   dedupVendoredDeps,
@@ -312,11 +313,11 @@ licenseScanSourceUnit ::
   , Has ReadFS sig m
   , Has FossaApiClient sig m
   ) =>
-  Bool ->
+  VendoredDependencyScanMode ->
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
   m (NonEmpty Locator)
-licenseScanSourceUnit skippingSupported baseDir vendoredDeps = do
+licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
   uniqDeps <- dedupVendoredDeps vendoredDeps
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
@@ -327,18 +328,18 @@ licenseScanSourceUnit skippingSupported baseDir vendoredDeps = do
   uniqDepsWithVersions <- traverse (ensureVendoredDepVersion baseDir) uniqDeps
   -- If skipping is supported, ask Core if any of these deps have already been scanned. If they have, skip scanning them.
   (needScanningDeps, skippedDeps) <-
-    if skippingSupported
+    if vendoredDependencyScanMode == VendoredDependencyScanModeSkipPreviouslyScanned
       then findDepsThatNeedScanning uniqDepsWithVersions orgId
       else pure (NE.toList uniqDepsWithVersions, [])
 
   -- Debug logs giving info about which vendored deps were actually scanned
   -- If none of the dependencies need scanning, then log that, but we still need to do `finalizeLicenseScan` so keep going
-  _ <- case (needScanningDeps, skippingSupported) of
-    (_, False) ->
+  _ <- case (needScanningDeps, vendoredDependencyScanMode) of
+    (_, VendoredDependencyScanModeSkippingNotSupported) ->
       logDebug "Skipping vendored dependency scans not supported on your FOSSA instance. All vendored dependencies will be scanned"
-    ([], True) -> do
+    ([], VendoredDependencyScanModeSkipPreviouslyScanned) -> do
       logDebug "All vendored dependencies have already been scanned by FOSSA. Skipping vendored dependency license scans."
-    (_, True) -> do
+    (_, VendoredDependencyScanModeSkipPreviouslyScanned) -> do
       case skippedDeps of
         [] -> logDebug "All vendored dependencies are un-scanned and require license scanning"
         _ -> logDebug . pretty $ "Some vendored dependencies have already been scanned by FOSSA. Skipping these vendored dependencies: " <> show skippedDeps

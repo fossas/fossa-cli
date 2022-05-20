@@ -1,5 +1,6 @@
 module App.Fossa.VendoredDependency (
   VendoredDependency (..),
+  VendoredDependencyScanMode (..),
   arcToLocator,
   forceVendoredToArchive,
   compressFile,
@@ -47,6 +48,10 @@ instance FromJSON VendoredDependency where
       <*> obj .: "path"
       <*> (unTextLike <$$> obj .:? "version")
       <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
+data VendoredDependencyScanMode
+  = VendoredDependencyScanModeSkipPreviouslyScanned
+  | VendoredDependencyScanModeSkippingNotSupported
+  deriving (Eq, Show)
 
 dedupVendoredDeps :: (Has Diagnostics sig m) => NonEmpty VendoredDependency -> m (NonEmpty VendoredDependency)
 dedupVendoredDeps vdeps = do
