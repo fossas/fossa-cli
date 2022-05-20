@@ -26,8 +26,8 @@ import Control.Effect.FossaApiClient (
   FossaApiClient,
   PackageRevision (..),
   finalizeLicenseScan,
+  getAnalyzedRevisions,
   getOrganization,
-  getRevisionInfo,
   getSignedLicenseScanUrl,
   uploadLicenseScanResult,
  )
@@ -370,7 +370,7 @@ findDepsThatNeedScanning ::
   OrgId ->
   m ([VendoredDependency], [VendoredDependency])
 findDepsThatNeedScanning vdeps orgId = do
-  analyzedLocators <- getRevisionInfo vdeps
+  analyzedLocators <- getAnalyzedRevisions vdeps
   pure $ NE.partition (shouldScanRevision analyzedLocators orgId) vdeps
 
 ensureVendoredDepVersion ::

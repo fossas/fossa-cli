@@ -6,7 +6,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   getLatestBuild,
   getOrganization,
   getProject,
-  getRevisionInfo,
+  getAnalyzedRevisions,
   getSignedUploadUrl,
   queueArchiveBuild,
   uploadAnalysis,
@@ -66,16 +66,16 @@ getProject revision = do
   apiOpts <- ask
   API.getProject apiOpts revision
 
-getRevisionInfo ::
+getAnalyzedRevisions ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   NE.NonEmpty VendoredDependency ->
   m [Text]
-getRevisionInfo vdeps = do
+getAnalyzedRevisions vdeps = do
   apiOpts <- ask
-  API.getRevisionInfo apiOpts vdeps
+  API.getAnalyzedRevisions apiOpts vdeps
 
 uploadAnalysis ::
   ( Has (Lift IO) sig m

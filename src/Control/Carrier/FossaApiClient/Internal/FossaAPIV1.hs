@@ -12,7 +12,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getIssues,
   getOrganization,
   getAttribution,
-  getRevisionInfo,
+  getAnalyzedRevisions,
   getSignedLicenseScanURL,
   getSignedURL,
   getProject,
@@ -175,6 +175,17 @@ instance (Has (Lift IO) sig m, Has Diagnostics sig m) => MonadHttp (FossaReqAllo
     where
       allow401 :: HttpException -> EmptyC m a
       allow401 err = maybe empty fatal (allow401' err)
+
+newtype GetAnalyzedRevisionsBody = GetAnalyzedRevisionsBody
+  { getAnalyzedRevisionsBodyLocators :: NonEmpty Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance ToJSON GetAnalyzedRevisionsBody where
+  toJSON GetAnalyzedRevisionsBody{..} =
+    object
+      [ "locators" .= getAnalyzedRevisionsBodyLocators
+      ]
 
 fossaReq :: FossaReq m a -> m a
 fossaReq = unFossaReq
@@ -369,38 +380,27 @@ getProject apiopts ProjectRevision{..} = fossaReq $ do
 
 -----
 
-getRevisionInfoEndpoint :: Url 'Https -> Url 'Https
-getRevisionInfoEndpoint baseurl = baseurl /: "api" /: "cli" /: "analyzedRevisions"
+getAnalyzedRevisionsEndpoint :: Url 'Https -> Url 'Https
+getAnalyzedRevisionsEndpoint baseurl = baseurl /: "api" /: "cli" /: "analyzedRevisions"
 
-getRevisionInfo ::
+getAnalyzedRevisions ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   NonEmpty VendoredDependency ->
   m [Text]
-getRevisionInfo apiOpts vDeps = fossaReq $ do
+getAnalyzedRevisions apiOpts vDeps = fossaReq $ do
   orgId <- organizationId <$> getOrganization apiOpts
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   let locatorBody = constructLocatorBody orgId vDeps
-  responseBody <$> req POST (getRevisionInfoEndpoint baseUrl) (ReqBodyJson locatorBody) jsonResponse baseOpts
-
-newtype GetRevisionInfoBody = GetRevisionInfoBody
-  { getRevisionInfoBodyLocators :: NonEmpty Text
-  }
-  deriving (Eq, Ord, Show)
-
-instance ToJSON GetRevisionInfoBody where
-  toJSON GetRevisionInfoBody{..} =
-    object
-      [ "locators" .= getRevisionInfoBodyLocators
-      ]
-
-constructLocatorBody :: OrgId -> NonEmpty VendoredDependency -> GetRevisionInfoBody
-constructLocatorBody orgId = GetRevisionInfoBody <$> NE.map (constructLocatorOption orgId)
+  responseBody <$> req POST (getAnalyzedRevisionsEndpoint baseUrl) (ReqBodyJson locatorBody) jsonResponse baseOpts
   where
-    constructLocatorOption :: OrgId -> VendoredDependency -> Text
-    constructLocatorOption org VendoredDependency{..} = do
-      let locator = Locator{locatorFetcher = "archive", locatorProject = vendoredName, locatorRevision = vendoredVersion}
-      renderLocatorUrl org locator
+    constructLocatorBody :: OrgId -> NonEmpty VendoredDependency -> GetAnalyzedRevisionsBody
+    constructLocatorBody orgId = GetAnalyzedRevisionsBody <$> NE.map (constructLocator orgId)
+      where
+        constructLocator :: OrgId -> VendoredDependency -> Text
+        constructLocator org VendoredDependency{..} = do
+          let locator = Locator{locatorFetcher = "archive", locatorProject = vendoredName, locatorRevision = vendoredVersion}
+          renderLocatorUrl org locator
 
 -----
 

@@ -172,22 +172,22 @@ expectGetSignedUrl packageRevision = GetSignedLicenseScanUrl packageRevision `al
 
 expectEverythingScannedAlready :: Has MockApi sig m => m ()
 expectEverythingScannedAlready =
-  (GetRevisionInfo Fixtures.vendoredDeps)
+  (GetAnalyzedRevisions Fixtures.vendoredDeps)
     `returnsOnce` map renderLocator (NE.toList Fixtures.locators)
 
 expectNothingScannedYet :: Has MockApi sig m => m ()
 expectNothingScannedYet =
-  (GetRevisionInfo Fixtures.vendoredDeps)
+  (GetAnalyzedRevisions Fixtures.vendoredDeps)
     `returnsOnce` []
 
 expectAllScansInProgress :: Has MockApi sig m => m ()
 expectAllScansInProgress =
-  (GetRevisionInfo Fixtures.vendoredDeps)
+  (GetAnalyzedRevisions Fixtures.vendoredDeps)
     `returnsOnce` []
 
 expectOneScanInProgress :: Has MockApi sig m => m ()
 expectOneScanInProgress =
-  (GetRevisionInfo Fixtures.vendoredDeps)
+  (GetAnalyzedRevisions Fixtures.vendoredDeps)
     `returnsOnce` [renderLocator Fixtures.secondLocator]
 
 expectUploadLicenseScanResult :: Has MockApi sig m => LicenseSourceUnit -> m ()
