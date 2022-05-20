@@ -16,8 +16,10 @@ import Control.Effect.Diagnostics (
   Diagnostics,
   ToDiagnostic (..),
   fatalText,
+  fromMaybeText,
   recover,
   warnOnErr,
+  (<||>),
  )
 import Control.Effect.Reader (Reader)
 import Control.Effect.Stack (context)
@@ -27,6 +29,7 @@ import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TL
+import Diag.Common (MissingDeepDeps (MissingDeepDeps))
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -41,7 +44,7 @@ import Effect.Exec (
   Has,
   execThrow,
  )
-import Effect.ReadFS (ReadFS)
+import Effect.ReadFS (ReadFS, readContentsXML)
 import GHC.Generics (Generic)
 import Path (
   Abs,
@@ -54,14 +57,15 @@ import Path (
  )
 import Prettyprinter (viaShow)
 import Strategy.Maven.Pom qualified as Pom
-import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures)
-import Strategy.Maven.Pom.Closure qualified as PomClosure
+import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures, closurePath)
+import Strategy.Maven.Pom.PomFile (RawPom, rawPomName)
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
+import Strategy.Scala.SbtDependencyTree (analyze)
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
   DiscoveredProjectType (ScalaProjectType),
-  GraphBreadth (Complete),
+  GraphBreadth (Complete, Partial),
  )
 
 discover ::
@@ -74,36 +78,38 @@ discover ::
   m [DiscoveredProject ScalaProject]
 discover = simpleDiscover findProjects' mkProject ScalaProjectType
   where
-    findProjects' dir = map ScalaProject <$> findProjects dir
+    findProjects' dir =
+      concatMap (\(SbtClosure sbtBuildDir closure) -> ScalaProject sbtBuildDir <$> closure) <$> (findProjects dir)
 
-newtype ScalaProject = ScalaProject {unScalaProject :: PomClosure.MavenProjectClosure}
+data ScalaProject = ScalaProject
+  { sbtBuildDir :: Path Abs Dir
+  , unScalaProject :: MavenProjectClosure
+  }
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON ScalaProject
 
 instance AnalyzeProject ScalaProject where
-  analyzeProject _ = pure . getDeps
+  analyzeProject _ = getDeps
 
 mkProject :: ScalaProject -> DiscoveredProject ScalaProject
-mkProject (ScalaProject closure) =
+mkProject (ScalaProject sbtBuildDir closure) =
   DiscoveredProject
     { projectType = ScalaProjectType
-    , projectPath = parent $ PomClosure.closurePath closure
+    , projectPath = parent $ closurePath closure
     , projectBuildTargets = mempty
-    , projectData = ScalaProject closure
+    , projectData = ScalaProject sbtBuildDir closure
     }
 
--- only do static analysis of generated pom files
-getDeps :: ScalaProject -> DependencyResults
-getDeps (ScalaProject closure) =
-  DependencyResults
-    { dependencyGraph = Pom.analyze' closure
-    , dependencyGraphBreadth = Complete
-    , dependencyManifestFiles = [PomClosure.closurePath closure]
-    }
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => ScalaProject -> m DependencyResults
+getDeps project =
+  warnOnErr MissingDeepDeps (analyzeWithSbtDepTree project)
+    <||> analyzeWithPoms project
 
 pathToText :: Path ar fd -> Text
 pathToText = toText . toFilePath
+
+data SbtClosure = SbtClosure (Path Abs Dir) [MavenProjectClosure]
 
 findProjects ::
   ( Has Exec sig m
@@ -112,7 +118,7 @@ findProjects ::
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
-  m [MavenProjectClosure]
+  m [SbtClosure]
 findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "build.sbt" files of
     Nothing -> pure ([], WalkContinue)
@@ -125,13 +131,35 @@ findProjects = walkWithFilters' $ \dir _ files -> do
 
       case projectsRes of
         Nothing -> pure ([], WalkSkipAll)
-        Just projects -> pure (projects, WalkSkipAll)
+        Just projects -> pure ([SbtClosure dir projects], WalkSkipAll)
 
 newtype FailedToListProjects = FailedToListProjects (Path Abs Dir)
   deriving (Eq, Ord, Show)
 
 instance ToDiagnostic FailedToListProjects where
   renderDiagnostic (FailedToListProjects dir) = "Failed to discover and analyze sbt projects, for sbt build manifest at:" <> viaShow dir
+
+analyzeWithPoms :: (Has Diagnostics sig m) => ScalaProject -> m DependencyResults
+analyzeWithPoms (ScalaProject _ closure) = context "Analyzing sbt dependencies with generated pom" $ do
+  pure $
+    DependencyResults
+      { dependencyGraph = Pom.analyze' closure
+      , dependencyGraphBreadth = Partial
+      , dependencyManifestFiles = [closurePath closure]
+      }
+
+analyzeWithSbtDepTree :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => ScalaProject -> m DependencyResults
+analyzeWithSbtDepTree (ScalaProject sbtBuildDir closure) = context "Analyzing sbt dependencies using dependencyTree" $ do
+  let pomPath = closurePath closure
+  maybeRawPom <- recover (readContentsXML @RawPom pomPath)
+  projectName <- fromMaybeText ("Could not retrieve project name from generated pom file:" <> toText pomPath) (rawPomName =<< maybeRawPom)
+  projectGraph <- analyze sbtBuildDir projectName
+  pure $
+    DependencyResults
+      { dependencyGraph = projectGraph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [closurePath closure]
+      }
 
 makePomCmd :: Command
 makePomCmd =

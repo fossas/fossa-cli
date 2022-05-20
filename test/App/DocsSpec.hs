@@ -36,6 +36,7 @@ import Strategy.Swift.Errors (
  )
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 import Text.URI (mkURI)
+import Strategy.Scala.Errors (scalaFossaDocUrl, sbtDepsGraphPluginUrl)
 
 shouldRespondToGETWithHttpCode :: Text -> Int -> Expectation
 shouldRespondToGETWithHttpCode uri expected = do
@@ -62,6 +63,8 @@ urlsToCheck =
   , refPodDocUrl
   , refGradleDocUrl
   , containerScanningDocUrl
+  , scalaFossaDocUrl
+  , sbtDepsGraphPluginUrl
   ]
 
 spec :: Spec
