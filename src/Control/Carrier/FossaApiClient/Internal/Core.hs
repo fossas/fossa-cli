@@ -36,7 +36,6 @@ import Fossa.API.Types (
   Issues,
   Organization,
   Project,
-  RevisionInfo,
   SignedURL,
   UploadResponse,
  )
@@ -73,7 +72,7 @@ getRevisionInfo ::
   , Has (Reader ApiOpts) sig m
   ) =>
   NE.NonEmpty VendoredDependency ->
-  m [RevisionInfo]
+  m [Text]
 getRevisionInfo vdeps = do
   apiOpts <- ask
   API.getRevisionInfo apiOpts vdeps

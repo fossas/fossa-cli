@@ -57,7 +57,6 @@ import Fossa.API.Types (
   Issues,
   Organization,
   Project,
-  RevisionInfo,
   ScanId,
   ScanResponse,
   SignedURL,
@@ -90,7 +89,7 @@ data FossaApiClientF a where
   GetLatestScan :: Locator -> ProjectRevision -> FossaApiClientF ScanResponse
   GetOrganization :: FossaApiClientF Organization
   GetProject :: ProjectRevision -> FossaApiClientF Project
-  GetRevisionInfo :: (NonEmpty VendoredDependency) -> FossaApiClientF [RevisionInfo]
+  GetRevisionInfo :: (NonEmpty VendoredDependency) -> FossaApiClientF [Text]
   GetScan :: Locator -> ScanId -> FossaApiClientF ScanResponse
   GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
@@ -176,7 +175,7 @@ assertRevisionBinaries locator fprints = sendSimple (AssertRevisionBinaries loca
 assertUserDefinedBinaries :: Has FossaApiClient sig m => IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> m ()
 assertUserDefinedBinaries meta fprints = sendSimple (AssertUserDefinedBinaries meta fprints)
 
-getRevisionInfo :: Has FossaApiClient sig m => (NonEmpty VendoredDependency) -> m ([RevisionInfo])
+getRevisionInfo :: Has FossaApiClient sig m => (NonEmpty VendoredDependency) -> m ([Text])
 getRevisionInfo = sendSimple . GetRevisionInfo
 
 getSignedLicenseScanUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL

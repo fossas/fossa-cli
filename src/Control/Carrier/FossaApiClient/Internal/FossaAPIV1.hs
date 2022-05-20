@@ -93,7 +93,6 @@ import Fossa.API.Types (
   OrgId,
   Organization (organizationId),
   Project,
-  RevisionInfo (..),
   SignedURL (signedURL),
   UploadResponse,
   useApiOpts,
@@ -371,27 +370,37 @@ getProject apiopts ProjectRevision{..} = fossaReq $ do
 -----
 
 getRevisionInfoEndpoint :: Url 'Https -> Url 'Https
-getRevisionInfoEndpoint baseurl = baseurl /: "api" /: "cli" /: "scannedRevisions"
+getRevisionInfoEndpoint baseurl = baseurl /: "api" /: "cli" /: "analyzedRevisions"
 
 getRevisionInfo ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   NonEmpty VendoredDependency ->
-  m [RevisionInfo]
+  m [Text]
 getRevisionInfo apiOpts vDeps = fossaReq $ do
   orgId <- organizationId <$> getOrganization apiOpts
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  let locatorQuery = mconcat $ NE.toList $ constructLocatorQuery orgId vDeps
-  responseBody <$> req GET (getRevisionInfoEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> locatorQuery)
+  let locatorBody = constructLocatorBody orgId vDeps
+  responseBody <$> req POST (getRevisionInfoEndpoint baseUrl) (ReqBodyJson locatorBody) jsonResponse baseOpts
 
-constructLocatorQuery :: OrgId -> NonEmpty VendoredDependency -> NonEmpty (Option 'Https)
-constructLocatorQuery orgId = NE.map (constructLocatorOption orgId)
+newtype GetRevisionInfoBody = GetRevisionInfoBody
+  { getRevisionInfoBodyLocators :: NonEmpty Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance ToJSON GetRevisionInfoBody where
+  toJSON GetRevisionInfoBody{..} =
+    object
+      [ "locators" .= getRevisionInfoBodyLocators
+      ]
+
+constructLocatorBody :: OrgId -> NonEmpty VendoredDependency -> GetRevisionInfoBody
+constructLocatorBody orgId = GetRevisionInfoBody <$> NE.map (constructLocatorOption orgId)
   where
-    constructLocatorOption :: OrgId -> VendoredDependency -> Option 'Https
+    constructLocatorOption :: OrgId -> VendoredDependency -> Text
     constructLocatorOption org VendoredDependency{..} = do
       let locator = Locator{locatorFetcher = "archive", locatorProject = vendoredName, locatorRevision = vendoredVersion}
-      let locatorUrl = renderLocatorUrl org locator
-      "locator[]" =: locatorUrl
+      renderLocatorUrl org locator
 
 -----
 

@@ -14,7 +14,7 @@ import Diag.Result (Result (..))
 import Effect.Exec (runExecIO)
 import Effect.Logger (ignoreLogger)
 import Effect.ReadFS (runReadFSIO)
-import Fossa.API.Types (Archive, ArchiveComponents (ArchiveComponents, archives), RevisionInfo (..))
+import Fossa.API.Types (Archive, ArchiveComponents (ArchiveComponents, archives))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
 import Srclib.Types (
@@ -181,12 +181,12 @@ expectNothingScannedYet =
 expectAllScansInProgress :: Has MockApi sig m => m ()
 expectAllScansInProgress =
   (GetRevisionInfo Fixtures.vendoredDeps)
-    `returnsOnce` [Fixtures.firstRevision{revisionInfoResolved = False}, Fixtures.secondRevision{revisionInfoResolved = False}]
+    `returnsOnce` []
 
 expectOneScanInProgress :: Has MockApi sig m => m ()
 expectOneScanInProgress =
   (GetRevisionInfo Fixtures.vendoredDeps)
-    `returnsOnce` [Fixtures.firstRevision{revisionInfoResolved = False}, Fixtures.secondRevision]
+    `returnsOnce` [Fixtures.secondRevision]
 
 expectUploadLicenseScanResult :: Has MockApi sig m => LicenseSourceUnit -> m ()
 expectUploadLicenseScanResult licenseUnit =

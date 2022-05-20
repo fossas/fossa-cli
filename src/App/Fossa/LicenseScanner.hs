@@ -58,7 +58,6 @@ import Fossa.API.Types (
   ArchiveComponents (ArchiveComponents),
   OrgId,
   Organization (organizationId),
-  RevisionInfo (..),
  )
 import Path (Abs, Dir, File, Path, SomeBase (Abs, Rel), fileExtension, parent, (</>))
 import Path.Extra (tryMakeRelative)
@@ -371,8 +370,8 @@ findDepsThatNeedScanning ::
   OrgId ->
   m ([VendoredDependency], [VendoredDependency])
 findDepsThatNeedScanning vdeps orgId = do
-  revisionInfos <- getRevisionInfo vdeps
-  pure $ NE.partition (shouldScanRevision revisionInfos orgId) vdeps
+  analyzedLocators <- getRevisionInfo vdeps
+  pure $ NE.partition (shouldScanRevision analyzedLocators orgId) vdeps
 
 ensureVendoredDepVersion ::
   (Has (Lift IO) sig m) =>
@@ -385,12 +384,12 @@ ensureVendoredDepVersion baseDir vdep = do
     Just version -> pure version
   pure vdep{vendoredVersion = Just depVersion}
 
-shouldScanRevision :: [RevisionInfo] -> OrgId -> VendoredDependency -> Bool
-shouldScanRevision revisionInfos orgId vdep = all (locatorMatches vdep orgId) revisionInfos
+shouldScanRevision :: [Text] -> OrgId -> VendoredDependency -> Bool
+shouldScanRevision analyzedLocators orgId vdep = all (locatorDoesNotMatch vdep orgId) analyzedLocators
   where
-    locatorMatches :: VendoredDependency -> OrgId -> RevisionInfo -> Bool
-    locatorMatches VendoredDependency{..} org RevisionInfo{..} =
-      locatorUrl /= revisionInfoLocator || not revisionInfoResolved
+    locatorDoesNotMatch :: VendoredDependency -> OrgId -> Text -> Bool
+    locatorDoesNotMatch VendoredDependency{..} org loc =
+      locatorUrl /= loc
       where
         locator = Locator{locatorFetcher = "archive", locatorProject = vendoredName, locatorRevision = vendoredVersion}
         locatorUrl = renderLocatorUrl org locator

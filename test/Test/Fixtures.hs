@@ -41,7 +41,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text.Extra (showT)
-import Fossa.API.Types (Archive (..), RevisionInfo (..))
+import Fossa.API.Types (Archive (..))
 import Fossa.API.Types qualified as API
 import Path (mkRelDir, parseAbsDir, (</>))
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), LicenseUnit (..), LicenseUnitData (..), LicenseUnitInfo (..), LicenseUnitMatchData (..), Locator (..), SourceUnit (..))
@@ -262,17 +262,11 @@ secondLocator =
     "42/second-archive-test"
     (Just "0.0.1")
 
-firstRevision :: RevisionInfo
-firstRevision =
-  RevisionInfo
-    "archive+42/first-archive-test$0.0.1"
-    True
+firstRevision :: Text
+firstRevision = "archive+42/first-archive-test$0.0.1"
 
-secondRevision :: RevisionInfo
-secondRevision =
-  RevisionInfo
-    "archive+42/second-archive-test$0.0.1"
-    True
+secondRevision :: Text
+secondRevision = "archive+42/second-archive-test$0.0.1"
 
 firstArchive :: Archive
 firstArchive =
