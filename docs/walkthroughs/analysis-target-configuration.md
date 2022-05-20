@@ -1,4 +1,4 @@
-# Analyze only set of targets
+# Analyze only a set of targets
 
 FOSSA CLI can be configured to discover and analyze, based on the target type (e.g. gradle, rebar3, etc.) and by its path. This can be useful when multiple targets exist in the directory, but we are only interested in a select few. 
 
