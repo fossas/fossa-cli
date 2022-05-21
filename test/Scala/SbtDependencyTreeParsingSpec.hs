@@ -7,7 +7,14 @@ module Scala.SbtDependencyTreeParsingSpec (
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import Strategy.Scala.SbtDependencyTree (SbtArtifact (SbtArtifact), SbtDep (SbtDep), parseEviction, parseSbtArtifact, removeLogPrefixes, sbtTreeParser)
+import Strategy.Scala.SbtDependencyTree (
+  SbtArtifact (SbtArtifact),
+  SbtDep (SbtDep),
+  parseEviction,
+  parseSbtArtifact,
+  removeLogPrefixes,
+  sbtTreeParser,
+ )
 import Test.Hspec (
   Expectation,
   Spec,

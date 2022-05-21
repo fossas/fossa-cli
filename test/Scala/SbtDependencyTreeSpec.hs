@@ -15,7 +15,7 @@ import DepTypes (
   VerConstraint (CEq),
  )
 import GraphUtil (expectDep, expectDirect, expectEdge)
-import Graphing (Graphing, directList, edgesList)
+import Graphing (Graphing)
 import Strategy.Scala.SbtDependencyTree (buildGraph, removeLogPrefixes, sbtTreeParser)
 import Test.Hspec (
   Expectation,
@@ -23,10 +23,8 @@ import Test.Hspec (
   describe,
   expectationFailure,
   it,
-  runIO,
  )
 import Text.Megaparsec (errorBundlePretty, runParser)
-import Text.Pretty.Simple (pPrint)
 import Text.RawString.QQ (r)
 
 spec :: Spec
