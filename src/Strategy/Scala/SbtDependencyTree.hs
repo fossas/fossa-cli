@@ -14,7 +14,7 @@ module Strategy.Scala.SbtDependencyTree (
 ) where
 
 import Control.Carrier.Simple (Has)
-import Control.Effect.Diagnostics (Diagnostics, context, errCtx, fatal, fromMaybeText)
+import Control.Effect.Diagnostics (Diagnostics, context, errCtx, fatal)
 import Control.Monad (guard, void)
 import Data.Functor (($>))
 import Data.Maybe qualified as DMaybe
