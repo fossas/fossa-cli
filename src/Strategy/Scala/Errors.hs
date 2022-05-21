@@ -1,5 +1,6 @@
 module Strategy.Scala.Errors (
   MaybeWithoutDependencyTreeTask (..),
+  FailedToListProjects (..),
 
   -- * docs
   scalaFossaDocUrl,
@@ -9,6 +10,7 @@ module Strategy.Scala.Errors (
 import App.Docs (strategyLangDocUrl)
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
+import Path (Abs, Dir, Path)
 import Prettyprinter (Pretty (pretty), indent, viaShow, vsep)
 
 scalaFossaDocUrl :: Text
@@ -35,3 +37,9 @@ instance ToDiagnostic MaybeWithoutDependencyTreeTask where
       , "Refer to:"
       , indent 2 $ pretty $ "- " <> scalaFossaDocUrl
       ]
+
+newtype FailedToListProjects = FailedToListProjects (Path Abs Dir)
+  deriving (Eq, Ord, Show)
+
+instance ToDiagnostic FailedToListProjects where
+  renderDiagnostic (FailedToListProjects dir) = "Failed to discover and analyze sbt projects, for sbt build manifest at:" <> viaShow dir

@@ -14,7 +14,6 @@ module Strategy.Scala (
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
-  ToDiagnostic (..),
   fatalText,
   fromMaybeText,
   recover,
@@ -55,11 +54,11 @@ import Path (
   parseAbsFile,
   toFilePath,
  )
-import Prettyprinter (viaShow)
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures, closurePath)
 import Strategy.Maven.Pom.PomFile (RawPom, rawPomName)
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
+import Strategy.Scala.Errors (FailedToListProjects (FailedToListProjects))
 import Strategy.Scala.SbtDependencyTree (analyze)
 import Types (
   DependencyResults (..),
@@ -78,8 +77,10 @@ discover ::
   m [DiscoveredProject ScalaProject]
 discover = simpleDiscover findProjects' mkProject ScalaProjectType
   where
-    findProjects' dir =
-      concatMap (\(SbtClosure sbtBuildDir closure) -> ScalaProject sbtBuildDir <$> closure) <$> (findProjects dir)
+    findProjects' dir = concatMap toScalaProjects <$> (findProjects dir)
+
+    toScalaProjects :: SbtTargets -> [ScalaProject]
+    toScalaProjects (SbtTargets sbtBuildDir closure) = ScalaProject sbtBuildDir <$> closure
 
 data ScalaProject = ScalaProject
   { sbtBuildDir :: Path Abs Dir
@@ -109,7 +110,7 @@ getDeps project =
 pathToText :: Path ar fd -> Text
 pathToText = toText . toFilePath
 
-data SbtClosure = SbtClosure (Path Abs Dir) [MavenProjectClosure]
+data SbtTargets = SbtTargets (Path Abs Dir) [MavenProjectClosure]
 
 findProjects ::
   ( Has Exec sig m
@@ -118,7 +119,7 @@ findProjects ::
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
-  m [SbtClosure]
+  m [SbtTargets]
 findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "build.sbt" files of
     Nothing -> pure ([], WalkContinue)
@@ -131,13 +132,7 @@ findProjects = walkWithFilters' $ \dir _ files -> do
 
       case projectsRes of
         Nothing -> pure ([], WalkSkipAll)
-        Just projects -> pure ([SbtClosure dir projects], WalkSkipAll)
-
-newtype FailedToListProjects = FailedToListProjects (Path Abs Dir)
-  deriving (Eq, Ord, Show)
-
-instance ToDiagnostic FailedToListProjects where
-  renderDiagnostic (FailedToListProjects dir) = "Failed to discover and analyze sbt projects, for sbt build manifest at:" <> viaShow dir
+        Just projects -> pure ([SbtTargets dir projects], WalkSkipAll)
 
 analyzeWithPoms :: (Has Diagnostics sig m) => ScalaProject -> m DependencyResults
 analyzeWithPoms (ScalaProject _ closure) = context "Analyzing sbt dependencies with generated pom" $ do

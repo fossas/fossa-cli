@@ -29,6 +29,7 @@ import Strategy.Node.Errors (
  )
 import Strategy.Python.Errors (commitPoetryLockToVCS)
 import Strategy.Ruby.Errors (bundlerLockFileRationaleUrl, rubyFossaDocUrl)
+import Strategy.Scala.Errors (sbtDepsGraphPluginUrl, scalaFossaDocUrl)
 import Strategy.Swift.Errors (
   swiftFossaDocUrl,
   swiftPackageResolvedRef,
@@ -36,7 +37,6 @@ import Strategy.Swift.Errors (
  )
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 import Text.URI (mkURI)
-import Strategy.Scala.Errors (scalaFossaDocUrl, sbtDepsGraphPluginUrl)
 
 shouldRespondToGETWithHttpCode :: Text -> Int -> Expectation
 shouldRespondToGETWithHttpCode uri expected = do
