@@ -1,7 +1,10 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.VendoredDependency (
   VendoredDependency (..),
   VendoredDependencyScanMode (..),
   arcToLocator,
+  vendoredDepToLocator,
   forceVendoredToArchive,
   compressFile,
   hashFile,
@@ -89,6 +92,10 @@ arcToLocator arc =
     , locatorProject = archiveName arc
     , locatorRevision = Just $ archiveVersion arc
     }
+
+vendoredDepToLocator :: VendoredDependency -> Locator
+vendoredDepToLocator VendoredDependency{..} =
+  Locator{locatorFetcher = "archive", locatorProject = vendoredName, locatorRevision = vendoredVersion}
 
 compressFile :: Path Abs Dir -> Path Abs Dir -> FilePath -> IO FilePath
 compressFile outputDir directory fileToTar = do

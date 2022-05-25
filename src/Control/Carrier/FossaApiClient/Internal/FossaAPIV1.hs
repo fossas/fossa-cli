@@ -40,7 +40,7 @@ import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
 import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
-import App.Fossa.VendoredDependency (VendoredDependency (..))
+import App.Fossa.VendoredDependency (VendoredDependency (..), vendoredDepToLocator)
 import App.Support (reportDefectMsg)
 import App.Types (
   ProjectMetadata (..),
@@ -393,16 +393,10 @@ getAnalyzedRevisions ::
 getAnalyzedRevisions apiOpts vDeps = fossaReq $ do
   orgId <- organizationId <$> getOrganization apiOpts
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  let locatorBody = constructLocatorBody orgId vDeps
+  let constructLocatorBody :: NonEmpty VendoredDependency -> GetAnalyzedRevisionsBody
+      constructLocatorBody = GetAnalyzedRevisionsBody <$> NE.map (renderLocatorUrl orgId . vendoredDepToLocator)
+      locatorBody = constructLocatorBody vDeps
   responseBody <$> req POST (getAnalyzedRevisionsEndpoint baseUrl) (ReqBodyJson locatorBody) jsonResponse baseOpts
-  where
-    constructLocatorBody :: OrgId -> NonEmpty VendoredDependency -> GetAnalyzedRevisionsBody
-    constructLocatorBody orgId = GetAnalyzedRevisionsBody <$> NE.map (constructLocator orgId)
-      where
-        constructLocator :: OrgId -> VendoredDependency -> Text
-        constructLocator org VendoredDependency{..} = do
-          let locator = Locator{locatorFetcher = "archive", locatorProject = vendoredName, locatorRevision = vendoredVersion}
-          renderLocatorUrl org locator
 
 -----
 
