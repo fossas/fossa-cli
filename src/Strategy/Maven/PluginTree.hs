@@ -6,10 +6,11 @@ import Data.Char (isSpace)
 import Data.Functor (($>))
 import Data.Text (Text)
 import Data.Void (Void)
-import Text.Megaparsec (Parsec, chunk, takeWhile1P, (<|>), sepBy, count, many)
+import Text.Megaparsec (Parsec, chunk, takeWhile1P, (<|>), sepBy, count, many, try)
 import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 import qualified Data.Text as Text
+import Debug.Trace (traceShow)
 
 type Parser = Parsec Void Text
 
@@ -55,7 +56,7 @@ data TextArtifact = TextArtifact {
 
 parseArtifactChild :: Int -- ^ Number of recursion levels deep we are
                    -> Parser TextArtifact
-parseArtifactChild level =
+parseArtifactChild level = try $
   (count level (lexeme $ char '|'))
   *> lexeme (chunk "+-"
               <|> chunk "\\-") *> (parseLevelNTextArtifact (succ level))

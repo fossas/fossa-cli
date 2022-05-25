@@ -84,21 +84,34 @@ parseTextArtifactSpec = fcontext "" $ do
 artifactWithChildren :: TextArtifact
 artifactWithChildren =
   TextArtifact {
-  artifactText = "org.clojure:tools.namespace:1.0.0"
+  artifactText = "org.clojure:test.generative:1.0.0"
   , scopes = ["test"]
-  , children = [ TextArtifact {
-                   artifactText = "org.clojure:java.classpath:1.0.0"
-                   , scopes = ["test"]
-                   , children = []}
-               , TextArtifact {
-                   artifactText = "org.clojure:tools.reader:1.3.2"
-                   , scopes = ["test"]
-                   , children = []
-                   }]
-               }
+  , children = [
+      TextArtifact {
+          artifactText = "org.clojure:tools.namespace:1.0.0"
+          , scopes = ["test"]
+          , children = [ TextArtifact {
+                           artifactText = "org.clojure:java.classpath:1.0.0"
+                           , scopes = ["test"]
+                           , children = []}
+                       , 
+                         TextArtifact {
+                           artifactText = "org.clojure:tools.reader:1.3.2"
+                           , scopes = ["test"]
+                           , children = []
+                           }]
+          }
+      , TextArtifact {
+          artifactText = "org.foo:bar:1.0.0"
+          , scopes = ["compile"]
+          , children = []
+          }]
+  }
 
 artifactTextWithChildren :: Text
 artifactTextWithChildren =
-  [r|org.clojure:tools.namespace:1.0.0:test
-+- org.clojure:java.classpath:1.0.0:test
-\- org.clojure:tools.reader:1.3.2:test |]
+  [r|org.clojure:test.generative:1.0.0:test
++- org.clojure:tools.namespace:1.0.0:test
+|  +- org.clojure:java.classpath:1.0.0:test
+|  \- org.clojure:tools.reader:1.3.2:test
+\- org.foo:bar:1.0.0:compile |]
