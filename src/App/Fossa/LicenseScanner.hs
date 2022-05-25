@@ -345,13 +345,13 @@ licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
   finalizeLicenseScan $ ArchiveComponents $ NE.toList archives
 
-  pure $ NE.map arcToLocator (archivesWithOrganization orgId archives)
-  where
-    archivesWithOrganization :: OrgId -> NonEmpty Archive -> NonEmpty Archive
-    archivesWithOrganization org = NE.map $ includeOrgId org
+  let archivesWithOrganization :: OrgId -> NonEmpty Archive -> NonEmpty Archive
+      archivesWithOrganization org = NE.map $ includeOrgId org
 
-    includeOrgId :: OrgId -> Archive -> Archive
-    includeOrgId org arc = arc{archiveName = showT org <> "/" <> archiveName arc}
+      includeOrgId :: OrgId -> Archive -> Archive
+      includeOrgId org arc = arc{archiveName = showT org <> "/" <> archiveName arc}
+
+  pure $ NE.map arcToLocator (archivesWithOrganization orgId archives)
 
 -- Debug logs giving info about which vendored deps were actually scanned
 logSkippedDeps ::
