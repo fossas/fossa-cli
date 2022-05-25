@@ -71,7 +71,7 @@ spec = do
       case units of
         Failure ws eg -> fail (show (renderFailure ws eg "An issue occurred"))
         Success _ us -> do
-          (length us) `shouldBe` 3
+          length us `shouldBe` 3
           NE.sort (NE.map licenseUnitName us) `shouldBe` "No_license_found" :| ["apache-2.0", "mit"]
           NE.sort (licenseUnitFiles mitUnit) `shouldBe` "vendor/foo/bar/MIT_LICENSE" :| ["vendor/foo/bar/baz/SOMETHING_LICENSE", "vendor/foo/bar/baz/quux/QUUX_LICENSE"]
           NE.sort (licenseUnitFiles apacheUnit) `shouldBe` "vendor/foo/bar/bar_apache.rb" :| ["vendor/foo/bar/baz/something.rb"]
