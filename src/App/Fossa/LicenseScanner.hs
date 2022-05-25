@@ -359,6 +359,17 @@ licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
 
   pure $ NE.map arcToLocator (archivesWithOrganization orgId archives)
 
+ensureVendoredDepVersion ::
+  Has (Lift IO) sig m =>
+  Path Abs Dir ->
+  VendoredDependency ->
+  m VendoredDependency
+ensureVendoredDepVersion baseDir vdep = do
+  depVersion <- case vendoredVersion vdep of
+    Nothing -> sendIO . withSystemTempDir "fossa-temp" . calculateVendoredHash baseDir $ vendoredPath vdep
+    Just version -> pure version
+  pure vdep{vendoredVersion = Just depVersion}
+
 -- Debug logs giving info about which vendored deps were actually scanned
 logSkippedDeps ::
   Has Logger sig m =>
@@ -396,18 +407,7 @@ findDepsThatNeedScanning ::
 findDepsThatNeedScanning vdeps orgId = do
   analyzedLocators <- getAnalyzedRevisions vdeps
   let (need, already) = NE.partition (shouldScanRevision analyzedLocators orgId) vdeps
-  pure ((NeedScanningDeps need), (SkippableDeps already))
-
-ensureVendoredDepVersion ::
-  Has (Lift IO) sig m =>
-  Path Abs Dir ->
-  VendoredDependency ->
-  m VendoredDependency
-ensureVendoredDepVersion baseDir vdep = do
-  depVersion <- case vendoredVersion vdep of
-    Nothing -> sendIO . withSystemTempDir "fossa-temp" . calculateVendoredHash baseDir $ vendoredPath vdep
-    Just version -> pure version
-  pure vdep{vendoredVersion = Just depVersion}
+  pure (NeedScanningDeps need, SkippableDeps already)
 
 shouldScanRevision :: [Text] -> OrgId -> VendoredDependency -> Bool
 shouldScanRevision analyzedLocators orgId VendoredDependency{..} = locatorUrl orgId `notElem` analyzedLocators
