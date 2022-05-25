@@ -49,8 +49,8 @@ instance FromJSON VendoredDependency where
       <*> (unTextLike <$$> obj .:? "version")
       <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
 data VendoredDependencyScanMode
-  = VendoredDependencyScanModeSkipPreviouslyScanned
-  | VendoredDependencyScanModeSkippingNotSupported
+  = SkipPreviouslyScanned
+  | SkippingNotSupported
   deriving (Eq, Show)
 
 dedupVendoredDeps :: (Has Diagnostics sig m) => NonEmpty VendoredDependency -> m (NonEmpty VendoredDependency)

@@ -98,7 +98,7 @@ spec = do
       expectGetOrganization
       expectEverythingScannedAlready
       expectFinalizeScan Fixtures.archives
-      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit VendoredDependencyScanModeSkipPreviouslyScanned scanDir Fixtures.vendoredDeps
+      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit SkipPreviouslyScanned scanDir Fixtures.vendoredDeps
       case locators of
         Failure ws eg -> expectationFailure' $ "Could not license scan source unit. Warnings = " <> show ws <> ", error group: " <> show eg
         Success _ ls -> do
@@ -113,7 +113,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit VendoredDependencyScanModeSkipPreviouslyScanned scanDir Fixtures.vendoredDeps
+      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit SkipPreviouslyScanned scanDir Fixtures.vendoredDeps
       case locators of
         Failure ws eg -> expectationFailure' $ "Could not license scan source unit. Warnings = " <> show ws <> ", error group: " <> show eg
         Success _ ls -> do
@@ -128,7 +128,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit VendoredDependencyScanModeSkipPreviouslyScanned scanDir Fixtures.vendoredDeps
+      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit SkipPreviouslyScanned scanDir Fixtures.vendoredDeps
       case locators of
         Failure ws eg -> expectationFailure' $ "Could not license scan source unit. Warnings = " <> show ws <> ", error group: " <> show eg
         Success _ ls -> do
@@ -141,7 +141,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "first-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.firstLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit VendoredDependencyScanModeSkipPreviouslyScanned scanDir Fixtures.vendoredDeps
+      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit SkipPreviouslyScanned scanDir Fixtures.vendoredDeps
       case locators of
         Failure ws eg -> expectationFailure' $ "Could not license scan source unit. Warnings = " <> show ws <> ", error group: " <> show eg
         Success _ ls -> do
@@ -155,7 +155,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit VendoredDependencyScanModeSkippingNotSupported scanDir Fixtures.vendoredDeps
+      locators <- runStack . ignoreLogger . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO $ licenseScanSourceUnit SkippingNotSupported scanDir Fixtures.vendoredDeps
       case locators of
         Failure ws eg -> expectationFailure' $ "Could not license scan source unit. Warnings = " <> show ws <> ", error group: " <> show eg
         Success _ ls -> do

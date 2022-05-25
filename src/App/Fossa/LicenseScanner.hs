@@ -328,19 +328,19 @@ licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
   uniqDepsWithVersions <- traverse (ensureVendoredDepVersion baseDir) uniqDeps
   -- If skipping is supported, ask Core if any of these deps have already been scanned. If they have, skip scanning them.
   (needScanningDeps, skippedDeps) <-
-    if vendoredDependencyScanMode == VendoredDependencyScanModeSkipPreviouslyScanned
+    if vendoredDependencyScanMode == SkipPreviouslyScanned
       then findDepsThatNeedScanning uniqDepsWithVersions orgId
       else pure (NE.toList uniqDepsWithVersions, [])
 
   -- Debug logs giving info about which vendored deps were actually scanned
   -- If none of the dependencies need scanning, then log that, but we still need to do `finalizeLicenseScan` so keep going
   _ <- case (needScanningDeps, vendoredDependencyScanMode) of
-    (_, VendoredDependencyScanModeSkippingNotSupported) -> do
+    (_, SkippingNotSupported) -> do
       logDebug "This version of the FOSSA service does not support enumerating previously scanned vendored dependencies."
       logDebug "Performing a full scan of all vendored dependencies even if they have been scanned previously."
-    ([], VendoredDependencyScanModeSkipPreviouslyScanned) -> do
+    ([], SkipPreviouslyScanned) -> do
       logDebug "All of the current vendored dependencies have been previously scanned, reusing previous results."
-    (_, VendoredDependencyScanModeSkipPreviouslyScanned) -> do
+    (_, SkipPreviouslyScanned) -> do
       case skippedDeps of
         [] -> logDebug "None of the current vendored dependencies have been previously scanned. License scanning all vendored dependencies"
         _ -> do
