@@ -331,23 +331,10 @@ licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
     if vendoredDependencyScanMode == SkipPreviouslyScanned
       then findDepsThatNeedScanning uniqDepsWithVersions orgId
       else pure (NE.toList uniqDepsWithVersions, [])
-
-  -- Debug logs giving info about which vendored deps were actually scanned
-  -- If none of the dependencies need scanning, then log that, but we still need to do `finalizeLicenseScan` so keep going
-  _ <- case (needScanningDeps, vendoredDependencyScanMode) of
-    (_, SkippingNotSupported) -> do
-      logDebug "This version of the FOSSA service does not support enumerating previously scanned vendored dependencies."
-      logDebug "Performing a full scan of all vendored dependencies even if they have been scanned previously."
-    ([], SkipPreviouslyScanned) -> do
-      logDebug "All of the current vendored dependencies have been previously scanned, reusing previous results."
-    (_, SkipPreviouslyScanned) -> do
-      case skippedDeps of
-        [] -> logDebug "None of the current vendored dependencies have been previously scanned. License scanning all vendored dependencies"
-        _ -> do
-          logDebug "Some of the current vendored dependencies have already been scanned by FOSSA."
-          logDebug . pretty $ "Reusing previous results for the following vendored dependencies: " <> show skippedDeps
+  logSkippedDeps needScanningDeps skippedDeps vendoredDependencyScanMode
 
   -- At this point, we have a good list of deps, so go for it.
+  -- If none of the dependencies need scanning we still need to do `finalizeLicenseScan`, so keep going
   maybeScannedArchives <- traverse (scanAndUploadVendoredDep baseDir) needScanningDeps
 
   -- We need to include both scanned and skipped archives in this list so that they all get included in the build in FOSSA
@@ -365,6 +352,27 @@ licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
 
     includeOrgId :: OrgId -> Archive -> Archive
     includeOrgId org arc = arc{archiveName = showT org <> "/" <> archiveName arc}
+
+-- Debug logs giving info about which vendored deps were actually scanned
+logSkippedDeps ::
+  Has Logger sig m =>
+  [VendoredDependency] ->
+  [VendoredDependency] ->
+  VendoredDependencyScanMode ->
+  m ()
+logSkippedDeps needScanningDeps skippedDeps scanMode =
+  case (needScanningDeps, scanMode) of
+    (_, SkippingNotSupported) -> do
+      logDebug "This version of the FOSSA service does not support enumerating previously scanned vendored dependencies."
+      logDebug "Performing a full scan of all vendored dependencies even if they have been scanned previously."
+    ([], SkipPreviouslyScanned) -> do
+      logDebug "All of the current vendored dependencies have been previously scanned, reusing previous results."
+    (_, SkipPreviouslyScanned) -> do
+      if null skippedDeps
+        then logDebug "None of the current vendored dependencies have been previously scanned. License scanning all vendored dependencies"
+        else do
+          logDebug "Some of the current vendored dependencies have already been scanned by FOSSA."
+          logDebug . pretty $ "Reusing previous results for the following vendored dependencies: " <> show skippedDeps
 
 -- | Split the supplied vendored dependencies into those that need scanning and those that do not.
 --   We can skip scanning a vendored dependency if an analyzed revision for that vendored dependency already exists on Core.
