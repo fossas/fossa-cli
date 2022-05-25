@@ -88,6 +88,12 @@ instance ToDiagnostic LicenseScanErr where
 
 newtype ScannableArchive = ScannableArchive {scanFile :: Path Abs File} deriving (Eq, Ord, Show)
 
+newtype NeedScanningDeps = NeedScanningDeps {needScanningDeps :: [VendoredDependency]}
+  deriving (Eq, Ord, Show)
+
+newtype SkippableDeps = SkippableDeps {skippableDeps :: [VendoredDependency]}
+  deriving (Eq, Ord, Show)
+
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -327,18 +333,18 @@ licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
   -- make sure all revisions have their versions populated
   uniqDepsWithVersions <- traverse (ensureVendoredDepVersion baseDir) uniqDeps
   -- If skipping is supported, ask Core if any of these deps have already been scanned. If they have, skip scanning them.
-  (needScanningDeps, skippedDeps) <-
+  (needScanning, skippable) <-
     if vendoredDependencyScanMode == SkipPreviouslyScanned
       then findDepsThatNeedScanning uniqDepsWithVersions orgId
-      else pure (NE.toList uniqDepsWithVersions, [])
-  logSkippedDeps needScanningDeps skippedDeps vendoredDependencyScanMode
+      else pure (NeedScanningDeps $ NE.toList uniqDepsWithVersions, SkippableDeps [])
+  logSkippedDeps needScanning skippable vendoredDependencyScanMode
 
   -- At this point, we have a good list of deps, so go for it.
   -- If none of the dependencies need scanning we still need to do `finalizeLicenseScan`, so keep going
-  maybeScannedArchives <- traverse (scanAndUploadVendoredDep baseDir) needScanningDeps
+  maybeScannedArchives <- traverse (scanAndUploadVendoredDep baseDir) (needScanningDeps needScanning)
 
   -- We need to include both scanned and skipped archives in this list so that they all get included in the build in FOSSA
-  let skippedArchives = map forceVendoredToArchive skippedDeps
+  let skippedArchives = map forceVendoredToArchive $ skippableDeps skippable
   archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ (catMaybes maybeScannedArchives) <> skippedArchives
 
   -- finalizeLicenseScan takes archives without Organization information. This orgID is appended when creating the build on the backend.
@@ -356,8 +362,8 @@ licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
 -- Debug logs giving info about which vendored deps were actually scanned
 logSkippedDeps ::
   Has Logger sig m =>
-  [VendoredDependency] ->
-  [VendoredDependency] ->
+  NeedScanningDeps ->
+  SkippableDeps ->
   VendoredDependencyScanMode ->
   m ()
 logSkippedDeps needScanningDeps skippedDeps scanMode =
@@ -365,12 +371,12 @@ logSkippedDeps needScanningDeps skippedDeps scanMode =
     (_, SkippingNotSupported) -> do
       logDebug "This version of the FOSSA service does not support enumerating previously scanned vendored dependencies."
       logDebug "Performing a full scan of all vendored dependencies even if they have been scanned previously."
-    ([], SkipPreviouslyScanned) -> do
+    (NeedScanningDeps [], SkipPreviouslyScanned) -> do
       logDebug "All of the current vendored dependencies have been previously scanned, reusing previous results."
     (_, SkipPreviouslyScanned) -> do
-      if null skippedDeps
-        then logDebug "None of the current vendored dependencies have been previously scanned. License scanning all vendored dependencies"
-        else do
+      case skippedDeps of
+        SkippableDeps [] -> logDebug "None of the current vendored dependencies have been previously scanned. License scanning all vendored dependencies"
+        _ -> do
           logDebug "Some of the current vendored dependencies have already been scanned by FOSSA."
           logDebug . pretty $ "Reusing previous results for the following vendored dependencies: " <> show skippedDeps
 
@@ -386,10 +392,11 @@ findDepsThatNeedScanning ::
   Has FossaApiClient sig m =>
   NonEmpty VendoredDependency ->
   OrgId ->
-  m ([VendoredDependency], [VendoredDependency])
+  m (NeedScanningDeps, SkippableDeps)
 findDepsThatNeedScanning vdeps orgId = do
   analyzedLocators <- getAnalyzedRevisions vdeps
-  pure $ NE.partition (shouldScanRevision analyzedLocators orgId) vdeps
+  let (need, already) = NE.partition (shouldScanRevision analyzedLocators orgId) vdeps
+  pure ((NeedScanningDeps need), (SkippableDeps already))
 
 ensureVendoredDepVersion ::
   Has (Lift IO) sig m =>
