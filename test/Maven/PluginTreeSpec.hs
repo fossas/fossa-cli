@@ -1,9 +1,12 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module Maven.PluginTreeSpec (spec) where
 
 import Data.Text (Text)
-import Strategy.Maven.PluginTree (Artifact (..), parseArtifact)
-import Test.Hspec (Spec, shouldBe, it)
+import Strategy.Maven.PluginTree (Artifact (..), TextArtifact (..), parseArtifact, parseTextArtifact)
+import Test.Hspec (Spec, fcontext, fit, it, shouldBe)
 import Text.Megaparsec (ParseErrorBundle, Parsec, runParser)
+import Text.RawString.QQ (r)
 
 -- TODO: test edgecase where a dep is optional in one part of the
 -- maven-depgraph-plugin output but required in another
@@ -36,6 +39,15 @@ simpleArtifact =
     , artifactScopes = ["compile"]
     }
 
+multiScopeTextArtifact :: TextArtifact
+multiScopeTextArtifact =
+  TextArtifact
+    { artifactText = "org.clojure:clojure:1.12.0-master-SNAPSHOT"
+    , scopes = ["compile", "test"]
+    , children = []
+    -- , isOptional = False
+    }
+
 multiScopeArtifact :: Artifact
 multiScopeArtifact =
   Artifact
@@ -57,10 +69,36 @@ optionalArtifact =
     }
 
 parseTextArtifactSpec :: Spec
-parseTextArtifactSpec = do
-  it "Parses an artifact from a string" $
+parseTextArtifactSpec = fcontext "" $ do
+  it "Parses an Artifact from a string" $
     parseArtifact `shouldParse` simpleArtifactString `to` simpleArtifact
-  it "Parses an artifact with multiple scopes a string" $
+  it "Parses an Artifact with multiple scopes a string" $
     parseArtifact `shouldParse` multiScopeArtifactString `to` multiScopeArtifact
-  it "Parses an optional artifact from a string" $
+  it "Parses an optional Artifact from a string" $
     parseArtifact `shouldParse` optionalArtifactString `to` optionalArtifact
+  it "Parses a TextArtifact from a string" $
+    parseTextArtifact `shouldParse` multiScopeArtifactString `to` multiScopeTextArtifact
+  it "Parses a TextArtifact with children" $
+    parseTextArtifact `shouldParse` artifactTextWithChildren `to` artifactWithChildren
+
+artifactWithChildren :: TextArtifact
+artifactWithChildren =
+  TextArtifact {
+  artifactText = "org.clojure:tools.namespace:1.0.0"
+  , scopes = ["test"]
+  , children = [ TextArtifact {
+                   artifactText = "org.clojure:java.classpath:1.0.0"
+                   , scopes = ["test"]
+                   , children = []}
+               , TextArtifact {
+                   artifactText = "org.clojure:tools.reader:1.3.2"
+                   , scopes = ["test"]
+                   , children = []
+                   }]
+               }
+
+artifactTextWithChildren :: Text
+artifactTextWithChildren =
+  [r|org.clojure:tools.namespace:1.0.0:test
++- org.clojure:java.classpath:1.0.0:test
+\- org.clojure:tools.reader:1.3.2:test |]

@@ -6,8 +6,7 @@ import Data.Aeson (decode)
 import Data.String.Conversion (encodeUtf8)
 import Data.Text (Text)
 import Strategy.Maven.Plugin (Artifact (..))
-import Test.Hspec (Spec, describe, fcontext, it, shouldBe)
-import Text.Megaparsec (ParseErrorBundle, Parsec, runParser)
+import Test.Hspec (Spec, describe, it, shouldBe)
 import Text.RawString.QQ (r)
 
 jsonArtifact :: Text
