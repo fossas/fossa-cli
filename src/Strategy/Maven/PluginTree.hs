@@ -3,10 +3,9 @@ module Strategy.Maven.PluginTree (parseArtifact
 
 import Data.Char (isSpace)
 import Data.Functor (($>))
-import Data.List (singleton)
 import Data.Text (Text)
 import Data.Void (Void)
-import Text.Megaparsec (Parsec, chunk, takeWhile1P, (<|>))
+import Text.Megaparsec (Parsec, chunk, takeWhile1P, (<|>), sepBy)
 import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 
@@ -33,14 +32,14 @@ parseArtifact =
     -- based on  the maven documentation, it  seems there can be  only one scope
     -- for a given rtifact even though maven-depgraph-plugin returns an array
     -- of strings in the json output
-    <*> (singleton <$> scopeParse)
+    <*> scopeParse
     <*> isOptional
   where
     readThruNextColon :: String -> Parser Text
     readThruNextColon name = takeWhile1P (Just name) (/= ':') <* char ':'
 
-    scopeParse :: Parser Text
-    scopeParse = lexeme (takeWhile1P (Just "scopes") (not . isSpace))
+    scopeParse :: Parser [Text]
+    scopeParse = lexeme $ sepBy (takeWhile1P (Just "scopes") (\c -> not (isSpace c || c == '/'))) (char '/')
 
     isOptional :: Parser Bool
     isOptional =
