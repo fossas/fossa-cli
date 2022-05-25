@@ -375,9 +375,7 @@ licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
 -- This is intentional. Even if we did the scan, an already analyzed revision with this locator already exists on Core
 -- and the build to analyze it would not get queued.
 findDepsThatNeedScanning ::
-  ( Has (Lift IO) sig m
-  , Has FossaApiClient sig m
-  ) =>
+  Has FossaApiClient sig m =>
   NonEmpty VendoredDependency ->
   OrgId ->
   m ([VendoredDependency], [VendoredDependency])
@@ -386,13 +384,13 @@ findDepsThatNeedScanning vdeps orgId = do
   pure $ NE.partition (shouldScanRevision analyzedLocators orgId) vdeps
 
 ensureVendoredDepVersion ::
-  (Has (Lift IO) sig m) =>
+  Has (Lift IO) sig m =>
   Path Abs Dir ->
   VendoredDependency ->
   m VendoredDependency
 ensureVendoredDepVersion baseDir vdep = do
   depVersion <- case vendoredVersion vdep of
-    Nothing -> sendIO $ withSystemTempDir "fossa-temp" (calculateVendoredHash baseDir (vendoredPath vdep))
+    Nothing -> sendIO . withSystemTempDir "fossa-temp" . calculateVendoredHash baseDir $ vendoredPath vdep
     Just version -> pure version
   pure vdep{vendoredVersion = Just depVersion}
 
