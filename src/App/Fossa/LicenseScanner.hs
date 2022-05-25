@@ -403,11 +403,10 @@ ensureVendoredDepVersion baseDir vdep = do
   pure vdep{vendoredVersion = Just depVersion}
 
 shouldScanRevision :: [Text] -> OrgId -> VendoredDependency -> Bool
-shouldScanRevision analyzedLocators orgId vdep = all (locatorDoesNotMatch vdep orgId) analyzedLocators
+shouldScanRevision analyzedLocators orgId VendoredDependency{..} = locatorUrl orgId `notElem` analyzedLocators
   where
-    locatorDoesNotMatch :: VendoredDependency -> OrgId -> Text -> Bool
-    locatorDoesNotMatch VendoredDependency{..} org loc =
-      locatorUrl /= loc
-      where
-        locator = Locator{locatorFetcher = "archive", locatorProject = vendoredName, locatorRevision = vendoredVersion}
-        locatorUrl = renderLocatorUrl org locator
+    locator :: Locator
+    locator = Locator "archive" vendoredName vendoredVersion
+
+    locatorUrl :: OrgId -> Text
+    locatorUrl org = renderLocatorUrl org locator
