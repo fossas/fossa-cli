@@ -1,16 +1,20 @@
-module Strategy.Maven.PluginTree (parseArtifact
-                                 , Artifact(..), parseTextArtifact
-                                 , TextArtifact(..), parseArtifactChild) where
+module Strategy.Maven.PluginTree (
+  parseArtifact,
+  Artifact (..),
+  parseTextArtifact,
+  TextArtifact (..),
+  parseArtifactChild,
+) where
 
 import Data.Char (isSpace)
 import Data.Functor (($>))
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
-import Text.Megaparsec (Parsec, chunk, takeWhile1P, (<|>), sepBy, count, many, try)
-import Text.Megaparsec.Char (char, space1)
-import Text.Megaparsec.Char.Lexer qualified as Lexer
-import qualified Data.Text as Text
 import Debug.Trace (traceShow)
+import Text.Megaparsec (Parsec, chunk, count, getSourcePos, many, sepBy, sourceColumn, takeP, takeWhile1P, try, unPos, (<|>))
+import Text.Megaparsec.Char (char, space1, spaceChar)
+import Text.Megaparsec.Char.Lexer qualified as Lexer
 
 type Parser = Parsec Void Text
 
@@ -47,26 +51,38 @@ parseArtifact =
     <*> scopeParse
     <*> isOptional
 
-data TextArtifact = TextArtifact {
-  artifactText :: Text
+data TextArtifact = TextArtifact
+  { artifactText :: Text
   , scopes :: [Text]
   , children :: [TextArtifact]
   -- , isOptional :: Bool
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)
 
-parseArtifactChild :: Int -- ^ Number of recursion levels deep we are
-                   -> Parser TextArtifact
-parseArtifactChild level = try $
-  (count level (lexeme $ char '|'))
-  *> lexeme (chunk "+-"
-              <|> chunk "\\-") *> (parseLevelNTextArtifact (succ level))
+parseArtifactChild ::
+  -- | Number of characters to consume to get to the level of this parse
+  Int ->
+  Parser TextArtifact
+parseArtifactChild level =
+  try $
+    takeP (Just "Artifact prefix") level
+      *> lexeme (chunk "+-" <|> chunk "\\-")
+      *> parseLevelNTextArtifact
 
-parseLevelNTextArtifact :: Int -> Parser TextArtifact
-parseLevelNTextArtifact level =
-  TextArtifact
-  <$> (Text.intercalate ":" <$> count 3 (readThruNextColon "artifactSpecifier"))
-  <*> scopeParse
-  <*> many (parseArtifactChild level)
-  
+-- old version which tried to count abstract levels of indentation.
+-- ((count level (lexeme $ char '|'))
+--  <|>
+-- (count (level * 3) spaceChar))
+
+--             <|> chunk "\\-") *> (parseLevelNTextArtifact (succ level))
+
+parseLevelNTextArtifact :: Parser TextArtifact
+parseLevelNTextArtifact =
+  do startPos <- unPos . sourceColumn <$> getSourcePos
+     TextArtifact
+       <$> (Text.intercalate ":" <$> count 3 (readThruNextColon "artifactSpecifier"))
+       <*> scopeParse
+       <*> many (parseArtifactChild (startPos - 1))
+
 parseTextArtifact :: Parser TextArtifact
-parseTextArtifact = parseLevelNTextArtifact 0
+parseTextArtifact = parseLevelNTextArtifact
