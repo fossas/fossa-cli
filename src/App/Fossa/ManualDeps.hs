@@ -178,7 +178,10 @@ scanAndUpload root vdeps allowNative = do
           -- TODO: Add a --forbid-archive-upload CLI flag
             logWarn "Server does not support native license scanning" $> ArchiveUpload
       else pure ArchiveUpload
-  let vendoredDependencyScanMode = if (orgSupportsAnalyzedRevisionsQuery org) then SkipPreviouslyScanned else SkippingNotSupported
+  let vendoredDependencyScanMode =
+        if (orgSupportsAnalyzedRevisionsQuery org)
+          then SkipPreviouslyScanned
+          else SkippingNotSupported
   let scanner = case archiveOrCLI of
         ArchiveUpload -> archiveUploadSourceUnit
         CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode

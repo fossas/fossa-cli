@@ -51,7 +51,7 @@ instance FromJSON VendoredDependency where
 data VendoredDependencyScanMode
   = SkipPreviouslyScanned
   | SkippingNotSupported
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 dedupVendoredDeps :: (Has Diagnostics sig m) => NonEmpty VendoredDependency -> m (NonEmpty VendoredDependency)
 dedupVendoredDeps vdeps = do
