@@ -191,31 +191,37 @@ isSingular :: ApiExpectation -> Bool
 isSingular (ApiExpectation Once _ _ _) = True
 isSingular (ApiExpectation Always _ _ _) = False
 
+
+-- | A helper function used to check both ExpectationRequestType possibilities in matchExpectation
+checkResult :: ExpectationRequestType -> FossaApiClientF a  -> FossaApiClientF a -> ApiResult a -> Maybe (ApiResult a)
+checkResult ExpectingExactRequest a b resp = resp <$ guard (a == b)
+checkResult ExpectingAnyRequest _ _ resp = pure resp
+
 -- | Matches a request to an expectation.  This function basically exists to
 -- extract and compare the runtime constructor of the two arguments so that
 -- arbitrary ones can be compared even if the types wouldn't match.
 -- A convenient expression for building these lines is:
---   s/(\w+) ::.*/matchExpectation a@(\1{}) (ApiExpectation _ b@(\1{}) resp) = resp <$ guard (a == b)/
+--   s/(\w+) ::.*/matchExpectation a@(\1{}) (ApiExpectation _ requestExpectation b@(\1{}) resp) = checkResult requestExpectation a b resp/
 matchExpectation :: FossaApiClientF a -> ApiExpectation -> Maybe (ApiResult a)
-matchExpectation a@(AssertRevisionBinaries{}) (ApiExpectation _ _ b@(AssertRevisionBinaries{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(AssertUserDefinedBinaries{}) (ApiExpectation _ _ b@(AssertUserDefinedBinaries{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(FinalizeLicenseScan{}) (ApiExpectation _ _ b@(FinalizeLicenseScan{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetApiOpts) (ApiExpectation _ _ b@(GetApiOpts) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetAttribution{}) (ApiExpectation _ _ b@(GetAttribution{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetIssues{}) (ApiExpectation _ _ b@(GetIssues{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetLatestBuild{}) (ApiExpectation _ _ b@(GetLatestBuild{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetLatestScan{}) (ApiExpectation _ _ b@(GetLatestScan{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetOrganization{}) (ApiExpectation _ _ b@(GetOrganization{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetProject{}) (ApiExpectation _ _ b@(GetProject{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetScan{}) (ApiExpectation _ _ b@(GetScan{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetSignedLicenseScanUrl{}) (ApiExpectation _ _ b@(GetSignedLicenseScanUrl{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(ResolveProjectDependencies{}) (ApiExpectation _ _ b@(ResolveProjectDependencies{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(ResolveUserDefinedBinary{}) (ApiExpectation _ _ b@(ResolveUserDefinedBinary{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(UploadAnalysis{}) (ApiExpectation _ _ b@(UploadAnalysis{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(UploadArchive{}) (ApiExpectation _ _ b@(UploadArchive{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(UploadContainerScan{}) (ApiExpectation _ _ b@(UploadContainerScan{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(UploadContributors{}) (ApiExpectation _ _ b@(UploadContributors{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(UploadLicenseScanResult{}) (ApiExpectation _ _ b@(UploadLicenseScanResult{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(AssertRevisionBinaries{}) (ApiExpectation _ requestExpectation b@(AssertRevisionBinaries{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(AssertUserDefinedBinaries{}) (ApiExpectation _ requestExpectation b@(AssertUserDefinedBinaries{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(FinalizeLicenseScan{}) (ApiExpectation _ requestExpectation b@(FinalizeLicenseScan{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetApiOpts) (ApiExpectation _ requestExpectation b@(GetApiOpts) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetAttribution{}) (ApiExpectation _ requestExpectation b@(GetAttribution{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetIssues{}) (ApiExpectation _ requestExpectation b@(GetIssues{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetLatestBuild{}) (ApiExpectation _ requestExpectation b@(GetLatestBuild{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetLatestScan{}) (ApiExpectation _ requestExpectation b@(GetLatestScan{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetOrganization{}) (ApiExpectation _ requestExpectation b@(GetOrganization{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetProject{}) (ApiExpectation _ requestExpectation b@(GetProject{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetScan{}) (ApiExpectation _ requestExpectation b@(GetScan{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetSignedLicenseScanUrl{}) (ApiExpectation _ requestExpectation b@(GetSignedLicenseScanUrl{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(ResolveProjectDependencies{}) (ApiExpectation _ requestExpectation b@(ResolveProjectDependencies{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(ResolveUserDefinedBinary{}) (ApiExpectation _ requestExpectation b@(ResolveUserDefinedBinary{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(UploadAnalysis{}) (ApiExpectation _ requestExpectation b@(UploadAnalysis{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(UploadArchive{}) (ApiExpectation _ requestExpectation b@(UploadArchive{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(UploadContainerScan{}) (ApiExpectation _ requestExpectation b@(UploadContainerScan{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(UploadContributors{}) (ApiExpectation _ requestExpectation b@(UploadContributors{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(UploadLicenseScanResult{}) (ApiExpectation _ requestExpectation b@(UploadLicenseScanResult{}) resp) = checkResult requestExpectation a b resp
 matchExpectation _ _ = Nothing
 
 -- | Handles a request in the context of the mock API.
