@@ -226,14 +226,14 @@ firstVendoredDep :: VendoredDependency
 firstVendoredDep =
   VendoredDependency
     "first-archive-test"
-    "vendor/foo"
+    "vendored/foo"
     (Just "0.0.1")
 
 secondVendoredDep :: VendoredDependency
 secondVendoredDep =
   VendoredDependency
     "second-archive-test"
-    "vendor/bar"
+    "vendored/bar"
     (Just "0.0.1")
 
 vendoredDeps :: NonEmpty VendoredDependency
