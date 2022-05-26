@@ -60,7 +60,6 @@ import Fossa.API.Types (
   SignedURL,
   UploadResponse,
  )
-import Network.HTTP.Req (LbsResponse)
 import Path (File, Path, Rel)
 import Srclib.Types (LicenseSourceUnit, Locator, SourceUnit)
 

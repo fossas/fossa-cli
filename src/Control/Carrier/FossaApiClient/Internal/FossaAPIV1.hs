@@ -67,6 +67,7 @@ import Data.Aeson (
 import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as C
+import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
@@ -134,7 +135,6 @@ import Srclib.Types (
   renderLocator,
  )
 import Text.URI qualified as URI
-import Data.ByteString.Lazy (ByteString)
 
 -- | Represents error emitted via FOSSA instance.
 -- This data-shape corresponds to 'PublicFacingError' type in backend,
