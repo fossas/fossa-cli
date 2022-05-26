@@ -40,9 +40,11 @@ module Test.MockApi (
   MockApi (..),
   MockApiC (runMockApiC),
   alwaysReturns,
+  alwaysReturnsForAnyRequest,
   assertAllSatisfied,
   fails,
   returnsOnce,
+  returnsOnceForAnyRequest,
   runMockApi,
   runApiWithMock,
 ) where
@@ -64,6 +66,8 @@ import Test.HUnit (assertFailure)
 data MockApi (m :: Type -> Type) a where
   MockApiOnce :: FossaApiClientF a -> a -> MockApi m ()
   MockApiAlways :: FossaApiClientF a -> a -> MockApi m ()
+  MockApiOnceForAnyRequest :: FossaApiClientF a -> a -> MockApi m ()
+  MockApiAlwaysForAnyRequest :: FossaApiClientF a -> a -> MockApi m ()
   MockApiFails :: FossaApiClientF a -> Text -> MockApi m ()
   MockApiRunExpectations :: FossaApiClientF a -> MockApi m (Maybe (ApiResult a))
   AssertUnexpectedCall :: FossaApiClientF a -> MockApi m a
@@ -75,6 +79,11 @@ data ExpectationRepetition
   | Always
   deriving (Eq, Ord, Show)
 
+data ExpectationRequestType
+  = ExpectingExactRequest
+  | ExpectingAnyRequest
+  deriving (Eq, Ord, Show)
+
 -- | The result of a call can be either a value or a diagnostic failure
 newtype ApiResult a = ApiResult (Either ApiFail a)
 
@@ -82,7 +91,7 @@ newtype ApiFail = ApiFail {unApiFail :: Text}
 
 -- | An expectation of an API call made up of the request and response.
 data ApiExpectation where
-  ApiExpectation :: ExpectationRepetition -> FossaApiClientF a -> ApiResult a -> ApiExpectation
+  ApiExpectation :: ExpectationRepetition -> ExpectationRequestType -> FossaApiClientF a -> ApiResult a -> ApiExpectation
 
 -- | Create an expectation that will only be satisfied once.
 returnsOnce :: Has MockApi sig m => FossaApiClientF a -> a -> m ()
@@ -90,11 +99,22 @@ returnsOnce req resp =
   -- ApiExpectation Once req (Return resp)
   send $ MockApiOnce req resp
 
+-- | Create an expectation that will only be satisfied once where we do not check the value of the req
+returnsOnceForAnyRequest :: Has MockApi sig m => FossaApiClientF a -> a -> m ()
+returnsOnceForAnyRequest req resp =
+  send $ MockApiOnceForAnyRequest req resp
+
 -- | Create an expectation that can be satisfied multiple times.
 alwaysReturns :: Has MockApi sig m => FossaApiClientF a -> a -> m ()
 alwaysReturns req resp =
   -- ApiExpectation Once req (Return resp)
   send $ MockApiAlways req resp
+
+-- | Create an expectation that can be satisfied multiple times and does not check the value of the request
+alwaysReturnsForAnyRequest :: Has MockApi sig m => FossaApiClientF a -> a -> m ()
+alwaysReturnsForAnyRequest req resp =
+  -- ApiExpectation Once req (Return resp)
+  send $ MockApiAlwaysForAnyRequest req resp
 
 -- | Fail with a fatal diagnostic error
 fails :: Has MockApi sig m => FossaApiClientF a -> Text -> m ()
@@ -126,15 +146,23 @@ newtype MockApiC m a = MockApiC
 instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (MockApi :+: sig) (MockApiC m) where
   alg hdl sig ctx = MockApiC $ case sig of
     L (MockApiOnce req resp) -> do
-      let expectation = ApiExpectation Once req (ApiResult (Right resp))
+      let expectation = ApiExpectation Once ExpectingExactRequest req (ApiResult (Right resp))
+      modify (++ [expectation])
+      pure ctx
+    L (MockApiOnceForAnyRequest req resp) -> do
+      let expectation = ApiExpectation Once ExpectingAnyRequest req (ApiResult (Right resp))
       modify (++ [expectation])
       pure ctx
     L (MockApiAlways req resp) -> do
-      let expectation = ApiExpectation Always req (ApiResult (Right resp))
+      let expectation = ApiExpectation Always ExpectingExactRequest req (ApiResult (Right resp))
+      modify (++ [expectation])
+      pure ctx
+    L (MockApiAlwaysForAnyRequest req resp) -> do
+      let expectation = ApiExpectation Always ExpectingAnyRequest req (ApiResult (Right resp))
       modify (++ [expectation])
       pure ctx
     L (MockApiFails req msg) -> do
-      let expectation = ApiExpectation Once req (ApiResult (Left (ApiFail msg)))
+      let expectation = ApiExpectation Once ExpectingExactRequest req (ApiResult (Left (ApiFail msg)))
       modify (++ [expectation])
       pure ctx
     L (MockApiRunExpectations req) -> do
@@ -145,7 +173,7 @@ instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (MockApi :+: sig) (Mock
         sendIO . assertFailure $
           "Unexpected call: \n  " <> show req <> "\n"
             <> "Unsatisfied expectations: \n  "
-            <> intercalate "\n  " (map (\(ApiExpectation _ expectedReq _) -> show expectedReq) expectations)
+            <> intercalate "\n  " (map (\(ApiExpectation _ _ expectedReq _) -> show expectedReq) expectations)
       pure (a <$ ctx)
     L AssertAllSatisfied -> do
       remainingExpectations <- get
@@ -156,12 +184,12 @@ instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (MockApi :+: sig) (Mock
         else
           sendIO . assertFailure $
             "Test completed with unsatisfied expectations: \n  "
-              <> intercalate "\n  " (map (\(ApiExpectation _ req _) -> show req) unsatisfiedSingleExpectations)
+              <> intercalate "\n  " (map (\(ApiExpectation _ _ req _) -> show req) unsatisfiedSingleExpectations)
     R other -> alg (runMockApiC . hdl) (R other) ctx
 
 isSingular :: ApiExpectation -> Bool
-isSingular (ApiExpectation Once _ _) = True
-isSingular (ApiExpectation Always _ _) = False
+isSingular (ApiExpectation Once _ _ _) = True
+isSingular (ApiExpectation Always _ _ _) = False
 
 -- | Matches a request to an expectation.  This function basically exists to
 -- extract and compare the runtime constructor of the two arguments so that
@@ -169,25 +197,25 @@ isSingular (ApiExpectation Always _ _) = False
 -- A convenient expression for building these lines is:
 --   s/(\w+) ::.*/matchExpectation a@(\1{}) (ApiExpectation _ b@(\1{}) resp) = resp <$ guard (a == b)/
 matchExpectation :: FossaApiClientF a -> ApiExpectation -> Maybe (ApiResult a)
-matchExpectation a@(AssertRevisionBinaries{}) (ApiExpectation _ b@(AssertRevisionBinaries{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(AssertUserDefinedBinaries{}) (ApiExpectation _ b@(AssertUserDefinedBinaries{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(FinalizeLicenseScan{}) (ApiExpectation _ b@(FinalizeLicenseScan{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetApiOpts) (ApiExpectation _ b@(GetApiOpts) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetAttribution{}) (ApiExpectation _ b@(GetAttribution{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetIssues{}) (ApiExpectation _ b@(GetIssues{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetLatestBuild{}) (ApiExpectation _ b@(GetLatestBuild{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetLatestScan{}) (ApiExpectation _ b@(GetLatestScan{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetOrganization{}) (ApiExpectation _ b@(GetOrganization{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetProject{}) (ApiExpectation _ b@(GetProject{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetScan{}) (ApiExpectation _ b@(GetScan{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(GetSignedLicenseScanUrl{}) (ApiExpectation _ b@(GetSignedLicenseScanUrl{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(ResolveProjectDependencies{}) (ApiExpectation _ b@(ResolveProjectDependencies{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(ResolveUserDefinedBinary{}) (ApiExpectation _ b@(ResolveUserDefinedBinary{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(UploadAnalysis{}) (ApiExpectation _ b@(UploadAnalysis{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(UploadArchive{}) (ApiExpectation _ b@(UploadArchive{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(UploadContainerScan{}) (ApiExpectation _ b@(UploadContainerScan{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(UploadContributors{}) (ApiExpectation _ b@(UploadContributors{}) resp) = resp <$ guard (a == b)
-matchExpectation a@(UploadLicenseScanResult{}) (ApiExpectation _ b@(UploadLicenseScanResult{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(AssertRevisionBinaries{}) (ApiExpectation _ _ b@(AssertRevisionBinaries{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(AssertUserDefinedBinaries{}) (ApiExpectation _ _ b@(AssertUserDefinedBinaries{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(FinalizeLicenseScan{}) (ApiExpectation _ _ b@(FinalizeLicenseScan{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetApiOpts) (ApiExpectation _ _ b@(GetApiOpts) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetAttribution{}) (ApiExpectation _ _ b@(GetAttribution{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetIssues{}) (ApiExpectation _ _ b@(GetIssues{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetLatestBuild{}) (ApiExpectation _ _ b@(GetLatestBuild{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetLatestScan{}) (ApiExpectation _ _ b@(GetLatestScan{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetOrganization{}) (ApiExpectation _ _ b@(GetOrganization{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetProject{}) (ApiExpectation _ _ b@(GetProject{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetScan{}) (ApiExpectation _ _ b@(GetScan{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(GetSignedLicenseScanUrl{}) (ApiExpectation _ _ b@(GetSignedLicenseScanUrl{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(ResolveProjectDependencies{}) (ApiExpectation _ _ b@(ResolveProjectDependencies{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(ResolveUserDefinedBinary{}) (ApiExpectation _ _ b@(ResolveUserDefinedBinary{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(UploadAnalysis{}) (ApiExpectation _ _ b@(UploadAnalysis{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(UploadArchive{}) (ApiExpectation _ _ b@(UploadArchive{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(UploadContainerScan{}) (ApiExpectation _ _ b@(UploadContainerScan{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(UploadContributors{}) (ApiExpectation _ _ b@(UploadContributors{}) resp) = resp <$ guard (a == b)
+matchExpectation a@(UploadLicenseScanResult{}) (ApiExpectation _ _ b@(UploadLicenseScanResult{}) resp) = resp <$ guard (a == b)
 matchExpectation _ _ = Nothing
 
 -- | Handles a request in the context of the mock API.
