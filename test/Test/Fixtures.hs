@@ -25,7 +25,9 @@ module Test.Fixtures (
   archives,
   firstArchive,
   locators,
+  firstLocator,
   vendoredDeps,
+  firstVendoredDep,
 ) where
 
 import App.Fossa.ManualDeps (VendoredDependency (..))

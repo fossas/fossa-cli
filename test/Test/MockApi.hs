@@ -191,9 +191,8 @@ isSingular :: ApiExpectation -> Bool
 isSingular (ApiExpectation Once _ _ _) = True
 isSingular (ApiExpectation Always _ _ _) = False
 
-
 -- | A helper function used to check both ExpectationRequestType possibilities in matchExpectation
-checkResult :: ExpectationRequestType -> FossaApiClientF a  -> FossaApiClientF a -> ApiResult a -> Maybe (ApiResult a)
+checkResult :: ExpectationRequestType -> FossaApiClientF a -> FossaApiClientF a -> ApiResult a -> Maybe (ApiResult a)
 checkResult ExpectingExactRequest a b resp = resp <$ guard (a == b)
 checkResult ExpectingAnyRequest _ _ resp = pure resp
 
@@ -215,6 +214,8 @@ matchExpectation a@(GetOrganization{}) (ApiExpectation _ requestExpectation b@(G
 matchExpectation a@(GetProject{}) (ApiExpectation _ requestExpectation b@(GetProject{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetScan{}) (ApiExpectation _ requestExpectation b@(GetScan{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetSignedLicenseScanUrl{}) (ApiExpectation _ requestExpectation b@(GetSignedLicenseScanUrl{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetSignedUploadUrl{}) (ApiExpectation _ requestExpectation b@(GetSignedUploadUrl{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(QueueArchiveBuild{}) (ApiExpectation _ requestExpectation b@(QueueArchiveBuild{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(ResolveProjectDependencies{}) (ApiExpectation _ requestExpectation b@(ResolveProjectDependencies{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(ResolveUserDefinedBinary{}) (ApiExpectation _ requestExpectation b@(ResolveUserDefinedBinary{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadAnalysis{}) (ApiExpectation _ requestExpectation b@(UploadAnalysis{}) resp) = checkResult requestExpectation a b resp

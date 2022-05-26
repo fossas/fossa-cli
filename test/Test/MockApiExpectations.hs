@@ -1,7 +1,6 @@
 module Test.MockApiExpectations (
   expectGetApiOpts,
   expectGetOrganization,
-  expectGetSignedUrl,
 ) where
 
 import Control.Algebra (Has)
@@ -15,6 +14,3 @@ expectGetApiOpts =
 
 expectGetOrganization :: Has MockApi sig m => m ()
 expectGetOrganization = API.GetOrganization `alwaysReturns` Fixtures.organization
-
-expectGetSignedUrl :: Has MockApi sig m => API.PackageRevision -> m ()
-expectGetSignedUrl packageRevision = API.GetSignedLicenseScanUrl packageRevision `alwaysReturns` Fixtures.signedUrl
