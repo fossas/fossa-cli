@@ -2,14 +2,15 @@
 
 While the other analysis strategies for `gradle` and `maven` offer some scala project coverage, scala projects overwhelmingly use the build tool `sbt`.
 
-| Strategy           | Direct Deps        | Deep Deps          | Edges              | Other Limitations                                                 |
-| ------------------ | ------------------ | ------------------ | ------------------ | ----------------------------------------------------------------- |
-| sbt dependencyTree | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | Requires sbt v1.4 or greater. Versions do not include classifiers |
-| pom                | :heavy_check_mark: | :x:                | :x:                |                                                                   |
+| Strategy           | Direct Deps        | Deep Deps          | Edges              | Other Limitations                                                                                       |
+| ------------------ | ------------------ | ------------------ | ------------------ | ------------------------------------------------------------------------------------------------------- |
+| sbt dependencyTree | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | Requires sbt v1.4 or greater. Versions do not include classifiers. Does not support multi-project build |
+| pom                | :heavy_check_mark: | :x:                | :x:                |                                                                                                         |
 
  # Requirements
 
 - A locally-installed `sbt`
+- Ensure project is compiled with `sbt compile` or equivalent
 
 ## Project Discovery
 
@@ -32,6 +33,9 @@ For sbt < 1.3:
 # in project/plugins.sbt
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.10.0-RC1")
 ```
+
+> Unfortunately, `sbt dependencyTree` command does not include version classifier in it's output. Further, 
+> currently we do not support this strategy for multi-project builds due [inconsistent reporting defect in sbt](https://github.com/sbt/sbt/issues/6905)
 
 ## Strategy: `pom`
 

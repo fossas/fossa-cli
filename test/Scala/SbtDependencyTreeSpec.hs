@@ -16,7 +16,8 @@ import DepTypes (
  )
 import GraphUtil (expectDep, expectDirect, expectEdge)
 import Graphing (Graphing)
-import Strategy.Scala.SbtDependencyTree (buildGraph, removeLogPrefixes, sbtTreeParser)
+import Strategy.Scala.Common (SbtArtifact (SbtArtifact), removeLogPrefixes)
+import Strategy.Scala.SbtDependencyTree (buildGraph, sbtTreeParser)
 import Test.Hspec (
   Expectation,
   Spec,
@@ -29,8 +30,10 @@ import Text.RawString.QQ (r)
 
 spec :: Spec
 spec = do
-  checkGraph exampleSingleProjectSbtOut singleProjectGraphSpec
-  checkGraph exampleMultiProjectSbtOut multiProjectGraphSpec
+  checkGraph exampleSingleProjectSbtOut (SbtArtifact "default" "project_A" "0.0.0") singleProjectGraphSpec
+  checkGraph exampleMultiProjectSbtOut (SbtArtifact "org.PARENT" "PROJECT" "1.0-SNAPSHOT") multiProjectGraphSpecForParent
+  checkGraph exampleMultiProjectSbtOut (SbtArtifact "org" "PROJECTA" "1.0-SNAPSHOT") multiProjectGraphSpecForProjectA
+  checkGraph exampleMultiProjectSbtOut (SbtArtifact "org" "PROJECTB" "1.0-SNAPSHOT") multiProjectGraphSpecForProjectB
 
 exampleSingleProjectSbtOut :: Text
 exampleSingleProjectSbtOut =
@@ -120,8 +123,14 @@ exampleMultiProjectSbtOut =
 [success] Total time: 3 s, completed 19-May-2022 2:38:11 PM
 |]
 
-multiProjectGraphSpec :: Graphing Dependency -> Spec
-multiProjectGraphSpec graph = do
+multiProjectGraphSpecForParent :: Graphing Dependency -> Spec
+multiProjectGraphSpecForParent graph = do
+  describe "buildGraph" $ do
+    it "should correctly graph dependencies" $ do
+      expectDirect [mkRawDep "org.PARENT:PROJECT" "1.0-SNAPSHOT"] graph
+
+multiProjectGraphSpecForProjectA :: Graphing Dependency -> Spec
+multiProjectGraphSpecForProjectA graph = do
   let hasEdge :: Dependency -> Dependency -> Expectation
       hasEdge = expectEdge graph
 
@@ -130,7 +139,7 @@ multiProjectGraphSpec graph = do
 
   describe "buildGraph" $ do
     it "should correctly graph dependencies" $ do
-      expectDirect [mkRawDep "org.PARENT:PROJECT" "1.0-SNAPSHOT", mkRawDep "org:PROJECTA" "1.0-SNAPSHOT", mkRawDep "org:PROJECTB" "1.0-SNAPSHOT"] graph
+      expectDirect [mkRawDep "org:PROJECTA" "1.0-SNAPSHOT"] graph
 
       -- For sub project a
       traverse_
@@ -180,7 +189,18 @@ multiProjectGraphSpec graph = do
       hasEdge (mkDep "M@1.0") (mkDep "N@1.0")
       hasEdge (mkDep "M@1.0") (mkDep "O@1.0")
 
-      -- For sub project b
+multiProjectGraphSpecForProjectB :: Graphing Dependency -> Spec
+multiProjectGraphSpecForProjectB graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  let hasDep :: Dependency -> Expectation
+      hasDep dep = expectDep dep graph
+
+  describe "buildGraph" $ do
+    it "should correctly graph dependencies" $ do
+      expectDirect [mkRawDep "org:PROJECTB" "1.0-SNAPSHOT"] graph
+
       traverse_
         hasDep
         [ mkDep "T@1.0"
@@ -209,8 +229,8 @@ mkDep nameAtVersion = do
       version = last nameAndVersionSplit
   mkRawDep ("org:" <> name) version
 
-checkGraph :: Text -> (Graphing Dependency -> Spec) -> Spec
-checkGraph rawOutput buildGraphSpec = do
+checkGraph :: Text -> SbtArtifact -> (Graphing Dependency -> Spec) -> Spec
+checkGraph rawOutput parentArtifact buildGraphSpec = do
   case runParser sbtTreeParser "" (removeLogPrefixes rawOutput) of
     Left err -> describe "sbtDependencyTree" $ it "should parse sbt output" (expectationFailure $ errorBundlePretty err)
-    Right parsedDeps -> buildGraphSpec $ buildGraph parsedDeps
+    Right parsedDeps -> buildGraphSpec $ buildGraph parentArtifact parsedDeps

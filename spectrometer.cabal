@@ -394,6 +394,7 @@ library
     Strategy.Ruby.GemfileLock
     Strategy.Ruby.Parse
     Strategy.Scala
+    Strategy.Scala.Common
     Strategy.Scala.Errors
     Strategy.Scala.SbtDependencyTree
     Strategy.Swift.Errors
@@ -532,6 +533,7 @@ test-suite unit-tests
     Ruby.BundleShowSpec
     Ruby.GemfileLockSpec
     Ruby.ParseSpec
+    Scala.CommonSpec
     Scala.SbtDependencyTreeParsingSpec
     Scala.SbtDependencyTreeSpec
     Swift.PackageResolvedSpec
@@ -582,6 +584,7 @@ test-suite integration-tests
     Analysis.Python.SetuptoolsSpec
     Analysis.RubySpec
     Analysis.RustSpec
+    Analysis.ScalaSpec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
   build-depends:

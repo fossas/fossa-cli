@@ -9,11 +9,13 @@
 module Strategy.Scala (
   discover,
   findProjects,
+  ScalaProject (..),
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
+  errCtx,
   fatalText,
   fromMaybeText,
   recover,
@@ -22,9 +24,11 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Reader (Reader)
 import Control.Effect.Stack (context)
-import Data.Aeson (ToJSON)
+import Control.Monad (when)
+import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
+import Data.ByteString.Lazy (ByteString)
 import Data.Maybe (mapMaybe)
-import Data.String.Conversion (decodeUtf8, toString, toText)
+import Data.String.Conversion (ConvertUtf8 (decodeUtf8), toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TL
@@ -43,6 +47,7 @@ import Effect.Exec (
   Has,
   execThrow,
  )
+import Effect.Logger (Logger, logDebug, logInfo, viaShow)
 import Effect.ReadFS (ReadFS, readContentsXML)
 import GHC.Generics (Generic)
 import Path (
@@ -56,10 +61,10 @@ import Path (
  )
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures, closurePath)
-import Strategy.Maven.Pom.PomFile (RawPom, rawPomName)
+import Strategy.Maven.Pom.PomFile (RawPom (rawPomArtifact, rawPomGroup, rawPomVersion))
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
-import Strategy.Scala.Errors (FailedToListProjects (FailedToListProjects))
-import Strategy.Scala.SbtDependencyTree (analyze)
+import Strategy.Scala.Errors (FailedToListProjects (FailedToListProjects), MaybeWithoutDependencyTreeTask (MaybeWithoutDependencyTreeTask))
+import Strategy.Scala.SbtDependencyTree (SbtArtifact (SbtArtifact), analyze, sbtDepTreeCmd)
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
@@ -71,6 +76,7 @@ discover ::
   ( Has Exec sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
@@ -80,15 +86,19 @@ discover = simpleDiscover findProjects' mkProject ScalaProjectType
     findProjects' dir = concatMap toScalaProjects <$> (findProjects dir)
 
     toScalaProjects :: SbtTargets -> [ScalaProject]
-    toScalaProjects (SbtTargets sbtBuildDir closure) = ScalaProject sbtBuildDir <$> closure
+    toScalaProjects (SbtTargets maybeSbtDepTree closure) = ScalaProject maybeSbtDepTree <$> closure
 
 data ScalaProject = ScalaProject
-  { sbtBuildDir :: Path Abs Dir
+  { rawSbtDepTree :: Maybe ByteString
   , unScalaProject :: MavenProjectClosure
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON ScalaProject
+instance ToJSON ScalaProject where
+  toJSON scalaProject =
+    object
+      [ "unScalaProject" .= unScalaProject scalaProject
+      ]
 
 instance AnalyzeProject ScalaProject where
   analyzeProject _ = getDeps
@@ -102,20 +112,22 @@ mkProject (ScalaProject sbtBuildDir closure) =
     , projectData = ScalaProject sbtBuildDir closure
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => ScalaProject -> m DependencyResults
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => ScalaProject -> m DependencyResults
 getDeps project =
-  warnOnErr MissingDeepDeps (analyzeWithSbtDepTree project)
-    <||> analyzeWithPoms project
+  case (rawSbtDepTree project) of
+    Nothing -> analyzeWithPoms project
+    _ -> warnOnErr MissingDeepDeps (analyzeWithSbtDepTree project) <||> analyzeWithPoms project
 
 pathToText :: Path ar fd -> Text
 pathToText = toText . toFilePath
 
-data SbtTargets = SbtTargets (Path Abs Dir) [MavenProjectClosure]
+data SbtTargets = SbtTargets (Maybe ByteString) [MavenProjectClosure]
 
 findProjects ::
   ( Has Exec sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
@@ -130,9 +142,24 @@ findProjects = walkWithFilters' $ \dir _ files -> do
           . context ("Listing sbt projects at " <> pathToText dir)
           $ genPoms dir
 
+      rawSbtDepTreeStdout <-
+        recover $
+          context ("inferring dependencies") $
+            errCtx (MaybeWithoutDependencyTreeTask) $
+              execThrow dir sbtDepTreeCmd
+
       case projectsRes of
         Nothing -> pure ([], WalkSkipAll)
-        Just projects -> pure ([SbtTargets dir projects], WalkSkipAll)
+        Just projects -> do
+          -- In Sbt there is an ongoing defect when sbt renders multi-project build
+          -- Refer to: https://github.com/sbt/sbt/issues/6905
+          --
+          -- We intentionally avoid faulty tactic if multi-project build is identified!
+          when (length projects > 1) $
+            logInfo "Discovered multi-project sbt build, only direct dependencies will be reported!"
+          let safeRawSbtDepTreeStdout = if length projects > 1 then Nothing else rawSbtDepTreeStdout
+
+          pure ([SbtTargets safeRawSbtDepTreeStdout projects], WalkSkipAll)
 
 analyzeWithPoms :: (Has Diagnostics sig m) => ScalaProject -> m DependencyResults
 analyzeWithPoms (ScalaProject _ closure) = context "Analyzing sbt dependencies with generated pom" $ do
@@ -143,18 +170,27 @@ analyzeWithPoms (ScalaProject _ closure) = context "Analyzing sbt dependencies w
       , dependencyManifestFiles = [closurePath closure]
       }
 
-analyzeWithSbtDepTree :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => ScalaProject -> m DependencyResults
-analyzeWithSbtDepTree (ScalaProject sbtBuildDir closure) = context "Analyzing sbt dependencies using dependencyTree" $ do
-  let pomPath = closurePath closure
-  maybeRawPom <- recover (readContentsXML @RawPom pomPath)
-  projectName <- fromMaybeText ("Could not retrieve project name from generated pom file:" <> toText pomPath) (rawPomName =<< maybeRawPom)
-  projectGraph <- analyze sbtBuildDir projectName
+analyzeWithSbtDepTree :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => ScalaProject -> m DependencyResults
+analyzeWithSbtDepTree (ScalaProject maybeDepTree closure) = context "Analyzing sbt dependencies using dependencyTree" $ do
+  projectArtifact <- pomSbtArtifact
+  logDebug $ "identified artifact whose descendent to include when graphing: " <> viaShow projectArtifact
+
+  projectGraph <- analyze maybeDepTree projectArtifact
   pure $
     DependencyResults
       { dependencyGraph = projectGraph
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [closurePath closure]
       }
+  where
+    pomSbtArtifact :: (Has ReadFS sig m, Has Diagnostics sig m) => m SbtArtifact
+    pomSbtArtifact = do
+      let pomPath = closurePath closure
+      maybeRawPom <- recover (readContentsXML @RawPom pomPath)
+      groupId <- fromMaybeText ("Could not retrieve project group from generated pom file:" <> toText pomPath) (rawPomGroup =<< maybeRawPom)
+      artifactId <- fromMaybeText ("Could not retrieve project artifact from generated pom file:" <> toText pomPath) (rawPomArtifact <$> maybeRawPom)
+      version <- fromMaybeText ("Could not retrieve project version from generated pom file:" <> toText pomPath) (rawPomVersion =<< maybeRawPom)
+      pure $ SbtArtifact groupId artifactId version
 
 makePomCmd :: Command
 makePomCmd =

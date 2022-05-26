@@ -24,6 +24,7 @@ import Graphing (
   shrinkSingle,
   shrinkWithoutPromotionToDirect,
   stripRoot,
+  subGraphOf,
   toAdjacencyMap,
   unfold,
   unfoldDeep,
@@ -363,6 +364,49 @@ hasPredecessorsSpec = do
       let graph :: Graphing Int = Graphing.directs [1, 2] <> Graphing.edges [(1, 2), (2, 3), (3, 4)]
       hasPredecessors graph 2 `shouldBe` True
 
+subGraphOfSpec :: Spec
+subGraphOfSpec = do
+  describe "subGraphOf" $
+    it "should return graph of children including the node" $ do
+      --   1 -> 2
+      --    \    \
+      --     3    \
+      --      \    4
+      --       6
+      let graph :: Graphing Int = Graphing.directs [1, 2] <> Graphing.edges [(1, 2), (1, 3), (2, 4), (3, 6)]
+
+      let graphSub0 = subGraphOf 0 graph
+          graphSub1 = subGraphOf 1 graph
+          graphSub2 = subGraphOf 2 graph
+          graphSub3 = subGraphOf 3 graph
+
+      expectEdges [] graphSub0
+      expectDeps [] graphSub0
+      expectDirect [] graphSub0
+
+      graphSub1 `shouldBe` graph
+
+      expectEdges [(2, 4)] graphSub2
+      expectDeps [2, 4] graphSub2
+      expectDirect [2] graphSub2
+
+      expectEdges [(3, 6)] graphSub3
+      expectDeps [3, 6] graphSub3
+      expectDirect [] graphSub3
+
+      -- 1 -> 2 -> 5 -> 6
+      --      \    \
+      --       \    7
+      -- 3 ----> 4
+
+      let graph2 :: Graphing Int
+          graph2 = Graphing.edges [(1, 2), (3, 4), (2, 4), (2, 5), (5, 7), (5, 6)] <> Graphing.directs [1, 3]
+          graph2Sub5 = subGraphOf 5 graph2
+
+      expectEdges [(5, 7), (5, 6)] graph2Sub5
+      expectDeps [5, 6, 7] graph2Sub5
+      expectDirect [] graph2Sub5
+
 spec :: Spec
 spec = do
   unfoldSpec
@@ -386,3 +430,5 @@ spec = do
   promoteToDirectSpec
 
   hasPredecessorsSpec
+
+  subGraphOfSpec

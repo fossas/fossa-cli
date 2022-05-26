@@ -12,7 +12,6 @@ import Strategy.Scala.SbtDependencyTree (
   SbtDep (SbtDep),
   parseEviction,
   parseSbtArtifact,
-  removeLogPrefixes,
   sbtTreeParser,
  )
 import Test.Hspec (
@@ -20,7 +19,6 @@ import Test.Hspec (
   Spec,
   describe,
   it,
-  shouldBe,
  )
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (
@@ -31,14 +29,6 @@ import Text.RawString.QQ (r)
 
 parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Expectation
 parseMatch parser input expected = parse parser "" input `shouldParse` expected
-
-stdoutFromSbt :: Text
-stdoutFromSbt =
-  [r|[info] truth
-[info] is
-[warn] out
-[error] there!
-|]
 
 spec :: Spec
 spec = do
@@ -54,15 +44,6 @@ spec = do
       "a:b.c:1.0" `shouldParseInto` SbtArtifact "a" "b.c" "1.0"
       "a:b.c:1.0.0" `shouldParseInto` SbtArtifact "a" "b.c" "1.0.0"
       "a:b.c:1.0.0-SNAPSHOT" `shouldParseInto` SbtArtifact "a" "b.c" "1.0.0-SNAPSHOT"
-
-  describe "removeLogPrefixes" $ do
-    it "should parse sbt artifact" $ do
-      removeLogPrefixes "pineapples!\n" `shouldBe` "pineapples!\n"
-      removeLogPrefixes "[info] pineapples!\n" `shouldBe` "pineapples!\n"
-      removeLogPrefixes "[warn] pineapples!\n" `shouldBe` "pineapples!\n"
-      removeLogPrefixes "[error] pineapples!\n" `shouldBe` "pineapples!\n"
-      removeLogPrefixes "[debug] pineapples!\n" `shouldBe` "pineapples!\n"
-      removeLogPrefixes stdoutFromSbt `shouldBe` "truth\nis\nout\nthere!\n"
 
   describe "parseEviction" $ do
     let shouldParseInto = parseMatch parseEviction

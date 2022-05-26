@@ -2,6 +2,7 @@
 
 module Strategy.Scala.SbtDependencyTree (
   analyze,
+  sbtDepTreeCmd,
 
   -- * for testing
   SbtArtifact (..),
@@ -9,15 +10,14 @@ module Strategy.Scala.SbtDependencyTree (
   parseSbtArtifact,
   parseEviction,
   sbtTreeParser,
-  removeLogPrefixes,
   buildGraph,
 ) where
 
 import Control.Carrier.Simple (Has)
-import Control.Effect.Diagnostics (Diagnostics, context, errCtx, fatal)
+import Control.Effect.Diagnostics (Diagnostics, fatal, fromMaybeText)
 import Control.Monad (guard, void)
+import Data.ByteString.Lazy (ByteString)
 import Data.Functor (($>))
-import Data.Maybe qualified as DMaybe
 import Data.Set qualified as Set
 import Data.String.Conversion (ConvertUtf8 (decodeUtf8), toText)
 import Data.Text (Text)
@@ -34,11 +34,9 @@ import Effect.Exec (
   Command (..),
   Exec,
   ExecErr (CommandParseError),
-  execThrow,
  )
-import Graphing (Graphing, shrinkRoots, unfold)
-import Path (Abs, Dir, Path)
-import Strategy.Scala.Errors (MaybeWithoutDependencyTreeTask (MaybeWithoutDependencyTreeTask))
+import Graphing (Graphing, shrinkRoots, subGraphOf, unfold)
+import Strategy.Scala.Common (SbtArtifact (SbtArtifact, artifactId, groupId, version), removeLogPrefixes)
 import Text.Megaparsec (
   MonadParsec (eof, takeWhileP, try),
   Parsec,
@@ -58,24 +56,17 @@ import Text.Megaparsec.Char.Lexer qualified as Lexer
 -- | Sbt Dependency Ascii tree task
 -- This only works with sbt v1.4.0 greater, or with sbt which has DependencyTreePlugin.
 -- Ref: https://www.scala-sbt.org/1.x/docs/sbt-1.4-Release-Notes.html#sbt-dependency-graph+is+in-sourced
-sbtDepTreeCmd :: Text -> Command
-sbtDepTreeCmd projectName =
+sbtDepTreeCmd :: Command
+sbtDepTreeCmd =
   Command
     { cmdName = "sbt"
     , cmdArgs =
         [ "--batch" -- ensure sbt does not enter repl mode!
         , "--no-colors"
-        , projectName <> "/dependencyTree"
+        , "dependencyTree"
         ]
     , cmdAllowErr = Never
     }
-
-data SbtArtifact = SbtArtifact
-  { groupId :: Text
-  , artifactId :: Text
-  , version :: Text
-  }
-  deriving (Eq, Ord, Show)
 
 data SbtDep = SbtDep
   { artifact :: SbtArtifact
@@ -196,44 +187,49 @@ sbtTreeParser = concat <$> ((try (parseDeps 0) <|> ignoredLine) `sepBy` eol) <* 
     sbtRecurse :: Int -> Parser [SbtDep]
     sbtRecurse depth = chunk "\n" *> parseDeps depth
 
--- | Removes log prefix from the log.
--- >> removeLogPrefixes "[info] someInfo" = "someInfo"
-removeLogPrefixes :: Text -> Text
-removeLogPrefixes content = Text.unlines . map removePrefix $ Text.lines content
-  where
-    removePrefix candidate
-      | Text.isPrefixOf "[debug]" candidate = DMaybe.fromMaybe candidate $ Text.stripPrefix "[debug] " candidate
-      | Text.isPrefixOf "[info]" candidate = DMaybe.fromMaybe candidate $ Text.stripPrefix "[info] " candidate
-      | Text.isPrefixOf "[warn]" candidate = DMaybe.fromMaybe candidate $ Text.stripPrefix "[warn] " candidate
-      | Text.isPrefixOf "[success]" candidate = DMaybe.fromMaybe candidate $ Text.stripPrefix "[success] " candidate
-      | Text.isPrefixOf "[error]" candidate = DMaybe.fromMaybe candidate $ Text.stripPrefix "[error] " candidate
-      | Text.isPrefixOf "[trace]" candidate = DMaybe.fromMaybe candidate $ Text.stripPrefix "[trace] " candidate
-      | otherwise = candidate
+-- | Builds graph with scoped to @SbtArtifact
+--
+-- Given following graph in [SbtDep] shape:
+--
+-- org:PROJECTA:1.0-SNAPSHOT [S]
+--   +-org:B:1.0
+--   | +-org:C:1.0
+--   | +-org:D:1.0
+--   |
+--   +-org:E:1.0
+--
+-- org:PROJECTB:1.0-SNAPSHOT [S]
+--   +-org:T:1.0
+--   | +-org:U:1.0
+--   |
+--   +-org:W:1.0 (evicted by: 2.0)
+--
+-- 'buildGraph 'org:PROJECTB:1.0-SNAPSHOT' sbtDpes' return following graph:
+--
+-- org:PROJECTB:1.0-SNAPSHOT [S]
+--   +-org:T:1.0
+--   | +-org:U:1.0
+--   |
+--   +-org:W:1.0 (evicted by: 2.0)
+buildGraph :: SbtArtifact -> [SbtDep] -> Graphing Dependency
+buildGraph onlyArtifact dependencies =
+  subGraphOf (toDependency onlyArtifact) $
+    unfold dependencies requires (toDependency . artifact)
 
-buildGraph :: [SbtDep] -> Graphing Dependency
-buildGraph dependencies = unfold dependencies requires toDependency
-  where
-    toDependency SbtDep{..} =
-      Dependency
-        { dependencyType = MavenType
-        , dependencyName = toText (groupId artifact) <> ":" <> toText (artifactId artifact)
-        , dependencyVersion = Just (CEq $ version artifact)
-        , dependencyLocations = mempty
-        , dependencyEnvironments = Set.singleton EnvProduction
-        , dependencyTags = mempty
-        }
+toDependency :: SbtArtifact -> Dependency
+toDependency SbtArtifact{..} =
+  Dependency
+    { dependencyType = MavenType
+    , dependencyName = toText (groupId) <> ":" <> toText (artifactId)
+    , dependencyVersion = Just (CEq version)
+    , dependencyLocations = mempty
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = mempty
+    }
 
-analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Graphing Dependency)
-analyze buildSbtDir projectName = do
-  let sbtCmd = sbtDepTreeCmd projectName
-
-  rawSbtDepTreeStdout <-
-    context ("inferring dependencies for project: " <> projectName) $
-      errCtx (MaybeWithoutDependencyTreeTask projectName) $
-        execThrow buildSbtDir sbtCmd
-
-  case runParser sbtTreeParser "" (removeLogPrefixes $ decodeUtf8 rawSbtDepTreeStdout) of
-    Right parsedDeps -> pure $ shrinkRoots $ buildGraph parsedDeps
-    Left err ->
-      fatal $
-        CommandParseError sbtCmd (toText $ errorBundlePretty err)
+analyze :: (Has Exec sig m, Has Diagnostics sig m) => (Maybe ByteString) -> SbtArtifact -> m (Graphing Dependency)
+analyze maybeDepTree pomArtifact = do
+  depTree <- fromMaybeText "Could not retrieve output from sbt dependencyTree" maybeDepTree
+  case runParser sbtTreeParser "" (removeLogPrefixes $ decodeUtf8 depTree) of
+    Right parsedDeps -> pure $ shrinkRoots $ buildGraph pomArtifact parsedDeps
+    Left err -> fatal $ CommandParseError sbtDepTreeCmd (toText $ errorBundlePretty err)

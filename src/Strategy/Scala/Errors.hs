@@ -19,13 +19,12 @@ scalaFossaDocUrl = strategyLangDocUrl "scala/sbt.md"
 sbtDepsGraphPluginUrl :: Text
 sbtDepsGraphPluginUrl = "https://github.com/sbt/sbt-dependency-graph"
 
-newtype MaybeWithoutDependencyTreeTask = MaybeWithoutDependencyTreeTask (Text)
+data MaybeWithoutDependencyTreeTask = MaybeWithoutDependencyTreeTask
 
 instance ToDiagnostic MaybeWithoutDependencyTreeTask where
-  renderDiagnostic (MaybeWithoutDependencyTreeTask project) =
+  renderDiagnostic (MaybeWithoutDependencyTreeTask) =
     vsep
-      [ "We could not perform dynamic sbt analysis for: " <> viaShow project
-      , ""
+      [ "We could not perform dynamic sbt analysis via sbt dependencyTree"
       , indent 2 $
           vsep
             [ "Ensure you can run sbt dependencyTree. If you are using sbt v1.4.0 or older"
