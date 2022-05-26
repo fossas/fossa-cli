@@ -38,7 +38,6 @@ import Fossa.API.Types (
   SignedURL,
   UploadResponse,
  )
-import Network.HTTP.Req (LbsResponse)
 import Srclib.Types (Locator, SourceUnit, renderLocator)
 
 -- Fetches an organization from the API
