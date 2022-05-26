@@ -13,7 +13,6 @@ import Test.Effect (it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, runIO)
 import Test.MockApi (MockApi, alwaysReturns, returnsOnce, returnsOnceForAnyRequest)
-import Test.MockApiExpectations (expectGetApiOpts, expectGetOrganization)
 
 fixtureDir :: Path Rel Dir
 fixtureDir = $(mkRelDir "test/App/Fossa/VendoredDependency/testdata")
@@ -24,8 +23,8 @@ spec = do
     currDir <- runIO getCurrentDir
     let scanDir = currDir </> fixtureDir
     it' "should do the archive upload workflow" $ do
-      expectGetApiOpts
-      expectGetOrganization
+      GetOrganization `alwaysReturns` Fixtures.organization
+      GetApiOpts `alwaysReturns` Fixtures.apiOpts
       expectGetSignedUrl PackageRevision{packageName = "first-archive-test", packageVersion = "0.0.1"}
       expectUploadArchive -- Fixtures.firstArchive
       expectQueueArchiveBuild Fixtures.firstArchive

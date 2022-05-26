@@ -538,7 +538,6 @@ test-suite unit-tests
     Test.Effect
     Test.Fixtures
     Test.MockApi
-    Test.MockApiExpectations
     Yarn.V1.YarnLockV1Spec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec
