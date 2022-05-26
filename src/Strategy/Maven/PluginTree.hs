@@ -13,7 +13,7 @@ import Data.Text qualified as Text
 import Data.Void (Void)
 import Debug.Trace (traceShow)
 import Text.Megaparsec (Parsec, chunk, count, getSourcePos, many, sepBy, sourceColumn, takeP, takeWhile1P, try, unPos, (<|>))
-import Text.Megaparsec.Char (char, space1, spaceChar)
+import Text.Megaparsec.Char (char, space1, spaceChar, string)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 
 type Parser = Parsec Void Text
@@ -34,7 +34,7 @@ readThruNextColon :: String -> Parser Text
 readThruNextColon name = takeWhile1P (Just name) (/= ':') <* char ':'
 
 scopeParse :: Parser [Text]
-scopeParse = lexeme $ sepBy (takeWhile1P (Just "scopes") (\c -> not (isSpace c || c == '/'))) (char '/')
+scopeParse = sepBy (takeWhile1P (Just "scopes") (\c -> not (isSpace c || c == '/'))) (char '/')
 
 isOptional :: Parser Bool
 isOptional =
@@ -66,7 +66,7 @@ parseArtifactChild ::
 parseArtifactChild level =
   try $
     takeP (Just "Artifact prefix") level
-      *> lexeme (chunk "+-" <|> chunk "\\-")
+      *> lexeme (string "+-" <|> string "\\-")
       *> parseLevelNTextArtifact
 
 -- old version which tried to count abstract levels of indentation.
@@ -81,7 +81,7 @@ parseLevelNTextArtifact =
   do startPos <- unPos . sourceColumn <$> getSourcePos
      TextArtifact
        <$> (Text.intercalate ":" <$> count 3 (readThruNextColon "artifactSpecifier"))
-       <*> scopeParse
+       <*> lexeme scopeParse
        <*> many (parseArtifactChild (startPos - 1))
 
 parseTextArtifact :: Parser TextArtifact
