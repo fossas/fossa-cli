@@ -24,6 +24,7 @@ module Test.Fixtures (
   signedUrl,
   archives,
   firstArchive,
+  secondArchive,
   locators,
   firstLocator,
   vendoredDeps,

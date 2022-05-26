@@ -22,14 +22,26 @@ spec = do
   describe "archiveUploadSourceUnit" $ do
     currDir <- runIO getCurrentDir
     let scanDir = currDir </> fixtureDir
-    it' "should do the archive upload workflow" $ do
+    it' "should do the archive upload workflow for a single archive" $ do
       GetOrganization `alwaysReturns` Fixtures.organization
       GetApiOpts `alwaysReturns` Fixtures.apiOpts
       expectGetSignedUrl PackageRevision{packageName = "first-archive-test", packageVersion = "0.0.1"}
-      expectUploadArchive -- Fixtures.firstArchive
+      expectUploadArchive
       expectQueueArchiveBuild Fixtures.firstArchive
       locators <- archiveUploadSourceUnit scanDir $ Fixtures.firstVendoredDep NE.:| []
       locators `shouldBe'` (Fixtures.firstLocator NE.:| [])
+
+    it' "should do the archive upload workflow for multiple archives" $ do
+      GetOrganization `alwaysReturns` Fixtures.organization
+      GetApiOpts `alwaysReturns` Fixtures.apiOpts
+      expectGetSignedUrl PackageRevision{packageName = "first-archive-test", packageVersion = "0.0.1"}
+      expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
+      expectUploadArchive
+      expectUploadArchive
+      expectQueueArchiveBuild Fixtures.firstArchive
+      expectQueueArchiveBuild Fixtures.secondArchive
+      locators <- archiveUploadSourceUnit scanDir Fixtures.vendoredDeps
+      locators `shouldBe'` Fixtures.locators
 
 expectUploadArchive :: Has MockApi sig m => m ()
 expectUploadArchive = do
