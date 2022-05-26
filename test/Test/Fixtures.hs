@@ -34,7 +34,7 @@ module Test.Fixtures (
 import App.Fossa.ManualDeps (VendoredDependency (..))
 import App.Types qualified as App
 import Control.Timeout (Duration (MilliSeconds))
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
@@ -237,7 +237,7 @@ secondVendoredDep =
     (Just "0.0.1")
 
 vendoredDeps :: NonEmpty VendoredDependency
-vendoredDeps = NE.fromList [firstVendoredDep, secondVendoredDep]
+vendoredDeps = firstVendoredDep :| [secondVendoredDep]
 
 firstLocator :: Locator
 firstLocator =
@@ -254,7 +254,7 @@ secondLocator =
     (Just "0.0.1")
 
 locators :: NonEmpty Locator
-locators = NE.fromList [firstLocator, secondLocator]
+locators = firstLocator :| [secondLocator]
 
 firstArchive :: Archive
 firstArchive =
