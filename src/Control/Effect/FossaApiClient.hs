@@ -42,6 +42,7 @@ import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
 import Data.ByteString.Char8 qualified as C8
+import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Text (Text)
@@ -59,7 +60,6 @@ import Fossa.API.Types (
   SignedURL,
   UploadResponse,
  )
-import Network.HTTP.Req (LbsResponse)
 import Path (File, Path, Rel)
 import Srclib.Types (LicenseSourceUnit, Locator, SourceUnit)
 
@@ -99,7 +99,7 @@ data FossaApiClientF a where
     ProjectMetadata ->
     NE.NonEmpty SourceUnit ->
     FossaApiClientF UploadResponse
-  UploadArchive :: SignedURL -> FilePath -> FossaApiClientF LbsResponse
+  UploadArchive :: SignedURL -> FilePath -> FossaApiClientF ByteString
   UploadContainerScan ::
     ProjectRevision ->
     ProjectMetadata ->
@@ -159,7 +159,7 @@ getAttribution revision format = sendSimple $ GetAttribution revision format
 getSignedUploadUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
 getSignedUploadUrl = sendSimple . GetSignedUploadUrl
 
-uploadArchive :: Has FossaApiClient sig m => SignedURL -> FilePath -> m LbsResponse
+uploadArchive :: Has FossaApiClient sig m => SignedURL -> FilePath -> m ByteString
 uploadArchive dest path = sendSimple (UploadArchive dest path)
 
 queueArchiveBuild :: Has FossaApiClient sig m => Archive -> m (Maybe C8.ByteString)
