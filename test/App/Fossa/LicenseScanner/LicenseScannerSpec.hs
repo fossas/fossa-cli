@@ -7,7 +7,6 @@ import App.Fossa.LicenseScanner (combineLicenseUnits, licenseScanSourceUnit)
 import App.Fossa.VendoredDependency (VendoredDependencyScanMode (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (..))
-import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Fossa.API.Types (Archive, ArchiveComponents (ArchiveComponents, archives))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
@@ -35,9 +34,12 @@ unitOne =
     { licenseUnitName = "MIT"
     , licenseUnitType = "LicenseUnit"
     , licenseUnitDir = ""
-    , licenseUnitData = emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/LICENSE"} :| [emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/one.txt"}]
+    , licenseUnitData = NE.fromList
+        [emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/LICENSE"}
+        , emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/one.txt"}
+        ]
     , licenseUnitFiles =
-        "foo/bar/LICENSE" :| ["foo/bar/one.txt"]
+        NE.fromList ["foo/bar/LICENSE" ,"foo/bar/one.txt"]
     , licenseUnitInfo = info
     }
 
@@ -47,8 +49,8 @@ unitTwo =
     { licenseUnitName = "MIT"
     , licenseUnitType = "LicenseUnit"
     , licenseUnitDir = ""
-    , licenseUnitData = emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"} :| [emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/two.txt"}]
-    , licenseUnitFiles = "foo/bar/baz/ANOTHER_LICENSE" :| ["foo/bar/baz/two.txt"]
+    , licenseUnitData = NE.fromList [emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"} ,emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/two.txt"}]
+    , licenseUnitFiles = NE.fromList ["foo/bar/baz/ANOTHER_LICENSE", "foo/bar/baz/two.txt"]
     , licenseUnitInfo = info
     }
 expectedCombinedUnit :: LicenseUnit
@@ -58,17 +60,19 @@ expectedCombinedUnit =
     , licenseUnitType = "LicenseUnit"
     , licenseUnitDir = ""
     , licenseUnitData =
-        emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/LICENSE"}
-          :| [ emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"}
-             , emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/two.txt"}
-             , emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/one.txt"}
-             ]
+        NE.fromList
+          [ emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/LICENSE"}
+          , emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"}
+          , emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/two.txt"}
+          , emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/one.txt"}
+          ]
     , licenseUnitFiles =
-        "foo/bar/LICENSE"
-          :| [ "foo/bar/baz/ANOTHER_LICENSE"
-             , "foo/bar/baz/two.txt"
-             , "foo/bar/one.txt"
-             ]
+        NE.fromList
+        [ "foo/bar/LICENSE"
+        , "foo/bar/baz/ANOTHER_LICENSE"
+        , "foo/bar/baz/two.txt"
+        , "foo/bar/one.txt"
+        ]
     , licenseUnitInfo = info
     }
 

@@ -13,7 +13,6 @@ import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (ignoreStickyLogger)
 import Data.List.Extra (head')
-import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Diag.Result (Result (Failure, Success), renderFailure)
@@ -72,9 +71,9 @@ spec = do
         Failure ws eg -> fail (show (renderFailure ws eg "An issue occurred"))
         Success _ us -> do
           length us `shouldBe` 3
-          NE.sort (NE.map licenseUnitName us) `shouldBe` "No_license_found" :| ["apache-2.0", "mit"]
-          NE.sort (licenseUnitFiles mitUnit) `shouldBe` "vendor/foo/bar/MIT_LICENSE" :| ["vendor/foo/bar/baz/SOMETHING_LICENSE", "vendor/foo/bar/baz/quux/QUUX_LICENSE"]
-          NE.sort (licenseUnitFiles apacheUnit) `shouldBe` "vendor/foo/bar/bar_apache.rb" :| ["vendor/foo/bar/baz/something.rb"]
+          NE.sort (NE.map licenseUnitName us) `shouldBe` NE.fromList ["No_license_found", "apache-2.0", "mit"]
+          NE.sort (licenseUnitFiles mitUnit) `shouldBe` NE.fromList ["vendor/foo/bar/MIT_LICENSE", "vendor/foo/bar/baz/SOMETHING_LICENSE", "vendor/foo/bar/baz/quux/QUUX_LICENSE"]
+          NE.sort (licenseUnitFiles apacheUnit) `shouldBe` NE.fromList ["vendor/foo/bar/bar_apache.rb", "vendor/foo/bar/baz/something.rb"]
           where
             mitUnit :: LicenseUnit
             mitUnit = fromMaybe emptyLicenseUnit (head' $ NE.filter (\u -> licenseUnitName u == "mit") us)
