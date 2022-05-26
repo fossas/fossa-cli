@@ -35,7 +35,7 @@ ifdef ARGS
 else
 	cabal test integration-tests --test-show-details=streaming --test-option=--format=checks
 endif
-	
+
 test-all:
 	cabal test
 
@@ -88,7 +88,7 @@ lint:
 	@echo "No linter errors found"
 
 # Runs linter on only modified files
-# 
+#
 # When running in docker, we have to tell git that the directory which doesn't belong to us is safe.
 # The two git commands are for staged (cached) and unstaged files.
 # We also succeed if there are no changed filers to lint.  We grep the list of files for non-whitespace,
@@ -98,7 +98,7 @@ fast-lint:
 		git config --global --add safe.directory /fossa-cli && \
 		echo "Running in docker, added temp safe.directory entry to git config"
 	@echo Collecting unstaged files
-	@git diff --name-only --diff-filter=AM -- "*.hs" > /tmp/hlint-changed-files
+	@git diff --name-only --diff-filter=AM master... -- "*.hs" > /tmp/hlint-changed-files
 	@echo Collecting staged files
 	@git diff --name-only --diff-filter=AM --cached -- "*.hs" >> /tmp/hlint-changed-files
 	@if grep -q "[^[:space:]]" /tmp/hlint-changed-files; then \

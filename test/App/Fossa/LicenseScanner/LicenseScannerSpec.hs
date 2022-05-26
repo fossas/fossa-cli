@@ -34,12 +34,13 @@ unitOne =
     { licenseUnitName = "MIT"
     , licenseUnitType = "LicenseUnit"
     , licenseUnitDir = ""
-    , licenseUnitData = NE.fromList
-        [emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/LICENSE"}
-        , emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/one.txt"}
-        ]
+    , licenseUnitData =
+        NE.fromList
+          [ emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/LICENSE"}
+          , emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/one.txt"}
+          ]
     , licenseUnitFiles =
-        NE.fromList ["foo/bar/LICENSE" ,"foo/bar/one.txt"]
+        NE.fromList ["foo/bar/LICENSE", "foo/bar/one.txt"]
     , licenseUnitInfo = info
     }
 
@@ -49,7 +50,7 @@ unitTwo =
     { licenseUnitName = "MIT"
     , licenseUnitType = "LicenseUnit"
     , licenseUnitDir = ""
-    , licenseUnitData = NE.fromList [emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"} ,emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/two.txt"}]
+    , licenseUnitData = NE.fromList [emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"}, emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/two.txt"}]
     , licenseUnitFiles = NE.fromList ["foo/bar/baz/ANOTHER_LICENSE", "foo/bar/baz/two.txt"]
     , licenseUnitInfo = info
     }
@@ -68,11 +69,11 @@ expectedCombinedUnit =
           ]
     , licenseUnitFiles =
         NE.fromList
-        [ "foo/bar/LICENSE"
-        , "foo/bar/baz/ANOTHER_LICENSE"
-        , "foo/bar/baz/two.txt"
-        , "foo/bar/one.txt"
-        ]
+          [ "foo/bar/LICENSE"
+          , "foo/bar/baz/ANOTHER_LICENSE"
+          , "foo/bar/baz/two.txt"
+          , "foo/bar/one.txt"
+          ]
     , licenseUnitInfo = info
     }
 
