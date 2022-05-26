@@ -6,6 +6,8 @@ module App.Fossa.Report.Attribution (
   Dependency (..),
   License (..),
   LicenseContents (..),
+  LicenseCopyright (..),
+  LicenseDetails (..),
   LicenseName (..),
   Project (..),
 ) where
@@ -21,13 +23,14 @@ newtype LicenseName = LicenseName {rawName :: Text}
 newtype LicenseContents = LicenseContents {rawContents :: Text}
   deriving (Eq, Ord, Show, FromJSON, ToJSON)
 
-newtype LicenseCopyright = LicenseCopyright { rawCopyright :: Text }
+newtype LicenseCopyright = LicenseCopyright {rawCopyright :: Text}
   deriving (Eq, Ord, Show, FromJSON, ToJSON)
 
-data LicenseDetails = LicenseDetails {
-  licenseText :: LicenseContents,
-  licenseCopyrights :: [LicenseCopyright]
-} deriving (Eq, Ord, Show)
+data LicenseDetails = LicenseDetails
+  { licenseText :: LicenseContents
+  , licenseCopyrights :: [LicenseCopyright]
+  }
+  deriving (Eq, Ord, Show)
 
 data Attribution = Attribution
   { attribProject :: Project
@@ -75,7 +78,7 @@ instance FromJSON Attribution where
       <*> obj .:? "directDependencies" .!= []
       <*> obj .:? "deepDependencies" .!= []
       <*> obj .: "licenses"
-      <*> obj .:? "licenceDetails"
+      <*> obj .:? "licenseDetails"
 
 instance ToJSON Attribution where
   toJSON Attribution{..} =
@@ -84,10 +87,10 @@ instance ToJSON Attribution where
       , "directDependencies" .= attribDirectDeps
       , "deepDependencies" .= attribDeepDeps
       , "licenses" .= attribLicenses
-      ] ++
-      if isNothing attribLicenseDetails
-        then []
-        else [ "licenseDetails" .= attribLicenseDetails ]
+      ]
+        ++ if isNothing attribLicenseDetails
+          then []
+          else ["licenseDetails" .= attribLicenseDetails]
 
 instance FromJSON Dependency where
   parseJSON = withObject "Dependency" $ \obj ->
