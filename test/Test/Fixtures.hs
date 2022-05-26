@@ -21,14 +21,22 @@ module Test.Fixtures (
   successfulBuild,
   pendingBuild,
   attributionReportAsSerializedJson,
+  signedUrl,
+  archives,
+  firstArchive,
+  locators,
+  vendoredDeps,
 ) where
 
+import App.Fossa.ManualDeps (VendoredDependency (..))
 import App.Types qualified as App
 import Control.Timeout (Duration (MilliSeconds))
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text.Extra (showT)
+import Fossa.API.Types (Archive (..))
 import Fossa.API.Types qualified as API
 import Path (mkRelDir, parseAbsDir, (</>))
 import Srclib.Types (Locator (..), SourceUnit (..))
@@ -206,3 +214,56 @@ issuesPending =
 
 attributionReportAsSerializedJson :: Text
 attributionReportAsSerializedJson = "{\"TestReport\": \"TestReportData\"}"
+
+signedUrl :: API.SignedURL
+signedUrl = API.SignedURL{API.signedURL = "https://foo.com"}
+
+-- Test data for licenseScanSourceUnits tests
+firstVendoredDep :: VendoredDependency
+firstVendoredDep =
+  VendoredDependency
+    "first-archive-test"
+    "vendor/foo"
+    (Just "0.0.1")
+
+secondVendoredDep :: VendoredDependency
+secondVendoredDep =
+  VendoredDependency
+    "second-archive-test"
+    "vendor/bar"
+    (Just "0.0.1")
+
+vendoredDeps :: NonEmpty VendoredDependency
+vendoredDeps = NE.fromList [firstVendoredDep, secondVendoredDep]
+
+firstLocator :: Locator
+firstLocator =
+  Locator
+    "archive"
+    "42/first-archive-test"
+    (Just "0.0.1")
+
+secondLocator :: Locator
+secondLocator =
+  Locator
+    "archive"
+    "42/second-archive-test"
+    (Just "0.0.1")
+
+locators :: NonEmpty Locator
+locators = NE.fromList [firstLocator, secondLocator]
+
+firstArchive :: Archive
+firstArchive =
+  Archive
+    "first-archive-test"
+    "0.0.1"
+
+secondArchive :: Archive
+secondArchive =
+  Archive
+    "second-archive-test"
+    "0.0.1"
+
+archives :: [Archive]
+archives = [firstArchive, secondArchive]

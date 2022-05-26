@@ -134,6 +134,7 @@ import Srclib.Types (
   renderLocator,
  )
 import Text.URI qualified as URI
+import Data.ByteString.Lazy (ByteString)
 
 -- | Represents error emitted via FOSSA instance.
 -- This data-shape corresponds to 'PublicFacingError' type in backend,
@@ -477,16 +478,17 @@ archiveUpload ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   SignedURL ->
   FilePath ->
-  m LbsResponse
+  m ByteString
 archiveUpload signedArcURI arcFile = fossaReq $ do
   let arcURL = URI.mkURI $ signedURL signedArcURI
 
   uri <- fromMaybeText ("Invalid URL: " <> signedURL signedArcURI) arcURL
   validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
 
-  context ("Uploading project archive to " <> signedURL signedArcURI) $ case validatedURI of
+  response <- context ("Uploading project archive to " <> signedURL signedArcURI) $ case validatedURI of
     Left (url, options) -> uploadArchiveRequest url options
     Right (url, options) -> uploadArchiveRequest url options
+  pure (responseBody response)
   where
     uploadArchiveRequest url options = reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
 
