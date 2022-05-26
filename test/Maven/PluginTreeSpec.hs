@@ -24,7 +24,7 @@ simpleArtifactString :: Text
 simpleArtifactString = "org.clojure:clojure:1.12.0-master-SNAPSHOT:compile "
 
 multiScopeArtifactString :: Text
-multiScopeArtifactString = "org.clojure:clojure:1.12.0-master-SNAPSHOT:compile/test "
+multiScopeArtifactString = "org.clojure:clojure:1.12.0-master-SNAPSHOT:compile/test"
 
 optionalArtifactString :: Text
 optionalArtifactString = "jakarta.mail:jakarta.mail-api:2.0.1:compile (optional)"
@@ -45,7 +45,7 @@ multiScopeTextArtifact =
     { artifactText = "org.clojure:clojure:1.12.0-master-SNAPSHOT"
     , scopes = ["compile", "test"]
     , children = []
-    -- , isOptional = False
+    , isOptional = False
     }
 
 multiScopeArtifact :: Artifact
@@ -83,30 +83,45 @@ parseTextArtifactSpec = fcontext "" $ do
 
 artifactWithChildren :: TextArtifact
 artifactWithChildren =
-  TextArtifact {
-  artifactText = "org.clojure:test.generative:1.0.0"
-  , scopes = ["test"]
-  , children = [
-      TextArtifact {
-          artifactText = "org.clojure:tools.namespace:1.0.0"
-          , scopes = ["test"]
-          , children = [ TextArtifact {
-                           artifactText = "org.clojure:java.classpath:1.0.0"
-                           , scopes = ["test"]
-                           , children = []}
-                       , 
-                         TextArtifact {
-                           artifactText = "org.clojure:tools.reader:1.3.2"
-                           , scopes = ["test"]
-                           , children = []
-                           }]
-          }
-      , TextArtifact {
-          artifactText = "org.foo:bar:1.0.0"
-          , scopes = ["compile"]
-          , children = []
-          }]
-  }
+  TextArtifact
+    { artifactText = "org.clojure:test.generative:1.0.0"
+    , scopes = ["test"]
+    , isOptional = False
+    , children =
+        [ TextArtifact
+            { artifactText = "org.clojure:tools.namespace:1.0.0"
+            , scopes = ["test"]
+            , isOptional = False
+            , children =
+                [ TextArtifact
+                    { artifactText = "org.clojure:java.classpath:1.0.0"
+                    , scopes = ["test"]
+                    , children = []
+                    , isOptional = False
+                    }
+                , TextArtifact
+                    { artifactText = "org.clojure:tools.reader:1.3.2"
+                    , scopes = ["test"]
+                    , children = []
+                    , isOptional = False
+                    }
+                ]
+            }
+        , TextArtifact
+            { artifactText = "org.foo:bar:1.0.0"
+            , scopes = ["compile"]
+            , isOptional = False
+            , children =
+                [ TextArtifact
+                    { artifactText = "org.baz:buzz:1.0.0"
+                    , scopes = ["test"]
+                    , children = []
+                    , isOptional = False
+                    }
+                ]
+            }
+        ]
+    }
 
 artifactTextWithChildren :: Text
 artifactTextWithChildren =
@@ -114,4 +129,10 @@ artifactTextWithChildren =
 +- org.clojure:tools.namespace:1.0.0:test
 |  +- org.clojure:java.classpath:1.0.0:test
 |  \- org.clojure:tools.reader:1.3.2:test
-\- org.foo:bar:1.0.0:compile |]
+\- org.foo:bar:1.0.0:compile
+   \- org.baz:buzz:1.0.0:test|]
+
+--   [r|org.clojure:test.generative:1.0.0:test
+-- \- org.foo:bar:1.0.0:compile
+--    \- org.baz:buzz:1.0.0:test |]
+

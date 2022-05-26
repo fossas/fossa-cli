@@ -6,14 +6,14 @@ module Strategy.Maven.PluginTree (
   parseArtifactChild,
 ) where
 
+import Control.Monad (void)
 import Data.Char (isSpace)
 import Data.Functor (($>))
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import Debug.Trace (traceShow)
-import Text.Megaparsec (Parsec, chunk, count, getSourcePos, many, sepBy, sourceColumn, takeP, takeWhile1P, try, unPos, (<|>))
-import Text.Megaparsec.Char (char, space1, spaceChar, string)
+import Text.Megaparsec (Parsec, chunk, count, eof, getSourcePos, sepBy, some, sourceColumn, takeWhile1P, takeWhileP, try, unPos, (<|>))
+import Text.Megaparsec.Char (char, space1, string)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 
 type Parser = Parsec Void Text
@@ -28,7 +28,7 @@ data Artifact = Artifact
   deriving (Show, Eq, Ord)
 
 lexeme :: Parser a -> Parser a
-lexeme = Lexer.lexeme space1
+lexeme = Lexer.lexeme (space1 <|> eof <|> fail "Failed to parse lexeme")
 
 readThruNextColon :: String -> Parser Text
 readThruNextColon name = takeWhile1P (Just name) (/= ':') <* char ':'
@@ -36,8 +36,8 @@ readThruNextColon name = takeWhile1P (Just name) (/= ':') <* char ':'
 scopeParse :: Parser [Text]
 scopeParse = sepBy (takeWhile1P (Just "scopes") (\c -> not (isSpace c || c == '/'))) (char '/')
 
-isOptional :: Parser Bool
-isOptional =
+parseIsOptional :: Parser Bool
+parseIsOptional =
   (chunk "(optional)" $> True)
     <|> pure False
 
@@ -49,40 +49,44 @@ parseArtifact =
     <*> readThruNextColon "artifactId"
     <*> readThruNextColon "artifactVersion"
     <*> scopeParse
-    <*> isOptional
+    <*> parseIsOptional
 
 data TextArtifact = TextArtifact
   { artifactText :: Text
   , scopes :: [Text]
+  , isOptional :: Bool
   , children :: [TextArtifact]
-  -- , isOptional :: Bool
   }
   deriving (Eq, Ord, Show)
 
+currentColumn :: Parser Int
+currentColumn = unPos . sourceColumn <$> getSourcePos
+
 parseArtifactChild ::
-  -- | Number of characters to consume to get to the level of this parse
+  -- | Column where we expect to be able to parse a child artifact
   Int ->
   Parser TextArtifact
-parseArtifactChild level =
-  try $
-    takeP (Just "Artifact prefix") level
-      *> lexeme (string "+-" <|> string "\\-")
-      *> parseLevelNTextArtifact
+parseArtifactChild prefixCount =
+  try $ do
+    void $ takeWhileP Nothing (\c -> c `notElem` ['\\', '+'])
+    pos <- currentColumn
+    if pos == prefixCount
+      then
+        lexeme (string "+-" <|> string "\\-")
+          *> parseTextArtifactAndChildren
+      else fail "can't parse child"
 
--- old version which tried to count abstract levels of indentation.
--- ((count level (lexeme $ char '|'))
---  <|>
--- (count (level * 3) spaceChar))
-
---             <|> chunk "\\-") *> (parseLevelNTextArtifact (succ level))
-
-parseLevelNTextArtifact :: Parser TextArtifact
-parseLevelNTextArtifact =
-  do startPos <- unPos . sourceColumn <$> getSourcePos
-     TextArtifact
-       <$> (Text.intercalate ":" <$> count 3 (readThruNextColon "artifactSpecifier"))
-       <*> lexeme scopeParse
-       <*> many (parseArtifactChild (startPos - 1))
+parseTextArtifactAndChildren :: Parser TextArtifact
+parseTextArtifactAndChildren =
+  do
+    startPos <- currentColumn
+    TextArtifact
+      <$> (Text.intercalate ":" <$> count 3 (readThruNextColon "artifactSpecifier"))
+      <*> lexeme scopeParse
+      <*> parseIsOptional
+      <*> ( some (parseArtifactChild startPos)
+              <|> pure []
+          )
 
 parseTextArtifact :: Parser TextArtifact
-parseTextArtifact = parseLevelNTextArtifact
+parseTextArtifact = parseTextArtifactAndChildren <* eof
