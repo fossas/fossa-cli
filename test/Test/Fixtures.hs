@@ -47,13 +47,13 @@ import Data.Text.Extra (showT)
 import Fossa.API.Types (Archive (..))
 import Fossa.API.Types qualified as API
 import Path (mkRelDir, parseAbsDir, (</>))
-import Srclib.Types
-  ( LicenseScanType (..)
-  , LicenseSourceUnit (..)
-  , Locator (..)
-  , SourceUnit (..)
-  , emptyLicenseUnit
-  )
+import Srclib.Types (
+  LicenseScanType (..),
+  LicenseSourceUnit (..),
+  Locator (..),
+  SourceUnit (..),
+  emptyLicenseUnit,
+ )
 import System.Directory (getTemporaryDirectory)
 import Text.URI.QQ (uri)
 import Types (GraphBreadth (..))
@@ -292,7 +292,7 @@ archives = [firstArchive, secondArchive]
 firstLicenseSourceUnit :: LicenseSourceUnit
 firstLicenseSourceUnit =
   LicenseSourceUnit
-    { licenseSourceUnitName = "vendor/foo"
+    { licenseSourceUnitName = "vendored/foo"
     , licenseSourceUnitType = CliLicenseScanned
     , licenseSourceUnitLicenseUnits = NE.fromList [emptyLicenseUnit]
     }
@@ -300,7 +300,7 @@ firstLicenseSourceUnit =
 secondLicenseSourceUnit :: LicenseSourceUnit
 secondLicenseSourceUnit =
   LicenseSourceUnit
-    { licenseSourceUnitName = "vendor/foo"
+    { licenseSourceUnitName = "vendored/foo"
     , licenseSourceUnitType = CliLicenseScanned
     , licenseSourceUnitLicenseUnits = NE.fromList [emptyLicenseUnit]
     }
