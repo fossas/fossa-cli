@@ -7,6 +7,7 @@ module App.Fossa.Config.Analyze (
   AnalyzeConfig (..),
   BinaryDiscovery (..),
   ExperimentalAnalyzeConfig (..),
+  ForceVendoredDependencyRescans (..),
   IATAssertion (..),
   DynamicLinkInspect (..),
   IncludeAll (..),
@@ -108,6 +109,7 @@ import Types (TargetFilter)
 
 -- CLI flags, for use with 'Data.Flag'
 data AllowNativeLicenseScan = AllowNativeLicenseScan deriving (Generic)
+data ForceVendoredDependencyRescans = ForceVendoredDependencyRescans deriving (Generic)
 
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
 data IncludeAll = IncludeAll deriving (Generic)
@@ -163,6 +165,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeIncludeAllDeps :: Flag IncludeAll
   , analyzeNoDiscoveryExclusion :: Flag NoDiscoveryExclusion
   , analyzeAllowNativeLicenseScan :: Flag AllowNativeLicenseScan
+  , analyzeForceVendoredDependencyRescans :: Flag ForceVendoredDependencyRescans
   , analyzeBranch :: Maybe Text
   , analyzeMetadata :: ProjectMetadata
   , analyzeOnlyTargets :: [TargetFilter]
@@ -223,6 +226,7 @@ data StandardAnalyzeConfig = StandardAnalyzeConfig
   , includeAllDeps :: Flag IncludeAll
   , noDiscoveryExclusion :: Flag NoDiscoveryExclusion
   , allowNativeLicenseScan :: Flag AllowNativeLicenseScan
+  , forceVendoredDependencyRescans :: Flag ForceVendoredDependencyRescans
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -254,6 +258,7 @@ cliParser =
     <*> flagOpt NoDiscoveryExclusion (long "debug-no-discovery-exclusion" <> help "Ignore filters during discovery phase.  This is for debugging only and may be removed without warning." <> hidden)
     -- Intentionally hidden until some critical bugs are addressed
     <*> flagOpt AllowNativeLicenseScan (long "experimental-native-license-scan" <> hidden)
+    <*> flagOpt ForceVendoredDependencyRescans (long "force-vendored-dependency-rescans" <> help "Force vendored dependencies to be rescanned even if the revision has been previously analyzed by FOSSA. This currently only works if the --experimental-native-license-scan flag is present." <> hidden)
     <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> many (option (eitherReader targetOpt) (long "only-target" <> help "Only scan these targets. See targets.only in the fossa.yml spec." <> metavar "PATH"))
@@ -399,6 +404,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure analyzeIncludeAllDeps
     <*> pure analyzeNoDiscoveryExclusion
     <*> pure analyzeAllowNativeLicenseScan
+    <*> pure analyzeForceVendoredDependencyRescans
 
 collectFilters ::
   ( Has Diagnostics sig m
