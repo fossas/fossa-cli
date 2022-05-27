@@ -1,7 +1,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.Fossa.LicenseScanner.LicenseScannerSpec (spec) where
+module App.Fossa.LicenseScannerSpec (spec) where
 
 import App.Fossa.LicenseScanner (combineLicenseUnits, licenseScanSourceUnit)
 import App.Fossa.VendoredDependency (VendoredDependencyScanMode (..))
