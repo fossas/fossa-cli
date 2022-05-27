@@ -15,7 +15,7 @@ import Test.Hspec (Spec, describe, runIO)
 import Test.MockApi (MockApi, alwaysReturns, returnsOnce, returnsOnceForAnyRequest)
 
 fixtureDir :: Path Rel Dir
-fixtureDir = $(mkRelDir "test/App/Fossa/VendoredDependency/testdata")
+fixtureDir = $(mkRelDir "test/App/Fossa/VendoredDependency/testdata/repo")
 
 spec :: Spec
 spec = do

@@ -22,7 +22,7 @@ import Srclib.Types (
 import Test.Effect (it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
-import Test.MockApi (MockApi, alwaysReturns, returnsOnce)
+import Test.MockApi (MockApi, alwaysReturns, returnsOnce, returnsOnceForAnyRequest)
 
 -- test data for combineLicenseUnits tests
 info :: LicenseUnitInfo
@@ -78,7 +78,7 @@ expectedCombinedUnit =
     }
 
 fixtureDir :: Path Rel Dir
-fixtureDir = $(mkRelDir "test/App/Fossa/LicenseScanner/testdata/repo")
+fixtureDir = $(mkRelDir "test/App/Fossa/VendoredDependency/testdata/repo")
 
 spec :: Spec
 spec = do
@@ -87,6 +87,7 @@ spec = do
       combineLicenseUnits [unitOne, unitTwo] `shouldBe` [expectedCombinedUnit]
     it "should not combine two units with different licenses" $
       combineLicenseUnits [unitOne, unitTwo{licenseUnitName = "AGPL"}] `shouldBe` [unitTwo{licenseUnitName = "AGPL"}, unitOne]
+
   describe "licenseScanSourceUnits" $ do
     currDir <- runIO getCurrentDir
     let scanDir = currDir </> fixtureDir
@@ -156,17 +157,17 @@ expectGetSignedUrl packageRevision = GetSignedLicenseScanUrl packageRevision `al
 
 expectEverythingScannedAlready :: Has MockApi sig m => m ()
 expectEverythingScannedAlready =
-  (GetAnalyzedRevisions Fixtures.vendoredDeps)
+  GetAnalyzedRevisions Fixtures.vendoredDeps
     `returnsOnce` map renderLocator (NE.toList Fixtures.locators)
 
 expectNothingScannedYet :: Has MockApi sig m => m ()
 expectNothingScannedYet =
-  (GetAnalyzedRevisions Fixtures.vendoredDeps)
+  GetAnalyzedRevisions Fixtures.vendoredDeps
     `returnsOnce` []
 
 expectAllScansInProgress :: Has MockApi sig m => m ()
 expectAllScansInProgress =
-  (GetAnalyzedRevisions Fixtures.vendoredDeps)
+  GetAnalyzedRevisions Fixtures.vendoredDeps
     `returnsOnce` []
 
 expectOneScanInProgress :: Has MockApi sig m => m ()
@@ -176,7 +177,7 @@ expectOneScanInProgress =
 
 expectUploadLicenseScanResult :: Has MockApi sig m => LicenseSourceUnit -> m ()
 expectUploadLicenseScanResult licenseUnit =
-  (UploadLicenseScanResult Fixtures.signedUrl licenseUnit) `returnsOnce` ()
+  (UploadLicenseScanResult Fixtures.signedUrl licenseUnit) `returnsOnceForAnyRequest` ()
 
 expectFinalizeScan :: Has MockApi sig m => [Archive] -> m ()
 expectFinalizeScan as =
