@@ -205,6 +205,7 @@ matchExpectation :: FossaApiClientF a -> ApiExpectation -> Maybe (ApiResult a)
 matchExpectation a@(AssertRevisionBinaries{}) (ApiExpectation _ requestExpectation b@(AssertRevisionBinaries{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(AssertUserDefinedBinaries{}) (ApiExpectation _ requestExpectation b@(AssertUserDefinedBinaries{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(FinalizeLicenseScan{}) (ApiExpectation _ requestExpectation b@(FinalizeLicenseScan{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetAnalyzedRevisions{}) (ApiExpectation _ requestExpectation b@(GetAnalyzedRevisions{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetApiOpts) (ApiExpectation _ requestExpectation b@(GetApiOpts) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetAttribution{}) (ApiExpectation _ requestExpectation b@(GetAttribution{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetIssues{}) (ApiExpectation _ requestExpectation b@(GetIssues{}) resp) = checkResult requestExpectation a b resp
