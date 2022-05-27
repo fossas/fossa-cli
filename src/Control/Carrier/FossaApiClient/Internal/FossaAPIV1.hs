@@ -69,6 +69,7 @@ import Data.Aeson (
 import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as C
+import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -511,16 +512,17 @@ archiveUpload ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   SignedURL ->
   FilePath ->
-  m LbsResponse
+  m ByteString
 archiveUpload signedArcURI arcFile = fossaReq $ do
   let arcURL = URI.mkURI $ signedURL signedArcURI
 
   uri <- fromMaybeText ("Invalid URL: " <> signedURL signedArcURI) arcURL
   validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
 
-  context ("Uploading project archive to " <> signedURL signedArcURI) $ case validatedURI of
+  response <- context ("Uploading project archive to " <> signedURL signedArcURI) $ case validatedURI of
     Left (url, options) -> uploadArchiveRequest url options
     Right (url, options) -> uploadArchiveRequest url options
+  pure (responseBody response)
   where
     uploadArchiveRequest url options = reqCb PUT url (ReqBodyFile arcFile) lbsResponse options (pure . requestEncoder)
 

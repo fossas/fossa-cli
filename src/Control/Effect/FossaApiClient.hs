@@ -44,8 +44,8 @@ import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
 import Data.ByteString.Char8 qualified as C8
+import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Text (Text)
 import Fossa.API.Types (
@@ -62,7 +62,6 @@ import Fossa.API.Types (
   SignedURL,
   UploadResponse,
  )
-import Network.HTTP.Req (LbsResponse)
 import Path (File, Path, Rel)
 import Srclib.Types (LicenseSourceUnit, Locator, SourceUnit)
 
@@ -101,9 +100,9 @@ data FossaApiClientF a where
   UploadAnalysis ::
     ProjectRevision ->
     ProjectMetadata ->
-    NE.NonEmpty SourceUnit ->
+    NonEmpty SourceUnit ->
     FossaApiClientF UploadResponse
-  UploadArchive :: SignedURL -> FilePath -> FossaApiClientF LbsResponse
+  UploadArchive :: SignedURL -> FilePath -> FossaApiClientF ByteString
   UploadContainerScan ::
     ProjectRevision ->
     ProjectMetadata ->
@@ -134,7 +133,7 @@ getApiOpts :: (Has FossaApiClient sig m) => m ApiOpts
 getApiOpts = sendSimple GetApiOpts
 
 -- | Uploads the results of an analysis and associates it to a project
-uploadAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NE.NonEmpty SourceUnit -> m UploadResponse
+uploadAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NonEmpty SourceUnit -> m UploadResponse
 uploadAnalysis revision metadata units = sendSimple (UploadAnalysis revision metadata units)
 
 -- | Uploads results of container analysis to a project
@@ -163,7 +162,7 @@ getAttribution revision format = sendSimple $ GetAttribution revision format
 getSignedUploadUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
 getSignedUploadUrl = sendSimple . GetSignedUploadUrl
 
-uploadArchive :: Has FossaApiClient sig m => SignedURL -> FilePath -> m LbsResponse
+uploadArchive :: Has FossaApiClient sig m => SignedURL -> FilePath -> m ByteString
 uploadArchive dest path = sendSimple (UploadArchive dest path)
 
 queueArchiveBuild :: Has FossaApiClient sig m => Archive -> m (Maybe C8.ByteString)

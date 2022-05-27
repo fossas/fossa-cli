@@ -26,6 +26,7 @@ import Control.Effect.FossaApiClient (PackageRevision (..))
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Data.ByteString.Char8 qualified as C8
+import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Fossa.API.Types (
@@ -39,7 +40,6 @@ import Fossa.API.Types (
   SignedURL,
   UploadResponse,
  )
-import Network.HTTP.Req (LbsResponse)
 import Srclib.Types (Locator, SourceUnit, renderLocator)
 
 -- Fetches an organization from the API
@@ -177,6 +177,6 @@ uploadArchive ::
   ) =>
   SignedURL ->
   FilePath ->
-  m LbsResponse
+  m ByteString
 uploadArchive =
   API.archiveUpload
