@@ -243,6 +243,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
       allowNativeLicenseScan = Config.allowNativeLicenseScan cfg
+      forceVendoredDependencyRescans = Config.forceVendoredDependencyRescans cfg
       BaseDir basedir = Config.baseDir cfg
       destination = Config.scanDestination cfg
       filters = Config.filterSet cfg
@@ -278,7 +279,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         then do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure Nothing
-        else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir maybeApiOpts allowNativeLicenseScan
+        else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir maybeApiOpts allowNativeLicenseScan forceVendoredDependencyRescans
   let additionalSourceUnits :: [SourceUnit]
       additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults, dynamicLinkedResults]
   traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults, binarySearchResults, manualSrcUnits, dynamicLinkedResults]

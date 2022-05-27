@@ -382,6 +382,8 @@ logSkippedDeps needScanningDeps skippedDeps scanMode =
     (_, SkippingNotSupported) -> do
       logDebug "This version of the FOSSA service does not support enumerating previously scanned vendored dependencies."
       logDebug "Performing a full scan of all vendored dependencies even if they have been scanned previously."
+    (_, SkippingDisabledViaFlag) ->
+      logDebug "The --force-vendored-dependency-rescans flag was used, so performing a full scan of all vendored dependencies even if they have been scanned previously."
     (NeedScanningDeps [], SkipPreviouslyScanned) -> do
       logDebug "All of the current vendored dependencies have been previously scanned, reusing previous results."
     (_, SkipPreviouslyScanned) -> do
