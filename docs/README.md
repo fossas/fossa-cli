@@ -41,6 +41,8 @@ Walkthrough guides explain how to accomplish specific tasks. They also include t
 
 - [Integrating a project](./walkthroughs/integrating.md)
 - [Debugging a strategy](./walkthroughs/debugging-your-integration.md)
+- [Analysis target configuration](./walkthroughs/analysis-target-configuration.md)
+- [Custom integration](./walkthroughs/custom-integrating-with-bower-example.md)
 
 ## Features
 
