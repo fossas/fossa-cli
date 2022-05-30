@@ -27,7 +27,7 @@ instance ToDiagnostic MaybeWithoutDependencyTreeTask where
       [ "We could not perform dynamic sbt analysis via sbt dependencyTree"
       , indent 2 $
           vsep
-            [ "Ensure you can run sbt dependencyTree. If you are using sbt v1.4.0 or older"
+            [ "Ensure you can run sbt dependencyTree. If you are using older version than sbt v1.4.0 (e.g. v1.3.13)"
             , "please install following plugin prior to running fossa:"
             , indent 2 $ pretty sbtDepsGraphPluginUrl
             , ""
