@@ -22,11 +22,11 @@ Directories that contain `build.sbt` files are treated as sbt projects
 
 ## Strategy: `sbt dependencyTree`
 
-1. From generated pom file, identify project name via, `<name>` attribute.
-2. Perform `sbt $project/dependencyTree` and parse it's output to create dependency graph
+1. From the generated pom file, identify the project name via the `<name>` attribute.
+2. Perform `sbt $project/dependencyTree` and parse its output to create a dependency graph
 
-With [sbt 1.4.0 release](https://www.scala-sbt.org/1.x/docs/sbt-1.4-Release-Notes.html#sbt-dependency-graph+is+in-sourced), `dependencyTree` command is available by default. If you are using
-older sbt version, you can install following plugin: https://github.com/sbt/sbt-dependency-graph, which will also enable fossa-cli to work with `dependencyTree` task.
+With [sbt 1.4.0 release](https://www.scala-sbt.org/1.x/docs/sbt-1.4-Release-Notes.html#sbt-dependency-graph+is+in-sourced), the `dependencyTree` command is available by default. If you are using
+an older sbt version, you can install the following plugin: https://github.com/sbt/sbt-dependency-graph. This will also enable fossa-cli to work with the `dependencyTree` task.
 
 For sbt < 1.3:
 ```
