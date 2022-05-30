@@ -58,7 +58,7 @@ You can also use the `-s` flag, to specify which CLI version to install. For ins
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash -s -- v3.1.1
 ```
 
-Likewise, you can download FOSSA CLI binary in specific directory, instead of `/usr/local/bin` with `-b` flag. For example,
+Likewise, you can download FOSSA CLI binary in a specific directory, instead of default `/usr/local/bin` with `-b` flag. For example,
 following installs CLI v3.1.1 in current working directory:
 ```bash
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash -s -- -b . v3.1.1
