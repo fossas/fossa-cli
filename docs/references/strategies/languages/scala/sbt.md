@@ -34,8 +34,8 @@ For sbt < 1.3:
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.10.0-RC1")
 ```
 
-> Unfortunately, `sbt dependencyTree` command does not include version classifier in it's output. Further, 
-> currently we do not support this strategy for multi-project builds due [inconsistent reporting defect in sbt](https://github.com/sbt/sbt/issues/6905)
+> Unfortunately, the `sbt dependencyTree` command does not include version classifier in its output. Further, 
+> currently we do not support this strategy for multi-project builds due an [inconsistent reporting defect in sbt](https://github.com/sbt/sbt/issues/6905).
 
 ## Strategy: `pom`
 
