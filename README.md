@@ -49,22 +49,7 @@ Alternatively, install using [Scoop](https://scoop.sh/):
 scoop install fossa
 ```
 
-### Installing manually
-
-You can install the FOSSA CLI releases manually by downloading the latest release from [GitHub Releases](https://github.com/fossas/fossa-cli/releases) and extracting the binary to your `$PATH`.
-
-You can also use the `-s` flag, to specify which CLI version to install. For instance following invocation, installs FOSSA CLI v3.1.1:
-```bash
-curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash -s -- v3.1.1
-```
-
-Likewise, you can download FOSSA CLI binary in a specific directory, instead of default `/usr/local/bin` with `-b` flag. For example,
-following installs CLI v3.1.1 in current working directory:
-```bash
-curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash -s -- -b . v3.1.1
-```
-
-To install FOSSA CLI 1.x with install script please refer to: [installing 1.x guide](./docs/install-v1.md) 
+Please refer to detailed walkthrough [Installing FOSSA CLI](./docs/walkthroughs/installing-fossa-cli.md), for installing [FOSSA CLI 1.x](./docs/walkthroughs/installing-fossa-cli.md#installing-cli-1x-using-installation-script) and using [GitHub Releases](https://github.com/fossas/fossa-cli/releases) to install [FOSSA cli manually](./docs/walkthroughs/installing-fossa-cli.md#installing-manually-with-github-releases).
 
 ## Getting Started
 
