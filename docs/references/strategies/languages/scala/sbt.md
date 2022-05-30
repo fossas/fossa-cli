@@ -2,10 +2,10 @@
 
 While the other analysis strategies for `gradle` and `maven` offer some scala project coverage, scala projects overwhelmingly use the build tool `sbt`.
 
-| Strategy           | Direct Deps        | Deep Deps          | Edges              | Other Limitations                                                                                       |
-| ------------------ | ------------------ | ------------------ | ------------------ | ------------------------------------------------------------------------------------------------------- |
-| sbt dependencyTree | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | Requires sbt v1.4 or greater. Versions do not include classifiers. Does not support multi-project build |
-| pom                | :heavy_check_mark: | :x:                | :x:                |                                                                                                         |
+| Strategy           | Direct Deps        | Deep Deps          | Edges              | Other Limitations                                                                                                                                      |
+| ------------------ | ------------------ | ------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| sbt dependencyTree | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | Requires sbt version greater than v1.3.13 or `sbt-dependency-graph` plugin. Versions do not include classifiers. Does not support multi-project build. |
+| pom                | :heavy_check_mark: | :x:                | :x:                |                                                                                                                                                        |
 
  # Requirements
 
