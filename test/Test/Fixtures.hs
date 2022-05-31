@@ -28,6 +28,7 @@ module Test.Fixtures (
   secondArchive,
   vendoredDeps,
   firstVendoredDep,
+  secondVendoredDep,
   locators,
   firstLocator,
   secondLocator,

@@ -5,6 +5,10 @@ module App.Fossa.LicenseScanner (
   licenseScanSourceUnit,
   combineLicenseUnits,
   scanVendoredDep,
+  skippedDepsDebugLog,
+  SkippableDeps (..),
+  NeedScanningDeps (..),
+  SkippedDepsLogMsg (..),
 ) where
 
 import App.Fossa.Config.Analyze (ForceVendoredDependencyRescans (ForceVendoredDependencyRescans))
