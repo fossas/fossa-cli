@@ -3,6 +3,7 @@
 ## Unreleased
 - Vendor Dependencies: Considers `licence` and `license` equivalent when performing native license scan.
 - CLI-side license scans will skip rescanning revisions that are already known to FOSSA. This can be overridden by using the `--force-vendored-dependency-rescans` flag.
+- Vendor Dependencies: Native license scanning works in alpine linux without additional dependencies ([#949](https://github.com/fossas/fossa-cli/pull/949)).
 - Adds copyright information to attribution reports in the JSON output.
 ## v3.3.0
 - Telemetry: CLI collects telemetry by default. ([#936](https://github.com/fossas/fossa-cli/pull/936))
