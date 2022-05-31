@@ -5,10 +5,6 @@ module App.Fossa.LicenseScanner (
   licenseScanSourceUnit,
   combineLicenseUnits,
   scanVendoredDep,
-  skippedDepsDebugLog,
-  SkippableDeps (..),
-  NeedScanningDeps (..),
-  SkippedDepsLogMsg (..),
 ) where
 
 import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)
@@ -16,6 +12,8 @@ import App.Fossa.RunThemis (
   execThemis,
  )
 import App.Fossa.VendoredDependency (
+  NeedScanningDeps (..),
+  SkippableDeps (..),
   VendoredDependency (..),
   VendoredDependencyScanMode (..),
   arcToLocator,
@@ -23,6 +21,7 @@ import App.Fossa.VendoredDependency (
   dedupVendoredDeps,
   forceVendoredToArchive,
   hashFile,
+  skippedDepsDebugLog,
  )
 import Control.Carrier.Finally (Finally, runFinally)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (renderLocatorUrl)
@@ -51,7 +50,7 @@ import Data.Text.Extra (showT)
 import Discovery.Archive (withArchive')
 import Discovery.Walk (WalkStep (WalkContinue, WalkStop), walk')
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, logDebug, vsep)
+import Effect.Logger (Logger, logDebug)
 import Effect.ReadFS (
   Has,
   ReadFS,
@@ -91,39 +90,6 @@ instance ToDiagnostic LicenseScanErr where
     Nothing -> "fossa-cli does not support archives without file extensions: " <> pretty (toString path)
 
 newtype ScannableArchive = ScannableArchive {scanFile :: Path Abs File} deriving (Eq, Ord, Show)
-
-newtype NeedScanningDeps = NeedScanningDeps {needScanningDeps :: [VendoredDependency]}
-  deriving (Eq, Ord, Show)
-
-newtype SkippableDeps = SkippableDeps {skippableDeps :: [VendoredDependency]}
-  deriving (Eq, Ord, Show)
-
--- Debug logs giving info about which vendored deps were actually scanned
-data SkippedDepsLogMsg
-  = SkippingUnsupportedMsg
-  | SkippingDisabledViaFlagMsg
-  | AllDepsPreviouslyScannedMsg
-  | AllDepsNeedScanningMsg
-  | SomeDepsNeedScanningMsg SkippableDeps
-  deriving (Eq, Ord, Show)
-
-instance Pretty SkippedDepsLogMsg where
-  pretty SkippingUnsupportedMsg =
-    vsep
-      [ "This version of the FOSSA service does not support enumerating previously scanned vendored dependencies."
-      , "Performing a full scan of all vendored dependencies even if they have been scanned previously."
-      ]
-  pretty SkippingDisabledViaFlagMsg =
-    "The --force-vendored-dependency-rescans flag was used, so performing a full scan of all vendored dependencies even if they have been scanned previously."
-  pretty AllDepsPreviouslyScannedMsg =
-    "All of the current vendored dependencies have been previously scanned, reusing previous results."
-  pretty AllDepsNeedScanningMsg =
-    "None of the current vendored dependencies have been previously scanned. License scanning all vendored dependencies"
-  pretty (SomeDepsNeedScanningMsg skippedDeps) =
-    vsep
-      [ "Some of the current vendored dependencies have already been scanned by FOSSA."
-      , "Reusing previous results for the following vendored dependencies: " <> (pretty . show $ skippedDeps)
-      ]
 
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
@@ -401,17 +367,6 @@ ensureVendoredDepVersion baseDir vdep = do
     Nothing -> sendIO . withSystemTempDir "fossa-temp" . calculateVendoredHash baseDir $ vendoredPath vdep
     Just version -> pure version
   pure vdep{vendoredVersion = Just depVersion}
-
-skippedDepsDebugLog :: NeedScanningDeps -> SkippableDeps -> VendoredDependencyScanMode -> SkippedDepsLogMsg
-skippedDepsDebugLog needScanningDeps skippedDeps scanMode =
-  case (needScanningDeps, scanMode) of
-    (_, SkippingNotSupported) -> SkippingUnsupportedMsg
-    (_, SkippingDisabledViaFlag) -> SkippingDisabledViaFlagMsg
-    (NeedScanningDeps [], SkipPreviouslyScanned) -> AllDepsPreviouslyScannedMsg
-    (_, SkipPreviouslyScanned) -> do
-      case skippedDeps of
-        SkippableDeps [] -> AllDepsNeedScanningMsg
-        _ -> SomeDepsNeedScanningMsg skippedDeps
 
 -- | Split the supplied vendored dependencies into those that need scanning and those that do not.
 --   We can skip scanning a vendored dependency if an analyzed revision for that vendored dependency already exists on Core.
