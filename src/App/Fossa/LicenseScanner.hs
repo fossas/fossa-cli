@@ -49,7 +49,7 @@ import Data.Text.Extra (showT)
 import Discovery.Archive (withArchive')
 import Discovery.Walk (WalkStep (WalkContinue, WalkStop), walk')
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, logDebug)
+import Effect.Logger (Logger, logDebug, vsep)
 import Effect.ReadFS (
   Has,
   ReadFS,
@@ -95,6 +95,33 @@ newtype NeedScanningDeps = NeedScanningDeps {needScanningDeps :: [VendoredDepend
 
 newtype SkippableDeps = SkippableDeps {skippableDeps :: [VendoredDependency]}
   deriving (Eq, Ord, Show)
+
+-- Debug logs giving info about which vendored deps were actually scanned
+data SkippedDepsLogMsg
+  = SkippingUnsupportedMsg
+  | SkippingDisabledViaFlagMsg
+  | AllDepsPreviouslyScannedMsg
+  | AllDepsNeedScanningMsg
+  | SomeDepsNeedScanningMsg SkippableDeps
+  deriving (Eq, Ord, Show)
+
+instance Pretty SkippedDepsLogMsg where
+  pretty SkippingUnsupportedMsg =
+    vsep
+      [ "This version of the FOSSA service does not support enumerating previously scanned vendored dependencies."
+      , "Performing a full scan of all vendored dependencies even if they have been scanned previously."
+      ]
+  pretty SkippingDisabledViaFlagMsg =
+    "The --force-vendored-dependency-rescans flag was used, so performing a full scan of all vendored dependencies even if they have been scanned previously."
+  pretty AllDepsPreviouslyScannedMsg =
+    "All of the current vendored dependencies have been previously scanned, reusing previous results."
+  pretty AllDepsNeedScanningMsg =
+    "None of the current vendored dependencies have been previously scanned. License scanning all vendored dependencies"
+  pretty (SomeDepsNeedScanningMsg skippedDeps) =
+    vsep
+      [ "Some of the current vendored dependencies have already been scanned by FOSSA."
+      , "Reusing previous results for the following vendored dependencies: " <> (pretty . show $ skippedDeps)
+      ]
 
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
@@ -340,7 +367,8 @@ licenseScanSourceUnit vendoredDependencyScanMode forceRebuild baseDir vendoredDe
     if vendoredDependencyScanMode == SkipPreviouslyScanned
       then findDepsThatNeedScanning uniqDepsWithVersions orgId
       else pure (NeedScanningDeps $ NE.toList uniqDepsWithVersions, SkippableDeps [])
-  logSkippedDeps needScanning skippable vendoredDependencyScanMode
+
+  logDebug . pretty $ skippedDepsDebugLog needScanning skippable vendoredDependencyScanMode
 
   -- At this point, we have a good list of deps, so go for it.
   -- If none of the dependencies need scanning we still need to do `finalizeLicenseScan`, so keep going
@@ -373,28 +401,16 @@ ensureVendoredDepVersion baseDir vdep = do
     Just version -> pure version
   pure vdep{vendoredVersion = Just depVersion}
 
--- Debug logs giving info about which vendored deps were actually scanned
-logSkippedDeps ::
-  Has Logger sig m =>
-  NeedScanningDeps ->
-  SkippableDeps ->
-  VendoredDependencyScanMode ->
-  m ()
-logSkippedDeps needScanningDeps skippedDeps scanMode =
+skippedDepsDebugLog :: NeedScanningDeps -> SkippableDeps -> VendoredDependencyScanMode -> SkippedDepsLogMsg
+skippedDepsDebugLog needScanningDeps skippedDeps scanMode =
   case (needScanningDeps, scanMode) of
-    (_, SkippingNotSupported) -> do
-      logDebug "This version of the FOSSA service does not support enumerating previously scanned vendored dependencies."
-      logDebug "Performing a full scan of all vendored dependencies even if they have been scanned previously."
-    (_, SkippingDisabledViaFlag) ->
-      logDebug "The --force-vendored-dependency-rescans flag was used, so performing a full scan of all vendored dependencies even if they have been scanned previously."
-    (NeedScanningDeps [], SkipPreviouslyScanned) -> do
-      logDebug "All of the current vendored dependencies have been previously scanned, reusing previous results."
+    (_, SkippingNotSupported) -> SkippingUnsupportedMsg
+    (_, SkippingDisabledViaFlag) -> SkippingDisabledViaFlagMsg
+    (NeedScanningDeps [], SkipPreviouslyScanned) -> AllDepsPreviouslyScannedMsg
     (_, SkipPreviouslyScanned) -> do
       case skippedDeps of
-        SkippableDeps [] -> logDebug "None of the current vendored dependencies have been previously scanned. License scanning all vendored dependencies"
-        _ -> do
-          logDebug "Some of the current vendored dependencies have already been scanned by FOSSA."
-          logDebug . pretty $ "Reusing previous results for the following vendored dependencies: " <> show skippedDeps
+        SkippableDeps [] -> AllDepsNeedScanningMsg
+        _ -> SomeDepsNeedScanningMsg skippedDeps
 
 -- | Split the supplied vendored dependencies into those that need scanning and those that do not.
 --   We can skip scanning a vendored dependency if an analyzed revision for that vendored dependency already exists on Core.
