@@ -1,7 +1,8 @@
 # FOSSA CLI Changelog
 
 ## Unreleased
-- Vendor Dependencies: Considers `licence` and `license` equivalent when performing native license scan.
+- Vendor Dependencies: Considers `licence` and `license` equivalent when performing native license scan ([#939](https://github.com/fossas/fossa-cli/pull/939)).
+- Vendor Dependencies: Native license scanning works in alpine linux without additional dependencies ([#949](https://github.com/fossas/fossa-cli/pull/949)).
 - Adds copyright information to attribution reports in the JSON output.
 
 ## v3.3.0
