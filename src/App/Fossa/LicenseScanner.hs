@@ -320,10 +320,11 @@ licenseScanSourceUnit ::
   , Has FossaApiClient sig m
   ) =>
   VendoredDependencyScanMode ->
+  Bool ->
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
   m (NonEmpty Locator)
-licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
+licenseScanSourceUnit vendoredDependencyScanMode forceRebuild baseDir vendoredDeps = do
   uniqDeps <- dedupVendoredDeps vendoredDeps
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
@@ -349,7 +350,7 @@ licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
 
   -- finalizeLicenseScan takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
-  finalizeLicenseScan $ ArchiveComponents $ NE.toList archives
+  finalizeLicenseScan $ ArchiveComponents (NE.toList archives) forceRebuild
 
   let archivesWithOrganization :: OrgId -> NonEmpty Archive -> NonEmpty Archive
       archivesWithOrganization org = NE.map $ includeOrgId org

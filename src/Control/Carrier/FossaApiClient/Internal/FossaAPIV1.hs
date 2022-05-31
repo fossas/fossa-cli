@@ -434,7 +434,7 @@ archiveBuildUpload apiOpts archive = runEmpty $
     let opts = "dependency" =: True <> "rawLicenseScan" =: True
     -- The API route expects an array of archives, but doesn't properly handle multiple archives so we upload
     -- an array of a single archive.
-    let archiveProjects = ArchiveComponents [archive]
+    let archiveProjects = ArchiveComponents [archive] False
     -- The response appears to either be "Created" for new builds, or an error message for existing builds.
     -- Making the actual return value of "Created" essentially worthless.
     resp <-
@@ -447,7 +447,6 @@ archiveBuildUpload apiOpts archive = runEmpty $
 licenseScanFinalizeUrl :: Url 'Https -> Url 'Https
 licenseScanFinalizeUrl baseUrl = baseUrl /: "api" /: "license_scan" /: "finalize"
 
--- TODO: /license_scan/finalize just returns a 201 if there's a success. No need to parse the body
 licenseScanFinalize ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   ApiOpts ->
