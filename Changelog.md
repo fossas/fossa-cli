@@ -2,6 +2,7 @@
 
 ## Unreleased
 - Vendor Dependencies: Considers `licence` and `license` equivalent when performing native license scan.
+- Adds copyright information to attribution reports in the JSON output.
 
 ## v3.3.0
 - Telemetry: CLI collects telemetry by default. ([#936](https://github.com/fossas/fossa-cli/pull/936))
