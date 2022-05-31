@@ -8,7 +8,7 @@ import App.Fossa.VendoredDependency (VendoredDependencyScanMode (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (..))
 import Data.List.NonEmpty qualified as NE
-import Fossa.API.Types (Archive, ArchiveComponents (ArchiveComponents, archives))
+import Fossa.API.Types (Archive, ArchiveComponents (ArchiveComponents, archives, forceRebuild))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
 import Srclib.Types (
@@ -97,7 +97,7 @@ spec = do
       expectGetOrganization
       expectEverythingScannedAlready
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned False scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should scan all if Core does not know about the revisions" $ do
@@ -109,7 +109,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned False scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should scan all if the revisions are still being scanned" $ do
@@ -121,7 +121,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned False scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should scan one if one revision is still being scanned" $ do
@@ -131,7 +131,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "first-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.firstLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned False scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should always scan all if vendor dependency skipping is not supported" $ do
@@ -142,7 +142,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkippingNotSupported scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkippingNotSupported False scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
 expectGetApiOpts :: Has MockApi sig m => m ()
@@ -181,4 +181,4 @@ expectUploadLicenseScanResult licenseUnit =
 
 expectFinalizeScan :: Has MockApi sig m => [Archive] -> m ()
 expectFinalizeScan as =
-  (FinalizeLicenseScan ArchiveComponents{archives = as}) `returnsOnce` ()
+  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = False}) `returnsOnce` ()
