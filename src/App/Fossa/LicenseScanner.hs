@@ -7,6 +7,7 @@ module App.Fossa.LicenseScanner (
   scanVendoredDep,
 ) where
 
+import App.Fossa.Config.Analyze (ForceVendoredDependencyRescans (ForceVendoredDependencyRescans))
 import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)
 import App.Fossa.RunThemis (
   execThemis,
@@ -35,6 +36,7 @@ import Control.Effect.FossaApiClient (
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
+import Data.Flag (Flag, fromFlag)
 import Data.HashMap.Strict qualified as HM
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -320,7 +322,7 @@ licenseScanSourceUnit ::
   , Has FossaApiClient sig m
   ) =>
   VendoredDependencyScanMode ->
-  Bool ->
+  Flag ForceVendoredDependencyRescans ->
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
   m (NonEmpty Locator)
@@ -350,7 +352,7 @@ licenseScanSourceUnit vendoredDependencyScanMode forceRebuild baseDir vendoredDe
 
   -- finalizeLicenseScan takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
-  finalizeLicenseScan $ ArchiveComponents (NE.toList archives) forceRebuild
+  finalizeLicenseScan $ ArchiveComponents (NE.toList archives) (fromFlag ForceVendoredDependencyRescans forceRebuild)
 
   let archivesWithOrganization :: OrgId -> NonEmpty Archive -> NonEmpty Archive
       archivesWithOrganization org = NE.map $ includeOrgId org

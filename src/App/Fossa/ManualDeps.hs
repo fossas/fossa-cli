@@ -184,15 +184,14 @@ scanAndUpload root vdeps allowNative forceRescans = do
           -- TODO: Add a --forbid-archive-upload CLI flag
             logWarn "Server does not support native license scanning" $> ArchiveUpload
       else pure ArchiveUpload
-  let forceRebuild = fromFlag ForceVendoredDependencyRescans forceRescans
   let vendoredDependencyScanMode =
-        case (orgSupportsAnalyzedRevisionsQuery org, forceRebuild) of
+        case (orgSupportsAnalyzedRevisionsQuery org, fromFlag ForceVendoredDependencyRescans forceRescans) of
           (False, _) -> SkippingNotSupported
           (True, True) -> SkippingDisabledViaFlag
           (True, False) -> SkipPreviouslyScanned
   let scanner = case archiveOrCLI of
         ArchiveUpload -> archiveUploadSourceUnit
-        CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode forceRebuild
+        CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode forceRescans
   scanner root vdeps
 
 -- | Used when users run `fossa analyze -o` and do not upload their source units.
