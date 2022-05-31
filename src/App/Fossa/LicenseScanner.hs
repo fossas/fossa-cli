@@ -60,7 +60,7 @@ import Effect.ReadFS (
  )
 import Fossa.API.Types (
   Archive (Archive, archiveName),
-  ArchiveComponents (ArchiveComponents),
+  ArchiveComponents (..),
   OrgId,
   Organization (organizationId),
  )
@@ -381,7 +381,7 @@ licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
 
   -- finalizeLicenseScan takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
-  finalizeLicenseScan $ ArchiveComponents (NE.toList archives) (vendoredDependencyScanMode == SkippingDisabledViaFlag)
+  finalizeLicenseScan $ ArchiveComponents{archives = NE.toList archives, forceRebuild = vendoredDependencyScanMode == SkippingDisabledViaFlag}
 
   let archivesWithOrganization :: OrgId -> NonEmpty Archive -> NonEmpty Archive
       archivesWithOrganization org = NE.map $ includeOrgId org

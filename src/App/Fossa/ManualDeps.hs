@@ -186,6 +186,7 @@ scanAndUpload root vdeps allowNative forceRescans = do
       else pure ArchiveUpload
   let vendoredDependencyScanMode =
         case (orgSupportsAnalyzedRevisionsQuery org, fromFlag ForceVendoredDependencyRescans forceRescans) of
+          -- The --force-vendored-dependency-rescans flag should win so that we can force rebuilds even if Core does not support skipping
           (_, True) -> SkippingDisabledViaFlag
           (False, False) -> SkippingNotSupported
           (True, False) -> SkipPreviouslyScanned
