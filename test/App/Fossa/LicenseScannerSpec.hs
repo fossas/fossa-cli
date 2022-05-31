@@ -85,6 +85,9 @@ fixtureDir = $(mkRelDir "test/App/Fossa/VendoredDependency/testdata/repo")
 noForceRescans :: Data.Flag.Flag ForceVendoredDependencyRescans
 noForceRescans = (toFlag ForceVendoredDependencyRescans False)
 
+forceRescans :: Data.Flag.Flag ForceVendoredDependencyRescans
+forceRescans = (toFlag ForceVendoredDependencyRescans True)
+
 spec :: Spec
 spec = do
   describe "combineLicenseUnits" $ do
@@ -148,6 +151,17 @@ spec = do
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
       locators <- licenseScanSourceUnit SkippingNotSupported noForceRescans scanDir Fixtures.vendoredDeps
+      locators `shouldBe'` Fixtures.locators
+
+    it' "should always scan all if the --force-vendor-dependency-rescans flag is used" $ do
+      expectGetApiOpts
+      expectGetOrganization
+      expectGetSignedUrl PackageRevision{packageName = "first-archive-test", packageVersion = "0.0.1"}
+      expectUploadLicenseScanResult Fixtures.firstLicenseSourceUnit
+      expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
+      expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
+      expectFinalizeScan Fixtures.archives
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned forceRescans scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
 expectGetApiOpts :: Has MockApi sig m => m ()
