@@ -93,11 +93,11 @@ spec = do
       skippedDepsDebugLog (NeedScanningDeps []) (SkippableDeps []) SkippingNotSupported `shouldBe` SkippingUnsupportedMsg
     it "should return SkippingDisabledViaFlagMsg when skipping is disabled" $
       skippedDepsDebugLog (NeedScanningDeps []) (SkippableDeps []) SkippingDisabledViaFlag `shouldBe` SkippingDisabledViaFlagMsg
-    it "should return AllDepsPreviouslyScannedMsg when skipping is supported and all deps have been scanned" $
-      skippedDepsDebugLog (NeedScanningDeps []) (SkippableDeps []) SkipPreviouslyScanned `shouldBe` AllDepsPreviouslyScannedMsg
-    it "should return AllDepsNeedScanningMsg when skipping is supported and all deps have been scanned" $
+    it "should return AllDepsPreviouslyScannedMsg when skipping is supported and nothing needs scanning" $
+      skippedDepsDebugLog (NeedScanningDeps []) (SkippableDeps [Fixtures.firstVendoredDep]) SkipPreviouslyScanned `shouldBe` AllDepsPreviouslyScannedMsg
+    it "should return AllDepsNeedScanningMsg when skipping is supported and all deps need to be scanned" $
       skippedDepsDebugLog (NeedScanningDeps [Fixtures.firstVendoredDep]) (SkippableDeps []) SkipPreviouslyScanned `shouldBe` AllDepsNeedScanningMsg
-    it "should return SomeDepsNeedScanningMsg when skipping is supported and all deps have been scanned" $
+    it "should return SomeDepsNeedScanningMsg when skipping is supported and some deps need scanning but some deps do not need scanning" $
       skippedDepsDebugLog (NeedScanningDeps [Fixtures.firstVendoredDep]) (SkippableDeps [Fixtures.secondVendoredDep]) SkipPreviouslyScanned
         `shouldBe` SomeDepsNeedScanningMsg (SkippableDeps [Fixtures.secondVendoredDep])
 
