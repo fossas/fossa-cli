@@ -49,6 +49,7 @@ genAttribution =
     <*> Gen.list defaultRange genDependency
     <*> Gen.list defaultRange genDependency
     <*> genLicenseMap
+    <*> Gen.maybe genLicenseDetailsMap
 
 tuplify :: Monad m => m a -> m b -> m (a, b)
 tuplify = liftA2 (,)
@@ -59,14 +60,22 @@ genLicenseMap = do
   let genContents = LicenseContents <$> arbitraryText
   Gen.map defaultRange $ tuplify genName genContents
 
+genLicenseDetailsMap :: Gen (Map LicenseName LicenseDetails)
+genLicenseDetailsMap =
+  let genName = LicenseName <$> arbitraryText
+      genContents = LicenseContents <$> arbitraryText
+      genCopyrights = Gen.list defaultRange (LicenseCopyright <$> arbitraryText)
+      genDetails = LicenseDetails <$> genContents <*> genCopyrights
+   in Gen.map defaultRange $ tuplify genName genDetails
+
 arbitraryText :: Gen Text
 arbitraryText = Gen.text (Range.linear 3 25) Gen.unicodeAll
 
 spec :: Spec
 spec =
-  describe "Attribution ToJSON/FromJSON instances" $
+  describe "Attribution ToJSON/FromJSON" $
     modifyMaxSuccess (const 20) $
-      it "are roundtrippable" $
+      it "is round-trip-able" $
         hedgehog $
           do
             attr <- forAll genAttribution
