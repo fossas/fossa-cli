@@ -186,12 +186,12 @@ scanAndUpload root vdeps allowNative forceRescans = do
       else pure ArchiveUpload
   let vendoredDependencyScanMode =
         case (orgSupportsAnalyzedRevisionsQuery org, fromFlag ForceVendoredDependencyRescans forceRescans) of
-          (False, _) -> SkippingNotSupported
-          (True, True) -> SkippingDisabledViaFlag
+          (_, True) -> SkippingDisabledViaFlag
+          (False, False) -> SkippingNotSupported
           (True, False) -> SkipPreviouslyScanned
   let scanner = case archiveOrCLI of
         ArchiveUpload -> archiveUploadSourceUnit
-        CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode forceRescans
+        CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode
   scanner root vdeps
 
 -- | Used when users run `fossa analyze -o` and do not upload their source units.
