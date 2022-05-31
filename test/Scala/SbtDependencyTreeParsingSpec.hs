@@ -67,8 +67,8 @@ org:project:1.0.0-snapshot
   +-org:childA:1.0
 |]
 
-treeWithOneDepWithEvication :: Text
-treeWithOneDepWithEvication =
+treeWithOneDepWithEviction :: Text
+treeWithOneDepWithEviction =
   [r|
 org:project:1.0.0-snapshot
   +-org:childA:1.0 (evicted by: 2.0)
@@ -81,6 +81,9 @@ org:project:1.0.0-snapshot
   +-org:childA:1.0
     +-org:grandChildA:2.0
 |]
+
+treeWithNestedDepWithWindowsLineBreak :: Text
+treeWithNestedDepWithWindowsLineBreak = "org:project:1.0.0-snapshot\r\n  +-org:childA:1.0\r\n    +-org:grandChildA:2.0\r\n"
 
 treeWithMultipleNestedDep :: Text
 treeWithMultipleNestedDep =
@@ -132,7 +135,7 @@ parsesTreeSpec = do
                           ]
 
     it "should parse tree with one dep" $
-      treeWithOneDepWithEvication
+      treeWithOneDepWithEviction
         `shouldParseInto` [ SbtDep
                               (mkArtifact "project@1.0.0-snapshot")
                               [ SbtDep (mkArtifact "childA@2.0") []
@@ -141,6 +144,17 @@ parsesTreeSpec = do
 
     it "should parse tree with nested dep" $
       treeWithNestedDep
+        `shouldParseInto` [ SbtDep
+                              (mkArtifact "project@1.0.0-snapshot")
+                              [ SbtDep
+                                  (mkArtifact "childA@1.0")
+                                  [ SbtDep (mkArtifact "grandChildA@2.0") mempty
+                                  ]
+                              ]
+                          ]
+
+    it "should parse tree with nested dep with windows line break" $
+      treeWithNestedDepWithWindowsLineBreak
         `shouldParseInto` [ SbtDep
                               (mkArtifact "project@1.0.0-snapshot")
                               [ SbtDep

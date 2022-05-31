@@ -185,7 +185,7 @@ sbtTreeParser = concat <$> ((try (parseDeps 0) <|> ignoredLine) `sepBy` eol) <* 
     emptyLineBreakInGraph = mempty
 
     sbtRecurse :: Int -> Parser [SbtDep]
-    sbtRecurse depth = chunk "\n" *> parseDeps depth
+    sbtRecurse depth = (chunk "\n" <|> chunk "\r\n") *> parseDeps depth
 
 -- | Builds graph with scoped to @SbtArtifact
 --
@@ -220,7 +220,7 @@ toDependency :: SbtArtifact -> Dependency
 toDependency SbtArtifact{..} =
   Dependency
     { dependencyType = MavenType
-    , dependencyName = toText (groupId) <> ":" <> toText (artifactId)
+    , dependencyName = toText groupId <> ":" <> toText artifactId
     , dependencyVersion = Just (CEq version)
     , dependencyLocations = mempty
     , dependencyEnvironments = Set.singleton EnvProduction

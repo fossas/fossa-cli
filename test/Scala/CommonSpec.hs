@@ -31,4 +31,6 @@ spec = do
       removeLogPrefixes "[warn] pineapples!\n" `shouldBe` "pineapples!\n"
       removeLogPrefixes "[error] pineapples!\n" `shouldBe` "pineapples!\n"
       removeLogPrefixes "[debug] pineapples!\n" `shouldBe` "pineapples!\n"
+      removeLogPrefixes "[success] pineapples!\n" `shouldBe` "pineapples!\n"
+      removeLogPrefixes "[trace] pineapples!\n" `shouldBe` "pineapples!\n"
       removeLogPrefixes stdoutFromSbt `shouldBe` "truth\nis\nout\nthere!\n"

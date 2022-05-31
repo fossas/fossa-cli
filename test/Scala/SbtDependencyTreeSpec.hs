@@ -61,15 +61,20 @@ singleProjectGraphSpec graph = do
 
   describe "buildGraph" $ do
     it "should correctly graph dependencies" $ do
-      expectDirect [mkRawDep "default:project_A" "0.0.0"] graph
+      let defaultProject = mkRawDep "default:project_A" "0.0.0"
+      let htmlCleaner = mkRawDep "net.sourceforge.htmlcleaner:htmlcleaner" "2.0"
+      let jdom = mkRawDep "org.jdom:jdom2" "2.0.0"
+      let scalaLib = mkRawDep "org.scala-lang:scala3-library_3" "3.0"
 
-      hasDep $ mkRawDep "net.sourceforge.htmlcleaner:htmlcleaner" "2.0"
-      hasDep $ mkRawDep "org.jdom:jdom2" "2.0.0"
-      hasDep $ mkRawDep "org.scala-lang:scala3-library_3" "3.0"
+      expectDirect [defaultProject] graph
 
-      hasEdge (mkRawDep "default:project_A" "0.0.0") (mkRawDep "net.sourceforge.htmlcleaner:htmlcleaner" "2.0")
-      hasEdge (mkRawDep "default:project_A" "0.0.0") (mkRawDep "org.scala-lang:scala3-library_3" "3.0")
-      hasEdge (mkRawDep "net.sourceforge.htmlcleaner:htmlcleaner" "2.0") (mkRawDep "org.jdom:jdom2" "2.0.0")
+      hasDep htmlCleaner
+      hasDep jdom
+      hasDep scalaLib
+
+      hasEdge defaultProject htmlCleaner
+      hasEdge defaultProject scalaLib
+      hasEdge htmlCleaner jdom
 
 exampleMultiProjectSbtOut :: Text
 exampleMultiProjectSbtOut =
@@ -217,7 +222,7 @@ mkRawDep name version =
   Dependency
     MavenType
     name
-    (CEq <$> Just version)
+    (Just $ CEq version)
     mempty
     (Set.singleton EnvProduction)
     mempty

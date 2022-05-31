@@ -19,11 +19,15 @@ data SbtArtifact = SbtArtifact
 removeLogPrefixes :: Text -> Text
 removeLogPrefixes content = Text.unlines . map removePrefix $ Text.lines content
   where
+    removePrefix :: Text -> Text
     removePrefix candidate
-      | Text.isPrefixOf "[debug]" candidate = fromMaybe candidate $ Text.stripPrefix "[debug] " candidate
-      | Text.isPrefixOf "[info]" candidate = fromMaybe candidate $ Text.stripPrefix "[info] " candidate
-      | Text.isPrefixOf "[warn]" candidate = fromMaybe candidate $ Text.stripPrefix "[warn] " candidate
-      | Text.isPrefixOf "[success]" candidate = fromMaybe candidate $ Text.stripPrefix "[success] " candidate
-      | Text.isPrefixOf "[error]" candidate = fromMaybe candidate $ Text.stripPrefix "[error] " candidate
-      | Text.isPrefixOf "[trace]" candidate = fromMaybe candidate $ Text.stripPrefix "[trace] " candidate
+      | Text.isPrefixOf "[debug]" candidate = maybeRemovePrefix "[debug]" candidate
+      | Text.isPrefixOf "[info]" candidate = maybeRemovePrefix "[info]" candidate
+      | Text.isPrefixOf "[warn]" candidate = maybeRemovePrefix "[warn]" candidate
+      | Text.isPrefixOf "[success]" candidate = maybeRemovePrefix "[success]" candidate
+      | Text.isPrefixOf "[error]" candidate = maybeRemovePrefix "[error]" candidate
+      | Text.isPrefixOf "[trace]" candidate = maybeRemovePrefix "[trace]" candidate
       | otherwise = candidate
+
+    maybeRemovePrefix :: Text -> Text -> Text
+    maybeRemovePrefix prefix candidate = fromMaybe candidate $ Text.stripPrefix (prefix <> " ") candidate
