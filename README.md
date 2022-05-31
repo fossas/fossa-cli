@@ -49,7 +49,7 @@ Alternatively, install using [Scoop](https://scoop.sh/):
 scoop install fossa
 ```
 
-Please refer to detailed walkthrough [Installing FOSSA CLI](./docs/walkthroughs/installing-fossa-cli.md), for installing [FOSSA CLI 1.x](./docs/walkthroughs/installing-fossa-cli.md#installing-cli-1x-using-installation-script) and using [GitHub Releases](https://github.com/fossas/fossa-cli/releases) to install [FOSSA cli manually](./docs/walkthroughs/installing-fossa-cli.md#installing-manually-with-github-releases).
+Please refer to detailed walkthrough [Installing FOSSA CLI](./docs/walkthroughs/installing-fossa-cli.md), for installing [FOSSA CLI 1.x](./docs/walkthroughs/installing-fossa-cli.md#installing-cli-1x-using-installation-script) and using [GitHub Releases](https://github.com/fossas/fossa-cli/releases) to install [FOSSA CLI manually](./docs/walkthroughs/installing-fossa-cli.md#installing-manually-with-github-releases).
 
 ## Getting Started
 
