@@ -145,6 +145,7 @@ data RawPom = RawPom
   , rawPomGroup :: Maybe Text
   , rawPomArtifact :: Text
   , rawPomVersion :: Maybe Text
+  , rawPomName :: Maybe Text
   , rawPomProperties :: Map Text Text
   , rawPomModules :: [Text]
   , rawPomDependencyManagement :: [RawDependency]
@@ -185,6 +186,7 @@ instance FromXML RawPom where
       <*> optional (child "groupId" el)
       <*> child "artifactId" el
       <*> optional (child "version" el)
+      <*> optional (child "name" el)
       <*> optional (child "properties" el) `defaultsTo` Map.empty
       <*> optional (child "modules" el >>= children "module") `defaultsTo` []
       <*> optional (child "dependencyManagement" el >>= children "dependency") `defaultsTo` []
