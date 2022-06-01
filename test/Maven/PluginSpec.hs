@@ -1,36 +1,113 @@
-{-# LANGUAGE QuasiQuotes #-}
-
 module Maven.PluginSpec (spec) where
 
 import Data.Aeson (decode)
+import Data.Either (fromRight)
+import Data.Set qualified as Set
 import Data.String.Conversion (encodeUtf8)
 import Data.Text (Text)
-import Strategy.Maven.Plugin (Artifact (..))
-import Test.Hspec (Spec, describe, it, shouldBe)
+import Strategy.Maven.Plugin (Artifact (..), PluginOutput (..), textArtifactToPluginOutput)
+import Strategy.Maven.PluginTree (TextArtifact (..))
+import Test.Hspec (Spec, describe, fdescribe, it, shouldBe, shouldMatchList, shouldSatisfy)
 import Text.RawString.QQ (r)
-
-jsonArtifact :: Text
-jsonArtifact =
-  [r|{
-    "id" : "org.clojure:clojure:jar",
-    "numericId" : 1,
-    "groupId" : "org.clojure",
-    "artifactId" : "clojure",
-    "version" : "1.12.0-master-SNAPSHOT",
-    "optional" : false,
-    "scopes" : [ "compile" ],
-    "types" : [ "jar" ]
-  }|]
 
 spec :: Spec
 spec = do
-  parseJsonArtifactSpec
+  textArtifactConversionSpec
 
-parseJsonArtifactSpec :: Spec
-parseJsonArtifactSpec = do
-  describe "json Artifact parsing" $ do
-    it "Parses an artifact from JSON" $
-      (decode . encodeUtf8 $ jsonArtifact) `shouldBe` Just simpleArtifact
+singleTextArtifact :: TextArtifact
+singleTextArtifact =
+  TextArtifact
+    { artifactText = "org.clojure:clojure:1.12.0-master-SNAPSHOT"
+    , scopes = ["test"]
+    , isOptional = False
+    , children = []
+    }
+
+complexTextArtifact :: TextArtifact
+complexTextArtifact =
+  TextArtifact
+    { artifactText = "org.clojure:test.generative:1.0.0"
+    , scopes = ["test"]
+    , isOptional = False
+    , children =
+        [ TextArtifact
+            { artifactText = "org.fake:fake-pkg:1.0.0"
+            , scopes = ["compile"]
+            , children = []
+            , isOptional = True
+            }
+        , TextArtifact
+            { artifactText = "org.foo:bar:1.0.0"
+            , scopes = ["compile"]
+            , isOptional = False
+            , children =
+                [ TextArtifact
+                    { artifactText = "org.baz:buzz:1.0.0"
+                    , scopes = ["test"]
+                    , children = []
+                    , isOptional = False
+                    }
+                ]
+            }
+        ]
+    }
+
+complexPluginOutputArtifacts :: [Artifact]
+complexPluginOutputArtifacts =
+  [ Artifact
+      { artifactNumericId = 0
+      , artifactGroupId = "org.baz"
+      , artifactArtifactId = "buzz"
+      , artifactVersion = "1.0.0"
+      , artifactScopes = ["test"]
+      , artifactOptional = False
+      }
+  , Artifact
+      { artifactNumericId = 1
+      , artifactGroupId = "org.foo"
+      , artifactArtifactId = "bar"
+      , artifactVersion = "1.0.0"
+      , artifactScopes = ["compile"]
+      , artifactOptional = False
+      }
+  , Artifact
+      { artifactNumericId = 2
+      , artifactGroupId = "org.fake"
+      , artifactArtifactId = "fake-pkg"
+      , artifactVersion = "1.0.0"
+      , artifactScopes = ["compile"]
+      , artifactOptional = True
+      }
+  , Artifact
+      { artifactNumericId = 3
+      , artifactGroupId = "org.clojure"
+      , artifactArtifactId = "test.generative"
+      , artifactVersion = "1.0.0"
+      , artifactScopes = ["test"]
+      , artifactOptional = False
+      }
+  ]
+
+-- TODO: because we use sets, there is no set internal order here so matching the numeric id is difficult without
+-- some kind of sort
+
+textArtifactConversionSpec :: Spec
+textArtifactConversionSpec =
+  fdescribe "Maven text artifact tree conversion" $ do
+    it "Converts a single TextArtifact correctly" $
+      textArtifactToPluginOutput singleTextArtifact
+        `shouldBe` Right
+          PluginOutput
+            { outArtifacts = [simpleArtifact]
+            , outEdges = []
+            }
+
+    it "Converts a more complext TextArtifact correctly" $ do
+      let PluginOutput{outArtifacts = artifacts} =
+            fromRight
+              (error "This test should not have failed")
+              (textArtifactToPluginOutput complexTextArtifact)
+      artifacts `shouldBe` complexPluginOutputArtifacts
 
 simpleArtifact :: Artifact
 simpleArtifact =
@@ -40,5 +117,5 @@ simpleArtifact =
     , artifactArtifactId = "clojure"
     , artifactVersion = "1.12.0-master-SNAPSHOT"
     , artifactOptional = False
-    , artifactScopes = ["compile"]
+    , artifactScopes = ["test"]
     }

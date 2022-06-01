@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Maven.Plugin (
@@ -11,24 +12,28 @@ module Strategy.Maven.Plugin (
   DepGraphPlugin (..),
   Edge (..),
   PluginOutput (..),
+  textArtifactToPluginOutput,
 ) where
 
 import Control.Algebra
 import Control.Effect.Diagnostics
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
-import Data.Aeson
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.FileEmbed (embedFile)
 import Data.Functor (void)
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Effect.Exec
 import Effect.ReadFS
 import Path
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
+import Strategy.Maven.PluginTree (TextArtifact (..), foldTextArtifactl, parseTextArtifact, foldTextArtifactM)
 import System.FilePath qualified as FP
+import qualified Data.Text as Text
 
 data DepGraphPlugin = DepGraphPlugin
   { group :: Text
@@ -81,10 +86,60 @@ execPlugin :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> DepGrap
 execPlugin dir plugin = void $ execThrow dir $ mavenPluginDependenciesCmd plugin
 
 outputFile :: Path Rel File
-outputFile = $(mkRelFile "target/dependency-graph.json")
+outputFile = $(mkRelFile "target/dependency-graph.txt")
 
 parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m PluginOutput
-parsePluginOutput dir = readContentsJson (dir </> outputFile)
+parsePluginOutput dir =
+  do contents <- readContentsParser parseTextArtifact (dir </> outputFile)
+     case textArtifactToPluginOutput contents of
+       Left (MissingArtifact t) -> fatal $ "Could not find an id for artifact " <> t
+       Left (UnparseableName t) -> fatal $ "Could not parse name for artifact " <> t
+       Right po -> pure po
+
+newtype ArtifactInfo = ArtifactInfo
+  { artifacts :: [Artifact] }
+  deriving (Eq, Ord, Show)
+
+emptyArtifactInfo :: ArtifactInfo
+emptyArtifactInfo = ArtifactInfo []
+
+data ConversionError
+  = MissingArtifact Text
+  | UnparseableName Text
+  deriving (Eq, Show)
+
+textArtifactToPluginOutput :: TextArtifact -> Either ConversionError PluginOutput
+textArtifactToPluginOutput
+  ta = do ArtifactInfo {..} <- foldTextArtifactM foldFn emptyArtifactInfo ta
+          Right PluginOutput {outArtifacts = artifacts, outEdges = []}
+  where
+      artifactNames :: [Text]
+      artifactNames = foldTextArtifactl (\a c -> (artifactText c : a)) mempty ta
+
+      namesToIds :: Map Text Int
+      namesToIds = Map.fromList . (\ns -> zip ns [0 ..]) $ artifactNames
+
+      textArtifactToArtifact :: Int -> TextArtifact -> Either ConversionError Artifact
+      textArtifactToArtifact numericId TextArtifact{..} = 
+        case Text.splitOn ":" artifactText of
+          [groupId, artifactId, version] -> Right $
+            Artifact {
+            artifactNumericId = numericId
+            , artifactGroupId = groupId
+            , artifactArtifactId = artifactId
+            , artifactVersion = version
+            , artifactScopes = scopes
+            , artifactOptional = isOptional
+            }
+          _ -> Left . UnparseableName $ artifactText 
+          
+      foldFn :: ArtifactInfo ->  TextArtifact -> Either ConversionError ArtifactInfo
+      foldFn acc@(ArtifactInfo{..}) t@TextArtifact{artifactText = aText} =
+        case Map.lookup aText namesToIds of
+          Nothing -> Left . MissingArtifact $ "Could not find artifact with name " <> aText
+          Just numericId -> do artifact <- textArtifactToArtifact numericId t 
+                               Right $ acc{artifacts = artifact : artifacts}
+                               
 
 mavenInstallPluginCmd :: FP.FilePath -> DepGraphPlugin -> Command
 mavenInstallPluginCmd pluginFilePath plugin =
@@ -107,9 +162,12 @@ mavenPluginDependenciesCmd plugin =
     { cmdName = "mvn"
     , cmdArgs =
         [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":aggregate"
-        , "-DgraphFormat=json"
+        , "-DgraphFormat=text"
         , "-DmergeScopes"
         , "-DreduceEdges=false"
+        , "-DshowVersions=true"
+        , "-DshowGroupIds=true"
+        , "-DshowOptional=true"
         ]
     , cmdAllowErr = Never
     }
@@ -137,24 +195,3 @@ data Edge = Edge
   , edgeTo :: Int
   }
   deriving (Eq, Ord, Show)
-
-instance FromJSON PluginOutput where
-  parseJSON = withObject "PluginOutput" $ \obj ->
-    PluginOutput <$> obj .:? "artifacts" .!= []
-      <*> obj .:? "dependencies" .!= []
-
-instance FromJSON Artifact where
-  parseJSON = withObject "Artifact" $ \obj ->
-    Artifact <$> (offset <$> obj .: "numericId")
-      <*> obj .: "groupId"
-      <*> obj .: "artifactId"
-      <*> obj .: "version"
-      <*> obj .: "scopes"
-      <*> obj .: "optional"
-    where
-      offset = subtract 1
-
-instance FromJSON Edge where
-  parseJSON = withObject "Edge" $ \obj ->
-    Edge <$> obj .: "numericFrom"
-      <*> obj .: "numericTo"

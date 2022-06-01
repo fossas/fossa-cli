@@ -2,9 +2,11 @@ module Strategy.Maven.PluginTree (
   parseTextArtifact,
   TextArtifact (..),
   parseArtifactChild,
+  foldTextArtifactl,
+  foldTextArtifactM,
 ) where
 
-import Control.Monad (void)
+import Control.Monad (foldM, void)
 import Data.Char (isSpace)
 import Data.Functor (($>))
 import Data.Text (Text)
@@ -27,6 +29,7 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (char, space1, string)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
+import Data.List (foldl')
 
 type Parser = Parsec Void Text
 
@@ -51,6 +54,64 @@ data TextArtifact = TextArtifact
   , children :: [TextArtifact]
   }
   deriving (Eq, Ord, Show)
+
+foldTextArtifactl :: (a -> TextArtifact -> a) -> a -> TextArtifact -> a
+foldTextArtifactl f a t@(TextArtifact{children = children}) =
+  inner `seq` foldl' (foldTextArtifactl f) inner children
+  where inner = f a t
+
+foldTextArtifactM :: Monad m => (a -> TextArtifact -> m a) -> a -> TextArtifact -> m a
+foldTextArtifactM f a t@TextArtifact{children = children} = do
+  res <- f a t
+  foldM (foldTextArtifactM f) res children
+
+artifactWithChildren :: TextArtifact
+artifactWithChildren =
+  TextArtifact
+    { artifactText = "org.clojure:test.generative:1.0.0"
+    , scopes = ["test"]
+    , isOptional = False
+    , children =
+        [ TextArtifact
+            { artifactText = "org.clojure:tools.namespace:1.0.0"
+            , scopes = ["test"]
+            , isOptional = False
+            , children =
+                [ TextArtifact
+                    { artifactText = "org.clojure:java.classpath:1.0.0"
+                    , scopes = ["test"]
+                    , children = []
+                    , isOptional = False
+                    }
+                , TextArtifact
+                    { artifactText = "org.fake:fake-pkg:1.0.0"
+                    , scopes = ["compile"]
+                    , children = []
+                    , isOptional = True
+                    }
+                , TextArtifact
+                    { artifactText = "org.clojure:tools.reader:1.3.2"
+                    , scopes = ["test"]
+                    , children = []
+                    , isOptional = False
+                    }
+                ]
+            }
+        , TextArtifact
+            { artifactText = "org.foo:bar:1.0.0"
+            , scopes = ["compile"]
+            , isOptional = False
+            , children =
+                [ TextArtifact
+                    { artifactText = "org.baz:buzz:1.0.0"
+                    , scopes = ["test"]
+                    , children = []
+                    , isOptional = False
+                    }
+                ]
+            }
+        ]
+    }
 
 currentColumn :: Parser Int
 currentColumn = unPos . sourceColumn <$> getSourcePos
