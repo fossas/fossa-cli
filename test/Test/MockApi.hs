@@ -226,6 +226,9 @@ matchExpectation a@(UploadContributors{}) (ApiExpectation _ requestExpectation b
 matchExpectation a@(UploadLicenseScanResult{}) (ApiExpectation _ requestExpectation b@(UploadLicenseScanResult{}) resp) = checkResult requestExpectation a b resp
 matchExpectation _ _ = Nothing
 
+-- This is a bit of a hack. It runs `matchExpectation` with the given request and `ExpectingAnyRequest`.
+-- This should return `Just resp` for any request if the endpoint of the request has been mocked.
+-- So, if this returns `Nothing`, then we know that the endpoint of the request has not been mocked
 endpointHasBeenMocked :: FossaApiClientF a -> Bool
 endpointHasBeenMocked req = isJust $ matchExpectation req (ApiExpectation Always ExpectingAnyRequest req (ApiResult $ Left $ ApiFail ""))
 
@@ -256,14 +259,6 @@ testExpectations :: FossaApiClientF a -> [ApiExpectation] -> Maybe (ApiResult a,
 testExpectations _ [] = Nothing
 testExpectations req (expectation : rest) =
   case matchExpectation req expectation of
-    -- if the request did not match the expectation, throw the expectation back on the queue and keep recursing
-    -- So this is not an error, it just means "that specific expectation did not match to this specific request"
-    -- It's only if no expectations match that we need to fail
-    -- And we need to know if they did not match because the request is mocked but there were no expectations for that request that matched,
-    -- or if it's because the request is not mocked
-    -- We could maybe do this by testing with an ApiExpectation that does not care about the request. That seems a bit hacky, though
-    -- Do that in the `Nothing` case of `handleRequest`.
-    -- Or you could make testExpectations return a three-tuple, (ApiResult a, MatchingRequestFound, [ApiExpectation])
     Nothing -> fmap (expectation :) <$> testExpectations req rest
     Just resp ->
       if isSingular expectation
