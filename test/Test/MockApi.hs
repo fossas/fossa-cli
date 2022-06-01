@@ -60,6 +60,7 @@ import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO)
 import Data.Kind (Type)
 import Data.List (intercalate)
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import Test.HUnit (assertFailure)
 
@@ -69,8 +70,8 @@ data MockApi (m :: Type -> Type) a where
   MockApiOnceForAnyRequest :: FossaApiClientF a -> a -> MockApi m ()
   MockApiAlwaysForAnyRequest :: FossaApiClientF a -> a -> MockApi m ()
   MockApiFails :: FossaApiClientF a -> Text -> MockApi m ()
-  MockApiRunExpectations :: FossaApiClientF a -> MockApi m (Maybe (ApiResult a))
-  AssertUnexpectedCall :: FossaApiClientF a -> MockApi m a
+  MockApiRunExpectations :: FossaApiClientF a -> MockApi m (Either MatchFailureType (ApiResult a))
+  AssertUnexpectedCall :: FossaApiClientF a -> MatchFailureType -> MockApi m a
   AssertAllSatisfied :: MockApi m ()
 
 -- | Specifies how to handle repetition of a request
@@ -123,14 +124,14 @@ fails req msg =
   send $ MockApiFails req msg
 
 -- | Run a request against the expectations
-runExpectations :: Has MockApi sig m => FossaApiClientF a -> m (Maybe (ApiResult a))
+runExpectations :: Has MockApi sig m => FossaApiClientF a -> m (Either MatchFailureType (ApiResult a))
 runExpectations =
   send . MockApiRunExpectations
 
 -- | Assert that this call is unexpected
-assertUnexpectedCall :: Has MockApi sig m => FossaApiClientF a -> m a
-assertUnexpectedCall =
-  send . AssertUnexpectedCall
+assertUnexpectedCall :: Has MockApi sig m => FossaApiClientF a -> MatchFailureType -> m a
+assertUnexpectedCall err =
+  send . AssertUnexpectedCall err
 
 -- | Assert that all non-repeating expectations have been satisfied
 assertAllSatisfied :: Has MockApi sig m => m ()
@@ -167,11 +168,11 @@ instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (MockApi :+: sig) (Mock
       pure ctx
     L (MockApiRunExpectations req) -> do
       (<$ ctx) <$> handleRequest req
-    L (AssertUnexpectedCall req) -> do
+    L (AssertUnexpectedCall req err) -> do
       expectations <- get
       a <-
         sendIO . assertFailure $
-          "Unexpected call: \n  " <> show req <> "\n"
+          "Unexpected call: \n  " <> show err <> ": " <> show req <> "\n"
             <> "Unsatisfied expectations: \n  "
             <> intercalate "\n  " (map (\(ApiExpectation _ _ expectedReq _) -> show expectedReq) expectations)
       pure (a <$ ctx)
@@ -225,21 +226,29 @@ matchExpectation a@(UploadContributors{}) (ApiExpectation _ requestExpectation b
 matchExpectation a@(UploadLicenseScanResult{}) (ApiExpectation _ requestExpectation b@(UploadLicenseScanResult{}) resp) = checkResult requestExpectation a b resp
 matchExpectation _ _ = Nothing
 
+endpointHasBeenMocked :: FossaApiClientF a -> Bool
+endpointHasBeenMocked req = isJust $ matchExpectation req (ApiExpectation Always ExpectingAnyRequest req (ApiResult $ Left $ ApiFail ""))
+
+data MatchFailureType = NoMatchingRequest | UnmockedEndpoint
+  deriving (Eq, Ord, Show)
+
 -- | Handles a request in the context of the mock API.
 handleRequest ::
   ( Has (State [ApiExpectation]) sig m
   ) =>
   forall a.
   FossaApiClientF a ->
-  m (Maybe (ApiResult a))
+  m (Either MatchFailureType (ApiResult a))
 handleRequest req = do
   expectations <- get
   case testExpectations req expectations of
     Just (resp, expectations') -> do
       put expectations'
-      pure (Just resp)
+      pure (Right resp)
     Nothing ->
-      pure Nothing
+      if endpointHasBeenMocked req
+        then pure $ Left NoMatchingRequest
+        else pure $ Left UnmockedEndpoint
 
 -- | Tests a request against a list of expectations and returns the result and
 -- remaining expectations.
@@ -247,6 +256,14 @@ testExpectations :: FossaApiClientF a -> [ApiExpectation] -> Maybe (ApiResult a,
 testExpectations _ [] = Nothing
 testExpectations req (expectation : rest) =
   case matchExpectation req expectation of
+    -- if the request did not match the expectation, throw the expectation back on the queue and keep recursing
+    -- So this is not an error, it just means "that specific expectation did not match to this specific request"
+    -- It's only if no expectations match that we need to fail
+    -- And we need to know if they did not match because the request is mocked but there were no expectations for that request that matched,
+    -- or if it's because the request is not mocked
+    -- We could maybe do this by testing with an ApiExpectation that does not care about the request. That seems a bit hacky, though
+    -- Do that in the `Nothing` case of `handleRequest`.
+    -- Or you could make testExpectations return a three-tuple, (ApiResult a, MatchingRequestFound, [ApiExpectation])
     Nothing -> fmap (expectation :) <$> testExpectations req rest
     Just resp ->
       if isSingular expectation
@@ -277,9 +294,9 @@ runApiWithMock f = do
     runRequest req = do
       apiResult <- runExpectations req
       case apiResult of
-        Just (ApiResult result) -> either (fatalText . unApiFail) pure result
-        Nothing ->
-          assertUnexpectedCall req
+        Right (ApiResult result) -> either (fatalText . unApiFail) pure result
+        Left err ->
+          assertUnexpectedCall req err
 
 runMockApi ::
   ( Has (Lift IO) sig m
