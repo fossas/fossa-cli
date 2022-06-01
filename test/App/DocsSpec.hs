@@ -29,6 +29,7 @@ import Strategy.Node.Errors (
  )
 import Strategy.Python.Errors (commitPoetryLockToVCS)
 import Strategy.Ruby.Errors (bundlerLockFileRationaleUrl, rubyFossaDocUrl)
+import Strategy.Scala.Errors (sbtDepsGraphPluginUrl, scalaFossaDocUrl)
 import Strategy.Swift.Errors (
   swiftFossaDocUrl,
   swiftPackageResolvedRef,
@@ -62,6 +63,8 @@ urlsToCheck =
   , refPodDocUrl
   , refGradleDocUrl
   , containerScanningDocUrl
+  , scalaFossaDocUrl
+  , sbtDepsGraphPluginUrl
   ]
 
 spec :: Spec
