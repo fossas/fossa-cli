@@ -9,6 +9,7 @@ module Strategy.Maven.PluginStrategy (
 import Control.Algebra (Has, run)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, errCtx)
 import Control.Effect.Lift (Lift)
+import Control.Monad (when)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -21,8 +22,9 @@ import DepTypes (
  )
 import Effect.Exec (Exec)
 import Effect.Grapher (Grapher, edge, evalGrapher)
+import Effect.Grapher qualified as Grapher
 import Effect.ReadFS (ReadFS)
-import Graphing (Graphing)
+import Graphing (Graphing, shrinkRoots)
 import Path (Abs, Dir, Path)
 import Strategy.Maven.Plugin (
   Artifact (..),
@@ -84,29 +86,30 @@ instance ToDiagnostic MvnPluginExecFailed where
   renderDiagnostic (MvnPluginExecFailed) = "Failed to execute maven plugin for analysis."
 
 buildGraph :: PluginOutput -> Graphing Dependency
-buildGraph PluginOutput{..} = run $
-  evalGrapher $ do
-    let byNumeric :: Map Int Artifact
-        byNumeric = indexBy artifactNumericId outArtifacts
+buildGraph PluginOutput{..} = shrinkRoots . run . evalGrapher $ do
+  let byNumeric :: Map Int Artifact
+      byNumeric = indexBy artifactNumericId outArtifacts
 
-    let depsByNumeric :: Map Int Dependency
-        depsByNumeric = Map.map toDependency byNumeric
+  depsByNumeric <- traverse toDependency byNumeric
 
-    traverse_ (visitEdge depsByNumeric) outEdges
+  traverse_ (visitEdge depsByNumeric) outEdges
   where
-    toDependency :: Artifact -> Dependency
-    toDependency Artifact{..} =
-      Dependency
-        { dependencyType = MavenType
-        , dependencyName = artifactGroupId <> ":" <> artifactArtifactId
-        , dependencyVersion = Just (CEq artifactVersion)
-        , dependencyLocations = []
-        , dependencyEnvironments = Set.fromList $ [EnvTesting | "test" `elem` artifactScopes]
-        , dependencyTags =
-            Map.fromList $
-              ("scopes", artifactScopes) :
-                [("optional", ["true"]) | artifactOptional]
-        }
+    toDependency :: Has (Grapher Dependency) sig m => Artifact -> m Dependency
+    toDependency Artifact{..} = do
+      let dep =
+            Dependency
+              { dependencyType = MavenType
+              , dependencyName = artifactGroupId <> ":" <> artifactArtifactId
+              , dependencyVersion = Just (CEq artifactVersion)
+              , dependencyLocations = []
+              , dependencyEnvironments = Set.fromList $ [EnvTesting | "test" `elem` artifactScopes]
+              , dependencyTags =
+                  Map.fromList $
+                    ("scopes", artifactScopes) :
+                      [("optional", ["true"]) | artifactOptional]
+              }
+      when artifactIsDirect (Grapher.direct dep)
+      pure dep
 
     visitEdge :: Has (Grapher Dependency) sig m => Map Int Dependency -> Edge -> m ()
     visitEdge refsByNumeric Edge{..} = do
