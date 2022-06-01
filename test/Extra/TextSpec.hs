@@ -2,25 +2,27 @@ module Extra.TextSpec (
   spec,
 ) where
 
-import Data.Text.Extra
-import Test.Hspec qualified as Test
-import Prelude
+import Data.Text.Extra ( dropPrefix, splitOnceOn, splitOnceOnEnd )
+import Test.Hspec ( describe, it, shouldBe, Spec ) 
 
-spec :: Test.Spec
+spec :: Spec
 spec = do
-  Test.describe "Text splitOnceOn" $
-    Test.it "should split a string once from the start" $
-      splitOnceOn "-" "1-2-3" `Test.shouldBe` ("1", "2-3")
+  describe "Text splitOnceOn" $ do
+    it "should split a string once from the start" $
+      splitOnceOn "-" "1-2-3" `shouldBe` ("1", "2-3")
+    
+    it "should not affect a string that does not include the needle" $
+      splitOnceOn "-" "1/2/3" `shouldBe` ("1/2/3", "")
 
-  Test.describe "Text splitOnceonEnd" $
-    Test.it "should split a string once from the end" $
-      splitOnceOnEnd "-" "1-2-3" `Test.shouldBe` ("1-2", "3")
+  describe "Text splitOnceonEnd" $
+    it "should split a string once from the end" $
+      splitOnceOnEnd "-" "1-2-3" `shouldBe` ("1-2", "3")
 
-  Test.describe "Text dropPrefix" $ do
-    Test.it "should drop a prefix when present" $ do
-      dropPrefix "foo" "foobar" `Test.shouldBe` "bar"
-      dropPrefix "foo" "foofoobar" `Test.shouldBe` "foobar"
+  describe "Text dropPrefix" $ do
+    it "should drop a prefix when present" $ do
+      dropPrefix "foo" "foobar" `shouldBe` "bar"
+      dropPrefix "foo" "foofoobar" `shouldBe` "foobar"
 
-    Test.it "should leave the string unchanged when the prefix is missing" $ do
-      dropPrefix "foo" "bar" `Test.shouldBe` "bar"
-      dropPrefix "foo" "" `Test.shouldBe` ""
+    it "should leave the string unchanged when the prefix is missing" $ do
+      dropPrefix "foo" "bar" `shouldBe` "bar"
+      dropPrefix "foo" "" `shouldBe` ""

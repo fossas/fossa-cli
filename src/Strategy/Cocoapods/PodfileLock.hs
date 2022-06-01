@@ -36,7 +36,7 @@ import Data.SemVer.Internal (Version (..))
 import Data.Set (Set)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text, strip)
-import Data.Text.Extra (showT)
+import Data.Text.Extra (showT, splitOnceOn)
 import Data.Void (Void)
 import Data.Yaml ((.:), (.:?))
 import Data.Yaml qualified as Yaml
@@ -56,6 +56,7 @@ analyze' :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig m) => Path Ab
 analyze' podfileLockFilepath = do
   podfileLock <- readContentsYaml podfileLockFilepath
   context "Building dependency graph" $
+    -- TODO: Always run static normally, optionally enrich with dynamic data.
     buildGraph podfileLockFilepath podfileLock
       <||> pure (buildGraphStatic podfileLock)
 
@@ -185,17 +186,34 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
       ) =>
       Dependency ->
       m Dependency
-    replaceVendoredPods d@Dependency{dependencyType, dependencyName} = case dependencyType of
-      PodType -> case Map.lookup dependencyName lockExternalSources of
-        Just es -> case es of
-          ExternalPodSpec podSpecPath ->
-            readPodSpecAt podSpecPath <||> pure d
-          ExternalPath podPath ->
-            readPodSpecAt (toText $ toString podPath </> (toString dependencyName <.> "podspec")) <||> pure d
-          ExternalGitType _ -> pure d
-          ExternalOtherType -> pure d
-        Nothing -> pure d
-      _ -> pure d
+    replaceVendoredPods d@Dependency{dependencyType, dependencyName} =
+      case dependencyType of
+        PodType -> case Map.lookup dependencyName lockExternalSources of
+          Just es -> case es of
+            ExternalPodSpec podSpecPath ->
+              readPodSpecAt podSpecPath <||> pure d
+            ExternalPath podPath -> do
+              -- We do not need to individually scan subspecs, they will be
+              -- analyzed as part of their parent. Given the name A/B/C, we
+              -- only want to directly scan the first slash component, "A".
+              -- If there are no slash components, we take the entire name.
+              -- 
+              -- This is why we use splitOnceOn:
+              -- splitOnceOn "/" "A/B/C" = ("A", "B/C")
+              -- splitOnceOn "/" "hello" = ("hello", "")
+              let specfileName = fst $ splitOnceOn "/" dependencyName
+              readPodSpecAt
+                ( toText
+                    ( toString podPath
+                        </> ( toString specfileName <.> "podspec"
+                            )
+                    )
+                )
+                <||> pure d
+            ExternalGitType _ -> pure d
+            ExternalOtherType -> pure d
+          Nothing -> pure d
+        _ -> pure d
 
     readPodSpecAt ::
       ( Has Exec sig m
@@ -204,24 +222,25 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
       ) =>
       Text ->
       m Dependency
-    readPodSpecAt podSpecPath = context ("Resolving vendored podspec at " <> showT podSpecPath) $ do
-      podSpecCache :: PodSpecCache <- get
-      (PodSpecJSON ExternalGitSource{urlOf, tagOf, commitOf, branchOf}) <-
-        case Map.lookup podSpecPath podSpecCache of
-          Just cached -> pure cached
-          Nothing -> do
-            podSpec <- execJson lockFileDir $ podIpcSpecCmd podSpecPath
-            put $ Map.insert podSpecPath podSpec podSpecCache
-            pure podSpec
-      pure
-        Dependency
-          { dependencyType = GitType
-          , dependencyName = urlOf
-          , dependencyVersion = CEq <$> asum [tagOf, commitOf, branchOf]
-          , dependencyLocations = []
-          , dependencyEnvironments = mempty
-          , dependencyTags = Map.empty
-          }
+    readPodSpecAt podSpecPath =
+      context ("Resolving vendored podspec at " <> showT podSpecPath) $ do
+        podSpecCache <- get
+        (PodSpecJSON ExternalGitSource{urlOf, tagOf, commitOf, branchOf}) <-
+          case Map.lookup podSpecPath podSpecCache of
+            Just cached -> pure cached
+            Nothing -> do
+              podSpec <- execJson lockFileDir $ podIpcSpecCmd podSpecPath
+              put $ Map.insert podSpecPath podSpec podSpecCache
+              pure podSpec
+        pure
+          Dependency
+            { dependencyType = GitType
+            , dependencyName = urlOf
+            , dependencyVersion = CEq <$> asum [tagOf, commitOf, branchOf]
+            , dependencyLocations = []
+            , dependencyEnvironments = mempty
+            , dependencyTags = Map.empty
+            }
 
 type Parser = Parsec Void Text
 
