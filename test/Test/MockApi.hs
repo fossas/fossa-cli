@@ -94,6 +94,9 @@ newtype ApiFail = ApiFail {unApiFail :: Text}
 data ApiExpectation where
   ApiExpectation :: ExpectationRepetition -> ExpectationRequestType -> FossaApiClientF a -> ApiResult a -> ApiExpectation
 
+data MatchFailureType = NoMatchingRequest | UnmockedEndpoint
+  deriving (Eq, Ord, Show)
+
 -- | Create an expectation that will only be satisfied once.
 returnsOnce :: Has MockApi sig m => FossaApiClientF a -> a -> m ()
 returnsOnce req resp =
@@ -231,9 +234,6 @@ matchExpectation _ _ = Nothing
 -- So, if this returns `Nothing`, then we know that the endpoint of the request has not been mocked
 endpointHasBeenMocked :: FossaApiClientF a -> Bool
 endpointHasBeenMocked req = isJust $ matchExpectation req (ApiExpectation Always ExpectingAnyRequest req (ApiResult $ Left $ ApiFail ""))
-
-data MatchFailureType = NoMatchingRequest | UnmockedEndpoint
-  deriving (Eq, Ord, Show)
 
 -- | Handles a request in the context of the mock API.
 handleRequest ::
