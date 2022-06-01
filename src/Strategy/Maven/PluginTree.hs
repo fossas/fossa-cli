@@ -65,54 +65,6 @@ foldTextArtifactM f a t@TextArtifact{children = children} = do
   res <- f a t
   foldM (foldTextArtifactM f) res children
 
-artifactWithChildren :: TextArtifact
-artifactWithChildren =
-  TextArtifact
-    { artifactText = "org.clojure:test.generative:1.0.0"
-    , scopes = ["test"]
-    , isOptional = False
-    , children =
-        [ TextArtifact
-            { artifactText = "org.clojure:tools.namespace:1.0.0"
-            , scopes = ["test"]
-            , isOptional = False
-            , children =
-                [ TextArtifact
-                    { artifactText = "org.clojure:java.classpath:1.0.0"
-                    , scopes = ["test"]
-                    , children = []
-                    , isOptional = False
-                    }
-                , TextArtifact
-                    { artifactText = "org.fake:fake-pkg:1.0.0"
-                    , scopes = ["compile"]
-                    , children = []
-                    , isOptional = True
-                    }
-                , TextArtifact
-                    { artifactText = "org.clojure:tools.reader:1.3.2"
-                    , scopes = ["test"]
-                    , children = []
-                    , isOptional = False
-                    }
-                ]
-            }
-        , TextArtifact
-            { artifactText = "org.foo:bar:1.0.0"
-            , scopes = ["compile"]
-            , isOptional = False
-            , children =
-                [ TextArtifact
-                    { artifactText = "org.baz:buzz:1.0.0"
-                    , scopes = ["test"]
-                    , children = []
-                    , isOptional = False
-                    }
-                ]
-            }
-        ]
-    }
-
 currentColumn :: Parser Int
 currentColumn = unPos . sourceColumn <$> getSourcePos
 

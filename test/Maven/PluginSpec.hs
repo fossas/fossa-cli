@@ -1,15 +1,9 @@
 module Maven.PluginSpec (spec) where
 
-import Data.Aeson (decode)
-import Data.Either (fromRight)
-import Data.Set qualified as Set
-import Data.String.Conversion (encodeUtf8)
-import Data.Text (Text)
-import Strategy.Maven.Plugin (Artifact (..), PluginOutput (..), textArtifactToPluginOutput)
+import Strategy.Maven.Plugin (Artifact (..), Edge (..), PluginOutput (..), textArtifactToPluginOutput)
 import Strategy.Maven.PluginTree (TextArtifact (..))
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Spec, describe, fdescribe, it, shouldBe, shouldMatchList, shouldSatisfy)
-import Text.RawString.QQ (r)
+import Test.Hspec (Spec, fdescribe)
 
 spec :: Spec
 spec = do
@@ -50,6 +44,12 @@ complexTextArtifact =
                     }
                 ]
             }
+        , TextArtifact
+            { artifactText = "org.clojure:data.generators:1.0.0"
+            , scopes = ["test"]
+            , isOptional = False
+            , children = []
+            }
         ]
     }
 
@@ -59,6 +59,14 @@ complexPluginOutputArtifacts =
     { outArtifacts =
         [ Artifact
             { artifactNumericId = 0
+            , artifactGroupId = "org.clojure"
+            , artifactArtifactId = "data.generators"
+            , artifactVersion = "1.0.0"
+            , artifactScopes = ["test"]
+            , artifactOptional = False
+            }
+        , Artifact
+            { artifactNumericId = 1
             , artifactGroupId = "org.baz"
             , artifactArtifactId = "buzz"
             , artifactVersion = "1.0.0"
@@ -66,7 +74,7 @@ complexPluginOutputArtifacts =
             , artifactOptional = False
             }
         , Artifact
-            { artifactNumericId = 1
+            { artifactNumericId = 2
             , artifactGroupId = "org.foo"
             , artifactArtifactId = "bar"
             , artifactVersion = "1.0.0"
@@ -74,7 +82,7 @@ complexPluginOutputArtifacts =
             , artifactOptional = False
             }
         , Artifact
-            { artifactNumericId = 2
+            { artifactNumericId = 3
             , artifactGroupId = "org.fake"
             , artifactArtifactId = "fake-pkg"
             , artifactVersion = "1.0.0"
@@ -82,7 +90,7 @@ complexPluginOutputArtifacts =
             , artifactOptional = True
             }
         , Artifact
-            { artifactNumericId = 3
+            { artifactNumericId = 4
             , artifactGroupId = "org.clojure"
             , artifactArtifactId = "test.generative"
             , artifactVersion = "1.0.0"
@@ -90,7 +98,12 @@ complexPluginOutputArtifacts =
             , artifactOptional = False
             }
         ]
-    , outEdges = []
+    , outEdges =
+        [ Edge 2 1
+        , Edge 4 3
+        , Edge 4 2
+        , Edge 4 0
+        ]
     }
 
 -- TODO: because we use sets, there is no set internal order here so matching the numeric id is difficult without
