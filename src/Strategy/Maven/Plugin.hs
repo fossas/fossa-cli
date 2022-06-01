@@ -90,28 +90,25 @@ outputFile = $(mkRelFile "target/dependency-graph.txt")
 
 parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m PluginOutput
 parsePluginOutput dir =
-  do contents <- readContentsParser parseTextArtifact (dir </> outputFile)
-     case textArtifactToPluginOutput contents of
-       Left (MissingArtifact t) -> fatal $ "Could not find an id for artifact " <> t
-       Left (UnparseableName t) -> fatal $ "Could not parse name for artifact " <> t
-       Right po -> pure po
+  readContentsParser parseTextArtifact (dir </> outputFile) >>= textArtifactToPluginOutput
 
-newtype ArtifactInfo = ArtifactInfo
-  { artifacts :: [Artifact] }
-  deriving (Eq, Ord, Show)
+data ArtifactInfo = ArtifactInfo
+                    { artifacts :: [Artifact]
+                    , edges :: [Edge]}
+                  deriving (Eq, Ord, Show)
 
 emptyArtifactInfo :: ArtifactInfo
-emptyArtifactInfo = ArtifactInfo []
+emptyArtifactInfo = ArtifactInfo [] []
 
 data ConversionError
   = MissingArtifact Text
   | UnparseableName Text
   deriving (Eq, Show)
 
-textArtifactToPluginOutput :: TextArtifact -> Either ConversionError PluginOutput
+textArtifactToPluginOutput :: Has Diagnostics sig m => TextArtifact -> m PluginOutput
 textArtifactToPluginOutput
   ta = do ArtifactInfo {..} <- foldTextArtifactM foldFn emptyArtifactInfo ta
-          Right PluginOutput {outArtifacts = artifacts, outEdges = []}
+          pure $ PluginOutput {outArtifacts = artifacts, outEdges = edges}
   where
       artifactNames :: [Text]
       artifactNames = foldTextArtifactl (\a c -> (artifactText c : a)) mempty ta
@@ -119,10 +116,10 @@ textArtifactToPluginOutput
       namesToIds :: Map Text Int
       namesToIds = Map.fromList . (\ns -> zip ns [0 ..]) $ artifactNames
 
-      textArtifactToArtifact :: Int -> TextArtifact -> Either ConversionError Artifact
+      textArtifactToArtifact :: Int -> TextArtifact -> Maybe Artifact
       textArtifactToArtifact numericId TextArtifact{..} = 
         case Text.splitOn ":" artifactText of
-          [groupId, artifactId, version] -> Right $
+          [groupId, artifactId, version] -> Just $
             Artifact {
             artifactNumericId = numericId
             , artifactGroupId = groupId
@@ -131,14 +128,27 @@ textArtifactToPluginOutput
             , artifactScopes = scopes
             , artifactOptional = isOptional
             }
-          _ -> Left . UnparseableName $ artifactText 
+          _ -> Nothing
           
-      foldFn :: ArtifactInfo ->  TextArtifact -> Either ConversionError ArtifactInfo
+      -- buildEdges :: Int -> TextArtifact -> [Edge]
+      -- buildEdges parentId TextArtifact{..} =
+      --   map (Map.lookup (\a -> Map.lookup artifactText namesToids))
+
+      foldFn :: (Has Diagnostics sig m) => ArtifactInfo ->  TextArtifact -> m ArtifactInfo
       foldFn acc@(ArtifactInfo{..}) t@TextArtifact{artifactText = aText} =
-        case Map.lookup aText namesToIds of
-          Nothing -> Left . MissingArtifact $ "Could not find artifact with name " <> aText
-          Just numericId -> do artifact <- textArtifactToArtifact numericId t 
-                               Right $ acc{artifacts = artifact : artifacts}
+        -- the two warnings below should happen very rarely in practice because:
+        -- The first is a lookup in a map using the same names we used to create the map.
+        -- TODO: Include the parsed data as well as the full name in our original parser
+        -- If the names aren't parsable, the parser we used reading the text graph should
+        -- fail well before we ever get here.
+        case Map.lookup aText namesToIds of 
+          Nothing -> do warn $ "Could not find artifact with name " <> aText
+                        pure acc
+          Just numericId -> case textArtifactToArtifact numericId t of
+                              Nothing -> do warn $ "Could not parse artifact with name " <> aText
+                                            pure acc
+                            
+                              Just artifact -> pure acc{artifacts = artifact : artifacts}
                                
 
 mavenInstallPluginCmd :: FP.FilePath -> DepGraphPlugin -> Command

@@ -7,6 +7,7 @@ import Data.String.Conversion (encodeUtf8)
 import Data.Text (Text)
 import Strategy.Maven.Plugin (Artifact (..), PluginOutput (..), textArtifactToPluginOutput)
 import Strategy.Maven.PluginTree (TextArtifact (..))
+import Test.Effect (it', shouldBe')
 import Test.Hspec (Spec, describe, fdescribe, it, shouldBe, shouldMatchList, shouldSatisfy)
 import Text.RawString.QQ (r)
 
@@ -52,41 +53,45 @@ complexTextArtifact =
         ]
     }
 
-complexPluginOutputArtifacts :: [Artifact]
+complexPluginOutputArtifacts :: PluginOutput
 complexPluginOutputArtifacts =
-  [ Artifact
-      { artifactNumericId = 0
-      , artifactGroupId = "org.baz"
-      , artifactArtifactId = "buzz"
-      , artifactVersion = "1.0.0"
-      , artifactScopes = ["test"]
-      , artifactOptional = False
-      }
-  , Artifact
-      { artifactNumericId = 1
-      , artifactGroupId = "org.foo"
-      , artifactArtifactId = "bar"
-      , artifactVersion = "1.0.0"
-      , artifactScopes = ["compile"]
-      , artifactOptional = False
-      }
-  , Artifact
-      { artifactNumericId = 2
-      , artifactGroupId = "org.fake"
-      , artifactArtifactId = "fake-pkg"
-      , artifactVersion = "1.0.0"
-      , artifactScopes = ["compile"]
-      , artifactOptional = True
-      }
-  , Artifact
-      { artifactNumericId = 3
-      , artifactGroupId = "org.clojure"
-      , artifactArtifactId = "test.generative"
-      , artifactVersion = "1.0.0"
-      , artifactScopes = ["test"]
-      , artifactOptional = False
-      }
-  ]
+  PluginOutput
+    { outArtifacts =
+        [ Artifact
+            { artifactNumericId = 0
+            , artifactGroupId = "org.baz"
+            , artifactArtifactId = "buzz"
+            , artifactVersion = "1.0.0"
+            , artifactScopes = ["test"]
+            , artifactOptional = False
+            }
+        , Artifact
+            { artifactNumericId = 1
+            , artifactGroupId = "org.foo"
+            , artifactArtifactId = "bar"
+            , artifactVersion = "1.0.0"
+            , artifactScopes = ["compile"]
+            , artifactOptional = False
+            }
+        , Artifact
+            { artifactNumericId = 2
+            , artifactGroupId = "org.fake"
+            , artifactArtifactId = "fake-pkg"
+            , artifactVersion = "1.0.0"
+            , artifactScopes = ["compile"]
+            , artifactOptional = True
+            }
+        , Artifact
+            { artifactNumericId = 3
+            , artifactGroupId = "org.clojure"
+            , artifactArtifactId = "test.generative"
+            , artifactVersion = "1.0.0"
+            , artifactScopes = ["test"]
+            , artifactOptional = False
+            }
+        ]
+    , outEdges = []
+    }
 
 -- TODO: because we use sets, there is no set internal order here so matching the numeric id is difficult without
 -- some kind of sort
@@ -94,20 +99,17 @@ complexPluginOutputArtifacts =
 textArtifactConversionSpec :: Spec
 textArtifactConversionSpec =
   fdescribe "Maven text artifact tree conversion" $ do
-    it "Converts a single TextArtifact correctly" $
-      textArtifactToPluginOutput singleTextArtifact
-        `shouldBe` Right
-          PluginOutput
-            { outArtifacts = [simpleArtifact]
-            , outEdges = []
-            }
+    it' "Converts a single TextArtifact correctly" $ do
+      pluginOutput <- textArtifactToPluginOutput singleTextArtifact
+      pluginOutput
+        `shouldBe'` PluginOutput
+          { outArtifacts = [simpleArtifact]
+          , outEdges = []
+          }
 
-    it "Converts a more complext TextArtifact correctly" $ do
-      let PluginOutput{outArtifacts = artifacts} =
-            fromRight
-              (error "This test should not have failed")
-              (textArtifactToPluginOutput complexTextArtifact)
-      artifacts `shouldBe` complexPluginOutputArtifacts
+    it' "Converts a more complext TextArtifact correctly" $ do
+      pluginOutput <- textArtifactToPluginOutput complexTextArtifact
+      pluginOutput `shouldBe'` complexPluginOutputArtifacts
 
 simpleArtifact :: Artifact
 simpleArtifact =
