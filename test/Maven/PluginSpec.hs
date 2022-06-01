@@ -3,7 +3,7 @@ module Maven.PluginSpec (spec) where
 import Strategy.Maven.Plugin (Artifact (..), Edge (..), PluginOutput (..), textArtifactToPluginOutput)
 import Strategy.Maven.PluginTree (TextArtifact (..))
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Spec, fdescribe, describe)
+import Test.Hspec (Spec, describe)
 
 spec :: Spec
 spec = do
@@ -25,7 +25,7 @@ complexTextArtifact =
   TextArtifact
     { artifactText = "org.clojure:test.generative:1.0.0"
     , scopes = ["test"]
-    , isDirect = False
+    , isDirect = True
     , isOptional = False
     , children =
         [ TextArtifact
@@ -71,7 +71,7 @@ complexPluginOutputArtifacts =
             , artifactVersion = "1.0.0"
             , artifactScopes = ["test"]
             , artifactOptional = False
-            , artifactIsDirect = True
+            , artifactIsDirect = False
             }
         , Artifact
             { artifactNumericId = 1
@@ -107,7 +107,7 @@ complexPluginOutputArtifacts =
             , artifactVersion = "1.0.0"
             , artifactScopes = ["test"]
             , artifactOptional = False
-            , artifactIsDirect = False
+            , artifactIsDirect = True
             }
         ]
     , outEdges =
@@ -117,9 +117,6 @@ complexPluginOutputArtifacts =
         , Edge 4 0
         ]
     }
-
--- TODO: because we use sets, there is no set internal order here so matching the numeric id is difficult without
--- some kind of sort
 
 textArtifactConversionSpec :: Spec
 textArtifactConversionSpec =
@@ -132,7 +129,7 @@ textArtifactConversionSpec =
           , outEdges = []
           }
 
-    it' "Converts a more complext TextArtifact correctly" $ do
+    it' "Converts a more complex TextArtifact correctly" $ do
       pluginOutput <- textArtifactToPluginOutput complexTextArtifact
       pluginOutput `shouldBe'` complexPluginOutputArtifacts
 
@@ -145,5 +142,5 @@ simpleArtifact =
     , artifactVersion = "1.12.0-master-SNAPSHOT"
     , artifactOptional = False
     , artifactScopes = ["test"]
-    , artifactIsDirect = False
+    , artifactIsDirect = True
     }

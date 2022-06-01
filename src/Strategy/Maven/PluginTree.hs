@@ -9,6 +9,7 @@ module Strategy.Maven.PluginTree (
 import Control.Monad (foldM, void)
 import Data.Char (isSpace)
 import Data.Functor (($>))
+import Data.List (foldl')
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
@@ -29,7 +30,6 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (char, space1, string)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
-import Data.List (foldl')
 
 type Parser = Parsec Void Text
 
@@ -59,7 +59,8 @@ data TextArtifact = TextArtifact
 foldTextArtifactl :: (a -> TextArtifact -> a) -> a -> TextArtifact -> a
 foldTextArtifactl f a t@(TextArtifact{children = children}) =
   inner `seq` foldl' (foldTextArtifactl f) inner children
-  where inner = f a t
+  where
+    inner = f a t
 
 foldTextArtifactM :: Monad m => (a -> TextArtifact -> m a) -> a -> TextArtifact -> m a
 foldTextArtifactM f a t@TextArtifact{children = children} = do

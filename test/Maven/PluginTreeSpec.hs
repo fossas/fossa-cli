@@ -4,7 +4,7 @@ module Maven.PluginTreeSpec (spec) where
 
 import Data.Text (Text)
 import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
-import Test.Hspec (Spec, it, shouldBe, fdescribe, describe)
+import Test.Hspec (Spec, describe, it, shouldBe)
 import Text.Megaparsec (ParseErrorBundle, Parsec, runParser)
 import Text.RawString.QQ (r)
 
@@ -18,8 +18,7 @@ to :: (Show a1, Show a2, Eq a2) => Either a1 a2 -> a2 -> IO ()
 to parsed expected = either (fail . show) (`shouldBe` expected) parsed
 
 spec :: Spec
-spec = fdescribe "Maven dep-tree plugin parsing" $
-  do parseTextArtifactSpec
+spec = do parseTextArtifactSpec
 
 mockArtifactString :: Text
 mockArtifactString = "org.clojure:clojure:1.12.0-master-SNAPSHOT:test"
