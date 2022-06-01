@@ -43,6 +43,7 @@ mavenOutput =
             , artifactVersion = "1.0.0"
             , artifactOptional = False
             , artifactScopes = ["compile", "test"]
+            , artifactIsDirect = False
             }
         , Artifact
             { artifactNumericId = 1
@@ -51,6 +52,7 @@ mavenOutput =
             , artifactVersion = "2.0.0"
             , artifactOptional = True
             , artifactScopes = ["compile"]
+            , artifactIsDirect = False
             }
         ]
     , outEdges =

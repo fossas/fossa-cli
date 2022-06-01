@@ -3,10 +3,11 @@ module Maven.PluginSpec (spec) where
 import Strategy.Maven.Plugin (Artifact (..), Edge (..), PluginOutput (..), textArtifactToPluginOutput)
 import Strategy.Maven.PluginTree (TextArtifact (..))
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Spec, fdescribe)
+import Test.Hspec (Spec, fdescribe, describe)
 
 spec :: Spec
 spec = do
+  -- TODO: Consider moving this to PluginStrategySpec.hs
   textArtifactConversionSpec
 
 singleTextArtifact :: TextArtifact
@@ -14,6 +15,7 @@ singleTextArtifact =
   TextArtifact
     { artifactText = "org.clojure:clojure:1.12.0-master-SNAPSHOT"
     , scopes = ["test"]
+    , isDirect = True
     , isOptional = False
     , children = []
     }
@@ -23,21 +25,25 @@ complexTextArtifact =
   TextArtifact
     { artifactText = "org.clojure:test.generative:1.0.0"
     , scopes = ["test"]
+    , isDirect = False
     , isOptional = False
     , children =
         [ TextArtifact
             { artifactText = "org.fake:fake-pkg:1.0.0"
             , scopes = ["compile"]
+            , isDirect = False
             , children = []
             , isOptional = True
             }
         , TextArtifact
             { artifactText = "org.foo:bar:1.0.0"
+            , isDirect = False
             , scopes = ["compile"]
             , isOptional = False
             , children =
                 [ TextArtifact
                     { artifactText = "org.baz:buzz:1.0.0"
+                    , isDirect = False
                     , scopes = ["test"]
                     , children = []
                     , isOptional = False
@@ -46,6 +52,7 @@ complexTextArtifact =
             }
         , TextArtifact
             { artifactText = "org.clojure:data.generators:1.0.0"
+            , isDirect = False
             , scopes = ["test"]
             , isOptional = False
             , children = []
@@ -64,6 +71,7 @@ complexPluginOutputArtifacts =
             , artifactVersion = "1.0.0"
             , artifactScopes = ["test"]
             , artifactOptional = False
+            , artifactIsDirect = True
             }
         , Artifact
             { artifactNumericId = 1
@@ -72,6 +80,7 @@ complexPluginOutputArtifacts =
             , artifactVersion = "1.0.0"
             , artifactScopes = ["test"]
             , artifactOptional = False
+            , artifactIsDirect = False
             }
         , Artifact
             { artifactNumericId = 2
@@ -80,6 +89,7 @@ complexPluginOutputArtifacts =
             , artifactVersion = "1.0.0"
             , artifactScopes = ["compile"]
             , artifactOptional = False
+            , artifactIsDirect = False
             }
         , Artifact
             { artifactNumericId = 3
@@ -88,6 +98,7 @@ complexPluginOutputArtifacts =
             , artifactVersion = "1.0.0"
             , artifactScopes = ["compile"]
             , artifactOptional = True
+            , artifactIsDirect = False
             }
         , Artifact
             { artifactNumericId = 4
@@ -96,6 +107,7 @@ complexPluginOutputArtifacts =
             , artifactVersion = "1.0.0"
             , artifactScopes = ["test"]
             , artifactOptional = False
+            , artifactIsDirect = False
             }
         ]
     , outEdges =
@@ -111,7 +123,7 @@ complexPluginOutputArtifacts =
 
 textArtifactConversionSpec :: Spec
 textArtifactConversionSpec =
-  fdescribe "Maven text artifact tree conversion" $ do
+  describe "Maven text artifact -> PluginOutput conversion" $ do
     it' "Converts a single TextArtifact correctly" $ do
       pluginOutput <- textArtifactToPluginOutput singleTextArtifact
       pluginOutput
@@ -133,4 +145,5 @@ simpleArtifact =
     , artifactVersion = "1.12.0-master-SNAPSHOT"
     , artifactOptional = False
     , artifactScopes = ["test"]
+    , artifactIsDirect = False
     }

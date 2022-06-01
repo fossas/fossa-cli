@@ -51,6 +51,7 @@ data TextArtifact = TextArtifact
   { artifactText :: Text
   , scopes :: [Text]
   , isOptional :: Bool
+  , isDirect :: Bool
   , children :: [TextArtifact]
   }
   deriving (Eq, Ord, Show)
@@ -79,20 +80,21 @@ parseArtifactChild prefixCount =
     if pos == prefixCount
       then
         lexeme (string "+-" <|> string "\\-")
-          *> parseTextArtifactAndChildren
+          *> parseTextArtifactAndChildren False
       else fail "can't parse child"
 
-parseTextArtifactAndChildren :: Parser TextArtifact
-parseTextArtifactAndChildren =
+parseTextArtifactAndChildren :: Bool -> Parser TextArtifact
+parseTextArtifactAndChildren isDirect =
   do
     startPos <- currentColumn
     TextArtifact
       <$> (Text.intercalate ":" <$> count 3 (readThruNextColon "artifactSpecifier"))
       <*> lexeme scopeParse
       <*> parseIsOptional
+      <*> pure (isDirect)
       <*> ( some (parseArtifactChild startPos)
               <|> pure []
           )
 
 parseTextArtifact :: Parser TextArtifact
-parseTextArtifact = parseTextArtifactAndChildren <* eof
+parseTextArtifact = parseTextArtifactAndChildren True <* eof

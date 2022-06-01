@@ -133,6 +133,7 @@ textArtifactToPluginOutput
                 , artifactVersion = version
                 , artifactScopes = scopes
                 , artifactOptional = isOptional
+                , artifactIsDirect = isDirect
                 }
           _ -> Nothing
 
@@ -223,6 +224,7 @@ data Artifact = Artifact
   , artifactVersion :: Text
   , artifactScopes :: [Text]
   , artifactOptional :: Bool
+  , artifactIsDirect :: Bool
   }
   deriving (Eq, Ord, Show)
 
