@@ -56,7 +56,6 @@ import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify, put)
-import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO)
 import Data.Kind (Type)
 import Data.List (intercalate)
@@ -69,8 +68,8 @@ data MockApi (m :: Type -> Type) a where
   MockApiOnceForAnyRequest :: FossaApiClientF a -> a -> MockApi m ()
   MockApiAlwaysForAnyRequest :: FossaApiClientF a -> a -> MockApi m ()
   MockApiFails :: FossaApiClientF a -> Text -> MockApi m ()
-  MockApiRunExpectations :: FossaApiClientF a -> MockApi m (Maybe (ApiResult a))
-  AssertUnexpectedCall :: FossaApiClientF a -> MockApi m a
+  MockApiRunExpectations :: FossaApiClientF a -> MockApi m (Either MatchFailureType (ApiResult a))
+  AssertUnexpectedCall :: FossaApiClientF a -> MatchFailureType -> MockApi m a
   AssertAllSatisfied :: MockApi m ()
 
 -- | Specifies how to handle repetition of a request
@@ -123,14 +122,14 @@ fails req msg =
   send $ MockApiFails req msg
 
 -- | Run a request against the expectations
-runExpectations :: Has MockApi sig m => FossaApiClientF a -> m (Maybe (ApiResult a))
+runExpectations :: Has MockApi sig m => FossaApiClientF a -> m (Either MatchFailureType (ApiResult a))
 runExpectations =
   send . MockApiRunExpectations
 
 -- | Assert that this call is unexpected
-assertUnexpectedCall :: Has MockApi sig m => FossaApiClientF a -> m a
-assertUnexpectedCall =
-  send . AssertUnexpectedCall
+assertUnexpectedCall :: Has MockApi sig m => FossaApiClientF a -> MatchFailureType -> m a
+assertUnexpectedCall err =
+  send . AssertUnexpectedCall err
 
 -- | Assert that all non-repeating expectations have been satisfied
 assertAllSatisfied :: Has MockApi sig m => m ()
@@ -167,11 +166,11 @@ instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (MockApi :+: sig) (Mock
       pure ctx
     L (MockApiRunExpectations req) -> do
       (<$ ctx) <$> handleRequest req
-    L (AssertUnexpectedCall req) -> do
+    L (AssertUnexpectedCall req err) -> do
       expectations <- get
       a <-
         sendIO . assertFailure $
-          "Unexpected call: \n  " <> show req <> "\n"
+          "Unexpected call: \n  " <> show err <> ": " <> show req <> "\n"
             <> "Unsatisfied expectations: \n  "
             <> intercalate "\n  " (map (\(ApiExpectation _ _ expectedReq _) -> show expectedReq) expectations)
       pure (a <$ ctx)
@@ -192,8 +191,10 @@ isSingular (ApiExpectation Once _ _ _) = True
 isSingular (ApiExpectation Always _ _ _) = False
 
 -- | A helper function used to check both ExpectationRequestType possibilities in matchExpectation
-checkResult :: ExpectationRequestType -> FossaApiClientF a -> FossaApiClientF a -> ApiResult a -> Maybe (ApiResult a)
-checkResult ExpectingExactRequest a b resp = resp <$ guard (a == b)
+checkResult :: ExpectationRequestType -> FossaApiClientF a -> FossaApiClientF a -> ApiResult a -> Either MatchFailureType (ApiResult a)
+checkResult ExpectingExactRequest a b resp
+  | a == b = Right resp
+  | otherwise = Left NoMatchingRequest
 checkResult ExpectingAnyRequest _ _ resp = pure resp
 
 -- | Matches a request to an expectation.  This function basically exists to
@@ -201,7 +202,7 @@ checkResult ExpectingAnyRequest _ _ resp = pure resp
 -- arbitrary ones can be compared even if the types wouldn't match.
 -- A convenient expression for building these lines is:
 --   s/(\w+) ::.*/matchExpectation a@(\1{}) (ApiExpectation _ requestExpectation b@(\1{}) resp) = checkResult requestExpectation a b resp/
-matchExpectation :: FossaApiClientF a -> ApiExpectation -> Maybe (ApiResult a)
+matchExpectation :: FossaApiClientF a -> ApiExpectation -> Either MatchFailureType (ApiResult a)
 matchExpectation a@(AssertRevisionBinaries{}) (ApiExpectation _ requestExpectation b@(AssertRevisionBinaries{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(AssertUserDefinedBinaries{}) (ApiExpectation _ requestExpectation b@(AssertUserDefinedBinaries{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(FinalizeLicenseScan{}) (ApiExpectation _ requestExpectation b@(FinalizeLicenseScan{}) resp) = checkResult requestExpectation a b resp
@@ -223,7 +224,7 @@ matchExpectation a@(UploadArchive{}) (ApiExpectation _ requestExpectation b@(Upl
 matchExpectation a@(UploadContainerScan{}) (ApiExpectation _ requestExpectation b@(UploadContainerScan{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadContributors{}) (ApiExpectation _ requestExpectation b@(UploadContributors{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadLicenseScanResult{}) (ApiExpectation _ requestExpectation b@(UploadLicenseScanResult{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _ _ = Nothing
+matchExpectation _ _ = Left UnmockedEndpoint
 
 -- | Handles a request in the context of the mock API.
 handleRequest ::
@@ -231,27 +232,31 @@ handleRequest ::
   ) =>
   forall a.
   FossaApiClientF a ->
-  m (Maybe (ApiResult a))
+  m (Either MatchFailureType (ApiResult a))
 handleRequest req = do
   expectations <- get
-  case testExpectations req expectations of
-    Just (resp, expectations') -> do
+  case testExpectations req UnmockedEndpoint expectations of
+    Right (resp, expectations') -> do
       put expectations'
-      pure (Just resp)
-    Nothing ->
-      pure Nothing
+      pure $ Right resp
+    Left err ->
+      pure $ Left err
+
+data MatchFailureType = NoMatchingRequest | UnmockedEndpoint
+  deriving (Eq, Ord, Show)
 
 -- | Tests a request against a list of expectations and returns the result and
 -- remaining expectations.
-testExpectations :: FossaApiClientF a -> [ApiExpectation] -> Maybe (ApiResult a, [ApiExpectation])
-testExpectations _ [] = Nothing
-testExpectations req (expectation : rest) =
+testExpectations :: FossaApiClientF a -> MatchFailureType -> [ApiExpectation] -> Either MatchFailureType (ApiResult a, [ApiExpectation])
+testExpectations _ currentMockErrorType [] = Left currentMockErrorType
+testExpectations req currentMockErrorType (expectation : rest) =
   case matchExpectation req expectation of
-    Nothing -> fmap (expectation :) <$> testExpectations req rest
-    Just resp ->
+    Left NoMatchingRequest -> fmap (expectation :) <$> testExpectations req NoMatchingRequest rest
+    Left UnmockedEndpoint -> fmap (expectation :) <$> testExpectations req currentMockErrorType rest
+    Right resp ->
       if isSingular expectation
-        then Just (resp, rest)
-        else Just (resp, expectation : rest)
+        then Right (resp, rest)
+        else Right (resp, expectation : rest)
 
 type FossaApiClientMockC = SimpleC FossaApiClientF
 
@@ -277,9 +282,9 @@ runApiWithMock f = do
     runRequest req = do
       apiResult <- runExpectations req
       case apiResult of
-        Just (ApiResult result) -> either (fatalText . unApiFail) pure result
-        Nothing ->
-          assertUnexpectedCall req
+        Right (ApiResult result) -> either (fatalText . unApiFail) pure result
+        Left err ->
+          assertUnexpectedCall req err
 
 runMockApi ::
   ( Has (Lift IO) sig m
