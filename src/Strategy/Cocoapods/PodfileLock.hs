@@ -197,7 +197,7 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
               -- analyzed as part of their parent. Given the name A/B/C, we
               -- only want to directly scan the first slash component, "A".
               -- If there are no slash components, we take the entire name.
-              -- 
+              --
               -- This is why we use splitOnceOn:
               -- splitOnceOn "/" "A/B/C" = ("A", "B/C")
               -- splitOnceOn "/" "hello" = ("hello", "")
