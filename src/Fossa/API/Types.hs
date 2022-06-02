@@ -6,6 +6,7 @@ module Fossa.API.Types (
   ApiKey (..),
   ApiOpts (..),
   Archive (..),
+  ArchiveUploadType (..),
   ArchiveComponents (..),
   Build (..),
   BuildStatus (..),
@@ -287,8 +288,9 @@ instance Show OrgId where
 data Organization = Organization
   { organizationId :: OrgId
   , orgUsesSAML :: Bool
-  , orgDoLocalLicenseScan :: Bool
+  , orgCoreSupportsLocalLicenseScan :: Bool
   , orgSupportsAnalyzedRevisionsQuery :: Bool
+  , orgDefaultVendoredDependencyScanType :: ArchiveUploadType
   }
   deriving (Eq, Ord, Show)
 
@@ -298,6 +300,18 @@ instance FromJSON Organization where
       <*> obj .:? "usesSAML" .!= False
       <*> obj .:? "supportsCliLicenseScanning" .!= False
       <*> obj .:? "supportsAnalyzedRevisionsQuery" .!= False
+      <*> obj .:? "defaultVendoredDependencyScanType" .!= CLILicenseScan
+
+data ArchiveUploadType
+  = ArchiveUpload
+  | CLILicenseScan
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ArchiveUploadType where
+  parseJSON = withText "ArchiveUploadType" $ \case
+    "ArchiveUpload" -> pure ArchiveUpload
+    "CLILicenseScan" -> pure CLILicenseScan
+    _ -> pure CLILicenseScan
 
 data Project = Project
   { projectId :: Text
