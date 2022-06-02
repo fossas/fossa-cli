@@ -3,6 +3,7 @@
 module Maven.PluginTreeSpec (spec) where
 
 import Data.Text (Text)
+import Data.Tree (Tree (..))
 import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Text.Megaparsec (ParseErrorBundle, Parsec, runParser)
@@ -29,35 +30,38 @@ multiScopeArtifactString = "org.clojure:clojure:1.12.0-master-SNAPSHOT:compile/t
 optionalArtifactString :: Text
 optionalArtifactString = "jakarta.mail:jakarta.mail-api:2.0.1:compile (optional)"
 
-mockArtifact :: TextArtifact
+mockArtifact :: Tree TextArtifact
 mockArtifact =
-  TextArtifact
-    { artifactText = "org.clojure:clojure:1.12.0-master-SNAPSHOT"
-    , scopes = ["test"]
-    , isDirect = True
-    , isOptional = False
-    , children = []
-    }
+  Node
+    TextArtifact
+      { artifactText = "org.clojure:clojure:1.12.0-master-SNAPSHOT"
+      , scopes = ["test"]
+      , isDirect = True
+      , isOptional = False
+      }
+    []
 
-multiScopeTextArtifact :: TextArtifact
+multiScopeTextArtifact :: Tree TextArtifact
 multiScopeTextArtifact =
-  TextArtifact
-    { artifactText = "org.clojure:clojure:1.12.0-master-SNAPSHOT"
-    , scopes = ["compile", "test"]
-    , isDirect = True
-    , children = []
-    , isOptional = False
-    }
+  Node
+    TextArtifact
+      { artifactText = "org.clojure:clojure:1.12.0-master-SNAPSHOT"
+      , scopes = ["compile", "test"]
+      , isDirect = True
+      , isOptional = False
+      }
+    []
 
-optionalTextArtifact :: TextArtifact
+optionalTextArtifact :: Tree TextArtifact
 optionalTextArtifact =
-  TextArtifact
-    { artifactText = "jakarta.mail:jakarta.mail-api:2.0.1"
-    , scopes = ["compile"]
-    , isDirect = True
-    , isOptional = True
-    , children = []
-    }
+  Node
+    TextArtifact
+      { artifactText = "jakarta.mail:jakarta.mail-api:2.0.1"
+      , scopes = ["compile"]
+      , isDirect = True
+      , isOptional = True
+      }
+    []
 
 parseTextArtifactSpec :: Spec
 parseTextArtifactSpec = describe "Parsing maven artifact text" $ do
@@ -70,60 +74,64 @@ parseTextArtifactSpec = describe "Parsing maven artifact text" $ do
   it "Parses a TextArtifact with nested children" $
     parseTextArtifact `shouldParse` artifactTextWithChildren `to` artifactWithChildren
 
-artifactWithChildren :: TextArtifact
+artifactWithChildren :: Tree TextArtifact
 artifactWithChildren =
-  TextArtifact
-    { artifactText = "org.clojure:test.generative:1.0.0"
-    , scopes = ["test"]
-    , isDirect = True
-    , isOptional = False
-    , children =
-        [ TextArtifact
-            { artifactText = "org.clojure:tools.namespace:1.0.0"
-            , scopes = ["test"]
-            , isOptional = False
-            , isDirect = False
-            , children =
-                [ TextArtifact
-                    { artifactText = "org.clojure:java.classpath:1.0.0"
-                    , scopes = ["test"]
-                    , isDirect = False
-                    , children = []
-                    , isOptional = False
-                    }
-                , TextArtifact
-                    { artifactText = "org.fake:fake-pkg:1.0.0"
-                    , isDirect = False
-                    , scopes = ["compile"]
-                    , children = []
-                    , isOptional = True
-                    }
-                , TextArtifact
-                    { artifactText = "org.clojure:tools.reader:1.3.2"
-                    , isDirect = False
-                    , scopes = ["test"]
-                    , children = []
-                    , isOptional = False
-                    }
-                ]
-            }
-        , TextArtifact
-            { artifactText = "org.foo:bar:1.0.0"
-            , isDirect = False
-            , scopes = ["compile"]
-            , isOptional = False
-            , children =
-                [ TextArtifact
-                    { artifactText = "org.baz:buzz:1.0.0"
-                    , isDirect = False
-                    , scopes = ["test"]
-                    , children = []
-                    , isOptional = False
-                    }
-                ]
-            }
+  Node
+    TextArtifact
+      { artifactText = "org.clojure:test.generative:1.0.0"
+      , scopes = ["test"]
+      , isDirect = True
+      , isOptional = False
+      }
+    [ Node
+        TextArtifact
+          { artifactText = "org.clojure:tools.namespace:1.0.0"
+          , scopes = ["test"]
+          , isOptional = False
+          , isDirect = False
+          }
+        [ Node
+            TextArtifact
+              { artifactText = "org.clojure:java.classpath:1.0.0"
+              , scopes = ["test"]
+              , isDirect = False
+              , isOptional = False
+              }
+            []
+        , Node
+            TextArtifact
+              { artifactText = "org.fake:fake-pkg:1.0.0"
+              , isDirect = False
+              , scopes = ["compile"]
+              , isOptional = True
+              }
+            []
+        , Node
+            TextArtifact
+              { artifactText = "org.clojure:tools.reader:1.3.2"
+              , isDirect = False
+              , scopes = ["test"]
+              , isOptional = False
+              }
+            []
         ]
-    }
+    , Node
+        TextArtifact
+          { artifactText = "org.foo:bar:1.0.0"
+          , isDirect = False
+          , scopes = ["compile"]
+          , isOptional = False
+          }
+        [ Node
+            TextArtifact
+              { artifactText = "org.baz:buzz:1.0.0"
+              , isDirect = False
+              , scopes = ["test"]
+              , isOptional = False
+              }
+            []
+        ]
+    ]
 
 artifactTextWithChildren :: Text
 artifactTextWithChildren =

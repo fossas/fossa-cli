@@ -23,6 +23,7 @@ import Control.Monad (when)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.FileEmbed (embedFile)
+import Data.Foldable (Foldable (fold))
 import Data.Functor (void)
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -31,11 +32,12 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Traversable (for)
+import Data.Tree (Tree (..))
 import Effect.Exec
 import Effect.ReadFS
 import Path
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
-import Strategy.Maven.PluginTree (TextArtifact (..), foldTextArtifactM, foldTextArtifactl, parseTextArtifact)
+import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
 import System.FilePath qualified as FP
 
 data DepGraphPlugin = DepGraphPlugin
@@ -95,28 +97,17 @@ parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -
 parsePluginOutput dir =
   readContentsParser parseTextArtifact (dir </> outputFile) >>= textArtifactToPluginOutput
 
-data ArtifactInfo = ArtifactInfo
-  { artifacts :: [Artifact]
-  , edges :: [Edge]
-  }
-  deriving (Eq, Ord, Show)
-
-emptyArtifactInfo :: ArtifactInfo
-emptyArtifactInfo = ArtifactInfo [] []
-
 data ConversionError
   = MissingArtifact Text
   | UnparseableName Text
   deriving (Eq, Show)
 
-textArtifactToPluginOutput :: Has Diagnostics sig m => TextArtifact -> m PluginOutput
+textArtifactToPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m PluginOutput
 textArtifactToPluginOutput
-  ta = do
-    ArtifactInfo{..} <- foldTextArtifactM foldFn emptyArtifactInfo ta
-    pure $ PluginOutput{outArtifacts = artifacts, outEdges = edges}
+  ta = buildPluginOutput ta
     where
       artifactNames :: [Text]
-      artifactNames = foldTextArtifactl (\a c -> (artifactText c : a)) mempty ta
+      artifactNames = foldl (\a c -> (artifactText c : a)) mempty ta
 
       namesToIds :: Map Text Int
       namesToIds = Map.fromList . (\ns -> zip ns [0 ..]) $ artifactNames
@@ -146,36 +137,37 @@ textArtifactToPluginOutput
           warn $ "Could not find artifact with name " <> aText
         pure res
 
-      buildEdges :: Has Diagnostics sig m => Int -> [TextArtifact] -> m [Edge]
+      buildEdges :: Has Diagnostics sig m => Int -> [Tree TextArtifact] -> m [Edge]
       buildEdges parentId children =
         catMaybes
           <$> for
-            children
+            (map rootLabel children)
             (\c -> fmap (Edge parentId) <$> lookupArtifactByName (artifactText c))
 
-      foldFn :: (Has Diagnostics sig m) => ArtifactInfo -> TextArtifact -> m ArtifactInfo
-      foldFn
-        artInfo@(ArtifactInfo{..})
-        t@TextArtifact
-          { artifactText = aText
-          , children = aChildren
-          } = do
+      buildPluginOutput :: (Has Diagnostics sig m) => Tree TextArtifact -> m PluginOutput
+      buildPluginOutput
+        (Node t@(TextArtifact{artifactText = aText}) aChildren) = do
           -- TODO: Include the parsed data as well as the full name in our original parser
           -- If the names aren't parsable, the parser we used to read the text
           -- graph should fail well before we ever get here.
           maybeId <- lookupArtifactByName aText
+          childInfo@PluginOutput
+            { outArtifacts = cArtifacts
+            , outEdges = cEdges
+            } <-
+            fold <$> traverse buildPluginOutput aChildren
           case maybeId of
-            Nothing -> pure artInfo
+            Nothing -> pure childInfo
             Just numericId -> case textArtifactToArtifact numericId t of
               Nothing -> do
                 warn $ "Could not parse artifact with name " <> aText
-                pure artInfo
+                pure childInfo
               Just artifact -> do
                 newEdges <- buildEdges numericId aChildren
                 pure
-                  artInfo
-                    { artifacts = artifact : artifacts
-                    , edges = newEdges <> edges
+                  childInfo
+                    { outArtifacts = artifact : cArtifacts
+                    , outEdges = newEdges <> cEdges
                     }
 
 mavenInstallPluginCmd :: FP.FilePath -> DepGraphPlugin -> Command
@@ -214,6 +206,19 @@ data PluginOutput = PluginOutput
   , outEdges :: [Edge]
   }
   deriving (Eq, Ord, Show)
+
+instance Semigroup PluginOutput where
+  PluginOutput
+    { outArtifacts = p1Arts
+    , outEdges = p1Edges
+    }
+    <> PluginOutput
+      { outArtifacts = p2Arts
+      , outEdges = p2Edges
+      } = PluginOutput (p1Arts <> p2Arts) (p1Edges <> p2Edges)
+
+instance Monoid PluginOutput where
+  mempty = PluginOutput [] []
 
 -- NOTE: artifact numeric IDs are 1-indexed, whereas edge numeric references are 0-indexed.
 -- the json parser for artifacts converts them to be 0-indexed.

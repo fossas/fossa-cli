@@ -1,9 +1,12 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Maven.PluginSpec (spec) where
 
+import Data.Tree (Tree (..))
 import Strategy.Maven.Plugin (Artifact (..), Edge (..), PluginOutput (..), textArtifactToPluginOutput)
 import Strategy.Maven.PluginTree (TextArtifact (..))
-import Test.Effect (it', shouldBe')
-import Test.Hspec (Spec, describe)
+import Test.Effect (it', shouldBe', shouldMatchList')
+import Test.Hspec (Spec, describe, fdescribe)
 
 spec :: Spec
 spec = do
@@ -17,48 +20,50 @@ singleTextArtifact =
     , scopes = ["test"]
     , isDirect = True
     , isOptional = False
-    , children = []
     }
 
-complexTextArtifact :: TextArtifact
+complexTextArtifact :: Tree TextArtifact
 complexTextArtifact =
-  TextArtifact
-    { artifactText = "org.clojure:test.generative:1.0.0"
-    , scopes = ["test"]
-    , isDirect = True
-    , isOptional = False
-    , children =
-        [ TextArtifact
-            { artifactText = "org.fake:fake-pkg:1.0.0"
-            , scopes = ["compile"]
-            , isDirect = False
-            , children = []
-            , isOptional = True
-            }
-        , TextArtifact
-            { artifactText = "org.foo:bar:1.0.0"
-            , isDirect = False
-            , scopes = ["compile"]
-            , isOptional = False
-            , children =
-                [ TextArtifact
-                    { artifactText = "org.baz:buzz:1.0.0"
-                    , isDirect = False
-                    , scopes = ["test"]
-                    , children = []
-                    , isOptional = False
-                    }
-                ]
-            }
-        , TextArtifact
-            { artifactText = "org.clojure:data.generators:1.0.0"
-            , isDirect = False
-            , scopes = ["test"]
-            , isOptional = False
-            , children = []
-            }
+  Node
+    TextArtifact
+      { artifactText = "org.clojure:test.generative:1.0.0"
+      , scopes = ["test"]
+      , isDirect = True
+      , isOptional = False
+      }
+    [ Node
+        TextArtifact
+          { artifactText = "org.fake:fake-pkg:1.0.0"
+          , scopes = ["compile"]
+          , isDirect = False
+          , isOptional = True
+          }
+        []
+    , Node
+        TextArtifact
+          { artifactText = "org.foo:bar:1.0.0"
+          , isDirect = False
+          , scopes = ["compile"]
+          , isOptional = False
+          }
+        [ Node
+            TextArtifact
+              { artifactText = "org.baz:buzz:1.0.0"
+              , isDirect = False
+              , scopes = ["test"]
+              , isOptional = False
+              }
+            []
         ]
-    }
+    , Node
+        TextArtifact
+          { artifactText = "org.clojure:data.generators:1.0.0"
+          , isDirect = False
+          , scopes = ["test"]
+          , isOptional = False
+          }
+        []
+    ]
 
 complexPluginOutputArtifacts :: PluginOutput
 complexPluginOutputArtifacts =
@@ -122,7 +127,7 @@ textArtifactConversionSpec :: Spec
 textArtifactConversionSpec =
   describe "Maven text artifact -> PluginOutput conversion" $ do
     it' "Converts a single TextArtifact correctly" $ do
-      pluginOutput <- textArtifactToPluginOutput singleTextArtifact
+      pluginOutput <- textArtifactToPluginOutput (Node singleTextArtifact [])
       pluginOutput
         `shouldBe'` PluginOutput
           { outArtifacts = [simpleArtifact]
@@ -130,8 +135,9 @@ textArtifactConversionSpec =
           }
 
     it' "Converts a more complex TextArtifact correctly" $ do
-      pluginOutput <- textArtifactToPluginOutput complexTextArtifact
-      pluginOutput `shouldBe'` complexPluginOutputArtifacts
+      PluginOutput{outArtifacts = resArts, outEdges = resEdges} <- textArtifactToPluginOutput complexTextArtifact
+      resArts `shouldMatchList'` (outArtifacts complexPluginOutputArtifacts)
+      resEdges `shouldMatchList'` (outEdges complexPluginOutputArtifacts)
 
 simpleArtifact :: Artifact
 simpleArtifact =
