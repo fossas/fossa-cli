@@ -197,6 +197,7 @@ mavenPluginDependenciesCmd plugin =
         , "-DshowVersions=true"
         , "-DshowGroupIds=true"
         , "-DshowOptional=true"
+        , "-DrepeatTransitiveDependenciesInTextGraph=true"
         ]
     , cmdAllowErr = Never
     }
