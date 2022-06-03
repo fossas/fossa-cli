@@ -47,6 +47,7 @@ module Graphing (
   stripRoot,
   promoteToDirect,
   shrinkRoots,
+  subGraphOf,
 
   -- * Conversions
   fromAdjacencyMap,
@@ -366,3 +367,31 @@ hasPredecessors (Graphing gr) from = not $ Set.null $ Set.filter (withoutRoots) 
     withoutRoots :: Node a -> Bool
     withoutRoots (Node _) = True
     withoutRoots (Root) = False
+
+-- | Keeps children of provided node in graph
+--
+-- Example:
+--
+--   1 -> 2 -> 5 -> 6
+--        \       \
+--         \       7
+--          4
+--
+--  subGraphOf 5 gr =
+--
+--   5 -> 6
+--        \
+--         7
+subGraphOf :: forall ty. Ord ty => ty -> Graphing ty -> Graphing ty
+subGraphOf n (Graphing gr) =
+  Graphing (AM.induce keepPredicate gr)
+  where
+    nodes :: [Node ty]
+    nodes = Prelude.filter (== Node n) $ AM.vertexList gr
+
+    reachableNodes :: Set.Set (Node ty)
+    reachableNodes = Set.fromList $ AMA.dfs nodes gr
+
+    keepPredicate :: Node ty -> Bool
+    keepPredicate Root = True
+    keepPredicate (Node ty) = Set.member (Node ty) reachableNodes
