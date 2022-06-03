@@ -24,7 +24,7 @@ import Effect.Exec (Exec)
 import Effect.Grapher (Grapher, edge, evalGrapher)
 import Effect.Grapher qualified as Grapher
 import Effect.ReadFS (ReadFS)
-import Graphing (Graphing, shrinkRoots)
+import Graphing (Graphing, directList, shrink, shrinkRoots)
 import Path (Abs, Dir, Path)
 import Strategy.Maven.Plugin (
   Artifact (..),
@@ -85,13 +85,50 @@ data MvnPluginExecFailed = MvnPluginExecFailed
 instance ToDiagnostic MvnPluginExecFailed where
   renderDiagnostic (MvnPluginExecFailed) = "Failed to execute maven plugin for analysis."
 
+-- | Prune out toplevel packages and submodules from the graph.
+--
+-- The graphs returned by the depgraph plugin look like this:
+--
+-- @
+-- org1:toplevelPackage1:1.0.0:compile
+-- \- org1:name2:2.0.0:compile
+-- @
+--
+-- The top-level name in the above case is the name of the project, and the
+-- nested name2 package is a dependency.
+--
+-- Multimodule projects look like this:
+--
+-- @
+-- org1:submodule1:1.0.0:compile
+-- \- org1:name2:2.0.0:compile
+-- org1:submodule2:1.0.0:compile
+-- \- org1:name3:3.0.0:compile
+--    \- org1:submodule1:1.0.0:compile
+-- @
+--
+-- In both cases, we want to remove either the toplevel project name or the
+-- toplevel submodule name because these are the users' own packages.
+--
+-- The multimodule case also shows how one submodule can depend on another. In
+-- this case we want to remove the reference to submodule1 in submodule2's
+-- dependency tree and promote submodule1's dependencies to be dependencies of
+-- org1:name3.
+processSubmodules :: Graphing Dependency -> Graphing Dependency
+processSubmodules g =
+  Graphing.shrink (not . (`Set.member` rootDeps))
+    . shrinkRoots
+    $ g
+  where
+    rootDeps = Set.fromList . Graphing.directList $ g
+
 buildGraph :: PluginOutput -> Graphing Dependency
 buildGraph PluginOutput{..} =
   -- The root deps in the maven depgraph text graph output are either the
   -- toplevel package or submodules in a multi-module project. We don't want to
   -- consider those because they're the users' packages, so promote the root
   -- deps to direct when building the graph using `shrinkRoots`.
-  shrinkRoots . run . evalGrapher $ do
+  processSubmodules . run . evalGrapher $ do
     let byNumeric :: Map Int Artifact
         byNumeric = indexBy artifactNumericId outArtifacts
 

@@ -40,8 +40,7 @@ packageFour =
     , dependencyVersion = Just (CEq "4.0.0")
     , dependencyLocations = []
     , dependencyEnvironments = mempty
-    , dependencyTags = Map.fromList [("scopes", ["compile"])]
-    }
+    , dependencyTags = Map.fromList [("scopes", ["compile"])]}
 
 mavenOutput :: PluginOutput
 mavenOutput =
@@ -106,8 +105,7 @@ mavenOutputWithDirects =
     }
 
 mavenMultimoduleOutputWithDirects :: PluginOutput
-mavenMultimoduleOutputWithDirects =
-  PluginOutput
+mavenMultimoduleOutputWithDirects = PluginOutput
     { outArtifacts =
         [ Artifact
             { artifactNumericId = 0
@@ -152,6 +150,55 @@ mavenMultimoduleOutputWithDirects =
         ]
     }
 
+    
+mavenCrossDependentSubModules :: PluginOutput
+mavenCrossDependentSubModules =
+  PluginOutput
+    { outArtifacts =
+        [ Artifact
+            { artifactNumericId = 0
+            , artifactGroupId = "mygroup"
+            , artifactArtifactId = "packageOne"
+            , artifactVersion = "1.0.0"
+            , artifactOptional = False
+            , artifactScopes = ["compile", "test"]
+            , artifactIsDirect = True
+            }
+        , Artifact
+            { artifactNumericId = 1
+            , artifactGroupId = "mygroup"
+            , artifactArtifactId = "packageTwo"
+            , artifactVersion = "2.0.0"
+            , artifactOptional = True
+            , artifactScopes = ["compile"]
+            , artifactIsDirect = False
+            }
+        , Artifact
+            { artifactNumericId = 2
+            , artifactGroupId = "mygroup"
+            , artifactArtifactId = "packageThree"
+            , artifactVersion = "3.0.0"
+            , artifactOptional = False
+            , artifactScopes = ["compile"]
+            , artifactIsDirect = True
+            }
+        , Artifact
+            { artifactNumericId = 3
+            , artifactGroupId = "mygroup2"
+            , artifactArtifactId = "packageFour"
+            , artifactVersion = "4.0.0"
+            , artifactOptional = False
+            , artifactScopes = ["compile"]
+            , artifactIsDirect = False
+            }
+        ]
+    , outEdges =
+        [ Edge 0 1
+        , Edge 2 3
+        , Edge 3 0
+        ]
+    }
+
 spec :: Spec
 spec = do
   fdescribe "buildGraph" $ do
@@ -173,3 +220,9 @@ spec = do
       expectDeps [packageTwo, packageFour] graph
       expectDirect [packageTwo, packageFour] graph
       expectEdges [] graph
+
+    it "Should remove cross dependent submodules in multimodule projects" $ do
+      let graph = buildGraph mavenCrossDependentSubModules
+      expectDeps [packageTwo, packageFour] graph
+      expectDirect [packageTwo, packageFour] graph
+      expectEdges [(packageFour, packageTwo)] graph
