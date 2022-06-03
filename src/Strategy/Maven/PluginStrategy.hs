@@ -86,7 +86,12 @@ instance ToDiagnostic MvnPluginExecFailed where
   renderDiagnostic (MvnPluginExecFailed) = "Failed to execute maven plugin for analysis."
 
 buildGraph :: PluginOutput -> Graphing Dependency
-buildGraph PluginOutput{..} = shrinkRoots . run . evalGrapher $ do
+buildGraph PluginOutput{..} =
+  -- The root deps in the maven depgraph text graph output are either the
+  -- toplevel package or submodules in a multi-module project. We don't want to
+  -- consider those because they're the users' packages, so promote the root
+  -- deps to direct when building the graph using `shrinkRoots`.
+  shrinkRoots . run . evalGrapher $ do
   let byNumeric :: Map Int Artifact
       byNumeric = indexBy artifactNumericId outArtifacts
 

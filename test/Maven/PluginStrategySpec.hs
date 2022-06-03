@@ -63,6 +63,37 @@ mavenOutput =
         ]
     }
 
+mavenOutputWithDirects :: PluginOutput
+mavenOutputWithDirects =
+  PluginOutput
+    { outArtifacts =
+        [ Artifact
+            { artifactNumericId = 0
+            , artifactGroupId = "mygroup"
+            , artifactArtifactId = "packageOne"
+            , artifactVersion = "1.0.0"
+            , artifactOptional = False
+            , artifactScopes = ["compile", "test"]
+            , artifactIsDirect = True
+            }
+        , Artifact
+            { artifactNumericId = 1
+            , artifactGroupId = "mygroup"
+            , artifactArtifactId = "packageTwo"
+            , artifactVersion = "2.0.0"
+            , artifactOptional = True
+            , artifactScopes = ["compile"]
+            , artifactIsDirect = False
+            }
+        ]
+    , outEdges =
+        [ Edge
+            { edgeFrom = 0
+            , edgeTo = 1
+            }
+        ]
+    }
+
 spec :: Spec
 spec = do
   describe "buildGraph" $ do
@@ -72,3 +103,10 @@ spec = do
       expectDeps [packageOne, packageTwo] graph
       expectDirect [] graph
       expectEdges [(packageOne, packageTwo)] graph
+
+    it "Should promote children of root dep(s) to direct" $ do
+      let graph = buildGraph mavenOutputWithDirects
+      expectDeps [packageTwo] graph
+      expectDirect [packageTwo] graph
+      expectEdges [] graph
+      

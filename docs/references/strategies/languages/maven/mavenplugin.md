@@ -18,4 +18,8 @@ Find `pom.xml` files, and treat those as maven projects. Skip all subdirectories
 
 1. unpack the embedded plugin to a temporary directory
 2. install it to the local maven repository `mvn install:install-file -DgroupId=com.github.ferstl -DartifactId=depgraph-maven-plugin -Dversion=4.0.1 -Dpackaging=jar -Dfile=<location>/depgraph-maven-plugin-4.0.1.jar`
-3. invoke the plugin in the top-level project with the command `mvn com.github.ferstl:depgraph-maven-plugin:4.0.1:aggregate -DgraphFormat=dot -DmergeScopes -DreduceEdges=false`
+3. invoke the plugin in the top-level project with the command `mvn com.github.ferstl:depgraph-maven-plugin:4.0.1:aggregate -DgraphFormat=text -DmergeScopes -DreduceEdges=false -DshowVersions=true -DshowGroupIds=true -DshowOptional=true -DrepeatTransitiveDependenciesInTextGraph=true`
+
+For `graphFormat`s other than `text` the data will be output to
+`target/dependency-graph.<format>`. For `text`, it will additionally be output
+to stdout.
