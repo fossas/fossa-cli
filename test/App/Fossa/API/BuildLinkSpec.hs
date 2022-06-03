@@ -40,7 +40,7 @@ spec = do
     describe "SAML URL builder" $ do
       it' "should render simple locators" $ do
         let locator = Locator "fetcher123" "project123" $ Just "revision123"
-            org = Just $ Organization (OrgId 1) True False
+            org = Just $ Organization (OrgId 1) True False True
             revision = ProjectRevision "" "not this revision" $ Just "master123"
         actual <- getBuildURLWithOrg org revision Fixtures.apiOpts locator
 
@@ -48,7 +48,7 @@ spec = do
 
       it' "should render git@ locators" $ do
         let locator = Locator "fetcher@123/abc" "git@github.com/user/repo" $ Just "revision@123/abc"
-            org = Just $ Organization (OrgId 103) True False
+            org = Just $ Organization (OrgId 103) True False True
             revision = ProjectRevision "not this project name" "not this revision" $ Just "weird--branch"
         actual <- getBuildURLWithOrg org revision Fixtures.apiOpts locator
 
@@ -56,7 +56,7 @@ spec = do
 
       it' "should render full url correctly" $ do
         let locator = Locator "a" "b" $ Just "c"
-            org = Just $ Organization (OrgId 33) True False
+            org = Just $ Organization (OrgId 33) True False True
             revision = ProjectRevision "" "not this revision" $ Just "master"
         actual <- getBuildURLWithOrg org revision Fixtures.apiOpts locator
 
@@ -73,7 +73,7 @@ spec = do
     describe "Fossa URL Builder" $
       it' "should render from API info" $ do
         GetApiOpts `returnsOnce` Fixtures.apiOpts
-        GetOrganization `returnsOnce` Organization (OrgId 1) True False
+        GetOrganization `returnsOnce` Organization (OrgId 1) True False True
         let locator = Locator "fetcher123" "project123" $ Just "revision123"
             revision = ProjectRevision "" "not this revision" $ Just "master123"
         actual <- getFossaBuildUrl revision locator

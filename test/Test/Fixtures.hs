@@ -8,6 +8,7 @@ module Test.Fixtures (
   contributors,
   locator,
   organization,
+  packageRevision,
   project,
   projectMetadata,
   projectRevision,
@@ -25,16 +26,20 @@ module Test.Fixtures (
   archives,
   firstArchive,
   secondArchive,
-  locators,
-  firstLocator,
   vendoredDeps,
   firstVendoredDep,
+  locators,
+  firstLocator,
+  secondLocator,
+  firstLicenseSourceUnit,
+  secondLicenseSourceUnit,
 ) where
 
-import App.Fossa.ManualDeps (VendoredDependency (..))
+import App.Fossa.VendoredDependency (VendoredDependency (..))
 import App.Types qualified as App
+import Control.Effect.FossaApiClient qualified as App
 import Control.Timeout (Duration (MilliSeconds))
-import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
@@ -42,7 +47,13 @@ import Data.Text.Extra (showT)
 import Fossa.API.Types (Archive (..))
 import Fossa.API.Types qualified as API
 import Path (mkRelDir, parseAbsDir, (</>))
-import Srclib.Types (Locator (..), SourceUnit (..))
+import Srclib.Types (
+  LicenseScanType (..),
+  LicenseSourceUnit (..),
+  Locator (..),
+  SourceUnit (..),
+  emptyLicenseUnit,
+ )
 import System.Directory (getTemporaryDirectory)
 import Text.URI.QQ (uri)
 import Types (GraphBreadth (..))
@@ -56,7 +67,7 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True False
+organization = API.Organization (API.OrgId 42) True False True
 
 project :: API.Project
 project =
@@ -101,8 +112,15 @@ projectRevision =
     , App.projectBranch = Just "testBranch"
     }
 
+packageRevision :: App.PackageRevision
+packageRevision =
+  App.PackageRevision
+    { App.packageName = "testPackageName"
+    , App.packageVersion = "1.0"
+    }
+
 sourceUnits :: NE.NonEmpty SourceUnit
-sourceUnits = unit NE.:| []
+sourceUnits = NE.fromList [unit]
   where
     unit =
       SourceUnit
@@ -237,7 +255,7 @@ secondVendoredDep =
     (Just "0.0.1")
 
 vendoredDeps :: NonEmpty VendoredDependency
-vendoredDeps = firstVendoredDep :| [secondVendoredDep]
+vendoredDeps = NE.fromList [firstVendoredDep, secondVendoredDep]
 
 firstLocator :: Locator
 firstLocator =
@@ -254,7 +272,7 @@ secondLocator =
     (Just "0.0.1")
 
 locators :: NonEmpty Locator
-locators = firstLocator :| [secondLocator]
+locators = NE.fromList [firstLocator, secondLocator]
 
 firstArchive :: Archive
 firstArchive =
@@ -270,3 +288,19 @@ secondArchive =
 
 archives :: [Archive]
 archives = [firstArchive, secondArchive]
+
+firstLicenseSourceUnit :: LicenseSourceUnit
+firstLicenseSourceUnit =
+  LicenseSourceUnit
+    { licenseSourceUnitName = "vendored/foo"
+    , licenseSourceUnitType = CliLicenseScanned
+    , licenseSourceUnitLicenseUnits = NE.fromList [emptyLicenseUnit]
+    }
+
+secondLicenseSourceUnit :: LicenseSourceUnit
+secondLicenseSourceUnit =
+  LicenseSourceUnit
+    { licenseSourceUnitName = "vendored/foo"
+    , licenseSourceUnitType = CliLicenseScanned
+    , licenseSourceUnitLicenseUnits = NE.fromList [emptyLicenseUnit]
+    }

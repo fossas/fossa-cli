@@ -12,6 +12,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getIssues,
   getOrganization,
   getAttribution,
+  getAnalyzedRevisions,
   getSignedLicenseScanURL,
   getSignedURL,
   getProject,
@@ -39,6 +40,7 @@ import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
 import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
+import App.Fossa.VendoredDependency (VendoredDependency (..), vendoredDepToLocator)
 import App.Support (reportDefectMsg)
 import App.Types (
   ProjectMetadata (..),
@@ -68,6 +70,7 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as C
 import Data.ByteString.Lazy (ByteString)
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe)
@@ -173,6 +176,17 @@ instance (Has (Lift IO) sig m, Has Diagnostics sig m) => MonadHttp (FossaReqAllo
     where
       allow401 :: HttpException -> EmptyC m a
       allow401 err = maybe empty fatal (allow401' err)
+
+newtype GetAnalyzedRevisionsBody = GetAnalyzedRevisionsBody
+  { getAnalyzedRevisionsBodyLocators :: NonEmpty Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance ToJSON GetAnalyzedRevisionsBody where
+  toJSON GetAnalyzedRevisionsBody{..} =
+    object
+      [ "locators" .= getAnalyzedRevisionsBodyLocators
+      ]
 
 fossaReq :: FossaReq m a -> m a
 fossaReq = unFossaReq
@@ -364,6 +378,24 @@ getProject apiopts ProjectRevision{..} = fossaReq $ do
   let endpoint = projectEndpoint baseurl orgid $ Locator "custom" projectName Nothing
 
   responseBody <$> req GET endpoint NoReqBody jsonResponse baseopts
+
+-----
+
+getAnalyzedRevisionsEndpoint :: Url 'Https -> Url 'Https
+getAnalyzedRevisionsEndpoint baseurl = baseurl /: "api" /: "cli" /: "analyzedRevisions"
+
+-- | getAnalyzedRevisions makes a request to Core with a list of locators that we are considering scanning
+--   Core will respond with a list of locators that have already been analyzed
+getAnalyzedRevisions ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  NonEmpty VendoredDependency ->
+  m [Text]
+getAnalyzedRevisions apiOpts vDeps = fossaReq $ do
+  orgId <- organizationId <$> getOrganization apiOpts
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  let locatorBody = GetAnalyzedRevisionsBody $ NE.map (renderLocatorUrl orgId . vendoredDepToLocator) vDeps
+  responseBody <$> req POST (getAnalyzedRevisionsEndpoint baseUrl) (ReqBodyJson locatorBody) jsonResponse baseOpts
 
 -----
 

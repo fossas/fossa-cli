@@ -17,6 +17,7 @@ module Control.Effect.FossaApiClient (
   getLatestScan,
   getOrganization,
   getProject,
+  getAnalyzedRevisions,
   getScan,
   getSignedLicenseScanUrl,
   getSignedUploadUrl,
@@ -38,12 +39,13 @@ import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
 import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
+import App.Fossa.VendoredDependency (VendoredDependency)
 import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
 import Data.ByteString.Char8 qualified as C8
 import Data.ByteString.Lazy (ByteString)
-import Data.List.NonEmpty qualified as NE
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Text (Text)
 import Fossa.API.Types (
@@ -86,6 +88,7 @@ data FossaApiClientF a where
   GetLatestScan :: Locator -> ProjectRevision -> FossaApiClientF ScanResponse
   GetOrganization :: FossaApiClientF Organization
   GetProject :: ProjectRevision -> FossaApiClientF Project
+  GetAnalyzedRevisions :: NonEmpty VendoredDependency -> FossaApiClientF [Text]
   GetScan :: Locator -> ScanId -> FossaApiClientF ScanResponse
   GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
@@ -97,7 +100,7 @@ data FossaApiClientF a where
   UploadAnalysis ::
     ProjectRevision ->
     ProjectMetadata ->
-    NE.NonEmpty SourceUnit ->
+    NonEmpty SourceUnit ->
     FossaApiClientF UploadResponse
   UploadArchive :: SignedURL -> FilePath -> FossaApiClientF ByteString
   UploadContainerScan ::
@@ -130,7 +133,7 @@ getApiOpts :: (Has FossaApiClient sig m) => m ApiOpts
 getApiOpts = sendSimple GetApiOpts
 
 -- | Uploads the results of an analysis and associates it to a project
-uploadAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NE.NonEmpty SourceUnit -> m UploadResponse
+uploadAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NonEmpty SourceUnit -> m UploadResponse
 uploadAnalysis revision metadata units = sendSimple (UploadAnalysis revision metadata units)
 
 -- | Uploads results of container analysis to a project
@@ -170,6 +173,9 @@ assertRevisionBinaries locator fprints = sendSimple (AssertRevisionBinaries loca
 
 assertUserDefinedBinaries :: Has FossaApiClient sig m => IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> m ()
 assertUserDefinedBinaries meta fprints = sendSimple (AssertUserDefinedBinaries meta fprints)
+
+getAnalyzedRevisions :: Has FossaApiClient sig m => NonEmpty VendoredDependency -> m ([Text])
+getAnalyzedRevisions = sendSimple . GetAnalyzedRevisions
 
 getSignedLicenseScanUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
 getSignedLicenseScanUrl = sendSimple . GetSignedLicenseScanUrl

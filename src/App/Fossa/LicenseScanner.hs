@@ -13,17 +13,21 @@ import App.Fossa.RunThemis (
  )
 import App.Fossa.VendoredDependency (
   VendoredDependency (..),
+  VendoredDependencyScanMode (..),
   arcToLocator,
   compressFile,
   dedupVendoredDeps,
+  forceVendoredToArchive,
   hashFile,
  )
 import Control.Carrier.Finally (Finally, runFinally)
+import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (renderLocatorUrl)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, fatal, fromMaybe, recover)
 import Control.Effect.FossaApiClient (
   FossaApiClient,
   PackageRevision (..),
   finalizeLicenseScan,
+  getAnalyzedRevisions,
   getOrganization,
   getSignedLicenseScanUrl,
   uploadLicenseScanResult,
@@ -43,6 +47,7 @@ import Data.Text.Extra (showT)
 import Discovery.Archive (withArchive')
 import Discovery.Walk (WalkStep (WalkContinue, WalkStop), walk')
 import Effect.Exec (Exec)
+import Effect.Logger (Logger, logDebug)
 import Effect.ReadFS (
   Has,
   ReadFS,
@@ -82,6 +87,12 @@ instance ToDiagnostic LicenseScanErr where
     Nothing -> "fossa-cli does not support archives without file extensions: " <> pretty (toString path)
 
 newtype ScannableArchive = ScannableArchive {scanFile :: Path Abs File} deriving (Eq, Ord, Show)
+
+newtype NeedScanningDeps = NeedScanningDeps {needScanningDeps :: [VendoredDependency]}
+  deriving (Eq, Ord, Show)
+
+newtype SkippableDeps = SkippableDeps {skippableDeps :: [VendoredDependency]}
+  deriving (Eq, Ord, Show)
 
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
@@ -303,31 +314,106 @@ licenseScanSourceUnit ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
+  , Has Logger sig m
   , Has Exec sig m
   , Has ReadFS sig m
   , Has FossaApiClient sig m
   ) =>
+  VendoredDependencyScanMode ->
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
   m (NonEmpty Locator)
-licenseScanSourceUnit baseDir vendoredDeps = do
+licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
   uniqDeps <- dedupVendoredDeps vendoredDeps
-  -- At this point, we have a good list of deps, so go for it.
-  maybeArchives <- traverse (scanAndUploadVendoredDep baseDir) uniqDeps
-  archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ catMaybes $ NE.toList maybeArchives
-
-  -- archiveBuildUpload takes archives without Organization information. This orgID is appended when creating the build on the backend.
-  -- We don't care about the response here because if the build has already been queued, we get a 401 response.
-  finalizeLicenseScan $ ArchiveComponents $ NE.toList archives
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
   -- but not when reading from a source unit.
   orgId <- organizationId <$> getOrganization
 
-  pure $ NE.map arcToLocator (archivesWithOrganization orgId archives)
-  where
-    archivesWithOrganization :: OrgId -> NonEmpty Archive -> NonEmpty Archive
-    archivesWithOrganization orgId = NE.map $ includeOrgId orgId
+  -- make sure all revisions have their versions populated
+  uniqDepsWithVersions <- traverse (ensureVendoredDepVersion baseDir) uniqDeps
+  -- If skipping is supported, ask Core if any of these deps have already been scanned. If they have, skip scanning them.
+  (needScanning, skippable) <-
+    if vendoredDependencyScanMode == SkipPreviouslyScanned
+      then findDepsThatNeedScanning uniqDepsWithVersions orgId
+      else pure (NeedScanningDeps $ NE.toList uniqDepsWithVersions, SkippableDeps [])
+  logSkippedDeps needScanning skippable vendoredDependencyScanMode
 
-    includeOrgId :: OrgId -> Archive -> Archive
-    includeOrgId orgId arc = arc{archiveName = showT orgId <> "/" <> archiveName arc}
+  -- At this point, we have a good list of deps, so go for it.
+  -- If none of the dependencies need scanning we still need to do `finalizeLicenseScan`, so keep going
+  maybeScannedArchives <- traverse (scanAndUploadVendoredDep baseDir) (needScanningDeps needScanning)
+
+  -- We need to include both scanned and skipped archives in this list so that they all get included in the build in FOSSA
+  let skippedArchives = map forceVendoredToArchive $ skippableDeps skippable
+  archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ (catMaybes maybeScannedArchives) <> skippedArchives
+
+  -- finalizeLicenseScan takes archives without Organization information. This orgID is appended when creating the build on the backend.
+  -- We don't care about the response here because if the build has already been queued, we get a 401 response.
+  finalizeLicenseScan $ ArchiveComponents $ NE.toList archives
+
+  let archivesWithOrganization :: OrgId -> NonEmpty Archive -> NonEmpty Archive
+      archivesWithOrganization org = NE.map $ includeOrgId org
+
+      includeOrgId :: OrgId -> Archive -> Archive
+      includeOrgId org arc = arc{archiveName = showT org <> "/" <> archiveName arc}
+
+  pure $ NE.map arcToLocator (archivesWithOrganization orgId archives)
+
+ensureVendoredDepVersion ::
+  Has (Lift IO) sig m =>
+  Path Abs Dir ->
+  VendoredDependency ->
+  m VendoredDependency
+ensureVendoredDepVersion baseDir vdep = do
+  depVersion <- case vendoredVersion vdep of
+    Nothing -> sendIO . withSystemTempDir "fossa-temp" . calculateVendoredHash baseDir $ vendoredPath vdep
+    Just version -> pure version
+  pure vdep{vendoredVersion = Just depVersion}
+
+-- Debug logs giving info about which vendored deps were actually scanned
+logSkippedDeps ::
+  Has Logger sig m =>
+  NeedScanningDeps ->
+  SkippableDeps ->
+  VendoredDependencyScanMode ->
+  m ()
+logSkippedDeps needScanningDeps skippedDeps scanMode =
+  case (needScanningDeps, scanMode) of
+    (_, SkippingNotSupported) -> do
+      logDebug "This version of the FOSSA service does not support enumerating previously scanned vendored dependencies."
+      logDebug "Performing a full scan of all vendored dependencies even if they have been scanned previously."
+    (NeedScanningDeps [], SkipPreviouslyScanned) -> do
+      logDebug "All of the current vendored dependencies have been previously scanned, reusing previous results."
+    (_, SkipPreviouslyScanned) -> do
+      case skippedDeps of
+        SkippableDeps [] -> logDebug "None of the current vendored dependencies have been previously scanned. License scanning all vendored dependencies"
+        _ -> do
+          logDebug "Some of the current vendored dependencies have already been scanned by FOSSA."
+          logDebug . pretty $ "Reusing previous results for the following vendored dependencies: " <> show skippedDeps
+
+-- | Split the supplied vendored dependencies into those that need scanning and those that do not.
+--   We can skip scanning a vendored dependency if an analyzed revision for that vendored dependency already exists on Core.
+
+-- For vendored dependencies with versions supplied by the user in fossa-deps.yml, this means that
+-- we will only rescan when the version supplied by the user changes,
+-- regardless of whether or not the code in the vendored dependency has changed.
+-- This is intentional. Even if we did the scan, an already analyzed revision with this locator already exists on Core
+-- and the build to analyze it would not get queued.
+findDepsThatNeedScanning ::
+  Has FossaApiClient sig m =>
+  NonEmpty VendoredDependency ->
+  OrgId ->
+  m (NeedScanningDeps, SkippableDeps)
+findDepsThatNeedScanning vdeps orgId = do
+  analyzedLocators <- getAnalyzedRevisions vdeps
+  let (need, already) = NE.partition (shouldScanRevision analyzedLocators orgId) vdeps
+  pure (NeedScanningDeps need, SkippableDeps already)
+
+shouldScanRevision :: [Text] -> OrgId -> VendoredDependency -> Bool
+shouldScanRevision analyzedLocators orgId VendoredDependency{..} = locatorUrl orgId `notElem` analyzedLocators
+  where
+    locator :: Locator
+    locator = Locator "archive" vendoredName vendoredVersion
+
+    locatorUrl :: OrgId -> Text
+    locatorUrl org = renderLocatorUrl org locator

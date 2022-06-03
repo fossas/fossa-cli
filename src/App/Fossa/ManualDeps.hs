@@ -19,6 +19,7 @@ import App.Fossa.Config.Analyze (AllowNativeLicenseScan (AllowNativeLicenseScan)
 import App.Fossa.LicenseScanner (licenseScanSourceUnit)
 import App.Fossa.VendoredDependency (
   VendoredDependency (..),
+  VendoredDependencyScanMode (..),
   arcToLocator,
   forceVendoredToArchive,
  )
@@ -48,7 +49,7 @@ import DepTypes (DepType (..))
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, logWarn)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
-import Fossa.API.Types (ApiOpts, Organization (orgDoLocalLicenseScan))
+import Fossa.API.Types (ApiOpts, Organization (..))
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
@@ -165,10 +166,11 @@ scanAndUpload ::
   Flag AllowNativeLicenseScan ->
   m (NonEmpty Locator)
 scanAndUpload root vdeps allowNative = do
+  org <- getOrganization
   archiveOrCLI <-
     if fromFlag AllowNativeLicenseScan allowNative
       then do
-        doNative <- orgDoLocalLicenseScan <$> getOrganization
+        let doNative = orgDoLocalLicenseScan org
         if doNative
           then pure CLILicenseScan
           else -- If they've selected native scanning, but the server doesn't support it,
@@ -176,10 +178,13 @@ scanAndUpload root vdeps allowNative = do
           -- TODO: Add a --forbid-archive-upload CLI flag
             logWarn "Server does not support native license scanning" $> ArchiveUpload
       else pure ArchiveUpload
-
+  let vendoredDependencyScanMode =
+        if (orgSupportsAnalyzedRevisionsQuery org)
+          then SkipPreviouslyScanned
+          else SkippingNotSupported
   let scanner = case archiveOrCLI of
         ArchiveUpload -> archiveUploadSourceUnit
-        CLILicenseScan -> licenseScanSourceUnit
+        CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode
   scanner root vdeps
 
 -- | Used when users run `fossa analyze -o` and do not upload their source units.

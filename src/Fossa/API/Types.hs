@@ -286,6 +286,7 @@ data Organization = Organization
   { organizationId :: OrgId
   , orgUsesSAML :: Bool
   , orgDoLocalLicenseScan :: Bool
+  , orgSupportsAnalyzedRevisionsQuery :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -294,6 +295,7 @@ instance FromJSON Organization where
     Organization <$> obj .: "organizationId"
       <*> obj .:? "usesSAML" .!= False
       <*> obj .:? "supportsCliLicenseScanning" .!= False
+      <*> obj .:? "supportsAnalyzedRevisionsQuery" .!= False
 
 data Project = Project
   { projectId :: Text

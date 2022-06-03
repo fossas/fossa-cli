@@ -13,7 +13,6 @@ import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (ignoreStickyLogger)
 import Data.List.Extra (head')
-import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Diag.Result (Result (Failure, Success), renderFailure)
@@ -26,7 +25,7 @@ import Srclib.Types (
   LicenseUnit (licenseUnitFiles, licenseUnitName),
   emptyLicenseUnit,
  )
-import Test.Hspec (Spec, it, shouldBe)
+import Test.Hspec (Spec, describe, it, shouldBe)
 
 recursiveArchive :: FixtureArtifact
 recursiveArchive =
@@ -62,20 +61,21 @@ vendoredDep =
 --                 └── something.rb
 spec :: Spec
 spec = do
-  it "should find licenses in nested archives" $ do
-    extractedDir <- getArtifact recursiveArchive
-    let scanDir = extractedDir </> [reldir|cli-license-scan-integration-test-fixtures-main/recursive-archive|]
-    units <- runStack . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO . fmap licenseSourceUnitLicenseUnits $ scanVendoredDep scanDir vendoredDep
-    PIO.removeDirRecur extractedDir
-    case units of
-      Failure ws eg -> fail (show (renderFailure ws eg "An issue occurred"))
-      Success _ us -> do
-        (length us) `shouldBe` 3
-        NE.sort (NE.map licenseUnitName us) `shouldBe` "No_license_found" :| ["apache-2.0", "mit"]
-        NE.sort (licenseUnitFiles mitUnit) `shouldBe` "vendor/foo/bar/MIT_LICENSE" :| ["vendor/foo/bar/baz/SOMETHING_LICENSE", "vendor/foo/bar/baz/quux/QUUX_LICENSE"]
-        NE.sort (licenseUnitFiles apacheUnit) `shouldBe` "vendor/foo/bar/bar_apache.rb" :| ["vendor/foo/bar/baz/something.rb"]
-        where
-          mitUnit :: LicenseUnit
-          mitUnit = fromMaybe emptyLicenseUnit (head' $ NE.filter (\u -> licenseUnitName u == "mit") us)
-          apacheUnit :: LicenseUnit
-          apacheUnit = fromMaybe emptyLicenseUnit (head' $ NE.filter (\u -> licenseUnitName u == "apache-2.0") us)
+  describe "scanVendoredDep" $ do
+    it "should find licenses in nested archives" $ do
+      extractedDir <- getArtifact recursiveArchive
+      let scanDir = extractedDir </> [reldir|cli-license-scan-integration-test-fixtures-main/recursive-archive|]
+      units <- runStack . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO . fmap licenseSourceUnitLicenseUnits $ scanVendoredDep scanDir vendoredDep
+      PIO.removeDirRecur extractedDir
+      case units of
+        Failure ws eg -> fail (show (renderFailure ws eg "An issue occurred"))
+        Success _ us -> do
+          length us `shouldBe` 3
+          NE.sort (NE.map licenseUnitName us) `shouldBe` NE.fromList ["No_license_found", "apache-2.0", "mit"]
+          NE.sort (licenseUnitFiles mitUnit) `shouldBe` NE.fromList ["vendor/foo/bar/MIT_LICENSE", "vendor/foo/bar/baz/SOMETHING_LICENSE", "vendor/foo/bar/baz/quux/QUUX_LICENSE"]
+          NE.sort (licenseUnitFiles apacheUnit) `shouldBe` NE.fromList ["vendor/foo/bar/bar_apache.rb", "vendor/foo/bar/baz/something.rb"]
+          where
+            mitUnit :: LicenseUnit
+            mitUnit = fromMaybe emptyLicenseUnit (head' $ NE.filter (\u -> licenseUnitName u == "mit") us)
+            apacheUnit :: LicenseUnit
+            apacheUnit = fromMaybe emptyLicenseUnit (head' $ NE.filter (\u -> licenseUnitName u == "apache-2.0") us)

@@ -1,6 +1,10 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.VendoredDependency (
   VendoredDependency (..),
+  VendoredDependencyScanMode (..),
   arcToLocator,
+  vendoredDepToLocator,
   forceVendoredToArchive,
   compressFile,
   hashFile,
@@ -47,6 +51,10 @@ instance FromJSON VendoredDependency where
       <*> obj .: "path"
       <*> (unTextLike <$$> obj .:? "version")
       <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
+data VendoredDependencyScanMode
+  = SkipPreviouslyScanned
+  | SkippingNotSupported
+  deriving (Eq, Ord, Show)
 
 dedupVendoredDeps :: (Has Diagnostics sig m) => NonEmpty VendoredDependency -> m (NonEmpty VendoredDependency)
 dedupVendoredDeps vdeps = do
@@ -84,6 +92,10 @@ arcToLocator arc =
     , locatorProject = archiveName arc
     , locatorRevision = Just $ archiveVersion arc
     }
+
+vendoredDepToLocator :: VendoredDependency -> Locator
+vendoredDepToLocator VendoredDependency{..} =
+  Locator{locatorFetcher = "archive", locatorProject = vendoredName, locatorRevision = vendoredVersion}
 
 compressFile :: Path Abs Dir -> Path Abs Dir -> FilePath -> IO FilePath
 compressFile outputDir directory fileToTar = do
