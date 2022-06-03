@@ -32,9 +32,12 @@ data SwiftResolvedPackage = SwiftResolvedPackage
   deriving (Show, Eq, Ord)
 
 instance FromJSON SwiftPackageResolvedFile where
-  parseJSON = withObject "Package.resolved content" $ \obj ->
-    SwiftPackageResolvedFile <$> obj .: "version"
-      <*> (obj .: "object" |> "pins")
+  parseJSON = withObject "Package.resolved content" $ \obj -> do
+    version :: Integer <- obj .: "version"
+    case version of
+      1 -> SwiftPackageResolvedFile version <$> ((obj .: "object" |> "pins") >>= traverse (withObject "Package.resolved v1 pin" parseV1Pin))
+      2 -> SwiftPackageResolvedFile version <$> ((obj .: "pins") >>= traverse (withObject "Package.resolved v2 pin" parseV2Pin))
+      _ -> fail $ "unknown Package.resolved version: " <> show version
 
 (|>) :: FromJSON a => Parser Object -> Text -> Parser a
 (|>) parser key = do
@@ -47,6 +50,22 @@ instance FromJSON SwiftPackageResolvedFile where
   case obj of
     Nothing -> pure Nothing
     Just o -> o .:? key
+
+parseV1Pin :: Object -> Parser SwiftResolvedPackage
+parseV1Pin obj =
+  SwiftResolvedPackage <$> obj .: "package"
+    <*> obj .: "repositoryURL"
+    <*> (obj .:? "state" |?> "branch")
+    <*> (obj .:? "state" |?> "revision")
+    <*> (obj .:? "state" |?> "version")
+
+parseV2Pin :: Object -> Parser SwiftResolvedPackage
+parseV2Pin obj =
+  SwiftResolvedPackage <$> obj .: "identity"
+    <*> obj .: "location"
+    <*> pure Nothing
+    <*> (obj .:? "state" |?> "revision")
+    <*> (obj .:? "state" |?> "version")
 
 instance FromJSON SwiftResolvedPackage where
   parseJSON = withObject "Package.resolved pinned object" $ \obj ->
