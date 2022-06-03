@@ -1,0 +1,37 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE QuasiQuotes #-}
+
+module Analysis.ScalaSpec (spec) where
+
+import Analysis.FixtureExpectationUtils (
+  DependencyResultsSummary (DependencyResultsSummary),
+  testSuiteDepResultSummary,
+ )
+import Analysis.FixtureUtils (
+  AnalysisTestFixture (AnalysisTestFixture),
+  FixtureArtifact (FixtureArtifact),
+  FixtureEnvironment (NixEnv),
+ )
+import Path (reldir)
+import Strategy.Scala qualified as Scala
+import Test.Hspec (Spec)
+import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
+
+scalaEnv :: FixtureEnvironment
+scalaEnv = NixEnv ["scala", "sbt"]
+
+scalaExampleProject :: AnalysisTestFixture (Scala.ScalaProject)
+scalaExampleProject =
+  AnalysisTestFixture
+    "scalaExampleProject"
+    Scala.discover
+    scalaEnv
+    Nothing
+    $ FixtureArtifact
+      "https://github.com/fossas/scala3-example-project/archive/refs/heads/main.tar.gz"
+      [reldir|scala/scala-3-ex-project/|]
+      [reldir|scala3-example-project-main/target/scala-3.1.2/|]
+
+spec :: Spec
+spec = do
+  testSuiteDepResultSummary scalaExampleProject ScalaProjectType (DependencyResultsSummary 3 2 1 1 Complete)

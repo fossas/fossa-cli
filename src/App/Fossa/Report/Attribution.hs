@@ -6,13 +6,15 @@ module App.Fossa.Report.Attribution (
   Dependency (..),
   License (..),
   LicenseContents (..),
+  LicenseCopyright (..),
+  LicenseDetails (..),
   LicenseName (..),
   Project (..),
 ) where
 
 import Data.Aeson
 import Data.Map.Strict (Map)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, isNothing)
 import Data.Text (Text)
 
 newtype LicenseName = LicenseName {rawName :: Text}
@@ -21,11 +23,21 @@ newtype LicenseName = LicenseName {rawName :: Text}
 newtype LicenseContents = LicenseContents {rawContents :: Text}
   deriving (Eq, Ord, Show, FromJSON, ToJSON)
 
+newtype LicenseCopyright = LicenseCopyright {rawCopyright :: Text}
+  deriving (Eq, Ord, Show, FromJSON, ToJSON)
+
+data LicenseDetails = LicenseDetails
+  { licenseText :: LicenseContents
+  , licenseCopyrights :: [LicenseCopyright]
+  }
+  deriving (Eq, Ord, Show)
+
 data Attribution = Attribution
   { attribProject :: Project
   , attribDirectDeps :: [Dependency]
   , attribDeepDeps :: [Dependency]
   , attribLicenses :: Map LicenseName LicenseContents
+  , attribLicenseDetails :: Maybe (Map LicenseName LicenseDetails)
   }
   deriving (Eq, Show, Ord)
 
@@ -66,15 +78,19 @@ instance FromJSON Attribution where
       <*> obj .:? "directDependencies" .!= []
       <*> obj .:? "deepDependencies" .!= []
       <*> obj .: "licenses"
+      <*> obj .:? "licenseDetails"
 
 instance ToJSON Attribution where
   toJSON Attribution{..} =
-    object
+    object $
       [ "project" .= attribProject
       , "directDependencies" .= attribDirectDeps
       , "deepDependencies" .= attribDeepDeps
       , "licenses" .= attribLicenses
       ]
+        ++ if isNothing attribLicenseDetails
+          then []
+          else ["licenseDetails" .= attribLicenseDetails]
 
 instance FromJSON Dependency where
   parseJSON = withObject "Dependency" $ \obj ->
@@ -137,4 +153,17 @@ instance ToJSON Project where
     object
       [ "name" .= projectName
       , "revision" .= projectRevision
+      ]
+
+instance FromJSON LicenseDetails where
+  parseJSON = withObject "LicenseDetails" $ \obj ->
+    LicenseDetails
+      <$> obj .: "text"
+      <*> obj .: "copyrights"
+
+instance ToJSON LicenseDetails where
+  toJSON LicenseDetails{..} =
+    object
+      [ "text" .= licenseText
+      , "copyrights" .= licenseCopyrights
       ]
