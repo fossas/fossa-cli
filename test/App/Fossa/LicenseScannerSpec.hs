@@ -7,7 +7,7 @@ import App.Fossa.VendoredDependency (VendoredDependencyScanMode (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (..))
 import Data.List.NonEmpty qualified as NE
-import Fossa.API.Types (Archive, ArchiveComponents (ArchiveComponents, archives))
+import Fossa.API.Types (Archive, ArchiveComponents (ArchiveComponents, archives, forceRebuild))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
 import Srclib.Types (
