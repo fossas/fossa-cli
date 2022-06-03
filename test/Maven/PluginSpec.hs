@@ -1,22 +1,22 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Maven.PluginSpec (spec) where
 
 import Data.Tree (Tree (..))
 import Strategy.Maven.Plugin (Artifact (..), Edge (..), PluginOutput (..), textArtifactToPluginOutput)
 import Strategy.Maven.PluginTree (TextArtifact (..))
 import Test.Effect (it', shouldBe', shouldMatchList')
-import Test.Hspec (Spec, describe, fdescribe)
+import Test.Hspec (Spec, describe)
 
 spec :: Spec
 spec = do
-  -- TODO: Consider moving this to PluginStrategySpec.hs
   textArtifactConversionSpec
 
 singleTextArtifact :: TextArtifact
 singleTextArtifact =
   TextArtifact
     { artifactText = "org.clojure:clojure:1.12.0-master-SNAPSHOT"
+    , groupId = "org.clojure"
+    , artifactId = "clojure"
+    , textArtifactVersion = "1.12.0-master-SNAPSHOT"
     , scopes = ["test"]
     , isDirect = True
     , isOptional = False
@@ -27,6 +27,9 @@ complexTextArtifact =
   Node
     TextArtifact
       { artifactText = "org.clojure:test.generative:1.0.0"
+      , groupId = "org.clojure"
+      , artifactId = "test.generative"
+      , textArtifactVersion = "1.0.0"
       , scopes = ["test"]
       , isDirect = True
       , isOptional = False
@@ -34,6 +37,9 @@ complexTextArtifact =
     [ Node
         TextArtifact
           { artifactText = "org.fake:fake-pkg:1.0.0"
+          , groupId = "org.fake"
+          , artifactId = "fake-pkg"
+          , textArtifactVersion = "1.0.0"
           , scopes = ["compile"]
           , isDirect = False
           , isOptional = True
@@ -42,6 +48,9 @@ complexTextArtifact =
     , Node
         TextArtifact
           { artifactText = "org.foo:bar:1.0.0"
+          , groupId = "org.foo"
+          , artifactId = "bar"
+          , textArtifactVersion = "1.0.0"
           , isDirect = False
           , scopes = ["compile"]
           , isOptional = False
@@ -49,6 +58,9 @@ complexTextArtifact =
         [ Node
             TextArtifact
               { artifactText = "org.baz:buzz:1.0.0"
+              , groupId = "org.baz"
+              , artifactId = "buzz"
+              , textArtifactVersion = "1.0.0"
               , isDirect = False
               , scopes = ["test"]
               , isOptional = False
@@ -58,6 +70,9 @@ complexTextArtifact =
     , Node
         TextArtifact
           { artifactText = "org.clojure:data.generators:1.0.0"
+          , groupId = "org.clojure"
+          , artifactId = "data.generators"
+          , textArtifactVersion = "1.0.0"
           , isDirect = False
           , scopes = ["test"]
           , isOptional = False

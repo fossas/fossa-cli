@@ -14,7 +14,6 @@ import Data.Void (Void)
 import Text.Megaparsec (
   Parsec,
   chunk,
-  count,
   eof,
   getSourcePos,
   sepBy,
@@ -47,22 +46,14 @@ parseIsOptional =
 
 data TextArtifact = TextArtifact
   { artifactText :: Text
+  , groupId :: Text
+  , artifactId :: Text
+  , textArtifactVersion :: Text
   , scopes :: [Text]
   , isOptional :: Bool
   , isDirect :: Bool
   }
   deriving (Eq, Ord, Show)
-
--- foldTextArtifactl :: (a -> TextArtifact -> a) -> a -> TextArtifact -> a
--- foldTextArtifactl f a t@(TextArtifact{children = children}) =
---   inner `seq` foldl' (foldTextArtifactl f) inner children
---   where
---     inner = f a t
-
--- foldTextArtifactM :: Monad m => (a -> TextArtifact -> m a) -> a -> TextArtifact -> m a
--- foldTextArtifactM f a t@TextArtifact{children = children} = do
---   res <- f a t
---   foldM (foldTextArtifactM f) res children
 
 currentColumn :: Parser Int
 currentColumn = unPos . sourceColumn <$> getSourcePos
@@ -85,10 +76,18 @@ parseTextArtifactAndChildren :: Bool -> Parser (Tree TextArtifact)
 parseTextArtifactAndChildren isDirect =
   do
     startPos <- currentColumn
+    (groupId, artifactId, artifactVersion) <-
+      (,,)
+        <$> readThruNextColon "groupId"
+        <*> readThruNextColon "artifactId"
+        <*> readThruNextColon "artifactVersion"
     Node
       <$> ( TextArtifact
-              <$> (Text.intercalate ":" <$> count 3 (readThruNextColon "artifactSpecifier"))
-              <*> lexeme scopeParse
+              (Text.intercalate ":" [groupId, artifactId, artifactVersion])
+              groupId
+              artifactId
+              artifactVersion
+              <$> lexeme scopeParse
               <*> parseIsOptional
               <*> pure (isDirect)
           )

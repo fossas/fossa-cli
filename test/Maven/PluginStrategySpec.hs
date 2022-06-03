@@ -72,7 +72,7 @@ mavenOutputWithDirects =
             , artifactGroupId = "mygroup"
             , artifactArtifactId = "packageOne"
             , artifactVersion = "1.0.0"
-            , artifactOptional = False
+            , artifactOptional = True
             , artifactScopes = ["compile", "test"]
             , artifactIsDirect = True
             }
@@ -109,4 +109,3 @@ spec = do
       expectDeps [packageTwo] graph
       expectDirect [packageTwo] graph
       expectEdges [] graph
-      

@@ -30,7 +30,6 @@ import Data.Map qualified as Map
 import Data.Maybe (catMaybes, isNothing)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text qualified as Text
 import Data.Traversable (for)
 import Data.Tree (Tree (..))
 import Effect.Exec
@@ -97,11 +96,6 @@ parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -
 parsePluginOutput dir =
   readContentsParser parseTextArtifact (dir </> outputFile) >>= textArtifactToPluginOutput
 
-data ConversionError
-  = MissingArtifact Text
-  | UnparseableName Text
-  deriving (Eq, Show)
-
 textArtifactToPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m PluginOutput
 textArtifactToPluginOutput
   ta = buildPluginOutput ta
@@ -112,21 +106,17 @@ textArtifactToPluginOutput
       namesToIds :: Map Text Int
       namesToIds = Map.fromList . (\ns -> zip ns [0 ..]) $ artifactNames
 
-      textArtifactToArtifact :: Int -> TextArtifact -> Maybe Artifact
+      textArtifactToArtifact :: Int -> TextArtifact -> Artifact
       textArtifactToArtifact numericId TextArtifact{..} =
-        case Text.splitOn ":" artifactText of
-          [groupId, artifactId, version] ->
-            Just $
-              Artifact
-                { artifactNumericId = numericId
-                , artifactGroupId = groupId
-                , artifactArtifactId = artifactId
-                , artifactVersion = version
-                , artifactScopes = scopes
-                , artifactOptional = isOptional
-                , artifactIsDirect = isDirect
-                }
-          _ -> Nothing
+        Artifact
+          { artifactNumericId = numericId
+          , artifactGroupId = groupId
+          , artifactArtifactId = artifactId
+          , artifactVersion = textArtifactVersion
+          , artifactScopes = scopes
+          , artifactOptional = isOptional
+          , artifactIsDirect = isDirect
+          }
 
       lookupArtifactByName :: (Has Diagnostics sig m) => Text -> m (Maybe Int)
       lookupArtifactByName aText = do
@@ -147,9 +137,6 @@ textArtifactToPluginOutput
       buildPluginOutput :: (Has Diagnostics sig m) => Tree TextArtifact -> m PluginOutput
       buildPluginOutput
         (Node t@(TextArtifact{artifactText = aText}) aChildren) = do
-          -- TODO: Include the parsed data as well as the full name in our original parser
-          -- If the names aren't parsable, the parser we used to read the text
-          -- graph should fail well before we ever get here.
           maybeId <- lookupArtifactByName aText
           childInfo@PluginOutput
             { outArtifacts = cArtifacts
@@ -158,17 +145,14 @@ textArtifactToPluginOutput
             fold <$> traverse buildPluginOutput aChildren
           case maybeId of
             Nothing -> pure childInfo
-            Just numericId -> case textArtifactToArtifact numericId t of
-              Nothing -> do
-                warn $ "Could not parse artifact with name " <> aText
-                pure childInfo
-              Just artifact -> do
-                newEdges <- buildEdges numericId aChildren
-                pure
-                  childInfo
-                    { outArtifacts = artifact : cArtifacts
-                    , outEdges = newEdges <> cEdges
-                    }
+            Just numericId -> do
+              let artifact = textArtifactToArtifact numericId t
+              newEdges <- buildEdges numericId aChildren
+              pure
+                childInfo
+                  { outArtifacts = artifact : cArtifacts
+                  , outEdges = newEdges <> cEdges
+                  }
 
 mavenInstallPluginCmd :: FP.FilePath -> DepGraphPlugin -> Command
 mavenInstallPluginCmd pluginFilePath plugin =

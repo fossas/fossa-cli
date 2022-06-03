@@ -35,6 +35,9 @@ mockArtifact =
   Node
     TextArtifact
       { artifactText = "org.clojure:clojure:1.12.0-master-SNAPSHOT"
+      , groupId = "org.clojure"
+      , artifactId = "clojure"
+      , textArtifactVersion = "1.12.0-master-SNAPSHOT"
       , scopes = ["test"]
       , isDirect = True
       , isOptional = False
@@ -46,6 +49,9 @@ multiScopeTextArtifact =
   Node
     TextArtifact
       { artifactText = "org.clojure:clojure:1.12.0-master-SNAPSHOT"
+      , groupId = "org.clojure"
+      , artifactId = "clojure"
+      , textArtifactVersion = "1.12.0-master-SNAPSHOT"
       , scopes = ["compile", "test"]
       , isDirect = True
       , isOptional = False
@@ -57,6 +63,9 @@ optionalTextArtifact =
   Node
     TextArtifact
       { artifactText = "jakarta.mail:jakarta.mail-api:2.0.1"
+      , groupId = "jakarta.mail"
+      , artifactId = "jakarta.mail-api"
+      , textArtifactVersion = "2.0.1"
       , scopes = ["compile"]
       , isDirect = True
       , isOptional = True
@@ -79,6 +88,9 @@ artifactWithChildren =
   Node
     TextArtifact
       { artifactText = "org.clojure:test.generative:1.0.0"
+      , groupId = "org.clojure"
+      , artifactId = "test.generative"
+      , textArtifactVersion = "1.0.0"
       , scopes = ["test"]
       , isDirect = True
       , isOptional = False
@@ -86,6 +98,9 @@ artifactWithChildren =
     [ Node
         TextArtifact
           { artifactText = "org.clojure:tools.namespace:1.0.0"
+          , groupId = "org.clojure"
+          , artifactId = "tools.namespace"
+          , textArtifactVersion = "1.0.0"
           , scopes = ["test"]
           , isOptional = False
           , isDirect = False
@@ -93,6 +108,9 @@ artifactWithChildren =
         [ Node
             TextArtifact
               { artifactText = "org.clojure:java.classpath:1.0.0"
+              , groupId = "org.clojure"
+              , artifactId = "java.classpath"
+              , textArtifactVersion = "1.0.0"
               , scopes = ["test"]
               , isDirect = False
               , isOptional = False
@@ -101,6 +119,9 @@ artifactWithChildren =
         , Node
             TextArtifact
               { artifactText = "org.fake:fake-pkg:1.0.0"
+              , groupId = "org.fake"
+              , artifactId = "fake-pkg"
+              , textArtifactVersion = "1.0.0"
               , isDirect = False
               , scopes = ["compile"]
               , isOptional = True
@@ -109,6 +130,9 @@ artifactWithChildren =
         , Node
             TextArtifact
               { artifactText = "org.clojure:tools.reader:1.3.2"
+              , groupId = "org.clojure"
+              , artifactId = "tools.reader"
+              , textArtifactVersion = "1.3.2"
               , isDirect = False
               , scopes = ["test"]
               , isOptional = False
@@ -118,6 +142,9 @@ artifactWithChildren =
     , Node
         TextArtifact
           { artifactText = "org.foo:bar:1.0.0"
+          , groupId = "org.foo"
+          , artifactId = "bar"
+          , textArtifactVersion = "1.0.0"
           , isDirect = False
           , scopes = ["compile"]
           , isOptional = False
@@ -125,6 +152,9 @@ artifactWithChildren =
         [ Node
             TextArtifact
               { artifactText = "org.baz:buzz:1.0.0"
+              , groupId = "org.baz"
+              , artifactId = "buzz"
+              , textArtifactVersion = "1.0.0"
               , isDirect = False
               , scopes = ["test"]
               , isOptional = False

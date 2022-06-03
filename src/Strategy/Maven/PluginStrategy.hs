@@ -92,12 +92,12 @@ buildGraph PluginOutput{..} =
   -- consider those because they're the users' packages, so promote the root
   -- deps to direct when building the graph using `shrinkRoots`.
   shrinkRoots . run . evalGrapher $ do
-  let byNumeric :: Map Int Artifact
-      byNumeric = indexBy artifactNumericId outArtifacts
+    let byNumeric :: Map Int Artifact
+        byNumeric = indexBy artifactNumericId outArtifacts
 
-  depsByNumeric <- traverse toDependency byNumeric
+    depsByNumeric <- traverse toDependency byNumeric
 
-  traverse_ (visitEdge depsByNumeric) outEdges
+    traverse_ (visitEdge depsByNumeric) outEdges
   where
     toDependency :: Has (Grapher Dependency) sig m => Artifact -> m Dependency
     toDependency Artifact{..} = do
