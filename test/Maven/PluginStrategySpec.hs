@@ -32,6 +32,17 @@ packageTwo =
     , dependencyTags = Map.fromList [("scopes", ["compile"]), ("optional", ["true"])]
     }
 
+packageFour :: Dependency
+packageFour =
+  Dependency
+    { dependencyType = MavenType
+    , dependencyName = "mygroup2:packageFour"
+    , dependencyVersion = Just (CEq "4.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = mempty
+    , dependencyTags = Map.fromList [("scopes", ["compile"])]
+    }
+
 mavenOutput :: PluginOutput
 mavenOutput =
   PluginOutput
@@ -94,9 +105,56 @@ mavenOutputWithDirects =
         ]
     }
 
+mavenMultimoduleOutputWithDirects :: PluginOutput
+mavenMultimoduleOutputWithDirects =
+  PluginOutput
+    { outArtifacts =
+        [ Artifact
+            { artifactNumericId = 0
+            , artifactGroupId = "mygroup"
+            , artifactArtifactId = "packageOne"
+            , artifactVersion = "1.0.0"
+            , artifactOptional = False
+            , artifactScopes = ["compile", "test"]
+            , artifactIsDirect = True
+            }
+        , Artifact
+            { artifactNumericId = 1
+            , artifactGroupId = "mygroup"
+            , artifactArtifactId = "packageTwo"
+            , artifactVersion = "2.0.0"
+            , artifactOptional = True
+            , artifactScopes = ["compile"]
+            , artifactIsDirect = False
+            }
+        , Artifact
+            { artifactNumericId = 2
+            , artifactGroupId = "mygroup"
+            , artifactArtifactId = "packageThree"
+            , artifactVersion = "3.0.0"
+            , artifactOptional = False
+            , artifactScopes = ["compile"]
+            , artifactIsDirect = True
+            }
+        , Artifact
+            { artifactNumericId = 3
+            , artifactGroupId = "mygroup2"
+            , artifactArtifactId = "packageFour"
+            , artifactVersion = "4.0.0"
+            , artifactOptional = False
+            , artifactScopes = ["compile"]
+            , artifactIsDirect = False
+            }
+        ]
+    , outEdges =
+        [ Edge 0 1
+        , Edge 2 3
+        ]
+    }
+
 spec :: Spec
 spec = do
-  describe "buildGraph" $ do
+  fdescribe "buildGraph" $ do
     it "should produce expected output" $ do
       let graph = buildGraph mavenOutput
 
@@ -108,4 +166,10 @@ spec = do
       let graph = buildGraph mavenOutputWithDirects
       expectDeps [packageTwo] graph
       expectDirect [packageTwo] graph
+      expectEdges [] graph
+
+    it "Should promote children of root dep(s) to direct in multimodule projects" $ do
+      let graph = buildGraph mavenMultimoduleOutputWithDirects
+      expectDeps [packageTwo, packageFour] graph
+      expectDirect [packageTwo, packageFour] graph
       expectEdges [] graph
