@@ -2,11 +2,12 @@
 
 ## Unreleased
 - CLI-side license scans will skip rescanning revisions that are already known to FOSSA
+- Swift: Added support for `Package.resolved` v2 files ([#957](https://github.com/fossas/fossa-cli/pull/957)).
 
 ## v3.3.1
 - Vendor Dependencies: Considers `licence` and `license` equivalent when performing native license scan ([#939](https://github.com/fossas/fossa-cli/pull/939)).
 - Vendor Dependencies: Native license scanning works in alpine linux without additional dependencies ([#949](https://github.com/fossas/fossa-cli/pull/949)).
-- Adds copyright information to attribution reports in the JSON output ([#945](https://github.com/fossas/fossa-cli/pull/945)). 
+- Adds copyright information to attribution reports in the JSON output ([#945](https://github.com/fossas/fossa-cli/pull/945)).
 - Scala: non-multi sbt projects include deep dependencies ([#942](https://github.com/fossas/fossa-cli/pull/942)).
 
 ## v3.3.0
