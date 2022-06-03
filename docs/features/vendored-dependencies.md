@@ -1,6 +1,6 @@
-### License scanning local dependencies
+### License scanning vendored dependencies
 
-Fossa offers the ability to license scan your code directly. This is used primarily if a package manager is not yet supported or if you are vendoring dependencies. Using the license scanning feature will allow you to capture the licenses for dependencies that may otherwise be missed from normal fossa analysis that relies on package manager information.
+fossa-cli offers the ability to directly scan your code for licenses. This is used primarily if a package manager is not yet supported or if you are vendoring dependencies. Using the license scanning feature will allow you to capture the licenses of dependencies that may otherwise be missed from normal fossa-cli analysis that relies on package manager information.
 
 In order to specify a file path, modify your `fossa-deps.yml` file and add a `vendored-dependencies` section like the following:
 
@@ -13,13 +13,26 @@ referenced-dependencies:
 
 vendored-dependencies:
 - name: Django
-  path: vendor/Django-3.4.16.zip # path can be either a file or a folder.
+  path: vendor/Django-3.4.16.zip # path can be either a file or a directory.
   version: 3.4.16 # revision will be set to the MD5 hash of the filepath if left unspecified.
 ```
 
 > Note: License scanning currently operates by uploading the files at the specified path to a secure S3 bucket. All files that do not contain licenses are then removed after 2 weeks.
 
-We also support json-formatted dependencies:
+Unlike other analysis strategies, dependencies defined in `fossa-deps.yml` cannot be filtered using path or target filters.
+If you need to only scan dependencies in `fossa-deps.yml` and ignore all other dependencies found in your project, you can use the following configuration in your `.fossa.yml` configuration file:
+
+```yml
+# .fossa.yml
+# intentionally contradicting target filters to only analyze vendored dependencies
+targets:
+  only:
+    - type: cargo
+  exclude:
+    - type: cargo
+```
+
+We also support JSON-formatted dependencies:
 
 ```json
 {
