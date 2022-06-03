@@ -91,12 +91,6 @@ instance ToDiagnostic LicenseScanErr where
 
 newtype ScannableArchive = ScannableArchive {scanFile :: Path Abs File} deriving (Eq, Ord, Show)
 
-newtype NeedScanningDeps = NeedScanningDeps {needScanningDeps :: [VendoredDependency]}
-  deriving (Eq, Ord, Show)
-
-newtype SkippableDeps = SkippableDeps {skippableDeps :: [VendoredDependency]}
-  deriving (Eq, Ord, Show)
-
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
