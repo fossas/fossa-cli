@@ -8,7 +8,7 @@ import Analysis.FixtureUtils
 import Path
 import Strategy.Cargo qualified as Cargo
 import Test.Hspec
-import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
+import Types (DiscoveredProjectType (..))
 
 rustEnv :: FixtureEnvironment
 rustEnv = NixEnv ["rustc", "cargo"]
