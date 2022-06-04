@@ -37,9 +37,13 @@ fd =
       [reldir|rust/fd/|]
       [reldir|fd-8.3.0/|]
 
--- These numbers can change as the dependency tree for sharkdp changes.
--- The fix for now is to just update the numbers when the spec breaks
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary bat CargoProjectType (DependencyResultsSummary 146 29 268 1 Complete)
-  testSuiteDepResultSummary fd CargoProjectType (DependencyResultsSummary 74 25 145 1 Complete)
+  testSuitHasSomeDepResults bat CargoProjectType
+  testSuitHasSomeDepResults fd CargoProjectType
+
+-- The dependency number can change as the dependency tree for following changes,
+-- This is ramification of how `rust` builds are analyzed.
+--
+-- testSuiteDepResultSummary bat CargoProjectType (DependencyResultsSummary 146 29 268 1 Complete)
+-- testSuiteDepResultSummary fd CargoProjectType (DependencyResultsSummary 74 25 145 1 Complete)
