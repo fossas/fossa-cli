@@ -6,6 +6,7 @@ module Analysis.FixtureExpectationUtils (
 
   -- * spec helpers
   testSuiteDepResultSummary,
+  testSuitHasSomeDepResults,
 
   -- * expectation helpers
   getDepResultsOf,
@@ -18,6 +19,7 @@ import App.Fossa.Analyze.Types (AnalyzeProject)
 import Control.Algebra (Has)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.List (find)
+import Data.Maybe (isJust)
 import Data.String.Conversion (toString)
 import Graphing
 import Path
@@ -87,6 +89,15 @@ withProjectOfType ::
   Maybe (DiscoveredProject a, DependencyResults)
 withProjectOfType result (projType, projPath) =
   find (\(dr, _) -> projectType dr == projType && projectPath dr == projPath) result
+
+testSuitHasSomeDepResults :: (AnalyzeProject a, Show a, Eq a) => AnalysisTestFixture a -> DiscoveredProjectType -> Spec
+testSuitHasSomeDepResults fixture projType = aroundAll (withAnalysisOf fixture) $
+  describe (toString $ testName fixture) $ do
+    it "should find targets" $ \(result, extractedDir) ->
+      expectProject (projType, extractedDir) result
+
+    it "should have some dependency results" $ \(result, extractedDir) ->
+      isJust (getDepResultsOf result (projType, extractedDir)) `shouldBe` True
 
 testSuiteDepResultSummary :: (AnalyzeProject a, Show a, Eq a) => AnalysisTestFixture a -> DiscoveredProjectType -> DependencyResultsSummary -> Spec
 testSuiteDepResultSummary fixture projType depResultSummary =

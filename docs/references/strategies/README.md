@@ -57,7 +57,7 @@
 
 - [yarn](languages/nodejs/yarn.md)
 - [npm](languages/nodejs/npm.md)
-
+- [pnpm](languages/nodejs/pnpm.md)
 ### nim
 
 - [Nimble](languages/nim/nimble.md)
