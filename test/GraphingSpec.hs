@@ -182,7 +182,7 @@ shrinkingSpec = context "Shrinking" $ do
       expectEdges [(1, 4), (4, 5)] graph'
 
       expectDirect [2] graph''
-      expectDeps [2, 3, 4] graph'
+      expectDeps [2, 3, 4] graph''
       expectEdges [(2, 3), (3, 4)] graph''
 
   describe "shrinkWithoutPromotionToDirect" $ do
