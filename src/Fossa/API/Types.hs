@@ -313,6 +313,9 @@ instance FromJSON ArchiveUploadType where
     "CLILicenseScan" -> pure CLILicenseScan
     _ -> pure CLILicenseScan
 
+instance ToJSON ArchiveUploadType where
+  toJSON = toJSON . show
+
 data Project = Project
   { projectId :: Text
   , projectTitle :: Text

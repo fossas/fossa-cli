@@ -19,6 +19,7 @@ module App.Fossa.Config.Analyze (
   ScanDestination (..),
   StandardAnalyzeConfig (..),
   UnpackArchives (..),
+  VendoredDependencyOptions (..),
   VSIAnalysis (..),
   VSIModeOptions (..),
   mkSubCommand,
@@ -49,6 +50,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigTelemetryScope (NoTelemetry),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
+  VendoredDependencyConfigs (..),
   mergeFileCmdMetadata,
   resolveConfigFile,
  )
@@ -70,8 +72,8 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Lift (Lift)
 import Control.Monad (when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
-import Data.Flag (Flag, flagOpt)
-import Data.Maybe (isJust)
+import Data.Flag (Flag, flagOpt, fromFlag)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Monoid.Extra (isMempty)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -86,7 +88,7 @@ import Effect.Exec (
  )
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn)
 import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
-import Fossa.API.Types (ApiOpts)
+import Fossa.API.Types (ApiOpts, ArchiveUploadType (..))
 import GHC.Generics (Generic)
 import Options.Applicative (
   Alternative (many),
@@ -161,6 +163,15 @@ data VSIModeOptions = VSIModeOptions
 instance ToJSON VSIModeOptions where
   toEncoding = genericToEncoding defaultOptions
 
+data VendoredDependencyOptions = VendoredDependencyOptions
+  { forceRescans :: Bool
+  , licenseScanMethod :: ArchiveUploadType
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON VendoredDependencyOptions where
+  toEncoding = genericToEncoding defaultOptions
+
 data AnalyzeCliOpts = AnalyzeCliOpts
   { commons :: CommonOpts
   , analyzeOutput :: Bool
@@ -227,13 +238,11 @@ data StandardAnalyzeConfig = StandardAnalyzeConfig
   , vsiOptions :: VSIModeOptions
   , filterSet :: AllFilters
   , experimental :: ExperimentalAnalyzeConfig
+  , vendoredDeps :: VendoredDependencyOptions
   , unpackArchives :: Flag UnpackArchives
   , jsonOutput :: Flag JsonOutput
   , includeAllDeps :: Flag IncludeAll
   , noDiscoveryExclusion :: Flag NoDiscoveryExclusion
-  , forceVendoredDependencyRescans :: Flag ForceVendoredDependencyRescans
-  , forceCLILicenseScan :: Flag ForceVendoredDependencyCLILicenseScan
-  , forceArchiveUpload :: Flag ForceVendoredDependencyArchiveUpload
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -399,6 +408,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       modeOpts = collectModeOptions cliOpts
       filters = collectFilters maybeConfig cliOpts
       experimentalCfgs = collectExperimental maybeConfig
+      vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
 
   StandardAnalyzeConfig
     <$> basedir
@@ -408,13 +418,11 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> modeOpts
     <*> filters
     <*> pure experimentalCfgs
+    <*> vendoredDepsOptions
     <*> pure analyzeUnpackArchives
     <*> pure analyzeJsonOutput
     <*> pure analyzeIncludeAllDeps
     <*> pure analyzeNoDiscoveryExclusion
-    <*> pure analyzeForceVendoredDependencyRescans
-    <*> pure analyzeForceCLILicenseScan
-    <*> pure analyzeForceArchiveUpload
 
 collectFilters ::
   ( Has Diagnostics sig m
@@ -457,6 +465,27 @@ collectExperimental maybeCfg =
     fmap
       gradleConfigsOnly
       (maybeCfg >>= configExperimental >>= gradle)
+
+collectVendoredDeps ::
+  ( Has Diagnostics sig m
+  ) =>
+  Maybe ConfigFile ->
+  AnalyzeCliOpts ->
+  m VendoredDependencyOptions
+collectVendoredDeps maybeCfg AnalyzeCliOpts{..} = do
+  let forceRescansFromFlag = fromFlag ForceVendoredDependencyRescans analyzeForceVendoredDependencyRescans
+      forceRescansFromConfig = maybe False configForceRescans (maybeCfg >>= configVendoredDependencies)
+      forceRescans = forceRescansFromFlag || forceRescansFromConfig
+      forceCLILicenseScan = fromFlag ForceVendoredDependencyCLILicenseScan analyzeForceCLILicenseScan
+      forceArchiveUpload = fromFlag ForceVendoredDependencyArchiveUpload analyzeForceArchiveUpload
+  scanTypeFromFlags <- case (forceCLILicenseScan, forceArchiveUpload) of
+    (True, True) -> fatalText "You have provided both --force-cli-license-scan and --force-archive-upload flags. A maximum of one of these flags can be used."
+    (True, False) -> pure $ Just CLILicenseScan
+    (False, True) -> pure $ Just ArchiveUpload
+    (False, False) -> pure Nothing
+  let defaultScanTypeFromConfig = maybe CLILicenseScan configLicenseScanMethod (maybeCfg >>= configVendoredDependencies)
+      defaultScanType = fromMaybe defaultScanTypeFromConfig scanTypeFromFlags
+  pure $ VendoredDependencyOptions forceRescans defaultScanType
 
 collectScanDestination ::
   ( Has Diagnostics sig m
