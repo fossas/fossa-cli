@@ -16,9 +16,7 @@ module App.Fossa.ManualDeps (
 
 import App.Fossa.ArchiveUploader (archiveUploadSourceUnit)
 import App.Fossa.Config.Analyze (
-  ForceVendoredDependencyArchiveUpload (ForceVendoredDependencyArchiveUpload),
-  ForceVendoredDependencyCLILicenseScan (ForceVendoredDependencyCLILicenseScan),
-  ForceVendoredDependencyRescans (ForceVendoredDependencyRescans),
+  VendoredDependencyOptions (..),
  )
 import App.Fossa.LicenseScanner (licenseScanSourceUnit)
 import App.Fossa.VendoredDependency (
@@ -42,7 +40,6 @@ import Data.Aeson (
  )
 import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers)
 import Data.Aeson.Types (Parser)
-import Data.Flag (Flag, fromFlag)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -73,17 +70,15 @@ analyzeFossaDepsFile ::
   ) =>
   Path Abs Dir ->
   Maybe ApiOpts ->
-  Flag ForceVendoredDependencyRescans ->
-  Flag ForceVendoredDependencyCLILicenseScan ->
-  Flag ForceVendoredDependencyArchiveUpload ->
+  VendoredDependencyOptions ->
   m (Maybe SourceUnit)
-analyzeFossaDepsFile root maybeApiOpts forceRescans forceCLILicenseScan forceArchiveUpload = do
+analyzeFossaDepsFile root maybeApiOpts vendoredDepsOptions = do
   maybeDepsFile <- findFossaDepsFile root
   case maybeDepsFile of
     Nothing -> pure Nothing
     Just depsFile -> do
       manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
-      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts forceRescans forceCLILicenseScan forceArchiveUpload
+      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
 
 readFoundDeps :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundDepsFile -> m ManualDependencies
 readFoundDeps (ManualJSON path) = readContentsJson path
@@ -120,16 +115,14 @@ toSourceUnit ::
   FoundDepsFile ->
   ManualDependencies ->
   Maybe ApiOpts ->
-  Flag ForceVendoredDependencyRescans ->
-  Flag ForceVendoredDependencyCLILicenseScan ->
-  Flag ForceVendoredDependencyArchiveUpload ->
+  VendoredDependencyOptions ->
   m SourceUnit
-toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts forceRescans forceCLILicenseScan forceArchiveUpload = do
+toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendoredDepsOptions = do
   -- If the file exists and we have no dependencies to report, that's a failure.
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
 
   archiveLocators <- case (maybeApiOpts, NE.nonEmpty vendoredDependencies) of
-    (Just apiOpts, Just vdeps) -> NE.toList <$> runFossaApiClient apiOpts (scanAndUpload root vdeps forceRescans forceCLILicenseScan forceArchiveUpload)
+    (Just apiOpts, Just vdeps) -> NE.toList <$> runFossaApiClient apiOpts (scanAndUpload root vdeps vendoredDepsOptions)
     (Nothing, Just vdeps) -> pure $ noSourceUnits $ NE.toList vdeps
     -- Don't do anything if there are no vendored deps.
     (_, Nothing) -> pure []
@@ -165,31 +158,22 @@ scanAndUpload ::
   ) =>
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
-  Flag ForceVendoredDependencyRescans ->
-  Flag ForceVendoredDependencyCLILicenseScan ->
-  Flag ForceVendoredDependencyArchiveUpload ->
+  VendoredDependencyOptions ->
   m (NonEmpty Locator)
-scanAndUpload root vdeps forceRescansFlag forceCLILicenseScanFlag forceArchiveUploadFlag = do
+scanAndUpload root vdeps VendoredDependencyOptions{..} = do
   org <- getOrganization
 
   let coreSupportsLicenseScan = orgCoreSupportsLocalLicenseScan org
       defaultScanType = orgDefaultVendoredDependencyScanType org
-      forceCLILicenseScan = fromFlag ForceVendoredDependencyCLILicenseScan forceCLILicenseScanFlag
-      forceArchiveUpload = fromFlag ForceVendoredDependencyArchiveUpload forceArchiveUploadFlag
-  forceScanType <- case (forceCLILicenseScan, forceArchiveUpload) of
-    (True, True) -> fatalText "You have provided both --force-cli-license-scan and --force-archive-upload flags. A maximum of one of these flags can be used."
-    (True, False) -> pure $ Just CLILicenseScan
-    (False, True) -> pure $ Just ArchiveUpload
-    (False, False) -> pure Nothing
   archiveOrCLI <-
-    case (coreSupportsLicenseScan, defaultScanType, forceScanType) of
+    case (coreSupportsLicenseScan, defaultScanType, licenseScanMethod) of
       (False, _, Just CLILicenseScan) -> fatalText "You provided the --force-cli-license-scan flag but this version of FOSSA does not support CLI-side license scans"
       (False, _, _) -> pure ArchiveUpload
       (True, _, Just ArchiveUpload) -> pure ArchiveUpload
       (True, _, Just CLILicenseScan) -> pure CLILicenseScan
-      (True, def, Nothing) -> pure def
+      (True, orgDefault, Nothing) -> pure orgDefault
   let vendoredDependencyScanMode =
-        case (orgSupportsAnalyzedRevisionsQuery org, fromFlag ForceVendoredDependencyRescans forceRescansFlag) of
+        case (orgSupportsAnalyzedRevisionsQuery org, forceRescans) of
           -- The --force-vendored-dependency-rescans flag should win so that we can force rebuilds even if Core does not support skipping
           (_, True) -> SkippingDisabledViaFlag
           (False, False) -> SkippingNotSupported

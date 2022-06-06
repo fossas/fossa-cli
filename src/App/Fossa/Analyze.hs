@@ -242,9 +242,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let maybeApiOpts = case destination of
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
-      forceVendoredDependencyRescans = Config.forceVendoredDependencyRescans cfg
-      forceCLILicenseScan = Config.forceCLILicenseScan cfg
-      forceArchiveUpload = Config.forceArchiveUpload cfg
       BaseDir basedir = Config.baseDir cfg
       destination = Config.scanDestination cfg
       filters = Config.filterSet cfg
@@ -254,6 +251,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       noDiscoveryExclusion = Config.noDiscoveryExclusion cfg
       revision = Config.projectRevision cfg
       skipResolutionSet = Config.vsiSkipSet $ Config.vsiOptions cfg
+      vendoredDepsOptions = Config.vendoredDeps cfg
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
@@ -280,7 +278,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         then do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure Nothing
-        else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir maybeApiOpts forceVendoredDependencyRescans forceCLILicenseScan forceArchiveUpload
+        else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir maybeApiOpts vendoredDepsOptions
   let additionalSourceUnits :: [SourceUnit]
       additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults, dynamicLinkedResults]
   traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults, binarySearchResults, manualSrcUnits, dynamicLinkedResults]

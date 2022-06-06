@@ -73,7 +73,7 @@ import Control.Effect.Lift (Lift)
 import Control.Monad (when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Flag (Flag, flagOpt, fromFlag)
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (isJust)
 import Data.Monoid.Extra (isMempty)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -165,7 +165,7 @@ instance ToJSON VSIModeOptions where
 
 data VendoredDependencyOptions = VendoredDependencyOptions
   { forceRescans :: Bool
-  , licenseScanMethod :: ArchiveUploadType
+  , licenseScanMethod :: Maybe ArchiveUploadType
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -483,8 +483,8 @@ collectVendoredDeps maybeCfg AnalyzeCliOpts{..} = do
     (True, False) -> pure $ Just CLILicenseScan
     (False, True) -> pure $ Just ArchiveUpload
     (False, False) -> pure Nothing
-  let defaultScanTypeFromConfig = maybe CLILicenseScan configLicenseScanMethod (maybeCfg >>= configVendoredDependencies)
-      defaultScanType = fromMaybe defaultScanTypeFromConfig scanTypeFromFlags
+  let defaultScanTypeFromConfig = configLicenseScanMethod <$> (maybeCfg >>= configVendoredDependencies)
+      defaultScanType = scanTypeFromFlags <|> defaultScanTypeFromConfig
   pure $ VendoredDependencyOptions forceRescans defaultScanType
 
 collectScanDestination ::
