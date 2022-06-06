@@ -40,6 +40,9 @@ paths:
     - ./test
   exclude:
     - ./vendor/django/test
+
+telemetry:
+  scope: full
 ```
 
 
