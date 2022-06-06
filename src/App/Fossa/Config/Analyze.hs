@@ -231,7 +231,6 @@ data StandardAnalyzeConfig = StandardAnalyzeConfig
   , jsonOutput :: Flag JsonOutput
   , includeAllDeps :: Flag IncludeAll
   , noDiscoveryExclusion :: Flag NoDiscoveryExclusion
-  , allowNativeLicenseScan :: Flag AllowNativeLicenseScan
   , forceVendoredDependencyRescans :: Flag ForceVendoredDependencyRescans
   , forceCLILicenseScan :: Flag ForceVendoredDependencyCLILicenseScan
   , forceArchiveUpload :: Flag ForceVendoredDependencyArchiveUpload
@@ -413,7 +412,6 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure analyzeJsonOutput
     <*> pure analyzeIncludeAllDeps
     <*> pure analyzeNoDiscoveryExclusion
-    <*> pure analyzeAllowNativeLicenseScan
     <*> pure analyzeForceVendoredDependencyRescans
     <*> pure analyzeForceCLILicenseScan
     <*> pure analyzeForceArchiveUpload
