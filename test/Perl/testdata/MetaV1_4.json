@@ -4,7 +4,7 @@
       "Some Author"
     ],
     "build_requires": {
-      "Compress::Zlib": "0"
+      "Compress::Zlib": 0
     },
     "configure_requires": {
       "ExtUtils::MakeMaker": "0"

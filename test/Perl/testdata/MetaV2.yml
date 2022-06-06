@@ -9,7 +9,7 @@ prereqs:
       perl: '5.006'
   develop:
     requires:
-      Dist::Zilla: '5'
+      Dist::Zilla: 5
       perl: '5.006'
   runtime:
     requires:

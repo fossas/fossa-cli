@@ -12,8 +12,10 @@ import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (Object, ToJSON)
+import Data.Aeson.Extra (TextLike (unTextLike))
 import Data.Aeson.Types (FromJSONKey, Parser, withObject)
 import Data.Aeson.Types qualified as AesonTypes
+import Data.Bifunctor (second)
 import Data.Foldable (asum)
 import Data.Map (Map, toList)
 import Data.Maybe (fromMaybe)
@@ -107,11 +109,11 @@ newtype PackageName = PackageName {unPackageName :: Text} deriving (Show, Eq, Or
 -- v2.0: https://metacpan.org/release/DAGOLDEN/CPAN-Meta-2.150010
 data PerlMeta = PerlMeta
   { version :: Double
-  , runtimeRequires :: Maybe (Map PackageName (Maybe Text))
-  , buildRequires :: Maybe (Map PackageName (Maybe Text))
-  , testRequires :: Maybe (Map PackageName (Maybe Text))
-  , developRequires :: Maybe (Map PackageName (Maybe Text))
-  , configureRequires :: Maybe (Map PackageName (Maybe Text))
+  , runtimeRequires :: Maybe (Map PackageName (Maybe TextLike))
+  , buildRequires :: Maybe (Map PackageName (Maybe TextLike))
+  , testRequires :: Maybe (Map PackageName (Maybe TextLike))
+  , developRequires :: Maybe (Map PackageName (Maybe TextLike))
+  , configureRequires :: Maybe (Map PackageName (Maybe TextLike))
   }
   deriving (Generic, Show, Eq, Ord)
 
@@ -188,8 +190,8 @@ buildGraph meta =
     notNamedPerl :: Dependency -> Bool
     notNamedPerl dep = dependencyName dep /= "perl"
 
-    getDepsOf :: DepEnvironment -> (PerlMeta -> Maybe (Map PackageName (Maybe Text))) -> [Dependency]
-    getDepsOf env getter = map (toDependency env) (toList $ fromMaybe mempty (getter meta))
+    getDepsOf :: DepEnvironment -> (PerlMeta -> Maybe (Map PackageName (Maybe TextLike))) -> [Dependency]
+    getDepsOf env getter = map (toDependency env . second (fmap unTextLike)) (toList $ fromMaybe mempty (getter meta))
 
     toDependency :: DepEnvironment -> (PackageName, Maybe Text) -> Dependency
     toDependency env (pkgName, version) =

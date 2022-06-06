@@ -3,11 +3,17 @@ module Perl.PerlSpec (
 ) where
 
 import Data.Aeson (decodeFileStrict')
+import Data.Aeson.Extra (TextLike (..))
 import Data.Map.Strict (empty, fromList)
 import Data.Set (singleton)
 import Data.Text (Text)
 import Data.Yaml (decodeFileEither, prettyPrintParseException)
-import DepTypes
+import DepTypes (
+  DepEnvironment (EnvDevelopment, EnvProduction),
+  DepType (CpanType),
+  Dependency (Dependency),
+  VerConstraint (CEq),
+ )
 import GraphUtil (expectDeps)
 import Strategy.Perl (PackageName (PackageName), PerlMeta (..), buildGraph)
 import Test.Hspec (
@@ -18,29 +24,29 @@ import Test.Hspec (
   shouldBe,
  )
 
-perl :: (PackageName, Maybe Text)
-perl = (PackageName "perl", Just "5.006")
+perl :: (PackageName, Maybe TextLike)
+perl = (PackageName "perl", Just $ TextLike "5.006")
 
 expectedContentFromV2 :: PerlMeta
 expectedContentFromV2 =
   PerlMeta
     { version = 2.0
-    , runtimeRequires = Just $ fromList [(PackageName "Carp", Just "0"), perl]
+    , runtimeRequires = Just $ fromList [(PackageName "Carp", Just $ TextLike "0"), perl]
     , buildRequires = Just $ fromList [perl]
     , testRequires = Just $ fromList [perl]
-    , developRequires = Just $ fromList [(PackageName "Dist::Zilla", Just "5"), perl]
-    , configureRequires = Just $ fromList [(PackageName "ExtUtils::MakeMaker", Just "0"), perl]
+    , developRequires = Just $ fromList [(PackageName "Dist::Zilla", Just $ TextLike "5"), perl]
+    , configureRequires = Just $ fromList [(PackageName "ExtUtils::MakeMaker", Just $ TextLike "0"), perl]
     }
 
 expectedContentFromV1_4 :: PerlMeta
 expectedContentFromV1_4 =
   PerlMeta
     { version = 1.4
-    , runtimeRequires = Just $ fromList [(PackageName "Archive::Zip", Just "0"), perl]
-    , buildRequires = Just $ fromList [(PackageName "Compress::Zlib", Just "0")]
+    , runtimeRequires = Just $ fromList [(PackageName "Archive::Zip", Just $ TextLike "0"), perl]
+    , buildRequires = Just $ fromList [(PackageName "Compress::Zlib", Just $ TextLike "0")]
     , testRequires = Nothing
     , developRequires = Nothing
-    , configureRequires = Just $ fromList [(PackageName "ExtUtils::MakeMaker", Just "0")]
+    , configureRequires = Just $ fromList [(PackageName "ExtUtils::MakeMaker", Just $ TextLike "0")]
     }
 
 mkDependency :: Text -> Text -> DepEnvironment -> Dependency
@@ -48,7 +54,7 @@ mkDependency name version env = Dependency CpanType name (Just $ CEq version) []
 
 spec :: Spec
 spec = do
-  describe "parse" $ do
+  describe "perl meta parser" $ do
     it "should parse meta json (v2) file correctly" $ do
       resolvedFile <- decodeFileStrict' "test/Perl/testdata/MetaV2.json"
       resolvedFile `shouldBe` Just expectedContentFromV2
