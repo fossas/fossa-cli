@@ -12,6 +12,6 @@ meta-spec:
   version: '1.4'
 name: Some-App
 requires:
-  Archive::Zip: '0'
+  Archive::Zip: 0
   perl: '5.006'
 version: 1.16
