@@ -1,7 +1,7 @@
 # FOSSA CLI Changelog
 
 ## Unreleased
-- CLI-side license scans will skip rescanning revisions that are already known to FOSSA
+- CLI-side license scans will skip rescanning revisions that are already known to FOSSA. This can be overridden by using the `--force-vendored-dependency-rescans` flag.
 - Swift: Added support for `Package.resolved` v2 files ([#957](https://github.com/fossas/fossa-cli/pull/957)).
 
 ## v3.3.1

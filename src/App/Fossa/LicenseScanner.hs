@@ -12,6 +12,8 @@ import App.Fossa.RunThemis (
   execThemis,
  )
 import App.Fossa.VendoredDependency (
+  NeedScanningDeps (..),
+  SkippableDeps (..),
   VendoredDependency (..),
   VendoredDependencyScanMode (..),
   arcToLocator,
@@ -19,6 +21,7 @@ import App.Fossa.VendoredDependency (
   dedupVendoredDeps,
   forceVendoredToArchive,
   hashFile,
+  skippedDepsDebugLog,
  )
 import Control.Carrier.Finally (Finally, runFinally)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (renderLocatorUrl)
@@ -56,7 +59,7 @@ import Effect.ReadFS (
  )
 import Fossa.API.Types (
   Archive (Archive, archiveName),
-  ArchiveComponents (ArchiveComponents),
+  ArchiveComponents (..),
   OrgId,
   Organization (organizationId),
  )
@@ -87,12 +90,6 @@ instance ToDiagnostic LicenseScanErr where
     Nothing -> "fossa-cli does not support archives without file extensions: " <> pretty (toString path)
 
 newtype ScannableArchive = ScannableArchive {scanFile :: Path Abs File} deriving (Eq, Ord, Show)
-
-newtype NeedScanningDeps = NeedScanningDeps {needScanningDeps :: [VendoredDependency]}
-  deriving (Eq, Ord, Show)
-
-newtype SkippableDeps = SkippableDeps {skippableDeps :: [VendoredDependency]}
-  deriving (Eq, Ord, Show)
 
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
@@ -337,7 +334,8 @@ licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
     if vendoredDependencyScanMode == SkipPreviouslyScanned
       then findDepsThatNeedScanning uniqDepsWithVersions orgId
       else pure (NeedScanningDeps $ NE.toList uniqDepsWithVersions, SkippableDeps [])
-  logSkippedDeps needScanning skippable vendoredDependencyScanMode
+
+  logDebug . pretty $ skippedDepsDebugLog needScanning skippable vendoredDependencyScanMode
 
   -- At this point, we have a good list of deps, so go for it.
   -- If none of the dependencies need scanning we still need to do `finalizeLicenseScan`, so keep going
@@ -349,7 +347,7 @@ licenseScanSourceUnit vendoredDependencyScanMode baseDir vendoredDeps = do
 
   -- finalizeLicenseScan takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
-  finalizeLicenseScan $ ArchiveComponents $ NE.toList archives
+  finalizeLicenseScan $ ArchiveComponents (NE.toList archives) (vendoredDependencyScanMode == SkippingDisabledViaFlag)
 
   let archivesWithOrganization :: OrgId -> NonEmpty Archive -> NonEmpty Archive
       archivesWithOrganization org = NE.map $ includeOrgId org
@@ -369,27 +367,6 @@ ensureVendoredDepVersion baseDir vdep = do
     Nothing -> sendIO . withSystemTempDir "fossa-temp" . calculateVendoredHash baseDir $ vendoredPath vdep
     Just version -> pure version
   pure vdep{vendoredVersion = Just depVersion}
-
--- Debug logs giving info about which vendored deps were actually scanned
-logSkippedDeps ::
-  Has Logger sig m =>
-  NeedScanningDeps ->
-  SkippableDeps ->
-  VendoredDependencyScanMode ->
-  m ()
-logSkippedDeps needScanningDeps skippedDeps scanMode =
-  case (needScanningDeps, scanMode) of
-    (_, SkippingNotSupported) -> do
-      logDebug "This version of the FOSSA service does not support enumerating previously scanned vendored dependencies."
-      logDebug "Performing a full scan of all vendored dependencies even if they have been scanned previously."
-    (NeedScanningDeps [], SkipPreviouslyScanned) -> do
-      logDebug "All of the current vendored dependencies have been previously scanned, reusing previous results."
-    (_, SkipPreviouslyScanned) -> do
-      case skippedDeps of
-        SkippableDeps [] -> logDebug "None of the current vendored dependencies have been previously scanned. License scanning all vendored dependencies"
-        _ -> do
-          logDebug "Some of the current vendored dependencies have already been scanned by FOSSA."
-          logDebug . pretty $ "Reusing previous results for the following vendored dependencies: " <> show skippedDeps
 
 -- | Split the supplied vendored dependencies into those that need scanning and those that do not.
 --   We can skip scanning a vendored dependency if an analyzed revision for that vendored dependency already exists on Core.

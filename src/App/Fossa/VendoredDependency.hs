@@ -9,6 +9,10 @@ module App.Fossa.VendoredDependency (
   compressFile,
   hashFile,
   dedupVendoredDeps,
+  skippedDepsDebugLog,
+  SkippableDeps (..),
+  NeedScanningDeps (..),
+  SkippedDepsLogMsg (..),
 ) where
 
 import Codec.Archive.Tar qualified as Tar
@@ -35,6 +39,7 @@ import Data.Text qualified as Text
 import Data.UUID.V4 (nextRandom)
 import Fossa.API.Types (Archive (..))
 import Path (Abs, Dir, Path)
+import Prettyprinter (Pretty (pretty), vsep)
 import Srclib.Types (Locator (..))
 import System.FilePath.Posix (splitDirectories, (</>))
 
@@ -54,7 +59,41 @@ instance FromJSON VendoredDependency where
 data VendoredDependencyScanMode
   = SkipPreviouslyScanned
   | SkippingNotSupported
+  | SkippingDisabledViaFlag
   deriving (Eq, Ord, Show)
+
+newtype NeedScanningDeps = NeedScanningDeps {needScanningDeps :: [VendoredDependency]}
+  deriving (Eq, Ord, Show)
+
+newtype SkippableDeps = SkippableDeps {skippableDeps :: [VendoredDependency]}
+  deriving (Eq, Ord, Show)
+
+-- Debug logs giving info about which vendored deps were actually scanned
+data SkippedDepsLogMsg
+  = SkippingUnsupportedMsg
+  | SkippingDisabledViaFlagMsg
+  | AllDepsPreviouslyScannedMsg
+  | AllDepsNeedScanningMsg
+  | SomeDepsNeedScanningMsg SkippableDeps
+  deriving (Eq, Ord, Show)
+
+instance Pretty SkippedDepsLogMsg where
+  pretty SkippingUnsupportedMsg =
+    vsep
+      [ "This version of the FOSSA service does not support enumerating previously scanned vendored dependencies."
+      , "Performing a full scan of all vendored dependencies even if they have been scanned previously."
+      ]
+  pretty SkippingDisabledViaFlagMsg =
+    "The --force-vendored-dependency-rescans flag was used, so performing a full scan of all vendored dependencies even if they have been scanned previously."
+  pretty AllDepsPreviouslyScannedMsg =
+    "All of the current vendored dependencies have been previously scanned, reusing previous results."
+  pretty AllDepsNeedScanningMsg =
+    "None of the current vendored dependencies have been previously scanned. License scanning all vendored dependencies"
+  pretty (SomeDepsNeedScanningMsg skippedDeps) =
+    vsep
+      [ "Some of the current vendored dependencies have already been scanned by FOSSA."
+      , "Reusing previous results for the following vendored dependencies: " <> (pretty . show $ skippedDeps)
+      ]
 
 dedupVendoredDeps :: (Has Diagnostics sig m) => NonEmpty VendoredDependency -> m (NonEmpty VendoredDependency)
 dedupVendoredDeps vdeps = do
@@ -118,3 +157,14 @@ hashFile fileToHash = do
 
 safeSeparators :: FilePath -> FilePath
 safeSeparators = intercalate "_" . splitDirectories
+
+skippedDepsDebugLog :: NeedScanningDeps -> SkippableDeps -> VendoredDependencyScanMode -> SkippedDepsLogMsg
+skippedDepsDebugLog needScanningDeps skippedDeps scanMode =
+  case (needScanningDeps, scanMode) of
+    (_, SkippingNotSupported) -> SkippingUnsupportedMsg
+    (_, SkippingDisabledViaFlag) -> SkippingDisabledViaFlagMsg
+    (NeedScanningDeps [], SkipPreviouslyScanned) -> AllDepsPreviouslyScannedMsg
+    (_, SkipPreviouslyScanned) -> do
+      case skippedDeps of
+        SkippableDeps [] -> AllDepsNeedScanningMsg
+        _ -> SomeDepsNeedScanningMsg skippedDeps

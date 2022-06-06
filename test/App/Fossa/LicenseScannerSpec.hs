@@ -7,7 +7,7 @@ import App.Fossa.VendoredDependency (VendoredDependencyScanMode (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (..))
 import Data.List.NonEmpty qualified as NE
-import Fossa.API.Types (Archive, ArchiveComponents (ArchiveComponents, archives))
+import Fossa.API.Types (Archive, ArchiveComponents (ArchiveComponents, archives, forceRebuild))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
 import Srclib.Types (
@@ -144,6 +144,17 @@ spec = do
       locators <- licenseScanSourceUnit SkippingNotSupported scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
+    it' "should always scan all if the --force-vendor-dependency-rescans flag is used" $ do
+      expectGetApiOpts
+      expectGetOrganization
+      expectGetSignedUrl PackageRevision{packageName = "first-archive-test", packageVersion = "0.0.1"}
+      expectUploadLicenseScanResult Fixtures.firstLicenseSourceUnit
+      expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
+      expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
+      expectFinalizeScanWithForceRebuild Fixtures.archives
+      locators <- licenseScanSourceUnit SkippingDisabledViaFlag scanDir Fixtures.vendoredDeps
+      locators `shouldBe'` Fixtures.locators
+
 expectGetApiOpts :: Has MockApi sig m => m ()
 expectGetApiOpts =
   GetApiOpts `alwaysReturns` Fixtures.apiOpts
@@ -180,4 +191,8 @@ expectUploadLicenseScanResult licenseUnit =
 
 expectFinalizeScan :: Has MockApi sig m => [Archive] -> m ()
 expectFinalizeScan as =
-  (FinalizeLicenseScan ArchiveComponents{archives = as}) `returnsOnce` ()
+  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = False}) `returnsOnce` ()
+
+expectFinalizeScanWithForceRebuild :: Has MockApi sig m => [Archive] -> m ()
+expectFinalizeScanWithForceRebuild as =
+  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = True}) `returnsOnce` ()
