@@ -68,7 +68,7 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True False True
+organization = API.Organization (API.OrgId 42) True False True API.CLILicenseScan
 
 project :: API.Project
 project =
