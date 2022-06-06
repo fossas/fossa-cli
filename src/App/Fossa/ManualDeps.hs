@@ -16,8 +16,8 @@ module App.Fossa.ManualDeps (
 
 import App.Fossa.ArchiveUploader (archiveUploadSourceUnit)
 import App.Fossa.Config.Analyze (
-  ForceArchiveUpload (ForceArchiveUpload),
-  ForceCLILicenseScan (ForceCLILicenseScan),
+  ForceVendoredDependencyArchiveUpload (ForceVendoredDependencyArchiveUpload),
+  ForceVendoredDependencyCLILicenseScan (ForceVendoredDependencyCLILicenseScan),
   ForceVendoredDependencyRescans (ForceVendoredDependencyRescans),
  )
 import App.Fossa.LicenseScanner (licenseScanSourceUnit)
@@ -74,8 +74,8 @@ analyzeFossaDepsFile ::
   Path Abs Dir ->
   Maybe ApiOpts ->
   Flag ForceVendoredDependencyRescans ->
-  Flag ForceCLILicenseScan ->
-  Flag ForceArchiveUpload ->
+  Flag ForceVendoredDependencyCLILicenseScan ->
+  Flag ForceVendoredDependencyArchiveUpload ->
   m (Maybe SourceUnit)
 analyzeFossaDepsFile root maybeApiOpts forceRescans forceCLILicenseScan forceArchiveUpload = do
   maybeDepsFile <- findFossaDepsFile root
@@ -121,8 +121,8 @@ toSourceUnit ::
   ManualDependencies ->
   Maybe ApiOpts ->
   Flag ForceVendoredDependencyRescans ->
-  Flag ForceCLILicenseScan ->
-  Flag ForceArchiveUpload ->
+  Flag ForceVendoredDependencyCLILicenseScan ->
+  Flag ForceVendoredDependencyArchiveUpload ->
   m SourceUnit
 toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts forceRescans forceCLILicenseScan forceArchiveUpload = do
   -- If the file exists and we have no dependencies to report, that's a failure.
@@ -166,16 +166,16 @@ scanAndUpload ::
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
   Flag ForceVendoredDependencyRescans ->
-  Flag ForceCLILicenseScan ->
-  Flag ForceArchiveUpload ->
+  Flag ForceVendoredDependencyCLILicenseScan ->
+  Flag ForceVendoredDependencyArchiveUpload ->
   m (NonEmpty Locator)
 scanAndUpload root vdeps forceRescansFlag forceCLILicenseScanFlag forceArchiveUploadFlag = do
   org <- getOrganization
 
   let coreSupportsLicenseScan = orgCoreSupportsLocalLicenseScan org
       defaultScanType = orgDefaultVendoredDependencyScanType org
-      forceCLILicenseScan = fromFlag ForceCLILicenseScan forceCLILicenseScanFlag
-      forceArchiveUpload = fromFlag ForceArchiveUpload forceArchiveUploadFlag
+      forceCLILicenseScan = fromFlag ForceVendoredDependencyCLILicenseScan forceCLILicenseScanFlag
+      forceArchiveUpload = fromFlag ForceVendoredDependencyArchiveUpload forceArchiveUploadFlag
   forceScanType <- case (forceCLILicenseScan, forceArchiveUpload) of
     (True, True) -> fatalText "You have provided both --force-cli-license-scan and --force-archive-upload flags. A maximum of one of these flags can be used."
     (True, False) -> pure $ Just CLILicenseScan

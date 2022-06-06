@@ -8,8 +8,8 @@ module App.Fossa.Config.Analyze (
   BinaryDiscovery (..),
   ExperimentalAnalyzeConfig (..),
   ForceVendoredDependencyRescans (..),
-  ForceCLILicenseScan (..),
-  ForceArchiveUpload (..),
+  ForceVendoredDependencyCLILicenseScan (..),
+  ForceVendoredDependencyArchiveUpload (..),
   IATAssertion (..),
   DynamicLinkInspect (..),
   IncludeAll (..),
@@ -112,8 +112,8 @@ import Types (TargetFilter)
 -- CLI flags, for use with 'Data.Flag'
 data AllowNativeLicenseScan = AllowNativeLicenseScan deriving (Generic)
 data ForceVendoredDependencyRescans = ForceVendoredDependencyRescans deriving (Generic)
-data ForceCLILicenseScan = ForceCLILicenseScan deriving (Generic)
-data ForceArchiveUpload = ForceArchiveUpload deriving (Generic)
+data ForceVendoredDependencyCLILicenseScan = ForceVendoredDependencyCLILicenseScan deriving (Generic)
+data ForceVendoredDependencyArchiveUpload = ForceVendoredDependencyArchiveUpload deriving (Generic)
 
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
 data IncludeAll = IncludeAll deriving (Generic)
@@ -169,8 +169,8 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeIncludeAllDeps :: Flag IncludeAll
   , analyzeNoDiscoveryExclusion :: Flag NoDiscoveryExclusion
   , analyzeAllowNativeLicenseScan :: Flag AllowNativeLicenseScan
-  , analyzeForceCLILicenseScan :: Flag ForceCLILicenseScan
-  , analyzeForceArchiveUpload :: Flag ForceArchiveUpload
+  , analyzeForceCLILicenseScan :: Flag ForceVendoredDependencyCLILicenseScan
+  , analyzeForceArchiveUpload :: Flag ForceVendoredDependencyArchiveUpload
   , analyzeForceVendoredDependencyRescans :: Flag ForceVendoredDependencyRescans
   , analyzeBranch :: Maybe Text
   , analyzeMetadata :: ProjectMetadata
@@ -233,8 +233,8 @@ data StandardAnalyzeConfig = StandardAnalyzeConfig
   , noDiscoveryExclusion :: Flag NoDiscoveryExclusion
   , allowNativeLicenseScan :: Flag AllowNativeLicenseScan
   , forceVendoredDependencyRescans :: Flag ForceVendoredDependencyRescans
-  , forceCLILicenseScan :: Flag ForceCLILicenseScan
-  , forceArchiveUpload :: Flag ForceArchiveUpload
+  , forceCLILicenseScan :: Flag ForceVendoredDependencyCLILicenseScan
+  , forceArchiveUpload :: Flag ForceVendoredDependencyArchiveUpload
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -266,9 +266,9 @@ cliParser =
     <*> flagOpt NoDiscoveryExclusion (long "debug-no-discovery-exclusion" <> help "Ignore filters during discovery phase.  This is for debugging only and may be removed without warning." <> hidden)
     -- Intentionally hidden until some critical bugs are addressed
     <*> flagOpt AllowNativeLicenseScan (long "experimental-native-license-scan" <> hidden)
-    <*> flagOpt ForceCLILicenseScan (long "force-license-scan" <> help "Force vendored dependencies to be license scanned in your CI environment. This is usually the default unless your organization has set Archive uploads to tbe the default.")
-    <*> flagOpt ForceArchiveUpload (long "force-archive-upload" <> help "Force vendored dependencies to be scanned via the Archive Upload process")
-    <*> flagOpt ForceVendoredDependencyRescans (long "force-vendored-dependency-rescans" <> help "Force vendored dependencies to be rescanned even if the revision has been previously analyzed by FOSSA. This currently only works if the --experimental-native-license-scan flag is present." <> hidden)
+    <*> flagOpt ForceVendoredDependencyCLILicenseScan (long "force-vendored-dependency-license-scan" <> help "Force vendored dependencies to be license scanned in your CI environment. This is usually the default unless your organization has set Archive uploads to tbe the default. Incompatible with --force-vendored-dependency-archive-upload.")
+    <*> flagOpt ForceVendoredDependencyArchiveUpload (long "force-vendored-dependency-archive-upload" <> help "Force vendored dependencies to be scanned via the Archive Upload process. Incompatible with --force-vendored-dependency-license-scan.")
+    <*> flagOpt ForceVendoredDependencyRescans (long "force-vendored-dependency-rescans" <> help "Force vendored dependencies to be rescanned even if the revision has been previously analyzed by FOSSA. This currently only works if the --experimental-native-license-scan flag is present.")
     <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> many (option (eitherReader targetOpt) (long "only-target" <> help "Only scan these targets. See targets.only in the fossa.yml spec." <> metavar "PATH"))
