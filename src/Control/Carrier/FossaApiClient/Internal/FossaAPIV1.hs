@@ -394,9 +394,7 @@ getAnalyzedRevisions ::
 getAnalyzedRevisions apiOpts vDeps = fossaReq $ do
   orgId <- organizationId <$> getOrganization apiOpts
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  let constructLocatorBody :: NonEmpty VendoredDependency -> GetAnalyzedRevisionsBody
-      constructLocatorBody = GetAnalyzedRevisionsBody <$> NE.map (renderLocatorUrl orgId . vendoredDepToLocator)
-      locatorBody = constructLocatorBody vDeps
+  let locatorBody = GetAnalyzedRevisionsBody $ NE.map (renderLocatorUrl orgId . vendoredDepToLocator) vDeps
   responseBody <$> req POST (getAnalyzedRevisionsEndpoint baseUrl) (ReqBodyJson locatorBody) jsonResponse baseOpts
 
 -----

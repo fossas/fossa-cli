@@ -9,8 +9,8 @@ import Strategy.Swift.PackageResolved (
  )
 import Test.Hspec (Spec, describe, it, shouldBe)
 
-expectedResolvedContent :: SwiftPackageResolvedFile
-expectedResolvedContent =
+expectedV1ResolvedContent :: SwiftPackageResolvedFile
+expectedV1ResolvedContent =
   SwiftPackageResolvedFile
     1
     [ SwiftResolvedPackage
@@ -33,9 +33,48 @@ expectedResolvedContent =
         (Just "5.1.0")
     ]
 
+expectedV2ResolvedContent :: SwiftPackageResolvedFile
+expectedV2ResolvedContent =
+  SwiftPackageResolvedFile
+    { version = 2
+    , pinnedPackages =
+        [ SwiftResolvedPackage
+            { package = "iqkeyboardmanager"
+            , repositoryURL = "https://github.com/hackiftekhar/IQKeyboardManager.git"
+            , repositoryBranch = Nothing
+            , repositoryRevision = Just "9ab144a1a6c6ae8dad25840610c072709b15d8b5"
+            , repositoryVersion = Nothing
+            }
+        , SwiftResolvedPackage
+            { package = "popupview"
+            , repositoryURL = "https://github.com/exyte/PopupView.git"
+            , repositoryBranch = Nothing
+            , repositoryRevision = Just "521b2ddc2ae8160f2816e03fa1f7be0937db8fff"
+            , repositoryVersion = Just "1.1.1"
+            }
+        , SwiftResolvedPackage
+            { package = "realm-core"
+            , repositoryURL = "https://github.com/realm/realm-core"
+            , repositoryBranch = Nothing
+            , repositoryRevision = Just "d97eed3ae7dff2f2e2ffbda83fa8f3b8c445c6ba"
+            , repositoryVersion = Just "11.17.0"
+            }
+        , SwiftResolvedPackage
+            { package = "realm-swift"
+            , repositoryURL = "https://github.com/realm/realm-swift.git"
+            , repositoryBranch = Nothing
+            , repositoryRevision = Just "7f123e48ec12926bb5080e449df360127ee0352d"
+            , repositoryVersion = Just "10.26.0"
+            }
+        ]
+    }
+
 spec :: Spec
 spec = do
-  describe "parse Package.resolved file" $
-    it "should parse content correctly" $ do
-      resolvedFile <- decodeFileStrict' "test/Swift/testdata/Package.resolved"
-      resolvedFile `shouldBe` Just expectedResolvedContent
+  describe "parse Package.resolved file" $ do
+    it "should parse v1 content correctly" $ do
+      resolvedFile <- decodeFileStrict' "test/Swift/testdata/v1/Package.resolved"
+      resolvedFile `shouldBe` Just expectedV1ResolvedContent
+    it "should parse v2 content correctly" $ do
+      resolvedFile <- decodeFileStrict' "test/Swift/testdata/v2/Package.resolved"
+      resolvedFile `shouldBe` Just expectedV2ResolvedContent
