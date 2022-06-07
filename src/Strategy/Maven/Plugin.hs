@@ -139,8 +139,6 @@ textArtifactToPluginOutput
       lookupArtifactByName :: (Has Diagnostics sig m) => Text -> m (Maybe Int)
       lookupArtifactByName aText = do
         let res = Map.lookup aText namesToIds
-        -- This error should be rare because because we walked the same
-        -- structure aText is a part of to create namesToIds.
         when (isNothing res) $
           warn $ "Could not find artifact with name " <> aText
         pure res
@@ -162,7 +160,9 @@ textArtifactToPluginOutput
             } <-
             fold <$> traverse buildPluginOutput aChildren
           case maybeId of
-            Nothing -> pure childInfo
+            Nothing -> do
+              warn ("Could not find id for artifact " <> aText)
+              pure childInfo
             Just numericId -> do
               let artifact = textArtifactToArtifact numericId t
               newEdges <- buildEdges numericId aChildren

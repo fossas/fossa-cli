@@ -129,12 +129,12 @@ buildGraph reactorOutput PluginOutput{..} =
   -- consider those because they're the users' packages, so promote them to
   -- direct when building the graph using `shrinkRoots`.
   shrinkRoots . run . evalGrapher $ do
-      let byNumeric :: Map Int Artifact
-          byNumeric = indexBy artifactNumericId outArtifacts
+    let byNumeric :: Map Int Artifact
+        byNumeric = indexBy artifactNumericId outArtifacts
 
-      depsByNumeric <- traverse toDependency byNumeric
+    depsByNumeric <- traverse toDependency byNumeric
 
-      traverse_ (visitEdge depsByNumeric) outEdges
+    traverse_ (visitEdge depsByNumeric) outEdges
   where
     knownSubmodules :: Set.Set Text
     knownSubmodules = Set.fromList . map reactorArtifactName . reactorArtifacts $ reactorOutput
@@ -171,7 +171,7 @@ buildGraph reactorOutput PluginOutput{..} =
       --
       -- In both cases, we want to mark either the toplevel project name or the
       -- submodule as direct because these are the users' own packages. We will
-      -- prune them from the graph in a later step.
+      -- remove them and promote their postSet to direct in a later step.
       when
         (artifactIsDirect || artifactArtifactId `Set.member` knownSubmodules)
         (Grapher.direct dep)
