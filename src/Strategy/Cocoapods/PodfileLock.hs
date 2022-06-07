@@ -36,7 +36,7 @@ import Data.SemVer qualified as SemVer
 import Data.SemVer.Internal (Version (..))
 import Data.Set (Set)
 import Data.String.Conversion (decodeUtf8, toString, toText)
-import Data.Text (Text, strip)
+import Data.Text (Text, null, strip)
 import Data.Text.Extra (showT, splitOnceOn)
 import Data.Void (Void)
 import Data.Yaml ((.:), (.:?))
@@ -211,7 +211,7 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
           -- We replace this dependency with parent's git sourced dependency.
           let (parentSpec, candidateSubSpec) = splitOnceOn "/" dependencyName
 
-          if candidateSubSpec == mempty
+          if Data.Text.null candidateSubSpec
             then pure d
             else do
               revisedDep <- case Map.lookup parentSpec lockExternalSources of
