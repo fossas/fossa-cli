@@ -3,6 +3,7 @@
 
 module App.Fossa.Report.Attribution (
   Attribution (..),
+  CopyrightText (..),
   Dependency (..),
   License (..),
   LicenseContents (..),
@@ -21,11 +22,15 @@ newtype LicenseName = LicenseName {rawName :: Text}
 newtype LicenseContents = LicenseContents {rawContents :: Text}
   deriving (Eq, Ord, Show, FromJSON, ToJSON)
 
+newtype CopyrightText = CopyrightText {rawCopyright :: Text}
+  deriving (Eq, Ord, Show, FromJSON, ToJSON)
+
 data Attribution = Attribution
   { attribProject :: Project
   , attribDirectDeps :: [Dependency]
   , attribDeepDeps :: [Dependency]
   , attribLicenses :: Map LicenseName LicenseContents
+  , attribCopyrightsByLicense :: Maybe (Map LicenseName CopyrightText)
   }
   deriving (Eq, Show, Ord)
 
@@ -66,6 +71,7 @@ instance FromJSON Attribution where
       <*> obj .:? "directDependencies" .!= []
       <*> obj .:? "deepDependencies" .!= []
       <*> obj .: "licenses"
+      <*> obj .:? "copyrightsByLicense"
 
 instance ToJSON Attribution where
   toJSON Attribution{..} =
@@ -74,6 +80,7 @@ instance ToJSON Attribution where
       , "directDependencies" .= attribDirectDeps
       , "deepDependencies" .= attribDeepDeps
       , "licenses" .= attribLicenses
+      , "copyrightsByLicense" .= attribCopyrightsByLicense
       ]
 
 instance FromJSON Dependency where
