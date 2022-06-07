@@ -14,6 +14,7 @@ import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
+import Data.Text (Text)
 import DepTypes (
   DepEnvironment (..),
   DepType (MavenType),
@@ -24,18 +25,23 @@ import Effect.Exec (Exec)
 import Effect.Grapher (Grapher, edge, evalGrapher)
 import Effect.Grapher qualified as Grapher
 import Effect.ReadFS (ReadFS)
-import Graphing (Graphing, directList, shrink, shrinkRoots)
+import Graphing (Graphing, shrinkRoots)
 import Path (Abs, Dir, Path)
 import Strategy.Maven.Plugin (
   Artifact (..),
   DepGraphPlugin,
   Edge (..),
   PluginOutput (..),
+  ReactorOutput,
   depGraphPlugin,
   depGraphPluginLegacy,
-  execPlugin,
+  execPluginAggregate,
+  execPluginReactor,
   installPlugin,
   parsePluginOutput,
+  parseReactorOutput,
+  reactorArtifactName,
+  reactorArtifacts,
   withUnpackedPlugin,
  )
 import Types (GraphBreadth (..))
@@ -72,9 +78,11 @@ analyze ::
 analyze dir plugin = do
   graph <- withUnpackedPlugin plugin $ \filepath -> do
     context "Installing plugin" $ errCtx MvnPluginInstallFailed $ installPlugin dir filepath plugin
-    context "Running plugin" $ errCtx MvnPluginExecFailed $ execPlugin dir plugin
+    context "Running plugin to get submodule names" $ errCtx MvnReactorExecFailed $ execPluginReactor dir plugin
+    reactorOutput <- parseReactorOutput dir
+    context "Running plugin to get dependency graph" $ errCtx MvnPluginExecFailed $ execPluginAggregate dir plugin
     pluginOutput <- parsePluginOutput dir
-    context "Building dependency graph" $ pure (buildGraph pluginOutput)
+    context "Building dependency graph" $ pure (buildGraph reactorOutput pluginOutput)
   pure (graph, Complete)
 
 data MvnPluginInstallFailed = MvnPluginInstallFailed
@@ -85,6 +93,10 @@ data MvnPluginExecFailed = MvnPluginExecFailed
 instance ToDiagnostic MvnPluginExecFailed where
   renderDiagnostic (MvnPluginExecFailed) = "Failed to execute maven plugin for analysis."
 
+data MvnReactorExecFailed = MvnReactorExecFailed
+instance ToDiagnostic MvnReactorExecFailed where
+  renderDiagnostic MvnReactorExecFailed = "Failed to execute maven plugin for submodule list."
+
 -- | Prune out toplevel packages and submodules from the graph.
 --
 -- The graphs returned by the depgraph plugin look like this:
@@ -94,48 +106,39 @@ instance ToDiagnostic MvnPluginExecFailed where
 -- \- org1:name2:2.0.0:compile
 -- @
 --
--- The top-level name in the above case is the name of the project, and the
--- nested name2 package is a dependency.
---
 -- Multimodule projects look like this:
 --
 -- @
--- org1:submodule1:1.0.0:compile
--- \- org1:name2:2.0.0:compile
 -- org1:submodule2:1.0.0:compile
 -- \- org1:name3:3.0.0:compile
 --    \- org1:submodule1:1.0.0:compile
+--       \- org1:name2:2.0.0:compile
 -- @
 --
 -- In both cases, we want to remove either the toplevel project name or the
--- toplevel submodule name because these are the users' own packages.
+-- submodule name because these are the users' own packages.
 --
 -- The multimodule case also shows how one submodule can depend on another. In
 -- this case we want to remove the reference to submodule1 in submodule2's
 -- dependency tree and promote submodule1's dependencies to be dependencies of
 -- org1:name3.
-processSubmodules :: Graphing Dependency -> Graphing Dependency
-processSubmodules g =
-  Graphing.shrink (not . (`Set.member` rootDeps))
-    . shrinkRoots
-    $ g
-  where
-    rootDeps = Set.fromList . Graphing.directList $ g
-
-buildGraph :: PluginOutput -> Graphing Dependency
-buildGraph PluginOutput{..} =
+buildGraph :: ReactorOutput -> PluginOutput -> Graphing Dependency
+buildGraph reactorOutput PluginOutput{..} =
   -- The root deps in the maven depgraph text graph output are either the
   -- toplevel package or submodules in a multi-module project. We don't want to
-  -- consider those because they're the users' packages, so promote the root
-  -- deps to direct when building the graph using `shrinkRoots`.
-  processSubmodules . run . evalGrapher $ do
-    let byNumeric :: Map Int Artifact
-        byNumeric = indexBy artifactNumericId outArtifacts
+  -- consider those because they're the users' packages, so promote them to
+  -- direct when building the graph using `shrinkRoots`.
+  shrinkRoots . run . evalGrapher $ do
+      let byNumeric :: Map Int Artifact
+          byNumeric = indexBy artifactNumericId outArtifacts
 
-    depsByNumeric <- traverse toDependency byNumeric
+      depsByNumeric <- traverse toDependency byNumeric
 
-    traverse_ (visitEdge depsByNumeric) outEdges
+      traverse_ (visitEdge depsByNumeric) outEdges
   where
+    knownSubmodules :: Set.Set Text
+    knownSubmodules = Set.fromList . map reactorArtifactName . reactorArtifacts $ reactorOutput
+
     toDependency :: Has (Grapher Dependency) sig m => Artifact -> m Dependency
     toDependency Artifact{..} = do
       let dep =
@@ -150,7 +153,28 @@ buildGraph PluginOutput{..} =
                     ("scopes", artifactScopes) :
                       [("optional", ["true"]) | artifactOptional]
               }
-      when artifactIsDirect (Grapher.direct dep)
+      -- The graphs returned by the depgraph plugin look like this:
+      --
+      -- @
+      -- org1:toplevelPackage1:1.0.0:compile
+      -- \- org1:name2:2.0.0:compile
+      -- @
+      --
+      -- Multimodule projects look like this:
+      --
+      -- @
+      -- org1:submodule2:1.0.0:compile
+      -- \- org1:name3:3.0.0:compile
+      --    \- org1:submodule1:1.0.0:compile
+      --       \- org1:name2:2.0.0:compile
+      -- @
+      --
+      -- In both cases, we want to mark either the toplevel project name or the
+      -- submodule as direct because these are the users' own packages. We will
+      -- prune them from the graph in a later step.
+      when
+        (artifactIsDirect || artifactArtifactId `Set.member` knownSubmodules)
+        (Grapher.direct dep)
       pure dep
 
     visitEdge :: Has (Grapher Dependency) sig m => Map Int Dependency -> Edge -> m ()

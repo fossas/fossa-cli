@@ -9,9 +9,6 @@ import Test.Hspec (Spec, describe, it, shouldBe)
 import Text.Megaparsec (ParseErrorBundle, Parsec, runParser)
 import Text.RawString.QQ (r)
 
--- TODO: test edgecase where a dep is optional in one part of the
--- maven-depgraph-plugin output but required in another
-
 shouldParse :: Parsec e s a -> s -> Either (ParseErrorBundle s e) a
 shouldParse parser = runParser parser ""
 

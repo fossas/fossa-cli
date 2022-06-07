@@ -12,7 +12,12 @@ module Strategy.Maven.Plugin (
   DepGraphPlugin (..),
   Edge (..),
   PluginOutput (..),
+  ReactorOutput (..),
+  ReactorArtifact (..),
+  parseReactorOutput,
   textArtifactToPluginOutput,
+  execPluginAggregate,
+  execPluginReactor,
 ) where
 
 import Control.Algebra
@@ -20,6 +25,7 @@ import Control.Effect.Diagnostics
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
 import Control.Monad (when)
+import Data.Aeson (FromJSON, parseJSON, withObject, (.:))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.FileEmbed (embedFile)
@@ -86,8 +92,14 @@ withUnpackedPlugin plugin act =
 installPlugin :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> FP.FilePath -> DepGraphPlugin -> m ()
 installPlugin dir path plugin = void $ execThrow dir (mavenInstallPluginCmd path plugin)
 
-execPlugin :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
-execPlugin dir plugin = void $ execThrow dir $ mavenPluginDependenciesCmd plugin
+execPlugin :: (Has Exec sig m, Has Diagnostics sig m) => (DepGraphPlugin -> Command) -> Path Abs Dir -> DepGraphPlugin -> m ()
+execPlugin pluginToCmd dir plugin = void $ execThrow dir $ pluginToCmd plugin
+
+execPluginAggregate :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginAggregate = execPlugin mavenPluginDependenciesCmd
+
+execPluginReactor :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginReactor = execPlugin mavenPluginReactorCmd
 
 outputFile :: Path Rel File
 outputFile = $(mkRelFile "target/dependency-graph.txt")
@@ -95,6 +107,12 @@ outputFile = $(mkRelFile "target/dependency-graph.txt")
 parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m PluginOutput
 parsePluginOutput dir =
   readContentsParser parseTextArtifact (dir </> outputFile) >>= textArtifactToPluginOutput
+
+reactorOutputFile :: Path Rel File
+reactorOutputFile = $(mkRelFile "target/reactor-graph.json")
+
+parseReactorOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => (Path Abs Dir) -> m ReactorOutput
+parseReactorOutput dir = readContentsJson (dir </> reactorOutputFile)
 
 textArtifactToPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m PluginOutput
 textArtifactToPluginOutput
@@ -186,6 +204,34 @@ mavenPluginDependenciesCmd plugin =
     , cmdAllowErr = Never
     }
 
+mavenPluginReactorCmd :: DepGraphPlugin -> Command
+mavenPluginReactorCmd plugin =
+  Command
+    { cmdName = "mvn"
+    , cmdArgs =
+        [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":reactor"
+        , "-DgraphFormat=json"
+        , "-DoutputFileName=reactor-graph.json"
+        ]
+    , cmdAllowErr = Never
+    }
+
+newtype ReactorArtifact = ReactorArtifact
+  { reactorArtifactName :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ReactorArtifact where
+  parseJSON = withObject "Reactor artifact" $
+    \o -> ReactorArtifact <$> o .: "artifactId"
+
+newtype ReactorOutput = ReactorOutput {reactorArtifacts :: [ReactorArtifact]}
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ReactorOutput where
+  parseJSON = withObject "Reactor output" $
+    \o -> ReactorOutput <$> (o .: "artifacts")
+
 data PluginOutput = PluginOutput
   { outArtifacts :: [Artifact]
   , outEdges :: [Edge]
@@ -205,8 +251,6 @@ instance Semigroup PluginOutput where
 instance Monoid PluginOutput where
   mempty = PluginOutput [] []
 
--- NOTE: artifact numeric IDs are 1-indexed, whereas edge numeric references are 0-indexed.
--- the json parser for artifacts converts them to be 0-indexed.
 data Artifact = Artifact
   { artifactNumericId :: Int
   , artifactGroupId :: Text
