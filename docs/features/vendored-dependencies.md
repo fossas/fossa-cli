@@ -17,8 +17,6 @@ vendored-dependencies:
   version: 3.4.16 # revision will be set to the MD5 hash of the filepath if left unspecified.
 ```
 
-> Note: License scanning currently operates by uploading the files at the specified path to a secure S3 bucket. All files that do not contain licenses are then removed after 2 weeks.
-
 We also support json-formatted dependencies:
 
 ```json
@@ -71,3 +69,28 @@ We also support json-formatted dependencies:
   ]
 }
 ```
+
+## How Vendored Dependencies are scanned
+
+There are two methods of vendored dependency scanning: "CLI license scan" and "archive upload".
+
+The default is typically "CLI license scan", but your organization may have opted to default to "archive upload".
+
+Both methods will give you exactly the same results. The difference is where the license scan is done.
+
+A "CLI license scan" runs a license scan directly on your server, and only uploads the matched license data to FOSSA's servers. You can see the data that FOSSA will upload by using the `--output` flag.
+
+"Archive upload" uploads the files at the specified path to a secure S3 bucket. We license scan the uploaded files on our servers. All files that do not contain licenses are then removed after 2 weeks.
+
+You can change the scan method by using the `--force-vendored-dependency-license-scan` or `--force-vendored-dependency-archive-upload` flags when invoking the CLI, or by setting the `vendoredDependencies.scanMethod` field in your `.fossa.yml` file. See the [.fossa.yml documentation](https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-yml.md) for details.
+
+## Forcing rescans
+
+If you are scanning a revision that has already been scanned and is known to FOSSA, then by default we will not rescan that dependency.
+
+This speeds up your CI scans and avoids unnecessary work.
+
+However, if you have made a change to your code and do not want to change the version provided, you can force a rescan by using the `--force-vendored-dependency-rescans` flag or setting the `vendoredDependencies.forceRescans` field to true in your `.fossa.yml` file.
+
+If you do not provide a version for the vendored dependency, then any changes to your code will be picked up as a new version and there should be no need to force a rescan.
+
