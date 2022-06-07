@@ -44,7 +44,7 @@ import Data.Yaml qualified as Yaml
 import DepTypes (DepType (GitType, PodType), Dependency (..), VerConstraint (CEq))
 import Effect.Exec (AllowErr (..), Command (..), Exec, exec, execJson)
 import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
-import Effect.Logger (Logger, Pretty (pretty), logDebug, logInfo, vsep)
+import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing, gtraverse)
 import Options.Applicative (Alternative ((<|>)))
