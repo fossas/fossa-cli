@@ -90,6 +90,7 @@ expectedVendoredDependencies =
     { configForceRescans = True
     , configLicenseScanMethod = Just ArchiveUpload
     }
+
 simpleTarget :: TargetFilter
 simpleTarget = TypeTarget "pip"
 
