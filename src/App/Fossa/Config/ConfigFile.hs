@@ -56,7 +56,7 @@ import Effect.Logger (
   vsep,
  )
 import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir, readContentsYaml)
-import Fossa.API.Types (ArchiveUploadType (CLILicenseScan))
+import Fossa.API.Types (ArchiveUploadType)
 import Path (
   Abs,
   Dir,
