@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Adds copyrightsByLicense field to the attribution report JSON output.
+- Adds copyrightsByLicense field to the attribution report JSON output. [#966](https://github.com/fossas/fossa-cli/pull/966)
 - Removes copyright information from attribution reports in the JSON output ([#945](https://github.com/fossas/fossa-cli/pull/945)) as it was never available from the server.
 
 ## v3.3.3
