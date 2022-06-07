@@ -23,7 +23,7 @@ in `pnpm-lock.yaml` to analyze the dependency graph.
     - `resolution`: infer git URL, git commit, or package source URL.  
     - `dependencies`: list of deep dependencies 
     - `peerDependencies`: list of peer dependencies (will be treated like any other dependency)
-    - `dev`: to infer if this is used dependency or not. If the value is `true,` by default CLI will not include this in the final analysis.
+    - `dev`: to infer if this is used dependency or not. If the value is `true` by default CLI will not include this in the final analysis.
 
 An example is provided below:
 
