@@ -21,28 +21,30 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.State (State, get, put)
 import Control.Monad (when)
-import Data.Aeson (FromJSON (parseJSON))
+import Data.Aeson (FromJSON (parseJSON), (.!=))
 import Data.Aeson qualified as JSON
 import Data.Aeson.Types (FromJSONKey)
 import Data.Bifunctor (first)
 import Data.Char qualified as C
-import Data.Foldable (asum, traverse_)
+import Data.Foldable (asum, find, traverse_)
 import Data.Functor (void)
 import Data.HashMap.Lazy qualified as HashMap (toList)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.SemVer qualified as SemVer
 import Data.SemVer.Internal (Version (..))
 import Data.Set (Set)
 import Data.String.Conversion (decodeUtf8, toString, toText)
-import Data.Text (Text, strip)
-import Data.Text.Extra (showT)
+import Data.Text (Text, null, strip)
+import Data.Text.Extra (showT, splitOnceOn)
 import Data.Void (Void)
 import Data.Yaml ((.:), (.:?))
 import Data.Yaml qualified as Yaml
 import DepTypes (DepType (GitType, PodType), Dependency (..), VerConstraint (CEq))
 import Effect.Exec (AllowErr (..), Command (..), Exec, exec, execJson)
 import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
+import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing, gtraverse)
 import Options.Applicative (Alternative ((<|>)))
@@ -52,7 +54,7 @@ import Text.Megaparsec (Parsec, between, empty, errorBundlePretty, parse, some, 
 import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer qualified as L
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig m) => Path Abs File -> m (Graphing Dependency)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig m, Has Logger sig m) => Path Abs File -> m (Graphing Dependency)
 analyze' podfileLockFilepath = do
   podfileLock <- readContentsYaml podfileLockFilepath
   context "Building dependency graph" $
@@ -144,7 +146,7 @@ podVersionCmd :: Command
 podVersionCmd = Command{cmdName = "pod", cmdArgs = ["--version"], cmdAllowErr = Never}
 
 buildGraph ::
-  (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) =>
+  (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) =>
   Path Abs File ->
   PodLock ->
   m (Graphing Dependency)
@@ -178,24 +180,87 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
     lockFileDir :: Path Abs Dir
     lockFileDir = parent lockFilePath
 
+    toPodSpecPath :: Text -> Text -> Text
+    toPodSpecPath podPath dependencyName = toText $ toString podPath </> (toString dependencyName <.> "podspec")
+
     replaceVendoredPods ::
       ( Has Exec sig m
       , Has Diagnostics sig m
       , Has (State PodSpecCache) sig m
+      , Has Logger sig m
       ) =>
       Dependency ->
       m Dependency
     replaceVendoredPods d@Dependency{dependencyType, dependencyName} = case dependencyType of
       PodType -> case Map.lookup dependencyName lockExternalSources of
         Just es -> case es of
-          ExternalPodSpec podSpecPath ->
-            readPodSpecAt podSpecPath <||> pure d
-          ExternalPath podPath ->
-            readPodSpecAt (toText $ toString podPath </> (toString dependencyName <.> "podspec")) <||> pure d
+          ExternalPodSpec podSpecPath -> readPodSpecAt podSpecPath <||> pure d
+          ExternalPath podPath -> readPodSpecAt (toPodSpecPath podPath dependencyName) <||> pure d
           ExternalGitType _ -> pure d
           ExternalOtherType -> pure d
-        Nothing -> pure d
+        Nothing -> do
+          -- Pod dependency can be included as part of externally sourced dependency's sub spec.
+          -- Refer to: https://guides.cocoapods.org/syntax/podspec.html#subspec
+          --
+          -- To aptly resolve such dependencies, we infer candidate parent,
+          -- and candidate sub spec from dependency's name. If and only if:
+          --  * Candidate parent spec exists within external sources
+          --  * Parent's pod spec has sub spec listed
+          --  * Parent has git source
+          --
+          -- We replace this dependency with parent's git sourced dependency.
+          let (parentSpec, candidateSubSpec) = splitOnceOn "/" dependencyName
+
+          if Data.Text.null candidateSubSpec
+            then pure d
+            else do
+              revisedDep <- case Map.lookup parentSpec lockExternalSources of
+                Just (ExternalPodSpec podSpecPath) -> fromMaybe d <$> (readPodSubSpecSourceAt podSpecPath parentSpec)
+                Just (ExternalPath podPath) -> fromMaybe d <$> (readPodSubSpecSourceAt (toPodSpecPath podPath parentSpec) candidateSubSpec)
+                _ -> pure d
+
+              when (revisedDep /= d) $
+                logDebug . pretty $
+                  "Replaced " <> dependencyName <> " with " <> parentSpec
+                    <> ", since "
+                    <> dependencyName
+                    <> " is subspec of "
+                    <> parentSpec
+
+              pure revisedDep
       _ -> pure d
+
+    readPodSubSpecSourceAt ::
+      ( Has Exec sig m
+      , Has Diagnostics sig m
+      , Has (State PodSpecCache) sig m
+      ) =>
+      Text ->
+      Text ->
+      m (Maybe Dependency)
+    readPodSubSpecSourceAt podSpecPath candidateSubSpec = context ("Resolving vendored subspec of podspec at " <> showT podSpecPath) $ do
+      podSpecCache :: PodSpecCache <- get
+      (PodSpecJSON ExternalGitSource{urlOf, tagOf, commitOf, branchOf} subSpecs) <-
+        case Map.lookup podSpecPath podSpecCache of
+          Just cached -> pure cached
+          Nothing -> do
+            podSpec <- execJson lockFileDir $ podIpcSpecCmd podSpecPath
+            put $ Map.insert podSpecPath podSpec podSpecCache
+            pure podSpec
+
+      case find (== (PodsSpecJSONSubSpec candidateSubSpec)) subSpecs of
+        Nothing -> pure Nothing
+        Just _ -> do
+          pure $
+            Just $
+              Dependency
+                { dependencyType = GitType
+                , dependencyName = urlOf
+                , dependencyVersion = CEq <$> asum [tagOf, commitOf, branchOf]
+                , dependencyLocations = []
+                , dependencyEnvironments = mempty
+                , dependencyTags = Map.empty
+                }
 
     readPodSpecAt ::
       ( Has Exec sig m
@@ -206,7 +271,7 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
       m Dependency
     readPodSpecAt podSpecPath = context ("Resolving vendored podspec at " <> showT podSpecPath) $ do
       podSpecCache :: PodSpecCache <- get
-      (PodSpecJSON ExternalGitSource{urlOf, tagOf, commitOf, branchOf}) <-
+      (PodSpecJSON ExternalGitSource{urlOf, tagOf, commitOf, branchOf} _) <-
         case Map.lookup podSpecPath podSpecCache of
           Just cached -> pure cached
           Nothing -> do
@@ -322,14 +387,27 @@ lexeme = L.lexeme sc
 sc :: Parser ()
 sc = L.space (void $ some (char ' ')) empty empty
 
-newtype PodSpecJSON = PodSpecJSON ExternalGitSource
+data PodSpecJSON = PodSpecJSON
+  { podSpecSources :: ExternalGitSource
+  , podSpecSubSpecs :: [PodsSpecJSONSubSpec]
+  }
+  deriving (Show, Eq, Ord)
+
+newtype PodsSpecJSONSubSpec = PodsSpecJSONSubSpec {subSpecName :: Text}
+  deriving (Show, Eq, Ord)
+
+instance FromJSON PodsSpecJSONSubSpec where
+  parseJSON = JSON.withObject "PodSpecJSON" $ \o ->
+    PodsSpecJSONSubSpec <$> o .: "name"
 
 instance FromJSON PodSpecJSON where
-  parseJSON = JSON.withObject "PodSpecJSON" $ \o ->
-    PodSpecJSON <$> do
-      source <- o .: "source"
+  parseJSON = JSON.withObject "PodSpecJSON" $ \o -> do
+    source <- o .: "source"
+    subSpecs <- (o .:? "subspecs" .!= mempty)
+    externalGitSource <-
       ExternalGitSource
         <$> source .: "git"
         <*> source .:? "tag"
         <*> source .:? "commit"
         <*> source .:? "branch"
+    pure $ PodSpecJSON externalGitSource subSpecs
