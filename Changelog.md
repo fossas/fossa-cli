@@ -1,7 +1,8 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.3.6
 - Make CLI-side license scanning the default method of scanning vendored dependencies
+- Maven: Report direct dependencies as direct rather than deep. ([#963](https://github.com/fossas/fossa-cli/pull/963))
 
 ## v3.3.5
 - Pnpm: Adds support for dependency analysis using `pnpm-lock.yaml` file. ([#958](https://github.com/fossas/fossa-cli/pull/958))
@@ -11,7 +12,7 @@
 - VSI scans now automatically skip the `.git` directory inside the scan root ([#969](https://github.com/fossas/fossa-cli/pull/969)).
 
 ## v3.3.3
-- Cocoapods: Cocoapods analyzer does not handle subspecs in vendored podspecs. ([#964](https://github.com/fossas/fossa-cli/pull/964/files))
+- Cocoapods: Cocoapods analyzer does not handle subspecs in vendored podspecs. ([#964](https://github.com/fossas/fossa-cli/pull/964/files)) 
 
 ## v3.3.2
 - CLI-side license scans will skip rescanning revisions that are already known to FOSSA. This can be overridden by using the `--force-vendored-dependency-rescans` flag.
