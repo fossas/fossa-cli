@@ -11,6 +11,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigTargets (..),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (ExperimentalGradleConfigs),
+  VendoredDependencyConfigs (..),
   resolveConfigFile,
  )
 import App.Types (ReleaseGroupMetadata (..))
@@ -20,6 +21,7 @@ import Data.Set qualified as Set
 import Diag.Result (Result)
 import Effect.Logger (ignoreLogger)
 import Effect.ReadFS (runReadFSIO)
+import Fossa.API.Types (ArchiveUploadType (..))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess, expectFailure)
@@ -38,6 +40,7 @@ expectedConfigFile =
     , configTargets = Just expectedConfigTargets
     , configPaths = Nothing
     , configExperimental = Just expectedExperimentalConfig
+    , configVendoredDependencies = Just expectedVendoredDependencies
     , configTelemetry = Nothing
     }
 
@@ -81,6 +84,12 @@ expectedExperimentalConfig =
     { gradle = Just $ ExperimentalGradleConfigs (Set.fromList ["onlyProdConfigs", "onlyProdConfigs2"])
     }
 
+expectedVendoredDependencies :: VendoredDependencyConfigs
+expectedVendoredDependencies =
+  VendoredDependencyConfigs
+    { configForceRescans = True
+    , configLicenseScanMethod = Just ArchiveUpload
+    }
 simpleTarget :: TargetFilter
 simpleTarget = TypeTarget "pip"
 

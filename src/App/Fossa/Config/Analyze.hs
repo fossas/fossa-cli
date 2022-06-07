@@ -483,7 +483,7 @@ collectVendoredDeps maybeCfg AnalyzeCliOpts{..} = do
     (True, False) -> pure $ Just CLILicenseScan
     (False, True) -> pure $ Just ArchiveUpload
     (False, False) -> pure Nothing
-  let defaultScanTypeFromConfig = configLicenseScanMethod <$> (maybeCfg >>= configVendoredDependencies)
+  let defaultScanTypeFromConfig = maybeCfg >>= configVendoredDependencies >>= configLicenseScanMethod
       defaultScanType = scanTypeFromFlags <|> defaultScanTypeFromConfig
   pure $ VendoredDependencyOptions forceRescans defaultScanType
 

@@ -295,11 +295,11 @@ instance FromJSON ConfigTelemetryScope where
 
 data VendoredDependencyConfigs = VendoredDependencyConfigs
   { configForceRescans :: Bool
-  , configLicenseScanMethod :: ArchiveUploadType
+  , configLicenseScanMethod :: Maybe ArchiveUploadType
   }
   deriving (Eq, Ord, Show)
 
 instance FromJSON VendoredDependencyConfigs where
   parseJSON = withObject "vendoredDependencies" $ \obj ->
-    VendoredDependencyConfigs <$> (obj .:? "force-rescans" .!= False)
-      <*> (obj .:? "license-scan-method" .!= CLILicenseScan)
+    VendoredDependencyConfigs <$> (obj .:? "forceRescans" .!= False)
+      <*> (obj .:? "scanMethod")
