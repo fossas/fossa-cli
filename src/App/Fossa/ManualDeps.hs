@@ -145,8 +145,7 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
       , additionalData = additional
       }
 
--- | Run either archive upload or native license scan.  During the native scan beta, we only allow
--- native scanning if the @Flag AllowNativeLicenseScan@ is set during config.
+-- | Run either archive upload or native license scan.
 scanAndUpload ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
