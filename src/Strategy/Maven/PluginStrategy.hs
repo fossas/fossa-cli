@@ -7,7 +7,14 @@ module Strategy.Maven.PluginStrategy (
 ) where
 
 import Control.Algebra (Has, run)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, errCtx)
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (renderDiagnostic),
+  context,
+  errCtx,
+  recover,
+  warn,
+ )
 import Control.Effect.Lift (Lift)
 import Control.Monad (when)
 import Data.Foldable (traverse_)
@@ -32,7 +39,7 @@ import Strategy.Maven.Plugin (
   DepGraphPlugin,
   Edge (..),
   PluginOutput (..),
-  ReactorOutput,
+  ReactorOutput (ReactorOutput),
   depGraphPlugin,
   depGraphPluginLegacy,
   execPluginAggregate,
@@ -66,6 +73,26 @@ analyzeLegacy' ::
   m (Graphing Dependency, GraphBreadth)
 analyzeLegacy' dir = analyze dir depGraphPluginLegacy
 
+runReactor ::
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
+  ) =>
+  Path Abs Dir ->
+  DepGraphPlugin ->
+  m ReactorOutput
+runReactor dir plugin =
+  context "Running plugin to get submodule names" $
+    do
+      res <-
+        recover $
+          execPluginReactor dir plugin
+      case res of
+        Nothing -> do
+          warn ("Failed to run reactor, submodules may be included in the output graph." :: Text)
+          pure $ ReactorOutput []
+        Just _ -> parseReactorOutput dir
+
 analyze ::
   ( Has (Lift IO) sig m
   , Has ReadFS sig m
@@ -78,9 +105,9 @@ analyze ::
 analyze dir plugin = do
   graph <- withUnpackedPlugin plugin $ \filepath -> do
     context "Installing plugin" $ errCtx MvnPluginInstallFailed $ installPlugin dir filepath plugin
-    context "Running plugin to get submodule names" $ errCtx MvnReactorExecFailed $ execPluginReactor dir plugin
-    reactorOutput <- parseReactorOutput dir
-    context "Running plugin to get dependency graph" $ errCtx MvnPluginExecFailed $ execPluginAggregate dir plugin
+    reactorOutput <- runReactor dir plugin
+    context "Running plugin to get dependency graph" $
+      errCtx MvnPluginExecFailed $ execPluginAggregate dir plugin
     pluginOutput <- parsePluginOutput dir
     context "Building dependency graph" $ pure (buildGraph reactorOutput pluginOutput)
   pure (graph, Complete)
@@ -92,10 +119,6 @@ instance ToDiagnostic MvnPluginInstallFailed where
 data MvnPluginExecFailed = MvnPluginExecFailed
 instance ToDiagnostic MvnPluginExecFailed where
   renderDiagnostic (MvnPluginExecFailed) = "Failed to execute maven plugin for analysis."
-
-data MvnReactorExecFailed = MvnReactorExecFailed
-instance ToDiagnostic MvnReactorExecFailed where
-  renderDiagnostic MvnReactorExecFailed = "Failed to execute maven plugin for submodule list."
 
 -- | Prune out toplevel packages and submodules from the graph.
 --

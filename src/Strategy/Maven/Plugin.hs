@@ -4,7 +4,6 @@
 module Strategy.Maven.Plugin (
   withUnpackedPlugin,
   installPlugin,
-  execPlugin,
   parsePluginOutput,
   depGraphPlugin,
   depGraphPluginLegacy,
