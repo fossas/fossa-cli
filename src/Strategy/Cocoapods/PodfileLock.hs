@@ -404,9 +404,10 @@ instance FromJSON PodSpecJSON where
   parseJSON = JSON.withObject "PodSpecJSON" $ \o -> do
     source <- o .: "source"
     subSpecs <- (o .:? "subspecs" .!= mempty)
-    externalGitSource <- ExternalGitSource 
-      <$> source .: "git" 
-      <*> source .:? "tag" 
-      <*> source .:? "commit" 
-      <*> source .:? "branch"
+    externalGitSource <-
+      ExternalGitSource
+        <$> source .: "git"
+        <*> source .:? "tag"
+        <*> source .:? "commit"
+        <*> source .:? "branch"
     pure $ PodSpecJSON externalGitSource subSpecs
