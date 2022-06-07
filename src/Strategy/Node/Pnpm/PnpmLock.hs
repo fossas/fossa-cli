@@ -124,7 +124,6 @@ instance FromJSON PnpmProjectSnapshot where
 
 data PnpmPackageSnapshot = PnpmPackageSnapshot
   { isDev :: Bool
-  , isOptional :: Bool
   , name :: Maybe Text -- only provided when non-registry resolver is used
   , resolution :: Resolution
   , dependencies :: Map Text Text
@@ -135,7 +134,6 @@ data PnpmPackageSnapshot = PnpmPackageSnapshot
 instance FromJSON PnpmPackageSnapshot where
   parseJSON = Yaml.withObject "PnpmPackageSnapshot" $ \obj ->
     PnpmPackageSnapshot <$> (obj .:? "dev" .!= False)
-      <*> (obj .:? "optional" .!= False)
       <*> obj .:? "name"
       <*> obj .: "resolution"
       <*> (obj .:? "dependencies" .!= mempty)
@@ -271,16 +269,16 @@ buildGraph lockFile = withoutLocalPackages $
     mkPkgKey name version = "/" <> name <> "/" <> version
 
     toDependency :: Text -> Maybe Text -> PnpmPackageSnapshot -> Dependency
-    toDependency name maybeVersion (PnpmPackageSnapshot isDev isOptional _ (RegistryResolution _) _ _) =
-      toDep NodeJSType name (withoutSymConstraint <$> maybeVersion) (isDev || isOptional)
-    toDependency _ _ (PnpmPackageSnapshot isDev isOptional _ (GitResolution (GitPnpmResolution url rev)) _ _) =
-      toDep GitType url (Just rev) (isDev || isOptional)
-    toDependency _ _ (PnpmPackageSnapshot isDev isOptional _ (TarballResolution (TarballPnpmResolution url)) _ _) =
-      toDep URLType url Nothing (isDev || isOptional)
-    toDependency _ _ (PnpmPackageSnapshot isDev isOptional (Just name) (DirectoryResolution _) _ _) =
-      toDep UserType name Nothing (isDev || isOptional)
-    toDependency name _ (PnpmPackageSnapshot isDev isOptional Nothing (DirectoryResolution _) _ _) =
-      toDep UserType name Nothing (isDev || isOptional)
+    toDependency name maybeVersion (PnpmPackageSnapshot isDev _ (RegistryResolution _) _ _) =
+      toDep NodeJSType name (withoutSymConstraint <$> maybeVersion) isDev
+    toDependency _ _ (PnpmPackageSnapshot isDev _ (GitResolution (GitPnpmResolution url rev)) _ _) =
+      toDep GitType url (Just rev) isDev
+    toDependency _ _ (PnpmPackageSnapshot isDev _ (TarballResolution (TarballPnpmResolution url)) _ _) =
+      toDep URLType url Nothing isDev
+    toDependency _ _ (PnpmPackageSnapshot isDev (Just name) (DirectoryResolution _) _ _) =
+      toDep UserType name Nothing isDev
+    toDependency name _ (PnpmPackageSnapshot isDev Nothing (DirectoryResolution _) _ _) =
+      toDep UserType name Nothing isDev
 
     -- Sometimes package versions include symlinked paths
     -- of sibling dependencies used for resolution.

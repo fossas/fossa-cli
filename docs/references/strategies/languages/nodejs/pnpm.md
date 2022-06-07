@@ -24,7 +24,6 @@ in `pnpm-lock.yaml` to analyze the dependency graph.
     - `dependencies`: list of deep dependencies 
     - `peerDependencies`: list of peer dependencies (will be treated like any other dependency)
     - `dev`: to infer if this is used dependency or not. If the value is `true,` by default CLI will not include this in the final analysis.
-    - `optional`: to infer if this is used dependency or not. If the value is `true`, by default CLI will not include this in the final analysis.
 
 An example is provided below:
 
@@ -150,7 +149,7 @@ CLI will infer the package name and version using `/${dependencyName}/${dependen
 
 * Peer dependencies will be included in the analysis (they are treated like any other dependency).
 * Pnpm workspaces are supported.
-* Development dependencies (`dev: true`) or optional dependencies `optional: true` are ignored by default from analysis. To include them in the analysis, execute CLI with `--include-unused` flag e.g. `fossa analyze --include-unused`.
+* Development dependencies (`dev: true`) are ignored by default from analysis. To include them in the analysis, execute CLI with `--include-unused` flag e.g. `fossa analyze --include-unused`.
 
 # F.A.Q
 
