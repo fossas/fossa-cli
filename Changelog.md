@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Removes copyright information from attribution reports in the JSON output ([#945](https://github.com/fossas/fossa-cli/pull/945)) as it was never available from the server.
+
 ## v3.3.3
 - Cocoapods: Cocoapods analyzer does not handle subspecs in vendored podspecs. ([#964](https://github.com/fossas/fossa-cli/pull/964/files)) 
 
