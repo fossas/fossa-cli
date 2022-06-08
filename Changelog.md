@@ -1,8 +1,9 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.3.4
 
 - Removes copyright information from attribution reports in the JSON output ([#945](https://github.com/fossas/fossa-cli/pull/945)) as it was never available from the server.
+- VSI scans now automatically skip the `.git` directory inside the scan root ([#969](https://github.com/fossas/fossa-cli/pull/969)).
 
 ## v3.3.3
 - Cocoapods: Cocoapods analyzer does not handle subspecs in vendored podspecs. ([#964](https://github.com/fossas/fossa-cli/pull/964/files)) 
