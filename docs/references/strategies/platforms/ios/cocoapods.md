@@ -41,7 +41,7 @@ DEPENDENCIES:
   - "five/+zlib (7.0.0)"
 ```
 
-We also look at the `EXTERNAL SOURCES` section to try and resolve locally vendored Cocoapods. If we see a locally vendored Cocoapod using either `:podspec` or `:path` to a local directory, we'll read the Podspec at that directory and also upload that dependency if it has a supported `source`. We currently only support the `git` source.
+We also look at the `EXTERNAL SOURCES` section to try and resolve locally vendored Cocoapods. If we see a locally vendored Cocoapod using either `:podspec` or `:path` to a local directory, we'll read the Podspec at that directory and also upload that dependency if it has a supported `source`. We will also replace any dependencies originating via subspec of locally vendored dependency, with it's vendored dependency's `source`. We currently only support the `git` source. 
 
 ## Limitations
 

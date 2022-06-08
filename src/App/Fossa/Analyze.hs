@@ -91,6 +91,7 @@ import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
+import Data.Text.Extra (showT)
 import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, applyFilters, filterIsVSIOnly)
@@ -181,17 +182,18 @@ runDependencyAnalysis ::
   AllFilters ->
   DiscoveredProject proj ->
   m ()
-runDependencyAnalysis basedir filters project = do
-  let dpi = DiscoveredProjectIdentifier (projectPath project) (projectType project)
+runDependencyAnalysis basedir filters project@DiscoveredProject{..} = do
+  let dpi = DiscoveredProjectIdentifier projectPath projectType
   case applyFiltersToProject basedir filters project of
     Nothing -> do
-      logInfo $ "Skipping " <> pretty (projectType project) <> " project at " <> viaShow (projectPath project) <> ": no filters matched"
+      logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> ": no filters matched"
       output $ SkippedDueToProvidedFilter dpi
     Just targets -> do
-      logInfo $ "Analyzing " <> pretty (projectType project) <> " project at " <> pretty (toFilePath (projectPath project))
-      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context "Project Analysis" $ do
+      logInfo $ "Analyzing " <> pretty projectType <> " project at " <> pretty (toFilePath projectPath)
+      let ctxMessage = "Project Analysis: " <> showT projectType
+      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context ctxMessage $ do
         debugMetadata "DiscoveredProject" project
-        trackTimeSpent (toText . show $ projectType project) $ analyzeProject targets (projectData project)
+        trackTimeSpent (showT projectType) $ analyzeProject targets projectData
       Diag.flushLogs SevError SevDebug graphResult
       trackResult graphResult
       output $ Scanned dpi (mkResult basedir project <$> graphResult)
