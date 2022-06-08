@@ -18,6 +18,12 @@ fossa analyze --experimental-enable-vsi
 
 VSI support requires a feature flag enabled in your FOSSA organization. If you're interested in using this feature please contact us!
 
+### Default Filters
+
+By default, VSI ignores the following directory:
+
+- `{scandir}/.git`
+
 ### FAQ
 
 #### Why not always enable VSI?
