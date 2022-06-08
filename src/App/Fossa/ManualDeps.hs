@@ -12,6 +12,7 @@ module App.Fossa.ManualDeps (
   analyzeFossaDepsFile,
   findFossaDepsFile,
   readFoundDeps,
+  scanAndUpload,
 ) where
 
 import App.Fossa.ArchiveUploader (archiveUploadSourceUnit)
