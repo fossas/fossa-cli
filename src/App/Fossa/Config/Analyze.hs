@@ -472,20 +472,32 @@ collectVendoredDeps ::
   Maybe ConfigFile ->
   AnalyzeCliOpts ->
   m VendoredDependencyOptions
-collectVendoredDeps maybeCfg AnalyzeCliOpts{..} = do
-  let forceRescansFromFlag = fromFlag ForceVendoredDependencyRescans analyzeForceVendoredDependencyRescans
-      forceRescansFromConfig = maybe False configForceRescans (maybeCfg >>= configVendoredDependencies)
-      forceRescans = forceRescansFromFlag || forceRescansFromConfig
+collectVendoredDeps maybeCfg cliOpts = do
+  let (forceRescansFromConfig, scanTypeFromConfig) = collectVendoredDepsFromConfig maybeCfg
+  (forceRescansFromFlags, scanTypeFromFlags) <- collectVendoredDepsFromFlags cliOpts
+  pure $ VendoredDependencyOptions (forceRescansFromFlags || forceRescansFromConfig) (scanTypeFromFlags <|> scanTypeFromConfig)
+
+collectVendoredDepsFromFlags ::
+  ( Has Diagnostics sig m
+  ) =>
+  AnalyzeCliOpts ->
+  m (Bool, Maybe ArchiveUploadType)
+collectVendoredDepsFromFlags AnalyzeCliOpts{..} = do
+  let forceRescans = fromFlag ForceVendoredDependencyRescans analyzeForceVendoredDependencyRescans
       forceCLILicenseScan = fromFlag ForceVendoredDependencyCLILicenseScan analyzeForceCLILicenseScan
       forceArchiveUpload = fromFlag ForceVendoredDependencyArchiveUpload analyzeForceArchiveUpload
-  scanTypeFromFlags <- case (forceCLILicenseScan, forceArchiveUpload) of
+  scanType <- case (forceCLILicenseScan, forceArchiveUpload) of
     (True, True) -> fatalText "You have provided both --force-cli-license-scan and --force-archive-upload flags. A maximum of one of these flags can be used."
     (True, False) -> pure $ Just CLILicenseScan
     (False, True) -> pure $ Just ArchiveUpload
     (False, False) -> pure Nothing
-  let defaultScanTypeFromConfig = maybeCfg >>= configVendoredDependencies >>= configLicenseScanMethod
-      defaultScanType = scanTypeFromFlags <|> defaultScanTypeFromConfig
-  pure $ VendoredDependencyOptions forceRescans defaultScanType
+  pure (forceRescans, scanType)
+
+collectVendoredDepsFromConfig :: Maybe ConfigFile -> (Bool, Maybe ArchiveUploadType)
+collectVendoredDepsFromConfig maybeCfg =
+  let forceRescans = maybe False configForceRescans (maybeCfg >>= configVendoredDependencies)
+      defaultScanType = maybeCfg >>= configVendoredDependencies >>= configLicenseScanMethod
+   in (forceRescans, defaultScanType)
 
 collectScanDestination ::
   ( Has Diagnostics sig m
