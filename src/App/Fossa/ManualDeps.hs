@@ -12,7 +12,7 @@ module App.Fossa.ManualDeps (
   analyzeFossaDepsFile,
   findFossaDepsFile,
   readFoundDeps,
-  scanAndUpload,
+  getScanCfg,
 ) where
 
 import App.Fossa.ArchiveUploader (archiveUploadSourceUnit)
@@ -160,28 +160,30 @@ scanAndUpload ::
   NonEmpty VendoredDependency ->
   VendoredDependencyOptions ->
   m (NonEmpty Locator)
-scanAndUpload root vdeps VendoredDependencyOptions{..} = do
+scanAndUpload root vdeps vendoredDepsOptions = do
   org <- getOrganization
+  (archiveOrCLI, vendoredDependencyScanMode) <- getScanCfg org vendoredDepsOptions
+  let scanner = case archiveOrCLI of
+        ArchiveUpload -> archiveUploadSourceUnit
+        CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode
+  scanner root vdeps
 
-  let coreSupportsLicenseScan = orgCoreSupportsLocalLicenseScan org
-      orgDefaultScanType = orgDefaultVendoredDependencyScanType org
+getScanCfg :: (Has Diagnostics sig m) => Organization -> VendoredDependencyOptions -> m (ArchiveUploadType, VendoredDependencyScanMode)
+getScanCfg Organization{..} VendoredDependencyOptions{..} = do
   archiveOrCLI <-
-    case (coreSupportsLicenseScan, orgDefaultScanType, licenseScanMethod) of
-      (False, _, Just CLILicenseScan) -> fatalText "You provided the --force-vendored-dependencies-license-scan flag but this version of FOSSA does not support CLI-side license scans"
+    case (orgCoreSupportsLocalLicenseScan, orgDefaultVendoredDependencyScanType, licenseScanMethod) of
+      (False, _, Just CLILicenseScan) -> fatalText "You provided the --force-vendored-dependencies-license-scan flag but the FOSSA server does not support CLI-side license scans"
       (False, _, _) -> pure ArchiveUpload
       (True, _, Just ArchiveUpload) -> pure ArchiveUpload
       (True, _, Just CLILicenseScan) -> pure CLILicenseScan
       (True, orgDefault, Nothing) -> pure orgDefault
   let vendoredDependencyScanMode =
-        case (orgSupportsAnalyzedRevisionsQuery org, forceRescans) of
+        case (orgSupportsAnalyzedRevisionsQuery, forceRescans) of
           -- The --force-vendored-dependency-rescans flag should win so that we can force rebuilds even if Core does not support skipping
           (_, True) -> SkippingDisabledViaFlag
           (False, False) -> SkippingNotSupported
           (True, False) -> SkipPreviouslyScanned
-  let scanner = case archiveOrCLI of
-        ArchiveUpload -> archiveUploadSourceUnit
-        CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode
-  scanner root vdeps
+  pure (archiveOrCLI, vendoredDependencyScanMode)
 
 -- | Used when users run `fossa analyze -o` and do not upload their source units.
 noSourceUnits :: [VendoredDependency] -> [Locator]
