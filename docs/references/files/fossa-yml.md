@@ -145,7 +145,6 @@ The `vendoredDependencies` section is an optional section that configures how we
 
 `forceRescans` is an optional setting that, if true, forces a re-scan of all vendored dependencies on every run. If false or not present, then we do not re-scan vendored dependencies that have been previously scanned. A vendored dependency has been previously scanned if a dependency with the same name and version has already been scanned by your organization. If no version is provided, then any change in the files being scanned will result in a rescan.
 
-For a more thorough description of how versions are calculated, see the [documentation for vendored dependencies](https://github.com/fossas/fossa-cli/blob/master/docs/features/vendored-dependencies.md).
 #### `vendoredDependencies.scanMethod`
 
 The `scanMethod` setting determines whether your vendored dependencies are scanned using the "Archive Upload" or the "CLI License Scan" method.
