@@ -101,7 +101,7 @@ runFingerprintDiscovery ::
   m ()
 runFingerprintDiscovery capabilities files dir filters = do
   runStickyLogger SevInfo . withTaskPool capabilities (updateProgress " > Fingerprint files") . runAtomicCounter $ do
-    let pathFilters = (withDefaultFilters dir $ toPathFilters dir filters)
+    let pathFilters = withDefaultFilters dir $ toPathFilters dir filters
     res <- runDiagnosticsIO $ discover files pathFilters dir ancestryDirect
     withResult SevError SevWarn res (const (pure ()))
 
