@@ -6,7 +6,7 @@ module Analysis.FixtureExpectationUtils (
 
   -- * spec helpers
   testSuiteDepResultSummary,
-  testSuitHasSomeDepResults,
+  testSuiteHasSomeDepResults,
 
   -- * expectation helpers
   getDepResultsOf,
@@ -90,8 +90,8 @@ withProjectOfType ::
 withProjectOfType result (projType, projPath) =
   find (\(dr, _) -> projectType dr == projType && projectPath dr == projPath) result
 
-testSuitHasSomeDepResults :: (AnalyzeProject a, Show a, Eq a) => AnalysisTestFixture a -> DiscoveredProjectType -> Spec
-testSuitHasSomeDepResults fixture projType = aroundAll (withAnalysisOf fixture) $
+testSuiteHasSomeDepResults :: (AnalyzeProject a, Show a, Eq a) => AnalysisTestFixture a -> DiscoveredProjectType -> Spec
+testSuiteHasSomeDepResults fixture projType = aroundAll (withAnalysisOf fixture) $
   describe (toString $ testName fixture) $ do
     it "should find targets" $ \(result, extractedDir) ->
       expectProject (projType, extractedDir) result

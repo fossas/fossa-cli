@@ -3,11 +3,17 @@
 
 module Analysis.RustSpec (spec) where
 
-import Analysis.FixtureExpectationUtils
-import Analysis.FixtureUtils
-import Path
+import Analysis.FixtureExpectationUtils (
+  testSuiteHasSomeDepResults,
+ )
+import Analysis.FixtureUtils (
+  AnalysisTestFixture (AnalysisTestFixture),
+  FixtureArtifact (FixtureArtifact),
+  FixtureEnvironment (NixEnv),
+ )
+import Path (reldir)
 import Strategy.Cargo qualified as Cargo
-import Test.Hspec
+import Test.Hspec (Spec)
 import Types (DiscoveredProjectType (..))
 
 rustEnv :: FixtureEnvironment
@@ -39,8 +45,8 @@ fd =
 
 spec :: Spec
 spec = do
-  testSuitHasSomeDepResults bat CargoProjectType
-  testSuitHasSomeDepResults fd CargoProjectType
+  testSuiteHasSomeDepResults bat CargoProjectType
+  testSuiteHasSomeDepResults fd CargoProjectType
 
 -- The dependency number can change as the dependency tree for following changes,
 -- This is ramification of how `rust` builds are analyzed.

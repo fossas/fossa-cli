@@ -13,7 +13,7 @@ import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Yaml (FromJSON, (.!=), (.:), (.:?))
+import Data.Yaml (FromJSON, Object, Parser, (.!=), (.:), (.:?))
 import Data.Yaml qualified as Yaml
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
@@ -81,8 +81,8 @@ import Path (Abs, File, Path)
 --    - [pnpm-lockfile](https://github.com/pnpm/pnpm/blob/5cfd6d01946edcce86f62580bddc788d02f93ed6/packages/lockfile-types/src/index.ts)
 data PnpmLockfile = PnpmLockfile
   { lockFileVersion :: Float
-  , importers :: Map Text PnpmProjectSnapshot
-  , packages :: Map Text PnpmPackageSnapshot
+  , importers :: Map Text ProjectMap
+  , packages :: Map Text PackageData
   }
   deriving (Show, Eq, Ord)
 
@@ -103,7 +103,7 @@ instance FromJSON PnpmLockfile where
 
     dependencies <- obj .:? "dependencies" .!= mempty
     devDependencies <- obj .:? "devDependencies" .!= mempty
-    let virtualRootWs = PnpmProjectSnapshot dependencies devDependencies
+    let virtualRootWs = ProjectMap dependencies devDependencies
     let refinedImporters =
           if Map.null importers
             then Map.insert "." virtualRootWs importers
@@ -111,18 +111,18 @@ instance FromJSON PnpmLockfile where
 
     pure $ PnpmLockfile lockFileVersion refinedImporters packages
 
-data PnpmProjectSnapshot = PnpmProjectSnapshot
+data ProjectMap = ProjectMap
   { directDependencies :: Map Text Text
   , directDevDependencies :: Map Text Text
   }
   deriving (Show, Eq, Ord)
 
-instance FromJSON PnpmProjectSnapshot where
-  parseJSON = Yaml.withObject "PnpmProjectSnapshot" $ \obj ->
-    PnpmProjectSnapshot <$> obj .:? "dependencies" .!= mempty
+instance FromJSON ProjectMap where
+  parseJSON = Yaml.withObject "ProjectMap" $ \obj ->
+    ProjectMap <$> obj .:? "dependencies" .!= mempty
       <*> obj .:? "devDependencies" .!= mempty
 
-data PnpmPackageSnapshot = PnpmPackageSnapshot
+data PackageData = PackageData
   { isDev :: Bool
   , name :: Maybe Text -- only provided when non-registry resolver is used
   , resolution :: Resolution
@@ -131,37 +131,46 @@ data PnpmPackageSnapshot = PnpmPackageSnapshot
   }
   deriving (Show, Eq, Ord)
 
-instance FromJSON PnpmPackageSnapshot where
-  parseJSON = Yaml.withObject "PnpmPackageSnapshot" $ \obj ->
-    PnpmPackageSnapshot <$> (obj .:? "dev" .!= False)
+instance FromJSON PackageData where
+  parseJSON = Yaml.withObject "PackageData" $ \obj ->
+    PackageData <$> (obj .:? "dev" .!= False)
       <*> obj .:? "name"
       <*> obj .: "resolution"
       <*> (obj .:? "dependencies" .!= mempty)
       <*> (obj .:? "peerDependencies" .!= mempty)
 
 data Resolution
-  = GitResolution GitPnpmResolution
-  | RegistryResolution RegistryPnpmResolution
-  | TarballResolution TarballPnpmResolution
-  | DirectoryResolution DirectoryPnpmResolution
+  = GitResolve GitResolution
+  | RegistryResolve RegistryResolution
+  | TarballResolve TarballResolution
+  | DirectoryResolve DirectoryResolution
   deriving (Show, Eq, Ord)
 
-data GitPnpmResolution = GitPnpmResolution
+data GitResolution = GitResolution
   { gitUrl :: Text
   , revision :: Text
   }
   deriving (Show, Eq, Ord)
 
-newtype TarballPnpmResolution = TarballPnpmResolution {tarballUrl :: Text} deriving (Show, Eq, Ord)
-newtype RegistryPnpmResolution = RegistryPnpmResolution {integrity :: Text} deriving (Show, Eq, Ord)
-newtype DirectoryPnpmResolution = DirectoryPnpmResolution {directory :: Text} deriving (Show, Eq, Ord)
+newtype TarballResolution = TarballResolution {tarballUrl :: Text} deriving (Show, Eq, Ord)
+newtype RegistryResolution = RegistryResolution {integrity :: Text} deriving (Show, Eq, Ord)
+newtype DirectoryResolution = DirectoryResolution {directory :: Text} deriving (Show, Eq, Ord)
 
 instance FromJSON Resolution where
   parseJSON = Yaml.withObject "Resolution" $ \obj ->
-    GitResolution <$> (GitPnpmResolution <$> obj .: "repo" <*> obj .: "commit")
-      <|> (TarballResolution <$> (TarballPnpmResolution <$> obj .: "tarball"))
-      <|> (DirectoryResolution <$> (DirectoryPnpmResolution <$> obj .: "directory"))
-      <|> (RegistryResolution <$> (RegistryPnpmResolution <$> obj .: "integrity"))
+    gitRes obj <|> tarballRes obj <|> directoryRes obj <|> registryRes obj
+    where
+      directoryRes :: Object -> Parser Resolution
+      directoryRes obj = DirectoryResolve . DirectoryResolution <$> obj .: "directory"
+
+      registryRes :: Object -> Parser Resolution
+      registryRes obj = RegistryResolve . RegistryResolution <$> obj .: "integrity"
+
+      tarballRes :: Object -> Parser Resolution
+      tarballRes obj = TarballResolve . TarballResolution <$> obj .: "tarball"
+
+      gitRes :: Object -> Parser Resolution
+      gitRes obj = GitResolve <$> (GitResolution <$> obj .: "repo" <*> obj .: "commit")
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = context "Analyzing Npm Lockfile (v3)" $ do
@@ -176,10 +185,8 @@ buildGraph lockFile = withoutLocalPackages $
             toList (directDependencies projectSnapshot)
               <> toList (directDevDependencies projectSnapshot)
 
-      for_ allDirectDependencies $ \(depName, depVersion) -> do
-        case (toResolvedDependency depName depVersion) of
-          Just dep -> direct dep
-          Nothing -> pure ()
+      for_ allDirectDependencies $ \(depName, depVersion) ->
+        maybe (pure ()) direct $ toResolvedDependency depName depVersion
 
     -- Add edges and deep dependencies by iterating over all packages.
     --
@@ -214,9 +221,7 @@ buildGraph lockFile = withoutLocalPackages $
       deep parentDep
 
       for_ deepDependencies $ \(deepName, deepVersion) -> do
-        case (toResolvedDependency deepName deepVersion) of
-          Just childDep -> edge parentDep childDep
-          Nothing -> pure ()
+        maybe (pure ()) (edge parentDep) (toResolvedDependency deepName deepVersion)
   where
     -- Gets package name and version from package's key.
     --
@@ -268,23 +273,23 @@ buildGraph lockFile = withoutLocalPackages $
     mkPkgKey :: Text -> Text -> Text
     mkPkgKey name version = "/" <> name <> "/" <> version
 
-    toDependency :: Text -> Maybe Text -> PnpmPackageSnapshot -> Dependency
-    toDependency name maybeVersion (PnpmPackageSnapshot isDev _ (RegistryResolution _) _ _) =
+    toDependency :: Text -> Maybe Text -> PackageData -> Dependency
+    toDependency name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) =
       toDep NodeJSType name (withoutSymConstraint <$> maybeVersion) isDev
-    toDependency _ _ (PnpmPackageSnapshot isDev _ (GitResolution (GitPnpmResolution url rev)) _ _) =
+    toDependency _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) =
       toDep GitType url (Just rev) isDev
-    toDependency _ _ (PnpmPackageSnapshot isDev _ (TarballResolution (TarballPnpmResolution url)) _ _) =
+    toDependency _ _ (PackageData isDev _ (TarballResolve (TarballResolution url)) _ _) =
       toDep URLType url Nothing isDev
-    toDependency _ _ (PnpmPackageSnapshot isDev (Just name) (DirectoryResolution _) _ _) =
+    toDependency _ _ (PackageData isDev (Just name) (DirectoryResolve _) _ _) =
       toDep UserType name Nothing isDev
-    toDependency name _ (PnpmPackageSnapshot isDev Nothing (DirectoryResolution _) _ _) =
+    toDependency name _ (PackageData isDev Nothing (DirectoryResolve _) _ _) =
       toDep UserType name Nothing isDev
 
     -- Sometimes package versions include symlinked paths
     -- of sibling dependencies used for resolution.
     --
-    -- >> withoutSymLinks "1.2.0" = "1.2.0"
-    -- >> withoutSymLinks "1.2.0_vue@3.0" = "1.2.0"
+    -- >> withoutSymConstraint "1.2.0" = "1.2.0"
+    -- >> withoutSymConstraint "1.2.0_vue@3.0" = "1.2.0"
     withoutSymConstraint :: Text -> Text
     withoutSymConstraint version = fst $ Text.breakOn "_" version
 

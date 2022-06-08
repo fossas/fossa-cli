@@ -150,12 +150,13 @@ CLI will infer the package name and version using `/${dependencyName}/${dependen
 * Peer dependencies will be included in the analysis (they are treated like any other dependency).
 * Pnpm workspaces are supported.
 * Development dependencies (`dev: true`) are ignored by default from analysis. To include them in the analysis, execute CLI with `--include-unused` flag e.g. `fossa analyze --include-unused`.
+* Optional dependencies are included in the analysis by default. They can be ignored in FOSSA UI.
 
 # F.A.Q
 
-### How do I *only perform analysis* for the pmpm?
+### How do I perform analysis only for pnpm projects?
 
-You can explicitly specify an analysis target in `.fossa.yml` file. The example below will exclude all analysis targets except for the pnpm.
+You can explicitly specify an analysis target in `.fossa.yml` file. The example below will exclude all analysis targets except for pnpm.
 
 ```yaml
 # .fossa.yml 
