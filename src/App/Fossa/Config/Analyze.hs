@@ -487,7 +487,7 @@ collectVendoredDepsFromFlags AnalyzeCliOpts{..} = do
       forceCLILicenseScan = fromFlag ForceVendoredDependencyCLILicenseScan analyzeForceCLILicenseScan
       forceArchiveUpload = fromFlag ForceVendoredDependencyArchiveUpload analyzeForceArchiveUpload
   scanType <- case (forceCLILicenseScan, forceArchiveUpload) of
-    (True, True) -> fatalText "You have provided both --force-cli-license-scan and --force-archive-upload flags. A maximum of one of these flags can be used."
+    (True, True) -> fatalText "You have provided both --force-vendored-dependency-license-scan and --force-vendored-dependency-archive-upload flags. These flags conflict with each other. Please use at most one of them."
     (True, False) -> pure $ Just CLILicenseScan
     (False, True) -> pure $ Just ArchiveUpload
     (False, False) -> pure Nothing
