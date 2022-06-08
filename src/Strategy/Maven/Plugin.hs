@@ -19,16 +19,16 @@ module Strategy.Maven.Plugin (
   execPluginReactor,
 ) where
 
-import Control.Algebra
-import Control.Effect.Diagnostics
-import Control.Effect.Exception
+import Control.Algebra (Has)
+import Control.Effect.Diagnostics (Diagnostics, warn)
+import Control.Effect.Exception (Lift, bracket)
 import Control.Effect.Lift (sendIO)
 import Control.Monad (when)
 import Data.Aeson (FromJSON, parseJSON, withObject, (.:))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.FileEmbed (embedFile)
-import Data.Foldable (Foldable (fold))
+import Data.Foldable (Foldable (fold), foldl')
 import Data.Functor (void)
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -37,9 +37,28 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Traversable (for)
 import Data.Tree (Tree (..))
-import Effect.Exec
-import Effect.ReadFS
-import Path
+import Effect.Exec (
+  AllowErr (Never),
+  Command (..),
+  Exec,
+  execThrow,
+ )
+import Effect.ReadFS (
+  ReadFS,
+  readContentsJson,
+  readContentsParser,
+ )
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  fromAbsDir,
+  mkRelDir,
+  mkRelFile,
+  (</>),
+ )
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
 import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
 import System.FilePath qualified as FP
@@ -107,18 +126,18 @@ parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -
 parsePluginOutput dir =
   readContentsParser parseTextArtifact (dir </> outputFile) >>= textArtifactToPluginOutput
 
-reactorOutputFile :: Path Rel File
-reactorOutputFile = $(mkRelFile "target/reactor-graph.json")
+reactorOutputFilename :: Path Rel File
+reactorOutputFilename = $(mkRelFile "fossa-reactor-graph.json")
 
 parseReactorOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => (Path Abs Dir) -> m ReactorOutput
-parseReactorOutput dir = readContentsJson (dir </> reactorOutputFile)
+parseReactorOutput dir = readContentsJson $ dir </> $(mkRelDir "target/") </> reactorOutputFilename
 
 textArtifactToPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m PluginOutput
 textArtifactToPluginOutput
   ta = buildPluginOutput ta
     where
       artifactNames :: [Text]
-      artifactNames = foldl (\a c -> (artifactText c : a)) mempty ta
+      artifactNames = foldl' (\a c -> (artifactText c : a)) mempty ta
 
       namesToIds :: Map Text Int
       namesToIds = Map.fromList . (\ns -> zip ns [0 ..]) $ artifactNames
@@ -135,7 +154,7 @@ textArtifactToPluginOutput
           , artifactIsDirect = isDirect
           }
 
-      lookupArtifactByName :: (Has Diagnostics sig m) => Text -> m (Maybe Int)
+      lookupArtifactByName :: Has Diagnostics sig m => Text -> m (Maybe Int)
       lookupArtifactByName aText = do
         let res = Map.lookup aText namesToIds
         when (isNothing res) $
@@ -149,7 +168,7 @@ textArtifactToPluginOutput
             (map rootLabel children)
             (\c -> fmap (Edge parentId) <$> lookupArtifactByName (artifactText c))
 
-      buildPluginOutput :: (Has Diagnostics sig m) => Tree TextArtifact -> m PluginOutput
+      buildPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m PluginOutput
       buildPluginOutput
         (Node t@(TextArtifact{artifactText = aText}) aChildren) = do
           maybeId <- lookupArtifactByName aText
@@ -186,6 +205,8 @@ mavenInstallPluginCmd pluginFilePath plugin =
     , cmdAllowErr = Never
     }
 
+-- |The aggregate command is documented
+-- [here.](https://ferstl.github.io/depgraph-maven-plugin/aggregate-mojo.html)
 mavenPluginDependenciesCmd :: DepGraphPlugin -> Command
 mavenPluginDependenciesCmd plugin =
   Command
@@ -193,16 +214,23 @@ mavenPluginDependenciesCmd plugin =
     , cmdArgs =
         [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":aggregate"
         , "-DgraphFormat=text"
-        , "-DmergeScopes"
-        , "-DreduceEdges=false"
+        , -- display deps that appear multiple times in different scopes as a single node
+          "-DmergeScopes"
+        , -- Don't omit edges for deps appearing in multiple places in the graph
+          "-DreduceEdges=false"
         , "-DshowVersions=true"
         , "-DshowGroupIds=true"
-        , "-DshowOptional=true"
-        , "-DrepeatTransitiveDependenciesInTextGraph=true"
+        , -- Deps that are optional in the graph will be tagged optional in the cli's output
+          -- this does not exclude them from sourceUnits.
+          "-DshowOptional=true"
+        , -- Repeat transitive deps for packages that appear multiple times
+          "-DrepeatTransitiveDependenciesInTextGraph=true"
         ]
     , cmdAllowErr = Never
     }
 
+-- |The reactor command is documented
+-- [here.](https://ferstl.github.io/depgraph-maven-plugin/reactor-mojo.html)
 mavenPluginReactorCmd :: DepGraphPlugin -> Command
 mavenPluginReactorCmd plugin =
   Command
@@ -210,7 +238,7 @@ mavenPluginReactorCmd plugin =
     , cmdArgs =
         [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":reactor"
         , "-DgraphFormat=json"
-        , "-DoutputFileName=reactor-graph.json"
+        , "-DoutputFileName=" <> toText reactorOutputFilename
         ]
     , cmdAllowErr = Never
     }

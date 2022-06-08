@@ -9,7 +9,7 @@ import Data.Char (isSpace)
 import Data.Functor (($>))
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Tree
+import Data.Tree (Tree (Node))
 import Data.Void (Void)
 import Text.Megaparsec (
   Parsec,
@@ -95,5 +95,30 @@ parseTextArtifactAndChildren isDirect =
               <|> pure []
           )
 
+-- | Parse output from the maven depgraph plugin.
+--
+-- The output of the depgraph plugin looks like:
+--
+-- @
+-- org.clojure:clojure:1.12.0-master-SNAPSHOT:compile
+-- +- org.clojure:spec.alpha:0.3.218:compile
+-- +- org.clojure:core.specs.alpha:0.2.62:compile
+-- +- org.clojure:test.generative:1.0.0:test
+-- |  +- org.clojure:tools.namespace:1.0.0:test/compile
+-- |  |  +- org.clojure:java.classpath:1.0.0:test
+-- |  |  \- org.clojure:tools.reader:1.3.2:test
+-- |  \- org.clojure:data.generators:1.0.0:test (optional)
+-- +- org.clojure:test.check:1.1.1:test
+-- \- javax.xml.ws:jaxws-api:2.3.0:test
+--    +- javax.xml.bind:jaxb-api:2.3.0:test
+--    \- javax.xml.soap:javax.xml.soap-api:1.4.0:test
+-- @
+--
+-- The strings after the tree structure text (e.g. '+-', '|', '\-') represent
+-- a maven artifact and have the format
+-- @<groupId>:<artifactId>:<version>:<slash delimited scopes> (optional)@
+-- The final '(optional)' string may or may not be present.
+--
+-- The parser should parse the text into a tree of these artifacts.
 parseTextArtifact :: Parser (Tree TextArtifact)
 parseTextArtifact = parseTextArtifactAndChildren True <* eof
