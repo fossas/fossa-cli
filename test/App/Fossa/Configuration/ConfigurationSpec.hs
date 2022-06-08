@@ -21,13 +21,12 @@ import Data.Set qualified as Set
 import Diag.Result (Result)
 import Effect.Logger (ignoreLogger)
 import Effect.ReadFS (runReadFSIO)
-import Fossa.API.Types (ArchiveUploadType (..))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess, expectFailure)
 import Test.Hspec qualified as T
 import Test.Hspec.Core.Spec (SpecM)
-import Types (BuildTarget (..), TargetFilter (..))
+import Types (ArchiveUploadType (..), BuildTarget (..), TargetFilter (..))
 
 expectedConfigFile :: ConfigFile
 expectedConfigFile =

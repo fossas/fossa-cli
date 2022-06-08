@@ -56,7 +56,6 @@ import Effect.Logger (
   vsep,
  )
 import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir, readContentsYaml)
-import Fossa.API.Types (ArchiveUploadType)
 import Path (
   Abs,
   Dir,
@@ -68,7 +67,7 @@ import Path (
   parseSomeFile,
   (</>),
  )
-import Types (TargetFilter)
+import Types (ArchiveUploadType, TargetFilter)
 
 defaultConfigFileNames :: [Path Rel File]
 defaultConfigFileNames =

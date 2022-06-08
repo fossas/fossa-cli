@@ -6,7 +6,6 @@ module Fossa.API.Types (
   ApiKey (..),
   ApiOpts (..),
   Archive (..),
-  ArchiveUploadType (..),
   ArchiveComponents (..),
   Build (..),
   BuildStatus (..),
@@ -67,6 +66,7 @@ import Prettyprinter (
 import Srclib.Types (Locator, parseLocator)
 import Text.URI (URI, render)
 import Text.URI.QQ (uri)
+import Types (ArchiveUploadType (..))
 import Unsafe.Coerce qualified as Unsafe
 
 newtype ApiKey = ApiKey {unApiKey :: Text}
@@ -301,20 +301,6 @@ instance FromJSON Organization where
       <*> obj .:? "supportsCliLicenseScanning" .!= False
       <*> obj .:? "supportsAnalyzedRevisionsQuery" .!= False
       <*> obj .:? "defaultVendoredDependencyScanType" .!= CLILicenseScan
-
-data ArchiveUploadType
-  = ArchiveUpload
-  | CLILicenseScan
-  deriving (Eq, Ord, Show)
-
-instance FromJSON ArchiveUploadType where
-  parseJSON = withText "ArchiveUploadType" $ \case
-    "ArchiveUpload" -> pure ArchiveUpload
-    "CLILicenseScan" -> pure CLILicenseScan
-    _ -> pure CLILicenseScan
-
-instance ToJSON ArchiveUploadType where
-  toJSON = toJSON . show
 
 data Project = Project
   { projectId :: Text

@@ -88,7 +88,7 @@ import Effect.Exec (
  )
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn)
 import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
-import Fossa.API.Types (ApiOpts, ArchiveUploadType (..))
+import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
 import Options.Applicative (
   Alternative (many),
@@ -109,7 +109,7 @@ import Options.Applicative (
  )
 import Path (Abs, Dir, File, Path, Rel)
 import System.Info qualified as SysInfo
-import Types (TargetFilter)
+import Types (ArchiveUploadType (..), TargetFilter)
 
 -- CLI flags, for use with 'Data.Flag'
 data AllowNativeLicenseScan = AllowNativeLicenseScan deriving (Generic)
