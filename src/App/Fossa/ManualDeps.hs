@@ -166,7 +166,7 @@ scanAndUpload root vdeps VendoredDependencyOptions{..} = do
       orgDefaultScanType = orgDefaultVendoredDependencyScanType org
   archiveOrCLI <-
     case (coreSupportsLicenseScan, orgDefaultScanType, licenseScanMethod) of
-      (False, _, Just CLILicenseScan) -> fatalText "You provided the --force-cli-license-scan flag but this version of FOSSA does not support CLI-side license scans"
+      (False, _, Just CLILicenseScan) -> fatalText "You provided the --force-vendored-dependencies-license-scan flag but this version of FOSSA does not support CLI-side license scans"
       (False, _, _) -> pure ArchiveUpload
       (True, _, Just ArchiveUpload) -> pure ArchiveUpload
       (True, _, Just CLILicenseScan) -> pure CLILicenseScan
