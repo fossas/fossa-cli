@@ -100,6 +100,12 @@ spec = do
       (uploadType, scanMode) <- getScanCfg Fixtures.organization opts
       (uploadType, scanMode) `shouldBe'` (CLILicenseScan, SkippingDisabledViaFlag)
 
+    it' "should not skip if the server does not support the analyzed revisions query" $ do
+      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Nothing}
+          org = Fixtures.organization{orgSupportsAnalyzedRevisionsQuery = False}
+      (uploadType, scanMode) <- getScanCfg org opts
+      (uploadType, scanMode) `shouldBe'` (CLILicenseScan, SkippingNotSupported)
+
     it' "should do an archive upload if they are the default and no flags are passed" $ do
       let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Nothing}
           org = Fixtures.organization{orgDefaultVendoredDependencyScanType = ArchiveUpload}
