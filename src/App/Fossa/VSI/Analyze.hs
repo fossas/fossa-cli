@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.VSI.Analyze (
   runVsiAnalysis,
@@ -100,7 +101,8 @@ runFingerprintDiscovery ::
   m ()
 runFingerprintDiscovery capabilities files dir filters = do
   runStickyLogger SevInfo . withTaskPool capabilities (updateProgress " > Fingerprint files") . runAtomicCounter $ do
-    res <- runDiagnosticsIO $ discover files (toPathFilters dir filters) dir ancestryDirect
+    let pathFilters = (withDefaultFilters dir $ toPathFilters dir filters)
+    res <- runDiagnosticsIO $ discover files pathFilters dir ancestryDirect
     withResult SevError SevWarn res (const (pure ()))
 
   logDebug "Finished processing files"
@@ -331,6 +333,15 @@ toPathFilters root filters =
     { include = map (root </>) (combinedPaths $ includeFilters filters)
     , exclude = map (root </>) (combinedPaths $ excludeFilters filters)
     }
+
+withDefaultFilters :: Path Abs Dir -> PathFilters -> PathFilters
+withDefaultFilters root filters =
+  PathFilters
+    { include = include filters
+    , exclude = dotgit : exclude filters
+    }
+  where
+    dotgit = root </> $(P.mkRelDir ".git")
 
 allow :: PathFilters -> Path Abs Dir -> Bool
 allow filters dir = (not shouldExclude) && shouldInclude
