@@ -83,6 +83,7 @@ data DiscoveredProjectType
   | PaketProjectType
   | PerlProjectType
   | PipenvProjectType
+  | PnpmProjectType
   | PoetryProjectType
   | ProjectAssetsJsonProjectType
   | ProjectJsonProjectType
@@ -124,6 +125,7 @@ projectTypeToText = \case
   PaketProjectType -> "packet"
   PerlProjectType -> "perl"
   PipenvProjectType -> "pipenv"
+  PnpmProjectType -> "pnpm"
   PoetryProjectType -> "poetry"
   ProjectAssetsJsonProjectType -> "projectassetsjson"
   ProjectJsonProjectType -> "projectjson"
