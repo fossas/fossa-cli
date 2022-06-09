@@ -279,7 +279,7 @@ instance FromJSON ArchiveUploadType where
   parseJSON = withText "ArchiveUploadType" $ \case
     "ArchiveUpload" -> pure ArchiveUpload
     "CLILicenseScan" -> pure CLILicenseScan
-    _ -> pure CLILicenseScan
+    notSupported -> fail . toString $ "Expected either: 'ArchiveUpload' or 'CLILicenseScan' for telemetry scope. You provided: " <> notSupported
 
 instance ToJSON ArchiveUploadType where
   toJSON = toJSON . show

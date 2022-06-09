@@ -114,6 +114,9 @@ validDefaultYamlDir = maintestdir </> $(mkRelDir "valid-default-yaml")
 invalidDefaultDir :: Path Rel Dir
 invalidDefaultDir = maintestdir </> $(mkRelDir "invalid-default")
 
+invalidScanMethodDir :: Path Rel Dir
+invalidScanMethodDir = maintestdir </> $(mkRelDir "invalid-scan-method")
+
 expectSuccessfulParse :: Result (Maybe ConfigFile) -> T.Expectation
 expectSuccessfulParse act =
   assertOnSuccess act $ \_ a -> case a of
@@ -140,6 +143,7 @@ spec = do
   -- If the file exists, but is invalid YAML, that's most likely a real error,
   -- so we error here
   invalidDefault <- runIt invalidDefaultDir Nothing
+  invalidScanMethod <- runIt invalidScanMethodDir Nothing
 
   -- @Just file@ informs us that the file is specified manually, so we fail
   -- instead of trying to recover, so we don't ignore the file and do the wrong thing
@@ -158,6 +162,7 @@ spec = do
     T.it "always returns failure for a bad file" $ do
       expectFailure invalidSpecified
       expectFailure invalidDefault
+      expectFailure invalidScanMethod
 
     T.it "returns Nothing for missing default file" $
       assertOnSuccess missingDefault $ \_ result -> result `T.shouldBe` Nothing

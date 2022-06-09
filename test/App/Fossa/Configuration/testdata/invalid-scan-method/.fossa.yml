@@ -1,0 +1,5 @@
+
+version: 3
+vendoredDependencies:
+  forceRescans: true
+  scanMethod: invalid
