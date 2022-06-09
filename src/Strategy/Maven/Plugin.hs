@@ -24,7 +24,7 @@ import Control.Effect.Diagnostics (Diagnostics, warn)
 import Control.Effect.Exception (Lift, bracket)
 import Control.Effect.Lift (sendIO)
 import Control.Monad (when)
-import Data.Aeson (FromJSON, parseJSON, withObject, (.:))
+import Data.Aeson (FromJSON, parseJSON, withObject, (.:), (.:?), (.!=))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.FileEmbed (embedFile)
@@ -257,7 +257,7 @@ newtype ReactorOutput = ReactorOutput {reactorArtifacts :: [ReactorArtifact]}
 
 instance FromJSON ReactorOutput where
   parseJSON = withObject "Reactor output" $
-    \o -> ReactorOutput <$> (o .: "artifacts")
+    \o -> ReactorOutput <$> (o .:? "artifacts" .!= [])
 
 data PluginOutput = PluginOutput
   { outArtifacts :: [Artifact]

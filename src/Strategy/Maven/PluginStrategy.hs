@@ -12,8 +12,8 @@ import Control.Effect.Diagnostics (
   ToDiagnostic (renderDiagnostic),
   context,
   errCtx,
-  recover,
-  warn,
+  warnOnErr,
+  (<||>),
  )
 import Control.Effect.Lift (Lift)
 import Control.Monad (when)
@@ -83,15 +83,8 @@ runReactor ::
   m ReactorOutput
 runReactor dir plugin =
   context "Running plugin to get submodule names" $
-    do
-      res <-
-        recover $
-          execPluginReactor dir plugin
-      case res of
-        Nothing -> do
-          warn ("Failed to run reactor, submodules may be included in the output graph." :: Text)
-          pure $ ReactorOutput []
-        Just _ -> parseReactorOutput dir
+    warnOnErr MayIncludeSubmodule (execPluginReactor dir plugin >> parseReactorOutput dir)
+      <||> pure (ReactorOutput [])
 
 analyze ::
   ( Has (Lift IO) sig m
@@ -119,6 +112,11 @@ instance ToDiagnostic MvnPluginInstallFailed where
 data MvnPluginExecFailed = MvnPluginExecFailed
 instance ToDiagnostic MvnPluginExecFailed where
   renderDiagnostic (MvnPluginExecFailed) = "Failed to execute maven plugin for analysis."
+
+data MayIncludeSubmodule = MayIncludeSubmodule
+instance ToDiagnostic MayIncludeSubmodule where
+  renderDiagnostic MayIncludeSubmodule =
+    "Failed to run reactor, submodules may be included in the output graph."
 
 -- | Prune out toplevel packages and submodules from the graph.
 --
