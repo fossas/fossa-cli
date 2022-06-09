@@ -191,66 +191,13 @@ pnpmLockGraphWithoutWorkspaceSpec graph = do
   let hasEdge :: Dependency -> Dependency -> Expectation
       hasEdge = expectEdge graph
 
-  let colors =
-        Dependency
-          URLType
-          "https://codeload.github.com/Marak/colors.js/tar.gz/6bc50e79eeaa1d87369bb3e7e608ebed18c5cf26"
-          Nothing
-          mempty
-          (Set.singleton EnvProduction)
-          mempty
-
   describe "buildGraph without workspaces" $ do
     it "should include dependencies of root and workspace package as direct" $ do
-      expectDirect
-        [ mkProdDep "aws-sdk@2.1148.0"
-        , colors
-        , mkDevDep "react@18.1.0"
-        ]
-        graph
+      expectDirect [mkProdDep "react@18.1.0"] graph
 
-    it "should include all relevant edges and deps for example@1.0.0" $ do
-      -- aws-sdk 2.1148.0
-      -- ├─┬ buffer 4.9.2
-      -- │ ├── base64-js 1.5.1
-      -- │ ├── ieee754 1.1.13
-      -- │ └── isarray 1.0.0
-      -- ├── events 1.1.1
-      -- ├── ieee754 1.1.13
-      -- ├── jmespath 0.16.0
-      -- ├── querystring 0.2.0
-      -- ├── sax 1.2.1
-      -- ├─┬ url 0.10.3
-      -- │ ├── punycode 1.3.2
-      -- │ └── querystring 0.2.0
-      -- ├── uuid 8.0.0
-      -- └─┬ xml2js 0.4.19
-      --   ├── sax 1.2.1
-      --   └── xmlbuilder 9.0.7
-      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "buffer@4.9.2")
-      hasEdge (mkProdDep "buffer@4.9.2") (mkProdDep "base64-js@1.5.1")
-      hasEdge (mkProdDep "buffer@4.9.2") (mkProdDep "ieee754@1.1.13")
-      hasEdge (mkProdDep "buffer@4.9.2") (mkProdDep "isarray@1.0.0")
-
-      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "events@1.1.1")
-      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "ieee754@1.1.13")
-      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "jmespath@0.16.0")
-      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "sax@1.2.1")
-      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "url@0.10.3")
-
-      hasEdge (mkProdDep "url@0.10.3") (mkProdDep "punycode@1.3.2")
-      hasEdge (mkProdDep "url@0.10.3") (mkProdDep "querystring@0.2.0")
-      hasEdge (mkProdDep "url@0.10.3") (mkProdDep "punycode@1.3.2")
-      hasEdge (mkProdDep "url@0.10.3") (mkProdDep "querystring@0.2.0")
-
-      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "uuid@8.0.0")
-      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "xml2js@0.4.19")
-
-      hasEdge (mkProdDep "xml2js@0.4.19") (mkProdDep "sax@1.2.1")
-      hasEdge (mkProdDep "xml2js@0.4.19") (mkProdDep "xmlbuilder@9.0.7")
-
+    it "should include all relevant edges and deps" $ do
       -- react 18.1.0
       -- └─┬ loose-envify 1.4.0
       --   └── js-tokens 4.0.0
-      hasEdge (mkDevDep "react@18.1.0") (mkDevDep "loose-envify@1.4.0")
-      hasEdge (mkDevDep "loose-envify@1.4.0") (mkDevDep "js-tokens@4.0.0")
+      hasEdge (mkProdDep "react@18.1.0") (mkProdDep "loose-envify@1.4.0")
+      hasEdge (mkProdDep "loose-envify@1.4.0") (mkProdDep "js-tokens@4.0.0")

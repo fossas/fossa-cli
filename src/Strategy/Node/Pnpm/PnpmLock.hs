@@ -228,6 +228,7 @@ buildGraph lockFile = withoutLocalPackages $
     -- >> getPkgNameVersion "" = Nothing
     -- >> getPkgNameVersion "github.com/something" = Nothing
     -- >> getPkgNameVersion "/pkg-a/1.0.0" = Just ("pkg-a", "1.0.0")
+    -- >> getPkgNameVersion "/@angular/core/1.0.0" = Just ("@angular/core", "1.0.0")
     getPkgNameVersion :: Text -> Maybe (Text, Text)
     getPkgNameVersion pkgKey = case (Text.stripPrefix "/" pkgKey) of
       Nothing -> Nothing
