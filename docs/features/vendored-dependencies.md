@@ -83,7 +83,7 @@ Both methods use the same license scanning technology and will give you the same
 
 A "CLI license scan" runs a license scan directly on the server where you are running `fossa analyze`, and only uploads the matched license data to FOSSA's servers.
 
-"Archive upload" uploads the files at the specified path to a secure S3 bucket. We license scan the uploaded files on our servers. All files that do not contain licenses are then removed after 2 weeks.
+"Archive upload" uploads the files at the specified path to a secure S3 bucket. We license scan the uploaded files on our servers. All files that do not contain licenses are then removed after 30 days.
 
 You can change the scan method by using the `--force-vendored-dependency-license-scan` or `--force-vendored-dependency-archive-upload` flags when invoking the CLI, or by setting the `vendoredDependencies.scanMethod` field in your `.fossa.yml` file. See the [.fossa.yml documentation](https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-yml.md) for details.
 
