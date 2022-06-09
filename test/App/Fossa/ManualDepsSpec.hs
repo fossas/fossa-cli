@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module App.Fossa.ManualDepsSpec (
   spec,
 ) where
