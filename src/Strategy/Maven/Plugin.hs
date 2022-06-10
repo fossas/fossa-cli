@@ -24,7 +24,7 @@ import Control.Effect.Diagnostics (Diagnostics, warn)
 import Control.Effect.Exception (Lift, bracket)
 import Control.Effect.Lift (sendIO)
 import Control.Monad (when)
-import Data.Aeson (FromJSON, parseJSON, withObject, (.:), (.:?), (.!=))
+import Data.Aeson (FromJSON, parseJSON, withObject, (.!=), (.:), (.:?))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.FileEmbed (embedFile)
