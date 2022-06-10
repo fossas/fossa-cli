@@ -107,6 +107,7 @@ import Options.Applicative (
   switch,
   (<|>),
  )
+import Options.Applicative.Builder (maybeReader)
 import Path (Abs, Dir, File, Path, Rel)
 import System.Info qualified as SysInfo
 import Types (ArchiveUploadType (..), TargetFilter)
@@ -180,8 +181,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeIncludeAllDeps :: Flag IncludeAll
   , analyzeNoDiscoveryExclusion :: Flag NoDiscoveryExclusion
   , analyzeAllowNativeLicenseScan :: Flag AllowNativeLicenseScan
-  , analyzeForceCLILicenseScan :: Flag ForceVendoredDependencyCLILicenseScan
-  , analyzeForceArchiveUpload :: Flag ForceVendoredDependencyArchiveUpload
+  , analyzeForceVendoredDependencyMode :: Maybe ArchiveUploadType
   , analyzeForceVendoredDependencyRescans :: Flag ForceVendoredDependencyRescans
   , analyzeBranch :: Maybe Text
   , analyzeMetadata :: ProjectMetadata
@@ -272,10 +272,9 @@ cliParser =
     <*> flagOpt JsonOutput (long "json" <> help "Output project metadata as json to the console. Useful for communicating with the FOSSA API")
     <*> flagOpt IncludeAll (long "include-unused-deps" <> help "Include all deps found, instead of filtering non-production deps.  Ignored by VSI.")
     <*> flagOpt NoDiscoveryExclusion (long "debug-no-discovery-exclusion" <> help "Ignore filters during discovery phase.  This is for debugging only and may be removed without warning." <> hidden)
-    -- Intentionally hidden until some critical bugs are addressed
+    -- AllowNativeLicenseScan is no longer used, but we're keeping it in so we don't cause scans to blow up for customers who are still using it
     <*> flagOpt AllowNativeLicenseScan (long "experimental-native-license-scan" <> hidden)
-    <*> flagOpt ForceVendoredDependencyCLILicenseScan (long "force-vendored-dependency-license-scan" <> help "Force vendored dependencies to be license scanned in your CI environment. This is usually the default unless your organization has set Archive uploads to be the default. Incompatible with --force-vendored-dependency-archive-upload.")
-    <*> flagOpt ForceVendoredDependencyArchiveUpload (long "force-vendored-dependency-archive-upload" <> help "Force vendored dependencies to be scanned via the Archive Upload process. Incompatible with --force-vendored-dependency-license-scan.")
+    <*> optional vendoredDependencyModeOpt
     <*> flagOpt ForceVendoredDependencyRescans (long "force-vendored-dependency-rescans" <> help "Force vendored dependencies to be rescanned even if the revision has been previously analyzed by FOSSA. This currently only works for CLI-side license scans.")
     <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
@@ -290,6 +289,15 @@ cliParser =
     <*> many skipVSIGraphResolutionOpt
     <*> monorepoOpts
     <*> baseDirArg
+
+vendoredDependencyModeOpt :: Parser ArchiveUploadType
+vendoredDependencyModeOpt = option (maybeReader parseType) (long "force-vendored-dependency-scan-mode" <> metavar "MODE" <> help "Force the vendored dependency mode. The options are 'CLILicenseScan' or 'ArchiveUpload'. 'CLILicenseScan' is usually the default unless your organization has overridden this.")
+  where
+    parseType :: String -> Maybe ArchiveUploadType
+    parseType = \case
+      "ArchiveUpload" -> Just ArchiveUpload
+      "CLILicenseScan" -> Just CLILicenseScan
+      _ -> Nothing
 
 vsiEnableOpt :: Parser (Flag VSIAnalysis)
 vsiEnableOpt = visible <|> legacy
@@ -473,25 +481,17 @@ collectVendoredDeps ::
   AnalyzeCliOpts ->
   m VendoredDependencyOptions
 collectVendoredDeps maybeCfg cliOpts = do
-  (forceRescansFromFlags, scanTypeFromFlags) <- collectVendoredDepsFromFlags cliOpts
-  let (forceRescansFromConfig, scanTypeFromConfig) = collectVendoredDepsFromConfig maybeCfg
+  let (forceRescansFromFlags, scanTypeFromFlags) = collectVendoredDepsFromFlags cliOpts
+      (forceRescansFromConfig, scanTypeFromConfig) = collectVendoredDepsFromConfig maybeCfg
   pure $ VendoredDependencyOptions (forceRescansFromFlags || forceRescansFromConfig) (scanTypeFromFlags <|> scanTypeFromConfig)
 
 collectVendoredDepsFromFlags ::
-  ( Has Diagnostics sig m
-  ) =>
   AnalyzeCliOpts ->
-  m (Bool, Maybe ArchiveUploadType)
+  (Bool, Maybe ArchiveUploadType)
 collectVendoredDepsFromFlags AnalyzeCliOpts{..} = do
   let forceRescans = fromFlag ForceVendoredDependencyRescans analyzeForceVendoredDependencyRescans
-      forceCLILicenseScan = fromFlag ForceVendoredDependencyCLILicenseScan analyzeForceCLILicenseScan
-      forceArchiveUpload = fromFlag ForceVendoredDependencyArchiveUpload analyzeForceArchiveUpload
-  scanType <- case (forceCLILicenseScan, forceArchiveUpload) of
-    (True, True) -> fatalText "You have provided both --force-vendored-dependency-license-scan and --force-vendored-dependency-archive-upload flags. These flags conflict with each other. Please use at most one of them."
-    (True, False) -> pure $ Just CLILicenseScan
-    (False, True) -> pure $ Just ArchiveUpload
-    (False, False) -> pure Nothing
-  pure (forceRescans, scanType)
+      scanType = analyzeForceVendoredDependencyMode
+  (forceRescans, scanType)
 
 collectVendoredDepsFromConfig :: Maybe ConfigFile -> (Bool, Maybe ArchiveUploadType)
 collectVendoredDepsFromConfig maybeCfg =

@@ -85,7 +85,7 @@ A "CLI license scan" inspects your code for licensing on the local system within
 
 "Archive upload" uploads the files at the specified path to a secure S3 bucket. We license scan the uploaded files on our servers. All files that do not contain licenses are then removed after 30 days.
 
-You can change the scan method by using the `--force-vendored-dependency-license-scan` or `--force-vendored-dependency-archive-upload` flags when invoking the CLI, or by setting the `vendoredDependencies.scanMethod` field in your `.fossa.yml` file. See the [.fossa.yml documentation](https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-yml.md) for details.
+You can change the scan method by using the `--force-vendored-dependency-scan-mode` flag when invoking the CLI, or by setting the `vendoredDependencies.scanMethod` field in your `.fossa.yml` file. See the [.fossa.yml documentation](https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-yml.md) for details.
 
 ## Forcing rescans
 
