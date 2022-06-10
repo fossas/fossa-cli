@@ -28,7 +28,7 @@ revision:
   branch: master
 
 vendoredDependencies:
-  forceRescans: true
+  forceRescans: false
   scanMethod: CLILicenseScan
 
 targets:
