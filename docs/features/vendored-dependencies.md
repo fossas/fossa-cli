@@ -81,7 +81,7 @@ The default is typically "CLI license scan", but your organization may have opte
 
 Both methods use the same license scanning technology and will give you the same results. The difference is where the license scan is done.
 
-A "CLI license scan" runs a license scan directly on the server where you are running `fossa analyze`, and only uploads the matched license data to FOSSA's servers.
+A "CLI license scan" inspects your code for licensing on the local system within the CLI, and only uploads the matched license data to FOSSA's servers.
 
 "Archive upload" uploads the files at the specified path to a secure S3 bucket. We license scan the uploaded files on our servers. All files that do not contain licenses are then removed after 30 days.
 
