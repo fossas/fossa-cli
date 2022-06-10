@@ -234,6 +234,10 @@
                         {
                             "const": "perl",
                             "description": "For perl targets (using *META.{json,yml})"
+                        },
+                        {
+                            "const": "pnpm",
+                            "description": "For pnpm targets (javascript)"
                         }
                     ],
                     "description": "Target (package manager)"
