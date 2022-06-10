@@ -118,9 +118,7 @@ instance ToDiagnostic MayIncludeSubmodule where
   renderDiagnostic MayIncludeSubmodule =
     "Failed to run reactor, submodules may be included in the output graph."
 
--- | Prune out toplevel packages and submodules from the graph.
---
--- The graphs returned by the depgraph plugin look like this:
+-- | The graphs returned by the depgraph plugin look like this:
 --
 -- @
 -- org1:toplevelPackage1:1.0.0:compile
@@ -136,13 +134,13 @@ instance ToDiagnostic MayIncludeSubmodule where
 --       \- org1:name2:2.0.0:compile
 -- @
 --
--- In both cases, we want to remove either the toplevel project name or the
+-- After building a graph from the text, we do some additional processing. In
+-- both cases, we want to remove either the toplevel project name or the
 -- submodule name because these are the users' own packages.
 --
--- The multimodule case also shows how one submodule can depend on another. In
--- this case we want to remove the reference to submodule1 in submodule2's
--- dependency tree and promote submodule1's dependencies to be dependencies of
--- org1:name3.
+-- The multimodule case shows how one submodule can depend on another. In this
+-- case we want to remove the reference to submodule1 in submodule2's dependency
+-- tree and promote submodule1's dependency to be a root (direct) dependency.
 buildGraph :: ReactorOutput -> PluginOutput -> Graphing Dependency
 buildGraph reactorOutput PluginOutput{..} =
   -- The root deps in the maven depgraph text graph output are either the
@@ -174,25 +172,7 @@ buildGraph reactorOutput PluginOutput{..} =
                     ("scopes", artifactScopes) :
                       [("optional", ["true"]) | artifactOptional]
               }
-      -- The graphs returned by the depgraph plugin look like this:
-      --
-      -- @
-      -- org1:toplevelPackage1:1.0.0:compile
-      -- \- org1:name2:2.0.0:compile
-      -- @
-      --
-      -- Multimodule projects look like this:
-      --
-      -- @
-      -- org1:submodule2:1.0.0:compile
-      -- \- org1:name3:3.0.0:compile
-      --    \- org1:submodule1:1.0.0:compile
-      --       \- org1:name2:2.0.0:compile
-      -- @
-      --
-      -- In both cases, we want to mark either the toplevel project name or the
-      -- submodule as direct because these are the users' own packages. We will
-      -- remove them and promote their postSet to direct in a later step.
+
       when
         (artifactIsDirect || artifactArtifactId `Set.member` knownSubmodules)
         (Grapher.direct dep)
