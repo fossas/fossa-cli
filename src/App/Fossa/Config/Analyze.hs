@@ -291,7 +291,7 @@ cliParser =
     <*> baseDirArg
 
 vendoredDependencyModeOpt :: Parser ArchiveUploadType
-vendoredDependencyModeOpt = option (maybeReader parseType) (long "force-vendored-dependency-scan-mode" <> metavar "MODE" <> help "Force the vendored dependency mode. The options are 'CLILicenseScan' or 'ArchiveUpload'. 'CLILicenseScan' is usually the default unless your organization has overridden this.")
+vendoredDependencyModeOpt = option (maybeReader parseType) (long "force-vendored-dependency-scan-method" <> metavar "METHOD" <> help "Force the vendored dependency scan method. The options are 'CLILicenseScan' or 'ArchiveUpload'. 'CLILicenseScan' is usually the default unless your organization has overridden this.")
   where
     parseType :: String -> Maybe ArchiveUploadType
     parseType = \case
