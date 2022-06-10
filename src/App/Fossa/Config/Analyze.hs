@@ -8,8 +8,6 @@ module App.Fossa.Config.Analyze (
   BinaryDiscovery (..),
   ExperimentalAnalyzeConfig (..),
   ForceVendoredDependencyRescans (..),
-  ForceVendoredDependencyCLILicenseScan (..),
-  ForceVendoredDependencyArchiveUpload (..),
   IATAssertion (..),
   DynamicLinkInspect (..),
   IncludeAll (..),
@@ -107,7 +105,6 @@ import Options.Applicative (
   switch,
   (<|>),
  )
-import Options.Applicative.Builder (maybeReader)
 import Path (Abs, Dir, File, Path, Rel)
 import System.Info qualified as SysInfo
 import Types (ArchiveUploadType (..), TargetFilter)
@@ -115,8 +112,6 @@ import Types (ArchiveUploadType (..), TargetFilter)
 -- CLI flags, for use with 'Data.Flag'
 data AllowNativeLicenseScan = AllowNativeLicenseScan deriving (Generic)
 data ForceVendoredDependencyRescans = ForceVendoredDependencyRescans deriving (Generic)
-data ForceVendoredDependencyCLILicenseScan = ForceVendoredDependencyCLILicenseScan deriving (Generic)
-data ForceVendoredDependencyArchiveUpload = ForceVendoredDependencyArchiveUpload deriving (Generic)
 
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
 data IncludeAll = IncludeAll deriving (Generic)
@@ -291,13 +286,13 @@ cliParser =
     <*> baseDirArg
 
 vendoredDependencyModeOpt :: Parser ArchiveUploadType
-vendoredDependencyModeOpt = option (maybeReader parseType) (long "force-vendored-dependency-scan-method" <> metavar "METHOD" <> help "Force the vendored dependency scan method. The options are 'CLILicenseScan' or 'ArchiveUpload'. 'CLILicenseScan' is usually the default unless your organization has overridden this.")
+vendoredDependencyModeOpt = option (eitherReader parseType) (long "force-vendored-dependency-scan-method" <> metavar "METHOD" <> help "Force the vendored dependency scan method. The options are 'CLILicenseScan' or 'ArchiveUpload'. 'CLILicenseScan' is usually the default unless your organization has overridden this.")
   where
-    parseType :: String -> Maybe ArchiveUploadType
+    parseType :: String -> Either String ArchiveUploadType
     parseType = \case
-      "ArchiveUpload" -> Just ArchiveUpload
-      "CLILicenseScan" -> Just CLILicenseScan
-      _ -> Nothing
+      "ArchiveUpload" -> Right ArchiveUpload
+      "CLILicenseScan" -> Right CLILicenseScan
+      val -> Left ("must be either 'CLILicenseScan' or 'ArchiveUpload'. Found " <> val)
 
 vsiEnableOpt :: Parser (Flag VSIAnalysis)
 vsiEnableOpt = visible <|> legacy
