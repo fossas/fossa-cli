@@ -3,9 +3,6 @@ name:               spectrometer
 version:            0.1.0.0
 license:            MPL-2.0
 build-type:         Simple
-extra-source-files:
-  scripts/depgraph-maven-plugin-3.3.0.jar
-  scripts/jsondeps.gradle
 
 common lang
   build-depends:      base ^>=4.15
