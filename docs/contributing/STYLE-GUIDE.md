@@ -1,4 +1,4 @@
-# Fossa CLI style guide
+# FOSSA CLI style guide
 
 [Back to development doc homepage](README.md)
 
@@ -360,4 +360,3 @@ Use these instead of `decodeUtf8`/`encodeUTF8`/`Text.pack`
   design.  Consider making an `Internal` module instead.
 - In do-notation, use `let` bindings, otherwise, use `where` clauses.  Don't
   use `let` expressions (exammple: `let ... in ...`).
-
