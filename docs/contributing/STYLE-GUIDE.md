@@ -1,4 +1,4 @@
-# FOSSA CLI style guide
+# Style guide for `fossa-cli`
 
 [Back to development doc homepage](README.md)
 

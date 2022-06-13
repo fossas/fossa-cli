@@ -1,4 +1,4 @@
-## Custom SSL Certificate with FOSSA CLI
+## Custom SSL Certificate with `fossa-cli`
 
 `fossa-cli` uses the path provided in the following environment variable to infer root certificate store:
 
