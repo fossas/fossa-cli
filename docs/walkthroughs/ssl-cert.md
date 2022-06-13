@@ -1,6 +1,6 @@
-## Custom SSL Certificate with Fossa-CLI
+## Custom SSL Certificate with `fossa-cli`
 
-Fossa-cli uses the path provided in the following environment variable to infer root certificate store:
+`fossa-cli` uses the path provided in the following environment variable to infer root certificate store:
 
 1) `SSL_CERT_FILE`
 2) `SSL_CERT_DIR`
@@ -10,7 +10,7 @@ If none of these environment variables are provided, fossa-cli uses a system sto
 
 #### Linux
 
-Fossa-cli looks for certificate store in the following paths:
+`fossa-cli` looks for certificate store in the following paths:
 
 - `/etc/ssl/certs/`  
 - `/system/etc/security/cacerts/`
@@ -19,14 +19,14 @@ Fossa-cli looks for certificate store in the following paths:
 
 #### macOS
 
-Fossa-cli creates a certificate store by finding all signed certificates.  
+`fossa-cli` creates a certificate store by finding all signed certificates.  
 
 We use following command to retrieve all signed certificates: `security find-certificate -pa /System/Library/Keychains/SystemRootCertificates.keychain /Library/Keychains/System.keychain`
 
 
 #### Windows
 
-Fossa-cli retrieves certificates store by performing,
+`fossa-cli` retrieves certificates store by performing,
 
 - [CertOpenSystemStoreW](https://docs.microsoft.com/en-us/windows/win32/api/wincrypt/nf-wincrypt-certopensystemstorew)
 

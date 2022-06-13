@@ -1,6 +1,6 @@
 # `fossa-deps`
 
-Fossa-deps file is a file named `fossa-deps.{yaml, yml, json}` at the root of the project. It can be used to provide manual and vendor dependencies. 
+`fossa-deps` file is a file named `fossa-deps.{yaml, yml, json}` at the root of the project. It can be used to provide manual and vendor dependencies. 
 
 ## Fields
 

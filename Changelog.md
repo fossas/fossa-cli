@@ -169,7 +169,7 @@ Please read for details on telemetry [here](./docs/telemetry.md)
 
 ## v3.1.0
 
-- Fossa API: Uses `SSL_CERT_FILE`, and `SSL_CERT_DIR` environment variable for certificates when provided. ([#760](https://github.com/fossas/fossa-cli/pull/760))
+- FOSSA API: Uses `SSL_CERT_FILE`, and `SSL_CERT_DIR` environment variable for certificates when provided. ([#760](https://github.com/fossas/fossa-cli/pull/760))
 - UX: Uses error messages received from FOSSA api, when reporting API related errors. ([#792](https://github.com/fossas/fossa-cli/pull/792))
 - UX: Adds scan summary tabulating errors, warnings, project directory, and skipped projects. ([#790](https://github.com/fossas/fossa-cli/pull/790))
 
@@ -1129,7 +1129,7 @@ specify pre-1.0.0 behavior. Here is how `fossa` <1.0.0 releases work:
 - e26421e28 fix (gradle parser) bug related to windows line endings (#421)
 - 75994dadf fix (windows script) add a correct download script for windows users to the cli manual (#422)
 - cbd0f751a testing and comment logic (#420)
-- 2a2a23f14 fix (report dependencies) Change report dependencies to track Fossa.com results (#419)
+- 2a2a23f14 fix (report dependencies) Change report dependencies to track fossa.com results (#419)
 - fa135e191 feat (test pass) add the --supress-issues flag to fossa test (#418)
 - f6660fb91 fix (raw modules) prevent modules from appearing as projects (#416)
 - 2068b2d8f fix (manual links) broken links on the cli manual (#415)

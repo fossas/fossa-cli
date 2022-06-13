@@ -239,21 +239,21 @@ tarResolver =
 
 -- | The file resolver supports local "file:" references on disk
 --
--- Fossa cannot handle these, so we don't do any further parsing of the
+-- FOSSA cannot handle these, so we don't do any further parsing of the
 -- resolution field
 fileResolver :: Resolver
 fileResolver = unsupportedResolver "FileResolver" "file:" FilePackage
 
 -- | The link resolver is similar to the file resolver
 --
--- Fossa cannot handle these, so we don't do any further parsing of the
+-- FOSSA cannot handle these, so we don't do any further parsing of the
 -- resolution field
 linkResolver :: Resolver
 linkResolver = unsupportedResolver "LinkResolver" "link:" LinkPackage
 
 -- | The portal resolver is similar to the link resolver
 --
--- Fossa cannot handle these, so we don't do any further parsing of the
+-- FOSSA cannot handle these, so we don't do any further parsing of the
 -- resolution field
 portalResolver :: Resolver
 portalResolver = unsupportedResolver "PortalResolver" "portal:" PortalPackage
@@ -261,7 +261,7 @@ portalResolver = unsupportedResolver "PortalResolver" "portal:" PortalPackage
 -- | The exec resolver allows you to point to a script to run; the output of the
 -- script is used as a package
 --
--- Fossa cannot handle these, so we don't do any further parsing of the
+-- FOSSA cannot handle these, so we don't do any further parsing of the
 -- resolution field
 execResolver :: Resolver
 execResolver = unsupportedResolver "ExecResolver" "exec:" ExecPackage

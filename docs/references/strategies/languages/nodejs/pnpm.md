@@ -92,7 +92,7 @@ packages:
 ```
 
 * If the dependency was resolved using git (`resolution` will have `type: git` attribute),
-Fossa will use provided `repo` and `commit` attribute to analyze this dependency.
+FOSSA will use provided `repo` and `commit` attribute to analyze this dependency.
 
 ```yaml
     # FOSSA will use `commit` and `repo` to analyze the this dependency.
@@ -105,7 +105,7 @@ Fossa will use provided `repo` and `commit` attribute to analyze this dependency
 ```
 
 * If the dependency was resolved using tarball (`resolution` will have `tarball` attribute) 
-Fossa will use provided URL address to download and analyze this dependency.
+FOSSA will use provided URL address to download and analyze this dependency.
 
 ```yaml
     # FOSSA will analyze lodash from the tarball URL.
@@ -118,7 +118,7 @@ Fossa will use provided URL address to download and analyze this dependency.
 ```
 
 * If the dependency was resolved using the local directory (`resolution` will have the `type: directory` attribute),
-Fossa will not analyze this dependency. Local dependency's deep dependencies will be analyzed, 
+FOSSA will not analyze this dependency. Local dependency's deep dependencies will be analyzed, 
 and they will be promoted in place of local dependency. 
 
 ```yaml
@@ -136,7 +136,7 @@ and they will be promoted in place of local dependency.
         dev: false
 ```
 
-* If the dependency was resolved using registry resolver, Fossa will use the registry to analyze the dependency. 
+* If the dependency was resolved using registry resolver, FOSSA will use the registry to analyze the dependency. 
 CLI will infer the package name and version using `/${dependencyName}/${dependencyVersion}` scheme from the package's key.
 
 ```yaml

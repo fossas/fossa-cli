@@ -361,7 +361,7 @@ print_deprecation_warning() {
   log_crit "You are installing FOSSA CLI v1, which is no longer in active"
 	log_crit "development. FOSSA will not address new defects found in CLI v1."  
   log_crit ""
-  log_crit "Please upgrade to the latest Fossa CLI."
+  log_crit "Please upgrade to the latest FOSSA CLI."
   log_crit ""
   log_crit "Please upgrade to FOSSA CLI v3 by using install-latest script"
   log_crit "-------------------------------------------------------------" 
