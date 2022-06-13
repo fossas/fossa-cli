@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Types (
+  ArchiveUploadType (..),
   DiscoveredProject (..),
   DependencyResults (..),
   GraphBreadth (..),
@@ -23,6 +24,7 @@ import Data.Aeson (
   genericToEncoding,
   object,
   withObject,
+  withText,
   (.:),
   (.:?),
  )
@@ -269,3 +271,17 @@ instance ToJSON LicenseResult where
       [ "filepath" .= licenseFile
       , "licenses" .= licensesFound
       ]
+
+data ArchiveUploadType
+  = ArchiveUpload
+  | CLILicenseScan
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ArchiveUploadType where
+  parseJSON = withText "ArchiveUploadType" $ \case
+    "ArchiveUpload" -> pure ArchiveUpload
+    "CLILicenseScan" -> pure CLILicenseScan
+    notSupported -> fail . toString $ "Expected either: 'ArchiveUpload' or 'CLILicenseScan' for scanType. You provided: " <> notSupported
+
+instance ToJSON ArchiveUploadType where
+  toJSON = toJSON . show

@@ -13,6 +13,7 @@ module App.Fossa.Config.ConfigFile (
   ConfigTelemetryScope (..),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
+  VendoredDependencyConfigs (..),
   mergeFileCmdMetadata,
   empty,
   resolveLocalConfigFile,
@@ -66,7 +67,7 @@ import Path (
   parseSomeFile,
   (</>),
  )
-import Types (TargetFilter)
+import Types (ArchiveUploadType, TargetFilter)
 
 defaultConfigFileNames :: [Path Rel File]
 defaultConfigFileNames =
@@ -169,7 +170,7 @@ mergeFileCmdMetadata meta file =
     }
 
 empty :: ConfigFile
-empty = ConfigFile 3 Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+empty = ConfigFile 3 Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
 data ConfigFile = ConfigFile
   { configVersion :: Int
@@ -180,6 +181,7 @@ data ConfigFile = ConfigFile
   , configTargets :: Maybe ConfigTargets
   , configPaths :: Maybe ConfigPaths
   , configExperimental :: Maybe ExperimentalConfigs
+  , configVendoredDependencies :: Maybe VendoredDependencyConfigs
   , configTelemetry :: Maybe ConfigTelemetry
   }
   deriving (Eq, Ord, Show)
@@ -242,6 +244,7 @@ instance FromJSON ConfigFile where
       <*> obj .:? "targets"
       <*> obj .:? "paths"
       <*> obj .:? "experimental"
+      <*> obj .:? "vendoredDependencies"
       <*> obj .:? "telemetry"
 
 instance FromJSON ConfigProject where
@@ -288,3 +291,14 @@ instance FromJSON ConfigTelemetryScope where
       "full" -> pure FullTelemetry
       "off" -> pure NoTelemetry
       notSupported -> fail . toString $ "Expected either: 'full' or 'off' for telemetry scope. You provided: " <> notSupported
+
+data VendoredDependencyConfigs = VendoredDependencyConfigs
+  { configForceRescans :: Bool
+  , configLicenseScanMethod :: Maybe ArchiveUploadType
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON VendoredDependencyConfigs where
+  parseJSON = withObject "vendoredDependencies" $ \obj ->
+    VendoredDependencyConfigs <$> (obj .:? "forceRescans" .!= False)
+      <*> (obj .:? "scanMethod")

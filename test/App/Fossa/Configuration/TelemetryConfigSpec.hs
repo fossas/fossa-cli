@@ -59,6 +59,7 @@ defaultConfigFile =
     , configTargets = Nothing
     , configPaths = Nothing
     , configExperimental = Nothing
+    , configVendoredDependencies = Nothing
     , configTelemetry = Nothing
     }
 

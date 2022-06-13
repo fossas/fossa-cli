@@ -2,6 +2,7 @@ module App.Fossa.ManualDepsSpec (
   spec,
 ) where
 
+import App.Fossa.Config.Analyze (VendoredDependencyOptions (..))
 import App.Fossa.ManualDeps (
   CustomDependency (CustomDependency),
   DependencyMetadata (DependencyMetadata),
@@ -9,14 +10,20 @@ import App.Fossa.ManualDeps (
   ReferencedDependency (ReferencedDependency),
   RemoteDependency (RemoteDependency),
   VendoredDependency (VendoredDependency),
+  getScanCfg,
  )
+import App.Fossa.VendoredDependency (VendoredDependencyScanMode (..))
 import Control.Effect.Exception (displayException)
 import Data.Aeson qualified as Json
 import Data.ByteString qualified as BS
 import Data.Yaml qualified as Yaml
 import DepTypes (DepType (..))
+import Fossa.API.Types (Organization (..))
+import Test.Effect (expectFatal', it', shouldBe')
+import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe, shouldContain)
 import Test.Hspec.Core.Spec (SpecM)
+import Types (ArchiveUploadType (..))
 
 getTestDataFile :: String -> SpecM a BS.ByteString
 getTestDataFile name = runIO . BS.readFile $ "test/App/Fossa/testdata/" <> name
@@ -69,3 +76,42 @@ spec = do
     licenseInRefDepBS <- getTestDataFile "license-in-ref-dep.yml"
     it "should report license used on referenced deps" $
       exceptionContains licenseInRefDepBS "Invalid field name for referenced dependencies: license"
+
+  describe "getScanCfg" $ do
+    it' "should fail if you try to force a license scan but the FOSSA server does not support it" $ do
+      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Just CLILicenseScan}
+          org = Fixtures.organization{orgCoreSupportsLocalLicenseScan = False}
+      expectFatal' $ getScanCfg org opts
+
+    it' "should do a license scan if requested and FOSSA supports it" $ do
+      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Just CLILicenseScan}
+      (uploadType, scanMode) <- getScanCfg Fixtures.organization opts
+      (uploadType, scanMode) `shouldBe'` (CLILicenseScan, SkipPreviouslyScanned)
+
+    it' "should do a license scan if they are the default and no flags are passed" $ do
+      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Nothing}
+      (uploadType, scanMode) <- getScanCfg Fixtures.organization opts
+      (uploadType, scanMode) `shouldBe'` (CLILicenseScan, SkipPreviouslyScanned)
+
+    it' "should force a license scan rebuild if forceRescans is True" $ do
+      let opts = VendoredDependencyOptions{forceRescans = True, licenseScanMethod = Nothing}
+      (uploadType, scanMode) <- getScanCfg Fixtures.organization opts
+      (uploadType, scanMode) `shouldBe'` (CLILicenseScan, SkippingDisabledViaFlag)
+
+    it' "should not skip if the server does not support the analyzed revisions query" $ do
+      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Nothing}
+          org = Fixtures.organization{orgSupportsAnalyzedRevisionsQuery = False}
+      (uploadType, scanMode) <- getScanCfg org opts
+      (uploadType, scanMode) `shouldBe'` (CLILicenseScan, SkippingNotSupported)
+
+    it' "should do an archive upload if they are the default and no flags are passed" $ do
+      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Nothing}
+          org = Fixtures.organization{orgDefaultVendoredDependencyScanType = ArchiveUpload}
+      (uploadType, scanMode) <- getScanCfg org opts
+      (uploadType, scanMode) `shouldBe'` (ArchiveUpload, SkipPreviouslyScanned)
+
+    it' "should do an archive upload if requested and CLI license scan is the default" $ do
+      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Just ArchiveUpload}
+          org = Fixtures.organization{orgDefaultVendoredDependencyScanType = ArchiveUpload}
+      (uploadType, scanMode) <- getScanCfg org opts
+      (uploadType, scanMode) `shouldBe'` (ArchiveUpload, SkipPreviouslyScanned)

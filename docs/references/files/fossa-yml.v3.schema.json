@@ -259,11 +259,36 @@
                         "configurations-only": {
                             "type": "array",
                             "description": "Configurations to only include in analysis (by default excludes any other configurations not listed)",
-                            "items": {"type": "string"},
+                            "items": {
+                                "type": "string"
+                            },
                             "minItems": 1,
-                            "uniqueItems": true 
+                            "uniqueItems": true
                         }
                     }
+                }
+            }
+        },
+        "vendoredDependencies": {
+            "type": "object",
+            "description": "the vendoredDependencies fields allow you to configure vendored dependency scans. Vendored dependency scans are described in https://github.com/fossas/fossa-cli/blob/master/docs/features/vendored-dependencies.md",
+            "properties": {
+                "forceRescans": {
+                    "type": "boolean",
+                    "description": "If true, forces a re-scan of all vendored dependencies on every run. If false or not present, then we do not re-scan vendored dependencies that have been previously scanned. A vendored dependency has been previously scanned if a dependency with the same name and version has already been scanned by your organization. If no version is provided, then any change in the files being scanned will result in a rescan."
+                },
+                "scanMethod": {
+                    "type": "string",
+                    "oneOf": [
+                        {
+                            "const": "ArchiveUpload",
+                            "description": "Vendored dependencies are scanned by the \"Archive Upload\" method, as described in https://github.com/fossas/fossa-cli/blob/master/docs/features/vendored-dependencies.md"
+                        },
+                        {
+                            "const": "CLILicenseScan",
+                            "description": "Vendored dependencies are scanned by the \"CLI-side license scan\" method, as described in https://github.com/fossas/fossa-cli/blob/master/docs/features/vendored-dependencies.md"
+                        }
+                    ]
                 }
             }
         }
@@ -290,6 +315,9 @@
         },
         "telemetry": {
             "$ref": "#/$defs/telemetry"
+        },
+        "vendoredDependencies": {
+            "$ref": "#/$defs/vendoredDependencies"
         },
         "revision": {
             "type": "array",

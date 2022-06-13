@@ -66,6 +66,7 @@ import Prettyprinter (
 import Srclib.Types (Locator, parseLocator)
 import Text.URI (URI, render)
 import Text.URI.QQ (uri)
+import Types (ArchiveUploadType (..))
 import Unsafe.Coerce qualified as Unsafe
 
 newtype ApiKey = ApiKey {unApiKey :: Text}
@@ -287,8 +288,9 @@ instance Show OrgId where
 data Organization = Organization
   { organizationId :: OrgId
   , orgUsesSAML :: Bool
-  , orgDoLocalLicenseScan :: Bool
+  , orgCoreSupportsLocalLicenseScan :: Bool
   , orgSupportsAnalyzedRevisionsQuery :: Bool
+  , orgDefaultVendoredDependencyScanType :: ArchiveUploadType
   }
   deriving (Eq, Ord, Show)
 
@@ -298,6 +300,7 @@ instance FromJSON Organization where
       <*> obj .:? "usesSAML" .!= False
       <*> obj .:? "supportsCliLicenseScanning" .!= False
       <*> obj .:? "supportsAnalyzedRevisionsQuery" .!= False
+      <*> obj .:? "defaultVendoredDependencyScanType" .!= CLILicenseScan
 
 data Project = Project
   { projectId :: Text

@@ -57,7 +57,7 @@ import Srclib.Types (
  )
 import System.Directory (getTemporaryDirectory)
 import Text.URI.QQ (uri)
-import Types (GraphBreadth (..))
+import Types (ArchiveUploadType (..), GraphBreadth (..))
 
 apiOpts :: API.ApiOpts
 apiOpts =
@@ -68,7 +68,7 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True False True
+organization = API.Organization (API.OrgId 42) True True True CLILicenseScan
 
 project :: API.Project
 project =

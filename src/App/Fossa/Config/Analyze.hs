@@ -17,6 +17,7 @@ module App.Fossa.Config.Analyze (
   ScanDestination (..),
   StandardAnalyzeConfig (..),
   UnpackArchives (..),
+  VendoredDependencyOptions (..),
   VSIAnalysis (..),
   VSIModeOptions (..),
   mkSubCommand,
@@ -47,6 +48,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigTelemetryScope (NoTelemetry),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
+  VendoredDependencyConfigs (..),
   mergeFileCmdMetadata,
   resolveConfigFile,
  )
@@ -68,7 +70,7 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Lift (Lift)
 import Control.Monad (when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
-import Data.Flag (Flag, flagOpt)
+import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Maybe (isJust)
 import Data.Monoid.Extra (isMempty)
 import Data.Set (Set)
@@ -105,7 +107,7 @@ import Options.Applicative (
  )
 import Path (Abs, Dir, File, Path, Rel)
 import System.Info qualified as SysInfo
-import Types (TargetFilter)
+import Types (ArchiveUploadType (..), TargetFilter)
 
 -- CLI flags, for use with 'Data.Flag'
 data AllowNativeLicenseScan = AllowNativeLicenseScan deriving (Generic)
@@ -157,6 +159,15 @@ data VSIModeOptions = VSIModeOptions
 instance ToJSON VSIModeOptions where
   toEncoding = genericToEncoding defaultOptions
 
+data VendoredDependencyOptions = VendoredDependencyOptions
+  { forceRescans :: Bool
+  , licenseScanMethod :: Maybe ArchiveUploadType
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON VendoredDependencyOptions where
+  toEncoding = genericToEncoding defaultOptions
+
 data AnalyzeCliOpts = AnalyzeCliOpts
   { commons :: CommonOpts
   , analyzeOutput :: Bool
@@ -165,6 +176,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeIncludeAllDeps :: Flag IncludeAll
   , analyzeNoDiscoveryExclusion :: Flag NoDiscoveryExclusion
   , analyzeAllowNativeLicenseScan :: Flag AllowNativeLicenseScan
+  , analyzeForceVendoredDependencyMode :: Maybe ArchiveUploadType
   , analyzeForceVendoredDependencyRescans :: Flag ForceVendoredDependencyRescans
   , analyzeBranch :: Maybe Text
   , analyzeMetadata :: ProjectMetadata
@@ -221,12 +233,11 @@ data StandardAnalyzeConfig = StandardAnalyzeConfig
   , vsiOptions :: VSIModeOptions
   , filterSet :: AllFilters
   , experimental :: ExperimentalAnalyzeConfig
+  , vendoredDeps :: VendoredDependencyOptions
   , unpackArchives :: Flag UnpackArchives
   , jsonOutput :: Flag JsonOutput
   , includeAllDeps :: Flag IncludeAll
   , noDiscoveryExclusion :: Flag NoDiscoveryExclusion
-  , allowNativeLicenseScan :: Flag AllowNativeLicenseScan
-  , forceVendoredDependencyRescans :: Flag ForceVendoredDependencyRescans
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -256,9 +267,10 @@ cliParser =
     <*> flagOpt JsonOutput (long "json" <> help "Output project metadata as json to the console. Useful for communicating with the FOSSA API")
     <*> flagOpt IncludeAll (long "include-unused-deps" <> help "Include all deps found, instead of filtering non-production deps.  Ignored by VSI.")
     <*> flagOpt NoDiscoveryExclusion (long "debug-no-discovery-exclusion" <> help "Ignore filters during discovery phase.  This is for debugging only and may be removed without warning." <> hidden)
-    -- Intentionally hidden until some critical bugs are addressed
+    -- AllowNativeLicenseScan is no longer used, but we're keeping it in so we don't cause scans to blow up for customers who are still using it
     <*> flagOpt AllowNativeLicenseScan (long "experimental-native-license-scan" <> hidden)
-    <*> flagOpt ForceVendoredDependencyRescans (long "force-vendored-dependency-rescans" <> help "Force vendored dependencies to be rescanned even if the revision has been previously analyzed by FOSSA." <> hidden)
+    <*> optional vendoredDependencyModeOpt
+    <*> flagOpt ForceVendoredDependencyRescans (long "force-vendored-dependency-rescans" <> help "Force vendored dependencies to be rescanned even if the revision has been previously analyzed by FOSSA. This currently only works for CLI-side license scans.")
     <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
     <*> metadataOpts
     <*> many (option (eitherReader targetOpt) (long "only-target" <> help "Only scan these targets. See targets.only in the fossa.yml spec." <> metavar "PATH"))
@@ -272,6 +284,15 @@ cliParser =
     <*> many skipVSIGraphResolutionOpt
     <*> monorepoOpts
     <*> baseDirArg
+
+vendoredDependencyModeOpt :: Parser ArchiveUploadType
+vendoredDependencyModeOpt = option (eitherReader parseType) (long "force-vendored-dependency-scan-method" <> metavar "METHOD" <> help "Force the vendored dependency scan method. The options are 'CLILicenseScan' or 'ArchiveUpload'. 'CLILicenseScan' is usually the default unless your organization has overridden this.")
+  where
+    parseType :: String -> Either String ArchiveUploadType
+    parseType = \case
+      "ArchiveUpload" -> Right ArchiveUpload
+      "CLILicenseScan" -> Right CLILicenseScan
+      val -> Left ("must be either 'CLILicenseScan' or 'ArchiveUpload'. Found " <> val)
 
 vsiEnableOpt :: Parser (Flag VSIAnalysis)
 vsiEnableOpt = visible <|> legacy
@@ -390,6 +411,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       modeOpts = collectModeOptions cliOpts
       filters = collectFilters maybeConfig cliOpts
       experimentalCfgs = collectExperimental maybeConfig
+      vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
 
   StandardAnalyzeConfig
     <$> basedir
@@ -399,12 +421,11 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> modeOpts
     <*> filters
     <*> pure experimentalCfgs
+    <*> vendoredDepsOptions
     <*> pure analyzeUnpackArchives
     <*> pure analyzeJsonOutput
     <*> pure analyzeIncludeAllDeps
     <*> pure analyzeNoDiscoveryExclusion
-    <*> pure analyzeAllowNativeLicenseScan
-    <*> pure analyzeForceVendoredDependencyRescans
 
 collectFilters ::
   ( Has Diagnostics sig m
@@ -447,6 +468,31 @@ collectExperimental maybeCfg =
     fmap
       gradleConfigsOnly
       (maybeCfg >>= configExperimental >>= gradle)
+
+collectVendoredDeps ::
+  ( Has Diagnostics sig m
+  ) =>
+  Maybe ConfigFile ->
+  AnalyzeCliOpts ->
+  m VendoredDependencyOptions
+collectVendoredDeps maybeCfg cliOpts = do
+  let (forceRescansFromFlags, scanTypeFromFlags) = collectVendoredDepsFromFlags cliOpts
+      (forceRescansFromConfig, scanTypeFromConfig) = collectVendoredDepsFromConfig maybeCfg
+  pure $ VendoredDependencyOptions (forceRescansFromFlags || forceRescansFromConfig) (scanTypeFromFlags <|> scanTypeFromConfig)
+
+collectVendoredDepsFromFlags ::
+  AnalyzeCliOpts ->
+  (Bool, Maybe ArchiveUploadType)
+collectVendoredDepsFromFlags AnalyzeCliOpts{..} = do
+  let forceRescans = fromFlag ForceVendoredDependencyRescans analyzeForceVendoredDependencyRescans
+      scanType = analyzeForceVendoredDependencyMode
+  (forceRescans, scanType)
+
+collectVendoredDepsFromConfig :: Maybe ConfigFile -> (Bool, Maybe ArchiveUploadType)
+collectVendoredDepsFromConfig maybeCfg =
+  let forceRescans = maybe False configForceRescans (maybeCfg >>= configVendoredDependencies)
+      defaultScanType = maybeCfg >>= configVendoredDependencies >>= configLicenseScanMethod
+   in (forceRescans, defaultScanType)
 
 collectScanDestination ::
   ( Has Diagnostics sig m
