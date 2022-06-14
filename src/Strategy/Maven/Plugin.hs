@@ -20,7 +20,7 @@ import Control.Effect.Lift (sendIO)
 import Data.Aeson
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
-import Data.FileEmbed.Extra (embedFileL)
+import Data.FileEmbed.Extra (embedFile')
 import Data.Functor (void)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -44,7 +44,7 @@ depGraphPlugin =
     { group = "com.github.ferstl"
     , artifact = "depgraph-maven-plugin"
     , version = "4.0.1"
-    , jar = $(embedFileL "scripts/depgraph-maven-plugin-4.0.1.jar")
+    , jar = $(embedFile' "scripts/depgraph-maven-plugin-4.0.1.jar")
     }
 
 depGraphPluginLegacy :: DepGraphPlugin
@@ -53,7 +53,7 @@ depGraphPluginLegacy =
     { group = "com.github.ferstl"
     , artifact = "depgraph-maven-plugin"
     , version = "3.3.0"
-    , jar = $(embedFileL "scripts/depgraph-maven-plugin-3.3.0.jar")
+    , jar = $(embedFile' "scripts/depgraph-maven-plugin-3.3.0.jar")
     }
 
 withUnpackedPlugin ::

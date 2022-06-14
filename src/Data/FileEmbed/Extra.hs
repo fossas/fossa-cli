@@ -1,5 +1,5 @@
 module Data.FileEmbed.Extra (
-  embedFileL,
+  embedFile',
   embedFileIfExists,
 ) where
 
@@ -25,7 +25,7 @@ embedFileIfExists inputPath = do
     (_, Just path) -> do
       exists <- doesFileExist path
       if exists
-        then embedFile inputPath
+        then embedFile' inputPath
         else do
           reportWarning $ "File " <> inputPath <> " not found"
           pure (LitE $ StringL "")
@@ -33,8 +33,8 @@ embedFileIfExists inputPath = do
 
 -- | Like `embedFile`, but prints out debug logging when
 -- @FOSSA_DEBUG_EMBED_FILE@ is set.
-embedFileL :: FilePath -> Q Exp
-embedFileL fp = do
+embedFile' :: FilePath -> Q Exp
+embedFile' fp = do
   _ <- runIO logEmbedFile
   embedFile fp
   where
