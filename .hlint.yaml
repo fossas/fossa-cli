@@ -10,7 +10,7 @@
   - {name: Data.Map.Strict, as: Map, message: "Use complete name for qualified import of Strict Map"}
   - {name: Data.Text, as: Text, message: "Use complete name for qualified import of Text"}
   # Don't allow unsafe IO
-  - {name: System.IO.Unsafe, within: [Data.FileEmbed.Extra]}
+  - {name: System.IO.Unsafe, within: []}
   # Arrows are more complicated than the problem they solve
   - {name: Control.Arrow, within: []}
 
