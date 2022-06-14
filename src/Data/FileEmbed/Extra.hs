@@ -34,9 +34,7 @@ embedFileIfExists inputPath = do
 -- | Like `embedFile`, but prints out debug logging when
 -- @FOSSA_DEBUG_EMBED_FILE@ is set.
 embedFile' :: FilePath -> Q Exp
-embedFile' fp = do
-  _ <- runIO logEmbedFile
-  embedFile fp
+embedFile' fp = runIO logEmbedFile *> embedFile fp
   where
     logEmbedFile :: IO (Either IOError ())
     logEmbedFile = do
@@ -50,6 +48,8 @@ embedFile' fp = do
           let isRel = isRelative fp
           putStrLn $ "Relative?: " <> show isRel
 
+          -- `tail` is safe here because `iterate` returns an infinite list and
+          -- therefore must always have at least 1 element.
           let dirs = take (length (splitPath fp) - if isRel then 0 else 1) $ tail $ iterate takeDirectory fp
           traverse_ ls dirs
 
