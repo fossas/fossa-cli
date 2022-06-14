@@ -22,20 +22,17 @@ versionNumber = $$(getCurrentTag)
 info :: Either String GitInfo
 info = $$(tGitInfoCwdTry)
 
-fromRight' :: v -> (r -> v) -> Either l r -> v
-fromRight' v = either (const v)
-
 currentBranch :: Text
-currentBranch = toText $ fromRight' "unknown" giBranch info
+currentBranch = toText $ either (const "unknown") giBranch info
 
 currentCommit :: Text
-currentCommit = toText $ fromRight' "unknown" giHash info
+currentCommit = toText $ either (const "unknown") giHash info
 
 shortCommit :: Text
 shortCommit = Text.take 12 currentCommit
 
 isDirty :: Bool
-isDirty = fromRight' False giDirty info
+isDirty = either (const False) giDirty info
 
 compilerId :: Text
 compilerId = name <> "-" <> version
