@@ -64,7 +64,7 @@ jobs:
     container: ghcr.io/fossas/haskell-dev-tools:9.0.2
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     # Run `cabal install`.
     - uses: actions/cache@v2
@@ -79,5 +79,6 @@ jobs:
 
     - name: Run `cabal install`
       run: |
+        apk add xz-dev bzip2-dev bzip2-static
         cabal update
         cabal install
