@@ -79,4 +79,5 @@ jobs:
 
     - name: Run `cabal install`
       run: |
+        cabal update
         cabal install
