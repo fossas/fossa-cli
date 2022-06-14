@@ -37,7 +37,7 @@ import Data.Aeson (ToJSON)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
-import Data.FileEmbed (embedFile)
+import Data.FileEmbed.Extra (embedFileL)
 import Data.Foldable (find, traverse_)
 import Data.List (isPrefixOf)
 import Data.Maybe (mapMaybe)
@@ -261,7 +261,7 @@ getDeps targets project = context "Gradle" $ do
 
 -- See the release process to see how this script gets vendored.
 initScript :: ByteString
-initScript = $(embedFile "scripts/jsondeps.gradle")
+initScript = $(embedFileL "scripts/jsondeps.gradle")
 
 -- During analysis, we unpack the Gradle init script, run it, and parse the
 -- output.
