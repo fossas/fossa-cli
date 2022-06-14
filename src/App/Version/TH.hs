@@ -1,4 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
+-- We disable overlapping-patterns in this module to handle the case statement
+-- in `getCurrentTag`. GHC always thinks one of the two cases is redundant
+-- because `tGitInfoCwdTry` is compiled by Template Haskell into a concrete
+-- Right or Left. However, both branches are needed to handle different
+-- compilation environments.
+{-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
 module App.Version.TH (
   getCurrentTag,

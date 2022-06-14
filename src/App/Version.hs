@@ -26,10 +26,10 @@ fromRight' :: v -> (r -> v) -> Either l r -> v
 fromRight' v = either (const v)
 
 currentBranch :: Text
-currentBranch = toText $ fromRight' "unknown branch" giBranch info
+currentBranch = toText $ fromRight' "unknown" giBranch info
 
 currentCommit :: Text
-currentCommit = toText $ fromRight' "unknown commit" giHash info
+currentCommit = toText $ fromRight' "unknown" giHash info
 
 shortCommit :: Text
 shortCommit = Text.take 12 currentCommit
