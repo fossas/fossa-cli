@@ -1,6 +1,6 @@
 ### License scanning local dependencies
 
-Fossa offers the ability to license scan your code directly. This is used primarily if a package manager is not yet supported or if you are vendoring dependencies. Using the license scanning feature will allow you to capture the licenses for dependencies that may otherwise be missed from normal fossa analysis that relies on package manager information.
+FOSSA offers the ability to license scan your code directly. This is used primarily if a package manager is not yet supported or if you are vendoring dependencies. Using the license scanning feature will allow you to capture the licenses for dependencies that may otherwise be missed from normal fossa analysis that relies on package manager information.
 
 In order to specify a file path, modify your `fossa-deps.yml` file and add a `vendored-dependencies` section like the following:
 

@@ -1,9 +1,9 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Maven.Plugin (
   withUnpackedPlugin,
   installPlugin,
-  execPlugin,
   parsePluginOutput,
   depGraphPlugin,
   depGraphPluginLegacy,
@@ -11,23 +11,56 @@ module Strategy.Maven.Plugin (
   DepGraphPlugin (..),
   Edge (..),
   PluginOutput (..),
+  ReactorOutput (..),
+  ReactorArtifact (..),
+  parseReactorOutput,
+  textArtifactToPluginOutput,
+  execPluginAggregate,
+  execPluginReactor,
 ) where
 
-import Control.Algebra
-import Control.Effect.Diagnostics
-import Control.Effect.Exception
+import Control.Algebra (Has)
+import Control.Effect.Diagnostics (Diagnostics, warn)
+import Control.Effect.Exception (Lift, bracket)
 import Control.Effect.Lift (sendIO)
-import Data.Aeson
+import Control.Monad (when)
+import Data.Aeson (FromJSON, parseJSON, withObject, (.!=), (.:), (.:?))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.FileEmbed.Extra (embedFile')
+import Data.Foldable (Foldable (fold), foldl')
 import Data.Functor (void)
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.Maybe (catMaybes, isNothing)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Effect.Exec
-import Effect.ReadFS
-import Path
+import Data.Traversable (for)
+import Data.Tree (Tree (..))
+import Effect.Exec (
+  AllowErr (Never),
+  Command (..),
+  Exec,
+  execThrow,
+ )
+import Effect.ReadFS (
+  ReadFS,
+  readContentsJson,
+  readContentsParser,
+ )
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  fromAbsDir,
+  mkRelDir,
+  mkRelFile,
+  (</>),
+ )
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
+import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
 import System.FilePath qualified as FP
 
 data DepGraphPlugin = DepGraphPlugin
@@ -77,14 +110,85 @@ withUnpackedPlugin plugin act =
 installPlugin :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> FP.FilePath -> DepGraphPlugin -> m ()
 installPlugin dir path plugin = void $ execThrow dir (mavenInstallPluginCmd path plugin)
 
-execPlugin :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
-execPlugin dir plugin = void $ execThrow dir $ mavenPluginDependenciesCmd plugin
+execPlugin :: (Has Exec sig m, Has Diagnostics sig m) => (DepGraphPlugin -> Command) -> Path Abs Dir -> DepGraphPlugin -> m ()
+execPlugin pluginToCmd dir plugin = void $ execThrow dir $ pluginToCmd plugin
+
+execPluginAggregate :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginAggregate = execPlugin mavenPluginDependenciesCmd
+
+execPluginReactor :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginReactor = execPlugin mavenPluginReactorCmd
 
 outputFile :: Path Rel File
-outputFile = $(mkRelFile "target/dependency-graph.json")
+outputFile = $(mkRelFile "target/dependency-graph.txt")
 
 parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m PluginOutput
-parsePluginOutput dir = readContentsJson (dir </> outputFile)
+parsePluginOutput dir =
+  readContentsParser parseTextArtifact (dir </> outputFile) >>= textArtifactToPluginOutput
+
+reactorOutputFilename :: Path Rel File
+reactorOutputFilename = $(mkRelFile "fossa-reactor-graph.json")
+
+parseReactorOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => (Path Abs Dir) -> m ReactorOutput
+parseReactorOutput dir = readContentsJson $ dir </> $(mkRelDir "target/") </> reactorOutputFilename
+
+textArtifactToPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m PluginOutput
+textArtifactToPluginOutput
+  ta = buildPluginOutput ta
+    where
+      artifactNames :: [Text]
+      artifactNames = foldl' (\a c -> (artifactText c : a)) mempty ta
+
+      namesToIds :: Map Text Int
+      namesToIds = Map.fromList . (\ns -> zip ns [0 ..]) $ artifactNames
+
+      textArtifactToArtifact :: Int -> TextArtifact -> Artifact
+      textArtifactToArtifact numericId TextArtifact{..} =
+        Artifact
+          { artifactNumericId = numericId
+          , artifactGroupId = groupId
+          , artifactArtifactId = artifactId
+          , artifactVersion = textArtifactVersion
+          , artifactScopes = scopes
+          , artifactOptional = isOptional
+          , artifactIsDirect = isDirect
+          }
+
+      lookupArtifactByName :: Has Diagnostics sig m => Text -> m (Maybe Int)
+      lookupArtifactByName aText = do
+        let res = Map.lookup aText namesToIds
+        when (isNothing res) $
+          warn $ "Could not find artifact with name " <> aText
+        pure res
+
+      buildEdges :: Has Diagnostics sig m => Int -> [Tree TextArtifact] -> m [Edge]
+      buildEdges parentId children =
+        catMaybes
+          <$> for
+            (map rootLabel children)
+            (\c -> fmap (Edge parentId) <$> lookupArtifactByName (artifactText c))
+
+      buildPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m PluginOutput
+      buildPluginOutput
+        (Node t@(TextArtifact{artifactText = aText}) aChildren) = do
+          maybeId <- lookupArtifactByName aText
+          childInfo@PluginOutput
+            { outArtifacts = cArtifacts
+            , outEdges = cEdges
+            } <-
+            fold <$> traverse buildPluginOutput aChildren
+          case maybeId of
+            Nothing -> do
+              warn ("Could not find id for artifact " <> aText)
+              pure childInfo
+            Just numericId -> do
+              let artifact = textArtifactToArtifact numericId t
+              newEdges <- buildEdges numericId aChildren
+              pure
+                childInfo
+                  { outArtifacts = artifact : cArtifacts
+                  , outEdges = newEdges <> cEdges
+                  }
 
 mavenInstallPluginCmd :: FP.FilePath -> DepGraphPlugin -> Command
 mavenInstallPluginCmd pluginFilePath plugin =
@@ -101,18 +205,59 @@ mavenInstallPluginCmd pluginFilePath plugin =
     , cmdAllowErr = Never
     }
 
+-- |The aggregate command is documented
+-- [here.](https://ferstl.github.io/depgraph-maven-plugin/aggregate-mojo.html)
 mavenPluginDependenciesCmd :: DepGraphPlugin -> Command
 mavenPluginDependenciesCmd plugin =
   Command
     { cmdName = "mvn"
     , cmdArgs =
         [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":aggregate"
-        , "-DgraphFormat=json"
-        , "-DmergeScopes"
-        , "-DreduceEdges=false"
+        , "-DgraphFormat=text"
+        , -- display deps that appear multiple times in different scopes as a single node
+          "-DmergeScopes"
+        , -- Don't omit edges for deps appearing in multiple places in the graph
+          "-DreduceEdges=false"
+        , "-DshowVersions=true"
+        , "-DshowGroupIds=true"
+        , -- Deps that are optional in the graph will be tagged optional in the cli's output
+          -- this does not exclude them from sourceUnits.
+          "-DshowOptional=true"
+        , -- Repeat transitive deps for packages that appear multiple times
+          "-DrepeatTransitiveDependenciesInTextGraph=true"
         ]
     , cmdAllowErr = Never
     }
+
+-- |The reactor command is documented
+-- [here.](https://ferstl.github.io/depgraph-maven-plugin/reactor-mojo.html)
+mavenPluginReactorCmd :: DepGraphPlugin -> Command
+mavenPluginReactorCmd plugin =
+  Command
+    { cmdName = "mvn"
+    , cmdArgs =
+        [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":reactor"
+        , "-DgraphFormat=json"
+        , "-DoutputFileName=" <> toText reactorOutputFilename
+        ]
+    , cmdAllowErr = Never
+    }
+
+newtype ReactorArtifact = ReactorArtifact
+  { reactorArtifactName :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ReactorArtifact where
+  parseJSON = withObject "Reactor artifact" $
+    \o -> ReactorArtifact <$> o .: "artifactId"
+
+newtype ReactorOutput = ReactorOutput {reactorArtifacts :: [ReactorArtifact]}
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ReactorOutput where
+  parseJSON = withObject "Reactor output" $
+    \o -> ReactorOutput <$> (o .:? "artifacts" .!= [])
 
 data PluginOutput = PluginOutput
   { outArtifacts :: [Artifact]
@@ -120,15 +265,27 @@ data PluginOutput = PluginOutput
   }
   deriving (Eq, Ord, Show)
 
--- NOTE: artifact numeric IDs are 1-indexed, whereas edge numeric references are 0-indexed.
--- the json parser for artifacts converts them to be 0-indexed.
+instance Semigroup PluginOutput where
+  PluginOutput
+    { outArtifacts = p1Arts
+    , outEdges = p1Edges
+    }
+    <> PluginOutput
+      { outArtifacts = p2Arts
+      , outEdges = p2Edges
+      } = PluginOutput (p1Arts <> p2Arts) (p1Edges <> p2Edges)
+
+instance Monoid PluginOutput where
+  mempty = PluginOutput [] []
+
 data Artifact = Artifact
   { artifactNumericId :: Int
   , artifactGroupId :: Text
   , artifactArtifactId :: Text
   , artifactVersion :: Text
-  , artifactOptional :: Bool
   , artifactScopes :: [Text]
+  , artifactOptional :: Bool
+  , artifactIsDirect :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -137,24 +294,3 @@ data Edge = Edge
   , edgeTo :: Int
   }
   deriving (Eq, Ord, Show)
-
-instance FromJSON PluginOutput where
-  parseJSON = withObject "PluginOutput" $ \obj ->
-    PluginOutput <$> obj .:? "artifacts" .!= []
-      <*> obj .:? "dependencies" .!= []
-
-instance FromJSON Artifact where
-  parseJSON = withObject "Artifact" $ \obj ->
-    Artifact <$> (offset <$> obj .: "numericId")
-      <*> obj .: "groupId"
-      <*> obj .: "artifactId"
-      <*> obj .: "version"
-      <*> obj .: "optional"
-      <*> obj .: "scopes"
-    where
-      offset = subtract 1
-
-instance FromJSON Edge where
-  parseJSON = withObject "Edge" $ \obj ->
-    Edge <$> obj .: "numericFrom"
-      <*> obj .: "numericTo"

@@ -28,6 +28,7 @@
 - ignore: {name: "Use toString", within: ["Data.String.Conversion"]}
 
 - suggest: {lhs: Data.List.foldl, rhs: Data.List.foldl'}
+- suggest: {lhs: Prelude.foldl, rhs: Data.List.foldl'}
 - suggest: {lhs: "(Data.Set.size x) == 0" , rhs: "Data.Set.null x"}
 - suggest: {lhs: "(Data.Set.size x) /= 0" , rhs: "not $ Data.Set.null x"}
 

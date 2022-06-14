@@ -5,7 +5,7 @@ do not need to be analyzed at all, and could be safely ignored.  We use the
 `--{only,exclude}-{path,target}` CLI arguments, or the
 `{targets,paths}.{only,exclude}:` config file values to avoid giving users
 information they don't care about, or to avoid doing work that will be thrown
-away.  This document expresses how that filter process works, and clarfies its
+away.  This document expresses how that filter process works, and clarifies its
 semantics and limitations.
 
 ## Shorthand

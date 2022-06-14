@@ -57,3 +57,12 @@ jobs:
     - name: "run cabal-fmt"
       run: |
         cabal-fmt --check spectrometer.cabal
+
+  common-verbiage-check:
+    name: "Check for correct spelling of FOSSA"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: "Check for incorrect FOSSA wording"
+        run: |
+          ! grep 'Fossa ' **/*.md

@@ -23,6 +23,7 @@ module Strategy.Erlang.ConfigParser (
 import Data.Aeson.Types (ToJSON (toJSON))
 import Data.Char qualified as C
 import Data.Functor (($>))
+import Data.List (foldl')
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -93,7 +94,7 @@ stringMatchesRadix rad str = do
 
 -- | Returns the 'raw' string parsed in base 'base'
 intLiteralInBase :: Int -> [Char] -> Int
-intLiteralInBase base = foldl accum 0
+intLiteralInBase base = foldl' accum 0
   where
     accum :: Int -> Char -> Int
     accum value c = value * base + alphaNumToInt c
