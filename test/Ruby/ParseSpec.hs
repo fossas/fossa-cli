@@ -11,7 +11,6 @@ import Test.Hspec (Spec, context, describe, it, shouldBe)
 import Text.Megaparsec (MonadParsec (eof), ParseErrorBundle, Parsec, runParser, takeWhile1P)
 import Text.RawString.QQ (r)
 
--- I'm not sure about these helpers. Get guidance on whether they help readability.
 shouldParse :: Parsec e s a -> s -> Either (ParseErrorBundle s e) a
 shouldParse parser = runParser parser ""
 

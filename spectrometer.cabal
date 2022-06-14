@@ -351,6 +351,7 @@ library
     Strategy.Maven.DepTree
     Strategy.Maven.Plugin
     Strategy.Maven.PluginStrategy
+    Strategy.Maven.PluginTree
     Strategy.Maven.Pom
     Strategy.Maven.Pom.Closure
     Strategy.Maven.Pom.PomFile
@@ -505,7 +506,9 @@ test-suite unit-tests
     Haskell.CabalSpec
     Haskell.StackSpec
     Maven.DepTreeSpec
+    Maven.PluginSpec
     Maven.PluginStrategySpec
+    Maven.PluginTreeSpec
     Maven.PomStrategySpec
     Nim.NimbleSpec
     Node.NodeSpec

@@ -82,3 +82,12 @@ jobs:
         apk add xz-dev bzip2-dev bzip2-static
         cabal update
         cabal install
+
+  common-verbiage-check:
+    name: "Check for correct spelling of FOSSA"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: "Check for incorrect FOSSA wording"
+        run: |
+          ! grep 'Fossa ' **/*.md
