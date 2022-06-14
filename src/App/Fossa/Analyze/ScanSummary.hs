@@ -18,7 +18,7 @@ import App.Version (fullVersionDescription)
 import Control.Carrier.Lift
 import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
 import Control.Monad (when)
-import Data.Foldable (traverse_)
+import Data.Foldable (foldl', traverse_)
 import Data.List (sort)
 import Data.Maybe (catMaybes, mapMaybe, maybeToList)
 import Data.Monoid.Extra (isMempty)
@@ -90,7 +90,7 @@ instance Monoid ScanCount where
   mempty = ScanCount 0 0 0 0 0
 
 getScanCount :: [DiscoveredProjectScan] -> ScanCount
-getScanCount = foldl countOf (ScanCount 0 0 0 0 0)
+getScanCount = foldl' countOf (ScanCount 0 0 0 0 0)
   where
     countOf :: ScanCount -> DiscoveredProjectScan -> ScanCount
     countOf tsc (SkippedDueToProvidedFilter _) = tsc{numProjects = numProjects tsc + 1, numSkipped = numSkipped tsc + 1}
