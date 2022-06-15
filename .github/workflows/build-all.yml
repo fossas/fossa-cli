@@ -145,6 +145,8 @@ jobs:
 
     - name: Check that version info was embedded correctly
       run: |
+        chmod +x Linux-binaries/fossa
+
         echo $GITHUB_REF_NAME
         echo $GITHUB_REF_TYPE
         echo $GITHUB_REF_SHA
