@@ -128,10 +128,22 @@ jobs:
       if: ${{ !contains(matrix.os, 'windows')}}
       run: |
         echo $(release/fossa --version)
+
         echo $GITHUB_REF_NAME
+        echo $GITHUB_REF_TYPE
+        if [ "$GITHUB_REF_TYPE" = "branch" ]; then
+          export VERSION_STRING="branch $GITHUB_REF_NAME"
+        elif [ "$GITHUB_REF_TYPE" = "tag" ]; then
+          export VERSION_STRING="version ${GITHUB_REF_NAME:1}"
+        else
+          echo "Unknown ref type: $GITHUB_REF_TYPE"
+          exit 1
+        fi
+
         echo $GITHUB_SHA
         echo ${GITHUB_SHA:0:12}
-        [ "$(release/fossa --version)" = "fossa-cli branch $GITHUB_REF_NAME (revision ${GITHUB_SHA:0:12} compiled with ghc-9.0)" ]
+
+        [ "$(release/fossa --version)" = "fossa-cli $VERSION_STRING (revision ${GITHUB_SHA:0:12} compiled with ghc-9.0)" ]
 
     - uses: actions/upload-artifact@v2
       with:
