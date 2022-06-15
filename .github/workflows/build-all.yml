@@ -127,6 +127,10 @@ jobs:
     - name: Check that version info was embedded correctly
       if: ${{ !contains(matrix.os, 'windows')}}
       run: |
+        echo $(release/fossa --version)
+        echo $GITHUB_REF_NAME
+        echo $GITHUB_SHA
+        echo ${GITHUB_SHA:0:12}
         [ "$(release/fossa --version)" = "fossa-cli branch $GITHUB_REF_NAME (revision ${GITHUB_SHA:0:12} compiled with ghc-9.0)" ]
 
     - uses: actions/upload-artifact@v2
