@@ -64,7 +64,7 @@ genCopyrightMap :: Gen (Map LicenseName CopyrightText)
 genCopyrightMap = do
   let genName = LicenseName <$> arbitraryText
   let genCopyright = CopyrightText <$> arbitraryText
-  Gen.map defaultRange $ tuplify genName genCopyright
+  Gen.map defaultRange $ tuplify genName $ Gen.list defaultRange genCopyright
 
 arbitraryText :: Gen Text
 arbitraryText = Gen.text (Range.linear 3 25) Gen.unicodeAll

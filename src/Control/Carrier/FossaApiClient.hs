@@ -14,7 +14,7 @@ import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift)
 import Fossa.API.Types (ApiOpts)
 
--- | A carrier to run Fossa API functions in the IO monad
+-- | A carrier to run FOSSA API functions in the IO monad
 type FossaApiClientC m = SimpleC FossaApiClientF (ReaderC ApiOpts m)
 
 -- | Runs FossaAPI effects as IO operations

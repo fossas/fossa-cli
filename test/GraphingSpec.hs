@@ -173,9 +173,17 @@ shrinkingSpec = context "Shrinking" $ do
           graph' :: Graphing Int
           graph' = Graphing.shrink (\x -> x /= 2 && x /= 3) graph
 
+          -- 1 -> 2 -> 3 -> 4
+          graph'' :: Graphing Int
+          graph'' = Graphing.shrink (/= 1) (Graphing.direct 1 <> Graphing.edges [(1, 2), (2, 3), (3, 4)])
+
       expectDirect [] graph'
       expectDeps [1, 4, 5] graph'
       expectEdges [(1, 4), (4, 5)] graph'
+
+      expectDirect [2] graph''
+      expectDeps [2, 3, 4] graph''
+      expectEdges [(2, 3), (3, 4)] graph''
 
   describe "shrinkWithoutPromotionToDirect" $ do
     it "should preserve set of direct nodes" $ do

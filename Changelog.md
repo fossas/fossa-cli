@@ -2,8 +2,18 @@
 
 ## Unreleased
 
-- Adds copyrightsByLicense field to the attribution report JSON output. [#966](https://github.com/fossas/fossa-cli/pull/966)
+- Changes copyrights field to copyrightsByLicense in the attribution report JSON output. [#966](https://github.com/fossas/fossa-cli/pull/966)
+
+## v3.3.6
+- Make CLI-side license scanning the default method of scanning vendored dependencies
+- Maven: Report direct dependencies as direct rather than deep. ([#963](https://github.com/fossas/fossa-cli/pull/963))
+
+## v3.3.5
+- Pnpm: Adds support for dependency analysis using `pnpm-lock.yaml` file. ([#958](https://github.com/fossas/fossa-cli/pull/958))
+
+## v3.3.4
 - Removes copyright information from attribution reports in the JSON output ([#945](https://github.com/fossas/fossa-cli/pull/945)) as it was never available from the server.
+- VSI scans now automatically skip the `.git` directory inside the scan root ([#969](https://github.com/fossas/fossa-cli/pull/969)).
 
 ## v3.3.3
 - Cocoapods: Cocoapods analyzer does not handle subspecs in vendored podspecs. ([#964](https://github.com/fossas/fossa-cli/pull/964/files)) 
@@ -11,7 +21,7 @@
 ## v3.3.2
 - CLI-side license scans will skip rescanning revisions that are already known to FOSSA. This can be overridden by using the `--force-vendored-dependency-rescans` flag.
 - Swift: Added support for `Package.resolved` v2 files ([#957](https://github.com/fossas/fossa-cli/pull/957)).
-- Perl: Updated version number parser to be more lenient on non-textual version numbers ([#960](https://github.com/fossas/fossa-cli/pull/960)) 
+- Perl: Updated version number parser to be more lenient on non-textual version numbers ([#960](https://github.com/fossas/fossa-cli/pull/960))
 
 ## v3.3.1
 - Vendor Dependencies: Considers `licence` and `license` equivalent when performing native license scan ([#939](https://github.com/fossas/fossa-cli/pull/939)).
@@ -164,7 +174,7 @@ Please read for details on telemetry [here](./docs/telemetry.md)
 
 ## v3.1.0
 
-- Fossa API: Uses `SSL_CERT_FILE`, and `SSL_CERT_DIR` environment variable for certificates when provided. ([#760](https://github.com/fossas/fossa-cli/pull/760))
+- FOSSA API: Uses `SSL_CERT_FILE`, and `SSL_CERT_DIR` environment variable for certificates when provided. ([#760](https://github.com/fossas/fossa-cli/pull/760))
 - UX: Uses error messages received from FOSSA api, when reporting API related errors. ([#792](https://github.com/fossas/fossa-cli/pull/792))
 - UX: Adds scan summary tabulating errors, warnings, project directory, and skipped projects. ([#790](https://github.com/fossas/fossa-cli/pull/790))
 
@@ -1124,7 +1134,7 @@ specify pre-1.0.0 behavior. Here is how `fossa` <1.0.0 releases work:
 - e26421e28 fix (gradle parser) bug related to windows line endings (#421)
 - 75994dadf fix (windows script) add a correct download script for windows users to the cli manual (#422)
 - cbd0f751a testing and comment logic (#420)
-- 2a2a23f14 fix (report dependencies) Change report dependencies to track Fossa.com results (#419)
+- 2a2a23f14 fix (report dependencies) Change report dependencies to track fossa.com results (#419)
 - fa135e191 feat (test pass) add the --supress-issues flag to fossa test (#418)
 - f6660fb91 fix (raw modules) prevent modules from appearing as projects (#416)
 - 2068b2d8f fix (manual links) broken links on the cli manual (#415)

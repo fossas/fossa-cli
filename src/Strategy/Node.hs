@@ -89,12 +89,13 @@ import Strategy.Node.PackageJson (
   pkgFileList,
  )
 import Strategy.Node.PackageJson qualified as PackageJson
+import Strategy.Node.Pnpm.PnpmLock qualified as PnpmLock
 import Strategy.Node.YarnV1.YarnLock qualified as V1
 import Strategy.Node.YarnV2.YarnLock qualified as V2
 import Types (
   DependencyResults (DependencyResults),
   DiscoveredProject (..),
-  DiscoveredProjectType (NpmProjectType, YarnProjectType),
+  DiscoveredProjectType (NpmProjectType, PnpmProjectType, YarnProjectType),
   FoundTargets (ProjectWithoutTargets),
   GraphBreadth (Complete, Partial),
   License (License),
@@ -114,7 +115,7 @@ discover ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject NodeProject]
-discover dir = withMultiToolFilter [YarnProjectType, NpmProjectType] $
+discover dir = withMultiToolFilter [YarnProjectType, NpmProjectType, PnpmProjectType] $
   context "NodeJS" $ do
     manifestList <- context "Finding nodejs projects" $ collectManifests dir
     manifestMap <- context "Reading package.json files" $ (Map.fromList . catMaybes) <$> traverse loadPackage manifestList
@@ -143,6 +144,7 @@ mkProject project = do
         Yarn _ g -> (g, YarnProjectType)
         NPMLock _ g -> (g, NpmProjectType)
         NPM g -> (g, NpmProjectType)
+        Pnpm _ g -> (g, PnpmProjectType)
   Manifest rootManifest <- fromEitherShow $ findWorkspaceRootManifest graph
   pure $
     DiscoveredProject
@@ -165,7 +167,13 @@ getDeps ::
   m DependencyResults
 getDeps (Yarn yarnLockFile graph) = analyzeYarn yarnLockFile graph
 getDeps (NPMLock packageLockFile graph) = analyzeNpmLock packageLockFile graph
+getDeps (Pnpm pnpmLockFile _) = analyzePnpmLock pnpmLockFile
 getDeps (NPM graph) = analyzeNpm graph
+
+analyzePnpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> m DependencyResults
+analyzePnpmLock (Manifest pnpmLockFile) = do
+  result <- PnpmLock.analyze pnpmLockFile
+  pure $ DependencyResults result Complete [pnpmLockFile]
 
 analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> PkgJsonGraph -> m DependencyResults
 analyzeNpmLock (Manifest npmLockFile) graph = do
@@ -338,17 +346,21 @@ identifyProjectType graph = do
   Manifest manifest <- fromEitherShow $ findWorkspaceRootManifest graph
   let yarnFilePath = parent manifest Path.</> $(mkRelFile "yarn.lock")
       packageLockPath = parent manifest Path.</> $(mkRelFile "package-lock.json")
+      pnpmLockPath = parent manifest Path.</> $(mkRelFile "pnpm-lock.yaml")
   yarnExists <- doesFileExist yarnFilePath
   pkgLockExists <- doesFileExist packageLockPath
-  pure $ case (yarnExists, pkgLockExists) of
-    (True, _) -> Yarn (Manifest yarnFilePath) graph
-    (_, True) -> NPMLock (Manifest packageLockPath) graph
+  pnpmLockExists <- doesFileExist pnpmLockPath
+  pure $ case (yarnExists, pkgLockExists, pnpmLockExists) of
+    (True, _, _) -> Yarn (Manifest yarnFilePath) graph
+    (_, True, _) -> NPMLock (Manifest packageLockPath) graph
+    (_, _, True) -> Pnpm (Manifest pnpmLockPath) graph
     _ -> NPM graph
 
 data NodeProject
   = Yarn Manifest PkgJsonGraph
   | NPMLock Manifest PkgJsonGraph
   | NPM PkgJsonGraph
+  | Pnpm Manifest PkgJsonGraph
   deriving (Eq, Ord, Show, Generic)
 
 instance LicenseAnalyzeProject NodeProject where
@@ -380,6 +392,7 @@ pkgGraph :: NodeProject -> PkgJsonGraph
 pkgGraph (Yarn _ pjg) = pjg
 pkgGraph (NPMLock _ pjg) = pjg
 pkgGraph (NPM pjg) = pjg
+pkgGraph (Pnpm _ pjg) = pjg
 
 findWorkspaceRootManifest :: PkgJsonGraph -> Either String Manifest
 findWorkspaceRootManifest PkgJsonGraph{jsonGraph} =

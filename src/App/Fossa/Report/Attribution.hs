@@ -30,7 +30,7 @@ data Attribution = Attribution
   , attribDirectDeps :: [Dependency]
   , attribDeepDeps :: [Dependency]
   , attribLicenses :: Map LicenseName LicenseContents
-  , attribCopyrightsByLicense :: Maybe (Map LicenseName CopyrightText)
+  , attribCopyrightsByLicense :: Maybe (Map LicenseName [CopyrightText])
   }
   deriving (Eq, Show, Ord)
 

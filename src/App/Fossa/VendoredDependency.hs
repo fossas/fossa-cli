@@ -84,7 +84,7 @@ instance Pretty SkippedDepsLogMsg where
       , "Performing a full scan of all vendored dependencies even if they have been scanned previously."
       ]
   pretty SkippingDisabledViaFlagMsg =
-    "The --force-vendored-dependency-rescans flag was used, so performing a full scan of all vendored dependencies even if they have been scanned previously."
+    "Vendored dependency rescans forced on via either the --force-vendored-dependency-rescans flag or the vendoredDependencies.forceRescans entry in .fossa.yml, so performing a full scan of all vendored dependencies even if they have been scanned previously."
   pretty AllDepsPreviouslyScannedMsg =
     "All of the current vendored dependencies have been previously scanned, reusing previous results."
   pretty AllDepsNeedScanningMsg =

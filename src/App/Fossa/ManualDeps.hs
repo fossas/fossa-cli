@@ -12,12 +12,12 @@ module App.Fossa.ManualDeps (
   analyzeFossaDepsFile,
   findFossaDepsFile,
   readFoundDeps,
+  getScanCfg,
 ) where
 
 import App.Fossa.ArchiveUploader (archiveUploadSourceUnit)
 import App.Fossa.Config.Analyze (
-  AllowNativeLicenseScan (AllowNativeLicenseScan),
-  ForceVendoredDependencyRescans (ForceVendoredDependencyRescans),
+  VendoredDependencyOptions (..),
  )
 import App.Fossa.LicenseScanner (licenseScanSourceUnit)
 import App.Fossa.VendoredDependency (
@@ -41,8 +41,6 @@ import Data.Aeson (
  )
 import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers)
 import Data.Aeson.Types (Parser)
-import Data.Flag (Flag, fromFlag)
-import Data.Functor (($>))
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -50,23 +48,18 @@ import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import DepTypes (DepType (..))
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, logWarn)
+import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
 import Fossa.API.Types (ApiOpts, Organization (..))
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
-import Types (GraphBreadth (..))
+import Types (ArchiveUploadType (..), GraphBreadth (..))
 
 data FoundDepsFile
   = ManualYaml (Path Abs File)
   | ManualJSON (Path Abs File)
-
-data ArchiveUploadType
-  = ArchiveUpload
-  | CLILicenseScan
-  deriving (Eq, Ord, Show)
 
 analyzeFossaDepsFile ::
   ( Has Diagnostics sig m
@@ -78,16 +71,15 @@ analyzeFossaDepsFile ::
   ) =>
   Path Abs Dir ->
   Maybe ApiOpts ->
-  Flag AllowNativeLicenseScan ->
-  Flag ForceVendoredDependencyRescans ->
+  VendoredDependencyOptions ->
   m (Maybe SourceUnit)
-analyzeFossaDepsFile root maybeApiOpts allowNative forceRescans = do
+analyzeFossaDepsFile root maybeApiOpts vendoredDepsOptions = do
   maybeDepsFile <- findFossaDepsFile root
   case maybeDepsFile of
     Nothing -> pure Nothing
     Just depsFile -> do
       manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
-      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts allowNative forceRescans
+      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
 
 readFoundDeps :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundDepsFile -> m ManualDependencies
 readFoundDeps (ManualJSON path) = readContentsJson path
@@ -124,15 +116,14 @@ toSourceUnit ::
   FoundDepsFile ->
   ManualDependencies ->
   Maybe ApiOpts ->
-  Flag AllowNativeLicenseScan ->
-  Flag ForceVendoredDependencyRescans ->
+  VendoredDependencyOptions ->
   m SourceUnit
-toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts allowNative forceRescans = do
+toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendoredDepsOptions = do
   -- If the file exists and we have no dependencies to report, that's a failure.
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
 
   archiveLocators <- case (maybeApiOpts, NE.nonEmpty vendoredDependencies) of
-    (Just apiOpts, Just vdeps) -> NE.toList <$> runFossaApiClient apiOpts (scanAndUpload root vdeps allowNative forceRescans)
+    (Just apiOpts, Just vdeps) -> NE.toList <$> runFossaApiClient apiOpts (scanAndUpload root vdeps vendoredDepsOptions)
     (Nothing, Just vdeps) -> pure $ noSourceUnits $ NE.toList vdeps
     -- Don't do anything if there are no vendored deps.
     (_, Nothing) -> pure []
@@ -155,8 +146,7 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts allowN
       , additionalData = additional
       }
 
--- | Run either archive upload or native license scan.  During the native scan beta, we only allow
--- native scanning if the @Flag AllowNativeLicenseScan@ is set during config.
+-- | Run either archive upload or native license scan.
 scanAndUpload ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
@@ -168,32 +158,32 @@ scanAndUpload ::
   ) =>
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
-  Flag AllowNativeLicenseScan ->
-  Flag ForceVendoredDependencyRescans ->
+  VendoredDependencyOptions ->
   m (NonEmpty Locator)
-scanAndUpload root vdeps allowNative forceRescans = do
+scanAndUpload root vdeps vendoredDepsOptions = do
   org <- getOrganization
-  archiveOrCLI <-
-    if fromFlag AllowNativeLicenseScan allowNative
-      then do
-        let doNative = orgDoLocalLicenseScan org
-        if doNative
-          then pure CLILicenseScan
-          else -- If they've selected native scanning, but the server doesn't support it,
-          -- we should let them know.
-          -- TODO: Add a --forbid-archive-upload CLI flag
-            logWarn "Server does not support native license scanning" $> ArchiveUpload
-      else pure ArchiveUpload
-  let vendoredDependencyScanMode =
-        case (orgSupportsAnalyzedRevisionsQuery org, fromFlag ForceVendoredDependencyRescans forceRescans) of
-          -- The --force-vendored-dependency-rescans flag should win so that we can force rebuilds even if Core does not support skipping
-          (_, True) -> SkippingDisabledViaFlag
-          (False, False) -> SkippingNotSupported
-          (True, False) -> SkipPreviouslyScanned
+  (archiveOrCLI, vendoredDependencyScanMode) <- getScanCfg org vendoredDepsOptions
   let scanner = case archiveOrCLI of
         ArchiveUpload -> archiveUploadSourceUnit
         CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode
   scanner root vdeps
+
+getScanCfg :: (Has Diagnostics sig m) => Organization -> VendoredDependencyOptions -> m (ArchiveUploadType, VendoredDependencyScanMode)
+getScanCfg Organization{..} VendoredDependencyOptions{..} = do
+  archiveOrCLI <-
+    case (orgCoreSupportsLocalLicenseScan, orgDefaultVendoredDependencyScanType, licenseScanMethod) of
+      (False, _, Just CLILicenseScan) -> fatalText "You provided the --force-vendored-dependencies-license-scan flag but the FOSSA server does not support CLI-side license scans"
+      (False, _, _) -> pure ArchiveUpload
+      (True, _, Just ArchiveUpload) -> pure ArchiveUpload
+      (True, _, Just CLILicenseScan) -> pure CLILicenseScan
+      (True, orgDefault, Nothing) -> pure orgDefault
+  let vendoredDependencyScanMode =
+        case (orgSupportsAnalyzedRevisionsQuery, forceRescans) of
+          -- The --force-vendored-dependency-rescans flag should win so that we can force rebuilds even if Core does not support skipping
+          (_, True) -> SkippingDisabledViaFlag
+          (False, False) -> SkippingNotSupported
+          (True, False) -> SkipPreviouslyScanned
+  pure (archiveOrCLI, vendoredDependencyScanMode)
 
 -- | Used when users run `fossa analyze -o` and do not upload their source units.
 noSourceUnits :: [VendoredDependency] -> [Locator]

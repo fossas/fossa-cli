@@ -11,6 +11,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigTargets (..),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (ExperimentalGradleConfigs),
+  VendoredDependencyConfigs (..),
   resolveConfigFile,
  )
 import App.Types (ReleaseGroupMetadata (..))
@@ -25,7 +26,7 @@ import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess, expectFailure)
 import Test.Hspec qualified as T
 import Test.Hspec.Core.Spec (SpecM)
-import Types (BuildTarget (..), TargetFilter (..))
+import Types (ArchiveUploadType (..), BuildTarget (..), TargetFilter (..))
 
 expectedConfigFile :: ConfigFile
 expectedConfigFile =
@@ -38,6 +39,7 @@ expectedConfigFile =
     , configTargets = Just expectedConfigTargets
     , configPaths = Nothing
     , configExperimental = Just expectedExperimentalConfig
+    , configVendoredDependencies = Just expectedVendoredDependencies
     , configTelemetry = Nothing
     }
 
@@ -81,6 +83,13 @@ expectedExperimentalConfig =
     { gradle = Just $ ExperimentalGradleConfigs (Set.fromList ["onlyProdConfigs", "onlyProdConfigs2"])
     }
 
+expectedVendoredDependencies :: VendoredDependencyConfigs
+expectedVendoredDependencies =
+  VendoredDependencyConfigs
+    { configForceRescans = True
+    , configLicenseScanMethod = Just ArchiveUpload
+    }
+
 simpleTarget :: TargetFilter
 simpleTarget = TypeTarget "pip"
 
@@ -104,6 +113,9 @@ validDefaultYamlDir = maintestdir </> $(mkRelDir "valid-default-yaml")
 
 invalidDefaultDir :: Path Rel Dir
 invalidDefaultDir = maintestdir </> $(mkRelDir "invalid-default")
+
+invalidScanMethodDir :: Path Rel Dir
+invalidScanMethodDir = maintestdir </> $(mkRelDir "invalid-scan-method")
 
 expectSuccessfulParse :: Result (Maybe ConfigFile) -> T.Expectation
 expectSuccessfulParse act =
@@ -131,6 +143,7 @@ spec = do
   -- If the file exists, but is invalid YAML, that's most likely a real error,
   -- so we error here
   invalidDefault <- runIt invalidDefaultDir Nothing
+  invalidScanMethod <- runIt invalidScanMethodDir Nothing
 
   -- @Just file@ informs us that the file is specified manually, so we fail
   -- instead of trying to recover, so we don't ignore the file and do the wrong thing
@@ -149,6 +162,7 @@ spec = do
     T.it "always returns failure for a bad file" $ do
       expectFailure invalidSpecified
       expectFailure invalidDefault
+      expectFailure invalidScanMethod
 
     T.it "returns Nothing for missing default file" $
       assertOnSuccess missingDefault $ \_ result -> result `T.shouldBe` Nothing

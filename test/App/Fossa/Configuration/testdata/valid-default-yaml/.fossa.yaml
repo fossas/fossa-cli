@@ -33,3 +33,7 @@ experimental:
     configurations-only:
       - onlyProdConfigs
       - onlyProdConfigs2
+
+vendoredDependencies:
+  forceRescans: true
+  scanMethod: ArchiveUpload
