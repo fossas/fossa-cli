@@ -1,13 +1,11 @@
-cabal-version:      2.2
+cabal-version:      3.0
 name:               spectrometer
 version:            0.1.0.0
 license:            MPL-2.0
 build-type:         Simple
 extra-source-files:
-  scripts/depgraph-maven-plugin-3.3.0.jar
-  scripts/jsondeps.gradle
-  vendor-bins/syft
-  vendor-bins/wiggins
+  scripts/*.gradle
+  scripts/*.jar
 
 common lang
   build-depends:      base ^>=4.15

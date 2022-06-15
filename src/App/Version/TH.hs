@@ -1,4 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
+-- We disable overlapping-patterns in this module to handle the case statement
+-- in `getCurrentTag`. GHC always thinks one of the two cases is redundant
+-- because `tGitInfoCwdTry` is compiled by Template Haskell into a concrete
+-- Right or Left. However, both branches are needed to handle different
+-- compilation environments.
+{-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
 module App.Version.TH (
   getCurrentTag,
@@ -23,7 +29,7 @@ import Effect.Exec (
   runExecIO,
  )
 import Effect.ReadFS (ReadFS, getCurrentDir, runReadFSIO)
-import GitHash (giHash, tGitInfoCwd)
+import GitHash (giHash, tGitInfoCwdTry)
 import Instances.TH.Lift ()
 import Language.Haskell.TH (Code, Q, bindCode_, joinCode)
 import Language.Haskell.TH.Syntax (reportWarning, runIO)
@@ -38,12 +44,14 @@ gitTagPointCommand commit =
 
 getCurrentTag :: Code Q (Maybe Text)
 getCurrentTag = joinCode $ do
-  let commitHash = giHash $$(tGitInfoCwd)
-  result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO . getTags $ toText commitHash
-
-  pure $ case result of
-    Success _ tags -> filterTags tags
-    err -> reportWarning (show err) `bindCode_` [||Nothing||]
+  case $$(tGitInfoCwdTry) of
+    Right info -> do
+      let commitHash = giHash info
+      result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO . getTags $ toText commitHash
+      pure $ case result of
+        Success _ tags -> filterTags tags
+        err -> reportWarning (show err) `bindCode_` [||Nothing||]
+    Left err -> pure $ reportWarning (show err) `bindCode_` [||Nothing||]
 
 getTags :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Text -> m [Text]
 getTags hash = do

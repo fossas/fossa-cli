@@ -53,6 +53,7 @@ data DiscoveredProjectScan
   = SkippedDueToProvidedFilter DiscoveredProjectIdentifier
   | SkippedDueToDefaultProductionFilter DiscoveredProjectIdentifier
   | Scanned DiscoveredProjectIdentifier (Result ProjectResult)
+  deriving (Show)
 
 instance Ord DiscoveredProjectScan where
   a `compare` b = orderByScanStatusAndType a b
@@ -79,7 +80,7 @@ data DiscoveredProjectIdentifier = DiscoveredProjectIdentifier
   { dpiProjectPath :: Path Abs Dir
   , dpiProjectType :: DiscoveredProjectType
   }
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
 
 class AnalyzeProject a where
   analyzeProject :: AnalyzeTaskEffs sig m => FoundTargets -> a -> m DependencyResults
