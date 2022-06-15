@@ -37,7 +37,7 @@
   - {name: error, within: [Data.String.Conversion, Control.Effect.Replay]}
   - {name: undefined, within: []}
   - {name: Prelude.head, within: [Control.Effect.*.TH, "**.*Spec"], message: "Use Data.List.Extra.head' instead."}
-  - {name: Prelude.tail, within: []}
+  - {name: Prelude.tail, within: [Data.FileEmbed.Extra]}
   - {name: Prelude.init, within: []}
   - {name: Prelude.last, within: ["**.*Spec"]}
   - {name: Data.ByteString.head, within: []}

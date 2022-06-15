@@ -27,7 +27,7 @@ import Control.Monad (when)
 import Data.Aeson (FromJSON, parseJSON, withObject, (.!=), (.:), (.:?))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
-import Data.FileEmbed (embedFile)
+import Data.FileEmbed.Extra (embedFile')
 import Data.Foldable (Foldable (fold), foldl')
 import Data.Functor (void)
 import Data.Map (Map)
@@ -77,7 +77,7 @@ depGraphPlugin =
     { group = "com.github.ferstl"
     , artifact = "depgraph-maven-plugin"
     , version = "4.0.1"
-    , jar = $(embedFile "scripts/depgraph-maven-plugin-4.0.1.jar")
+    , jar = $(embedFile' "scripts/depgraph-maven-plugin-4.0.1.jar")
     }
 
 depGraphPluginLegacy :: DepGraphPlugin
@@ -86,7 +86,7 @@ depGraphPluginLegacy =
     { group = "com.github.ferstl"
     , artifact = "depgraph-maven-plugin"
     , version = "3.3.0"
-    , jar = $(embedFile "scripts/depgraph-maven-plugin-3.3.0.jar")
+    , jar = $(embedFile' "scripts/depgraph-maven-plugin-3.3.0.jar")
     }
 
 withUnpackedPlugin ::
