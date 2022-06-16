@@ -289,7 +289,14 @@ some of the definitions needed to make a reader work:
 
 ```haskell
 -- This is the Effect type, which all concrete implementors must handle.
+-- Note the GADT syntax, this is almost always required, especially when the
+-- return types are different.
+-- The `k` stands for "kontinuation".  It's a little silly, but it's common.
 data Reader r m k where
+  -- We can think of `Ask` and `Local` as messages sent to some handler later.
+  -- `Ask` takes no extra data, and when handled, returns `Reader r m r`, where
+  -- `r` is the type of the immutable context that the reader holds.
+  -- `Local` needs a function and a monadic action to construct the message.
   Ask   ::                    Reader r m r
   Local :: (r -> r) -> m a -> Reader r m a
 
@@ -298,7 +305,7 @@ data Reader r m k where
 -- constraints are met at compile time.  We'll go into more detail later.
 type Has eff sig m = (Member eff sig, Algebra sig m)
 
--- We define these 'send'-based helpers so that our code isn't completly
+-- We define these 'send'-based helpers so that our code isn't completely
 -- cluttered with calls to 'send'.
 ask :: Has (Reader r) sig m => m r
 ask = send Ask
@@ -306,7 +313,7 @@ ask = send Ask
 -- 'send' invokes the 'Algebra' typeclass, and only for those carriers
 -- whose 'Member' constraints satisfy the given 'eff' effect.
 -- This is the secret sauce that actually invokes the various 'Algebra'
--- implementations, where all of the real effect-handling code is.
+-- implementations, where all of the real effect-handling starts.
 send :: Has eff sig m => eff m a -> m a
 
 -- This function specifies a specific datatype, (ReaderC) and "runs" it,
@@ -351,10 +358,277 @@ pop the monad off of the stack.
 At this point, there should only be a few things we don't know about the given
 examples.
 
-- How to write the implementation for an `Algebra` instance.
-- DRAFT SAVEPOINT
+- How do we write the implementation for an `Algebra` instance?
+- What about `Simple`-based effects?  Why don't all effects work like that?
+- How does the `Member` class work?  What about `:+:`?
+- What is `sig`?
+
+We can refer to the `fused-effects` docs for the first one, they have a simple
+[tutorial for writing your own effects][eff-tutorial]. For the second one, we
+can refer to the [code docs in the module][simple-file] that defines the
+`Simple` effect mechanisms.
+
+All that leaves is the `Member` typeclass, the `:+:` type, and the `sig` type
+variable.  Luckily, these are all very closely intertwined.
+
+## `Member`, `:+:`, and `sig`
+
+When we run `ask`, how do we know, definitively, that there is some `Reader`
+effect handler?  We don't specify `ReaderC r m r` in the return type of `ask`,
+we return `m r`, and the type of `r` is the static data, like `AppConfig`, so
+the `ReaderC` must be inside of that `m` somehow.  But if we don't know what `m`
+actually is (and we really don't, since it might be a different interpreter for
+the `Reader` effect, with several other monads stacked in unpredictable
+orderings), how can we guarantee that some part of that `m` has an interpreter
+for the `Reader` effect?
+
+As a user, the answer is really simple.  We use the `Has eff sig m` typeclass.
+
+```haskell
+foo :: 
+  ( Has (Reader Config) sig m
+  , Has (Lift IO) sig m
+  , Has ReadFS sig m
+  ) =>
+  m ()
+```
+
+Really easy, right?  There are some constraints.  You can rename `sig` and `m`
+to anything you want, but the names need to be different than each other, and
+must all be renamed at once. Other than that, there's really no difficulty here.
+
+So how does `Has` work?  We can see from our previous example that it's just a
+simple alias:
+
+```haskell
+foo :: Has eff sig m
+-- is exactly identical to 
+foo :: (Member eff sig, Algebra sig m)
+``` 
+
+We kind of know how `Algebra` works except for the `sig` part, but `Member` is
+a complete mystery to us. How would you even define it?  Well, we can take a
+look at the implementation:
+
+```haskell
+-- | Higher-order sums are used to combine multiple effects into a signature, typically by chaining on the right.
+data (f :+: g) (m :: Type -> Type) k
+  = L (f m k)
+  | R (g m k)
+
+infixr 4 :+:
+
+class Member (sub :: (Type -> Type) -> (Type -> Type)) sup where
+  -- | Inject a member of a signature into the signature.
+  inj :: sub m a -> sup m a
+
+-- | Reflexivity
+instance Member t t where
+  inj = id
+
+-- | Left-occurrence
+instance Member l (l :+: r) where
+  inj = L
+
+-- | Right-recursion
+instance Member l r => Member l (l' :+: r) where
+  inj = R . inj
+```
+
+Let's break the file down from top to bottom:
+
+First we have `:+:`.  We can see that it's used to combine two types with the
+same type parameters, labelled `m` and `k`.  The `L` and `R` contrstuctors allow
+us to pattern-match on the left or right side of the operator, respectively.
+
+Note that Effect types have this same shape: `eff m a ~ f m k`.  We could
+represent two effects as being summed together with this operator. If we nest
+the types, we can have an arbitrary list of types.
+
+```haskell
+data A m k = A
+data B m k = B
+data C m k = C
+
+-- We can construct sums by assuming nesting to the right.
+-- Notice that fooA, fooB, and fooC all have the exact same type.
+fooA :: (A :+: B :+: C) m k
+fooA = L A
+fooB :: (A :+: B :+: C) m k
+fooB = R (L B)
+fooC :: (A :+: B :+: C) m k
+fooC = R (R C)
+
+-- We can also pattern-match to deconstruct the sums, like any other data type.
+data Matcher m k 
+  = MatchA (A m k)
+  | MatchB (B m k)
+  | MatchC (C m k)
+
+matchSum :: (A :+: B :+: C) m k -> Matcher m k
+matchSum sum = case sum of
+  L a -> MatchA a
+  R (L b) -> MatchB b
+  R (R c) -> MatchC c
+```
+
+We've got what we need for `:+:`, now let's look at `Member`.  The `Member`
+typeclass comes from a research paper titled [Data types á la carte][dtalc], and
+we will summarize the results of that paper here.
+
+Say we have a unknown sum, and we want to declare that some specific type is one
+of the values in the sum.  This is the exact problem we face with effects.  We
+want to declare that the requested effect `eff` is present in the sum of all
+effects `sig`.
+
+For example, we have the sum `A :+: B :+: C :+: D :+: E`, and we want to prove
+that `A`, `C`, and `E` are all members of that sum.  Let's review the rules of
+the `Member` class and explain them: 
+
+```haskell
+class Member (sub :: (Type -> Type) -> (Type -> Type)) sup where
+  -- | Inject a member of a signature into the signature.
+  inj :: sub m a -> sup m a
+```
+
+The `inj` function (short for `inject`) is just a way to control when we test
+for membership in the sum, and places any value into the correct place in the
+sum type automatically. In most cases, it's just wrapping the `eff` type in the
+correct `L` or `R` constructor.  This serves two purposes simultaneously:
+
+- Testing for membership of `eff` within `sig`.
+- Providing a value of `sig` that we can deconstruct to get back our original
+  `eff`, which contains the "message data" for our effect that we wanted to run
+  in the first place.
+
+```haskell
+-- | Reflexivity
+instance Member t t where
+  inj = id
+```
+
+This is a special case for terminating recursion. If we only have one effect, or
+only one effect left, we don't need to do anything special with sums. We can
+simply assert that the types are the same. Let's move on:
+
+```haskell
+-- | Left-occurrence
+instance Member l (l :+: r) where
+  inj = L
+```
+
+Here, if the `eff` we're looking for (which is renamed `l` here) is found on the left side of the sum, we wrap
+the effect value in the correct constructor, which is `L`.  We could write this explicitly as
+
+```haskell
+instance Member Foo (Foo :+: anySum) where
+  inj foo = L foo
+```
+
+Now we need to handle the values on the right side of the sum:
+
+```haskell
+-- | Right-recursion
+instance Member l r => Member l (l' :+: r) where
+  inj = R . inj
+```
+
+If the type we're looking for is within the right side of the sum (which is
+often a sum itself), then we recurse into the sum on the right side.  This is
+best shown through example, so let's go through our ABCDE tests step-by-step.
+First, we'll check for `A`:
+
+```haskell
+-- Start with this
+instance Member A (A :+: B :+: C :+: D :+: E)
+-- :+: is right-binding, so we can use parenthesis to clarify
+instance Member A (A :+: (B :+: (C :+: (D :+: E))))
+-- Remove noise, and we see the left occurence rule.
+instance Member A (A :+: noise) where
+  inj x = L x
+
+-- We can test this by creating the type manually
+-- Try using combinations of `L` and `R` , but don't change the value of `A`.
+-- Type errors prevent you from constructing that type for this specific sum.
+sumViaA :: (A :+: B :+: C :+: D :+: E) m k
+sumViaA = L A
+```
+
+Great, we've found `A`.  For the rest of the data types, assume that they all
+follow the form of `data A m k = A`.  Now let's look for `C`:
+
+```haskell
+-- Starting point
+instance Member C (A :+: B :+: C :+: D :+: E)
+-- Group with parens, we don't have a match on the left
+instance Member C (A :+: (B :+: (C :+: (D :+: E)))) where
+  -- Hit the right-recursion rule once
+  inj c = R (inj c)
+
+-- The new call to `inj` pops the `A` type off of the sum, and we now match on
+-- the right side of the original sum
+instance Member C (B :+: (C :+: (D :+: E))) where
+  -- Same as before, hit the right-recursion rule again
+  -- Remember that our first `inj` already wrapped us in an `R` constructor.
+  -- This is a second `R` constructor, nested in the first.
+  inj c = R (inj c)
+
+-- Pop `B` from the stack, this is now the left-occurence rule
+instance Member C (C :+: D :+: E) where
+  -- Now we return an `L`, but previous calls mean we're wrapped in 2 `R`
+  -- constructors
+  inj c = L c
+
+-- Test manual creation of the type
+-- As with `A`, this is the only way to make a type matching this sum with a
+-- value of `C`
+sumViaC :: (A :+: B :+: C :+: D :+: E) m k
+sumViaC = R (R (L C))
+```
+
+Finally, let's go through `E`:
+
+```haskell
+-- Starting point
+instance Member E (A :+: B :+: C :+: D :+: E)
+-- Fast forward through right recursion 3 times Remember that that adds 3 layers
+-- of `R`
+instance Mamber E (D :+: E)
+-- Another right recursion, another `R`, but now when recurse to the right-hand
+-- side of the sum, there no more sum left, just the `E` type
+instance Member E (E) where
+  -- This is the reflexive rule, and we return the identity
+  inj e = id e
+  -- also can be written as
+  inj e = e
+
+-- We right-recursed 4x, then returned the identity.  Let's check manually:
+sumViaE :: (A :+: B :+: C :+: D :+: E) m k
+sumViaE = R (R (R (R E)))
+```
+
+We just demonstrated how we could find any type within a `:+:` sum, by
+constructing a value of that type.  We can later pattern match on the
+constructors for that sum, and fetch the actual value, which is exactly one of
+the types of the sum.
+
+That's all we need to test membership. In [the real source file][member-source],
+they've added some stuff to make the compiler happy, and have gone through the
+trouble of actually exporting the types here, but this is essentially everything
+needed.
+
+Note that the left-recursion rule is missing from the source. Left-recursion is
+critical for [detecting type sum synonyms][left-rec].  However, it's not
+necessary for understanding how the `Member` typeclass works fundamentally.
+
+## Demystifying `Algebra`
 
 [Haskell101]: http://youtu.be/cTN1Qar4HSw
 [Haskell102]: http://youtu.be/Ug9yJnOYR4U
 [MTLTutorial]: http://two-wrongs.com/a-gentle-introduction-to-monad-transformers
 [fused-talk]: http://youtu.be/vfDazZfxlNs
+[eff-tutorial]: https://github.com/fused-effects/fused-effects/blob/36bec2d6c0e97f7e01df97acd15012e1735c28bf/docs/defining_effects.md
+[simple-file]: https://github.com/fossas/fossa-cli/blob/aafe05624d102eb746b85c78027983e8c128bf24/src/Control/Carrier/Simple.hs
+[member-source]: https://hackage.haskell.org/package/fused-effects-1.1.1.2/docs/src/Control.Effect.Sum.html#Member
+[left-rec]: https://github.com/fused-effects/fused-effects/issues/213
+[dtalc]: http://www.cs.ru.nl/~W.Swierstra/Publications/DataTypesALaCarte.pdf
