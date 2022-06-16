@@ -12,7 +12,7 @@ module Effect.Logger (
   withLogger,
   withDefaultLogger,
   withWriterLogger,
-  withStateLogger,
+  withConcurrentLogger,
   runLogger,
   ignoreLogger,
   log,
@@ -27,12 +27,14 @@ module Effect.Logger (
 
 import Control.Algebra as X
 import Control.Carrier.Simple
+import Control.Concurrent.STM (atomically, readTVar)
+import Control.Concurrent.STM.TVar (TVar, writeTVar)
 import Control.Effect.ConsoleRegion
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
+import Control.Effect.Reader (Reader, ask)
 import Control.Effect.Record (RecordableValue)
 import Control.Effect.Record.TH (deriveRecordable)
-import Control.Effect.State (State, modify)
 import Control.Effect.Writer (Writer, tell)
 import Control.Monad (when)
 import Data.Aeson (ToJSON)
@@ -139,23 +141,29 @@ withWriterLogger sev = runLogger ctx
         , logCtxWrite = tell . pure @f
         }
 
-withStateLogger ::
+withConcurrentLogger ::
   forall f sig m a.
   ( Applicative f
   , Monoid (f (Doc AnsiStyle))
-  , Has (State (f (Doc AnsiStyle))) sig m
+  , Has (Reader (TVar (f (Doc AnsiStyle)))) sig m
+  , Has (Lift IO) sig m
   ) =>
   Severity ->
   LoggerC m a ->
   m a
-withStateLogger sev = runLogger ctx
+withConcurrentLogger sev = runLogger ctx
   where
     ctx :: LogCtx (Doc AnsiStyle) m
     ctx =
       LogCtx
         { logCtxSeverity = sev
         , logCtxFormatter = const id
-        , logCtxWrite = \m -> modify (<> pure @f m)
+        , logCtxWrite = \msg -> do
+            logs <- ask
+            sendIO $
+              atomically $ do
+                entries <- readTVar logs
+                writeTVar logs $ entries <> pure @f msg
         }
 
 -- | Determine the default LogAction to use by checking whether the terminal
