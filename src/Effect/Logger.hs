@@ -12,6 +12,7 @@ module Effect.Logger (
   withLogger,
   withDefaultLogger,
   withWriterLogger,
+  withStateLogger,
   runLogger,
   ignoreLogger,
   log,
@@ -31,6 +32,7 @@ import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Record (RecordableValue)
 import Control.Effect.Record.TH (deriveRecordable)
+import Control.Effect.State (State, modify)
 import Control.Effect.Writer (Writer, tell)
 import Control.Monad (when)
 import Data.Aeson (ToJSON)
@@ -118,6 +120,9 @@ withDefaultLogger sev act = do
 --
 -- Note that you will need to specify the type variable @f@ (the monoidal
 -- container of each log message) at the call-site using @TypeApplications@.
+--
+-- The log is constructed with left-associative `mappend`s, so pick an @f@ where
+-- left-associative append is performant (like `Seq`, unlike `[]`).
 withWriterLogger ::
   forall f sig m a.
   (Applicative f, Has (Writer (f (Doc AnsiStyle))) sig m) =>
@@ -132,6 +137,25 @@ withWriterLogger sev = runLogger ctx
         { logCtxSeverity = sev
         , logCtxFormatter = const id
         , logCtxWrite = tell . pure @f
+        }
+
+withStateLogger ::
+  forall f sig m a.
+  ( Applicative f
+  , Monoid (f (Doc AnsiStyle))
+  , Has (State (f (Doc AnsiStyle))) sig m
+  ) =>
+  Severity ->
+  LoggerC m a ->
+  m a
+withStateLogger sev = runLogger ctx
+  where
+    ctx :: LogCtx (Doc AnsiStyle) m
+    ctx =
+      LogCtx
+        { logCtxSeverity = sev
+        , logCtxFormatter = const id
+        , logCtxWrite = \m -> modify (<> pure @f m)
         }
 
 -- | Determine the default LogAction to use by checking whether the terminal
