@@ -60,7 +60,7 @@ genLicenseMap = do
   let genContents = LicenseContents <$> arbitraryText
   Gen.map defaultRange $ tuplify genName genContents
 
-genCopyrightMap :: Gen (Map LicenseName CopyrightText)
+genCopyrightMap :: Gen (Map LicenseName [CopyrightText])
 genCopyrightMap = do
   let genName = LicenseName <$> arbitraryText
   let genCopyright = CopyrightText <$> arbitraryText
