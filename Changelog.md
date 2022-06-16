@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Changes copyrights field to copyrightsByLicense in the attribution report JSON output. [#966](https://github.com/fossas/fossa-cli/pull/966)
+- Always include the "downloadUrl" field in attribution reports, regardless of the setting in the FOSSA reports UI. ([#979](https://github.com/fossas/fossa-cli/pull/979))
 
 ## v3.3.6
 - Make CLI-side license scanning the default method of scanning vendored dependencies
@@ -16,7 +17,7 @@
 - VSI scans now automatically skip the `.git` directory inside the scan root ([#969](https://github.com/fossas/fossa-cli/pull/969)).
 
 ## v3.3.3
-- Cocoapods: Cocoapods analyzer does not handle subspecs in vendored podspecs. ([#964](https://github.com/fossas/fossa-cli/pull/964/files)) 
+- Cocoapods: Cocoapods analyzer does not handle subspecs in vendored podspecs. ([#964](https://github.com/fossas/fossa-cli/pull/964/files))
 
 ## v3.3.2
 - CLI-side license scans will skip rescanning revisions that are already known to FOSSA. This can be overridden by using the `--force-vendored-dependency-rescans` flag.
