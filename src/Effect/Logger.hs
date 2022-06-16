@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -10,6 +11,7 @@ module Effect.Logger (
   IgnoreLoggerC,
   withLogger,
   withDefaultLogger,
+  withWriterLogger,
   runLogger,
   ignoreLogger,
   log,
@@ -29,6 +31,7 @@ import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Record (RecordableValue)
 import Control.Effect.Record.TH (deriveRecordable)
+import Control.Effect.Writer (Writer, tell)
 import Control.Monad (when)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Types (Value (String), toJSON)
@@ -41,13 +44,13 @@ import System.Console.Concurrent (errorConcurrent, outputConcurrent)
 import System.IO (stderr)
 import Prelude hiding (log)
 
-data LogCtx m = LogCtx
+data LogCtx l m = LogCtx
   { logCtxSeverity :: Severity
-  , logCtxFormatter :: LogFormatter
-  , logCtxWrite :: Text -> m ()
+  , logCtxFormatter :: LogFormatter l
+  , logCtxWrite :: l -> m ()
   }
 
-type LogFormatter = Severity -> Doc AnsiStyle -> Text
+type LogFormatter l = Severity -> Doc AnsiStyle -> l
 
 data Severity
   = SevDebug
@@ -96,7 +99,7 @@ logWarn = log SevWarn
 logError :: Has Logger sig m => Doc AnsiStyle -> m ()
 logError = log SevError
 
-withLogger :: Has (Lift IO) sig m => LogCtx m -> LoggerC m a -> m a
+withLogger :: Has (Lift IO) sig m => LogCtx Text m -> LoggerC m a -> m a
 withLogger ctx act = displayConsoleRegions (runLogger ctx act)
 
 withDefaultLogger :: Has (Lift IO) sig m => Severity -> LoggerC m a -> m a
@@ -110,19 +113,40 @@ withDefaultLogger sev act = do
           }
   withConcurrentOutput $ withLogger ctx act
 
+-- | Runs a Logger into a Writer. Useful for collecting logged messages, such as
+-- in testing.
+--
+-- Note that you will need to specify the type variable @f@ (the monoidal
+-- container of each log message) at the call-site using @TypeApplications@.
+withWriterLogger ::
+  forall f sig m a.
+  (Applicative f, Has (Writer (f (Doc AnsiStyle))) sig m) =>
+  Severity ->
+  LoggerC m a ->
+  m a
+withWriterLogger sev = runLogger ctx
+  where
+    ctx :: LogCtx (Doc AnsiStyle) m
+    ctx =
+      LogCtx
+        { logCtxSeverity = sev
+        , logCtxFormatter = const id
+        , logCtxWrite = tell . pure @f
+        }
+
 -- | Determine the default LogAction to use by checking whether the terminal
 -- supports ANSI rendering
-determineDefaultLogFormatter :: Has (Lift IO) sig m => m LogFormatter
+determineDefaultLogFormatter :: Has (Lift IO) sig m => m (LogFormatter Text)
 determineDefaultLogFormatter = do
   ansiSupported <- sendIO $ hSupportsANSI stderr
   if ansiSupported
     then pure termLoggerFormatter
     else pure rawLoggerFormatter
 
-rawLoggerFormatter :: LogFormatter
+rawLoggerFormatter :: LogFormatter Text
 rawLoggerFormatter sev msg = renderIt . unAnnotate $ formatCommon sev msg <> line
 
-termLoggerFormatter :: LogFormatter
+termLoggerFormatter :: LogFormatter Text
 termLoggerFormatter sev msg = renderIt $ formatCommon sev msg <> line
 
 formatCommon :: Severity -> Doc AnsiStyle -> Doc AnsiStyle
@@ -135,7 +159,7 @@ formatCommon sev msg = hang 2 (pretty '[' <> showSev sev <> pretty @String "] " 
 
 type LoggerC = SimpleC LoggerF
 
-runLogger :: Applicative m => LogCtx m -> LoggerC m a -> m a
+runLogger :: Applicative m => LogCtx l m -> LoggerC m a -> m a
 runLogger LogCtx{logCtxWrite, logCtxFormatter, logCtxSeverity} = interpret $ \case
   Log sev msg -> do
     when (logCtxSeverity <= sev) $

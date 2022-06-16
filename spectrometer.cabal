@@ -482,6 +482,7 @@ test-suite unit-tests
     Discovery.FiltersSpec
     Discovery.WalkSpec
     Effect.ExecSpec
+    Effect.LoggerSpec
     Elixir.MixTreeSpec
     Erlang.ConfigParserSpec
     Erlang.Rebar3TreeSpec
