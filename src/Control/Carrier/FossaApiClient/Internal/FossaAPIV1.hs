@@ -603,13 +603,11 @@ getAttributionJson ::
 getAttributionJson apiOpts ProjectRevision{..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let packageDownloadUrl :: String
-      packageDownloadUrl = "PackageDownloadUrl"
-      opts =
+  let opts =
         baseOpts
           <> "includeDeepDependencies" =: True
           <> "includeHashAndVersionData" =: True
-          <> "dependencyInfoOptions[]" =: packageDownloadUrl
+          <> "dependencyInfoOptions[]" =: Text.pack "PackageDownloadUrl"
   orgId <- organizationId <$> getOrganization apiOpts
   response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision)) ReportJson) NoReqBody jsonResponse opts
   pure (responseBody response)
