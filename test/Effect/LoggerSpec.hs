@@ -14,7 +14,7 @@ import Test.Hspec (Spec, describe, it, shouldBe)
 import Control.Carrier.TaskPool (forkTask, withTaskPool)
 import Data.Functor.Extra ((<$$>))
 import Data.Text.Extra (showT)
-import Effect.Logger (Severity (..), logInfo, pretty, renderIt, withConcurrentLogger, withWriterLogger)
+import Effect.Logger (Severity (..), logInfo, pretty, renderIt, withTVarLogger, withWriterLogger)
 
 spec :: Spec
 spec = do
@@ -30,10 +30,10 @@ spec = do
                 logInfo "this is another test message"
       messages `shouldBe` Seq.fromList ["this is a test message", "this is another test message"]
 
-  describe "withConcurrentLogger" $ do
+  describe "withTVarLogger" $ do
     it "records logged messages from a single thread" $ do
       logs <- newTVarIO Seq.empty
-      runReader logs . withConcurrentLogger @Seq SevInfo $ do
+      runReader logs . withTVarLogger @Seq SevInfo $ do
         logInfo "this is a test message"
         logInfo "this is another test message"
       messages <- renderIt <$$> readTVarIO logs
@@ -46,7 +46,7 @@ spec = do
 
       logs <- newTVarIO Seq.empty
       runReader logs
-        . withConcurrentLogger @Seq SevInfo
+        . withTVarLogger @Seq SevInfo
         . withTaskPool capabilities (const $ pure ())
         $ forM_ threads $ \t -> forkTask $ traverse_ (logInfo . pretty . show . (t,)) msgIds
       messages <- renderIt <$$> readTVarIO logs

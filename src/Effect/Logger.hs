@@ -12,7 +12,7 @@ module Effect.Logger (
   withLogger,
   withDefaultLogger,
   withWriterLogger,
-  withConcurrentLogger,
+  withTVarLogger,
   runLogger,
   ignoreLogger,
   log,
@@ -141,7 +141,9 @@ withWriterLogger sev = runLogger ctx
         , logCtxWrite = tell . pure @f
         }
 
-withConcurrentLogger ::
+-- | Like `withWriterLogger`, except it works even when the logged action forks
+-- threads.
+withTVarLogger ::
   forall f sig m a.
   ( Applicative f
   , Monoid (f (Doc AnsiStyle))
@@ -151,7 +153,7 @@ withConcurrentLogger ::
   Severity ->
   LoggerC m a ->
   m a
-withConcurrentLogger sev = runLogger ctx
+withTVarLogger sev = runLogger ctx
   where
     ctx :: LogCtx (Doc AnsiStyle) m
     ctx =
