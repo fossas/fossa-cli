@@ -405,6 +405,7 @@ library
     Strategy.SwiftPM
     System.Args
     Text.URI.Builder
+    Tryout
     Type.Operator
     Types
 
