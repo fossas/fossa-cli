@@ -34,6 +34,7 @@ import Control.Effect.Writer (Writer, tell)
 import Control.Monad (when)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Types (Value (String), toJSON)
+import Data.List (singleton)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter as X
@@ -114,14 +115,14 @@ withDefaultLogger sev act = do
 
 -- | Runs a Logger into a Writer. Useful for collecting logged messages, such as
 -- in testing.
-withWriterLogger :: Has (Writer (Doc AnsiStyle)) sig m => Severity -> LoggerC m a -> m a
+withWriterLogger :: Has (Writer ([Doc AnsiStyle])) sig m => Severity -> LoggerC m a -> m a
 withWriterLogger sev = runLogger ctx
   where
     ctx =
       LogCtx
         { logCtxSeverity = sev
         , logCtxFormatter = const id
-        , logCtxWrite = tell
+        , logCtxWrite = tell . singleton
         }
 
 -- | Determine the default LogAction to use by checking whether the terminal
