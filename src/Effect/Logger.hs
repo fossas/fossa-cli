@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -34,7 +35,6 @@ import Control.Effect.Writer (Writer, tell)
 import Control.Monad (when)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Types (Value (String), toJSON)
-import Data.List (singleton)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter as X
@@ -115,14 +115,23 @@ withDefaultLogger sev act = do
 
 -- | Runs a Logger into a Writer. Useful for collecting logged messages, such as
 -- in testing.
-withWriterLogger :: Has (Writer ([Doc AnsiStyle])) sig m => Severity -> LoggerC m a -> m a
+--
+-- Note that you will need to specify the type variable @f@ (the monoidal
+-- container of each log message) at the call-site using @TypeApplications@.
+withWriterLogger ::
+  forall f sig m a.
+  (Applicative f, Has (Writer (f (Doc AnsiStyle))) sig m) =>
+  Severity ->
+  LoggerC m a ->
+  m a
 withWriterLogger sev = runLogger ctx
   where
+    ctx :: LogCtx (Doc AnsiStyle) m
     ctx =
       LogCtx
         { logCtxSeverity = sev
         , logCtxFormatter = const id
-        , logCtxWrite = tell . singleton
+        , logCtxWrite = tell . pure @f
         }
 
 -- | Determine the default LogAction to use by checking whether the terminal
