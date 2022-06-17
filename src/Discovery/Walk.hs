@@ -12,22 +12,41 @@ module Discovery.Walk (
   findFilesMatchingGlob,
 ) where
 
-import Control.Carrier.Writer.Church
-import Control.Effect.Diagnostics
+import Control.Carrier.Writer.Church (
+  Has,
+  WriterC,
+  runWriter,
+  tell,
+ )
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  context,
+  recover,
+ )
 import Control.Effect.Reader (Reader, ask)
-import Control.Monad.Trans
-import Control.Monad.Trans.Maybe
+import Control.Monad.Trans (MonadTrans (lift))
+import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
 import Data.Foldable (find)
 import Data.Functor (void)
 import Data.Glob qualified as Glob
 import Data.List ((\\))
-import Data.Maybe (mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Discovery.Filters (AllFilters, pathAllowed)
-import Effect.ReadFS
-import Path
+import Effect.ReadFS (ReadFS, getIdentifier, listDir)
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  dirname,
+  filename,
+  parseRelDir,
+  stripProperPrefix,
+  toFilePath,
+ )
 
 data WalkStep
   = -- | Continue walking subdirectories
@@ -155,7 +174,11 @@ walkDir handler topdir =
         Nothing -> pure $ Just ()
         Just traversed' -> walktree traversed' curdir
     walktree traversed curdir = do
-      (subdirs, files) <- listDir curdir
+      -- If we can't list the directory contents, we just skip the directory
+      -- and claim that it has no children.  We don't log it because it would
+      -- happen for every discovery process and would be very noisy.
+      -- TODO: use a (State (Set SkippedDirs)) effect to track and report this
+      (subdirs, files) <- fmap (fromMaybe ([], [])) $ recover $ listDir curdir
       action <- handler curdir subdirs files
       case action of
         WalkFinish -> pure Nothing
