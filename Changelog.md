@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Changes copyrights field to copyrightsByLicense in the attribution report JSON output. [#966](https://github.com/fossas/fossa-cli/pull/966)
+
 ## v3.3.6
 - Make CLI-side license scanning the default method of scanning vendored dependencies
 - Maven: Report direct dependencies as direct rather than deep. ([#963](https://github.com/fossas/fossa-cli/pull/963))

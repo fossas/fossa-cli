@@ -49,6 +49,7 @@ genAttribution =
     <*> Gen.list defaultRange genDependency
     <*> Gen.list defaultRange genDependency
     <*> genLicenseMap
+    <*> Gen.maybe genCopyrightMap
 
 tuplify :: Monad m => m a -> m b -> m (a, b)
 tuplify = liftA2 (,)
@@ -58,6 +59,12 @@ genLicenseMap = do
   let genName = LicenseName <$> arbitraryText
   let genContents = LicenseContents <$> arbitraryText
   Gen.map defaultRange $ tuplify genName genContents
+
+genCopyrightMap :: Gen (Map LicenseName [CopyrightText])
+genCopyrightMap = do
+  let genName = LicenseName <$> arbitraryText
+  let genCopyright = CopyrightText <$> arbitraryText
+  Gen.map defaultRange $ tuplify genName $ Gen.list defaultRange genCopyright
 
 arbitraryText :: Gen Text
 arbitraryText = Gen.text (Range.linear 3 25) Gen.unicodeAll
