@@ -34,6 +34,8 @@ module Control.Effect.Diagnostics (
   fromMaybeText,
   tagError,
   combineSuccessful,
+  recoverWith,
+  recoverWithDefault,
 
   -- * Algebra re-exports
   module X,
@@ -51,6 +53,7 @@ import Control.Exception (Exception, IOException, SomeException (..))
 import Control.Exception.Extra (safeCatch)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
+import Data.Maybe qualified as Maybe
 import Data.Semigroup (sconcat)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -214,3 +217,11 @@ combineSuccessful err war actions = do
   case successful of
     Nothing -> fatal err
     Just xs -> pure (sconcat xs)
+
+-- | Recover from an error and apply a function
+recoverWith :: Has Diagnostics sig m => (Maybe a -> b) -> m a -> m b
+recoverWith f act = f <$> recover act
+
+-- | Recover from an error and provide a fallback value
+recoverWithDefault :: Has Diagnostics sig m => a -> m a -> m a
+recoverWithDefault x = recoverWith (Maybe.fromMaybe x)

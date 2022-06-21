@@ -21,7 +21,7 @@ import Control.Carrier.Writer.Church (
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
-  recover,
+  recoverWithDefault,
  )
 import Control.Effect.Reader (Reader, ask)
 import Control.Monad.Trans (MonadTrans (lift))
@@ -30,7 +30,7 @@ import Data.Foldable (find)
 import Data.Functor (void)
 import Data.Glob qualified as Glob
 import Data.List ((\\))
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
@@ -178,7 +178,7 @@ walkDir handler topdir =
       -- and claim that it has no children.  We don't log it because it would
       -- happen for every discovery process and would be very noisy.
       -- TODO: use a (State (Set SkippedDirs)) effect to track and report this
-      (subdirs, files) <- fmap (fromMaybe ([], [])) $ recover $ listDir curdir
+      (subdirs, files) <- recoverWithDefault ([], []) $ listDir curdir
       action <- handler curdir subdirs files
       case action of
         WalkFinish -> pure Nothing
