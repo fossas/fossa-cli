@@ -12,7 +12,7 @@ module Effect.Logger (
   withLogger,
   withDefaultLogger,
   withWriterLogger,
-  withTVarLogger,
+  withConcurrentWriterLogger,
   runLogger,
   ignoreLogger,
   log,
@@ -27,8 +27,8 @@ module Effect.Logger (
 
 import Control.Algebra as X
 import Control.Carrier.Simple
-import Control.Concurrent.STM (atomically, readTVar)
-import Control.Concurrent.STM.TVar (TVar, writeTVar)
+import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM.TMQueue (TMQueue, closeTMQueue, writeTMQueue)
 import Control.Effect.ConsoleRegion
 import Control.Effect.Exception
 import Control.Effect.Lift (sendIO)
@@ -143,17 +143,24 @@ withWriterLogger sev = runLogger ctx
 
 -- | Like `withWriterLogger`, except it works even when the logged action forks
 -- threads.
-withTVarLogger ::
-  forall f sig m a.
-  ( Applicative f
-  , Monoid (f (Doc AnsiStyle))
-  , Has (Reader (TVar (f (Doc AnsiStyle)))) sig m
+--
+-- In particular, using `withWriterLogger` with `TaskPool` will cause log
+-- messages from forked threads to be missed. Use `withConcurrentWriterLogger`
+-- wherever you would use `withWriterLogger` to collect log messages even when
+-- the underlying action forks.
+withConcurrentWriterLogger ::
+  forall sig m a.
+  ( Has (Reader (TMQueue (Doc AnsiStyle))) sig m
   , Has (Lift IO) sig m
   ) =>
   Severity ->
   LoggerC m a ->
   m a
-withTVarLogger sev = runLogger ctx
+withConcurrentWriterLogger sev action = do
+  result <- runLogger ctx action
+  logs <- ask @(TMQueue (Doc AnsiStyle))
+  sendIO $ atomically $ closeTMQueue logs
+  pure result
   where
     ctx :: LogCtx (Doc AnsiStyle) m
     ctx =
@@ -162,10 +169,7 @@ withTVarLogger sev = runLogger ctx
         , logCtxFormatter = const id
         , logCtxWrite = \msg -> do
             logs <- ask
-            sendIO $
-              atomically $ do
-                entries <- readTVar logs
-                writeTVar logs $ entries <> pure @f msg
+            sendIO $ atomically $ writeTMQueue logs msg
         }
 
 -- | Determine the default LogAction to use by checking whether the terminal
