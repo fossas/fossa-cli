@@ -25,6 +25,7 @@ import Control.Effect.Diagnostics (
   warn,
  )
 import Control.Effect.Reader (Reader)
+import Control.Monad (when)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
   Parser,
@@ -35,7 +36,7 @@ import Data.Aeson.Types (
  )
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, isJust)
+import Data.Maybe (catMaybes, isJust, isNothing)
 import Data.Set (Set)
 import Data.String.Conversion (toText)
 import Data.Text qualified as Text
@@ -193,13 +194,14 @@ findProjects = walkWithFilters' $ \dir _ files -> do
             CargoProject
               { cargoToml = toml
               , cargoDir = dir
+              , cargoLock = findFileNamed "Cargo.lock" files
               }
-
       pure ([project], WalkSkipAll)
 
 data CargoProject = CargoProject
   { cargoDir :: Path Abs Dir
   , cargoToml :: Path Abs File
+  , cargoLock :: Maybe (Path Abs File)
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -293,6 +295,9 @@ getDeps project = do
       , dependencyManifestFiles = [cargoToml project]
       }
 
+-- | Reference: https://doc.rust-lang.org/cargo/commands/cargo-generate-lockfile.html
+-- This command may update user's lockfile. If the lockfile already exists,
+-- it will be rebuilt with the latest available version of every package.
 cargoGenLockfileCmd :: Command
 cargoGenLockfileCmd =
   Command
@@ -301,6 +306,7 @@ cargoGenLockfileCmd =
     , cmdAllowErr = Never
     }
 
+-- | Reference: https://doc.rust-lang.org/cargo/commands/cargo-metadata.html
 cargoMetadataCmd :: Command
 cargoMetadataCmd =
   Command
@@ -313,8 +319,14 @@ analyze ::
   (Has Exec sig m, Has Diagnostics sig m) =>
   CargoProject ->
   m (Graphing Dependency, GraphBreadth)
-analyze (CargoProject manifestDir manifestFile) = do
-  _ <- context "Generating lockfile" $ errCtx (FailedToGenLockFile manifestFile) $ execThrow manifestDir cargoGenLockfileCmd
+analyze (CargoProject manifestDir manifestFile maybeLockFile) = do
+  -- We don't want to generate lockfile, if lockfile already exists already.
+  -- As this may mutate lockfile (and version of dependency therein).
+  when (isNothing maybeLockFile) $ do
+    context "Generating lockfile" $
+      errCtx (FailedToGenLockFile manifestFile) $
+        execThrow manifestDir cargoGenLockfileCmd >> pure ()
+
   meta <- errCtx (FailedToRetrieveCargoMetadata manifestFile) $ execJson @CargoMetadata manifestDir cargoMetadataCmd
   graph <- context "Building dependency graph" $ pure (buildGraph meta)
   pure (graph, Complete)

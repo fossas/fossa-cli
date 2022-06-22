@@ -4,6 +4,7 @@
 
 - Changes copyrights field to copyrightsByLicense in the attribution report JSON output. [#966](https://github.com/fossas/fossa-cli/pull/966)
 - Always include the "downloadUrl" field in attribution reports, regardless of the setting in the FOSSA reports UI. ([#979](https://github.com/fossas/fossa-cli/pull/979))
+- Rust: Does not mutate lockfile when performing analysis. []()
 
 ## v3.3.6
 - Make CLI-side license scanning the default method of scanning vendored dependencies

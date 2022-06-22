@@ -47,18 +47,17 @@ root
 
 ## Analysis
 
-First, we invoke `cargo generate-lockfile` to trigger the lockfile build.  This
-downloads the dependency graph info and almost nothing else.  Then, we read the
+If the lockfile does not exist, we invoke `cargo generate-lockfile` to trigger the lockfile build.
+  
+This downloads the dependency graph info and almost nothing else.  Then, we read the
 output of the `cargo metadata --format-version 1` command (format version 1 is JSON,
 and is currently the only allowed formatting scheme).  This will arrange the data
 into a slightly simpler scheme.
 
-**NOTE**: If we do not attempt to regenerate the lockfile, we may try to download
-every dependency in the tree.  This can take upwards of 10 minutes even for small
-projects, which is wasteful and unnecessary.  However, if the lockfile has recently
-been generated, it will try to update the package index.  This usually takes about
-2-10 seconds, which is potentially wasteful, but far less so than the 10 minutes
-that it would take to download entire crates.
+**Recommendation**: For optimal performance, we recommend that you run `fossa analyze` after 
+building the project, or after `cargo fetch` is ran. This will ensure, when fossa-cli executes
+`cargo metadata`, cargo does not need to download all of the project's dependencies, and operation
+can be performed within few minutes.
 
 We can interrogate the JSON output for direct and deep dependency info, but it is
 non-trivial to do so.  For more info, see the metadata schema found
