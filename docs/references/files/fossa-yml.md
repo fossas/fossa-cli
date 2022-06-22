@@ -218,6 +218,8 @@ Analysis target configuration determines which targets should be scanned with th
     -  If no targets were listed in the `only` sections, `exclude` will remove targets from the list of all available targets.
 3. Analysis is run on the remaining targets.
 
+For detailed walkthrough, and example please refer to [analysis target configuration walkthrough](../../walkthroughs/analysis-target-configuration.md)
+
 #### Project target configuration example
 
 Run the command `fossa list-targets` to determine the analysis targets present in your project. The output will look similar to the following with the targets in format `type@path` (You may see that duplicated lines for "Found target" and "Found project"):
