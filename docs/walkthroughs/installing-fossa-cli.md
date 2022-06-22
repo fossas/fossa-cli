@@ -2,9 +2,9 @@
 
 ## Using Installation script
 
-FOSSA CLI provides an install script that downloads the latest release from GitHub Releases for your computer's architecture. You can see the source code and flags at [`install-latest.sh`](./install-latest.sh) for Mac and Linux or [`install-latest.ps1`](./install-latest.ps1) for Windows.
+FOSSA CLI provides an install script that downloads the latest release from GitHub Releases for your computer's architecture. You can see the source code and flags at [`install-latest.sh`](../../install-latest.sh) for Mac and Linux or [`install-latest.ps1`](../../install-latest.ps1) for Windows.
 
-**NOTE:** You may need to add the downloaded executable to your `$PATH`. The installer script will output the installed path of the executable. You can also use `-b` to pick the installation directory when using `install-latest.sh` (see [the `install-latest.sh` source code](./install-latest.sh) for details).
+**NOTE:** You may need to add the downloaded executable to your `$PATH`. The installer script will output the installed path of the executable. You can also use `-b` to pick the installation directory when using `install-latest.sh` (see [the `install-latest.sh` source code](../../install-latest.sh) for details).
 
 ### Linux or macOS
 
