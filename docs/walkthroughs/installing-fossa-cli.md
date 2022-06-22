@@ -54,7 +54,7 @@ And for windows:
 Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install-v1.ps1'))
 ```
 
-> As of now, there is no development work being done on CLI 1.x. Likewise, support for CLI 1.x is deprecated. If there is a defect with CLI 1.x, we will not make patches to CLI 1.x anymore but instead will ask you to migrate to 3.x, and make necessary patches to CLI 3.x. It is recommended that you migrate to CLI 3.x. Please read the [migration guide](./differences-from-v1.md) for more details.
+> As of now, there is no development work being done on CLI 1.x. Likewise, support for CLI 1.x is deprecated. If there is a defect with CLI 1.x, we will not make patches to CLI 1.x anymore but instead will ask you to migrate to 3.x, and make necessary patches to CLI 3.x. It is recommended that you migrate to CLI 3.x. Please read the [migration guide](./../differences-from-v1.md) for more details.
 
 ## Installing manually with Github Releases
 
