@@ -78,7 +78,7 @@ import Control.Carrier.TaskPool (
  )
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Exception (Lift)
-import Control.Effect.FossaApiClient (FossaApiClient)
+import Control.Effect.FossaApiClient (FossaApiClient, getEndpointVersion)
 import Control.Effect.Git (Git)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
@@ -308,7 +308,14 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   let analysisResult = AnalysisScanResult projectScansWithSkippedProdPath vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults
 
-  renderScanSummary (severity cfg) analysisResult $ Config.filterSet cfg
+  maybeEndpointAppVersion <- case destination of
+    UploadScan apiOpts _ -> runFossaApiClient apiOpts $ do
+      version <- getEndpointVersion
+      debugMetadata "FossaEndpointCoreVersion" version
+      pure version
+    _ -> pure Nothing
+
+  renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult $ Config.filterSet cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits of
@@ -320,6 +327,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         Diag.context "upload-results"
           . runFossaApiClient apiOpts
           $ do
+            --
+
             locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision sourceUnits
             doAssertRevisionBinaries iatAssertion locator
 

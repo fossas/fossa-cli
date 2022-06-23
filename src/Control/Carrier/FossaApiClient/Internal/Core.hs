@@ -13,6 +13,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   uploadArchive,
   uploadContainerScan,
   uploadContributors,
+  getEndpointVersion,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
@@ -180,3 +181,13 @@ uploadArchive ::
   m ByteString
 uploadArchive =
   API.archiveUpload
+
+getEndpointVersion ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  m (Maybe Text)
+getEndpointVersion = do
+  apiOpts <- ask
+  API.getEndpointVersion apiOpts
