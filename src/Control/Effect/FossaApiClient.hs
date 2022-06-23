@@ -35,6 +35,7 @@ module Control.Effect.FossaApiClient (
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
+import App.Fossa.Config.Test (DiffRevision)
 import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
 import App.Fossa.VSI.Fingerprint qualified as Fingerprint
@@ -84,7 +85,7 @@ data FossaApiClientF a where
   FinalizeLicenseScan :: ArchiveComponents -> FossaApiClientF ()
   GetApiOpts :: FossaApiClientF ApiOpts
   GetAttribution :: ProjectRevision -> ReportOutputFormat -> FossaApiClientF Text
-  GetIssues :: ProjectRevision -> FossaApiClientF Issues
+  GetIssues :: ProjectRevision -> Maybe DiffRevision -> FossaApiClientF Issues
   GetEndpointVersion :: FossaApiClientF (Maybe Text)
   GetLatestBuild :: ProjectRevision -> FossaApiClientF Build
   GetLatestScan :: Locator -> ProjectRevision -> FossaApiClientF ScanResponse
@@ -149,8 +150,8 @@ uploadContributors locator contributors = sendSimple $ UploadContributors locato
 getLatestBuild :: (Has FossaApiClient sig m) => ProjectRevision -> m Build
 getLatestBuild = sendSimple . GetLatestBuild
 
-getIssues :: (Has FossaApiClient sig m) => ProjectRevision -> m Issues
-getIssues = sendSimple . GetIssues
+getIssues :: (Has FossaApiClient sig m) => ProjectRevision -> Maybe DiffRevision -> m Issues
+getIssues projectRevision maybeDiffRevision = sendSimple $ GetIssues projectRevision maybeDiffRevision
 
 getScan :: Has FossaApiClient sig m => Locator -> ScanId -> m ScanResponse
 getScan locator scanId = sendSimple $ GetScan locator scanId

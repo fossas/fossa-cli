@@ -34,8 +34,11 @@ module Test.Fixtures (
   secondLocator,
   firstLicenseSourceUnit,
   secondLicenseSourceUnit,
+  diffRevision,
+  issuesDiffAvailable,
 ) where
 
+import App.Fossa.Config.Test (DiffRevision (DiffRevision))
 import App.Fossa.VendoredDependency (VendoredDependency (..))
 import App.Types qualified as App
 import Control.Effect.FossaApiClient qualified as App
@@ -68,7 +71,7 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True True True CLILicenseScan
+organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True
 
 project :: API.Project
 project =
@@ -112,6 +115,9 @@ projectRevision =
     , App.projectRevision = "testRevision"
     , App.projectBranch = Just "testBranch"
     }
+
+diffRevision :: DiffRevision
+diffRevision = DiffRevision "someDiffRevision"
 
 packageRevision :: App.PackageRevision
 packageRevision =
@@ -213,6 +219,33 @@ issuesAvailable =
       makeIssue issueId issueType =
         API.Issue
           { API.issueId = 200 + issueId
+          , API.issuePriorityString = Nothing
+          , API.issueResolved = False
+          , API.issueRevisionId = "IssueRevisionId" <> showT issueId
+          , API.issueType = issueType
+          , API.issueRule = Nothing
+          }
+      issueList = zipWith makeIssue [1 ..] issueTypes
+   in API.Issues
+        { API.issuesCount = length issueList
+        , API.issuesIssues = issueList
+        , API.issuesStatus = "SCANNED"
+        }
+
+issuesDiffAvailable :: API.Issues
+issuesDiffAvailable =
+  let issueTypes =
+        [ API.IssuePolicyConflict
+        , API.IssuePolicyFlag
+        , API.IssueVulnerability
+        , API.IssueUnlicensedDependency
+        , API.IssueOutdatedDependency
+        , API.IssueOther "TestIssueOther"
+        ]
+      makeIssue :: Int -> API.IssueType -> API.Issue
+      makeIssue issueId issueType =
+        API.Issue
+          { API.issueId = 100 + issueId
           , API.issuePriorityString = Nothing
           , API.issueResolved = False
           , API.issueRevisionId = "IssueRevisionId" <> showT issueId

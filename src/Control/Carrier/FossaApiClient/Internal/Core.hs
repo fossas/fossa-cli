@@ -17,6 +17,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
+import App.Fossa.Config.Test (DiffRevision)
 import App.Fossa.Container.Scan (ContainerScan)
 import App.Fossa.VendoredDependency (VendoredDependency (..))
 import App.Types (ProjectMetadata, ProjectRevision (..))
@@ -133,10 +134,11 @@ getIssues ::
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->
+  Maybe DiffRevision ->
   m Issues
-getIssues rev = do
+getIssues rev maybeDiffRevision = do
   apiOpts <- ask
-  API.getIssues apiOpts rev
+  API.getIssues apiOpts rev maybeDiffRevision
 
 getAttribution ::
   ( Has (Lift IO) sig m

@@ -4,6 +4,7 @@ module App.Fossa.API.BuildWait (
   waitForBuild,
 ) where
 
+import App.Fossa.Config.Test (DiffRevision)
 import App.Types (ProjectRevision (projectName))
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -84,15 +85,16 @@ waitForIssues ::
   , Has (Lift IO) sig m
   ) =>
   ProjectRevision ->
+  Maybe DiffRevision ->
   Cancel ->
   m Issues
-waitForIssues revision cancelFlag = do
+waitForIssues revision maybeDiffRevision cancelFlag = do
   checkForTimeout cancelFlag
-  issues <- getIssues revision
+  issues <- getIssues revision maybeDiffRevision
   case issuesStatus issues of
     "WAITING" -> do
       pauseForRetry
-      waitForIssues revision cancelFlag
+      waitForIssues revision maybeDiffRevision cancelFlag
     _ -> pure issues
 
 -- | Wait for a "normal" (non-VPS) build completion

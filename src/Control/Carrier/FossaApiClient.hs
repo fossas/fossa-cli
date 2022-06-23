@@ -37,7 +37,7 @@ runFossaApiClient apiOpts =
           FinalizeLicenseScan components -> LicenseScanning.finalizeLicenseScan components
           GetApiOpts -> pure apiOpts
           GetAttribution rev format -> Core.getAttribution rev format
-          GetIssues rev -> Core.getIssues rev
+          GetIssues rev maybeDiffRev -> Core.getIssues rev maybeDiffRev
           GetEndpointVersion -> Core.getEndpointVersion
           GetLatestBuild rev -> Core.getLatestBuild rev
           GetLatestScan locator rev -> ScotlandYard.getLatestScan locator rev

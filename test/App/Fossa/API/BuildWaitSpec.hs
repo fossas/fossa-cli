@@ -88,22 +88,29 @@ spec =
         commonExpectations
         expectIssuesAvailable
         runWithTimeout $ \cancel -> do
-          issues <- waitForIssues Fixtures.projectRevision cancel
+          issues <- waitForIssues Fixtures.projectRevision Nothing cancel
           issues `shouldBe'` Fixtures.issuesAvailable
+
+      it' "should return when the issues diffs are avilable" $ do
+        commonExpectations
+        expectDiffIssuesAvailable
+        runWithTimeout $ \cancel -> do
+          issues <- waitForIssues Fixtures.projectRevision (Just Fixtures.diffRevision) cancel
+          issues `shouldBe'` Fixtures.issuesDiffAvailable
 
       it' "should retry periodically if the issues are not available" $ do
         commonExpectations
         expectIssuesPending
         expectIssuesAvailable
         runWithTimeout $ \cancel -> do
-          issues <- waitForIssues Fixtures.projectRevision cancel
+          issues <- waitForIssues Fixtures.projectRevision Nothing cancel
           issues `shouldBe'` Fixtures.issuesAvailable
 
       it' "should cancel when the timeout expires" $ do
         commonExpectations
         expectIssuesAlwaysWaiting
         expectFatal' . runWithTimeout $
-          waitForIssues Fixtures.projectRevision
+          waitForIssues Fixtures.projectRevision Nothing
     describe "waitForBuild" $ do
       it' "should return when the build is complete" $ do
         expectGetApiOpts
@@ -161,12 +168,17 @@ expectGetScan scanStatus =
 
 expectIssuesAvailable :: Has MockApi sig m => m ()
 expectIssuesAvailable =
-  (GetIssues Fixtures.projectRevision)
+  (GetIssues Fixtures.projectRevision Nothing)
     `returnsOnce` Fixtures.issuesAvailable
+
+expectDiffIssuesAvailable :: Has MockApi sig m => m ()
+expectDiffIssuesAvailable =
+  GetIssues Fixtures.projectRevision (Just Fixtures.diffRevision)
+    `returnsOnce` Fixtures.issuesDiffAvailable
 
 expectIssuesPending :: Has MockApi sig m => m ()
 expectIssuesPending =
-  (GetIssues Fixtures.projectRevision)
+  (GetIssues Fixtures.projectRevision Nothing)
     `returnsOnce` Fixtures.issuesPending
 
 expectScanAlwaysPending :: Has MockApi sig m => m ()
@@ -181,5 +193,5 @@ expectBuildAlwaysRunning =
 
 expectIssuesAlwaysWaiting :: Has MockApi sig m => m ()
 expectIssuesAlwaysWaiting =
-  (GetIssues Fixtures.projectRevision)
+  (GetIssues Fixtures.projectRevision Nothing)
     `alwaysReturns` Fixtures.issuesPending
