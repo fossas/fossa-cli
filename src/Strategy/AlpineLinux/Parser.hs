@@ -109,6 +109,8 @@ packageParser = do
       pure . Left $ MissingPackageVersion name
 
 -- | Parses a list of properties into a map.
+-- Note: Some properties can be repeated.  This map will only have the last value.
+-- However, none of the properties we are interested in are repeatable.
 propertiesParser :: Parser (Map.Map Text Text)
 propertiesParser =
   Map.fromList . NE.toList <$> propertyParser `sepByWithTry1` eol
