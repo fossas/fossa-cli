@@ -20,7 +20,7 @@ import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
 import Control.Monad (when)
 import Data.Foldable (foldl', traverse_)
 import Data.List (sort)
-import Data.Maybe (catMaybes, mapMaybe, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
 import Data.Monoid.Extra (isMempty)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
@@ -126,9 +126,11 @@ instance Pretty ScanCount where
 -- * __poetry__ project in path: succeeded
 -- * __fpm__ project in path: skipped
 -- * __setuptools__ project in path: skipped
-renderScanSummary :: (Has Diag.Diagnostics sig m, Has Logger sig m, Has (Lift IO) sig m) => Severity -> AnalysisScanResult -> AllFilters -> m ()
-renderScanSummary severity analysisResults filters =
-  case summarize analysisResults of
+renderScanSummary :: (Has Diag.Diagnostics sig m, Has Logger sig m, Has (Lift IO) sig m) => Severity -> (Maybe Text) -> AnalysisScanResult -> AllFilters -> m ()
+renderScanSummary severity maybeEndpointVersion analysisResults filters = do
+  let endpointVersion = fromMaybe "N/A" maybeEndpointVersion
+
+  case summarize endpointVersion analysisResults of
     Nothing -> pure ()
     Just summary -> do
       let someFilters = isMempty filters
@@ -144,12 +146,12 @@ renderScanSummary severity analysisResults filters =
       when (severity /= SevDebug) $ do
         logInfo "You can pass `--debug` option to eagerly show all warning and failure messages."
 
-      summaryWithWarnErrorsTmpFile <- dumpResultLogsToTempFile analysisResults
+      summaryWithWarnErrorsTmpFile <- dumpResultLogsToTempFile endpointVersion analysisResults
       logInfo . pretty $ "You can also view analysis summary with warning and error messages at: " <> show summaryWithWarnErrorsTmpFile
       logInfo "------------"
 
-summarize :: AnalysisScanResult -> Maybe ([Doc AnsiStyle])
-summarize (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps) =
+summarize :: Text -> AnalysisScanResult -> Maybe ([Doc AnsiStyle])
+summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps) =
   if (numProjects totalScanCount <= 0)
     then Nothing
     else
@@ -158,6 +160,7 @@ summarize (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps) =
         , "Scan Summary"
         , "------------"
         , pretty fullVersionDescription
+        , pretty $ "fossa endpoint server version: " <> endpointVersion
         , ""
         , pretty totalScanCount
         , ""
@@ -302,8 +305,8 @@ countWarnings ws =
     isIgnoredErrGroup IgnoredErrGroup{} = True
     isIgnoredErrGroup _ = False
 
-dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => AnalysisScanResult -> m (Path Abs File)
-dumpResultLogsToTempFile (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps) = do
+dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => Text -> AnalysisScanResult -> m (Path Abs File)
+dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps) = do
   let doc =
         renderStrict
           . layoutPretty defaultLayoutOptions
@@ -323,7 +326,7 @@ dumpResultLogsToTempFile (AnalysisScanResult projects vsi binary manualDeps dyna
   pure (tmpDir </> scanSummaryFileName)
   where
     scanSummary :: [Doc AnsiStyle]
-    scanSummary = maybeToList (vsep <$> summarize (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps))
+    scanSummary = maybeToList (vsep <$> summarize endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps))
 
     renderSourceUnit :: Doc AnsiStyle -> Result (Maybe SourceUnit) -> Maybe (Doc AnsiStyle)
     renderSourceUnit header (Failure ws eg) = Just $ renderFailure ws eg $ vsep $ summarizeSrcUnit header Nothing (Failure ws eg)

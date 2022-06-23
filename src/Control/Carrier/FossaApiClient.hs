@@ -38,6 +38,7 @@ runFossaApiClient apiOpts =
           GetApiOpts -> pure apiOpts
           GetAttribution rev format -> Core.getAttribution rev format
           GetIssues rev -> Core.getIssues rev
+          GetEndpointVersion -> Core.getEndpointVersion
           GetLatestBuild rev -> Core.getLatestBuild rev
           GetLatestScan locator rev -> ScotlandYard.getLatestScan locator rev
           GetOrganization -> Core.getOrganization

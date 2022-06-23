@@ -15,6 +15,7 @@ module Control.Effect.FossaApiClient (
   getIssues,
   getLatestBuild,
   getLatestScan,
+  getEndpointVersion,
   getOrganization,
   getProject,
   getAnalyzedRevisions,
@@ -84,6 +85,7 @@ data FossaApiClientF a where
   GetApiOpts :: FossaApiClientF ApiOpts
   GetAttribution :: ProjectRevision -> ReportOutputFormat -> FossaApiClientF Text
   GetIssues :: ProjectRevision -> FossaApiClientF Issues
+  GetEndpointVersion :: FossaApiClientF (Maybe Text)
   GetLatestBuild :: ProjectRevision -> FossaApiClientF Build
   GetLatestScan :: Locator -> ProjectRevision -> FossaApiClientF ScanResponse
   GetOrganization :: FossaApiClientF Organization
@@ -206,3 +208,6 @@ getVsiScanAnalysisStatus = sendSimple . GetVsiScanAnalysisStatus
 
 getVsiInferences :: Has FossaApiClient sig m => VSI.ScanID -> m [Locator]
 getVsiInferences = sendSimple . GetVsiInferences
+
+getEndpointVersion :: Has FossaApiClient sig m => m (Maybe Text)
+getEndpointVersion = sendSimple GetEndpointVersion

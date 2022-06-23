@@ -30,6 +30,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   vsiScanAnalysisStatus,
   vsiDownloadInferences,
   renderLocatorUrl,
+  getEndpointVersion,
 ) where
 
 import App.Docs (fossaSslCertDocsUrl)
@@ -51,7 +52,7 @@ import App.Version (versionNumber)
 import Codec.Compression.GZip qualified as GZIP
 import Control.Algebra (Algebra, Has, type (:+:))
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fromMaybeText)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fromEither, fromMaybeText, warn)
 import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception (Exception (displayException), SomeException)
@@ -129,6 +130,7 @@ import Network.HTTP.Req (
  )
 import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
 import Network.HTTP.Types qualified as HTTP
+import Parse.XML (FromXML (..), child, parseXML, xmlErrorPretty)
 import Path (File, Path, Rel)
 import Srclib.Types (
   LicenseSourceUnit,
@@ -862,3 +864,19 @@ vsiDownloadInferences apiOpts scanID = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   body <- responseBody <$> req GET (vsiDownloadInferencesEndpoint baseUrl scanID) NoReqBody jsonResponse baseOpts
   pure $ unVSIExportedInferencesBody body
+
+endpointAppManifest :: Url scheme -> Url scheme
+endpointAppManifest baseurl = baseurl /: "rest" /: "applinks" /: "*" /: "manifest"
+
+newtype AppManifest = AppManifest {endpointAppVersion :: Text} deriving (Show, Eq, Ord)
+
+instance FromXML AppManifest where
+  parseElement el = AppManifest <$> child "version" el
+
+getEndpointVersion :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> m (Maybe Text)
+getEndpointVersion apiOpts = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  body <- responseBody <$> req GET (endpointAppManifest baseUrl) NoReqBody bsResponse baseOpts
+  case parseXML (decodeUtf8 body) of
+    Left err -> warn (xmlErrorPretty err) >> pure Nothing
+    Right (appManifest :: AppManifest) -> pure $ Just (endpointAppVersion appManifest)
