@@ -59,7 +59,7 @@ versionKey = "V"
 --    https://github.com/mrkkrp/megaparsec/issues/401
 -- This implementation is written to mirror the source of the generic version:
 --   https://hackage.haskell.org/package/parser-combinators-1.3.0/docs/src/Control.Monad.Combinators.html#sepBy
-sepByWithTry :: MonadParsec e s m => m a1 -> m a2 -> m [a1]
+sepByWithTry :: MonadParsec e s m => m a -> m b -> m [a]
 sepByWithTry p sep = do
   r <- optional (try p)
   case r of
@@ -72,7 +72,7 @@ sepByWithTry p sep = do
 --
 -- This implementation is written to mirror the source of the generic version:
 --   https://hackage.haskell.org/package/parser-combinators-1.3.0/docs/src/Control.Monad.Combinators.html#sepBy1
-sepByWithTry1 :: MonadParsec e s m => m a1 -> m a2 -> m (NonEmpty a1)
+sepByWithTry1 :: MonadParsec e s m => m a -> m b -> m (NonEmpty a)
 sepByWithTry1 p sep = do
   x <- try p
   (x :|) <$> many (try (sep >> p))
