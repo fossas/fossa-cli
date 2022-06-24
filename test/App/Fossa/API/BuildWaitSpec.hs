@@ -91,7 +91,7 @@ spec =
           issues <- waitForIssues Fixtures.projectRevision Nothing cancel
           issues `shouldBe'` Fixtures.issuesAvailable
 
-      it' "should return when the issues diffs are avilable" $ do
+      it' "should return when the issues diffs are available" $ do
         commonExpectations
         expectDiffIssuesAvailable
         runWithTimeout $ \cancel -> do
