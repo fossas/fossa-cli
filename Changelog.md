@@ -1,9 +1,9 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.3.7
 
-- Changes copyrights field to copyrightsByLicense in the attribution report JSON output. [#966](https://github.com/fossas/fossa-cli/pull/966)
-- Always include the "downloadUrl" field in attribution reports, regardless of the setting in the FOSSA reports UI. ([#979](https://github.com/fossas/fossa-cli/pull/979))
+- Report: Changes copyrights field to copyrightsByLicense in the attribution report JSON output. [#966](https://github.com/fossas/fossa-cli/pull/966)
+- Report: Always include the "downloadUrl" field in attribution reports, regardless of the setting in the FOSSA reports UI. ([#979](https://github.com/fossas/fossa-cli/pull/979))
 - Debug: Includes version associated with endpoint in debug bundle, and scan summary. ([#984](https://github.com/fossas/fossa-cli/pull/984))
 - Test: Adds `--diff` option for `fossa test` command. ([#986](https://github.com/fossas/fossa-cli/pull/986))
 
