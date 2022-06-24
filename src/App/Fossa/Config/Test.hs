@@ -106,7 +106,7 @@ parser =
     <*> optional (option auto (long "timeout" <> help "Duration to wait for build completion in seconds (Defaults to 1 hour)"))
     <*> flag TestOutputPretty TestOutputJson (long "json" <> help "Output issues as json")
     <*> baseDirArg
-    <*> optional (strOption (long "diff" <> help "Check for only new issues that do not exist in provided diff revision."))
+    <*> optional (strOption (long "diff" <> help "Checks for new issues of the revision, that does not exist in provided diff revision."))
 
 loadConfig ::
   ( Has (Lift IO) sig m
