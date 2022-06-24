@@ -151,7 +151,7 @@ getLatestBuild :: (Has FossaApiClient sig m) => ProjectRevision -> m Build
 getLatestBuild = sendSimple . GetLatestBuild
 
 getIssues :: (Has FossaApiClient sig m) => ProjectRevision -> Maybe DiffRevision -> m Issues
-getIssues projectRevision maybeDiffRevision = sendSimple $ GetIssues projectRevision maybeDiffRevision
+getIssues projectRevision diffRevision = sendSimple $ GetIssues projectRevision diffRevision
 
 getScan :: Has FossaApiClient sig m => Locator -> ScanId -> m ScanResponse
 getScan locator scanId = sendSimple $ GetScan locator scanId

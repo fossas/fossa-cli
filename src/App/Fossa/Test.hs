@@ -12,7 +12,7 @@ import App.Fossa.Config.Test (
   DiffRevision (..),
   OutputFormat (TestOutputJson, TestOutputPretty),
   TestCliOpts,
-  TestConfig (maybeDiffRevision),
+  TestConfig (diffRevision),
  )
 import App.Fossa.Config.Test qualified as Config
 import App.Fossa.Subcommand (SubCommand)
@@ -56,13 +56,13 @@ testMain config = runStickyLogger SevInfo
   $ \cancelFlag -> do
     let revision = Config.projectRevision config
         outputType = Config.outputFormat config
-        maybeDiffRev = maybeDiffRevision config
+        diffRev = diffRevision config
 
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
     logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
 
-    case maybeDiffRev of
+    case diffRev of
       Nothing -> logInfo ""
       Just (DiffRevision rev) -> do
         logInfo ("diffing against revision: `" <> pretty rev <> "`")
@@ -73,13 +73,13 @@ testMain config = runStickyLogger SevInfo
     waitForScanCompletion revision cancelFlag
 
     logSticky "[ Waiting for issue scan completion... ]"
-    issues <- waitForIssues revision maybeDiffRev cancelFlag
+    issues <- waitForIssues revision diffRev cancelFlag
     logSticky ""
     logInfo ""
 
     case issuesCount issues of
       0 -> do
-        logInfo . pretty $ successMsg maybeDiffRev
+        logInfo . pretty $ successMsg diffRev
         case outputType of
           TestOutputPretty -> renderJson issues
           TestOutputJson -> pure ()
@@ -94,15 +94,15 @@ testMain config = runStickyLogger SevInfo
           else case outputType of
             TestOutputPretty -> logError $ pretty issues
             TestOutputJson -> renderJson issues
-        fatalText $ issesFoundMsg maybeDiffRev n
+        fatalText $ issesFoundMsg diffRev n
   where
     successMsg :: Maybe DiffRevision -> Text
-    successMsg maybeDiffRevision = case maybeDiffRevision of
+    successMsg diffRevision = case diffRevision of
       Nothing -> "Test passed! 0 issues found"
       Just (DiffRevision rev) -> "Test passed! No new issues found compared to revision: " <> rev <> "."
 
     issesFoundMsg :: Maybe DiffRevision -> Int -> Text
-    issesFoundMsg maybeDiffRevision n = case maybeDiffRevision of
+    issesFoundMsg diffRevision n = case diffRevision of
       Nothing -> "The scan has revealed issues. Number of issues found: " <> showT n
       Just (DiffRevision rev) ->
         "The scan has revealed new issues compared to revision: "

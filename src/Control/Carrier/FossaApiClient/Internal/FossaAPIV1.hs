@@ -581,11 +581,11 @@ getIssues ::
   ProjectRevision ->
   Maybe DiffRevision ->
   m Issues
-getIssues apiOpts ProjectRevision{..} maybeDiffRevision = fossaReq $ do
+getIssues apiOpts ProjectRevision{..} diffRevision = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   org <- getOrganization apiOpts
 
-  opts <- case (maybeDiffRevision, orgSupportsIssueDiffs org) of
+  opts <- case (diffRevision, orgSupportsIssueDiffs org) of
     (Just (DiffRevision diffRev), True) -> pure (baseOpts <> "diffRevision" =: diffRev)
     (Just _, False) -> fatal EndpointDoesNotSupportIssueDiffing
     (Nothing, _) -> pure baseOpts

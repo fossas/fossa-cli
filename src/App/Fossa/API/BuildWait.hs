@@ -88,13 +88,13 @@ waitForIssues ::
   Maybe DiffRevision ->
   Cancel ->
   m Issues
-waitForIssues revision maybeDiffRevision cancelFlag = do
+waitForIssues revision diffRevision cancelFlag = do
   checkForTimeout cancelFlag
-  issues <- getIssues revision maybeDiffRevision
+  issues <- getIssues revision diffRevision
   case issuesStatus issues of
     "WAITING" -> do
       pauseForRetry
-      waitForIssues revision maybeDiffRevision cancelFlag
+      waitForIssues revision diffRevision cancelFlag
     _ -> pure issues
 
 -- | Wait for a "normal" (non-VPS) build completion

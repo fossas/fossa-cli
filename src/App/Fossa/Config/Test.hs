@@ -86,7 +86,7 @@ data TestConfig = TestConfig
   , timeout :: Duration
   , outputFormat :: OutputFormat
   , projectRevision :: ProjectRevision
-  , maybeDiffRevision :: Maybe DiffRevision
+  , diffRevision :: Maybe DiffRevision
   }
   deriving (Show, Generic)
 
@@ -138,7 +138,7 @@ mergeOpts maybeConfig envvars TestCliOpts{..} = do
       revision =
         collectRevisionData' baseDir maybeConfig ReadOnly $
           OverrideProject (optProjectName commons) (optProjectRevision commons) Nothing
-      maybeDiffRevision = DiffRevision <$> testDiffRevision
+      diffRevision = DiffRevision <$> testDiffRevision
 
   TestConfig
     <$> baseDir
@@ -146,4 +146,4 @@ mergeOpts maybeConfig envvars TestCliOpts{..} = do
     <*> pure timeout
     <*> pure testOutputType
     <*> revision
-    <*> pure maybeDiffRevision
+    <*> pure diffRevision

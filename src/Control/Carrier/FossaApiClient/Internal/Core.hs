@@ -136,9 +136,9 @@ getIssues ::
   ProjectRevision ->
   Maybe DiffRevision ->
   m Issues
-getIssues rev maybeDiffRevision = do
+getIssues rev diffRevision = do
   apiOpts <- ask
-  API.getIssues apiOpts rev maybeDiffRevision
+  API.getIssues apiOpts rev diffRevision
 
 getAttribution ::
   ( Has (Lift IO) sig m
