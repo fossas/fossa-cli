@@ -63,7 +63,7 @@ test ContainerTestConfig{..} = runStickyLogger SevInfo $
     waitForBuild revision cancelToken
 
     logSticky "[ Waiting for issue scan completion ]"
-    issues <- waitForIssues revision cancelToken
+    issues <- waitForIssues revision Nothing cancelToken
     logSticky ""
 
     case issuesCount issues of

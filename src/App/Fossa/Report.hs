@@ -79,7 +79,7 @@ fetchReport ReportConfig{..} =
 
       logSticky "[ Waiting for issue scan completion... ]"
 
-      _ <- waitForIssues revision cancelToken
+      _ <- waitForIssues revision Nothing cancelToken
 
       logSticky $ "[ Fetching " <> showT reportType <> " report... ]"
 

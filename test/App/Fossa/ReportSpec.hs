@@ -70,16 +70,16 @@ expectBuildError = do
 
 expectFetchIssuesSuccess :: (Has MockApi sig m) => m ()
 expectFetchIssuesSuccess =
-  (GetIssues Fixtures.projectRevision) `returnsOnce` Fixtures.issuesAvailable
+  (GetIssues Fixtures.projectRevision Nothing) `returnsOnce` Fixtures.issuesAvailable
 
 expectFetchIssuesPending :: (Has MockApi sig m) => m ()
 expectFetchIssuesPending = do
   GetApiOpts `alwaysReturns` Fixtures.apiOpts -- It needs to fetch the poll delay
-  (GetIssues Fixtures.projectRevision) `alwaysReturns` Fixtures.issuesPending
+  (GetIssues Fixtures.projectRevision Nothing) `alwaysReturns` Fixtures.issuesPending
 
 expectFetchIssuesError :: (Has MockApi sig m) => m ()
 expectFetchIssuesError =
-  (GetIssues Fixtures.projectRevision) `fails` "Mock failure: GetIssues"
+  (GetIssues Fixtures.projectRevision Nothing) `fails` "Mock failure: GetIssues"
 
 expectFetchReportSuccess :: (Has MockApi sig m) => m ()
 expectFetchReportSuccess =

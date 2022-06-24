@@ -4,6 +4,7 @@
 module App.Fossa.Config.Test (
   TestCliOpts,
   TestConfig (..),
+  DiffRevision (..),
   OutputFormat (..),
   mkSubCommand,
   parser,
@@ -32,6 +33,7 @@ import Control.Effect.Lift (Lift)
 import Control.Timeout (Duration (..))
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.String.Conversion (toText)
+import Data.Text (Text)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
@@ -47,6 +49,7 @@ import Options.Applicative (
   option,
   optional,
   progDesc,
+  strOption,
  )
 
 data OutputFormat
@@ -57,11 +60,17 @@ data OutputFormat
 instance ToJSON OutputFormat where
   toEncoding = genericToEncoding defaultOptions
 
+newtype DiffRevision = DiffRevision Text deriving (Show, Eq, Ord, Generic)
+
+instance ToJSON DiffRevision where
+  toEncoding = genericToEncoding defaultOptions
+
 data TestCliOpts = TestCliOpts
   { commons :: CommonOpts
   , testTimeout :: Maybe Int
   , testOutputType :: OutputFormat
   , testBaseDir :: FilePath
+  , testDiffRevision :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -77,6 +86,7 @@ data TestConfig = TestConfig
   , timeout :: Duration
   , outputFormat :: OutputFormat
   , projectRevision :: ProjectRevision
+  , diffRevision :: Maybe DiffRevision
   }
   deriving (Show, Generic)
 
@@ -96,6 +106,7 @@ parser =
     <*> optional (option auto (long "timeout" <> help "Duration to wait for build completion in seconds (Defaults to 1 hour)"))
     <*> flag TestOutputPretty TestOutputJson (long "json" <> help "Output issues as json")
     <*> baseDirArg
+    <*> optional (strOption (long "diff" <> help "Checks for new issues of the revision, that does not exist in provided diff revision."))
 
 loadConfig ::
   ( Has (Lift IO) sig m
@@ -127,9 +138,12 @@ mergeOpts maybeConfig envvars TestCliOpts{..} = do
       revision =
         collectRevisionData' baseDir maybeConfig ReadOnly $
           OverrideProject (optProjectName commons) (optProjectRevision commons) Nothing
+      diffRevision = DiffRevision <$> testDiffRevision
+
   TestConfig
     <$> baseDir
     <*> apiOpts
     <*> pure timeout
     <*> pure testOutputType
     <*> revision
+    <*> pure diffRevision

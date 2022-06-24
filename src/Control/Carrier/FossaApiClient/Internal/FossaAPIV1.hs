@@ -35,6 +35,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
 
 import App.Docs (fossaSslCertDocsUrl)
 import App.Fossa.Config.Report
+import App.Fossa.Config.Test (DiffRevision (DiffRevision))
 import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Fossa.Report.Attribution qualified as Attr
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
@@ -93,7 +94,7 @@ import Fossa.API.Types (
   Contributors,
   Issues,
   OrgId,
-  Organization (organizationId),
+  Organization (orgSupportsIssueDiffs, organizationId),
   Project,
   SignedURL (signedURL),
   UploadResponse,
@@ -578,13 +579,35 @@ getIssues ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   ProjectRevision ->
+  Maybe DiffRevision ->
   m Issues
-getIssues apiOpts ProjectRevision{..} = fossaReq $ do
+getIssues apiOpts ProjectRevision{..} diffRevision = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
+  org <- getOrganization apiOpts
 
-  orgId <- organizationId <$> getOrganization apiOpts
-  response <- req GET (issuesEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
+  opts <- case (diffRevision, orgSupportsIssueDiffs org) of
+    (Just (DiffRevision diffRev), True) -> pure (baseOpts <> "diffRevision" =: diffRev)
+    (Just _, False) -> fatal EndpointDoesNotSupportIssueDiffing
+    (Nothing, _) -> pure baseOpts
+
+  response <-
+    req
+      GET
+      (issuesEndpoint baseUrl (organizationId org) (Locator "custom" projectName (Just projectRevision)))
+      NoReqBody
+      jsonResponse
+      opts
+
   pure (responseBody response)
+
+data EndpointDoesNotSupportIssueDiffing = EndpointDoesNotSupportIssueDiffing
+instance ToDiagnostic EndpointDoesNotSupportIssueDiffing where
+  renderDiagnostic (EndpointDoesNotSupportIssueDiffing) =
+    vsep
+      [ "Provided endpoint does not support issue diffing."
+      , ""
+      , "If this instance of FOSSA is on-premise, it likely needs to be updated."
+      ]
 
 ---------------
 

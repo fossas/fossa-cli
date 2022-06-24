@@ -291,6 +291,7 @@ data Organization = Organization
   , orgCoreSupportsLocalLicenseScan :: Bool
   , orgSupportsAnalyzedRevisionsQuery :: Bool
   , orgDefaultVendoredDependencyScanType :: ArchiveUploadType
+  , orgSupportsIssueDiffs :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -301,6 +302,7 @@ instance FromJSON Organization where
       <*> obj .:? "supportsCliLicenseScanning" .!= False
       <*> obj .:? "supportsAnalyzedRevisionsQuery" .!= False
       <*> obj .:? "defaultVendoredDependencyScanType" .!= CLILicenseScan
+      <*> obj .:? "supportsIssueDiffs" .!= False
 
 data Project = Project
   { projectId :: Text
