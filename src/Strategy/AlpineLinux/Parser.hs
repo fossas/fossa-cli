@@ -1,9 +1,41 @@
 -- | Parsing functions for APK files.
 -- APK is the package manager for Alpine Linux (https://alpinelinux.org/).
 --
--- The database itself is just a flat file with entries in text.  These are
--- specified in a key-value format with obscure names.  See
--- https://wiki.alpinelinux.org/wiki/Apk_spec#Syntax.
+-- - The @database@ itself is just a flat file of text.
+-- - A @database@ is a list of @package@s, separated by two (or more?) new lines.
+-- - A @package@ is a list of @property@s, separated by a new line.
+-- - A @property@ is a @key@ and @value@ separated by a colon.
+-- - A @key@ is a letter.  Meaning of keys is in
+--   https://wiki.alpinelinux.org/wiki/Apk_spec.  They are not all unique.
+-- - A @value@ is any text other than a new line.
+--
+-- Here's an example of the package definition for libssl.
+--
+-- C:Q1/KZ00qDHWZ5cj3AWG/DPdACRNYI=
+-- P:libssl1.1
+-- V:1.1.1n-r0
+-- A:x86_64
+-- S:213209
+-- I:540672
+-- T:SSL shared libraries
+-- U:https://www.openssl.org/
+-- L:OpenSSL
+-- o:openssl
+-- m:Timo Teras <timo.teras@iki.fi>
+-- t:1647383879
+-- c:455e966899a9358fc94f5bce633afe8a1942095c
+-- D:so:libc.musl-x86_64.so.1 so:libcrypto.so.1.1
+-- p:so:libssl.so.1.1=1.1
+-- r:libressl
+-- F:lib
+-- R:libssl.so.1.1
+-- a:0:0:755
+-- Z:Q1xNjj7jxvOj3lDRd3sRXzHowTUsQ=
+-- F:usr
+-- F:usr/lib
+-- R:libssl.so.1.1
+-- a:0:0:777
+-- Z:Q18j35pe3yp6HOgMih1wlGP1/mm2c=
 module Strategy.AlpineLinux.Parser (installedPackagesDatabaseParser, PackageError (..)) where
 
 import Data.List.NonEmpty (NonEmpty (..))
@@ -11,6 +43,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
 import Strategy.AlpineLinux.Types (AlpinePackage (..))
 import Text.Megaparsec (
@@ -78,10 +111,22 @@ sepByWithTry1 p sep = do
   (x :|) <$> many (try (sep >> p))
 
 -- | Parses an Alpine Linux installed-packages database file.
+--
 -- This returns a list of packages or errors that represent malformed packages.
 --
 -- Packages are separated from one another by one-or-more newlines.  The end of
 -- a file may have any number of trailing newlines.
+--
+-- Example:
+--
+-- > P:libssl1.1
+-- > V:1.1.1n-r0
+-- > A:x86_64
+-- >
+-- > P:ssl_client
+-- > V:1.34.1-r4
+-- > A:x86_64
+-- >
 installedPackagesDatabaseParser :: Parser [Either PackageError AlpinePackage]
 installedPackagesDatabaseParser =
   many eol *> packageParser `sepByWithTry` (eol *> some eol) <* many eol <* eof
@@ -90,6 +135,12 @@ installedPackagesDatabaseParser =
 --
 -- Each package is a list of line-separated properties.  Each property is of the
 -- form @key:value@.
+--
+-- Example:
+--
+-- > P:libssl1.1
+-- > V:1.1.1n-r0
+-- > A:x86_64
 packageParser :: Parser (Either PackageError AlpinePackage)
 packageParser = do
   entries <- propertiesParser
@@ -97,9 +148,9 @@ packageParser = do
     (Just name, Just arch, Just version) ->
       pure . Right $
         AlpinePackage
-          { alpinePackageName = name
-          , alpinePackageArchitecture = arch
-          , alpinePackageVersion = version
+          { alpinePackageName = Text.strip name
+          , alpinePackageArchitecture = Text.strip arch
+          , alpinePackageVersion = Text.strip version
           }
     (Nothing, _, _) ->
       pure . Left $ MissingPackageName
@@ -111,18 +162,48 @@ packageParser = do
 -- | Parses a list of properties into a map.
 -- Note: Some properties can be repeated.  This map will only have the last value.
 -- However, none of the properties we are interested in are repeatable.
+--
+-- >>> parse propertiesParser "" "P:libcrypto1.1\r\nT:Crypto library from openssl"
+-- Right (fromList [("P","libcrypto1.1"),("T","Crypto library from openssl")])
 propertiesParser :: Parser (Map.Map Text Text)
 propertiesParser =
   Map.fromList . NE.toList <$> propertyParser `sepByWithTry1` eol
 
 -- | Parses a single property.
+--
+-- >>> parse propertyParser "" "P:libcrypto1.1"
+-- Right ("P","libcrypto1.1")
+--
+-- >>> parse propertyParser "" "T:Crypto library from openssl"
+-- Right ("T","Crypto library from openssl")
+--
+-- >>> parse propertyParser "" "U:https://www.openssl.org/"
+-- Right ("U","https://www.openssl.org/")
 propertyParser :: Parser (Text, Text)
 propertyParser = (,) <$> (keyParser <* char ':') <*> valueParser
 
--- | Parses a property key.  Keys are assumed to be a single letter.
+-- | Parses a property key.  Keys appear to be a single letter, but multiple is supported.
+--
+-- >>> parse keyParser "" "A"
+-- Right "A"
+--
+-- >>> parse keyParser "" "foo"
+-- Right "foo"
 keyParser :: Parser Text
 keyParser = toText <$> some letterChar
 
 -- | Parses a property value.  The value may be empty.
+--
+-- >>> parse valueParser "" "libcrypto1.1"
+-- Right "libcrypto1.1"
+--
+-- >>> parse valueParser "" "so:libc.musl-x86_64.so.1"
+-- Right "so:libc.musl-x86_64.so.1"
+--
+-- >>> parse valueParser "" "Crypto library from openssl"
+-- Right "Crypto library from openssl"
+--
+-- >>> parse valueParser "" "https://www.openssl.org/"
+-- Right "https://www.openssl.org/"
 valueParser :: Parser Text
 valueParser = takeWhileP (Just "entry value") (not . (`elem` ("\r\n" :: String)))
