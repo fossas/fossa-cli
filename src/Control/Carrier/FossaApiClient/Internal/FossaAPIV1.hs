@@ -606,8 +606,7 @@ instance ToDiagnostic EndpointDoesNotSupportIssueDiffing where
     vsep
       [ "Provided endpoint does not support issue diffing."
       , ""
-      , "If you are an on-prem customer, you will likely need to"
-      , "update your FOSSA server instance."
+      , "If this instance of FOSSA is on-premise, it likely needs to be updated."
       ]
 
 ---------------
