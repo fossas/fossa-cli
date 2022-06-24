@@ -30,15 +30,15 @@ fossa test --json
 
 `--diff <REVISION>` configures FOSSA to only report new issues observed with the current revision that weren't already reported on the specified `<REVISION>`.
 
-\```sh
+```sh
 fossa test --diff revisionToCompare
-\```
+```
 
 #### Example
 
-\```sh
+```sh
 fossa test --revision 34021e --diff v2.0.0
-\```
+```
 
 This only reports issues that are present in `34021e` revision,
 BUT are not present in revision `v2.0.0`.
