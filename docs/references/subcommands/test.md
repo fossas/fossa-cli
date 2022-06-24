@@ -26,32 +26,32 @@ By default, `fossa test` displays issues in a human-readable format. To instead 
 fossa test --json
 ```
 
-### Test against previous revision
+### Test for new issues compared to another revision
 
-With `--diff <ARG>`, you can check for _only_ new issue comapred to some `<ARG>` revision. 
+`--diff <REVISION>` configures FOSSA to only report new issues observed with the current revision that weren't already reported on the specified `<REVISION>`.
 
-```sh
+\```sh
 fossa test --diff revisionToCompare
-```
+\```
 
 #### Example
 
-```sh
+\```sh
 fossa test --revision 34021e --diff v2.0.0
-```
+\```
 
-This will only report issues that are present in `34021e` revision,
+This only reports issues that are present in `34021e` revision,
 BUT are not present in revision `v2.0.0`.
 
 For instance, 
 
 * If the revision `v2.0.0` has issue: `A`, and the revision `34021e` has issue `A`, 
-  * `fossa-cli` will report no new issues discovered, and will exit with status code of 0.
+  * `fossa-cli` reports no new issues discovered and exits with status code of 0.
   
 
 * If the revision `v2.0.0` has issue: `A`, and the revision `34021e` has 0 issues, 
-  * `fossa-cli` will report no new issues discovered, and will exit with status code of 0.
+  * `fossa-cli` reports no new issues discovered and exits with status code of 0.
 
 
 * If the revision `v2.0.0` has issue: `A`, and the revision `34021e` has issues `A`, `B`, 
-  * `fossa-cli` will report issue `B`, and will exit with status code of 1.
+  * `fossa-cli` reports issue `B` and exits with status code of 1.
