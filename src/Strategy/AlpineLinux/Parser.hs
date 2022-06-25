@@ -1,6 +1,10 @@
 -- | Parsing functions for APK files.
 -- APK is the package manager for Alpine Linux (https://alpinelinux.org/).
 --
+-- The database contains many properties of the packages, but we are only
+-- interested in a few that we pull out by name.  As of writing that's the
+-- package name, architecture and version.
+--
 -- - The @database@ itself is just a flat file of text.
 -- - A @database@ is a list of @package@s, separated by two (or more?) new lines.
 -- - A @package@ is a list of @property@s, separated by a new line.
@@ -56,9 +60,10 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (char, eol, letterChar)
 
--- | Errors that can occur even in a valid file.  Packages are a lose collection
--- of fields, but it unclear which are required.  These error represent fields
--- we expect, but which may be missing in unusual circumstances.
+-- | Errors that can occur even in a valid file.  Packages are a loose
+-- collection of fields, but it is unclear which are required.  These errors
+-- represent fields we expect, but which may be missing in unusual
+-- circumstances.
 data PackageError
   = MissingPackageName
   | MissingPackageArchitecture {packageName :: Text}
