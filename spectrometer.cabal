@@ -306,6 +306,8 @@ library
     Path.Extra
     Srclib.Converter
     Srclib.Types
+    Strategy.AlpineLinux.Parser
+    Strategy.AlpineLinux.Types
     Strategy.Android.Util
     Strategy.Bundler
     Strategy.Cargo
@@ -434,6 +436,7 @@ test-suite unit-tests
   -- cabal-fmt: expand test
   other-modules:
     AdjacencyMapSpec
+    AlpineLinux.ParserSpec
     Android.UtilSpec
     App.DocsSpec
     App.Fossa.Analyze.UploadSpec
