@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Maven: Fixes a bug where running depgraph would sometimes fail dependending on the local Maven repository's state
+
 ## v3.3.7
 
 - Report: Changes copyrights field to copyrightsByLicense in the attribution report JSON output. [#966](https://github.com/fossas/fossa-cli/pull/966)
