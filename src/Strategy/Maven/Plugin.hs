@@ -195,7 +195,7 @@ mavenInstallPluginCmd pluginFilePath plugin =
   Command
     { cmdName = "mvn"
     , cmdArgs =
-        [ "install:install-file"
+        [ "org.apache.maven.plugins:maven-install-plugin:3.0.0-M1:install-file"
         , "-DgroupId=" <> group plugin
         , "-DartifactId=" <> artifact plugin
         , "-Dversion=" <> version plugin
