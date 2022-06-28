@@ -29,6 +29,7 @@ import Data.Functor (void)
 import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Text.Extra qualified as Text
 import Data.Void (Void)
 import DepTypes (
@@ -204,8 +205,17 @@ entryToDepName :: ResolvedEntry -> Text
 entryToDepName entry =
   case resolvedType entry of
     GitEntry -> resolvedName entry
-    GithubType -> "https://github.com/" <> resolvedName entry
+    GithubType ->
+      -- Carthage supports GH enterprise, which may include
+      -- Uri as opposed to GH username/repo scheme.
+      -- Refer to: https://github.com/Carthage/Carthage/pull/657/files#diff-379c471609daf7e9fd3a9dcb49ead7f1c10b6ad23bd3e93d2e60dde6d03b8b8f
+      if hasHttpsUriSpec
+        then resolvedName entry
+        else "https://github.com/" <> resolvedName entry
     BinaryType -> resolvedName entry
+  where
+    hasHttpsUriSpec :: Bool
+    hasHttpsUriSpec = Text.isPrefixOf "http://" (resolvedName entry)
 
 toDependency :: ResolvedEntry -> Dependency
 toDependency entry =

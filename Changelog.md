@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.3.8
+
+- Carthage: Fixes analysis of artifacts dervided from Github entry for GH enterprise urls. ([#]())
+
 ## v3.3.7
 
 - Report: Changes copyrights field to copyrightsByLicense in the attribution report JSON output. [#966](https://github.com/fossas/fossa-cli/pull/966)
