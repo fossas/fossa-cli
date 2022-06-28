@@ -4,6 +4,10 @@
 
 - Maven: Always use Maven Install Plugin 3.0.0-M1 to install depgraph. This avoids a Maven bug with older versions failing to install the plugin correctly from a vendored JAR. ([#988](https://github.com/fossas/fossa-cli/pull/988/files))
 
+## v3.3.8
+
+- Carthage: Fixes analysis of artifacts dervided from Github entry for GH enterprise urls. ([#989](https://github.com/fossas/fossa-cli/pull/989))
+
 ## v3.3.7
 
 - Report: Changes copyrights field to copyrightsByLicense in the attribution report JSON output. [#966](https://github.com/fossas/fossa-cli/pull/966)
