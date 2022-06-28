@@ -39,7 +39,7 @@ spec = do
 
     it "should work for a complex project" $ do
       assertOnSuccess complexResult $ \_ graph -> do
-        expectDirect [nimble713, swinject, ocmock, someRepo] graph
+        expectDirect [nimble713, swinject, ocmock, someRepo, someRepoViaGitScheme, someRepoViaHttpScheme] graph
         expectDeps
           [ nimble713
           , nimble703
@@ -49,6 +49,8 @@ spec = do
           , cwlPreconditionTesting
           , cwlCatchException
           , someRepo
+          , someRepoViaGitScheme
+          , someRepoViaHttpScheme
           ]
           graph
         expectEdges
@@ -82,3 +84,9 @@ ocmock = ResolvedEntry GithubType "erikdoe/ocmock" "v3.4.2"
 
 someRepo :: ResolvedEntry
 someRepo = ResolvedEntry GithubType "https://github.example.com/someOwner/someRepo" "0.0.1"
+
+someRepoViaGitScheme :: ResolvedEntry
+someRepoViaGitScheme = ResolvedEntry GithubType "git://github.example.com/someOwner/someRepo" "0.0.1"
+
+someRepoViaHttpScheme :: ResolvedEntry
+someRepoViaHttpScheme = ResolvedEntry GithubType "http://github.example.com/someOwner/someRepo" "0.0.1"
