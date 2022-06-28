@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Maven: Fixes a bug where running depgraph would sometimes fail dependending on the local Maven repository's state
+- Maven: Always use Maven Install Plugin 3.0.0-M1 to install depgraph. This avoids a Maven bug with older versions failing to install the plugin correctly from a vendored JAR. ([#988](https://github.com/fossas/fossa-cli/pull/988/files))
 
 ## v3.3.7
 
