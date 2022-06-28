@@ -77,7 +77,7 @@ instance Semigroup (RequestResult a) where
   RequestUnsatisfied <> _ = RequestUnsatisfied
   _ <> b = b
 instance Monoid (RequestResult a) where
-  mempty = RequestUnmocked
+  mempty = RequestUnsatisfied
 
 data MockApi (m :: Type -> Type) a where
   MockApiOnce :: FossaApiClientF a -> a -> MockApi m ()
@@ -223,45 +223,55 @@ matchExpectation :: FossaApiClientF a -> ApiExpectation -> RequestResult (ApiRes
 matchExpectation a@(AssertRevisionBinaries{}) (ApiExpectation _ requestExpectation b@(AssertRevisionBinaries{}) resp) = checkResult requestExpectation a b resp
 matchExpectation _a@(AssertRevisionBinaries{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(AssertUserDefinedBinaries{}) (ApiExpectation _ requestExpectation b@(AssertUserDefinedBinaries{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(AssertUserDefinedBinaries{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(AssertUserDefinedBinaries{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(FinalizeLicenseScan{}) (ApiExpectation _ requestExpectation b@(FinalizeLicenseScan{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(FinalizeLicenseScan{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(FinalizeLicenseScan{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(GetApiOpts) (ApiExpectation _ requestExpectation b@(GetApiOpts) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(GetApiOpts{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(GetApiOpts{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(GetAttribution{}) (ApiExpectation _ requestExpectation b@(GetAttribution{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(GetAttribution{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(GetAttribution{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(GetIssues{}) (ApiExpectation _ requestExpectation b@(GetIssues{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(GetIssues{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(GetIssues{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(GetLatestBuild{}) (ApiExpectation _ requestExpectation b@(GetLatestBuild{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(GetLatestBuild{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(GetLatestBuild{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(GetLatestScan{}) (ApiExpectation _ requestExpectation b@(GetLatestScan{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(GetLatestScan{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(GetLatestScan{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(GetOrganization{}) (ApiExpectation _ requestExpectation b@(GetOrganization{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(GetOrganization{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(GetOrganization{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(GetProject{}) (ApiExpectation _ requestExpectation b@(GetProject{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(GetProject{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(GetProject{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(GetScan{}) (ApiExpectation _ requestExpectation b@(GetScan{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(GetScan{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(GetScan{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(GetSignedLicenseScanUrl{}) (ApiExpectation _ requestExpectation b@(GetSignedLicenseScanUrl{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(GetSignedLicenseScanUrl{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(GetSignedLicenseScanUrl{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(GetSignedUploadUrl{}) (ApiExpectation _ requestExpectation b@(GetSignedUploadUrl{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(GetSignedUploadUrl{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(GetSignedUploadUrl{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(QueueArchiveBuild{}) (ApiExpectation _ requestExpectation b@(QueueArchiveBuild{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(QueueArchiveBuild{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(QueueArchiveBuild{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(ResolveProjectDependencies{}) (ApiExpectation _ requestExpectation b@(ResolveProjectDependencies{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(ResolveProjectDependencies{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(ResolveProjectDependencies{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(ResolveUserDefinedBinary{}) (ApiExpectation _ requestExpectation b@(ResolveUserDefinedBinary{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(ResolveUserDefinedBinary{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(ResolveUserDefinedBinary{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(UploadAnalysis{}) (ApiExpectation _ requestExpectation b@(UploadAnalysis{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(UploadAnalysis{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(UploadAnalysis{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(UploadArchive{}) (ApiExpectation _ requestExpectation b@(UploadArchive{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(UploadArchive{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(UploadArchive{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(UploadContainerScan{}) (ApiExpectation _ requestExpectation b@(UploadContainerScan{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(UploadContainerScan{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(UploadContainerScan{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(UploadContributors{}) (ApiExpectation _ requestExpectation b@(UploadContributors{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(UploadContributors{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(UploadContributors{}) (ApiExpectation{}) = RequestUnsatisfied
 matchExpectation a@(UploadLicenseScanResult{}) (ApiExpectation _ requestExpectation b@(UploadLicenseScanResult{}) resp) = checkResult requestExpectation a b resp
-matchExpectation _a@(UploadLicenseScanResult{}) (ApiExpectation _ _ _ _) = RequestUnsatisfied
+matchExpectation _a@(UploadLicenseScanResult{}) (ApiExpectation{}) = RequestUnsatisfied
+matchExpectation a@(AddFilesToVsiScan{}) (ApiExpectation _ requestExpectation b@(AddFilesToVsiScan{}) resp) = checkResult requestExpectation a b resp
+matchExpectation _a@(AddFilesToVsiScan{}) (ApiExpectation{}) = RequestUnsatisfied
+matchExpectation a@(CompleteVsiScan{}) (ApiExpectation _ requestExpectation b@(CompleteVsiScan{}) resp) = checkResult requestExpectation a b resp
+matchExpectation _a@(CompleteVsiScan{}) (ApiExpectation{}) = RequestUnsatisfied
+matchExpectation a@(CreateVsiScan{}) (ApiExpectation _ requestExpectation b@(CreateVsiScan{}) resp) = checkResult requestExpectation a b resp
+matchExpectation _a@(CreateVsiScan{}) (ApiExpectation{}) = RequestUnsatisfied
+matchExpectation a@(GetVsiInferences{}) (ApiExpectation _ requestExpectation b@(GetVsiInferences{}) resp) = checkResult requestExpectation a b resp
+matchExpectation _a@(GetVsiInferences{}) (ApiExpectation{}) = RequestUnsatisfied
+matchExpectation a@(GetVsiScanAnalysisStatus{}) (ApiExpectation _ requestExpectation b@(GetVsiScanAnalysisStatus{}) resp) = checkResult requestExpectation a b resp
+matchExpectation _a@(GetVsiScanAnalysisStatus{}) (ApiExpectation{}) = RequestUnsatisfied
 
 -- | Handles a request in the context of the mock API.
 handleRequest ::
