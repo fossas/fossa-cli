@@ -209,13 +209,19 @@ entryToDepName entry =
       -- Carthage supports GH enterprise, which may include
       -- Uri as opposed to GH username/repo scheme.
       -- Refer to: https://github.com/Carthage/Carthage/pull/657/files#diff-379c471609daf7e9fd3a9dcb49ead7f1c10b6ad23bd3e93d2e60dde6d03b8b8f
-      if hasHttpsUriSpec
+      if hasUriSchemePrefix
         then resolvedName entry
         else "https://github.com/" <> resolvedName entry
     BinaryType -> resolvedName entry
   where
-    hasHttpsUriSpec :: Bool
-    hasHttpsUriSpec = Text.isPrefixOf "http://" (resolvedName entry)
+    hasUriSchemePrefix :: Bool
+    hasUriSchemePrefix =
+      any
+        (\scheme -> Text.isPrefixOf scheme $ resolvedName entry)
+        [ "https://"
+        , "http://"
+        , "git://"
+        ]
 
 toDependency :: ResolvedEntry -> Dependency
 toDependency entry =

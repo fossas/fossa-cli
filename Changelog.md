@@ -2,7 +2,7 @@
 
 ## v3.3.8
 
-- Carthage: Fixes analysis of artifacts dervided from Github entry for GH enterprise urls. ([#]())
+- Carthage: Fixes analysis of artifacts dervided from Github entry for GH enterprise urls. ([#989](https://github.com/fossas/fossa-cli/pull/989))
 
 ## v3.3.7
 
