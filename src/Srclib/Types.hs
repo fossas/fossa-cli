@@ -264,6 +264,17 @@ instance ToJSON SourceUnit where
       , "AdditionalDependencyData" .= additionalData
       ]
 
+instance FromJSON SourceUnit where
+  parseJSON = withObject "SourceUnit" $ \o -> do
+    sourceUnitName <- o .: "Name"
+    sourceUnitType <- o .: "Type"
+    sourceUnitManifest <- o .: "Manifest"
+    sourceUnitBuild <- o .:? "Build"
+    sourceUnitGraphBreadth <- o .: "GraphBreadth"
+    sourceUnitOriginPaths <- o .: "OriginPaths"
+    additionalData <- o .:? "AdditionalDependencyData"
+    pure SourceUnit{sourceUnitName, sourceUnitType, sourceUnitManifest, sourceUnitBuild, sourceUnitGraphBreadth, sourceUnitOriginPaths, additionalData}
+
 instance ToJSON SourceUnitBuild where
   toJSON SourceUnitBuild{..} =
     object
@@ -273,6 +284,14 @@ instance ToJSON SourceUnitBuild where
       , "Dependencies" .= buildDependencies
       ]
 
+instance FromJSON SourceUnitBuild where
+  parseJSON = withObject "SourceUnitBuild" $ \o -> do
+    buildArtifact <- o .: "Artifact"
+    buildSucceeded <- o .: "Succeeded"
+    buildImports <- o .: "Imports"
+    buildDependencies <- o .: "Dependencies"
+    pure SourceUnitBuild{buildArtifact, buildSucceeded, buildImports, buildDependencies}
+
 instance ToJSON SourceUnitDependency where
   toJSON SourceUnitDependency{..} =
     object
@@ -280,12 +299,24 @@ instance ToJSON SourceUnitDependency where
       , "imports" .= sourceDepImports
       ]
 
+instance FromJSON SourceUnitDependency where
+  parseJSON = withObject "SourceUnitDependency" $ \o -> do
+    sourceDepLocator <- o .: "locator"
+    sourceDepImports <- o .: "imports"
+    pure SourceUnitDependency{sourceDepLocator, sourceDepImports}
+
 instance ToJSON AdditionalDepData where
   toJSON AdditionalDepData{..} =
     object
       [ "UserDefinedDependencies" .= userDefinedDeps
       , "RemoteDependencies" .= remoteDeps
       ]
+
+instance FromJSON AdditionalDepData where
+  parseJSON = withObject "AdditionalDepData" $ \o -> do
+    userDefinedDeps <- o .:? "UserDefinedDependencies"
+    remoteDeps <- o .:? "RemoteDependencies"
+    pure AdditionalDepData{userDefinedDeps, remoteDeps}
 
 instance ToJSON SourceUserDefDep where
   toJSON SourceUserDefDep{..} =
@@ -298,6 +329,16 @@ instance ToJSON SourceUserDefDep where
       , "Origin" .= fmap toText srcUserDepOrigin
       ]
 
+instance FromJSON SourceUserDefDep where
+  parseJSON = withObject "SourceUserDefDep" $ \o -> do
+    srcUserDepName <- o .: "Name"
+    srcUserDepVersion <- o .: "Version"
+    srcUserDepLicense <- o .: "License"
+    srcUserDepDescription <- o .:? "Description"
+    srcUserDepHomepage <- o .:? "Homepage"
+    srcUserDepOrigin <- o .:? "Origin"
+    pure SourceUserDefDep{srcUserDepName, srcUserDepVersion, srcUserDepLicense, srcUserDepDescription, srcUserDepHomepage, srcUserDepOrigin}
+
 instance ToJSON SourceRemoteDep where
   toJSON SourceRemoteDep{..} =
     object
@@ -308,6 +349,18 @@ instance ToJSON SourceRemoteDep where
       , "Homepage" .= srcRemoteDepHomepage
       ]
 
+instance FromJSON SourceRemoteDep where
+  parseJSON = withObject "SourceRemoteDep" $ \o -> do
+    srcRemoteDepName <- o .: "Name"
+    srcRemoteDepVersion <- o .: "Version"
+    srcRemoteDepUrl <- o .: "Url"
+    srcRemoteDepDescription <- o .:? "Description"
+    srcRemoteDepHomepage <- o .:? "Homepage"
+    pure SourceRemoteDep{srcRemoteDepName, srcRemoteDepVersion, srcRemoteDepUrl, srcRemoteDepDescription, srcRemoteDepHomepage}
+
 instance ToJSON Locator where
   -- render as text
   toJSON = toJSON . renderLocator
+
+instance FromJSON Locator where
+  parseJSON = withText "Locator" (pure . parseLocator)

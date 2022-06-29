@@ -183,6 +183,12 @@ data DependencyResults = DependencyResults
 data GraphBreadth = Complete | Partial
   deriving (Eq, Ord, Show)
 
+instance FromJSON GraphBreadth where
+  parseJSON = withText "GraphBreadth" $ \case
+    "complete" -> pure Complete
+    "partial" -> pure Partial
+    _ -> fail "invalid graphBreadth value"
+
 instance ToJSON GraphBreadth where
   -- render as text
   toJSON = toJSON . renderGraphType
