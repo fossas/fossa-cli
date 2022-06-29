@@ -187,7 +187,7 @@ instance FromJSON GraphBreadth where
   parseJSON = withText "GraphBreadth" $ \case
     "complete" -> pure Complete
     "partial" -> pure Partial
-    _ -> fail "invalid graphBreadth value"
+    _ -> fail "invalid GraphBreadth value"
 
 instance ToJSON GraphBreadth where
   -- render as text

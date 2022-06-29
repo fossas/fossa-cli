@@ -265,15 +265,14 @@ instance ToJSON SourceUnit where
       ]
 
 instance FromJSON SourceUnit where
-  parseJSON = withObject "SourceUnit" $ \o -> do
-    sourceUnitName <- o .: "Name"
-    sourceUnitType <- o .: "Type"
-    sourceUnitManifest <- o .: "Manifest"
-    sourceUnitBuild <- o .:? "Build"
-    sourceUnitGraphBreadth <- o .: "GraphBreadth"
-    sourceUnitOriginPaths <- o .: "OriginPaths"
-    additionalData <- o .:? "AdditionalDependencyData"
-    pure SourceUnit{sourceUnitName, sourceUnitType, sourceUnitManifest, sourceUnitBuild, sourceUnitGraphBreadth, sourceUnitOriginPaths, additionalData}
+  parseJSON = withObject "SourceUnit" $ \obj ->
+    SourceUnit <$> obj .: "Name"
+    <*> obj .: "Type"
+    <*> obj .: "Manifest"
+    <*> obj .:? "Build"
+    <*> obj .: "GraphBreadth"
+    <*> obj .: "OriginPaths"
+    <*> obj .:? "AdditionalDependencyData"
 
 instance ToJSON SourceUnitBuild where
   toJSON SourceUnitBuild{..} =
@@ -285,12 +284,11 @@ instance ToJSON SourceUnitBuild where
       ]
 
 instance FromJSON SourceUnitBuild where
-  parseJSON = withObject "SourceUnitBuild" $ \o -> do
-    buildArtifact <- o .: "Artifact"
-    buildSucceeded <- o .: "Succeeded"
-    buildImports <- o .: "Imports"
-    buildDependencies <- o .: "Dependencies"
-    pure SourceUnitBuild{buildArtifact, buildSucceeded, buildImports, buildDependencies}
+  parseJSON = withObject "SourceUnitBuild" $ \obj ->
+    SourceUnitBuild <$> obj .: "Artifact"
+    <*> obj .: "Succeeded"
+    <*> obj .: "Imports"
+    <*> obj .: "Dependencies"
 
 instance ToJSON SourceUnitDependency where
   toJSON SourceUnitDependency{..} =
@@ -300,10 +298,9 @@ instance ToJSON SourceUnitDependency where
       ]
 
 instance FromJSON SourceUnitDependency where
-  parseJSON = withObject "SourceUnitDependency" $ \o -> do
-    sourceDepLocator <- o .: "locator"
-    sourceDepImports <- o .: "imports"
-    pure SourceUnitDependency{sourceDepLocator, sourceDepImports}
+  parseJSON = withObject "SourceUnitDependency" $ \obj ->
+    SourceUnitDependency <$> obj .: "locator"
+    <*> obj .: "imports"
 
 instance ToJSON AdditionalDepData where
   toJSON AdditionalDepData{..} =
@@ -313,10 +310,9 @@ instance ToJSON AdditionalDepData where
       ]
 
 instance FromJSON AdditionalDepData where
-  parseJSON = withObject "AdditionalDepData" $ \o -> do
-    userDefinedDeps <- o .:? "UserDefinedDependencies"
-    remoteDeps <- o .:? "RemoteDependencies"
-    pure AdditionalDepData{userDefinedDeps, remoteDeps}
+  parseJSON = withObject "AdditionalDepData" $ \obj ->
+    AdditionalDepData <$> obj .:? "UserDefinedDependencies"
+    <*> obj .:? "RemoteDependencies"
 
 instance ToJSON SourceUserDefDep where
   toJSON SourceUserDefDep{..} =
@@ -330,14 +326,13 @@ instance ToJSON SourceUserDefDep where
       ]
 
 instance FromJSON SourceUserDefDep where
-  parseJSON = withObject "SourceUserDefDep" $ \o -> do
-    srcUserDepName <- o .: "Name"
-    srcUserDepVersion <- o .: "Version"
-    srcUserDepLicense <- o .: "License"
-    srcUserDepDescription <- o .:? "Description"
-    srcUserDepHomepage <- o .:? "Homepage"
-    srcUserDepOrigin <- o .:? "Origin"
-    pure SourceUserDefDep{srcUserDepName, srcUserDepVersion, srcUserDepLicense, srcUserDepDescription, srcUserDepHomepage, srcUserDepOrigin}
+  parseJSON = withObject "SourceUserDefDep" $ \obj ->
+    SourceUserDefDep <$> obj .: "Name"
+    <*> obj .: "Version"
+    <*> obj .: "License"
+    <*> obj .:? "Description"
+    <*> obj .:? "Homepage"
+    <*> obj .:? "Origin"
 
 instance ToJSON SourceRemoteDep where
   toJSON SourceRemoteDep{..} =
@@ -350,13 +345,12 @@ instance ToJSON SourceRemoteDep where
       ]
 
 instance FromJSON SourceRemoteDep where
-  parseJSON = withObject "SourceRemoteDep" $ \o -> do
-    srcRemoteDepName <- o .: "Name"
-    srcRemoteDepVersion <- o .: "Version"
-    srcRemoteDepUrl <- o .: "Url"
-    srcRemoteDepDescription <- o .:? "Description"
-    srcRemoteDepHomepage <- o .:? "Homepage"
-    pure SourceRemoteDep{srcRemoteDepName, srcRemoteDepVersion, srcRemoteDepUrl, srcRemoteDepDescription, srcRemoteDepHomepage}
+  parseJSON = withObject "SourceRemoteDep" $ \obj ->
+    SourceRemoteDep <$> obj .: "Name"
+    <*> obj .: "Version"
+    <*> obj .: "Url"
+    <*> obj .:? "Description"
+    <*> obj .:? "Homepage"
 
 instance ToJSON Locator where
   -- render as text
