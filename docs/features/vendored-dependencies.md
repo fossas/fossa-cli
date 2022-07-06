@@ -9,17 +9,19 @@ In order to specify a file path, modify your `fossa-deps.yml` file and add a `ve
 referenced-dependencies:
 - type: gem
   name: rubyXL
-  version: 3.4.16
+  version: "3.4.16"
 
 vendored-dependencies:
 - name: Django
   path: vendor/Django-3.4.16.zip # path can be either a file or a folder.
-  version: 3.4.16 # revision will be set to the MD5 hash of the filepath if left unspecified.
+  version: "3.4.16" # revision will be set to the MD5 hash of the filepath if left unspecified.
 ```
 
 The path to a vendored dependency can either be a path to an archive or a path to a directory.
 
 If it is a path to an archive, then we recursively unarchive and scan the archive. If it is a directory, then we scan the directory and recursively unarchive and scan any archives contained in the directory.
+
+Note: When parsed, YAML considers text that could be a decimal number (such as 1.0 or 2.0) to be a number, not a string. This means that we'd parse the version 1.0 as 1. This probably isn't what you want. To avoid this, surround your version with quotes, as in "1.0".
 
 We also support json-formatted dependencies:
 

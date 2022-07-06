@@ -16,10 +16,12 @@ referenced-dependencies:
   name: iron
 - type: pypi
   name: Django
-  version: 2.1.7
+  version: "2.1.7"
 ```
 
 The `name` and `type` fields are required and specify the name of the dependency and where to find it. The `version` field is optional and specifies the preferred version of dependency.
+
+Note: When parsed, YAML considers text that could be a decimal number (such as 1.0 or 2.0) to be a number, not a string. This means that we'd parse the version 1.0 as 1. This probably isn't what you want. To avoid this, surround your version with quotes, as in "1.0".
 
 Supported dependency types:
 
@@ -48,22 +50,25 @@ Supported dependency types:
 FOSSA supports users that have dependencies that can't be automatically discovered or identified, by offering the ability to define new dependencies.
 
 To do this, you must supply the name, version, and license of the dependency.  This creates a stub package which requires no source code or linkage to any other system, but still acts as a normal dependency in other areas of FOSSA, like reports and the dependency views.
+
 You may also supply a description and/or url, but both are optional.  Note that these fields reference the dependency itself, and do not reference the parent project (the one at the current analysis directory), or the individual versions of the dependency.
 
 ```yaml
 custom-dependencies:
 # Custom dependencies need name, version, and license
 - name: foo
-  version: 1.2.3
+  version: "1.2.3"
   license: "MIT or Apache-2.0"
 # You can also provide a description and/or homepage. These values populate metadata fields in reports in the FOSSA web UI.
 - name: foo-wrapper
-  version: 1.2.3
+  version: "1.2.3"
   license: MIT
   metadata:
     homepage: https://www.foowrapper.com/about
     description: Provides foo and a helpful interface around foo-like tasks.
 ```
+
+Note: When parsed, YAML considers text that could be a decimal number (such as 1.0 or 2.0) to be a number, not a string. This means that we'd parse the version 1.0 as 1. This probably isn't what you want. To avoid this, surround your version with quotes, as in "1.0".
 
 ### Remote dependencies
 
