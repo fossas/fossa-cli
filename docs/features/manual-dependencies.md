@@ -21,8 +21,7 @@ referenced-dependencies:
 
 The `name` and `type` fields are required and specify the name of the dependency and where to find it. The `version` field is optional and specifies the preferred version of dependency.
 
-Note that YAML will convert a version like `1.0` or `2.0` into an integer, which is probably not what you want. The workaround is to
-surround the version with quotes.
+Note: When parsed, YAML considers text that could be a decimal number (such as 1.0 or 2.0) to be a number, not a string. This means that we'd parse the version 1.0 as 1. This probably isn't what you want. To avoid this, surround your version with quotes, as in "1.0".
 
 Supported dependency types:
 
@@ -69,8 +68,8 @@ custom-dependencies:
     description: Provides foo and a helpful interface around foo-like tasks.
 ```
 
-Note that YAML will convert a version like `1.0` or `2.0` into an integer, which is probably not what you want. The workaround is to
-surround the version with quotes.
+Note: When parsed, YAML considers text that could be a decimal number (such as 1.0 or 2.0) to be a number, not a string. This means that we'd parse the version 1.0 as 1. This probably isn't what you want. To avoid this, surround your version with quotes, as in "1.0".
+
 ### Remote dependencies
 
 FOSSA also supports dependencies that can't be automatically discovered or identified, but where the user has a URL where FOSSA can download the source code of the dependency.
