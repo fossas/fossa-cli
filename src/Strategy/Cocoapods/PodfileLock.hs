@@ -37,6 +37,7 @@ import Data.SemVer.Internal (Version (..))
 import Data.Set (Set)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text, null, strip)
+import Data.Text qualified as Text
 import Data.Text.Extra (showT, splitOnceOn)
 import Data.Void (Void)
 import Data.Yaml ((.:), (.:?))
@@ -44,7 +45,7 @@ import Data.Yaml qualified as Yaml
 import DepTypes (DepType (GitType, PodType), Dependency (..), VerConstraint (CEq))
 import Effect.Exec (AllowErr (..), Command (..), Exec, exec, execJson)
 import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
-import Effect.Logger (Logger, Pretty (pretty), logDebug)
+import Effect.Logger (Logger, Pretty (pretty), logDebug, vsep)
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing, gtraverse)
 import Options.Applicative (Alternative ((<|>)))
@@ -233,34 +234,41 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
     readPodSubSpecSourceAt ::
       ( Has Exec sig m
       , Has Diagnostics sig m
+      , Has Logger sig m
       , Has (State PodSpecCache) sig m
       ) =>
       Text ->
       Text ->
       m (Maybe Dependency)
-    readPodSubSpecSourceAt podSpecPath candidateSubSpec = context ("Resolving vendored subspec of podspec at " <> showT podSpecPath) $ do
-      podSpecCache :: PodSpecCache <- get
-      (PodSpecJSON ExternalGitSource{urlOf, tagOf, commitOf, branchOf} subSpecs) <-
-        case Map.lookup podSpecPath podSpecCache of
-          Just cached -> pure cached
-          Nothing -> do
-            podSpec <- execJson lockFileDir $ podIpcSpecCmd podSpecPath
-            put $ Map.insert podSpecPath podSpec podSpecCache
-            pure podSpec
+    readPodSubSpecSourceAt podSpecPath candidateSubSpec = context
+      ( "Trying to resolving (" <> candidateSubSpec <> "), vendored subspec of podspec at " <> showT podSpecPath
+      )
+      $ do
+        podSpecCache :: PodSpecCache <- get
+        (PodSpecJSON ExternalGitSource{urlOf, tagOf, commitOf, branchOf} subSpecs) <-
+          case Map.lookup podSpecPath podSpecCache of
+            Just cached -> pure cached
+            Nothing -> do
+              podSpec <- execJson lockFileDir $ podIpcSpecCmd podSpecPath
+              put $ Map.insert podSpecPath podSpec podSpecCache
+              pure podSpec
 
-      case find (== (PodsSpecJSONSubSpec candidateSubSpec)) subSpecs of
-        Nothing -> pure Nothing
-        Just _ -> do
-          pure $
-            Just $
-              Dependency
-                { dependencyType = GitType
-                , dependencyName = urlOf
-                , dependencyVersion = CEq <$> asum [tagOf, commitOf, branchOf]
-                , dependencyLocations = []
-                , dependencyEnvironments = mempty
-                , dependencyTags = Map.empty
-                }
+        logDebug $ "Found subspecs: " <> vsep (map (pretty . show) subSpecs)
+        case find (== (PodsSpecJSONSubSpec candidateSubSpec)) subSpecs of
+          Nothing -> do
+            logDebug . pretty $ "Could not find, " <> candidateSubSpec <> "from vendored subspec listing"
+            pure Nothing
+          Just _ -> do
+            pure $
+              Just $
+                Dependency
+                  { dependencyType = GitType
+                  , dependencyName = urlOf
+                  , dependencyVersion = CEq <$> asum [tagOf, commitOf, branchOf]
+                  , dependencyLocations = []
+                  , dependencyEnvironments = mempty
+                  , dependencyTags = Map.empty
+                  }
 
     readPodSpecAt ::
       ( Has Exec sig m
@@ -371,7 +379,12 @@ instance FromJSON ExternalSource where
       -- We don't parse these as filepaths because `path`'s parsing functions do
       -- not accept `..`.
       <|> (ExternalPodSpec <$> obj .: ":podspec")
-      <|> (ExternalPath <$> obj .: ":path")
+      <|> ( do
+              somePath <- obj .: ":path"
+              if ".podspec" `Text.isSuffixOf` somePath
+                then pure $ ExternalPodSpec somePath -- sometimes podspec are listed under :path
+                else pure $ ExternalPath somePath
+          )
       <|> pure ExternalOtherType
 
 parserPod :: Text -> Maybe Yaml.Value -> Yaml.Parser Pod
