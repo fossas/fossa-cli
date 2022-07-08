@@ -17,7 +17,7 @@ import Control.Effect.Diagnostics (
   fatalText,
   fromEither,
   run,
-  (<||>)
+  (<||>),
  )
 import Control.Effect.State (State, get, put)
 import Control.Monad (when)
@@ -199,39 +199,39 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
           ExternalPath podPath -> readPodSpecAt (toPodSpecPath podPath dependencyName) <||> pure d
           ExternalGitType _ -> pure d
           ExternalOtherType -> pure d
-        Nothing -> 
+        Nothing ->
           do
-          logDebug . pretty $ "replaceVendoredPods.Nothing: dependencyName: " <> dependencyName
-          -- Pod dependency can be included as part of externally sourced dependency's sub spec.
-          -- Refer to: https://guides.cocoapods.org/syntax/podspec.html#subspec
-          --
-          -- To aptly resolve such dependencies, we infer candidate parent,
-          -- and candidate sub spec from dependency's name. If and only if:
-          --  * Candidate parent spec exists within external sources
-          --  * Parent's pod spec has sub spec listed
-          --  * Parent has git source
-          --
-          -- We replace this dependency with parent's git sourced dependency.
-          let (parentSpec, candidateSubSpec) = splitOnceOn "/" dependencyName
+            logDebug . pretty $ "replaceVendoredPods.Nothing: dependencyName: " <> dependencyName
+            -- Pod dependency can be included as part of externally sourced dependency's sub spec.
+            -- Refer to: https://guides.cocoapods.org/syntax/podspec.html#subspec
+            --
+            -- To aptly resolve such dependencies, we infer candidate parent,
+            -- and candidate sub spec from dependency's name. If and only if:
+            --  * Candidate parent spec exists within external sources
+            --  * Parent's pod spec has sub spec listed
+            --  * Parent has git source
+            --
+            -- We replace this dependency with parent's git sourced dependency.
+            let (parentSpec, candidateSubSpec) = splitOnceOn "/" dependencyName
 
-          if Data.Text.null candidateSubSpec
-            then pure d
-            else do
-              logDebug . pretty $ "replaceVendoredPods.Nothing: parentSpec: " <> parentSpec
-              revisedDep <- case Map.lookup parentSpec lockExternalSources of
-                Just (ExternalPodSpec podSpecPath) -> (fromMaybe d <$> (readPodSubSpecSourceAt podSpecPath parentSpec)) <||> pure d
-                Just (ExternalPath podPath) -> (fromMaybe d <$> (readPodSubSpecSourceAt (toPodSpecPath podPath parentSpec) candidateSubSpec)) <||> pure d
-                _ -> pure d
+            if Data.Text.null candidateSubSpec
+              then pure d
+              else do
+                logDebug . pretty $ "replaceVendoredPods.Nothing: parentSpec: " <> parentSpec
+                revisedDep <- case Map.lookup parentSpec lockExternalSources of
+                  Just (ExternalPodSpec podSpecPath) -> (fromMaybe d <$> (readPodSubSpecSourceAt podSpecPath parentSpec)) <||> pure d
+                  Just (ExternalPath podPath) -> (fromMaybe d <$> (readPodSubSpecSourceAt (toPodSpecPath podPath parentSpec) candidateSubSpec)) <||> pure d
+                  _ -> pure d
 
-              when (revisedDep /= d) $
-                logDebug . pretty $
-                  "Replaced " <> dependencyName <> " with " <> parentSpec
-                    <> ", since "
-                    <> dependencyName
-                    <> " is subspec of "
-                    <> parentSpec
+                when (revisedDep /= d) $
+                  logDebug . pretty $
+                    "Replaced " <> dependencyName <> " with " <> parentSpec
+                      <> ", since "
+                      <> dependencyName
+                      <> " is subspec of "
+                      <> parentSpec
 
-              pure revisedDep
+                pure revisedDep
       _ -> pure d
 
     readPodSubSpecSourceAt ::
