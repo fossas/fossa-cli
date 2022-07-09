@@ -7,6 +7,10 @@ module Strategy.Cocoapods.PodfileLock (
   Pod (..),
   ExternalSource (..),
   ExternalGitSource (..),
+
+  -- * for testing
+  PodsSpecJSONSubSpec (..),
+  allSubspecs,
 ) where
 
 import Control.Carrier.State.Strict (evalState)
@@ -45,7 +49,7 @@ import Data.Yaml qualified as Yaml
 import DepTypes (DepType (GitType, PodType), Dependency (..), VerConstraint (CEq))
 import Effect.Exec (AllowErr (..), Command (..), Exec, exec, execJson)
 import Effect.Grapher (LabeledGrapher, direct, edge, label, withLabeling)
-import Effect.Logger (Logger, Pretty (pretty), logDebug, vsep)
+import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing, gtraverse)
 import Options.Applicative (Alternative ((<|>)))
@@ -199,39 +203,35 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
           ExternalPath podPath -> readPodSpecAt (toPodSpecPath podPath dependencyName) <||> pure d
           ExternalGitType _ -> pure d
           ExternalOtherType -> pure d
-        Nothing ->
-          do
-            logDebug . pretty $ "replaceVendoredPods.Nothing: dependencyName: " <> dependencyName
-            -- Pod dependency can be included as part of externally sourced dependency's sub spec.
-            -- Refer to: https://guides.cocoapods.org/syntax/podspec.html#subspec
-            --
-            -- To aptly resolve such dependencies, we infer candidate parent,
-            -- and candidate sub spec from dependency's name. If and only if:
-            --  * Candidate parent spec exists within external sources
-            --  * Parent's pod spec has sub spec listed
-            --  * Parent has git source
-            --
-            -- We replace this dependency with parent's git sourced dependency.
-            let (parentSpec, candidateSubSpec) = splitOnceOn "/" dependencyName
+        Nothing -> do
+          -- Pod dependency can be included as part of externally sourced dependency's sub spec.
+          -- Refer to: https://guides.cocoapods.org/syntax/podspec.html#subspec
+          --
+          -- To aptly resolve such dependencies, we infer candidate parent,
+          -- and candidate sub spec from dependency's name. If and only if:
+          --  * Candidate parent spec exists within external sources
+          --  * Parent's pod spec has sub spec listed
+          --  * Parent has git source
+          --
+          -- We replace this dependency with parent's git sourced dependency.
+          let (parentSpec, childSpec) = splitOnceOn "/" dependencyName
 
-            if Data.Text.null candidateSubSpec
-              then pure d
-              else do
-                logDebug . pretty $ "replaceVendoredPods.Nothing: parentSpec: " <> parentSpec
-                revisedDep <- case Map.lookup parentSpec lockExternalSources of
-                  Just (ExternalPodSpec podSpecPath) -> (fromMaybe d <$> (readPodSubSpecSourceAt podSpecPath parentSpec)) <||> pure d
-                  Just (ExternalPath podPath) -> (fromMaybe d <$> (readPodSubSpecSourceAt (toPodSpecPath podPath parentSpec) candidateSubSpec)) <||> pure d
-                  _ -> pure d
+          if Data.Text.null childSpec
+            then pure d
+            else do
+              revisedDep <- case Map.lookup parentSpec lockExternalSources of
+                Just (ExternalPodSpec podSpecPath) ->
+                  (fromMaybe d <$> (readPodSubSpecSourceAt podSpecPath childSpec)) <||> pure d
+                Just (ExternalPath podPath) ->
+                  (fromMaybe d <$> (readPodSubSpecSourceAt (toPodSpecPath podPath parentSpec) childSpec))
+                    <||> pure d
+                _ -> pure d
 
-                when (revisedDep /= d) $
-                  logDebug . pretty $
-                    "Replaced " <> dependencyName <> " with " <> parentSpec
-                      <> ", since "
-                      <> dependencyName
-                      <> " is subspec of "
-                      <> parentSpec
+              when (revisedDep /= d) $
+                logDebug . pretty $
+                  "Replaced " <> dependencyName <> " with " <> parentSpec <> ", since " <> dependencyName <> " is subspec of " <> parentSpec
 
-                pure revisedDep
+              pure revisedDep
       _ -> pure d
 
     readPodSubSpecSourceAt ::
@@ -244,7 +244,7 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
       Text ->
       m (Maybe Dependency)
     readPodSubSpecSourceAt podSpecPath candidateSubSpec = context
-      ( "Trying to resolve (" <> candidateSubSpec <> "), maybe a vendored subspec of podspec at " <> showT podSpecPath
+      ( "Trying to resolve (" <> candidateSubSpec <> "), It is potentially a vendored subspec of podspec at: " <> showT podSpecPath
       )
       $ do
         podSpecCache :: PodSpecCache <- get
@@ -256,10 +256,12 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
               put $ Map.insert podSpecPath podSpec podSpecCache
               pure podSpec
 
-        logDebug $ "Found subspecs: " <> vsep (map (pretty . show) subSpecs)
-        case find (== (PodsSpecJSONSubSpec candidateSubSpec)) subSpecs of
+        let allSubspecNames :: [Text]
+            allSubspecNames = concatMap allSubspecs subSpecs
+
+        case find (== candidateSubSpec) allSubspecNames of
           Nothing -> do
-            logDebug . pretty $ "Could not find, (" <> candidateSubSpec <> ") from vendored subspec listing"
+            logDebug . pretty $ "Could not find, (" <> candidateSubSpec <> ") from vendored subspec"
             pure Nothing
           Just _ -> do
             pure $
@@ -409,12 +411,17 @@ data PodSpecJSON = PodSpecJSON
   }
   deriving (Show, Eq, Ord)
 
-newtype PodsSpecJSONSubSpec = PodsSpecJSONSubSpec {subSpecName :: Text}
+data PodsSpecJSONSubSpec = PodsSpecJSONSubSpec
+  { subSpecName :: Text
+  , childSubSpecs :: [PodsSpecJSONSubSpec]
+  }
   deriving (Show, Eq, Ord)
 
 instance FromJSON PodsSpecJSONSubSpec where
   parseJSON = JSON.withObject "PodSpecJSON" $ \o ->
-    PodsSpecJSONSubSpec <$> o .: "name"
+    PodsSpecJSONSubSpec
+      <$> (o .: "name")
+      <*> (o .:? "subspecs" .!= mempty)
 
 instance FromJSON PodSpecJSON where
   parseJSON = JSON.withObject "PodSpecJSON" $ \o -> do
@@ -427,3 +434,16 @@ instance FromJSON PodSpecJSON where
         <*> source .:? "commit"
         <*> source .:? "branch"
     pure $ PodSpecJSON externalGitSource subSpecs
+
+-- | Returns all subspec names, including nested subspecs.
+--
+-- >>> allSubspecs (PodsSpecJSONSubSpec "a" [PodsSpecJSONSubSpec "b" mempty])
+-- ["a", "a/b"]
+allSubspecs :: PodsSpecJSONSubSpec -> [Text]
+allSubspecs = allSpecs Nothing
+  where
+    allSpecs :: Maybe Text -> PodsSpecJSONSubSpec -> [Text]
+    allSpecs prefix (PodsSpecJSONSubSpec name childs) =
+      case prefix of
+        Nothing -> [name] <> concatMap (allSpecs $ Just name) childs
+        Just p -> [p <> "/" <> name] <> concatMap (allSpecs (Just $ p <> "/" <> name)) childs

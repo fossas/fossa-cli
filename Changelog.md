@@ -1,8 +1,9 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.3.9
 
 - Maven: Always use Maven Install Plugin 3.0.0-M1 to install depgraph. This avoids a Maven bug with older versions failing to install the plugin correctly from a vendored JAR. ([#988](https://github.com/fossas/fossa-cli/pull/988/files))
+- Cocoapods: Fixes podpsec bug in which nested subspecs (of external sources), were not aptly handled, and better logging. ([#994](https://github.com/fossas/fossa-cli/pull/994))
 
 ## v3.3.8
 
