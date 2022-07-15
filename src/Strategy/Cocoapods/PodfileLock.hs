@@ -7,6 +7,10 @@ module Strategy.Cocoapods.PodfileLock (
   Pod (..),
   ExternalSource (..),
   ExternalGitSource (..),
+
+  -- * for testing
+  PodsSpecJSONSubSpec (..),
+  allSubspecs,
 ) where
 
 import Control.Carrier.State.Strict (evalState)
@@ -31,12 +35,12 @@ import Data.Functor (void)
 import Data.HashMap.Lazy qualified as HashMap (toList)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe)
 import Data.SemVer qualified as SemVer
 import Data.SemVer.Internal (Version (..))
 import Data.Set (Set)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text, null, strip)
+import Data.Text qualified as Text
 import Data.Text.Extra (showT, splitOnceOn)
 import Data.Void (Void)
 import Data.Yaml ((.:), (.:?))
@@ -209,58 +213,38 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
           --  * Parent has git source
           --
           -- We replace this dependency with parent's git sourced dependency.
-          let (parentSpec, candidateSubSpec) = splitOnceOn "/" dependencyName
+          let (parentSpec, childSpec) = splitOnceOn "/" dependencyName
 
-          if Data.Text.null candidateSubSpec
+          if Data.Text.null childSpec
             then pure d
             else do
               revisedDep <- case Map.lookup parentSpec lockExternalSources of
-                Just (ExternalPodSpec podSpecPath) -> fromMaybe d <$> (readPodSubSpecSourceAt podSpecPath parentSpec)
-                Just (ExternalPath podPath) -> fromMaybe d <$> (readPodSubSpecSourceAt (toPodSpecPath podPath parentSpec) candidateSubSpec)
+                Just (ExternalPodSpec podSpecPath) -> (readPodSubSpecSourceAt podSpecPath childSpec) <||> pure d
+                Just (ExternalPath podPath) -> (readPodSubSpecSourceAt (toPodSpecPath podPath parentSpec) childSpec) <||> pure d
                 _ -> pure d
 
               when (revisedDep /= d) $
                 logDebug . pretty $
-                  "Replaced " <> dependencyName <> " with " <> parentSpec
-                    <> ", since "
-                    <> dependencyName
-                    <> " is subspec of "
-                    <> parentSpec
+                  "Replaced " <> dependencyName <> " with " <> parentSpec <> ", since " <> dependencyName <> " is subspec of " <> parentSpec
 
               pure revisedDep
       _ -> pure d
 
-    readPodSubSpecSourceAt ::
+    readPodSpecRaw ::
       ( Has Exec sig m
       , Has Diagnostics sig m
       , Has (State PodSpecCache) sig m
       ) =>
       Text ->
-      Text ->
-      m (Maybe Dependency)
-    readPodSubSpecSourceAt podSpecPath candidateSubSpec = context ("Resolving vendored subspec of podspec at " <> showT podSpecPath) $ do
-      podSpecCache :: PodSpecCache <- get
-      (PodSpecJSON ExternalGitSource{urlOf, tagOf, commitOf, branchOf} subSpecs) <-
-        case Map.lookup podSpecPath podSpecCache of
-          Just cached -> pure cached
-          Nothing -> do
-            podSpec <- execJson lockFileDir $ podIpcSpecCmd podSpecPath
-            put $ Map.insert podSpecPath podSpec podSpecCache
-            pure podSpec
-
-      case find (== (PodsSpecJSONSubSpec candidateSubSpec)) subSpecs of
-        Nothing -> pure Nothing
-        Just _ -> do
-          pure $
-            Just $
-              Dependency
-                { dependencyType = GitType
-                , dependencyName = urlOf
-                , dependencyVersion = CEq <$> asum [tagOf, commitOf, branchOf]
-                , dependencyLocations = []
-                , dependencyEnvironments = mempty
-                , dependencyTags = Map.empty
-                }
+      m PodSpecJSON
+    readPodSpecRaw podSpecPath = context ("Resolving vendored podspec at " <> showT podSpecPath) $ do
+      podSpecCache <- get
+      case Map.lookup podSpecPath podSpecCache of
+        Just cached -> pure cached
+        Nothing -> do
+          podSpec <- execJson lockFileDir $ podIpcSpecCmd podSpecPath
+          put $ Map.insert podSpecPath podSpec podSpecCache
+          pure podSpec
 
     readPodSpecAt ::
       ( Has Exec sig m
@@ -270,23 +254,40 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
       Text ->
       m Dependency
     readPodSpecAt podSpecPath = context ("Resolving vendored podspec at " <> showT podSpecPath) $ do
-      podSpecCache :: PodSpecCache <- get
-      (PodSpecJSON ExternalGitSource{urlOf, tagOf, commitOf, branchOf} _) <-
-        case Map.lookup podSpecPath podSpecCache of
-          Just cached -> pure cached
-          Nothing -> do
-            podSpec <- execJson lockFileDir $ podIpcSpecCmd podSpecPath
-            put $ Map.insert podSpecPath podSpec podSpecCache
-            pure podSpec
-      pure
-        Dependency
-          { dependencyType = GitType
-          , dependencyName = urlOf
-          , dependencyVersion = CEq <$> asum [tagOf, commitOf, branchOf]
-          , dependencyLocations = []
-          , dependencyEnvironments = mempty
-          , dependencyTags = Map.empty
-          }
+      podSpecJson <- readPodSpecRaw podSpecPath
+      pure $ podSpecJsonToDependency podSpecJson
+
+    podSpecJsonToDependency :: PodSpecJSON -> Dependency
+    podSpecJsonToDependency (PodSpecJSON ExternalGitSource{urlOf, tagOf, commitOf, branchOf} _) =
+      Dependency
+        { dependencyType = GitType
+        , dependencyName = urlOf
+        , dependencyVersion = CEq <$> asum [tagOf, commitOf, branchOf]
+        , dependencyLocations = []
+        , dependencyEnvironments = mempty
+        , dependencyTags = Map.empty
+        }
+
+    readPodSubSpecSourceAt ::
+      ( Has Exec sig m
+      , Has Diagnostics sig m
+      , Has (State PodSpecCache) sig m
+      ) =>
+      Text ->
+      Text ->
+      m Dependency
+    readPodSubSpecSourceAt podSpecPath candidateSubSpec = context
+      ( "Trying to resolve (" <> candidateSubSpec <> "), It is potentially a vendored subspec of podspec at: " <> showT podSpecPath
+      )
+      $ do
+        podSpecJson <- readPodSpecRaw podSpecPath
+
+        let allSubspecNames :: [Text]
+            allSubspecNames = concatMap allSubspecs (podSpecSubSpecs podSpecJson)
+
+        case find (== candidateSubSpec) allSubspecNames of
+          Nothing -> fatalText $ "could not find candidate subspec (" <> candidateSubSpec <> ") in list of subspecs!"
+          Just _ -> pure $ podSpecJsonToDependency podSpecJson
 
 type Parser = Parsec Void Text
 
@@ -371,7 +372,12 @@ instance FromJSON ExternalSource where
       -- We don't parse these as filepaths because `path`'s parsing functions do
       -- not accept `..`.
       <|> (ExternalPodSpec <$> obj .: ":podspec")
-      <|> (ExternalPath <$> obj .: ":path")
+      <|> ( do
+              somePath <- obj .: ":path"
+              if ".podspec" `Text.isSuffixOf` somePath
+                then pure $ ExternalPodSpec somePath -- sometimes podspec are listed under :path
+                else pure $ ExternalPath somePath
+          )
       <|> pure ExternalOtherType
 
 parserPod :: Text -> Maybe Yaml.Value -> Yaml.Parser Pod
@@ -393,12 +399,17 @@ data PodSpecJSON = PodSpecJSON
   }
   deriving (Show, Eq, Ord)
 
-newtype PodsSpecJSONSubSpec = PodsSpecJSONSubSpec {subSpecName :: Text}
+data PodsSpecJSONSubSpec = PodsSpecJSONSubSpec
+  { subSpecName :: Text
+  , childSubSpecs :: [PodsSpecJSONSubSpec]
+  }
   deriving (Show, Eq, Ord)
 
 instance FromJSON PodsSpecJSONSubSpec where
   parseJSON = JSON.withObject "PodSpecJSON" $ \o ->
-    PodsSpecJSONSubSpec <$> o .: "name"
+    PodsSpecJSONSubSpec
+      <$> (o .: "name")
+      <*> (o .:? "subspecs" .!= mempty)
 
 instance FromJSON PodSpecJSON where
   parseJSON = JSON.withObject "PodSpecJSON" $ \o -> do
@@ -411,3 +422,16 @@ instance FromJSON PodSpecJSON where
         <*> source .:? "commit"
         <*> source .:? "branch"
     pure $ PodSpecJSON externalGitSource subSpecs
+
+-- | Returns all subspec names, including nested subspecs.
+--
+-- >>> allSubspecs (PodsSpecJSONSubSpec "a" [PodsSpecJSONSubSpec "b" mempty])
+-- ["a", "a/b"]
+allSubspecs :: PodsSpecJSONSubSpec -> [Text]
+allSubspecs = allSpecs Nothing
+  where
+    allSpecs :: Maybe Text -> PodsSpecJSONSubSpec -> [Text]
+    allSpecs prefix (PodsSpecJSONSubSpec name childs) =
+      case prefix of
+        Nothing -> [name] <> concatMap (allSpecs $ Just name) childs
+        Just p -> [p <> "/" <> name] <> concatMap (allSpecs (Just $ p <> "/" <> name)) childs

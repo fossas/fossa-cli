@@ -18,6 +18,8 @@ import Strategy.Cocoapods.PodfileLock (
   ExternalSource (..),
   Pod (Pod),
   PodLock (..),
+  PodsSpecJSONSubSpec (PodsSpecJSONSubSpec),
+  allSubspecs,
   buildGraphStatic,
  )
 import Test.Hspec qualified as T
@@ -95,6 +97,27 @@ externalSources =
     , ("ChatSecureCore", ExternalPodSpec "ChatSecureCore.podspec")
     ]
 
+subspecNoNestedSubspecs :: PodsSpecJSONSubSpec
+subspecNoNestedSubspecs = PodsSpecJSONSubSpec "a" []
+
+subspecSingleNestedSubspec :: PodsSpecJSONSubSpec
+subspecSingleNestedSubspec =
+  PodsSpecJSONSubSpec
+    "a"
+    [ PodsSpecJSONSubSpec "b" []
+    ]
+
+subspecMultipleNestedSubspec :: PodsSpecJSONSubSpec
+subspecMultipleNestedSubspec =
+  PodsSpecJSONSubSpec
+    "a"
+    [ PodsSpecJSONSubSpec
+        "b"
+        [ PodsSpecJSONSubSpec "c" mempty
+        ]
+    , PodsSpecJSONSubSpec "d" []
+    ]
+
 spec :: T.Spec
 spec = do
   T.describe "podfile lock analyzer" $
@@ -133,3 +156,10 @@ spec = do
       case decodeEither' podLockFile of
         Left err -> T.expectationFailure $ "failed to parse: " <> show err
         Right result -> result `T.shouldBe` PodLock pods dependencies externalSources
+
+  T.describe "Podfile.lock utilities" $ do
+    T.describe "allSubspecs" $
+      T.it "should returns all subspecs (including nested subspecs)" $ do
+        allSubspecs subspecNoNestedSubspecs `T.shouldMatchList` ["a"]
+        allSubspecs subspecSingleNestedSubspec `T.shouldMatchList` ["a", "a/b"]
+        allSubspecs subspecMultipleNestedSubspec `T.shouldMatchList` ["a", "a/b", "a/b/c", "a/d"]
