@@ -35,7 +35,6 @@ import Data.Functor (void)
 import Data.HashMap.Lazy qualified as HashMap (toList)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe)
 import Data.SemVer qualified as SemVer
 import Data.SemVer.Internal (Version (..))
 import Data.Set (Set)
@@ -220,11 +219,8 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
             then pure d
             else do
               revisedDep <- case Map.lookup parentSpec lockExternalSources of
-                Just (ExternalPodSpec podSpecPath) ->
-                  (fromMaybe d <$> (readPodSubSpecSourceAt podSpecPath childSpec)) <||> pure d
-                Just (ExternalPath podPath) ->
-                  (fromMaybe d <$> (readPodSubSpecSourceAt (toPodSpecPath podPath parentSpec) childSpec))
-                    <||> pure d
+                Just (ExternalPodSpec podSpecPath) -> (readPodSubSpecSourceAt podSpecPath childSpec) <||> pure d
+                Just (ExternalPath podPath) -> (readPodSubSpecSourceAt (toPodSpecPath podPath parentSpec) childSpec) <||> pure d
                 _ -> pure d
 
               when (revisedDep /= d) $
@@ -234,46 +230,21 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
               pure revisedDep
       _ -> pure d
 
-    readPodSubSpecSourceAt ::
+    readPodSpecRaw ::
       ( Has Exec sig m
       , Has Diagnostics sig m
-      , Has Logger sig m
       , Has (State PodSpecCache) sig m
       ) =>
       Text ->
-      Text ->
-      m (Maybe Dependency)
-    readPodSubSpecSourceAt podSpecPath candidateSubSpec = context
-      ( "Trying to resolve (" <> candidateSubSpec <> "), It is potentially a vendored subspec of podspec at: " <> showT podSpecPath
-      )
-      $ do
-        podSpecCache :: PodSpecCache <- get
-        (PodSpecJSON ExternalGitSource{urlOf, tagOf, commitOf, branchOf} subSpecs) <-
-          case Map.lookup podSpecPath podSpecCache of
-            Just cached -> pure cached
-            Nothing -> do
-              podSpec <- execJson lockFileDir $ podIpcSpecCmd podSpecPath
-              put $ Map.insert podSpecPath podSpec podSpecCache
-              pure podSpec
-
-        let allSubspecNames :: [Text]
-            allSubspecNames = concatMap allSubspecs subSpecs
-
-        case find (== candidateSubSpec) allSubspecNames of
-          Nothing -> do
-            logDebug . pretty $ "Could not find, (" <> candidateSubSpec <> ") from vendored subspec"
-            pure Nothing
-          Just _ -> do
-            pure $
-              Just $
-                Dependency
-                  { dependencyType = GitType
-                  , dependencyName = urlOf
-                  , dependencyVersion = CEq <$> asum [tagOf, commitOf, branchOf]
-                  , dependencyLocations = []
-                  , dependencyEnvironments = mempty
-                  , dependencyTags = Map.empty
-                  }
+      m PodSpecJSON
+    readPodSpecRaw podSpecPath = context ("Resolving vendored podspec at " <> showT podSpecPath) $ do
+      podSpecCache <- get
+      case Map.lookup podSpecPath podSpecCache of
+        Just cached -> pure cached
+        Nothing -> do
+          podSpec <- execJson lockFileDir $ podIpcSpecCmd podSpecPath
+          put $ Map.insert podSpecPath podSpec podSpecCache
+          pure podSpec
 
     readPodSpecAt ::
       ( Has Exec sig m
@@ -283,23 +254,40 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
       Text ->
       m Dependency
     readPodSpecAt podSpecPath = context ("Resolving vendored podspec at " <> showT podSpecPath) $ do
-      podSpecCache :: PodSpecCache <- get
-      (PodSpecJSON ExternalGitSource{urlOf, tagOf, commitOf, branchOf} _) <-
-        case Map.lookup podSpecPath podSpecCache of
-          Just cached -> pure cached
-          Nothing -> do
-            podSpec <- execJson lockFileDir $ podIpcSpecCmd podSpecPath
-            put $ Map.insert podSpecPath podSpec podSpecCache
-            pure podSpec
-      pure
-        Dependency
-          { dependencyType = GitType
-          , dependencyName = urlOf
-          , dependencyVersion = CEq <$> asum [tagOf, commitOf, branchOf]
-          , dependencyLocations = []
-          , dependencyEnvironments = mempty
-          , dependencyTags = Map.empty
-          }
+      podSpecJson <- readPodSpecRaw podSpecPath
+      pure $ podSpecJsonToDependency podSpecJson
+
+    podSpecJsonToDependency :: PodSpecJSON -> Dependency
+    podSpecJsonToDependency (PodSpecJSON ExternalGitSource{urlOf, tagOf, commitOf, branchOf} _) =
+      Dependency
+        { dependencyType = GitType
+        , dependencyName = urlOf
+        , dependencyVersion = CEq <$> asum [tagOf, commitOf, branchOf]
+        , dependencyLocations = []
+        , dependencyEnvironments = mempty
+        , dependencyTags = Map.empty
+        }
+
+    readPodSubSpecSourceAt ::
+      ( Has Exec sig m
+      , Has Diagnostics sig m
+      , Has (State PodSpecCache) sig m
+      ) =>
+      Text ->
+      Text ->
+      m Dependency
+    readPodSubSpecSourceAt podSpecPath candidateSubSpec = context
+      ( "Trying to resolve (" <> candidateSubSpec <> "), It is potentially a vendored subspec of podspec at: " <> showT podSpecPath
+      )
+      $ do
+        podSpecJson <- readPodSpecRaw podSpecPath
+
+        let allSubspecNames :: [Text]
+            allSubspecNames = concatMap allSubspecs (podSpecSubSpecs podSpecJson)
+
+        case find (== candidateSubSpec) allSubspecNames of
+          Nothing -> fatalText $ "could not find candidate subspec (" <> candidateSubSpec <> ") in list of subspecs!"
+          Just _ -> pure $ podSpecJsonToDependency podSpecJson
 
 type Parser = Parsec Void Text
 
