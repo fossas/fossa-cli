@@ -2,7 +2,7 @@
 
 ## v3.3.10
 
-- Svn: Fixes project inference bug, where revision values included `\r`. ([]())
+- Svn: Fixes project inference bug, where revision values included `\r`. ([#997](https://github.com/fossas/fossa-cli/pull/997))
 
 ## v3.3.9
 

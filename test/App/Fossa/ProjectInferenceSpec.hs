@@ -1,13 +1,13 @@
 module App.Fossa.ProjectInferenceSpec (spec) where
 
-import App.Fossa.ProjectInference (linesWithCR)
+import App.Fossa.ProjectInference (linesWithoutCR)
 import Test.Hspec (Spec, describe, it, shouldBe)
 
 spec :: Spec
 spec = do
-  describe "linesWithCR" $ do
+  describe "linesWithoutCR" $ do
     it "should remove CR from lines if present" $
-      linesWithCR "a\r\nb\r\n" `shouldBe` ["a", "b"]
+      linesWithoutCR "a\r\nb\r\n" `shouldBe` ["a", "b"]
 
     it "should remove CR from lines" $
-      linesWithCR "a\nb\n" `shouldBe` ["a", "b"]
+      linesWithoutCR "a\nb\n" `shouldBe` ["a", "b"]
