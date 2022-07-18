@@ -10,6 +10,9 @@ module App.Fossa.ProjectInference (
   mergeOverride,
   readCachedRevision,
   InferredProject (..),
+
+  -- * for testing
+  linesWithCR,
 ) where
 
 import App.Types
@@ -103,12 +106,21 @@ inferSVN dir = context "Inferring project from SVN" $ do
     Just project -> pure project
   where
     toProps :: BL.ByteString -> [(Text, Text)]
-    toProps bs = mapMaybe toProp (Text.lines (decodeUtf8 bs))
+    toProps bs = mapMaybe toProp (linesWithCR (decodeUtf8 bs))
+
     toProp :: Text -> Maybe (Text, Text)
     toProp propLine =
       case Text.splitOn ": " propLine of
         [key, val] -> Just (key, val)
         _ -> Nothing
+
+-- Removes Windows `\r` from suffix if any
+-- We do this since: Text.lines does not remove \r.
+linesWithCR :: Text -> [Text]
+linesWithCR content = map removeSuffixCR $ Text.lines content
+  where
+    removeSuffixCR :: Text -> Text
+    removeSuffixCR t = fromMaybe t $ Text.stripSuffix "\r" t
 
 saveRevision :: Has (Lift IO) sig m => ProjectRevision -> m ()
 saveRevision project = do
