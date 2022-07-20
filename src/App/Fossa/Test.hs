@@ -81,8 +81,8 @@ testMain config = runStickyLogger SevInfo
       0 -> do
         logInfo . pretty $ successMsg diffRev
         case outputType of
-          TestOutputPretty -> renderJson issues
-          TestOutputJson -> pure ()
+          TestOutputPretty -> pure ()
+          TestOutputJson -> renderJson issues
       n -> do
         if null (issuesIssues issues)
           then

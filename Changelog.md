@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.3.11
+
+- `fossa test` - `fossa test --json` produces json output when there are 0 issues found. ([#999](https://github.com/fossas/fossa-cli/pull/999))
+
 ## v3.3.10
 
 - Svn: Fixes project inference bug, where revision values included `\r`. ([#997](https://github.com/fossas/fossa-cli/pull/997))
