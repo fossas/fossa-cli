@@ -2,7 +2,7 @@
 
 ## v3.3.11
 
-- `fossa test` - `fossa test --json` produces json output when there are 0 issues found. ([]())
+- `fossa test` - `fossa test --json` produces json output when there are 0 issues found. ([#999](https://github.com/fossas/fossa-cli/pull/999))
 
 ## v3.3.10
 
