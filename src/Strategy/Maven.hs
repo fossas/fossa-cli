@@ -85,10 +85,10 @@ getDepsDynamicAnalysis ::
   MavenProjectClosure ->
   m (Graphing Dependency, GraphBreadth)
 getDepsDynamicAnalysis closure =
-  context "Dynamic Analysis" $
-    warnOnErr MissingEdges
+  context "Dynamic Analysis"
+    $ warnOnErr MissingEdges
       . warnOnErr MissingDeepDeps
-      $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
+    $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
 
 getDepsPlugin ::
   ( Has (Lift IO) sig m
@@ -120,7 +120,8 @@ getDepsTreeCmd ::
   m (Graphing Dependency, GraphBreadth)
 getDepsTreeCmd closure =
   context "Dynamic analysis" $
-    DepTreeCmd.analyze . parent $ PomClosure.closurePath closure
+    DepTreeCmd.analyze . parent $
+      PomClosure.closurePath closure
 
 getStaticAnalysis ::
   ( Has (Lift IO) sig m

@@ -154,7 +154,8 @@ newtype BuildTask = BuildTask
 
 instance FromJSON Build where
   parseJSON = withObject "Build" $ \obj ->
-    Build <$> obj .: "id"
+    Build
+      <$> obj .: "id"
       <*> obj .:? "error"
       <*> obj .: "task"
 
@@ -217,7 +218,8 @@ newtype IssueRule = IssueRule
 
 instance FromJSON Issues where
   parseJSON = withObject "Issues" $ \obj ->
-    Issues <$> obj .: "count"
+    Issues
+      <$> obj .: "count"
       <*> obj .:? "issues" .!= []
       <*> obj .: "status"
 
@@ -231,7 +233,8 @@ instance ToJSON Issues where
 
 instance FromJSON Issue where
   parseJSON = withObject "Issue" $ \obj ->
-    Issue <$> obj .: "id"
+    Issue
+      <$> obj .: "id"
       <*> obj .:? "priorityString"
       <*> obj .: "resolved"
       -- VPS issues don't have a revisionId
@@ -297,7 +300,8 @@ data Organization = Organization
 
 instance FromJSON Organization where
   parseJSON = withObject "Organization" $ \obj ->
-    Organization <$> obj .: "organizationId"
+    Organization
+      <$> obj .: "organizationId"
       <*> obj .:? "usesSAML" .!= False
       <*> obj .:? "supportsCliLicenseScanning" .!= False
       <*> obj .:? "supportsAnalyzedRevisionsQuery" .!= False
@@ -313,7 +317,8 @@ data Project = Project
 
 instance FromJSON Project where
   parseJSON = withObject "Project" $ \obj ->
-    Project <$> obj .: "id"
+    Project
+      <$> obj .: "id"
       <*> obj .: "title"
       <*> obj .: "isMonorepo"
 
@@ -325,7 +330,8 @@ data UploadResponse = UploadResponse
 
 instance FromJSON UploadResponse where
   parseJSON = withObject "UploadResponse" $ \obj ->
-    UploadResponse <$> (parseLocator <$> obj .: "locator")
+    UploadResponse
+      <$> (parseLocator <$> obj .: "locator")
       <*> obj .:? "error"
 
 newtype ScanId = ScanId Text deriving (Eq, Ord, FromJSON, ToJSON)

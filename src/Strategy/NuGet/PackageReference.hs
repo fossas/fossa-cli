@@ -119,7 +119,8 @@ instance FromXML ItemGroup where
 -- See: https://cloud.google.com/functions/docs/writing/specifying-dependencies-dotnet
 instance FromXML Package where
   parseElement el =
-    Package <$> attr "Include" el
+    Package
+      <$> attr "Include" el
       <*> optional (attr "Version" el <|> child "Version" el)
 
 buildGraph :: PackageReference -> Graphing Dependency

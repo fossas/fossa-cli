@@ -62,12 +62,14 @@ logIgnoredDeps pyproject poetryLock = for_ notSupportedDepsMsgs (logDebug . pret
     notSupportedPyProjectDevDeps :: [Text]
     notSupportedPyProjectDevDeps =
       Map.keys $
-        Map.filter (not . supportedPyProjectDep) $ maybe Map.empty devDependencies (pyprojectPoetry pyproject)
+        Map.filter (not . supportedPyProjectDep) $
+          maybe Map.empty devDependencies (pyprojectPoetry pyproject)
 
     notSupportedPyProjectDeps :: [Text]
     notSupportedPyProjectDeps =
       Map.keys $
-        Map.filter (not . supportedPyProjectDep) $ maybe Map.empty dependencies (pyprojectPoetry pyproject)
+        Map.filter (not . supportedPyProjectDep) $
+          maybe Map.empty dependencies (pyprojectPoetry pyproject)
 
 -- | Not supported poetry lock package.
 supportedPoetryLockDep :: PoetryLockPackage -> Bool

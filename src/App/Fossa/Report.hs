@@ -48,7 +48,7 @@ report config@ReportConfig{..} = do
   from App.Fossa.Test.  I wanted to push this out sooner, and refactoring
   everything right away was not appropriate for the timing of this command.
 
-  * Waiting for builds and issue scans (separately, but also together)
+    * Waiting for builds and issue scans (separately, but also together)
     * Above includes errors, types, and scaffolding
   -}
   runStickyLogger SevInfo

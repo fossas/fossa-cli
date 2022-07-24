@@ -79,7 +79,8 @@ data StackLocation
 
 instance FromJSON StackDep where
   parseJSON = withObject "StackDep" $ \obj ->
-    StackDep <$> obj .: "name"
+    StackDep
+      <$> obj .: "name"
       <*> obj .: "version"
       <*> obj .:? "dependencies" .!= []
       <*> obj .:? "location" .!= BuiltIn

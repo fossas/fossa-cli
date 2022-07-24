@@ -152,7 +152,9 @@ requirementParser = specification
     python_str_c :: Parser Char
     python_str_c =
       label "python_str_c" $
-        satisfy isSpace <|> satisfy C.isLetter <|> satisfy C.isDigit
+        satisfy isSpace
+          <|> satisfy C.isLetter
+          <|> satisfy C.isDigit
           <|> oneOf ("().{}-_*#:;,/?[]!~`@$%^&=+|<>" :: String)
 
     dquote :: Parser Char

@@ -278,7 +278,8 @@ data DependencyMetadata = DependencyMetadata
 
 instance FromJSON ManualDependencies where
   parseJSON = withObject "ManualDependencies" $ \obj ->
-    ManualDependencies <$ (obj .:? "version" >>= isMissingOr1)
+    ManualDependencies
+      <$ (obj .:? "version" >>= isMissingOr1)
       <*> (obj .:? "referenced-dependencies" .!= [])
       <*> (obj .:? "custom-dependencies" .!= [])
       <*> (obj .:? "vendored-dependencies" .!= [])
@@ -295,14 +296,16 @@ depTypeParser text = case depTypeFromText text of
 
 instance FromJSON ReferencedDependency where
   parseJSON = withObject "ReferencedDependency" $ \obj ->
-    ReferencedDependency <$> obj .: "name"
+    ReferencedDependency
+      <$> obj .: "name"
       <*> (obj .: "type" >>= depTypeParser)
       <*> (unTextLike <$$> obj .:? "version")
       <* forbidMembers "referenced dependencies" ["license", "description", "url", "path"] obj
 
 instance FromJSON CustomDependency where
   parseJSON = withObject "CustomDependency" $ \obj ->
-    CustomDependency <$> obj .: "name"
+    CustomDependency
+      <$> obj .: "name"
       <*> (unTextLike <$> obj .: "version")
       <*> obj .: "license"
       <*> obj .:? "metadata"
@@ -310,7 +313,8 @@ instance FromJSON CustomDependency where
 
 instance FromJSON RemoteDependency where
   parseJSON = withObject "RemoteDependency" $ \obj ->
-    RemoteDependency <$> obj .: "name"
+    RemoteDependency
+      <$> obj .: "name"
       <*> (unTextLike <$> obj .: "version")
       <*> obj .: "url"
       <*> obj .:? "metadata"
@@ -319,7 +323,8 @@ instance FromJSON RemoteDependency where
 -- Dependency "metadata" section for both Remote and Custom Dependencies
 instance FromJSON DependencyMetadata where
   parseJSON = withObject "metadata" $ \obj ->
-    DependencyMetadata <$> obj .:? "description"
+    DependencyMetadata
+      <$> obj .:? "description"
       <*> obj .:? "homepage"
       <* forbidMembers "metadata" ["url"] obj
 

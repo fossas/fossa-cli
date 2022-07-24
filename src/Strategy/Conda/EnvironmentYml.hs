@@ -81,7 +81,8 @@ data EnvironmentYmlFile = EnvironmentYmlFile
 
 instance FromJSON EnvironmentYmlFile where
   parseJSON = withObject "EnvironmentYmlFile" $ \obj ->
-    EnvironmentYmlFile <$> obj .: "name"
+    EnvironmentYmlFile
+      <$> obj .: "name"
       <*> obj .: "dependencies"
 
 data CondaDep = CondaDep

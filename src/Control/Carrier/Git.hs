@@ -51,7 +51,8 @@ fetchGitContributors ::
 fetchGitContributors basedir = do
   now <- sendIO getCurrentTime
   rawContrib <- errCtx FailedToPerformGitLog $ execThrow basedir $ gitLogCmd now
-  pure . Contributors
+  pure
+    . Contributors
     . Map.map (toText . iso8601Show)
     . Map.fromListWith max
     . mapMaybe readLine

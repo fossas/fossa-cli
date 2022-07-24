@@ -66,10 +66,10 @@ getDeps project = do
   (graph, graphBreadth) <- case pubLock project of
     Just lockFile -> analyzeDepsCmd lockFile (pubSpecDir project) <||> analyzePubLockFile lockFile
     Nothing -> do
-      void . recover $
-        warnOnErr MissingDeepDeps
+      void . recover
+        $ warnOnErr MissingDeepDeps
           . warnOnErr MissingEdges
-          $ errCtx PubspecLimitation (fatalText "Missing pubspec.lock file")
+        $ errCtx PubspecLimitation (fatalText "Missing pubspec.lock file")
       analyzePubSpecFile $ pubSpec project
   pure $
     DependencyResults

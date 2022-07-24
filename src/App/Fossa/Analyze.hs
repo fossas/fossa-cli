@@ -83,7 +83,7 @@ import Control.Effect.Git (Git)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent)
-import Control.Monad (join, when)
+import Control.Monad (join, unless, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
@@ -267,7 +267,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         _ -> pure Nothing
   dynamicLinkedResults <-
     Diag.errorBoundaryIO . diagToDebug $
-      Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget $ Config.vsiOptions cfg
+      Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget $
+        Config.vsiOptions cfg
   binarySearchResults <-
     Diag.errorBoundaryIO . diagToDebug $
       Diag.context "discover-binaries" $
@@ -355,11 +356,10 @@ analyzeVSI dir revision filters skipResolving = do
   logInfo "Running VSI analysis"
 
   let skippedLocators = VSI.unVSISkipResolution skipResolving
-  if not $ null skippedLocators
-    then do
+  unless (null skippedLocators) $
+    do
       logInfo "Skipping resolution of the following locators:"
       traverse_ (logInfo . pretty . VSI.renderLocator) skippedLocators
-    else pure ()
 
   results <- analyzeVSIDeps dir revision filters skipResolving
   pure $ Just results

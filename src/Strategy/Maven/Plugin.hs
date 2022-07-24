@@ -158,7 +158,8 @@ textArtifactToPluginOutput
       lookupArtifactByName aText = do
         let res = Map.lookup aText namesToIds
         when (isNothing res) $
-          warn $ "Could not find artifact with name " <> aText
+          warn $
+            "Could not find artifact with name " <> aText
         pure res
 
       buildEdges :: Has Diagnostics sig m => Int -> [Tree TextArtifact] -> m [Edge]

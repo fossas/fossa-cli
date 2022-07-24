@@ -164,7 +164,8 @@ instance FromJSON PkgJsonWorkspaces where
 
 instance FromJSON PackageJson where
   parseJSON = withObject "PackageJson" $ \obj ->
-    PackageJson <$> obj .:? "name"
+    PackageJson
+      <$> obj .:? "name"
       <*> obj .:? "version"
       <*> obj .:? "workspaces" .!= PkgJsonWorkspaces []
       <*> obj .:? "dependencies" .!= Map.empty

@@ -40,7 +40,8 @@ spec = do
     result <- runIO . runStack . runDiagnostics . runReadFSIO $ fingerprint target
 
     it "fingerprints raw correctly" $
-      assertOnSuccess result $ \_ c -> (toText . combinedRaw $ c) `shouldBe` "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      assertOnSuccess result $
+        \_ c -> (toText . combinedRaw $ c) `shouldBe` "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
     it "fingerprints comment stripped correctly" $
       assertOnSuccess result $ \_ c ->

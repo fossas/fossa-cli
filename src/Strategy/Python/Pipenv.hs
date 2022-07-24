@@ -97,12 +97,12 @@ getDeps project = context "Pipenv" $ do
   lock <- context "Getting direct dependencies" $ readContentsJson (pipenvLockfile project)
 
   maybeDeps <-
-    context "Getting deep dependencies" $
-      recover
+    context "Getting deep dependencies"
+      $ recover
         . warnOnErr MissingDeepDeps
         . warnOnErr MissingEdges
         . errCtx (PipenvCmdFailed pipenvGraphCmd)
-        $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
+      $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
 
   graph <- context "Building dependency graph" $ pure (buildGraph lock maybeDeps)
   pure $
@@ -142,9 +142,7 @@ pipenvGraphCmd =
 buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> Graphing Dependency
 buildGraph lock maybeDeps = run . withLabeling toDependency $ do
   buildNodes lock
-  case maybeDeps of
-    Just deps -> buildEdges deps
-    Nothing -> pure ()
+  traverse_ buildEdges maybeDeps
   where
     toDependency :: PipPkg -> Set PipLabel -> Dependency
     toDependency pkg = foldr applyLabel start
@@ -247,13 +245,15 @@ data PipfileDep = PipfileDep
 
 instance FromJSON PipfileLock where
   parseJSON = withObject "PipfileLock" $ \obj ->
-    PipfileLock <$> obj .: "_meta"
+    PipfileLock
+      <$> obj .: "_meta"
       <*> obj .: "default"
       <*> obj .: "develop"
 
 instance FromJSON PipfileDep where
   parseJSON = withObject "PipfileDep" $ \obj ->
-    PipfileDep <$> obj .:? "version"
+    PipfileDep
+      <$> obj .:? "version"
       <*> obj .:? "index"
 
 instance FromJSON PipfileMeta where
@@ -262,7 +262,8 @@ instance FromJSON PipfileMeta where
 
 instance FromJSON PipfileSource where
   parseJSON = withObject "PipfileSource" $ \obj ->
-    PipfileSource <$> obj .: "name"
+    PipfileSource
+      <$> obj .: "name"
       <*> obj .: "url"
 
 ---------- pipenv graph
@@ -277,7 +278,8 @@ data PipenvGraphDep = PipenvGraphDep
 
 instance FromJSON PipenvGraphDep where
   parseJSON = withObject "PipenvGraphDep" $ \obj ->
-    PipenvGraphDep <$> obj .: "package_name"
+    PipenvGraphDep
+      <$> obj .: "package_name"
       <*> obj .: "installed_version"
       <*> obj .: "required_version"
       <*> obj .: "dependencies"

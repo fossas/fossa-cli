@@ -169,7 +169,8 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
           first ("could not parse `pod --version` output: " <>) $
             SemVer.fromText podVersionStdout
       when (_versionMajor == 0 && _versionMinor < 29) $
-        fatalText $ "`pod` version " <> podVersionStdout <> " does not support `pod ipc spec`"
+        fatalText $
+          "`pod` version " <> podVersionStdout <> " does not support `pod ipc spec`"
 
       -- If `pod` _is_ installed, then we can shell out to `pod ipc spec` to
       -- convert locally vendored `.podspec` files to JSON and read them for
@@ -341,7 +342,8 @@ parseNameAndVersion = (,) <$> parseName <*> parseVersion
 
 instance FromJSON PodLock where
   parseJSON = Yaml.withObject "Podfile.lock content" $ \obj ->
-    PodLock <$> obj .: "PODS"
+    PodLock
+      <$> obj .: "PODS"
       <*> obj .: "DEPENDENCIES"
       <*> obj .: "EXTERNAL SOURCES"
 

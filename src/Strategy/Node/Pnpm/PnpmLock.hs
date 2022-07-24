@@ -119,7 +119,8 @@ data ProjectMap = ProjectMap
 
 instance FromJSON ProjectMap where
   parseJSON = Yaml.withObject "ProjectMap" $ \obj ->
-    ProjectMap <$> obj .:? "dependencies" .!= mempty
+    ProjectMap
+      <$> obj .:? "dependencies" .!= mempty
       <*> obj .:? "devDependencies" .!= mempty
 
 data PackageData = PackageData
@@ -133,7 +134,8 @@ data PackageData = PackageData
 
 instance FromJSON PackageData where
   parseJSON = Yaml.withObject "PackageData" $ \obj ->
-    PackageData <$> (obj .:? "dev" .!= False)
+    PackageData
+      <$> (obj .:? "dev" .!= False)
       <*> obj .:? "name"
       <*> obj .: "resolution"
       <*> (obj .:? "dependencies" .!= mempty)

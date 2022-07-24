@@ -61,13 +61,15 @@ data GlideDep = GlideDep
 
 instance FromJSON GlideLockfile where
   parseJSON = withObject "GlideLockfile" $ \obj ->
-    GlideLockfile <$> obj .: "hash"
+    GlideLockfile
+      <$> obj .: "hash"
       <*> obj .: "updated"
       <*> obj .: "imports"
 
 instance FromJSON GlideDep where
   parseJSON = withObject "GlideDep" $ \obj ->
-    GlideDep <$> obj .: "name"
+    GlideDep
+      <$> obj .: "name"
       -- version field can be text or an int (hexadecimal hash)
       <*> (obj .: "version" <|> (intToText <$> obj .: "version"))
       <*> obj .:? "repo"

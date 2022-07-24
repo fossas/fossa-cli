@@ -107,7 +107,8 @@ instance FromJSON NpmResolved where
 
 instance FromJSON PkgLockDependency where
   parseJSON = withObject "PkgLockDependency" $ \obj ->
-    PkgLockDependency <$> obj .: "version"
+    PkgLockDependency
+      <$> obj .: "version"
       <*> obj .:? "dev" .!= False
       <*> obj .:? "resolved" .!= NpmResolved Nothing
       <*> obj .:? "requires" .!= mempty
@@ -148,7 +149,8 @@ packagePathsToNames = Map.mapKeys (TE.dropPrefix "node_modules/")
 buildGraph :: PkgLockJson -> Set Text -> WorkspacePackageNames -> Graphing Dependency
 buildGraph packageJson directSet (WorkspacePackageNames workspacePackages) =
   run . withLabeling toDependency $
-    void $ Map.traverseWithKey (maybeAddDep False Nothing) packageDeps
+    void $
+      Map.traverseWithKey (maybeAddDep False Nothing) packageDeps
   where
     packageDeps = lockDependencies packageJson
 

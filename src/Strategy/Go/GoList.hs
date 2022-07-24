@@ -78,7 +78,8 @@ data GoListModule = GoListModule
 
 instance FromJSON GoListModule where
   parseJSON = withObject "GoListModule" $ \obj ->
-    GoListModule <$> obj .: "Path"
+    GoListModule
+      <$> obj .: "Path"
       <*> obj .:? "Version"
       <*> (obj .:? "Main" .!= False)
       <*> (obj .:? "Indirect" .!= False)

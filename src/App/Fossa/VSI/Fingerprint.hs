@@ -71,7 +71,8 @@ encodeFingerprint = Fingerprint . toText . show
 hashBinaryFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
 hashBinaryFile fp =
   context "as binary" $
-    (fatalOnIOException "hash binary file") . sendIO . runConduitRes $ sourceFile fp .| sinkHash
+    (fatalOnIOException "hash binary file") . sendIO . runConduitRes $
+      sourceFile fp .| sinkHash
 
 hashTextFileCommentStripped :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
 hashTextFileCommentStripped file =

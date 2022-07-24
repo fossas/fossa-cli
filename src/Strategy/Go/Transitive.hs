@@ -102,14 +102,16 @@ data Module = Module
 
 instance FromJSON a => FromJSON (Package a) where
   parseJSON = withObject "Package" $ \obj ->
-    Package <$> obj .: "ImportPath"
+    Package
+      <$> obj .: "ImportPath"
       <*> obj .:? "Module"
       <*> obj .:? "Imports"
       <*> obj .:? "Standard"
 
 instance FromJSON Module where
   parseJSON = withObject "Module" $ \obj ->
-    Module <$> obj .: "Path"
+    Module
+      <$> obj .: "Path"
       <*> obj .:? "Version"
       <*> obj .:? "Replace"
 

@@ -69,7 +69,7 @@ pyProjectCodec :: TomlCodec PyProject
 pyProjectCodec =
   PyProject
     <$> Toml.dioptional (Toml.table pyProjectBuildSystemCodec "build-system") .= pyprojectBuildSystem
-      <*> Toml.dioptional (Toml.table pyProjectPoetryCodec "tool.poetry") .= pyprojectPoetry
+    <*> Toml.dioptional (Toml.table pyProjectPoetryCodec "tool.poetry") .= pyprojectPoetry
 
 newtype PyProjectBuildSystem = PyProjectBuildSystem
   { buildBackend :: Text

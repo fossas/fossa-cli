@@ -32,14 +32,16 @@ data AnalyzeEffects = AnalyzeEffects
 
 instance FromJSON AnalyzeJournal where
   parseJSON = withObject "AnalyzeJournal" $ \obj ->
-    AnalyzeJournal <$> obj .: "commit"
+    AnalyzeJournal
+      <$> obj .: "commit"
       <*> obj .: "effects"
       <*> obj .: "args"
       <*> obj .: "workdir"
 
 instance FromJSON AnalyzeEffects where
   parseJSON = withObject "AnalyzeEffects" $ \obj ->
-    AnalyzeEffects <$> obj .: "ReadFS"
+    AnalyzeEffects
+      <$> obj .: "ReadFS"
       <*> obj .: "Exec"
 
 instance ToJSON AnalyzeJournal where

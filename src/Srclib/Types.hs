@@ -90,7 +90,8 @@ instance ToJSON LicenseUnit where
 
 instance FromJSON LicenseUnit where
   parseJSON = withObject "LicenseUnit" $ \obj ->
-    LicenseUnit <$> obj .: "Name"
+    LicenseUnit
+      <$> obj .: "Name"
       <*> obj .: "Type"
       <*> obj .: "Dir"
       <*> obj .: "Files"
@@ -141,7 +142,8 @@ instance ToJSON LicenseUnitData where
 
 instance FromJSON LicenseUnitData where
   parseJSON = withObject "LicenseUnitData" $ \obj ->
-    LicenseUnitData <$> obj .: "path"
+    LicenseUnitData
+      <$> obj .: "path"
       <*> obj .:? "Copyright"
       <*> obj .: "ThemisVersion"
       <*> obj .:? "match_data"
@@ -170,7 +172,8 @@ instance ToJSON LicenseUnitMatchData where
 
 instance FromJSON LicenseUnitMatchData where
   parseJSON = withObject "LicenseUnitMatchData" $ \obj ->
-    LicenseUnitMatchData <$> obj .: "match_string"
+    LicenseUnitMatchData
+      <$> obj .: "match_string"
       <*> obj .: "location"
       <*> obj .: "length"
       <*> obj .: "index"
@@ -266,7 +269,8 @@ instance ToJSON SourceUnit where
 
 instance FromJSON SourceUnit where
   parseJSON = withObject "SourceUnit" $ \obj ->
-    SourceUnit <$> obj .: "Name"
+    SourceUnit
+      <$> obj .: "Name"
       <*> obj .: "Type"
       <*> obj .: "Manifest"
       <*> obj .:? "Build"
@@ -285,7 +289,8 @@ instance ToJSON SourceUnitBuild where
 
 instance FromJSON SourceUnitBuild where
   parseJSON = withObject "SourceUnitBuild" $ \obj ->
-    SourceUnitBuild <$> obj .: "Artifact"
+    SourceUnitBuild
+      <$> obj .: "Artifact"
       <*> obj .: "Succeeded"
       <*> obj .: "Imports"
       <*> obj .: "Dependencies"
@@ -299,7 +304,8 @@ instance ToJSON SourceUnitDependency where
 
 instance FromJSON SourceUnitDependency where
   parseJSON = withObject "SourceUnitDependency" $ \obj ->
-    SourceUnitDependency <$> obj .: "locator"
+    SourceUnitDependency
+      <$> obj .: "locator"
       <*> obj .: "imports"
 
 instance ToJSON AdditionalDepData where
@@ -311,7 +317,8 @@ instance ToJSON AdditionalDepData where
 
 instance FromJSON AdditionalDepData where
   parseJSON = withObject "AdditionalDepData" $ \obj ->
-    AdditionalDepData <$> obj .:? "UserDefinedDependencies"
+    AdditionalDepData
+      <$> obj .:? "UserDefinedDependencies"
       <*> obj .:? "RemoteDependencies"
 
 instance ToJSON SourceUserDefDep where
@@ -327,7 +334,8 @@ instance ToJSON SourceUserDefDep where
 
 instance FromJSON SourceUserDefDep where
   parseJSON = withObject "SourceUserDefDep" $ \obj ->
-    SourceUserDefDep <$> obj .: "Name"
+    SourceUserDefDep
+      <$> obj .: "Name"
       <*> obj .: "Version"
       <*> obj .: "License"
       <*> obj .:? "Description"
@@ -346,7 +354,8 @@ instance ToJSON SourceRemoteDep where
 
 instance FromJSON SourceRemoteDep where
   parseJSON = withObject "SourceRemoteDep" $ \obj ->
-    SourceRemoteDep <$> obj .: "Name"
+    SourceRemoteDep
+      <$> obj .: "Name"
       <*> obj .: "Version"
       <*> obj .: "Url"
       <*> obj .:? "Description"

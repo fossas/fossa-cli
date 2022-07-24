@@ -182,16 +182,22 @@ instance ToJSON PomLicense
 
 instance FromXML RawPom where
   parseElement el =
-    RawPom <$> optional (child "parent" el)
+    RawPom
+      <$> optional (child "parent" el)
       <*> optional (child "groupId" el)
       <*> child "artifactId" el
       <*> optional (child "version" el)
       <*> optional (child "name" el)
-      <*> optional (child "properties" el) `defaultsTo` Map.empty
-      <*> optional (child "modules" el >>= children "module") `defaultsTo` []
-      <*> optional (child "dependencyManagement" el >>= children "dependency") `defaultsTo` []
-      <*> optional (child "dependencies" el >>= children "dependency") `defaultsTo` []
-      <*> optional (child "licenses" el >>= children "license") `defaultsTo` []
+      <*> optional (child "properties" el)
+      `defaultsTo` Map.empty
+      <*> optional (child "modules" el >>= children "module")
+      `defaultsTo` []
+      <*> optional (child "dependencyManagement" el >>= children "dependency")
+      `defaultsTo` []
+      <*> optional (child "dependencies" el >>= children "dependency")
+      `defaultsTo` []
+      <*> optional (child "licenses" el >>= children "license")
+      `defaultsTo` []
 
 instance FromXML RawParent where
   -- TODO: move this documentation
@@ -199,14 +205,16 @@ instance FromXML RawParent where
   -- search the path given for this project's parent, before searching the local and then remote repositories."
   -- https://maven.apache.org/pom.html#Inheritance
   parseElement el =
-    RawParent <$> child "groupId" el
+    RawParent
+      <$> child "groupId" el
       <*> child "artifactId" el
       <*> child "version" el
       <*> optional (child "relativePath" el)
 
 instance FromXML RawDependency where
   parseElement el =
-    RawDependency <$> child "groupId" el
+    RawDependency
+      <$> child "groupId" el
       <*> child "artifactId" el
       <*> optional (child "version" el)
       <*> optional (child "classifier" el)
@@ -215,5 +223,6 @@ instance FromXML RawDependency where
 
 instance FromXML PomLicense where
   parseElement el =
-    PomLicense <$> optional (child "name" el)
+    PomLicense
+      <$> optional (child "name" el)
       <*> optional (child "url" el)

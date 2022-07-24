@@ -53,7 +53,8 @@ instance FromJSON SwiftPackageResolvedFile where
 
 parseV1Pin :: Object -> Parser SwiftResolvedPackage
 parseV1Pin obj =
-  SwiftResolvedPackage <$> obj .: "package"
+  SwiftResolvedPackage
+    <$> obj .: "package"
     <*> obj .: "repositoryURL"
     <*> (obj .:? "state" |?> "branch")
     <*> (obj .:? "state" |?> "revision")
@@ -61,7 +62,8 @@ parseV1Pin obj =
 
 parseV2Pin :: Object -> Parser SwiftResolvedPackage
 parseV2Pin obj =
-  SwiftResolvedPackage <$> obj .: "identity"
+  SwiftResolvedPackage
+    <$> obj .: "identity"
     <*> obj .: "location"
     <*> pure Nothing
     <*> (obj .:? "state" |?> "revision")
@@ -69,7 +71,8 @@ parseV2Pin obj =
 
 instance FromJSON SwiftResolvedPackage where
   parseJSON = withObject "Package.resolved pinned object" $ \obj ->
-    SwiftResolvedPackage <$> obj .: "package"
+    SwiftResolvedPackage
+      <$> obj .: "package"
       <*> obj .: "repositoryURL"
       <*> (obj .:? "state" |?> "branch")
       <*> (obj .:? "state" |?> "revision")

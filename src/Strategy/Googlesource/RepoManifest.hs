@@ -283,25 +283,29 @@ validateProject manifest project = do
 
 instance FromXML RepoManifest where
   parseElement el =
-    RepoManifest <$> optional (child "default" el)
+    RepoManifest
+      <$> optional (child "default" el)
       <*> children "remote" el
       <*> children "project" el
       <*> children "include" el
 
 instance FromXML ManifestDefault where
   parseElement el =
-    ManifestDefault <$> optional (attr "remote" el)
+    ManifestDefault
+      <$> optional (attr "remote" el)
       <*> optional (attr "revision" el)
 
 instance FromXML ManifestRemote where
   parseElement el =
-    ManifestRemote <$> attr "name" el
+    ManifestRemote
+      <$> attr "name" el
       <*> attr "fetch" el
       <*> optional (attr "revision" el)
 
 instance FromXML ManifestProject where
   parseElement el =
-    ManifestProject <$> attr "name" el
+    ManifestProject
+      <$> attr "name" el
       <*> optional (attr "path" el)
       <*> optional (attr "remote" el)
       <*> optional (attr "revision" el)

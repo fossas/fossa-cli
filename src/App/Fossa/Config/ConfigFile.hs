@@ -236,7 +236,8 @@ newtype ExperimentalGradleConfigs = ExperimentalGradleConfigs
 
 instance FromJSON ConfigFile where
   parseJSON = withObject "ConfigFile" $ \obj ->
-    ConfigFile <$> obj .: "version"
+    ConfigFile
+      <$> obj .: "version"
       <*> obj .:? "server"
       <*> obj .:? "apiKey"
       <*> obj .:? "project"
@@ -249,7 +250,8 @@ instance FromJSON ConfigFile where
 
 instance FromJSON ConfigProject where
   parseJSON = withObject "ConfigProject" $ \obj ->
-    ConfigProject <$> obj .:? "id"
+    ConfigProject
+      <$> obj .:? "id"
       <*> obj .:? "name"
       <*> obj .:? "link"
       <*> obj .:? "team"
@@ -260,17 +262,20 @@ instance FromJSON ConfigProject where
 
 instance FromJSON ConfigRevision where
   parseJSON = withObject "ConfigRevision" $ \obj ->
-    ConfigRevision <$> obj .:? "commit"
+    ConfigRevision
+      <$> obj .:? "commit"
       <*> obj .:? "branch"
 
 instance FromJSON ConfigTargets where
   parseJSON = withObject "ConfigTargets" $ \obj ->
-    ConfigTargets <$> (obj .:? "only" .!= [])
+    ConfigTargets
+      <$> (obj .:? "only" .!= [])
       <*> (obj .:? "exclude" .!= [])
 
 instance FromJSON ConfigPaths where
   parseJSON = withObject "ConfigPaths" $ \obj ->
-    ConfigPaths <$> (obj .:? "only" .!= [])
+    ConfigPaths
+      <$> (obj .:? "only" .!= [])
       <*> (obj .:? "exclude" .!= [])
 
 instance FromJSON ExperimentalConfigs where
@@ -300,5 +305,6 @@ data VendoredDependencyConfigs = VendoredDependencyConfigs
 
 instance FromJSON VendoredDependencyConfigs where
   parseJSON = withObject "vendoredDependencies" $ \obj ->
-    VendoredDependencyConfigs <$> (obj .:? "forceRescans" .!= False)
+    VendoredDependencyConfigs
+      <$> (obj .:? "forceRescans" .!= False)
       <*> (obj .:? "scanMethod")
