@@ -95,7 +95,7 @@ instance FromJSON PubSpecDepSource where
                   <$> go .: "git" |> "ref"
                   <*> go .: "git" |> "url"
                   <|> PubSpecDepGitSource Nothing
-                  <$> go .: "git"
+                    <$> go .: "git"
               )
       parseSdkSource :: Yaml.Object -> Yaml.Parser PubSpecDepSource
       parseSdkSource so = SdkSource . PubSpecDepSdkSource <$> so .: "sdk"

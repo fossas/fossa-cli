@@ -233,7 +233,8 @@ buildGraph manifestContent maybeResolvedContent =
     -- dependencies sourced from local path, we do not need to do any filtering.
     Just resolvedContent ->
       promoteToDirect (isDirect depInManifest) $
-        deeps $ resolvedDependenciesOf resolvedContent
+        deeps $
+          resolvedDependenciesOf resolvedContent
   where
     isDirect :: Set Text -> Dependency -> Bool
     isDirect s dep = (dependencyName dep) `member` s

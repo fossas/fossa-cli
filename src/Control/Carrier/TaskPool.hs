@@ -30,7 +30,8 @@ withTaskPool ::
 withTaskPool numWorkers reportProgress act = do
   state <-
     sendIO $
-      State <$> newTVarIO []
+      State
+        <$> newTVarIO []
         <*> newTVarIO 0
         <*> newTVarIO 0
         <*> newEmptyTMVarIO

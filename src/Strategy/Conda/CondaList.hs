@@ -57,6 +57,7 @@ data CondaListDep = CondaListDep
 
 instance FromJSON CondaListDep where
   parseJSON = withObject "CondaListOutput" $ \obj ->
-    CondaListDep <$> obj .: "name"
+    CondaListDep
+      <$> obj .: "name"
       <*> obj .:? "version"
       <*> obj .:? "build_string"

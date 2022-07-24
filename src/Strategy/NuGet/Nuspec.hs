@@ -149,13 +149,17 @@ data NuGetDependency = NuGetDependency
 instance FromXML Nuspec where
   parseElement el = do
     metadata <- child "metadata" el
-    Nuspec <$> optional (child "dependencies" metadata >>= children "group") `defaultsTo` []
+    Nuspec
+      <$> optional (child "dependencies" metadata >>= children "group")
+      `defaultsTo` []
       <*> children "license" metadata
       <*> optional (child "licenseUrl" metadata)
 
 instance FromXML NuspecLicense where
   parseElement el =
-    NuspecLicense <$> optional (attr "type" el) `defaultsTo` ""
+    NuspecLicense
+      <$> optional (attr "type" el)
+      `defaultsTo` ""
       <*> content el
 
 instance FromXML Group where
@@ -163,7 +167,8 @@ instance FromXML Group where
 
 instance FromXML NuGetDependency where
   parseElement el =
-    NuGetDependency <$> attr "id" el
+    NuGetDependency
+      <$> attr "id" el
       <*> attr "version" el
 
 buildGraph :: Nuspec -> Graphing Dependency

@@ -143,12 +143,14 @@ data CompDep = CompDep
 
 instance FromJSON ComposerLock where
   parseJSON = withObject "ComposerLock" $ \obj ->
-    ComposerLock <$> obj .: "packages"
+    ComposerLock
+      <$> obj .: "packages"
       <*> obj .: "packages-dev"
 
 instance FromJSON CompDep where
   parseJSON = withObject "CompDep" $ \obj ->
-    CompDep <$> obj .: "name"
+    CompDep
+      <$> obj .: "name"
       <*> obj .: "version"
       <*> obj .:? "require"
       <*> obj .:? "require-dev"

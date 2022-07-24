@@ -117,14 +117,16 @@ spec = do
     result <- runIO . runStack . runFinally . runDiagnostics . runReadFSIO $ withArchive extractRpm target hashFiles
 
     it "should have extracted the correct contents" $
-      assertOnSuccess result $ \_ contents -> contents `shouldBe` rpmCurlEl7ExpectedFiles
+      assertOnSuccess result $
+        \_ contents -> contents `shouldBe` rpmCurlEl7ExpectedFiles
 
   describe "extract fc35 (zstd) rpm to a temporary location" $ do
     target <- runIO rpmCurlFc35Path
     result <- runIO . runStack . runFinally . runDiagnostics . runReadFSIO $ withArchive extractRpm target hashFiles
 
     it "should have extracted the correct contents" $
-      assertOnSuccess result $ \_ contents -> contents `shouldBe` rpmCurlFc35ExpectedFiles
+      assertOnSuccess result $
+        \_ contents -> contents `shouldBe` rpmCurlFc35ExpectedFiles
 
 simpleZipPath :: IO (Path Abs File)
 simpleZipPath = PIO.resolveFile' "test/Discovery/testdata/simple.zip"

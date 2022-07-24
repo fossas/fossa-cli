@@ -143,13 +143,15 @@ data CargoMetadata = CargoMetadata
 
 instance FromJSON PackageDependency where
   parseJSON = withObject "PackageDependency" $ \obj ->
-    PackageDependency <$> obj .: "name"
+    PackageDependency
+      <$> obj .: "name"
       <*> obj .: "req"
       <*> obj .:? "kind"
 
 instance FromJSON Package where
   parseJSON = withObject "Package" $ \obj ->
-    Package <$> obj .: "name"
+    Package
+      <$> obj .: "name"
       <*> obj .: "version"
       <*> (obj .: "id" >>= parsePkgId)
       <*> obj .:? "license"
@@ -158,17 +160,20 @@ instance FromJSON Package where
 
 instance FromJSON NodeDepKind where
   parseJSON = withObject "NodeDepKind" $ \obj ->
-    NodeDepKind <$> obj .:? "kind"
+    NodeDepKind
+      <$> obj .:? "kind"
       <*> obj .:? "target"
 
 instance FromJSON NodeDependency where
   parseJSON = withObject "NodeDependency" $ \obj ->
-    NodeDependency <$> (obj .: "pkg" >>= parsePkgId)
+    NodeDependency
+      <$> (obj .: "pkg" >>= parsePkgId)
       <*> obj .: "dep_kinds"
 
 instance FromJSON ResolveNode where
   parseJSON = withObject "ResolveNode" $ \obj ->
-    ResolveNode <$> (obj .: "id" >>= parsePkgId)
+    ResolveNode
+      <$> (obj .: "id" >>= parsePkgId)
       <*> obj .: "deps"
 
 instance FromJSON Resolve where
@@ -177,7 +182,8 @@ instance FromJSON Resolve where
 
 instance FromJSON CargoMetadata where
   parseJSON = withObject "CargoMetadata" $ \obj ->
-    CargoMetadata <$> obj .: "packages"
+    CargoMetadata
+      <$> obj .: "packages"
       <*> (obj .: "workspace_members" >>= traverse parsePkgId)
       <*> obj .: "resolve"
 

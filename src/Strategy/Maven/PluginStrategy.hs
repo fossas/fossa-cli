@@ -100,7 +100,8 @@ analyze dir plugin = do
     context "Installing plugin" $ errCtx MvnPluginInstallFailed $ installPlugin dir filepath plugin
     reactorOutput <- runReactor dir plugin
     context "Running plugin to get dependency graph" $
-      errCtx MvnPluginExecFailed $ execPluginAggregate dir plugin
+      errCtx MvnPluginExecFailed $
+        execPluginAggregate dir plugin
     pluginOutput <- parsePluginOutput dir
     context "Building dependency graph" $ pure (buildGraph reactorOutput pluginOutput)
   pure (graph, Complete)
@@ -169,8 +170,8 @@ buildGraph reactorOutput PluginOutput{..} =
               , dependencyEnvironments = Set.fromList $ [EnvTesting | "test" `elem` artifactScopes]
               , dependencyTags =
                   Map.fromList $
-                    ("scopes", artifactScopes) :
-                      [("optional", ["true"]) | artifactOptional]
+                    ("scopes", artifactScopes)
+                      : [("optional", ["true"]) | artifactOptional]
               }
 
       when

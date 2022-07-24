@@ -201,7 +201,8 @@ runLogger :: Applicative m => LogCtx l m -> LoggerC m a -> m a
 runLogger LogCtx{logCtxWrite, logCtxFormatter, logCtxSeverity} = interpret $ \case
   Log sev msg -> do
     when (logCtxSeverity <= sev) $
-      logCtxWrite $ logCtxFormatter sev msg
+      logCtxWrite $
+        logCtxFormatter sev msg
   LogStdout -> pure ()
 
 type IgnoreLoggerC = SimpleC LoggerF

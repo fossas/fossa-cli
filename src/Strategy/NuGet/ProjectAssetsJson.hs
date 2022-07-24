@@ -150,7 +150,8 @@ data DependencyInfo = DependencyInfo
 
 instance FromJSON DependencyInfo where
   parseJSON = withObject "Dependency" $ \obj ->
-    DependencyInfo <$> obj .: "type"
+    DependencyInfo
+      <$> obj .: "type"
       <*> obj .:? "dependencies" .!= Map.empty
 
 instance FromJSON ProjectAssetsJson where

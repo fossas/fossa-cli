@@ -182,7 +182,8 @@ instance ToDiagnostic ReadFSErr where
         , reportDefectWithFileMsg path
         ]
     ResolveError base rel err ->
-      "Error resolving a relative file:" <> line
+      "Error resolving a relative file:"
+        <> line
         <> indent
           4
           ( vsep

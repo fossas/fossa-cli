@@ -49,7 +49,8 @@ spec = do
       runReader logs
         . withConcurrentWriterLogger SevInfo
         . withTaskPool capabilities (const $ pure ())
-        $ forM_ threads $ \t -> forkTask $ traverse_ (logInfo . pretty . show . (t,)) msgIds
+        $ forM_ threads
+        $ \t -> forkTask $ traverse_ (logInfo . pretty . show . (t,)) msgIds
       messages <- renderIt <$$> readAllTMQueue logs
 
       let expected = showT @(Int, Int) <$> [(t, m) | t <- threads, m <- msgIds]

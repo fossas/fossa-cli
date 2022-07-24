@@ -112,7 +112,8 @@ instance FromJSON Component where
 
 instance FromJSON InstallPlan where
   parseJSON = withObject "InstallPlan" $ \obj ->
-    InstallPlan <$> (obj .: "type" >>= parsePlanType)
+    InstallPlan
+      <$> (obj .: "type" >>= parsePlanType)
       <*> obj .: "id"
       <*> obj .: "pkg-name"
       <*> obj .: "pkg-version"

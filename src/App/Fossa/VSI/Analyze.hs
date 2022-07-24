@@ -353,7 +353,8 @@ allow filters dir = (not shouldExclude) && shouldInclude
 updateProgress :: Has StickyLogger sig m => Text -> Progress -> m ()
 updateProgress status Progress{..} =
   logSticky'
-    ( renderStatus <> "[ "
+    ( renderStatus
+        <> "[ "
         <> annotate (color Cyan) (pretty pQueued)
         <> " Waiting / "
         <> annotate (color Yellow) (pretty pRunning)

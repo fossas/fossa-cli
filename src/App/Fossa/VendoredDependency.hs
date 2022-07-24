@@ -52,7 +52,8 @@ data VendoredDependency = VendoredDependency
 
 instance FromJSON VendoredDependency where
   parseJSON = withObject "VendoredDependency" $ \obj ->
-    VendoredDependency <$> obj .: "name"
+    VendoredDependency
+      <$> obj .: "name"
       <*> obj .: "path"
       <*> (unTextLike <$$> obj .:? "version")
       <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj

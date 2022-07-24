@@ -52,7 +52,8 @@ instance ToJSON ReleaseGroupMetadata where
 
 instance FromJSON ReleaseGroupMetadata where
   parseJSON = withObject "ReleaseGroupMetadata" $ \obj ->
-    ReleaseGroupMetadata <$> obj .: "name"
+    ReleaseGroupMetadata
+      <$> obj .: "name"
       <*> obj .: "release"
 
 newtype MonorepoAnalysisOpts = MonorepoAnalysisOpts

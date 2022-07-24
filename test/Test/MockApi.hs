@@ -171,7 +171,9 @@ instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (MockApi :+: sig) (Mock
       expectations <- get
       a <-
         sendIO . assertFailure $
-          "Unexpected call: \n  " <> show req <> "\n"
+          "Unexpected call: \n  "
+            <> show req
+            <> "\n"
             <> "Unsatisfied expectations: \n  "
             <> intercalate "\n  " (map (\(ApiExpectation _ _ expectedReq _) -> show expectedReq) expectations)
       pure (a <$ ctx)

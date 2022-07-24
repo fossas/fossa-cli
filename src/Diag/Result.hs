@@ -266,7 +266,9 @@ header name =
 
 section :: Doc AnsiStyle -> Doc AnsiStyle -> Doc AnsiStyle
 section name content =
-  annotate (color Yellow) (">>> " <> name) <> line <> line
+  annotate (color Yellow) (">>> " <> name)
+    <> line
+    <> line
     <> indent 2 content
     <> line
 

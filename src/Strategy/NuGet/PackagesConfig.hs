@@ -89,7 +89,8 @@ instance FromXML PackagesConfig where
 
 instance FromXML NuGetDependency where
   parseElement el =
-    NuGetDependency <$> attr "id" el
+    NuGetDependency
+      <$> attr "id" el
       <*> attr "version" el
 
 newtype PackagesConfig = PackagesConfig

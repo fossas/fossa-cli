@@ -112,7 +112,8 @@ instance FromJSON DependencyInfo where
     where
       parseJSONObject :: Value -> Parser DependencyInfo
       parseJSONObject = withObject "DependencyInfo" $ \obj ->
-        DependencyInfo <$> obj .: "version"
+        DependencyInfo
+          <$> obj .: "version"
           <*> obj .:? "type"
 
       parseJSONText :: Value -> Parser DependencyInfo

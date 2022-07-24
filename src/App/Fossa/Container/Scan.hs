@@ -61,7 +61,8 @@ data SyftResponse = SyftResponse
 
 instance FromJSON SyftResponse where
   parseJSON = withObject "SyftResponse" $ \obj ->
-    SyftResponse <$> (filter artifactTypeIsOk <$> obj .: "artifacts")
+    SyftResponse
+      <$> (filter artifactTypeIsOk <$> obj .: "artifacts")
       <*> obj .: "source"
       <*> obj .: "distro"
 
@@ -83,7 +84,8 @@ data ResponseArtifact = ResponseArtifact
 
 instance FromJSON ResponseArtifact where
   parseJSON = withObject "ResponseArtifact" $ \obj ->
-    ResponseArtifact <$> obj .: "name"
+    ResponseArtifact
+      <$> obj .: "name"
       <*> obj .: "version"
       <*> obj .: "type"
       <*> obj .: "locations"
@@ -110,7 +112,8 @@ data ResponseDistro = ResponseDistro
 
 instance FromJSON ResponseDistro where
   parseJSON = withObject "ResponseDistro" $ \obj ->
-    ResponseDistro <$> obj .: "name"
+    ResponseDistro
+      <$> obj .: "name"
       <*> obj .: "version"
 
 data SourceTarget = SourceTarget
@@ -121,7 +124,8 @@ data SourceTarget = SourceTarget
 
 instance FromJSON SourceTarget where
   parseJSON = withObject "SourceTarget" $ \obj ->
-    SourceTarget <$> obj .: "imageID"
+    SourceTarget
+      <$> obj .: "imageID"
       <*> obj .: "layers"
       <*> obj .: "tags"
 

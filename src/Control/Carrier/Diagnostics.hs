@@ -77,11 +77,13 @@ instance Has Stack sig m => Algebra (Diag :+: sig) (DiagnosticsC m) where
     L (Recover act) ->
       fmap (distributeMaybe ctx) $
         ResultT.recoverT $
-          runDiagnosticsC $ hdl (act <$ ctx)
+          runDiagnosticsC $
+            hdl (act <$ ctx)
     L (ErrorBoundary act) ->
       fmap (distributeResult ctx) $
         ResultT.errorBoundaryT $
-          runDiagnosticsC $ hdl (act <$ ctx)
+          runDiagnosticsC $
+            hdl (act <$ ctx)
     L (Rethrow result) ->
       (<$ ctx) <$> ResultT.rethrowT result
     R other ->

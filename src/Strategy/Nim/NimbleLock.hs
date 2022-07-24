@@ -90,7 +90,8 @@ instance FromJSON NimbleLock where
 
       parseNimPackageWithName :: PackageName -> Value -> Parser NimPackage
       parseNimPackageWithName name = withObject "parseNimPackageWithName" $ \metaO ->
-        NimPackage name <$> metaO .: "version"
+        NimPackage name
+          <$> metaO .: "version"
           <*> metaO .: "url"
           <*> metaO .: "downloadMethod"
           <*> metaO .: "vcsRevision"

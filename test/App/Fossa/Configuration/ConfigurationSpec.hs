@@ -165,10 +165,12 @@ spec = do
       expectFailure invalidScanMethod
 
     T.it "returns Nothing for missing default file" $
-      assertOnSuccess missingDefault $ \_ result -> result `T.shouldBe` Nothing
+      assertOnSuccess missingDefault $
+        \_ result -> result `T.shouldBe` Nothing
 
     T.it "returns Nothing for incompatible file" $
-      assertOnSuccess ver2Default $ \_ result -> result `T.shouldBe` Nothing
+      assertOnSuccess ver2Default $
+        \_ result -> result `T.shouldBe` Nothing
 
     T.it "fails for a missing specified file" $
       expectFailure missingSpecified
