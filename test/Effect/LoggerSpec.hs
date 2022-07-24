@@ -7,8 +7,7 @@ import Control.Carrier.Writer.Strict (execWriter)
 import Control.Concurrent (getNumCapabilities)
 import Control.Concurrent.STM (STM, atomically)
 import Control.Concurrent.STM.TMQueue (TMQueue, newTMQueueIO, readTMQueue)
-import Control.Monad (forM_)
-import Data.Foldable (traverse_)
+import Data.Foldable (for_, traverse_)
 import Data.Functor.Extra ((<$$>))
 import Data.List (sort)
 import Data.Sequence (Seq)
@@ -49,7 +48,7 @@ spec = do
       runReader logs
         . withConcurrentWriterLogger SevInfo
         . withTaskPool capabilities (const $ pure ())
-        $ forM_ threads
+        $ for_ threads
         $ \t -> forkTask $ traverse_ (logInfo . pretty . show . (t,)) msgIds
       messages <- renderIt <$$> readAllTMQueue logs
 

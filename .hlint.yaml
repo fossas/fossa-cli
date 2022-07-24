@@ -20,6 +20,8 @@
 - suggest: {lhs: () <$ x, rhs: Control.Monad.void x}
 - suggest: {lhs: x <&> f, rhs: f <$> x}
 - suggest: {lhs: mapM, rhs: traverse}
+- suggest: {lhs: forM, rhs: for}
+- suggest: {lhs: forM_, rhs: for_}
 
 - suggest: {lhs: Data.Text.pack, rhs: Data.String.Conversion.toText}
 - ignore: {name: "Use toText", within: ["Data.String.Conversion"]}

@@ -32,7 +32,7 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
-import Data.Foldable (forM_, for_, traverse_)
+import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
@@ -142,7 +142,7 @@ pipenvGraphCmd =
 buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> Graphing Dependency
 buildGraph lock maybeDeps = run . withLabeling toDependency $ do
   buildNodes lock
-  forM_ maybeDeps buildEdges
+  traverse_ buildEdges maybeDeps
   where
     toDependency :: PipPkg -> Set PipLabel -> Dependency
     toDependency pkg = foldr applyLabel start
