@@ -2,19 +2,23 @@
 
 module Container.OsReleaseSpec (spec) where
 
-import Container.OsRelease (OsInfo (OsInfo), busyBoxParser, centOsOldFmtParser, osReleaseParser)
+import Container.OsRelease (
+  OsInfo (OsInfo),
+  busyBoxParser,
+  centOsOldFmtParser,
+  osReleaseParser,
+ )
+import Data.ByteString qualified as BS
+import Data.Text (Text)
+import Data.Text.Encoding (decodeUtf8With)
+import Data.Text.Encoding.Error (OnDecodeError)
+import Data.Void (Void)
 import Test.Hspec (Expectation, Spec, describe, it, runIO)
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (
   Parsec,
   parse,
  )
-
-import Data.ByteString qualified as BS
-import Data.Text (Text)
-import Data.Text.Encoding (decodeUtf8With)
-import Data.Text.Encoding.Error (OnDecodeError)
-import Data.Void (Void)
 import Text.RawString.QQ (r)
 
 -- | Replace an invalid input byte with the Unicode replacement (U+FFFD).
