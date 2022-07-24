@@ -16,6 +16,7 @@ import Control.Carrier.Diagnostics (
  )
 import Control.Carrier.Finally (runFinally)
 import Control.Effect.Lift (Lift)
+import Control.Monad (when)
 import Data.List (isSuffixOf, sortOn)
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -99,9 +100,10 @@ metaInfManifestToMeta manifest =
 tacticPom :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> m JarMetadata
 tacticPom archive = context ("Parse representative pom.xml in " <> toText archive) $ do
   poms <- context "Find pom.xml files" $ walk' (collectFilesNamed "pom.xml") (archive </> $(mkRelDir "META-INF"))
-  if length poms > 1
-    then logDebug $ "Found multiple pom.xml files: " <> pretty (Text.intercalate "; " $ map (renderRelative archive) poms)
-    else pure ()
+  when (length poms > 1) $
+    logDebug $
+      "Found multiple pom.xml files: " <> pretty (Text.intercalate "; " $ map (renderRelative archive) poms)
+
   pom <- fromMaybeText "No pom.xml files found" $ choosePom poms
   logDebug $ "Chose representative pom.xml: " <> pretty (renderRelative archive pom)
   parsePom pom

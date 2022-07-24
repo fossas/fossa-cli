@@ -19,7 +19,7 @@ module Strategy.Elixir.MixTree (
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, Has, context, warn)
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Aeson (ToJSON)
 import Data.Foldable (asum)
@@ -86,7 +86,7 @@ analyze project = do
         <$> execParser mixDepsCmdOutputParser dir mixDepCmd
 
   -- Reminder to get and compile dependencies, if not already done so.
-  _ <- if missingResolvedVersions depsAllResolved then warn missingDepVersionsMsg else pure ()
+  when (missingResolvedVersions depsAllResolved) $ warn missingDepVersionsMsg
   graph <- context "Building dependency graph" $ pure (buildGraph depsAllEnvTree depsAllResolved)
   pure $
     DependencyResults

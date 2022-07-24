@@ -17,6 +17,7 @@ import Control.Carrier.Stack (StackC, runStack)
 import Control.Carrier.Telemetry (TelemetryC, withTelemetry)
 import Control.Effect.Telemetry (setSink, trackConfig)
 import Data.Aeson (ToJSON)
+import Data.Foldable (forM_)
 import Data.String.Conversion (ToText (toText), toStrict)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (
@@ -60,9 +61,7 @@ runSubCommand SubCommand{..} = uncurry (runEffs) . mergeAndRun <$> parser
       envvars <- context "Fetching environment variables" getEnvVars
 
       maybeTelSink <- collectTelemetrySink configFile envvars $ getCommonOpts cliOptions
-      case maybeTelSink of
-        Nothing -> pure ()
-        Just ts -> setSink ts
+      forM_ maybeTelSink setSink
 
       cfg <- context "Validating configuration" $ optMerge configFile envvars cliOptions
       trackConfig (toText commandName) cfg

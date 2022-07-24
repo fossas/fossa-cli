@@ -24,6 +24,7 @@ import Control.Effect.FossaApiClient (
  )
 import Control.Effect.Git (Git, fetchGitContributors)
 import Control.Effect.Lift (Lift)
+import Control.Monad (when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.Flag (Flag, fromFlag)
@@ -89,22 +90,19 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units =
     -- Warn on contributor errors, never fail
     void . recover $ tryUploadContributors basedir (uploadLocator uploadResult)
 
-    if fromFlag JsonOutput jsonOutput
-      then do
-        summary <-
-          context "Analysis ran successfully, but the server returned invalid metadata" $
-            buildProjectSummary revision (uploadLocator uploadResult) buildUrl
-        logStdout . decodeUtf8 $ Aeson.encode summary
-      else pure ()
+    when (fromFlag JsonOutput jsonOutput) $ do
+      summary <-
+        context "Analysis ran successfully, but the server returned invalid metadata" $
+          buildProjectSummary revision (uploadLocator uploadResult) buildUrl
+      logStdout . decodeUtf8 $ Aeson.encode summary
 
     pure locator
 
 dieOnMonorepoUpload :: (Has Diagnostics sig m, Has FossaApiClient sig m) => ProjectRevision -> m ()
 dieOnMonorepoUpload revision = do
   project <- recover $ getProject revision
-  if maybe False projectIsMonorepo project
-    then fatalText "This project already exists as a monorepo project. Perhaps you meant to supply '--experimental-enable-monorepo', or meant to run 'fossa vps analyze' instead?"
-    else pure ()
+  when (maybe False projectIsMonorepo project) $
+    fatalText "This project already exists as a monorepo project. Perhaps you meant to supply '--experimental-enable-monorepo', or meant to run 'fossa vps analyze' instead?"
 
 tryUploadContributors ::
   ( Has Diagnostics sig m

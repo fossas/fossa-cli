@@ -5,6 +5,7 @@ module Discovery.FiltersSpec (
 ) where
 
 import Control.Carrier.Reader (run, runReader)
+import Control.Monad (when)
 import Data.Foldable (traverse_)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty)
@@ -269,16 +270,14 @@ spec = do
     it "should return the list continuation when the tool is allowed" $ do
       let filters = excludeTool GomodProjectType
           result = run . runReader filters $ withToolFilter CargoProjectType $ pure [True]
-      if null result
-        then expectationFailure "withToolFilter returned non-empty"
-        else pure ()
+      when (null result) $
+        expectationFailure "withToolFilter returned non-empty"
 
     it "should return the continuation when the filters are empty" $ do
       let filters = mempty :: AllFilters
           result = run . runReader filters $ withToolFilter CargoProjectType $ pure [True]
-      if null result
-        then expectationFailure "withToolFilter returned non-empty"
-        else pure ()
+      when (null result) $
+        expectationFailure "withToolFilter returned non-empty"
 
 testHarness :: FilterCombination Include -> FilterCombination Exclude -> [((Text.Text, Path Rel Dir), FoundTargets, Maybe FoundTargets)] -> Expectation
 testHarness include exclude = traverse_ testSingle

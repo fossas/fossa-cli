@@ -5,6 +5,7 @@ module Data.Aeson.Extra (
 ) where
 
 import Control.Applicative ((<|>))
+import Control.Monad (when)
 import Data.Aeson (ToJSON)
 import Data.Aeson qualified as Aeson
 import Data.Aeson.Types (FromJSON (parseJSON), Object, Parser)
@@ -47,9 +48,9 @@ forbidMembers :: Text -> [Text] -> Object -> Parser ()
 forbidMembers typename names obj = traverse_ (badMember obj) names
   where
     badMember hashmap name =
-      if member name hashmap
-        then fail . toString $ "Invalid field name for " <> typename <> ": " <> name
-        else pure ()
+      when (member name hashmap) $
+        fail . toString $
+          "Invalid field name for " <> typename <> ": " <> name
 
 -- | Like 'Data.Aeson.encode', but produces @Text@ instead of @ByteString@
 encodeJSONToText :: ToJSON a => a -> Text

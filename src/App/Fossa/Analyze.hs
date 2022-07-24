@@ -83,7 +83,7 @@ import Control.Effect.Git (Git)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent)
-import Control.Monad (join, when)
+import Control.Monad (join, unless, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
@@ -356,11 +356,10 @@ analyzeVSI dir revision filters skipResolving = do
   logInfo "Running VSI analysis"
 
   let skippedLocators = VSI.unVSISkipResolution skipResolving
-  if not $ null skippedLocators
-    then do
+  unless (null skippedLocators) $
+    do
       logInfo "Skipping resolution of the following locators:"
       traverse_ (logInfo . pretty . VSI.renderLocator) skippedLocators
-    else pure ()
 
   results <- analyzeVSIDeps dir revision filters skipResolving
   pure $ Just results

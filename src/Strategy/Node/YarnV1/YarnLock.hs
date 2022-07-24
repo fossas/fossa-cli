@@ -7,6 +7,7 @@ module Strategy.Node.YarnV1.YarnLock (
 ) where
 
 import Control.Effect.Diagnostics (Diagnostics, Has, context, tagError, warn)
+import Control.Monad (when)
 import Data.Foldable (for_, traverse_)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
@@ -102,11 +103,11 @@ buildGraph lockfile FlatDeps{..} = fmap hydrateDepEnvs . withLabeling toDependen
     -- Add edges from current parent
     traverse_ (edge parent) children
     let promote env pkgSet =
-          if any (`Set.member` pkgSet) allKeysAsNodePackages
-            then do
+          when (any (`Set.member` pkgSet) allKeysAsNodePackages) $
+            do
               direct parent
               label parent $ NodeEnvironment env
-            else pure ()
+
     -- Mark as direct if present in any relevant package.json direct list
     -- Mark as dev if present in any relevant package.json dev list
     promote EnvProduction $ unTag @Production directDeps
