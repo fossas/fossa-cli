@@ -60,15 +60,24 @@ module Container.OsRelease (
   centOsOldFmtParser,
 ) where
 
-import Control.Effect.Diagnostics (Diagnostics, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, fatal, (<||>))
 import Control.Monad (void)
 import Data.Foldable (asum)
 import Data.Map qualified as Map
 import Data.SemVer qualified as SemVer
-import Data.String.Conversion (toText)
+import Data.String.Conversion (ToString (toString), toText)
 import Data.Text (Text)
+import Data.Text.Encoding (decodeUtf8With)
+import Data.Text.Encoding.Error (OnDecodeError)
 import Data.Void (Void)
-import Effect.ReadFS (Has, ReadFS, readContentsParser, resolveFile)
+import Effect.ReadFS (
+  Has,
+  ReadFS,
+  ReadFSErr (FileParseError),
+  readContentsBS,
+  readContentsParser,
+ )
+import Path (Abs, File)
 import Path.Internal.Posix (Path (Path))
 import Text.Megaparsec (
   MonadParsec (takeWhileP, try),
@@ -76,8 +85,10 @@ import Text.Megaparsec (
   anySingle,
   chunk,
   empty,
+  errorBundlePretty,
   many,
   optional,
+  runParser,
   skipManyTill,
   some,
   (<|>),
@@ -113,11 +124,22 @@ getOsInfo = parseEtcOsRelease <||> parseSystemReleaseCpe <||> parseBinBusyBox
 parseEtcOsRelease :: (Has ReadFS sig m, Has Diagnostics sig m) => m OsInfo
 parseEtcOsRelease = readContentsParser osInfoParser (Path "etc/os-release")
 
-parseBinBusyBox :: (Has ReadFS sig m, Has Diagnostics sig m) => m OsInfo
-parseBinBusyBox = readContentsParser busyBoxParser (Path "bin/busybox")
-
 parseSystemReleaseCpe :: (Has ReadFS sig m, Has Diagnostics sig m) => m OsInfo
 parseSystemReleaseCpe = readContentsParser centOsOldFmtParser (Path "etc/system-release-cpe")
+
+parseBinBusyBox :: (Has ReadFS sig m, Has Diagnostics sig m) => m OsInfo
+parseBinBusyBox = do
+  binBusyBoxContent <- decodeUtf8With lenientDecode <$> (readContentsBS binBusyBox)
+  case runParser busyBoxParser (toString binBusyBox) binBusyBoxContent of
+    Left err -> fatal $ FileParseError (toString binBusyBox) (toText (errorBundlePretty err))
+    Right a -> pure a
+  where
+    binBusyBox :: Path Abs File
+    binBusyBox = (Path "bin/busybox")
+
+    -- Replace an invalid input byte with the Unicode replacement (U+FFFD).
+    lenientDecode :: OnDecodeError
+    lenientDecode _ _ = Just '\xfffd'
 
 -- | Parses Os Release Information.
 osInfoParser :: Parser OsInfo
@@ -160,9 +182,9 @@ osReleaseParser = do
     -- >> parseTest valueParser "\"Abc\"" = Abc
     valueParser :: Parser Text
     valueParser = do
-      _ <- optional (char '"' <|> char '\'')
+      void $ optional (char '"' <|> char '\'')
       value <- takeWhileP (Just "entry value") (not . (`elem` ("\r\n\"" :: String)))
-      _ <- optional (char '"' <|> char '\'')
+      void $ optional (char '"' <|> char '\'')
       pure value
 
 -- | Parses content of /bin/busybox to identify OsInfo.
@@ -174,7 +196,7 @@ osReleaseParser = do
 --  https://unix.stackexchange.com/questions/15895/how-do-i-check-busybox-version-from-busybox
 busyBoxParser :: Parser OsInfo
 busyBoxParser = do
-  maybePrefix <- optional (try prefix)
+  maybePrefix <- optional $ try prefix
   case maybePrefix of
     Nothing -> fail "could not find keyword BusyBox to infer release information"
     Just _ -> do
@@ -187,7 +209,10 @@ busyBoxParser = do
     prefix = skipManyTill anySingle (symbol "BusyBox v")
 
     versionText :: Parser Text
-    versionText = takeWhileP (Just "busybox version") (not . (`elem` (" " :: String)))
+    versionText =
+      takeWhileP
+        (Just "busybox version")
+        (not . (`elem` (" " :: String)))
 
 -- | Parses older centos distribution for os information.
 --
@@ -200,6 +225,14 @@ busyBoxParser = do
 centOsOldFmtParser :: Parser OsInfo
 centOsOldFmtParser = OsInfo <$> name <*> version
   where
+    name :: Parser Text
     name = chunk "cpe:/o:" *> tillColon <* chunk ":linux:"
+
+    version :: Parser Text
     version = tillColon
-    tillColon = takeWhileP (Just "entry till :") (not . (`elem` (":\r\n\"" :: String)))
+
+    tillColon :: Parser Text
+    tillColon =
+      takeWhileP
+        (Just "entry till :")
+        (not . (`elem` (":\r\n\"" :: String)))

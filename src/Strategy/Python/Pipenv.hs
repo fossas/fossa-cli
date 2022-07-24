@@ -32,7 +32,7 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
-import Data.Foldable (forM_, for_, traverse_)
+import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)

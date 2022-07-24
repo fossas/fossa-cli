@@ -8,12 +8,9 @@ import Container.OsRelease (
   centOsOldFmtParser,
   osReleaseParser,
  )
-import Data.ByteString qualified as BS
 import Data.Text (Text)
-import Data.Text.Encoding (decodeUtf8With)
-import Data.Text.Encoding.Error (OnDecodeError)
 import Data.Void (Void)
-import Test.Hspec (Expectation, Spec, describe, it, runIO)
+import Test.Hspec (Expectation, Spec, describe, it)
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (
   Parsec,
@@ -21,19 +18,11 @@ import Text.Megaparsec (
  )
 import Text.RawString.QQ (r)
 
--- | Replace an invalid input byte with the Unicode replacement (U+FFFD).
-lenientDecode :: OnDecodeError
-lenientDecode _ _ = Just '\xfffd'
-
 parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Expectation
 parseMatch parser input expected = parse parser "" input `shouldParse` expected
 
 spec :: Spec
 spec = do
-  -- binary content of /bin/busybox has to be lenientDecoded to not throw exception!
-  -- as content is not fully UTF8/locale compliant
-  busyBoxContent <- runIO (decodeUtf8With lenientDecode <$> BS.readFile "test/Container/Os/testdata/busybox")
-
   describe "example release info files" $ do
     let shouldOsReleaseParseInto = parseMatch osReleaseParser
     let shouldBusyBoxParser = parseMatch busyBoxParser
@@ -226,3 +215,12 @@ BUG_REPORT_URL="https://bugs.opensuse.org"
 HOME_URL="https://www.opensuse.org/"
 DOCUMENTATION_URL="https://en.opensuse.org/Portal:Leap"
 LOGO="distributor-logo-Leap|]
+
+busyBoxContent :: Text
+busyBoxContent =
+  [r|BusyBox is copyrighted by many authors between 1998-2015.
+        BusyBox is a multi-call binary that combines many common Unix
+        link to busybox for each function they wish to use and BusyBox
+BusyBox v1.34.1 (2022-06-06 22:12:17 UTC)
+syslogd started: BusyBox v1.34.1
+|]
