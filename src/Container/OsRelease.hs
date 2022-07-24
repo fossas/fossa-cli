@@ -78,7 +78,7 @@ import Effect.ReadFS (
   readContentsParser,
  )
 import Path (Abs, File)
-import Path.Internal.Posix (Path (Path))
+import Path.Internal (Path (Path))
 import Text.Megaparsec (
   MonadParsec (takeWhileP, try),
   Parsec,
