@@ -47,9 +47,12 @@ module Effect.ReadFS (
 
   -- * File identity information
   contentIsBinary,
-  DirID,
+  DirID (..),
   getIdentifier,
   getIdentifier',
+
+  -- * misc
+  catchingIO,
   module X,
 ) where
 
@@ -349,7 +352,7 @@ runReadFSIO = interpret $ \case
   ListDir dir -> do
     PIO.listDir dir
       `catchingIO` ListDirError (toString dir)
-  GetIdentifier dir -> do
+  GetIdentifier dir ->
     (extractIdentifier <$> Posix.getFileStatus (toString dir))
       `catchingIO` FileReadError (toString dir)
     where

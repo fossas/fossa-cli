@@ -179,6 +179,7 @@ library
     App.Fossa.Config.Test
     App.Fossa.Container
     App.Fossa.Container.Analyze
+    App.Fossa.Container.AnalyzeNative
     App.Fossa.Container.Scan
     App.Fossa.Container.Test
     App.Fossa.DumpBinaries
@@ -226,7 +227,10 @@ library
     Console.Sticky
     Container.Docker.Manifest
     Container.Docker.Source.Tarball
+    Container.Errors
+    Container.Os.Release
     Container.Types
+    Container.VirtualFS.VirtualMapsFS
     Control.Carrier.AtomicCounter
     Control.Carrier.AtomicState
     Control.Carrier.Debug
@@ -244,6 +248,7 @@ library
     Control.Carrier.Stack
     Control.Carrier.Stack.StickyLog
     Control.Carrier.StickyLogger
+    Control.Carrier.TarballReadFS
     Control.Carrier.TaskPool
     Control.Carrier.Telemetry
     Control.Carrier.Telemetry.Sink.Common
@@ -310,9 +315,11 @@ library
     Path.Extra
     Srclib.Converter
     Srclib.Types
+    Strategy.AlpineLinux.Apk
     Strategy.AlpineLinux.Parser
     Strategy.AlpineLinux.Types
     Strategy.Android.Util
+    Strategy.Apk
     Strategy.Bundler
     Strategy.Cargo
     Strategy.Carthage
@@ -480,6 +487,9 @@ test-suite unit-tests
     Composer.ComposerLockSpec
     Conda.CondaListSpec
     Conda.EnvironmentYmlSpec
+    Container.Docker.ManifestSpec
+    Container.Os.ReleaseSpec
+    Container.VirtualFS.VirtualMapsFSSpec
     Control.Carrier.DiagnosticsSpec
     Control.Carrier.TelemetrySpec
     Control.TimeoutSpec

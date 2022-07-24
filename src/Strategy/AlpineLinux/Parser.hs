@@ -42,6 +42,7 @@
 -- Z:Q18j35pe3yp6HOgMih1wlGP1/mm2c=
 module Strategy.AlpineLinux.Parser (installedPackagesDatabaseParser, PackageError (..)) where
 
+import Control.Effect.Diagnostics (ToDiagnostic (renderDiagnostic))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
@@ -49,6 +50,7 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
+import Effect.Logger (pretty)
 import Strategy.AlpineLinux.Types (AlpinePackage (..))
 import Text.Megaparsec (
   MonadParsec (eof, takeWhileP),
@@ -69,6 +71,11 @@ data PackageError
   | MissingPackageArchitecture {packageName :: Text}
   | MissingPackageVersion {packageName :: Text}
   deriving (Show, Eq, Ord)
+
+instance ToDiagnostic PackageError where
+  renderDiagnostic MissingPackageName = "Could not identify alpine package name"
+  renderDiagnostic (MissingPackageArchitecture name) = pretty $ "Could not identify architecture associated with " <> name
+  renderDiagnostic (MissingPackageVersion name) = pretty $ "Could not identify version associated with " <> name
 
 type Parser = Parsec Void Text
 

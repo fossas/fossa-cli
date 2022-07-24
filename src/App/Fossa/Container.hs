@@ -5,6 +5,7 @@ module App.Fossa.Container (
 ) where
 
 import App.Fossa.Config.Container (
+  ContainerAnalyzeConfig (usesExperimentalScanner),
   ContainerCommand,
   ContainerDumpScanConfig (ContainerDumpScanConfig),
   ContainerParseFileConfig (ContainerParseFileConfig),
@@ -12,6 +13,7 @@ import App.Fossa.Config.Container (
  )
 import App.Fossa.Config.Container qualified as Config
 import App.Fossa.Container.Analyze qualified as Analyze
+import App.Fossa.Container.AnalyzeNative qualified as AnalyzeNative
 import App.Fossa.Container.Scan (SyftResponse, syftCommand, toContainerScan)
 import App.Fossa.Container.Test qualified as Test
 import App.Fossa.EmbeddedBinary (withSyftBinary)
@@ -22,6 +24,7 @@ import Control.Effect.Diagnostics (
   fromEitherShow,
  )
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Telemetry (Telemetry)
 import Data.Aeson (FromJSON (parseJSON), Value, encode)
 import Data.Aeson.Types (parseEither)
 import Data.ByteString.Lazy qualified as BL
@@ -44,11 +47,15 @@ dispatch ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   ContainerScanConfig ->
   m ()
 dispatch = \case
-  AnalyzeCfg cfg -> Analyze.analyze cfg
+  AnalyzeCfg cfg ->
+    if usesExperimentalScanner cfg
+      then AnalyzeNative.analyzeExperimental cfg
+      else Analyze.analyze cfg
   TestCfg cfg -> Test.test cfg
   DumpCfg cfg -> dumpSyftScan cfg
   ParseCfg cfg -> parseSyftOutput cfg

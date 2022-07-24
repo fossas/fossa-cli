@@ -99,6 +99,7 @@ data DiscoveredProjectType
   | SwiftProjectType
   | VsiProjectType
   | YarnProjectType
+  | AlpineDatabaseProjectType
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 projectTypeToText :: DiscoveredProjectType -> Text
@@ -141,6 +142,7 @@ projectTypeToText = \case
   SwiftProjectType -> "swift"
   VsiProjectType -> "vsi"
   YarnProjectType -> "yarn"
+  AlpineDatabaseProjectType -> "apk"
 
 instance ToJSON DiscoveredProjectType where
   toJSON = toJSON . toText
