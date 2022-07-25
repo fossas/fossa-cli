@@ -98,7 +98,7 @@ cliParser =
       )
     <*> metadataOpts
     <*> imageTextArg
-    <*> switch (long "experimental-scanner" <> short 'x' <> help "Uses experimental fossa native container scanner")
+    <*> switch (long "experimental-scanner" <> help "Uses experimental fossa native container scanner")
 
 mergeOpts ::
   Has Diagnostics sig m =>
