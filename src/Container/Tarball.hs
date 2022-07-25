@@ -19,9 +19,10 @@ import Codec.Archive.Tar.Entry qualified as TarEntry
 import Codec.Archive.Tar.Index (TarEntryOffset, nextEntryOffset)
 import Container.Errors (
   ContainerImgParsingError (
+    ContainerNoLayersDiscovered,
     TarLayerNotAFile,
     TarMissingLayerTar,
-    TarParserError, ContainerNoLayersDiscovered
+    TarParserError
   ),
  )
 import Container.Types (
@@ -71,14 +72,12 @@ mkImage ::
   Either (NLE.NonEmpty ContainerImgParsingError) ContainerImageRaw
 mkImage entries layerTarballPaths =
   if null errs
-    then
-      case parsedLayers of 
-        [] -> Left $ NLE.fromList [ContainerNoLayersDiscovered]
-        l -> Right $ ContainerImageRaw $ NLE.fromList l
-    else 
-      -- This is safe, since we asserted that layers are not null
-      -- earlier in main clause.
-      Left $ NLE.fromList errs 
+    then case parsedLayers of
+      [] -> Left $ NLE.fromList [ContainerNoLayersDiscovered]
+      l -> Right $ ContainerImageRaw $ NLE.fromList l
+    else -- This is safe, since we asserted that layers are not null
+    -- earlier in main clause.
+      Left $ NLE.fromList errs
   where
     errs :: [ContainerImgParsingError]
     errs = lefts layers
