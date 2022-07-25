@@ -1,0 +1,44 @@
+# Testcase: changesets_exmaple.tar
+#
+# To Build:
+#   docker build -f Dockerfile.sample . -t changeset_example:latest
+#
+# To Export:
+#   docker save changeset_example:latest > changeset_example.tar
+#   
+# To Run:
+#   docker run -it changeset_example:latest /bin/sh
+FROM alpine:3.14
+
+# Layer 1 - Adds a file and directory
+RUN echo '01-01-2022' > status.txt && \
+    echo 'OK' > health.txt \
+    && mkdir logs-archive
+
+# Layer 2 - Adds a nested file and a nested directory
+RUN echo '01-01-2022' > logs-archive/last.txt && \
+    cd logs-archive && mkdir jan && cd .. && \
+    cd logs-archive && mkdir feb && cd .. && \
+    cd logs-archive && mkdir march && cd .. && \
+    echo '1' > logs-archive/jan/1.txt && \
+    echo '2' > logs-archive/feb/2.txt
+
+# Layer 3 - Removes a file and directories
+RUN rm status.txt && \
+    rm logs-archive/jan/1.txt && \
+    rm -rf logs-archive/march
+
+# Layer 4 - Adds an absolute symbolic link and relative symbolic link
+RUN ln -s logs-archive/last.txt last && \
+    cd logs-archive/feb/ && \
+    ln -s ../../health.txt last_health
+
+# Layer 5 - Removes symbolic link
+RUN unlink last && \
+    unlink logs-archive/feb/last_health
+
+# Layer 6 - Removes a nested directory
+RUN rm -rf logs-archive
+
+# Layer 7 - Empty layer 
+RUN echo "Bye!"
