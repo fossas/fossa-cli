@@ -46,6 +46,7 @@ import Options.Applicative (
   progDesc,
   short,
   strOption,
+  switch,
  )
 
 data NoUpload = NoUpload
@@ -54,6 +55,7 @@ data ContainerAnalyzeConfig = ContainerAnalyzeConfig
   { scanDestination :: ScanDestination
   , revisionOverride :: OverrideProject
   , imageLocator :: ImageText
+  , usesExperimentalScanner :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -66,6 +68,7 @@ data ContainerAnalyzeOptions = ContainerAnalyzeOptions
   , containerBranch :: Maybe Text
   , containerMetadata :: ProjectMetadata
   , containerAnalyzeImage :: ImageText
+  , containerExperimentalScanner :: Bool
   }
 
 subcommand :: (ContainerAnalyzeOptions -> a) -> Mod CommandFields a
@@ -95,6 +98,7 @@ cliParser =
       )
     <*> metadataOpts
     <*> imageTextArg
+    <*> switch (long "experimental-scanner" <> short 'x' <> help "Uses experimental fossa native container scanner")
 
 mergeOpts ::
   Has Diagnostics sig m =>
@@ -115,6 +119,7 @@ mergeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
     <$> scanDest
     <*> pure revOverride
     <*> pure imageLoc
+    <*> pure containerExperimentalScanner
 
 collectScanDestination ::
   Has Diagnostics sig m =>

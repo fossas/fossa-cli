@@ -178,6 +178,7 @@ library
     App.Fossa.Config.Test
     App.Fossa.Container
     App.Fossa.Container.Analyze
+    App.Fossa.Container.AnalyzeNative
     App.Fossa.Container.Scan
     App.Fossa.Container.Test
     App.Fossa.DumpBinaries
