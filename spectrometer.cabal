@@ -78,6 +78,7 @@ common deps
     , containers                   ^>=0.6.0
     , cpio-conduit                 ^>=0.7.0
     , cryptonite                   ^>=0.29
+    , deepseq                      >=1.4.5.0
     , directory                    ^>=1.3.6.1
     , exceptions                   ^>=0.10.4
     , file-embed                   ^>=0.0.11
@@ -224,6 +225,7 @@ library
     App.Version
     App.Version.TH
     Console.Sticky
+    Container.Docker.Manifest
     Control.Carrier.AtomicCounter
     Control.Carrier.AtomicState
     Control.Carrier.Debug
@@ -477,6 +479,7 @@ test-suite unit-tests
     Composer.ComposerLockSpec
     Conda.CondaListSpec
     Conda.EnvironmentYmlSpec
+    Container.Docker.ManifestSpec
     Control.Carrier.DiagnosticsSpec
     Control.Carrier.TelemetrySpec
     Control.TimeoutSpec
