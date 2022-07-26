@@ -21,7 +21,6 @@ import Data.Aeson (
   parseJSON,
   toEncoding,
   withObject,
-  (.!=),
   (.:),
  )
 import Data.ByteString.Lazy qualified as ByteStringLazy
@@ -60,7 +59,7 @@ instance FromJSON ManifestJsonImageEntry where
   parseJSON = withObject "" $ \o ->
     ManifestJsonImageEntry
       <$> o .: "Config"
-      <*> o .: "RepoTags" .!= []
+      <*> o .: "RepoTags"
       <*> o .: "Layers"
 
 getLayerPaths :: ManifestJson -> NonEmpty.NonEmpty FilePath
