@@ -159,7 +159,7 @@ isWhiteOut = fileNameHasPrefix ".wh"
 
 -- | True if tarpath's filename has provided prefix. Otherwise False.
 fileNameHasPrefix :: Text -> TarPath -> Bool
-fileNameHasPrefix prefix path = Text.isPrefixOf prefix (fileNameOf $ toText . fromTarPath $ path)
+fileNameHasPrefix prefix = Text.isPrefixOf prefix . fileNameOf . toText . fromTarPath
 
 -- | Filename from text path.
 fileNameOf :: Text -> Text
