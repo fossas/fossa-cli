@@ -617,3 +617,15 @@ test-suite integration-tests
     , hspec-megaparsec                ^>=2.2
     , req-conduit                     ^>=1.0.1
     , spectrometer
+
+benchmark bench
+  import:         lang
+  import:         deps
+  hs-source-dirs: bench/
+  main-is:        Main.hs
+  type:           exitcode-stdio-1.0
+  build-depends:
+    , spectrometer
+    , tasty-bench
+
+  ghc-options:    -with-rtsopts=-A32m
