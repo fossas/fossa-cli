@@ -65,19 +65,15 @@ mkEntries = build (TarEntries mempty 0)
         , prevOffset = nextEntryOffset entry (prevOffset tarEntries)
         }
 
-{- HLINT ignore "Avoid restricted function" -}
 mkImage ::
   TarEntries ->
   NLE.NonEmpty FilePath ->
   Either (NLE.NonEmpty ContainerImgParsingError) ContainerImageRaw
 mkImage entries layerTarballPaths =
-  if null errs
-    then case parsedLayers of
-      [] -> Left $ NLE.fromList [ContainerNoLayersDiscovered]
-      l -> Right $ ContainerImageRaw $ NLE.fromList l
-    else -- This is safe, since we asserted that layers are not null
-    -- earlier in main clause.
-      Left $ NLE.fromList errs
+  case (errs, parsedLayers) of
+    ((e : es), _) -> Left $ e NLE.:| es
+    (_, []) -> Left $ NLE.singleton ContainerNoLayersDiscovered
+    (_, (l : ls)) -> Right . ContainerImageRaw $ l NLE.:| ls
   where
     errs :: [ContainerImgParsingError]
     errs = lefts layers
