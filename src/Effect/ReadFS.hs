@@ -47,9 +47,12 @@ module Effect.ReadFS (
 
   -- * File identity information
   contentIsBinary,
-  DirID,
+  DirID (..),
   getIdentifier,
   getIdentifier',
+
+  -- * misc
+  catchingIO,
   module X,
 ) where
 

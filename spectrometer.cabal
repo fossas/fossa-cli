@@ -88,7 +88,7 @@ common deps
     , fused-effects-exceptions     ^>=1.1.0.0
     , git-config                   ^>=0.1.2
     , githash                      ^>=0.1.4.0
-    , hashable                     >= 1.0.0.1
+    , hashable                     >=1.0.0.1
     , hashtables                   >=1.2
     , hedn                         ^>=0.3.0.1
     , http-client                  ^>=0.7.1
@@ -231,6 +231,7 @@ library
     Container.Errors
     Container.OsRelease
     Container.Tarball
+    Container.TarballReadFs
     Container.Types
     Control.Carrier.AtomicCounter
     Control.Carrier.AtomicState
@@ -497,6 +498,7 @@ test-suite unit-tests
     Dart.PubDepsSpec
     Dart.PubSpecLockSpec
     Dart.PubSpecSpec
+    Data.IndexFileTreeSpec
     Discovery.ArchiveSpec
     Discovery.FiltersSpec
     Discovery.WalkSpec
@@ -631,4 +633,4 @@ benchmark bench
     , spectrometer
     , tasty-bench
 
-  ghc-options:    -with-rtsopts=-A32m
+  ghc-options:    "-with-rtsopts=-A32m --nonmoving-gc"
