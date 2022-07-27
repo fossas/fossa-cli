@@ -161,9 +161,9 @@ osReleaseParser = do
 
   case (nameId, versionId) of
     (Just name, Just version) -> pure $ OsInfo name version
-    (Just _, Nothing) -> fail "could not identify os's version"
-    (Nothing, Just _) -> fail "could not identify os's name"
-    (Nothing, Nothing) -> fail "could not identify os's name and version"
+    (Just _, Nothing) -> fail "could not identify os version"
+    (Nothing, Just _) -> fail "could not identify os name"
+    (Nothing, Nothing) -> fail "could not identify os name or version"
   where
     -- >> parseTest propertiesParser "A=B\nC=D" = fromList [(A, B), (C, D)]
     -- >> parseTest propertiesParser "A=B\n\nC=D" = fromList [(A, B), (C, D)]
