@@ -157,7 +157,7 @@ osReleaseParser = do
           ( map (`Map.lookup` properties) ["ID"]
               ++ [Just "linux"] -- We should default to linux as last resort per spec!
           )
-  let versionId = asum $ map (`Map.lookup` properties) ["VERSION_ID"]
+  let versionId = Map.lookup "VERSION_ID" properties
 
   case (nameId, versionId) of
     (Just name, Just version) -> pure $ OsInfo name version
