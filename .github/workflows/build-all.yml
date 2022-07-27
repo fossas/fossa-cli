@@ -36,6 +36,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        lfs: true
 
     # Install tools used in `vendor_download.sh`.
     - name: Install alpine binary dependencies
