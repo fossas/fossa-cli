@@ -12,7 +12,7 @@ import Codec.Archive.Tar (
   entryPath,
  )
 import Codec.Archive.Tar qualified as Tar
-import Codec.Archive.Tar.Entry (Entry (entryTarPath), TarPath, fromTarPath)
+import Codec.Archive.Tar.Entry (Entry (entryTarPath), TarPath, fromTarPathToPosixPath)
 import Codec.Archive.Tar.Entry qualified as TarEntry
 import Codec.Archive.Tar.Index (TarEntryOffset, nextEntryOffset)
 import Container.Errors (
@@ -167,7 +167,7 @@ fileNameOf path = snd $ Text.breakOnEnd "/" path
 
 -- | Retrieves filepath from tar path.
 filePathOf :: TarPath -> FilePath
-filePathOf = fromTarPath
+filePathOf = fromTarPathToPosixPath
 
 -- | Removes whiteout prefix from the filepath. If no whiteout prefix is detected returns Nothing.
 --

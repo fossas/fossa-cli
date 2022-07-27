@@ -3,7 +3,7 @@ module Container.TarballSpec (
 ) where
 
 import Codec.Archive.Tar qualified as Tar
-import Codec.Archive.Tar.Entry (Entry (entryTarPath), fromTarPath)
+import Codec.Archive.Tar.Entry (Entry (entryTarPath), fromTarPathToPosixPath)
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Tarball (
   TarEntries (TarEntries),
@@ -164,7 +164,7 @@ spec = do
   mkImageSpec
 
 tarEntriesToPathsOffset :: TarEntries -> [(FilePath, TarEntryOffset)]
-tarEntriesToPathsOffset (TarEntries entries _) = map (first $ fromTarPath . entryTarPath) $ toList entries
+tarEntriesToPathsOffset (TarEntries entries _) = map (first $ fromTarPathToPosixPath . entryTarPath) $ toList entries
 
 toChangeSets :: ContainerImageRaw -> [[ContainerFSChangeSet]]
 toChangeSets (ContainerImageRaw layers) = map (toList . layerChangeSets) (toList layers)
