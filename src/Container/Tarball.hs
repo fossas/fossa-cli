@@ -1,5 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-
 module Container.Tarball (
   -- * for testing
   TarEntries (..),
@@ -42,9 +40,10 @@ import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 
+-- | Container of list of tar entries with their offset for random content read.
 data TarEntries = TarEntries
-  { entries :: !(Seq (Tar.Entry, TarEntryOffset))
-  , prevOffset :: !TarEntryOffset
+  { entries :: Seq (Tar.Entry, TarEntryOffset)
+  , prevOffset :: TarEntryOffset
   }
   deriving (Show)
 
@@ -54,9 +53,9 @@ mkEntries ::
 mkEntries = build (TarEntries mempty 0)
   where
     build :: TarEntries -> Tar.Entries Tar.FormatError -> Either ContainerImgParsingError TarEntries
-    build !builder (Tar.Next e es) = build (addEntry e builder) es
-    build !builder Tar.Done = Right builder
-    build !_ (Tar.Fail err) = Left $ TarParserError err
+    build builder (Tar.Next e es) = build (addEntry e builder) es
+    build builder Tar.Done = Right builder
+    build _ (Tar.Fail err) = Left $ TarParserError err
 
     addEntry :: Tar.Entry -> TarEntries -> TarEntries
     addEntry entry tarEntries =
@@ -105,9 +104,9 @@ mkLayerFromOffset ::
   Either ContainerImgParsingError ContainerLayer
 mkLayerFromOffset imgOffset = build (ContainerLayer mempty 0)
   where
-    build !builder (Tar.Next e es) = build (addNextChangeSet imgOffset e builder) es
-    build !builder Tar.Done = Right builder
-    build !_ (Tar.Fail err) = Left $ TarParserError err
+    build builder (Tar.Next e es) = build (addNextChangeSet imgOffset e builder) es
+    build builder Tar.Done = Right builder
+    build _ (Tar.Fail err) = Left $ TarParserError err
 
     addNextChangeSet :: TarEntryOffset -> Tar.Entry -> ContainerLayer -> ContainerLayer
     addNextChangeSet offset entry containerLayer =

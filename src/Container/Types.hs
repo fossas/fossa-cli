@@ -24,8 +24,8 @@ baseLayer :: ContainerImageRaw -> ContainerLayer
 baseLayer img = NonEmpty.head $ layers img
 
 data ContainerLayer = ContainerLayer
-  { layerChangeSets :: !(Seq ContainerFSChangeSet)
-  , lastOffset :: !TarEntryOffset
+  { layerChangeSets :: Seq ContainerFSChangeSet
+  , lastOffset :: TarEntryOffset
   }
   deriving (Show, Eq, Generic, NFData)
 
@@ -39,7 +39,7 @@ instance Monoid ContainerLayer where
 -- | Record indicating a change fs event, with filepath and reference.
 data ContainerFSChangeSet
   = -- | Record which is inserted or to be modified.
-    InsertOrUpdate !FilePath !TarEntryOffset
+    InsertOrUpdate FilePath TarEntryOffset
   | -- | Record which is to be removed
-    Whiteout !FilePath
+    Whiteout FilePath
   deriving (Show, Generic, Eq, NFData)
