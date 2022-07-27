@@ -9,7 +9,6 @@ module Container.Tarball (
 import Codec.Archive.Tar (
   Entry (entryContent),
   EntryContent (NormalFile, SymbolicLink),
-  entryPath,
  )
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Tar.Entry (Entry (entryTarPath), TarPath, fromTarPathToPosixPath)
@@ -85,7 +84,7 @@ mkImage entries layerTarballPaths =
 
 mkLayer :: TarEntries -> FilePath -> Either ContainerImgParsingError ContainerLayer
 mkLayer (TarEntries entries _) layerTarball =
-  case viewl $ Seq.filter (\(t, _) -> entryPath t == layerTarball && isFile t) entries of
+  case viewl $ Seq.filter (\(t, _) -> (filePathOf . entryTarPath) t == layerTarball && isFile t) entries of
     EmptyL -> Left $ TarMissingLayerTar layerTarball
     (layerTarballEntry :< _) -> case entryContent $ fst layerTarballEntry of
       (NormalFile c _) -> do
