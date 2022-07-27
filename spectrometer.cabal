@@ -88,6 +88,8 @@ common deps
     , fused-effects-exceptions     ^>=1.1.0.0
     , git-config                   ^>=0.1.2
     , githash                      ^>=0.1.4.0
+    , hashable                     >= 1.0.0.1
+    , hashtables                   >=1.2
     , hedn                         ^>=0.3.0.1
     , http-client                  ^>=0.7.1
     , http-types                   ^>=0.12.3
@@ -279,6 +281,7 @@ library
     Data.Aeson.Extra
     Data.Conduit.Extra
     Data.FileEmbed.Extra
+    Data.FileTree.IndexFileTree
     Data.Flag
     Data.Functor.Extra
     Data.Glob
