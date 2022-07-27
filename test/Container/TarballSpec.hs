@@ -33,16 +33,16 @@ removeWhiteOutSpec :: Spec
 removeWhiteOutSpec =
   describe "removeWhiteOut" $ do
     it "should return path without whiteout marker, when a directory has whiteout marker" $ do
-      removeWhiteOut ".wh.data.log" `shouldBe` (Just "data.log")
-      removeWhiteOut "etc/.wh.data.log" `shouldBe` (Just "etc/data.log")
-      removeWhiteOut "etc/nested/.wh.data.log" `shouldBe` (Just "etc/nested/data.log")
+      removeWhiteOut ".wh.data.log" `shouldBe` "data.log"
+      removeWhiteOut "etc/.wh.data.log" `shouldBe` "etc/data.log"
+      removeWhiteOut "etc/nested/.wh.data.log" `shouldBe` "etc/nested/data.log"
 
     it "should return Nothing, when a path does not have a whiteout marker" $ do
-      removeWhiteOut "etc/archive/" `shouldBe` Nothing
-      removeWhiteOut "etc/nested/archive/" `shouldBe` Nothing
-      removeWhiteOut "data.log" `shouldBe` Nothing
-      removeWhiteOut "etc/data.log" `shouldBe` Nothing
-      removeWhiteOut "etc/nested/data.log" `shouldBe` Nothing
+      removeWhiteOut "etc/archive/" `shouldBe` "etc/archive/"
+      removeWhiteOut "etc/nested/archive/" `shouldBe` "etc/nested/archive/"
+      removeWhiteOut "data.log" `shouldBe` "data.log"
+      removeWhiteOut "etc/data.log" `shouldBe` "etc/data.log"
+      removeWhiteOut "etc/nested/data.log" `shouldBe` "etc/nested/data.log"
 
 exampleImg :: FilePath
 exampleImg = "test/Container/testdata/changeset_example.tar"

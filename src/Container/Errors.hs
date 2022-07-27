@@ -1,8 +1,8 @@
 module Container.Errors (ContainerImgParsingError (..)) where
 
 import Codec.Archive.Tar qualified as Tar
-import Diag.Diagnostic ( ToDiagnostic(renderDiagnostic) )
 import Control.Exception (Exception)
+import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Logger (pretty)
 
 -- | Errors that can be encountered when parsing a container image.

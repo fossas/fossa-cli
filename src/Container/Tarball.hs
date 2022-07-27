@@ -117,9 +117,9 @@ mkLayerFromOffset imgOffset = build (ContainerLayer mempty 0)
 
     updateChangeSet :: TarEntryOffset -> Tar.Entry -> ContainerLayer -> Seq ContainerFSChangeSet
     updateChangeSet offset entry containerLayer =
-      if isDoubleWhiteOut (entryTarPath entry)
+      if isDoubleWhiteOut (filePathOf . entryTarPath $ entry)
         || ( not (isFileOrSymLink entry)
-              && not (isWhiteOut $ entryTarPath entry)
+              && not (isWhiteOut $ filePathOf . entryTarPath $ entry)
            )
         then -- Do not capture Insert for non-files or non-symbolic links, as folders
         -- by themselves are not analysis relevant, and filepath information already contains
@@ -130,9 +130,10 @@ mkLayerFromOffset imgOffset = build (ContainerLayer mempty 0)
             |> (mkChangeSet (entryTarPath entry) (offset + lastOffset containerLayer + 1))
 
     mkChangeSet :: TarPath -> TarEntryOffset -> ContainerFSChangeSet
-    mkChangeSet path offset = case removeWhiteOut $ fromTarPath path of
-      Nothing -> InsertOrUpdate (fromTarPath path) offset
-      Just p -> Whiteout p
+    mkChangeSet tarPath offset =
+      if isWhiteOut $ filePathOf tarPath
+        then Whiteout (removeWhiteOut . filePathOf $ tarPath)
+        else InsertOrUpdate (filePathOf tarPath) offset
 
 -- | True if tar entry is for a file or a symlink, otherwise False
 isFileOrSymLink :: Tar.Entry -> Bool
@@ -149,20 +150,24 @@ isSymLink (TarEntry.Entry _ (SymbolicLink _) _ _ _ _) = True
 isSymLink _ = False
 
 -- | True if tar path has double whiteout marker.
-isDoubleWhiteOut :: TarPath -> Bool
+isDoubleWhiteOut :: FilePath -> Bool
 isDoubleWhiteOut = fileNameHasPrefix ".wh..wh."
 
 -- | True if tar path has whiteout marker.
-isWhiteOut :: TarPath -> Bool
+isWhiteOut :: FilePath -> Bool
 isWhiteOut = fileNameHasPrefix ".wh"
 
 -- | True if tarpath's filename has provided prefix. Otherwise False.
-fileNameHasPrefix :: Text -> TarPath -> Bool
-fileNameHasPrefix prefix = Text.isPrefixOf prefix . fileNameOf . toText . fromTarPath
+fileNameHasPrefix :: Text -> FilePath -> Bool
+fileNameHasPrefix prefix = Text.isPrefixOf prefix . fileNameOf . toText
 
 -- | Filename from text path.
 fileNameOf :: Text -> Text
 fileNameOf path = snd $ Text.breakOnEnd "/" path
+
+-- | Retrieves filepath from tar path.
+filePathOf :: TarPath -> FilePath
+filePathOf = fromTarPath
 
 -- | Removes whiteout prefix from the filepath. If no whiteout prefix is detected returns Nothing.
 --
@@ -171,8 +176,5 @@ fileNameOf path = snd $ Text.breakOnEnd "/" path
 -- >> removeWhiteOut "etc/hello.txt" = Nothing
 -- >> removeWhiteOut "etc/.wh.hello.txt" = Just "etc/hello.txt"
 -- >> removeWhiteOut "etc/w.h.os" = Just "etc/os"
-removeWhiteOut :: FilePath -> Maybe FilePath
-removeWhiteOut path =
-  if Text.isPrefixOf ".wh." (fileNameOf $ toText path)
-    then Just $ toString $ Text.replace ".wh." "" (toText path)
-    else Nothing
+removeWhiteOut :: FilePath -> FilePath
+removeWhiteOut p = if isWhiteOut p then toString $ Text.replace ".wh." "" (toText p) else p
