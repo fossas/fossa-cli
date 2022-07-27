@@ -226,6 +226,7 @@ library
     App.Version.TH
     Console.Sticky
     Container.Docker.Manifest
+    Container.OsRelease
     Control.Carrier.AtomicCounter
     Control.Carrier.AtomicState
     Control.Carrier.Debug
@@ -480,6 +481,7 @@ test-suite unit-tests
     Conda.CondaListSpec
     Conda.EnvironmentYmlSpec
     Container.Docker.ManifestSpec
+    Container.OsReleaseSpec
     Control.Carrier.DiagnosticsSpec
     Control.Carrier.TelemetrySpec
     Control.TimeoutSpec
