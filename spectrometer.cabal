@@ -226,8 +226,8 @@ library
     App.Version.TH
     Console.Sticky
     Container.Docker.Manifest
-    Container.OsRelease
     Container.Errors
+    Container.OsRelease
     Container.Tarball
     Container.Types
     Control.Carrier.AtomicCounter
