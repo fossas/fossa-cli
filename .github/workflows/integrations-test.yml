@@ -21,6 +21,9 @@ jobs:
         apk add bash xz-dev bzip2-dev bzip2-static upx curl jq
 
     - uses: actions/checkout@v3
+      with:
+        lfs: true
+
     - name: Ensures git ownership check does not lead to compile error (we run git during compile for version tagging, etc.)
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
