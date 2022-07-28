@@ -61,7 +61,8 @@ instance Monoid FoundTargets where
   mempty = ProjectWithoutTargets
 
 data DiscoveredProjectType
-  = BinaryDepsProjectType
+  = AlpineDatabaseProjectType
+  | BinaryDepsProjectType
   | BundlerProjectType
   | CabalProjectType
   | CargoProjectType
@@ -103,6 +104,7 @@ data DiscoveredProjectType
 
 projectTypeToText :: DiscoveredProjectType -> Text
 projectTypeToText = \case
+  AlpineDatabaseProjectType -> "apkdb"
   BinaryDepsProjectType -> "binary-deps"
   BundlerProjectType -> "bundler"
   CabalProjectType -> "cabal"
