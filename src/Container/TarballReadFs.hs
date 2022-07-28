@@ -59,10 +59,10 @@ import Effect.ReadFS (
   SomePath (SomeDir, SomeFile),
   catchingIO,
  )
-import Path (Abs, Dir, File, Path, SomeBase (..))
-import Path.Internal.Posix (Path (Path))
+import Path (Abs, Dir, File, SomeBase (..))
+import Path.Internal (Path (Path))
 import System.IO (IOMode (ReadMode), withFile)
-import System.Random
+import System.Random (randomIO)
 
 readContentBS :: SomeFileTree TarEntryOffset -> Path Abs File -> SomeBase File -> IO ByteString
 readContentBS fs tarball target = do
@@ -137,28 +137,44 @@ getIdentifier fs tarball target = do
         else throw $ userError $ "GetIdentifier: Could not find directory " <> toString target <> " in " <> toString tarball
     Just tarOffset -> pure $ DirID (toInteger tarOffset) (toInteger tarOffset)
 
-resolvePath :: SomeFileTree TarEntryOffset -> Path Abs File -> Path Abs Dir -> FilePath -> IO Effect.ReadFS.SomePath
+resolvePath :: SomeFileTree TarEntryOffset -> Path Abs File -> Path Abs Dir -> FilePath -> IO SomePath
 resolvePath fs tarball dir target = do
   dirExist <- doesDirExist candidatePath fs
   fileExist <- doesFileExist candidatePath fs
   case (dirExist, fileExist) of
-    (True, _) -> pure $ Effect.ReadFS.SomeDir (Abs (Path $ toString candidatePath))
-    (_, True) -> pure $ Effect.ReadFS.SomeFile (Abs (Path $ toString candidatePath))
+    (True, _) -> pure $ SomeDir (Abs (Path $ toString candidatePath))
+    (_, True) -> pure $ SomeFile (Abs (Path $ toString candidatePath))
     (_, _) -> throw $ userError $ "ResolvePath: Could not find " <> target <> " in " <> (toString tarball)
   where
     candidatePath :: Text
     candidatePath = (toText dir) <> "/" <> (toText target) <> "/"
 
-runTarballReadFSIO :: Has (Lift IO) sig m => (SomeFileTree TarEntryOffset) -> (Path Abs File) -> Effect.ReadFS.ReadFSIOC m a -> m a
+runTarballReadFSIO :: Has (Lift IO) sig m => SomeFileTree TarEntryOffset -> Path Abs File -> ReadFSIOC m a -> m a
 runTarballReadFSIO fs tarball = interpret $ \case
-  Effect.ReadFS.ReadContentsBS' file -> readContentBS fs tarball file `Effect.ReadFS.catchingIO` Effect.ReadFS.FileReadError (toString file)
-  Effect.ReadFS.ReadContentsBSLimit' file limit -> readContentsBSLimit fs tarball file limit `Effect.ReadFS.catchingIO` Effect.ReadFS.FileReadError (toString file)
-  Effect.ReadFS.ReadContentsText' file -> readContentText fs tarball file `Effect.ReadFS.catchingIO` Effect.ReadFS.FileReadError (toString file)
-  Effect.ReadFS.ResolveFile' dir path -> resolveFile fs tarball dir path `Effect.ReadFS.catchingIO` Effect.ReadFS.ResolveError (toString dir) (toString path)
-  Effect.ReadFS.ResolveDir' dir path -> resolveDir fs tarball dir path `Effect.ReadFS.catchingIO` Effect.ReadFS.ResolveError (toString dir) (toString path)
-  Effect.ReadFS.ListDir dir -> listDir fs tarball dir `Effect.ReadFS.catchingIO` Effect.ReadFS.ListDirError (toString dir)
-  Effect.ReadFS.GetIdentifier dir -> getIdentifier fs tarball dir `Effect.ReadFS.catchingIO` Effect.ReadFS.FileReadError (toString dir)
-  Effect.ReadFS.ResolvePath root path -> resolvePath fs tarball root path `Effect.ReadFS.catchingIO` Effect.ReadFS.ResolveError (toString root) path
-  Effect.ReadFS.GetCurrentDir -> pure (Left $ Effect.ReadFS.CurrentDirError "there is no current directory within tar!")
-  Effect.ReadFS.DoesFileExist file -> sendIO $ doesFileExist (toText file) fs
-  Effect.ReadFS.DoesDirExist dir -> sendIO $ doesDirExist (toText dir) fs
+  ReadContentsBS' file ->
+    readContentBS fs tarball file
+      `catchingIO` FileReadError (toString file)
+  ReadContentsBSLimit' file limit ->
+    readContentsBSLimit fs tarball file limit
+      `catchingIO` FileReadError (toString file)
+  ReadContentsText' file ->
+    readContentText fs tarball file
+      `catchingIO` FileReadError (toString file)
+  ResolveFile' dir path ->
+    resolveFile fs tarball dir path
+      `catchingIO` ResolveError (toString dir) (toString path)
+  ResolveDir' dir path ->
+    resolveDir fs tarball dir path
+      `catchingIO` ResolveError (toString dir) (toString path)
+  ListDir dir ->
+    listDir fs tarball dir
+      `catchingIO` ListDirError (toString dir)
+  GetIdentifier dir ->
+    getIdentifier fs tarball dir
+      `catchingIO` FileReadError (toString dir)
+  ResolvePath root path ->
+    resolvePath fs tarball root path
+      `catchingIO` ResolveError (toString root) path
+  GetCurrentDir -> pure . Left $ CurrentDirError "there is no current directory within tar!"
+  DoesFileExist file -> sendIO $ doesFileExist (toText file) fs
+  DoesDirExist dir -> sendIO $ doesDirExist (toText dir) fs
