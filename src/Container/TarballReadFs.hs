@@ -39,6 +39,7 @@ import Data.String.Conversion (
   toString,
  )
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Effect.ReadFS (
   DirID (..),
   ReadFSErr (CurrentDirError, FileReadError, ListDirError, ResolveError),
@@ -62,6 +63,9 @@ import Effect.ReadFS (
 import Path (Abs, Dir, File, SomeBase (..))
 import Path.Internal (Path (Path))
 import System.IO (IOMode (ReadMode), withFile)
+
+ensureSlashSuffix :: Text -> Text
+ensureSlashSuffix t = if Text.isSuffixOf "/" t then t else (t <> "/")
 
 readContentBS ::
   SomeFileTree TarEntryOffset ->
@@ -130,7 +134,7 @@ resolveFile fs tarball dir target =
     else pure $ Path (toString candidatePath)
   where
     candidatePath :: Text
-    candidatePath = (toText dir) <> "/" <> target
+    candidatePath = (ensureSlashSuffix . toText $ dir) <> target
 
 resolveDir ::
   SomeFileTree TarEntryOffset ->
@@ -149,7 +153,7 @@ resolveDir fs tarball dir target =
     else pure $ Path (toString candidatePath)
   where
     candidatePath :: Text
-    candidatePath = (toText dir) <> "/" <> target <> "/"
+    candidatePath = (ensureSlashSuffix . toText $ dir) <> (ensureSlashSuffix target)
 
 listDir ::
   SomeFileTree TarEntryOffset ->
@@ -166,7 +170,7 @@ listDir fs tarball target =
           <> (toString tarball)
     Just paths -> do
       let dirs = filter (`doesDirExist` fs) $ Set.toList paths
-      let files = filter (`doesDirExist` fs) $ Set.toList paths
+      let files = filter (`doesFileExist` fs) $ Set.toList paths
       pure (mapToPath dirs, mapToPath files)
   where
     mapToPath :: [Text] -> [Path b t]
@@ -178,11 +182,11 @@ getIdentifier ::
   Path Abs Dir ->
   IO DirID
 getIdentifier fs tarball target = do
-  case lookupFileRef (toText target) fs of
+  case lookupFileRef candidatePath fs of
     Nothing -> do
       -- Tarball changeset do not have inode IDs!
-      -- So we use hash of the filepath
-      if doesDirExist (toText target) fs
+      -- So we use hash of the directory filepath
+      if doesDirExist candidatePath fs
         then pure $ DirID hashOfFilePath hashOfFilePath
         else
           throw . userError $
@@ -190,8 +194,11 @@ getIdentifier fs tarball target = do
               <> toString target
               <> " in "
               <> toString tarball
-    Just tarOffset -> pure $ DirID (toInteger tarOffset) (toInteger tarOffset)
+    Just tarOffset -> pure $ DirID hashOfFilePath (toInteger tarOffset)
   where
+    candidatePath :: Text
+    candidatePath = (ensureSlashSuffix . toText $ target)
+
     hashOfFilePath :: Integer
     hashOfFilePath = toInteger . hash . toText $ target
 

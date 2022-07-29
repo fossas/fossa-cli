@@ -491,6 +491,7 @@ test-suite unit-tests
     Conda.EnvironmentYmlSpec
     Container.Docker.ManifestSpec
     Container.OsReleaseSpec
+    Container.TarballReadFSSpec
     Container.TarballSpec
     Control.Carrier.DiagnosticsSpec
     Control.Carrier.TelemetrySpec
