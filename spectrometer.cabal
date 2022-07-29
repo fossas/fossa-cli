@@ -313,9 +313,11 @@ library
     Path.Extra
     Srclib.Converter
     Srclib.Types
+    Strategy.AlpineLinux.Apk
     Strategy.AlpineLinux.Parser
     Strategy.AlpineLinux.Types
     Strategy.Android.Util
+    Strategy.ApkDatabase
     Strategy.Bundler
     Strategy.Cargo
     Strategy.Carthage
