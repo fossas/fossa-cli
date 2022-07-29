@@ -22,9 +22,6 @@ module Data.FileTree.IndexFileTree (
 ) where
 
 import Control.DeepSeq (NFData)
-
--- import Data.HashTable.IO qualified as H
-
 import Data.Foldable (Foldable (foldr'), foldl')
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as H
@@ -147,8 +144,8 @@ lookupDir t fsTree =
     f _ = Left Nothing
 
 -- | Removes suffix '/' if any.
-withoutSlash :: Text -> Text
-withoutSlash c = fromMaybe c $ Text.stripSuffix "/" c
+withoutSuffixSlash :: Text -> Text
+withoutSuffixSlash c = fromMaybe c $ Text.stripSuffix "/" c
 
 -- | Makes Directory.
 toSomeDir :: Text -> SomePath
@@ -156,8 +153,8 @@ toSomeDir a = SomeDir (SomeDirPath a)
 
 -- | Gets parent directory of path.
 getParentPath :: SomePath -> SomeDirPath
-getParentPath (SomeFile (SomeFilePath filepath)) = SomeDirPath (withoutSlash $ fst (Text.breakOnEnd "/" filepath))
-getParentPath (SomeDir (SomeDirPath filepath)) = SomeDirPath (withoutSlash $ fst (Text.breakOnEnd "/" filepath))
+getParentPath (SomeFile (SomeFilePath filepath)) = SomeDirPath (withoutSuffixSlash $ fst (Text.breakOnEnd "/" filepath))
+getParentPath (SomeDir (SomeDirPath filepath)) = SomeDirPath (withoutSuffixSlash $ fst (Text.breakOnEnd "/" filepath))
 
 -- | Inserts SomePath into FileTree with Reference.
 --
