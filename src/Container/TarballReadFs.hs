@@ -17,10 +17,19 @@ import Codec.Archive.Tar (
     SymbolicLink
   ),
  )
+import Codec.Archive.Tar.Entry (entryTarPath, fromLinkTargetToPosixPath)
 import Codec.Archive.Tar.Index (TarEntryOffset, hReadEntry)
+import Container.Tarball (filePathOf)
 import Control.Carrier.Simple (interpret)
 import Control.Effect.Exception (throw)
 import Control.Effect.Lift (Has, Lift)
+import Control.Exception (
+  Exception (fromException, toException),
+  IOException,
+  SomeAsyncException (SomeAsyncException),
+  catch,
+  throwIO,
+ )
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as ByteString
 import Data.FileTree.IndexFileTree (
@@ -29,6 +38,7 @@ import Data.FileTree.IndexFileTree (
   doesFileExist,
   lookupDir,
   lookupFileRef,
+  resolveSymLinkRef,
  )
 import Data.Hashable (hash)
 import Data.Set qualified as Set
@@ -64,15 +74,19 @@ import Path (Abs, Dir, File, SomeBase (..))
 import Path.Internal (Path (Path))
 import System.IO (IOMode (ReadMode), withFile)
 
+maxHopsOf20 :: Int
+maxHopsOf20 = 20
+
 ensureSlashSuffix :: Text -> Text
 ensureSlashSuffix t = if Text.isSuffixOf "/" t then t else (t <> "/")
 
 readContentBS ::
   SomeFileTree TarEntryOffset ->
   Path Abs File ->
+  Int -> -- circuit breaker for symbolic link hops
   SomeBase File ->
   IO ByteString
-readContentBS fs tarball target =
+readContentBS fs tarball hop target =
   case lookupFileRef (toText target) fs of
     Nothing ->
       throw . userError $
@@ -82,23 +96,44 @@ readContentBS fs tarball target =
           <> (toString tarball)
     Just tarOffset ->
       withFile (toString tarball) ReadMode $ \handle -> do
-        (getContent fs tarball) =<< hReadEntry handle tarOffset
+        (getContent fs tarball hop) =<< hReadEntry handle tarOffset
 
 getContent ::
   SomeFileTree TarEntryOffset ->
   Path Abs File ->
+  Int -> -- current hop count
   Entry ->
   IO ByteString
-getContent _ _ entry =
+getContent fs tarball hop entry =
   case entryContent entry of
     NormalFile content _ -> pure $ toStrict content
-    Directory -> throw $ userError "directory found, cannot get file content of a directory."
-    NamedPipe -> throw $ userError "named pipe found, cannot get file content of a named pipe."
-    BlockDevice _ _ -> throw $ userError "block device found, cannot get file content of block device."
-    CharacterDevice _ _ -> throw $ userError "character device found, cannot get file content of character device."
-    OtherEntryType{} -> throw $ userError "other entry type found, cannot get file content of other entry type."
-    SymbolicLink _ -> throw $ userError "symbolic link found, cannot get file content of symbolic link."
-    HardLink _ -> throw $ userError "hard link found, cannot get file content of hard link."
+    Directory -> throw $ userError "directory found, cannot get file content from a directory."
+    NamedPipe -> throw $ userError "named pipe found, cannot get file content from a named pipe."
+    BlockDevice _ _ -> throw $ userError "block device found, cannot get file content from block device."
+    CharacterDevice _ _ -> throw $ userError "character device found, cannot get file content from character device."
+    OtherEntryType{} -> throw $ userError "other entry type found, cannot get file content from other entry type."
+    SymbolicLink target ->
+      if hop > maxHopsOf20
+        then throw . userError $ "following symbolic link led to more than maximum hops, current filepaths is: " <> (toString currPath)
+        else
+          do
+            -- In Tarball symbolic links target path may be provided as absolute, relative, or absolute without leading /
+            --
+            -- e.g.
+            --  etc/os-release => ../usr/lib/os-release
+            --  etc/os-release => /usr/lib/os-release
+            --  etc/os-release => usr/lib/os-release
+            -- -
+            let targetPath :: Path Abs File =
+                  Path . toString $
+                    resolveSymLinkRef currPath (toText . fromLinkTargetToPosixPath $ target)
+
+            readContentBS fs tarball (hop + 1) (Abs targetPath)
+            `ioOr` readContentBS fs tarball (hop + 1) (Abs . Path $ fromLinkTargetToPosixPath target)
+    HardLink _ -> throw $ userError "hard link found, cannot get file content from hard link."
+  where
+    currPath :: Text
+    currPath = toText . filePathOf . entryTarPath $ entry
 
 readContentsBSLimit ::
   SomeFileTree TarEntryOffset ->
@@ -107,7 +142,7 @@ readContentsBSLimit ::
   Int ->
   IO ByteString
 readContentsBSLimit fs tarball target limit =
-  ByteString.take limit <$> (readContentBS fs tarball target)
+  ByteString.take limit <$> (readContentBS fs tarball 0 target)
 
 readContentText ::
   SomeFileTree TarEntryOffset ->
@@ -115,7 +150,7 @@ readContentText ::
   SomeBase File ->
   IO Text
 readContentText fs tarball target =
-  decodeUtf8 <$> (readContentBS fs tarball target)
+  decodeUtf8 <$> (readContentBS fs tarball 0 target)
 
 resolveFile ::
   SomeFileTree TarEntryOffset ->
@@ -217,7 +252,7 @@ resolvePath fs tarball dir target = do
     candidatePath :: Text
     candidatePath = (toText dir) <> "/" <> (toText target) <> "/"
 
--- | ReadFS based on virtual filetree and tarball archive for random seeks.
+-- | ReadFS based on virtual file tree and tarball archive for random seeks.
 runTarballReadFSIO ::
   Has (Lift IO) sig m =>
   SomeFileTree TarEntryOffset -> -- Virtual FileTree Containing Filepaths with reference offsets
@@ -226,7 +261,7 @@ runTarballReadFSIO ::
   m a
 runTarballReadFSIO fs tarball = interpret $ \case
   ReadContentsBS' file ->
-    readContentBS fs tarball file
+    readContentBS fs tarball 0 file
       `catchingIO` FileReadError (toString file)
   ReadContentsBSLimit' file limit ->
     readContentsBSLimit fs tarball file limit
@@ -252,3 +287,11 @@ runTarballReadFSIO fs tarball = interpret $ \case
   GetCurrentDir -> pure . Left $ CurrentDirError "there is no current directory within tar!"
   DoesFileExist file -> pure $ doesFileExist (toText file) fs
   DoesDirExist dir -> pure $ doesDirExist (toText dir) fs
+
+-- | Alternatives in IO monad handling IO exceptions.
+ioOr :: IO a -> IO a -> IO a
+ioOr a b = a `catch` (\(e :: IOException) -> if isSyncException e then b else throwIO e)
+  where
+    isSyncException e = case fromException (toException e) of
+      Just (SomeAsyncException _) -> False
+      Nothing -> True

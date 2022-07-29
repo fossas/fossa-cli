@@ -36,7 +36,7 @@ spec = do
   tarFile <- runIO tarAbsFile
   let it' = itEff tarFile
 
-  describe "readContentText" $
+  describe "readContentText" $ do
     it' "should read content of file in tarball" $ do
       let feb2 :: Path Abs File = Path "logs-archive/feb/2.txt"
       feb2Content <- readContentsText feb2
@@ -47,6 +47,15 @@ spec = do
       jan1Content `shouldBe'` "1\n"
 
       let lastFile :: Path Abs File = Path "logs-archive/last.txt"
+      lastContent <- readContentsText lastFile
+      lastContent `shouldBe'` "01-01-2022\n"
+
+    it' "should read content of symbolic link's target in tarball" $ do
+      let healthFile :: Path Abs File = Path "logs-archive/feb/last_health"
+      healthFileContent <- readContentsText healthFile
+      healthFileContent `shouldBe'` "OK\n"
+
+      let lastFile :: Path Abs File = Path "last"
       lastContent <- readContentsText lastFile
       lastContent `shouldBe'` "01-01-2022\n"
 
@@ -102,4 +111,7 @@ minimalTarFsTree =
     [ ("logs-archive/feb/2.txt", Just 10)
     , ("logs-archive/jan/1.txt", Just 14)
     , ("logs-archive/last.txt", Just 16)
+    , ("logs-archive/feb/last_health", Just 66)
+    , ("health.txt", Just 76)
+    , ("last", Just 63)
     ]

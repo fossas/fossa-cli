@@ -9,6 +9,7 @@ import Data.FileTree.IndexFileTree (
   lookupDir,
   lookupFileRef,
   remove,
+  resolveSymLinkRef,
   toSomePath,
  )
 
@@ -130,6 +131,34 @@ lookupFileRefSpec =
       (lookupFileRef "root.txt" sampleFileTree) `shouldBe` refVal1
       (lookupFileRef "archive/index.txt" sampleFileTree) `shouldBe` refVal2
 
+resolveSymLinkRefSpec :: Spec
+resolveSymLinkRefSpec =
+  describe "resolveSymLinkRef" $ do
+    it "should resolve to parent directory, when ./ is prefixed in target path" $ do
+      resolveSymLinkRef "a/b/c/d" "./e" `shouldBe` "a/b/c/e"
+      resolveSymLinkRef "a/b/c" "./e" `shouldBe` "a/b/e"
+      resolveSymLinkRef "a/b" "./e" `shouldBe` "a/e"
+      resolveSymLinkRef "a" "./e" `shouldBe` "e"
+      resolveSymLinkRef "" "./e" `shouldBe` "e"
+
+    it "should resolve to grand parent directory, when ../ is prefixed in target path" $ do
+      resolveSymLinkRef "a/b/c/d" "../e" `shouldBe` "a/b/e"
+      resolveSymLinkRef "a/b/c" "../e" `shouldBe` "a/e"
+      resolveSymLinkRef "a/b" "../e" `shouldBe` "e"
+      resolveSymLinkRef "a" "../e" `shouldBe` "e"
+      resolveSymLinkRef "" "../e" `shouldBe` "e"
+
+    it "should resolve when multiple ../ ./ prefix are consecutively used" $ do
+      resolveSymLinkRef "a/b/c/d" "./../e" `shouldBe` "a/b/e"
+      resolveSymLinkRef "a/b/c/d" ".././../e" `shouldBe` "a/e"
+      resolveSymLinkRef "a/b/c/d" "../../e" `shouldBe` "a/e"
+      resolveSymLinkRef "a/b/c/d" "../.././e" `shouldBe` "a/e"
+      resolveSymLinkRef "a/b/c/d" "../../../e" `shouldBe` "e"
+
+    it "should resolve to absolute path when / is prefixed in target path" $ do
+      resolveSymLinkRef "a/b/c/d" "/a/b/e" `shouldBe` "a/b/e"
+      resolveSymLinkRef "a/b/c/d" "/e" `shouldBe` "e"
+
 removeSpec :: Spec
 removeSpec =
   describe "remove" $ do
@@ -189,3 +218,5 @@ spec = do
 
   lookupFileRefSpec
   doesFileExistSpec
+
+  resolveSymLinkRefSpec

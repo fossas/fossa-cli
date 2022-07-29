@@ -9,6 +9,7 @@ module Data.FileTree.IndexFileTree (
   doesDirExist,
   lookupFileRef,
   lookupDir,
+  resolveSymLinkRef,
 
   -- * modifiers
   insert,
@@ -88,7 +89,7 @@ instance Hashable SomeFilePath where
 toSomePath :: Text -> SomePath
 toSomePath c =
   if Text.isSuffixOf "/" candidate -- In POSIX, path with / suffix are directories
-    then SomeDir $ SomeDirPath (withoutSlash candidate)
+    then SomeDir $ SomeDirPath (withoutSuffixSlash candidate)
     else SomeFile $ SomeFilePath candidate
   where
     candidate :: Text
@@ -274,3 +275,56 @@ allLeadingPaths path = map fst $ breakOnAll "/" (path <> "/")
 -- zippedPath ["A", "A/B", "A/B/C"] = [("A", "A/B"), ("A/B", "A/B/C")]
 zippedPath :: [Text] -> [(Text, Text)]
 zippedPath path = zip path (drop 1 path)
+
+-- | Resolves Filepath's SymLink references in related to candidate working filepath.
+--
+-- >> resolveSymLinkRef "a/b/c" "./d" = "a/b/d"
+-- >> resolveSymLinkRef "a/b/c" "../d" = "a/d"
+-- >> resolveSymLinkRef "a/b/c" "../../d" = "d"
+-- >> resolveSymLinkRef "a/b/c" "/d" = "d"
+--
+-- If it runs of of parent directory of candidate working path, it presumes
+-- target is located at root.
+--
+-- >> resolveSymLinkRef "a/b/c" "../../../../../d" = "d"
+--
+-- It presumes candidate working filepath is not a directory. Directory SymLinks
+-- resolution is not supported.
+--
+-- It does not handle, '../' or './' between non-relative filepaths, e.g.
+-- /a/b/c/../d/../e, ./a/b/../e, etc.
+-- -
+resolveSymLinkRef :: Text -> Text -> Text
+resolveSymLinkRef cwd targetPath =
+  case (Text.isPrefixOf "./" targetPath, Text.isPrefixOf "../" targetPath, Text.isPrefixOf "/" targetPath) of
+    (True, _, _) -> uncurry resolveSymLinkRef $ skipToParentDir cwd targetPath
+    (_, True, _) -> uncurry resolveSymLinkRef $ skipToGrandParentDir cwd targetPath
+    (_, _, True) -> fromMaybe targetPath $ Text.stripPrefix "/" targetPath
+    (False, False, False) -> cwd <> targetPath
+  where
+    parentDir :: Text
+    parentDir = "./"
+
+    grandParentDir :: Text
+    grandParentDir = "../"
+
+    withoutPrefix :: Text -> Text -> Text
+    withoutPrefix p t = fromMaybe t $ Text.stripPrefix p t
+
+    skipToGrandParentDir :: Text -> Text -> (Text, Text)
+    skipToGrandParentDir currentCwd target =
+      if Text.isPrefixOf grandParentDir target
+        then
+          ( fst $ Text.breakOnEnd "/" (withoutSuffixSlash $ fst $ Text.breakOnEnd "/" cwd)
+          , withoutPrefix grandParentDir target
+          )
+        else (currentCwd, target)
+
+    skipToParentDir :: Text -> Text -> (Text, Text)
+    skipToParentDir currentCwd target =
+      if Text.isPrefixOf parentDir target
+        then
+          ( fst $ Text.breakOnEnd "/" currentCwd
+          , withoutPrefix parentDir target
+          )
+        else (currentCwd, target)

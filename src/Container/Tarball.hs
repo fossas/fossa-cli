@@ -4,6 +4,9 @@ module Container.Tarball (
   removeWhiteOut,
   mkEntries,
   mkImage,
+
+  -- * utilities
+  filePathOf,
 ) where
 
 import Codec.Archive.Tar (
