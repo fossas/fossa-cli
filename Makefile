@@ -66,8 +66,8 @@ clean-test-data:
 # `@command` does not echo the command before running
 fmt:
 	@echo "Running fourmolu"
-	./fourmolu --version
-	./fourmolu --mode inplace ${FMT_OPTS} $(shell find ${FIND_OPTS})
+	@fourmolu --version
+	@fourmolu --mode inplace ${FMT_OPTS} $(shell find ${FIND_OPTS})
 	@echo "Running cabal-fmt"
 	@cabal-fmt spectrometer.cabal --inplace
 
@@ -83,8 +83,8 @@ check-fmt:
 # Lint everything (If this fails, update .hlint.yaml or report the failure)
 lint:
 	@echo "Running hlint"
-	./hlint --version
-	./hlint src test integration-test --cross --timing -vj
+	@hlint --version
+	@hlint src test integration-test --cross --timing -vj
 	@echo "No linter errors found"
 
 # Runs linter on only modified files
