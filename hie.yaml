@@ -8,3 +8,5 @@ cradle:
       component: "test:unit-tests"
     - path: "./integration-test"
       component: "test:integration-tests"
+    - path: "./bench"
+      component: "bench"
