@@ -2,22 +2,32 @@
 {-# LANGUAGE DerivingStrategies #-}
 
 module Data.FileTree.IndexFileTree (
-  allLeadingPaths,
-  zippedPath,
   SomeFileTree (..),
+
+  -- * getters
   doesFileExist,
   doesDirExist,
   lookupFileRef,
   lookupDir,
+
+  -- * modifiers
   insert,
   remove,
   empty,
+
+  -- * utility functions
   toSomePath,
+  allLeadingPaths,
+  zippedPath,
 ) where
 
 import Control.DeepSeq (NFData)
-import Control.Monad (foldM)
-import Data.HashTable.IO qualified as H
+
+-- import Data.HashTable.IO qualified as H
+
+import Data.Foldable (Foldable (foldr'), foldl')
+import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as H
 import Data.Hashable (Hashable, hash)
 import Data.Maybe (fromMaybe, isJust)
 import Data.Set (Set)
@@ -26,21 +36,30 @@ import Data.Text (Text, breakOnAll)
 import Data.Text qualified as Text
 import GHC.Generics (Generic)
 
-type HashTable k v = H.BasicHashTable k v
-
--- FIX ME
 fixedVfsRoot :: Text
 fixedVfsRoot = "vfs-root"
 
 -- | Simple FileSystem Representation.
+--
+-- From investigation, this representation/structure can be substantially further
+-- optimized. By using impure dictionary implementations which use IORef, this
+-- filetree is ~2.3x faster and has less peak memory consumption, and heap memory
+-- usage. However, it is not implemented now to avoid use of impurity/IO.
+--
+-- In future, if we need to optimize operation around FileTree, it is recommended that,
+-- we use HashTable, or vector-dictionary module.
+--
+-- Refer to POC code:
+-- * https://github.com/fossas/fossa-cli/pull/1005/commits/6f7ed2c2e946b469285cdb2ec97572f1b5fbf389
+-- * https://github.com/fossas/fossa-cli/pull/1005/commits/f2892c48ff896002b119426ae71eb0c521a2ad44
 data SomeFileTree a = SomeFileTree
-  { paths :: HashTable SomePath (Maybe a)
-  , directories :: HashTable SomeDirPath (Set.Set SomePath)
+  { paths :: HashMap SomePath (Maybe a)
+  , directories :: HashMap SomeDirPath (Set SomePath)
   }
-  deriving (Show, Generic)
+  deriving (Show, Generic, NFData)
 
-empty :: IO (SomeFileTree a)
-empty = SomeFileTree <$> H.new <*> H.new
+empty :: SomeFileTree a
+empty = SomeFileTree mempty mempty
 
 data SomePath
   = SomeDir SomeDirPath
@@ -85,51 +104,46 @@ somePathToText (SomeDir (SomeDirPath dir)) = Text.replace (fixedVfsRoot <> "/") 
 somePathToText (SomeFile (SomeFilePath file)) = Text.replace (fixedVfsRoot <> "/") "" file
 
 -- | Returns True if File Exists, Otherwise False.
-doesFileExist :: forall a. Text -> SomeFileTree a -> IO (Bool)
+doesFileExist :: forall a. Text -> SomeFileTree a -> Bool
 doesFileExist t fsTree = f $ toSomePath t
   where
-    f :: SomePath -> IO Bool
-    f (SomeFile file) = isJust <$> H.lookup (paths fsTree) (SomeFile file)
-    f _ = pure False
+    f :: SomePath -> Bool
+    f (SomeFile file) = isJust $ H.lookup (SomeFile file) (paths fsTree)
+    f _ = False
 
 -- | Returns True if Dir Exists, Otherwise False.
-doesDirExist :: forall a. Text -> SomeFileTree a -> IO (Bool)
-doesDirExist t fsTree = if (t == fixedVfsRoot) then pure True else f (toSomePath t)
+doesDirExist :: forall a. Text -> SomeFileTree a -> Bool
+doesDirExist t fsTree = (t == fixedVfsRoot) || f (toSomePath t)
   where
-    f :: SomePath -> IO Bool
-    f (SomeDir dir) = isJust <$> H.lookup (paths fsTree) (SomeDir dir)
-    f _ = pure False
+    f :: SomePath -> Bool
+    f (SomeDir dir) = isJust $ H.lookup (SomeDir dir) (paths fsTree)
+    f _ = False
 
 -- | Returns reference associated with the filepath (if any).
-lookupFileRef :: forall a. Text -> SomeFileTree a -> IO (Maybe a)
-lookupFileRef t fsTree = do
-  refVal <- f (toSomePath t)
-  case refVal of
-    Nothing -> pure Nothing
-    Just rv -> pure rv
+lookupFileRef :: forall a. Text -> SomeFileTree a -> Maybe a
+lookupFileRef t fsTree = fromMaybe Nothing (f $ toSomePath t)
   where
-    f :: SomePath -> IO (Maybe (Maybe a))
-    f (SomeFile file) = H.lookup (paths fsTree) (SomeFile file)
-    f _ = pure Nothing
+    f :: SomePath -> Maybe (Maybe a)
+    f (SomeFile file) = H.lookup (SomeFile file) (paths fsTree)
+    f _ = Nothing
 
 -- | Returns List of immediate paths that are in the directory (if any)
 -- If directory does not exist, returns Nothing;
 -- If directory is empty, returns Empty Set;
-lookupDir :: forall a. Text -> SomeFileTree a -> IO (Maybe (Set.Set Text))
+lookupDir :: forall a. Text -> SomeFileTree a -> Maybe (Set Text)
 lookupDir t fsTree =
   case f path of
-    Left _ -> pure Nothing
-    Right act -> do
-      subDirs <- act
+    Left _ -> Nothing
+    Right subDirs -> do
       case subDirs of
-        Nothing -> pure $ Just Set.empty
-        Just setPaths -> pure $ Just $ Set.map somePathToText setPaths
+        Nothing -> Just Set.empty
+        Just setPaths -> Just $ Set.map somePathToText setPaths
   where
     path :: SomePath
     path = if t == fixedVfsRoot then SomeDir $ SomeDirPath fixedVfsRoot else toSomePath t
 
-    f :: SomePath -> Either (Maybe a) (IO (Maybe (Set SomePath)))
-    f (SomeDir dir) = Right $ H.lookup (directories fsTree) dir
+    f :: SomePath -> Either (Maybe a) (Maybe (Set SomePath))
+    f (SomeDir dir) = Right $ H.lookup dir (directories fsTree)
     f _ = Left Nothing
 
 -- | Removes suffix '/' if any.
@@ -152,29 +166,30 @@ getParentPath (SomeDir (SomeDirPath filepath)) = SomeDirPath (withoutSlash $ fst
 --
 -- >> insert "a/hello.txt" (Just 123)
 -- >> insert "a/archive/"
-insert :: forall a. SomePath -> Maybe a -> SomeFileTree a -> IO (SomeFileTree a)
-insert (SomeDir (SomeDirPath dirPath)) _ tree = foldM' insertDirNode tree $ pathPairs dirPath
+insert :: forall a. SomePath -> Maybe a -> SomeFileTree a -> SomeFileTree a
+insert (SomeDir (SomeDirPath dirPath)) _ tree = foldl' insertDirNode tree $ pathPairs dirPath
   where
-    insertDirNode :: SomeFileTree a -> (Text, Text) -> IO (SomeFileTree a)
-    insertDirNode (SomeFileTree paths dirs) (pre, post) = do
-      -- Ensure Predecessor and Successor Directory
-      -- exists in the Paths (if not already)
-      H.insert paths (toSomeDir post) Nothing
-      H.insert paths (toSomeDir pre) Nothing
+    -- Ensure Predecessor and Successor Directory
+    -- exists in the Paths (if not already)
+    insertedPaths :: SomeFileTree a -> (Text, Text) -> HashMap SomePath (Maybe a)
+    insertedPaths (SomeFileTree paths _) (pre, post) = H.insert (toSomeDir post) Nothing $ H.insert (toSomeDir pre) Nothing paths
 
+    insertDirNode :: SomeFileTree a -> (Text, Text) -> SomeFileTree a
+    insertDirNode (SomeFileTree paths dirs) (pre, post) =
       -- If Predecessor Directory exists in our Directory Listing,
       -- Add Successor Directory into set of Successors. If Predecessor
       -- directory does not exist, Create a listing and add Successor
       -- directory into Set.
-      subDirListing <- H.lookup dirs (SomeDirPath pre)
-      case subDirListing of
+      case H.lookup (SomeDirPath pre) dirs of
         Nothing -> do
-          H.insert dirs (SomeDirPath pre) (Set.singleton $ toSomeDir post)
-          pure $ SomeFileTree paths dirs
+          SomeFileTree
+            (insertedPaths (SomeFileTree paths dirs) (pre, post))
+            (H.insert (SomeDirPath pre) (Set.singleton $ toSomeDir post) dirs)
         Just setOfSuccessors -> do
-          H.insert dirs (SomeDirPath pre) (Set.union setOfSuccessors . Set.singleton $ toSomeDir post)
-          pure $ SomeFileTree paths dirs
-insert (SomeFile someFilePath) someRef tree = do
+          SomeFileTree
+            (insertedPaths (SomeFileTree paths dirs) (pre, post))
+            (H.insert (SomeDirPath pre) (Set.union setOfSuccessors . Set.singleton $ toSomeDir post) dirs)
+insert (SomeFile someFilePath) someRef tree =
   -- Ensure all leading directories exist in fileTree.
   -- E.g.
   --
@@ -182,84 +197,71 @@ insert (SomeFile someFilePath) someRef tree = do
   --
   -- Ensure, path A and A/B exist in fileTree, and
   -- A's directory listing includes A/B.
-  let parentDirPath = getParentPath (SomeFile someFilePath)
-  let fs = insert (SomeDir parentDirPath) Nothing tree -- We don't store ref for Dirs
-  insertFileNode parentDirPath =<< fs
+  -- let parentDirPath = getParentPath (SomeFile someFilePath)
+  -- We don't store ref for Dirs
+  insertFileNode parentDirPath $ insert (SomeDir parentDirPath) Nothing tree
   where
-    insertFileNode :: SomeDirPath -> SomeFileTree a -> IO (SomeFileTree a)
-    insertFileNode parentDirPath (SomeFileTree paths dirs) = do
-      -- Add filepath in paths listing
-      H.insert paths (SomeFile someFilePath) someRef
+    parentDirPath :: SomeDirPath
+    parentDirPath = getParentPath (SomeFile someFilePath)
 
+    -- Add filepath in paths listing
+    updatedPath :: HashMap SomePath (Maybe a) -> HashMap SomePath (Maybe a)
+    updatedPath = H.insert (SomeFile someFilePath) someRef
+
+    insertFileNode :: SomeDirPath -> SomeFileTree a -> SomeFileTree a
+    insertFileNode parentDir (SomeFileTree paths dirs) =
       -- Ensure File exists in directory listing
       -- of it's parent directory.
-      subDirs <- H.lookup dirs parentDirPath
-      case subDirs of
+      case (H.lookup parentDir dirs) of
         Nothing -> do
-          H.insert dirs parentDirPath (Set.singleton $ SomeFile someFilePath)
-          pure $ SomeFileTree paths dirs
+          SomeFileTree
+            (updatedPath paths)
+            (H.insert parentDir (Set.singleton $ SomeFile someFilePath) dirs)
         Just subDirListing -> do
-          H.insert dirs parentDirPath (Set.union subDirListing . Set.singleton $ SomeFile someFilePath)
-          pure $ SomeFileTree paths dirs
+          SomeFileTree
+            (updatedPath paths)
+            (H.insert parentDir (Set.union subDirListing . Set.singleton $ SomeFile someFilePath) dirs)
 
 -- | Removes FilePath from File tree.
 --
 -- If the FilePath is a directory, it's removes all successor filepaths
 -- from file tree (i.e. recursively removes).
-remove :: forall a. SomePath -> SomeFileTree a -> IO (SomeFileTree a)
-remove (SomeFile filepath) (SomeFileTree paths dirs) = do
-  -- Remove from Path Listing
-  H.delete paths $ SomeFile filepath
-
-  -- Remove from It's parents directory listing.
-  subDirs <- H.lookup dirs parentPath
-  case subDirs of
-    Nothing -> pure $ SomeFileTree paths dirs
+remove :: forall a. SomePath -> SomeFileTree a -> SomeFileTree a
+remove (SomeFile filepath) (SomeFileTree paths dirs) =
+  case (H.lookup parentPath dirs) of
+    Nothing -> SomeFileTree withoutPath dirs
     Just subDirListing -> do
-      H.insert dirs parentPath (Set.filter (/= SomeFile filepath) subDirListing)
-      pure $ SomeFileTree paths dirs
+      SomeFileTree withoutPath (H.insert parentPath (Set.filter (/= SomeFile filepath) subDirListing) dirs)
   where
+    -- Remove from Path Listing
+    withoutPath :: HashMap SomePath (Maybe a)
+    withoutPath = H.delete (SomeFile filepath) paths
+
     parentPath :: SomeDirPath
     parentPath = getParentPath $ SomeFile filepath
-remove (SomeDir dirPath) tree = do
-  -- Recursively remove all successor filepaths
-  fsWoSubPaths <- fsWithoutSubPaths
-
-  -- Remove directory filepath from paths listing
-  H.delete (paths fsWoSubPaths) dir
-
-  pure fsWoSubPaths
+remove (SomeDir dirPath) tree = SomeFileTree (H.delete dir $ paths fsWithoutSubPaths) (directories fsWithoutSubPaths)
   where
     dir :: SomePath
     dir = SomeDir dirPath
 
     -- Gets all directories listing
-    subPathListing :: IO (Maybe (Set SomePath))
-    subPathListing = H.lookup (directories tree) dirPath
+    subPathListing :: (Maybe (Set SomePath))
+    subPathListing = H.lookup dirPath (directories tree)
 
-    fsWithoutSubPaths :: IO (SomeFileTree a)
-    fsWithoutSubPaths = do
-      subPaths <- subPathListing
+    -- Recursively removed sub paths from directory
+    subPathsRemoved :: SomeFileTree a
+    subPathsRemoved = case subPathListing of
+      Nothing -> tree
+      Just subPathsToRemove -> foldr' remove tree subPathsToRemove
 
-      -- Get FS with all sub paths removed.
-      fs <- case subPaths of
-        Nothing -> pure tree
-        Just subPathsToRemove -> foldM (flip remove) tree subPathsToRemove
+    -- Removed from Parent's sub dir listing.
+    rmdFromParentSubDirListing :: HashMap SomeDirPath (Set SomePath)
+    rmdFromParentSubDirListing = case H.lookup (getParentPath $ SomeDir dirPath) (directories subPathsRemoved) of
+      Nothing -> directories subPathsRemoved
+      Just subDirsListing -> H.insert (getParentPath $ SomeDir dirPath) (Set.delete dir subDirsListing) (directories subPathsRemoved)
 
-      -- Get parent directory of current path
-      subDirs <- H.lookup (directories fs) (getParentPath $ SomeDir dirPath)
-
-      -- Modify Parent directories directory listing to ensure
-      -- path to be removed is not present
-      dirsRemoved <- case subDirs of
-        Nothing -> pure $ directories fs
-        Just subDirsListing -> do
-          H.insert (directories fs) (getParentPath $ SomeDir dirPath) (Set.delete dir subDirsListing)
-          pure $ directories fs
-
-      -- Remove dirpath from directory listing
-      H.delete (dirsRemoved) dirPath
-      pure $ SomeFileTree (paths fs) dirsRemoved
+    fsWithoutSubPaths :: (SomeFileTree a)
+    fsWithoutSubPaths = SomeFileTree (paths subPathsRemoved) $ H.delete dirPath (rmdFromParentSubDirListing)
 
 -- | Generates paths pairs of predecessor, and successors from a path.
 -- >> pathPairs "A/B/hello.txt" = [("A", "A/B"), ("A/B", "A/B/hello.txt")]
@@ -275,11 +277,3 @@ allLeadingPaths path = map fst $ breakOnAll "/" (path <> "/")
 -- zippedPath ["A", "A/B", "A/B/C"] = [("A", "A/B"), ("A/B", "A/B/C")]
 zippedPath :: [Text] -> [(Text, Text)]
 zippedPath path = zip path (drop 1 path)
-
--- | Strict foldL
--- from: https://stackoverflow.com/a/8919106/19573624
-foldM' :: (Monad m) => (a -> b -> m a) -> a -> [b] -> m a
-foldM' _ z [] = pure z
-foldM' f z (x : xs) = do
-  z' <- f z x
-  z' `seq` foldM' f z' xs
