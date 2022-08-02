@@ -6,28 +6,22 @@ module Container.TarballReadFSSpec (
 
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.TarballReadFs (runTarballReadFSIO)
-import Control.Algebra (Has)
-import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
+import Control.Carrier.Diagnostics (DiagnosticsC)
 import Control.Carrier.Stack (StackC, runStack)
-import Control.Effect.Lift (Lift, sendIO)
 import Data.FileTree.IndexFileTree (SomeFileTree, empty, insert, toSomePath)
-import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Diag.Result (Result (Failure, Success), renderFailure)
-import Effect.Logger (IgnoreLoggerC, ignoreLogger, renderIt)
+import Effect.Logger (IgnoreLoggerC, ignoreLogger)
 import Effect.ReadFS (ReadFSIOC, listDir, readContentsText)
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Path.IO qualified as PIO
 import Path.Internal (Path (..))
+import Test.Effect (handleDiag, shouldBe', shouldMatchList')
 import Test.Hspec (
   Spec,
   SpecWith,
   describe,
-  expectationFailure,
   it,
   runIO,
-  shouldBe,
-  shouldMatchList,
  )
 import Type.Operator (type ($))
 
@@ -70,32 +64,16 @@ spec = do
     itEff :: Path Abs File -> String -> EffStack () -> SpecWith ()
     itEff tarFile msg = it msg . (runWithTarFsEff tarFile minimalTarFsTree)
 
-    shouldBe' :: (Has (Lift IO) sig m, Show a, Eq a) => a -> a -> m ()
-    shouldBe' left right = sendIO $ shouldBe left right
-
-    shouldMatchList' :: (Has (Lift IO) sig m, Show a, Eq a) => [a] -> [a] -> m ()
-    shouldMatchList' a b = sendIO $ shouldMatchList a b
-
 -- * Effect Stack For Testing
 
 type EffStack = ReadFSIOC $ DiagnosticsC $ IgnoreLoggerC $ StackC IO
 
 runWithTarFsEff :: Path Abs File -> SomeFileTree TarEntryOffset -> EffStack () -> IO ()
-runWithTarFsEff tarPath tarTree = do
-  runStack . ignoreLogger . handleDiag . runTarballReadFSIO (tarTree) (tarPath)
-  where
-    handleDiag :: (Has (Lift IO) sig m) => DiagnosticsC m () -> m ()
-    handleDiag diag =
-      runDiagnostics diag >>= \case
-        Failure ws eg ->
-          expectationFailure'
-            . toString
-            . renderIt
-            $ renderFailure ws eg "An issue occurred"
-        Success _ _ -> pure ()
-
-    expectationFailure' :: (Has (Lift IO) sig m) => String -> m ()
-    expectationFailure' = sendIO . expectationFailure
+runWithTarFsEff tarPath tarTree =
+  runStack
+    . ignoreLogger
+    . handleDiag
+    . runTarballReadFSIO (tarTree) (tarPath)
 
 mkTree :: [(Text, Maybe TarEntryOffset)] -> SomeFileTree TarEntryOffset
 mkTree = foldr (\(p, ref) tree -> insert (toSomePath p) ref tree) empty

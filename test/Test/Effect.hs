@@ -14,6 +14,7 @@ module Test.Effect (
   fit',
   xit',
   withTempDir,
+  handleDiag,
 ) where
 
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
@@ -77,13 +78,13 @@ runTestEffects' = runIO . runTestEffects
 
 runTestEffects :: EffectStack () -> IO ()
 runTestEffects = runStack . ignoreStickyLogger . ignoreLogger . runMockApi . handleDiag . runApiWithMock . runReadFSIO . runExecIO . runReader mempty . runFinally
-  where
-    handleDiag :: (Has (Lift IO) sig m) => DiagnosticsC m () -> m ()
-    handleDiag diag =
-      runDiagnostics diag >>= \case
-        Failure ws eg -> do
-          expectationFailure' $ toString $ renderIt $ renderFailure ws eg "An issue occurred"
-        Success _ _ -> pure ()
+
+handleDiag :: (Has (Lift IO) sig m) => DiagnosticsC m () -> m ()
+handleDiag diag =
+  runDiagnostics diag >>= \case
+    Failure ws eg -> do
+      expectationFailure' $ toString $ renderIt $ renderFailure ws eg "An issue occurred"
+    Success _ _ -> pure ()
 
 -- | Create a temporary directory with the given name.  The directory will be
 -- created in the system temporary directory.  It will be deleted after use.

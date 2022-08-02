@@ -302,29 +302,23 @@ resolveSymLinkRef cwd targetPath =
     (_, _, True) -> fromMaybe targetPath $ Text.stripPrefix "/" targetPath
     (False, False, False) -> cwd <> targetPath
   where
-    parentDir :: Text
-    parentDir = "./"
-
-    grandParentDir :: Text
-    grandParentDir = "../"
-
     withoutPrefix :: Text -> Text -> Text
     withoutPrefix p t = fromMaybe t $ Text.stripPrefix p t
 
     skipToGrandParentDir :: Text -> Text -> (Text, Text)
     skipToGrandParentDir currentCwd target =
-      if Text.isPrefixOf grandParentDir target
+      if Text.isPrefixOf "../" target
         then
           ( fst $ Text.breakOnEnd "/" (withoutSuffixSlash $ fst $ Text.breakOnEnd "/" cwd)
-          , withoutPrefix grandParentDir target
+          , withoutPrefix "../" target
           )
         else (currentCwd, target)
 
     skipToParentDir :: Text -> Text -> (Text, Text)
     skipToParentDir currentCwd target =
-      if Text.isPrefixOf parentDir target
+      if Text.isPrefixOf "./" target
         then
           ( fst $ Text.breakOnEnd "/" currentCwd
-          , withoutPrefix parentDir target
+          , withoutPrefix "./" target
           )
         else (currentCwd, target)

@@ -160,13 +160,13 @@ resolveFile ::
   IO (Path Abs File)
 resolveFile fs tarball dir target =
   if (doesFileExist candidatePath fs)
-    then
+    then pure $ Path (toString candidatePath)
+    else
       throw . userError $
         "ResolveFile: Could not find "
           <> (toString target)
           <> " in "
           <> (toString tarball)
-    else pure $ Path (toString candidatePath)
   where
     candidatePath :: Text
     candidatePath = (ensureSlashSuffix . toText $ dir) <> target
@@ -179,13 +179,13 @@ resolveDir ::
   IO (Path Abs Dir)
 resolveDir fs tarball dir target =
   if doesDirExist candidatePath fs
-    then
+    then pure $ Path (toString candidatePath)
+    else
       throw . userError $
         "ResolveDir: Could not find "
           <> (toString target)
           <> " in "
           <> (toString tarball)
-    else pure $ Path (toString candidatePath)
   where
     candidatePath :: Text
     candidatePath = (ensureSlashSuffix . toText $ dir) <> (ensureSlashSuffix target)
@@ -203,13 +203,16 @@ listDir fs tarball target =
           <> (toString target)
           <> " in "
           <> (toString tarball)
-    Just paths -> do
-      let dirs = filter (`doesDirExist` fs) $ Set.toList paths
-      let files = filter (`doesFileExist` fs) $ Set.toList paths
-      pure (mapToPath dirs, mapToPath files)
-  where
-    mapToPath :: [Text] -> [Path b t]
-    mapToPath = map (Path . toString)
+    Just paths ->
+      pure $
+        foldr
+          ( \a (dirs, files) ->
+              let dirs' = if a `doesDirExist` fs then (Path . toString $ a) : dirs else dirs
+                  files' = if a `doesFileExist` fs then (Path . toString $ a) : files else files
+               in (dirs', files')
+          )
+          ([], [])
+          (Set.toList paths)
 
 getIdentifier ::
   SomeFileTree TarEntryOffset ->
