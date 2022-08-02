@@ -23,7 +23,7 @@ module Data.FileTree.IndexFileTree (
 ) where
 
 import Control.DeepSeq (NFData)
-import Data.Foldable (Foldable (foldr'), foldl')
+import Data.Foldable (foldl')
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as H
 import Data.Hashable (Hashable, hash)
@@ -50,9 +50,16 @@ fixedVfsRoot = "vfs-root"
 -- Refer to POC code:
 -- * https://github.com/fossas/fossa-cli/pull/1005/commits/6f7ed2c2e946b469285cdb2ec97572f1b5fbf389
 -- * https://github.com/fossas/fossa-cli/pull/1005/commits/f2892c48ff896002b119426ae71eb0c521a2ad44
+--
+--
+-- Note,
+--  We are not using PATH lib, since file-tree representing of a given filesystem
+--  may not abide by convention of POSIX, and windows. Doing this way provides more
+--  clarity on operations done. For instance, in tarballs, prefix of `/` does not
+--  signify absolute path.
 data SomeFileTree a = SomeFileTree
-  { paths :: HashMap SomePath (Maybe a)
-  , directories :: HashMap SomeDirPath (Set SomePath)
+  { paths :: HashMap SomePath (Maybe a) -- all filepaths
+  , directories :: HashMap SomeDirPath (Set SomePath) -- directories and their immediate successors
   }
   deriving (Show, Generic, NFData)
 
@@ -75,16 +82,12 @@ instance Hashable SomePath where
 newtype SomeDirPath = SomeDirPath Text
   deriving (Show, Eq, Ord, Generic)
   deriving anyclass (NFData) -- explicitly use DeriveAnyClass strategy to avoid deriving-defaults warning.
+  deriving newtype (Hashable)
 
 newtype SomeFilePath = SomeFilePath Text
   deriving (Show, Eq, Ord, Generic)
   deriving anyclass (NFData) -- explicitly use DeriveAnyClass strategy to avoid deriving-defaults warning.
-
-instance Hashable SomeDirPath where
-  hash (SomeDirPath dir) = hash dir
-
-instance Hashable SomeFilePath where
-  hash (SomeFilePath file) = hash file
+  deriving newtype (Hashable)
 
 toSomePath :: Text -> SomePath
 toSomePath c =
@@ -129,20 +132,14 @@ lookupFileRef t fsTree = fromMaybe Nothing (f $ toSomePath t)
 -- If directory does not exist, returns Nothing;
 -- If directory is empty, returns Empty Set;
 lookupDir :: forall a. Text -> SomeFileTree a -> Maybe (Set Text)
-lookupDir t fsTree =
-  case f path of
-    Left _ -> Nothing
-    Right subDirs -> do
-      case subDirs of
-        Nothing -> Just Set.empty
-        Just setPaths -> Just $ Set.map somePathToText setPaths
+lookupDir t fsTree = (Set.map somePathToText) <$> f path
   where
     path :: SomePath
     path = if t == fixedVfsRoot then SomeDir $ SomeDirPath fixedVfsRoot else toSomePath t
 
-    f :: SomePath -> Either (Maybe a) (Maybe (Set SomePath))
-    f (SomeDir dir) = Right $ H.lookup dir (directories fsTree)
-    f _ = Left Nothing
+    f :: SomePath -> Maybe (Set SomePath)
+    f (SomeDir dir) = H.lookup dir (directories fsTree)
+    f _ = Nothing
 
 -- | Removes suffix '/' if any.
 withoutSuffixSlash :: Text -> Text
@@ -250,7 +247,7 @@ remove (SomeDir dirPath) tree = SomeFileTree (H.delete dir $ paths fsWithoutSubP
     subPathsRemoved :: SomeFileTree a
     subPathsRemoved = case subPathListing of
       Nothing -> tree
-      Just subPathsToRemove -> foldr' remove tree subPathsToRemove
+      Just subPathsToRemove -> foldl' (flip remove) tree subPathsToRemove
 
     -- Removed from Parent's sub dir listing.
     rmdFromParentSubDirListing :: HashMap SomeDirPath (Set SomePath)

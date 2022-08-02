@@ -633,4 +633,8 @@ benchmark bench
     , spectrometer
     , tasty-bench
 
+  -- Although this is not 1:1 representative of build profile
+  -- It provides comparable benchamark for evalauting different
+  -- implementation. Refer to tasty-bench documentation, for
+  -- use of rtsopts=-A32m, and --nonmoving-gc.
   ghc-options:    "-with-rtsopts=-A32m --nonmoving-gc"

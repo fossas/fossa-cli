@@ -71,6 +71,10 @@ import Effect.ReadFS (
   catchingIO,
  )
 import Path (Abs, Dir, File, SomeBase (..))
+
+-- We use internal module, as we cannot use parse_B_T (e.g. parseAbsFile), etc. to craft
+-- Path b t, since tarball paths are not representative of POSIX, or windows
+-- and such, parse__B_T is not useful.
 import Path.Internal (Path (Path))
 import System.IO (IOMode (ReadMode), withFile)
 

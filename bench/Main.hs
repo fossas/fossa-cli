@@ -6,7 +6,7 @@ import Data.FileTree.IndexFileTree (
   insert,
   toSomePath,
  )
-import Data.Foldable (Foldable (foldr'))
+import Data.Foldable (Foldable (foldl'))
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -36,4 +36,4 @@ rmLeadingSlash :: Text -> Text
 rmLeadingSlash t = fromMaybe t $ Text.stripPrefix "/" t
 
 mkTree :: [Text] -> (SomeFileTree Int)
-mkTree = foldr' (\p tree -> insert (toSomePath p) Nothing tree) empty
+mkTree items = foldl' (\tree p -> insert (toSomePath p) Nothing tree) empty items
