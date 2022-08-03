@@ -11,7 +11,7 @@ import Control.Carrier.Stack (StackC, runStack)
 import Data.FileTree.IndexFileTree (SomeFileTree, empty, insert, toSomePath)
 import Data.Text (Text)
 import Effect.Logger (IgnoreLoggerC, ignoreLogger)
-import Effect.ReadFS (ReadFSIOC, listDir, readContentsText)
+import Effect.ReadFS (ReadFSIOC, listDir, readContentsText, resolveDir, resolveFile)
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Path.IO qualified as PIO
 import Path.Internal (Path (..))
@@ -60,6 +60,18 @@ spec = do
 
       listedDirs `shouldMatchList'` [Path "logs-archive/jan/", Path "logs-archive/feb/"]
       listedFiles `shouldMatchList'` [Path "logs-archive/last.txt"]
+
+  describe "resolveFile" $
+    it' "should resolve file" $ do
+      let logsArchive :: Path Abs Dir = Path "logs-archive/"
+      resolvedFile <- resolveFile logsArchive "last.txt"
+      resolvedFile `shouldBe'` Path "logs-archive/last.txt"
+
+  describe "resolveDir" $
+    it' "should resolve directory" $ do
+      let logsArchive :: Path Abs Dir = Path "logs-archive/"
+      resolvedDir <- resolveDir logsArchive "jan"
+      resolvedDir `shouldBe'` Path "logs-archive/jan/"
   where
     itEff :: Path Abs File -> String -> EffStack () -> SpecWith ()
     itEff tarFile msg = it msg . (runWithTarFsEff tarFile minimalTarFsTree)
