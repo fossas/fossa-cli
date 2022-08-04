@@ -226,6 +226,7 @@ library
     App.Version.TH
     Console.Sticky
     Container.Docker.Manifest
+    Container.Dpkg
     Container.Errors
     Container.OsRelease
     Container.Tarball
@@ -488,6 +489,7 @@ test-suite unit-tests
     Container.Docker.ManifestSpec
     Container.OsReleaseSpec
     Container.TarballSpec
+    Container.DpkgSpec
     Control.Carrier.DiagnosticsSpec
     Control.Carrier.TelemetrySpec
     Control.TimeoutSpec
