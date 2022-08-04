@@ -3,7 +3,7 @@
 module Container.Dpkg (
   analyzeDpkgEntries,
   analyzeDpkgEntriesScoped,
-  DpkgEntry,
+  DpkgEntry (..),
 ) where
 
 import Control.Algebra (Has)
