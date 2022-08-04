@@ -487,9 +487,9 @@ test-suite unit-tests
     Conda.CondaListSpec
     Conda.EnvironmentYmlSpec
     Container.Docker.ManifestSpec
+    Container.DpkgSpec
     Container.OsReleaseSpec
     Container.TarballSpec
-    Container.DpkgSpec
     Control.Carrier.DiagnosticsSpec
     Control.Carrier.TelemetrySpec
     Control.TimeoutSpec
