@@ -6,7 +6,7 @@ module Container.Dpkg (
   DpkgEntry (..),
 ) where
 
-import App.Fossa.VSI.DynLinked.Util (runningLinux)
+import App.Fossa.VSI.DynLinked.Util (fsRoot, runningLinux)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import Data.Map qualified as Map
@@ -16,7 +16,7 @@ import Effect.ReadFS (
   ReadFS,
   readContentsParser,
  )
-import Path (Abs, Dir, Path, mkAbsDir, mkRelDir, mkRelFile, (</>))
+import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Text.Megaparsec (
   MonadParsec (notFollowedBy, takeWhileP),
   Parsec,
@@ -39,7 +39,7 @@ data DpkgEntry = DpkgEntry
 -- | Analyze dpkg entries from the root of the file system.
 -- Searches for: @var/lib/dpkg/{status|status.d}@ from the root of the file system.
 analyzeDpkgEntries :: (Has ReadFS sig m, Has Diagnostics sig m) => m ([DpkgEntry])
-analyzeDpkgEntries = analyzeDpkgEntriesScoped $(mkAbsDir "/")
+analyzeDpkgEntries = analyzeDpkgEntriesScoped fsRoot
 
 -- | Analyze dpkg entries from the provided root.
 -- Searches for: @var/lib/dpkg/{status|status.d}@ from the provided directory.
