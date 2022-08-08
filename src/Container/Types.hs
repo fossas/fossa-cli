@@ -18,7 +18,7 @@ import Codec.Archive.Tar.Index (TarEntryOffset)
 import Control.DeepSeq (NFData)
 import Data.Aeson (object)
 import Data.Aeson.Types (ToJSON, toJSON, (.=))
-import Data.Foldable (fold)
+import Data.Foldable (foldl')
 import Data.List.NonEmpty as NonEmpty (NonEmpty, head, tail)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
@@ -44,14 +44,13 @@ data ContainerLayer = ContainerLayer
   deriving (Show, Eq, Generic, NFData)
 
 otherLayersSquashed :: ContainerImageRaw -> ContainerLayer
-otherLayersSquashed containerImage = fold $! restOfLayers
+otherLayersSquashed containerImage = foldl' (<>) mempty restOfLayers
   where
     restOfLayers :: [ContainerLayer]
     restOfLayers = NonEmpty.tail (layers containerImage)
 
 instance Semigroup ContainerLayer where
-  ContainerLayer lhs _ _ <> ContainerLayer rhs offset digest =
-    ContainerLayer (lhs <> rhs) offset digest
+  ContainerLayer lhs _ _ <> ContainerLayer rhs offset digest = ContainerLayer (lhs <> rhs) offset digest
 
 instance Monoid ContainerLayer where
   mempty = ContainerLayer Seq.empty 0 mempty
