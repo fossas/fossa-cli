@@ -65,7 +65,7 @@ import Effect.Logger (
  )
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, File, Path, toFilePath)
-import Path.Internal.Posix (Path (Path))
+import Path.Internal (Path (Path))
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (SourceUnit)
 import Strategy.ApkDatabase qualified as Apk
