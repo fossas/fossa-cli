@@ -89,21 +89,26 @@ analyzeExportedTarball tarball = do
   let imageDigest = rawDigest image
 
   -- Analyze Base Layer
+  logInfo "Analyzing Base Layer"
   let baseFs = mkFsFromChangeset $ baseLayer image
   let baseDigest = layerDigest . baseLayer $ image
   osInfo <-
     context "Retrieving Os Information" $
       runTarballReadFSIO baseFs tarball getOsInfo
   baseUnits <-
-    context "Analyzing Base Layer" $
+    context "Analyzing From Base Layer" $
       analyzeLayer capabilities osInfo baseFs tarball
 
   -- Analyze Rest of Layers
-  let squashedFs = mkFsFromChangeset $ otherLayersSquashed image
+  logInfo "Analyzing Other Layers"
   let squashedDigest = layerDigest . otherLayersSquashed $ image
   otherUnits <-
-    context "Analyzing Other Layers" $
-      analyzeLayer capabilities osInfo squashedFs tarball
+    context "Squashing all non-base layer for analysis" $
+      analyzeLayer
+        capabilities
+        osInfo
+        (mkFsFromChangeset $ otherLayersSquashed image)
+        tarball
 
   pure $
     ContainerScan
