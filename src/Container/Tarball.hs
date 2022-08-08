@@ -1,4 +1,7 @@
 module Container.Tarball (
+  parse,
+  mkFsFromChangeset,
+
   -- * for testing
   TarEntries (..),
   removeWhiteOut,
@@ -14,27 +17,26 @@ import Codec.Archive.Tar (
   EntryContent (NormalFile, SymbolicLink),
  )
 import Codec.Archive.Tar qualified as Tar
-import Codec.Archive.Tar.Entry (Entry (entryTarPath), TarPath, fromTarPathToPosixPath)
+import Codec.Archive.Tar.Entry (Entry (entryTarPath), TarPath, entryPath, fromTarPathToPosixPath)
 import Codec.Archive.Tar.Entry qualified as TarEntry
 import Codec.Archive.Tar.Index (TarEntryOffset, nextEntryOffset)
-import Container.Errors (
-  ContainerImgParsingError (
-    ContainerNoLayersDiscovered,
-    TarLayerNotAFile,
-    TarMissingLayerTar,
-    TarParserError
-  ),
- )
+import Container.Docker.ImageJson (ImageJson, decodeImageJson, getLayerIds)
+import Container.Docker.Manifest (ManifestJson (..), decodeManifestJson, getImageDigest, getImageJsonConfigFilePath, getLayerPaths, manifestFilename)
+import Container.Errors (ContainerImgParsingError (..))
 import Container.Types (
   ContainerFSChangeSet (InsertOrUpdate, Whiteout),
   ContainerImageRaw (ContainerImageRaw),
   ContainerLayer (
     ContainerLayer,
     lastOffset,
-    layerChangeSets
+    layerChangeSets,
+    layerDigest
   ),
  )
+import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.Either (lefts, rights)
+import Data.FileTree.IndexFileTree (SomeFileTree, empty, insert, remove, toSomePath)
+import Data.Foldable (foldl')
 import Data.List.NonEmpty qualified as NLE
 import Data.Sequence (Seq, ViewL (EmptyL, (:<)), viewl, (|>))
 import Data.Sequence qualified as Seq
@@ -48,6 +50,42 @@ data TarEntries = TarEntries
   , prevOffset :: TarEntryOffset
   }
   deriving (Show)
+
+-- | Parses Container Image from Tarball Byte string.
+parse :: ByteStringLazy.ByteString -> Either (NLE.NonEmpty ContainerImgParsingError) ContainerImageRaw
+parse content = case mkEntries $ Tar.read content of
+  Left err -> Left $ NLE.singleton err
+  Right te -> do
+    case getManifest te of
+      Left err -> Left $ NLE.singleton err
+      Right manifest -> do
+        case getImageJson (getImageJsonConfigFilePath manifest) te of
+          Left err -> Left $ NLE.singleton err
+          Right imgJson -> mkImage (getImageDigest manifest) imgJson te (getLayerPaths manifest)
+  where
+    getManifest :: TarEntries -> Either ContainerImgParsingError ManifestJson
+    getManifest te = parseManifest =<< getFileContent te (toString manifestFilename)
+
+    parseManifest :: ByteStringLazy.ByteString -> Either ContainerImgParsingError ManifestJson
+    parseManifest bs = case decodeManifestJson bs of
+      Left err -> Left $ ManifestJsonParsingFailed err
+      Right manifest -> Right manifest
+
+    getImageJson :: Text -> TarEntries -> Either ContainerImgParsingError ImageJson
+    getImageJson imgJsonFp te = parseImageJson =<< getFileContent te (toString imgJsonFp)
+
+    parseImageJson :: ByteStringLazy.ByteString -> Either ContainerImgParsingError ImageJson
+    parseImageJson bs = case decodeImageJson bs of
+      Left err -> Left $ ManifestJsonParsingFailed err
+      Right imgJson -> Right imgJson
+
+    getFileContent :: TarEntries -> FilePath -> Either ContainerImgParsingError ByteStringLazy.ByteString
+    getFileContent (TarEntries te _) filepath =
+      case viewl $ Seq.filter (\(t, _) -> entryPath t == filepath && isFile t) te of
+        EmptyL -> Left $ TarballFileNotFound filepath
+        (manifestEntryOffset :< _) -> case entryContent $ fst manifestEntryOffset of
+          (NormalFile c _) -> Right c
+          _ -> Left $ TarballFileNotFound filepath
 
 mkEntries ::
   Tar.Entries Tar.FormatError ->
@@ -67,14 +105,16 @@ mkEntries = build (TarEntries mempty 0)
         }
 
 mkImage ::
+  Text ->
+  ImageJson ->
   TarEntries ->
   NLE.NonEmpty FilePath ->
   Either (NLE.NonEmpty ContainerImgParsingError) ContainerImageRaw
-mkImage entries layerTarballPaths =
+mkImage imgDigest imgJson entries layerTarballPaths =
   case (errs, parsedLayers) of
     ((e : es), _) -> Left $ e NLE.:| es
     (_, []) -> Left $ NLE.singleton ContainerNoLayersDiscovered
-    (_, (l : ls)) -> Right . ContainerImageRaw $ l NLE.:| ls
+    (_, (l : ls)) -> Right $ ContainerImageRaw (l NLE.:| ls) imgDigest
   where
     errs :: [ContainerImgParsingError]
     errs = lefts layers
@@ -83,16 +123,16 @@ mkImage entries layerTarballPaths =
     parsedLayers = rights layers
 
     layers :: [Either ContainerImgParsingError ContainerLayer]
-    layers = NLE.toList $ NLE.map (mkLayer entries) layerTarballPaths
+    layers = zipWith (curry $ mkLayer entries) (getLayerIds imgJson) (NLE.toList layerTarballPaths)
 
-mkLayer :: TarEntries -> FilePath -> Either ContainerImgParsingError ContainerLayer
-mkLayer (TarEntries entries _) layerTarball =
+mkLayer :: TarEntries -> (Text, FilePath) -> Either ContainerImgParsingError ContainerLayer
+mkLayer (TarEntries entries _) (layerId, layerTarball) =
   case viewl $ Seq.filter (\(t, _) -> (filePathOf . entryTarPath) t == layerTarball && isFile t) entries of
     EmptyL -> Left $ TarMissingLayerTar layerTarball
     (layerTarballEntry :< _) -> case entryContent $ fst layerTarballEntry of
       (NormalFile c _) -> do
         let rawEntries = Tar.read c
-        case mkLayerFromOffset (snd layerTarballEntry) rawEntries of
+        case mkLayerFromOffset layerId (snd layerTarballEntry) rawEntries of
           Left err -> Left err
           Right layer -> Right layer
 
@@ -101,10 +141,11 @@ mkLayer (TarEntries entries _) layerTarball =
       _ -> Left $ TarLayerNotAFile layerTarball
 
 mkLayerFromOffset ::
+  Text ->
   TarEntryOffset ->
   Tar.Entries Tar.FormatError ->
   Either ContainerImgParsingError ContainerLayer
-mkLayerFromOffset imgOffset = build (ContainerLayer mempty 0)
+mkLayerFromOffset layerId imgOffset = build (ContainerLayer mempty 0 layerId)
   where
     build builder (Tar.Next e es) = build (addNextChangeSet imgOffset e builder) es
     build builder Tar.Done = Right builder
@@ -115,6 +156,7 @@ mkLayerFromOffset imgOffset = build (ContainerLayer mempty 0)
       ContainerLayer
         { layerChangeSets = updateChangeSet offset entry containerLayer
         , lastOffset = nextEntryOffset entry (lastOffset containerLayer)
+        , layerDigest = layerId
         }
 
     updateChangeSet :: TarEntryOffset -> Tar.Entry -> ContainerLayer -> Seq ContainerFSChangeSet
@@ -136,6 +178,13 @@ mkLayerFromOffset imgOffset = build (ContainerLayer mempty 0)
       if isWhiteOut $ filePathOf tarPath
         then Whiteout (removeWhiteOut . filePathOf $ tarPath)
         else InsertOrUpdate (filePathOf tarPath) offset
+
+mkFsFromChangeset :: ContainerLayer -> SomeFileTree TarEntryOffset
+mkFsFromChangeset (ContainerLayer changeSet _ _) = foldl' (flip applyChangeSet) empty changeSet
+  where
+    applyChangeSet :: ContainerFSChangeSet -> SomeFileTree TarEntryOffset -> SomeFileTree TarEntryOffset
+    applyChangeSet (InsertOrUpdate path offset) tree = insert (toSomePath . toText $ path) (Just offset) tree
+    applyChangeSet (Whiteout path) tree = remove (toSomePath . toText $ path) tree
 
 -- | True if tar entry is for a file or a symlink, otherwise False
 isFileOrSymLink :: Tar.Entry -> Bool

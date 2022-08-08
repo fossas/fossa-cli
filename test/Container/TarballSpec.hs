@@ -5,6 +5,7 @@ module Container.TarballSpec (
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Tar.Entry (Entry (entryTarPath), fromTarPathToPosixPath)
 import Codec.Archive.Tar.Index (TarEntryOffset)
+import Container.Docker.ImageJson (ImageJson (ImageJson), ImageJsonRootFs (ImageJsonRootFs))
 import Container.Tarball (
   TarEntries (TarEntries),
   mkEntries,
@@ -108,6 +109,20 @@ mkEntriesSpec = do
                        , ("repositories", 11588)
                        ]
 
+mockImageJson :: ImageJson
+mockImageJson =
+  ImageJson . ImageJsonRootFs $
+    NLE.fromList
+      [ "sha256:b541d28bf3b491aeb424c61353c8c92476ecc2cd603a6c09ee5c2708f1a4b258"
+      , "sha256:690b9450535c0e7db4f6a9f41a15e3260abfec49d0430f4a853185d15af89f20"
+      , "sha256:3859b16f69447c6a8e59659d7d6e629dba1c5a87dba6b9374fad0e1d98ede98d"
+      , "sha256:80169933fb42b41773031cab68d4688c96dd69e094507a8fe8b74e253f047648"
+      , "sha256:1ed3dd0e0a49ff255a219191ea3bfffa1e3d5ff99647b732923237e87d548cce"
+      , "sha256:f362a8928301b2ba83eb44d9e729c8f9cdabce2049b14f164637ae6fffbb8800"
+      , "sha256:33552eb17ad8ae902c15a8037e0fe69c85bc8c1af6c3bbc7258f41feafb2e082"
+      , "sha256:3892250d356b09c234bb80bd28a6a2aad35e0049be30391d5bff03c2674be3d2"
+      ]
+
 mkImageSpec :: Spec
 mkImageSpec = do
   tarFile <- runIO $ Tar.read <$> ByteStringLazy.readFile exampleImg
@@ -117,7 +132,7 @@ mkImageSpec = do
       case mkEntries tarFile of
         Left err -> expectationFailure (show err)
         Right entries -> do
-          case (mkImage entries exampleImgLayers) of
+          case (mkImage mempty mockImageJson entries exampleImgLayers) of
             Left errs -> expectationFailure (show errs)
             Right img ->
               toChangeSets img
@@ -167,4 +182,4 @@ tarEntriesToPathsOffset :: TarEntries -> [(FilePath, TarEntryOffset)]
 tarEntriesToPathsOffset (TarEntries entries _) = map (first $ fromTarPathToPosixPath . entryTarPath) $ toList entries
 
 toChangeSets :: ContainerImageRaw -> [[ContainerFSChangeSet]]
-toChangeSets (ContainerImageRaw layers) = map (toList . layerChangeSets) (toList layers)
+toChangeSets (ContainerImageRaw layers _) = map (toList . layerChangeSets) (toList layers)

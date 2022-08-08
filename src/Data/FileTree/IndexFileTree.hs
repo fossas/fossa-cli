@@ -114,7 +114,7 @@ doesFileExist t fsTree = f $ toSomePath t
 
 -- | Returns True if Dir Exists, Otherwise False.
 doesDirExist :: forall a. Text -> SomeFileTree a -> Bool
-doesDirExist t fsTree = (t == fixedVfsRoot) || f (toSomePath t)
+doesDirExist t fsTree = (t == fixedVfsRoot <> "/") || f (toSomePath t)
   where
     f :: SomePath -> Bool
     f (SomeDir dir) = isJust $ H.lookup (SomeDir dir) (paths fsTree)

@@ -8,6 +8,7 @@ module App.Fossa.Analyze (
   analyzeSubCommand,
 
   -- * Helpers
+  toProjectResult,
   applyFiltersToProject,
 ) where
 

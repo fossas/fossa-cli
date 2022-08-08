@@ -62,6 +62,7 @@ module Container.OsRelease (
 
 import Control.Effect.Diagnostics (Diagnostics, fatal, (<||>))
 import Control.Monad (void)
+import Data.Aeson (ToJSON)
 import Data.Foldable (asum)
 import Data.Map qualified as Map
 import Data.SemVer qualified as SemVer
@@ -77,6 +78,7 @@ import Effect.ReadFS (
   readContentsBS,
   readContentsParser,
  )
+import GHC.Generics (Generic)
 import Path (Abs, File)
 import Path.Internal (Path (Path))
 import Text.Megaparsec (
@@ -116,7 +118,9 @@ data OsInfo = OsInfo
   { nameId :: Text -- name identifier, e.g. alpine
   , version :: Text -- version identifier e.g. 3.1.4
   }
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq, Generic)
+
+instance ToJSON OsInfo
 
 getOsInfo :: (Has ReadFS sig m, Has Diagnostics sig m) => m OsInfo
 getOsInfo = parseEtcOsRelease <||> parseSystemReleaseCpe <||> parseBinBusyBox

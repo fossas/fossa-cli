@@ -24,6 +24,7 @@ import Control.Effect.Diagnostics (
   fromEitherShow,
  )
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Telemetry (Telemetry)
 import Data.Aeson (FromJSON (parseJSON), Value, encode)
 import Data.Aeson.Types (parseEither)
 import Data.ByteString.Lazy qualified as BL
@@ -46,6 +47,7 @@ dispatch ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   ContainerScanConfig ->
   m ()

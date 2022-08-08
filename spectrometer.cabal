@@ -227,6 +227,7 @@ library
     App.Version
     App.Version.TH
     Console.Sticky
+    Container.Docker.ImageJson
     Container.Docker.Manifest
     Container.Errors
     Container.OsRelease
