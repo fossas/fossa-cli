@@ -40,7 +40,7 @@ data ContainerImageSource
   deriving (Show, Eq)
 
 debugBundlePath :: FilePath
-debugBundlePath = "fossa.container.debug.json.gz"
+debugBundlePath = "fossa.debug.json.gz"
 
 analyzeExperimental ::
   ( Has Diagnostics sig m
@@ -81,7 +81,7 @@ analyze cfg = do
 
   case scanDestination cfg of
     OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode scannedImage
-    UploadScan _ _ -> fatalText "experimental scanner does not allow to submit projects"
+    UploadScan _ _ -> fatalText "experimental scanner does not allow to submit projects to fossa yet!"
 
 parseContainerImageSource ::
   ( Has (Lift IO) sig m

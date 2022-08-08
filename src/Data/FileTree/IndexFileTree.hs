@@ -10,6 +10,7 @@ module Data.FileTree.IndexFileTree (
   lookupFileRef,
   lookupDir,
   resolveSymLinkRef,
+  fixedVfsRoot,
 
   -- * modifiers
   insert,

@@ -39,7 +39,7 @@ import Control.Carrier.TaskPool (withTaskPool)
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.AtomicCounter (AtomicCounter)
 import Control.Effect.Debug (Debug)
-import Control.Effect.Diagnostics (Diagnostics, fromEither)
+import Control.Effect.Diagnostics (Diagnostics, context, fromEither)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Output (Output)
 import Control.Effect.Reader (Reader)
@@ -47,7 +47,7 @@ import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.TaskPool (TaskPool)
 import Control.Effect.Telemetry (Telemetry)
 import Data.ByteString.Lazy qualified as BS
-import Data.FileTree.IndexFileTree (SomeFileTree)
+import Data.FileTree.IndexFileTree (SomeFileTree, fixedVfsRoot)
 import Data.Foldable (traverse_)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToString (toString))
@@ -71,6 +71,7 @@ import Srclib.Types (SourceUnit)
 import Strategy.ApkDatabase qualified as Apk
 import Types (DiscoveredProject (..))
 
+-- | Analyzes Docker Image from Exported Tarball Source.
 analyzeExportedTarball ::
   ( Has Diagnostics sig m
   , Has Exec sig m
@@ -82,28 +83,38 @@ analyzeExportedTarball ::
   Path Abs File ->
   m ContainerScan
 analyzeExportedTarball tarball = do
-  containerTarball <- sendIO $ BS.readFile (toString tarball)
-  containerImage <- fromEither $ parse containerTarball
-
-  let baseFs = mkFsFromChangeset $ baseLayer containerImage
-  let squashedFs = mkFsFromChangeset $ otherLayersSquashed containerImage
-
-  osInfo <- runTarballReadFSIO baseFs tarball getOsInfo
   capabilities <- sendIO getNumCapabilities
+  containerTarball <- sendIO . BS.readFile $ toString tarball
+  image <- fromEither $ parse containerTarball
+  let imageDigest = rawDigest image
 
-  baseUnits <- analyzeLayer capabilities osInfo baseFs tarball
-  otherUnits <- analyzeLayer capabilities osInfo squashedFs tarball
+  -- Analyze Base Layer
+  let baseFs = mkFsFromChangeset $ baseLayer image
+  let baseDigest = layerDigest . baseLayer $ image
+  osInfo <-
+    context "Retrieving Os Information" $
+      runTarballReadFSIO baseFs tarball getOsInfo
+  baseUnits <-
+    context "Analyzing Base Layer" $
+      analyzeLayer capabilities osInfo baseFs tarball
+
+  -- Analyze Rest of Layers
+  let squashedFs = mkFsFromChangeset $ otherLayersSquashed image
+  let squashedDigest = layerDigest . otherLayersSquashed $ image
+  otherUnits <-
+    context "Analyzing Other Layers" $
+      analyzeLayer capabilities osInfo squashedFs tarball
 
   pure $
     ContainerScan
       ( ContainerScanImage
           (nameId osInfo)
           (version osInfo)
-          [ ContainerScanImageLayer (layerDigest . baseLayer $ containerImage) baseUnits
-          , ContainerScanImageLayer (layerDigest . otherLayersSquashed $ containerImage) otherUnits
+          [ ContainerScanImageLayer baseDigest baseUnits
+          , ContainerScanImageLayer squashedDigest otherUnits
           ]
       )
-      (rawDigest containerImage)
+      imageDigest
 
 analyzeLayer ::
   ( Has Diagnostics sig m
@@ -119,14 +130,13 @@ analyzeLayer ::
   Path Abs File ->
   m [SourceUnit]
 analyzeLayer capabilities osInfo layerFs tarball =
-  map (Srclib.toSourceUnit False)
+  map (Srclib.toSourceUnit noUnusedDeps)
     . mapMaybe toProjectResult
-    <$> runReader
-      (mempty :: AllFilters)
+    <$> (runReader noFilters)
       ( do
           (projectResults, ()) <-
-            runTarballReadFSIO (layerFs) tarball
-              . runReader (ExperimentalAnalyzeConfig Nothing)
+            runTarballReadFSIO layerFs tarball
+              . runReader noExperimental
               . Diag.context "discovery/analysis tasks"
               . runOutput @DiscoveredProjectScan
               . runStickyLogger SevInfo
@@ -134,9 +144,18 @@ analyzeLayer capabilities osInfo layerFs tarball =
               . withTaskPool capabilities updateProgress
               . runAtomicCounter
               $ do
-                runAnalyzers osInfo mempty
+                runAnalyzers osInfo noFilters
           pure projectResults
       )
+  where
+    noExperimental :: ExperimentalAnalyzeConfig
+    noExperimental = ExperimentalAnalyzeConfig Nothing
+
+    noUnusedDeps :: Bool
+    noUnusedDeps = False
+
+    noFilters :: AllFilters
+    noFilters = mempty
 
 runAnalyzers ::
   ( AnalyzeTaskEffs sig m
@@ -154,7 +173,7 @@ runAnalyzers osInfo filters = do
     ]
   where
     single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters)
-    basedir = Path "vfs-root"
+    basedir = Path $ toString fixedVfsRoot
 
 runDependencyAnalysis ::
   ( AnalyzeProject proj

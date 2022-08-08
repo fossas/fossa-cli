@@ -74,5 +74,7 @@ decodeManifestJson = eitherDecode
 getImageJsonConfigFilePath :: ManifestJson -> Text
 getImageJsonConfigFilePath (ManifestJson mjEntries) = config $ NonEmpty.head mjEntries
 
+-- | Gets the image digest.
+-- Exported docker ball's config filename is digest of the image.
 getImageDigest :: ManifestJson -> Text
 getImageDigest mj = "sha256:" <> Text.replace ".json" "" (getImageJsonConfigFilePath mj)

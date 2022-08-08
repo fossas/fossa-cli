@@ -490,6 +490,7 @@ test-suite unit-tests
     Composer.ComposerLockSpec
     Conda.CondaListSpec
     Conda.EnvironmentYmlSpec
+    Container.Docker.ImageJsonSpec
     Container.Docker.ManifestSpec
     Container.OsReleaseSpec
     Container.TarballReadFSSpec

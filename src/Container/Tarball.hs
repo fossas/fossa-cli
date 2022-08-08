@@ -56,9 +56,13 @@ parse :: ByteStringLazy.ByteString -> Either (NLE.NonEmpty ContainerImgParsingEr
 parse content = case mkEntries $ Tar.read content of
   Left err -> Left $ NLE.singleton err
   Right te -> do
+    -- Exported docker image must have
+    -- manifest file
     case getManifest te of
       Left err -> Left $ NLE.singleton err
       Right manifest -> do
+        -- Use manifest to get image config which has
+        -- layer and image hash
         case getImageJson (getImageJsonConfigFilePath manifest) te of
           Left err -> Left $ NLE.singleton err
           Right imgJson -> mkImage (getImageDigest manifest) imgJson te (getLayerPaths manifest)

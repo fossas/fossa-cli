@@ -23,6 +23,8 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 
 -- | Image Description Json.
+-- Refer to: https://github.com/moby/moby/blob/master/image/spec/v1.2.md#image-json-description
+-- Refer to: https://github.com/moby/moby/blob/master/image/spec/v1.1.md#image-json-description
 newtype ImageJson = ImageJson ImageJsonRootFs
   deriving (Show, Eq, Ord, Generic)
   deriving anyclass (NFData) -- explicitly use DeriveAnyClass strategy to avoid deriving-defaults warning.
@@ -48,5 +50,6 @@ instance FromJSON ImageJsonRootFs where
 decodeImageJson :: ByteStringLazy.ByteString -> Either String ImageJson
 decodeImageJson = eitherDecode
 
+-- | Gets all layer Ids.
 getLayerIds :: ImageJson -> [Text]
 getLayerIds (ImageJson (ImageJsonRootFs diffIds)) = NonEmpty.toList diffIds
