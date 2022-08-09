@@ -33,7 +33,7 @@ import Data.Text qualified as Text
 import Discovery.Archive (withArchive')
 import Discovery.Filters (AllFilters, combinedPaths, excludeFilters, includeFilters)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk)
-import Effect.Logger (Color (..), Logger, Severity (SevError, SevInfo, SevWarn), annotate, color, logDebug, logInfo, plural, pretty)
+import Effect.Logger (Color (..), Logger, Severity (SevError, SevInfo, SevWarn), annotate, color, hsep, logDebug, logInfo, plural, pretty)
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (Abs, Rel), isProperPrefixOf, toFilePath, (</>))
 import Path qualified as P
@@ -53,7 +53,9 @@ runVsiAnalysis ::
   AllFilters ->
   m ([VSI.Locator], [IAT.UserDep])
 runVsiAnalysis dir projectRevision filters = context "VSI" $ do
-  capabilities <- sendIO getNumCapabilities
+  -- If we try to run with fewer than 2 capabilities, STM will deadlock
+  capabilities <- max 2 <$> sendIO getNumCapabilities
+  logDebug $ hsep ["Running with capabilites:", pretty capabilities]
 
   scanID <- context "Create scan in backend" $ createVsiScan projectRevision
   logInfo . pretty $ "Created Scan ID: " <> unScanID scanID
