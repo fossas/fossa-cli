@@ -30,7 +30,7 @@ newtype ImageJson = ImageJson ImageJsonRootFs
   deriving anyclass (NFData) -- explicitly use DeriveAnyClass strategy to avoid deriving-defaults warning.
 
 instance FromJSON ImageJson where
-  parseJSON = withObject "" $ \o ->
+  parseJSON = withObject "image json" $ \o ->
     ImageJson <$> o .: "rootfs"
 
 newtype ImageJsonRootFs = ImageJsonRootFs {diffIds :: NonEmpty.NonEmpty Text}
@@ -38,7 +38,7 @@ newtype ImageJsonRootFs = ImageJsonRootFs {diffIds :: NonEmpty.NonEmpty Text}
   deriving anyclass (NFData) -- explicitly use DeriveAnyClass strategy to avoid deriving-defaults warning.
 
 instance FromJSON ImageJsonRootFs where
-  parseJSON = withObject "" $ \o -> do
+  parseJSON = withObject "root fs" $ \o -> do
     diffIds <- o .: "diff_ids"
     diffType <- o .: "type"
     when (diffType /= "layers") $

@@ -159,6 +159,7 @@ analyzeLayer capabilities osInfo layerFs tarball =
     noUnusedDeps :: Bool
     noUnusedDeps = False
 
+    -- TODO: Implement filters from .fossa.yml file
     noFilters :: AllFilters
     noFilters = mempty
 

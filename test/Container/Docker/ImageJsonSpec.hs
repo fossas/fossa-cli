@@ -17,5 +17,5 @@ spec :: Spec
 spec = do
   describe "Docker Image Description Json" $
     it "should parse image description json" $ do
-      manifest <- decodeFileStrict' "test/Container/Docker/testdata/config.json"
-      manifest `shouldBe` Just expectedImageJson
+      imgJson <- decodeFileStrict' "test/Container/Docker/testdata/config.json"
+      imgJson `shouldBe` Just expectedImageJson
