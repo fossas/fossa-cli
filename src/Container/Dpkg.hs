@@ -11,12 +11,12 @@ module Container.Dpkg (
 import App.Fossa.VSI.DynLinked.Util (fsRoot, runningLinux)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
+import Control.Monad (void)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
-import Debug.Trace (trace)
 import Effect.ReadFS (
   ReadFS,
   readContentsParser,
@@ -26,14 +26,16 @@ import Text.Megaparsec (
   MonadParsec (eof, notFollowedBy, takeWhileP),
   Parsec,
   anySingle,
+  chunk,
   empty,
   many,
+  manyTill,
   single,
+  some,
   someTill,
   try,
   (<|>),
  )
-import Text.Megaparsec.Char (space1)
 import Text.Megaparsec.Char.Lexer (lexeme)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 
@@ -80,12 +82,8 @@ dpkgEntryParser = do
   let arch = Map.lookup "Architecture" properties
 
   case (package, version, arch) of
-    (Just package', Just version', Just arch') -> do
-      let entry = DpkgEntry arch' package' version'
-      pure $ trace ("Parsed entry: " <> show entry) entry
-    _ -> do
-      let failure = buildFailure package version arch
-      fail $ trace ("Failed entry: " <> failure) failure
+    (Just package', Just version', Just arch') -> pure $ DpkgEntry arch' package' version'
+    _ -> fail $ buildFailure package version arch
   where
     buildFailure :: Maybe Text -> Maybe Text -> Maybe Text -> String
     buildFailure package version arch =
@@ -98,12 +96,13 @@ dpkgEntryParser = do
         <> show arch
 
     -- Collect Key: Value pairs into a map.
+    -- Each entry is separated by a blank line.
     propertiesParser :: Parser (Map Text Text)
-    propertiesParser = Map.fromList <$> many (lexeme sc propertyParser)
+    propertiesParser = Map.fromList <$> manyTill (lexeme sc propertyParser) eov
 
     -- Collect Key: Value pairs into actual tuples.
     propertyParser :: Parser (Text, Text)
-    propertyParser = (,) <$> (keyParser <* symbol ":") <*> valueParser <* sc
+    propertyParser = (,) <$> (keyParser <* symbol ":") <*> valueParser
 
     -- Keys are easy: just parse anything up to the ':' literal.
     keyParser :: Parser Text
@@ -114,33 +113,16 @@ dpkgEntryParser = do
     -- but from observeration it appears that a single space indent is used
     -- to form a multi-line value, with intentionally blank lines consisting
     -- of a single literal dot after the space.
-    -- Given this, we first try to parse a single line, and if that fails
-    -- we try to parse a multiline. If that fails, fail the parse.
     valueParser :: Parser Text
-    valueParser = try singleLineValueParser <|> multiLineValueParser
+    valueParser = toText <$> someTill anySingle eov
 
-    -- A single line value is one that is terminated on a newline and is not
-    -- followed by a space on the next line.
-    -- This is not documented, and was simply observed- see valueParser for details.
-    singleLineValueParser :: Parser Text
-    singleLineValueParser = takeWhileP Nothing (/= '\n') <* single '\n' <* notFollowedBy (single ' ')
+    -- The end of a value: A newline not followed by a space, or the end of the input.
+    eov :: Parser ()
+    eov = try (void (chunk "\n") <* notFollowedBy (single ' ')) <|> eof
 
-    -- Parse and record anything until the end of this multiline value.
-    -- So far we don't actually use any of the multiline values, so no further processing
-    -- is performed, we just read them.
-    multiLineValueParser :: Parser Text
-    multiLineValueParser = do
-      parsed <- someTill anySingle eov
-      pure $ toText parsed
-
-    -- End of [multiline] value is reached when either a double newline is encountered,
-    -- or the end of the file is encountered.
-    -- This is not documented, and was simply observed- see valueParser for details.
-    eov :: Parser Text
-    eov = try $ (symbol "\n\n") <|> (eof >> "")
-
+-- | Consume spaces, not including newlines.
 sc :: Parser ()
-sc = Lexer.space space1 empty empty
+sc = Lexer.space (void $ some (single ' ' <|> single '\t')) empty empty
 
 -- | Parse for the provided symbol, then consume any trailing spaces.
 symbol :: Text -> Parser Text
