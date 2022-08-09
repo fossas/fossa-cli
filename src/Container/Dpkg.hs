@@ -8,7 +8,7 @@ module Container.Dpkg (
   dpkgEntryParser,
 ) where
 
-import App.Fossa.VSI.DynLinked.Util (fsRoot, runningLinux)
+import App.Fossa.VSI.DynLinked.Util (fsRoot)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import Control.Monad (void)
@@ -57,8 +57,7 @@ analyzeDpkgEntries = analyzeDpkgEntriesScoped fsRoot
 -- | Analyze dpkg entries from the provided root.
 -- Searches for: @var/lib/dpkg/{status|status.d}@ from the provided directory.
 analyzeDpkgEntriesScoped :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m ([DpkgEntry])
-analyzeDpkgEntriesScoped root | runningLinux = parseStatus root <||> parseStatusD root
-analyzeDpkgEntriesScoped _ = pure []
+analyzeDpkgEntriesScoped root = parseStatus root <||> parseStatusD root
 
 parseStatus :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m ([DpkgEntry])
 parseStatus root = readContentsParser dpkgEntriesParser $ dpkgStatusDir root </> $(mkRelFile "status")
