@@ -8,6 +8,9 @@ module App.Fossa.Container.Scan (
   extractRevision,
   SyftResponse,
   ContainerScan (..),
+
+  -- * Helpers
+  LayerTarget (..),
 ) where
 
 import App.Fossa.Config.Container.Common (ImageText (ImageText))

@@ -88,6 +88,7 @@ common deps
     , fused-effects-exceptions     ^>=1.1.0.0
     , git-config                   ^>=0.1.2
     , githash                      ^>=0.1.4.0
+    , hashable                     >=1.0.0.1
     , hedn                         ^>=0.3.0.1
     , http-client                  ^>=0.7.1
     , http-types                   ^>=0.12.3
@@ -181,6 +182,7 @@ library
     App.Fossa.Container.Analyze
     App.Fossa.Container.AnalyzeNative
     App.Fossa.Container.Scan
+    App.Fossa.Container.Sources.DockerTarball
     App.Fossa.Container.Test
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
@@ -225,11 +227,13 @@ library
     App.Version
     App.Version.TH
     Console.Sticky
+    Container.Docker.ImageJson
     Container.Docker.Manifest
     Container.Dpkg
     Container.Errors
     Container.OsRelease
     Container.Tarball
+    Container.TarballReadFs
     Container.Types
     Control.Carrier.AtomicCounter
     Control.Carrier.AtomicState
@@ -280,6 +284,7 @@ library
     Data.Aeson.Extra
     Data.Conduit.Extra
     Data.FileEmbed.Extra
+    Data.FileTree.IndexFileTree
     Data.Flag
     Data.Functor.Extra
     Data.Glob
@@ -486,9 +491,11 @@ test-suite unit-tests
     Composer.ComposerLockSpec
     Conda.CondaListSpec
     Conda.EnvironmentYmlSpec
+    Container.Docker.ImageJsonSpec
     Container.Docker.ManifestSpec
     Container.DpkgSpec
     Container.OsReleaseSpec
+    Container.TarballReadFSSpec
     Container.TarballSpec
     Control.Carrier.DiagnosticsSpec
     Control.Carrier.TelemetrySpec
@@ -496,6 +503,7 @@ test-suite unit-tests
     Dart.PubDepsSpec
     Dart.PubSpecLockSpec
     Dart.PubSpecSpec
+    Data.IndexFileTreeSpec
     Discovery.ArchiveSpec
     Discovery.FiltersSpec
     Discovery.WalkSpec
@@ -619,3 +627,19 @@ test-suite integration-tests
     , hspec-megaparsec                ^>=2.2
     , req-conduit                     ^>=1.0.1
     , spectrometer
+
+benchmark bench
+  import:         lang
+  import:         deps
+  hs-source-dirs: bench/
+  main-is:        Main.hs
+  type:           exitcode-stdio-1.0
+  build-depends:
+    , spectrometer
+    , tasty-bench
+
+  -- Although this is not 1:1 representative of build profile
+  -- It provides comparable benchamark for evalauting different
+  -- implementation. Refer to tasty-bench documentation, for
+  -- use of rtsopts=-A32m, and --nonmoving-gc.
+  ghc-options:    "-with-rtsopts=-A32m --nonmoving-gc"

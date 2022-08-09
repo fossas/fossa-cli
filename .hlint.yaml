@@ -52,7 +52,7 @@
   - {name: Data.Text.last, within: []}
     # TODO: remove special-case
   - {name: Data.List.NonEmpty.fromList, within: ["App.Fossa.Analyze.Filter", "Test.Fixtures", "**.*Spec"], message: "Pattern-match on nonEmpty instead of forcing the list."}
-  - {name: "Prelude.!!", within: []}
+  - {name: "Prelude.!!", within: ["**.*Spec"]}
   - {name: "Data.Map.!", within: []}
     # TODO: remove the need to special-case this test module.
   - {name: fromJust, within: [App.DocsSpec]}

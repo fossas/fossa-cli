@@ -9,6 +9,8 @@ module Container.Docker.Manifest (
   decodeManifestJson,
   getLayerPaths,
   manifestFilename,
+  getImageJsonConfigFilePath,
+  getImageDigest,
 ) where
 
 import Control.DeepSeq (NFData)
@@ -26,6 +28,7 @@ import Data.Aeson (
 import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text)
+import Data.Text qualified as Text
 import GHC.Generics (Generic)
 
 manifestFilename :: Text
@@ -67,3 +70,11 @@ getLayerPaths (ManifestJson mjEntries) = layers $ NonEmpty.head mjEntries
 
 decodeManifestJson :: ByteStringLazy.ByteString -> Either String ManifestJson
 decodeManifestJson = eitherDecode
+
+getImageJsonConfigFilePath :: ManifestJson -> Text
+getImageJsonConfigFilePath (ManifestJson mjEntries) = config $ NonEmpty.head mjEntries
+
+-- | Gets the image digest.
+-- Exported docker tarball's config filename is digest of the image.
+getImageDigest :: ManifestJson -> Text
+getImageDigest mj = "sha256:" <> Text.replace ".json" "" (getImageJsonConfigFilePath mj)

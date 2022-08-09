@@ -142,4 +142,8 @@ ci-shell:
 	docker pull ${DEV_TOOLS}
 	docker run -it ${MOUNTED_DEV_TOOLS} bash
 
-.PHONY: build test integration-test analyze install-local fmt check check-fmt lint check-ci fmt-ci build-test-data clean-test-data install-dev test-all
+# Runs benchmarks
+bench:
+	cabal bench --benchmark-options '+RTS -T'
+
+.PHONY: build test integration-test analyze install-local fmt check check-fmt lint check-ci fmt-ci build-test-data clean-test-data install-dev test-all bench
