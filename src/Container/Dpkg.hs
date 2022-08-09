@@ -68,7 +68,7 @@ dpkgStatusDir root = root </> $(mkRelDir "var") </> $(mkRelDir "lib") </> $(mkRe
 
 -- | Parses a dpkg status file.
 dpkgEntriesParser :: Parser [DpkgEntry]
-dpkgEntriesParser = many dpkgEntryParser
+dpkgEntriesParser = many dpkgEntryParser <* eof
 
 -- | Parses a dpkg status entry.
 dpkgEntryParser :: Parser DpkgEntry
@@ -100,7 +100,7 @@ dpkgEntryParser = do
 
     -- Collect Key: Value pairs into a map.
     propertiesParser :: Parser (Map Text Text)
-    propertiesParser = Map.fromList <$> many (lexeme sc propertyParser) <* eof
+    propertiesParser = Map.fromList <$> many (lexeme sc propertyParser)
 
     -- Collect Key: Value pairs into actual tuples.
     propertyParser :: Parser (Text, Text)
