@@ -10,7 +10,7 @@ module App.Fossa.Config.Container.Analyze (
 ) where
 
 import App.Fossa.Config.Common (
-  CommonOpts (optProjectName, optProjectRevision),
+  CommonOpts (CommonOpts, optDebug, optProjectName, optProjectRevision),
   ScanDestination (..),
   collectAPIMetadata,
   collectApiOpts,
@@ -24,6 +24,7 @@ import App.Fossa.Config.Container.Common (
   imageTextArg,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars)
+import App.Fossa.Subcommand (GetSeverity, getSeverity)
 import App.Types (
   OverrideProject (OverrideProject),
   ProjectMetadata,
@@ -33,6 +34,7 @@ import Data.Aeson (ToJSON, defaultOptions, genericToEncoding)
 import Data.Aeson.Types (ToJSON (toEncoding))
 import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Text (Text)
+import Effect.Logger (Severity (SevDebug, SevInfo))
 import GHC.Generics (Generic)
 import Options.Applicative (
   CommandFields,
@@ -56,6 +58,7 @@ data ContainerAnalyzeConfig = ContainerAnalyzeConfig
   , revisionOverride :: OverrideProject
   , imageLocator :: ImageText
   , usesExperimentalScanner :: Bool
+  , severity :: Severity
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -70,6 +73,9 @@ data ContainerAnalyzeOptions = ContainerAnalyzeOptions
   , containerAnalyzeImage :: ImageText
   , containerExperimentalScanner :: Bool
   }
+
+instance GetSeverity ContainerAnalyzeOptions where
+  getSeverity ContainerAnalyzeOptions{analyzeCommons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo
 
 subcommand :: (ContainerAnalyzeOptions -> a) -> Mod CommandFields a
 subcommand f =
@@ -108,6 +114,7 @@ mergeOpts ::
   m ContainerAnalyzeConfig
 mergeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
   let scanDest = collectScanDestination cfgfile envvars cliOpts
+      severity = getSeverity cliOpts
       imageLoc = containerAnalyzeImage
       revOverride =
         collectRevisionOverride cfgfile $
@@ -120,6 +127,7 @@ mergeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
     <*> pure revOverride
     <*> pure imageLoc
     <*> pure containerExperimentalScanner
+    <*> pure severity
 
 collectScanDestination ::
   Has Diagnostics sig m =>

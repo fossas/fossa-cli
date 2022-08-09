@@ -1,5 +1,6 @@
 module Strategy.AlpineLinux.Apk (analyze) where
 
+import Container.OsRelease (OsInfo (OsInfo))
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
@@ -33,14 +34,14 @@ import Strategy.AlpineLinux.Types (
  )
 import Types (GraphBreadth (..))
 
-buildGraph :: [AlpinePackage] -> Graphing Dependency
-buildGraph pkgs = directs (map toDependency pkgs)
+buildGraph :: OsInfo -> [AlpinePackage] -> Graphing Dependency
+buildGraph (OsInfo os osVersion) pkgs = directs (map toDependency pkgs)
   where
     toDependency :: AlpinePackage -> Dependency
     toDependency pkg =
       Dependency
         LinuxAPK
-        (alpinePackageName pkg)
+        (alpinePackageName pkg <> "#" <> os <> "#" <> osVersion)
         (Just $ version pkg)
         mempty
         mempty
@@ -55,8 +56,9 @@ analyze ::
   ) =>
   Path Abs Dir ->
   Path Abs File ->
+  OsInfo ->
   m (Graphing Dependency, GraphBreadth)
-analyze _ dbFile = do
+analyze _ dbFile osInfo = do
   installed <- context ("Reading alpine database file: " <> toText dbFile) $ readContentsParser installedPackagesDatabaseParser dbFile
   traverse_ warn (lefts installed)
-  context "building graphing alpine packages" $ pure (buildGraph $ rights installed, Complete)
+  context "building graphing alpine packages" $ pure (buildGraph osInfo $ rights installed, Complete)
