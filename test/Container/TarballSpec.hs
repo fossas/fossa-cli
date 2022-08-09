@@ -6,6 +6,7 @@ import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Tar.Entry (Entry (entryTarPath), fromTarPathToPosixPath)
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Docker.ImageJson (ImageJson (ImageJson), ImageJsonRootFs (ImageJsonRootFs))
+import Container.Docker.Manifest (ManifestJson (..), ManifestJsonImageEntry (..))
 import Container.Tarball (
   TarEntries (TarEntries),
   mkEntries,
@@ -124,6 +125,25 @@ mockImageJson =
       , "sha256:3892250d356b09c234bb80bd28a6a2aad35e0049be30391d5bff03c2674be3d2"
       ]
 
+expectedManifest :: ManifestJson
+expectedManifest =
+  ManifestJson $
+    NLE.fromList
+      [ ManifestJsonImageEntry
+          "7b27f90216d827d7b4ad2b679c276201b250d10408481b81d0c0a42d37e177e9.json"
+          ["changeset_example:latest"]
+          $ NLE.fromList
+            [ "e41b68215b5165f6f14e274c208885c0f4ee3766d9404b68ed679e88eada0021/layer.tar"
+            , "c93a3bb6976b4b84aa147a657a6ee319046d1556f2e0a97f59d9fb71c3f97dee/layer.tar"
+            , "151cd8679f39b8f3a595ad0f1cdd022732c0e0d893995f23e9a8b32b23038e7b/layer.tar"
+            , "1e019fb5d397ea20b463b0419da6526daf9725c257f567f641f07278937f16a6/layer.tar"
+            , "bc59e5f3a95799b3e19d4a7c0472b2f4bfacadb94adbd4463c8beee27f5c3e7e/layer.tar"
+            , "69fa65e4ea24eaba63bc404184a1c673420cfa799b1ae6fd18fe7f989631c46e/layer.tar"
+            , "efef3a67f85b6bf3b9584832aeb824c7c5533ee4ac3443d2e3523130407e3ebe/layer.tar"
+            , "e8562e2ca2eec04dec1b798010628430edeb86b0ebbd6be5a637e2b472414531/layer.tar"
+            ]
+      ]
+
 expectedLayerChangeSets :: [[ContainerFSChangeSet]]
 expectedLayerChangeSets =
   [ -- Layer 1 - Adds a file and directory
@@ -170,11 +190,11 @@ mkImageSpec = do
     it "should parse image with all layers and correct layer Ids" $ do
       case parse tarFileBs of
         Left errs -> expectationFailure (show errs)
-        Right (ContainerImageRaw neLayers imgDigest) -> do
+        Right (ContainerImageRaw neLayers imgManifest) -> do
           let l = NLE.toList neLayers
           let otherLayers = NLE.fromList . NLE.tail $ neLayers
 
-          imgDigest `shouldBe` "sha256:7b27f90216d827d7b4ad2b679c276201b250d10408481b81d0c0a42d37e177e9"
+          imgManifest `shouldBe` expectedManifest
           layerDigest (head l) `shouldBe` "sha256:b541d28bf3b491aeb424c61353c8c92476ecc2cd603a6c09ee5c2708f1a4b258"
           layerDigest (l !! 1) `shouldBe` "sha256:690b9450535c0e7db4f6a9f41a15e3260abfec49d0430f4a853185d15af89f20"
           layerDigest (l !! 2) `shouldBe` "sha256:3859b16f69447c6a8e59659d7d6e629dba1c5a87dba6b9374fad0e1d98ede98d"
@@ -184,7 +204,7 @@ mkImageSpec = do
           layerDigest (l !! 6) `shouldBe` "sha256:33552eb17ad8ae902c15a8037e0fe69c85bc8c1af6c3bbc7258f41feafb2e082"
           layerDigest (l !! 7) `shouldBe` "sha256:3892250d356b09c234bb80bd28a6a2aad35e0049be30391d5bff03c2674be3d2"
 
-          toChangeSets (ContainerImageRaw otherLayers imgDigest)
+          toChangeSets (ContainerImageRaw otherLayers imgManifest)
             `shouldBe` expectedLayerChangeSets
 
   describe "mkImage" $
@@ -192,7 +212,7 @@ mkImageSpec = do
       case mkEntries tarFile of
         Left err -> expectationFailure (show err)
         Right entries -> do
-          case (mkImage mempty mockImageJson entries exampleImgLayers) of
+          case (mkImage expectedManifest mockImageJson entries exampleImgLayers) of
             Left errs -> expectationFailure (show errs)
             Right img -> toChangeSets img `shouldBe` expectedLayerChangeSets
 

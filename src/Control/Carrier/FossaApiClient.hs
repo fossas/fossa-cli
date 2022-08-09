@@ -55,6 +55,7 @@ runFossaApiClient apiOpts =
           UploadAnalysis rev metadata units -> Core.uploadAnalysis rev metadata units
           UploadArchive url path -> Core.uploadArchive url path
           UploadContainerScan revision metadata scan -> Core.uploadContainerScan revision metadata scan
+          UploadNativeContainerScan revision metadata scan -> Core.uploadNativeContainerScan revision metadata scan
           UploadContributors locator contributors -> Core.uploadContributors locator contributors
           UploadLicenseScanResult signedUrl licenseSourceUnit -> LicenseScanning.uploadLicenseScanResult signedUrl licenseSourceUnit
       )

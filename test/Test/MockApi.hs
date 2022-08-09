@@ -225,6 +225,7 @@ matchExpectation a@(ResolveUserDefinedBinary{}) (ApiExpectation _ requestExpecta
 matchExpectation a@(UploadAnalysis{}) (ApiExpectation _ requestExpectation b@(UploadAnalysis{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadArchive{}) (ApiExpectation _ requestExpectation b@(UploadArchive{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadContainerScan{}) (ApiExpectation _ requestExpectation b@(UploadContainerScan{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(UploadNativeContainerScan{}) (ApiExpectation _ requestExpectation b@(UploadNativeContainerScan{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadContributors{}) (ApiExpectation _ requestExpectation b@(UploadContributors{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadLicenseScanResult{}) (ApiExpectation _ requestExpectation b@(UploadLicenseScanResult{}) resp) = checkResult requestExpectation a b resp
 matchExpectation _ _ = Nothing

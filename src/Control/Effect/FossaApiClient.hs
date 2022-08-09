@@ -30,6 +30,7 @@ module Control.Effect.FossaApiClient (
   uploadAnalysis,
   uploadArchive,
   uploadContainerScan,
+  uploadNativeContainerScan,
   uploadContributors,
   uploadLicenseScanResult,
 ) where
@@ -43,6 +44,7 @@ import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency)
 import App.Types (ProjectMetadata, ProjectRevision)
+import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
 import Data.ByteString.Char8 qualified as C8
@@ -111,6 +113,11 @@ data FossaApiClientF a where
     ProjectMetadata ->
     ContainerScan ->
     FossaApiClientF UploadResponse
+  UploadNativeContainerScan ::
+    ProjectRevision ->
+    ProjectMetadata ->
+    NativeContainer.ContainerScan ->
+    FossaApiClientF UploadResponse
   UploadContributors ::
     Locator ->
     Contributors ->
@@ -142,6 +149,10 @@ uploadAnalysis revision metadata units = sendSimple (UploadAnalysis revision met
 -- | Uploads results of container analysis to a project
 uploadContainerScan :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> ContainerScan -> m UploadResponse
 uploadContainerScan revision metadata scan = sendSimple (UploadContainerScan revision metadata scan)
+
+-- | Uploads results of container analysis performed by native scanner to a project
+uploadNativeContainerScan :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NativeContainer.ContainerScan -> m UploadResponse
+uploadNativeContainerScan revision metadata scan = sendSimple (UploadNativeContainerScan revision metadata scan)
 
 -- | Associates contributors to a specific locator
 uploadContributors :: (Has FossaApiClient sig m) => Locator -> Contributors -> m ()

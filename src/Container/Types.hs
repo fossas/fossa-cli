@@ -15,6 +15,7 @@ module Container.Types (
 ) where
 
 import Codec.Archive.Tar.Index (TarEntryOffset)
+import Container.Docker.Manifest (ManifestJson)
 import Control.DeepSeq (NFData)
 import Data.Aeson (object)
 import Data.Aeson.Types (ToJSON, toJSON, (.=))
@@ -28,7 +29,7 @@ import Srclib.Types (SourceUnit)
 
 data ContainerImageRaw = ContainerImageRaw
   { layers :: NonEmpty.NonEmpty ContainerLayer
-  , rawDigest :: Text
+  , rawManifest :: ManifestJson
   }
   deriving (Show, Generic, Eq)
   deriving anyclass (NFData)
@@ -66,6 +67,7 @@ data ContainerFSChangeSet
 data ContainerScan = ContainerScan
   { imageData :: ContainerScanImage
   , imageDigest :: Text
+  , imageTag :: Text
   }
   deriving (Show, Eq, Ord)
 

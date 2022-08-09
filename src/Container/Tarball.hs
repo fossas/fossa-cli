@@ -65,7 +65,7 @@ parse content = case mkEntries $ Tar.read content of
         -- layer and image hash
         case getImageJson (getImageJsonConfigFilePath manifest) te of
           Left err -> Left $ NLE.singleton err
-          Right imgJson -> mkImage (getImageDigest manifest) imgJson te (getLayerPaths manifest)
+          Right imgJson -> mkImage manifest imgJson te (getLayerPaths manifest)
   where
     getManifest :: TarEntries -> Either ContainerImgParsingError ManifestJson
     getManifest te = parseManifest =<< getFileContent te (toString manifestFilename)
@@ -109,7 +109,7 @@ mkEntries = build (TarEntries mempty 0)
         }
 
 mkImage ::
-  Text ->
+  ManifestJson ->
   ImageJson ->
   TarEntries ->
   NLE.NonEmpty FilePath ->
