@@ -1,14 +1,21 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module Container.DpkgSpec (spec) where
 
 import App.Fossa.VSI.DynLinked.Util (runningLinux)
-import Container.Dpkg (DpkgEntry (..), analyzeDpkgEntriesScoped)
+import Container.Dpkg (DpkgEntry (..), analyzeDpkgEntriesScoped, dpkgEntryParser)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
+import Data.Text (Text)
+import Data.Void (Void)
 import Effect.ReadFS (runReadFSIO)
 import Path (Abs, Dir, Path)
 import Path.IO qualified as PIO
 import ResultUtil (assertOnSuccess)
-import Test.Hspec (Spec, describe, it, runIO, shouldBe)
+import Test.Hspec (Expectation, Spec, describe, it, runIO, shouldBe)
+import Test.Hspec.Megaparsec (shouldParse)
+import Text.Megaparsec (Parsec, parse)
+import Text.RawString.QQ (r)
 
 spec :: Spec
 spec = do
@@ -16,14 +23,76 @@ spec = do
     target <- runIO testDataDir
     result <- runIO . runStack . runDiagnostics . runReadFSIO $ analyzeDpkgEntriesScoped target
 
+    it "parses a single simple entry" $
+      simpleSingleEntry `shouldParseEntryInto` singleEntryExpected
+
+    it "parses a single realistic entry" $
+      singleEntry `shouldParseEntryInto` singleEntryExpected
+
     it "parses var/lib/dpkg/status" $
       assertOnSuccess result $ \_ c ->
         c `shouldBe` expectedEntries
 
 -- | Inside testdata, a file is stored at @var/lib/dpkg/status@.
--- This file is the exact contents of a file at @/var/lib/dpkg/status@ on @debian:bullseye@.
+-- This file is the exact contents of a file at @/var/lib/dpkg/status@ on a default install of @debian:bullseye@.
 testDataDir :: IO (Path Abs Dir)
 testDataDir = PIO.resolveDir' "test/Container/testdata/"
+
+shouldParseEntryInto :: Text -> DpkgEntry -> Expectation
+shouldParseEntryInto = parseMatch dpkgEntryParser
+  where
+    parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Expectation
+    parseMatch parser input expected = parse parser "" input `shouldParse` expected
+
+singleEntryExpected :: DpkgEntry
+singleEntryExpected =
+  DpkgEntry
+    { dpkgEntryArch = "all"
+    , dpkgEntryPackage = "adduser"
+    , dpkgEntryVersion = "3.118"
+    }
+
+singleEntry :: Text
+singleEntry =
+  [r|Package: adduser
+Status: install ok installed
+Priority: important
+Section: admin
+Installed-Size: 849
+Maintainer: Debian Adduser Developers <adduser@packages.debian.org>
+Architecture: all
+Multi-Arch: foreign
+Version: 3.118
+Depends: passwd, debconf (>= 0.5) | debconf-2.0
+Suggests: liblocale-gettext-perl, perl
+Conffiles:
+ /etc/deluser.conf 773fb95e98a27947de4a95abb3d3f2a2
+Description: add and remove users and groups
+ This package includes the 'adduser' and 'deluser' commands for creating
+ and removing users.
+ .
+  - 'adduser' creates new users and groups and adds existing users to
+    existing groups;
+  - 'deluser' removes users and groups and removes users from a given
+    group.
+ .
+ Adding users with 'adduser' is much easier than adding them manually.
+ Adduser will choose appropriate UID and GID values, create a home
+ directory, copy skeletal user configuration, and automate setting
+ initial values for the user's password, real name and so on.
+ .
+ Deluser can back up and remove users' home directories
+ and mail spool or all the files they own on the system.
+ .
+ A custom script can be executed after each of the commands.
+|]
+
+simpleSingleEntry :: Text
+simpleSingleEntry =
+  [r|Package: adduser
+Architecture: all
+Version: 3.118
+|]
 
 expectedEntries :: [DpkgEntry]
 expectedEntries =

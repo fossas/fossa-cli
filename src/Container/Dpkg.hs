@@ -4,12 +4,16 @@ module Container.Dpkg (
   analyzeDpkgEntries,
   analyzeDpkgEntriesScoped,
   DpkgEntry (..),
+  -- | For testing
+  dpkgEntryParser,
 ) where
 
 import App.Fossa.VSI.DynLinked.Util (fsRoot, runningLinux)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
+import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
 import Effect.ReadFS (
@@ -18,12 +22,18 @@ import Effect.ReadFS (
  )
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Text.Megaparsec (
-  MonadParsec (notFollowedBy, takeWhileP),
+  MonadParsec (eof, notFollowedBy, takeWhileP),
   Parsec,
+  anySingle,
   empty,
   many,
+  single,
+  someTill,
+  try,
+  (<|>),
  )
 import Text.Megaparsec.Char (space1)
+import Text.Megaparsec.Char.Lexer (lexeme)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 
 type Parser = Parsec Void Text
@@ -48,18 +58,21 @@ analyzeDpkgEntriesScoped root | runningLinux = parseStatus root <||> parseStatus
 analyzeDpkgEntriesScoped _ = pure []
 
 parseStatus :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m ([DpkgEntry])
-parseStatus root = readContentsParser entriesParser $ root </> $(mkRelDir "var") </> $(mkRelDir "lib") </> $(mkRelDir "dpkg") </> $(mkRelFile "status")
+parseStatus root = readContentsParser dpkgEntriesParser $ dpkgStatusDir root </> $(mkRelFile "status")
 
 parseStatusD :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m ([DpkgEntry])
-parseStatusD root = readContentsParser entriesParser $ root </> $(mkRelDir "var") </> $(mkRelDir "lib") </> $(mkRelDir "dpkg") </> $(mkRelFile "status.d")
+parseStatusD root = readContentsParser dpkgEntriesParser $ dpkgStatusDir root </> $(mkRelFile "status.d")
+
+dpkgStatusDir :: Path Abs Dir -> Path Abs Dir
+dpkgStatusDir root = root </> $(mkRelDir "var") </> $(mkRelDir "lib") </> $(mkRelDir "dpkg")
 
 -- | Parses a dpkg status file.
-entriesParser :: Parser [DpkgEntry]
-entriesParser = many entryParser
+dpkgEntriesParser :: Parser [DpkgEntry]
+dpkgEntriesParser = many dpkgEntryParser
 
 -- | Parses a dpkg status entry.
-entryParser :: Parser DpkgEntry
-entryParser = do
+dpkgEntryParser :: Parser DpkgEntry
+dpkgEntryParser = do
   properties <- propertiesParser
   let package = Map.lookup "Package" properties
   let version = Map.lookup "Version" properties
@@ -85,26 +98,47 @@ entryParser = do
         <> "; Arch: "
         <> show arch
 
-    -- >> parseTest propertiesParser "A: B\nC: D" = fromList [(A, B), (C, D)]
-    propertiesParser :: Parser (Map.Map Text Text)
-    propertiesParser = Map.fromList <$> many (lexeme propertyParser)
+    -- Collect Key: Value pairs into a map.
+    propertiesParser :: Parser (Map Text Text)
+    propertiesParser = Map.fromList <$> many (lexeme sc propertyParser) <* eof
 
-    -- >> parseTest propertyParser "A: B" = (A, B)
+    -- Collect Key: Value pairs into actual tuples.
     propertyParser :: Parser (Text, Text)
-    propertyParser = (,) <$> (keyParser <* symbol ":") <*> valueParser
+    propertyParser = (,) <$> (keyParser <* symbol ":") <*> valueParser <* sc
 
-    -- keyParser :: Parser Text
-    -- keyParser = toText <$> (some (alphaNumChar <|> char '-'))
+    -- Keys are easy: just parse anything up to the ':' literal.
     keyParser :: Parser Text
     keyParser = takeWhileP Nothing (/= ':')
 
-    -- >> parseTest valueParser "1.0.2" = 1.0.2
-    -- >> parseTest valueParser "This is a\n long line" = This is a\n long line
+    -- Value fields are either single line or multi line.
+    -- There's no documentation I could find on this,
+    -- but from observeration it appears that a single space indent is used
+    -- to form a multi-line value, with intentionally blank lines consisting
+    -- of a single literal dot after the space.
+    -- Given this, we first try to parse a single line, and if that fails
+    -- we try to parse a multiline. If that fails, fail the parse.
     valueParser :: Parser Text
-    valueParser = takeWhileP Nothing (/= '\n') <* notFollowedBy (symbol "\n ")
+    valueParser = try singleLineValueParser <|> multiLineValueParser
 
-lexeme :: Parser a -> Parser a
-lexeme = Lexer.lexeme sc
+    -- A single line value is one that is terminated on a newline and is not
+    -- followed by a space on the next line.
+    -- This is not documented, and was simply observed- see valueParser for details.
+    singleLineValueParser :: Parser Text
+    singleLineValueParser = takeWhileP Nothing (/= '\n') <* single '\n' <* notFollowedBy (single ' ')
+
+    -- Parse and record anything until the end of this multiline value.
+    -- So far we don't actually use any of the multiline values, so no further processing
+    -- is performed, we just read them.
+    multiLineValueParser :: Parser Text
+    multiLineValueParser = do
+      parsed <- someTill anySingle eov
+      pure $ toText parsed
+
+    -- End of [multiline] value is reached when either a double newline is encountered,
+    -- or the end of the file is encountered.
+    -- This is not documented, and was simply observed- see valueParser for details.
+    eov :: Parser Text
+    eov = try $ (symbol "\n\n") <|> (eof >> "")
 
 sc :: Parser ()
 sc = Lexer.space space1 empty empty
