@@ -21,7 +21,7 @@ import Codec.Archive.Tar.Entry (Entry (entryTarPath), TarPath, entryPath, fromTa
 import Codec.Archive.Tar.Entry qualified as TarEntry
 import Codec.Archive.Tar.Index (TarEntryOffset, nextEntryOffset)
 import Container.Docker.ImageJson (ImageJson, decodeImageJson, getLayerIds)
-import Container.Docker.Manifest (ManifestJson (..), decodeManifestJson, getImageDigest, getImageJsonConfigFilePath, getLayerPaths, manifestFilename)
+import Container.Docker.Manifest (ManifestJson (..), decodeManifestJson, getImageJsonConfigFilePath, getLayerPaths, manifestFilename)
 import Container.Errors (ContainerImgParsingError (..))
 import Container.Types (
   ContainerFSChangeSet (InsertOrUpdate, Whiteout),
@@ -114,11 +114,11 @@ mkImage ::
   TarEntries ->
   NLE.NonEmpty FilePath ->
   Either (NLE.NonEmpty ContainerImgParsingError) ContainerImageRaw
-mkImage imgDigest imgJson entries layerTarballPaths =
+mkImage manifest imgJson entries layerTarballPaths =
   case (errs, parsedLayers) of
     ((e : es), _) -> Left $ e NLE.:| es
     (_, []) -> Left $ NLE.singleton ContainerNoLayersDiscovered
-    (_, (l : ls)) -> Right $ ContainerImageRaw (l NLE.:| ls) imgDigest
+    (_, (l : ls)) -> Right $ ContainerImageRaw (l NLE.:| ls) manifest
   where
     errs :: [ContainerImgParsingError]
     errs = lefts layers
