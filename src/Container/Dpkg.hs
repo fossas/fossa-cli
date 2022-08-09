@@ -16,6 +16,7 @@ import Data.Map qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
+import Debug.Trace (trace)
 import Effect.ReadFS (
   ReadFS,
   readContentsParser,
@@ -79,14 +80,12 @@ dpkgEntryParser = do
   let arch = Map.lookup "Architecture" properties
 
   case (package, version, arch) of
-    (Just package', Just version', Just arch') ->
-      pure $
-        DpkgEntry
-          { dpkgEntryArch = arch'
-          , dpkgEntryPackage = package'
-          , dpkgEntryVersion = version'
-          }
-    _ -> fail $ buildFailure package version arch
+    (Just package', Just version', Just arch') -> do
+      let entry = DpkgEntry arch' package' version'
+      pure $ trace ("Parsed entry: " <> show entry) entry
+    _ -> do
+      let failure = buildFailure package version arch
+      fail $ trace ("Failed entry: " <> failure) failure
   where
     buildFailure :: Maybe Text -> Maybe Text -> Maybe Text -> String
     buildFailure package version arch =
