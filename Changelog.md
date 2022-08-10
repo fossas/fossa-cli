@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- CocoaPods: Fixes error when analyzing podspecs that print non-JSON text to stdout ([#1015]https://github.com/fossas/fossa-cli/pull/1015)
+
 ## v3.3.11
 
 - `fossa test` - `fossa test --json` produces json output when there are 0 issues found. ([#999](https://github.com/fossas/fossa-cli/pull/999))
