@@ -33,7 +33,7 @@ runDockerEngineApi = interpret $ \case
 -- Refer to: https://docs.docker.com/engine/api/v1.41/#tag/Image/operation/ImageGet
 exportDockerImage :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => Text -> Path Abs File -> m ()
 exportDockerImage img sinkTarget = do
-  let request = HTTP.parseRequest_ $ "http://localhost/v1.41/images/" <> (toString img) <> "/get"
+  let request = HTTP.parseRequest_ $ baseApi <> "images/" <> (toString img) <> "/get"
   manager <- sendIO dockerClient
   -- Performs equivalent of for given image:
   -- >> curl --unix-socket /var/run/docker.sock -X GET "http://localhost/v1.41/images/redis:alpine/get" > img.tar
@@ -45,7 +45,7 @@ exportDockerImage img sinkTarget = do
 -- Refer to: https://docs.docker.com/engine/api/v1.41/#tag/Image/operation/ImageInspect
 getDockerImageSize :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => Text -> m Int
 getDockerImageSize img = do
-  let request = HTTP.parseRequest_ $ "http://localhost/v1.41/images/" <> (toString img) <> "/json"
+  let request = HTTP.parseRequest_ $ baseApi <> "images/" <> (toString img) <> "/json"
 
   -- Performs equivalent of for given image:
   -- >> curl --unix-socket /var/run/docker.sock -X GET "http://localhost/v1.41/images/redis:alpine/json"
@@ -62,7 +62,7 @@ isAccessible :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => m Bool
 isAccessible = do
   -- Performs equivalent of for given image:
   -- >> curl --unix-socket /var/run/docker.sock -X GET "http://localhost/v1.41/_ping"
-  response <- sendIO $ HTTP.httpLbs (HTTP.parseRequest_ "http://localhost/v1.41/_ping") =<< dockerClient
+  response <- sendIO $ HTTP.httpLbs (HTTP.parseRequest_ $ baseApi <> "_ping") =<< dockerClient
   pure $ statusCode (HTTP.responseStatus response) == 200
 
 newtype DockerImageInspectJson = DockerImageInspectJson {imageSize :: Int}
@@ -71,6 +71,9 @@ newtype DockerImageInspectJson = DockerImageInspectJson {imageSize :: Int}
 instance FromJSON DockerImageInspectJson where
   parseJSON = withObject "image inspect json" $ \o ->
     DockerImageInspectJson <$> o .: "Size"
+
+baseApi :: String
+baseApi = "http://localhost/v1.28/"
 
 dockerClient :: Has (Lift IO) sig m => m HTTP.Manager
 dockerClient = unixSocketClient "/var/run/docker.sock"

@@ -34,7 +34,13 @@ import Control.Carrier.Debug (Debug, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.DockerEngineApi (runDockerEngineApi)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
-import Control.Effect.Diagnostics (Diagnostics, fatal, fatalText, fromEitherShow, (<||>))
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  fatal,
+  fatalText,
+  fromEitherShow,
+  (<||>),
+ )
 import Control.Effect.DockerEngineApi (getDockerImageSize, isDockerEngineAccessible)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, uploadNativeContainerScan)
 import Control.Effect.Lift (Lift, sendIO)
@@ -44,7 +50,12 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
-import Data.String.Conversion (ConvertUtf8 (decodeUtf8), decodeUtf8, toString, toText)
+import Data.String.Conversion (
+  ConvertUtf8 (decodeUtf8),
+  decodeUtf8,
+  toString,
+  toText,
+ )
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Effect.Exec (Exec)
@@ -161,7 +172,7 @@ parseContainerImageSource ::
   , Has Logger sig m
   ) =>
   Text ->
-  m (ContainerImageSource)
+  m ContainerImageSource
 parseContainerImageSource src =
   parseExportedTarballSource src
     <||> parseDockerEngineSource src
@@ -172,7 +183,7 @@ parseDockerEngineSource ::
   , Has Logger sig m
   ) =>
   Text ->
-  m (ContainerImageSource)
+  m ContainerImageSource
 parseDockerEngineSource imgTag = runDockerEngineApi $ do
   canAccessDockerEngine <- isDockerEngineAccessible
 
@@ -196,7 +207,7 @@ parseExportedTarballSource ::
   , Has ReadFS sig m
   ) =>
   Text ->
-  m (ContainerImageSource)
+  m ContainerImageSource
 parseExportedTarballSource path = do
   cwd <- getCurrentDir
   someTarballFile <- fromEitherShow $ parseSomeFile (toString path)
