@@ -141,7 +141,7 @@ podIpcSpecCmd :: Text -> Command
 podIpcSpecCmd podSpecPath =
   Command
     { cmdName = "pod"
-    , cmdArgs = ["ipc", "spec", podSpecPath]
+    , cmdArgs = ["ipc", "spec", "--silent", podSpecPath]
     , cmdAllowErr = Never
     }
 
