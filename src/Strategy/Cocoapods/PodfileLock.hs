@@ -133,6 +133,9 @@ buildGraphStatic PodLock{lockPods, lockDeps, lockExternalSources} = staticGraph
 type PodSpecCache = Map Text PodSpecJSON
 
 -- `pod ipc spec` returns the JSON representation of a fully-evaluated Podspec.
+-- The `--silent` flag suppresses stdout printed by a podspec that calls
+-- Pod::UI.puts, which can break JSON parsing.
+--
 -- See also:
 --
 -- - Command documentation: https://guides.cocoapods.org/terminal/commands.html#pod_ipc_spec
