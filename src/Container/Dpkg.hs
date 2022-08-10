@@ -117,7 +117,11 @@ dpkgEntryParser = do
 
     -- The end of a value: A newline not followed by a space, or the end of the input.
     eov :: Parser ()
-    eov = try (void (chunk "\n") <* notFollowedBy (single ' ')) <|> eof
+    eov = try (eol <* notFollowedBy (single ' ')) <|> eof
+
+    -- The end of a line.
+    eol :: Parser ()
+    eol = try (void (chunk "\r\n")) <|> void (chunk "\n")
 
 -- | Consume spaces, not including newlines.
 sc :: Parser ()
