@@ -89,10 +89,10 @@ analyzeExportedTarball tarball = do
   containerTarball <- sendIO . BS.readFile $ toString tarball
   image <- fromEither $ parse containerTarball
 
-  -- get Image Digest
-  let imageDigest = getImageDigest . rawManifest $ image
-  imageTag <- extractTag (getRepoTags . rawManifest $ image)
-  -- get Image Tag
+  -- get Image Digest and Tags
+  let manifest = rawManifest image
+  let imageDigest = getImageDigest manifest
+  imageTag <- extractTag (getRepoTags manifest)
 
   -- Analyze Base Layer
   logInfo "Analyzing Base Layer"
