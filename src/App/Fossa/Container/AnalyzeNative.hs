@@ -17,6 +17,7 @@ import App.Fossa.Config.Container.Analyze (
  )
 import App.Fossa.Config.Container.Analyze qualified as Config
 import App.Fossa.Config.Container.Common (ImageText (unImageText))
+import App.Fossa.Container.Sources.DockerEngine (analyzeFromDockerEngine)
 import App.Fossa.Container.Sources.DockerTarball (analyzeExportedTarball)
 import App.Types (
   OverrideProject (OverrideProject),
@@ -31,18 +32,21 @@ import Container.Errors (EndpointDoesNotSupportNativeContainerScan (EndpointDoes
 import Container.Types (ContainerScan (..))
 import Control.Carrier.Debug (Debug, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
+import Control.Carrier.DockerEngineApi (runDockerEngineApi)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
-import Control.Effect.Diagnostics (Diagnostics, fatal, fatalText, fromEitherShow)
+import Control.Effect.Diagnostics (Diagnostics, fatal, fatalText, fromEitherShow, (<||>))
+import Control.Effect.DockerEngineApi (getDockerImageSize, isDockerEngineAccessible)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, uploadNativeContainerScan)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Telemetry (Telemetry)
-import Control.Monad (void)
+import Control.Monad (unless, void)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
-import Data.String.Conversion (decodeUtf8, toString)
+import Data.String.Conversion (ConvertUtf8 (decodeUtf8), decodeUtf8, toString, toText)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Effect.Exec (Exec)
 import Effect.Logger (
   Has,
@@ -54,7 +58,7 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
-import Effect.ReadFS (ReadFS, getCurrentDir)
+import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir)
 import Fossa.API.Types (Organization (orgSupportsNativeContainerScan), UploadResponse (uploadError), uploadLocator)
 import Path (Abs, File, Path, SomeBase (Abs, Rel), parseSomeFile, (</>))
 import Srclib.Types (Locator)
@@ -101,7 +105,7 @@ analyze cfg = do
   logInfo "Running container scanning with fossa experimental-scanner!"
   parsedSource <- parseContainerImageSource (unImageText $ imageLocator cfg)
   scannedImage <- case parsedSource of
-    ContainerDockerImage _ -> fatalText "container images from daemon are not yet supported!"
+    ContainerDockerImage imgTag -> analyzeFromDockerEngine imgTag
     ContainerOCIRegistry _ _ -> fatalText "container images from oci registry are not yet supported!"
     ContainerExportedTarball tarball -> analyzeExportedTarball tarball
 
@@ -154,10 +158,37 @@ parseContainerImageSource ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has ReadFS sig m
+  , Has Logger sig m
   ) =>
   Text ->
   m (ContainerImageSource)
-parseContainerImageSource = parseExportedTarballSource
+parseContainerImageSource src =
+  parseExportedTarballSource src
+    <||> parseDockerEngineSource src
+
+parseDockerEngineSource ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  ) =>
+  Text ->
+  m (ContainerImageSource)
+parseDockerEngineSource imgTag = runDockerEngineApi $ do
+  canAccessDockerEngine <- isDockerEngineAccessible
+
+  unless canAccessDockerEngine $
+    fatalText "Docker Engine (via sdk api) could not be accessed."
+
+  unless (Text.isInfixOf ":" imgTag) $
+    fatalText $
+      "Docker Engine (via sdk api) requires image tag, in form of repo:tag, you provided: " <> imgTag
+
+  -- Confirm image is available by checking image size
+  -- It will throw diag error, if image is missing
+  imgSize <- toText . show <$> getDockerImageSize imgTag
+  logInfo . pretty $ "Discovered image for: " <> imgTag <> " (of " <> imgSize <> " bytes) via docker engine api."
+
+  pure $ ContainerDockerImage imgTag
 
 parseExportedTarballSource ::
   ( Has (Lift IO) sig m
@@ -172,4 +203,8 @@ parseExportedTarballSource path = do
   resolvedAbsPath <- case someTarballFile of
     Abs absPath -> pure absPath
     Rel relPath -> pure $ cwd </> relPath
+  doesFileExist' <- doesFileExist resolvedAbsPath
+  unless doesFileExist' $
+    fatalText $
+      "Could not locate tarball source at filepath: " <> toText resolvedAbsPath
   pure $ ContainerExportedTarball resolvedAbsPath

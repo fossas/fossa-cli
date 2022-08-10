@@ -28,6 +28,7 @@ import Container.Types (
   ContainerScanImage (ContainerScanImage),
   ContainerScanImageLayer (ContainerScanImageLayer),
   baseLayer,
+  hasOtherLayers,
   otherLayersSquashed,
  )
 import Control.Carrier.AtomicCounter (runAtomicCounter)
@@ -105,28 +106,34 @@ analyzeExportedTarball tarball = do
     context "Analyzing From Base Layer" $
       analyzeLayer capabilities osInfo baseFs tarball
 
-  -- Analyze Rest of Layers
-  logInfo "Analyzing Other Layers"
-  let squashedDigest = layerDigest . otherLayersSquashed $ image
-  otherUnits <-
-    context "Squashing all non-base layer for analysis" $
-      analyzeLayer
-        capabilities
-        osInfo
-        (mkFsFromChangeset $ otherLayersSquashed image)
-        tarball
+  let mkScan :: [ContainerScanImageLayer] -> ContainerScan
+      mkScan layers =
+        ContainerScan
+          ( ContainerScanImage
+              (nameId osInfo)
+              (version osInfo)
+              layers
+          )
+          imageDigest
+          imageTag
 
-  pure $
-    ContainerScan
-      ( ContainerScanImage
-          (nameId osInfo)
-          (version osInfo)
+  if hasOtherLayers image
+    then do
+      logInfo "Analyzing Other Layers"
+      let squashedDigest = layerDigest . otherLayersSquashed $ image
+      otherUnits <-
+        context "Squashing all non-base layer for analysis" $
+          analyzeLayer
+            capabilities
+            osInfo
+            (mkFsFromChangeset $ otherLayersSquashed image)
+            tarball
+      pure $
+        mkScan
           [ ContainerScanImageLayer baseDigest baseUnits
           , ContainerScanImageLayer squashedDigest otherUnits
           ]
-      )
-      imageDigest
-      imageTag
+    else pure $ mkScan [ContainerScanImageLayer baseDigest baseUnits]
 
 analyzeLayer ::
   ( Has Diagnostics sig m
