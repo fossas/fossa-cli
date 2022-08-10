@@ -229,6 +229,7 @@ library
     Console.Sticky
     Container.Docker.ImageJson
     Container.Docker.Manifest
+    Container.Dpkg
     Container.Errors
     Container.OsRelease
     Container.Tarball
@@ -493,6 +494,7 @@ test-suite unit-tests
     Conda.EnvironmentYmlSpec
     Container.Docker.ImageJsonSpec
     Container.Docker.ManifestSpec
+    Container.DpkgSpec
     Container.OsReleaseSpec
     Container.TarballReadFSSpec
     Container.TarballSpec
