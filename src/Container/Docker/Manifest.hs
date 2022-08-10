@@ -11,6 +11,7 @@ module Container.Docker.Manifest (
   manifestFilename,
   getImageJsonConfigFilePath,
   getImageDigest,
+  getRepoTags,
 ) where
 
 import Control.DeepSeq (NFData)
@@ -78,3 +79,8 @@ getImageJsonConfigFilePath (ManifestJson mjEntries) = config $ NonEmpty.head mjE
 -- Exported docker tarball's config filename is digest of the image.
 getImageDigest :: ManifestJson -> Text
 getImageDigest mj = "sha256:" <> Text.replace ".json" "" (getImageJsonConfigFilePath mj)
+
+-- | Gets the image digest.
+-- Exported docker tarball's config filename is digest of the image.
+getRepoTags :: ManifestJson -> [Text]
+getRepoTags (ManifestJson mjEntries) = repoTags $ NonEmpty.head mjEntries

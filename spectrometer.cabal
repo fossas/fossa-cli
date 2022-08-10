@@ -464,6 +464,7 @@ test-suite unit-tests
     App.Fossa.Config.Utils
     App.Fossa.Configuration.ConfigurationSpec
     App.Fossa.Configuration.TelemetryConfigSpec
+    App.Fossa.Container.NativeAnalyzeSpec
     App.Fossa.LicenseScannerSpec
     App.Fossa.ManualDepsSpec
     App.Fossa.ProjectInferenceSpec

@@ -15,12 +15,14 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectScan (..),
  )
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
+import App.Fossa.Container.Scan (extractTag)
 import Codec.Archive.Tar.Index (TarEntryOffset)
+import Container.Docker.Manifest (getImageDigest, getRepoTags)
 import Container.OsRelease (OsInfo (nameId, version), getOsInfo)
 import Container.Tarball (mkFsFromChangeset, parse)
 import Container.TarballReadFs (runTarballReadFSIO)
 import Container.Types (
-  ContainerImageRaw (rawDigest),
+  ContainerImageRaw (..),
   ContainerLayer (layerDigest),
   ContainerScan (ContainerScan),
   ContainerScanImage (ContainerScanImage),
@@ -86,7 +88,11 @@ analyzeExportedTarball tarball = do
   capabilities <- sendIO getNumCapabilities
   containerTarball <- sendIO . BS.readFile $ toString tarball
   image <- fromEither $ parse containerTarball
-  let imageDigest = rawDigest image
+
+  -- get Image Digest and Tags
+  let manifest = rawManifest image
+  let imageDigest = getImageDigest manifest
+  imageTag <- extractTag (getRepoTags manifest)
 
   -- Analyze Base Layer
   logInfo "Analyzing Base Layer"
@@ -120,6 +126,7 @@ analyzeExportedTarball tarball = do
           ]
       )
       imageDigest
+      imageTag
 
 analyzeLayer ::
   ( Has Diagnostics sig m

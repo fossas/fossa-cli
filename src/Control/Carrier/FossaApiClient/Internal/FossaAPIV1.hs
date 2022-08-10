@@ -6,6 +6,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   uploadAnalysis,
   uploadContributors,
   uploadContainerScan,
+  uploadNativeContainerScan,
   mkMetadataOpts,
   fossaReq,
   getLatestBuild,
@@ -51,6 +52,8 @@ import App.Types (
  )
 import App.Version (versionNumber)
 import Codec.Compression.GZip qualified as GZIP
+import Container.Errors (EndpointDoesNotSupportNativeContainerScan (EndpointDoesNotSupportNativeContainerScan))
+import Container.Types qualified as NativeContainer
 import Control.Algebra (Algebra, Has, type (:+:))
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fromMaybeText, warn)
@@ -94,7 +97,7 @@ import Fossa.API.Types (
   Contributors,
   Issues,
   OrgId,
-  Organization (orgSupportsIssueDiffs, organizationId),
+  Organization (orgSupportsIssueDiffs, orgSupportsNativeContainerScan, organizationId),
   Project,
   SignedURL (signedURL),
   UploadResponse,
@@ -296,6 +299,31 @@ uploadContainerScan apiOpts ProjectRevision{..} metadata scan = fossaReq $ do
           <> mkMetadataOpts metadata projectName
   resp <- req POST (containerUploadUrl baseUrl) (ReqBodyJson scan) jsonResponse (baseOpts <> opts)
   pure $ responseBody resp
+
+uploadNativeContainerScan ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  ProjectMetadata ->
+  NativeContainer.ContainerScan ->
+  m UploadResponse
+uploadNativeContainerScan apiOpts ProjectRevision{..} metadata scan = fossaReq $ do
+  supportsNativeScan <- orgSupportsNativeContainerScan <$> getOrganization apiOpts
+  -- Sanity Check!
+  if not supportsNativeScan
+    then fatal EndpointDoesNotSupportNativeContainerScan
+    else do
+      (baseUrl, baseOpts) <- useApiOpts apiOpts
+      let locator = renderLocator $ Locator "custom" projectName (Just projectRevision)
+          opts =
+            "locator" =: locator
+              <> "cliVersion" =: cliVersion
+              <> "managedBuild" =: True
+              <> maybe mempty ("branch" =:) projectBranch
+              <> "scanType" =: ("native" :: Text)
+              <> mkMetadataOpts metadata projectName
+      resp <- req POST (containerUploadUrl baseUrl) (ReqBodyJson scan) jsonResponse (baseOpts <> opts)
+      pure $ responseBody resp
 
 uploadAnalysis ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>

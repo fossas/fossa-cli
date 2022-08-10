@@ -1,10 +1,14 @@
-module Container.Errors (ContainerImgParsingError (..)) where
+module Container.Errors (
+  ContainerImgParsingError (..),
+  EndpointDoesNotSupportNativeContainerScan (..),
+) where
 
 import Codec.Archive.Tar qualified as Tar
 import Control.Exception (Exception)
 import Data.List.NonEmpty (NonEmpty)
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Logger (pretty)
+import Prettyprinter (vsep)
 
 -- | Errors that can be encountered when parsing a container image.
 data ContainerImgParsingError
@@ -35,3 +39,16 @@ instance ToDiagnostic ContainerImgParsingError where
 
 instance ToDiagnostic (NonEmpty ContainerImgParsingError) where
   renderDiagnostic = pretty . show
+
+data EndpointDoesNotSupportNativeContainerScan = EndpointDoesNotSupportNativeContainerScan
+instance ToDiagnostic EndpointDoesNotSupportNativeContainerScan where
+  renderDiagnostic (EndpointDoesNotSupportNativeContainerScan) =
+    vsep
+      [ "Provided endpoint does not support native container scans."
+      , ""
+      , "If you are using, --experimental-scanner option, it is not supported for your"
+      , "FOSSA instance. Try without using --experimental-scanner."
+      , ""
+      , "If your instance of FOSSA is on-premise, it likely needs to be updated to latest version."
+      , "Please contact FOSSA support for more assistance."
+      ]
