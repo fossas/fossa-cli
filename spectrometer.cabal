@@ -470,7 +470,8 @@ test-suite unit-tests
     App.Fossa.Config.Utils
     App.Fossa.Configuration.ConfigurationSpec
     App.Fossa.Configuration.TelemetryConfigSpec
-    App.Fossa.Container.NativeAnalyzeSpec
+    App.Fossa.Container.AnalyzeNativeSpec
+    App.Fossa.Container.AnalyzeNativeUploadSpec
     App.Fossa.LicenseScannerSpec
     App.Fossa.ManualDepsSpec
     App.Fossa.ProjectInferenceSpec
@@ -580,6 +581,7 @@ test-suite unit-tests
     Test.Effect
     Test.Fixtures
     Test.MockApi
+    Test.MockDockerEngineApi
     Yarn.V1.YarnLockV1Spec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec

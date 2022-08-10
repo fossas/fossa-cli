@@ -1,4 +1,4 @@
-module App.Fossa.Container.NativeAnalyzeSpec (spec) where
+module App.Fossa.Container.AnalyzeNativeUploadSpec (spec) where
 
 import App.Fossa.Container.AnalyzeNative (uploadScan)
 import App.Types (ProjectMetadata (..), ProjectRevision (..))

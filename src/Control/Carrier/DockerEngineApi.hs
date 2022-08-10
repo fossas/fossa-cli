@@ -7,7 +7,7 @@ import Conduit (runConduit, runResourceT, (.|))
 import Control.Carrier.Simple (Has, SimpleC, interpret)
 import Control.Effect.Diagnostics (fatalText)
 import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
-import Control.Effect.DockerEngineApi (DockerEngineApiF (ExportImage, GetImageSize, IsAccessible))
+import Control.Effect.DockerEngineApi (DockerEngineApiF (ExportImage, GetImageSize, IsDockerEngineAccessible))
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Aeson (FromJSON (parseJSON), eitherDecode, withObject, (.:))
 import Data.Conduit.Binary (sinkFile)
@@ -27,28 +27,28 @@ runDockerEngineApi :: (Has (Lift IO) sig m, Has Diag.Diagnostics sig m) => Docke
 runDockerEngineApi = interpret $ \case
   ExportImage img path -> exportDockerImage img path
   GetImageSize img -> getDockerImageSize img
-  IsAccessible -> isAccessible
+  IsDockerEngineAccessible -> isDockerEngineAccessible
 
 -- | Exports Docker Image to a given path.
--- Refer to: https://docs.docker.com/engine/api/v1.41/#tag/Image/operation/ImageGet
+-- Refer to: https://docs.docker.com/engine/api/v1.28/#tag/Image/operation/ImageGet
 exportDockerImage :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => Text -> Path Abs File -> m ()
 exportDockerImage img sinkTarget = do
   let request = HTTP.parseRequest_ $ baseApi <> "images/" <> (toString img) <> "/get"
   manager <- sendIO dockerClient
   -- Performs equivalent of for given image:
-  -- >> curl --unix-socket /var/run/docker.sock -X GET "http://localhost/v1.41/images/redis:alpine/get" > img.tar
+  -- >> curl --unix-socket /var/run/docker.sock -X GET "http://localhost/v1.28/images/redis:alpine/get" > img.tar
   sendIO . runResourceT $ do
     response <- HTTPConduit.http request manager
     runConduit $ HTTPConduit.responseBody response .| sinkFile (toString sinkTarget)
 
 -- | Gets Image Size from Image Description Json
--- Refer to: https://docs.docker.com/engine/api/v1.41/#tag/Image/operation/ImageInspect
+-- Refer to: https://docs.docker.com/engine/api/v1.28/#tag/Image/operation/ImageInspect
 getDockerImageSize :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => Text -> m Int
 getDockerImageSize img = do
   let request = HTTP.parseRequest_ $ baseApi <> "images/" <> (toString img) <> "/json"
 
   -- Performs equivalent of for given image:
-  -- >> curl --unix-socket /var/run/docker.sock -X GET "http://localhost/v1.41/images/redis:alpine/json"
+  -- >> curl --unix-socket /var/run/docker.sock -X GET "http://localhost/v1.28/images/redis:alpine/json"
   response <- sendIO $ HTTP.httpLbs request =<< dockerClient
 
   let body = HTTP.responseBody response
@@ -57,11 +57,11 @@ getDockerImageSize img = do
     Right (DockerImageInspectJson imgSize) -> pure imgSize
 
 -- | True if Docker Engine API is accessible, otherwise False.
--- Refer to: https://docs.docker.com/engine/api/v1.41/#tag/System/operation/SystemPing
-isAccessible :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => m Bool
-isAccessible = do
+-- Refer to: https://docs.docker.com/engine/api/v1.28/#tag/System/operation/SystemPing
+isDockerEngineAccessible :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) => m Bool
+isDockerEngineAccessible = do
   -- Performs equivalent of for given image:
-  -- >> curl --unix-socket /var/run/docker.sock -X GET "http://localhost/v1.41/_ping"
+  -- >> curl --unix-socket /var/run/docker.sock -X GET "http://localhost/v1.28/_ping"
   response <- sendIO $ HTTP.httpLbs (HTTP.parseRequest_ $ baseApi <> "_ping") =<< dockerClient
   pure $ statusCode (HTTP.responseStatus response) == 200
 

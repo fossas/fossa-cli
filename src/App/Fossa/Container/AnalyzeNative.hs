@@ -5,6 +5,8 @@ module App.Fossa.Container.AnalyzeNative (
 
   -- * for testing
   uploadScan,
+  ContainerImageSource (..),
+  parseDockerEngineSource,
 ) where
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
@@ -34,14 +36,8 @@ import Control.Carrier.Debug (Debug, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.DockerEngineApi (runDockerEngineApi)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
-import Control.Effect.Diagnostics (
-  Diagnostics,
-  fatal,
-  fatalText,
-  fromEitherShow,
-  (<||>),
- )
-import Control.Effect.DockerEngineApi (getDockerImageSize, isDockerEngineAccessible)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, errCtx, fatal, fatalText, fromEitherShow, (<||>))
+import Control.Effect.DockerEngineApi (DockerEngineApi, getDockerImageSize, isDockerEngineAccessible)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, uploadNativeContainerScan)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Telemetry (Telemetry)
@@ -114,7 +110,7 @@ analyze ::
   m ()
 analyze cfg = do
   logInfo "Running container scanning with fossa experimental-scanner!"
-  parsedSource <- parseContainerImageSource (unImageText $ imageLocator cfg)
+  parsedSource <- runDockerEngineApi $ parseContainerImageSource (unImageText $ imageLocator cfg)
   scannedImage <- case parsedSource of
     ContainerDockerImage imgTag -> analyzeFromDockerEngine imgTag
     ContainerOCIRegistry _ _ -> fatalText "container images from oci registry are not yet supported!"
@@ -170,6 +166,7 @@ parseContainerImageSource ::
   , Has Diagnostics sig m
   , Has ReadFS sig m
   , Has Logger sig m
+  , Has DockerEngineApi sig m
   ) =>
   Text ->
   m ContainerImageSource
@@ -181,10 +178,11 @@ parseDockerEngineSource ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has Logger sig m
+  , Has DockerEngineApi sig m
   ) =>
   Text ->
   m ContainerImageSource
-parseDockerEngineSource imgTag = runDockerEngineApi $ do
+parseDockerEngineSource imgTag = do
   canAccessDockerEngine <- isDockerEngineAccessible
 
   unless canAccessDockerEngine $

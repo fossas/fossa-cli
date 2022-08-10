@@ -1,3 +1,5 @@
+{-# LANGUAGE GADTs #-}
+
 module Control.Effect.DockerEngineApi (
   DockerEngineApiF (..),
   DockerEngineApi,
@@ -13,9 +15,12 @@ import Path (Abs, File, Path)
 data DockerEngineApiF a where
   ExportImage :: Text -> Path Abs File -> DockerEngineApiF ()
   GetImageSize :: Text -> DockerEngineApiF Int
-  IsAccessible :: DockerEngineApiF Bool
+  IsDockerEngineAccessible :: DockerEngineApiF Bool
 
 type DockerEngineApi = Simple DockerEngineApiF
+
+deriving instance Show (DockerEngineApiF a)
+deriving instance Eq (DockerEngineApiF a)
 
 -- | Exports Docker Image Tarball to given path.
 getDockerImage :: (Has DockerEngineApi sig m) => Text -> Path Abs File -> m ()
@@ -27,4 +32,4 @@ getDockerImageSize = sendSimple . GetImageSize
 
 -- | True if Docker Engine is Accessible
 isDockerEngineAccessible :: (Has DockerEngineApi sig m) => m Bool
-isDockerEngineAccessible = sendSimple IsAccessible
+isDockerEngineAccessible = sendSimple IsDockerEngineAccessible
