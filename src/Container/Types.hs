@@ -26,7 +26,7 @@ import Control.DeepSeq (NFData)
 import Data.Aeson (object)
 import Data.Aeson.Types (ToJSON, toJSON, (.=))
 import Data.Foldable (foldl')
-import Data.List.NonEmpty as NonEmpty (NonEmpty, head, length, tail)
+import Data.List.NonEmpty as NonEmpty (NonEmpty, head, tail)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
@@ -44,7 +44,7 @@ baseLayer :: ContainerImageRaw -> ContainerLayer
 baseLayer img = NonEmpty.head $ layers img
 
 hasOtherLayers :: ContainerImageRaw -> Bool
-hasOtherLayers img = not . null . NonEmpty.tail . layers
+hasOtherLayers = not . null . NonEmpty.tail . layers
 
 data ContainerLayer = ContainerLayer
   { layerChangeSets :: Seq ContainerFSChangeSet
