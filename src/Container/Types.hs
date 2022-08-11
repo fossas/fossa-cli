@@ -4,14 +4,20 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Container.Types (
+  -- * Raw Image
   ContainerImageRaw (..),
   ContainerLayer (..),
   ContainerFSChangeSet (..),
-  baseLayer,
-  otherLayersSquashed,
+
+  -- * Scanned Image
   ContainerScan (..),
   ContainerScanImage (..),
   ContainerScanImageLayer (..),
+
+  -- * helpers
+  baseLayer,
+  otherLayersSquashed,
+  hasOtherLayers,
 ) where
 
 import Codec.Archive.Tar.Index (TarEntryOffset)
@@ -36,6 +42,9 @@ data ContainerImageRaw = ContainerImageRaw
 
 baseLayer :: ContainerImageRaw -> ContainerLayer
 baseLayer img = NonEmpty.head $ layers img
+
+hasOtherLayers :: ContainerImageRaw -> Bool
+hasOtherLayers = not . null . NonEmpty.tail . layers
 
 data ContainerLayer = ContainerLayer
   { layerChangeSets :: Seq ContainerFSChangeSet
