@@ -1,4 +1,3 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 
 module Control.Carrier.DockerEngineApi (runDockerEngineApi) where
@@ -16,7 +15,7 @@ import Data.Text (Text)
 import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Client.Internal (Connection)
 import Network.HTTP.Conduit qualified as HTTPConduit
-import Network.HTTP.Types (Status (statusCode))
+import Network.HTTP.Types (Status (statusCode), ok200)
 import Network.Socket qualified as Socket
 import Network.Socket.ByteString qualified as SocketByteString
 import Path (Abs, File, Path)
@@ -63,7 +62,7 @@ isDockerEngineAccessible = do
   -- Performs equivalent of for given image:
   -- >> curl --unix-socket /var/run/docker.sock -X GET "http://localhost/v1.28/_ping"
   response <- sendIO $ HTTP.httpLbs (HTTP.parseRequest_ $ baseApi <> "_ping") =<< dockerClient
-  pure $ statusCode (HTTP.responseStatus response) == 200
+  pure $ statusCode (HTTP.responseStatus response) == ok200
 
 newtype DockerImageInspectJson = DockerImageInspectJson {imageSize :: Int}
   deriving (Eq, Ord, Show)

@@ -108,7 +108,7 @@ instance (Algebra sig m, Has (Lift IO) sig m) => Algebra (MockApi :+: sig) (Mock
 
 isSingular :: ApiExpectation -> Bool
 isSingular (ApiExpectation Once _ _ _) = True
-isSingular (ApiExpectation Always _ _ _) = False
+isSingular _ = False
 
 checkResult :: ExpectationRequestType -> DockerEngineApiF a -> DockerEngineApiF a -> ApiResult a -> Maybe (ApiResult a)
 checkResult ExpectingExactRequest a b resp = resp <$ guard (a == b)

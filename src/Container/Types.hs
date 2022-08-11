@@ -44,7 +44,7 @@ baseLayer :: ContainerImageRaw -> ContainerLayer
 baseLayer img = NonEmpty.head $ layers img
 
 hasOtherLayers :: ContainerImageRaw -> Bool
-hasOtherLayers img = NonEmpty.length (layers img) > 1
+hasOtherLayers img = not . null . NonEmpty.tail . layers
 
 data ContainerLayer = ContainerLayer
   { layerChangeSets :: Seq ContainerFSChangeSet
