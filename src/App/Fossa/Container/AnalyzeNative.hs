@@ -64,6 +64,7 @@ import Effect.Logger (
   logInfo,
   logStdout,
   viaShow,
+  vsep,
  )
 import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir)
 import Fossa.API.Types (Organization (orgSupportsNativeContainerScan), UploadResponse (uploadError), uploadLocator)
@@ -194,7 +195,7 @@ parseDockerEngineSource imgTag = do
 
   -- Confirm image is available by checking image size
   -- It will throw diag error, if image is missing
-  imgSize <- toText . show <$> getDockerImageSize imgTag
+  imgSize <- toText . show <$> errCtx (DockerEngineImageNotPresentLocally imgTag) (getDockerImageSize imgTag)
   logInfo . pretty $ "Discovered image for: " <> imgTag <> " (of " <> imgSize <> " bytes) via docker engine api."
 
   pure $ ContainerDockerImage imgTag
@@ -217,3 +218,11 @@ parseExportedTarballSource path = do
     fatalText $
       "Could not locate tarball source at filepath: " <> toText resolvedAbsPath
   pure $ ContainerExportedTarball resolvedAbsPath
+
+newtype DockerEngineImageNotPresentLocally = DockerEngineImageNotPresentLocally Text
+instance ToDiagnostic DockerEngineImageNotPresentLocally where
+  renderDiagnostic (DockerEngineImageNotPresentLocally tag) =
+    vsep
+      [ pretty $ "Could not find: " <> (toString tag) <> " in local repository."
+      , pretty $ "Perform: docker pull " <> (toString tag) <> ", prior to running fossa."
+      ]
