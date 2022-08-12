@@ -294,6 +294,7 @@ library
     Control.Timeout
     Control.Timeout.Internal
     Data.Aeson.Extra
+    Data.BerkeleyDB
     Data.Conduit.Extra
     Data.FileEmbed.Extra
     Data.FileTree.IndexFileTree
