@@ -17,6 +17,7 @@ module Test.Effect (
   handleDiag,
 ) where
 
+import Control.Carrier.ContainerRegistryApi (ContainerRegistryApiC, runContainerRegistryApi)
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
 import Control.Carrier.Reader (ReaderC, runReader)
@@ -60,7 +61,7 @@ import Type.Operator (type ($))
 -- depends on it.
 -- MockApiC must be inside Diagnostics so its state is not
 -- lost when diagnostics short-circuits on an error.
-type EffectStack = FinallyC $ ReaderC AllFilters $ ExecIOC $ ReadFSIOC $ FossaApiClientMockC $ DiagnosticsC $ MockApiC $ IgnoreLoggerC $ IgnoreStickyLoggerC $ StackC IO
+type EffectStack = FinallyC $ ContainerRegistryApiC $ ReaderC AllFilters $ ExecIOC $ ReadFSIOC $ FossaApiClientMockC $ DiagnosticsC $ MockApiC $ IgnoreLoggerC $ IgnoreStickyLoggerC $ StackC IO
 
 -- TODO: add useful describe, naive describe' doesn't work.
 
@@ -77,7 +78,7 @@ runTestEffects' :: EffectStack () -> Spec
 runTestEffects' = runIO . runTestEffects
 
 runTestEffects :: EffectStack () -> IO ()
-runTestEffects = runStack . ignoreStickyLogger . ignoreLogger . runMockApi . handleDiag . runApiWithMock . runReadFSIO . runExecIO . runReader mempty . runFinally
+runTestEffects = runStack . ignoreStickyLogger . ignoreLogger . runMockApi . handleDiag . runApiWithMock . runReadFSIO . runExecIO . runReader mempty . runContainerRegistryApi . runFinally
 
 handleDiag :: (Has (Lift IO) sig m) => DiagnosticsC m () -> m ()
 handleDiag diag =

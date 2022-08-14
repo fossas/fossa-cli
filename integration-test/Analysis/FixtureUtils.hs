@@ -118,7 +118,7 @@ testRunnerWithLogger f env =
 
 runExecIOWithinEnv :: (Has (Lift IO) sig m) => FixtureEnvironment -> ExecIOC m a -> m a
 runExecIOWithinEnv conf = interpret $ \case
-  Exec dir cmd -> sendIO $ runExecIO $ sendSimple (Exec dir $ decorateCmdWith conf cmd)
+  Exec dir cmd stdin -> sendIO $ runExecIO $ sendSimple (Exec dir (decorateCmdWith conf cmd) stdin)
 
 decorateCmdWith :: FixtureEnvironment -> Command -> Command
 decorateCmdWith LocalEnvironment cmd = cmd

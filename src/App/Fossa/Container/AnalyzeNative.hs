@@ -21,6 +21,7 @@ import App.Fossa.Config.Container.Analyze qualified as Config
 import App.Fossa.Config.Container.Common (ImageText (unImageText))
 import App.Fossa.Container.Sources.DockerEngine (analyzeFromDockerEngine)
 import App.Fossa.Container.Sources.DockerTarball (analyzeExportedTarball)
+import App.Fossa.Container.Sources.Registry (analyzeFromRegistry)
 import App.Types (
   OverrideProject (OverrideProject),
   ProjectMetadata,
@@ -30,13 +31,14 @@ import App.Types (
   overrideRevision,
  )
 import Codec.Compression.GZip qualified as GZip
+import Container.Docker.SourceParser (RegistryImageSource, parseImageUrl)
 import Container.Errors (EndpointDoesNotSupportNativeContainerScan (EndpointDoesNotSupportNativeContainerScan))
 import Container.Types (ContainerScan (..))
 import Control.Carrier.Debug (Debug, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.DockerEngineApi (runDockerEngineApi)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, errCtx, fatal, fatalText, fromEitherShow, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, errCtx, fatal, fatalText, fromEitherShow, (<||>))
 import Control.Effect.DockerEngineApi (DockerEngineApi, getDockerImageSize, isDockerEngineAccessible)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, uploadNativeContainerScan)
 import Control.Effect.Lift (Lift, sendIO)
@@ -70,11 +72,13 @@ import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir)
 import Fossa.API.Types (Organization (orgSupportsNativeContainerScan), UploadResponse (uploadError), uploadLocator)
 import Path (Abs, File, Path, SomeBase (Abs, Rel), parseSomeFile, (</>))
 import Srclib.Types (Locator)
+import System.Info (arch)
+import Text.Megaparsec (errorBundlePretty, parse)
 
 data ContainerImageSource
   = ContainerExportedTarball (Path Abs File)
   | ContainerDockerImage Text
-  | ContainerOCIRegistry Text Text
+  | ContainerOCIRegistry RegistryImageSource
   deriving (Show, Eq)
 
 debugBundlePath :: FilePath
@@ -113,9 +117,9 @@ analyze cfg = do
   logInfo "Running container scanning with fossa experimental-scanner!"
   parsedSource <- runDockerEngineApi $ parseContainerImageSource (unImageText $ imageLocator cfg)
   scannedImage <- case parsedSource of
-    ContainerDockerImage imgTag -> analyzeFromDockerEngine imgTag
-    ContainerOCIRegistry _ _ -> fatalText "container images from oci registry are not yet supported!"
-    ContainerExportedTarball tarball -> analyzeExportedTarball tarball
+    ContainerDockerImage imgTag -> context "Analyzing via Docker Engine Api" $ analyzeFromDockerEngine imgTag
+    ContainerOCIRegistry registrySrc -> context "Analyzing via Registry" $ analyzeFromRegistry registrySrc
+    ContainerExportedTarball tarball -> context "Analyzing via Tarball" $ analyzeExportedTarball tarball
 
   let revision = extractRevision (revisionOverride cfg) scannedImage
   case scanDestination cfg of
@@ -174,6 +178,7 @@ parseContainerImageSource ::
 parseContainerImageSource src =
   parseExportedTarballSource src
     <||> parseDockerEngineSource src
+    <||> parseOciRegistrySource src
 
 parseDockerEngineSource ::
   ( Has (Lift IO) sig m
@@ -226,3 +231,16 @@ instance ToDiagnostic DockerEngineImageNotPresentLocally where
       [ pretty $ "Could not find: " <> (toString tag) <> " in local repository."
       , pretty $ "Perform: docker pull " <> (toString tag) <> ", prior to running fossa."
       ]
+
+parseOciRegistrySource ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  ) =>
+  Text ->
+  m ContainerImageSource
+parseOciRegistrySource tag = case parse (parseImageUrl defaultArch) "" tag of
+  Left err -> fatal $ errorBundlePretty err
+  Right registrySource -> pure $ ContainerOCIRegistry registrySource
+  where
+    defaultArch :: Text
+    defaultArch = toText $ if arch == "x86_64" then "amd64" else arch
