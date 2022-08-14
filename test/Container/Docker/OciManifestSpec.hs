@@ -20,7 +20,7 @@ spec = do
       ociManifest `shouldBe` Just expectedOciManifest
 
     it "should parse oci manifest list" $ do
-      manifests <- decodeFileStrict' "test/Container/Docker/testdata/OciManifestIndex.json"
+      manifests <- decodeFileStrict' "test/Container/Docker/testdata/ociManifestIndex.json"
       manifests `shouldBe` Just expectedManifestList
 
 expectedOciManifest :: OciManifestV2
