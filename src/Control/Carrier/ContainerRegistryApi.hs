@@ -78,7 +78,6 @@ import Data.Conduit.Zlib (ungzip)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (
   LazyStrict (toStrict),
-
   toString,
   toText,
  )
