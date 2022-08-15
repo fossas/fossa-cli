@@ -22,12 +22,14 @@ headerBlobSpec :: BLS.ByteString -> Spec
 headerBlobSpec bs = describe "header blob parsing" $ do
   context "minimal example" $ do
     it "Parses data length and index length" $ do
-      let testBS = BLS.pack [2,0,0,1 -- indexLen
-                            ,3,0,0,2] -- dataLen
+      let testBS = BLS.pack [0,0,0,1 -- indexLen
+                            ,0,0,0,2] -- dataLen
       let fromBigEndianBlob = HeaderBlob {
-            indexLength  = 0x02000001
-            , dataLength = 0x03000002
-                                         }
+            indexLength  = 0x00000001
+            , dataLength = 0x00000002
+            , dataStart = 0x140 -- 0x40 + 0x01 * entryInfoSize
+            , pvLength = 0xc2
+            }
       headerBlobInit testBS `shouldBe` Right fromBigEndianBlob
 
   context "Real example " $ do
@@ -35,9 +37,10 @@ headerBlobSpec bs = describe "header blob parsing" $ do
       let expected = HeaderBlob {
             indexLength  = 0x00000050
             , dataLength = 0x00008ebc
+            , dataStart = 0x475e40
+            , pvLength = 0xb6fc -- 0x40 + 0x8ebc + 0x50 * entryInfoSize
             }
       headerBlobInit bs `shouldBe` Right expected
-  
 
 headerBlobErrSpec :: Spec
 headerBlobErrSpec =
