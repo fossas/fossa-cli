@@ -73,4 +73,4 @@ takeReachable :: forall a. Ord a => a -> AM.AdjacencyMap a -> AM.AdjacencyMap a
 takeReachable x gr = AM.induce (`Set.member` vertices) gr
   where
     vertices :: Set a
-    vertices = Set.fromList $ AMA.reachable x gr
+    vertices = Set.fromList $ AMA.reachable gr x

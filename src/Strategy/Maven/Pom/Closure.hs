@@ -61,7 +61,7 @@ buildProjectClosures basedir global = closures
 
 -- Find reachable nodes both below (children, grandchildren, ...) and above (parents, grandparents) the node
 bidirectionalReachable :: Ord a => a -> AM.AdjacencyMap a -> Set.Set a
-bidirectionalReachable node gr = Set.fromList $ AM.reachable node gr ++ AM.reachable node (AM.transpose gr)
+bidirectionalReachable node gr = Set.fromList $ AM.reachable gr node ++ AM.reachable (AM.transpose gr) node
 
 sourceVertices :: Ord a => AM.AdjacencyMap a -> [a]
 sourceVertices graph = [v | v <- AM.vertexList graph, Set.null (AM.preSet v graph)]
@@ -99,10 +99,10 @@ determineProjectRoots rootDir closure = go . Set.fromList
         frontier = Set.unions $ Set.map (\coord -> AM.postSet coord (globalGraph closure)) remainingCoords
 
 data MavenProjectClosure = MavenProjectClosure
-  { closureAnalysisRoot :: Path Abs Dir
-  -- ^ the root of global fossa-analyze analysis; needed for pathfinder license scan
-  , closurePath :: Path Abs File
-  -- ^ path of the pom file used as the root of this project closure
+  { -- | the root of global fossa-analyze analysis; needed for pathfinder license scan
+    closureAnalysisRoot :: Path Abs Dir
+  , -- | path of the pom file used as the root of this project closure
+    closurePath :: Path Abs File
   , closureRootCoord :: MavenCoordinate
   , closureRootPom :: Pom
   , closureGraph :: AM.AdjacencyMap MavenCoordinate
