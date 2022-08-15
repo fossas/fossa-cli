@@ -37,31 +37,22 @@ import Container.Docker.SourceParser (
     registryCred
   ),
   RepoDigest,
-  RepoReference (RepoReferenceDigest, RepoReferenceTag),
-  RepoTag (RepoTag),
-  defaultHttpScheme,
+  RepoReference (RepoReferenceDigest),
  )
 import Control.Algebra (Algebra, Has)
 import Control.Carrier.AtomicCounter (runAtomicCounter)
 import Control.Carrier.ContainerRegistryApi.Authorization (applyBearAuth, getAuthToken, mkRequest)
 import Control.Carrier.ContainerRegistryApi.Common (
   RegistryCtx (RegistryCtx),
-  acceptsContentType,
   fromResponse,
   getContentType,
   getToken,
-  logHttp,
-  updateToken,
  )
 
--- updateAccessToken,
-
-import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Finally (runFinally)
 import Control.Carrier.Reader (ReaderC, ask, runReader)
 import Control.Carrier.Simple (SimpleC, interpret)
-import Control.Carrier.Stack (runStack)
-import Control.Carrier.StickyLogger (ignoreStickyLogger, runStickyLogger)
+import Control.Carrier.StickyLogger (runStickyLogger)
 import Control.Carrier.TaskPool (withTaskPool)
 import Control.Concurrent (getNumCapabilities)
 import Control.Concurrent.STM (newEmptyTMVarIO)
@@ -87,7 +78,7 @@ import Data.Conduit.Zlib (ungzip)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (
   LazyStrict (toStrict),
-  encodeUtf8,
+
   toString,
   toText,
  )
@@ -96,11 +87,10 @@ import Effect.Logger (
   Logger,
   Pretty (pretty),
   Severity (SevInfo),
-  ignoreLogger,
   logDebug,
   logInfo,
  )
-import Effect.ReadFS (ReadFS, listDir, runReadFSIO)
+import Effect.ReadFS (ReadFS, listDir)
 import Network.HTTP.Client (
   Manager,
   Request,
@@ -111,7 +101,7 @@ import Network.HTTP.Client (
 import Network.HTTP.Conduit (tlsManagerSettings)
 import Network.HTTP.Conduit qualified as HTTPConduit
 import Network.HTTP.Types.Header (ResponseHeaders)
-import Path (Abs, Dir, File, Path, filename, mkAbsDir, mkRelFile, toFilePath, (</>))
+import Path (Abs, Dir, File, Path, filename, mkRelFile, toFilePath, (</>))
 import Path.Internal (Path (..))
 
 -- | A carrier to run Registry API functions in the IO monad
@@ -323,33 +313,3 @@ mkTarball dir manifest imgSrc = context "Making Image Tarball" $ do
         (toFilePath dir) -- Base Directory.
         (map (toFilePath . filename) files) -- Filepath as seen from Base directory in tarball.
   pure tarballFile
-
-eff = runStack . ignoreStickyLogger . ignoreLogger . runDiagnostics . runReadFSIO . runContainerRegistryApi . runFinally
-
-src' :: RegistryImageSource
-src' =
-  ( RegistryImageSource
-      "ghcr.io"
-      defaultHttpScheme
-      (Just ("user", "pass"))
-      "fossas/haskell-dev-tools"
-      (RepoReferenceTag . RepoTag $ "9.0.2")
-      "amd64"
-  )
-
-targetPath :: Path Abs Dir
-targetPath = $(mkAbsDir "/Users/megh/Work/upstream/fossa-cli/sandbox/jjj")
-
-main :: IO ()
-main = do
-  res <- eff $ exportImage src' targetPath
-  print ""
-
--- updateToken "new"
--- token <- getToken
--- print token
-
--- print "done"
-
--- Replace with Req'
---

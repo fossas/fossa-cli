@@ -177,7 +177,7 @@ parseContainerImageSource ::
   m ContainerImageSource
 parseContainerImageSource src =
   parseExportedTarballSource src
-    -- <||> parseDockerEngineSource src
+    <||> parseDockerEngineSource src
     <||> parseOciRegistrySource src
 
 parseDockerEngineSource ::

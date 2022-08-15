@@ -67,7 +67,6 @@ common deps
     , attoparsec                   ^>=0.14.1
     , bytestring                   ^>=0.10.8
     , bzlib                        ^>=0.5.0.0
-    , case-insensitive             ^>=1.2.0.0
     , cgroup-rts-threads           ^>=0.2.0.0
     , codec-rpm                    ^>=0.2.2
     , concurrent-output            ^>=1.10.12
@@ -232,6 +231,7 @@ library
     Container.Docker.ImageJson
     Container.Docker.Manifest
     Container.Docker.OciManifest
+    Container.Docker.OciManifestIndex
     Container.Docker.SourceParser
     Container.Dpkg
     Container.Errors
@@ -504,8 +504,10 @@ test-suite unit-tests
     Composer.ComposerLockSpec
     Conda.CondaListSpec
     Conda.EnvironmentYmlSpec
+    Container.Docker.CredentialsSpec
     Container.Docker.ImageJsonSpec
     Container.Docker.ManifestSpec
+    Container.Docker.OciManifestIndexSpec
     Container.Docker.OciManifestSpec
     Container.Docker.SourceParserSpec
     Container.DpkgSpec

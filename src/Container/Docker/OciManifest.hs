@@ -9,8 +9,17 @@ module Container.Docker.OciManifest (
   blobEntries,
 ) where
 
-import Container.Docker.Manifest (ManifestJson (ManifestJson), ManifestJsonImageEntry (ManifestJsonImageEntry))
-import Container.Docker.SourceParser (RegistryImageSource (RegistryImageSource), RepoDigest (RepoDigest), RepoReference, dockerHubRegistry, showReferenceWithSep, suggestDockerExport)
+import Container.Docker.Manifest (
+  ManifestJson (ManifestJson),
+  ManifestJsonImageEntry (ManifestJsonImageEntry),
+ )
+import Container.Docker.SourceParser (
+  RegistryImageSource (RegistryImageSource),
+  RepoDigest (RepoDigest),
+  dockerHubRegistry,
+  showReferenceWithSep,
+  suggestDockerExport,
+ )
 import Control.Effect.Diagnostics (ToDiagnostic, renderDiagnostic)
 import Data.Aeson (FromJSON (parseJSON), withObject, withText, (.:))
 import Data.List.NonEmpty ((<|))
