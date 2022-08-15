@@ -301,6 +301,7 @@ library
     Data.Glob
     Data.List.Extra
     Data.Monoid.Extra
+    Data.Rpm.DbHeaderBlob
     Data.Set.NonEmpty
     Data.String.Conversion
     Data.Tagged
@@ -524,6 +525,7 @@ test-suite unit-tests
     Dart.PubSpecLockSpec
     Dart.PubSpecSpec
     Data.IndexFileTreeSpec
+    Data.RpmDbHeaderBlobSpec
     Discovery.ArchiveSpec
     Discovery.FiltersSpec
     Discovery.WalkSpec
