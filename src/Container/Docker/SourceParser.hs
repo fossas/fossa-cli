@@ -91,9 +91,6 @@ instance Show RepoReference where
   show (RepoReferenceTag (RepoTag tag)) = toString tag
   show (RepoReferenceDigest (RepoDigest digest)) = toString digest
 
--- Vimal (co-op) bakery
--- C: 403-354-2677
-
 data RegistryHostScheme
   = RegistryHTTP
   | RegistryHTTPS
