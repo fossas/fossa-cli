@@ -1,27 +1,16 @@
-{-# LANGUAGE TemplateHaskell #-}
-
-module Container.Dpkg (
-  analyzeDpkgEntries,
-  analyzeDpkgEntriesScoped,
+module Strategy.Dpkg.Parser (
   DpkgEntry (..),
+  dpkgEntriesParser,
   -- | For testing
   dpkgEntryParser,
 ) where
 
-import App.Fossa.VSI.DynLinked.Util (fsRoot)
-import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import Control.Monad (void)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
-import Effect.ReadFS (
-  ReadFS,
-  readContentsParser,
- )
-import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Text.Megaparsec (
   MonadParsec (eof, notFollowedBy, takeWhileP),
   Parsec,
@@ -48,25 +37,6 @@ data DpkgEntry = DpkgEntry
   , dpkgEntryVersion :: Text
   }
   deriving (Eq, Ord, Show)
-
--- | Analyze dpkg entries from the root of the file system.
--- Searches for: @var/lib/dpkg/{status|status.d}@ from the root of the file system.
-analyzeDpkgEntries :: (Has ReadFS sig m, Has Diagnostics sig m) => m ([DpkgEntry])
-analyzeDpkgEntries = analyzeDpkgEntriesScoped fsRoot
-
--- | Analyze dpkg entries from the provided root.
--- Searches for: @var/lib/dpkg/{status|status.d}@ from the provided directory.
-analyzeDpkgEntriesScoped :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m ([DpkgEntry])
-analyzeDpkgEntriesScoped root = parseStatus root <||> parseStatusD root
-
-parseStatus :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m ([DpkgEntry])
-parseStatus root = readContentsParser dpkgEntriesParser $ dpkgStatusDir root </> $(mkRelFile "status")
-
-parseStatusD :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m ([DpkgEntry])
-parseStatusD root = readContentsParser dpkgEntriesParser $ dpkgStatusDir root </> $(mkRelFile "status.d")
-
-dpkgStatusDir :: Path Abs Dir -> Path Abs Dir
-dpkgStatusDir root = root </> $(mkRelDir "var") </> $(mkRelDir "lib") </> $(mkRelDir "dpkg")
 
 -- | Parses a dpkg status file.
 dpkgEntriesParser :: Parser [DpkgEntry]
