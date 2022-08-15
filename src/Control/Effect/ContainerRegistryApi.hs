@@ -1,31 +1,23 @@
 {-# LANGUAGE GADTs #-}
 
 module Control.Effect.ContainerRegistryApi (
-  ContainerRegistryApiF (..),
   ContainerRegistryApi,
-  PlatformArchitecture,
-
-  -- * Accessors
+  ContainerRegistryApiF (..),
   getImageManifest,
   exportImage,
 ) where
 
 import Container.Docker.OciManifest (OciManifestV2)
 import Container.Docker.SourceParser (RegistryImageSource)
-import Control.Carrier.Simple (Has, Simple, sendSimple)
-import Data.Text (Text)
+import Control.Algebra (Has)
+import Control.Carrier.Simple (Simple, sendSimple)
 import Path (Abs, Dir, File, Path)
-
-type PlatformArchitecture = Text
-
-data ContainerRegistryApiF a where
-  GetImageManifest :: RegistryImageSource -> ContainerRegistryApiF OciManifestV2
-  ExportImage :: RegistryImageSource -> Path Abs Dir -> ContainerRegistryApiF (Path Abs File)
 
 type ContainerRegistryApi = Simple ContainerRegistryApiF
 
-deriving instance Show (ContainerRegistryApiF a)
-deriving instance Eq (ContainerRegistryApiF a)
+data ContainerRegistryApiF a where
+  GetImageManifest :: RegistryImageSource -> ContainerRegistryApiF (OciManifestV2)
+  ExportImage :: RegistryImageSource -> Path Abs Dir -> ContainerRegistryApiF (Path Abs File)
 
 -- | Retrieves Image Manifest from Container Registry.
 getImageManifest ::

@@ -1,11 +1,13 @@
 module Control.Carrier.ContainerRegistryApi.Common (
   logHttp,
-  http,
   fromResponse,
   originalReqUri,
   getHeaderValue,
   getContentType,
   acceptsContentType,
+  RegistryCtx (..),
+  getToken,
+  updateToken,
 ) where
 
 import Control.Algebra (Has)
@@ -13,6 +15,7 @@ import Control.Carrier.ContainerRegistryApi.Errors (
   ContainerRegistryApiErrorBody,
   UnknownApiError (UnknownApiError),
  )
+import Control.Concurrent.STM (STM, TMVar, atomically, putTMVar, tryReadTMVar)
 import Control.Effect.Diagnostics (Diagnostics, fatal)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Aeson (decode')
@@ -53,9 +56,6 @@ logHttp req manager = do
           <> show (getContentType . responseHeaders $ r)
           <> ")"
 
-http :: Has (Lift IO) sig m => Request -> Manager -> m (Response ByteStringLazy.ByteString)
-http req manager = sendIO $ httpLbs req manager
-
 -- | Throws Diagnostics Error for Api Errors, and unexpected responses.
 fromResponse :: Has Diagnostics sig m => Response ByteStringLazy.ByteString -> m (Response ByteStringLazy.ByteString)
 fromResponse resp =
@@ -81,3 +81,19 @@ getContentType = getHeaderValue hContentType
 -- | Applies 'Accepts' header to request.
 acceptsContentType :: Request -> Text -> Request
 acceptsContentType r contentType = r{requestHeaders = requestHeaders r ++ [(hAccept, encodeUtf8 contentType)]}
+
+-- | Wrapper for context - e.g. access token etc.
+newtype RegistryCtx = RegistryCtx
+  { registryAccessToken :: TMVar Text
+  }
+
+-- | Gets access token from registry context.
+getToken :: (Has (Lift IO) sig m) => RegistryCtx -> m (Maybe Text)
+getToken = sendSTM . tryReadTMVar . registryAccessToken
+
+-- | Updates access token from registry context.
+updateToken :: Has (Lift IO) sig m => RegistryCtx -> Text -> m ()
+updateToken token newVal = sendSTM $ putTMVar (registryAccessToken token) newVal
+
+sendSTM :: Has (Lift IO) sig m => STM a -> m a
+sendSTM = sendIO . atomically

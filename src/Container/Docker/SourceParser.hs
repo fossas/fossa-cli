@@ -37,20 +37,26 @@
 module Container.Docker.SourceParser (
   RegistryImageSource (..),
   RegistryHostScheme (..),
+  RepoReference (..),
+  RepoTag (..),
+  RepoDigest (..),
   parseImageUrl,
   dockerHubRegistry,
   defaultTag,
   defaultHttpScheme,
+  suggestDockerExport,
+  showReferenceWithSep,
 ) where
 
 import Control.Monad (unless, void)
 import Data.Functor (($>))
 import Data.Maybe (fromMaybe)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (ToString (toString), toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import Prettyprinter (Pretty (pretty))
+import Prettyprinter (Doc, Pretty (pretty), indent, line, vsep)
+import Prettyprinter.Render.Terminal (AnsiStyle)
 import Text.Megaparsec (
   MonadParsec (try),
   Parsec,
@@ -67,11 +73,26 @@ type Parser = Parsec Void Text
 dockerHubRegistry :: Text
 dockerHubRegistry = "index.docker.io"
 
-defaultTag :: Text
-defaultTag = "latest"
+defaultTag :: RepoReference
+defaultTag = RepoReferenceTag . RepoTag $ "latest"
 
 defaultHttpScheme :: RegistryHostScheme
 defaultHttpScheme = RegistryHTTPS
+
+data RepoReference
+  = RepoReferenceTag RepoTag
+  | RepoReferenceDigest RepoDigest
+  deriving (Eq, Ord)
+
+newtype RepoTag = RepoTag Text deriving (Show, Eq, Ord)
+newtype RepoDigest = RepoDigest Text deriving (Show, Eq, Ord)
+
+instance Show RepoReference where
+  show (RepoReferenceTag (RepoTag tag)) = toString tag
+  show (RepoReferenceDigest (RepoDigest digest)) = toString digest
+
+-- Vimal (co-op) bakery
+-- C: 403-354-2677
 
 data RegistryHostScheme
   = RegistryHTTP
@@ -87,7 +108,7 @@ data RegistryImageSource = RegistryImageSource
   , registryScheme :: RegistryHostScheme
   , registryCred :: Maybe (Text, Text)
   , registryContainerRepository :: Text
-  , registryContainerRepositoryReference :: Text
+  , registryContainerRepositoryReference :: RepoReference
   , platformArchitecture :: Text
   }
   deriving (Show, Eq, Ord)
@@ -100,13 +121,42 @@ instance Pretty RegistryImageSource where
         <> host
         <> "/"
         <> repo
-        <> ":"
-        <> ref
+        <> showReferenceWithSep ref
     where
       redactedCred :: Text
       redactedCred = case cred of
         Nothing -> mempty
         _ -> "<REDACTED>:<REDACTED>@"
+
+suggestDockerExport :: RegistryImageSource -> Doc AnsiStyle
+suggestDockerExport (RegistryImageSource host _ _ repo ref _) =
+  vsep
+    [ "Try using exported container image for analysis instead."
+    , line
+    , indent 4 $
+        vsep
+          [ ">> " <> pullCmd
+          , ">> " <> saveCmd
+          , line
+          , fossaAnalyzeCmd
+          ]
+    ]
+  where
+    imgIdentifier :: Text
+    imgIdentifier = host <> "/" <> repo <> showReferenceWithSep ref
+
+    pullCmd :: Doc AnsiStyle
+    pullCmd = pretty $ "docker pull " <> imgIdentifier
+
+    saveCmd :: Doc AnsiStyle
+    saveCmd = pretty $ "docker save " <> imgIdentifier <> " > image-exported.tar"
+
+    fossaAnalyzeCmd :: Doc AnsiStyle
+    fossaAnalyzeCmd = "fossa container analyze image-exported.tar --experimental-scanner"
+
+showReferenceWithSep :: RepoReference -> Text
+showReferenceWithSep (RepoReferenceTag (RepoTag tag)) = ":" <> tag
+showReferenceWithSep (RepoReferenceDigest (RepoDigest digest)) = "@" <> digest
 
 -- | Parses to RegistryImageSource.
 --
@@ -114,17 +164,31 @@ instance Pretty RegistryImageSource where
 -- >> parse parseImageUrl "fossa/db:alpine" = https://index.docker.io/fossa/db:alpine
 -- >> parse parseImageUrl "quay.io/fossas/cli" = https://quay.io/fossas/cli:latest
 -- >> parse parseImageUrl "quay.io/fossas/cli:9.0.0" = https://quay.io/fossas/cli:9.0.0
--- >> parse parseImageUrl "user:pass@quay.io/fossas/cli:9.0.0" = https://user:pass@quay.io/fossas/cli:9.0.0
+-- >> parse parseImageUrl "user:pass@quay.io/repo/cli:9.0.0" = https://user:pass@quay.io/repo/cli:9.0.0
 -- -
 parseImageUrl :: Text -> Parser RegistryImageSource
 parseImageUrl targetArch = do
-  imgSrc <- try (parseImageUrl' targetArch) <|> parseImageUrlWithDefaultRegistry dockerHubRegistry targetArch
+  imgSrc <-
+    try (parseImageUrl' targetArch)
+      <|> parseImageUrlWithDefaultRegistry dockerHubRegistry targetArch
 
   -- Docker Registry uses library/image for
-  -- official images. For instance 'library/redis' should resolve to 'library/redis:latest'
-  if (registryHost imgSrc == dockerHubRegistry && not (Text.isInfixOf "/" $ registryContainerRepository imgSrc))
-    then pure $ imgSrc{registryContainerRepository = "library/" <> registryContainerRepository imgSrc}
+  -- official images. For instance 'redis' should resolve to 'library/redis:latest'
+  if isOfficialImage imgSrc
+    then pure $ repoWithPrefix "library/" imgSrc
     else pure imgSrc
+  where
+    isOfficialImage :: RegistryImageSource -> Bool
+    isOfficialImage imgSrc =
+      registryHost imgSrc == dockerHubRegistry
+        && not (Text.isInfixOf "/" $ registryContainerRepository imgSrc)
+
+    repoWithPrefix :: Text -> RegistryImageSource -> RegistryImageSource
+    repoWithPrefix prefix imgSrc =
+      imgSrc
+        { registryContainerRepository =
+            prefix <> registryContainerRepository imgSrc
+        }
 
 parseImageUrlWithDefaultRegistry :: Text -> Text -> Parser RegistryImageSource
 parseImageUrlWithDefaultRegistry defaultHost targetArch = do
@@ -164,7 +228,9 @@ parseImageUrl' targetArch = do
       }
 
 parseHostScheme :: Parser RegistryHostScheme
-parseHostScheme = try (chunk "http://" $> RegistryHTTP) <|> (chunk "https://" $> RegistryHTTPS)
+parseHostScheme =
+  try (chunk "http://" $> RegistryHTTP)
+    <|> (chunk "https://" $> RegistryHTTPS)
 
 -- | Parses Authorization Credentials in URI.
 --
@@ -185,23 +251,35 @@ parseAuthCred = do
 -- >> parse parseRepoRef "fossas/fossa:4.0.0" = ("fossas/fossa", "4.0.0")
 -- >> parse parseRepoRef "fossas/fossa@4.0.0" = ("fossas/fossa", "4.0.0")
 -- -
-parseRepoRef :: Parser (Text, Text)
+parseRepoRef :: Parser (Text, RepoReference)
 parseRepoRef = try parseRepoRef' <|> parseRepoWithDefaultTag defaultTag
 
-parseRepoRef' :: Parser (Text, Text)
+parseRepoRef' :: Parser (Text, RepoReference)
 parseRepoRef' = do
   repo <- parseRepo
-  void $ chunk ":" <|> chunk "@"
-  ref <- parseRef
+  ref <- parseRepoReference
   pure (repo, ref)
 
-parseRepoWithDefaultTag :: Text -> Parser (Text, Text)
+parseRepoReference :: Parser RepoReference
+parseRepoReference = try parseRepoTag <|> parseRepoDigest
+
+parseRepoTag :: Parser RepoReference
+parseRepoTag = RepoReferenceTag . RepoTag <$> (chunk ":" *> parseRef)
+
+parseRepoDigest :: Parser RepoReference
+parseRepoDigest = RepoReferenceDigest . RepoDigest <$> (chunk "@" *> parseRef)
+
+parseRepoWithDefaultTag :: RepoReference -> Parser (Text, RepoReference)
 parseRepoWithDefaultTag tag = do
   repo <- parseRepo
   pure (repo, tag)
 
 parseRepo :: Parser Text
-parseRepo = toText <$> some (alphaNumChar <|> char '.' <|> char '_' <|> char '-' <|> char '/')
+parseRepo =
+  toText
+    <$> some (alphaNumChar <|> char '.' <|> char '_' <|> char '-' <|> char '/')
 
 parseRef :: Parser Text
-parseRef = toText <$> some (alphaNumChar <|> char '.' <|> char '_' <|> char '-' <|> char ':')
+parseRef =
+  toText
+    <$> some (alphaNumChar <|> char '.' <|> char '_' <|> char '-' <|> char ':')

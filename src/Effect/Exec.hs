@@ -219,6 +219,7 @@ instance ToDiagnostic ExecErr where
 exec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure Stdout)
 exec dir cmd = sendSimple (Exec (Abs dir) cmd Nothing)
 
+-- | Execute a command with stdin and return its @(exitcode, stdout, stderr)@
 exec' :: Has Exec sig m => Path Abs Dir -> Command -> Text -> m (Either CmdFailure Stdout)
 exec' dir cmd stdin = sendSimple (Exec (Abs dir) cmd (Just stdin))
 
@@ -284,9 +285,10 @@ runExecIO = interpret $ \case
         ioExceptionToCmdFailure :: IOException -> CmdFailure
         ioExceptionToCmdFailure = mkFailure (ExitFailure 1) "" . fromString . show
 
-    processResult <- case stdin of
-      Just stin -> try $ readProcess (setStdin (fromString . toString $ stin) $ setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs'))
-      Nothing -> try $ readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs'))
+    let process = setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs')
+    processResult <- try . readProcess $ case stdin of
+      Just stdin' -> setStdin (fromString . toString $ stdin') process
+      Nothing -> process
 
     -- apply business logic for considering whether exitcode + stderr constitutes a "failure"
     let mangleResult :: (ExitCode, Stdout, Stderr) -> Either CmdFailure Stdout

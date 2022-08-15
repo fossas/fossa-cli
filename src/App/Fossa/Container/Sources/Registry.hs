@@ -29,10 +29,10 @@ analyzeFromRegistry ::
   RegistryImageSource ->
   m ContainerScan
 analyzeFromRegistry imgSrc = do
-  imgSrcEnrichedCred <- enrichCreds
+  imgSrc' <- enrichCreds
   withSystemTempDir "fossa-container-registry-tmp" $ \dir -> do
-    logInfo $ "Inferred registry source: " <> pretty imgSrcEnrichedCred
-    tempTarFile <- runContainerRegistryApi $ exportImage imgSrcEnrichedCred dir
+    logInfo $ "Inferred registry source: " <> pretty imgSrc'
+    tempTarFile <- runContainerRegistryApi $ exportImage imgSrc' dir
     logInfo . pretty $ "Analyzing exported container tarball: " <> toString tempTarFile
     analyzeExportedTarball tempTarFile
   where

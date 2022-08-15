@@ -17,12 +17,15 @@ module Test.Effect (
   handleDiag,
 ) where
 
-import Control.Carrier.ContainerRegistryApi (ContainerRegistryApiC, runContainerRegistryApi)
+import Control.Carrier.ContainerRegistryApi (runContainerRegistryApi)
+import Control.Carrier.ContainerRegistryApi.Common (RegistryCtx)
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
 import Control.Carrier.Reader (ReaderC, runReader)
+import Control.Carrier.Simple (SimpleC)
 import Control.Carrier.Stack (StackC, runStack)
 import Control.Carrier.StickyLogger (IgnoreStickyLoggerC, ignoreStickyLogger)
+import Control.Effect.ContainerRegistryApi (ContainerRegistryApiF)
 import Control.Effect.Diagnostics (Diagnostics, errorBoundary)
 import Control.Effect.Finally (Finally, onExit)
 import Control.Effect.Lift (Has, Lift, sendIO)
@@ -61,7 +64,19 @@ import Type.Operator (type ($))
 -- depends on it.
 -- MockApiC must be inside Diagnostics so its state is not
 -- lost when diagnostics short-circuits on an error.
-type EffectStack = FinallyC $ ContainerRegistryApiC $ ReaderC AllFilters $ ExecIOC $ ReadFSIOC $ FossaApiClientMockC $ DiagnosticsC $ MockApiC $ IgnoreLoggerC $ IgnoreStickyLoggerC $ StackC IO
+type EffectStack =
+  FinallyC
+    $ SimpleC ContainerRegistryApiF
+    $ ReaderC RegistryCtx
+    $ ReaderC AllFilters
+    $ ExecIOC
+    $ ReadFSIOC
+    $ FossaApiClientMockC
+    $ DiagnosticsC
+    $ MockApiC
+    $ IgnoreLoggerC
+    $ IgnoreStickyLoggerC
+    $ StackC IO
 
 -- TODO: add useful describe, naive describe' doesn't work.
 

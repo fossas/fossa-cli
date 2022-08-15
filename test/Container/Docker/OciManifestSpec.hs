@@ -1,15 +1,20 @@
 module Container.Docker.OciManifestSpec (spec) where
 
+import Container.Docker.Manifest (
+  ManifestJson (ManifestJson),
+  ManifestJsonImageEntry (ManifestJsonImageEntry),
+ )
 import Container.Docker.OciManifest (
   LayerKind (LayerDockerRootFsDiffTarGz),
   OciManifestConfig (OciManifestConfig),
-  OciManifestIndex (..),
-  OciManifestIndexItem (OciManifestIndexItem),
   OciManifestLayer (OciManifestLayer),
   OciManifestV2 (OciManifestV2),
+  toDockerManifest,
  )
+import Container.Docker.SourceParser (RegistryImageSource (..), RepoDigest (RepoDigest), RepoReference (RepoReferenceTag), RepoTag (RepoTag), defaultHttpScheme, dockerHubRegistry)
 import Data.Aeson (decodeFileStrict')
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Text (Text)
 import Test.Hspec (Spec, describe, it, shouldBe)
 
 spec :: Spec
@@ -19,27 +24,67 @@ spec = do
       ociManifest <- decodeFileStrict' "test/Container/Docker/testdata/ociManifest.json"
       ociManifest `shouldBe` Just expectedOciManifest
 
-    it "should parse oci manifest list" $ do
-      manifests <- decodeFileStrict' "test/Container/Docker/testdata/ociManifestIndex.json"
-      manifests `shouldBe` Just expectedManifestList
+  describe "toDockerManifest" $ do
+    it "should convert to docker manifest" $ do
+      toDockerManifest expectedOciManifest (defaultRegistrySrc "org/img" latestTag)
+        `shouldBe` ManifestJson
+          ( NonEmpty.fromList
+              [ ManifestJsonImageEntry
+                  "config.json"
+                  ["org/img:latest"]
+                  $ NonEmpty.fromList ["layer.tar"]
+              ]
+          )
+
+  it "should remove library/ for official docker images" $ do
+    toDockerManifest expectedOciManifest (defaultRegistrySrc "library/redis" alpineTag)
+      `shouldBe` ManifestJson
+        ( NonEmpty.fromList
+            [ ManifestJsonImageEntry
+                "config.json"
+                ["redis:alpine"]
+                $ NonEmpty.fromList ["layer.tar"]
+            ]
+        )
+
+  it "should not remove library/ from private registries" $ do
+    toDockerManifest expectedOciManifest (mkRegistrySrc "quay.io" "library/redis" alpineTag)
+      `shouldBe` ManifestJson
+        ( NonEmpty.fromList
+            [ ManifestJsonImageEntry
+                "config.json"
+                ["library/redis:alpine"]
+                $ NonEmpty.fromList ["layer.tar"]
+            ]
+        )
+mkRegistrySrc :: Text -> Text -> RepoReference -> RegistryImageSource
+mkRegistrySrc host repo ref =
+  RegistryImageSource
+    host
+    defaultHttpScheme
+    Nothing
+    repo
+    ref
+    mempty
+
+defaultRegistrySrc :: Text -> RepoReference -> RegistryImageSource
+defaultRegistrySrc = mkRegistrySrc dockerHubRegistry
+
+alpineTag :: RepoReference
+alpineTag = (RepoReferenceTag . RepoTag $ "alpine")
+
+latestTag :: RepoReference
+latestTag = (RepoReferenceTag . RepoTag $ "latest")
 
 expectedOciManifest :: OciManifestV2
 expectedOciManifest =
   OciManifestV2
-    (OciManifestConfig "sha256:09743aaf7c328c517bc0e9a7f0008802a1e85a73bb7772aaff2fb9370e3e0367")
+    ( OciManifestConfig $
+        RepoDigest "sha256:config"
+    )
     ( NonEmpty.fromList
         [ OciManifestLayer
-            "sha256:88ecf269dec31566a8e6b05147732fe34d32bc608de0d636dffaba659230a515"
+            (RepoDigest "sha256:layer")
             LayerDockerRootFsDiffTarGz
         ]
     )
-
-expectedManifestList :: OciManifestIndex
-expectedManifestList =
-  OciManifestIndex $
-    NonEmpty.fromList
-      [ OciManifestIndexItem
-          "sha256:ea8176d5185642c6e34063eac2d1c0edb5dcdff8f678028db14b0dad960ee0b5"
-          "linux"
-          "arm64"
-      ]

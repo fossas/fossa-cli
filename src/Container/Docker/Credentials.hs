@@ -34,7 +34,7 @@ data DockerConfig = DockerConfig
     -- Refer to: https://docs.docker.com/engine/reference/commandline/login/#credential-helpers
     credHelpers :: Map Text Text
   }
-  deriving (Eq, Ord)
+  deriving (Show, Eq, Ord)
 
 instance FromJSON DockerConfig where
   parseJSON = withObject "DockerConfig" $ \o ->
@@ -138,7 +138,7 @@ data DockerCredentialHelperGetResponse = DockerCredentialHelperGetResponse
   { registryUsername :: Text
   , registrySecret :: Text
   }
-  deriving (Eq, Ord)
+  deriving (Show, Eq, Ord)
 
 instance FromJSON DockerCredentialHelperGetResponse where
   parseJSON = withObject "" $ \o ->

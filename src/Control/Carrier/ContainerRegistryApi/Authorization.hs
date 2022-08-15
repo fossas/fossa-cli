@@ -1,6 +1,7 @@
 module Control.Carrier.ContainerRegistryApi.Authorization (
+  mkRequest,
   getAuthToken,
-  getAuthToken',
+  applyBearAuth,
 
   -- * for testing
   RegistryAuthChallenge (..),
@@ -9,11 +10,14 @@ module Control.Carrier.ContainerRegistryApi.Authorization (
 
 import Control.Algebra (Has)
 import Control.Carrier.ContainerRegistryApi.Common (
+  RegistryCtx,
+  acceptsContentType,
   fromResponse,
   getHeaderValue,
-  http,
+  getToken,
   logHttp,
   originalReqUri,
+  updateToken,
  )
 import Control.Carrier.ContainerRegistryApi.Errors (
   ContainerRegistryApiErrorBody,
@@ -22,11 +26,14 @@ import Control.Carrier.ContainerRegistryApi.Errors (
  )
 import Control.Effect.Diagnostics (Diagnostics, fatal, fatalText)
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (FromJSON (parseJSON), decode', eitherDecode, withObject, (.:))
+import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.String.Conversion (encodeUtf8, toString, toText)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
 import Effect.Logger (Logger)
 import Network.HTTP.Client (
@@ -34,6 +41,7 @@ import Network.HTTP.Client (
   Request (method),
   Response (responseBody, responseHeaders, responseStatus),
   applyBasicAuth,
+  applyBearerAuth,
   parseRequest,
  )
 import Network.HTTP.Types (statusCode)
@@ -53,36 +61,33 @@ import Text.Megaparsec.Char (alphaNumChar, char)
 
 type Parser = Parsec Void Text
 
-data RegistryAuthChallenge = RegistryAuthChallenge
-  { authChallengeBearerRealm :: Text
-  , authChallengeService :: Text
-  , authChallengeScope :: Text
-  }
-  deriving (Show, Eq, Ord)
-
-newtype AuthChallengeResponse = AuthChallengeResponse {token :: Text} deriving (Eq, Show, Ord)
-instance FromJSON AuthChallengeResponse where
-  parseJSON = withObject "" $ \o -> AuthChallengeResponse <$> o .: "token"
-
--- | Authorization Server Endpoint.
--- Refer to:
-authTokenEndpoint :: Has (Lift IO) sig m => RegistryAuthChallenge -> m (Request)
-authTokenEndpoint (RegistryAuthChallenge url service scope) =
-  sendIO $ parseRequest $ toString url <> "?" <> "service=" <> toString service <> "&scope=" <> toString scope
-
-getAuthToken ::
+-- | Request with registry authorization middleware.
+mkRequest ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has Logger sig m
+  , Has (Reader RegistryCtx) sig m
   ) =>
-  Maybe (Text, Text) ->
-  -- | Username and Password to user when retrieving authorization token
-  Request ->
-  -- | Request For which to Get Authorization Token
-  Manager ->
-  -- | Manager to use for requests
-  m (Maybe Text)
-getAuthToken = getAuthToken' True
+  Manager -> -- Request Manager to use
+  Maybe (Text, Text) -> -- Credentials to use when retrieving authorization token
+  Maybe [Text] -> -- Content-Type to request
+  Request -> -- Request to make
+  m (Response ByteStringLazy.ByteString)
+mkRequest manager registryCred accepts req = do
+  token <- getToken =<< ask
+  token' <- getAuthToken registryCred req manager token
+  logHttp (applyContentType accepts $ applyBearAuth token' req) manager
+  where
+    applyContentType :: Maybe [Text] -> Request -> Request
+    applyContentType c r = case c of
+      Nothing -> req
+      Just c' -> r `acceptsContentType` (Text.intercalate ", " c')
+
+-- | Adds 'Authorization: Bearer <>', if 'Just token', otherwise id.
+applyBearAuth :: Maybe Text -> Request -> Request
+applyBearAuth t r = case t of
+  Nothing -> r
+  Just t' -> applyBearerAuth (encodeUtf8 t') r
 
 -- | Generates Auth Token For Request.
 --
@@ -96,7 +101,7 @@ getAuthToken = getAuthToken' True
 --
 -- In Summary, Auth Workflow is:
 --
---  1. Client attempts request to desired endpoint (recommendation is to mae HEAD request)
+--  1. Client attempts request to desired endpoint (with HEAD)
 --  2. If authorization is required, server will respond with 401, and auth challenge.
 --
 --      Registry should respond with RFC 6750: OAuth 2.0 Authorization Framework: Bearer Token
@@ -107,44 +112,63 @@ getAuthToken = getAuthToken' True
 --
 --  3. Make Request to retrieve Authorization Token (use HTTP AUTH, if private repository).
 --  4. Retrieve Authorization Token from (3)
-getAuthToken' ::
+getAuthToken ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has Logger sig m
+  , Has (Reader RegistryCtx) sig m
   ) =>
-  Bool ->
   Maybe (Text, Text) ->
+  -- | Username and Password to user when retrieving authorization token
   Request ->
+  -- | Request For which to Get Authorization Token
   Manager ->
+  -- | Manager to use for requests
+  Maybe Text ->
+  -- | Existing Token (if any)
   m (Maybe Text)
-getAuthToken' includeDebug cred reqAttempt manager = do
-  -- We Attempt to make HEAD request to see if the
-  -- endpoint is accessible. If we need to pass auth challenge,
-  -- we will see unauthorized failure. `HEAD` is supported for
-  -- all endpoints per SPEC.
-  let request' = reqAttempt{method = "HEAD"}
-  headResponse <- (if includeDebug then logHttp else http) request' manager
+getAuthToken cred reqAttempt manager token = do
+  let request' = applyAuthForExistingToken $ reqAttempt{method = "HEAD"}
+  response <- logHttp request' manager
 
-  let respBody = responseBody headResponse
-  let errs :: Maybe ContainerRegistryApiErrorBody = decode' respBody
-
-  case (errs, statusCode . responseStatus $ headResponse) of
+  case (decode' $ responseBody response, statusCode . responseStatus $ response) of
     -- If Registry does not have auth challenge, we will see successful response.
-    -- meaning that we do not need token for provided request.
-    (Nothing, 200) -> pure Nothing
+    -- meaning that our token is valid, or we do not require authorization token.
+    (Nothing, 200) -> pure token
     (_, 401) -> do
-      case parse parseAuthChallenge "" <$> getHeaderValue hWWWAuthenticate (responseHeaders headResponse) of
+      case parse parseAuthChallenge "" <$> getHeaderValue hWWWAuthenticate (responseHeaders response) of
+        -- -
+        -- Did not receive valid auth challenge
+        -- -
         Nothing ->
           fatalText
             ( "Did not provide WWW-Authenticate Challenge to Retrieve Authorization Token: "
-                <> (toText . show $ originalReqUri headResponse)
+                <> (toText . show $ originalReqUri response)
             )
+        -- -
+        -- Failed to Parse Auth Challenge
+        -- -
         Just (Left err) -> fatalText . toText $ errorBundlePretty err
+        -- -
+        -- Retrieve fresh authorization token, and update in current
+        -- registry context.
+        -- -
         Just (Right authChallenge) -> do
-          authToken <- getTokenFromAuthChallenge includeDebug cred authChallenge manager
-          pure $ Just authToken
-    (Just apiErrors, _) -> fatal (originalReqUri headResponse, apiErrors)
-    (Nothing, _) -> fatal $ UnknownApiError (originalReqUri headResponse) $ responseStatus headResponse
+          token' <- getTokenFromAuthChallenge cred authChallenge manager
+          ctx <- ask
+          updateToken ctx token'
+          pure (Just token')
+
+    -- -
+    -- Other Errors
+    -- -
+    (Just (apiErrors :: ContainerRegistryApiErrorBody), _) -> fatal (originalReqUri response, apiErrors)
+    (Nothing, _) -> fatal $ UnknownApiError (originalReqUri response) $ responseStatus response
+  where
+    applyAuthForExistingToken :: Request -> Request
+    applyAuthForExistingToken r = case token of
+      Nothing -> r
+      Just token' -> applyBearerAuth (encodeUtf8 token') r
 
 -- | Retrieves Token from Authorization Server.
 --
@@ -161,8 +185,6 @@ getTokenFromAuthChallenge ::
   , Has Diagnostics sig m
   , Has Logger sig m
   ) =>
-  Bool ->
-  -- | Should Debug Request?
   Maybe (Text, Text) ->
   -- | Username and Password to user when retrieving authorization token
   RegistryAuthChallenge ->
@@ -170,17 +192,35 @@ getTokenFromAuthChallenge ::
   Manager ->
   -- | Request Manager to use for subsequent requests
   m Text
-getTokenFromAuthChallenge includeDebug cred (RegistryAuthChallenge url service scope) manager = do
-  req <- authTokenEndpoint (RegistryAuthChallenge url service scope)
+getTokenFromAuthChallenge cred (RegistryAuthChallenge url service scope) manager = do
+  req <- authTokenEndpoint
 
+  -- If there are auth provided for private registries
+  -- use them, when requesting access token
   let req' = case cred of
         Nothing -> req
         Just (user, pass) -> applyBasicAuth (encodeUtf8 user) (encodeUtf8 pass) req
 
-  response <- fromResponse =<< (if includeDebug then logHttp else http) req' manager
-  case eitherDecode (responseBody response) of
+  response <- fromResponse =<< logHttp req' manager
+  case eitherDecode $ responseBody response of
     Left err -> fatal . FailedToParseAuthChallenge $ toText err
-    Right (AuthChallengeResponse token) -> pure token
+    Right tokenResponse -> pure . unToken $ tokenResponse
+  where
+    -- \| Authorization Server Endpoint.
+    authTokenEndpoint :: Has (Lift IO) sig m => m (Request)
+    authTokenEndpoint =
+      sendIO $ parseRequest $ toString url <> "?" <> "service=" <> toString service <> "&scope=" <> toString scope
+
+data RegistryAuthChallenge = RegistryAuthChallenge
+  { authChallengeBearerRealm :: Text
+  , authChallengeService :: Text
+  , authChallengeScope :: Text
+  }
+  deriving (Show, Eq, Ord)
+
+newtype AuthChallengeResponse = AuthChallengeResponse {unToken :: Text} deriving (Eq, Show, Ord)
+instance FromJSON AuthChallengeResponse where
+  parseJSON = withObject "AuthChallengeResponse" $ \o -> AuthChallengeResponse <$> o .: "token"
 
 -- | Parses Authorization Header.
 --

@@ -177,7 +177,7 @@ parseContainerImageSource ::
   m ContainerImageSource
 parseContainerImageSource src =
   parseExportedTarballSource src
-    <||> parseDockerEngineSource src
+    -- <||> parseDockerEngineSource src
     <||> parseOciRegistrySource src
 
 parseDockerEngineSource ::
@@ -242,5 +242,14 @@ parseOciRegistrySource tag = case parse (parseImageUrl defaultArch) "" tag of
   Left err -> fatal $ errorBundlePretty err
   Right registrySource -> pure $ ContainerOCIRegistry registrySource
   where
+    -- Get current runtime arch, We use this to find suitable image,
+    -- if multi-platform image is discovered. This is similar to
+    -- how docker pull, and existing behavior works
+    --
+    -- Ref: https://docs.docker.com/desktop/multi-arch/
     defaultArch :: Text
-    defaultArch = toText $ if arch == "x86_64" then "amd64" else arch
+    defaultArch =
+      toText $
+        if arch == "x86_64" -- x86_64 is equivalent to amd64
+          then "amd64"
+          else arch
