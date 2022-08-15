@@ -12,18 +12,49 @@ module Control.Carrier.Debug (
   module X,
 ) where
 
-import Control.Carrier.AtomicState
-import Control.Carrier.Diagnostics
-import Control.Carrier.Output.IO
+import Control.Carrier.AtomicState (AtomicStateC, modify, runAtomicState)
+import Control.Carrier.Diagnostics (
+  Algebra (..),
+  Diagnostics,
+  Handler,
+  Has,
+  SomeDiagnostic (..),
+  ToDiagnostic (renderDiagnostic),
+  errorBoundaryIO,
+  rethrow,
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:) (..),
+ )
+import Control.Carrier.Output.IO (OutputC, output, runOutput)
 import Control.Carrier.Simple (Simple, sendSimple)
-import Control.Effect.Debug as X
-import Control.Effect.Lift
+import Control.Effect.Debug as X (
+  Algebra (..),
+  Debug (..),
+  Handler,
+  Has,
+  debugEffect,
+  debugError,
+  debugLog,
+  debugMetadata,
+  debugScope,
+  run,
+  send,
+  thread,
+  (~<~),
+  type (:+:) (..),
+ )
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Record (Recordable, SomeEffectResult (SomeEffectResult), recordEff)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans (MonadTrans, lift)
-import Data.Aeson
+import Data.Aeson (Key, KeyValue ((.=)), ToJSON (toJSON), Value (String), object)
+import Data.Aeson.Key qualified as Key
 import Data.Aeson.Types (Pair)
-import Data.Fixed
+import Data.Bifunctor (first)
+import Data.Fixed (Fixed (MkFixed), Nano)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Time.Clock.System (SystemTime (MkSystemTime), getSystemTime)
@@ -52,9 +83,9 @@ scopePairs Scope{..} =
   [ "duration" .= show (unDuration scopeTiming)
   ]
     ++ whenNonEmpty "events" scopeEvents
-    ++ Map.toList scopeMetadata
+    ++ map (first Key.fromText) (Map.toList scopeMetadata)
 
-whenNonEmpty :: ToJSON a => Text -> [a] -> [Pair]
+whenNonEmpty :: ToJSON a => Key -> [a] -> [Pair]
 whenNonEmpty _ [] = []
 whenNonEmpty key val = [key .= val]
 

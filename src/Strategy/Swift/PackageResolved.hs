@@ -6,6 +6,7 @@ module Strategy.Swift.PackageResolved (
 
 import Data.Aeson (
   FromJSON (parseJSON),
+  Key,
   Object,
   withObject,
   (.:),
@@ -39,12 +40,12 @@ instance FromJSON SwiftPackageResolvedFile where
       2 -> SwiftPackageResolvedFile version <$> ((obj .: "pins") >>= traverse (withObject "Package.resolved v2 pin" parseV2Pin))
       _ -> fail $ "unknown Package.resolved version: " <> show version
 
-(|>) :: FromJSON a => Parser Object -> Text -> Parser a
+(|>) :: FromJSON a => Parser Object -> Key -> Parser a
 (|>) parser key = do
   obj <- parser
   obj .: key
 
-(|?>) :: FromJSON a => Parser (Maybe Object) -> Text -> Parser (Maybe a)
+(|?>) :: FromJSON a => Parser (Maybe Object) -> Key -> Parser (Maybe a)
 (|?>) parser key = do
   obj <- parser
   case obj of
