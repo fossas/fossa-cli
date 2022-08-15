@@ -44,7 +44,7 @@ source-repository-package
 -- Current implementation of yarn-lock throws runtime error, as described by patches:
 -- (a) https://github.com/Profpatsch/yarn2nix/pull/73
 -- (b) https://github.com/Profpatsch/yarn2nix/pull/72
--- TODO: Remove once, both PRs are merged. 
+-- TODO: Remove once, both PRs are merged.
 source-repository-package
   type: git
   location: https://github.com/fossas/yarn2nix
@@ -52,11 +52,11 @@ source-repository-package
   subdir: yarn-lock
 
 -- Current hackage distribution does not support SSL_CERT_FILE, and SSL_CERT_DIR
--- environment variable. Modified source code below, supports aforementioned environment variables. 
+-- environment variable. Modified source code below, supports aforementioned environment variables.
 source-repository-package
   type: git
   location: https://github.com/fossas/hs-certificate
   tag: d93afd2dc78c2f6910766fabc2f5e4452bcae2f2
   subdir: x509-system
 
-index-state: hackage.haskell.org 2022-04-13T23:32:58Z
+index-state: hackage.haskell.org 2022-08-15T18:24:28Z
