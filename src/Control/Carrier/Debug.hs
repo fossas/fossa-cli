@@ -13,39 +13,10 @@ module Control.Carrier.Debug (
 ) where
 
 import Control.Carrier.AtomicState (AtomicStateC, modify, runAtomicState)
-import Control.Carrier.Diagnostics (
-  Algebra (..),
-  Diagnostics,
-  Handler,
-  Has,
-  SomeDiagnostic (..),
-  ToDiagnostic (renderDiagnostic),
-  errorBoundaryIO,
-  rethrow,
-  run,
-  send,
-  thread,
-  (~<~),
-  type (:+:) (..),
- )
+import Control.Carrier.Diagnostics
 import Control.Carrier.Output.IO (OutputC, output, runOutput)
 import Control.Carrier.Simple (Simple, sendSimple)
-import Control.Effect.Debug as X (
-  Algebra (..),
-  Debug (..),
-  Handler,
-  Has,
-  debugEffect,
-  debugError,
-  debugLog,
-  debugMetadata,
-  debugScope,
-  run,
-  send,
-  thread,
-  (~<~),
-  type (:+:) (..),
- )
+import Control.Effect.Debug as X
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Record (Recordable, SomeEffectResult (SomeEffectResult), recordEff)
 import Control.Monad.IO.Class (MonadIO)
