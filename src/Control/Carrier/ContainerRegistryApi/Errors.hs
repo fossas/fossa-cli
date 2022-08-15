@@ -84,7 +84,6 @@ instance ToDiagnostic ContainerRegistryApiError where
     vsep
       [ pretty $ "Error Code: " <> (show errKind)
       , pretty $ "Error Message: " <> msg
-      , "-"
       ]
 
 -- * Other Errors

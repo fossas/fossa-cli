@@ -3,8 +3,9 @@
 module Control.Carrier.DockerEngineApi (runDockerEngineApi) where
 
 import Conduit (runConduit, runResourceT, (.|))
+import Control.Carrier.Diagnostics (errorBoundaryIO)
 import Control.Carrier.Simple (Has, SimpleC, interpret)
-import Control.Effect.Diagnostics (fatalText)
+import Control.Effect.Diagnostics (fatalText, fromMaybeText)
 import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
 import Control.Effect.DockerEngineApi (DockerEngineApiF (ExportImage, GetImageSize, IsDockerEngineAccessible))
 import Control.Effect.Lift (Lift, sendIO)
@@ -12,6 +13,7 @@ import Data.Aeson (FromJSON (parseJSON), eitherDecode, withObject, (.:))
 import Data.Conduit.Binary (sinkFile)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
+import Diag.Result (resultToMaybe)
 import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Client.Internal (Connection)
 import Network.HTTP.Conduit qualified as HTTPConduit
@@ -61,8 +63,13 @@ isDockerEngineAccessible :: (Has Diag.Diagnostics sig m, Has (Lift IO) sig m) =>
 isDockerEngineAccessible = do
   -- Performs equivalent of for given image:
   -- >> curl --unix-socket /var/run/docker.sock -X GET "http://localhost/v1.28/_ping"
-  response <- sendIO $ HTTP.httpLbs (HTTP.parseRequest_ $ baseApi <> "_ping") =<< dockerClient
-  pure $ (HTTP.responseStatus response) == ok200
+
+  -- `Network.Socket.connect` throws async IO exception, only when socket does not
+  -- exist at /var/run/docker.sock location, If daemon is running but refusing connection,
+  -- then we receive nominal error code (as expected).
+  response <- errorBoundaryIO $ sendIO (HTTP.httpLbs (HTTP.parseRequest_ $ baseApi <> "_ping") =<< dockerClient)
+  response' <- fromMaybeText ("Could not connect to docker daemon at: " <> toText daemonLocation) $ resultToMaybe response
+  pure $ (HTTP.responseStatus response') == ok200
 
 newtype DockerImageInspectJson = DockerImageInspectJson {imageSize :: Int}
   deriving (Eq, Ord, Show)
@@ -74,8 +81,11 @@ instance FromJSON DockerImageInspectJson where
 baseApi :: String
 baseApi = "http://localhost/v1.28/"
 
+daemonLocation :: FilePath
+daemonLocation = "/var/run/docker.sock"
+
 dockerClient :: Has (Lift IO) sig m => m HTTP.Manager
-dockerClient = unixSocketClient "/var/run/docker.sock"
+dockerClient = unixSocketClient daemonLocation
 
 unixSocketClient :: FilePath -> Has (Lift IO) sig m => m HTTP.Manager
 unixSocketClient socketPath = socketHttpManager
