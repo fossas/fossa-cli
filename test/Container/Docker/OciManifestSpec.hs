@@ -11,7 +11,7 @@ import Container.Docker.OciManifest (
   OciManifestV2 (OciManifestV2),
   toDockerManifest,
  )
-import Container.Docker.SourceParser (RegistryImageSource (..), RepoDigest (RepoDigest), RepoReference (RepoReferenceTag), RepoTag (RepoTag), defaultHttpScheme, dockerHubRegistry)
+import Container.Docker.SourceParser (RegistryImageSource (..), RepoDigest (RepoDigest), RepoReference (RepoReferenceTag), RepoTag (RepoTag), defaultHttpScheme, defaultRegistry)
 import Data.Aeson (decodeFileStrict')
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text)
@@ -68,7 +68,7 @@ mkRegistrySrc host repo ref =
     mempty
 
 defaultRegistrySrc :: Text -> RepoReference -> RegistryImageSource
-defaultRegistrySrc = mkRegistrySrc dockerHubRegistry
+defaultRegistrySrc = mkRegistrySrc defaultRegistry
 
 alpineTag :: RepoReference
 alpineTag = (RepoReferenceTag . RepoTag $ "alpine")

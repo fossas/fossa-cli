@@ -41,7 +41,7 @@ module Container.Docker.SourceParser (
   RepoTag (..),
   RepoDigest (..),
   parseImageUrl,
-  dockerHubRegistry,
+  defaultRegistry,
   defaultTag,
   defaultHttpScheme,
   suggestDockerExport,
@@ -70,8 +70,8 @@ import Text.Megaparsec.Char.Lexer qualified as L
 
 type Parser = Parsec Void Text
 
-dockerHubRegistry :: Text
-dockerHubRegistry = "index.docker.io"
+defaultRegistry :: Text
+defaultRegistry = "index.docker.io" -- if you change this, update docs on top of module
 
 defaultTag :: RepoReference
 defaultTag = RepoReferenceTag . RepoTag $ "latest"
@@ -167,7 +167,7 @@ parseImageUrl :: Text -> Parser RegistryImageSource
 parseImageUrl targetArch = do
   imgSrc <-
     try (parseImageUrl' targetArch)
-      <|> parseImageUrlWithDefaultRegistry dockerHubRegistry targetArch
+      <|> parseImageUrlWithDefaultRegistry defaultRegistry targetArch
 
   -- Docker Registry uses library/image for
   -- official images. For instance 'redis' should resolve to 'library/redis:latest'
@@ -177,7 +177,7 @@ parseImageUrl targetArch = do
   where
     isOfficialImage :: RegistryImageSource -> Bool
     isOfficialImage imgSrc =
-      registryHost imgSrc == dockerHubRegistry
+      registryHost imgSrc == defaultRegistry
         && not (Text.isInfixOf "/" $ registryContainerRepository imgSrc)
 
     repoWithPrefix :: Text -> RegistryImageSource -> RegistryImageSource

@@ -2,7 +2,7 @@ module App.Fossa.Container.Sources.Registry (analyzeFromRegistry) where
 
 import App.Fossa.Container.Sources.DockerTarball (analyzeExportedTarball)
 import Container.Docker.Credentials (useCredentialFromConfig)
-import Container.Docker.SourceParser (RegistryImageSource (RegistryImageSource))
+import Container.Docker.SourceParser (RegistryImageSource (RegistryImageSource), defaultRegistry)
 import Container.Types (ContainerScan)
 import Control.Carrier.ContainerRegistryApi (runContainerRegistryApi)
 import Control.Carrier.Lift (Lift)
@@ -13,6 +13,7 @@ import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.Telemetry (Telemetry)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toString)
+import Data.Text qualified as Text
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, logInfo, pretty)
 import Effect.ReadFS (ReadFS)
@@ -40,6 +41,10 @@ analyzeFromRegistry imgSrc = do
     hasCred (RegistryImageSource _ _ (Just _) _ _ _) = True
     hasCred _ = False
 
+    isOfficialImageSrc :: RegistryImageSource -> Bool
+    isOfficialImageSrc (RegistryImageSource host _ _ repo _ _) =
+      (host == defaultRegistry) && Text.isPrefixOf "library/" repo
+
     enrichCreds ::
       ( Has Diagnostics sig m
       , Has Exec sig m
@@ -48,7 +53,7 @@ analyzeFromRegistry imgSrc = do
       ) =>
       m RegistryImageSource
     enrichCreds =
-      if hasCred imgSrc
+      if (hasCred imgSrc || isOfficialImageSrc imgSrc)
         then pure imgSrc
         else do
           imgSrcEnriched <- recover $ useCredentialFromConfig imgSrc

@@ -7,8 +7,8 @@ import Container.Docker.SourceParser (
   RepoReference (RepoReferenceDigest, RepoReferenceTag),
   RepoTag (RepoTag),
   defaultHttpScheme,
+  defaultRegistry,
   defaultTag,
-  dockerHubRegistry,
   parseImageUrl,
  )
 import Data.Text (Text)
@@ -123,7 +123,7 @@ fixtureArch = "amd64"
 defaultedRegistrySrc :: Text -> RepoReference -> RegistryImageSource
 defaultedRegistrySrc repo ref =
   RegistryImageSource
-    dockerHubRegistry
+    defaultRegistry
     defaultHttpScheme
     Nothing
     repo

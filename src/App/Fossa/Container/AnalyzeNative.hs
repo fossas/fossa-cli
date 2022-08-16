@@ -117,9 +117,9 @@ analyze cfg = do
   logInfo "Running container scanning with fossa experimental-scanner!"
   parsedSource <- runDockerEngineApi $ parseContainerImageSource (unImageText $ imageLocator cfg)
   scannedImage <- case parsedSource of
-    ContainerDockerImage imgTag -> context "Analyzing via Docker Engine Api" $ analyzeFromDockerEngine imgTag
-    ContainerOCIRegistry registrySrc -> context "Analyzing via Registry" $ analyzeFromRegistry registrySrc
-    ContainerExportedTarball tarball -> context "Analyzing via Tarball" $ analyzeExportedTarball tarball
+    ContainerDockerImage imgTag -> context "Analyzing via Docker engine API" $ analyzeFromDockerEngine imgTag
+    ContainerOCIRegistry registrySrc -> context "Analyzing via registry" $ analyzeFromRegistry registrySrc
+    ContainerExportedTarball tarball -> context "Analyzing via tarball" $ analyzeExportedTarball tarball
 
   let revision = extractRevision (revisionOverride cfg) scannedImage
   case scanDestination cfg of

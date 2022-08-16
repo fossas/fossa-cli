@@ -38,7 +38,7 @@ instance FromJSON OciManifestIndex where
     mediaType :: Text <- o .: "mediaType"
     unless (mediaType `elem` supportedManifestIndexKinds) $
       fail $
-        "MediaType of: " <> (toString mediaType) <> " is not supported."
+        "Manifest format of: " <> (toString mediaType) <> " is not supported."
 
     OciManifestIndex <$> o .: "manifests"
 

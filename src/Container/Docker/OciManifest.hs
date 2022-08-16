@@ -16,7 +16,7 @@ import Container.Docker.Manifest (
 import Container.Docker.SourceParser (
   RegistryImageSource (RegistryImageSource),
   RepoDigest (RepoDigest),
-  dockerHubRegistry,
+  defaultRegistry,
   showReferenceWithSep,
   suggestDockerExport,
  )
@@ -124,7 +124,7 @@ toDockerManifest (OciManifestV2 config layers) (RegistryImageSource host _ _ rep
     sanitizeRepoName :: Text
     sanitizeRepoName =
       if ( Text.isPrefixOf "library/" repo
-            && host == dockerHubRegistry
+            && host == defaultRegistry
          )
         then Text.replace "library/" "" repo
         else repo
@@ -173,11 +173,11 @@ data NotSupportedManifestFmt = NotSupportedManifestFmt Text RegistryImageSource
 instance ToDiagnostic NotSupportedManifestFmt where
   renderDiagnostic (NotSupportedManifestFmt fmt imgSrc) =
     vsep
-      [ pretty $ "We cannot process, manifest in format of: " <> fmt
+      [ pretty $ "Manifest format is not supported: " <> fmt
       , line <> "Workaround:" <> line
       , indent 2 $
           vsep
-            [ "You can use exported tarball to perform analysis:"
+            [ "Export the image:"
             , line
             , suggestDockerExport imgSrc
             ]

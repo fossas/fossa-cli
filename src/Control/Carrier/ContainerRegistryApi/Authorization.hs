@@ -93,8 +93,7 @@ applyBearAuth t r = case t of
 --
 -- Refer to:
 --
---  Docker Registry Spec: https://docs.docker.com/registry/spec/auth/token/
---  OCI Spec:
+--  https://docs.docker.com/registry/spec/auth/token/
 --
 -- OCI Registry SPEC do not explicitly specify auth workflow, but all registries tested follow
 -- specified workflow, same as docker registry.
@@ -142,7 +141,7 @@ getAuthToken cred reqAttempt manager token = do
         -- -
         Nothing ->
           fatalText
-            ( "Did not provide WWW-Authenticate Challenge to Retrieve Authorization Token: "
+            ( "Registry did not provide expected 'WWW-Authenticate' challenge: "
                 <> (toText . show $ originalReqUri response)
             )
         -- -

@@ -72,9 +72,9 @@ instance FromJSON ContainerRegistryApiError where
 instance ToDiagnostic (URI, ContainerRegistryApiErrorBody) where
   renderDiagnostic (uri, ContainerRegistryApiErrorBody errs) =
     vsep
-      [ pretty $ "Caught API Error From: " <> show uri
+      [ pretty $ "Caught API error from: " <> show uri
       , line
-      , "API Errors:"
+      , "API errors:"
       , line
       , indent 4 $ vsep $ map renderDiagnostic errs
       ]
@@ -82,8 +82,8 @@ instance ToDiagnostic (URI, ContainerRegistryApiErrorBody) where
 instance ToDiagnostic ContainerRegistryApiError where
   renderDiagnostic (ContainerRegistryApiError errKind msg) =
     vsep
-      [ pretty $ "Error Code: " <> (show errKind)
-      , pretty $ "Error Message: " <> msg
+      [ pretty $ "Error code: " <> (show errKind)
+      , pretty $ "Error message: " <> msg
       ]
 
 -- * Other Errors
@@ -93,7 +93,7 @@ data UnknownApiError = UnknownApiError URI Status
 instance ToDiagnostic UnknownApiError where
   renderDiagnostic (UnknownApiError uri status) =
     vsep
-      [ "Caught Unexpected Error From: "
+      [ "Caught unexpected error from: "
       , indent 4 $ pretty $ "(" <> show (statusCode status) <> ") " <> show uri
       ]
 

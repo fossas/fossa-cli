@@ -175,7 +175,7 @@ getImageManifest src = context "Getting Image Manifest" $ do
   if isManifestIndex (responseHeaders resp)
     then do
       manifestIndex <- fromEither $ eitherDecode respBody
-      logDebug "Retrieved image manifest index, This is multi-platform image."
+      logDebug "Retrieved multi-platform image manifest index."
 
       let platformArch :: Text
           platformArch = platformArchitecture src
@@ -189,7 +189,9 @@ getImageManifest src = context "Getting Image Manifest" $ do
       parseOciManifest
         =<< mkRequest manager (registryCred src) (Just supportedManifestKinds)
         =<< (manifestEndpoint $ src{registryContainerRepositoryReference = manifestDigest})
-    else parseOciManifest resp
+    else do
+      logDebug "Retrieved single-platform image manifest."
+      parseOciManifest resp
   where
     isSupportedManifestKind :: ResponseHeaders -> Bool
     isSupportedManifestKind headers =
@@ -229,7 +231,7 @@ exportImage imgSrc dir = context "Exporting Image" $ do
 
   capabilities <- max 2 <$> sendIO getNumCapabilities
   runStickyLogger SevInfo . runFinally
-    $ context "Downloading Image Artifact from Registry"
+    $ context "Downloading image artifact from registry"
       . withTaskPool capabilities (updateProgress)
       . runAtomicCounter
     $ do
@@ -271,7 +273,7 @@ exportBlob manager imgSrc dir (digest, isGzip, targetFilename) = do
 
   logInfo . pretty $
     if isGzip
-      then "Gzip Extracted & Downloaded: " <> targetFilename
+      then "Gzip extracted & downloaded: " <> targetFilename
       else "Downloaded: " <> targetFilename
 
   pure sinkTarget
@@ -290,7 +292,7 @@ mkTarball ::
   OciManifestV2 ->
   RegistryImageSource ->
   m (Path Abs File)
-mkTarball dir manifest imgSrc = context "Making Image Tarball" $ do
+mkTarball dir manifest imgSrc = context "Making image tarball" $ do
   let tarballFile :: Path Abs File = dir </> $(mkRelFile "image.tar")
   let manifestFile :: Path Abs File = dir </> $(mkRelFile $ toString manifestFilename)
 
@@ -303,9 +305,10 @@ mkTarball dir manifest imgSrc = context "Making Image Tarball" $ do
   files <- snd <$> listDir dir
 
   when (null files) $
-    fatalText "Expected to have some files in the directory for OCI archiving!"
+    fatalText $
+      "Directory " <> toText (show dir) <> " cannot be made into a image tarball: it does not contain any files!"
 
-  context "Creating Tarball" $
+  context "Creating tarball" $
     sendIO $
       Tar.create
         (toFilePath tarballFile) -- Location where to store tarball file.
