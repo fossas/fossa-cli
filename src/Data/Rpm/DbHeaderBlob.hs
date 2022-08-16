@@ -11,6 +11,8 @@ import Data.Binary.Get (ByteOffset, Get, getInt32be, getWord32be, label, runGetO
 import Data.ByteString.Lazy qualified as BLS
 import Data.Int (Int32)
 import Data.Word (Word32)
+import Data.List.NonEmpty (NonEmpty ((:|)))
+import Control.Applicative (liftA2)
 
 -- A package blob is laid out like this:
 --
@@ -29,8 +31,9 @@ data HeaderBlob = HeaderBlob
   { indexLength :: Int32
   , dataLength :: Int32
   , dataStart :: Int32
+  , dataEnd :: Int32
   , pvLength :: Int32 -- I do not know what this is
-  , entryInfos :: [EntryInfo]
+  , entryInfos :: NonEmpty EntryInfo
   }
   deriving (Show, Eq)
 
@@ -91,9 +94,9 @@ headerBlobInit bs =
         fail "region no tags error"
 
       dataLength <- label "Read dataLength" getInt32be
-
       let dataStart = calcDataStart dataLength
       let pvLength = dataAndIndexLen + dataLength + indexLength * entryInfoSize
+      let dataEnd = dataStart + dataLength
 
       when (pvLength >= headerMaxBytes) $
         fail "blob size bad"
@@ -114,9 +117,9 @@ headerBlobInit bs =
         + indexLength
         * entryInfoSize
 
--- TODO: Keep processing even if one of these fails to read
-readEntries :: Int32 -> Get [EntryInfo]
-readEntries indexLength = replicateM (fromIntegral indexLength) readEntry
+readEntries :: Int32 -> Get (NonEmpty EntryInfo)
+readEntries indexLength = do
+  liftA2 (:|) readEntry $ replicateM (fromIntegral (indexLength - 1)) readEntry
   where
     readEntry :: Get EntryInfo
     readEntry =

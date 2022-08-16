@@ -3,6 +3,7 @@ module Data.RpmDbHeaderBlobSpec (spec) where
 import Data.ByteString.Lazy qualified as BLS
 import Data.Either (fromRight)
 import Data.List (isSuffixOf)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Rpm.DbHeaderBlob (EntryInfo (..), HeaderBlob (..), headerBlobInit)
 import Test.Hspec (
   Expectation,
@@ -23,9 +24,12 @@ spec = fcontext "" $ do
   headerBlobErrSpec
   headerBlobSpec testBlob
 
+emptyInfo :: NonEmpty.NonEmpty EntryInfo
+emptyInfo = NonEmpty.singleton EntryInfo{tag = 0, tagType = 0, offset = 0, count = 0}
+
 equalIgnoringEntries :: HeaderBlob -> HeaderBlob -> Bool
 equalIgnoringEntries b1 b2 =
-  b1{entryInfos = []} == b2{entryInfos = []}
+  b1{entryInfos = emptyInfo} == b2{entryInfos = emptyInfo}
 
 matchesIgnoringEntries :: Either a HeaderBlob -> HeaderBlob -> Expectation
 matchesIgnoringEntries bs expected =
@@ -75,14 +79,15 @@ headerBlobSpec bs = describe "header blob parsing" $ do
               { indexLength = 0x00000050
               , dataLength = 0x00008ebc
               , dataStart = 0x475e40
+              , dataEnd = 0x47ecfc
               , pvLength = 0xb6fc -- 0x40 + 0x8ebc + 0x50 * entryInfoSize
-              , entryInfos = []
+              , entryInfos = emptyInfo -- Not used in test
               }
       eBlob `matchesIgnoringEntries` expected
 
     it "Parses entries" $ do
       -- this database is large, so we'll only check the first 2 entries
-      let entries = take 2 $ entryInfos blob
+      let entries = take 2 . NonEmpty.toList . entryInfos $ blob
 
       entries
         `shouldMatchList` [ EntryInfo
