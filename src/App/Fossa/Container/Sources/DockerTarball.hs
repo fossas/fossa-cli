@@ -15,7 +15,6 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectScan (..),
  )
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
-import App.Fossa.Container.Scan (extractTag)
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Docker.Manifest (getImageDigest, getRepoTags)
 import Container.OsRelease (OsInfo (nameId, version), getOsInfo)
@@ -31,6 +30,7 @@ import Container.Types (
   hasOtherLayers,
   otherLayersSquashed,
  )
+import Control.Applicative ((<|>))
 import Control.Carrier.AtomicCounter (runAtomicCounter)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally (runFinally)
@@ -42,7 +42,7 @@ import Control.Carrier.TaskPool (withTaskPool)
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.AtomicCounter (AtomicCounter)
 import Control.Effect.Debug (Debug)
-import Control.Effect.Diagnostics (Diagnostics, context, fromEither)
+import Control.Effect.Diagnostics (Diagnostics, context, fromEither, fromMaybeText)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Output (Output)
 import Control.Effect.Reader (Reader)
@@ -52,9 +52,10 @@ import Control.Effect.Telemetry (Telemetry)
 import Data.ByteString.Lazy qualified as BS
 import Data.FileTree.IndexFileTree (SomeFileTree, fixedVfsRoot)
 import Data.Foldable (traverse_)
-import Data.Maybe (mapMaybe)
+import Data.Maybe (listToMaybe, mapMaybe)
 import Data.String.Conversion (ToString (toString))
-import Data.Text.Extra (showT)
+import Data.Text (Text)
+import Data.Text.Extra (breakOnAndRemove, showT)
 import Discovery.Filters (AllFilters)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec)
@@ -93,7 +94,7 @@ analyzeExportedTarball tarball = do
   -- get Image Digest and Tags
   let manifest = rawManifest image
   let imageDigest = getImageDigest manifest
-  imageTag <- extractTag (getRepoTags manifest)
+  imageTag <- extractRepoName (getRepoTags manifest)
 
   -- Analyze Base Layer
   logInfo "Analyzing Base Layer"
@@ -226,3 +227,17 @@ runDependencyAnalysis basedir filters project@DiscoveredProject{..} = do
         analyzeProject targets projectData
       Diag.flushLogs SevError SevDebug graphResult
       output $ Scanned dpi (mkResult basedir project <$> graphResult)
+
+-- | Extracts Repository Name.
+--
+-- >> extractRepoName ["redis:alpine"] = "redis"
+-- >> extractRepoName ["redis@someDigest"] = "redis"
+-- -
+extractRepoName :: Has Diagnostics sig m => [Text] -> m Text
+extractRepoName tags = do
+  firstTag <- fromMaybeText "No image tags found" $ listToMaybe tags
+  tagTuple <-
+    fromMaybeText "Image was not in the format name:tag or name@digest" $
+      breakOnAndRemove "@" firstTag
+        <|> breakOnAndRemove ":" firstTag
+  pure $ fst tagTuple

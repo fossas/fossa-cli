@@ -96,6 +96,7 @@ common deps
     , modern-uri                   ^>=0.3.4
     , mtl                          ^>=2.2.2
     , network                      ^>=3.1.2.0
+    , network-uri                  ^>=2.6.4.0
     , optparse-applicative         ^>=0.17.0.0
     , parser-combinators           ^>=1.3
     , path                         ^>=0.9.0
@@ -181,6 +182,7 @@ library
     App.Fossa.Container.Scan
     App.Fossa.Container.Sources.DockerEngine
     App.Fossa.Container.Sources.DockerTarball
+    App.Fossa.Container.Sources.Registry
     App.Fossa.Container.Test
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
@@ -225,8 +227,12 @@ library
     App.Version
     App.Version.TH
     Console.Sticky
+    Container.Docker.Credentials
     Container.Docker.ImageJson
     Container.Docker.Manifest
+    Container.Docker.OciManifest
+    Container.Docker.OciManifestIndex
+    Container.Docker.SourceParser
     Container.Dpkg
     Container.Errors
     Container.OsRelease
@@ -235,6 +241,10 @@ library
     Container.Types
     Control.Carrier.AtomicCounter
     Control.Carrier.AtomicState
+    Control.Carrier.ContainerRegistryApi
+    Control.Carrier.ContainerRegistryApi.Authorization
+    Control.Carrier.ContainerRegistryApi.Common
+    Control.Carrier.ContainerRegistryApi.Errors
     Control.Carrier.Debug
     Control.Carrier.Diagnostics
     Control.Carrier.DockerEngineApi
@@ -262,6 +272,7 @@ library
     Control.Effect.AtomicCounter
     Control.Effect.AtomicState
     Control.Effect.ConsoleRegion
+    Control.Effect.ContainerRegistryApi
     Control.Effect.Debug
     Control.Effect.Diagnostics
     Control.Effect.DockerEngineApi
@@ -493,10 +504,15 @@ test-suite unit-tests
     Composer.ComposerLockSpec
     Conda.CondaListSpec
     Conda.EnvironmentYmlSpec
+    Container.Docker.CredentialsSpec
     Container.Docker.ImageJsonSpec
     Container.Docker.ManifestSpec
+    Container.Docker.OciManifestIndexSpec
+    Container.Docker.OciManifestSpec
+    Container.Docker.SourceParserSpec
     Container.DpkgSpec
     Container.OsReleaseSpec
+    Container.RegistryApiSpec
     Container.TarballReadFSSpec
     Container.TarballSpec
     Control.Carrier.DiagnosticsSpec

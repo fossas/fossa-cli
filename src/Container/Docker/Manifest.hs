@@ -17,10 +17,12 @@ module Container.Docker.Manifest (
 import Control.DeepSeq (NFData)
 import Data.Aeson (
   FromJSON,
-  ToJSON,
+  KeyValue ((.=)),
+  ToJSON (toJSON),
   defaultOptions,
   eitherDecode,
   genericToEncoding,
+  object,
   parseJSON,
   toEncoding,
   withObject,
@@ -57,8 +59,12 @@ data ManifestJsonImageEntry = ManifestJsonImageEntry
   deriving (Show, Eq, Ord, Generic, NFData)
 
 instance ToJSON ManifestJsonImageEntry where
-  toEncoding = genericToEncoding defaultOptions
-
+  toJSON entry =
+    object
+      [ "Config" .= config entry
+      , "RepoTags" .= repoTags entry
+      , "Layers" .= layers entry
+      ]
 instance FromJSON ManifestJsonImageEntry where
   parseJSON = withObject "" $ \o ->
     ManifestJsonImageEntry

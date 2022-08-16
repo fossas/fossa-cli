@@ -14,6 +14,7 @@ module Effect.Exec (
   AllowErr (..),
   execParser,
   execJson,
+  execJson',
   ExecIOC,
   runExecIO,
   renderCommand,
@@ -68,6 +69,7 @@ import System.Exit (ExitCode (..))
 import System.Process.Typed (
   proc,
   readProcess,
+  setStdin,
   setWorkingDir,
  )
 import Text.Megaparsec (Parsec, runParser)
@@ -144,7 +146,7 @@ data ExecF a where
   -- | Exec runs a command and returns either:
   -- - stdout when the command succeeds
   -- - a description of the command failure
-  Exec :: SomeBase Dir -> Command -> ExecF (Either CmdFailure Stdout)
+  Exec :: SomeBase Dir -> Command -> Maybe Text -> ExecF (Either CmdFailure Stdout)
 
 type Exec = Simple ExecF
 
@@ -215,7 +217,11 @@ instance ToDiagnostic ExecErr where
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
 exec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure Stdout)
-exec dir cmd = sendSimple (Exec (Abs dir) cmd)
+exec dir cmd = sendSimple (Exec (Abs dir) cmd Nothing)
+
+-- | Execute a command with stdin and return its @(exitcode, stdout, stderr)@
+exec' :: Has Exec sig m => Path Abs Dir -> Command -> Text -> m (Either CmdFailure Stdout)
+exec' dir cmd stdin = sendSimple (Exec (Abs dir) cmd (Just stdin))
 
 type Parser = Parsec Void Text
 
@@ -235,6 +241,17 @@ execJson dir cmd = do
     Left err -> fatal (CommandParseError cmd (toText (show err)))
     Right a -> pure a
 
+-- | Parse the JSON stdout of a command, but executes command with stdin.
+execJson' :: (FromJSON a, Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> Command -> Text -> m a
+execJson' dir cmd stdin = do
+  result <- exec' dir cmd stdin
+  case result of
+    Left failure -> fatal (CommandFailed failure)
+    Right stdout ->
+      case eitherDecode stdout of
+        Left err -> fatal (CommandParseError cmd (toText (show err)))
+        Right a -> pure a
+
 -- | A variant of 'exec' that throws a 'ExecErr' when the command returns a non-zero exit code
 execThrow :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> Command -> m BL.ByteString
 execThrow dir cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
@@ -253,7 +270,7 @@ type ExecIOC = SimpleC ExecF
 
 runExecIO :: Has (Lift IO) sig m => ExecIOC m a -> m a
 runExecIO = interpret $ \case
-  Exec dir cmd -> sendIO $ do
+  Exec dir cmd stdin -> sendIO $ do
     absolute <-
       case dir of
         Abs absDir -> pure absDir
@@ -268,7 +285,10 @@ runExecIO = interpret $ \case
         ioExceptionToCmdFailure :: IOException -> CmdFailure
         ioExceptionToCmdFailure = mkFailure (ExitFailure 1) "" . fromString . show
 
-    processResult <- try $ readProcess (setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs'))
+    let process = setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs')
+    processResult <- try . readProcess $ case stdin of
+      Just stdin' -> setStdin (fromString . toString $ stdin') process
+      Nothing -> process
 
     -- apply business logic for considering whether exitcode + stderr constitutes a "failure"
     let mangleResult :: (ExitCode, Stdout, Stderr) -> Either CmdFailure Stdout

@@ -40,7 +40,7 @@ type ConstExecC = SimpleC ExecF
 
 runConstExec :: Applicative m => BL.ByteString -> ConstExecC m a -> m a
 runConstExec output = interpret $ \case
-  Exec _ _ -> pure (Right output)
+  Exec{} -> pure (Right output)
 
 expected :: Graphing Dependency
 expected = run . evalGrapher $ do
