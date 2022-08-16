@@ -25,7 +25,7 @@ spec = fcontext "" $ do
 
 equalIgnoringEntries :: HeaderBlob -> HeaderBlob -> Bool
 equalIgnoringEntries b1 b2 =
-  b1{entryInfo = []} == b2{entryInfo = []}
+  b1{entryInfos = []} == b2{entryInfos = []}
 
 matchesIgnoringEntries :: Either a HeaderBlob -> HeaderBlob -> Expectation
 matchesIgnoringEntries bs expected =
@@ -60,7 +60,7 @@ headerBlobSpec bs = describe "header blob parsing" $ do
   --             , dataLength = 0x00000002
   --             , dataStart = 0x140 -- 0x40 + 0x01 * entryInfoSize
   --             , pvLength = 0xc2
-  --             , entryInfo = []
+  --             , entryInfos = []
   --             }
 
   --     (headerBlobInit testBs) `matchesIgnoringEntries` fromBigEndianBlob
@@ -76,13 +76,13 @@ headerBlobSpec bs = describe "header blob parsing" $ do
               , dataLength = 0x00008ebc
               , dataStart = 0x475e40
               , pvLength = 0xb6fc -- 0x40 + 0x8ebc + 0x50 * entryInfoSize
-              , entryInfo = []
+              , entryInfos = []
               }
       eBlob `matchesIgnoringEntries` expected
 
     it "Parses entries" $ do
-      -- this database is large, so we'll only check the first entries
-      let entries = take 2 $ entryInfo blob
+      -- this database is large, so we'll only check the first 2 entries
+      let entries = take 2 $ entryInfos blob
 
       entries
         `shouldMatchList` [ EntryInfo

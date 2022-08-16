@@ -12,12 +12,33 @@ import Data.ByteString.Lazy qualified as BLS
 import Data.Int (Int32)
 import Data.Word (Word32)
 
+-- A package blob is laid out like this:
+--
+-- Blob:
+-- indexLength - int32
+-- dataLength - int32
+-- entryInfo region - indexLength * 128 bits (indexLength entry infos)
+--
+-- entryInfo:
+-- tag - int32
+-- tagType - uint32
+-- offset - int32
+-- count - uint32
+
 data HeaderBlob = HeaderBlob
   { indexLength :: Int32
   , dataLength :: Int32
   , dataStart :: Int32
   , pvLength :: Int32 -- I do not know what this is
-  , entryInfo :: [EntryInfo]
+  , entryInfos :: [EntryInfo]
+  }
+  deriving (Show, Eq)
+
+data EntryInfo = EntryInfo
+  { tag :: Int32
+  , tagType :: Word32
+  , offset :: Int32
+  , count :: Word32
   }
   deriving (Show, Eq)
 
@@ -77,8 +98,10 @@ headerBlobInit bs =
       when (pvLength >= headerMaxBytes) $
         fail "blob size bad"
 
-      entryInfo <- readEntries indexLength
+      entryInfos <- readEntries indexLength
 
+      -- TODO: There are a few extra verification steps that the go version does here
+      -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L139
       pure $ HeaderBlob{..}
 
     dataAndIndexLen :: Int32
@@ -91,19 +114,18 @@ headerBlobInit bs =
         + indexLength
         * entryInfoSize
 
-data EntryInfo = EntryInfo
-  { tag :: Int32
-  , tagType :: Word32
-  , offset :: Int32
-  , count :: Word32
-  }
-  deriving (Show, Eq)
-
+-- TODO: Keep processing even if one of these fails to read
 readEntries :: Int32 -> Get [EntryInfo]
 readEntries indexLength = replicateM (fromIntegral indexLength) readEntry
   where
     readEntry :: Get EntryInfo
     readEntry =
+      -- The original code reads these as little endian:
+      -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L127
+      -- However, the original code looks like it simply copies bytes
+      -- sequentially into a buffer that is then treated like an entryInfo
+      -- structure. That means higher bytes in a word are least-significant,
+      -- corresponding to big-endian when read individually.
       EntryInfo
         <$> label "Read tag" getInt32be
         <*> label "Read type" getWord32be
