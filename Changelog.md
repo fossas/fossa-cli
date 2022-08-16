@@ -1,8 +1,10 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.3.12
 
-- CocoaPods: Fixes error when analyzing podspecs that print non-JSON text to stdout ([#1015]https://github.com/fossas/fossa-cli/pull/1015)
+- CocoaPods: Fixes error when analyzing podspecs that print non-JSON text to stdout ([#1015](https://github.com/fossas/fossa-cli/pull/1015))
+- VSI: Executes with at least two threads even on a single core system ([#1013](https://github.com/fossas/fossa-cli/pull/1013))
+- VSI: Reports a better error when no dependencies are found ([#1023](https://github.com/fossas/fossa-cli/pull/1023)).
 
 ## v3.3.11
 
