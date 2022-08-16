@@ -581,7 +581,7 @@ test-suite unit-tests
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec
 
-  build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
+  build-tool-depends: hspec-discover:hspec-discover ^>=2.10.0.1
   build-depends:
     , hedgehog          ^>=1.1.1
     , hspec             ^>=2.10.0.1
@@ -619,7 +619,7 @@ test-suite integration-tests
     Analysis.RustSpec
     Analysis.ScalaSpec
 
-  build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
+  build-tool-depends: hspec-discover:hspec-discover ^>=2.10.0.1
   build-depends:
     , hedgehog      ^>=1.1.1
     , hspec         ^>=2.10.0.1
