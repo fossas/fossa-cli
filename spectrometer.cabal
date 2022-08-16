@@ -583,12 +583,12 @@ test-suite unit-tests
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
   build-depends:
-    , hedgehog                        ^>=1.1.1
-    , hspec                           ^>=2.10.0.1
-    , hspec-core                      ^>=2.10.0.1
-    , hspec-hedgehog                  ^>=0.0.1.2
-    , hspec-megaparsec                ^>=2.2
-    , HUnit                           ^>=1.6.0
+    , hedgehog          ^>=1.1.1
+    , hspec             ^>=2.10.0.1
+    , hspec-core        ^>=2.10.0.1
+    , hspec-hedgehog    ^>=0.0.1.2
+    , hspec-megaparsec  ^>=2.2
+    , HUnit             ^>=1.6.0
     , spectrometer
 
 test-suite integration-tests
@@ -621,9 +621,9 @@ test-suite integration-tests
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.8.2
   build-depends:
-    , hedgehog                        ^>=1.1.1
-    , hspec                           ^>=2.10.0.1
-    , req-conduit                     ^>=1.0.1
+    , hedgehog      ^>=1.1.1
+    , hspec         ^>=2.10.0.1
+    , req-conduit   ^>=1.0.1
     , spectrometer
 
 benchmark bench
