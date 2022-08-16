@@ -25,6 +25,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Stack (Stack)
 import Control.Effect.StickyLogger (StickyLogger, logSticky, logSticky')
 import Control.Effect.TaskPool (TaskPool, forkTask)
+import Control.Monad (when)
 import Data.Foldable (traverse_)
 import Data.Map qualified as Map
 import Data.String.Conversion (toText)
@@ -78,6 +79,8 @@ runVsiAnalysis dir projectRevision filters = context "VSI" $ do
   context "Wait for cloud analysis" $ waitForAnalysis scanID
 
   discoveredRawLocators <- context "Download analysis results" $ getVsiInferences scanID
+  when (null discoveredRawLocators) $ fatalText "No dependencies discovered with VSI"
+
   parsedLocators <- context "Parse analysis results" . fromEither $ traverse VSI.parseLocator discoveredRawLocators
 
   let userDefinedDeps = map IAT.toUserDep $ filter VSI.isUserDefined parsedLocators
