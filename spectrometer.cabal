@@ -56,7 +56,7 @@ common lang
     -Wincomplete-record-updates -Wmissing-home-modules
     -Wmissing-export-lists -Wredundant-constraints
 
--- TODO: Switch `semver` back to `versions` once https://github.com/fosskers/versions/issues/47 is fixed? This package maintainer seems much more responsive. Contrast https://github.com/brendanhay/semver/issues/12.
+-- TODO: Switch `semver` back to `versions` since https://github.com/fosskers/versions/issues/47 is fixed. This package maintainer seems much more responsive. Contrast https://github.com/brendanhay/semver/issues/12.
 common deps
   build-depends:
     , aeson                        ^>=2.1.0.0
