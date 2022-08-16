@@ -67,11 +67,13 @@ isDefaultAndroidDevConfig config = config `elem` androidDefaultConfigs
       , "kotlinCompilerPluginClasspathRelease"
       , "kotlinKlibCommonizerClasspath"
       , "kotlinNativeCompilerPluginClasspath"
+      -- https://kotlinlang.org/docs/kapt.html
+      , "kapt"
       ]
 
 isDefaultAndroidTestConfig :: Text -> Bool
 isDefaultAndroidTestConfig config =
-  any (config `isPrefixedBy`) ["androidTest", "debugAndroidTest", "releaseUnitTest"]
+  any (config `isPrefixedBy`) ["androidTest", "debugAndroidTest", "releaseUnitTest", "kaptAndroid"]
     || (config `elem` androidDefaultConfigs)
   where
     isPrefixedBy :: Text -> Text -> Bool
