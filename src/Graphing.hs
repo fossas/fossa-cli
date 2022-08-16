@@ -321,7 +321,7 @@ pruneUnreachable (Graphing gr) =
     directNodes = Set.toList $ AM.postSet Root gr
 
     reachableNodes :: Set.Set (Node ty)
-    reachableNodes = Set.fromList $ AMA.dfs directNodes gr
+    reachableNodes = Set.fromList $ AMA.dfs gr directNodes
 
     keepPredicate :: Node ty -> Bool
     keepPredicate Root = True
@@ -352,7 +352,7 @@ getRootsOf :: forall ty. (Ord ty) => Graphing ty -> ty -> [ty]
 getRootsOf (Graphing gr) from = Prelude.filter (/= from) $ mapMaybe withoutRoots (Prelude.filter predecessorIsRoot reachableNodes)
   where
     reachableNodes :: [Node ty]
-    reachableNodes = AMA.reachable (Node from) (AM.transpose gr)
+    reachableNodes = AMA.reachable (AM.transpose gr) (Node from)
 
     predecessorIsRoot :: Node ty -> Bool
     predecessorIsRoot node = Root `Set.member` AM.preSet node gr
@@ -390,7 +390,7 @@ subGraphOf n (Graphing gr) =
     nodes = Prelude.filter (== Node n) $ AM.vertexList gr
 
     reachableNodes :: Set.Set (Node ty)
-    reachableNodes = Set.fromList $ AMA.dfs nodes gr
+    reachableNodes = Set.fromList $ AMA.dfs gr nodes
 
     keepPredicate :: Node ty -> Bool
     keepPredicate Root = True

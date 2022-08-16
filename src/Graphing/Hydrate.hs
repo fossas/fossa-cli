@@ -24,7 +24,7 @@ hydrate extractList update gr = Graphing.gmap doPromotion gr
     topVia subItem = AM.vertexList $ AM.induce (elem subItem . extractList) adjMap
     -- Get all nodes reachable from a list of nodes
     allFrom :: b -> Set a
-    allFrom item = Set.fromList $ concatMap (`AMA.reachable` adjMap) (topVia item)
+    allFrom item = Set.fromList $ concatMap (adjMap `AMA.reachable`) (topVia item)
 
     -- Dedup'd sub-items from all vertices in the AdjMap
     allSubItems :: Set b

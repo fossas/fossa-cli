@@ -61,7 +61,7 @@ buildProjectClosures basedir global = closures
 
 -- Find reachable nodes both below (children, grandchildren, ...) and above (parents, grandparents) the node
 bidirectionalReachable :: Ord a => a -> AM.AdjacencyMap a -> Set.Set a
-bidirectionalReachable node gr = Set.fromList $ AM.reachable node gr ++ AM.reachable node (AM.transpose gr)
+bidirectionalReachable node gr = Set.fromList $ AM.reachable gr node ++ AM.reachable (AM.transpose gr) node
 
 sourceVertices :: Ord a => AM.AdjacencyMap a -> [a]
 sourceVertices graph = [v | v <- AM.vertexList graph, Set.null (AM.preSet v graph)]
