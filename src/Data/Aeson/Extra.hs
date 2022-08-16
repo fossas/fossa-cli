@@ -47,7 +47,7 @@ forbidMembers :: Text -> [Key] -> Object -> Parser ()
 forbidMembers typename names obj = traverse_ (badMember obj) names
   where
     badMember hashmap name =
-      when (Object.member (name) hashmap) $
+      when (Object.member name hashmap) $
         fail . toString $
           "Invalid field name for " <> typename <> ": " <> toText name
 
