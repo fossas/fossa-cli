@@ -11,17 +11,34 @@ module Strategy.Node.YarnV2.Lockfile (
   tryParseDescriptor,
 ) where
 
-import Data.Aeson
+import Data.Aeson (
+  FromJSON (parseJSON),
+  FromJSONKey (..),
+  FromJSONKeyFunction (FromJSONKeyTextParser),
+  Value (Object),
+  withObject,
+  withText,
+  (.!=),
+  (.:),
+  (.:?),
+ )
 import Data.Aeson.Extra (TextLike (..))
-import Data.HashMap.Strict qualified as HM
+import Data.Aeson.KeyMap qualified as Object
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import Strategy.Node.PackageJson (NodePackage (..))
-import Text.Megaparsec
-import Text.Megaparsec.Char
+import Text.Megaparsec (
+  MonadParsec (takeWhile1P),
+  Parsec,
+  errorBundlePretty,
+  optional,
+  runParser,
+  takeRest,
+ )
+import Text.Megaparsec.Char (char)
 
 ---------- Types
 
@@ -57,7 +74,7 @@ data PackageDescription = PackageDescription
 -- To decode the lockfile, we kill the metadata field, and run parseJSON again
 -- on the object
 instance FromJSON YarnLockfile where
-  parseJSON = withObject "YarnLockfile" (fmap YarnLockfile . parseJSON . Object . HM.delete "__metadata")
+  parseJSON = withObject "YarnLockfile" (fmap YarnLockfile . parseJSON . Object . Object.delete "__metadata")
 
 -- | See 'packageRefP'/'locatorP' below
 instance FromJSON Locator where
@@ -70,7 +87,7 @@ instance FromJSON Descriptor where
 -- | Each key at the top level in a yarn lockfile is a comma-separated list of
 -- descriptors, in string form.
 --
--- Fortunately, aeson provides a mechanism for us to represent this:
+-- Fortunately, Aeson provides a mechanism for us to represent this:
 -- 'FromJSONKey', which is used in the 'FromJSON' instance for 'Map'. It allows
 -- us to arbitrarily decode any type as a Map key (assuming an 'Ord' instance,
 -- of course).

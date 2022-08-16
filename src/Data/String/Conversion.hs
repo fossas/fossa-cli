@@ -11,6 +11,8 @@ module Data.String.Conversion (
   LazyStrict (..),
 ) where
 
+import Data.Aeson.Key (Key)
+import Data.Aeson.Key qualified as Key
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Text qualified as Text
@@ -83,6 +85,9 @@ instance ToText (SomeBase t) where
     Path.Abs p -> toText p
     Path.Rel p -> toText p
 
+instance ToText Key where
+  toText = Key.toText
+
 ----- ToLText
 
 class ToLText a where
@@ -130,6 +135,9 @@ instance ToString (SomeBase t) where
   toString = \case
     Path.Rel p -> toString p
     Path.Abs p -> toString p
+
+instance ToString Key where
+  toString = Key.toString
 
 ----- LazyStrict
 

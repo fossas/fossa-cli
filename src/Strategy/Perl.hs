@@ -11,7 +11,7 @@ import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Reader (Reader)
-import Data.Aeson (Object, ToJSON)
+import Data.Aeson (Key, Object, ToJSON)
 import Data.Aeson.Extra (TextLike (unTextLike))
 import Data.Aeson.Types (FromJSONKey, Parser, withObject)
 import Data.Aeson.Types qualified as AesonTypes
@@ -138,12 +138,12 @@ instance FromJSON PerlMeta where
       then parseAboveV1_4 o specVersion
       else parseBelowV1_5 o specVersion
     where
-      (|>) :: FromJSON a => Parser Object -> Text -> Parser a
+      (|>) :: FromJSON a => Parser Object -> Key -> Parser a
       (|>) parser key = do
         obj <- parser
         obj .: key
 
-      (|?>) :: FromJSON a => Parser (Maybe Object) -> Text -> Parser (Maybe a)
+      (|?>) :: FromJSON a => Parser (Maybe Object) -> Key -> Parser (Maybe a)
       (|?>) parser key = do
         obj <- parser
         case obj of

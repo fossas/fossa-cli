@@ -25,6 +25,7 @@ import Data.Aeson (
   FromJSON (parseJSON),
   FromJSONKey (..),
   FromJSONKeyFunction (FromJSONKeyTextParser),
+  Key,
   Object,
   ToJSON,
   Value,
@@ -33,14 +34,14 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
+import Data.Aeson.KeyMap qualified as Object
 import Data.Aeson.Types (Parser)
 import Data.Foldable (for_)
-import Data.HashMap.Strict qualified as HM
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.String.Conversion (toString)
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Traversable (for)
@@ -161,7 +162,7 @@ instance FromJSON ProjectAssetsJson where
     deps <- parseFramework projectFrameworks
     pure $ ProjectAssetsJson targets deps
     where
-      (|>) :: FromJSON a => Parser Object -> Text -> Parser a
+      (|>) :: FromJSON a => Parser Object -> Key -> Parser a
       (|>) parser key = do
         obj <- parser
         obj .: key
@@ -171,14 +172,14 @@ instance FromJSON ProjectAssetsJson where
         depsObj :: Maybe Object <- o .:? "dependencies"
         deps <- case depsObj of
           Nothing -> pure []
-          Just hm -> pure (fst <$> HM.toList hm)
-        pure $ Set.fromList deps
+          Just o' -> pure $ Object.keys o'
+        pure $ Set.fromList $ fmap toText deps
 
       parseFramework :: Value -> Parser (Map.Map FrameworkName (Set Text))
       parseFramework = withObject "parseFramework" $ \o -> do
-        projectFrameworks <- for (HM.toList o) $ \(framework, kv) -> do
+        projectFrameworks <- for (Object.toList o) $ \(framework, kv) -> do
           frameworkDeps <- parseFrameworkDeps kv
-          pure (FrameworkName framework, frameworkDeps)
+          pure (FrameworkName $ toText framework, frameworkDeps)
         pure $ Map.fromList projectFrameworks
 
 buildGraph :: ProjectAssetsJson -> Graphing Dependency

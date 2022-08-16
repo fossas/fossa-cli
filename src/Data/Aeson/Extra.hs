@@ -6,11 +6,10 @@ module Data.Aeson.Extra (
 
 import Control.Applicative ((<|>))
 import Control.Monad (when)
-import Data.Aeson (ToJSON)
 import Data.Aeson qualified as Aeson
-import Data.Aeson.Types (FromJSON (parseJSON), Object, Parser)
+import Data.Aeson.KeyMap qualified as Object
+import Data.Aeson.Types (FromJSON (parseJSON), Key, Object, Parser, ToJSON)
 import Data.Foldable (traverse_)
-import Data.HashMap.Strict (member)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 
@@ -39,18 +38,18 @@ instance FromJSON TextLike where
       parseAsDouble = TextLike . toText . show <$> parseJSON @Double val
 
 -- | Parser insert to prevent specific fields from being used in parsers
--- Primarily useful for rejecting aeson fields which should be reported with custom error messages
+-- Primarily useful for rejecting Aeson fields which should be reported with custom error messages
 --
 -- >  parseJSON = withObject "MyDataType" $ \obj ->
 -- >   MyDataType <$> obj .: "my-data-field"
 -- >     <* forbidMembers "Custom error message" ["badfield1", "badfield2"] obj
-forbidMembers :: Text -> [Text] -> Object -> Parser ()
+forbidMembers :: Text -> [Key] -> Object -> Parser ()
 forbidMembers typename names obj = traverse_ (badMember obj) names
   where
     badMember hashmap name =
-      when (member name hashmap) $
+      when (Object.member name hashmap) $
         fail . toString $
-          "Invalid field name for " <> typename <> ": " <> name
+          "Invalid field name for " <> typename <> ": " <> toText name
 
 -- | Like 'Data.Aeson.encode', but produces @Text@ instead of @ByteString@
 encodeJSONToText :: ToJSON a => a -> Text

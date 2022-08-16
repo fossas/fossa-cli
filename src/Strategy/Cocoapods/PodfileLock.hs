@@ -27,12 +27,12 @@ import Control.Effect.State (State, get, put)
 import Control.Monad (when)
 import Data.Aeson (FromJSON (parseJSON), (.!=))
 import Data.Aeson qualified as JSON
+import Data.Aeson.KeyMap qualified as Object
 import Data.Aeson.Types (FromJSONKey)
 import Data.Bifunctor (first)
 import Data.Char qualified as C
 import Data.Foldable (asum, find, traverse_)
 import Data.Functor (void)
-import Data.HashMap.Lazy qualified as HashMap (toList)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.SemVer qualified as SemVer
@@ -352,8 +352,8 @@ instance FromJSON PodLock where
 
 instance FromJSON Pod where
   parseJSON (Yaml.String p) = parserPod p Nothing
-  parseJSON (Yaml.Object obj) = case HashMap.toList obj of
-    [(podEntry, podDepsListing)] -> parserPod podEntry $ Just podDepsListing
+  parseJSON (Yaml.Object obj) = case Object.toList obj of
+    [(podEntry, podDepsListing)] -> parserPod (toText podEntry) $ Just podDepsListing
     [] -> fail "Expected non empty list of dependencies, but received empty list"
     _ -> fail $ "Expected list of dependencies, but received: " <> show obj
   parseJSON notSupported = fail $ "Expected string, but received: " <> show notSupported

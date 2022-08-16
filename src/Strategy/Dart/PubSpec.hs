@@ -13,6 +13,7 @@ module Strategy.Dart.PubSpec (
 
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context)
+import Data.Aeson qualified as Aeson
 import Data.Foldable (asum, for_)
 import Data.Map (Map, toList)
 import Data.Map.Strict qualified as Map
@@ -103,7 +104,7 @@ instance FromJSON PubSpecDepSource where
       parsePathSource :: Yaml.Object -> Yaml.Parser PubSpecDepSource
       parsePathSource po = PathSource . PubSpecDepPathSource <$> po .: "path"
 
-      (|>) :: FromJSON a => Yaml.Parser Yaml.Object -> Text -> Yaml.Parser a
+      (|>) :: FromJSON a => Yaml.Parser Yaml.Object -> Aeson.Key -> Yaml.Parser a
       (|>) parser key = do
         obj <- parser
         obj .: key

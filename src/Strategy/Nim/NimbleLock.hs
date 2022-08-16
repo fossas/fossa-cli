@@ -30,12 +30,13 @@ import Data.Aeson (
   withText,
   (.:),
  )
+import Data.Aeson.KeyMap qualified as Object
 import Data.Aeson.Types (Parser)
-import Data.HashMap.Strict qualified as HM
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Traversable (for)
 import DepTypes (
@@ -85,8 +86,8 @@ instance FromJSON NimbleLock where
     where
       parsePkgs :: Value -> Parser [NimPackage]
       parsePkgs = withObject "NimPackage" $ \o ->
-        for (HM.toList o) $ \(pkgName, pkgMeta) -> do
-          parseNimPackageWithName (PackageName pkgName) pkgMeta
+        for (Object.toList o) $ \(pkgName, pkgMeta) ->
+          parseNimPackageWithName (PackageName $ toText pkgName) pkgMeta
 
       parseNimPackageWithName :: PackageName -> Value -> Parser NimPackage
       parseNimPackageWithName name = withObject "parseNimPackageWithName" $ \metaO ->
