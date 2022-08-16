@@ -69,7 +69,9 @@ import Data.Aeson (
   encode,
   object,
   withObject,
+  (.!=),
   (.:),
+  (.:?),
  )
 import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
@@ -904,7 +906,7 @@ newtype VSIExportedInferencesBody = VSIExportedInferencesBody {unVSIExportedInfe
 
 instance FromJSON VSIExportedInferencesBody where
   parseJSON = withObject "VSIExportedInferencesBody" $ \obj -> do
-    plainLocators <- obj .: "locators"
+    plainLocators <- obj .:? "locators" .!= []
     pure . VSIExportedInferencesBody $ fmap parseLocator plainLocators
 
 vsiDownloadInferencesEndpoint :: Url scheme -> VSI.ScanID -> Url scheme
