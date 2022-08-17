@@ -349,9 +349,9 @@ library
     Strategy.Dart.PubDeps
     Strategy.Dart.PubSpec
     Strategy.Dart.PubSpecLock
-    Strategy.Dpkg.Dpkg
+    Strategy.Dpkg
+    Strategy.Dpkg.Database
     Strategy.Dpkg.Parser
-    Strategy.DpkgDatabase
     Strategy.Elixir.MixTree
     Strategy.Erlang.ConfigParser
     Strategy.Erlang.Rebar3Tree

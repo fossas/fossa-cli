@@ -73,7 +73,7 @@ import Path.Internal (Path (Path))
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (SourceUnit)
 import Strategy.ApkDatabase qualified as Apk
-import Strategy.DpkgDatabase qualified as Dpkg
+import Strategy.Dpkg qualified as Dpkg
 import Types (DiscoveredProject (..))
 
 -- | Analyzes Docker Image from Exported Tarball Source.

@@ -1,4 +1,4 @@
-module Strategy.DpkgDatabase (
+module Strategy.Dpkg (
   discover,
   findProjects,
   mkProject,
@@ -21,7 +21,7 @@ import Discovery.Walk (
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, toFilePath)
-import Strategy.Dpkg.Dpkg (analyze)
+import Strategy.Dpkg.Database (analyze)
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),

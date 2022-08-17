@@ -1,4 +1,4 @@
-module Strategy.Dpkg.Dpkg (analyze) where
+module Strategy.Dpkg.Database (analyze) where
 
 import Container.OsRelease (OsInfo (OsInfo))
 import Control.Effect.Diagnostics (
@@ -28,7 +28,7 @@ import Strategy.Dpkg.Parser (
 import Types (GraphBreadth (..))
 
 buildGraph :: OsInfo -> [DpkgEntry] -> Graphing Dependency
-buildGraph (OsInfo os osVersion) pkgs = directs (map toDependency pkgs)
+buildGraph (OsInfo os osVersion) = directs . map toDependency
   where
     toDependency :: DpkgEntry -> Dependency
     toDependency pkg =
