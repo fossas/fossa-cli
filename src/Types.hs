@@ -70,6 +70,7 @@ data DiscoveredProjectType
   | CocoapodsProjectType
   | ComposerProjectType
   | CondaProjectType
+  | DpkgDatabaseProjectType
   | FpmProjectType
   | GlideProjectType
   | GodepProjectType
@@ -113,6 +114,7 @@ projectTypeToText = \case
   CocoapodsProjectType -> "cocoapods"
   ComposerProjectType -> "composer"
   CondaProjectType -> "conda"
+  DpkgDatabaseProjectType -> "dpkgdb"
   FpmProjectType -> "fpm"
   GlideProjectType -> "glide"
   GodepProjectType -> "godep"
