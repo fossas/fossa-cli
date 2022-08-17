@@ -4,15 +4,54 @@ module Data.Rpm.DbHeaderBlob (
   headerBlobInit,
   HeaderBlob (..),
   EntryInfo (..),
+  RegionInfo (..),
+  hdrblobVerifyRegion,
+  emptyRegionInfo,
+  -- consts
+  rpmTagHeaderImg,
+  rpmTagHeaderImmutable,
+  rpmTagHeaderSignatures,
+  regionTagType,
+  regionTagCount,
 ) where
 
-import Control.Monad (replicateM, when)
+import Control.Applicative (liftA2)
+import Control.Monad (replicateM, unless, when)
 import Data.Binary.Get (ByteOffset, Get, getInt32be, getWord32be, label, runGetOrFail)
 import Data.ByteString.Lazy qualified as BLS
 import Data.Int (Int32)
-import Data.Word (Word32)
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Control.Applicative (liftA2)
+import Data.List.NonEmpty qualified as NonEmpty
+import Data.Word (Word32)
+import Debug.Trace (traceShowM)
+
+-- Constants from
+-- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/rpmtags.go#L3
+rpmTagHeaderImmutable :: Int32
+rpmTagHeaderImmutable = 63
+
+rpmTagHeaderSignatures :: Int32
+rpmTagHeaderSignatures = 62
+
+rpmTagHeaderImg :: Int32
+rpmTagHeaderImg = 61
+
+-- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L71
+-- Size in bytes.
+entryInfoSize :: Int32
+entryInfoSize = 16
+
+-- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L18
+headerMaxBytes :: Int32
+headerMaxBytes = 256 * 1024 * 1024
+
+-- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L14
+regionTagCount :: Int32
+regionTagCount = entryInfoSize
+
+-- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L15
+regionTagType :: Word32
+regionTagType = 7
 
 -- A package blob is laid out like this:
 --
@@ -44,14 +83,6 @@ data EntryInfo = EntryInfo
   , count :: Word32
   }
   deriving (Show, Eq)
-
--- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L71
-entryInfoSize :: Int32
-entryInfoSize = 128
-
--- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L18
-headerMaxBytes :: Int32
-headerMaxBytes = 256 * 1024 * 1024
 
 -- data BlobParseError
 --   = IndexLength
@@ -94,7 +125,7 @@ headerBlobInit bs =
         fail "region no tags error"
 
       dataLength <- label "Read dataLength" getInt32be
-      let dataStart = calcDataStart dataLength
+      let dataStart = calcDataStart indexLength
       let pvLength = dataAndIndexLen + dataLength + indexLength * entryInfoSize
       let dataEnd = dataStart + dataLength
 
@@ -103,12 +134,13 @@ headerBlobInit bs =
 
       entryInfos <- readEntries indexLength
 
-      -- TODO: There are a few extra verification steps that the go version does here
-      -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L139
-      pure $ HeaderBlob{..}
+      let h = HeaderBlob{..}
+      let regionInfo = hdrblobVerifyRegion h
+
+      pure h
 
     dataAndIndexLen :: Int32
-    dataAndIndexLen = 32 + 32
+    dataAndIndexLen = 8
 
     -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L116
     calcDataStart :: Int32 -> Int32
@@ -117,20 +149,84 @@ headerBlobInit bs =
         + indexLength
         * entryInfoSize
 
-readEntries :: Int32 -> Get (NonEmpty EntryInfo)
-readEntries indexLength = do
-  liftA2 (:|) readEntry $ replicateM (fromIntegral (indexLength - 1)) readEntry
+newtype RegionInfo = RegionInfo
+  { regionDataLen :: Int32
+  }
+  deriving (Show, Eq)
+
+emptyRegionInfo :: RegionInfo
+emptyRegionInfo = RegionInfo
+  {regionDataLen = 0}
+
+-- -- This is inspired by hdrblobVerifyRegion:
+-- -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L263 In the
+-- -- interest of getting an MVP done quickly, this currently doesn't do
+-- -- verification, it just calculates any data that future processes might need.
+hdrblobVerifyRegion :: HeaderBlob -> Either String RegionInfo
+hdrblobVerifyRegion HeaderBlob{entryInfos, dataLength, dataStart} = do
+  let firstEntry@EntryInfo{..} = NonEmpty.head entryInfos
+  let regionTag =
+        if tag
+          `elem` [ rpmTagHeaderImg
+                 , rpmTagHeaderSignatures
+                 , rpmTagHeaderImmutable
+                 ]
+          then tag
+          else 0
+
+  if regionTag == 0
+    then
+    -- go defaults numbers to 0, so I think the effect of bailing out early in
+    -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L276
+    -- is to have all region information be 0.
+    pure emptyRegionInfo
+    else do
+      unless (tagType == regionTagType && count == fromIntegral regionTagCount) $
+        Left "invalid region tag"
+
+      when (hdrCheckRange dataLength (offset + regionTagCount)) $
+        Left "invalid region offset"
+
+      let regionEnd = dataStart + offset
+      
+      pure emptyRegionInfo{regionDataLen = offset + regionTagCount}
   where
-    readEntry :: Get EntryInfo
-    readEntry =
-      -- The original code reads these as little endian:
-      -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L127
-      -- However, the original code looks like it simply copies bytes
-      -- sequentially into a buffer that is then treated like an entryInfo
-      -- structure. That means higher bytes in a word are least-significant,
-      -- corresponding to big-endian when read individually.
-      EntryInfo
-        <$> label "Read tag" getInt32be
-        <*> label "Read type" getWord32be
-        <*> label "Read offset" getInt32be
-        <*> label "Read count" getWord32be
+    -- do
+    -- when (not $ hdrCheckRange )
+
+    hdrCheckRange :: Int32 -> Int32 -> Bool
+    hdrCheckRange dataLen offset = offset < 0 || offset > dataLen
+
+-- TODO: Should I keep processing even if one of these fails to read?
+-- Since they're just lined up next to each other a failure to read in one
+-- place likely means we've gone too far off the rails anyways.
+readEntries :: Int32 -> Get (NonEmpty EntryInfo)
+readEntries indexLength =
+  liftA2 (:|) readEntry $ replicateM (fromIntegral (indexLength - 1)) readEntry
+
+readEntry :: Get EntryInfo
+readEntry =
+    -- The original code reads these as little endian:
+    -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L127
+    -- However, the original code looks like it simply copies bytes
+    -- sequentially into a buffer that is then treated like an entryInfo
+    -- structure. That means higher bytes in a word are least-significant,
+    -- corresponding to big-endian when read individually. Big endian is also
+    -- network order.
+    EntryInfo
+    <$> label "Read tag" getInt32be
+    <*> label "Read type" getWord32be
+    <*> label "Read offset" getInt32be
+    <*> label "Read count" getWord32be
+
+-- data IndexEntry = IndexEntry {}
+
+-- rpmTagHeaderI18nTable :: Int32
+-- rpmTagHeaderI18nTable = 100
+
+-- hdrBlobImport :: BLS.ByteString -> HeaderBlob -> [IndexEntry]
+-- hdrBlobImport bs HeaderBlob{..} =
+--   if tag (entryInfos !! 1) >= rpmTagHeaderI18nTable then
+--     error "Not implemented yet"
+--   else
+--     regionSwab bs entryInfos
