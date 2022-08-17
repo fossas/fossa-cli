@@ -512,7 +512,6 @@ test-suite unit-tests
     Container.Docker.OciManifestIndexSpec
     Container.Docker.OciManifestSpec
     Container.Docker.SourceParserSpec
-    Container.DpkgSpec
     Container.OsReleaseSpec
     Container.RegistryApiSpec
     Container.TarballReadFSSpec
