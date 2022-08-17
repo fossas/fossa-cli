@@ -17,6 +17,7 @@ data EnvVars = EnvVars
   , envConfigDebug :: Bool
   , envTelemetryDebug :: Bool
   , envTelemetryScope :: Maybe ConfigTelemetryScope
+  , envDockerHost :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -32,6 +33,9 @@ telemetryDebugName = "FOSSA_TELEMETRY_DEBUG"
 telemetryScopeKeyName :: String
 telemetryScopeKeyName = "FOSSA_TELEMETRY_SCOPE"
 
+dockerHostName :: String
+dockerHostName = "DOCKER_HOST"
+
 getEnvVars :: (Has (Lift IO) sig m, Has Logger sig m) => m EnvVars
 getEnvVars =
   EnvVars
@@ -39,6 +43,7 @@ getEnvVars =
     <*> lookupBool configDebugName
     <*> lookupBool telemetryDebugName
     <*> lookUpTelemetryScope telemetryScopeKeyName
+    <*> lookupName dockerHostName
 
 lookupName :: Has (Lift IO) sig m => String -> m (Maybe Text)
 lookupName name = toText <$$> sendIO (lookupEnv name)

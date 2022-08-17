@@ -180,8 +180,9 @@ library
     App.Fossa.Container.Analyze
     App.Fossa.Container.AnalyzeNative
     App.Fossa.Container.Scan
+    App.Fossa.Container.Sources.DockerArchive
     App.Fossa.Container.Sources.DockerEngine
-    App.Fossa.Container.Sources.DockerTarball
+    App.Fossa.Container.Sources.Podman
     App.Fossa.Container.Sources.Registry
     App.Fossa.Container.Test
     App.Fossa.DumpBinaries
