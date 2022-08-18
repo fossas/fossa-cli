@@ -38,5 +38,5 @@ analyzeFromDockerEngine imgTag dockerHost = do
         <> "! This may take a while!"
     runDockerEngineApi dockerHost $ getDockerImage imgTag tempTarFile
 
-    logInfo . pretty $ "Analyzing exported docker tarball: " <> toString tempTarFile
+    logInfo . pretty $ "Analyzing exported docker archive: " <> toString tempTarFile
     analyzeFromDockerArchive tempTarFile

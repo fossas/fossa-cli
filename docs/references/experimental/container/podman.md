@@ -46,7 +46,7 @@ Now we can specify `DOCKER_HOST` when running `fossa-cli`.
 DOCKER_HOST='unix:///Users/fossa/.local/share/containers/podman/machine/podman-machine-default/podman.sock' fossa container analyze --experimental-scanner
 ```
 
-Likewise, if you are using `podman-remote`, you should be able to use generate unix socket, and use it with `fossa-cli`. Refer to documentation belows for more details.
+Likewise, if you are using `podman-remote`, you should be able to use generate unix socket, and use it with `fossa-cli`. Refer to documentation below for more details.
 
 Refer to documentation here:
 - https://podman.io/blogs/2020/07/01/rest-versioning.html
@@ -56,7 +56,7 @@ Refer to documentation here:
 
 # Integration via Podman Executables
 
-`fossa-cli` will perform, following command:
+`fossa-cli` will perform the following command:
 
 ```bash
 # check if image exists
@@ -66,9 +66,9 @@ podman image inspect <ARG>
 # and perform analysis on exported image.
 podman save --format docker-archive -o <temp-path>
 ```
-`fossa-cli`, will look for `podman` executable in `$PATH`.
+`fossa-cli` will look for `podman` executable in `$PATH`.
 
-> Note this is same approach as 'Integration via Docker Archive except that
+> Note this is same approach as integration via Docker Archive except that
 > `fossa-cli` performs necessary invocation and does cleanup of artifacts.
 
 # Integration via Docker Archive

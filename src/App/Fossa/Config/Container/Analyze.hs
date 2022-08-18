@@ -121,7 +121,6 @@ mergeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
   let scanDest = collectScanDestination cfgfile envvars cliOpts
       severity = getSeverity cliOpts
       imageLoc = containerAnalyzeImage
-      dockerHost = collectDockerHost envvars
       arch = collectArch
       revOverride =
         collectRevisionOverride cfgfile $
@@ -134,7 +133,7 @@ mergeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
     <*> pure revOverride
     <*> pure imageLoc
     <*> pure containerExperimentalScanner
-    <*> pure dockerHost
+    <*> collectDockerHost envvars
     <*> pure arch
     <*> pure severity
 

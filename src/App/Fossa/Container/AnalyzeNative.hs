@@ -117,21 +117,14 @@ analyze ::
   m ()
 analyze cfg = do
   logInfo "Running container scanning with fossa experimental-scanner!"
-
-  let host :: Text
-      host = (dockerHost cfg)
-
-  let defaultArch :: Text
-      defaultArch = arch cfg
-
   parsedSource <-
-    runDockerEngineApi host $
+    runDockerEngineApi (dockerHost cfg) $
       parseContainerImageSource
         (unImageText $ imageLocator cfg)
-        defaultArch
+        (arch cfg)
   scannedImage <- case parsedSource of
     DockerArchive tarball -> context "Analyzing via tarball" $ analyzeFromDockerArchive tarball
-    DockerEngine imgTag -> context "Analyzing via Docker engine API" $ analyzeFromDockerEngine imgTag host
+    DockerEngine imgTag -> context "Analyzing via Docker engine API" $ analyzeFromDockerEngine imgTag (dockerHost cfg)
     Podman img -> context "Analyzing via podman" $ analyzeFromPodman img
     Registry registrySrc -> context "Analyzing via registry" $ analyzeFromRegistry registrySrc
 

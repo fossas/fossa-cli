@@ -6,12 +6,14 @@ module App.Fossa.Config.Container.Common (
 ) where
 
 import App.Fossa.Config.EnvironmentVars (EnvVars (EnvVars, envDockerHost))
+import Control.Effect.Diagnostics (Diagnostics, Has, ToDiagnostic, renderDiagnostic, warn)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Options.Applicative (Parser, argument, help, metavar, str)
+import Prettyprinter (pretty, vsep)
 import System.Info (arch)
 
 newtype ImageText = ImageText
@@ -37,17 +39,30 @@ collectArch =
       then "amd64"
       else arch
 
-collectDockerHost :: EnvVars -> Text
+collectDockerHost :: Has Diagnostics sig m => EnvVars -> m Text
 collectDockerHost EnvVars{envDockerHost} =
   case envDockerHost of
-    Nothing -> defaultDockerHost
+    Nothing -> pure defaultDockerHost
     Just host ->
       if Text.isPrefixOf "unix://" host
-        then withoutUnixSocketScheme host
-        else defaultDockerHost
+        then pure $ withoutUnixSocketScheme host
+        else do
+          warn $ NotSupportedHostScheme host
+          pure defaultDockerHost
   where
     withoutUnixSocketScheme :: Text -> Text
     withoutUnixSocketScheme = Text.replace "unix://" ""
 
-    defaultDockerHost :: Text
-    defaultDockerHost = "/var/run/docker.sock"
+defaultDockerHost :: Text
+defaultDockerHost = "/var/run/docker.sock"
+
+newtype NotSupportedHostScheme = NotSupportedHostScheme Text
+
+instance ToDiagnostic NotSupportedHostScheme where
+  renderDiagnostic (NotSupportedHostScheme provided) =
+    vsep
+      [ "Only unix domain sockets are supported for DOCKER_HOST value."
+      , pretty $ "Provided 'DOCKER_HOST' via environment variable: " <> provided
+      , ""
+      , pretty $ "fossa will use: " <> "unix://" <> defaultDockerHost <> " instead, to connect with docker engine api (if needed)."
+      ]

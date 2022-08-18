@@ -11,7 +11,7 @@ Fossa container has following options:
 
 Fossa container analyze, can scan container image from,
 
-1) Docker Tarball
+1) Docker archive
 2) Docker Engine (accessed via unix socket /var/lib/docker.sock)
 3) OCI Registry
 
