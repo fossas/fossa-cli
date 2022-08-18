@@ -1,6 +1,9 @@
-module App.Fossa.Container.Sources.Registry (analyzeFromRegistry) where
+module App.Fossa.Container.Sources.Registry (
+  analyzeFromRegistry,
+  listTargetsFromRegistry,
+) where
 
-import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive)
+import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive)
 import Container.Docker.Credentials (useCredentialFromConfig)
 import Container.Docker.SourceParser (RegistryImageSource (RegistryImageSource), defaultRegistry)
 import Container.Types (ContainerScan)
@@ -12,30 +15,33 @@ import Control.Effect.Diagnostics (Diagnostics, recover)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.Telemetry (Telemetry)
 import Data.Maybe (fromMaybe)
-import Data.String.Conversion (toString)
+import Data.String.Conversion (toText)
+import Data.Text (Text)
 import Data.Text qualified as Text
+import Discovery.Filters (AllFilters)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, logInfo, pretty)
 import Effect.ReadFS (ReadFS)
+import Path (Abs, File, Path)
 
-analyzeFromRegistry ::
+runFromRegistry ::
   ( Has Diagnostics sig m
-  , Has Exec sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
-  , Has Telemetry sig m
   , Has ReadFS sig m
-  , Has Debug sig m
+  , Has Exec sig m
   ) =>
   RegistryImageSource ->
-  m ContainerScan
-analyzeFromRegistry imgSrc = do
+  Text ->
+  (Path Abs File -> m b) ->
+  m b
+runFromRegistry imgSrc ctx f = do
   imgSrc' <- enrichCreds
   withSystemTempDir "fossa-container-registry-tmp" $ \dir -> do
     logInfo $ "Inferred registry source: " <> pretty imgSrc'
     tempTarFile <- runContainerRegistryApi $ exportImage imgSrc' dir
-    logInfo . pretty $ "Analyzing exported container tarball: " <> toString tempTarFile
-    analyzeFromDockerArchive tempTarFile
+    logInfo . pretty $ ctx <> toText tempTarFile
+    f tempTarFile
   where
     hasCred :: RegistryImageSource -> Bool
     hasCred (RegistryImageSource _ _ (Just _) _ _ _) = True
@@ -58,3 +64,36 @@ analyzeFromRegistry imgSrc = do
         else do
           imgSrcEnriched <- recover $ useCredentialFromConfig imgSrc
           pure $ fromMaybe imgSrc imgSrcEnriched
+
+analyzeFromRegistry ::
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has Telemetry sig m
+  , Has Debug sig m
+  , Has ReadFS sig m
+  ) =>
+  AllFilters ->
+  RegistryImageSource ->
+  m ContainerScan
+analyzeFromRegistry filters img =
+  runFromRegistry
+    img
+    "Analyzing exported docker archive: "
+    $ analyzeFromDockerArchive filters
+
+listTargetsFromRegistry ::
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  ) =>
+  RegistryImageSource ->
+  m ()
+listTargetsFromRegistry img =
+  runFromRegistry
+    img
+    "Listing targets exported docker archive: "
+    listTargetsFromDockerArchive

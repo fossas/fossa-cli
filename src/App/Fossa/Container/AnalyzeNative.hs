@@ -1,11 +1,12 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Container.AnalyzeNative (
+  ContainerImageSource (..),
   analyzeExperimental,
+  parseContainerImageSource,
 
   -- * for testing
   uploadScan,
-  ContainerImageSource (..),
   parseDockerEngineSource,
 ) where
 
@@ -15,7 +16,7 @@ import App.Fossa.Config.Common (
   ScanDestination (OutputStdout, UploadScan),
  )
 import App.Fossa.Config.Container.Analyze (
-  ContainerAnalyzeConfig (arch, dockerHost, imageLocator, revisionOverride, scanDestination),
+  ContainerAnalyzeConfig (arch, dockerHost, filterSet, imageLocator, revisionOverride, scanDestination),
  )
 import App.Fossa.Config.Container.Analyze qualified as Config
 import App.Fossa.Config.Container.Common (ImageText (unImageText))
@@ -117,16 +118,14 @@ analyze ::
   m ()
 analyze cfg = do
   logInfo "Running container scanning with fossa experimental-scanner!"
-  parsedSource <-
-    runDockerEngineApi (dockerHost cfg) $
-      parseContainerImageSource
-        (unImageText $ imageLocator cfg)
-        (arch cfg)
+
+  let filters = filterSet cfg
+  parsedSource <- runDockerEngineApi (dockerHost cfg) $ parseContainerImageSource (unImageText $ imageLocator cfg) (arch cfg)
   scannedImage <- case parsedSource of
-    DockerArchive tarball -> context "Analyzing via tarball" $ analyzeFromDockerArchive tarball
-    DockerEngine imgTag -> context "Analyzing via Docker engine API" $ analyzeFromDockerEngine imgTag (dockerHost cfg)
-    Podman img -> context "Analyzing via podman" $ analyzeFromPodman img
-    Registry registrySrc -> context "Analyzing via registry" $ analyzeFromRegistry registrySrc
+    DockerArchive tarball -> context "Analyzing via docker archive" $ analyzeFromDockerArchive filters tarball
+    DockerEngine imgTag -> context "Analyzing via Docker engine API" $ analyzeFromDockerEngine filters (dockerHost cfg) imgTag
+    Podman img -> context "Analyzing via podman" $ analyzeFromPodman filters img
+    Registry registrySrc -> context "Analyzing via registry" $ analyzeFromRegistry filters registrySrc
 
   let revision = extractRevision (revisionOverride cfg) scannedImage
   case scanDestination cfg of

@@ -1,8 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.Fossa.Container.Sources.DockerEngine (analyzeFromDockerEngine) where
+module App.Fossa.Container.Sources.DockerEngine (
+  analyzeFromDockerEngine,
+  listTargetsFromDockerEngine,
+) where
 
-import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive)
+import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive)
 import Container.Types (ContainerScan)
 import Control.Carrier.DockerEngineApi (runDockerEngineApi)
 import Control.Carrier.Lift (Lift)
@@ -11,11 +14,35 @@ import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.DockerEngineApi (getDockerImage)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.Telemetry (Telemetry)
-import Data.String.Conversion (toString)
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
+import Discovery.Filters (AllFilters)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, logInfo, pretty)
-import Path (mkRelFile, (</>))
+import Path (Abs, File, Path, mkRelFile, (</>))
+
+runFromDockerEngine ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  ) =>
+  Text ->
+  Text ->
+  Text ->
+  (Path Abs File -> m b) ->
+  m b
+runFromDockerEngine engineHost imgTag ctx f = do
+  withSystemTempDir "fossa-docker-engine-tmp" $ \dir -> do
+    let tempTarFile = dir </> $(mkRelFile "image.tar")
+
+    logInfo . pretty $
+      "Exporting docker image to temp file: "
+        <> toString tempTarFile
+        <> "! This may take a while!"
+    runDockerEngineApi engineHost $ getDockerImage imgTag tempTarFile
+
+    logInfo . pretty $ ctx <> toText tempTarFile
+    f tempTarFile
 
 analyzeFromDockerEngine ::
   ( Has Diagnostics sig m
@@ -25,18 +52,28 @@ analyzeFromDockerEngine ::
   , Has Telemetry sig m
   , Has Debug sig m
   ) =>
+  AllFilters ->
   Text ->
   Text ->
   m ContainerScan
-analyzeFromDockerEngine imgTag dockerHost = do
-  withSystemTempDir "fossa-docker-engine-tmp" $ \dir -> do
-    let tempTarFile = dir </> $(mkRelFile "image.tar")
+analyzeFromDockerEngine filters engineHost imgTag =
+  runFromDockerEngine
+    engineHost
+    imgTag
+    "Analyzing exported docker archive: "
+    $ analyzeFromDockerArchive filters
 
-    logInfo . pretty $
-      "Exporting docker image to temp file: "
-        <> toString tempTarFile
-        <> "! This may take a while!"
-    runDockerEngineApi dockerHost $ getDockerImage imgTag tempTarFile
-
-    logInfo . pretty $ "Analyzing exported docker archive: " <> toString tempTarFile
-    analyzeFromDockerArchive tempTarFile
+listTargetsFromDockerEngine ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  ) =>
+  Text ->
+  Text ->
+  m ()
+listTargetsFromDockerEngine engineHost imgTag =
+  runFromDockerEngine
+    engineHost
+    imgTag
+    "Listing targets exported docker archive: "
+    listTargetsFromDockerArchive

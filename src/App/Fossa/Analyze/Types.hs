@@ -2,6 +2,7 @@ module App.Fossa.Analyze.Types (
   AnalyzeProject (..),
   AnalysisScanResult (..),
   AnalyzeTaskEffs,
+  AnalyzeStaticTaskEffs,
   AnalyzeExperimentalPreferences (..),
   DiscoveredProjectScan (..),
   DiscoveredProjectIdentifier (..),
@@ -33,6 +34,17 @@ type AnalyzeTaskEffs sig m =
   ( Has (Lift IO) sig m
   , Has ReadFS sig m
   , Has Exec sig m
+  , Has Logger sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader AllFilters) sig m
+  , Has Telemetry sig m
+  )
+
+type AnalyzeStaticTaskEffs sig m =
+  ( Has (Lift IO) sig m
+  , Has ReadFS sig m
   , Has Logger sig m
   , Has Diagnostics sig m
   , Has Debug sig m

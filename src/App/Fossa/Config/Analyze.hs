@@ -33,6 +33,7 @@ import App.Fossa.Config.Common (
   collectAPIMetadata,
   collectApiOpts,
   collectBaseDir,
+  collectConfigFileFilters,
   collectRevisionData',
   commonOpts,
   metadataOpts,
@@ -444,17 +445,6 @@ collectFilters maybeConfig cliOpts = do
     (False, False) ->
       cliFilters
         <$ logWarn "Overriding config file filters with command-line filters"
-
-collectConfigFileFilters :: ConfigFile -> AllFilters
-collectConfigFileFilters configFile = do
-  let pullFromFile :: (a -> [b]) -> (ConfigFile -> Maybe a) -> [b]
-      pullFromFile field section = maybe [] field (section configFile)
-      onlyT = pullFromFile targetsOnly configTargets
-      onlyP = pullFromFile pathsOnly configPaths
-      excludeT = pullFromFile targetsExclude configTargets
-      excludeP = pullFromFile pathsExclude configPaths
-
-  AllFilters (comboInclude onlyT onlyP) (comboExclude excludeT excludeP)
 
 collectCLIFilters :: AnalyzeCliOpts -> AllFilters
 collectCLIFilters AnalyzeCliOpts{..} =

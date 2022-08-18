@@ -1,8 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.Fossa.Container.Sources.Podman (analyzeFromPodman, podmanInspectImage) where
+module App.Fossa.Container.Sources.Podman (
+  analyzeFromPodman,
+  podmanInspectImage,
+  listTargetsFromPodman,
+) where
 
-import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive)
+import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive)
 import Container.Types (ContainerScan)
 import Control.Carrier.Lift (Lift)
 import Control.Effect.Debug (Debug, Has)
@@ -12,6 +16,7 @@ import Control.Effect.Telemetry (Telemetry)
 import Control.Monad (void)
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
+import Discovery.Filters (AllFilters)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execThrow')
 import Effect.Logger (Logger, logInfo, pretty)
 import Effect.ReadFS (ReadFS)
@@ -37,6 +42,27 @@ podmanExtractImage img dest =
     , cmdAllowErr = Never
     }
 
+runFromPodman ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
+  ) =>
+  Text ->
+  (Path Abs File -> m b) ->
+  m b
+runFromPodman img f = do
+  withSystemTempDir "fossa-podman-tmp" $ \dir -> do
+    let tempTarFile = dir </> $(mkRelFile "image.tar")
+    logInfo . pretty $
+      "Exporting image to temp file: "
+        <> toString tempTarFile
+        <> "! This may take a while!"
+    void $ execThrow' (podmanExtractImage img tempTarFile)
+    logInfo . pretty $ "Analyzing exported container image: " <> toString tempTarFile
+    f tempTarFile
+
 analyzeFromPodman ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -46,15 +72,18 @@ analyzeFromPodman ::
   , Has Exec sig m
   , Has ReadFS sig m
   ) =>
+  AllFilters ->
   Text ->
   m ContainerScan
-analyzeFromPodman img = do
-  withSystemTempDir "fossa-podman-tmp" $ \dir -> do
-    let tempTarFile = dir </> $(mkRelFile "image.tar")
-    logInfo . pretty $
-      "Exporting image to temp file: "
-        <> toString tempTarFile
-        <> "! This may take a while!"
-    void $ execThrow' (podmanExtractImage img tempTarFile)
-    logInfo . pretty $ "Analyzing exported container image: " <> toString tempTarFile
-    analyzeFromDockerArchive tempTarFile
+analyzeFromPodman filters img = runFromPodman img $ analyzeFromDockerArchive filters
+
+listTargetsFromPodman ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
+  ) =>
+  Text ->
+  m ()
+listTargetsFromPodman img = runFromPodman img listTargetsFromDockerArchive

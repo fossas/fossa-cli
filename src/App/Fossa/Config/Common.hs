@@ -23,6 +23,7 @@ module App.Fossa.Config.Common (
   collectAPIMetadata,
   collectApiOpts,
   collectTelemetrySink,
+  collectConfigFileFilters,
 
   -- * Configuration Types
   ScanDestination (..),
@@ -34,9 +35,19 @@ module App.Fossa.Config.Common (
 ) where
 
 import App.Fossa.Config.ConfigFile (
-  ConfigFile (configApiKey, configProject, configRevision, configServer, configTelemetry),
+  ConfigFile (
+    configApiKey,
+    configPaths,
+    configProject,
+    configRevision,
+    configServer,
+    configTargets,
+    configTelemetry
+  ),
+  ConfigPaths (pathsExclude, pathsOnly),
   ConfigProject (configProjID),
   ConfigRevision (configBranch, configCommit),
+  ConfigTargets (targetsExclude, targetsOnly),
   ConfigTelemetry (telemetryScope),
   ConfigTelemetryScope (..),
   mergeFileCmdMetadata,
@@ -78,7 +89,7 @@ import Data.Maybe (fromMaybe)
 import Data.String (IsString)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text, null, strip, toLower)
-import Discovery.Filters (targetFilterParser)
+import Discovery.Filters (AllFilters (AllFilters), comboExclude, comboInclude, targetFilterParser)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
@@ -333,3 +344,14 @@ commonOpts =
     <*> optional (strOption (long fossaApiKeyCmdText <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
     <*> optional (strOption (long "config" <> short 'c' <> help "Path to configuration file including filename (default: .fossa.yml)"))
     <*> optional (option parseTelemetryScope (long "with-telemetry-scope" <> help "Scope of telemetry to use, the options are 'full' or 'off'. (default: 'full')"))
+
+collectConfigFileFilters :: ConfigFile -> AllFilters
+collectConfigFileFilters configFile = do
+  let pullFromFile :: (a -> [b]) -> (ConfigFile -> Maybe a) -> [b]
+      pullFromFile field section = maybe [] field (section configFile)
+      onlyT = pullFromFile targetsOnly configTargets
+      onlyP = pullFromFile pathsOnly configPaths
+      excludeT = pullFromFile targetsExclude configTargets
+      excludeP = pullFromFile pathsExclude configPaths
+
+  AllFilters (comboInclude onlyT onlyP) (comboExclude excludeT excludeP)

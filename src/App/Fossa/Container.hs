@@ -14,6 +14,7 @@ import App.Fossa.Config.Container (
 import App.Fossa.Config.Container qualified as Config
 import App.Fossa.Container.Analyze qualified as Analyze
 import App.Fossa.Container.AnalyzeNative qualified as AnalyzeNative
+import App.Fossa.Container.ListTargets (listTargets)
 import App.Fossa.Container.Scan (SyftResponse, syftCommand, toContainerScan)
 import App.Fossa.Container.Test qualified as Test
 import App.Fossa.EmbeddedBinary (withSyftBinary)
@@ -59,6 +60,7 @@ dispatch = \case
   TestCfg cfg -> Test.test cfg
   DumpCfg cfg -> dumpSyftScan cfg
   ParseCfg cfg -> parseSyftOutput cfg
+  ListTargetsCfg cfg -> listTargets cfg
 
 parseSyftOutput ::
   ( Has Diagnostics sig m
