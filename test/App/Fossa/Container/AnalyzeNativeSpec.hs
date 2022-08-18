@@ -1,6 +1,6 @@
 module App.Fossa.Container.AnalyzeNativeSpec (spec) where
 
-import App.Fossa.Container.AnalyzeNative (ContainerImageSource (ContainerDockerImage), parseDockerEngineSource)
+import App.Fossa.Container.AnalyzeNative (ContainerImageSource (DockerEngine), parseDockerEngineSource)
 import Control.Carrier.Diagnostics (DiagnosticsC, Has)
 import Control.Carrier.Stack (StackC, runStack)
 import Control.Effect.DockerEngineApi (DockerEngineApiF (GetImageSize, IsDockerEngineAccessible))
@@ -31,7 +31,7 @@ spec = do
       expectDockerSdkToBeAccessible
       expectGetImageSizeToSucceed
       src <- parseDockerEngineSource exampleImgWithTag
-      src `shouldBe'` ContainerDockerImage exampleImgWithTag
+      src `shouldBe'` DockerEngine exampleImgWithTag
 
 exampleImgWithoutTag :: Text
 exampleImgWithoutTag = "redis"

@@ -1,6 +1,6 @@
 module App.Fossa.Container.Sources.Registry (analyzeFromRegistry) where
 
-import App.Fossa.Container.Sources.DockerTarball (analyzeExportedTarball)
+import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive)
 import Container.Docker.Credentials (useCredentialFromConfig)
 import Container.Docker.SourceParser (RegistryImageSource (RegistryImageSource), defaultRegistry)
 import Container.Types (ContainerScan)
@@ -35,7 +35,7 @@ analyzeFromRegistry imgSrc = do
     logInfo $ "Inferred registry source: " <> pretty imgSrc'
     tempTarFile <- runContainerRegistryApi $ exportImage imgSrc' dir
     logInfo . pretty $ "Analyzing exported container tarball: " <> toString tempTarFile
-    analyzeExportedTarball tempTarFile
+    analyzeFromDockerArchive tempTarFile
   where
     hasCred :: RegistryImageSource -> Bool
     hasCred (RegistryImageSource _ _ (Just _) _ _ _) = True

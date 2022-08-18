@@ -21,6 +21,8 @@ import App.Fossa.Config.Common (
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.Container.Common (
   ImageText,
+  collectArch,
+  collectDockerHost,
   imageTextArg,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars)
@@ -57,7 +59,10 @@ data ContainerAnalyzeConfig = ContainerAnalyzeConfig
   { scanDestination :: ScanDestination
   , revisionOverride :: OverrideProject
   , imageLocator :: ImageText
-  , usesExperimentalScanner :: Bool
+  , -- \* For Experimental Scanner
+    usesExperimentalScanner :: Bool
+  , dockerHost :: Text
+  , arch :: Text
   , severity :: Severity
   }
   deriving (Eq, Ord, Show, Generic)
@@ -116,6 +121,7 @@ mergeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
   let scanDest = collectScanDestination cfgfile envvars cliOpts
       severity = getSeverity cliOpts
       imageLoc = containerAnalyzeImage
+      arch = collectArch
       revOverride =
         collectRevisionOverride cfgfile $
           OverrideProject
@@ -127,6 +133,8 @@ mergeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
     <*> pure revOverride
     <*> pure imageLoc
     <*> pure containerExperimentalScanner
+    <*> collectDockerHost envvars
+    <*> pure arch
     <*> pure severity
 
 collectScanDestination ::
