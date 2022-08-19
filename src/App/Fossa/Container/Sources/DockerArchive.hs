@@ -52,7 +52,7 @@ import Control.Effect.Reader (Reader)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.TaskPool (TaskPool)
 import Control.Effect.Telemetry (Telemetry)
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Data.ByteString.Lazy qualified as BS
 import Data.FileTree.IndexFileTree (SomeFileTree, fixedVfsRoot)
 import Data.Foldable (for_, traverse_)
@@ -344,16 +344,14 @@ listTargetsFromDockerArchive tarball = do
   osInfo <- runTarballReadFSIO baseFs tarball getOsInfo
   listTargetLayer capabilities osInfo baseFs tarball "Base Layer"
 
-  if hasOtherLayers image
-    then do
-      void $
-        listTargetLayer
-          capabilities
-          osInfo
-          (mkFsFromChangeset $ otherLayersSquashed image)
-          tarball
-          "Other Layers"
-    else pure ()
+  when (hasOtherLayers image) $ do
+    void $
+      listTargetLayer
+        capabilities
+        osInfo
+        (mkFsFromChangeset $ otherLayersSquashed image)
+        tarball
+        "Other Layers"
 
 -- This should be shared
 printSingle :: Has Logger sig m => Path Abs Dir -> Text -> DiscoveredProject a -> m ()
