@@ -11,12 +11,12 @@ import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc))
 import App.Fossa.Analyze.Project (mkResult)
 import App.Fossa.Analyze.Types (
   AnalyzeProject (analyzeProject),
-  AnalyzeStaticTaskEffs,
   AnalyzeTaskEffs,
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
+import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Docker.Manifest (getImageDigest, getRepoTags)
 import Container.OsRelease (OsInfo (nameId, version), getOsInfo)
@@ -55,16 +55,14 @@ import Control.Effect.Telemetry (Telemetry)
 import Control.Monad (void, when)
 import Data.ByteString.Lazy qualified as BS
 import Data.FileTree.IndexFileTree (SomeFileTree, fixedVfsRoot)
-import Data.Foldable (for_, traverse_)
+import Data.Foldable (traverse_)
 import Data.Maybe (listToMaybe, mapMaybe)
-import Data.Set qualified as Set
-import Data.Set.NonEmpty (toSet)
 import Data.String.Conversion (ToString (toString))
 import Data.Text (Text)
 import Data.Text.Extra (breakOnAndRemove, showT)
 import Discovery.Filters (AllFilters)
 import Discovery.Projects (withDiscoveredProjects)
-import Effect.Exec (Exec)
+import Effect.Exec (Exec, runAlwaysFailingExecIO)
 import Effect.Logger (
   Has,
   Logger,
@@ -76,45 +74,24 @@ import Effect.Logger (
  )
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, File, Path, toFilePath)
-import Path.IO (makeRelative)
 import Path.Internal (Path (Path))
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (SourceUnit)
-import Strategy.ApkDatabase qualified as Apk
-import Strategy.Bundler qualified as Bundler
-import Strategy.Carthage qualified as Carthage
-import Strategy.Composer qualified as Composer
-import Strategy.Dpkg qualified as Dpkg
-import Strategy.Fpm qualified as Fpm
-import Strategy.Glide qualified as Glide
-import Strategy.Googlesource.RepoManifest qualified as RepoManifest
-import Strategy.Node qualified as Node
-import Strategy.NuGet.Nuspec qualified as Nuspec
-import Strategy.NuGet.PackageReference qualified as PackageReference
-import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
-import Strategy.NuGet.Paket qualified as Paket
-import Strategy.NuGet.ProjectAssetsJson qualified as ProjectAssetsJson
-import Strategy.NuGet.ProjectJson qualified as ProjectJson
-import Strategy.Perl qualified as Perl
-import Strategy.Python.Poetry qualified as Poetry
-import Strategy.Python.Setuptools qualified as Setuptools
-import Strategy.RPM qualified as RPM
-import Strategy.SwiftPM qualified as SwiftPM
-import Types (DiscoveredProject (..), FoundTargets (FoundTargets, ProjectWithoutTargets), unBuildTarget)
+import Types (DiscoveredProject (..))
 
 -- | Analyzes Docker Image from Exported Tarball Source.
 analyzeFromDockerArchive ::
   ( Has Diagnostics sig m
-  , Has Exec sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has Telemetry sig m
   , Has Debug sig m
   ) =>
+  Bool ->
   AllFilters ->
   Path Abs File ->
   m ContainerScan
-analyzeFromDockerArchive filters tarball = do
+analyzeFromDockerArchive systemDepsOnly filters tarball = do
   capabilities <- sendIO getNumCapabilities
   containerTarball <- sendIO . BS.readFile $ toString tarball
   image <- fromEither $ parse containerTarball
@@ -133,7 +110,7 @@ analyzeFromDockerArchive filters tarball = do
       runTarballReadFSIO baseFs tarball getOsInfo
   baseUnits <-
     context "Analyzing From Base Layer" $
-      analyzeLayer filters capabilities osInfo baseFs tarball
+      analyzeLayer systemDepsOnly filters capabilities osInfo baseFs tarball
 
   let mkScan :: [ContainerScanImageLayer] -> ContainerScan
       mkScan layers =
@@ -153,6 +130,7 @@ analyzeFromDockerArchive filters tarball = do
       otherUnits <-
         context "Squashing all non-base layer for analysis" $
           analyzeLayer
+            systemDepsOnly
             filters
             capabilities
             osInfo
@@ -167,22 +145,22 @@ analyzeFromDockerArchive filters tarball = do
 
 analyzeLayer ::
   ( Has Diagnostics sig m
-  , Has Exec sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has Telemetry sig m
   , Has Debug sig m
   ) =>
+  Bool ->
   AllFilters ->
   Int ->
   OsInfo ->
   SomeFileTree TarEntryOffset ->
   Path Abs File ->
   m [SourceUnit]
-analyzeLayer filters capabilities osInfo layerFs tarball =
+analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball =
   map (Srclib.toSourceUnit noUnusedDeps)
     . mapMaybe toProjectResult
-    <$> (runReader noFilters)
+    <$> (runReader filters)
       ( do
           (projectResults, ()) <-
             runTarballReadFSIO layerFs tarball
@@ -193,8 +171,9 @@ analyzeLayer filters capabilities osInfo layerFs tarball =
               . runFinally
               . withTaskPool capabilities updateProgress
               . runAtomicCounter
+              . runAlwaysFailingExecIO "Command execution is not supported in container scanning"
               $ do
-                runAnalyzers osInfo filters
+                runAnalyzers systemDepsOnly osInfo filters
           pure projectResults
       )
   where
@@ -204,25 +183,20 @@ analyzeLayer filters capabilities osInfo layerFs tarball =
     noUnusedDeps :: Bool
     noUnusedDeps = False
 
-    -- TODO: Implement filters from .fossa.yml file
-    noFilters :: AllFilters
-    noFilters = mempty
-
 runAnalyzers ::
   ( AnalyzeTaskEffs sig m
   , Has (Output DiscoveredProjectScan) sig m
   , Has TaskPool sig m
   , Has AtomicCounter sig m
   ) =>
+  Bool ->
   OsInfo ->
   AllFilters ->
   m ()
-runAnalyzers osInfo filters = do
+runAnalyzers systemDepsOnly osInfo filters = do
   traverse_
     single
-    [ DiscoverFunc (Apk.discover osInfo)
-    , DiscoverFunc (Dpkg.discover osInfo)
-    ]
+    $ layerAnalyzers osInfo systemDepsOnly
   where
     single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters)
     basedir = Path $ toString fixedVfsRoot
@@ -254,8 +228,9 @@ runDependencyAnalysis basedir filters project@DiscoveredProject{..} = do
     Just targets -> do
       logInfo $ "Analyzing " <> pretty projectType <> " project at " <> pretty (toFilePath projectPath)
       let ctxMessage = "Project Analysis: " <> showT projectType
-      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context ctxMessage $ do
-        analyzeProject targets projectData
+      graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $
+        Diag.context ctxMessage $ do
+          analyzeProject targets projectData
       Diag.flushLogs SevError SevDebug graphResult
       output $ Scanned dpi (mkResult basedir project <$> graphResult)
 
@@ -273,38 +248,40 @@ extractRepoName tags = do
         <|> breakOnAndRemove ":" firstTag
   pure $ fst tagTuple
 
-osDepsAnalyzers :: AnalyzeStaticTaskEffs sig m => OsInfo -> [DiscoverFunc m]
-osDepsAnalyzers osInfo =
-  [ DiscoverFunc (Apk.discover osInfo)
-  , DiscoverFunc (Dpkg.discover osInfo)
-  ]
+listTargetsFromDockerArchive ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has Telemetry sig m
+  ) =>
+  Path Abs File ->
+  m ()
+listTargetsFromDockerArchive tarball = do
+  capabilities <- sendIO getNumCapabilities
+  containerTarball <- sendIO . BS.readFile $ toString tarball
+  image <- fromEither $ parse containerTarball
 
-staticOnlyManagedDepsAnalyzers :: AnalyzeStaticTaskEffs sig m => [DiscoverFunc m]
-staticOnlyManagedDepsAnalyzers =
-  [ DiscoverFunc Bundler.discover
-  , DiscoverFunc Carthage.discover
-  , DiscoverFunc Composer.discover
-  , DiscoverFunc Fpm.discover
-  , DiscoverFunc Glide.discover
-  , DiscoverFunc Node.discover
-  , DiscoverFunc Nuspec.discover
-  , DiscoverFunc PackageReference.discover
-  , DiscoverFunc PackagesConfig.discover
-  , DiscoverFunc Paket.discover
-  , DiscoverFunc Perl.discover
-  , DiscoverFunc Poetry.discover
-  , DiscoverFunc ProjectAssetsJson.discover
-  , DiscoverFunc ProjectJson.discover
-  , DiscoverFunc RPM.discover
-  , DiscoverFunc RepoManifest.discover
-  , DiscoverFunc Setuptools.discover
-  , DiscoverFunc SwiftPM.discover
-  ]
+  logWarn "fossa container list-targets does not apply any filtering, you may see projects which are not present in the final analysis."
+  logWarn "fossa container list-targets only lists targets for experimental-scanner (when analyzed with --experimental-scanner flag)."
+
+  let baseFs = mkFsFromChangeset $ baseLayer image
+  osInfo <- runTarballReadFSIO baseFs tarball getOsInfo
+  listTargetLayer capabilities osInfo baseFs tarball "Base Layer"
+
+  when (hasOtherLayers image) $ do
+    void $
+      listTargetLayer
+        capabilities
+        osInfo
+        (mkFsFromChangeset $ otherLayersSquashed image)
+        tarball
+        "Other Layers"
 
 listTargetLayer ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
+  , Has Telemetry sig m
   ) =>
   Int ->
   OsInfo ->
@@ -323,65 +300,6 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
     . runReader (mempty :: AllFilters)
     $ run
   where
-    run = traverse_ findTargets [DiscoverFunc (Apk.discover osInfo), DiscoverFunc (Dpkg.discover osInfo)]
-    findTargets (DiscoverFunc f) = withDiscoveredProjects f basedir (printSingle basedir layerType)
+    run = traverse_ findTargets $ layerAnalyzers osInfo False
+    findTargets (DiscoverFunc f) = withDiscoveredProjects f basedir (renderLayerTarget basedir layerType)
     basedir = Path $ toString fixedVfsRoot
-
-listTargetsFromDockerArchive ::
-  ( Has Diagnostics sig m
-  , Has (Lift IO) sig m
-  , Has Logger sig m
-  ) =>
-  Path Abs File ->
-  m ()
-listTargetsFromDockerArchive tarball = do
-  capabilities <- sendIO getNumCapabilities
-  containerTarball <- sendIO . BS.readFile $ toString tarball
-  image <- fromEither $ parse containerTarball
-  logWarn "fossa container list-targets does not apply any filtering, you may see projects which are not present in the final analysis."
-
-  let baseFs = mkFsFromChangeset $ baseLayer image
-  osInfo <- runTarballReadFSIO baseFs tarball getOsInfo
-  listTargetLayer capabilities osInfo baseFs tarball "Base Layer"
-
-  when (hasOtherLayers image) $ do
-    void $
-      listTargetLayer
-        capabilities
-        osInfo
-        (mkFsFromChangeset $ otherLayersSquashed image)
-        tarball
-        "Other Layers"
-
--- This should be shared
-printSingle :: Has Logger sig m => Path Abs Dir -> Text -> DiscoveredProject a -> m ()
-printSingle basedir layerLocation project = do
-  let maybeRel = makeRelative basedir (projectPath project)
-
-  case maybeRel of
-    Nothing -> pure ()
-    Just rel -> do
-      logInfo $
-        "Found project: "
-          <> pretty (projectType project)
-          <> "@"
-          <> pretty (toFilePath rel)
-          <> pretty (" (" <> layerLocation <> ")")
-
-      case projectBuildTargets project of
-        ProjectWithoutTargets -> do
-          logInfo $
-            "Found target: "
-              <> pretty (projectType project)
-              <> "@"
-              <> pretty (toFilePath rel)
-              <> pretty (" (" <> layerLocation <> ")")
-        FoundTargets targets -> for_ (Set.toList $ toSet targets) $ \target -> do
-          logInfo $
-            "Found target: "
-              <> pretty (projectType project)
-              <> "@"
-              <> pretty (toFilePath rel)
-              <> ":"
-              <> pretty (unBuildTarget target)
-              <> pretty (" (" <> layerLocation <> ")")

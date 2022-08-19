@@ -22,6 +22,7 @@ import App.Fossa.Config.Container.Analyze qualified as Analyze
 import App.Fossa.Config.Container.Common (ImageText (..))
 import App.Fossa.Config.Container.Dump (ContainerDumpScanConfig (..), ContainerDumpScanOptions (..))
 import App.Fossa.Config.Container.Dump qualified as Dump
+import App.Fossa.Config.Container.ListTargets (ContainerListTargetsConfig, ContainerListTargetsOptions)
 import App.Fossa.Config.Container.ListTargets qualified as ListTargets
 import App.Fossa.Config.Container.Parse (ContainerParseFileConfig)
 import App.Fossa.Config.Container.Parse qualified as Parse
@@ -66,7 +67,7 @@ mergeOpts cfgfile envvars = \case
   ContainerTest opts -> TestCfg <$> Test.mergeOpts cfgfile envvars opts
   ContainerParseFile fp -> ParseCfg <$> Parse.mergeOpts cfgfile envvars fp
   ContainerDumpScan opts -> DumpCfg <$> Dump.mergeOpts cfgfile envvars opts
-  ContainerListTargets opts -> ListTargetsCfg <$> Analyze.mergeOpts cfgfile envvars opts
+  ContainerListTargets opts -> ListTargetsCfg <$> ListTargets.mergeOpts cfgfile envvars opts
 
 loadConfig ::
   ( Has Diagnostics sig m
@@ -94,14 +95,14 @@ data ContainerCommand
   | ContainerTest ContainerTestOptions
   | ContainerParseFile Text
   | ContainerDumpScan ContainerDumpScanOptions
-  | ContainerListTargets ContainerAnalyzeOptions
+  | ContainerListTargets ContainerListTargetsOptions
 
 data ContainerScanConfig
   = AnalyzeCfg ContainerAnalyzeConfig
   | TestCfg ContainerTestConfig
   | DumpCfg ContainerDumpScanConfig
   | ParseCfg ContainerParseFileConfig
-  | ListTargetsCfg ContainerAnalyzeConfig
+  | ListTargetsCfg ContainerListTargetsConfig
   deriving (Show, Generic)
 
 instance ToJSON ContainerScanConfig where
@@ -123,7 +124,7 @@ instance GetCommonOpts ContainerCommand where
     ContainerTest (ContainerTestOptions{testCommons}) -> Just testCommons
     ContainerParseFile _ -> Nothing
     ContainerDumpScan _ -> Nothing
-    ContainerListTargets (ContainerAnalyzeOptions{analyzeCommons}) -> Just analyzeCommons
+    ContainerListTargets _ -> Nothing
 
 parser :: Parser ContainerCommand
 parser = public <|> private

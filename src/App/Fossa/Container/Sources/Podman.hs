@@ -72,10 +72,11 @@ analyzeFromPodman ::
   , Has Exec sig m
   , Has ReadFS sig m
   ) =>
+  Bool ->
   AllFilters ->
   Text ->
   m ContainerScan
-analyzeFromPodman filters img = runFromPodman img $ analyzeFromDockerArchive filters
+analyzeFromPodman systemDepsOnly filters img = runFromPodman img $ analyzeFromDockerArchive systemDepsOnly filters
 
 listTargetsFromPodman ::
   ( Has Diagnostics sig m
@@ -83,6 +84,7 @@ listTargetsFromPodman ::
   , Has Logger sig m
   , Has Exec sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   Text ->
   m ()

@@ -17,7 +17,6 @@ import Control.Effect.Telemetry (Telemetry)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Discovery.Filters (AllFilters)
-import Effect.Exec (Exec)
 import Effect.Logger (Logger, logInfo, pretty)
 import Path (Abs, File, Path, mkRelFile, (</>))
 
@@ -46,27 +45,28 @@ runFromDockerEngine engineHost imgTag ctx f = do
 
 analyzeFromDockerEngine ::
   ( Has Diagnostics sig m
-  , Has Exec sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has Telemetry sig m
   , Has Debug sig m
   ) =>
+  Bool ->
   AllFilters ->
   Text ->
   Text ->
   m ContainerScan
-analyzeFromDockerEngine filters engineHost imgTag =
+analyzeFromDockerEngine systemDepsOnly filters engineHost imgTag =
   runFromDockerEngine
     engineHost
     imgTag
     "Analyzing exported docker archive: "
-    $ analyzeFromDockerArchive filters
+    $ analyzeFromDockerArchive systemDepsOnly filters
 
 listTargetsFromDockerEngine ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
+  , Has Telemetry sig m
   ) =>
   Text ->
   Text ->

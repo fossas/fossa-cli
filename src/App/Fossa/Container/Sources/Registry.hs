@@ -74,14 +74,15 @@ analyzeFromRegistry ::
   , Has Debug sig m
   , Has ReadFS sig m
   ) =>
+  Bool ->
   AllFilters ->
   RegistryImageSource ->
   m ContainerScan
-analyzeFromRegistry filters img =
+analyzeFromRegistry systemDepsOnly filters img =
   runFromRegistry
     img
     "Analyzing exported docker archive: "
-    $ analyzeFromDockerArchive filters
+    $ analyzeFromDockerArchive systemDepsOnly filters
 
 listTargetsFromRegistry ::
   ( Has Diagnostics sig m
@@ -89,6 +90,7 @@ listTargetsFromRegistry ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   RegistryImageSource ->
   m ()

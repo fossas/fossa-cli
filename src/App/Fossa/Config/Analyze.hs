@@ -44,8 +44,6 @@ import App.Fossa.Config.Common (
  )
 import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
-  ConfigPaths (..),
-  ConfigTargets (..),
   ConfigTelemetryScope (NoTelemetry),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
