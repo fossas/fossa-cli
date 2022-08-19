@@ -3,7 +3,7 @@ module App.Fossa.Analyze.Discover (
   DiscoverFunc (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, AnalyzeStaticTaskEffs, AnalyzeTaskEffs)
+import App.Fossa.Analyze.Types (AnalyzeProject, AnalyzeTaskEffs)
 import Control.Effect.Reader (Has, Reader)
 import Data.Aeson qualified as Aeson
 import Discovery.Filters (AllFilters)
