@@ -172,7 +172,7 @@ analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball = do
               . runFinally
               . withTaskPool capabilities updateProgress
               . runAtomicCounter
-              . runAlwaysFailingExecIO "Command execution is not supported in container scanning"
+              . runAlwaysFailingExecIO "container scanning"
               $ do
                 runAnalyzers systemDepsOnly osInfo filters
           pure projectResults

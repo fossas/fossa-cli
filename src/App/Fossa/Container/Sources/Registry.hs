@@ -32,15 +32,14 @@ runFromRegistry ::
   , Has Exec sig m
   ) =>
   RegistryImageSource ->
-  Text ->
   (Path Abs File -> m b) ->
   m b
-runFromRegistry imgSrc ctx f = do
+runFromRegistry imgSrc f = do
   imgSrc' <- enrichCreds
   withSystemTempDir "fossa-container-registry-tmp" $ \dir -> do
     logInfo $ "Inferred registry source: " <> pretty imgSrc'
     tempTarFile <- runContainerRegistryApi $ exportImage imgSrc' dir
-    logInfo . pretty $ ctx <> toText tempTarFile
+    logInfo . pretty $ "Analyzing exported docker archive: " <> toText tempTarFile
     f tempTarFile
   where
     hasCred :: RegistryImageSource -> Bool
@@ -81,7 +80,6 @@ analyzeFromRegistry ::
 analyzeFromRegistry systemDepsOnly filters img =
   runFromRegistry
     img
-    "Analyzing exported docker archive: "
     $ analyzeFromDockerArchive systemDepsOnly filters
 
 listTargetsFromRegistry ::
@@ -97,5 +95,4 @@ listTargetsFromRegistry ::
 listTargetsFromRegistry img =
   runFromRegistry
     img
-    "Listing targets exported docker archive: "
     listTargetsFromDockerArchive

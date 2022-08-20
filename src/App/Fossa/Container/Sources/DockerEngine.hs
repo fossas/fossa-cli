@@ -27,10 +27,9 @@ runFromDockerEngine ::
   ) =>
   Text ->
   Text ->
-  Text ->
   (Path Abs File -> m b) ->
   m b
-runFromDockerEngine engineHost imgTag ctx f = do
+runFromDockerEngine engineHost imgTag f = do
   withSystemTempDir "fossa-docker-engine-tmp" $ \dir -> do
     let tempTarFile = dir </> $(mkRelFile "image.tar")
 
@@ -40,7 +39,7 @@ runFromDockerEngine engineHost imgTag ctx f = do
         <> "! This may take a while!"
     runDockerEngineApi engineHost $ getDockerImage imgTag tempTarFile
 
-    logInfo . pretty $ ctx <> toText tempTarFile
+    logInfo . pretty $ "Analyzing exported docker archive: " <> toText tempTarFile
     f tempTarFile
 
 analyzeFromDockerEngine ::
@@ -59,7 +58,6 @@ analyzeFromDockerEngine systemDepsOnly filters engineHost imgTag =
   runFromDockerEngine
     engineHost
     imgTag
-    "Analyzing exported docker archive: "
     $ analyzeFromDockerArchive systemDepsOnly filters
 
 listTargetsFromDockerEngine ::
@@ -75,5 +73,4 @@ listTargetsFromDockerEngine engineHost imgTag =
   runFromDockerEngine
     engineHost
     imgTag
-    "Listing targets exported docker archive: "
     listTargetsFromDockerArchive

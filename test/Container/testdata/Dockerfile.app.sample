@@ -1,4 +1,4 @@
-# Testcase: changesets_exmaple.tar
+# Testcase: app_deps_example.tar
 #
 # To Build:
 #   docker build -f Dockerfile.app.sample . -t app_deps_example:latest
