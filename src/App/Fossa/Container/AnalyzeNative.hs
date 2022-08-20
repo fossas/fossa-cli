@@ -4,10 +4,10 @@ module App.Fossa.Container.AnalyzeNative (
   ContainerImageSource (..),
   analyzeExperimental,
   parseContainerImageSource,
+  parseDockerEngineSource,
 
   -- * for testing
   uploadScan,
-  parseDockerEngineSource,
 ) where
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)

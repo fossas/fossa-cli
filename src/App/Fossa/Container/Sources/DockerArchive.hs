@@ -8,6 +8,7 @@ module App.Fossa.Container.Sources.DockerArchive (
 import App.Fossa.Analyze (applyFiltersToProject, toProjectResult, updateProgress)
 import App.Fossa.Analyze.Debug (diagToDebug)
 import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc))
+import App.Fossa.Analyze.Filter (skipNonProdProjectsBasedOnPath)
 import App.Fossa.Analyze.Project (mkResult)
 import App.Fossa.Analyze.Types (
   AnalyzeProject (analyzeProject),
@@ -17,6 +18,7 @@ import App.Fossa.Analyze.Types (
  )
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
 import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
+import App.Types (BaseDir (BaseDir))
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Docker.Manifest (getImageDigest, getRepoTags)
 import Container.OsRelease (OsInfo (nameId, version), getOsInfo)
@@ -157,9 +159,8 @@ analyzeLayer ::
   SomeFileTree TarEntryOffset ->
   Path Abs File ->
   m [SourceUnit]
-analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball =
-  map (Srclib.toSourceUnit noUnusedDeps)
-    . mapMaybe toProjectResult
+analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball = do
+  toSourceUnit
     <$> (runReader filters)
       ( do
           (projectResults, ()) <-
@@ -180,8 +181,11 @@ analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball =
     noExperimental :: ExperimentalAnalyzeConfig
     noExperimental = ExperimentalAnalyzeConfig Nothing
 
-    noUnusedDeps :: Bool
-    noUnusedDeps = False
+    toSourceUnit :: [DiscoveredProjectScan] -> [SourceUnit]
+    toSourceUnit =
+      map (Srclib.toSourceUnit False)
+        . mapMaybe toProjectResult
+        . skipNonProdProjectsBasedOnPath (BaseDir . Path $ "./")
 
 runAnalyzers ::
   ( AnalyzeTaskEffs sig m

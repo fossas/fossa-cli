@@ -77,7 +77,7 @@ applyDefaultProductionPathFilter dir (Scanned dpi result) = case result of
     rootPath = fromAbsDir $ unBaseDir dir
 
     dropPrefix :: String -> String -> String
-    dropPrefix prefix str = fromMaybe prefix (stripPrefix prefix str)
+    dropPrefix prefix str = fromMaybe str (stripPrefix prefix str)
 
 isProductionPath :: FilePath -> Bool
 isProductionPath path = not $ any (`isInfixOf` path) ignoredPaths

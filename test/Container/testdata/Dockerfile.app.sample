@@ -1,0 +1,31 @@
+# Testcase: changesets_exmaple.tar
+#
+# To Build:
+#   docker build -f Dockerfile.app.sample . -t app_deps_example:latest
+#
+# To Export:
+#   docker save app_deps_example:latest > app_deps_example.tar
+#   
+# To Run:
+#   docker run -it app_deps_example:latest /bin/sh
+FROM alpine:3.14
+
+RUN apk add tree
+
+# Directory with setuptools targets
+# 
+# /app # tree
+# .
+# └── services
+#     ├── a
+#     │   └── reqs.txt (pip+numpy)
+#     └── b
+#         ├── internal
+#         │   ├── reqs.txt (pip+scipy)
+#         │   └── test
+#         │       └── reqs.txt (pip+networkx)
+#         └── reqs.txt (pip+black)
+RUN mkdir -p app/services/a/ && echo 'numpy' > app/services/a/reqs.txt && \
+    mkdir -p app/services/b/ && echo 'scipy' > app/services/b/reqs.txt && \
+    mkdir -p app/services/b/internal/ && echo 'black' > app/services/b/internal/reqs.txt && \
+    mkdir -p app/services/b/internal/test/ && echo 'networkx' > app/services/b/internal/test/reqs.txt
