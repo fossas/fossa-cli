@@ -143,7 +143,7 @@ shouldMatchList' :: (Has (Lift IO) sig m, Show a, Eq a) => [a] -> [a] -> m ()
 shouldMatchList' a b = sendIO $ shouldMatchList a b
 
 shouldBeSupersetOf' :: (Has (Lift IO) sig m, Show a, Ord a) => [a] -> [a] -> m ()
-shouldBeSupersetOf' list sublist = sendIO $ shouldSatisfy (fromList sublist) $ isSubsetOf (fromList list)
+shouldBeSupersetOf' list sublist = sendIO $ shouldSatisfy (fromList list) $ isSubsetOf (fromList sublist)
 
 expectFailure' :: Has (Lift IO) sig m => Result a -> m ()
 expectFailure' res = sendIO $ expectFailure res
