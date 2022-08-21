@@ -16,7 +16,6 @@ import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.Telemetry (Telemetry)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toText)
-import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Filters (AllFilters)
 import Effect.Exec (Exec)
