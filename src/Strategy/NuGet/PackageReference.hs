@@ -12,7 +12,7 @@ module Strategy.NuGet.PackageReference (
   Package (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import Control.Applicative (optional, (<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Effect.Reader (Reader)
@@ -67,6 +67,7 @@ instance ToJSON PackageReferenceProject
 
 instance AnalyzeProject PackageReferenceProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = getDeps
 
 mkProject :: PackageReferenceProject -> DiscoveredProject PackageReferenceProject
 mkProject project =

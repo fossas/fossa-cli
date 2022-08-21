@@ -25,11 +25,14 @@ import Path.IO (RelPath, makeRelative)
 import Strategy.ApkDatabase qualified as Apk
 import Strategy.Bundler qualified as Bundler
 import Strategy.Carthage qualified as Carthage
+import Strategy.Cocoapods qualified as Cocoapods
 import Strategy.Composer qualified as Composer
 import Strategy.Dpkg qualified as Dpkg
 import Strategy.Fpm qualified as Fpm
 import Strategy.Glide qualified as Glide
 import Strategy.Googlesource.RepoManifest qualified as RepoManifest
+import Strategy.Maven qualified as Maven
+import Strategy.Nim qualified as Nim
 import Strategy.Node qualified as Node
 import Strategy.NuGet.Nuspec qualified as Nuspec
 import Strategy.NuGet.PackageReference qualified as PackageReference
@@ -38,6 +41,8 @@ import Strategy.NuGet.Paket qualified as Paket
 import Strategy.NuGet.ProjectAssetsJson qualified as ProjectAssetsJson
 import Strategy.NuGet.ProjectJson qualified as ProjectJson
 import Strategy.Perl qualified as Perl
+import Strategy.Pub qualified as Pub
+import Strategy.Python.Pipenv qualified as Pipenv
 import Strategy.Python.Poetry qualified as Poetry
 import Strategy.Python.Setuptools qualified as Setuptools
 import Strategy.RPM qualified as RPM
@@ -53,7 +58,7 @@ layerAnalyzers :: AnalyzeStaticTaskEffs sig m => OsInfo -> Bool -> [DiscoverFunc
 layerAnalyzers os onlySystemDeps =
   if onlySystemDeps
     then osDepsAnalyzers os
-    else osDepsAnalyzers os ++ staticOnlyAnalyzers
+    else osDepsAnalyzers os ++ managedDepsDiscoveryF
 
 osDepsAnalyzers :: AnalyzeStaticTaskEffs sig m => OsInfo -> [DiscoverFunc m]
 osDepsAnalyzers osInfo =
@@ -61,37 +66,46 @@ osDepsAnalyzers osInfo =
   , DiscoverFunc (Dpkg.discover osInfo)
   ]
 
--- | Static analyzers, not requiring Exec Effect.
---
--- Instead of analyzing _static_ tactics for all analyzers, we intentionally
--- choose analyzer, which support static tactics only. We do this, to avoid
--- scenario in which customer using Container Scanning for Image sees, a
--- conflicting result between scanned container image, and provided build
--- for a project which is persisted in container image.
---
--- If customer requires, suboptimal static tactics, instead of having any
--- analysis, we can make such change as needed in future. This is intentionally
--- kept simple for now.
-staticOnlyAnalyzers :: AnalyzeStaticTaskEffs sig m => [DiscoverFunc m]
-staticOnlyAnalyzers =
+managedDepsDiscoveryF :: AnalyzeStaticTaskEffs sig m => [DiscoverFunc m]
+managedDepsDiscoveryF =
   [ DiscoverFunc Bundler.discover
   , DiscoverFunc Carthage.discover
+  , DiscoverFunc Cocoapods.discover
   , DiscoverFunc Composer.discover
   , DiscoverFunc Fpm.discover
   , DiscoverFunc Glide.discover
+  , DiscoverFunc Maven.discover
+  , DiscoverFunc Nim.discover
   , DiscoverFunc Node.discover
   , DiscoverFunc Nuspec.discover
   , DiscoverFunc PackageReference.discover
   , DiscoverFunc PackagesConfig.discover
   , DiscoverFunc Paket.discover
   , DiscoverFunc Perl.discover
+  , DiscoverFunc Pipenv.discover
   , DiscoverFunc Poetry.discover
   , DiscoverFunc ProjectAssetsJson.discover
   , DiscoverFunc ProjectJson.discover
+  , DiscoverFunc Pub.discover
   , DiscoverFunc RPM.discover
   , DiscoverFunc RepoManifest.discover
   , DiscoverFunc Setuptools.discover
   , DiscoverFunc SwiftPM.discover
+  --
+  -- Following can be performed only with dynamic analysis.
+  -- So we don not do any discovery for them (to avoid error noise)
+  --
+  -- , DiscoverFunc Cabal.discover
+  -- , DiscoverFunc Cargo.discover
+  -- , DiscoverFunc Conda.discover
+  -- , DiscoverFunc Godep.discover
+  -- , DiscoverFunc Gomodules.discover
+  -- , DiscoverFunc Gradle.discover
+  -- , DiscoverFunc Leiningen.discover
+  -- , DiscoverFunc Mix.discover
+  -- , DiscoverFunc Rebar3.discover
+  -- , DiscoverFunc Scala.discover
+  -- , DiscoverFunc Stack.discover
   ]
 
 -- | Logs a discovered project, with it's project type, path, targets, and layer in info severity.

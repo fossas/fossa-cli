@@ -12,7 +12,7 @@ module Strategy.Scala (
   ScalaProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
   errCtx,
@@ -102,6 +102,7 @@ instance ToJSON ScalaProject where
 
 instance AnalyzeProject ScalaProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = const $ fatalText "Cannot analyze scala project statically"
 
 mkProject :: ScalaProject -> DiscoveredProject ScalaProject
 mkProject (ScalaProject sbtBuildDir closure) =

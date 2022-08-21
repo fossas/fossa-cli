@@ -96,3 +96,4 @@ data DiscoveredProjectIdentifier = DiscoveredProjectIdentifier
 
 class AnalyzeProject a where
   analyzeProject :: AnalyzeTaskEffs sig m => FoundTargets -> a -> m DependencyResults
+  analyzeProject' :: AnalyzeStaticTaskEffs sig m => FoundTargets -> a -> m DependencyResults

@@ -11,7 +11,7 @@ module Strategy.RPM (
   Dependencies (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Effect.Diagnostics qualified as Diag
 import Control.Effect.Reader (Reader)
@@ -89,6 +89,7 @@ instance ToJSON RpmProject
 
 instance AnalyzeProject RpmProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = getDeps
 
 mkProject :: RpmProject -> DiscoveredProject RpmProject
 mkProject project =

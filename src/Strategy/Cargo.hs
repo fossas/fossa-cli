@@ -13,7 +13,7 @@ module Strategy.Cargo (
   findProjects,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -21,6 +21,7 @@ import Control.Effect.Diagnostics (
   ToDiagnostic,
   context,
   errCtx,
+  fatalText,
   run,
   warn,
  )
@@ -213,6 +214,7 @@ instance ToJSON CargoProject
 
 instance AnalyzeProject CargoProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = const $ fatalText "Cannot analyze Cargo project statically."
 
 data CargoPackage = CargoPackage
   { license :: Maybe Text.Text

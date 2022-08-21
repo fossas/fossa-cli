@@ -11,8 +11,8 @@ import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc))
 import App.Fossa.Analyze.Filter (skipNonProdProjectsBasedOnPath)
 import App.Fossa.Analyze.Project (mkResult)
 import App.Fossa.Analyze.Types (
-  AnalyzeProject (analyzeProject),
-  AnalyzeTaskEffs,
+  AnalyzeProject (analyzeProject'),
+  AnalyzeStaticTaskEffs,
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
@@ -64,7 +64,6 @@ import Data.Text (Text)
 import Data.Text.Extra (breakOnAndRemove, showT)
 import Discovery.Filters (AllFilters)
 import Discovery.Projects (withDiscoveredProjects)
-import Effect.Exec (Exec, runAlwaysFailingExecIO)
 import Effect.Logger (
   Has,
   Logger,
@@ -172,7 +171,6 @@ analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball = do
               . runFinally
               . withTaskPool capabilities updateProgress
               . runAtomicCounter
-              . runAlwaysFailingExecIO "container scanning"
               $ do
                 runAnalyzers systemDepsOnly osInfo filters
           pure projectResults
@@ -188,7 +186,7 @@ analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball = do
         . skipNonProdProjectsBasedOnPath (BaseDir . Path $ "./")
 
 runAnalyzers ::
-  ( AnalyzeTaskEffs sig m
+  ( AnalyzeStaticTaskEffs sig m
   , Has (Output DiscoveredProjectScan) sig m
   , Has TaskPool sig m
   , Has AtomicCounter sig m
@@ -212,7 +210,6 @@ runDependencyAnalysis ::
   , Has Debug sig m
   , Has Logger sig m
   , Has ReadFS sig m
-  , Has Exec sig m
   , Has (Output DiscoveredProjectScan) sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   , Has (Reader AllFilters) sig m
@@ -234,7 +231,7 @@ runDependencyAnalysis basedir filters project@DiscoveredProject{..} = do
       let ctxMessage = "Project Analysis: " <> showT projectType
       graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $
         Diag.context ctxMessage $ do
-          analyzeProject targets projectData
+          analyzeProject' targets projectData
       Diag.flushLogs SevError SevDebug graphResult
       output $ Scanned dpi (mkResult basedir project <$> graphResult)
 

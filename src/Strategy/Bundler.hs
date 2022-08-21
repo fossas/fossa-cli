@@ -7,7 +7,7 @@ module Strategy.Bundler (
   BundlerProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -85,6 +85,7 @@ instance ToJSON BundlerProject
 
 instance AnalyzeProject BundlerProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = analyzeGemfileLock
 
 instance LicenseAnalyzeProject BundlerProject where
   licenseAnalyzeProject = fmap mconcat . traverse findLicenses . bundlerGemSpec

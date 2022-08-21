@@ -7,12 +7,12 @@ We will not scan `.build` directory if the `Package.swift` or Xcode project file
 
 # Swift Analysis
 
-| Strategy                                                                 | Direct Deps        | Deep Deps          | Edges | Classifies Test Dependencies |
-| ------------------------------------------------------------------------ | ------------------ | ------------------ | ----- | ---------------------------- |
-| Parse dependencies from `Package.swift`                                  | :white_check_mark: | :x:                | :x:   | :x:                          |
-| Parse dependencies from `Package.swift` and `Package.resolved`           | :white_check_mark: | :white_check_mark: | :x:   | :x:                          |
-| Parse dependencies from Xcode's `project.pbxproj`                        | :white_check_mark: | :x:                | :x:   | :x:                          |
-| Parse dependencies from Xcode's `project.pbxproj` and `Package.resolved` | :white_check_mark: | :white_check_mark: | :x:   | :x:                          |
+| Strategy                                                                 | Direct Deps        | Deep Deps          | Edges | Classifies Test Dependencies | Container Scanning (experimental) |
+| ------------------------------------------------------------------------ | ------------------ | ------------------ | ----- | ---------------------------- | --------------------------------- |
+| Parse dependencies from `Package.swift`                                  | :white_check_mark: | :x:                | :x:   | :x:                          | :white_check_mark:                |
+| Parse dependencies from `Package.swift` and `Package.resolved`           | :white_check_mark: | :white_check_mark: | :x:   | :x:                          | :white_check_mark:                |
+| Parse dependencies from Xcode's `project.pbxproj`                        | :white_check_mark: | :x:                | :x:   | :x:                          | :white_check_mark:                |
+| Parse dependencies from Xcode's `project.pbxproj` and `Package.resolved` | :white_check_mark: | :white_check_mark: | :x:   | :x:                          | :white_check_mark:                |
 
 - Manifest file: `Package.swift`, must begin with `// swift-tools-version:` string, followed by version number specifier. 
 - We follow swift package manager's convention and presume properties of the package are defined in a single nested initializer statement and are not modified after initialization.

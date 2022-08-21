@@ -12,7 +12,7 @@ module Strategy.NuGet.Nuspec (
   NuspecLicense (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
@@ -85,6 +85,7 @@ mkProject project =
 
 instance AnalyzeProject NuspecProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = getDeps
 
 instance LicenseAnalyzeProject NuspecProject where
   licenseAnalyzeProject = analyzeLicenses . nuspecFile

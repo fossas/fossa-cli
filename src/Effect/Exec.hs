@@ -17,7 +17,6 @@ module Effect.Exec (
   execJson',
   ExecIOC,
   runExecIO,
-  runAlwaysFailingExecIO,
   renderCommand,
   module System.Exit,
   execThrow',
@@ -309,8 +308,3 @@ runExecIO = interpret $ \case
         result = first ioExceptionToCmdFailure processResult >>= mangleResult
 
     pure result
-
--- | Exec effect that always fails, with @ExecEnvNotSupported@ error.
-runAlwaysFailingExecIO :: Has Diagnostics sig m => Text -> ExecIOC m a -> m a
-runAlwaysFailingExecIO env = interpret $ \case
-  Exec{} -> fatal (ExecEnvNotSupported env)
