@@ -1,6 +1,23 @@
-## FOSSA Experimental Container Scanning
+# FOSSA's new Container Scanner
 
-### What's New in Experimental Scanner?
+- [FOSSA's new Container Scanner](#fossas-new-container-scanner)
+  - [What's New in Experimental Container Scanner?](#whats-new-in-experimental-container-scanner)
+  - [Integration](#integration)
+- [Documentation](#documentation)
+  - [Container Image Source](#container-image-source)
+    - [1) Exported docker archive (checks if `<IMAGE>` is local path to exported image tarball)](#1-exported-docker-archive-checks-if-image-is-local-path-to-exported-image-tarball)
+    - [2) From Docker Engine](#2-from-docker-engine)
+    - [3) From Registries](#3-from-registries)
+  - [Container Image Analysis](#container-image-analysis)
+    - [Path Exclusion and Filtering](#path-exclusion-and-filtering)
+    - [Debugging Integration](#debugging-integration)
+    - [Frequently Asked Questions (FAQs)](#frequently-asked-questions-faqs)
+      - [How do I scan multi-platform container images with `fossa-cli`?](#how-do-i-scan-multi-platform-container-images-with-fossa-cli)
+    - [How can I only scan for system dependencies (alpine, dpkg, rpm)?](#how-can-i-only-scan-for-system-dependencies-alpine-dpkg-rpm)
+    - [How do I exclude specific projects from container scanning?](#how-do-i-exclude-specific-projects-from-container-scanning)
+    - [Limitations & Workarounds](#limitations--workarounds)
+
+## What's New in Experimental Container Scanner?
 
 FOSSA's new container scanner supports compliance and vulnerability checks 
 for application dependencies (e.g. javascript). These are done performantly 
@@ -15,7 +32,7 @@ origin path.
 Like the current container scanner, the experimental scanner fully 
 supports the detection of OS dependencies (apk, deb, etc.).
 
-## How do I integrate with the new Experimental Scanner?
+## Integration
 
 To use the new fossa container scanner, use the `--experimental-scanner` flag 
 with the container analyze command like the following:
@@ -24,9 +41,26 @@ with the container analyze command like the following:
 fossa container analyze <ARG> --experimental-scanner
 fossa container test <ARG> # no changes to container test command  
 ```
-Please refer to the documentation for more details below.
 
-## Documentation
+For example,
+
+```bash
+fossa container analyze redis:alpine --experimental-scanner
+fossa container analyze ghcr.io/fossas/haskell-dev-tools:9.0.2 --experimental-scanner
+
+# via docker archive
+fossa container analyze image.tar --experimental-scanner
+
+# only analyze system dependencies (alpine, dpkg, rpm)
+fossa container analyze redis:alpine --experimental-scanner --only-system-deps
+```
+
+Refer to following guides for integrating container scanning in your CI,
+
+- [Walthrough: Integrating in Generic CI](./../../../walkthroughs/container-scanning-generic-ci.md)
+
+
+# Documentation
 
 With `fossa-cli's`, new container scanner scans container image's base layer, 
 and other layers (squashed) to report compliance and security issues for 
@@ -76,21 +110,21 @@ use `fossa container test ` command.
 fossa container test <IMAGE>
 ```
 
-### Container Image Source
+## Container Image Source
 
 FOSSA can analyze container image from multiple sources - such as docker engine, 
 podman, oci container registry (both public and private), or docker hub (default docker registry). 
 
 By default, `fossa-cli`, first attempts to identify `<IMAGE>` source in order of:
 
-##### 1) Exported Tarball (checks if `<IMAGE>` is local path to export image tarball)
+### 1) Exported docker archive (checks if `<IMAGE>` is local path to exported image tarball)
 
 ```bash
 docker save redis:alpine > redis_alpine.tar
 fossa container analyze redis_alpine.tar --experimental-scanner
 ```
 
-##### 2) From Docker Engine
+### 2) From Docker Engine
 
 ```bash
 fossa container analyze redis:alpine --experimental-scanner
@@ -114,18 +148,17 @@ curl --unix-socket /var/run/docker.sock -X GET "http://localhost/v1.28/images/re
 ```
 
 Once the image tarball is retrieved, `fossa-cli` will store this tarball in temporary
-location, and will defer to (1) Exported Tarball strategy to perform the analysis.
+location, and will defer to (1) Exported docker archive strategy to perform the analysis.
 
-##### 3) From Registries
+### 3) From Registries
 
 ```bash
 fossa container analyze ghcr.io/fossas/haskell-dev-tools:9.0.2 --experimental-scanner
 ```
 
-This step works, even if you do not have docker engine api working, or are in windows
-operating system.
+This step works even if you do not have docker installed or have docker engine accessible.
 
-If `<IMAGE>` is not tarball, nor is accessible via docker engine API. `fossa-cli`, will
+If `<IMAGE>` is not docker image archived, nor is accessible via docker engine API. `fossa-cli`, will
 try to retrieve the image via registries based on content of `<IMAGE>`. It will 
 parse `<IMAGE`>, in same fashion as `docker pull <ARG>`.
 
@@ -141,13 +174,16 @@ example,
 | `ghcr.io/fossas/haskell-dev-tools@sha256:e83e...` 	| `ghcr.io`                            	| `fossas/haskell-dev-tools` 	| `sha256:e83e...` (as digest)   	|
 | `quay.io/org/image:tag`                           	| `quay.io`                            	| `org/image`                	| `tag`                          	|
 
-Note that, when domain is not present, we default to `index.docker.io` registry. 
-When digest or tag is not present, we default to `latest` tag. When registry is found
-to `index.docker.io`, and repository does not have `/` character, we infer that this
-is official image which are stored under `library/<image>` value. 
+Note that, 
+- when domain is not present, we default to `index.docker.io` registry. 
+- when digest or tag is not present, we default to `latest` tag. 
+- 
+When registry is found to `index.docker.io`, and repository does not have `/` character, 
+we infer that this is official image which are stored under `library/<image>` value. 
 
 When multi-platform image is provided (e.g. `ghcr.io/graalvm/graalvm-ce:ol7-java11-21.3.3`), 
 `fossa-cli` defaults to selecting image artifacts for current runtime platform. 
+
 If you want to analyze container image for platform that is different then your runtime platform 
 (where you are running `fossa-cli`), specify image by that platform's digest. 
 
@@ -158,9 +194,9 @@ we can use specific digest like following to analyze arm64 variant.
 fossa container analyze ghcr.io/graalvm/graalvm-ce@sha256:bdcba07acb11053fea0026b807ecf94550ace7df27b10596ca4c765165243cef --experimental-scanner
 ```
 
-##### Private Registries
+**Private Registries**
 
-`fossa-cli` automatically tries to infer credential based on host name and credential store
+`fossa-cli` automatically infers credential based on host name and credential store
 docker is using. This is done in following steps:
 
 1) Identify host of image source (e.g. `quay.io` for `quay.io/org/image:tag`)
@@ -186,7 +222,7 @@ provide explicit username ans password. This only works when host value is prese
 fossa container analyze user:secret@quay.io/org/image:tag --experimental-scanner
 ```
 
-##### Retrieving Image from Registry
+**Retrieving Image from Registry**
 
 `fossa-cli` uses `/v2/` registry api (per OCI distribution spec) for retrieving 
 image manifests, and image artifacts from registry. It does so in following manner:
@@ -204,132 +240,52 @@ All `GET` request from step 2 to step 5, will make `HEAD` call prior to confirm 
 401 status is received new access token will be generated using auth flow mentioned in step (1).
 
 
-### Container Image Analysis
+## Container Image Analysis
 
 From the container image, experimental scanner will scan base layer, and rest of the
 layers as squashed. 
 
-### OS Dependencies
+Following package managers are supported in container scanning:
 
-Currently, `fossa-cli` supports retrieving os dependencies from alpine package manager, 
-debian package manager (dpkg), and from rpm package managers (dnf, yum, etc.).
+| Analysis                             | Supported?         | Docs                                                             |
+| ------------------------------------ | ------------------ | ---------------------------------------------------------------- |
+| Alpine                               | :white_check_mark: | [Apk Docs](./../../strategies/system/apk/apk.md)                 |
+| Dpkg                                 | :white_check_mark: | [Dpkg Docs](./../../strategies/system/dpkg/dpkg.md)              |
+| Rpm                                  | :x:                | This is to be implemented, and in roadmap                        |
+| Python (setuptools, poetry, etc.)    | :white_check_mark: | [Python Docs](./../../strategies/languages/python/python.md)     |
+| Javascript (npm, yarn, pnpm, etc.)   | :white_check_mark: | [Javascript Docs](./../../strategies/languages/nodejs/nodejs.md) |
+| Ruby (bundler)                       | :white_check_mark: | [Ruby](./../../strategies/languages/ruby/ruby.md)                |
+| .Net (packet, projectjson, etc.)     | :white_check_mark: | [.Net](./../../strategies/languages/dotnet/README.md)            |
+| Perl                                 | :white_check_mark: | [Perl](./../../strategies/languages/perl/perl.md)                |
+| Swift (xcode, swift package manager) | :white_check_mark: | [Swift](./../../strategies/platforms/ios/swift.md)               |
+| Carthage                             | :white_check_mark: | [Carthage](./../../strategies/platforms/ios/carthage.md)         |
+| Fortran (fpm)                        | :white_check_mark: | [Fortran](./../../strategies/languages/fortran/fortran.md)       |
+| Cocoapods                            | :warning:          | [CocoaPods](./../../strategies/platforms/ios/cocoapods.md)       |
+| Nim (nimble)                         | :warning:          | [Nim](./../../strategies/languages/nim/nimble.md)                |
+| Dart (pub)                           | :warning:          | [Dart](./../../strategies/languages/dart/pub.md)                 |
+| Maven                                | :warning:          | [Maven](./../../strategies/languages/maven/maven.md)             |
+| Golang (gomod)                       | :x:                | N/A                                                              |
+| Rust (cargo)                         | :x:                | N/A                                                              |
+| Haskell (cabal, stack)               | :x:                | N/A                                                              |
+| Gradle                               | :x:                | N/A                                                              |
+| Clojure (lein)                       | :x:                | N/A                                                              |
+| Scala (sbt)                          | :x:                | N/A                                                              |
+| Elixir                               | :x:                | N/A                                                              |
+| Erlang                               | :x:                | N/A                                                              |
 
-#### Apk
-
-This is alpine package manager (apk), often used in alpine centric distros.
-
-##### Discovery
-
-Find file named: `installed` under `**/apk/**`.
-
-##### Analysis
-
-Parse and analyze, reporting only - package name, package version, and architecture.
-
-```text
-C:Q1Deb0jNytkrjPW4N/eKLZ43BwOlw=
-P:musl
-V:1.2.2-r7
-A:x86_64
-S:383152
-I:622592
-T:the musl c library (libc) implementation
-U:https://musl.libc.org/
-L:MIT
-o:musl
-m:Timo Teräs <timo.teras@iki.fi>
-t:1632431095
-c:bf5bbfdbf780092f387b7abe401fbfceda90c84d
-p:so:libc.musl-x86_64.so.1=1
-F:lib
-R:ld-musl-x86_64.so.1
-a:0:0:755
-Z:Q12adwqQOjo9dFl+VJD2Ecd901vhE=
-R:libc.musl-x86_64.so.1
-a:0:0:777
-Z:Q17yJ3JFNypA4mxhJJr0ou6CzsJVI=
-```
-
-For above, we will discover dependency: `musl` of version `1.2.2-r7` with architecture of `x86_64`.
-
-#### Dpkg
-
-This is debian package manager, often used debian centric distros- e.g. `ubuntu`.
-
-##### Discovery
-
-Find file named: `status` or `status.d` in `**/var/lib/dpkg/*`
-
-##### Analysis
-
-Parse and analyze, reporting only - package name, package version, and architecture.
-
-```text
-Package: bash
-Essential: yes
-Status: install ok installed
-Priority: required
-Section: shells
-Installed-Size: 6512
-Maintainer: Matthias Klose <doko@debian.org>
-Architecture: arm64
-Multi-Arch: foreign
-Version: 5.1-2+deb11u1
-Replaces: bash-completion (<< 20060301-0), bash-doc (<= 2.05-1)
-Depends: base-files (>= 2.1.12), debianutils (>= 2.15)
-Pre-Depends: libc6 (>= 2.25), libtinfo6 (>= 6)
-Recommends: bash-completion (>= 20060301-0)
-Suggests: bash-doc
-Conflicts: bash-completion (<< 20060301-0)
-Conffiles:
- /etc/bash.bashrc 89269e1298235f1b12b4c16e4065ad0d
- /etc/skel/.bash_logout 22bfb8c1dd94b5f3813a2b25da67463f
- /etc/skel/.bashrc ee35a240758f374832e809ae0ea4883a
- /etc/skel/.profile f4e81ade7d6f9fb342541152d08e7a97
-Description: GNU Bourne Again SHell
- Bash is an sh-compatible command language interpreter that executes
- commands read from the standard input or from a file.  Bash also
- incorporates useful features from the Korn and C shells (ksh and csh).
- .
- Bash is ultimately intended to be a conformant implementation of the
- IEEE POSIX Shell and Tools specification (IEEE Working Group 1003.2).
- .
- The Programmable Completion Code, by Ian Macdonald, is now found in
- the bash-completion package.
-Homepage: http://tiswww.case.edu/php/chet/bash/bashtop.html
-```
-
-For above, we will discover dependency: `bash`, with architecture of `arm64` and version of: `5.1-2+deb11u1`.
-
-#### Rpm
-
-For Rpm, we support rpmdb using sqlite backend (latest fedora), ndb backend (SLES) and berkelydb backend (centsos, etc.).
-
-##### Discovery
-
-Find file named: `Packages`, `Packages.db` or `Packages.sqlite`.
-
-##### Analysis
-
-We attempt to parse this file with berkely database parser, ndb database parser, and lastly using
-sqlite engine to make query.
-
-### Application Dependencies
-
-This is yet to be supported and released.
-
-### Manual and Vendored Dependencies
-
-This is yet to be supported and released.
+Where, 
+- :heavy-check-mark: - analysis is supported
+- :warning: - partial analysis is supported (e.g. may not report edges among dependencies, etc.). Refer to the documentation.
+- :x: - analysis is not supported in container scanning.
 
 ### Path Exclusion and Filtering
 
-This is yet to be supported and released.
+
 
 ### Debugging Integration
 
 Unlike current container scanner, `fossa-cli` supports `--debug` flag, 
-and debug bundle generation. 
+and debug bundle generation with experimental-scanner. 
 
 ```bash
 fossa container analyze redis:alpine --experimental-scanner --debug
@@ -338,10 +294,10 @@ fossa container analyze redis:alpine --experimental-scanner --debug
 # dumps comprehensive debug bundle in cwd with filename of "fossa.container.debug.json.gz"
 ```
 
-For performant experience, prefer analyzing exported tarball file, instead
+For performant experience, prefer analyzing exported docker archive file, instead
 of downloading image from registry. If you are building container image in CI
 pipeline, consider saving this image artifact and using that for analysis. As 
-this will save time, memory, and cpu cycles in downloading and extracting image. 
+this will reduce total runtime by not having to download and extract image.
 
 If you are using docker, you can also easily save image.
 
@@ -358,19 +314,51 @@ rm image.tar
 
 #### How do I scan multi-platform container images with `fossa-cli`?
 
-Prefer using image digest (which is specific to platform) for doing analysis. 
+By default, when `fossa-cli` is analyzing multi-platform image, it will prefer using same
+runtime architecture, of host. If the you would like to analyze for specific platform, 
+prefer using digest. 
 
-Refer to documentation here:
-
-In `fossa-cli`, you can container scan image with digest with following invocation:
+For example,
 
 ```bash
 fossa container analyze ghcr.io/fossas/haskell-dev-tools@sha256:e83e... --experimental-scanner
 ```
 
+Read more: 
+
+### How can I only scan for system dependencies (alpine, dpkg, rpm)?
+
+You can use `--only-system-deps` option,
+
+```bash
+fossa container analyze <IMAGE> --experimental-scanner --only-system-deps
+```
+
+### How do I exclude specific projects from container scanning?
+
+You can use configuration file to perform exclusion of projects or paths. Refer to
+[configuration file](./../../files/fossa-yml.md) for more details. 
+
+For example, to only analyze `setuptools`, and `alpine` packages, we can use
+following configuration file. 
+
+```yml
+# filename: .fossa.config.yaml
+version: 3
+
+targets:
+  only:
+    - type: setuptools
+    - type: apkdb
+```
+
+```bash
+fossa container analyze <IMAGE> --experimental-scanner -c .fossa.config.yaml --output
+```
+
 ### Limitations & Workarounds
 
-Currently experimental-scanner does not support already deprecated v1 manifest format,
+Currently experimental-scanner does not support already deprecated [v1 docker manifest format](https://docs.docker.com/registry/spec/manifest-v2-1/),
 found for container image in some registries.
 
 Workaround recommended is to export this image in tarball with use of docker. For example,
@@ -380,5 +368,7 @@ docker pull quay.io/org/image:tag
 docker save quay.io/org/image:tag > img.tar
 
 fossa container analyze img.tar --experimental-scanner
+rm img.tar
 ```
 
+You can also refer to [migration guide](https://docs.docker.com/registry/spec/deprecated-schema-v1/) provided by docker to update your image to using latest manifest version.
