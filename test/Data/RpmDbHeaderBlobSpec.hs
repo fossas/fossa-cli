@@ -1,9 +1,8 @@
 module Data.RpmDbHeaderBlobSpec (spec) where
 
-import Data.Binary.Get (ByteOffset, Get, runGetOrFail)
 import Data.ByteString.Lazy qualified as BLS
 import Data.Either (fromRight)
-import Data.List (isInfixOf, isSuffixOf)
+import Data.List (isSuffixOf)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Rpm.DbHeaderBlob (EntryInfo (..), HeaderBlob (..), RegionInfo (..), hdrblobVerifyRegion, headerBlobInit, regionTagCount, regionTagType, rpmTagHeaderImg, emptyRegionInfo)
 import Test.Hspec (
@@ -13,8 +12,6 @@ import Test.Hspec (
   describe,
   expectationFailure,
   fcontext,
-  fdescribe,
-  fit,
   it,
   runIO,
   shouldBe,
@@ -22,6 +19,7 @@ import Test.Hspec (
   shouldMatchList,
   shouldSatisfy,
  )
+import Data.Int (Int32)
 
 -- This blob was output from an rpm sqlite db. The parts of the format
 -- that we are interested in are documented in src/Data/Rpm/DbHeaderBlob.hs.
@@ -42,15 +40,15 @@ headerBlobVerifyRegionSpec :: BLS.ByteString -> Spec
 headerBlobVerifyRegionSpec blobData = do
   describe "headerBlobVerifyRegion" $ do
     it "Does nothing if not a header tag" $
-      hdrblobVerifyRegion (mkBlob notHeaderTag) "unused" `shouldBe` (Right emptyRegionInfo)
+      hdrblobVerifyRegion' notHeaderTag "unused" `shouldBe` (Right emptyRegionInfo)
     it "Fails on invalid region tag" $
-      hdrblobVerifyRegion (mkBlob invalidRegionTag) "unused" `failsWithMsg` "invalid region tag"
+      hdrblobVerifyRegion' invalidRegionTag "unused" `failsWithMsg` "invalid region tag"
     it "Fails on invalid region offset" $
-      hdrblobVerifyRegion (mkBlob invalidRegionOffset) "unused" `failsWithMsg` "invalid region offset"
+      hdrblobVerifyRegion' invalidRegionOffset "unused" `failsWithMsg` "invalid region offset"
     it "Fails on trailer parse" $
-      hdrblobVerifyRegion (mkBlob goodInfo) "unused" `failsWithMsg` "read trailer"
+      hdrblobVerifyRegion' goodInfo "unused" `failsWithMsg` "read trailer"
     it "Verifies a valid blob region" $
-      hdrblobVerifyRegion (mkBlob goodInfo) blobData `shouldBe` (Right expectedRegionInfo)
+      hdrblobVerifyRegion' goodInfo blobData `shouldBe` (Right expectedRegionInfo)
   where
     failsWithMsg :: Either String RegionInfo -> String -> Expectation
     failsWithMsg e msg =
@@ -60,20 +58,18 @@ headerBlobVerifyRegionSpec blobData = do
 
     expectedRegionInfo :: RegionInfo
     expectedRegionInfo = RegionInfo {
-      regionDataLength = 0x89b1
-      , regionIndexLength = 0x45
+      rDl = 0x89b1
+      , rIl = 0x45
       }
 
-    mkBlob :: EntryInfo -> HeaderBlob
-    mkBlob eInfo =
-      HeaderBlob
-        { indexLength = 0x00000050
-        , dataLength = 0x00008ebc
-        , dataStart = 0x508
-        , dataEnd = 0x93c4
-        , pvLength = 0x93c4
-        , entryInfos = NonEmpty.singleton eInfo
-        }
+    testDataLength :: Int32
+    testDataLength = 0x00008ebc
+
+    testDataStart :: Int32
+    testDataStart = 0x508
+      
+    hdrblobVerifyRegion' :: EntryInfo -> BLS.ByteString -> Either String RegionInfo
+    hdrblobVerifyRegion' entryInfo = hdrblobVerifyRegion (NonEmpty.singleton entryInfo) testDataLength testDataStart 
 
     goodInfo =
       EntryInfo
@@ -167,6 +163,8 @@ headerBlobSpec bs = describe "header blob parsing" $ do
               , dataEnd = 0x93c4
               , pvLength = 0x93c4
               , entryInfos = emptyInfo -- Not used in test
+              , regionDataLength = 0x89b1 -- Not used in test
+              , regionIndexLength = 0x45 -- Not used in test
               }
       eBlob `matchesIgnoringEntries` expected
 

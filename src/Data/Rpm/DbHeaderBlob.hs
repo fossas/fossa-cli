@@ -24,7 +24,6 @@ import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Word (Word32)
-import Debug.Trace (traceShowM)
 
 -- Constants from
 -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/rpmtags.go#L3
@@ -74,6 +73,8 @@ data HeaderBlob = HeaderBlob
   , dataEnd :: Int32
   , pvLength :: Int32 -- I do not know what this is
   , entryInfos :: NonEmpty EntryInfo
+  , regionDataLength :: Int32
+  , regionIndexLength :: Int32
   }
   deriving (Show, Eq)
 
@@ -135,10 +136,13 @@ headerBlobInit bs =
 
       entryInfos <- readEntries indexLength
 
-      let h = HeaderBlob{..}
-      let regionInfo = hdrblobVerifyRegion h
-
-      pure h
+      case hdrblobVerifyRegion entryInfos dataLength dataStart bs of
+        Left s -> fail s
+        Right
+          RegionInfo
+            { rDl = regionDataLength 
+            , rIl = regionIndexLength 
+            } -> pure HeaderBlob{..}
 
     dataAndIndexLen :: Int32
     dataAndIndexLen = 8
@@ -151,25 +155,25 @@ headerBlobInit bs =
         * entryInfoSize
 
 data RegionInfo = RegionInfo
-  { regionDataLength :: Int32
-  , regionIndexLength :: Int32
+  { rDl :: Int32
+  , rIl :: Int32
   }
   deriving (Show, Eq)
 
 emptyRegionInfo :: RegionInfo
 emptyRegionInfo =
   RegionInfo
-    { regionDataLength = 0
-    , regionIndexLength = 0
+    { rDl = 0
+    , rIl = 0
     }
 
 -- -- This is inspired by hdrblobVerifyRegion:
 -- -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L263 In the
 -- -- interest of getting an MVP done quickly, this currently doesn't do
 -- -- verification, it just calculates any data that future processes might need.
-hdrblobVerifyRegion :: HeaderBlob -> BLS.ByteString -> Either String RegionInfo
-hdrblobVerifyRegion HeaderBlob{entryInfos, dataLength, dataStart} blobData = do
-  let firstEntry@EntryInfo{..} = NonEmpty.head entryInfos
+hdrblobVerifyRegion :: NonEmpty.NonEmpty EntryInfo -> Int32 -> Int32 -> BLS.ByteString -> Either String RegionInfo
+hdrblobVerifyRegion entryInfos dataLength dataStart blobData = do
+  let EntryInfo{..} = NonEmpty.head entryInfos
   let regionTag =
         if tag
           `elem` [ rpmTagHeaderImg
@@ -192,8 +196,6 @@ hdrblobVerifyRegion HeaderBlob{entryInfos, dataLength, dataStart} blobData = do
         Left "invalid region offset"
 
       let regionEnd = dataStart + offset
-      traceShowM regionEnd
-      traceShowM (regionEnd + regionTagCount)
       EntryInfo{offset = trailerOffset} <-
         runGetOrFail'
           (label "read trailer" readEntry)
@@ -205,8 +207,8 @@ hdrblobVerifyRegion HeaderBlob{entryInfos, dataLength, dataStart} blobData = do
 
       pure
         emptyRegionInfo
-          { regionDataLength = offset + regionTagCount
-          , regionIndexLength = negOffset `div` entryInfoSize
+          { rDl = offset + regionTagCount
+          , rIl = negOffset `div` entryInfoSize
           }
   where
     -- do
