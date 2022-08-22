@@ -17,6 +17,7 @@ module Data.Rpm.DbHeaderBlob (
 
 import Control.Applicative (liftA2)
 import Control.Monad (replicateM, unless, when)
+import Data.Bifunctor (bimap)
 import Data.Binary.Get (ByteOffset, Get, getInt32be, getWord32be, label, runGetOrFail)
 import Data.ByteString.Lazy qualified as BLS
 import Data.Int (Int32)
@@ -149,21 +150,25 @@ headerBlobInit bs =
         + indexLength
         * entryInfoSize
 
-newtype RegionInfo = RegionInfo
-  { regionDataLen :: Int32
+data RegionInfo = RegionInfo
+  { regionDataLength :: Int32
+  , regionIndexLength :: Int32
   }
   deriving (Show, Eq)
 
 emptyRegionInfo :: RegionInfo
-emptyRegionInfo = RegionInfo
-  {regionDataLen = 0}
+emptyRegionInfo =
+  RegionInfo
+    { regionDataLength = 0
+    , regionIndexLength = 0
+    }
 
 -- -- This is inspired by hdrblobVerifyRegion:
 -- -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L263 In the
 -- -- interest of getting an MVP done quickly, this currently doesn't do
 -- -- verification, it just calculates any data that future processes might need.
-hdrblobVerifyRegion :: HeaderBlob -> Either String RegionInfo
-hdrblobVerifyRegion HeaderBlob{entryInfos, dataLength, dataStart} = do
+hdrblobVerifyRegion :: HeaderBlob -> BLS.ByteString -> Either String RegionInfo
+hdrblobVerifyRegion HeaderBlob{entryInfos, dataLength, dataStart} blobData = do
   let firstEntry@EntryInfo{..} = NonEmpty.head entryInfos
   let regionTag =
         if tag
@@ -175,11 +180,10 @@ hdrblobVerifyRegion HeaderBlob{entryInfos, dataLength, dataStart} = do
           else 0
 
   if regionTag == 0
-    then
-    -- go defaults numbers to 0, so I think the effect of bailing out early in
+    then -- go defaults numbers to 0, so I think the effect of bailing out early in
     -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L276
     -- is to have all region information be 0.
-    pure emptyRegionInfo
+      pure emptyRegionInfo
     else do
       unless (tagType == regionTagType && count == fromIntegral regionTagCount) $
         Left "invalid region tag"
@@ -188,14 +192,39 @@ hdrblobVerifyRegion HeaderBlob{entryInfos, dataLength, dataStart} = do
         Left "invalid region offset"
 
       let regionEnd = dataStart + offset
-      
-      pure emptyRegionInfo{regionDataLen = offset + regionTagCount}
+      traceShowM regionEnd
+      traceShowM (regionEnd + regionTagCount)
+      EntryInfo{offset = trailerOffset} <-
+        runGetOrFail'
+          (label "read trailer" readEntry)
+          (bsSubString regionEnd (regionEnd + regionTagCount) blobData)
+
+      -- The negation has a special meaning according to the original code.
+      -- https://github.com/rpm-software-management/rpm/blob/061ba962297eba71ecb1b45a4133cbbd86f8450e/lib/header.c#L1843
+      let negOffset = negate trailerOffset
+
+      pure
+        emptyRegionInfo
+          { regionDataLength = offset + regionTagCount
+          , regionIndexLength = negOffset `div` entryInfoSize
+          }
   where
     -- do
     -- when (not $ hdrCheckRange )
+    trd (_, _, c) = c
+
+    runGetOrFail' r = bimap trd trd . runGetOrFail r
 
     hdrCheckRange :: Int32 -> Int32 -> Bool
     hdrCheckRange dataLen offset = offset < 0 || offset > dataLen
+
+-- next steps: try to parse an entry out of the trailer, then finish creating
+-- the regionInfo
+
+-- | Substring of a byte string. Includes stop, but not end for range
+-- [start, end).
+bsSubString :: Int32 -> Int32 -> BLS.ByteString -> BLS.ByteString
+bsSubString start end = BLS.take (fromIntegral $ end - start) . BLS.drop (fromIntegral start)
 
 -- TODO: Should I keep processing even if one of these fails to read?
 -- Since they're just lined up next to each other a failure to read in one
@@ -206,14 +235,14 @@ readEntries indexLength =
 
 readEntry :: Get EntryInfo
 readEntry =
-    -- The original code reads these as little endian:
-    -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L127
-    -- However, the original code looks like it simply copies bytes
-    -- sequentially into a buffer that is then treated like an entryInfo
-    -- structure. That means higher bytes in a word are least-significant,
-    -- corresponding to big-endian when read individually. Big endian is also
-    -- network order.
-    EntryInfo
+  -- The original code reads these as little endian:
+  -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L127
+  -- However, the original code looks like it simply copies bytes
+  -- sequentially into a buffer that is then treated like an entryInfo
+  -- structure. That means higher bytes in a word are least-significant,
+  -- corresponding to big-endian when read individually. Big endian is also
+  -- network order.
+  EntryInfo
     <$> label "Read tag" getInt32be
     <*> label "Read type" getWord32be
     <*> label "Read offset" getInt32be

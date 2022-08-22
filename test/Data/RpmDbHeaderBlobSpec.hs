@@ -35,23 +35,22 @@ spec = fcontext "" $ do
   testBlob' <- runIO $ BLS.readFile testBlob
   headerBlobErrSpec
   headerBlobSpec testBlob'
-  headerBlobVerifyRegionSpec
+  headerBlobVerifyRegionSpec testBlob'
 
-runGetOrFail' :: Get a -> BLS.ByteString -> Either (BLS.ByteString, ByteOffset, String) a
-runGetOrFail' g bs =
-  (\(_, _, c) -> c) <$> (runGetOrFail g bs)
-
-headerBlobVerifyRegionSpec :: Spec
-headerBlobVerifyRegionSpec = do
+-- bobData should be read in from pkg_blob.bin.
+headerBlobVerifyRegionSpec :: BLS.ByteString -> Spec
+headerBlobVerifyRegionSpec blobData = do
   describe "headerBlobVerifyRegion" $ do
     it "Does nothing if not a header tag" $
-      hdrblobVerifyRegion (mkBlob notHeaderTag) `shouldBe` (Right emptyRegionInfo)
+      hdrblobVerifyRegion (mkBlob notHeaderTag) "unused" `shouldBe` (Right emptyRegionInfo)
     it "Fails on invalid region tag" $
-      hdrblobVerifyRegion (mkBlob invalidRegionTag) `failsWithMsg` "invalid region tag"
+      hdrblobVerifyRegion (mkBlob invalidRegionTag) "unused" `failsWithMsg` "invalid region tag"
     it "Fails on invalid region offset" $
-      hdrblobVerifyRegion (mkBlob invalidRegionOffset) `failsWithMsg` "invalid region offset"
+      hdrblobVerifyRegion (mkBlob invalidRegionOffset) "unused" `failsWithMsg` "invalid region offset"
+    it "Fails on trailer parse" $
+      hdrblobVerifyRegion (mkBlob goodInfo) "unused" `failsWithMsg` "read trailer"
     it "Verifies a valid blob region" $
-      hdrblobVerifyRegion (mkBlob goodInfo) `shouldBe` (Right expectedRegionInfo)
+      hdrblobVerifyRegion (mkBlob goodInfo) blobData `shouldBe` (Right expectedRegionInfo)
   where
     failsWithMsg :: Either String RegionInfo -> String -> Expectation
     failsWithMsg e msg =
@@ -61,7 +60,8 @@ headerBlobVerifyRegionSpec = do
 
     expectedRegionInfo :: RegionInfo
     expectedRegionInfo = RegionInfo {
-      regionDataLen = 0x89b1
+      regionDataLength = 0x89b1
+      , regionIndexLength = 0x45
       }
 
     mkBlob :: EntryInfo -> HeaderBlob
