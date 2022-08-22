@@ -9,7 +9,6 @@
     - [2) From Docker Engine](#2-from-docker-engine)
     - [3) From Registries](#3-from-registries)
   - [Container Image Analysis](#container-image-analysis)
-    - [Path Exclusion and Filtering](#path-exclusion-and-filtering)
     - [Debugging Integration](#debugging-integration)
     - [Frequently Asked Questions (FAQs)](#frequently-asked-questions-faqs)
       - [How do I scan multi-platform container images with `fossa-cli`?](#how-do-i-scan-multi-platform-container-images-with-fossa-cli)
@@ -135,9 +134,9 @@ be running and accessible. Specifically, `fossa-cli` will use socket
 connection at `/var/lib/docker.sock` and on that connection
 use `http://localhost/v1.28/` to make 
 
-a) `/_ping`: to sanity check connection to docker
-b)  `images/<IMAGE>/json`: to retrieve image manifest (confirms image is present locally)
-c) `images/<IMAGE>/get`: to retrieve image tarball
+1) `/_ping`: to sanity check connection to docker
+2)  `images/<IMAGE>/json`: to retrieve image manifest (confirms image is present locally)
+3) `images/<IMAGE>/get`: to retrieve image tarball
 
 In summary, `fossa-cli` does equivalent to:
 
@@ -177,18 +176,13 @@ example,
 Note that, 
 - when domain is not present, we default to `index.docker.io` registry. 
 - when digest or tag is not present, we default to `latest` tag. 
-- 
-When registry is found to `index.docker.io`, and repository does not have `/` character, 
-we infer that this is official image which are stored under `library/<image>` value. 
-
-When multi-platform image is provided (e.g. `ghcr.io/graalvm/graalvm-ce:ol7-java11-21.3.3`), 
-`fossa-cli` defaults to selecting image artifacts for current runtime platform. 
+- When registry is found to be `index.docker.io`, and repository does not have `/` character, we infer that this is official image which are stored under `library/<image>` value. 
+- When multi-platform image is provided (e.g. `ghcr.io/graalvm/graalvm-ce:ol7-java11-21.3.3`), `fossa-cli` defaults to selecting image artifacts for current runtime platform. 
 
 If you want to analyze container image for platform that is different then your runtime platform 
-(where you are running `fossa-cli`), specify image by that platform's digest. 
-
-For instance, if `fossa-cli` is running in `amd84`, but we want to analyze `amr64` platform image,
-we can use specific digest like following to analyze arm64 variant. 
+(where you are running `fossa-cli`), specify image by that platform's digest. For instance, if `fossa-cli` is 
+running in `amd84`, but we want to analyze `amr64` platform image,we can use specific digest like following to
+analyze arm64 variant. 
 
 ```bash
 fossa container analyze ghcr.io/graalvm/graalvm-ce@sha256:bdcba07acb11053fea0026b807ecf94550ace7df27b10596ca4c765165243cef --experimental-scanner
@@ -228,10 +222,10 @@ fossa container analyze user:secret@quay.io/org/image:tag --experimental-scanner
 image manifests, and image artifacts from registry. It does so in following manner:
 
 1) `HEAD <repository>/manifests/<tag-or-digest>` (to see if the manifests exists)
-   a) If 401 status code is provided, and auth challenge is presented, `fossa-cli` will make request to token provider with mentioned scope and service (if username and password were provided for registry, HTTP auth will be used) to retrieve token.
+   1) If 401 status code is provided, and auth challenge is presented, `fossa-cli` will make request to token provider with mentioned scope and service (if username and password were provided for registry, HTTP auth will be used) to retrieve token.
 2) Use token from step (1) to make `GET /v2/<repository>/manifests/<tag-or-digest>` to retrieve manifest
-   a) If multi-platform image is detected (content-type indicating manifest index, or manifest list), manifest for current runtime's digest will be identified
-   b) Using (2.a)'s digest value, `GET /v2/<repository>/manifests/<digest>` will be used to infer platform specific manifest
+   1) If multi-platform image is detected (content-type indicating manifest index, or manifest list), manifest for current runtime's digest will be identified
+   2) Using (2.a)'s digest value, `GET /v2/<repository>/manifests/<digest>` will be used to infer platform specific manifest
 3) Identify configuration blob and layer blobs digests from (2)
 4) Download all blobs using `GET /v2/<repository>/blobs/<digest>` (if blobs are tar.gzip, they will be gzip extracted)
 5) From artifacts downloaded representative image tarball will be created.
@@ -251,7 +245,7 @@ Following package managers are supported in container scanning:
 | ------------------------------------ | ------------------ | ---------------------------------------------------------------- |
 | Alpine                               | :white_check_mark: | [Apk Docs](./../../strategies/system/apk/apk.md)                 |
 | Dpkg                                 | :white_check_mark: | [Dpkg Docs](./../../strategies/system/dpkg/dpkg.md)              |
-| Rpm                                  | :x:                | This is to be implemented, and in roadmap                        |
+| Rpm                                  | :x:                | This is to be implemented.                                       |
 | Python (setuptools, poetry, etc.)    | :white_check_mark: | [Python Docs](./../../strategies/languages/python/python.md)     |
 | Javascript (npm, yarn, pnpm, etc.)   | :white_check_mark: | [Javascript Docs](./../../strategies/languages/nodejs/nodejs.md) |
 | Ruby (bundler)                       | :white_check_mark: | [Ruby](./../../strategies/languages/ruby/ruby.md)                |
@@ -277,10 +271,6 @@ Where,
 - :heavy-check-mark: - analysis is supported
 - :warning: - partial analysis is supported (e.g. may not report edges among dependencies, etc.). Refer to the documentation.
 - :x: - analysis is not supported in container scanning.
-
-### Path Exclusion and Filtering
-
-
 
 ### Debugging Integration
 
