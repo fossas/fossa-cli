@@ -2,9 +2,10 @@ module Data.RpmDbHeaderBlobSpec (spec) where
 
 import Data.ByteString.Lazy qualified as BLS
 import Data.Either (fromRight)
+import Data.Int (Int32)
 import Data.List (isSuffixOf)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Rpm.DbHeaderBlob (EntryInfo (..), HeaderBlob (..), RegionInfo (..), hdrblobVerifyRegion, headerBlobInit, regionTagCount, regionTagType, rpmTagHeaderImg, emptyRegionInfo)
+import Data.Rpm.DbHeaderBlob (EntryInfo (..), HeaderBlob (..), IndexEntry (..), RegionInfo (..), calcDataLength, emptyRegionInfo, hdrblobImport, hdrblobVerifyRegion, headerBlobInit, regionTagCount, regionTagType, rpmStringType, rpmTagHeaderImg, rpmStringArrayType, rpmI18NstringType, rpmInt64Type)
 import Test.Hspec (
   Expectation,
   Spec,
@@ -12,6 +13,7 @@ import Test.Hspec (
   describe,
   expectationFailure,
   fcontext,
+  fdescribe,
   it,
   runIO,
   shouldBe,
@@ -19,7 +21,6 @@ import Test.Hspec (
   shouldMatchList,
   shouldSatisfy,
  )
-import Data.Int (Int32)
 
 -- This blob was output from an rpm sqlite db. The parts of the format
 -- that we are interested in are documented in src/Data/Rpm/DbHeaderBlob.hs.
@@ -28,14 +29,78 @@ import Data.Int (Int32)
 testBlob :: FilePath
 testBlob = "test/Data/test_data/pkg_blob.bin"
 
+-- the first two index entries that should result from parsing testBlob
+testBlobIndexEntries :: [IndexEntry]
+testBlobIndexEntries =
+  [ IndexEntry
+      { info = EntryInfo{tag = 1000, tagType = 6, offset = 2, count = 1}
+      , entryLength = 7
+      , rdLen = 0
+      , entryData = BLS.pack [108, 105, 98, 103, 99, 99, 0]
+      }
+  , IndexEntry
+      { info = EntryInfo{tag = 1004, tagType = 9, offset = 23, count = 1}
+      , entryLength = 38
+      , rdLen = 0
+      , entryData = BLS.pack [71, 67, 67, 32, 118, 101, 114, 115, 105, 111, 110, 32, 49, 49, 32, 115, 104, 97, 114, 101, 100, 32, 115, 117, 112, 112, 111, 114, 116, 32, 108, 105, 98, 114, 97, 114, 121, 0]
+      }
+  ]
+
 spec :: Spec
 spec = fcontext "" $ do
   testBlob' <- runIO $ BLS.readFile testBlob
   headerBlobErrSpec
   headerBlobSpec testBlob'
   headerBlobVerifyRegionSpec testBlob'
+  headerBlobImportSpec testBlob'
+  dataLengthSpec
 
--- bobData should be read in from pkg_blob.bin.
+dataLengthSpec :: Spec
+dataLengthSpec =
+  fdescribe "dataLength" $ do
+  context "rpm string type" $ do
+    it "Fails for strings with too large of a count" $
+      calcDataLength "" rpmStringType 2 0 0 `shouldBe` Left "count for string == 2 it should == 1."
+    it "Fails if start > dataEnd" $
+      calcDataLength "" rpmStringType 1 1 0 `shouldBe` Left "String start (1) >= end (0)"
+    it "Calculates string lengths from the beginning of the buffer" $
+        calcDataLength strData rpmStringType 1 0 7 `shouldBe` Right 3
+    it "Calculates string lengths when start > 0" $
+      calcDataLength strData rpmStringType 1 3 7`shouldBe` Right 4
+  context "rpm string array type" $
+    it "calculates length when count > 1" $
+    calcDataLength strData rpmStringArrayType 2 0 7 `shouldBe` Right 7
+  context "rpm i18nstring type" $
+    it "calculates length when count > 1" $
+    calcDataLength strData rpmI18NstringType 2 0 7 `shouldBe` Right 7
+  context "rpm other types" $ do
+    it "Fails on nonexistent type" $
+      calcDataLength "" 255 0 0 0 `shouldBe` Left "Nonexistent typesize: 255"
+    it "calculates length of an int64" $
+      calcDataLength "" rpmInt64Type 2 0 0 `shouldBe` Right 16
+    it "calculates length of an int64" $
+      calcDataLength "" rpmInt64Type 2 0 0 `shouldBe` Right 16
+  where
+    strData =
+      BLS.pack
+        [99
+        , 67
+        , 0 
+        , 99
+        , 103
+        , 104
+        , 0
+        , 255 -- this shouldn't matter, it's after a 0 and count should not be > 2
+        ]
+
+headerBlobImportSpec :: BLS.ByteString -> Spec
+headerBlobImportSpec bs = do
+  blob <- runIO . pure $ fromRight (error "RPM blob read failure") (headerBlobInit bs)
+  describe "headerBlobImport" $ do
+    it "Reads index entries from a non-dribble header blob" $ do
+      hdrblobImport blob bs `shouldBe` Right testBlobIndexEntries
+
+-- blobData should be read in from pkg_blob.bin.
 headerBlobVerifyRegionSpec :: BLS.ByteString -> Spec
 headerBlobVerifyRegionSpec blobData = do
   describe "headerBlobVerifyRegion" $ do
@@ -57,19 +122,20 @@ headerBlobVerifyRegionSpec blobData = do
         Left s -> s `shouldContain` msg
 
     expectedRegionInfo :: RegionInfo
-    expectedRegionInfo = RegionInfo {
-      rDl = 0x89b1
-      , rIl = 0x45
-      }
+    expectedRegionInfo =
+      RegionInfo
+        { rDl = 0x89b1
+        , rIl = 0x45
+        }
 
     testDataLength :: Int32
     testDataLength = 0x00008ebc
 
     testDataStart :: Int32
     testDataStart = 0x508
-      
+
     hdrblobVerifyRegion' :: EntryInfo -> BLS.ByteString -> Either String RegionInfo
-    hdrblobVerifyRegion' entryInfo = hdrblobVerifyRegion (NonEmpty.singleton entryInfo) testDataLength testDataStart 
+    hdrblobVerifyRegion' entryInfo = hdrblobVerifyRegion (NonEmpty.singleton entryInfo) testDataLength testDataStart
 
     goodInfo =
       EntryInfo
@@ -104,7 +170,6 @@ headerBlobVerifyRegionSpec blobData = do
         { offset = 0x8ebc
         }
 
-
 emptyInfo :: NonEmpty.NonEmpty EntryInfo
 emptyInfo = NonEmpty.singleton EntryInfo{tag = 0, tagType = 0, offset = 0, count = 0}
 
@@ -120,36 +185,6 @@ matchesIgnoringEntries bs expected =
 
 headerBlobSpec :: BLS.ByteString -> Spec
 headerBlobSpec bs = describe "header blob parsing" $ do
-  -- I'm not convinced this is valuable. It will take some effort to keep
-  -- updating this test/binary as we read.
-  -- context "minimal example" $ do
-  --   it "Parses data length and index length" $ do
-  --     let testBs =
-  --           BLS.pack
-  --             [ --indexLen
-  --               0
-  --             , 0
-  --             , 0
-  --             , 1
-  --             -- end indexLen
-  --             -- dataLen
-  --             , 0
-  --             , 0
-  --             , 0
-  --             , 2
-  --             -- end dataLen
-  --             ]
-  --     let fromBigEndianBlob =
-  --           HeaderBlob
-  --             { indexLength = 0x00000001
-  --             , dataLength = 0x00000002
-  --             , dataStart = 0x140 -- 0x40 + 0x01 * entryInfoSize
-  --             , pvLength = 0xc2
-  --             , entryInfos = []
-  --             }
-
-  --     (headerBlobInit testBs) `matchesIgnoringEntries` fromBigEndianBlob
-
   context "Real example " $ do
     let eBlob = headerBlobInit bs
     blob <- runIO . pure $ fromRight (error "RPM blob read failure") eBlob

@@ -4,25 +4,33 @@ module Data.Rpm.DbHeaderBlob (
   headerBlobInit,
   HeaderBlob (..),
   EntryInfo (..),
+  IndexEntry (..),
   RegionInfo (..),
   hdrblobVerifyRegion,
   emptyRegionInfo,
+  calcDataLength,
   -- consts
   rpmTagHeaderImg,
   rpmTagHeaderImmutable,
   rpmTagHeaderSignatures,
+  rpmStringType,
   regionTagType,
   regionTagCount,
-) where
+  hdrblobImport,
+  rpmStringArrayType,
+  rpmI18NstringType,
+  rpmInt64Type) where
 
 import Control.Applicative (liftA2)
 import Control.Monad (replicateM, unless, when)
 import Data.Bifunctor (bimap)
 import Data.Binary.Get (ByteOffset, Get, getInt32be, getWord32be, label, runGetOrFail)
+import Data.Bits ((.&.))
 import Data.ByteString.Lazy qualified as BLS
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Vector qualified as V
 import Data.Word (Word32)
 
 -- Constants from
@@ -35,6 +43,21 @@ rpmTagHeaderSignatures = 62
 
 rpmTagHeaderImg :: Int32
 rpmTagHeaderImg = 61
+
+rpmTagHeaderI18nTable :: Int32
+rpmTagHeaderI18nTable = 100
+
+rpmStringType :: Word32
+rpmStringType = 6
+
+rpmStringArrayType :: Word32
+rpmStringArrayType = 8
+
+rpmI18NstringType :: Word32
+rpmI18NstringType = 9
+
+rpmInt64Type :: Word32
+rpmInt64Type = 5
 
 -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L71
 -- Size in bytes.
@@ -52,6 +75,27 @@ regionTagCount = entryInfoSize
 -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L15
 regionTagType :: Word32
 regionTagType = 7
+
+typeSizes :: V.Vector Int32
+typeSizes =
+  V.fromList
+    [ 0 -- !< RPM_NULL_TYPE
+    , 1 -- !< RPM_CHAR_TYPE
+    , 1 -- !< RPM_INT8_TYPE
+    , 2 -- !< RPM_INT16_TYPE
+    , 4 -- !< RPM_INT32_TYPE
+    , 8 -- !< RPM_INT64_TYPE
+    , -1 -- !< RPM_STRING_TYPE
+    , 1 -- !< RPM_BIN_TYPE
+    , -1 -- !< RPM_STRING_ARRAY_TYPE
+    , -1 -- !< RPM_I18NSTRING_TYPE
+    , 0
+    , 0
+    , 0
+    , 0
+    , 0
+    , 0
+    ]
 
 -- A package blob is laid out like this:
 --
@@ -140,8 +184,8 @@ headerBlobInit bs =
         Left s -> fail s
         Right
           RegionInfo
-            { rDl = regionDataLength 
-            , rIl = regionIndexLength 
+            { rDl = regionDataLength
+            , rIl = regionIndexLength
             } -> pure HeaderBlob{..}
 
     dataAndIndexLen :: Int32
@@ -220,8 +264,100 @@ hdrblobVerifyRegion entryInfos dataLength dataStart blobData = do
     hdrCheckRange :: Int32 -> Int32 -> Bool
     hdrCheckRange dataLen offset = offset < 0 || offset > dataLen
 
--- next steps: try to parse an entry out of the trailer, then finish creating
--- the regionInfo
+data IndexEntry = IndexEntry
+  { info :: EntryInfo
+  , entryLength :: Int32
+  , rdLen :: Int32
+  , entryData :: BLS.ByteString
+  }
+  deriving (Eq, Show)
+
+hdrblobImport :: HeaderBlob -> BLS.ByteString -> Either String [IndexEntry]
+hdrblobImport HeaderBlob{..} bs = do
+  let firstEntry = NonEmpty.head entryInfos
+  if tag firstEntry == rpmTagHeaderI18nTable
+    then Left "Not implemented yet"
+    else do
+      let regionIndexLength = if offset firstEntry == 0 then indexLength else regionIndexLength
+      (indexEntries, _) <- regionSwab bs (subList 0 regionIndexLength (NonEmpty.tail entryInfos)) dataStart dataEnd
+
+      -- TODO: the dribble entries
+      Right indexEntries
+  where
+    subList :: Int32 -> Int32 -> [a] -> [a]
+    subList start end = take (fromIntegral $ end - start) . drop (fromIntegral start)
+
+maybeToEither :: b -> Maybe a -> Either b a
+maybeToEither _ (Just a) = Right a
+maybeToEither b Nothing = Left b
+
+regionSwab :: BLS.ByteString -> [EntryInfo] -> Int32 -> Int32 -> Either String ([IndexEntry], Int32)
+regionSwab bs entryInfos dataStart dataEnd = do
+  Right
+    (
+      [ IndexEntry
+          { info = error "info"
+          , entryLength = error "entryLength"
+          , rdLen = error "rdLen"
+          , entryData = error "entryData"
+          }
+      ]
+    , 0
+    )
+  where
+    entryInfosV :: V.Vector (Int, EntryInfo)
+    entryInfosV = V.indexed . V.fromList $ entryInfos
+
+    lastIdx :: Int32
+    lastIdx = fromIntegral $ V.length entryInfosV - 1
+
+    swabEntry :: Int32 -> EntryInfo -> Either String IndexEntry
+    swabEntry i info = do
+      let currOffset = offset info
+      let start = dataStart + currOffset
+      let tType = tagType info
+      entryLength <-
+        do
+          typeSize <- maybeToEither ("No such type size: " <> show tType) (typeSizes V.!? fromIntegral tType)
+          if i < lastIdx - 1
+            then case offset . snd <$> entryInfosV V.!? fromIntegral (i + 1) of
+              -- this Nothing shouldn't happen since we checked it in
+              -- the if exp above
+              Nothing -> Left $ "Failed to read index " <> show i
+              Just nextOffset -> Right $ nextOffset - currOffset
+            else calcDataLength bs tType (count info) start dataEnd
+
+      if (start >= dataEnd)
+        then Left "invalid data offset"
+        else do undefined
+
+-- | Calculate the length of a given piece of data in bytes
+calcDataLength :: BLS.ByteString -> Word32 -> Word32 -> Int32 -> Int32 -> Either String Int32
+calcDataLength bs ty count start dataEnd
+  | ty == rpmStringType =
+    if count /= 1
+      then Left $ "count for string == " <> show count <> " it should == 1."
+      else strtaglen 1
+  | ty `elem` [rpmStringArrayType, rpmI18NstringType] = strtaglen count
+  | otherwise = do
+    t <- maybeToEither ("Nonexistent typesize: " <> show ty) (typeSizes V.!? fromIntegral ty)
+    if t == -1
+      then Left $ "Typesize " <> show ty <> " can't be -1"
+      else do
+        -- typeSizes has 16 members, so it should never fail to read one for (ty .&. 0xf)
+        let mLen = ((fromIntegral count) *) <$> (typeSizes V.!? (fromIntegral ty .&. 0xf))
+        len <- maybeToEither ("Nonexistent tag type " <> show ty) mLen
+        if len < 0 || dataEnd > 0 && start + fromIntegral len > dataEnd
+          then Left $ "Invalid calculated len: " <> show len
+          else Right $ fromIntegral len
+  where
+    strtaglen :: Word32 -> Either String Int32
+    strtaglen strCount =
+      if start >= dataEnd
+        then Left $ "String start (" <> show start <> ") >= end (" <> show dataEnd <> ")"
+        else
+          let indices = take (fromIntegral strCount) . BLS.findIndices (== 0) . bsSubString start dataEnd $ bs
+           in Right . fromIntegral $ last indices + 1
 
 -- | Substring of a byte string. Includes stop, but not end for range
 -- [start, end).
@@ -249,15 +385,3 @@ readEntry =
     <*> label "Read type" getWord32be
     <*> label "Read offset" getInt32be
     <*> label "Read count" getWord32be
-
--- data IndexEntry = IndexEntry {}
-
--- rpmTagHeaderI18nTable :: Int32
--- rpmTagHeaderI18nTable = 100
-
--- hdrBlobImport :: BLS.ByteString -> HeaderBlob -> [IndexEntry]
--- hdrBlobImport bs HeaderBlob{..} =
---   if tag (entryInfos !! 1) >= rpmTagHeaderI18nTable then
---     error "Not implemented yet"
---   else
---     regionSwab bs entryInfos
