@@ -5,7 +5,9 @@ import Data.Either (fromRight)
 import Data.Int (Int32)
 import Data.List (isSuffixOf)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Rpm.DbHeaderBlob (EntryInfo (..), HeaderBlob (..), IndexEntry (..), RegionInfo (..), calcDataLength, emptyRegionInfo, hdrblobImport, hdrblobVerifyRegion, headerBlobInit, regionTagCount, regionTagType, rpmI18NstringType, rpmInt64Type, rpmStringArrayType, rpmStringType, rpmTagHeaderImg)
+import Text.Printf(printf)
+import Debug.Trace(traceM)
+import Data.Rpm.DbHeaderBlob (EntryInfo (..), HeaderBlob (..), IndexEntry (..), RegionInfo (..), calcDataLength, emptyRegionInfo, hdrblobImport, hdrblobVerifyRegion, headerBlobInit, regionTagCount, regionTagType, rpmI18NstringType, rpmInt64Type, rpmStringArrayType, rpmStringType, rpmTagHeaderImg, rpmInt32Type)
 import Test.Hspec (
   Expectation,
   Spec,
@@ -20,6 +22,7 @@ import Test.Hspec (
   shouldMatchList,
   shouldSatisfy,
  )
+import qualified Data.Set as Set
 
 -- This blob was output from an rpm sqlite db. The parts of the format
 -- that we are interested in are documented in src/Data/Rpm/DbHeaderBlob.hs.
@@ -80,8 +83,8 @@ dataLengthSpec =
         calcDataLength "" 255 0 0 0 `shouldBe` Left "Nonexistent typesize: 255"
       it "calculates length of an int64" $
         calcDataLength "" rpmInt64Type 2 0 0 `shouldBe` Right 16
-      it "calculates length of an int64" $
-        calcDataLength "" rpmInt64Type 2 0 0 `shouldBe` Right 16
+      it "calculates length of an int32" $
+        calcDataLength "" rpmInt32Type 2 0 0 `shouldBe` Right 8
   where
     strData =
       BLS.pack
@@ -97,7 +100,7 @@ dataLengthSpec =
 
 headerBlobImportSpec :: BLS.ByteString -> Spec
 headerBlobImportSpec bs = do
-  blob <- runIO . pure $ fromRight (error "RPM blob read failure") (headerBlobInit bs)
+  let blob = fromRight (error "RPM blob read failure") (headerBlobInit bs)
   describe "headerBlobImport" $ do
     -- note that this test will be wrong after implementing the "dribble", dribble entries
     -- get put into the index entry list before the initial ones.
@@ -105,7 +108,13 @@ headerBlobImportSpec bs = do
     -- Alternatively, there is only one non-dribble entry for this test case so we
     -- can drop then compare.
     it "Reads index entries from a non-dribble header blob" $ do
-      take 3 <$> hdrblobImport blob bs `shouldBe` Right testBlobIndexEntries
+      let indexEntries = fromRight [] $ hdrblobImport blob bs 
+      traceM $ printf "Found these with tag 1001: %s" $ show (filter (\i -> (tag . info $ i) == 1001) indexEntries)
+      testBlobIndexEntries `shouldExistIn` indexEntries
+
+  where shouldExistIn :: (Ord a, Show a) => [a] -> [a] -> Expectation
+        shouldExistIn a b = let a' = Set.fromList a in
+          (a' `Set.intersection` Set.fromList b) `shouldBe` a'
 
 -- blobData should be read in from pkg_blob.bin.
 headerBlobVerifyRegionSpec :: BLS.ByteString -> Spec
