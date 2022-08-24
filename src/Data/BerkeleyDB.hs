@@ -1,7 +1,9 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Data.BerkeleyDB (
-  entries,
-  entriesWith,
-  BdbEntry,
+  pages,
+  pagesWith,
+  BdbPage,
 ) where
 
 import Control.Algebra (Has)
@@ -9,7 +11,7 @@ import Control.Carrier.Diagnostics (runDiagnosticsIO, withResult)
 import Control.Effect.Diagnostics (Diagnostics, context, fromEither)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Bits (Bits (shiftL))
-import Data.ByteString (ByteString)
+import Data.ByteString (ByteString, pack)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
@@ -25,6 +27,7 @@ import Text.Megaparsec (
   empty,
   many,
   manyTill,
+  runParser,
   single,
   some,
   someTill,
@@ -40,20 +43,14 @@ type Parser = Parsec Void ByteString
 
 data ByteOrder = BigEndian | LittleEndian
 
--- | An entry in BerkeleyDB. Each entry must be parsed.
-newtype BdbEntry = BdbEntry
-  { bdbEntryValue :: ByteString
-  }
-  deriving (Eq, Ord, Show)
+pages :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs File -> m [BdbPage]
+pages = pagesWith pure
 
-entries :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs File -> m [BdbEntry]
-entries = entriesWith pure
-
-entriesWith :: (Has Diagnostics sig m, Has ReadFS sig m) => (BdbEntry -> m a) -> Path Abs File -> m [a]
-entriesWith parseEntry file = context ("Parse BDB file: " <> toText file) $ do
+pagesWith :: (Has Diagnostics sig m, Has ReadFS sig m) => (BdbPage -> m a) -> Path Abs File -> m [a]
+pagesWith parse file = context ("parse BDB database: " <> toText file) $ do
   metadata <- context "metadata" $ readContentsParserBS parseBdbMeta file
-
-  undefined
+  contents <- context "pages" $ readContentsParserBS (parsePages metadata) file
+  traverse parse contents
 
 -- The metadata header.
 -- Combines the "generic" and "hash" sections from the Go source because it's simpler to do so here.
@@ -151,13 +148,25 @@ validateMetaEncryptionAlg meta@BdbMetadata{bdbMetaEncryptionAlg} = validate' exp
 
 validatePageSize :: (MonadFail m) => BdbMetadata -> m BdbMetadata
 validatePageSize meta@BdbMetadata{bdbMetaPageSize} =
-  if bdbMetaPageSize `elem` valid
+  if bdbMetaPageSize `elem` validSizes
     then pure meta
     else fail $ "invalid page size: " <> show bdbMetaPageSize
   where
     -- From: https://github.com/knqyf263/go-rpmdb/blob/956701287363101ee9ade742d6bf1d5c5495f62a/pkg/bdb/bdb.go#L11-L20
-    valid :: [Word32]
-    valid = [shiftL 512 x | x <- [0 .. 7]]
+    validSizes :: [Word32]
+    validSizes = [shiftL 512 x | x <- [0 .. 7]]
+
+-- | An page in BerkeleyDB.
+newtype BdbPage = BdbPage
+  { bdbPageValue :: ByteString
+  }
+  deriving (Eq, Ord, Show)
+
+parsePages :: BdbMetadata -> Parser [BdbPage]
+parsePages meta = some (parsePage meta) <* eof
+
+parsePage :: BdbMetadata -> Parser BdbPage
+parsePage BdbMetadata{..} = undefined
 
 validate' :: (MonadFail m, Eq a, Show a) => a -> String -> b -> a -> m b
 validate' expect msg meta test =
@@ -170,4 +179,8 @@ word32' LittleEndian = word32le
 word32' BigEndian = word32be
 
 parseByteN :: Int -> Parser [Word8]
-parseByteN n = take n <$> many word8
+parseByteN n = do
+  buf <- take n <$> some word8
+  if length buf == n
+    then pure buf
+    else fail $ "short read: expected " <> show n <> " bytes, read " <> show (length buf)
