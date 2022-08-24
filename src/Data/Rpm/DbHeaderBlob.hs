@@ -19,19 +19,22 @@ module Data.Rpm.DbHeaderBlob (
   hdrblobImport,
   rpmStringArrayType,
   rpmI18NstringType,
-  rpmInt64Type) where
+  rpmInt64Type,
+) where
 
 import Control.Applicative (liftA2)
-import Control.Monad (replicateM, unless, when)
+import Control.Monad (foldM, replicateM, unless, when)
 import Data.Bifunctor (bimap)
 import Data.Binary.Get (ByteOffset, Get, getInt32be, getWord32be, label, runGetOrFail)
 import Data.Bits ((.&.))
 import Data.ByteString.Lazy qualified as BLS
+import Data.Foldable (foldrM)
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Vector qualified as V
 import Data.Word (Word32)
+import Debug.Trace (traceShowM)
 
 -- Constants from
 -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/rpmtags.go#L3
@@ -255,8 +258,6 @@ hdrblobVerifyRegion entryInfos dataLength dataStart blobData = do
           , rIl = negOffset `div` entryInfoSize
           }
   where
-    -- do
-    -- when (not $ hdrCheckRange )
     trd (_, _, c) = c
 
     runGetOrFail' r = bimap trd trd . runGetOrFail r
@@ -267,19 +268,22 @@ hdrblobVerifyRegion entryInfos dataLength dataStart blobData = do
 data IndexEntry = IndexEntry
   { info :: EntryInfo
   , entryLength :: Int32
-  , rdLen :: Int32
   , entryData :: BLS.ByteString
   }
   deriving (Eq, Show)
 
+-- it looks like we have the first few region info in headerblob correct,
+-- next make sure we're passing the right things to region swab as in the go code
+
 hdrblobImport :: HeaderBlob -> BLS.ByteString -> Either String [IndexEntry]
 hdrblobImport HeaderBlob{..} bs = do
   let firstEntry = NonEmpty.head entryInfos
-  if tag firstEntry == rpmTagHeaderI18nTable
+  if tag firstEntry >= rpmTagHeaderI18nTable
     then Left "Not implemented yet"
     else do
-      let regionIndexLength = if offset firstEntry == 0 then indexLength else regionIndexLength
-      (indexEntries, _) <- regionSwab bs (subList 0 regionIndexLength (NonEmpty.tail entryInfos)) dataStart dataEnd
+      traceShowM $ "First few entryInfo: " <> show (NonEmpty.take 3 entryInfos)
+      let regionIndexLength' = fromIntegral $ if offset firstEntry == 0 then indexLength else regionIndexLength
+      (indexEntries, _) <- regionSwab bs (take regionIndexLength' (NonEmpty.tail entryInfos)) dataStart dataEnd
 
       -- TODO: the dribble entries
       Right indexEntries
@@ -293,18 +297,26 @@ maybeToEither b Nothing = Left b
 
 regionSwab :: BLS.ByteString -> [EntryInfo] -> Int32 -> Int32 -> Either String ([IndexEntry], Int32)
 regionSwab bs entryInfos dataStart dataEnd = do
-  Right
-    (
-      [ IndexEntry
-          { info = error "info"
-          , entryLength = error "entryLength"
-          , rdLen = error "rdLen"
-          , entryData = error "entryData"
-          }
-      ]
-    , 0
-    )
+  traceShowM $ "first entryInfo" <> show (head entryInfos)
+  traceShowM $ "start " <> show dataStart
+  traceShowM $ "end " <> show dataEnd
+  foldrM calcIndexEntry ([], 0) (zip [0 ..] entryInfos)
   where
+    calcIndexEntry (idx, entryInfo) (entries, runningDataLength) = do
+      -- traceShowM "calcing index entry"
+      newIdxEntry <- swabEntry idx entryInfo
+      alignDifference <- alignDiff (tagType entryInfo) runningDataLength
+      let rdl = alignDifference + runningDataLength
+      rdl `seq` Right (newIdxEntry : entries, rdl)
+
+    alignDiff :: Word32 -> Int32 -> Either String Int32
+    alignDiff ty alignSize = do
+      tSize <- maybeToEither ("aligning diff: tag type " <> show ty <> " is invalid") (typeSizes V.!? fromIntegral ty)
+      let diff = tSize - (alignSize `mod` tSize)
+      if tSize > 1 && diff /= tSize
+        then Right diff
+        else Right 0
+
     entryInfosV :: V.Vector (Int, EntryInfo)
     entryInfosV = V.indexed . V.fromList $ entryInfos
 
@@ -319,17 +331,28 @@ regionSwab bs entryInfos dataStart dataEnd = do
       entryLength <-
         do
           typeSize <- maybeToEither ("No such type size: " <> show tType) (typeSizes V.!? fromIntegral tType)
-          if i < lastIdx - 1
+          if i < lastIdx - 1 && typeSize == -1
             then case offset . snd <$> entryInfosV V.!? fromIntegral (i + 1) of
               -- this Nothing shouldn't happen since we checked it in
               -- the if exp above
               Nothing -> Left $ "Failed to read index " <> show i
               Just nextOffset -> Right $ nextOffset - currOffset
-            else calcDataLength bs tType (count info) start dataEnd
+            else do
+              dataLength <- calcDataLength bs tType (count info) start dataEnd
+              if dataLength < 0
+                then Left "invalid data length"
+                else Right dataLength
 
+      let end = start + entryLength
       if (start >= dataEnd)
         then Left "invalid data offset"
-        else do undefined
+        else
+          Right
+            IndexEntry
+              { info = info
+              , entryLength = entryLength
+              , entryData = bsSubString start end bs
+              }
 
 -- | Calculate the length of a given piece of data in bytes
 calcDataLength :: BLS.ByteString -> Word32 -> Word32 -> Int32 -> Int32 -> Either String Int32

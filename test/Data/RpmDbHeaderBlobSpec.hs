@@ -5,7 +5,7 @@ import Data.Either (fromRight)
 import Data.Int (Int32)
 import Data.List (isSuffixOf)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Rpm.DbHeaderBlob (EntryInfo (..), HeaderBlob (..), IndexEntry (..), RegionInfo (..), calcDataLength, emptyRegionInfo, hdrblobImport, hdrblobVerifyRegion, headerBlobInit, regionTagCount, regionTagType, rpmStringType, rpmTagHeaderImg, rpmStringArrayType, rpmI18NstringType, rpmInt64Type)
+import Data.Rpm.DbHeaderBlob (EntryInfo (..), HeaderBlob (..), IndexEntry (..), RegionInfo (..), calcDataLength, emptyRegionInfo, hdrblobImport, hdrblobVerifyRegion, headerBlobInit, regionTagCount, regionTagType, rpmI18NstringType, rpmInt64Type, rpmStringArrayType, rpmStringType, rpmTagHeaderImg)
 import Test.Hspec (
   Expectation,
   Spec,
@@ -13,7 +13,6 @@ import Test.Hspec (
   describe,
   expectationFailure,
   fcontext,
-  fdescribe,
   it,
   runIO,
   shouldBe,
@@ -29,20 +28,23 @@ import Test.Hspec (
 testBlob :: FilePath
 testBlob = "test/Data/test_data/pkg_blob.bin"
 
--- the first two index entries that should result from parsing testBlob
+-- the first three non-dribble index entries that should result from parsing testBlob
 testBlobIndexEntries :: [IndexEntry]
 testBlobIndexEntries =
   [ IndexEntry
+      { info = EntryInfo{tag = 100, tagType = 8, offset = 0, count = 1}
+      , entryLength = 2
+      , entryData = BLS.pack [67, 0]
+      }
+  , IndexEntry
       { info = EntryInfo{tag = 1000, tagType = 6, offset = 2, count = 1}
       , entryLength = 7
-      , rdLen = 0
       , entryData = BLS.pack [108, 105, 98, 103, 99, 99, 0]
       }
   , IndexEntry
-      { info = EntryInfo{tag = 1004, tagType = 9, offset = 23, count = 1}
-      , entryLength = 38
-      , rdLen = 0
-      , entryData = BLS.pack [71, 67, 67, 32, 118, 101, 114, 115, 105, 111, 110, 32, 49, 49, 32, 115, 104, 97, 114, 101, 100, 32, 115, 117, 112, 112, 111, 114, 116, 32, 108, 105, 98, 114, 97, 114, 121, 0]
+      { info = EntryInfo{tag = 1001, tagType = 6, offset = 9, count = 1}
+      , entryLength = 7
+      , entryData = BLS.pack [49, 49, 46, 50, 46, 49, 0]
       }
   ]
 
@@ -57,35 +59,35 @@ spec = fcontext "" $ do
 
 dataLengthSpec :: Spec
 dataLengthSpec =
-  fdescribe "dataLength" $ do
-  context "rpm string type" $ do
-    it "Fails for strings with too large of a count" $
-      calcDataLength "" rpmStringType 2 0 0 `shouldBe` Left "count for string == 2 it should == 1."
-    it "Fails if start > dataEnd" $
-      calcDataLength "" rpmStringType 1 1 0 `shouldBe` Left "String start (1) >= end (0)"
-    it "Calculates string lengths from the beginning of the buffer" $
+  describe "dataLength" $ do
+    context "rpm string type" $ do
+      it "Fails for strings with too large of a count" $
+        calcDataLength "" rpmStringType 2 0 0 `shouldBe` Left "count for string == 2 it should == 1."
+      it "Fails if start > dataEnd" $
+        calcDataLength "" rpmStringType 1 1 0 `shouldBe` Left "String start (1) >= end (0)"
+      it "Calculates string lengths from the beginning of the buffer" $
         calcDataLength strData rpmStringType 1 0 7 `shouldBe` Right 3
-    it "Calculates string lengths when start > 0" $
-      calcDataLength strData rpmStringType 1 3 7`shouldBe` Right 4
-  context "rpm string array type" $
-    it "calculates length when count > 1" $
-    calcDataLength strData rpmStringArrayType 2 0 7 `shouldBe` Right 7
-  context "rpm i18nstring type" $
-    it "calculates length when count > 1" $
-    calcDataLength strData rpmI18NstringType 2 0 7 `shouldBe` Right 7
-  context "rpm other types" $ do
-    it "Fails on nonexistent type" $
-      calcDataLength "" 255 0 0 0 `shouldBe` Left "Nonexistent typesize: 255"
-    it "calculates length of an int64" $
-      calcDataLength "" rpmInt64Type 2 0 0 `shouldBe` Right 16
-    it "calculates length of an int64" $
-      calcDataLength "" rpmInt64Type 2 0 0 `shouldBe` Right 16
+      it "Calculates string lengths when start > 0" $
+        calcDataLength strData rpmStringType 1 3 7 `shouldBe` Right 4
+    context "rpm string array type" $
+      it "calculates length when count > 1" $
+        calcDataLength strData rpmStringArrayType 2 0 7 `shouldBe` Right 7
+    context "rpm i18nstring type" $
+      it "calculates length when count > 1" $
+        calcDataLength strData rpmI18NstringType 2 0 7 `shouldBe` Right 7
+    context "rpm other types" $ do
+      it "Fails on nonexistent type" $
+        calcDataLength "" 255 0 0 0 `shouldBe` Left "Nonexistent typesize: 255"
+      it "calculates length of an int64" $
+        calcDataLength "" rpmInt64Type 2 0 0 `shouldBe` Right 16
+      it "calculates length of an int64" $
+        calcDataLength "" rpmInt64Type 2 0 0 `shouldBe` Right 16
   where
     strData =
       BLS.pack
-        [99
+        [ 99
         , 67
-        , 0 
+        , 0
         , 99
         , 103
         , 104
@@ -97,8 +99,13 @@ headerBlobImportSpec :: BLS.ByteString -> Spec
 headerBlobImportSpec bs = do
   blob <- runIO . pure $ fromRight (error "RPM blob read failure") (headerBlobInit bs)
   describe "headerBlobImport" $ do
+    -- note that this test will be wrong after implementing the "dribble", dribble entries
+    -- get put into the index entry list before the initial ones.
+    -- I think I can change it to `shouldContain` to test for some non-dribble entries.
+    -- Alternatively, there is only one non-dribble entry for this test case so we
+    -- can drop then compare.
     it "Reads index entries from a non-dribble header blob" $ do
-      hdrblobImport blob bs `shouldBe` Right testBlobIndexEntries
+      take 3 <$> hdrblobImport blob bs `shouldBe` Right testBlobIndexEntries
 
 -- blobData should be read in from pkg_blob.bin.
 headerBlobVerifyRegionSpec :: BLS.ByteString -> Spec
