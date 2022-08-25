@@ -91,7 +91,7 @@ jobs:
       - name: json-syntax-check
         uses: limitusus/json-syntax-check@v1
         with:
-          pattern: "\\.schema.json$"
+          pattern: "docs.*\\.schema\\.json$"
 
   common-verbiage-check:
     name: "Check for correct spelling of FOSSA"
