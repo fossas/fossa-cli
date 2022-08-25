@@ -12,6 +12,7 @@
                 },
                 "type": {
                     "enum": [
+                        "bower",
                         "cargo",
                         "carthage",
                         "composer",

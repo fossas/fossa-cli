@@ -42,6 +42,7 @@ Supported dependency types:
 - `paket` - .NET dependencies found at [fsprojects.github.io/Paket/](https://fsprojects.github.io/Paket/).
 - `pub` - Dart dependencies found at [pub.dev](https://www.pub.dev/).
 - `pypi` - Python dependencies that are typically found at [Pypi.org](https://pypi.org/).
+- `swift` - Swift dependencies using the [Swift Package Manager](https://www.swift.org/package-manager/).
 - `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
 - `url` - The URL type allows you to specify only the download location of an archive (e.g.: `.zip`, .`tar.gz`, etc.) in the `name` field and the FOSSA backend will attempt to download and scan it. Example for a github source dependency `https://github.com/fossas/spectrometer/archive/refs/tags/v2.7.2.tar.gz`. The `version` field will be silently ignored for `url` type dependencies.
 
