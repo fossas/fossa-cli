@@ -9,7 +9,7 @@ use read::{value::Value, EntryReader};
 use stable_eyre::{eyre::Context, Result};
 
 pub mod metadata;
-mod read;
+pub mod read;
 
 pub struct BerkeleyDB {
     file: BufReader<File>,

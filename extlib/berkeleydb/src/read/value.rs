@@ -1,4 +1,4 @@
-use std::io::{Cursor, Read, Seek, SeekFrom};
+use std::io::{Read, Seek, SeekFrom};
 
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use stable_eyre::{
@@ -11,6 +11,7 @@ use crate::{
     read_n_dyn,
 };
 
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct Value(Vec<u8>);
 
 impl Value {
@@ -38,7 +39,13 @@ impl Value {
             bail!("unsupported page type: {page_type}");
         }
 
-        let entry = Entry::parse::<E>(&mut Cursor::new(page)).context("parse entry")?;
+        let entry_data = page
+            .iter()
+            .skip(index)
+            .take(Entry::SIZE)
+            .cloned()
+            .collect::<Vec<_>>();
+        let entry = Entry::parse::<E>(&mut entry_data.as_slice()).context("parse entry")?;
 
         let mut hash_value = Vec::new();
         let mut current_page_no = entry.page_no();
@@ -49,23 +56,22 @@ impl Value {
 
             let page_size = page_size.try_into().context("convert page size")?;
             let page = read_n_dyn(db, page_size).context("read page from file")?;
-            let page = page.as_slice();
 
-            let header = Header::parse::<E>(&mut Cursor::new(page)).context("parse header")?;
+            let header = Header::parse::<E>(&mut page.as_slice()).context("parse header")?;
             if header.page_type() != Self::OVERFLOW_PAGE_TYPE {
                 current_page_no = header.next_page_no();
                 continue;
             }
 
-            if header.next_page_no() == 0 {
+            if header.has_next_page() {
+                hash_value.extend(page.iter().skip(Header::SIZE).cloned());
+            } else {
                 hash_value.extend(
                     page.iter()
                         .skip(Header::SIZE)
                         .take(header.free_area_offset().into())
                         .cloned(),
                 );
-            } else {
-                hash_value.extend(page.iter().skip(Header::SIZE).cloned());
             }
 
             current_page_no = header.next_page_no();

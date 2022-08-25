@@ -19,6 +19,8 @@ pub struct Entry {
 }
 
 impl Entry {
+    pub const SIZE: usize = 12;
+
     /// Read [`Self`] out of a file in plain byte order.
     pub fn parse<E: ByteOrder>(r: &mut impl Read) -> Result<Self> {
         Ok(Self {

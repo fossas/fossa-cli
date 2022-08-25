@@ -54,4 +54,9 @@ impl Header {
     pub fn should_skip(&self) -> bool {
         self.page_type != Self::UNSORTED_PAGE_TYPE && self.page_type != Self::SORTED_PAGE_TYPE
     }
+
+    /// Whether the header has a next page.
+    pub fn has_next_page(&self) -> bool {
+        self.next_page_no != 0
+    }
 }

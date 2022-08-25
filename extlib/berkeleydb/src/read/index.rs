@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::{io::Read, vec};
 
 use byteorder::{BigEndian, ByteOrder, LittleEndian, ReadBytesExt};
 use stable_eyre::{
@@ -51,12 +51,18 @@ impl Index {
         }
     }
 
-    pub fn into_iter(self) -> impl Iterator<Item = u16> {
-        self.0.into_iter()
-    }
-
     fn size(entries: usize) -> usize {
         entries * Self::ENTRY_SIZE
+    }
+}
+
+impl IntoIterator for Index {
+    type Item = u16;
+
+    type IntoIter = vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 
