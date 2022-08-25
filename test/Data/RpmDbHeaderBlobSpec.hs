@@ -1,7 +1,7 @@
 module Data.RpmDbHeaderBlobSpec (spec) where
 
 import Data.ByteString.Lazy qualified as BLS
-import Data.Either (fromRight)
+import Data.Either (fromRight, isRight)
 import Data.Int (Int32)
 import Data.List (isSuffixOf)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -44,6 +44,17 @@ import Test.Hspec (
  )
 import Text.Printf (printf)
 
+spec :: Spec
+spec = fcontext "RPM header blob parsing" $ do
+  testBlob' <- runIO $ BLS.readFile testBlob
+  headerBlobErrSpec
+  headerBlobSpec testBlob'
+  headerBlobVerifyRegionSpec testBlob'
+  headerBlobImportSpec testBlob'
+  dataLengthSpec
+  readPackageSpec
+
+
 -- This blob was output from an rpm sqlite db. The parts of the format
 -- that we are interested in are documented in src/Data/Rpm/DbHeaderBlob.hs.
 -- It's easiest to follow along using a hex editor, such as hexl or hex-fiend.
@@ -71,26 +82,42 @@ testBlobIndexEntries =
       }
   ]
 
-spec :: Spec
-spec = fcontext "" $ do
-  testBlob' <- runIO $ BLS.readFile testBlob
-  headerBlobErrSpec
-  headerBlobSpec testBlob'
-  headerBlobVerifyRegionSpec testBlob'
-  headerBlobImportSpec testBlob'
-  dataLengthSpec
-  readPackageSpec testBlob'
+readPackageSpec :: Spec
+readPackageSpec = do
+  ubi8Which <- runIO $ BLS.readFile "test/Data/test_data/ubi8-which2.21-17.el8-s390x.bin"
+  centos5Vim <- runIO $ BLS.readFile "test/Data/test_data/centos5-vim-minimal-7.0.109-7.2.el5-x86_64.bin"
+  sle15LibNCurses <- runIO $ BLS.readFile "test/Data/test_data/suse15-libncurses6-6.1-5.9.1-x86_64.bin"
 
-readPackageSpec :: BLS.ByteString -> Spec
-readPackageSpec testBlob' =
-  describe "read package data" $
-    it "Reads package info out of a test blob" $
-      readPackageInfo testBlob'
+  describe "read package data" $ do
+
+    it "Reads big-endian bdb package: ubi8 Which" $
+      readPackageInfo ubi8Which
         `shouldBe` Right
           PkgInfo
-            { pkgName = "libgcc"
-            , pkgVersion = "11.2.1"
-            , pkgRelease = "1.fc35"
+            { pkgName = "which"
+            , pkgVersion = "2.21"
+            , pkgRelease = "17.el8"
+            , pkgArch = "s390x"
+            }
+
+    it "Reads little-endian bdb package: centos5 Vim" $
+      readPackageInfo centos5Vim
+        `shouldBe` Right
+          PkgInfo
+            { pkgName = "vim-minimal"
+            , pkgVersion = "7.0.109"
+            , pkgRelease = "7.2.el5"
+            , pkgArch = "x86_64"
+            }
+
+    it "Reads ndb package: suse15 libncurses6" $
+      readPackageInfo sle15LibNCurses
+        `shouldBe` Right
+          PkgInfo
+            { pkgName = "libncurses6"
+            , pkgVersion = "6.1"
+            , pkgRelease = "5.9.1"
+            , pkgArch = "x86_64"
             }
 
 dataLengthSpec :: Spec
@@ -135,14 +162,8 @@ headerBlobImportSpec :: BLS.ByteString -> Spec
 headerBlobImportSpec bs = do
   let blob = fromRight (error "RPM blob read failure") (headerBlobInit bs)
   describe "headerBlobImport" $ do
-    -- note that this test will be wrong after implementing the "dribble", dribble entries
-    -- get put into the index entry list before the initial ones.
-    -- I think I can change it to `shouldContain` to test for some non-dribble entries.
-    -- Alternatively, there is only one non-dribble entry for this test case so we
-    -- can drop then compare.
     it "Reads index entries from a non-dribble header blob" $ do
       let indexEntries = fromRight [] $ hdrblobImport blob bs
-      traceM $ printf "Found these with tag 1001: %s" $ show (filter (\i -> (tag . info $ i) == 1001) indexEntries)
       testBlobIndexEntries `shouldExistIn` indexEntries
   where
     shouldExistIn :: (Ord a, Show a) => [a] -> [a] -> Expectation
@@ -271,6 +292,16 @@ headerBlobSpec bs = describe "header blob parsing" $ do
                               , count = 0x1
                               }
                           ]
+
+    it "Reads package info out of a test blob from sqlite" $
+      readPackageInfo bs
+        `shouldBe` Right
+          PkgInfo
+            { pkgName = "libgcc"
+            , pkgVersion = "11.2.1"
+            , pkgRelease = "1.fc35"
+            , pkgArch = "x86_64"
+            }
 
 headerBlobErrSpec :: Spec
 headerBlobErrSpec =

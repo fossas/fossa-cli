@@ -94,16 +94,16 @@ regionTagType = 7
 typeSizes :: V.Vector Int32
 typeSizes =
   V.fromList
-    [ 0 -- !< RPM_NULL_TYPE
-    , 1 -- !< RPM_CHAR_TYPE
-    , 1 -- !< RPM_INT8_TYPE
-    , 2 -- !< RPM_INT16_TYPE
-    , 4 -- !< RPM_INT32_TYPE
-    , 8 -- !< RPM_INT64_TYPE
-    , -1 -- !< RPM_STRING_TYPE
-    , 1 -- !< RPM_BIN_TYPE
-    , -1 -- !< RPM_STRING_ARRAY_TYPE
-    , -1 -- !< RPM_I18NSTRING_TYPE
+    [ 0 -- RPM_NULL_TYPE
+    , 1 -- RPM_CHAR_TYPE
+    , 1 -- RPM_INT8_TYPE
+    , 2 -- RPM_INT16_TYPE
+    , 4 -- RPM_INT32_TYPE
+    , 8 -- RPM_INT64_TYPE
+    , -1 -- RPM_STRING_TYPE
+    , 1 -- RPM_BIN_TYPE
+    , -1 -- RPM_STRING_ARRAY_TYPE
+    , -1 -- RPM_I18NSTRING_TYPE
     , 0
     , 0
     , 0
@@ -461,6 +461,7 @@ data PkgInfo = PkgInfo
   { pkgName :: Text
   , pkgVersion :: Text
   , pkgRelease :: Text
+  , pkgArch :: Text
   }
   deriving (Eq, Ord, Show)
 
@@ -473,11 +474,15 @@ rpmtagVersion = 1001 -- string
 rpmtagRelease :: Int
 rpmtagRelease = 1002 -- string
 
+rpmtagArch :: Int
+rpmtagArch = 1022 -- string
+
 getNEVRA :: [IndexEntry] -> Either String PkgInfo
 getNEVRA ies = do
   pkgName <- readTag rpmtagName
   pkgVersion <- readTag rpmtagVersion
   pkgRelease <- readTag rpmtagRelease
+  pkgArch <- readTag rpmtagArch
   Right PkgInfo{..}
   where
     tagMap =
