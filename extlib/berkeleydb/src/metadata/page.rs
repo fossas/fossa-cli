@@ -1,12 +1,19 @@
+use getset::{CopyGetters, Getters};
 use stable_eyre::{eyre::Context, Result};
+use typed_builder::TypedBuilder;
 
 use super::{Generic, Hash};
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq, Getters, CopyGetters, TypedBuilder)]
 pub struct Page {
-    pub generic: Generic,
-    pub hash: Hash,
-    pub big_endian: bool,
+    #[get = "pub"]
+    generic: Generic,
+
+    #[get = "pub"]
+    hash: Hash,
+
+    #[get_copy = "pub"]
+    big_endian: bool,
 }
 
 impl Page {

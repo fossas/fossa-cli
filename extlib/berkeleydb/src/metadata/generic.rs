@@ -1,17 +1,24 @@
-use std::io::Read;
+use std::{collections::HashSet, io::Read};
 
 use byteorder::ReadBytesExt;
+use getset::CopyGetters;
 use stable_eyre::{eyre::bail, Result};
 
-use super::{
-    shared::{
-        read_n, valid_page_sizes, HASH_MAGIC_NUMBER, HASH_METADATA_PAGE_TYPE,
-        NO_ENCRYPTION_ALGORITHM,
-    },
-    HASH_MAGIC_NUMBER_BE,
-};
+use crate::read_n;
 
-#[derive(Debug, Default, PartialEq, Eq)]
+const HASH_MAGIC_NUMBER_BE: u32 = 0x61150600;
+const HASH_MAGIC_NUMBER: u32 = 0x00061561;
+
+const HASH_METADATA_PAGE_TYPE: u8 = 8;
+
+const NO_ENCRYPTION_ALGORITHM: u8 = 0;
+
+fn valid_page_sizes() -> HashSet<u32> {
+    HashSet::from([512, 1024, 2048, 4096, 8192, 16384, 32768, 65536])
+}
+
+#[derive(Debug, Default, PartialEq, Eq, CopyGetters)]
+#[get_copy = "pub"]
 pub struct Generic {
     lsn: [u8; 8],
     page_no: u32,
@@ -32,6 +39,7 @@ pub struct Generic {
 }
 
 impl Generic {
+    /// Read [`Self`] out of a file in plain byte order.
     pub fn parse<E: byteorder::ByteOrder>(r: &mut impl Read) -> Result<Self> {
         Ok(Self {
             lsn: read_n(r)?,
