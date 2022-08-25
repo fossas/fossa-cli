@@ -94,4 +94,8 @@ impl Value {
             Self::parse::<LittleEndian, F>(db, page, index, page_size)
         }
     }
+
+    pub fn into_inner(self) -> Vec<u8> {
+        self.0
+    }
 }
