@@ -1,7 +1,7 @@
 module Data.RpmDbHeaderBlobSpec (spec) where
 
 import Data.ByteString.Lazy qualified as BLS
-import Data.Either (fromRight, isRight)
+import Data.Either (fromRight)
 import Data.Int (Int32)
 import Data.List (isSuffixOf)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -27,14 +27,12 @@ import Data.Rpm.DbHeaderBlob (
   rpmTagHeaderImg,
  )
 import Data.Set qualified as Set
-import Debug.Trace (traceM)
 import Test.Hspec (
   Expectation,
   Spec,
   context,
   describe,
   expectationFailure,
-  fcontext,
   it,
   runIO,
   shouldBe,
@@ -44,7 +42,7 @@ import Test.Hspec (
  )
 
 spec :: Spec
-spec = fcontext "RPM header blob parsing" $ do
+spec = context "RPM header blob parsing" $ do
   testBlob' <- runIO $ BLS.readFile testBlob
   headerBlobErrSpec
   headerBlobSpec testBlob'
@@ -316,9 +314,12 @@ headerBlobErrSpec =
     let checkErr (size, offset) suffix res =
           case res of
             Left (size', offset', errStr) ->
-              size' == size
-                && offset' == offset
-                && suffix `isSuffixOf` errStr
+              size'
+                == size
+                && offset'
+                == offset
+                && suffix
+                `isSuffixOf` errStr
             _ -> False
 
     it "Should report failure when parsing nonexistent index length" $
