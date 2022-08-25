@@ -42,7 +42,6 @@ import Test.Hspec (
   shouldMatchList,
   shouldSatisfy,
  )
-import Text.Printf (printf)
 
 spec :: Spec
 spec = fcontext "RPM header blob parsing" $ do
@@ -53,7 +52,6 @@ spec = fcontext "RPM header blob parsing" $ do
   headerBlobImportSpec testBlob'
   dataLengthSpec
   readPackageSpec
-
 
 -- This blob was output from an rpm sqlite db. The parts of the format
 -- that we are interested in are documented in src/Data/Rpm/DbHeaderBlob.hs.
@@ -87,9 +85,9 @@ readPackageSpec = do
   ubi8Which <- runIO $ BLS.readFile "test/Data/test_data/ubi8-which2.21-17.el8-s390x.bin"
   centos5Vim <- runIO $ BLS.readFile "test/Data/test_data/centos5-vim-minimal-7.0.109-7.2.el5-x86_64.bin"
   sle15LibNCurses <- runIO $ BLS.readFile "test/Data/test_data/suse15-libncurses6-6.1-5.9.1-x86_64.bin"
+  v3HeaderCentos6 <- runIO $ BLS.readFile "test/Data/test_data/centos6-devtools-gpg-pubkey-c105b9de-4e0fd3a3.bin"
 
   describe "read package data" $ do
-
     it "Reads big-endian bdb package: ubi8 Which" $
       readPackageInfo ubi8Which
         `shouldBe` Right
@@ -97,7 +95,7 @@ readPackageSpec = do
             { pkgName = "which"
             , pkgVersion = "2.21"
             , pkgRelease = "17.el8"
-            , pkgArch = "s390x"
+            , pkgArch = Just "s390x"
             }
 
     it "Reads little-endian bdb package: centos5 Vim" $
@@ -107,7 +105,7 @@ readPackageSpec = do
             { pkgName = "vim-minimal"
             , pkgVersion = "7.0.109"
             , pkgRelease = "7.2.el5"
-            , pkgArch = "x86_64"
+            , pkgArch = Just "x86_64"
             }
 
     it "Reads ndb package: suse15 libncurses6" $
@@ -117,8 +115,18 @@ readPackageSpec = do
             { pkgName = "libncurses6"
             , pkgVersion = "6.1"
             , pkgRelease = "5.9.1"
-            , pkgArch = "x86_64"
+            , pkgArch = Just "x86_64"
             }
+
+  it "Reads package blob with a v3 header centos6-devtools gpg pubkey" $ do
+    readPackageInfo v3HeaderCentos6
+      `shouldBe` Right
+        PkgInfo
+          { pkgName = "gpg-pubkey"
+          , pkgVersion = "c105b9de"
+          , pkgRelease = "4e0fd3a3"
+          , pkgArch = Nothing
+          }
 
 dataLengthSpec :: Spec
 dataLengthSpec =
@@ -171,7 +179,6 @@ headerBlobImportSpec bs = do
       let a' = Set.fromList a
        in (a' `Set.intersection` Set.fromList b) `shouldBe` a'
 
--- blobData should be read in from pkg_blob.bin.
 headerBlobVerifyRegionSpec :: BLS.ByteString -> Spec
 headerBlobVerifyRegionSpec blobData = do
   describe "headerBlobVerifyRegion" $ do
@@ -300,7 +307,7 @@ headerBlobSpec bs = describe "header blob parsing" $ do
             { pkgName = "libgcc"
             , pkgVersion = "11.2.1"
             , pkgRelease = "1.fc35"
-            , pkgArch = "x86_64"
+            , pkgArch = Just "x86_64"
             }
 
 headerBlobErrSpec :: Spec

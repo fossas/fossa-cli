@@ -42,7 +42,6 @@ import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Vector qualified as V
 import Data.Word (Word32)
-import Debug.Trace (traceM, traceShowM)
 import Text.Printf (printf)
 
 -- Constants from
@@ -112,25 +111,31 @@ typeSizes =
     , 0
     ]
 
--- A package blob is laid out like this:
+-- A package header blob is contains these data:
 --
 -- Blob:
 -- indexLength - int32
 -- dataLength - int32
 -- entryInfo region - indexLength * 128 bits (indexLength entry infos)
+-- IndexEntries
+--
 --
 -- entryInfo:
 -- tag - int32
 -- tagType - uint32
 -- offset - int32
 -- count - uint32
+--
+-- Entry infos point to an area in the blob offset from the beginning which
+-- contain count bytes of data. The data is interpreted according to the
+-- type stored in the corresponding entryInfo.
 
 data HeaderBlob = HeaderBlob
   { indexLength :: Int32
   , dataLength :: Int32
   , dataStart :: Int32
   , dataEnd :: Int32
-  , pvLength :: Int32 -- I do not know what this is
+  , pvLength :: Int32
   , entryInfos :: NonEmpty EntryInfo
   , regionDataLength :: Int32
   , regionIndexLength :: Int32
@@ -144,33 +149,6 @@ data EntryInfo = EntryInfo
   , count :: Word32
   }
   deriving (Show, Ord, Eq)
-
--- data BlobParseError
---   = IndexLength
---   | DataLength
-
--- data BlobParseContext = BlobParseContext
---   { byteString :: BLS.ByteString
---   , offset :: ByteOffset
---   , error :: BlobParseError
---   }
-
--- -- This might raise an error, but is never meant to be used outside this module.
--- strToError :: String -> BlobParseError
--- strToError = \case
---   "indexLen" -> IndexLength
---   "dataLen" -> DataLength
---   _ -> Prelude.error "strToError should not be used outside its module. This error indicates a bug in Data.Rpm.DbHeaderBlob."
-
--- data BlobInitErr
---   = Parse (BLS.ByteString, ByteOffset, String)
---   | IndexLength
---   deriving (Eq)
-
--- instance Show BlobInitErr where
---   show (Parse t) = "Parse " <> show t
---   -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L120
---   show IndexLength = "Index length too small"
 
 -- Inspired by https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L105
 headerBlobInit :: BLS.ByteString -> Either (BLS.ByteString, ByteOffset, String) HeaderBlob
@@ -226,10 +204,8 @@ emptyRegionInfo =
     , rIl = 0
     }
 
--- -- This is inspired by hdrblobVerifyRegion:
--- -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L263 In the
--- -- interest of getting an MVP done quickly, this currently doesn't do
--- -- verification, it just calculates any data that future processes might need.
+-- This is inspired by hdrblobVerifyRegion:
+-- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L263
 hdrblobVerifyRegion :: NonEmpty.NonEmpty EntryInfo -> Int32 -> Int32 -> BLS.ByteString -> Either String RegionInfo
 hdrblobVerifyRegion entryInfos dataLength dataStart blobData = do
   let EntryInfo{..} = NonEmpty.head entryInfos
@@ -243,9 +219,7 @@ hdrblobVerifyRegion entryInfos dataLength dataStart blobData = do
           else 0
 
   if regionTag == 0
-    then -- go defaults numbers to 0, so I think the effect of bailing out early in
-    -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L276
-    -- is to have all region information be 0.
+    then -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L276
       pure emptyRegionInfo
     else do
       unless (tagType == regionTagType && count == fromIntegral regionTagCount) $
@@ -284,29 +258,27 @@ data IndexEntry = IndexEntry
   }
   deriving (Eq, Ord, Show)
 
--- it looks like we have the first few region info in headerblob correct,
--- next make sure we're passing the right things to region swab as in the go code
-
+-- Inspired by https://github.com/knqyf263/go-rpmdb/blob/a9e3110d8ee1fd3b0798a7abe8c59230bd265cd3/pkg/entry.go#L150
 hdrblobImport :: HeaderBlob -> BLS.ByteString -> Either String [IndexEntry]
 hdrblobImport HeaderBlob{..} bs = do
   let firstEntry = NonEmpty.head entryInfos
-  traceM $ printf "entryinfos with tag 1001: %s" $ show (NonEmpty.filter (\i -> tag i == 1001) entryInfos)
+
   if tag firstEntry >= rpmTagHeaderI18nTable
-    then Left "Not implemented yet"
+    then -- v3 entries, these seem to be uncommon
+
+      bimap
+        (printf "Failed to parse legacy index entries: %s")
+        fst
+        (regionSwab bs (NonEmpty.toList entryInfos) dataStart dataEnd 0)
     else do
-      traceM $ printf "First few entryInfo %s " $ show (NonEmpty.take 4 entryInfos)
+      -- v4 entries
       let regionIndexLength' = if offset firstEntry == 0 then indexLength else regionIndexLength
-      traceM $ printf "regionIndexLen' %d" regionIndexLength'
       (indexEntries, ieReadLen) <- regionSwab bs (subList 1 regionIndexLength' entryInfos) dataStart dataEnd 0
-      traceM $ printf "initial read len %d" ieReadLen
-      traceM $ printf "blob dl %d" dataLength
 
       (allEntries, dataLenWithDribble) <-
         if fromIntegral regionIndexLength' < length entryInfos
           then calculateDribbleEntries indexEntries regionIndexLength' ieReadLen
           else Right (indexEntries, ieReadLen)
-
-      traceM $ printf "Data len with dribble %d" dataLenWithDribble
 
       let totalLen = dataLenWithDribble + regionTagCount
       if totalLen /= dataLength
@@ -319,7 +291,6 @@ hdrblobImport HeaderBlob{..} bs = do
     calculateDribbleEntries :: [IndexEntry] -> Int32 -> Int32 -> Either String ([IndexEntry], Int32)
     calculateDribbleEntries indexEntries ril startDataLength = do
       let dribbleInfos = NonEmpty.drop (fromIntegral ril) entryInfos
-      traceM $ printf "First dribble info %s" (show . head $ dribbleInfos)
       (dribbleEntries, ieReadLen) <- regionSwab bs dribbleInfos dataStart dataEnd startDataLength
       if ieReadLen < 0
         then Left "invalid length of dribble entries"
@@ -339,28 +310,18 @@ maybeToEither b Nothing = Left b
 -- Returns a list of index entries that were read as well as their length in bytes
 regionSwab :: BLS.ByteString -> [EntryInfo] -> Int32 -> Int32 -> Int32 -> Either String ([IndexEntry], Int32)
 regionSwab bs entryInfos dataStart dataEnd startDataLength = do
-  traceShowM $ "first entryInfo" <> show (head entryInfos)
-  traceShowM $ "start " <> show dataStart
-  traceShowM $ "end " <> show dataEnd
-  traceM $ printf "last entryInfo %s" (show . last $ entryInfos)
-  traceM $ printf "Start swab dl %d" startDataLength
   foldM calcIndexEntry ([], startDataLength) (zip [0 ..] entryInfos)
   where
     calcIndexEntry (entries, runningDataLength) (idx, entryInfo) = do
-      when (tag entryInfo == 1001) $
-        traceM "Found 1001 tag!"
       newIdxEntry <- swabEntry idx entryInfo
-      -- traceM $ printf "entering alignDiff %d %d" (tagType entryInfo) runningDataLength
       alignDifference <- alignDiff (tagType entryInfo) runningDataLength
       let rdl = alignDifference + runningDataLength + entryLength newIdxEntry
       Right (newIdxEntry : entries, rdl)
 
     alignDiff :: Word32 -> Int32 -> Either String Int32
     alignDiff ty alignSize = do
-      traceM $ printf "Aligning with %d and %d" ty alignSize
       tSize <- maybeToEither ("aligning diff: tag type " <> show ty <> " is invalid") (typeSizes V.!? fromIntegral ty)
       let diff = tSize - (alignSize `mod` tSize)
-      traceM $ printf "diff %d" diff
       if tSize > 1 && diff /= tSize
         then Right diff
         else Right 0
@@ -376,6 +337,7 @@ regionSwab bs entryInfos dataStart dataEnd startDataLength = do
       let currOffset = offset info
       let start = dataStart + currOffset
       let tType = tagType info
+
       entryLength <-
         do
           typeSize <- maybeToEither ("No such type size: " <> show tType) (typeSizes V.!? fromIntegral tType)
@@ -393,7 +355,7 @@ regionSwab bs entryInfos dataStart dataEnd startDataLength = do
 
       let end = start + entryLength
       if (start >= dataEnd)
-        then Left "invalid data offset"
+        then do Left "invalid data offset"
         else
           Right
             IndexEntry
@@ -435,9 +397,6 @@ calcDataLength bs ty count start dataEnd
 bsSubString :: Int32 -> Int32 -> BLS.ByteString -> BLS.ByteString
 bsSubString start end = BLS.take (fromIntegral $ end - start) . BLS.drop (fromIntegral start)
 
--- TODO: Should I keep processing even if one of these fails to read?
--- Since they're just lined up next to each other a failure to read in one
--- place likely means we've gone too far off the rails anyways.
 readEntries :: Int32 -> Get (NonEmpty EntryInfo)
 readEntries indexLength =
   liftA2 (:|) readEntry $ replicateM (fromIntegral (indexLength - 1)) readEntry
@@ -461,7 +420,7 @@ data PkgInfo = PkgInfo
   { pkgName :: Text
   , pkgVersion :: Text
   , pkgRelease :: Text
-  , pkgArch :: Text
+  , pkgArch :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -477,13 +436,13 @@ rpmtagRelease = 1002 -- string
 rpmtagArch :: Int
 rpmtagArch = 1022 -- string
 
-getNEVRA :: [IndexEntry] -> Either String PkgInfo
-getNEVRA ies = do
-  pkgName <- readTag rpmtagName
-  pkgVersion <- readTag rpmtagVersion
-  pkgRelease <- readTag rpmtagRelease
-  pkgArch <- readTag rpmtagArch
-  Right PkgInfo{..}
+getPkgInfo :: [IndexEntry] -> Either String PkgInfo
+getPkgInfo ies =
+  PkgInfo
+    <$> readTag rpmtagName
+    <*> readTag rpmtagVersion
+    <*> readTag rpmtagRelease
+    <*> Right (readOptionalTag rpmtagArch)
   where
     tagMap =
       fmap convertIndexEntryData
@@ -493,10 +452,13 @@ getNEVRA ies = do
 
     readTag :: Int -> Either String Text
     readTag tag =
-      maybeToEither (printf "Failed to read tag %d" tag)
+      maybeToEither (printf "Failed to read required tag %d" tag)
         . join
         . Map.lookup tag
         $ tagMap
+
+    readOptionalTag :: Int -> Maybe Text
+    readOptionalTag tag = join $ Map.lookup tag tagMap
 
 convertIndexEntryData :: IndexEntry -> Maybe Text
 convertIndexEntryData ie =
@@ -519,4 +481,4 @@ readPackageInfo :: BLS.ByteString -> Either String PkgInfo
 readPackageInfo bs = do
   blob <- first (\(_, _, s) -> s) $ headerBlobInit bs
   ies <- hdrblobImport blob bs
-  getNEVRA ies
+  getPkgInfo ies
