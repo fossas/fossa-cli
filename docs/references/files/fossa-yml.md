@@ -17,7 +17,7 @@ project:
   team: cli-team
   policy: custom-cli-policy
   link: fossa.com
-  url: github.com/fossas/spectrometer
+  url: github.com/fossas/fossa-cli
   jiraProjectKey: jira-key
   releaseGroup:
     name: release-group-name
