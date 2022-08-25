@@ -5,9 +5,29 @@ import Data.Either (fromRight)
 import Data.Int (Int32)
 import Data.List (isSuffixOf)
 import Data.List.NonEmpty qualified as NonEmpty
-import Text.Printf(printf)
-import Debug.Trace(traceM)
-import Data.Rpm.DbHeaderBlob (EntryInfo (..), HeaderBlob (..), IndexEntry (..), RegionInfo (..), calcDataLength, emptyRegionInfo, hdrblobImport, hdrblobVerifyRegion, headerBlobInit, regionTagCount, regionTagType, rpmI18NstringType, rpmInt64Type, rpmStringArrayType, rpmStringType, rpmTagHeaderImg, rpmInt32Type)
+import Data.Rpm.DbHeaderBlob (
+  EntryInfo (..),
+  HeaderBlob (..),
+  IndexEntry (..),
+  PkgInfo (..),
+  RegionInfo (..),
+  calcDataLength,
+  emptyRegionInfo,
+  hdrblobImport,
+  hdrblobVerifyRegion,
+  headerBlobInit,
+  readPackageInfo,
+  regionTagCount,
+  regionTagType,
+  rpmI18NstringType,
+  rpmInt32Type,
+  rpmInt64Type,
+  rpmStringArrayType,
+  rpmStringType,
+  rpmTagHeaderImg,
+ )
+import Data.Set qualified as Set
+import Debug.Trace (traceM)
 import Test.Hspec (
   Expectation,
   Spec,
@@ -22,7 +42,7 @@ import Test.Hspec (
   shouldMatchList,
   shouldSatisfy,
  )
-import qualified Data.Set as Set
+import Text.Printf (printf)
 
 -- This blob was output from an rpm sqlite db. The parts of the format
 -- that we are interested in are documented in src/Data/Rpm/DbHeaderBlob.hs.
@@ -59,6 +79,19 @@ spec = fcontext "" $ do
   headerBlobVerifyRegionSpec testBlob'
   headerBlobImportSpec testBlob'
   dataLengthSpec
+  readPackageSpec testBlob'
+
+readPackageSpec :: BLS.ByteString -> Spec
+readPackageSpec testBlob' =
+  describe "read package data" $
+    it "Reads package info out of a test blob" $
+      readPackageInfo testBlob'
+        `shouldBe` Right
+          PkgInfo
+            { pkgName = "libgcc"
+            , pkgVersion = "11.2.1"
+            , pkgRelease = "1.fc35"
+            }
 
 dataLengthSpec :: Spec
 dataLengthSpec =
@@ -108,13 +141,14 @@ headerBlobImportSpec bs = do
     -- Alternatively, there is only one non-dribble entry for this test case so we
     -- can drop then compare.
     it "Reads index entries from a non-dribble header blob" $ do
-      let indexEntries = fromRight [] $ hdrblobImport blob bs 
+      let indexEntries = fromRight [] $ hdrblobImport blob bs
       traceM $ printf "Found these with tag 1001: %s" $ show (filter (\i -> (tag . info $ i) == 1001) indexEntries)
       testBlobIndexEntries `shouldExistIn` indexEntries
-
-  where shouldExistIn :: (Ord a, Show a) => [a] -> [a] -> Expectation
-        shouldExistIn a b = let a' = Set.fromList a in
-          (a' `Set.intersection` Set.fromList b) `shouldBe` a'
+  where
+    shouldExistIn :: (Ord a, Show a) => [a] -> [a] -> Expectation
+    shouldExistIn a b =
+      let a' = Set.fromList a
+       in (a' `Set.intersection` Set.fromList b) `shouldBe` a'
 
 -- blobData should be read in from pkg_blob.bin.
 headerBlobVerifyRegionSpec :: BLS.ByteString -> Spec

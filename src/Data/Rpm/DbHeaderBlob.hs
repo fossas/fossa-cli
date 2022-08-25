@@ -1,11 +1,14 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Data.Rpm.DbHeaderBlob (
-  headerBlobInit,
+  readPackageInfo,
+  PkgInfo (..),
+  -- everything below here is exposed for testing
   HeaderBlob (..),
   EntryInfo (..),
   IndexEntry (..),
   RegionInfo (..),
+  headerBlobInit,
   hdrblobVerifyRegion,
   emptyRegionInfo,
   calcDataLength,
@@ -24,21 +27,23 @@ module Data.Rpm.DbHeaderBlob (
 ) where
 
 import Control.Applicative (liftA2)
-import Control.Monad (foldM, replicateM, unless, when)
-import Data.Bifunctor (bimap)
+import Control.Monad (foldM, join, replicateM, unless, when)
+import Data.Bifunctor (bimap, first)
 import Data.Binary.Get (ByteOffset, Get, getInt32be, getWord32be, label, runGetOrFail)
 import Data.Bits ((.&.))
+import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BLS
-import Data.Foldable (foldrM)
+import Data.Char (ord)
 import Data.Int (Int32)
 import Data.IntMap qualified as Map
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.String.Conversion (decodeUtf8)
+import Data.Text (Text)
 import Data.Vector qualified as V
 import Data.Word (Word32)
 import Debug.Trace (traceM, traceShowM)
 import Text.Printf (printf)
-import Data.List (findIndices)
 
 -- Constants from
 -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/rpmtags.go#L3
@@ -451,3 +456,62 @@ readEntry =
     <*> label "Read type" getWord32be
     <*> label "Read offset" getInt32be
     <*> label "Read count" getWord32be
+
+data PkgInfo = PkgInfo
+  { pkgName :: Text
+  , pkgVersion :: Text
+  , pkgRelease :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+rpmtagName :: Int
+rpmtagName = 1000 -- string
+
+rpmtagVersion :: Int
+rpmtagVersion = 1001 -- string
+
+rpmtagRelease :: Int
+rpmtagRelease = 1002 -- string
+
+getNEVRA :: [IndexEntry] -> Either String PkgInfo
+getNEVRA ies = do
+  pkgName <- readTag rpmtagName
+  pkgVersion <- readTag rpmtagVersion
+  pkgRelease <- readTag rpmtagRelease
+  Right PkgInfo{..}
+  where
+    tagMap =
+      fmap convertIndexEntryData
+        . Map.fromList
+        . map (\i -> (fromIntegral . tag . info $ i, i))
+        $ ies
+
+    readTag :: Int -> Either String Text
+    readTag tag =
+      maybeToEither (printf "Failed to read tag %d" tag)
+        . join
+        . Map.lookup tag
+        $ tagMap
+
+convertIndexEntryData :: IndexEntry -> Maybe Text
+convertIndexEntryData ie =
+  if tagNum == rpmStringType
+    then Just dataAsText
+    else Nothing
+  where
+    eData :: BLS.ByteString
+    eData = entryData ie
+
+    tagNum :: Word32
+    tagNum = tagType . info $ ie
+
+    nullChr = fromIntegral . ord $ '\0'
+
+    dataAsText :: Text
+    dataAsText = decodeUtf8 . BS.dropWhileEnd (== nullChr) . BLS.toStrict $ eData
+
+readPackageInfo :: BLS.ByteString -> Either String PkgInfo
+readPackageInfo bs = do
+  blob <- first (\(_, _, s) -> s) $ headerBlobInit bs
+  ies <- hdrblobImport blob bs
+  getNEVRA ies
