@@ -51,6 +51,7 @@ impl Index {
         }
     }
 
+    /// Given a number of expected entries, returns the total size for all the entries.
     fn size(entries: usize) -> usize {
         entries * Self::ENTRY_SIZE
     }

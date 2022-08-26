@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, ReadBytesExt};
 use getset::CopyGetters;
 use stable_eyre::Result;
 
-use crate::read_n;
+use crate::parse::{read_n, ByteParser};
 
 /// An entry in a page.
 ///
@@ -20,9 +20,13 @@ pub struct Entry {
 
 impl Entry {
     pub const SIZE: usize = 12;
+}
+
+impl ByteParser for Entry {
+    type Output = Self;
 
     /// Read [`Self`] out of a file in plain byte order.
-    pub fn parse<E: ByteOrder>(r: &mut impl Read) -> Result<Self> {
+    fn parse<E: ByteOrder>(r: &mut impl Read) -> Result<Self::Output> {
         Ok(Self {
             page_type: r.read_u8()?,
             _unused: read_n(r)?,

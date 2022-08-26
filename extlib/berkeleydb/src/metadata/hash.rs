@@ -4,6 +4,8 @@ use std::io::Read;
 
 use byteorder::{ByteOrder, ReadBytesExt};
 
+use crate::parse::ByteParser;
+
 #[derive(Debug, Default, PartialEq, Eq, CopyGetters)]
 #[get_copy = "pub"]
 pub struct Hash {
@@ -16,8 +18,16 @@ pub struct Hash {
 }
 
 impl Hash {
+    pub fn validate(&self) -> Result<()> {
+        Ok(())
+    }
+}
+
+impl ByteParser for Hash {
+    type Output = Self;
+
     /// Read [`Self`] out of a file in plain byte order.
-    pub fn parse<E: ByteOrder>(r: &mut impl Read) -> Result<Self> {
+    fn parse<E: ByteOrder>(r: &mut impl Read) -> Result<Self::Output> {
         Ok(Self {
             max_bucket: r.read_u32::<E>()?,
             high_mask: r.read_u32::<E>()?,
@@ -26,9 +36,5 @@ impl Hash {
             num_keys: r.read_u32::<E>()?,
             char_key_hash: r.read_u32::<E>()?,
         })
-    }
-
-    pub fn validate(&self) -> Result<()> {
-        Ok(())
     }
 }

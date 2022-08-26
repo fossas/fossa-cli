@@ -4,7 +4,7 @@ use byteorder::{BigEndian, ByteOrder, LittleEndian, ReadBytesExt};
 use getset::CopyGetters;
 use stable_eyre::Result;
 
-use crate::read_n;
+use crate::parse::read_n;
 
 #[derive(Debug, Default, PartialEq, Eq, CopyGetters)]
 #[get_copy = "pub"]

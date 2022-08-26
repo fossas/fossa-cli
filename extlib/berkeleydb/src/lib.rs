@@ -1,14 +1,15 @@
 use std::{
     fs::File,
-    io::{BufReader, Read, Seek, SeekFrom},
+    io::{BufReader, Seek, SeekFrom},
     path::PathBuf,
 };
 
-use byteorder::{BigEndian, LittleEndian};
-use read::{read_entries, value::Value};
+use metadata::{Generic, Hash};
+use parse::ByteParser;
 use stable_eyre::{eyre::Context, Result};
 
 pub mod metadata;
+mod parse;
 pub mod read;
 
 pub struct BerkeleyDB {
@@ -17,56 +18,21 @@ pub struct BerkeleyDB {
 }
 
 impl BerkeleyDB {
-    pub fn open(path: PathBuf) -> Result<BerkeleyDB> {
-        let file = File::open(&path).wrap_err_with(|| format!("open file at {path:?}"))?;
+    pub fn open(path: &PathBuf) -> Result<BerkeleyDB> {
+        let file = File::open(&path).context("open file")?;
         let mut file = BufReader::new(file);
 
-        let (generic, big_endian) = parse_generic(&mut file).context("parse generic metadata")?;
-        let hash = parse_hash(&mut file, big_endian).context("parse hash metadata")?;
+        let (generic, big_endian) = Generic::parse(&mut file).context("parse generic metadata")?;
+        let hash = Hash::parse_dyn(&mut file, big_endian).context("parse hash metadata")?;
 
         let metadata = metadata::Page::builder()
             .generic(generic)
             .hash(hash)
             .big_endian(big_endian)
             .build();
-        metadata.validate().context("validate page metadata")?;
+        metadata.validate().context("validate metadata")?;
 
         file.seek(SeekFrom::Start(0)).context("seek to start")?;
         Ok(BerkeleyDB { file, metadata })
     }
-
-    pub fn read(self) -> Result<Vec<Value>> {
-        read_entries(self)
-    }
-}
-
-fn parse_generic(file: &mut BufReader<File>) -> Result<(metadata::Generic, bool)> {
-    let generic = metadata::Generic::parse::<LittleEndian>(file).context("little endian")?;
-    if generic.is_big_endian() {
-        file.seek(SeekFrom::Start(0)).context("seek to start")?;
-        let generic = metadata::Generic::parse::<BigEndian>(file).context("big endian")?;
-        Ok((generic, true))
-    } else {
-        Ok((generic, false))
-    }
-}
-
-fn parse_hash(file: &mut BufReader<File>, big_endian: bool) -> Result<metadata::Hash> {
-    if big_endian {
-        metadata::Hash::parse::<BigEndian>(file).context("big endian")
-    } else {
-        metadata::Hash::parse::<LittleEndian>(file).context("little endian")
-    }
-}
-
-pub(crate) fn read_n<const N: usize>(r: &mut impl Read) -> Result<[u8; N]> {
-    let mut buf = [0; N];
-    r.read_exact(&mut buf)?;
-    Ok(buf)
-}
-
-pub(crate) fn slice(r: &mut impl Read, n: usize) -> Result<Vec<u8>> {
-    let mut buf = vec![0; n];
-    r.read_exact(&mut buf)?;
-    Ok(buf)
 }

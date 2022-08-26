@@ -6,7 +6,7 @@ use stable_eyre::{eyre::Context, Result};
 
 #[test]
 fn opens_db() -> Result<()> {
-    let db = BerkeleyDB::open("./testdata/centos5-plain/Packages".into())?;
+    let db = BerkeleyDB::open(&"./testdata/centos5-plain/Packages".into())?;
     let default = Page::default();
     assert_ne!(db.metadata, default);
     Ok(())
@@ -125,7 +125,7 @@ fn reads_ubi8_s390x_expected() -> Result<()> {
 #[track_caller]
 fn assert_reads_nonzero_values(path: impl Into<PathBuf>) -> Result<()> {
     let path = path.into();
-    let db = BerkeleyDB::open(path.join("Packages"))?;
+    let mut db = BerkeleyDB::open(&path.join("Packages"))?;
 
     let default = Value::default();
     let read_values = db
@@ -159,7 +159,7 @@ fn assert_reads_nonzero_values(path: impl Into<PathBuf>) -> Result<()> {
 #[track_caller]
 fn assert_reads_expected(path: impl Into<PathBuf>) -> Result<()> {
     let path = path.into();
-    let db = BerkeleyDB::open(path.join("Packages"))?;
+    let mut db = BerkeleyDB::open(&path.join("Packages"))?;
     let bins_dir = path.join("bins");
     let mut files = fs::read_dir(&bins_dir)?
         .map(|e| e.expect("must read dir"))

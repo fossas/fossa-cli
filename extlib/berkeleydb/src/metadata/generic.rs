@@ -1,10 +1,17 @@
-use std::{collections::HashSet, io::Read};
+use std::{
+    collections::HashSet,
+    io::{Read, Seek, SeekFrom},
+};
 
-use byteorder::ReadBytesExt;
+use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use getset::CopyGetters;
-use stable_eyre::{eyre::bail, Result};
+use serde::Serialize;
+use stable_eyre::{
+    eyre::{bail, Context},
+    Result,
+};
 
-use crate::read_n;
+use crate::parse::read_n;
 
 const HASH_MAGIC_NUMBER_BE: u32 = 0x61150600;
 const HASH_MAGIC_NUMBER: u32 = 0x00061561;
@@ -17,7 +24,7 @@ fn valid_page_sizes() -> HashSet<u32> {
     HashSet::from([512, 1024, 2048, 4096, 8192, 16384, 32768, 65536])
 }
 
-#[derive(Debug, Default, PartialEq, Eq, CopyGetters)]
+#[derive(Debug, Default, PartialEq, Eq, CopyGetters, Serialize)]
 #[get_copy = "pub"]
 pub struct Generic {
     lsn: [u8; 8],
@@ -39,8 +46,19 @@ pub struct Generic {
 }
 
 impl Generic {
-    /// Read [`Self`] out of a file in plain byte order.
-    pub fn parse<E: byteorder::ByteOrder>(r: &mut impl Read) -> Result<Self> {
+    /// Read [`Self`] out of a file in plain byte order. Also returns the endianness of the data read using a check integer.
+    pub fn parse<F: Read + Seek>(r: &mut F) -> Result<(Self, bool)> {
+        let generic = Self::parse_inner::<LittleEndian>(r).context("little endian")?;
+        if generic.is_big_endian() {
+            r.seek(SeekFrom::Start(0)).context("seek to start")?;
+            let generic = Self::parse_inner::<BigEndian>(r).context("big endian")?;
+            Ok((generic, true))
+        } else {
+            Ok((generic, false))
+        }
+    }
+
+    pub fn parse_inner<E: byteorder::ByteOrder>(r: &mut impl Read) -> Result<Self> {
         Ok(Self {
             lsn: read_n(r)?,
             page_no: r.read_u32::<E>()?,
@@ -81,7 +99,7 @@ impl Generic {
         Ok(())
     }
 
-    pub fn is_big_endian(&self) -> bool {
+    fn is_big_endian(&self) -> bool {
         self.magic == HASH_MAGIC_NUMBER_BE
     }
 }
