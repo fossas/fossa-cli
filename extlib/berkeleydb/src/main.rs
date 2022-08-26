@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use berkeleydb::BerkeleyDB;
 use clap::Parser;
+use log::debug;
 use simple_logger::SimpleLogger;
 use stable_eyre::{eyre::Context, Result};
 
@@ -35,6 +36,7 @@ fn main() -> Result<()> {
         .with_level(args.log_level_filter())
         .init()?;
 
+    debug!("👩🏻‍💻 Starting up!");
     let target = args.target;
     let mut db = BerkeleyDB::open(&target).wrap_err_with(|| format!("open db at '{target:?}'"))?;
 
@@ -42,5 +44,6 @@ fn main() -> Result<()> {
     let encoded = serde_json::to_string(&values).context("encode values to JSON")?;
     println!("{encoded}");
 
+    debug!("✨ Values encoded as JSON to stdout; all done!");
     Ok(())
 }

@@ -55,6 +55,16 @@ impl Index {
     fn size(entries: usize) -> usize {
         entries * Self::ENTRY_SIZE
     }
+
+    /// Given a parsed index, report its length.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 impl IntoIterator for Index {

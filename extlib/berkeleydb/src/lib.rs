@@ -4,6 +4,7 @@ use std::{
     path::PathBuf,
 };
 
+use log::debug;
 use metadata::{Generic, Hash};
 use parse::ByteParser;
 use stable_eyre::{eyre::Context, Result};
@@ -19,6 +20,7 @@ pub struct BerkeleyDB {
 
 impl BerkeleyDB {
     pub fn open(path: &PathBuf) -> Result<BerkeleyDB> {
+        debug!("📂 Open DB: {path:?}");
         let file = File::open(&path).context("open file")?;
         let mut file = BufReader::new(file);
 
@@ -30,9 +32,12 @@ impl BerkeleyDB {
             .hash(hash)
             .big_endian(big_endian)
             .build();
-        metadata.validate().context("validate metadata")?;
 
+        debug!("🔖 Parsed metadata: {metadata:?}");
+        metadata.validate().context("validate metadata")?;
         file.seek(SeekFrom::Start(0)).context("seek to start")?;
+
+        debug!("✅ Metadata validated and cursor reset; db is ready for reading!");
         Ok(BerkeleyDB { file, metadata })
     }
 }
