@@ -1,5 +1,6 @@
 module Data.RpmDbHeaderBlobSpec (spec) where
 
+import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BLS
 import Data.Either (fromRight)
 import Data.Int (Int32)
@@ -53,7 +54,6 @@ spec = context "RPM header blob parsing" $ do
 
 -- This blob was output from an rpm sqlite db. The parts of the format
 -- that we are interested in are documented in src/Data/Rpm/DbHeaderBlob.hs.
--- It's easiest to follow along using a hex editor, such as hexl or hex-fiend.
 -- This blob is a v4 header
 testBlob :: FilePath
 testBlob = "test/Data/test_data/pkg_blob.bin"
@@ -164,13 +164,17 @@ dataLengthSpec =
         , 255 -- this shouldn't matter, it's after a 0 and count should not be > 2
         ]
 
+headerBlobInit' :: BLS.ByteString -> Either String HeaderBlob
+headerBlobInit' = first (\(_, _, c) -> c) . headerBlobInit
+
 headerBlobImportSpec :: BLS.ByteString -> Spec
 headerBlobImportSpec bs = do
-  let blob = fromRight (error "RPM blob read failure") (headerBlobInit bs)
   describe "headerBlobImport" $ do
     it "Reads index entries from a non-dribble header blob" $ do
-      let indexEntries = fromRight [] $ hdrblobImport blob bs
-      testBlobIndexEntries `shouldExistIn` indexEntries
+      let bl = headerBlobInit' bs >>= (hdrblobImport bs)
+      case bl of
+        Right importedIes -> testBlobIndexEntries `shouldExistIn` importedIes
+        Left e -> expectationFailure $ "Failed: " <> e
   where
     shouldExistIn :: (Ord a, Show a) => [a] -> [a] -> Expectation
     shouldExistIn a b =
@@ -262,9 +266,7 @@ matchesIgnoringEntries bs expected =
 headerBlobSpec :: BLS.ByteString -> Spec
 headerBlobSpec bs = describe "header blob parsing" $ do
   context "Real example " $ do
-    let eBlob = headerBlobInit bs
-    blob <- runIO . pure $ fromRight (error "RPM blob read failure") eBlob
-
+    let eBlob = headerBlobInit' bs
     it "Parses data length and index length" $ do
       let expected =
             HeaderBlob
@@ -281,7 +283,7 @@ headerBlobSpec bs = describe "header blob parsing" $ do
 
     it "Parses entries" $ do
       -- this database is large, so we'll only check the first 2 entries
-      let entries = take 2 . NonEmpty.toList . entryInfos $ blob
+      let entries = fromRight [] $ (NonEmpty.take 2 . entryInfos) <$> eBlob
 
       entries
         `shouldMatchList` [ EntryInfo

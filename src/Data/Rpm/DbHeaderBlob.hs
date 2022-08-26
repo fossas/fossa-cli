@@ -41,7 +41,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Vector qualified as V
-import Data.Word (Word32)
+import Data.Word (Word32, Word8)
 import Text.Printf (printf)
 
 -- Constants from
@@ -259,8 +259,8 @@ data IndexEntry = IndexEntry
   deriving (Eq, Ord, Show)
 
 -- Inspired by https://github.com/knqyf263/go-rpmdb/blob/a9e3110d8ee1fd3b0798a7abe8c59230bd265cd3/pkg/entry.go#L150
-hdrblobImport :: HeaderBlob -> BLS.ByteString -> Either String [IndexEntry]
-hdrblobImport HeaderBlob{..} bs = do
+hdrblobImport :: BLS.ByteString -> HeaderBlob -> Either String [IndexEntry]
+hdrblobImport bs HeaderBlob{..} = do
   let firstEntry = NonEmpty.head entryInfos
 
   if tag firstEntry >= rpmTagHeaderI18nTable
@@ -388,9 +388,11 @@ calcDataLength bs ty count start dataEnd
     strtaglen strCount =
       if start >= dataEnd
         then Left $ "String start (" <> show start <> ") >= end (" <> show dataEnd <> ")"
-        else
-          let indices = take (fromIntegral strCount) . BLS.findIndices (== 0) . bsSubString start dataEnd $ bs
-           in Right . fromIntegral $ last indices + 1
+        else do
+          let substr = bsSubString start dataEnd bs
+          case take (fromIntegral strCount) . BLS.findIndices (== 0) $ substr of
+            (x : xs) -> Right . fromIntegral $ NonEmpty.last (x NonEmpty.:| xs) + 1
+            _ -> Left $ printf "Couldn't find ending null byte for %d string(s) in substring %s" strCount (show substr)
 
 -- | Substring of a byte string. Includes stop, but not end for range
 -- [start, end).
@@ -436,6 +438,9 @@ rpmtagRelease = 1002 -- string
 rpmtagArch :: Int
 rpmtagArch = 1022 -- string
 
+-- More information than what gets extracted is available from the blob. See the
+-- different tag values here:
+-- https://github.com/csasarak/go-rpmdb/blob/modified-cmd/pkg/package.go#L50
 getPkgInfo :: [IndexEntry] -> Either String PkgInfo
 getPkgInfo ies =
   PkgInfo
@@ -472,6 +477,7 @@ convertIndexEntryData ie =
     tagNum :: Word32
     tagNum = tagType . info $ ie
 
+    nullChr :: Word8
     nullChr = fromIntegral . ord $ '\0'
 
     dataAsText :: Text
@@ -480,5 +486,5 @@ convertIndexEntryData ie =
 readPackageInfo :: BLS.ByteString -> Either String PkgInfo
 readPackageInfo bs = do
   blob <- first (\(_, _, s) -> s) $ headerBlobInit bs
-  ies <- hdrblobImport blob bs
+  ies <- hdrblobImport bs blob
   getPkgInfo ies
