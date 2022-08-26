@@ -9,28 +9,28 @@ jobs:
     container: ghcr.io/fossas/haskell-dev-tools:9.0.2
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Run hlint
-      run: |
-        make lint
+      - name: Run hlint
+        run: |
+          make lint
 
   link-check:
     name: link-check
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Check Markdown links
-      uses: gaurav-nelson/github-action-markdown-link-check@v1
-      with:
-        use-quiet-mode: 'yes'
-        config-file: '.markdown-link-check.json'
+      - name: Check Markdown links
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: "yes"
+          config-file: ".markdown-link-check.json"
 
-    - name: Disallow empty Markdown links
-      run: |
-        ! grep ']()' **/*.md
+      - name: Disallow empty Markdown links
+        run: |
+          ! grep ']()' **/*.md
 
   format-check:
     name: formatter-check
@@ -38,12 +38,12 @@ jobs:
     container: ghcr.io/fossas/haskell-dev-tools:9.0.2
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    # Run the formatter
-    - name: run fourmolu
-      run: |
-        make check-fmt
+      # Run the formatter
+      - name: run fourmolu
+        run: |
+          make check-fmt
 
   cabal-format-check:
     name: cabal-format-check
@@ -51,12 +51,12 @@ jobs:
     container: ghcr.io/fossas/haskell-dev-tools:9.0.2
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    # Run the formatter
-    - name: "run cabal-fmt"
-      run: |
-        cabal-fmt --check spectrometer.cabal
+      # Run the formatter
+      - name: "run cabal-fmt"
+        run: |
+          cabal-fmt --check spectrometer.cabal
 
   cabal-install-check:
     name: cabal-install-check
@@ -64,24 +64,34 @@ jobs:
     container: ghcr.io/fossas/haskell-dev-tools:9.0.2
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    # Run `cabal install`.
-    - uses: actions/cache@v2
-      name: Cache cabal store
-      with:
-        path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
-        key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('**/*.cabal') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
-          ${{ runner.os }}-${{ matrix.ghc }}-
-          ${{ runner.os }}-
+      # Run `cabal install`.
+      - uses: actions/cache@v2
+        name: Cache cabal store
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
+          key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('**/*.cabal') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
+            ${{ runner.os }}-${{ matrix.ghc }}-
+            ${{ runner.os }}-
 
-    - name: Run `cabal install`
-      run: |
-        apk add xz-dev bzip2-dev bzip2-static
-        cabal update
-        cabal install
+      - name: Run `cabal install`
+        run: |
+          apk add xz-dev bzip2-dev bzip2-static
+          cabal update
+          cabal install
+
+  schema-lint-check:
+    name: "schema lint check"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: json-syntax-check
+        uses: limitusus/json-syntax-check@v1
+        with:
+          pattern: "docs.*\\.schema\\.json$"
 
   common-verbiage-check:
     name: "Check for correct spelling of FOSSA"

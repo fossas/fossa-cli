@@ -67,14 +67,14 @@ Both test suites will be run when you execute `cabal test`.
 
 ## Tools
 
-| name | description |
-| ---- | ----------- |
-| [ghcup][ghcup] | Used to manage installed versions of ghc and cabal-install |
-| ghc | The haskell compiler (installed via ghcup) |
-| cabal-install | The package manager we use (installed via ghcup). Accessed via `cabal` on most setups. |
-| [haskell-language-server][hls] ("HLS") | LSP server for haskell projects |
-| [hlint][hlint] | A linting + hints tool for haskell code. It provides really useful suggestions.  `hlint` is bundled with HLS |
-| [fourmolu][fourmolu] | A haskell source code formatter. `fourmolu` is bundled with HLS |
+| name                                   | description                                                                                                  |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| [ghcup][ghcup]                         | Used to manage installed versions of ghc and cabal-install                                                   |
+| ghc                                    | The haskell compiler (installed via ghcup)                                                                   |
+| cabal-install                          | The package manager we use (installed via ghcup). Accessed via `cabal` on most setups.                       |
+| [haskell-language-server][hls] ("HLS") | LSP server for haskell projects                                                                              |
+| [hlint][hlint]                         | A linting + hints tool for haskell code. It provides really useful suggestions.  `hlint` is bundled with HLS |
+| [fourmolu][fourmolu]                   | A haskell source code formatter. `fourmolu` is bundled with HLS                                              |
 
 ### Installing haskell-language-server
 
@@ -122,9 +122,9 @@ or having to install the formatter yourself.  This also makes sure you're using 
 
 ## Docs
 
-| name | description |
-| ---- | ----------- |
-| [hoogle][hoogle] | Search for type signatures or symbols |
+| name               | description                                                                    |
+| ------------------ | ------------------------------------------------------------------------------ |
+| [hoogle][hoogle]   | Search for type signatures or symbols                                          |
 | [hackage][hackage] | Package repository; can be used to browse individual package docs ("haddocks") |
 
 If on macOS, [dash](https://kapeli.com/dash) is a great tool that allows for downloading searchable package haddocks
@@ -135,23 +135,23 @@ On linux, you can use [zeal](https://zealdocs.org/).  (Currently there is an iss
 
 ### Cabal cheatsheet
 
-| command | description |
-| ------- | ----------- |
-| `cabal repl` | opens the ghci repl on the project |
-| `cabal build` | build spectrometer |
-| `cabal test` | build + run tests |
+| command                              | description                                                                |
+| ------------------------------------ | -------------------------------------------------------------------------- |
+| `cabal repl`                         | opens the ghci repl on the project                                         |
+| `cabal build`                        | build fossa-cli                                                            |
+| `cabal test`                         | build + run tests                                                          |
 | `cabal run binary-name -- arg1 arg2` | build + run an executable named `binary-name`, and with args `arg1` `arg2` |
 
 ### GHCI cheatsheet
 
 Use `cabal repl` to open ghci.
 
-| command | description |
-| ------- | ----------- |
-| `:r`/`:reload` | reload the project |
-| `:t`/`:type <symbol>` | query the type of a symbol |
-| `:i`/`:info <symbol>` | query info about a symbol -- docs, where it was defined, etc |
-| `:l`/`:load <Module.Name>` | load a specific file into the repl |
+| command                    | description                                                  |
+| -------------------------- | ------------------------------------------------------------ |
+| `:r`/`:reload`             | reload the project                                           |
+| `:t`/`:type <symbol>`      | query the type of a symbol                                   |
+| `:i`/`:info <symbol>`      | query info about a symbol -- docs, where it was defined, etc |
+| `:l`/`:load <Module.Name>` | load a specific file into the repl                           |
 
 ## FAQ/Troubleshooting
 
