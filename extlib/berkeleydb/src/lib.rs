@@ -5,7 +5,7 @@ use std::{
 };
 
 use byteorder::{BigEndian, LittleEndian};
-use read::{value::Value, EntryReader};
+use read::{read_entries, value::Value};
 use stable_eyre::{eyre::Context, Result};
 
 pub mod metadata;
@@ -35,8 +35,8 @@ impl BerkeleyDB {
         Ok(BerkeleyDB { file, metadata })
     }
 
-    pub fn read(self) -> Result<impl Iterator<Item = Result<Value>>> {
-        EntryReader::new(self).context("construct entry reader")
+    pub fn read(self) -> Result<Vec<Value>> {
+        read_entries(self)
     }
 }
 
@@ -65,7 +65,7 @@ pub(crate) fn read_n<const N: usize>(r: &mut impl Read) -> Result<[u8; N]> {
     Ok(buf)
 }
 
-pub(crate) fn read_n_dyn(r: &mut impl Read, n: usize) -> Result<Vec<u8>> {
+pub(crate) fn slice(r: &mut impl Read, n: usize) -> Result<Vec<u8>> {
     let mut buf = vec![0; n];
     r.read_exact(&mut buf)?;
     Ok(buf)

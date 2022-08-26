@@ -1,7 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use berkeleydb::{metadata::Page, read::value::Value, BerkeleyDB};
-use itertools::Itertools;
+use lexical_sort::{natural_lexical_cmp, StringSort};
 use stable_eyre::{eyre::Context, Result};
 
 #[test]
@@ -131,7 +131,7 @@ fn assert_reads_nonzero_values(path: impl Into<PathBuf>) -> Result<()> {
     let read_values = db
         .read()
         .context("open reader")?
-        .map(|value| value.expect("must read value"))
+        .into_iter()
         .map(|value| {
             assert_ne!(default, value);
             value
@@ -161,18 +161,21 @@ fn assert_reads_expected(path: impl Into<PathBuf>) -> Result<()> {
     let path = path.into();
     let db = BerkeleyDB::open(path.join("Packages"))?;
     let bins_dir = path.join("bins");
-    let bins = fs::read_dir(&bins_dir)?
+    let mut files = fs::read_dir(&bins_dir)?
         .map(|e| e.expect("must read dir"))
-        .map(|e| e.file_name())
-        .sorted()
-        .map(|n| bins_dir.join(n))
-        .map(|p| fs::read(p).expect("must read file"));
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .collect::<Vec<_>>();
+    files.string_sort_unstable(natural_lexical_cmp);
+    let bins = files
+        .into_iter()
+        .map(|n| (n.clone(), bins_dir.join(n)))
+        .map(|(n, p)| (n, fs::read(p).expect("must read file")));
 
     // We don't parse any data out of the actual blobs. Instead, we just check that we read the same blobs in the same order.
     let mut read_any = false;
-    let reader = db.read()?.map(|v| v.expect("must read value").into_inner());
-    for (idx, (value, expected)) in reader.zip(bins).enumerate() {
-        assert_eq!(expected, value, "item {idx} must match");
+    let reader = db.read()?.into_iter().map(|v| v.into_inner());
+    for (idx, (value, (name, expected))) in reader.zip(bins).enumerate() {
+        assert_eq!(expected, value, "item {idx} ('{name}') must match");
         read_any = true;
     }
 

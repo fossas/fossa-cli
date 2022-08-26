@@ -9,8 +9,7 @@ fn main() -> Result<()> {
     println!("Opened DB: {:?}", db.metadata);
 
     let reader = db.read().context("open parser")?;
-    for (read_values, value) in reader.enumerate() {
-        let value = value.context("read value")?;
+    for (read_values, value) in reader.into_iter().enumerate() {
         println!("Read value {read_values}: {value:?}");
     }
 
