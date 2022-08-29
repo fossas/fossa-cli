@@ -1,25 +1,36 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Data.Rpm.DbHeaderBlob.Internal (
-  readPackageInfo,
+  -- * Main interface
+  -- |You should not use this module directly. Use 'Data.Rpm.DbHeaderBlob'
+  -- instead.
   PkgInfo (..),
-  -- everything below here is exposed for testing
+  readPackageInfo,
+
+  -- * Internal Types
   HeaderBlob (..),
   EntryInfo (..),
   IndexEntry (..),
   RegionInfo (..),
+
+  -- * Internal Functions
   readHeaderMetaData,
-  hdrblobVerifyRegion,
+  getV3RegionCount,
   emptyRegionInfo,
   calcDataLength,
-  -- consts
+  hdrblobImport,
+
+  -- * Header Tag Ids
+  -- $tagIdDoc
   rpmTagHeaderImg,
   rpmTagHeaderImmutable,
   rpmTagHeaderSignatures,
+  regionTagCount,
+
+  -- * Header Blob Type IDs
+  -- $tagTypeDoc
   rpmStringType,
   regionTagType,
-  regionTagCount,
-  hdrblobImport,
   rpmStringArrayType,
   rpmI18NstringType,
   rpmInt64Type,
@@ -34,6 +45,7 @@ import Data.Bits ((.&.))
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BLS
 import Data.Char (ord)
+import Data.Either.Combinators (maybeToRight)
 import Data.Int (Int32)
 import Data.IntMap qualified as Map
 import Data.List.NonEmpty (NonEmpty ((:|)))
@@ -44,8 +56,9 @@ import Data.Vector qualified as V
 import Data.Word (Word32, Word8)
 import Text.Printf (printf)
 
--- Constants from
--- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/rpmtags.go#L3
+-- $tagIdDoc
+-- Magic numbers for different tags included in a header blob
+-- $tagIdDoc
 rpmTagHeaderImmutable :: Int32
 rpmTagHeaderImmutable = 63
 
@@ -57,6 +70,25 @@ rpmTagHeaderImg = 61
 
 rpmTagHeaderI18nTable :: Int32
 rpmTagHeaderI18nTable = 100
+
+rpmtagName :: Int
+rpmtagName = 1000 -- string
+
+rpmtagVersion :: Int
+rpmtagVersion = 1001 -- string
+
+rpmtagRelease :: Int
+rpmtagRelease = 1002 -- string
+
+rpmtagArch :: Int
+rpmtagArch = 1022 -- string
+
+-- $tagTypeDoc
+-- Ids for types of data used in the header blobs. This is not exhaustive and
+-- only includes types for data we actually read from the header. More types can
+-- be found
+-- [here](https://github.com/csasarak/go-rpmdb/blob/modified-cmd/pkg/rpmtags.go#L2)
+-- $tagTypeDoc
 
 rpmStringType :: Word32
 rpmStringType = 6
@@ -73,22 +105,22 @@ rpmInt64Type = 5
 rpmInt32Type :: Word32
 rpmInt32Type = 4
 
--- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L71
--- Size in bytes.
-entryInfoSize :: Int32
-entryInfoSize = 16
-
--- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L18
-headerMaxBytes :: Int32
-headerMaxBytes = 256 * 1024 * 1024
-
--- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L14
-regionTagCount :: Int32
-regionTagCount = entryInfoSize
-
 -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L15
 regionTagType :: Word32
 regionTagType = 7
+
+
+-- $dataSizeDoc
+-- Sizes for data that may be found in a header blob, in bytes.
+
+-- |Size in bytes of an 'EntryInfo'.
+entryInfoSize :: Int32
+entryInfoSize = 16
+
+-- |Maximum number of bytes allowed in a header. Defined
+-- [here](https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L18).
+headerMaxBytes :: Int32
+headerMaxBytes = 256 * 1024 * 1024
 
 typeSizes :: V.Vector Int32
 typeSizes =
@@ -110,6 +142,14 @@ typeSizes =
     , 0
     , 0
     ]
+
+-- |The number of 'EntryInfo's to expect in a v3 header region.
+-- [Reference Implementation](https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L14).
+regionTagCount :: Int32
+-- Logically, I'm not sure why this is derived from the size in bytes of an
+-- entryInfo in both the c code and the go code. It seems like the only
+-- relationship between the two is they happen to both be the number 16.
+regionTagCount = entryInfoSize
 
 -- |General characteristics about a header blob. Official documentation can be
 -- found [here](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
@@ -144,11 +184,14 @@ data HeaderBlob = HeaderBlob
   }
   deriving (Show, Eq)
 
+-- |Structure for metadata describing the type, location, and size of a tag value
+-- pair in a 'HeaderBlob'
 data EntryInfo = EntryInfo
   { -- |ID for which piece of RPM data this is. More information on available
-    -- tags can be found here: https://rpm-software-management.github.io/rpm/manual/tags.html
+    -- tags can be found [here](https://rpm-software-management.github.io/rpm/manual/tags.html).
     tag :: Int32
-  , -- |The type of data that this tag is. See https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html
+  , -- |The type of data that this tag is. See the
+    -- [docs](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
     -- Table 24-5.
     tagType :: Word32
   , -- |The offset from the beginning of 'HeaderBlob's 'dataStart' that data for
@@ -188,7 +231,7 @@ readHeaderMetaData bs =
 
       entryInfos <- readEntries indexCount
 
-      case hdrblobVerifyRegion entryInfos dataLength dataStart bs of
+      case getV3RegionCount entryInfos dataLength dataStart bs of
         Left s -> fail s
         Right
           RegionInfo
@@ -216,10 +259,13 @@ emptyRegionInfo =
     { rIl = 0
     }
 
--- This is inspired by hdrblobVerifyRegion:
--- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L263
-hdrblobVerifyRegion :: NonEmpty.NonEmpty EntryInfo -> Int32 -> Int32 -> BLS.ByteString -> Either String RegionInfo
-hdrblobVerifyRegion entryInfos dataLength dataStart blobData = do
+-- | Report the number entries in this blob corresponding to a v3 data region
+-- and verify its correctness. In the case of a regular v3 blob, this will be
+-- 0. In the case of v4 it may be more.
+--
+-- This is inspired by [hdrblobVerifyRegion](https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L263).
+getV3RegionCount :: NonEmpty.NonEmpty EntryInfo -> Int32 -> Int32 -> BLS.ByteString -> Either String RegionInfo
+getV3RegionCount entryInfos dataLength dataStart blobData = do
   let EntryInfo{..} = NonEmpty.head entryInfos
   let regionTag =
         if tag
@@ -237,7 +283,7 @@ hdrblobVerifyRegion entryInfos dataLength dataStart blobData = do
       unless (tagType == regionTagType && count == fromIntegral regionTagCount) $
         Left "invalid region tag"
 
-      when (hdrCheckRange dataLength (offset + regionTagCount)) $
+      when (headerCheckRange dataLength (offset + regionTagCount)) $
         Left "invalid region offset"
 
       let regionEnd = dataStart + offset
@@ -259,17 +305,25 @@ hdrblobVerifyRegion entryInfos dataLength dataStart blobData = do
 
     runGetOrFail' r = bimap trd trd . runGetOrFail r
 
-    hdrCheckRange :: Int32 -> Int32 -> Bool
-    hdrCheckRange dataLen offset = offset < 0 || offset > dataLen
+    headerCheckRange :: Int32 -> Int32 -> Bool
+    headerCheckRange dataLen offset = offset < 0 || offset > dataLen
 
-data IndexEntry = IndexEntry
-  { info :: EntryInfo
-  , entryLength :: Int32
+data IndexEntry = -- | Metadata about this entry info
+  IndexEntry
+  { -- | The expected length of the entryData, in bytes
+    info :: EntryInfo
+  , -- | The actual data for the entry
+    entryLength :: Int32
   , entryData :: BLS.ByteString
   }
   deriving (Eq, Ord, Show)
 
--- Inspired by https://github.com/knqyf263/go-rpmdb/blob/a9e3110d8ee1fd3b0798a7abe8c59230bd265cd3/pkg/entry.go#L150
+-- |Given header metadata, read out the sub-slice of the bytestring blob that
+-- corresponds to each 'EntryInfo'.
+--
+-- Rought equivalent to
+-- [hdrblobImport](https://github.com/knqyf263/go-rpmdb/blob/a9e3110d8ee1fd3b0798a7abe8c59230bd265cd3/pkg/entry.go#L150)
+-- in the original go code
 hdrblobImport :: BLS.ByteString -> HeaderBlob -> Either String [IndexEntry]
 hdrblobImport bs HeaderBlob{..} = do
   let firstEntry = NonEmpty.head entryInfos
@@ -278,11 +332,12 @@ hdrblobImport bs HeaderBlob{..} = do
     then -- v3 entries, these seem to be uncommon
 
       bimap
-        (printf "Failed to parse legacy index entries: %s")
+        ("Failed to parse legacy index entries: " <>)
         fst
         (regionSwab bs (NonEmpty.toList entryInfos) dataStart dataEnd 0)
     else do
-      -- v4 entries
+      -- v4 entries, since we need to read the legacy v3 entries first we'll
+      -- try to pull out all 'IndexEntry's in just the v3 header region area.
       let regionIndexLength' = if offset firstEntry == 0 then indexCount else regionIndexCount
       (indexEntries, ieReadLen) <- regionSwab bs (subList 1 regionIndexLength' entryInfos) dataStart dataEnd 0
 
@@ -314,10 +369,6 @@ hdrblobImport bs HeaderBlob{..} = do
             , ieReadLen
             )
 
-maybeToEither :: b -> Maybe a -> Either b a
-maybeToEither _ (Just a) = Right a
-maybeToEither b Nothing = Left b
-
 -- Returns a list of index entries that were read as well as their length in bytes
 regionSwab :: BLS.ByteString -> [EntryInfo] -> Int32 -> Int32 -> Int32 -> Either String ([IndexEntry], Int32)
 regionSwab bs entryInfos dataStart dataEnd startDataLength = do
@@ -331,7 +382,7 @@ regionSwab bs entryInfos dataStart dataEnd startDataLength = do
 
     alignDiff :: Word32 -> Int32 -> Either String Int32
     alignDiff ty alignSize = do
-      tSize <- maybeToEither ("aligning diff: tag type " <> show ty <> " is invalid") (typeSizes V.!? fromIntegral ty)
+      tSize <- maybeToRight ("aligning diff: tag type " <> show ty <> " is invalid") (typeSizes V.!? fromIntegral ty)
       let diff = tSize - (alignSize `mod` tSize)
       if tSize > 1 && diff /= tSize
         then Right diff
@@ -351,7 +402,7 @@ regionSwab bs entryInfos dataStart dataEnd startDataLength = do
 
       entryLength <-
         do
-          typeSize <- maybeToEither ("No such type size: " <> show tType) (typeSizes V.!? fromIntegral tType)
+          typeSize <- maybeToRight ("No such type size: " <> show tType) (typeSizes V.!? fromIntegral tType)
           if i < lastIdx && typeSize == -1
             then case offset . snd <$> entryInfosV V.!? fromIntegral (i + 1) of
               -- this Nothing shouldn't happen since we checked it in
@@ -381,22 +432,22 @@ calcDataLength bs ty count start dataEnd
   | ty == rpmStringType =
     if count /= 1
       then Left $ "count for string == " <> show count <> " it should == 1."
-      else strtaglen 1
-  | ty `elem` [rpmStringArrayType, rpmI18NstringType] = strtaglen count
+      else stringTagLength 1
+  | ty `elem` [rpmStringArrayType, rpmI18NstringType] = stringTagLength count
   | otherwise = do
-    t <- maybeToEither ("Nonexistent typesize: " <> show ty) (typeSizes V.!? fromIntegral ty)
+    t <- maybeToRight ("Nonexistent typesize: " <> show ty) (typeSizes V.!? fromIntegral ty)
     if t == -1
       then Left $ "Typesize " <> show ty <> " can't be -1"
       else do
         -- typeSizes has 16 members, so it should never fail to read one for (ty .&. 0xf)
         let mLen = ((fromIntegral count) *) <$> (typeSizes V.!? (fromIntegral ty .&. 0xf))
-        len <- maybeToEither ("Nonexistent tag type " <> show ty) mLen
+        len <- maybeToRight ("Nonexistent tag type " <> show ty) mLen
         if len < 0 || dataEnd > 0 && start + fromIntegral len > dataEnd
           then Left $ "Invalid calculated len: " <> show len
           else Right $ fromIntegral len
   where
-    strtaglen :: Word32 -> Either String Int32
-    strtaglen strCount =
+    stringTagLength :: Word32 -> Either String Int32
+    stringTagLength strCount =
       if start >= dataEnd
         then Left $ "String start (" <> show start <> ") >= end (" <> show dataEnd <> ")"
         else do
@@ -437,18 +488,6 @@ data PkgInfo = PkgInfo
   }
   deriving (Eq, Ord, Show)
 
-rpmtagName :: Int
-rpmtagName = 1000 -- string
-
-rpmtagVersion :: Int
-rpmtagVersion = 1001 -- string
-
-rpmtagRelease :: Int
-rpmtagRelease = 1002 -- string
-
-rpmtagArch :: Int
-rpmtagArch = 1022 -- string
-
 -- More information than what gets extracted is available from the blob. See the
 -- different tag values here:
 -- https://github.com/csasarak/go-rpmdb/blob/modified-cmd/pkg/package.go#L50
@@ -468,7 +507,7 @@ getPkgInfo ies =
 
     readTag :: Int -> Either String Text
     readTag tag =
-      maybeToEither (printf "Failed to read required tag %d" tag)
+      maybeToRight (printf "Failed to read required tag %d" tag)
         . join
         . Map.lookup tag
         $ tagMap

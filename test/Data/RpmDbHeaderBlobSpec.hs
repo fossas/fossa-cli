@@ -15,7 +15,7 @@ import Data.Rpm.DbHeaderBlob.Internal (
   calcDataLength,
   emptyRegionInfo,
   hdrblobImport,
-  hdrblobVerifyRegion,
+  getV3RegionCount,
   readHeaderMetaData,
   readPackageInfo,
   regionTagCount,
@@ -39,15 +39,15 @@ import Test.Hspec (
   shouldBe,
   shouldContain,
   shouldMatchList,
-  shouldSatisfy,
+  shouldSatisfy, fcontext,
  )
 
 spec :: Spec
-spec = context "RPM header blob parsing" $ do
+spec = fcontext "RPM header blob parsing" $ do
   testBlob' <- runIO $ BLS.readFile testBlob
   headerBlobErrSpec
   headerBlobSpec testBlob'
-  headerBlobVerifyRegionSpec testBlob'
+  headerBlobV3RegionSpec testBlob'
   headerBlobImportSpec testBlob'
   dataLengthSpec
   readPackageSpec
@@ -181,19 +181,19 @@ headerBlobImportSpec bs = do
       let a' = Set.fromList a
        in (a' `Set.intersection` Set.fromList b) `shouldBe` a'
 
-headerBlobVerifyRegionSpec :: BLS.ByteString -> Spec
-headerBlobVerifyRegionSpec blobData = do
+headerBlobV3RegionSpec :: BLS.ByteString -> Spec
+headerBlobV3RegionSpec blobData = do
   describe "headerBlobVerifyRegion" $ do
     it "Does nothing if not a header tag" $
-      hdrblobVerifyRegion' notHeaderTag "unused" `shouldBe` (Right emptyRegionInfo)
+      getV3RegionCount' notHeaderTag "unused" `shouldBe` (Right emptyRegionInfo)
     it "Fails on invalid region tag" $
-      hdrblobVerifyRegion' invalidRegionTag "unused" `failsWithMsg` "invalid region tag"
+      getV3RegionCount' invalidRegionTag "unused" `failsWithMsg` "invalid region tag"
     it "Fails on invalid region offset" $
-      hdrblobVerifyRegion' invalidRegionOffset "unused" `failsWithMsg` "invalid region offset"
+      getV3RegionCount' invalidRegionOffset "unused" `failsWithMsg` "invalid region offset"
     it "Fails on trailer parse" $
-      hdrblobVerifyRegion' goodInfo "unused" `failsWithMsg` "read trailer"
+      getV3RegionCount' goodInfo "unused" `failsWithMsg` "read trailer"
     it "Verifies a valid blob region" $
-      hdrblobVerifyRegion' goodInfo blobData `shouldBe` (Right expectedRegionInfo)
+      getV3RegionCount' goodInfo blobData `shouldBe` (Right expectedRegionInfo)
   where
     failsWithMsg :: Either String RegionInfo -> String -> Expectation
     failsWithMsg e msg =
@@ -213,8 +213,8 @@ headerBlobVerifyRegionSpec blobData = do
     testDataStart :: Int32
     testDataStart = 0x508
 
-    hdrblobVerifyRegion' :: EntryInfo -> BLS.ByteString -> Either String RegionInfo
-    hdrblobVerifyRegion' entryInfo = hdrblobVerifyRegion (NonEmpty.singleton entryInfo) testDataLength testDataStart
+    getV3RegionCount' :: EntryInfo -> BLS.ByteString -> Either String RegionInfo
+    getV3RegionCount' entryInfo = getV3RegionCount (NonEmpty.singleton entryInfo) testDataLength testDataStart
 
     goodInfo =
       EntryInfo
