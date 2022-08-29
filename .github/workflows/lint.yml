@@ -9,6 +9,14 @@ jobs:
     container: ghcr.io/fossas/haskell-dev-tools:9.0.2
 
     steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components:
+            - clippy
+            - rustfmt
+
       - uses: actions/checkout@v2
 
       - name: Run hlint
@@ -38,6 +46,14 @@ jobs:
     container: ghcr.io/fossas/haskell-dev-tools:9.0.2
 
     steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components:
+            - clippy
+            - rustfmt
+
       - uses: actions/checkout@v2
 
       # Run the formatter
