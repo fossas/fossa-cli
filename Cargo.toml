@@ -3,7 +3,8 @@ members = [
   "extlib/berkeleydb"
 ]
 exclude = [
-  "integration-test/artifacts/rust/fd/fd-8.3.0"
+  "integration-test/artifacts/rust/fd/fd-8.3.0",
+  "integration-test/artifacts/rust/bat/bat-0.18.3"
 ]
 
 [profile.dev.package.backtrace]
