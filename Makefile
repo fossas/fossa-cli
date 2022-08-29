@@ -79,8 +79,8 @@ fmt: fmt-cargo
 
 fmt-cargo:
 	@echo "Running rustfmt"
-	@rustfmt -V
-	@rustfmt extlib/**/*.rs --emit files
+	@cargo fmt --version
+	@cargo fmt
 
 # Confirm everything is formatted without changing anything
 check-fmt: check-fmt-cargo
@@ -93,8 +93,8 @@ check-fmt: check-fmt-cargo
 
 check-fmt-cargo:
 	@echo "Running rustfmt"
-	@rustfmt -V
-	@rustfmt extlib/**/*.rs --check
+	@cargo fmt --version
+	@cargo fmt --check
 
 # Lint everything (If this fails, update .hlint.yaml or report the failure)
 lint: lint-cargo
