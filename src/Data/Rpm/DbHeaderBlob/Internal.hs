@@ -8,7 +8,7 @@ module Data.Rpm.DbHeaderBlob.Internal (
   EntryInfo (..),
   IndexEntry (..),
   RegionInfo (..),
-  headerBlobInit,
+  readHeaderMetaData,
   hdrblobVerifyRegion,
   emptyRegionInfo,
   calcDataLength,
@@ -111,72 +111,88 @@ typeSizes =
     , 0
     ]
 
--- A package header blob is contains these data:
+-- |General characteristics about a header blob. Official documentation can be
+-- found [here](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
 --
--- Blob:
--- indexLength - int32
--- dataLength - int32
--- entryInfo region - indexLength * 128 bits (indexLength entry infos)
--- IndexEntries
+-- In summary, a header blob is a key-value data-store for different attributes
+-- of an RPM package.  Each key-value pair is called a tag. For example, the
+-- package name attribute for a package has @tag@ of @1000@ and is a string.
 --
+-- The first part of a header blob is an index which describes all of the tags that it
+-- contains as well as their types. In this implementation, these entries are called 'EntryInfo'.
+-- Following the index is a data area which contain the actual values for a tag.
 --
--- entryInfo:
--- tag - int32
--- tagType - uint32
--- offset - int32
--- count - uint32
---
--- Entry infos point to an area in the blob offset from the beginning which
--- contain count bytes of data. The data is interpreted according to the
--- type stored in the corresponding entryInfo.
-
+-- One caveat for a header is that v4 headers are structured differently than v3
+-- headers, but include the v3 original in a tag that describes where in the
+-- blob the original v3 data region is. The v3 data is read in first in a
+-- separate step before any additional info from the v4 part of the header. More
+-- information can be found
+-- [here](https://rpm-software-management.github.io/rpm/manual/hregions.html)
 data HeaderBlob = HeaderBlob
-  { indexLength :: Int32
-  , dataLength :: Int32
-  , dataStart :: Int32
-  , dataEnd :: Int32
-  , pvLength :: Int32
-  , entryInfos :: NonEmpty EntryInfo
-  , regionIndexLength :: Int32
+  { -- |Count of entries in the index area
+    indexCount :: Int32
+  , -- |The size of the data area in bytes
+    dataLength :: Int32
+  , -- |The offset from the beginning of the blob data where tag values are
+    dataStart :: Int32
+  , -- |The offset where the data area ends
+    dataEnd :: Int32
+  , -- |The metadata entries for each tag
+    entryInfos :: NonEmpty EntryInfo
+  , -- |The number of EntryInfo's in the original v3 header region. 0 if none exists.
+    regionIndexCount :: Int32
   }
   deriving (Show, Eq)
 
 data EntryInfo = EntryInfo
-  { tag :: Int32
-  , tagType :: Word32
-  , offset :: Int32
-  , count :: Word32
+  { -- |ID for which piece of RPM data this is. More information on available
+    -- tags can be found here: https://rpm-software-management.github.io/rpm/manual/tags.html
+    tag :: Int32
+  , -- |The type of data that this tag is. See https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html
+    -- Table 24-5.
+    tagType :: Word32
+  , -- |The offset from the beginning of 'HeaderBlob's 'dataStart' that data for
+    -- this entry can be found.
+    offset :: Int32
+  , -- | The count of data items to expect. For simple scalar types like numbers
+    -- or strings this will be 1. For composite types such as arrays it may be
+    -- more.
+    count :: Word32
   }
   deriving (Show, Ord, Eq)
 
--- Inspired by https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L105
-headerBlobInit :: BLS.ByteString -> Either (BLS.ByteString, ByteOffset, String) HeaderBlob
-headerBlobInit bs =
+-- | Read initial metadata items, such as data lengths, locations, and index entries from
+-- a header blob.
+--
+-- This function is roughly equivalent to @hdrblobInit@ from the original [go
+-- code](https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L105).
+readHeaderMetaData :: BLS.ByteString -> Either (BLS.ByteString, ByteOffset, String) HeaderBlob
+readHeaderMetaData bs =
   case runGetOrFail readHeader bs of
     Right (_, _, res) -> Right res
     Left l -> Left l
   where
     readHeader = do
-      indexLength <- label "Read indexLength" getInt32be
+      indexCount <- label "Read indexCount" getInt32be
 
-      when (indexLength < 1) $
+      when (indexCount < 1) $
         fail "region no tags error"
 
       dataLength <- label "Read dataLength" getInt32be
-      let dataStart = calcDataStart indexLength
-      let pvLength = dataAndIndexLen + dataLength + indexLength * entryInfoSize
+      let dataStart = calcDataStart indexCount
+      let pvLength = dataAndIndexLen + dataLength + indexCount * entryInfoSize
       let dataEnd = dataStart + dataLength
 
       when (pvLength >= headerMaxBytes) $
         fail "blob size bad"
 
-      entryInfos <- readEntries indexLength
+      entryInfos <- readEntries indexCount
 
       case hdrblobVerifyRegion entryInfos dataLength dataStart bs of
         Left s -> fail s
         Right
           RegionInfo
-            { rIl = regionIndexLength
+            { rIl = regionIndexCount
             } -> pure HeaderBlob{..}
 
     dataAndIndexLen :: Int32
@@ -189,15 +205,16 @@ headerBlobInit bs =
         + indexLength
           * entryInfoSize
 
-newtype RegionInfo = RegionInfo {
-   rIl :: Int32
-}
+newtype RegionInfo = RegionInfo
+  { rIl :: Int32
+  }
   deriving (Show, Eq)
 
 emptyRegionInfo :: RegionInfo
 emptyRegionInfo =
   RegionInfo
-    {rIl = 0}
+    { rIl = 0
+    }
 
 -- This is inspired by hdrblobVerifyRegion:
 -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L263
@@ -235,7 +252,8 @@ hdrblobVerifyRegion entryInfos dataLength dataStart blobData = do
 
       pure
         emptyRegionInfo
-          {rIl = negOffset `div` entryInfoSize}
+          { rIl = negOffset `div` entryInfoSize
+          }
   where
     trd (_, _, c) = c
 
@@ -265,7 +283,7 @@ hdrblobImport bs HeaderBlob{..} = do
         (regionSwab bs (NonEmpty.toList entryInfos) dataStart dataEnd 0)
     else do
       -- v4 entries
-      let regionIndexLength' = if offset firstEntry == 0 then indexLength else regionIndexLength
+      let regionIndexLength' = if offset firstEntry == 0 then indexCount else regionIndexCount
       (indexEntries, ieReadLen) <- regionSwab bs (subList 1 regionIndexLength' entryInfos) dataStart dataEnd 0
 
       (allEntries, dataLenWithDribble) <-
@@ -361,21 +379,21 @@ regionSwab bs entryInfos dataStart dataEnd startDataLength = do
 calcDataLength :: BLS.ByteString -> Word32 -> Word32 -> Int32 -> Int32 -> Either String Int32
 calcDataLength bs ty count start dataEnd
   | ty == rpmStringType =
-      if count /= 1
-        then Left $ "count for string == " <> show count <> " it should == 1."
-        else strtaglen 1
+    if count /= 1
+      then Left $ "count for string == " <> show count <> " it should == 1."
+      else strtaglen 1
   | ty `elem` [rpmStringArrayType, rpmI18NstringType] = strtaglen count
   | otherwise = do
-      t <- maybeToEither ("Nonexistent typesize: " <> show ty) (typeSizes V.!? fromIntegral ty)
-      if t == -1
-        then Left $ "Typesize " <> show ty <> " can't be -1"
-        else do
-          -- typeSizes has 16 members, so it should never fail to read one for (ty .&. 0xf)
-          let mLen = ((fromIntegral count) *) <$> (typeSizes V.!? (fromIntegral ty .&. 0xf))
-          len <- maybeToEither ("Nonexistent tag type " <> show ty) mLen
-          if len < 0 || dataEnd > 0 && start + fromIntegral len > dataEnd
-            then Left $ "Invalid calculated len: " <> show len
-            else Right $ fromIntegral len
+    t <- maybeToEither ("Nonexistent typesize: " <> show ty) (typeSizes V.!? fromIntegral ty)
+    if t == -1
+      then Left $ "Typesize " <> show ty <> " can't be -1"
+      else do
+        -- typeSizes has 16 members, so it should never fail to read one for (ty .&. 0xf)
+        let mLen = ((fromIntegral count) *) <$> (typeSizes V.!? (fromIntegral ty .&. 0xf))
+        len <- maybeToEither ("Nonexistent tag type " <> show ty) mLen
+        if len < 0 || dataEnd > 0 && start + fromIntegral len > dataEnd
+          then Left $ "Invalid calculated len: " <> show len
+          else Right $ fromIntegral len
   where
     strtaglen :: Word32 -> Either String Int32
     strtaglen strCount =
@@ -478,6 +496,6 @@ convertIndexEntryData ie =
 
 readPackageInfo :: BLS.ByteString -> Either String PkgInfo
 readPackageInfo bs = do
-  blob <- first (\(_, _, s) -> s) $ headerBlobInit bs
+  blob <- first (\(_, _, s) -> s) $ readHeaderMetaData bs
   ies <- hdrblobImport bs blob
   getPkgInfo ies

@@ -16,7 +16,7 @@ import Data.Rpm.DbHeaderBlob.Internal (
   emptyRegionInfo,
   hdrblobImport,
   hdrblobVerifyRegion,
-  headerBlobInit,
+  readHeaderMetaData,
   readPackageInfo,
   regionTagCount,
   regionTagType,
@@ -165,7 +165,7 @@ dataLengthSpec =
         ]
 
 headerBlobInit' :: BLS.ByteString -> Either String HeaderBlob
-headerBlobInit' = first (\(_, _, c) -> c) . headerBlobInit
+headerBlobInit' = first (\(_, _, c) -> c) . readHeaderMetaData
 
 headerBlobImportSpec :: BLS.ByteString -> Spec
 headerBlobImportSpec bs = do
@@ -269,13 +269,12 @@ headerBlobSpec bs = describe "header blob parsing" $ do
     it "Parses data length and index length" $ do
       let expected =
             HeaderBlob
-              { indexLength = 0x00000050
+              { indexCount = 0x00000050
               , dataLength = 0x00008ebc
               , dataStart = 0x508
               , dataEnd = 0x93c4
-              , pvLength = 0x93c4
               , entryInfos = emptyInfo -- Not used in test
-              , regionIndexLength = 0x45 -- Not used in test
+              , regionIndexCount = 0x45 -- Not used in test
               }
       eBlob `matchesIgnoringEntries` expected
 
@@ -322,18 +321,18 @@ headerBlobErrSpec =
                 `isSuffixOf` errStr
             _ -> False
 
-    it "Should report failure when parsing nonexistent index length" $
-      headerBlobInit ""
-        `shouldSatisfy` checkErr ("", 0) "Read indexLength"
+    it "Should report failure when parsing nonexistent index count" $
+      readHeaderMetaData ""
+        `shouldSatisfy` checkErr ("", 0) "Read indexCount"
 
     it "Should report failure when parsing nonexistent data length" $ do
       let invalidDl = BLS.pack [0, 0, 0, 1]
-      headerBlobInit invalidDl
+      readHeaderMetaData invalidDl
         `shouldSatisfy` checkErr ("", 4) "Read dataLength"
 
     it "Should report too small index lengths" $ do
       let invalidIl = BLS.pack [0, 0, 0, 0]
-      headerBlobInit invalidIl `shouldSatisfy` checkErr ("", 4) "region no tags error"
+      readHeaderMetaData invalidIl `shouldSatisfy` checkErr ("", 4) "region no tags error"
 
     it "Should report too small blob sizes" $ do
       let invalidDl =
@@ -347,4 +346,4 @@ headerBlobErrSpec =
               , 0
               , 1 -- dl
               ]
-      headerBlobInit invalidDl `shouldSatisfy` checkErr ("", 8) "blob size bad"
+      readHeaderMetaData invalidDl `shouldSatisfy` checkErr ("", 8) "blob size bad"
