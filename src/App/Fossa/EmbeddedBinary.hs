@@ -5,12 +5,14 @@ module App.Fossa.EmbeddedBinary (
   BinaryPaths,
   ThemisIndex,
   ThemisBins (..),
+  PackagedBinary (..),
   toPath,
   withWigginsBinary,
   withSyftBinary,
   withThemisAndIndex,
   allBins,
   dumpEmbeddedBinary,
+  withEmbeddedBinary,
 ) where
 
 import Codec.Compression.Lzma qualified as Lzma
@@ -51,6 +53,7 @@ data PackagedBinary
   | Wiggins
   | Themis
   | ThemisIndex
+  | BerkeleyDB
   deriving (Show, Eq, Enum, Bounded)
 
 allBins :: [PackagedBinary]
@@ -142,6 +145,7 @@ writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
   Wiggins -> embeddedBinaryWiggins
   Themis -> embeddedBinaryThemis
   ThemisIndex -> embeddedBinaryThemisIndex
+  BerkeleyDB -> embeddedBinaryBerkeleyDB
 
 writeExecutable :: Path Abs File -> ByteString -> IO ()
 writeExecutable path content = do
@@ -157,6 +161,7 @@ extractedPath bin = case bin of
   Wiggins -> $(mkRelFile "vsi-plugin")
   Themis -> $(mkRelFile "themis-cli")
   ThemisIndex -> $(mkRelFile "index.gob.xz")
+  BerkeleyDB -> $(mkRelFile "berkeleydb-plugin")
 
 -- | Extract to @$TMP/fossa-vendor/<timestamp>
 -- We used to extract everything to @$TMP/fossa-vendor@, but there's a subtle issue with that.
@@ -196,3 +201,7 @@ embeddedBinaryThemis = $(embedFileIfExists "vendor-bins/themis-cli")
 
 embeddedBinaryThemisIndex :: ByteString
 embeddedBinaryThemisIndex = $(embedFileIfExists "vendor-bins/index.gob.xz")
+
+-- To build this, run `make build` or `cargo build --release`.
+embeddedBinaryBerkeleyDB :: ByteString
+embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb")

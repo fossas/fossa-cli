@@ -15,7 +15,7 @@ build: build-cargo
 	cabal build
 
 build-cargo:
-	cargo build
+	cargo build --release
 
 # Runs units tests.
 # To run a set of unit tests matching a specific value, use ARGS
