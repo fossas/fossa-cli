@@ -2,6 +2,9 @@
 members = [
   "extlib/berkeleydb"
 ]
+exclude = [
+  "integration-test/artifacts/rust/fd/fd-8.3.0"
+]
 
 [profile.dev.package.backtrace]
 opt-level = 3
