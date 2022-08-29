@@ -137,7 +137,6 @@ data HeaderBlob = HeaderBlob
   , dataEnd :: Int32
   , pvLength :: Int32
   , entryInfos :: NonEmpty EntryInfo
-  , regionDataLength :: Int32
   , regionIndexLength :: Int32
   }
   deriving (Show, Eq)
@@ -177,8 +176,7 @@ headerBlobInit bs =
         Left s -> fail s
         Right
           RegionInfo
-            { rDl = regionDataLength
-            , rIl = regionIndexLength
+            { rIl = regionIndexLength
             } -> pure HeaderBlob{..}
 
     dataAndIndexLen :: Int32
@@ -191,18 +189,15 @@ headerBlobInit bs =
         + indexLength
           * entryInfoSize
 
-data RegionInfo = RegionInfo
-  { rDl :: Int32
-  , rIl :: Int32
-  }
+newtype RegionInfo = RegionInfo {
+   rIl :: Int32
+}
   deriving (Show, Eq)
 
 emptyRegionInfo :: RegionInfo
 emptyRegionInfo =
   RegionInfo
-    { rDl = 0
-    , rIl = 0
-    }
+    {rIl = 0}
 
 -- This is inspired by hdrblobVerifyRegion:
 -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L263
@@ -240,9 +235,7 @@ hdrblobVerifyRegion entryInfos dataLength dataStart blobData = do
 
       pure
         emptyRegionInfo
-          { rDl = offset + regionTagCount
-          , rIl = negOffset `div` entryInfoSize
-          }
+          {rIl = negOffset `div` entryInfoSize}
   where
     trd (_, _, c) = c
 

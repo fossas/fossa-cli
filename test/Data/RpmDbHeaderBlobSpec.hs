@@ -204,8 +204,7 @@ headerBlobVerifyRegionSpec blobData = do
     expectedRegionInfo :: RegionInfo
     expectedRegionInfo =
       RegionInfo
-        { rDl = 0x89b1
-        , rIl = 0x45
+        { rIl = 0x45
         }
 
     testDataLength :: Int32
@@ -276,7 +275,6 @@ headerBlobSpec bs = describe "header blob parsing" $ do
               , dataEnd = 0x93c4
               , pvLength = 0x93c4
               , entryInfos = emptyInfo -- Not used in test
-              , regionDataLength = 0x89b1 -- Not used in test
               , regionIndexLength = 0x45 -- Not used in test
               }
       eBlob `matchesIgnoringEntries` expected
