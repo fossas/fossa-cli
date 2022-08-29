@@ -11,10 +11,15 @@ use super::header::Header;
 pub struct Index(Vec<u16>);
 
 impl Index {
+    /// https://github.com/jssblck/go-rpmdb/blob/956701287363101ee9ade742d6bf1d5c5495f62a/pkg/bdb/constants.go#L10
     const ENTRY_SIZE: usize = 2;
+
+    /// https://github.com/jssblck/go-rpmdb/blob/160242deff7a9ee82d1b493b62b7e50fd4c3e81c/pkg/bdb/hash_page.go#L102
     const PAIR_SIZE: usize = Self::ENTRY_SIZE * 2;
 
     /// Read [`Self`] out of a file in plain byte order.
+    ///
+    /// Reference: https://github.com/jssblck/go-rpmdb/blob/160242deff7a9ee82d1b493b62b7e50fd4c3e81c/pkg/bdb/hash_page.go#L89
     pub fn parse<E: ByteOrder>(data: &[u8], entries: usize) -> Result<Self> {
         if entries % 2 != 0 {
             bail!("entries must only be requested in pairs: {entries}");
@@ -32,11 +37,11 @@ impl Index {
             bail!("short read: expected {data_len}, got {}", index_data.len());
         }
 
-        // data is stored in key-value pairs (https://github.com/berkeleydb/libdb/blob/5b7b02ae052442626af54c176335b67ecc613a30/src/dbinc/db_page.h#L591)
-        // skip over keys and only keep values
+        // data is stored in key-value pairs (each a `u16`), but we only care about the values.
+        // Reference: https://github.com/jssblck/go-rpmdb/blob/160242deff7a9ee82d1b493b62b7e50fd4c3e81c/pkg/bdb/hash_page.go#L100-L108
         index_data
             .chunks(Self::PAIR_SIZE)
-            .map(|chunk| to_pair_u16::<E>(chunk).map(snd))
+            .map(|chunk| parse_pair_u16::<E>(chunk).map(snd))
             .collect::<Result<Vec<_>>>()
             .map(Index)
             .context("read index values")
@@ -77,7 +82,7 @@ impl IntoIterator for Index {
     }
 }
 
-fn to_pair_u16<E: ByteOrder>(mut r: impl Read) -> Result<(u16, u16)> {
+fn parse_pair_u16<E: ByteOrder>(mut r: impl Read) -> Result<(u16, u16)> {
     let k = r.read_u16::<E>().context("read pair 0 index")?;
     let v = r.read_u16::<E>().context("read pair 1 index")?;
     Ok((k, v))
