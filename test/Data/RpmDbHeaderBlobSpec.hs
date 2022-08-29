@@ -11,7 +11,6 @@ import Data.Rpm.DbHeaderBlob.Internal (
   HeaderBlob (..),
   IndexEntry (..),
   PkgInfo (..),
-  RegionInfo (..),
   calcDataLength,
   emptyRegionInfo,
   hdrblobImport,
@@ -25,7 +24,7 @@ import Data.Rpm.DbHeaderBlob.Internal (
   rpmInt64Type,
   rpmStringArrayType,
   rpmStringType,
-  rpmTagHeaderImg,
+  rpmTagHeaderImg, IndexCount,
  )
 import Data.Set qualified as Set
 import Test.Hspec (
@@ -195,17 +194,14 @@ headerBlobV3RegionSpec blobData = do
     it "Verifies a valid blob region" $
       getV3RegionCount' goodInfo blobData `shouldBe` (Right expectedRegionInfo)
   where
-    failsWithMsg :: Either String RegionInfo -> String -> Expectation
+    failsWithMsg :: Either String IndexCount -> String -> Expectation
     failsWithMsg e msg =
       case e of
         Right _ -> expectationFailure "Expected failure, got success"
         Left s -> s `shouldContain` msg
 
-    expectedRegionInfo :: RegionInfo
-    expectedRegionInfo =
-      RegionInfo
-        { rIl = 0x45
-        }
+    expectedRegionInfo :: IndexCount
+    expectedRegionInfo = 0x45
 
     testDataLength :: Int32
     testDataLength = 0x00008ebc
@@ -213,7 +209,7 @@ headerBlobV3RegionSpec blobData = do
     testDataStart :: Int32
     testDataStart = 0x508
 
-    getV3RegionCount' :: EntryInfo -> BLS.ByteString -> Either String RegionInfo
+    getV3RegionCount' :: EntryInfo -> BLS.ByteString -> Either String IndexCount
     getV3RegionCount' entryInfo = getV3RegionCount (NonEmpty.singleton entryInfo) testDataLength testDataStart
 
     goodInfo =

@@ -11,7 +11,7 @@ module Data.Rpm.DbHeaderBlob.Internal (
   HeaderBlob (..),
   EntryInfo (..),
   IndexEntry (..),
-  RegionInfo (..),
+  IndexCount (..),
 
   -- * Internal Functions
   readHeaderMetaData,
@@ -58,6 +58,7 @@ import Text.Printf (printf)
 
 -- $tagIdDoc
 -- Magic numbers for different tags included in a header blob
+
 -- $tagIdDoc
 rpmTagHeaderImmutable :: Int32
 rpmTagHeaderImmutable = 63
@@ -88,6 +89,7 @@ rpmtagArch = 1022 -- string
 -- only includes types for data we actually read from the header. More types can
 -- be found
 -- [here](https://github.com/csasarak/go-rpmdb/blob/modified-cmd/pkg/rpmtags.go#L2)
+
 -- $tagTypeDoc
 
 rpmStringType :: Word32
@@ -108,7 +110,6 @@ rpmInt32Type = 4
 -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L15
 regionTagType :: Word32
 regionTagType = 7
-
 
 -- $dataSizeDoc
 -- Sizes for data that may be found in a header blob, in bytes.
@@ -170,7 +171,7 @@ regionTagCount = entryInfoSize
 -- [here](https://rpm-software-management.github.io/rpm/manual/hregions.html)
 data HeaderBlob = HeaderBlob
   { -- |Count of entries in the index area
-    indexCount :: Int32
+    indexCount :: IndexCount
   , -- |The size of the data area in bytes
     dataLength :: Int32
   , -- |The offset from the beginning of the blob data where tag values are
@@ -180,7 +181,7 @@ data HeaderBlob = HeaderBlob
   , -- |The metadata entries for each tag
     entryInfos :: NonEmpty EntryInfo
   , -- |The number of EntryInfo's in the original v3 header region. 0 if none exists.
-    regionIndexCount :: Int32
+    regionIndexCount :: IndexCount
   }
   deriving (Show, Eq)
 
@@ -216,14 +217,15 @@ readHeaderMetaData bs =
     Left l -> Left l
   where
     readHeader = do
-      indexCount <- label "Read indexCount" getInt32be
+      indexCount <- IndexCount <$> label "Read indexCount" getInt32be
+      let indexCount' = fromIntegral indexCount
 
       when (indexCount < 1) $
         fail "region no tags error"
 
       dataLength <- label "Read dataLength" getInt32be
-      let dataStart = calcDataStart indexCount
-      let pvLength = dataAndIndexLen + dataLength + indexCount * entryInfoSize
+      let dataStart = calcDataStart indexCount'
+      let pvLength = dataAndIndexLen + dataLength + indexCount' * entryInfoSize
       let dataEnd = dataStart + dataLength
 
       when (pvLength >= headerMaxBytes) $
@@ -233,10 +235,7 @@ readHeaderMetaData bs =
 
       case getV3RegionCount entryInfos dataLength dataStart bs of
         Left s -> fail s
-        Right
-          RegionInfo
-            { rIl = regionIndexCount
-            } -> pure HeaderBlob{..}
+        Right regionIndexCount -> pure HeaderBlob{..}
 
     dataAndIndexLen :: Int32
     dataAndIndexLen = 8
@@ -248,23 +247,19 @@ readHeaderMetaData bs =
         + indexLength
           * entryInfoSize
 
-newtype RegionInfo = RegionInfo
-  { rIl :: Int32
-  }
-  deriving (Show, Eq)
+-- |A count of entries in a tag index
+newtype IndexCount = IndexCount Int32
+  deriving (Show, Eq, Ord, Num, Enum, Real, Integral)
 
-emptyRegionInfo :: RegionInfo
-emptyRegionInfo =
-  RegionInfo
-    { rIl = 0
-    }
+emptyRegionInfo :: IndexCount
+emptyRegionInfo = IndexCount 0
 
 -- | Report the number entries in this blob corresponding to a v3 data region
 -- and verify its correctness. In the case of a regular v3 blob, this will be
 -- 0. In the case of v4 it may be more.
 --
 -- This is inspired by [hdrblobVerifyRegion](https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L263).
-getV3RegionCount :: NonEmpty.NonEmpty EntryInfo -> Int32 -> Int32 -> BLS.ByteString -> Either String RegionInfo
+getV3RegionCount :: NonEmpty.NonEmpty EntryInfo -> Int32 -> Int32 -> BLS.ByteString -> Either String IndexCount
 getV3RegionCount entryInfos dataLength dataStart blobData = do
   let EntryInfo{..} = NonEmpty.head entryInfos
   let regionTag =
@@ -296,10 +291,8 @@ getV3RegionCount entryInfos dataLength dataStart blobData = do
       -- https://github.com/rpm-software-management/rpm/blob/061ba962297eba71ecb1b45a4133cbbd86f8450e/lib/header.c#L1843
       let negOffset = negate trailerOffset
 
-      pure
-        emptyRegionInfo
-          { rIl = negOffset `div` entryInfoSize
-          }
+      pure $
+        IndexCount (negOffset `div` entryInfoSize)
   where
     trd (_, _, c) = c
 
@@ -338,12 +331,12 @@ hdrblobImport bs HeaderBlob{..} = do
     else do
       -- v4 entries, since we need to read the legacy v3 entries first we'll
       -- try to pull out all 'IndexEntry's in just the v3 header region area.
-      let regionIndexLength' = if offset firstEntry == 0 then indexCount else regionIndexCount
-      (indexEntries, ieReadLen) <- regionSwab bs (subList 1 regionIndexLength' entryInfos) dataStart dataEnd 0
+      let regionIndexCount' = if offset firstEntry == 0 then indexCount else regionIndexCount
+      (indexEntries, ieReadLen) <- regionSwab bs (subList 1 (fromIntegral regionIndexCount') entryInfos) dataStart dataEnd 0
 
       (allEntries, dataLenWithDribble) <-
-        if fromIntegral regionIndexLength' < length entryInfos
-          then calculateDribbleEntries indexEntries regionIndexLength' ieReadLen
+        if fromIntegral regionIndexCount' < length entryInfos
+          then calculateDribbleEntries indexEntries regionIndexCount ieReadLen
           else Right (indexEntries, ieReadLen)
 
       let totalLen = dataLenWithDribble + regionTagCount
@@ -354,7 +347,7 @@ hdrblobImport bs HeaderBlob{..} = do
     subList :: Int32 -> Int32 -> NonEmpty a -> [a]
     subList start end = take (fromIntegral $ end - start) . NonEmpty.drop (fromIntegral start)
 
-    calculateDribbleEntries :: [IndexEntry] -> Int32 -> Int32 -> Either String ([IndexEntry], Int32)
+    calculateDribbleEntries :: [IndexEntry] -> IndexCount -> Int32 -> Either String ([IndexEntry], Int32)
     calculateDribbleEntries indexEntries ril startDataLength = do
       let dribbleInfos = NonEmpty.drop (fromIntegral ril) entryInfos
       (dribbleEntries, ieReadLen) <- regionSwab bs dribbleInfos dataStart dataEnd startDataLength
@@ -461,7 +454,7 @@ calcDataLength bs ty count start dataEnd
 bsSubString :: Int32 -> Int32 -> BLS.ByteString -> BLS.ByteString
 bsSubString start end = BLS.take (fromIntegral $ end - start) . BLS.drop (fromIntegral start)
 
-readEntries :: Int32 -> Get (NonEmpty EntryInfo)
+readEntries :: IndexCount -> Get (NonEmpty EntryInfo)
 readEntries indexLength =
   liftA2 (:|) readEntry $ replicateM (fromIntegral (indexLength - 1)) readEntry
 
