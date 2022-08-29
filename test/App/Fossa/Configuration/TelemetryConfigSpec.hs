@@ -34,6 +34,7 @@ defaultEnvVars =
     , envConfigDebug = False
     , envTelemetryDebug = False
     , envTelemetryScope = Nothing
+    , envDockerHost = Nothing
     }
 
 defaultCommonOpts :: CommonOpts

@@ -1,16 +1,16 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module Container.DpkgSpec (spec) where
+module Dpkg.DpkgSpec (spec) where
 
-import Container.Dpkg (DpkgEntry (..), analyzeDpkgEntriesScoped, dpkgEntryParser)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Data.Text (Text)
 import Data.Void (Void)
-import Effect.ReadFS (runReadFSIO)
-import Path (Abs, Dir, Path)
+import Effect.ReadFS (readContentsParser, runReadFSIO)
+import Path (Abs, File, Path)
 import Path.IO qualified as PIO
 import ResultUtil (assertOnSuccess)
+import Strategy.Dpkg.Parser (DpkgEntry (..), dpkgEntriesParser, dpkgEntryParser)
 import Test.Hspec (Expectation, Spec, describe, it, runIO, shouldBe)
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (Parsec, parse, some)
@@ -19,8 +19,8 @@ import Text.RawString.QQ (r)
 spec :: Spec
 spec = do
   describe "Container Dpkg Parser" $ do
-    target <- runIO testDataDir
-    result <- runIO . runStack . runDiagnostics . runReadFSIO $ analyzeDpkgEntriesScoped target
+    target <- runIO testStatusFile
+    result <- runIO . runStack . runDiagnostics . runReadFSIO $ readContentsParser dpkgEntriesParser target
 
     it "parses a single simple entry" $
       simpleSingleEntry `shouldParseEntryInto` singleEntryExpected
@@ -35,10 +35,8 @@ spec = do
       assertOnSuccess result $ \_ c ->
         c `shouldBe` expectedEntries
 
--- | Inside testdata, a file is stored at @var/lib/dpkg/status@.
--- This file is the exact contents of a file at @/var/lib/dpkg/status@ on a default install of @debian:bullseye@.
-testDataDir :: IO (Path Abs Dir)
-testDataDir = PIO.resolveDir' "test/Container/testdata/"
+testStatusFile :: IO (Path Abs File)
+testStatusFile = PIO.resolveFile' "test/Container/testdata/var/lib/dpkg/status"
 
 shouldParseEntryInto :: Text -> DpkgEntry -> Expectation
 shouldParseEntryInto = parseMatch dpkgEntryParser

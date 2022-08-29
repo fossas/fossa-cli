@@ -15,12 +15,13 @@ import App.Fossa.Config.Common (
   ScanDestination (OutputStdout, UploadScan),
  )
 import App.Fossa.Config.Container.Analyze (
-  ContainerAnalyzeConfig (imageLocator, revisionOverride, scanDestination),
+  ContainerAnalyzeConfig (arch, dockerHost, imageLocator, revisionOverride, scanDestination),
  )
 import App.Fossa.Config.Container.Analyze qualified as Config
 import App.Fossa.Config.Container.Common (ImageText (unImageText))
+import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive)
 import App.Fossa.Container.Sources.DockerEngine (analyzeFromDockerEngine)
-import App.Fossa.Container.Sources.DockerTarball (analyzeExportedTarball)
+import App.Fossa.Container.Sources.Podman (analyzeFromPodman, podmanInspectImage)
 import App.Fossa.Container.Sources.Registry (analyzeFromRegistry)
 import App.Types (
   OverrideProject (OverrideProject),
@@ -47,6 +48,7 @@ import Control.Monad (unless, void)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (traverse_)
+import Data.Functor (($>))
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (
   ConvertUtf8 (decodeUtf8),
@@ -56,7 +58,7 @@ import Data.String.Conversion (
  )
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Effect.Exec (Exec)
+import Effect.Exec (Exec, execThrow')
 import Effect.Logger (
   Has,
   Logger,
@@ -72,13 +74,13 @@ import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir)
 import Fossa.API.Types (Organization (orgSupportsNativeContainerScan), UploadResponse (uploadError), uploadLocator)
 import Path (Abs, File, Path, SomeBase (Abs, Rel), parseSomeFile, (</>))
 import Srclib.Types (Locator)
-import System.Info (arch)
 import Text.Megaparsec (errorBundlePretty, parse)
 
 data ContainerImageSource
-  = ContainerExportedTarball (Path Abs File)
-  | ContainerDockerImage Text
-  | ContainerOCIRegistry RegistryImageSource
+  = DockerArchive (Path Abs File)
+  | DockerEngine Text
+  | Podman Text
+  | Registry RegistryImageSource
   deriving (Show, Eq)
 
 debugBundlePath :: FilePath
@@ -115,11 +117,16 @@ analyze ::
   m ()
 analyze cfg = do
   logInfo "Running container scanning with fossa experimental-scanner!"
-  parsedSource <- runDockerEngineApi $ parseContainerImageSource (unImageText $ imageLocator cfg)
+  parsedSource <-
+    runDockerEngineApi (dockerHost cfg) $
+      parseContainerImageSource
+        (unImageText $ imageLocator cfg)
+        (arch cfg)
   scannedImage <- case parsedSource of
-    ContainerDockerImage imgTag -> context "Analyzing via Docker engine API" $ analyzeFromDockerEngine imgTag
-    ContainerOCIRegistry registrySrc -> context "Analyzing via registry" $ analyzeFromRegistry registrySrc
-    ContainerExportedTarball tarball -> context "Analyzing via tarball" $ analyzeExportedTarball tarball
+    DockerArchive tarball -> context "Analyzing via tarball" $ analyzeFromDockerArchive tarball
+    DockerEngine imgTag -> context "Analyzing via Docker engine API" $ analyzeFromDockerEngine imgTag (dockerHost cfg)
+    Podman img -> context "Analyzing via podman" $ analyzeFromPodman img
+    Registry registrySrc -> context "Analyzing via registry" $ analyzeFromRegistry registrySrc
 
   let revision = extractRevision (revisionOverride cfg) scannedImage
   case scanDestination cfg of
@@ -171,14 +178,17 @@ parseContainerImageSource ::
   , Has Diagnostics sig m
   , Has ReadFS sig m
   , Has Logger sig m
+  , Has Exec sig m
   , Has DockerEngineApi sig m
   ) =>
   Text ->
+  Text ->
   m ContainerImageSource
-parseContainerImageSource src =
-  parseExportedTarballSource src
+parseContainerImageSource src defaultArch =
+  parseDockerArchiveSource src
     <||> parseDockerEngineSource src
-    <||> parseOciRegistrySource src
+    <||> parsePodmanSource src
+    <||> parseRegistrySource defaultArch src
 
 parseDockerEngineSource ::
   ( Has (Lift IO) sig m
@@ -203,16 +213,16 @@ parseDockerEngineSource imgTag = do
   imgSize <- toText . show <$> errCtx (DockerEngineImageNotPresentLocally imgTag) (getDockerImageSize imgTag)
   logInfo . pretty $ "Discovered image for: " <> imgTag <> " (of " <> imgSize <> " bytes) via docker engine api."
 
-  pure $ ContainerDockerImage imgTag
+  pure $ DockerEngine imgTag
 
-parseExportedTarballSource ::
+parseDockerArchiveSource ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has ReadFS sig m
   ) =>
   Text ->
   m ContainerImageSource
-parseExportedTarballSource path = do
+parseDockerArchiveSource path = do
   cwd <- getCurrentDir
   someTarballFile <- fromEitherShow $ parseSomeFile (toString path)
   resolvedAbsPath <- case someTarballFile of
@@ -222,7 +232,7 @@ parseExportedTarballSource path = do
   unless doesFileExist' $
     fatalText $
       "Could not locate tarball source at filepath: " <> toText resolvedAbsPath
-  pure $ ContainerExportedTarball resolvedAbsPath
+  pure $ DockerArchive resolvedAbsPath
 
 newtype DockerEngineImageNotPresentLocally = DockerEngineImageNotPresentLocally Text
 instance ToDiagnostic DockerEngineImageNotPresentLocally where
@@ -232,24 +242,23 @@ instance ToDiagnostic DockerEngineImageNotPresentLocally where
       , pretty $ "Perform: docker pull " <> (toString tag) <> ", prior to running fossa."
       ]
 
-parseOciRegistrySource ::
+parsePodmanSource ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
+  ) =>
+  Text ->
+  m ContainerImageSource
+parsePodmanSource img = execThrow' (podmanInspectImage img) $> Podman img
+
+parseRegistrySource ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   ) =>
   Text ->
+  Text ->
   m ContainerImageSource
-parseOciRegistrySource tag = case parse (parseImageUrl defaultArch) "" tag of
+parseRegistrySource defaultArch tag = case parse (parseImageUrl defaultArch) "" tag of
   Left err -> fatal $ errorBundlePretty err
-  Right registrySource -> pure $ ContainerOCIRegistry registrySource
-  where
-    -- Get current runtime arch, We use this to find suitable image,
-    -- if multi-platform image is discovered. This is similar to
-    -- how docker pull, and existing behavior works
-    --
-    -- Ref: https://docs.docker.com/desktop/multi-arch/
-    defaultArch :: Text
-    defaultArch =
-      toText $
-        if arch == "x86_64" -- x86_64 is equivalent to amd64
-          then "amd64"
-          else arch
+  Right registrySource -> pure $ Registry registrySource

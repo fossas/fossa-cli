@@ -65,6 +65,7 @@ common deps
     , ansi-terminal                ^>=0.11
     , async                        ^>=2.2.2
     , attoparsec                   ^>=0.14.1
+    , binary                       ^>=0.8.8.0
     , bytestring                   ^>=0.10.8
     , bzlib                        ^>=0.5.0.0
     , cgroup-rts-threads           ^>=0.2.0.0
@@ -180,8 +181,9 @@ library
     App.Fossa.Container.Analyze
     App.Fossa.Container.AnalyzeNative
     App.Fossa.Container.Scan
+    App.Fossa.Container.Sources.DockerArchive
     App.Fossa.Container.Sources.DockerEngine
-    App.Fossa.Container.Sources.DockerTarball
+    App.Fossa.Container.Sources.Podman
     App.Fossa.Container.Sources.Registry
     App.Fossa.Container.Test
     App.Fossa.DumpBinaries
@@ -233,7 +235,6 @@ library
     Container.Docker.OciManifest
     Container.Docker.OciManifestIndex
     Container.Docker.SourceParser
-    Container.Dpkg
     Container.Errors
     Container.OsRelease
     Container.Tarball
@@ -301,6 +302,8 @@ library
     Data.Glob
     Data.List.Extra
     Data.Monoid.Extra
+    Data.Rpm.DbHeaderBlob
+    Data.Rpm.DbHeaderBlob.Internal
     Data.Set.NonEmpty
     Data.String.Conversion
     Data.Tagged
@@ -350,6 +353,9 @@ library
     Strategy.Dart.PubDeps
     Strategy.Dart.PubSpec
     Strategy.Dart.PubSpecLock
+    Strategy.Dpkg
+    Strategy.Dpkg.Database
+    Strategy.Dpkg.Parser
     Strategy.Elixir.MixTree
     Strategy.Erlang.ConfigParser
     Strategy.Erlang.Rebar3Tree
@@ -510,7 +516,6 @@ test-suite unit-tests
     Container.Docker.OciManifestIndexSpec
     Container.Docker.OciManifestSpec
     Container.Docker.SourceParserSpec
-    Container.DpkgSpec
     Container.OsReleaseSpec
     Container.RegistryApiSpec
     Container.TarballReadFSSpec
@@ -522,9 +527,11 @@ test-suite unit-tests
     Dart.PubSpecLockSpec
     Dart.PubSpecSpec
     Data.IndexFileTreeSpec
+    Data.RpmDbHeaderBlobSpec
     Discovery.ArchiveSpec
     Discovery.FiltersSpec
     Discovery.WalkSpec
+    Dpkg.DpkgSpec
     Effect.ExecSpec
     Effect.LoggerSpec
     Elixir.MixTreeSpec

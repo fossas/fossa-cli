@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.Fossa.Container.Sources.DockerTarball (
-  analyzeExportedTarball,
+module App.Fossa.Container.Sources.DockerArchive (
+  analyzeFromDockerArchive,
 ) where
 
 import App.Fossa.Analyze (applyFiltersToProject, toProjectResult, updateProgress)
@@ -73,10 +73,11 @@ import Path.Internal (Path (Path))
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (SourceUnit)
 import Strategy.ApkDatabase qualified as Apk
+import Strategy.Dpkg qualified as Dpkg
 import Types (DiscoveredProject (..))
 
 -- | Analyzes Docker Image from Exported Tarball Source.
-analyzeExportedTarball ::
+analyzeFromDockerArchive ::
   ( Has Diagnostics sig m
   , Has Exec sig m
   , Has (Lift IO) sig m
@@ -86,7 +87,7 @@ analyzeExportedTarball ::
   ) =>
   Path Abs File ->
   m ContainerScan
-analyzeExportedTarball tarball = do
+analyzeFromDockerArchive tarball = do
   capabilities <- sendIO getNumCapabilities
   containerTarball <- sendIO . BS.readFile $ toString tarball
   image <- fromEither $ parse containerTarball
@@ -191,6 +192,7 @@ runAnalyzers osInfo filters = do
   traverse_
     single
     [ DiscoverFunc (Apk.discover osInfo)
+    , DiscoverFunc (Dpkg.discover osInfo)
     ]
   where
     single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters)

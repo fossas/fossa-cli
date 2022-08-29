@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Fix a bug in fossa-deps.schema.json. It is now valid JSON. ([#1030](https://github.com/fossas/fossa-cli/pull/1030))
+
 ## 3.3.12
 
 - CocoaPods: Fixes error when analyzing podspecs that print non-JSON text to stdout ([#1015](https://github.com/fossas/fossa-cli/pull/1015))
