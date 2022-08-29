@@ -13,9 +13,7 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-          components:
-            - clippy
-            - rustfmt
+          components: clippy, rustfmt
 
       - uses: actions/checkout@v2
 
@@ -50,9 +48,7 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-          components:
-            - clippy
-            - rustfmt
+          components: clippy, rustfmt
 
       - uses: actions/checkout@v2
 
