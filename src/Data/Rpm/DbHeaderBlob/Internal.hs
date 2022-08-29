@@ -368,21 +368,21 @@ regionSwab bs entryInfos dataStart dataEnd startDataLength = do
 calcDataLength :: BLS.ByteString -> Word32 -> Word32 -> Int32 -> Int32 -> Either String Int32
 calcDataLength bs ty count start dataEnd
   | ty == rpmStringType =
-    if count /= 1
-      then Left $ "count for string == " <> show count <> " it should == 1."
-      else strtaglen 1
+      if count /= 1
+        then Left $ "count for string == " <> show count <> " it should == 1."
+        else strtaglen 1
   | ty `elem` [rpmStringArrayType, rpmI18NstringType] = strtaglen count
   | otherwise = do
-    t <- maybeToEither ("Nonexistent typesize: " <> show ty) (typeSizes V.!? fromIntegral ty)
-    if t == -1
-      then Left $ "Typesize " <> show ty <> " can't be -1"
-      else do
-        -- typeSizes has 16 members, so it should never fail to read one for (ty .&. 0xf)
-        let mLen = ((fromIntegral count) *) <$> (typeSizes V.!? (fromIntegral ty .&. 0xf))
-        len <- maybeToEither ("Nonexistent tag type " <> show ty) mLen
-        if len < 0 || dataEnd > 0 && start + fromIntegral len > dataEnd
-          then Left $ "Invalid calculated len: " <> show len
-          else Right $ fromIntegral len
+      t <- maybeToEither ("Nonexistent typesize: " <> show ty) (typeSizes V.!? fromIntegral ty)
+      if t == -1
+        then Left $ "Typesize " <> show ty <> " can't be -1"
+        else do
+          -- typeSizes has 16 members, so it should never fail to read one for (ty .&. 0xf)
+          let mLen = ((fromIntegral count) *) <$> (typeSizes V.!? (fromIntegral ty .&. 0xf))
+          len <- maybeToEither ("Nonexistent tag type " <> show ty) mLen
+          if len < 0 || dataEnd > 0 && start + fromIntegral len > dataEnd
+            then Left $ "Invalid calculated len: " <> show len
+            else Right $ fromIntegral len
   where
     strtaglen :: Word32 -> Either String Int32
     strtaglen strCount =
