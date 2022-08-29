@@ -11,19 +11,25 @@ MOUNTED_DEV_TOOLS_OPTS += --workdir "/fossa-cli"
 MOUNTED_DEV_TOOLS := ${MOUNTED_DEV_TOOLS_OPTS} ${DEV_TOOLS}
 SHELL := bash
 
-build:
+build: build-cargo
 	cabal build
+
+build-cargo:
+	cargo build
 
 # Runs units tests.
 # To run a set of unit tests matching a specific value, use ARGS
 # For example, to only run tests whose name matches the wildcard '*Node.PackageLockV3*':
 # 	make test ARGS="Node.PackageLockV3"
-test:
+test: test-cargo
 ifdef ARGS
 	cabal test unit-tests --test-show-details=streaming --test-option=--format=checks --test-option=--times --test-option=--color --test-option=--match --test-option="$(ARGS)"
 else
 	cabal test unit-tests --test-show-details=streaming --test-option=--format=checks --test-option=--times --test-option=--color
 endif
+
+test-cargo:
+	cargo test
 
 # Runs an integration test.
 # To run a set of integration tests matching a specific value, use ARGS
@@ -36,7 +42,7 @@ else
 	cabal test integration-tests --test-show-details=streaming --test-option=--format=checks
 endif
 	
-test-all:
+test-all: test-cargo
 	cabal test
 
 # Dogfood the dev version
@@ -64,15 +70,20 @@ clean-test-data:
 
 # Format everything (if this fails, update FMT_OPTS or use your IDE to format)
 # `@command` does not echo the command before running
-fmt:
+fmt: fmt-cargo
 	@echo "Running fourmolu"
 	@fourmolu --version
 	@fourmolu --mode inplace ${FMT_OPTS} $(shell find ${FIND_OPTS})
 	@echo "Running cabal-fmt"
 	@cabal-fmt spectrometer.cabal --inplace
 
+fmt-cargo:
+	@echo "Running rustfmt"
+	@rustfmt -V
+	@rustfmt extlib/**/*.rs --emit files
+
 # Confirm everything is formatted without changing anything
-check-fmt:
+check-fmt: check-fmt-cargo
 	@echo "Running fourmolu"
 	@fourmolu --version
 	@fourmolu --mode check ${FMT_OPTS} $(shell find ${FIND_OPTS})
@@ -80,12 +91,23 @@ check-fmt:
 	@echo "Running cabal-fmt"
 	@cabal-fmt --check spectrometer.cabal
 
+check-fmt-cargo:
+	@echo "Running rustfmt"
+	@rustfmt -V
+	@rustfmt extlib/**/*.rs --check
+
 # Lint everything (If this fails, update .hlint.yaml or report the failure)
-lint:
+lint: lint-cargo
 	@echo "Running hlint"
 	@hlint --version
 	@hlint src test integration-test --cross --timing -vj
 	@echo "No linter errors found"
+
+# Lint everything (If this fails, update clippy directives or report the failure)
+lint-cargo:
+	@echo "Running clippy"
+	@cargo clippy -V
+	@cargo clippy
 
 # Runs linter on only modified files
 # 
@@ -146,4 +168,4 @@ ci-shell:
 bench:
 	cabal bench --benchmark-options '+RTS -T'
 
-.PHONY: build test integration-test analyze install-local fmt check check-fmt lint check-ci fmt-ci build-test-data clean-test-data install-dev test-all bench
+.PHONY: build test integration-test analyze install-local fmt check check-fmt lint check-ci fmt-ci build-test-data clean-test-data install-dev test-all bench build-cargo test-cargo fmt-cargo check-fmt-cargo lint-cargo
