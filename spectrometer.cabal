@@ -303,6 +303,7 @@ library
     Data.List.Extra
     Data.Monoid.Extra
     Data.Rpm.DbHeaderBlob
+    Data.Rpm.DbHeaderBlob.Internal
     Data.Set.NonEmpty
     Data.String.Conversion
     Data.Tagged
