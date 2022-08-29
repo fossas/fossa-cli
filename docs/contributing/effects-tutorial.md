@@ -631,4 +631,4 @@ necessary for understanding how the `Member` typeclass works fundamentally.
 [simple-file]: https://github.com/fossas/fossa-cli/blob/aafe05624d102eb746b85c78027983e8c128bf24/src/Control/Carrier/Simple.hs
 [member-source]: https://hackage.haskell.org/package/fused-effects-1.1.1.2/docs/src/Control.Effect.Sum.html#Member
 [left-rec]: https://github.com/fused-effects/fused-effects/issues/213
-[dtalc]: http://www.cs.ru.nl/~W.Swierstra/Publications/DataTypesALaCarte.pdf
+[dtalc]: https://www.cambridge.org/core/journals/journal-of-functional-programming/article/data-types-a-la-carte/14416CB20C4637164EA9F77097909409#

@@ -28,6 +28,8 @@ impl Args {
     }
 }
 
+/// Open the database and output a JSON array of `base64` encoded [`berkeleydb::read::Value`] blobs.
+/// These blobs are a shared format between different RPM backends, so the CLI contains a parser for the blob value.
 fn main() -> Result<()> {
     stable_eyre::install()?;
     let args = Args::parse();

@@ -14,12 +14,11 @@ use crate::{
 };
 
 /// Values are raw bytes.
-///
-/// `fossa-cli` contains a parser for these values;
-/// we emit them as plain `base64` strings so as to not reinvent the wheel.
+/// `fossa-cli` contains a parser for these values, because the same blob format is shared between all RPM backends.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Value(Vec<u8>);
 
+/// Serialize the value as a `base64` string.
 impl Serialize for Value {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let encoded = base64::encode(&self.0);
@@ -28,13 +27,16 @@ impl Serialize for Value {
 }
 
 impl Value {
-    /// Hash Offset pages are supported: https://github.com/berkeleydb/libdb/blob/v5.3.28/src/dbinc/db_page.h#L569-L573
+    /// Hash Offset pages are the only ones that contain data.
+    /// https://github.com/jssblck/go-rpmdb/blob/956701287363101ee9ade742d6bf1d5c5495f62a/pkg/bdb/bdb.go#L110-L113
     pub const SUPPORTED_PAGE_TYPE: u8 = 3;
 
     /// https://github.com/berkeleydb/libdb/blob/v5.3.28/src/dbinc/db_page.h#L35-L53
     pub const OVERFLOW_PAGE_TYPE: u8 = 7;
 
     /// Read [`Self`] out of a DB and page with the provided page offset.
+    ///
+    /// Reference: https://github.com/jssblck/go-rpmdb/blob/160242deff7a9ee82d1b493b62b7e50fd4c3e81c/pkg/bdb/hash_page.go#L34
     pub fn parse<E: ByteOrder>(db: &mut BerkeleyDB, page: &[u8], index: u16) -> Result<Value> {
         let index = usize::from(index);
 
@@ -45,6 +47,8 @@ impl Value {
             bail!("block {index} did not exist in page, but was pointed at by index");
         };
 
+        // Other pages don't contain data.
+        // https://github.com/jssblck/go-rpmdb/blob/160242deff7a9ee82d1b493b62b7e50fd4c3e81c/pkg/bdb/hash_page.go#L38-L41
         if page_type != Self::SUPPORTED_PAGE_TYPE {
             bail!("unsupported page type: {page_type}");
         }
@@ -59,7 +63,8 @@ impl Value {
             .collect::<Vec<_>>();
         let entry = Entry::parse::<E>(&mut entry_data.as_slice()).context("parse entry")?;
 
-        // The value may be spread over multiple pages. Built it all together.
+        // The value may be spread over multiple pages. Build it all together.
+        // Reference: https://github.com/jssblck/go-rpmdb/blob/160242deff7a9ee82d1b493b62b7e50fd4c3e81c/pkg/bdb/hash_page.go#L52-L84
         let mut value = Vec::new();
         let mut current_page_no = entry.page_no();
         while current_page_no != 0 {
@@ -102,9 +107,5 @@ impl Value {
         } else {
             Self::parse::<LittleEndian>(db, page, index)
         }
-    }
-
-    pub fn into_inner(self) -> Vec<u8> {
-        self.0
     }
 }
