@@ -12,7 +12,6 @@ import Data.Rpm.DbHeaderBlob.Internal (
   IndexEntry (..),
   PkgInfo (..),
   calcDataLength,
-  emptyRegionInfo,
   readHeaderBlobTagData,
   getV3RegionCount,
   readHeaderMetaData,
@@ -182,7 +181,7 @@ headerBlobV3RegionSpec :: BLS.ByteString -> Spec
 headerBlobV3RegionSpec blobData = do
   describe "headerBlobVerifyRegion" $ do
     it "Does nothing if not a header tag" $
-      getV3RegionCount' notHeaderTag "unused" `shouldBe` (Right emptyRegionInfo)
+      getV3RegionCount' notHeaderTag "unused" `shouldBe` (Right 0)
     it "Fails on invalid region tag" $
       getV3RegionCount' invalidRegionTag "unused" `failsWithMsg` "invalid region tag"
     it "Fails on invalid region offset" $
