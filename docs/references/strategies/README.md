@@ -111,7 +111,7 @@ Languages supported by FOSSA CLI can have multiple strategies for detecting depe
 
 It is important to note that neither type of strategy has an inherent benefit when detecting dependencies. If a supported language does not have static and dynamic strategies, this does not mean it is less supported than a language that does.
 
-> If the FOSSA CLI uses a fallback strategy and does not detect ideal results, you will see a "Warning" in the output when running `fossa analyze`.
+> If the FOSSA CLI is forced to utilize a fallback strategy, meaning it did not detect ideal results, a warning is emitted in the scan summary after running `fossa analyze`.
 
 | Language/Package Manager                                                                                                                        | Dynamic | Static | Primary Strategy |
 | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------ | ---------------- |
