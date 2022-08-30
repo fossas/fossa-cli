@@ -9,7 +9,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Rpm.DbHeaderBlob.Internal (
   EntryMetadata (..),
   HeaderBlob (..),
-  IndexEntry (..),
+  TagValueData (..),
   PkgInfo (..),
   calcDataLength,
   readHeaderBlobTagData,
@@ -53,19 +53,19 @@ testBlob :: FilePath
 testBlob = "test/Data/test_data/pkg_blob.bin"
 
 -- the first three non-dribble index entries that should result from parsing testBlob
-testBlobIndexEntries :: [IndexEntry]
-testBlobIndexEntries =
-  [ IndexEntry
+testBlobTagValueData :: [TagValueData]
+testBlobTagValueData =
+  [ TagValueData
       { info = EntryMetadata{tag = 100, tagType = RpmStringArray, offset = 0, count = 1}
       , entryLength = 2
       , entryData = BLS.pack [67, 0]
       }
-  , IndexEntry
+  , TagValueData
       { info = EntryMetadata{tag = 1000, tagType = RpmString, offset = 2, count = 1}
       , entryLength = 7
       , entryData = BLS.pack [108, 105, 98, 103, 99, 99, 0]
       }
-  , IndexEntry
+  , TagValueData
       { info = EntryMetadata{tag = 1001, tagType = RpmString, offset = 9, count = 1}
       , entryLength = 7
       , entryData = BLS.pack [49, 49, 46, 50, 46, 49, 0]
@@ -169,7 +169,7 @@ headerBlobImportSpec bs = do
     it "Reads index entries from a non-dribble header blob" $ do
       let bl = headerBlobInit' bs >>= (readHeaderBlobTagData bs)
       case bl of
-        Right importedIes -> testBlobIndexEntries `shouldExistIn` importedIes
+        Right importedIes -> testBlobTagValueData `shouldExistIn` importedIes
         Left e -> expectationFailure $ "Failed: " <> e
   where
     shouldExistIn :: (Ord a, Show a) => [a] -> [a] -> Expectation

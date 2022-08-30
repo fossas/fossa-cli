@@ -1,5 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
-
+{-|
+Description: These are internal functions for parsing an RPM package header blob. The
+main entry-point is 'readPackageInfo'.
+-}
 module Data.Rpm.DbHeaderBlob.Internal (
   -- * Main interface
   -- |You should not use this module directly. Use 'Data.Rpm.DbHeaderBlob'
@@ -10,7 +13,7 @@ module Data.Rpm.DbHeaderBlob.Internal (
   -- * Internal Types
   HeaderBlob (..),
   EntryMetadata (..),
-  IndexEntry (..),
+  TagValueData (..),
   IndexCount (..),
   RpmTagType(..),
 
@@ -297,9 +300,12 @@ getV3RegionCount entryMetadatas dataLength dataStart blobData = do
     headerCheckRange :: Int32 -> Int32 -> Bool
     headerCheckRange dataLen offset = offset < 0 || offset > dataLen
 
--- | Container for the data as well as 'EntryMetadata' for a tag.
-data IndexEntry =
-  IndexEntry
+-- | Container for metadata as well as the byte data for an entry in the header
+-- blob. This type is equivalent to
+-- [indexEntry](https://github.com/csasarak/go-rpmdb/blob/master/pkg/entry.go#L70)
+-- in the original Go code.
+data TagValueData =
+  TagValueData
   { -- | The expected length of the entryData, in bytes
     info :: EntryMetadata,
     entryLength :: Int32,
@@ -315,7 +321,7 @@ data IndexEntry =
 -- Rought equivalent to
 -- [hdrblobImport](https://github.com/knqyf263/go-rpmdb/blob/a9e3110d8ee1fd3b0798a7abe8c59230bd265cd3/pkg/entry.go#L150)
 -- in the original go code
-readHeaderBlobTagData :: BLS.ByteString -> HeaderBlob -> Either String [IndexEntry]
+readHeaderBlobTagData :: BLS.ByteString -> HeaderBlob -> Either String [TagValueData]
 readHeaderBlobTagData bs HeaderBlob{..} = do
   let firstEntry = NonEmpty.head entryMetadatas
   if tag firstEntry >= rpmTagHeaderI18nTable
@@ -329,14 +335,14 @@ readHeaderBlobTagData bs HeaderBlob{..} = do
         (extractEntryData bs (NonEmpty.toList entryMetadatas) dataStart dataEnd 0)
     else do
       -- v4 entries, since we need to read the legacy v3 entries first we'll
-      -- try to pull out all 'IndexEntry's in just the v3 header region.
+      -- try to pull out all 'TagValueData's in just the v3 header region.
       let regionIndexCount' = if offset firstEntry == 0 then indexCount else regionIndexCount
-      (indexEntries, ieReadLen) <- extractEntryData bs (subList 1 (fromIntegral regionIndexCount') entryMetadatas) dataStart dataEnd 0
+      (tagValueData, ieReadLen) <- extractEntryData bs (subList 1 (fromIntegral regionIndexCount') entryMetadatas) dataStart dataEnd 0
 
       (allEntries, dataLenWithDribble) <-
         if fromIntegral regionIndexCount' < length entryMetadatas
-          then calculateDribbleEntries indexEntries regionIndexCount ieReadLen
-          else Right (indexEntries, ieReadLen)
+          then calculateDribbleEntries tagValueData regionIndexCount ieReadLen
+          else Right (tagValueData, ieReadLen)
 
       let totalLen = dataLenWithDribble + regionTagCount
       if totalLen /= dataLength
@@ -346,8 +352,8 @@ readHeaderBlobTagData bs HeaderBlob{..} = do
     subList :: Int32 -> Int32 -> NonEmpty a -> [a]
     subList start end = take (fromIntegral $ end - start) . NonEmpty.drop (fromIntegral start)
 
-    calculateDribbleEntries :: [IndexEntry] -> IndexCount -> Int32 -> Either String ([IndexEntry], Int32)
-    calculateDribbleEntries indexEntries ril startDataLength = do
+    calculateDribbleEntries :: [TagValueData] -> IndexCount -> Int32 -> Either String ([TagValueData], Int32)
+    calculateDribbleEntries tagValueDatas ril startDataLength = do
       let dribbleInfos = NonEmpty.drop (fromIntegral ril) entryMetadatas
       (dribbleEntries, ieReadLen) <- extractEntryData bs dribbleInfos dataStart dataEnd startDataLength
       if ieReadLen < 0
@@ -357,16 +363,16 @@ readHeaderBlobTagData bs HeaderBlob{..} = do
             ( Map.elems
                 . Map.fromList
                 . map (\ie -> (fromIntegral . tag . info $ ie, ie))
-                $ dribbleEntries <> indexEntries
+                $ dribbleEntries <> tagValueDatas
             , ieReadLen
             )
 
 -- Returns a list of index entries that were read as well as their combined length in bytes
-extractEntryData :: BLS.ByteString -> [EntryMetadata] -> Int32 -> Int32 -> Int32 -> Either String ([IndexEntry], Int32)
+extractEntryData :: BLS.ByteString -> [EntryMetadata] -> Int32 -> Int32 -> Int32 -> Either String ([TagValueData], Int32)
 extractEntryData bs entryMetadatas dataStart dataEnd startDataLength = do
-  foldM calcIndexEntry ([], startDataLength) (zip [0 ..] entryMetadatas)
+  foldM getTagValueData ([], startDataLength) (zip [0 ..] entryMetadatas)
   where
-    calcIndexEntry (entries, runningDataLength) (idx, entryMeta) = do
+    getTagValueData (entries, runningDataLength) (idx, entryMeta) = do
       newIdxEntry <- swabEntry idx entryMeta
       alignDifference <- alignDiff (tagType entryMeta) runningDataLength
       let rdl = alignDifference + runningDataLength + entryLength newIdxEntry
@@ -386,7 +392,7 @@ extractEntryData bs entryMetadatas dataStart dataEnd startDataLength = do
     lastIdx :: Int32
     lastIdx = fromIntegral $ V.length entryMetadatasV - 1
 
-    swabEntry :: Int32 -> EntryMetadata -> Either String IndexEntry
+    swabEntry :: Int32 -> EntryMetadata -> Either String TagValueData
     swabEntry i info = do
       let currOffset = offset info
       let start = dataStart + currOffset
@@ -411,7 +417,7 @@ extractEntryData bs entryMetadatas dataStart dataEnd startDataLength = do
         then do Left "invalid data offset"
         else
           Right
-            IndexEntry
+            TagValueData
               { info = info
               , entryLength = entryLength
               , entryData = bsSubString start end bs
@@ -472,6 +478,7 @@ readEntry =
                Nothing -> fail $ "Invalid type number: " <> show tyNum
 
 
+-- |Result data from reading a header blob.
 data PkgInfo = PkgInfo
   { pkgName :: Text
   , pkgVersion :: Text
@@ -483,7 +490,7 @@ data PkgInfo = PkgInfo
 -- More information than what gets extracted is available from the blob. See the
 -- different tag values here:
 -- https://github.com/csasarak/go-rpmdb/blob/modified-cmd/pkg/package.go#L50
-getPkgInfo :: [IndexEntry] -> Either String PkgInfo
+getPkgInfo :: [TagValueData] -> Either String PkgInfo
 getPkgInfo ies =
   PkgInfo
     <$> readTag rpmtagName
@@ -507,7 +514,7 @@ getPkgInfo ies =
     readOptionalTag :: Int -> Maybe Text
     readOptionalTag tag = join $ Map.lookup tag tagMap
 
-convertIndexEntryData :: IndexEntry -> Maybe Text
+convertIndexEntryData :: TagValueData -> Maybe Text
 convertIndexEntryData ie =
   case tagNum of
     RpmString -> Just dataAsText
