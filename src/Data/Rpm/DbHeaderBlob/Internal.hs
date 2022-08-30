@@ -9,7 +9,7 @@ module Data.Rpm.DbHeaderBlob.Internal (
 
   -- * Internal Types
   HeaderBlob (..),
-  EntryInfo (..),
+  EntryMetadata (..),
   IndexEntry (..),
   IndexCount (..),
   RpmTagType(..),
@@ -89,22 +89,22 @@ rpmTagHeaderI18nTable = 100
 regionTagType :: RpmTagType
 regionTagType = RpmBin
 
--- |Size in bytes of an 'EntryInfo'.
-entryInfoSize :: Int32
-entryInfoSize = 16
+-- |Size in bytes of an 'EntryMetadata'.
+entryMetadataSize :: Int32
+entryMetadataSize = 16
 
 -- |Maximum number of bytes allowed in a header. Defined
 -- [here](https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L18).
 headerMaxBytes :: Int32
 headerMaxBytes = 256 * 1024 * 1024
 
--- |The number of 'EntryInfo's to expect in a v3 header region.
+-- |The number of 'EntryMetadata's to expect in a v3 header region.
 -- [Reference Implementation](https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L14).
 regionTagCount :: Int32
 -- Logically, I'm not sure why this is derived from the size in bytes of an
 -- entryInfo in both the c code and the go code. It seems like the only
 -- relationship between the two is they happen to both be the number 16.
-regionTagCount = entryInfoSize
+regionTagCount = entryMetadataSize
 
 data RpmTagType =
   RpmNull
@@ -157,7 +157,7 @@ intToHeaderType i =
 -- package name attribute for a package has @tag@ of @1000@ and is a string.
 --
 -- The first part of a header blob is an index which describes all of the tags that it
--- contains as well as their types. In this implementation, these entries are called 'EntryInfo'.
+-- contains as well as their types. In this implementation, these entries are called 'EntryMetadata'.
 -- Following the index is a data area which contain the actual values for a tag.
 --
 -- One caveat for a header is that v4 headers are structured differently than v3
@@ -176,30 +176,32 @@ data HeaderBlob = HeaderBlob
   , -- |The offset where the data area ends
     dataEnd :: Int32
   , -- |The metadata entries for each tag
-    entryInfos :: NonEmpty EntryInfo
-  , -- |The number of EntryInfo's in the original v3 header region. 0 if none exists.
+    entryMetadatas :: NonEmpty EntryMetadata
+  , -- |The number of 'EntryMetadata''s in the original v3 header region. 0 if none exists.
     regionIndexCount :: IndexCount
   }
   deriving (Show, Eq)
 
--- |Structure for metadata describing the type, location, and size of a tag value
--- pair in a 'HeaderBlob'
-data EntryInfo = EntryInfo
-  { -- |ID for which piece of RPM data this is. More information on available
-    -- tags can be found [here](https://rpm-software-management.github.io/rpm/manual/tags.html).
-    tag :: Int32
-  , -- |The type of data that this tag is. See the
-    -- [docs](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
-    -- Table 24-5.
-    tagType :: RpmTagType
-  , -- |The offset from the beginning of 'HeaderBlob's 'dataStart' that data for
-    -- this entry can be found.
-    offset :: Int32
-  , -- | The count of data items to expect. For simple scalar types like numbers
-    -- or strings this will be 1. For composite types such as arrays it may be
-    -- more.
-    count :: Word32
-  }
+-- |Structure for describing the type, location, and size of a tag-value
+-- pair in a 'HeaderBlob'.
+-- This roughly corresponds to [entryInfo](https://github.com/csasarak/go-rpmdb/blob/master/pkg/entry.go#L63)
+-- in the original Go code.
+data EntryMetadata = EntryMetadata
+      { -- |ID for which piece of RPM data this is. More information on available
+        -- tags can be found [here](https://rpm-software-management.github.io/rpm/manual/tags.html).
+        tag :: Int32
+      , -- |The type of data that this tag is. See the
+        -- [docs](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
+        -- Table 24-5.
+        tagType :: RpmTagType
+      , -- |The offset from the beginning of 'HeaderBlob's 'dataStart' that data for
+        -- this entry can be found.
+        offset :: Int32
+      , -- | The count of data items to expect. For simple scalar types like numbers
+        -- or strings this will be 1. For composite types such as arrays it may be
+        -- more.
+        count :: Word32
+      }
   deriving (Show, Eq, Ord)
 
 -- | Read initial metadata items, such as data lengths, locations, and index entries from
@@ -222,15 +224,15 @@ readHeaderMetaData bs =
 
       dataLength <- label "Read dataLength" getInt32be
       let dataStart = calcDataStart indexCount'
-      let pvLength = dataAndIndexLen + dataLength + indexCount' * entryInfoSize
+      let pvLength = dataAndIndexLen + dataLength + indexCount' * entryMetadataSize
       let dataEnd = dataStart + dataLength
 
       when (pvLength >= headerMaxBytes) $
         fail "blob size bad"
 
-      entryInfos <- readEntries indexCount
+      entryMetadatas <- readEntries indexCount
 
-      case getV3RegionCount entryInfos dataLength dataStart bs of
+      case getV3RegionCount entryMetadatas dataLength dataStart bs of
         Left s -> fail s
         Right regionIndexCount -> pure HeaderBlob{..}
 
@@ -242,7 +244,7 @@ readHeaderMetaData bs =
     calcDataStart indexLength =
       dataAndIndexLen
         + indexLength
-          * entryInfoSize
+          * entryMetadataSize
 
 -- |A count of entries in a tag index
 newtype IndexCount = IndexCount Int32
@@ -253,9 +255,9 @@ newtype IndexCount = IndexCount Int32
 -- 0. In the case of v4 it will be more.
 --
 -- This is inspired by [hdrblobVerifyRegion](https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L263).
-getV3RegionCount :: NonEmpty.NonEmpty EntryInfo -> Int32 -> Int32 -> BLS.ByteString -> Either String IndexCount
-getV3RegionCount entryInfos dataLength dataStart blobData = do
-  let EntryInfo{..} = NonEmpty.head entryInfos
+getV3RegionCount :: NonEmpty.NonEmpty EntryMetadata -> Int32 -> Int32 -> BLS.ByteString -> Either String IndexCount
+getV3RegionCount entryMetadatas dataLength dataStart blobData = do
+  let EntryMetadata{..} = NonEmpty.head entryMetadatas
   let regionTag =
         if tag
           `elem` [ rpmTagHeaderImg
@@ -276,7 +278,7 @@ getV3RegionCount entryInfos dataLength dataStart blobData = do
         Left "invalid region offset"
 
       let regionEnd = dataStart + offset
-      EntryInfo{offset = trailerOffset} <-
+      EntryMetadata{offset = trailerOffset} <-
         runGetOrFail'
           (label "read trailer" readEntry)
           (bsSubString regionEnd (regionEnd + regionTagCount) blobData)
@@ -286,7 +288,7 @@ getV3RegionCount entryInfos dataLength dataStart blobData = do
       let negOffset = negate trailerOffset
 
       pure $
-        IndexCount (negOffset `div` entryInfoSize)
+        IndexCount (negOffset `div` entryMetadataSize)
   where
     trd (_, _, c) = c
 
@@ -295,43 +297,44 @@ getV3RegionCount entryInfos dataLength dataStart blobData = do
     headerCheckRange :: Int32 -> Int32 -> Bool
     headerCheckRange dataLen offset = offset < 0 || offset > dataLen
 
--- | Container for the data as well as 'IndexEntry' for a tag.
+-- | Container for the data as well as 'EntryMetadata' for a tag.
 data IndexEntry =
   IndexEntry
   { -- | The expected length of the entryData, in bytes
-    info :: EntryInfo
-  , -- | The actual data for the entry
-    entryLength :: Int32
-  , entryData :: BLS.ByteString
+    info :: EntryMetadata,
+    entryLength :: Int32,
+    -- | The actual data for the entry
+    entryData :: BLS.ByteString
   }
   deriving (Eq, Show, Ord)
 
 -- |Given header metadata, read out the sub-slice of the bytestring blob that
--- corresponds to each 'EntryInfo'.
+-- corresponds to each 'EntryMetadata'. This function will respect both v3 and v4
+-- headers.
 --
 -- Rought equivalent to
 -- [hdrblobImport](https://github.com/knqyf263/go-rpmdb/blob/a9e3110d8ee1fd3b0798a7abe8c59230bd265cd3/pkg/entry.go#L150)
 -- in the original go code
 readHeaderBlobTagData :: BLS.ByteString -> HeaderBlob -> Either String [IndexEntry]
 readHeaderBlobTagData bs HeaderBlob{..} = do
-  let firstEntry = NonEmpty.head entryInfos
+  let firstEntry = NonEmpty.head entryMetadatas
   if tag firstEntry >= rpmTagHeaderI18nTable
     then
     -- v3 entries, these seem to be uncommon. They are distinct from > v4
     -- entries in that they don't have a specialized region for v3 data, which
-    -- is why the function doesn't skip the first element of entryInfos
+    -- is why the function doesn't skip the first element of entryMetadatas
       bimap
         ("Failed to parse legacy index entries: " <>)
         fst
-        (extractEntryData bs (NonEmpty.toList entryInfos) dataStart dataEnd 0)
+        (extractEntryData bs (NonEmpty.toList entryMetadatas) dataStart dataEnd 0)
     else do
       -- v4 entries, since we need to read the legacy v3 entries first we'll
       -- try to pull out all 'IndexEntry's in just the v3 header region.
       let regionIndexCount' = if offset firstEntry == 0 then indexCount else regionIndexCount
-      (indexEntries, ieReadLen) <- extractEntryData bs (subList 1 (fromIntegral regionIndexCount') entryInfos) dataStart dataEnd 0
+      (indexEntries, ieReadLen) <- extractEntryData bs (subList 1 (fromIntegral regionIndexCount') entryMetadatas) dataStart dataEnd 0
 
       (allEntries, dataLenWithDribble) <-
-        if fromIntegral regionIndexCount' < length entryInfos
+        if fromIntegral regionIndexCount' < length entryMetadatas
           then calculateDribbleEntries indexEntries regionIndexCount ieReadLen
           else Right (indexEntries, ieReadLen)
 
@@ -345,7 +348,7 @@ readHeaderBlobTagData bs HeaderBlob{..} = do
 
     calculateDribbleEntries :: [IndexEntry] -> IndexCount -> Int32 -> Either String ([IndexEntry], Int32)
     calculateDribbleEntries indexEntries ril startDataLength = do
-      let dribbleInfos = NonEmpty.drop (fromIntegral ril) entryInfos
+      let dribbleInfos = NonEmpty.drop (fromIntegral ril) entryMetadatas
       (dribbleEntries, ieReadLen) <- extractEntryData bs dribbleInfos dataStart dataEnd startDataLength
       if ieReadLen < 0
         then Left "invalid length of dribble entries"
@@ -359,13 +362,13 @@ readHeaderBlobTagData bs HeaderBlob{..} = do
             )
 
 -- Returns a list of index entries that were read as well as their combined length in bytes
-extractEntryData :: BLS.ByteString -> [EntryInfo] -> Int32 -> Int32 -> Int32 -> Either String ([IndexEntry], Int32)
-extractEntryData bs entryInfos dataStart dataEnd startDataLength = do
-  foldM calcIndexEntry ([], startDataLength) (zip [0 ..] entryInfos)
+extractEntryData :: BLS.ByteString -> [EntryMetadata] -> Int32 -> Int32 -> Int32 -> Either String ([IndexEntry], Int32)
+extractEntryData bs entryMetadatas dataStart dataEnd startDataLength = do
+  foldM calcIndexEntry ([], startDataLength) (zip [0 ..] entryMetadatas)
   where
-    calcIndexEntry (entries, runningDataLength) (idx, entryInfo) = do
-      newIdxEntry <- swabEntry idx entryInfo
-      alignDifference <- alignDiff (tagType entryInfo) runningDataLength
+    calcIndexEntry (entries, runningDataLength) (idx, entryMeta) = do
+      newIdxEntry <- swabEntry idx entryMeta
+      alignDifference <- alignDiff (tagType entryMeta) runningDataLength
       let rdl = alignDifference + runningDataLength + entryLength newIdxEntry
       Right (newIdxEntry : entries, rdl)
 
@@ -377,13 +380,13 @@ extractEntryData bs entryInfos dataStart dataEnd startDataLength = do
         then Right diff
         else Right 0
 
-    entryInfosV :: V.Vector (Int, EntryInfo)
-    entryInfosV = V.indexed . V.fromList $ entryInfos
+    entryMetadatasV :: V.Vector (Int, EntryMetadata)
+    entryMetadatasV = V.indexed . V.fromList $ entryMetadatas
 
     lastIdx :: Int32
-    lastIdx = fromIntegral $ V.length entryInfosV - 1
+    lastIdx = fromIntegral $ V.length entryMetadatasV - 1
 
-    swabEntry :: Int32 -> EntryInfo -> Either String IndexEntry
+    swabEntry :: Int32 -> EntryMetadata -> Either String IndexEntry
     swabEntry i info = do
       let currOffset = offset info
       let start = dataStart + currOffset
@@ -392,7 +395,7 @@ extractEntryData bs entryInfos dataStart dataEnd startDataLength = do
       entryLength <-
         do
           if i < lastIdx && tType `elem` [RpmString, RpmStringArray, RpmI18nString]
-            then case offset . snd <$> entryInfosV V.!? fromIntegral (i + 1) of
+            then case offset . snd <$> entryMetadatasV V.!? fromIntegral (i + 1) of
               -- this Nothing shouldn't happen since we checked it in
               -- the if exp above
               Nothing -> Left $ "Failed to read index " <> show i
@@ -445,20 +448,19 @@ calcDataLength bs ty count start dataEnd =
 bsSubString :: Int32 -> Int32 -> BLS.ByteString -> BLS.ByteString
 bsSubString start end = BLS.take (fromIntegral $ end - start) . BLS.drop (fromIntegral start)
 
-readEntries :: IndexCount -> Get (NonEmpty EntryInfo)
+readEntries :: IndexCount -> Get (NonEmpty EntryMetadata)
 readEntries indexLength =
   liftA2 (:|) readEntry $ replicateM (fromIntegral (indexLength - 1)) readEntry
 
-readEntry :: Get EntryInfo
+readEntry :: Get EntryMetadata
 readEntry =
   -- The original code reads these as little endian:
-  -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L127
-  -- However, the original code looks like it simply copies bytes
-  -- sequentially into a buffer that is then treated like an entryInfo
-  -- structure. That means higher bytes in a word are least-significant,
-  -- corresponding to big-endian when read individually. Big endian is also
-  -- network order.
-  EntryInfo
+  -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L127 However,
+  -- the original code looks like it simply copies bytes sequentially into a
+  -- buffer that is then treated like an entryInfo/entryMetadata structure. That
+  -- means higher bytes in a word are least-significant, corresponding to
+  -- big-endian when read individually. Big endian is also network order.
+  EntryMetadata
     <$> label "Read tag" getInt32be
     <*> label "Read type" readTagType
     <*> label "Read offset" getInt32be

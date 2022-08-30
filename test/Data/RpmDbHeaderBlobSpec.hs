@@ -7,7 +7,7 @@ import Data.Int (Int32)
 import Data.List (isSuffixOf)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Rpm.DbHeaderBlob.Internal (
-  EntryInfo (..),
+  EntryMetadata (..),
   HeaderBlob (..),
   IndexEntry (..),
   PkgInfo (..),
@@ -56,17 +56,17 @@ testBlob = "test/Data/test_data/pkg_blob.bin"
 testBlobIndexEntries :: [IndexEntry]
 testBlobIndexEntries =
   [ IndexEntry
-      { info = EntryInfo{tag = 100, tagType = RpmStringArray, offset = 0, count = 1}
+      { info = EntryMetadata{tag = 100, tagType = RpmStringArray, offset = 0, count = 1}
       , entryLength = 2
       , entryData = BLS.pack [67, 0]
       }
   , IndexEntry
-      { info = EntryInfo{tag = 1000, tagType = RpmString, offset = 2, count = 1}
+      { info = EntryMetadata{tag = 1000, tagType = RpmString, offset = 2, count = 1}
       , entryLength = 7
       , entryData = BLS.pack [108, 105, 98, 103, 99, 99, 0]
       }
   , IndexEntry
-      { info = EntryInfo{tag = 1001, tagType = RpmString, offset = 9, count = 1}
+      { info = EntryMetadata{tag = 1001, tagType = RpmString, offset = 9, count = 1}
       , entryLength = 7
       , entryData = BLS.pack [49, 49, 46, 50, 46, 49, 0]
       }
@@ -206,11 +206,11 @@ headerBlobV3RegionSpec blobData = do
     testDataStart :: Int32
     testDataStart = 0x508
 
-    getV3RegionCount' :: EntryInfo -> BLS.ByteString -> Either String IndexCount
-    getV3RegionCount' entryInfo = getV3RegionCount (NonEmpty.singleton entryInfo) testDataLength testDataStart
+    getV3RegionCount' :: EntryMetadata -> BLS.ByteString -> Either String IndexCount
+    getV3RegionCount' entryMeta = getV3RegionCount (NonEmpty.singleton entryMeta) testDataLength testDataStart
 
     goodInfo =
-      EntryInfo
+      EntryMetadata
         { tag = 0x3f
         , tagType = RpmBin
         , offset = 0x89a1
@@ -218,7 +218,7 @@ headerBlobV3RegionSpec blobData = do
         }
 
     baseInfo =
-      EntryInfo
+      EntryMetadata
         { tag = 0
         , tagType = RpmNull
         , offset = 0
@@ -242,12 +242,12 @@ headerBlobV3RegionSpec blobData = do
         { offset = 0x8ebc
         }
 
-emptyInfo :: NonEmpty.NonEmpty EntryInfo
-emptyInfo = NonEmpty.singleton EntryInfo{tag = 0, tagType = RpmNull, offset = 0, count = 0}
+emptyInfo :: NonEmpty.NonEmpty EntryMetadata
+emptyInfo = NonEmpty.singleton EntryMetadata{tag = 0, tagType = RpmNull, offset = 0, count = 0}
 
 equalIgnoringEntries :: HeaderBlob -> HeaderBlob -> Expectation
 equalIgnoringEntries b1 b2 =
-  b1{entryInfos = emptyInfo} `shouldBe` b2{entryInfos = emptyInfo}
+  b1{entryMetadatas = emptyInfo} `shouldBe` b2{entryMetadatas = emptyInfo}
 
 matchesIgnoringEntries :: (Show a) => Either a HeaderBlob -> HeaderBlob -> Expectation
 matchesIgnoringEntries bs expected =
@@ -266,23 +266,23 @@ headerBlobSpec bs = describe "header blob parsing" $ do
               , dataLength = 0x00008ebc
               , dataStart = 0x508
               , dataEnd = 0x93c4
-              , entryInfos = emptyInfo -- Not used in test
+              , entryMetadatas = emptyInfo -- Not used in test
               , regionIndexCount = 0x45 -- Not used in test
               }
       eBlob `matchesIgnoringEntries` expected
 
     it "Parses entries" $ do
       -- this database is large, so we'll only check the first 2 entries
-      let entries = fromRight [] $ (NonEmpty.take 2 . entryInfos) <$> eBlob
+      let entries = fromRight [] $ (NonEmpty.take 2 . entryMetadatas) <$> eBlob
 
       entries
-        `shouldMatchList` [ EntryInfo
+        `shouldMatchList` [ EntryMetadata
                               { tag = 0x3f
                               , tagType = RpmBin
                               , offset = 0x89a1
                               , count = 0x10
                               }
-                          , EntryInfo
+                          , EntryMetadata
                               { tag = 0x64
                               , tagType = RpmStringArray
                               , offset = 0
