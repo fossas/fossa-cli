@@ -1,6 +1,6 @@
 # Glide
 
-Glide is very commonly encountered as a buildtool for older golang projects.
+Glide is very commonly encountered as a buildtool for older Go projects.
 Though deprecated, it's prevalent enough among existing projects that it
 warrants support in fossa-cli.
 
