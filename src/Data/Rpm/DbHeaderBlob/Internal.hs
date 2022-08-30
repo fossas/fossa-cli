@@ -18,10 +18,11 @@ module Data.Rpm.DbHeaderBlob.Internal (
   getV3RegionCount,
   emptyRegionInfo,
   calcDataLength,
-  hdrblobImport,
+  readHeaderBlobTagData,
 
   -- * Header Tag Ids
   -- $tagIdDoc
+  RpmTagType(..),
   rpmTagHeaderImg,
   rpmTagHeaderImmutable,
   rpmTagHeaderSignatures,
@@ -41,7 +42,6 @@ import Control.Applicative (liftA2)
 import Control.Monad (foldM, join, replicateM, unless, when)
 import Data.Bifunctor (bimap, first)
 import Data.Binary.Get (ByteOffset, Get, getInt32be, getWord32be, label, runGetOrFail)
-import Data.Bits ((.&.))
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BLS
 import Data.Char (ord)
@@ -107,9 +107,11 @@ rpmInt64Type = 5
 rpmInt32Type :: Word32
 rpmInt32Type = 4
 
--- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L15
-regionTagType :: Word32
-regionTagType = 7
+-- |This corresponds to a type of 'RpmBin' but has a special meaning when the
+-- first entry info has this type.
+-- [Reference](https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L15)
+regionTagType :: RpmTagType
+regionTagType = RpmBin
 
 -- $dataSizeDoc
 -- Sizes for data that may be found in a header blob, in bytes.
@@ -123,26 +125,49 @@ entryInfoSize = 16
 headerMaxBytes :: Int32
 headerMaxBytes = 256 * 1024 * 1024
 
-typeSizes :: V.Vector Int32
-typeSizes =
-  V.fromList
-    [ 0 -- RPM_NULL_TYPE
-    , 1 -- RPM_CHAR_TYPE
-    , 1 -- RPM_INT8_TYPE
-    , 2 -- RPM_INT16_TYPE
-    , 4 -- RPM_INT32_TYPE
-    , 8 -- RPM_INT64_TYPE
-    , -1 -- RPM_STRING_TYPE
-    , 1 -- RPM_BIN_TYPE
-    , -1 -- RPM_STRING_ARRAY_TYPE
-    , -1 -- RPM_I18NSTRING_TYPE
-    , 0
-    , 0
-    , 0
-    , 0
-    , 0
-    , 0
-    ]
+data RpmTagType =
+  RpmNull
+  | RpmChar
+  | RpmInt8
+  | RpmInt16
+  | RpmInt32
+  | RpmInt64
+  | RpmString
+  | RpmBin
+  | RpmStringArray
+  | RpmI18nString
+  -- | RpmNonExistentType
+  deriving (Eq, Show, Ord)
+
+-- | The size of each type in bytes, -1 if it's a string
+-- and 1 if it's binary
+headerTypeSize :: RpmTagType -> Int32
+headerTypeSize ty = case ty of
+  RpmNull        -> 0
+  RpmChar        -> 1
+  RpmInt8        -> 1
+  RpmInt16       -> 2
+  RpmInt32       -> 4
+  RpmInt64       -> 8
+  RpmString      -> -1
+  RpmBin         -> 1
+  RpmStringArray -> -1
+  RpmI18nString  -> -1
+
+intToHeaderType :: Word32 -> Maybe RpmTagType
+intToHeaderType i =
+  case i of
+    0 -> Just RpmNull
+    1 -> Just RpmChar
+    2 -> Just RpmInt8
+    3 -> Just RpmInt16
+    4 -> Just RpmInt32
+    5 -> Just RpmInt64
+    6 -> Just RpmString
+    7 -> Just RpmBin
+    8 -> Just RpmStringArray
+    9 -> Just RpmI18nString
+    _ -> Nothing
 
 -- |The number of 'EntryInfo's to expect in a v3 header region.
 -- [Reference Implementation](https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L14).
@@ -194,7 +219,7 @@ data EntryInfo = EntryInfo
   , -- |The type of data that this tag is. See the
     -- [docs](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
     -- Table 24-5.
-    tagType :: Word32
+    tagType :: RpmTagType
   , -- |The offset from the beginning of 'HeaderBlob's 'dataStart' that data for
     -- this entry can be found.
     offset :: Int32
@@ -203,7 +228,7 @@ data EntryInfo = EntryInfo
     -- more.
     count :: Word32
   }
-  deriving (Show, Ord, Eq)
+  deriving (Show, Eq, Ord)
 
 -- | Read initial metadata items, such as data lengths, locations, and index entries from
 -- a header blob.
@@ -301,7 +326,8 @@ getV3RegionCount entryInfos dataLength dataStart blobData = do
     headerCheckRange :: Int32 -> Int32 -> Bool
     headerCheckRange dataLen offset = offset < 0 || offset > dataLen
 
-data IndexEntry = -- | Metadata about this entry info
+-- | Metadata about an entry info
+data IndexEntry =
   IndexEntry
   { -- | The expected length of the entryData, in bytes
     info :: EntryInfo
@@ -309,7 +335,7 @@ data IndexEntry = -- | Metadata about this entry info
     entryLength :: Int32
   , entryData :: BLS.ByteString
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Show, Ord)
 
 -- |Given header metadata, read out the sub-slice of the bytestring blob that
 -- corresponds to each 'EntryInfo'.
@@ -317,20 +343,21 @@ data IndexEntry = -- | Metadata about this entry info
 -- Rought equivalent to
 -- [hdrblobImport](https://github.com/knqyf263/go-rpmdb/blob/a9e3110d8ee1fd3b0798a7abe8c59230bd265cd3/pkg/entry.go#L150)
 -- in the original go code
-hdrblobImport :: BLS.ByteString -> HeaderBlob -> Either String [IndexEntry]
-hdrblobImport bs HeaderBlob{..} = do
+readHeaderBlobTagData :: BLS.ByteString -> HeaderBlob -> Either String [IndexEntry]
+readHeaderBlobTagData bs HeaderBlob{..} = do
   let firstEntry = NonEmpty.head entryInfos
-
   if tag firstEntry >= rpmTagHeaderI18nTable
-    then -- v3 entries, these seem to be uncommon
-
+    then
+    -- v3 entries, these seem to be uncommon. They are distinct from > v4
+    -- entries in that they don't have a specialized region for v3 data, which
+    -- is why the function doesn't skip the first element of entryInfos
       bimap
         ("Failed to parse legacy index entries: " <>)
         fst
         (regionSwab bs (NonEmpty.toList entryInfos) dataStart dataEnd 0)
     else do
       -- v4 entries, since we need to read the legacy v3 entries first we'll
-      -- try to pull out all 'IndexEntry's in just the v3 header region area.
+      -- try to pull out all 'IndexEntry's in just the v3 header region.
       let regionIndexCount' = if offset firstEntry == 0 then indexCount else regionIndexCount
       (indexEntries, ieReadLen) <- regionSwab bs (subList 1 (fromIntegral regionIndexCount') entryInfos) dataStart dataEnd 0
 
@@ -373,9 +400,9 @@ regionSwab bs entryInfos dataStart dataEnd startDataLength = do
       let rdl = alignDifference + runningDataLength + entryLength newIdxEntry
       Right (newIdxEntry : entries, rdl)
 
-    alignDiff :: Word32 -> Int32 -> Either String Int32
+    alignDiff :: RpmTagType -> Int32 -> Either String Int32
     alignDiff ty alignSize = do
-      tSize <- maybeToRight ("aligning diff: tag type " <> show ty <> " is invalid") (typeSizes V.!? fromIntegral ty)
+      let tSize = headerTypeSize ty
       let diff = tSize - (alignSize `mod` tSize)
       if tSize > 1 && diff /= tSize
         then Right diff
@@ -395,8 +422,7 @@ regionSwab bs entryInfos dataStart dataEnd startDataLength = do
 
       entryLength <-
         do
-          typeSize <- maybeToRight ("No such type size: " <> show tType) (typeSizes V.!? fromIntegral tType)
-          if i < lastIdx && typeSize == -1
+          if i < lastIdx && tType `elem` [RpmString, RpmStringArray, RpmI18nString]
             then case offset . snd <$> entryInfosV V.!? fromIntegral (i + 1) of
               -- this Nothing shouldn't happen since we checked it in
               -- the if exp above
@@ -420,24 +446,20 @@ regionSwab bs entryInfos dataStart dataEnd startDataLength = do
               }
 
 -- | Calculate the length of a given piece of data in bytes
-calcDataLength :: BLS.ByteString -> Word32 -> Word32 -> Int32 -> Int32 -> Either String Int32
-calcDataLength bs ty count start dataEnd
-  | ty == rpmStringType =
-    if count /= 1
-      then Left $ "count for string == " <> show count <> " it should == 1."
-      else stringTagLength 1
-  | ty `elem` [rpmStringArrayType, rpmI18NstringType] = stringTagLength count
-  | otherwise = do
-    t <- maybeToRight ("Nonexistent typesize: " <> show ty) (typeSizes V.!? fromIntegral ty)
-    if t == -1
-      then Left $ "Typesize " <> show ty <> " can't be -1"
-      else do
-        -- typeSizes has 16 members, so it should never fail to read one for (ty .&. 0xf)
-        let mLen = ((fromIntegral count) *) <$> (typeSizes V.!? (fromIntegral ty .&. 0xf))
-        len <- maybeToRight ("Nonexistent tag type " <> show ty) mLen
-        if len < 0 || dataEnd > 0 && start + fromIntegral len > dataEnd
-          then Left $ "Invalid calculated len: " <> show len
-          else Right $ fromIntegral len
+calcDataLength :: BLS.ByteString -> RpmTagType -> Word32 -> Int32 -> Int32 -> Either String Int32
+calcDataLength bs ty count start dataEnd =
+  case ty of
+    RpmString -> if count /= 1 then
+                   Left $ "count for string == " <> show count <> " it should == 1."
+                 else
+                   stringTagLength 1
+    RpmStringArray -> stringTagLength count
+    RpmI18nString -> stringTagLength count
+    _ -> do let len = (fromIntegral count) * (headerTypeSize ty)
+            if len < 0 || dataEnd > 0 && start + fromIntegral len > dataEnd
+              then Left $ "Invalid calculated len: " <> show len
+              else Right $ fromIntegral len
+
   where
     stringTagLength :: Word32 -> Either String Int32
     stringTagLength strCount =
@@ -469,9 +491,15 @@ readEntry =
   -- network order.
   EntryInfo
     <$> label "Read tag" getInt32be
-    <*> label "Read type" getWord32be
+    <*> label "Read type" readTagType
     <*> label "Read offset" getInt32be
     <*> label "Read count" getWord32be
+  where readTagType =
+          do tyNum <- getWord32be
+             case intToHeaderType tyNum of
+               Just ty -> pure ty
+               Nothing -> fail $ "Invalid type number: " <> show tyNum
+
 
 data PkgInfo = PkgInfo
   { pkgName :: Text
@@ -510,14 +538,14 @@ getPkgInfo ies =
 
 convertIndexEntryData :: IndexEntry -> Maybe Text
 convertIndexEntryData ie =
-  if tagNum == rpmStringType
-    then Just dataAsText
-    else Nothing
+  case tagNum of
+    RpmString -> Just dataAsText
+    _         -> Nothing
   where
     eData :: BLS.ByteString
     eData = entryData ie
 
-    tagNum :: Word32
+    tagNum :: RpmTagType
     tagNum = tagType . info $ ie
 
     nullChr :: Word8
@@ -529,5 +557,5 @@ convertIndexEntryData ie =
 readPackageInfo :: BLS.ByteString -> Either String PkgInfo
 readPackageInfo bs = do
   blob <- first (\(_, _, s) -> s) $ readHeaderMetaData bs
-  ies <- hdrblobImport bs blob
+  ies <- readHeaderBlobTagData bs blob
   getPkgInfo ies

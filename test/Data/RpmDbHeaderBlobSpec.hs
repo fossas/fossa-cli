@@ -13,18 +13,14 @@ import Data.Rpm.DbHeaderBlob.Internal (
   PkgInfo (..),
   calcDataLength,
   emptyRegionInfo,
-  hdrblobImport,
+  readHeaderBlobTagData,
   getV3RegionCount,
   readHeaderMetaData,
   readPackageInfo,
   regionTagCount,
   regionTagType,
-  rpmI18NstringType,
-  rpmInt32Type,
-  rpmInt64Type,
-  rpmStringArrayType,
-  rpmStringType,
-  rpmTagHeaderImg, IndexCount,
+  rpmTagHeaderImg, IndexCount, 
+  RpmTagType(..)
  )
 import Data.Set qualified as Set
 import Test.Hspec (
@@ -61,17 +57,17 @@ testBlob = "test/Data/test_data/pkg_blob.bin"
 testBlobIndexEntries :: [IndexEntry]
 testBlobIndexEntries =
   [ IndexEntry
-      { info = EntryInfo{tag = 100, tagType = 8, offset = 0, count = 1}
+      { info = EntryInfo{tag = 100, tagType = RpmStringArray, offset = 0, count = 1}
       , entryLength = 2
       , entryData = BLS.pack [67, 0]
       }
   , IndexEntry
-      { info = EntryInfo{tag = 1000, tagType = 6, offset = 2, count = 1}
+      { info = EntryInfo{tag = 1000, tagType = RpmString, offset = 2, count = 1}
       , entryLength = 7
       , entryData = BLS.pack [108, 105, 98, 103, 99, 99, 0]
       }
   , IndexEntry
-      { info = EntryInfo{tag = 1001, tagType = 6, offset = 9, count = 1}
+      { info = EntryInfo{tag = 1001, tagType = RpmString, offset = 9, count = 1}
       , entryLength = 7
       , entryData = BLS.pack [49, 49, 46, 50, 46, 49, 0]
       }
@@ -130,26 +126,28 @@ dataLengthSpec =
   describe "dataLength" $ do
     context "rpm string type" $ do
       it "Fails for strings with too large of a count" $
-        calcDataLength "" rpmStringType 2 0 0 `shouldBe` Left "count for string == 2 it should == 1."
+        calcDataLength "" RpmString 2 0 0 `shouldBe` Left "count for string == 2 it should == 1."
       it "Fails if start > dataEnd" $
-        calcDataLength "" rpmStringType 1 1 0 `shouldBe` Left "String start (1) >= end (0)"
+        calcDataLength "" RpmString 1 1 0 `shouldBe` Left "String start (1) >= end (0)"
       it "Calculates string lengths from the beginning of the buffer" $
-        calcDataLength strData rpmStringType 1 0 7 `shouldBe` Right 3
+        calcDataLength strData RpmString 1 0 7 `shouldBe` Right 3
       it "Calculates string lengths when start > 0" $
-        calcDataLength strData rpmStringType 1 3 7 `shouldBe` Right 4
+        calcDataLength strData RpmString 1 3 7 `shouldBe` Right 4
     context "rpm string array type" $
       it "calculates length when count > 1" $
-        calcDataLength strData rpmStringArrayType 2 0 7 `shouldBe` Right 7
+        calcDataLength strData RpmStringArray 2 0 7 `shouldBe` Right 7
     context "rpm i18nstring type" $
       it "calculates length when count > 1" $
-        calcDataLength strData rpmI18NstringType 2 0 7 `shouldBe` Right 7
+        calcDataLength strData RpmI18nString 2 0 7 `shouldBe` Right 7
     context "rpm other types" $ do
-      it "Fails on nonexistent type" $
-        calcDataLength "" 255 0 0 0 `shouldBe` Left "Nonexistent typesize: 255"
       it "calculates length of an int64" $
-        calcDataLength "" rpmInt64Type 2 0 0 `shouldBe` Right 16
-      it "calculates length of an int32" $
-        calcDataLength "" rpmInt32Type 2 0 0 `shouldBe` Right 8
+        calcDataLength "" RpmInt64 2 0 0 `shouldBe` Right 16
+      it "calculates length of two int32" $
+        calcDataLength "" RpmInt32 2 0 0 `shouldBe` Right 8
+      it "calculates length of an int16" $
+        calcDataLength "" RpmInt16 1 0 0 `shouldBe` Right 2
+      it "calculates length of an int8" $
+        calcDataLength "" RpmInt8 1 0 0 `shouldBe` Right 1
   where
     strData =
       BLS.pack
@@ -170,7 +168,7 @@ headerBlobImportSpec :: BLS.ByteString -> Spec
 headerBlobImportSpec bs = do
   describe "headerBlobImport" $ do
     it "Reads index entries from a non-dribble header blob" $ do
-      let bl = headerBlobInit' bs >>= (hdrblobImport bs)
+      let bl = headerBlobInit' bs >>= (readHeaderBlobTagData bs)
       case bl of
         Right importedIes -> testBlobIndexEntries `shouldExistIn` importedIes
         Left e -> expectationFailure $ "Failed: " <> e
@@ -215,7 +213,7 @@ headerBlobV3RegionSpec blobData = do
     goodInfo =
       EntryInfo
         { tag = 0x3f
-        , tagType = 0x7
+        , tagType = RpmBin
         , offset = 0x89a1
         , count = 0x10
         }
@@ -223,7 +221,7 @@ headerBlobV3RegionSpec blobData = do
     baseInfo =
       EntryInfo
         { tag = 0
-        , tagType = 0
+        , tagType = RpmNull
         , offset = 0
         , count = 0
         }
@@ -246,7 +244,7 @@ headerBlobV3RegionSpec blobData = do
         }
 
 emptyInfo :: NonEmpty.NonEmpty EntryInfo
-emptyInfo = NonEmpty.singleton EntryInfo{tag = 0, tagType = 0, offset = 0, count = 0}
+emptyInfo = NonEmpty.singleton EntryInfo{tag = 0, tagType = RpmNull, offset = 0, count = 0}
 
 equalIgnoringEntries :: HeaderBlob -> HeaderBlob -> Expectation
 equalIgnoringEntries b1 b2 =
@@ -281,13 +279,13 @@ headerBlobSpec bs = describe "header blob parsing" $ do
       entries
         `shouldMatchList` [ EntryInfo
                               { tag = 0x3f
-                              , tagType = 0x7
+                              , tagType = RpmBin
                               , offset = 0x89a1
                               , count = 0x10
                               }
                           , EntryInfo
                               { tag = 0x64
-                              , tagType = 0x8
+                              , tagType = RpmStringArray
                               , offset = 0
                               , count = 0x1
                               }
