@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Strategy.BerkeleyDB (
   discover,
   findProjects,
@@ -115,7 +117,7 @@ data BdbEntry = BdbEntry
 
 -- | FOSSA _requires_ that architecture is provided: https://github.com/fossas/FOSSA/blob/e61713dec1ef80dc6b6114f79622c14df5278235/modules/fetchers/README.md#locators-for-linux-packages
 parsePkgInfo :: (Has Diagnostics sig m) => PkgInfo -> m BdbEntry
-parsePkgInfo PkgInfo{pkgArch = Just (pkgArch), pkgName, pkgVersion} = pure $ BdbEntry pkgArch pkgName pkgVersion
+parsePkgInfo PkgInfo{pkgArch = Just (pkgArch), ..} = pure $ BdbEntry pkgArch pkgName (pkgVersion <> "-" <> pkgRelease)
 parsePkgInfo pkg = fatalText . toText $ "package '" <> show pkg <> "' does not have an architecture, which is required"
 
 analyze ::
