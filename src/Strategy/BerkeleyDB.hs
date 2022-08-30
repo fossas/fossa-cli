@@ -2,6 +2,9 @@ module Strategy.BerkeleyDB (
   discover,
   findProjects,
   mkProject,
+  -- | For testing
+  readBerkeleyDB,
+  BdbEntry (..),
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
@@ -110,7 +113,7 @@ data BdbEntry = BdbEntry
   }
   deriving (Eq, Ord, Show)
 
--- | FOSSA _requires_ that architecture is provided: https://github.com/fossas/FOSSA/blob/e61713dec1ef80dc6b6114f79622c14df5278235/modules/fetchers/README.md#L96
+-- | FOSSA _requires_ that architecture is provided: https://github.com/fossas/FOSSA/blob/e61713dec1ef80dc6b6114f79622c14df5278235/modules/fetchers/README.md#locators-for-linux-packages
 parsePkgInfo :: (Has Diagnostics sig m) => PkgInfo -> m BdbEntry
 parsePkgInfo PkgInfo{pkgArch = Just (pkgArch), pkgName, pkgVersion} = pure $ BdbEntry pkgArch pkgName pkgVersion
 parsePkgInfo pkg = fatalText . toText $ "package '" <> show pkg <> "' does not have an architecture, which is required"
@@ -125,7 +128,7 @@ analyze ::
   OsInfo ->
   m (Graphing Dependency, GraphBreadth)
 analyze dir file osInfo = do
-  installed <- context ("read berkeleydb database file: " <> toText file) $ readDb dir file
+  installed <- context ("read berkeleydb database file: " <> toText file) $ readBerkeleyDB dir file
   context "building graph of packages" $ pure (buildGraph osInfo installed, Complete)
 
 buildGraph :: OsInfo -> [BdbEntry] -> Graphing Dependency
@@ -145,7 +148,7 @@ buildGraph (OsInfo os osVersion) = directs . map toDependency
     version pkg = CEq $ (bdbEntryArch pkg) <> "#" <> (bdbEntryVersion pkg)
 
 -- | Packages are read as a JSON array of base64 strings.
-readDb ::
+readBerkeleyDB ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Exec sig m
@@ -153,7 +156,7 @@ readDb ::
   Path Abs Dir ->
   Path Abs File ->
   m [BdbEntry]
-readDb dir file = withBerkeleyBinary $ \bdb -> do
+readBerkeleyDB dir file = withBerkeleyBinary $ \bdb -> do
   (bdbJsonOutput :: [Text]) <- context "read raw blobs" . execJson dir $ bdbCommand bdb file
   bdbByteOutput <- context "decode base64" . traverse fromEitherShow $ B64.decode <$> fmap encodeUtf8 bdbJsonOutput
   entries <- context "parse blobs" . traverse fromEitherShow $ readPackageInfo <$> fmap BSL.fromStrict bdbByteOutput
