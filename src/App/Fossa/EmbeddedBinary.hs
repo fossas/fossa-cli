@@ -5,14 +5,13 @@ module App.Fossa.EmbeddedBinary (
   BinaryPaths,
   ThemisIndex,
   ThemisBins (..),
-  PackagedBinary (..),
   toPath,
   withWigginsBinary,
   withSyftBinary,
   withThemisAndIndex,
+  withBerkeleyBinary,
   allBins,
   dumpEmbeddedBinary,
-  withEmbeddedBinary,
 ) where
 
 import Codec.Compression.Lzma qualified as Lzma
@@ -112,6 +111,13 @@ withWigginsBinary ::
   (BinaryPaths -> m c) ->
   m c
 withWigginsBinary = withEmbeddedBinary Wiggins
+
+withBerkeleyBinary ::
+  ( Has (Lift IO) sig m
+  ) =>
+  (BinaryPaths -> m c) ->
+  m c
+withBerkeleyBinary = withEmbeddedBinary BerkeleyDB
 
 withEmbeddedBinary ::
   ( Has (Lift IO) sig m
