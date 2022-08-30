@@ -46,7 +46,6 @@ import Path.IO (
   removeDirRecur,
   setPermissions,
  )
-import System.Info qualified as SysInfo
 import Prelude hiding (writeFile)
 
 data PackagedBinary
