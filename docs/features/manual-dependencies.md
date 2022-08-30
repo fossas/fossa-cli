@@ -33,7 +33,7 @@ Supported dependency types:
 - `cpan` - Dependencies located on the [CPAN package manager](https://www.cpan.org/).
 - `gem` - Dependencies which can be found at [RubyGems.org](https://rubygems.org/).
 - `git` - Github projects (which appear as dependencies in many package managers). Specified as the full github repository `https://github.com/fossas/fossa-cli`.
-- `go` - Golang specific dependency. Many golang dependencies are located on Github, but there are some which look like the following `go.mongodb.org/mongo-driver` that have custom golang URLs.
+- `go` - Go specific dependency. Many Go dependencies are located on Github, but there are some which look like the following `go.mongodb.org/mongo-driver` that have custom Go URLs.
 - `hackage` - Haskell dependencies found at [Hackage](https://hackage.haskell.org/).
 - `hex` - Erlang and Elixir dependencies that are found at [Hex.pm](https://hex.pm/).
 - `maven` - Maven dependencies that can be found at many different sources. Specified as `name: javax.xml.bind:jaxb-api` where the convention is `groupId:artifactId`.
