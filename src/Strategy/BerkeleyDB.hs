@@ -12,14 +12,14 @@ module Strategy.BerkeleyDB (
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withBerkeleyBinary)
 import Container.OsRelease (OsInfo (..))
-import Control.Effect.Diagnostics (Diagnostics, context, fatalText, fromEitherShow)
-import Control.Effect.Lift (Lift)
+import Control.Effect.Diagnostics (Diagnostics, context, fatalOnSomeException, fatalText, fromEitherShow)
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.ByteString.Base64 qualified as B64
 import Data.ByteString.Lazy qualified as BSL
 import Data.Rpm.DbHeaderBlob (PkgInfo (..), readPackageInfo)
-import Data.String.Conversion (ConvertUtf8 (encodeUtf8), toText)
+import Data.String.Conversion (ConvertUtf8 (encodeUtf8), decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Filters (AllFilters)
@@ -29,11 +29,12 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
-import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson)
-import Effect.ReadFS (Has, ReadFS)
+import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson')
+import Effect.ReadFS (Has, ReadFS, readContentsBS)
 import GHC.Generics (Generic)
 import Graphing (Graphing, directs)
-import Path (Abs, Dir, File, Path, toFilePath)
+import Path (Abs, Dir, File, Path, parseAbsDir, toFilePath)
+import System.Directory (getCurrentDirectory)
 import Types (
   DepType (LinuxRPM),
   Dependency (..),
@@ -94,6 +95,7 @@ mkProject project =
 getDeps ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
+  , Has ReadFS sig m
   , Has Exec sig m
   ) =>
   BerkeleyDatabase ->
@@ -123,14 +125,15 @@ parsePkgInfo pkg = fatalText . toText $ "package '" <> show pkg <> "' does not h
 analyze ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
+  , Has ReadFS sig m
   , Has Exec sig m
   ) =>
   Path Abs Dir ->
   Path Abs File ->
   OsInfo ->
   m (Graphing Dependency, GraphBreadth)
-analyze dir file osInfo = do
-  installed <- context ("read berkeleydb database file: " <> toText file) $ readBerkeleyDB dir file
+analyze _ file osInfo = do
+  installed <- context ("read berkeleydb database file: " <> toText file) $ readBerkeleyDB file
   context "building graph of packages" $ pure (buildGraph osInfo installed, Complete)
 
 buildGraph :: OsInfo -> [BdbEntry] -> Graphing Dependency
@@ -153,21 +156,34 @@ buildGraph (OsInfo os osVersion) = directs . map toDependency
 readBerkeleyDB ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
+  , Has ReadFS sig m
   , Has Exec sig m
   ) =>
-  Path Abs Dir ->
   Path Abs File ->
   m [BdbEntry]
-readBerkeleyDB dir file = withBerkeleyBinary $ \bdb -> do
-  (bdbJsonOutput :: [Text]) <- context "read raw blobs" . execJson dir $ bdbCommand bdb file
+readBerkeleyDB file = withBerkeleyBinary $ \bin -> do
+  -- Get the process working directory, not the one that 'ReadFS' reports, because 'ReadFS' is inside of the tarball.
+  cwd <- getSystemCwd
+
+  -- Read the file content from disk and send it to the parser via stdin.
+  -- This is necessary because the parser doesn't have access to the file system being read.
+  fileContent <- context "read file content" $ readContentsBS file
+
+  -- Handle the JSON response.
+  (bdbJsonOutput :: [Text]) <- context "read raw blobs" . execJson' cwd (bdbCommand bin) . decodeUtf8 $ B64.encode fileContent
   bdbByteOutput <- context "decode base64" . traverse fromEitherShow $ B64.decode <$> fmap encodeUtf8 bdbJsonOutput
   entries <- context "parse blobs" . traverse fromEitherShow $ readPackageInfo <$> fmap BSL.fromStrict bdbByteOutput
   context "parse package info" $ traverse parsePkgInfo entries
 
-bdbCommand :: BinaryPaths -> Path Abs File -> Command
-bdbCommand bin file =
+bdbCommand :: BinaryPaths -> Command
+bdbCommand bin =
   Command
     { cmdName = toText $ toPath bin
-    , cmdArgs = ["--target", toText file]
+    , cmdArgs = []
     , cmdAllowErr = Never
     }
+
+getSystemCwd :: (Has (Lift IO) sig m, Has Diagnostics sig m) => m (Path Abs Dir)
+getSystemCwd = do
+  cwd <- fatalOnSomeException "get process working directory" $ sendIO getCurrentDirectory
+  fatalOnSomeException "parse cwd as path" . sendIO $ parseAbsDir cwd

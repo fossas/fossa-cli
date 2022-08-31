@@ -3,7 +3,8 @@ module BerkeleyDB.BerkeleyDBSpec (spec) where
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Effect.Exec (runExecIO)
-import Path (Abs, Dir, File, Path)
+import Effect.ReadFS (runReadFSIO)
+import Path (Abs, File, Path)
 import Path.IO qualified as PIO
 import ResultUtil (assertOnSuccess)
 import Strategy.BerkeleyDB (BdbEntry (..), readBerkeleyDB)
@@ -13,8 +14,7 @@ spec :: Spec
 spec = do
   describe "Container BerkeleyDB Parser" $ do
     target <- runIO testPackagesFile
-    parent <- runIO testPackagesDir
-    result <- runIO . runStack . runDiagnostics . runExecIO $ readBerkeleyDB parent target
+    result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO $ readBerkeleyDB target
 
     it "parses berkeleydb contents" $
       assertOnSuccess result $ \_ c ->
@@ -25,9 +25,6 @@ spec = do
 -- from https://github.com/jssblck/go-rpmdb/blob/9a3bd2ebb923399db2189c5d8963af27368ba2c8/pkg/rpmdb_test.go#L16-L20
 testPackagesFile :: IO (Path Abs File)
 testPackagesFile = PIO.resolveFile' "extlib/berkeleydb/testdata/centos5-plain/Packages"
-
-testPackagesDir :: IO (Path Abs Dir)
-testPackagesDir = PIO.resolveDir' "extlib/berkeleydb/testdata/centos5-plain"
 
 -- docker run --rm -it centos:5 bash
 -- rpm -qa --queryformat "\"%{ARCH}\"\ \"%{NAME}\" \"%{VERSION}-%{RELEASE}\",\n" | sed "s/(none)/0/g"

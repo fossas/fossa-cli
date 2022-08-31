@@ -18,7 +18,7 @@
 
 use std::{
     fs::File,
-    io::{BufReader, Seek, SeekFrom},
+    io::{self, Cursor, Read, Seek, SeekFrom},
     path::PathBuf,
 };
 
@@ -35,22 +35,49 @@ pub mod read;
 ///
 /// Reference: https://github.com/jssblck/go-rpmdb/blob/956701287363101ee9ade742d6bf1d5c5495f62a/pkg/bdb/bdb.go#L22
 pub struct BerkeleyDB {
-    file: BufReader<File>,
+    file: Cursor<Vec<u8>>,
     pub metadata: metadata::Page,
 }
 
 impl BerkeleyDB {
     /// Open the database and parse its metadata, which is used for future reading.
-    pub fn open(path: &PathBuf) -> Result<BerkeleyDB> {
-        debug!("📂 Open DB: {path:?}");
-        let file = File::open(&path).context("open file")?;
+    pub fn open(path: &PathBuf) -> Result<Self> {
+        debug!("📂 Open DB from file system: {path:?}");
+        let mut file = File::open(&path).context("open file")?;
 
-        // Data structure parsers rely on many read calls for small numbers of bytes at once.
-        // We use a bufreader so that we don't trigger syscalls with all these.
-        let mut file = BufReader::new(file);
+        let mut input = Vec::new();
+        file.read_to_end(&mut input).context("buffer file")?;
 
-        let (generic, big_endian) = Generic::parse(&mut file).context("parse generic metadata")?;
-        let hash = Hash::parse_dyn(&mut file, big_endian).context("parse hash metadata")?;
+        Self::from(input).context("open db from buffered file")
+    }
+
+    /// Open the database from stdin (base64 encoded) and parse its metadata, which is used for future reading.
+    pub fn stdin() -> Result<Self> {
+        debug!("📖 Reading database from stdin");
+
+        let mut input = String::new();
+        io::stdin()
+            .read_to_string(&mut input)
+            .context("buffer stdin")?;
+
+        let input = base64::decode(&input).context("parse stdin as base64")?;
+        Self::from(input).context("open db from stdin")
+    }
+
+    fn from(input: Vec<u8>) -> Result<Self> {
+        let mut file = Cursor::new(input);
+
+        let metadata = BerkeleyDB::parse_metadata(&mut file).context("parse metadata")?;
+        debug!("🔖 Parsed metadata: {metadata:?}");
+
+        file.seek(SeekFrom::Start(0)).context("seek file start")?;
+        debug!("✅ Metadata validated and cursor reset; db is ready for reading!");
+        Ok(BerkeleyDB { file, metadata })
+    }
+
+    fn parse_metadata<F: Read + Seek>(file: &mut F) -> Result<metadata::Page> {
+        let (generic, big_endian) = Generic::parse(file).context("generic metadata")?;
+        let hash = Hash::parse_dyn(file, big_endian).context("hash metadata")?;
 
         let metadata = metadata::Page::builder()
             .generic(generic)
@@ -58,11 +85,7 @@ impl BerkeleyDB {
             .big_endian(big_endian)
             .build();
 
-        debug!("🔖 Parsed metadata: {metadata:?}");
-        metadata.validate().context("validate metadata")?;
-        file.seek(SeekFrom::Start(0)).context("seek to start")?;
-
-        debug!("✅ Metadata validated and cursor reset; db is ready for reading!");
-        Ok(BerkeleyDB { file, metadata })
+        metadata.validate().context("validate")?;
+        Ok(metadata)
     }
 }
