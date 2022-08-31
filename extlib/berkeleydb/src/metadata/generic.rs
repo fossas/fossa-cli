@@ -43,8 +43,8 @@ pub struct Generic {
     page_size: u32,           /* 20-23: Pagesize. */
     encryption_alg: u8,       /*    24: Encryption algorithm. */
     page_type: u8,            /*    25: Page type. */
-    meta_flags: u8,           /* 26: Meta-only flags */
-    _unused: u8,              /* 27: Unused. */
+    meta_flags: u8,           /*    26: Meta-only flags */
+    _unused: u8,              /*    27: Unused. */
     free: u32,                /* 28-31: Free list page number. */
     last_page_no: u32,        /* 32-35: Page number of last page in db. */
     n_parts: u32,             /* 36-39: Number of partitions. */
