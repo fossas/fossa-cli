@@ -27,7 +27,6 @@ import Test.Hspec (
   context,
   describe,
   expectationFailure,
-  fcontext,
   it,
   runIO,
   shouldBe,
@@ -37,7 +36,7 @@ import Test.Hspec (
  )
 
 spec :: Spec
-spec = fcontext "RPM header blob parsing" $ do
+spec = context "RPM header blob parsing" $ do
   testBlob' <- runIO $ BLS.readFile testBlob
   headerBlobErrSpec
   headerBlobSpec testBlob'
@@ -74,6 +73,8 @@ testBlobTagValueData =
 
 readPackageSpec :: Spec
 readPackageSpec = do
+  -- These header blobs were all extracted from test dbs in go-rpmdb:
+  -- https://github.com/knqyf263/go-rpmdb/tree/9f953f9/pkg/testdata
   ubi8Which <- runIO $ BLS.readFile "test/Data/test_data/ubi8-which2.21-17.el8-s390x.bin"
   centos5Vim <- runIO $ BLS.readFile "test/Data/test_data/centos5-vim-minimal-7.0.109-7.2.el5-x86_64.bin"
   sle15LibNCurses <- runIO $ BLS.readFile "test/Data/test_data/suse15-libncurses6-6.1-5.9.1-x86_64.bin"

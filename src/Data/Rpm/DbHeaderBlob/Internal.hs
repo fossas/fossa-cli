@@ -1,10 +1,11 @@
 {-# LANGUAGE RecordWildCards #-}
-{-|
-Description: These are internal functions for parsing an RPM package header blob. The
-main entry-point is 'readPackageInfo'.
--}
+
+-- |
+--Description: These are internal functions for parsing an RPM package header blob. The
+--main entry-point is 'readPackageInfo'.
 module Data.Rpm.DbHeaderBlob.Internal (
   -- * Main interface
+
   -- |You should not use this module directly. Use 'Data.Rpm.DbHeaderBlob'
   -- instead.
   PkgInfo (..),
@@ -48,7 +49,7 @@ import Text.Printf (printf)
 
 -- |RPM tags (keys). This is not exhaustive, you can see the full list in the
 -- [origin go-rpmdb
--- implementation](https://github.com/csasarak/go-rpmdb/blob/master/pkg/rpmtags.go#L3).
+-- implementation](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/rpmtags.go#L3).
 data RpmTag
   = -- When modifying this type, it is *critically* important to order data
     -- constructors by the same as the numbers would be. When checking the first
@@ -62,12 +63,11 @@ data RpmTag
   | TagVersion -- 1001
   | TagRelease -- 1002
   | TagArchitecture -- 1022
-
-  -- | There are tag values that we either aren't interested in or that may not
-  -- be predicted by the reference implementation. This allows reading without
-  -- failing. If there's a future need to extract data from a new tag, that tag
-  -- should get its own entry above.
-  | TagOther Int32
+  | -- | There are tag values that we either aren't interested in or that may not
+    -- be predicted by the reference implementation. This allows reading without
+    -- failing. If there's a future need to extract data from a new tag, that tag
+    -- should get its own entry above.
+    TagOther Int32
   deriving (Eq, Ord, Show)
 
 intToRpmTag :: Int32 -> RpmTag
@@ -85,7 +85,7 @@ intToRpmTag t =
 
 -- |This corresponds to a type of 'RpmBin' but has a special meaning when the
 -- first entry info has this type.
--- [Reference](https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L15)
+-- [Reference](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L15)
 regionTagType :: RpmTagType
 regionTagType = RpmBin
 
@@ -94,12 +94,12 @@ entryMetadataSize :: Int32
 entryMetadataSize = 16
 
 -- |Maximum number of bytes allowed in a header. Defined
--- [here](https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L18).
+-- [here](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L18).
 headerMaxBytes :: Int32
 headerMaxBytes = 256 * 1024 * 1024
 
 -- |The number of 'EntryMetadata's to expect in a v3 header region.
--- [Reference Implementation](https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L14).
+-- [Reference Implementation](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L14).
 regionTagCount :: Int32
 -- Logically, I'm not sure why this is derived from the size in bytes of an
 -- entryInfo in both the c code and the go code. It seems like the only
@@ -149,7 +149,8 @@ intToHeaderType i =
     9 -> Just RpmI18nString
     _ -> Nothing
 
--- |General characteristics about a header blob. Official documentation can be
+-- |Structure representing the data we can read out of an RPM package header blob.
+-- Official documentation can be
 -- found [here](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
 --
 -- In summary, a header blob is a key-value data-store for different attributes
@@ -167,40 +168,40 @@ intToHeaderType i =
 -- information can be found
 -- [here](https://rpm-software-management.github.io/rpm/manual/hregions.html)
 data HeaderBlob = HeaderBlob
-  { -- |Count of entries in the index area
-    indexCount :: IndexCount
-  , -- |The size of the data area in bytes
-    dataLength :: Int32
-  , -- |The offset from the beginning of the blob data where tag values are
-    dataStart :: Int32
-  , -- |The offset where the data area ends
-    dataEnd :: Int32
-  , -- |The metadata entries for each tag
-    entryMetadatas :: NonEmpty EntryMetadata
-  , -- |The number of 'EntryMetadata''s in the original v3 header region. 0 if none exists.
-    regionIndexCount :: IndexCount
+  { indexCount :: IndexCount
+  -- ^Count of entries in the index area
+  , dataLength :: Int32
+  -- ^The size of the data area in bytes
+  , dataStart :: Int32
+  -- ^The offset from the beginning of the blob data where tag values are
+  , dataEnd :: Int32
+  -- ^The offset where the data area ends
+  , entryMetadatas :: NonEmpty EntryMetadata
+  -- ^The metadata entries for each tag
+  , regionIndexCount :: IndexCount
+  -- ^The number of 'EntryMetadata''s in the original v3 header region. 0 if none exists.
   }
   deriving (Show, Eq)
 
 -- |Structure for describing the type, location, and size of a tag-value
 -- pair in a 'HeaderBlob'.
--- This roughly corresponds to [entryInfo](https://github.com/csasarak/go-rpmdb/blob/master/pkg/entry.go#L63)
+-- This roughly corresponds to [entryInfo](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L63)
 -- in the original Go code.
 data EntryMetadata = EntryMetadata
-  { -- |ID for which piece of RPM data this is. More information on available
-    -- tags can be found [here](https://rpm-software-management.github.io/rpm/manual/tags.html).
-    tag :: RpmTag
-  , -- |The type of data that this tag is. See the
-    -- [docs](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
-    -- Table 24-5.
-    tagType :: RpmTagType
-  , -- |The offset from the beginning of 'HeaderBlob's 'dataStart' that data for
-    -- this entry can be found.
-    offset :: Int32
-  , -- | The count of data items to expect. For simple scalar types like numbers
-    -- or strings this will be 1. For composite types such as arrays it may be
-    -- more.
-    count :: Word32
+  { tag :: RpmTag
+  -- ^ID for which piece of RPM data this is. More information on available
+  -- tags can be found [here](https://rpm-software-management.github.io/rpm/manual/tags.html).
+  , tagType :: RpmTagType
+  -- ^The type of data that this tag is. See the
+  -- [docs](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
+  -- Table 24-5.
+  , offset :: Int32
+  -- ^The offset from the beginning of 'HeaderBlob's 'dataStart' that data for
+  -- this entry can be found.
+  , count :: Word32
+  -- ^ The count of data items to expect. For simple scalar types like numbers
+  -- or strings this will be 1. For composite types such as arrays it may be
+  -- more.
   }
   deriving (Show, Eq, Ord)
 
@@ -208,7 +209,7 @@ data EntryMetadata = EntryMetadata
 -- a header blob.
 --
 -- This function is roughly equivalent to @hdrblobInit@ from the original [go
--- code](https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L105).
+-- code](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L105).
 readHeaderMetaData :: BLS.ByteString -> Either (BLS.ByteString, ByteOffset, String) HeaderBlob
 readHeaderMetaData bs =
   case runGetOrFail readHeader bs of
@@ -239,7 +240,7 @@ readHeaderMetaData bs =
     dataAndIndexLen :: Int32
     dataAndIndexLen = 8
 
-    -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L116
+    -- https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L116
     calcDataStart :: Int32 -> Int32
     calcDataStart indexLength =
       dataAndIndexLen
@@ -254,7 +255,7 @@ newtype IndexCount = IndexCount Int32
 -- and verify its correctness. In the case of a regular v3 blob, this will be
 -- 0. In the case of v4 it will be more.
 --
--- This is inspired by [hdrblobVerifyRegion](https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L263).
+-- This is inspired by [hdrblobVerifyRegion](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L263).
 getV3RegionCount :: NonEmpty.NonEmpty EntryMetadata -> Int32 -> Int32 -> BLS.ByteString -> Either String IndexCount
 getV3RegionCount entryMetadatas dataLength dataStart blobData = do
   let EntryMetadata{..} = NonEmpty.head entryMetadatas
@@ -264,7 +265,7 @@ getV3RegionCount entryMetadatas dataLength dataStart blobData = do
               , TagHeaderImmutable
               ]
     then -- This is a v3 header, so no special v3 region.
-    -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L276
+    -- https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L276
       pure 0
     else do
       -- There is a v3 region because this is a v4 header
@@ -296,14 +297,14 @@ getV3RegionCount entryMetadatas dataLength dataStart blobData = do
 
 -- | Container for metadata as well as the byte data for an entry in the header
 -- blob. This type is equivalent to
--- [indexEntry](https://github.com/csasarak/go-rpmdb/blob/master/pkg/entry.go#L70)
+-- [indexEntry](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L70)
 -- in the original Go code.
 data TagValueData = TagValueData
-  { -- | The expected length of the entryData, in bytes
-    info :: EntryMetadata
+  { info :: EntryMetadata
+  -- ^ The expected length of the entryData, in bytes
   , entryLength :: Int32
-  , -- | The actual data for the entry
-    entryData :: BLS.ByteString
+  , entryData :: BLS.ByteString
+  -- ^ The actual data for the entry
   }
   deriving (Eq, Show, Ord)
 
@@ -318,10 +319,10 @@ readHeaderBlobTagData :: BLS.ByteString -> HeaderBlob -> Either String [TagValue
 readHeaderBlobTagData bs HeaderBlob{..} = do
   let firstEntry = NonEmpty.head entryMetadatas
   if tag firstEntry >= TagHeaderI18nTable
-    then
-    -- v3 entries, these seem to be uncommon. They are distinct from > v4
+    then -- v3 entries, these seem to be uncommon. They are distinct from > v4
     -- entries in that they don't have a specialized region for v3 data, which
     -- is why the function doesn't skip the first element of entryMetadatas
+
       bimap
         ("Failed to parse legacy index entries: " <>)
         fst
@@ -454,7 +455,7 @@ readEntries indexLength =
 readEntry :: Get EntryMetadata
 readEntry =
   -- The original code reads these as little endian:
-  -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L127 However,
+  -- https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L127 However,
   -- the original code looks like it simply copies bytes sequentially into a
   -- buffer that is then treated like an entryInfo/entryMetadata structure. That
   -- means higher bytes in a word are least-significant, corresponding to
@@ -482,8 +483,8 @@ data PkgInfo = PkgInfo
   deriving (Eq, Ord, Show)
 
 -- More information than what gets extracted is available from the blob. See the
--- different tag values here:
--- https://github.com/csasarak/go-rpmdb/blob/modified-cmd/pkg/package.go#L50
+-- different tag values [here]
+-- (https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/package.go#L50)
 getPkgInfo :: [TagValueData] -> Either String PkgInfo
 getPkgInfo ies =
   PkgInfo
