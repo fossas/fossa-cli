@@ -18,7 +18,7 @@ Upgrading from FOSSA CLI 1.x to 3.x is a major breaking change. For most users, 
     - [Language Specific Changes](#language-specific-changes)
       - [Gradle](#gradle)
       - [Clojure](#clojure)
-      - [Golang](#golang)
+      - [Go](#go)
       - [Haskell](#haskell)
       - [Maven](#maven)
       - [Nodejs](#nodejs)
@@ -138,10 +138,10 @@ Following CLI commands are not supported with 3.x:
 - 3.x does not support any options - `strategy`, and `lien` for Clojure analysis.
 - Refer to [FOSSA 3.x clojure docs](references/strategies/languages/clojure/clojure.md) for more information on how 3.x performs analysis for clojure.
 
-#### Golang 
-- 3.x supports analysis of the Golang project for projects using gomod, godeps, and glide.
+#### Go
+- 3.x supports analysis of the Go project for projects using gomod, godeps, and glide.
 - 3.x does not support following options: `tags`, `all-tags,` `strategy`, `lockfile`, `manifest`, `modules-vendor`, `allow-unresolved`, `allow-unresolved-prefix`, `allow-nested-vendor`, `allow-deep-vendor`, `allow-external-vendor`, `allow-external-vendor-prefix`.
-- Refer to [FOSSA 3.x golang docs](references/strategies/languages/golang/golang.md) for more information on how 3.x performs analysis for golang.
+- Refer to [FOSSA 3.x Go docs](references/strategies/languages/golang/golang.md) for more information on how 3.x performs analysis for Go.
 
 #### Haskell 
 - 3.x will apply stack strategy when a project is discovered having stack.yaml file

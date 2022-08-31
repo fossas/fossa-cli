@@ -169,7 +169,7 @@ Targets are listed in the following formats for both `only` and `exclude` lists.
 ```
 
 #### `targets.only:`
-The list of `only` targets that should be scanned. When used alongside `paths.only`, the list of targets to be scanned are unioned.
+The list of `only` targets that should be scanned. When used alongside `paths.only`, the intersection of the two lists is taken to find targets for scanning
 
 #### `targets.exclude:`
 The list of `exclude` targets which should be excluded from scanning. The targets listed in the exclude section will override the targets listed in the only sections. This feature is used most effectively to remove specific targets from a directory.

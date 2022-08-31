@@ -84,7 +84,8 @@ isProductionPath path = not $ any (`isInfixOf` path) ignoredPaths
 
 ignoredPaths :: [[Char]]
 ignoredPaths =
-  [ "doc/"
+  [ "dist-newstyle"
+  , "doc/"
   , "docs/"
   , "test/"
   , "example/"

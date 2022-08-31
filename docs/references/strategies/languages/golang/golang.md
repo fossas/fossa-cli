@@ -1,15 +1,15 @@
-# Golang Analysis
+# Go Analysis
 
-Historically, the Golang buildtool ecosystem has been very fragmented: many
+Historically, the Go buildtool ecosystem has been very fragmented: many
 tools like dep, Glide, Govendor, etc have tried to address issues around build
 reproducibility, versioning and vendoring of dependencies.
 
-As of Golang 1.11, we have first-class support for "modules", which solves
+As of Go 1.11, we have first-class support for "modules", which solves
 issues previously seen around versioning and build reproducibility.
 
 Because modules address those issues so well, the other tooling has largely gone
-into maintenance mode, with the notable exception of dep. As such, golang
-analysis in fossa-cli primarily targets Golang 1.11+ modules and dep. Support
+into maintenance mode, with the notable exception of dep. As such, Go
+analysis in fossa-cli primarily targets Go 1.11+ modules and dep. Support
 for Glide is also included, because it's still commonly used.
 
 | Strategy               | Direct Deps | Deep Deps | Edges |
