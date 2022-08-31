@@ -6,7 +6,10 @@ use stable_eyre::{
     Result,
 };
 
-use crate::{parse::slice_dyn, BerkeleyDB};
+use crate::{
+    parse::{slice_dyn, ByteParser},
+    BerkeleyDB,
+};
 
 use self::{entry::Entry, header::Header, index::Index, value::Value};
 
@@ -40,7 +43,8 @@ impl BerkeleyDB {
             let end_of_page_offset = self.file.stream_position().context("get current offset")?;
 
             let big_endian = self.metadata.big_endian();
-            let header = Header::parse_dyn(page.as_slice(), big_endian).context("parse header")?;
+            let header =
+                Header::parse_dyn(&mut page.as_slice(), big_endian).context("parse header")?;
             if header.should_skip() {
                 debug!("🔁 Skip page {page_num}; header: {header:?}");
                 continue;

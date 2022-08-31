@@ -56,6 +56,8 @@ pub struct Generic {
 
 impl Generic {
     /// Read [`Self`] out of a file in plain byte order. Also returns the endianness of the data read using a check integer.
+    /// Cannot implement `ByteParser` because this type does not have a distinction between `dyn` and `const` parser implementations
+    /// (by design- this parser is what tells _other parsers_ which implementations to use).
     ///
     /// Reference: https://github.com/jssblck/go-rpmdb/blob/956701287363101ee9ade742d6bf1d5c5495f62a/pkg/bdb/hash_metadata_page.go#L26-L27
     pub fn parse<F: Read + Seek>(r: &mut F) -> Result<(Self, bool)> {

@@ -1,5 +1,6 @@
 use getset::{CopyGetters, Getters};
-use stable_eyre::{eyre::Context, Result};
+use stable_eyre::eyre::Context;
+use stable_eyre::Result;
 use typed_builder::TypedBuilder;
 
 use super::{Generic, Hash};

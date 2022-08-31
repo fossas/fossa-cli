@@ -18,6 +18,7 @@ impl Index {
     const PAIR_SIZE: usize = Self::ENTRY_SIZE * 2;
 
     /// Read [`Self`] out of a file in plain byte order.
+    /// This can't be a `ByteParser` because it takes an additional argument and a different data type than `Read`.
     ///
     /// Reference: https://github.com/jssblck/go-rpmdb/blob/160242deff7a9ee82d1b493b62b7e50fd4c3e81c/pkg/bdb/hash_page.go#L89
     pub fn parse<E: ByteOrder>(data: &[u8], entries: usize) -> Result<Self> {
@@ -88,6 +89,6 @@ fn parse_pair_u16<E: ByteOrder>(mut r: impl Read) -> Result<(u16, u16)> {
     Ok((k, v))
 }
 
-fn snd<T>((_, t): (T, T)) -> T {
+fn snd<T, K>((_, t): (K, T)) -> T {
     t
 }
