@@ -15,7 +15,8 @@ module Data.Rpm.DbHeaderBlob.Internal (
   EntryMetadata (..),
   TagValueData (..),
   IndexCount (..),
-  RpmTagType(..),
+  RpmTagType (..),
+  RpmTag (..),
 
   -- * Internal Functions
   readHeaderMetaData,
@@ -23,15 +24,9 @@ module Data.Rpm.DbHeaderBlob.Internal (
   calcDataLength,
   readHeaderBlobTagData,
 
-  -- * Header Tag Ids
-  -- $tagIdDoc
-  rpmTagHeaderImg,
-  rpmTagHeaderImmutable,
-  rpmTagHeaderSignatures,
-
+  -- * Magic numbers
   regionTagCount,
   regionTagType,
-
 ) where
 
 import Control.Applicative (liftA2)
@@ -42,49 +37,51 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BLS
 import Data.Either.Combinators (maybeToRight)
 import Data.Int (Int32)
-import Data.IntMap qualified as Map
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Map qualified as Map
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Vector qualified as V
 import Data.Word (Word32, Word8)
 import Text.Printf (printf)
 
--- $tagIdDoc
--- Ids for types of data used in the header blobs. This is not exhaustive and
--- only includes types for data we actually read from the header. More types can
--- be found
--- [here](https://github.com/csasarak/go-rpmdb/blob/modified-cmd/pkg/rpmtags.go#L2)
--- $tagIdDoc
+-- |RPM tags (keys). This is not exhaustive, you can see the full list in the
+-- [origin go-rpmdb
+-- implementation](https://github.com/csasarak/go-rpmdb/blob/master/pkg/rpmtags.go#L3).
+data RpmTag
+  = -- When modifying this type, it is *critically* important to order data
+    -- constructors by the same as the numbers would be. When checking the first
+    -- entry in the index's tag anything >= TagHeaderI18nTable (1000) indicates a
+    -- v3 header. Adding new constructors out of order risks breaking that.
+    TagHeaderImage -- 61
+  | TagHeaderSignatures -- 62
+  | TagHeaderImmutable -- 63
+  | TagHeaderI18nTable -- 100
+  | TagName -- 1000
+  | TagVersion -- 1001
+  | TagRelease -- 1002
+  | TagArchitecture -- 1022
 
-rpmtagName :: Int
-rpmtagName = 1000 -- string
+  -- | There are tag values that we either aren't interested in or that may not
+  -- be predicted by the reference implementation. This allows reading without
+  -- failing. If there's a future need to extract data from a new tag, that tag
+  -- should get its own entry above.
+  | TagOther Int32
+  deriving (Eq, Ord, Show)
 
-rpmtagVersion :: Int
-rpmtagVersion = 1001 -- string
-
-rpmtagRelease :: Int
-rpmtagRelease = 1002 -- string
-
-rpmtagArchitecture :: Int
-rpmtagArchitecture = 1022 -- string
-
--- |Type of an entry that might be a v3 header region.
-rpmTagHeaderImmutable :: Int32
-rpmTagHeaderImmutable = 63
-
--- |Type of an entry that might be a v3 header region.
-rpmTagHeaderSignatures :: Int32
-rpmTagHeaderSignatures = 62
-
--- |Type of an entry that might be a v3 header region.
-rpmTagHeaderImg :: Int32
-rpmTagHeaderImg = 61
-
--- |Tags > than this as the first entry indicate a v3 region entry.
-rpmTagHeaderI18nTable :: Int32
-rpmTagHeaderI18nTable = 100
+intToRpmTag :: Int32 -> RpmTag
+intToRpmTag t =
+  case t of
+    61 -> TagHeaderImage
+    62 -> TagHeaderSignatures
+    63 -> TagHeaderImmutable
+    100 -> TagHeaderI18nTable
+    1000 -> TagName
+    1001 -> TagVersion
+    1002 -> TagRelease
+    1022 -> TagArchitecture
+    n -> TagOther n
 
 -- |This corresponds to a type of 'RpmBin' but has a special meaning when the
 -- first entry info has this type.
@@ -109,8 +106,8 @@ regionTagCount :: Int32
 -- relationship between the two is they happen to both be the number 16.
 regionTagCount = entryMetadataSize
 
-data RpmTagType =
-  RpmNull
+data RpmTagType
+  = RpmNull
   | RpmChar
   | RpmInt8
   | RpmInt16
@@ -126,16 +123,16 @@ data RpmTagType =
 -- and 1 if it's binary
 headerTypeSize :: RpmTagType -> Int32
 headerTypeSize ty = case ty of
-  RpmNull        -> 0
-  RpmChar        -> 1
-  RpmInt8        -> 1
-  RpmInt16       -> 2
-  RpmInt32       -> 4
-  RpmInt64       -> 8
-  RpmString      -> -1
-  RpmBin         -> 1
+  RpmNull -> 0
+  RpmChar -> 1
+  RpmInt8 -> 1
+  RpmInt16 -> 2
+  RpmInt32 -> 4
+  RpmInt64 -> 8
+  RpmString -> -1
+  RpmBin -> 1
   RpmStringArray -> -1
-  RpmI18nString  -> -1
+  RpmI18nString -> -1
 
 intToHeaderType :: Word32 -> Maybe RpmTagType
 intToHeaderType i =
@@ -190,21 +187,21 @@ data HeaderBlob = HeaderBlob
 -- This roughly corresponds to [entryInfo](https://github.com/csasarak/go-rpmdb/blob/master/pkg/entry.go#L63)
 -- in the original Go code.
 data EntryMetadata = EntryMetadata
-      { -- |ID for which piece of RPM data this is. More information on available
-        -- tags can be found [here](https://rpm-software-management.github.io/rpm/manual/tags.html).
-        tag :: Int32
-      , -- |The type of data that this tag is. See the
-        -- [docs](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
-        -- Table 24-5.
-        tagType :: RpmTagType
-      , -- |The offset from the beginning of 'HeaderBlob's 'dataStart' that data for
-        -- this entry can be found.
-        offset :: Int32
-      , -- | The count of data items to expect. For simple scalar types like numbers
-        -- or strings this will be 1. For composite types such as arrays it may be
-        -- more.
-        count :: Word32
-      }
+  { -- |ID for which piece of RPM data this is. More information on available
+    -- tags can be found [here](https://rpm-software-management.github.io/rpm/manual/tags.html).
+    tag :: RpmTag
+  , -- |The type of data that this tag is. See the
+    -- [docs](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
+    -- Table 24-5.
+    tagType :: RpmTagType
+  , -- |The offset from the beginning of 'HeaderBlob's 'dataStart' that data for
+    -- this entry can be found.
+    offset :: Int32
+  , -- | The count of data items to expect. For simple scalar types like numbers
+    -- or strings this will be 1. For composite types such as arrays it may be
+    -- more.
+    count :: Word32
+  }
   deriving (Show, Eq, Ord)
 
 -- | Read initial metadata items, such as data lengths, locations, and index entries from
@@ -261,19 +258,16 @@ newtype IndexCount = IndexCount Int32
 getV3RegionCount :: NonEmpty.NonEmpty EntryMetadata -> Int32 -> Int32 -> BLS.ByteString -> Either String IndexCount
 getV3RegionCount entryMetadatas dataLength dataStart blobData = do
   let EntryMetadata{..} = NonEmpty.head entryMetadatas
-  let regionTag =
-        if tag
-          `elem` [ rpmTagHeaderImg
-                 , rpmTagHeaderSignatures
-                 , rpmTagHeaderImmutable
-                 ]
-          then tag
-          else 0
-
-  if regionTag == 0
-    then -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L276
+  if tag --  any of these 3 tags would indicate a v4 header, thus no v3 region
+    `notElem` [ TagHeaderImage
+              , TagHeaderSignatures
+              , TagHeaderImmutable
+              ]
+    then -- This is a v3 header, so no special v3 region.
+    -- https://github.com/knqyf263/go-rpmdb/blob/master/pkg/entry.go#L276
       pure 0
     else do
+      -- There is a v3 region because this is a v4 header
       unless (tagType == regionTagType && count == fromIntegral regionTagCount) $
         Left "invalid region tag"
 
@@ -304,12 +298,11 @@ getV3RegionCount entryMetadatas dataLength dataStart blobData = do
 -- blob. This type is equivalent to
 -- [indexEntry](https://github.com/csasarak/go-rpmdb/blob/master/pkg/entry.go#L70)
 -- in the original Go code.
-data TagValueData =
-  TagValueData
+data TagValueData = TagValueData
   { -- | The expected length of the entryData, in bytes
-    info :: EntryMetadata,
-    entryLength :: Int32,
-    -- | The actual data for the entry
+    info :: EntryMetadata
+  , entryLength :: Int32
+  , -- | The actual data for the entry
     entryData :: BLS.ByteString
   }
   deriving (Eq, Show, Ord)
@@ -324,7 +317,7 @@ data TagValueData =
 readHeaderBlobTagData :: BLS.ByteString -> HeaderBlob -> Either String [TagValueData]
 readHeaderBlobTagData bs HeaderBlob{..} = do
   let firstEntry = NonEmpty.head entryMetadatas
-  if tag firstEntry >= rpmTagHeaderI18nTable
+  if tag firstEntry >= TagHeaderI18nTable
     then
     -- v3 entries, these seem to be uncommon. They are distinct from > v4
     -- entries in that they don't have a specialized region for v3 data, which
@@ -346,7 +339,7 @@ readHeaderBlobTagData bs HeaderBlob{..} = do
 
       let totalLen = dataLenWithDribble + regionTagCount
       if totalLen /= dataLength
-        then Left $ printf "The caculated length (%d) is different than the data length (%d)" totalLen dataLength
+        then Left $ printf "The calculated length (%d) is different than the data length (%d)" totalLen dataLength
         else Right allEntries
   where
     subList :: Int32 -> Int32 -> NonEmpty a -> [a]
@@ -362,7 +355,7 @@ readHeaderBlobTagData bs HeaderBlob{..} = do
           Right
             ( Map.elems
                 . Map.fromList
-                . map (\ie -> (fromIntegral . tag . info $ ie, ie))
+                . map (\ie -> (tag . info $ ie, ie))
                 $ dribbleEntries <> tagValueDatas
             , ieReadLen
             )
@@ -427,17 +420,17 @@ extractEntryData bs entryMetadatas dataStart dataEnd startDataLength = do
 calcDataLength :: BLS.ByteString -> RpmTagType -> Word32 -> Int32 -> Int32 -> Either String Int32
 calcDataLength bs ty count start dataEnd =
   case ty of
-    RpmString -> if count /= 1 then
-                   Left $ "count for string == " <> show count <> " it should == 1."
-                 else
-                   stringTagLength 1
+    RpmString ->
+      if count /= 1
+        then Left $ "count for string == " <> show count <> " it should == 1."
+        else stringTagLength 1
     RpmStringArray -> stringTagLength count
     RpmI18nString -> stringTagLength count
-    _ -> do let len = (fromIntegral count) * (headerTypeSize ty)
-            if len < 0 || dataEnd > 0 && start + fromIntegral len > dataEnd
-              then Left $ "Invalid calculated len: " <> show len
-              else Right $ fromIntegral len
-
+    _ -> do
+      let len = (fromIntegral count) * (headerTypeSize ty)
+      if len < 0 || dataEnd > 0 && start + fromIntegral len > dataEnd
+        then Left $ "Invalid calculated len: " <> show len
+        else Right $ fromIntegral len
   where
     stringTagLength :: Word32 -> Either String Int32
     stringTagLength strCount =
@@ -467,16 +460,17 @@ readEntry =
   -- means higher bytes in a word are least-significant, corresponding to
   -- big-endian when read individually. Big endian is also network order.
   EntryMetadata
-    <$> label "Read tag" getInt32be
+    <$> label "Read tag" (intToRpmTag <$> getInt32be)
     <*> label "Read type" readTagType
     <*> label "Read offset" getInt32be
     <*> label "Read count" getWord32be
-  where readTagType =
-          do tyNum <- getWord32be
-             case intToHeaderType tyNum of
-               Just ty -> pure ty
-               Nothing -> fail $ "Invalid type number: " <> show tyNum
-
+  where
+    readTagType =
+      do
+        tyNum <- getWord32be
+        case intToHeaderType tyNum of
+          Just ty -> pure ty
+          Nothing -> fail $ "Invalid type number: " <> show tyNum
 
 -- |Result data from reading a header blob.
 data PkgInfo = PkgInfo
@@ -493,32 +487,34 @@ data PkgInfo = PkgInfo
 getPkgInfo :: [TagValueData] -> Either String PkgInfo
 getPkgInfo ies =
   PkgInfo
-    <$> readTag rpmtagName
-    <*> readTag rpmtagVersion
-    <*> readTag rpmtagRelease
-    <*> Right (readOptionalTag rpmtagArchitecture)
+    <$> readTag TagName
+    <*> readTag TagVersion
+    <*> readTag TagRelease
+    <*> Right (readOptionalTag TagArchitecture)
   where
     tagMap =
-      fmap convertIndexEntryData
+      fmap tagDataToText
         . Map.fromList
-        . map (\i -> (fromIntegral . tag . info $ i, i))
+        . map (\i -> (tag . info $ i, i))
         $ ies
 
-    readTag :: Int -> Either String Text
+    readTag :: RpmTag -> Either String Text
     readTag tag =
-      maybeToRight (printf "Failed to read required tag %d" tag)
+      maybeToRight ("Failed to read required tag " <> show tag)
         . join
         . Map.lookup tag
         $ tagMap
 
-    readOptionalTag :: Int -> Maybe Text
+    readOptionalTag :: RpmTag -> Maybe Text
     readOptionalTag tag = join $ Map.lookup tag tagMap
 
-convertIndexEntryData :: TagValueData -> Maybe Text
-convertIndexEntryData ie =
+-- |Read tag value data from a 'TagValueData's data bytestring and convert it to
+-- text according to the 'TagValueData's type.
+tagDataToText :: TagValueData -> Maybe Text
+tagDataToText ie =
   case tagNum of
     RpmString -> Just dataAsText
-    _         -> Nothing
+    _ -> Nothing
   where
     eData :: BLS.ByteString
     eData = entryData ie

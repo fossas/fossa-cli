@@ -9,17 +9,16 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Rpm.DbHeaderBlob.Internal (
   EntryMetadata (..),
   HeaderBlob (..),
-  TagValueData (..),
+  IndexCount,
   PkgInfo (..),
+  RpmTag (..),
+  RpmTagType (..),
+  TagValueData (..),
   calcDataLength,
-  readHeaderBlobTagData,
   getV3RegionCount,
+  readHeaderBlobTagData,
   readHeaderMetaData,
   readPackageInfo,
-  regionTagCount,
-  regionTagType,
-  rpmTagHeaderImg, IndexCount, 
-  RpmTagType(..)
  )
 import Data.Set qualified as Set
 import Test.Hspec (
@@ -28,12 +27,13 @@ import Test.Hspec (
   context,
   describe,
   expectationFailure,
+  fcontext,
   it,
   runIO,
   shouldBe,
   shouldContain,
   shouldMatchList,
-  shouldSatisfy, fcontext,
+  shouldSatisfy,
  )
 
 spec :: Spec
@@ -56,17 +56,17 @@ testBlob = "test/Data/test_data/pkg_blob.bin"
 testBlobTagValueData :: [TagValueData]
 testBlobTagValueData =
   [ TagValueData
-      { info = EntryMetadata{tag = 100, tagType = RpmStringArray, offset = 0, count = 1}
+      { info = EntryMetadata{tag = TagHeaderI18nTable, tagType = RpmStringArray, offset = 0, count = 1}
       , entryLength = 2
       , entryData = BLS.pack [67, 0]
       }
   , TagValueData
-      { info = EntryMetadata{tag = 1000, tagType = RpmString, offset = 2, count = 1}
+      { info = EntryMetadata{tag = TagName, tagType = RpmString, offset = 2, count = 1}
       , entryLength = 7
       , entryData = BLS.pack [108, 105, 98, 103, 99, 99, 0]
       }
   , TagValueData
-      { info = EntryMetadata{tag = 1001, tagType = RpmString, offset = 9, count = 1}
+      { info = EntryMetadata{tag = TagVersion, tagType = RpmString, offset = 9, count = 1}
       , entryLength = 7
       , entryData = BLS.pack [49, 49, 46, 50, 46, 49, 0]
       }
@@ -180,8 +180,6 @@ headerBlobImportSpec bs = do
 headerBlobV3RegionSpec :: BLS.ByteString -> Spec
 headerBlobV3RegionSpec blobData = do
   describe "headerBlobVerifyRegion" $ do
-    it "Does nothing if not a header tag" $
-      getV3RegionCount' notHeaderTag "unused" `shouldBe` (Right 0)
     it "Fails on invalid region tag" $
       getV3RegionCount' invalidRegionTag "unused" `failsWithMsg` "invalid region tag"
     it "Fails on invalid region offset" $
@@ -211,30 +209,18 @@ headerBlobV3RegionSpec blobData = do
 
     goodInfo =
       EntryMetadata
-        { tag = 0x3f
+        { tag = TagHeaderImmutable
         , tagType = RpmBin
         , offset = 0x89a1
         , count = 0x10
         }
 
-    baseInfo =
+    invalidRegionTag =
       EntryMetadata
-        { tag = 0
+        { tag = TagHeaderImage
         , tagType = RpmNull
         , offset = 0
         , count = 0
-        }
-
-    notHeaderTag =
-      baseInfo
-        { tag = -1
-        , tagType = regionTagType
-        , count = fromIntegral regionTagCount
-        }
-
-    invalidRegionTag =
-      baseInfo
-        { tag = rpmTagHeaderImg
         }
 
     invalidRegionOffset =
@@ -243,7 +229,14 @@ headerBlobV3RegionSpec blobData = do
         }
 
 emptyInfo :: NonEmpty.NonEmpty EntryMetadata
-emptyInfo = NonEmpty.singleton EntryMetadata{tag = 0, tagType = RpmNull, offset = 0, count = 0}
+emptyInfo =
+  NonEmpty.singleton
+    EntryMetadata
+      { tag = TagName -- this is arbitrary, just needed a value
+      , tagType = RpmNull
+      , offset = 0
+      , count = 0
+      }
 
 equalIgnoringEntries :: HeaderBlob -> HeaderBlob -> Expectation
 equalIgnoringEntries b1 b2 =
@@ -277,13 +270,13 @@ headerBlobSpec bs = describe "header blob parsing" $ do
 
       entries
         `shouldMatchList` [ EntryMetadata
-                              { tag = 0x3f
+                              { tag = TagHeaderImmutable
                               , tagType = RpmBin
                               , offset = 0x89a1
                               , count = 0x10
                               }
                           , EntryMetadata
-                              { tag = 0x64
+                              { tag = TagHeaderI18nTable
                               , tagType = RpmStringArray
                               , offset = 0
                               , count = 0x1
