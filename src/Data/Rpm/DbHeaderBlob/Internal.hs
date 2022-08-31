@@ -52,7 +52,7 @@ import Text.Printf (printf)
 -- implementation](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/rpmtags.go#L3).
 data RpmTag
   = -- When modifying this type, it is *critically* important to order data
-    -- constructors by the same as the numbers would be. When checking the first
+    -- constructors by their corresponding numbers. When checking the first
     -- entry in the index's tag anything >= TagHeaderI18nTable (1000) indicates a
     -- v3 header. Adding new constructors out of order risks breaking that.
     TagHeaderImage -- 61
@@ -63,10 +63,11 @@ data RpmTag
   | TagVersion -- 1001
   | TagRelease -- 1002
   | TagArchitecture -- 1022
-  | -- | There are tag values that we either aren't interested in or that may not
-    -- be predicted by the reference implementation. This allows reading without
-    -- failing. If there's a future need to extract data from a new tag, that tag
-    -- should get its own entry above.
+  | -- | There are tag values that we either aren't interested in or that may
+    -- not be predicted by the reference implementation. This allows reading
+    -- those tag entries without failing on unknown tags. If there's a
+    -- future need to extract data from a new tag, that tag should get its own
+    -- entry above.
     TagOther Int32
   deriving (Eq, Ord, Show)
 
@@ -84,7 +85,7 @@ intToRpmTag t =
     n -> TagOther n
 
 -- |This corresponds to a type of 'RpmBin' but has a special meaning when the
--- first entry info has this type.
+-- first entry info in the blob has this type.
 -- [Reference](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L15)
 regionTagType :: RpmTagType
 regionTagType = RpmBin
@@ -154,14 +155,16 @@ intToHeaderType i =
 -- found [here](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
 --
 -- In summary, a header blob is a key-value data-store for different attributes
--- of an RPM package.  Each key-value pair is called a tag. For example, the
+-- of an RPM package.  Keys are called 'tags' in RPM docs/code. For example, the
 -- package name attribute for a package has @tag@ of @1000@ and is a string.
 --
--- The first part of a header blob is an index which describes all of the tags that it
--- contains as well as their types. In this implementation, these entries are called 'EntryMetadata'.
--- Following the index is a data area which contain the actual values for a tag.
+-- The first part of a header blob is an index which describes all of the tags
+-- that it contains as well as their types. In this implementation, these
+-- entries are called 'EntryMetadata', but are called @entryInfo@ in the
+-- reference implementation.  Following the index is a data area which contain
+-- the actual values for a tag.
 --
--- One caveat for a header is that v4 headers are structured differently than v3
+-- One caveat for header is that v4 headers are structured differently than v3
 -- headers, but include the v3 original in a tag that describes where in the
 -- blob the original v3 data region is. The v3 data is read in first in a
 -- separate step before any additional info from the v4 part of the header. More
@@ -255,7 +258,7 @@ newtype IndexCount = IndexCount Int32
 -- and verify its correctness. In the case of a regular v3 blob, this will be
 -- 0. In the case of v4 it will be more.
 --
--- This is inspired by [hdrblobVerifyRegion](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L263).
+-- This is analagous to [hdrblobVerifyRegion](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L263).
 getV3RegionCount :: NonEmpty.NonEmpty EntryMetadata -> Int32 -> Int32 -> BLS.ByteString -> Either String IndexCount
 getV3RegionCount entryMetadatas dataLength dataStart blobData = do
   let EntryMetadata{..} = NonEmpty.head entryMetadatas
@@ -361,13 +364,14 @@ readHeaderBlobTagData bs HeaderBlob{..} = do
             , ieReadLen
             )
 
--- Returns a list of index entries that were read as well as their combined length in bytes
+-- Returns a list of index entries that were read as well as their combined length in bytes.
+-- This is analogous to [regionSwab](https://github.com/knqyf263/go-rpmdb/blob/c11b1c45/pkg/entry.go#L336)
 extractEntryData :: BLS.ByteString -> [EntryMetadata] -> Int32 -> Int32 -> Int32 -> Either String ([TagValueData], Int32)
 extractEntryData bs entryMetadatas dataStart dataEnd startDataLength = do
   foldM getTagValueData ([], startDataLength) (zip [0 ..] entryMetadatas)
   where
     getTagValueData (entries, runningDataLength) (idx, entryMeta) = do
-      newIdxEntry <- swabEntry idx entryMeta
+      newIdxEntry <- extractEntry idx entryMeta
       alignDifference <- alignDiff (tagType entryMeta) runningDataLength
       let rdl = alignDifference + runningDataLength + entryLength newIdxEntry
       Right (newIdxEntry : entries, rdl)
@@ -386,8 +390,8 @@ extractEntryData bs entryMetadatas dataStart dataEnd startDataLength = do
     lastIdx :: Int32
     lastIdx = fromIntegral $ V.length entryMetadatasV - 1
 
-    swabEntry :: Int32 -> EntryMetadata -> Either String TagValueData
-    swabEntry i info = do
+    extractEntry :: Int32 -> EntryMetadata -> Either String TagValueData
+    extractEntry i info = do
       let currOffset = offset info
       let start = dataStart + currOffset
       let tType = tagType info
