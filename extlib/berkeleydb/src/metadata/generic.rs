@@ -7,7 +7,7 @@ use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use getset::CopyGetters;
 use serde::Serialize;
 use stable_eyre::{
-    eyre::{bail, Context},
+    eyre::{bail, ensure, Context},
     Result,
 };
 
@@ -96,21 +96,34 @@ impl Generic {
     /// Reference: https://github.com/jssblck/go-rpmdb/blob/956701287363101ee9ade742d6bf1d5c5495f62a/pkg/bdb/hash_metadata_page.go#L51,
     ///      plus: https://github.com/jssblck/go-rpmdb/blob/956701287363101ee9ade742d6bf1d5c5495f62a/pkg/bdb/bdb.go#L50-L52
     pub fn validate(&self) -> Result<()> {
-        if self.magic != HASH_MAGIC_NUMBER {
-            bail!("unexpected DB magic number: {}", self.magic);
-        }
+        let Self {
+            magic,
+            page_type,
+            page_size,
+            encryption_alg,
+            ..
+        } = *self;
 
-        if self.page_type != HASH_METADATA_PAGE_TYPE {
-            bail!("unexpected page type: {}", self.page_type);
-        }
+        ensure!(
+            magic == HASH_MAGIC_NUMBER,
+            "unexpected DB magic number: {magic}"
+        );
 
-        if self.encryption_alg != NO_ENCRYPTION_ALGORITHM {
-            bail!("unexpected encryption algorithm: {}", self.encryption_alg);
-        }
+        ensure!(
+            page_type == HASH_METADATA_PAGE_TYPE,
+            "unexpected page type: {page_type}"
+        );
 
-        if !valid_page_sizes().contains(&self.page_size) {
-            bail!("unexpected page size: {}", self.page_size);
-        }
+        ensure!(
+            encryption_alg == NO_ENCRYPTION_ALGORITHM,
+            "unexpected encryption algorithm: {encryption_alg}"
+        );
+
+        ensure!(
+            valid_page_sizes().contains(&page_size),
+            "unexpected page size: {}",
+            page_size
+        );
 
         Ok(())
     }

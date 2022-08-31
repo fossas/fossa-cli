@@ -3,7 +3,7 @@ use std::io::{Seek, SeekFrom};
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use serde::{Serialize, Serializer};
 use stable_eyre::{
-    eyre::{bail, Context},
+    eyre::{bail, ensure, Context},
     Result,
 };
 
@@ -49,9 +49,10 @@ impl Value {
 
         // Other pages don't contain data.
         // https://github.com/jssblck/go-rpmdb/blob/160242deff7a9ee82d1b493b62b7e50fd4c3e81c/pkg/bdb/hash_page.go#L38-L41
-        if page_type != Self::SUPPORTED_PAGE_TYPE {
-            bail!("unsupported page type: {page_type}");
-        }
+        ensure!(
+            page_type == Self::SUPPORTED_PAGE_TYPE,
+            "unsupported page type: {page_type}"
+        );
 
         // Use iterator APIs instead of direct slicing so that we can't cause a panic.
         // It's a little slower, but worth it for a better error message.

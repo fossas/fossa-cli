@@ -2,7 +2,7 @@ use std::{io::Read, vec};
 
 use byteorder::{BigEndian, ByteOrder, LittleEndian, ReadBytesExt};
 use stable_eyre::{
-    eyre::{bail, Context},
+    eyre::{bail, ensure, Context},
     Result,
 };
 
@@ -22,9 +22,10 @@ impl Index {
     ///
     /// Reference: https://github.com/jssblck/go-rpmdb/blob/160242deff7a9ee82d1b493b62b7e50fd4c3e81c/pkg/bdb/hash_page.go#L89
     pub fn parse<E: ByteOrder>(data: &[u8], entries: usize) -> Result<Self> {
-        if entries % 2 != 0 {
-            bail!("entries must only be requested in pairs: {entries}");
-        }
+        ensure!(
+            entries % 2 == 0,
+            "entries must only be requested in pairs: {entries}"
+        );
 
         // Every entry is a 2-byte offset that points somewhere in the current database page.
         let data_len = Self::size(entries);
@@ -34,9 +35,11 @@ impl Index {
             .take(data_len)
             .cloned()
             .collect::<Vec<_>>();
-        if index_data.len() != data_len {
-            bail!("short read: expected {data_len}, got {}", index_data.len());
-        }
+        ensure!(
+            index_data.len() == data_len,
+            "short read: expected {data_len}, got {}",
+            index_data.len()
+        );
 
         // data is stored in key-value pairs (each a `u16`), but we only care about the values.
         // Reference: https://github.com/jssblck/go-rpmdb/blob/160242deff7a9ee82d1b493b62b7e50fd4c3e81c/pkg/bdb/hash_page.go#L100-L108
