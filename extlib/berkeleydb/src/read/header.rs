@@ -4,7 +4,7 @@ use byteorder::{BigEndian, ByteOrder, LittleEndian, ReadBytesExt};
 use getset::CopyGetters;
 use stable_eyre::Result;
 
-use crate::parse::read_n;
+use crate::parse::slice;
 
 /// The header for a hash page.
 ///
@@ -38,7 +38,7 @@ impl Header {
     /// Reference: https://github.com/jssblck/go-rpmdb/blob/160242deff7a9ee82d1b493b62b7e50fd4c3e81c/pkg/bdb/hash_page.go#L24
     pub fn parse<E: ByteOrder>(r: &mut impl Read) -> Result<Self> {
         Ok(Self {
-            lsn: read_n(r)?,
+            lsn: slice(r)?,
             page_no: r.read_u32::<E>()?,
             previous_page_no: r.read_u32::<E>()?,
             next_page_no: r.read_u32::<E>()?,

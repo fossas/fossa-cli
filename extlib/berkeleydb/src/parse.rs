@@ -21,14 +21,14 @@ pub trait ByteParser {
 }
 
 /// Read exactly `n` bytes from a reader into a constant sized array.
-pub(crate) fn read_n<const N: usize>(r: &mut impl Read) -> Result<[u8; N]> {
+pub(crate) fn slice<const N: usize>(r: &mut impl Read) -> Result<[u8; N]> {
     let mut buf = [0; N];
     r.read_exact(&mut buf)?;
     Ok(buf)
 }
 
 /// Read exactly `n` bytes from a reader into a variably sized vec.
-pub(crate) fn slice(r: &mut impl Read, n: usize) -> Result<Vec<u8>> {
+pub(crate) fn slice_dyn(r: &mut impl Read, n: usize) -> Result<Vec<u8>> {
     let mut buf = vec![0; n];
     r.read_exact(&mut buf)?;
     Ok(buf)

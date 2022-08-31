@@ -8,7 +8,7 @@ use stable_eyre::{
 };
 
 use crate::{
-    parse::{slice, ByteParser},
+    parse::{slice_dyn, ByteParser},
     read::{header::Header, Entry},
     BerkeleyDB,
 };
@@ -75,7 +75,7 @@ impl Value {
                 .context("seek to page")?;
 
             let page_size = page_size.try_into().context("convert page size")?;
-            let page = slice(&mut db.file, page_size).context("read page from file")?;
+            let page = slice_dyn(&mut db.file, page_size).context("read page from file")?;
 
             let header = Header::parse::<E>(&mut page.as_slice()).context("parse header")?;
             if header.page_type() != Self::OVERFLOW_PAGE_TYPE {

@@ -6,7 +6,7 @@ use stable_eyre::{
     Result,
 };
 
-use crate::{parse::slice, BerkeleyDB};
+use crate::{parse::slice_dyn, BerkeleyDB};
 
 use self::{entry::Entry, header::Header, index::Index, value::Value};
 
@@ -36,7 +36,7 @@ impl BerkeleyDB {
         for page_num in 0..=self.metadata.generic().last_page_no() {
             debug!("🔢 Reading page {page_num}");
 
-            let page = slice(&mut self.file, page_size).context("read page from file")?;
+            let page = slice_dyn(&mut self.file, page_size).context("read page from file")?;
             let end_of_page_offset = self.file.stream_position().context("get current offset")?;
 
             let big_endian = self.metadata.big_endian();

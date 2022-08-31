@@ -11,7 +11,7 @@ use stable_eyre::{
     Result,
 };
 
-use crate::parse::read_n;
+use crate::parse::slice;
 
 /// https://github.com/jssblck/go-rpmdb/blob/956701287363101ee9ade742d6bf1d5c5495f62a/pkg/bdb/constants.go#L7
 const HASH_MAGIC_NUMBER_BE: u32 = 0x61150600;
@@ -72,7 +72,7 @@ impl Generic {
 
     pub fn parse_inner<E: byteorder::ByteOrder>(r: &mut impl Read) -> Result<Self> {
         Ok(Self {
-            lsn: read_n(r)?,
+            lsn: slice(r)?,
             page_no: r.read_u32::<E>()?,
             magic: r.read_u32::<E>()?,
             version: r.read_u32::<E>()?,
@@ -87,7 +87,7 @@ impl Generic {
             key_count: r.read_u32::<E>()?,
             record_count: r.read_u32::<E>()?,
             flags: r.read_u32::<E>()?,
-            unique_file_id: read_n(r)?,
+            unique_file_id: slice(r)?,
         })
     }
 
