@@ -85,40 +85,44 @@ readPackageSpec = do
       readPackageInfo ubi8Which
         `shouldBe` Right
           PkgInfo
-            { pkgName = "which"
-            , pkgVersion = "2.21"
-            , pkgRelease = "17.el8"
+            { pkgName = Just "which"
+            , pkgVersion = Just "2.21"
+            , pkgRelease = Just "17.el8"
             , pkgArch = Just "s390x"
+            , pkgEpoch = Nothing
             }
 
     it "Reads little-endian bdb package: centos5 Vim" $
       readPackageInfo centos5Vim
         `shouldBe` Right
           PkgInfo
-            { pkgName = "vim-minimal"
-            , pkgVersion = "7.0.109"
-            , pkgRelease = "7.2.el5"
+            { pkgName = Just "vim-minimal"
+            , pkgVersion = Just "7.0.109"
+            , pkgRelease = Just "7.2.el5"
             , pkgArch = Just "x86_64"
+            , pkgEpoch = Just 2
             }
 
     it "Reads ndb package: suse15 libncurses6" $
       readPackageInfo sle15LibNCurses
         `shouldBe` Right
           PkgInfo
-            { pkgName = "libncurses6"
-            , pkgVersion = "6.1"
-            , pkgRelease = "5.9.1"
+            { pkgName = Just "libncurses6"
+            , pkgVersion = Just "6.1"
+            , pkgRelease = Just "5.9.1"
             , pkgArch = Just "x86_64"
+            , pkgEpoch = Nothing
             }
 
   it "Reads package blob with a v3 header centos6-devtools gpg pubkey" $ do
     readPackageInfo v3HeaderCentos6
       `shouldBe` Right
         PkgInfo
-          { pkgName = "gpg-pubkey"
-          , pkgVersion = "c105b9de"
-          , pkgRelease = "4e0fd3a3"
+          { pkgName = Just "gpg-pubkey"
+          , pkgVersion = Just "c105b9de"
+          , pkgRelease = Just "4e0fd3a3"
           , pkgArch = Nothing
+          , pkgEpoch = Nothing
           }
 
 dataLengthSpec :: Spec
@@ -288,10 +292,11 @@ headerBlobSpec bs = describe "header blob parsing" $ do
       readPackageInfo bs
         `shouldBe` Right
           PkgInfo
-            { pkgName = "libgcc"
-            , pkgVersion = "11.2.1"
-            , pkgRelease = "1.fc35"
-            , pkgArch = Just "x86_64"
+            { pkgName    = Just "libgcc"
+            , pkgVersion = Just "11.2.1"
+            , pkgRelease = Just "1.fc35"
+            , pkgArch    = Just "x86_64"
+            , pkgEpoch   = Nothing
             }
 
 headerBlobErrSpec :: Spec
