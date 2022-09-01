@@ -292,11 +292,11 @@ headerBlobSpec bs = describe "header blob parsing" $ do
       readPackageInfo bs
         `shouldBe` Right
           PkgInfo
-            { pkgName    = Just "libgcc"
+            { pkgName = Just "libgcc"
             , pkgVersion = Just "11.2.1"
             , pkgRelease = Just "1.fc35"
-            , pkgArch    = Just "x86_64"
-            , pkgEpoch   = Nothing
+            , pkgArch = Just "x86_64"
+            , pkgEpoch = Nothing
             }
 
 headerBlobErrSpec :: Spec

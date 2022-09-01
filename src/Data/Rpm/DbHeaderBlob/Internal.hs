@@ -31,12 +31,11 @@ module Data.Rpm.DbHeaderBlob.Internal (
 ) where
 
 import Control.Applicative (liftA2)
-import Control.Monad (foldM, join, replicateM, unless, when)
+import Control.Monad (foldM, replicateM, unless, when)
 import Data.Bifunctor (bimap, first)
 import Data.Binary.Get (ByteOffset, Get, getInt32be, getWord32be, label, runGetOrFail)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BLS
-import Data.Either.Combinators (maybeToRight)
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
@@ -175,18 +174,18 @@ intToHeaderType i =
 -- information can be found
 -- [here](https://rpm-software-management.github.io/rpm/manual/hregions.html)
 data HeaderBlob = HeaderBlob
-  { -- |Count of entries in the index area
-    indexCount :: IndexCount
-  , -- |The size of the data area in bytes
-    dataLength :: Int32
-  , -- |The offset from the beginning of the blob data where tag values are
-    dataStart :: Int32
-  , -- |The offset where the data area ends
-    dataEnd :: Int32
-  , -- |The metadata entries for each tag
-    entryMetadatas :: NonEmpty EntryMetadata
-  , -- |The number of 'EntryMetadata''s in the original v3 header region. 0 if none exists.
-    regionIndexCount :: IndexCount
+  { indexCount :: IndexCount
+  -- ^Count of entries in the index area
+  , dataLength :: Int32
+  -- ^The size of the data area in bytes
+  , dataStart :: Int32
+  -- ^The offset from the beginning of the blob data where tag values are
+  , dataEnd :: Int32
+  -- ^The offset where the data area ends
+  , entryMetadatas :: NonEmpty EntryMetadata
+  -- ^The metadata entries for each tag
+  , regionIndexCount :: IndexCount
+  -- ^The number of 'EntryMetadata''s in the original v3 header region. 0 if none exists.
   }
   deriving (Show, Eq)
 
@@ -195,20 +194,20 @@ data HeaderBlob = HeaderBlob
 -- This roughly corresponds to [entryInfo](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L63)
 -- in the original Go code.
 data EntryMetadata = EntryMetadata
-  { -- |ID for which piece of RPM data this is. More information on available
-    -- tags can be found [here](https://rpm-software-management.github.io/rpm/manual/tags.html).
-    tag :: RpmTag
-  , -- |The type of data that this tag is. See the
-    -- [docs](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
-    -- Table 24-5.
-    tagType :: RpmTagType
-  , -- |The offset from the beginning of 'HeaderBlob's 'dataStart' that data for
-    -- this entry can be found.
-    offset :: Int32
-  , -- | The count of data items to expect. For simple scalar types like numbers
-    -- or strings this will be 1. For composite types such as arrays it may be
-    -- more.
-    count :: Word32
+  { tag :: RpmTag
+  -- ^ID for which piece of RPM data this is. More information on available
+  -- tags can be found [here](https://rpm-software-management.github.io/rpm/manual/tags.html).
+  , tagType :: RpmTagType
+  -- ^The type of data that this tag is. See the
+  -- [docs](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
+  -- Table 24-5.
+  , offset :: Int32
+  -- ^The offset from the beginning of 'HeaderBlob's 'dataStart' that data for
+  -- this entry can be found.
+  , count :: Word32
+  -- ^ The count of data items to expect. For simple scalar types like numbers
+  -- or strings this will be 1. For composite types such as arrays it may be
+  -- more.
   }
   deriving (Show, Eq, Ord)
 
@@ -310,11 +309,11 @@ runGetOrFail' r = bimap trd trd . runGetOrFail r
 -- [indexEntry](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L70)
 -- in the original Go code.
 data TagValueData = TagValueData
-  { -- | The expected length of the entryData, in bytes
-    info :: EntryMetadata
+  { info :: EntryMetadata
+  -- ^ The expected length of the entryData, in bytes
   , entryLength :: Int32
-  , -- | The actual data for the entry
-    entryData :: BLS.ByteString
+  , entryData :: BLS.ByteString
+  -- ^ The actual data for the entry
   }
   deriving (Eq, Show, Ord)
 
@@ -491,14 +490,14 @@ data PkgInfo = PkgInfo
   , pkgVersion :: Maybe Text
   , pkgRelease :: Maybe Text
   , pkgArch :: Maybe Text
-  , -- | This package epoch won't match the printout from go-rpmdb. In that code
-    -- the epoch is stored as an [int
-    -- pointer](https://github.com/knqyf263/go-rpmdb/blob/c11b1c45080aec5141fea92cd1577f8aa1c8d2fc/pkg/package.go#L15)
-    -- which it isn't according to the tag
-    -- [documentation](https://rpm-software-management.github.io/rpm/manual/tags.html).
-    -- There seems to be code which does dereference it properly, so this appears
-    -- to be a bug in the print statements than in the implementation.
-    pkgEpoch :: Maybe Int32
+  , pkgEpoch :: Maybe Int32
+  -- ^ This package epoch won't match the printout from go-rpmdb. In that code
+  -- the epoch is stored as an [int
+  -- pointer](https://github.com/knqyf263/go-rpmdb/blob/c11b1c45080aec5141fea92cd1577f8aa1c8d2fc/pkg/package.go#L15)
+  -- which it isn't according to the tag
+  -- [documentation](https://rpm-software-management.github.io/rpm/manual/tags.html).
+  -- There seems to be code which does dereference it properly, so this appears
+  -- to be a bug in the print statements than in the implementation.
   }
   deriving (Eq, Ord, Show)
 
@@ -508,42 +507,44 @@ data PkgInfo = PkgInfo
 getPkgInfo :: [TagValueData] -> Either String PkgInfo
 getPkgInfo ies =
   PkgInfo
-    <$> readTag TagName
-    <*> readTag TagVersion
-    <*> readTag TagRelease
-    <*> readTag TagArchitecture
-    <*> readTag TagEpoch
+    <$> readTextTag TagName
+    <*> readTextTag TagVersion
+    <*> readTextTag TagRelease
+    <*> readTextTag TagArchitecture
+    <*> readInt32Tag TagEpoch
   where
-    tagMap :: ReadTagValData a => Map.Map RpmTag (Either String a)
+    tagMap :: Map.Map RpmTag TagValueData
     tagMap =
-      fmap readVal
-        . Map.fromList
+      Map.fromList
         . map (\i -> (tag . info $ i, i))
         $ ies
 
-    readTag :: ReadTagValData a => RpmTag -> Either String (Maybe a)
-    readTag tag =
-      sequenceA . Map.lookup tag $ tagMap
+    readTextTag :: RpmTag -> Either String (Maybe Text)
+    readTextTag = readTag parseTextTag
 
--- |Class for types that can be read from bytestrings in a 'TagValueData'
-class ReadTagValData a where
-  readVal :: TagValueData -> Either String a
+    readInt32Tag :: RpmTag -> Either String (Maybe Int32)
+    readInt32Tag = readTag parseInt32Tag
 
-instance ReadTagValData Text where
-  readVal TagValueData{..}
-    | (tagType info) /= RpmString =
-      Left $ "Expected RpmString type for " <> show (tag info) <> " got " <> (show (tagType info))
-    | otherwise = Right . decodeUtf8 . BS.dropWhileEnd (== 0) . BLS.toStrict $ entryData
+    readTag :: (TagValueData -> Either String a) -> RpmTag -> Either String (Maybe a)
+    readTag tagParse tag =
+      traverse tagParse (Map.lookup tag tagMap)
 
-instance ReadTagValData Int32 where
-  readVal TagValueData{..}
-    | (tagType info) /= RpmInt32 =
-      Left $
-        "Expected RpmInt32 type for "
-          <> show (tag info)
-          <> " got "
-          <> show (tagType info)
-    | otherwise = runGetOrFail' getInt32be entryData
+    parseTextTag :: TagValueData -> Either String Text
+    parseTextTag TagValueData{..} =
+      if (tagType info) /= RpmString
+        then Left $ "Expected RpmString type for " <> show (tag info) <> " got " <> (show (tagType info))
+        else Right . decodeUtf8 . BS.dropWhileEnd (== 0) . BLS.toStrict $ entryData
+
+    parseInt32Tag :: TagValueData -> Either String Int32
+    parseInt32Tag TagValueData{..} =
+      if (tagType info) /= RpmInt32
+        then
+          Left $
+            "Expected RpmInt32 type for "
+              <> show (tag info)
+              <> " got "
+              <> show (tagType info)
+        else runGetOrFail' getInt32be entryData
 
 -- |Attempt to read a ByteString containing the data for a single RPM package
 -- header blob.
