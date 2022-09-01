@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, ReadBytesExt};
 use getset::CopyGetters;
 use stable_eyre::Result;
 
-use crate::parse::{read_n, ByteParser};
+use crate::parse::{slice, ByteParser};
 
 /// An entry in a page.
 ///
@@ -32,7 +32,7 @@ impl ByteParser for Entry {
     fn parse<E: ByteOrder>(r: &mut impl Read) -> Result<Self::Output> {
         Ok(Self {
             page_type: r.read_u8()?,
-            _unused: read_n(r)?,
+            _unused: slice(r)?,
             page_no: r.read_u32::<E>()?,
             length: r.read_u32::<E>()?,
         })
