@@ -74,7 +74,7 @@ The CLI supports the following strategies:
 - [elixir](../references/strategies/languages/elixir/elixir.md) (mix)
 - [erlang](../references/strategies/languages/erlang/erlang.md) (rebar3)
 - [fortran](../references/strategies/languages/fortran/fortran.md)
-- [golang](../references/strategies/languages/golang/golang.md) (gomodules, dep, glide)
+- [go](../references/strategies/languages/golang/golang.md) (gomodules, dep, glide)
 - [gradle](../references/strategies/languages/gradle/gradle.md)
 - [haskell](../references/strategies/languages/haskell/README.md) (cabal, stack)
 - [iOS](../references/strategies/platforms/ios/ios.md) (Carthage, Cocoapods, Swift package manager)

@@ -7,11 +7,11 @@ use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use getset::CopyGetters;
 use serde::Serialize;
 use stable_eyre::{
-    eyre::{bail, Context},
+    eyre::{bail, ensure, Context},
     Result,
 };
 
-use crate::parse::read_n;
+use crate::parse::slice;
 
 /// https://github.com/jssblck/go-rpmdb/blob/956701287363101ee9ade742d6bf1d5c5495f62a/pkg/bdb/constants.go#L7
 const HASH_MAGIC_NUMBER_BE: u32 = 0x61150600;
@@ -43,8 +43,8 @@ pub struct Generic {
     page_size: u32,           /* 20-23: Pagesize. */
     encryption_alg: u8,       /*    24: Encryption algorithm. */
     page_type: u8,            /*    25: Page type. */
-    meta_flags: u8,           /* 26: Meta-only flags */
-    _unused: u8,              /* 27: Unused. */
+    meta_flags: u8,           /*    26: Meta-only flags */
+    _unused: u8,              /*    27: Unused. */
     free: u32,                /* 28-31: Free list page number. */
     last_page_no: u32,        /* 32-35: Page number of last page in db. */
     n_parts: u32,             /* 36-39: Number of partitions. */
@@ -56,6 +56,8 @@ pub struct Generic {
 
 impl Generic {
     /// Read [`Self`] out of a file in plain byte order. Also returns the endianness of the data read using a check integer.
+    /// Cannot implement `ByteParser` because this type does not have a distinction between `dyn` and `const` parser implementations
+    /// (by design- this parser is what tells _other parsers_ which implementations to use).
     ///
     /// Reference: https://github.com/jssblck/go-rpmdb/blob/956701287363101ee9ade742d6bf1d5c5495f62a/pkg/bdb/hash_metadata_page.go#L26-L27
     pub fn parse<F: Read + Seek>(r: &mut F) -> Result<(Self, bool)> {
@@ -72,7 +74,7 @@ impl Generic {
 
     pub fn parse_inner<E: byteorder::ByteOrder>(r: &mut impl Read) -> Result<Self> {
         Ok(Self {
-            lsn: read_n(r)?,
+            lsn: slice(r)?,
             page_no: r.read_u32::<E>()?,
             magic: r.read_u32::<E>()?,
             version: r.read_u32::<E>()?,
@@ -87,28 +89,41 @@ impl Generic {
             key_count: r.read_u32::<E>()?,
             record_count: r.read_u32::<E>()?,
             flags: r.read_u32::<E>()?,
-            unique_file_id: read_n(r)?,
+            unique_file_id: slice(r)?,
         })
     }
 
     /// Reference: https://github.com/jssblck/go-rpmdb/blob/956701287363101ee9ade742d6bf1d5c5495f62a/pkg/bdb/hash_metadata_page.go#L51,
     ///      plus: https://github.com/jssblck/go-rpmdb/blob/956701287363101ee9ade742d6bf1d5c5495f62a/pkg/bdb/bdb.go#L50-L52
     pub fn validate(&self) -> Result<()> {
-        if self.magic != HASH_MAGIC_NUMBER {
-            bail!("unexpected DB magic number: {}", self.magic);
-        }
+        let Self {
+            magic,
+            page_type,
+            page_size,
+            encryption_alg,
+            ..
+        } = *self;
 
-        if self.page_type != HASH_METADATA_PAGE_TYPE {
-            bail!("unexpected page type: {}", self.page_type);
-        }
+        ensure!(
+            magic == HASH_MAGIC_NUMBER,
+            "unexpected DB magic number: {magic}"
+        );
 
-        if self.encryption_alg != NO_ENCRYPTION_ALGORITHM {
-            bail!("unexpected encryption algorithm: {}", self.encryption_alg);
-        }
+        ensure!(
+            page_type == HASH_METADATA_PAGE_TYPE,
+            "unexpected page type: {page_type}"
+        );
 
-        if !valid_page_sizes().contains(&self.page_size) {
-            bail!("unexpected page size: {}", self.page_size);
-        }
+        ensure!(
+            encryption_alg == NO_ENCRYPTION_ALGORITHM,
+            "unexpected encryption algorithm: {encryption_alg}"
+        );
+
+        ensure!(
+            valid_page_sizes().contains(&page_size),
+            "unexpected page size: {}",
+            page_size
+        );
 
         Ok(())
     }

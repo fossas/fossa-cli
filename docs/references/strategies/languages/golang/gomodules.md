@@ -83,4 +83,4 @@ where:
 
 We use `go list -m -json all` in combination with the `go list -json all`, to infer direct and transitive dependencies. The reason, we do not use solely use `go list -json -deps` command at this moment, is because it does not include transitive dependencies imported with test imports. 
 
-This go module functionality is actively being worked on, such that we can label dependencies environment (e.g. Test) correctly, for all types of golang project configurations.
+This go module functionality is actively being worked on, such that we can label dependencies environment (e.g. Test) correctly, for all types of Go project configurations.

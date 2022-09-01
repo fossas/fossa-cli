@@ -3,12 +3,12 @@ use std::io::{Seek, SeekFrom};
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use serde::{Serialize, Serializer};
 use stable_eyre::{
-    eyre::{bail, Context},
+    eyre::{bail, ensure, Context},
     Result,
 };
 
 use crate::{
-    parse::{slice, ByteParser},
+    parse::{slice_dyn, ByteParser},
     read::{header::Header, Entry},
     BerkeleyDB,
 };
@@ -49,9 +49,10 @@ impl Value {
 
         // Other pages don't contain data.
         // https://github.com/jssblck/go-rpmdb/blob/160242deff7a9ee82d1b493b62b7e50fd4c3e81c/pkg/bdb/hash_page.go#L38-L41
-        if page_type != Self::SUPPORTED_PAGE_TYPE {
-            bail!("unsupported page type: {page_type}");
-        }
+        ensure!(
+            page_type == Self::SUPPORTED_PAGE_TYPE,
+            "unsupported page type: {page_type}"
+        );
 
         // Use iterator APIs instead of direct slicing so that we can't cause a panic.
         // It's a little slower, but worth it for a better error message.
@@ -75,7 +76,7 @@ impl Value {
                 .context("seek to page")?;
 
             let page_size = page_size.try_into().context("convert page size")?;
-            let page = slice(&mut db.file, page_size).context("read page from file")?;
+            let page = slice_dyn(&mut db.file, page_size).context("read page from file")?;
 
             let header = Header::parse::<E>(&mut page.as_slice()).context("parse header")?;
             if header.page_type() != Self::OVERFLOW_PAGE_TYPE {
