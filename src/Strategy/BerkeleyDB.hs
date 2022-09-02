@@ -114,13 +114,14 @@ data BdbEntry = BdbEntry
   { bdbEntryArch :: Text
   , bdbEntryPackage :: Text
   , bdbEntryVersion :: Text
+  , bdbEntryEpoch :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
 -- | FOSSA _requires_ that architecture is provided: https://github.com/fossas/FOSSA/blob/e61713dec1ef80dc6b6114f79622c14df5278235/modules/fetchers/README.md#locators-for-linux-packages
 parsePkgInfo :: (Has Diagnostics sig m) => PkgInfo -> m BdbEntry
-parsePkgInfo PkgInfo{pkgArch = Just (pkgArch), ..} = pure $ BdbEntry pkgArch pkgName (pkgVersion <> "-" <> pkgRelease)
-parsePkgInfo pkg = fatalText . toText $ "package '" <> show pkg <> "' does not have an architecture, which is required"
+parsePkgInfo (PkgInfo (Just pkgName) (Just pkgVersion) (Just pkgRelease) (Just pkgArch) pkgEpoch) = pure $ BdbEntry pkgArch pkgName (pkgVersion <> "-" <> pkgRelease) (fmap (toText . show) pkgEpoch)
+parsePkgInfo pkg = fatalText . toText $ "package '" <> show pkg <> "' is missing one or more fields; all fields are required"
 
 analyze ::
   ( Has Diagnostics sig m
@@ -150,7 +151,10 @@ buildGraph (OsInfo os osVersion) = directs . map toDependency
         mempty
 
     version :: BdbEntry -> VerConstraint
-    version pkg = CEq $ (bdbEntryArch pkg) <> "#" <> (bdbEntryVersion pkg)
+    version pkg = CEq $ epoch pkg <> (bdbEntryArch pkg) <> "#" <> (bdbEntryVersion pkg)
+
+    epoch :: BdbEntry -> Text
+    epoch BdbEntry{bdbEntryEpoch} = maybe "" (<> ":") bdbEntryEpoch
 
 -- | Packages are read as a JSON array of base64 strings.
 readBerkeleyDB ::
