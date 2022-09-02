@@ -45,9 +45,8 @@ spec = context "RPM header blob parsing" $ do
   dataLengthSpec
   readPackageSpec
 
--- This blob was output from an rpm sqlite db. The parts of the format
--- that we are interested in are documented in src/Data/Rpm/DbHeaderBlob.hs.
--- This blob is a v4 header
+-- This blob was output from an rpm sqlite db and is a v4 header.
+-- The parts of the format that we are interested in are documented in src/Data/Rpm/DbHeaderBlob.hs.
 testBlob :: FilePath
 testBlob = "test/Data/test_data/pkg_blob.bin"
 

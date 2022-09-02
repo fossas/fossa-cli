@@ -1,12 +1,11 @@
 {-# LANGUAGE RecordWildCards #-}
 
--- |
---Description: These are internal functions for parsing an RPM package header blob. The
---main entry-point is 'readPackageInfo'.
+-- | Description: These are internal functions for parsing an RPM package header blob. The
+-- main entry-point is 'readPackageInfo'.
 module Data.Rpm.DbHeaderBlob.Internal (
   -- * Main interface
 
-  -- |You should not use this module directly. Use 'Data.Rpm.DbHeaderBlob'
+  -- | You should not use this module directly. Use 'Data.Rpm.DbHeaderBlob'
   -- instead.
   PkgInfo (..),
   readPackageInfo,
@@ -46,15 +45,12 @@ import Data.Vector qualified as V
 import Data.Word (Word32)
 import Text.Printf (printf)
 
--- |RPM tags (keys). This is not exhaustive, you can see the full list in the
--- [origin go-rpmdb
--- implementation](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/rpmtags.go#L3).
+-- | RPM tags (keys). This is not exhaustive, see the full list in the
+-- [origin go-rpmdb implementation](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/rpmtags.go#L3).
 data RpmTag
-  = -- When modifying this type, it is *critically* important to order data
-    -- constructors by their corresponding numbers. When checking the first
-    -- entry in the index's tag anything >= TagHeaderI18nTable (1000) indicates a
-    -- v3 header. Adding new constructors out of order risks breaking that.
-    --
+  = -- When modifying this type, it is important to order data constructors like their numbers.
+    -- When checking the first entry in the index, tag  >= TagHeaderI18nTable (1000) indicates a v3 header.
+    -- Adding new constructors out of order risks breaking that.
     -- New tags also need to be added to 'intToRpmTag' to be usable.
     TagHeaderImage -- 61
   | TagHeaderSignatures -- 62
@@ -65,11 +61,9 @@ data RpmTag
   | TagRelease -- 1002
   | TagEpoch -- 1003
   | TagArchitecture -- 1022
-  | -- | There are tag values that we either aren't interested in or that may
-    -- not be predicted by the reference implementation. This allows reading
-    -- those tag entries without failing on unknown tags. If there's a
-    -- future need to extract data from a new tag, that tag should get its own
-    -- entry above.
+  | -- | Tag values that we aren't interested in that aren't in spec/reference implementation.
+    -- This allows reading those tag entries without failing on unknown tags.
+    -- If a new, known tag is needed in the future, that tag should get its own entry above.
     TagOther Int32
   deriving (Eq, Ord, Show)
 
@@ -87,28 +81,27 @@ intToRpmTag t =
     1022 -> TagArchitecture
     n -> TagOther n
 
--- |This corresponds to a type of 'RpmBin' but has a special meaning when the
--- first entry info in the blob has this type.
--- [Reference](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L15)
+-- | This is a type of 'RpmBin' but has a special meaning when the first entry info in the blob has this type.
+-- [Reference](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L15).
 regionTagType :: RpmTagType
 regionTagType = RpmBin
 
--- |Size in bytes of an 'EntryMetadata'.
+-- | Size in bytes of an 'EntryMetadata'.
 entryMetadataSize :: Int32
 entryMetadataSize = 16
 
--- |Maximum number of bytes allowed in a header. Defined
--- [here](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L18).
+-- | Maximum number of bytes allowed in a header.
+-- Defined [here](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L18).
 headerMaxBytes :: Int32
 headerMaxBytes = 256 * 1024 * 1024
 
--- |The number of 'EntryMetadata's to expect in a v3 header region.
+-- | The number of 'EntryMetadata's to expect in a v3 header region.
 -- [Reference Implementation](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L14).
 regionTagCount :: Int32
--- Logically, I'm not sure why this is derived from the size in bytes of an
--- entryInfo in both the c code and the go code. It seems like the only
--- relationship between the two is they happen to both be the number 16.
-regionTagCount = entryMetadataSize
+-- In the reference implementation REGION_TAG_COUNT = sizeof(entryInfo).
+-- One is a count and the other is a size in bytes.
+-- Besides the fact that both = 16 I don't now why thatt is, so I chose not to replicate it here.
+regionTagCount = 16
 
 data RpmTagType
   = RpmNull
@@ -153,56 +146,51 @@ intToHeaderType i =
     9 -> Just RpmI18nString
     _ -> Nothing
 
--- |Structure representing the data we can read out of an RPM package header blob.
+-- | Structure representing the data we can read out of an RPM package header blob.
 -- Official documentation can be
 -- found [here](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
 --
--- In summary, a header blob is a key-value data-store for different attributes
--- of an RPM package.  Keys are called 'tags' in RPM docs/code. For example, the
--- package name attribute for a package has @tag@ of @1000@ and is a string.
+-- In summary, a header blob is a key-value data-store for different attributes of an RPM package.
+-- Keys are called 'tags' in RPM docs/code. For example,
+-- the package name attribute for a package has @tag@ of @1000@ and is a string.
 --
--- The first part of a header blob is an index which describes all of the tags
--- that it contains as well as their types. In this implementation, these
--- entries are called 'EntryMetadata', but are called @entryInfo@ in the
--- reference implementation.  Following the index is a data area which contain
--- the actual values for a tag.
+-- The first part of a header blob is an index which describes all of the tags that it contains as well as their types.
+-- In this implementation, these entries are called 'EntryMetadata',
+-- but are called @entryInfo@ in the reference implementation.
+-- Following the index is a data area which contain the actual values for a tag.
 --
--- One caveat for header is that v4 headers are structured differently than v3
--- headers, but include the v3 original in a tag that describes where in the
--- blob the original v3 data region is. The v3 data is read in first in a
--- separate step before any additional info from the v4 part of the header. More
--- information can be found
--- [here](https://rpm-software-management.github.io/rpm/manual/hregions.html)
+-- v4 headers are structured differently than v3 headers.
+-- v4 headers include the v3 original v3 tags in a tag that describes where in the blob the v3 data region is.
+-- The v3 data is read in first in a separate step before any additional info from the v4 part of the header.
+-- More information can be found [here](https://rpm-software-management.github.io/rpm/manual/hregions.html)
 data HeaderBlob = HeaderBlob
   { indexCount :: IndexCount
-  -- ^Count of entries in the index area
+  -- ^ Count of entries in the index area
   , dataLength :: Int32
-  -- ^The size of the data area in bytes
+  -- ^ The size of the data area in bytes
   , dataStart :: Int32
-  -- ^The offset from the beginning of the blob data where tag values are
+  -- ^ The offset from the beginning of the blob data where tag values are
   , dataEnd :: Int32
-  -- ^The offset where the data area ends
+  -- ^ The offset where the data area ends
   , entryMetadatas :: NonEmpty EntryMetadata
-  -- ^The metadata entries for each tag
+  -- ^ The metadata entries for each tag
   , regionIndexCount :: IndexCount
-  -- ^The number of 'EntryMetadata''s in the original v3 header region. 0 if none exists.
+  -- ^ The number of 'EntryMetadata''s in the original v3 header region. 0 if none exists.
   }
   deriving (Show, Eq)
 
--- |Structure for describing the type, location, and size of a tag-value
--- pair in a 'HeaderBlob'.
--- This roughly corresponds to [entryInfo](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L63)
--- in the original Go code.
+-- | Structure for describing the type, location, and size of a tag-value pair in a 'HeaderBlob'.
+-- This roughly corresponds to [entryInfo](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L63) in the original Go code.
 data EntryMetadata = EntryMetadata
   { tag :: RpmTag
-  -- ^ID for which piece of RPM data this is. More information on available
+  -- ^ ID for which piece of RPM data this is. More information on available
   -- tags can be found [here](https://rpm-software-management.github.io/rpm/manual/tags.html).
   , tagType :: RpmTagType
-  -- ^The type of data that this tag is. See the
+  -- ^ The type of data that this tag is. See the
   -- [docs](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
   -- Table 24-5.
   , offset :: Int32
-  -- ^The offset from the beginning of 'HeaderBlob's 'dataStart' that data for
+  -- ^ The offset from the beginning of 'HeaderBlob's 'dataStart' that data for
   -- this entry can be found.
   , count :: Word32
   -- ^ The count of data items to expect. For simple scalar types like numbers
@@ -211,11 +199,8 @@ data EntryMetadata = EntryMetadata
   }
   deriving (Show, Eq, Ord)
 
--- | Read initial metadata items, such as data lengths, locations, and index entries from
--- a header blob.
---
--- This function is roughly equivalent to @hdrblobInit@ from the original [go
--- code](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L105).
+-- | Read initial metadata items, such as data lengths, locations, and index entries from a header blob.
+-- This function is roughly equivalent to @hdrblobInit@ from the original [go code](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L105).
 readHeaderMetaData :: BLS.ByteString -> Either (BLS.ByteString, ByteOffset, String) HeaderBlob
 readHeaderMetaData bs =
   case runGetOrFail readHeader bs of
@@ -253,14 +238,12 @@ readHeaderMetaData bs =
         + indexLength
           * entryMetadataSize
 
--- |A count of entries in a tag index
+-- | A count of entries in a tag index
 newtype IndexCount = IndexCount Int32
   deriving (Show, Eq, Ord, Num, Enum, Real, Integral)
 
--- | Report the number entries in this blob corresponding to a v3 data region
--- and verify its correctness. In the case of a regular v3 blob, this will be
--- 0. In the case of v4 it will be more.
---
+-- | Report the number entries in this blob corresponding to a v3 data region and verify the region's correctness.
+-- In the case of a regular v3 blob, this is 0. In the case of v4 it is non-zero.
 -- This is analagous to [hdrblobVerifyRegion](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L263).
 getV3RegionCount :: NonEmpty.NonEmpty EntryMetadata -> Int32 -> Int32 -> BLS.ByteString -> Either String IndexCount
 getV3RegionCount entryMetadatas dataLength dataStart blobData = do
@@ -304,10 +287,8 @@ trd (_, _, c) = c
 runGetOrFail' :: Get d -> BLS.ByteString -> Either String d
 runGetOrFail' r = bimap trd trd . runGetOrFail r
 
--- | Container for metadata as well as the byte data for an entry in the header
--- blob. This type is equivalent to
--- [indexEntry](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L70)
--- in the original Go code.
+-- | Container for metadata as well as the byte data for an entry in the header blob.
+-- This type is equivalent to [indexEntry](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L70) in the original Go code.
 data TagValueData = TagValueData
   { info :: EntryMetadata
   -- ^ The expected length of the entryData, in bytes
@@ -317,13 +298,9 @@ data TagValueData = TagValueData
   }
   deriving (Eq, Show, Ord)
 
--- |Given header metadata, read out the sub-slice of the bytestring blob that
--- corresponds to each 'EntryMetadata'. This function will respect both v3 and v4
--- headers.
---
--- Rought equivalent to
--- [hdrblobImport](https://github.com/knqyf263/go-rpmdb/blob/a9e3110d8ee1fd3b0798a7abe8c59230bd265cd3/pkg/entry.go#L150)
--- in the original go code
+-- | Read out the sub-slice of the bytestring blob that corresponds to each 'EntryMetadata'.
+-- This function will respect both v3 and v4 headers.
+-- Roughly equivalent to [hdrblobImport](https://github.com/knqyf263/go-rpmdb/blob/a9e3110d8ee1fd3b0798a7abe8c59230bd265cd3/pkg/entry.go#L150) in the original go code
 readHeaderBlobTagData :: BLS.ByteString -> HeaderBlob -> Either String [TagValueData]
 readHeaderBlobTagData bs HeaderBlob{..} = do
   let firstEntry = NonEmpty.head entryMetadatas
@@ -406,8 +383,7 @@ extractEntryData bs entryMetadatas dataStart dataEnd startDataLength = do
         do
           if i < lastIdx && tType `elem` [RpmString, RpmStringArray, RpmI18nString]
             then case offset . snd <$> entryMetadatasV V.!? fromIntegral (i + 1) of
-              -- this Nothing shouldn't happen since we checked it in
-              -- the if exp above
+              -- this Nothing shouldn't happen since we checked it in the if exp above
               Nothing -> Left $ "Failed to read index " <> show i
               Just nextOffset -> Right $ nextOffset - currOffset
             else do
@@ -464,12 +440,10 @@ readEntries indexLength =
 
 readEntry :: Get EntryMetadata
 readEntry =
-  -- The original code reads these as little endian:
-  -- https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L127 However,
-  -- the original code looks like it simply copies bytes sequentially into a
-  -- buffer that is then treated like an entryInfo/entryMetadata structure. That
-  -- means higher bytes in a word are least-significant, corresponding to
-  -- big-endian when read individually. Big endian is also network order.
+  -- The original code reads these as little endian: https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L127
+  -- However, it simply copies bytes sequentially into a buffer that is then treated as an entryInfo/entryMetadata structure.
+  -- That means higher bytes in a word are least-significant or big-endian.
+  -- Big endian is also network order.
   EntryMetadata
     <$> label "Read tag" (intToRpmTag <$> getInt32be)
     <*> label "Read type" readTagType
@@ -483,7 +457,7 @@ readEntry =
           Just ty -> pure ty
           Nothing -> fail $ "Invalid type number: " <> show tyNum
 
--- |Result data from reading a header blob. Everything is maybe because
+-- | Result data from reading a header blob. Everything is maybe because
 -- not every package has everything, even though they're
 data PkgInfo = PkgInfo
   { pkgName :: Maybe Text
@@ -491,19 +465,16 @@ data PkgInfo = PkgInfo
   , pkgRelease :: Maybe Text
   , pkgArch :: Maybe Text
   , pkgEpoch :: Maybe Int32
-  -- ^ This package epoch won't match the printout from go-rpmdb. In that code
-  -- the epoch is stored as an [int
-  -- pointer](https://github.com/knqyf263/go-rpmdb/blob/c11b1c45080aec5141fea92cd1577f8aa1c8d2fc/pkg/package.go#L15)
-  -- which it isn't according to the tag
-  -- [documentation](https://rpm-software-management.github.io/rpm/manual/tags.html).
-  -- There seems to be code which does dereference it properly, so this appears
-  -- to be a bug in the print statements than in the implementation.
+  -- ^ This package epoch won't match the printout from go-rpmdb.
+  -- In that code the epoch is stored as an [int pointer](https://github.com/knqyf263/go-rpmdb/blob/c11b1c45080aec5141fea92cd1577f8aa1c8d2fc/pkg/package.go#L15).
+  -- According to the tag [documentation](https://rpm-software-management.github.io/rpm/manual/tags.html) it is int32.
+  -- There seems to be code which does dereference it properly,
+  -- so this appears to be a bug in the print statements than in the implementation.
   }
   deriving (Eq, Ord, Show)
 
--- More information than what is returned in a 'PkgInfo' is available from the blob. See the
--- different tag values [here]
--- (https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/package.go#L50)
+-- More information than what is returned in a 'PkgInfo' is available from the blob.
+-- See the different tag values [here] (https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/package.go#L50)
 getPkgInfo :: [TagValueData] -> Either String PkgInfo
 getPkgInfo ies =
   PkgInfo
@@ -546,8 +517,7 @@ getPkgInfo ies =
               <> show (tagType info)
         else runGetOrFail' getInt32be entryData
 
--- |Attempt to read a ByteString containing the data for a single RPM package
--- header blob.
+-- | Attempt to read a ByteString containing the data for a single RPM package header blob.
 readPackageInfo :: BLS.ByteString -> Either String PkgInfo
 readPackageInfo bs = do
   blob <- first (\(_, _, s) -> s) $ readHeaderMetaData bs
