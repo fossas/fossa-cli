@@ -151,7 +151,7 @@ buildGraph (OsInfo os osVersion) = directs . map toDependency
         mempty
 
     version :: BdbEntry -> VerConstraint
-    version pkg = CEq $ epoch pkg <> (bdbEntryArch pkg) <> "#" <> (bdbEntryVersion pkg)
+    version pkg = CEq $ (bdbEntryArch pkg) <> "#" <> epoch pkg <> (bdbEntryVersion pkg)
 
     epoch :: BdbEntry -> Text
     epoch BdbEntry{bdbEntryEpoch} = maybe "" (<> ":") bdbEntryEpoch
