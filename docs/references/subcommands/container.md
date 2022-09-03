@@ -1,43 +1,43 @@
 # `fossa container`
 
-Fossa container subcommand lets you analyze and test container for vulnerabilities, and compliance issues. 
+The `fossa container` subcommand supports analysis and testing of containers for vulnerabilities and compliance issues. 
 
-Fossa container has following options:
+`fossa container` supports following subcommands:
 
-- `analyze`: Scans an container image
-- `test`: Check for issues from FOSSA and exit non-zero when issues are found
+- `analyze`: Scan a container image
+- `test`: Check for issues in a previously scanned container image
 
-## `fossa container analyze <Image>`
+## `fossa container analyze <ARG>`
 
-Fossa container analyze, can scan container image from,
+`fossa container analyze` scans container images from:
 
 1) Docker archive
-2) Docker Engine (accessed via unix socket /var/lib/docker.sock)
+2) Docker Engine (accessed via unix socket `/var/lib/docker.sock`)
 3) OCI Registry
 
-No arguments are required to specify which kind of image you are using. Fossa will 
-automatically identifies accessible image source.
+No arguments are required to specify the kind of image being analyzed:
+`fossa-cli` automatically identifies the appropriate image source.
 
 For example:
 
 ```bash
-
-# Exported Container Image in Tarball format (done via docker save redis:alpine > redis.tar)
+# Exported container image in archive format (via `docker save redis:alpine > redis.tar`)
 fossa container analyze redis.tar
 
-# Local Image (accessed via docker engine)
-fossa container analyze fossa
+# Local image (via Docker engine)
+fossa container analyze redis:alpine
 
 # Resolved from hub.docker.com/_/debian
 fossa container analyze debian
 
-# Explicit remote image via docker.fossa.com
-fossa container analyze docker.fossa.com/fossa/fossa
+# Explicit remote image via docker.your-org.com
+fossa container analyze docker.your-org.com/project/image
 ```
 
-## `fossa container test <Image>`
+## `fossa container test <ARG>`
 
-Check for issues from FOSSA and exit non-zero when issues are found.
+Check for issues in a previously analyzed image.
+Exits non-zero if issues are found.
 
 For example:
 
@@ -45,18 +45,17 @@ For example:
 fossa container test redis:alpine
 ```
 
-## `fossa container list-targets <Image>`
+## `fossa container list-targets <ARG>`
 
-The list targets command lists all valid analysis targets in a directory. This output can 
-be useful to understand what is going to be analyzed when `fossa container analyze <Image> --experimental-scanner` 
-is run. `list-targets` can be also be used with [analysis target configuration](../files/fossa-yml.md#analysis-target-configuration) 
-to limit what is ultimately analyzed.
+Lists all detected analysis targets in an image.
+This output can be useful to understand what is going to be analyzed via `fossa container analyze <ARG> --experimental-scanner`,
+and if desired can inform [analysis target configuration](../files/fossa-yml.md#analysis-target-configuration).
 
 ### Command output
 
-Example output
+Example output:
 ```bash
-➜  fossa-cli git:(feat/complete-container-scanning-docs) ✗ ./fossa container list-targets ghcr.io/tcort/markdown-link-check:stable  
+; fossa container list-targets ghcr.io/tcort/markdown-link-check:stable  
 
 [ INFO] Discovered image for: ghcr.io/tcort/markdown-link-check:stable (of 137610196 bytes) via docker engine api.
 [ INFO] Exporting docker image to temp file: /private/var/folders/hb/pg5d0r196kq1qdswr6_79hzh0000gn/T/fossa-docker-engine-tmp-f7af2b5d1ec5173d/image.tar! This may take a while!
@@ -77,19 +76,22 @@ Example output
 
 #### Utilizing [analysis target configuration](../files/fossa-yml.md#analysis-target-configuration)
 
-Analysis target configuration through the fossa configuration file allows users to manually determine what they would like to analyze. Looking at the example above, if we know that the dependencies for the `setuptools@usr/local/lib/node_modules/npm/node_modules/node-gyp/gyp/` target are not part of the production release, we can exclude it from the analysis. Example exclusion format:
+Analysis targets can be configured via `.fossa.yml`.
+The example above shows the project `setuptools@usr/local/lib/node_modules/npm/node_modules/node-gyp/gyp/`.
+
+If this is not part of the production release it can be excluded from analysis:
 
 ```yaml
 exclude:
   - type: setuptools
 ```
 
-Adding this section to your configuration file at the root of your project will ensure that when `fossa container analyze <IMAGE> --experimental-scanner` 
-is run, the `setuptools` target is skipped.
+Adding this section to the configuration file at the root of the project ensures that when running
+`fossa container analyze <ARG> --experimental-scanner` the `setuptools` target is skipped.
 
 ### Printing results without uploading to FOSSA
 
-The `--output` flag can be used to print projects and dependency graph information to stdout, rather than uploading to FOSSA
+The `--output` flag outputs dependency graph information to the terminal rather than uploading to FOSSA.
 
 ```sh
 fossa container analyze redis:alpine --output
@@ -99,6 +101,6 @@ fossa container analyze redis:alpine --output
 
 _Important: For support and other general information, refer to the [experimental options overview](../experimental/README.md) before using experimental options._
 
-| Name                     | Description                                                       |
-| ------------------------ | ----------------------------------------------------------------- |
-| `--experimental-scanner` | Uses native container scanner which has better debugging support. |
+| Name                     | Description                                                                                                       |
+|--------------------------|-------------------------------------------------------------------------------------------------------------------|
+| `--experimental-scanner` | Provides many enhancements to container scanning ([reference](../experimental/container/experimenal-scanner.md)). |

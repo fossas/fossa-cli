@@ -1,46 +1,43 @@
 # Integrating Container Scanning in CI
 
-- [Integrating Container Scanning in CI](#integrating-container-scanning-in-ci)
+- [Integrating container scanning in CI](#integrating-container-scanning-in-ci)
   - [Analyze](#analyze)
   - [Test](#test)
   - [Example](#example)
 
 **Scenario:**
 
-As a development team, we want to analyze container image for vulnerability, 
-and compliance issues, as part of the CI process.
+As a development team we want to analyze container image for vulnerability and compliance issues as part of the CI process.
 
 ## Analyze
 
-For this, we can use `fossa container analyze <IMAGE>` command. 
+Use the `fossa container analyze <IMAGE>` command.
 
-For CI with docker executable,
+With Docker:
 
 ```bash
 docker build . -t <IMAGE>
 fossa container analyze <IMAGE>
 
-# You can also export image in the docker, to perform 
-# on the exported image. 
+# Alternately, export the image to an archive and analyze that for maximal performance. 
 #
 # >> docker save -o image.tar <IMAGE>
 # >> fossa container analyze image.tar
 ```
 
-If you are using podman, 
+With Podman:
 
 ```bash
 podman build . -t <IMAGE>
 fossa container analyze <IMAGE>
 
-# You can also export image in the podman, to perform 
-# on the exported image. 
+# Alternately, export the image to an archive and analyze that for maximal performance. 
 #
 # >> podman save <IMAGE> --format docker-archive -o image.tar 
 # >> fossa container analyze image.tar
 ```
 
-If you are using buildah, 
+With Buildah:
 
 ```bash
 buildah bud --format=docker -f Dockerfile -t <IMAGE> .
@@ -51,8 +48,8 @@ fossa container analyze image.tar
 
 ## Test
 
-For this, we can use `fossa container test <IMAGE>` command. This command, 
-will exit with non 0 exit code if there are issues discovered.
+Use the `fossa container test <IMAGE>` command to test a previously analyzed image.
+This command exits with a non-zero exit code if issues are discovered.
 
 ```bash
 fossa container test <IMAGE>
@@ -62,7 +59,7 @@ fossa container test <IMAGE>
 
 **Prerequisite**
 
-Our Dockerfile is:
+Dockerfile:
 ```Dockerfile
 FROM alpine:latest
 
@@ -72,7 +69,7 @@ COPY ./app ./app
 RUN pip install -r ./app/reqs.txt
 ```
 
-Our `app/reqs.txt` file is:
+`app/reqs.txt`:
 ```text
 # app/reqs.txt
 flask
@@ -81,15 +78,15 @@ flask
 **With Docker**
 
 ```bash
-VERSION="1.0.0" # to use git commit hash use: VERSION=$(git log -1 --pretty=%h)
+VERSION="1.0.0" # or git commit hash: VERSION=$(git log -1 --pretty=%h)
 REPO="core-app:"
 TAG="$REPO$VERSION"
 BUILD_TIMESTAMP=$( date '+%F_%H:%M:%S' )
 
-# Build & Analyze
+# Build
 docker build -t "$TAG" -build-arg VERSION="$VERSION" --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" . 
 
-# Analyze and Test Image for security and compliance issues
+# Analyze and test image for security and compliance issues
 fossa container analyze "$TAG"
 fossa container test "$TAG"
 
@@ -100,14 +97,15 @@ docker push "$TAG"
 **With Podman**
 
 ```bash
-VERSION="1.0.0" # to use git commit hash use: VERSION=$(git log -1 --pretty=%h)
+VERSION="1.0.0" # or git commit hash: VERSION=$(git log -1 --pretty=%h)
 REPO="core-app:"
 TAG="$REPO$VERSION"
 BUILD_TIMESTAMP=$( date '+%F_%H:%M:%S' )
 
+# Build
 podman build . -t "$TAG" --build-arg VERSION="$VERSION" --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" . 
 
-# Analyze and Test Image for security and compliance issues
+# Analyze and test image for security and compliance issues
 fossa container analyze "$TAG"
 fossa container test "$TAG"
 
@@ -118,15 +116,16 @@ podman push "$TAG"
 **With Buildah**
 
 ```bash
-VERSION="1.0.0" # to use git commit hash use: VERSION=$(git log -1 --pretty=%h)
+VERSION="1.0.0" # or git commit hash: VERSION=$(git log -1 --pretty=%h)
 REPO="core-app:"
 TAG="$REPO$VERSION"
 BUILD_TIMESTAMP=$( date '+%F_%H:%M:%S' )
 
+# Build
 buildah bud --format=docker -f Dockerfile --build-arg VERSION="$VERSION" --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" -t "$TAG" .
 buildah push "$TAG" docker-archive:image.tar
 
-# Analyze and Test Image for security and compliance issues
+# Analyze and test image for security and compliance issues
 fossa container analyze image.tar
 fossa container test image.tar
 rm image.tar

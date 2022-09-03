@@ -1,16 +1,16 @@
-# Apk
+# APK
 
-This is alpine package manager (apk), often used in alpine centric distros.
+The Alpine Package Manager (apk).
 
 > This analysis is only ran for Container Scanning.
 
 ## Discovery
 
-Find file named: `installed` under `**/apk/**`.
+Find file named `installed` under `**/apk/**`.
 
 ## Analysis
 
-Parse and analyze, reporting only - package name, package version, and architecture.
+Parse and analyze, reporting package name, package version, and architecture.
 
 ```text
 C:Q1Deb0jNytkrjPW4N/eKLZ43BwOlw=
@@ -36,13 +36,13 @@ a:0:0:777
 Z:Q17yJ3JFNypA4mxhJJr0ou6CzsJVI=
 ```
 
-For above, we will discover dependency: `musl` of version `1.2.2-r7` with architecture of `x86_64`.
+For the above, the dependency `musl` at version `1.2.2-r7` with architecture `x86_64` is discovered.
 
 ## FAQ
 
-### How do I *only perform analysis* for Apkdb?
+### How do I *only perform analysis* for APK?
 
-You can explicitly specify an analysis target in `.fossa.yml` file. The example below will exclude all analysis targets except for the apkdb. 
+Explicitly specify an analysis target in `.fossa.yml` file. The example below excludes all other analysis targets:
 
 ```yaml
 # .fossa.yml 

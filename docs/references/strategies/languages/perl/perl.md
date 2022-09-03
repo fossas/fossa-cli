@@ -26,7 +26,7 @@ Find a file named `MYMETA.json`, `MYMETA.yml`, `META.json`, or `META.yml`.
 
 ### How do I *only perform analysis* for Perl?
 
-You can explicitly specify an analysis target in `.fossa.yml` file. The example below will exclude all analysis targets except for the perl. 
+Explicitly specify an analysis target in `.fossa.yml` file. The example below excludes all other analysis targets:
 
 ```yaml
 # .fossa.yml 

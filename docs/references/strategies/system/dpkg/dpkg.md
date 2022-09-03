@@ -1,6 +1,6 @@
-# Dpkg
+# DPKG
 
-This is debian package manager, often used debian centric distros- e.g. `ubuntu`.
+The Debian Package Manager, often additionally used debian based distros such as `ubuntu`.
 
 > This analysis is only ran for Container Scanning.
 
@@ -10,7 +10,7 @@ Find file named: `status` or `status.d` in `**/var/lib/dpkg/*`
 
 ## Analysis
 
-Parse and analyze, reporting only - package name, package version, and architecture.
+Parse and analyze, reporting only package name, package version, and architecture.
 
 ```text
 Package: bash
@@ -47,13 +47,13 @@ Description: GNU Bourne Again SHell
 Homepage: http://tiswww.case.edu/php/chet/bash/bashtop.html
 ```
 
-For above, we will discover dependency: `bash`, with architecture of `arm64` and version of: `5.1-2+deb11u1`.
+For the above, the dependency `bash` at version `5.1-2+deb11u1` with architecture `arm64` is discovered.
 
 ## FAQ
 
-### How do I *only perform analysis* for dpkgdb?
+### How do I *only perform analysis* for DPKG?
 
-You can explicitly specify an analysis target in `.fossa.yml` file. The example below will exclude all analysis targets except for the dpkgdb. 
+Explicitly specify an analysis target in `.fossa.yml` file. The example below excludes all other analysis targets:
 
 ```yaml
 # .fossa.yml 
