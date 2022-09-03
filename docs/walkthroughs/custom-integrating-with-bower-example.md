@@ -7,9 +7,9 @@ With `fossa-deps.{yml, json, yaml}` file, FOSSA CLI can be integrated to support
 
 ## Example with Bower
 
-For an example, we will look at [Bower](https://bower.io/). 
+For an example, we will look at [Bower](https://bower.io/).
 
-We can usually identify a list of dependencies from our custom tool by looking at configuration files or executing a command. Bower provides both of these options, we can inspect (1) `bower.json` or (2) parse the output from the `bower list` command. 
+We can usually identify a list of dependencies from our custom tool by looking at configuration files or executing a command. Bower provides both of these options, we can inspect (1) `bower.json` or (2) parse the output from the `bower list` command.
 
 From an example `bower.json` file, lists direct dependencies:
 
@@ -31,7 +31,7 @@ From an example `bower.json` file, lists direct dependencies:
     "tests"
   ],
   "dependencies": {
-    "font-awsome": "^5.0.0",
+    "font-awesome": "^5.0.0",
     "jquery": "^3.6.0"
   }
 }
@@ -41,15 +41,15 @@ We can execute `bower list` command to list all of the resolved bower dependenci
 
 ```
 example-project /Users/example-user/path
-├── font-awsome#5.15.4
+├── font-awesome#5.15.4
 └── jquery#3.6.0
 ```
 
-We have two dependencies (1) jquery and (2) font-awsome.
+We have two dependencies (1) jquery and (2) font-awesome.
 
 From [manual dependencies](./../features/manual-dependencies.md) documentation, we know that `bower` type dependencies are supported type as reference dependency.
 
-We can include all listed dependencies in fossa-deps.json. 
+We can include all listed dependencies in fossa-deps.json.
 
 ```json
 {
@@ -61,7 +61,7 @@ We can include all listed dependencies in fossa-deps.json.
     },
     {
       "type": "bower",
-      "name": "font-awsome",
+      "name": "font-awesome",
       "version": "5.15.4"
     }
   ]

@@ -65,6 +65,7 @@ common deps
     , ansi-terminal                ^>=0.11
     , async                        ^>=2.2.2
     , attoparsec                   ^>=0.14.1
+    , binary                       ^>=0.8.8.0
     , bytestring                   ^>=0.10.8
     , bzlib                        ^>=0.5.0.0
     , cgroup-rts-threads           ^>=0.2.0.0
@@ -78,6 +79,7 @@ common deps
     , cryptonite                   ^>=0.30
     , deepseq                      >=1.4.5.0
     , directory                    ^>=1.3.6.1
+    , either                       ^>=5.0.2
     , file-embed                   ^>=0.0.11
     , filepath                     ^>=1.4.2.1
     , filepattern                  ^>=0.1.2
@@ -301,6 +303,8 @@ library
     Data.Glob
     Data.List.Extra
     Data.Monoid.Extra
+    Data.Rpm.DbHeaderBlob
+    Data.Rpm.DbHeaderBlob.Internal
     Data.Set.NonEmpty
     Data.String.Conversion
     Data.Tagged
@@ -524,6 +528,7 @@ test-suite unit-tests
     Dart.PubSpecLockSpec
     Dart.PubSpecSpec
     Data.IndexFileTreeSpec
+    Data.RpmDbHeaderBlobSpec
     Discovery.ArchiveSpec
     Discovery.FiltersSpec
     Discovery.WalkSpec
