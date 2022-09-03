@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Strategy.BerkeleyDB (
   discover,
   findProjects,
