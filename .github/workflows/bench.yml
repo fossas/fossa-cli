@@ -13,6 +13,11 @@ jobs:
       run: |
         apk add bash xz-dev bzip2-dev bzip2-static upx curl jq
 
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+
     - uses: actions/checkout@v3
       with:
         lfs: true
@@ -29,7 +34,10 @@ jobs:
         ghc --version || echo "no ghc"
         cabal --version || echo "no cabal"
         ghcup --version || echo "no ghcup"
+        rustc -V || echo "no rustc"
+        cargo -V || echo "no cargo"
 
+    - uses: Swatinem/rust-cache@v1.3.0
     - uses: actions/cache@v2
       name: Cache cabal store
       with:
@@ -39,6 +47,9 @@ jobs:
           ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
           ${{ runner.os }}-${{ matrix.ghc }}-
           ${{ runner.os }}-
+
+    - name: Build Rust dependencies
+      run: cargo build --release
 
     - name: Update vendored binaries
       run: |

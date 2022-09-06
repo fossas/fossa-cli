@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -9,6 +10,7 @@ module App.Fossa.EmbeddedBinary (
   withWigginsBinary,
   withSyftBinary,
   withThemisAndIndex,
+  withBerkeleyBinary,
   allBins,
   dumpEmbeddedBinary,
 ) where
@@ -51,6 +53,7 @@ data PackagedBinary
   | Wiggins
   | Themis
   | ThemisIndex
+  | BerkeleyDB
   deriving (Show, Eq, Enum, Bounded)
 
 allBins :: [PackagedBinary]
@@ -110,6 +113,13 @@ withWigginsBinary ::
   m c
 withWigginsBinary = withEmbeddedBinary Wiggins
 
+withBerkeleyBinary ::
+  ( Has (Lift IO) sig m
+  ) =>
+  (BinaryPaths -> m c) ->
+  m c
+withBerkeleyBinary = withEmbeddedBinary BerkeleyDB
+
 withEmbeddedBinary ::
   ( Has (Lift IO) sig m
   ) =>
@@ -142,6 +152,7 @@ writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
   Wiggins -> embeddedBinaryWiggins
   Themis -> embeddedBinaryThemis
   ThemisIndex -> embeddedBinaryThemisIndex
+  BerkeleyDB -> embeddedBinaryBerkeleyDB
 
 writeExecutable :: Path Abs File -> ByteString -> IO ()
 writeExecutable path content = do
@@ -157,6 +168,7 @@ extractedPath bin = case bin of
   Wiggins -> $(mkRelFile "vsi-plugin")
   Themis -> $(mkRelFile "themis-cli")
   ThemisIndex -> $(mkRelFile "index.gob.xz")
+  BerkeleyDB -> $(mkRelFile "berkeleydb-plugin")
 
 -- | Extract to @$TMP/fossa-vendor/<timestamp>
 -- We used to extract everything to @$TMP/fossa-vendor@, but there's a subtle issue with that.
@@ -196,3 +208,12 @@ embeddedBinaryThemis = $(embedFileIfExists "vendor-bins/themis-cli")
 
 embeddedBinaryThemisIndex :: ByteString
 embeddedBinaryThemisIndex = $(embedFileIfExists "vendor-bins/index.gob.xz")
+
+-- To build this, run `make build` or `cargo build --release`.
+#ifdef mingw32_HOST_OS
+embeddedBinaryBerkeleyDB :: ByteString
+embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb.exe")
+#else
+embeddedBinaryBerkeleyDB :: ByteString
+embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb")
+#endif

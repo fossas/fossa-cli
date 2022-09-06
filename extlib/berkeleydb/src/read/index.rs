@@ -2,7 +2,7 @@ use std::{io::Read, vec};
 
 use byteorder::{BigEndian, ByteOrder, LittleEndian, ReadBytesExt};
 use stable_eyre::{
-    eyre::{bail, ensure, Context},
+    eyre::{ensure, Context},
     Result,
 };
 
