@@ -10,8 +10,9 @@ use stable_eyre::{eyre::Context, Result};
 #[clap(version)]
 struct Args {
     /// The BerkeleyDB file to extract.
+    /// Run with no target to parse file content from stdin (base64 encoded) instead.
     #[clap(short = 't', long)]
-    target: PathBuf,
+    target: Option<PathBuf>,
 
     /// Whether to emit debug logs.
     #[clap(short = 'd', long)]
@@ -39,8 +40,13 @@ fn main() -> Result<()> {
         .init()?;
 
     debug!("👩🏻‍💻 Starting up!");
-    let target = args.target;
-    let mut db = BerkeleyDB::open(&target).wrap_err_with(|| format!("open db at '{target:?}'"))?;
+    let mut db = if let Some(target) = args.target {
+        debug!("📖 Reading database from file system: {target:?}");
+        BerkeleyDB::open(&target).wrap_err_with(|| format!("open db at '{target:?}'"))?
+    } else {
+        debug!("📖 Reading database from stdin");
+        BerkeleyDB::stdin().context("open db from stdin")?
+    };
 
     let values = db.read().context("read values from db")?;
     let encoded = serde_json::to_string(&values).context("encode values to JSON")?;

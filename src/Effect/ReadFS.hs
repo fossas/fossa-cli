@@ -40,6 +40,7 @@ module Effect.ReadFS (
 
   -- * Parsing file contents
   readContentsParser,
+  readContentsParserBS,
   readContentsJson,
   readContentsToml,
   readContentsYaml,
@@ -296,6 +297,14 @@ type Parser = Parsec Void Text
 readContentsParser :: forall a sig m. (Has ReadFS sig m, Has Diagnostics sig m) => Parser a -> Path Abs File -> m a
 readContentsParser parser file = context ("Parsing file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsText file
+  case runParser parser (toString file) contents of
+    Left err -> fatal $ FileParseError (toString file) (toText (errorBundlePretty err))
+    Right a -> pure a
+
+-- | Read from a file as a byte string, parsing its contents
+readContentsParserBS :: forall a sig m. (Has ReadFS sig m, Has Diagnostics sig m) => Parsec Void ByteString a -> Path Abs File -> m a
+readContentsParserBS parser file = context ("Parsing file '" <> toText (toString file) <> "'") $ do
+  contents <- readContentsBS file
   case runParser parser (toString file) contents of
     Left err -> fatal $ FileParseError (toString file) (toText (errorBundlePretty err))
     Right a -> pure a

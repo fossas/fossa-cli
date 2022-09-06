@@ -7,7 +7,7 @@ use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use getset::CopyGetters;
 use serde::Serialize;
 use stable_eyre::{
-    eyre::{bail, ensure, Context},
+    eyre::{ensure, Context},
     Result,
 };
 
