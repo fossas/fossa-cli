@@ -98,7 +98,7 @@ fossa container test <IMAGE>
 
 ## Container image source
 
-FOSSA can analyze container image from multiple sources:
+FOSSA can analyze container images from multiple sources:
 - Exported archive
 - Docker engine
 - Podman
