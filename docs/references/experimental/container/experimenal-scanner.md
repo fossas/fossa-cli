@@ -79,7 +79,7 @@ fossa container analyze <IMAGE> --experimental-scanner
 
 # Similar to the above, but instead of uploading the results they are instead written to the terminal in JSON format.
 #
-fossa container analyze <IMAGE> -o
+fossa container analyze <IMAGE> --experimental-scanner -o
 ```
 
 Once the container image has been scanned and the results uploaded to FOSSA,
@@ -93,6 +93,7 @@ security and compliance issues are reported via the `fossa container test` comma
 # Policies are also able to surface or suppress issues based on the layer in which the issue was detected.
 # Refer to FOSSA's product documentation for more information: https://docs.fossa.com
 #
+# This does not need the `--experimental-scanner` flag.
 fossa container test <IMAGE>
 ```
 
@@ -219,7 +220,6 @@ image manifests, and image artifacts from registry. It does so in following mann
 All `GET` request from step 2 to step 5, will make `HEAD` call prior to confirm existence of resource. If 
 401 status is received new access token will be generated using auth flow mentioned in step (1).
 
-
 ## Container image analysis
 
 The new experimental scanner scans in two steps:
@@ -254,10 +254,52 @@ The following package managers are supported in container scanning:
 | Elixir                               | :x:                | N/A                                                              |
 | Erlang                               | :x:                | N/A                                                              |
 
-Where, 
+Where:
 - :white_check_mark: - analysis is supported
 - :warning: - partial analysis is supported. Refer to the linked strategy documentation for more details.
 - :x: - analysis is not supported in container scanning.
+
+### View detected projects
+
+To view the list of projects detected within the container by the above strategies run `fossa container list-targets <ARG> --experimental-scanner`.
+`ARG` must be the same value as provided to `fossa container analyze <ARG> --experimental-scanner` or `fossa container test <ARG>`.
+
+This output can be useful to understand what is going to be analyzed via `fossa container analyze <ARG> --experimental-scanner`,
+and if desired can inform [analysis target configuration](../../files/fossa-yml.md#analysis-target-configuration).
+
+#### Command output
+
+Example output:
+```bash
+; fossa container list-targets ghcr.io/tcort/markdown-link-check:stable  
+
+[ INFO] Discovered image for: ghcr.io/tcort/markdown-link-check:stable (of 137610196 bytes) via docker engine api.
+[ INFO] Exporting docker image to temp file: /private/var/folders/hb/pg5d0r196kq1qdswr6_79hzh0000gn/T/fossa-docker-engine-tmp-f7af2b5d1ec5173d/image.tar! This may take a while!
+[ INFO] Listing targets exported docker archive: /private/var/folders/hb/pg5d0r196kq1qdswr6_79hzh0000gn/T/fossa-docker-engine-tmp-f7af2b5d1ec5173d/image.tar
+[ WARN] fossa container list-targets does not apply any filtering, you may see projects which are not present in the final analysis.
+[ WARN] fossa container list-targets only lists targets for experimental-scanner (when analyzed with --experimental-scanner flag).
+[ INFO] Found project: apkdb@lib/apk/db/ (Base Layer)
+[ INFO] Found target: apkdb@lib/apk/db/ (Base Layer)
+[ INFO] Found project: setuptools@usr/local/lib/node_modules/npm/node_modules/node-gyp/gyp/ (Other Layers)
+[ INFO] Found target: setuptools@usr/local/lib/node_modules/npm/node_modules/node-gyp/gyp/ (Other Layers)
+[ INFO] Found project: npm@src/ (Other Layers)
+[ INFO] Found project: npm@opt/yarn-v1.22.5/ (Other Layers)
+[ INFO] Found target: npm@src/ (Other Layers)
+[ INFO] Found target: npm@opt/yarn-v1.22.5/ (Other Layers)
+[ INFO] Found project: apkdb@lib/apk/db/ (Other Layers)
+[ INFO] Found target: apkdb@lib/apk/db/ (Other Layers)
+```
+
+### Utilize analysis target configuration
+
+The new experimental scanner supports configuring analysis targets via `.fossa.yml`, as with a standard `fossa analyze` command.
+For more information on configuring analysis targets, see [analysis target configuration](../../files/fossa-yml.md#analysis-target-configuration).
+
+For example, the following `fossa.yml` excludes all `setuptools` targets:
+```yaml
+exclude:
+  - type: setuptools
+```
 
 ### Debugging
 
@@ -312,7 +354,7 @@ Refer to the [configuration file](./../../files/fossa-yml.md) documentation for 
 As an example, the following configuration file only analyzes `setuptools`, and `alpine` packages:
 
 ```yml
-# filename: .fossa.config.yaml
+# filename: .fossa.yaml
 version: 3
 
 targets:
