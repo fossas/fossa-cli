@@ -145,8 +145,8 @@ fossa container analyze ghcr.io/fossas/haskell-dev-tools:9.0.2 --experimental-sc
 
 This step works even if you do not have docker installed or have docker engine accessible.
 
-If `<IMAGE>` is not docker image archived, nor is accessible via docker engine API,
-`fossa-cli` attempts to retrieve the image via registries based on content of `<IMAGE>`.
+If `<IMAGE>` is not a docker image archive and is not accessible via the docker engine API,
+`fossa-cli` attempts to retrieve the image via registries based on the content of `<IMAGE>`.
 
 `<IMAGE>` is parsed in a similar fashion to `docker pull <ARG>`:
 
