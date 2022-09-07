@@ -23,6 +23,7 @@ import Effect.Logger (
 import Path (Abs, Dir, Path, Rel, toFilePath)
 import Path.IO (RelPath, makeRelative)
 import Strategy.ApkDatabase qualified as Apk
+import Strategy.BerkeleyDB qualified as BerkeleyDB
 import Strategy.Bundler qualified as Bundler
 import Strategy.Carthage qualified as Carthage
 import Strategy.Cocoapods qualified as Cocoapods
@@ -53,7 +54,6 @@ import Types (
   DiscoveredProjectType,
   FoundTargets (FoundTargets, ProjectWithoutTargets),
  )
-import qualified Strategy.BerkeleyDB as BerkeleyDB
 
 layerAnalyzers :: AnalyzeStaticTaskEffs sig m => OsInfo -> Bool -> [DiscoverFunc m]
 layerAnalyzers os onlySystemDeps =
