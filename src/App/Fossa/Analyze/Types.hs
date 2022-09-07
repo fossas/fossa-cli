@@ -45,6 +45,7 @@ type AnalyzeTaskEffs sig m =
 type AnalyzeStaticTaskEffs sig m =
   ( Has (Lift IO) sig m
   , Has ReadFS sig m
+  , Has Exec sig m -- May not exec dynamic strategies. TODO: Remove this and convert the BerkeleyDB driver to FFI.
   , Has Logger sig m
   , Has Diagnostics sig m
   , Has Debug sig m
@@ -95,5 +96,8 @@ data DiscoveredProjectIdentifier = DiscoveredProjectIdentifier
   deriving (Eq, Ord, Show)
 
 class AnalyzeProject a where
+  -- | Analyze a project with any tactic.
   analyzeProject :: AnalyzeTaskEffs sig m => FoundTargets -> a -> m DependencyResults
+
+  -- | Analyze a project with only static tactics.
   analyzeProject' :: AnalyzeStaticTaskEffs sig m => FoundTargets -> a -> m DependencyResults

@@ -7,7 +7,7 @@ module Strategy.BerkeleyDB (
   BdbEntry (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject), analyzeProject')
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withBerkeleyBinary)
 import Container.OsRelease (OsInfo (..))
 import Control.Effect.Diagnostics (Diagnostics, context, fatalOnSomeException, fatalText, fromEitherShow)
@@ -54,6 +54,7 @@ instance ToJSON BerkeleyDatabase
 
 instance AnalyzeProject BerkeleyDatabase where
   analyzeProject _ = getDeps
+  analyzeProject' _ = getDeps
 
 discover ::
   ( Has ReadFS sig m
