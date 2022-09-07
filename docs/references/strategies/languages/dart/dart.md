@@ -10,13 +10,13 @@ Find file named `pubspec.yaml`.
 
 We attempt to perform all of the strategies below, we select the result of succeeded strategies which has the highest preference. 
 
-| Preference | Strategy                                                                                               | Direct Deps        | Deep Deps          | Edges              |
-| ---------- | ------------------------------------------------------------------------------------------------------ | ------------------ | ------------------ | ------------------ |
-| Highest    | 1. `pubspec.yaml` and `pubspec.lock` are discovered, and `flutter pub deps -s compact` can be executed | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-|            | 2. `pubspec.yaml` and `pubspec.lock` are discovered, and `dart pub deps -s compact` can be executed    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-|            | 3. `pubspec.yaml` and `pubspec.lock` are discovered, and `pub deps -s compact` can be executed         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-|            | 4. `pubspec.yaml` and `pubspec.lock` are discovered                                                    | :heavy_check_mark: | :x:                | :x:                |
-| Lowest     | 5. Only `pubspec.yaml` is discovered                                                                   | :heavy_check_mark: | :x:                | :x:                |
+| Preference | Strategy                                                                                               | Direct Deps        | Deep Deps          | Edges              | Container Scanning (Experimental) |
+| ---------- | ------------------------------------------------------------------------------------------------------ | ------------------ | ------------------ | ------------------ | --------------------------------- |
+| Highest    | 1. `pubspec.yaml` and `pubspec.lock` are discovered, and `flutter pub deps -s compact` can be executed | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                               |
+|            | 2. `pubspec.yaml` and `pubspec.lock` are discovered, and `dart pub deps -s compact` can be executed    | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                               |
+|            | 3. `pubspec.yaml` and `pubspec.lock` are discovered, and `pub deps -s compact` can be executed         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                               |
+|            | 4. `pubspec.yaml` and `pubspec.lock` are discovered                                                    | :white_check_mark: | :white_check_mark: | :x:                | :white_check_mark:                |
+| Lowest     | 5. Only `pubspec.yaml` is discovered                                                                   | :white_check_mark: | :x:                | :x:                | :white_check_mark:                |
 
 Where, 
 

@@ -14,11 +14,12 @@ import App.Fossa.Config.Common (
   ScanDestination (..),
   collectAPIMetadata,
   collectApiOpts,
+  collectConfigFileFilters,
   collectRevisionOverride,
   commonOpts,
   metadataOpts,
  )
-import App.Fossa.Config.ConfigFile (ConfigFile)
+import App.Fossa.Config.ConfigFile
 import App.Fossa.Config.Container.Common (
   ImageText,
   collectArch,
@@ -35,7 +36,9 @@ import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding)
 import Data.Aeson.Types (ToJSON (toEncoding))
 import Data.Flag (Flag, flagOpt, fromFlag)
+import Data.Monoid.Extra (isMempty)
 import Data.Text (Text)
+import Discovery.Filters
 import Effect.Logger (Severity (SevDebug, SevInfo))
 import GHC.Generics (Generic)
 import Options.Applicative (
@@ -64,6 +67,8 @@ data ContainerAnalyzeConfig = ContainerAnalyzeConfig
   , dockerHost :: Text
   , arch :: Text
   , severity :: Severity
+  , onlySystemDeps :: Bool
+  , filterSet :: AllFilters
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -77,6 +82,7 @@ data ContainerAnalyzeOptions = ContainerAnalyzeOptions
   , containerMetadata :: ProjectMetadata
   , containerAnalyzeImage :: ImageText
   , containerExperimentalScanner :: Bool
+  , containerExperimentalOnlySysDependencies :: Bool
   }
 
 instance GetSeverity ContainerAnalyzeOptions where
@@ -110,6 +116,7 @@ cliParser =
     <*> metadataOpts
     <*> imageTextArg
     <*> switch (long "experimental-scanner" <> help "Uses experimental fossa native container scanner")
+    <*> switch (long "only-system-deps" <> help "Only analyzes system dependencies (e.g. apk, dep, rpm). Works only with experimental scanner.")
 
 mergeOpts ::
   Has Diagnostics sig m =>
@@ -122,6 +129,9 @@ mergeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
       severity = getSeverity cliOpts
       imageLoc = containerAnalyzeImage
       arch = collectArch
+      onlySystemDeps = containerExperimentalOnlySysDependencies
+      scanFilters = collectFilters cfgfile
+
       revOverride =
         collectRevisionOverride cfgfile $
           OverrideProject
@@ -136,6 +146,8 @@ mergeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
     <*> collectDockerHost envvars
     <*> pure arch
     <*> pure severity
+    <*> pure onlySystemDeps
+    <*> pure scanFilters
 
 collectScanDestination ::
   Has Diagnostics sig m =>
@@ -150,3 +162,10 @@ collectScanDestination maybeCfgFile envvars ContainerAnalyzeOptions{..} =
       apiOpts <- collectApiOpts maybeCfgFile envvars analyzeCommons
       let metaMerged = collectAPIMetadata maybeCfgFile containerMetadata
       pure $ UploadScan apiOpts metaMerged
+
+collectFilters :: Maybe ConfigFile -> AllFilters
+collectFilters maybeConfig = do
+  let cfgFileFilters = maybe mempty collectConfigFileFilters maybeConfig
+  if isMempty cfgFileFilters
+    then mempty
+    else cfgFileFilters

@@ -4,10 +4,12 @@ module Test.Effect (
   expectFailure',
   expectFatal',
   shouldBe',
+  shouldBeSupersetOf',
   shouldSatisfy',
   shouldStartWith',
   shouldEndWith',
   shouldContain',
+  shouldNotContain',
   shouldMatchList',
   runTestEffects',
   it',
@@ -30,6 +32,7 @@ import Control.Effect.Diagnostics (Diagnostics, errorBoundary)
 import Control.Effect.Finally (Finally, onExit)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.Bits (finiteBitSize)
+import Data.Set (fromList, isSubsetOf)
 import Data.String.Conversion (toString)
 import Diag.Result (Result (..), renderFailure)
 import Discovery.Filters (AllFilters)
@@ -52,6 +55,7 @@ import Test.Hspec (
   shouldContain,
   shouldEndWith,
   shouldMatchList,
+  shouldNotContain,
   shouldSatisfy,
   shouldStartWith,
   xit,
@@ -132,8 +136,14 @@ shouldEndWith' list suffix = sendIO $ shouldEndWith list suffix
 shouldContain' :: (Has (Lift IO) sig m, Show a, Eq a) => [a] -> [a] -> m ()
 shouldContain' list sublist = sendIO $ shouldContain list sublist
 
+shouldNotContain' :: (Has (Lift IO) sig m, Show a, Eq a) => [a] -> [a] -> m ()
+shouldNotContain' list sublist = sendIO $ shouldNotContain list sublist
+
 shouldMatchList' :: (Has (Lift IO) sig m, Show a, Eq a) => [a] -> [a] -> m ()
 shouldMatchList' a b = sendIO $ shouldMatchList a b
+
+shouldBeSupersetOf' :: (Has (Lift IO) sig m, Show a, Ord a) => [a] -> [a] -> m ()
+shouldBeSupersetOf' list sublist = sendIO $ shouldSatisfy (fromList list) $ isSubsetOf (fromList sublist)
 
 expectFailure' :: Has (Lift IO) sig m => Result a -> m ()
 expectFailure' res = sendIO $ expectFailure res

@@ -4,6 +4,7 @@
 
 module Control.Carrier.Debug (
   DebugC,
+  IgnoreDebugC,
   runDebug,
   ignoreDebug,
   recording,

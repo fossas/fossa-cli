@@ -2,6 +2,7 @@
 
 module Strategy.Nim.NimbleLock (
   analyze,
+  analyze',
 
   -- * for testing
   NimbleLock (..),
@@ -198,6 +199,17 @@ analyze dir lockFile = do
       . errCtx CmdNimbleDumpFailed
       $ execJson dir nimbleDumpJsonCmd
   context "building graphing from nimble.lock" $ pure (buildGraph lockContents nimbleDumpContent, Complete)
+
+analyze' ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  Path Abs File ->
+  m (Graphing Dependency, GraphBreadth)
+analyze' _ lockFile = do
+  lockContents <- context "Reading nimble.lock" $ readContentsJson lockFile
+  context "building graphing from nimble.lock" $ pure (buildGraph lockContents Nothing, Complete)
 
 data MissingEdgesBetweenDirectDeps = MissingEdgesBetweenDirectDeps
 instance ToDiagnostic MissingEdgesBetweenDirectDeps where

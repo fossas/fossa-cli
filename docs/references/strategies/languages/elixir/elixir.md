@@ -2,9 +2,9 @@
 
 When developing in Elixir, [Mix](https://hexdocs.pm/mix/Mix.html) and [Hex](https://hex.pm/) are most commonly used to manage dependencies. 
 
-| Strategy | Direct Deps        | Deep Deps          | Edges              |
-| -------- | ------------------ | ------------------ | ------------------ |
-| mix deps | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Strategy | Direct Deps        | Deep Deps          | Edges              | Container Scanning (experimental) |
+| -------- | ------------------ | ------------------ | ------------------ | --------------------------------- |
+| mix deps | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                               |
 
 ## Project Discovery
 

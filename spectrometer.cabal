@@ -169,6 +169,7 @@ library
     App.Fossa.Config.Container.Analyze
     App.Fossa.Config.Container.Common
     App.Fossa.Config.Container.Dump
+    App.Fossa.Config.Container.ListTargets
     App.Fossa.Config.Container.Parse
     App.Fossa.Config.Container.Test
     App.Fossa.Config.DumpBinaries
@@ -181,7 +182,9 @@ library
     App.Fossa.Container
     App.Fossa.Container.Analyze
     App.Fossa.Container.AnalyzeNative
+    App.Fossa.Container.ListTargets
     App.Fossa.Container.Scan
+    App.Fossa.Container.Sources.Discovery
     App.Fossa.Container.Sources.DockerArchive
     App.Fossa.Container.Sources.DockerEngine
     App.Fossa.Container.Sources.Podman

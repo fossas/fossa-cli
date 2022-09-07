@@ -2,9 +2,9 @@ module Strategy.Godep (
   discover,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics (Diagnostics, context, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, context, fatalText, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
@@ -58,6 +58,7 @@ instance ToJSON GodepProject
 
 instance AnalyzeProject GodepProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = const $ fatalText "Cannot analyze Godep project statically"
 
 mkProject :: GodepProject -> DiscoveredProject GodepProject
 mkProject project =

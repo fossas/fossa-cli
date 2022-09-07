@@ -2,9 +2,10 @@
 
 When developing in [nim](https://nim-lang.org/), nimble is used to manage dependencies.
 
-| Strategy    | Direct Deps        | Deep Deps          | Edges              | Classifies Dev Dependencies |
-| ----------- | ------------------ | ------------------ | ------------------ | --------------------------- |
-| nimble.lock | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                         |
+| Strategy                      | Direct Deps        | Deep Deps          | Edges              | Classifies Dev Dependencies | Container Scanning (experimental) |
+| ----------------------------- | ------------------ | ------------------ | ------------------ | --------------------------- | --------------------------------- |
+| nimble.lock and `nimble dump` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                         | :x:                               |
+| nimble.lock                   | :warning:          | :white_check_mark: | :white_check_mark: | :x:                         | :white_check_mark:                |
 
 ## Project Discovery
 
@@ -17,7 +18,7 @@ Find a file named `nimble.lock`.
 
 Limitation:
 - Dependencies downloaded from mercurial are not reported.
-
+- When `nimble dump --json` fails, any dependencies without incoming edge is considered to be a direct dependency
 
 ## Example 
 

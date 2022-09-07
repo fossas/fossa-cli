@@ -1,6 +1,6 @@
 module Strategy.Fpm (discover) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
@@ -39,6 +39,7 @@ instance ToJSON FpmProject
 
 instance AnalyzeProject FpmProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = getDeps
 
 mkProject :: FpmProject -> DiscoveredProject FpmProject
 mkProject project =

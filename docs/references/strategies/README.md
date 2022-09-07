@@ -84,6 +84,7 @@
 - [conda](platforms/conda/conda.md)
 - [`requirements.txt`/`setup.py`](languages/python/python.md)
 - [pipenv](languages/python/pipenv.md)
+- [poetry](languages/python/poetry.md)
 
 ### ruby
 

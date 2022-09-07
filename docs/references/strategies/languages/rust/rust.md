@@ -5,9 +5,9 @@ that ships with rust distributions. There are rare, but known cases of generic
 buildtools being used, like `make`, `cmake`, and `ninja`.  These cases are not
 handled here.
 
-| Strategy | Direct Deps | Deep Deps | Edges | Tags         |
-| ---      | ---         | ---       | ---   | ---          |
-| cargo    | ✅          | ✅        | ✅    | Environment  |
+| Strategy | Direct Deps        | Deep Deps          | Edges              | Tags        | Container Scanning |
+| -------- | ------------------ | ------------------ | ------------------ | ----------- | ------------------ |
+| cargo    | :white_check_mark: | :white_check_mark: | :white_check_mark: | Environment | :x:                |
 
 ## Project Discovery
 

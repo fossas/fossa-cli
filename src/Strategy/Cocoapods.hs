@@ -6,7 +6,7 @@ module Strategy.Cocoapods (
   CocoapodsProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject, analyzeProject')
 import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, warnOnErr, (<||>))
@@ -78,6 +78,7 @@ instance ToJSON CocoapodsProject
 
 instance AnalyzeProject CocoapodsProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = getDeps'
 
 instance LicenseAnalyzeProject CocoapodsProject where
   licenseAnalyzeProject = traverse readLicense . cocoapodsSpecFiles
@@ -120,6 +121,18 @@ getDeps project =
       )
       <||> context "Podfile analysis" (analyzePodfile project)
 
+getDeps' :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m DependencyResults
+getDeps' project =
+  context "Cocoapods" $
+    context
+      "Podfile.lock analysis"
+      ( warnOnErr MissingEdges
+          . warnOnErr MissingDeepDeps
+          . errCtx MissingPodLockFile
+          $ (analyzePodfileLockStatically project)
+      )
+      <||> context "Podfile analysis" (analyzePodfile project)
+
 analyzePodfile :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m DependencyResults
 analyzePodfile project = do
   podFile <- Diag.fromMaybeText "No Podfile present in the project" (cocoapodsPodfile project)
@@ -135,6 +148,17 @@ analyzePodfileLock :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig m, 
 analyzePodfileLock project = do
   lockFile <- Diag.fromMaybeText "No Podfile.lock present in the project" (cocoapodsPodfileLock project)
   graph <- PodfileLock.analyze' lockFile
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [lockFile]
+      }
+
+analyzePodfileLockStatically :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m DependencyResults
+analyzePodfileLockStatically project = do
+  lockFile <- Diag.fromMaybeText "No Podfile.lock present in the project" (cocoapodsPodfileLock project)
+  graph <- PodfileLock.analyzeStatic lockFile
   pure $
     DependencyResults
       { dependencyGraph = graph

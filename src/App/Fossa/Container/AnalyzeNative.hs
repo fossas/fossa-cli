@@ -1,12 +1,13 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Container.AnalyzeNative (
+  ContainerImageSource (..),
   analyzeExperimental,
+  parseContainerImageSource,
+  parseDockerEngineSource,
 
   -- * for testing
   uploadScan,
-  ContainerImageSource (..),
-  parseDockerEngineSource,
 ) where
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
@@ -15,7 +16,7 @@ import App.Fossa.Config.Common (
   ScanDestination (OutputStdout, UploadScan),
  )
 import App.Fossa.Config.Container.Analyze (
-  ContainerAnalyzeConfig (arch, dockerHost, imageLocator, revisionOverride, scanDestination),
+  ContainerAnalyzeConfig (arch, dockerHost, filterSet, imageLocator, onlySystemDeps, revisionOverride, scanDestination),
  )
 import App.Fossa.Config.Container.Analyze qualified as Config
 import App.Fossa.Config.Container.Common (ImageText (unImageText))
@@ -117,16 +118,23 @@ analyze ::
   m ()
 analyze cfg = do
   logInfo "Running container scanning with fossa experimental-scanner!"
-  parsedSource <-
-    runDockerEngineApi (dockerHost cfg) $
-      parseContainerImageSource
-        (unImageText $ imageLocator cfg)
-        (arch cfg)
+
+  let filters = filterSet cfg
+  let systemDepsOnly = onlySystemDeps cfg
+  parsedSource <- runDockerEngineApi (dockerHost cfg) $ parseContainerImageSource (unImageText $ imageLocator cfg) (arch cfg)
   scannedImage <- case parsedSource of
-    DockerArchive tarball -> context "Analyzing via tarball" $ analyzeFromDockerArchive tarball
-    DockerEngine imgTag -> context "Analyzing via Docker engine API" $ analyzeFromDockerEngine imgTag (dockerHost cfg)
-    Podman img -> context "Analyzing via podman" $ analyzeFromPodman img
-    Registry registrySrc -> context "Analyzing via registry" $ analyzeFromRegistry registrySrc
+    DockerArchive tarball ->
+      context "Analyzing via docker archive" $
+        analyzeFromDockerArchive systemDepsOnly filters tarball
+    DockerEngine imgTag ->
+      context "Analyzing via Docker engine API" $
+        analyzeFromDockerEngine systemDepsOnly filters (dockerHost cfg) imgTag
+    Podman img ->
+      context "Analyzing via podman" $
+        analyzeFromPodman systemDepsOnly filters img
+    Registry registrySrc ->
+      context "Analyzing via registry" $
+        analyzeFromRegistry systemDepsOnly filters registrySrc
 
   let revision = extractRevision (revisionOverride cfg) scannedImage
   case scanDestination cfg of

@@ -1,8 +1,8 @@
 # Perl Analysis
 
-| Strategy           | Direct Deps        | Deep Deps          | Edges | Classifies Dev Dependencies |
-| ------------------ | ------------------ | ------------------ | ----- | --------------------------- |
-| `*META.{yml, json} | :white_check_mark: | :white_check_mark: | :x:   | :white_check_mark:          |
+| Strategy           | Direct Deps        | Deep Deps          | Edges | Classifies Dev Dependencies | Container Scanning (experimental) |
+| ------------------ | ------------------ | ------------------ | ----- | --------------------------- | --------------------------------- |
+| `*META.{yml, json} | :white_check_mark: | :white_check_mark: | :x:   | :white_check_mark:          | :white_check_mark:                |
 
 ## Project Discovery
 

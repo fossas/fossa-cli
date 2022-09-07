@@ -6,7 +6,7 @@ module Strategy.Python.Setuptools (
   SetuptoolsProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Diagnostics qualified as Diag
 import Control.Effect.Reader (Reader)
@@ -93,6 +93,7 @@ instance ToJSON SetuptoolsProject
 
 instance AnalyzeProject SetuptoolsProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = getDeps
 
 mkProject :: SetuptoolsProject -> DiscoveredProject SetuptoolsProject
 mkProject project =

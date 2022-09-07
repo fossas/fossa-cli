@@ -17,8 +17,8 @@ module Strategy.Elixir.MixTree (
   analyze,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics (Diagnostics, Has, context, warn)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import Control.Effect.Diagnostics (Diagnostics, Has, context, fatalText, warn)
 import Control.Monad (void, when)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Aeson (ToJSON)
@@ -105,6 +105,7 @@ instance ToJSON MixProject
 
 instance AnalyzeProject MixProject where
   analyzeProject _ = analyze
+  analyzeProject' _ = const $ fatalText "Cannot analyze mix project statically"
 
 -- | Name of the Package.
 newtype PackageName = PackageName {unPackageName :: Text} deriving (Show, Eq, Ord)

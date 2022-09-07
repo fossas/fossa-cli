@@ -10,11 +10,12 @@ module Strategy.Haskell.Stack (
   StackLocation (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   context,
+  fatalText,
   fromEither,
  )
 import Control.Effect.Reader (Reader)
@@ -128,6 +129,7 @@ instance ToJSON StackProject
 
 instance AnalyzeProject StackProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = const $ fatalText "Cannot analyze stack project statically"
 
 stackJSONDepsCmd :: Command
 stackJSONDepsCmd =
