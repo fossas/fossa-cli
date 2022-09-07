@@ -98,6 +98,7 @@ data DiscoveredProjectType
   | RpmProjectType
   | ScalaProjectType
   | SetuptoolsProjectType
+  | SqliteRpmLinuxProjectType
   | StackProjectType
   | SwiftProjectType
   | VsiProjectType

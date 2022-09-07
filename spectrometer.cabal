@@ -112,6 +112,7 @@ common deps
     , req                          ^>=3.13.0
     , retry                        ^>=0.9.0.0
     , semver                       ^>=0.4.0.1
+    , direct-sqlite                ^>= 2.3.27
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
     , tar                          ^>=0.5.1.1
@@ -429,6 +430,7 @@ library
     Strategy.Python.Util
     Strategy.Rebar3
     Strategy.RPM
+    Strategy.Sqlite
     Strategy.Ruby.BundleShow
     Strategy.Ruby.Errors
     Strategy.Ruby.GemfileLock
@@ -598,6 +600,7 @@ test-suite unit-tests
     Scala.CommonSpec
     Scala.SbtDependencyTreeParsingSpec
     Scala.SbtDependencyTreeSpec
+    Sqlite.SqliteSpec
     Swift.PackageResolvedSpec
     Swift.PackageSwiftSpec
     Swift.Xcode.PbxprojParserSpec
