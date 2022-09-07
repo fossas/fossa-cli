@@ -6,7 +6,7 @@ module Strategy.Composer (
   ComposerProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -114,6 +114,7 @@ instance ToJSON ComposerProject
 
 instance AnalyzeProject ComposerProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = getDeps
 
 instance LicenseAnalyzeProject ComposerProject where
   licenseAnalyzeProject = analyzeLicenses . composerJson

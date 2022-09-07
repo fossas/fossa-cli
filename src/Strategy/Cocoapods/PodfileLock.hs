@@ -1,5 +1,6 @@
 module Strategy.Cocoapods.PodfileLock (
   analyze',
+  analyzeStatic,
   buildGraph,
   buildGraphStatic,
   PodLock (..),
@@ -60,10 +61,19 @@ import Text.Megaparsec.Char.Lexer qualified as L
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig m, Has Logger sig m) => Path Abs File -> m (Graphing Dependency)
 analyze' podfileLockFilepath = do
-  podfileLock <- readContentsYaml podfileLockFilepath
   context "Building dependency graph" $
-    buildGraph podfileLockFilepath podfileLock
-      <||> pure (buildGraphStatic podfileLock)
+    analyze podfileLockFilepath
+      <||> analyzeStatic podfileLockFilepath
+
+analyzeStatic :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyzeStatic podfileLockFilepath = do
+  podfileLock <- readContentsYaml podfileLockFilepath
+  pure (buildGraphStatic podfileLock)
+
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig m, Has Logger sig m) => Path Abs File -> m (Graphing Dependency)
+analyze podfileLockFilepath = do
+  podfileLock <- readContentsYaml podfileLockFilepath
+  buildGraph podfileLockFilepath podfileLock
 
 type PodfileGrapher = LabeledGrapher PodfilePkg PodfileLabel
 

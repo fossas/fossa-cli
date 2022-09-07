@@ -14,7 +14,7 @@ module Strategy.Python.Pipenv (
   buildGraph,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -112,6 +112,22 @@ getDeps project = context "Pipenv" $ do
       , dependencyManifestFiles = [pipenvLockfile project]
       }
 
+getDeps' ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  ) =>
+  PipenvProject ->
+  m DependencyResults
+getDeps' project = context "Pipenv" $ do
+  lock <- context "Getting direct dependencies" $ readContentsJson (pipenvLockfile project)
+  graph <- context "Building dependency graph" $ pure (buildGraph lock Nothing)
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [pipenvLockfile project]
+      }
+
 mkProject :: PipenvProject -> DiscoveredProject PipenvProject
 mkProject project =
   DiscoveredProject
@@ -130,6 +146,7 @@ instance ToJSON PipenvProject
 
 instance AnalyzeProject PipenvProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = getDeps'
 
 pipenvGraphCmd :: Command
 pipenvGraphCmd =

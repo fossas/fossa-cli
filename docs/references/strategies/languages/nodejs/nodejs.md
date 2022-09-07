@@ -2,9 +2,9 @@
 
 The nodejs buildtool ecosystem consists of three major toolchains: the `npm` cli, `pnpm` and `yarn`.
 
-| Strategy                      | Direct Deps | Deep Deps | Edges |
-| ----------------------------- | ----------- | --------- | ----- |
-| [yarnlock](yarn.md)           | ✅           | ✅         | ✅     |
-| [npmlock](npm-lockfile.md)    | ✅           | ✅         | ✅     |
-| [pnpmlock](pnpm.md)           | ✅           | ✅         | ✅     |
-| [packagejson](packagejson.md) | ✅           | ❌         | ❌     |
+| Strategy                      | Direct Deps        | Deep Deps          | Edges              | Container Scanning (experimental) |
+| ----------------------------- | ------------------ | ------------------ | ------------------ | --------------------------------- |
+| [yarnlock](yarn.md)           | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:                |
+| [npmlock](npm-lockfile.md)    | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:                |
+| [pnpmlock](pnpm.md)           | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:                |
+| [packagejson](packagejson.md) | :white_check_mark: | :x:                | :x:                | :white_check_mark:                |

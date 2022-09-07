@@ -1,8 +1,8 @@
 # Perl Analysis
 
-| Strategy           | Direct Deps        | Deep Deps          | Edges | Classifies Dev Dependencies |
-| ------------------ | ------------------ | ------------------ | ----- | --------------------------- |
-| `*META.{yml, json} | :white_check_mark: | :white_check_mark: | :x:   | :white_check_mark:          |
+| Strategy           | Direct Deps        | Deep Deps          | Edges | Classifies Dev Dependencies | Container Scanning (experimental) |
+| ------------------ | ------------------ | ------------------ | ----- | --------------------------- | --------------------------------- |
+| `*META.{yml, json} | :white_check_mark: | :white_check_mark: | :x:   | :white_check_mark:          | :white_check_mark:                |
 
 ## Project Discovery
 
@@ -26,7 +26,7 @@ Find a file named `MYMETA.json`, `MYMETA.yml`, `META.json`, or `META.yml`.
 
 ### How do I *only perform analysis* for Perl?
 
-You can explicitly specify an analysis target in `.fossa.yml` file. The example below will exclude all analysis targets except for the composer. 
+Explicitly specify an analysis target in `.fossa.yml` file. The example below excludes all other analysis targets:
 
 ```yaml
 # .fossa.yml 

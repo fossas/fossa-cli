@@ -1,6 +1,6 @@
 module Strategy.Pub (discover) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, errCtx, fatalText, recover, warnOnErr, (<||>))
 import Control.Effect.Reader (Reader)
 import Control.Monad (void)
@@ -51,6 +51,7 @@ instance ToJSON PubProject
 
 instance AnalyzeProject PubProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = getDeps'
 
 mkProject :: PubProject -> DiscoveredProject PubProject
 mkProject project =
@@ -65,6 +66,23 @@ getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger 
 getDeps project = do
   (graph, graphBreadth) <- case pubLock project of
     Just lockFile -> analyzeDepsCmd lockFile (pubSpecDir project) <||> analyzePubLockFile lockFile
+    Nothing -> do
+      void . recover
+        $ warnOnErr MissingDeepDeps
+          . warnOnErr MissingEdges
+        $ errCtx PubspecLimitation (fatalText "Missing pubspec.lock file")
+      analyzePubSpecFile $ pubSpec project
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = graphBreadth
+      , dependencyManifestFiles = [pubSpec project]
+      }
+
+getDeps' :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PubProject -> m DependencyResults
+getDeps' project = do
+  (graph, graphBreadth) <- case pubLock project of
+    Just lockFile -> analyzePubLockFile lockFile
     Nothing -> do
       void . recover
         $ warnOnErr MissingDeepDeps

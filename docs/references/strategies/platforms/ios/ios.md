@@ -2,8 +2,8 @@
 
 The iOS buildtool ecosystem consists of two major toolchains: `Carthage` and `Cocoapods`
 
-| Strategy                     | Direct Deps | Deep Deps | Edges |
-| ---------------------------- | ----------- | --------- | ----- |
-| [Carthage](carthage.md)      | ✅           | ✅         | ✅     |
-| [Podfile.lock](cocoapods.md) | ✅           | ✅         | ✅     |
-| [Podfile](cocoapods.md)      | ✅           | ❌         | ❌     |
+| Strategy                     | Direct Deps        | Deep Deps          | Edges              | Container Scanning (experimental) |
+| ---------------------------- | ------------------ | ------------------ | ------------------ | --------------------------------- |
+| [Carthage](carthage.md)      | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:                |
+| [Podfile.lock](cocoapods.md) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                               |
+| [Podfile](cocoapods.md)      | :white_check_mark: | :x:                | :x:                | :white_check_mark:                |

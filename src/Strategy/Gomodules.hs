@@ -6,8 +6,8 @@ module Strategy.Gomodules (
   GomodulesProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
-import Control.Effect.Diagnostics (Diagnostics, context, recover, (<||>))
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import Control.Effect.Diagnostics (Diagnostics, context, fatalText, recover, (<||>))
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Discovery.Filters (AllFilters)
@@ -53,6 +53,7 @@ instance ToJSON GomodulesProject
 
 instance AnalyzeProject GomodulesProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = const $ fatalText "Cannot analyze GoModule project statically"
 
 mkProject :: GomodulesProject -> DiscoveredProject GomodulesProject
 mkProject project =

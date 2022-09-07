@@ -5,7 +5,7 @@ FOSSA offers the ability to license scan your code directly. This is used primar
 In order to specify a file path, modify your `fossa-deps.yml` file and add a `vendored-dependencies` section like the following:
 
 ```yml
-# Example full `fossa.deps.yml` file.
+# Example full `fossa-deps.yaml` file.
 referenced-dependencies:
 - type: gem
   name: rubyXL

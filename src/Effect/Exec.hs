@@ -162,6 +162,7 @@ data ExecErr
     CommandFailed CmdFailure
   | -- | Command output couldn't be parsed. command, err
     CommandParseError Command Text
+  | ExecEnvNotSupported Text
   deriving (Eq, Ord, Show, Generic)
 
 renderCmdFailure :: CmdFailure -> Doc AnsiStyle
@@ -205,6 +206,7 @@ renderCmdFailure err =
 
 instance ToDiagnostic ExecErr where
   renderDiagnostic = \case
+    ExecEnvNotSupported env -> pretty $ "Exec is not supported in: " <> env
     CommandFailed err -> renderCmdFailure err
     CommandParseError cmd err ->
       vsep

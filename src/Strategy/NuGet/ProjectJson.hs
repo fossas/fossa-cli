@@ -9,7 +9,7 @@ module Strategy.NuGet.ProjectJson (
   ProjectJson (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Effect.Reader (Reader)
@@ -69,6 +69,7 @@ instance ToJSON ProjectJsonProject
 
 instance AnalyzeProject ProjectJsonProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = getDeps
 
 mkProject :: ProjectJsonProject -> DiscoveredProject ProjectJsonProject
 mkProject project =

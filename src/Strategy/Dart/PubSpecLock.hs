@@ -16,6 +16,7 @@ module Strategy.Dart.PubSpecLock (
   isSupported,
 ) where
 
+import Control.Carrier.Simple (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Data.Aeson.Types (
   FromJSONKey,
@@ -35,7 +36,6 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Effect.Exec (Exec, Has)
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import GHC.Generics (Generic)
@@ -180,7 +180,7 @@ logIgnoredPackages lockContent = for_ notSupportedDependenciesMsgs (logDebug . p
     notSupportedPackages = map (unPackageName . fst) (Map.toList $ Map.filter isSupported $ packages lockContent)
 
 analyzePubLockFile ::
-  (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) =>
+  (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) =>
   Path Abs File ->
   m (Graphing Dependency, GraphBreadth)
 analyzePubLockFile lockFile = do

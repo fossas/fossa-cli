@@ -2,9 +2,9 @@
 
 Currently, we only support analysis of fortran project which are using [fortran package manager](https://github.com/fortran-lang/fpm).
 
-| Strategy | Direct Deps        | Deep Deps | Edges | Classifies Dev & Test Deps |
-| -------- | ------------------ | --------- | ----- | -------------------------- |
-| fpm      | :heavy_check_mark: | :x:       | :x:   | :heavy_check_mark:         |
+| Strategy | Direct Deps        | Deep Deps | Edges | Classifies Dev & Test Deps | Container Scanning (experimental) |
+| -------- | ------------------ | --------- | ----- | -------------------------- | --------------------------------- |
+| fpm      | :white_check_mark: | :x:       | :x:   | :white_check_mark:         | :white_check_mark:                |
 
 ## Project Discovery
 

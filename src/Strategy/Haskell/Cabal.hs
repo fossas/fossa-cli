@@ -14,7 +14,7 @@ module Strategy.Haskell.Cabal (
   buildGraph,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -22,6 +22,7 @@ import Control.Effect.Diagnostics (
   context,
   errCtx,
   fatal,
+  fatalText,
  )
 import Control.Effect.Reader (Reader)
 import Control.Monad (when)
@@ -198,6 +199,7 @@ instance ToJSON CabalProject
 
 instance AnalyzeProject CabalProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = const $ fatalText "Cannot analyze cabal project statically"
 
 doGraph :: Has (MappedGrapher PlanId InstallPlan) sig m => InstallPlan -> m ()
 doGraph plan = do

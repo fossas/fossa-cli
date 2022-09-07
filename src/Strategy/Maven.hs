@@ -5,7 +5,7 @@ module Strategy.Maven (
   getDeps,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
@@ -55,6 +55,7 @@ instance ToJSON MavenProject
 
 instance AnalyzeProject MavenProject where
   analyzeProject _ = getDeps
+  analyzeProject' _ = getDeps'
 
 instance LicenseAnalyzeProject MavenProject where
   licenseAnalyzeProject = pure . Pom.getLicenses . unMavenProject
@@ -69,6 +70,21 @@ getDeps ::
   m DependencyResults
 getDeps (MavenProject closure) = do
   (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis closure <||> getStaticAnalysis closure
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = graphBreadth
+      , dependencyManifestFiles = [PomClosure.closurePath closure]
+      }
+
+getDeps' ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  ) =>
+  MavenProject ->
+  m DependencyResults
+getDeps' (MavenProject closure) = do
+  (graph, graphBreadth) <- context "Maven" $ getStaticAnalysis closure
   pure $
     DependencyResults
       { dependencyGraph = graph
