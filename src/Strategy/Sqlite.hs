@@ -1,11 +1,13 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 
 -- Description: Discovery and analysis functions for Sqlite3 backed RPM databases
-module Strategy.Sqlite
-  (-- for testing
-    SqliteDB(..)
-  , readDBPackages) where
+module Strategy.Sqlite (
+  -- for testing
+  SqliteDB (..),
+  readDBPackages,
+) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
 import Container.OsRelease (OsInfo (..))
@@ -13,20 +15,21 @@ import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, warn)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Reader (Reader)
+import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BLS
 import Data.Either (partitionEithers)
 import Data.Foldable (traverse_)
+import Data.Int (Int64)
 import Data.Rpm.DbHeaderBlob.Internal (PkgInfo, readPackageInfo)
 import Data.String.Conversion (toText)
-import Database.SQLite3 (ColumnIndex (ColumnIndex), StepResult (..), close, columnBlob, finalize, prepare, step)
+import Database.SQLite3 (ColumnIndex (ColumnIndex), StepResult (..), close, columnBlob, columnInt64, finalize, prepare, step)
 import Database.SQLite3 qualified as SQLite
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsBS)
 import Path (Abs, Dir, File, Path, mkAbsFile, parent)
 import Path.IO (withSystemTempFile)
-import System.IO (hFlush)
 import Types (DependencyResults, DiscoveredProject (..), DiscoveredProjectType (SqliteRpmLinuxProjectType))
 
 newtype SqliteDB = SqliteDB
@@ -75,19 +78,28 @@ getDeps sqlDb@SqliteDB{..} =
 readDBPackages :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => SqliteDB -> m [PkgInfo]
 readDBPackages SqliteDB{..} =
   do
-    (parseFailures, packages) <- (partitionEithers . readPackageInfos) <$> (writeTempFileAndFetchPkgRows =<< readContentsBS dbFile)
-    traverse_ (warn . ("Failed reading package with " <>)) parseFailures
+    (parseFailures, packages) <- (partitionEithers . map parsePackageInfos) <$> (writeTempFileAndFetchPkgRows =<< readContentsBS dbFile)
+    traverse_ reportParseError parseFailures
     pure packages
   where
-    readPackageInfos :: [BS.ByteString] -> [Either String PkgInfo]
-    readPackageInfos = map (readPackageInfo . BLS.fromStrict)
+    parsePackageInfos :: (Int64, BS.ByteString) -> Either (Int64, String) PkgInfo
+    parsePackageInfos (hnum, blob) = first (hnum,) (readPackageInfo . BLS.fromStrict $ blob)
+
+    reportParseError :: Has Diagnostics sig m => (Int64, String) -> m ()
+    reportParseError (index, errString) =
+      warn
+        ( "Couldn't read package number "
+            <> show index
+            <> " with error "
+            <> errString
+        )
 
 -- TODO: Report hnum in the database of packages that failed to read
 writeTempFileAndFetchPkgRows ::
   Has (Lift IO) sig m =>
   -- |Bytestring for a sqlite package database
   BS.ByteString ->
-  m [BS.ByteString]
+  m [(Int64, BS.ByteString)]
 writeTempFileAndFetchPkgRows sqliteBlob =
   sendIO $
     withSystemTempFile "sqlite-bs.db" $
@@ -101,16 +113,20 @@ writeTempFileAndFetchPkgRows sqliteBlob =
           close dbConn
           pure blobs
   where
-    retrieveBlob :: Has (Lift IO) sig m => SQLite.Statement -> m (Maybe BS.ByteString)
+    retrieveBlob :: Has (Lift IO) sig m => SQLite.Statement -> m (Maybe (Int64, BS.ByteString))
     retrieveBlob statement =
       do
         res <- sendIO $ step statement
         case res of
-          -- todo: error handling, report blob index
-          Row -> Just <$> sendIO (columnBlob statement (ColumnIndex 1))
+          Row ->
+            -- Per the docs: column* functions don't throw errors except when reading text.
+            do
+              hnum <- sendIO (columnInt64 statement (ColumnIndex 0))
+              blob <- sendIO (columnBlob statement (ColumnIndex 1))
+              pure . Just $ (hnum, blob)
           Done -> pure Nothing
 
-    retrieveBlobs :: Has (Lift IO) sig m => SQLite.Statement -> m [BS.ByteString]
+    retrieveBlobs :: Has (Lift IO) sig m => SQLite.Statement -> m [(Int64, BS.ByteString)]
     retrieveBlobs statement = do
       maybeRow <- retrieveBlob statement
       case maybeRow of
