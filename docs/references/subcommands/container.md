@@ -1,6 +1,6 @@
 # `fossa container`
 
-The `fossa container` subcommand supports analysis and testing of containers for vulnerabilities and compliance issues. 
+The `fossa container` subcommand supports analysis and testing of containers for vulnerabilities and compliance issues.
 
 `fossa container` supports following subcommands:
 
@@ -59,4 +59,4 @@ _Important: For support and other general information, refer to the [experimenta
 
 | Name                     | Description                                                                                                       |
 |--------------------------|-------------------------------------------------------------------------------------------------------------------|
-| `--experimental-scanner` | Provides many enhancements to container scanning ([reference](../experimental/container/experimenal-scanner.md)). |
+| `--experimental-scanner` | Provides many enhancements to container scanning ([reference](../experimental/container/experimental-scanner.md)). |
