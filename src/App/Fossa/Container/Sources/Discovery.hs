@@ -53,6 +53,7 @@ import Types (
   DiscoveredProjectType,
   FoundTargets (FoundTargets, ProjectWithoutTargets),
  )
+import qualified Strategy.BerkeleyDB as BerkeleyDB
 
 layerAnalyzers :: AnalyzeStaticTaskEffs sig m => OsInfo -> Bool -> [DiscoverFunc m]
 layerAnalyzers os onlySystemDeps =
@@ -64,6 +65,7 @@ osDepsAnalyzers :: AnalyzeStaticTaskEffs sig m => OsInfo -> [DiscoverFunc m]
 osDepsAnalyzers osInfo =
   [ DiscoverFunc (Apk.discover osInfo)
   , DiscoverFunc (Dpkg.discover osInfo)
+  , DiscoverFunc (BerkeleyDB.discover osInfo)
   ]
 
 managedDepsDiscoveryF :: AnalyzeStaticTaskEffs sig m => [DiscoverFunc m]
