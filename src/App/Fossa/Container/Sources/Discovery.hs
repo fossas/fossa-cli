@@ -23,6 +23,7 @@ import Effect.Logger (
 import Path (Abs, Dir, Path, Rel, toFilePath)
 import Path.IO (RelPath, makeRelative)
 import Strategy.ApkDatabase qualified as Apk
+import Strategy.BerkeleyDB qualified as BerkeleyDB
 import Strategy.Bundler qualified as Bundler
 import Strategy.Carthage qualified as Carthage
 import Strategy.Cocoapods qualified as Cocoapods
@@ -64,6 +65,7 @@ osDepsAnalyzers :: AnalyzeStaticTaskEffs sig m => OsInfo -> [DiscoverFunc m]
 osDepsAnalyzers osInfo =
   [ DiscoverFunc (Apk.discover osInfo)
   , DiscoverFunc (Dpkg.discover osInfo)
+  , DiscoverFunc (BerkeleyDB.discover osInfo)
   ]
 
 managedDepsDiscoveryF :: AnalyzeStaticTaskEffs sig m => [DiscoverFunc m]

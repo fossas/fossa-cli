@@ -65,6 +65,7 @@ common deps
     , ansi-terminal                ^>=0.11
     , async                        ^>=2.2.2
     , attoparsec                   ^>=0.14.1
+    , base64-bytestring            ^>=1.2.1.0
     , binary                       ^>=0.8.8.0
     , bytestring                   ^>=0.10.8
     , bzlib                        ^>=0.5.0.0
@@ -342,6 +343,7 @@ library
     Strategy.AlpineLinux.Types
     Strategy.Android.Util
     Strategy.ApkDatabase
+    Strategy.BerkeleyDB
     Strategy.Bundler
     Strategy.Cargo
     Strategy.Carthage
@@ -502,6 +504,7 @@ test-suite unit-tests
     App.Fossa.VSI.DynLinked.UtilSpec
     App.Fossa.VSI.FingerprintSpec
     App.Fossa.VSI.IAT.ResolveSpec
+    BerkeleyDB.BerkeleyDBSpec
     BundlerSpec
     Cargo.CargoTomlSpec
     Cargo.MetadataSpec

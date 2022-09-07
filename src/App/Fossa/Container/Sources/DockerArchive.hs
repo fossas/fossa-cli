@@ -64,6 +64,7 @@ import Data.Text (Text)
 import Data.Text.Extra (breakOnAndRemove, showT)
 import Discovery.Filters (AllFilters)
 import Discovery.Projects (withDiscoveredProjects)
+import Effect.Exec (Exec)
 import Effect.Logger (
   Has,
   Logger,
@@ -84,6 +85,7 @@ import Types (DiscoveredProject (..))
 analyzeFromDockerArchive ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
+  , Has Exec sig m -- May not exec dynamic strategies. TODO: Remove this and convert the BerkeleyDB driver to FFI.
   , Has Logger sig m
   , Has Telemetry sig m
   , Has Debug sig m
@@ -147,6 +149,7 @@ analyzeFromDockerArchive systemDepsOnly filters tarball = do
 analyzeLayer ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
+  , Has Exec sig m -- May not exec dynamic strategies. TODO: Remove this and convert the BerkeleyDB driver to FFI.
   , Has Logger sig m
   , Has Telemetry sig m
   , Has Debug sig m
@@ -206,6 +209,7 @@ runAnalyzers systemDepsOnly osInfo filters = do
 runDependencyAnalysis ::
   ( AnalyzeProject proj
   , Has (Lift IO) sig m
+  , Has Exec sig m -- May not exec dynamic strategies. TODO: Remove this and convert the BerkeleyDB driver to FFI.
   , Has AtomicCounter sig m
   , Has Debug sig m
   , Has Logger sig m
@@ -252,6 +256,7 @@ extractRepoName tags = do
 listTargetsFromDockerArchive ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
+  , Has Exec sig m -- May not exec dynamic strategies. TODO: Remove this and convert the BerkeleyDB driver to FFI.
   , Has Logger sig m
   , Has Telemetry sig m
   ) =>
@@ -281,6 +286,7 @@ listTargetsFromDockerArchive tarball = do
 listTargetLayer ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
+  , Has Exec sig m -- May not exec dynamic strategies. TODO: Remove this and convert the BerkeleyDB driver to FFI.
   , Has Logger sig m
   , Has Telemetry sig m
   ) =>

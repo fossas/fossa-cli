@@ -35,6 +35,8 @@ jobs:
             ghc: '9.0.2'
 
     steps:
+    - uses: Swatinem/rust-cache@v1.3.0
+
     - uses: actions/checkout@v3
       with:
         lfs: true
@@ -59,13 +61,29 @@ jobs:
       with:
         ghc-version: ${{ matrix.ghc }}
 
+    # Set up Rust.
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+    - uses: taiki-e/install-action@nextest
+
     - name: Debugging information
       run: |
         ghc --version || echo "no ghc"
         cabal --version || echo "no cabal"
         ghcup --version || echo "no ghcup"
+        rustc -V || echo "no rustc"
+        cargo -V || echo "no cargo"
 
-    # Build Spectrometer.
+    # Build Rust crates, which must be present when the CLI builds.
+    - name: Test Rust dependencies
+      run: cargo nextest run
+
+    - name: Build Rust dependencies
+      run: cargo build --release
+
+    # Build FOSSA CLI.
     - uses: actions/cache@v2
       name: Cache cabal store
       with:

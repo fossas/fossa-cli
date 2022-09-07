@@ -34,7 +34,7 @@ jobs:
         env:
           FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
         run: |
-          fossa analyze --only-target cabal
+          fossa analyze --only-target cabal --only-target cargo
 
       - name: Check for scan results
         env:
