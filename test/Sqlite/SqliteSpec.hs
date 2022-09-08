@@ -14,7 +14,7 @@ spec = fcontext "Sqlite DB" $
   do readDBPackagesSpec
 
 singlePackageDB :: Path Rel File
-singlePackageDB = $(mkRelFile "test/Sqlite/test_data/single_pkg_db.sqlite")
+singlePackageDB = $(mkRelFile "test/Sqlite/test_data/good_pkg_db.sqlite")
 
 expectedPackage :: [PkgInfo]
 expectedPackage =
@@ -24,6 +24,13 @@ expectedPackage =
       , pkgRelease = Just "1.fc35"
       , pkgArch = Just "x86_64"
       , pkgEpoch = Nothing
+      }
+  , PkgInfo
+      { pkgName = Just "gmp"
+      , pkgVersion = Just "6.2.0"
+      , pkgRelease = Just "7.fc35"
+      , pkgArch = Just "x86_64"
+      , pkgEpoch = Just 1
       }
   ]
 
