@@ -1,5 +1,10 @@
 //! Parse the BerkeleyDB container format.
 //!
+//! # C Interop
+//!
+//! This library is also built as a C binary for FFI.
+//! Refer to `ffi` for more information.
+//!
 //! # Logic decisions
 //!
 //! This library is heavily based on `go-rpmdb`: https://github.com/jssblck/go-rpmdb/blob/956701287363101ee9ade742d6bf1d5c5495f62a/pkg/bdb/bdb.go
@@ -16,20 +21,19 @@
 //! Rather than try to reimplement the nuances of that library (most of which are Go specific),
 //! this library uses simple readers to read bytes directly into the types required for the struct.
 
-use std::{
-    fs::File,
-    io::{self, Cursor, Read, Seek, SeekFrom},
-    path::PathBuf,
-};
+use std::io::{Cursor, Read, Seek, SeekFrom};
 
 use log::debug;
 use metadata::{Generic, Hash};
 use parse::ByteParser;
 use stable_eyre::{eyre::Context, Result};
 
+mod ffi;
 pub mod metadata;
 mod parse;
 pub mod read;
+
+pub use ffi::*;
 
 /// Contains the reference to the BerkeleyDB file and its metadata.
 ///
@@ -40,31 +44,8 @@ pub struct BerkeleyDB {
 }
 
 impl BerkeleyDB {
-    /// Open the database and parse its metadata, which is used for future reading.
-    pub fn open(path: &PathBuf) -> Result<Self> {
-        debug!("📂 Open DB from file system: {path:?}");
-        let mut file = File::open(&path).context("open file")?;
-
-        let mut input = Vec::new();
-        file.read_to_end(&mut input).context("buffer file")?;
-
-        Self::from(input).context("open db from buffered file")
-    }
-
-    /// Open the database from stdin (base64 encoded) and parse its metadata, which is used for future reading.
-    pub fn stdin() -> Result<Self> {
-        debug!("📖 Reading database from stdin");
-
-        let mut input = String::new();
-        io::stdin()
-            .read_to_string(&mut input)
-            .context("buffer stdin")?;
-
-        let input = base64::decode(&input).context("parse stdin as base64")?;
-        Self::from(input).context("open db from stdin")
-    }
-
-    fn from(input: Vec<u8>) -> Result<Self> {
+    /// Parse a BerkeleyDB database from the provided slice.
+    pub fn from(input: Vec<u8>) -> Result<Self> {
         let mut file = Cursor::new(input);
 
         let metadata = BerkeleyDB::parse_metadata(&mut file).context("parse metadata")?;

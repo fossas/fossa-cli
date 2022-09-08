@@ -1,12 +1,25 @@
-use std::{fs, path::PathBuf};
+use std::{
+    fs::{self, File},
+    io,
+    path::PathBuf,
+};
 
-use berkeleydb::{metadata::Page, read::value::Value, BerkeleyDB};
+use bdb::{metadata::Page, read::value::Value, BerkeleyDB};
 use lexical_sort::{natural_lexical_cmp, StringSort};
 use stable_eyre::{eyre::Context, Result};
 
+macro_rules! read_db {
+    ($path:expr) => {{
+        let mut f = File::open($path).context("open file")?;
+        let mut buf = Vec::new();
+        io::copy(&mut f, &mut buf).context("read file")?;
+        BerkeleyDB::from(buf).context("parse db")
+    }};
+}
+
 #[test]
 fn opens_db() -> Result<()> {
-    let db = BerkeleyDB::open(&"./testdata/centos5-plain/Packages".into())?;
+    let db = read_db!("./testdata/centos5-plain/Packages")?;
     let default = Page::default();
     assert_ne!(db.metadata, default);
     Ok(())
@@ -124,8 +137,7 @@ fn reads_ubi8_s390x_expected() -> Result<()> {
 
 #[track_caller]
 fn assert_reads_nonzero_values(path: impl Into<PathBuf>) -> Result<()> {
-    let path = path.into();
-    let mut db = BerkeleyDB::open(&path.join("Packages"))?;
+    let mut db = read_db!(path.into().join("Packages"))?;
 
     let default = Value::default();
     let read_values = db
@@ -159,7 +171,8 @@ fn assert_reads_nonzero_values(path: impl Into<PathBuf>) -> Result<()> {
 #[track_caller]
 fn assert_reads_expected(path: impl Into<PathBuf>) -> Result<()> {
     let path = path.into();
-    let mut db = BerkeleyDB::open(&path.join("Packages"))?;
+    let mut db = read_db!(path.join("Packages"))?;
+
     let bins_dir = path.join("bins");
     let mut files = fs::read_dir(&bins_dir)?
         .map(|e| e.expect("must read dir"))

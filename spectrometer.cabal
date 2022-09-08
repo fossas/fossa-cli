@@ -344,6 +344,7 @@ library
     Strategy.Android.Util
     Strategy.ApkDatabase
     Strategy.BerkeleyDB
+    Strategy.BerkeleyDB.Internal
     Strategy.Bundler
     Strategy.Cargo
     Strategy.Carthage
@@ -456,6 +457,8 @@ executable fossa
   hs-source-dirs: app/fossa
   build-depends:  spectrometer
   ghc-options:    -threaded
+  extra-libraries: bdb
+  extra-lib-dirs: /Users/jessica/projects/fossa-cli/target/release
 
 executable pathfinder
   import:         lang

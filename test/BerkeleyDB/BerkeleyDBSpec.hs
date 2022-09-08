@@ -7,14 +7,14 @@ import Effect.ReadFS (runReadFSIO)
 import Path (Abs, File, Path)
 import Path.IO qualified as PIO
 import ResultUtil (assertOnSuccess)
-import Strategy.BerkeleyDB (BdbEntry (..), readBerkeleyDB)
+import Strategy.BerkeleyDB.Internal (BdbEntry (..), readBerkeleyDB, readBerkeleyDB')
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 
 spec :: Spec
 spec = do
   describe "Container BerkeleyDB Parser" $ do
     target <- runIO testPackagesFile
-    result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO $ readBerkeleyDB target
+    result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO $ readBerkeleyDB' target
 
     it "parses berkeleydb contents" $
       assertOnSuccess result $ \_ c ->
