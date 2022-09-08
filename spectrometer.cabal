@@ -344,6 +344,7 @@ library
     Strategy.Android.Util
     Strategy.ApkDatabase
     Strategy.BerkeleyDB
+    Strategy.BerkeleyDB.Internal
     Strategy.Bundler
     Strategy.Cargo
     Strategy.Carthage
@@ -397,6 +398,8 @@ library
     Strategy.Maven.Pom.PomFile
     Strategy.Maven.Pom.Resolver
     Strategy.Mix
+    Strategy.NDB
+    Strategy.NDB.Internal
     Strategy.Nim
     Strategy.Nim.NimbleLock
     Strategy.Node

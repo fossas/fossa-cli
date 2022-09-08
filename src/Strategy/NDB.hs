@@ -1,10 +1,10 @@
-module Strategy.BerkeleyDB (
+module Strategy.NDB (
   discover,
   findProjects,
   mkProject,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject), analyzeProject')
+import App.Fossa.Analyze.Types (AnalyzeProject (..), analyzeProject')
 import Container.OsRelease (OsInfo (..))
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Lift (Lift)
@@ -25,13 +25,13 @@ import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing, directs)
 import Path (Abs, Dir, File, Path, toFilePath)
-import Strategy.BerkeleyDB.Internal (BdbEntry (..), readBerkeleyDB)
+import Strategy.NDB.Internal (NdbEntry (..), readNDB)
 import Types (
   DepType (LinuxRPM),
   Dependency (..),
   DependencyResults (..),
   DiscoveredProject (..),
-  DiscoveredProjectType (BerkeleyDBProjectType),
+  DiscoveredProjectType (..),
   GraphBreadth (Complete),
   VerConstraint (CEq),
  )
@@ -57,7 +57,7 @@ discover ::
   OsInfo ->
   Path Abs Dir ->
   m [DiscoveredProject BerkeleyDatabase]
-discover osInfo = simpleDiscover (findProjects osInfo) mkProject BerkeleyDBProjectType
+discover osInfo = simpleDiscover (findProjects osInfo) mkProject NDBProjectType
 
 findProjects ::
   ( Has ReadFS sig m
@@ -112,24 +112,24 @@ analyze ::
   OsInfo ->
   m (Graphing Dependency, GraphBreadth)
 analyze _ file osInfo = do
-  installed <- context ("read berkeleydb database file: " <> toText file) $ readBerkeleyDB file
+  installed <- context ("read database file: " <> toText file) $ readNDB file
   context "building graph of packages" $ pure (buildGraph osInfo installed, Complete)
 
-buildGraph :: OsInfo -> [BdbEntry] -> Graphing Dependency
+buildGraph :: OsInfo -> [NdbEntry] -> Graphing Dependency
 buildGraph (OsInfo os osVersion) = directs . map toDependency
   where
-    toDependency :: BdbEntry -> Dependency
+    toDependency :: NdbEntry -> Dependency
     toDependency pkg =
       Dependency
         LinuxRPM
-        (bdbEntryPackage pkg <> "#" <> os <> "#" <> osVersion)
+        (ndbEntryPackage pkg <> "#" <> os <> "#" <> osVersion)
         (Just $ version pkg)
         mempty
         mempty
         mempty
 
-    version :: BdbEntry -> VerConstraint
-    version pkg = CEq $ (bdbEntryArch pkg) <> "#" <> epoch pkg <> (bdbEntryVersion pkg)
+    version :: NdbEntry -> VerConstraint
+    version pkg = CEq $ (ndbEntryArch pkg) <> "#" <> epoch pkg <> (ndbEntryVersion pkg)
 
-    epoch :: BdbEntry -> Text
-    epoch BdbEntry{bdbEntryEpoch} = maybe "" (<> ":") bdbEntryEpoch
+    epoch :: NdbEntry -> Text
+    epoch NdbEntry{ndbEntryEpoch} = maybe "" (<> ":") ndbEntryEpoch
