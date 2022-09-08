@@ -1,42 +1,50 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 
 -- Description: Discovery and analysis functions for Sqlite3 backed RPM databases
 module Strategy.Sqlite (
   -- for testing
   SqliteDB (..),
-  readDBPackages,
+  readSqliteDBPackages,
+  discover,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProject'))
 import Container.OsRelease (OsInfo (..))
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, warn)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Reader (Reader)
+import Data.Aeson (ToJSON)
 import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BLS
 import Data.Either (partitionEithers)
 import Data.Foldable (traverse_)
 import Data.Int (Int64)
-import Data.Rpm.DbHeaderBlob.Internal (PkgInfo, readPackageInfo)
+import Data.Rpm.DbHeaderBlob (PkgConversionError, PkgInfo (..), pkgInfoToDependency, readPackageInfo)
 import Data.String.Conversion (toText)
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Database.SQLite3 (ColumnIndex (ColumnIndex), StepResult (..), close, columnBlob, columnInt64, finalize, prepare, step)
 import Database.SQLite3 qualified as SQLite
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
-import Effect.ReadFS (ReadFS, doesFileExist, readContentsBS)
-import Path (Abs, Dir, File, Path, mkAbsFile, parent)
+import Discovery.Walk (WalkStep (WalkContinue), findFileNamed, findFirstMatchingFile, walkWithFilters')
+import Effect.ReadFS (ReadFS, readContentsBS)
+import GHC.Generics (Generic)
+import Graphing (directs)
+import Path (Abs, Dir, File, Path, parent, toFilePath)
 import Path.IO (withSystemTempFile)
-import Types (DependencyResults, DiscoveredProject (..), DiscoveredProjectType (SqliteRpmLinuxProjectType))
+import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (SqliteDBProjectType), GraphBreadth (Complete))
 
-newtype SqliteDB = SqliteDB
-  {dbFile :: Path Abs File}
+data SqliteDB = SqliteDB
+  { dbDir :: Path Abs Dir
+  , dbFile :: Path Abs File
+  , osInfo :: OsInfo
+  }
+  deriving (Eq, Ord, Show, Generic)
 
-rpmSqliteDbPath :: Path Abs File
-rpmSqliteDbPath = $(mkAbsFile "/var/lib/rpm/Packages.sqlite")
+instance ToJSON SqliteDB
 
 discover ::
   ( Has ReadFS sig m
@@ -46,39 +54,75 @@ discover ::
   OsInfo ->
   Path Abs Dir ->
   m [DiscoveredProject SqliteDB]
-discover osInfo = simpleDiscover (findProject osInfo) mkProject SqliteRpmLinuxProjectType
+discover osInfo = simpleDiscover (findProjects osInfo) mkProject SqliteDBProjectType
 
-findProject :: (Has ReadFS sig m) => OsInfo -> Path Abs Dir -> m [SqliteDB]
-findProject _ _ =
-  do
-    exists <- doesFileExist rpmSqliteDbPath
-    pure $
-      if exists
-        then [SqliteDB{dbFile = rpmSqliteDbPath}]
-        else []
+findProjects ::
+  ( Has ReadFS sig m
+  , Has (Reader AllFilters) sig m
+  , Has Diagnostics sig m
+  ) =>
+  OsInfo ->
+  Path Abs Dir ->
+  m [SqliteDB]
+findProjects osInfo = walkWithFilters' $ \dir _ files -> do
+  case findFirstMatchingFile
+    [ "Packages.sqlite"
+    , "rpmdb.sqlite"
+    ]
+    files of
+    Nothing -> pure ([], WalkContinue)
+    Just file -> do
+      if (Text.isInfixOf "var/lib/rpm/" $ toText . toFilePath $ file)
+        then pure ([SqliteDB{dbDir = dir, dbFile = file, osInfo = osInfo}], WalkContinue)
+        else pure ([], WalkContinue)
 
 mkProject :: SqliteDB -> DiscoveredProject SqliteDB
 mkProject db =
   DiscoveredProject
-    { projectType = SqliteRpmLinuxProjectType
+    { projectType = SqliteDBProjectType
     , projectBuildTargets = mempty
     , projectPath = parent (dbFile db)
     , projectData = db
     }
 
 instance AnalyzeProject SqliteDB where
-  analyzeProject _ = getDeps
+  analyzeProject _ = analyze
+  analyzeProject' _ = analyze
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => SqliteDB -> m DependencyResults
-getDeps sqlDb@SqliteDB{..} =
-  do
-    context ("Reading package database found at " <> toText dbFile) $ readDBPackages sqlDb
-    undefined
+data SqliteDBEntry = SqliteDBEntry
+  { pkgName :: Text
+  , pkgVersion :: Text
+  , pkgRelease :: Text
+  , pkgEpoch :: Maybe Text
+  , pkgArch :: Text
+  }
+  deriving (Show)
 
-readDBPackages :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => SqliteDB -> m [PkgInfo]
-readDBPackages SqliteDB{..} =
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => SqliteDB -> m DependencyResults
+analyze
+  SqliteDB
+    { osInfo = osInfo
+    , dbFile = dbFile
+    } =
+    do
+      context ("Reading packages from SqliteDB at " <> toText dbFile) $ do
+        (conversionFailures, dependencies) <- (partitionEithers . map (pkgInfoToDependency osInfo)) <$> readSqliteDBPackages dbFile
+        traverse_ mkConversionErrMsg conversionFailures
+        context "Building graph of packages" $
+          pure
+            DependencyResults
+              { dependencyGraph = directs dependencies
+              , dependencyGraphBreadth = Complete
+              , dependencyManifestFiles = [dbFile]
+              }
+    where
+      mkConversionErrMsg :: Has Diagnostics sig m => PkgConversionError -> m ()
+      mkConversionErrMsg e = warn $ "Discovered package is missing one of name, version, or architecture: " <> show e
+
+readSqliteDBPackages :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m [PkgInfo]
+readSqliteDBPackages sqlDbFile =
   do
-    (parseFailures, packages) <- (partitionEithers . map parsePackageInfos) <$> (writeTempFileAndFetchPkgRows =<< readContentsBS dbFile)
+    (parseFailures, packages) <- (partitionEithers . map parsePackageInfos) <$> (writeTempFileAndFetchPkgRows =<< readContentsBS sqlDbFile)
     traverse_ reportParseError parseFailures
     pure packages
   where

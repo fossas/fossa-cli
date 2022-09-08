@@ -5,12 +5,12 @@ module Sqlite.SqliteSpec (spec) where
 import Data.Rpm.DbHeaderBlob (PkgInfo (..))
 import Path (File, Path, Rel, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Sqlite (SqliteDB (SqliteDB), readDBPackages)
+import Strategy.Sqlite (readSqliteDBPackages)
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Spec, context, describe, fcontext, runIO)
+import Test.Hspec (Spec, context, describe, runIO)
 
 spec :: Spec
-spec = fcontext "Sqlite DB" $
+spec = context "Sqlite DB" $
   do readDBPackagesSpec
 
 singlePackageDB :: Path Rel File
@@ -37,18 +37,17 @@ expectedPackage =
 badPackageDB :: Path Rel File
 badPackageDB = $(mkRelFile "test/Sqlite/test_data/bad_db.sqlite")
 
--- include discovery in the future by storing these pkg dbs in a tar file
 readDBPackagesSpec :: Spec
 readDBPackagesSpec = do
   currDir <- runIO getCurrentDir
   describe "readDBPackages" $ do
     it' "Reads from a package db with only a single package header" $
       do
-        packages <- readDBPackages (SqliteDB (currDir </> singlePackageDB))
+        packages <- readSqliteDBPackages (currDir </> singlePackageDB)
         packages
           `shouldBe'` expectedPackage
 
     it' "Successfully reads remaining packages in a db with a bad blob" $
       do
-        packages <- readDBPackages (SqliteDB (currDir </> badPackageDB))
+        packages <- readSqliteDBPackages (currDir </> badPackageDB)
         packages `shouldBe'` expectedPackage
