@@ -125,9 +125,11 @@ fileName = toFilePath . filename
 findFileNamed :: String -> [Path a File] -> Maybe (Path a File)
 findFileNamed name = find (\f -> fileName f == name)
 
--- |Find the first file that matches any of the provided names.
+-- | Find the first file that matches any of the provided names.
 findFirstMatchingFile :: [String] -> [Path a File] -> Maybe (Path a File)
-findFirstMatchingFile names = find (\f -> fileName f `elem` names)
+findFirstMatchingFile names = find (\f -> fileName f `Set.member` names')
+  where
+    names' = Set.fromList names
 
 findFilesMatchingGlob :: Glob.Glob a -> [Path a File] -> [Path a File]
 findFilesMatchingGlob g = filter (`Glob.matches` g)
