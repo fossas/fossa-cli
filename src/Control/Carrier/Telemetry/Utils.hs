@@ -124,8 +124,8 @@ lookupCIEnvironment = do
     -- Ref: https://confluence.atlassian.com/bamboo/bamboo-variables-289277087.html#Bamboovariables-Build-specificvariables
     isBamboo :: IO (Maybe CIEnvironment)
     isBamboo = do
-      isGH <- hasSomeValue "bamboo.buildKey"
-      pure $ if isGH then Just Bamboo else Nothing
+      isB <- hasSomeValue "bamboo.buildKey"
+      pure $ if isB then Just Bamboo else Nothing
 
    -- Catch all for CI systems, typically they set either CI or BUILD_ID environment
    -- variable. Example: Jenkins, GitlabCI, etc.
