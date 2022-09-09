@@ -6,6 +6,7 @@
   For more information, see the [experimental container scanning documentation](./docs/references/experimental/container/experimental-scanner.md).
 - Add `dist-newstyle` to the list of automatically filtered directories. ([#1030](https://github.com/fossas/fossa-cli/pull/1035))
 - Fix a bug in fossa-deps.schema.json. It is now valid JSON. ([#1030](https://github.com/fossas/fossa-cli/pull/1030))
+- Add support for RPM package dbs based on Sqlite in container scanning. ([#1044](https://github.com/fossas/fossa-cli/pull/1044))
 
 ## 3.3.12
 

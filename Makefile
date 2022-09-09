@@ -21,7 +21,7 @@ build-cargo:
 # To run a set of unit tests matching a specific value, use ARGS
 # For example, to only run tests whose name matches the wildcard '*Node.PackageLockV3*':
 # 	make test ARGS="Node.PackageLockV3"
-test: build-cargo test-cargo test-cabal
+test: test-cargo test-cabal
 
 test-cabal:
 ifdef ARGS
@@ -30,7 +30,7 @@ else
 	cabal test unit-tests --test-show-details=streaming --test-option=--format=checks --test-option=--times --test-option=--color
 endif
 
-test-cargo:
+test-cargo: build-cargo
 	cargo test
 
 # Runs an integration test.

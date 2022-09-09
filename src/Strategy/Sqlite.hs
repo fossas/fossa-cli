@@ -29,7 +29,7 @@ import Database.SQLite3 (ColumnIndex (ColumnIndex), StepResult (..), close, colu
 import Database.SQLite3 qualified as SQLite
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
-import Discovery.Walk (WalkStep (WalkContinue), findFileNamed, findFirstMatchingFile, walkWithFilters')
+import Discovery.Walk (WalkStep (WalkContinue), findFirstMatchingFile, walkWithFilters')
 import Effect.ReadFS (ReadFS, readContentsBS)
 import GHC.Generics (Generic)
 import Graphing (directs)
@@ -138,7 +138,6 @@ readSqliteDBPackages sqlDbFile =
             <> errString
         )
 
--- TODO: Report hnum in the database of packages that failed to read
 writeTempFileAndFetchPkgRows ::
   Has (Lift IO) sig m =>
   -- |Bytestring for a sqlite package database
