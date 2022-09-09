@@ -2,7 +2,6 @@
 
 -- Description: Discovery and analysis functions for Sqlite3 backed RPM databases
 module Strategy.Sqlite (
-  -- for testing
   SqliteDB (..),
   readSqliteDBPackages,
   discover,
