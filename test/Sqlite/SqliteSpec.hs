@@ -7,7 +7,7 @@ import Path (File, Path, Rel, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Sqlite (readSqliteDBPackages)
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Spec, context, describe, context, runIO)
+import Test.Hspec (Spec, context, describe, runIO)
 
 spec :: Spec
 spec = context "Sqlite DB" $
