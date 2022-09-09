@@ -572,6 +572,7 @@ test-suite unit-tests
     Maven.PluginStrategySpec
     Maven.PluginTreeSpec
     Maven.PomStrategySpec
+    Ndb.NdbSpec
     Nim.NimbleSpec
     Node.NodeSpec
     Node.PackageJsonSpec

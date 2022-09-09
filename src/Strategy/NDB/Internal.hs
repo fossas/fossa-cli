@@ -26,7 +26,7 @@ module Strategy.NDB.Internal (
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, context, fatalText, fromEitherShow)
+import Control.Effect.Diagnostics (Diagnostics, context, fatalText, fromEitherParser, fromEitherShow)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BSL
@@ -40,8 +40,10 @@ import Numeric (showHex)
 import Path (Abs, File, Path)
 import Text.Megaparsec (
   Parsec,
+  count,
   runParser,
   some,
+  (<?>),
  )
 import Text.Megaparsec.Byte.Binary (word32le, word8)
 
@@ -91,28 +93,22 @@ readNDB' file = do
   content <- readContentsBS file
 
   -- Equivalent to 'Open': https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L93
-  entries <- fromEitherShow $ runParser parseRawNdb "ndb header" content
+  header <- fromEitherParser $ runParser parseRawNdb "ndb header" content
+  entries <- fromEitherParser . runParser (parseSlotEntries header) "slot entries" $ slice ndbHeaderLength content
 
   -- Equivalent to 'Read', without the needless channel: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L129
-  readBlobs content entries
+  readBlobs content $ filter ndbSlotEntryShouldProcess entries
   where
     readBlobs :: (Has Diagnostics sig m) => ByteString -> [NdbSlotEntry] -> m [ByteString]
     readBlobs content (entry : entries) = do
       let content' = slice (ndbSlotBlkOffset entry * ndbBlobHeaderSize) content
-      blobHeader <- fromEitherShow $ runParser (parseNdbBlobHeader entry) "blob header" content'
-      blob <- fromEitherShow . runParser (parseNdbBlob blobHeader) "blob" $ slice ndbBlobHeaderSize content'
+      blobHeader <- fromEitherParser $ runParser (parseNdbBlobHeader entry) "blob header" content'
+      blob <- fromEitherParser . runParser (parseNdbBlob blobHeader) "blob" $ slice ndbBlobHeaderSize content'
       rest <- readBlobs content entries
       pure $ blob : rest
     readBlobs _ [] = pure []
 
 type Parser = Parsec Void ByteString
-
-data NdbSlotEntry = NdbSlotEntry
-  { ndbSlotMagic :: Word32
-  , ndbSlotPkgIndex :: Word32
-  , ndbSlotBlkOffset :: Word32
-  , ndbSlotBlkCount :: Word32
-  }
 
 data NdbHeader = NdbHeader
   { ndbHeaderMagic :: Word32
@@ -120,6 +116,15 @@ data NdbHeader = NdbHeader
   , ndbHeaderGeneration :: Word32
   , ndbHeaderSlotNPages :: Word32
   }
+  deriving (Show)
+
+data NdbSlotEntry = NdbSlotEntry
+  { ndbSlotMagic :: Word32
+  , ndbSlotPkgIndex :: Word32
+  , ndbSlotBlkOffset :: Word32
+  , ndbSlotBlkCount :: Word32
+  }
+  deriving (Show)
 
 data NdbBlobHeader = NdbBlobHeader
   { ndbBlobHeaderMagic :: Word32
@@ -127,6 +132,7 @@ data NdbBlobHeader = NdbBlobHeader
   , ndbBlobHeaderChecksum :: Word32
   , ndbBlobHeaderLen :: Word32
   }
+  deriving (Show)
 
 -- | Parse the slot entries in the header section of the DB.
 -- The original structure contains the file handle too, but as mentioned in 'readNdb'' this code doesn't use a file handle,
@@ -135,11 +141,11 @@ data NdbBlobHeader = NdbBlobHeader
 -- Structure: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L82-L85
 -- Parse: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L93-L127
 -- Validation is handled by the child parsers.
-parseRawNdb :: Parser [NdbSlotEntry]
-parseRawNdb = do
-  header <- parseNdbHeader
-  entries <- take (ndbHeaderEntryCount header) <$> some parseNdbSlotEntry
-  pure $ filter ndbSlotEntryShouldProcess entries
+parseRawNdb :: Parser NdbHeader
+parseRawNdb = parseNdbHeader <?> "header"
+
+parseSlotEntries :: NdbHeader -> Parser [NdbSlotEntry]
+parseSlotEntries header = count (ndbHeaderEntryCount header) (parseNdbSlotEntry <?> "slot entry")
 
 -- | Parse the header for the database.
 -- Due to the way in which this module buffers the file content for parsers, parsing the unused portion of the struct is technically not needed.
@@ -151,11 +157,11 @@ parseRawNdb = do
 parseNdbHeader :: Parser NdbHeader
 parseNdbHeader =
   NdbHeader
-    <$> word32le -- magic
-    <*> word32le -- version
-    <*> word32le -- generation
-    <*> word32le -- slot pages count
-    <* parseBytesRaw 16 -- unused: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L65
+    <$> (word32le <?> "magic")
+    <*> (word32le <?> "version")
+    <*> (word32le <?> "generation")
+    <*> (word32le <?> "slot pages count")
+    <* (parseBytesRaw 16 <?> "unused")
     >>= validate
   where
     validate :: (MonadFail m) => NdbHeader -> m NdbHeader
@@ -173,10 +179,10 @@ parseNdbHeader =
 parseNdbSlotEntry :: Parser NdbSlotEntry
 parseNdbSlotEntry =
   NdbSlotEntry
-    <$> word32le -- magic
-    <*> word32le -- package index
-    <*> word32le -- block offset
-    <*> word32le -- block count
+    <$> (word32le <?> "magic")
+    <*> (word32le <?> "package index")
+    <*> (word32le <?> "block offset")
+    <*> (word32le <?> "block count")
     >>= validate
   where
     validate :: (MonadFail m) => NdbSlotEntry -> m NdbSlotEntry
@@ -191,10 +197,10 @@ parseNdbSlotEntry =
 parseNdbBlobHeader :: NdbSlotEntry -> Parser NdbBlobHeader
 parseNdbBlobHeader slot =
   NdbBlobHeader
-    <$> word32le -- magic
-    <*> word32le -- package index
-    <*> word32le -- checksum
-    <*> word32le -- len
+    <$> (word32le <?> "magic")
+    <*> (word32le <?> "package index")
+    <*> (word32le <?> "checksum")
+    <*> (word32le <?> "len")
     >>= validate slot
   where
     validate :: (MonadFail m) => NdbSlotEntry -> NdbBlobHeader -> m NdbBlobHeader
@@ -244,6 +250,9 @@ ndbHeaderEntryCount NdbHeader{ndbHeaderSlotNPages} = fromIntegral $ ndbHeaderSlo
 -- | https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L146-L149
 ndbSlotEntryShouldProcess :: NdbSlotEntry -> Bool
 ndbSlotEntryShouldProcess NdbSlotEntry{ndbSlotPkgIndex} = ndbSlotPkgIndex /= 0
+
+ndbHeaderLength :: Int
+ndbHeaderLength = 32
 
 -- | Just read raw bytes. Fails if the read is short.
 parseBytesRaw :: Int -> Parser [Word8]
