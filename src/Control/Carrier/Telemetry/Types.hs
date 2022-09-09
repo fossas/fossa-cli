@@ -8,7 +8,7 @@ module Control.Carrier.Telemetry.Types (
   TelemetryTimeSpent (..),
   TelemetryCmdConfig (..),
   CountableCliFeature (..),
-  CIEnvironment(..),
+  CIEnvironment (..),
 ) where
 
 import Control.Concurrent.STM (TMVar)

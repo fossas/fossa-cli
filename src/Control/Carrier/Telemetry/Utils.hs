@@ -11,17 +11,22 @@ import App.Version (isDirty, versionOrBranch)
 import Control.Algebra (Has)
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Telemetry.Types (
+  CIEnvironment (..),
   CliEnvironment (..),
   SystemInfo (SystemInfo),
   TelemetryCmdConfig (TelemetryCmdConfig),
   TelemetryCtx (TelemetryCtx, telCounters, telFossaConfig, telId, telLogsQ, telStartUtcTime, telTimeSpentQ),
-  TelemetryRecord (..), CIEnvironment(..),
+  TelemetryRecord (..),
  )
 import Control.Concurrent.STM (STM, atomically, newEmptyTMVarIO, tryReadTMVar)
 import Control.Concurrent.STM.TBMQueue (TBMQueue, newTBMQueueIO, tryReadTBMQueue)
 import Control.Monad (join, replicateM)
+import Data.Foldable (asum)
+import Data.Functor.Extra ((<$$>))
 import Data.Maybe (catMaybes)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Time (diffUTCTime, getCurrentTime, nominalDiffTimeToSeconds)
 import Data.Tracing.Instrument (
   getCounterRegistry,
@@ -30,12 +35,8 @@ import Data.Tracing.Instrument (
 import Data.UUID.V4 (nextRandom)
 import GHC.Conc.Sync qualified as Conc
 import System.Args (getCommandArgs)
-import System.Info qualified as Info
 import System.Environment (lookupEnv)
-import qualified Data.Text as Text
-import Data.String.Conversion (toText)
-import Data.Functor.Extra ((<$$>))
-import Data.Foldable (asum)
+import System.Info qualified as Info
 
 maxQueueSize :: Int
 maxQueueSize = 1000
@@ -127,8 +128,8 @@ lookupCIEnvironment = do
       isB <- hasSomeValue "bamboo.buildKey"
       pure $ if isB then Just Bamboo else Nothing
 
-   -- Catch all for CI systems, typically they set either CI or BUILD_ID environment
-   -- variable. Example: Jenkins, GitlabCI, etc.
+    -- Catch all for CI systems, typically they set either CI or BUILD_ID environment
+    -- variable. Example: Jenkins, GitlabCI, etc.
     isSomeCI :: IO (Maybe CIEnvironment)
     isSomeCI = do
       hasCIEnv <- hasSomeValue "CI"
@@ -138,7 +139,7 @@ lookupCIEnvironment = do
     lookupName :: String -> IO (Maybe Text)
     lookupName name = toText <$$> lookupEnv name
 
-    -- | True if environment variable has non empty value, otherwise False.
+    -- True if environment variable has non empty value, otherwise False.
     hasSomeValue :: String -> IO Bool
     hasSomeValue name = do
       value <- lookupName name
@@ -146,7 +147,7 @@ lookupCIEnvironment = do
         Nothing -> False
         Just txt -> not $ Text.null txt
 
-    -- | True if environment variable represents 'true' boolean value, otherwise False.
+    -- True if environment variable represents 'true' boolean value, otherwise False.
     isTrue :: String -> IO Bool
     isTrue name = do
       value <- lookupName name
