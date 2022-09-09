@@ -7,10 +7,10 @@ import Path (File, Path, Rel, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Sqlite (readSqliteDBPackages)
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Spec, context, describe, fcontext, runIO)
+import Test.Hspec (Spec, context, describe, context, runIO)
 
 spec :: Spec
-spec = fcontext "Sqlite DB" $
+spec = context "Sqlite DB" $
   do readDBPackagesSpec
 
 singlePackageDB :: Path Rel File
@@ -173,6 +173,6 @@ expectedPackages =
   , PkgInfo (Just "tar") (Just "1.34") (Just "2.fc35") (Just "x86_64") (Just 2)
   , PkgInfo (Just "fedora-repos-modular") (Just "35") (Just "1") (Just "noarch") (Nothing)
   , PkgInfo (Just "rootfiles") (Just "8.1") (Just "30.fc35") (Just "noarch") (Nothing)
-  -- The next package is has no architecture and will cause a warning when running a full container scan
-  , PkgInfo (Just "gpg-pubkey") (Just "9867c58f") (Just "601c49ca") (Nothing) (Nothing)
+  , -- The next package is has no architecture and will cause a warning when running a full container scan
+    PkgInfo (Just "gpg-pubkey") (Just "9867c58f") (Just "601c49ca") (Nothing) (Nothing)
   ]

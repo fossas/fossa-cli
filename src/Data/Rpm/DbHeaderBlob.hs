@@ -48,5 +48,5 @@ pkgInfoToDependency
       version = CEq $ pkgArch <> "#" <> epoch <> (pkgVersion <> "-" <> pkgRelease)
 
       epoch :: Text
-      epoch = maybe "" (<> ":") (toText . show <$> pkgEpoch)
+      epoch = maybe "" ((<> ":") . toText . show) pkgEpoch
 pkgInfoToDependency _ pkg = Left $ PkgConversionError pkg
