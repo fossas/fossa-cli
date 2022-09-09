@@ -151,3 +151,32 @@ targets:
     - type: setuptools
       path: utils/helpers/
 ```
+
+## Target Filtering for Submodules
+
+For some package manager, you may have submodules or sub-projects within a single project
+that you are analyzing. And you may want to analyze only specifics sub project in some cases.
+
+Here is example with gradle:
+
+1) Running `fossa list-targets`
+```bash
+[ INFO] Found project: gradle@./
+[ INFO] Found target: gradle@./::app
+[ INFO] Found target: gradle@./::list
+[ INFO] Found target: gradle@./::utilities
+```
+
+2) Now to analyze only `utilities`, use `.fossa.yml` file.
+
+```yaml
+version: 3
+
+targets:
+  only:
+    - type: gradle
+      path: ./
+      target: ':utilities'
+```
+
+3) Running `fossa analyze --output -c .fossa.yml`, will only analyze `utilities` submodule.
