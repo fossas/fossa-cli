@@ -23,8 +23,6 @@ import DepTypes (
 newtype PkgConversionError = PkgConversionError PkgInfo
   deriving (Show)
 
--- |Turn a list of RPM header blobs into a graph where every package is
--- a direct dependency.
 pkgInfoToDependency :: OsInfo -> PkgInfo -> Either PkgConversionError Dependency
 pkgInfoToDependency
   (OsInfo os osVersion)

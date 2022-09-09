@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- Add support for RPM package dbs based on Sqlite in container scanning. ([#1044](https://github.com/fossas/fossa-cli/pull/1044))
+
 ## 3.4.0
 
 - New experimental scanner for containers. ([#1001](https://github.com/fossas/fossa-cli/pull/1001), [#1002](https://github.com/fossas/fossa-cli/pull/1002), [#1003](https://github.com/fossas/fossa-cli/pull/1003), [#1004](https://github.com/fossas/fossa-cli/pull/1004), [#1005](https://github.com/fossas/fossa-cli/pull/1005), [#1006](https://github.com/fossas/fossa-cli/pull/1006), [#1010](https://github.com/fossas/fossa-cli/pull/1010), [#1011](https://github.com/fossas/fossa-cli/pull/1011), [#1012](https://github.com/fossas/fossa-cli/pull/1012), [#1014](https://github.com/fossas/fossa-cli/pull/1014), [#1016](https://github.com/fossas/fossa-cli/pull/1016), [#1017](https://github.com/fossas/fossa-cli/pull/1017), [#1021](https://github.com/fossas/fossa-cli/pull/1021), [#1025](https://github.com/fossas/fossa-cli/pull/1025), [#1026](https://github.com/fossas/fossa-cli/pull/1026), [#1029](https://github.com/fossas/fossa-cli/pull/1029), [#1031](https://github.com/fossas/fossa-cli/pull/1031), [#1032](https://github.com/fossas/fossa-cli/pull/1032), [#1034](https://github.com/fossas/fossa-cli/pull/1034))<br>
