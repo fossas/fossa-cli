@@ -64,11 +64,7 @@ findProjects ::
   Path Abs Dir ->
   m [SqliteDB]
 findProjects osInfo = walkWithFilters' $ \dir _ files -> do
-  case findFirstMatchingFile
-    [ "Packages.sqlite"
-    , "rpmdb.sqlite"
-    ]
-    files of
+  case findFirstMatchingFile ["Packages.sqlite", "rpmdb.sqlite"] files of
     Nothing -> pure ([], WalkContinue)
     Just file -> do
       if (Text.isInfixOf "var/lib/rpm/" $ toText . toFilePath $ file)
