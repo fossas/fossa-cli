@@ -70,7 +70,7 @@ data TelemetryRecord = TelemetryRecord
   , cliTotalDurationInSec :: Double
   , cliUsageCounter :: Map CountableCliFeature Int
   , cliVersion :: Text
-  , cliCIEnv :: Maybe CIEnvironment
+  , cliCIEnvironment :: Maybe CIEnvironment
   }
   deriving (Show, Eq, Ord, Generic)
 

@@ -60,7 +60,7 @@ mkTelemetryRecord seenFatalException ctx = sendIO $ do
   cliTimedDurations <- atomically $ getItems (telTimeSpentQ ctx)
   cliUsageCounter <- atomically $ getCounterRegistry (telCounters ctx)
   finalTime <- getCurrentTime
-  cliCIEnv <- lookupCIEnvironment
+  ciEnv <- lookupCIEnvironment
 
   pure $
     TelemetryRecord
@@ -76,7 +76,7 @@ mkTelemetryRecord seenFatalException ctx = sendIO $ do
       , cliTotalDurationInSec = realToFrac $ nominalDiffTimeToSeconds $ diffUTCTime finalTime (telStartUtcTime ctx)
       , cliUsageCounter = cliUsageCounter
       , cliVersion = getCurrentCliVersion
-      , cliCIEnv = cliCIEnv
+      , cliCIEnvironment = ciEnv
       }
   where
     getItems :: TBMQueue a -> STM [a]
@@ -135,21 +135,21 @@ lookupCIEnvironment = do
       hasBuildIdEnv <- hasSomeValue "BUILD_ID"
       pure $ if (hasCIEnv || hasBuildIdEnv) then Just UnknownCI else Nothing
 
-lookupName :: String -> IO (Maybe Text)
-lookupName name = toText <$$> lookupEnv name
+    lookupName :: String -> IO (Maybe Text)
+    lookupName name = toText <$$> lookupEnv name
 
--- | True if environment variable has non empty value, otherwise False.
-hasSomeValue :: String -> IO Bool
-hasSomeValue name = do
-  value <- lookupName name
-  pure $ case value of
-    Nothing -> False
-    Just txt -> not $ Text.null txt
+    -- | True if environment variable has non empty value, otherwise False.
+    hasSomeValue :: String -> IO Bool
+    hasSomeValue name = do
+      value <- lookupName name
+      pure $ case value of
+        Nothing -> False
+        Just txt -> not $ Text.null txt
 
--- | True if environment variable represents 'true' boolean value, otherwise False.
-isTrue :: String -> IO Bool
-isTrue name = do
-  value <- lookupName name
-  pure $ case value of
-    Nothing -> False
-    Just txt -> Text.toLower txt == "true"
+    -- | True if environment variable represents 'true' boolean value, otherwise False.
+    isTrue :: String -> IO Bool
+    isTrue name = do
+      value <- lookupName name
+      pure $ case value of
+        Nothing -> False
+        Just txt -> Text.toLower txt == "true"
