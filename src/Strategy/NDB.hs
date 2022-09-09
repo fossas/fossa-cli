@@ -7,7 +7,6 @@ module Strategy.NDB (
 import App.Fossa.Analyze.Types (AnalyzeProject (..), analyzeProject')
 import Container.OsRelease (OsInfo (..))
 import Control.Effect.Diagnostics (Diagnostics, context)
-import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.String.Conversion (toText)
@@ -20,7 +19,6 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
-import Effect.Exec (Exec)
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing, directs)
@@ -86,9 +84,7 @@ mkProject project =
 
 getDeps ::
   ( Has Diagnostics sig m
-  , Has (Lift IO) sig m
   , Has ReadFS sig m
-  , Has Exec sig m
   ) =>
   BerkeleyDatabase ->
   m DependencyResults
@@ -103,9 +99,7 @@ getDeps project = do
 
 analyze ::
   ( Has Diagnostics sig m
-  , Has (Lift IO) sig m
   , Has ReadFS sig m
-  , Has Exec sig m
   ) =>
   Path Abs Dir ->
   Path Abs File ->
