@@ -15,7 +15,7 @@ Each RPM installation may use one of several backends:
 ## Analysis
 
 Parse and analyze, reporting package name, package version, architecture, and optionally epoch.
-Each of these backends share a common format for storing actual packages, but the method used to retreive the list of packages is unique to each backend.
+Each of these backends share a common format for storing actual packages, but the method used to retrieve the list of packages is unique to each backend.
 
 ## FAQ
 
