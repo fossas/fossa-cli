@@ -34,16 +34,16 @@ import Types (
   VerConstraint (CEq),
  )
 
-data BerkeleyDatabase = BerkeleyDatabase
+data NdbLocation = NdbLocation
   { dbDir :: Path Abs Dir
   , dbFile :: Path Abs File
   , osInfo :: OsInfo
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON BerkeleyDatabase
+instance ToJSON NdbLocation
 
-instance AnalyzeProject BerkeleyDatabase where
+instance AnalyzeProject NdbLocation where
   analyzeProject _ = getDeps
   analyzeProject' _ = getDeps
 
@@ -54,7 +54,7 @@ discover ::
   ) =>
   OsInfo ->
   Path Abs Dir ->
-  m [DiscoveredProject BerkeleyDatabase]
+  m [DiscoveredProject NdbLocation]
 discover osInfo = simpleDiscover (findProjects osInfo) mkProject NDBProjectType
 
 findProjects ::
@@ -64,19 +64,27 @@ findProjects ::
   ) =>
   OsInfo ->
   Path Abs Dir ->
-  m [BerkeleyDatabase]
+  m [NdbLocation]
 findProjects osInfo = walkWithFilters' $ \dir _ files -> do
-  case findFileNamed "Packages" files of
+  case findFileNamed "Packages.db" files of
     Nothing -> pure ([], WalkContinue)
     Just file -> do
-      if (Text.isInfixOf "var/lib/rpm/" $ toText . toFilePath $ file)
-        then pure ([BerkeleyDatabase dir file osInfo], WalkContinue)
+      if isSupportedPath file
+        then pure ([NdbLocation dir file osInfo], WalkContinue)
         else pure ([], WalkContinue)
+  where
+    -- The standard location for this is '/var/lib/rpm/', but some distros in some versions (e.g. openSUSE) symlink this elsewhere
+    -- (the example seen for openSUSE is 'usr/lib/sysimage/rpm/').
+    -- For maximal compatibility while still being reasonably confident that this is the 'Packages.db' for the system RPM install,
+    -- this function just checks whether the file is a child of any directory containing the word 'rpm'.
+    -- We may want to consider making walk work with symlinks or unconditionally trying any 'Packages.db' named file.
+    isSupportedPath :: Path Abs File -> Bool
+    isSupportedPath = Text.isInfixOf "rpm" . toText . toFilePath
 
-mkProject :: BerkeleyDatabase -> DiscoveredProject BerkeleyDatabase
+mkProject :: NdbLocation -> DiscoveredProject NdbLocation
 mkProject project =
   DiscoveredProject
-    { projectType = BerkeleyDBProjectType
+    { projectType = NDBProjectType
     , projectBuildTargets = mempty
     , projectPath = dbDir project
     , projectData = project
@@ -86,7 +94,7 @@ getDeps ::
   ( Has Diagnostics sig m
   , Has ReadFS sig m
   ) =>
-  BerkeleyDatabase ->
+  NdbLocation ->
   m DependencyResults
 getDeps project = do
   (graph, graphBreadth) <- analyze (dbDir project) (dbFile project) (osInfo project)
