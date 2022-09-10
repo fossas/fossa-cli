@@ -47,6 +47,7 @@ import Strategy.Python.Pipenv qualified as Pipenv
 import Strategy.Python.Poetry qualified as Poetry
 import Strategy.Python.Setuptools qualified as Setuptools
 import Strategy.RPM qualified as RPM
+import Strategy.Sqlite qualified as Sqlite
 import Strategy.SwiftPM qualified as SwiftPM
 import Types (
   BuildTarget (unBuildTarget),
@@ -66,6 +67,7 @@ osDepsAnalyzers osInfo =
   [ DiscoverFunc (Apk.discover osInfo)
   , DiscoverFunc (Dpkg.discover osInfo)
   , DiscoverFunc (BerkeleyDB.discover osInfo)
+  , DiscoverFunc (Sqlite.discover osInfo)
   ]
 
 managedDepsDiscoveryF :: AnalyzeStaticTaskEffs sig m => [DiscoverFunc m]

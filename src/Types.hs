@@ -99,6 +99,7 @@ data DiscoveredProjectType
   | RpmProjectType
   | ScalaProjectType
   | SetuptoolsProjectType
+  | SqliteDBProjectType
   | StackProjectType
   | SwiftProjectType
   | VsiProjectType
@@ -145,6 +146,7 @@ projectTypeToText = \case
   RpmProjectType -> "rpm"
   ScalaProjectType -> "scala"
   SetuptoolsProjectType -> "setuptools"
+  SqliteDBProjectType -> "sqlitedb"
   StackProjectType -> "stack"
   SwiftProjectType -> "swift"
   VsiProjectType -> "vsi"
