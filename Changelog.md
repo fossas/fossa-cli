@@ -1,7 +1,9 @@
 # FOSSA CLI Changelog
 
-## Unreleased
-- Add support for RPM package dbs based on Sqlite in container scanning. ([#1044](https://github.com/fossas/fossa-cli/pull/1044))
+## 3.4.1
+
+- Add support for RPM package databases using the Sqlite backend in container scanning. ([#1044](https://github.com/fossas/fossa-cli/pull/1044))
+- Add support for RPM package databases using the NDB backend in container scanning. ([#1046](https://github.com/fossas/fossa-cli/pull/1046))
 
 ## 3.4.0
 
