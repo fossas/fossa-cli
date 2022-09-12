@@ -2,15 +2,15 @@
 
 ## 3.4.1
 
-- Add support for RPM package databases using the Sqlite backend in container scanning. ([#1044](https://github.com/fossas/fossa-cli/pull/1044))
-- Add support for RPM package databases using the NDB backend in container scanning. ([#1046](https://github.com/fossas/fossa-cli/pull/1046))
+- Container scanning: RPM: Add support for the Sqlite backend. ([#1044](https://github.com/fossas/fossa-cli/pull/1044))
+- Container scanning: RPM: Add support for the NDB backend. ([#1046](https://github.com/fossas/fossa-cli/pull/1046))
 
 ## 3.4.0
 
-- New experimental scanner for containers. ([#1001](https://github.com/fossas/fossa-cli/pull/1001), [#1002](https://github.com/fossas/fossa-cli/pull/1002), [#1003](https://github.com/fossas/fossa-cli/pull/1003), [#1004](https://github.com/fossas/fossa-cli/pull/1004), [#1005](https://github.com/fossas/fossa-cli/pull/1005), [#1006](https://github.com/fossas/fossa-cli/pull/1006), [#1010](https://github.com/fossas/fossa-cli/pull/1010), [#1011](https://github.com/fossas/fossa-cli/pull/1011), [#1012](https://github.com/fossas/fossa-cli/pull/1012), [#1014](https://github.com/fossas/fossa-cli/pull/1014), [#1016](https://github.com/fossas/fossa-cli/pull/1016), [#1017](https://github.com/fossas/fossa-cli/pull/1017), [#1021](https://github.com/fossas/fossa-cli/pull/1021), [#1025](https://github.com/fossas/fossa-cli/pull/1025), [#1026](https://github.com/fossas/fossa-cli/pull/1026), [#1029](https://github.com/fossas/fossa-cli/pull/1029), [#1031](https://github.com/fossas/fossa-cli/pull/1031), [#1032](https://github.com/fossas/fossa-cli/pull/1032), [#1034](https://github.com/fossas/fossa-cli/pull/1034))<br>
+- Container scanning: New experimental scanner. ([#1001](https://github.com/fossas/fossa-cli/pull/1001), [#1002](https://github.com/fossas/fossa-cli/pull/1002), [#1003](https://github.com/fossas/fossa-cli/pull/1003), [#1004](https://github.com/fossas/fossa-cli/pull/1004), [#1005](https://github.com/fossas/fossa-cli/pull/1005), [#1006](https://github.com/fossas/fossa-cli/pull/1006), [#1010](https://github.com/fossas/fossa-cli/pull/1010), [#1011](https://github.com/fossas/fossa-cli/pull/1011), [#1012](https://github.com/fossas/fossa-cli/pull/1012), [#1014](https://github.com/fossas/fossa-cli/pull/1014), [#1016](https://github.com/fossas/fossa-cli/pull/1016), [#1017](https://github.com/fossas/fossa-cli/pull/1017), [#1021](https://github.com/fossas/fossa-cli/pull/1021), [#1025](https://github.com/fossas/fossa-cli/pull/1025), [#1026](https://github.com/fossas/fossa-cli/pull/1026), [#1029](https://github.com/fossas/fossa-cli/pull/1029), [#1031](https://github.com/fossas/fossa-cli/pull/1031), [#1032](https://github.com/fossas/fossa-cli/pull/1032), [#1034](https://github.com/fossas/fossa-cli/pull/1034))<br>
   For more information, see the [experimental container scanning documentation](./docs/references/experimental/container/experimental-scanner.md).
-- Add `dist-newstyle` to the list of automatically filtered directories. ([#1030](https://github.com/fossas/fossa-cli/pull/1035))
-- Fix a bug in fossa-deps.schema.json. It is now valid JSON. ([#1030](https://github.com/fossas/fossa-cli/pull/1030))
+- Filters: Add `dist-newstyle` to the list of automatically filtered directories. ([#1030](https://github.com/fossas/fossa-cli/pull/1035))
+- `fossa-deps`: Fix a bug in `fossa-deps.schema.json`, it is now valid JSON. ([#1030](https://github.com/fossas/fossa-cli/pull/1030))
 
 ## 3.3.12
 
@@ -20,7 +20,7 @@
 
 ## v3.3.11
 
-- `fossa test` - `fossa test --json` produces json output when there are 0 issues found. ([#999](https://github.com/fossas/fossa-cli/pull/999))
+- `fossa test`: `fossa test --json` produces json output when there are 0 issues found. ([#999](https://github.com/fossas/fossa-cli/pull/999))
 
 ## v3.3.10
 
@@ -43,28 +43,28 @@
 - Test: Adds `--diff` option for `fossa test` command. ([#986](https://github.com/fossas/fossa-cli/pull/986))
 
 ## v3.3.6
-- Make CLI-side license scanning the default method of scanning vendored dependencies
+- License scanning: Make CLI-side license scanning the default method for `vendored-dependencies`.
 - Maven: Report direct dependencies as direct rather than deep. ([#963](https://github.com/fossas/fossa-cli/pull/963))
 
 ## v3.3.5
 - Pnpm: Adds support for dependency analysis using `pnpm-lock.yaml` file. ([#958](https://github.com/fossas/fossa-cli/pull/958))
 
 ## v3.3.4
-- Removes copyright information from attribution reports in the JSON output ([#945](https://github.com/fossas/fossa-cli/pull/945)) as it was never available from the server.
+- `fossa report attribution`: Removes copyright information from JSON output ([#945](https://github.com/fossas/fossa-cli/pull/945)) as it was never available from the server.
 - VSI scans now automatically skip the `.git` directory inside the scan root ([#969](https://github.com/fossas/fossa-cli/pull/969)).
 
 ## v3.3.3
 - Cocoapods: Cocoapods analyzer does not handle subspecs in vendored podspecs. ([#964](https://github.com/fossas/fossa-cli/pull/964/files))
 
 ## v3.3.2
-- CLI-side license scans will skip rescanning revisions that are already known to FOSSA. This can be overridden by using the `--force-vendored-dependency-rescans` flag.
+- License scanning: Skip rescanning revisions that are already known to FOSSA. This can be overridden by using the `--force-vendored-dependency-rescans` flag.
 - Swift: Added support for `Package.resolved` v2 files ([#957](https://github.com/fossas/fossa-cli/pull/957)).
 - Perl: Updated version number parser to be more lenient on non-textual version numbers ([#960](https://github.com/fossas/fossa-cli/pull/960))
 
 ## v3.3.1
 - Vendor Dependencies: Considers `licence` and `license` equivalent when performing native license scan ([#939](https://github.com/fossas/fossa-cli/pull/939)).
 - Vendor Dependencies: Native license scanning works in alpine linux without additional dependencies ([#949](https://github.com/fossas/fossa-cli/pull/949)).
-- Adds copyright information to attribution reports in the JSON output ([#945](https://github.com/fossas/fossa-cli/pull/945)).
+- `fossa report attribution`: Adds copyright information to JSON output ([#945](https://github.com/fossas/fossa-cli/pull/945)).
 - Scala: non-multi sbt projects include deep dependencies ([#942](https://github.com/fossas/fossa-cli/pull/942)).
 
 ## v3.3.0
@@ -81,7 +81,7 @@ Read more about telemetry: https://github.com/fossas/fossa-cli/blob/master/docs/
 
 ## v3.2.15
 
-- Update Maven depGraph plugin to 4.0.1 and add a fallback ot the legacy 3.3.0 plugin ([#895](https://github.com/fossas/fossa-cli/pull/895))
+- Maven: Update `depGraph` plugin to `4.0.1` and add a fallback ot the legacy `3.3.0` plugin ([#895](https://github.com/fossas/fossa-cli/pull/895))
 
 ## v3.2.14
 
@@ -93,13 +93,13 @@ Read more about telemetry: https://github.com/fossas/fossa-cli/blob/master/docs/
 
 ## v3.2.12
 
-- Adds `text` as an option to `fossa report attribution --format`. ([#921](https://github.com/fossas/fossa-cli/pull/921))
+- `fossa report attribution`: Adds `text` as an option to `--format`. ([#921](https://github.com/fossas/fossa-cli/pull/921))
 - Go: The standard library is no longer reported as a dependency. ([#918](https://github.com/fossas/fossa-cli/pull/918))
 
 ## v3.2.11
 
 - nodejs: Refine how workspace packages are recognized/skipped. ([#916](https://github.com/fossas/fossa-cli/pull/916))
-- Cocoapods - Resolves vendored local podspecs into their source Git repositories when possible. ([#875](https://github.com/fossas/fossa-cli/pull/875))
+- Cocoapods: Resolves vendored local podspecs into their source Git repositories when possible. ([#875](https://github.com/fossas/fossa-cli/pull/875))
 
 ## v3.2.10
 
@@ -116,8 +116,8 @@ Read more about telemetry: https://github.com/fossas/fossa-cli/blob/master/docs/
 
 ## v3.2.7
 
-- debug: Redact all known API keys from the debug bundle (#[897](https://github.com/fossas/fossa-cli/pull/897))
-- nodejs: Discover peer deps and transitive deps for name-spaced packages in package-lock.json. ([#882](https://github.com/fossas/fossa-cli/pull/882))
+- Debug: Redact all known API keys from the debug bundle (#[897](https://github.com/fossas/fossa-cli/pull/897))
+- Nodejs: Discover peer deps and transitive deps for name-spaced packages in package-lock.json. ([#882](https://github.com/fossas/fossa-cli/pull/882))
 
 ## v3.2.6
 
@@ -125,17 +125,19 @@ Read more about telemetry: https://github.com/fossas/fossa-cli/blob/master/docs/
 
 ## v3.2.5
 
-- debug: Reduce the size of debug bundles. ([#890](https://github.com/fossas/fossa-cli/pull/890))
+- Debug: Reduce the size of debug bundles. ([#890](https://github.com/fossas/fossa-cli/pull/890))
 
 ## v3.2.4
-- nodejs: Fixed a bug where dev deps that only appear in requires were considered production dependencies. ([#884](https://github.com/fossas/fossa-cli/pull/884))
+
+- Nodejs: Fixed a bug where dev deps that only appear in requires were considered production dependencies. ([#884](https://github.com/fossas/fossa-cli/pull/884))
 
 ## v3.2.3
-- nodejs: Fixed a bug where some dev dependencies weren't removed during shrinking. ([#859](https://github.com/fossas/fossa-cli/pull/859))
+
+- Nodejs: Fixed a bug where some dev dependencies weren't removed during shrinking. ([#859](https://github.com/fossas/fossa-cli/pull/859))
 
 ## v3.2.2
 
-- nodejs: Fix a bug where cycles involved peer dependencies would cause an infinite loop. ([#870](https://github.com/fossas/fossa-cli/pull/870))
+- Nodejs: Fix a bug where cycles involved peer dependencies would cause an infinite loop. ([#870](https://github.com/fossas/fossa-cli/pull/870))
 - Experimental: Allow local license scanning of vendored dependencies (specified in `fossa-deps.yml` file) when using `--experimental-native-license-scan`.
   - [#868](https://github.com/fossas/fossa-cli/pull/868)
   - [#858](https://github.com/fossas/fossa-cli/pull/858)
