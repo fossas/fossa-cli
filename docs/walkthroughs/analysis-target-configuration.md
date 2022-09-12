@@ -154,8 +154,8 @@ targets:
 
 ## Target Filtering for Submodules
 
-For some package manager, you may have submodules or sub-projects within a single project
-that you are analyzing. And you may want to analyze only specifics sub project in some cases.
+For some package managers, you may have submodules or sub-projects within a single project
+that you are analyzing and you may want to analyze only specifics sub project in some cases.
 
 Here is example with gradle:
 
