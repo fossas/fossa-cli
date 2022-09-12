@@ -298,7 +298,7 @@ In `fossa-cli`, this can be achieved by using [exclusion filtering](./../../../f
 [ INFO] Found target: gradle@./::utilities
 ```
 
-2) Now to analyze only `utilities`, use `.fossa.yml` file.
+2) Now to analyze only `utilities`, use a `.fossa.yml` file in the project root.
 
 ```yaml
 # filename: .fossa.yml
