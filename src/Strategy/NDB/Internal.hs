@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- | This implementation of the NDB format is heavily based on the Go project here:
---   https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L60
+--   https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go
 --
 --   The "New" Database format by RPM is not well documented outside the original source code, located here:
 --   https://github.com/rpm-software-management/rpm/blob/rpm-4.17.0-release/lib/backend/ndb/rpmpkg.c
@@ -92,11 +92,11 @@ readNDB' file = do
   -- If any of the above change in the future this may need to be rethought.
   content <- readContentsBS file
 
-  -- Equivalent to 'Open': https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L93
+  -- Equivalent to 'Open': https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L93-L127
   header <- fromEitherParser $ runParser parseRawNdb "ndb header" content
   entries <- fromEitherParser . runParser (parseSlotEntries header) "slot entries" $ slice ndbHeaderLength content
 
-  -- Equivalent to 'Read', without the needless channel: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L129
+  -- Equivalent to 'Read', without the needless channel: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L129-L192
   readBlobs content $ filter ndbSlotEntryShouldProcess entries
   where
     readBlobs :: (Has Diagnostics sig m) => ByteString -> [NdbSlotEntry] -> m [ByteString]
@@ -138,8 +138,8 @@ data NdbBlobHeader = NdbBlobHeader
 -- The original structure contains the file handle too, but as mentioned in 'readNdb'' this code doesn't use a file handle,
 -- so instead it just parses the entries themselves instead of a container type.
 --
--- Structure: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L82-L85
--- Parse: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L93-L127
+-- Structure: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L82-L85
+-- Parse: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L93-L127
 -- Validation is handled by the child parsers.
 parseRawNdb :: Parser NdbHeader
 parseRawNdb = parseNdbHeader <?> "header"
@@ -151,9 +151,9 @@ parseSlotEntries header = count (ndbHeaderEntryCount header) (parseNdbSlotEntry 
 -- Due to the way in which this module buffers the file content for parsers, parsing the unused portion of the struct is technically not needed.
 -- It's kept in for completeness, so that in the future if this module needs to move to handle based parsing it can do so with less surprises.
 --
--- Structure: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L60-L66
--- Parse: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L99-L103
--- Validate: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L105-L113
+-- Structure: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L60-L66
+-- Parse: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L99-L103
+-- Validate: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L105-L113
 parseNdbHeader :: Parser NdbHeader
 parseNdbHeader =
   NdbHeader
@@ -173,9 +173,9 @@ parseNdbHeader =
 
 -- | Parse a slot entry.
 --
--- Structure: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L68-L73
--- Parse: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L116-L117
--- Validate: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L138-L145
+-- Structure: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L68-L73
+-- Parse: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L116-L117
+-- Validate: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L138-L145
 parseNdbSlotEntry :: Parser NdbSlotEntry
 parseNdbSlotEntry =
   NdbSlotEntry
@@ -191,9 +191,9 @@ parseNdbSlotEntry =
 
 -- | Parse the header for a specific blob.
 --
--- Structure: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L75-L80
--- Parse: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L159-L167
--- Validate: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L168-L178
+-- Structure: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L75-L80
+-- Parse: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L159-L167
+-- Validate: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L168-L178
 parseNdbBlobHeader :: NdbSlotEntry -> Parser NdbBlobHeader
 parseNdbBlobHeader slot =
   NdbBlobHeader
@@ -211,43 +211,43 @@ parseNdbBlobHeader slot =
 -- | Parse a blob.
 -- Contains no real structure (other than that it is, in Haskell terms, a '[Word8]') or validation.
 --
--- Parse: https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L182-L187
+-- Parse: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L182-L187
 parseNdbBlob :: NdbBlobHeader -> Parser ByteString
 parseNdbBlob NdbBlobHeader{..} = BS.pack <$> parseBytesRaw (fromIntegral ndbBlobHeaderLen)
 
--- | https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L88
+-- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L88
 ndbHeaderMagicExpected :: Word32
 ndbHeaderMagicExpected = 1349349458
 
--- | https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L138
+-- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L138
 ndbSlotMagicExpected :: Word32
 ndbSlotMagicExpected = 1953459283
 
--- | https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L168
+-- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L168
 ndbBlobMagicExpected :: Word32
 ndbBlobMagicExpected = 1398959170
 
--- | https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L111
+-- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L111
 ndbHeaderMaxPages :: Word32
 ndbHeaderMaxPages = 2048
 
--- | https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L89
+-- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L89
 ndbHeaderSupportedVersion :: Word32
 ndbHeaderSupportedVersion = 0
 
--- | https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L87
+-- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L87
 ndbSlotEntriesPerPage :: Word32
 ndbSlotEntriesPerPage = 256
 
--- | https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L135
+-- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L135
 ndbBlobHeaderSize :: Word32
 ndbBlobHeaderSize = 16
 
--- | https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L116
+-- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L116
 ndbHeaderEntryCount :: NdbHeader -> Int
 ndbHeaderEntryCount NdbHeader{ndbHeaderSlotNPages} = fromIntegral $ ndbHeaderSlotNPages * ndbSlotEntriesPerPage - 2
 
--- | https://github.com/jssblck/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L146-L149
+-- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L146-L149
 ndbSlotEntryShouldProcess :: NdbSlotEntry -> Bool
 ndbSlotEntryShouldProcess NdbSlotEntry{ndbSlotPkgIndex} = ndbSlotPkgIndex /= 0
 
