@@ -135,8 +135,6 @@ data CIEnvironment
   | UnknownCI
   deriving (Eq, Ord, Generic)
 
--- Modifying values below, also requires modifying value in
--- FOSSA's server's cli telemetry type for compatibility.
 instance Show CIEnvironment where
   show GithubAction = "github_action"
   show AzurePipeline = "azure_pipeline"
