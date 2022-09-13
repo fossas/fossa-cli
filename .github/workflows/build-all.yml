@@ -46,7 +46,7 @@ jobs:
       if: ${{ contains(matrix.os, 'ubuntu') }}
       shell: sh
       run: |
-        apk add bash xz-libs=5.2.6-r0 xz-dev=5.2.6-r0 bzip2-dev bzip2-static upx curl jq
+        apk add bash xz-libs xz-dev bzip2-dev bzip2-static upx curl jq
 
     - name: Install MacOS binary dependencies
       if: ${{ contains(matrix.os, 'macos') }}
