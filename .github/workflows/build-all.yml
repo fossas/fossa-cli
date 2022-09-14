@@ -41,13 +41,6 @@ jobs:
       with:
         lfs: true
 
-    # Install tools used in `vendor_download.sh`.
-    - name: Install alpine binary dependencies
-      if: ${{ contains(matrix.os, 'ubuntu') }}
-      shell: sh
-      run: |
-        apk add bash xz-libs xz-dev bzip2-dev bzip2-static upx curl jq
-
     - name: Install MacOS binary dependencies
       if: ${{ contains(matrix.os, 'macos') }}
       run: |
