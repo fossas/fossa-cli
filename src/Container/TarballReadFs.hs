@@ -17,7 +17,7 @@ import Codec.Archive.Tar (
     SymbolicLink
   ),
  )
-import Codec.Archive.Tar.Entry (entryTarPath, fromLinkTargetToPosixPath)
+import Codec.Archive.Tar.Entry (LinkTarget, entryTarPath, fromLinkTargetToPosixPath)
 import Codec.Archive.Tar.Index (TarEntryOffset, hReadEntry)
 import Container.Tarball (filePathOf)
 import Control.Carrier.Simple (interpret)
@@ -116,12 +116,16 @@ getContent fs tarball hop entry =
     BlockDevice _ _ -> throw $ userError "block device found, cannot get file content from block device."
     CharacterDevice _ _ -> throw $ userError "character device found, cannot get file content from character device."
     OtherEntryType{} -> throw $ userError "other entry type found, cannot get file content from other entry type."
-    SymbolicLink target ->
+    SymbolicLink target -> toTargetPath target
+    HardLink target -> toTargetPath target
+  where
+    toTargetPath :: LinkTarget -> IO ByteString
+    toTargetPath target =
       if hop > maxHopsOf20
         then throw . userError $ "following symbolic link led to more than maximum hops, current filepaths is: " <> (toString currPath)
         else
           do
-            -- In Tarball symbolic links target path may be provided as absolute, relative, or absolute without leading /
+            -- In Tarball links target path may be provided as absolute, relative, or absolute without leading /
             --
             -- e.g.
             --  etc/os-release => ../usr/lib/os-release
@@ -134,8 +138,7 @@ getContent fs tarball hop entry =
 
             readContentBS fs tarball (hop + 1) (Abs targetPath)
             `ioOr` readContentBS fs tarball (hop + 1) (Abs . Path $ fromLinkTargetToPosixPath target)
-    HardLink _ -> throw $ userError "hard link found, cannot get file content from hard link."
-  where
+
     currPath :: Text
     currPath = toText . filePathOf . entryTarPath $ entry
 
