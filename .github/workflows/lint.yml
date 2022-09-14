@@ -91,6 +91,7 @@ jobs:
 
       - name: Run `cabal install`
         run: |
+          apk add xz-dev bzip2-dev bzip2-static
           cabal update
           cabal install
 
