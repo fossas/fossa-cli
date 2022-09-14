@@ -8,14 +8,15 @@ module Strategy.Cocoapods (
 
 import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject)
 import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
-import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, warnOnErr, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.Glob qualified as Glob
-import Data.List (find)
+import Data.List (find, foldl')
 import Data.List.Extra (singleton)
+import Data.List.NonEmpty (nonEmpty)
+import Data.Maybe (isJust)
 import Data.Text (isSuffixOf)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Filters (AllFilters)
@@ -34,6 +35,7 @@ import Path (Abs, Dir, File, Path, toFilePath)
 import Strategy.Cocoapods.Errors (MissingPodLockFile (MissingPodLockFile))
 import Strategy.Cocoapods.Podfile qualified as Podfile
 import Strategy.Cocoapods.PodfileLock qualified as PodfileLock
+import Strategy.Cocoapods.Podspecs qualified as Podspecs
 import Strategy.Ruby.Parse (Assignment (label, value), PodSpecAssignmentValue (PodspecDict, PodspecStr), Symbol (Symbol), findBySymbol, podspecAssignmentValuesP, readAssignments)
 import Types (
   DependencyResults (..),
@@ -44,6 +46,7 @@ import Types (
   LicenseResult (LicenseResult, licenseFile, licensesFound),
   LicenseType (UnknownType),
  )
+import Control.Applicative (liftA2)
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CocoapodsProject]
 discover = simpleDiscover findProjects mkProject CocoapodsProjectType
@@ -52,7 +55,7 @@ findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters
 findProjects = walkWithFilters' $ \dir _ files -> do
   let podfile = findFileNamed "Podfile" files
       podfileLock = findFileNamed "Podfile.lock" files
-      podSpecs = findFilesMatchingGlob (Glob.toGlob dir Glob.</> "*.podspec") files
+      podSpecs = findFilesMatchingGlob (Glob.toGlob dir Glob.</> "*.podspec") files -- [Path Abs File]
 
   let project =
         CocoapodsProject
@@ -62,9 +65,9 @@ findProjects = walkWithFilters' $ \dir _ files -> do
           , cocoapodsSpecFiles = podSpecs
           }
 
-  case podfile <|> podfileLock of
-    Nothing -> pure ([], WalkContinue)
-    Just _ -> pure ([project], WalkContinue)
+  if isJust podfile || isJust podfileLock || isJust (nonEmpty podSpecs)
+    then pure ([], WalkContinue)
+    else pure ([project], WalkContinue)
 
 data CocoapodsProject = CocoapodsProject
   { cocoapodsPodfile :: Maybe (Path Abs File)
@@ -119,6 +122,7 @@ getDeps project =
           $ (analyzePodfileLock project)
       )
       <||> context "Podfile analysis" (analyzePodfile project)
+      <||> context "Podspecs analysis" (analyzePodSpecs project)
 
 analyzePodfile :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m DependencyResults
 analyzePodfile project = do
@@ -141,3 +145,15 @@ analyzePodfileLock project = do
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [lockFile]
       }
+
+analyzePodSpecs :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m DependencyResults
+analyzePodSpecs project = do
+  let specFiles = (cocoapodsSpecFiles project)
+  let graphs = Podspecs.analyze' <$> specFiles
+  graph  <- Data.List.foldl' (liftA2 (<>)) (head graphs) (tail graphs) 
+  pure $
+    DependencyResults
+    { dependencyGraph = graph
+    , dependencyGraphBreadth = Complete
+    , dependencyManifestFiles = specFiles
+    }

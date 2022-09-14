@@ -1,5 +1,8 @@
 module Strategy.Ruby.Parse (
   rubyString,
+  rubySpc,
+  lexeme,
+  betweenDelim,
   parseRubyAssignment,
   Assignment (..),
   readAssignments,

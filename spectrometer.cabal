@@ -342,6 +342,7 @@ library
     Strategy.Cocoapods.Errors
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
+    Strategy.Cocoapods.Podspecs
     Strategy.Composer
     Strategy.Conda
     Strategy.Conda.CondaList
