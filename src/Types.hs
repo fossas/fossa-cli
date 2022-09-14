@@ -80,6 +80,7 @@ data DiscoveredProjectType
   | LeiningenProjectType
   | MavenProjectType
   | MixProjectType
+  | NDBProjectType
   | NimbleProjectType
   | NpmProjectType
   | NuspecProjectType
@@ -126,6 +127,7 @@ projectTypeToText = \case
   LeiningenProjectType -> "leiningen"
   MavenProjectType -> "maven"
   MixProjectType -> "mix"
+  NDBProjectType -> "ndb"
   NimbleProjectType -> "nimble"
   NpmProjectType -> "npm"
   NuspecProjectType -> "nuspec"

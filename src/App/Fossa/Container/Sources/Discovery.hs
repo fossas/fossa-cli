@@ -33,6 +33,7 @@ import Strategy.Fpm qualified as Fpm
 import Strategy.Glide qualified as Glide
 import Strategy.Googlesource.RepoManifest qualified as RepoManifest
 import Strategy.Maven qualified as Maven
+import Strategy.NDB qualified as NDB
 import Strategy.Nim qualified as Nim
 import Strategy.Node qualified as Node
 import Strategy.NuGet.Nuspec qualified as Nuspec
@@ -68,6 +69,7 @@ osDepsAnalyzers osInfo =
   , DiscoverFunc (Dpkg.discover osInfo)
   , DiscoverFunc (BerkeleyDB.discover osInfo)
   , DiscoverFunc (Sqlite.discover osInfo)
+  , DiscoverFunc (NDB.discover osInfo)
   ]
 
 managedDepsDiscoveryF :: AnalyzeStaticTaskEffs sig m => [DiscoverFunc m]

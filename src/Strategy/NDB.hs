@@ -1,13 +1,12 @@
-module Strategy.BerkeleyDB (
+module Strategy.NDB (
   discover,
   findProjects,
   mkProject,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject), analyzeProject')
+import App.Fossa.Analyze.Types (AnalyzeProject (..), analyzeProject')
 import Container.OsRelease (OsInfo (..))
 import Control.Effect.Diagnostics (Diagnostics, context)
-import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.String.Conversion (toText)
@@ -20,32 +19,31 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
-import Effect.Exec (Exec)
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing, directs)
 import Path (Abs, Dir, File, Path, toFilePath)
-import Strategy.BerkeleyDB.Internal (BdbEntry (..), readBerkeleyDB)
+import Strategy.NDB.Internal (NdbEntry (..), readNDB)
 import Types (
   DepType (LinuxRPM),
   Dependency (..),
   DependencyResults (..),
   DiscoveredProject (..),
-  DiscoveredProjectType (BerkeleyDBProjectType),
+  DiscoveredProjectType (..),
   GraphBreadth (Complete),
   VerConstraint (CEq),
  )
 
-data BerkeleyDatabase = BerkeleyDatabase
+data NdbLocation = NdbLocation
   { dbDir :: Path Abs Dir
   , dbFile :: Path Abs File
   , osInfo :: OsInfo
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON BerkeleyDatabase
+instance ToJSON NdbLocation
 
-instance AnalyzeProject BerkeleyDatabase where
+instance AnalyzeProject NdbLocation where
   analyzeProject _ = getDeps
   analyzeProject' _ = getDeps
 
@@ -56,8 +54,8 @@ discover ::
   ) =>
   OsInfo ->
   Path Abs Dir ->
-  m [DiscoveredProject BerkeleyDatabase]
-discover osInfo = simpleDiscover (findProjects osInfo) mkProject BerkeleyDBProjectType
+  m [DiscoveredProject NdbLocation]
+discover osInfo = simpleDiscover (findProjects osInfo) mkProject NDBProjectType
 
 findProjects ::
   ( Has ReadFS sig m
@@ -66,19 +64,27 @@ findProjects ::
   ) =>
   OsInfo ->
   Path Abs Dir ->
-  m [BerkeleyDatabase]
+  m [NdbLocation]
 findProjects osInfo = walkWithFilters' $ \dir _ files -> do
-  case findFileNamed "Packages" files of
+  case findFileNamed "Packages.db" files of
     Nothing -> pure ([], WalkContinue)
     Just file -> do
-      if (Text.isInfixOf "var/lib/rpm/" $ toText . toFilePath $ file)
-        then pure ([BerkeleyDatabase dir file osInfo], WalkContinue)
+      if isSupportedPath file
+        then pure ([NdbLocation dir file osInfo], WalkContinue)
         else pure ([], WalkContinue)
+  where
+    -- The standard location for this is '/var/lib/rpm/', but some distros in some versions (e.g. openSUSE) symlink this elsewhere
+    -- (the example seen for openSUSE is 'usr/lib/sysimage/rpm/').
+    -- For maximal compatibility while still being reasonably confident that this is the 'Packages.db' for the system RPM install,
+    -- this function just checks whether the file is a child of any directory containing the word 'rpm'.
+    -- We may want to consider making walk work with symlinks or unconditionally trying any 'Packages.db' named file.
+    isSupportedPath :: Path Abs File -> Bool
+    isSupportedPath = Text.isInfixOf "rpm" . toText . toFilePath
 
-mkProject :: BerkeleyDatabase -> DiscoveredProject BerkeleyDatabase
+mkProject :: NdbLocation -> DiscoveredProject NdbLocation
 mkProject project =
   DiscoveredProject
-    { projectType = BerkeleyDBProjectType
+    { projectType = NDBProjectType
     , projectBuildTargets = mempty
     , projectPath = dbDir project
     , projectData = project
@@ -86,11 +92,9 @@ mkProject project =
 
 getDeps ::
   ( Has Diagnostics sig m
-  , Has (Lift IO) sig m
   , Has ReadFS sig m
-  , Has Exec sig m
   ) =>
-  BerkeleyDatabase ->
+  NdbLocation ->
   m DependencyResults
 getDeps project = do
   (graph, graphBreadth) <- analyze (dbDir project) (dbFile project) (osInfo project)
@@ -103,33 +107,31 @@ getDeps project = do
 
 analyze ::
   ( Has Diagnostics sig m
-  , Has (Lift IO) sig m
   , Has ReadFS sig m
-  , Has Exec sig m
   ) =>
   Path Abs Dir ->
   Path Abs File ->
   OsInfo ->
   m (Graphing Dependency, GraphBreadth)
 analyze _ file osInfo = do
-  installed <- context ("read berkeleydb database file: " <> toText file) $ readBerkeleyDB file
+  installed <- context ("read database file: " <> toText file) $ readNDB file
   context "building graph of packages" $ pure (buildGraph osInfo installed, Complete)
 
-buildGraph :: OsInfo -> [BdbEntry] -> Graphing Dependency
+buildGraph :: OsInfo -> [NdbEntry] -> Graphing Dependency
 buildGraph (OsInfo os osVersion) = directs . map toDependency
   where
-    toDependency :: BdbEntry -> Dependency
+    toDependency :: NdbEntry -> Dependency
     toDependency pkg =
       Dependency
         LinuxRPM
-        (bdbEntryPackage pkg <> "#" <> os <> "#" <> osVersion)
+        (ndbEntryPackage pkg <> "#" <> os <> "#" <> osVersion)
         (Just $ version pkg)
         mempty
         mempty
         mempty
 
-    version :: BdbEntry -> VerConstraint
-    version pkg = CEq $ (bdbEntryArch pkg) <> "#" <> epoch pkg <> (bdbEntryVersion pkg)
+    version :: NdbEntry -> VerConstraint
+    version pkg = CEq $ (ndbEntryArch pkg) <> "#" <> epoch pkg <> (ndbEntryVersion pkg)
 
-    epoch :: BdbEntry -> Text
-    epoch BdbEntry{bdbEntryEpoch} = maybe "" (<> ":") bdbEntryEpoch
+    epoch :: NdbEntry -> Text
+    epoch NdbEntry{ndbEntryEpoch} = maybe "" (<> ":") ndbEntryEpoch
