@@ -1,23 +1,28 @@
 # FOSSA CLI Changelog
 
-## 3.4.2
+## v3.4.3
+- Container scanning: Supports hardlink file discovery for experimental scanner. ([#1047](https://github.com/fossas/fossa-cli/pull/1047))
+- Container scanning: Supports busybox. ([#1047](https://github.com/fossas/fossa-cli/pull/1047))
+- Container scanning: Increases timeout to 5 mins when extracting image from docker engine api for experimental scanner. ([#1047](https://github.com/fossas/fossa-cli/pull/1047))
+
+## v3.4.2
 
 - API: Error messages are more clear and provide user-actionable feedback. ([#1048](https://github.com/fossas/fossa-cli/pull/1048))
 - Metrics: Reports the kind of CI environment in which FOSSA is running, if any. ([#1043](https://github.com/fossas/fossa-cli/pull/1043))
 
-## 3.4.1
+## v3.4.1
 
 - Container scanning: RPM: Add support for the Sqlite backend. ([#1044](https://github.com/fossas/fossa-cli/pull/1044))
 - Container scanning: RPM: Add support for the NDB backend. ([#1046](https://github.com/fossas/fossa-cli/pull/1046))
 
-## 3.4.0
+## v3.4.0
 
 - Container scanning: New experimental scanner. ([#1001](https://github.com/fossas/fossa-cli/pull/1001), [#1002](https://github.com/fossas/fossa-cli/pull/1002), [#1003](https://github.com/fossas/fossa-cli/pull/1003), [#1004](https://github.com/fossas/fossa-cli/pull/1004), [#1005](https://github.com/fossas/fossa-cli/pull/1005), [#1006](https://github.com/fossas/fossa-cli/pull/1006), [#1010](https://github.com/fossas/fossa-cli/pull/1010), [#1011](https://github.com/fossas/fossa-cli/pull/1011), [#1012](https://github.com/fossas/fossa-cli/pull/1012), [#1014](https://github.com/fossas/fossa-cli/pull/1014), [#1016](https://github.com/fossas/fossa-cli/pull/1016), [#1017](https://github.com/fossas/fossa-cli/pull/1017), [#1021](https://github.com/fossas/fossa-cli/pull/1021), [#1025](https://github.com/fossas/fossa-cli/pull/1025), [#1026](https://github.com/fossas/fossa-cli/pull/1026), [#1029](https://github.com/fossas/fossa-cli/pull/1029), [#1031](https://github.com/fossas/fossa-cli/pull/1031), [#1032](https://github.com/fossas/fossa-cli/pull/1032), [#1034](https://github.com/fossas/fossa-cli/pull/1034))<br>
   For more information, see the [experimental container scanning documentation](./docs/references/experimental/container/experimental-scanner.md).
 - Filters: Add `dist-newstyle` to the list of automatically filtered directories. ([#1030](https://github.com/fossas/fossa-cli/pull/1035))
 - `fossa-deps`: Fix a bug in `fossa-deps.schema.json`, it is now valid JSON. ([#1030](https://github.com/fossas/fossa-cli/pull/1030))
 
-## 3.3.12
+## v3.3.12
 
 - CocoaPods: Fixes error when analyzing podspecs that print non-JSON text to stdout ([#1015](https://github.com/fossas/fossa-cli/pull/1015))
 - VSI: Executes with at least two threads even on a single core system ([#1013](https://github.com/fossas/fossa-cli/pull/1013))
