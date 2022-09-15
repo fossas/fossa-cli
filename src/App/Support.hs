@@ -1,23 +1,41 @@
 module App.Support (
   supportUrl,
   statusPageUrl,
+  fossaSaasHost,
+  fossaEnvironment,
   reportFossaBugErrorMsg,
+  reportCliBugErrorMsg,
   reportTransientErrorMsg,
   reportNetworkErrorMsg,
   reportDefectMsg,
   reportDefectWithFileMsg,
   reportDefectWithDebugBundle,
   requestDebugBundle,
+  FossaEnvironment (..),
 ) where
 
-import Data.Text (Text)
+import Data.String.Conversion (decodeUtf8)
+import Data.Text (Text, isInfixOf)
+import Network.HTTP.Client qualified as HTTP
 import Prettyprinter (Doc, Pretty (pretty), indent, vsep)
+
+data FossaEnvironment = FossaEnvironmentCloud | FossaEnvironmentOnprem deriving (Eq)
 
 supportUrl :: Text
 supportUrl = "https://support.fossa.com/hc/en-us"
 
 statusPageUrl :: Text
 statusPageUrl = "https://status.fossa.com/"
+
+fossaSaasHost :: Text
+fossaSaasHost = "fossa.com"
+
+-- | Return the FOSSA environment used in the request.
+fossaEnvironment :: HTTP.Request -> FossaEnvironment
+fossaEnvironment req' =
+  if fossaSaasHost `isInfixOf` decodeUtf8 (HTTP.host req')
+    then FossaEnvironmentCloud
+    else FossaEnvironmentOnprem
 
 -- | Standard call to action for reporting defects.
 reportDefectMsg :: Doc ann
@@ -60,16 +78,35 @@ reportNetworkErrorMsg =
       , "If this issue persists, please report a bug to FOSSA support at " <> pretty supportUrl
       ]
 
--- | For errors which almost definitely are a bug in FOSSA.
-reportFossaBugErrorMsg :: Doc ann
-reportFossaBugErrorMsg =
+-- | For errors which almost definitely are a bug in the FOSSA CLI.
+reportCliBugErrorMsg :: Doc ann
+reportCliBugErrorMsg =
   withDebugBundle $
     vsep
-      [ "This is likely a bug in FOSSA."
-      , "It is also possible that a router or firewall between FOSSA CLI and the FOSSA service is causing this."
+      [ "This is likely a bug in the FOSSA CLI."
       , ""
-      , "FOSSA may already be aware of this error, in which case this may be transient."
+      , "If this issue persists, please report a bug to FOSSA support at " <> pretty supportUrl
+      ]
+
+-- | For errors which almost definitely are a bug in FOSSA.
+reportFossaBugErrorMsg :: FossaEnvironment -> Doc ann
+reportFossaBugErrorMsg FossaEnvironmentCloud =
+  withDebugBundle $
+    vsep
+      [ "This is likely a bug in FOSSA, although it is also possible that a router or firewall"
+      , "between FOSSA CLI and the FOSSA service is causing this."
+      , ""
+      , "FOSSA may already be aware of this issue, in which case this may be transient."
       , "For current status, see the FOSSA status page at " <> pretty statusPageUrl
+      , ""
+      , "Trying again in a few minutes may resolve this issue."
+      , "If this issue persists, please report a bug to FOSSA support at " <> pretty supportUrl
+      ]
+reportFossaBugErrorMsg FossaEnvironmentOnprem =
+  withDebugBundle $
+    vsep
+      [ "This is likely a bug in FOSSA, although it is also possible that a router or firewall"
+      , "between FOSSA CLI and the FOSSA service is causing this."
       , ""
       , "Trying again in a few minutes may resolve this issue."
       , "If this issue persists, please report a bug to FOSSA support at " <> pretty supportUrl

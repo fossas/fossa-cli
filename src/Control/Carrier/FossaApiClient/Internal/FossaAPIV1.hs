@@ -45,6 +45,9 @@ import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency (..), vendoredDepToLocator)
 import App.Support (
+  FossaEnvironment (FossaEnvironmentCloud),
+  fossaEnvironment,
+  reportCliBugErrorMsg,
   reportDefectMsg,
   reportDefectWithDebugBundle,
   reportFossaBugErrorMsg,
@@ -288,7 +291,8 @@ instance ToDiagnostic FossaError where
         , ""
         , indent 4 $ pretty . displayException $ exception
         , ""
-        , "These errors are usually related to TLS issues. Please refer to:"
+        , "These errors are usually related to TLS issues or the host being unreachable."
+        , "For troubleshooting steps with TLS issues, please refer to:"
         , indent 4 $ pretty ("- " <> fossaSslCertDocsUrl)
         , ""
         , reportDefectMsg
@@ -313,6 +317,8 @@ instance ToDiagnostic FossaError where
         , ""
         , indent 4 $ "Provided:" <+> pretty url
         , indent 6 $ "Reason:" <+> pretty reason
+        , ""
+        , reportDefectMsg
         ]
     StatusCodeError ereq eres ->
       vsep
@@ -369,7 +375,7 @@ instance ToDiagnostic FossaError where
         , indent 4 "Request:" <+> renderRequest ereq
         , indent 4 "Status:" <+> pretty status
         , ""
-        , reportFossaBugErrorMsg
+        , reportFossaBugErrorMsg $ fossaEnvironment ereq
         ]
     InvalidResponseHeaderError ereq header ->
       vsep
@@ -378,7 +384,7 @@ instance ToDiagnostic FossaError where
         , indent 4 "Request:" <+> renderRequest ereq
         , indent 4 "Header:" <+> pretty header
         , ""
-        , reportFossaBugErrorMsg
+        , reportFossaBugErrorMsg $ fossaEnvironment ereq
         ]
     InvalidRequestHeaderError ereq header ->
       vsep
@@ -387,7 +393,7 @@ instance ToDiagnostic FossaError where
         , indent 4 "Request:" <+> renderRequest ereq
         , indent 4 "Header:" <+> pretty header
         , ""
-        , reportFossaBugErrorMsg
+        , reportCliBugErrorMsg
         ]
     ProxyConnectError ereq host port status ->
       vsep
@@ -406,13 +412,14 @@ instance ToDiagnostic FossaError where
         , ""
         , indent 4 "Request:" <+> renderRequest ereq
         , ""
-        , reportFossaBugErrorMsg
+        , reportFossaBugErrorMsg $ fossaEnvironment ereq
         ]
     TlsNotSupportedError ereq ->
-      if (HTTP.host ereq) == "app.fossa.com"
+      if fossaEnvironment ereq == FossaEnvironmentCloud
         then
           vsep
             [ "The FOSSA service reported that it does not support TLS connections."
+            , "This request is connecting to FOSSA's Cloud environment, which only supports TLS connections."
             , ""
             , indent 4 "Request:" <+> renderRequest ereq
             , ""
@@ -420,7 +427,8 @@ instance ToDiagnostic FossaError where
             ]
         else
           vsep
-            [ "The FOSSA service does not support TLS connections."
+            [ "The FOSSA service reported that it does not support TLS connections."
+            , "The FOSSA service is running in the local network environment for your organization, so this is up to your local FOSSA administrators."
             , ""
             , indent 4 "Request:" <+> renderRequest ereq
             , ""
@@ -437,7 +445,7 @@ instance ToDiagnostic FossaError where
         , indent 6 "Expected size (bytes):" <+> pretty (show expect)
         , indent 6 "Provided size (bytes):" <+> pretty (show got)
         , ""
-        , reportFossaBugErrorMsg
+        , reportCliBugErrorMsg
         ]
     ResponseBodyTooShortError ereq expect got ->
       vsep
@@ -447,7 +455,7 @@ instance ToDiagnostic FossaError where
         , indent 6 "Expected size (bytes):" <+> pretty (show expect)
         , indent 6 "Provided size (bytes):" <+> pretty (show got)
         , ""
-        , reportFossaBugErrorMsg
+        , reportFossaBugErrorMsg $ fossaEnvironment ereq
         ]
     InvalidChunkHeadersError ereq ->
       vsep
@@ -455,7 +463,7 @@ instance ToDiagnostic FossaError where
         , ""
         , indent 4 "Request:" <+> renderRequest ereq
         , ""
-        , reportFossaBugErrorMsg
+        , reportFossaBugErrorMsg $ fossaEnvironment ereq
         ]
     IncompleteHeadersError ereq ->
       vsep
@@ -463,7 +471,7 @@ instance ToDiagnostic FossaError where
         , ""
         , indent 4 "Request:" <+> renderRequest ereq
         , ""
-        , reportFossaBugErrorMsg
+        , reportFossaBugErrorMsg $ fossaEnvironment ereq
         ]
     InvalidDestinationHostError ereq ->
       vsep
@@ -499,7 +507,7 @@ instance ToDiagnostic FossaError where
         , ""
         , indent 4 "Request:" <+> renderRequest ereq
         , ""
-        , reportFossaBugErrorMsg
+        , reportCliBugErrorMsg
         ]
     InvalidProxySettingsError ereq msg ->
       vsep
