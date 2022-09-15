@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.4.2
+
+- API: Error messages are more clear and provide user-actionable feedback. ([#1048](https://github.com/fossas/fossa-cli/pull/1048))
+
 ## 3.4.1
 
 - Container scanning: RPM: Add support for the Sqlite backend. ([#1044](https://github.com/fossas/fossa-cli/pull/1044))

@@ -23,6 +23,8 @@ module Effect.Logger (
   logStdout,
   renderIt,
   module X,
+  newlineTrailing,
+  newlinePreceding,
 ) where
 
 import Control.Algebra as X
@@ -214,3 +216,9 @@ ignoreLogger = interpret $ \case
 
 renderIt :: Doc AnsiStyle -> Text
 renderIt = renderStrict . layoutPretty defaultLayoutOptions
+
+newlineTrailing :: Doc ann -> Doc ann
+newlineTrailing doc = vsep [doc, ""]
+
+newlinePreceding :: Doc ann -> Doc ann
+newlinePreceding doc = vsep ["", doc]
