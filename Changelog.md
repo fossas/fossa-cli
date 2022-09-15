@@ -3,6 +3,7 @@
 ## 3.4.2
 
 - API: Error messages are more clear and provide user-actionable feedback. ([#1048](https://github.com/fossas/fossa-cli/pull/1048))
+- Metrics: Reports the kind of CI environment in which FOSSA is running, if any. ([#1043](https://github.com/fossas/fossa-cli/pull/1043))
 
 ## 3.4.1
 
