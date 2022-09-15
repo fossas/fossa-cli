@@ -95,8 +95,6 @@ import Effect.Logger (
   AnsiStyle,
   Doc,
   Pretty (pretty),
-  fillSep,
-  group,
   indent,
   newlinePreceding,
   newlineTrailing,
