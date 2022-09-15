@@ -230,9 +230,9 @@ The following package managers are supported in container scanning:
 
 | Analysis                             | Supported?         | Docs                                                             |
 |--------------------------------------|--------------------|------------------------------------------------------------------|
-| Alpine                               | :white_check_mark: | [Apk Docs](./../../strategies/system/apk/apk.md)                 |
-| Dpkg                                 | :white_check_mark: | [Dpkg Docs](./../../strategies/system/dpkg/dpkg.md)              |
-| Rpm                                  | :x:                | In progress                                                      |
+| Alpine (APK)                         | :white_check_mark: | [APK Docs](./../../strategies/system/apk/apk.md)                 |
+| Debian (DPKG)                        | :white_check_mark: | [DPKG Docs](./../../strategies/system/dpkg/dpkg.md)              |
+| RedHat (RPM)                         | :white_check_mark: | [RPM Docs](../../strategies/system/rpm/rpm-container.md)         |
 | Python (setuptools, poetry, etc.)    | :white_check_mark: | [Python Docs](./../../strategies/languages/python/python.md)     |
 | Javascript (npm, yarn, pnpm, etc.)   | :white_check_mark: | [Javascript Docs](./../../strategies/languages/nodejs/nodejs.md) |
 | Ruby (bundler)                       | :white_check_mark: | [Ruby](./../../strategies/languages/ruby/ruby.md)                |

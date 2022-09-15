@@ -29,6 +29,7 @@ module Control.Effect.Diagnostics (
   fatalOnSomeException',
   fromEither,
   fromEitherShow,
+  fromEitherParser,
   fromMaybe,
   fromMaybeText,
   tagError,
@@ -58,6 +59,7 @@ import Diag.Diagnostic as Diagnostic (
   ToDiagnostic (..),
  )
 import Diag.Result (Result)
+import Text.Megaparsec (ParseErrorBundle, ShowErrorComponent, TraversableStream, VisualStream, errorBundlePretty)
 
 ---------- Diagnostics
 
@@ -136,6 +138,10 @@ fromEither = either fatal pure
 -- | Lift an Either result into the Diagnostics effect, given a Show instance for the error type
 fromEitherShow :: (Show err, Has Diagnostics sig m) => Either err a -> m a
 fromEitherShow = either (fatal . toText . show) pure
+
+-- | Lift a parser result in the Diagnostics effect via errorBundlePretty.
+fromEitherParser :: (Has Diagnostics sig m, VisualStream s, TraversableStream s, ShowErrorComponent e) => Either (ParseErrorBundle s e) a -> m a
+fromEitherParser = either (fatal . toText . errorBundlePretty) pure
 
 -- | Lift a Maybe result into Diagnostics, with the given diagnostic thrown for @Nothing@
 fromMaybe :: (ToDiagnostic err, Has Diagnostics sig m) => err -> Maybe a -> m a

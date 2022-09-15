@@ -8,6 +8,7 @@ module Control.Carrier.Telemetry.Types (
   TelemetryTimeSpent (..),
   TelemetryCmdConfig (..),
   CountableCliFeature (..),
+  CIEnvironment (..),
 ) where
 
 import Control.Concurrent.STM (TMVar)
@@ -69,6 +70,7 @@ data TelemetryRecord = TelemetryRecord
   , cliTotalDurationInSec :: Double
   , cliUsageCounter :: Map CountableCliFeature Int
   , cliVersion :: Text
+  , cliCIEnvironment :: Maybe CIEnvironment
   }
   deriving (Show, Eq, Ord, Generic)
 
@@ -125,3 +127,19 @@ data TelemetryTimeSpent = TelemetryTimeSpent
 
 instance ToJSON TelemetryTimeSpent where
   toEncoding = genericToEncoding defaultOptions
+
+data CIEnvironment
+  = GithubAction
+  | AzurePipeline
+  | Bamboo
+  | UnknownCI
+  deriving (Eq, Ord, Generic)
+
+instance Show CIEnvironment where
+  show GithubAction = "github_action"
+  show AzurePipeline = "azure_pipeline"
+  show Bamboo = "bamboo"
+  show UnknownCI = "unknown_ci"
+
+instance ToJSON CIEnvironment where
+  toJSON = String . showT

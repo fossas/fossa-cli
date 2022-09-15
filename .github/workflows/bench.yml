@@ -8,11 +8,6 @@ jobs:
     container: fossa/haskell-static-alpine:ghc-9.0.2
 
     steps:
-    - name: Install alpine binary dependencies
-      shell: sh
-      run: |
-        apk add bash xz-dev bzip2-dev bzip2-static upx curl jq
-
     - uses: actions-rs/toolchain@v1
       with:
         profile: minimal
