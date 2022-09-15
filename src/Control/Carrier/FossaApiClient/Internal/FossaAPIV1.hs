@@ -44,7 +44,13 @@ import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency (..), vendoredDepToLocator)
-import App.Support (reportDefectMsg)
+import App.Support (
+  reportDefectMsg,
+  reportDefectWithDebugBundle,
+  reportFossaBugErrorMsg,
+  reportNetworkErrorMsg,
+  reportTransientErrorMsg,
+ )
 import App.Types (
   ProjectMetadata (..),
   ProjectRevision (..),
@@ -84,12 +90,18 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.String.Conversion (decodeUtf8, toStrict, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Word (Word8)
+import Data.Word (Word64, Word8)
 import Effect.Logger (
+  AnsiStyle,
+  Doc,
   Pretty (pretty),
+  fillSep,
+  group,
   indent,
-  viaShow,
+  newlinePreceding,
+  newlineTrailing,
   vsep,
+  (<+>),
  )
 import Fossa.API.Types (
   ApiOpts,
@@ -245,30 +257,48 @@ responseTimeoutSeconds sec = responseTimeout $ sec * 1_000_000
 data FossaError
   = JsonDeserializeError String
   | InternalException SomeException
-  | OtherError HttpException
   | BackendPublicFacingError FossaPublicFacingError
+  | InvalidUrlError String String
+  | StatusCodeError HTTP.Request (HTTP.Response ())
+  | TooManyRedirectsError [(HTTP.Request, HTTP.Response ByteString)]
+  | OverlongHeadersError HTTP.Request
+  | ResponseTimeoutError HTTP.Request
+  | ConnectionTimeoutError HTTP.Request
+  | ConnectionFailureError HTTP.Request SomeException
+  | InvalidStatusLineError HTTP.Request String
+  | InvalidResponseHeaderError HTTP.Request String
+  | InvalidRequestHeaderError HTTP.Request String
+  | ProxyConnectError HTTP.Request String Int HTTP.Status
+  | NoResponseDataError HTTP.Request
+  | TlsNotSupportedError HTTP.Request
+  | WrongRequestBodyStreamSizeError HTTP.Request Word64 Word64
+  | ResponseBodyTooShortError HTTP.Request Word64 Word64
+  | InvalidChunkHeadersError HTTP.Request
+  | IncompleteHeadersError HTTP.Request
+  | InvalidDestinationHostError HTTP.Request
+  | HttpZlibError HTTP.Request String
+  | InvalidProxyEnvironmentVariableError HTTP.Request Text Text
+  | ConnectionClosedError HTTP.Request
+  | InvalidProxySettingsError HTTP.Request Text
   deriving (Show)
 
 instance ToDiagnostic FossaError where
   renderDiagnostic = \case
     InternalException exception ->
       vsep
-        [ "An error occurred when accessing the FOSSA API."
+        [ "A socket-level error occurred when accessing the FOSSA API:"
         , ""
         , indent 4 $ pretty . displayException $ exception
         , ""
-        , "If the exception is related to certificate, please refer to:"
+        , "These errors are usually related to TLS issues. Please refer to:"
         , indent 4 $ pretty ("- " <> fossaSslCertDocsUrl)
         , ""
         , reportDefectMsg
         ]
-    JsonDeserializeError err -> "An error occurred when deserializing a response from the FOSSA API: " <> pretty err
-    OtherError err -> "An unknown error occurred when accessing the FOSSA API: " <> viaShow err
+    JsonDeserializeError err -> "An error occurred when deserializing a response from the FOSSA API:" <+> pretty err
     BackendPublicFacingError pfe ->
       vsep
-        [ "An error occurred when accessing the FOSSA API."
-        , ""
-        , "Error message from API:"
+        [ "The FOSSA service reported an error:"
         , ""
         , indent 4 $ pretty . fpeMessage $ pfe
         , ""
@@ -277,7 +307,210 @@ instance ToDiagnostic FossaError where
         , indent 4 $ pretty . fpeUuid $ pfe
         , ""
         , reportDefectMsg
-        , "Please include Error UUID in your request."
+        , "Please include the error UUID in your request."
+        ]
+    InvalidUrlError url reason ->
+      vsep
+        [ "The URL provided is invalid."
+        , ""
+        , indent 4 $ "Provided:" <+> pretty url
+        , indent 6 $ "Reason:" <+> pretty reason
+        ]
+    StatusCodeError ereq eres ->
+      vsep
+        [ "The FOSSA service returned an unexpected status code:"
+        , ""
+        , indent 4 $ "Request:" <+> renderRequest ereq
+        , indent 4 $ "Response:" <+> renderResponse eres
+        , ""
+        , reportTransientErrorMsg
+        ]
+    TooManyRedirectsError txns ->
+      newlineTrailing
+        "Too many redirects were encountered when communicating with the FOSSA service."
+        <> "Network request log:"
+        <> vsep (fmap (\(ereq, eres) -> indent 4 $ renderRequestResponse ereq eres) txns)
+        <> newlinePreceding reportNetworkErrorMsg
+    OverlongHeadersError ereq ->
+      vsep
+        [ "The HTTP headers provided by the server were too long."
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , ""
+        , reportNetworkErrorMsg
+        ]
+    ResponseTimeoutError ereq ->
+      vsep
+        [ "A connection to the FOSSA service was established, but the service took too long to respond."
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , ""
+        , reportNetworkErrorMsg
+        ]
+    ConnectionTimeoutError ereq ->
+      vsep
+        [ "Connecting to the FOSSA service took too long."
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , ""
+        , reportNetworkErrorMsg
+        ]
+    ConnectionFailureError ereq err ->
+      vsep
+        [ "Connecting to the FOSSA service failed:"
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , indent 4 "Error:" <+> pretty (displayException err)
+        , ""
+        , reportNetworkErrorMsg
+        ]
+    InvalidStatusLineError ereq status ->
+      vsep
+        [ "The FOSSA service returned a status that could not be parsed:"
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , indent 4 "Status:" <+> pretty status
+        , ""
+        , reportFossaBugErrorMsg
+        ]
+    InvalidResponseHeaderError ereq header ->
+      vsep
+        [ "The FOSSA service returned a header which could not be parsed:"
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , indent 4 "Header:" <+> pretty header
+        , ""
+        , reportFossaBugErrorMsg
+        ]
+    InvalidRequestHeaderError ereq header ->
+      vsep
+        [ "The FOSSA CLI provided a header which was not HTTP compliant:"
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , indent 4 "Header:" <+> pretty header
+        , ""
+        , reportFossaBugErrorMsg
+        ]
+    ProxyConnectError ereq host port status ->
+      vsep
+        [ "The proxy specified for FOSSA to use returned an unexpected status code."
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , indent 4 "Proxy:"
+        , indent 6 "Server:" <+> pretty host <+> ":" <> pretty port
+        , indent 6 "Status:" <+> pretty (HTTP.statusCode status)
+        , ""
+        , reportNetworkErrorMsg
+        ]
+    NoResponseDataError ereq ->
+      vsep
+        [ "The connection to the FOSSA service was closed without a response."
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , ""
+        , reportFossaBugErrorMsg
+        ]
+    TlsNotSupportedError ereq ->
+      if (HTTP.host ereq) == "app.fossa.com"
+        then
+          vsep
+            [ "The FOSSA service reported that it does not support TLS connections."
+            , ""
+            , indent 4 "Request:" <+> renderRequest ereq
+            , ""
+            , reportNetworkErrorMsg
+            ]
+        else
+          vsep
+            [ "The FOSSA service does not support TLS connections."
+            , ""
+            , indent 4 "Request:" <+> renderRequest ereq
+            , ""
+            , "Try again with an `http://` URL."
+            , "The FOSSA service URL may be specified in `.fossa.yml` or with the `-e` or `--endpoint` arguments."
+            , ""
+            , reportDefectWithDebugBundle
+            ]
+    WrongRequestBodyStreamSizeError ereq expect got ->
+      vsep
+        [ "The FOSSA CLI did not provide a request body with the correct length."
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , indent 6 "Expected size (bytes):" <+> pretty (show expect)
+        , indent 6 "Provided size (bytes):" <+> pretty (show got)
+        , ""
+        , reportFossaBugErrorMsg
+        ]
+    ResponseBodyTooShortError ereq expect got ->
+      vsep
+        [ "The FOSSA service provided a response body that was too short."
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , indent 6 "Expected size (bytes):" <+> pretty (show expect)
+        , indent 6 "Provided size (bytes):" <+> pretty (show got)
+        , ""
+        , reportFossaBugErrorMsg
+        ]
+    InvalidChunkHeadersError ereq ->
+      vsep
+        [ "The FOSSA service provided a chunked response but it had invalid headers."
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , ""
+        , reportFossaBugErrorMsg
+        ]
+    IncompleteHeadersError ereq ->
+      vsep
+        [ "The FOSSA service returned an incomplete set of headers."
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , ""
+        , reportFossaBugErrorMsg
+        ]
+    InvalidDestinationHostError ereq ->
+      vsep
+        [ "The host provided as the FOSSA CLI endpoint is invalid."
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , ""
+        , reportDefectMsg
+        ]
+    HttpZlibError ereq msg ->
+      vsep
+        [ "The FOSSA service provided a response body that was unable to decompress."
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , indent 6 "Decompression error:" <+> pretty msg
+        , ""
+        , reportNetworkErrorMsg
+        ]
+    InvalidProxyEnvironmentVariableError ereq var val ->
+      vsep
+        [ "A provided environment variable used to configure the proxy connection is invalid."
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , indent 4 "Environment variable:"
+        , indent 6 "Name:" <+> pretty var
+        , indent 6 "Value:" <+> pretty val
+        , ""
+        , reportDefectMsg
+        ]
+    ConnectionClosedError ereq ->
+      vsep
+        [ "FOSSA CLI attempted to reuse a connection that was closed."
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , ""
+        , reportFossaBugErrorMsg
+        ]
+    InvalidProxySettingsError ereq msg ->
+      vsep
+        [ "The proxy settings provided were not valid."
+        , ""
+        , indent 4 "Request:" <+> renderRequest ereq
+        , indent 4 "Proxy settings:" <+> pretty msg
+        , ""
+        , reportDefectMsg
         ]
 
 containerUploadUrl :: Url scheme -> Url scheme
@@ -364,16 +597,72 @@ mkMetadataOpts ProjectMetadata{..} projectName = mconcat $ catMaybes maybes
 
 mangleError :: HttpException -> FossaError
 mangleError err = case errWithoutSensitiveInfo of
-  VanillaHttpException (HTTP.HttpExceptionRequest _ (HTTP.InternalException e)) -> InternalException e
-  VanillaHttpException (HTTP.HttpExceptionRequest _ (HTTP.StatusCodeException _ respBody)) ->
-    case decodeStrict respBody of
-      Just pfe -> BackendPublicFacingError pfe
-      Nothing -> OtherError errWithoutSensitiveInfo
   JsonHttpException msg -> JsonDeserializeError msg
-  _ -> OtherError errWithoutSensitiveInfo
+  VanillaHttpException he -> case he of
+    HTTP.HttpExceptionRequest ereq hec -> case hec of
+      HTTP.StatusCodeException res respBody -> case decodeStrict respBody of
+        Just pfe -> BackendPublicFacingError pfe
+        Nothing -> StatusCodeError ereq res
+      HTTP.TooManyRedirects res -> TooManyRedirectsError $ fmap (ereq,) res
+      HTTP.OverlongHeaders -> OverlongHeadersError ereq
+      HTTP.ResponseTimeout -> ResponseTimeoutError ereq
+      HTTP.ConnectionTimeout -> ConnectionTimeoutError ereq
+      HTTP.ConnectionFailure se -> ConnectionFailureError ereq se
+      HTTP.InvalidStatusLine bs -> InvalidStatusLineError ereq $ show bs
+      HTTP.InvalidHeader bs -> InvalidResponseHeaderError ereq $ show bs
+      HTTP.InvalidRequestHeader bs -> InvalidRequestHeaderError ereq $ show bs
+      HTTP.InternalException se -> InternalException se
+      HTTP.ProxyConnectException host port status -> ProxyConnectError ereq (show host) port status
+      HTTP.NoResponseDataReceived -> NoResponseDataError ereq
+      HTTP.TlsNotSupported -> TlsNotSupportedError ereq
+      HTTP.WrongRequestBodyStreamSize expected actual -> WrongRequestBodyStreamSizeError ereq expected actual
+      HTTP.ResponseBodyTooShort expected actual -> ResponseBodyTooShortError ereq expected actual
+      HTTP.InvalidChunkHeaders -> InvalidChunkHeadersError ereq
+      HTTP.IncompleteHeaders -> IncompleteHeadersError ereq
+      HTTP.InvalidDestinationHost _ -> InvalidDestinationHostError ereq
+      HTTP.HttpZlibException ze -> HttpZlibError ereq $ show ze
+      HTTP.InvalidProxyEnvironmentVariable var value -> InvalidProxyEnvironmentVariableError ereq var value
+      HTTP.ConnectionClosed -> ConnectionClosedError ereq
+      HTTP.InvalidProxySettings txt -> InvalidProxySettingsError ereq txt
+    HTTP.InvalidUrlException url str -> InvalidUrlError url str
   where
     errWithoutSensitiveInfo :: HttpException
     errWithoutSensitiveInfo = redactSensitiveInfoFromException err
+
+-- Render the request and the response.
+renderRequestResponse :: HTTP.Request -> HTTP.Response a -> Doc AnsiStyle
+renderRequestResponse request response = renderRequest request <> " -> " <> renderResponse response
+
+-- Render response details for humans to read.
+-- Does not render bodies.
+-- TODO: Possibly render it 'viaShow' in debug mode for more info.
+renderResponse :: HTTP.Response a -> Doc AnsiStyle
+renderResponse = pretty . show . HTTP.statusCode . HTTP.responseStatus
+
+-- Render request details for humans to read.
+-- TODO: Possibly render it 'viaShow' in debug mode for more info.
+renderRequest :: HTTP.Request -> Doc AnsiStyle
+renderRequest req' =
+  pretty $
+    decodeUtf8 (HTTP.method req')
+      <> " "
+      <> renderHttpHttps
+      <> decodeUtf8 (HTTP.host req')
+      <> renderNonDefaultPort
+      <> decodeUtf8 (HTTP.path req')
+      <> decodeUtf8 (HTTP.queryString req')
+  where
+    renderHttpHttps :: String
+    renderHttpHttps = (if HTTP.secure req' then "https" else "http") <> "://"
+
+    renderNonDefaultPort :: String
+    renderNonDefaultPort =
+      if (HTTP.port req') /= defaultPort
+        then ":" <> show (HTTP.port req')
+        else ""
+
+    defaultPort :: Int
+    defaultPort = if HTTP.secure req' then 443 else 80
 
 redactSensitiveInfoFromException :: HttpException -> HttpException
 redactSensitiveInfoFromException (VanillaHttpException (HTTP.HttpExceptionRequest r (HTTP.StatusCodeException resp respBody))) =
