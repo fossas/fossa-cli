@@ -300,7 +300,7 @@ instance ToDiagnostic FossaError where
     JsonDeserializeError err -> "An error occurred when deserializing a response from the FOSSA API:" <+> pretty err
     BackendPublicFacingError pfe ->
       vsep
-        [ "The FOSSA service reported an error:"
+        [ "The FOSSA endpoint reported an error:"
         , ""
         , indent 4 $ pretty . fpeMessage $ pfe
         , ""
@@ -322,7 +322,7 @@ instance ToDiagnostic FossaError where
         ]
     StatusCodeError ereq eres ->
       vsep
-        [ "The FOSSA service returned an unexpected status code:"
+        [ "The FOSSA endpoint returned an unexpected status code:"
         , ""
         , indent 4 $ "Request:" <+> renderRequest ereq
         , indent 4 $ "Response:" <+> renderResponse eres
@@ -331,7 +331,7 @@ instance ToDiagnostic FossaError where
         ]
     TooManyRedirectsError txns ->
       newlineTrailing
-        "Too many redirects were encountered when communicating with the FOSSA service."
+        "Too many redirects were encountered when communicating with the FOSSA endpoint."
         <> "Network request log:"
         <> vsep (fmap (\(ereq, eres) -> indent 4 $ renderRequestResponse ereq eres) txns)
         <> newlinePreceding reportNetworkErrorMsg
@@ -345,7 +345,7 @@ instance ToDiagnostic FossaError where
         ]
     ResponseTimeoutError ereq ->
       vsep
-        [ "A connection to the FOSSA service was established, but the service took too long to respond."
+        [ "A connection to the FOSSA endpoint was established, but the service took too long to respond."
         , ""
         , indent 4 "Request:" <+> renderRequest ereq
         , ""
@@ -353,7 +353,7 @@ instance ToDiagnostic FossaError where
         ]
     ConnectionTimeoutError ereq ->
       vsep
-        [ "Connecting to the FOSSA service took too long."
+        [ "Connecting to the FOSSA endpoint took too long."
         , ""
         , indent 4 "Request:" <+> renderRequest ereq
         , ""
@@ -361,7 +361,7 @@ instance ToDiagnostic FossaError where
         ]
     ConnectionFailureError ereq err ->
       vsep
-        [ "Connecting to the FOSSA service failed:"
+        [ "Connecting to the FOSSA endpoint failed:"
         , ""
         , indent 4 "Request:" <+> renderRequest ereq
         , indent 4 "Error:" <+> pretty (displayException err)
@@ -370,7 +370,7 @@ instance ToDiagnostic FossaError where
         ]
     InvalidStatusLineError ereq status ->
       vsep
-        [ "The FOSSA service returned a status that could not be parsed:"
+        [ "The FOSSA endpoint returned a status that could not be parsed:"
         , ""
         , indent 4 "Request:" <+> renderRequest ereq
         , indent 4 "Status:" <+> pretty status
@@ -379,7 +379,7 @@ instance ToDiagnostic FossaError where
         ]
     InvalidResponseHeaderError ereq header ->
       vsep
-        [ "The FOSSA service returned a header which could not be parsed:"
+        [ "The FOSSA endpoint returned a header which could not be parsed:"
         , ""
         , indent 4 "Request:" <+> renderRequest ereq
         , indent 4 "Header:" <+> pretty header
@@ -408,7 +408,7 @@ instance ToDiagnostic FossaError where
         ]
     NoResponseDataError ereq ->
       vsep
-        [ "The connection to the FOSSA service was closed without a response."
+        [ "The connection to the FOSSA endpoint was closed without a response."
         , ""
         , indent 4 "Request:" <+> renderRequest ereq
         , ""
@@ -418,8 +418,8 @@ instance ToDiagnostic FossaError where
       if fossaEnvironment ereq == FossaEnvironmentCloud
         then
           vsep
-            [ "The FOSSA service reported that it does not support TLS connections."
-            , "This request is connecting to FOSSA's Cloud environment, which only supports TLS connections."
+            [ "The FOSSA endpoint reported that it does not support TLS connections."
+            , "This request is connecting to FOSSA's cloud environment, which only supports TLS connections."
             , ""
             , indent 4 "Request:" <+> renderRequest ereq
             , ""
@@ -427,13 +427,13 @@ instance ToDiagnostic FossaError where
             ]
         else
           vsep
-            [ "The FOSSA service reported that it does not support TLS connections."
-            , "The FOSSA service is running in the local network environment for your organization, so this is up to your local FOSSA administrators."
+            [ "The FOSSA endpoint reported that it does not support TLS connections."
+            , "This request is not connecting to FOSSA's cloud environment, so this is up to the FOSSA administrators in your organization."
             , ""
             , indent 4 "Request:" <+> renderRequest ereq
             , ""
             , "Try again with an `http://` URL."
-            , "The FOSSA service URL may be specified in `.fossa.yml` or with the `-e` or `--endpoint` arguments."
+            , "The FOSSA endpoint URL may be specified in `.fossa.yml` or with the `-e` or `--endpoint` arguments."
             , ""
             , reportDefectWithDebugBundle
             ]
@@ -449,7 +449,7 @@ instance ToDiagnostic FossaError where
         ]
     ResponseBodyTooShortError ereq expect got ->
       vsep
-        [ "The FOSSA service provided a response body that was too short."
+        [ "The FOSSA endpoint provided a response body that was too short."
         , ""
         , indent 4 "Request:" <+> renderRequest ereq
         , indent 6 "Expected size (bytes):" <+> pretty (show expect)
@@ -459,7 +459,7 @@ instance ToDiagnostic FossaError where
         ]
     InvalidChunkHeadersError ereq ->
       vsep
-        [ "The FOSSA service provided a chunked response but it had invalid headers."
+        [ "The FOSSA endpoint provided a chunked response but it had invalid headers."
         , ""
         , indent 4 "Request:" <+> renderRequest ereq
         , ""
@@ -467,7 +467,7 @@ instance ToDiagnostic FossaError where
         ]
     IncompleteHeadersError ereq ->
       vsep
-        [ "The FOSSA service returned an incomplete set of headers."
+        [ "The FOSSA endpoint returned an incomplete set of headers."
         , ""
         , indent 4 "Request:" <+> renderRequest ereq
         , ""
@@ -483,7 +483,7 @@ instance ToDiagnostic FossaError where
         ]
     HttpZlibError ereq msg ->
       vsep
-        [ "The FOSSA service provided a response body that was unable to decompress."
+        [ "The FOSSA endpoint provided a response body that was unable to decompress."
         , ""
         , indent 4 "Request:" <+> renderRequest ereq
         , indent 6 "Decompression error:" <+> pretty msg

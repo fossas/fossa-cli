@@ -95,7 +95,7 @@ reportFossaBugErrorMsg FossaEnvironmentCloud =
   withDebugBundle $
     vsep
       [ "This is likely a bug in FOSSA, although it is also possible that this is caused by network failure"
-      , "or a network appliance (e.g. a firewall) between FOSSA CLI and the FOSSA service."
+      , "or a network appliance (e.g. a firewall) between FOSSA CLI and the FOSSA endpoint."
       , ""
       , "FOSSA may already be aware of this issue, in which case this may be transient."
       , "For current status, see the FOSSA status page at " <> pretty statusPageUrl
@@ -107,7 +107,7 @@ reportFossaBugErrorMsg FossaEnvironmentOnprem =
   withDebugBundle $
     vsep
       [ "This is likely a bug in FOSSA, although it is also possible that this is caused by network failure"
-      , "or a network appliance (e.g. a firewall) between FOSSA CLI and the FOSSA service."
+      , "or a network appliance (e.g. a firewall) between FOSSA CLI and the FOSSA endpoint."
       , ""
       , "Trying again in a few minutes may resolve this issue."
       , "If this issue persists, please report a bug to FOSSA support at " <> pretty supportUrl
