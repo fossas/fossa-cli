@@ -15,13 +15,17 @@ import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Diag.Result (resultToMaybe)
 import Network.HTTP.Client qualified as HTTP
-import Network.HTTP.Client.Internal (Connection)
+import Network.HTTP.Client.Internal (Connection, ResponseTimeout (ResponseTimeoutMicro))
 import Network.HTTP.Conduit qualified as HTTPConduit
 import Network.HTTP.Types (ok200)
 import Network.Socket qualified as Socket
 import Network.Socket.ByteString qualified as SocketByteString
 import Path (Abs, File, Path)
 
+-- TODO: Replace it with docker inspect <image>, and docker save <image> -o <filepath>?
+--
+-- We should just use `docker` executable, having docker engine is nice and all
+-- for full compatibility with other builder tools.but in practice, most users will be using docker executable.
 type DockerEngineApiC = SimpleC DockerEngineApiF
 
 runDockerEngineApi :: (Has (Lift IO) sig m, Has Diag.Diagnostics sig m) => Text -> DockerEngineApiC m a -> m a
@@ -91,8 +95,15 @@ unixSocketClient socketPath = socketHttpManager
     socketHttpManager :: Has (Lift IO) sig m => m HTTP.Manager
     socketHttpManager = sendIO $ HTTP.newManager socketManagerSettings
 
+    fiveMinutes :: ResponseTimeout
+    fiveMinutes = ResponseTimeoutMicro 300_000_000
+
     socketManagerSettings :: HTTP.ManagerSettings
-    socketManagerSettings = HTTP.defaultManagerSettings{HTTP.managerRawConnection = pure open}
+    socketManagerSettings =
+      HTTP.defaultManagerSettings
+        { HTTP.managerRawConnection = pure open
+        , HTTP.managerResponseTimeout = fiveMinutes
+        }
 
     open :: Maybe Socket.HostAddress -> String -> Int -> IO Connection
     open _ _ _ = do

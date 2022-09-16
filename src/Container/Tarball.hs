@@ -14,7 +14,7 @@ module Container.Tarball (
 
 import Codec.Archive.Tar (
   Entry (entryContent),
-  EntryContent (NormalFile, SymbolicLink),
+  EntryContent (HardLink, NormalFile, SymbolicLink),
  )
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Tar.Entry (Entry (entryTarPath), TarPath, entryPath, fromTarPathToPosixPath)
@@ -166,7 +166,7 @@ mkLayerFromOffset layerId imgOffset = build (ContainerLayer mempty 0 layerId)
     updateChangeSet :: TarEntryOffset -> Tar.Entry -> ContainerLayer -> Seq ContainerFSChangeSet
     updateChangeSet offset entry containerLayer =
       if isDoubleWhiteOut (filePathOf . entryTarPath $ entry)
-        || ( not (isFileOrSymLink entry)
+        || ( not (isFileOrLinkTarget entry)
               && not (isWhiteOut $ filePathOf . entryTarPath $ entry)
            )
         then -- Do not capture Insert for non-files or non-symbolic links, as folders
@@ -191,8 +191,8 @@ mkFsFromChangeset (ContainerLayer changeSet _ _) = foldl' (flip applyChangeSet) 
     applyChangeSet (Whiteout path) tree = remove (toSomePath . toText $ path) tree
 
 -- | True if tar entry is for a file or a symlink, otherwise False
-isFileOrSymLink :: Tar.Entry -> Bool
-isFileOrSymLink e = isFile e || isSymLink e
+isFileOrLinkTarget :: Tar.Entry -> Bool
+isFileOrLinkTarget e = isFile e || isSymLink e || isHardLink e
 
 -- | True if tar entry is for a file with content, otherwise False.
 isFile :: Tar.Entry -> Bool
@@ -203,6 +203,11 @@ isFile _ = False
 isSymLink :: Tar.Entry -> Bool
 isSymLink (TarEntry.Entry _ (SymbolicLink _) _ _ _ _) = True
 isSymLink _ = False
+
+-- | True if tar entry is for a hard link, otherwise False.
+isHardLink :: Tar.Entry -> Bool
+isHardLink (TarEntry.Entry _ (HardLink _) _ _ _ _) = True
+isHardLink _ = False
 
 -- | True if tar path has double whiteout marker.
 isDoubleWhiteOut :: FilePath -> Bool
