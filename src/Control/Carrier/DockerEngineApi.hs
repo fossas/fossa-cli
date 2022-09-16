@@ -96,7 +96,7 @@ unixSocketClient socketPath = socketHttpManager
     socketHttpManager = sendIO $ HTTP.newManager socketManagerSettings
 
     fiveMinutes :: ResponseTimeout
-    fiveMinutes = ResponseTimeoutMicro 3_0000_0000
+    fiveMinutes = ResponseTimeoutMicro 300_000_000
 
     socketManagerSettings :: HTTP.ManagerSettings
     socketManagerSettings =
