@@ -204,7 +204,7 @@ isSymLink :: Tar.Entry -> Bool
 isSymLink (TarEntry.Entry _ (SymbolicLink _) _ _ _ _) = True
 isSymLink _ = False
 
--- | True if tar entry is for a symbolic link, otherwise False.
+-- | True if tar entry is for a hard link, otherwise False.
 isHardLink :: Tar.Entry -> Bool
 isHardLink (TarEntry.Entry _ (HardLink _) _ _ _ _) = True
 isHardLink _ = False
