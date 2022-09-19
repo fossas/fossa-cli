@@ -61,7 +61,7 @@ import Data.Foldable (traverse_)
 import Data.Maybe (listToMaybe, mapMaybe)
 import Data.String.Conversion (ToString (toString))
 import Data.Text (Text)
-import Data.Text.Extra (breakOnAndRemove, showT)
+import Data.Text.Extra (breakOnEndAndRemove, showT)
 import Discovery.Filters (AllFilters)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec)
@@ -70,6 +70,7 @@ import Effect.Logger (
   Logger,
   Pretty (pretty),
   Severity (..),
+  logDebug,
   logInfo,
   logWarn,
   viaShow,
@@ -244,13 +245,14 @@ runDependencyAnalysis basedir filters project@DiscoveredProject{..} = do
 -- >> extractRepoName ["redis:alpine"] = "redis"
 -- >> extractRepoName ["redis@someDigest"] = "redis"
 -- -
-extractRepoName :: Has Diagnostics sig m => [Text] -> m Text
+extractRepoName :: (Has Logger sig m, Has Diagnostics sig m) => [Text] -> m Text
 extractRepoName tags = do
   firstTag <- fromMaybeText "No image tags found" $ listToMaybe tags
   tagTuple <-
     fromMaybeText "Image was not in the format name:tag or name@digest" $
-      breakOnAndRemove "@" firstTag
-        <|> breakOnAndRemove ":" firstTag
+      breakOnEndAndRemove "@" firstTag
+        <|> breakOnEndAndRemove ":" firstTag
+  logDebug . pretty $ "Identified project name: " <> fst tagTuple
   pure $ fst tagTuple
 
 listTargetsFromDockerArchive ::

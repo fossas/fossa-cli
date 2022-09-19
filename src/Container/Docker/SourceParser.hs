@@ -46,6 +46,7 @@ module Container.Docker.SourceParser (
   defaultHttpScheme,
   suggestDockerExport,
   showReferenceWithSep,
+  toRepoNameWithRegistry,
 ) where
 
 import Control.Monad (unless, void)
@@ -186,6 +187,12 @@ parseImageUrl targetArch = do
         { registryContainerRepository =
             prefix <> registryContainerRepository imgSrc
         }
+
+toRepoNameWithRegistry :: RegistryImageSource -> Text
+toRepoNameWithRegistry imgSrc =
+  registryHost imgSrc
+    <> "/"
+    <> registryContainerRepository imgSrc
 
 parseImageUrlWithDefaultRegistry :: Text -> Text -> Parser RegistryImageSource
 parseImageUrlWithDefaultRegistry defaultHost targetArch = do

@@ -137,6 +137,11 @@ analyze cfg = do
         analyzeFromRegistry systemDepsOnly filters registrySrc
 
   let revision = extractRevision (revisionOverride cfg) scannedImage
+
+  -- Diagnose Project amd Revision Identifier
+  logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
+  logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
+
   case scanDestination cfg of
     OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode scannedImage
     UploadScan apiOpts projectMeta ->
@@ -164,11 +169,6 @@ uploadScan revision projectMeta containerScan =
     if not supportsNativeScan
       then fatal EndpointDoesNotSupportNativeContainerScan
       else do
-        logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
-        logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
-        let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
-        logInfo ("Using branch: `" <> pretty branchText <> "`")
-
         resp <- uploadNativeContainerScan revision projectMeta containerScan
         let locator = uploadLocator resp
         buildUrl <- getFossaBuildUrl revision locator

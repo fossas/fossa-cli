@@ -14,11 +14,14 @@ import Container.Docker.Manifest (
   ManifestJsonImageEntry (ManifestJsonImageEntry),
  )
 import Container.Docker.SourceParser (
-  RegistryImageSource (RegistryImageSource),
+  RegistryImageSource (registryContainerRepository),
   RepoDigest (RepoDigest),
   defaultRegistry,
+  registryContainerRepositoryReference,
+  registryHost,
   showReferenceWithSep,
   suggestDockerExport,
+  toRepoNameWithRegistry,
  )
 import Control.Effect.Diagnostics (ToDiagnostic, renderDiagnostic)
 import Data.Aeson (FromJSON (parseJSON), withObject, withText, (.:))
@@ -110,7 +113,7 @@ isGzipKind _ = False
 
 -- | Converts Oci Manifest To Docker Manifest Json.
 toDockerManifest :: OciManifestV2 -> RegistryImageSource -> ManifestJson
-toDockerManifest (OciManifestV2 config layers) (RegistryImageSource host _ _ repo ref _) =
+toDockerManifest (OciManifestV2 config layers) imgSrc =
   ManifestJson $
     NonEmpty.singleton $
       ManifestJsonImageEntry
@@ -119,15 +122,18 @@ toDockerManifest (OciManifestV2 config layers) (RegistryImageSource host _ _ rep
         (NonEmpty.map (toString . mkLayerTarFileName) layers)
   where
     repoTag :: Text
-    repoTag = sanitizeRepoName <> showReferenceWithSep ref
+    repoTag = sanitizeRepoName <> showReferenceWithSep (registryContainerRepositoryReference imgSrc)
 
     sanitizeRepoName :: Text
     sanitizeRepoName =
       if ( Text.isPrefixOf "library/" repo
-            && host == defaultRegistry
+            && registryHost imgSrc == defaultRegistry
          )
         then Text.replace "library/" "" repo
-        else repo
+        else toRepoNameWithRegistry imgSrc
+
+    repo :: Text
+    repo = registryContainerRepository imgSrc
 
 -- | Gets image artifacts blobs.
 blobEntries :: OciManifestV2 -> NonEmpty.NonEmpty (RepoDigest, Bool, Text)

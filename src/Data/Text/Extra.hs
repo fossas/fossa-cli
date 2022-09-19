@@ -2,6 +2,7 @@ module Data.Text.Extra (
   splitOnceOn,
   splitOnceOnEnd,
   breakOnAndRemove,
+  breakOnEndAndRemove,
   underBS,
   showT,
   dropPrefix,
@@ -41,6 +42,21 @@ breakOnAndRemove needle haystack = do
   let (before, after) = Text.breakOn needle haystack
   if needle `Text.isPrefixOf` after
     then pure (before, Text.drop (Text.length needle) after)
+    else Nothing
+
+-- | Removes last needle (ordering from left to right) from haystack.
+--
+-- >> breakOnEndAndRemove ":" "a:b:c"
+-- Just ("a:b", "c")
+--
+-- >> breakOnEndAndRemove ":" "a-b-c"
+-- Nothing
+-- -
+breakOnEndAndRemove :: Text -> Text -> Maybe (Text, Text)
+breakOnEndAndRemove needle haystack = do
+  let (before, after) = Text.breakOnEnd needle haystack
+  if needle `Text.isSuffixOf` before
+    then pure (Text.dropEnd (Text.length needle) before, after)
     else Nothing
 
 underBS :: (ByteString -> ByteString) -> Text -> Text

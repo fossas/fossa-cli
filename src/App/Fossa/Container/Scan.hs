@@ -46,7 +46,7 @@ import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Set (Set)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Data.Text.Extra (breakOnAndRemove)
+import Data.Text.Extra (breakOnEndAndRemove)
 import Effect.Exec (
   AllowErr (Never),
   Command (..),
@@ -239,7 +239,7 @@ convertArtifact ResponseArtifact{..} = do
 extractTag :: Has Diagnostics sig m => [Text] -> m Text
 extractTag tags = do
   firstTag <- fromMaybeText "No image tags found" $ listToMaybe tags
-  tagTuple <- fromMaybeText "Image was not in the format name:tag" $ breakOnAndRemove ":" firstTag
+  tagTuple <- fromMaybeText "Image was not in the format name:tag" $ breakOnEndAndRemove ":" firstTag
   pure $ fst tagTuple
 
 runSyft ::
