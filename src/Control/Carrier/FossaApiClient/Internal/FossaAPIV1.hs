@@ -65,7 +65,7 @@ import Container.Errors (EndpointDoesNotSupportNativeContainerScan (EndpointDoes
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Algebra, Has, type (:+:))
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fromMaybeText, warn)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fatalText, fromMaybeText)
 import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception (Exception (displayException), SomeException)
@@ -1214,17 +1214,17 @@ vsiDownloadInferences apiOpts scanID = fossaReq $ do
   pure $ unVSIExportedInferencesBody body
 
 endpointAppManifest :: Url scheme -> Url scheme
-endpointAppManifest baseurl = baseurl /: "rest" /: "applinks" /: "*" /: "manifest"
+endpointAppManifest baseurl = baseurl /: "rest" /: "applinks" /: "*" /: "manifests"
 
 newtype AppManifest = AppManifest {endpointAppVersion :: Text} deriving (Show, Eq, Ord)
 
 instance FromXML AppManifest where
   parseElement el = AppManifest <$> child "version" el
 
-getEndpointVersion :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> m (Maybe Text)
+getEndpointVersion :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> m Text
 getEndpointVersion apiOpts = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   body <- responseBody <$> req GET (endpointAppManifest baseUrl) NoReqBody bsResponse baseOpts
   case parseXML (decodeUtf8 body) of
-    Left err -> warn (xmlErrorPretty err) >> pure Nothing
-    Right (appManifest :: AppManifest) -> pure $ Just (endpointAppVersion appManifest)
+    Left err -> fatalText (xmlErrorPretty err)
+    Right (appManifest :: AppManifest) -> pure $ endpointAppVersion appManifest

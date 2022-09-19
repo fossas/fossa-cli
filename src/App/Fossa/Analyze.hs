@@ -78,6 +78,7 @@ import Control.Carrier.TaskPool (
   withTaskPool,
  )
 import Control.Concurrent (getNumCapabilities)
+import Control.Effect.Diagnostics (recover)
 import Control.Effect.Exception (Lift)
 import Control.Effect.FossaApiClient (FossaApiClient, getEndpointVersion)
 import Control.Effect.Git (Git)
@@ -312,7 +313,9 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   maybeEndpointAppVersion <- case destination of
     UploadScan apiOpts _ -> runFossaApiClient apiOpts $ do
-      version <- getEndpointVersion
+      -- Using 'recovery' as API corresponding to 'getEndpointVersion',
+      -- seems to be not stable and we sometimes see TimeoutError in telemetry
+      version <- recover getEndpointVersion
       debugMetadata "FossaEndpointCoreVersion" version
       pure version
     _ -> pure Nothing

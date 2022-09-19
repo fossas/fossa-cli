@@ -204,7 +204,7 @@ getEndpointVersion ::
   , Has Diagnostics sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  m (Maybe Text)
+  m Text
 getEndpointVersion = do
   apiOpts <- ask
   API.getEndpointVersion apiOpts
