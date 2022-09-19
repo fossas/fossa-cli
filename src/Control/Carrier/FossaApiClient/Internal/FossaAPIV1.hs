@@ -1214,7 +1214,7 @@ vsiDownloadInferences apiOpts scanID = fossaReq $ do
   pure $ unVSIExportedInferencesBody body
 
 endpointAppManifest :: Url scheme -> Url scheme
-endpointAppManifest baseurl = baseurl /: "rest" /: "applinks" /: "*" /: "manifests"
+endpointAppManifest baseurl = baseurl /: "rest" /: "applinks" /: "*" /: "manifest"
 
 newtype AppManifest = AppManifest {endpointAppVersion :: Text} deriving (Show, Eq, Ord)
 
