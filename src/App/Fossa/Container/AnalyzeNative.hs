@@ -141,6 +141,8 @@ analyze cfg = do
   -- Diagnose Project amd Revision Identifier
   logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
   logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
+  let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
+  logInfo ("Using branch: `" <> pretty branchText <> "`")
 
   case scanDestination cfg of
     OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode scannedImage
