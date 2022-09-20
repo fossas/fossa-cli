@@ -88,7 +88,7 @@ data FossaApiClientF a where
   GetApiOpts :: FossaApiClientF ApiOpts
   GetAttribution :: ProjectRevision -> ReportOutputFormat -> FossaApiClientF Text
   GetIssues :: ProjectRevision -> Maybe DiffRevision -> FossaApiClientF Issues
-  GetEndpointVersion :: FossaApiClientF (Maybe Text)
+  GetEndpointVersion :: FossaApiClientF Text
   GetLatestBuild :: ProjectRevision -> FossaApiClientF Build
   GetLatestScan :: Locator -> ProjectRevision -> FossaApiClientF ScanResponse
   GetOrganization :: FossaApiClientF Organization
@@ -221,5 +221,5 @@ getVsiScanAnalysisStatus = sendSimple . GetVsiScanAnalysisStatus
 getVsiInferences :: Has FossaApiClient sig m => VSI.ScanID -> m [Locator]
 getVsiInferences = sendSimple . GetVsiInferences
 
-getEndpointVersion :: Has FossaApiClient sig m => m (Maybe Text)
+getEndpointVersion :: Has FossaApiClient sig m => m Text
 getEndpointVersion = sendSimple GetEndpointVersion

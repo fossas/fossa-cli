@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- FOSSA API: Adds resiliency against API errors occurring when retrieving endpoint versioning information. ([#1051](https://github.com/fossas/fossa-cli/pull/1051))
+
 ## v3.4.4
 - Fix a bug in the v1 installers for Windows (install-v1.ps1 and install.ps1) ([#1052](https://github.com/fossas/fossa-cli/pull/1052))
 
