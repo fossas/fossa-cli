@@ -126,10 +126,11 @@ toDockerManifest (OciManifestV2 config layers) imgSrc =
 
     sanitizeRepoName :: Text
     sanitizeRepoName =
-      if ( Text.isPrefixOf "library/" repo
-            && registryHost imgSrc == defaultRegistry
-         )
-        then Text.replace "library/" "" repo
+      if (registryHost imgSrc == defaultRegistry)
+        then
+          if (Text.isPrefixOf "library/" repo)
+            then Text.replace "library/" "" repo
+            else repo
         else toRepoNameWithRegistry imgSrc
 
     repo :: Text
