@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.4.4
+- Fix a bug in the v1 installers for Windows (install-v1.ps1 and install.ps1) ([#1052](https://github.com/fossas/fossa-cli/pull/1052))
+
 ## v3.4.3
 - Container scanning: Supports hardlink file discovery for experimental scanner. ([#1047](https://github.com/fossas/fossa-cli/pull/1047))
 - Container scanning: Supports busybox. ([#1047](https://github.com/fossas/fossa-cli/pull/1047))
