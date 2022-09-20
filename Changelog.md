@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.4.5
 - FOSSA API: Adds resiliency against API errors occurring when retrieving endpoint versioning information. ([#1051](https://github.com/fossas/fossa-cli/pull/1051))
 
 ## v3.4.4
