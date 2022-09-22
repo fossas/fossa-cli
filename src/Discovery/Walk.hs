@@ -28,6 +28,7 @@ import Data.Text (Text)
 import Discovery.Filters (AllFilters, pathAllowed)
 import Effect.ReadFS
 import Path
+import Debug.Trace (traceM)
 
 data WalkStep
   = -- | Continue walking subdirectories
@@ -167,12 +168,18 @@ walkDir handler topdir =
                 mapM_
                   (MaybeT . walkAvoidLoop traversed)
                   ds
+    checkLoop :: (Has ReadFS sig m, Has Diagnostics sig m) => Set.Set DirID -> Path Abs Dir -> m (Maybe (Set.Set DirID))
     checkLoop traversed dir = do
-      identifier <- getIdentifier dir
-      pure $
-        if Set.member identifier traversed
-          then Nothing
-          else Just (Set.insert identifier traversed)
+      traceM $ "Checking for loop in " ++ (show dir)
+      maybeIdentifier <- recover $ getIdentifier dir
+      traceM $ "maybeIdentifier: " ++ show maybeIdentifier
+      case maybeIdentifier of
+        Nothing -> pure Nothing
+        Just identifier ->
+          pure $
+            if Set.member identifier traversed
+              then Nothing
+              else Just (Set.insert identifier traversed)
 
 data WalkAction b
   = -- | Finish the entire walk altogether
