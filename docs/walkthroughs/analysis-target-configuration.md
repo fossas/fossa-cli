@@ -167,6 +167,16 @@ Here is an example with gradle:
 [ INFO] Found target: gradle@./::utilities
 ```
 
+Note that, targets are denoted in following format `type@path:target`. For 
+example `gradle@./::utilities`:
+
+```
+gradle  @           ./      :         :utilities
+------ ---          ---    ---        -----------
+Type   Path         Path   Target      Target
+       separator           separator
+```
+
 2) Now to analyze only `utilities`, use `.fossa.yml` file.
 
 ```yaml
