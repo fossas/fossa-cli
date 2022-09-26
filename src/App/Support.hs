@@ -22,7 +22,7 @@ import Prettyprinter (Doc, Pretty (pretty), indent, vsep)
 data FossaEnvironment = FossaEnvironmentCloud | FossaEnvironmentOnprem deriving (Eq)
 
 supportUrl :: Text
-supportUrl = "https://support.fossa.com/"
+supportUrl = "https://support.fossa.com"
 
 statusPageUrl :: Text
 statusPageUrl = "https://status.fossa.com/"
