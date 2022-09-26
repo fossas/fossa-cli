@@ -216,7 +216,7 @@ In 3.x, archive uploads are no longer a special analysis target type. Instead, y
 
 If you run into migration issues, you can get support by opening a ticket in this repository.
 
-If you are integrating a private project and want to share more details, or if you're a FOSSA customer with priority support, you can also email support@fossa.com or file a ticket at support.fossa.com for assistance.
+If you are integrating a private project and want to share more details, or if you're a FOSSA customer with priority support, you can you can file a ticket at [support.fossa.com](https://support.fossa.com) for assistance.
 
 ### Migrate "fossa report" commands
 
@@ -240,7 +240,7 @@ FOSSA will only patch 1.x for security fixes. Any feature and patch development 
 
 If you run into poor dependency results with 3.x, you can get support by opening a ticket in this repository.
 
-If you are integrating a private project and want to share more details, or if you're a FOSSA customer with priority support, you can also email support@fossa.com or file a ticket at support.fossa.com for assistance.
+If you are integrating a private project and want to share more details, or if you're a FOSSA customer with priority support, you can file a ticket at [support.fossa.com](https://support.fossa.com) for assistance.
 
 #### How do I run only a specific analyzer for my project? 
 
