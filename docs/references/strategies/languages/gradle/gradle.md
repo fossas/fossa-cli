@@ -309,7 +309,7 @@ Type   Path         Path   Target      Target
        separator           separator
 ```
 
-1) Now to analyze only `utilities`, use a `.fossa.yml` file in the project root.
+2) Now to analyze only `utilities`, use a `.fossa.yml` file in the project root.
 
 ```yaml
 # filename: .fossa.yml
