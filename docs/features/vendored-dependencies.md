@@ -21,6 +21,8 @@ The path to a vendored dependency can either be a path to an archive or a path t
 
 If it is a path to an archive, then we recursively unarchive and scan the archive. If it is a directory, then we scan the directory and recursively unarchive and scan any archives contained in the directory.
 
+If the version is not specified, then we calculate the version by calculating a hash of the contents of the archive or directory. This is often what you actually want, as it means that the version will automatically change when the contents of the vendored dependency change. It also avoids conflicts across your organization when two different projects contain a vendored dependency with the same name and version, as described in [Vendored Dependency Names and Scope](#vendored-dependency-names-and-scope).
+
 Note: When parsed, YAML considers text that could be a decimal number (such as 1.0 or 2.0) to be a number, not a string. This means that we'd parse the version 1.0 as 1. This probably isn't what you want. To avoid this, surround your version with quotes, as in "1.0".
 
 We also support json-formatted dependencies:
@@ -75,6 +77,17 @@ We also support json-formatted dependencies:
   ]
 }
 ```
+
+## Vendored Dependency Names and Scope
+
+The name of a vendored dependency is scoped to an organization.
+
+This means that if two different projects in your organization have the same name and version, they will be treated as the same dependency by FOSSA even if they have different contents. The one that was scanned first will be used by FOSSA. If you use the `--force-vendored-dependency-rescans` flag, then the current scan will overwrite the original one. But this will cause the data for the original scan to be incorrect now.
+
+This can cause unexpected behavior, and we are working on changing this so that vendored dependencies are scoped to projects rather than organizations.
+
+Our suggested workaround is to not set an explicit version on your vendored dependency. When you omit the version, FOSSA will calculate a version based on the contents of the vendored dependency, thus avoiding any conflicts. This also has the added benefit of automatically changing the version when the contents of the vendored dependency change.
+
 ## How Vendored Dependencies are scanned
 
 There are two methods of vendored dependency scanning: "CLI license scan" and "archive upload".
