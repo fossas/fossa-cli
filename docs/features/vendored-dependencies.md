@@ -86,7 +86,7 @@ This means that if two different projects in your organization have the same nam
 
 This can cause unexpected behavior, and we are working on changing this so that vendored dependencies are scoped to projects rather than organizations.
 
-Our suggested workaround is to not set an explicit version on your vendored dependency. When you omit the version, FOSSA will calculate a version based on the contents of the vendored dependency, thus avoiding any conflicts. This also has the added benefit of automatically changing the version when the contents of the vendored dependency change.
+Our suggested workaround is to not set a version on your vendored dependency. When you omit the version, FOSSA will calculate a version based on the contents of the vendored dependency, thus avoiding any conflicts. This also has the added benefit of automatically changing the version when the contents of the vendored dependency change.
 
 ## How Vendored Dependencies are scanned
 
