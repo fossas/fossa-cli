@@ -144,11 +144,11 @@ Users who need advanced customization or features should see the [User Manual](.
 
 ## Reporting Issues
 
-If you've found a bug or need support, the best way to get support is to email [support@fossa.com](mailto:support@fossa.com).
+If you've found a bug or need support, the best way to get support is via the [FOSSA support portal](https://support.fossa.com).
 
 Make sure to include reproduction steps and any relevant project files (e.g. `pom.xml`s, `package.json`s, etc.). Including the output from `fossa analyze --debug` in the email as well as any relevant fossa files (`fossa-deps.json`, `.fossa.yml`) will help expedite a solution.
 
-We'll try to respond to issues opened in this repository on a best-effort basis, but we mostly provide support via our [`support@`](mailto:support@fossa.com) email.
+We'll try to respond to issues opened in this repository on a best-effort basis, but we mostly provide support via the [FOSSA support portal](https://support.fossa.com).
 
 ## Contributing
 

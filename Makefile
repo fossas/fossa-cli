@@ -136,9 +136,9 @@ fast-lint:
 # You will need to install https://github.com/tcort/markdown-link-check
 check-links:
 	@echo "Running markdown-link-check in docs directory"
-	find ./docs/ -name \*.md -exec markdown-link-check {} \;
+	find ./docs/ -name \*.md -exec markdown-link-check {} -c .markdown-link-check.json \;
 	@echo "Running markdown-link-check for README.md"
-	markdown-link-check README.md
+	markdown-link-check README.md -c .markdown-link-check.json
 
 # Run the formatter from within a docker image, with the project mounted as a volume
 fmt-ci:
