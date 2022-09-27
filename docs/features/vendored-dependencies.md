@@ -21,7 +21,7 @@ The path to a vendored dependency can either be a path to an archive or a path t
 
 If it is a path to an archive, then we recursively unarchive and scan the archive. If it is a directory, then we scan the directory and recursively unarchive and scan any archives contained in the directory.
 
-If the version is not specified, then FOSSA CLI calculates the version by generating a hash of the contents of the archive or directory. This is often desired, as it means that the version automatically changes when the contents of the vendored dependency change. It also avoids conflicts across an organization when two different projects contain a vendored dependency with the same name and version, as described in [Vendored Dependency Names and Scope](#vendored-dependency-names-and-scope).
+If the version is not specified, FOSSA CLI calculates the version by generating a hash of the contents of the archive or directory. This is often desired, as it means that the version automatically changes when the contents of the vendored dependency change. It also avoids conflicts across an organization when two different projects contain a vendored dependency with the same name and version, as described in [Vendored Dependency Names and Scope](#vendored-dependency-names-and-scope).
 
 Note: When parsed, YAML considers text that could be a decimal number (such as 1.0 or 2.0) to be a number, not a string. This means that we'd parse the version 1.0 as 1. This probably isn't what you want. To avoid this, surround your version with quotes, as in "1.0".
 
