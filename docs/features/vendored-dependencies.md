@@ -21,6 +21,8 @@ The path to a vendored dependency can either be a path to an archive or a path t
 
 If it is a path to an archive, then we recursively unarchive and scan the archive. If it is a directory, then we scan the directory and recursively unarchive and scan any archives contained in the directory.
 
+If the version is not specified, FOSSA CLI calculates the version by generating a hash of the contents of the archive or directory. This is often desired, as it means that the version automatically changes when the contents of the vendored dependency change. It also avoids conflicts across an organization when two different projects contain a vendored dependency with the same name and version, as described in [Vendored Dependency Names and Scope](#vendored-dependency-names-and-scope).
+
 Note: When parsed, YAML considers text that could be a decimal number (such as 1.0 or 2.0) to be a number, not a string. This means that we'd parse the version 1.0 as 1. This probably isn't what you want. To avoid this, surround your version with quotes, as in "1.0".
 
 We also support json-formatted dependencies:
@@ -75,6 +77,33 @@ We also support json-formatted dependencies:
   ]
 }
 ```
+
+## Vendored Dependency Names and Scope
+
+The name of a vendored dependency is scoped to an organization.
+
+This means that if two different projects in an organization have the same name and version, they are treated as the same dependency by FOSSA, and the one that was scanned first is reported. As an example:
+
+Project A defines a vendored dependency like this in its fossa-deps.yml, and the contents of that vendored dependency contain an MIT license:
+
+```yaml
+vendored-dependencies:
+- name: Django
+  path: vendor/Django-3.4.16.zip
+  version: "3.4.16"
+```
+
+Project B has exactly the same contents in fossa-deps.yml, but the contents of Project B's vendored dependency contain an Apache 2.0 license.
+
+If Project A is scanned first, then both Project A and Project B report that their vendored dependency has an MIT license.
+
+If Project B is scanned first, then both Project A and Project B report that their vendored dependency has an Apache 2.0 license.
+
+This can cause unexpected behavior. (Note: FOSSA is working on changing this so that vendored dependencies are scoped to projects rather than organizations.)
+
+The suggested workaround is to not set a version in the vendored dependency entry. When the version is omitted, FOSSA calculates a version based on the contents of the vendored dependency, thus avoiding any conflicts. This also has the added benefit of automatically changing the version when the contents of the vendored dependency change.
+
+
 ## How Vendored Dependencies are scanned
 
 There are two methods of vendored dependency scanning: "CLI license scan" and "archive upload".
