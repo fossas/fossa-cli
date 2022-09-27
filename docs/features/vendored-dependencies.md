@@ -82,26 +82,27 @@ We also support json-formatted dependencies:
 
 The name of a vendored dependency is scoped to an organization.
 
-This means that if two different projects in your organization have the same name and version, they will be treated as the same dependency by FOSSA. The one that was scanned first will be used by FOSSA. Here's an example.
+This means that if two different projects in an organization have the same name and version, they are treated as the same dependency by FOSSA, and the one that was scanned first is reported. As an example:
 
-Project A defines a vendored dependency like this in its fossa-deps.yml, and the contents of that vendored dependency has an MIT license:
+Project A defines a vendored dependency like this in its fossa-deps.yml, and the contents of that vendored dependency contain an MIT license:
 
 ```yaml
 vendored-dependencies:
 - name: Django
-  path: vendor/Django-3.4.16.zip # path can be either a file or a folder.
-  version: "3.4.16" # revision will be set to the MD5 hash of the filepath if left unspecified.
+  path: vendor/Django-3.4.16.zip
+  version: "3.4.16"
 ```
 
-Project B has exactly the same contents in `fossa-deps.yml`, but the contents of Project B's vendored dependency have an Apache 2.0 license.
+Project B has exactly the same contents in fossa-deps.yml, but the contents of Project B's vendored dependency contain an Apache 2.0 license.
 
-If Project A is scanned first, then both Project A and Project B will report that their vendored dependency has an MIT license.
+If Project A is scanned first, then both Project A and Project B report that their vendored dependency has an MIT license.
 
-If Project B is scanned first, then both Project A and Project B will report that their vendored dependency has an Apache 2.0 license.
+If Project B is scanned first, then both Project A and Project B report that their vendored dependency has an Apache 2.0 license.
 
-This can cause unexpected behavior, and we are working on changing this so that vendored dependencies are scoped to projects rather than organizations.
+This can cause unexpected behavior. (Note: FOSSA is working on changing this so that vendored dependencies are scoped to projects rather than organizations.)
 
-Our suggested workaround is to not set a version on your vendored dependency. When you omit the version, FOSSA will calculate a version based on the contents of the vendored dependency, thus avoiding any conflicts. This also has the added benefit of automatically changing the version when the contents of the vendored dependency change.
+The suggested workaround is to not set a version in the vendored dependency entry. When the version is omitted, FOSSA calculates a version based on the contents of the vendored dependency, thus avoiding any conflicts. This also has the added benefit of automatically changing the version when the contents of the vendored dependency change.
+
 
 ## How Vendored Dependencies are scanned
 
