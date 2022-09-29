@@ -2,10 +2,11 @@
 
 Currently, we only support analysis of r project which are using [renv package manager](https://rstudio.github.io/renv/index.html).
 
-| Files                       | Direct Deps        | Deep Deps          | Edges              | Classifies Dev & Test Deps | Container Scanning (experimental) |
-| --------------------------- | ------------------ | ------------------ | ------------------ | -------------------------- | --------------------------------- |
-| `DESCRIPTION`               | :white_check_mark: | :x:                | :x:                | :x:                        | :white_check_mark:                |
-| `DESCRIPTION` & `renv.lock` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                        | :white_check_mark:                |
+| Files                       | Direct Deps                             | Deep Deps          | Edges              | Classifies Dev & Test Deps | Container Scanning (experimental) |
+| --------------------------- | --------------------------------------- | ------------------ | ------------------ | -------------------------- | --------------------------------- |
+| `renv.lock`                 | (included but not classified as direct) | :white_check_mark: | :white_check_mark: | :x:                        | :white_check_mark:                |
+| `DESCRIPTION` & `renv.lock` | :white_check_mark:                      | :white_check_mark: | :white_check_mark: | :x:                        | :white_check_mark:                |
+
 
 ## Project Discovery
 

@@ -1,5 +1,6 @@
 module Strategy.R.Errors (
   MissingRenvLockFile (..),
+  MissingDescriptionFile (..),
   VersionConstraintsIgnored (..),
   rEnvLockFileDocUrl,
   rEnvLockFileGenerateDocUrl,
@@ -14,6 +15,13 @@ rEnvLockFileDocUrl = "https://rstudio.github.io/renv/"
 
 rEnvLockFileGenerateDocUrl :: Text
 rEnvLockFileGenerateDocUrl = "https://rstudio.github.io/renv/reference/snapshot.html"
+
+data MissingDescriptionFile = MissingDescriptionFile
+instance ToDiagnostic MissingDescriptionFile where
+  renderDiagnostic (MissingDescriptionFile) =
+    vsep
+      [ "Provide DESCRIPTION file in same path as `renv.lock`, so fossa-cli can infer direct dependencies."
+      ]
 
 data VersionConstraintsIgnored = VersionConstraintsIgnored
 instance ToDiagnostic VersionConstraintsIgnored where

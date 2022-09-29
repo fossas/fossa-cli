@@ -24,10 +24,15 @@ import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
 import Strategy.R.Errors (
-  MissingRenvLockFile (MissingRenvLockFile),
-  VersionConstraintsIgnored (VersionConstraintsIgnored),
+  MissingDescriptionFile (..),
+  MissingRenvLockFile (..),
+  VersionConstraintsIgnored (..),
  )
-import Strategy.R.Renv (analyze)
+import Strategy.R.Renv (
+  analyzeDescription,
+  analyzeDescriptionAndLockFile,
+  analyzeLockFile,
+ )
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
@@ -39,7 +44,8 @@ newtype RDescriptionFile = RDescriptionFile (Path Abs File)
 
 data RProject
   = Renv (Path Abs Dir) RDescriptionFile (Path Abs File)
-  | ManifestOnly (Path Abs Dir) RDescriptionFile
+  | RenvLockOnly (Path Abs Dir) (Path Abs File)
+  | DescriptionOnly (Path Abs Dir) RDescriptionFile
   deriving (Show, Eq, Ord, Generic)
 
 instance ToJSON RDescriptionFile
@@ -71,12 +77,15 @@ findProjects = walkWithFilters' $ \dir _ files -> do
   let skipRenvLibs = WalkSkipSome ["renv"]
 
   case (lockFile, descriptionFile) of
+    (Nothing, Just description') -> do
+      let project = DescriptionOnly dir (RDescriptionFile description')
+      pure ([project], skipRenvLibs)
+    (Just lockFile', Nothing) -> do
+      let project' = RenvLockOnly dir lockFile'
+      pure ([project'], skipRenvLibs)
     (Just lockFile', Just description') -> do
       let project' = Renv dir (RDescriptionFile description') lockFile'
       pure ([project'], skipRenvLibs)
-    (Nothing, Just description') -> do
-      let project = ManifestOnly dir (RDescriptionFile description')
-      pure ([project], skipRenvLibs)
     _ -> pure ([], WalkContinue)
 
 mkProject :: RProject -> DiscoveredProject RProject
@@ -90,18 +99,32 @@ mkProject project =
   where
     projectDir :: RProject -> Path Abs Dir
     projectDir (Renv dir _ _) = dir
-    projectDir (ManifestOnly dir _) = dir
+    projectDir (RenvLockOnly dir _) = dir
+    projectDir (DescriptionOnly dir _) = dir
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RProject -> m DependencyResults
-getDeps (Renv _ (RDescriptionFile manifestFile) lockFile) = do
-  (graph, graphBreadth) <- analyze manifestFile (Just lockFile)
+getDeps (Renv _ (RDescriptionFile descriptionFile) lockFile) = do
+  (graph, graphBreadth) <- analyzeDescriptionAndLockFile descriptionFile lockFile
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = graphBreadth
-      , dependencyManifestFiles = [manifestFile]
+      , dependencyManifestFiles = [lockFile]
       }
-getDeps (ManifestOnly _ (RDescriptionFile manifestFile)) = do
+getDeps (RenvLockOnly _ lockFile) = do
+  void
+    . recover
+    . errCtx MissingDescriptionFile
+    $ fatalText "Cannot distinguish between direct and deep dependencies."
+
+  (graph, graphBreadth) <- analyzeLockFile lockFile
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = graphBreadth
+      , dependencyManifestFiles = [lockFile]
+      }
+getDeps (DescriptionOnly _ (RDescriptionFile descriptionFile)) = do
   void
     . recover
     . warnOnErr MissingEdges
@@ -110,10 +133,10 @@ getDeps (ManifestOnly _ (RDescriptionFile manifestFile)) = do
     . errCtx MissingRenvLockFile
     $ fatalText "renv.lock file is missing."
 
-  (graph, graphBreadth) <- analyze manifestFile Nothing
+  (graph, graphBreadth) <- analyzeDescription descriptionFile
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = graphBreadth
-      , dependencyManifestFiles = [manifestFile]
+      , dependencyManifestFiles = [descriptionFile]
       }

@@ -1,5 +1,7 @@
 module Strategy.R.Renv (
-  analyze,
+  analyzeLockFile,
+  analyzeDescription,
+  analyzeDescriptionAndLockFile,
 
   -- * for testing
   RenvLock (..),
@@ -11,7 +13,6 @@ module Strategy.R.Renv (
 ) where
 
 import Control.Effect.Diagnostics (Diagnostics, Has)
-import Control.Monad (when)
 import Data.Aeson (
   FromJSON (parseJSON),
   withObject,
@@ -24,7 +25,7 @@ import Data.Foldable (for_)
 import Data.List (find)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Data.Set (toList)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -35,11 +36,10 @@ import DepTypes (
   VerConstraint (CEq),
  )
 import Effect.Grapher (deep, direct, edge, evalGrapher, run)
-import Effect.Logger (logWarn)
 import Effect.ReadFS (ReadFS, readContentsJson, readContentsParser)
 import Graphing (Graphing)
 import Path (Abs, File, Path)
-import Strategy.R.Description (RDescription, allPkgNames, descriptionParser)
+import Strategy.R.Description (RDescription (RDescription), allPkgNames, descriptionParser)
 import Types (GraphBreadth (Complete, Partial))
 
 -- | Represents lockfile of: https://github.com/rstudio/renv.
@@ -236,24 +236,48 @@ toDependency repos pkg =
       Url _ -> Nothing
       _ -> Just $ pkgVersion pkg
 
-analyze ::
+analyzeLockFile ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   ) =>
   Path Abs File ->
-  Maybe (Path Abs File) ->
   m (Graphing Dependency, GraphBreadth)
-analyze descriptionPath lockFilePath = do
-  description <- readContentsParser descriptionParser descriptionPath
-  lockFile <- case lockFilePath of
-    Just lockFilePath' -> do
-      lock <- readContentsJson lockFilePath'
-      pure . Just $ lock
-    Nothing -> pure Nothing
-
+analyzeLockFile lockFilePath = do
+  lock <- readContentsJson lockFilePath
   pure
-    ( buildGraph description (fromMaybe emptyLockFile lockFile)
-    , if isJust lockFile then Complete else Partial
+    ( buildGraph emptyDescription lock
+    , Partial
+    )
+  where
+    emptyDescription :: RDescription
+    emptyDescription = RDescription mempty mempty mempty mempty mempty
+
+analyzeDescriptionAndLockFile ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  ) =>
+  Path Abs File ->
+  Path Abs File ->
+  m (Graphing Dependency, GraphBreadth)
+analyzeDescriptionAndLockFile descriptionFile lockFilePath = do
+  description <- readContentsParser descriptionParser descriptionFile
+  lock <- readContentsJson lockFilePath
+  pure
+    ( buildGraph description lock
+    , Complete
+    )
+
+analyzeDescription ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  ) =>
+  Path Abs File ->
+  m (Graphing Dependency, GraphBreadth)
+analyzeDescription descriptionFile = do
+  description <- readContentsParser descriptionParser descriptionFile
+  pure
+    ( buildGraph description emptyLockFile
+    , Partial
     )
   where
     emptyLockFile :: RenvLock
