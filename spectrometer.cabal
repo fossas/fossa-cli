@@ -431,6 +431,10 @@ library
     Strategy.Python.SetupPy
     Strategy.Python.Setuptools
     Strategy.Python.Util
+    Strategy.R
+    Strategy.R.Description
+    Strategy.R.Errors
+    Strategy.R.Renv
     Strategy.Rebar3
     Strategy.RPM
     Strategy.Ruby.BundleShow
@@ -596,6 +600,8 @@ test-suite unit-tests
     Python.ReqTxtSpec
     Python.RequirementsSpec
     Python.SetupPySpec
+    R.DescriptionSpec
+    R.RenvSpec
     ResultUtil
     RPM.SpecFileSpec
     Ruby.BundleShowSpec

@@ -28,6 +28,7 @@ import Strategy.Node.Errors (
   yarnV2LockfileDocUrl,
  )
 import Strategy.Python.Errors (commitPoetryLockToVCS)
+import Strategy.R.Errors (rEnvLockFileDocUrl, rEnvLockFileGenerateDocUrl)
 import Strategy.Ruby.Errors (bundlerLockFileRationaleUrl, rubyFossaDocUrl)
 import Strategy.Scala.Errors (sbtDepsGraphPluginUrl, scalaFossaDocUrl)
 import Strategy.Swift.Errors (
@@ -60,6 +61,8 @@ urlsToCheck =
   , swiftFossaDocUrl
   , swiftPackageResolvedRef
   , xcodeCoordinatePkgVersion
+  , rEnvLockFileDocUrl
+  , rEnvLockFileGenerateDocUrl
   , refPodDocUrl
   , refGradleDocUrl
   , containerScanningDocUrl

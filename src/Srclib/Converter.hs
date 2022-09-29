@@ -133,6 +133,7 @@ depTypeToFetcher = \case
   ComposerType -> "comp"
   CondaType -> "conda"
   CpanType -> "cpan"
+  CranType -> "cran"
   CustomType -> "custom"
   GemType -> "gem"
   GitType -> "git"
@@ -164,6 +165,7 @@ fetcherToDepType fetcher | depTypeToFetcher CargoType == fetcher = Just CargoTyp
 fetcherToDepType fetcher | depTypeToFetcher ComposerType == fetcher = Just ComposerType
 fetcherToDepType fetcher | depTypeToFetcher CondaType == fetcher = Just CondaType
 fetcherToDepType fetcher | depTypeToFetcher CpanType == fetcher = Just CpanType
+fetcherToDepType fetcher | depTypeToFetcher CranType == fetcher = Just CranType
 fetcherToDepType fetcher | depTypeToFetcher CustomType == fetcher = Just CustomType
 fetcherToDepType fetcher | depTypeToFetcher GemType == fetcher = Just GemType
 fetcherToDepType fetcher | depTypeToFetcher GitType == fetcher = Just GitType
