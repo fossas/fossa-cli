@@ -41,7 +41,7 @@ import App.Fossa.Config.Analyze (
   AnalyzeConfig (..),
   BinaryDiscovery (BinaryDiscovery),
   DynamicLinkInspect (DynamicLinkInspect),
-  ExperimentalAnalyzeConfig,
+  ExperimentalAnalyzeConfig (allowedGradleConfigs),
   IATAssertion (IATAssertion),
   IncludeAll (IncludeAll),
   NoDiscoveryExclusion (NoDiscoveryExclusion),
@@ -77,6 +77,7 @@ import Control.Carrier.TaskPool (
   forkTask,
   withTaskPool,
  )
+import Control.Carrier.Telemetry.Types (CountableCliFeature (ExperimentalBinaryDiscovery, ExperimentalGradleConfigurationUsage))
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Diagnostics (recover)
 import Control.Effect.Exception (Lift)
@@ -84,14 +85,14 @@ import Control.Effect.FossaApiClient (FossaApiClient, getEndpointVersion)
 import Control.Effect.Git (Git)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
-import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent)
+import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent, trackUsage)
 import Control.Monad (join, unless, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
-import Data.Maybe (mapMaybe)
+import Data.Maybe (isJust, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Diag.Result (resultToMaybe)
@@ -256,6 +257,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       revision = Config.projectRevision cfg
       skipResolutionSet = Config.vsiSkipSet $ Config.vsiOptions cfg
       vendoredDepsOptions = Config.vendoredDeps cfg
+      experimentalConfig = Config.experimental cfg
+
+  when (isJust $ allowedGradleConfigs experimentalConfig) $
+    trackUsage ExperimentalGradleConfigurationUsage
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
@@ -275,7 +280,9 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     Diag.errorBoundaryIO . diagToDebug $
       Diag.context "discover-binaries" $
         if (fromFlag BinaryDiscovery $ Config.binaryDiscoveryEnabled $ Config.vsiOptions cfg)
-          then analyzeDiscoverBinaries basedir filters
+          then do
+            trackUsage ExperimentalBinaryDiscovery
+            analyzeDiscoverBinaries basedir filters
           else pure Nothing
   manualSrcUnits <-
     Diag.errorBoundaryIO . diagToDebug $

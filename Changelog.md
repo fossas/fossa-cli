@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Telemetry: Counts experimental feature usage for experimental gradle config, binary discovery, and container scanner functionalities. ([#1063](https://github.com/fossas/fossa-cli/pull/1063))
+
 ## v3.4.5
 - FOSSA API: Adds resiliency against API errors occurring when retrieving endpoint versioning information. ([#1051](https://github.com/fossas/fossa-cli/pull/1051))
 

@@ -40,11 +40,12 @@ import Control.Carrier.Debug (Debug, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.DockerEngineApi (runDockerEngineApi)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
+import Control.Carrier.Telemetry.Types (CountableCliFeature (ExperimentalContainerScanner))
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, errCtx, fatal, fatalText, fromEitherShow, (<||>))
 import Control.Effect.DockerEngineApi (DockerEngineApi, getDockerImageSize, isDockerEngineAccessible)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, uploadNativeContainerScan)
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Telemetry (Telemetry)
+import Control.Effect.Telemetry (Telemetry, trackUsage)
 import Control.Monad (unless, void)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
@@ -118,6 +119,7 @@ analyze ::
   m ()
 analyze cfg = do
   logInfo "Running container scanning with fossa experimental-scanner!"
+  trackUsage ExperimentalContainerScanner
 
   let filters = filterSet cfg
   let systemDepsOnly = onlySystemDeps cfg

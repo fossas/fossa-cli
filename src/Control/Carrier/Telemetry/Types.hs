@@ -48,7 +48,9 @@ data TelemetryCtx = TelemetryCtx
   }
 
 data CountableCliFeature
-  = ExperimentalGradleSingleConfigurationUsage
+  = ExperimentalGradleConfigurationUsage
+  | ExperimentalContainerScanner
+  | ExperimentalBinaryDiscovery
   deriving (Show, Eq, Ord, Generic)
 
 instance ToJSONKey CountableCliFeature where

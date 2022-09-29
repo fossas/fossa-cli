@@ -54,12 +54,12 @@ When `--output` is used, we do not emit telemetry.
 1. Counting feature usage via counters
 
 ```haskell
--- >> :t countUsage
--- countUsage :: Has Telemetry sig m => CountableAnalysisMetric -> m ()
+-- >> :t trackUsage
+-- trackUsage :: Has Telemetry sig m => CountableCliFeature -> m ()
 
 experimental :: (Has Telemetry sig m) => SomeProj -> m ()
 experimental (SomeProject manifestDir manifestFile) = do
-  countUsage SomeProjectAnalyzedExperimentally
+  trackUsage SomeProjectAnalyzedExperimentally
   pure ()
 ```
 
