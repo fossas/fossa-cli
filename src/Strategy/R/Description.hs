@@ -86,7 +86,7 @@ allPkgNames d =
         <> linkingTo d
   where
     rmVersionConstraint :: Text -> Text
-    rmVersionConstraint t = fst $ Text.breakOnEnd "(" t
+    rmVersionConstraint = Text.strip . fst . Text.breakOn "("
 
 -- | Parses R's DESCRIPTION file.
 descriptionParser :: Parser RDescription
