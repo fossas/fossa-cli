@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Linux releases are now packaged as tar.gz to improve compatibility when installing
+
 ## v3.4.5
 - FOSSA API: Adds resiliency against API errors occurring when retrieving endpoint versioning information. ([#1051](https://github.com/fossas/fossa-cli/pull/1051))
 
