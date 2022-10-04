@@ -171,6 +171,12 @@ jobs:
         [ "$(Linux-binaries/fossa --version)" = "fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.0)" ] && echo "CLI version OK"
 
     # This uses names compatible with our install script.
+    #
+    # Originally, CLI >=2.x Linux releases were only packaged as zip files, but
+    # we added tar.gz to improve compatibility. Our install script depends on
+    # the unzip command, which is not installed in most Linux distributions by
+    # default. To avoid breaking compatibility with older install scripts, we
+    # release both formats but default to using tar.gz when installing.
     - name: Bundle binaries
       run: |
         mkdir release
@@ -180,6 +186,8 @@ jobs:
         chmod +x Linux-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/fossa
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/pathfinder
+        tar --create --gzip --verbose --file release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz Linux-binaries/fossa
+        tar --create --gzip --verbose --file release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz Linux-binaries/pathfinder
 
         chmod +x macOS-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/fossa
@@ -194,6 +202,7 @@ jobs:
       run: |
         cd release
         sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip.sha256"
+        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz" > "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz.sha256"
         sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip.sha256"
         sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip.sha256"
 
