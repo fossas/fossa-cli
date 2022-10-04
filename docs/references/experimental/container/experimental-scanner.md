@@ -9,12 +9,15 @@
     - [2) From Docker Engine](#2-from-docker-engine)
     - [3) From registries](#3-from-registries)
   - [Container image analysis](#container-image-analysis)
+    - [View detected projects](#view-detected-projects)
+      - [Command output](#command-output)
+    - [Utilize analysis target configuration](#utilize-analysis-target-configuration)
     - [Debugging](#debugging)
     - [Frequently Asked Questions (FAQs)](#frequently-asked-questions-faqs)
       - [How do I scan multi-platform container images with `fossa-cli`?](#how-do-i-scan-multi-platform-container-images-with-fossa-cli)
-      - [How can I only scan for system dependencies (alpine, dpkg, rpm)?](#how-can-i-only-scan-for-system-dependencies-alpine-dpkg-rpm)
-      - [How do I exclude specific projects from container scanning?](#how-do-i-exclude-specific-projects-from-container-scanning)
-    - [Limitations & Workarounds](#limitations--workarounds)
+    - [How can I only scan for system dependencies (alpine, dpkg, rpm)?](#how-can-i-only-scan-for-system-dependencies-alpine-dpkg-rpm)
+    - [How do I exclude specific projects from container scanning?](#how-do-i-exclude-specific-projects-from-container-scanning)
+  - [Limitations & Workarounds](#limitations--workarounds)
 
 ## What's new in this scanner?
 
@@ -23,7 +26,6 @@ The performance of analysis and support for container image sources is improved,
 
 FOSSA's new container scanner brings support for standard FOSSA CLI features into containers:
 - Support for configuration via `.fossa.yml`.
-- Support for `fossa-deps`.
 - Support for path filtering (exclusion and inclusion).
 
 Finally, FOSSA's new container scanner improves the user experience and reports more information to FOSSA servers,
