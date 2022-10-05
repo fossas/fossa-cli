@@ -159,7 +159,7 @@ jobs:
             echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/v/}
             ;;
           *)
-            echo ::set-output name=VERSION::${GITHUB_REF}
+            echo ::set-output name=VERSION::${GITHUB_SHA}
             ;;
         esac
 
