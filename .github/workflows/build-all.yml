@@ -218,7 +218,10 @@ jobs:
 
         cat *.sha256 | sha256sum --check --status
 
-    - name: Upload release artifacts
+    # Uploads the generated archives (tar.gz/zip) as build artifacts to allow
+    # verifying them without needing to do an actual release. This step does not
+    # need to run for tagged release versions.
+    - name: Upload release archives
       if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
       uses: actions/upload-artifact@v2
       with:
