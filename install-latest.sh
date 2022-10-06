@@ -46,7 +46,7 @@ execute() {
   # http_download "${tmpdir}/${CHECKSUM}" "${CHECKSUM_URL}"
   # hash_sha256_verify "${tmpdir}/${TARBALL}" "${tmpdir}/${CHECKSUM}"
   srcdir="${tmpdir}"
-  (cd "${tmpdir}" && unzip -o "${TARBALL}")
+  (cd "${tmpdir}" && untar "${TARBALL}")
   log_debug "setting up bindir: $BINDIR"
   mkdir -p "$BINDIR" 2> /dev/null || sudo mkdir -p "$BINDIR"
   for binexe in "fossa" ; do
@@ -102,6 +102,9 @@ adjust_format() {
 }
 adjust_os() {
   # adjust archive name based on OS
+  case $(uname_os) in
+   linux) FORMAT=tar.gz ;;
+  esac
   true
 }
 adjust_arch() {
@@ -232,7 +235,7 @@ untar() {
   case "${tarball}" in
     *.tar.gz | *.tgz) tar -xzf "${tarball}" ;;
     *.tar) tar -xf "${tarball}" ;;
-    *.zip) unzip "${tarball}" ;;
+    *.zip) unzip -o "${tarball}" ;;
     *)
       log_err "untar unknown archive format for ${tarball}"
       return 1
