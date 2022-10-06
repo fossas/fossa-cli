@@ -1,8 +1,11 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.4.7
+- Linux releases are now packaged as both tar.gz and to improve compatibility when installing
 
-- Linux releases are now packaged as tar.gz to improve compatibility when installing
+## v3.4.6
+- Container Scanning: Fixes a defect, where container registry `registry:3000/org/repo:tag` was incorrectly identifying `registry` as project name. ([#1050](https://github.com/fossas/fossa-cli/issues/1050))
+- Container Scanning: Includes registry uri in project name (experimental scanner only). ([#1050](https://github.com/fossas/fossa-cli/issues/1050))
 
 ## v3.4.5
 - FOSSA API: Adds resiliency against API errors occurring when retrieving endpoint versioning information. ([#1051](https://github.com/fossas/fossa-cli/pull/1051))

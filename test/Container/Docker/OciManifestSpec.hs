@@ -53,7 +53,7 @@ spec = do
         ( NonEmpty.fromList
             [ ManifestJsonImageEntry
                 "config.json"
-                ["library/redis:alpine"]
+                ["quay.io/library/redis:alpine"]
                 $ NonEmpty.fromList ["layer.tar"]
             ]
         )

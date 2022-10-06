@@ -56,6 +56,12 @@ analyze ContainerAnalyzeConfig{..} = do
   logDebug "Running embedded syft binary"
   containerScan <- errCtx (SyftScanFailed imageLocator) (runSyft imageLocator >>= toContainerScan)
   let revision = extractRevision revisionOverride containerScan
+
+  logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
+  logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
+  let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
+  logInfo ("Using branch: `" <> pretty branchText <> "`")
+
   case scanDestination of
     OutputStdout -> logStdout . decodeUtf8 $ encode containerScan
     UploadScan apiOpts projectMeta ->
@@ -72,11 +78,6 @@ uploadScan ::
   m ()
 uploadScan revision projectMeta containerScan =
   do
-    logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
-    logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
-    let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
-    logInfo ("Using branch: `" <> pretty branchText <> "`")
-
     resp <- uploadContainerScan revision projectMeta containerScan
 
     buildUrl <- getFossaBuildUrl revision $ uploadLocator resp

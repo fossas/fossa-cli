@@ -24,3 +24,9 @@ spec = do
     Test.it "should leave the string unchanged when the prefix is missing" $ do
       dropPrefix "foo" "bar" `Test.shouldBe` "bar"
       dropPrefix "foo" "" `Test.shouldBe` ""
+
+  Test.describe "Text breakOnEndAndRemove" $
+    Test.it "should break a string from last needle (with last needle removed)" $ do
+      breakOnEndAndRemove ":" "a:b" `Test.shouldBe` Just ("a", "b")
+      breakOnEndAndRemove ":" "a:b:c" `Test.shouldBe` Just ("a:b", "c")
+      breakOnEndAndRemove ":" "some.registry:5000/org/app:tag" `Test.shouldBe` Just ("some.registry:5000/org/app", "tag")
