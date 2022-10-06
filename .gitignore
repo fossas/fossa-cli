@@ -17,6 +17,7 @@ vendor-bins/
 /fossa
 /fossa-?dev
 /release
+/fourmolu
 
 # Debug output
 fossa.debug.json
@@ -29,6 +30,7 @@ integration-test/artifacts/
 # One offs
 test/App/Fossa/VSI/DynLinked/testdata/hello_standard*
 test/App/Fossa/VSI/DynLinked/testdata/hello_setuid*
+sandbox/
 
 # Rust
 

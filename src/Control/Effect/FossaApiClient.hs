@@ -18,6 +18,7 @@ module Control.Effect.FossaApiClient (
   getEndpointVersion,
   getOrganization,
   getProject,
+  getRevisionDependencyCacheStatus,
   getAnalyzedRevisions,
   getScan,
   getSignedLicenseScanUrl,
@@ -61,6 +62,7 @@ import Fossa.API.Types (
   Issues,
   Organization,
   Project,
+  RevisionDependencyCache,
   ScanId,
   ScanResponse,
   SignedURL,
@@ -89,6 +91,7 @@ data FossaApiClientF a where
   GetAttribution :: ProjectRevision -> ReportOutputFormat -> FossaApiClientF Text
   GetIssues :: ProjectRevision -> Maybe DiffRevision -> FossaApiClientF Issues
   GetEndpointVersion :: FossaApiClientF Text
+  GetRevisionDependencyCacheStatus :: ProjectRevision -> FossaApiClientF RevisionDependencyCache
   GetLatestBuild :: ProjectRevision -> FossaApiClientF Build
   GetLatestScan :: Locator -> ProjectRevision -> FossaApiClientF ScanResponse
   GetOrganization :: FossaApiClientF Organization
@@ -160,6 +163,9 @@ uploadContributors locator contributors = sendSimple $ UploadContributors locato
 
 getLatestBuild :: (Has FossaApiClient sig m) => ProjectRevision -> m Build
 getLatestBuild = sendSimple . GetLatestBuild
+
+getRevisionDependencyCacheStatus :: (Has FossaApiClient sig m) => ProjectRevision -> m RevisionDependencyCache
+getRevisionDependencyCacheStatus = sendSimple . GetRevisionDependencyCacheStatus
 
 getIssues :: (Has FossaApiClient sig m) => ProjectRevision -> Maybe DiffRevision -> m Issues
 getIssues projectRevision diffRevision = sendSimple $ GetIssues projectRevision diffRevision

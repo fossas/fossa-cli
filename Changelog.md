@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.4.8
+- Report: Fixes a defect, where `report` command was failing due to invalid dependencies cache from endpoint ([#1068](https://github.com/fossas/fossa-cli/pull/1068)).
+
 ## v3.4.7
 - Linux releases are now packaged as both tar.gz and to improve compatibility when installing ([#1066](https://github.com/fossas/fossa-cli/pull/1066))
 

@@ -40,6 +40,7 @@ runFossaApiClient apiOpts =
           GetIssues rev diffRev -> Core.getIssues rev diffRev
           GetEndpointVersion -> Core.getEndpointVersion
           GetLatestBuild rev -> Core.getLatestBuild rev
+          GetRevisionDependencyCacheStatus rev -> Core.getRevisionDependencyCacheStatus rev
           GetLatestScan locator rev -> ScotlandYard.getLatestScan locator rev
           GetOrganization -> Core.getOrganization
           GetProject rev -> Core.getProject rev
