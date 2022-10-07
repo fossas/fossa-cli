@@ -9,6 +9,7 @@ import Test.Effect (expectFatal', it')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, runIO)
 import Test.MockApi (MockApi, alwaysReturns, fails, returnsOnce)
+import Fossa.API.Types (RevisionDependencyCache(RevisionDependencyCache), RevisionDependencyCacheStatus (Ready))
 
 reportConfig :: IO ReportConfig
 reportConfig = do
@@ -28,27 +29,35 @@ spec =
   describe "Report" $ do
     config <- runIO reportConfig
     it' "should timeout if build-completion doesn't complete" $ do
+      expectGetOrganization
       expectBuildPending
       expectFatal' $ fetchReport config
     it' "should timeout if issue-generation doesn't complete" $ do
+      expectGetOrganization
       expectBuildSuccess
       expectFetchIssuesPending
       expectFatal' $ fetchReport config
     it' "should fetch a report when the build and issues are ready" $ do
+      expectGetOrganization
       expectBuildSuccess
       expectFetchIssuesSuccess
+      expectFetchRevisionDependencyCacheSuccess
       expectFetchReportSuccess
       fetchReport config
     it' "should die if fetching the build fails" $ do
+      expectGetOrganization
       expectBuildError
       expectFatal' $ fetchReport config
     it' "should die if fetching issues fails" $ do
+      expectGetOrganization
       expectBuildSuccess
       expectFetchIssuesError
       expectFatal' $ fetchReport config
     it' "should die if fetching the report fails" $ do
+      expectGetOrganization
       expectBuildSuccess
       expectFetchIssuesSuccess
+      expectFetchRevisionDependencyCacheSuccess
       expectFetchReportError
       expectFatal' $ fetchReport config
 
@@ -90,3 +99,11 @@ expectFetchReportError :: (Has MockApi sig m) => m ()
 expectFetchReportError =
   (GetAttribution Fixtures.projectRevision ReportJson)
     `fails` "Mock failure: GetAttribution"
+
+expectFetchRevisionDependencyCacheSuccess :: (Has MockApi sig m) => m ()
+expectFetchRevisionDependencyCacheSuccess =
+  (GetRevisionDependencyCacheStatus Fixtures.projectRevision)
+    `returnsOnce` RevisionDependencyCache Ready
+
+expectGetOrganization :: Has MockApi sig m => m ()
+expectGetOrganization = GetOrganization `alwaysReturns` Fixtures.organization
