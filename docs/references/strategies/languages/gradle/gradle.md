@@ -31,6 +31,7 @@ Gradle users generally specify their builds using a `build.gradle`/`settings.gra
   - [Manually specifying Gradle dependencies](#manually-specifying-gradle-dependencies)
   - [Configurations For Development and Testing](#configurations-for-development-and-testing)
   - [Android Gradle Configurations For Development and Testing](#android-gradle-configurations-for-development-and-testing)
+  - [Only analyzing specific sub project](#only-analyzing-specific-sub-project)
   - [(Experimental) Only Selecting Set of Configurations For Analysis](#experimental-only-selecting-set-of-configurations-for-analysis)
 
 ## Concepts
@@ -281,6 +282,69 @@ We classify following configurations, and dependencies originating from it as a 
 - kotlinKlibCommonizerClasspath
 - kotlinNativeCompilerPluginClasspath
 ```
+
+## Only analyzing specific sub project
+
+If you have gradle project which has one or more subprojects, you may
+only want to analyze a specific set of subprojects in some cases.
+
+
+In `fossa-cli`, this can be achieved by using [exclusion filtering](./../../../files/fossa-yml.md).
+
+1) Run `fossa list-targets`, to identify project directory and identifier of subprojects.
+```bash
+[ INFO] Found project: gradle@./
+[ INFO] Found target: gradle@./::app
+[ INFO] Found target: gradle@./::list
+[ INFO] Found target: gradle@./::utilities
+```
+
+Note that, targets are denoted in following format `type@path:target`. For 
+example `gradle@./::utilities`:
+
+Note: gradle attaches leading colons to submodules, so the utilities submodule here is referenced by ":utilities"
+```
+gradle  @           ./      :         :utilities
+------ ---          ---    ---        -----------
+Type   Path         Path   Target      Target
+       separator           separator
+```
+
+2) Now to analyze only `utilities`, use a `.fossa.yml` file in the project root.
+
+```yaml
+# filename: .fossa.yml
+#
+# analyze only gradle@./::utilities
+version: 3
+targets:
+  only:
+    - type: gradle
+      path: ./
+      target: ':utilities'
+```
+
+Likewise, if you want to exclude specific set of subprojects, you can do following:
+
+```yaml
+# filename: .fossa.yml
+#
+# do not analyze gradle@./::app, and gradle@./::utilities
+version: 3
+targets:
+  only:
+    - type: gradle
+  exclude:
+    - type: gradle
+      path: ./
+      target: ':app'
+    - type: gradle
+      path: ./
+      target: ':utilities'
+```
+
+
+1) Running `fossa analyze --output -c .fossa.yml`, will only analyze `utilities` submodule.
 
 ## (Experimental) Only Selecting Set of Configurations For Analysis
 

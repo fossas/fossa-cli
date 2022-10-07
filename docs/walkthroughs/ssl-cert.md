@@ -40,7 +40,7 @@ _We recommended that you leverage the operating system's certificate store inste
 
 In Windows:
 ```
-$Env:SSL_CERT_FILE = "C:\Users\example-user\AppData\Local\mkcert\"
+$Env:SSL_CERT_FILE = "\path\to\rootCa"
 fossa analyze
 ```
 
