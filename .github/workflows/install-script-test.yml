@@ -24,6 +24,13 @@ jobs:
           ./fossa --version
           rm fossa
 
+      - name: install latest script can install a specific version
+        shell: bash
+        run: |
+          ./install-latest.sh -b . v3.1.1
+          ./fossa --version | grep -q "3.1.1"
+          rm fossa
+
       - name: install-v1 script does not install v2 or greater version
         shell: bash
         run: |
