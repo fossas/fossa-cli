@@ -1,6 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
 module Strategy.Cocoapods.Podspecs (
-  analyze'
+  analyze',
+  buildGraph,
+  parsePodspecFile
 ) where
 
 

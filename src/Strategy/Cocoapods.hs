@@ -66,8 +66,8 @@ findProjects = walkWithFilters' $ \dir _ files -> do
           }
 
   if isJust podfile || isJust podfileLock || isJust (nonEmpty podSpecs)
-    then pure ([], WalkContinue)
-    else pure ([project], WalkContinue)
+    then pure ([project], WalkContinue)
+    else pure ([], WalkContinue)
 
 data CocoapodsProject = CocoapodsProject
   { cocoapodsPodfile :: Maybe (Path Abs File)
