@@ -170,6 +170,8 @@ Here is an example with gradle:
 Note that, targets are denoted in following format `type@path:target`. For 
 example `gradle@./::utilities`:
 
+Note: gradle attaches leading colons to submodules, so the utilities submodule here is referenced by ":utilities"
+
 ```
 gradle  @           ./      :         :utilities
 ------ ---          ---    ---        -----------
