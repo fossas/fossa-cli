@@ -1,6 +1,6 @@
 module App.Fossa.API.BuildWaitSpec (spec) where
 
-import App.Fossa.API.BuildWait (waitForBuild, waitForIssues, waitForScanCompletion)
+import App.Fossa.API.BuildWait (waitForBuild, waitForIssues, waitForReportReadiness, waitForScanCompletion)
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift)
@@ -12,6 +12,8 @@ import Fossa.API.Types (
   BuildStatus (StatusCreated, StatusFailed, StatusRunning, StatusSucceeded),
   BuildTask (..),
   Project (projectIsMonorepo),
+  RevisionDependencyCache (RevisionDependencyCache),
+  RevisionDependencyCacheStatus (Ready, Waiting),
   ScanResponse (responseScanStatus),
  )
 import Srclib.Types (Locator (..))
@@ -135,6 +137,34 @@ spec =
         expectFatal' . runWithTimeout $
           waitForBuild Fixtures.projectRevision
 
+    describe "waitForReportReadiness" $ do
+      it' "should return when the dependency cache are ready" $ do
+        expectGetApiOpts
+        expectGetOrganization
+        expectIssuesAvailable
+        expectGetRevisionCache Ready
+        runWithTimeout $
+          waitForReportReadiness Fixtures.projectRevision
+
+      it' "should retry periodically if the revision's dependency cache is in waiting state" $ do
+        expectGetApiOpts
+        expectGetOrganization
+        expectIssuesAvailable
+        expectGetRevisionCache Waiting
+        expectGetRevisionCache Waiting
+        expectGetRevisionCache Waiting
+        expectGetRevisionCache Ready
+        runWithTimeout $
+          waitForReportReadiness Fixtures.projectRevision
+
+      it' "should cancel when the timeout expires" $ do
+        expectGetApiOpts
+        expectGetOrganization
+        expectIssuesAvailable
+        expectRevisionDependencyCacheAlwaysWaiting
+        expectFatal' . runWithTimeout $
+          waitForReportReadiness Fixtures.projectRevision
+
 testVpsLocator :: Locator
 testVpsLocator = Locator{locatorFetcher = "custom", locatorProject = "42/testProjectName", locatorRevision = Nothing}
 
@@ -155,6 +185,11 @@ expectGetLatestBuild :: Has MockApi sig m => BuildStatus -> m ()
 expectGetLatestBuild status =
   (GetLatestBuild Fixtures.projectRevision)
     `returnsOnce` Fixtures.build{buildTask = BuildTask{buildTaskStatus = status}}
+
+expectGetRevisionCache :: Has MockApi sig m => RevisionDependencyCacheStatus -> m ()
+expectGetRevisionCache status =
+  (GetRevisionDependencyCacheStatus Fixtures.projectRevision)
+    `returnsOnce` (RevisionDependencyCache status)
 
 expectGetLatestScan :: Has MockApi sig m => m ()
 expectGetLatestScan =
@@ -190,6 +225,11 @@ expectBuildAlwaysRunning :: Has MockApi sig m => m ()
 expectBuildAlwaysRunning =
   (GetLatestBuild Fixtures.projectRevision)
     `alwaysReturns` Fixtures.build{buildTask = BuildTask{buildTaskStatus = StatusRunning}}
+
+expectRevisionDependencyCacheAlwaysWaiting :: Has MockApi sig m => m ()
+expectRevisionDependencyCacheAlwaysWaiting =
+  (GetRevisionDependencyCacheStatus Fixtures.projectRevision)
+    `alwaysReturns` RevisionDependencyCache Waiting
 
 expectIssuesAlwaysWaiting :: Has MockApi sig m => m ()
 expectIssuesAlwaysWaiting =

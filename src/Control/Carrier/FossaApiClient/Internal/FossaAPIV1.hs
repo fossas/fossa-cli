@@ -14,6 +14,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getOrganization,
   getAttribution,
   getAnalyzedRevisions,
+  getRevisionDependencyCacheStatus,
   getSignedLicenseScanURL,
   getSignedURL,
   getProject,
@@ -114,6 +115,7 @@ import Fossa.API.Types (
   OrgId,
   Organization (orgSupportsIssueDiffs, orgSupportsNativeContainerScan, organizationId),
   Project,
+  RevisionDependencyCache,
   SignedURL (signedURL),
   UploadResponse,
   useApiOpts,
@@ -741,6 +743,22 @@ getLatestBuild apiOpts ProjectRevision{..} = fossaReq $ do
   orgId <- organizationId <$> getOrganization apiOpts
 
   response <- req GET (buildsEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
+  pure (responseBody response)
+
+----
+
+dependencyCacheReadyEndpoint :: Url 'Https -> OrgId -> Locator -> Url 'Https
+dependencyCacheReadyEndpoint baseurl orgId locator = baseurl /: "api" /: "cli" /: renderLocatorUrl orgId locator /: "dependencies-cache" /: "status"
+
+getRevisionDependencyCacheStatus ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  m RevisionDependencyCache
+getRevisionDependencyCacheStatus apiOpts ProjectRevision{..} = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  orgId <- organizationId <$> getOrganization apiOpts
+  response <- req GET (dependencyCacheReadyEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
 
 ---------- Archive build queueing. This Endpoint ensures that after an archive is uploaded, it is scanned.

@@ -2,6 +2,7 @@ module App.Fossa.API.BuildWait (
   waitForScanCompletion,
   waitForIssues,
   waitForBuild,
+  waitForReportReadiness,
 ) where
 
 import App.Fossa.Config.Test (DiffRevision)
@@ -23,9 +24,11 @@ import Control.Effect.FossaApiClient (
   getLatestScan,
   getOrganization,
   getProject,
+  getRevisionDependencyCacheStatus,
   getScan,
  )
 import Control.Effect.StickyLogger (StickyLogger, logSticky')
+import Control.Monad (void, when)
 import Control.Timeout (Cancel, checkForCancel, delay)
 import Data.Text (Text)
 import Data.Text.Extra (showT)
@@ -37,8 +40,10 @@ import Fossa.API.Types (
   BuildTask (buildTaskStatus),
   Issues (issuesStatus),
   OrgId,
-  Organization (organizationId),
+  Organization (orgSupportsDependenciesCachePolling, organizationId),
   Project (projectIsMonorepo),
+  RevisionDependencyCache (status),
+  RevisionDependencyCacheStatus (Ready, UnknownDependencyCacheStatus, Waiting),
   ScanId,
   ScanResponse (..),
  )
@@ -194,3 +199,42 @@ pauseForRetry ::
 pauseForRetry = do
   apiOpts <- getApiOpts
   delay $ apiOptsPollDelay apiOpts
+
+waitForReportReadiness ::
+  ( Has Diagnostics sig m
+  , Has Logger sig m
+  , Has StickyLogger sig m
+  , Has FossaApiClient sig m
+  , Has (Lift IO) sig m
+  ) =>
+  ProjectRevision ->
+  Cancel ->
+  m ()
+waitForReportReadiness revision cancelFlag = do
+  void $ waitForIssues revision Nothing cancelFlag
+
+  supportsDepCacheReadinessPolling <- orgSupportsDependenciesCachePolling <$> getOrganization
+  when supportsDepCacheReadinessPolling $
+    waitForValidDependenciesCache revision cancelFlag
+
+waitForValidDependenciesCache ::
+  ( Has Diagnostics sig m
+  , Has Logger sig m
+  , Has StickyLogger sig m
+  , Has FossaApiClient sig m
+  , Has (Lift IO) sig m
+  ) =>
+  ProjectRevision ->
+  Cancel ->
+  m ()
+waitForValidDependenciesCache revision cancelFlag = do
+  checkForTimeout cancelFlag
+  cacheStatus <- getRevisionDependencyCacheStatus revision
+
+  case status cacheStatus of
+    Ready -> pure ()
+    Waiting -> do
+      logSticky' $ "[ Waiting for revision's dependency cache... last status: " <> viaShow Waiting <> " ]"
+      pauseForRetry
+      waitForValidDependenciesCache revision cancelFlag
+    UnknownDependencyCacheStatus status -> fatalText $ "unknown status of " <> status <> " received for revision's dependency cache"
