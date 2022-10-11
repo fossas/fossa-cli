@@ -4,7 +4,7 @@ RPM packages managed by system package managers like `dnf` and `yum` are built
 using SPEC files.  We are able to analyze these files to determine runtime
 dependencies.
 
-| Strategy | Direct Deps        | Deep Deps | Edges | Tags        | Container Scanning |
+| Strategy | Direct Deps        | Transitive Deps | Edges | Tags        | Container Scanning |
 | -------- | ------------------ | --------- | ----- | ----------- | ------------------ |
 | rpm-spec | :white_check_mark: | :x:       | :x:   | Environment | :white_check_mark: |
 

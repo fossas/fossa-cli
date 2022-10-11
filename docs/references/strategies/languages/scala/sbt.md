@@ -2,7 +2,7 @@
 
 While the other analysis strategies for `gradle` and `maven` offer some scala project coverage, scala projects overwhelmingly use the build tool `sbt`.
 
-| Strategy           | Direct Deps        | Deep Deps          | Edges              | Container Scanning (experimental) |
+| Strategy           | Direct Deps        | Transitive Deps          | Edges              | Container Scanning (experimental) |
 | ------------------ | ------------------ | ------------------ | ------------------ | --------------------------------- |
 | sbt dependencyTree | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                               |
 | pom                | :white_check_mark: | :x:                | :x:                | :x:                               |

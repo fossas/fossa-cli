@@ -10,7 +10,7 @@ Find file named `pubspec.yaml`.
 
 We attempt to perform all of the strategies below, we select the result of succeeded strategies which has the highest preference. 
 
-| Preference | Strategy                                                                                               | Direct Deps        | Deep Deps          | Edges              | Container Scanning (Experimental) |
+| Preference | Strategy                                                                                               | Direct Deps        | Transitive Deps          | Edges              | Container Scanning (Experimental) |
 | ---------- | ------------------------------------------------------------------------------------------------------ | ------------------ | ------------------ | ------------------ | --------------------------------- |
 | Highest    | 1. `pubspec.yaml` and `pubspec.lock` are discovered, and `flutter pub deps -s compact` can be executed | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                               |
 |            | 2. `pubspec.yaml` and `pubspec.lock` are discovered, and `dart pub deps -s compact` can be executed    | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                               |
@@ -23,7 +23,7 @@ Where,
 * :heavy_check_mark: - Supported in all projects
 * :x: - Not Supported
 
-It is recommended that, `pub deps get` is executed prior to analyzing dart project. This ensures dependencies are retrieved, so `pub deps -s compact` command can produce edges between direct, and deep dependencies.
+It is recommended that, `pub deps get` is executed prior to analyzing dart project. This ensures dependencies are retrieved, so `pub deps -s compact` command can produce edges between direct, and transitive dependencies.
 
 ### Limitations
 
@@ -248,7 +248,7 @@ When pub deps command is successfully executed, and lockfile id discovered (stra
 
 ![With lock file and deps command](dart-resolved-graph-with-lock-cmd.svg)
 
-Note: Dependencies in yellow boxes are direct dependencies, rest are deep dependencies. All descendent dependencies of sdk dependencies are promoted to their ancestor - e.g. characters, collection, meta, typed_data, and vector_math.
+Note: Dependencies in yellow boxes are direct dependencies, rest are transitive dependencies. All descendent dependencies of sdk dependencies are promoted to their ancestor - e.g. characters, collection, meta, typed_data, and vector_math.
 
 If pub deps command is not successfully executed:
 

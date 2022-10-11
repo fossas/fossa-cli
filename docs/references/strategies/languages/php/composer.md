@@ -2,7 +2,7 @@
 
 When developing in PHP, [composer](https://getcomposer.org/) is commonly used to manage dependencies.
 
-| Strategy      | Direct Deps        | Deep Deps          | Edges              | Classifies Dev Dependencies | Container Scanning (experimental) |
+| Strategy      | Direct Deps        | Transitive Deps          | Edges              | Classifies Dev Dependencies | Container Scanning (experimental) |
 | ------------- | ------------------ | ------------------ | ------------------ | --------------------------- | --------------------------------- |
 | composer.lock | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:          | :white_check_mark:                |
 
@@ -12,7 +12,7 @@ Find a file named `composer.lock`.
 
 ## Analysis
 
-1. Parse `composer.lock` to identify direct and deep dependencies.
+1. Parse `composer.lock` to identify direct and transitive dependencies.
 
 ## Example 
 

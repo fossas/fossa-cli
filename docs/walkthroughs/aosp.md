@@ -120,7 +120,7 @@ If you need to analyze a different set of directories, you should modify this fi
 
 `version` is actually an optional field when defining vendored dependencies in `fossa-deps.yml`.
 However, omitting this field causes the FOSSA CLI to compress each vendored directory to calculate a hash to use as a placeholder version.
-AOSP directory trees are too deep for zip files, so we manually define a dummy version to avoid having to compress each subdirectory.
+AOSP directory trees are too transitive for zip files, so we manually define a dummy version to avoid having to compress each subdirectory.
 
 Running `fossa analyze` without any other flags or configuration files causes all [analysis strategies](../references/strategies/README.md) to be executed, which requires significantly more resources. This is likely to fail or take an excessive amount of time due to the size and number of subprojects discovered in the AOSP source tree.
 

@@ -7,7 +7,7 @@ We will not scan `.build` directory if the `Package.swift` or Xcode project file
 
 # Swift Analysis
 
-| Strategy                                                                 | Direct Deps        | Deep Deps          | Edges | Classifies Test Dependencies | Container Scanning (experimental) |
+| Strategy                                                                 | Direct Deps        | Transitive Deps          | Edges | Classifies Test Dependencies | Container Scanning (experimental) |
 | ------------------------------------------------------------------------ | ------------------ | ------------------ | ----- | ---------------------------- | --------------------------------- |
 | Parse dependencies from `Package.swift`                                  | :white_check_mark: | :x:                | :x:   | :x:                          | :white_check_mark:                |
 | Parse dependencies from `Package.swift` and `Package.resolved`           | :white_check_mark: | :white_check_mark: | :x:   | :x:                          | :white_check_mark:                |
@@ -80,7 +80,7 @@ When the analysis is performed (e.g. `fossa analyze -o`), we will identify the f
 
 - https://github.com/grpc/grpc-swift.git with version 1.3.0
 
-If `Package.resolved` is discovered, the following deep dependencies will be identified, however, we will not identify the edges in the dependency graph:
+If `Package.resolved` is discovered, the following transitive dependencies will be identified, however, we will not identify the edges in the dependency graph:
 
 - https://github.com/apple/swift-log.git with version 1.4.2
 
@@ -118,7 +118,7 @@ Excerpt from example `project.pbxproj`:
 } 
 ```
 
-If the `Package.resolved` is discovered, deep dependencies will be identified. If not, only direct dependencies listed in xcode project file will be identified. In either case, no edges among dependencies will be reported.
+If the `Package.resolved` is discovered, transitive dependencies will be identified. If not, only direct dependencies listed in xcode project file will be identified. In either case, no edges among dependencies will be reported.
 
 ## F.A.Q
 

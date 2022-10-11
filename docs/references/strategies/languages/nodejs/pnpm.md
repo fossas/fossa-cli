@@ -21,7 +21,7 @@ in `pnpm-lock.yaml` to analyze the dependency graph.
 - `packages`
   - `[packagesKey]`
     - `resolution`: infer git URL, git commit, or package source URL.  
-    - `dependencies`: list of deep dependencies 
+    - `dependencies`: list of transitive dependencies 
     - `peerDependencies`: list of peer dependencies (will be treated like any other dependency)
     - `dev`: to infer if this is used dependency or not. If the value is `true` by default CLI will not include this in the final analysis.
 
@@ -118,7 +118,7 @@ FOSSA will use provided URL address to download and analyze this dependency.
 ```
 
 * If the dependency was resolved using the local directory (`resolution` will have the `type: directory` attribute),
-FOSSA will not analyze this dependency. Local dependency's deep dependencies will be analyzed, 
+FOSSA will not analyze this dependency. Local dependency's transitive dependencies will be analyzed, 
 and they will be promoted in place of local dependency. 
 
 ```yaml

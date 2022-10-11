@@ -2,7 +2,7 @@
 
 For maven projects, we offer a more-accurate strategy (mavenplugin), and a strategy with zero requirements (pomxml).
 
-| Strategy                      | Direct Deps        | Deep Deps          | Edges              | Container Scanning (experimental) |
+| Strategy                      | Direct Deps        | Transitive Deps          | Edges              | Container Scanning (experimental) |
 |-------------------------------|--------------------|--------------------|--------------------|-----------------------------------|
 | [mavenplugin](mavenplugin.md) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                               |
 | [treecmd](treecmd.md)         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                               |

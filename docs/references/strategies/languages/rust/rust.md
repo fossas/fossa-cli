@@ -5,7 +5,7 @@ that ships with rust distributions. There are rare, but known cases of generic
 buildtools being used, like `make`, `cmake`, and `ninja`.  These cases are not
 handled here.
 
-| Strategy | Direct Deps        | Deep Deps          | Edges              | Tags        | Container Scanning |
+| Strategy | Direct Deps        | Transitive Deps          | Edges              | Tags        | Container Scanning |
 | -------- | ------------------ | ------------------ | ------------------ | ----------- | ------------------ |
 | cargo    | :white_check_mark: | :white_check_mark: | :white_check_mark: | Environment | :x:                |
 
@@ -60,7 +60,7 @@ been generated, it will try to update the package index.  This usually takes abo
 2-10 seconds, which is potentially wasteful, but far less so than the 10 minutes
 that it would take to download entire crates.
 
-We can interrogate the JSON output for direct and deep dependency info, but it is
+We can interrogate the JSON output for direct and transitive dependency info, but it is
 non-trivial to do so.  For more info, see the metadata schema found
 [here](https://doc.rust-lang.org/cargo/commands/cargo-metadata.html)
 

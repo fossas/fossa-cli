@@ -3,7 +3,7 @@
 The python buildtool ecosystem consists of three major toolchains: setuptools
 (requirements.txt, setup.py), pipenv, and conda.
 
-| Strategy                                       | Direct Deps        | Deep Deps          | Edges              | Container Scanning (experimental) |
+| Strategy                                       | Direct Deps        | Transitive Deps          | Edges              | Container Scanning (experimental) |
 | ---------------------------------------------- | ------------------ | ------------------ | ------------------ | --------------------------------- |
 | [pipenv](pipenv.md)                            | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :x:                               |
 | [pipfile](pipenv.md)                           | :heavy_check_mark: | :heavy_check_mark: | :x:                | :x:                               |
