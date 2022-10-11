@@ -46,7 +46,7 @@ execute() {
   # http_download "${tmpdir}/${CHECKSUM}" "${CHECKSUM_URL}"
   # hash_sha256_verify "${tmpdir}/${TARBALL}" "${tmpdir}/${CHECKSUM}"
   srcdir="${tmpdir}"
-  (cd "${tmpdir}" && unzip -o "${TARBALL}")
+  (cd "${tmpdir}" && untar "${TARBALL}")
   log_debug "setting up bindir: $BINDIR"
   mkdir -p "$BINDIR" 2> /dev/null || sudo mkdir -p "$BINDIR"
   for binexe in "fossa" ; do
@@ -102,6 +102,9 @@ adjust_format() {
 }
 adjust_os() {
   # adjust archive name based on OS
+  case $(uname_os) in
+   linux) FORMAT=tar.gz ;;
+  esac
   true
 }
 adjust_arch() {
@@ -232,7 +235,7 @@ untar() {
   case "${tarball}" in
     *.tar.gz | *.tgz) tar -xzf "${tarball}" ;;
     *.tar) tar -xf "${tarball}" ;;
-    *.zip) unzip "${tarball}" ;;
+    *.zip) unzip -o "${tarball}" ;;
     *)
       log_err "untar unknown archive format for ${tarball}"
       return 1
@@ -248,38 +251,50 @@ http_download_curl() {
   local_file=$1
   source_url=$2
   header=$3
-  if [ -z "$header" ]; then
-    code=$(curl -w '%{http_code}' -sL -o "$local_file" "$source_url") || (log_debug "curl command failed." && return 1)
-  else
-    code=$(curl -w '%{http_code}' -sL -H "$header" -o "$local_file" "$source_url") || (log_debug "curl command failed." && return 1)
+  if [ ! -z "$3" ]; then
+    header="-H $header"
   fi
-  if [ "$code" != "200" ]; then
-    log_debug "http_download_curl received HTTP status $code"
-    return 1
-  fi
+  HTTP_CODE=$(curl -w '%{HTTP_CODE}' -sL $header -o "$local_file" "$source_url") || (log_debug "curl command failed." && return 1)
   return 0
 }
 http_download_wget() {
   local_file=$1
   source_url=$2
-  header=$3
-  if [ -z "$header" ]; then
-    wget -q -O "$local_file" "$source_url" || (log_debug "wget command failed." && return 1)
-  else
-    wget -q --header "$header" -O "$local_file" "$source_url" || (log_debug "wget command failed." && return 1)
+  if [ ! -z $3 ]; then
+    header="--header $3"
   fi
+  HTTP_CODE=$(wget -q $header --server-response -O "$local_file" "$source_url" 2>&1 | awk 'NR==1{print $2}') || (log_debug "wget command failed." && return 1)
+  return 0
 }
 http_download() {
   log_debug "http_download $2"
   if is_command curl; then
     http_download_curl "$@"
-    return
   elif is_command wget; then
     http_download_wget "$@"
-    return
+  else
+    log_crit "http_download unable to find wget or curl"
+    return 1
   fi
-  log_crit "http_download unable to find wget or curl"
-  return 1
+
+  # tar.gz releases were added starting from v3.4.7.
+  # Context: https://github.com/fossas/fossa-cli/pull/1066
+  case $source_url in
+    *.tar.gz) if [ "$HTTP_CODE" = "404" ]; then
+      log_debug "http_download received 404 from $source_url, trying to download a zip file instead..."
+      FORMAT="zip"
+      TARBALL=${NAME}.${FORMAT}
+      TARBALL_URL=${GITHUB_DOWNLOAD}/${TAG}/${TARBALL}
+      http_download "${tmpdir}/${TARBALL}" "${TARBALL_URL}" "$3"
+    fi ;;
+  esac
+
+  # wget returns the first status code it finds even if it redirected. Checking
+  # for 302 seems to work consistently with GitHub's API.
+  if [ -n "$HTTP_CODE" ] && [ "$HTTP_CODE" != 200 ] && [ "$HTTP_CODE" != 302 ]; then
+    log_err "http_download received HTTP status $HTTP_CODE from $2"
+    return 1
+  fi
 }
 http_copy() {
   tmp=$(mktemp)

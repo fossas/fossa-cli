@@ -4,7 +4,7 @@
 - Report: Fixes a defect, where `report` command was failing due to invalid dependencies cache from endpoint ([#1068](https://github.com/fossas/fossa-cli/pull/1068)).
 
 ## v3.4.7
-- Linux releases are now packaged as both tar.gz and to improve compatibility when installing ([#1066](https://github.com/fossas/fossa-cli/pull/1066))
+- Linux releases are now packaged as both tar.gz and zip to improve compatibility when installing ([#1066](https://github.com/fossas/fossa-cli/pull/1066))
 
 ## v3.4.6
 - Container Scanning: Fixes a defect, where container registry `registry:3000/org/repo:tag` was incorrectly identifying `registry` as project name. ([#1050](https://github.com/fossas/fossa-cli/issues/1050))
