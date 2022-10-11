@@ -7,7 +7,7 @@ module App.Fossa.Report (
 ) where
 
 import App.Fossa.API.BuildWait (
-  waitForReport,
+  waitForReportReadiness,
   waitForScanCompletion,
  )
 import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), ReportOutputFormat (ReportJson), mkSubCommand)
@@ -78,7 +78,7 @@ fetchReport ReportConfig{..} =
       waitForScanCompletion revision cancelToken
       logSticky "[ Waiting for scan completion... ]"
 
-      waitForReport revision cancelToken
+      waitForReportReadiness revision cancelToken
       logSticky $ "[ Fetching " <> showT reportType <> " report... ]"
 
       renderedReport <- getAttribution revision outputFormat

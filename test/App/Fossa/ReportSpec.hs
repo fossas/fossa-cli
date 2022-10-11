@@ -5,11 +5,11 @@ import App.Fossa.Report (fetchReport)
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Timeout (Duration (MilliSeconds))
+import Fossa.API.Types (RevisionDependencyCache (RevisionDependencyCache), RevisionDependencyCacheStatus (Ready))
 import Test.Effect (expectFatal', it')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, runIO)
 import Test.MockApi (MockApi, alwaysReturns, fails, returnsOnce)
-import Fossa.API.Types (RevisionDependencyCache(RevisionDependencyCache), RevisionDependencyCacheStatus (Ready))
 
 reportConfig :: IO ReportConfig
 reportConfig = do

@@ -372,7 +372,7 @@ instance FromJSON RevisionDependencyCache where
       <$> obj .: "status"
 
 instance FromJSON RevisionDependencyCacheStatus where
-  parseJSON = withText "RevisionDependencyCacheStatus" $ \case
+  parseJSON = withText "RevisionDependencyCacheStatus" $ \txt -> case Text.toUpper txt of
     "WAITING" -> pure Waiting
     "READY" -> pure Ready
     other -> pure $ UnknownDependencyCacheStatus other

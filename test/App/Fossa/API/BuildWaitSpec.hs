@@ -1,6 +1,6 @@
 module App.Fossa.API.BuildWaitSpec (spec) where
 
-import App.Fossa.API.BuildWait (waitForBuild, waitForIssues, waitForReport, waitForScanCompletion)
+import App.Fossa.API.BuildWait (waitForBuild, waitForIssues, waitForReportReadiness, waitForScanCompletion)
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift)
@@ -137,14 +137,14 @@ spec =
         expectFatal' . runWithTimeout $
           waitForBuild Fixtures.projectRevision
 
-    describe "waitForReport" $ do
+    describe "waitForReportReadiness" $ do
       it' "should return when the dependency cache are ready" $ do
         expectGetApiOpts
         expectGetOrganization
         expectIssuesAvailable
         expectGetRevisionCache Ready
         runWithTimeout $
-          waitForReport Fixtures.projectRevision
+          waitForReportReadiness Fixtures.projectRevision
 
       it' "should retry periodically if the revision's dependency cache is in waiting state" $ do
         expectGetApiOpts
@@ -155,7 +155,7 @@ spec =
         expectGetRevisionCache Waiting
         expectGetRevisionCache Ready
         runWithTimeout $
-          waitForReport Fixtures.projectRevision
+          waitForReportReadiness Fixtures.projectRevision
 
       it' "should cancel when the timeout expires" $ do
         expectGetApiOpts
@@ -163,7 +163,7 @@ spec =
         expectIssuesAvailable
         expectRevisionDependencyCacheAlwaysWaiting
         expectFatal' . runWithTimeout $
-          waitForReport Fixtures.projectRevision
+          waitForReportReadiness Fixtures.projectRevision
 
 testVpsLocator :: Locator
 testVpsLocator = Locator{locatorFetcher = "custom", locatorProject = "42/testProjectName", locatorRevision = Nothing}

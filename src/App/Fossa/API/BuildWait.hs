@@ -2,7 +2,7 @@ module App.Fossa.API.BuildWait (
   waitForScanCompletion,
   waitForIssues,
   waitForBuild,
-  waitForReport,
+  waitForReportReadiness,
 ) where
 
 import App.Fossa.Config.Test (DiffRevision)
@@ -200,7 +200,7 @@ pauseForRetry = do
   apiOpts <- getApiOpts
   delay $ apiOptsPollDelay apiOpts
 
-waitForReport ::
+waitForReportReadiness ::
   ( Has Diagnostics sig m
   , Has Logger sig m
   , Has StickyLogger sig m
@@ -210,7 +210,7 @@ waitForReport ::
   ProjectRevision ->
   Cancel ->
   m ()
-waitForReport revision cancelFlag = do
+waitForReportReadiness revision cancelFlag = do
   void $ waitForIssues revision Nothing cancelFlag
 
   supportsDepCacheReadinessPolling <- orgSupportsDependenciesCachePolling <$> getOrganization
