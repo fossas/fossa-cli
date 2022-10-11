@@ -18,6 +18,8 @@ module Fossa.API.Types (
   OrgId (..),
   Organization (..),
   Project (..),
+  RevisionDependencyCache (..),
+  RevisionDependencyCacheStatus (..),
   SignedURL (..),
   UploadResponse (..),
   ScanId (..),
@@ -296,6 +298,7 @@ data Organization = Organization
   , orgDefaultVendoredDependencyScanType :: ArchiveUploadType
   , orgSupportsIssueDiffs :: Bool
   , orgSupportsNativeContainerScan :: Bool
+  , orgSupportsDependenciesCachePolling :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -309,6 +312,7 @@ instance FromJSON Organization where
       <*> obj .:? "defaultVendoredDependencyScanType" .!= CLILicenseScan
       <*> obj .:? "supportsIssueDiffs" .!= False
       <*> obj .:? "supportsNativeContainerScans" .!= False
+      <*> obj .:? "supportsDependenciesCachePolling" .!= False
 
 data Project = Project
   { projectId :: Text
@@ -352,6 +356,26 @@ instance FromJSON ScanResponse where
     ScanResponse
       <$> obj .: "id"
       <*> obj .:? "status"
+
+data RevisionDependencyCacheStatus
+  = Ready
+  | Waiting
+  | UnknownDependencyCacheStatus Text
+  deriving (Eq, Ord, Show)
+
+newtype RevisionDependencyCache = RevisionDependencyCache {status :: RevisionDependencyCacheStatus}
+  deriving (Eq, Ord, Show)
+
+instance FromJSON RevisionDependencyCache where
+  parseJSON = withObject "RevisionDependencyCache" $ \obj ->
+    RevisionDependencyCache
+      <$> obj .: "status"
+
+instance FromJSON RevisionDependencyCacheStatus where
+  parseJSON = withText "RevisionDependencyCacheStatus" $ \txt -> case Text.toUpper txt of
+    "WAITING" -> pure Waiting
+    "READY" -> pure Ready
+    other -> pure $ UnknownDependencyCacheStatus other
 
 ---------------
 

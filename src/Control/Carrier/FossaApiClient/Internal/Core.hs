@@ -7,6 +7,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   getOrganization,
   getProject,
   getAnalyzedRevisions,
+  getRevisionDependencyCacheStatus,
   getSignedUploadUrl,
   queueArchiveBuild,
   uploadAnalysis,
@@ -41,6 +42,7 @@ import Fossa.API.Types (
   Issues,
   Organization,
   Project,
+  RevisionDependencyCache,
   SignedURL,
   UploadResponse,
  )
@@ -166,6 +168,17 @@ getAttribution ::
 getAttribution revision format = do
   apiOpts <- ask
   API.getAttribution apiOpts revision format
+
+getRevisionDependencyCacheStatus ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  ProjectRevision ->
+  m RevisionDependencyCache
+getRevisionDependencyCacheStatus rev = do
+  apiOpts <- ask
+  API.getRevisionDependencyCacheStatus apiOpts rev
 
 getSignedUploadUrl ::
   ( Has (Lift IO) sig m

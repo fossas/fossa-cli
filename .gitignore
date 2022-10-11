@@ -17,6 +17,7 @@ vendor-bins/
 /fossa
 /fossa-?dev
 /release
+/fourmolu
 
 # Debug output
 fossa.debug.json
