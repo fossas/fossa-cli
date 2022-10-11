@@ -85,3 +85,44 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 | `--experimental-skip-vsi-graph 'custom+1/some$locator'` | Skip resolving the dependencies of the given project that was previously linked via `--experimental-link-project-binary`.                                           |
 | `--experimental-enable-monorepo 'monorepo-type'`        | Scan the project in monorepo mode. For more information, see the [monorepo overview](../experimental/monorepo/README.md).                                           |
 | `--experimental-analyze-dynamic-deps './some-binary`    | Analyze the binary at the provided path for dynamically linked dependencies. For more information, see [dynamic link detection](../experimental/dynlink/README.md)  |
+
+### F.A.Q.
+
+1. Why is `fossa-cli` is skipping my project?
+
+`fossa-cli` may sometime report a project of interest was skipped from the analysis. For example,
+
+```text
+[ INFO] Scan Summary
+[ INFO] ------------
+[ INFO] 3 projects scanned;  2 skipped,  1 succeeded,  0 failed,  1 analysis warning
+[ INFO] 
+[ INFO] * setuptools project in "sandbox/": succeeded with 1 warning
+[ INFO] * setuptools project in "sandbox/example/": skipped (production path filtering)
+[ INFO] * setuptools project in "sandbox/external/": skipped (exclusion filters)
+```
+
+`fossa-cli` skips analysis, if and only if 
+
+- (a) Target is excluded via fossa configuration file (this filtering is referred to as "exclusion filters")
+- (b) Target is skipped because its `fossa-cli` considers target to be not part of production (this filtering is referred to as "production path filtering")
+
+`fossa-cli` skips any target per (b), if the target is found within the following directories:
+
+- `dist-newstyle`
+- `doc/`
+- `docs/`
+- `test/`
+- `example/`
+- `examples/`
+- `vendor/`
+- `node_modules/`
+- `.srclib-cache/`
+- `spec/`
+- `Godeps/`
+- `.git/`
+- `bower_components/`
+- `third_party/`
+- `third-party/`
+- `Carthage/`
+- `Checkouts/` 
