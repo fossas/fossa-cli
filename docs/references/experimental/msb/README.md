@@ -16,7 +16,7 @@ Such binary can be a library purchased from a vendor, or a prebuilt open source 
 If the team building the internal binary links the binary to its project, multi-stage build support can identify such binaries vendored into the directory structure of another project.
 Linking will preserve all of the metadata known about the artifact during the linking.
 
-The upstream library project will be shown as a direct dependency of the project that is vendoring the binary artifact, and upstream project’s dependencies are shown as deep dependencies of the vendoring project.
+The upstream library project will be shown as a direct dependency of the project that is vendoring the binary artifact, and upstream project’s dependencies are shown as transitive dependencies of the vendoring project.
 
 #### Build a binary used downstream
 
@@ -26,7 +26,7 @@ This allows you to configure the CI pipeline for your project to always keep the
 ### Link a binary’s fingerprint to a user project
 
 When the source of a library is available, FOSSA can scan that library for its dependencies and associate one or more binaries with the project.
-Then, when scanning a downstream project that uses one of those binaries, all the dependency information from the library will appear as deep dependency information for the downstream project.
+Then, when scanning a downstream project that uses one of those binaries, all the dependency information from the library will appear as transitive dependency information for the downstream project.
 
 To link one or more binaries to a project, use `--experimental-link-project-binary`.
 

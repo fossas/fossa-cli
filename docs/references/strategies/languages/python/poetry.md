@@ -22,7 +22,7 @@ If `poetry.lock` file is discovered, following will be analyzed from lockfile to
 
 If `poetry.lock` file is not discovered, we fallback to reporting only direct dependencies parsed from `pyproject.toml`.
 
-| Strategy                                          | Direct Deps        | Deep Deps          | Edges              |
+| Strategy                                          | Direct Deps        | Transitive Deps          | Edges              |
 | ------------------------------------------------- | ------------------ | ------------------ | ------------------ |
 | `pyproject.toml` and `poetry.lock` are discovered | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | Only `pyproject.toml` is discovered               | :heavy_check_mark: | :x:                | :x:                |
@@ -172,14 +172,14 @@ content-hash = "31cb32d5165d1cc95e45e9d3e839af556f548df74dda74e25a02b79ba5aa5948
 We will produce the following dependency graph, from our analyses if both `poetry.lock` and `pyproject.toml` are discovered.
 
 ![With poetry.lock file](poetry-with-lock.svg)
-_Dependencies highlighted in yellow boxes are direct dependencies, rest are deep dependencies._
+_Dependencies highlighted in yellow boxes are direct dependencies, rest are transitive dependencies._
 
 If only, `pyproject.toml` is discovered, following dependency graph will be produced.
 
 ![Without poetry.lock file](poetry-without-lock.svg)
-_Dependencies highlighted in yellow boxes are direct dependencies, rest are deep dependencies._
+_Dependencies highlighted in yellow boxes are direct dependencies, rest are transitive dependencies._
 
-Without `poetry.lock` we are not able to identify any deep dependencies. We are also unable to locally resolve dependency when version ranges are provided, like `loguru = "^0.5"`.
+Without `poetry.lock` we are not able to identify any transitive dependencies. We are also unable to locally resolve dependency when version ranges are provided, like `loguru = "^0.5"`.
 
 ### References
 

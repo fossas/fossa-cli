@@ -12,7 +12,7 @@ Find directories containing `setup.py` or `requirements.txt`
 
 We run `pip list --format=json` and parse the output -- in the worst case, this
 only provides global dependencies; in the best case, the global dependencies
-will include our project's direct and deep dependencies.
+will include our project's direct and transitive dependencies.
 
 ## Example
 

@@ -3,7 +3,7 @@
 Ruby projects use a buildtool called `bundler` to manage their dependencies. We
 parse a lockfile or run the `bundle` cli to determine dependencies.
 
-| Strategy    | Direct Deps                    | Deep Deps                      | Edges              | Tags | Container Scanning (experimental) |
+| Strategy    | Direct Deps                    | Transitive Deps                      | Edges              | Tags | Container Scanning (experimental) |
 | ----------- | ------------------------------ | ------------------------------ | ------------------ | ---- | --------------------------------- |
 | gemfilelock | :white_check_mark:             | :white_check_mark:             | :white_check_mark: |      | :white_check_mark:                |
 | bundleshow  | :white_check_mark: (unlabeled) | :white_check_mark: (unlabeled) | :x:                |      | :x:                               |
@@ -76,7 +76,7 @@ BUNDLED WITH
 
 Running `bundle show` displays information about all dependencies used by a
 project, and their pinned versions. It doesn't label which dependencies are
-direct or deep, and doesn't tell us edges between dependencies
+direct or transitive, and doesn't tell us edges between dependencies
 
 Example output:
 

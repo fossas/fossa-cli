@@ -1,6 +1,6 @@
 # Maven plugin
 
-| Strategy           | Direct Deps | Deep Deps | Edges | Tags       |
+| Strategy           | Direct Deps | Transitive Deps | Edges | Tags       |
 | ---                | ---         | ---       | ---   | ---        |
 | depgraph plugin    | ✅          | ✅        | ✅   | Optional   |
 
@@ -44,7 +44,7 @@ org:submodule1:1.0.0:compile
 ```
 
 If `submodule1` and `submodule2` are both submodules of the project we would
-report `pkg3` and `pkg1` as direct dependencies. `pkg2` is reported as a deep
+report `pkg3` and `pkg1` as direct dependencies. `pkg2` is reported as a transitive
 dependency. `submodule1` and `submodule2` won't be included at all. `fossa-cli`'s
 graph would look like this:
 

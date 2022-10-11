@@ -3,7 +3,7 @@
 When developing in Clojure, [leiningen](https://leiningen.org/) is the most common package manager. Dependencies are specified in a manifest file by users which is used by the `lein` tool to build a dependency graph and download the correct dependencies.
 
 
-| Strategy    | Direct Deps        | Deep Deps          | Edges              | Container Scanning (Experimental) |
+| Strategy    | Direct Deps        | Transitive Deps          | Edges              | Container Scanning (Experimental) |
 | ----------- | ------------------ | ------------------ | ------------------ | --------------------------------- |
 | `lein deps` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                               |
 

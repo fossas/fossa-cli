@@ -76,5 +76,5 @@ To programmatically add these dependencies, you can write a script in your langu
 
 Please note that with the fossa-deps file, we can report dependencies, but we cannot:
 
-- differentiate between direct and deep dependencies
+- differentiate between direct and transitive dependencies
 - report edge information between dependencies
