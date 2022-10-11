@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Scan Summary: Identifies project skipped due to production path filtering, or exclusion filtering. ([]())
+
 ## v3.4.8
 - Report: Fixes a defect, where `report` command was failing due to invalid dependencies cache from endpoint ([#1068](https://github.com/fossas/fossa-cli/pull/1068)).
 
