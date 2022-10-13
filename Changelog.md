@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.4.10
+- Scala: Supports analysis of multi-project sbt builds with `sbt-dependency-graph` plugin. ([#1074](https://github.com/fossas/fossa-cli/pull/1074)).
+
 ## v3.4.9
 - Scan Summary: Identifies project skipped due to production path filtering, or exclusion filtering. ([#1071](https://github.com/fossas/fossa-cli/pull/1071))
 - R: Adds support for `renv` package manager. ([#1062](https://github.com/fossas/fossa-cli/pull/1062))
