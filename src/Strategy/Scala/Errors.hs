@@ -1,6 +1,7 @@
 module Strategy.Scala.Errors (
   MaybeWithoutDependencyTreeTask (..),
   FailedToListProjects (..),
+  MissingFullDependencyPlugin (..),
 
   -- * docs
   scalaFossaDocUrl,
@@ -31,6 +32,23 @@ instance ToDiagnostic MaybeWithoutDependencyTreeTask where
             , "please install following plugin prior to running fossa:"
             , indent 2 $ pretty sbtDepsGraphPluginUrl
             , ""
+            ]
+      , ""
+      , "Refer to:"
+      , indent 2 $ pretty $ "- " <> scalaFossaDocUrl
+      ]
+
+data MissingFullDependencyPlugin = MissingFullDependencyPlugin
+
+instance ToDiagnostic MissingFullDependencyPlugin where
+  renderDiagnostic (MissingFullDependencyPlugin) =
+    vsep
+      [ "We could not perform dynamic sbt analysis via `sbt dependencyBrowseTreeHTML`"
+      , indent 2 $
+          vsep
+            [ "Ensure you can run `sbt dependencyBrowseTreeHTML`."
+            , "Please install following plugin prior to running fossa:"
+            , indent 2 $ pretty sbtDepsGraphPluginUrl
             ]
       , ""
       , "Refer to:"

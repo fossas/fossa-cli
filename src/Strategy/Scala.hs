@@ -24,10 +24,9 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Reader (Reader)
 import Control.Effect.Stack (context)
-import Control.Monad (when)
 import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
 import Data.ByteString.Lazy (ByteString)
-import Data.Maybe (mapMaybe)
+import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
 import Data.String.Conversion (ConvertUtf8 (decodeUtf8), toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -47,7 +46,7 @@ import Effect.Exec (
   Has,
   execThrow,
  )
-import Effect.Logger (Logger, logDebug, logInfo, viaShow)
+import Effect.Logger (Logger, logDebug, viaShow)
 import Effect.ReadFS (ReadFS, readContentsXML)
 import GHC.Generics (Generic)
 import Path (
@@ -63,8 +62,10 @@ import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures, closurePath)
 import Strategy.Maven.Pom.PomFile (RawPom (rawPomArtifact, rawPomGroup, rawPomVersion))
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
-import Strategy.Scala.Errors (FailedToListProjects (FailedToListProjects), MaybeWithoutDependencyTreeTask (MaybeWithoutDependencyTreeTask))
+import Strategy.Scala.Errors (FailedToListProjects (FailedToListProjects), MaybeWithoutDependencyTreeTask (MaybeWithoutDependencyTreeTask), MissingFullDependencyPlugin (MissingFullDependencyPlugin))
+import Strategy.Scala.Plugin (genTreeJson, hasDependencyPlugins)
 import Strategy.Scala.SbtDependencyTree (SbtArtifact (SbtArtifact), analyze, sbtDepTreeCmd)
+import Strategy.Scala.TreeJson qualified as TreeJson
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
@@ -76,7 +77,6 @@ discover ::
   ( Has Exec sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
-  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
@@ -86,10 +86,24 @@ discover = simpleDiscover findProjects' mkProject ScalaProjectType
     findProjects' dir = concatMap toScalaProjects <$> (findProjects dir)
 
     toScalaProjects :: SbtTargets -> [ScalaProject]
-    toScalaProjects (SbtTargets maybeSbtDepTree closure) = ScalaProject maybeSbtDepTree <$> closure
+    toScalaProjects (SbtTargets maybeSbtDepTree treeJsonPaths closure) =
+      map
+        (mkScalaProject (SbtTargets maybeSbtDepTree treeJsonPaths closure))
+        closure
+
+    mkScalaProject :: SbtTargets -> MavenProjectClosure -> ScalaProject
+    mkScalaProject (SbtTargets maybeSbtDepTree treeJsonPaths _) cls =
+      ScalaProject maybeSbtDepTree (findRelevantJsonTree cls treeJsonPaths) cls
+
+    findRelevantJsonTree :: MavenProjectClosure -> [Path Abs File] -> Maybe (Path Abs File)
+    findRelevantJsonTree closure paths = do
+      let clsPath = parent $ closurePath closure
+      let matchingPaths = filter (\p -> parent p == clsPath || parent p == parent clsPath) paths
+      listToMaybe matchingPaths
 
 data ScalaProject = ScalaProject
   { rawSbtDepTree :: Maybe ByteString
+  , unScalaProjectDepTreeJson :: Maybe (Path Abs File)
   , unScalaProject :: MavenProjectClosure
   }
   deriving (Eq, Ord, Show, Generic)
@@ -105,30 +119,28 @@ instance AnalyzeProject ScalaProject where
   analyzeProject' _ = const $ fatalText "Cannot analyze scala project statically"
 
 mkProject :: ScalaProject -> DiscoveredProject ScalaProject
-mkProject (ScalaProject sbtBuildDir closure) =
+mkProject (ScalaProject sbtBuildDir sbtTreeJson closure) =
   DiscoveredProject
     { projectType = ScalaProjectType
     , projectPath = parent $ closurePath closure
     , projectBuildTargets = mempty
-    , projectData = ScalaProject sbtBuildDir closure
+    , projectData = ScalaProject sbtBuildDir sbtTreeJson closure
     }
 
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => ScalaProject -> m DependencyResults
 getDeps project =
-  case (rawSbtDepTree project) of
-    Nothing -> analyzeWithPoms project
-    _ -> warnOnErr MissingDeepDeps (analyzeWithSbtDepTree project) <||> analyzeWithPoms project
+  warnOnErr MissingDeepDeps (analyzeWithDepTreeJson project <||> analyzeWithSbtDepTree project)
+    <||> analyzeWithPoms project
 
 pathToText :: Path ar fd -> Text
 pathToText = toText . toFilePath
 
-data SbtTargets = SbtTargets (Maybe ByteString) [MavenProjectClosure]
+data SbtTargets = SbtTargets (Maybe ByteString) [Path Abs File] [MavenProjectClosure]
 
 findProjects ::
   ( Has Exec sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
-  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
@@ -143,27 +155,27 @@ findProjects = walkWithFilters' $ \dir _ files -> do
           . context ("Listing sbt projects at " <> pathToText dir)
           $ genPoms dir
 
-      rawSbtDepTreeStdout <-
-        recover $
-          context ("inferring dependencies") $
-            errCtx (MaybeWithoutDependencyTreeTask) $
-              execThrow dir sbtDepTreeCmd
+      (miniDepPlugin, depPlugin) <- hasDependencyPlugins dir
+      case (projectsRes, miniDepPlugin, depPlugin) of
+        (Nothing, _, _) -> pure ([], WalkSkipAll)
+        (Just projects, False, False) -> pure ([SbtTargets Nothing [] projects], WalkSkipAll)
+        (Just projects, _, True) -> do
+          treeJSONs <- recover $ genTreeJson dir
+          pure ([SbtTargets Nothing (fromMaybe [] treeJSONs) projects], WalkSkipAll)
+        (Just projects, True, _) -> do
+          depTreeStdOut <-
+            recover $
+              context ("inferring dependencies") $
+                errCtx (MaybeWithoutDependencyTreeTask) $
+                  execThrow dir sbtDepTreeCmd
 
-      case projectsRes of
-        Nothing -> pure ([], WalkSkipAll)
-        Just projects -> do
-          -- In Sbt there is an ongoing defect when sbt renders multi-project build
-          -- Refer to: https://github.com/sbt/sbt/issues/6905
-          --
-          -- We intentionally avoid faulty tactic if multi-project build is identified!
-          when (length projects > 1) $
-            logInfo "Discovered multi-project sbt build, only direct dependencies will be reported!"
-          let safeRawSbtDepTreeStdout = if length projects > 1 then Nothing else rawSbtDepTreeStdout
-
-          pure ([SbtTargets safeRawSbtDepTreeStdout projects], WalkSkipAll)
+          case (length projects > 1, depTreeStdOut) of
+            (True, _) -> pure ([SbtTargets Nothing [] projects], WalkSkipAll)
+            (_, Just _) -> pure ([SbtTargets depTreeStdOut [] projects], WalkSkipAll)
+            (_, _) -> pure ([], WalkSkipAll)
 
 analyzeWithPoms :: (Has Diagnostics sig m) => ScalaProject -> m DependencyResults
-analyzeWithPoms (ScalaProject _ closure) = context "Analyzing sbt dependencies with generated pom" $ do
+analyzeWithPoms (ScalaProject _ _ closure) = context "Analyzing sbt dependencies with generated pom" $ do
   pure $
     DependencyResults
       { dependencyGraph = Pom.analyze' closure
@@ -171,8 +183,19 @@ analyzeWithPoms (ScalaProject _ closure) = context "Analyzing sbt dependencies w
       , dependencyManifestFiles = [closurePath closure]
       }
 
+analyzeWithDepTreeJson :: (Has ReadFS sig m, Has Diagnostics sig m) => ScalaProject -> m DependencyResults
+analyzeWithDepTreeJson (ScalaProject _ treeJson closure) = context "Analyzing sbt dependencies using dependencyBrowseTreeHTML" $ do
+  treeJson' <- errCtx MissingFullDependencyPlugin $ fromMaybeText "Could not retrieve output from sbt dependencyBrowseTreeHTML" treeJson
+  projectGraph <- TreeJson.analyze treeJson'
+  pure $
+    DependencyResults
+      { dependencyGraph = projectGraph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = [closurePath closure]
+      }
+
 analyzeWithSbtDepTree :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => ScalaProject -> m DependencyResults
-analyzeWithSbtDepTree (ScalaProject maybeDepTree closure) = context "Analyzing sbt dependencies using dependencyTree" $ do
+analyzeWithSbtDepTree (ScalaProject maybeDepTree _ closure) = context "Analyzing sbt dependencies using dependencyTree" $ do
   projectArtifact <- pomSbtArtifact
   logDebug $ "identified artifact whose descendent to include when graphing: " <> viaShow projectArtifact
 
