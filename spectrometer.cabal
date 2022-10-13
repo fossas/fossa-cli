@@ -446,7 +446,7 @@ library
     Strategy.Scala.Errors
     Strategy.Scala.Plugin
     Strategy.Scala.SbtDependencyTree
-    Strategy.Scala.TreeJson
+    Strategy.Scala.SbtDependencyTreeJson
     Strategy.Sqlite
     Strategy.Swift.Errors
     Strategy.Swift.PackageResolved

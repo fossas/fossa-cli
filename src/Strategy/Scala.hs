@@ -65,7 +65,7 @@ import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
 import Strategy.Scala.Errors (FailedToListProjects (FailedToListProjects), MaybeWithoutDependencyTreeTask (MaybeWithoutDependencyTreeTask), MissingFullDependencyPlugin (MissingFullDependencyPlugin))
 import Strategy.Scala.Plugin (genTreeJson, hasDependencyPlugins)
 import Strategy.Scala.SbtDependencyTree (SbtArtifact (SbtArtifact), analyze, sbtDepTreeCmd)
-import Strategy.Scala.TreeJson qualified as TreeJson
+import Strategy.Scala.SbtDependencyTreeJson qualified as TreeJson
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
@@ -93,11 +93,16 @@ discover = simpleDiscover findProjects' mkProject ScalaProjectType
 
     mkScalaProject :: SbtTargets -> MavenProjectClosure -> ScalaProject
     mkScalaProject (SbtTargets maybeSbtDepTree treeJsonPaths _) cls =
-      ScalaProject maybeSbtDepTree (findRelevantJsonTree cls treeJsonPaths) cls
+      ScalaProject maybeSbtDepTree (findRelevantDependencyTreeJson cls treeJsonPaths) cls
 
-    findRelevantJsonTree :: MavenProjectClosure -> [Path Abs File] -> Maybe (Path Abs File)
-    findRelevantJsonTree closure paths = do
+    findRelevantDependencyTreeJson :: MavenProjectClosure -> [Path Abs File] -> Maybe (Path Abs File)
+    findRelevantDependencyTreeJson closure paths = do
       let clsPath = parent $ closurePath closure
+      -- treeJson are written in /module/target/
+      -- where as makePom may write in /module/target/scala-version/ or /module/target/
+      --
+      -- match closure to treeJson based common parent path /module/target/
+      -- module can only have one pom closure, and one or none tree json file.
       let matchingPaths = filter (\p -> parent p == clsPath || parent p == parent clsPath) paths
       listToMaybe matchingPaths
 
@@ -160,9 +165,12 @@ findProjects = walkWithFilters' $ \dir _ files -> do
         (Nothing, _, _) -> pure ([], WalkSkipAll)
         (Just projects, False, False) -> pure ([SbtTargets Nothing [] projects], WalkSkipAll)
         (Just projects, _, True) -> do
+          -- project is explicitly configured to use dependency-tree-plugin
           treeJSONs <- recover $ genTreeJson dir
           pure ([SbtTargets Nothing (fromMaybe [] treeJSONs) projects], WalkSkipAll)
         (Just projects, True, _) -> do
+          -- project is using miniature dependency tree plugin,
+          -- which is included by default with sbt 1.4+
           depTreeStdOut <-
             recover $
               context ("inferring dependencies") $
@@ -170,6 +178,9 @@ findProjects = walkWithFilters' $ \dir _ files -> do
                   execThrow dir sbtDepTreeCmd
 
           case (length projects > 1, depTreeStdOut) of
+            -- not emitting warning or error, to avoid duplication from
+            -- those in `analyze` step. further analysis warn/errors are
+            -- included in analysis scan summary.
             (True, _) -> pure ([SbtTargets Nothing [] projects], WalkSkipAll)
             (_, Just _) -> pure ([SbtTargets depTreeStdOut [] projects], WalkSkipAll)
             (_, _) -> pure ([], WalkSkipAll)

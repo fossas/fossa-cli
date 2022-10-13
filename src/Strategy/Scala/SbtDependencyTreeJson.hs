@@ -1,9 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Strategy.Scala.TreeJson (
+module Strategy.Scala.SbtDependencyTreeJson (
   analyze,
-  SbtTreeJson (..),
-  SbtTree (..),
   parseSbtArtifact,
 ) where
 
@@ -63,28 +61,28 @@ import Text.Megaparsec.Char.Lexer qualified as Lexer
 -- >   }
 -- > ]
 -- -
-newtype SbtTreeJson = SbtTreeJson [SbtTree]
+newtype SbtTree = SbtTree [SbtDep]
   deriving (Eq, Ord, Show)
 
-data SbtTree = SbtTree
+data SbtDep = SbtDep
   { artifact :: SbtArtifact
-  , dependsOn :: [SbtTree]
+  , dependsOn :: [SbtDep]
   }
   deriving (Show, Eq, Ord)
 
-instance FromJSON SbtTreeJson where
-  parseJSON = withArray "SbtTreeRoot" $ \arr -> do
-    SbtTreeJson . toList <$> traverse parseJSON arr
-
 instance FromJSON SbtTree where
-  parseJSON = withObject "SbtTree" $ \obj -> do
+  parseJSON = withArray "SbtDepRoot" $ \arr -> do
+    SbtTree . toList <$> traverse parseJSON arr
+
+instance FromJSON SbtDep where
+  parseJSON = withObject "SbtDep" $ \obj -> do
     txt <- obj .: "text"
     children <- obj .: "children"
 
     artifact <- case runParser parseSbtArtifact "sbtArtifact" txt of
       Left err -> fail $ errorBundlePretty err
       Right sa -> pure sa
-    pure $ SbtTree artifact children
+    pure $ SbtDep artifact children
 
 type ParserT = Parsec Void Text
 
@@ -115,14 +113,14 @@ parseSbtArtifact = do
     parseValidProjectIdentifier :: ParserT Text
     parseValidProjectIdentifier = toText <$> some (alphaNumChar <|> char '.' <|> char '-' <|> char '_')
 
-buildGraph :: SbtTreeJson -> Graphing Dependency
-buildGraph (SbtTreeJson tress) = shrinkRoots . run . evalGrapher $ buildGraph'
+buildGraph :: SbtTree -> Graphing Dependency
+buildGraph (SbtTree deps) = shrinkRoots . run . evalGrapher $ buildGraph'
   where
     buildGraph' :: GrapherC Dependency Identity ()
     buildGraph' = do
-      for_ tress $ \root -> do
-        direct $ toDependency (artifact root)
-        unfold root
+      for_ deps $ \dep -> do
+        direct $ toDependency (artifact dep)
+        unfold dep
 
     unfold candidate = do
       let parent = toDependency (artifact candidate)

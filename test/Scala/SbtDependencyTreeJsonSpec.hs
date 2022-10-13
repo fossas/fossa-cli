@@ -15,7 +15,7 @@ import GraphUtil (expectDeps', expectDirect', expectEdges')
 import Path (mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Scala.Common (SbtArtifact (SbtArtifact))
-import Strategy.Scala.TreeJson (analyze, parseSbtArtifact)
+import Strategy.Scala.SbtDependencyTreeJson (analyze, parseSbtArtifact)
 import Test.Effect (it')
 import Test.Hspec (
   Expectation,
