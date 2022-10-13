@@ -88,9 +88,9 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 
 ### F.A.Q.
 
-1. Why is `fossa-cli` is skipping my project?
+1. Why is the `fossa-cli` skipping my project?
 
-`fossa-cli` may sometime report a project of interest was skipped from the analysis. For example,
+`fossa-cli` may sometimes report a project of interest was skipped from the analysis. For example,
 
 ```text
 [ INFO] Scan Summary
@@ -104,8 +104,8 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 
 `fossa-cli` skips analysis, if and only if 
 
-- (a) Target is excluded via fossa configuration file (this filtering is referred to as "exclusion filters")
-- (b) Target is skipped because its `fossa-cli` considers target to be not part of production (this filtering is referred to as "production path filtering")
+- (a) Target is excluded via fossa configuration file (this filtering is referred to as "exclusion filters").
+- (b) Target is skipped because the `fossa-cli` does not consider the target to be a production target (this filtering is referred to as "production path filtering").
 
 `fossa-cli` skips any target per (b), if the target is found within the following directories:
 
@@ -126,3 +126,8 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 - `third-party/`
 - `Carthage/`
 - `Checkouts/` 
+
+As `fossa-cli` relies on manifest and lock files provided in the project's directory, we 
+intentionally skip `node_modules/` and such directories. If `fossa-cli` discovers and
+analyzes project found in `node_modules/`: `fossa-cli` will not be able to infer
+the dependency's scope (development or production) and may double count dependencies.
