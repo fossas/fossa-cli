@@ -75,6 +75,8 @@ data DepType
     CondaType
   | -- | CPAN dependency
     CpanType
+  | -- | CRAN dependency
+    CranType
   | -- | Custom dependency
     CustomType
   | -- | Repository in Github

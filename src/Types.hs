@@ -95,6 +95,7 @@ data DiscoveredProjectType
   | ProjectJsonProjectType
   | PubProjectType
   | Rebar3ProjectType
+  | RProjectType
   | RepoManifestProjectType
   | RpmProjectType
   | ScalaProjectType
@@ -142,6 +143,7 @@ projectTypeToText = \case
   ProjectJsonProjectType -> "projectjson"
   PubProjectType -> "pub"
   Rebar3ProjectType -> "rebar3"
+  RProjectType -> "renv"
   RepoManifestProjectType -> "repomanifest"
   RpmProjectType -> "rpm"
   ScalaProjectType -> "scala"

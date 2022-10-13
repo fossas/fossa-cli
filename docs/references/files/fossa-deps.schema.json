@@ -17,6 +17,7 @@
                         "carthage",
                         "composer",
                         "cpan",
+                        "renv",
                         "gem",
                         "git",
                         "go",

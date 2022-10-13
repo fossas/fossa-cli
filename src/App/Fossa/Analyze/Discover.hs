@@ -38,6 +38,7 @@ import Strategy.Pub qualified as Pub
 import Strategy.Python.Pipenv qualified as Pipenv
 import Strategy.Python.Poetry qualified as Poetry
 import Strategy.Python.Setuptools qualified as Setuptools
+import Strategy.R qualified as R
 import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
@@ -73,6 +74,7 @@ discoverFuncs =
   , DiscoverFunc ProjectAssetsJson.discover
   , DiscoverFunc ProjectJson.discover
   , DiscoverFunc Pub.discover
+  , DiscoverFunc R.discover
   , DiscoverFunc RPM.discover
   , DiscoverFunc Rebar3.discover
   , DiscoverFunc RepoManifest.discover

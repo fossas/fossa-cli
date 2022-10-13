@@ -47,6 +47,7 @@ import Strategy.Pub qualified as Pub
 import Strategy.Python.Pipenv qualified as Pipenv
 import Strategy.Python.Poetry qualified as Poetry
 import Strategy.Python.Setuptools qualified as Setuptools
+import Strategy.R qualified as R
 import Strategy.RPM qualified as RPM
 import Strategy.Sqlite qualified as Sqlite
 import Strategy.SwiftPM qualified as SwiftPM
@@ -93,6 +94,7 @@ managedDepsDiscoveryF =
   , DiscoverFunc ProjectAssetsJson.discover
   , DiscoverFunc ProjectJson.discover
   , DiscoverFunc Pub.discover
+  , DiscoverFunc R.discover
   , DiscoverFunc RPM.discover
   , DiscoverFunc RepoManifest.discover
   , DiscoverFunc Setuptools.discover

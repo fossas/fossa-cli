@@ -1,0 +1,101 @@
+{
+	"R": {
+		"Version": "4.2.0",
+		"Repositories": [
+			{
+				"Name": "CRAN",
+				"URL": "https://cran.rstudio.com"
+			},
+			{
+				"Name": "EXAMPLE-REPO",
+				"URL": "https://EXAMPLE-REPO"
+			}
+		]
+	},
+	"Bioconductor": {
+		"Version": "3.15"
+	},
+	"Packages": {
+		"BiocManager": {
+			"Package": "BiocManager",
+			"Version": "1.30.17",
+			"Source": "Repository",
+			"Repository": "CRAN",
+			"Hash": "0ab5f6e14502755ca875f938781909af",
+			"Requirements": []
+		},
+		"emo": {
+			"Package": "emo",
+			"Version": "0.0.0.9000",
+			"Source": "GitHub",
+			"RemoteType": "github",
+			"RemoteHost": "api.github.com",
+			"RemoteRepo": "emo",
+			"RemoteUsername": "hadley",
+			"RemoteRef": "master",
+			"RemoteSha": "3f03b11491ce3d6fc5601e210927eff73bf8e350",
+			"Hash": "5ece31a6c0f94811e6bef59482d87164"
+		},
+		"nkbcgeneral": {
+			"Package": "nkbcgeneral",
+			"Version": "0.8.0",
+			"Source": "Bitbucket",
+			"RemoteType": "bitbucket",
+			"RemoteHost": "api.bitbucket.org/2.0",
+			"RemoteUsername": "cancercentrum",
+			"RemoteRepo": "nkbcgeneral",
+			"RemoteRef": "master",
+			"RemoteSha": "db8e9206e7be44c53c5e7017900f38d506cf08a6",
+			"Hash": "d9e272efa3a8cb27069aa91fab7aa49f",
+			"Requirements": []
+		},
+		"BiocGenerics": {
+			"Package": "BiocGenerics",
+			"Version": "0.40.0",
+			"Source": "Bioconductor",
+			"git_url": "https://git.bioconductor.org/packages/BiocGenerics",
+			"git_branch": "RELEASE_3_14",
+			"git_last_commit": "0bc1e0e",
+			"git_last_commit_date": "2021-10-26",
+			"Hash": "ddc1d29bbe66aaef34b0d17620b61a69",
+			"Requirements": []
+		},
+		"R6": {
+			"Package": "R6",
+			"Version": "2.5.1",
+			"Source": "Repository",
+			"Repository": "EXAMPLE-REPO",
+			"RemoteType": "standard",
+			"Hash": "470851b6d5d0ac559e9d01bb352b4021",
+			"Requirements": []
+		},
+		"SOME-GITLAB-PKG": {
+			"Package": "some-gitlab-pkg",
+			"Version": "0",
+			"Source": "Gitlab",
+			"RemoteType": "Gitlab",
+			"RemoteHost": "api.Gitlab.com",
+			"RemoteRepo": "someRepo",
+			"RemoteUsername": "someUser",
+			"RemoteRef": "master",
+			"RemoteSha": "someSha",
+			"Hash": "5ece31a6c0f94811e6bef59482d87164"
+		},
+		"SOME-URL-PKG": {
+			"Package": "some-url-pkg",
+			"Version": "1",
+			"Source": "URL",
+			"RemoteUrl": "https://some-url"
+		},
+		"SOME-REMOTE-REF-PKG": {
+			"Package": "some-remote-ref-pkg",
+			"Version": "2",
+			"Source": "Repository",
+			"Repository": "CRAN",
+			"RemoteRepos": "http://some-custom-repo",
+			"RemoteType": "standard",
+			"Hash": "470851b6d5d0ac559e9d01bb352b4021",
+			"Requirements": []
+		}
+	}
+}

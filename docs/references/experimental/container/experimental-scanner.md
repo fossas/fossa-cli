@@ -154,7 +154,7 @@ If `<IMAGE>` is not a docker image archive and is not accessible via the docker 
 `<IMAGE>` is parsed in a similar fashion to `docker pull <ARG>`:
 
 | `<IMAGE>`                                         | Registry                             | Repository                 | Manifest Reference             |
-|---------------------------------------------------|--------------------------------------|----------------------------|--------------------------------|
+| ------------------------------------------------- | ------------------------------------ | -------------------------- | ------------------------------ |
 | `redis`                                           | None (defaults to `index.docker.io`) | `library/redis`            | None (defaults to `latest`)    |
 | `redis:alpine`                                    | None (defaults to `index.docker.io`) | `library/redis`            | `alpine` (as tag)              |
 | `bitnami/wordpress:6.0.1-debian-11-r14`           | None (defaults to `index.docker.io`) | `bitnami/wordpress`        | `6.0.1-debian-11-r14` (as tag) |
@@ -231,7 +231,7 @@ The new experimental scanner scans in two steps:
 The following package managers are supported in container scanning:
 
 | Analysis                             | Supported?         | Docs                                                             |
-|--------------------------------------|--------------------|------------------------------------------------------------------|
+| ------------------------------------ | ------------------ | ---------------------------------------------------------------- |
 | Alpine (APK)                         | :white_check_mark: | [APK Docs](./../../strategies/system/apk/apk.md)                 |
 | Debian (DPKG)                        | :white_check_mark: | [DPKG Docs](./../../strategies/system/dpkg/dpkg.md)              |
 | RedHat (RPM)                         | :white_check_mark: | [RPM Docs](../../strategies/system/rpm/rpm-container.md)         |
@@ -243,6 +243,7 @@ The following package managers are supported in container scanning:
 | Swift (xcode, swift package manager) | :white_check_mark: | [Swift](./../../strategies/platforms/ios/swift.md)               |
 | Carthage                             | :white_check_mark: | [Carthage](./../../strategies/platforms/ios/carthage.md)         |
 | Fortran (fpm)                        | :white_check_mark: | [Fortran](./../../strategies/languages/fortran/fortran.md)       |
+| R (renv)                             | :white_check_mark: | [Fortran](./../../strategies/languages/r/renv.md)                |
 | Cocoapods                            | :warning:          | [CocoaPods](./../../strategies/platforms/ios/cocoapods.md)       |
 | Nim (nimble)                         | :warning:          | [Nim](./../../strategies/languages/nim/nimble.md)                |
 | Dart (pub)                           | :warning:          | [Dart](./../../strategies/languages/dart/pub.md)                 |

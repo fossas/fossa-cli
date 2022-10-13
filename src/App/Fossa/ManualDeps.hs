@@ -336,6 +336,7 @@ depTypeFromText text = case text of
   "carthage" -> Just CarthageType
   "composer" -> Just ComposerType
   "cpan" -> Just CpanType
+  "cran" -> Just CranType
   "gem" -> Just GemType
   "git" -> Just GitType
   "go" -> Just GoType

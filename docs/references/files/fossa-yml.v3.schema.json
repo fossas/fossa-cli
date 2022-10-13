@@ -180,6 +180,10 @@
                             "description": "For rpm targets"
                         },
                         {
+                            "const": "renv",
+                            "description": "For renv targets (r)"
+                        },
+                        {
                             "const": "scala",
                             "description": "For scala targets"
                         },
