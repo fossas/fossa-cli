@@ -104,7 +104,7 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 
 `fossa-cli` skips analysis, if and only if 
 
-- (a) Target is excluded via fossa configuration file (this filtering is referred to as "exclusion filters").
+- (a) Target is excluded via [fossa configuration file](https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-yml.md#analysis-target-configuration) (this filtering is referred to as "exclusion filters").
 - (b) Target is skipped because the `fossa-cli` does not consider the target to be a production target (this filtering is referred to as "production path filtering").
 
 `fossa-cli` skips any target per (b), if the target is found within the following directories:
