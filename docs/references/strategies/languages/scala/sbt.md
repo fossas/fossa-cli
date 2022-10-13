@@ -103,7 +103,7 @@ format per each project in sbt build. Unlike `dependencyBrowseTree` command,
 it does not open a browser once command is successfully ran. It produces a graph
 in a format that is easy to parse and diagnose.
 
-## Does FOSSA CLI includes standard library?
+## Does FOSSA CLI include standard library as a dependency?
 
 Like all package manager's analysis, FOSSA CLI does not include standard library 
 in it's final analysis. This is to avoid dependency noise. 
