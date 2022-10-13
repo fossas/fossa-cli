@@ -47,7 +47,9 @@ instance ToDiagnostic MissingFullDependencyPlugin where
       , indent 2 $
           vsep
             [ "Ensure you can run `sbt dependencyBrowseTreeHTML`."
-            , "Please install following plugin prior to running fossa:"
+            , ""
+            , "If you are not able run the aforementioned command,"
+            , "you need to install following sbt plugin for your project, prior to using FOSSA CLI:"
             , indent 2 $ pretty sbtDepsGraphPluginUrl
             ]
       , ""

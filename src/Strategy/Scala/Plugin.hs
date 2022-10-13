@@ -39,8 +39,8 @@ hasDependencyPlugins :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir 
 hasDependencyPlugins projectDir = do
   stdoutText <- (TextLazy.toStrict . decodeUtf8) <$> context "Identifying plugins" (execThrow projectDir getPlugins)
   pure
-    ( Text.count "MiniDependencyTreePlugin" stdoutText > 0
-    , Text.count "DependencyTreePlugin" stdoutText > 0
+    ( Text.count ".MiniDependencyTreePlugin" stdoutText > 0
+    , Text.count ".DependencyTreePlugin" stdoutText > 0
     )
 
 -- | Generates Dependency Trees.
