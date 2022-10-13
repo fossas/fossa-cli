@@ -20,7 +20,7 @@ data MissingDescriptionFile = MissingDescriptionFile
 instance ToDiagnostic MissingDescriptionFile where
   renderDiagnostic (MissingDescriptionFile) =
     vsep
-      [ "Provide DESCRIPTION file in same path as `renv.lock`, so fossa-cli can infer direct dependencies."
+      [ "Provide DESCRIPTION file in same path as `renv.lock`, so FOSSA CLI can infer direct dependencies."
       ]
 
 data VersionConstraintsIgnored = VersionConstraintsIgnored

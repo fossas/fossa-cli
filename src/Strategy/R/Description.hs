@@ -73,7 +73,9 @@ data RDescription = RDescription
   deriving (Eq, Ord, Show)
 
 -- | Retrieves package name without version constraints.
--- renv does not support version constraints
+-- renv does not support version constraints, nor does cran fetcher, so
+-- we remove constraint and fallback to LATEST version.
+-- -
 -- ref: https://github.com/rstudio/renv/issues/767
 allPkgNames :: RDescription -> Set Text
 allPkgNames d =

@@ -10,12 +10,17 @@ Currently, we only support analysis of r project which are using [renv package m
 
 ## Project Discovery
 
-Find a file named `DESCRIPTION`, and optionally look for `renv.lock` in the same directory as `DESCRIPTION`.
+Find a file named `DESCRIPTION`, and optionally look for `renv.lock` in the same directory as `DESCRIPTION`. Discovery will not look for
+projects inside `renv` directory, if `renv.lock` or `DESCRIPTION` files are discovered.
 
 ## Analysis
 
 1. Parse `DESCRIPTION` file to identify direct dependencies - we look for packages in `Depends`, `Imports`, `Suggests`, `Enhances`, `LinkingTo`.
 2. Parse `renv.lock` file to identify deep dependencies, and edges among them.
+
+## Limitations
+
+- If only `DESCRIPTION` file is accessible, FOSSA CLI will ignore version constraints, and will always default to latest version.
 
 ## Example
 

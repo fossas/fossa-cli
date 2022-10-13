@@ -77,15 +77,15 @@ findProjects = walkWithFilters' $ \dir _ files -> do
   let skipRenvLibs = WalkSkipSome ["renv"]
 
   case (lockFile, descriptionFile) of
-    (Nothing, Just description') -> do
-      let project = DescriptionOnly dir (RDescriptionFile description')
+    (Nothing, Just description) -> do
+      let project = DescriptionOnly dir (RDescriptionFile description)
       pure ([project], skipRenvLibs)
     (Just lockFile', Nothing) -> do
-      let project' = RenvLockOnly dir lockFile'
-      pure ([project'], skipRenvLibs)
-    (Just lockFile', Just description') -> do
-      let project' = Renv dir (RDescriptionFile description') lockFile'
-      pure ([project'], skipRenvLibs)
+      let project = RenvLockOnly dir lockFile'
+      pure ([project], skipRenvLibs)
+    (Just lockFile', Just description) -> do
+      let project = Renv dir (RDescriptionFile description) lockFile'
+      pure ([project], skipRenvLibs)
     _ -> pure ([], WalkContinue)
 
 mkProject :: RProject -> DiscoveredProject RProject

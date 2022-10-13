@@ -4,10 +4,12 @@ module R.DescriptionSpec (
   spec,
 ) where
 
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Void (Void)
 import Strategy.R.Description (
   RDescription (RDescription),
+  allPkgNames,
   descriptionParser,
  )
 import Test.Hspec (
@@ -15,6 +17,7 @@ import Test.Hspec (
   Spec,
   describe,
   it,
+  shouldBe,
  )
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (
@@ -48,6 +51,10 @@ spec = do
           ["MASS"]
           mempty
           mempty
+
+    it "should not parse version constraint from the description file" $
+      allPkgNames (RDescription ["nlme (>= 2.0.0)"] mempty ["MASS"] mempty mempty)
+        `shouldBe` Set.fromList ["nlme", "MASS"]
 
     it "should parse description file with multi-line requirements" $
       descriptionMultiLine
