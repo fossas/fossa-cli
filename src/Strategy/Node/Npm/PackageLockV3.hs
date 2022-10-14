@@ -140,6 +140,7 @@ data PackageLockV3Package = PackageLockV3Package
   , plV3PkgResolved :: NpmLockV3Resolved
   , plV3PkgDependencies :: Map PackageName Text
   , plV3PkgDevDependencies :: Map PackageName Text
+  , plV3PkgOptionalDependencies :: Map PackageName Text
   , plV3PkgPeerDependencies :: Map PackageName Text
   , plV3PkgDev :: Bool
   }
@@ -152,6 +153,7 @@ instance FromJSON PackageLockV3Package where
       <*> obj .:? "resolved" .!= (NpmLockV3Resolved Nothing)
       <*> obj .:? "dependencies" .!= mempty
       <*> obj .:? "devDependencies" .!= mempty
+      <*> obj .:? "optionalDependencies" .!= mempty
       <*> obj .:? "peerDependencies" .!= mempty
       <*> obj .:? "dev" .!= False -- if 'dev' key is not included, it is presumed to be prod dependency
 
@@ -256,6 +258,7 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
                   [ plV3PkgDependencies pkgMetadata
                   , plV3PkgDevDependencies pkgMetadata
                   , plV3PkgPeerDependencies pkgMetadata
+                  , plV3PkgOptionalDependencies pkgMetadata
                   ]
 
         let resolvedDeps :: [Dependency]
@@ -294,6 +297,7 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
                   [ plV3PkgDependencies pkgMetadata
                   , plV3PkgDevDependencies pkgMetadata
                   , plV3PkgPeerDependencies pkgMetadata
+                  , plV3PkgOptionalDependencies pkgMetadata
                   ]
 
         let resolvedDeps :: [Dependency]
@@ -337,6 +341,7 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
                   Map.keys
                   [ plV3PkgDependencies pkgMetadata
                   , plV3PkgPeerDependencies pkgMetadata
+                  , plV3PkgOptionalDependencies pkgMetadata
                   ]
 
         let resolvedDeepDeps :: [Dependency]
