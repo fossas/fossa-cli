@@ -394,6 +394,56 @@ underscore =
     , dependencyTags = mempty
     }
 
+expressSession :: Dependency
+expressSession =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "express-session"
+    , dependencyVersion = Just $ CEq "1.17.3"
+    , dependencyLocations = ["https://registry.npmjs.org/express-session/-/express-session-1.17.3.tgz"]
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = mempty
+    }
+
+debug :: Dependency
+debug =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "debug"
+    , dependencyVersion = Just $ CEq "2.6.9"
+    , dependencyLocations = ["https://registry.npmjs.org/debug/-/debug-2.6.9.tgz"]
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = mempty
+    }
+
+ms :: Dependency
+ms =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "ms"
+    , dependencyVersion = Just $ CEq "2.0.0"
+    , dependencyLocations = ["https://registry.npmjs.org/ms/-/ms-2.0.0.tgz"]
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = mempty
+    }
+
+log4js :: Dependency
+log4js =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = "log4js"
+    , dependencyVersion = Just $ CEq "6.7.0"
+    , dependencyLocations = ["https://registry.npmjs.org/log4js/-/log4js-6.7.0.tgz"]
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = mempty
+    }
+
+debug' :: Dependency
+debug' = debug{dependencyVersion = Just $ CEq "4.3.4", dependencyLocations = ["https://registry.npmjs.org/debug/-/debug-4.3.4.tgz"]}
+
+ms' :: Dependency
+ms' = ms{dependencyVersion = Just $ CEq "2.1.2", dependencyLocations = ["https://registry.npmjs.org/ms/-/ms-2.1.2.tgz"]}
+
 mockLockWithWorkspacePkgs :: PkgLockJson
 mockLockWithWorkspacePkgs =
   PkgLockJson
@@ -445,6 +495,19 @@ buildGraphSpec testDir =
       expectEdges'
         [ (jsyaml, argparseDeep)
         , (argparseDirect, sprintf)
+        ]
+        graph
+
+    it' "should process nested sibling dependencies" $ do
+      parsed <- readContentsJson (testDir </> $(mkRelFile "sibling-nested-deps.json"))
+      let graph = buildGraph' parsed (Set.fromList ["express-session", "log4js"])
+      expectDeps' [expressSession, log4js, debug, ms, debug', ms'] graph
+      expectDirect' [expressSession, log4js] graph
+      expectEdges'
+        [ (expressSession, debug)
+        , (debug, ms)
+        , (log4js, debug')
+        , (debug', ms')
         ]
         graph
 

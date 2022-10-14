@@ -150,7 +150,7 @@ buildGraph :: PkgLockJson -> Set Text -> WorkspacePackageNames -> Graphing Depen
 buildGraph packageJson directSet (WorkspacePackageNames workspacePackages) =
   run . withLabeling toDependency $
     void $
-      Map.traverseWithKey (maybeAddDep False Nothing) packageDeps
+      traverseWithKey' (maybeAddDep False) packageDeps
   where
     packageDeps = lockDependencies packageJson
 
@@ -158,10 +158,10 @@ buildGraph packageJson directSet (WorkspacePackageNames workspacePackages) =
     pkgJsonPackages = packagePathsToNames . lockPackages $ packageJson
 
     -- Skip adding deps if we think it's a workspace package.
-    maybeAddDep isRecursive parent name dep@PkgLockDependency{..} =
+    maybeAddDep isRecursive name dep@PkgLockDependency{..} parentDepRequires =
       if name `Set.member` workspacePackages || "file:" `Text.isPrefixOf` depVersion
         then pure ()
-        else addDep isRecursive parent name dep
+        else addDep isRecursive name dep parentDepRequires
 
     -- Look up if a given npm package has peer dependencies, then add them to
     -- the graph recursively. All peer dependencies added via this function will
@@ -194,8 +194,8 @@ buildGraph packageJson directSet (WorkspacePackageNames workspacePackages) =
             Nothing -> pure ()
 
     -- isRecursive lets us know if we are parsing a top-level or nested dep.
-    addDep :: Has NpmGrapher sig m => Bool -> Maybe NpmDepVertex -> Text -> PkgLockDependency -> m ()
-    addDep isRecursive parent name PkgLockDependency{..} = do
+    addDep :: Has NpmGrapher sig m => Bool -> Text -> PkgLockDependency -> Map Text PkgLockDependency -> m ()
+    addDep isRecursive name PkgLockDependency{..} parentDepRequires = do
       let pkg = NpmDepVertex name depVersion
 
       -- DEEP/DIRECT
@@ -221,7 +221,16 @@ buildGraph packageJson directSet (WorkspacePackageNames workspacePackages) =
           ( \reqName reqVer -> do
               let requiredPkg =
                     NpmDepVertex reqName $
-                      getResolvedVersion [depDependencies, lockDependencies packageJson] reqName reqVer
+                      getResolvedVersion
+                        [ depDependencies
+                        , -- some times, when lockfile has dependency with multiple versions,
+                          -- it may be defined at $.dependencies.dep or $.dependencies.otherDep.dependencies.dep
+                          -- we include `parentDepRequires` to handle such cases!
+                          parentDepRequires
+                        , lockDependencies packageJson
+                        ]
+                        reqName
+                        reqVer
               edge pkg requiredPkg
               -- The below is a safety net for when a required package doesn't
               -- exist at the top-level dependencies object or in the parent
@@ -232,14 +241,10 @@ buildGraph packageJson directSet (WorkspacePackageNames workspacePackages) =
                 label requiredPkg (NpmDepVertexEnv EnvDevelopment)
           )
           depRequires
-      -- Add edge from parent
-      case parent of
-        Nothing -> pure ()
-        Just parentPkg -> edge parentPkg pkg
 
       -- RECURSION
       -- Recurse to dep nodes
-      void $ Map.traverseWithKey (maybeAddDep True (Just pkg)) depDependencies
+      void $ traverseWithKey' (maybeAddDep True) depDependencies
 
     getResolvedVersion :: [Map Text PkgLockDependency] -> Text -> Text -> Text
     getResolvedVersion lookups reqName reqVersion = maybe reqVersion depVersion foundVersion
@@ -263,3 +268,7 @@ buildGraph packageJson directSet (WorkspacePackageNames workspacePackages) =
         , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }
+
+-- | Traverse Map by Key, Value and Map.
+traverseWithKey' :: Applicative f => (a -> b -> Map a b -> f c) -> Map a b -> f (Map a c)
+traverseWithKey' f mapped = Map.traverseWithKey (\k v -> f k v mapped) mapped
