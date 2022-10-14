@@ -435,17 +435,24 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
 --      , "ws/myPkg/node_modules/"
 --      ]
 vendorPrefixes :: Text -> Maybe Text -> [Text]
-vendorPrefixes path ws =
-  pathWithWS . reverse
-    $ map (defaultVendorDir <>)
-      . scanl1 (\prev curr -> prev <> curr <> "/" <> defaultVendorDir)
-      . map (Text.dropAround (== '/'))
-    $ Text.splitOn defaultVendorDir pathWithoutWS
+vendorPrefixes path ws = prefixWithWS . reverse $ possiblePrefixes
   where
-    pathWithoutWS = case ws of
+    -- ["node_modules/", "node_modules/a/node_modules/", "node_modules/a/node_modules/b/node_modules/"]
+    possiblePrefixes :: [Text]
+    possiblePrefixes =
+      map (defaultVendorDir <>) $
+        scanl1 (\prev curr -> prev <> curr <> "/" <> defaultVendorDir) withoutNodeModules
+
+    -- ["", "a", "b"]
+    withoutNodeModules :: [Text]
+    withoutNodeModules = map (Text.dropAround (== '/')) $ Text.splitOn defaultVendorDir prefixWithoutWS
+
+    prefixWithoutWS :: Text
+    prefixWithoutWS = case ws of
       Nothing -> path
       Just ws' -> Text.replace ws' "" path
 
-    pathWithWS result = case ws of
+    prefixWithWS :: [Text] -> [Text]
+    prefixWithWS result = case ws of
       Nothing -> result
       Just ws' -> map (\r -> ws' <> "/" <> r) result
