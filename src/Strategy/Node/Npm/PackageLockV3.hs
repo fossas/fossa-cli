@@ -10,6 +10,7 @@ module Strategy.Node.Npm.PackageLockV3 (
   buildGraph,
   isV3Compatible,
   parsePathKey,
+  vendorPrefixes,
 ) where
 
 import Control.Algebra (Has)
@@ -26,10 +27,10 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
-import Data.Foldable (for_, traverse_)
+import Data.Foldable (find, for_, traverse_)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
+import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text, breakOnEnd)
 import Data.Text qualified as Text
@@ -347,19 +348,27 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
             for_ resolvedDeepDeps $ edge parentDep
   where
     -- Prefer resolution path in following order of precedent:
+    --
     --  1) {prefix}/node_modules/{pkgName}
     --  2) {root of prefix}/node_modules/{pkgName} (handles workspace root projects)
-    --  3) node_modules/{pkgName}
+    --  3) {parent root of prefix}/node_modules/{pkgName}
+    --  4) ....
+    --  5) node_modules/{pkgName}
     --
     -- Example, for prefix of "workspace-a/node_modules/a/" for 'PackageName b' we will attempt,
     --  1) workspace-a/node_modules/a/node_modules/b/
     --  2) workspace-a/node_modules/b/
     --  3) node_modules/b/
     vendoredPathElseTopLevelPath :: Text -> PackageName -> PackagePath
-    vendoredPathElseTopLevelPath prefix pkgName
-      | Map.member (toVendoredPackage prefix pkgName) allDependencyPackages = (toVendoredPackage prefix pkgName)
-      | Map.member (toWorkspaceLevelPackage prefix pkgName) allDependencyPackages = (toWorkspaceLevelPackage prefix pkgName)
-      | otherwise = toTopLevelPackage pkgName
+    vendoredPathElseTopLevelPath prefix pkgName =
+      case find (`Map.member` allDependencyPackages) $ possiblePkgPaths prefix pkgName of
+        Just foundPath -> foundPath
+        Nothing -> toTopLevelPackage pkgName
+
+    possiblePkgPaths :: Text -> PackageName -> [PackagePath]
+    possiblePkgPaths prefix pkgName =
+      map (`PackageLockV3PathKey` pkgName) $
+        vendorPrefixes prefix (getRootWorkspace prefix)
 
     toDependency :: PackagePath -> Maybe Dependency
     toDependency pkgPath =
@@ -395,36 +404,48 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
     toTopLevelPackage :: PackageName -> PackagePath
     toTopLevelPackage = PackageLockV3PathKey defaultVendorDir
 
-    -- Provides candidate path in as if the package was vendored
-    -- >> toVendoredPackage "node_modules/a" pkgName = PackagePath "node_modules/a/node_modules/" pkgName
-    toVendoredPackage :: Text -> PackageName -> PackagePath
-    toVendoredPackage prefix = PackageLockV3PathKey (prefix <> "/" <> defaultVendorDir)
-
-    -- Provides candidate path in current workspace root, if it contains a workspace root.
-    -- If prefix does not contain workspace root, it mimics @toVendoredPackage.
-    --
-    -- >> toVendoredPackage "myWorkspace/myPkg/node_modules/a" pkgName = PackagePath "myWorkspace/myPkg/node_modules/" pkgName
-    -- >> toVendoredPackage "myWorkspace/myPkg/node_modules/a/node_modules/b" pkgName = PackagePath "myWorkspace/myPkg/node_modules/" pkgName
-    -- >> toVendoredPackage "node_modules/a" pkgName = PackagePath "node_modules/a/node_modules/" pkgName
-    toWorkspaceLevelPackage :: Text -> PackageName -> PackagePath
-    toWorkspaceLevelPackage prefix = PackageLockV3PathKey (rootWorkspace <> "/" <> defaultVendorDir)
-      where
-        rootWorkspace :: Text
-        rootWorkspace = fromMaybe prefix (getRootWorkspace prefix)
-
     -- Retrieves root workspace module.
     --
     -- >> getRootWorkspace "myWorkspace/myPkg/node_modules/a" = Just "myWorkspace/myPkg"
     -- >> getRootWorkspace "myWorkspace/myPkg/node_modules/a/node_modules/b" = Just "myWorkspace/myPkg"
     -- >> getRootWorkspace "node_modules/a" = Nothing
     -- >> getRootWorkspace "node_modules/a/node_module/b" = Nothing
+    -- >> getRootWorkspace "myWorkspace/myPkg" = Just "myWorkspace/myPkg"
     getRootWorkspace :: Text -> Maybe Text
     getRootWorkspace pkgPath = case Text.breakOn "/node_modules" pkgPath of
       ("", "") -> Nothing
       (firstModule, _)
-        | firstModule == pkgPath -> Nothing
         | (Map.size (Map.filterWithKey (\k _ -> isWorkSpace firstModule k) (packages pkgLockV3)) > 0) -> Just firstModule
         | otherwise -> Nothing
 
     isWorkSpace :: Text -> PackagePath -> Bool
     isWorkSpace name pkgPath = pkgPath == PackageLockV3WorkSpace name
+
+-- | Creates vendor prefixes, in order of precedent in lockfile.
+--
+-- >> vendorPrefixes "node_modules/a/node_modules/b" Nothing =
+--      [ "node_modules/a/node_modules/b/node_modules/"
+--      , "node_modules/a/node_modules/"
+--      , "node_modules/"
+--      ]
+--
+-- >> vendorPrefixes "ws/myPkg/node_modules/a/node_modules/b" (Just "ws/myPkg") =
+--      [ "ws/myPkg/node_modules/a/node_modules/b/node_modules/"
+--      , "ws/myPkg/node_modules/a/node_modules/"
+--      , "ws/myPkg/node_modules/"
+--      ]
+vendorPrefixes :: Text -> Maybe Text -> [Text]
+vendorPrefixes path ws =
+  pathWithWS . reverse
+    $ map (defaultVendorDir <>)
+      . scanl1 (\prev curr -> prev <> curr <> "/" <> defaultVendorDir)
+      . map (Text.dropAround (== '/'))
+    $ Text.splitOn defaultVendorDir pathWithoutWS
+  where
+    pathWithoutWS = case ws of
+      Nothing -> path
+      Just ws' -> Text.replace ws' "" path
+
+    pathWithWS result = case ws of
+      Nothing -> result
+      Just ws' -> map (\r -> ws' <> "/" <> r) result
