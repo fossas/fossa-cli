@@ -102,6 +102,9 @@ With this approach, for aforementioned example, we will generate following depen
 
 We use `dev` field to infer if the dependency is development dependency or not.
 
+We analyze `optional` dependencies. If you would like to ignore them, you can do
+so from [FOSSA UI](https://docs.fossa.com/docs/generating-reports#modifying-report-information).
+
 ## Analysis (for lockFile version 1)
 
 Opening a `package-lock.json` file reveals the project's dependency tree. This
