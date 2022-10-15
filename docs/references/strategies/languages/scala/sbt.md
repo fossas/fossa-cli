@@ -105,26 +105,4 @@ in a format that is easy to parse and diagnose.
 
 ## Does FOSSA CLI include standard library as a dependency?
 
-Like all package manager's analysis, FOSSA CLI does not include standard library 
-in it's final analysis. This is to avoid dependency noise. 
-
-If you want to include standard library as dependency, you can use
-[fossa-deps](./../../../../features/manual-dependencies.md) file.
-
-For example:
-
-1. Create `fossa-deps.yml`
-2. Include standard library as a reference dependency.
-
-```yaml
-# Content of `fossa-deps.yml`
-#
-# Note, for your project, name and version may differ.
-# This example is provided for demonstration only.
-# -
-
-referenced-dependencies:
-- type: maven
-  name: org.scala-lang:scala3-library_3 
-  version: "3.2.0"
-```
+Yes

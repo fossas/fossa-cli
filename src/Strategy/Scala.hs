@@ -62,7 +62,6 @@ import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures, closurePath)
 import Strategy.Maven.Pom.PomFile (RawPom (rawPomArtifact, rawPomGroup, rawPomVersion))
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
-import Strategy.Scala.Common (withoutStdLibs)
 import Strategy.Scala.Errors (FailedToListProjects (FailedToListProjects), MaybeWithoutDependencyTreeTask (MaybeWithoutDependencyTreeTask), MissingFullDependencyPlugin (MissingFullDependencyPlugin))
 import Strategy.Scala.Plugin (genTreeJson, hasDependencyPlugins)
 import Strategy.Scala.SbtDependencyTree (SbtArtifact (SbtArtifact), analyze, sbtDepTreeCmd)
@@ -190,7 +189,7 @@ analyzeWithPoms :: (Has Diagnostics sig m) => ScalaProject -> m DependencyResult
 analyzeWithPoms (ScalaProject _ _ closure) = context "Analyzing sbt dependencies with generated pom" $ do
   pure $
     DependencyResults
-      { dependencyGraph = withoutStdLibs $ Pom.analyze' closure
+      { dependencyGraph = Pom.analyze' closure
       , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = [closurePath closure]
       }
@@ -201,7 +200,7 @@ analyzeWithDepTreeJson (ScalaProject _ treeJson closure) = context "Analyzing sb
   projectGraph <- TreeJson.analyze treeJson'
   pure $
     DependencyResults
-      { dependencyGraph = withoutStdLibs projectGraph
+      { dependencyGraph = projectGraph
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [closurePath closure]
       }
@@ -214,7 +213,7 @@ analyzeWithSbtDepTree (ScalaProject maybeDepTree _ closure) = context "Analyzing
   projectGraph <- analyze maybeDepTree projectArtifact
   pure $
     DependencyResults
-      { dependencyGraph = withoutStdLibs projectGraph
+      { dependencyGraph = projectGraph
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [closurePath closure]
       }

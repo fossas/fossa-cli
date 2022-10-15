@@ -34,4 +34,4 @@ scalaExampleProject =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary scalaExampleProject ScalaProjectType (DependencyResultsSummary 2 1 1 1 Complete)
+  testSuiteDepResultSummary scalaExampleProject ScalaProjectType (DependencyResultsSummary 3 2 1 1 Complete)

@@ -108,7 +108,7 @@ parseSbtArtifact = do
     symbol = Lexer.symbol sc
 
     parseEviction :: ParserT (Text)
-    parseEviction = lexeme ("(evicted by" <|> "(evicted by") *> parseValidProjectIdentifier <* symbol ")"
+    parseEviction = lexeme ("(evicted by" <|> "(evicted by:") *> parseValidProjectIdentifier <* symbol ")"
 
     parseValidProjectIdentifier :: ParserT Text
     parseValidProjectIdentifier = toText <$> some (alphaNumChar <|> char '.' <|> char '-' <|> char '_')
