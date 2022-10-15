@@ -86,6 +86,8 @@ With `sbt 1.4.0+`:
 ```
 addDependencyTreePlugin
 ```
+Refer to sbt: https://www.scala-sbt.org/1.x/docs/sbt-1.4-Release-Notes.html#sbt-dependency-graph+is+in-sourced
+
 
 With `sbt < 1.4`:
 
