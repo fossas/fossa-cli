@@ -41,6 +41,7 @@ hasDependencyPlugins projectDir = do
   pure
     ( Text.count ".MiniDependencyTreePlugin" stdoutText > 0
     , Text.count ".DependencyTreePlugin" stdoutText > 0
+        || Text.count "net.virtualvoid.sbt.graph.DependencyGraphPlugin" stdoutText > 0 -- =< sbt1.4
     )
 
 -- | Generates Dependency Trees.

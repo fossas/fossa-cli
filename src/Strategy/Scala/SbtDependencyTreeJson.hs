@@ -90,7 +90,7 @@ parseSbtArtifact :: ParserT SbtArtifact
 parseSbtArtifact = do
   groupId <- parseValidProjectIdentifier
   artifactId <- (":" >> parseValidProjectIdentifier)
-  version <- lexeme (":" >> parseValidProjectIdentifier)
+  version <- lexeme (":" >> parseValidVersionConstraint)
   evictedByVersion <- try . optional $ parseEviction
   pure $
     SbtArtifact
@@ -112,6 +112,22 @@ parseSbtArtifact = do
 
     parseValidProjectIdentifier :: ParserT Text
     parseValidProjectIdentifier = toText <$> some (alphaNumChar <|> char '.' <|> char '-' <|> char '_')
+
+    parseValidVersionConstraint :: ParserT Text
+    parseValidVersionConstraint =
+      toText
+        <$> some
+          ( alphaNumChar
+              <|> char '.'
+              <|> char '-'
+              <|> char '_'
+              <|> char ',' -- If there is eviction, sbt tree may provide version constraint instead of
+              <|> char '[' -- resolved version. https://www.scala-sbt.org/1.x/docs/Library-Dependencies.html
+              <|> char ']'
+              <|> char '('
+              <|> char ')'
+              <|> char '+'
+          )
 
 buildGraph :: SbtTree -> Graphing Dependency
 buildGraph (SbtTree deps) = shrinkRoots . run . evalGrapher $ buildGraph'

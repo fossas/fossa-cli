@@ -50,6 +50,8 @@ spec = do
       "a:b.c:1.0 (evicted by 2.0)" `shouldParseInto` SbtArtifact "a" "b.c" "2.0"
       "a:b.c:1.0.0 (cycle)" `shouldParseInto` SbtArtifact "a" "b.c" "1.0.0"
       "a:b.c:1.0.0 (error: some error)" `shouldParseInto` SbtArtifact "a" "b.c" "1.0.0"
+      "org.agrona:agrona:[1.16.0,2.0)" `shouldParseInto` SbtArtifact "org.agrona" "agrona" "[1.16.0,2.0)"
+      "org.agrona:agrona:[1.16.0,2.0) (evicted by 1.16.0)" `shouldParseInto` SbtArtifact "org.agrona" "agrona" "1.16.0"
       "org.scala-lang.modules:scala-parser-combinators_2.13:1.1.2" `shouldParseInto` SbtArtifact "org.scala-lang.modules" "scala-parser-combinators_2.13" "1.1.2"
 
   describe "analyze" $ do
