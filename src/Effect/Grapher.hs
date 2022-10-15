@@ -8,6 +8,7 @@
 module Effect.Grapher (
   Grapher,
   SGrapher (..),
+  GrapherC,
   direct,
   edge,
   deep,

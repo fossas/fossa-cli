@@ -444,7 +444,9 @@ library
     Strategy.Scala
     Strategy.Scala.Common
     Strategy.Scala.Errors
+    Strategy.Scala.Plugin
     Strategy.Scala.SbtDependencyTree
+    Strategy.Scala.SbtDependencyTreeJson
     Strategy.Sqlite
     Strategy.Swift.Errors
     Strategy.Swift.PackageResolved
@@ -608,6 +610,7 @@ test-suite unit-tests
     Ruby.GemfileLockSpec
     Ruby.ParseSpec
     Scala.CommonSpec
+    Scala.SbtDependencyTreeJsonSpec
     Scala.SbtDependencyTreeParsingSpec
     Scala.SbtDependencyTreeSpec
     Sqlite.SqliteSpec

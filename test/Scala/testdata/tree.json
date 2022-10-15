@@ -1,0 +1,78 @@
+[
+    {
+      "text": "com.fossa:sub1_3:0.1.0-SNAPSHOT",
+      "children": [
+        {
+          "text": "com.typesafe.akka:akka-stream_3:2.6.19",
+          "children": [
+            {
+              "text": "com.typesafe.akka:akka-actor_3:2.6.19",
+              "children": [
+                { "text": "com.typesafe:config:1.4.2", "children": [] },
+                {
+                  "text": "org.scala-lang.modules:scala-java8-compat_3:1.0.0",
+                  "children": [
+                    {
+                      "text": "org.scala-lang:scala3-library_3:3.0.0 (evicted by 3.1.1)",
+                      "children": []
+                    },
+                    {
+                      "text": "org.scala-lang:scala3-library_3:3.1.1",
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "text": "org.scala-lang:scala3-library_3:3.1.1",
+                  "children": []
+                }
+              ]
+            },
+            {
+              "text": "com.typesafe.akka:akka-protobuf-v3_3:2.6.19",
+              "children": []
+            },
+            {
+              "text": "com.typesafe:ssl-config-core_2.13:0.4.3",
+              "children": [
+                {
+                  "text": "com.typesafe:config:1.4.0 (evicted by 1.4.2)",
+                  "children": []
+                },
+                { "text": "com.typesafe:config:1.4.2", "children": [] },
+                {
+                  "text": "org.scala-lang.modules:scala-parser-combinators_2.13:1.1.2",
+                  "children": []
+                }
+              ]
+            },
+            {
+              "text": "org.reactivestreams:reactive-streams:1.0.3",
+              "children": []
+            },
+            { "text": "org.scala-lang:scala3-library_3:3.1.1", "children": [] }
+          ]
+        },
+        {
+          "text": "net.logstash.logback:logstash-logback-encoder:7.2",
+          "children": [
+            {
+              "text": "com.fasterxml.jackson.core:jackson-databind:2.13.3",
+              "children": [
+                {
+                  "text": "com.fasterxml.jackson.core:jackson-annotations:2.13.3",
+                  "children": []
+                },
+                {
+                  "text": "com.fasterxml.jackson.core:jackson-core:2.13.3",
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        { "text": "org.scala-lang:scala3-library_3:3.1.1", "children": [] }
+      ]
+    }
+  ]
+  
