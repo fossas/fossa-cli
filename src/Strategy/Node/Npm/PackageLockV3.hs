@@ -357,13 +357,12 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
     --  1) {prefix}/node_modules/{pkgName}
     --  2) {root of prefix}/node_modules/{pkgName} (handles workspace root projects)
     --  3) {parent root of prefix}/node_modules/{pkgName}
-    --  4) ....
-    --  5) node_modules/{pkgName}
+    --  4) node_modules/{pkgName}
     --
     -- Example, for prefix of "workspace-a/node_modules/a/" for 'PackageName b' we will attempt,
     --  1) workspace-a/node_modules/a/node_modules/b/
     --  2) workspace-a/node_modules/b/
-    --  3) node_modules/b/
+    --  3) node_modules/b/ (same as step 5 from above)
     vendoredPathElseTopLevelPath :: Text -> PackageName -> PackagePath
     vendoredPathElseTopLevelPath prefix pkgName =
       case find (`Map.member` allDependencyPackages) $ possiblePkgPaths prefix pkgName of
