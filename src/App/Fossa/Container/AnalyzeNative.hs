@@ -134,6 +134,5 @@ uploadScan revision projectMeta containerScan =
         logInfo ("  " <> pretty buildUrl)
         traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
 
-        -- We return locator for purely
-        -- purpose of testing.
+        -- We return locator for purely for testing.
         pure locator

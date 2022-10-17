@@ -5,6 +5,7 @@ module App.Docs (
   strategyLangDocUrl,
   platformDocUrl,
   fossaSslCertDocsUrl,
+  fossaContainerScannerUrl,
 ) where
 
 import App.Version (versionOrBranch)
@@ -33,3 +34,6 @@ platformDocUrl path = guidePathOf versionOrBranch ("/docs/references/strategies/
 
 fossaSslCertDocsUrl :: Text
 fossaSslCertDocsUrl = guidePathOf versionOrBranch "/docs/walkthroughs/ssl-cert.md"
+
+fossaContainerScannerUrl :: Text
+fossaContainerScannerUrl = guidePathOf versionOrBranch "/docs/subcommands/container/scanner.md"
