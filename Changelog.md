@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.4.11
+- Npm (Lockfile v3) - Fixes a defect where, _sometimes_ wrong version of the dependency was reported if multiple version of the same dependency existed in the lock file. ([#1075](https://github.com/fossas/fossa-cli/pull/1075))
+- Npm (Lockfile v2) - Fixes a defect where, _sometimes_ wrong version of the dependency was reported if multiple version of the same dependency existed in the lock file. ([#1075](https://github.com/fossas/fossa-cli/pull/1075))
+
 ## v3.4.10
 - Scala: Supports analysis of multi-project sbt builds with `sbt-dependency-graph` plugin. ([#1074](https://github.com/fossas/fossa-cli/pull/1074)).
 

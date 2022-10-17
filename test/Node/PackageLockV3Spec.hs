@@ -34,12 +34,16 @@ import Strategy.Node.Npm.PackageLockV3 (
   buildGraph,
   isV3Compatible,
   parsePathKey,
+  vendorPrefixes,
  )
 import Test.Effect (it', shouldBe')
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe)
 
 fixtureSimplePackageLockPath :: Path Rel File
 fixtureSimplePackageLockPath = $(mkRelFile "simple-package-lock.json")
+
+multiLevelVendorLockPath :: Path Rel File
+multiLevelVendorLockPath = $(mkRelFile "multi-level-vendor-package-lock.json")
 
 workspaceNestedModulePackageLockPath :: Path Rel File
 workspaceNestedModulePackageLockPath = $(mkRelFile "ws-nested-module-package-lock.json")
@@ -56,10 +60,55 @@ spec = do
   -- Helpers
   isV3CompatibleSpec
   parsePathKeySpec
+  vendorPrefixesSpec
 
   -- Parse and Validate Graphing
   checkGraph (graphingFixtureDir </> fixtureSimplePackageLockPath) simplePackageLockGraphSpec
   checkGraph (graphingFixtureDir </> workspaceNestedModulePackageLockPath) workspaceNestedModulePackageLockGraphSpec
+  checkGraph (graphingFixtureDir </> multiLevelVendorLockPath) multiLevelVendorLockGraphSpec
+
+vendorPrefixesSpec :: Spec
+vendorPrefixesSpec = do
+  describe "vendorPrefixes" $ do
+    it "should return all possible prefix until root, when workspace is not provided" $ do
+      vendorPrefixes "node_modules/a" Nothing
+        `shouldBe` [ "node_modules/a/node_modules/"
+                   , "node_modules/"
+                   ]
+
+      vendorPrefixes "node_modules/a/node_modules/b" Nothing
+        `shouldBe` [ "node_modules/a/node_modules/b/node_modules/"
+                   , "node_modules/a/node_modules/"
+                   , "node_modules/"
+                   ]
+
+      vendorPrefixes "node_modules/@someOrg/a/node_modules/b" Nothing
+        `shouldBe` [ "node_modules/@someOrg/a/node_modules/b/node_modules/"
+                   , "node_modules/@someOrg/a/node_modules/"
+                   , "node_modules/"
+                   ]
+
+    it "should return all possible prefix until root, when workspace is provided" $ do
+      vendorPrefixes "ws/myPkg" (Just "ws/myPkg")
+        `shouldBe` [ "ws/myPkg/node_modules/"
+                   ]
+
+      vendorPrefixes "ws/myPkg/node_modules/a" (Just "ws/myPkg")
+        `shouldBe` [ "ws/myPkg/node_modules/a/node_modules/"
+                   , "ws/myPkg/node_modules/"
+                   ]
+
+      vendorPrefixes "ws/myPkg/node_modules/a/node_modules/b" (Just "ws/myPkg")
+        `shouldBe` [ "ws/myPkg/node_modules/a/node_modules/b/node_modules/"
+                   , "ws/myPkg/node_modules/a/node_modules/"
+                   , "ws/myPkg/node_modules/"
+                   ]
+
+      vendorPrefixes "ws/myPkg/node_modules/@someOrg/a/node_modules/b" (Just "ws/myPkg")
+        `shouldBe` [ "ws/myPkg/node_modules/@someOrg/a/node_modules/b/node_modules/"
+                   , "ws/myPkg/node_modules/@someOrg/a/node_modules/"
+                   , "ws/myPkg/node_modules/"
+                   ]
 
 isV3CompatibleSpec :: Spec
 isV3CompatibleSpec = do
@@ -299,6 +348,33 @@ simplePackageLockGraphSpec graph = do
       hasEdge (mkProdDep "aws-sdk@2.1134.0") (mkProdDep "xml2js@0.4.19")
       hasEdge (mkProdDep "xml2js@0.4.19") (mkProdDep "sax@1.2.1")
       hasEdge (mkProdDep "xml2js@0.4.19") (mkProdDep "xmlbuilder@9.0.7")
+
+multiLevelVendorLockGraphSpec :: Graphing Dependency -> Spec
+multiLevelVendorLockGraphSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  let hasDep :: Dependency -> Expectation
+      hasDep dep = expectDep dep graph
+
+  describe "buildGraph" $ do
+    it "should include dependencies of root as direct" $ do
+      expectDirect
+        [ mkProdDep "express-session@1.17.3"
+        , mkProdDep "log4js@6.7.0"
+        ]
+        graph
+
+    it "should correctly graph dependencies resolved from multi-level vendored path" $ do
+      hasDep (mkProdDep "debug@2.6.9")
+      hasDep (mkProdDep "ms@2.0.0")
+      hasEdge (mkProdDep "express-session@1.17.3") (mkProdDep "debug@2.6.9")
+      hasEdge (mkProdDep "debug@2.6.9") (mkProdDep "ms@2.0.0")
+
+      hasDep (mkProdDep "debug@4.3.4")
+      hasDep (mkProdDep "ms@2.1.2")
+      hasEdge (mkProdDep "log4js@6.7.0") (mkProdDep "debug@4.3.4")
+      hasEdge (mkProdDep "debug@4.3.4") (mkProdDep "ms@2.1.2")
 
 workspaceNestedModulePackageLockGraphSpec :: Graphing Dependency -> Spec
 workspaceNestedModulePackageLockGraphSpec graph = do
