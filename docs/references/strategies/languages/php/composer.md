@@ -2,7 +2,7 @@
 
 When developing in PHP, [composer](https://getcomposer.org/) is commonly used to manage dependencies.
 
-| Strategy      | Direct Deps        | Transitive Deps          | Edges              | Classifies Dev Dependencies | Container Scanning (experimental) |
+| Strategy      | Direct Deps        | Transitive Deps          | Edges              | Classifies Dev Dependencies | Container Scanning |
 | ------------- | ------------------ | ------------------ | ------------------ | --------------------------- | --------------------------------- |
 | composer.lock | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark:          | :white_check_mark:                |
 

@@ -150,7 +150,7 @@ suggestDockerExport (RegistryImageSource host _ _ repo ref _) =
     saveCmd = pretty $ "docker save " <> imgIdentifier <> " > image-exported.tar"
 
     fossaAnalyzeCmd :: Doc AnsiStyle
-    fossaAnalyzeCmd = "fossa container analyze image-exported.tar --experimental-scanner"
+    fossaAnalyzeCmd = "fossa container analyze image-exported.tar"
 
 showReferenceWithSep :: RepoReference -> Text
 showReferenceWithSep (RepoReferenceTag (RepoTag tag)) = ":" <> tag

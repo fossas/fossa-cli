@@ -12,13 +12,13 @@ into maintenance mode, with the notable exception of dep. As such, Go
 analysis in fossa-cli primarily targets Go 1.11+ modules and dep. Support
 for Glide is also included, because it's still commonly used.
 
-| Strategy               | Direct Deps        | Transitive Deps          | Edges     | Container Scanning (Experimental) |
-| ---------------------- | ------------------ | ------------------ | --------- | --------------------------------- |
-| [golist](gomodules.md) | :white_check_mark: | :white_check_mark: | :warning: | :x:                               |
-| [gomod](gomodules.md)  | :white_check_mark: | :x:                | :warning: | :x:                               |
-| [gopkglock](godep.md)  | :white_check_mark: | :white_check_mark: | :warning: | :x:                               |
-| [gopkgtoml](godep.md)  | :white_check_mark: | :warning:          | :warning: | :x:                               |
-| [glide](glide.md)      | :white_check_mark: | :white_check_mark: | :X:       | :white_check_mark:                |
+| Strategy               | Direct Deps        | Transitive Deps    | Edges     | Container Scanning |
+| ---------------------- | ------------------ | ------------------ | --------- | ------------------ |
+| [golist](gomodules.md) | :white_check_mark: | :white_check_mark: | :warning: | :x:                |
+| [gomod](gomodules.md)  | :white_check_mark: | :x:                | :warning: | :x:                |
+| [gopkglock](godep.md)  | :white_check_mark: | :white_check_mark: | :warning: | :x:                |
+| [gopkgtoml](godep.md)  | :white_check_mark: | :warning:          | :warning: | :x:                |
+| [glide](glide.md)      | :white_check_mark: | :white_check_mark: | :X:       | :white_check_mark: |
 
 ## 🔶 Edges and transitive dependencies
 

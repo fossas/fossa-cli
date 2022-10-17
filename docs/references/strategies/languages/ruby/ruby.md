@@ -3,10 +3,10 @@
 Ruby projects use a buildtool called `bundler` to manage their dependencies. We
 parse a lockfile or run the `bundle` cli to determine dependencies.
 
-| Strategy    | Direct Deps                    | Transitive Deps                      | Edges              | Tags | Container Scanning (experimental) |
-| ----------- | ------------------------------ | ------------------------------ | ------------------ | ---- | --------------------------------- |
-| gemfilelock | :white_check_mark:             | :white_check_mark:             | :white_check_mark: |      | :white_check_mark:                |
-| bundleshow  | :white_check_mark: (unlabeled) | :white_check_mark: (unlabeled) | :x:                |      | :x:                               |
+| Strategy    | Direct Deps                    | Transitive Deps                | Edges              | Tags | Container Scanning |
+| ----------- | ------------------------------ | ------------------------------ | ------------------ | ---- | ------------------ |
+| gemfilelock | :white_check_mark:             | :white_check_mark:             | :white_check_mark: |      | :white_check_mark: |
+| bundleshow  | :white_check_mark: (unlabeled) | :white_check_mark: (unlabeled) | :x:                |      | :x:                |
 
 ## Project Discovery
 

@@ -2,11 +2,11 @@
 
 For maven projects, we offer a more-accurate strategy (mavenplugin), and a strategy with zero requirements (pomxml).
 
-| Strategy                      | Direct Deps        | Transitive Deps          | Edges              | Container Scanning (experimental) |
-|-------------------------------|--------------------|--------------------|--------------------|-----------------------------------|
-| [mavenplugin](mavenplugin.md) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                               |
-| [treecmd](treecmd.md)         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                               |
-| [pomxml](pomxml.md)           | :white_check_mark: | :x:                | :x:                | :white_check_mark:                |
+| Strategy                      | Direct Deps        | Transitive Deps    | Edges              | Container Scanning |
+| ----------------------------- | ------------------ | ------------------ | ------------------ | ------------------ |
+| [mavenplugin](mavenplugin.md) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |
+| [treecmd](treecmd.md)         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |
+| [pomxml](pomxml.md)           | :white_check_mark: | :x:                | :x:                | :white_check_mark: |
 
 Maven analysis attempts these analysis methods in order:
 1. Run the maven plugin command version 4.0.1.
