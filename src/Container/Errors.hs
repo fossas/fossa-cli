@@ -47,7 +47,7 @@ instance ToDiagnostic EndpointDoesNotSupportNativeContainerScan where
       [ "Provided endpoint does not support native container scans."
       , ""
       , "Container scanning with new scanner is not supported for your FOSSA endpoint."
-      , "" 
+      , ""
       , "Upgrade your FOSSA instance to v4.0.37 or downgrade your FOSSA CLI to 3.4.x"
       , ""
       , "Please contact FOSSA support for more assistance."
