@@ -3,7 +3,6 @@ module App.DocsSpec (
 ) where
 
 import App.Docs (fossaYmlDocUrl, newIssueUrl, userGuideUrl)
-import App.Fossa.Container.Analyze (containerScanningDocUrl)
 import Data.Foldable (for_)
 import Data.Maybe (fromJust)
 import Data.String.Conversion (toString)
@@ -65,7 +64,6 @@ urlsToCheck =
   , rEnvLockFileGenerateDocUrl
   , refPodDocUrl
   , refGradleDocUrl
-  , containerScanningDocUrl
   , scalaFossaDocUrl
   , sbtDepsGraphPluginUrl
   ]

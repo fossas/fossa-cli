@@ -170,9 +170,7 @@ library
     App.Fossa.Config.Container
     App.Fossa.Config.Container.Analyze
     App.Fossa.Config.Container.Common
-    App.Fossa.Config.Container.Dump
     App.Fossa.Config.Container.ListTargets
-    App.Fossa.Config.Container.Parse
     App.Fossa.Config.Container.Test
     App.Fossa.Config.DumpBinaries
     App.Fossa.Config.EnvironmentVars
@@ -182,7 +180,6 @@ library
     App.Fossa.Config.Report
     App.Fossa.Config.Test
     App.Fossa.Container
-    App.Fossa.Container.Analyze
     App.Fossa.Container.AnalyzeNative
     App.Fossa.Container.ListTargets
     App.Fossa.Container.Scan

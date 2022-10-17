@@ -88,6 +88,7 @@ instance ToJSON (FilterCombination a) where
 type role FilterCombination nominal
 
 data Include
+
 data Exclude
 
 instance Semigroup (FilterCombination a) where

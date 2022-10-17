@@ -3,9 +3,10 @@
 module App.Fossa.Container.Sources.DockerEngine (
   analyzeFromDockerEngine,
   listTargetsFromDockerEngine,
+  revisionFromDockerEngine,
 ) where
 
-import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive)
+import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
 import Container.Types (ContainerScan)
 import Control.Carrier.DockerEngineApi (runDockerEngineApi)
 import Control.Carrier.Lift (Lift)
@@ -77,3 +78,17 @@ listTargetsFromDockerEngine engineHost imgTag =
     engineHost
     imgTag
     listTargetsFromDockerArchive
+
+revisionFromDockerEngine ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  ) =>
+  Text ->
+  Text ->
+  m (Text, Text)
+revisionFromDockerEngine engineHost imgTag =
+  runFromDockerEngine
+    engineHost
+    imgTag
+    revisionFromDockerArchive

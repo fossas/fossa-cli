@@ -47,6 +47,7 @@ import Options.Applicative (
   Parser,
   command,
   help,
+  hidden,
   info,
   long,
   optional,
@@ -115,8 +116,8 @@ cliParser =
       )
     <*> metadataOpts
     <*> imageTextArg
-    <*> switch (long "experimental-scanner" <> help "Uses experimental fossa native container scanner")
-    <*> switch (long "only-system-deps" <> help "Only analyzes system dependencies (e.g. apk, dep, rpm). Works only with experimental scanner.")
+    <*> switch (long "experimental-scanner" <> help "Uses experimental fossa native container scanner." <> hidden)
+    <*> switch (long "only-system-deps" <> help "Only analyzes system dependencies (e.g. apk, dep, rpm).")
 
 mergeOpts ::
   Has Diagnostics sig m =>

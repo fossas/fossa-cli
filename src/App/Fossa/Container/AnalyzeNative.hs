@@ -1,10 +1,6 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module App.Fossa.Container.AnalyzeNative (
   ContainerImageSource (..),
   analyzeExperimental,
-  parseContainerImageSource,
-  parseDockerEngineSource,
 
   -- * for testing
   uploadScan,
@@ -19,47 +15,33 @@ import App.Fossa.Config.Container.Analyze (
   ContainerAnalyzeConfig (arch, dockerHost, filterSet, imageLocator, onlySystemDeps, revisionOverride, scanDestination),
  )
 import App.Fossa.Config.Container.Analyze qualified as Config
-import App.Fossa.Config.Container.Common (ImageText (unImageText))
-import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive)
-import App.Fossa.Container.Sources.DockerEngine (analyzeFromDockerEngine)
-import App.Fossa.Container.Sources.Podman (analyzeFromPodman, podmanInspectImage)
-import App.Fossa.Container.Sources.Registry (analyzeFromRegistry)
+import App.Fossa.Container.Scan (extractRevision, scanImage)
 import App.Types (
-  OverrideProject (OverrideProject),
   ProjectMetadata,
-  ProjectRevision (ProjectRevision, projectBranch, projectName, projectRevision),
-  overrideBranch,
-  overrideName,
-  overrideRevision,
+  ProjectRevision (..),
  )
 import Codec.Compression.GZip qualified as GZip
-import Container.Docker.SourceParser (RegistryImageSource, parseImageUrl)
+import Container.Docker.SourceParser (RegistryImageSource)
 import Container.Errors (EndpointDoesNotSupportNativeContainerScan (EndpointDoesNotSupportNativeContainerScan))
 import Container.Types (ContainerScan (..))
 import Control.Carrier.Debug (Debug, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
-import Control.Carrier.DockerEngineApi (runDockerEngineApi)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, errCtx, fatal, fatalText, fromEitherShow, (<||>))
-import Control.Effect.DockerEngineApi (DockerEngineApi, getDockerImageSize, isDockerEngineAccessible)
+import Control.Effect.Diagnostics (Diagnostics, fatal)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, uploadNativeContainerScan)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Telemetry (Telemetry)
-import Control.Monad (unless, void)
+import Control.Monad (void)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (traverse_)
-import Data.Functor (($>))
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (
   ConvertUtf8 (decodeUtf8),
   decodeUtf8,
-  toString,
-  toText,
  )
 import Data.Text (Text)
-import Data.Text qualified as Text
-import Effect.Exec (Exec, execThrow')
+import Effect.Exec (Exec)
 import Effect.Logger (
   Has,
   Logger,
@@ -69,13 +51,11 @@ import Effect.Logger (
   logInfo,
   logStdout,
   viaShow,
-  vsep,
  )
-import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir)
+import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (Organization (orgSupportsNativeContainerScan), UploadResponse (uploadError), uploadLocator)
-import Path (Abs, File, Path, SomeBase (Abs, Rel), parseSomeFile, (</>))
+import Path (Abs, File, Path)
 import Srclib.Types (Locator)
-import Text.Megaparsec (errorBundlePretty, parse)
 
 data ContainerImageSource
   = DockerArchive (Path Abs File)
@@ -117,30 +97,12 @@ analyze ::
   ContainerAnalyzeConfig ->
   m ()
 analyze cfg = do
-  logInfo "Running container scanning with fossa experimental-scanner!"
-
-  let filters = filterSet cfg
-  let systemDepsOnly = onlySystemDeps cfg
-  parsedSource <- runDockerEngineApi (dockerHost cfg) $ parseContainerImageSource (unImageText $ imageLocator cfg) (arch cfg)
-  scannedImage <- case parsedSource of
-    DockerArchive tarball ->
-      context "Analyzing via docker archive" $
-        analyzeFromDockerArchive systemDepsOnly filters tarball
-    DockerEngine imgTag ->
-      context "Analyzing via Docker engine API" $
-        analyzeFromDockerEngine systemDepsOnly filters (dockerHost cfg) imgTag
-    Podman img ->
-      context "Analyzing via podman" $
-        analyzeFromPodman systemDepsOnly filters img
-    Registry registrySrc ->
-      context "Analyzing via registry" $
-        analyzeFromRegistry systemDepsOnly filters registrySrc
-
+  scannedImage <- scanImage (filterSet cfg) (onlySystemDeps cfg) (imageLocator cfg) (dockerHost cfg) (arch cfg)
   let revision = extractRevision (revisionOverride cfg) scannedImage
 
-  -- Diagnose Project amd Revision Identifier
   logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
   logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
+
   let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
   logInfo ("Using branch: `" <> pretty branchText <> "`")
 
@@ -148,13 +110,6 @@ analyze cfg = do
     OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode scannedImage
     UploadScan apiOpts projectMeta ->
       void $ runFossaApiClient apiOpts $ uploadScan revision projectMeta scannedImage
-  where
-    extractRevision :: OverrideProject -> ContainerScan -> ProjectRevision
-    extractRevision OverrideProject{..} ContainerScan{..} =
-      ProjectRevision
-        (fromMaybe imageTag overrideName)
-        (fromMaybe imageDigest overrideRevision)
-        overrideBranch
 
 uploadScan ::
   ( Has Diagnostics sig m
@@ -182,93 +137,3 @@ uploadScan revision projectMeta containerScan =
         -- We return locator for purely
         -- purpose of testing.
         pure locator
-
-parseContainerImageSource ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has ReadFS sig m
-  , Has Logger sig m
-  , Has Exec sig m
-  , Has DockerEngineApi sig m
-  ) =>
-  Text ->
-  Text ->
-  m ContainerImageSource
-parseContainerImageSource src defaultArch =
-  parseDockerArchiveSource src
-    <||> parseDockerEngineSource src
-    <||> parsePodmanSource src
-    <||> parseRegistrySource defaultArch src
-
-parseDockerEngineSource ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Logger sig m
-  , Has DockerEngineApi sig m
-  ) =>
-  Text ->
-  m ContainerImageSource
-parseDockerEngineSource imgTag = do
-  canAccessDockerEngine <- isDockerEngineAccessible
-
-  unless canAccessDockerEngine $
-    fatalText "Docker Engine (via sdk api) could not be accessed."
-
-  unless (Text.isInfixOf ":" imgTag) $
-    fatalText $
-      "Docker Engine (via sdk api) requires image tag, in form of repo:tag, you provided: " <> imgTag
-
-  -- Confirm image is available by checking image size
-  -- It will throw diag error, if image is missing
-  imgSize <- toText . show <$> errCtx (DockerEngineImageNotPresentLocally imgTag) (getDockerImageSize imgTag)
-  logInfo . pretty $ "Discovered image for: " <> imgTag <> " (of " <> imgSize <> " bytes) via docker engine api."
-
-  pure $ DockerEngine imgTag
-
-parseDockerArchiveSource ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has ReadFS sig m
-  ) =>
-  Text ->
-  m ContainerImageSource
-parseDockerArchiveSource path = do
-  cwd <- getCurrentDir
-  someTarballFile <- fromEitherShow $ parseSomeFile (toString path)
-  resolvedAbsPath <- case someTarballFile of
-    Abs absPath -> pure absPath
-    Rel relPath -> pure $ cwd </> relPath
-  doesFileExist' <- doesFileExist resolvedAbsPath
-  unless doesFileExist' $
-    fatalText $
-      "Could not locate tarball source at filepath: " <> toText resolvedAbsPath
-  pure $ DockerArchive resolvedAbsPath
-
-newtype DockerEngineImageNotPresentLocally = DockerEngineImageNotPresentLocally Text
-instance ToDiagnostic DockerEngineImageNotPresentLocally where
-  renderDiagnostic (DockerEngineImageNotPresentLocally tag) =
-    vsep
-      [ pretty $ "Could not find: " <> (toString tag) <> " in local repository."
-      , pretty $ "Perform: docker pull " <> (toString tag) <> ", prior to running fossa."
-      ]
-
-parsePodmanSource ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
-  ) =>
-  Text ->
-  m ContainerImageSource
-parsePodmanSource img = execThrow' (podmanInspectImage img) $> Podman img
-
-parseRegistrySource ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  ) =>
-  Text ->
-  Text ->
-  m ContainerImageSource
-parseRegistrySource defaultArch tag = case parse (parseImageUrl defaultArch) "" tag of
-  Left err -> fatal $ errorBundlePretty err
-  Right registrySource -> pure $ Registry registrySource

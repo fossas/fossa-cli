@@ -8,7 +8,6 @@ module App.Fossa.EmbeddedBinary (
   ThemisBins (..),
   toPath,
   withWigginsBinary,
-  withSyftBinary,
   withThemisAndIndex,
   withBerkeleyBinary,
   allBins,
@@ -49,8 +48,7 @@ import Path.IO (
 import Prelude hiding (writeFile)
 
 data PackagedBinary
-  = Syft
-  | Wiggins
+  = Wiggins
   | Themis
   | ThemisIndex
   | BerkeleyDB
@@ -66,6 +64,7 @@ data BinaryPaths = BinaryPaths
   deriving (Eq, Ord, Show)
 
 data ThemisBinary
+
 data ThemisIndex
 
 data ThemisBins = ThemisBins
@@ -98,13 +97,6 @@ extractThemisFiles = do
   _ <- sendIO $ ensureDir $ parent $ toPath decompressedThemisIndex
   _ <- sendIO $ BL.writeFile (toString $ toPath decompressedThemisIndex) (Lzma.decompress $ toLazy embeddedBinaryThemisIndex)
   pure $ ThemisBins themisActual $ applyTag @ThemisIndex decompressedThemisIndex
-
-withSyftBinary ::
-  ( Has (Lift IO) sig m
-  ) =>
-  (BinaryPaths -> m c) ->
-  m c
-withSyftBinary = withEmbeddedBinary Syft
 
 withWigginsBinary ::
   ( Has (Lift IO) sig m
@@ -148,7 +140,6 @@ dumpEmbeddedBinary dir bin = writeBinary path bin
 
 writeBinary :: (Has (Lift IO) sig m) => Path Abs File -> PackagedBinary -> m ()
 writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
-  Syft -> embeddedBinarySyft
   Wiggins -> embeddedBinaryWiggins
   Themis -> embeddedBinaryThemis
   ThemisIndex -> embeddedBinaryThemisIndex
@@ -162,7 +153,6 @@ writeExecutable path content = do
 
 extractedPath :: PackagedBinary -> Path Rel File
 extractedPath bin = case bin of
-  Syft -> $(mkRelFile "syft")
   -- Rename wiggins upon local extraction so that we can provide a better status line to users during the VSI strategy.
   -- Users don't know what "wiggins" is, but they explicitly enable the VSI plugin, so this is more intuitive.
   Wiggins -> $(mkRelFile "vsi-plugin")
@@ -199,9 +189,6 @@ makeExecutable path = do
 -- If you wish to run these on your local system, populate these binaries via `vendor_download.sh`.
 embeddedBinaryWiggins :: ByteString
 embeddedBinaryWiggins = $(embedFileIfExists "vendor-bins/wiggins")
-
-embeddedBinarySyft :: ByteString
-embeddedBinarySyft = $(embedFileIfExists "vendor-bins/syft")
 
 embeddedBinaryThemis :: ByteString
 embeddedBinaryThemis = $(embedFileIfExists "vendor-bins/themis-cli")

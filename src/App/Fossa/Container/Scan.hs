@@ -1,240 +1,60 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Container.Scan (
-  runSyft,
-  syftCommand,
-  toContainerScan,
   extractTag,
   extractRevision,
-  SyftResponse,
-  ContainerScan (..),
-
-  -- * Helpers
-  LayerTarget (..),
+  scanImage,
+  scanImageNoAnalysis,
+  parseContainerImageSource,
+  parseDockerEngineSource,
+  ContainerImageSource (..),
 ) where
 
-import App.Fossa.Config.Container.Common (ImageText (ImageText))
-import App.Fossa.EmbeddedBinary (
-  BinaryPaths,
-  toPath,
-  withSyftBinary,
- )
-import App.Types (
-  OverrideProject (..),
-  ProjectRevision (ProjectRevision),
- )
-import Control.Effect.Diagnostics (
-  Diagnostics,
-  context,
-  fromMaybeText,
- )
+import App.Fossa.Config.Container.Common (ImageText (unImageText))
+import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, revisionFromDockerArchive)
+import App.Fossa.Container.Sources.DockerEngine (analyzeFromDockerEngine, revisionFromDockerEngine)
+import App.Fossa.Container.Sources.Podman (analyzeFromPodman, podmanInspectImage, revisionFromPodman)
+import App.Fossa.Container.Sources.Registry (analyzeFromRegistry, revisionFromRegistry)
+import App.Types (OverrideProject (..), ProjectRevision (ProjectRevision))
+import Container.Docker.SourceParser (RegistryImageSource, parseImageUrl)
+import Container.Types (ContainerScan (..))
+import Control.Carrier.DockerEngineApi (runDockerEngineApi)
+import Control.Effect.Debug (Debug)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, errCtx, fatal, fatalText, fromEitherShow, fromMaybeText, (<||>))
+import Control.Effect.DockerEngineApi (DockerEngineApi, getDockerImageSize, isDockerEngineAccessible)
 import Control.Effect.Lift (Has, Lift)
-import Data.Aeson (
-  FromJSON (parseJSON),
-  KeyValue ((.=)),
-  ToJSON (toJSON),
-  Value,
-  object,
-  withObject,
-  (.:),
-  (.:?),
- )
-import Data.Functor.Extra ((<$$>))
-import Data.Map (Map)
-import Data.Map.Lazy qualified as LMap
+import Control.Effect.Telemetry (Telemetry)
+import Control.Monad (unless)
+import Data.Functor (($>))
 import Data.Maybe (fromMaybe, listToMaybe)
-import Data.Set (Set)
-import Data.String.Conversion (toText)
-import Data.Text (Text)
-import Data.Text.Extra (breakOnEndAndRemove)
-import Effect.Exec (
-  AllowErr (Never),
-  Command (..),
-  Exec,
-  execJson,
+import Data.String.Conversion (
+  toString,
+  toText,
  )
-import Effect.ReadFS (ReadFS, getCurrentDir)
+import Data.Text (Text)
+import Data.Text qualified as Text
+import Data.Text.Extra (breakOnEndAndRemove)
+import Diag.Diagnostic qualified as Diag (
+  ToDiagnostic (renderDiagnostic),
+ )
+import Discovery.Filters (AllFilters (..))
+import Effect.Exec (Exec, execThrow')
+import Effect.Logger (
+  Logger,
+  Pretty (pretty),
+  logInfo,
+  vsep,
+ )
+import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir)
+import Path (Abs, File, Path, SomeBase (Abs, Rel), parseSomeFile, (</>))
+import Text.Megaparsec (errorBundlePretty, parse)
 
--- | The output of the syft binary
-data SyftResponse = SyftResponse
-  { responseArtifacts :: [ResponseArtifact]
-  , responseSource :: ResponseSource
-  , responseDistro :: ResponseDistro
-  }
-
-instance FromJSON SyftResponse where
-  parseJSON = withObject "SyftResponse" $ \obj ->
-    SyftResponse
-      <$> (filter artifactTypeIsOk <$> obj .: "artifacts")
-      <*> obj .: "source"
-      <*> obj .: "distro"
-
-artifactTypeIsOk :: ResponseArtifact -> Bool
-artifactTypeIsOk art = artifactType art `elem` acceptedArtifactTypes
-
-acceptedArtifactTypes :: [Text]
-acceptedArtifactTypes = ["deb", "rpm", "apk"]
-
-data ResponseArtifact = ResponseArtifact
-  { artifactName :: Text
-  , artifactVersion :: Text
-  , artifactType :: Text
-  , artifactLocations :: Set ContainerLocation
-  , artifactPkgUrl :: Text
-  , artifactMetadataType :: Text
-  , artifactMetadata :: Maybe (Map Text Value)
-  }
-
-instance FromJSON ResponseArtifact where
-  parseJSON = withObject "ResponseArtifact" $ \obj ->
-    ResponseArtifact
-      <$> obj .: "name"
-      <*> obj .: "version"
-      <*> obj .: "type"
-      <*> obj .: "locations"
-      <*> obj .: "purl"
-      <*> obj .: "metadataType"
-      -- We delete "files" as early as possible, which reduces
-      -- the size by over 95% in many cases.
-      -- We use Lazy delete to avoid evaluating the innards of
-      -- the field, since Aeson will try to avoid evaluating it
-      -- as well.
-      <*> (LMap.delete "files" <$$> obj .:? "metadata")
-
-newtype ResponseSource = ResponseSource
-  {sourceTarget :: SourceTarget}
-
-instance FromJSON ResponseSource where
-  parseJSON = withObject "ResponseSource" $ \obj ->
-    ResponseSource <$> obj .: "target"
-
-data ResponseDistro = ResponseDistro
-  { distroName :: Text
-  , distroVersion :: Text
-  }
-
-instance FromJSON ResponseDistro where
-  parseJSON = withObject "ResponseDistro" $ \obj ->
-    ResponseDistro
-      <$> obj .: "name"
-      <*> obj .: "version"
-
-data SourceTarget = SourceTarget
-  { targetDigest :: Text
-  , targetLayers :: [LayerTarget]
-  , targetTags :: [Text]
-  }
-
-instance FromJSON SourceTarget where
-  parseJSON = withObject "SourceTarget" $ \obj ->
-    SourceTarget
-      <$> obj .: "imageID"
-      <*> obj .: "layers"
-      <*> obj .: "tags"
-
--- Capture container layers from target
--- The digest will correspond to location -> layerId
-newtype LayerTarget = LayerTarget {layerTargetDigest :: Text} deriving (Eq, Show, Ord)
-
-instance FromJSON LayerTarget where
-  parseJSON = withObject "LayerTarget" $ \obj ->
-    LayerTarget <$> obj .: "digest"
-
-instance ToJSON LayerTarget where
-  toJSON LayerTarget{..} =
-    object ["digest" .= layerTargetDigest]
-
--- | The reorganized output of syft into a slightly different format
-data ContainerScan = ContainerScan
-  { imageData :: ContainerImage
-  , imageTag :: Text
-  , imageDigest :: Text
-  }
+data ContainerImageSource
+  = DockerArchive (Path Abs File)
+  | DockerEngine Text
+  | Podman Text
+  | Registry RegistryImageSource
   deriving (Show, Eq)
-
-instance ToJSON ContainerScan where
-  toJSON scan = object ["image" .= imageData scan]
-
-data ContainerImage = ContainerImage
-  { imageArtifacts :: [ContainerArtifact]
-  , imageOs :: Text
-  , imageOsRelease :: Text
-  , imageLayers :: [LayerTarget]
-  }
-  deriving (Show, Eq)
-
-instance ToJSON ContainerImage where
-  toJSON ContainerImage{..} =
-    object
-      [ "os" .= imageOs
-      , "osRelease" .= imageOsRelease
-      , "layers" .= imageLayers
-      , "artifacts" .= imageArtifacts
-      ]
-
--- Define Layer/Location type to capture layers in which a dep is found
--- omitting "path" from the object to reduce noise
-newtype ContainerLocation = ContainerLocation {conLayerId :: Text} deriving (Eq, Show, Ord)
-
-instance FromJSON ContainerLocation where
-  parseJSON = withObject "ContainerLocation" $ \obj ->
-    ContainerLocation <$> obj .: "layerID"
-
-instance ToJSON ContainerLocation where
-  toJSON ContainerLocation{..} =
-    object ["layerId" .= conLayerId]
-
-data ContainerArtifact = ContainerArtifact
-  { conArtifactName :: Text
-  , conArtifactVersion :: Text
-  , conArtifactType :: Text
-  , conArtifactLocations :: Set ContainerLocation
-  , conArtifactPkgUrl :: Text
-  , conArtifactMetadataType :: Text
-  , conArtifactMetadata :: Map Text Value
-  }
-  deriving (Show, Eq)
-
-instance ToJSON ContainerArtifact where
-  toJSON ContainerArtifact{..} =
-    object
-      [ "name" .= conArtifactName
-      , "fullVersion" .= conArtifactVersion
-      , "type" .= conArtifactType
-      , "locations" .= conArtifactLocations
-      , "purl" .= conArtifactPkgUrl
-      , "metadataType" .= conArtifactMetadataType
-      , "metadata" .= LMap.delete "files" conArtifactMetadata
-      ]
-
-extractRevision :: OverrideProject -> ContainerScan -> ProjectRevision
-extractRevision OverrideProject{..} ContainerScan{..} = ProjectRevision name revision overrideBranch
-  where
-    name = fromMaybe imageTag overrideName
-    revision = fromMaybe imageDigest overrideRevision
-
-toContainerScan :: Has Diagnostics sig m => SyftResponse -> m ContainerScan
-toContainerScan SyftResponse{..} = do
-  newArts <- context "error while validating system artifacts" $ traverse convertArtifact responseArtifacts
-  let image = ContainerImage newArts (distroName responseDistro) (distroVersion responseDistro) (targetLayers $ sourceTarget responseSource)
-      target = sourceTarget responseSource
-  tag <- context "error while extracting image tags" . extractTag $ targetTags target
-  pure . ContainerScan image tag $ targetDigest target
-
-convertArtifact :: Has Diagnostics sig m => ResponseArtifact -> m ContainerArtifact
-convertArtifact ResponseArtifact{..} = do
-  let errMsg = "No metadata for system package with name: " <> artifactName
-  validMetadata <- fromMaybeText errMsg artifactMetadata
-  pure
-    ContainerArtifact
-      { conArtifactName = artifactName
-      , conArtifactVersion = artifactVersion
-      , conArtifactType = artifactType
-      , conArtifactLocations = artifactLocations
-      , conArtifactPkgUrl = artifactPkgUrl
-      , conArtifactMetadataType = artifactMetadataType
-      , conArtifactMetadata = validMetadata
-      }
 
 extractTag :: Has Diagnostics sig m => [Text] -> m Text
 extractTag tags = do
@@ -242,24 +62,158 @@ extractTag tags = do
   tagTuple <- fromMaybeText "Image was not in the format name:tag" $ breakOnEndAndRemove ":" firstTag
   pure $ fst tagTuple
 
-runSyft ::
+extractRevision :: OverrideProject -> ContainerScan -> ProjectRevision
+extractRevision OverrideProject{..} ContainerScan{..} =
+  ProjectRevision
+    (fromMaybe imageTag overrideName)
+    (fromMaybe imageDigest overrideRevision)
+    overrideBranch
+
+scanImage ::
   ( Has Diagnostics sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
   , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  , Has Telemetry sig m
+  , Has Debug sig m
+  ) =>
+  AllFilters ->
+  Bool ->
+  ImageText ->
+  Text ->
+  Text ->
+  m ContainerScan
+scanImage filters systemDepsOnly imgText dockerHost imageArch = do
+  parsedSource <- runDockerEngineApi dockerHost $ parseContainerImageSource (unImageText imgText) imageArch
+  case parsedSource of
+    DockerArchive tarball ->
+      context "Analyzing via docker archive" $
+        analyzeFromDockerArchive systemDepsOnly filters tarball
+    DockerEngine imgTag ->
+      context "Analyzing via Docker engine API" $
+        analyzeFromDockerEngine systemDepsOnly filters dockerHost imgTag
+    Podman img ->
+      context "Analyzing via podman" $
+        analyzeFromPodman systemDepsOnly filters img
+    Registry registrySrc ->
+      context "Analyzing via registry" $
+        analyzeFromRegistry systemDepsOnly filters registrySrc
+
+scanImageNoAnalysis ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
   ) =>
   ImageText ->
-  m SyftResponse
-runSyft image = withSyftBinary $ \syftBin -> do
-  dir <- getCurrentDir
-  execJson @SyftResponse dir $ syftCommand syftBin image
+  Text ->
+  Text ->
+  m (Text, Text)
+scanImageNoAnalysis imgText dockerHost imageArch = do
+  parsedSource <- runDockerEngineApi dockerHost $ parseContainerImageSource (unImageText imgText) imageArch
+  case parsedSource of
+    DockerArchive tarball ->
+      context "Retrieving revision information via docker archive" $
+        revisionFromDockerArchive tarball
+    DockerEngine imgTag ->
+      context "Retrieving revision information via Docker engine API" $
+        revisionFromDockerEngine dockerHost imgTag
+    Podman img ->
+      context "Retrieving revision information via podman" $
+        revisionFromPodman img
+    Registry registrySrc ->
+      context "Retrieving revision information via registry" $
+        revisionFromRegistry registrySrc
 
--- Scope to all layers, to prevent odd "squashing" that syft does
--- Output to produce machine readable json that we can ingest
-syftCommand :: BinaryPaths -> ImageText -> Command
-syftCommand bin (ImageText image) =
-  Command
-    { cmdName = toText $ toPath bin
-    , cmdArgs = ["--scope", "all-layers", "-o", "json", image]
-    , cmdAllowErr = Never
-    }
+parseContainerImageSource ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has ReadFS sig m
+  , Has Logger sig m
+  , Has Exec sig m
+  , Has DockerEngineApi sig m
+  ) =>
+  Text ->
+  Text ->
+  m ContainerImageSource
+parseContainerImageSource src defaultArch =
+  parseDockerArchiveSource src
+    <||> parseDockerEngineSource src
+    <||> parsePodmanSource src
+    <||> parseRegistrySource defaultArch src
+
+parseDockerEngineSource ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  , Has DockerEngineApi sig m
+  ) =>
+  Text ->
+  m ContainerImageSource
+parseDockerEngineSource imgTag = do
+  canAccessDockerEngine <- isDockerEngineAccessible
+
+  unless canAccessDockerEngine $
+    fatalText "Docker Engine (via sdk api) could not be accessed."
+
+  unless (Text.isInfixOf ":" imgTag) $
+    fatalText $
+      "Docker Engine (via sdk api) requires image tag, in form of repo:tag, you provided: " <> imgTag
+
+  -- Confirm image is available by checking image size
+  -- It will throw diag error, if image is missing
+  imgSize <- toText . show <$> errCtx (DockerEngineImageNotPresentLocally imgTag) (getDockerImageSize imgTag)
+  logInfo . pretty $ "Discovered image for: " <> imgTag <> " (of " <> imgSize <> " bytes) via docker engine api."
+
+  pure $ DockerEngine imgTag
+
+parseDockerArchiveSource ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has ReadFS sig m
+  ) =>
+  Text ->
+  m ContainerImageSource
+parseDockerArchiveSource path = do
+  cwd <- getCurrentDir
+  someTarballFile <- fromEitherShow $ parseSomeFile (toString path)
+  resolvedAbsPath <- case someTarballFile of
+    Abs absPath -> pure absPath
+    Rel relPath -> pure $ cwd </> relPath
+  doesFileExist' <- doesFileExist resolvedAbsPath
+  unless doesFileExist' $
+    fatalText $
+      "Could not locate tarball source at filepath: " <> toText resolvedAbsPath
+  pure $ DockerArchive resolvedAbsPath
+
+newtype DockerEngineImageNotPresentLocally = DockerEngineImageNotPresentLocally Text
+
+instance ToDiagnostic DockerEngineImageNotPresentLocally where
+  renderDiagnostic (DockerEngineImageNotPresentLocally tag) =
+    vsep
+      [ pretty $ "Could not find: " <> (toString tag) <> " in local repository."
+      , pretty $ "Perform: docker pull " <> (toString tag) <> ", prior to running fossa."
+      ]
+
+parsePodmanSource ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
+  ) =>
+  Text ->
+  m ContainerImageSource
+parsePodmanSource img = execThrow' (podmanInspectImage img) $> Podman img
+
+parseRegistrySource ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  ) =>
+  Text ->
+  Text ->
+  m ContainerImageSource
+parseRegistrySource defaultArch tag = case parse (parseImageUrl defaultArch) "" tag of
+  Left err -> fatal $ errorBundlePretty err
+  Right registrySource -> pure $ Registry registrySource

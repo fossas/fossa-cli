@@ -14,19 +14,17 @@ import App.Fossa.Config.Container (
   OutputFormat (TestOutputJson, TestOutputPretty),
  )
 import App.Fossa.Config.Container qualified as Config
-import App.Fossa.Container.Scan (
-  extractRevision,
-  runSyft,
-  toContainerScan,
- )
-import App.Types (ProjectRevision (..))
+import App.Fossa.Container.Scan (scanImageNoAnalysis)
+import App.Types (OverrideProject (OverrideProject, overrideBranch, overrideName, overrideRevision), ProjectRevision (..))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Timeout (timeout')
 import Data.Aeson qualified as Aeson
+import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8)
+import Data.Text (Text)
 import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
@@ -40,6 +38,13 @@ import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (Issues (..))
 import System.Exit (exitFailure)
 
+extractRevision :: OverrideProject -> Text -> Text -> ProjectRevision
+extractRevision OverrideProject{..} imageTag imageDigest =
+  ProjectRevision
+    (fromMaybe imageTag overrideName)
+    (fromMaybe imageDigest overrideRevision)
+    overrideBranch
+
 test ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -51,10 +56,8 @@ test ::
   m ()
 test ContainerTestConfig{..} = runStickyLogger SevInfo $
   runFossaApiClient apiOpts . timeout' timeoutDuration $ \cancelToken -> do
-    logSticky "Running embedded syft binary"
-
-    containerScan <- runSyft testImageLocator >>= toContainerScan
-    let revision = extractRevision testRevisionOverride containerScan
+    (imageTag, imageDigest) <- scanImageNoAnalysis testImageLocator testDockerHost testArch
+    let revision = extractRevision testRevisionOverride imageTag imageDigest
 
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
     logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")

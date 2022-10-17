@@ -2,10 +2,7 @@ module App.Fossa.Container.ListTargets (listTargets) where
 
 import App.Fossa.Config.Container.Common (ImageText (unImageText))
 import App.Fossa.Config.Container.ListTargets (ContainerListTargetsConfig (arch, cfgImageLocator, dockerHost))
-import App.Fossa.Container.AnalyzeNative (
-  ContainerImageSource (..),
-  parseContainerImageSource,
- )
+import App.Fossa.Container.Scan (ContainerImageSource (..), parseContainerImageSource)
 import App.Fossa.Container.Sources.DockerArchive (listTargetsFromDockerArchive)
 import App.Fossa.Container.Sources.DockerEngine (listTargetsFromDockerEngine)
 import App.Fossa.Container.Sources.Podman (listTargetsFromPodman)
