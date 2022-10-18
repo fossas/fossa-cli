@@ -65,7 +65,7 @@ dispatch = \case
             , ""
             , "FOSSA CLI is using new native container scanner, which scans for application"
             , "dependencies in the container image by default. To only scan for system"
-            , "dependencies, provide `--` flag."
+            , "dependencies, provide `--only-system-deps` flag."
             , ""
             , "To learn more,"
             , indent 4 $ pretty fossaContainerScannerUrl
