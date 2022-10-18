@@ -39,8 +39,8 @@ You can provide, `--only-system-deps` to only analyze dependencies originating f
 - rpm
 - alpine
 
-> Performing `fossa container analyze <IMAGE> --only-system-deps` will match scanner behaviour that of
-> previous FOSSA container scanner (same as all CLI prior to v3.5.0)
+> Performing `fossa container analyze <IMAGE> --only-system-deps` will match the behavior of
+> the previous FOSSA CLI container scanner (same as all CLI prior to v3.5.0)
 
 You can refer to [scanner](./container/scanner.md) documentation, to learn
 more about how FOSSA CLI performs scan on a container image.

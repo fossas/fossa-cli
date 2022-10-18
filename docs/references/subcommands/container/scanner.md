@@ -29,7 +29,7 @@ FOSSA's new container scanner brings support for standard FOSSA CLI features int
 
 Finally, FOSSA's new container scanner improves the user experience and reports more information to FOSSA servers,
 improving both the information available to users and the ability for FOSSA to debug questions or issues.
-For example images scanned with the container scanner show the origin path for each dependency discovered inside the image, just like analysis of a local project.
+For example, images scanned with the container scanner show the origin path for each dependency discovered inside the image, just like analysis of a local project.
 
 Like the legacy container scanner, the container scanner fully supports the detection of OS dependencies (`apk`, `deb`, etc).
 
