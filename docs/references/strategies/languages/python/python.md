@@ -10,7 +10,7 @@ The python buildtool ecosystem consists of three major toolchains: setuptools
 | [requirements.txt & setuptools](setuptools.md) | :heavy_check_mark: | :x:                | :x:                | :heavy_check_mark:                |
 | [setup.py & setuptools](setuptools.md)         | :heavy_check_mark: | :x:                | :x:                | :heavy_check_mark:                |
 | [piplist](piplist.md)                          | :white_check_mark: | :white_check_mark: | :x:                | :heavy_check_mark:                |
-| [conda](conda.md)                              | :heavy_check_mark: | :heavy_check_mark: | :x:                | :x:                               |
+| [conda](conda.md)                              | :heavy_check_mark: | :white_check_mark: | :x:                | :x:                               |
 | [poetry](poetry.md)                            | :heavy_check_mark: | :white_check_mark: | :white_check_mark: | :heavy_check_mark:                |
 
 * :heavy_check_mark: - Supported in all projects
