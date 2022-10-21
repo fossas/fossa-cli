@@ -1,0 +1,20 @@
+# Testcase: changesets_symlinked_entries.tar
+#
+# To Build:
+#   docker build -f Dockerfile.sample2 . -t changesets_symlinked_entries:latest
+#
+# To Export:
+#   docker save changesets_symlinked_entries:latest > changesets_symlinked_entries.tar
+#   
+# To Run:
+#   docker run -it changesets_symlinked_entries:latest /bin/sh
+FROM busybox
+
+RUN echo 'a' > filea.txt
+WORKDIR /tmp
+
+RUN echo 'b' > fileb.txt
+WORKDIR /app
+
+RUN echo 'c' > filec.txt
+WORKDIR /tmp
