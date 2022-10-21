@@ -190,7 +190,6 @@ mkImageSpec = do
   let tarFile = Tar.read tarFileBs
 
   tarFileBsSymEntries <- runIO $ ByteStringLazy.readFile exampleImgSymLinkEntries
-  let tarFileSymEntries = Tar.read tarFileBsSymEntries
 
   describe "parse" $ do
     it "should parse image with all layers and correct layer Ids" $ do
@@ -216,9 +215,8 @@ mkImageSpec = do
     it "should parse image with all layers and correct layer Ids when some layers are symlinked" $ do
       case parse tarFileBsSymEntries of
         Left errs -> expectationFailure (show errs)
-        Right (ContainerImageRaw neLayers imgManifest) -> do
+        Right (ContainerImageRaw neLayers _) -> do
           let l = NLE.toList neLayers
-          let otherLayers = NLE.fromList . NLE.tail $ neLayers
 
           layerDigest (head l) `shouldBe` "sha256:0b16ab2571f4b3e0d5a96b66a00e5016ddc0d268e8bc45dc612948c4c95b94cd"
           layerDigest (l !! 1) `shouldBe` "sha256:79561e664b2eb736c17d5019036e2bcafe26c760859e65d34f2e006b1c0beb9a"
