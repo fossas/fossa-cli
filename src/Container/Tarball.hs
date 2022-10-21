@@ -149,7 +149,7 @@ mkLayer (TarEntries entries tarOffset) (layerId, layerTarball) =
           , toString $
               resolveSymLinkRef
                 (toText layerTarball)
-                (toText $ TarEntry.fromLinkTarget target)
+                (toText $ TarEntry.fromLinkTargetToPosixPath target)
           )
 
       -- Layer tarball must be a file, or symbolic link to existing tar file.
