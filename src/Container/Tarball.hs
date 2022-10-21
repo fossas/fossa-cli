@@ -35,7 +35,7 @@ import Container.Types (
  )
 import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.Either (lefts, rights)
-import Data.FileTree.IndexFileTree (SomeFileTree, empty, insert, remove, toSomePath)
+import Data.FileTree.IndexFileTree (SomeFileTree, empty, insert, remove, resolveSymLinkRef, toSomePath)
 import Data.Foldable (foldl')
 import Data.List.NonEmpty qualified as NLE
 import Data.Sequence (Seq, ViewL (EmptyL, (:<)), viewl, (|>))
@@ -130,8 +130,8 @@ mkImage manifest imgJson entries layerTarballPaths =
     layers = zipWith (curry $ mkLayer entries) (getLayerIds imgJson) (NLE.toList layerTarballPaths)
 
 mkLayer :: TarEntries -> (Text, FilePath) -> Either ContainerImgParsingError ContainerLayer
-mkLayer (TarEntries entries _) (layerId, layerTarball) =
-  case viewl $ Seq.filter (\(t, _) -> (filePathOf . entryTarPath) t == layerTarball && isFile t) entries of
+mkLayer (TarEntries entries tarOffset) (layerId, layerTarball) =
+  case viewl $ Seq.filter (\(t, _) -> (filePathOf . entryTarPath) t == layerTarball && (isFile t || isSymLink t)) entries of
     EmptyL -> Left $ TarMissingLayerTar layerTarball
     (layerTarballEntry :< _) -> case entryContent $ fst layerTarballEntry of
       (NormalFile c _) -> do
@@ -140,8 +140,19 @@ mkLayer (TarEntries entries _) (layerId, layerTarball) =
           Left err -> Left err
           Right layer -> Right layer
 
-      -- Layer tarball must be a file, they cannot be a directory
-      -- or symlink to some other file.
+      -- Sometimes layer tar is alias to existing tarball file
+      -- This occurs when same layer is used multiple times in container image.
+      (SymbolicLink target) -> do
+        mkLayer
+          (TarEntries entries tarOffset)
+          ( layerId
+          , toString $
+              resolveSymLinkRef
+                (toText layerTarball)
+                (toText $ TarEntry.fromLinkTargetToPosixPath target)
+          )
+
+      -- Layer tarball must be a file, or symbolic link to existing tar file.
       _ -> Left $ TarLayerNotAFile layerTarball
 
 mkLayerFromOffset ::

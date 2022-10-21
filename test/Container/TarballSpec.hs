@@ -50,6 +50,9 @@ removeWhiteOutSpec =
 exampleImg :: FilePath
 exampleImg = "test/Container/testdata/changeset_example.tar"
 
+exampleImgSymLinkEntries :: FilePath
+exampleImgSymLinkEntries = "test/Container/testdata/changesets_symlinked_entries.tar"
+
 exampleImgLayers :: NLE.NonEmpty FilePath
 exampleImgLayers =
   NLE.fromList
@@ -186,7 +189,9 @@ mkImageSpec = do
   tarFileBs <- runIO $ ByteStringLazy.readFile exampleImg
   let tarFile = Tar.read tarFileBs
 
-  describe "parse" $
+  tarFileBsSymEntries <- runIO $ ByteStringLazy.readFile exampleImgSymLinkEntries
+
+  describe "parse" $ do
     it "should parse image with all layers and correct layer Ids" $ do
       case parse tarFileBs of
         Left errs -> expectationFailure (show errs)
@@ -206,6 +211,20 @@ mkImageSpec = do
 
           toChangeSets (ContainerImageRaw otherLayers imgManifest)
             `shouldBe` expectedLayerChangeSets
+
+    it "should parse image with all layers and correct layer Ids when some layers are symlinked" $ do
+      case parse tarFileBsSymEntries of
+        Left errs -> expectationFailure (show errs)
+        Right (ContainerImageRaw neLayers _) -> do
+          let l = NLE.toList neLayers
+
+          layerDigest (head l) `shouldBe` "sha256:0b16ab2571f4b3e0d5a96b66a00e5016ddc0d268e8bc45dc612948c4c95b94cd"
+          layerDigest (l !! 1) `shouldBe` "sha256:79561e664b2eb736c17d5019036e2bcafe26c760859e65d34f2e006b1c0beb9a"
+          layerDigest (l !! 2) `shouldBe` "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+          layerDigest (l !! 3) `shouldBe` "sha256:ac0192bbb75bcafb054a0b4bc0915771c12f46b1e3ac2ae284ac7852fa0a55df"
+          layerDigest (l !! 4) `shouldBe` "sha256:b0ffa65701492545ff15c114e01fa3b3e88876830e3176524f9c2ad6bbd68337"
+          layerDigest (l !! 5) `shouldBe` "sha256:202fcf6ef76ae496d03f4466be0b56de0c88fac0d4a6ca529496c60f67eb0e2d"
+          layerDigest (l !! 6) `shouldBe` "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
 
   describe "mkImage" $
     it "should build image with layers with all change sets" $
