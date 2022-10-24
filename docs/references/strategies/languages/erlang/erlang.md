@@ -3,9 +3,9 @@
 When developing in Erlang, [Rebar](https://www.rebar3.org/) is the most common package manager. Dependencies are specified in a manifest file by users which is used by the `rebar3` tool to build a dependency graph and download the correct dependencies.
 
 
-| Strategy | Direct Deps        | Transitive Deps          | Edges              | Container Scanning (experimental) |
-| -------- | ------------------ | ------------------ | ------------------ |
-| rebar3   | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                               |
+| Strategy | Direct Deps        | Transitive Deps    | Edges              | Container Scanning |
+| -------- | ------------------ | ------------------ | ------------------ | ------------------ |
+| rebar3   | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |
 
 ## Project Discovery
 

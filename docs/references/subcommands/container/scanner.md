@@ -2,7 +2,6 @@
 
 - [FOSSA's new container scanner](#fossas-new-container-scanner)
   - [What's new in this scanner?](#whats-new-in-this-scanner)
-  - [Integration](#integration)
 - [Documentation](#documentation)
   - [Container image source](#container-image-source)
     - [1) Exported docker archive](#1-exported-docker-archive)
@@ -30,32 +29,9 @@ FOSSA's new container scanner brings support for standard FOSSA CLI features int
 
 Finally, FOSSA's new container scanner improves the user experience and reports more information to FOSSA servers,
 improving both the information available to users and the ability for FOSSA to debug questions or issues.
-For example images scanned with the experimental scanner show the origin path for each dependency discovered inside the image, just like analysis of a local project.
+For example, images scanned with the container scanner show the origin path for each dependency discovered inside the image, just like analysis of a local project.
 
-Like the legacy container scanner, the experimental scanner fully supports the detection of OS dependencies (`apk`, `deb`, etc).
-
-## Integration
-
-To use the new fossa container scanner, use the `--experimental-scanner` flag 
-with the container analyze command like the following:
-
-```bash
-fossa container analyze <ARG> --experimental-scanner
-fossa container test <ARG> # no changes to container test command  
-```
-
-For example:
-
-```bash
-fossa container analyze redis:alpine --experimental-scanner
-fossa container analyze ghcr.io/fossas/haskell-dev-tools:9.0.2 --experimental-scanner
-
-# via docker archive
-fossa container analyze image.tar --experimental-scanner
-
-# only analyze system dependencies (alpine, dpkg, rpm)
-fossa container analyze redis:alpine --experimental-scanner --only-system-deps
-```
+Like the legacy container scanner, the container scanner fully supports the detection of OS dependencies (`apk`, `deb`, etc).
 
 Refer to following guides for integrating container scanning in your CI,
 
@@ -69,19 +45,19 @@ Scans report compliance and security issues for operating system dependencies an
 To scan a container image with `fossa-cli`, use the `container analyze` command:
 
 ```bash
-# Analyze the container image `<IMAGE>` with experimental scanner and upload scan results to FOSSA.
+# Analyze the container image `<IMAGE>` with container scanner and upload scan results to FOSSA.
 # This command only reports dependency metadata, no source code or actual file is sent to FOSSA.
 #
 # This command uses the repository name as project name, and image digest as the revision.
 # Like standard FOSSA analysis, the project name is customizable via `--project` and revision via `--revision`:
 #
-#   >> fossa container analyze <IMAGE> --project <PROJECT-NAME> --revision <REVISION-VALUE> --experimental-scanner 
+#   >> fossa container analyze <IMAGE> --project <PROJECT-NAME> --revision <REVISION-VALUE> 
 #
-fossa container analyze <IMAGE> --experimental-scanner 
+fossa container analyze <IMAGE> 
 
 # Similar to the above, but instead of uploading the results they are instead written to the terminal in JSON format.
 #
-fossa container analyze <IMAGE> --experimental-scanner -o
+fossa container analyze <IMAGE> -o
 ```
 
 Once the container image has been scanned and the results uploaded to FOSSA,
@@ -95,7 +71,7 @@ security and compliance issues are reported via the `fossa container test` comma
 # Policies are also able to surface or suppress issues based on the layer in which the issue was detected.
 # Refer to FOSSA's product documentation for more information: https://docs.fossa.com
 #
-# This does not need the `--experimental-scanner` flag.
+# This does not need the `` flag.
 fossa container test <IMAGE>
 ```
 
@@ -114,13 +90,13 @@ By default `fossa-cli` attempts to identify `<IMAGE>` source in the following or
 
 ```bash
 docker save redis:alpine > redis_alpine.tar
-fossa container analyze redis_alpine.tar --experimental-scanner
+fossa container analyze redis_alpine.tar 
 ```
 
 ### 2) From Docker Engine
 
 ```bash
-fossa container analyze redis:alpine --experimental-scanner
+fossa container analyze redis:alpine 
 ```
 
 For this image source to work, `fossa-cli` requires docker to be running and accessible.
@@ -143,7 +119,7 @@ curl --unix-socket /var/run/docker.sock -X GET "http://localhost/v1.28/images/re
 ### 3) From registries
 
 ```bash
-fossa container analyze ghcr.io/fossas/haskell-dev-tools:9.0.2 --experimental-scanner
+fossa container analyze ghcr.io/fossas/haskell-dev-tools:9.0.2 
 ```
 
 This step works even if you do not have docker installed or have docker engine accessible.
@@ -173,7 +149,7 @@ Analyzing the container image for a platform other than the one currently runnin
 For example, the following command analyzes the `arm64` platform image of `ghcr.io/graalvm/graalvm-ce@sha256` regardless of the platform running `fossa container analyze`:
 
 ```bash
-fossa container analyze ghcr.io/graalvm/graalvm-ce@sha256:bdcba07acb11053fea0026b807ecf94550ace7df27b10596ca4c765165243cef --experimental-scanner
+fossa container analyze ghcr.io/graalvm/graalvm-ce@sha256:bdcba07acb11053fea0026b807ecf94550ace7df27b10596ca4c765165243cef 
 ```
 
 **Private registries**
@@ -202,7 +178,7 @@ To explicitly provide a username and password, use HTTP-style authentication in 
 For this to work the host value must be present in the image URL:
 
 ```bash
-fossa container analyze user:secret@quay.io/org/image:tag --experimental-scanner
+fossa container analyze user:secret@quay.io/org/image:tag 
 ```
 
 **Retrieving image from registry**
@@ -224,7 +200,7 @@ All `GET` request from step 2 to step 5, will make `HEAD` call prior to confirm 
 
 ## Container image analysis
 
-The new experimental scanner scans in two steps:
+The new container scanner scans in two steps:
 1. The base layer.
 2. The rest of the layers, squashed. 
 
@@ -264,10 +240,10 @@ Where:
 
 ### View detected projects
 
-To view the list of projects detected within the container by the above strategies run `fossa container list-targets <ARG> --experimental-scanner`.
-`ARG` must be the same value as provided to `fossa container analyze <ARG> --experimental-scanner` or `fossa container test <ARG>`.
+To view the list of projects detected within the container by the above strategies run `fossa container list-targets <ARG> `.
+`ARG` must be the same value as provided to `fossa container analyze <ARG> ` or `fossa container test <ARG>`.
 
-This output can be useful to understand what is going to be analyzed via `fossa container analyze <ARG> --experimental-scanner`,
+This output can be useful to understand what is going to be analyzed via `fossa container analyze <ARG> `,
 and if desired can inform [analysis target configuration](../../files/fossa-yml.md#analysis-target-configuration).
 
 #### Command output
@@ -280,7 +256,7 @@ Example output:
 [ INFO] Exporting docker image to temp file: /private/var/folders/hb/pg5d0r196kq1qdswr6_79hzh0000gn/T/fossa-docker-engine-tmp-f7af2b5d1ec5173d/image.tar! This may take a while!
 [ INFO] Listing targets exported docker archive: /private/var/folders/hb/pg5d0r196kq1qdswr6_79hzh0000gn/T/fossa-docker-engine-tmp-f7af2b5d1ec5173d/image.tar
 [ WARN] fossa container list-targets does not apply any filtering, you may see projects which are not present in the final analysis.
-[ WARN] fossa container list-targets only lists targets for experimental-scanner (when analyzed with --experimental-scanner flag).
+[ WARN] fossa container list-targets only lists targets for experimental-scanner (when analyzed with flag).
 [ INFO] Found project: apkdb@lib/apk/db/ (Base Layer)
 [ INFO] Found target: apkdb@lib/apk/db/ (Base Layer)
 [ INFO] Found project: setuptools@usr/local/lib/node_modules/npm/node_modules/node-gyp/gyp/ (Other Layers)
@@ -295,7 +271,7 @@ Example output:
 
 ### Utilize analysis target configuration
 
-The new experimental scanner supports configuring analysis targets via `.fossa.yml`, as with a standard `fossa analyze` command.
+The new container scanner supports configuring analysis targets via `.fossa.yml`, as with a standard `fossa analyze` command.
 For more information on configuring analysis targets, see [analysis target configuration](../../files/fossa-yml.md#analysis-target-configuration).
 
 For example, the following `fossa.yml` excludes all `setuptools` targets:
@@ -306,10 +282,10 @@ exclude:
 
 ### Debugging
 
-`fossa-cli` supports the `--debug` flag and debug bundle generation with the experimental scanner. 
+`fossa-cli` supports the `--debug` flag and debug bundle generation with the container scanner. 
 
 ```bash
-fossa container analyze redis:alpine --experimental-scanner --debug
+fossa container analyze redis:alpine --debug
 
 # Generates debug logs in the terminal.
 # Writes the FOSSA debug bundle in the current working directory with the filename "fossa.container.debug.json.gz".
@@ -325,7 +301,7 @@ Images can be exported to archives using Docker:
 docker pull <IMAGE>:<TAG> # or docker pull <IMAGE>@<DIGEST>
 docker save <IMAGE>:<TAG> > image.tar
 
-fossa container analyze image.tar --experimental scanner 
+fossa container analyze image.tar --container scanner 
 
 rm image.tar
 ```
@@ -338,7 +314,7 @@ By default when `fossa-cli` is analyzing multi-platform image it prefers using t
 If a specific platform is desired, use the digest for that platform:
 
 ```bash
-fossa container analyze ghcr.io/graalvm/graalvm-ce@sha256:bdcba07acb11053fea0026b807ecf94550ace7df27b10596ca4c765165243cef --experimental-scanner
+fossa container analyze ghcr.io/graalvm/graalvm-ce@sha256:bdcba07acb11053fea0026b807ecf94550ace7df27b10596ca4c765165243cef 
 ```
 
 ### How can I only scan for system dependencies (alpine, dpkg, rpm)?
@@ -346,7 +322,7 @@ fossa container analyze ghcr.io/graalvm/graalvm-ce@sha256:bdcba07acb11053fea0026
 Use the `--only-system-deps` option:
 
 ```bash
-fossa container analyze <IMAGE> --experimental-scanner --only-system-deps
+fossa container analyze <IMAGE> --only-system-deps
 ```
 
 ### How do I exclude specific projects from container scanning?
@@ -367,12 +343,12 @@ targets:
 ```
 
 ```bash
-fossa container analyze <IMAGE> --experimental-scanner -c .fossa.config.yaml --output
+fossa container analyze <IMAGE> -c .fossa.config.yaml --output
 ```
 
 ## Limitations & Workarounds
 
-`fossa-cli` using the experimental scanner does not support [v1 docker manifest format](https://docs.docker.com/registry/spec/manifest-v2-1/).
+`fossa-cli` using the container scanner does not support [v1 docker manifest format](https://docs.docker.com/registry/spec/manifest-v2-1/).
 This manifest format is officially deprecated, but is still found in some registries.
 
 The recommended workaround is to export the image to an archive, then analyze that:
@@ -381,7 +357,7 @@ The recommended workaround is to export the image to an archive, then analyze th
 docker pull quay.io/org/image:tag
 docker save quay.io/org/image:tag > img.tar
 
-fossa container analyze img.tar --experimental-scanner
+fossa container analyze img.tar 
 rm img.tar
 ```
 

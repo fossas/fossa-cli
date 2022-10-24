@@ -46,9 +46,9 @@ instance ToDiagnostic EndpointDoesNotSupportNativeContainerScan where
     vsep
       [ "Provided endpoint does not support native container scans."
       , ""
-      , "If you are using, --experimental-scanner option, it is not supported for your"
-      , "FOSSA instance. Try without using --experimental-scanner."
+      , "Container scanning with new scanner is not supported for your FOSSA endpoint."
       , ""
-      , "If your instance of FOSSA is on-premise, it likely needs to be updated to latest version."
+      , "Upgrade your FOSSA instance to v4.0.37 or downgrade your FOSSA CLI to 3.4.x"
+      , ""
       , "Please contact FOSSA support for more assistance."
       ]

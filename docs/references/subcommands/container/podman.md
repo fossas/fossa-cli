@@ -43,7 +43,7 @@ Machine "podman-machine-default" started successfully
 Now we can specify `DOCKER_HOST` when running `fossa-cli`. 
 
 ```bash
-DOCKER_HOST='unix:///Users/fossa/.local/share/containers/podman/machine/podman-machine-default/podman.sock' fossa container analyze --experimental-scanner
+DOCKER_HOST='unix:///Users/fossa/.local/share/containers/podman/machine/podman-machine-default/podman.sock' fossa container analyze
 ```
 
 Likewise, if you are using `podman-remote`, you should be able to use generate unix socket, and use it with `fossa-cli`. Refer to documentation below for more details.
@@ -80,7 +80,7 @@ with `fossa-cli`.
 podman build . -t someImg:1.0.0
 podman save --format docker-archive -o image.tar
 
-fossa container analyze image.tar --experimental-scanner
+fossa container analyze image.tar
 
 # Cleanup
 rm image.tar

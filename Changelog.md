@@ -45,7 +45,7 @@
 ## v3.4.0
 
 - Container scanning: New experimental scanner. ([#1001](https://github.com/fossas/fossa-cli/pull/1001), [#1002](https://github.com/fossas/fossa-cli/pull/1002), [#1003](https://github.com/fossas/fossa-cli/pull/1003), [#1004](https://github.com/fossas/fossa-cli/pull/1004), [#1005](https://github.com/fossas/fossa-cli/pull/1005), [#1006](https://github.com/fossas/fossa-cli/pull/1006), [#1010](https://github.com/fossas/fossa-cli/pull/1010), [#1011](https://github.com/fossas/fossa-cli/pull/1011), [#1012](https://github.com/fossas/fossa-cli/pull/1012), [#1014](https://github.com/fossas/fossa-cli/pull/1014), [#1016](https://github.com/fossas/fossa-cli/pull/1016), [#1017](https://github.com/fossas/fossa-cli/pull/1017), [#1021](https://github.com/fossas/fossa-cli/pull/1021), [#1025](https://github.com/fossas/fossa-cli/pull/1025), [#1026](https://github.com/fossas/fossa-cli/pull/1026), [#1029](https://github.com/fossas/fossa-cli/pull/1029), [#1031](https://github.com/fossas/fossa-cli/pull/1031), [#1032](https://github.com/fossas/fossa-cli/pull/1032), [#1034](https://github.com/fossas/fossa-cli/pull/1034))<br>
-  For more information, see the [experimental container scanning documentation](./docs/references/experimental/container/experimental-scanner.md).
+  For more information, see the [experimental container scanning documentation](./docs/references/subcommands/container/scanner.md).
 - Filters: Add `dist-newstyle` to the list of automatically filtered directories. ([#1030](https://github.com/fossas/fossa-cli/pull/1035))
 - `fossa-deps`: Fix a bug in `fossa-deps.schema.json`, it is now valid JSON. ([#1030](https://github.com/fossas/fossa-cli/pull/1030))
 

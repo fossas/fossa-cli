@@ -2,10 +2,10 @@
 
 When developing in [nim](https://nim-lang.org/), nimble is used to manage dependencies.
 
-| Strategy                      | Direct Deps        | Transitive Deps          | Edges              | Classifies Dev Dependencies | Container Scanning (experimental) |
-| ----------------------------- | ------------------ | ------------------ | ------------------ | --------------------------- | --------------------------------- |
-| nimble.lock and `nimble dump` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                         | :x:                               |
-| nimble.lock                   | :warning:          | :white_check_mark: | :white_check_mark: | :x:                         | :white_check_mark:                |
+| Strategy                      | Direct Deps        | Transitive Deps    | Edges              | Classifies Dev Dependencies | Container Scanning |
+| ----------------------------- | ------------------ | ------------------ | ------------------ | --------------------------- | ------------------ |
+| nimble.lock and `nimble dump` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                         | :x:                |
+| nimble.lock                   | :warning:          | :white_check_mark: | :white_check_mark: | :x:                         | :white_check_mark: |
 
 ## Project Discovery
 

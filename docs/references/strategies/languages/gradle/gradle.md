@@ -123,7 +123,7 @@ This init script is implemented [here](https://github.com/fossas/fossa-cli/blob/
 
 The script works by iterating through configurations, getting resolution result for the configuration, and then serializing those dependencies into JSON. Please note that we currently only support analysis for builds using gradle v3.3 or greater.
 
-> Gradle analysis is not supported in Container Scanning (experimental).
+> Gradle analysis is not supported in Container Scanning.
 
 ### Parsing `gradle :dependencies`
 

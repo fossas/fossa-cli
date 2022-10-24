@@ -33,6 +33,17 @@ fossa container analyze debian
 # Explicit remote image via docker.your-org.com
 fossa container analyze docker.your-org.com/project/image
 ```
+You can provide, `--only-system-deps` to only analyze dependencies originating from following package managers:
+
+- dpkg
+- rpm
+- alpine
+
+> Performing `fossa container analyze <IMAGE> --only-system-deps` will match the behavior of
+> the previous FOSSA CLI container scanner (same as all CLI prior to v3.5.0)
+
+You can refer to [scanner](./container/scanner.md) documentation, to learn
+more about how FOSSA CLI performs scan on a container image.
 
 ## `fossa container test <ARG>`
 
@@ -52,11 +63,3 @@ The `--output` flag outputs dependency graph information to the terminal rather 
 ```sh
 fossa container analyze redis:alpine --output
 ```
-
-## Experimental Options
-
-_Important: For support and other general information, refer to the [experimental options overview](../experimental/README.md) before using experimental options._
-
-| Name                     | Description                                                                                                       |
-|--------------------------|-------------------------------------------------------------------------------------------------------------------|
-| `--experimental-scanner` | Provides many enhancements to container scanning ([reference](../experimental/container/experimental-scanner.md)). |
