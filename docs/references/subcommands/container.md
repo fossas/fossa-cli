@@ -63,3 +63,34 @@ The `--output` flag outputs dependency graph information to the terminal rather 
 ```sh
 fossa container analyze redis:alpine --output
 ```
+
+### F.A.Q.
+
+1. How can I only scan system dependencies?
+
+You can provide `--only-system-deps`, like following to scan only system dependencies.
+
+```bash
+fossa container analyze <IMAGE> --only-system-deps
+```
+
+2. How can I improve performance of fossa container scanning?
+
+You can use docker-archive source with FOSSA CLI. This will reduce
+time required to retrieve container image from registry or from docker engine.
+
+```bash
+# save archive of the image
+docker save redis:alpine > redis.tar
+
+# scan and test the image
+fossa container analyze redis.tar
+fossa container test redis.tar
+```
+
+3. How can I exclude certain projects or targets from container image?
+
+You can use [fossa configuration](./../files/fossa-yml.md) file to exclude
+specific directory or projects. 
+
+Refer to [target exclusion walk-through](./../../concepts/analysis-and-analyzers.md).

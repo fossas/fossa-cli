@@ -51,11 +51,11 @@ dispatch = \case
           vsep
             [ "DEPRECATION NOTICE"
             , ""
-            , "Experimental scanner has been PROMOTED as default scanner. By default, FOSSA CLI uses"
-            , "this native container scanner (previously known as experimental scanner)."
+            , "The 'experimental' container scanner is now the only available scanner, and is enabled automatically."
             , ""
-            , "In future, using --experimental-scanner may yield fatal error. Please stop"
-            , "using --experimental-scanner flag for container scanning."
+            , "The --experimental-scanner flag is now deprecated, and has no effect."
+            , "In the future, using this flag will cause a fatal error."
+            , "To avoid these errors, remove the flag from your fossa commands."
             , ""
             ]
       else
@@ -72,7 +72,7 @@ dispatch = \case
             , ""
             , "In future release of FOSSA CLI, this notice will not be displayed."
             , ""
-            , "If you are running into performance issue or poor results on image"
+            , "If you are running into a performance issue or poor results on image analysis"
             , "with new scanner, please contact FOSSA support at:"
             , indent 4 $ pretty supportUrl
             ]

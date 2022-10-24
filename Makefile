@@ -74,8 +74,8 @@ clean-test-data:
 # `@command` does not echo the command before running
 fmt: fmt-cargo
 	@echo "Running fourmolu"
-	@fourmolu --version
-	@fourmolu --mode inplace ${FMT_OPTS} $(shell find ${FIND_OPTS})
+	./fourmolu --version
+	./fourmolu --mode inplace ${FMT_OPTS} $(shell find ${FIND_OPTS})
 	@echo "Running cabal-fmt"
 	@cabal-fmt spectrometer.cabal --inplace
 
