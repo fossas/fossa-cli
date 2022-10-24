@@ -36,4 +36,4 @@ fossaSslCertDocsUrl :: Text
 fossaSslCertDocsUrl = guidePathOf versionOrBranch "/docs/walkthroughs/ssl-cert.md"
 
 fossaContainerScannerUrl :: Text
-fossaContainerScannerUrl = guidePathOf versionOrBranch "/docs/subcommands/container/scanner.md"
+fossaContainerScannerUrl = guidePathOf versionOrBranch "/docs/references/subcommands/container/scanner.md"
