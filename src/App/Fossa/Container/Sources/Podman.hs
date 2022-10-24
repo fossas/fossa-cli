@@ -4,9 +4,10 @@ module App.Fossa.Container.Sources.Podman (
   analyzeFromPodman,
   podmanInspectImage,
   listTargetsFromPodman,
+  revisionFromPodman,
 ) where
 
-import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive)
+import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
 import Container.Types (ContainerScan)
 import Control.Carrier.Lift (Lift)
 import Control.Effect.Debug (Debug, Has)
@@ -89,3 +90,14 @@ listTargetsFromPodman ::
   Text ->
   m ()
 listTargetsFromPodman img = runFromPodman img listTargetsFromDockerArchive
+
+revisionFromPodman ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
+  ) =>
+  Text ->
+  m (Text, Text)
+revisionFromPodman img = runFromPodman img revisionFromDockerArchive

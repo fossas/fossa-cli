@@ -19,6 +19,8 @@ import App.Fossa.Config.Common (
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.Container.Common (
   ImageText,
+  collectArch,
+  collectDockerHost,
   imageTextArg,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars)
@@ -26,6 +28,7 @@ import App.Types (OverrideProject (OverrideProject))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Timeout (Duration (Seconds))
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
+import Data.Text (Text)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
 import Options.Applicative (
@@ -65,6 +68,8 @@ data ContainerTestConfig = ContainerTestConfig
   , outputFormat :: OutputFormat
   , testImageLocator :: ImageText
   , testRevisionOverride :: OverrideProject
+  , testDockerHost :: Text
+  , testArch :: Text
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -95,6 +100,7 @@ mergeOpts ::
 mergeOpts cfgfile envvars ContainerTestOptions{..} = do
   let apiopts = collectApiOpts cfgfile envvars testCommons
       timeout = maybe defaultTimeoutDuration Seconds containerTestTimeout
+      arch = collectArch
       revOverride =
         collectRevisionOverride cfgfile $
           OverrideProject (optProjectName testCommons) (optProjectRevision testCommons) Nothing
@@ -104,3 +110,5 @@ mergeOpts cfgfile envvars ContainerTestOptions{..} = do
     <*> pure containerTestOutputType
     <*> pure containerTestImage
     <*> pure revOverride
+    <*> collectDockerHost envvars
+    <*> pure arch

@@ -12,7 +12,6 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   queueArchiveBuild,
   uploadAnalysis,
   uploadArchive,
-  uploadContainerScan,
   uploadNativeContainerScan,
   uploadContributors,
   getEndpointVersion,
@@ -20,7 +19,6 @@ module Control.Carrier.FossaApiClient.Internal.Core (
 
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Config.Test (DiffRevision)
-import App.Fossa.Container.Scan (ContainerScan)
 import App.Fossa.VendoredDependency (VendoredDependency (..))
 import App.Types (ProjectMetadata, ProjectRevision (..))
 import Container.Types qualified as NativeContainer
@@ -95,19 +93,6 @@ uploadAnalysis ::
 uploadAnalysis revision metadata units = do
   apiOpts <- ask
   API.uploadAnalysis apiOpts revision metadata units
-
-uploadContainerScan ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has (Reader ApiOpts) sig m
-  ) =>
-  ProjectRevision ->
-  ProjectMetadata ->
-  ContainerScan ->
-  m UploadResponse
-uploadContainerScan revision metadata scan = do
-  apiOpts <- ask
-  API.uploadContainerScan apiOpts revision metadata scan
 
 uploadNativeContainerScan ::
   ( Has (Lift IO) sig m

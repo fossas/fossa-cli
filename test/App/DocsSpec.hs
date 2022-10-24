@@ -2,8 +2,7 @@ module App.DocsSpec (
   spec,
 ) where
 
-import App.Docs (fossaYmlDocUrl, newIssueUrl, userGuideUrl)
-import App.Fossa.Container.Analyze (containerScanningDocUrl)
+import App.Docs (fossaContainerScannerUrl, fossaYmlDocUrl, newIssueUrl, userGuideUrl)
 import Data.Foldable (for_)
 import Data.Maybe (fromJust)
 import Data.String.Conversion (toString)
@@ -50,6 +49,7 @@ urlsToCheck =
   [ userGuideUrl
   , newIssueUrl
   , fossaYmlDocUrl
+  , fossaContainerScannerUrl
   , bundlerLockFileRationaleUrl
   , rubyFossaDocUrl
   , refPubDocUrl
@@ -65,7 +65,6 @@ urlsToCheck =
   , rEnvLockFileGenerateDocUrl
   , refPodDocUrl
   , refGradleDocUrl
-  , containerScanningDocUrl
   , scalaFossaDocUrl
   , sbtDepsGraphPluginUrl
   ]

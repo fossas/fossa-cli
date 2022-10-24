@@ -5,7 +5,6 @@
 module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   uploadAnalysis,
   uploadContributors,
-  uploadContainerScan,
   uploadNativeContainerScan,
   mkMetadataOpts,
   fossaReq,
@@ -38,7 +37,6 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
 import App.Docs (fossaSslCertDocsUrl)
 import App.Fossa.Config.Report
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
-import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Fossa.Report.Attribution qualified as Attr
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
 import App.Fossa.VSI.Fingerprint qualified as Fingerprint
@@ -524,25 +522,6 @@ instance ToDiagnostic FossaError where
 containerUploadUrl :: Url scheme -> Url scheme
 containerUploadUrl baseurl = baseurl /: "api" /: "container" /: "upload"
 
-uploadContainerScan ::
-  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
-  ApiOpts ->
-  ProjectRevision ->
-  ProjectMetadata ->
-  ContainerScan ->
-  m UploadResponse
-uploadContainerScan apiOpts ProjectRevision{..} metadata scan = fossaReq $ do
-  (baseUrl, baseOpts) <- useApiOpts apiOpts
-  let locator = renderLocator $ Locator "custom" projectName (Just projectRevision)
-      opts =
-        "locator" =: locator
-          <> "cliVersion" =: cliVersion
-          <> "managedBuild" =: True
-          <> maybe mempty ("branch" =:) projectBranch
-          <> mkMetadataOpts metadata projectName
-  resp <- req POST (containerUploadUrl baseUrl) (ReqBodyJson scan) jsonResponse (baseOpts <> opts)
-  pure $ responseBody resp
-
 uploadNativeContainerScan ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   ApiOpts ->
@@ -944,6 +923,7 @@ getIssues apiOpts ProjectRevision{..} diffRevision = fossaReq $ do
   pure (responseBody response)
 
 data EndpointDoesNotSupportIssueDiffing = EndpointDoesNotSupportIssueDiffing
+
 instance ToDiagnostic EndpointDoesNotSupportIssueDiffing where
   renderDiagnostic (EndpointDoesNotSupportIssueDiffing) =
     vsep

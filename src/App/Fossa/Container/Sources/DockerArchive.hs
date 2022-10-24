@@ -3,6 +3,7 @@
 module App.Fossa.Container.Sources.DockerArchive (
   analyzeFromDockerArchive,
   listTargetsFromDockerArchive,
+  revisionFromDockerArchive,
 ) where
 
 import App.Fossa.Analyze (applyFiltersToProject, toProjectResult, updateProgress)
@@ -254,6 +255,21 @@ extractRepoName tags = do
         <|> breakOnEndAndRemove ":" firstTag
   logDebug . pretty $ "Identified project name: " <> fst tagTuple
   pure $ fst tagTuple
+
+revisionFromDockerArchive ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  ) =>
+  Path Abs File ->
+  m (Text, Text)
+revisionFromDockerArchive tarball = do
+  containerTarball <- sendIO . BS.readFile $ toString tarball
+  image <- fromEither $ parse containerTarball
+  let manifest = rawManifest image
+  let imageDigest = getImageDigest manifest
+  imageTag <- extractRepoName (getRepoTags manifest)
+  pure (imageTag, imageDigest)
 
 listTargetsFromDockerArchive ::
   ( Has Diagnostics sig m

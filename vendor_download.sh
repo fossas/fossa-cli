@@ -114,41 +114,6 @@ echo "themis index downloaded"
 rm $THEMIS_RELEASE_JSON
 echo
 
-SYFT_TAG="v0.14.2-fossa"
-if $OS_WINDOWS; then
-  echo "Skipping syft for Windows builds"
-  touch vendor-bins/syft
-else
-  echo "Downloading forked syft binary"
-  echo "Using forked syft release: $SYFT_TAG"
-  SYFT_RELEASE_JSON=vendor-bins/syft-release.json
-  curl -sL \
-      -H "Authorization: token $GITHUB_TOKEN" \
-      -H "Accept: application/vnd.github.v3.raw" \
-      https://api.github.com/repos/fossas/syft/releases/tags/${SYFT_TAG} > $SYFT_RELEASE_JSON
-
-  # Remove leading 'v' from version tag
-  # 'v123' -> '123'
-  SYFT_TAG=$(jq -cr '.name' $SYFT_RELEASE_JSON | sed 's/^v//')
-  echo "Using fossas/syft release: $SYFT_TAG"
-  FILTER=".name == \"container-scanning_${SYFT_TAG}_${ASSET_POSTFIX}_amd64.tar.gz\""
-  jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $SYFT_RELEASE_JSON | while read ASSET; do
-    URL="$(echo $ASSET | jq -c -r '.url')"
-    NAME="$(echo $ASSET | jq -c -r '.name')"
-    OUTPUT=vendor-bins/${NAME%"-$ASSET_POSTFIX"}
-
-    echo "Downloading '$NAME' to '$OUTPUT'"
-    curl -sSL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s $URL > $OUTPUT
-    echo "Extracting syft binary from tarball"
-    tar xzf $OUTPUT fossa-container-scanning
-    mv fossa-container-scanning vendor-bins/syft
-    rm $OUTPUT
-
-  done
-  rm $SYFT_RELEASE_JSON
-  echo "Forked Syft download successful"
-fi
-
 echo "Marking binaries executable"
 chmod +x vendor-bins/*
 

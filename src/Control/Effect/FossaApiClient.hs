@@ -30,7 +30,6 @@ module Control.Effect.FossaApiClient (
   resolveUserDefinedBinary,
   uploadAnalysis,
   uploadArchive,
-  uploadContainerScan,
   uploadNativeContainerScan,
   uploadContributors,
   uploadLicenseScanResult,
@@ -38,7 +37,6 @@ module Control.Effect.FossaApiClient (
 
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Config.Test (DiffRevision)
-import App.Fossa.Container.Scan (ContainerScan (..))
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
 import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
@@ -111,11 +109,6 @@ data FossaApiClientF a where
     NonEmpty SourceUnit ->
     FossaApiClientF UploadResponse
   UploadArchive :: SignedURL -> FilePath -> FossaApiClientF ByteString
-  UploadContainerScan ::
-    ProjectRevision ->
-    ProjectMetadata ->
-    ContainerScan ->
-    FossaApiClientF UploadResponse
   UploadNativeContainerScan ::
     ProjectRevision ->
     ProjectMetadata ->
@@ -128,6 +121,7 @@ data FossaApiClientF a where
   UploadLicenseScanResult :: SignedURL -> LicenseSourceUnit -> FossaApiClientF ()
 
 deriving instance Show (FossaApiClientF a)
+
 deriving instance Eq (FossaApiClientF a)
 
 type FossaApiClient = Simple FossaApiClientF
@@ -148,10 +142,6 @@ getApiOpts = sendSimple GetApiOpts
 -- | Uploads the results of an analysis and associates it to a project
 uploadAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NonEmpty SourceUnit -> m UploadResponse
 uploadAnalysis revision metadata units = sendSimple (UploadAnalysis revision metadata units)
-
--- | Uploads results of container analysis to a project
-uploadContainerScan :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> ContainerScan -> m UploadResponse
-uploadContainerScan revision metadata scan = sendSimple (UploadContainerScan revision metadata scan)
 
 -- | Uploads results of container analysis performed by native scanner to a project
 uploadNativeContainerScan :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NativeContainer.ContainerScan -> m UploadResponse

@@ -2,7 +2,7 @@
 
 module App.Fossa.Container.AnalyzeNativeSpec (spec) where
 
-import App.Fossa.Container.AnalyzeNative (
+import App.Fossa.Container.Scan (
   ContainerImageSource (DockerEngine),
   parseDockerEngineSource,
  )
