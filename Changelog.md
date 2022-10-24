@@ -2,9 +2,9 @@
 
 ## v3.5.0
 
-- Container Scanning: Uses native container scanner, deprecates old container scanner.
+- Container Scanning: Uses native container scanner, deprecates old container scanner ([#1078](https://github.com/fossas/fossa-cli/pull/1078)), ([#1079](https://github.com/fossas/fossa-cli/pull/1079)), ([#1080](https://github.com/fossas/fossa-cli/pull/1080)), ([1082](https://github.com/fossas/fossa-cli/pull/1082)).
 
-_Note:_
+_Notice:_
 
 - Now, container scanning analyzes projects for applications (`npm`, `pip`, etc) dependencies. 
 - Now, container scanning can filter specific targets via target exclusions using [fossa configuration file](./docs/references/files/fossa-yml.md).
@@ -17,7 +17,7 @@ This will mimic behavior of older FOSSA CLI's container scanning (older than v3.
 
 Learn more: 
 - [container scanner](./docs/references/subcommands/container/scanner.md)
-- [fossa container analyze command](./docs/references/subcommands/container.md)
+- [fossa container analyze](./docs/references/subcommands/container.md)
 
 If you experience any issue with this release, or have question, please contact [FOSSA Support](https://support.fossa.com).
 
