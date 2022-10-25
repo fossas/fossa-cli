@@ -5,9 +5,12 @@ module Control.Carrier.Git (
   runGit,
 ) where
 
-import Control.Carrier.Diagnostics (errCtx)
-import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Simple (SimpleC, interpret)
+import Control.Effect.Diagnostics (
+  ToDiagnostic (renderDiagnostic),
+  errCtx,
+ )
+import Control.Effect.Diagnostics qualified as Diag
 import Control.Effect.Git (GitF (..))
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Map qualified as Map
@@ -16,14 +19,31 @@ import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Extra (splitOnceOn)
-import Data.Time
+import Data.Time (
+  Day,
+  NominalDiffTime,
+  UTCTime (utctDay),
+  addUTCTime,
+  defaultTimeLocale,
+  getCurrentTime,
+  nominalDay,
+  parseTimeM,
+ )
 import Data.Time.Format.ISO8601 (iso8601Show)
-import Diag.Diagnostic (ToDiagnostic)
-import Effect.Exec
+import Effect.Exec (
+  AllowErr (Never),
+  Command (..),
+  Exec,
+  Has,
+  execThrow,
+ )
 import Fossa.API.Types (Contributors (..))
 import Path (Abs, Dir, Path)
 
 type GitC = SimpleC GitF
+
+gitContributorDays :: NominalDiffTime
+gitContributorDays = 365
 
 runGit :: (Has (Lift IO) sig m, Has Exec sig m, Has Diag.Diagnostics sig m) => GitC m a -> m a
 runGit = interpret $ \case
@@ -38,7 +58,7 @@ gitLogCmd now =
     }
   where
     sinceArg = toText . iso8601Show $ utctDay wayBack
-    delta = nominalDay * (-90)
+    delta = nominalDay * (-gitContributorDays)
     wayBack = addUTCTime delta now
 
 fetchGitContributors ::
