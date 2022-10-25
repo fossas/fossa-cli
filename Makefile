@@ -60,7 +60,7 @@ install-dev: build
 
 check: check-fmt lint
 
-fast-check: check-fmt fast-lint
+fast-check: check-fmt-haskell fast-lint
 
 # Run any build scripts required for test data to be generated.
 build-test-data:
@@ -72,10 +72,12 @@ clean-test-data:
 
 # Format everything (if this fails, update FMT_OPTS or use your IDE to format)
 # `@command` does not echo the command before running
-fmt: fmt-cargo
+fmt: fmt-haskell fmt-cargo
+
+fmt-haskell:
 	@echo "Running fourmolu"
-	./fourmolu --version
-	./fourmolu --mode inplace ${FMT_OPTS} $(shell find ${FIND_OPTS})
+	@fourmolu --version
+	@fourmolu --mode inplace ${FMT_OPTS} $(shell find ${FIND_OPTS})
 	@echo "Running cabal-fmt"
 	@cabal-fmt spectrometer.cabal --inplace
 
@@ -85,7 +87,9 @@ fmt-cargo:
 	@cargo fmt
 
 # Confirm everything is formatted without changing anything
-check-fmt: check-fmt-cargo
+check-fmt: check-fmt-haskell check-fmt-cargo
+
+check-fmt-haskell:
 	@echo "Running fourmolu"
 	@fourmolu --version
 	@fourmolu --mode check ${FMT_OPTS} $(shell find ${FIND_OPTS})
@@ -99,7 +103,9 @@ check-fmt-cargo:
 	@cargo fmt --check
 
 # Lint everything (If this fails, update .hlint.yaml or report the failure)
-lint: lint-cargo
+lint: lint-haskell lint-cargo
+
+lint-haskell:
 	@echo "Running hlint"
 	@hlint --version
 	@hlint src test integration-test --cross --timing -vj
@@ -117,7 +123,7 @@ lint-cargo:
 # The two git commands are for staged (cached) and unstaged files.
 # We also succeed if there are no changed filers to lint.  We grep the list of files for non-whitespace,
 # and if we find any non-whitespace characters, then the git search found at least one file.
-fast-lint:
+fast-lint-haskell:
 	@test "${current_dir}" = "/fossa-cli/" && \
 		git config --global --add safe.directory /fossa-cli && \
 		echo "Running in docker, added temp safe.directory entry to git config"
@@ -143,18 +149,18 @@ check-links:
 # Run the formatter from within a docker image, with the project mounted as a volume
 fmt-ci:
 	docker pull ${DEV_TOOLS}
-	docker run ${MOUNTED_DEV_TOOLS} make fmt
+	docker run ${MOUNTED_DEV_TOOLS} make fmt-haskell
 
 # Run the fast-lint target with the CI docker container
 fast-lint-ci:
 	docker pull ${DEV_TOOLS}
-	docker run ${MOUNTED_DEV_TOOLS} make fast-lint
+	docker run ${MOUNTED_DEV_TOOLS} make fast-lint-haskell
 
 # Docker doesn't always check for new versions during build, so pulling ensures
 # that we always have the latest.
 check-ci:
 	docker pull ${DEV_TOOLS}
-	docker run ${MOUNTED_DEV_TOOLS} make check
+	docker run ${MOUNTED_DEV_TOOLS} make check-haskell
 
 # Run the fast-check target with the CI docker container
 fast-check-ci:
