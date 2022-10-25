@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.5.1
+
+- Contributor counting: update the contributor count range from 90 days to 365 days. ([#1083](https://github.com/fossas/fossa-cli/pull/1083))
+
 ## v3.5.0
 
 - Container Scanning: Uses native container scanner, deprecates old container scanner ([#1078](https://github.com/fossas/fossa-cli/pull/1078)), ([#1079](https://github.com/fossas/fossa-cli/pull/1079)), ([#1080](https://github.com/fossas/fossa-cli/pull/1080)), ([1082](https://github.com/fossas/fossa-cli/pull/1082)).
