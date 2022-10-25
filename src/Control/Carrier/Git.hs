@@ -25,6 +25,9 @@ import Path (Abs, Dir, Path)
 
 type GitC = SimpleC GitF
 
+gitContributorDays :: NominalDiffTime
+gitContributorDays = 365
+
 runGit :: (Has (Lift IO) sig m, Has Exec sig m, Has Diag.Diagnostics sig m) => GitC m a -> m a
 runGit = interpret $ \case
   FetchGitContributors baseDir -> fetchGitContributors baseDir
@@ -38,7 +41,7 @@ gitLogCmd now =
     }
   where
     sinceArg = toText . iso8601Show $ utctDay wayBack
-    delta = nominalDay * (-90)
+    delta = nominalDay * (- gitContributorDays)
     wayBack = addUTCTime delta now
 
 fetchGitContributors ::
