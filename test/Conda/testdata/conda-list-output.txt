@@ -28,5 +28,25 @@
     "name": "ca-certificates",
     "platform": "osx-64",
     "version": "2021.1.19"
+  },
+  {
+    "base_url": "https://repo.anaconda.com/pkgs/main",
+    "build_number": 0,
+    "build_string": "py310hecd8cb5_0",
+    "channel": "pkgs/main",
+    "dist_name": "absl-py-1.3.0-py310hecd8cb5_0",
+    "name": "absl-py",
+    "platform": null,
+    "version": "1.3.0"
+  } ,
+  {
+    "base_url": "https://repo.anaconda.com/pkgs/main",
+    "build_number": 0,
+    "build_string": "py310hecd8cb5_0",
+    "channel": null,
+    "dist_name": "aenum-3.1.5-py310hecd8cb5_0",
+    "name": "aenum",
+    "platform": "osx-64",
+    "version": "3.1.5"
   }
 ]

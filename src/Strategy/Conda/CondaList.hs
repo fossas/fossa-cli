@@ -10,6 +10,7 @@ module Strategy.Conda.CondaList (
 import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Data.Aeson
 import Data.Map.Strict qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Effect.Exec
 import Graphing (Graphing, fromList)
@@ -28,11 +29,14 @@ condaListCmd =
 buildGraph :: [CondaListDep] -> Graphing Dependency
 buildGraph deps = Graphing.fromList (map toDependency deps)
   where
+    makeV2Dep :: Text -> Text -> Text -> Text
+    makeV2Dep name channel platform = "'" <> channel <> "':" <> platform <> ":" <> name
+
     toDependency :: CondaListDep -> Dependency
     toDependency CondaListDep{..} =
       Dependency
         { dependencyType = CondaType
-        , dependencyName = listName
+        , dependencyName = fromMaybe listName (makeV2Dep listName <$> listChannel <*> listPlatform)
         , dependencyVersion = CEq <$> listVersion
         , dependencyLocations = []
         , dependencyEnvironments = mempty
@@ -52,6 +56,8 @@ data CondaListDep = CondaListDep
   { listName :: Text
   , listVersion :: Maybe Text
   , listBuild :: Maybe Text
+  , listChannel :: Maybe Text
+  , listPlatform :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -61,3 +67,5 @@ instance FromJSON CondaListDep where
       <$> obj .: "name"
       <*> obj .:? "version"
       <*> obj .:? "build_string"
+      <*> obj .:? "channel"
+      <*> obj .:? "platform"

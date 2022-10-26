@@ -18,7 +18,7 @@ expected = run . evalGrapher $ do
   direct $
     Dependency
       { dependencyType = CondaType
-      , dependencyName = "biopython"
+      , dependencyName = "'pkgs/main':osx-64:biopython"
       , dependencyVersion = Just (CEq "1.78")
       , dependencyLocations = []
       , dependencyEnvironments = mempty
@@ -27,7 +27,7 @@ expected = run . evalGrapher $ do
   direct $
     Dependency
       { dependencyType = CondaType
-      , dependencyName = "blas"
+      , dependencyName = "'pkgs/main':osx-64:blas"
       , dependencyVersion = Just (CEq "1.0")
       , dependencyLocations = []
       , dependencyEnvironments = mempty
@@ -36,8 +36,28 @@ expected = run . evalGrapher $ do
   direct $
     Dependency
       { dependencyType = CondaType
-      , dependencyName = "ca-certificates"
+      , dependencyName = "'pkgs/main':osx-64:ca-certificates"
       , dependencyVersion = Just (CEq "2021.1.19")
+      , dependencyLocations = []
+      , dependencyEnvironments = mempty
+      , dependencyTags = Map.empty
+      }
+  -- Missing platform, should default to the v1 package spec format
+  direct $
+    Dependency
+      { dependencyType = CondaType
+      , dependencyName = "absl-py"
+      , dependencyVersion = Just (CEq "1.3.0")
+      , dependencyLocations = []
+      , dependencyEnvironments = mempty
+      , dependencyTags = Map.empty
+      }
+  -- Missing channel field, should default to v1 package spec format
+  direct $
+    Dependency
+      { dependencyType = CondaType
+      , dependencyName = "aenum"
+      , dependencyVersion = Just (CEq "3.1.5")
       , dependencyLocations = []
       , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
