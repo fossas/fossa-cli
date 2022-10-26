@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- Conda: Output more detailed locators for channel/platform specific analysis. ([#1084])(https://github.com/fossas/fossa-cli/pull/1084)
+
 ## v3.5.1
 
 - Contributor counting: update the contributor count range from 90 days to 365 days. ([#1083](https://github.com/fossas/fossa-cli/pull/1083))
