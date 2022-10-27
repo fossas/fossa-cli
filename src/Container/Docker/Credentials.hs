@@ -12,7 +12,7 @@ module Container.Docker.Credentials (
 
 import Container.Docker.SourceParser (RegistryImageSource (RegistryImageSource))
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.Diagnostics (Diagnostics, fatalText, (<||>))
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
 import Data.ByteString.Base64 (decode)
@@ -75,14 +75,14 @@ getCredentialStore host (DockerConfig (Just defaultStore) _ hostToCred) =
     withoutHttps :: Text -> Text
     withoutHttps = Text.replace "https://" ""
 
-getRawCred :: Text -> DockerConfig -> Maybe (Text, Text)
+getRawCred :: Text -> DockerConfig -> Either (Maybe Text) (Text, Text)
 getRawCred host (DockerConfig _ auths _) = case auth <$> (Map.lookup host authsWithoutUriScheme) of
   Just (Just auth') -> case decode . encodeUtf8 $ auth' of
+    Left err -> Left . Just $ toText err
     Right bs -> case breakOnEndAndRemove ":" $ decodeUtf8 bs of
-      Just (user, pass) -> pure (user, pass)
-      _ -> Nothing -- could not break by ':'
-    _ -> Nothing -- could not base64 decode!
-  _ -> Nothing -- does not have raw auth!
+      Just (user, pass) -> Right (user, pass)
+      _ -> Left . Just $ "could not break by ':' for base64 decoded authentication value"
+  _ -> Left Nothing
   where
     -- Docker Config considers quay.io and https://quay.io to be equivalent
     -- for credentials. Remove URI scheme to ensure compatibility
@@ -94,7 +94,6 @@ getRawCred host (DockerConfig _ auths _) = case auth <$> (Map.lookup host authsW
 
     withoutHttps :: Text -> Text
     withoutHttps = Text.replace "https://" ""
-
 
 -- | Uses Credentials from Credential Helpers and Config File.
 --
@@ -124,9 +123,11 @@ useCredentialFromConfig (RegistryImageSource host scheme _ repo repoRef arch) = 
   let rawCred = getRawCred host dockerConfig
 
   (user, pass) <- case (rawCred, credStore) of
-    (_, Just credStore') -> getCredential host credStore'
-    (Just (user', pass'), _) -> pure (user', pass')
-    (Nothing, Nothing) -> fatalText ("could not retrieve credential from" <> toText configFile)
+    (Right (user', pass'), Just credStore') -> getCredential host credStore' <||> pure (user', pass')
+    (Left _, Just credStore') -> getCredential host credStore'
+    (Right (user', pass'), Nothing) -> pure (user', pass')
+    (Left (Just err), _) -> fatalText (toText configFile <> ":" <> err)
+    (Left Nothing, _) -> fatalText ("could not retrieve credential from: " <> toText configFile)
 
   pure $
     RegistryImageSource

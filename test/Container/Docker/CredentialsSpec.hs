@@ -70,7 +70,7 @@ spec = do
         Just config -> config `shouldBe` expectedDockerConfigRawAuth
 
     it "should should decode raw authentication values" $ do
-      getRawCred "gcr.io" expectedDockerConfigRawAuth `shouldBe` Just ("someUser", "somePass")
+      getRawCred "gcr.io" expectedDockerConfigRawAuth `shouldBe` Right ("someUser", "somePass")
 
     it "should parse docker credential helper's response" $ do
       case decodeStrict dockerCredHelperResponse of
