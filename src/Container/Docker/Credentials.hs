@@ -5,18 +5,23 @@ module Container.Docker.Credentials (
 
   -- * For Testing
   DockerConfig (..),
+  DockerConfigRawAuth (..),
   DockerCredentialHelperGetResponse (..),
+  getRawCred,
 ) where
 
 import Container.Docker.SourceParser (RegistryImageSource (RegistryImageSource))
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, fatalText, (<||>))
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
+import Data.ByteString.Base64 (decode)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.String.Conversion (ConvertUtf8 (decodeUtf8, encodeUtf8), toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Text.Extra (breakOnEndAndRemove)
 import Effect.Exec (
   AllowErr (Never),
   Command (Command, cmdAllowErr, cmdArgs, cmdName),
@@ -28,7 +33,8 @@ import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO qualified as PIO
 
 data DockerConfig = DockerConfig
-  { credStore :: Text
+  { credStore :: Maybe Text
+  , auths :: Map Text DockerConfigRawAuth
   , -- With Docker 1.13.0 or greater, Docker lets you configure different credential helpers
     -- for different registries. These are stored in Credential Helpers.
     -- Refer to: https://docs.docker.com/engine/reference/commandline/login/#credential-helpers
@@ -39,17 +45,49 @@ data DockerConfig = DockerConfig
 instance FromJSON DockerConfig where
   parseJSON = withObject "DockerConfig" $ \o ->
     DockerConfig
-      <$> o .: "credsStore"
+      <$> o .:? "credsStore"
+      <*> o .:? "auths" .!= mempty
       <*> o .:? "credHelpers" .!= mempty
 
-getCredentialStore :: Text -> DockerConfig -> Text
-getCredentialStore host (DockerConfig defaultStore hostToCred) =
-  Map.findWithDefault defaultStore host withoutUriScheme
+newtype DockerConfigRawAuth = DockerConfigRawAuth
+  { -- auth is base64(user:pass) value
+    auth :: Maybe Text
+  }
+  deriving (Show, Eq, Ord)
+
+instance FromJSON DockerConfigRawAuth where
+  parseJSON = withObject "DockerConfigRawAuth" $ \o ->
+    DockerConfigRawAuth <$> o .:? "auth"
+
+getCredentialStore :: Text -> DockerConfig -> Maybe Text
+getCredentialStore _ (DockerConfig Nothing _ _) = Nothing
+getCredentialStore host (DockerConfig (Just defaultStore) _ hostToCred) =
+  Just $ Map.findWithDefault defaultStore host withoutUriScheme
   where
     -- Docker Config considers quay.io and https://quay.io to be equivalent
     -- for credentials. Remove URI scheme to ensure compatibility
     withoutUriScheme :: Map Text Text
     withoutUriScheme = Map.mapKeys (withoutHttp . withoutHttps) hostToCred
+
+    withoutHttp :: Text -> Text
+    withoutHttp = Text.replace "http://" ""
+
+    withoutHttps :: Text -> Text
+    withoutHttps = Text.replace "https://" ""
+
+getRawCred :: Text -> DockerConfig -> Either (Maybe Text) (Text, Text)
+getRawCred host (DockerConfig _ auths _) = case auth <$> (Map.lookup host authsWithoutUriScheme) of
+  Just (Just auth') -> case decode . encodeUtf8 $ auth' of
+    Left err -> Left . Just $ toText err
+    Right bs -> case breakOnEndAndRemove ":" $ decodeUtf8 bs of
+      Just (user, pass) -> Right (user, pass)
+      _ -> Left . Just $ "could not break by ':' for base64 decoded authentication value"
+  _ -> Left Nothing
+  where
+    -- Docker Config considers quay.io and https://quay.io to be equivalent
+    -- for credentials. Remove URI scheme to ensure compatibility
+    authsWithoutUriScheme :: Map Text DockerConfigRawAuth
+    authsWithoutUriScheme = Map.mapKeys (withoutHttp . withoutHttps) auths
 
     withoutHttp :: Text -> Text
     withoutHttp = Text.replace "http://" ""
@@ -63,8 +101,8 @@ getCredentialStore host (DockerConfig defaultStore hostToCred) =
 --  - Linux & macOs: $HOME/.docker/config.json
 --  - Windows: %USERPROFILE%/.docker/config.json
 --
--- Identifies credential store, and uses credential store, to
--- retrieve server's credentials.
+-- Identifies credential store, and uses credential store, or raw base64 encoded
+-- auth values for server's credentials.
 useCredentialFromConfig ::
   ( Has ReadFS sig m
   , Has Exec sig m
@@ -82,7 +120,20 @@ useCredentialFromConfig (RegistryImageSource host scheme _ repo repoRef arch) = 
   dockerConfig <- readContentsJson configFile
 
   let credStore = getCredentialStore host dockerConfig
-  (user, pass) <- getCredential host credStore
+  let rawCred = getRawCred host dockerConfig
+
+  (user, pass) <- case (rawCred, credStore) of
+    -- Found credential helper, but also raw auths
+    -- try credential helper, if it fails use raw auths
+    (Right (user', pass'), Just credStore') -> getCredential host credStore' <||> pure (user', pass')
+    -- only found associated credential helper
+    (Left _, Just credStore') -> getCredential host credStore'
+    -- only found associated raw auths
+    (Right (user', pass'), Nothing) -> pure (user', pass')
+    -- raw auth was found for the host, but failed in decoding
+    (Left (Just err), _) -> fatalText (toText configFile <> ":" <> err)
+    -- raw auth could not be found for the host, nor we could find credential helper
+    (Left Nothing, _) -> fatalText ("could not retrieve credential from: " <> toText configFile)
 
   pure $
     RegistryImageSource

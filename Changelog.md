@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.5.2
+
+- Container Scanning: Fixes an issue with base64 encoded raw authentications [#1085](https://github.com/fossas/fossa-cli/pull/1085).
+
 ## v3.5.1
 
 - Contributor counting: update the contributor count range from 90 days to 365 days. ([#1083](https://github.com/fossas/fossa-cli/pull/1083))
