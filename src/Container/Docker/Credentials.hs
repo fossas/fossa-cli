@@ -46,7 +46,7 @@ instance FromJSON DockerConfig where
   parseJSON = withObject "DockerConfig" $ \o ->
     DockerConfig
       <$> o .:? "credsStore"
-      <*> (o .:? "auths" .!= mempty)
+      <*> o .:? "auths" .!= mempty
       <*> o .:? "credHelpers" .!= mempty
 
 newtype DockerConfigRawAuth = DockerConfigRawAuth
@@ -123,10 +123,16 @@ useCredentialFromConfig (RegistryImageSource host scheme _ repo repoRef arch) = 
   let rawCred = getRawCred host dockerConfig
 
   (user, pass) <- case (rawCred, credStore) of
+    -- Found credential helper, but also raw auths
+    -- try credential helper, if it fails use raw auths
     (Right (user', pass'), Just credStore') -> getCredential host credStore' <||> pure (user', pass')
+    -- only found associated credential helper
     (Left _, Just credStore') -> getCredential host credStore'
+    -- only found associated raw auths
     (Right (user', pass'), Nothing) -> pure (user', pass')
+    -- raw auth was found for the host, but failed in decoding
     (Left (Just err), _) -> fatalText (toText configFile <> ":" <> err)
+    -- raw auth could not be found for the host, nor we could find credential helper
     (Left Nothing, _) -> fatalText ("could not retrieve credential from: " <> toText configFile)
 
   pure $
