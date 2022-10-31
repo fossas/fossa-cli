@@ -47,6 +47,63 @@ Supported dependency types:
 - `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
 - `url` - The URL type allows you to specify only the download location of an archive (e.g.: `.zip`, .`tar.gz`, etc.) in the `name` field and the FOSSA backend will attempt to download and scan it. Example for a github source dependency `https://github.com/fossas/fossa-cli/archive/refs/tags/v3.3.12.tar.gz`. The `version` field will be silently ignored for `url` type dependencies.
 
+Following dependency types are also supported but they require `arch`, `os`, and `osVersion` attributes:
+
+- `apk` - Alpine packages. 
+- `deb` - Debian packages.
+- `rpm-generic` - Rpm packages.
+
+At this moment only following `os` are supported:
+
+- `alpine`
+- `centos`
+- `debian`
+- `redhat`
+- `ubuntu`
+- `oraclelinux`
+- `busybox`
+- `sles`
+- `fedora`
+
+For example:
+
+```yaml
+referenced-dependencies:
+ - name: musl
+   version: 1.2.3-r0
+   type: apk
+   arch: x86_64
+   os: alpine
+   osVersion: 3.16.2
+
+ - name: bash
+   type: deb
+   version: 5.1-6ubuntu1
+   arch: amd64
+   os: ubuntu
+   osVersion: 22.04
+
+ - name: bash
+   type: rpm-generic
+   version: 4.4.19-14.el8
+   os: centos
+   arch: x86_64
+   osVersion: 8
+```
+
+You should choose `architecture`, `os`, and `osVersion` values based on the package
+information. If you are unsure of how to identify these values for these packages
+refer to the table below:
+
+| type        | version                                                                                                                        | architecture                                                                                                                                                                    |
+|-------------|--------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| apk         | version value from `apk info -vv`<br>e.g. for `musl-1.2.3-r0` version is `1.2.3-r0`                                            | `A` field in alpine database, or `Architecture` field in PKGINFO.<br>You can also infer architecture from calling `arch` command on system where this <br>package is installed. |
+| deb         | version value from `dpkg -p package`                                                                                           | `Architecture` field from `dpkg -p package` query                                                                                                                               |
+| rpm-generic | `version-release` value from `rpm -qi package` query. <br>e.g `Version: 4.4.19 Release: 14.el-8` translates to `4.4.19-14.el8` | `Architecture` field from `rpm -qi package` query                                                                                                                               |
+
+For `os` and `osVersion`, refer to `ID` value and `VERSION_ID` value from `/etc/os-release` of target system.
+
+
 ### Custom dependencies
 
 FOSSA supports users that have dependencies that can't be automatically discovered or identified, by offering the ability to define new dependencies.
