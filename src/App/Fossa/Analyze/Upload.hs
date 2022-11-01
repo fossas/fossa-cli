@@ -41,9 +41,10 @@ import Effect.Logger (
   logError,
   logInfo,
   logStdout,
+  logWarn,
   viaShow,
  )
-import Fossa.API.Types (Project (projectIsMonorepo), UploadResponse (uploadError, uploadLocator))
+import Fossa.API.Types (Project (projectIsMonorepo), UploadResponse (uploadError, uploadLocator, uploadWarnings))
 import Path (Abs, Dir, Path)
 import Srclib.Types (
   Locator (locatorProject, locatorRevision),
@@ -86,7 +87,10 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units =
       , ""
       , "============================================================"
       ]
+    -- FOSSA endpoint build errors
     traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError uploadResult)
+    -- FOSSA endpoint build warnings
+    traverse_ (\w -> logWarn $ "FOSSA warnings: " <> viaShow w) (uploadWarnings uploadResult)
     -- Warn on contributor errors, never fail
     void . recover $ tryUploadContributors basedir (uploadLocator uploadResult)
 
