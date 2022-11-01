@@ -1,7 +1,7 @@
 ## Multi Stage Builds
 
 The _Multi-stage builds_ feature allows users give FOSSA metadata attached to a binary ahead of time (for example, a team working on an internal library can tell FOSSA about that library as part of that CI process).
-FOSSA then can detect binaries that are registered as dependencies in downstream projects that include that binary in their source tree when running with [VSI enabled](../vsi/README.md).
+FOSSA then can detect binaries that are registered as dependencies in downstream projects that include that binary in their source tree when [detecting vendored dependencies](../../subcommands/analyze/detect-vendored.md).
 
 ### Use Cases
 
