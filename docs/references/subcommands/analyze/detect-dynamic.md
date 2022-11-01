@@ -29,13 +29,13 @@ If you are using Dynamic Linked Dependency Detection on your own binary, we reco
 
 ## How to use
 
-When running `fossa analyze`, use the `--experimental-analyze-dynamic-deps <BINARY>` flag.
+When running `fossa analyze`, use the `--detect-dynamic <BINARY>` flag.
 Point the `<BINARY>` at the binary that is built from the project.
 
 As an example, if the project is located at `~/projects/my-project`, and results in a binary at `~/projects/my-project/out/project`, the scan invocation would be as follows:
 
 ```shell
-fossa analyze ~/projects/my-project --experimental-analyze-dynamic-deps ~/projects/my-project/out/project
+fossa analyze ~/projects/my-project --detect-dynamic ~/projects/my-project/out/project
 ```
 
 This results in the FOSSA reporting both the dependencies discovered inside the project directory and the dependencies discovered by analyzing the binary.
@@ -47,7 +47,7 @@ For example, this invocation results in reporting only the dynamic dependencies 
 
 ```shell
 mkdir empty
-fossa analyze empty --experimental-analyze-dynamic-deps /bin/ls
+fossa analyze empty --detect-dynamic /bin/ls
 ```
 
 **Important:** It's possible to use this method to analyze arbitrary binaries. Keep the guidance in the [Security](#security) section in mind when using this feature.
