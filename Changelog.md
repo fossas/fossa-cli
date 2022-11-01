@@ -1,5 +1,11 @@
 # FOSSA CLI Changelog
 
+## v3.6.0
+
+- Promote C/C++ features to general availability [#1085](https://github.com/fossas/fossa-cli/pull/1085).
+  - `--experimental-enable-vsi` is now `--detect-vendored`
+  - `--experimental-analyze-dynamic-deps` is now `--detect-dynamic`.
+
 ## v3.5.2
 
 - Container Scanning: Fixes an issue with base64 encoded raw authentications [#1085](https://github.com/fossas/fossa-cli/pull/1085).
