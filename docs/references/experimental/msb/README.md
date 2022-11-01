@@ -72,7 +72,7 @@ fossa experimental-link-user-defined-dependency-binary [DIR] \
 #### Failing to resolve dependencies for FOSSA projects
 
 > _Note: This error may present during a `--detect-vendored` strategy._
-> _For more information on multi-stage builds see the [multi stage builds overview](../msb/README.md)._
+> _For more information on detecting vendored dependencies see [detecting vendored dependencies](../../subcommands/analyze/detect-vendored.md)._
 
 Let's say we have two C projects: `LibProject` and `CliProject`.
 `LibProject` is a library that is used inside `CliProject`, and we want to report that relationship in FOSSA, such that dependencies of `LibProject` appear as transitive dependencies of `CliProject`.
