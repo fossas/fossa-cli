@@ -297,13 +297,13 @@ dynamicLinkInspectOpt :: Parser FilePath
 dynamicLinkInspectOpt = visible <|> legacy
   where
     visible = strOption (long "detect-dynamic" <> metavar "BINARY" <> help "Analyzes dynamically linked libraries in the target binary and reports them as dependencies")
-    legacy = strOption (long "experimental-analyze-dynamic-deps" <> metavar "BINARY" <> help "Analyzes dynamically linked libraries in the target binary and reports them as dependencies" <> hidden)
+    legacy = strOption (long "experimental-analyze-dynamic-deps" <> hidden)
 
 vsiEnableOpt :: Parser (Flag VSIAnalysis)
 vsiEnableOpt = visible <|> legacyExperimental <|> legacy
   where
     visible = flagOpt VSIAnalysis (long "detect-vendored" <> help "Analyzes project files on disk to detect vendored open source libraries")
-    legacyExperimental = flagOpt VSIAnalysis (long "experimental-enable-vsi" <> help "Analyzes project files on disk to detect vendored open source libraries (used for C/C++ support)" <> hidden)
+    legacyExperimental = flagOpt VSIAnalysis (long "experimental-enable-vsi" <> hidden)
     legacy = flagOpt VSIAnalysis (long "enable-vsi" <> hidden)
 
 skipVSIGraphResolutionOpt :: Parser VSI.Locator
