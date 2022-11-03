@@ -53,7 +53,7 @@ Following dependency types are also supported but they require `arch`, `os`, and
 - `deb` - Debian packages.
 - `rpm-generic` - Rpm packages.
 
-At this moment only following `os` are supported:
+At this moment the following `os` are supported:
 
 - `alpine`
 - `centos`

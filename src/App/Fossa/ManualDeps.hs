@@ -212,7 +212,7 @@ refToLocator (Managed ManagedReferenceDependency{..}) =
 refToLocator (LinuxApkDebDep LinuxReferenceDependency{..}) =
   Locator
     { locatorFetcher = depTypeToFetcher locLinuxDepType
-    , locatorProject = locLinuxDepName <> "#" <> locLinuxDepOS <> "#" <> locLinuxDepOSVersion
+    , locatorProject = mkLinuxPackage locLinuxDepName locLinuxDepOS locLinuxDepOSVersion
     , locatorRevision = version
     }
   where
@@ -221,7 +221,7 @@ refToLocator (LinuxApkDebDep LinuxReferenceDependency{..}) =
 refToLocator (LinuxRpmDep LinuxReferenceDependency{..} rpmEpoch) =
   Locator
     { locatorFetcher = depTypeToFetcher locLinuxDepType
-    , locatorProject = locLinuxDepName <> "#" <> locLinuxDepOS <> "#" <> locLinuxDepOSVersion
+    , locatorProject = mkLinuxPackage locLinuxDepName locLinuxDepOS locLinuxDepOSVersion
     , locatorRevision = version
     }
   where
@@ -230,6 +230,9 @@ refToLocator (LinuxRpmDep LinuxReferenceDependency{..} rpmEpoch) =
 
     epoch :: Text
     epoch = maybe "" ((<> ":") . toText . show) rpmEpoch
+
+mkLinuxPackage :: Text -> Text -> Text -> Text
+mkLinuxPackage depName os osVersion = depName <> "#" <> os <> "#" <> osVersion
 
 addEmptyDep :: Locator -> SourceUnitDependency
 addEmptyDep loc = SourceUnitDependency loc []
