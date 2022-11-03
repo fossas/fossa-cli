@@ -1,3 +1,5 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module App.Fossa.ManualDepsSpec (
   spec,
 ) where
@@ -6,8 +8,10 @@ import App.Fossa.Config.Analyze (VendoredDependencyOptions (..))
 import App.Fossa.ManualDeps (
   CustomDependency (CustomDependency),
   DependencyMetadata (DependencyMetadata),
+  LinuxReferenceDependency (..),
+  ManagedReferenceDependency (..),
   ManualDependencies (ManualDependencies),
-  ReferencedDependency (ReferencedDependency),
+  ReferencedDependency (..),
   RemoteDependency (RemoteDependency),
   VendoredDependency (VendoredDependency),
   getScanCfg,
@@ -16,6 +20,8 @@ import App.Fossa.VendoredDependency (VendoredDependencyScanMode (..))
 import Control.Effect.Exception (displayException)
 import Data.Aeson qualified as Json
 import Data.ByteString qualified as BS
+import Data.String.Conversion (encodeUtf8)
+import Data.Text (Text)
 import Data.Yaml qualified as Yaml
 import DepTypes (DepType (..))
 import Fossa.API.Types (Organization (..))
@@ -23,6 +29,7 @@ import Test.Effect (expectFatal', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe, shouldContain)
 import Test.Hspec.Core.Spec (SpecM)
+import Text.RawString.QQ (r)
 import Types (ArchiveUploadType (..))
 
 getTestDataFile :: String -> SpecM a BS.ByteString
@@ -32,8 +39,8 @@ theWorks :: ManualDependencies
 theWorks = ManualDependencies references customs vendors remotes
   where
     references =
-      [ ReferencedDependency "one" GemType Nothing
-      , ReferencedDependency "two" PipType $ Just "1.0.0"
+      [ Managed (ManagedReferenceDependency "one" GemType Nothing)
+      , Managed (ManagedReferenceDependency "two" PipType $ Just "1.0.0")
       ]
     customs =
       [ CustomDependency "hello" "1.2.3" "MIT" Nothing
@@ -77,6 +84,8 @@ spec = do
     it "should report license used on referenced deps" $
       exceptionContains licenseInRefDepBS "Invalid field name for referenced dependencies: license"
 
+    referenceDepSpec
+
   describe "getScanCfg" $ do
     it' "should fail if you try to force a license scan but the FOSSA server does not support it" $ do
       let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Just CLILicenseScan}
@@ -115,3 +124,130 @@ spec = do
           org = Fixtures.organization{orgDefaultVendoredDependencyScanType = ArchiveUpload}
       (uploadType, scanMode) <- getScanCfg org opts
       (uploadType, scanMode) `shouldBe'` (ArchiveUpload, SkipPreviouslyScanned)
+
+referenceDepSpec :: Spec
+referenceDepSpec = do
+  describe "reference dependency" $ do
+    it "should parse linux reference dependency" $
+      case Yaml.decodeEither' (encodeUtf8 linuxReferenceDep) of
+        Left err -> expectationFailure $ displayException err
+        Right yamlDeps -> yamlDeps `shouldBe` linuxRefManualDep "centos" Nothing
+
+    it "should parse rpm reference dependency with epoch" $
+      case Yaml.decodeEither' (encodeUtf8 linuxReferenceDepWithEpoch) of
+        Left err -> expectationFailure $ displayException err
+        Right yamlDeps -> yamlDeps `shouldBe` linuxRefManualDep "centos" (Just "1")
+
+    it "should fail when linux reference dependency of deb or apk contains epoch" $
+      exceptionContains
+        (encodeUtf8 apkReferenceDepWithEpoch)
+        "Invalid field name for referenced dependencies (of dependency type: apk): epoch"
+
+    it "should fail when linux reference dependency does not include arch information" $
+      exceptionContains
+        (encodeUtf8 linuxReferenceDepWithoutArch)
+        "arch is required field for reference dependency (of dependency type: apk, deb, rpm-generic)"
+
+    it "should fail when linux reference dependency does not include os information" $
+      exceptionContains
+        (encodeUtf8 linuxReferenceDepWithoutOS)
+        "os is required field for reference dependency (of dependency type: apk, deb, rpm-generic)"
+
+    it "should fail when linux reference dependency uses not supported os" $
+      exceptionContains
+        (encodeUtf8 linuxReferenceDepWithUnsupportedOS)
+        "Provided os: poky is not supported! Please provide oneOf:"
+
+    it "should fail when managed reference dependency provides os information" $
+      exceptionContains
+        (encodeUtf8 managedReferenceDepWithOS)
+        "Invalid field name for referenced dependencies (of dependency type: gem): os"
+
+linuxReferenceDep :: Text
+linuxReferenceDep =
+  [r|
+referenced-dependencies:
+- name: pkgName
+  type: rpm-generic
+  version: 1.1
+  arch: x86
+  os: centos
+  osVersion: 2.2
+|]
+
+apkReferenceDepWithEpoch :: Text
+apkReferenceDepWithEpoch =
+  [r|
+referenced-dependencies:
+- name: pkgName
+  type: apk
+  version: 1.1
+  epoch: 1
+  arch: x86
+  os: centos
+  osVersion: 2.2
+|]
+
+linuxReferenceDepWithEpoch :: Text
+linuxReferenceDepWithEpoch =
+  [r|
+referenced-dependencies:
+- name: pkgName
+  type: rpm-generic
+  version: 1.1
+  epoch: 1
+  arch: x86
+  os: centos
+  osVersion: 2.2
+|]
+
+linuxReferenceDepWithoutArch :: Text
+linuxReferenceDepWithoutArch =
+  [r|
+referenced-dependencies:
+- name: pkgName
+  type: rpm-generic
+  version: 1.1
+  os: centos
+  osVersion: 2.2
+|]
+
+linuxReferenceDepWithoutOS :: Text
+linuxReferenceDepWithoutOS =
+  [r|
+referenced-dependencies:
+- name: pkgName
+  type: rpm-generic
+  version: 1.1
+  arch: x86
+|]
+
+linuxReferenceDepWithUnsupportedOS :: Text
+linuxReferenceDepWithUnsupportedOS =
+  [r|
+referenced-dependencies:
+- name: pkgName
+  type: rpm-generic
+  version: 1.1
+  arch: x86
+  os: poky
+  osVersion: 2.2
+|]
+
+managedReferenceDepWithOS :: Text
+managedReferenceDepWithOS =
+  [r|
+referenced-dependencies:
+- name: one
+  type: gem
+  os: poky
+  osVersion: 2.2
+|]
+
+linuxRefManualDep :: Text -> Maybe Text -> ManualDependencies
+linuxRefManualDep os epoch =
+  ManualDependencies
+    [LinuxRpmDep (LinuxReferenceDependency "pkgName" LinuxRPM (Just "1.1") "x86" os "2.2") epoch]
+    mempty
+    mempty
+    mempty

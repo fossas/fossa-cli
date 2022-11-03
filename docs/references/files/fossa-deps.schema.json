@@ -3,7 +3,21 @@
     "title": "fossa-deps",
     "description": "fossa-deps for dependency specification for FOSSA CLI",
     "$defs": {
-        "referenced-dependency": {
+        "os": {
+            "enum": [
+                "alpine",
+                "centos",
+                "debian",
+                "redhat",
+                "ubuntu",
+                "oraclelinux",
+                "busybox",
+                "sles",
+                "fedora"
+            ],
+            "description": "Name of the distribution OS."
+        },
+        "referenced-app-dependency": {
             "properties": {
                 "name": {
                     "type": "string",
@@ -45,6 +59,100 @@
                 "type"
             ],
             "additionalProperties": false
+        },
+        "referenced-apk-deb-dependency": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Name of the dependency. This name will be used to search for dependency in relevant registries."
+                },
+                "type": {
+                    "enum": [
+                        "apk",
+                        "deb"
+                    ],
+                    "description": "Type of the dependency. It informs FOSSA which relevant registries to search for dependency's distribution."
+                },
+                "version": {
+                    "type": "string",
+                    "description": "Version of the dependency. It informs FOSSA which version of the dependency to scan. If not provided, latest version will be used."
+                },
+                "arch": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Architecture associated with this package"
+                },
+                "os": {
+                    "$ref": "#/$defs/os"
+                },
+                "osVersion": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Version of the distribution OS."
+                }
+            },
+            "required": [
+                "name",
+                "type",
+                "arch",
+                "os",
+                "osVersion"
+            ],
+            "additionalProperties": false
+        },
+        "referenced-rpm-dependency": {
+            "properties": {
+                "type": {
+                    "enum": [
+                        "rpm-generic"
+                    ],
+                    "description": "Type of the dependency. It informs FOSSA which relevant registries to search for dependency's distribution."
+                },
+                "version": {
+                    "type": "string",
+                    "description": "Version of the dependency. It informs FOSSA which version of the dependency to scan. If not provided, latest version will be used."
+                },
+                "arch": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Architecture associated with this package"
+                },
+                "epoch": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Epoch associated with version (if any)."
+                },
+                "os": {
+                    "$ref": "#/$defs/os"
+                },
+                "osVersion": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Version of the distribution OS."
+                }
+            },
+            "required": [
+                "name",
+                "type",
+                "arch",
+                "os",
+                "osVersion"
+            ],
+            "additionalProperties": false
+        },
+        "referenced-dependency": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/referenced-app-dependency"
+                },
+                {
+                    "$ref": "#/$defs/referenced-apk-deb-dependency"
+                },
+                {
+                    "$ref": "#/$defs/referenced-rpm-dependency"
+                }
+            ]
         },
         "custom-dependency": {
             "properties": {

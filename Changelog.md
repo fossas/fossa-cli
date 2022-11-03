@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.5.3
+
+- Manual Dependencies: Linux Dependencies (`rpm-generic`, `apk`, `deb`) can be provided as reference dependency in fossa-deps file [#1086](https://github.com/fossas/fossa-cli/pull/1086).
+
 ## v3.5.2
 
 - Container Scanning: Fixes an issue with base64 encoded raw authentications [#1085](https://github.com/fossas/fossa-cli/pull/1085).

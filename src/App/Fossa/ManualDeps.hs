@@ -3,6 +3,8 @@
 
 module App.Fossa.ManualDeps (
   ReferencedDependency (..),
+  ManagedReferenceDependency (..),
+  LinuxReferenceDependency (..),
   CustomDependency (..),
   RemoteDependency (..),
   DependencyMetadata (..),
@@ -31,7 +33,7 @@ import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Has, Lift)
 import Control.Effect.StickyLogger (StickyLogger)
-import Control.Monad (when)
+import Control.Monad (unless, when)
 import Data.Aeson (
   FromJSON (parseJSON),
   withObject,
@@ -40,12 +42,14 @@ import Data.Aeson (
   (.:?),
  )
 import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers)
-import Data.Aeson.Types (Parser)
+import Data.Aeson.Types (Object, Parser, prependFailure)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
+import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toString, toText)
-import Data.Text (Text)
+import Data.Text (Text, toLower)
+import Data.Text qualified as Text
 import DepTypes (DepType (..))
 import Effect.Exec (Exec)
 import Effect.Logger (Logger)
@@ -199,12 +203,36 @@ toBuildData locators =
     }
 
 refToLocator :: ReferencedDependency -> Locator
-refToLocator ReferencedDependency{..} =
+refToLocator (Managed ManagedReferenceDependency{..}) =
   Locator
     { locatorFetcher = depTypeToFetcher locDepType
     , locatorProject = locDepName
     , locatorRevision = locDepVersion
     }
+refToLocator (LinuxApkDebDep LinuxReferenceDependency{..}) =
+  Locator
+    { locatorFetcher = depTypeToFetcher locLinuxDepType
+    , locatorProject = mkLinuxPackage locLinuxDepName locLinuxDepOS locLinuxDepOSVersion
+    , locatorRevision = version
+    }
+  where
+    version :: Maybe Text
+    version = Just $ locLinuxDepArch <> "#" <> (fromMaybe "" locLinuxDepVersion)
+refToLocator (LinuxRpmDep LinuxReferenceDependency{..} rpmEpoch) =
+  Locator
+    { locatorFetcher = depTypeToFetcher locLinuxDepType
+    , locatorProject = mkLinuxPackage locLinuxDepName locLinuxDepOS locLinuxDepOSVersion
+    , locatorRevision = version
+    }
+  where
+    version :: Maybe Text
+    version = Just $ locLinuxDepArch <> "#" <> epoch <> (fromMaybe "" locLinuxDepVersion)
+
+    epoch :: Text
+    epoch = maybe "" ((<> ":") . toText . show) rpmEpoch
+
+mkLinuxPackage :: Text -> Text -> Text -> Text
+mkLinuxPackage depName os osVersion = depName <> "#" <> os <> "#" <> osVersion
 
 addEmptyDep :: Locator -> SourceUnitDependency
 addEmptyDep loc = SourceUnitDependency loc []
@@ -236,7 +264,11 @@ toAdditionalData customDeps remoteDeps =
         }
 
 hasNoDeps :: ManualDependencies -> Bool
-hasNoDeps ManualDependencies{..} = null referencedDependencies && null customDependencies && null vendoredDependencies && null remoteDependencies
+hasNoDeps ManualDependencies{..} =
+  null referencedDependencies
+    && null customDependencies
+    && null vendoredDependencies
+    && null remoteDependencies
 
 -- TODO: Change these to Maybe NonEmpty
 data ManualDependencies = ManualDependencies
@@ -247,10 +279,26 @@ data ManualDependencies = ManualDependencies
   }
   deriving (Eq, Ord, Show)
 
-data ReferencedDependency = ReferencedDependency
+data ReferencedDependency
+  = Managed ManagedReferenceDependency
+  | LinuxApkDebDep LinuxReferenceDependency
+  | LinuxRpmDep LinuxReferenceDependency (Maybe Text)
+  deriving (Eq, Ord, Show)
+
+data ManagedReferenceDependency = ManagedReferenceDependency
   { locDepName :: Text
   , locDepType :: DepType
   , locDepVersion :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
+
+data LinuxReferenceDependency = LinuxReferenceDependency
+  { locLinuxDepName :: Text
+  , locLinuxDepType :: DepType
+  , locLinuxDepVersion :: Maybe Text
+  , locLinuxDepArch :: Text
+  , locLinuxDepOS :: Text
+  , locLinuxDepOSVersion :: Text
   }
   deriving (Eq, Ord, Show)
 
@@ -295,12 +343,98 @@ depTypeParser text = case depTypeFromText text of
   Nothing -> fail $ "dep type: " <> toString text <> " not supported"
 
 instance FromJSON ReferencedDependency where
-  parseJSON = withObject "ReferencedDependency" $ \obj ->
-    ReferencedDependency
-      <$> obj .: "name"
-      <*> (obj .: "type" >>= depTypeParser)
-      <*> (unTextLike <$$> obj .:? "version")
-      <* forbidMembers "referenced dependencies" ["license", "description", "url", "path"] obj
+  parseJSON = withObject "ReferencedDependency" $ \obj -> do
+    depType <- parseDepType obj
+    case depType of
+      LinuxRPM -> parseRpmDependency obj depType
+      LinuxAPK -> parseApkOrDebDependency obj depType
+      LinuxDEB -> parseApkOrDebDependency obj depType
+      _ -> parseManagedDependency obj depType
+    where
+      parseDepType :: Object -> Parser DepType
+      parseDepType obj = obj .: "type" >>= depTypeParser
+
+      parseManagedDependency :: Object -> DepType -> Parser ReferencedDependency
+      parseManagedDependency obj depType =
+        Managed
+          <$> ( ManagedReferenceDependency
+                  <$> obj .: "name"
+                  <*> pure depType
+                  <*> (unTextLike <$$> obj .:? "version")
+                  <* forbidNonRefDepFields obj
+                  <* forbidLinuxFields depType obj
+                  <* forbidEpoch depType obj
+              )
+
+      parseApkOrDebDependency :: Object -> DepType -> Parser ReferencedDependency
+      parseApkOrDebDependency obj depType =
+        LinuxApkDebDep
+          <$> parseLinuxDependency obj depType
+          <* forbidNonRefDepFields obj
+          <* forbidEpoch depType obj
+
+      parseRpmDependency :: Object -> DepType -> Parser ReferencedDependency
+      parseRpmDependency obj depType =
+        LinuxRpmDep
+          <$> parseLinuxDependency obj depType
+          <*> (unTextLike <$$> obj .:? "epoch")
+          <* forbidNonRefDepFields obj
+
+      parseLinuxDependency :: Object -> DepType -> Parser LinuxReferenceDependency
+      parseLinuxDependency obj depType =
+        LinuxReferenceDependency
+          <$> obj .: "name"
+          <*> pure depType
+          <*> (unTextLike <$$> obj .:? "version")
+          <*> parseArch obj
+          <*> parseOS obj
+          <*> parseOSVersion obj
+
+      parseArch :: Object -> Parser Text
+      parseArch obj = requiredFieldMsg "arch" $ obj .: "arch"
+
+      parseOSVersion :: Object -> Parser Text
+      parseOSVersion obj = requiredFieldMsg "osVersion" (unTextLike <$> obj .: "osVersion")
+
+      parseOS :: Object -> Parser Text
+      parseOS obj = do
+        os <- requiredFieldMsg "os" $ obj .: "os"
+        unless (toLower os `elem` supportedOSs) $
+          fail . toString $
+            "Provided os: "
+              <> (toLower os)
+              <> " is not supported! Please provide oneOf: "
+              <> Text.intercalate ", " supportedOSs
+        pure os
+
+      requiredFieldMsg :: String -> Parser a -> Parser a
+      requiredFieldMsg field =
+        prependFailure $ field <> " is required field for reference dependency (of dependency type: apk, deb, rpm-generic): "
+
+      forbidLinuxFields :: DepType -> Object -> Parser ()
+      forbidLinuxFields depType =
+        forbidMembers
+          ("referenced dependencies (of dependency type: " <> depTypeToText depType <> ")")
+          [ "os"
+          , "osVersion"
+          , "arch"
+          ]
+
+      forbidEpoch :: DepType -> Object -> Parser ()
+      forbidEpoch depType =
+        forbidMembers
+          ("referenced dependencies (of dependency type: " <> depTypeToText depType <> ")")
+          ["epoch"]
+
+      forbidNonRefDepFields :: Object -> Parser ()
+      forbidNonRefDepFields =
+        forbidMembers
+          "referenced dependencies"
+          [ "license"
+          , "description"
+          , "url"
+          , "path"
+          ]
 
 instance FromJSON CustomDependency where
   parseJSON = withObject "CustomDependency" $ \obj ->
@@ -349,7 +483,47 @@ depTypeFromText text = case text of
   "cocoapods" -> Just PodType
   "url" -> Just URLType
   "swift" -> Just SwiftType
+  "apk" -> Just LinuxAPK
+  "deb" -> Just LinuxDEB
+  "rpm-generic" -> Just LinuxRPM
   _ -> Nothing -- unsupported dep, need to respond with an error and skip this dependency
-  -- rpm is an unsupported type. This is because we currently have 2 RPM fetchers
-  -- and we should wait for a need to determine which one to use for manually
-  -- specified dependencies.
+
+depTypeToText :: DepType -> Text
+depTypeToText depType = case depType of
+  BowerType -> "bower"
+  CargoType -> "cargo"
+  CarthageType -> "carthage"
+  ComposerType -> "composer"
+  CpanType -> "cpan"
+  CranType -> "cran"
+  GemType -> "gem"
+  GitType -> "git"
+  GoType -> "go"
+  HackageType -> "hackage"
+  HexType -> "hex"
+  MavenType -> "maven"
+  NodeJSType -> "npm"
+  NuGetType -> "nuget"
+  PipType -> "pypi"
+  PodType -> "cocoapods"
+  URLType -> "url"
+  SwiftType -> "swift"
+  LinuxAPK -> "apk"
+  LinuxDEB -> "deb"
+  LinuxRPM -> "rpm"
+  other -> toText . show $ other
+
+-- | Distro OS supported by FOSSA.
+-- If you update this, please make sure to update /docs/references/files/fossa-deps.schema.json
+supportedOSs :: [Text]
+supportedOSs =
+  [ "alpine"
+  , "centos"
+  , "debian"
+  , "redhat"
+  , "ubuntu"
+  , "oraclelinux"
+  , "busybox"
+  , "sles"
+  , "fedora"
+  ]
