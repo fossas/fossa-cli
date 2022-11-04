@@ -2,7 +2,7 @@
 
 ## v3.6.1
 
-- Container Scanning: Fixes a bug where image source parser ignored '-' in host. [#1089](https://github.com/fossas/fossa-cli/pull/1089) 
+- Container Scanning: Fixes a bug where image source parser ignored '-' in host. Also fixes an issue regarding to redirect headers when communicating with registry. [#1089](https://github.com/fossas/fossa-cli/pull/1089) 
 
 ## v3.6.0
 

@@ -6,6 +6,7 @@ module Control.Carrier.ContainerRegistryApi.Common (
   getContentType,
   acceptsContentType,
   RegistryCtx (..),
+  AuthToken (..),
   getToken,
   updateToken,
 ) where
@@ -82,17 +83,23 @@ getContentType = getHeaderValue hContentType
 acceptsContentType :: Request -> Text -> Request
 acceptsContentType r contentType = r{requestHeaders = requestHeaders r ++ [(hAccept, encodeUtf8 contentType)]}
 
+-- | Represents authorization token
+data AuthToken
+  = BearerAuthToken Text
+  | BasicAuthToken Text Text
+  deriving (Show, Eq, Ord)
+
 -- | Wrapper for context - e.g. access token etc.
 newtype RegistryCtx = RegistryCtx
-  { registryAccessToken :: TMVar Text
+  { registryAccessToken :: TMVar AuthToken
   }
 
 -- | Gets access token from registry context.
-getToken :: (Has (Lift IO) sig m) => RegistryCtx -> m (Maybe Text)
+getToken :: (Has (Lift IO) sig m) => RegistryCtx -> m (Maybe AuthToken)
 getToken = sendSTM . tryReadTMVar . registryAccessToken
 
 -- | Updates access token from registry context.
-updateToken :: Has (Lift IO) sig m => RegistryCtx -> Text -> m ()
+updateToken :: Has (Lift IO) sig m => RegistryCtx -> AuthToken -> m ()
 updateToken token newVal = sendSTM $ putTMVar (registryAccessToken token) newVal
 
 sendSTM :: Has (Lift IO) sig m => STM a -> m a

@@ -4,7 +4,7 @@ module Container.RegistryApiSpec (spec) where
 
 import Container.Docker.OciManifest (OciManifestConfig (configDigest), OciManifestV2 (ociConfig))
 import Container.Docker.SourceParser (RegistryImageSource, RepoDigest (RepoDigest), parseImageUrl)
-import Control.Carrier.ContainerRegistryApi.Authorization (RegistryAuthChallenge (RegistryAuthChallenge), parseAuthChallenge)
+import Control.Carrier.ContainerRegistryApi.Authorization (RegistryAuthChallenge (..), RegistryBearerChallenge (..), parseAuthChallenge)
 import Control.Effect.ContainerRegistryApi (ContainerRegistryApi, getImageManifest)
 import Control.Effect.Diagnostics (Diagnostics, Has, fromEitherShow)
 import Control.Effect.Lift (Lift)
@@ -19,6 +19,9 @@ import Text.RawString.QQ (r)
 
 wwwAuthenticate :: Text
 wwwAuthenticate = [r|Bearer realm="https://quay.io/v2/auth",service="quay.io",scope="repository:some-repo/some-img:pull"|]
+
+wwwAuthenticateBasic :: Text
+wwwAuthenticateBasic = [r|Basic realm="https://quay.io/v2/auth",service="quay.io"|]
 
 parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Expectation
 parseMatch parser input expected = parse parser mempty input `shouldParse` expected
@@ -47,12 +50,16 @@ parseAuthChallengeSpec :: Spec
 parseAuthChallengeSpec =
   describe "parseAuthChallenge" $ do
     let shouldParseInto = parseMatch parseAuthChallenge
-    it "should parse auth challenge" $
+    it "should parse bearer auth challenge" $
       wwwAuthenticate
-        `shouldParseInto` RegistryAuthChallenge
-          "https://quay.io/v2/auth"
-          "quay.io"
-          "repository:some-repo/some-img:pull"
+        `shouldParseInto` ( BearerAuthChallenge $
+                              RegistryBearerChallenge "https://quay.io/v2/auth" "quay.io" "repository:some-repo/some-img:pull"
+                          )
+
+    it "should parse basic auth challenge" $
+      wwwAuthenticateBasic
+        `shouldParseInto` ( BasicAuthChallenge "https://quay.io/v2/auth"
+                          )
 
 registryApiSpec :: Spec
 registryApiSpec =
