@@ -29,7 +29,8 @@ import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as TIO
-import Data.Time.Clock.POSIX (getPOSIXTime)
+import Data.Time.Clock.POSIX (getCurrentTime)
+import Data.Time.Format.ISO8601 (iso8601Show)
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
@@ -66,9 +67,8 @@ inferProjectCached dir = do
 inferProjectDefault :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path b Dir -> m InferredProject
 inferProjectDefault dir = context "Inferring project from directory name / timestamp" . sendIO $ do
   let name = FP.dropTrailingPathSeparator (fromRelDir (dirname dir))
-  time <- floor <$> getPOSIXTime :: IO Int
-
-  pure (InferredProject (toText name) (toText (show time)) Nothing)
+  time <- iso8601Show <$> getCurrentTime
+  pure (InferredProject (toText name) (toText time) Nothing)
 
 svnCommand :: Command
 svnCommand =
