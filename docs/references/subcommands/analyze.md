@@ -13,15 +13,15 @@ For supported command-line flags, use `fossa analyze --help`
 
 In addition to the [usual FOSSA project flags](#common-fossa-project-flags) supported by all commands, the analyze command supports the following FOSSA-project-related flags:
 
-| Name                                  | Short | Description                                                                                                                                                         |
-| ------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--title 'some title'`                | `-t`  | Set the title of the FOSSA project                                                                                                                                  |
-| `--branch 'some branch'`              | `-b`  | Override the detected FOSSA project branch                                                                                                                          |
-| `--project-url 'https://example.com'` | `-P`  | Add a URL to the FOSSA project                                                                                                                                      |
-| `--jira-project-key 'some-key'`       | `-j`  | Add a Jira project key to the FOSSA project                                                                                                                         |
-| `--link 'https://example.com'`        | `-L`  | Attach a link to the current FOSSA build                                                                                                                            |
-| `--team 'some team'`                  | `-T`  | Specify a team within your FOSSA organization                                                                                                                       |
-| `--policy 'some policy'`              |       | Assign a specific FOSSA policy to this project                                                                                                                      |
+| Name                                  | Short | Description                                                                                                                                           |
+|---------------------------------------|-------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--title 'some title'`                | `-t`  | Set the title of the FOSSA project                                                                                                                    |
+| `--branch 'some branch'`              | `-b`  | Override the detected FOSSA project branch                                                                                                            |
+| `--project-url 'https://example.com'` | `-P`  | Add a URL to the FOSSA project                                                                                                                        |
+| `--jira-project-key 'some-key'`       | `-j`  | Add a Jira project key to the FOSSA project                                                                                                           |
+| `--link 'https://example.com'`        | `-L`  | Attach a link to the current FOSSA build                                                                                                              |
+| `--team 'some team'`                  | `-T`  | Specify a team within your FOSSA organization                                                                                                         |
+| `--policy 'some policy'`              |       | Assign a specific FOSSA policy to this project                                                                                                        |
 | `--config /path/to/file`              | `-c`  | Path to a [configuration file](../files/fossa-yml.md) including filename. By default we look for `.fossa.yml` in target directory of analyze command. |
 
 ### Printing results without uploading to FOSSA
@@ -71,20 +71,28 @@ We support the following archive formats:
   - `xz` compression
   - `zstd` compression
 
+### Enabling additional strategies
+
+In addition to the [standard flags](#specifying-fossa-project-details), the analyze command supports the following additional strategy flags:
+
+| Name                                                             | Description                                                                                                                                                              |
+|------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`--detect-vendored`](./analyze/detect-vendored.md)              | Enable the vendored source indentification engine. For more information, see the [C and C++ overview](../strategies/languages/c-cpp/c-cpp.md).                           |
+| [`--detect-dynamic './some-binary`](./analyze/detect-dynamic.md) | Analyze the binary at the provided path for dynamically linked dependencies. For more information, see the [C and C++ overview](../strategies/languages/c-cpp/c-cpp.md). |
+
+
 ### Experimental Options
 
 _Important: For support and other general information, refer to the [experimental options overview](../experimental/README.md) before using experimental options._
 
 In addition to the [standard flags](#specifying-fossa-project-details), the analyze command supports the following experimental flags:
 
-| Name                                                    | Description                                                                                                                                                         |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--experimental-enable-vsi`                             | Enable the vendored source indentification engine. For more information, see the [vendored source indentification overview](../experimental/vsi/README.md).         |
-| `--experimental-enable-binary-discovery`                | Enable reporting binary files as unlicensed dependencies. For more information, see the [binary discovery overview](../experimental/binary-discovery/README.md).    |
-| `--experimental-link-project-binary './some-dir'`       | Link the provided binary files to the project being analyzed. For more information, see the [multi stage builds overview](../experimental/msb/README.md).           |
-| `--experimental-skip-vsi-graph 'custom+1/some$locator'` | Skip resolving the dependencies of the given project that was previously linked via `--experimental-link-project-binary`.                                           |
-| `--experimental-enable-monorepo 'monorepo-type'`        | Scan the project in monorepo mode. For more information, see the [monorepo overview](../experimental/monorepo/README.md).                                           |
-| `--experimental-analyze-dynamic-deps './some-binary`    | Analyze the binary at the provided path for dynamically linked dependencies. For more information, see [dynamic link detection](../experimental/dynlink/README.md)  |
+| Name                                                                                     | Description                                                                                                                                                      |
+|------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`--experimental-enable-binary-discovery`](../experimental/binary-discovery/README.md)   | Enable reporting binary files as unlicensed dependencies. For more information, see the [binary discovery overview](../experimental/binary-discovery/README.md). |
+| [`--experimental-link-project-binary './some-dir'`](../experimental/msb/README.md)       | Link the provided binary files to the project being analyzed. For more information, see the [multi stage builds overview](../experimental/msb/README.md).        |
+| [`--experimental-skip-vsi-graph 'custom+1/some$locator'`](../experimental/msb/README.md) | Skip resolving the dependencies of the given project that was previously linked via `--experimental-link-project-binary`.                                        |
+| [`--experimental-enable-monorepo 'monorepo-type'`](../experimental/monorepo/README.md)   | Scan the project in monorepo mode. For more information, see the [monorepo overview](../experimental/monorepo/README.md).                                        |
 
 ### F.A.Q.
 

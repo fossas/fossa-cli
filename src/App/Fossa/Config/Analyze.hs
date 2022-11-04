@@ -279,7 +279,7 @@ cliParser =
     <*> vsiEnableOpt
     <*> flagOpt BinaryDiscovery (long "experimental-enable-binary-discovery" <> help "Reports binary files as unlicensed dependencies")
     <*> optional (strOption (long "experimental-link-project-binary" <> metavar "DIR" <> help "Links output binary files to this project in FOSSA"))
-    <*> optional (strOption (long "experimental-analyze-dynamic-deps" <> metavar "BINARY" <> help "Analyzes dynamically linked libraries in the target binary and reports them as dependencies"))
+    <*> optional dynamicLinkInspectOpt
     <*> many skipVSIGraphResolutionOpt
     <*> monorepoOpts
     <*> baseDirArg
@@ -293,10 +293,17 @@ vendoredDependencyModeOpt = option (eitherReader parseType) (long "force-vendore
       "CLILicenseScan" -> Right CLILicenseScan
       val -> Left ("must be either 'CLILicenseScan' or 'ArchiveUpload'. Found " <> val)
 
-vsiEnableOpt :: Parser (Flag VSIAnalysis)
-vsiEnableOpt = visible <|> legacy
+dynamicLinkInspectOpt :: Parser FilePath
+dynamicLinkInspectOpt = visible <|> legacy
   where
-    visible = flagOpt VSIAnalysis (long "experimental-enable-vsi" <> help "Analyzes project files on disk to detect vendored open source libraries (used for C/C++ support)")
+    visible = strOption (long "detect-dynamic" <> metavar "BINARY" <> help "Analyzes dynamically linked libraries in the target binary and reports them as dependencies")
+    legacy = strOption (long "experimental-analyze-dynamic-deps" <> hidden)
+
+vsiEnableOpt :: Parser (Flag VSIAnalysis)
+vsiEnableOpt = visible <|> legacyExperimental <|> legacy
+  where
+    visible = flagOpt VSIAnalysis (long "detect-vendored" <> help "Analyzes project files on disk to detect vendored open source libraries")
+    legacyExperimental = flagOpt VSIAnalysis (long "experimental-enable-vsi" <> hidden)
     legacy = flagOpt VSIAnalysis (long "enable-vsi" <> hidden)
 
 skipVSIGraphResolutionOpt :: Parser VSI.Locator

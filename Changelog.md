@@ -1,5 +1,11 @@
 # FOSSA CLI Changelog
 
+## v3.6.0
+
+- Promote C/C++ features to general availability [#1087](https://github.com/fossas/fossa-cli/pull/1087).
+  - `--experimental-enable-vsi` is now `--detect-vendored`.
+  - `--experimental-analyze-dynamic-deps` is now `--detect-dynamic`.
+
 ## v3.5.3
 
 - Manual Dependencies: Linux Dependencies (`rpm-generic`, `apk`, `deb`) can be provided as reference dependency in fossa-deps file [#1086](https://github.com/fossas/fossa-cli/pull/1086).
