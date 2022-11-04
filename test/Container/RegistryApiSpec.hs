@@ -52,9 +52,12 @@ parseAuthChallengeSpec =
     let shouldParseInto = parseMatch parseAuthChallenge
     it "should parse bearer auth challenge" $
       wwwAuthenticate
-        `shouldParseInto` ( BearerAuthChallenge $
-                              RegistryBearerChallenge "https://quay.io/v2/auth" "quay.io" "repository:some-repo/some-img:pull"
-                          )
+        `shouldParseInto` BearerAuthChallenge
+          ( RegistryBearerChallenge
+              "https://quay.io/v2/auth"
+              "quay.io"
+              "repository:some-repo/some-img:pull"
+          )
 
     it "should parse basic auth challenge" $
       wwwAuthenticateBasic
