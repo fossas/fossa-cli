@@ -66,7 +66,6 @@ spec = do
                               fixtureArch
                           )
 
-
       "ghcr.io/fossas/haskell-dev-tools"
         `shouldParseInto` ( RegistryImageSource
                               "ghcr.io"
