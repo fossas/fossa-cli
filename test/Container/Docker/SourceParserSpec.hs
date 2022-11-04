@@ -56,6 +56,17 @@ spec = do
                               fixtureArch
                           )
 
+      "111.dkr.ecr.us-east-1.amazonaws.com/jamm"
+        `shouldParseInto` ( RegistryImageSource
+                              "111.dkr.ecr.us-east-1.amazonaws.com"
+                              defaultHttpScheme
+                              Nothing
+                              "jamm"
+                              defaultTag
+                              fixtureArch
+                          )
+
+
       "ghcr.io/fossas/haskell-dev-tools"
         `shouldParseInto` ( RegistryImageSource
                               "ghcr.io"
