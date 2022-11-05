@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Uses an ISO timestamp for the revision if no better revision can be inferred [#1091](https://github.com/fossas/fossa-cli/pull/1091).
+
 ## v3.6.0
 
 - Promote C/C++ features to general availability [#1087](https://github.com/fossas/fossa-cli/pull/1087).
