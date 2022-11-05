@@ -2,21 +2,21 @@
 
 ## Unreleased
 
-- Uses an ISO timestamp for the revision if no better revision can be inferred [#1091](https://github.com/fossas/fossa-cli/pull/1091).
+- Uses an ISO timestamp for the revision if no better revision can be inferred ([#1091](https://github.com/fossas/fossa-cli/pull/1091)).
 
 ## v3.6.0
 
-- Promote C/C++ features to general availability [#1087](https://github.com/fossas/fossa-cli/pull/1087).
+- Promote C/C++ features to general availability ([#1087](https://github.com/fossas/fossa-cli/pull/1087)).
   - `--experimental-enable-vsi` is now `--detect-vendored`.
   - `--experimental-analyze-dynamic-deps` is now `--detect-dynamic`.
 
 ## v3.5.3
 
-- Manual Dependencies: Linux Dependencies (`rpm-generic`, `apk`, `deb`) can be provided as reference dependency in fossa-deps file [#1086](https://github.com/fossas/fossa-cli/pull/1086).
+- Manual Dependencies: Linux Dependencies (`rpm-generic`, `apk`, `deb`) can be provided as reference dependency in fossa-deps file ([#1086](https://github.com/fossas/fossa-cli/pull/1086)).
 
 ## v3.5.2
 
-- Container Scanning: Fixes an issue with base64 encoded raw authentications [#1085](https://github.com/fossas/fossa-cli/pull/1085).
+- Container Scanning: Fixes an issue with base64 encoded raw authentications ([#1085](https://github.com/fossas/fossa-cli/pull/1085)).
 
 ## v3.5.1
 
