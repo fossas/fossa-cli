@@ -70,7 +70,7 @@ inferProjectDefault dir = context "Inferring project from directory name / times
   time <- iso8601Show <$> getCurrentTime
 
   let stamp = Text.takeWhile (/= '.') $ toText time -- trim milliseconds off, format is yyyy-mm-ddThh:mm:ss[.sss]
-  pure (InferredProject (toText name) stamp Nothing)
+  pure (InferredProject (toText name) (stamp <> "Z") Nothing)
 
 svnCommand :: Command
 svnCommand =
