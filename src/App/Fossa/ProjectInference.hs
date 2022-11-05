@@ -68,7 +68,9 @@ inferProjectDefault :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path b Di
 inferProjectDefault dir = context "Inferring project from directory name / timestamp" . sendIO $ do
   let name = FP.dropTrailingPathSeparator (fromRelDir (dirname dir))
   time <- iso8601Show <$> getCurrentTime
-  pure (InferredProject (toText name) (toText time) Nothing)
+
+  let stamp = Text.takeWhile (/= '.') $ toText time -- trim milliseconds off, format is yyyy-mm-ddThh:mm:ss[.sss]
+  pure (InferredProject (toText name) stamp Nothing)
 
 svnCommand :: Command
 svnCommand =
