@@ -124,6 +124,8 @@ import Control.Applicative
 import Control.Carrier.Reader
 import Control.Carrier.State.Strict
 import Control.Monad.Trans
+import Control.Monad.Except (MonadError (..))
+import Conduit (MonadUnliftIO)
 
 ---------- The Simple effect
 
@@ -192,7 +194,7 @@ interpretState s f = runState s . interpret f
 
 -- | A carrier for arbitrary "first-order" effects
 newtype SimpleC eff m a = SimpleC {runSimpleC :: ReaderC (HandlerFor eff m) m a}
-  deriving (Functor, Applicative, Alternative, Monad, MonadIO)
+  deriving (Functor, Applicative, Alternative, Monad, MonadIO, MonadUnliftIO)
 
 -- | A wrapper for an effect handler function
 data HandlerFor eff m where
@@ -200,6 +202,12 @@ data HandlerFor eff m where
 
 instance MonadTrans (SimpleC eff) where
   lift = SimpleC . lift
+
+instance (MonadError e m, Algebra sig m) => MonadError e (SimpleC eff m) where
+  throwError = lift . throwError
+  catchError action handler = do
+    (HandlerFor f) <- SimpleC ask
+    lift $ catchError (interpret f action) (interpret f . handler)
 
 instance Algebra sig m => Algebra (Simple eff :+: sig) (SimpleC eff m) where
   alg hdl sig ctx = SimpleC $ do
