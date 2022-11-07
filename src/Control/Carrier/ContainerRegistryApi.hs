@@ -41,7 +41,7 @@ import Container.Docker.SourceParser (
  )
 import Control.Algebra (Algebra, Has)
 import Control.Carrier.AtomicCounter (runAtomicCounter)
-import Control.Carrier.ContainerRegistryApi.Authorization (applyBearAuth, getAuthToken, mkRequest)
+import Control.Carrier.ContainerRegistryApi.Authorization (applyAuthToken, getAuthToken, mkRequest)
 import Control.Carrier.ContainerRegistryApi.Common (
   RegistryCtx (RegistryCtx),
   fromResponse,
@@ -261,7 +261,7 @@ exportBlob manager imgSrc dir (digest, isGzip, targetFilename) = do
   -- Prepare request with necessary authorization
   req <- blobEndpoint imgSrc'
   token <- getAuthToken (registryCred imgSrc) req manager =<< getToken ctx
-  let req' = applyBearAuth token req
+  let req' = applyAuthToken token req
 
   -- Download image artifact
   sendIO . runResourceT $ do

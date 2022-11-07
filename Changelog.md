@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.6.1
+
+- Container Scanning: Fixes a bug where image source parser ignored '-' in host. Also fixes an issue regarding to redirect headers when communicating with registry. [#1089](https://github.com/fossas/fossa-cli/pull/1089) 
+
 ## v3.6.0
 
 - Promote C/C++ features to general availability [#1087](https://github.com/fossas/fossa-cli/pull/1087).
