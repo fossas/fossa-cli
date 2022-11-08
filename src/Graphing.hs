@@ -139,8 +139,7 @@ shrink f = Graphing . AME.shrink f' . unGraphing
     f' Root = True
     f' (Node a) = f a
 
--- | Unlike @shrink@ when root vertices are deleted, their successor are not promoted as direct
--- if they have any predecessors.
+-- | Unlike @shrink@ when root vertices are deleted, their successor are not promoted as direct.
 --
 --  Example:
 --
