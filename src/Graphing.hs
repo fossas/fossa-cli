@@ -163,9 +163,9 @@ shrinkWithoutPromotionToDirect f gr = foldl' withoutEdgeToRoot shrunkGraph jumpe
     jumpedDirects :: [a]
     jumpedDirects =
       Set.toList $
-          Set.difference
-            (Set.fromList . directList $ shrunkGraph)
-            (Set.fromList . directList $ gr)
+        Set.difference
+          (Set.fromList . directList $ shrunkGraph)
+          (Set.fromList . directList $ gr)
 
     withoutEdgeToRoot :: Graphing a -> a -> Graphing a
     withoutEdgeToRoot g n = Graphing . AM.removeEdge Root (Node n) $ unGraphing g
