@@ -20,9 +20,10 @@ import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.IORef
 import Prelude
+import Control.Monad.IO.Unlift (MonadUnliftIO)
 
 newtype FinallyC m a = FinallyC {runFinallyC :: ReaderC (IORef [FinallyC m ()]) m a}
-  deriving (Functor, Applicative, Monad, MonadIO)
+  deriving (Functor, Applicative, Monad, MonadIO, MonadUnliftIO)
 
 runFinally :: Has (Lift IO) sig m => FinallyC m a -> m a
 runFinally (FinallyC go) = do
