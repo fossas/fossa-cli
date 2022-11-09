@@ -4,6 +4,14 @@
 
 - Uses an ISO timestamp for the revision if no better revision can be inferred ([#1091](https://github.com/fossas/fossa-cli/pull/1091)).
 
+## v3.6.2
+
+- Container Scanning: Fixes a bug where tar entry were not normalized within nested layer tar. [#1095](https://github.com/fossas/fossa-cli/pull/1095)
+
+## v3.6.1
+
+- Container Scanning: Fixes a bug where image source parser ignored '-' in host. Also fixes an issue regarding to redirect headers when communicating with registry. [#1089](https://github.com/fossas/fossa-cli/pull/1089)
+
 ## v3.6.0
 
 - Promote C/C++ features to general availability ([#1087](https://github.com/fossas/fossa-cli/pull/1087)).

@@ -211,7 +211,7 @@ parseImageUrl' :: Text -> Parser RegistryImageSource
 parseImageUrl' targetArch = do
   scheme <- optional parseHostScheme
   cred <- optional . try $ parseAuthCred
-  host <- toText <$> some (alphaNumChar <|> char '.')
+  host <- toText <$> some (alphaNumChar <|> char '.' <|> char '-' <|> char '_')
   port :: Maybe Int <- (try . optional $ chunk ":" *> L.decimal)
   void $ optional (chunk "/")
 

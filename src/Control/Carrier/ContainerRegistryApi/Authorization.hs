@@ -1,15 +1,17 @@
 module Control.Carrier.ContainerRegistryApi.Authorization (
   mkRequest,
   getAuthToken,
-  applyBearAuth,
+  applyAuthToken,
 
   -- * for testing
   RegistryAuthChallenge (..),
+  RegistryBearerChallenge (..),
   parseAuthChallenge,
 ) where
 
 import Control.Algebra (Has)
 import Control.Carrier.ContainerRegistryApi.Common (
+  AuthToken (BasicAuthToken, BearerAuthToken),
   RegistryCtx,
   acceptsContentType,
   fromResponse,
@@ -24,28 +26,31 @@ import Control.Carrier.ContainerRegistryApi.Errors (
   FailedToParseAuthChallenge (FailedToParseAuthChallenge),
   UnknownApiError (UnknownApiError),
  )
-import Control.Effect.Diagnostics (Diagnostics, fatal, fatalText)
+import Control.Effect.Diagnostics (Diagnostics, fatal, fatalText, fromMaybeText)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (FromJSON (parseJSON), decode', eitherDecode, withObject, (.:))
 import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.String.Conversion (encodeUtf8, toString, toText)
-import Data.Text (Text)
+import Data.String.Conversion (ConvertUtf8 (decodeUtf8), encodeUtf8, toString, toText)
+import Data.Text (Text, isInfixOf)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import Effect.Logger (Logger)
 import Network.HTTP.Client (
   Manager,
-  Request (method),
+  Request (host, method, shouldStripHeaderOnRedirect),
   Response (responseBody, responseHeaders, responseStatus),
   applyBasicAuth,
   applyBearerAuth,
   parseRequest,
  )
-import Network.HTTP.Types (statusCode)
-import Network.HTTP.Types.Header (hWWWAuthenticate)
+import Network.HTTP.Types (methodGet, statusCode)
+import Network.HTTP.Types.Header (
+  hAuthorization,
+  hWWWAuthenticate,
+ )
 import Text.Megaparsec (
   MonadParsec (takeWhileP),
   Parsec,
@@ -76,18 +81,34 @@ mkRequest ::
 mkRequest manager registryCred accepts req = do
   token <- getToken =<< ask
   token' <- getAuthToken registryCred req manager token
-  logHttp (applyContentType accepts $ applyBearAuth token' req) manager
+  logHttp (applyContentType accepts $ applyAuthToken token' req) manager
   where
     applyContentType :: Maybe [Text] -> Request -> Request
     applyContentType c r = case c of
       Nothing -> req
       Just c' -> r `acceptsContentType` (Text.intercalate ", " c')
 
--- | Adds 'Authorization: Bearer <>', if 'Just token', otherwise id.
-applyBearAuth :: Maybe Text -> Request -> Request
-applyBearAuth t r = case t of
-  Nothing -> r
-  Just t' -> applyBearerAuth (encodeUtf8 t') r
+-- | Adds 'Authorization' header if token is provided otherwise id
+applyAuthToken :: Maybe AuthToken -> Request -> Request
+applyAuthToken Nothing r = r
+applyAuthToken (Just (BasicAuthToken user pass)) r =
+  stripAuthHeaderOnRedirect $ applyBasicAuth (encodeUtf8 user) (encodeUtf8 pass) r
+applyAuthToken (Just (BearerAuthToken token)) r =
+  stripAuthHeaderOnRedirect $ applyBearerAuth (encodeUtf8 token) r
+
+-- If we don't strip auth headers, on redirect, depending on how
+-- blobs/manifest are retrieved cloud vendor may throw 'Bad Request' error.
+stripAuthHeaderOnRedirect :: Request -> Request
+stripAuthHeaderOnRedirect r =
+  if ((isAwsECR || isAzure) && method r == methodGet)
+    then r{shouldStripHeaderOnRedirect = (== hAuthorization)}
+    else r
+  where
+    isAwsECR :: Bool
+    isAwsECR = "amazonaws.com" `isInfixOf` decodeUtf8 (host r)
+
+    isAzure :: Bool
+    isAzure = "azurecr.io" `isInfixOf` decodeUtf8 (host r)
 
 -- | Generates Auth Token For Request.
 --
@@ -123,9 +144,9 @@ getAuthToken ::
   -- | Request For which to Get Authorization Token
   Manager ->
   -- | Manager to use for requests
-  Maybe Text ->
+  Maybe AuthToken ->
   -- | Existing Token (if any)
-  m (Maybe Text)
+  m (Maybe AuthToken)
 getAuthToken cred reqAttempt manager token = do
   let request' = applyAuthForExistingToken $ reqAttempt{method = "HEAD"}
   response <- logHttp request' manager
@@ -165,9 +186,7 @@ getAuthToken cred reqAttempt manager token = do
     (Nothing, _) -> fatal $ UnknownApiError (originalReqUri response) $ responseStatus response
   where
     applyAuthForExistingToken :: Request -> Request
-    applyAuthForExistingToken r = case token of
-      Nothing -> r
-      Just token' -> applyBearerAuth (encodeUtf8 token') r
+    applyAuthForExistingToken = applyAuthToken token
 
 -- | Retrieves Token from Authorization Server.
 --
@@ -190,8 +209,8 @@ getTokenFromAuthChallenge ::
   -- | Authorization Challenge
   Manager ->
   -- | Request Manager to use for subsequent requests
-  m Text
-getTokenFromAuthChallenge cred (RegistryAuthChallenge url service scope) manager = do
+  m AuthToken
+getTokenFromAuthChallenge cred (BearerAuthChallenge (RegistryBearerChallenge url service scope)) manager = do
   req <- authTokenEndpoint
 
   -- If there are auth provided for private registries
@@ -203,14 +222,22 @@ getTokenFromAuthChallenge cred (RegistryAuthChallenge url service scope) manager
   response <- fromResponse =<< logHttp req' manager
   case eitherDecode $ responseBody response of
     Left err -> fatal . FailedToParseAuthChallenge $ toText err
-    Right tokenResponse -> pure . unToken $ tokenResponse
+    Right tokenResponse -> pure $ BearerAuthToken $ unToken tokenResponse
   where
     -- \| Authorization Server Endpoint.
     authTokenEndpoint :: Has (Lift IO) sig m => m (Request)
     authTokenEndpoint =
       sendIO $ parseRequest $ toString url <> "?" <> "service=" <> toString service <> "&scope=" <> toString scope
+getTokenFromAuthChallenge cred (BasicAuthChallenge _) _ = do
+  (user, pass) <- fromMaybeText "Registry requested basic auth challenge, but no credentials were provided!" cred
+  pure $ BasicAuthToken user pass
 
-data RegistryAuthChallenge = RegistryAuthChallenge
+data RegistryAuthChallenge
+  = BasicAuthChallenge Text
+  | BearerAuthChallenge RegistryBearerChallenge
+  deriving (Show, Eq, Ord)
+
+data RegistryBearerChallenge = RegistryBearerChallenge
   { authChallengeBearerRealm :: Text
   , authChallengeService :: Text
   , authChallengeScope :: Text
@@ -219,7 +246,10 @@ data RegistryAuthChallenge = RegistryAuthChallenge
 
 newtype AuthChallengeResponse = AuthChallengeResponse {unToken :: Text} deriving (Eq, Show, Ord)
 instance FromJSON AuthChallengeResponse where
-  parseJSON = withObject "AuthChallengeResponse" $ \o -> AuthChallengeResponse <$> o .: "token"
+  parseJSON = withObject "AuthChallengeResponse" $ \o ->
+    ( AuthChallengeResponse <$> o .: "token"
+        <|> AuthChallengeResponse <$> o .: "access_token"
+    )
 
 -- | Parses Authorization Header.
 --
@@ -232,19 +262,23 @@ parseAuthChallenge :: Parser RegistryAuthChallenge
 parseAuthChallenge = do
   wwwProps <- propertiesParser
 
-  let url = Map.lookup "Bearer realm" wwwProps
+  let basicUrl = Map.lookup "Basic realm" wwwProps
+  let bearerUrl = Map.lookup "Bearer realm" wwwProps
   let scope = Map.lookup "scope" wwwProps
   let service = Map.lookup "service" wwwProps
 
-  case (url, scope, service) of
-    (Just url', Just scope', Just service') -> pure $ RegistryAuthChallenge url' service' scope'
-    _ -> fail $ buildFailure url scope service
+  case (basicUrl, bearerUrl, scope, service) of
+    (Nothing, Just url', Just scope', Just service') -> pure $ BearerAuthChallenge $ RegistryBearerChallenge url' service' scope'
+    (Just url', _, _, _) -> pure $ BasicAuthChallenge url'
+    _ -> fail $ buildFailure basicUrl bearerUrl scope service
   where
-    buildFailure :: Maybe Text -> Maybe Text -> Maybe Text -> String
-    buildFailure url scope service =
-      "failed to parse all of required 'Bearer realm', 'scope', 'service' attributes."
+    buildFailure :: Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text -> String
+    buildFailure basicUrl bearerUrl scope service =
+      "failed build registry challenge from 'Bearer realm' or 'Basic realm', 'scope', 'service' attributes."
+        <> " Basic realm: "
+        <> show basicUrl
         <> " Bearer realm: "
-        <> show url
+        <> show bearerUrl
         <> "; scope: "
         <> show scope
         <> "; service: "
