@@ -16,14 +16,25 @@ import Control.Effect.Exception (finally)
 import Control.Effect.Finally as X
 import Control.Effect.Lift
 import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Trans
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.IORef
 import Prelude
 import Control.Monad.IO.Unlift (MonadUnliftIO)
+import Control.Monad.Except (MonadError (..))
 
 newtype FinallyC m a = FinallyC {runFinallyC :: ReaderC (IORef [FinallyC m ()]) m a}
   deriving (Functor, Applicative, Monad, MonadIO, MonadUnliftIO)
+
+instance MonadTrans (FinallyC) where
+  lift = FinallyC . lift
+
+instance MonadError e m => MonadError e (FinallyC m) where
+  throwError = lift . throwError
+  catchError action handler =
+    FinallyC . ReaderC $ \ref ->
+      catchError (runReader ref . runFinallyC $ action) (runReader ref . runFinallyC . handler)
 
 runFinally :: Has (Lift IO) sig m => FinallyC m a -> m a
 runFinally (FinallyC go) = do
