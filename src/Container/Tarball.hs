@@ -43,6 +43,7 @@ import Data.Sequence qualified as Seq
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import System.FilePath.Posix (normalise)
 
 -- | Container of list of tar entries with their offset for random content read.
 data TarEntries = TarEntries
@@ -238,7 +239,7 @@ fileNameOf path = snd $ Text.breakOnEnd "/" path
 
 -- | Retrieves filepath from tar path.
 filePathOf :: TarPath -> FilePath
-filePathOf = fromTarPathToPosixPath
+filePathOf = normalise . fromTarPathToPosixPath
 
 -- | Removes whiteout prefix from the filepath. If no whiteout prefix is detected returns Nothing.
 --
