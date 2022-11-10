@@ -14,6 +14,17 @@ Maven analysis attempts these analysis methods in order:
 3. Run the maven plugin command version 3.3.0.
 4. Scan `pom.xml` files located in the file tree.
 
+## FAQ
+### One of my transitive dependencies does not have path information
+The mavenplugin and treecmd tactic can result in transitive dependencies which do not display paths to parents. This example graph shows how that can happen:
+```
++- com.amazonaws:aws-java-sdk-kms:1.11.415:compile
+|  +- com.amazonaws:aws-java-sdk-core:1.11.415:compile
+\- com.jayway.restassured:rest-assured:2.9.0:test
+   +- org.apache.httpcomponents:httpclient:4.5.1:compile   👈
+```
+`httpclient` will appear as a transitive dependency in the FOSSA UI, but it will not have any paths. There are a few things that contribute to this happening. `httpclient`'s only listed parent is `restassured` which is a `test` dependency, however, `httpclient` is a `compile`. This tells us that `httpclient` has another parent in the graph, but we are unable to determine where.
+
 <!--
 
 TODO: write docs, like Gradle's.
