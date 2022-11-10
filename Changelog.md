@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.6.3
+
+Gradle: Considers dependencies from `debugUnitTest*` configurations to be unused. ([#1097](https://github.com/fossas/fossa-cli/pull/1097))
+
 ## v3.6.2
 
 - Don't promote transitive dependencies  [#1092](https://github.com/fossas/fossa-cli/pull/1092).
