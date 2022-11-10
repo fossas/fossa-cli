@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 module Strategy.Conda (
   discover,
 ) where
@@ -75,13 +76,13 @@ getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => CondaPro
 getDeps project = analyzeCondaList project <||> analyzeEnvironmentYml project
 
 analyzeCondaList :: (Has Exec sig m, Has Diagnostics sig m) => CondaProject -> m DependencyResults
-analyzeCondaList project = do
-  graph <- CondaList.analyze . condaDir $ project
+analyzeCondaList CondaProject{..} = do
+  graph <- CondaList.analyze condaDir condaEnvironmentYml
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = Complete
-      , dependencyManifestFiles = [condaEnvironmentYml project]
+      , dependencyManifestFiles = [condaEnvironmentYml]
       }
 
 analyzeEnvironmentYml :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => CondaProject -> m DependencyResults

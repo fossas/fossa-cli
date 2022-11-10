@@ -1,63 +1,102 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Strategy.Conda.CondaList (
-  analyze,
-  buildGraph,
-  CondaListDep (..),
-) where
+module Strategy.Conda.CondaList
+  ( analyze,
+    buildGraph,
+    CondaEnvDeps (..),
+    CondaEnvDep (..),
+    -- exposed for testing
+    parseCondaEnvDep,
+  )
+where
 
 import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Data.Aeson
 import Data.Map.Strict qualified as Map
+import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Data.Void (Void)
 import Effect.Exec
 import Graphing (Graphing, fromList)
 import Path
+import Text.Megaparsec (Parsec, chunk, single, takeWhile1P)
 import Types
 
--- conda list --json will output dependency data in JSON format
-condaListCmd :: Command
-condaListCmd =
+-- conda env create --json --file <filename.yml> --dry-run --force
+-- runs conda and mocks the creation of an environment based on environment.yml.
+-- The command outputs json data, including the list of resolved packages.
+condaEnvCmd :: Path Abs File -> Command
+condaEnvCmd environmentYml =
   Command
-    { cmdName = "conda"
-    , cmdArgs = ["list", "--json"]
-    , cmdAllowErr = Never
+    { cmdName = "conda",
+      cmdArgs =
+        [ "env",
+          "create",
+          "--json",
+          "--file",
+          toText environmentYml,
+          "--dry-run",
+          "--force"
+        ],
+      cmdAllowErr = Never
     }
 
-buildGraph :: [CondaListDep] -> Graphing Dependency
+buildGraph :: [CondaEnvDep] -> Graphing Dependency
 buildGraph deps = Graphing.fromList (map toDependency deps)
   where
-    toDependency :: CondaListDep -> Dependency
-    toDependency CondaListDep{..} =
+    toDependency :: CondaEnvDep -> Dependency
+    toDependency CondaEnvDep {..} =
       Dependency
-        { dependencyType = CondaType
-        , dependencyName = listName
-        , dependencyVersion = CEq <$> listVersion
-        , dependencyLocations = []
-        , dependencyEnvironments = mempty
-        , dependencyTags = Map.empty
+        { dependencyType = CondaType,
+          dependencyName = name, -- needs to be enriched
+          dependencyVersion = Just $ CEq version,
+          dependencyLocations = [],
+          dependencyEnvironments = mempty,
+          dependencyTags = Map.empty
         }
 
 analyze ::
-  ( Has Exec sig m
-  , Has Diagnostics sig m
+  ( Has Exec sig m,
+    Has Diagnostics sig m
   ) =>
   Path Abs Dir ->
+  Path Abs File ->
   m (Graphing Dependency)
-analyze dir = do
-  buildGraph <$> execJson @[CondaListDep] dir condaListCmd
+analyze dir file = do
+  buildGraph . placeholder <$> execJson @[CondaEnvDeps] dir (condaEnvCmd file)
 
-data CondaListDep = CondaListDep
-  { listName :: Text
-  , listVersion :: Maybe Text
-  , listBuild :: Maybe Text
+placeholder :: [CondaEnvDeps] -> [CondaEnvDep]
+placeholder = undefined
+
+newtype CondaEnvDeps = CondaEnvDeps
+  { dependencies :: [Text]
   }
   deriving (Eq, Ord, Show)
 
-instance FromJSON CondaListDep where
-  parseJSON = withObject "CondaListOutput" $ \obj ->
-    CondaListDep
-      <$> obj .: "name"
-      <*> obj .:? "version"
-      <*> obj .:? "build_string"
+data CondaEnvDep = CondaEnvDep
+  { channel :: Text,
+    platform :: Text,
+    name :: Text,
+    version :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON CondaEnvDeps where
+  parseJSON = withObject "CondaEnvOutput" $ \obj ->
+    CondaEnvDeps
+      <$> obj
+      .: "dependencies"
+
+type Parser = Parsec Void Text
+
+parseCondaEnvDep :: Parser CondaEnvDep
+parseCondaEnvDep =
+  CondaEnvDep
+  <$> takeWhile1P (Just "channel") (/= '/')
+  <* single '/'
+  <*> takeWhile1P (Just "platform") (/= ':')
+  <* chunk "::"
+  <*> takeWhile1P (Just "package name") (/= '=')
+  <* chunk "=="
+  <*> takeWhile1P (Just "version") (/= '=')
