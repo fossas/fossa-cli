@@ -202,7 +202,7 @@ shrinkingSpec = context "Shrinking" $ do
       expectDeps [1, 2, 4, 6, 7] graph'
       expectEdges [(1, 2), (2, 4), (2, 6), (2, 7)] graph'
 
-    it "should promote to direct, if and only if no predecessors exist" $ do
+    it "should not promote any deps to direct" $ do
       --   1 -> 2 -> 5 -> 6
       --        \       \
       --         \       7
@@ -216,7 +216,7 @@ shrinkingSpec = context "Shrinking" $ do
           graph' :: Graphing Int
           graph' = Graphing.shrinkWithoutPromotionToDirect (\x -> x /= 3 && x /= 5) graph
 
-      expectDirect [1, 8] graph'
+      expectDirect [1] graph'
       expectDeps [1, 2, 4, 6, 7, 8] graph'
       expectEdges [(1, 2), (2, 4), (2, 6), (2, 7)] graph'
 

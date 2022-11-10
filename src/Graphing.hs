@@ -139,8 +139,7 @@ shrink f = Graphing . AME.shrink f' . unGraphing
     f' Root = True
     f' (Node a) = f a
 
--- | Unlike @shrink@ when root vertices are deleted, their successor are not promoted as direct
--- if they have any predecessors.
+-- | Unlike @shrink@ when root vertices are deleted, their successor are not promoted as direct.
 --
 --  Example:
 --
@@ -151,27 +150,26 @@ shrink f = Graphing . AME.shrink f' . unGraphing
 --    \
 --     8
 --
---  When node (3) is shrinked, 8 will be promoted to direct, and 4 will be not be promoted as direct.
+--  When node (3) is shrunk, neither 4 or 8 will be not be promoted as direct.
 shrinkWithoutPromotionToDirect :: forall a. Ord a => (a -> Bool) -> Graphing a -> Graphing a
-shrinkWithoutPromotionToDirect f gr = foldl' withoutEdgeToRoot shrinkedGraph jumpedDirects
+shrinkWithoutPromotionToDirect f gr = foldl' withoutEdgeToRoot shrunkGraph jumpedDirects
   where
-    shrinkedGraph :: Graphing a
-    shrinkedGraph = shrink f gr
+    shrunkGraph :: Graphing a
+    shrunkGraph = shrink f gr
 
     -- Identify direct nodes after shrinking the graph on predicate,
     -- that were not part of direct nodes previously and have predecessors.
     jumpedDirects :: [a]
     jumpedDirects =
       Set.toList $
-        Set.filter (hasPredecessors shrinkedGraph) $
-          Set.difference
-            (Set.fromList . directList $ shrinkedGraph)
-            (Set.fromList . directList $ gr)
+        Set.difference
+          (Set.fromList . directList $ shrunkGraph)
+          (Set.fromList . directList $ gr)
 
     withoutEdgeToRoot :: Graphing a -> a -> Graphing a
     withoutEdgeToRoot g n = Graphing . AM.removeEdge Root (Node n) $ unGraphing g
 
--- | Delete a vertex in a Grahing, preserving the overall structure by rewiring edges through the delted vertex.
+-- | Delete a vertex in a Graphing, preserving the overall structure by rewiring edges through the deleted vertex.
 --
 -- For example, given the graph @1 -> 2 -> 3 -> 4@ and applying @shrinkSingle 3@, we return the graph
 -- @1 -> 2 -> 4@
