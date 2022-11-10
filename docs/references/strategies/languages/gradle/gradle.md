@@ -225,16 +225,12 @@ Any dependencies with following prefixes:
 - androidTest
 - debugAndroidTest
 - releaseUnitTest
+- debugUnitTest
 
 And any configuration named:
 - androidJacocoAnt
 - testApiDependenciesMetadata
 - testCompileOnlyDependenciesMetadata
-- debugUnitTestApiDependenciesMetadata
-- debugUnitTestCompileOnlyDependenciesMetadata
-- debugUnitTestImplementationDependenciesMetadata
-- debugUnitTestIntransitiveDependenciesMetadata
-- debugUnitTestRuntimeOnlyDependenciesMetadata
 - testDebugApiDependenciesMetadata
 - testDebugCompileOnlyDependenciesMetadata
 - testDebugImplementationDependenciesMetadata
@@ -248,8 +244,6 @@ And any configuration named:
 - testReleaseIntransitiveDependenciesMetadata
 - testReleaseRuntimeOnlyDependenciesMetadata
 - testRuntimeOnlyDependenciesMetadata
-- debugUnitTestAnnotationProcessorClasspath
-
 ```
 
 We classify following configurations, and dependencies originating from it as a development (or debug) environment dependency:

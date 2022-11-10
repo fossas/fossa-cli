@@ -4,8 +4,13 @@
 
 - Uses an ISO timestamp for the revision if no better revision can be inferred ([#1091](https://github.com/fossas/fossa-cli/pull/1091)).
 
+## v3.6.3
+
+Gradle: Considers dependencies from `debugUnitTest*` configurations to be unused. ([#1097](https://github.com/fossas/fossa-cli/pull/1097))
+
 ## v3.6.2
 
+- Don't promote transitive dependencies  [#1092](https://github.com/fossas/fossa-cli/pull/1092).
 - Container Scanning: Fixes a bug where tar entry were not normalized within nested layer tar. [#1095](https://github.com/fossas/fossa-cli/pull/1095)
 
 ## v3.6.1

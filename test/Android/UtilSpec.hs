@@ -22,6 +22,9 @@ defaultAndroidTestConfigs =
   , "androidTestApiDependenciesMetadata"
   , "debugAndroidTestImplementationDependenciesMetadata"
   , "releaseUnitTestImplementationDependenciesMetadata"
+  , "debugUnitTestAnnotationProcessorClasspath"
+  , "debugUnitTestCompileClasspath"
+  , "debugUnitTestRuntimeClasspath"
   ]
 
 defaultNonDevAndTestConfigs :: [Text]
