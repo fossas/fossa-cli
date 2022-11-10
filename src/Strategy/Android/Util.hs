@@ -71,7 +71,7 @@ isDefaultAndroidDevConfig config = config `elem` androidDefaultConfigs
 
 isDefaultAndroidTestConfig :: Text -> Bool
 isDefaultAndroidTestConfig config =
-  any (config `isPrefixedBy`) ["androidTest", "debugAndroidTest", "releaseUnitTest"]
+  any (config `isPrefixedBy`) ["androidTest", "debugAndroidTest", "releaseUnitTest", "debugUnitTest"]
     || (config `elem` androidDefaultConfigs)
   where
     isPrefixedBy :: Text -> Text -> Bool
@@ -83,11 +83,6 @@ isDefaultAndroidTestConfig config =
       , -- Metadata for test dependencies
         "testApiDependenciesMetadata"
       , "testCompileOnlyDependenciesMetadata"
-      , "debugUnitTestApiDependenciesMetadata"
-      , "debugUnitTestCompileOnlyDependenciesMetadata"
-      , "debugUnitTestImplementationDependenciesMetadata"
-      , "debugUnitTestIntransitiveDependenciesMetadata"
-      , "debugUnitTestRuntimeOnlyDependenciesMetadata"
       , -- For 'testDebug' sources
         "testDebugApiDependenciesMetadata"
       , "testDebugCompileOnlyDependenciesMetadata"
@@ -104,6 +99,4 @@ isDefaultAndroidTestConfig config =
       , "testReleaseIntransitiveDependenciesMetadata"
       , "testReleaseRuntimeOnlyDependenciesMetadata"
       , "testRuntimeOnlyDependenciesMetadata"
-      , -- Misc
-        "debugUnitTestAnnotationProcessorClasspath"
       ]
