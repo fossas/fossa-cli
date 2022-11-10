@@ -31,7 +31,7 @@ Supported dependency types:
 - `carthage` - Dependencies as specified by the [Carthage](https://github.com/Carthage/Carthage) package manager.
 - `composer` - Dependencies specified by the PHP package manager [Composer](https://getcomposer.org/), which are located on [Packagist](https://packagist.org/).
 - `cpan` - Dependencies located on the [CPAN package manager](https://www.cpan.org/).
-- `cran` - Dependencies located on the [CRAN](https://www.cran.org/) like repository.
+- `cran` - Dependencies located on the [CRAN](https://cran.r-project.org/) like repository.
 - `gem` - Dependencies which can be found at [RubyGems.org](https://rubygems.org/).
 - `git` - Github projects (which appear as dependencies in many package managers). Specified as the full github repository `https://github.com/fossas/fossa-cli`.
 - `go` - Go specific dependency. Many Go dependencies are located on Github, but there are some which look like the following `go.mongodb.org/mongo-driver` that have custom Go URLs.
