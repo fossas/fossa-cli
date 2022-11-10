@@ -1159,7 +1159,7 @@ vsiAddFilesToScan apiOpts scanID files = fossaReq $ do
   pure ()
   where
     normalizeFiles :: [(Path Rel File, Fingerprint.Combined)] -> [(FilePath, Fingerprint.Combined)]
-    normalizeFiles = fmap normalizeFile
+    normalizeFiles = map normalizeFile
 
     normalizeFile :: (Path Rel File, Fingerprint.Combined) -> (FilePath, Fingerprint.Combined)
     normalizeFile (path, fp) = (normalizePath path, fp)
