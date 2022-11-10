@@ -88,8 +88,9 @@ import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Maybe (catMaybes, fromMaybe)
-import Data.String.Conversion (decodeUtf8, toStrict, toText)
+import Data.String.Conversion (decodeUtf8, toStrict, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Word (Word64, Word8)
@@ -151,6 +152,7 @@ import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
 import Network.HTTP.Types qualified as HTTP
 import Parse.XML (FromXML (..), child, parseXML, xmlErrorPretty)
 import Path (File, Path, Rel)
+import Path qualified
 import Srclib.Types (
   LicenseSourceUnit,
   Locator (..),
@@ -158,6 +160,7 @@ import Srclib.Types (
   parseLocator,
   renderLocator,
  )
+import System.FilePath (pathSeparator, splitDirectories)
 import Text.URI qualified as URI
 
 -- | Represents error emitted via FOSSA instance.
@@ -1136,7 +1139,7 @@ vsiCreateScan apiOpts ProjectRevision{..} = fossaReq $ do
   body <- responseBody <$> req POST (vsiCreateScanEndpoint baseUrl) (ReqBodyJsonCompat reqBody) jsonResponse baseOpts
   pure $ unVSICreateScanResponseBody body
 
-newtype VSIAddFilesToScanRequestBody = VSIAddFilesToScanRequestBody {vsiAddFilesToScanRequestBodyFiles :: Map (Path Rel File) Fingerprint.Combined}
+newtype VSIAddFilesToScanRequestBody = VSIAddFilesToScanRequestBody {vsiAddFilesToScanRequestBodyFiles :: Map FilePath Fingerprint.Combined}
 
 instance ToJSON VSIAddFilesToScanRequestBody where
   toJSON VSIAddFilesToScanRequestBody{..} = object ["ScanData" .= vsiAddFilesToScanRequestBodyFiles]
@@ -1148,10 +1151,23 @@ vsiAddFilesToScan :: (Has (Lift IO) sig m, Has Diagnostics sig m) => ApiOpts -> 
 vsiAddFilesToScan apiOpts scanID files = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let body = VSIAddFilesToScanRequestBody files
+  -- This is in the API layer because it's an implementation detail of the API.
+  -- The API expects all file paths to be normalized to forward slashes.
+  let normalized = Map.fromList . normalizeFiles $ Map.toList files
+  let body = VSIAddFilesToScanRequestBody normalized
   _ <- req POST (vsiAddFilesToScanEndpoint baseUrl scanID) (ReqBodyJsonCompat body) ignoreResponse baseOpts
 
   pure ()
+  where
+    normalizeFiles :: [(Path Rel File, Fingerprint.Combined)] -> [(FilePath, Fingerprint.Combined)]
+    normalizeFiles = fmap normalizeFile
+
+    normalizeFile :: (Path Rel File, Fingerprint.Combined) -> (FilePath, Fingerprint.Combined)
+    normalizeFile (path, fp) = (normalizePath path, fp)
+
+    normalizePath :: Path Rel File -> FilePath
+    normalizePath input | pathSeparator == '/' = Path.toFilePath input
+    normalizePath input = toString . Text.intercalate "/" $ toText <$> splitDirectories (Path.toFilePath input)
 
 -- | The 'vsiCompleteScanFilePath' is an absolute path denoting what portion of the scan should be considered complete.
 -- In this path structure, '/' means "the root of the scan".
