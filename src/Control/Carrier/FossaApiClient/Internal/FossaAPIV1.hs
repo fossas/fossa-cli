@@ -151,8 +151,7 @@ import Network.HTTP.Req (
 import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
 import Network.HTTP.Types qualified as HTTP
 import Parse.XML (FromXML (..), child, parseXML, xmlErrorPretty)
-import Path (File, Path, Rel)
-import Path qualified
+import Path (File, Path, Rel, toFilePath)
 import Srclib.Types (
   LicenseSourceUnit,
   Locator (..),
@@ -1166,8 +1165,8 @@ vsiAddFilesToScan apiOpts scanID files = fossaReq $ do
     normalizeFile (path, fp) = (normalizePath path, fp)
 
     normalizePath :: Path Rel File -> FilePath
-    normalizePath input | pathSeparator == '/' = Path.toFilePath input
-    normalizePath input = toString . Text.intercalate "/" $ toText <$> splitDirectories (Path.toFilePath input)
+    normalizePath input | pathSeparator == '/' = toFilePath input
+    normalizePath input = toString . Text.intercalate "/" $ toText <$> splitDirectories (toFilePath input)
 
 -- | The 'vsiCompleteScanFilePath' is an absolute path denoting what portion of the scan should be considered complete.
 -- In this path structure, '/' means "the root of the scan".
