@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.6.3
+
+Gradle: Considers dependencies from `debugUnitTest*` configurations to be unused. ([#1097](https://github.com/fossas/fossa-cli/pull/1097))
+
 ## v3.6.2
 
 - Container Scanning: Fixes a bug where tar entry were not normalized within nested layer tar. [#1095](https://github.com/fossas/fossa-cli/pull/1095)
