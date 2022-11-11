@@ -1,7 +1,8 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.6.4
 
+- C/C++: Fixes `--detect-vendored` on Windows. ([#1096](https://github.com/fossas/fossa-cli/pull/1096))
 - Uses an ISO timestamp for the revision if no better revision can be inferred ([#1091](https://github.com/fossas/fossa-cli/pull/1091)).
 
 ## v3.6.3
