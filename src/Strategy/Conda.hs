@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+
 module Strategy.Conda (
   discover,
 ) where

@@ -1,16 +1,15 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Strategy.Conda.CondaEnvCreate
-  ( analyze,
-    buildGraph,
-    CondaEnvCreateOut (..),
-    CondaEnvDep (..),
-    -- exposed for testing
-    parseCondaEnvDep,
-    parseEnvCreateDeps,
-  )
-where
+module Strategy.Conda.CondaEnvCreate (
+  analyze,
+  buildGraph,
+  CondaEnvCreateOut (..),
+  CondaEnvDep (..),
+  -- exposed for testing
+  parseCondaEnvDep,
+  parseEnvCreateDeps,
+) where
 
 import Control.Carrier.Diagnostics (Diagnostics, Has, warn)
 import Control.Monad.Combinators (some)
@@ -26,11 +25,11 @@ import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson)
 import Graphing (Graphing, fromList)
 import Path (Abs, Dir, File, Path)
 import Text.Megaparsec (Parsec, chunk, errorBundlePretty, parse, single, takeWhile1P, try)
-import Types
-  ( DepType (CondaType),
-    Dependency (..),
-    VerConstraint (CEq),
-  )
+import Types (
+  DepType (CondaType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
 
 -- conda env create --json --file <filename.yml> --dry-run --force
 -- runs conda and mocks the creation of an environment based on environment.yml.
@@ -38,36 +37,36 @@ import Types
 condaEnvCmd :: Path Abs File -> Command
 condaEnvCmd environmentYml =
   Command
-    { cmdName = "conda",
-      cmdArgs =
-        [ "env",
-          "create",
-          "--json",
-          "--file",
-          toText environmentYml,
-          "--dry-run",
-          "--force"
-        ],
-      cmdAllowErr = Never
+    { cmdName = "conda"
+    , cmdArgs =
+        [ "env"
+        , "create"
+        , "--json"
+        , "--file"
+        , toText environmentYml
+        , "--dry-run"
+        , "--force"
+        ]
+    , cmdAllowErr = Never
     }
 
 buildGraph :: [CondaEnvDep] -> Graphing Dependency
 buildGraph deps = Graphing.fromList (map toDependency deps)
   where
     toDependency :: CondaEnvDep -> Dependency
-    toDependency CondaEnvDep {..} =
+    toDependency CondaEnvDep{..} =
       Dependency
-        { dependencyType = CondaType,
-          dependencyName = "'" <> channel <> "':" <> platform <> ":" <> name,
-          dependencyVersion = Just $ CEq version,
-          dependencyLocations = [],
-          dependencyEnvironments = mempty,
-          dependencyTags = Map.empty
+        { dependencyType = CondaType
+        , dependencyName = "'" <> channel <> "':" <> platform <> ":" <> name
+        , dependencyVersion = Just $ CEq version
+        , dependencyLocations = []
+        , dependencyEnvironments = mempty
+        , dependencyTags = Map.empty
         }
 
 analyze ::
-  ( Has Exec sig m,
-    Has Diagnostics sig m
+  ( Has Exec sig m
+  , Has Diagnostics sig m
   ) =>
   Path Abs Dir ->
   Path Abs File ->
@@ -76,7 +75,7 @@ analyze dir file = do
   buildGraph <$> (parseEnvCreateDeps =<< execJson @CondaEnvCreateOut dir (condaEnvCmd file))
 
 parseEnvCreateDeps :: (Monad m, Has Diagnostics sig m) => CondaEnvCreateOut -> m [CondaEnvDep]
-parseEnvCreateDeps CondaEnvCreateOut {dependencies = deps} = do
+parseEnvCreateDeps CondaEnvCreateOut{dependencies = deps} = do
   let (lefts, rights) = partitionEithers . map (parse parseCondaEnvDep "") $ deps
   traverse_ (warn . errorBundlePretty) lefts
   pure rights
@@ -85,10 +84,10 @@ newtype CondaEnvCreateOut = CondaEnvCreateOut {dependencies :: [Text]}
   deriving (Eq, Ord, Show)
 
 data CondaEnvDep = CondaEnvDep
-  { channel :: Text,
-    platform :: Text,
-    name :: Text,
-    version :: Text
+  { channel :: Text
+  , platform :: Text
+  , name :: Text
+  , version :: Text
   }
   deriving (Eq, Ord, Show)
 
@@ -96,7 +95,7 @@ instance FromJSON CondaEnvCreateOut where
   parseJSON = withObject "CondaEnvOutput" $ \obj ->
     CondaEnvCreateOut
       <$> obj
-      .: "dependencies"
+        .: "dependencies"
 
 type Parser = Parsec Void Text
 
