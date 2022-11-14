@@ -1,5 +1,10 @@
 # FOSSA CLI Changelog
 
+## v3.6.6
+
+- Conda: Change dynamic strategy to simulate building an environment from `environment.yml` instead of reading from the currently active environment. ([#1099](https://github.com/fossas/fossa-cli/pull/1099))
+- Added breadcrumb to main help output indicating that subcommands have additional options. ([#1106](https://github.com/fossas/fossa-cli/pull/1106))
+
 ## v3.6.5
 
 - `fossa test`: deprecates `--json` flag in favor of `--format json` option. ([#1109](https://github.com/fossas/fossa-cli/pull/1109))
