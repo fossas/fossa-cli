@@ -174,11 +174,11 @@ data Simple e m a where
 sendSimple :: Has (Simple eff) sig m => eff a -> m a
 sendSimple = send . Simple
 
--- | Invoke an effect constructor
+-- | Invoke an effect constructor of two arguments
 sendSimple2 :: Has (Simple eff) sig m => (a -> b -> eff c) -> a -> b -> m c
 sendSimple2 constructor arg = send . Simple . constructor arg
 
--- | Invoke an effect constructor
+-- | Invoke an effect constructor of three arguments
 sendSimple3 :: Has (Simple eff) sig m => (a -> b -> c -> eff d) -> a -> b -> c -> m d
 sendSimple3 constructor arg1 arg2 = send . Simple . constructor arg1 arg2
 
