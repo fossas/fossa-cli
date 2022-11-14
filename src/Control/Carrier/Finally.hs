@@ -15,14 +15,13 @@ import Control.Carrier.Reader
 import Control.Effect.Exception (finally)
 import Control.Effect.Finally as X
 import Control.Effect.Lift
+import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Trans
+import Control.Monad.IO.Unlift (MonadUnliftIO)
+import Control.Monad.Trans (MonadTrans (..))
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.IORef
-import Prelude
-import Control.Monad.IO.Unlift (MonadUnliftIO)
-import Control.Monad.Except (MonadError (..))
 
 newtype FinallyC m a = FinallyC {runFinallyC :: ReaderC (IORef [FinallyC m ()]) m a}
   deriving (Functor, Applicative, Monad, MonadIO, MonadUnliftIO)

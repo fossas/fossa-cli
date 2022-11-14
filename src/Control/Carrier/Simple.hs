@@ -125,9 +125,9 @@ import Control.Algebra as X
 import Control.Applicative
 import Control.Carrier.Reader
 import Control.Carrier.State.Strict
-import Control.Monad.Trans
 import Control.Monad.Except (MonadError (..))
-import Conduit (MonadUnliftIO)
+import Control.Monad.IO.Unlift (MonadUnliftIO)
+import Control.Monad.Trans
 
 ---------- The Simple effect
 
@@ -170,7 +170,7 @@ import Conduit (MonadUnliftIO)
 data Simple e m a where
   Simple :: e a -> Simple e m a
 
--- | Invoke an effect constructor
+-- | Invoke an effect constructor. Can be composed with constructors of one argument.
 sendSimple :: Has (Simple eff) sig m => eff a -> m a
 sendSimple = send . Simple
 
