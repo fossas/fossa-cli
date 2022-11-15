@@ -1,5 +1,10 @@
 # FOSSA CLI Changelog
 
+## v3.6.5
+
+Resolves an issue where UPX compression on binary plugins inside the CLI can cause segmentation faults on macOS. ([#1104](https://github.com/fossas/fossa-cli/pull/1104)).<br>
+Builds past this version no longer use UPX to compress binary plugins on macOS, and consequently macOS binaries are expected to be slightly larger.
+
 ## v3.6.4
 
 - C/C++: Fixes `--detect-vendored` on Windows. ([#1096](https://github.com/fossas/fossa-cli/pull/1096))
