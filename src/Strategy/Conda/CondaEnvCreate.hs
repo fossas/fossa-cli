@@ -102,6 +102,9 @@ type Parser = Parsec Void Text
 -- Parses a dep specification from a string like the following:
 --   "conda-forge/osx-64::bzip2==1.0.8=h0d85af4_4"
 --   "pkgs/main/osx-64::libgfortran5==11.3.0=h082f757_25"
+-- the form being:
+-- <channel>/<platform>::<package name>==<package version>=<build number>
+-- Currently the build number isn't used for anything so it isn't parsed.
 parseCondaEnvDep :: Parser CondaEnvDep
 parseCondaEnvDep =
   CondaEnvDep
@@ -115,6 +118,7 @@ parseCondaEnvDep =
     -- Parse '<str>/'.
     -- If it finds '<str>:', that is the signal that there are no remaining channel components.
     -- Don't consume '<str>:' and fail in that case.
+    -- This is important for knowing where the channel string ends and the platform one begins.
     parseChannelComponent :: Parser Text
     parseChannelComponent = try $ takeWhile1P (Just "channel") (`notElem` ['/', ':']) <* single '/'
 
