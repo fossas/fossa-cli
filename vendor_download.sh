@@ -34,10 +34,12 @@ mkdir -p vendor-bins
 ASSET_POSTFIX=""
 BASIS_ASSET_POSTFIX=""
 OS_WINDOWS=false
+OS_DARWIN=false
 case "$(uname -s)" in
   Darwin)
     ASSET_POSTFIX="darwin"
     BASIS_ASSET_POSTFIX="darwin-amd64"
+    OS_DARWIN=true
     ;;
 
   Linux)
@@ -119,7 +121,11 @@ chmod +x vendor-bins/*
 
 echo "Compressing binaries"
 xz vendor-bins/index.gob
+if [[ $OS_DARWIN ]]; then
+echo "Skipping UPX on macOS as it leads to segfaults on some versions of macOS when used"
+else
 find vendor-bins -type f -not -name '*.xz' | xargs upx || echo "WARN: 'upx' command not found, binaries will not be compressed"
+fi
 
 echo "Vendored binaries are ready for use"
 ls -lh vendor-bins/
