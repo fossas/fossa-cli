@@ -1,0 +1,18 @@
+name: Issue Autoresponse
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  auto-response:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: derekprior/add-autoresponse@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        respondableId: ${{ github.event.issue.node_id }}
+        response: "Thank you ${{ github.event.issue.user.login }} creating this issue. If this is in regards to a defect, product question or feature request: you should use our support portal at https://support.fossa.com to file a request, as you would receive more immediate support."
+        author: ${{ github.event.issue.user.login }}
