@@ -134,6 +134,7 @@ jobs:
         find . -type f -path '*/pathfinder/pathfinder' -exec cp {} release \;
 
     - name: Strip binaries
+      if: ${{ !contains(matrix.os, 'macos') }}
       run: |
         strip release/*
 
