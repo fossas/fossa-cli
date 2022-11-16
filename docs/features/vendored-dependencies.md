@@ -118,13 +118,13 @@ A "CLI license scan" inspects your code for licensing on the local system within
 
 You can change the scan method by using the `--force-vendored-dependency-scan-method` flag when invoking the CLI, or by setting the `vendoredDependencies.scanMethod` field in your `.fossa.yml` file. See the [.fossa.yml documentation](https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-yml.md) for details.
 
-## Forcing rescans
+## Performance
 
-If you are scanning a revision that has already been scanned by FOSSA, then by default we will not rescan that dependency. A revision has been scanned by FOSSA if you or someone else from your organization has previously analyzed a dependency with the same name and version in the `vendored-dependencies` field in a `fossa-deps.yml` file.
+The FOSSA service caches the results of a vendored dependency by the combination of its `(name, version)` fields.
+Due to this caching setup, it is normal for the first analysis to take some time, especially for larger projects, but future analysis of dependencies with the same information should be fast.
 
-Avoiding rescans speeds up your CI scans and avoids unnecessary work.
+If `version` is not specified, FOSSA computes a version based on the contents specified by `path`; this means that if the contents have not changed then the results are reused.
 
-However, if you have made a change to your code and do not want to change the version provided, you can force a rescan by using the `--force-vendored-dependency-rescans` flag or setting the `vendoredDependencies.forceRescans` field to true in your `.fossa.yml` file.
-
-If you do not provide a version for the vendored dependency, then we generate a version by calculating an MD5 hash of the contents of the vendored dependency. Any changes to your code will be picked up as a new version and there is typically no need to force a rescan.
-
+In the event caching is causing problems, FOSSA can be made to rescan this kind of dependency: 
+- Run `fossa analyze` with the `--force-vendored-dependency-rescans` flag, or
+- Set `vendoredDependencies.forceRescans` to `true` in `.fossa.yml` at the root of the project.
