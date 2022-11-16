@@ -166,6 +166,10 @@ If `version` is not provided, the system assumes the version is "latest", and ca
 
 For dependency types that require `arch`, `os`, and `osVersion` attributes, these fields additionally form part of the cache tuple.
 
+In the event caching is causing problems, FOSSA can be made to rebuild this kind of dependency: 
+Click the dependency in the UI and then click "Reanalyze".
+This button enqueues a background job to rebuild the dependency, which should resolve after a few minutes.
+
 ### Custom dependencies
 
 `custom-dependencies` do not require analysis by the FOSSA backend and are therefore not cached.
@@ -173,3 +177,7 @@ For dependency types that require `arch`, `os`, and `osVersion` attributes, thes
 ### Remote dependencies
 
 `remote-dependencies` are cached by their `(name, url, version)` tuple, which are all required fields.
+
+In the event caching is causing problems, FOSSA can be made to rebuild this kind of dependency: 
+Click the dependency in the UI and then click "Reanalyze".
+This button enqueues a background job to rebuild the dependency, which should resolve after a few minutes.
