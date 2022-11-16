@@ -25,6 +25,7 @@ import Options.Applicative (
   ParserPrefs,
   command,
   customExecParser,
+  footer,
   fullDesc,
   header,
   help,
@@ -58,7 +59,10 @@ versionOpt =
       [long "version", short 'V', help "show version information and exit"]
 
 progData :: InfoMod (IO ())
-progData = fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"
+progData =
+  fullDesc
+    <> header "fossa-cli - Flexible, performant dependency analysis"
+    <> footer "Subcommands have additional options, run 'fossa COMMAND -h' for more details"
 
 subcommands :: Parser (IO ())
 subcommands = public <|> private
