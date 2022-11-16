@@ -153,3 +153,23 @@ remote-dependencies:
     description: Provides foo and a helpful interface around foo-like tasks.
     homepage: https://www.foowrapper-home.com
 ```
+
+## Performance
+
+The FOSSA service caches the results of dependency analysis by different keys depending on the type of remote dependency specified (explained below).
+Due to this caching setup, it is normal for the first analysis to take some time, especially for larger projects, but future analysis of dependencies with the cache keys unchanged should be fast.
+
+### Referenced dependencies
+
+Most `referenced-dependencies` are cached by their `(type, name, version)` tuple.
+If `version` is not provided, the system assumes the version is "latest", and caching is usually not applied.
+
+For dependency types that require `arch`, `os`, and `osVersion` attributes, these fields additionally form part of the cache tuple.
+
+### Custom dependencies
+
+`custom-dependencies` do not require analysis by the FOSSA backend and are therefore not cached.
+
+### Remote dependencies
+
+`remote-dependencies` are cached by their `(name, url, version)` tuple, which are all required fields.
