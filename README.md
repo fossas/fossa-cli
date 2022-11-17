@@ -5,7 +5,8 @@
 
 [![Build](https://github.com/fossas/fossa-cli/actions/workflows/build-all.yml/badge.svg)](https://github.com/fossas/fossa-cli/actions/workflows/build.yml)
 [![Dependency scan](https://github.com/fossas/fossa-cli/actions/workflows/dependency-scan.yml/badge.svg)](https://github.com/fossas/fossa-cli/actions/workflows/dependency-scan.yml) <!-- markdown-link-check-disable-next-line -->
-[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli.svg?type=shield)](https://app.fossa.com/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli?ref=badge_shield) <!-- markdown-link-check-disable-next-line -->
+[![FOSSA License Status](https://app.fossa.com/api/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli.svg?type=shield)](https://app.fossa.com/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli?ref=badge_shield) <!-- markdown-link-check-disable-next-line -->
+[![FOSSA Security Status](https://app.fossa.com/api/projects/custom%2B1%2Fgithub.com%2Ffossas%2Ffossa-cli.svg?type=shield&issueType=security)](https://app.fossa.com/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli?ref=badge_shield) <!-- markdown-link-check-disable-next-line -->
 [![FOSSA Downloads](https://img.shields.io/github/downloads/fossas/fossa-cli/total.svg)](https://github.com/fossas/fossa-cli/releases)
 
 
