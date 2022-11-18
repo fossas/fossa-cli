@@ -189,7 +189,7 @@ mergeOpts maybeConfig envvars TestCliOpts{..} = do
     logWarn $
       vsep
         [ "DEPRECATION NOTICE"
-        , "=================="
+        , "========================"
         , "--json flag is now deprecated for `fossa test` command."
         , ""
         , "Please use: "

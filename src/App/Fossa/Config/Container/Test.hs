@@ -109,7 +109,7 @@ mergeOpts cfgfile envvars ContainerTestOptions{..} = do
     logWarn $
       vsep
         [ "DEPRECATION NOTICE"
-        , "=================="
+        , "========================"
         , "--json flag is now deprecated for `fossa container test` command."
         , ""
         , "Please use: "
