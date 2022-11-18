@@ -11,7 +11,7 @@ import App.Fossa.API.BuildWait (
  )
 import App.Fossa.Config.Container (
   ContainerTestConfig (ContainerTestConfig, timeoutDuration),
-  OutputFormat (TestOutputJson, TestOutputPretty),
+  TestOutputFormat (TestOutputJson, TestOutputPretty),
  )
 import App.Fossa.Config.Container qualified as Config
 import App.Fossa.Container.Scan (scanImageNoAnalysis)

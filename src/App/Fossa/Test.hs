@@ -10,9 +10,9 @@ import App.Fossa.API.BuildWait (
  )
 import App.Fossa.Config.Test (
   DiffRevision (..),
-  OutputFormat (TestOutputJson, TestOutputPretty),
   TestCliOpts,
   TestConfig (diffRevision),
+  TestOutputFormat (TestOutputJson, TestOutputPretty),
  )
 import App.Fossa.Config.Test qualified as Config
 import App.Fossa.Subcommand (SubCommand)
