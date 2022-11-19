@@ -111,9 +111,11 @@
 -- @
 module Control.Carrier.Simple (
   Simple (..),
-  sendSimple,
   SimpleC (..),
   SimpleStateC,
+  sendSimple,
+  sendSimple2,
+  sendSimple3,
   interpret,
   interpretState,
   module X,
@@ -123,6 +125,8 @@ import Control.Algebra as X
 import Control.Applicative
 import Control.Carrier.Reader
 import Control.Carrier.State.Strict
+import Control.Monad.Except (MonadError (..))
+import Control.Monad.IO.Unlift (MonadUnliftIO)
 import Control.Monad.Trans
 
 ---------- The Simple effect
@@ -166,9 +170,17 @@ import Control.Monad.Trans
 data Simple e m a where
   Simple :: e a -> Simple e m a
 
--- | Invoke an effect constructor
+-- | Invoke an effect constructor. Can be composed with constructors of one argument.
 sendSimple :: Has (Simple eff) sig m => eff a -> m a
 sendSimple = send . Simple
+
+-- | Invoke an effect constructor of two arguments
+sendSimple2 :: Has (Simple eff) sig m => (a -> b -> eff c) -> a -> b -> m c
+sendSimple2 constructor arg = send . Simple . constructor arg
+
+-- | Invoke an effect constructor of three arguments
+sendSimple3 :: Has (Simple eff) sig m => (a -> b -> c -> eff d) -> a -> b -> c -> m d
+sendSimple3 constructor arg1 arg2 = send . Simple . constructor arg1 arg2
 
 ---------- Direct interpretation
 
@@ -192,7 +204,7 @@ interpretState s f = runState s . interpret f
 
 -- | A carrier for arbitrary "first-order" effects
 newtype SimpleC eff m a = SimpleC {runSimpleC :: ReaderC (HandlerFor eff m) m a}
-  deriving (Functor, Applicative, Alternative, Monad, MonadIO)
+  deriving (Functor, Applicative, Alternative, Monad, MonadIO, MonadUnliftIO)
 
 -- | A wrapper for an effect handler function
 data HandlerFor eff m where
@@ -200,6 +212,12 @@ data HandlerFor eff m where
 
 instance MonadTrans (SimpleC eff) where
   lift = SimpleC . lift
+
+instance (MonadError e m, Algebra sig m) => MonadError e (SimpleC eff m) where
+  throwError = lift . throwError
+  catchError action handler = do
+    (HandlerFor f) <- SimpleC ask
+    lift $ catchError (interpret f action) (interpret f . handler)
 
 instance Algebra sig m => Algebra (Simple eff :+: sig) (SimpleC eff m) where
   alg hdl sig ctx = SimpleC $ do
