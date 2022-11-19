@@ -47,7 +47,7 @@ data NoVendoredDeps = NoVendoredDeps
 instance ToDiagnostic MissingFossaDepsFile where
   renderDiagnostic _ =
     vsep
-      [ "'fossa experimental-license-scan fossa-deps' requires pointing to a directory with a fossa-deps file."
+      [ "'fossa license-scan fossa-deps' requires pointing to a directory with a fossa-deps file."
       , "The file can have one of the extensions: .yaml .yml .json"
       ]
 
