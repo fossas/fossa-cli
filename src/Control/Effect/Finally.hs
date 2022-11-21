@@ -12,6 +12,8 @@ module Control.Effect.Finally (
 import Control.Algebra as X
 import Prelude
 
+-- | The `Finally` effect runs finalizer actions at the end of a scope. These
+-- actions are run even if an exception occurs during the scope.
 data Finally m k where
   OnExit :: m a -> Finally m ()
 
