@@ -1,8 +1,10 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.6.5
 
-- Added breadcrumb to main help output indicating that subcommands have additional options. ([#1106](https://github.com/fossas/fossa-cli/pull/1106))
+- `fossa test`: deprecates `--json` flag in favor of `--format json` option. ([#1109](https://github.com/fossas/fossa-cli/pull/1109))
+- `fossa container test`: deprecates `--json` flag in favor of `--format json` option. ([#1109](https://github.com/fossas/fossa-cli/pull/1109))
+- UX: Added breadcrumb to main help output indicating that subcommands have additional options. ([#1106](https://github.com/fossas/fossa-cli/pull/1106))
 
 ## v3.6.4
 

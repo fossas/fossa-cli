@@ -1,7 +1,7 @@
 module App.Fossa.Config.Container (
   mkSubCommand,
   ImageText (..),
-  OutputFormat (..),
+  TestOutputFormat (..),
   ContainerCommand,
   ContainerScanConfig (..),
   ContainerAnalyzeConfig (..),
@@ -20,7 +20,7 @@ import App.Fossa.Config.Container.Analyze qualified as Analyze
 import App.Fossa.Config.Container.Common (ImageText (..))
 import App.Fossa.Config.Container.ListTargets (ContainerListTargetsConfig, ContainerListTargetsOptions)
 import App.Fossa.Config.Container.ListTargets qualified as ListTargets
-import App.Fossa.Config.Container.Test (ContainerTestConfig, ContainerTestOptions (..), OutputFormat (..))
+import App.Fossa.Config.Container.Test (ContainerTestConfig, ContainerTestOptions (..), TestOutputFormat (..))
 import App.Fossa.Config.Container.Test qualified as Test
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
@@ -45,6 +45,7 @@ mkSubCommand = SubCommand "container" containerCmdInfo parser loadConfig mergeOp
 
 mergeOpts ::
   ( Has Diagnostics sig m
+  , Has Logger sig m
   ) =>
   Maybe ConfigFile ->
   EnvVars ->
