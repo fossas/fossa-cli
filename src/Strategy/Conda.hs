@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Strategy.Conda (
   discover,
 ) where
@@ -22,7 +24,7 @@ import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
-import Strategy.Conda.CondaList qualified as CondaList
+import Strategy.Conda.CondaEnvCreate qualified as CondaEnvCreate
 import Strategy.Conda.EnvironmentYml qualified as EnvironmentYml
 import Types (
   DependencyResults (..),
@@ -67,21 +69,21 @@ mkProject project =
     , projectData = project
     }
 
--- Prefer analyzeCondaList over analyzeEnvironmentYml, results shoudln't be combined, it's either/or.
+-- Prefer analyzeCondaEnvCreate over analyzeEnvironmentYml, results shoudln't be combined, it's either/or.
 -- There might be a dep with a version spec in an environment.yml file: i.e. conda+foo$1.2.*, and perhaps
--- the same dep resolved to a known version in the users virtual environment: i.e. conda+foo$1.2.4 (we get that form conda list).
+-- the same dep resolved to a known version in the users virtual environment: i.e. conda+'conda-forge':foo$1.2.4 (we get that from conda env create).
 -- If we combined the results then we would include both of those deps in the result, which is not correct behavior.
 getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => CondaProject -> m DependencyResults
-getDeps project = analyzeCondaList project <||> analyzeEnvironmentYml project
+getDeps project = analyzeCondaEnvCreate project <||> analyzeEnvironmentYml project
 
-analyzeCondaList :: (Has Exec sig m, Has Diagnostics sig m) => CondaProject -> m DependencyResults
-analyzeCondaList project = do
-  graph <- CondaList.analyze . condaDir $ project
+analyzeCondaEnvCreate :: (Has Exec sig m, Has Diagnostics sig m) => CondaProject -> m DependencyResults
+analyzeCondaEnvCreate CondaProject{..} = do
+  graph <- CondaEnvCreate.analyze condaDir condaEnvironmentYml
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = Complete
-      , dependencyManifestFiles = [condaEnvironmentYml project]
+      , dependencyManifestFiles = [condaEnvironmentYml]
       }
 
 analyzeEnvironmentYml :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => CondaProject -> m DependencyResults

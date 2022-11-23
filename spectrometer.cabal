@@ -353,7 +353,7 @@ library
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer
     Strategy.Conda
-    Strategy.Conda.CondaList
+    Strategy.Conda.CondaEnvCreate
     Strategy.Conda.EnvironmentYml
     Strategy.Dart.Errors
     Strategy.Dart.PubDeps
@@ -524,7 +524,7 @@ test-suite unit-tests
     Cocoapods.PodfileSpec
     Composer.ComposerJsonSpec
     Composer.ComposerLockSpec
-    Conda.CondaListSpec
+    Conda.CondaEnvCreateSpec
     Conda.EnvironmentYmlSpec
     Container.Docker.CredentialsSpec
     Container.Docker.ImageJsonSpec
