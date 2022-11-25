@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Emit a warning if the `--experimental-native-license-scan` flag is used
+
 ## v3.6.6
 
 - Conda: Change dynamic strategy to simulate building an environment from `environment.yml` instead of reading from the currently active environment. ([#1099](https://github.com/fossas/fossa-cli/pull/1099))
@@ -52,16 +56,16 @@ Gradle: Considers dependencies from `debugUnitTest*` configurations to be unused
 
 _Notice:_
 
-- Now, container scanning analyzes projects for applications (`npm`, `pip`, etc) dependencies. 
+- Now, container scanning analyzes projects for applications (`npm`, `pip`, etc) dependencies.
 - Now, container scanning can filter specific targets via target exclusions using [fossa configuration file](./docs/references/files/fossa-yml.md).
 - Now, `fossa-cli`'s windows binary can perform container scanning.
 - Now, container scanned projects will show origin path in FOSSA web UI.
 - Now, container scanned projects can target specific architecture via digest.
 
-You can use `--only-system-deps` flag to only scan for dependencies from `apk`, `dpkg`, `dpm`. 
+You can use `--only-system-deps` flag to only scan for dependencies from `apk`, `dpkg`, `dpm`.
 This will mimic behavior of older FOSSA CLI's container scanning (older than v3.5.0).
 
-Learn more: 
+Learn more:
 - [container scanner](./docs/references/subcommands/container/scanner.md)
 - [fossa container analyze](./docs/references/subcommands/container.md)
 
