@@ -83,7 +83,7 @@ import Discovery.Filters (AllFilters (AllFilters), comboExclude, comboInclude)
 import Effect.Exec (
   Exec,
  )
-import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn)
+import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn, vsep)
 import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
@@ -266,7 +266,6 @@ cliParser =
     <*> flagOpt JsonOutput (long "json" <> help "Output project metadata as json to the console. Useful for communicating with the FOSSA API")
     <*> flagOpt IncludeAll (long "include-unused-deps" <> help "Include all deps found, instead of filtering non-production deps.  Ignored by VSI.")
     <*> flagOpt NoDiscoveryExclusion (long "debug-no-discovery-exclusion" <> help "Ignore filters during discovery phase.  This is for debugging only and may be removed without warning." <> hidden)
-    -- AllowNativeLicenseScan is no longer used, but we're keeping it in so we don't cause scans to blow up for customers who are still using it
     <*> flagOpt AllowNativeLicenseScan (long "experimental-native-license-scan" <> hidden)
     <*> optional vendoredDependencyModeOpt
     <*> flagOpt ForceVendoredDependencyRescans (long "force-vendored-dependency-rescans" <> help "Force vendored dependencies to be rescanned even if the revision has been previously analyzed by FOSSA. This currently only works for CLI-side license scans.")
@@ -349,7 +348,24 @@ mergeOpts ::
   EnvVars ->
   AnalyzeCliOpts ->
   m AnalyzeConfig
-mergeOpts cfg env cliOpts =
+mergeOpts cfg env cliOpts = do
+  let experimentalNativeLicenseScanFlagUsed = fromFlag AllowNativeLicenseScan $ analyzeAllowNativeLicenseScan cliOpts
+  when experimentalNativeLicenseScanFlagUsed $ do
+    logWarn $
+      vsep
+        [ "DEPRECATION NOTICE"
+        , "========================"
+        , "The --experimental-native-license-scan flag is deprecated."
+        , ""
+        , "The functionality enabled by the flag, CLI-license-scans, is now the default method for scanning vendored-dependencies."
+        , ""
+        , "In rare cases, your organization may have made Archive Uploads the default method for scanning vendored-dependencies."
+        , ""
+        , "If you need to force CLI-license-scans on, you can use `--force-vendored-dependency-scan-method CLILicenseScan`."
+        , ""
+        , "In the future, usage of the --experimental-native-license-scan flag may result in fatal error."
+        ]
+
   if isJust $ monorepoAnalysisType $ monorepoAnalysisOpts cliOpts
     then Monorepo <$> mergeMonorepoOpts cfg env cliOpts
     else Standard <$> mergeStandardOpts cfg env cliOpts
