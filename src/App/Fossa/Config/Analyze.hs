@@ -360,10 +360,6 @@ mergeOpts cfg env cliOpts = do
         , ""
         , "The functionality enabled by the flag, CLI-license-scans, is now the default method for scanning vendored-dependencies."
         , ""
-        , "In rare cases, your organization may have made Archive Uploads the default method for scanning vendored-dependencies."
-        , ""
-        , "If you need to force CLI-license-scans on, you can use `--force-vendored-dependency-scan-method CLILicenseScan`."
-        , ""
         , "In the future, usage of the --experimental-native-license-scan flag may result in fatal error."
         ]
 
