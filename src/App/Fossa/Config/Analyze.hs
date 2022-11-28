@@ -2,7 +2,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Config.Analyze (
-  AllowNativeLicenseScan (..),
   AnalyzeCliOpts (..),
   AnalyzeConfig (..),
   BinaryDiscovery (..),
@@ -109,7 +108,7 @@ import System.Info qualified as SysInfo
 import Types (ArchiveUploadType (..), TargetFilter)
 
 -- CLI flags, for use with 'Data.Flag'
-data AllowNativeLicenseScan = AllowNativeLicenseScan deriving (Generic)
+data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan deriving (Generic)
 data ForceVendoredDependencyRescans = ForceVendoredDependencyRescans deriving (Generic)
 
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
@@ -174,7 +173,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeJsonOutput :: Flag JsonOutput
   , analyzeIncludeAllDeps :: Flag IncludeAll
   , analyzeNoDiscoveryExclusion :: Flag NoDiscoveryExclusion
-  , analyzeAllowNativeLicenseScan :: Flag AllowNativeLicenseScan
+  , analyzeDeprecatedAllowNativeLicenseScan :: Flag DeprecatedAllowNativeLicenseScan
   , analyzeForceVendoredDependencyMode :: Maybe ArchiveUploadType
   , analyzeForceVendoredDependencyRescans :: Flag ForceVendoredDependencyRescans
   , analyzeBranch :: Maybe Text
@@ -267,7 +266,7 @@ cliParser =
     <*> flagOpt IncludeAll (long "include-unused-deps" <> help "Include all deps found, instead of filtering non-production deps.  Ignored by VSI.")
     <*> flagOpt NoDiscoveryExclusion (long "debug-no-discovery-exclusion" <> help "Ignore filters during discovery phase.  This is for debugging only and may be removed without warning." <> hidden)
     -- AllowNativeLicenseScan is no longer used. We started emitting a warning if it was used in https://github.com/fossas/fossa-cli/pull/1113
-    <*> flagOpt AllowNativeLicenseScan (long "experimental-native-license-scan" <> hidden)
+    <*> flagOpt DeprecatedAllowNativeLicenseScan (long "experimental-native-license-scan" <> hidden)
     <*> optional vendoredDependencyModeOpt
     <*> flagOpt ForceVendoredDependencyRescans (long "force-vendored-dependency-rescans" <> help "Force vendored dependencies to be rescanned even if the revision has been previously analyzed by FOSSA. This currently only works for CLI-side license scans.")
     <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
@@ -350,7 +349,7 @@ mergeOpts ::
   AnalyzeCliOpts ->
   m AnalyzeConfig
 mergeOpts cfg env cliOpts = do
-  let experimentalNativeLicenseScanFlagUsed = fromFlag AllowNativeLicenseScan $ analyzeAllowNativeLicenseScan cliOpts
+  let experimentalNativeLicenseScanFlagUsed = fromFlag DeprecatedAllowNativeLicenseScan $ analyzeDeprecatedAllowNativeLicenseScan cliOpts
   when experimentalNativeLicenseScanFlagUsed $ do
     logWarn $
       vsep
