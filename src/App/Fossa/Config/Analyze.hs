@@ -2,7 +2,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Config.Analyze (
-  AllowNativeLicenseScan (..),
   AnalyzeCliOpts (..),
   AnalyzeConfig (..),
   BinaryDiscovery (..),
@@ -83,7 +82,7 @@ import Discovery.Filters (AllFilters (AllFilters), comboExclude, comboInclude)
 import Effect.Exec (
   Exec,
  )
-import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn)
+import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn, vsep)
 import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
@@ -109,7 +108,7 @@ import System.Info qualified as SysInfo
 import Types (ArchiveUploadType (..), TargetFilter)
 
 -- CLI flags, for use with 'Data.Flag'
-data AllowNativeLicenseScan = AllowNativeLicenseScan deriving (Generic)
+data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan deriving (Generic)
 data ForceVendoredDependencyRescans = ForceVendoredDependencyRescans deriving (Generic)
 
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
@@ -174,7 +173,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeJsonOutput :: Flag JsonOutput
   , analyzeIncludeAllDeps :: Flag IncludeAll
   , analyzeNoDiscoveryExclusion :: Flag NoDiscoveryExclusion
-  , analyzeAllowNativeLicenseScan :: Flag AllowNativeLicenseScan
+  , analyzeDeprecatedAllowNativeLicenseScan :: Flag DeprecatedAllowNativeLicenseScan
   , analyzeForceVendoredDependencyMode :: Maybe ArchiveUploadType
   , analyzeForceVendoredDependencyRescans :: Flag ForceVendoredDependencyRescans
   , analyzeBranch :: Maybe Text
@@ -266,8 +265,8 @@ cliParser =
     <*> flagOpt JsonOutput (long "json" <> help "Output project metadata as json to the console. Useful for communicating with the FOSSA API")
     <*> flagOpt IncludeAll (long "include-unused-deps" <> help "Include all deps found, instead of filtering non-production deps.  Ignored by VSI.")
     <*> flagOpt NoDiscoveryExclusion (long "debug-no-discovery-exclusion" <> help "Ignore filters during discovery phase.  This is for debugging only and may be removed without warning." <> hidden)
-    -- AllowNativeLicenseScan is no longer used, but we're keeping it in so we don't cause scans to blow up for customers who are still using it
-    <*> flagOpt AllowNativeLicenseScan (long "experimental-native-license-scan" <> hidden)
+    -- AllowNativeLicenseScan is no longer used. We started emitting a warning if it was used in https://github.com/fossas/fossa-cli/pull/1113
+    <*> flagOpt DeprecatedAllowNativeLicenseScan (long "experimental-native-license-scan" <> hidden)
     <*> optional vendoredDependencyModeOpt
     <*> flagOpt ForceVendoredDependencyRescans (long "force-vendored-dependency-rescans" <> help "Force vendored dependencies to be rescanned even if the revision has been previously analyzed by FOSSA. This currently only works for CLI-side license scans.")
     <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
@@ -349,7 +348,20 @@ mergeOpts ::
   EnvVars ->
   AnalyzeCliOpts ->
   m AnalyzeConfig
-mergeOpts cfg env cliOpts =
+mergeOpts cfg env cliOpts = do
+  let experimentalNativeLicenseScanFlagUsed = fromFlag DeprecatedAllowNativeLicenseScan $ analyzeDeprecatedAllowNativeLicenseScan cliOpts
+  when experimentalNativeLicenseScanFlagUsed $ do
+    logWarn $
+      vsep
+        [ "DEPRECATION NOTICE"
+        , "========================"
+        , "The --experimental-native-license-scan flag is deprecated."
+        , ""
+        , "The functionality enabled by the flag, CLI-license-scans, is now the default method for scanning vendored-dependencies."
+        , ""
+        , "In the future, usage of the --experimental-native-license-scan flag may result in fatal error."
+        ]
+
   if isJust $ monorepoAnalysisType $ monorepoAnalysisOpts cliOpts
     then Monorepo <$> mergeMonorepoOpts cfg env cliOpts
     else Standard <$> mergeStandardOpts cfg env cliOpts

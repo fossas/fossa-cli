@@ -1,8 +1,9 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.6.7
 
 - Rename `--experimental-license-scan` to `--license-scan` (https://github.com/fossas/fossa-cli/pull/1110)
+- Emit a warning if the `--experimental-native-license-scan` flag is used
 
 ## v3.6.6
 
