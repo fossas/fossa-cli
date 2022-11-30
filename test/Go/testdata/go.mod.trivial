@@ -1,4 +1,4 @@
-module github.com/my/package
+module "github.com/my/package"
 
 require (
     github.com/pkg/one v1.0.0
