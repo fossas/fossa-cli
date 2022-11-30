@@ -29,7 +29,7 @@ genIssueRevisionSummary :: Gen IssueRevisionSummary
 genIssueRevisionSummary =
   IssueRevisionSummary
     <$> genIssueRevision
-    <*> (Gen.maybe $ Gen.list (Range.linear 0 100) genIssueRevisionTargets)
+    <*> Gen.maybe (Gen.list (Range.linear 0 100) genIssueRevisionTargets)
 
 genIssueRevision :: Gen IssueRevision
 genIssueRevision =
