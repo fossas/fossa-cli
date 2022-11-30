@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+
+## Unreleased
+- Go: Allow quotes module names in static analysis ([#1118](https://github.com/fossas/fossa-cli/pull/1118))
+
 ## v3.6.7
 
 - Rename `--experimental-license-scan` to `--license-scan` (https://github.com/fossas/fossa-cli/pull/1110)
