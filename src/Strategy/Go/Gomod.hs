@@ -287,6 +287,7 @@ gomodParser = do
     packageName :: Parser PackageName
     packageName = toText <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_'))
 
+    modulePath :: Parser Text
     modulePath =
       packageName
         <|> between (char '"') (char '"') packageName
