@@ -2,7 +2,7 @@ module Fossa.API.TypesSpec (spec) where
 
 import Data.Aeson (FromJSON, ToJSON, fromJSON, toJSON)
 import Data.Text (Text)
-import Fossa.API.Types (Issue (..), IssueRule (..), IssueType (..), Issues (..))
+import Fossa.API.Types (Issue (..), IssueRevision (..), IssueRevisionSummary (..), IssueRevisionTarget (..), IssueRule (..), IssueType (..), Issues (..))
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import Test.Hspec
@@ -23,6 +23,26 @@ genIssues =
     <$> Gen.int (Range.linear minBound maxBound)
     <*> Gen.list (Range.linear 0 100) genIssue
     <*> arbitraryText
+    <*> Gen.maybe genIssueRevisionSummary
+
+genIssueRevisionSummary :: Gen IssueRevisionSummary
+genIssueRevisionSummary =
+  IssueRevisionSummary
+    <$> genIssueRevision
+    <*> (Gen.maybe $ Gen.list (Range.linear 0 100) genIssueRevisionTargets)
+
+genIssueRevision :: Gen IssueRevision
+genIssueRevision =
+  IssueRevision
+    <$> arbitraryText
+    <*> arbitraryText
+    <*> Gen.maybe (Gen.bool)
+
+genIssueRevisionTargets :: Gen IssueRevisionTarget
+genIssueRevisionTargets =
+  IssueRevisionTarget
+    <$> arbitraryText
+    <*> Gen.list (Range.linear 0 5) arbitraryText
 
 genIssue :: Gen Issue
 genIssue =

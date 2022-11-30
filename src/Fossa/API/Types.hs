@@ -15,6 +15,9 @@ module Fossa.API.Types (
   IssueRule (..),
   IssueType (..),
   Issues (..),
+  IssueRevision (..),
+  IssueRevisionSummary (..),
+  IssueRevisionTarget (..),
   OrgId (..),
   Organization (..),
   Project (..),
@@ -43,12 +46,14 @@ import Data.Aeson (
   (.:?),
  )
 import Data.Coerce (coerce)
+import Data.List (sort)
 import Data.List.Extra ((!?))
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
+import Data.Ord (comparing)
 import Data.String.Conversion (encodeUtf8)
-import Data.Text (Text)
+import Data.Text (Text, toLower)
 import Data.Text qualified as Text
 import Network.HTTP.Req (
   Option,
@@ -182,8 +187,34 @@ data Issues = Issues
   { issuesCount :: Int
   , issuesIssues :: [Issue]
   , issuesStatus :: Text
+  , issuesSummary :: Maybe IssueRevisionSummary
   }
   deriving (Eq, Ord, Show)
+
+data IssueRevisionSummary = IssueRevisionSummary
+  { revision :: IssueRevision
+  , targets :: Maybe [IssueRevisionTarget]
+  }
+  deriving (Eq, Ord, Show)
+
+data IssueRevision = IssueRevision
+  { irProjectTitle :: Text
+  , irProjectRevision :: Text
+  , irIsPublic :: Maybe Bool
+  }
+  deriving (Eq, Ord, Show)
+
+data IssueRevisionTarget = IssueRevisionTarget
+  { irTargetType :: Text
+  , irTargetPaths :: [Text]
+  }
+  deriving (Eq, Show)
+
+instance Ord IssueRevisionTarget where
+  compare lhs rhs =
+    if (irTargetType lhs == irTargetType rhs)
+      then comparing irTargetPaths lhs rhs
+      else comparing irTargetType lhs rhs
 
 data IssueType
   = IssuePolicyConflict
@@ -224,6 +255,7 @@ instance FromJSON Issues where
       <$> obj .: "count"
       <*> obj .:? "issues" .!= []
       <*> obj .: "status"
+      <*> obj .:? "summary"
 
 instance ToJSON Issues where
   toJSON Issues{..} =
@@ -231,7 +263,48 @@ instance ToJSON Issues where
       [ "count" .= issuesCount
       , "issues" .= issuesIssues
       , "status" .= issuesStatus
+      , "summary" .= issuesSummary
       ]
+
+instance FromJSON IssueRevisionSummary where
+  parseJSON = withObject "IssueRevisionSummary" $ \obj ->
+    IssueRevisionSummary
+      <$> obj .: "revision"
+      <*> obj .: "targets"
+
+instance ToJSON IssueRevisionSummary where
+  toJSON IssueRevisionSummary{..} =
+    object
+      [ "revision" .= revision
+      , "targets" .= targets
+      ]
+instance ToJSON IssueRevisionTarget where
+  toJSON IssueRevisionTarget{..} =
+    object
+      [ "type" .= irTargetType
+      , "originPaths" .= irTargetPaths
+      ]
+
+instance ToJSON IssueRevision where
+  toJSON IssueRevision{..} =
+    object
+      [ "projectTitle" .= irProjectTitle
+      , "projectRevision" .= irProjectRevision
+      , "isPublic" .= irIsPublic
+      ]
+
+instance FromJSON IssueRevision where
+  parseJSON = withObject "IssueRevision" $ \obj ->
+    IssueRevision
+      <$> obj .: "projectTitle"
+      <*> obj .: "projectRevision"
+      <*> obj .:? "isPublic"
+
+instance FromJSON IssueRevisionTarget where
+  parseJSON = withObject "IssueRevisionTarget" $ \obj ->
+    IssueRevisionTarget
+      <$> obj .: "type"
+      <*> obj .: "originPaths"
 
 instance FromJSON Issue where
   parseJSON = withObject "Issue" $ \obj ->
@@ -398,17 +471,58 @@ renderedIssues issues = rendered
     renderSection issueType rawIssues =
       renderHeader issueType <> line <> vsep (map renderIssue rawIssues) <> line
 
+    renderedRevisionSummary :: Doc ann
+    renderedRevisionSummary = case issuesSummary issues of
+      Nothing -> mempty
+      Just summary ->
+        vsep
+          [ line
+          , headerLine
+          , "Tested Following Project:"
+          , headerLine
+          , line
+          , "Project Title: " <> pretty (irProjectTitle . revision $ summary)
+          , "Project Revision: " <> pretty (irProjectRevision . revision $ summary)
+          , "Project Visibility: " <> renderProjectVisibility (irIsPublic . revision $ summary)
+          , renderRevisionTargets (targets summary)
+          , line
+          ]
+
+    renderRevisionTargets :: Maybe [IssueRevisionTarget] -> Doc ann
+    renderRevisionTargets issueRevisionTargets = case issueRevisionTargets of
+      Nothing -> mempty
+      Just [] -> mempty
+      Just targets ->
+        vsep $
+          ["Project Targets:"]
+            <> map (\target -> "- " <> renderedTarget target) (sort targets)
+
+    renderProjectVisibility :: Maybe Bool -> Doc ann
+    renderProjectVisibility Nothing = "unknown"
+    renderProjectVisibility (Just True) = "public"
+    renderProjectVisibility (Just False) = "private"
+
+    renderedTarget :: IssueRevisionTarget -> Doc ann
+    renderedTarget issueRevisionTarget =
+      pretty (toLower $ irTargetType issueRevisionTarget)
+        <> ": "
+        <> pretty (irTargetPaths issueRevisionTarget)
+
     rendered :: Doc ann
     rendered =
-      vsep
-        [renderSection issueType rawIssues | (issueType, rawIssues) <- Map.toList issuesByType]
+      vsep $
+        [renderedRevisionSummary]
+          <> [renderSection issueType rawIssues | (issueType, rawIssues) <- Map.toList issuesByType]
+
+    headerLine :: Doc ann
+    headerLine = "========================================================================"
 
     renderHeader :: IssueType -> Doc ann
     renderHeader ty =
       vsep
-        [ "========================================================================"
+        [ headerLine
         , pretty $ renderIssueType ty
-        , "========================================================================"
+        , headerLine
         , hsep $
             map (fill padding) $ case ty of
               IssuePolicyConflict -> ["Dependency", "Revision", "License"]
