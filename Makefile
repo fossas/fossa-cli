@@ -60,6 +60,8 @@ install-dev: build
 
 check: check-fmt lint
 
+check-haskell: check-fmt-haskell lint-haskell
+
 fast-check: check-fmt-haskell fast-lint
 
 # Run any build scripts required for test data to be generated.
