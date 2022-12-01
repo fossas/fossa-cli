@@ -15,9 +15,9 @@ module Fossa.API.Types (
   IssueRule (..),
   IssueType (..),
   Issues (..),
-  IssueRevision (..),
-  IssueRevisionSummary (..),
-  IssueRevisionTarget (..),
+  IssueSummaryRevision (..),
+  IssuesSummary (..),
+  IssueSummaryTarget (..),
   OrgId (..),
   Organization (..),
   Project (..),
@@ -187,34 +187,34 @@ data Issues = Issues
   { issuesCount :: Int
   , issuesIssues :: [Issue]
   , issuesStatus :: Text
-  , issuesSummary :: Maybe IssueRevisionSummary
+  , issuesSummary :: Maybe IssuesSummary
   }
   deriving (Eq, Ord, Show)
 
-data IssueRevisionSummary = IssueRevisionSummary
-  { revision :: IssueRevision
-  , targets :: Maybe [IssueRevisionTarget]
+data IssuesSummary = IssuesSummary
+  { revision :: IssueSummaryRevision
+  , targets :: Maybe [IssueSummaryTarget]
   }
   deriving (Eq, Ord, Show)
 
-data IssueRevision = IssueRevision
-  { irProjectTitle :: Text
-  , irProjectRevision :: Text
-  , irIsPublic :: Maybe Bool
+data IssueSummaryRevision = IssueSummaryRevision
+  { isrProjectTitle :: Text
+  , isrProjectRevision :: Text
+  , isrIsPublic :: Maybe Bool
   }
   deriving (Eq, Ord, Show)
 
-data IssueRevisionTarget = IssueRevisionTarget
-  { irTargetType :: Text
-  , irTargetPaths :: [Text]
+data IssueSummaryTarget = IssueSummaryTarget
+  { istTargetType :: Text
+  , istTargetPaths :: [Text]
   }
   deriving (Eq, Show)
 
-instance Ord IssueRevisionTarget where
+instance Ord IssueSummaryTarget where
   compare lhs rhs =
-    if (irTargetType lhs == irTargetType rhs)
-      then comparing irTargetPaths lhs rhs
-      else comparing irTargetType lhs rhs
+    if (istTargetType lhs == istTargetType rhs)
+      then comparing istTargetPaths lhs rhs
+      else comparing istTargetType lhs rhs
 
 data IssueType
   = IssuePolicyConflict
@@ -266,45 +266,46 @@ instance ToJSON Issues where
       , "summary" .= issuesSummary
       ]
 
-instance FromJSON IssueRevisionSummary where
-  parseJSON = withObject "IssueRevisionSummary" $ \obj ->
-    IssueRevisionSummary
+instance FromJSON IssuesSummary where
+  parseJSON = withObject "IssuesSummary" $ \obj ->
+    IssuesSummary
       <$> obj .: "revision"
       <*> obj .: "targets"
 
-instance ToJSON IssueRevisionSummary where
-  toJSON IssueRevisionSummary{..} =
+instance ToJSON IssuesSummary where
+  toJSON IssuesSummary{..} =
     object
       [ "revision" .= revision
       , "targets" .= targets
       ]
-instance ToJSON IssueRevisionTarget where
-  toJSON IssueRevisionTarget{..} =
-    object
-      [ "type" .= irTargetType
-      , "originPaths" .= irTargetPaths
-      ]
 
-instance ToJSON IssueRevision where
-  toJSON IssueRevision{..} =
-    object
-      [ "projectTitle" .= irProjectTitle
-      , "projectRevision" .= irProjectRevision
-      , "isPublic" .= irIsPublic
-      ]
-
-instance FromJSON IssueRevision where
-  parseJSON = withObject "IssueRevision" $ \obj ->
-    IssueRevision
+instance FromJSON IssueSummaryRevision where
+  parseJSON = withObject "IssueSummaryRevision" $ \obj ->
+    IssueSummaryRevision
       <$> obj .: "projectTitle"
       <*> obj .: "projectRevision"
       <*> obj .:? "isPublic"
 
-instance FromJSON IssueRevisionTarget where
-  parseJSON = withObject "IssueRevisionTarget" $ \obj ->
-    IssueRevisionTarget
+instance ToJSON IssueSummaryRevision where
+  toJSON IssueSummaryRevision{..} =
+    object
+      [ "projectTitle" .= isrProjectTitle
+      , "projectRevision" .= isrProjectRevision
+      , "isPublic" .= isrIsPublic
+      ]
+
+instance FromJSON IssueSummaryTarget where
+  parseJSON = withObject "IssueSummaryTarget" $ \obj ->
+    IssueSummaryTarget
       <$> obj .: "type"
       <*> obj .: "originPaths"
+
+instance ToJSON IssueSummaryTarget where
+  toJSON IssueSummaryTarget{..} =
+    object
+      [ "type" .= istTargetType
+      , "originPaths" .= istTargetPaths
+      ]
 
 instance FromJSON Issue where
   parseJSON = withObject "Issue" $ \obj ->
@@ -481,14 +482,14 @@ renderedIssues issues = rendered
           , "Tested Following Project:"
           , headerLine
           , line
-          , "Project Title: " <> pretty (irProjectTitle . revision $ summary)
-          , "Project Revision: " <> pretty (irProjectRevision . revision $ summary)
-          , "Project Visibility: " <> renderProjectVisibility (irIsPublic . revision $ summary)
+          , "Project Title: " <> pretty (isrProjectTitle . revision $ summary)
+          , "Project Revision: " <> pretty (isrProjectRevision . revision $ summary)
+          , "Project Visibility: " <> renderProjectVisibility (isrIsPublic . revision $ summary)
           , renderRevisionTargets (targets summary)
           , line
           ]
 
-    renderRevisionTargets :: Maybe [IssueRevisionTarget] -> Doc ann
+    renderRevisionTargets :: Maybe [IssueSummaryTarget] -> Doc ann
     renderRevisionTargets issueRevisionTargets = case issueRevisionTargets of
       Nothing -> mempty
       Just [] -> mempty
@@ -502,11 +503,11 @@ renderedIssues issues = rendered
     renderProjectVisibility (Just True) = "public"
     renderProjectVisibility (Just False) = "private"
 
-    renderedTarget :: IssueRevisionTarget -> Doc ann
+    renderedTarget :: IssueSummaryTarget -> Doc ann
     renderedTarget issueRevisionTarget =
-      pretty (toLower $ irTargetType issueRevisionTarget)
+      pretty (toLower $ istTargetType issueRevisionTarget)
         <> ": "
-        <> pretty (irTargetPaths issueRevisionTarget)
+        <> pretty (istTargetPaths issueRevisionTarget)
 
     rendered :: Doc ann
     rendered =
