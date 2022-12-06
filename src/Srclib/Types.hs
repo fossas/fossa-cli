@@ -150,7 +150,7 @@ instance FromJSON LicenseUnitData where
       <*> obj .:? "Copyrights"
 
 data LicenseUnitMatchData = LicenseUnitMatchData
-  { licenseUnitMatchDataMatchString :: Text
+  { licenseUnitMatchDataMatchString :: Maybe Text
   , licenseUnitMatchDataLocation :: Integer
   , licenseUnitMatchDataLength :: Integer
   , licenseUnitMatchDataIndex :: Integer
