@@ -72,7 +72,7 @@ licenseScanMain ::
   LicenseScanConfig ->
   m ()
 licenseScanMain = \case
-  RawPathScan (BaseDir dir) -> logStdout . decodeUtf8 =<< withThemisAndIndex (`execRawThemis` dir)
+  RawPathScan (BaseDir dir) -> logStdout . decodeUtf8 =<< withThemisAndIndex (\bins -> execRawThemis bins dir ["--srclib-with-matches"])
   VendoredDepsOutput basedir -> outputVendoredDeps basedir
 
 outputVendoredDeps ::
