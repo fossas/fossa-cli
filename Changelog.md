@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.6.9
+- Yarn: Fix a bug where tarball URLs were recognized as git urls. ([#1126](https://github.com/fossas/fossa-cli/pull/1126))
+
 ## v3.6.8
 - Go: Allow quotes module names in static analysis ([#1118](https://github.com/fossas/fossa-cli/pull/1118))
 - `fossa test`: Includes revision summary and target information, when accessible ([#1119](https://github.com/fossas/fossa-cli/pull/1119))
