@@ -164,7 +164,7 @@ themisRunner pathPrefix scanDir themisBins = runThemis themisBins pathPrefix sca
 
 runThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Path Abs Dir -> m [LicenseUnit]
 runThemis themisBins pathPrefix scanDir = do
-  context "Running license scan binary" $ execThemis themisBins pathPrefix scanDir
+  context "Running license scan binary" $ execThemis themisBins pathPrefix scanDir ["--srclib-with-matches"]
 
 calculateVendoredHash :: Path Abs Dir -> Text -> Path Abs Dir -> IO Text
 calculateVendoredHash baseDir vendoredPath tmpDir = do
