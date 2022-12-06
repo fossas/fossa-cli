@@ -96,6 +96,7 @@ validateOutputFormat False (Just format) = fromMaybe (InvalidReportFormat format
 
 parseFossaTestOutputFormat :: String -> Maybe TestOutputFormat
 parseFossaTestOutputFormat "json" = Just TestOutputJson
+parseFossaTestOutputFormat "text-pretty" = Just TestOutputPretty
 parseFossaTestOutputFormat _ = Nothing
 
 instance ToJSON TestOutputFormat where

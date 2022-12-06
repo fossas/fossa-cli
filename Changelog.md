@@ -1,8 +1,8 @@
 # FOSSA CLI Changelog
 
-
-## Unreleased
+## v3.6.8
 - Go: Allow quotes module names in static analysis ([#1118](https://github.com/fossas/fossa-cli/pull/1118))
+- `fossa test`: Includes revision summary and target information, when accessible ([#1119](https://github.com/fossas/fossa-cli/pull/1119))
 
 ## v3.6.7
 

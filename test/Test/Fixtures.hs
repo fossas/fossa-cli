@@ -203,6 +203,7 @@ emptyIssues =
     { API.issuesCount = 0
     , API.issuesIssues = []
     , API.issuesStatus = ""
+    , API.issuesSummary = Nothing
     }
 
 issuesAvailable :: API.Issues
@@ -230,6 +231,7 @@ issuesAvailable =
         { API.issuesCount = length issueList
         , API.issuesIssues = issueList
         , API.issuesStatus = "SCANNED"
+        , API.issuesSummary = Nothing
         }
 
 issuesDiffAvailable :: API.Issues
@@ -257,6 +259,7 @@ issuesDiffAvailable =
         { API.issuesCount = length issueList
         , API.issuesIssues = issueList
         , API.issuesStatus = "SCANNED"
+        , API.issuesSummary = Nothing
         }
 
 issuesPending :: API.Issues
@@ -265,6 +268,7 @@ issuesPending =
     { API.issuesCount = 0
     , API.issuesIssues = []
     , API.issuesStatus = "WAITING"
+    , API.issuesSummary = Nothing
     }
 
 attributionReportAsSerializedJson :: Text
