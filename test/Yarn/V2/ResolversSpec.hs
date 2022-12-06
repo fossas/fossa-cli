@@ -20,9 +20,11 @@ import Strategy.Node.YarnV2.Resolvers (
   npmResolver,
   patchResolver,
   portalResolver,
+  resolveLocatorToPackage,
   tarResolver,
   workspaceResolver,
  )
+import Test.Effect (it', shouldBe')
 import Test.Hspec (Spec, describe, it, shouldBe)
 
 spec :: Spec
@@ -66,6 +68,18 @@ spec = do
   testUnsupportedResolver portalResolver "portal:" PortalPackage
   testUnsupportedResolver execResolver "exec:" ExecPackage
   testUnsupportedResolver patchResolver "patch:" PatchPackage
+
+  testResolveLocatorToPackage
+
+gitPkgLocator :: Text
+gitPkgLocator = "https://gitpkg.now.sh/api/pkg.tgz?url=colorjs%2fcolor-name&commit=0f12d6e6ad4ab04e5cbc26360b759b446b0c6a4e"
+
+testResolveLocatorToPackage :: Spec
+testResolveLocatorToPackage =
+  describe "resolveLocatorToPackage" $
+    it' "Should prefer the tarball to the git resolver in case of conflict" $ do
+      pkg <- resolveLocatorToPackage (Locator Nothing "unused" gitPkgLocator)
+      pkg `shouldBe'` (TarPackage gitPkgLocator)
 
 testResolver ::
   Resolver ->

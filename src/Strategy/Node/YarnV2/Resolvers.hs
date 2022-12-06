@@ -75,8 +75,13 @@ allResolvers :: [Resolver]
 allResolvers =
   [ workspaceResolver
   , npmResolver
+  , -- Ensure that tarResolver appears before gitResolver in this list.
+    -- Currently there are some package locators that the git resolver matches that are actually tarballs.
+    -- To get around this, the tarResolver gets to examine a locator first.
+    -- Ideally the git resolver's 'resolverSupportsLocator' function would be more specific.
+    -- ANE-720 captures that work.
+    tarResolver
   , gitResolver
-  , tarResolver
   , fileResolver
   , linkResolver
   , execResolver
