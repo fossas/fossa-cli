@@ -134,7 +134,7 @@ projectTypeToText = \case
   NuspecProjectType -> "nuspec"
   PackageReferenceProjectType -> "packagereference"
   PackagesConfigProjectType -> "packagesconfig"
-  PaketProjectType -> "packet"
+  PaketProjectType -> "paket"
   PerlProjectType -> "perl"
   PipenvProjectType -> "pipenv"
   PnpmProjectType -> "pnpm"

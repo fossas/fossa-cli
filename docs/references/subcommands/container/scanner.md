@@ -214,7 +214,7 @@ The following package managers are supported in container scanning:
 | Python (setuptools, poetry, etc.)    | :white_check_mark: | [Python Docs](./../../strategies/languages/python/python.md)     |
 | Javascript (npm, yarn, pnpm, etc.)   | :white_check_mark: | [Javascript Docs](./../../strategies/languages/nodejs/nodejs.md) |
 | Ruby (bundler)                       | :white_check_mark: | [Ruby](./../../strategies/languages/ruby/ruby.md)                |
-| .Net (packet, projectjson, etc.)     | :white_check_mark: | [.Net](./../../strategies/languages/dotnet/README.md)            |
+| .Net (paket, projectjson, etc.)     | :white_check_mark: | [.Net](./../../strategies/languages/dotnet/README.md)            |
 | Perl                                 | :white_check_mark: | [Perl](./../../strategies/languages/perl/perl.md)                |
 | Swift (xcode, swift package manager) | :white_check_mark: | [Swift](./../../strategies/platforms/ios/swift.md)               |
 | Carthage                             | :white_check_mark: | [Carthage](./../../strategies/platforms/ios/carthage.md)         |
