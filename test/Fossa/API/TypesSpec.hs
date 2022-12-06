@@ -2,7 +2,7 @@ module Fossa.API.TypesSpec (spec) where
 
 import Data.Aeson (FromJSON, ToJSON, fromJSON, toJSON)
 import Data.Text (Text)
-import Fossa.API.Types (Issue (..), IssueSummaryRevision (..), IssuesSummary (..), IssueSummaryTarget (..), IssueRule (..), IssueType (..), Issues (..))
+import Fossa.API.Types (Issue (..), IssueRule (..), IssueSummaryRevision (..), IssueSummaryTarget (..), IssueType (..), Issues (..), IssuesSummary (..))
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import Test.Hspec
