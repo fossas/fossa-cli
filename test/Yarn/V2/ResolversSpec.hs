@@ -77,7 +77,7 @@ gitPkgLocator = "https://gitpkg.now.sh/api/pkg.tgz?url=colorjs%2fcolor-name&comm
 testResolveLocatorToPackage :: Spec
 testResolveLocatorToPackage =
   describe "resolveLocatorToPackage" $
-    it' "Should prefer the tarball to the git resolver in case of conflict" $ do
+    it' "Should prefer the tarball to the git resolver in cases where a locator would match both" $ do
       pkg <- resolveLocatorToPackage (Locator Nothing "unused" gitPkgLocator)
       pkg `shouldBe'` (TarPackage gitPkgLocator)
 
