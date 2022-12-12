@@ -27,9 +27,15 @@ jobs:
     - name: Ensures git ownership check does not lead to compile error (we run git during compile for version tagging, etc.)
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+    - name: Create nixbuild users/group
+      run: |
+        groupadd -r nixbld
+        useradd -c "Nix build user $n" -d /var/empty -g nixbld -G nixbld -M -N -r -s "#(which nologin)" nixbld$n
+
     - uses: cachix/install-nix-action@v17
       with:
         nix_path: nixpkgs=channel:nixos-unstable
+        extra_nix_config: "build-users-group = nixbld"
 
     - name: Debugging information
       run: |
