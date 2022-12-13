@@ -88,39 +88,39 @@ spec = do
 
   describe "getScanCfg" $ do
     it' "should fail if you try to force a license scan but the FOSSA server does not support it" $ do
-      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Just CLILicenseScan}
+      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Just CLILicenseScan, licenseScanPathFilters = Nothing}
           org = Fixtures.organization{orgCoreSupportsLocalLicenseScan = False}
       expectFatal' $ getScanCfg org opts
 
     it' "should do a license scan if requested and FOSSA supports it" $ do
-      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Just CLILicenseScan}
+      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Just CLILicenseScan, licenseScanPathFilters = Nothing}
       (uploadType, scanMode) <- getScanCfg Fixtures.organization opts
       (uploadType, scanMode) `shouldBe'` (CLILicenseScan, SkipPreviouslyScanned)
 
     it' "should do a license scan if they are the default and no flags are passed" $ do
-      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Nothing}
+      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Nothing, licenseScanPathFilters = Nothing}
       (uploadType, scanMode) <- getScanCfg Fixtures.organization opts
       (uploadType, scanMode) `shouldBe'` (CLILicenseScan, SkipPreviouslyScanned)
 
     it' "should force a license scan rebuild if forceRescans is True" $ do
-      let opts = VendoredDependencyOptions{forceRescans = True, licenseScanMethod = Nothing}
+      let opts = VendoredDependencyOptions{forceRescans = True, licenseScanMethod = Nothing, licenseScanPathFilters = Nothing}
       (uploadType, scanMode) <- getScanCfg Fixtures.organization opts
       (uploadType, scanMode) `shouldBe'` (CLILicenseScan, SkippingDisabledViaFlag)
 
     it' "should not skip if the server does not support the analyzed revisions query" $ do
-      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Nothing}
+      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Nothing, licenseScanPathFilters = Nothing}
           org = Fixtures.organization{orgSupportsAnalyzedRevisionsQuery = False}
       (uploadType, scanMode) <- getScanCfg org opts
       (uploadType, scanMode) `shouldBe'` (CLILicenseScan, SkippingNotSupported)
 
     it' "should do an archive upload if they are the default and no flags are passed" $ do
-      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Nothing}
+      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Nothing, licenseScanPathFilters = Nothing}
           org = Fixtures.organization{orgDefaultVendoredDependencyScanType = ArchiveUpload}
       (uploadType, scanMode) <- getScanCfg org opts
       (uploadType, scanMode) `shouldBe'` (ArchiveUpload, SkipPreviouslyScanned)
 
     it' "should do an archive upload if requested and CLI license scan is the default" $ do
-      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Just ArchiveUpload}
+      let opts = VendoredDependencyOptions{forceRescans = False, licenseScanMethod = Just ArchiveUpload, licenseScanPathFilters = Nothing}
           org = Fixtures.organization{orgDefaultVendoredDependencyScanType = ArchiveUpload}
       (uploadType, scanMode) <- getScanCfg org opts
       (uploadType, scanMode) `shouldBe'` (ArchiveUpload, SkipPreviouslyScanned)
