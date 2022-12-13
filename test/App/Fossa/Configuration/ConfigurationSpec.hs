@@ -11,8 +11,8 @@ import App.Fossa.Config.ConfigFile (
   ConfigTargets (..),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (ExperimentalGradleConfigs),
-  VendoredDependencyConfigs (..),
   LicenseScanPathFilters (..),
+  VendoredDependencyConfigs (..),
   resolveConfigFile,
  )
 import App.Types (ReleaseGroupMetadata (..))
@@ -27,7 +27,7 @@ import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess, expectFailure)
 import Test.Hspec qualified as T
 import Test.Hspec.Core.Spec (SpecM)
-import Types (ArchiveUploadType (..), BuildTarget (..), TargetFilter (..), GlobFilter (GlobFilter))
+import Types (ArchiveUploadType (..), BuildTarget (..), GlobFilter (GlobFilter), TargetFilter (..))
 
 expectedConfigFile :: ConfigFile
 expectedConfigFile =
@@ -95,9 +95,9 @@ expectedVendoredDependencies =
 expectedVendoredDependencyFilters :: LicenseScanPathFilters
 expectedVendoredDependencyFilters =
   LicenseScanPathFilters
-  { configLicenseScanPathFiltersOnly = [GlobFilter "**/*.rb"]
-  , configLicenseScanPathFiltersExclude =  [GlobFilter ".git/**", GlobFilter "test/**/*.rb"]
-  }
+    { configLicenseScanPathFiltersOnly = [GlobFilter "**/*.rb"]
+    , configLicenseScanPathFiltersExclude = [GlobFilter ".git/**", GlobFilter "test/**/*.rb"]
+    }
 
 simpleTarget :: TargetFilter
 simpleTarget = TypeTarget "pip"

@@ -177,8 +177,8 @@ themisFlags (Just filters) =
   let defaultFilter = ["--srclib-with_matches"]
       onlyFilters = concatMap (\only -> ["--only-paths", unGlobFilter only]) $ configLicenseScanPathFiltersOnly filters
       exceptFilters = concatMap (\exclude -> ["--exclude-paths", unGlobFilter exclude]) $ configLicenseScanPathFiltersExclude filters
-  in
-    defaultFilter ++ onlyFilters ++ exceptFilters
+   in
+      defaultFilter ++ onlyFilters ++ exceptFilters
 
 calculateVendoredHash :: Path Abs Dir -> Text -> Path Abs Dir -> IO Text
 calculateVendoredHash baseDir vendoredPath tmpDir = do
@@ -340,7 +340,7 @@ licenseScanSourceUnit ::
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
   m (NonEmpty Locator)
-licenseScanSourceUnit vendoredDependencyScanMode licenseScanPathFilters baseDir vendoredDeps  = do
+licenseScanSourceUnit vendoredDependencyScanMode licenseScanPathFilters baseDir vendoredDeps = do
   uniqDeps <- dedupVendoredDeps vendoredDeps
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
