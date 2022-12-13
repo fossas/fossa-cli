@@ -169,7 +169,7 @@ scanAndUpload root vdeps vendoredDepsOptions = do
   (archiveOrCLI, vendoredDependencyScanMode) <- getScanCfg org vendoredDepsOptions
   let scanner = case archiveOrCLI of
         ArchiveUpload -> archiveUploadSourceUnit
-        CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode
+        CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode $ licenseScanPathFilters vendoredDepsOptions
   scanner root vdeps
 
 getScanCfg :: (Has Diagnostics sig m) => Organization -> VendoredDependencyOptions -> m (ArchiveUploadType, VendoredDependencyScanMode)

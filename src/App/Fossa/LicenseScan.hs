@@ -101,4 +101,4 @@ runLicenseScan ::
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
   m (NonEmpty LicenseSourceUnit)
-runLicenseScan basedir vdeps = dedupVendoredDeps vdeps >>= traverse (scanVendoredDep basedir)
+runLicenseScan basedir vdeps = dedupVendoredDeps vdeps >>= traverse (scanVendoredDep basedir Nothing)

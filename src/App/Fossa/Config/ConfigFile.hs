@@ -39,6 +39,10 @@ import Data.Aeson (
   (.!=),
   (.:),
   (.:?),
+  ToJSON (toJSON),
+  FromJSON,
+  KeyValue ((.=)),
+  object,
  )
 import Data.Foldable (asum)
 import Data.Functor (($>))
@@ -324,4 +328,9 @@ instance FromJSON LicenseScanPathFilters where
       <$> (obj .:? "only" .!= [])
       <*> (obj .:? "exclude" .!= [])
 
-
+instance ToJSON LicenseScanPathFilters where
+  toJSON LicenseScanPathFilters{..} =
+    object
+      [ "only" .= configLicenseScanPathFiltersOnly
+      , "exclude" .= configLicenseScanPathFiltersExclude
+      ]
