@@ -40,6 +40,7 @@ import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path)
 import Prettyprinter (vsep)
 import Srclib.Types (LicenseSourceUnit)
+import App.Fossa.Config.ConfigFile (resolveConfigFile, VendoredDependencyConfigs (configLicenseScanPathFilters), ConfigFile (configVendoredDependencies), LicenseScanPathFilters)
 
 data MissingFossaDepsFile = MissingFossaDepsFile
 data NoVendoredDeps = NoVendoredDeps
@@ -85,10 +86,12 @@ outputVendoredDeps ::
   BaseDir ->
   m ()
 outputVendoredDeps (BaseDir dir) = runStickyLogger SevInfo $ do
+  config <- resolveConfigFile dir Nothing
   manualDepsFile <- fromMaybe MissingFossaDepsFile =<< findFossaDepsFile dir
   manualDeps <- readFoundDeps manualDepsFile
   vendoredDeps <- fromMaybe NoVendoredDeps $ NE.nonEmpty $ vendoredDependencies manualDeps
-  resultMap <- UploadUnits <$> runLicenseScan dir vendoredDeps
+  let licenseScanPathFilters = config >>= configVendoredDependencies >>= configLicenseScanPathFilters
+  resultMap <- UploadUnits <$> runLicenseScan dir licenseScanPathFilters vendoredDeps
   logStdout . decodeUtf8 $ Aeson.encode resultMap
 
 runLicenseScan ::
@@ -99,6 +102,7 @@ runLicenseScan ::
   , Has Exec sig m
   ) =>
   Path Abs Dir ->
+  Maybe LicenseScanPathFilters ->
   NonEmpty VendoredDependency ->
   m (NonEmpty LicenseSourceUnit)
-runLicenseScan basedir vdeps = dedupVendoredDeps vdeps >>= traverse (scanVendoredDep basedir Nothing)
+runLicenseScan basedir licenseScanPathFilters vdeps = dedupVendoredDeps vdeps >>= traverse (scanVendoredDep basedir licenseScanPathFilters)
