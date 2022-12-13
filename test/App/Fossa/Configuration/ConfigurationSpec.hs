@@ -95,8 +95,8 @@ expectedVendoredDependencies =
 expectedVendoredDependencyFilters :: LicenseScanPathFilters
 expectedVendoredDependencyFilters =
   LicenseScanPathFilters
-    { configLicenseScanPathFiltersOnly = [GlobFilter "**/*.rb"]
-    , configLicenseScanPathFiltersExclude = [GlobFilter ".git/**", GlobFilter "test/**/*.rb"]
+    { licenseScanPathFiltersOnly = [GlobFilter "**/*.rb"]
+    , licenseScanPathFiltersExclude = [GlobFilter ".git/**", GlobFilter "test/**/*.rb"]
     }
 
 simpleTarget :: TargetFilter

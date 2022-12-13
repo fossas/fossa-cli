@@ -71,7 +71,7 @@ import Path (
   parseSomeFile,
   (</>),
  )
-import Types (ArchiveUploadType, GlobFilter, TargetFilter)
+import Types (ArchiveUploadType, GlobFilter, TargetFilter, LicenseScanPathFilters)
 
 defaultConfigFileNames :: [Path Rel File]
 defaultConfigFileNames =
@@ -315,21 +315,3 @@ instance FromJSON VendoredDependencyConfigs where
       <*> (obj .:? "scanMethod")
       <*> (obj .:? "licenseScanPathFilters")
 
-data LicenseScanPathFilters = LicenseScanPathFilters
-  { configLicenseScanPathFiltersOnly :: [GlobFilter]
-  , configLicenseScanPathFiltersExclude :: [GlobFilter]
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON LicenseScanPathFilters where
-  parseJSON = withObject "LicenseScanPathFilters" $ \obj ->
-    LicenseScanPathFilters
-      <$> (obj .:? "only" .!= [])
-      <*> (obj .:? "exclude" .!= [])
-
-instance ToJSON LicenseScanPathFilters where
-  toJSON LicenseScanPathFilters{..} =
-    object
-      [ "only" .= configLicenseScanPathFiltersOnly
-      , "exclude" .= configLicenseScanPathFiltersExclude
-      ]

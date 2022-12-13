@@ -175,8 +175,8 @@ themisFlags :: Maybe LicenseScanPathFilters -> [Text]
 themisFlags Nothing = ["--srclib-with-matches"]
 themisFlags (Just filters) =
   let defaultFilter = ["--srclib-with-matches"]
-      onlyFilters = concatMap (\only -> ["--only-paths", unGlobFilter only]) $ configLicenseScanPathFiltersOnly filters
-      exceptFilters = concatMap (\exclude -> ["--exclude-paths", unGlobFilter exclude]) $ configLicenseScanPathFiltersExclude filters
+      onlyFilters = concatMap (\only -> ["--only-paths", unGlobFilter only]) $ licenseScanPathFiltersOnly filters
+      exceptFilters = concatMap (\exclude -> ["--exclude-paths", unGlobFilter exclude]) $ licenseScanPathFiltersExclude filters
    in defaultFilter ++ onlyFilters ++ exceptFilters
 
 calculateVendoredHash :: Path Abs Dir -> Text -> Path Abs Dir -> IO Text
