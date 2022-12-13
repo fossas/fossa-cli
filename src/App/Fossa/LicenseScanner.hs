@@ -172,9 +172,9 @@ runThemis themisBins pathPrefix licenseScanPathFilters scanDir = do
   context "Running license scan binary" $ execThemis themisBins pathPrefix scanDir $ themisFlags licenseScanPathFilters
 
 themisFlags :: Maybe LicenseScanPathFilters -> [Text]
-themisFlags Nothing = ["--srclib-with_matches"]
+themisFlags Nothing = ["--srclib-with-matches"]
 themisFlags (Just filters) =
-  let defaultFilter = ["--srclib-with_matches"]
+  let defaultFilter = ["--srclib-with-matches"]
       onlyFilters = concatMap (\only -> ["--only-paths", unGlobFilter only]) $ configLicenseScanPathFiltersOnly filters
       exceptFilters = concatMap (\exclude -> ["--exclude-paths", unGlobFilter exclude]) $ configLicenseScanPathFiltersExclude filters
    in defaultFilter ++ onlyFilters ++ exceptFilters
