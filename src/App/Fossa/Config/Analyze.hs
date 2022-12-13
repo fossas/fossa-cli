@@ -105,7 +105,7 @@ import Options.Applicative (
  )
 import Path (Abs, Dir, File, Path, Rel)
 import System.Info qualified as SysInfo
-import Types (ArchiveUploadType (..), TargetFilter, LicenseScanPathFilters (..))
+import Types (ArchiveUploadType (..), LicenseScanPathFilters (..), TargetFilter)
 
 -- CLI flags, for use with 'Data.Flag'
 data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan deriving (Generic)

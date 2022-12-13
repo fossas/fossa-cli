@@ -26,7 +26,7 @@ import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess, expectFailure)
 import Test.Hspec qualified as T
 import Test.Hspec.Core.Spec (SpecM)
-import Types (ArchiveUploadType (..), BuildTarget (..), GlobFilter (GlobFilter), TargetFilter (..), LicenseScanPathFilters (..))
+import Types (ArchiveUploadType (..), BuildTarget (..), GlobFilter (GlobFilter), LicenseScanPathFilters (..), TargetFilter (..))
 
 expectedConfigFile :: ConfigFile
 expectedConfigFile =

@@ -67,7 +67,7 @@ import Path (
   parseSomeFile,
   (</>),
  )
-import Types (ArchiveUploadType, TargetFilter, LicenseScanPathFilters)
+import Types (ArchiveUploadType, LicenseScanPathFilters, TargetFilter)
 
 defaultConfigFileNames :: [Path Rel File]
 defaultConfigFileNames =
@@ -310,4 +310,3 @@ instance FromJSON VendoredDependencyConfigs where
       <$> (obj .:? "forceRescans" .!= False)
       <*> (obj .:? "scanMethod")
       <*> (obj .:? "licenseScanPathFilters")
-

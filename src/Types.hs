@@ -27,9 +27,9 @@ import Data.Aeson (
   object,
   withObject,
   withText,
+  (.!=),
   (.:),
   (.:?),
-  (.!=),
  )
 import Data.Aeson.Types (Parser)
 import Data.Set.NonEmpty (NonEmptySet)

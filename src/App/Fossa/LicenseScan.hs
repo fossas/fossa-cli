@@ -2,6 +2,7 @@ module App.Fossa.LicenseScan (
   licenseScanSubCommand,
 ) where
 
+import App.Fossa.Config.ConfigFile (ConfigFile (configVendoredDependencies), VendoredDependencyConfigs (configLicenseScanPathFilters), resolveConfigFile)
 import App.Fossa.Config.LicenseScan (
   LicenseScanCommand,
   LicenseScanConfig (..),
@@ -40,7 +41,6 @@ import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path)
 import Prettyprinter (vsep)
 import Srclib.Types (LicenseSourceUnit)
-import App.Fossa.Config.ConfigFile (resolveConfigFile, VendoredDependencyConfigs (configLicenseScanPathFilters), ConfigFile (configVendoredDependencies))
 import Types (LicenseScanPathFilters)
 
 data MissingFossaDepsFile = MissingFossaDepsFile
