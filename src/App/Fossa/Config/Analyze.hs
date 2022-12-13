@@ -46,9 +46,10 @@ import App.Fossa.Config.ConfigFile (
   ConfigTelemetryScope (NoTelemetry),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
+  LicenseScanPathFilters,
   VendoredDependencyConfigs (..),
   mergeFileCmdMetadata,
-  resolveConfigFile, LicenseScanPathFilters,
+  resolveConfigFile,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))

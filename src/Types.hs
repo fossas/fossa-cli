@@ -225,7 +225,7 @@ newtype BuildTarget = BuildTarget {unBuildTarget :: Text}
   and an exact gradle target.
 -}
 
-newtype GlobFilter = GlobFilter { unGlobFilter :: Text }
+newtype GlobFilter = GlobFilter {unGlobFilter :: Text}
   deriving (Eq, Ord, Show, ToJSON, FromJSON)
 
 data TargetFilter

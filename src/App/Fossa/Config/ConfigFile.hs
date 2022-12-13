@@ -34,15 +34,14 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Lift (Lift)
 import Data.Aeson (
   FromJSON (parseJSON),
+  KeyValue ((.=)),
+  ToJSON (toJSON),
+  object,
   withObject,
   withText,
   (.!=),
   (.:),
   (.:?),
-  ToJSON (toJSON),
-  FromJSON,
-  KeyValue ((.=)),
-  object,
  )
 import Data.Foldable (asum)
 import Data.Functor (($>))
@@ -72,7 +71,7 @@ import Path (
   parseSomeFile,
   (</>),
  )
-import Types (ArchiveUploadType, TargetFilter, GlobFilter)
+import Types (ArchiveUploadType, GlobFilter, TargetFilter)
 
 defaultConfigFileNames :: [Path Rel File]
 defaultConfigFileNames =

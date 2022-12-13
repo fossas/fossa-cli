@@ -7,6 +7,7 @@ module App.Fossa.LicenseScanner (
   scanVendoredDep,
 ) where
 
+import App.Fossa.Config.ConfigFile (LicenseScanPathFilters (..))
 import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)
 import App.Fossa.RunThemis (
   execThemis,
@@ -72,8 +73,7 @@ import Srclib.Types (
   LicenseUnit (..),
   Locator (..),
  )
-import App.Fossa.Config.ConfigFile (LicenseScanPathFilters (..))
-import Types (GlobFilter(unGlobFilter))
+import Types (GlobFilter (unGlobFilter))
 
 data LicenseScanErr
   = NoSuccessfulScans
@@ -177,8 +177,7 @@ themisFlags (Just filters) =
   let defaultFilter = ["--srclib-with_matches"]
       onlyFilters = concatMap (\only -> ["--only-paths", unGlobFilter only]) $ configLicenseScanPathFiltersOnly filters
       exceptFilters = concatMap (\exclude -> ["--exclude-paths", unGlobFilter exclude]) $ configLicenseScanPathFiltersExclude filters
-   in
-      defaultFilter ++ onlyFilters ++ exceptFilters
+   in defaultFilter ++ onlyFilters ++ exceptFilters
 
 calculateVendoredHash :: Path Abs Dir -> Text -> Path Abs Dir -> IO Text
 calculateVendoredHash baseDir vendoredPath tmpDir = do
