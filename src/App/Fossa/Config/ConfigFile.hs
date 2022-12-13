@@ -14,6 +14,7 @@ module App.Fossa.Config.ConfigFile (
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
   VendoredDependencyConfigs (..),
+  LicenseScanPathFilters (..),
   mergeFileCmdMetadata,
   empty,
   resolveLocalConfigFile,

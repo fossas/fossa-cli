@@ -228,8 +228,6 @@ newtype BuildTarget = BuildTarget {unBuildTarget :: Text}
 newtype GlobFilter = GlobFilter { unGlobFilter :: Text }
   deriving (Eq, Ord, Show, ToJSON, FromJSON)
 
-
-
 data TargetFilter
   = TypeTarget Text
   | TypeDirTarget Text (Path Rel Dir)
