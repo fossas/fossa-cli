@@ -10,6 +10,7 @@ module App.Fossa.LicenseScanner (
 import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)
 import App.Fossa.RunThemis (
   execThemis,
+  themisFlags,
  )
 import App.Fossa.VendoredDependency (
   NeedScanningDeps (..),
@@ -72,7 +73,7 @@ import Srclib.Types (
   LicenseUnit (..),
   Locator (..),
  )
-import Types (GlobFilter (unGlobFilter), LicenseScanPathFilters (..))
+import Types (LicenseScanPathFilters)
 
 data LicenseScanErr
   = NoSuccessfulScans
@@ -169,14 +170,6 @@ themisRunner pathPrefix licenseScanPathFilters scanDir themisBins = runThemis th
 runThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Maybe LicenseScanPathFilters -> Path Abs Dir -> m [LicenseUnit]
 runThemis themisBins pathPrefix licenseScanPathFilters scanDir = do
   context "Running license scan binary" $ execThemis themisBins pathPrefix scanDir $ themisFlags licenseScanPathFilters
-
-themisFlags :: Maybe LicenseScanPathFilters -> [Text]
-themisFlags Nothing = ["--srclib-with-matches"]
-themisFlags (Just filters) =
-  let defaultFilter = ["--srclib-with-matches"]
-      onlyFilters = concatMap (\only -> ["--only-paths", unGlobFilter only]) $ licenseScanPathFiltersOnly filters
-      exceptFilters = concatMap (\exclude -> ["--exclude-paths", unGlobFilter exclude]) $ licenseScanPathFiltersExclude filters
-   in defaultFilter ++ onlyFilters ++ exceptFilters
 
 calculateVendoredHash :: Path Abs Dir -> Text -> Path Abs Dir -> IO Text
 calculateVendoredHash baseDir vendoredPath tmpDir = do
