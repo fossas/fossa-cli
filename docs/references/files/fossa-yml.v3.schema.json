@@ -293,6 +293,26 @@
                             "description": "Vendored dependencies are scanned by the \"CLI-side license scan\" method, as described in https://github.com/fossas/fossa-cli/blob/master/docs/features/vendored-dependencies.md"
                         }
                     ]
+                },
+                "licenseScanPathFilters": {
+                    "type": "object",
+                    "description": "licenseScanPathFilters allows you to filter which files are scanned when doing a CLILicenseScan. This setting does not apply if you use the ArchiveUpload method of scanning vendoredDependencies.",
+                    "properties": {
+                      "only": {
+                          "type": "array",
+                          "description": "A list of globs that will be used to filter paths. If there are any entries in the `only` list, then only paths that match one or more of the globs in the `only` list will be scanned for licenses.",
+                          "items": {
+                              "$ref": "#/$defs/targetFilter"
+                          }
+                      },
+                      "exclude": {
+                          "type": "array",
+                          "description": "A list of globs that will be used to filter paths. If there are any entries in the `exclude` list, then paths that match any of the `exclude` entries will not be scanned for licenses.",
+                          "items": {
+                              "$ref": "#/$defs/targetFilter"
+                          }
+                      }
+                    }
                 }
             }
         }

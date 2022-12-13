@@ -67,7 +67,7 @@ import Path (
   parseSomeFile,
   (</>),
  )
-import Types (ArchiveUploadType, TargetFilter)
+import Types (ArchiveUploadType, TargetFilter, GlobFilter)
 
 defaultConfigFileNames :: [Path Rel File]
 defaultConfigFileNames =
@@ -300,6 +300,7 @@ instance FromJSON ConfigTelemetryScope where
 data VendoredDependencyConfigs = VendoredDependencyConfigs
   { configForceRescans :: Bool
   , configLicenseScanMethod :: Maybe ArchiveUploadType
+  , configLicenseScanPathFilters :: Maybe LicenseScanPathFilters
   }
   deriving (Eq, Ord, Show)
 
@@ -308,3 +309,18 @@ instance FromJSON VendoredDependencyConfigs where
     VendoredDependencyConfigs
       <$> (obj .:? "forceRescans" .!= False)
       <*> (obj .:? "scanMethod")
+      <*> (obj .:? "licenseScanPathFilters")
+
+data LicenseScanPathFilters = LicenseScanPathFilters
+  { configLicenseScanPathFiltersOnly :: [GlobFilter]
+  , configLicenseScanPathFiltersExclude :: [GlobFilter]
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON LicenseScanPathFilters where
+  parseJSON = withObject "LicenseScanPathFilters" $ \obj ->
+    LicenseScanPathFilters
+      <$> (obj .:? "only" .!= [])
+      <*> (obj .:? "exclude" .!= [])
+
+

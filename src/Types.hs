@@ -12,6 +12,7 @@ module Types (
   LicenseType (..),
   module DepTypes,
   TargetFilter (..),
+  GlobFilter (..),
   DiscoveredProjectType (..),
   projectTypeToText,
 ) where
@@ -223,6 +224,12 @@ newtype BuildTarget = BuildTarget {unBuildTarget :: Text}
   However, many Gradle targets consist of a strategy type, a directory,
   and an exact gradle target.
 -}
+
+newtype GlobFilter = GlobFilter { unGlobFilter :: Text }
+  deriving (Eq, Ord, Show, ToJSON, FromJSON)
+
+
+
 data TargetFilter
   = TypeTarget Text
   | TypeDirTarget Text (Path Rel Dir)
