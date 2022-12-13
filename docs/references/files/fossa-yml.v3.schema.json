@@ -302,14 +302,14 @@
                           "type": "array",
                           "description": "A list of globs that will be used to filter paths. If there are any entries in the `only` list, then only paths that match one or more of the globs in the `only` list will be scanned for licenses.",
                           "items": {
-                              "$ref": "#/$defs/targetFilter"
+                              "type": "string"
                           }
                       },
                       "exclude": {
                           "type": "array",
                           "description": "A list of globs that will be used to filter paths. If there are any entries in the `exclude` list, then paths that match any of the `exclude` entries will not be scanned for licenses.",
                           "items": {
-                              "$ref": "#/$defs/targetFilter"
+                              "type": "string"
                           }
                       }
                     }
