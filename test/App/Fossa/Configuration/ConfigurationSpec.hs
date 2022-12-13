@@ -11,7 +11,6 @@ import App.Fossa.Config.ConfigFile (
   ConfigTargets (..),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (ExperimentalGradleConfigs),
-  LicenseScanPathFilters (..),
   VendoredDependencyConfigs (..),
   resolveConfigFile,
  )
@@ -27,7 +26,7 @@ import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess, expectFailure)
 import Test.Hspec qualified as T
 import Test.Hspec.Core.Spec (SpecM)
-import Types (ArchiveUploadType (..), BuildTarget (..), GlobFilter (GlobFilter), TargetFilter (..))
+import Types (ArchiveUploadType (..), BuildTarget (..), GlobFilter (GlobFilter), TargetFilter (..), LicenseScanPathFilters (..))
 
 expectedConfigFile :: ConfigFile
 expectedConfigFile =

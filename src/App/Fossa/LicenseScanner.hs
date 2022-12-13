@@ -7,7 +7,6 @@ module App.Fossa.LicenseScanner (
   scanVendoredDep,
 ) where
 
-import App.Fossa.Config.ConfigFile (LicenseScanPathFilters (..))
 import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)
 import App.Fossa.RunThemis (
   execThemis,
@@ -73,7 +72,7 @@ import Srclib.Types (
   LicenseUnit (..),
   Locator (..),
  )
-import Types (GlobFilter (unGlobFilter))
+import Types (GlobFilter (unGlobFilter), LicenseScanPathFilters (..))
 
 data LicenseScanErr
   = NoSuccessfulScans

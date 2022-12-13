@@ -40,7 +40,8 @@ import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path)
 import Prettyprinter (vsep)
 import Srclib.Types (LicenseSourceUnit)
-import App.Fossa.Config.ConfigFile (resolveConfigFile, VendoredDependencyConfigs (configLicenseScanPathFilters), ConfigFile (configVendoredDependencies), LicenseScanPathFilters)
+import App.Fossa.Config.ConfigFile (resolveConfigFile, VendoredDependencyConfigs (configLicenseScanPathFilters), ConfigFile (configVendoredDependencies))
+import Types (LicenseScanPathFilters)
 
 data MissingFossaDepsFile = MissingFossaDepsFile
 data NoVendoredDeps = NoVendoredDeps

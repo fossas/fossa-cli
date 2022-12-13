@@ -46,7 +46,6 @@ import App.Fossa.Config.ConfigFile (
   ConfigTelemetryScope (NoTelemetry),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
-  LicenseScanPathFilters,
   VendoredDependencyConfigs (..),
   mergeFileCmdMetadata,
   resolveConfigFile,
@@ -106,7 +105,7 @@ import Options.Applicative (
  )
 import Path (Abs, Dir, File, Path, Rel)
 import System.Info qualified as SysInfo
-import Types (ArchiveUploadType (..), TargetFilter)
+import Types (ArchiveUploadType (..), TargetFilter, LicenseScanPathFilters (..))
 
 -- CLI flags, for use with 'Data.Flag'
 data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan deriving (Generic)

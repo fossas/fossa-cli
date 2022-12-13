@@ -14,7 +14,6 @@ module App.Fossa.Config.ConfigFile (
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
   VendoredDependencyConfigs (..),
-  LicenseScanPathFilters (..),
   mergeFileCmdMetadata,
   empty,
   resolveLocalConfigFile,
@@ -34,9 +33,6 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Lift (Lift)
 import Data.Aeson (
   FromJSON (parseJSON),
-  KeyValue ((.=)),
-  ToJSON (toJSON),
-  object,
   withObject,
   withText,
   (.!=),
@@ -71,7 +67,7 @@ import Path (
   parseSomeFile,
   (</>),
  )
-import Types (ArchiveUploadType, GlobFilter, TargetFilter, LicenseScanPathFilters)
+import Types (ArchiveUploadType, TargetFilter, LicenseScanPathFilters)
 
 defaultConfigFileNames :: [Path Rel File]
 defaultConfigFileNames =
