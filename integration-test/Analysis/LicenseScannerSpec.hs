@@ -25,6 +25,7 @@ import Srclib.Types (
   LicenseUnit (licenseUnitFiles, licenseUnitName),
   emptyLicenseUnit,
  )
+import Types (LicenseScanPathFilters (..), GlobFilter (GlobFilter))
 import Test.Hspec (Spec, describe, it, shouldBe)
 
 recursiveArchive :: FixtureArtifact
@@ -77,5 +78,21 @@ spec = do
           where
             mitUnit :: LicenseUnit
             mitUnit = fromMaybe emptyLicenseUnit (head' $ NE.filter (\u -> licenseUnitName u == "mit") us)
+            apacheUnit :: LicenseUnit
+            apacheUnit = fromMaybe emptyLicenseUnit (head' $ NE.filter (\u -> licenseUnitName u == "apache-2.0") us)
+
+    it "should filter licenses if LicenseScanPathFilters is set" $ do
+      extractedDir <- getArtifact recursiveArchive
+      let scanDir = extractedDir </> [reldir|cli-license-scan-integration-test-fixtures-main/recursive-archive|]
+      let licenseScanPathFilters = LicenseScanPathFilters{licenseScanPathFiltersOnly = [GlobFilter "**.rb"], licenseScanPathFiltersExclude = []}
+      units <- runStack . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO . fmap licenseSourceUnitLicenseUnits $ scanVendoredDep scanDir (Just licenseScanPathFilters) vendoredDep
+      PIO.removeDirRecur extractedDir
+      case units of
+        Failure ws eg -> fail (show (renderFailure ws eg "An issue occurred"))
+        Success _ us -> do
+          length us `shouldBe` 1
+          NE.sort (NE.map licenseUnitName us) `shouldBe` NE.fromList ["apache-2.0"]
+          NE.sort (licenseUnitFiles apacheUnit) `shouldBe` NE.fromList ["vendor/foo/bar/bar_apache.rb", "vendor/foo/bar/baz/something.rb"]
+          where
             apacheUnit :: LicenseUnit
             apacheUnit = fromMaybe emptyLicenseUnit (head' $ NE.filter (\u -> licenseUnitName u == "apache-2.0") us)
