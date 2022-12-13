@@ -25,8 +25,8 @@ import Srclib.Types (
   LicenseUnit (licenseUnitFiles, licenseUnitName),
   emptyLicenseUnit,
  )
-import Types (LicenseScanPathFilters (..), GlobFilter (GlobFilter))
 import Test.Hspec (Spec, describe, it, shouldBe)
+import Types (GlobFilter (GlobFilter), LicenseScanPathFilters (..))
 
 recursiveArchive :: FixtureArtifact
 recursiveArchive =
