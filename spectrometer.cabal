@@ -505,6 +505,7 @@ test-suite unit-tests
     App.Fossa.Report.AttributionSpec
     App.Fossa.Report.Log4jReportSpec
     App.Fossa.ReportSpec
+    App.Fossa.RunThemisSpec
     App.Fossa.VendoredDependencySpec
     App.Fossa.VSI.DynLinked.Internal.BinarySpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.DEBSpec
