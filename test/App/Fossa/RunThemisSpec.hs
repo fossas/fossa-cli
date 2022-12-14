@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module App.Fossa.RunThemisSpec (spec) where
 
 import App.Fossa.RunThemis (themisFlags)
