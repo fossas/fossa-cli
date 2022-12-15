@@ -27,10 +27,12 @@ jobs:
     - name: Ensures git ownership check does not lead to compile error (we run git during compile for version tagging, etc.)
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+    # adduser cannot add users to group: https://unix.stackexchange.com/a/397733
     - name: Create nixbuild users/group
       run: |
         addgroup nixbld
-        adduser -k -G nixbld nixbld
+        adduser -k nixbld
+        usermod -a -G nixbld nixbld
 
     - uses: cachix/install-nix-action@v17
       with:
