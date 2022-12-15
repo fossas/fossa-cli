@@ -30,7 +30,7 @@ jobs:
     - name: Create nixbuild users/group
       run: |
         addgroup nixbld
-        adduser -c "Nix build user $n" -d /var/empty -g nixbld -G nixbld -M -N -r -s "#(which nologin)" nixbld$n
+        adduser -k -G nixbld nixbld
 
     - uses: cachix/install-nix-action@v17
       with:
