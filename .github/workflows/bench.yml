@@ -8,58 +8,58 @@ jobs:
     container: fossa/haskell-static-alpine:ghc-9.0.2
 
     steps:
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
 
-    - uses: actions/checkout@v3
-      with:
-        lfs: true
+      - uses: actions/checkout@v3
+        with:
+          lfs: true
 
-    - name: Ensures git ownership check does not lead to compile error (we run git during compile for version tagging, etc.)
-      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Ensures git ownership check does not lead to compile error (we run git during compile for version tagging, etc.)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-    - uses: cachix/install-nix-action@v17
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
+      - uses: cachix/install-nix-action@v18
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
 
-    - name: Debugging information
-      run: |
-        ghc --version || echo "no ghc"
-        cabal --version || echo "no cabal"
-        ghcup --version || echo "no ghcup"
-        rustc -V || echo "no rustc"
-        cargo -V || echo "no cargo"
+      - name: Debugging information
+        run: |
+          ghc --version || echo "no ghc"
+          cabal --version || echo "no cabal"
+          ghcup --version || echo "no ghcup"
+          rustc -V || echo "no rustc"
+          cargo -V || echo "no cargo"
 
-    - uses: Swatinem/rust-cache@v1.3.0
-    - uses: actions/cache@v2
-      name: Cache cabal store
-      with:
-        path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
-        key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('**/*.cabal') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
-          ${{ runner.os }}-${{ matrix.ghc }}-
-          ${{ runner.os }}-
+      - uses: Swatinem/rust-cache@v1.3.0
+      - uses: actions/cache@v2
+        name: Cache cabal store
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
+          key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('**/*.cabal') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
+            ${{ runner.os }}-${{ matrix.ghc }}-
+            ${{ runner.os }}-
 
-    - name: Build Rust dependencies
-      run: cargo build --release
+      - name: Build Rust dependencies
+        run: cargo build --release
 
-    - name: Update vendored binaries
-      run: |
-        mkdir vendor-bins
-        ./vendor_download.sh
-      env:
-        GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
+      - name: Update vendored binaries
+        run: |
+          mkdir vendor-bins
+          ./vendor_download.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
 
-    - name: Build
-      env:
-        RUN_CMD: cabal build --project-file=cabal.project.ci.linux all
-      run: |
-        cabal update
-        $RUN_CMD || $RUN_CMD
+      - name: Build
+        env:
+          RUN_CMD: cabal build --project-file=cabal.project.ci.linux all
+        run: |
+          cabal update
+          $RUN_CMD || $RUN_CMD
 
-    - name: Bench
-      run: |
-        cabal bench --benchmark-options '+RTS -T'
+      - name: Bench
+        run: |
+          cabal bench --benchmark-options '+RTS -T'
