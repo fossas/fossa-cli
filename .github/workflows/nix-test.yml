@@ -7,7 +7,7 @@ jobs:
   nix-tests:
     name: nix-test
     runs-on: ubuntu-latest
-    # container: fossa/haskell-static-alpine:ghc-9.0.2
+    container: fossa/haskell-static-alpine:ghc-9.0.2
 
     steps:
       # - uses: actions-rs/toolchain@v1
