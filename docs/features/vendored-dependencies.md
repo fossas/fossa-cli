@@ -157,7 +157,7 @@ So in the example above, we will license scan files named "LICENSE" and files th
 
 There are a few things to note here. First, the `**`, known as a globstar, is a non-standard extension to globs. It means "one or more directories".
 
-So if you have a directory structure like this:
+The following table shows which files will be matched by a glob for this directory structure.
 
 ```
 .
@@ -173,30 +173,36 @@ So if you have a directory structure like this:
     └── runit_test.rb
 ```
 
-Then we have the following results
-
-| Glob        | Meaning                                             | Files matched                                                                                   |
-| ----------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| src/*.rb    | All .rb files directly in the root src directory    | `src/runit.rb`, `src/runit_external.rb`                                                         |
-| **/src/*.rb | All .rb files directly in any directory named `src` | `src/runit.rb`, `src/runit_external.rb`                                                         |
-| **/*.rb     | All .rb files                                       | `foo.rb`, `src/runit.rb`, `src/runit_external.rb`,  `src/subdir/again.rb`, `test/runit_test.rb` |
-| **/src/**   | All files under the src directory                   | `src/subdir/again.rb`                                                                           |
+| Glob          | Meaning                                             | Files matched                                                                                   |
+| ------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `src/*.rb`    | All .rb files directly in the root src directory    | `src/runit.rb`, `src/runit_external.rb`                                                         |
+| `**/src/*.rb` | All .rb files directly in any directory named `src` | `src/runit.rb`, `src/runit_external.rb`                                                         |
+| `**/*.rb`     | All .rb files                                       | `foo.rb`, `src/runit.rb`, `src/runit_external.rb`,  `src/subdir/again.rb`, `test/runit_test.rb` |
+| `**/src/**`   | All files under the src directory                   | `src/subdir/again.rb`                                                                           |
 
 > Note: Some implementations of globstar treat it as "zero or more directories". Since different implementations differ in their globstar functionality, we have decided to treat globstars as matching "one or more directories". We did this as it is simpler to include the additional glob for the base directory case when desired than to exclude the base directory case when it is not desired.
 
-To filter out all files with a given extension, add an entry like `**/*.extension` to the `exclude` object. E.g. `**/*.ts`.
+To filter out all files with a given extension
+: add an entry like `**/*.extension` to the `exclude` object. E.g. `**/*.ts`.
 
-To filter out all files with a given name, add an entry like `**/filename` to the `exclude` object. E.g `**/LICENSE` or `**/LICENSE.*`.
+To filter out all files with a given name
+: add an entry like `**/filename` to the `exclude` object. E.g `**/LICENSE` or `**/LICENSE.*`.
 
-To include only files with a given extension, add an entry like `**/*.extension` to the `only` object. If you want to include files with multiple extensions, you can add multiple entries to the `only` object. E.g. `**/*.ts`.
+To include only files with a given extension
+: add an entry like `**/*.extension` to the `only` object. If you want to include files with multiple extensions, you can add multiple entries to the `only` object. E.g. `**/*.ts`.
 
-To include all files with a given name, add an entry like `**/filename` to the `only` object. E.g `**/LICENSE` or `**/LICENSE.*`.
+To include all files with a given name
+: add an entry like `**/filename` to the `only` object. E.g `**/LICENSE` or `**/LICENSE.*`.
 
-To exclude all files in subdirectories of a given directory, add that directory followed by `/**` to the exclude object. E.g. `path/to/exclude/**`.
+To exclude all files in subdirectories of a given directory
+: add that directory followed by `/**` to the exclude object. E.g. `path/to/exclude/**`.
 
-If you also want to exclude files directly in that directory, add a second entry with the directory followed by `/*`. E.g. `path/to/exclude/*`.
+If you also want to exclude files directly in that directory
+: add a second entry with the directory followed by `/*`. E.g. `path/to/exclude/*`.
 
-To scan only files in a subdirectory of a given directory, add that directory followed by `/**` to the exclude object.  E.g. `path/to/scan/**`.
+To scan only files in a subdirectory of a given directory
+: add that directory followed by `/**` to the exclude object.  E.g. `path/to/scan/**`.
 
-If you also want to scan all files directly in that directory, add a second entry with the directory followed by `/*`. E.g. `path/to/scan/*`.
+If you also want to scan all files directly in that directory
+: add a second entry with the directory followed by `/*`. E.g. `path/to/scan/*`.
 
