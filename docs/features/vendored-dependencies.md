@@ -125,6 +125,61 @@ Due to this caching setup, it is normal for the first analysis to take some time
 
 If `version` is not specified, FOSSA computes a version based on the contents specified by `path`; this means that if the contents have not changed then the results are reused.
 
-In the event caching is causing problems, FOSSA can be made to rescan this kind of dependency: 
+In the event caching is causing problems, FOSSA can be made to rescan this kind of dependency:
 - Run `fossa analyze` with the `--force-vendored-dependency-rescans` flag, or
 - Set `vendoredDependencies.forceRescans` to `true` in `.fossa.yml` at the root of the project.
+
+## Path Filtering
+
+Note: This section does not apply to archive uploads. Path filtering is only available when doing a CLI License Scan. See [here](#how-vendored-dependencies-are-scanned) for more info on the difference between these two methods.
+
+Path filtering can be used to omit some files or directories from license scanning. Path filtering is set up in the `.fossa.yml` file. Here is an example:
+
+```yaml
+version: 3
+vendoredDependencies:
+  licenseScanPathFilters:
+    only:
+      - "**/*.rb"
+      - "**/LICENSE"
+    exclude:
+      - "**/test/**"
+      - "**/test/*"
+      - "**/spec/**"
+      - "**/spec/*"
+```
+
+As you can see, the filters are set in the `vendoredDependencies.licenseScanPathFilters` section of the file. You can provide an `only` object and an `exclude` object. Both of these objects is a list of file globs.
+
+The `only` object will filter to only paths that match at least one of the entries in the `only` object. The `exclude` object will exclude paths that match any of the entries in the `exclude` object.
+
+So in the example above, we will license scan files named "LICENSE" and files that have an extension of `.rb`. We will also filter out any files in directories named `test` or `spec`, even if they match the `only` filters.
+
+There are a few things to note here. First, the `**`, known as a globstar, is a non-standard extension to globs. It means "one or more directories".
+
+So if you have a directory structure like this:
+
+```
+.
+├── LICENSE
+├── foo.rb
+├── src
+│   ├── runit.rb
+│   ├── runit_external.rb
+│   └── subdir
+│       └── again.rb
+└── test
+    ├── LICENSE
+    └── runit_test.rb
+```
+
+Then we have the following results
+
+| Glob        | Meaning                                             | Files matched                                                                                   |
+| ----------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| src/*.rb    | All .rb files directly in the root src directory    | `src/runit.rb`, `src/runit_external.rb`                                                         |
+| **/src/*.rb | All .rb files directly in any directory named `src` | `src/runit.rb`, `src/runit_external.rb`                                                         |
+| **/*.rb     | All .rb files                                       | `foo.rb`, `src/runit.rb`, `src/runit_external.rb`,  `src/subdir/again.rb`, `test/runit_test.rb` |
+| **/src/**   | All files under the src directory                   | `src/subdir/again.rb`                                                                           |
+
+> Note: Some implementations of globstar treat it as "zero or more directories". Since different implementations differ in their globstar functionality, we have decided to treat globstars as matching "one or more directories". We did this as it is simpler to include the additional glob for the base directory case when desired than to exclude the base directory case when it is not desired.
