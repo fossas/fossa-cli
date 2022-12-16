@@ -149,13 +149,15 @@ vendoredDependencies:
       - "**/spec/*"
 ```
 
-As you can see, the filters are set in the `vendoredDependencies.licenseScanPathFilters` section of the file. You can provide an `only` object and an `exclude` object. Both of these objects consist of a list of file globs.
+Filters are set in the `vendoredDependencies.licenseScanPathFilters` section of the file. You can provide an `only` object and an `exclude` object. Both of these objects consist of a list of file globs. You can provide both `only` and `exclude` objects or just `only` or just `exclude`.
 
-The `only` object will filter to only paths that match at least one of the entries in the `only` object. The `exclude` object will exclude paths that match any of the entries in the `exclude` object.
+The `only` object will scan paths that match at least one of the entries in the `only` object. The `exclude` object will exclude paths that match any of the entries in the `exclude` object.
 
 So in the example above, we will license scan files named "LICENSE" and files that have an extension of `.rb`. We will also filter out any files in directories named `test` or `spec`, even if they match the `only` filters.
 
-There are a few things to note here. First, the `**`, known as a globstar, is a non-standard extension to globs. It means "one or more directories".
+The `**`, known as a globstar, is a non-standard extension to globs. It matches one or more directories.
+
+> Note: Some implementations of globstar treat it as matching "zero or more directories". Since different implementations differ in their globstar functionality, we have decided to treat globstars as matching "one or more directories". We did this as it is simpler to include the additional glob for the base directory case when desired than to exclude the base directory case when it is not desired.
 
 The following table shows which files will be matched by a glob for this directory structure.
 
@@ -179,8 +181,6 @@ The following table shows which files will be matched by a glob for this directo
 | `**/src/*.rb` | All .rb files directly in any directory named `src` | `src/runit.rb`, `src/runit_external.rb`                                                         |
 | `**/*.rb`     | All .rb files                                       | `foo.rb`, `src/runit.rb`, `src/runit_external.rb`,  `src/subdir/again.rb`, `test/runit_test.rb` |
 | `**/src/**`   | All files under the src directory                   | `src/subdir/again.rb`                                                                           |
-
-> Note: Some implementations of globstar treat it as "zero or more directories". Since different implementations differ in their globstar functionality, we have decided to treat globstars as matching "one or more directories". We did this as it is simpler to include the additional glob for the base directory case when desired than to exclude the base directory case when it is not desired.
 
 - To filter out all files with a given extension, add an entry like `**/*.extension` to the `exclude` object. E.g. `**/*.ts`.
 
