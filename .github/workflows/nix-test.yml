@@ -1,0 +1,29 @@
+name: Nix Tests
+
+on:
+  push:
+
+jobs:
+  nix-tests:
+    name: nix-test
+    runs-on: ubuntu-latest
+    # container: fossa/haskell-static-alpine:ghc-9.0.2
+
+    steps:
+      # - uses: actions-rs/toolchain@v1
+      #   with:
+      #     profile: minimal
+      #     toolchain: stable
+
+      - uses: actions/checkout@v3
+        with:
+          lfs: true
+
+      # - name: Ensures git ownership check does not lead to compile error (we run git during compile for version tagging, etc.)
+      #   run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - uses: cachix/install-nix-action@v17
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      # - run: nix-build
+      - run: nix-shell --run "echo OK"
