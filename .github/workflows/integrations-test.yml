@@ -36,6 +36,11 @@ jobs:
         # adduser -D nixbld-3
         sed 's/nixbld:x:\([[:digit:]]*\):/nixbld:x:\1:nixbld-1/' /etc/group > /etc/group
 
+    - name: show users and groups
+      run: |
+        for user in $(awk -F: '{print $1}' /etc/passwd); do groups $user; done
+      shell: bash
+
     - name: run our custom nix install script
       run : ./.github/scripts/install-nix.sh
       shell: bash
