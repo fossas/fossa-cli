@@ -36,9 +36,13 @@ jobs:
         # adduser -D nixbld-3
         sed 's/nixbld:x:\([[:digit:]]*\):/nixbld:x:\1:nixbld-1/' /etc/group > /etc/group
 
-    - name: show users and groups
+    - name: show groups
       run: |
         getent group
+      shell: bash
+
+    - name: show users
+      run: |
         getent passwd
       shell: bash
 
