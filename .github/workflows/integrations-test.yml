@@ -43,6 +43,8 @@ jobs:
       env:
         INPUT_NIX_PATH: "nixpkgs=channel:nixos-unstable"
         INPUT_EXTRA_NIX_CONFIG: "build-users-group = nixbld"
+        INPUT_INSTALL_URL: ""
+        INPUT_INSTALL_OPTIONS: ""
 
     - name: Debugging information
       run: |
