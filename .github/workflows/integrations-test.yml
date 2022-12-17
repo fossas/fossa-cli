@@ -38,7 +38,8 @@ jobs:
 
     - name: show users and groups
       run: |
-        for user in $(awk -F: '{print $1}' /etc/passwd); do groups $user; done
+        getent group
+        getent passwd
       shell: bash
 
     - name: run our custom nix install script
