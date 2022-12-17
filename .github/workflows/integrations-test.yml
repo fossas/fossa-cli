@@ -28,13 +28,14 @@ jobs:
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
     # adduser cannot add users to group: https://unix.stackexchange.com/a/397733
+    # so we edit /etc/group directly
     - name: Create nixbuild users/group
       run: |
         addgroup nixbld
         adduser -D nixbld-1
         adduser -D nixbld-2
         adduser -D nixbld-3
-        sed 's/nixbld:x:\([[:digit:]]*\):/nixbld:x:\1:nixbld-1,nixbld-2,nixbld-3/' /etc/group > group-changed
+        sed 's/nixbld:x:\([[:digit:]]*\):$/nixbld:x:\1:nixbld-1,nixbld-2,nixbld-3/' /etc/group > group-changed
         mv group-changed /etc/group
 
     - name: run our custom nix install script
