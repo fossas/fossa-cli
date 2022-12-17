@@ -30,8 +30,8 @@ jobs:
     # adduser cannot add users to group: https://unix.stackexchange.com/a/397733
     - name: Create nixbuild users/group
       run: |
-        addgroup -S nixbld
-        adduser -S nixbld
+        addgroup nixbld
+        adduser -k nixbld
         sed 's/nixbld:x:\([[:digit:]]*\):/nixbld:x:\1:nixbld/' /etc/group > /etc/group
         cat /etc/group
 
