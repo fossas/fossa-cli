@@ -32,13 +32,15 @@ jobs:
       run: |
         addgroup nixbld
         adduser -D nixbld-1
-        sed 's/nixbld:x:\([[:digit:]]*\):/nixbld:x:\1:nixbld-1/' /etc/group > /etc/group
+        adduser -D nixbld-2
+        adduser -D nixbld-3
+        sed 's/nixbld:x:\([[:digit:]]*\):/nixbld:x:\1:nixbld-1,nixbld-2,nixbld-3/' /etc/group > /etc/group
         cat /etc/group
 
     - uses: cachix/install-nix-action@v17
       with:
         nix_path: nixpkgs=channel:nixos-unstable
-        # extra_nix_config: "build-users-group = nixbld"
+        extra_nix_config: "build-users-group = nixbld"
 
     - name: Debugging information
       run: |
