@@ -31,7 +31,7 @@ jobs:
     - name: Create nixbuild users/group
       run: |
         addgroup nixbld
-        adduser -k /etc/skel nixbld-1
+        adduser -D nixbld-1
         sed 's/nixbld:x:\([[:digit:]]*\):/nixbld:x:\1:nixbld-1/' /etc/group > /etc/group
         cat /etc/group
 
