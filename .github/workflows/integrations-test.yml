@@ -32,9 +32,10 @@ jobs:
       run: |
         addgroup nixbld
         adduser -D nixbld-1
-        # adduser -D nixbld-2
-        # adduser -D nixbld-3
-        sed 's/nixbld:x:\([[:digit:]]*\):/nixbld:x:\1:nixbld-1/' /etc/group > /etc/group
+        adduser -D nixbld-2
+        adduser -D nixbld-3
+        sed 's/nixbld:x:\([[:digit:]]*\):/nixbld:x:\1:nixbld-1,nixbld-2,nixbld-3/' /etc/group > group-changed
+        mv group-changed /etc/group
 
     - name: show groups
       run: |
