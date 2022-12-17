@@ -30,8 +30,8 @@ jobs:
     # adduser cannot add users to group: https://unix.stackexchange.com/a/397733
     - name: Create nixbuild users/group
       run: |
-        addgroup nixbld
-        adduser -k nixbld -G nixbld
+        addgroup -S nixbld
+        adduser -S -G nixbld
         # usermod -a -G nixbld nixbld
 
     - uses: cachix/install-nix-action@v17
