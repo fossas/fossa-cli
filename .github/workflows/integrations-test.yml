@@ -6,7 +6,7 @@ on:
   push:
   workflow_dispatch:
   schedule:
-    - cron: "0 5 * * *" # At 05:00 on every day. 
+    - cron: "0 5 * * *" # At 05:00 on every day.
 
 jobs:
   integration-test:
@@ -37,7 +37,7 @@ jobs:
     - uses: cachix/install-nix-action@v17
       with:
         nix_path: nixpkgs=channel:nixos-unstable
-        extra_nix_config: "build-users-group = nixbld"
+        extra_nix_config: "build-users-group=nixbld"
 
     - name: Debugging information
       run: |
