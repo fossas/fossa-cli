@@ -32,10 +32,9 @@ jobs:
       run: |
         addgroup nixbld
         adduser -D nixbld-1
-        adduser -D nixbld-2
-        adduser -D nixbld-3
-        sed 's/nixbld:x:\([[:digit:]]*\):/nixbld:x:\1:nixbld-1,nixbld-2,nixbld-3/' /etc/group > /etc/group
-        cat /etc/group
+        # adduser -D nixbld-2
+        # adduser -D nixbld-3
+        sed 's/nixbld:x:\([[:digit:]]*\):/nixbld:x:\1:nixbld-1/' /etc/group > /etc/group
 
     - name: run our custom nix install script
       run : ./.github/scripts/install-nix.sh
