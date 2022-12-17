@@ -31,8 +31,8 @@ jobs:
     - name: Create nixbuild users/group
       run: |
         addgroup nixbld
-        adduser -k nixbld
-        usermod -a -G nixbld nixbld
+        adduser -k nixbld -G nixbld
+        # usermod -a -G nixbld nixbld
 
     - uses: cachix/install-nix-action@v17
       with:
