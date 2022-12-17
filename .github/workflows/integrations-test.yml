@@ -32,8 +32,8 @@ jobs:
       run: |
         addgroup -S nixbld
         cat /etc/group
-        # adduser -S -G nixbld
-        # usermod -a -G nixbld nixbld
+        adduser -S nixbld
+        sed 's/nixbld:x:\([[:digit:]]*\):/nixbld:x:\1:nixbld/' /etc/group > /etc/group
 
     - uses: cachix/install-nix-action@v17
       with:
