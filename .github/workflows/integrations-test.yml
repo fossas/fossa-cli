@@ -38,7 +38,7 @@ jobs:
 
     - name: show groups
       run: |
-        getent group
+        groups nixbld-1
       shell: bash
 
     - name: show users
