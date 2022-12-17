@@ -31,9 +31,9 @@ jobs:
     - name: Create nixbuild users/group
       run: |
         addgroup -S nixbld
-        cat /etc/group
         adduser -S nixbld
         sed 's/nixbld:x:\([[:digit:]]*\):/nixbld:x:\1:nixbld/' /etc/group > /etc/group
+        cat /etc/group
 
     - uses: cachix/install-nix-action@v17
       with:
