@@ -43,6 +43,9 @@ if [[ $OSTYPE =~ darwin || -e /run/systemd/system ]]; then
     --daemon-user-count "$(python3 -c 'import multiprocessing as mp; print(mp.cpu_count() * 2)')"
   )
 else
+  # [SP]: The `add_config "build-users-group ="` line was causing this script to fail,
+  #       so we copied it from https://github.com/cachix/install-nix-action/blob/master/install-nix.sh
+  #       and commented out that line.
   # "fix" the following error when running nix*
   # error: the group 'nixbld' specified in 'build-users-group' does not exist
   # add_config "build-users-group ="
