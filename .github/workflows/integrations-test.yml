@@ -32,7 +32,7 @@ jobs:
       run: |
         addgroup nixbld
         adduser -k /etc/skel nixbld-1
-        sed 's/nixbld:x:\([[:digit:]]*\):/nixbld:x:\1:nixbld/' /etc/group > /etc/group
+        sed 's/nixbld:x:\([[:digit:]]*\):/nixbld:x:\1:nixbld-1/' /etc/group > /etc/group
         cat /etc/group
 
     - uses: cachix/install-nix-action@v17
