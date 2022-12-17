@@ -38,7 +38,7 @@ jobs:
     - uses: cachix/install-nix-action@v17
       with:
         nix_path: nixpkgs=channel:nixos-unstable
-        extra_nix_config: "build-users-group = nixbld"
+        # extra_nix_config: "build-users-group = nixbld"
 
     - name: Debugging information
       run: |
