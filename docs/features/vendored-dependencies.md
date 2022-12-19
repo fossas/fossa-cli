@@ -198,3 +198,18 @@ The following table shows which files will be matched by a glob for this directo
 
 - If you also want to scan all files directly in that directory, add a second entry with the directory followed by `/*`. E.g. `path/to/scan/*`.
 
+### Debugging your path filters
+
+If you want to see what files we are scanning with your current `.fossa.yml` file, you can use the `fossa license-scan fossa-deps` command:
+
+```
+fossa license-scan fossa-deps
+```
+
+That will output the results of the license-scan. If you have `jq` installed, you can filter the output to just show the paths that were scanned:
+
+```
+fossa license-scan fossa-deps | jq '.uploadUnits[].LicenseUnits[].Files'
+```
+
+This will include all of the files scanned, even those with no licenses found in them.
