@@ -46,7 +46,7 @@ import Data.Aeson.Types (Object, Parser, prependFailure)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text, toLower)
 import Data.Text qualified as Text
@@ -167,9 +167,14 @@ scanAndUpload ::
 scanAndUpload root vdeps vendoredDepsOptions = do
   org <- getOrganization
   (archiveOrCLI, vendoredDependencyScanMode) <- getScanCfg org vendoredDepsOptions
+  let pathFilters = licenseScanPathFilters vendoredDepsOptions
   let scanner = case archiveOrCLI of
         ArchiveUpload -> archiveUploadSourceUnit
-        CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode $ licenseScanPathFilters vendoredDepsOptions
+        CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode pathFilters
+
+  when (archiveOrCLI == ArchiveUpload && isJust pathFilters) $
+    fatalText "You have provided path filters in the vendoredDependencies.licenseScanPathFilters section of your .fossa.yml file. Path filters are not allowed when doing archive uploads."
+
   scanner root vdeps
 
 getScanCfg :: (Has Diagnostics sig m) => Organization -> VendoredDependencyOptions -> m (ArchiveUploadType, VendoredDependencyScanMode)
