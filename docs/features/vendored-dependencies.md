@@ -158,6 +158,8 @@ So in the example above, we will license scan files named "LICENSE" and files th
 The `**`, known as a globstar, is a non-standard extension to globs. It matches one or more directories.
 
 > Note: Some implementations of globstar treat it as matching "zero or more directories". Since different implementations differ in their globstar functionality, we have decided to treat globstars as matching "one or more directories". We did this as it is simpler to include the additional glob for the base directory case when desired than to exclude the base directory case when it is not desired.
+>
+> There is one exception to this. A glob like `**/*.rb` will also include `*.rb` files in the root directory. This was done so that you would only need one line in order to exclude all files with a given extension. If you had `**/*.rb` in the `only` object but wanted to exclude `*.rb` files in the root directory, you would need to add an entry of `*.rb` to the `exclude` object.
 
 The following table shows which files will be matched by a glob for this directory structure.
 
