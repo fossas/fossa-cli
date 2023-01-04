@@ -142,12 +142,9 @@ the dependency's scope (development or production) and may double count dependen
 
 2. How do I ensure `fossa analyze` does not exit fatally when no targets are discovered?
 
-In some scenarios, you may want to configure `fossa analyze` and `fossa test` CI workflow on
-empty repository. Unfortunately there is no configuration on CLI which will 
-allow for analysis when 0 targets are discovered as of yet.
+In some scenarios, you may want to configure the `fossa analyze` and `fossa test` CI workflow on an empty repository or directory with 0 targets. Unfortunately, `fossa-cli` does not have a configuration yet, which will allow for successful analysis (exit code of 0) when 0 targets are discovered.
 
-For workaround, create empty `reqs.txt` file prior to running `fossa analyze`, which will
-force `fossa-cli` to presume empty pip project (with 0 dependencies).
+For a workaround, create an empty `reqs.txt` file before running `fossa analyze,` which will force `fossa-cli` to presume an empty pip project (with 0 dependencies).
 
 ```bash
 touch reqs.txt && fossa analyze && rm reqs.txt && fossa test
