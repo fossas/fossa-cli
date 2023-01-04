@@ -139,3 +139,16 @@ As `fossa-cli` relies on manifest and lock files provided in the project's direc
 intentionally skip `node_modules/` and such directories. If `fossa-cli` discovers and
 analyzes project found in `node_modules/`: `fossa-cli` will not be able to infer
 the dependency's scope (development or production) and may double count dependencies.
+
+2. How do I ensure `fossa analyze` does not exit fatally when no targets are discovered?
+
+In some scenarios, you may want to configure `fossa analyze` and `fossa test` CI workflow on
+empty repository. Unfortunately there is no configuration on CLI which will 
+allow for analysis when 0 targets are discovered as of yet.
+
+For workaround, create empty `reqs.txt` file prior to running `fossa analyze`, which will
+force `fossa-cli` to presume empty pip project (with 0 dependencies).
+
+```bash
+touch reqs.txt && fossa analyze && rm reqs.txt && fossa test
+```
