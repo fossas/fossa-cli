@@ -1,7 +1,7 @@
 # FOSSA CLI Changelog
 
 ## Unreleased
-- Go: Collects environment variables in debug bundle. ([#]())
+- Go: Collects environment variables in debug bundle. ([#1132](https://github.com/fossas/fossa-cli/pull/1132))
 
 ## v3.6.9
 - Yarn: Fix a bug where tarball URLs were recognized as git urls. ([#1126](https://github.com/fossas/fossa-cli/pull/1126))
