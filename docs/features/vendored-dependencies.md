@@ -200,6 +200,10 @@ The following table shows which files will be matched by a glob for this directo
 
 - If you also want to scan all files directly in that directory, add a second entry with the directory followed by `/*`. E.g. `path/to/scan/*`.
 
+### Path filtering and Windows
+
+You must always use `/` as a path separator in your path filters. The CLI will convert these to `\` when you run in a Windows environment.
+
 ### Debugging your path filters
 
 If you want to see what files we are scanning with your current `.fossa.yml` file, you can use the `fossa license-scan fossa-deps` command:
