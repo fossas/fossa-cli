@@ -139,3 +139,33 @@ As `fossa-cli` relies on manifest and lock files provided in the project's direc
 intentionally skip `node_modules/` and such directories. If `fossa-cli` discovers and
 analyzes project found in `node_modules/`: `fossa-cli` will not be able to infer
 the dependency's scope (development or production) and may double count dependencies.
+
+2. Can `fossa-cli` detect licensed/copyright content downloaded at runtime by dependencies?
+
+Unfortunately, as of yet, `fossa-cli` cannot discover or analyze any licensed or copyrighted
+content retrieved at runtime by dependencies when it is not referenced in manifest or lock files.
+
+For example, in `python` with [datasets](https://pypi.org/project/datasets/) package,
+
+```python
+from datasets import load_dataset
+dataset = load_dataset("bigscience/P3", revision="f2cade2") # retrieved at runtime
+```
+
+In this case, `fossa-cli` would not be able to identify `bigscience/P3` and its associated compliance
+obligation since they were not part of the manifest or lockfile - e.g. `requirements.txt`, `setup.py`, `poetry.lock`.
+
+In this scenario, if the inclusion of `bigscience/P3` is desired in FOSSA's reporting, we recommend
+[fossa-deps.yml](./../files/fossa-deps.md) file to explicitly include `bigscience/P3` in FOSSA's reporting. Likewise, you can
+also download `huggingface.co/datasets/bigscience/P3` to disk and use [vendor dependency scanning](./../../features/vendored-dependencies.md).
+
+```yaml
+# Example fossa-deps.yml
+
+custom-dependencies:
+- name: huggingface.co/datasets/bigscience/P3
+  version: "f2cade2"
+  license: "Apache-2.0"
+```
+
+If you need more assistance, please contact [FOSSA support](https://support.fossa.com).
