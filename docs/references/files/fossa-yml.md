@@ -30,6 +30,12 @@ revision:
 vendoredDependencies:
   forceRescans: false
   scanMethod: CLILicenseScan
+  licenseScanPathFilters:
+    only:
+      - "**/*.rb"
+    exclude:
+      - ".git/**"
+      - "test/**/*.rb"
 
 targets:
   only:

@@ -67,7 +67,7 @@ import Path (
   parseSomeFile,
   (</>),
  )
-import Types (ArchiveUploadType, TargetFilter)
+import Types (ArchiveUploadType, LicenseScanPathFilters, TargetFilter)
 
 defaultConfigFileNames :: [Path Rel File]
 defaultConfigFileNames =
@@ -300,6 +300,7 @@ instance FromJSON ConfigTelemetryScope where
 data VendoredDependencyConfigs = VendoredDependencyConfigs
   { configForceRescans :: Bool
   , configLicenseScanMethod :: Maybe ArchiveUploadType
+  , configLicenseScanPathFilters :: Maybe LicenseScanPathFilters
   }
   deriving (Eq, Ord, Show)
 
@@ -308,3 +309,4 @@ instance FromJSON VendoredDependencyConfigs where
     VendoredDependencyConfigs
       <$> (obj .:? "forceRescans" .!= False)
       <*> (obj .:? "scanMethod")
+      <*> (obj .:? "licenseScanPathFilters")

@@ -12,7 +12,9 @@ module Types (
   LicenseType (..),
   module DepTypes,
   TargetFilter (..),
+  GlobFilter (..),
   DiscoveredProjectType (..),
+  LicenseScanPathFilters (..),
   projectTypeToText,
 ) where
 
@@ -25,6 +27,7 @@ import Data.Aeson (
   object,
   withObject,
   withText,
+  (.!=),
   (.:),
   (.:?),
  )
@@ -223,6 +226,10 @@ newtype BuildTarget = BuildTarget {unBuildTarget :: Text}
   However, many Gradle targets consist of a strategy type, a directory,
   and an exact gradle target.
 -}
+
+newtype GlobFilter = GlobFilter {unGlobFilter :: Text}
+  deriving (Eq, Ord, Show, ToJSON, FromJSON)
+
 data TargetFilter
   = TypeTarget Text
   | TypeDirTarget Text (Path Rel Dir)
@@ -303,3 +310,22 @@ instance FromJSON ArchiveUploadType where
 
 instance ToJSON ArchiveUploadType where
   toJSON = toJSON . show
+
+data LicenseScanPathFilters = LicenseScanPathFilters
+  { licenseScanPathFiltersOnly :: [GlobFilter]
+  , licenseScanPathFiltersExclude :: [GlobFilter]
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON LicenseScanPathFilters where
+  parseJSON = withObject "LicenseScanPathFilters" $ \obj ->
+    LicenseScanPathFilters
+      <$> (obj .:? "only" .!= [])
+      <*> (obj .:? "exclude" .!= [])
+
+instance ToJSON LicenseScanPathFilters where
+  toJSON LicenseScanPathFilters{..} =
+    object
+      [ "only" .= licenseScanPathFiltersOnly
+      , "exclude" .= licenseScanPathFiltersExclude
+      ]

@@ -3,6 +3,7 @@
 module App.Fossa.RunThemis (
   execThemis,
   execRawThemis,
+  themisFlags,
 ) where
 
 import App.Fossa.EmbeddedBinary (
@@ -25,6 +26,7 @@ import Effect.Exec (
  )
 import Path (Abs, Dir, Path, parent)
 import Srclib.Types (LicenseUnit)
+import Types (GlobFilter (unGlobFilter), LicenseScanPathFilters (..))
 
 execRawThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> [Text] -> m BL.ByteString
 execRawThemis themisBins scanDir flags = execThrow scanDir $ themisCommand themisBins "" flags
@@ -51,3 +53,11 @@ generateThemisArgs taggedThemisIndex pathPrefix flags =
   ]
     <> flags
     <> ["."]
+
+themisFlags :: Maybe LicenseScanPathFilters -> [Text]
+themisFlags Nothing = ["--srclib-with-matches"]
+themisFlags (Just filters) =
+  let defaultFilter = ["--srclib-with-matches"]
+      onlyFilters = concatMap (\only -> ["--only-paths", unGlobFilter only]) $ licenseScanPathFiltersOnly filters
+      exceptFilters = concatMap (\exclude -> ["--exclude-paths", unGlobFilter exclude]) $ licenseScanPathFiltersExclude filters
+   in defaultFilter ++ onlyFilters ++ exceptFilters

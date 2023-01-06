@@ -26,7 +26,7 @@ import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess, expectFailure)
 import Test.Hspec qualified as T
 import Test.Hspec.Core.Spec (SpecM)
-import Types (ArchiveUploadType (..), BuildTarget (..), TargetFilter (..))
+import Types (ArchiveUploadType (..), BuildTarget (..), GlobFilter (GlobFilter), LicenseScanPathFilters (..), TargetFilter (..))
 
 expectedConfigFile :: ConfigFile
 expectedConfigFile =
@@ -88,6 +88,14 @@ expectedVendoredDependencies =
   VendoredDependencyConfigs
     { configForceRescans = True
     , configLicenseScanMethod = Just ArchiveUpload
+    , configLicenseScanPathFilters = Just expectedVendoredDependencyFilters
+    }
+
+expectedVendoredDependencyFilters :: LicenseScanPathFilters
+expectedVendoredDependencyFilters =
+  LicenseScanPathFilters
+    { licenseScanPathFiltersOnly = [GlobFilter "**/*.rb"]
+    , licenseScanPathFiltersExclude = [GlobFilter ".git/**", GlobFilter "test/**/*.rb"]
     }
 
 simpleTarget :: TargetFilter

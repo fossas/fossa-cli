@@ -105,7 +105,7 @@ import Options.Applicative (
  )
 import Path (Abs, Dir, File, Path, Rel)
 import System.Info qualified as SysInfo
-import Types (ArchiveUploadType (..), TargetFilter)
+import Types (ArchiveUploadType (..), LicenseScanPathFilters (..), TargetFilter)
 
 -- CLI flags, for use with 'Data.Flag'
 data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan deriving (Generic)
@@ -160,6 +160,7 @@ instance ToJSON VSIModeOptions where
 data VendoredDependencyOptions = VendoredDependencyOptions
   { forceRescans :: Bool
   , licenseScanMethod :: Maybe ArchiveUploadType
+  , licenseScanPathFilters :: Maybe LicenseScanPathFilters
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -484,8 +485,8 @@ collectVendoredDeps ::
   m VendoredDependencyOptions
 collectVendoredDeps maybeCfg cliOpts = do
   let (forceRescansFromFlags, scanTypeFromFlags) = collectVendoredDepsFromFlags cliOpts
-      (forceRescansFromConfig, scanTypeFromConfig) = collectVendoredDepsFromConfig maybeCfg
-  pure $ VendoredDependencyOptions (forceRescansFromFlags || forceRescansFromConfig) (scanTypeFromFlags <|> scanTypeFromConfig)
+      (forceRescansFromConfig, scanTypeFromConfig, licenseScanPathFiltersFromConfig) = collectVendoredDepsFromConfig maybeCfg
+  pure $ VendoredDependencyOptions (forceRescansFromFlags || forceRescansFromConfig) (scanTypeFromFlags <|> scanTypeFromConfig) licenseScanPathFiltersFromConfig
 
 collectVendoredDepsFromFlags ::
   AnalyzeCliOpts ->
@@ -495,11 +496,12 @@ collectVendoredDepsFromFlags AnalyzeCliOpts{..} = do
       scanType = analyzeForceVendoredDependencyMode
   (forceRescans, scanType)
 
-collectVendoredDepsFromConfig :: Maybe ConfigFile -> (Bool, Maybe ArchiveUploadType)
+collectVendoredDepsFromConfig :: Maybe ConfigFile -> (Bool, Maybe ArchiveUploadType, Maybe LicenseScanPathFilters)
 collectVendoredDepsFromConfig maybeCfg =
   let forceRescans = maybe False configForceRescans (maybeCfg >>= configVendoredDependencies)
       defaultScanType = maybeCfg >>= configVendoredDependencies >>= configLicenseScanMethod
-   in (forceRescans, defaultScanType)
+      pathFilters = maybeCfg >>= configVendoredDependencies >>= configLicenseScanPathFilters
+   in (forceRescans, defaultScanType, pathFilters)
 
 collectScanDestination ::
   ( Has Diagnostics sig m

@@ -37,3 +37,9 @@ experimental:
 vendoredDependencies:
   forceRescans: true
   scanMethod: ArchiveUpload
+  licenseScanPathFilters:
+    only:
+      - "**/*.rb"
+    exclude:
+      - ".git/**"
+      - "test/**/*.rb"
