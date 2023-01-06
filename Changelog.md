@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.6.10
 
 - Vendored Dependencies: Allow path filtering when doing cli-side license scans ([#1128](https://github.com/fossas/fossa-cli/pull/1128))
 
