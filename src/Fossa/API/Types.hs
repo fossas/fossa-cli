@@ -52,7 +52,7 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Ord (comparing)
-import Data.String.Conversion (encodeUtf8)
+import Data.String.Conversion (encodeUtf8, toText)
 import Data.Text (Text, toLower)
 import Data.Text qualified as Text
 import Network.HTTP.Req (
@@ -287,8 +287,9 @@ data Issue = Issue
   }
   deriving (Eq, Ord, Show)
 
-newtype IssueRule = IssueRule
-  { ruleLicenseId :: Maybe Text
+data IssueRule = IssueRule
+  { ruleId :: Maybe Int
+  , ruleLicenseId :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -421,10 +422,16 @@ instance ToJSON IssueType where
 
 instance FromJSON IssueRule where
   parseJSON = withObject "IssueRule" $ \obj ->
-    IssueRule <$> obj .:? "licenseId"
+    IssueRule
+      <$> obj .:? "ruleId"
+      <*> obj .:? "license"
 
 instance ToJSON IssueRule where
-  toJSON IssueRule{..} = object ["licenseId" .= ruleLicenseId]
+  toJSON IssueRule{..} =
+    object
+      [ "license" .= ruleLicenseId
+      , "ruleId" .= ruleId
+      ]
 
 instance Pretty Issues where
   pretty = renderedIssues
@@ -639,7 +646,7 @@ renderedIssues issues = rendered
               IssueNativeCode -> "Native code dependency detected in " <> nameRevision
               IssueUnlicensedAndPublicDep -> "Unlicensed dependency detected in " <> nameRevision
               -- we get an id number, but need a name
-              IssuePolicyFlag -> fromMaybe "<unknown license>" licenseId <> " license detected in " <> nameRevision
+              IssuePolicyFlag -> fromMaybe unknownLicenseText licenseId <> " license detected in " <> nameRevision
               IssuePolicyConflict ->
                 mconcat . intersperse " " $
                   [ "Denied by policy"
@@ -651,6 +658,15 @@ renderedIssues issues = rendered
               IssueUnlicensedDependency -> "Unlicensed dependency detected in " <> nameRevision
               IssueOutdatedDependency -> "Outdated dependency detected in " <> nameRevision
               IssueOther t -> t
+          where
+            unknownLicenseText :: Text
+            unknownLicenseText =
+              fromMaybe
+                "Unknown "
+                ( do
+                    ruleId <- ruleId <$> (issueRule issue)
+                    pure $ "Unknown (rule id: " <> (toText . show $ ruleId) <> ")"
+                )
 
         name = fromMaybe (issueRevisionId issue) (locatorSplit !? 1)
         revision = fromMaybe "" (locatorSplit !? 2)

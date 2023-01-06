@@ -66,7 +66,10 @@ genIssueType =
     ]
 
 genIssueRule :: Gen IssueRule
-genIssueRule = IssueRule <$> Gen.maybe arbitraryText
+genIssueRule =
+  IssueRule
+    <$> Gen.maybe (Gen.int (Range.linear 0 100))
+    <*> Gen.maybe arbitraryText
 
 arbitraryText :: Gen Text
 arbitraryText = Gen.text (Range.linear 0 100) Gen.unicodeAll
