@@ -74,6 +74,7 @@ import Text.URI (URI, render)
 import Text.URI.QQ (uri)
 import Types (ArchiveUploadType (..))
 import Unsafe.Coerce qualified as Unsafe
+import Control.Applicative ((<|>))
 
 newtype ApiKey = ApiKey {unApiKey :: Text}
   deriving (Eq, Ord)
@@ -629,24 +630,23 @@ renderedIssues issues = rendered
         ]
 
     renderIssue :: Issue -> Doc ann
-    renderIssue issue = vsep (map format [issueTitle])
+    renderIssue Issue{..} = vsep (map format [issueTitle])
       where
         format :: Text -> Doc ann
         format = fill padding . pretty
 
-        locatorSplit = Text.split (\c -> c == '$' || c == '+') (issueRevisionId issue)
+        locatorSplit = Text.split (\c -> c == '$' || c == '+') issueRevisionId
 
         issueTitle :: Text
         issueTitle =
           "⚑ "
-            <> case issueType issue of
+            <> case issueType of
               IssueAbandonware -> "Abandoned dependency detected in " <> nameRevision
               IssueEmptyPackage -> "Empty package detected in " <> nameRevision
               IssueDenyListedDep -> "Denylist dependency detected in " <> nameRevision
               IssueNativeCode -> "Native code dependency detected in " <> nameRevision
               IssueUnlicensedAndPublicDep -> "Unlicensed dependency detected in " <> nameRevision
-              -- we get an id number, but need a name
-              IssuePolicyFlag -> fromMaybe unknownLicenseText licenseId <> " license detected in " <> nameRevision
+              IssuePolicyFlag -> issuePolicyFlagMessage
               IssuePolicyConflict ->
                 mconcat . intersperse " " $
                   [ "Denied by policy"
@@ -658,24 +658,35 @@ renderedIssues issues = rendered
               IssueUnlicensedDependency -> "Unlicensed dependency detected in " <> nameRevision
               IssueOutdatedDependency -> "Outdated dependency detected in " <> nameRevision
               IssueOther t -> t
-          where
-            unknownLicenseText :: Text
-            unknownLicenseText =
-              fromMaybe
-                "Unknown "
-                ( do
-                    ruleId <- ruleId <$> (issueRule issue)
-                    pure $ "Unknown (rule id: " <> (toText . show $ ruleId) <> ")"
-                )
 
-        name = fromMaybe (issueRevisionId issue) (locatorSplit !? 1)
+
+        name = fromMaybe issueRevisionId (locatorSplit !? 1)
         revision = fromMaybe "" (locatorSplit !? 2)
-
-        licenseId :: Maybe Text
-        licenseId = ruleLicenseId =<< issueRule issue
 
         nameRevision :: Text
         nameRevision = name <> "@" <> revision
+
+        licenseId :: Maybe Text
+        licenseId = ruleLicenseId =<< issueRule
+
+        issuePolicyFlagMessage :: Text
+        issuePolicyFlagMessage = fromMaybe missingRuleIdMsg (issuePolicyFlagMsg <|> missingLicenseIdMsg)
+          where
+            intToText :: Int -> Text
+            intToText = toText . show
+
+            ruleId' :: Maybe Text
+            ruleId' = intToText <$> (ruleId =<< issueRule)
+      
+            issuePolicyFlagMsg :: Maybe Text
+            issuePolicyFlagMsg = (\l -> l <> " license detected in " <> nameRevision) <$> licenseId
+    
+            missingLicenseIdMsg :: Maybe Text
+            missingLicenseIdMsg = (\rId -> "Policy flag issue detected (ruleId:  " <> rId <> ") in " <> nameRevision) <$> ruleId'
+    
+            missingRuleIdMsg :: Text
+            missingRuleIdMsg = "Policy flag issue detected (issueId: " <> intToText issueId <> ") in " <> nameRevision
+
 
 -- | parse a URI for use as a base Url, along with some default options (auth, port, ...)
 useApiOpts :: Has Diagnostics sig m => ApiOpts -> m (Url 'Https, Option 'Https)
