@@ -225,6 +225,7 @@ issuesAvailable =
           , API.issueRevisionId = "IssueRevisionId" <> showT issueId
           , API.issueType = issueType
           , API.issueRule = Nothing
+          , API.issueLicense = Nothing
           }
       issueList = zipWith makeIssue [1 ..] issueTypes
    in API.Issues
@@ -253,6 +254,7 @@ issuesDiffAvailable =
           , API.issueRevisionId = "IssueRevisionId" <> showT issueId
           , API.issueType = issueType
           , API.issueRule = Nothing
+          , API.issueLicense = Nothing
           }
       issueList = zipWith makeIssue [1 ..] issueTypes
    in API.Issues

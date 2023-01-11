@@ -53,6 +53,7 @@ genIssue =
     <*> arbitraryText
     <*> genIssueType
     <*> Gen.maybe genIssueRule
+    <*> Gen.maybe arbitraryText
 
 genIssueType :: Gen IssueType
 genIssueType =
@@ -67,9 +68,7 @@ genIssueType =
 
 genIssueRule :: Gen IssueRule
 genIssueRule =
-  IssueRule
-    <$> Gen.maybe (Gen.int (Range.linear 0 100))
-    <*> Gen.maybe arbitraryText
+  IssueRule <$> Gen.maybe (Gen.int (Range.linear 0 100))
 
 arbitraryText :: Gen Text
 arbitraryText = Gen.text (Range.linear 0 100) Gen.unicodeAll

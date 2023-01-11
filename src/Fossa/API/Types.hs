@@ -285,27 +285,20 @@ data Issue = Issue
   , issueRevisionId :: Text
   , issueType :: IssueType
   , issueRule :: Maybe IssueRule
+  , issueLicense :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
-data IssueRule = IssueRule
-  { ruleId :: Maybe Int
-  , ruleLicenseId :: Maybe Text
-  }
+newtype IssueRule = IssueRule
+  { ruleId :: Maybe Int}
   deriving (Eq, Ord, Show)
 
 instance FromJSON Issues where
   parseJSON = withObject "Issues" $ \obj ->
-    Issues
-      <$> obj
-        .: "count"
-      <*> obj
-        .:? "issues"
-        .!= []
-      <*> obj
-        .: "status"
-      <*> obj
-        .:? "summary"
+    Issues <$> obj .: "count"
+    <*> obj .:? "issues" .!= []
+    <*> obj .: "status"
+    <*> obj .:? "summary"
 
 instance ToJSON Issues where
   toJSON Issues{..} =
@@ -366,21 +359,14 @@ instance ToJSON IssueSummaryTarget where
 
 instance FromJSON Issue where
   parseJSON = withObject "Issue" $ \obj ->
-    Issue
-      <$> obj
-        .: "id"
-      <*> obj
-        .:? "priorityString"
-      <*> obj
-        .: "resolved"
-      -- VPS issues don't have a revisionId
-      <*> obj
-        .:? "revisionId"
-        .!= "unknown project"
-      <*> obj
-        .: "type"
-      <*> obj
-        .:? "rule"
+    Issue <$> obj .: "id"
+    <*> obj .:? "priorityString"
+    <*> obj .: "resolved"
+    -- VPS issues don't have a revisionId
+    <*> obj .:? "revisionId" .!= "unknown project"
+    <*> obj .: "type"
+    <*> obj .:? "rule"
+    <*> obj .:? "license"
 
 instance ToJSON Issue where
   toJSON Issue{..} =
@@ -391,6 +377,7 @@ instance ToJSON Issue where
       , "revisionId" .= issueRevisionId
       , "type" .= issueType
       , "rule" .= issueRule
+      , "license" .= issueLicense
       ]
 
 instance FromJSON IssueType where
@@ -423,15 +410,13 @@ instance ToJSON IssueType where
 
 instance FromJSON IssueRule where
   parseJSON = withObject "IssueRule" $ \obj ->
-    IssueRule
-      <$> obj .:? "ruleId"
-      <*> obj .:? "license"
+    IssueRule <$> obj .:? "ruleId"
 
 instance ToJSON IssueRule where
   toJSON IssueRule{..} =
     object
-      [ "license" .= ruleLicenseId
-      , "ruleId" .= ruleId
+      [ 
+       "ruleId" .= ruleId
       ]
 
 instance Pretty Issues where
@@ -650,7 +635,7 @@ renderedIssues issues = rendered
               IssuePolicyConflict ->
                 mconcat . intersperse " " $
                   [ "Denied by policy"
-                  , fromMaybe "<unknown rule>" licenseId
+                  , fromMaybe "<unknown rule>" issueLicense
                   , "on"
                   , nameRevision
                   ]
@@ -666,9 +651,6 @@ renderedIssues issues = rendered
         nameRevision :: Text
         nameRevision = name <> "@" <> revision
 
-        licenseId :: Maybe Text
-        licenseId = ruleLicenseId =<< issueRule
-
         issuePolicyFlagMessage :: Text
         issuePolicyFlagMessage = fromMaybe missingRuleIdMsg (issuePolicyFlagMsg <|> missingLicenseIdMsg)
           where
@@ -679,7 +661,7 @@ renderedIssues issues = rendered
             ruleId' = intToText <$> (ruleId =<< issueRule)
       
             issuePolicyFlagMsg :: Maybe Text
-            issuePolicyFlagMsg = (\l -> l <> " license detected in " <> nameRevision) <$> licenseId
+            issuePolicyFlagMsg = (\l -> l <> " license detected in " <> nameRevision) <$> issueLicense
     
             missingLicenseIdMsg :: Maybe Text
             missingLicenseIdMsg = (\rId -> "Policy flag issue detected (ruleId:  " <> rId <> ") in " <> nameRevision) <$> ruleId'
