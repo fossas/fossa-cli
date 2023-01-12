@@ -21,6 +21,7 @@ module Strategy.Node.YarnV2.Resolvers (
   gitResolver,
   tarResolver,
   fileResolver,
+  libResolver,
   linkResolver,
   execResolver,
   portalResolver,
@@ -47,12 +48,16 @@ data Resolver = Resolver
   -- ^ Convert this locator to a yarn package
   }
 
+-- Default Yarn Protocols can be found at https://yarnpkg.com/features/protocols.
 data Package
   = WorkspacePackage Text -- relative reference to a directory. not quite a Path Rel Dir because it may contain '..'
   | NpmPackage (Maybe Text) Text Text -- scope, package, version
   | GitPackage Text Text -- url, commit
   | TarPackage Text -- url
   | FilePackage Text
+  -- LibPackages are a custom protocol supported by a user.
+  -- TODO: Support all custom protocols out of the box.
+  | LibPackage Text
   | LinkPackage Text
   | PortalPackage Text
   | ExecPackage Text
@@ -75,14 +80,15 @@ allResolvers :: [Resolver]
 allResolvers =
   [ workspaceResolver
   , npmResolver
-  , -- Ensure that tarResolver appears before gitResolver in this list.
+    -- Ensure that tarResolver appears before gitResolver in this list.
     -- Currently there are some package locators that the git resolver matches that are actually tarballs.
     -- To get around this, the tarResolver gets to examine a locator first.
     -- Ideally the git resolver's 'resolverSupportsLocator' function would be more specific.
     -- ANE-720 captures that work.
-    tarResolver
+  , tarResolver
   , gitResolver
   , fileResolver
+  , libResolver
   , linkResolver
   , execResolver
   , portalResolver
@@ -270,6 +276,9 @@ portalResolver = unsupportedResolver "PortalResolver" "portal:" PortalPackage
 -- resolution field
 execResolver :: Resolver
 execResolver = unsupportedResolver "ExecResolver" "exec:" ExecPackage
+
+libResolver :: Resolver
+libResolver = unsupportedResolver "LibResolver" "lib:" LibPackage
 
 -- | The patch resolver allows you to modify another package with patch files.
 -- The packages appear elsewhere in the lockfile, so we don't do any further
