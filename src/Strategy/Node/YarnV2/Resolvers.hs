@@ -40,12 +40,12 @@ import Strategy.Node.YarnV2.Lockfile
 import Text.Megaparsec
 
 data Resolver = Resolver
-  { resolverName :: Text
-  -- ^ Used for error messages
-  , resolverSupportsLocator :: Locator -> Bool
-  -- ^ Does this resolver support the locator?
-  , resolverLocatorToPackage :: Locator -> Either Text Package
-  -- ^ Convert this locator to a yarn package
+  { -- | Used for error messages
+    resolverName :: Text
+  , -- | Does this resolver support the locator?
+    resolverSupportsLocator :: Locator -> Bool
+  , -- | Convert this locator to a yarn package
+    resolverLocatorToPackage :: Locator -> Either Text Package
   }
 
 -- Default Yarn Protocols can be found at https://yarnpkg.com/features/protocols.
@@ -55,9 +55,9 @@ data Package
   | GitPackage Text Text -- url, commit
   | TarPackage Text -- url
   | FilePackage Text
-  -- LibPackages are a custom protocol supported by a user.
-  -- TODO: Support all custom protocols out of the box.
-  | LibPackage Text
+  | -- LibPackages are a custom protocol supported by a user.
+    -- TODO: Support all custom protocols out of the box.
+    LibPackage Text
   | LinkPackage Text
   | PortalPackage Text
   | ExecPackage Text
@@ -80,12 +80,12 @@ allResolvers :: [Resolver]
 allResolvers =
   [ workspaceResolver
   , npmResolver
-    -- Ensure that tarResolver appears before gitResolver in this list.
+  , -- Ensure that tarResolver appears before gitResolver in this list.
     -- Currently there are some package locators that the git resolver matches that are actually tarballs.
     -- To get around this, the tarResolver gets to examine a locator first.
     -- Ideally the git resolver's 'resolverSupportsLocator' function would be more specific.
     -- ANE-720 captures that work.
-  , tarResolver
+    tarResolver
   , gitResolver
   , fileResolver
   , libResolver
@@ -249,7 +249,6 @@ tarResolver =
 ---------- Unsupported (by fossa) resolvers
 
 -- | The file resolver supports local "file:" references on disk
---
 fileResolver :: Resolver
 fileResolver = unsupportedResolver "FileResolver" "file:" FilePackage
 
