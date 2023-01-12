@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.6.11
+
+- Lib yarn protocol: When we encounter Yarn lib deps we should warn but not fail the scan ([#1134](https://github.com/fossas/fossa-cli/pull/1134))
+
 ## v3.6.10
 
 - Vendored Dependencies: Allow path filtering when doing cli-side license scans ([#1128](https://github.com/fossas/fossa-cli/pull/1128))

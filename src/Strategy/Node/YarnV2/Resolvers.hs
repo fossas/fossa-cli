@@ -250,8 +250,6 @@ tarResolver =
 
 -- | The file resolver supports local "file:" references on disk
 --
--- FOSSA cannot handle these, so we don't do any further parsing of the
--- resolution field
 fileResolver :: Resolver
 fileResolver = unsupportedResolver "FileResolver" "file:" FilePackage
 
@@ -277,6 +275,10 @@ portalResolver = unsupportedResolver "PortalResolver" "portal:" PortalPackage
 execResolver :: Resolver
 execResolver = unsupportedResolver "ExecResolver" "exec:" ExecPackage
 
+-- | The lib resolver is a custom implementation of the portal protocol
+--
+-- FOSSA cannot handle these, so we don't do any further parsing of the
+-- resolution field
 libResolver :: Resolver
 libResolver = unsupportedResolver "LibResolver" "lib:" LibPackage
 
