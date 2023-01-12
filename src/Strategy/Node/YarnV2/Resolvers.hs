@@ -40,12 +40,12 @@ import Strategy.Node.YarnV2.Lockfile
 import Text.Megaparsec
 
 data Resolver = Resolver
-  { -- | Used for error messages
-    resolverName :: Text
-  , -- | Does this resolver support the locator?
-    resolverSupportsLocator :: Locator -> Bool
-  , -- | Convert this locator to a yarn package
-    resolverLocatorToPackage :: Locator -> Either Text Package
+  { resolverName :: Text
+  -- ^ Used for error messages
+  , resolverSupportsLocator :: Locator -> Bool
+  -- ^ Does this resolver support the locator?
+  , resolverLocatorToPackage :: Locator -> Either Text Package
+  -- ^ Convert this locator to a yarn package
   }
 
 -- Default Yarn Protocols can be found at https://yarnpkg.com/features/protocols.
@@ -55,9 +55,9 @@ data Package
   | GitPackage Text Text -- url, commit
   | TarPackage Text -- url
   | FilePackage Text
-  | -- LibPackages are a custom protocol supported by a user.
-    -- TODO: Support all custom protocols out of the box.
-    LibPackage Text
+  -- LibPackages are a custom protocol supported by a user.
+  -- TODO: Support all custom protocols out of the box.
+  | LibPackage Text
   | LinkPackage Text
   | PortalPackage Text
   | ExecPackage Text
