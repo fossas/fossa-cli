@@ -31,6 +31,7 @@ module Fossa.API.Types (
   defaultApiPollDelay,
 ) where
 
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, fatalText)
 import Control.Timeout (Duration (Seconds))
 import Data.Aeson (
@@ -74,7 +75,6 @@ import Text.URI (URI, render)
 import Text.URI.QQ (uri)
 import Types (ArchiveUploadType (..))
 import Unsafe.Coerce qualified as Unsafe
-import Control.Applicative ((<|>))
 
 newtype ApiKey = ApiKey {unApiKey :: Text}
   deriving (Eq, Ord)
@@ -290,15 +290,16 @@ data Issue = Issue
   deriving (Eq, Ord, Show)
 
 newtype IssueRule = IssueRule
-  { ruleId :: Maybe Int}
+  {ruleId :: Maybe Int}
   deriving (Eq, Ord, Show)
 
 instance FromJSON Issues where
   parseJSON = withObject "Issues" $ \obj ->
-    Issues <$> obj .: "count"
-    <*> obj .:? "issues" .!= []
-    <*> obj .: "status"
-    <*> obj .:? "summary"
+    Issues
+      <$> obj .: "count"
+      <*> obj .:? "issues" .!= []
+      <*> obj .: "status"
+      <*> obj .:? "summary"
 
 instance ToJSON Issues where
   toJSON Issues{..} =
@@ -359,14 +360,15 @@ instance ToJSON IssueSummaryTarget where
 
 instance FromJSON Issue where
   parseJSON = withObject "Issue" $ \obj ->
-    Issue <$> obj .: "id"
-    <*> obj .:? "priorityString"
-    <*> obj .: "resolved"
-    -- VPS issues don't have a revisionId
-    <*> obj .:? "revisionId" .!= "unknown project"
-    <*> obj .: "type"
-    <*> obj .:? "rule"
-    <*> obj .:? "license"
+    Issue
+      <$> obj .: "id"
+      <*> obj .:? "priorityString"
+      <*> obj .: "resolved"
+      -- VPS issues don't have a revisionId
+      <*> obj .:? "revisionId" .!= "unknown project"
+      <*> obj .: "type"
+      <*> obj .:? "rule"
+      <*> obj .:? "license"
 
 instance ToJSON Issue where
   toJSON Issue{..} =
@@ -415,8 +417,7 @@ instance FromJSON IssueRule where
 instance ToJSON IssueRule where
   toJSON IssueRule{..} =
     object
-      [ 
-       "ruleId" .= ruleId
+      [ "ruleId" .= ruleId
       ]
 
 instance Pretty Issues where
@@ -632,18 +633,11 @@ renderedIssues issues = rendered
               IssueNativeCode -> "Native code dependency detected in " <> nameRevision
               IssueUnlicensedAndPublicDep -> "Unlicensed dependency detected in " <> nameRevision
               IssuePolicyFlag -> issuePolicyFlagMessage
-              IssuePolicyConflict ->
-                mconcat . intersperse " " $
-                  [ "Denied by policy"
-                  , fromMaybe "<unknown rule>" issueLicense
-                  , "on"
-                  , nameRevision
-                  ]
+              IssuePolicyConflict -> issuePolicyConflictMessage
               IssueVulnerability -> "Critical vulnerability detected on " <> nameRevision
               IssueUnlicensedDependency -> "Unlicensed dependency detected in " <> nameRevision
               IssueOutdatedDependency -> "Outdated dependency detected in " <> nameRevision
               IssueOther t -> t
-
 
         name = fromMaybe issueRevisionId (locatorSplit !? 1)
         revision = fromMaybe "" (locatorSplit !? 2)
@@ -651,24 +645,30 @@ renderedIssues issues = rendered
         nameRevision :: Text
         nameRevision = name <> "@" <> revision
 
+        intToText :: Int -> Text
+        intToText = toText . show
+
+        issuePolicyConflictMessage :: Text
+        issuePolicyConflictMessage =
+          "Denied by policy "
+            <> fromMaybe ("(unknown policy, issueId: " <> intToText issueId <> ")") issueLicense
+            <> "on"
+            <> nameRevision
+
         issuePolicyFlagMessage :: Text
         issuePolicyFlagMessage = fromMaybe missingRuleIdMsg (issuePolicyFlagMsg <|> missingLicenseIdMsg)
           where
-            intToText :: Int -> Text
-            intToText = toText . show
-
             ruleId' :: Maybe Text
             ruleId' = intToText <$> (ruleId =<< issueRule)
-      
+
             issuePolicyFlagMsg :: Maybe Text
             issuePolicyFlagMsg = (\l -> l <> " license detected in " <> nameRevision) <$> issueLicense
-    
+
             missingLicenseIdMsg :: Maybe Text
             missingLicenseIdMsg = (\rId -> "Policy flag issue detected (ruleId:  " <> rId <> ") in " <> nameRevision) <$> ruleId'
-    
+
             missingRuleIdMsg :: Text
             missingRuleIdMsg = "Policy flag issue detected (issueId: " <> intToText issueId <> ") in " <> nameRevision
-
 
 -- | parse a URI for use as a base Url, along with some default options (auth, port, ...)
 useApiOpts :: Has Diagnostics sig m => ApiOpts -> m (Url 'Https, Option 'Https)
