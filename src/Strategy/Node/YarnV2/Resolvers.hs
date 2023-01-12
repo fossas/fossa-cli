@@ -55,9 +55,9 @@ data Package
   | GitPackage Text Text -- url, commit
   | TarPackage Text -- url
   | FilePackage Text
-  -- LibPackages are a custom protocol supported by a user.
-  -- TODO: Support all custom protocols out of the box.
-  | LibPackage Text
+  | -- LibPackages are a custom protocol supported by a user.
+    -- TODO: Support all custom protocols out of the box.
+    LibPackage Text
   | LinkPackage Text
   | PortalPackage Text
   | ExecPackage Text
