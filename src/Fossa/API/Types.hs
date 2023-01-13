@@ -47,7 +47,7 @@ import Data.Aeson (
   (.:?),
  )
 import Data.Coerce (coerce)
-import Data.List (intersperse, sort)
+import Data.List (sort)
 import Data.List.Extra ((!?))
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
