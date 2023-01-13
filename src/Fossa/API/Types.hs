@@ -47,14 +47,15 @@ import Data.Aeson (
   (.:?),
  )
 import Data.Coerce (coerce)
-import Data.List (sort)
+import Data.Function (on)
+import Data.List (sort, sortBy)
 import Data.List.Extra ((!?))
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Ord (comparing)
-import Data.String.Conversion (encodeUtf8, toText)
-import Data.Text (Text, toLower)
+import Data.String.Conversion (ToText, encodeUtf8, toText)
+import Data.Text (Text, toLower, toUpper)
 import Data.Text qualified as Text
 import Network.HTTP.Req (
   Option,
@@ -221,47 +222,52 @@ instance Ord IssueSummaryTarget where
 
 -- This is not yet used, but may need to be in the future.
 -- Reevaluate before making PR.
--- data IssueCategory
---   = Security
---   | Compliance
---   | Other Text
---   deriving (Eq, Ord, Show)
+data IssueCategory
+  = Security
+  | Compliance
+  | Other Text
+  deriving (Eq, Ord, Show)
 
--- instance ToText IssueCategory where
---   toText :: IssueCategory -> Text
---   toText i =
---     case i of
---       Security -> "Security"
---       Compliance -> "Compliance"
---       Other t -> t
+instance ToText IssueCategory where
+  toText :: IssueCategory -> Text
+  toText i =
+    case i of
+      Security -> "Security"
+      Compliance -> "Compliance"
+      Other t -> t
 
--- issueTypeToCategory :: IssueType -> IssueCategory
--- issueTypeToCategory =
---   \case
---     IssueAbandonware -> Security
---     IssueDenyListedDep -> Security
---     IssueEmptyPackage -> Security
---     IssueNativeCode -> Security
---     IssueOutdatedDependency -> Security
---     IssueVulnerability -> Security
---     IssuePolicyConflict -> Compliance
---     IssuePolicyFlag -> Compliance
---     IssueUnlicensedAndPublicDep -> Compliance
---     IssueUnlicensedDependency -> Compliance
---     IssueOther t -> Other t
+instance Pretty IssueCategory where
+  pretty = pretty . toUpper . toText
 
+issueTypeToCategory :: IssueType -> IssueCategory
+issueTypeToCategory =
+  \case
+    IssueAbandonware -> Security
+    IssueDenyListedDep -> Security
+    IssueEmptyPackage -> Security
+    IssueNativeCode -> Security
+    IssueOutdatedDependency -> Security
+    IssueVulnerability -> Security
+    IssuePolicyConflict -> Compliance
+    IssuePolicyFlag -> Compliance
+    IssueUnlicensedAndPublicDep -> Compliance
+    IssueUnlicensedDependency -> Compliance
+    IssueOther t -> Other t
+
+-- These constructors are ordered alphabetically.
+-- This is needed for our `fossa test` output.
 data IssueType
   = IssueAbandonware
-  | IssueEmptyPackage
   | IssueDenyListedDep
+  | IssueEmptyPackage
   | IssueNativeCode
+  | IssueOther Text
+  | IssueOutdatedDependency
   | IssuePolicyConflict
   | IssuePolicyFlag
-  | IssueVulnerability
   | IssueUnlicensedAndPublicDep
   | IssueUnlicensedDependency
-  | IssueOutdatedDependency
-  | IssueOther Text
+  | IssueVulnerability
   deriving (Eq, Ord, Show)
 
 instance Pretty IssueType where
@@ -551,8 +557,14 @@ renderedIssues issues = rendered
     categorize :: Ord k => (v -> k) -> [v] -> Map k [v]
     categorize f = Map.fromListWith (++) . map (\v -> (f v, [v]))
 
-    issuesByType :: Map IssueType [Issue]
-    issuesByType = categorize issueType issuesList
+    issuesSortedByName :: Map IssueType [Issue]
+    issuesSortedByName = sortBy (compare `on` issueName) <$> categorize issueType issuesList
+
+    issuesSortedByCategory :: Map IssueCategory [(IssueType, [Issue])]
+    issuesSortedByCategory =
+      categorize (issueTypeToCategory . fst)
+        . Map.toList
+        $ issuesSortedByName
 
     renderSection :: IssueType -> [Issue] -> Doc ann
     renderSection issueType rawIssues =
@@ -602,18 +614,27 @@ renderedIssues issues = rendered
     rendered =
       vsep $
         [renderedRevisionSummary]
-          <> [renderSection issueType rawIssues | (issueType, rawIssues) <- Map.toList issuesByType]
+          <> do
+            (category, categoryIssues) <- Map.toList issuesSortedByCategory
+            let totalIssuesCount = length . mconcat . map snd $ categoryIssues
+            let issuesRendered = map (uncurry renderSection) categoryIssues
+            let categoryHeader = pretty category <> " ISSUES (Total " <> pretty totalIssuesCount <> ")" <> line
+            categoryHeader : issuesRendered
 
     headerLine :: Doc ann
     headerLine = "========================================================================"
 
-    renderHeader :: IssueType -> Int -> Doc ann
-    renderHeader issueType issueCount =
+    renderHeader :: Pretty a => a -> Int -> Doc ann
+    renderHeader headerItem count =
       vsep
         [ headerLine
-        , pretty issueType <> " (Total " <> pretty issueCount <> ")"
+        , pretty headerItem <> " (Total " <> pretty count <> ")"
         , headerLine
         ]
+
+    issueName :: Issue -> Text
+    issueName Issue{issueRevisionId = revisionId} =
+      fromMaybe revisionId $ Text.split (\c -> c == '$' || c == '+') revisionId !? 1
 
     renderIssue :: Issue -> Doc ann
     renderIssue Issue{..} = vsep (map format [issueTitle])
