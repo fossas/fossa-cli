@@ -1,5 +1,10 @@
 # FOSSA CLI Changelog
 
+## v3.6.12
+
+- Vendored Dependencies: Add the unity companion license (https://unity.com/legal/licenses/unity-companion-license) and unity package distribution license (https://unity.com/legal/licenses/unity-package-distribution-license) ([#1136](https://github.com/fossas/fossa-cli/pull/1136)) to license scanning
+
+
 ## v3.6.11
 
 - Lib yarn protocol: When we encounter Yarn lib deps we should warn but not fail the scan ([#1134](https://github.com/fossas/fossa-cli/pull/1134))
