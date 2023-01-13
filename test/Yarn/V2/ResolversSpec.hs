@@ -16,6 +16,7 @@ import Strategy.Node.YarnV2.Resolvers (
   execResolver,
   fileResolver,
   gitResolver,
+  libResolver,
   linkResolver,
   npmResolver,
   patchResolver,
@@ -64,6 +65,7 @@ spec = do
     ]
 
   testUnsupportedResolver fileResolver "file:" FilePackage
+  testUnsupportedResolver libResolver "lib:" LibPackage
   testUnsupportedResolver linkResolver "link:" LinkPackage
   testUnsupportedResolver portalResolver "portal:" PortalPackage
   testUnsupportedResolver execResolver "exec:" ExecPackage

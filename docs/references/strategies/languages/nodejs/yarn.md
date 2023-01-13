@@ -38,3 +38,12 @@ As of _v2.19.x_, we also support yarn workspaces.  In practice, this means that
 the `package.json` files used to build the `yarn.lock` file are also checked,
 and the knowledge of both is combined to form a (usually) complete picture of
 the full graph of dependencies.
+
+
+## FAQ
+
+### What Yarn Protocols are supported
+
+There are many default [Yarn protocols](https://yarnpkg.com/features/protocols) that Yarn allows users to fetch dependencies. The FOSSA CLI currently supports the `npm` and `git` protocols.
+
+<!-- We also support a tar protocol resolver, but this must be related to npm or a custom protocol because I can't find an example. -->
