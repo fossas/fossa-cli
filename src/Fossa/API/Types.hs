@@ -163,12 +163,9 @@ newtype BuildTask = BuildTask
 instance FromJSON Build where
   parseJSON = withObject "Build" $ \obj ->
     Build
-      <$> obj
-        .: "id"
-      <*> obj
-        .:? "error"
-      <*> obj
-        .: "task"
+      <$> obj .: "id"
+      <*> obj .:? "error"
+      <*> obj .: "task"
 
 instance FromJSON BuildTask where
   parseJSON = withObject "BuildTask" $ \obj ->
@@ -319,10 +316,8 @@ instance ToJSON Issues where
 instance FromJSON IssuesSummary where
   parseJSON = withObject "IssuesSummary" $ \obj ->
     IssuesSummary
-      <$> obj
-        .: "revision"
-      <*> obj
-        .: "targets"
+      <$> obj .: "revision"
+      <*> obj .: "targets"
 
 instance ToJSON IssuesSummary where
   toJSON IssuesSummary{..} =
@@ -334,12 +329,9 @@ instance ToJSON IssuesSummary where
 instance FromJSON IssueSummaryRevision where
   parseJSON = withObject "IssueSummaryRevision" $ \obj ->
     IssueSummaryRevision
-      <$> obj
-        .: "projectTitle"
-      <*> obj
-        .: "projectRevision"
-      <*> obj
-        .:? "isPublic"
+      <$> obj .: "projectTitle"
+      <*> obj .: "projectRevision"
+      <*> obj .:? "isPublic"
 
 instance ToJSON IssueSummaryRevision where
   toJSON IssueSummaryRevision{..} =
@@ -352,10 +344,8 @@ instance ToJSON IssueSummaryRevision where
 instance FromJSON IssueSummaryTarget where
   parseJSON = withObject "IssueSummaryTarget" $ \obj ->
     IssueSummaryTarget
-      <$> obj
-        .: "type"
-      <*> obj
-        .: "originPaths"
+      <$> obj .: "type"
+      <*> obj .: "originPaths"
 
 instance ToJSON IssueSummaryTarget where
   toJSON IssueSummaryTarget{..} =
