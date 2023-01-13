@@ -56,7 +56,6 @@ data Package
   | TarPackage Text -- url
   | FilePackage Text
   | -- LibPackages are a custom protocol supported by a user.
-    -- TODO: Support all custom protocols out of the box.
     LibPackage Text
   | LinkPackage Text
   | PortalPackage Text
