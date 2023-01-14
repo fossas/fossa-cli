@@ -37,7 +37,7 @@ packageOne =
     , dependencyName = "mygroup:packageOne"
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = Set.singleton EnvTesting
+    , dependencyEnvironments = Set.fromList [EnvProduction, EnvTesting]
     , dependencyTags = Map.fromList [("scopes", ["compile", "test"])]
     }
 
@@ -48,7 +48,7 @@ packageTwo =
     , dependencyName = "mygroup:packageTwo"
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = mempty
+    , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.fromList [("scopes", ["compile"]), ("optional", ["true"])]
     }
 
@@ -59,7 +59,7 @@ packageFour =
     , dependencyName = "mygroup2:packageFour"
     , dependencyVersion = Just (CEq "4.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = mempty
+    , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.fromList [("scopes", ["compile"])]
     }
 
