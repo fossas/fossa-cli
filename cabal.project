@@ -54,6 +54,15 @@ source-repository-package
   tag: d93afd2dc78c2f6910766fabc2f5e4452bcae2f2
   subdir: x509-system
 
+-- Since haskell/tar has terminal block defect, preventing analysis of tar
+-- files which have entry with title of ''. 
+-- 
+-- Refer to: https://github.com/haskell/tar/issues/73
+source-repository-package
+  type: git
+  location: https://github.com/meghfossa/tar
+  tag: 66f0a287fbdd9609d66e8a5c0e152a8c28c66bc0
+
 index-state: hackage.haskell.org 2022-08-15T18:24:28Z
 
 package *

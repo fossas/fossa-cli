@@ -54,7 +54,7 @@ data TarEntries = TarEntries
 
 -- | Parses Container Image from Tarball Byte string.
 parse :: ByteStringLazy.ByteString -> Either (NLE.NonEmpty ContainerImgParsingError) ContainerImageRaw
-parse content = case mkEntries $ Tar.read content of
+parse content = case mkEntries $ Tar.read' content of
   Left err -> Left $ NLE.singleton err
   Right te -> do
     -- Exported docker image must have
@@ -136,7 +136,7 @@ mkLayer (TarEntries entries tarOffset) (layerId, layerTarball) =
     EmptyL -> Left $ TarMissingLayerTar layerTarball
     (layerTarballEntry :< _) -> case entryContent $ fst layerTarballEntry of
       (NormalFile c _) -> do
-        let rawEntries = Tar.read c
+        let rawEntries = Tar.read' c
         case mkLayerFromOffset layerId (snd layerTarballEntry) rawEntries of
           Left err -> Left err
           Right layer -> Right layer
@@ -181,6 +181,7 @@ mkLayerFromOffset layerId imgOffset = build (ContainerLayer mempty 0 layerId)
         || ( not (isFileOrLinkTarget entry)
               && not (isWhiteOut $ filePathOf . entryTarPath $ entry)
            )
+        || isPathEmpty entry
         then -- Do not capture Insert for non-files or non-symbolic links, as folders
         -- by themselves are not analysis relevant, and filepath information already contains
         -- relevant folder information.
@@ -201,6 +202,10 @@ mkFsFromChangeset (ContainerLayer changeSet _ _) = foldl' (flip applyChangeSet) 
     applyChangeSet :: ContainerFSChangeSet -> SomeFileTree TarEntryOffset -> SomeFileTree TarEntryOffset
     applyChangeSet (InsertOrUpdate path offset) tree = insert (toSomePath . toText $ path) (Just offset) tree
     applyChangeSet (Whiteout path) tree = remove (toSomePath . toText $ path) tree
+
+-- | True if tar entry's path is empty, otherwise False.
+isPathEmpty :: Tar.Entry -> Bool
+isPathEmpty entry = filePathOf (entryTarPath entry) == mempty
 
 -- | True if tar entry is for a file or a symlink, otherwise False
 isFileOrLinkTarget :: Tar.Entry -> Bool

@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unrealsed
+
+- Container Scanning: Works with tar files which have content with path of ''. 
+
 ## v3.6.11
 
 - Lib yarn protocol: When we encounter Yarn lib deps we should warn but not fail the scan ([#1134](https://github.com/fossas/fossa-cli/pull/1134))

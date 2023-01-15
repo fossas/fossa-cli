@@ -6,7 +6,7 @@ module Strategy.BerkeleyDB (
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject), analyzeProject')
 import Container.OsRelease (OsInfo (..))
-import Control.Effect.Diagnostics (Diagnostics, context)
+import Control.Effect.Diagnostics (Diagnostics, context, ToDiagnostic, warnOnErr)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
@@ -35,6 +35,11 @@ import Types (
   GraphBreadth (Complete),
   VerConstraint (CEq),
  )
+import Data.Either (partitionEithers)
+import Control.Monad (unless, void)
+import Control.Carrier.Diagnostics (fatalText)
+import Diag.Diagnostic (ToDiagnostic(renderDiagnostic))
+import Prettyprinter (Pretty(..))
 
 data BerkeleyDatabase = BerkeleyDatabase
   { dbDir :: Path Abs Dir
@@ -48,6 +53,10 @@ instance ToJSON BerkeleyDatabase
 instance AnalyzeProject BerkeleyDatabase where
   analyzeProject _ = getDeps
   analyzeProject' _ = getDeps
+
+newtype BdbParsingFailed = BdbParsingFailed Int
+instance ToDiagnostic BdbParsingFailed where
+  renderDiagnostic (BdbParsingFailed numPkgs) = pretty $ "Could not parse " <> show numPkgs <> " packages from berkleydb store!"
 
 discover ::
   ( Has ReadFS sig m
@@ -112,7 +121,14 @@ analyze ::
   OsInfo ->
   m (Graphing Dependency, GraphBreadth)
 analyze _ file osInfo = do
-  installed <- context ("read berkeleydb database file: " <> toText file) $ readBerkeleyDB file
+  (parserErrs, installed) <- context ("read berkeleydb database file: " <> toText file) $ partitionEithers <$> readBerkeleyDB file
+
+  -- show warning for all parsing errors
+  unless (null parserErrs) $
+    void 
+    . warnOnErr (BdbParsingFailed $ length parserErrs) 
+    $ fatalText $ Text.unlines parserErrs
+
   context "building graph of packages" $ pure (buildGraph osInfo installed, Complete)
 
 buildGraph :: OsInfo -> [BdbEntry] -> Graphing Dependency

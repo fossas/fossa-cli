@@ -4,7 +4,7 @@ module Strategy.BerkeleyDB.Internal (
 ) where
 
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withBerkeleyBinary)
-import Control.Effect.Diagnostics (Diagnostics, context, fatalOnSomeException, fatalText, fromEitherShow)
+import Control.Effect.Diagnostics (Diagnostics, context, fatalOnSomeException, fromEitherShow)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString.Base64 qualified as B64
 import Data.ByteString.Lazy qualified as BSL
@@ -26,9 +26,9 @@ data BdbEntry = BdbEntry
   deriving (Eq, Ord, Show)
 
 -- | FOSSA _requires_ that architecture is provided: https://github.com/fossas/FOSSA/blob/e61713dec1ef80dc6b6114f79622c14df5278235/modules/fetchers/README.md#locators-for-linux-packages
-parsePkgInfo :: (Has Diagnostics sig m) => PkgInfo -> m BdbEntry
-parsePkgInfo (PkgInfo (Just pkgName) (Just pkgVersion) (Just pkgRelease) (Just pkgArch) pkgEpoch) = pure $ BdbEntry pkgArch pkgName (pkgVersion <> "-" <> pkgRelease) (fmap (toText . show) pkgEpoch)
-parsePkgInfo pkg = fatalText . toText $ "package '" <> show pkg <> "' is missing one or more fields; all fields are required"
+parsePkgInfo :: PkgInfo -> Either Text BdbEntry
+parsePkgInfo (PkgInfo (Just pkgName) (Just pkgVersion) (Just pkgRelease) (Just pkgArch) pkgEpoch) = Right $ BdbEntry pkgArch pkgName (pkgVersion <> "-" <> pkgRelease) (fmap (toText . show) pkgEpoch)
+parsePkgInfo pkg = Left $ toText $ "package '" <> show pkg <> "' is missing one or more fields; all fields are required"
 
 -- | Packages are read as a JSON array of base64 strings.
 readBerkeleyDB ::
@@ -38,7 +38,7 @@ readBerkeleyDB ::
   , Has Exec sig m
   ) =>
   Path Abs File ->
-  m [BdbEntry]
+  m [Either Text BdbEntry]
 readBerkeleyDB file = withBerkeleyBinary $ \bin -> do
   -- Get the process working directory, not the one that 'ReadFS' reports, because 'ReadFS' is inside of the tarball.
   cwd <- getSystemCwd
@@ -51,7 +51,7 @@ readBerkeleyDB file = withBerkeleyBinary $ \bin -> do
   (bdbJsonOutput :: [Text]) <- context "read raw blobs" . execJson' cwd (bdbCommand bin) . decodeUtf8 $ B64.encode fileContent
   bdbByteOutput <- context "decode base64" . traverse fromEitherShow $ B64.decode <$> fmap encodeUtf8 bdbJsonOutput
   entries <- context "parse blobs" . traverse fromEitherShow $ readPackageInfo <$> fmap BSL.fromStrict bdbByteOutput
-  context "parse package info" $ traverse parsePkgInfo entries
+  pure $ map parsePkgInfo entries
 
 bdbCommand :: BinaryPaths -> Command
 bdbCommand bin =

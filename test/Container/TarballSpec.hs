@@ -69,7 +69,7 @@ exampleImgLayers =
 
 mkEntriesSpec :: Spec
 mkEntriesSpec = do
-  tarFile <- runIO $ Tar.read <$> ByteStringLazy.readFile exampleImg
+  tarFile <- runIO $ Tar.read' <$> ByteStringLazy.readFile exampleImg
 
   describe "mkEntries" $
     it "should include entries of files with offsets" $
@@ -187,7 +187,7 @@ expectedLayerChangeSets =
 mkImageSpec :: Spec
 mkImageSpec = do
   tarFileBs <- runIO $ ByteStringLazy.readFile exampleImg
-  let tarFile = Tar.read tarFileBs
+  let tarFile = Tar.read' tarFileBs
 
   tarFileBsSymEntries <- runIO $ ByteStringLazy.readFile exampleImgSymLinkEntries
 
