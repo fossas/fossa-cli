@@ -2,6 +2,7 @@ module BerkeleyDB.BerkeleyDBSpec (spec) where
 
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
+import Data.Either (rights)
 import Effect.Exec (runExecIO)
 import Effect.ReadFS (runReadFSIO)
 import Path (Abs, File, Path)
@@ -18,7 +19,7 @@ spec = do
 
     it "parses berkeleydb contents" $
       assertOnSuccess result $ \_ c ->
-        c `shouldBe` expectedEntries
+        rights c `shouldBe` expectedEntries
 
 -- | 'extlib/berkeleydb/tests' contains a more complete set of tests for parsing various container formats.
 -- The goal of this test is to prove end-to-end flow; for that reason, we just test with the 'CentOS5 Plain' package list
