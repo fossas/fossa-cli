@@ -6,13 +6,17 @@ module Strategy.BerkeleyDB (
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject), analyzeProject')
 import Container.OsRelease (OsInfo (..))
-import Control.Effect.Diagnostics (Diagnostics, context, ToDiagnostic, warnOnErr)
+import Control.Carrier.Diagnostics (fatalText)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, warnOnErr)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader)
+import Control.Monad (unless, void)
 import Data.Aeson (ToJSON)
+import Data.Either (partitionEithers)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -25,6 +29,7 @@ import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing, directs)
 import Path (Abs, Dir, File, Path, toFilePath)
+import Prettyprinter (Pretty (..))
 import Strategy.BerkeleyDB.Internal (BdbEntry (..), readBerkeleyDB)
 import Types (
   DepType (LinuxRPM),
@@ -35,11 +40,6 @@ import Types (
   GraphBreadth (Complete),
   VerConstraint (CEq),
  )
-import Data.Either (partitionEithers)
-import Control.Monad (unless, void)
-import Control.Carrier.Diagnostics (fatalText)
-import Diag.Diagnostic (ToDiagnostic(renderDiagnostic))
-import Prettyprinter (Pretty(..))
 
 data BerkeleyDatabase = BerkeleyDatabase
   { dbDir :: Path Abs Dir
@@ -124,10 +124,11 @@ analyze _ file osInfo = do
   (parserErrs, installed) <- context ("read berkeleydb database file: " <> toText file) $ partitionEithers <$> readBerkeleyDB file
 
   -- show warning for all parsing errors
-  unless (null parserErrs) $
-    void 
-    . warnOnErr (BdbParsingFailed $ length parserErrs) 
-    $ fatalText $ Text.unlines parserErrs
+  unless (null parserErrs)
+    $ void
+      . warnOnErr (BdbParsingFailed $ length parserErrs)
+    $ fatalText
+    $ Text.unlines parserErrs
 
   context "building graph of packages" $ pure (buildGraph osInfo installed, Complete)
 
