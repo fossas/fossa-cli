@@ -227,6 +227,7 @@ issuesAvailable =
           , API.issueType = issueType
           , API.issueRule = Nothing
           , API.issueLicense = Nothing
+          , API.issueDashURL = Nothing
           }
       issueList = zipWith makeIssue [1 ..] issueTypes
    in API.Issues
@@ -256,6 +257,7 @@ issuesDiffAvailable =
           , API.issueType = issueType
           , API.issueRule = Nothing
           , API.issueLicense = Nothing
+          , API.issueDashURL = Nothing
           }
       issueList = zipWith makeIssue [1 ..] issueTypes
    in API.Issues

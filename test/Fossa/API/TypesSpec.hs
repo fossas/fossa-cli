@@ -54,6 +54,7 @@ genIssue =
     <*> genIssueType
     <*> Gen.maybe genIssueRule
     <*> Gen.maybe arbitraryText
+    <*> Gen.maybe arbitraryText
 
 genIssueType :: Gen IssueType
 genIssueType =
