@@ -197,17 +197,21 @@ mavenMultiScopeOutput =
             , artifactIsDirect = True
             }
         , Artifact
-            { artifactNumericId = 0
+            { artifactNumericId = 1
             , artifactGroupId = "multiscope"
             , artifactArtifactId = "apple"
             , artifactVersion = "1.0.0"
             , artifactOptional = False
             , artifactScopes = ["compile", "test", "other"]
-            , artifactIsDirect = True
+            , artifactIsDirect = False
             }
         ]
     , outEdges =
-        []
+        [ Edge
+            { edgeFrom = 0
+            , edgeTo = 1
+            }
+        ]
     }
 
 mavenCrossDependentSubModules :: PluginOutput
