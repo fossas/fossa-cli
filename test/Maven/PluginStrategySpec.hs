@@ -67,7 +67,7 @@ packageMultiScope :: Dependency
 packageMultiScope =
   Dependency
     { dependencyType = MavenType
-    , dependencyName = "multiscope:pie"
+    , dependencyName = "multiscope:apple"
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = mempty
     , dependencyEnvironments = Set.fromList [EnvProduction, EnvTesting, EnvOther "other"]
@@ -191,6 +191,15 @@ mavenMultiScopeOutput =
             { artifactNumericId = 0
             , artifactGroupId = "multiscope"
             , artifactArtifactId = "pie"
+            , artifactVersion = "1.0.0"
+            , artifactOptional = False
+            , artifactScopes = ["compile", "test", "other"]
+            , artifactIsDirect = True
+            }
+        , Artifact
+            { artifactNumericId = 0
+            , artifactGroupId = "multiscope"
+            , artifactArtifactId = "apple"
             , artifactVersion = "1.0.0"
             , artifactOptional = False
             , artifactScopes = ["compile", "test", "other"]
