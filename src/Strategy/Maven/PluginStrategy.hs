@@ -159,6 +159,12 @@ buildGraph reactorOutput PluginOutput{..} =
     knownSubmodules :: Set.Set Text
     knownSubmodules = Set.fromList . map reactorArtifactName . reactorArtifacts $ reactorOutput
 
+    toBuildTag :: Text -> DepEnvironment
+    toBuildTag = \case
+      "compile" -> EnvProduction
+      "test" -> EnvTesting
+      other -> EnvOther other
+
     toDependency :: Has (Grapher Dependency) sig m => Artifact -> m Dependency
     toDependency Artifact{..} = do
       let dep =
@@ -167,7 +173,7 @@ buildGraph reactorOutput PluginOutput{..} =
               , dependencyName = artifactGroupId <> ":" <> artifactArtifactId
               , dependencyVersion = Just (CEq artifactVersion)
               , dependencyLocations = []
-              , dependencyEnvironments = Set.fromList $ [EnvTesting | "test" `elem` artifactScopes]
+              , dependencyEnvironments = Set.fromList $ toBuildTag <$> artifactScopes
               , dependencyTags =
                   Map.fromList $
                     ("scopes", artifactScopes)
