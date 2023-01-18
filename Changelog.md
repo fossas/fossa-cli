@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.6.13
+
+- Vendored Dependencies: Add the unity companion license (https://unity.com/legal/licenses/unity-companion-license) and unity package distribution license (https://unity.com/legal/licenses/unity-package-distribution-license) to license scanning ([#1136](https://github.com/fossas/fossa-cli/pull/1136))
+
 ## v3.6.12
 
 - Maven: If a package is both `"test"` and `"compile"`, it is no longer filtered ([#1138](https://github.com/fossas/fossa-cli/pull/1138)).
