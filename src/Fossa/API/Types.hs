@@ -217,8 +217,6 @@ instance Ord IssueSummaryTarget where
       then comparing istTargetPaths lhs rhs
       else comparing istTargetType lhs rhs
 
--- This is not yet used, but may need to be in the future.
--- Reevaluate before making PR.
 data IssueCategory
   = Security
   | Compliance
