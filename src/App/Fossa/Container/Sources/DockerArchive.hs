@@ -108,10 +108,10 @@ analyzeFromDockerArchive systemDepsOnly filters tarball = do
 
   -- Analyze Base Layer
   logInfo "Analyzing Base Layer"
-  let baseFs = mkFsFromChangeset $ baseLayer image
+  baseFs <- context "Building base layer FS" $ mkFsFromChangeset $ baseLayer image
   let baseDigest = layerDigest . baseLayer $ image
   osInfo <-
-    context "Retrieving Os Information" $
+    context "Retrieving OS Information" $
       runTarballReadFSIO baseFs tarball getOsInfo
   baseUnits <-
     context "Analyzing From Base Layer" $
@@ -132,15 +132,10 @@ analyzeFromDockerArchive systemDepsOnly filters tarball = do
     then do
       logInfo "Analyzing Other Layers"
       let squashedDigest = layerDigest . otherLayersSquashed $ image
+      fs <- context "Building squashed FS from other layers" $ mkFsFromChangeset $ otherLayersSquashed image
       otherUnits <-
-        context "Squashing all non-base layer for analysis" $
-          analyzeLayer
-            systemDepsOnly
-            filters
-            capabilities
-            osInfo
-            (mkFsFromChangeset $ otherLayersSquashed image)
-            tarball
+        context "Analyzing from Other Layers" $
+          analyzeLayer systemDepsOnly filters capabilities osInfo fs tarball
       pure $
         mkScan
           [ ContainerScanImageLayer baseDigest baseUnits
@@ -288,18 +283,15 @@ listTargetsFromDockerArchive tarball = do
   logWarn "fossa container list-targets does not apply any filtering, you may see projects which are not present in the final analysis."
   logWarn "fossa container list-targets only lists targets for experimental-scanner (when analyzed with --experimental-scanner flag)."
 
-  let baseFs = mkFsFromChangeset $ baseLayer image
-  osInfo <- runTarballReadFSIO baseFs tarball getOsInfo
-  listTargetLayer capabilities osInfo baseFs tarball "Base Layer"
+  logInfo "Analyzing Base Layer"
+  baseFs <- context "Building Base Layer FS" $ mkFsFromChangeset $ baseLayer image
+  osInfo <- context "Retrieving OS Information" $ runTarballReadFSIO baseFs tarball getOsInfo
+  context "Analyzing From Base Layer" $ listTargetLayer capabilities osInfo baseFs tarball "Base Layer"
 
   when (hasOtherLayers image) $ do
-    void $
-      listTargetLayer
-        capabilities
-        osInfo
-        (mkFsFromChangeset $ otherLayersSquashed image)
-        tarball
-        "Other Layers"
+    logInfo "Analyzing Other Layers"
+    fs <- context "Building squashed FS from other layers" $ mkFsFromChangeset $ otherLayersSquashed image
+    void . context "Analyzing from Other Layers" $ listTargetLayer capabilities osInfo fs tarball "Other Layers"
 
 listTargetLayer ::
   ( Has Diagnostics sig m
