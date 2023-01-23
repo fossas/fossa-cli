@@ -155,4 +155,4 @@ It is important to note that neither type of strategy has an inherent benefit wh
 | [R (renv)](./languages/r/renv.md)                                                                                                               | ❌       | ✅      | ❌                    | Static           |
 | [Ruby (bundler)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/ruby/ruby.md)                             | ✅       | ✅      | ❌                    | Static           |
 | [Rust (cargo)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/rust/rust.md)                               | ✅       | ❌      | ❌                    | Dynamic          |
-| [Scala (sbt)](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/scala)                                       | ✅       | ✅      | ❌                    | Dynamic          |
+| [Scala (sbt)](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/scala)                                       | ✅       | ❌      | ❌                    | Dynamic          |
