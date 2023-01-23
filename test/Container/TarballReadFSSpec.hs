@@ -4,15 +4,25 @@ module Container.TarballReadFSSpec (
   spec,
 ) where
 
+import Codec.Archive.Tar (EntryContent (..))
+import Codec.Archive.Tar qualified as Tar
+import Codec.Archive.Tar.Entry qualified as TarEntry
 import Codec.Archive.Tar.Index (TarEntryOffset)
+import Container.Tarball (TarEntries (..), mkEntries)
 import Container.TarballReadFs (runTarballReadFSIO)
 import Control.Carrier.Diagnostics (DiagnosticsC)
 import Control.Carrier.Stack (StackC, runStack)
+import Data.ByteString qualified as ByteString
+import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.FileTree.IndexFileTree (SomeFileTree, empty, insert, toSomePath)
+import Data.Sequence (ViewL (..))
+import Data.Sequence qualified as Seq
+import Data.String.Conversion (ToString (toString), toText)
 import Data.Text (Text)
 import Effect.Logger (IgnoreLoggerC, ignoreLogger)
-import Effect.ReadFS (ReadFSIOC, listDir, readContentsText, resolveDir, resolveFile)
-import Path (Abs, Dir, File, Path, mkRelFile, (</>))
+import Effect.ReadFS (ReadFSIOC, listDir, readContentsBS, readContentsText, resolveDir, resolveFile)
+import GHC.Exception (throw)
+import Path (Abs, Dir, File, Path, mkRelFile, toFilePath, (</>))
 import Path.IO qualified as PIO
 import Path.Internal (Path (..))
 import Test.Effect (handleDiag, shouldBe', shouldMatchList')
@@ -28,10 +38,14 @@ import Type.Operator (type ($))
 spec :: Spec
 spec = do
   tarFile <- runIO tarAbsFile
-  let it' = itEff tarFile
+  emptyPathTarFile <- runIO tarEmptyRootFile
+  emptyPathTarFileTree <- runIO $ readTree emptyPathTarFile
+
+  let withStandardTarFileIt = itEff tarFile minimalTarFsTree
+  let withEmptyRootTarFileIt = itEff emptyPathTarFile emptyPathTarFileTree
 
   describe "readContentText" $ do
-    it' "should read content of file in tarball" $ do
+    withStandardTarFileIt "should read content of file in tarball" $ do
       let feb2 :: Path Abs File = Path "logs-archive/feb/2.txt"
       feb2Content <- readContentsText feb2
       feb2Content `shouldBe'` "2\n"
@@ -44,7 +58,7 @@ spec = do
       lastContent <- readContentsText lastFile
       lastContent `shouldBe'` "01-01-2022\n"
 
-    it' "should read content of symbolic link's target in tarball" $ do
+    withStandardTarFileIt "should read content of symbolic link's target in tarball" $ do
       let healthFile :: Path Abs File = Path "logs-archive/feb/last_health"
       healthFileContent <- readContentsText healthFile
       healthFileContent `shouldBe'` "OK\n"
@@ -53,28 +67,55 @@ spec = do
       lastContent <- readContentsText lastFile
       lastContent `shouldBe'` "01-01-2022\n"
 
-  describe "listDir" $
-    it' "should list directories and files" $ do
+    withEmptyRootTarFileIt "should read content of file in tarball when root has no name" $ do
+      let awsLambdaRie :: Path Abs File = Path "usr/local/bin/aws-lambda-rie"
+      awsLambdaRieContent <- readContentsBS awsLambdaRie
+      -- This is a binary, so just check the length rather than embedding the content in code.
+      (ByteString.length awsLambdaRieContent) `shouldBe'` 5373952
+
+  describe "listDir" $ do
+    withStandardTarFileIt "should list directories and files" $ do
       let logsArchive :: Path Abs Dir = Path "logs-archive/"
       (listedDirs, listedFiles) <- listDir logsArchive
 
       listedDirs `shouldMatchList'` [Path "logs-archive/jan/", Path "logs-archive/feb/"]
       listedFiles `shouldMatchList'` [Path "logs-archive/last.txt"]
 
-  describe "resolveFile" $
-    it' "should resolve file" $ do
+    withEmptyRootTarFileIt "should list directories and files when root has no name" $ do
+      let parent :: Path Abs Dir = Path "usr/local/bin/"
+      (parentDirs, parentFiles) <- listDir parent
+      parentDirs `shouldMatchList'` []
+      parentFiles `shouldMatchList'` [Path "usr/local/bin/aws-lambda-rie"]
+
+      let grandParent :: Path Abs Dir = Path "usr/local/"
+      (grandParentDirs, grandParentFiles) <- listDir grandParent
+      grandParentDirs `shouldMatchList'` [Path "usr/local/bin/"]
+      grandParentFiles `shouldMatchList'` []
+
+  describe "resolveFile" $ do
+    withStandardTarFileIt "should resolve file" $ do
       let logsArchive :: Path Abs Dir = Path "logs-archive/"
       resolvedFile <- resolveFile logsArchive "last.txt"
       resolvedFile `shouldBe'` Path "logs-archive/last.txt"
 
-  describe "resolveDir" $
-    it' "should resolve directory" $ do
+    withEmptyRootTarFileIt "should resolve file when root has no name" $ do
+      let parent :: Path Abs Dir = Path "usr/local/bin"
+      resolvedFile <- resolveFile parent "aws-lambda-rie"
+      resolvedFile `shouldBe'` Path "usr/local/bin/aws-lambda-rie"
+
+  describe "resolveDir" $ do
+    withStandardTarFileIt "should resolve directory" $ do
       let logsArchive :: Path Abs Dir = Path "logs-archive/"
       resolvedDir <- resolveDir logsArchive "jan"
       resolvedDir `shouldBe'` Path "logs-archive/jan/"
+
+    withEmptyRootTarFileIt "should resolve directory when root has no name" $ do
+      let parent :: Path Abs Dir = Path "usr/local/"
+      resolvedDir <- resolveDir parent "bin"
+      resolvedDir `shouldBe'` Path "usr/local/bin/"
   where
-    itEff :: Path Abs File -> String -> EffStack () -> SpecWith ()
-    itEff tarFile msg = it msg . (runWithTarFsEff tarFile minimalTarFsTree)
+    itEff :: Path Abs File -> SomeFileTree TarEntryOffset -> String -> EffStack () -> SpecWith ()
+    itEff tarFile tree msg = it msg . (runWithTarFsEff tarFile tree)
 
 -- * Effect Stack For Testing
 
@@ -85,10 +126,54 @@ runWithTarFsEff tarPath tarTree =
   runStack
     . ignoreLogger
     . handleDiag
-    . runTarballReadFSIO (tarTree) (tarPath)
+    . runTarballReadFSIO tarTree tarPath
 
+-- | Create a tree for the tar file in code, as though it had been read via @Tarball.mkFsFromChangeset@.
 mkTree :: [(Text, Maybe TarEntryOffset)] -> SomeFileTree TarEntryOffset
 mkTree = foldr (\(p, ref) tree -> insert (toSomePath p) ref tree) empty
+
+-- | Read a file tree directly from a tar file, as though it had been read via @Tarball.mkFsFromChangeset@.
+readTree :: Path Abs File -> IO (SomeFileTree TarEntryOffset)
+readTree file = do
+  content <- ByteStringLazy.readFile $ toFilePath file
+  case mkEntries $ Tar.read' content of
+    Left err -> throw . userError $ "read tar at " <> toString file <> ": " <> show err
+    Right entries -> pure $ mkTreeFromEntries empty entries
+  where
+    mkTreeFromEntries :: SomeFileTree TarEntryOffset -> TarEntries -> SomeFileTree TarEntryOffset
+    mkTreeFromEntries tree (TarEntries entries baseOffset) = case Seq.viewl $ Seq.filter (isFile . fst) entries of
+      EmptyL -> tree
+      (entry, offset) :< rest -> case Tar.entryContent entry of
+        (NormalFile _ _) -> do
+          let path = toText $ Tar.entryPath entry
+          let tree' = insert (toSomePath path) (Just offset) tree
+          mkTreeFromEntries tree' (TarEntries rest baseOffset)
+
+        -- Tar files can have multiple kinds of entries, but only handle the ones needed for test data here.
+        -- Skip anything else.
+        _ -> mkTreeFromEntries tree (TarEntries rest baseOffset)
+
+    -- True if tar entry is for a file with content, otherwise False.
+    isFile :: Tar.Entry -> Bool
+    isFile (TarEntry.Entry _ (NormalFile _ _) _ _ _ _) = True
+    isFile _ = False
+
+-- | This tar has no name for the root directory:
+--
+-- @
+-- ; tar -xf emptypath.tar
+-- tar: Substituting `.' for empty member name
+-- ; lt
+-- .
+-- └── usr
+--    └── local
+--       └── bin
+--          └── aws-lambda-rie
+-- @
+tarEmptyRootFile :: IO (Path Abs File)
+tarEmptyRootFile = do
+  cwd <- PIO.getCurrentDir
+  pure (cwd </> $(mkRelFile "test/Container/testdata/emptypath.tar"))
 
 tarAbsFile :: IO (Path Abs File)
 tarAbsFile = do
