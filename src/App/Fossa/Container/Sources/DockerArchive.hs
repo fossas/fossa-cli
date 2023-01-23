@@ -132,7 +132,7 @@ analyzeFromDockerArchive systemDepsOnly filters tarball = do
     then do
       logInfo "Analyzing Other Layers"
       let squashedDigest = layerDigest . otherLayersSquashed $ image
-      fs <- context "Building squashed FS from other layers" $ mkFsFromChangeset $ otherLayersSquashed image
+      fs <- context "Building squashed FS from other layers" . mkFsFromChangeset $ otherLayersSquashed image
       otherUnits <-
         context "Analyzing from Other Layers" $
           analyzeLayer systemDepsOnly filters capabilities osInfo fs tarball
