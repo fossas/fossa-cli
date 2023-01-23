@@ -1,7 +1,12 @@
 # FOSSA CLI Changelog
 
+## v3.6.15
+
+- Container scanning: support more tar formats. ([1142](https://github.com/fossas/fossa-cli/pull/1142))
+
 ## v3.6.14
-- Fossa Test: Improved reporting from `fossa test`. ([#1135](https://github.com/fossas/fossa-cli/pull/1135))
+
+- `fossa test`: Improved reporting from `fossa test`. ([#1135](https://github.com/fossas/fossa-cli/pull/1135))
 
 ## v3.6.13
 
