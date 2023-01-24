@@ -59,4 +59,9 @@ source-repository-package
   tag: d93afd2dc78c2f6910766fabc2f5e4452bcae2f2
   subdir: x509-system
 
+source-repository-package
+  type: git
+  location: https://github.com/fossas/tar
+  tag: 6bd13acc541ae60b5c831823243040e18bd1d957
+
 index-state: hackage.haskell.org 2023-01-11T00:56:49Z
