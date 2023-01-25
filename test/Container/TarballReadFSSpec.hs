@@ -58,7 +58,7 @@ spec = do
       lastContent <- readContentsText lastFile
       lastContent `shouldBe'` "01-01-2022\n"
 
-    withStandardTarFileIt ("should read content of symbolic link's target in tarball with content: " <> show emptyPathTarFileTree) $ do
+    withStandardTarFileIt "should read content of symbolic link's target in tarball" $ do
       let healthFile :: Path Abs File = Path "logs-archive/feb/last_health"
       healthFileContent <- readContentsText healthFile
       healthFileContent `shouldBe'` "OK\n"
@@ -67,7 +67,7 @@ spec = do
       lastContent <- readContentsText lastFile
       lastContent `shouldBe'` "01-01-2022\n"
 
-    withEmptyRootTarFileIt ("should read content of file in tarball when root has no name with content: " <> show emptyPathTarFileTree) $ do
+    withEmptyRootTarFileIt "should read content of file in tarball when root has no name" $ do
       let awsLambdaRie :: Path Abs File = Path "usr/local/bin/aws-lambda-rie"
       awsLambdaRieContent <- readContentsBS awsLambdaRie
       -- This is a binary, so just check the length rather than embedding the content in code.
@@ -81,7 +81,7 @@ spec = do
       listedDirs `shouldMatchList'` [Path "logs-archive/jan/", Path "logs-archive/feb/"]
       listedFiles `shouldMatchList'` [Path "logs-archive/last.txt"]
 
-    withEmptyRootTarFileIt ("should list directories and files when root has no name with content: " <> show emptyPathTarFileTree) $ do
+    withEmptyRootTarFileIt "should list directories and files when root has no name" $ do
       let parent :: Path Abs Dir = Path "usr/local/bin/"
       (parentDirs, parentFiles) <- listDir parent
       parentDirs `shouldMatchList'` []
@@ -98,7 +98,7 @@ spec = do
       resolvedFile <- resolveFile logsArchive "last.txt"
       resolvedFile `shouldBe'` Path "logs-archive/last.txt"
 
-    withEmptyRootTarFileIt ("should resolve file when root has no name with content: " <> show emptyPathTarFileTree) $ do
+    withEmptyRootTarFileIt "should resolve file when root has no name" $ do
       let parent :: Path Abs Dir = Path "usr/local/bin"
       resolvedFile <- resolveFile parent "aws-lambda-rie"
       resolvedFile `shouldBe'` Path "usr/local/bin/aws-lambda-rie"
@@ -109,7 +109,7 @@ spec = do
       resolvedDir <- resolveDir logsArchive "jan"
       resolvedDir `shouldBe'` Path "logs-archive/jan/"
 
-    withEmptyRootTarFileIt ("should resolve directory when root has no name with content: " <> show emptyPathTarFileTree) $ do
+    withEmptyRootTarFileIt "should resolve directory when root has no name" $ do
       let parent :: Path Abs Dir = Path "usr/local/"
       resolvedDir <- resolveDir parent "bin"
       resolvedDir `shouldBe'` Path "usr/local/bin/"
