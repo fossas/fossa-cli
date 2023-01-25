@@ -268,9 +268,11 @@ analyze cfg = Diag.context "fossa-analyze" $ do
             analyzeVSI basedir revision filters skipResolutionSet
         _ -> pure Nothing
   dynamicLinkedResults <-
-    Diag.errorBoundaryIO . diagToDebug $
-      Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir filters . Config.dynamicLinkingTarget $
-        Config.vsiOptions cfg
+    Diag.errorBoundaryIO
+      . diagToDebug
+      . runReader filters
+      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget
+      $ Config.vsiOptions cfg
   binarySearchResults <-
     Diag.errorBoundaryIO . diagToDebug $
       Diag.context "discover-binaries" $
@@ -406,13 +408,13 @@ doAnalyzeDynamicLinkedBinary ::
   , Has Logger sig m
   , Has ReadFS sig m
   , Has Exec sig m
+  , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
-  AllFilters ->
   DynamicLinkInspect ->
   m (Maybe SourceUnit)
-doAnalyzeDynamicLinkedBinary root filters (DynamicLinkInspect (Just target)) = analyzeDynamicLinkedDeps root target filters
-doAnalyzeDynamicLinkedBinary _ _ _ = pure Nothing
+doAnalyzeDynamicLinkedBinary root (DynamicLinkInspect (Just target)) = analyzeDynamicLinkedDeps root target
+doAnalyzeDynamicLinkedBinary _ _ = pure Nothing
 
 data AnalyzeError
   = ErrNoProjectsDiscovered

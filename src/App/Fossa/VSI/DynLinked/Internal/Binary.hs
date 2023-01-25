@@ -8,6 +8,7 @@ module App.Fossa.VSI.DynLinked.Internal.Binary (
 import App.Fossa.VSI.DynLinked.Util (runningLinux)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, recover, renderDiagnostic, warnOnErr)
+import Control.Effect.Reader (Reader)
 import Control.Monad (void)
 import Data.Char (isSpace)
 import Data.Maybe (catMaybes)
@@ -16,13 +17,13 @@ import Data.Set qualified as Set
 import Data.String.Conversion (ToString (toString), toText)
 import Data.Text (Text)
 import Data.Void (Void)
-import Discovery.Filters (AllFilters, pathAllowed)
-import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk')
+import Discovery.Filters (AllFilters)
+import Discovery.Walk (WalkStep (WalkContinue), walkWithFilters')
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
-import Effect.Logger (Logger, logDebug, logWarn, pretty)
+import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (ReadFS)
-import Path (Abs, Dir, File, Path, SomeBase (..), parent, parseAbsFile)
-import Path.Extra (SomeResolvedPath (..), tryMakeRelative)
+import Path (Abs, Dir, File, Path, parent, parseAbsFile)
+import Path.Extra (SomeResolvedPath (..))
 import Text.Megaparsec (Parsec, between, empty, eof, many, optional, takeWhile1P, try, (<|>))
 import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
@@ -34,48 +35,29 @@ dynamicLinkedDependencies ::
   , Has Exec sig m
   , Has Logger sig m
   , Has ReadFS sig m
+  , Has (Reader AllFilters) sig m
   ) =>
   SomeResolvedPath ->
-  AllFilters ->
   m (Set (Path Abs File))
-dynamicLinkedDependencies target filters | runningLinux = case target of
-  ResolvedDir dir -> dynamicLinkedDependenciesRecursive dir filters
+dynamicLinkedDependencies target | runningLinux = case target of
+  ResolvedDir dir -> dynamicLinkedDependenciesRecursive dir
   ResolvedFile file -> dynamicLinkedDependenciesSingle file
-dynamicLinkedDependencies _ _ = pure Set.empty
+dynamicLinkedDependencies _ = pure Set.empty
 
 dynamicLinkedDependenciesRecursive ::
   ( Has Diagnostics sig m
   , Has Exec sig m
   , Has Logger sig m
   , Has ReadFS sig m
+  , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
-  AllFilters ->
   m (Set (Path Abs File))
-dynamicLinkedDependenciesRecursive root filters = context "Recursively discover dynamic binaries" . flip walk' root $ \dir _ files -> case tryMakeRelative root dir of
-  -- For the root dir, always scan.
-  Abs resolved | resolved == root -> do
-    logDebug . pretty $ "[DETECT-DYNAMIC] Notice: Root dir, in this case " <> toText (show root) <> ", is always scanned regardless of filters."
-    logDebug . pretty $ "[DETECT-DYNAMIC] Inspecting binaries in directory: " <> toText (show resolved)
-    deps <- traverse resolveSingleWarnOnErr files
-    pure (Set.unions $ catMaybes deps, WalkContinue)
-  -- Before inspecting a subdir, check if it is allowed by the filters.
-  -- If not, skip that subdir.
-  Rel resolved ->
-    if pathAllowed filters resolved
-      then do
-        -- Log this so that users running in debug mode see the CLI working during long-running recursive traversals.
-        logDebug . pretty $ "[DETECT-DYNAMIC] Inspecting binaries in directory: " <> toText (show resolved)
-        deps <- traverse resolveSingleWarnOnErr files
-        pure (Set.unions $ catMaybes deps, WalkContinue)
-      else do
-        logDebug . pretty $ "[DETECT-DYNAMIC] User filter skipped directory: " <> toText (show resolved)
-        -- WalkContinue so that if this dir is excluded, but a subdir is included, it works.
-        pure (Set.empty, WalkContinue)
-  -- Anything else that can't be made relative is skipped.
-  Abs resolved -> do
-    logWarn . pretty $ "[DETECT-DYNAMIC] Failed to make " <> toText (show resolved) <> " relative to " <> toText (show root) <> ", skipping traversal"
-    pure (Set.empty, WalkSkipAll)
+dynamicLinkedDependenciesRecursive root = context "Recursively discover dynamic binaries" . flip walkWithFilters' root $ \dir _ files -> do
+  -- Log this so that users running in debug mode see the CLI working during long-running recursive traversals.
+  logDebug . pretty $ "[DETECT-DYNAMIC] Inspecting binaries in directory: " <> toText (show dir)
+  deps <- traverse resolveSingleWarnOnErr files
+  pure (Set.unions $ catMaybes deps, WalkContinue)
   where
     resolveSingleWarnOnErr :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs File -> m (Maybe (Set (Path Abs File)))
     resolveSingleWarnOnErr target = recover . warnOnErr (SkippingDynamicDep target) $ dynamicLinkedDependenciesSingle target

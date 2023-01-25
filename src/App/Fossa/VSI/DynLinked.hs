@@ -8,6 +8,7 @@ import App.Fossa.VSI.DynLinked.Internal.Resolve (environmentDistro, toSourceUnit
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, errCtx, fatalText, recover, renderDiagnostic, warnOnErr)
 import Control.Effect.Lift (Lift)
+import Control.Effect.Reader (Reader)
 import Data.String.Conversion (toText)
 import Discovery.Filters (AllFilters)
 import Effect.Exec (Exec)
@@ -24,18 +25,18 @@ analyzeDynamicLinkedDeps ::
   , Has Logger sig m
   , Has ReadFS sig m
   , Has Exec sig m
+  , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
   SomePath ->
-  AllFilters ->
   m (Maybe SourceUnit)
-analyzeDynamicLinkedDeps root (target) filters = context "Analyze dynamic deps" . recover . warnOnErr (SkippingDynamicDep target) $ do
+analyzeDynamicLinkedDeps root (target) = context "Analyze dynamic deps" . recover . warnOnErr (SkippingDynamicDep target) $ do
   environment <- context "Inspect environment OS" environmentDistro
   case environment of
     Nothing -> do
       errCtx NotSupportedDistro $ fatalText "Unsupported operating system"
     Just distro -> do
-      linkedFiles <- context ("Analyze target: " <> toText target) $ dynamicLinkedDependencies (resolveAbsolute root target) filters
+      linkedFiles <- context ("Analyze target: " <> toText target) . dynamicLinkedDependencies $ resolveAbsolute root target
       if null linkedFiles
         then do
           errCtx NoDependenciesFound $ fatalText "No dynamically linked dependencies referenced in target"
