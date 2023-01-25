@@ -133,6 +133,7 @@ mkTree :: [(Text, Maybe TarEntryOffset)] -> SomeFileTree TarEntryOffset
 mkTree = foldr (\(p, ref) tree -> insert (toSomePath p) ref tree) empty
 
 -- | Read a file tree directly from a tar file, as though it had been read via @Tarball.mkFsFromChangeset@.
+-- Normalizes paths to forward slashes regardless of platform to make testing simpler.
 readTree :: Path Abs File -> IO (SomeFileTree TarEntryOffset)
 readTree file = do
   content <- ByteStringLazy.readFile $ toFilePath file
@@ -145,7 +146,7 @@ readTree file = do
       EmptyL -> tree
       (entry, offset) :< rest -> case Tar.entryContent entry of
         (NormalFile _ _) -> do
-          let path = toText $ Tar.entryPath entry
+          let path = toText . normalizeSlash $ Tar.entryPath entry
           let tree' = insert (toSomePath path) (Just offset) tree
           mkTreeFromEntries tree' (TarEntries rest baseOffset)
 
@@ -157,6 +158,9 @@ readTree file = do
     isFile :: Tar.Entry -> Bool
     isFile (TarEntry.Entry _ (NormalFile _ _) _ _ _ _) = True
     isFile _ = False
+
+    normalizeSlash :: FilePath -> FilePath
+    normalizeSlash = map (\c -> if c == '\\' then '/' else c)
 
 -- | This tar has no name for the root directory:
 --
