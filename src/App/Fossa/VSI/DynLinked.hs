@@ -9,10 +9,12 @@ import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, errCtx, fatalText, recover, renderDiagnostic, warnOnErr)
 import Control.Effect.Lift (Lift)
 import Data.String.Conversion (toText)
+import Discovery.Filters (AllFilters)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, logDebug, pretty)
+import Effect.Logger (Logger, pretty)
 import Effect.ReadFS (ReadFS)
-import Path (Abs, Dir, File, Path)
+import Path (Abs, Dir, Path)
+import Path.Extra (SomePath, resolveAbsolute)
 import Srclib.Types (SourceUnit (..))
 
 -- | Dynamic linking analysis is sufficiently different from other analysis types that it cannot be just another strategy.
@@ -24,24 +26,24 @@ analyzeDynamicLinkedDeps ::
   , Has Exec sig m
   ) =>
   Path Abs Dir ->
-  Path Abs File ->
+  SomePath ->
+  AllFilters ->
   m (Maybe SourceUnit)
-analyzeDynamicLinkedDeps root target = context "analyze dynamic deps" . recover . warnOnErr (SkippingDynamicDep target) $ do
-  environment <- context "inspect distro" environmentDistro
+analyzeDynamicLinkedDeps root (target) filters = context "Analyze dynamic deps" . recover . warnOnErr (SkippingDynamicDep target) $ do
+  environment <- context "Inspect environment OS" environmentDistro
   case environment of
     Nothing -> do
       errCtx NotSupportedDistro $ fatalText "Unsupported operating system"
     Just distro -> do
-      linkedFiles <- context ("analyze target: " <> toText target) $ dynamicLinkedDependencies target
+      linkedFiles <- context ("Analyze target: " <> toText target) $ dynamicLinkedDependencies (resolveAbsolute root target) filters
       if null linkedFiles
         then do
-          errCtx NoDependenciesFound $ fatalText "Unsupported operating system"
+          errCtx NoDependenciesFound $ fatalText "No dynamically linked dependencies referenced in target"
         else do
-          logDebug . pretty $ "Dynamic linking analysis: resolving linked dependencies: " <> toText (show linkedFiles)
-          linkedDeps <- context ("resolve linked dependencies: " <> toText (show linkedFiles)) $ dynamicDependencies root linkedFiles
+          linkedDeps <- context "Resolve linked dependencies to packages" $ dynamicDependencies root linkedFiles
           toSourceUnit root distro linkedDeps
 
-newtype SkippingDynamicDep = SkippingDynamicDep (Path Abs File)
+newtype SkippingDynamicDep = SkippingDynamicDep (SomePath)
 instance ToDiagnostic SkippingDynamicDep where
   renderDiagnostic (SkippingDynamicDep path) = pretty $ "Skipping dynamic analysis for target: " <> show path
 

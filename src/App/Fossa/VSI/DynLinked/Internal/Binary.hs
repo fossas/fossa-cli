@@ -7,7 +7,7 @@ module App.Fossa.VSI.DynLinked.Internal.Binary (
 
 import App.Fossa.VSI.DynLinked.Util (runningLinux)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, recover, renderDiagnostic, warnOnErr)
 import Control.Monad (void)
 import Data.Char (isSpace)
 import Data.Maybe (catMaybes)
@@ -16,19 +16,83 @@ import Data.Set qualified as Set
 import Data.String.Conversion (ToString (toString), toText)
 import Data.Text (Text)
 import Data.Void (Void)
+import Discovery.Filters (AllFilters, pathAllowed)
+import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk')
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
-import Path (Abs, File, Path, parent, parseAbsFile)
+import Effect.Logger (Logger, logDebug, logWarn, pretty)
+import Effect.ReadFS (ReadFS)
+import Path (Abs, Dir, File, Path, SomeBase (..), parent, parseAbsFile)
+import Path.Extra (SomeResolvedPath (..), tryMakeRelative)
 import Text.Megaparsec (Parsec, between, empty, eof, many, optional, takeWhile1P, try, (<|>))
 import Text.Megaparsec.Char (char, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 
 -- | Report the list of dynamically linked dependencies of the target executable as a set of file paths.
 -- This is currently a stub for non-linux targets: on these systems an empty set is reported.
-dynamicLinkedDependencies :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs File -> m (Set (Path Abs File))
-dynamicLinkedDependencies file | runningLinux = do
+dynamicLinkedDependencies ::
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  ) =>
+  SomeResolvedPath ->
+  AllFilters ->
+  m (Set (Path Abs File))
+dynamicLinkedDependencies target filters | runningLinux = case target of
+  ResolvedDir dir -> dynamicLinkedDependenciesRecursive dir filters
+  ResolvedFile file -> dynamicLinkedDependenciesSingle file
+dynamicLinkedDependencies _ _ = pure Set.empty
+
+dynamicLinkedDependenciesRecursive ::
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  ) =>
+  Path Abs Dir ->
+  AllFilters ->
+  m (Set (Path Abs File))
+dynamicLinkedDependenciesRecursive root filters = context "Recursively discover dynamic binaries" . flip walk' root $ \dir _ files -> case tryMakeRelative root dir of
+  -- For the root dir, always scan.
+  Abs resolved | resolved == root -> do
+    logDebug . pretty $ "[DETECT-DYNAMIC] Notice: Root dir, in this case " <> toText (show root) <> ", is always scanned regardless of filters."
+    logDebug . pretty $ "[DETECT-DYNAMIC] Inspecting binaries in directory: " <> toText (show resolved)
+    deps <- traverse resolveSingleWarnOnErr files
+    pure (Set.unions $ catMaybes deps, WalkContinue)
+  -- Before inspecting a subdir, check if it is allowed by the filters.
+  -- If not, skip that subdir.
+  Rel resolved ->
+    if pathAllowed filters resolved
+      then do
+        -- Log this so that users running in debug mode see the CLI working during long-running recursive traversals.
+        logDebug . pretty $ "[DETECT-DYNAMIC] Inspecting binaries in directory: " <> toText (show resolved)
+        deps <- traverse resolveSingleWarnOnErr files
+        pure (Set.unions $ catMaybes deps, WalkContinue)
+      else do
+        logDebug . pretty $ "[DETECT-DYNAMIC] User filter skipped directory: " <> toText (show resolved)
+        -- WalkContinue so that if this dir is excluded, but a subdir is included, it works.
+        pure (Set.empty, WalkContinue)
+  -- Anything else that can't be made relative is skipped.
+  Abs resolved -> do
+    logWarn . pretty $ "[DETECT-DYNAMIC] Failed to make " <> toText (show resolved) <> " relative to " <> toText (show root) <> ", skipping traversal"
+    pure (Set.empty, WalkSkipAll)
+  where
+    resolveSingleWarnOnErr :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs File -> m (Maybe (Set (Path Abs File)))
+    resolveSingleWarnOnErr target = recover . warnOnErr (SkippingDynamicDep target) $ dynamicLinkedDependenciesSingle target
+
+dynamicLinkedDependenciesSingle ::
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  ) =>
+  Path Abs File ->
+  m (Set (Path Abs File))
+dynamicLinkedDependenciesSingle file = context ("Inspect " <> toText (show file) <> " for dynamic dependencies") $ do
   deps <- execParser lddParseLocalDependencies (parent file) $ lddCommand file
   pure . Set.fromList $ map localDependencyPath deps
-dynamicLinkedDependencies _ = pure Set.empty
+
+newtype SkippingDynamicDep = SkippingDynamicDep (Path Abs File)
+instance ToDiagnostic SkippingDynamicDep where
+  renderDiagnostic (SkippingDynamicDep target) = pretty $ "Skipping dynamic analysis for target: " <> show target
 
 lddCommand :: Path Abs File -> Command
 lddCommand binaryPath =
