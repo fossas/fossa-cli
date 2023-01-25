@@ -71,10 +71,10 @@ instance ToText Text.Text where
 instance ToText TL.Text where
   toText = TL.toStrict
 
-instance TypeError ('Text "Error: Use encodeUtf8/decodeUtf8 instead") => ToText BS.ByteString where
+instance TypeError ( 'Text "Error: Use encodeUtf8/decodeUtf8 instead") => ToText BS.ByteString where
   toText = error "unreachable"
 
-instance TypeError ('Text "Error: Use encodeUtf8/decodeUtf8 instead") => ToText BL.ByteString where
+instance TypeError ( 'Text "Error: Use encodeUtf8/decodeUtf8 instead") => ToText BL.ByteString where
   toText = error "unreachable"
 
 instance ToText (Path b t) where
@@ -102,10 +102,10 @@ instance ToLText Text.Text where
 instance ToLText TL.Text where
   toLText = id
 
-instance TypeError ('Text "Error: Use encodeUtf8/decodeUtf8 instead") => ToLText BS.ByteString where
+instance TypeError ( 'Text "Error: Use encodeUtf8/decodeUtf8 instead") => ToLText BS.ByteString where
   toLText = error "unreachable"
 
-instance TypeError ('Text "Error: Use encodeUtf8/decodeUtf8 instead") => ToLText BL.ByteString where
+instance TypeError ( 'Text "Error: Use encodeUtf8/decodeUtf8 instead") => ToLText BL.ByteString where
   toLText = error "unreachable"
 
 instance ToLText (Path b t) where
@@ -122,10 +122,10 @@ instance ToString Text.Text where
 instance ToString TL.Text where
   toString = TL.unpack
 
-instance TypeError ('Text "Error: Use decodeUtf8 instead") => ToString BS.ByteString where
+instance TypeError ( 'Text "Error: Use decodeUtf8 instead") => ToString BS.ByteString where
   toString = error "unreachable"
 
-instance TypeError ('Text "Error: Use decodeUtf8 instead") => ToString BL.ByteString where
+instance TypeError ( 'Text "Error: Use decodeUtf8 instead") => ToString BL.ByteString where
   toString = error "unreachable"
 
 instance ToString (Path b t) where
