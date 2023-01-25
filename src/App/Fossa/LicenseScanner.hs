@@ -55,7 +55,6 @@ import Effect.Logger (Logger, logDebug)
 import Effect.ReadFS (
   Has,
   ReadFS,
-  SomePath (SomeDir, SomeFile),
   resolvePath',
  )
 import Fossa.API.Types (
@@ -65,7 +64,7 @@ import Fossa.API.Types (
   Organization (organizationId),
  )
 import Path (Abs, Dir, File, Path, SomeBase (Abs, Rel), fileExtension, parent, (</>))
-import Path.Extra (tryMakeRelative)
+import Path.Extra (SomePath (..), tryMakeRelative)
 import Prettyprinter (Pretty (pretty), squotes)
 import Srclib.Types (
   LicenseScanType (CliLicenseScanned),
