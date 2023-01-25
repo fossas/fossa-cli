@@ -1,7 +1,12 @@
 # FOSSA CLI Changelog
 
+## v3.6.15
+
+- `--detect-dynamic`: Supports recursively inspecting binaries for dynamic dependencies. ([#1143](https://github.com/fossas/fossa-cli/pull/1143))
+
 ## v3.6.14
-- Fossa Test: Improved reporting from `fossa test`. ([#1135](https://github.com/fossas/fossa-cli/pull/1135))
+
+- `fossa test`: Improved reporting. ([#1135](https://github.com/fossas/fossa-cli/pull/1135))
 
 ## v3.6.13
 

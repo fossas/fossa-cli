@@ -39,7 +39,7 @@ import App.Fossa.Config.Common (
   pathOpt,
   targetOpt,
   validateDir,
-  validateFile,
+  validateExists,
  )
 import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
@@ -103,7 +103,8 @@ import Options.Applicative (
   switch,
   (<|>),
  )
-import Path (Abs, Dir, File, Path, Rel)
+import Path (Abs, Dir, Path, Rel)
+import Path.Extra (SomePath)
 import System.Info qualified as SysInfo
 import Types (ArchiveUploadType (..), LicenseScanPathFilters (..), TargetFilter)
 
@@ -119,7 +120,7 @@ data UnpackArchives = UnpackArchives deriving (Generic)
 data VSIAnalysis = VSIAnalysis deriving (Generic)
 
 newtype IATAssertion = IATAssertion {unIATAssertion :: Maybe (Path Abs Dir)} deriving (Eq, Ord, Show, Generic)
-newtype DynamicLinkInspect = DynamicLinkInspect {unDynamicLinkInspect :: Maybe (Path Abs File)} deriving (Eq, Ord, Show, Generic)
+newtype DynamicLinkInspect = DynamicLinkInspect {unDynamicLinkInspect :: Maybe SomePath} deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON BinaryDiscovery where
   toEncoding = genericToEncoding defaultOptions
@@ -527,12 +528,12 @@ collectModeOptions ::
   m VSIModeOptions
 collectModeOptions AnalyzeCliOpts{..} = do
   assertionDir <- traverse validateDir analyzeAssertMode
-  dynamicLinkTarget <- traverse validateFile analyzeDynamicLinkTarget
+  resolvedDynamicLinkTarget <- traverse validateExists analyzeDynamicLinkTarget
   pure
     VSIModeOptions
       { vsiAnalysisEnabled = analyzeVSIMode
       , vsiSkipSet = VSI.SkipResolution $ Set.fromList analyzeSkipVSIGraphResolution
       , iatAssertion = IATAssertion assertionDir
-      , dynamicLinkingTarget = DynamicLinkInspect dynamicLinkTarget
+      , dynamicLinkingTarget = DynamicLinkInspect resolvedDynamicLinkTarget
       , binaryDiscoveryEnabled = analyzeBinaryDiscoveryMode
       }
