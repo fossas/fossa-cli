@@ -1,3 +1,4 @@
+-- | Rebar, the Erlang dependency manager.
 module Strategy.Rebar3 (
   RebarProject (..),
   discover,

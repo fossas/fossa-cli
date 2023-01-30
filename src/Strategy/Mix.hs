@@ -1,3 +1,4 @@
+-- | Mix, the Elixir dependency manager.
 module Strategy.Mix (
   discover,
   findProjects,
