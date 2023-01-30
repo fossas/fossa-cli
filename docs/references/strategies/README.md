@@ -144,6 +144,7 @@ It is important to note that neither type of strategy has an inherent benefit wh
 | [Haskell (stack)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/haskell/stack.md)                        | ✅       | ❌      | ❌                    | Dynamic          |
 | [iOS (carthage)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/platforms/ios/carthage.md)                          | ❌       | ✅      | ❌                    | Static           |
 | [iOS (cocoapods)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/platforms/ios/cocoapods.md)                        | ❌       | ✅      | ❌                    | Static           |
+| [iOS (swift)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/platforms/ios/swift.md)                                | ❌       | ✅      | ❌                    | Static           |
 | [Maven](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/maven/maven.md)                                    | ✅       | ✅      | ❌                    | Dynamic          |
 | [NodeJS (NPM/Yarn/pnpm)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/nodejs/nodejs.md)                 | ❌       | ✅      | ❌                    | Static           |
 | [Perl](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/perl/perl.md)                                       | ❌       | ✅      | ❌                    | Static           |
