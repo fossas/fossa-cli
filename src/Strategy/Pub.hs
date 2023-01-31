@@ -1,3 +1,4 @@
+-- | Pub, the Dart dependency manager.
 module Strategy.Pub (discover) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
