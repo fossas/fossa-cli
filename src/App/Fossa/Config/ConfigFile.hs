@@ -260,7 +260,7 @@ instance FromJSON ConfigProject where
       <*> obj .:? "jiraProjectKey"
       <*> obj .:? "url"
       <*> obj .:? "policy"
-      <*> obj .:? "label" .!= []
+      <*> obj .:? "labels" .!= []
       <*> obj .:? "releaseGroup"
 
 instance FromJSON ConfigRevision where
