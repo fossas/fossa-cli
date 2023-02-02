@@ -66,7 +66,7 @@ import App.OptionExtensions (uriOption)
 import App.Types (
   BaseDir (BaseDir),
   OverrideProject (..),
-  ProjectMetadata,
+  ProjectMetadata (ProjectMetadata),
   ProjectRevision,
   ReleaseGroupMetadata (ReleaseGroupMetadata),
  )
