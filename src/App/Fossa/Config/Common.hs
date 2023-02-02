@@ -98,7 +98,6 @@ import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
 import GHC.Generics (Generic)
 import Options.Applicative (
   Alternative (many),
-  ParseError (ShowHelpText),
   Parser,
   ReadM,
   argument,
@@ -108,7 +107,6 @@ import Options.Applicative (
   metavar,
   option,
   optional,
-  parserFailure,
   short,
   str,
   strOption,

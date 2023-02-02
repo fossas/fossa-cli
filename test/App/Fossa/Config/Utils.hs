@@ -1,15 +1,22 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.Fossa.Config.Utils (parseArgString, itShouldLoadFromTheConfiguredBaseDir) where
+module App.Fossa.Config.Utils (parseArgString, itShouldLoadFromTheConfiguredBaseDir, itShouldFailWhenLabelsExceedFive) where
 
 import App.Fossa.Config.ConfigFile (ConfigFile (..))
 import Control.Algebra (Has)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString qualified as BS
-import Options.Applicative (Parser, execParserPure, handleParseResult, header, info, prefs)
+import Options.Applicative (Parser, execParserPure, handleParseResult, header, info, prefs, getParseResult)
 import Path (mkRelFile, toFilePath, (</>))
-import Test.Effect (EffectStack, it', shouldBe', withTempDir)
+import Test.Effect (EffectStack, it', shouldBe', withTempDir, expectFailure', expectFatal')
+import ResultUtil (expectFailure)
 import Test.Hspec (Spec)
+import App.Fossa.Config.Analyze (mergeOpts, AnalyzeCliOpts (AnalyzeCliOpts))
+import App.Fossa.Config.EnvironmentVars ( EnvVars(EnvVars) )
+import Data.Flag (toFlag)
+-- import App.Fossa.Config.Container.Analyze 
+import Control.Carrier.Diagnostics
+import Data.Text (Text)
 
 -- | Parses an arg string or raises an error
 parseArgString :: (Has (Lift IO) sig m) => Parser a -> String -> m a
@@ -17,6 +24,21 @@ parseArgString parser = sendIO . handleParseResult . execParserPure (prefs mempt
   where
     progInfo =
       header "Test Arg Parser"
+
+configFile :: ConfigFile 
+configFile =
+      ConfigFile
+        { configVersion = 42
+        , configServer = Nothing
+        , configApiKey = Nothing
+        , configProject = Nothing
+        , configRevision = Nothing
+        , configTargets = Nothing
+        , configPaths = Nothing
+        , configExperimental = Nothing
+        , configVendoredDependencies = Nothing
+        , configTelemetry = Nothing
+        }
 
 -- | Tests that the config loader uses the directory set in the arguments
 itShouldLoadFromTheConfiguredBaseDir ::
@@ -28,18 +50,14 @@ itShouldLoadFromTheConfiguredBaseDir parser loadConfig =
       do
         sendIO $ BS.writeFile (toFilePath (tempDir </> $(mkRelFile ".fossa.yml"))) "version: 42\n"
         options <- sendIO $ parseArgString parser (toFilePath tempDir)
-        let configFile =
-              ConfigFile
-                { configVersion = 42
-                , configServer = Nothing
-                , configApiKey = Nothing
-                , configProject = Nothing
-                , configRevision = Nothing
-                , configTargets = Nothing
-                , configPaths = Nothing
-                , configExperimental = Nothing
-                , configVendoredDependencies = Nothing
-                , configTelemetry = Nothing
-                }
         maybeConfigFile <- loadConfig options
         maybeConfigFile `shouldBe'` Just configFile
+itShouldFailWhenLabelsExceedFive :: Parser AnalyzeCliOpts -> Spec
+itShouldFailWhenLabelsExceedFive parser =
+  it' "should fail when labels exceed 5" $ do
+    let p = execParserPure (prefs mempty) (info parser $ header "Test Arg Parser") []
+    case getParseResult p of
+      Nothing -> fatal ("test failed" :: Text)
+      Just cliOpts -> do
+        expectFatal' $ mergeOpts Nothing (EnvVars Nothing False False Nothing Nothing) cliOpts
+
