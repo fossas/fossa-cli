@@ -288,6 +288,8 @@ data Issue = Issue
   , issueRule :: Maybe IssueRule
   , issueLicense :: Maybe Text
   , issueDashURL :: Maybe Text
+  , issueCVE :: Maybe Text
+  , issueFixedIn :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -365,6 +367,8 @@ instance FromJSON Issue where
       <*> obj .:? "rule"
       <*> obj .:? "license"
       <*> obj .:? "issueDashURL"
+      <*> obj .:? "cve"
+      <*> obj .:? "fixedIn"
 
 instance ToJSON Issue where
   toJSON Issue{..} =
@@ -377,6 +381,8 @@ instance ToJSON Issue where
       , "rule" .= issueRule
       , "license" .= issueLicense
       , "issueDashURL" .= issueDashURL
+      , "cve" .= issueCVE
+      , "fixedIn" .= issueFixedIn
       ]
 
 instance FromJSON IssueType where
@@ -632,6 +638,8 @@ renderedIssues issues = rendered
       vsep
         ( map format . catMaybes $
             [ Just issueTitle
+            , cveMessage
+            , fixedIn
             , issueLink
             ]
         )
@@ -675,6 +683,12 @@ renderedIssues issues = rendered
 
         issueLink :: Maybe Text
         issueLink = ("More information: " <>) <$> issueDashURL
+
+        cveMessage :: Maybe Text
+        cveMessage = ("CVE ID: " <>) <$> issueCVE
+
+        fixedIn :: Maybe Text
+        fixedIn = ("Fixed in: " <>) <$> issueFixedIn
 
         issuePolicyFlagMessage :: Text
         issuePolicyFlagMessage = fromMaybe missingRuleIdMsg (issuePolicyFlagMsg <|> missingLicenseIdMsg)
