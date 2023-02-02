@@ -53,7 +53,7 @@ expectedConfigProject =
     , configJiraKey = Just "key"
     , configUrl = Just "fossa.com"
     , configPolicy = Just "license-policy"
-    , configLabel = []
+    , configLabel = ["project-label", "label-2"]
     , configReleaseGroup = Just expectedReleaseGroup
     }
 
