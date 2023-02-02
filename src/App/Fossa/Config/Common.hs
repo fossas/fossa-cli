@@ -141,7 +141,7 @@ defaultTimeoutDuration :: Duration
 defaultTimeoutDuration = Minutes 60
 
 metadataOpts :: Parser ProjectMetadata
-metadataOpts = do
+metadataOpts =
   ProjectMetadata
     <$> optional (strOption (long "title" <> short 't' <> help "the title of the FOSSA project. (default: the project name)"))
     <*> optional (strOption (long "project-url" <> short 'P' <> help "this repository's home page"))

@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-<!-- title: description ([PR#](https://github.com/fossas/fossa-cli/pull/PR#)) -->
+<!-- title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
 ## v3.6.16
 
