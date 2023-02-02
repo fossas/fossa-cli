@@ -30,7 +30,7 @@ spec = do
       expectFatal' $ uploadScan fixtureRevision fixtureProjectMetadata fixtureContainerScan
 
 fixtureProjectMetadata :: ProjectMetadata
-fixtureProjectMetadata = ProjectMetadata Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+fixtureProjectMetadata = ProjectMetadata Nothing Nothing Nothing Nothing Nothing Nothing [] Nothing
 
 fixtureContainerScan :: ContainerScan
 fixtureContainerScan = ContainerScan (ContainerScanImage "alpine" "3.1.4" []) "some-digest" "some-tag"

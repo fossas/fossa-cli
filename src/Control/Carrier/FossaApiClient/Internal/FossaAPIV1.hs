@@ -570,7 +570,7 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
   pure (responseBody resp)
 
 mkMetadataOpts :: ProjectMetadata -> Text -> Option scheme
-mkMetadataOpts ProjectMetadata{..} projectName = mconcat $ catMaybes maybes
+mkMetadataOpts ProjectMetadata{..} projectName = mconcat totalMaybes
   where
     title = Just $ fromMaybe projectName projectTitle
     maybes =
@@ -583,6 +583,8 @@ mkMetadataOpts ProjectMetadata{..} projectName = mconcat $ catMaybes maybes
       , ("releaseGroupRelease" =:) . releaseGroupRelease <$> projectReleaseGroup
       , ("title" =:) <$> title
       ]
+    labelsArray = map ("labels[]" =:) projectLabel
+    totalMaybes = catMaybes maybes ++ labelsArray
 
 mangleError :: HttpException -> FossaError
 mangleError err = case errWithoutSensitiveInfo of

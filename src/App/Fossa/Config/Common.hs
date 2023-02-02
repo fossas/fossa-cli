@@ -66,7 +66,7 @@ import App.OptionExtensions (uriOption)
 import App.Types (
   BaseDir (BaseDir),
   OverrideProject (..),
-  ProjectMetadata (ProjectMetadata),
+  ProjectMetadata (ProjectMetadata, projectLabel),
   ProjectRevision,
   ReleaseGroupMetadata (ReleaseGroupMetadata),
  )
@@ -97,6 +97,8 @@ import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
 import GHC.Generics (Generic)
 import Options.Applicative (
+  Alternative (many),
+  ParseError (ShowHelpText),
   Parser,
   ReadM,
   argument,
@@ -106,6 +108,7 @@ import Options.Applicative (
   metavar,
   option,
   optional,
+  parserFailure,
   short,
   str,
   strOption,
@@ -138,7 +141,7 @@ defaultTimeoutDuration :: Duration
 defaultTimeoutDuration = Minutes 60
 
 metadataOpts :: Parser ProjectMetadata
-metadataOpts =
+metadataOpts = do
   ProjectMetadata
     <$> optional (strOption (long "title" <> short 't' <> help "the title of the FOSSA project. (default: the project name)"))
     <*> optional (strOption (long "project-url" <> short 'P' <> help "this repository's home page"))
@@ -146,6 +149,7 @@ metadataOpts =
     <*> optional (strOption (long "link" <> short 'L' <> help "a link to attach to the current build"))
     <*> optional (strOption (long "team" <> short 'T' <> help "this repository's team inside your organization"))
     <*> optional (strOption (long "policy" <> help "the policy to assign to this project in FOSSA"))
+    <*> many (strOption (long "project-label" <> help "assign up to 5 labels to the project"))
     <*> optional releaseGroupMetadataOpts
 
 releaseGroupMetadataOpts :: Parser ReleaseGroupMetadata
