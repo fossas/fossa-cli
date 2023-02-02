@@ -1,5 +1,11 @@
 # FOSSA CLI Changelog
 
+<!-- title: description ([PR#](https://github.com/fossas/fossa-cli/pull/PR#)) -->
+
+## v3.6.16
+
+- Project labels: Support project labels from command line and configuration file ([1145](https://github.com/fossas/fossa-cli/pull/1145))
+
 ## v3.6.15
 
 - Container scanning: support more tar formats. ([1142](https://github.com/fossas/fossa-cli/pull/1142))
