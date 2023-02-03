@@ -99,10 +99,10 @@ determineProjectRoots rootDir closure = go . Set.fromList
         frontier = Set.unions $ Set.map (\coord -> AM.postSet coord (globalGraph closure)) remainingCoords
 
 data MavenProjectClosure = MavenProjectClosure
-  { closureAnalysisRoot :: Path Abs Dir
-  -- ^ the root of global fossa-analyze analysis; needed for pathfinder license scan
-  , closurePath :: Path Abs File
-  -- ^ path of the pom file used as the root of this project closure
+  { -- | the root of global fossa-analyze analysis; needed for pathfinder license scan
+    closureAnalysisRoot :: Path Abs Dir
+  , -- | path of the pom file used as the root of this project closure
+    closurePath :: Path Abs File
   , closureRootCoord :: MavenCoordinate
   , closureRootPom :: Pom
   , closureGraph :: AM.AdjacencyMap MavenCoordinate

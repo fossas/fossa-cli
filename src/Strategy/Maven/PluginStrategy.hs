@@ -176,8 +176,8 @@ buildGraph reactorOutput PluginOutput{..} =
               , dependencyEnvironments = Set.fromList $ toBuildTag <$> artifactScopes
               , dependencyTags =
                   Map.fromList $
-                    ("scopes", artifactScopes)
-                      : [("optional", ["true"]) | artifactOptional]
+                    ("scopes", artifactScopes) :
+                      [("optional", ["true"]) | artifactOptional]
               }
 
       when

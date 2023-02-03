@@ -97,12 +97,12 @@ getDeps project = context "Pipenv" $ do
   lock <- context "Getting direct dependencies" $ readContentsJson (pipenvLockfile project)
 
   maybeDeps <-
-    context "Getting deep dependencies"
-      $ recover
+    context "Getting deep dependencies" $
+      recover
         . warnOnErr MissingDeepDeps
         . warnOnErr MissingEdges
         . errCtx (PipenvCmdFailed pipenvGraphCmd)
-      $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
+        $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
 
   graph <- context "Building dependency graph" $ pure (buildGraph lock maybeDeps)
   pure $

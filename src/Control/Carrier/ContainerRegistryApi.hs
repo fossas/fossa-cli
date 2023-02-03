@@ -230,12 +230,12 @@ exportImage imgSrc dir = context "Exporting Image" $ do
   let blobs = blobEntries manifest
 
   capabilities <- max 2 <$> sendIO getNumCapabilities
-  runStickyLogger SevInfo . runFinally
-    $ context "Downloading image artifact from registry"
+  runStickyLogger SevInfo . runFinally $
+    context "Downloading image artifact from registry"
       . withTaskPool capabilities (updateProgress)
       . runAtomicCounter
-    $ do
-      traverse (forkTask . exportBlob manager imgSrc dir) blobs
+      $ do
+        traverse (forkTask . exportBlob manager imgSrc dir) blobs
 
   mkTarball dir manifest imgSrc
 
@@ -296,11 +296,11 @@ mkTarball dir manifest imgSrc = context "Making image tarball" $ do
   let tarballFile :: Path Abs File = dir </> $(mkRelFile "image.tar")
   let manifestFile :: Path Abs File = dir </> $(mkRelFile $ toString manifestFilename)
 
-  sendIO
-    $ Data.ByteString.writeFile (toFilePath manifestFile)
-    $ toStrict
-      . encode
-    $ toDockerManifest manifest imgSrc
+  sendIO $
+    Data.ByteString.writeFile (toFilePath manifestFile) $
+      toStrict
+        . encode
+        $ toDockerManifest manifest imgSrc
 
   files <- snd <$> listDir dir
 

@@ -247,9 +247,9 @@ ednVecToMap = go Map.empty
     go m vec
       | V.null vec = pure m
       | otherwise = do
-          key <- EDN.vecGet 0 vec
-          value <- EDN.vecGet 1 vec
-          go (Map.insert key value m) (V.drop 2 vec)
+        key <- EDN.vecGet 0 vec
+        value <- EDN.vecGet 1 vec
+        go (Map.insert key value m) (V.drop 2 vec)
 
 -- | The FromEDN type for lein deps output
 newtype Deps = Deps

@@ -53,8 +53,8 @@ generateWigginsMonorepoOpts scanDir monorepoAnalysisOpts filters logSeverity pro
 
 generateMonorepoArgs :: MonorepoAnalysisOpts -> PathFilters -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> [Text]
 generateMonorepoArgs MonorepoAnalysisOpts{..} PathFilters{..} logSeverity ProjectRevision{..} ApiOpts{..} ProjectMetadata{..} =
-  "monorepo"
-    : optMaybeText "-endpoint" (render <$> apiOptsUri)
+  "monorepo" :
+  optMaybeText "-endpoint" (render <$> apiOptsUri)
     ++ ["-fossa-api-key", unApiKey apiOptsApiKey]
     ++ ["-project", projectName, "-revision", projectRevision]
     ++ optMaybeText "-jira-project-key" projectJiraKey

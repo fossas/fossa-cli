@@ -63,8 +63,8 @@ resolveJar root file = do
     . errCtx (FailedToResolveJarCtx file)
     . context ("Infer metadata from " <> fileDescription)
     . runFinally
-    $ withArchive extractZip file
-    $ \dir -> tacticPom dir <||> tacticMetaInf dir
+    $ withArchive extractZip file $
+      \dir -> tacticPom dir <||> tacticMetaInf dir
   pure $ fmap (toUserDefDep root file) result
 
 newtype FailedToResolveJar = FailedToResolveJar (Path Abs File)

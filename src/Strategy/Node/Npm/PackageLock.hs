@@ -85,8 +85,8 @@ data PkgLockDependency = PkgLockDependency
   { depVersion :: Text
   , depDev :: Bool
   , depResolved :: NpmResolved
-  , depRequires :: Map Text Text
-  -- ^ name to version spec
+  , -- | name to version spec
+    depRequires :: Map Text Text
   , depDependencies :: Map Text PkgLockDependency
   }
   deriving (Eq, Ord, Show)

@@ -76,12 +76,12 @@ import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 
 data Command = Command
-  { cmdName :: Text
-  -- ^ Command name to use. E.g., "pip", "pip3", "./gradlew".
-  , cmdArgs :: [Text]
-  -- ^ Arguments for the command
-  , cmdAllowErr :: AllowErr
-  -- ^ Error (i.e. non-zero exit code) tolerance policy for running commands. This is helpful for commands like @npm@, that nonsensically return non-zero exit codes when a command succeeds
+  { -- | Command name to use. E.g., "pip", "pip3", "./gradlew".
+    cmdName :: Text
+  , -- | Arguments for the command
+    cmdArgs :: [Text]
+  , -- | Error (i.e. non-zero exit code) tolerance policy for running commands. This is helpful for commands like @npm@, that nonsensically return non-zero exit codes when a command succeeds
+    cmdAllowErr :: AllowErr
   }
   deriving (Eq, Ord, Show, Generic)
 

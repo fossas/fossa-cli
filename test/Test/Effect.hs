@@ -71,16 +71,16 @@ import Type.Operator (type ($))
 type EffectStack =
   FinallyC
     $ SimpleC ContainerRegistryApiF
-    $ ReaderC RegistryCtx
-    $ ReaderC AllFilters
-    $ ExecIOC
-    $ ReadFSIOC
-    $ FossaApiClientMockC
-    $ DiagnosticsC
-    $ MockApiC
-    $ IgnoreLoggerC
-    $ IgnoreStickyLoggerC
-    $ StackC IO
+      $ ReaderC RegistryCtx
+        $ ReaderC AllFilters
+          $ ExecIOC
+            $ ReadFSIOC
+              $ FossaApiClientMockC
+                $ DiagnosticsC
+                  $ MockApiC
+                    $ IgnoreLoggerC
+                      $ IgnoreStickyLoggerC
+                        $ StackC IO
 
 -- TODO: add useful describe, naive describe' doesn't work.
 

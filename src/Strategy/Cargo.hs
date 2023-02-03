@@ -218,8 +218,8 @@ instance AnalyzeProject CargoProject where
 
 data CargoPackage = CargoPackage
   { license :: Maybe Text.Text
-  , cargoLicenseFile :: Maybe FilePath
-  -- ^ Path relative to Cargo.toml containing the license
+  , -- | Path relative to Cargo.toml containing the license
+    cargoLicenseFile :: Maybe FilePath
   }
   deriving (Eq, Show)
 

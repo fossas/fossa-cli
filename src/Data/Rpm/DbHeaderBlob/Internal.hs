@@ -164,38 +164,38 @@ intToHeaderType i =
 -- The v3 data is read in first in a separate step before any additional info from the v4 part of the header.
 -- More information can be found [here](https://rpm-software-management.github.io/rpm/manual/hregions.html)
 data HeaderBlob = HeaderBlob
-  { indexCount :: IndexCount
-  -- ^ Count of entries in the index area
-  , dataLength :: Int32
-  -- ^ The size of the data area in bytes
-  , dataStart :: Int32
-  -- ^ The offset from the beginning of the blob data where tag values are
-  , dataEnd :: Int32
-  -- ^ The offset where the data area ends
-  , entryMetadatas :: NonEmpty EntryMetadata
-  -- ^ The metadata entries for each tag
-  , regionIndexCount :: IndexCount
-  -- ^ The number of 'EntryMetadata''s in the original v3 header region. 0 if none exists.
+  { -- | Count of entries in the index area
+    indexCount :: IndexCount
+  , -- | The size of the data area in bytes
+    dataLength :: Int32
+  , -- | The offset from the beginning of the blob data where tag values are
+    dataStart :: Int32
+  , -- | The offset where the data area ends
+    dataEnd :: Int32
+  , -- | The metadata entries for each tag
+    entryMetadatas :: NonEmpty EntryMetadata
+  , -- | The number of 'EntryMetadata''s in the original v3 header region. 0 if none exists.
+    regionIndexCount :: IndexCount
   }
   deriving (Show, Eq)
 
 -- | Structure for describing the type, location, and size of a tag-value pair in a 'HeaderBlob'.
 -- This roughly corresponds to [entryInfo](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L63) in the original Go code.
 data EntryMetadata = EntryMetadata
-  { tag :: RpmTag
-  -- ^ ID for which piece of RPM data this is. More information on available
-  -- tags can be found [here](https://rpm-software-management.github.io/rpm/manual/tags.html).
-  , tagType :: RpmTagType
-  -- ^ The type of data that this tag is. See the
-  -- [docs](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
-  -- Table 24-5.
-  , offset :: Int32
-  -- ^ The offset from the beginning of 'HeaderBlob's 'dataStart' that data for
-  -- this entry can be found.
-  , count :: Word32
-  -- ^ The count of data items to expect. For simple scalar types like numbers
-  -- or strings this will be 1. For composite types such as arrays it may be
-  -- more.
+  { -- | ID for which piece of RPM data this is. More information on available
+    -- tags can be found [here](https://rpm-software-management.github.io/rpm/manual/tags.html).
+    tag :: RpmTag
+  , -- | The type of data that this tag is. See the
+    -- [docs](https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/pkgformat.html)
+    -- Table 24-5.
+    tagType :: RpmTagType
+  , -- | The offset from the beginning of 'HeaderBlob's 'dataStart' that data for
+    -- this entry can be found.
+    offset :: Int32
+  , -- | The count of data items to expect. For simple scalar types like numbers
+    -- or strings this will be 1. For composite types such as arrays it may be
+    -- more.
+    count :: Word32
   }
   deriving (Show, Eq, Ord)
 
@@ -290,11 +290,11 @@ runGetOrFail' r = bimap trd trd . runGetOrFail r
 -- | Container for metadata as well as the byte data for an entry in the header blob.
 -- This type is equivalent to [indexEntry](https://github.com/knqyf263/go-rpmdb/blob/9f953f9/pkg/entry.go#L70) in the original Go code.
 data TagValueData = TagValueData
-  { info :: EntryMetadata
-  -- ^ The expected length of the entryData, in bytes
+  { -- | The expected length of the entryData, in bytes
+    info :: EntryMetadata
   , entryLength :: Int32
-  , entryData :: BLS.ByteString
-  -- ^ The actual data for the entry
+  , -- | The actual data for the entry
+    entryData :: BLS.ByteString
   }
   deriving (Eq, Show, Ord)
 
@@ -464,12 +464,12 @@ data PkgInfo = PkgInfo
   , pkgVersion :: Maybe Text
   , pkgRelease :: Maybe Text
   , pkgArch :: Maybe Text
-  , pkgEpoch :: Maybe Int32
-  -- ^ This package epoch won't match the printout from go-rpmdb.
-  -- In that code the epoch is stored as an [int pointer](https://github.com/knqyf263/go-rpmdb/blob/c11b1c45080aec5141fea92cd1577f8aa1c8d2fc/pkg/package.go#L15).
-  -- According to the tag [documentation](https://rpm-software-management.github.io/rpm/manual/tags.html) it is int32.
-  -- There seems to be code which does dereference it properly,
-  -- so this appears to be a bug in the print statements than in the implementation.
+  , -- | This package epoch won't match the printout from go-rpmdb.
+    -- In that code the epoch is stored as an [int pointer](https://github.com/knqyf263/go-rpmdb/blob/c11b1c45080aec5141fea92cd1577f8aa1c8d2fc/pkg/package.go#L15).
+    -- According to the tag [documentation](https://rpm-software-management.github.io/rpm/manual/tags.html) it is int32.
+    -- There seems to be code which does dereference it properly,
+    -- so this appears to be a bug in the print statements than in the implementation.
+    pkgEpoch :: Maybe Int32
   }
   deriving (Eq, Ord, Show)
 

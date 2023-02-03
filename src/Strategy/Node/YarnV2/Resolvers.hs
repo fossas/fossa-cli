@@ -40,12 +40,12 @@ import Strategy.Node.YarnV2.Lockfile
 import Text.Megaparsec
 
 data Resolver = Resolver
-  { resolverName :: Text
-  -- ^ Used for error messages
-  , resolverSupportsLocator :: Locator -> Bool
-  -- ^ Does this resolver support the locator?
-  , resolverLocatorToPackage :: Locator -> Either Text Package
-  -- ^ Convert this locator to a yarn package
+  { -- | Used for error messages
+    resolverName :: Text
+  , -- | Does this resolver support the locator?
+    resolverSupportsLocator :: Locator -> Bool
+  , -- | Convert this locator to a yarn package
+    resolverLocatorToPackage :: Locator -> Either Text Package
   }
 
 -- Default Yarn Protocols can be found at https://yarnpkg.com/features/protocols.
