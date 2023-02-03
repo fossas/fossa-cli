@@ -78,4 +78,4 @@ jobs:
 
     - name: Bench
       run: |
-        cabal bench --benchmark-options '+RTS -T'
+        cabal bench --project-file=cabal.project.ci.linux --benchmark-options '+RTS -T'
