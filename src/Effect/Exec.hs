@@ -21,10 +21,14 @@ module Effect.Exec (
   module System.Exit,
   execThrow',
   Has,
+  CandidateAnalysisCommands (..),
+  mkAnalysisCommand,
 ) where
 
 import App.Support (reportDefectMsg)
+import App.Types (OverrideDynamicAnalysisBinary (..))
 import Control.Algebra (Has)
+import Control.Carrier.Reader (Reader, ask)
 import Control.Carrier.Simple (
   Simple,
   SimpleC,
@@ -36,6 +40,9 @@ import Control.Effect.Diagnostics (
   ToDiagnostic (..),
   context,
   fatal,
+  fatalText,
+  recover,
+  warnOnErr,
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Record (RecordableValue (..))
@@ -54,11 +61,15 @@ import Data.Aeson (
  )
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BL
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
+import Data.Map qualified as Map
 import Data.String (fromString)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
+import DepTypes (DepType (..))
 import Effect.ReadFS (ReadFS, getCurrentDir)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path, SomeBase (..), fromAbsDir)
@@ -116,8 +127,10 @@ instance RecordableValue CmdFailure
 instance FromJSON CmdFailure where
   parseJSON = withObject "CmdFailure" $ \obj ->
     CmdFailure
-      <$> obj .: "cmdFailureCmd"
-      <*> obj .: "cmdFailureDir"
+      <$> obj
+      .: "cmdFailureCmd"
+      <*> obj
+      .: "cmdFailureDir"
       <*> (obj .: "cmdFailureExit" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStdout" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStderr" >>= fromRecordedValue)
@@ -267,6 +280,74 @@ execThrow' :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Comma
 execThrow' cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
   dir <- getCurrentDir
   execThrow dir cmd
+
+-- | Describe a set of command names and the arguments used to validate the command names.
+-- Optionally, also specify the override kind for the command, which is used
+-- to look for a potential override command provided by the user from the environment.
+data CandidateAnalysisCommands = CandidateAnalysisCommands
+  { candidateCmdNames :: NonEmpty Text
+  , candidateCmdArgs :: [Text]
+  , candidateOverrideKind :: Maybe DepType
+  }
+  deriving (Show)
+
+-- | Create a @Command@ for dynamic analysis of a project of the given @DepType@ from the list of provided commands.
+--
+-- This function selects the appropriate binary to use given the environment
+-- and creates the command with the provided args and error handling semantics.
+--
+-- It is also possible that no supported command is valid in the provided context;
+-- in such a case a diagnostics error is thrown in @m@.
+mkAnalysisCommand ::
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has (Reader OverrideDynamicAnalysisBinary) sig m
+  ) =>
+  CandidateAnalysisCommands ->
+  Path Abs Dir ->
+  [Text] ->
+  AllowErr ->
+  m Command
+mkAnalysisCommand candidates@CandidateAnalysisCommands{..} workdir args allowErr =
+  context ("Make analysis command from " <> toText (show candidates)) $ do
+    (overrideBinaries :: OverrideDynamicAnalysisBinary) <- ask
+    cmd <- case candidateOverrideKind of
+      Just dt -> case Map.lookup dt (unOverrideDynamicAnalysisBinary overrideBinaries) of
+        Nothing -> context "Command override supported, but not specified" $ selectBestCmd workdir candidates
+        Just cmd -> context ("Command override provided: " <> cmd) . selectBestCmd workdir $ withCmdOverride cmd
+      Nothing -> context "Override not supported for this command" $ selectBestCmd workdir candidates
+    pure $ Command{cmdName = cmd, cmdArgs = args, cmdAllowErr = allowErr}
+  where
+    withCmdOverride :: Text -> CandidateAnalysisCommands
+    withCmdOverride override =
+      CandidateAnalysisCommands
+        { candidateCmdNames = NE.cons override candidateCmdNames
+        , candidateCmdArgs = candidateCmdArgs
+        , candidateOverrideKind = candidateOverrideKind
+        }
+
+-- | Given a set of possible binaries to try, choose the best one to use for dynamic analysis of this @DepType@.
+selectBestCmd :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> CandidateAnalysisCommands -> m Text
+selectBestCmd workdir CandidateAnalysisCommands{..} = selectBestCmd' (NE.toList candidateCmdNames)
+  where
+    selectBestCmd' :: (Has Diagnostics sig m, Has Exec sig m) => [Text] -> m Text
+    selectBestCmd' (cmd : remaining) = context ("Evaluate command: " <> cmd) $ do
+      let attempt = Command{cmdName = cmd, cmdArgs = candidateCmdArgs, cmdAllowErr = Never}
+      output <- recover . warnOnErr (CandidateCommandFailed cmd candidateCmdArgs) $ execThrow workdir attempt
+      case output of
+        Nothing -> selectBestCmd' remaining
+        Just _ -> pure cmd
+    selectBestCmd' [] = fatalText "unable to select best binary to analyze project: none passed validation"
+
+data CandidateCommandFailed = CandidateCommandFailed {failedCommand :: Text, failedArgs :: [Text]}
+instance ToDiagnostic CandidateCommandFailed where
+  renderDiagnostic CandidateCommandFailed{..} =
+    pretty $
+      "Command "
+        <> show failedCommand
+        <> " not suitable: running with args "
+        <> show failedArgs
+        <> " resulted in a non-zero exit code"
 
 type ExecIOC = SimpleC ExecF
 

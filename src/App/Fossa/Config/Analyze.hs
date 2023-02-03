@@ -50,12 +50,13 @@ import App.Fossa.Config.ConfigFile (
   mergeFileCmdMetadata,
   resolveConfigFile,
  )
-import App.Fossa.Config.EnvironmentVars (EnvVars)
+import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (
   BaseDir,
   MonorepoAnalysisOpts (MonorepoAnalysisOpts, monorepoAnalysisType),
+  OverrideDynamicAnalysisBinary (..),
   OverrideProject (OverrideProject),
   ProjectMetadata,
   ProjectRevision,
@@ -238,6 +239,7 @@ data StandardAnalyzeConfig = StandardAnalyzeConfig
   , jsonOutput :: Flag JsonOutput
   , includeAllDeps :: Flag IncludeAll
   , noDiscoveryExclusion :: Flag NoDiscoveryExclusion
+  , overrideDynamicAnalysis :: OverrideDynamicAnalysisBinary
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -432,6 +434,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       filters = collectFilters maybeConfig cliOpts
       experimentalCfgs = collectExperimental maybeConfig
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
+      dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
 
   StandardAnalyzeConfig
     <$> basedir
@@ -446,6 +449,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure analyzeJsonOutput
     <*> pure analyzeIncludeAllDeps
     <*> pure analyzeNoDiscoveryExclusion
+    <*> pure dynamicAnalysisOverrides
 
 collectFilters ::
   ( Has Diagnostics sig m
