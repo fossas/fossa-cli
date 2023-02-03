@@ -22,6 +22,7 @@ module App.Fossa.Config.Analyze (
   mkSubCommand,
   loadConfig,
   cliParser,
+  mergeOpts,
 ) where
 
 import App.Fossa.Config.Common (
@@ -57,7 +58,7 @@ import App.Types (
   BaseDir,
   MonorepoAnalysisOpts (MonorepoAnalysisOpts, monorepoAnalysisType),
   OverrideProject (OverrideProject),
-  ProjectMetadata,
+  ProjectMetadata (projectLabel),
   ProjectRevision,
  )
 import Control.Effect.Diagnostics (
@@ -517,6 +518,7 @@ collectScanDestination maybeCfgFile envvars AnalyzeCliOpts{..} =
     else do
       apiOpts <- collectApiOpts maybeCfgFile envvars commons
       let metaMerged = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
+      when (length (projectLabel metaMerged) > 5) $ fatalText "Projects are only allowed to have 5 associated project labels"
       pure $ UploadScan apiOpts metaMerged
 
 collectModeOptions ::
