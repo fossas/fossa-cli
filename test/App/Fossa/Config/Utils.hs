@@ -3,17 +3,15 @@
 module App.Fossa.Config.Utils (parseArgString, itShouldLoadFromTheConfiguredBaseDir, itShouldFailWhenLabelsExceedFive) where
 
 import App.Fossa.Config.ConfigFile (ConfigFile (..))
-import Control.Algebra (Has)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString qualified as BS
 import Options.Applicative (Parser, execParserPure, handleParseResult, header, info, prefs, getParseResult)
 import Path (mkRelFile, toFilePath, (</>))
-import Test.Effect (EffectStack, it', shouldBe', withTempDir, expectFailure', expectFatal')
-import ResultUtil (expectFailure)
+import Test.Effect (EffectStack, it', shouldBe', withTempDir, expectFatal')
 import Test.Hspec (Spec)
-import App.Fossa.Config.Analyze (mergeOpts, AnalyzeCliOpts (AnalyzeCliOpts))
+import App.Fossa.Config.Analyze (AnalyzeCliOpts, mergeOpts)
 import App.Fossa.Config.EnvironmentVars ( EnvVars(EnvVars) )
-import Data.Flag (toFlag)
+import Data.Flag ()
 -- import App.Fossa.Config.Container.Analyze 
 import Control.Carrier.Diagnostics
 import Data.Text (Text)

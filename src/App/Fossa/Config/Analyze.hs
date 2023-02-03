@@ -22,6 +22,7 @@ module App.Fossa.Config.Analyze (
   mkSubCommand,
   loadConfig,
   cliParser,
+  mergeOpts,
 ) where
 
 import App.Fossa.Config.Common (
