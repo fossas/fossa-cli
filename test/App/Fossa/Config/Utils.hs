@@ -2,17 +2,18 @@
 
 module App.Fossa.Config.Utils (parseArgString, itShouldLoadFromTheConfiguredBaseDir, itShouldFailWhenLabelsExceedFive) where
 
+import App.Fossa.Config.Analyze (AnalyzeCliOpts, mergeOpts)
 import App.Fossa.Config.ConfigFile (ConfigFile (..))
+import App.Fossa.Config.EnvironmentVars (EnvVars (EnvVars))
 import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString qualified as BS
-import Options.Applicative (Parser, execParserPure, handleParseResult, header, info, prefs, getParseResult)
-import Path (mkRelFile, toFilePath, (</>))
-import Test.Effect (EffectStack, it', shouldBe', withTempDir, expectFatal')
-import Test.Hspec (Spec)
-import App.Fossa.Config.Analyze (AnalyzeCliOpts, mergeOpts)
-import App.Fossa.Config.EnvironmentVars ( EnvVars(EnvVars) )
 import Data.Flag ()
--- import App.Fossa.Config.Container.Analyze 
+import Options.Applicative (Parser, execParserPure, getParseResult, handleParseResult, header, info, prefs)
+import Path (mkRelFile, toFilePath, (</>))
+import Test.Effect (EffectStack, expectFatal', it', shouldBe', withTempDir)
+import Test.Hspec (Spec)
+
+-- import App.Fossa.Config.Container.Analyze
 import Control.Carrier.Diagnostics
 import Data.Text (Text)
 
@@ -23,20 +24,20 @@ parseArgString parser = sendIO . handleParseResult . execParserPure (prefs mempt
     progInfo =
       header "Test Arg Parser"
 
-configFile :: ConfigFile 
+configFile :: ConfigFile
 configFile =
-      ConfigFile
-        { configVersion = 42
-        , configServer = Nothing
-        , configApiKey = Nothing
-        , configProject = Nothing
-        , configRevision = Nothing
-        , configTargets = Nothing
-        , configPaths = Nothing
-        , configExperimental = Nothing
-        , configVendoredDependencies = Nothing
-        , configTelemetry = Nothing
-        }
+  ConfigFile
+    { configVersion = 42
+    , configServer = Nothing
+    , configApiKey = Nothing
+    , configProject = Nothing
+    , configRevision = Nothing
+    , configTargets = Nothing
+    , configPaths = Nothing
+    , configExperimental = Nothing
+    , configVendoredDependencies = Nothing
+    , configTelemetry = Nothing
+    }
 
 -- | Tests that the config loader uses the directory set in the arguments
 itShouldLoadFromTheConfiguredBaseDir ::
@@ -50,6 +51,7 @@ itShouldLoadFromTheConfiguredBaseDir parser loadConfig =
         options <- sendIO $ parseArgString parser (toFilePath tempDir)
         maybeConfigFile <- loadConfig options
         maybeConfigFile `shouldBe'` Just configFile
+
 itShouldFailWhenLabelsExceedFive :: Parser AnalyzeCliOpts -> Spec
 itShouldFailWhenLabelsExceedFive parser =
   it' "should fail when labels exceed 5" $ do
@@ -58,4 +60,3 @@ itShouldFailWhenLabelsExceedFive parser =
       Nothing -> fatal ("test failed" :: Text)
       Just cliOpts -> do
         expectFatal' $ mergeOpts Nothing (EnvVars Nothing False False Nothing Nothing) cliOpts
-
