@@ -84,10 +84,10 @@ jobs:
         with:
           path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
           key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('**/*.cabal') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
-            ${{ runner.os }}-${{ matrix.ghc }}-
-            ${{ runner.os }}-
+          # restore-keys: |
+          #   ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
+          #   ${{ runner.os }}-${{ matrix.ghc }}-
+          #   ${{ runner.os }}-
 
       - name: Run `cabal install`
         run: |
