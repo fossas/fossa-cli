@@ -93,3 +93,9 @@ newtype OverrideDynamicAnalysisBinary = OverrideDynamicAnalysisBinary
 
 instance ToJSON OverrideDynamicAnalysisBinary where
   toEncoding = genericToEncoding defaultOptions
+
+instance Semigroup OverrideDynamicAnalysisBinary where
+  (OverrideDynamicAnalysisBinary a1) <> (OverrideDynamicAnalysisBinary a2) = OverrideDynamicAnalysisBinary (a1 <> a2)
+
+instance Monoid OverrideDynamicAnalysisBinary where
+  mempty = OverrideDynamicAnalysisBinary mempty

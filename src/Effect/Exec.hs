@@ -23,6 +23,7 @@ module Effect.Exec (
   Has,
   CandidateAnalysisCommands (..),
   mkAnalysisCommand,
+  mkSingleCandidateAnalysisCommand,
 ) where
 
 import App.Support (reportDefectMsg)
@@ -290,6 +291,10 @@ data CandidateAnalysisCommands = CandidateAnalysisCommands
   , candidateOverrideKind :: Maybe DepType
   }
   deriving (Show)
+
+-- | Convenience function for creating a @CandidateAnalysisCommands@ with a single candidate command.
+mkSingleCandidateAnalysisCommand :: Text -> [Text] -> Maybe DepType -> CandidateAnalysisCommands
+mkSingleCandidateAnalysisCommand cmd = CandidateAnalysisCommands (NE.singleton cmd)
 
 -- | Create a @Command@ for dynamic analysis of a project of the given @DepType@ from the list of provided commands.
 --

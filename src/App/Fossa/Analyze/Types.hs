@@ -10,6 +10,7 @@ module App.Fossa.Analyze.Types (
 
 import App.Fossa.Analyze.Project (ProjectResult)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
+import App.Types (OverrideDynamicAnalysisBinary)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Effect.Lift (Lift)
@@ -39,6 +40,7 @@ type AnalyzeTaskEffs sig m =
   , Has Debug sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   , Has (Reader AllFilters) sig m
+  , Has (Reader OverrideDynamicAnalysisBinary) sig m
   , Has Telemetry sig m
   )
 

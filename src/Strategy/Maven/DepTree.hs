@@ -9,8 +9,10 @@ module Strategy.Maven.DepTree (
   buildGraph,
 ) where
 
+import App.Types (OverrideDynamicAnalysisBinary)
 import Control.Algebra (Has, run)
 import Control.Applicative (some, (<|>))
+import Control.Carrier.Reader (Reader)
 import Control.Effect.Diagnostics (Diagnostics, context, fatal)
 import Control.Effect.Exception (SomeException, finally)
 import Control.Effect.Lift (Lift, sendIO)
@@ -28,7 +30,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Effect.Exec (AllowErr (..), Command (..), Exec, exec)
+import Effect.Exec (AllowErr (..), Command (..), Exec, exec, mkAnalysisCommand, mkSingleCandidateAnalysisCommand)
 import Effect.Grapher (direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser)
 import Graphing (Graphing, gmap, shrinkRoots)
@@ -47,57 +49,65 @@ import Text.Megaparsec.Char.Lexer qualified as Lexer
 import Types (GraphBreadth (Complete))
 
 -- Construct the Command for running `mvn dependency:tree` correctly.
-deptreeCmd :: Maybe (Path Abs File) -> Path Abs File -> Command
-deptreeCmd settingsFile outputFile =
-  Command
-    { cmdName = "mvn"
-    , cmdArgs =
-        [ -- Run `dependency:tree`.
-          --
-          -- See http://maven.apache.org/plugins/maven-dependency-plugin/usage.html#dependency:tree.
-          "dependency:tree"
-        , -- Output in DOT format, which is Graphviz's graph format.
-          --
-          -- See https://graphviz.org/doc/info/lang.html.
-          "-DoutputType=dot"
-        , -- Save output to this file. This must be an absolute path for output
-          -- to get saved to a single file. If this is a relative path, then
-          -- Maven will instead save output at the relative path in each
-          -- module's directory, which is super annoying and not desired.
-          --
-          -- See https://stackoverflow.com/a/42753822.
-          "-DoutputFile=" <> toText (fromAbsFile outputFile)
-        , -- Append the output of separate modules in a multi-module build,
-          -- instead of overwriting the file. If this is not set, then each
-          -- module will overwrite the previous module's results, and the only
-          -- dependencies in here will be from the last module that ran.
-          --
-          -- See https://stackoverflow.com/a/42753822.
-          "-DappendOutput=true"
-        , -- Don't abort module builds in a multi-module build early when they
-          -- can still be built. This allows us to get better results when the
-          -- only some modules in a multi-module project successfully build, by
-          -- maximizing the number of built modules. If this flag is not set,
-          -- then Maven stops building when the first error is encountered. With
-          -- this flag set, Maven continues and attempts to build every module
-          -- that can still be built (since subsequent modules may not depend on
-          -- the failing module.)
-          "--fail-at-end"
-        ]
-          <> maybe [] (\file -> ["--settings", toText file]) settingsFile
-    , -- `mvn dependency:tree` will exit non-zero when the build of any module
-      -- in a multi-module build fails. However, this should not cause an Exec
-      -- failure, since we can still get partial results.
-      --
-      -- TODO: We should emit a warning on non-zero exit.
-      cmdAllowErr = Always
-    }
+deptreeCmd ::
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has (Reader OverrideDynamicAnalysisBinary) sig m
+  ) =>
+  Path Abs Dir ->
+  Maybe (Path Abs File) ->
+  Path Abs File ->
+  m Command
+deptreeCmd workdir settingsFile outputFile = mkAnalysisCommand candidates workdir args allowErr
+  where
+    candidates = mkSingleCandidateAnalysisCommand "mvn" ["-v"] $ Just MavenType
+    args =
+      [ -- Run `dependency:tree`.
+        --
+        -- See http://maven.apache.org/plugins/maven-dependency-plugin/usage.html#dependency:tree.
+        "dependency:tree"
+      , -- Output in DOT format, which is Graphviz's graph format.
+        --
+        -- See https://graphviz.org/doc/info/lang.html.
+        "-DoutputType=dot"
+      , -- Save output to this file. This must be an absolute path for output
+        -- to get saved to a single file. If this is a relative path, then
+        -- Maven will instead save output at the relative path in each
+        -- module's directory, which is super annoying and not desired.
+        --
+        -- See https://stackoverflow.com/a/42753822.
+        "-DoutputFile=" <> toText (fromAbsFile outputFile)
+      , -- Append the output of separate modules in a multi-module build,
+        -- instead of overwriting the file. If this is not set, then each
+        -- module will overwrite the previous module's results, and the only
+        -- dependencies in here will be from the last module that ran.
+        --
+        -- See https://stackoverflow.com/a/42753822.
+        "-DappendOutput=true"
+      , -- Don't abort module builds in a multi-module build early when they
+        -- can still be built. This allows us to get better results when the
+        -- only some modules in a multi-module project successfully build, by
+        -- maximizing the number of built modules. If this flag is not set,
+        -- then Maven stops building when the first error is encountered. With
+        -- this flag set, Maven continues and attempts to build every module
+        -- that can still be built (since subsequent modules may not depend on
+        -- the failing module.)
+        "--fail-at-end"
+      ]
+        <> maybe [] (\file -> ["--settings", toText file]) settingsFile
+    -- `mvn dependency:tree` will exit non-zero when the build of any module
+    -- in a multi-module build fails. However, this should not cause an Exec
+    -- failure, since we can still get partial results.
+    --
+    -- TODO: We should emit a warning on non-zero exit.
+    allowErr = Always
 
 analyze ::
   ( Has Exec sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
   , Has (Lift IO) sig m
+  , Has (Reader OverrideDynamicAnalysisBinary) sig m
   ) =>
   Path Abs Dir ->
   m (Graphing Dependency, GraphBreadth)
@@ -131,13 +141,14 @@ analyze dir = do
     -- above runs for both exceptions in the exec and in the parsing. Do not
     -- separate these two into different actions.
     execAndParse ::
-      (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) =>
+      (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Reader OverrideDynamicAnalysisBinary) sig m) =>
       Maybe (Path Abs File) ->
       Path Abs File ->
       m [DotGraph]
     execAndParse settingsFile tmpFile = do
-      _ <- context "Running 'mvn dependency:tree'" $ exec dir $ deptreeCmd settingsFile tmpFile
-      context "Parsing 'mvn dependency:tree' output" $ readContentsParser parseDotGraphs tmpFile
+      cmd <- context "Build maven command" $ deptreeCmd dir settingsFile tmpFile
+      _ <- context ("Running '" <> cmdName cmd <> " dependency:tree'") $ exec dir cmd
+      context ("Parsing '" <> cmdName cmd <> " dependency:tree' output") $ readContentsParser parseDotGraphs tmpFile
 
     mustRelFile :: (Has Diagnostics sig m) => FilePath -> m (Path Rel File)
     mustRelFile f = case parseRelFile f of

@@ -21,8 +21,9 @@ import App.Fossa.Config.ConfigFile (
   ExperimentalGradleConfigs (gradleConfigsOnly),
   resolveLocalConfigFile,
  )
+import App.Fossa.Config.EnvironmentVars (EnvVars, envCmdOverrides)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
-import App.Types (BaseDir)
+import App.Types (BaseDir, OverrideDynamicAnalysisBinary (..))
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
@@ -56,15 +57,17 @@ mergeOpts ::
   , Has ReadFS sig m
   ) =>
   Maybe ConfigFile ->
-  p ->
+  EnvVars ->
   ListTargetsCliOpts ->
   m ListTargetsConfig
-mergeOpts cfgfile _envvars ListTargetsCliOpts{..} = do
+mergeOpts cfgfile envvars ListTargetsCliOpts{..} = do
   let basedir = collectBaseDir cliBaseDir
       experimentalPrefs = collectExperimental cfgfile
+      dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
   ListTargetsConfig
     <$> basedir
     <*> pure experimentalPrefs
+    <*> pure dynamicAnalysisOverrides
 
 collectExperimental :: Maybe ConfigFile -> ExperimentalAnalyzeConfig
 collectExperimental maybeCfg =
@@ -87,6 +90,7 @@ instance GetCommonOpts ListTargetsCliOpts where
 data ListTargetsConfig = ListTargetsConfig
   { baseDir :: BaseDir
   , experimental :: ExperimentalAnalyzeConfig
+  , overrideDynamicAnalysis :: OverrideDynamicAnalysisBinary
   }
   deriving (Show, Generic)
 

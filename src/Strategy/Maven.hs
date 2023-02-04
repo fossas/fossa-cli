@@ -7,6 +7,7 @@ module Strategy.Maven (
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
+import App.Types (OverrideDynamicAnalysisBinary)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift)
@@ -65,6 +66,7 @@ getDeps ::
   , Has Diagnostics sig m
   , Has ReadFS sig m
   , Has Exec sig m
+  , Has (Reader OverrideDynamicAnalysisBinary) sig m
   ) =>
   MavenProject ->
   m DependencyResults
@@ -97,6 +99,7 @@ getDepsDynamicAnalysis ::
   , Has Diagnostics sig m
   , Has ReadFS sig m
   , Has Exec sig m
+  , Has (Reader OverrideDynamicAnalysisBinary) sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing Dependency, GraphBreadth)
@@ -131,6 +134,7 @@ getDepsTreeCmd ::
   , Has Diagnostics sig m
   , Has ReadFS sig m
   , Has Exec sig m
+  , Has (Reader OverrideDynamicAnalysisBinary) sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing Dependency, GraphBreadth)
