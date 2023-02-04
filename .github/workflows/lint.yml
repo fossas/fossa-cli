@@ -93,7 +93,7 @@ jobs:
         run: |
           apk add xz-dev bzip2-dev bzip2-static
           cabal update
-          cabal install
+          cabal install --project-file=cabal.project.ci.linux
 
   schema-lint-check:
     name: "schema lint check"
