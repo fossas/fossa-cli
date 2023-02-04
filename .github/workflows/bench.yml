@@ -71,7 +71,7 @@ jobs:
 
     - name: Build
       env:
-        RUN_CMD: cabal build --project-file=cabal.project.ci.linux benchmarks
+        RUN_CMD: cabal build --project-file=cabal.project.ci.linux all
       run: |
         cabal update
         $RUN_CMD || $RUN_CMD
