@@ -53,10 +53,10 @@ jobs:
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
-        key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('**/*.cabal', 'cabal.project.ci.linux') }}
+        key: ${{ runner.os }}-benchmarks-cabal-cache-${{ hashFiles('**/*.cabal', 'cabal.project.ci.linux') }}
         restore-keys: |
-          ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
-          ${{ runner.os }}-${{ matrix.ghc }}-
+          ${{ runner.os }}-benchmarks-cabal-cache-
+          ${{ runner.os }}-benchmarks-
           ${{ runner.os }}-
 
     - name: Build Rust dependencies
@@ -71,11 +71,11 @@ jobs:
 
     - name: Build
       env:
-        RUN_CMD: cabal build --project-file=cabal.project.ci.linux all
+        RUN_CMD: cabal build all
       run: |
         cabal update
         $RUN_CMD || $RUN_CMD
 
     - name: Bench
       run: |
-        cabal bench --project-file=cabal.project.ci.linux --benchmark-options '+RTS -T'
+        cabal bench --benchmark-options '+RTS -T'
