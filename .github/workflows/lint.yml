@@ -93,18 +93,12 @@ jobs:
             ${{ runner.os }}-${{ env.GHC_VERSION }}-
             ${{ runner.os }}-
 
-      - name: Update vendored binaries
-        run: |
-          mkdir vendor-bins
-          ./vendor_download.sh
-        env:
-          GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
-
       - name: Run `cabal install`
         run: |
           apk add xz-dev bzip2-dev bzip2-static
           cabal update
-          cabal install --project-file=cabal.project.ci.linux
+          # -Wwarn switch because warnings about missing vendor bins would be emitted
+          cabal install --project-file=cabal.project.ci.linux --ghc-options="-Wwarn"
 
   schema-lint-check:
     name: "schema lint check"
