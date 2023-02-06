@@ -71,7 +71,7 @@ jobs:
 
     - name: Build
       env:
-        RUN_CMD: cabal build all
+        RUN_CMD: cabal build benchmarks
       run: |
         cabal update
         $RUN_CMD || $RUN_CMD
