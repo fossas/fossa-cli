@@ -207,6 +207,21 @@ emptyIssues =
     , API.issuesSummary = Nothing
     }
 
+makeIssue :: Int -> API.IssueType -> API.Issue
+makeIssue issueId issueType =
+  API.Issue
+    { API.issueId = issueId
+    , API.issuePriorityString = Nothing
+    , API.issueResolved = False
+    , API.issueRevisionId = "IssueRevisionId" <> showT issueId
+    , API.issueType = issueType
+    , API.issueRule = Nothing
+    , API.issueLicense = Nothing
+    , API.issueDashURL = Nothing
+    , API.issueCVE = Nothing
+    , API.issueFixedIn = Nothing
+    }
+
 issuesAvailable :: API.Issues
 issuesAvailable =
   let issueTypes =
@@ -217,18 +232,7 @@ issuesAvailable =
         , API.IssueOutdatedDependency
         , API.IssueOther "TestIssueOther"
         ]
-      makeIssue :: Int -> API.IssueType -> API.Issue
-      makeIssue issueId issueType =
-        API.Issue
-          { API.issueId = 200 + issueId
-          , API.issuePriorityString = Nothing
-          , API.issueResolved = False
-          , API.issueRevisionId = "IssueRevisionId" <> showT issueId
-          , API.issueType = issueType
-          , API.issueRule = Nothing
-          , API.issueLicense = Nothing
-          }
-      issueList = zipWith makeIssue [1 ..] issueTypes
+      issueList = zipWith makeIssue [201 ..] issueTypes
    in API.Issues
         { API.issuesCount = length issueList
         , API.issuesIssues = issueList
@@ -246,18 +250,7 @@ issuesDiffAvailable =
         , API.IssueOutdatedDependency
         , API.IssueOther "TestIssueOther"
         ]
-      makeIssue :: Int -> API.IssueType -> API.Issue
-      makeIssue issueId issueType =
-        API.Issue
-          { API.issueId = 100 + issueId
-          , API.issuePriorityString = Nothing
-          , API.issueResolved = False
-          , API.issueRevisionId = "IssueRevisionId" <> showT issueId
-          , API.issueType = issueType
-          , API.issueRule = Nothing
-          , API.issueLicense = Nothing
-          }
-      issueList = zipWith makeIssue [1 ..] issueTypes
+      issueList = zipWith makeIssue [101 ..] issueTypes
    in API.Issues
         { API.issuesCount = length issueList
         , API.issuesIssues = issueList
