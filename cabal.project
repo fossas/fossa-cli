@@ -1,4 +1,4 @@
-packages: .
+packages: . ~/devel/upgraded-fossa-cli-deps/bzlib ~/devel/upgraded-fossa-cli-deps/codec-rpm
 tests: True
 optimization: False
 
@@ -59,7 +59,15 @@ source-repository-package
   location: https://github.com/fossas/tar
   tag: 6bd13acc541ae60b5c831823243040e18bd1d957
 
-index-state: hackage.haskell.org 2023-01-11T00:56:49Z
+-- source-repository-package
+--     type: git
+--     location: /Users/csasarak/devel/upgraded-fossa-cli-deps/bzlib
+
+-- source-repository-package
+--     type: git
+--     location: /Users/csasarak/devel/upgraded-fossa-cli-deps/codec-rpm
+
+index-state: hackage.haskell.org 2023-02-08T18:37:40Z
 
 package *
   extra-include-dirs: /opt/homebrew/include
