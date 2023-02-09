@@ -35,6 +35,7 @@ defaultEnvVars =
     , envTelemetryDebug = False
     , envTelemetryScope = Nothing
     , envDockerHost = Nothing
+    , envCmdOverrides = mempty
     }
 
 defaultCommonOpts :: CommonOpts
