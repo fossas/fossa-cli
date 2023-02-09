@@ -3,6 +3,7 @@
 module App.Fossa.RunThemis (
   execThemis,
   execRawThemis,
+  themisCommand,
   themisFlags,
 ) where
 
