@@ -118,13 +118,104 @@ A "CLI license scan" inspects your code for licensing on the local system within
 
 You can change the scan method by using the `--force-vendored-dependency-scan-method` flag when invoking the CLI, or by setting the `vendoredDependencies.scanMethod` field in your `.fossa.yml` file. See the [.fossa.yml documentation](https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-yml.md) for details.
 
-## Forcing rescans
+## Performance
 
-If you are scanning a revision that has already been scanned by FOSSA, then by default we will not rescan that dependency. A revision has been scanned by FOSSA if you or someone else from your organization has previously analyzed a dependency with the same name and version in the `vendored-dependencies` field in a `fossa-deps.yml` file.
+The FOSSA service caches the results of a vendored dependency by the combination of its `(name, version)` fields.
+Due to this caching setup, it is normal for the first analysis to take some time, especially for larger projects, but future analysis of dependencies with the same information should be fast.
 
-Avoiding rescans speeds up your CI scans and avoids unnecessary work.
+If `version` is not specified, FOSSA computes a version based on the contents specified by `path`; this means that if the contents have not changed then the results are reused.
 
-However, if you have made a change to your code and do not want to change the version provided, you can force a rescan by using the `--force-vendored-dependency-rescans` flag or setting the `vendoredDependencies.forceRescans` field to true in your `.fossa.yml` file.
+In the event caching is causing problems, FOSSA can be made to rescan this kind of dependency:
+- Run `fossa analyze` with the `--force-vendored-dependency-rescans` flag, or
+- Set `vendoredDependencies.forceRescans` to `true` in `.fossa.yml` at the root of the project.
 
-If you do not provide a version for the vendored dependency, then we generate a version by calculating an MD5 hash of the contents of the vendored dependency. Any changes to your code will be picked up as a new version and there is typically no need to force a rescan.
+## Path Filtering
 
+> Note: This section does not apply to archive uploads. Path filtering is only available when doing a CLI License Scan. See [here](#how-vendored-dependencies-are-scanned) for more info on the difference between these two methods.
+
+Path filtering can be used to omit some files or directories from license scanning. Path filtering is set up in the `.fossa.yml` file. Here is an example:
+
+```yaml
+version: 3
+vendoredDependencies:
+  licenseScanPathFilters:
+    only:
+      - "**/*.rb"
+      - "**/LICENSE"
+    exclude:
+      - "**/test/**"
+      - "**/test/*"
+      - "**/spec/**"
+      - "**/spec/*"
+```
+
+Filters are set in the `vendoredDependencies.licenseScanPathFilters` section of the file. You can provide an `only` object and an `exclude` object. Both of these objects consist of a list of file globs. You can provide both `only` and `exclude` objects or just `only` or just `exclude`.
+
+The `only` object will scan paths that match at least one of the entries in the `only` object. The `exclude` object will exclude paths that match any of the entries in the `exclude` object.
+
+So in the example above, we will license scan files named "LICENSE" and files that have an extension of `.rb`. We will also filter out any files in directories named `test` or `spec`, even if they match the `only` filters.
+
+The `**`, known as a globstar, is a non-standard extension to globs. It matches one or more directories.
+
+> Note: Some implementations of globstar treat it as matching "zero or more directories". Since different implementations differ in their globstar functionality, we have decided to treat globstars as matching "one or more directories". We did this as it is simpler to include the additional glob for the base directory case when desired than to exclude the base directory case when it is not desired.
+>
+> There is one exception to this. A glob like `**/*.rb` will also include `*.rb` files in the root directory. This was done so that you would only need one line in order to exclude all files with a given extension. If you had `**/*.rb` in the `only` object but wanted to exclude `*.rb` files in the root directory, you would need to add an entry of `*.rb` to the `exclude` object.
+
+The following table shows which files will be matched by a glob for this directory structure.
+
+```
+.
+├── LICENSE
+├── foo.rb
+├── src
+│   ├── runit.rb
+│   ├── runit_external.rb
+│   └── subdir
+│       └── again.rb
+└── test
+    ├── LICENSE
+    └── runit_test.rb
+```
+
+| Glob          | Meaning                                             | Files matched                                                                                   |
+| ------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `src/*.rb`    | All .rb files directly in the root src directory    | `src/runit.rb`, `src/runit_external.rb`                                                         |
+| `**/src/*.rb` | All .rb files directly in any directory named `src` | `src/runit.rb`, `src/runit_external.rb`                                                         |
+| `**/*.rb`     | All .rb files                                       | `foo.rb`, `src/runit.rb`, `src/runit_external.rb`,  `src/subdir/again.rb`, `test/runit_test.rb` |
+| `**/src/**`   | All files under the src directory                   | `src/subdir/again.rb`                                                                           |
+
+- To filter out all files with a given extension, add an entry like `**/*.extension` to the `exclude` object. E.g. `**/*.ts`.
+
+- To filter out all files with a given name, add an entry like `**/filename` to the `exclude` object. E.g `**/LICENSE` or `**/LICENSE.*`.
+
+- To include only files with a given extension, add an entry like `**/*.extension` to the `only` object. If you want to include files with multiple extensions, you can add multiple entries to the `only` object. E.g. `**/*.ts`.
+
+- To include all files with a given name, add an entry like `**/filename` to the `only` object. E.g `**/LICENSE` or `**/LICENSE.*`.
+
+- To exclude all files in subdirectories of a given directory, add that directory followed by `/**` to the exclude object. E.g. `path/to/exclude/**`.
+
+- If you also want to exclude files directly in that directory, add a second entry with the directory followed by `/*`. E.g. `path/to/exclude/*`.
+
+- To scan only files in a subdirectory of a given directory, add that directory followed by `/**` to the exclude object.  E.g. `path/to/scan/**`.
+
+- If you also want to scan all files directly in that directory, add a second entry with the directory followed by `/*`. E.g. `path/to/scan/*`.
+
+### Path filtering and Windows
+
+You must always use `/` as a path separator in your path filters. The CLI will convert these to `\` when you run in a Windows environment.
+
+### Debugging your path filters
+
+If you want to see what files we are scanning with your current `.fossa.yml` file, you can use the `fossa license-scan fossa-deps` command:
+
+```
+fossa license-scan fossa-deps
+```
+
+That will output the results of the license-scan. If you have `jq` installed, you can filter the output to just show the paths that were scanned:
+
+```
+fossa license-scan fossa-deps | jq '.uploadUnits[].LicenseUnits[].Files'
+```
+
+This will include all of the files scanned, even those with no licenses found in them.

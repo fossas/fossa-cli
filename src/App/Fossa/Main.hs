@@ -25,6 +25,7 @@ import Options.Applicative (
   ParserPrefs,
   command,
   customExecParser,
+  footer,
   fullDesc,
   header,
   help,
@@ -58,7 +59,10 @@ versionOpt =
       [long "version", short 'V', help "show version information and exit"]
 
 progData :: InfoMod (IO ())
-progData = fullDesc <> header "fossa-cli - Flexible, performant dependency analysis"
+progData =
+  fullDesc
+    <> header "fossa-cli - Flexible, performant dependency analysis"
+    <> footer "Subcommands have additional options, run 'fossa COMMAND -h' for more details"
 
 subcommands :: Parser (IO ())
 subcommands = public <|> private
@@ -68,6 +72,7 @@ subcommands = public <|> private
         mconcat
           [ internal
           , initCommand
+          , experimentalLicenseScanCommand
           , decodeSubCommand Dump.dumpSubCommand
           , decodeSubCommand Log4j.log4jSubCommand
           , decodeSubCommand LicenseScan.licenseScanSubCommand
@@ -88,6 +93,12 @@ initCommand = command "init" (info runInit $ progDesc "Deprecated, no longer has
   where
     runInit :: Parser (IO ())
     runInit = pure $ putStrLn "The 'init' command has been deprecated and no longer has any effect.  You may safely remove this command."
+
+experimentalLicenseScanCommand :: Mod CommandFields (IO ())
+experimentalLicenseScanCommand = command "experimental-license-scan" (info runInit $ progDesc "The 'experimental-license-scan' command has been deprecated and renamed to 'license-scan'")
+  where
+    runInit :: Parser (IO ())
+    runInit = pure $ putStrLn "The 'experimental-license-scan' has been deprecated and renamed to 'license-scan'. Please use the 'license-scan' command instead."
 
 decodeSubCommand :: (GetSeverity a, GetCommonOpts a, Show b, ToJSON b) => SubCommand a b -> Mod CommandFields (IO ())
 decodeSubCommand cmd@SubCommand{..} = command commandName $ info (runSubCommand cmd) commandInfo

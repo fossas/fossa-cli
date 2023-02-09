@@ -1,14 +1,69 @@
 # FOSSA CLI Changelog
 
-## v3.6.5
+## v3.6.18
 
 Resolves an issue where UPX compression on binary plugins inside the CLI can cause segmentation faults on macOS. ([#1104](https://github.com/fossas/fossa-cli/pull/1104)).<br>
 Builds past this version no longer use UPX to compress binary plugins on macOS, and consequently macOS binaries are expected to be slightly larger.
 
+## v3.6.17
+
+- `fossa test`: Display CVE, fixed version information, and issue dashboard links when possible. ([#1146](https://github.com/fossas/fossa-cli/pull/1146))
+
+## v3.6.16
+
+- Project labels: Support project labels from command line and configuration file ([1145](https://github.com/fossas/fossa-cli/pull/1145))
+
+## v3.6.15
+
+- Container scanning: support more tar formats. ([1142](https://github.com/fossas/fossa-cli/pull/1142))
+- `--detect-dynamic`: Supports recursively inspecting binaries for dynamic dependencies. ([#1143](https://github.com/fossas/fossa-cli/pull/1143))
+
+## v3.6.14
+
+- `fossa test`: Improved reporting. ([#1135](https://github.com/fossas/fossa-cli/pull/1135))
+
+## v3.6.13
+
+- Vendored Dependencies: Add the unity companion license (https://unity.com/legal/licenses/unity-companion-license) and unity package distribution license (https://unity.com/legal/licenses/unity-package-distribution-license) to license scanning ([#1136](https://github.com/fossas/fossa-cli/pull/1136))
+
+## v3.6.12
+
+- Maven: If a package is both `"test"` and `"compile"`, it is no longer filtered ([#1138](https://github.com/fossas/fossa-cli/pull/1138)).
+
+## v3.6.11
+
+- Lib yarn protocol: When we encounter Yarn lib deps we should warn but not fail the scan ([#1134](https://github.com/fossas/fossa-cli/pull/1134))
+
+## v3.6.10
+
+- Vendored Dependencies: Allow path filtering when doing cli-side license scans ([#1128](https://github.com/fossas/fossa-cli/pull/1128))
+
+## v3.6.9
+- Yarn: Fix a bug where tarball URLs were recognized as git urls. ([#1126](https://github.com/fossas/fossa-cli/pull/1126))
+
+## v3.6.8
+- Go: Allow quotes module names in static analysis ([#1118](https://github.com/fossas/fossa-cli/pull/1118))
+- `fossa test`: Includes revision summary and target information, when accessible ([#1119](https://github.com/fossas/fossa-cli/pull/1119))
+
+## v3.6.7
+
+- Rename `--experimental-license-scan` to `--license-scan` (https://github.com/fossas/fossa-cli/pull/1110)
+- Emit a warning if the `--experimental-native-license-scan` flag is used
+
+## v3.6.6
+
+- Conda: Change dynamic strategy to simulate building an environment from `environment.yml` instead of reading from the currently active environment. ([#1099](https://github.com/fossas/fossa-cli/pull/1099))
+
+## v3.6.5
+
+- `fossa test`: deprecates `--json` flag in favor of `--format json` option. ([#1109](https://github.com/fossas/fossa-cli/pull/1109))
+- `fossa container test`: deprecates `--json` flag in favor of `--format json` option. ([#1109](https://github.com/fossas/fossa-cli/pull/1109))
+- UX: Added breadcrumb to main help output indicating that subcommands have additional options. ([#1106](https://github.com/fossas/fossa-cli/pull/1106))
+
 ## v3.6.4
 
 - C/C++: Fixes `--detect-vendored` on Windows. ([#1096](https://github.com/fossas/fossa-cli/pull/1096))
-- Uses an ISO timestamp for the revision if no better revision can be inferred ([#1091](https://github.com/fossas/fossa-cli/pull/1091)).
+- Uses an ISO timestamp for the revision if no better revision can be inferred. ([#1091](https://github.com/fossas/fossa-cli/pull/1091))
 
 ## v3.6.3
 
@@ -47,16 +102,16 @@ Gradle: Considers dependencies from `debugUnitTest*` configurations to be unused
 
 _Notice:_
 
-- Now, container scanning analyzes projects for applications (`npm`, `pip`, etc) dependencies. 
+- Now, container scanning analyzes projects for applications (`npm`, `pip`, etc) dependencies.
 - Now, container scanning can filter specific targets via target exclusions using [fossa configuration file](./docs/references/files/fossa-yml.md).
 - Now, `fossa-cli`'s windows binary can perform container scanning.
 - Now, container scanned projects will show origin path in FOSSA web UI.
 - Now, container scanned projects can target specific architecture via digest.
 
-You can use `--only-system-deps` flag to only scan for dependencies from `apk`, `dpkg`, `dpm`. 
+You can use `--only-system-deps` flag to only scan for dependencies from `apk`, `dpkg`, `dpm`.
 This will mimic behavior of older FOSSA CLI's container scanning (older than v3.5.0).
 
-Learn more: 
+Learn more:
 - [container scanner](./docs/references/subcommands/container/scanner.md)
 - [fossa container analyze](./docs/references/subcommands/container.md)
 

@@ -96,7 +96,7 @@ spec = do
       expectGetOrganization
       expectEverythingScannedAlready
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should scan all if Core does not know about the revisions" $ do
@@ -108,7 +108,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should scan all if the revisions are still being scanned" $ do
@@ -120,7 +120,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should scan one if one revision is still being scanned" $ do
@@ -130,7 +130,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "first-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.firstLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should always scan all if vendor dependency skipping is not supported" $ do
@@ -141,7 +141,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkippingNotSupported scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkippingNotSupported Nothing scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should always scan all if the --force-vendor-dependency-rescans flag is used" $ do
@@ -152,7 +152,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScanWithForceRebuild Fixtures.archives
-      locators <- licenseScanSourceUnit SkippingDisabledViaFlag scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkippingDisabledViaFlag Nothing scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
 expectGetApiOpts :: Has MockApi sig m => m ()

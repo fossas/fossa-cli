@@ -206,6 +206,7 @@ buildGraph gr FlatPackages{..} = hydrateDepEnvs convertedGraphing
 packageToDependency :: Package -> Maybe Dependency
 packageToDependency WorkspacePackage{} = Nothing
 packageToDependency FilePackage{} = Nothing
+packageToDependency LibPackage{} = Nothing
 packageToDependency LinkPackage{} = Nothing
 packageToDependency PortalPackage{} = Nothing
 packageToDependency ExecPackage{} = Nothing

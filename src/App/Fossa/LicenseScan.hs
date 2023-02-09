@@ -2,6 +2,7 @@ module App.Fossa.LicenseScan (
   licenseScanSubCommand,
 ) where
 
+import App.Fossa.Config.ConfigFile (ConfigFile (configVendoredDependencies), VendoredDependencyConfigs (configLicenseScanPathFilters), resolveConfigFile)
 import App.Fossa.Config.LicenseScan (
   LicenseScanCommand,
   LicenseScanConfig (..),
@@ -40,6 +41,7 @@ import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path)
 import Prettyprinter (vsep)
 import Srclib.Types (LicenseSourceUnit)
+import Types (LicenseScanPathFilters)
 
 data MissingFossaDepsFile = MissingFossaDepsFile
 data NoVendoredDeps = NoVendoredDeps
@@ -47,7 +49,7 @@ data NoVendoredDeps = NoVendoredDeps
 instance ToDiagnostic MissingFossaDepsFile where
   renderDiagnostic _ =
     vsep
-      [ "'fossa experimental-license-scan fossa-deps' requires pointing to a directory with a fossa-deps file."
+      [ "'fossa license-scan fossa-deps' requires pointing to a directory with a fossa-deps file."
       , "The file can have one of the extensions: .yaml .yml .json"
       ]
 
@@ -72,7 +74,7 @@ licenseScanMain ::
   LicenseScanConfig ->
   m ()
 licenseScanMain = \case
-  RawPathScan (BaseDir dir) -> logStdout . decodeUtf8 =<< withThemisAndIndex (`execRawThemis` dir)
+  RawPathScan (BaseDir dir) -> logStdout . decodeUtf8 =<< withThemisAndIndex (\bins -> execRawThemis bins dir ["--srclib-with-matches"])
   VendoredDepsOutput basedir -> outputVendoredDeps basedir
 
 outputVendoredDeps ::
@@ -85,10 +87,12 @@ outputVendoredDeps ::
   BaseDir ->
   m ()
 outputVendoredDeps (BaseDir dir) = runStickyLogger SevInfo $ do
+  config <- resolveConfigFile dir Nothing
   manualDepsFile <- fromMaybe MissingFossaDepsFile =<< findFossaDepsFile dir
   manualDeps <- readFoundDeps manualDepsFile
   vendoredDeps <- fromMaybe NoVendoredDeps $ NE.nonEmpty $ vendoredDependencies manualDeps
-  resultMap <- UploadUnits <$> runLicenseScan dir vendoredDeps
+  let licenseScanPathFilters = config >>= configVendoredDependencies >>= configLicenseScanPathFilters
+  resultMap <- UploadUnits <$> runLicenseScan dir licenseScanPathFilters vendoredDeps
   logStdout . decodeUtf8 $ Aeson.encode resultMap
 
 runLicenseScan ::
@@ -99,6 +103,7 @@ runLicenseScan ::
   , Has Exec sig m
   ) =>
   Path Abs Dir ->
+  Maybe LicenseScanPathFilters ->
   NonEmpty VendoredDependency ->
   m (NonEmpty LicenseSourceUnit)
-runLicenseScan basedir vdeps = dedupVendoredDeps vdeps >>= traverse (scanVendoredDep basedir)
+runLicenseScan basedir licenseScanPathFilters vdeps = dedupVendoredDeps vdeps >>= traverse (scanVendoredDep basedir licenseScanPathFilters)

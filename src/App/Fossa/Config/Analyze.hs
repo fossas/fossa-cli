@@ -2,7 +2,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Config.Analyze (
-  AllowNativeLicenseScan (..),
   AnalyzeCliOpts (..),
   AnalyzeConfig (..),
   BinaryDiscovery (..),
@@ -23,6 +22,7 @@ module App.Fossa.Config.Analyze (
   mkSubCommand,
   loadConfig,
   cliParser,
+  mergeOpts,
 ) where
 
 import App.Fossa.Config.Common (
@@ -40,7 +40,7 @@ import App.Fossa.Config.Common (
   pathOpt,
   targetOpt,
   validateDir,
-  validateFile,
+  validateExists,
  )
 import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
@@ -58,7 +58,7 @@ import App.Types (
   BaseDir,
   MonorepoAnalysisOpts (MonorepoAnalysisOpts, monorepoAnalysisType),
   OverrideProject (OverrideProject),
-  ProjectMetadata,
+  ProjectMetadata (projectLabel),
   ProjectRevision,
  )
 import Control.Effect.Diagnostics (
@@ -83,7 +83,7 @@ import Discovery.Filters (AllFilters (AllFilters), comboExclude, comboInclude)
 import Effect.Exec (
   Exec,
  )
-import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn)
+import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn, vsep)
 import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
@@ -104,12 +104,13 @@ import Options.Applicative (
   switch,
   (<|>),
  )
-import Path (Abs, Dir, File, Path, Rel)
+import Path (Abs, Dir, Path, Rel)
+import Path.Extra (SomePath)
 import System.Info qualified as SysInfo
-import Types (ArchiveUploadType (..), TargetFilter)
+import Types (ArchiveUploadType (..), LicenseScanPathFilters (..), TargetFilter)
 
 -- CLI flags, for use with 'Data.Flag'
-data AllowNativeLicenseScan = AllowNativeLicenseScan deriving (Generic)
+data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan deriving (Generic)
 data ForceVendoredDependencyRescans = ForceVendoredDependencyRescans deriving (Generic)
 
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
@@ -120,7 +121,7 @@ data UnpackArchives = UnpackArchives deriving (Generic)
 data VSIAnalysis = VSIAnalysis deriving (Generic)
 
 newtype IATAssertion = IATAssertion {unIATAssertion :: Maybe (Path Abs Dir)} deriving (Eq, Ord, Show, Generic)
-newtype DynamicLinkInspect = DynamicLinkInspect {unDynamicLinkInspect :: Maybe (Path Abs File)} deriving (Eq, Ord, Show, Generic)
+newtype DynamicLinkInspect = DynamicLinkInspect {unDynamicLinkInspect :: Maybe SomePath} deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON BinaryDiscovery where
   toEncoding = genericToEncoding defaultOptions
@@ -161,6 +162,7 @@ instance ToJSON VSIModeOptions where
 data VendoredDependencyOptions = VendoredDependencyOptions
   { forceRescans :: Bool
   , licenseScanMethod :: Maybe ArchiveUploadType
+  , licenseScanPathFilters :: Maybe LicenseScanPathFilters
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -174,7 +176,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeJsonOutput :: Flag JsonOutput
   , analyzeIncludeAllDeps :: Flag IncludeAll
   , analyzeNoDiscoveryExclusion :: Flag NoDiscoveryExclusion
-  , analyzeAllowNativeLicenseScan :: Flag AllowNativeLicenseScan
+  , analyzeDeprecatedAllowNativeLicenseScan :: Flag DeprecatedAllowNativeLicenseScan
   , analyzeForceVendoredDependencyMode :: Maybe ArchiveUploadType
   , analyzeForceVendoredDependencyRescans :: Flag ForceVendoredDependencyRescans
   , analyzeBranch :: Maybe Text
@@ -266,8 +268,8 @@ cliParser =
     <*> flagOpt JsonOutput (long "json" <> help "Output project metadata as json to the console. Useful for communicating with the FOSSA API")
     <*> flagOpt IncludeAll (long "include-unused-deps" <> help "Include all deps found, instead of filtering non-production deps.  Ignored by VSI.")
     <*> flagOpt NoDiscoveryExclusion (long "debug-no-discovery-exclusion" <> help "Ignore filters during discovery phase.  This is for debugging only and may be removed without warning." <> hidden)
-    -- AllowNativeLicenseScan is no longer used, but we're keeping it in so we don't cause scans to blow up for customers who are still using it
-    <*> flagOpt AllowNativeLicenseScan (long "experimental-native-license-scan" <> hidden)
+    -- AllowNativeLicenseScan is no longer used. We started emitting a warning if it was used in https://github.com/fossas/fossa-cli/pull/1113
+    <*> flagOpt DeprecatedAllowNativeLicenseScan (long "experimental-native-license-scan" <> hidden)
     <*> optional vendoredDependencyModeOpt
     <*> flagOpt ForceVendoredDependencyRescans (long "force-vendored-dependency-rescans" <> help "Force vendored dependencies to be rescanned even if the revision has been previously analyzed by FOSSA. This currently only works for CLI-side license scans.")
     <*> optional (strOption (long "branch" <> short 'b' <> help "this repository's current branch (default: current VCS branch)"))
@@ -349,7 +351,20 @@ mergeOpts ::
   EnvVars ->
   AnalyzeCliOpts ->
   m AnalyzeConfig
-mergeOpts cfg env cliOpts =
+mergeOpts cfg env cliOpts = do
+  let experimentalNativeLicenseScanFlagUsed = fromFlag DeprecatedAllowNativeLicenseScan $ analyzeDeprecatedAllowNativeLicenseScan cliOpts
+  when experimentalNativeLicenseScanFlagUsed $ do
+    logWarn $
+      vsep
+        [ "DEPRECATION NOTICE"
+        , "========================"
+        , "The --experimental-native-license-scan flag is deprecated."
+        , ""
+        , "The functionality enabled by the flag, CLI-license-scans, is now the default method for scanning vendored-dependencies."
+        , ""
+        , "In the future, usage of the --experimental-native-license-scan flag may result in fatal error."
+        ]
+
   if isJust $ monorepoAnalysisType $ monorepoAnalysisOpts cliOpts
     then Monorepo <$> mergeMonorepoOpts cfg env cliOpts
     else Standard <$> mergeStandardOpts cfg env cliOpts
@@ -472,8 +487,8 @@ collectVendoredDeps ::
   m VendoredDependencyOptions
 collectVendoredDeps maybeCfg cliOpts = do
   let (forceRescansFromFlags, scanTypeFromFlags) = collectVendoredDepsFromFlags cliOpts
-      (forceRescansFromConfig, scanTypeFromConfig) = collectVendoredDepsFromConfig maybeCfg
-  pure $ VendoredDependencyOptions (forceRescansFromFlags || forceRescansFromConfig) (scanTypeFromFlags <|> scanTypeFromConfig)
+      (forceRescansFromConfig, scanTypeFromConfig, licenseScanPathFiltersFromConfig) = collectVendoredDepsFromConfig maybeCfg
+  pure $ VendoredDependencyOptions (forceRescansFromFlags || forceRescansFromConfig) (scanTypeFromFlags <|> scanTypeFromConfig) licenseScanPathFiltersFromConfig
 
 collectVendoredDepsFromFlags ::
   AnalyzeCliOpts ->
@@ -483,11 +498,12 @@ collectVendoredDepsFromFlags AnalyzeCliOpts{..} = do
       scanType = analyzeForceVendoredDependencyMode
   (forceRescans, scanType)
 
-collectVendoredDepsFromConfig :: Maybe ConfigFile -> (Bool, Maybe ArchiveUploadType)
+collectVendoredDepsFromConfig :: Maybe ConfigFile -> (Bool, Maybe ArchiveUploadType, Maybe LicenseScanPathFilters)
 collectVendoredDepsFromConfig maybeCfg =
   let forceRescans = maybe False configForceRescans (maybeCfg >>= configVendoredDependencies)
       defaultScanType = maybeCfg >>= configVendoredDependencies >>= configLicenseScanMethod
-   in (forceRescans, defaultScanType)
+      pathFilters = maybeCfg >>= configVendoredDependencies >>= configLicenseScanPathFilters
+   in (forceRescans, defaultScanType, pathFilters)
 
 collectScanDestination ::
   ( Has Diagnostics sig m
@@ -502,6 +518,7 @@ collectScanDestination maybeCfgFile envvars AnalyzeCliOpts{..} =
     else do
       apiOpts <- collectApiOpts maybeCfgFile envvars commons
       let metaMerged = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
+      when (length (projectLabel metaMerged) > 5) $ fatalText "Projects are only allowed to have 5 associated project labels"
       pure $ UploadScan apiOpts metaMerged
 
 collectModeOptions ::
@@ -513,12 +530,12 @@ collectModeOptions ::
   m VSIModeOptions
 collectModeOptions AnalyzeCliOpts{..} = do
   assertionDir <- traverse validateDir analyzeAssertMode
-  dynamicLinkTarget <- traverse validateFile analyzeDynamicLinkTarget
+  resolvedDynamicLinkTarget <- traverse validateExists analyzeDynamicLinkTarget
   pure
     VSIModeOptions
       { vsiAnalysisEnabled = analyzeVSIMode
       , vsiSkipSet = VSI.SkipResolution $ Set.fromList analyzeSkipVSIGraphResolution
       , iatAssertion = IATAssertion assertionDir
-      , dynamicLinkingTarget = DynamicLinkInspect dynamicLinkTarget
+      , dynamicLinkingTarget = DynamicLinkInspect resolvedDynamicLinkTarget
       , binaryDiscoveryEnabled = analyzeBinaryDiscoveryMode
       }

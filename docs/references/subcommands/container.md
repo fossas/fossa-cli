@@ -56,6 +56,12 @@ For example:
 fossa container test redis:alpine
 ```
 
+To render results in JSON format: 
+
+```bash
+fossa container test redis:alpine --format json
+```
+
 ## Printing results without uploading to FOSSA
 
 The `--output` flag outputs dependency graph information to the terminal rather than uploading to FOSSA.

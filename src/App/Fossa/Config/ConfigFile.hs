@@ -67,7 +67,7 @@ import Path (
   parseSomeFile,
   (</>),
  )
-import Types (ArchiveUploadType, TargetFilter)
+import Types (ArchiveUploadType, LicenseScanPathFilters, TargetFilter)
 
 defaultConfigFileNames :: [Path Rel File]
 defaultConfigFileNames =
@@ -166,6 +166,7 @@ mergeFileCmdMetadata meta file =
     , projectLink = projectLink meta <|> (configProject file >>= configLink)
     , projectTeam = projectTeam meta <|> (configProject file >>= configTeam)
     , projectPolicy = projectPolicy meta <|> (configProject file >>= configPolicy)
+    , projectLabel = projectLabel meta <|> (maybe [] configLabel (configProject file))
     , projectReleaseGroup = projectReleaseGroup meta <|> (configProject file >>= configReleaseGroup)
     }
 
@@ -194,6 +195,7 @@ data ConfigProject = ConfigProject
   , configJiraKey :: Maybe Text
   , configUrl :: Maybe Text
   , configPolicy :: Maybe Text
+  , configLabel :: [Text]
   , configReleaseGroup :: Maybe ReleaseGroupMetadata
   }
   deriving (Eq, Ord, Show)
@@ -258,6 +260,7 @@ instance FromJSON ConfigProject where
       <*> obj .:? "jiraProjectKey"
       <*> obj .:? "url"
       <*> obj .:? "policy"
+      <*> obj .:? "labels" .!= []
       <*> obj .:? "releaseGroup"
 
 instance FromJSON ConfigRevision where
@@ -300,6 +303,7 @@ instance FromJSON ConfigTelemetryScope where
 data VendoredDependencyConfigs = VendoredDependencyConfigs
   { configForceRescans :: Bool
   , configLicenseScanMethod :: Maybe ArchiveUploadType
+  , configLicenseScanPathFilters :: Maybe LicenseScanPathFilters
   }
   deriving (Eq, Ord, Show)
 
@@ -308,3 +312,4 @@ instance FromJSON VendoredDependencyConfigs where
     VendoredDependencyConfigs
       <$> (obj .:? "forceRescans" .!= False)
       <*> (obj .:? "scanMethod")
+      <*> (obj .:? "licenseScanPathFilters")

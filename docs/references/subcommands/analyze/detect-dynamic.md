@@ -4,7 +4,7 @@ Some projects, especially C or C++ projects, result in binaries that dynamically
 
 ### How does it work?
 
-Dynamic Linked Dependency Detection works by using `ldd` to inspect the target binary for a list of linked binaries.
+Dynamic Linked Dependency Detection works by using `ldd` to inspect target binaries for a list of linked libraries.
 It then interacts with the local package manager (`rpm` for RedHat-based systems, `dpkg` for Debian-based systems) to determine the library which owns the binary.
 
 If a library is found, it is reported to FOSSA, which uses our database of Linux packages to lookup licensing and vulnerability information for the package.
@@ -29,16 +29,62 @@ If you are using Dynamic Linked Dependency Detection on your own binary, we reco
 
 ## How to use
 
+`--detect-dynamic` supports scanning binaries directly, as well as scanning a directory recursively.
+
+### Scanning a binary directly
+
 When running `fossa analyze`, use the `--detect-dynamic <BINARY>` flag.
 Point the `<BINARY>` at the binary that is built from the project.
 
-As an example, if the project is located at `~/projects/my-project`, and results in a binary at `~/projects/my-project/out/project`, the scan invocation would be as follows:
+As an example, if the project is located at `~/projects/my-project`,
+and results in a binary at `~/projects/my-project/out/project`,
+the scan invocation would be as follows:
 
 ```shell
-fossa analyze ~/projects/my-project --detect-dynamic ~/projects/my-project/out/project
+fossa analyze ~/projects/my-project --detect-dynamic ~/projects/my-project/out/my-project-bin
 ```
 
 This results in the FOSSA reporting both the dependencies discovered inside the project directory and the dependencies discovered by analyzing the binary.
+
+### Scanning all binaries in a directory
+
+When running `fossa analyze`, use the `--detect-dynamic <DIR>` flag.
+Point the `<DIR>` at the directory containing binaries built from the project.
+
+As an example, if the project is located at `~/projects/my-project`,
+and results in binaries output in `~/projects/my-project/out/`,
+the scan invocation would be as follows:
+
+```shell
+fossa analyze ~/projects/my-project --detect-dynamic ~/projects/my-project/out
+```
+
+This results in the FOSSA reporting both the dependencies discovered inside the project directory
+and the dependencies discovered by analyzing any binaries in `~/projects/my-project/out` recursively.
+
+#### Filters
+
+When running against a directory, `--detect-dynamic` respects path filters provided to FOSSA CLI (via `.fossa.yml` or command line flags).
+
+This uses the same mechanism as the CLI uses for determining projects to include in the report.
+
+- To learn how path filters work, see [path filtering](../../../contributing/filtering.md#discovery-exclusion-by-path).
+- To learn how to set path filters, see [configuring path filters](../../../references/files/fossa-yml.md#paths).
+
+As an example, if the project is located at `~/projects/my-project`,
+and results in binaries output in subdirectories of `~/projects/my-project/out/`,
+but it should skip `~/projects/my-project/out/docs/`,
+the scan invocation would be as follows:
+
+```shell
+fossa analyze ~/projects/my-project \
+  --detect-dynamic ~/projects/my-project/out \
+  --exclude-path ~/projects/my-project/out/docs/
+```
+
+This results in the FOSSA reporting both the dependencies discovered inside the project directory
+and the dependencies discovered by analyzing any binaries in `~/projects/my-project/out` recursively,
+skipping the `~/projects/my-project/out/docs` directory.
 
 ### Quick Example
 

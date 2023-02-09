@@ -3,6 +3,7 @@
 module App.Fossa.RunThemis (
   execThemis,
   execRawThemis,
+  themisFlags,
 ) where
 
 import App.Fossa.EmbeddedBinary (
@@ -25,29 +26,38 @@ import Effect.Exec (
  )
 import Path (Abs, Dir, Path, parent)
 import Srclib.Types (LicenseUnit)
+import Types (GlobFilter (unGlobFilter), LicenseScanPathFilters (..))
 
-execRawThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> m BL.ByteString
-execRawThemis themisBins scanDir = execThrow scanDir $ themisCommand themisBins ""
+execRawThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> [Text] -> m BL.ByteString
+execRawThemis themisBins scanDir flags = execThrow scanDir $ themisCommand themisBins "" flags
 
 -- TODO: We should log the themis version and index version
-execThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Path Abs Dir -> m [LicenseUnit]
-execThemis themisBins pathPrefix scanDir = do
-  execJson @[LicenseUnit] scanDir $ themisCommand themisBins pathPrefix
+execThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Path Abs Dir -> [Text] -> m [LicenseUnit]
+execThemis themisBins pathPrefix scanDir flags = do
+  execJson @[LicenseUnit] scanDir $ themisCommand themisBins pathPrefix flags
 
-themisCommand :: ThemisBins -> Text -> Command
-themisCommand ThemisBins{..} pathPrefix = do
+themisCommand :: ThemisBins -> Text -> [Text] -> Command
+themisCommand ThemisBins{..} pathPrefix flags = do
   Command
     { cmdName = toText . toPath $ unTag themisBinaryPaths
-    , cmdArgs = generateThemisArgs indexBinaryPaths pathPrefix
+    , cmdArgs = generateThemisArgs indexBinaryPaths pathPrefix flags
     , cmdAllowErr = Never
     }
 
-generateThemisArgs :: Tagged ThemisIndex BinaryPaths -> Text -> [Text]
-generateThemisArgs taggedThemisIndex pathPrefix =
+generateThemisArgs :: Tagged ThemisIndex BinaryPaths -> Text -> [Text] -> [Text]
+generateThemisArgs taggedThemisIndex pathPrefix flags =
   [ "--license-data-dir"
   , toText . parent . toPath $ unTag taggedThemisIndex
   , "--path-prefix"
   , pathPrefix
-  , "--srclib-with-matches"
-  , "."
   ]
+    <> flags
+    <> ["."]
+
+themisFlags :: Maybe LicenseScanPathFilters -> [Text]
+themisFlags Nothing = ["--srclib-with-matches"]
+themisFlags (Just filters) =
+  let defaultFilter = ["--srclib-with-matches"]
+      onlyFilters = concatMap (\only -> ["--only-paths", unGlobFilter only]) $ licenseScanPathFiltersOnly filters
+      exceptFilters = concatMap (\exclude -> ["--exclude-paths", unGlobFilter exclude]) $ licenseScanPathFiltersExclude filters
+   in defaultFilter ++ onlyFilters ++ exceptFilters

@@ -67,10 +67,10 @@ import Effect.ReadFS (
     ResolvePath
   ),
   ReadFSIOC,
-  SomePath (SomeDir, SomeFile),
   catchingIO,
  )
 import Path (Abs, Dir, File, SomeBase (..))
+import Path.Extra (SomePath (..))
 
 -- We use internal module, as we cannot use parse_B_T (e.g. parseAbsFile), etc. to craft
 -- Path b t, since tarball paths are not representative of POSIX, or windows

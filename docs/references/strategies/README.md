@@ -89,7 +89,7 @@ See the linked documentation above for details.
 
 ### python
 
-- [conda](platforms/conda/conda.md)
+- [conda](languages/python/conda.md)
 - [`requirements.txt`/`setup.py`](languages/python/python.md)
 - [pipenv](languages/python/pipenv.md)
 - [poetry](languages/python/poetry.md)
@@ -144,6 +144,7 @@ It is important to note that neither type of strategy has an inherent benefit wh
 | [Haskell (stack)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/haskell/stack.md)                        | ✅       | ❌      | ❌                    | Dynamic          |
 | [iOS (carthage)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/platforms/ios/carthage.md)                          | ❌       | ✅      | ❌                    | Static           |
 | [iOS (cocoapods)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/platforms/ios/cocoapods.md)                        | ❌       | ✅      | ❌                    | Static           |
+| [iOS (swift)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/platforms/ios/swift.md)                                | ❌       | ✅      | ❌                    | Static           |
 | [Maven](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/maven/maven.md)                                    | ✅       | ✅      | ❌                    | Dynamic          |
 | [NodeJS (NPM/Yarn/pnpm)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/nodejs/nodejs.md)                 | ❌       | ✅      | ❌                    | Static           |
 | [Perl](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/perl/perl.md)                                       | ❌       | ✅      | ❌                    | Static           |
@@ -155,4 +156,4 @@ It is important to note that neither type of strategy has an inherent benefit wh
 | [R (renv)](./languages/r/renv.md)                                                                                                               | ❌       | ✅      | ❌                    | Static           |
 | [Ruby (bundler)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/ruby/ruby.md)                             | ✅       | ✅      | ❌                    | Static           |
 | [Rust (cargo)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/rust/rust.md)                               | ✅       | ❌      | ❌                    | Dynamic          |
-| [Scala (sbt)](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/scala)                                       | ✅       | ✅      | ❌                    | Dynamic          |
+| [Scala (sbt)](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/scala)                                       | ✅       | ❌      | ❌                    | Dynamic          |

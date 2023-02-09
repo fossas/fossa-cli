@@ -28,7 +28,6 @@ module Effect.ReadFS (
   -- * Resolving existing paths
   resolvePath,
   resolvePath',
-  SomePath (..),
 
   -- * Checking whether files exist
   doesFileExist,
@@ -101,6 +100,7 @@ import Path (
   parseSomeDir,
   parseSomeFile,
  )
+import Path.Extra (SomePath (..))
 import Path.IO qualified as PIO
 import Prettyprinter (indent, line, pretty, vsep)
 import System.Directory qualified as Directory
@@ -118,19 +118,10 @@ import Toml qualified
 -- Uniqueness is guaranteed within a single OS.
 data DirID = DirID {dirFileID :: Integer, dirDeviceID :: Integer} deriving (Show, Eq, Ord, Generic)
 
-data SomePath
-  = SomeFile (SomeBase File)
-  | SomeDir (SomeBase Dir)
-  deriving (Eq, Ord, Show, Generic)
-
 instance ToJSON DirID
 instance RecordableValue DirID
 instance FromJSON DirID
 instance ReplayableValue DirID
-instance ToJSON SomePath
-instance RecordableValue SomePath
-instance FromJSON SomePath
-instance ReplayableValue SomePath
 
 data ReadFSF a where
   GetCurrentDir :: ReadFSF (Either ReadFSErr (Path Abs Dir))

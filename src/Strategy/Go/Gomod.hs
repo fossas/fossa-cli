@@ -199,7 +199,7 @@ gomodParser :: Parser Gomod
 gomodParser = do
   _ <- scn
   _ <- lexeme (chunk "module")
-  name <- packageName
+  name <- modulePath
   _ <- scn
   statements <- many (statement <* scn)
   eof
@@ -286,6 +286,11 @@ gomodParser = do
     -- package name, e.g., golang.org/x/text
     packageName :: Parser PackageName
     packageName = toText <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_'))
+
+    modulePath :: Parser Text
+    modulePath =
+      packageName
+        <|> between (char '"') (char '"') packageName
 
     -- goVersion, e.g.:
     --   v0.0.0-20190101000000-abcdefabcdef

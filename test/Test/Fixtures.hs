@@ -105,6 +105,7 @@ projectMetadata =
     , App.projectLink = Nothing
     , App.projectTeam = Nothing
     , App.projectPolicy = Nothing
+    , App.projectLabel = ["label-1", "label-2"]
     , App.projectReleaseGroup = Nothing
     }
 
@@ -203,6 +204,22 @@ emptyIssues =
     { API.issuesCount = 0
     , API.issuesIssues = []
     , API.issuesStatus = ""
+    , API.issuesSummary = Nothing
+    }
+
+makeIssue :: Int -> API.IssueType -> API.Issue
+makeIssue issueId issueType =
+  API.Issue
+    { API.issueId = issueId
+    , API.issuePriorityString = Nothing
+    , API.issueResolved = False
+    , API.issueRevisionId = "IssueRevisionId" <> showT issueId
+    , API.issueType = issueType
+    , API.issueRule = Nothing
+    , API.issueLicense = Nothing
+    , API.issueDashURL = Nothing
+    , API.issueCVE = Nothing
+    , API.issueFixedIn = Nothing
     }
 
 issuesAvailable :: API.Issues
@@ -215,21 +232,12 @@ issuesAvailable =
         , API.IssueOutdatedDependency
         , API.IssueOther "TestIssueOther"
         ]
-      makeIssue :: Int -> API.IssueType -> API.Issue
-      makeIssue issueId issueType =
-        API.Issue
-          { API.issueId = 200 + issueId
-          , API.issuePriorityString = Nothing
-          , API.issueResolved = False
-          , API.issueRevisionId = "IssueRevisionId" <> showT issueId
-          , API.issueType = issueType
-          , API.issueRule = Nothing
-          }
-      issueList = zipWith makeIssue [1 ..] issueTypes
+      issueList = zipWith makeIssue [201 ..] issueTypes
    in API.Issues
         { API.issuesCount = length issueList
         , API.issuesIssues = issueList
         , API.issuesStatus = "SCANNED"
+        , API.issuesSummary = Nothing
         }
 
 issuesDiffAvailable :: API.Issues
@@ -242,21 +250,12 @@ issuesDiffAvailable =
         , API.IssueOutdatedDependency
         , API.IssueOther "TestIssueOther"
         ]
-      makeIssue :: Int -> API.IssueType -> API.Issue
-      makeIssue issueId issueType =
-        API.Issue
-          { API.issueId = 100 + issueId
-          , API.issuePriorityString = Nothing
-          , API.issueResolved = False
-          , API.issueRevisionId = "IssueRevisionId" <> showT issueId
-          , API.issueType = issueType
-          , API.issueRule = Nothing
-          }
-      issueList = zipWith makeIssue [1 ..] issueTypes
+      issueList = zipWith makeIssue [101 ..] issueTypes
    in API.Issues
         { API.issuesCount = length issueList
         , API.issuesIssues = issueList
         , API.issuesStatus = "SCANNED"
+        , API.issuesSummary = Nothing
         }
 
 issuesPending :: API.Issues
@@ -265,6 +264,7 @@ issuesPending =
     { API.issuesCount = 0
     , API.issuesIssues = []
     , API.issuesStatus = "WAITING"
+    , API.issuesSummary = Nothing
     }
 
 attributionReportAsSerializedJson :: Text

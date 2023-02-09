@@ -25,10 +25,10 @@ import Options.Applicative (
  )
 
 licenseScanInfo :: InfoMod a
-licenseScanInfo = progDesc "Experimental utilities for native license-scanning"
+licenseScanInfo = progDesc "Utilities for native license-scanning"
 
 mkSubCommand :: (LicenseScanConfig -> EffStack ()) -> SubCommand LicenseScanCommand LicenseScanConfig
-mkSubCommand = SubCommand "experimental-license-scan" licenseScanInfo cliParser noLoadConfig mergeOpts
+mkSubCommand = SubCommand "license-scan" licenseScanInfo cliParser noLoadConfig mergeOpts
   where
     noLoadConfig = const $ pure Nothing
 

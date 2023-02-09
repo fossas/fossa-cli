@@ -150,7 +150,7 @@ instance FromJSON LicenseUnitData where
       <*> obj .:? "Copyrights"
 
 data LicenseUnitMatchData = LicenseUnitMatchData
-  { licenseUnitMatchDataMatchString :: Text
+  { licenseUnitMatchDataMatchString :: Maybe Text
   , licenseUnitMatchDataLocation :: Integer
   , licenseUnitMatchDataLength :: Integer
   , licenseUnitMatchDataIndex :: Integer
@@ -173,7 +173,7 @@ instance ToJSON LicenseUnitMatchData where
 instance FromJSON LicenseUnitMatchData where
   parseJSON = withObject "LicenseUnitMatchData" $ \obj ->
     LicenseUnitMatchData
-      <$> obj .: "match_string"
+      <$> obj .:? "match_string"
       <*> obj .: "location"
       <*> obj .: "length"
       <*> obj .: "index"

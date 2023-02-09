@@ -6,8 +6,8 @@ module App.Fossa.VSI.DynLinked.Internal.Lookup.DEB (
 import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
 import App.Fossa.VSI.DynLinked.Util (runningLinux)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics)
-import Control.Monad (join, void)
+import Control.Effect.Diagnostics (Diagnostics, context)
+import Control.Monad (void)
 import Data.Char (isSpace)
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
@@ -16,7 +16,6 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
-import Effect.Logger (Logger, logDebug, pretty)
 import Path (Abs, Dir, File, Path)
 import Text.Megaparsec (Parsec, empty, takeWhile1P)
 import Text.Megaparsec.Char (space1)
@@ -27,20 +26,16 @@ type Parser = Parsec Void Text
 debTactic ::
   ( Has Diagnostics sig m
   , Has Exec sig m
-  , Has Logger sig m
   ) =>
   Path Abs Dir ->
   Path Abs File ->
   m (Maybe DynamicDependency)
 debTactic root file | runningLinux = do
-  logDebug . pretty $ "[deb] resolving file: " <> show file
-
-  name <- packageForFile root file
-  logDebug . pretty $ "[deb] package: " <> show name
-
-  meta <- join <$> traverse (packageMeta root) name
-  logDebug . pretty $ "[deb] package metadata: " <> show meta
-  pure (DynamicDependency file . Just . ResolvedLinuxPackage LinuxPackageManagerDEB <$> meta)
+  packageForFile root file >>= \case
+    Nothing -> pure Nothing
+    Just name -> do
+      meta <- context ("Parse metadata for package " <> toText (show name) <> ", which owns file " <> toText (show file)) $ packageMeta root name
+      pure (DynamicDependency file . Just . ResolvedLinuxPackage LinuxPackageManagerRPM <$> meta)
 debTactic _ _ = pure Nothing
 
 packageForFile :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe Text)

@@ -5,10 +5,14 @@ module App.Fossa.Config.Test (
   TestCliOpts,
   TestConfig (..),
   DiffRevision (..),
-  OutputFormat (..),
+  TestOutputFormat (..),
   mkSubCommand,
   parser,
   loadConfig,
+  validateOutputFormat,
+  testOutputFormatList,
+  defaultOutputFmt,
+  parseFossaTestOutputFormat,
 ) where
 
 import App.Fossa.Config.Common (
@@ -28,14 +32,19 @@ import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
+  ToDiagnostic,
+  fromMaybe,
  )
 import Control.Effect.Lift (Lift)
+import Control.Monad (when)
 import Control.Timeout (Duration (..))
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
+import Data.List (intercalate)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
+import Effect.Logger (Logger, Pretty (pretty), Severity (SevDebug, SevInfo), logWarn, vsep)
 import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
@@ -45,6 +54,7 @@ import Options.Applicative (
   auto,
   flag,
   help,
+  internal,
   long,
   option,
   optional,
@@ -52,12 +62,44 @@ import Options.Applicative (
   strOption,
  )
 
-data OutputFormat
+data TestOutputFormat
   = TestOutputPretty
   | TestOutputJson
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Generic, Enum, Bounded)
 
-instance ToJSON OutputFormat where
+instance Show TestOutputFormat where
+  show TestOutputJson = "json"
+  show TestOutputPretty = "text-pretty"
+
+defaultOutputFmt :: TestOutputFormat
+defaultOutputFmt = TestOutputPretty
+
+testOutputFormatList :: String
+testOutputFormatList = intercalate ", " $ map show allFormats
+  where
+    allFormats :: [TestOutputFormat]
+    allFormats = enumFromTo minBound maxBound
+
+newtype InvalidReportFormat = InvalidReportFormat String
+instance ToDiagnostic InvalidReportFormat where
+  renderDiagnostic (InvalidReportFormat fmt) =
+    pretty $
+      "Fossa test format "
+        <> toText fmt
+        <> " is not supported. Supported formats: "
+        <> (toText testOutputFormatList)
+
+validateOutputFormat :: Has Diagnostics sig m => Bool -> Maybe String -> m TestOutputFormat
+validateOutputFormat True _ = pure TestOutputJson
+validateOutputFormat False Nothing = pure defaultOutputFmt
+validateOutputFormat False (Just format) = fromMaybe (InvalidReportFormat format) $ parseFossaTestOutputFormat format
+
+parseFossaTestOutputFormat :: String -> Maybe TestOutputFormat
+parseFossaTestOutputFormat "json" = Just TestOutputJson
+parseFossaTestOutputFormat "text-pretty" = Just TestOutputPretty
+parseFossaTestOutputFormat _ = Nothing
+
+instance ToJSON TestOutputFormat where
   toEncoding = genericToEncoding defaultOptions
 
 newtype DiffRevision = DiffRevision Text deriving (Show, Eq, Ord, Generic)
@@ -68,7 +110,8 @@ instance ToJSON DiffRevision where
 data TestCliOpts = TestCliOpts
   { commons :: CommonOpts
   , testTimeout :: Maybe Int
-  , testOutputType :: OutputFormat
+  , testDeprecatedOutputType :: TestOutputFormat
+  , testOutputFmt :: Maybe String
   , testBaseDir :: FilePath
   , testDiffRevision :: Maybe Text
   }
@@ -84,7 +127,7 @@ data TestConfig = TestConfig
   { baseDir :: BaseDir
   , apiOpts :: ApiOpts
   , timeout :: Duration
-  , outputFormat :: OutputFormat
+  , outputFormat :: TestOutputFormat
   , projectRevision :: ProjectRevision
   , diffRevision :: Maybe DiffRevision
   }
@@ -104,7 +147,8 @@ parser =
   TestCliOpts
     <$> commonOpts
     <*> optional (option auto (long "timeout" <> help "Duration to wait for build completion in seconds (Defaults to 1 hour)"))
-    <*> flag TestOutputPretty TestOutputJson (long "json" <> help "Output issues as json")
+    <*> flag defaultOutputFmt TestOutputJson (long "json" <> help "Output issues as json" <> internal)
+    <*> optional (strOption (long "format" <> help ("Output the report in the specified format. Currently available formats: (" <> testOutputFormatList <> ")")))
     <*> baseDirArg
     <*> optional (strOption (long "diff" <> help "Checks for new issues of the revision, that does not exist in provided diff revision."))
 
@@ -126,6 +170,7 @@ mergeOpts ::
   , Has Diagnostics sig m
   , Has ReadFS sig m
   , Has Exec sig m
+  , Has Logger sig m
   ) =>
   Maybe ConfigFile ->
   EnvVars ->
@@ -140,10 +185,29 @@ mergeOpts maybeConfig envvars TestCliOpts{..} = do
           OverrideProject (optProjectName commons) (optProjectRevision commons) Nothing
       diffRevision = DiffRevision <$> testDiffRevision
 
+  -- if the non-default value is present for flag, user is using deprecatedJsonFlag
+  when (testDeprecatedOutputType /= defaultOutputFmt) $ do
+    logWarn $
+      vsep
+        [ "DEPRECATION NOTICE"
+        , "========================"
+        , "--json flag is now deprecated for `fossa test` command."
+        , ""
+        , "Please use: "
+        , "   `--format json` instead."
+        , ""
+        , "In future, usage of --json may result in fatal error."
+        ]
+
+  testOutputFormat <-
+    validateOutputFormat
+      (testDeprecatedOutputType == TestOutputJson)
+      testOutputFmt
+
   TestConfig
     <$> baseDir
     <*> apiOpts
     <*> pure timeout
-    <*> pure testOutputType
+    <*> pure testOutputFormat
     <*> revision
     <*> pure diffRevision

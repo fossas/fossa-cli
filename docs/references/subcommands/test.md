@@ -23,7 +23,7 @@ Where `60` is the maximum number of seconds to wait for issue scan results.
 By default, `fossa test` displays issues in a human-readable format. To instead print issues as JSON, use:
 
 ```sh
-fossa test --json
+fossa test --format json
 ```
 
 ### Test for new issues compared to another revision

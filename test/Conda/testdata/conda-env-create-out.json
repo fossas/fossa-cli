@@ -1,0 +1,13 @@
+{
+  "name": "conda-forge-ex",
+  "channels": [
+    "conda-forge",
+    "defaults"
+  ],
+  "dependencies": [
+    "conda-forge/osx-64::bzip2==1.0.8=h0d85af4_4",
+    "defaults/osx-64::ca-certificates==2022.07.19=hecd8cb5_0",
+    "pkgs/main/noarch::tzdata==2022c=h191b570_0",
+    "unparsable dep string"
+  ]
+}

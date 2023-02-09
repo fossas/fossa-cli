@@ -14,6 +14,9 @@ project:
     name: test-release
     release: "123"
   jiraProjectKey: key
+  labels:
+    - project-label
+    - label-2
 
 revision:
   commit: "12345"
@@ -37,3 +40,9 @@ experimental:
 vendoredDependencies:
   forceRescans: true
   scanMethod: ArchiveUpload
+  licenseScanPathFilters:
+    only:
+      - "**/*.rb"
+    exclude:
+      - ".git/**"
+      - "test/**/*.rb"

@@ -18,7 +18,7 @@ for Glide is also included, because it's still commonly used.
 | [gomod](gomodules.md)  | :white_check_mark: | :x:                | :warning: | :x:                |
 | [gopkglock](godep.md)  | :white_check_mark: | :white_check_mark: | :warning: | :x:                |
 | [gopkgtoml](godep.md)  | :white_check_mark: | :warning:          | :warning: | :x:                |
-| [glide](glide.md)      | :white_check_mark: | :white_check_mark: | :X:       | :white_check_mark: |
+| [glide](glide.md)      | :white_check_mark: | :white_check_mark: | :x:       | :white_check_mark: |
 
 ## 🔶 Edges and transitive dependencies
 
