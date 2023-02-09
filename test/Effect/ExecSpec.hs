@@ -4,7 +4,7 @@ module Effect.ExecSpec (
   spec,
 ) where
 
-import App.Types (OverrideDynamicAnalysisBinary (OverrideDynamicAnalysisBinary))
+import App.Types (OverrideDynamicAnalysisBinary (..))
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Reader (runReader)
 import Control.Carrier.Stack (runStack)
@@ -44,11 +44,6 @@ spec = do
       res <- runExecIO $ exec dir (Command "lkajsdflkjasdlfkjas" [] Always)
       res `shouldSatisfy` isLeft
 
--- Windows doesn't have `false` or `true` binaries,
--- and doesn't have any easily accessible equivalent.
--- Fortunately this functionality should not change in Windows.
-#ifndef mingw32_HOST_OS
-
   describe "Command selection" $ do
     -- Use the unix "false" and "true" commands to test this.
     let candidates = CandidateAnalysisCommands ("false" :| ["true"]) [] Nothing
@@ -82,5 +77,3 @@ spec = do
     it "should respond with an error" $ case res of
       Failure _ _ -> pure ()
       Success _ cmd -> expectationFailure ("erroneously selected " <> toString (cmdName cmd))
-
-#endif
