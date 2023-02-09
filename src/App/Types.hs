@@ -57,9 +57,9 @@ instance FromJSON ReleaseGroupMetadata where
   parseJSON = withObject "ReleaseGroupMetadata" $ \obj ->
     ReleaseGroupMetadata
       <$> obj
-      .: "name"
+        .: "name"
       <*> obj
-      .: "release"
+        .: "release"
 
 newtype MonorepoAnalysisOpts = MonorepoAnalysisOpts
   { monorepoAnalysisType :: Maybe Text
