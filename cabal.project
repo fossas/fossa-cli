@@ -1,4 +1,4 @@
-packages: . ~/devel/upgraded-fossa-cli-deps/bzlib ~/devel/upgraded-fossa-cli-deps/codec-rpm
+packages: . ../upgraded-fossa-cli-deps/bzlib ../upgraded-fossa-cli-deps/codec-rpm
 tests: True
 optimization: False
 
@@ -67,7 +67,7 @@ source-repository-package
 --     type: git
 --     location: /Users/csasarak/devel/upgraded-fossa-cli-deps/codec-rpm
 
-index-state: hackage.haskell.org 2023-02-08T18:37:40Z
+index-state: hackage.haskell.org 2023-02-08T21:47:53Z
 
 package *
   extra-include-dirs: /opt/homebrew/include
