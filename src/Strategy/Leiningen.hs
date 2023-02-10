@@ -203,10 +203,10 @@ buildEdges deps = Map.traverseWithKey single (depsTree deps) $> ()
 toClojureNode :: ClojureDep -> ClojureNode
 toClojureNode dep = ClojureNode (reverseDepNameMerge $ Text.replace "/" ":" (depName dep)) (depVersion dep)
 
--- When a dependencies groupID and artifactID are identical, leiningen merges them. 
+-- When a dependencies groupID and artifactID are identical, leiningen merges them.
 -- In order to satisfy the Maven dependency format, we reverse the merge of these names.
 reverseDepNameMerge :: Text -> Text
-reverseDepNameMerge dep = if Text.any (== ':') dep then dep else dep <> ":" <> dep 
+reverseDepNameMerge dep = if Text.any (== ':') dep then dep else dep <> ":" <> dep
 
 toDependency :: ClojureNode -> Set ClojureLabel -> Dependency
 toDependency node = foldr applyLabel start
@@ -252,9 +252,9 @@ ednVecToMap = go Map.empty
     go m vec
       | V.null vec = pure m
       | otherwise = do
-          key <- EDN.vecGet 0 vec
-          value <- EDN.vecGet 1 vec
-          go (Map.insert key value m) (V.drop 2 vec)
+        key <- EDN.vecGet 0 vec
+        value <- EDN.vecGet 1 vec
+        go (Map.insert key value m) (V.drop 2 vec)
 
 -- | The FromEDN type for lein deps output
 newtype Deps = Deps
