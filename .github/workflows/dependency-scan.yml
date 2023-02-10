@@ -24,7 +24,10 @@ jobs:
           ./install-latest.sh -d
 
       - name: Use Spectrometer's GHC and Cabal
+        # The first line works around a ghcup issue:
+        # https://github.com/actions/runner-images/issues/7061#issuecomment-1422639889
         run: |
+          sudo chown -R $USER /usr/local/.ghcup
           ghcup install ghc 9.0.2
           ghcup set ghc 9.0.2
           ghcup install cabal 3.6.2.0
