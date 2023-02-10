@@ -52,7 +52,7 @@ import Data.List (sort, sortBy)
 import Data.List.Extra ((!?))
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Ord (comparing)
 import Data.String.Conversion (ToText, encodeUtf8, toText)
 import Data.Text (Text, toLower, toUpper)
@@ -287,6 +287,9 @@ data Issue = Issue
   , issueType :: IssueType
   , issueRule :: Maybe IssueRule
   , issueLicense :: Maybe Text
+  , issueDashURL :: Maybe Text
+  , issueCVE :: Maybe Text
+  , issueFixedIn :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -363,6 +366,9 @@ instance FromJSON Issue where
       <*> obj .: "type"
       <*> obj .:? "rule"
       <*> obj .:? "license"
+      <*> obj .:? "issueDashURL"
+      <*> obj .:? "cve"
+      <*> obj .:? "fixedIn"
 
 instance ToJSON Issue where
   toJSON Issue{..} =
@@ -374,6 +380,9 @@ instance ToJSON Issue where
       , "type" .= issueType
       , "rule" .= issueRule
       , "license" .= issueLicense
+      , "issueDashURL" .= issueDashURL
+      , "cve" .= issueCVE
+      , "fixedIn" .= issueFixedIn
       ]
 
 instance FromJSON IssueType where
@@ -625,7 +634,15 @@ renderedIssues issues = rendered
       fromMaybe revisionId $ Text.split (\c -> c == '$' || c == '+') revisionId !? 1
 
     renderIssue :: Issue -> Doc ann
-    renderIssue Issue{..} = vsep (map format [issueTitle])
+    renderIssue Issue{..} =
+      vsep
+        ( map format . catMaybes $
+            [ Just issueTitle
+            , cveMessage
+            , fixedIn
+            , issueLink
+            ]
+        )
       where
         format :: Text -> Doc ann
         format = fill padding . pretty
@@ -663,6 +680,15 @@ renderedIssues issues = rendered
             <> fromMaybe ("(unknown policy, issueId: " <> intToText issueId <> ") ") issueLicense
             <> "on"
             <> nameRevision
+
+        issueLink :: Maybe Text
+        issueLink = ("More information: " <>) <$> issueDashURL
+
+        cveMessage :: Maybe Text
+        cveMessage = ("CVE ID: " <>) <$> issueCVE
+
+        fixedIn :: Maybe Text
+        fixedIn = ("Fixed in: " <>) <$> issueFixedIn
 
         issuePolicyFlagMessage :: Text
         issuePolicyFlagMessage = fromMaybe missingRuleIdMsg (issuePolicyFlagMsg <|> missingLicenseIdMsg)

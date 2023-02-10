@@ -1,5 +1,15 @@
 # FOSSA CLI Changelog
 
+<!-- title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
+
+## v3.6.17
+
+- `fossa test`: Display CVE, fixed version information, and issue dashboard links when possible. ([#1146](https://github.com/fossas/fossa-cli/pull/1146))
+
+## v3.6.16
+
+- Project labels: Support project labels from command line and configuration file ([1145](https://github.com/fossas/fossa-cli/pull/1145))
+
 ## v3.6.15
 
 - Container scanning: support more tar formats. ([1142](https://github.com/fossas/fossa-cli/pull/1142))

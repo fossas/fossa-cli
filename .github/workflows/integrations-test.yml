@@ -12,7 +12,11 @@ jobs:
   integration-test:
     name: integration-test
     runs-on: ubuntu-latest
+    # Be sure to update the env below too
     container: fossa/haskell-static-alpine:ghc-9.0.2
+
+    env:
+      GHC_VERSION: '9.0.2'
 
     steps:
     - uses: actions-rs/toolchain@v1
@@ -60,10 +64,10 @@ jobs:
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
-        key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('**/*.cabal') }}
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-${{ hashFiles('**/*.cabal', 'cabal.project.ci.linux') }}
         restore-keys: |
-          ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
-          ${{ runner.os }}-${{ matrix.ghc }}-
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-
           ${{ runner.os }}-
 
     - name: Build Rust dependencies
@@ -85,4 +89,4 @@ jobs:
 
     - name: Run all integration tests
       run: |
-        cabal test --project-file=cabal.project.ci.linux integration-tests --test-show-details=direct --test-option=--times
+        cabal test --project-file=cabal.project.ci.linux --test-show-details=direct --test-option=--times integration-tests

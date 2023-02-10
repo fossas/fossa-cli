@@ -73,7 +73,11 @@ jobs:
   cabal-install-check:
     name: cabal-install-check
     runs-on: ubuntu-latest
+    # Be sure to update the env var below
     container: ghcr.io/fossas/haskell-dev-tools:9.0.2
+
+    env:
+      GHC_VERSION: '9.0.2'
 
     steps:
       - uses: actions/checkout@v3
@@ -83,17 +87,18 @@ jobs:
         name: Cache cabal store
         with:
           path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
-          key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('**/*.cabal') }}
+          key: ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-${{ hashFiles('**/*.cabal', 'cabal.project.ci.linux') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
-            ${{ runner.os }}-${{ matrix.ghc }}-
+            ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-
+            ${{ runner.os }}-${{ env.GHC_VERSION }}-
             ${{ runner.os }}-
 
       - name: Run `cabal install`
         run: |
           apk add xz-dev bzip2-dev bzip2-static
           cabal update
-          cabal install
+          # -Wwarn switch because warnings about missing vendor bins would be emitted
+          cabal install --project-file=cabal.project.ci.linux --ghc-options="-Wwarn"
 
   schema-lint-check:
     name: "schema lint check"

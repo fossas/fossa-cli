@@ -61,6 +61,13 @@
                         "name",
                         "release"
                     ]
+                },
+                "labels": {
+                    "type": "array",
+                    "description": "A list of labels that are assigned to the project",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

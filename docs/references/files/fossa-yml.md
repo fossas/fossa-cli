@@ -22,6 +22,9 @@ project:
   releaseGroup:
     name: release-group-name
     release: 123-release-candidate
+  labels:
+    - project-label-1
+    - test-project
 
 revision:
   commit: "12345"
@@ -126,6 +129,11 @@ The Jira Project Key to associate with your project for improved issue triage. R
 The `name:` and `release:` of the release group's release to add your project to in the FOSSA dashboard.
 
 If you choose to associate a project with a release group, you **must** supply both name and release.
+
+#### `project.labels:`
+The `labels` field allows you to add labels to projects so that you can classify certain projects how you would like. This adds a more flexible way to query for projects in the FOSSA UI as opposed to assigning a project to a team.
+
+Up to 5 labels are allowed to be associated with a project at a time. Labels will be applied in order up to the limit of 5 labels and then ignored.
 
 ### `revision:`
 The revision fields are used to help FOSSA differentiate between one upload for a project and another, just as GitHub uses commit hashes and branch names.

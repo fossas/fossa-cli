@@ -97,6 +97,7 @@ import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
 import GHC.Generics (Generic)
 import Options.Applicative (
+  Alternative (many),
   Parser,
   ReadM,
   argument,
@@ -146,6 +147,7 @@ metadataOpts =
     <*> optional (strOption (long "link" <> short 'L' <> help "a link to attach to the current build"))
     <*> optional (strOption (long "team" <> short 'T' <> help "this repository's team inside your organization"))
     <*> optional (strOption (long "policy" <> help "the policy to assign to this project in FOSSA"))
+    <*> many (strOption (long "project-label" <> help "assign up to 5 labels to the project"))
     <*> optional releaseGroupMetadataOpts
 
 releaseGroupMetadataOpts :: Parser ReleaseGroupMetadata
