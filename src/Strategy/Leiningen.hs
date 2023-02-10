@@ -201,7 +201,12 @@ buildEdges deps = Map.traverseWithKey single (depsTree deps) $> ()
           buildEdges deeper
 
 toClojureNode :: ClojureDep -> ClojureNode
-toClojureNode dep = ClojureNode (Text.replace "/" ":" (depName dep)) (depVersion dep)
+toClojureNode dep = ClojureNode (reverseDepNameMerge $ Text.replace "/" ":" (depName dep)) (depVersion dep)
+
+-- When a dependencies groupID and artifactID are identical, leiningen merges them. 
+-- In order to satisfy the Maven dependency format, we reverse the merge of these names.
+reverseDepNameMerge :: Text -> Text
+reverseDepNameMerge dep = if Text.any (== ':') dep then dep else dep <> ":" <> dep 
 
 toDependency :: ClojureNode -> Set ClojureLabel -> Dependency
 toDependency node = foldr applyLabel start
