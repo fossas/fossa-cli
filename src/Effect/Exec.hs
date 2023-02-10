@@ -21,6 +21,7 @@ module Effect.Exec (
   module System.Exit,
   execThrow',
   Has,
+  CandidateCommandEffs,
   CandidateAnalysisCommands (..),
   mkAnalysisCommand,
   mkSingleCandidateAnalysisCommand,
@@ -129,9 +130,9 @@ instance FromJSON CmdFailure where
   parseJSON = withObject "CmdFailure" $ \obj ->
     CmdFailure
       <$> obj
-        .: "cmdFailureCmd"
+      .: "cmdFailureCmd"
       <*> obj
-        .: "cmdFailureDir"
+      .: "cmdFailureDir"
       <*> (obj .: "cmdFailureExit" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStdout" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStderr" >>= fromRecordedValue)
@@ -282,6 +283,9 @@ execThrow' cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
   dir <- getCurrentDir
   execThrow dir cmd
 
+-- | Shorthand for the effects needed to select a candidate analysis command.
+type CandidateCommandEffs sig m = (Has Diagnostics sig m, Has Exec sig m, Has (Reader OverrideDynamicAnalysisBinary) sig m)
+
 -- | Describe a set of command names and the arguments used to validate the command names.
 -- Optionally, also specify the override kind for the command, which is used
 -- to look for a potential override command provided by the user from the environment.
@@ -304,9 +308,7 @@ mkSingleCandidateAnalysisCommand cmd = CandidateAnalysisCommands (NE.singleton c
 -- It is also possible that no supported command is valid in the provided context;
 -- in such a case a diagnostics error is thrown in @m@.
 mkAnalysisCommand ::
-  ( Has Diagnostics sig m
-  , Has Exec sig m
-  , Has (Reader OverrideDynamicAnalysisBinary) sig m
+  ( CandidateCommandEffs sig m
   ) =>
   CandidateAnalysisCommands ->
   Path Abs Dir ->

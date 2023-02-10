@@ -9,10 +9,8 @@ module Strategy.Maven.DepTree (
   buildGraph,
 ) where
 
-import App.Types (OverrideDynamicAnalysisBinary)
 import Control.Algebra (Has, run)
 import Control.Applicative (some, (<|>))
-import Control.Carrier.Reader (Reader)
 import Control.Effect.Diagnostics (Diagnostics, context, fatal)
 import Control.Effect.Exception (SomeException, finally)
 import Control.Effect.Lift (Lift, sendIO)
@@ -30,7 +28,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Effect.Exec (AllowErr (..), Command (..), Exec, exec, mkAnalysisCommand, mkSingleCandidateAnalysisCommand)
+import Effect.Exec (AllowErr (..), CandidateCommandEffs, Command (..), Exec, exec, mkAnalysisCommand, mkSingleCandidateAnalysisCommand)
 import Effect.Grapher (direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser)
 import Graphing (Graphing, gmap, shrinkRoots)
@@ -49,15 +47,7 @@ import Text.Megaparsec.Char.Lexer qualified as Lexer
 import Types (GraphBreadth (Complete))
 
 -- Construct the Command for running `mvn dependency:tree` correctly.
-deptreeCmd ::
-  ( Has Diagnostics sig m
-  , Has Exec sig m
-  , Has (Reader OverrideDynamicAnalysisBinary) sig m
-  ) =>
-  Path Abs Dir ->
-  Maybe (Path Abs File) ->
-  Path Abs File ->
-  m Command
+deptreeCmd :: CandidateCommandEffs sig m => Path Abs Dir -> Maybe (Path Abs File) -> Path Abs File -> m Command
 deptreeCmd workdir settingsFile outputFile = mkAnalysisCommand candidates workdir args allowErr
   where
     candidates = mkSingleCandidateAnalysisCommand "mvn" ["-v"] $ Just MavenType
@@ -107,7 +97,7 @@ analyze ::
   , Has ReadFS sig m
   , Has Diagnostics sig m
   , Has (Lift IO) sig m
-  , Has (Reader OverrideDynamicAnalysisBinary) sig m
+  , CandidateCommandEffs sig m
   ) =>
   Path Abs Dir ->
   m (Graphing Dependency, GraphBreadth)
@@ -140,11 +130,7 @@ analyze dir = do
     -- Note that we do both of these in a single action so that the `finally`
     -- above runs for both exceptions in the exec and in the parsing. Do not
     -- separate these two into different actions.
-    execAndParse ::
-      (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Reader OverrideDynamicAnalysisBinary) sig m) =>
-      Maybe (Path Abs File) ->
-      Path Abs File ->
-      m [DotGraph]
+    execAndParse :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Maybe (Path Abs File) -> Path Abs File -> m [DotGraph]
     execAndParse settingsFile tmpFile = do
       cmd <- context "Build maven command" $ deptreeCmd dir settingsFile tmpFile
       _ <- context ("Running '" <> cmdName cmd <> " dependency:tree'") $ exec dir cmd
