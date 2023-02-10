@@ -24,3 +24,4 @@ In order to find Leiningen projects, we look for `project.clj` files which speci
   [org.clojure/spec.alpha "0.2.176"] nil}}
 ```
 2. Parse this output to determine the full dependency graph and dependency versions.
+3. Dependencies which have the same groupID and artifactID (nrepl above) are expanded to satisfy Maven's repository standard. The differences can be seen in [this link](https://clojars.org/nrepl) where only `nrepl` is required by Leiningen, but nrepl:nrepl is required by Gradle and Maven.
