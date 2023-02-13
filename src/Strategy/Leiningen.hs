@@ -206,7 +206,7 @@ toClojureNode dep = ClojureNode (reverseDepNameMerge $ Text.replace "/" ":" (dep
 -- When a dependencies groupID and artifactID are identical, leiningen merges them.
 -- In order to satisfy the Maven dependency format, we reverse the merge of these names.
 reverseDepNameMerge :: Text -> Text
-reverseDepNameMerge dep = if Text.any (== ':') dep then dep else dep <> ":" <> dep
+reverseDepNameMerge dep = if ':' `Text.elem` dep then dep else dep <> ":" <> dep
 
 toDependency :: ClojureNode -> Set ClojureLabel -> Dependency
 toDependency node = foldr applyLabel start
