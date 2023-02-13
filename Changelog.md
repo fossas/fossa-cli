@@ -4,7 +4,7 @@
 
 ## v3.6.17
 
-- Handle Leinging deduped deps: expand groupID and artifactID in the leiningen tactic to satisfy the Maven fetcher ([#1152]](https://github.com/fossas/fossa-cli/pull/1152))
+- Handle Leiningen deduped deps: expand groupID and artifactID in the leiningen tactic to satisfy the Maven fetcher ([#1152]](https://github.com/fossas/fossa-cli/pull/1152))
 
 ## v3.6.17
 
