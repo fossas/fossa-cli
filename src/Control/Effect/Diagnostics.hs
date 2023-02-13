@@ -27,6 +27,7 @@ module Control.Effect.Diagnostics (
   fatalOnIOException',
   fatalOnSomeException,
   fatalOnSomeException',
+  warnOnSomeException,
   fromEither,
   fromEitherShow,
   fromEitherParser,
@@ -201,6 +202,20 @@ fatalOnException ::
   m a ->
   m a
 fatalOnException mangle ctx go = context ctx $ safeCatch go (fatal . mangle)
+
+-- | Throw a warning from a generic exception, wrapped in a new 'context' using the provided text.
+warnOnSomeException ::
+  forall exc err sig m a.
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , ToDiagnostic err
+  , Exception exc
+  ) =>
+  (exc -> err) ->
+  Text ->
+  m a ->
+  m (Maybe a)
+warnOnSomeException mangle ctx go = context ctx $ safeCatch (Just <$> go) (fmap (const Nothing) . warn . mangle)
 
 -- | Run a list of actions, combining the results of successful actions.
 --

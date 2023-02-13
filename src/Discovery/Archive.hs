@@ -16,7 +16,7 @@ import Codec.Archive.Zip qualified as Zip
 import Codec.Compression.BZip qualified as BZip
 import Codec.Compression.GZip qualified as GZip
 import Conduit (runConduit, runResourceT, sourceFileBS, (.|))
-import Control.Effect.Diagnostics (Diagnostics, Has, ToDiagnostic (renderDiagnostic), context, fatalOnSomeException')
+import Control.Effect.Diagnostics (Diagnostics, Has, ToDiagnostic (renderDiagnostic), context, warnOnSomeException)
 import Control.Effect.Exception (SomeException)
 import Control.Effect.Finally (Finally, onExit)
 import Control.Effect.Lift (Lift, sendIO)
@@ -93,7 +93,10 @@ withArchive' ::
   -- | Callback
   (Path Abs Dir -> m c) ->
   m (Maybe c)
-withArchive' file go = traverse (\e -> withArchive e file go) (selectUnarchiver $ fileName file)
+withArchive' file go =
+  case selectUnarchiver (fileName file) of
+    Just extract -> withArchive extract file go
+    Nothing -> pure Nothing
 
 -- | Extract an archive to a temporary directory, and run the provided callback
 -- on the temporary directory. Archive contents are removed when the callback
@@ -106,8 +109,8 @@ withArchive ::
   Path Abs File ->
   -- | Callback
   (Path Abs Dir -> m c) ->
-  m c
-withArchive extract file go = fatalOnSomeException' (ArchiveUnpackFailure file) "withArchive" $ do
+  m (Maybe c)
+withArchive extract file go = warnOnSomeException (ArchiveUnpackFailure file) "withArchive" $ do
   tmpDir <- mkTempDir (fileName file)
   extract tmpDir file
   go tmpDir
