@@ -3,6 +3,8 @@
 module App.Fossa.RunThemis (
   execThemis,
   execRawThemis,
+  -- `themisCommand` is used by Hubble.
+  themisCommand,
   themisFlags,
 ) where
 
