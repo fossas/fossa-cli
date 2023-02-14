@@ -9,6 +9,7 @@ module Discovery.Archive (
   extractTarBz2,
   extractZip,
   selectUnarchiver,
+  unpackFailurePath,
 ) where
 
 import Codec.Archive.Tar qualified as Tar
@@ -44,6 +45,9 @@ import Prettyprinter (Pretty (pretty), hsep, viaShow, vsep)
 import Prelude hiding (zip)
 
 data ArchiveUnpackFailure = ArchiveUnpackFailure (Path Abs File) SomeException
+
+unpackFailurePath :: ArchiveUnpackFailure -> Path Abs File
+unpackFailurePath (ArchiveUnpackFailure path _) = path
 
 instance ToDiagnostic ArchiveUnpackFailure where
   renderDiagnostic (ArchiveUnpackFailure file exc) =
@@ -101,6 +105,8 @@ withArchive' file go =
 -- | Extract an archive to a temporary directory, and run the provided callback
 -- on the temporary directory. Archive contents are removed when the callback
 -- finishes.
+--
+-- Exceptions thrown during archive extraction are emitted as warnings and 'Nothing' is returned.
 withArchive ::
   (Has (Lift IO) sig m, Has Diagnostics sig m, Has Finally sig m) =>
   -- | Archive extraction function

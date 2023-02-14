@@ -4,13 +4,14 @@ module Discovery.ArchiveSpec (spec) where
 
 import Conduit (runConduitRes, sourceFile, (.|))
 import Control.Algebra (Has)
-import Control.Carrier.Diagnostics (Diagnostics, fatalOnIOException, fatalText, runDiagnostics)
+import Control.Carrier.Diagnostics (Diagnostics, fatal, fatalOnIOException, fatalText, runDiagnostics)
 import Control.Carrier.Finally (runFinally)
 import Control.Carrier.Stack (runStack)
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Crypto.Hash (Digest, SHA256)
 import Data.Conduit.Extra (sinkHash)
+import Data.List (isInfixOf)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.String.Conversion (ToText (..))
@@ -23,14 +24,17 @@ import Path (Abs, Dir, File, Path, Rel, SomeBase (Abs, Rel), mkRelDir, mkRelFile
 import Path.Extra (tryMakeRelative)
 import Path.IO qualified as PIO
 import ResultUtil
-import Test.Hspec (Spec, describe, it, runIO, shouldBe)
+import Test.Hspec (Spec, describe, it, runIO, shouldBe, shouldSatisfy)
+
+failOnMaybe :: (Has Diagnostics sig m) => String -> m (Maybe a) -> m a
+failOnMaybe s m = maybe (fatal s) pure =<< m
 
 spec :: Spec
 spec = do
   describe "extract zip archive to a temporary location" $ do
     target <- runIO simpleZipPath
     result <- runIO $
-      runStack . runDiagnostics . runFinally . withArchive extractZip target $ \dir -> do
+      runStack . runDiagnostics . runFinally . failOnMaybe "extractZip" . withArchive extractZip target $ \dir -> do
         contentA <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "a.txt")
         contentB <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "b.txt")
         pure (dir, contentA, contentB)
@@ -47,7 +51,7 @@ spec = do
   describe "extract tar archive to a temporary location" $ do
     target <- runIO simpleTarPath
     result <- runIO $
-      runStack . runDiagnostics . runFinally . withArchive extractTar target $ \dir -> do
+      runStack . runDiagnostics . runFinally . failOnMaybe "extractTar" . withArchive extractTar target $ \dir -> do
         contentA <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "a.txt")
         contentB <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "b.txt")
         pure (dir, contentA, contentB)
@@ -64,7 +68,7 @@ spec = do
   describe "extract tar.gz archive to a temporary location" $ do
     target <- runIO simpleTarGzPath
     result <- runIO $
-      runStack . runDiagnostics . runFinally . withArchive extractTarGz target $ \dir -> do
+      runStack . runDiagnostics . runFinally . failOnMaybe "extractTarGz" . withArchive extractTarGz target $ \dir -> do
         contentA <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "a.txt")
         contentB <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "b.txt")
         pure (dir, contentA, contentB)
@@ -81,7 +85,7 @@ spec = do
   describe "extract tar.xz archive to a temporary location" $ do
     target <- runIO simpleTarXzPath
     result <- runIO $
-      runStack . runDiagnostics . runFinally . withArchive extractTarXz target $ \dir -> do
+      runStack . runDiagnostics . runFinally . failOnMaybe "extractTarXz" . withArchive extractTarXz target $ \dir -> do
         contentA <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "a.txt")
         contentB <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "b.txt")
         pure (dir, contentA, contentB)
@@ -98,7 +102,7 @@ spec = do
   describe "extract tar.bz2 archive to a temporary location" $ do
     target <- runIO simpleTarBz2Path
     result <- runIO $
-      runStack . runDiagnostics . runFinally . withArchive extractTarBz2 target $ \dir -> do
+      runStack . runDiagnostics . runFinally . failOnMaybe "extractZip" . withArchive extractTarBz2 target $ \dir -> do
         contentA <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "a.txt")
         contentB <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "b.txt")
         pure (dir, contentA, contentB)
@@ -114,7 +118,7 @@ spec = do
 
   describe "extract el7 (xz) rpm to a temporary location" $ do
     target <- runIO rpmCurlEl7Path
-    result <- runIO . runStack . runFinally . runDiagnostics . runReadFSIO $ withArchive extractRpm target hashFiles
+    result <- runIO . runStack . runFinally . runDiagnostics . runReadFSIO . failOnMaybe "extractZip" $ withArchive extractRpm target hashFiles
 
     it "should have extracted the correct contents" $
       assertOnSuccess result $
@@ -122,14 +126,25 @@ spec = do
 
   describe "extract fc35 (zstd) rpm to a temporary location" $ do
     target <- runIO rpmCurlFc35Path
-    result <- runIO . runStack . runFinally . runDiagnostics . runReadFSIO $ withArchive extractRpm target hashFiles
+    result <- runIO . runStack . runFinally . runDiagnostics . runReadFSIO . failOnMaybe "extractZip" $ withArchive extractRpm target hashFiles
 
     it "should have extracted the correct contents" $
       assertOnSuccess result $
         \_ contents -> contents `shouldBe` rpmCurlFc35ExpectedFiles
 
+  describe "Archive unpack failures" $ do
+    target <- runIO brokenZipPath
+    result <- runIO . runStack . runDiagnostics . runFinally $ withArchive extractZip target (pure . const ())
+
+    it "Succeeds with a warning on archive unpack failure" $ do
+      assertOnSuccess result $ \warnings _ ->
+        warnings `shouldSatisfy` any (\warning -> "Parsing of archive structure failed" `isInfixOf` show warning)
+
 simpleZipPath :: IO (Path Abs File)
 simpleZipPath = PIO.resolveFile' "test/Discovery/testdata/simple.zip"
+
+brokenZipPath :: IO (Path Abs File)
+brokenZipPath = PIO.resolveFile' "test/Discovery/testdata/broken.zip"
 
 simpleTarPath :: IO (Path Abs File)
 simpleTarPath = PIO.resolveFile' "test/Discovery/testdata/simple.tar"
