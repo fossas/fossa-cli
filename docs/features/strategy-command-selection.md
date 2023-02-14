@@ -12,7 +12,7 @@ The particular flags used are up to each strategy; sometimes they simply test wh
 and sometimes they may test that the command is of a particular minimum version or supports some capability.
 FOSSA refers to these flags as _evaluation flags_.
 
-If the command, run with the _evaluation flag_, exits with a non-zero exit code FOSSA CLI
+If the command, run with the _evaluation flags_, exits with a non-zero exit code FOSSA CLI
 determines that the candidate command is unsuitable and moves on to the next candidate.
 If no suitable command is found, the overall strategy fails.
 
@@ -59,7 +59,7 @@ where the earlier in the list the command appears, the higher priority that comm
 ```
 
 FOSSA CLI evaluates these candidates with the following commands in sequence,
-stopping after the first one evaluates with a non-zero exit code:
+stopping after the first one evaluates with exit code zero (signifying no error):
 ```
 ; /usr/local/bin/custom-mvn -v # exit code 1
 ; ./mvnw -v # exit code 0
