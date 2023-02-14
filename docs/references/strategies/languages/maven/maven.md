@@ -14,7 +14,15 @@ Maven analysis attempts these analysis methods in order:
 3. Run the maven plugin command version 3.3.0.
 4. Scan `pom.xml` files located in the file tree.
 
+FOSSA CLI uses [strategy command selection](../../../../features/strategy-command-selection.md) for Maven commands:
+- Maven _candidate commands_ are:
+  - If present, the command specified by the `FOSSA_MAVEN_CMD` environment variable.
+  - If present, the `mvnw` or `mvnw.bat` script in the project directory or any ancestor directory.
+  - Finally, the `mvn` command, which is searched for in `$PATH`.
+- The Maven _evaluation flag_ is `-v` for each _candidate command_.
+
 ## FAQ
+
 ### One of my transitive dependencies does not have path information
 The mavenplugin and treecmd tactic can result in transitive dependencies which do not display paths to parents. This example graph shows how that can happen:
 ```
