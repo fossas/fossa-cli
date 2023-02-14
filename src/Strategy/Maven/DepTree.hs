@@ -51,7 +51,7 @@ import Types (GraphBreadth (Complete))
 deptreeCmd :: CandidateCommandEffs sig m => Path Abs Dir -> Maybe (Path Abs File) -> Path Abs File -> m Command
 deptreeCmd workdir settingsFile outputFile = mkAnalysisCommand candidates workdir args allowErr
   where
-    candidates = CandidateAnalysisCommands ("mvn" :| ["mvnw"]) ["-v"] $ Just MavenType
+    candidates = CandidateAnalysisCommands ("mvnw" :| ["mvn"]) ["-v"] $ Just MavenType
     args =
       [ -- Run `dependency:tree`.
         --

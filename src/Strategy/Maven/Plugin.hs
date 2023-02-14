@@ -203,7 +203,7 @@ textArtifactToPluginOutput
                   }
 
 mavenCmdCandidates :: CandidateAnalysisCommands
-mavenCmdCandidates = CandidateAnalysisCommands ("mvn" :| ["mvnw"]) ["-v"] $ Just MavenType
+mavenCmdCandidates = CandidateAnalysisCommands ("mvnw" :| ["mvn"]) ["-v"] $ Just MavenType
 
 mavenInstallPluginCmd :: CandidateCommandEffs sig m => Path Abs Dir -> FP.FilePath -> DepGraphPlugin -> m Command
 mavenInstallPluginCmd workdir pluginFilePath plugin = mkAnalysisCommand mavenCmdCandidates workdir args Never
