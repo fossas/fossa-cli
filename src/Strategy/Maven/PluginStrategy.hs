@@ -8,7 +8,6 @@ module Strategy.Maven.PluginStrategy (
 
 import Control.Algebra (Has, run)
 import Control.Effect.Diagnostics (
-  Diagnostics,
   ToDiagnostic (renderDiagnostic),
   context,
   errCtx,
@@ -28,7 +27,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Effect.Exec (Exec)
+import Effect.Exec (CandidateCommandEffs)
 import Effect.Grapher (Grapher, edge, evalGrapher)
 import Effect.Grapher qualified as Grapher
 import Effect.ReadFS (ReadFS)
@@ -54,28 +53,25 @@ import Strategy.Maven.Plugin (
 import Types (GraphBreadth (..))
 
 analyze' ::
-  ( Has (Lift IO) sig m
+  ( CandidateCommandEffs sig m
+  , Has (Lift IO) sig m
   , Has ReadFS sig m
-  , Has Exec sig m
-  , Has Diagnostics sig m
   ) =>
   Path Abs Dir ->
   m (Graphing Dependency, GraphBreadth)
 analyze' dir = analyze dir depGraphPlugin
 
 analyzeLegacy' ::
-  ( Has (Lift IO) sig m
+  ( CandidateCommandEffs sig m
+  , Has (Lift IO) sig m
   , Has ReadFS sig m
-  , Has Exec sig m
-  , Has Diagnostics sig m
   ) =>
   Path Abs Dir ->
   m (Graphing Dependency, GraphBreadth)
 analyzeLegacy' dir = analyze dir depGraphPluginLegacy
 
 runReactor ::
-  ( Has Diagnostics sig m
-  , Has Exec sig m
+  ( CandidateCommandEffs sig m
   , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
@@ -87,10 +83,9 @@ runReactor dir plugin =
       <||> pure (ReactorOutput [])
 
 analyze ::
-  ( Has (Lift IO) sig m
+  ( CandidateCommandEffs sig m
+  , Has (Lift IO) sig m
   , Has ReadFS sig m
-  , Has Exec sig m
-  , Has Diagnostics sig m
   ) =>
   Path Abs Dir ->
   DepGraphPlugin ->

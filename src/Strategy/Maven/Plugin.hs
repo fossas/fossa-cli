@@ -120,12 +120,12 @@ installPlugin dir path plugin = do
 execPlugin :: (Has Exec sig m, Has Diagnostics sig m) => (DepGraphPlugin -> Command) -> Path Abs Dir -> DepGraphPlugin -> m ()
 execPlugin pluginToCmd dir plugin = void $ execThrow dir $ pluginToCmd plugin
 
-execPluginAggregate :: (CandidateCommandEffs sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginAggregate :: CandidateCommandEffs sig m => Path Abs Dir -> DepGraphPlugin -> m ()
 execPluginAggregate dir plugin = do
   cmd <- mavenPluginDependenciesCmd dir plugin
   execPlugin (const cmd) dir plugin
 
-execPluginReactor :: (CandidateCommandEffs sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginReactor :: CandidateCommandEffs sig m => Path Abs Dir -> DepGraphPlugin -> m ()
 execPluginReactor dir plugin = do
   cmd <- mavenPluginReactorCmd dir plugin
   execPlugin (const cmd) dir plugin
