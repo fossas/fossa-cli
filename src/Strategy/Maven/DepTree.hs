@@ -17,6 +17,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception.Extra (safeTry)
 import Data.Char (isSpace)
 import Data.Foldable (for_)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -28,7 +29,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Effect.Exec (AllowErr (..), CandidateCommandEffs, Command (..), Exec, exec, mkAnalysisCommand, mkSingleCandidateAnalysisCommand)
+import Effect.Exec (AllowErr (..), CandidateAnalysisCommands (..), CandidateCommandEffs, Command (..), Exec, exec, mkAnalysisCommand)
 import Effect.Grapher (direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser)
 import Graphing (Graphing, gmap, shrinkRoots)
@@ -50,7 +51,7 @@ import Types (GraphBreadth (Complete))
 deptreeCmd :: CandidateCommandEffs sig m => Path Abs Dir -> Maybe (Path Abs File) -> Path Abs File -> m Command
 deptreeCmd workdir settingsFile outputFile = mkAnalysisCommand candidates workdir args allowErr
   where
-    candidates = mkSingleCandidateAnalysisCommand "mvn" ["-v"] $ Just MavenType
+    candidates = CandidateAnalysisCommands ("mvn" :| ["mvnw"]) ["-v"] $ Just MavenType
     args =
       [ -- Run `dependency:tree`.
         --

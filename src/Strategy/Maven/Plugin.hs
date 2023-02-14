@@ -30,6 +30,7 @@ import Data.ByteString qualified as BS
 import Data.FileEmbed.Extra (embedFile')
 import Data.Foldable (Foldable (fold), foldl')
 import Data.Functor (void)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, isNothing)
@@ -40,13 +41,12 @@ import Data.Tree (Tree (..))
 import DepTypes (DepType (MavenType))
 import Effect.Exec (
   AllowErr (Never),
-  CandidateAnalysisCommands,
+  CandidateAnalysisCommands (..),
   CandidateCommandEffs,
   Command (..),
   Exec,
   execThrow,
   mkAnalysisCommand,
-  mkSingleCandidateAnalysisCommand,
  )
 import Effect.ReadFS (
   ReadFS,
@@ -203,7 +203,7 @@ textArtifactToPluginOutput
                   }
 
 mavenCmdCandidates :: CandidateAnalysisCommands
-mavenCmdCandidates = mkSingleCandidateAnalysisCommand "mvn" ["-v"] $ Just MavenType
+mavenCmdCandidates = CandidateAnalysisCommands ("mvn" :| ["mvnw"]) ["-v"] $ Just MavenType
 
 mavenInstallPluginCmd :: CandidateCommandEffs sig m => Path Abs Dir -> FP.FilePath -> DepGraphPlugin -> m Command
 mavenInstallPluginCmd workdir pluginFilePath plugin = mkAnalysisCommand mavenCmdCandidates workdir args Never
