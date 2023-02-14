@@ -17,7 +17,6 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception.Extra (safeTry)
 import Data.Char (isSpace)
 import Data.Foldable (for_)
-import Data.List.NonEmpty (NonEmpty (..))
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -29,12 +28,13 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Effect.Exec (AllowErr (..), CandidateAnalysisCommands (..), CandidateCommandEffs, Command (..), Exec, exec, mkAnalysisCommand)
+import Effect.Exec (AllowErr (..), CandidateCommandEffs, Command (..), Exec, exec, mkAnalysisCommand)
 import Effect.Grapher (direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser)
 import Graphing (Graphing, gmap, shrinkRoots)
 import Path (Abs, Dir, File, Path, Rel, fromAbsFile, parseRelFile, (</>))
 import Path.IO (getTempDir, removeFile)
+import Strategy.Maven.Plugin (mavenCmdCandidates)
 import System.Random (randomIO)
 import Text.Megaparsec (
   Parsec,
@@ -48,10 +48,11 @@ import Text.Megaparsec.Char.Lexer qualified as Lexer
 import Types (GraphBreadth (Complete))
 
 -- Construct the Command for running `mvn dependency:tree` correctly.
-deptreeCmd :: CandidateCommandEffs sig m => Path Abs Dir -> Maybe (Path Abs File) -> Path Abs File -> m Command
-deptreeCmd workdir settingsFile outputFile = mkAnalysisCommand candidates workdir args allowErr
+deptreeCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Maybe (Path Abs File) -> Path Abs File -> m Command
+deptreeCmd workdir settingsFile outputFile = do
+  candidates <- mavenCmdCandidates workdir
+  mkAnalysisCommand candidates workdir args allowErr
   where
-    candidates = CandidateAnalysisCommands ("mvnw" :| ["mvn"]) ["-v"] $ Just MavenType
     args =
       [ -- Run `dependency:tree`.
         --

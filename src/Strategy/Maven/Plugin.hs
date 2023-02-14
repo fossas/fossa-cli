@@ -17,10 +17,11 @@ module Strategy.Maven.Plugin (
   textArtifactToPluginOutput,
   execPluginAggregate,
   execPluginReactor,
+  mavenCmdCandidates,
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, warn)
+import Control.Effect.Diagnostics (Diagnostics, warn, (<||>))
 import Control.Effect.Exception (Lift, bracket)
 import Control.Effect.Lift (sendIO)
 import Control.Monad (when)
@@ -31,6 +32,7 @@ import Data.FileEmbed.Extra (embedFile')
 import Data.Foldable (Foldable (fold), foldl')
 import Data.Functor (void)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, isNothing)
@@ -39,6 +41,7 @@ import Data.Text (Text)
 import Data.Traversable (for)
 import Data.Tree (Tree (..))
 import DepTypes (DepType (MavenType))
+import Discovery.Walk (findFileInAncestor)
 import Effect.Exec (
   AllowErr (Never),
   CandidateAnalysisCommands (..),
@@ -112,7 +115,7 @@ withUnpackedPlugin plugin act =
 
       act pluginJarFilepath
 
-installPlugin :: (CandidateCommandEffs sig m) => Path Abs Dir -> FP.FilePath -> DepGraphPlugin -> m ()
+installPlugin :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> FP.FilePath -> DepGraphPlugin -> m ()
 installPlugin dir path plugin = do
   cmd <- mavenInstallPluginCmd dir path plugin
   void $ execThrow dir cmd
@@ -120,12 +123,12 @@ installPlugin dir path plugin = do
 execPlugin :: (Has Exec sig m, Has Diagnostics sig m) => (DepGraphPlugin -> Command) -> Path Abs Dir -> DepGraphPlugin -> m ()
 execPlugin pluginToCmd dir plugin = void $ execThrow dir $ pluginToCmd plugin
 
-execPluginAggregate :: CandidateCommandEffs sig m => Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginAggregate :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
 execPluginAggregate dir plugin = do
   cmd <- mavenPluginDependenciesCmd dir plugin
   execPlugin (const cmd) dir plugin
 
-execPluginReactor :: CandidateCommandEffs sig m => Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginReactor :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
 execPluginReactor dir plugin = do
   cmd <- mavenPluginReactorCmd dir plugin
   execPlugin (const cmd) dir plugin
@@ -202,11 +205,22 @@ textArtifactToPluginOutput
                   , outEdges = newEdges <> cEdges
                   }
 
-mavenCmdCandidates :: CandidateAnalysisCommands
-mavenCmdCandidates = CandidateAnalysisCommands ("mvnw" :| ["mvn"]) ["-v"] $ Just MavenType
+-- | Search for a maven wrapper in any parent directory and if found use it as a candidate command.
+-- Otherwise just use 'mvn'.
+mavenCmdCandidates :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m CandidateAnalysisCommands
+mavenCmdCandidates dir = do
+  cmds <- (flip (:|) ["mvn"] . toText <$> mvnWrapperPath) <||> pure (NE.singleton "mvn")
+  pure $ CandidateAnalysisCommands cmds ["-v"] $ Just MavenType
+  where
+    -- Unlike with the gradle wrapper, it's not _expected_ for maven projects to use the maven wrapper.
+    -- Given that, don't warn on failure to find a wrapper; only warn if we find a wrapper and it fails to execute.
+    mvnWrapperPath :: (Has ReadFS sig m, Has Diagnostics sig m) => m (Path Abs File)
+    mvnWrapperPath = findFileInAncestor dir "mvnw" <||> findFileInAncestor dir "mvnw.bat"
 
-mavenInstallPluginCmd :: CandidateCommandEffs sig m => Path Abs Dir -> FP.FilePath -> DepGraphPlugin -> m Command
-mavenInstallPluginCmd workdir pluginFilePath plugin = mkAnalysisCommand mavenCmdCandidates workdir args Never
+mavenInstallPluginCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> FP.FilePath -> DepGraphPlugin -> m Command
+mavenInstallPluginCmd workdir pluginFilePath plugin = do
+  candidates <- mavenCmdCandidates workdir
+  mkAnalysisCommand candidates workdir args Never
   where
     args =
       [ "org.apache.maven.plugins:maven-install-plugin:3.0.0-M1:install-file"
@@ -217,10 +231,12 @@ mavenInstallPluginCmd workdir pluginFilePath plugin = mkAnalysisCommand mavenCmd
       , "-Dfile=" <> toText pluginFilePath
       ]
 
--- |The aggregate command is documented
--- [here.](https://ferstl.github.io/depgraph-maven-plugin/aggregate-mojo.html)
-mavenPluginDependenciesCmd :: CandidateCommandEffs sig m => Path Abs Dir -> DepGraphPlugin -> m Command
-mavenPluginDependenciesCmd workdir plugin = mkAnalysisCommand mavenCmdCandidates workdir args Never
+-- | The aggregate command is documented
+--  [here.](https://ferstl.github.io/depgraph-maven-plugin/aggregate-mojo.html)
+mavenPluginDependenciesCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m Command
+mavenPluginDependenciesCmd workdir plugin = do
+  candidates <- mavenCmdCandidates workdir
+  mkAnalysisCommand candidates workdir args Never
   where
     args =
       [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":aggregate"
@@ -238,10 +254,12 @@ mavenPluginDependenciesCmd workdir plugin = mkAnalysisCommand mavenCmdCandidates
         "-DrepeatTransitiveDependenciesInTextGraph=true"
       ]
 
--- |The reactor command is documented
--- [here.](https://ferstl.github.io/depgraph-maven-plugin/reactor-mojo.html)
-mavenPluginReactorCmd :: CandidateCommandEffs sig m => Path Abs Dir -> DepGraphPlugin -> m Command
-mavenPluginReactorCmd workdir plugin = mkAnalysisCommand mavenCmdCandidates workdir args Never
+-- | The reactor command is documented
+--  [here.](https://ferstl.github.io/depgraph-maven-plugin/reactor-mojo.html)
+mavenPluginReactorCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m Command
+mavenPluginReactorCmd workdir plugin = do
+  candidates <- mavenCmdCandidates workdir
+  mkAnalysisCommand candidates workdir args Never
   where
     args =
       [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":reactor"
