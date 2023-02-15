@@ -16,7 +16,7 @@ import Control.Carrier.Diagnostics (
  )
 import Control.Carrier.Finally (runFinally)
 import Control.Effect.Lift (Lift)
-import Control.Monad (when)
+import Control.Monad (join, when)
 import Data.List (isSuffixOf, sortOn)
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -65,7 +65,7 @@ resolveJar root file = do
     . runFinally
     $ withArchive extractZip file
     $ \dir -> tacticPom dir <||> tacticMetaInf dir
-  pure $ fmap (toUserDefDep root file) result
+  pure $ fmap (toUserDefDep root file) (join result)
 
 newtype FailedToResolveJar = FailedToResolveJar (Path Abs File)
 instance ToDiagnostic FailedToResolveJar where
