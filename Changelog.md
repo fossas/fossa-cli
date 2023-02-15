@@ -2,6 +2,9 @@
 
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
+## v3.6.18
+- License Scanning: Emit a warning if unarchiving fails rather than a fatal error. ([#1153](https://github.com/fossas/fossa-cli/pull/1153))
+
 ## v3.6.17
 
 - Handle Leiningen deduped deps: expand groupID and artifactID in the leiningen tactic to satisfy the Maven fetcher ([#1152]](https://github.com/fossas/fossa-cli/pull/1152))
