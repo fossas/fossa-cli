@@ -129,8 +129,8 @@ It is important to note that neither type of strategy has an inherent benefit wh
 | Language/Package Manager                                                                                                                        | Dynamic | Static | Detect Vendored Code | Primary Strategy |
 |-------------------------------------------------------------------------------------------------------------------------------------------------|---------|--------|----------------------|------------------|
 | [C#](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/dotnet)                                               | ✅       | ✅      | ❌                    | Dynamic          |
-| [C](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/c-cpp/c-cpp.md)                                        | ✅       | ✅      | ✅                    | None             |
-| [C++](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/c-cpp/c-cpp.md)                                      | ✅       | ✅      | ✅                    | None             |
+| [C](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/c-cpp/c-cpp.md) *️⃣                                    | ✅       | ✅      | ✅                    | None             |
+| [C++](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/c-cpp/c-cpp.md) *️⃣                                  | ✅       | ✅      | ✅                    | None             |
 | [Clojure (leiningen)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/clojure/clojure.md)                  | ✅       | ❌      | ❌                    | Dynamic          |
 | [Dart (pub)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/dart/dart.md)                                 | ✅       | ✅      | ❌                    | Dynamic          |
 | [Elixer (mix)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/elixir/elixir.md)                           | ✅       | ❌      | ❌                    | Dynamic          |
@@ -157,3 +157,6 @@ It is important to note that neither type of strategy has an inherent benefit wh
 | [Ruby (bundler)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/ruby/ruby.md)                             | ✅       | ✅      | ❌                    | Static           |
 | [Rust (cargo)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/rust/rust.md)                               | ✅       | ❌      | ❌                    | Dynamic          |
 | [Scala (sbt)](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/scala)                                       | ✅       | ❌      | ❌                    | Dynamic          |
+
+*️⃣: Note that these strategies support _static_ and _dynamic_ detection differently than other strategies, and are not run by default.
+   Please make sure to check their linked documentation in the table above for more details.
