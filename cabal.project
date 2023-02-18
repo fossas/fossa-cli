@@ -68,7 +68,7 @@ source-repository-package
 -- TODO: Add commentary after making a PR against upstream
 source-repository-package
   type: git
-  location: git@github.com:fossas/codec-rpm.git
+  location: https://github.com/fossas/codec-rpm.git
   tag: 37081e93b0fbdb3e560be6a390fa7f7120a1b95d
 
 
