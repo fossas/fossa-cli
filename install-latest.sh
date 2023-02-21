@@ -43,8 +43,8 @@ execute() {
   tmpdir=$(mktmpdir)
   log_debug "downloading files into ${tmpdir}"
   http_download "${tmpdir}/${TARBALL}" "${TARBALL_URL}"
-  # http_download "${tmpdir}/${CHECKSUM}" "${CHECKSUM_URL}"
-  # hash_sha256_verify "${tmpdir}/${TARBALL}" "${tmpdir}/${CHECKSUM}"
+  http_download "${tmpdir}/${CHECKSUM}" "${CHECKSUM_URL}"
+  hash_sha256_verify "${tmpdir}/${TARBALL}" "${tmpdir}/${CHECKSUM}"
   srcdir="${tmpdir}"
   (cd "${tmpdir}" && untar "${TARBALL}")
   log_debug "setting up bindir: $BINDIR"
@@ -448,7 +448,7 @@ TARBALL=${NAME}.${FORMAT}
 TARBALL_URL=${GITHUB_DOWNLOAD}/${TAG}/${TARBALL}
 log_info "found fossa-cli ${VERSION} binary for ${PLATFORM} at ${TARBALL_URL}"
 
-CHECKSUM=${PROJECT_NAME}_${VERSION}_checksums.txt
+CHECKSUM=${TARBALL}.sha256
 CHECKSUM_URL=${GITHUB_DOWNLOAD}/${TAG}/${CHECKSUM}
 
 print_telemetry_disclaimer
