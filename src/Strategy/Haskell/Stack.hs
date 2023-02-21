@@ -59,6 +59,7 @@ import Types (
   DiscoveredProjectType (StackProjectType),
   GraphBreadth (Complete),
   VerConstraint (CEq),
+  DepType(GitType),
  )
 import Prelude
 
@@ -75,19 +76,30 @@ data StackDep = StackDep
 data StackLocation
   = Local
   | Remote
+  | Git Text Text -- URI
   | BuiltIn
   deriving (Eq, Ord, Show)
 
 instance FromJSON StackDep where
-  parseJSON = withObject "StackDep" $ \obj ->
-    StackDep
-      <$> obj .: "name"
-      <*> obj .: "version"
-      <*> obj .:? "dependencies" .!= []
-      <*> obj .:? "location" .!= BuiltIn
+  parseJSON =
+    withObject "StackDep" $ \obj -> do
+      location <- obj .:? "location" .!= BuiltIn
+      version <- case location of
+                   Git _ version -> pure version
+                   _ -> obj .: "version"
+      StackDep
+        <$> obj .: "name"
+        <*> pure version
+        <*> obj .:? "dependencies" .!= []
+        <*> pure location
 
 instance FromJSON StackLocation where
-  parseJSON = withObject "StackLocation" $ \obj -> obj .: "type" >>= parseLocationType
+  parseJSON = withObject "StackLocation" $ \obj -> obj .: "type" >>=
+    \case
+      "git" -> Git
+               <$> obj .: "url"
+               <*> obj .: "commit"
+      t -> parseLocationType t
 
 parseLocationType :: MonadFail m => Text -> m StackLocation
 parseLocationType txt
@@ -151,18 +163,25 @@ ignorePackageName :: PackageName -> a -> a
 ignorePackageName _ x = x
 
 shouldInclude :: StackDep -> Bool
-shouldInclude dep = Remote == stackLocation dep
+shouldInclude dep = case stackLocation dep of
+                      Remote -> True
+                      Git _ _ -> True
+                      _ -> False
 
 toDependency :: StackDep -> Dependency
 toDependency dep =
   Dependency
-    { dependencyType = HackageType
+    { dependencyType = depType
     , dependencyName = unPackageName $ stackName dep
     , dependencyVersion = Just $ CEq $ stackVersion dep
-    , dependencyLocations = []
+    , dependencyLocations = locations
     , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
+  where (locations, depType) =
+          case stackLocation dep of 
+            Git uri _ -> ([uri], GitType)
+            _ -> ([], HackageType)
 
 buildGraph :: Has Diagnostics sig m => [StackDep] -> m (G.Graphing Dependency)
 buildGraph deps = do
