@@ -6,7 +6,8 @@
         "name": "remote",
         "version": "remote-ver",
         "dependencies": [
-            "deep"
+            "deep",
+            "git-pkg"
         ]
     },
     {
@@ -31,5 +32,14 @@
     {
         "name": "builtin",
         "version": "builtin-ver"
+    },
+    { "name": "git-pkg",
+      "version": "ignored",
+      "dependencies": [],
+      "location": {
+          "type": "git",
+          "url": "https://domain.com/user/git-pkg",
+          "commit": "abc123"
+      }
     }
 ]

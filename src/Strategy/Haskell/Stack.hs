@@ -30,6 +30,7 @@ import Data.Aeson.Types (
  )
 import Data.Foldable (for_)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (mapMaybe)
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Discovery.Filters (AllFilters)
@@ -52,14 +53,13 @@ import GHC.Generics (Generic)
 import Graphing qualified as G
 import Path (Abs, Dir, File, Path)
 import Types (
-  DepType (HackageType),
+  DepType (GitType, HackageType),
   Dependency (..),
   DependencyResults (..),
   DiscoveredProject (..),
   DiscoveredProjectType (StackProjectType),
   GraphBreadth (Complete),
   VerConstraint (CEq),
-  DepType(GitType),
  )
 import Prelude
 
@@ -85,8 +85,8 @@ instance FromJSON StackDep where
     withObject "StackDep" $ \obj -> do
       location <- obj .:? "location" .!= BuiltIn
       version <- case location of
-                   Git _ version -> pure version
-                   _ -> obj .: "version"
+        Git _ sha -> pure sha
+        _ -> obj .: "version"
       StackDep
         <$> obj .: "name"
         <*> pure version
@@ -94,18 +94,15 @@ instance FromJSON StackDep where
         <*> pure location
 
 instance FromJSON StackLocation where
-  parseJSON = withObject "StackLocation" $ \obj -> obj .: "type" >>=
-    \case
-      "git" -> Git
-               <$> obj .: "url"
-               <*> obj .: "commit"
-      t -> parseLocationType t
-
-parseLocationType :: MonadFail m => Text -> m StackLocation
-parseLocationType txt
-  | txt == "hackage" = pure Remote
-  | txt `elem` ["project package", "archive"] = pure Local
-  | otherwise = fail $ "Bad location type: " ++ toString txt
+  parseJSON = withObject "StackLocation" $ \obj ->
+    do
+      (ty :: Text) <- obj .: "type"
+      case ty of
+        "git" -> Git <$> obj .: "url" <*> obj .: "commit"
+        "hackage" -> pure Remote
+        txt
+          | txt `elem` ["project package", "archive"] -> pure Local
+          | otherwise -> fail $ "Bad location type: " ++ toString txt
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject StackProject]
 discover = simpleDiscover findProjects mkProject StackProjectType
@@ -164,9 +161,9 @@ ignorePackageName _ x = x
 
 shouldInclude :: StackDep -> Bool
 shouldInclude dep = case stackLocation dep of
-                      Remote -> True
-                      Git _ _ -> True
-                      _ -> False
+  Remote -> True
+  Git _ _ -> True
+  _ -> False
 
 toDependency :: StackDep -> Dependency
 toDependency dep =
@@ -178,15 +175,36 @@ toDependency dep =
     , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
-  where (locations, depType) =
-          case stackLocation dep of 
-            Git uri _ -> ([uri], GitType)
-            _ -> ([], HackageType)
+  where
+    (locations, depType) =
+      case stackLocation dep of
+        Git uri _ -> ([uri], GitType)
+        _ -> ([], HackageType)
 
 buildGraph :: Has Diagnostics sig m => [StackDep] -> m (G.Graphing Dependency)
 buildGraph deps = do
-  result <- fromEither =<< withMapping ignorePackageName (traverse doGraph deps)
+  let deps' = map remapHackageToGitNames deps
+  result <- fromEither =<< withMapping ignorePackageName (traverse doGraph deps')
   pure . G.gmap toDependency $ G.filter shouldInclude result
+  where
+    -- Packages in a stack project can be git repos rather than hackage packages.
+    -- However, libraries depending on them will refer to them with their hackage name, e.g. servant-error vs. https://github.com/...
+    hackageNamesToGitRepoNames :: Map.Map PackageName PackageName
+    hackageNamesToGitRepoNames =
+      Map.fromList
+        . mapMaybe
+          ( \case
+              StackDep{stackLocation = Git uri _, stackName = name} -> Just (name, PackageName uri)
+              _ -> Nothing
+          )
+        $ deps
+
+    remapHackageToGitNames :: StackDep -> StackDep
+    remapHackageToGitNames s@StackDep{stackLocation = Git uri _} = replaceDepName s{stackName = PackageName uri}
+    remapHackageToGitNames s = replaceDepName s
+
+    replaceDepName :: StackDep -> StackDep
+    replaceDepName s@StackDep{stackDepNames = childDeps} = s{stackDepNames = (\name -> Map.findWithDefault name name hackageNamesToGitRepoNames) <$> childDeps}
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => StackProject -> m DependencyResults
 analyze project = do
