@@ -2,6 +2,9 @@
 
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
+## Unreleased
+- Installation Script: Verify that the sha256sum of the downloaded archive matches the recorded one. ([#1158](https://github.com/fossas/fossa-cli/pull/1158))
+
 ## v3.6.18
 - License Scanning: Emit a warning if unarchiving fails rather than a fatal error. ([#1153](https://github.com/fossas/fossa-cli/pull/1153))
 
