@@ -71,7 +71,6 @@ source-repository-package
   location: https://github.com/fossas/codec-rpm.git
   tag: 37081e93b0fbdb3e560be6a390fa7f7120a1b95d
 
-
 index-state: hackage.haskell.org 2023-02-08T21:47:53Z
 
 package *
