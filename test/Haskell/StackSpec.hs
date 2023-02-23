@@ -30,11 +30,11 @@ localDep = mkDep "local" ["remote", "builtin"] Local
 remoteDep :: StackDep
 remoteDep = mkDep "remote" ["deep", "git-pkg"] Remote
 
-gitDepUri :: Text
-gitDepUri = "https://domain.com/user/git-pkg"
+gitDepUrl :: Text
+gitDepUrl = "https://domain.com/user/git-pkg"
 
 gitDepUncorrectedName :: StackDep
-gitDepUncorrectedName = StackDep (PackageName "git-pkg") "abc123" [] (Git gitDepUri "abc123")
+gitDepUncorrectedName = StackDep (PackageName "git-pkg") "abc123" [] (Git (GitUrl gitDepUrl) (GitSha "abc123"))
 
 parsedAllDeps :: [StackDep]
 parsedAllDeps = gitDepUncorrectedName : baseDeps
@@ -45,16 +45,15 @@ spec = do
     jsonBytes <- Test.runIO $ BL.readFile "test/Haskell/testdata/stack.json"
     Test.it "should parse a json dependencies file" $
       case eitherDecode jsonBytes of
-        Left err -> Test.expectationFailure $ "Failed to parse: " ++ err
+        Left err -> Test.expectationFailure $ "Failed to parse: " ++ show err
         Right deps -> deps `Test.shouldMatchList` parsedAllDeps
 
   Test.describe "Stack graph builder" $ do
     let result = run . runStack . runDiagnostics . buildGraph $ parsedAllDeps
-    -- Debug.traceShowM result
 
     Test.it "should build a correct graph" $
       assertOnSuccess result $ \_ graph -> do
         let gr = G.gmap dependencyName graph
-        expectDeps ["deep", "remote", gitDepUri] gr
+        expectDeps ["deep", "remote", gitDepUrl] gr
         expectDirect ["remote"] gr
-        expectEdges [("remote", "deep"), ("remote", gitDepUri)] gr
+        expectEdges [("remote", "deep"), ("remote", gitDepUrl)] gr

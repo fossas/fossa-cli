@@ -5,6 +5,8 @@ module Strategy.Haskell.Stack (
 
   -- * Testing
   buildGraph,
+  GitUrl (..),
+  GitSha (..),
   PackageName (..),
   StackDep (..),
   StackLocation (..),
@@ -73,10 +75,16 @@ data StackDep = StackDep
   }
   deriving (Eq, Ord, Show)
 
+newtype GitUrl = GitUrl {unGitUrl :: Text}
+  deriving (Eq, Ord, Show, FromJSON)
+
+newtype GitSha = GitSha {unGitSha :: Text}
+  deriving (Eq, Ord, Show, FromJSON)
+
 data StackLocation
   = Local
   | Remote
-  | Git Text Text -- URI
+  | Git GitUrl GitSha
   | BuiltIn
   deriving (Eq, Ord, Show)
 
@@ -85,7 +93,7 @@ instance FromJSON StackDep where
     withObject "StackDep" $ \obj -> do
       location <- obj .:? "location" .!= BuiltIn
       version <- case location of
-        Git _ sha -> pure sha
+        Git _ sha -> pure . unGitSha $ sha
         _ -> obj .: "version"
       StackDep
         <$> obj .: "name"
@@ -178,7 +186,7 @@ toDependency dep =
   where
     (locations, depType) =
       case stackLocation dep of
-        Git uri _ -> ([uri], GitType)
+        Git uri _ -> ([unGitUrl uri], GitType)
         _ -> ([], HackageType)
 
 buildGraph :: Has Diagnostics sig m => [StackDep] -> m (G.Graphing Dependency)
@@ -188,23 +196,24 @@ buildGraph deps = do
   pure . G.gmap toDependency $ G.filter shouldInclude result
   where
     -- Packages in a stack project can be git repos rather than hackage packages.
-    -- However, libraries depending on them will refer to them with their hackage name, e.g. servant-error vs. https://github.com/...
+    -- However, libraries depending on them will refer to them with their hackage name.
+    -- Example: pkg vs. https://github.com/name/pkg
     hackageNamesToGitRepoNames :: Map.Map PackageName PackageName
     hackageNamesToGitRepoNames =
       Map.fromList
         . mapMaybe
           ( \case
-              StackDep{stackLocation = Git uri _, stackName = name} -> Just (name, PackageName uri)
+              StackDep{stackLocation = Git url _, stackName = name} -> Just (name, PackageName . unGitUrl $ url)
               _ -> Nothing
           )
         $ deps
 
     remapHackageToGitNames :: StackDep -> StackDep
-    remapHackageToGitNames s@StackDep{stackLocation = Git uri _} = replaceDepName s{stackName = PackageName uri}
-    remapHackageToGitNames s = replaceDepName s
+    remapHackageToGitNames s@StackDep{stackLocation = Git uri _} = replaceChildDepNames s{stackName = PackageName . unGitUrl $ uri}
+    remapHackageToGitNames s = replaceChildDepNames s
 
-    replaceDepName :: StackDep -> StackDep
-    replaceDepName s@StackDep{stackDepNames = childDeps} = s{stackDepNames = (\name -> Map.findWithDefault name name hackageNamesToGitRepoNames) <$> childDeps}
+    replaceChildDepNames :: StackDep -> StackDep
+    replaceChildDepNames s@StackDep{stackDepNames = childDeps} = s{stackDepNames = (\name -> Map.findWithDefault name name hackageNamesToGitRepoNames) <$> childDeps}
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => StackProject -> m DependencyResults
 analyze project = do
