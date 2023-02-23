@@ -305,6 +305,7 @@ library
     Data.Functor.Extra
     Data.Glob
     Data.List.Extra
+    Data.Maybe.Extra
     Data.Monoid.Extra
     Data.Rpm.DbHeaderBlob
     Data.Rpm.DbHeaderBlob.Internal

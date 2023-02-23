@@ -4,6 +4,7 @@ module Discovery.Walk (
   walk',
   walkWithFilters',
   WalkStep (..),
+  findFileInAncestor,
 
   -- * Helpers
   fileName,
@@ -23,7 +24,7 @@ import Data.Glob qualified as Glob
 import Data.List ((\\))
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
-import Data.String.Conversion (toString)
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Discovery.Filters (AllFilters, pathAllowed)
 import Effect.ReadFS
@@ -84,7 +85,7 @@ pathFilterIntercept filters base path act = do
         then act
         else pure (mempty, WalkSkipAll)
 
--- |Like @walk@, but collects the output of @f@ in a monoid.
+-- | Like @walk@, but collects the output of @f@ in a monoid.
 walk' ::
   forall o sig m.
   ( Has ReadFS sig m
@@ -118,6 +119,28 @@ walkWithFilters' f root = do
   filters <- ask
   let f' dir subdirs files = pathFilterIntercept filters root dir $ f dir subdirs files
   walk' f' root
+
+-- | Search upwards in the directory tree for the existence of the supplied file.
+findFileInAncestor :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)
+findFileInAncestor dir file = do
+  relFile <- case parseRelFile $ toString file of
+    Nothing -> fatal $ "invalid file name: " <> file
+    Just path -> pure path
+  findFileInAncestor' dir relFile >>= \case
+    Nothing -> fatal $ "file " <> file <> " not found in any ancestor of " <> toText dir
+    Just found -> pure found
+  where
+    findFileInAncestor' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Rel File -> m (Maybe (Path Abs File))
+    findFileInAncestor' dir' file' = do
+      let absFile = dir' </> file'
+      exists <- doesFileExist absFile
+      if exists
+        then pure $ Just absFile
+        else do
+          let next = parent dir'
+          if next /= dir'
+            then findFileInAncestor' next file'
+            else pure Nothing
 
 fileName :: Path a File -> String
 fileName = toFilePath . filename
