@@ -13,7 +13,7 @@ import App.Fossa.Config.ListTargets (
   mkSubCommand,
  )
 import App.Fossa.Subcommand (SubCommand)
-import App.Types (BaseDir (..), OverrideDynamicAnalysisBinary)
+import App.Types (BaseDir (..))
 import Control.Carrier.AtomicCounter (
   AtomicCounter,
   Has,
@@ -79,7 +79,6 @@ listTargetsMain ListTargetsConfig{..} = do
     . withTaskPool capabilities updateProgress
     . runAtomicCounter
     . runReader experimental
-    . runReader overrideDynamicAnalysis
     -- The current version of `fossa list-targets` does not support filters.
     -- TODO: support both discovery and post-discovery filtering.
     . runReader (mempty :: AllFilters)
@@ -96,7 +95,6 @@ runAll ::
   , Has Stack sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   , Has (Reader AllFilters) sig m
-  , Has (Reader OverrideDynamicAnalysisBinary) sig m
   , Has Telemetry sig m
   ) =>
   Path Abs Dir ->

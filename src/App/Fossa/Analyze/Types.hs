@@ -1,6 +1,7 @@
 module App.Fossa.Analyze.Types (
   AnalyzeProject (..),
   AnalysisScanResult (..),
+  DiscoverTaskEffs,
   AnalyzeTaskEffs,
   AnalyzeStaticTaskEffs,
   AnalyzeExperimentalPreferences (..),
@@ -30,9 +31,9 @@ newtype AnalyzeExperimentalPreferences = AnalyzeExperimentalPreferences
   {gradleOnlyConfigsAllowed :: Maybe (Set Text)}
   deriving (Show, Eq, Ord)
 
-type AnalyzeTaskEffs sig m =
-  ( CandidateCommandEffs sig m
-  , Has (Lift IO) sig m
+-- | Effects needed to discover projects.
+type DiscoverTaskEffs sig m =
+  ( Has (Lift IO) sig m
   , Has ReadFS sig m
   , Has Exec sig m
   , Has Logger sig m
@@ -43,10 +44,22 @@ type AnalyzeTaskEffs sig m =
   , Has Telemetry sig m
   )
 
+-- | Effects needed to analyze projects dynamically.
+type AnalyzeTaskEffs sig m =
+  ( CandidateCommandEffs sig m
+  , DiscoverTaskEffs sig m
+  )
+
+-- | Effects needed to analyze projects statically.
+--
+-- Currently a copy of @DiscoverTaskEffs@, but ideally wouldn't have @Exec@:
+-- @Exec@ is only there because we need to execute a binary to statically analyze BerkeleyDB,
+-- so ideally we'd either create a different effect to disambiguate this case or make the BDB analysis not a separate binary
+-- (either via FFI, WASM embedding, or rewriting it to Haskell).
 type AnalyzeStaticTaskEffs sig m =
   ( Has (Lift IO) sig m
   , Has ReadFS sig m
-  , Has Exec sig m -- May not exec dynamic strategies. TODO: Remove this and convert the BerkeleyDB driver to FFI.
+  , Has Exec sig m
   , Has Logger sig m
   , Has Diagnostics sig m
   , Has Debug sig m
