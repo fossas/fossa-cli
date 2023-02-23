@@ -70,6 +70,7 @@ import Path (
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
 import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
 import System.FilePath qualified as FP
+import System.Info qualified as SysInfo
 
 data DepGraphPlugin = DepGraphPlugin
   { group :: Text
@@ -208,26 +209,22 @@ textArtifactToPluginOutput
 -- | Search for maven wrappers in the closest parent directory and if found use them as a candidate command.
 mavenCmdCandidates :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m CandidateAnalysisCommands
 mavenCmdCandidates dir =
-  mvnWrapperPaths >>= \case
-    -- Preferring nix by default as we expect most CLI usage to be in CI, which is predominantly linux.
-    -- Technically we could branch on the currently running OS (or on compilation target),
-    -- but I think this makes more sense as it keeps semantics simpler.
-    -- It's also technically possible to run shell scripts in Windows via WSL.
-    (Just nix, Just win) -> pure . mkCmd $ (toText nix) :| [toText win, "mvn"]
-    (Nothing, Just win) -> pure . mkCmd $ (toText win) :| ["mvn"]
-    (Just nix, Nothing) -> pure . mkCmd $ (toText nix) :| ["mvn"]
-    (Nothing, Nothing) -> pure . mkCmd $ NE.singleton "mvn"
+  mvnWrapperPath >>= \case
+    Just wrapper -> pure . mkCmd $ (toText wrapper) :| ["mvn"]
+    Nothing -> pure . mkCmd $ NE.singleton "mvn"
   where
+    runningWindows :: Bool
+    runningWindows = SysInfo.os == "mingw32"
     mkCmd :: NonEmpty Text -> CandidateAnalysisCommands
     mkCmd cmds = CandidateAnalysisCommands cmds ["-v"] $ Just MavenType
     -- Unlike with the gradle wrapper, it's not _expected_ for maven projects to use the maven wrapper.
     -- Given that, don't warn on failure to find a wrapper; only warn if we find a wrapper and it fails to execute.
-    mvnWrapperPaths :: (Has ReadFS sig m, Has Diagnostics sig m) => m ((Maybe (Path Abs File), Maybe (Path Abs File)))
-    mvnWrapperPaths = (,) <$> mvnWrapperPathNix <*> mvnWrapperPathWin
-    mvnWrapperPathNix :: (Has ReadFS sig m, Has Diagnostics sig m) => m (Maybe (Path Abs File))
-    mvnWrapperPathNix = recover $ findFileInAncestor dir "mvnw"
-    mvnWrapperPathWin :: (Has ReadFS sig m, Has Diagnostics sig m) => m (Maybe (Path Abs File))
-    mvnWrapperPathWin = recover $ findFileInAncestor dir "mvnw.bat"
+    mvnWrapperPath :: (Has ReadFS sig m, Has Diagnostics sig m) => m (Maybe (Path Abs File))
+    mvnWrapperPath =
+      recover $
+        if runningWindows
+          then findFileInAncestor dir "mvnw.bat"
+          else findFileInAncestor dir "mvnw"
 
 mavenInstallPluginCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> FP.FilePath -> DepGraphPlugin -> m Command
 mavenInstallPluginCmd workdir pluginFilePath plugin = do
