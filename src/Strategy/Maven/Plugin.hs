@@ -218,6 +218,7 @@ mavenCmdCandidates dir =
     (Just nix, Nothing) -> pure . mkCmd $ (toText nix) :| ["mvn"]
     (Nothing, Nothing) -> pure . mkCmd $ NE.singleton "mvn"
   where
+    mkCmd :: NonEmpty Text -> CandidateAnalysisCommands
     mkCmd cmds = CandidateAnalysisCommands cmds ["-v"] $ Just MavenType
     -- Unlike with the gradle wrapper, it's not _expected_ for maven projects to use the maven wrapper.
     -- Given that, don't warn on failure to find a wrapper; only warn if we find a wrapper and it fails to execute.
