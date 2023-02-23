@@ -426,7 +426,7 @@ version_less_than() {
         fi
     done
 
-    return 1
+    return 0
 }
 print_telemetry_disclaimer() {
   log_info ""
