@@ -103,7 +103,15 @@ adjust_format() {
 adjust_os() {
   # adjust archive name based on OS
   case $(uname_os) in
-   linux) FORMAT=tar.gz ;;
+   linux) 
+    # Before 3.4.7 fossa was distributed in .zip archives on linux.
+    # 3.4.7 and later distributed fossa in tar.gz because it is more common than zip on linux.
+	if version_less_than "$VERSION" "3.4.7" 
+	then
+	  FORMAT=zip
+    else
+      FORMAT=tar.gz
+	fi ;;	
   esac
   true
 }
@@ -389,7 +397,37 @@ get_binary_name() {
   esac
   echo "$name"
 }
+# Check if one version is less than another.
+# Versions are expected to be of the for X.X.X where X is some integer.
+# 
+# Given version strings X1.X2.X3 and Y1.Y2.Y3:
+# A version is less than another if there exists an Xn/Yn pair where Xn < Yn where for every preceding Xn/Yn pair in the sequence Xn == Yn.
+# Example:
+# 2.1.4 < 3.1.4
+# 3.5.0 < 3.6.5
+# 3.5.5 < 3.5.15
+#
+# Returns 0 when the first version argument < the second.
+# Returns 1 otherwise.
+version_less_than() {
+    for i in 1 2 3
+    do
+        VERSION_PIECE1=$(echo "$1" | cut -d '.' -f $i)
+        VERSION_PIECE2=$(echo "$2" | cut -d '.' -f $i)    
 
+        if [ "$VERSION_PIECE1" -lt "$VERSION_PIECE2" ]
+        then
+            return 0
+        fi
+
+        if [ "$VERSION_PIECE1" -gt "$VERSION_PIECE2" ]
+        then
+            return 1
+        fi
+    done
+
+    return 1
+}
 print_telemetry_disclaimer() {
   log_info ""
   log_info "------"
@@ -414,7 +452,6 @@ print_telemetry_disclaimer() {
 PROJECT_NAME="fossa"
 OWNER=fossas
 REPO="fossa-cli"
-BINARY=fossa
 FORMAT=zip
 OS=$(uname_os)
 ARCH=$(uname_arch)
