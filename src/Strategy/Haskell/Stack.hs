@@ -186,7 +186,7 @@ toDependency dep =
   where
     (locations, depType) =
       case stackLocation dep of
-        Git uri _ -> ([unGitUrl uri], GitType)
+        Git url _ -> ([unGitUrl url], GitType)
         _ -> ([], HackageType)
 
 buildGraph :: Has Diagnostics sig m => [StackDep] -> m (G.Graphing Dependency)
@@ -196,8 +196,17 @@ buildGraph deps = do
   pure . G.gmap toDependency $ G.filter shouldInclude result
   where
     -- Packages in a stack project can be git repos rather than hackage packages.
-    -- However, libraries depending on them will refer to them with their hackage name.
-    -- Example: pkg vs. https://github.com/name/pkg
+    -- However, libraries depending on them will refer to them with their hackage name in the parsed `StackDep`s.
+    -- For example pkg instead of https://github.com/name/pkg.
+    -- Git dependencies need to have their name be a url in order to output a correct locator.
+    -- The following will map a 'StackDep's name to a git url where appropriate and do the same for its child dependencies.
+    remapHackageToGitNames :: StackDep -> StackDep
+    remapHackageToGitNames s@StackDep{stackLocation = Git uri _} = replaceChildDepNames s{stackName = PackageName . unGitUrl $ uri}
+    remapHackageToGitNames s = replaceChildDepNames s
+
+    replaceChildDepNames :: StackDep -> StackDep
+    replaceChildDepNames s@StackDep{stackDepNames = childDeps} = s{stackDepNames = (\name -> Map.findWithDefault name name hackageNamesToGitRepoNames) <$> childDeps}
+
     hackageNamesToGitRepoNames :: Map.Map PackageName PackageName
     hackageNamesToGitRepoNames =
       Map.fromList
@@ -207,13 +216,6 @@ buildGraph deps = do
               _ -> Nothing
           )
         $ deps
-
-    remapHackageToGitNames :: StackDep -> StackDep
-    remapHackageToGitNames s@StackDep{stackLocation = Git uri _} = replaceChildDepNames s{stackName = PackageName . unGitUrl $ uri}
-    remapHackageToGitNames s = replaceChildDepNames s
-
-    replaceChildDepNames :: StackDep -> StackDep
-    replaceChildDepNames s@StackDep{stackDepNames = childDeps} = s{stackDepNames = (\name -> Map.findWithDefault name name hackageNamesToGitRepoNames) <$> childDeps}
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => StackProject -> m DependencyResults
 analyze project = do

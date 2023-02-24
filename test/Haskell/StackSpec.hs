@@ -36,8 +36,8 @@ gitDepUrl = "https://domain.com/user/git-pkg"
 gitDepUncorrectedName :: StackDep
 gitDepUncorrectedName = StackDep (PackageName "git-pkg") "abc123" [] (Git (GitUrl gitDepUrl) (GitSha "abc123"))
 
-parsedAllDeps :: [StackDep]
-parsedAllDeps = gitDepUncorrectedName : baseDeps
+allDepsParsed :: [StackDep]
+allDepsParsed = gitDepUncorrectedName : baseDeps
 
 spec :: Test.Spec
 spec = do
@@ -46,10 +46,10 @@ spec = do
     Test.it "should parse a json dependencies file" $
       case eitherDecode jsonBytes of
         Left err -> Test.expectationFailure $ "Failed to parse: " ++ show err
-        Right deps -> deps `Test.shouldMatchList` parsedAllDeps
+        Right deps -> deps `Test.shouldMatchList` allDepsParsed
 
   Test.describe "Stack graph builder" $ do
-    let result = run . runStack . runDiagnostics . buildGraph $ parsedAllDeps
+    let result = run . runStack . runDiagnostics . buildGraph $ allDepsParsed
 
     Test.it "should build a correct graph" $
       assertOnSuccess result $ \_ graph -> do
