@@ -2,8 +2,10 @@
 
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
-## v3.7.0
+## v3.7.1
+- Stack: Git based dependencies are detected and handled correctly. ([#1160](https://github.com/fossas/fossa-cli/pull/1160))
 
+## v3.7.0
 - Support Maven wrapper (`mvnw`) usage in Maven projects, and user-provided binary overrides for Maven projects ([#1149](https://github.com/fossas/fossa-cli/pull/1149))
   For more information, see the [Maven strategy documentation](./docs/references/strategies/languages/maven/maven.md).
 - Installation Script: Verify that the sha256sum of the downloaded archive matches the recorded one. ([#1158](https://github.com/fossas/fossa-cli/pull/1158))
