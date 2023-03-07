@@ -1,5 +1,9 @@
 name: Static analysis
-on: push
+on:
+  push:
+    paths-ignore:
+      - 'docs/**'
+      - README
 
 jobs:
   # Run linter and format checkers independently, so you see errors from both.

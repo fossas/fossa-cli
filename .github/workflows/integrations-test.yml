@@ -4,6 +4,9 @@ name: Integration Tests
 # Refer to https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#workflow_dispatch
 on:
   push:
+    paths-ignore:
+      - 'docs/**'
+      - README
   workflow_dispatch:
   schedule:
     - cron: "0 5 * * *" # At 05:00 on every day.

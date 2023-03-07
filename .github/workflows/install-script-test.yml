@@ -1,5 +1,9 @@
 name: Test Installation Scripts
-on: push
+on:
+  push:
+    paths-ignore:
+      - 'docs/**'
+      - README
 
 jobs:
   test-nix:
