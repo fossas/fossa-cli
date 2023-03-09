@@ -332,18 +332,17 @@ instance ToDiagnostic FossaError where
       case statusCode $ responseStatus eres of
         403 ->
           vsep
-            [ "The FOSSA endpoint returned status code 403, which means that"
-            , "the FOSSA API key provided does not have access to FOSSA."
+            [ "The endpoint returned status code 403."
             , ""
-            , "Please double check that the FOSSA API key provided to FOSSA CLI is correct."
-            , ""
-            , "Note that while this response typically come from the FOSSA API,"
-            , "it's also possible that some other device on the network sent this response."
+            , "Typically, this status code indicates an authentication problem with the API."
+            , "However, FOSSA reports invalid API keys using a different mechanism;"
+            , "this likely means that some other service on your network intercepted the request"
+            , "and reported this status code. This might be a proxy or some other network appliance."
             , ""
             , indent 4 $ "Request:" <+> renderRequest ereq
             , indent 4 $ "Response:" <+> renderResponse eres
             , ""
-            , reportDefectMsg
+            , reportNetworkErrorMsg
             ]
         other ->
           vsep
