@@ -130,9 +130,9 @@ instance FromJSON CmdFailure where
   parseJSON = withObject "CmdFailure" $ \obj ->
     CmdFailure
       <$> obj
-      .: "cmdFailureCmd"
+        .: "cmdFailureCmd"
       <*> obj
-      .: "cmdFailureDir"
+        .: "cmdFailureDir"
       <*> (obj .: "cmdFailureExit" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStdout" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStderr" >>= fromRecordedValue)
