@@ -2,6 +2,9 @@
 
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
+## Unreleased
+- Diagnostics: Improves user-facing error messages and debugging tips for external commands and some HTTP error conditions ([#1165](https://github.com/fossas/fossa-cli/pull/1165))
+
 ## v3.7.2
 - License Scanning: Add four new licenses: Pushwoosh, PalletsFlaskLogo, IntelDisclaimer and Instabug
 
