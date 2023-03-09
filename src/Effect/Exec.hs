@@ -208,6 +208,9 @@ renderCmdFailure CmdFailure{..} =
     expectedCmdNotFoundErrStr :: Text
     expectedCmdNotFoundErrStr = cmdName cmdFailureCmd <> ": startProcess: exec: invalid argument (Bad file descriptor)"
 
+    prettyCommand :: Command -> Doc AnsiStyle
+    prettyCommand Command{..} = pretty $ cmdName <> " " <> Text.intercalate " " cmdArgs
+
     stdErr :: Text
     stdErr = decodeUtf8 cmdFailureStderr
 
@@ -223,7 +226,7 @@ renderCmdFailure CmdFailure{..} =
     details :: Doc AnsiStyle
     details =
       vsep
-        [ "Attempted to run the command '" <> viaShow cmdFailureCmd <> "'"
+        [ "Attempted to run the command '" <> prettyCommand cmdFailureCmd <> "'"
         , "inside the working directory '" <> pretty cmdFailureDir <> "',"
         , "but failed, because the command exited with code '" <> exitCode <> "'."
         , ""
@@ -263,7 +266,7 @@ renderCmdFailure CmdFailure{..} =
 
     prettyStdErr :: Doc AnsiStyle
     prettyStdErr =
-      if Text.null stdOut
+      if Text.null stdErr
         then "Command did not write an error log."
         else
           vsep
