@@ -3,6 +3,9 @@
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
 ## v3.7.1
+- License Scanning: Add four new licenses: Pushwoosh, PalletsFlaskLogo, IntelDisclaimer and Instabug
+
+## v3.7.1
 - Stack: Git based dependencies are detected and handled correctly. ([#1160](https://github.com/fossas/fossa-cli/pull/1160))
 
 ## v3.7.0
