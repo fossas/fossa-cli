@@ -52,6 +52,7 @@ import App.Support (
   reportFossaBugErrorMsg,
   reportNetworkErrorMsg,
   reportTransientErrorMsg,
+  requestReportIfPersists,
  )
 import App.Types (
   ProjectMetadata (..),
@@ -119,6 +120,7 @@ import Fossa.API.Types (
   UploadResponse,
   useApiOpts,
  )
+import Network.HTTP.Client (responseStatus)
 import Network.HTTP.Client qualified as C
 import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Req (
@@ -149,9 +151,11 @@ import Network.HTTP.Req (
   (=:),
  )
 import Network.HTTP.Req.Extra (httpConfigRetryTimeouts)
+import Network.HTTP.Types (statusCode)
 import Network.HTTP.Types qualified as HTTP
 import Parse.XML (FromXML (..), child, parseXML, xmlErrorPretty)
 import Path (File, Path, Rel, toFilePath)
+import Prettyprinter (viaShow)
 import Srclib.Types (
   LicenseSourceUnit,
   Locator (..),
@@ -174,8 +178,10 @@ data FossaPublicFacingError = FossaPublicFacingError
 instance FromJSON FossaPublicFacingError where
   parseJSON = withObject "FossaPublicFacingError" $ \v ->
     FossaPublicFacingError
-      <$> v .: "message"
-      <*> v .: "uuid"
+      <$> v
+        .: "message"
+      <*> v
+        .: "uuid"
 
 newtype FossaReq m a = FossaReq {unFossaReq :: m a}
   deriving (Functor, Applicative, Monad, Algebra sig)
@@ -323,14 +329,36 @@ instance ToDiagnostic FossaError where
         , reportDefectMsg
         ]
     StatusCodeError ereq eres ->
-      vsep
-        [ "The FOSSA endpoint returned an unexpected status code:"
-        , ""
-        , indent 4 $ "Request:" <+> renderRequest ereq
-        , indent 4 $ "Response:" <+> renderResponse eres
-        , ""
-        , reportTransientErrorMsg
-        ]
+      case statusCode $ responseStatus eres of
+        403 ->
+          vsep
+            [ "The endpoint returned status code 403."
+            , ""
+            , "Typically, this status code indicates an authentication problem with the API."
+            , "However, FOSSA reports invalid API keys using a different mechanism;"
+            , "this likely means that some other service on your network intercepted the request"
+            , "and reported this status code. This might be a proxy or some other network appliance."
+            , ""
+            , indent 4 $ "Request:" <+> renderRequest ereq
+            , indent 4 $ "Response:" <+> renderResponse eres
+            , ""
+            , reportNetworkErrorMsg
+            ]
+        other ->
+          vsep
+            [ "The FOSSA endpoint returned an unexpected status code: " <> viaShow other
+            , ""
+            , "While HTTP responses typically come from the FOSSA API,"
+            , "it's also possible that some other device on the network sent this response."
+            , ""
+            , "For a list of HTTP status codes and what they typically mean, see:"
+            , "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status."
+            , ""
+            , indent 4 $ "Request:" <+> renderRequest ereq
+            , indent 4 $ "Response:" <+> renderResponse eres
+            , ""
+            , reportTransientErrorMsg
+            ]
     TooManyRedirectsError txns ->
       newlineTrailing
         "Too many redirects were encountered when communicating with the FOSSA endpoint."
@@ -355,11 +383,19 @@ instance ToDiagnostic FossaError where
         ]
     ConnectionTimeoutError ereq ->
       vsep
-        [ "Connecting to the FOSSA endpoint took too long."
+        [ "The request to the FOSSA endpoint took too long to send."
+        , ""
+        , "This typically means that the CLI is being asked to send too much data"
+        , "with the current network speed (for example, uploading large archives),"
+        , "although this can also be a transient error caused by congested"
+        , "networking conditions between the CLI and the FOSSA API."
+        , ""
+        , "To reduce the likelihood of this error, ensure that only data you really"
+        , "need FOSSA to scan is being uploaded."
         , ""
         , indent 4 "Request:" <+> renderRequest ereq
         , ""
-        , reportNetworkErrorMsg
+        , requestReportIfPersists
         ]
     ConnectionFailureError ereq err ->
       vsep
@@ -540,11 +576,15 @@ uploadNativeContainerScan apiOpts ProjectRevision{..} metadata scan = fossaReq $
       (baseUrl, baseOpts) <- useApiOpts apiOpts
       let locator = renderLocator $ Locator "custom" projectName (Just projectRevision)
           opts =
-            "locator" =: locator
-              <> "cliVersion" =: cliVersion
-              <> "managedBuild" =: True
+            "locator"
+              =: locator
+              <> "cliVersion"
+                =: cliVersion
+              <> "managedBuild"
+                =: True
               <> maybe mempty ("branch" =:) projectBranch
-              <> "scanType" =: ("native" :: Text)
+              <> "scanType"
+                =: ("native" :: Text)
               <> mkMetadataOpts metadata projectName
       resp <- req POST (containerUploadUrl baseUrl) (ReqBodyJson scan) jsonResponse (baseOpts <> opts)
       pure $ responseBody resp
@@ -560,9 +600,12 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts =
-        "locator" =: renderLocator (Locator "custom" projectName (Just projectRevision))
-          <> "cliVersion" =: cliVersion
-          <> "managedBuild" =: True
+        "locator"
+          =: renderLocator (Locator "custom" projectName (Just projectRevision))
+          <> "cliVersion"
+            =: cliVersion
+          <> "managedBuild"
+            =: True
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
@@ -958,9 +1001,12 @@ getAttributionJson apiOpts ProjectRevision{..} = fossaReq $ do
       packageDownloadUrl = "PackageDownloadUrl"
       opts =
         baseOpts
-          <> "includeDeepDependencies" =: True
-          <> "includeHashAndVersionData" =: True
-          <> "dependencyInfoOptions[]" =: packageDownloadUrl
+          <> "includeDeepDependencies"
+            =: True
+          <> "includeHashAndVersionData"
+            =: True
+          <> "dependencyInfoOptions[]"
+            =: packageDownloadUrl
   orgId <- organizationId <$> getOrganization apiOpts
   response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision)) ReportJson) NoReqBody jsonResponse opts
   pure (responseBody response)

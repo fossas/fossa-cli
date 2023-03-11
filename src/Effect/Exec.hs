@@ -76,7 +76,7 @@ import Effect.ReadFS (ReadFS, getCurrentDir)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path, SomeBase (..), fromAbsDir)
 import Path.IO (AnyPath (makeAbsolute))
-import Prettyprinter (Doc, indent, line, pretty, viaShow, vsep)
+import Prettyprinter (Doc, indent, pretty, viaShow, vsep)
 import Prettyprinter.Render.Terminal (AnsiStyle)
 import System.Exit (ExitCode (..))
 import System.Process.Typed (
@@ -181,31 +181,23 @@ data ExecErr
   deriving (Eq, Ord, Show, Generic)
 
 renderCmdFailure :: CmdFailure -> Doc AnsiStyle
-renderCmdFailure err =
+renderCmdFailure CmdFailure{..} =
   if isCmdNotAvailable
     then
-      pretty ("Could not find executable: `" <> cmdName (cmdFailureCmd err) <> "`.")
-        <> line
-        <> line
-        <> pretty ("Please ensure `" <> cmdName (cmdFailureCmd err) <> "` exist in PATH prior to running fossa.")
-        <> line
-        <> line
-        <> reportDefectMsg
+      vsep
+        [ pretty $ "Could not find executable: `" <> cmdName cmdFailureCmd <> "`."
+        , pretty $ "Please ensure `" <> cmdName cmdFailureCmd <> "` exists in PATH prior to running fossa."
+        , ""
+        , reportDefectMsg
+        ]
     else
-      "Command execution failed: "
-        <> line
-        <> indent
-          4
-          ( vsep
-              [ "command: " <> viaShow (cmdFailureCmd err)
-              , "dir: " <> pretty (cmdFailureDir err)
-              , "exit: " <> viaShow (cmdFailureExit err)
-              , "stdout: " <> line <> indent 2 (pretty @Text (decodeUtf8 (cmdFailureStdout err)))
-              , "stderr: " <> line <> indent 2 (pretty stdErr)
-              ]
-          )
-        <> line
-        <> reportDefectMsg
+      vsep
+        [ "Command execution failed: "
+        , ""
+        , indent 4 details
+        , ""
+        , reportDefectMsg
+        ]
   where
     -- Infer if the stderr is caused by not having executable in path.
     -- There is no easy way to check for @EBADF@ within process exception,
@@ -214,10 +206,74 @@ renderCmdFailure err =
     isCmdNotAvailable = expectedCmdNotFoundErrStr == stdErr
 
     expectedCmdNotFoundErrStr :: Text
-    expectedCmdNotFoundErrStr = cmdName (cmdFailureCmd err) <> ": startProcess: exec: invalid argument (Bad file descriptor)"
+    expectedCmdNotFoundErrStr = cmdName cmdFailureCmd <> ": startProcess: exec: invalid argument (Bad file descriptor)"
+
+    prettyCommand :: Command -> Doc AnsiStyle
+    prettyCommand Command{..} = pretty $ cmdName <> " " <> Text.intercalate " " cmdArgs
 
     stdErr :: Text
-    stdErr = decodeUtf8 (cmdFailureStderr err)
+    stdErr = decodeUtf8 cmdFailureStderr
+
+    stdOut :: Text
+    stdOut = decodeUtf8 cmdFailureStdout
+
+    exitCode :: Doc AnsiStyle
+    exitCode = case cmdFailureExit of
+      ExitSuccess -> "0"
+      ExitFailure n -> viaShow n
+
+    -- Render details of a failed command to error text.
+    details :: Doc AnsiStyle
+    details =
+      vsep
+        [ "Attempted to run the command '" <> prettyCommand cmdFailureCmd <> "'"
+        , "inside the working directory '" <> pretty cmdFailureDir <> "',"
+        , "but failed, because the command exited with code '" <> exitCode <> "'."
+        , ""
+        , "Often, this kind of error is caused by the project not being ready to build;"
+        , "please ensure that the project at '" <> pretty cmdFailureDir <> "'"
+        , "builds successfully before running fossa."
+        , ""
+        , outputPreamble
+        , prettyStdOut
+        , prettyStdErr
+        ]
+
+    outputPreamble :: Doc AnsiStyle
+    outputPreamble =
+      if Text.null stdOut && Text.null stdErr
+        then
+          vsep
+            [ "The command did not log any output!"
+            , "Please check the project documentation for this command for troubleshooting guidance."
+            ]
+        else
+          vsep
+            [ "The logs for the command are listed below."
+            , "They will likely provide guidance on how to resolve this error."
+            ]
+
+    prettyStdOut :: Doc AnsiStyle
+    prettyStdOut =
+      if Text.null stdOut
+        then "Command did not write a standard log."
+        else
+          vsep
+            [ ""
+            , "Command standard log:"
+            , indent 2 $ pretty stdOut
+            ]
+
+    prettyStdErr :: Doc AnsiStyle
+    prettyStdErr =
+      if Text.null stdErr
+        then "Command did not write an error log."
+        else
+          vsep
+            [ ""
+            , "Command error log:"
+            , indent 2 $ pretty stdErr
+            ]
 
 instance ToDiagnostic ExecErr where
   renderDiagnostic = \case
