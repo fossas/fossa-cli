@@ -192,6 +192,9 @@ library
     App.Fossa.Container.Test
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
+    App.Fossa.EmbeddedBinary.BerkeleyDB
+    App.Fossa.EmbeddedBinary.Themis
+    App.Fossa.EmbeddedBinary.Wiggins
     App.Fossa.LicenseScan
     App.Fossa.LicenseScanner
     App.Fossa.ListTargets

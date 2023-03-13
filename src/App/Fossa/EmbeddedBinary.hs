@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -14,12 +13,28 @@ module App.Fossa.EmbeddedBinary (
   dumpEmbeddedBinary,
 ) where
 
+-- The intent with these embedded binaries is that the build system will replace the files with
+-- built binaries of the appropriate architecture.
+-- The below functions are expected to warn since the vendor-bins directory is typically populated in CI.
+-- If you wish to run these on your local system, populate these binaries via `vendor_download.sh`.
+--
+-- Each binary is in its own module because GHC runs out of stack space when embedding files.
+-- By splitting them into their own modules GHC doesn't have to try to load them all at once.
+--
+-- A better solution might be to use 'xxd -i' to generate a C file with the data and then access it via FFI. 
+-- This should be more resistant to memory issues.
+-- It seems memory issues with file-embed were addressed once before: https://github.com/snoyberg/file-embed/issues/24.
+-- The fix for that should be working for our code though, which suggests this is something different.
+-- In the future we should find a workaround.
+import App.Fossa.EmbeddedBinary.BerkeleyDB (embeddedBinaryBerkeleyDB)
+import App.Fossa.EmbeddedBinary.Themis (embeddedBinaryThemis, embeddedBinaryThemisIndex)
+import App.Fossa.EmbeddedBinary.Wiggins (embeddedBinaryWiggins)
+
 import Codec.Compression.Lzma qualified as Lzma
 import Control.Effect.Exception (bracket)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.ByteString (ByteString, writeFile)
 import Data.ByteString.Lazy qualified as BL
-import Data.FileEmbed.Extra (embedFileIfExists)
 import Data.Foldable (traverse_)
 import Data.String.Conversion (toLazy, toString)
 import Data.Tagged (Tagged, applyTag, unTag)
@@ -183,24 +198,3 @@ makeExecutable path = do
   p <- getPermissions path
   setPermissions path (p{executable = True})
 
--- The intent with these embedded binaries is that the build system will replace the files with
--- built binaries of the appropriate architecture.
--- The below functions are expected to warn since the vendor-bins directory is typically populated in CI.
--- If you wish to run these on your local system, populate these binaries via `vendor_download.sh`.
-embeddedBinaryWiggins :: ByteString
-embeddedBinaryWiggins = $(embedFileIfExists "vendor-bins/wiggins")
-
-embeddedBinaryThemis :: ByteString
-embeddedBinaryThemis = $(embedFileIfExists "vendor-bins/themis-cli")
-
-embeddedBinaryThemisIndex :: ByteString
-embeddedBinaryThemisIndex = $(embedFileIfExists "vendor-bins/index.gob.xz")
-
--- To build this, run `make build` or `cargo build --release`.
-#ifdef mingw32_HOST_OS
-embeddedBinaryBerkeleyDB :: ByteString
-embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb.exe")
-#else
-embeddedBinaryBerkeleyDB :: ByteString
-embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb")
-#endif
