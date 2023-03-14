@@ -9,11 +9,11 @@ The following sections describe what these different types of data look like. At
 
 ## Dependency list
 
-A typical analysis that happens when you run `fossa analyze` only uploads the dependency list to the server for analysis.
+When you run `fossa analyze`, we find the dependencies used by your project and then upload the list of dependencies to FOSSA's servers for analysis.
 
 You can see what we will upload for your specific project by running `fossa analyze --output`.
 
-As an example, we ran `fossa analyze --output` on https://github.com/bohnman/squiggly. You can [download the results](../assets/fossa-analyze-output.json).
+As an example, we ran `fossa analyze --output` on https://github.com/bohnman/squiggly. You can [view the results here](../assets/fossa-analyze-output.json).
 
 ## Vendored Dependencies
 
@@ -25,23 +25,23 @@ A "CLI license scan" inspects vendored dependencies for licensing on the local s
 
 "Archive upload" uploads vendored dependencies to a secure S3 bucket. We license scan the uploaded files on our servers. All files that do not contain licenses are then removed after 30 days.
 
-You can figure out whether the scan was a CLILicenseScan or an ArchiveUpload by looking at the logs with the `--debug` flag.
+You can figure out whether the scan was a CLILicenseScan or an ArchiveUpload by running `fossa analyze` with the `--debug` flag: `fossa analyze --debug`.
 
-If it was a CLILicenseScan, then it will say
+If it was a CLILicenseScan, then you will see this in the logs:
 
 ```
 "License Scanning '<vendored dependency name>' at '<vendored dependency path>'.
 
 ```
 
-If it was an ArchiveUpload, then it will say
+If it was an ArchiveUpload, then you will see this in the logs:
 
 ```
 "Compressing '<vendored dependency name>' at '<vendored dependency path>'.
 
 ```
 
-Here is a sample output of the data that gets uploaded to the server for a non-vendored-dependency scan. The license text has been truncated for readability, but other than that this is exactly what would be uploaded:
+Here is a sample output of the data that gets uploaded to the server for a CLI license scan. The license text has been truncated for readability, but other than that this is exactly what would be uploaded. You can also [download the full JSON](../assets/license-scan-data.json).
 
 ```json
 {
@@ -115,8 +115,6 @@ Here is a sample output of the data that gets uploaded to the server for a non-v
 
 ```
 
-You can also [download the full JSON](../assets/license-scan-data.json).
-
 You can see exactly what data we are uploading for a CLI license scan for your code by running the following command:
 
 ```
@@ -125,7 +123,6 @@ fossa license-scan fossa-deps
 
 ## Telemetry
 
-
 FOSSA CLI collects anonymous feature usage information, observed errors and warnings, and performance diagnostic information to help improve the experience for everyone.
 
 You can get more information about what telemetry data gets uploaded and how to opt-out of telemetry uploads [here](../telemetry.md).
@@ -133,3 +130,5 @@ You can get more information about what telemetry data gets uploaded and how to 
 ## Inspecting exactly what we upload with `echotraffic`
 
 FOSSA provides an open-source tool called [`echotraffic`](https://github.com/fossas/echotraffic) that you can use to see exactly what we data we are sending to our servers.
+
+Follow the directions in `echotraffic`'s README to get started.
