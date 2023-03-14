@@ -1,11 +1,11 @@
-/* 
+/*
 
 This Gradle init script adds a `jsonDeps` task that outputs the dependencies
 of each subproject as JSON.
 
 If you're debugging this script, you can directly run this on a Gradle project
-by running `gradle -I/path/to/script $TASK` e.g.
-    `gradle -I/tmp/jsondeps.gradle :jsonDeps`. This lets you see the output directly.
+by running `gradle -I /path/to/script $TASK` e.g.
+    `gradle -I /tmp/jsondeps.gradle :jsonDeps`. This lets you see the output directly.
 
 Useful documentation:
 - Gradle init scripts: https://docs.gradle.org/current/userguide/init_scripts.html
@@ -18,7 +18,7 @@ Useful documentation:
 
 ----
 
-There are two form of generated JSON: (1) from resolution API. 
+There are two form of generated JSON: (1) from resolution API.
 
 
 ## For (1) Resolution API:
@@ -26,7 +26,7 @@ There are two form of generated JSON: (1) from resolution API.
 
     The resulting JSON output is a list of all configuration with adjacency map of dependencies.
 
-    For a project resulting json is:    
+    For a project resulting json is:
     ```
         {
             resolvedProjectName: ..
@@ -34,7 +34,7 @@ There are two form of generated JSON: (1) from resolution API.
                 {
                     resolvedConfigurationName: ...,
                     resolvedConfigurationDirectComponents: [
-                        { "type": "project", "name": ":project-name" }, 
+                        { "type": "project", "name": ":project-name" },
                         ....
                     ],
                     resolvedConfigurationDependencies: [
@@ -53,7 +53,7 @@ There are two form of generated JSON: (1) from resolution API.
 */
 
 allprojects {
-    task jsonDeps {
+    tasks.register("jsonDeps") {
         doLast {
 
             def printTrace = { message, scope ->
@@ -65,25 +65,25 @@ allprojects {
                 println "FOSSA-DEBUG (${scope}): ${message}"
             }
 
-            // Uses configuration resolution api to serialize adjacency map of dependencies to json. 
-            // This is recommended approach to infer resolved graph. 
-            // 
+            // Uses configuration resolution api to serialize adjacency map of dependencies to json.
+            // This is recommended approach to infer resolved graph.
+            //
             // See:
             //  - https://github.com/gradle/gradle/issues/5953#issuecomment-404514591
-            //  - 
-            // 
+            //  -
+            //
             // Reference:
             // - https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ResolvableDependencies.html
             // - https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/Configuration.html#getIncoming--
-            def resolvedConfigToJSON = { resolvedConfig -> 
-                def getComponentName = { component -> 
+            def resolvedConfigToJSON = { resolvedConfig ->
+                def getComponentName = { component ->
                     if (component instanceof ProjectComponentIdentifier) { return "${component.projectPath}"}
                     if (component instanceof ModuleComponentIdentifier) { return "${component.group}:${component.module}"}
                     printTrace("Component is not project or module: ${component}", "resolvedConfigToJSON")
                     return null
                 }
 
-                def componentToJson = { component -> 
+                def componentToJson = { component ->
                     if (component instanceof ProjectComponentIdentifier) { return "{\"type\":\"project\",\"name\":\"${getComponentName(component)}\"}"}
                     if (component instanceof ModuleComponentIdentifier) { return "{\"type\":\"package\",\"name\":\"${getComponentName(component)}\",\"version\":\"${component.version}\"}"}
                     printTrace("Component is not project or module: ${component}", "resolvedConfigToJSON")
@@ -92,9 +92,9 @@ allprojects {
 
                 def resolutionResult = resolvedConfig.incoming.resolutionResult
                 def adjacencyMap = [:]
+                //noinspection GroovyUnusedAssignment
                 def directComponents = []
-                def loggedWarnings = []
-                
+
                 // Refs:
                 // -----
                 // resolutionResult: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ResolvableDependencies.html#getResolutionResult--
@@ -102,19 +102,19 @@ allprojects {
                 // resolvedComponent: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/ComponentResult.html
                 // getDependencies(): https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/ResolvedComponentResult.html#getDependencies--
                 // resolvedDep: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/DependencyResult.html
-                // - 
+                // -
                 resolvedConfig.incoming.resolutionResult.getAllComponents().each { resolvedComponent ->
                     if (resolvedComponent instanceof UnresolvedComponentResult) {
                         printDebugToFossa("Could not resolve component: ${resolvedComponent.getAttempted()}", "resolvedConfigToJSON")
-                        return;
-                    } 
-                    
-                    resolvedComponent.getDependencies().each { resolvedDep ->     
+                        return
+                    }
+
+                    resolvedComponent.getDependencies().each { resolvedDep ->
                         if (resolvedDep instanceof UnresolvedDependencyResult) {
                             printDebugToFossa("Could not resolve dependency: ${resolvedDep.getAttempted()}", "resolvedConfigToJSON")
-                            return;
+                            return
                         }
-                        
+
                         def resolvedDependencyId = resolvedDep.getSelected().getId()
                         if (resolvedDependencyId != resolvedComponent.getId()) {
                             adjacencyMap.get(resolvedComponent, []) << resolvedDependencyId
@@ -122,10 +122,10 @@ allprojects {
                     }
                 }
 
-                // Sort for reproducibility - ordering matches that of, 
+                // Sort for reproducibility - ordering matches that of,
                 // official gradle scan plugin dependencies results
                 directComponents = adjacencyMap.get(resolutionResult.getRoot(), [])
-                directComponents.sort { getComponentName(it) }                          
+                directComponents.sort { getComponentName(it) }
 
                 def json = "{"
                 json += "\"resolvedConfigurationName\": \"${resolvedConfig.getName()}\","
@@ -142,12 +142,10 @@ allprojects {
                         json += ","
                     }
                 }
-                json += "]"                
+                json += "]"
                 json += "}"
                 return json
             }
-
-
 
             def projectToJsonWithResolutionApi = { project ->
                 def jsonConfigs = []
@@ -169,6 +167,7 @@ allprojects {
                 // ConfiguationContainer: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ConfigurationContainer.html
                 // DomainObjectCollection: https://docs.gradle.org/current/javadoc/org/gradle/api/DomainObjectCollection.html
                 project.configurations.all { config ->
+                    //noinspection GroovyUnusedAssignment
                     def result = null
 
                     try {
@@ -186,7 +185,7 @@ allprojects {
                 }
                 return "{ \"resolvedProjectName\": \"${project.path}\", \"resolvedProjectConfigurations\": [${jsonConfigs.join(",")}]}"
             }
-            
+
 
             def resultWithResolutionApi = projectToJsonWithResolutionApi project
 
