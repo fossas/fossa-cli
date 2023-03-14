@@ -1,7 +1,61 @@
 # FOSSA CLI Changelog
 
+<!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
+
 ## Unreleased
 - Go: Collects environment variables in debug bundle. ([#1132](https://github.com/fossas/fossa-cli/pull/1132))
+- Diagnostics: Improves user-facing error messages and debugging tips for external commands and some HTTP error conditions ([#1165](https://github.com/fossas/fossa-cli/pull/1165))
+
+## v3.7.2
+- License Scanning: Add four new licenses: Pushwoosh, PalletsFlaskLogo, IntelDisclaimer and Instabug
+
+## v3.7.1
+- Stack: Git based dependencies are detected and handled correctly. ([#1160](https://github.com/fossas/fossa-cli/pull/1160))
+
+## v3.7.0
+- Support Maven wrapper (`mvnw`) usage in Maven projects, and user-provided binary overrides for Maven projects ([#1149](https://github.com/fossas/fossa-cli/pull/1149))
+  For more information, see the [Maven strategy documentation](./docs/references/strategies/languages/maven/maven.md).
+- Installation Script: Verify that the sha256sum of the downloaded archive matches the recorded one. ([#1158](https://github.com/fossas/fossa-cli/pull/1158))
+
+## v3.6.18
+- License Scanning: Emit a warning if unarchiving fails rather than a fatal error. ([#1153](https://github.com/fossas/fossa-cli/pull/1153))
+
+## v3.6.17
+
+- Handle Leiningen deduped deps: expand groupID and artifactID in the leiningen tactic to satisfy the Maven fetcher ([#1152]](https://github.com/fossas/fossa-cli/pull/1152))
+
+## v3.6.17
+
+- `fossa test`: Display CVE, fixed version information, and issue dashboard links when possible. ([#1146](https://github.com/fossas/fossa-cli/pull/1146))
+
+## v3.6.16
+
+- Project labels: Support project labels from command line and configuration file ([1145](https://github.com/fossas/fossa-cli/pull/1145))
+
+## v3.6.15
+
+- Container scanning: support more tar formats. ([1142](https://github.com/fossas/fossa-cli/pull/1142))
+- `--detect-dynamic`: Supports recursively inspecting binaries for dynamic dependencies. ([#1143](https://github.com/fossas/fossa-cli/pull/1143))
+
+## v3.6.14
+
+- `fossa test`: Improved reporting. ([#1135](https://github.com/fossas/fossa-cli/pull/1135))
+
+## v3.6.13
+
+- Vendored Dependencies: Add the unity companion license (https://unity.com/legal/licenses/unity-companion-license) and unity package distribution license (https://unity.com/legal/licenses/unity-package-distribution-license) to license scanning ([#1136](https://github.com/fossas/fossa-cli/pull/1136))
+
+## v3.6.12
+
+- Maven: If a package is both `"test"` and `"compile"`, it is no longer filtered ([#1138](https://github.com/fossas/fossa-cli/pull/1138)).
+
+## v3.6.11
+
+- Lib yarn protocol: When we encounter Yarn lib deps we should warn but not fail the scan ([#1134](https://github.com/fossas/fossa-cli/pull/1134))
+
+## v3.6.10
+
+- Vendored Dependencies: Allow path filtering when doing cli-side license scans ([#1128](https://github.com/fossas/fossa-cli/pull/1128))
 
 ## v3.6.9
 - Yarn: Fix a bug where tarball URLs were recognized as git urls. ([#1126](https://github.com/fossas/fossa-cli/pull/1126))

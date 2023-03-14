@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Config.Common (
@@ -13,6 +14,7 @@ module App.Fossa.Config.Common (
   -- * CLI Validators
   validateDir,
   validateFile,
+  validateExists,
   validateApiKey,
 
   -- * CLI Collectors
@@ -95,6 +97,7 @@ import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
 import GHC.Generics (Generic)
 import Options.Applicative (
+  Alternative (many),
   Parser,
   ReadM,
   argument,
@@ -111,7 +114,8 @@ import Options.Applicative (
   value,
   (<|>),
  )
-import Path (Abs, Dir, File, Path, Rel, parseRelDir)
+import Path (Abs, Dir, File, Path, Rel, SomeBase (..), parseRelDir)
+import Path.Extra (SomePath (..))
 import Path.IO (resolveDir', resolveFile')
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI, mkURI)
@@ -143,6 +147,7 @@ metadataOpts =
     <*> optional (strOption (long "link" <> short 'L' <> help "a link to attach to the current build"))
     <*> optional (strOption (long "team" <> short 'T' <> help "this repository's team inside your organization"))
     <*> optional (strOption (long "policy" <> help "the policy to assign to this project in FOSSA"))
+    <*> many (strOption (long "project-label" <> help "assign up to 5 labels to the project"))
     <*> optional releaseGroupMetadataOpts
 
 releaseGroupMetadataOpts :: Parser ReleaseGroupMetadata
@@ -196,6 +201,25 @@ validateFile fp = do
   if exists
     then pure file
     else fatalText $ "File does not exist: " <> toText file
+
+validateExists ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has ReadFS sig m
+  ) =>
+  FilePath ->
+  m SomePath
+validateExists fp =
+  recover (validateDir fp) >>= \case
+    Nothing ->
+      recover (validateFile fp) >>= \case
+        Nothing -> fatalText $ "File does not exist: " <> toText fp
+        -- Type included here so that if @validateFile@ ever changes this fails to compile,
+        -- since we're asserting @Abs@.
+        Just (resolved :: Path Abs File) -> pure . SomeFile $ Abs resolved
+    -- Type included here so that if @validateFile@ ever changes this fails to compile,
+    -- since we're asserting @Abs@.
+    Just (resolved :: Path Abs Dir) -> pure . SomeDir $ Abs resolved
 
 validateApiKey ::
   ( Has Diagnostics sig m

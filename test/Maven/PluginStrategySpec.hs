@@ -5,7 +5,7 @@ module Maven.PluginStrategySpec (
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import DepTypes (
-  DepEnvironment (EnvTesting),
+  DepEnvironment (..),
   DepType (MavenType),
   Dependency (..),
   VerConstraint (CEq),
@@ -37,7 +37,7 @@ packageOne =
     , dependencyName = "mygroup:packageOne"
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = Set.singleton EnvTesting
+    , dependencyEnvironments = Set.fromList [EnvProduction, EnvTesting]
     , dependencyTags = Map.fromList [("scopes", ["compile", "test"])]
     }
 
@@ -48,7 +48,7 @@ packageTwo =
     , dependencyName = "mygroup:packageTwo"
     , dependencyVersion = Just (CEq "2.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = mempty
+    , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.fromList [("scopes", ["compile"]), ("optional", ["true"])]
     }
 
@@ -59,8 +59,19 @@ packageFour =
     , dependencyName = "mygroup2:packageFour"
     , dependencyVersion = Just (CEq "4.0.0")
     , dependencyLocations = []
-    , dependencyEnvironments = mempty
+    , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.fromList [("scopes", ["compile"])]
+    }
+
+packageMultiScope :: Dependency
+packageMultiScope =
+  Dependency
+    { dependencyType = MavenType
+    , dependencyName = "multiscope:apple"
+    , dependencyVersion = Just (CEq "1.0.0")
+    , dependencyLocations = mempty
+    , dependencyEnvironments = Set.fromList [EnvProduction, EnvTesting, EnvOther "other"]
+    , dependencyTags = Map.singleton "scopes" ["compile", "test", "other"]
     }
 
 mavenOutput :: PluginOutput
@@ -172,6 +183,37 @@ mavenMultimoduleOutputWithDirects =
         ]
     }
 
+mavenMultiScopeOutput :: PluginOutput
+mavenMultiScopeOutput =
+  PluginOutput
+    { outArtifacts =
+        [ Artifact
+            { artifactNumericId = 0
+            , artifactGroupId = "multiscope"
+            , artifactArtifactId = "pie"
+            , artifactVersion = "1.0.0"
+            , artifactOptional = False
+            , artifactScopes = ["compile", "test", "other"]
+            , artifactIsDirect = True
+            }
+        , Artifact
+            { artifactNumericId = 1
+            , artifactGroupId = "multiscope"
+            , artifactArtifactId = "apple"
+            , artifactVersion = "1.0.0"
+            , artifactOptional = False
+            , artifactScopes = ["compile", "test", "other"]
+            , artifactIsDirect = False
+            }
+        ]
+    , outEdges =
+        [ Edge
+            { edgeFrom = 0
+            , edgeTo = 1
+            }
+        ]
+    }
+
 mavenCrossDependentSubModules :: PluginOutput
 mavenCrossDependentSubModules =
   PluginOutput
@@ -241,6 +283,10 @@ spec = do
       expectDeps [packageTwo, packageFour] graph
       expectDirect [packageTwo, packageFour] graph
       expectEdges [] graph
+
+    it "Should parse all scopes" $ do
+      let graph = buildGraph (ReactorOutput []) mavenMultiScopeOutput
+      expectDeps [packageMultiScope] graph
 
     let graph = buildGraph (ReactorOutput [ReactorArtifact "packageThree"]) mavenCrossDependentSubModules
     it "Should mark top-level graph artifacts and known submodules as direct, then shrinkRoots" $ do

@@ -25,7 +25,6 @@ import Control.Effect.Diagnostics (
   Diagnostics,
   context,
   errCtx,
-  fatal,
   fatalText,
   recover,
   warnOnErr,
@@ -45,7 +44,7 @@ import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty, toSet)
-import Data.String.Conversion (decodeUtf8, toString, toText)
+import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
@@ -53,13 +52,13 @@ import DepTypes (
  )
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
-import Discovery.Walk (WalkStep (..), fileName, walkWithFilters')
+import Discovery.Walk (WalkStep (..), fileName, findFileInAncestor, walkWithFilters')
 import Effect.Exec (AllowErr (..), Command (..), Exec, execThrow)
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
-import Effect.ReadFS (ReadFS, doesFileExist)
+import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
-import Path (Abs, Dir, File, Path, fromAbsDir, parent, parseRelFile, (</>))
+import Path (Abs, Dir, File, Path, fromAbsDir)
 import Strategy.Gradle.Common (
   ConfigName (..),
   getDebugMessages,
@@ -69,9 +68,9 @@ import Strategy.Gradle.ResolutionApi qualified as ResolutionApi
 import System.FilePath qualified as FilePath
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (GradleProjectType), FoundTargets (..), GraphBreadth (..))
 
--- |Run the init script on a set of subprojects. Note that this runs the
--- `:jsonDeps` task on every subproject in one command. This is helpful for
--- performance reasons, because Gradle has a slow startup on each invocation.
+-- | Run the init script on a set of subprojects. Note that this runs the
+--  `:jsonDeps` task on every subproject in one command. This is helpful for
+--  performance reasons, because Gradle has a slow startup on each invocation.
 gradleJsonDepsCmdTargets :: FilePath -> Set BuildTarget -> Text -> Command
 gradleJsonDepsCmdTargets initScriptFilepath targets baseCmd =
   Command
@@ -80,7 +79,7 @@ gradleJsonDepsCmdTargets initScriptFilepath targets baseCmd =
     , cmdAllowErr = Never
     }
 
--- |Run the init script on a root project.
+-- | Run the init script on a root project.
 gradleJsonDepsCmd :: FilePath -> Text -> Command
 gradleJsonDepsCmd initScriptFilepath baseCmd =
   Command
@@ -100,8 +99,8 @@ discover ::
   m [DiscoveredProject GradleProject]
 discover = simpleDiscover findProjects mkProject GradleProjectType
 
--- |Run a Gradle command in a specific working directory, while correctly trying
---Gradle wrappers.
+-- | Run a Gradle command in a specific working directory, while correctly trying
+-- Gradle wrappers.
 runGradle :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> (Text -> Command) -> m BL.ByteString
 runGradle dir cmd = gradleWrapper <||> gradleBinary
   where
@@ -109,23 +108,7 @@ runGradle dir cmd = gradleWrapper <||> gradleBinary
     gradleBinary = execThrow dir (cmd "gradle")
 
     gradleWrapper :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => m BL.ByteString
-    gradleWrapper = warnOnErr GradleWrapperFailed $ (walkUpDir dir "gradlew" >>= execThrow dir . cmd . toText) <||> (walkUpDir dir "gradlew.bat" >>= execThrow dir . cmd . toText)
-
--- |Search upwards in a directory for the existence of the supplied file.
-walkUpDir :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)
-walkUpDir dir filename = do
-  relFile <- case parseRelFile $ toString filename of
-    Nothing -> fatal $ "invalid file name: " <> filename
-    Just path -> pure path
-  let absFile = dir </> relFile
-  exists <- doesFileExist absFile
-  if exists
-    then pure absFile
-    else do
-      let parentDir = parent dir
-      if parentDir /= dir
-        then walkUpDir parentDir filename
-        else fatal $ "invalid file name: " <> filename
+    gradleWrapper = warnOnErr GradleWrapperFailed $ (findFileInAncestor dir "gradlew" >>= execThrow dir . cmd . toText) <||> (findFileInAncestor dir "gradlew.bat" >>= execThrow dir . cmd . toText)
 
 -- Search for a `build.gradle`. Each `build.gradle` is its own analysis target.
 --

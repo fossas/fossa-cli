@@ -2,6 +2,7 @@ module App.Fossa.AnalyzeSpec (spec) where
 
 import App.Fossa.Analyze.Discover (DiscoverFunc, discoverFuncs)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
+import App.Types (OverrideDynamicAnalysisBinary)
 import Control.Carrier.Debug (DebugC)
 import Control.Carrier.Diagnostics (DiagnosticsC)
 import Control.Carrier.Reader (ReaderC)
@@ -14,7 +15,7 @@ import Effect.ReadFS (ReadFSIOC)
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Type.Operator (type ($))
 
-type SomeMonad = TelemetryC $ ReaderC ExperimentalAnalyzeConfig $ ReaderC AllFilters $ DebugC $ DiagnosticsC $ LoggerC $ ExecIOC $ ReadFSIOC $ StackC IO
+type SomeMonad = TelemetryC $ ReaderC OverrideDynamicAnalysisBinary $ ReaderC ExperimentalAnalyzeConfig $ ReaderC AllFilters $ DebugC $ DiagnosticsC $ LoggerC $ ExecIOC $ ReadFSIOC $ StackC IO
 
 spec :: Spec
 spec =

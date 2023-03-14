@@ -1,3 +1,4 @@
+-- | Fpm, the fortran package manager.
 module Strategy.Fpm (discover) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)

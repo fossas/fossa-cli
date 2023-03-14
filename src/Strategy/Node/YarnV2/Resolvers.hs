@@ -21,6 +21,7 @@ module Strategy.Node.YarnV2.Resolvers (
   gitResolver,
   tarResolver,
   fileResolver,
+  libResolver,
   linkResolver,
   execResolver,
   portalResolver,
@@ -47,12 +48,15 @@ data Resolver = Resolver
   -- ^ Convert this locator to a yarn package
   }
 
+-- Default Yarn Protocols can be found at https://yarnpkg.com/features/protocols.
 data Package
   = WorkspacePackage Text -- relative reference to a directory. not quite a Path Rel Dir because it may contain '..'
   | NpmPackage (Maybe Text) Text Text -- scope, package, version
   | GitPackage Text Text -- url, commit
   | TarPackage Text -- url
   | FilePackage Text
+  | -- LibPackages are a custom protocol supported by a user.
+    LibPackage Text
   | LinkPackage Text
   | PortalPackage Text
   | ExecPackage Text
@@ -83,6 +87,7 @@ allResolvers =
     tarResolver
   , gitResolver
   , fileResolver
+  , libResolver
   , linkResolver
   , execResolver
   , portalResolver
@@ -243,9 +248,6 @@ tarResolver =
 ---------- Unsupported (by fossa) resolvers
 
 -- | The file resolver supports local "file:" references on disk
---
--- FOSSA cannot handle these, so we don't do any further parsing of the
--- resolution field
 fileResolver :: Resolver
 fileResolver = unsupportedResolver "FileResolver" "file:" FilePackage
 
@@ -270,6 +272,13 @@ portalResolver = unsupportedResolver "PortalResolver" "portal:" PortalPackage
 -- resolution field
 execResolver :: Resolver
 execResolver = unsupportedResolver "ExecResolver" "exec:" ExecPackage
+
+-- | The lib resolver is a custom implementation of the portal protocol
+--
+-- FOSSA cannot handle these, so we don't do any further parsing of the
+-- resolution field
+libResolver :: Resolver
+libResolver = unsupportedResolver "LibResolver" "lib:" LibPackage
 
 -- | The patch resolver allows you to modify another package with patch files.
 -- The packages appear elsewhere in the lockfile, so we don't do any further

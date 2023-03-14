@@ -21,6 +21,7 @@ import App.Fossa.Config.ConfigFile (
   ExperimentalGradleConfigs (gradleConfigsOnly),
   resolveLocalConfigFile,
  )
+import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir)
 import Control.Effect.Diagnostics (Diagnostics)
@@ -56,7 +57,7 @@ mergeOpts ::
   , Has ReadFS sig m
   ) =>
   Maybe ConfigFile ->
-  p ->
+  EnvVars ->
   ListTargetsCliOpts ->
   m ListTargetsConfig
 mergeOpts cfgfile _envvars ListTargetsCliOpts{..} = do

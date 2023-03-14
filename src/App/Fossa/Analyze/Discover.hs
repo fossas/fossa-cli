@@ -3,7 +3,7 @@ module App.Fossa.Analyze.Discover (
   DiscoverFunc (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, AnalyzeTaskEffs)
+import App.Fossa.Analyze.Types (AnalyzeProject, DiscoverTaskEffs)
 import Control.Effect.Reader (Has, Reader)
 import Data.Aeson qualified as Aeson
 import Discovery.Filters (AllFilters)
@@ -45,7 +45,7 @@ import Strategy.Scala qualified as Scala
 import Strategy.SwiftPM qualified as SwiftPM
 import Types (DiscoveredProject)
 
-discoverFuncs :: AnalyzeTaskEffs sig m => [DiscoverFunc m]
+discoverFuncs :: DiscoverTaskEffs sig m => [DiscoverFunc m]
 discoverFuncs =
   [ DiscoverFunc Bundler.discover
   , DiscoverFunc Cabal.discover

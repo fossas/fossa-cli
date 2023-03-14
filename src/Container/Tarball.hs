@@ -33,16 +33,22 @@ import Container.Types (
     layerDigest
   ),
  )
+import Control.Algebra (Has)
+import Control.Monad (unless)
 import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.Either (lefts, rights)
 import Data.FileTree.IndexFileTree (SomeFileTree, empty, insert, remove, resolveSymLinkRef, toSomePath)
-import Data.Foldable (foldl')
+import Data.Foldable (foldlM)
 import Data.List.NonEmpty qualified as NLE
 import Data.Sequence (Seq, ViewL (EmptyL, (:<)), viewl, (|>))
 import Data.Sequence qualified as Seq
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.String.Conversion (ToText (toText), toString)
-import Data.Text (Text)
+import Data.Text (Text, intercalate)
 import Data.Text qualified as Text
+import Effect.Logger (Logger, Pretty (pretty), logDebug, logWarn)
+import System.FilePath (hasTrailingPathSeparator)
 import System.FilePath.Posix (normalise)
 
 -- | Container of list of tar entries with their offset for random content read.
@@ -54,7 +60,7 @@ data TarEntries = TarEntries
 
 -- | Parses Container Image from Tarball Byte string.
 parse :: ByteStringLazy.ByteString -> Either (NLE.NonEmpty ContainerImgParsingError) ContainerImageRaw
-parse content = case mkEntries $ Tar.read content of
+parse content = case mkEntries $ Tar.read' content of
   Left err -> Left $ NLE.singleton err
   Right te -> do
     -- Exported docker image must have
@@ -136,7 +142,7 @@ mkLayer (TarEntries entries tarOffset) (layerId, layerTarball) =
     EmptyL -> Left $ TarMissingLayerTar layerTarball
     (layerTarballEntry :< _) -> case entryContent $ fst layerTarballEntry of
       (NormalFile c _) -> do
-        let rawEntries = Tar.read c
+        let rawEntries = Tar.read' c
         case mkLayerFromOffset layerId (snd layerTarballEntry) rawEntries of
           Left err -> Left err
           Right layer -> Right layer
@@ -195,12 +201,35 @@ mkLayerFromOffset layerId imgOffset = build (ContainerLayer mempty 0 layerId)
         then Whiteout (removeWhiteOut . filePathOf $ tarPath)
         else InsertOrUpdate (filePathOf tarPath) offset
 
-mkFsFromChangeset :: ContainerLayer -> SomeFileTree TarEntryOffset
-mkFsFromChangeset (ContainerLayer changeSet _ _) = foldl' (flip applyChangeSet) empty changeSet
+mkFsFromChangeset :: (Has Logger sig m) => ContainerLayer -> m (SomeFileTree TarEntryOffset)
+mkFsFromChangeset (ContainerLayer changeSet _ layerDigest) = do
+  logDebug $ "Building fs from layer " <> pretty layerDigest <> " changeset"
+  (emptyDirs, tree) <- foldlM (flip applyChangeSet) (Set.empty, empty) changeSet
+
+  unless (null emptyDirs) $ do
+    logWarn $
+      "Empty directories found in change set, analysis may not be fully representative of container."
+        <> "\nThis can happen when the path in the container is too long to have been stored in the tar image."
+        <> "\nDirectories:"
+        <> "\n"
+        <> pretty (intercalate "\n" . map toText $ Set.toList emptyDirs)
+
+  pure tree
   where
-    applyChangeSet :: ContainerFSChangeSet -> SomeFileTree TarEntryOffset -> SomeFileTree TarEntryOffset
-    applyChangeSet (InsertOrUpdate path offset) tree = insert (toSomePath . toText $ path) (Just offset) tree
-    applyChangeSet (Whiteout path) tree = remove (toSomePath . toText $ path) tree
+    applyChangeSet :: (Has Logger sig m) => ContainerFSChangeSet -> (Set FilePath, SomeFileTree TarEntryOffset) -> m (Set String, SomeFileTree TarEntryOffset)
+    applyChangeSet (InsertOrUpdate path offset) (emptyDirs, tree) = do
+      -- Do not insert directories directly, only files; @insert@ already handles creating directories on demand.
+      -- This is done because if the tar has a file path length limit that is too short to store the full file path,
+      -- inserting just the directory causes a path traversal error when using the resulting fs.
+      if hasTrailingPathSeparator path
+        then do
+          pure (Set.insert path emptyDirs, tree)
+        else do
+          logDebug $ "[BuildLayer] InsertUpdate " <> pretty path
+          pure (emptyDirs, insert (toSomePath . toText $ path) (Just offset) tree)
+    applyChangeSet (Whiteout path) (emptyDirs, tree) = do
+      logDebug $ "[BuildLayer] Remove " <> pretty path
+      pure (emptyDirs, remove (toSomePath . toText $ path) tree)
 
 -- | True if tar entry is for a file or a symlink, otherwise False
 isFileOrLinkTarget :: Tar.Entry -> Bool

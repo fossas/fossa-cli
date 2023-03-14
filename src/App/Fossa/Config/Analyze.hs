@@ -22,6 +22,7 @@ module App.Fossa.Config.Analyze (
   mkSubCommand,
   loadConfig,
   cliParser,
+  mergeOpts,
 ) where
 
 import App.Fossa.Config.Common (
@@ -39,7 +40,7 @@ import App.Fossa.Config.Common (
   pathOpt,
   targetOpt,
   validateDir,
-  validateFile,
+  validateExists,
  )
 import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
@@ -50,14 +51,15 @@ import App.Fossa.Config.ConfigFile (
   mergeFileCmdMetadata,
   resolveConfigFile,
  )
-import App.Fossa.Config.EnvironmentVars (EnvVars)
+import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (
   BaseDir,
   MonorepoAnalysisOpts (MonorepoAnalysisOpts, monorepoAnalysisType),
+  OverrideDynamicAnalysisBinary (..),
   OverrideProject (OverrideProject),
-  ProjectMetadata,
+  ProjectMetadata (projectLabel),
   ProjectRevision,
  )
 import Control.Effect.Diagnostics (
@@ -103,9 +105,10 @@ import Options.Applicative (
   switch,
   (<|>),
  )
-import Path (Abs, Dir, File, Path, Rel)
+import Path (Abs, Dir, Path, Rel)
+import Path.Extra (SomePath)
 import System.Info qualified as SysInfo
-import Types (ArchiveUploadType (..), TargetFilter)
+import Types (ArchiveUploadType (..), LicenseScanPathFilters (..), TargetFilter)
 
 -- CLI flags, for use with 'Data.Flag'
 data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan deriving (Generic)
@@ -119,7 +122,7 @@ data UnpackArchives = UnpackArchives deriving (Generic)
 data VSIAnalysis = VSIAnalysis deriving (Generic)
 
 newtype IATAssertion = IATAssertion {unIATAssertion :: Maybe (Path Abs Dir)} deriving (Eq, Ord, Show, Generic)
-newtype DynamicLinkInspect = DynamicLinkInspect {unDynamicLinkInspect :: Maybe (Path Abs File)} deriving (Eq, Ord, Show, Generic)
+newtype DynamicLinkInspect = DynamicLinkInspect {unDynamicLinkInspect :: Maybe SomePath} deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON BinaryDiscovery where
   toEncoding = genericToEncoding defaultOptions
@@ -160,6 +163,7 @@ instance ToJSON VSIModeOptions where
 data VendoredDependencyOptions = VendoredDependencyOptions
   { forceRescans :: Bool
   , licenseScanMethod :: Maybe ArchiveUploadType
+  , licenseScanPathFilters :: Maybe LicenseScanPathFilters
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -236,6 +240,7 @@ data StandardAnalyzeConfig = StandardAnalyzeConfig
   , jsonOutput :: Flag JsonOutput
   , includeAllDeps :: Flag IncludeAll
   , noDiscoveryExclusion :: Flag NoDiscoveryExclusion
+  , overrideDynamicAnalysis :: OverrideDynamicAnalysisBinary
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -430,6 +435,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       filters = collectFilters maybeConfig cliOpts
       experimentalCfgs = collectExperimental maybeConfig
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
+      dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
 
   StandardAnalyzeConfig
     <$> basedir
@@ -444,6 +450,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure analyzeJsonOutput
     <*> pure analyzeIncludeAllDeps
     <*> pure analyzeNoDiscoveryExclusion
+    <*> pure dynamicAnalysisOverrides
 
 collectFilters ::
   ( Has Diagnostics sig m
@@ -484,8 +491,8 @@ collectVendoredDeps ::
   m VendoredDependencyOptions
 collectVendoredDeps maybeCfg cliOpts = do
   let (forceRescansFromFlags, scanTypeFromFlags) = collectVendoredDepsFromFlags cliOpts
-      (forceRescansFromConfig, scanTypeFromConfig) = collectVendoredDepsFromConfig maybeCfg
-  pure $ VendoredDependencyOptions (forceRescansFromFlags || forceRescansFromConfig) (scanTypeFromFlags <|> scanTypeFromConfig)
+      (forceRescansFromConfig, scanTypeFromConfig, licenseScanPathFiltersFromConfig) = collectVendoredDepsFromConfig maybeCfg
+  pure $ VendoredDependencyOptions (forceRescansFromFlags || forceRescansFromConfig) (scanTypeFromFlags <|> scanTypeFromConfig) licenseScanPathFiltersFromConfig
 
 collectVendoredDepsFromFlags ::
   AnalyzeCliOpts ->
@@ -495,11 +502,12 @@ collectVendoredDepsFromFlags AnalyzeCliOpts{..} = do
       scanType = analyzeForceVendoredDependencyMode
   (forceRescans, scanType)
 
-collectVendoredDepsFromConfig :: Maybe ConfigFile -> (Bool, Maybe ArchiveUploadType)
+collectVendoredDepsFromConfig :: Maybe ConfigFile -> (Bool, Maybe ArchiveUploadType, Maybe LicenseScanPathFilters)
 collectVendoredDepsFromConfig maybeCfg =
   let forceRescans = maybe False configForceRescans (maybeCfg >>= configVendoredDependencies)
       defaultScanType = maybeCfg >>= configVendoredDependencies >>= configLicenseScanMethod
-   in (forceRescans, defaultScanType)
+      pathFilters = maybeCfg >>= configVendoredDependencies >>= configLicenseScanPathFilters
+   in (forceRescans, defaultScanType, pathFilters)
 
 collectScanDestination ::
   ( Has Diagnostics sig m
@@ -514,6 +522,7 @@ collectScanDestination maybeCfgFile envvars AnalyzeCliOpts{..} =
     else do
       apiOpts <- collectApiOpts maybeCfgFile envvars commons
       let metaMerged = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
+      when (length (projectLabel metaMerged) > 5) $ fatalText "Projects are only allowed to have 5 associated project labels"
       pure $ UploadScan apiOpts metaMerged
 
 collectModeOptions ::
@@ -525,12 +534,12 @@ collectModeOptions ::
   m VSIModeOptions
 collectModeOptions AnalyzeCliOpts{..} = do
   assertionDir <- traverse validateDir analyzeAssertMode
-  dynamicLinkTarget <- traverse validateFile analyzeDynamicLinkTarget
+  resolvedDynamicLinkTarget <- traverse validateExists analyzeDynamicLinkTarget
   pure
     VSIModeOptions
       { vsiAnalysisEnabled = analyzeVSIMode
       , vsiSkipSet = VSI.SkipResolution $ Set.fromList analyzeSkipVSIGraphResolution
       , iatAssertion = IATAssertion assertionDir
-      , dynamicLinkingTarget = DynamicLinkInspect dynamicLinkTarget
+      , dynamicLinkingTarget = DynamicLinkInspect resolvedDynamicLinkTarget
       , binaryDiscoveryEnabled = analyzeBinaryDiscoveryMode
       }

@@ -11,6 +11,9 @@ MOUNTED_DEV_TOOLS_OPTS += --workdir "/fossa-cli"
 MOUNTED_DEV_TOOLS := ${MOUNTED_DEV_TOOLS_OPTS} ${DEV_TOOLS}
 SHELL := bash
 
+build-cli: build-cargo
+	cabal build fossa
+
 build: build-cargo
 	cabal build
 
@@ -52,10 +55,10 @@ analyze:
 	cabal run fossa -- analyze --output --debug --only-target 'cabal@./'
 
 # Copy the built binary into the local root
-install-local: build
+install-local: build-cli
 	cp $(shell cabal list-bin fossa) ./fossa
 
-install-dev: build
+install-dev: build-cli
 	cp $(shell cabal list-bin fossa) /usr/local/bin/fossa-dev
 
 check: check-fmt lint
@@ -178,4 +181,4 @@ ci-shell:
 bench:
 	cabal bench --benchmark-options '+RTS -T'
 
-.PHONY: build test integration-test analyze install-local fmt check check-fmt lint check-ci fmt-ci build-test-data clean-test-data install-dev test-all bench build-cargo test-cargo fmt-cargo check-fmt-cargo lint-cargo
+.PHONY: build-cli test integration-test analyze install-local fmt check check-fmt lint check-ci fmt-ci build-test-data clean-test-data install-dev test-all bench build-cargo test-cargo fmt-cargo check-fmt-cargo lint-cargo

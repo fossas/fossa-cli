@@ -15,7 +15,7 @@ import Data.Aeson (ToJSON)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
-import Effect.Exec (Exec)
+import Effect.Exec (CandidateCommandEffs, Exec)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
@@ -65,6 +65,7 @@ getDeps ::
   , Has Diagnostics sig m
   , Has ReadFS sig m
   , Has Exec sig m
+  , CandidateCommandEffs sig m
   ) =>
   MavenProject ->
   m DependencyResults
@@ -97,6 +98,7 @@ getDepsDynamicAnalysis ::
   , Has Diagnostics sig m
   , Has ReadFS sig m
   , Has Exec sig m
+  , CandidateCommandEffs sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing Dependency, GraphBreadth)
@@ -107,20 +109,18 @@ getDepsDynamicAnalysis closure =
     $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
 
 getDepsPlugin ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
+  ( CandidateCommandEffs sig m
+  , Has (Lift IO) sig m
   , Has ReadFS sig m
-  , Has Exec sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing Dependency, GraphBreadth)
 getDepsPlugin closure = context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
 
 getDepsPluginLegacy ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
+  ( CandidateCommandEffs sig m
+  , Has (Lift IO) sig m
   , Has ReadFS sig m
-  , Has Exec sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing Dependency, GraphBreadth)
@@ -131,6 +131,7 @@ getDepsTreeCmd ::
   , Has Diagnostics sig m
   , Has ReadFS sig m
   , Has Exec sig m
+  , CandidateCommandEffs sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing Dependency, GraphBreadth)

@@ -31,6 +31,7 @@ module Fossa.API.Types (
   defaultApiPollDelay,
 ) where
 
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, fatalText)
 import Control.Timeout (Duration (Seconds))
 import Data.Aeson (
@@ -46,14 +47,15 @@ import Data.Aeson (
   (.:?),
  )
 import Data.Coerce (coerce)
-import Data.List (sort)
+import Data.Function (on)
+import Data.List (sort, sortBy)
 import Data.List.Extra ((!?))
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Ord (comparing)
-import Data.String.Conversion (encodeUtf8)
-import Data.Text (Text, toLower)
+import Data.String.Conversion (ToText, encodeUtf8, toText)
+import Data.Text (Text, toLower, toUpper)
 import Data.Text qualified as Text
 import Network.HTTP.Req (
   Option,
@@ -66,7 +68,6 @@ import Prettyprinter (
   Doc,
   Pretty (pretty),
   fill,
-  hsep,
   line,
   vsep,
  )
@@ -216,23 +217,67 @@ instance Ord IssueSummaryTarget where
       then comparing istTargetPaths lhs rhs
       else comparing istTargetType lhs rhs
 
-data IssueType
-  = IssuePolicyConflict
-  | IssuePolicyFlag
-  | IssueVulnerability
-  | IssueUnlicensedDependency
-  | IssueOutdatedDependency
-  | IssueOther Text
+data IssueCategory
+  = Security
+  | Compliance
+  | Other Text
   deriving (Eq, Ord, Show)
 
-renderIssueType :: IssueType -> Text
-renderIssueType = \case
-  IssuePolicyConflict -> "Denied by Policy"
-  IssuePolicyFlag -> "Flagged by Policy"
-  IssueVulnerability -> "Vulnerability"
-  IssueUnlicensedDependency -> "Unlicensed Dependency"
-  IssueOutdatedDependency -> "Outdated Dependency"
-  IssueOther other -> other
+instance ToText IssueCategory where
+  toText :: IssueCategory -> Text
+  toText i =
+    case i of
+      Security -> "Security"
+      Compliance -> "Compliance"
+      Other t -> t
+
+instance Pretty IssueCategory where
+  pretty = pretty . toUpper . toText
+
+issueTypeToCategory :: IssueType -> IssueCategory
+issueTypeToCategory =
+  \case
+    IssueAbandonware -> Security
+    IssueDenyListedDep -> Security
+    IssueEmptyPackage -> Security
+    IssueNativeCode -> Security
+    IssueOutdatedDependency -> Security
+    IssueVulnerability -> Security
+    IssuePolicyConflict -> Compliance
+    IssuePolicyFlag -> Compliance
+    IssueUnlicensedAndPublicDep -> Compliance
+    IssueUnlicensedDependency -> Compliance
+    IssueOther t -> Other t
+
+-- These constructors are ordered alphabetically.
+-- This is needed for our `fossa test` output.
+data IssueType
+  = IssueAbandonware
+  | IssueDenyListedDep
+  | IssueEmptyPackage
+  | IssueNativeCode
+  | IssueOther Text
+  | IssueOutdatedDependency
+  | IssuePolicyConflict
+  | IssuePolicyFlag
+  | IssueUnlicensedAndPublicDep
+  | IssueUnlicensedDependency
+  | IssueVulnerability
+  deriving (Eq, Ord, Show)
+
+instance Pretty IssueType where
+  pretty = \case
+    IssueAbandonware -> "Abandoned Dependencies"
+    IssueDenyListedDep -> "Denylisted Dependency"
+    IssueNativeCode -> "Native Code Dependency"
+    IssuePolicyConflict -> "Denied by Policy"
+    IssuePolicyFlag -> "Flagged by Policy"
+    IssueVulnerability -> "Vulnerability"
+    IssueUnlicensedDependency -> "Unlicensed Dependency"
+    IssueUnlicensedAndPublicDep -> "Unlicensed and Public Dependency"
+    IssueOutdatedDependency -> "Outdated Dependency"
+    IssueEmptyPackage -> "Empty Package"
+    IssueOther other -> pretty other
 
 data Issue = Issue
   { issueId :: Int
@@ -241,12 +286,15 @@ data Issue = Issue
   , issueRevisionId :: Text
   , issueType :: IssueType
   , issueRule :: Maybe IssueRule
+  , issueLicense :: Maybe Text
+  , issueDashURL :: Maybe Text
+  , issueCVE :: Maybe Text
+  , issueFixedIn :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
 newtype IssueRule = IssueRule
-  { ruleLicenseId :: Maybe Text
-  }
+  {ruleId :: Maybe Int}
   deriving (Eq, Ord, Show)
 
 instance FromJSON Issues where
@@ -317,6 +365,10 @@ instance FromJSON Issue where
       <*> obj .:? "revisionId" .!= "unknown project"
       <*> obj .: "type"
       <*> obj .:? "rule"
+      <*> obj .:? "license"
+      <*> obj .:? "issueDashURL"
+      <*> obj .:? "cve"
+      <*> obj .:? "fixedIn"
 
 instance ToJSON Issue where
   toJSON Issue{..} =
@@ -327,6 +379,10 @@ instance ToJSON Issue where
       , "revisionId" .= issueRevisionId
       , "type" .= issueType
       , "rule" .= issueRule
+      , "license" .= issueLicense
+      , "issueDashURL" .= issueDashURL
+      , "cve" .= issueCVE
+      , "fixedIn" .= issueFixedIn
       ]
 
 instance FromJSON IssueType where
@@ -336,11 +392,20 @@ instance FromJSON IssueType where
     "vulnerability" -> pure IssueVulnerability
     "unlicensed_dependency" -> pure IssueUnlicensedDependency
     "outdated_dependency" -> pure IssueOutdatedDependency
+    "risk_empty_package" -> pure IssueEmptyPackage
+    "risk_native_code" -> pure IssueNativeCode
+    "blacklisted_dependency" -> pure IssueDenyListedDep
+    "unlicensed_and_public" -> pure IssueUnlicensedAndPublicDep
     other -> pure (IssueOther other)
 
 instance ToJSON IssueType where
   toJSON =
     String . \case
+      IssueAbandonware -> "risk_abandonware"
+      IssueEmptyPackage -> "risk_empty_package"
+      IssueDenyListedDep -> "blacklisted_dependency"
+      IssueNativeCode -> "risk_native_code"
+      IssueUnlicensedAndPublicDep -> "unlicensed_and_public"
       IssuePolicyConflict -> "policy_conflict"
       IssuePolicyFlag -> "policy_flag"
       IssueVulnerability -> "vulnerability"
@@ -350,10 +415,13 @@ instance ToJSON IssueType where
 
 instance FromJSON IssueRule where
   parseJSON = withObject "IssueRule" $ \obj ->
-    IssueRule <$> obj .:? "licenseId"
+    IssueRule <$> obj .:? "ruleId"
 
 instance ToJSON IssueRule where
-  toJSON IssueRule{..} = object ["licenseId" .= ruleLicenseId]
+  toJSON IssueRule{..} =
+    object
+      [ "ruleId" .= ruleId
+      ]
 
 instance Pretty Issues where
   pretty = renderedIssues
@@ -379,14 +447,29 @@ data Organization = Organization
 instance FromJSON Organization where
   parseJSON = withObject "Organization" $ \obj ->
     Organization
-      <$> obj .: "organizationId"
-      <*> obj .:? "usesSAML" .!= False
-      <*> obj .:? "supportsCliLicenseScanning" .!= False
-      <*> obj .:? "supportsAnalyzedRevisionsQuery" .!= False
-      <*> obj .:? "defaultVendoredDependencyScanType" .!= CLILicenseScan
-      <*> obj .:? "supportsIssueDiffs" .!= False
-      <*> obj .:? "supportsNativeContainerScans" .!= False
-      <*> obj .:? "supportsDependenciesCachePolling" .!= False
+      <$> obj
+        .: "organizationId"
+      <*> obj
+        .:? "usesSAML"
+        .!= False
+      <*> obj
+        .:? "supportsCliLicenseScanning"
+        .!= False
+      <*> obj
+        .:? "supportsAnalyzedRevisionsQuery"
+        .!= False
+      <*> obj
+        .:? "defaultVendoredDependencyScanType"
+        .!= CLILicenseScan
+      <*> obj
+        .:? "supportsIssueDiffs"
+        .!= False
+      <*> obj
+        .:? "supportsNativeContainerScans"
+        .!= False
+      <*> obj
+        .:? "supportsDependenciesCachePolling"
+        .!= False
 
 data Project = Project
   { projectId :: Text
@@ -398,9 +481,12 @@ data Project = Project
 instance FromJSON Project where
   parseJSON = withObject "Project" $ \obj ->
     Project
-      <$> obj .: "id"
-      <*> obj .: "title"
-      <*> obj .: "isMonorepo"
+      <$> obj
+        .: "id"
+      <*> obj
+        .: "title"
+      <*> obj
+        .: "isMonorepo"
 
 data UploadResponse = UploadResponse
   { uploadLocator :: Locator
@@ -428,8 +514,10 @@ data ScanResponse = ScanResponse
 instance FromJSON ScanResponse where
   parseJSON = withObject "ScanResponse" $ \obj ->
     ScanResponse
-      <$> obj .: "id"
-      <*> obj .:? "status"
+      <$> obj
+        .: "id"
+      <*> obj
+        .:? "status"
 
 data RevisionDependencyCacheStatus
   = Ready
@@ -443,7 +531,8 @@ newtype RevisionDependencyCache = RevisionDependencyCache {status :: RevisionDep
 instance FromJSON RevisionDependencyCache where
   parseJSON = withObject "RevisionDependencyCache" $ \obj ->
     RevisionDependencyCache
-      <$> obj .: "status"
+      <$> obj
+        .: "status"
 
 instance FromJSON RevisionDependencyCacheStatus where
   parseJSON = withText "RevisionDependencyCacheStatus" $ \txt -> case Text.toUpper txt of
@@ -465,12 +554,21 @@ renderedIssues issues = rendered
     categorize :: Ord k => (v -> k) -> [v] -> Map k [v]
     categorize f = Map.fromListWith (++) . map (\v -> (f v, [v]))
 
-    issuesByType :: Map IssueType [Issue]
-    issuesByType = categorize issueType issuesList
+    issuesSortedByName :: Map IssueType [Issue]
+    issuesSortedByName = sortBy (compare `on` issueName) <$> categorize issueType issuesList
+
+    issuesSortedByCategory :: Map IssueCategory [(IssueType, [Issue])]
+    issuesSortedByCategory =
+      categorize (issueTypeToCategory . fst)
+        . Map.toList
+        $ issuesSortedByName
 
     renderSection :: IssueType -> [Issue] -> Doc ann
     renderSection issueType rawIssues =
-      renderHeader issueType <> line <> vsep (map renderIssue rawIssues) <> line
+      renderHeader issueType (length rawIssues)
+        <> line
+        <> vsep (map (\i -> renderIssue i <> line) rawIssues)
+        <> line
 
     renderedRevisionSummary :: Doc ann
     renderedRevisionSummary = case issuesSummary issues of
@@ -513,36 +611,99 @@ renderedIssues issues = rendered
     rendered =
       vsep $
         [renderedRevisionSummary]
-          <> [renderSection issueType rawIssues | (issueType, rawIssues) <- Map.toList issuesByType]
+          <> do
+            (category, categoryIssues) <- Map.toList issuesSortedByCategory
+            let totalIssuesCount = length . mconcat . map snd $ categoryIssues
+            let issuesRendered = map (uncurry renderSection) categoryIssues
+            let categoryHeader = pretty category <> " ISSUES (Total " <> pretty totalIssuesCount <> ")" <> line
+            categoryHeader : issuesRendered
 
     headerLine :: Doc ann
     headerLine = "========================================================================"
 
-    renderHeader :: IssueType -> Doc ann
-    renderHeader ty =
+    renderHeader :: Pretty a => a -> Int -> Doc ann
+    renderHeader headerItem count =
       vsep
         [ headerLine
-        , pretty $ renderIssueType ty
+        , pretty headerItem <> " (Total " <> pretty count <> ")"
         , headerLine
-        , hsep $
-            map (fill padding) $ case ty of
-              IssuePolicyConflict -> ["Dependency", "Revision", "License"]
-              IssuePolicyFlag -> ["Dependency", "Revision", "License"]
-              _ -> ["Dependency", "Revision"]
-        , ""
         ]
 
+    issueName :: Issue -> Text
+    issueName Issue{issueRevisionId = revisionId} =
+      fromMaybe revisionId $ Text.split (\c -> c == '$' || c == '+') revisionId !? 1
+
     renderIssue :: Issue -> Doc ann
-    renderIssue issue = hsep (map format [name, revision, license])
+    renderIssue Issue{..} =
+      vsep
+        ( map format . catMaybes $
+            [ Just issueTitle
+            , cveMessage
+            , fixedIn
+            , issueLink
+            ]
+        )
       where
         format :: Text -> Doc ann
         format = fill padding . pretty
 
-        locatorSplit = Text.split (\c -> c == '$' || c == '+') (issueRevisionId issue)
+        locatorSplit = Text.split (\c -> c == '$' || c == '+') issueRevisionId
 
-        name = fromMaybe (issueRevisionId issue) (locatorSplit !? 1)
+        issueTitle :: Text
+        issueTitle =
+          "⚑ "
+            <> case issueType of
+              IssueAbandonware -> "Abandoned dependency detected in " <> nameRevision
+              IssueEmptyPackage -> "Empty package detected in " <> nameRevision
+              IssueDenyListedDep -> "Denylist dependency detected in " <> nameRevision
+              IssueNativeCode -> "Native code dependency detected in " <> nameRevision
+              IssueUnlicensedAndPublicDep -> "Unlicensed dependency detected in " <> nameRevision
+              IssuePolicyFlag -> issuePolicyFlagMessage
+              IssuePolicyConflict -> issuePolicyConflictMessage
+              IssueVulnerability -> "Critical vulnerability detected on " <> nameRevision
+              IssueUnlicensedDependency -> "Unlicensed dependency detected in " <> nameRevision
+              IssueOutdatedDependency -> "Outdated dependency detected in " <> nameRevision
+              IssueOther t -> t
+
+        name = fromMaybe issueRevisionId (locatorSplit !? 1)
         revision = fromMaybe "" (locatorSplit !? 2)
-        license = fromMaybe "" (ruleLicenseId =<< issueRule issue)
+
+        nameRevision :: Text
+        nameRevision = name <> "@" <> revision
+
+        intToText :: Int -> Text
+        intToText = toText . show
+
+        issuePolicyConflictMessage :: Text
+        issuePolicyConflictMessage =
+          "Denied by policy "
+            <> fromMaybe ("(unknown policy, issueId: " <> intToText issueId <> ") ") issueLicense
+            <> "on"
+            <> nameRevision
+
+        issueLink :: Maybe Text
+        issueLink = ("More information: " <>) <$> issueDashURL
+
+        cveMessage :: Maybe Text
+        cveMessage = ("CVE ID: " <>) <$> issueCVE
+
+        fixedIn :: Maybe Text
+        fixedIn = ("Fixed in: " <>) <$> issueFixedIn
+
+        issuePolicyFlagMessage :: Text
+        issuePolicyFlagMessage = fromMaybe missingRuleIdMsg (issuePolicyFlagMsg <|> missingLicenseIdMsg)
+          where
+            ruleId' :: Maybe Text
+            ruleId' = intToText <$> (ruleId =<< issueRule)
+
+            issuePolicyFlagMsg :: Maybe Text
+            issuePolicyFlagMsg = (\l -> l <> " license detected in " <> nameRevision) <$> issueLicense
+
+            missingLicenseIdMsg :: Maybe Text
+            missingLicenseIdMsg = (\rId -> "Policy flag issue detected (ruleId:  " <> rId <> ") in " <> nameRevision) <$> ruleId'
+
+            missingRuleIdMsg :: Text
+            missingRuleIdMsg = "Policy flag issue detected (issueId: " <> intToText issueId <> ") in " <> nameRevision
 
 -- | parse a URI for use as a base Url, along with some default options (auth, port, ...)
 useApiOpts :: Has Diagnostics sig m => ApiOpts -> m (Url 'Https, Option 'Https)

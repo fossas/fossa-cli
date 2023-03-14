@@ -15,8 +15,8 @@ import Test.Hspec qualified as Test
 import Types
 import Prelude
 
-allDeps :: [StackDep]
-allDeps = [builtinDep, deepDep, localDep, remoteDep]
+baseDeps :: [StackDep]
+baseDeps = [builtinDep, deepDep, localDep, remoteDep]
 
 mkDep :: Text -> [Text] -> StackLocation -> StackDep
 mkDep name deps = StackDep (PackageName name) (name <> "-ver") (map PackageName deps)
@@ -28,7 +28,16 @@ deepDep = mkDep "deep" [] Remote
 localDep :: StackDep
 localDep = mkDep "local" ["remote", "builtin"] Local
 remoteDep :: StackDep
-remoteDep = mkDep "remote" ["deep"] Remote
+remoteDep = mkDep "remote" ["deep", "git-pkg"] Remote
+
+gitDepUrl :: Text
+gitDepUrl = "https://domain.com/user/git-pkg"
+
+gitDepUncorrectedName :: StackDep
+gitDepUncorrectedName = StackDep (PackageName "git-pkg") "abc123" [] (Git (GitUrl gitDepUrl) (GitSha "abc123"))
+
+allDepsParsed :: [StackDep]
+allDepsParsed = gitDepUncorrectedName : baseDeps
 
 spec :: Test.Spec
 spec = do
@@ -36,15 +45,15 @@ spec = do
     jsonBytes <- Test.runIO $ BL.readFile "test/Haskell/testdata/stack.json"
     Test.it "should parse a json dependencies file" $
       case eitherDecode jsonBytes of
-        Left err -> Test.expectationFailure $ "Failed to parse: " ++ err
-        Right deps -> deps `Test.shouldMatchList` allDeps
+        Left err -> Test.expectationFailure $ "Failed to parse: " ++ show err
+        Right deps -> deps `Test.shouldMatchList` allDepsParsed
 
   Test.describe "Stack graph builder" $ do
-    let result = run . runStack . runDiagnostics . buildGraph $ allDeps
+    let result = run . runStack . runDiagnostics . buildGraph $ allDepsParsed
 
     Test.it "should build a correct graph" $
       assertOnSuccess result $ \_ graph -> do
         let gr = G.gmap dependencyName graph
-        expectDeps ["deep", "remote"] gr
+        expectDeps ["deep", "remote", gitDepUrl] gr
         expectDirect ["remote"] gr
-        expectEdges [("remote", "deep")] gr
+        expectEdges [("remote", "deep"), ("remote", gitDepUrl)] gr

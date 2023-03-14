@@ -29,7 +29,7 @@ clojureComplete :: Dependency
 clojureComplete =
   Dependency
     { dependencyType = MavenType
-    , dependencyName = "clojure-complete"
+    , dependencyName = "clojure-complete:clojure-complete"
     , dependencyVersion = Just (CEq "0.2.5")
     , dependencyLocations = []
     , dependencyEnvironments = mempty
@@ -41,7 +41,7 @@ koanEngine :: Dependency
 koanEngine =
   Dependency
     { dependencyType = MavenType
-    , dependencyName = "koan-engine"
+    , dependencyName = "koan-engine:koan-engine"
     , dependencyVersion = Just (CEq "0.2.5")
     , dependencyLocations = []
     , dependencyEnvironments = mempty
@@ -52,7 +52,7 @@ fresh :: Dependency
 fresh =
   Dependency
     { dependencyType = MavenType
-    , dependencyName = "fresh"
+    , dependencyName = "fresh:fresh"
     , dependencyVersion = Just (CEq "1.0.2")
     , dependencyLocations = []
     , dependencyEnvironments = mempty
@@ -64,7 +64,7 @@ leinKoan :: Dependency
 leinKoan =
   Dependency
     { dependencyType = MavenType
-    , dependencyName = "lein-koan"
+    , dependencyName = "lein-koan:lein-koan"
     , dependencyVersion = Just (CEq "0.1.5")
     , dependencyLocations = []
     , dependencyEnvironments = Set.singleton EnvTesting
@@ -76,7 +76,7 @@ nrepl :: Dependency
 nrepl =
   Dependency
     { dependencyType = MavenType
-    , dependencyName = "nrepl"
+    , dependencyName = "nrepl:nrepl"
     , dependencyVersion = Just (CEq "0.6.0")
     , dependencyLocations = []
     , dependencyEnvironments = mempty
