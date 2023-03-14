@@ -3,6 +3,7 @@
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
 ## Unreleased
+- Go: Collects environment variables in debug bundle. ([#1132](https://github.com/fossas/fossa-cli/pull/1132))
 - Diagnostics: Improves user-facing error messages and debugging tips for external commands and some HTTP error conditions ([#1165](https://github.com/fossas/fossa-cli/pull/1165))
 
 ## v3.7.2
