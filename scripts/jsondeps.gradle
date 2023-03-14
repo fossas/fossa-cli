@@ -151,7 +151,24 @@ allprojects {
 
             def projectToJsonWithResolutionApi = { project ->
                 def jsonConfigs = []
-                project.configurations.each { config ->
+                // project.configurations returns a `ConfigurationContainer`, which iteself implements the `DomainObjectCollection` interface.
+                // This interface provides two additional ways of configuring elements in the collection in addition to Groovy's `each`:
+                // `all`, a method that eagerly executes the provided `Action` or `Closure` against the current elements of the collection 
+                // **and** any subsequent additions
+                // and `configureEach`, a method that lazily executes the provied `Closure` against the current elements of the collection 
+                // and anay additions on an as-needed basis.
+                //
+                // While theoretically the use of `each` should produce similar results to the use of `all` or `configureEach`, that cannot be
+                // guaranteed as other plugins or even gradle build authors also have the ability to access and modify the configurations during
+                // the Gradle configuration phase (eg, via dependency substitution). This is a particular risk for this script plugin, as it is
+                // highly likely that the jsonDepstask will be configured early in the configuration phase (because it is added as an init 
+                // script). The solution here is to use `all` or `configureEach` for enhanced laziness; `all` seems most prudent given the
+                // functionaliy that this task attempts to achieve. 
+                //
+                // links:
+                // ConfiguationContainer: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/ConfigurationContainer.html
+                // DomainObjectCollection: https://docs.gradle.org/current/javadoc/org/gradle/api/DomainObjectCollection.html
+                project.configurations.all { config ->
                     def result = null
 
                     try {
