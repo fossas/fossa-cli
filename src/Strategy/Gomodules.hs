@@ -8,7 +8,7 @@ module Strategy.Gomodules (
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText, recover, (<||>))
-import Control.Effect.Reader (Reader)
+import Control.Effect.Reader (Reader, asks)
 import Data.Aeson (ToJSON)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
@@ -33,6 +33,8 @@ import Types (
   DiscoveredProjectType (GomodProjectType),
   GraphBreadth,
  )
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig(goDynamicStrategy))
+import qualified Strategy.Go.GoListPackages as GoListPackages
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject GomodulesProject]
 discover = simpleDiscover findProjects mkProject GomodProjectType
@@ -52,7 +54,7 @@ data GomodulesProject = GomodulesProject
 instance ToJSON GomodulesProject
 
 instance AnalyzeProject GomodulesProject where
-  analyzeProject _ = getDeps
+  analyzeProject _ proj = asks goDynamicStrategy >>= getDeps proj
   analyzeProject' _ = const $ fatalText "Cannot analyze GoModule project statically"
 
 mkProject :: GomodulesProject -> DiscoveredProject GomodulesProject
@@ -64,8 +66,8 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> m DependencyResults
-getDeps project = do
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> Bool -> m DependencyResults
+getDeps project usePackageCentricGoList = do
   (graph, graphBreadth) <- context "Gomodules" $ dynamicAnalysis <||> staticAnalysis
   stdlib <- recover . context "Collect go standard library information" . listGoStdlibPackages $ gomodulesDir project
   pure $
@@ -85,9 +87,12 @@ getDeps project = do
     dynamicAnalysis :: (Has Exec sig m, Has Diagnostics sig m) => m (Graphing Dependency, GraphBreadth)
     dynamicAnalysis =
       context "Dynamic analysis" $
-        context "analysis using go mod graph" (GoModGraph.analyze (gomodulesDir project))
+        if usePackageCentricGoList then 
+          context "analysis using go list (packages)" (GoListPackages.analyze (gomodulesDir project))
+        else
+          context "analysis using go mod graph" (GoModGraph.analyze (gomodulesDir project))
 
           -- Go List tactic is only kept in consideration, in event go mod graph fails.
           -- In reality, this is highly unlikely scenario, and should almost never happen.
           -- This tactic uses `go list -m -json all`
-          <||> context "analysis using go list" (GoList.analyze' (gomodulesDir project))
+          <||> context "analysis using go list (modules)" (GoList.analyze' (gomodulesDir project))
