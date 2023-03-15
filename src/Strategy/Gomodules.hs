@@ -86,6 +86,8 @@ getDeps project = do
     dynamicAnalysis =
       context "Dynamic analysis" $
         context "analysis using go mod graph" (GoModGraph.analyze (gomodulesDir project))
+
           -- Go List tactic is only kept in consideration, in event go mod graph fails.
           -- In reality, this is highly unlikely scenario, and should almost never happen.
+          -- This tactic uses `go list -m -json all`
           <||> context "analysis using go list" (GoList.analyze' (gomodulesDir project))

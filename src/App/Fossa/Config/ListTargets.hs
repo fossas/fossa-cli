@@ -69,10 +69,11 @@ mergeOpts cfgfile _envvars ListTargetsCliOpts{..} = do
 
 collectExperimental :: Maybe ConfigFile -> ExperimentalAnalyzeConfig
 collectExperimental maybeCfg =
-  ExperimentalAnalyzeConfig $
-    fmap
+  ExperimentalAnalyzeConfig 
+    (fmap
       gradleConfigsOnly
-      (maybeCfg >>= configExperimental >>= gradle)
+      (maybeCfg >>= configExperimental >>= gradle))
+    False -- This should be ok because its discovery should not work differently than the old Go modules tactic.
 
 data ListTargetsCliOpts = ListTargetsCliOpts
   { commons :: CommonOpts

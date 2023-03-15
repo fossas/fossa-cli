@@ -135,12 +135,13 @@ analyzeForLog4j basedir = do
           . runFinally
           . withTaskPool capabilities updateProgress
           . runAtomicCounter
-          $ do
-            runAnalyzersForLog4j (toPath basedir) mempty
+          $ runAnalyzersForLog4j (toPath basedir) mempty
       reportLog4jVulnerability projectResults
   where
     toPath (BaseDir path) = path
-    withoutAnyExperimentalPreferences = ExperimentalAnalyzeConfig Nothing
+    withoutAnyExperimentalPreferences = ExperimentalAnalyzeConfig
+                                        Nothing 
+                                        False -- Discovery is the same for both module and package centric Go tactics.
 
 runAnalyzersForLog4j ::
   ( AnalyzeTaskEffs sig m
