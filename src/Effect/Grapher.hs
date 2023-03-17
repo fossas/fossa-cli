@@ -11,6 +11,7 @@ module Effect.Grapher (
   GrapherC,
   direct,
   edge,
+  edges,
   deep,
   evalGrapher,
   runGrapher,
@@ -45,6 +46,7 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Graphing qualified as G
 import Prettyprinter (pretty)
+import Data.Foldable (traverse_)
 
 data SGrapher ty k where
   Direct :: ty -> SGrapher ty ()
@@ -58,6 +60,9 @@ direct = sendSimple . Direct
 
 edge :: Has (Grapher ty) sig m => ty -> ty -> m ()
 edge parent child = sendSimple (Edge parent child)
+
+edges :: Traversable t => Has (Grapher ty) sig m => t (ty, ty) -> m ()
+edges = traverse_ (uncurry edge) 
 
 deep :: Has (Grapher ty) sig m => ty -> m ()
 deep = sendSimple . Deep
