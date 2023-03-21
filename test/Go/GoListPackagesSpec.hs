@@ -21,12 +21,12 @@ import DepTypes (
  )
 import Effect.Exec (ExecF (..))
 import Effect.Grapher (edges, deep, direct, evalGrapher)
-import GraphUtil (expectDeps, expectGraphEqual)
+import GraphUtil (expectGraphEqual)
 import Graphing (Graphing)
 import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess)
 import Strategy.Go.GoListPackages (analyze)
-import Test.Hspec (Spec, describe, focus, it, runIO, shouldBe)
+import Test.Hspec (Spec, describe, it, runIO)
 
 type ConstExecC = SimpleC ExecF
 

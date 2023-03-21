@@ -9537,6 +9537,81 @@
 	]
 }
 {
+	"Dir": "/usr/local/Cellar/go/1.19.5/libexec/src/io/ioutil",
+	"ImportPath": "io/ioutil",
+	"Name": "ioutil",
+	"Doc": "Package ioutil implements some I/O utility functions.",
+	"Target": "/usr/local/Cellar/go/1.19.5/libexec/pkg/darwin_amd64/io/ioutil.a",
+	"Root": "/usr/local/Cellar/go/1.19.5/libexec",
+	"Match": [
+		"all"
+	],
+	"Goroot": true,
+	"Standard": true,
+	"GoFiles": [
+		"ioutil.go",
+		"tempfile.go"
+	],
+	"Imports": [
+		"io",
+		"io/fs",
+		"os",
+		"sort"
+	],
+	"Deps": [
+		"errors",
+		"internal/abi",
+		"internal/bytealg",
+		"internal/cpu",
+		"internal/goarch",
+		"internal/goexperiment",
+		"internal/goos",
+		"internal/itoa",
+		"internal/oserror",
+		"internal/poll",
+		"internal/race",
+		"internal/reflectlite",
+		"internal/safefilepath",
+		"internal/syscall/execenv",
+		"internal/syscall/unix",
+		"internal/testlog",
+		"internal/unsafeheader",
+		"io",
+		"io/fs",
+		"math/bits",
+		"os",
+		"path",
+		"runtime",
+		"runtime/internal/atomic",
+		"runtime/internal/math",
+		"runtime/internal/sys",
+		"sort",
+		"sync",
+		"sync/atomic",
+		"syscall",
+		"time",
+		"unicode/utf8",
+		"unsafe"
+	],
+	"XTestGoFiles": [
+		"example_test.go",
+		"ioutil_test.go",
+		"tempfile_test.go"
+	],
+	"XTestImports": [
+		"bytes",
+		"fmt",
+		"io/fs",
+		"io/ioutil",
+		"log",
+		"os",
+		"path/filepath",
+		"regexp",
+		"strings",
+		"testing"
+	]
+}
+{
 	"Dir": "/usr/local/Cellar/go/1.19.5/libexec/src/log",
 	"ImportPath": "log",
 	"Name": "log",
@@ -9621,6 +9696,451 @@
 		"bytes",
 		"fmt",
 		"log"
+	]
+}
+{
+	"Dir": "/usr/local/Cellar/go/1.19.5/libexec/src/runtime/debug",
+	"ImportPath": "runtime/debug",
+	"Name": "debug",
+	"Doc": "Package debug contains facilities for programs to debug themselves while they are running.",
+	"Target": "/usr/local/Cellar/go/1.19.5/libexec/pkg/darwin_amd64/runtime/debug.a",
+	"Root": "/usr/local/Cellar/go/1.19.5/libexec",
+	"Match": [
+		"all"
+	],
+	"Goroot": true,
+	"Standard": true,
+	"GoFiles": [
+		"garbage.go",
+		"mod.go",
+		"stack.go",
+		"stubs.go"
+	],
+	"SFiles": [
+		"debug.s"
+	],
+	"Imports": [
+		"fmt",
+		"os",
+		"runtime",
+		"sort",
+		"strconv",
+		"strings",
+		"time"
+	],
+	"Deps": [
+		"errors",
+		"fmt",
+		"internal/abi",
+		"internal/bytealg",
+		"internal/cpu",
+		"internal/fmtsort",
+		"internal/goarch",
+		"internal/goexperiment",
+		"internal/goos",
+		"internal/itoa",
+		"internal/oserror",
+		"internal/poll",
+		"internal/race",
+		"internal/reflectlite",
+		"internal/safefilepath",
+		"internal/syscall/execenv",
+		"internal/syscall/unix",
+		"internal/testlog",
+		"internal/unsafeheader",
+		"io",
+		"io/fs",
+		"math",
+		"math/bits",
+		"os",
+		"path",
+		"reflect",
+		"runtime",
+		"runtime/internal/atomic",
+		"runtime/internal/math",
+		"runtime/internal/sys",
+		"sort",
+		"strconv",
+		"strings",
+		"sync",
+		"sync/atomic",
+		"syscall",
+		"time",
+		"unicode",
+		"unicode/utf8",
+		"unsafe"
+	],
+	"XTestGoFiles": [
+		"garbage_test.go",
+		"heapdump_test.go",
+		"mod_test.go",
+		"panic_test.go",
+		"stack_test.go"
+	],
+	"XTestImports": [
+		"bytes",
+		"fmt",
+		"internal/testenv",
+		"os",
+		"os/exec",
+		"path/filepath",
+		"reflect",
+		"runtime",
+		"runtime/debug",
+		"strings",
+		"syscall",
+		"testing",
+		"time",
+		"unsafe"
+	]
+}
+{
+	"Dir": "/Users/csasarak/go/pkg/mod/github.com/modern-go/concurrent@v0.0.0-20180306012644-bacd9c7ef1dd",
+	"ImportPath": "github.com/modern-go/concurrent",
+	"Name": "concurrent",
+	"Root": "/Users/csasarak/go/pkg/mod/github.com/modern-go/concurrent@v0.0.0-20180306012644-bacd9c7ef1dd",
+	"Module": {
+		"Path": "github.com/modern-go/concurrent",
+		"Version": "v0.0.0-20180306012644-bacd9c7ef1dd",
+		"Time": "2018-03-06T01:26:44Z",
+		"Indirect": true,
+		"Dir": "/Users/csasarak/go/pkg/mod/github.com/modern-go/concurrent@v0.0.0-20180306012644-bacd9c7ef1dd",
+		"GoMod": "/Users/csasarak/go/pkg/mod/cache/download/github.com/modern-go/concurrent/@v/v0.0.0-20180306012644-bacd9c7ef1dd.mod"
+	},
+	"Match": [
+		"all"
+	],
+	"Stale": true,
+	"StaleReason": "not installed but available in build cache",
+	"GoFiles": [
+		"executor.go",
+		"go_above_19.go",
+		"log.go",
+		"unbounded_executor.go"
+	],
+	"IgnoredGoFiles": [
+		"go_below_19.go"
+	],
+	"Imports": [
+		"context",
+		"fmt",
+		"io/ioutil",
+		"log",
+		"os",
+		"reflect",
+		"runtime",
+		"runtime/debug",
+		"sync",
+		"time"
+	],
+	"Deps": [
+		"context",
+		"errors",
+		"fmt",
+		"internal/abi",
+		"internal/bytealg",
+		"internal/cpu",
+		"internal/fmtsort",
+		"internal/goarch",
+		"internal/goexperiment",
+		"internal/goos",
+		"internal/itoa",
+		"internal/oserror",
+		"internal/poll",
+		"internal/race",
+		"internal/reflectlite",
+		"internal/safefilepath",
+		"internal/syscall/execenv",
+		"internal/syscall/unix",
+		"internal/testlog",
+		"internal/unsafeheader",
+		"io",
+		"io/fs",
+		"io/ioutil",
+		"log",
+		"math",
+		"math/bits",
+		"os",
+		"path",
+		"reflect",
+		"runtime",
+		"runtime/debug",
+		"runtime/internal/atomic",
+		"runtime/internal/math",
+		"runtime/internal/sys",
+		"sort",
+		"strconv",
+		"strings",
+		"sync",
+		"sync/atomic",
+		"syscall",
+		"time",
+		"unicode",
+		"unicode/utf8",
+		"unsafe"
+	],
+	"XTestGoFiles": [
+		"map_test.go",
+		"unbounded_executor_test.go"
+	],
+	"XTestImports": [
+		"context",
+		"fmt",
+		"github.com/modern-go/concurrent",
+		"testing",
+		"time"
+	]
+}
+{
+	"Dir": "/Users/csasarak/go/pkg/mod/github.com/modern-go/reflect2@v1.0.2",
+	"ImportPath": "github.com/modern-go/reflect2",
+	"Name": "reflect2",
+	"Root": "/Users/csasarak/go/pkg/mod/github.com/modern-go/reflect2@v1.0.2",
+	"Module": {
+		"Path": "github.com/modern-go/reflect2",
+		"Version": "v1.0.2",
+		"Time": "2021-09-11T02:10:30Z",
+		"Indirect": true,
+		"Dir": "/Users/csasarak/go/pkg/mod/github.com/modern-go/reflect2@v1.0.2",
+		"GoMod": "/Users/csasarak/go/pkg/mod/cache/download/github.com/modern-go/reflect2/@v/v1.0.2.mod",
+		"GoVersion": "1.12"
+	},
+	"Match": [
+		"all"
+	],
+	"Stale": true,
+	"StaleReason": "not installed but available in build cache",
+	"GoFiles": [
+		"go_above_118.go",
+		"go_above_19.go",
+		"reflect2.go",
+		"reflect2_kind.go",
+		"safe_field.go",
+		"safe_map.go",
+		"safe_slice.go",
+		"safe_struct.go",
+		"safe_type.go",
+		"type_map.go",
+		"unsafe_array.go",
+		"unsafe_eface.go",
+		"unsafe_field.go",
+		"unsafe_iface.go",
+		"unsafe_link.go",
+		"unsafe_map.go",
+		"unsafe_ptr.go",
+		"unsafe_slice.go",
+		"unsafe_struct.go",
+		"unsafe_type.go"
+	],
+	"IgnoredGoFiles": [
+		"go_below_118.go"
+	],
+	"IgnoredOtherFiles": [
+		"relfect2_386.s",
+		"relfect2_amd64p32.s",
+		"relfect2_arm.s",
+		"relfect2_arm64.s",
+		"relfect2_s390x.s"
+	],
+	"SFiles": [
+		"reflect2_amd64.s",
+		"relfect2_mips64x.s",
+		"relfect2_mipsx.s",
+		"relfect2_ppc64x.s"
+	],
+	"Imports": [
+		"reflect",
+		"runtime",
+		"sync",
+		"unsafe"
+	],
+	"Deps": [
+		"errors",
+		"internal/abi",
+		"internal/bytealg",
+		"internal/cpu",
+		"internal/goarch",
+		"internal/goexperiment",
+		"internal/goos",
+		"internal/itoa",
+		"internal/race",
+		"internal/reflectlite",
+		"internal/unsafeheader",
+		"math",
+		"math/bits",
+		"reflect",
+		"runtime",
+		"runtime/internal/atomic",
+		"runtime/internal/math",
+		"runtime/internal/sys",
+		"strconv",
+		"sync",
+		"sync/atomic",
+		"unicode",
+		"unicode/utf8",
+		"unsafe"
+	]
+}
+{
+	"Dir": "/Users/csasarak/Downloads/depmod_minimal/local_pkgs/go",
+	"ImportPath": "github.com/json-iterator/go",
+	"Name": "jsoniter",
+	"Doc": "Package jsoniter implements encoding and decoding of JSON as defined in RFC 4627 and provides interfaces with identical syntax of standard lib encoding/json.",
+	"Root": "/Users/csasarak/Downloads/depmod_minimal/local_pkgs/go",
+	"Module": {
+		"Path": "github.com/json-iterator/go",
+		"Version": "v1.1.12",
+		"Replace": {
+			"Path": "./local_pkgs/go",
+			"Dir": "/Users/csasarak/Downloads/depmod_minimal/local_pkgs/go",
+			"GoMod": "/Users/csasarak/Downloads/depmod_minimal/local_pkgs/go/go.mod",
+			"GoVersion": "1.12"
+		},
+		"Dir": "/Users/csasarak/Downloads/depmod_minimal/local_pkgs/go",
+		"GoMod": "/Users/csasarak/Downloads/depmod_minimal/local_pkgs/go/go.mod",
+		"GoVersion": "1.12"
+	},
+	"Match": [
+		"all"
+	],
+	"Stale": true,
+	"StaleReason": "stale dependency: github.com/modern-go/concurrent",
+	"GoFiles": [
+		"adapter.go",
+		"any.go",
+		"any_array.go",
+		"any_bool.go",
+		"any_float.go",
+		"any_int32.go",
+		"any_int64.go",
+		"any_invalid.go",
+		"any_nil.go",
+		"any_number.go",
+		"any_object.go",
+		"any_str.go",
+		"any_uint32.go",
+		"any_uint64.go",
+		"config.go",
+		"iter.go",
+		"iter_array.go",
+		"iter_float.go",
+		"iter_int.go",
+		"iter_object.go",
+		"iter_skip.go",
+		"iter_skip_strict.go",
+		"iter_str.go",
+		"jsoniter.go",
+		"pool.go",
+		"reflect.go",
+		"reflect_array.go",
+		"reflect_dynamic.go",
+		"reflect_extension.go",
+		"reflect_json_number.go",
+		"reflect_json_raw_message.go",
+		"reflect_map.go",
+		"reflect_marshaler.go",
+		"reflect_native.go",
+		"reflect_optional.go",
+		"reflect_slice.go",
+		"reflect_struct_decoder.go",
+		"reflect_struct_encoder.go",
+		"stream.go",
+		"stream_float.go",
+		"stream_int.go",
+		"stream_str.go"
+	],
+	"IgnoredGoFiles": [
+		"iter_skip_sloppy.go",
+		"iter_skip_sloppy_test.go"
+	],
+	"Imports": [
+		"bytes",
+		"encoding",
+		"encoding/base64",
+		"encoding/json",
+		"errors",
+		"fmt",
+		"github.com/modern-go/concurrent",
+		"github.com/modern-go/reflect2",
+		"io",
+		"math",
+		"math/big",
+		"reflect",
+		"sort",
+		"strconv",
+		"strings",
+		"sync",
+		"unicode",
+		"unicode/utf16",
+		"unicode/utf8",
+		"unsafe"
+	],
+	"Deps": [
+		"bytes",
+		"context",
+		"encoding",
+		"encoding/base64",
+		"encoding/binary",
+		"encoding/json",
+		"errors",
+		"fmt",
+		"github.com/modern-go/concurrent",
+		"github.com/modern-go/reflect2",
+		"internal/abi",
+		"internal/bytealg",
+		"internal/cpu",
+		"internal/fmtsort",
+		"internal/goarch",
+		"internal/goexperiment",
+		"internal/goos",
+		"internal/itoa",
+		"internal/oserror",
+		"internal/poll",
+		"internal/race",
+		"internal/reflectlite",
+		"internal/safefilepath",
+		"internal/syscall/execenv",
+		"internal/syscall/unix",
+		"internal/testlog",
+		"internal/unsafeheader",
+		"io",
+		"io/fs",
+		"io/ioutil",
+		"log",
+		"math",
+		"math/big",
+		"math/bits",
+		"math/rand",
+		"os",
+		"path",
+		"reflect",
+		"runtime",
+		"runtime/debug",
+		"runtime/internal/atomic",
+		"runtime/internal/math",
+		"runtime/internal/sys",
+		"sort",
+		"strconv",
+		"strings",
+		"sync",
+		"sync/atomic",
+		"syscall",
+		"time",
+		"unicode",
+		"unicode/utf16",
+		"unicode/utf8",
+		"unsafe"
+	],
+	"TestGoFiles": [
+		"example_test.go",
+		"stream_test.go"
+	],
+	"TestImports": [
+		"fmt",
+		"github.com/stretchr/testify/require",
+		"os",
+		"strings",
+		"testing"
 	]
 }
 {
@@ -13981,81 +14501,6 @@
 	]
 }
 {
-	"Dir": "/usr/local/Cellar/go/1.19.5/libexec/src/io/ioutil",
-	"ImportPath": "io/ioutil",
-	"Name": "ioutil",
-	"Doc": "Package ioutil implements some I/O utility functions.",
-	"Target": "/usr/local/Cellar/go/1.19.5/libexec/pkg/darwin_amd64/io/ioutil.a",
-	"Root": "/usr/local/Cellar/go/1.19.5/libexec",
-	"Match": [
-		"all"
-	],
-	"Goroot": true,
-	"Standard": true,
-	"GoFiles": [
-		"ioutil.go",
-		"tempfile.go"
-	],
-	"Imports": [
-		"io",
-		"io/fs",
-		"os",
-		"sort"
-	],
-	"Deps": [
-		"errors",
-		"internal/abi",
-		"internal/bytealg",
-		"internal/cpu",
-		"internal/goarch",
-		"internal/goexperiment",
-		"internal/goos",
-		"internal/itoa",
-		"internal/oserror",
-		"internal/poll",
-		"internal/race",
-		"internal/reflectlite",
-		"internal/safefilepath",
-		"internal/syscall/execenv",
-		"internal/syscall/unix",
-		"internal/testlog",
-		"internal/unsafeheader",
-		"io",
-		"io/fs",
-		"math/bits",
-		"os",
-		"path",
-		"runtime",
-		"runtime/internal/atomic",
-		"runtime/internal/math",
-		"runtime/internal/sys",
-		"sort",
-		"sync",
-		"sync/atomic",
-		"syscall",
-		"time",
-		"unicode/utf8",
-		"unsafe"
-	],
-	"XTestGoFiles": [
-		"example_test.go",
-		"ioutil_test.go",
-		"tempfile_test.go"
-	],
-	"XTestImports": [
-		"bytes",
-		"fmt",
-		"io/fs",
-		"io/ioutil",
-		"log",
-		"os",
-		"path/filepath",
-		"regexp",
-		"strings",
-		"testing"
-	]
-}
-{
 	"Dir": "/Users/csasarak/go/pkg/mod/google.golang.org/protobuf@v1.26.0/internal/impl",
 	"ImportPath": "google.golang.org/protobuf/internal/impl",
 	"Name": "impl",
@@ -17633,102 +18078,6 @@
 	]
 }
 {
-	"Dir": "/usr/local/Cellar/go/1.19.5/libexec/src/runtime/debug",
-	"ImportPath": "runtime/debug",
-	"Name": "debug",
-	"Doc": "Package debug contains facilities for programs to debug themselves while they are running.",
-	"Target": "/usr/local/Cellar/go/1.19.5/libexec/pkg/darwin_amd64/runtime/debug.a",
-	"Root": "/usr/local/Cellar/go/1.19.5/libexec",
-	"Match": [
-		"all"
-	],
-	"Goroot": true,
-	"Standard": true,
-	"GoFiles": [
-		"garbage.go",
-		"mod.go",
-		"stack.go",
-		"stubs.go"
-	],
-	"SFiles": [
-		"debug.s"
-	],
-	"Imports": [
-		"fmt",
-		"os",
-		"runtime",
-		"sort",
-		"strconv",
-		"strings",
-		"time"
-	],
-	"Deps": [
-		"errors",
-		"fmt",
-		"internal/abi",
-		"internal/bytealg",
-		"internal/cpu",
-		"internal/fmtsort",
-		"internal/goarch",
-		"internal/goexperiment",
-		"internal/goos",
-		"internal/itoa",
-		"internal/oserror",
-		"internal/poll",
-		"internal/race",
-		"internal/reflectlite",
-		"internal/safefilepath",
-		"internal/syscall/execenv",
-		"internal/syscall/unix",
-		"internal/testlog",
-		"internal/unsafeheader",
-		"io",
-		"io/fs",
-		"math",
-		"math/bits",
-		"os",
-		"path",
-		"reflect",
-		"runtime",
-		"runtime/internal/atomic",
-		"runtime/internal/math",
-		"runtime/internal/sys",
-		"sort",
-		"strconv",
-		"strings",
-		"sync",
-		"sync/atomic",
-		"syscall",
-		"time",
-		"unicode",
-		"unicode/utf8",
-		"unsafe"
-	],
-	"XTestGoFiles": [
-		"garbage_test.go",
-		"heapdump_test.go",
-		"mod_test.go",
-		"panic_test.go",
-		"stack_test.go"
-	],
-	"XTestImports": [
-		"bytes",
-		"fmt",
-		"internal/testenv",
-		"os",
-		"os/exec",
-		"path/filepath",
-		"reflect",
-		"runtime",
-		"runtime/debug",
-		"strings",
-		"syscall",
-		"testing",
-		"time",
-		"unsafe"
-	]
-}
-{
 	"Dir": "/Users/csasarak/go/pkg/mod/github.com/prometheus/client_golang@v1.12.2/prometheus",
 	"ImportPath": "github.com/prometheus/client_golang/prometheus",
 	"Name": "prometheus",
@@ -18082,12 +18431,13 @@
 		"all"
 	],
 	"Stale": true,
-	"StaleReason": "stale dependency: github.com/prometheus/client_golang/prometheus",
+	"StaleReason": "stale dependency: github.com/modern-go/concurrent",
 	"GoFiles": [
 		"depmod.go"
 	],
 	"Imports": [
 		"fmt",
+		"github.com/json-iterator/go",
 		"github.com/prometheus/client_golang/prometheus"
 	],
 	"Deps": [
@@ -18145,7 +18495,10 @@
 		"github.com/golang/protobuf/ptypes/any",
 		"github.com/golang/protobuf/ptypes/duration",
 		"github.com/golang/protobuf/ptypes/timestamp",
+		"github.com/json-iterator/go",
 		"github.com/matttproud/golang_protobuf_extensions/pbutil",
+		"github.com/modern-go/concurrent",
+		"github.com/modern-go/reflect2",
 		"github.com/prometheus/client_golang/prometheus",
 		"github.com/prometheus/client_golang/prometheus/internal",
 		"github.com/prometheus/client_model/go",
@@ -19079,4 +19432,3 @@
 		"time"
 	]
 }
-
