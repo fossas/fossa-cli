@@ -20,7 +20,7 @@ import DepTypes (
   VerConstraint (CEq),
  )
 import Effect.Exec (ExecF (..))
-import Effect.Grapher (edges, deep, direct, evalGrapher)
+import Effect.Grapher (deep, direct, edges, evalGrapher)
 import GraphUtil (expectGraphEqual)
 import Graphing (Graphing)
 import Path.IO (getCurrentDir)
@@ -158,7 +158,8 @@ protobufOld =
 expected :: Graphing Dependency
 expected = run . evalGrapher $ do
   traverse_ direct [clientGolang, xdiff]
-  traverse_ deep
+  traverse_
+    deep
     [ perks
     , protobuf
     , golangProtobufExtensions
@@ -170,8 +171,8 @@ expected = run . evalGrapher $ do
     , protobufOld
     ]
 
-  edges [
-     (protobuf, protobufOld)
+  edges
+    [ (protobuf, protobufOld)
     , (golangProtobufExtensions, protobuf)
     , (clientModel, protobuf)
     , (common, protobuf)
@@ -185,7 +186,8 @@ expected = run . evalGrapher $ do
     , (clientGolang, common)
     , (clientGolang, procfs)
     , (clientGolang, protobuf)
-    , (clientGolang, xxhash)]
+    , (clientGolang, xxhash)
+    ]
 
 -- | This FilePath represents =go list -json -deps all= output with a local package replacement and transitive deps.
 testFile :: FilePath

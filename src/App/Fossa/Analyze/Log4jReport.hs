@@ -139,9 +139,10 @@ analyzeForLog4j basedir = do
       reportLog4jVulnerability projectResults
   where
     toPath (BaseDir path) = path
-    withoutAnyExperimentalPreferences = ExperimentalAnalyzeConfig
-                                        Nothing 
-                                        False -- Discovery is the same for both module and package centric Go tactics.
+    withoutAnyExperimentalPreferences =
+      ExperimentalAnalyzeConfig
+        Nothing
+        False -- Discovery is the same for both module and package centric Go tactics.
 
 runAnalyzersForLog4j ::
   ( AnalyzeTaskEffs sig m

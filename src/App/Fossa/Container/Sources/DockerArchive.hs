@@ -177,10 +177,10 @@ analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball = do
       )
   where
     noExperimental :: ExperimentalAnalyzeConfig
-    noExperimental = ExperimentalAnalyzeConfig
-                     Nothing
-                     False -- Discovery is the same for both module and package centric analysis.
-
+    noExperimental =
+      ExperimentalAnalyzeConfig
+        Nothing
+        False -- Discovery is the same for both module and package centric analysis.
     toSourceUnit :: [DiscoveredProjectScan] -> [SourceUnit]
     toSourceUnit =
       map (Srclib.toSourceUnit False)
@@ -315,9 +315,11 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
     . runFinally
     . withTaskPool capabilities updateProgress
     . runAtomicCounter
-    . runReader (ExperimentalAnalyzeConfig
-                  Nothing
-                  False) -- Targets aren't different between package/module centric analysis for Go.
+    . runReader
+      ( ExperimentalAnalyzeConfig
+          Nothing
+          False -- Targets aren't different between package/module centric analysis for Go.
+      )
     . runReader (mempty :: AllFilters)
     $ run
   where

@@ -4,9 +4,11 @@
 -- Module : Strategy.Gomodules.GoListPackages
 --
 -- Description : Analyze a Go project using go list -json -deps all
-module Strategy.Go.GoListPackages (analyze
-                                  -- Exported for testing only
-                                  , buildGraph) where
+module Strategy.Go.GoListPackages (
+  analyze,
+  -- Exported for testing only
+  buildGraph,
+) where
 
 import Control.Algebra (Has)
 import Control.Applicative ((<|>))
@@ -28,11 +30,11 @@ import DepTypes (DepEnvironment (EnvProduction), DepType (GoType), Dependency (.
 import Effect.Exec (AllowErr (Never), Command (Command, cmdAllowErr, cmdArgs, cmdName), Exec, ExecErr (CommandParseError), execThrow, renderCommand)
 import Effect.Grapher (Grapher, deep, direct, edge, evalGrapher)
 import GHC.Generics (Generic)
+import Graphing (pruneUnreachable)
 import Graphing qualified
 import Path (Abs, Dir, Path)
 import Strategy.Go.Transitive (decodeMany)
 import Types (GraphBreadth (Complete))
-import Graphing (pruneUnreachable)
 
 -- * Types
 
@@ -91,22 +93,6 @@ instance FromJSON GoModule where
         <*> obj .:? "Main" .!= False
         <*> obj .:? "Replace"
 
--- remove the following two types later.
--- This data should be in Dependency and graph labels.
-data ModuleSummary = ModuleSummary
-  { modName :: ModulePath
-  , modVersion :: Maybe ModuleVersion
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance Hashable ModuleSummary
-data DepSummary
-  = Indirect ModuleSummary
-  | Direct ModuleSummary
-  | Root ModuleSummary
-  | NonMod ImportPath
-  deriving (Eq, Ord, Show)
-
 -- * Analysis
 
 goListCmd :: Command
@@ -130,9 +116,6 @@ analyze goModDir = do
     Right pkgs -> do
       context "Analyzing dependencies" $ buildGraph pkgs
 
-buildGraph :: (Has Diagnostics sig m) => [GoPackage] -> m (Graphing.Graphing Dependency, GraphBreadth)
-buildGraph = fmap (,Complete) . getPackageData
-
 -- | Given a list of GoPackages, generate a graph of *module* dependencies based on their package dependencies.
 -- This works by first making a mapping of package import paths to modules using the provided packages' 'moduleInfo' field.
 -- Next each package's deps have edges made between a it and its dependencies, except that the function uses a package's parent module to generate a the vertex for the package in the graph.
@@ -144,10 +127,11 @@ buildGraph = fmap (,Complete) . getPackageData
 -- * Removes path dependencies and child deps that aren't used elsewhere in the graph.
 --   The go tools give us this data but we haven't decided yet how to present it.
 -- * Replaces modules according to the module's 'replacement' field.
-getPackageData :: (Has Diagnostics sig m) => [GoPackage] -> m (Graphing.Graphing Dependency)
-getPackageData rawPackages= fmap pruneUnreachable -- Remove deps that are only children of removed path deps.
-                             . evalGrapher $ do
-  traverse_ graphEdges pkgsNoStdLibImports
+buildGraph :: (Has Diagnostics sig m) => [GoPackage] -> m (Graphing.Graphing Dependency, GraphBreadth)
+buildGraph rawPackages = fmap ((,Complete) . pruneUnreachable) -- Remove deps that are only children of removed path deps.
+  . evalGrapher
+  $ do
+    traverse_ graphEdges pkgsNoStdLibImports
   where
     (stdLibImportPaths, pkgsNoStdLibImports) = foldl' go (HashSet.empty, HashMap.empty) rawPackages
 
@@ -165,10 +149,11 @@ getPackageData rawPackages= fmap pruneUnreachable -- Remove deps that are only c
       currModule@GoModule{isMainModule, indirect} <- importToModule importPath
       unless (isMainModule || isPathDep currModule) $ do
         let modDep = modToDep currModule
-        let addChildEdge :: (Has Diagnostics sig m, Has (Grapher Dependency) sig m) => ImportPath -> m ()
-            addChildEdge p = do pMod <- importToModule p
-                                when (pMod /= currModule) $
-                                  edge modDep (modToDep pMod)
+            addChildEdge :: (Has Diagnostics sig m, Has (Grapher Dependency) sig m) => ImportPath -> m ()
+            addChildEdge p = do
+              pMod <- importToModule p
+              when (pMod /= currModule) $
+                edge modDep (modToDep pMod)
         traverse_ addChildEdge packageDeps
         if indirect
           then deep modDep
@@ -188,18 +173,18 @@ isPathDep :: GoModule -> Bool
 -- If I don't assume that a path dep always starts with one of these prefixes, it's possible that what looks like an import path is actually a relative path to a local directory.
 -- One possible improvement is to only perform this check when a module is a replacement for another.
 -- Is this too unix specific?
-isPathDep GoModule{modulePath=ModulePath mP} = any (`isPrefixOf` mP) ["./", "../"]
+isPathDep GoModule{modulePath = ModulePath mP} = any (`isPrefixOf` mP) ["./", "../"]
 
 modToDep :: GoModule -> Dependency
 modToDep
   ( GoModule
-      { modulePath = ModulePath t
+      { modulePath = ModulePath modPath
       , version
       }
     ) =
     Dependency
       { dependencyType = GoType
-      , dependencyName = t
+      , dependencyName = modPath
       , dependencyVersion = CEq . unModuleVersion <$> version
       , dependencyLocations = []
       , dependencyEnvironments = Set.singleton EnvProduction

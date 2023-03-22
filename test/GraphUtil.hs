@@ -57,7 +57,7 @@ expectGraphEqual :: (Ord a, Show a) => Graphing a -> Graphing a -> Expectation
 expectGraphEqual g1 g2 = do
   Graphing.vertexList g1 `shouldMatchList` Graphing.vertexList g2
   Graphing.edgesList g1 `shouldMatchList` Graphing.edgesList g2
-  
+
 -- | Effectful version of 'expectEdges'
 expectEdges' :: (Ord a, Show a, Has (Lift IO) sig m) => [(a, a)] -> Graphing a -> m ()
 expectEdges' edges graph = sendIO $ expectEdges edges graph

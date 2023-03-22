@@ -293,9 +293,10 @@ cliParser =
 
 experimentalPackageCentricGoAnalysis :: Parser Bool
 experimentalPackageCentricGoAnalysis =
-  switch $ long "experimental-package-centric-go"
-           <> help "For Go: generate a graph of module deps based on package deps. This will be the default in the future."
-                 
+  switch $
+    long "experimental-package-centric-go"
+      <> help "For Go: generate a graph of module deps based on package deps. This will be the default in the future."
+
 vendoredDependencyModeOpt :: Parser ArchiveUploadType
 vendoredDependencyModeOpt = option (eitherReader parseType) (long "force-vendored-dependency-scan-method" <> metavar "METHOD" <> help "Force the vendored dependency scan method. The options are 'CLILicenseScan' or 'ArchiveUpload'. 'CLILicenseScan' is usually the default unless your organization has overridden this.")
   where
@@ -485,11 +486,12 @@ collectCLIFilters AnalyzeCliOpts{..} =
     (comboExclude analyzeExcludeTargets analyzeExcludePaths)
 
 collectExperimental :: Maybe ConfigFile -> AnalyzeCliOpts -> ExperimentalAnalyzeConfig
-collectExperimental maybeCfg AnalyzeCliOpts{analyzeDynamicGoAnalysisType=goDynamicAnalysisType} =
+collectExperimental maybeCfg AnalyzeCliOpts{analyzeDynamicGoAnalysisType = goDynamicAnalysisType} =
   ExperimentalAnalyzeConfig
-    (fmap
-      gradleConfigsOnly
-      (maybeCfg >>= configExperimental >>= gradle))
+    ( fmap
+        gradleConfigsOnly
+        (maybeCfg >>= configExperimental >>= gradle)
+    )
     goDynamicAnalysisType
 
 collectVendoredDeps ::

@@ -37,6 +37,7 @@ import Control.Algebra as X
 import Control.Carrier.Diagnostics (ToDiagnostic (..))
 import Control.Carrier.Simple
 import Control.Carrier.State.Strict
+import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
@@ -46,7 +47,6 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Graphing qualified as G
 import Prettyprinter (pretty)
-import Data.Foldable (traverse_)
 
 data SGrapher ty k where
   Direct :: ty -> SGrapher ty ()
@@ -62,7 +62,7 @@ edge :: Has (Grapher ty) sig m => ty -> ty -> m ()
 edge parent child = sendSimple (Edge parent child)
 
 edges :: Traversable t => Has (Grapher ty) sig m => t (ty, ty) -> m ()
-edges = traverse_ (uncurry edge) 
+edges = traverse_ (uncurry edge)
 
 deep :: Has (Grapher ty) sig m => ty -> m ()
 deep = sendSimple . Deep
