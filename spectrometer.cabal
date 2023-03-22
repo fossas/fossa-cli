@@ -561,8 +561,8 @@ test-suite unit-tests
     Fortran.FpmTomlSpec
     Fossa.API.TypesSpec
     Go.GlideLockSpec
-    Go.GoListSpec
     Go.GoListPackagesSpec
+    Go.GoListSpec
     Go.GoModGraphSpec
     Go.GomodSpec
     Go.GopkgLockSpec
