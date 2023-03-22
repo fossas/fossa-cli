@@ -8,7 +8,7 @@
 - License Scanning: Scan the full contents of "license.html" and "licence.html" for license content, not just the comments. ([#1169](https://github.com/fossas/fossa-cli/pull/1169))
 
 ## v3.7.2
-- License Scanning: Add four new licenses: Pushwoosh, PalletsFlaskLogo, IntelDisclaimer and Instabug
+- License Scanning: Add four new licenses: Pushwoosh, PalletsFlaskLogo, IntelDisclaimer and Instabug ([#1163](https://github.com/fossas/fossa-cli/pull/1163))
 
 ## v3.7.1
 - Stack: Git based dependencies are detected and handled correctly. ([#1160](https://github.com/fossas/fossa-cli/pull/1160))
