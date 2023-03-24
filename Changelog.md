@@ -2,10 +2,13 @@
 
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
-## Unreleased
+## v3.7.4
+- Gradle: Fix possible ConcurrentModificationException that can ocurr when getting dependencies ([#1166](https://github.com/fossas/fossa-cli/pull/1166))
+        
+## v3.7.3
 - Go: Collects environment variables in debug bundle. ([#1132](https://github.com/fossas/fossa-cli/pull/1132))
 - Diagnostics: Improves user-facing error messages and debugging tips for external commands and some HTTP error conditions ([#1165](https://github.com/fossas/fossa-cli/pull/1165))
-- Gradle: Fix possible ConcurrentModificationException that can ocurr when getting dependencies ([#1166](https://github.com/fossas/fossa-cli/pull/1166))
+- License Scanning: Scan the full contents of "license.html" and "licence.html" for license content, not just the comments. ([#1169](https://github.com/fossas/fossa-cli/pull/1169))
 
 ## v3.7.2
 - License Scanning: Add four new licenses: Pushwoosh, PalletsFlaskLogo, IntelDisclaimer and Instabug
