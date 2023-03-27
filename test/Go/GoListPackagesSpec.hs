@@ -1,5 +1,4 @@
 {-# LANGUAGE GADTs #-}
-
 module Go.GoListPackagesSpec (
   spec,
 ) where
