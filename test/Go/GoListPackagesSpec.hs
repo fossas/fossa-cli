@@ -22,11 +22,11 @@ import DepTypes (
 import Effect.Exec (ExecF (..))
 import Effect.Grapher (deep, direct, edges, evalGrapher)
 import GraphUtil (expectGraphEqual)
-import Graphing (Graphing)
+import Graphing qualified (Graphing, direct)
 import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess)
-import Strategy.Go.GoListPackages (analyze)
-import Test.Hspec (Spec, describe, it, runIO)
+import Strategy.Go.GoListPackages (GoModule (..), GoPackage (..), ImportPath (..), ModulePath (ModulePath), ModuleVersion (ModuleVersion), analyze, buildGraph)
+import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 
 type ConstExecC = SimpleC ExecF
 
@@ -155,7 +155,7 @@ protobufOld =
     , dependencyTags = Map.empty
     }
 
-expected :: Graphing Dependency
+expected :: Graphing.Graphing Dependency
 expected = run . evalGrapher $ do
   traverse_ direct [clientGolang, xdiff]
   traverse_
@@ -193,6 +193,30 @@ expected = run . evalGrapher $ do
 testFile :: FilePath
 testFile = "test/Go/testdata/go-list-pkgs-out.json"
 
+ignoresC :: Spec
+ignoresC =
+  describe "Using C bindings" $
+    it "Ignores the special \"C\" package in dependencies" $ do
+      let result =
+            run . runStack . runDiagnostics $
+              buildGraph
+                [ GoPackage
+                    { importPath = ImportPath "github.com/ajankovic/xdiff"
+                    , standard = False
+                    , moduleInfo =
+                        Just
+                          GoModule
+                            { modulePath = ModulePath "github.com/ajankovic/xdiff"
+                            , version = Just (ModuleVersion "v0.0.1")
+                            , indirect = False
+                            , isMainModule = False
+                            , replacement = Nothing
+                            }
+                    , packageDeps = [ImportPath "C"]
+                    }
+                ]
+      assertOnSuccess result $ \_ (graph, _) -> graph `shouldBe` Graphing.direct xdiff
+
 analysisSpec :: Spec
 analysisSpec = do
   outputTrivial <- runIO (BL.readFile testFile)
@@ -213,3 +237,4 @@ spec :: Spec
 spec =
   do
     analysisSpec
+    ignoresC

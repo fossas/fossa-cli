@@ -6,13 +6,19 @@
 -- Description : Analyze a Go project using go list -json -deps all
 module Strategy.Go.GoListPackages (
   analyze,
-  -- Exported for testing only
+
+  -- * Exported for testing only
   buildGraph,
+  GoPackage (..),
+  ImportPath (..),
+  GoModule (..),
+  ModulePath (..),
+  ModuleVersion (..),
 ) where
 
 import Control.Algebra (Has)
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics (Diagnostics, context, fatal)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, fatal)
 import Control.Effect.Diagnostics qualified as Diagnostics
 import Control.Monad (unless, when)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
@@ -33,6 +39,7 @@ import GHC.Generics (Generic)
 import Graphing (pruneUnreachable)
 import Graphing qualified
 import Path (Abs, Dir, Path)
+import Prettyprinter (pretty)
 import Strategy.Go.Transitive (decodeMany)
 import Types (GraphBreadth (Complete))
 
@@ -128,10 +135,11 @@ analyze goModDir = do
 --   The go tools give us this data but we haven't decided yet how to present it.
 -- * Replaces modules according to the module's 'replacement' field.
 buildGraph :: (Has Diagnostics sig m) => [GoPackage] -> m (Graphing.Graphing Dependency, GraphBreadth)
-buildGraph rawPackages = fmap ((,Complete) . pruneUnreachable) -- Remove deps that are only children of removed path deps.
-  . evalGrapher
-  $ do
-    traverse_ graphEdges pkgsNoStdLibImports
+buildGraph rawPackages =
+  fmap ((,Complete) . pruneUnreachable) -- Remove deps that are only children of removed path deps.
+    . evalGrapher
+    . traverse_ graphEdges
+    $ pkgsNoStdLibImports
   where
     (stdLibImportPaths, pkgsNoStdLibImports) = foldl' go (HashSet.empty, HashMap.empty) rawPackages
 
@@ -140,9 +148,14 @@ buildGraph rawPackages = fmap ((,Complete) . pruneUnreachable) -- Remove deps th
       | standard = (HashSet.insert importPath stdLibPaths, otherPackages)
       | otherwise = (stdLibPaths, HashMap.insert importPath (removeStdLibDeps g) otherPackages)
 
+    -- "C" is a special package for using Go's FFI.
+    -- Ignore it because trying to look it up as a package import path later will fail.
+    ignoredPackages :: HashSet.HashSet ImportPath
+    ignoredPackages = HashSet.insert (ImportPath "C") stdLibImportPaths
+
     removeStdLibDeps :: GoPackage -> GoPackage
     removeStdLibDeps g@GoPackage{packageDeps = pDeps} =
-      g{packageDeps = filter (\i -> not $ i `HashSet.member` stdLibImportPaths) pDeps}
+      g{packageDeps = filter (\i -> not $ i `HashSet.member` ignoredPackages) pDeps}
 
     graphEdges :: (Has Diagnostics sig m, Has (Grapher Dependency) sig m) => GoPackage -> m ()
     graphEdges GoPackage{importPath, packageDeps} = do
@@ -163,9 +176,15 @@ buildGraph rawPackages = fmap ((,Complete) . pruneUnreachable) -- Remove deps th
     importToModule :: Has Diagnostics sig m => ImportPath -> m GoModule
     importToModule impPath = do
       -- Return a stand-in value for missing import paths so it's visible to users? even if unscannable.
-      Diagnostics.fromMaybe ("No module for " <> toText impPath) $ do
+      Diagnostics.fromMaybe (MissingModuleErr impPath) $ do
         GoPackage{moduleInfo = modInfo} <- HashMap.lookup impPath pkgsNoStdLibImports
         (modInfo >>= replacement) <|> modInfo
+
+newtype MissingModuleErr = MissingModuleErr ImportPath
+  deriving (Eq, Show)
+
+instance ToDiagnostic MissingModuleErr where
+  renderDiagnostic (MissingModuleErr (ImportPath i)) = pretty $ "Could not find module for " <> i
 
 -- |A module is a path dep if its import path starts with './' or '../'.
 isPathDep :: GoModule -> Bool
