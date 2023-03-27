@@ -2,6 +2,9 @@
 
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
+## v3.7.4
+- Gradle: Fix possible ConcurrentModificationException that can occur when getting dependencies ([#1171](https://github.com/fossas/fossa-cli/pull/1171))
+        
 ## v3.7.3
 - Go: Collects environment variables in debug bundle. ([#1132](https://github.com/fossas/fossa-cli/pull/1132))
 - Diagnostics: Improves user-facing error messages and debugging tips for external commands and some HTTP error conditions ([#1165](https://github.com/fossas/fossa-cli/pull/1165))
