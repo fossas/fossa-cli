@@ -61,7 +61,7 @@ direct = sendSimple . Direct
 edge :: Has (Grapher ty) sig m => ty -> ty -> m ()
 edge parent child = sendSimple (Edge parent child)
 
-edges :: Traversable t => Has (Grapher ty) sig m => t (ty, ty) -> m ()
+edges :: (Traversable t, Has (Grapher ty) sig m) => t (ty, ty) -> m ()
 edges = traverse_ (uncurry edge)
 
 deep :: Has (Grapher ty) sig m => ty -> m ()

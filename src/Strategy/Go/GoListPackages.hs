@@ -20,7 +20,7 @@ import Control.Algebra (Has)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, fatal)
 import Control.Effect.Diagnostics qualified as Diagnostics
-import Control.Monad (unless, when)
+import Control.Monad (unless, when, (>=>))
 import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
 import Data.Aeson.Internal (formatError)
 import Data.Foldable (traverse_)
@@ -146,31 +146,35 @@ buildGraph rawPackages =
     go :: (HashSet.HashSet ImportPath, HashMap.HashMap ImportPath GoPackage) -> GoPackage -> (HashSet.HashSet ImportPath, HashMap.HashMap ImportPath GoPackage)
     go (stdLibPaths, otherPackages) g@GoPackage{standard, importPath}
       | standard = (HashSet.insert importPath stdLibPaths, otherPackages)
-      | otherwise = (stdLibPaths, HashMap.insert importPath (removeStdLibDeps g) otherPackages)
+      | otherwise = (stdLibPaths, HashMap.insert importPath (removeIgnoredPackages g) otherPackages)
 
     -- "C" is a special package for using Go's FFI.
     -- Ignore it because trying to look it up as a package import path later will fail.
     ignoredPackages :: HashSet.HashSet ImportPath
     ignoredPackages = HashSet.insert (ImportPath "C") stdLibImportPaths
 
-    removeStdLibDeps :: GoPackage -> GoPackage
-    removeStdLibDeps g@GoPackage{packageDeps = pDeps} =
+    removeIgnoredPackages :: GoPackage -> GoPackage
+    removeIgnoredPackages g@GoPackage{packageDeps = pDeps} =
       g{packageDeps = filter (\i -> not $ i `HashSet.member` ignoredPackages) pDeps}
 
     graphEdges :: (Has Diagnostics sig m, Has (Grapher Dependency) sig m) => GoPackage -> m ()
     graphEdges GoPackage{importPath, packageDeps} = do
       currModule@GoModule{isMainModule, indirect} <- importToModule importPath
       unless (isMainModule || isPathDep currModule) $ do
-        let modDep = modToDep currModule
-            addChildEdge :: (Has Diagnostics sig m, Has (Grapher Dependency) sig m) => ImportPath -> m ()
-            addChildEdge p = do
-              pMod <- importToModule p
-              when (pMod /= currModule) $
-                edge modDep (modToDep pMod)
-        traverse_ addChildEdge packageDeps
+        let currDep :: Dependency
+            currDep = modToDep currModule
+
+            addChildEdge :: (Has Diagnostics sig m, Has (Grapher Dependency) sig m) => Dependency -> m ()
+            addChildEdge childDep = do
+              when (childDep /= currDep) $
+                edge currDep childDep
+
+            makeEdge :: (Has (Grapher Dependency) sig m,  Has Diagnostics sig m) => ImportPath -> m ()
+            makeEdge = importToModule >=> pure . modToDep >=> addChildEdge
+        traverse_ makeEdge packageDeps
         if indirect
-          then deep modDep
-          else direct modDep
+          then deep currDep
+          else direct currDep
 
     -- Look up module info for an import path, performing replacements if necessary.
     importToModule :: Has Diagnostics sig m => ImportPath -> m GoModule
