@@ -213,6 +213,7 @@ ignoresC =
                             , replacement = Nothing
                             }
                     , packageDeps = [ImportPath "C"]
+                    , listError = Nothing
                     }
                 ]
       assertOnSuccess result $ \_ (graph, _) -> graph `shouldBe` Graphing.direct xdiff

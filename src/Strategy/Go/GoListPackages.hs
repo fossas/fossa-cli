@@ -18,10 +18,11 @@ module Strategy.Go.GoListPackages (
 
 import Control.Algebra (Has)
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, fatal)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, fatal, warn)
 import Control.Effect.Diagnostics qualified as Diagnostics
 import Control.Monad (unless, when, (>=>))
-import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:), (.:?))
+import Data.Aeson (FromJSON (parseJSON), Value, withObject, (.!=), (.:), (.:?))
+import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.Aeson.Internal (formatError)
 import Data.Foldable (traverse_)
 import Data.HashMap.Strict qualified as HashMap
@@ -30,7 +31,7 @@ import Data.Hashable (Hashable)
 import Data.List (foldl')
 import Data.Map qualified as Map
 import Data.Set qualified as Set
-import Data.String.Conversion (ToText, toText)
+import Data.String.Conversion (ToText, decodeUtf8, toText)
 import Data.Text (Text, isPrefixOf)
 import DepTypes (DepEnvironment (EnvProduction), DepType (GoType), Dependency (..), VerConstraint (CEq))
 import Effect.Exec (AllowErr (Never), Command (Command, cmdAllowErr, cmdArgs, cmdName), Exec, ExecErr (CommandParseError), execThrow, renderCommand)
@@ -51,11 +52,23 @@ newtype ImportPath = ImportPath Text
 
 instance FromJSON ImportPath
 
+newtype GoListPackageError = GoListPackageError Value
+  deriving (Eq, Show, FromJSON)
+
+instance ToDiagnostic GoListPackageError where
+  renderDiagnostic (GoListPackageError v) =
+    pretty @Text $
+      "'go list -json -deps all' reported a package error: \n"
+        <> (decodeUtf8 . encodePretty $ v)
+        <> "\nThis may affect analysis results for this package, but often FOSSA can still analyze it."
+        <> "\nVerify the analysis results for the affected package on fossa.com."
+
 data GoPackage = GoPackage
   { importPath :: ImportPath
   , standard :: Bool
   , moduleInfo :: Maybe GoModule
   , packageDeps :: [ImportPath]
+  , listError :: Maybe GoListPackageError
   }
   deriving (Show)
 
@@ -71,6 +84,7 @@ instance FromJSON GoPackage where
         -- "Deps" includes recursively imported packages as well.
         -- Those should have their own entries in the output though.
         <*> (obj .: "Imports" <|> pure [])
+        <*> obj .:? "Error"
 
 newtype ModulePath = ModulePath {unModulePath :: Text}
   deriving (Eq, Ord, Show, ToText, FromJSON, Hashable)
@@ -106,7 +120,18 @@ goListCmd :: Command
 goListCmd =
   Command
     { cmdName = "go"
-    , cmdArgs = ["list", "-json", "-deps", "all"]
+    , cmdArgs =
+        [ "list"
+        , "-e" -- Note malformed or not found packages in the GoPackage "Error" field and return a 0 exit-status.
+        -- During testing there were some packages reported as erroneous due to how they were used in the project, but it is still possible to analyze them.
+        -- Rather than fail and fall back to static analysis, this tactic will still try to upload those packages and report the error as a warning.
+        -- Not doing this would make us do static analysis on projects that previously worked with the `go mod graph` based tactic.
+        -- See https://github.com/kubernetes/kubernetes/tree/master/hack/tools for a project needing this behavior.
+        -- See https://pkg.go.dev/cmd/go/internal/list for documentation of this flag
+        , "-json" -- Output in json format
+        , "-deps" -- Recursively print deps
+        , "all" -- all packages
+        ]
     , cmdAllowErr = Never
     }
 
@@ -158,7 +183,8 @@ buildGraph rawPackages =
       g{packageDeps = filter (\i -> not $ i `HashSet.member` ignoredPackages) pDeps}
 
     graphEdges :: (Has Diagnostics sig m, Has (Grapher Dependency) sig m) => GoPackage -> m ()
-    graphEdges GoPackage{importPath, packageDeps} = do
+    graphEdges GoPackage{importPath, packageDeps, listError} = do
+      maybe (pure ()) warn listError
       currModule@GoModule{isMainModule, indirect} <- importToModule importPath
       unless (isMainModule || isPathDep currModule) $ do
         let currDep :: Dependency
@@ -200,11 +226,10 @@ isPathDep GoModule{modulePath = ModulePath mP} = any (`isPrefixOf` mP) ["./", ".
 
 modToDep :: GoModule -> Dependency
 modToDep
-  ( GoModule
-      { modulePath = ModulePath modPath
-      , version
-      }
-    ) =
+  GoModule
+    { modulePath = ModulePath modPath
+    , version
+    } =
     Dependency
       { dependencyType = GoType
       , dependencyName = modPath
