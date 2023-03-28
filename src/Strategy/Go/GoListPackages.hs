@@ -169,7 +169,7 @@ buildGraph rawPackages =
               when (childDep /= currDep) $
                 edge currDep childDep
 
-            makeEdge :: (Has (Grapher Dependency) sig m,  Has Diagnostics sig m) => ImportPath -> m ()
+            makeEdge :: (Has (Grapher Dependency) sig m, Has Diagnostics sig m) => ImportPath -> m ()
             makeEdge = importToModule >=> pure . modToDep >=> addChildEdge
         traverse_ makeEdge packageDeps
         if indirect
