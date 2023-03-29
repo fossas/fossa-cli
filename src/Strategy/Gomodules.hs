@@ -7,7 +7,7 @@ module Strategy.Gomodules (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (goDynamicStrategy))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (useV3GoResolver), GoDynamicTactic (..))
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText, recover, (<||>))
 import Control.Effect.Reader (Reader, asks)
 import Data.Aeson (ToJSON)
@@ -54,7 +54,7 @@ data GomodulesProject = GomodulesProject
 instance ToJSON GomodulesProject
 
 instance AnalyzeProject GomodulesProject where
-  analyzeProject _ proj = asks goDynamicStrategy >>= getDeps proj
+  analyzeProject _ proj = asks useV3GoResolver >>= getDeps proj
   analyzeProject' _ = const $ fatalText "Cannot analyze GoModule project statically"
 
 mkProject :: GomodulesProject -> DiscoveredProject GomodulesProject
@@ -66,8 +66,8 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> Bool -> m DependencyResults
-getDeps project usePackageCentricGoList = do
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> GoDynamicTactic -> m DependencyResults
+getDeps project goDynamicTactic = do
   (graph, graphBreadth) <- context "Gomodules" $ dynamicAnalysis <||> staticAnalysis
   stdlib <- recover . context "Collect go standard library information" . listGoStdlibPackages $ gomodulesDir project
   pure $
@@ -89,9 +89,9 @@ getDeps project usePackageCentricGoList = do
     dynamicAnalysis :: (Has Exec sig m, Has Diagnostics sig m) => m (Graphing Dependency, GraphBreadth)
     dynamicAnalysis =
       context "Dynamic analysis" $
-        if usePackageCentricGoList
-          then context "analysis using go list (packages)" (GoListPackages.analyze (gomodulesDir project))
-          else
+        case goDynamicTactic of
+          GoPackagesBasedTactic -> context "analysis using go list (V3 Resolver)" (GoListPackages.analyze (gomodulesDir project))
+          GoModulesBasedTactic ->
             context "analysis using go mod graph" (GoModGraph.analyze (gomodulesDir project))
               -- Go List tactic is only kept in consideration, in event go mod graph fails.
               -- In reality, this is highly unlikely scenario, and should almost never happen.

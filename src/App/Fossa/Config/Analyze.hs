@@ -19,6 +19,7 @@ module App.Fossa.Config.Analyze (
   VendoredDependencyOptions (..),
   VSIAnalysis (..),
   VSIModeOptions (..),
+  GoDynamicTactic (..),
   mkSubCommand,
   loadConfig,
   cliParser,
@@ -193,7 +194,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeSkipVSIGraphResolution :: [VSI.Locator]
   , monorepoAnalysisOpts :: MonorepoAnalysisOpts
   , analyzeBaseDir :: FilePath
-  , analyzeDynamicGoAnalysisType :: Bool
+  , analyzeDynamicGoAnalysisType :: GoDynamicTactic
   }
   deriving (Eq, Ord, Show)
 
@@ -250,7 +251,7 @@ instance ToJSON StandardAnalyzeConfig where
 
 data ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
   { allowedGradleConfigs :: Maybe (Set Text)
-  , goDynamicStrategy :: Bool
+  , useV3GoResolver :: GoDynamicTactic
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -289,12 +290,25 @@ cliParser =
     <*> many skipVSIGraphResolutionOpt
     <*> monorepoOpts
     <*> baseDirArg
-    <*> experimentalPackageCentricGoAnalysis
+    <*> experimentalUseV3GoResolver
 
-experimentalPackageCentricGoAnalysis :: Parser Bool
-experimentalPackageCentricGoAnalysis =
-  switch $
-    long "experimental-package-centric-go"
+data GoDynamicTactic
+  = GoModulesBasedTactic
+  | GoPackagesBasedTactic
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON GoDynamicTactic where
+  toEncoding = genericToEncoding defaultOptions
+
+experimentalUseV3GoResolver :: Parser GoDynamicTactic
+experimentalUseV3GoResolver =
+  fmap
+    ( \case
+        True -> GoPackagesBasedTactic
+        False -> GoModulesBasedTactic
+    )
+    . switch
+    $ long "experimental-use-v3-go-resolver"
       <> help "For Go: generate a graph of module deps based on package deps. This will be the default in the future."
 
 vendoredDependencyModeOpt :: Parser ArchiveUploadType

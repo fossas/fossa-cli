@@ -8,6 +8,7 @@ module App.Fossa.Config.ListTargets (
 
 import App.Fossa.Config.Analyze (
   ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig),
+  GoDynamicTactic (GoModulesBasedTactic),
  )
 import App.Fossa.Config.Common (
   CommonOpts (..),
@@ -74,7 +75,7 @@ collectExperimental maybeCfg =
         gradleConfigsOnly
         (maybeCfg >>= configExperimental >>= gradle)
     )
-    False -- This should be ok because its discovery should not work differently than the old Go modules tactic.
+    GoModulesBasedTactic -- This should be ok because its discovery should not work differently than the old Go modules tactic.
 
 data ListTargetsCliOpts = ListTargetsCliOpts
   { commons :: CommonOpts

@@ -17,7 +17,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic))
 import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
 import App.Types (BaseDir (BaseDir))
 import Codec.Archive.Tar.Index (TarEntryOffset)
@@ -180,7 +180,7 @@ analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball = do
     noExperimental =
       ExperimentalAnalyzeConfig
         Nothing
-        False -- Discovery is the same for both module and package centric analysis.
+        GoModulesBasedTactic -- Discovery is the same for both module and package centric analysis.
     toSourceUnit :: [DiscoveredProjectScan] -> [SourceUnit]
     toSourceUnit =
       map (Srclib.toSourceUnit False)
@@ -318,7 +318,7 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
     . runReader
       ( ExperimentalAnalyzeConfig
           Nothing
-          False -- Targets aren't different between package/module centric analysis for Go.
+          GoModulesBasedTactic -- Targets aren't different between package/module centric analysis for Go.
       )
     . runReader (mempty :: AllFilters)
     $ run

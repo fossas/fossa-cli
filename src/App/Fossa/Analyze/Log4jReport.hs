@@ -18,7 +18,7 @@ import App.Fossa.Analyze.Debug (diagToDebug)
 import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc))
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Types (AnalyzeProject (..), AnalyzeTaskEffs)
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic))
 import App.Fossa.Config.Common (baseDirArg, collectBaseDir)
 import App.Fossa.Subcommand (GetCommonOpts, GetSeverity, SubCommand (SubCommand))
 import App.Types (
@@ -142,7 +142,7 @@ analyzeForLog4j basedir = do
     withoutAnyExperimentalPreferences =
       ExperimentalAnalyzeConfig
         Nothing
-        False -- Discovery is the same for both module and package centric Go tactics.
+        GoModulesBasedTactic -- Discovery is the same for both module and package centric Go tactics.
 
 runAnalyzersForLog4j ::
   ( AnalyzeTaskEffs sig m
