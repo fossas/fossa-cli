@@ -6,11 +6,7 @@ module Go.GoListPackagesSpec (
 
 import Control.Algebra (run)
 import Control.Carrier.Diagnostics (runDiagnostics)
-import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Carrier.Stack (runStack)
-import Data.ByteString.Lazy qualified as BL
-import Data.Foldable (traverse_)
-import Data.Function ((&))
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import DepTypes (
@@ -19,223 +15,157 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Effect.Exec (ExecF (..))
-import Effect.Grapher (deep, direct, edges, evalGrapher)
 import GraphUtil (expectGraphEqual)
-import Graphing qualified (Graphing, direct)
-import Path.IO (getCurrentDir)
+import Graphing qualified (Graphing, direct, edge)
 import ResultUtil (assertOnSuccess)
-import Strategy.Go.GoListPackages (GoModule (..), GoPackage (..), ImportPath (..), ModulePath (ModulePath), ModuleVersion (ModuleVersion), analyze, buildGraph)
-import Test.Hspec (Spec, describe, it, runIO, shouldBe)
+import Strategy.Go.GoListPackages (GoModule (..), GoPackage (..), ImportPath (..), ModulePath (ModulePath), ModuleVersion (ModuleVersion), buildGraph)
+import Test.Hspec (Spec, describe, it)
 
-type ConstExecC = SimpleC ExecF
+-- These packages are set up to test the following features:
+--
+-- 1. Direct/deep/transitive deps.
+-- 2. Local path replacement.
+-- 3. Module replacement.
+-- 4. Eliminating the C special package.
+-- 5. Eliminating path dependencies and their transitive deps.
+testPackages :: [GoPackage]
+testPackages =
+  [ GoPackage
+      { importPath = ImportPath "main/pkg1"
+      , standard = False
+      , moduleInfo =
+          Just
+            GoModule
+              { modulePath = ModulePath "main"
+              , version = Just (ModuleVersion "1.0.0")
+              , indirect = False
+              , isMainModule = True
+              , replacement = Nothing
+              }
+      , packageDeps =
+          [ ImportPath "moduleA/directDep"
+          , -- C is a special package for use with Go's FFI.
+            -- It should be totally ignored by the graphing function.
+            ImportPath "C"
+          ]
+      , listError = Nothing
+      }
+  , GoPackage
+      { importPath = ImportPath "moduleA/directDep"
+      , standard = False
+      , moduleInfo =
+          Just
+            GoModule
+              { modulePath = ModulePath "moduleA"
+              , version = Just (ModuleVersion "1.0.0")
+              , indirect = False
+              , isMainModule = False
+              , replacement = Nothing
+              }
+      , packageDeps = []
+      , listError = Nothing
+      }
+  , -- The following is a module that should be replaced with another module.
+    GoPackage
+      { importPath = ImportPath "replacedModule/pkg1"
+      , standard = False
+      , moduleInfo =
+          Just
+            GoModule
+              { modulePath = ModulePath "replacedModule"
+              , version = Just (ModuleVersion "1.0.0")
+              , indirect = False
+              , isMainModule = False
+              , replacement =
+                  Just
+                    GoModule
+                      { modulePath = ModulePath "moduleReplacement"
+                      , version = Just (ModuleVersion "2.0.0")
+                      , indirect = False
+                      , isMainModule = False
+                      , replacement = Nothing
+                      }
+              }
+      , -- Even with replacements, dependencies still appear in the graph
+        packageDeps = [ImportPath "moduleA/directDep"]
+      , listError = Nothing
+      }
+  , -- The following is a module that should be replaced with a path dep.
+    -- It should be removed by the graphing function because it's a path dep.
+    GoPackage
+      { importPath = ImportPath "pathDepReplaced/pkg1"
+      , standard = False
+      , moduleInfo =
+          Just
+            GoModule
+              { modulePath = ModulePath "pathDepReplaced"
+              , version = Just (ModuleVersion "1.0.0")
+              , indirect = True
+              , isMainModule = False
+              , replacement =
+                  Just
+                    GoModule
+                      { modulePath = ModulePath "../local_package"
+                      , version = Just (ModuleVersion "1.0.0")
+                      , indirect = False
+                      , isMainModule = False
+                      , replacement = Nothing
+                      }
+              }
+      , packageDeps = [ImportPath "pathDepDependency/pkg1"]
+      , listError = Nothing
+      }
+  , -- The following is a module that is depended on only by a path dep.
+    -- It should not appear in the result graph.
+    GoPackage
+      { importPath = ImportPath "pathDepDependency/pkg1"
+      , standard = False
+      , moduleInfo =
+          Just
+            GoModule
+              { modulePath = ModulePath "pathDepDependency"
+              , version = Just (ModuleVersion "1.0.0")
+              , indirect = True
+              , isMainModule = False
+              , replacement = Nothing
+              }
+      , packageDeps = []
+      , listError = Nothing
+      }
+  ]
 
-runConstExec :: Applicative m => BL.ByteString -> ConstExecC m a -> m a
-runConstExec output = interpret $ \case
-  Exec{} -> pure (Right output)
-
-clientGolang :: Dependency
-clientGolang =
+moduleA :: Dependency
+moduleA =
   Dependency
     { dependencyType = GoType
-    , dependencyName = "github.com/prometheus/client_golang"
-    , dependencyVersion = Just (CEq "v1.12.2")
+    , dependencyName = "moduleA"
+    , dependencyVersion = Just $ CEq "1.0.0"
     , dependencyLocations = []
     , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.empty
     }
 
-xdiff :: Dependency
-xdiff =
+replacedModule :: Dependency
+replacedModule =
   Dependency
     { dependencyType = GoType
-    , dependencyName = "github.com/ajankovic/xdiff"
-    , dependencyVersion = Just (CEq "v0.0.1")
+    , dependencyName = "moduleReplacement"
+    , dependencyVersion = Just $ CEq "2.0.0"
     , dependencyLocations = []
     , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.empty
     }
 
-perks :: Dependency
-perks =
-  Dependency
-    { dependencyType = GoType
-    , dependencyName = "github.com/beorn7/perks"
-    , dependencyVersion = Just (CEq "v1.0.1")
-    , dependencyLocations = []
-    , dependencyEnvironments = Set.singleton EnvProduction
-    , dependencyTags = Map.empty
-    }
+expectedGraph :: Graphing.Graphing Dependency
+expectedGraph =
+  Graphing.direct replacedModule
+    <> Graphing.direct moduleA
+    <> Graphing.edge replacedModule moduleA
 
-protobuf :: Dependency
-protobuf =
-  Dependency
-    { dependencyType = GoType
-    , dependencyName = "github.com/golang/protobuf"
-    , dependencyVersion = Just (CEq "v1.5.2")
-    , dependencyLocations = []
-    , dependencyEnvironments = Set.singleton EnvProduction
-    , dependencyTags = Map.empty
-    }
-
-golangProtobufExtensions :: Dependency
-golangProtobufExtensions =
-  Dependency
-    { dependencyType = GoType
-    , dependencyName = "github.com/matttproud/golang_protobuf_extensions"
-    , dependencyVersion = Just (CEq "v1.0.1")
-    , dependencyLocations = []
-    , dependencyEnvironments = Set.singleton EnvProduction
-    , dependencyTags = Map.empty
-    }
-
-clientModel :: Dependency
-clientModel =
-  Dependency
-    { dependencyType = GoType
-    , dependencyName = "github.com/prometheus/client_model"
-    , dependencyVersion = Just (CEq "v0.2.0")
-    , dependencyLocations = []
-    , dependencyEnvironments = Set.singleton EnvProduction
-    , dependencyTags = Map.empty
-    }
-
-common :: Dependency
-common =
-  Dependency
-    { dependencyType = GoType
-    , dependencyName = "github.com/prometheus/common"
-    , dependencyVersion = Just (CEq "v0.32.1")
-    , dependencyLocations = []
-    , dependencyEnvironments = Set.singleton EnvProduction
-    , dependencyTags = Map.empty
-    }
-
-procfs :: Dependency
-procfs =
-  Dependency
-    { dependencyType = GoType
-    , dependencyName = "github.com/prometheus/procfs"
-    , dependencyVersion = Just (CEq "v0.7.3")
-    , dependencyLocations = []
-    , dependencyEnvironments = Set.singleton EnvProduction
-    , dependencyTags = Map.empty
-    }
-
-xSys :: Dependency
-xSys =
-  Dependency
-    { dependencyType = GoType
-    , dependencyName = "golang.org/x/sys"
-    , dependencyVersion = Just (CEq "v0.0.0-20220114195835-da31bd327af9")
-    , dependencyLocations = []
-    , dependencyEnvironments = Set.singleton EnvProduction
-    , dependencyTags = Map.empty
-    }
-
-xxhash :: Dependency
-xxhash =
-  Dependency
-    { dependencyType = GoType
-    , dependencyName = "github.com/cespare/xxhash/v2"
-    , dependencyVersion = Just (CEq "v2.1.2")
-    , dependencyLocations = []
-    , dependencyEnvironments = Set.singleton EnvProduction
-    , dependencyTags = Map.empty
-    }
-
-protobufOld :: Dependency
-protobufOld =
-  Dependency
-    { dependencyType = GoType
-    , dependencyName = "google.golang.org/protobuf"
-    , dependencyVersion = Just (CEq "v1.26.0")
-    , dependencyLocations = []
-    , dependencyEnvironments = Set.singleton EnvProduction
-    , dependencyTags = Map.empty
-    }
-
-expected :: Graphing.Graphing Dependency
-expected = run . evalGrapher $ do
-  traverse_ direct [clientGolang, xdiff]
-  traverse_
-    deep
-    [ perks
-    , protobuf
-    , golangProtobufExtensions
-    , clientModel
-    , common
-    , procfs
-    , xSys
-    , xxhash
-    , protobufOld
-    ]
-
-  edges
-    [ (protobuf, protobufOld)
-    , (golangProtobufExtensions, protobuf)
-    , (clientModel, protobuf)
-    , (common, protobuf)
-    , (common, golangProtobufExtensions)
-    , (common, clientModel)
-    , (procfs, xSys)
-    , (clientGolang, perks)
-    , (clientGolang, protobuf)
-    , (clientGolang, protobufOld)
-    , (clientGolang, clientModel)
-    , (clientGolang, common)
-    , (clientGolang, procfs)
-    , (clientGolang, protobuf)
-    , (clientGolang, xxhash)
-    ]
-
--- | This FilePath represents =go list -json -deps all= output with a local package replacement and transitive deps.
-testFile :: FilePath
-testFile = "test/Go/testdata/go-list-pkgs-out.json"
-
-ignoresC :: Spec
-ignoresC =
-  describe "Using C bindings" $
-    it "Ignores the special \"C\" package in dependencies" $ do
-      let result =
-            run . runStack . runDiagnostics $
-              buildGraph
-                [ GoPackage
-                    { importPath = ImportPath "github.com/ajankovic/xdiff"
-                    , standard = False
-                    , moduleInfo =
-                        Just
-                          GoModule
-                            { modulePath = ModulePath "github.com/ajankovic/xdiff"
-                            , version = Just (ModuleVersion "v0.0.1")
-                            , indirect = False
-                            , isMainModule = False
-                            , replacement = Nothing
-                            }
-                    , packageDeps = [ImportPath "C"]
-                    , listError = Nothing
-                    }
-                ]
-      assertOnSuccess result $ \_ (graph, _) -> graph `shouldBe` Graphing.direct xdiff
-
-analysisSpec :: Spec
-analysisSpec = do
-  outputTrivial <- runIO (BL.readFile testFile)
-  -- The following dir is ignored because of the ConstExecC carrier.
-  testdir <- runIO getCurrentDir
-
-  describe "golist analyze" $ do
-    it "produces the expected output" $ do
-      let result =
-            analyze testdir
-              & runConstExec outputTrivial
-              & runDiagnostics
-              & runStack
-              & run
-      assertOnSuccess result $ \_ (graph, _) -> graph `expectGraphEqual` expected
+buildGraphSpec :: Spec
+buildGraphSpec = it "Graphs modules based on package dependencies" $ do
+  let result = run . runStack . runDiagnostics . buildGraph $ testPackages
+  assertOnSuccess result $ \_ (graph, _) -> graph `expectGraphEqual` expectedGraph
 
 spec :: Spec
-spec =
-  do
-    analysisSpec
-    ignoresC
+spec = describe "Graphing deps with go list -json -deps all" buildGraphSpec
