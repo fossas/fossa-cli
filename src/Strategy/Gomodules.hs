@@ -90,10 +90,15 @@ getDeps project goDynamicTactic = do
     dynamicAnalysis =
       context "Dynamic analysis" $
         case goDynamicTactic of
-          GoPackagesBasedTactic -> context "analysis using go list (V3 Resolver)" (GoListPackages.analyze (gomodulesDir project))
-          GoModulesBasedTactic ->
-            context "analysis using go mod graph" (GoModGraph.analyze (gomodulesDir project))
-              -- Go List tactic is only kept in consideration, in event go mod graph fails.
-              -- In reality, this is highly unlikely scenario, and should almost never happen.
-              -- This tactic uses `go list -m -json all`
-              <||> context "analysis using go list (modules)" (GoList.analyze' (gomodulesDir project))
+          GoPackagesBasedTactic ->
+            context "analysis using go list (V3 Resolver)" (GoListPackages.analyze (gomodulesDir project))
+              <||> defaultDynamicAnalysis
+          GoModulesBasedTactic -> defaultDynamicAnalysis
+
+    defaultDynamicAnalysis :: (Has Diagnostics sig m, Has Exec sig m) => m (Graphing Dependency, GraphBreadth)
+    defaultDynamicAnalysis =
+      context "analysis using go mod graph" (GoModGraph.analyze (gomodulesDir project))
+        -- Go List tactic is only kept in consideration, in event go mod graph fails.
+        -- In reality, this is highly unlikely scenario, and should almost never happen.
+        -- This tactic uses `go list -m -json all`
+        <||> context "analysis using go list (modules)" (GoList.analyze' (gomodulesDir project))
