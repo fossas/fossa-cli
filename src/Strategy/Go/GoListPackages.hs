@@ -205,7 +205,6 @@ buildGraph rawPackages =
     -- Look up module info for an import path, performing replacements if necessary.
     importToModule :: Has Diagnostics sig m => ImportPath -> m GoModule
     importToModule impPath = do
-      -- Return a stand-in value for missing import paths so it's visible to users? even if unscannable.
       Diagnostics.fromMaybe (MissingModuleErr impPath) $ do
         GoPackage{moduleInfo = modInfo} <- HashMap.lookup impPath pkgsNoStdLibImports
         (modInfo >>= replacement) <|> modInfo
@@ -218,10 +217,8 @@ instance ToDiagnostic MissingModuleErr where
 
 -- |A module is a path dep if its import path starts with './' or '../'.
 isPathDep :: GoModule -> Bool
--- I think this method of detection is crude, but I'm not sure how else to distinguish path deps from regular ones.
--- If I don't assume that a path dep always starts with one of these prefixes, it's possible that what looks like an import path is actually a relative path to a local directory.
--- One possible improvement is to only perform this check when a module is a replacement for another.
--- Is this too unix specific?
+-- Checking for ./ or ../ is the documented way of detecting path deps.
+-- https://go.dev/ref/mod#go-mod-file-replace
 isPathDep GoModule{modulePath = ModulePath mP} = any (`isPrefixOf` mP) ["./", "../"]
 
 modToDep :: GoModule -> Dependency
