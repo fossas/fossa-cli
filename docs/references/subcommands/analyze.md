@@ -169,3 +169,13 @@ custom-dependencies:
 ```
 
 If you need more assistance, please contact [FOSSA support](https://support.fossa.com).
+
+3. How do I ensure `fossa analyze` does not exit fatally when no targets are discovered?
+
+In some scenarios, you may want to configure the `fossa analyze` and `fossa test` CI workflow on an empty repository or directory with 0 targets. Unfortunately, `fossa-cli` does not have a configuration yet, which will allow for successful analysis (exit code of 0) when 0 targets are discovered.
+
+For a workaround, create an empty `reqs.txt` file before running `fossa analyze,` which will force `fossa-cli` to presume an empty pip project (with 0 dependencies).
+
+```bash
+touch reqs.txt && fossa analyze && rm reqs.txt && fossa test
+```

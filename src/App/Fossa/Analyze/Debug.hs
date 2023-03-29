@@ -44,8 +44,10 @@ import Control.Effect.Stack (Stack (Context))
 import Control.Effect.Sum (Member, inj)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
+import Data.Bifunctor (bimap)
+import Data.Map qualified as Map
 import Data.String.Conversion (toText)
-import Data.Text (Text)
+import Data.Text (Text, toLower)
 import Data.Word (Word64)
 import Effect.Exec (Exec, ExecF (..))
 import Effect.Logger (Logger, LoggerF (..))
@@ -54,7 +56,50 @@ import GHC.Conc qualified as Conc
 import GHC.Generics (Generic)
 import GHC.Stats qualified as Stats
 import System.Args (getCommandArgs)
+import System.Environment (getEnvironment)
 import System.Info qualified as Info
+
+collectEnvVariables :: Has (Lift IO) sig m => m (Map.Map Text Text)
+collectEnvVariables =
+  (Map.filterWithKey onlyEnvOfInterest <$> Map.fromList)
+    . map (bimap toText toText)
+    <$> sendIO getEnvironment
+  where
+    -- environment variables are case-sensitive in linux,
+    -- but are not case sensitive in windows, so always
+    -- perform case-insensitive comparison
+    onlyEnvOfInterest :: Text -> Text -> Bool
+    onlyEnvOfInterest envName _ =
+      toLower envName `elem` envOfInterest
+
+    envOfInterest :: [Text]
+    envOfInterest =
+      map
+        toLower
+        [ -- Golang
+          -- Ref: https://pkg.go.dev/cmd/go#hdr-Environment_variables
+          "GCCGO"
+        , "GO111MODULE"
+        , "GOARCH"
+        , "GOBIN"
+        , "GOCACHE"
+        , "GODEBUG"
+        , "GOENV"
+        , "GOFLAGS"
+        , "GOINSECURE"
+        , "GOMODCACHE"
+        , "GONOPROXY "
+        , "GONOSUMDB"
+        , "GOOS"
+        , "GOPATH"
+        , "GOPRIVATE"
+        , "GOPROXY"
+        , "GOROOT"
+        , "GOSUMDB"
+        , "GOTMPDIR"
+        , "GOVCS"
+        , "GOWORK"
+        ]
 
 collectDebugBundle ::
   ( Has Exec sig m
@@ -70,6 +115,7 @@ collectDebugBundle cfg act = do
   (scope, (execJournal, (readFSJournal, res))) <- runDebug . runRecord @ExecF . runRecord @ReadFSF . debugEverything $ act
   sysInfo <- sendIO collectSystemInfo
   args <- sendIO getCommandArgs
+  envVars <- collectEnvVariables
   let bundle =
         DebugBundle
           { bundleScope = scope
@@ -77,6 +123,7 @@ collectDebugBundle cfg act = do
           , bundleCLIVersion = fullVersionDescription
           , bundleArgs = args
           , bundleConfig = cfg
+          , bundleEnvVariables = envVars
           , bundleJournals =
               BundleJournals
                 { bundleJournalReadFS = readFSJournal
@@ -110,6 +157,7 @@ data DebugBundle cfg = DebugBundle
   , bundleCLIVersion :: Text
   , bundleArgs :: [Text]
   , bundleConfig :: cfg
+  , bundleEnvVariables :: Map.Map Text Text
   , bundleJournals :: BundleJournals
   }
   deriving (Show, Generic)
