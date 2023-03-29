@@ -10,7 +10,6 @@ module GraphUtil (
   expectDirect,
   expectDirect',
   expectGraphEqual,
-  expectGraphEqual',
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
@@ -74,6 +73,3 @@ expectEdge graph expectedFrom expectedTo = Graphing.edgesList graph `shouldConta
 
 expectEdge' :: (Ord a, Show a, Has (Lift IO) sig m) => Graphing a -> a -> a -> m ()
 expectEdge' graph expectedFrom expectedTo = sendIO $ expectEdge graph expectedFrom expectedTo
-
-expectGraphEqual' :: (Ord a, Show a, Has (Lift IO) sig m) => Graphing a -> Graphing a -> m ()
-expectGraphEqual' g1 g2 = sendIO $ expectGraphEqual g1 g2

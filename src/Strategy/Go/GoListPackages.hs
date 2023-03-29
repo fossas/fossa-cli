@@ -1,5 +1,3 @@
-{-# LANGUAGE DerivingVia #-}
-
 -- |
 -- Module : Strategy.Gomodules.GoListPackages
 --
@@ -184,7 +182,7 @@ buildGraph rawPackages =
 
     graphEdges :: (Has Diagnostics sig m, Has (Grapher Dependency) sig m) => GoPackage -> m ()
     graphEdges GoPackage{importPath, packageDeps, listError} = do
-      maybe (pure ()) warn listError
+      traverse_ warn listError
       currModule@GoModule{isMainModule, indirect} <- importToModule importPath
       unless (isMainModule || isPathDep currModule) $ do
         let currDep :: Dependency
