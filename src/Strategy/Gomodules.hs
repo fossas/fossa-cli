@@ -78,7 +78,7 @@ getDeps project usePackageCentricGoList = do
       }
   where
     -- `go list -json -deps all` marks std lib deps with a boolean, so Strategy.Go.GoListPackages does this filtering itself.
-    -- I think this can be removed when it becomes the default.
+    -- I think this can be removed when `go list -json -deps all` becomes the default.
     filterGraph :: Maybe [GoStdlibDep] -> Graphing Dependency -> Graphing Dependency
     filterGraph Nothing deps = deps
     filterGraph (Just stdlib) deps = filterGoStdlibPackages stdlib deps
