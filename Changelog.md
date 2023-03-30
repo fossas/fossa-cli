@@ -2,7 +2,7 @@
 
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
-## v3.7.5
+## Unreleased
 - Go: Introduce `--experimental-use-v3-go-resolver` to preview a new [tactic](./docs/references/strategies/languages/golang/gomodules.md#experimental-strategy-use-go-list-on-packages) for Go dependency scanning. ([#1168](https://github.com/fossas/fossa-cli/pull/1168)
        
 ## v3.7.4
