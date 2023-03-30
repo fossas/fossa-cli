@@ -371,6 +371,7 @@ library
     Strategy.Glide
     Strategy.Go.GlideLock
     Strategy.Go.GoList
+    Strategy.Go.GoListPackages
     Strategy.Go.Gomod
     Strategy.Go.GoModGraph
     Strategy.Go.GopkgLock
@@ -560,6 +561,7 @@ test-suite unit-tests
     Fortran.FpmTomlSpec
     Fossa.API.TypesSpec
     Go.GlideLockSpec
+    Go.GoListPackagesSpec
     Go.GoListSpec
     Go.GoModGraphSpec
     Go.GomodSpec

@@ -11,6 +11,7 @@ module Effect.Grapher (
   GrapherC,
   direct,
   edge,
+  edges,
   deep,
   evalGrapher,
   runGrapher,
@@ -36,6 +37,7 @@ import Control.Algebra as X
 import Control.Carrier.Diagnostics (ToDiagnostic (..))
 import Control.Carrier.Simple
 import Control.Carrier.State.Strict
+import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
@@ -58,6 +60,9 @@ direct = sendSimple . Direct
 
 edge :: Has (Grapher ty) sig m => ty -> ty -> m ()
 edge parent child = sendSimple (Edge parent child)
+
+edges :: (Traversable t, Has (Grapher ty) sig m) => t (ty, ty) -> m ()
+edges = traverse_ (uncurry edge)
 
 deep :: Has (Grapher ty) sig m => ty -> m ()
 deep = sendSimple . Deep

@@ -13,7 +13,7 @@ module Analysis.FixtureUtils (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic))
 import App.Types (OverrideDynamicAnalysisBinary)
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
@@ -123,7 +123,7 @@ testRunnerWithLogger f env =
     & withDefaultLogger SevWarn
     & runReader (mempty :: OverrideDynamicAnalysisBinary)
     & runReader (mempty :: AllFilters)
-    & runReader (ExperimentalAnalyzeConfig Nothing)
+    & runReader (ExperimentalAnalyzeConfig Nothing GoModulesBasedTactic)
     & runFinally
     & runStack
     & withoutTelemetry

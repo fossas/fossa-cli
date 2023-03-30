@@ -18,7 +18,7 @@ import App.Fossa.Analyze.Debug (diagToDebug)
 import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc))
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Types (AnalyzeProject (..), AnalyzeTaskEffs)
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic))
 import App.Fossa.Config.Common (baseDirArg, collectBaseDir)
 import App.Fossa.Subcommand (GetCommonOpts, GetSeverity, SubCommand (SubCommand))
 import App.Types (
@@ -135,12 +135,14 @@ analyzeForLog4j basedir = do
           . runFinally
           . withTaskPool capabilities updateProgress
           . runAtomicCounter
-          $ do
-            runAnalyzersForLog4j (toPath basedir) mempty
+          $ runAnalyzersForLog4j (toPath basedir) mempty
       reportLog4jVulnerability projectResults
   where
     toPath (BaseDir path) = path
-    withoutAnyExperimentalPreferences = ExperimentalAnalyzeConfig Nothing
+    withoutAnyExperimentalPreferences =
+      ExperimentalAnalyzeConfig
+        Nothing
+        GoModulesBasedTactic -- Discovery is the same for both module and package centric Go tactics.
 
 runAnalyzersForLog4j ::
   ( AnalyzeTaskEffs sig m
