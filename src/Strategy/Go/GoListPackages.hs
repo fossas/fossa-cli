@@ -18,7 +18,7 @@ import Control.Algebra (Has)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, fatal, warn)
 import Control.Effect.Diagnostics qualified as Diagnostics
-import Control.Monad (unless, when)
+import Control.Monad (unless, when, (>=>))
 import Data.Aeson (FromJSON (parseJSON), Value, withObject, (.!=), (.:), (.:?))
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.Aeson.Internal (formatError)
@@ -31,9 +31,14 @@ import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Data.String.Conversion (ToText, decodeUtf8, toText)
 import Data.Text (Text, isPrefixOf)
-import DepTypes (DepEnvironment (EnvProduction), DepType (GoType), Dependency (..), VerConstraint (CEq))
+import DepTypes
+    ( DepEnvironment(EnvProduction),
+      DepType(GoType),
+      Dependency(..),
+      VerConstraint(CEq),
+      DepEnvironment(..) )
 import Effect.Exec (AllowErr (Never), Command (Command, cmdAllowErr, cmdArgs, cmdName), Exec, ExecErr (CommandParseError), execThrow, renderCommand)
-import Effect.Grapher (Grapher, LabeledGrapher, deep, direct, edge, label, withLabeling)
+import Effect.Grapher (Grapher, LabeledGrapher, direct, edge, label, withLabeling)
 import GHC.Generics (Generic)
 import Graphing (pruneUnreachable)
 import Graphing qualified
@@ -161,7 +166,11 @@ analyze goModDir = do
 -- * Replaces modules according to the module's 'replacement' field.
 buildGraph :: (Has Diagnostics sig m) => [GoPackage] -> m (Graphing.Graphing Dependency, GraphBreadth)
 buildGraph rawPackages =
-  fmap ((,Complete) . pruneUnreachable) -- Remove deps that are only children of removed path deps.
+  fmap ((,Complete)
+        . pruneUnreachable -- Remove deps that are only children of removed path deps.
+        . labelTestChildren
+        . Graphing.stripRoot -- Remove the main module, promote its children to direct deps.
+       )
     . withLabeling labeler
     . traverse_ graphEdges
     $ pkgsNoStdLibImports
@@ -179,14 +188,16 @@ buildGraph rawPackages =
     ignoredPackages = HashSet.insert (ImportPath "C") stdLibImportPaths
 
     removeIgnoredPackages :: GoPackage -> GoPackage
-    removeIgnoredPackages g@GoPackage{packageDeps = pDeps} =
-      g{packageDeps = filter (\i -> not $ i `HashSet.member` ignoredPackages) pDeps}
+    removeIgnoredPackages g@GoPackage{packageDeps = pDeps
+                                     , testDeps = tDeps} =
+      g{packageDeps = filter (\i -> not $ i `HashSet.member` ignoredPackages) pDeps
+       , testDeps = filter (\i -> not $ i `HashSet.member` ignoredPackages) tDeps}
 
     graphEdges :: (Has Diagnostics sig m, Has (LabeledGrapher Dependency DepEnvironment) sig m) => GoPackage -> m ()
-    graphEdges GoPackage{importPath, packageDeps, listError} = do
+    graphEdges GoPackage{importPath, packageDeps, listError, testDeps} = do
       traverse_ warn listError
       currModule@GoModule{isMainModule, indirect} <- importToModule importPath
-      unless (isMainModule || isPathDep currModule) $ do
+      unless (isPathDep currModule) $ do
         let parentDep :: Dependency
             parentDep = modToDep currModule
 
@@ -201,11 +212,17 @@ buildGraph rawPackages =
               addChildEdge childDep
               pure childDep
 
-        traverse_ makeEdge packageDeps
-        label parentDep EnvProduction
-        if indirect
-          then deep parentDep
-          else direct parentDep
+        -- TODO: May have to traverse the main modules direct deps in order to get the correct EnvProduction labels on them
+        -- Right now the main module is skipped, so it's deps won't get a production label.
+        traverse_ (makeEdge >=> flip label EnvProduction) packageDeps
+        traverse_ (makeEdge >=> flip label EnvTesting) testDeps
+
+        -- main module is the only direct one for now, it will be deleted its direct deps promoted later
+        when isMainModule $ direct parentDep
+        -- if indirect
+        --   then deep parentDep
+        --   else direct parentDep
+
 
     -- Look up module info for an import path, performing replacements if necessary.
     importToModule :: Has Diagnostics sig m => ImportPath -> m GoModule
@@ -213,6 +230,21 @@ buildGraph rawPackages =
       Diagnostics.fromMaybe (MissingModuleErr impPath) $ do
         GoPackage{moduleInfo = modInfo} <- HashMap.lookup impPath pkgsNoStdLibImports
         (modInfo >>= replacement) <|> modInfo
+
+labelTestChildren :: Graphing.Graphing Dependency -> Graphing.Graphing Dependency
+labelTestChildren g = Graphing.gmap (\dep@Dependency{dependencyEnvironments=dEnvs} ->
+                                       if Set.member dep testingPostNodes
+                                       then dep{dependencyEnvironments = Set.insert EnvTesting dEnvs}
+                                       else dep)
+                      g
+  where testingVertices = Set.fromList
+                          . Graphing.vertexList
+                          . Graphing.filter (\Dependency{dependencyEnvironments=env} -> Set.member EnvTesting env)
+                          $ g
+
+        testingPostNodes :: Set.Set Dependency
+        testingPostNodes = foldMap (`Graphing.allPostNodes` g) testingVertices
+
 
 labeler :: Dependency -> Set.Set DepEnvironment -> Dependency
 labeler dep envs = dep{dependencyEnvironments = envs}

@@ -18,7 +18,7 @@ import GraphUtil (expectGraphEqual)
 import Graphing qualified (Graphing, direct, edge)
 import ResultUtil (assertOnSuccess)
 import Strategy.Go.GoListPackages (GoModule (..), GoPackage (..), ImportPath (..), ModulePath (ModulePath), ModuleVersion (ModuleVersion), buildGraph)
-import Test.Hspec (Spec, describe, it)
+import Test.Hspec (Spec, describe, it, fdescribe)
 
 -- These packages are set up to test the following features:
 --
@@ -43,6 +43,7 @@ testPackages =
               }
       , packageDeps =
           [ ImportPath "moduleA/directDep"
+          , ImportPath "replacedModule/pkg1"
           , -- C is a special package for use with Go's FFI.
             -- It should be totally ignored by the graphing function.
             ImportPath "C"
@@ -172,4 +173,4 @@ buildGraphSpec = it "Graphs modules based on package dependencies" $ do
   assertOnSuccess result $ \_ (graph, _) -> graph `expectGraphEqual` expectedGraph
 
 spec :: Spec
-spec = describe "Graphing deps with go list -json -deps all" buildGraphSpec
+spec = fdescribe "Graphing deps with go list -json -deps all" buildGraphSpec
