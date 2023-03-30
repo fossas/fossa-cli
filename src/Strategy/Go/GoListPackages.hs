@@ -67,6 +67,7 @@ data GoPackage = GoPackage
   , moduleInfo :: Maybe GoModule
   , packageDeps :: [ImportPath]
   , listError :: Maybe GoListPackageError
+  , testDeps :: [ImportPath]
   }
   deriving (Show)
 
@@ -83,6 +84,7 @@ instance FromJSON GoPackage where
         -- Those should have their own entries in the output though.
         <*> (obj .: "Imports" <|> pure [])
         <*> obj .:? "Error"
+        <*> (obj .:? "TestImports" .!= [])
 
 newtype ModulePath = ModulePath {unModulePath :: Text}
   deriving (Eq, Ord, Show, ToText, FromJSON, Hashable)

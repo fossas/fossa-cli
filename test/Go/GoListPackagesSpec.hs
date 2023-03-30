@@ -1,7 +1,7 @@
-{-# LANGUAGE GADTs #-}
 module Go.GoListPackagesSpec (
   spec,
-) where
+)
+where
 
 import Control.Algebra (run)
 import Control.Carrier.Diagnostics (runDiagnostics)
@@ -48,6 +48,7 @@ testPackages =
             ImportPath "C"
           ]
       , listError = Nothing
+      , testDeps = []
       }
   , GoPackage
       { importPath = ImportPath "moduleA/directDep"
@@ -63,6 +64,7 @@ testPackages =
               }
       , packageDeps = []
       , listError = Nothing
+      , testDeps = []
       }
   , -- The following is a module that should be replaced with another module.
     GoPackage
@@ -88,6 +90,7 @@ testPackages =
       , -- Even with replacements, dependencies still appear in the graph
         packageDeps = [ImportPath "moduleA/directDep"]
       , listError = Nothing
+      , testDeps = []
       }
   , -- The following is a module that should be replaced with a path dep.
     -- It should be removed by the graphing function because it's a path dep.
@@ -113,6 +116,7 @@ testPackages =
               }
       , packageDeps = [ImportPath "pathDepDependency/pkg1"]
       , listError = Nothing
+      , testDeps = []
       }
   , -- The following is a module that is depended on only by a path dep.
     -- It should not appear in the result graph.
@@ -130,6 +134,7 @@ testPackages =
               }
       , packageDeps = []
       , listError = Nothing
+      , testDeps = []
       }
   ]
 
