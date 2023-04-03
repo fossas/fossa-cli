@@ -16,7 +16,7 @@ module Strategy.Go.GoListPackages (
 
 import Control.Algebra (Has)
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, fatal, warn)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, fatal, recover, warn)
 import Control.Effect.Diagnostics qualified as Diagnostics
 import Control.Monad (unless, when, (>=>))
 import Data.Aeson (FromJSON (parseJSON), Value, withObject, (.!=), (.:), (.:?))
@@ -31,14 +31,15 @@ import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Data.String.Conversion (ToText, decodeUtf8, toText)
 import Data.Text (Text, isPrefixOf)
-import DepTypes
-    ( DepEnvironment(EnvProduction),
-      DepType(GoType),
-      Dependency(..),
-      VerConstraint(CEq),
-      DepEnvironment(..) )
+import Debug.Trace (traceShow, trace)
+import DepTypes (
+  DepEnvironment (..),
+  DepType (GoType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
 import Effect.Exec (AllowErr (Never), Command (Command, cmdAllowErr, cmdArgs, cmdName), Exec, ExecErr (CommandParseError), execThrow, renderCommand)
-import Effect.Grapher (Grapher, LabeledGrapher, direct, edge, label, withLabeling)
+import Effect.Grapher (Grapher, LabeledGrapher, direct, edge, label, withLabeling, LabeledGrapherC)
 import GHC.Generics (Generic)
 import Graphing (pruneUnreachable)
 import Graphing qualified
@@ -46,6 +47,7 @@ import Path (Abs, Dir, Path)
 import Prettyprinter (pretty)
 import Strategy.Go.Transitive (decodeMany)
 import Types (GraphBreadth (Complete))
+import Control.Effect.State (gets)
 
 -- * Types
 
@@ -153,6 +155,8 @@ analyze goModDir = do
     Right pkgs -> do
       context "Analyzing dependencies" $ buildGraph pkgs
 
+type GoLabeledGrapher m a = LabeledGrapherC Dependency DepEnvironment m a
+
 -- | Given a list of GoPackages, generate a graph of *module* dependencies based on their package dependencies.
 -- This works by first making a mapping of package import paths to modules using the provided packages' 'moduleInfo' field.
 -- Next each package's deps have edges made between a it and its dependencies, except that the function uses a package's parent module to generate a the vertex for the package in the graph.
@@ -168,12 +172,15 @@ buildGraph :: (Has Diagnostics sig m) => [GoPackage] -> m (Graphing.Graphing Dep
 buildGraph rawPackages =
   fmap ((,Complete)
         . pruneUnreachable -- Remove deps that are only children of removed path deps.
-        . labelTestChildren
+        -- . labelTestChildren
         . Graphing.stripRoot -- Remove the main module, promote its children to direct deps.
+        -- . (\g -> traceShow ("GRAPH: " <> show g) g)
        )
     . withLabeling labeler
-    . traverse_ graphEdges
-    $ pkgsNoStdLibImports
+    . makeGraph EnvProduction
+    =<< mainPackage
+    -- . traverse_ graphEdges
+    -- $ pkgsNoStdLibImports
   where
     (stdLibImportPaths, pkgsNoStdLibImports) = foldl' go (HashSet.empty, HashMap.empty) rawPackages
 
@@ -188,10 +195,44 @@ buildGraph rawPackages =
     ignoredPackages = HashSet.insert (ImportPath "C") stdLibImportPaths
 
     removeIgnoredPackages :: GoPackage -> GoPackage
-    removeIgnoredPackages g@GoPackage{packageDeps = pDeps
-                                     , testDeps = tDeps} =
-      g{packageDeps = filter (\i -> not $ i `HashSet.member` ignoredPackages) pDeps
-       , testDeps = filter (\i -> not $ i `HashSet.member` ignoredPackages) tDeps}
+    removeIgnoredPackages
+      g@GoPackage
+        { packageDeps = pDeps
+        , testDeps = tDeps
+        } =
+        g
+          { packageDeps = filter (\i -> not $ i `HashSet.member` ignoredPackages) pDeps
+          , testDeps = filter (\i -> not $ i `HashSet.member` ignoredPackages) tDeps
+          }
+
+    -- can we find this inline?
+    mainPackage :: Has Diagnostics sig m => m GoPackage
+    mainPackage = Diagnostics.fromMaybe MissingMainModuleErr $
+                  HashMap.foldr
+                  (\p a ->
+                      case p of
+                        GoPackage{moduleInfo= Just GoModule{isMainModule = True}} -> Just p
+                        _ -> a)
+                  Nothing
+                  pkgsNoStdLibImports
+      
+      
+    -- this can more intelligently handle Package -> Module since this happens multiple times throughout a run
+    -- Graph childPkg and its children with parentPkg as its parent, returning the Dependency for child.
+    makeGraph :: (Has Diagnostics sig m) => DepEnvironment -> GoPackage -> GoLabeledGrapher m Dependency
+    makeGraph currentEnv currentPkg@GoPackage{importPath, packageDeps, moduleInfo, testDeps} = do
+      currentMod@GoModule{indirect} <- case (moduleInfo >>= replacement) <|> moduleInfo of
+                                         Just m -> pure m
+                                         Nothing -> fatal $ MissingModuleErr importPath
+      -- The following two steps should really only be necessary for the main module, see if we can do that earlier elsewhere.
+      let pkgDep = modToDep currentMod
+      existsAlready <- gets (Graphing.hasVertex pkgDep)
+      unless indirect $ direct pkgDep -- TODO remove?
+      unless existsAlready $ traverse_ (lookupPackage >=> makeGraph currentEnv >=> edge pkgDep) packageDeps
+      -- probably not worth graphing transitive test deps of test deps
+      -- traverse_ (lookupPackage >=> makeGraph EnvTesting >=> edge pkgDep) testDeps
+      label pkgDep currentEnv
+      pure pkgDep
 
     graphEdges :: (Has Diagnostics sig m, Has (LabeledGrapher Dependency DepEnvironment) sig m) => GoPackage -> m ()
     graphEdges GoPackage{importPath, packageDeps, listError, testDeps} = do
@@ -224,6 +265,9 @@ buildGraph rawPackages =
         --   else direct parentDep
 
 
+    lookupPackage :: Has Diagnostics sig m => ImportPath -> m GoPackage
+    lookupPackage impPath = Diagnostics.fromMaybe (MissingModuleErr impPath) $ HashMap.lookup impPath pkgsNoStdLibImports
+    
     -- Look up module info for an import path, performing replacements if necessary.
     importToModule :: Has Diagnostics sig m => ImportPath -> m GoModule
     importToModule impPath = do
@@ -231,20 +275,25 @@ buildGraph rawPackages =
         GoPackage{moduleInfo = modInfo} <- HashMap.lookup impPath pkgsNoStdLibImports
         (modInfo >>= replacement) <|> modInfo
 
+
 labelTestChildren :: Graphing.Graphing Dependency -> Graphing.Graphing Dependency
-labelTestChildren g = Graphing.gmap (\dep@Dependency{dependencyEnvironments=dEnvs} ->
-                                       if Set.member dep testingPostNodes
-                                       then dep{dependencyEnvironments = Set.insert EnvTesting dEnvs}
-                                       else dep)
-                      g
-  where testingVertices = Set.fromList
-                          . Graphing.vertexList
-                          . Graphing.filter (\Dependency{dependencyEnvironments=env} -> Set.member EnvTesting env)
-                          $ g
+labelTestChildren g =
+    Graphing.gmap
+      ( \dep@Dependency{dependencyEnvironments = dEnvs} ->
+          if Set.member dep testingPostNodes
+            then dep{dependencyEnvironments = Set.insert EnvTesting dEnvs}
+            else dep
+      )
+      g
+  where
+    testingVertices =
+      Set.fromList
+        . Graphing.vertexList
+        . Graphing.filter (\Dependency{dependencyEnvironments = env} -> Set.member EnvTesting env)
+        $ g
 
-        testingPostNodes :: Set.Set Dependency
-        testingPostNodes = foldMap (`Graphing.allPostNodes` g) testingVertices
-
+    testingPostNodes :: Set.Set Dependency
+    testingPostNodes = foldMap (`Graphing.allPostNodes` g) testingVertices
 
 labeler :: Dependency -> Set.Set DepEnvironment -> Dependency
 labeler dep envs = dep{dependencyEnvironments = envs}
@@ -255,7 +304,14 @@ newtype MissingModuleErr = MissingModuleErr ImportPath
 instance ToDiagnostic MissingModuleErr where
   renderDiagnostic (MissingModuleErr (ImportPath i)) = pretty $ "Could not find module for " <> i
 
--- |A module is a path dep if its import path starts with './' or '../'.
+data MissingMainModuleErr = MissingMainModuleErr
+  deriving (Eq, Show)
+
+-- TODO: better error message
+instance ToDiagnostic MissingMainModuleErr where
+  renderDiagnostic _ = pretty @Text $ "No main module for project" 
+
+-- | A module is a path dep if its import path starts with './' or '../'.
 isPathDep :: GoModule -> Bool
 -- Checking for ./ or ../ is the documented way of detecting path deps.
 -- https://go.dev/ref/mod#go-mod-file-replace
