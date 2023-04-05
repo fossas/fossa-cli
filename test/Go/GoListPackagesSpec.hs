@@ -1,13 +1,13 @@
 module Go.GoListPackagesSpec (
   spec,
-)
-where
+) where
 
 import Control.Algebra (run)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
+import Debug.Trace (traceShow, traceShowM)
 import DepTypes (
   DepEnvironment (EnvProduction),
   DepType (GoType),
@@ -18,7 +18,7 @@ import GraphUtil (expectGraphEqual)
 import Graphing qualified (Graphing, direct, edge)
 import ResultUtil (assertOnSuccess)
 import Strategy.Go.GoListPackages (GoModule (..), GoPackage (..), ImportPath (..), ModulePath (ModulePath), ModuleVersion (ModuleVersion), buildGraph)
-import Test.Hspec (Spec, describe, it, fdescribe)
+import Test.Hspec (Spec, describe, fdescribe, it)
 
 -- These packages are set up to test the following features:
 --
@@ -44,12 +44,13 @@ testPackages =
       , packageDeps =
           [ ImportPath "moduleA/directDep"
           , ImportPath "replacedModule/pkg1"
+          , ImportPath "pathDepReplaced/pkg1"
           , -- C is a special package for use with Go's FFI.
             -- It should be totally ignored by the graphing function.
             ImportPath "C"
           ]
       , listError = Nothing
-      , testDeps = []
+      , testDeps = [ImportPath "testMod/testPkg1"]
       }
   , GoPackage
       { importPath = ImportPath "moduleA/directDep"
@@ -103,7 +104,7 @@ testPackages =
             GoModule
               { modulePath = ModulePath "pathDepReplaced"
               , version = Just (ModuleVersion "1.0.0")
-              , indirect = True
+              , indirect = False
               , isMainModule = False
               , replacement =
                   Just
@@ -128,6 +129,38 @@ testPackages =
           Just
             GoModule
               { modulePath = ModulePath "pathDepDependency"
+              , version = Just (ModuleVersion "1.0.0")
+              , indirect = True
+              , isMainModule = False
+              , replacement = Nothing
+              }
+      , packageDeps = []
+      , listError = Nothing
+      , testDeps = []
+      },
+    GoPackage
+    { importPath = ImportPath "testMod/testPkg1"
+      , standard = False
+      , moduleInfo =
+          Just
+            GoModule
+              { modulePath = ModulePath "testMod"
+              , version = Just (ModuleVersion "1.0.0")
+              , indirect = True
+              , isMainModule = False
+              , replacement = Nothing
+              }
+      , packageDeps = []
+      , listError = Nothing
+      , testDeps = [ImportPath "transitiveTestMod/testPkg2"]
+      },
+    GoPackage
+    { importPath = ImportPath "transitiveTestMod/testPkg2"
+      , standard = False
+      , moduleInfo =
+          Just
+            GoModule
+              { modulePath = ModulePath "transitiveTestMod"
               , version = Just (ModuleVersion "1.0.0")
               , indirect = True
               , isMainModule = False

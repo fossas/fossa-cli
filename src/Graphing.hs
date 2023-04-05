@@ -398,7 +398,7 @@ subGraphOf n (Graphing gr) =
 -- |Generate a set of all nodes that the given node and its successor nodes point to.
 -- This can be expensive because it must recursively visit each node and its descendents.
 -- It will not work on a cyclic graph.
--- 
+--
 -- Example:
 --
 --   1 -> 2 -> 5 -> 6
