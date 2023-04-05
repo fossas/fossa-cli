@@ -172,14 +172,17 @@ buildGraph rawPackages =
    . withLabeling labeler
    . traverse_ (makeGraph EnvProduction <=< lookupPackage)
    . packageDeps
-    =<< mainPackage
+    =<< Diagnostics.fromMaybe MissingMainModuleErr maybeMainPackage
   where
-    (stdLibImportPaths, pkgsNoStdLibImports) = foldl' go (HashSet.empty, HashMap.empty) rawPackages
+    (maybeMainPackage, stdLibImportPaths, pkgsNoStdLibImports) = foldl' go (Nothing, HashSet.empty, HashMap.empty) rawPackages
 
-    go :: (HashSet.HashSet ImportPath, HashMap.HashMap ImportPath GoPackage) -> GoPackage -> (HashSet.HashSet ImportPath, HashMap.HashMap ImportPath GoPackage)
-    go (stdLibPaths, otherPackages) g@GoPackage{standard, importPath}
-      | standard = (HashSet.insert importPath stdLibPaths, otherPackages)
-      | otherwise = (stdLibPaths, HashMap.insert importPath (removeIgnoredPackages g) otherPackages)
+    go :: (Maybe GoPackage, HashSet.HashSet ImportPath, HashMap.HashMap ImportPath GoPackage) -> GoPackage -> (Maybe GoPackage, HashSet.HashSet ImportPath, HashMap.HashMap ImportPath GoPackage)
+    go (maybeMain, stdLibPaths, otherPackages) g@GoPackage{standard, importPath, moduleInfo}
+      | standard = (maybeMain, HashSet.insert importPath stdLibPaths, otherPackages)
+      | Just GoModule{isMainModule = True} <- moduleInfo =
+          let g' = removeIgnoredPackages g in
+            (Just g', stdLibPaths, HashMap.insert importPath g' otherPackages)
+      | otherwise = (maybeMain, stdLibPaths, HashMap.insert importPath (removeIgnoredPackages g) otherPackages)
 
     -- "C" is a special package for using Go's FFI.
     -- Ignore it because trying to look it up as a package import path later will fail.
@@ -196,19 +199,6 @@ buildGraph rawPackages =
           { packageDeps = filter (\i -> not $ i `HashSet.member` ignoredPackages) pDeps
           , testDeps = filter (\i -> not $ i `HashSet.member` ignoredPackages) tDeps
           }
-
-    -- can we find this inline?
-    mainPackage :: Has Diagnostics sig m => m GoPackage
-    mainPackage =
-      Diagnostics.fromMaybe MissingMainModuleErr $
-        HashMap.foldr
-          ( \p a ->
-              case p of
-                GoPackage{moduleInfo = Just GoModule{isMainModule = True}} -> Just p
-                _ -> a
-          )
-          Nothing
-          pkgsNoStdLibImports
 
     -- Graph childPkg and its children with parentPkg as its parent, returning the Dependency for child if it was graphed.
     makeGraph :: (Has Diagnostics sig m) => DepEnvironment -> GoPackage -> GoLabeledGrapher m (Maybe Dependency)
