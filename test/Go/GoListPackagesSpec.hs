@@ -20,6 +20,67 @@ import ResultUtil (assertOnSuccess)
 import Strategy.Go.GoListPackages (GoModule (..), GoPackage (..), ImportPath (..), ModulePath (ModulePath), ModuleVersion (ModuleVersion), buildGraph)
 import Test.Hspec (Spec, describe, fdescribe, it)
 
+-- In this set of packages there are two main modules.
+-- In the resulting graph expect each main module to be absent, with it's dependencies
+multipleMains :: [GoPackage]
+multipleMains =
+  [ GoPackage
+      { importPath = ImportPath "main1/pkg1"
+      , standard = False
+      , moduleInfo =
+          Just
+            GoModule
+              { modulePath = ModulePath "main1"
+              , version = Just (ModuleVersion "1.0.0")
+              , indirect = False
+              , isMainModule = True
+              , replacement = Nothing
+              }
+      , packageDeps = [ImportPath "moduleB/pkg1"]
+      , listError = Nothing
+      , testDeps = []
+      }
+  , GoPackage
+      { importPath = ImportPath "main2/pkg1"
+      , standard = False
+      , moduleInfo =
+          Just
+            GoModule
+              { modulePath = ModulePath "main2"
+              , version = Just (ModuleVersion "1.0.0")
+              , indirect = False
+              , isMainModule = True
+              , replacement = Nothing
+              }
+      , packageDeps =
+          [ImportPath "moduleA/directDep"]
+      , listError = Nothing
+      , testDeps = []
+      }
+  , moduleAPkg
+  , GoPackage
+      { importPath = ImportPath "moduleB/pkg1"
+      , standard = False
+      , moduleInfo =
+          Just
+            GoModule
+              { modulePath = ModulePath "moduleB"
+              , version = Just (ModuleVersion "1.0.0")
+              , indirect = False
+              , isMainModule = False
+              , replacement = Nothing
+              }
+      , packageDeps = []
+      , listError = Nothing
+      , testDeps = []
+      }
+  ]
+
+multipleMainsExpected :: Graphing.Graphing Dependency
+multipleMainsExpected =
+  Graphing.direct moduleA
+    <> Graphing.direct moduleB
+
 -- These packages are set up to test the following features:
 --
 -- 1. Direct/deep/transitive deps.
@@ -52,22 +113,7 @@ testPackages =
       , listError = Nothing
       , testDeps = [ImportPath "testMod/testPkg1"]
       }
-  , GoPackage
-      { importPath = ImportPath "moduleA/directDep"
-      , standard = False
-      , moduleInfo =
-          Just
-            GoModule
-              { modulePath = ModulePath "moduleA"
-              , version = Just (ModuleVersion "1.0.0")
-              , indirect = False
-              , isMainModule = False
-              , replacement = Nothing
-              }
-      , packageDeps = []
-      , listError = Nothing
-      , testDeps = []
-      }
+  , moduleAPkg
   , -- The following is a module that should be replaced with another module.
     GoPackage
       { importPath = ImportPath "replacedModule/pkg1"
@@ -137,9 +183,9 @@ testPackages =
       , packageDeps = []
       , listError = Nothing
       , testDeps = []
-      },
-    GoPackage
-    { importPath = ImportPath "testMod/testPkg1"
+      }
+  , GoPackage
+      { importPath = ImportPath "testMod/testPkg1"
       , standard = False
       , moduleInfo =
           Just
@@ -153,9 +199,9 @@ testPackages =
       , packageDeps = []
       , listError = Nothing
       , testDeps = [ImportPath "transitiveTestMod/testPkg2"]
-      },
-    GoPackage
-    { importPath = ImportPath "transitiveTestMod/testPkg2"
+      }
+  , GoPackage
+      { importPath = ImportPath "transitiveTestMod/testPkg2"
       , standard = False
       , moduleInfo =
           Just
@@ -172,11 +218,41 @@ testPackages =
       }
   ]
 
+moduleAPkg :: GoPackage
+moduleAPkg =
+  GoPackage
+    { importPath = ImportPath "moduleA/directDep"
+    , standard = False
+    , moduleInfo =
+        Just
+          GoModule
+            { modulePath = ModulePath "moduleA"
+            , version = Just (ModuleVersion "1.0.0")
+            , indirect = False
+            , isMainModule = False
+            , replacement = Nothing
+            }
+    , packageDeps = []
+    , listError = Nothing
+    , testDeps = []
+    }
+
 moduleA :: Dependency
 moduleA =
   Dependency
     { dependencyType = GoType
     , dependencyName = "moduleA"
+    , dependencyVersion = Just $ CEq "1.0.0"
+    , dependencyLocations = []
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = Map.empty
+    }
+
+moduleB :: Dependency
+moduleB =
+  Dependency
+    { dependencyType = GoType
+    , dependencyName = "moduleB"
     , dependencyVersion = Just $ CEq "1.0.0"
     , dependencyLocations = []
     , dependencyEnvironments = Set.singleton EnvProduction
@@ -205,5 +281,13 @@ buildGraphSpec = it "Graphs modules based on package dependencies" $ do
   let result = run . runStack . runDiagnostics . buildGraph $ testPackages
   assertOnSuccess result $ \_ (graph, _) -> graph `expectGraphEqual` expectedGraph
 
+multipleMainSpec :: Spec
+multipleMainSpec =
+  it "Graphs module deps when there are multiple main modules" $ do
+    let result = run . runStack . runDiagnostics . buildGraph $ multipleMains
+    assertOnSuccess result $ \_ (graph, _) -> graph `expectGraphEqual` multipleMainsExpected
+
 spec :: Spec
-spec = fdescribe "Graphing deps with go list -json -deps all" buildGraphSpec
+spec = fdescribe "Graphing deps with go list -json -deps all" $ do
+  buildGraphSpec
+  multipleMainSpec

@@ -30,7 +30,6 @@ module Graphing (
   edgesList,
   toAdjacencyMap,
   getRootsOf,
-  allPostNodes,
   hasEdge,
   hasVertex,
   hasPredecessors,
@@ -394,27 +393,3 @@ subGraphOf n (Graphing gr) =
     keepPredicate :: Node ty -> Bool
     keepPredicate Root = True
     keepPredicate (Node ty) = Set.member (Node ty) reachableNodes
-
--- |Generate a set of all nodes that the given node and its successor nodes point to.
--- This can be expensive because it must recursively visit each node and its descendents.
--- It will not work on a cyclic graph.
---
--- Example:
---
---   1 -> 2 -> 5 -> 6
---        \       \
---         \       7
---          4
---
--- allPostNodes 2 gr = Set.fromList [4, 5, 6, 7]
--- allPostNodes 5 gr = Set.fromList [6, 7]
-allPostNodes :: Ord a => a -> Graphing a -> Set.Set a
-allPostNodes ty = AM.vertexSet . toAdjacencyMap . subGraphOf ty
-
--- A POSSIBLY MORE EFFICIENT VERSION
--- allPostNodes :: forall ty. Ord ty => ty -> Graphing ty -> Set.Set ty
--- allPostNodes g = allPostNodes' 
---   where g' = toAdjacencyMap g
-
---         allPostNodes' :: ty -> Set.Set ty
---         allPostNodes' = foldMap allPostNodes' . (`AM.postSet` g')
