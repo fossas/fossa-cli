@@ -16,11 +16,11 @@ import DepTypes (
 import GraphUtil (expectGraphEqual)
 import Graphing qualified (Graphing, direct, edge)
 import Path (Abs, Dir, Path)
-import Path.Internal.Posix qualified as PathInternal
 import ResultUtil (assertOnSuccess)
 import Strategy.Go.GoListPackages (GoModule (..), GoPackage (..), ImportPath (..), ModulePath (ModulePath), buildGraph)
 import Strategy.Go.GoModGraph (toGoModVersion)
-import Test.Hspec (Spec, describe, it)
+import Test.Hspec (Spec, describe, it, runIO)
+import Path.IO (getCurrentDir)
 
 -- In this set of packages there are two main modules.
 -- In the resulting graph expect each main module to be absent, with it's dependencies
@@ -279,21 +279,20 @@ expectedGraph =
     <> Graphing.direct moduleA
     <> Graphing.edge replacedModule moduleA
 
-dummyPath :: Path Abs Dir
-dummyPath = PathInternal.Path "/foo"
-
-buildGraphSpec :: Spec
-buildGraphSpec = it "Graphs modules based on package dependencies" $ do
+buildGraphSpec :: Path Abs Dir -> Spec
+buildGraphSpec dummyPath = it "Graphs modules based on package dependencies" $ do
   let result = run . runStack . runDiagnostics . buildGraph dummyPath $ testPackages
   assertOnSuccess result $ \_ (graph, _) -> graph `expectGraphEqual` expectedGraph
 
-multipleMainSpec :: Spec
-multipleMainSpec =
+multipleMainSpec :: Path Abs Dir -> Spec
+multipleMainSpec dummyPath =
   it "Graphs module deps when there are multiple main modules" $ do
     let result = run . runStack . runDiagnostics . buildGraph dummyPath $ multipleMains
     assertOnSuccess result $ \_ (graph, _) -> graph `expectGraphEqual` multipleMainsExpected
 
 spec :: Spec
-spec = describe "Graphing deps with go list -json -deps all" $ do
-  buildGraphSpec
-  multipleMainSpec
+spec = do
+  currDir <- runIO getCurrentDir
+  describe "Graphing deps with go list -json -deps all" $ do
+    buildGraphSpec currDir 
+    multipleMainSpec currDir
