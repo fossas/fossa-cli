@@ -16,11 +16,11 @@ import DepTypes (
 import GraphUtil (expectGraphEqual)
 import Graphing qualified (Graphing, direct, edge)
 import Path (Abs, Dir, Path)
+import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess)
 import Strategy.Go.GoListPackages (GoModule (..), GoPackage (..), ImportPath (..), ModulePath (ModulePath), buildGraph)
 import Strategy.Go.GoModGraph (toGoModVersion)
 import Test.Hspec (Spec, describe, it, runIO)
-import Path.IO (getCurrentDir)
 
 -- In this set of packages there are two main modules.
 -- In the resulting graph expect each main module to be absent, with it's dependencies
@@ -294,5 +294,5 @@ spec :: Spec
 spec = do
   currDir <- runIO getCurrentDir
   describe "Graphing deps with go list -json -deps all" $ do
-    buildGraphSpec currDir 
+    buildGraphSpec currDir
     multipleMainSpec currDir
