@@ -21,6 +21,7 @@ import Control.Effect.Diagnostics (Diagnostics, context, recover, warnOnErr)
 import Data.Char (isSpace)
 import Data.Foldable (traverse_)
 import Data.Functor (void)
+import Data.Hashable (Hashable)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
@@ -37,6 +38,7 @@ import Diag.Common (
 import Effect.Exec (Exec)
 import Effect.Grapher (direct, label)
 import Effect.ReadFS (ReadFS, readContentsParser)
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, File, Path, parent)
 import Strategy.Go.Transitive (fillInTransitive)
@@ -62,8 +64,6 @@ import Text.Megaparsec (
 import Text.Megaparsec.Char (alphaNumChar, char, numberChar, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 import Types (GraphBreadth (..))
-import Data.Hashable (Hashable)
-import GHC.Generics (Generic)
 
 -- For the file's grammar, see https://golang.org/ref/mod#go-mod-file-grammar.
 --

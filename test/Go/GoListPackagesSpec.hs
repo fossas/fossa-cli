@@ -15,10 +15,12 @@ import DepTypes (
  )
 import GraphUtil (expectGraphEqual)
 import Graphing qualified (Graphing, direct, edge)
+import Path (Abs, Dir, Path)
+import Path.Internal.Posix qualified as PathInternal
 import ResultUtil (assertOnSuccess)
 import Strategy.Go.GoListPackages (GoModule (..), GoPackage (..), ImportPath (..), ModulePath (ModulePath), buildGraph)
-import Test.Hspec (Spec, describe, it, fdescribe)
 import Strategy.Go.GoModGraph (toGoModVersion)
+import Test.Hspec (Spec, describe, it)
 
 -- In this set of packages there are two main modules.
 -- In the resulting graph expect each main module to be absent, with it's dependencies
@@ -129,8 +131,8 @@ testPackages =
                   Just
                     GoModule
                       { modulePath = ModulePath "moduleReplacement"
-                      -- This is a pseudo version, it should map to a dep with just the hash.
-                      , version = toGoModVersion "v0.0.0-20230129154200-a960b3787bd2"
+                      , -- This is a pseudo version, it should map to a dep with just the hash.
+                        version = toGoModVersion "v0.0.0-20230129154200-a960b3787bd2"
                       , indirect = False
                       , isMainModule = False
                       , replacement = Nothing
@@ -277,15 +279,18 @@ expectedGraph =
     <> Graphing.direct moduleA
     <> Graphing.edge replacedModule moduleA
 
+dummyPath :: Path Abs Dir
+dummyPath = PathInternal.Path "/foo"
+
 buildGraphSpec :: Spec
 buildGraphSpec = it "Graphs modules based on package dependencies" $ do
-  let result = run . runStack . runDiagnostics . buildGraph $ testPackages
+  let result = run . runStack . runDiagnostics . buildGraph dummyPath $ testPackages
   assertOnSuccess result $ \_ (graph, _) -> graph `expectGraphEqual` expectedGraph
 
 multipleMainSpec :: Spec
 multipleMainSpec =
   it "Graphs module deps when there are multiple main modules" $ do
-    let result = run . runStack . runDiagnostics . buildGraph $ multipleMains
+    let result = run . runStack . runDiagnostics . buildGraph dummyPath $ multipleMains
     assertOnSuccess result $ \_ (graph, _) -> graph `expectGraphEqual` multipleMainsExpected
 
 spec :: Spec

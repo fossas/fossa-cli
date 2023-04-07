@@ -44,14 +44,14 @@ import GHC.Generics (Generic)
 import Graphing qualified
 import Path (Abs, Dir, Path)
 import Prettyprinter (pretty)
+import Strategy.Go.GoModGraph qualified as GoModGraph
+import Strategy.Go.Gomod qualified as Gomod
 import Strategy.Go.Transitive (decodeMany)
 import Types (GraphBreadth (Complete))
-import qualified Strategy.Go.Gomod as Gomod
-import qualified Strategy.Go.GoModGraph as GoModGraph
 
 -- * Types
 
--- | Path used in a Go project to import a package.
+-- |Path used in a Go project to import a package.
 newtype ImportPath = ImportPath Text
   deriving (Eq, Ord, Show, ToText, Generic, Hashable)
 
@@ -157,7 +157,7 @@ analyze goModDir = do
   case decodeMany stdout of
     Left (path, err) -> fatal $ CommandParseError goListCmd (toText (formatError path err))
     Right pkgs -> do
-      context "Analyzing dependencies" $ buildGraph pkgs
+      context "Analyzing dependencies" $ buildGraph goModDir pkgs
 
 type GoLabeledGrapher m a = LabeledGrapherC GoPackage DepEnvironment m a
 
@@ -168,40 +168,26 @@ type GoLabeledGrapher m a = LabeledGrapherC GoPackage DepEnvironment m a
 --
 -- Other features of this function:
 -- * Removes standard lib deps where they are called out by a flag.
---   Stdlib packages with pseudo versions are not filtered yet. This is the same behavior as the current dynamic tactic in Strategy.Go.GoList.
 -- * Removes path dependencies and their transitive deps that aren't used elsewhere in the graph.
 --   The go tools give us this data but we haven't decided yet how to present it.
 -- * Replaces modules according to the module's 'replacement' field.
-buildGraph :: (Has Diagnostics sig m) => [GoPackage] -> m (Graphing.Graphing Dependency, GraphBreadth)
-buildGraph rawPackages =
-  do
-    fmap ((,Complete))
-    . uncurry transformGoPackages
-    =<< runLabeledGrapher
-      . traverse_ (makeGraph EnvProduction)
-    =<< mPackage
+-- * Skips over test dependencies and their children.
+buildGraph :: (Has Diagnostics sig m) => Path Abs Dir -> [GoPackage] -> m (Graphing.Graphing Dependency, GraphBreadth)
+buildGraph goModDir rawPackages = do
+  g <- runLabeledGrapher . traverse_ (makeGraph EnvProduction) =<< getMainPackages
+  fmap ((,Complete)) . uncurry pkgGraphToDepGraph $ g
   where
-    (maybeMainPackage, stdLibImportPaths, pkgsNoStdLibImports) = foldl' go ([], HashSet.empty, HashMap.empty) rawPackages
+    (mainPackages, stdLibImportPaths, pkgsNoStdLibImports) = foldl' go ([], HashSet.empty, HashMap.empty) rawPackages
 
-    mPackage = if null maybeMainPackage then fatal MissingMainModuleErr else pure maybeMainPackage
-
-    -- This process can likely be replaced with one that runs inline.
-    -- 1. Change makeGraph to return a list of dependencies.
-    -- 2. If the current module is a main one, return a list of child dependencies after processing.
-    -- 3. If the current module is not a main mod, return a list with just the current package.
-    -- 4. Make edges between the current dep and every child one returned by the recursive calls.
-    -- pruneMainPackages :: Has Diagnostics sig m => GoLabeledGrapher m ()
-    -- pruneMainPackages =
-    --   do modNames <- HashSet.fromList . map (unModulePath . modulePath) <$> traverse getModuleInfo maybeMainPackage
-    --      modify (Graphing.shrink (\Dependency{dependencyName} -> not $ dependencyName `HashSet.member` modNames))
+    getMainPackages = if null mainPackages then fatal (MissingMainModuleErr goModDir) else pure mainPackages
 
     go :: ([GoPackage], HashSet.HashSet ImportPath, HashMap.HashMap ImportPath GoPackage) -> GoPackage -> ([GoPackage], HashSet.HashSet ImportPath, HashMap.HashMap ImportPath GoPackage)
-    go (maybeMains, stdLibPaths, otherPackages) g@GoPackage{standard, importPath, moduleInfo}
+    go (maybeMains, stdLibPaths, otherPackages) gPkg@GoPackage{standard, importPath, moduleInfo}
       | Just GoModule{isMainModule = True} <- moduleInfo =
-          let g' = removeIgnoredPackages g
-           in (g' : maybeMains, stdLibPaths, HashMap.insert importPath g' otherPackages)
+          let gPkg' = removeIgnoredPackages gPkg
+           in (gPkg' : maybeMains, stdLibPaths, HashMap.insert importPath gPkg' otherPackages)
       | standard = (maybeMains, HashSet.insert importPath stdLibPaths, otherPackages)
-      | otherwise = (maybeMains, stdLibPaths, HashMap.insert importPath (removeIgnoredPackages g) otherPackages)
+      | otherwise = (maybeMains, stdLibPaths, HashMap.insert importPath (removeIgnoredPackages gPkg) otherPackages)
 
     -- "C" is a special package for using Go's FFI.
     -- Ignore it because trying to look it up as a package import path later will fail.
@@ -250,30 +236,26 @@ buildGraph rawPackages =
         Just m -> pure m
         Nothing -> fatal $ MissingModuleErr importPath
 
-    transformGoPackages :: Has Diagnostics sig m => Graphing.Graphing GoPackage -> Labels GoPackage DepEnvironment -> m (Graphing.Graphing Dependency)
-    transformGoPackages graph graphLabels = do
+    -- \|Convert a graph of 'GoPackage's with associated labels to a graph of 'Dependency's.
+    pkgGraphToDepGraph :: Has Diagnostics sig m => Graphing.Graphing GoPackage -> Labels GoPackage DepEnvironment -> m (Graphing.Graphing Dependency)
+    pkgGraphToDepGraph graph graphLabels = do
+      let pkgModAndLabels pkg = do
+            modInfo <- getModuleInfo pkg
+            pure (modInfo, fromMaybe Set.empty $ Map.lookup pkg graphLabels)
+
       modulesToLabels <-
         foldl' (\m (modInfo, modLabels) -> Map.insertWith (<>) modInfo modLabels m) Map.empty
-          <$> traverse
-            ( \pkg -> do
-                modInfo <- getModuleInfo pkg
-                pure (modInfo, fromMaybe Set.empty $ Map.lookup pkg graphLabels)
-            )
-            (Graphing.vertexList graph)
+          <$> traverse pkgModAndLabels (Graphing.vertexList graph)
 
-      -- filter out any main modules, rewiring children back
-      let graph' = Graphing.shrink (maybe False (not . isMainModule) . getFinalModuleInfo) graph
+      let -- filter out any main modules, rewiring children through to any main module's parent.
+          graph' = Graphing.shrink (maybe False (not . isMainModule) . getFinalModuleInfo) graph
 
-      Graphing.gtraverse
-        ( \ty -> do
+          pkgToDep ty = do
             modInfo <- getModuleInfo ty
             let labels = fromMaybe Set.empty (Map.lookup modInfo modulesToLabels)
-            pure . labeler (modToDep modInfo) $ labels
-        )
-        graph'
+            pure . modToDep modInfo $ labels
 
-labeler :: Dependency -> Set.Set DepEnvironment -> Dependency
-labeler dep envs = dep{dependencyEnvironments = envs}
+      Graphing.gtraverse pkgToDep graph'
 
 newtype MissingModuleErr = MissingModuleErr ImportPath
   deriving (Eq, Show)
@@ -281,30 +263,30 @@ newtype MissingModuleErr = MissingModuleErr ImportPath
 instance ToDiagnostic MissingModuleErr where
   renderDiagnostic (MissingModuleErr (ImportPath i)) = pretty $ "Could not find module for " <> i
 
-data MissingMainModuleErr = MissingMainModuleErr
+newtype MissingMainModuleErr = MissingMainModuleErr (Path Abs Dir)
   deriving (Eq, Show)
 
--- TODO: better error message
 instance ToDiagnostic MissingMainModuleErr where
-  renderDiagnostic _ = pretty @Text $ "No main module for project"
+  renderDiagnostic (MissingMainModuleErr path) = pretty @Text $ "No main module for project " <> toText path
 
 -- | A module is a path dep if its import path starts with './' or '../'.
-isPathDep :: GoModule -> Bool
 -- Checking for ./ or ../ is the documented way of detecting path deps.
 -- https://go.dev/ref/mod#go-mod-file-replace
+isPathDep :: GoModule -> Bool
 isPathDep GoModule{modulePath = ModulePath mP} = any (`isPrefixOf` mP) ["./", "../"]
 
-modToDep :: GoModule -> Dependency
+modToDep :: GoModule -> Set.Set DepEnvironment -> Dependency
 modToDep
   GoModule
     { modulePath = ModulePath modPath
     , version
-    } =
+    }
+  labels =
     Dependency
       { dependencyType = GoType
       , dependencyName = modPath
       , dependencyVersion = GoModGraph.toVerConstraint <$> version
       , dependencyLocations = []
-      , dependencyEnvironments = Set.empty -- These will be set using labels
+      , dependencyEnvironments = labels
       , dependencyTags = Map.empty
       }

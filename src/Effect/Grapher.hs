@@ -131,11 +131,17 @@ withLabeling f act = do
   (graph, (labels, _)) <- runGrapher . runState Map.empty $ act
   pure (unlabel f labels graph)
 
--- |Occasionally it isn't possible to transform a graph node and its labels in isolation.
--- If 'withLabeling' were given a function from (ty -> ty') which maps several ty to one ty', only the labels for the last ty for its ty' would be reflected in res.
+-- |This function will run a 'LabeledGrapherC', returning the graph as well as the labels with no post-processing.
 --
--- This function will return the graph as well as the labels for manual transformation by the user.
--- Prefer 'withLabeling' if possible.
+-- Occasionally it isn't possible to transform a graph node and its labels in isolation like 'withLabeling' does.
+-- Suppose 'withLabeling' were given a function from =(ty -> Set lbl -> res)= which maps several =ty= to one =res=.
+-- There could be multiple =res='s which should be the same, but aren't because each was created from a different =ty= and its associated =res=s.
+--
+-- A concrete example of this is in the GoListPackages tactic.
+-- Multiple packages may be associated with production or development envs, but all map to a single module.
+-- It is necessary then to collect the labels from multiple packages (=ty=) before producing the final 'Dependency' (=res=).
+--
+-- Prefer 'withLabeling' if it is enough to examine each =ty= and its set of labels in isolation.
 runLabeledGrapher :: (Ord ty, Monad m, Algebra sig m) => LabeledGrapherC ty lbl m a -> m (G.Graphing ty, Labels ty lbl)
 runLabeledGrapher act = do
   (graph, (labels, _)) <- runGrapher . runState Map.empty $ act
