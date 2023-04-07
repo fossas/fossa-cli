@@ -261,7 +261,7 @@ buildGraph rawPackages =
             (Graphing.vertexList graph)
 
       -- filter out any main modules, rewiring children back
-      let graph' = Graphing.filter (maybe False (not . isMainModule) . getFinalModuleInfo) graph
+      let graph' = Graphing.shrink (maybe False (not . isMainModule) . getFinalModuleInfo) graph
 
       Graphing.gtraverse
         ( \ty -> do
