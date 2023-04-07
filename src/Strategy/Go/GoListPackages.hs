@@ -92,6 +92,10 @@ instance FromJSON GoPackage where
         <*> obj .:? "Error"
         <*> (obj .:? "TestImports" .!= [])
 
+-- |Get module info from a 'GoPackage', respecting replacements
+getFinalModuleInfo :: GoPackage -> Maybe GoModule
+getFinalModuleInfo GoPackage{moduleInfo} = (moduleInfo >>= replacement) <|> moduleInfo
+
 newtype ModulePath = ModulePath {unModulePath :: Text}
   deriving (Eq, Ord, Show, ToText, FromJSON, Hashable)
 
@@ -240,8 +244,8 @@ buildGraph rawPackages =
     lookupPackage impPath = Diagnostics.fromMaybe (MissingModuleErr impPath) $ HashMap.lookup impPath pkgsNoStdLibImports
 
     getModuleInfo :: Has Diagnostics sig m => GoPackage -> m GoModule
-    getModuleInfo GoPackage{moduleInfo, importPath} =
-      case (moduleInfo >>= replacement) <|> moduleInfo of
+    getModuleInfo pkg@GoPackage{importPath} =
+      case getFinalModuleInfo pkg of
         Just m -> pure m
         Nothing -> fatal $ MissingModuleErr importPath
 
@@ -257,7 +261,7 @@ buildGraph rawPackages =
             (Graphing.vertexList graph)
 
       -- filter out any main modules, rewiring children back
-      let graph' = Graphing.filter (\GoPackage{moduleInfo} -> maybe False (not . isMainModule) $ (moduleInfo >>= replacement) <|> moduleInfo) graph
+      let graph' = Graphing.filter (maybe False (not . isMainModule) . getFinalModuleInfo) graph
 
       Graphing.gtraverse
         ( \ty -> do

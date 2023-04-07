@@ -7,7 +7,6 @@ import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
-import Debug.Trace (traceShow, traceShowM)
 import DepTypes (
   DepEnvironment (EnvProduction),
   DepType (GoType),
@@ -18,7 +17,7 @@ import GraphUtil (expectGraphEqual)
 import Graphing qualified (Graphing, direct, edge)
 import ResultUtil (assertOnSuccess)
 import Strategy.Go.GoListPackages (GoModule (..), GoPackage (..), ImportPath (..), ModulePath (ModulePath), ModuleVersion (ModuleVersion), buildGraph)
-import Test.Hspec (Spec, describe, fdescribe, it)
+import Test.Hspec (Spec, describe, it)
 
 -- In this set of packages there are two main modules.
 -- In the resulting graph expect each main module to be absent, with it's dependencies
@@ -288,6 +287,6 @@ multipleMainSpec =
     assertOnSuccess result $ \_ (graph, _) -> graph `expectGraphEqual` multipleMainsExpected
 
 spec :: Spec
-spec = fdescribe "Graphing deps with go list -json -deps all" $ do
+spec = describe "Graphing deps with go list -json -deps all" $ do
   buildGraphSpec
   multipleMainSpec
