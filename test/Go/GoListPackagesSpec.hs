@@ -16,8 +16,9 @@ import DepTypes (
 import GraphUtil (expectGraphEqual)
 import Graphing qualified (Graphing, direct, edge)
 import ResultUtil (assertOnSuccess)
-import Strategy.Go.GoListPackages (GoModule (..), GoPackage (..), ImportPath (..), ModulePath (ModulePath), ModuleVersion (ModuleVersion), buildGraph)
-import Test.Hspec (Spec, describe, it)
+import Strategy.Go.GoListPackages (GoModule (..), GoPackage (..), ImportPath (..), ModulePath (ModulePath), buildGraph)
+import Test.Hspec (Spec, describe, it, fdescribe)
+import Strategy.Go.GoModGraph (toGoModVersion)
 
 -- In this set of packages there are two main modules.
 -- In the resulting graph expect each main module to be absent, with it's dependencies
@@ -30,7 +31,7 @@ multipleMains =
           Just
             GoModule
               { modulePath = ModulePath "main1"
-              , version = Just (ModuleVersion "1.0.0")
+              , version = toGoModVersion "1.0.0"
               , indirect = False
               , isMainModule = True
               , replacement = Nothing
@@ -46,7 +47,7 @@ multipleMains =
           Just
             GoModule
               { modulePath = ModulePath "main2"
-              , version = Just (ModuleVersion "1.0.0")
+              , version = toGoModVersion "1.0.0"
               , indirect = False
               , isMainModule = True
               , replacement = Nothing
@@ -64,7 +65,7 @@ multipleMains =
           Just
             GoModule
               { modulePath = ModulePath "moduleB"
-              , version = Just (ModuleVersion "1.0.0")
+              , version = toGoModVersion "1.0.0"
               , indirect = False
               , isMainModule = False
               , replacement = Nothing
@@ -96,7 +97,7 @@ testPackages =
           Just
             GoModule
               { modulePath = ModulePath "main"
-              , version = Just (ModuleVersion "1.0.0")
+              , version = toGoModVersion "1.0.0"
               , indirect = False
               , isMainModule = True
               , replacement = Nothing
@@ -121,14 +122,15 @@ testPackages =
           Just
             GoModule
               { modulePath = ModulePath "replacedModule"
-              , version = Just (ModuleVersion "1.0.0")
+              , version = toGoModVersion "1.0.0"
               , indirect = False
               , isMainModule = False
               , replacement =
                   Just
                     GoModule
                       { modulePath = ModulePath "moduleReplacement"
-                      , version = Just (ModuleVersion "2.0.0")
+                      -- This is a pseudo version, it should map to a dep with just the hash.
+                      , version = toGoModVersion "v0.0.0-20230129154200-a960b3787bd2"
                       , indirect = False
                       , isMainModule = False
                       , replacement = Nothing
@@ -148,14 +150,14 @@ testPackages =
           Just
             GoModule
               { modulePath = ModulePath "pathDepReplaced"
-              , version = Just (ModuleVersion "1.0.0")
+              , version = toGoModVersion "1.0.0"
               , indirect = False
               , isMainModule = False
               , replacement =
                   Just
                     GoModule
                       { modulePath = ModulePath "../local_package"
-                      , version = Just (ModuleVersion "1.0.0")
+                      , version = toGoModVersion "1.0.0"
                       , indirect = False
                       , isMainModule = False
                       , replacement = Nothing
@@ -174,7 +176,7 @@ testPackages =
           Just
             GoModule
               { modulePath = ModulePath "pathDepDependency"
-              , version = Just (ModuleVersion "1.0.0")
+              , version = toGoModVersion "1.0.0"
               , indirect = True
               , isMainModule = False
               , replacement = Nothing
@@ -190,7 +192,7 @@ testPackages =
           Just
             GoModule
               { modulePath = ModulePath "testMod"
-              , version = Just (ModuleVersion "1.0.0")
+              , version = toGoModVersion "1.0.0"
               , indirect = True
               , isMainModule = False
               , replacement = Nothing
@@ -206,7 +208,7 @@ testPackages =
           Just
             GoModule
               { modulePath = ModulePath "transitiveTestMod"
-              , version = Just (ModuleVersion "1.0.0")
+              , version = toGoModVersion "1.0.0"
               , indirect = True
               , isMainModule = False
               , replacement = Nothing
@@ -226,7 +228,7 @@ moduleAPkg =
         Just
           GoModule
             { modulePath = ModulePath "moduleA"
-            , version = Just (ModuleVersion "1.0.0")
+            , version = toGoModVersion "1.0.0"
             , indirect = False
             , isMainModule = False
             , replacement = Nothing
@@ -263,7 +265,7 @@ replacedModule =
   Dependency
     { dependencyType = GoType
     , dependencyName = "moduleReplacement"
-    , dependencyVersion = Just $ CEq "2.0.0"
+    , dependencyVersion = Just $ CEq "a960b3787bd2"
     , dependencyLocations = []
     , dependencyEnvironments = Set.singleton EnvProduction
     , dependencyTags = Map.empty

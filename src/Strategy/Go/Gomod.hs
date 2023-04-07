@@ -62,6 +62,8 @@ import Text.Megaparsec (
 import Text.Megaparsec.Char (alphaNumChar, char, numberChar, space1)
 import Text.Megaparsec.Char.Lexer qualified as L
 import Types (GraphBreadth (..))
+import Data.Hashable (Hashable)
+import GHC.Generics (Generic)
 
 -- For the file's grammar, see https://golang.org/ref/mod#go-mod-file-grammar.
 --
@@ -97,7 +99,9 @@ data PackageVersion
   = NonCanonical Text -- Something like "master"
   | Pseudo Text
   | Semantic Version
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Hashable PackageVersion
 
 data Gomod = Gomod
   { modName :: PackageName

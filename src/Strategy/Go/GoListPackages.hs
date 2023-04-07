@@ -37,7 +37,6 @@ import DepTypes (
   DepEnvironment (..),
   DepType (GoType),
   Dependency (..),
-  VerConstraint (CEq),
  )
 import Effect.Exec (AllowErr (Never), Command (Command, cmdAllowErr, cmdArgs, cmdName), Exec, ExecErr (CommandParseError), execThrow, renderCommand)
 import Effect.Grapher (Grapher, LabeledGrapherC, Labels, deep, direct, edge, label, runLabeledGrapher)
@@ -47,6 +46,8 @@ import Path (Abs, Dir, Path)
 import Prettyprinter (pretty)
 import Strategy.Go.Transitive (decodeMany)
 import Types (GraphBreadth (Complete))
+import qualified Strategy.Go.Gomod as Gomod
+import qualified Strategy.Go.GoModGraph as GoModGraph
 
 -- * Types
 
@@ -105,7 +106,7 @@ newtype ModuleVersion = ModuleVersion {unModuleVersion :: Text}
 data GoModule = GoModule
   { modulePath :: ModulePath
   , -- The main go module will be unversioned
-    version :: Maybe ModuleVersion
+    version :: Maybe Gomod.PackageVersion
   , indirect :: Bool
   , isMainModule :: Bool
   , replacement :: Maybe GoModule
@@ -119,7 +120,7 @@ instance FromJSON GoModule where
     \obj ->
       GoModule
         <$> obj .: "Path"
-        <*> obj .:? "Version"
+        <*> ((>>= GoModGraph.toGoModVersion) <$> (obj .:? "Version"))
         <*> obj .:? "Indirect" .!= False
         <*> obj .:? "Main" .!= False
         <*> obj .:? "Replace"
@@ -302,7 +303,7 @@ modToDep
     Dependency
       { dependencyType = GoType
       , dependencyName = modPath
-      , dependencyVersion = CEq . unModuleVersion <$> version
+      , dependencyVersion = GoModGraph.toVerConstraint <$> version
       , dependencyLocations = []
       , dependencyEnvironments = Set.empty -- These will be set using labels
       , dependencyTags = Map.empty
