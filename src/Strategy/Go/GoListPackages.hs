@@ -11,7 +11,6 @@ module Strategy.Go.GoListPackages (
   ImportPath (..),
   GoModule (..),
   ModulePath (..),
-  ModuleVersion (..),
 ) where
 
 import Control.Algebra (Has)
@@ -98,9 +97,6 @@ getFinalModuleInfo :: GoPackage -> Maybe GoModule
 getFinalModuleInfo GoPackage{moduleInfo} = (moduleInfo >>= replacement) <|> moduleInfo
 
 newtype ModulePath = ModulePath {unModulePath :: Text}
-  deriving (Eq, Ord, Show, ToText, FromJSON, Hashable)
-
-newtype ModuleVersion = ModuleVersion {unModuleVersion :: Text}
   deriving (Eq, Ord, Show, ToText, FromJSON, Hashable)
 
 data GoModule = GoModule
