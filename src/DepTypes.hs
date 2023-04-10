@@ -15,6 +15,7 @@ import Data.Aeson (
   FromJSON,
   KeyValue ((.=)),
   ToJSON (toJSON),
+  ToJSONKey,
   Value,
   object,
  )
@@ -122,7 +123,7 @@ data DepType
     CarthageType
   | -- | A Swift Package Dependency -- effectively a "git" dependency. Name is repo path and version is tag/branch/hash
     SwiftType
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, Enum, Bounded)
 
 data VerConstraint
   = -- | equal to, e.g., @CEq "2.0.0"@
@@ -149,6 +150,7 @@ data VerConstraint
 
 instance FromJSON DepType -- use the generic instance
 instance ToJSON DepType -- use the generic instance
+instance ToJSONKey DepType
 
 instance ToJSON Dependency where
   toJSON Dependency{..} =

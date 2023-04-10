@@ -8,6 +8,7 @@ module App.Fossa.Config.ListTargets (
 
 import App.Fossa.Config.Analyze (
   ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig),
+  GoDynamicTactic (GoModulesBasedTactic),
  )
 import App.Fossa.Config.Common (
   CommonOpts (..),
@@ -21,6 +22,7 @@ import App.Fossa.Config.ConfigFile (
   ExperimentalGradleConfigs (gradleConfigsOnly),
   resolveLocalConfigFile,
  )
+import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir)
 import Control.Effect.Diagnostics (Diagnostics)
@@ -56,7 +58,7 @@ mergeOpts ::
   , Has ReadFS sig m
   ) =>
   Maybe ConfigFile ->
-  p ->
+  EnvVars ->
   ListTargetsCliOpts ->
   m ListTargetsConfig
 mergeOpts cfgfile _envvars ListTargetsCliOpts{..} = do
@@ -68,10 +70,12 @@ mergeOpts cfgfile _envvars ListTargetsCliOpts{..} = do
 
 collectExperimental :: Maybe ConfigFile -> ExperimentalAnalyzeConfig
 collectExperimental maybeCfg =
-  ExperimentalAnalyzeConfig $
-    fmap
-      gradleConfigsOnly
-      (maybeCfg >>= configExperimental >>= gradle)
+  ExperimentalAnalyzeConfig
+    ( fmap
+        gradleConfigsOnly
+        (maybeCfg >>= configExperimental >>= gradle)
+    )
+    GoModulesBasedTactic -- This should be ok because its discovery should not work differently than the old Go modules tactic.
 
 data ListTargetsCliOpts = ListTargetsCliOpts
   { commons :: CommonOpts

@@ -19,6 +19,7 @@ module App.Fossa.Config.Analyze (
   VendoredDependencyOptions (..),
   VSIAnalysis (..),
   VSIModeOptions (..),
+  GoDynamicTactic (..),
   mkSubCommand,
   loadConfig,
   cliParser,
@@ -51,12 +52,13 @@ import App.Fossa.Config.ConfigFile (
   mergeFileCmdMetadata,
   resolveConfigFile,
  )
-import App.Fossa.Config.EnvironmentVars (EnvVars)
+import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (
   BaseDir,
   MonorepoAnalysisOpts (MonorepoAnalysisOpts, monorepoAnalysisType),
+  OverrideDynamicAnalysisBinary (..),
   OverrideProject (OverrideProject),
   ProjectMetadata (projectLabel),
   ProjectRevision,
@@ -192,6 +194,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeSkipVSIGraphResolution :: [VSI.Locator]
   , monorepoAnalysisOpts :: MonorepoAnalysisOpts
   , analyzeBaseDir :: FilePath
+  , analyzeDynamicGoAnalysisType :: GoDynamicTactic
   }
   deriving (Eq, Ord, Show)
 
@@ -239,14 +242,16 @@ data StandardAnalyzeConfig = StandardAnalyzeConfig
   , jsonOutput :: Flag JsonOutput
   , includeAllDeps :: Flag IncludeAll
   , noDiscoveryExclusion :: Flag NoDiscoveryExclusion
+  , overrideDynamicAnalysis :: OverrideDynamicAnalysisBinary
   }
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON StandardAnalyzeConfig where
   toEncoding = genericToEncoding defaultOptions
 
-newtype ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
+data ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
   { allowedGradleConfigs :: Maybe (Set Text)
+  , useV3GoResolver :: GoDynamicTactic
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -285,6 +290,26 @@ cliParser =
     <*> many skipVSIGraphResolutionOpt
     <*> monorepoOpts
     <*> baseDirArg
+    <*> experimentalUseV3GoResolver
+
+data GoDynamicTactic
+  = GoModulesBasedTactic
+  | GoPackagesBasedTactic
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON GoDynamicTactic where
+  toEncoding = genericToEncoding defaultOptions
+
+experimentalUseV3GoResolver :: Parser GoDynamicTactic
+experimentalUseV3GoResolver =
+  fmap
+    ( \case
+        True -> GoPackagesBasedTactic
+        False -> GoModulesBasedTactic
+    )
+    . switch
+    $ long "experimental-use-v3-go-resolver"
+      <> help "For Go: generate a graph of module deps based on package deps. This will be the default in the future."
 
 vendoredDependencyModeOpt :: Parser ArchiveUploadType
 vendoredDependencyModeOpt = option (eitherReader parseType) (long "force-vendored-dependency-scan-method" <> metavar "METHOD" <> help "Force the vendored dependency scan method. The options are 'CLILicenseScan' or 'ArchiveUpload'. 'CLILicenseScan' is usually the default unless your organization has overridden this.")
@@ -431,8 +456,9 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
           OverrideProject (optProjectName commons) (optProjectRevision commons) (analyzeBranch)
       modeOpts = collectModeOptions cliOpts
       filters = collectFilters maybeConfig cliOpts
-      experimentalCfgs = collectExperimental maybeConfig
+      experimentalCfgs = collectExperimental maybeConfig cliOpts
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
+      dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
 
   StandardAnalyzeConfig
     <$> basedir
@@ -447,6 +473,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure analyzeJsonOutput
     <*> pure analyzeIncludeAllDeps
     <*> pure analyzeNoDiscoveryExclusion
+    <*> pure dynamicAnalysisOverrides
 
 collectFilters ::
   ( Has Diagnostics sig m
@@ -472,12 +499,14 @@ collectCLIFilters AnalyzeCliOpts{..} =
     (comboInclude analyzeOnlyTargets analyzeOnlyPaths)
     (comboExclude analyzeExcludeTargets analyzeExcludePaths)
 
-collectExperimental :: Maybe ConfigFile -> ExperimentalAnalyzeConfig
-collectExperimental maybeCfg =
-  ExperimentalAnalyzeConfig $
-    fmap
-      gradleConfigsOnly
-      (maybeCfg >>= configExperimental >>= gradle)
+collectExperimental :: Maybe ConfigFile -> AnalyzeCliOpts -> ExperimentalAnalyzeConfig
+collectExperimental maybeCfg AnalyzeCliOpts{analyzeDynamicGoAnalysisType = goDynamicAnalysisType} =
+  ExperimentalAnalyzeConfig
+    ( fmap
+        gradleConfigsOnly
+        (maybeCfg >>= configExperimental >>= gradle)
+    )
+    goDynamicAnalysisType
 
 collectVendoredDeps ::
   ( Has Diagnostics sig m

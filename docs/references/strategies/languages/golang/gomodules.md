@@ -76,6 +76,20 @@ where:
 - `replace` rewrites `require`s. In this example, our requires resolve to
   `[github.com/example/one v1.2.3, github.com/example/other v2.0.0]`
 
+## Experimental Strategy: Use Go List on Packages
+
+This strategy instead generates a graph of modules based on the required packages output by `go list -json -deps all`.
+A Go module distributes source code for one or more packages. However, only packages are `import`ed in Go source code.
+An implication of this is that the graph of module dependencies does not necessarily correspond to how different packages in a Go project depend on each other.
+By looking at how packages import one another, the CLI can get more information about what packages and modules are actually used in a final build product than by looking at modules alone.
+This should eliminate some false positives found by tactics that use `go list -m`.
+
+To enable a strategy that does this, run `fossa analyze` with the `--experimental-use-v3-go-resolver` flag.
+
+Currently there are a few limitations to this strategy:
+1. Does not exclude test dependencies.
+2. Does not properly report packages with [pseudo-versions](https://go.dev/ref/mod#pseudo-versions).
+3. Like our other strategies, this strategy does not yet report on path dependencies from Go `replace` directives.
 
 ## FAQ
 

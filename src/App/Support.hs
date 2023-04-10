@@ -11,6 +11,7 @@ module App.Support (
   reportDefectWithFileMsg,
   reportDefectWithDebugBundle,
   requestDebugBundle,
+  requestReportIfPersists,
   FossaEnvironment (..),
 ) where
 
@@ -76,18 +77,14 @@ reportNetworkErrorMsg =
       , "This means that often such errors are transient, or are caused by local network configuration."
       , ""
       , "Trying again in a few minutes may resolve this issue."
-      , "If this issue persists, please report a bug to FOSSA support at " <> pretty supportUrl
+      , requestReportIfPersists
       ]
 
 -- | For errors which almost definitely are a bug in the FOSSA CLI.
 reportCliBugErrorMsg :: Doc ann
 reportCliBugErrorMsg =
-  withDebugBundle $
-    vsep
-      [ "This is likely a bug in the FOSSA CLI."
-      , ""
-      , "If this issue persists, please report a bug to FOSSA support at " <> pretty supportUrl
-      ]
+  withDebugBundle . withRequestReportIfPersists $
+    "This is likely a bug in the FOSSA CLI."
 
 -- | For errors which almost definitely are a bug in FOSSA.
 reportFossaBugErrorMsg :: FossaEnvironment -> Doc ann
@@ -101,7 +98,7 @@ reportFossaBugErrorMsg FossaEnvironmentCloud =
       , "For current status, see the FOSSA status page at " <> pretty statusPageUrl
       , ""
       , "Trying again in a few minutes may resolve this issue."
-      , "If this issue persists, please report a bug to FOSSA support at " <> pretty supportUrl
+      , requestReportIfPersists
       ]
 reportFossaBugErrorMsg FossaEnvironmentOnprem =
   withDebugBundle $
@@ -110,7 +107,7 @@ reportFossaBugErrorMsg FossaEnvironmentOnprem =
       , "or a network appliance (e.g. a firewall) between FOSSA CLI and the FOSSA endpoint."
       , ""
       , "Trying again in a few minutes may resolve this issue."
-      , "If this issue persists, please report a bug to FOSSA support at " <> pretty supportUrl
+      , requestReportIfPersists
       ]
 
 -- | For temporary errors, explain that the error is transient and to wait a bit to try again.
@@ -118,12 +115,20 @@ reportFossaBugErrorMsg FossaEnvironmentOnprem =
 -- If this is a networking error, consider 'reportNetworkErrorMsg' instead.
 reportTransientErrorMsg :: Doc ann
 reportTransientErrorMsg =
-  withDebugBundle $
-    vsep
-      [ "This error is often transient, so trying again in a few minutes may resolve the issue."
-      , ""
-      , "If this issue persists, please report a bug to FOSSA support at " <> pretty supportUrl
-      ]
+  withDebugBundle . withRequestReportIfPersists $
+    "This error is often transient, so trying again in a few minutes may resolve the issue."
+
+-- | Request a report if the issue persists.
+requestReportIfPersists :: Doc ann
+requestReportIfPersists = "If this issue persists, please contact FOSSA support at " <> pretty supportUrl
+
+withRequestReportIfPersists :: Doc ann -> Doc ann
+withRequestReportIfPersists msg =
+  vsep
+    [ msg
+    , ""
+    , requestReportIfPersists
+    ]
 
 withDebugBundle :: Doc ann -> Doc ann
 withDebugBundle msg =

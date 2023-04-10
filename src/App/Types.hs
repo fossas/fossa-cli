@@ -6,10 +6,13 @@ module App.Types (
   ReleaseGroupMetadata (..),
   ProjectRevision (..),
   MonorepoAnalysisOpts (..),
+  OverrideDynamicAnalysisBinary (..),
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, withObject, (.:))
+import Data.Map (Map)
 import Data.Text (Text)
+import DepTypes (DepType)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)
 
@@ -54,8 +57,10 @@ instance ToJSON ReleaseGroupMetadata where
 instance FromJSON ReleaseGroupMetadata where
   parseJSON = withObject "ReleaseGroupMetadata" $ \obj ->
     ReleaseGroupMetadata
-      <$> obj .: "name"
-      <*> obj .: "release"
+      <$> obj
+        .: "name"
+      <*> obj
+        .: "release"
 
 newtype MonorepoAnalysisOpts = MonorepoAnalysisOpts
   { monorepoAnalysisType :: Maybe Text
@@ -82,3 +87,16 @@ data NinjaGraphCLIOptions = NinjaGraphCLIOptions
   , ninjaScanId :: Text
   , ninjaBuildName :: Text
   }
+
+newtype OverrideDynamicAnalysisBinary = OverrideDynamicAnalysisBinary
+  {unOverrideDynamicAnalysisBinary :: Map DepType Text}
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON OverrideDynamicAnalysisBinary where
+  toEncoding = genericToEncoding defaultOptions
+
+instance Semigroup OverrideDynamicAnalysisBinary where
+  (OverrideDynamicAnalysisBinary a1) <> (OverrideDynamicAnalysisBinary a2) = OverrideDynamicAnalysisBinary (a1 <> a2)
+
+instance Monoid OverrideDynamicAnalysisBinary where
+  mempty = OverrideDynamicAnalysisBinary mempty

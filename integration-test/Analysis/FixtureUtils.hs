@@ -13,7 +13,8 @@ module Analysis.FixtureUtils (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic))
+import App.Types (OverrideDynamicAnalysisBinary)
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
@@ -101,7 +102,17 @@ data FixtureArtifact = FixtureArtifact
   }
   deriving (Show, Eq, Ord)
 
-type TestC m = ExecIOC $ ReadFSIOC $ DiagnosticsC $ LoggerC $ ReaderC AllFilters $ ReaderC ExperimentalAnalyzeConfig $ FinallyC $ StackC $ IgnoreTelemetryC m
+type TestC m =
+  ExecIOC
+    $ ReadFSIOC
+    $ DiagnosticsC
+    $ LoggerC
+    $ ReaderC OverrideDynamicAnalysisBinary
+    $ ReaderC AllFilters
+    $ ReaderC ExperimentalAnalyzeConfig
+    $ FinallyC
+    $ StackC
+    $ IgnoreTelemetryC m
 
 testRunnerWithLogger :: TestC IO a -> FixtureEnvironment -> IO (Result a)
 testRunnerWithLogger f env =
@@ -110,8 +121,9 @@ testRunnerWithLogger f env =
     & runReadFSIO
     & runDiagnostics
     & withDefaultLogger SevWarn
-    & runReader mempty
-    & runReader (ExperimentalAnalyzeConfig Nothing)
+    & runReader (mempty :: OverrideDynamicAnalysisBinary)
+    & runReader (mempty :: AllFilters)
+    & runReader (ExperimentalAnalyzeConfig Nothing GoModulesBasedTactic)
     & runFinally
     & runStack
     & withoutTelemetry

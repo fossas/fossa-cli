@@ -27,6 +27,14 @@ jobs:
       - name: install latest script can install a specific version
         shell: bash
         run: |
+          # 3.4.7 is the first version with linux tarballs
+          ./install-latest.sh -b . v3.4.7
+          ./fossa --version | grep -q "3.4.7"
+          rm fossa
+
+      - name: install latest script can install version before linux was distributed with tarballs
+        shell: bash
+        run: |
           ./install-latest.sh -b . v3.1.1
           ./fossa --version | grep -q "3.1.1"
           rm fossa

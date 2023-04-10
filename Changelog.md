@@ -2,6 +2,28 @@
 
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
+## Unreleased
+- Go: Introduce `--experimental-use-v3-go-resolver` to preview a new [tactic](./docs/references/strategies/languages/golang/gomodules.md#experimental-strategy-use-go-list-on-packages) for Go dependency scanning. ([#1168](https://github.com/fossas/fossa-cli/pull/1168)
+       
+## v3.7.4
+- Gradle: Fix possible ConcurrentModificationException that can occur when getting dependencies ([#1171](https://github.com/fossas/fossa-cli/pull/1171))
+        
+## v3.7.3
+- Go: Collects environment variables in debug bundle. ([#1132](https://github.com/fossas/fossa-cli/pull/1132))
+- Diagnostics: Improves user-facing error messages and debugging tips for external commands and some HTTP error conditions ([#1165](https://github.com/fossas/fossa-cli/pull/1165))
+- License Scanning: Scan the full contents of "license.html" and "licence.html" for license content, not just the comments. ([#1169](https://github.com/fossas/fossa-cli/pull/1169))
+
+## v3.7.2
+- License Scanning: Add four new licenses: Pushwoosh, PalletsFlaskLogo, IntelDisclaimer and Instabug ([#1163](https://github.com/fossas/fossa-cli/pull/1163))
+
+## v3.7.1
+- Stack: Git based dependencies are detected and handled correctly. ([#1160](https://github.com/fossas/fossa-cli/pull/1160))
+
+## v3.7.0
+- Support Maven wrapper (`mvnw`) usage in Maven projects, and user-provided binary overrides for Maven projects ([#1149](https://github.com/fossas/fossa-cli/pull/1149))
+  For more information, see the [Maven strategy documentation](./docs/references/strategies/languages/maven/maven.md).
+- Installation Script: Verify that the sha256sum of the downloaded archive matches the recorded one. ([#1158](https://github.com/fossas/fossa-cli/pull/1158))
+
 ## v3.6.18
 - License Scanning: Emit a warning if unarchiving fails rather than a fatal error. ([#1153](https://github.com/fossas/fossa-cli/pull/1153))
 

@@ -21,10 +21,16 @@ module Effect.Exec (
   module System.Exit,
   execThrow',
   Has,
+  CandidateCommandEffs,
+  CandidateAnalysisCommands (..),
+  mkAnalysisCommand,
+  mkSingleCandidateAnalysisCommand,
 ) where
 
 import App.Support (reportDefectMsg)
+import App.Types (OverrideDynamicAnalysisBinary (..))
 import Control.Algebra (Has)
+import Control.Carrier.Reader (Reader, ask)
 import Control.Carrier.Simple (
   Simple,
   SimpleC,
@@ -36,6 +42,9 @@ import Control.Effect.Diagnostics (
   ToDiagnostic (..),
   context,
   fatal,
+  fatalText,
+  recover,
+  warnOnErr,
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Record (RecordableValue (..))
@@ -54,16 +63,20 @@ import Data.Aeson (
  )
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BL
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
+import Data.Map qualified as Map
 import Data.String (fromString)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
+import DepTypes (DepType (..))
 import Effect.ReadFS (ReadFS, getCurrentDir)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path, SomeBase (..), fromAbsDir)
 import Path.IO (AnyPath (makeAbsolute))
-import Prettyprinter (Doc, indent, line, pretty, viaShow, vsep)
+import Prettyprinter (Doc, indent, pretty, viaShow, vsep)
 import Prettyprinter.Render.Terminal (AnsiStyle)
 import System.Exit (ExitCode (..))
 import System.Process.Typed (
@@ -116,8 +129,10 @@ instance RecordableValue CmdFailure
 instance FromJSON CmdFailure where
   parseJSON = withObject "CmdFailure" $ \obj ->
     CmdFailure
-      <$> obj .: "cmdFailureCmd"
-      <*> obj .: "cmdFailureDir"
+      <$> obj
+        .: "cmdFailureCmd"
+      <*> obj
+        .: "cmdFailureDir"
       <*> (obj .: "cmdFailureExit" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStdout" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStderr" >>= fromRecordedValue)
@@ -166,31 +181,23 @@ data ExecErr
   deriving (Eq, Ord, Show, Generic)
 
 renderCmdFailure :: CmdFailure -> Doc AnsiStyle
-renderCmdFailure err =
+renderCmdFailure CmdFailure{..} =
   if isCmdNotAvailable
     then
-      pretty ("Could not find executable: `" <> cmdName (cmdFailureCmd err) <> "`.")
-        <> line
-        <> line
-        <> pretty ("Please ensure `" <> cmdName (cmdFailureCmd err) <> "` exist in PATH prior to running fossa.")
-        <> line
-        <> line
-        <> reportDefectMsg
+      vsep
+        [ pretty $ "Could not find executable: `" <> cmdName cmdFailureCmd <> "`."
+        , pretty $ "Please ensure `" <> cmdName cmdFailureCmd <> "` exists in PATH prior to running fossa."
+        , ""
+        , reportDefectMsg
+        ]
     else
-      "Command execution failed: "
-        <> line
-        <> indent
-          4
-          ( vsep
-              [ "command: " <> viaShow (cmdFailureCmd err)
-              , "dir: " <> pretty (cmdFailureDir err)
-              , "exit: " <> viaShow (cmdFailureExit err)
-              , "stdout: " <> line <> indent 2 (pretty @Text (decodeUtf8 (cmdFailureStdout err)))
-              , "stderr: " <> line <> indent 2 (pretty stdErr)
-              ]
-          )
-        <> line
-        <> reportDefectMsg
+      vsep
+        [ "Command execution failed: "
+        , ""
+        , indent 4 details
+        , ""
+        , reportDefectMsg
+        ]
   where
     -- Infer if the stderr is caused by not having executable in path.
     -- There is no easy way to check for @EBADF@ within process exception,
@@ -199,10 +206,74 @@ renderCmdFailure err =
     isCmdNotAvailable = expectedCmdNotFoundErrStr == stdErr
 
     expectedCmdNotFoundErrStr :: Text
-    expectedCmdNotFoundErrStr = cmdName (cmdFailureCmd err) <> ": startProcess: exec: invalid argument (Bad file descriptor)"
+    expectedCmdNotFoundErrStr = cmdName cmdFailureCmd <> ": startProcess: exec: invalid argument (Bad file descriptor)"
+
+    prettyCommand :: Command -> Doc AnsiStyle
+    prettyCommand Command{..} = pretty $ cmdName <> " " <> Text.intercalate " " cmdArgs
 
     stdErr :: Text
-    stdErr = decodeUtf8 (cmdFailureStderr err)
+    stdErr = decodeUtf8 cmdFailureStderr
+
+    stdOut :: Text
+    stdOut = decodeUtf8 cmdFailureStdout
+
+    exitCode :: Doc AnsiStyle
+    exitCode = case cmdFailureExit of
+      ExitSuccess -> "0"
+      ExitFailure n -> viaShow n
+
+    -- Render details of a failed command to error text.
+    details :: Doc AnsiStyle
+    details =
+      vsep
+        [ "Attempted to run the command '" <> prettyCommand cmdFailureCmd <> "'"
+        , "inside the working directory '" <> pretty cmdFailureDir <> "',"
+        , "but failed, because the command exited with code '" <> exitCode <> "'."
+        , ""
+        , "Often, this kind of error is caused by the project not being ready to build;"
+        , "please ensure that the project at '" <> pretty cmdFailureDir <> "'"
+        , "builds successfully before running fossa."
+        , ""
+        , outputPreamble
+        , prettyStdOut
+        , prettyStdErr
+        ]
+
+    outputPreamble :: Doc AnsiStyle
+    outputPreamble =
+      if Text.null stdOut && Text.null stdErr
+        then
+          vsep
+            [ "The command did not log any output!"
+            , "Please check the project documentation for this command for troubleshooting guidance."
+            ]
+        else
+          vsep
+            [ "The logs for the command are listed below."
+            , "They will likely provide guidance on how to resolve this error."
+            ]
+
+    prettyStdOut :: Doc AnsiStyle
+    prettyStdOut =
+      if Text.null stdOut
+        then "Command did not write a standard log."
+        else
+          vsep
+            [ ""
+            , "Command standard log:"
+            , indent 2 $ pretty stdOut
+            ]
+
+    prettyStdErr :: Doc AnsiStyle
+    prettyStdErr =
+      if Text.null stdErr
+        then "Command did not write an error log."
+        else
+          vsep
+            [ ""
+            , "Command error log:"
+            , indent 2 $ pretty stdErr
+            ]
 
 instance ToDiagnostic ExecErr where
   renderDiagnostic = \case
@@ -267,6 +338,79 @@ execThrow' :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Comma
 execThrow' cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
   dir <- getCurrentDir
   execThrow dir cmd
+
+-- | Shorthand for the effects needed to select a candidate analysis command.
+type CandidateCommandEffs sig m = (Has Diagnostics sig m, Has Exec sig m, Has (Reader OverrideDynamicAnalysisBinary) sig m)
+
+-- | Describe a set of command names and the arguments used to validate the command names.
+-- Optionally, also specify the override kind for the command, which is used
+-- to look for a potential override command provided by the user from the environment.
+data CandidateAnalysisCommands = CandidateAnalysisCommands
+  { candidateCmdNames :: NonEmpty Text
+  , candidateCmdArgs :: [Text]
+  , candidateOverrideKind :: Maybe DepType
+  }
+  deriving (Show)
+
+-- | Convenience function for creating a @CandidateAnalysisCommands@ with a single candidate command.
+mkSingleCandidateAnalysisCommand :: Text -> [Text] -> Maybe DepType -> CandidateAnalysisCommands
+mkSingleCandidateAnalysisCommand cmd = CandidateAnalysisCommands (NE.singleton cmd)
+
+-- | Create a @Command@ for dynamic analysis of a project of the given @DepType@ from the list of provided commands.
+--
+-- This function selects the appropriate binary to use given the environment
+-- and creates the command with the provided args and error handling semantics.
+--
+-- It is also possible that no supported command is valid in the provided context;
+-- in such a case a diagnostics error is thrown in @m@.
+mkAnalysisCommand ::
+  ( CandidateCommandEffs sig m
+  ) =>
+  CandidateAnalysisCommands ->
+  Path Abs Dir ->
+  [Text] ->
+  AllowErr ->
+  m Command
+mkAnalysisCommand candidates@CandidateAnalysisCommands{..} workdir args allowErr =
+  context ("Make analysis command from " <> toText (show candidates)) $ do
+    (overrideBinaries :: OverrideDynamicAnalysisBinary) <- ask
+    cmd <- case candidateOverrideKind of
+      Just dt -> case Map.lookup dt (unOverrideDynamicAnalysisBinary overrideBinaries) of
+        Nothing -> context "Command override supported, but not specified" $ selectBestCmd workdir candidates
+        Just cmd -> context ("Command override provided: " <> cmd) . selectBestCmd workdir $ withCmdOverride cmd
+      Nothing -> context "Override not supported for this command" $ selectBestCmd workdir candidates
+    pure $ Command{cmdName = cmd, cmdArgs = args, cmdAllowErr = allowErr}
+  where
+    withCmdOverride :: Text -> CandidateAnalysisCommands
+    withCmdOverride override =
+      CandidateAnalysisCommands
+        { candidateCmdNames = NE.cons override candidateCmdNames
+        , candidateCmdArgs = candidateCmdArgs
+        , candidateOverrideKind = candidateOverrideKind
+        }
+
+-- | Given a set of possible binaries to try, choose the best one to use for dynamic analysis of this @DepType@.
+selectBestCmd :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> CandidateAnalysisCommands -> m Text
+selectBestCmd workdir CandidateAnalysisCommands{..} = selectBestCmd' (NE.toList candidateCmdNames)
+  where
+    selectBestCmd' :: (Has Diagnostics sig m, Has Exec sig m) => [Text] -> m Text
+    selectBestCmd' (cmd : remaining) = context ("Evaluate command: " <> cmd) $ do
+      let attempt = Command{cmdName = cmd, cmdArgs = candidateCmdArgs, cmdAllowErr = Never}
+      output <- recover . warnOnErr (CandidateCommandFailed cmd candidateCmdArgs) $ execThrow workdir attempt
+      case output of
+        Nothing -> selectBestCmd' remaining
+        Just _ -> pure cmd
+    selectBestCmd' [] = fatalText "unable to select best binary to analyze project: none passed validation"
+
+data CandidateCommandFailed = CandidateCommandFailed {failedCommand :: Text, failedArgs :: [Text]}
+instance ToDiagnostic CandidateCommandFailed where
+  renderDiagnostic CandidateCommandFailed{..} =
+    pretty $
+      "Command "
+        <> show failedCommand
+        <> " not suitable: running with args "
+        <> show failedArgs
+        <> " resulted in a non-zero exit code"
 
 type ExecIOC = SimpleC ExecF
 

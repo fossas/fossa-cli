@@ -18,11 +18,12 @@ import App.Fossa.Analyze.Debug (diagToDebug)
 import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc))
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.Types (AnalyzeProject (..), AnalyzeTaskEffs)
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic))
 import App.Fossa.Config.Common (baseDirArg, collectBaseDir)
 import App.Fossa.Subcommand (GetCommonOpts, GetSeverity, SubCommand (SubCommand))
 import App.Types (
   BaseDir (..),
+  OverrideDynamicAnalysisBinary,
  )
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (debugMetadata, ignoreDebug)
@@ -124,6 +125,7 @@ analyzeForLog4j basedir = do
 
   runReader withoutAnyExperimentalPreferences
     . runReader (mempty :: AllFilters)
+    . runReader (mempty :: OverrideDynamicAnalysisBinary)
     . ignoreDebug
     $ do
       (projectResults, ()) <-
@@ -133,12 +135,14 @@ analyzeForLog4j basedir = do
           . runFinally
           . withTaskPool capabilities updateProgress
           . runAtomicCounter
-          $ do
-            runAnalyzersForLog4j (toPath basedir) mempty
+          $ runAnalyzersForLog4j (toPath basedir) mempty
       reportLog4jVulnerability projectResults
   where
     toPath (BaseDir path) = path
-    withoutAnyExperimentalPreferences = ExperimentalAnalyzeConfig Nothing
+    withoutAnyExperimentalPreferences =
+      ExperimentalAnalyzeConfig
+        Nothing
+        GoModulesBasedTactic -- Discovery is the same for both module and package centric Go tactics.
 
 runAnalyzersForLog4j ::
   ( AnalyzeTaskEffs sig m
@@ -172,6 +176,7 @@ runDependencyAnalysisForLog4j ::
   , Has (Output ProjectResult) sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   , Has (Reader AllFilters) sig m
+  , Has (Reader OverrideDynamicAnalysisBinary) sig m
   , Has Stack sig m
   , Has Telemetry sig m
   ) =>

@@ -9,6 +9,7 @@ module GraphUtil (
   expectEdges',
   expectDirect,
   expectDirect',
+  expectGraphEqual,
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
@@ -49,6 +50,12 @@ expectEdges :: (Ord a, Show a) => [(a, a)] -> Graphing a -> Expectation
 expectEdges edges graph =
   (length edges `shouldBe` AM.edgeCount (Graphing.toAdjacencyMap graph))
     *> traverse_ (`shouldSatisfy` \(from, to) -> AM.hasEdge from to (Graphing.toAdjacencyMap graph)) edges
+
+-- This assertion is meant to give more detailed information when two graphs are not equal to each other.
+expectGraphEqual :: (Ord a, Show a) => Graphing a -> Graphing a -> Expectation
+expectGraphEqual g1 g2 = do
+  Graphing.vertexList g1 `shouldMatchList` Graphing.vertexList g2
+  Graphing.edgesList g1 `shouldMatchList` Graphing.edgesList g2
 
 -- | Effectful version of 'expectEdges'
 expectEdges' :: (Ord a, Show a, Has (Lift IO) sig m) => [(a, a)] -> Graphing a -> m ()
