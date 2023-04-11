@@ -11,6 +11,8 @@ module Strategy.Go.GoModGraph (
   parseGoModGraph,
   parseGoGraphMod,
   buildGraph,
+  toVerConstraint,
+  toGoModVersion,
 ) where
 
 import Control.Effect.Diagnostics (
@@ -160,13 +162,13 @@ buildGraph GoBuildGraphCfg{..} =
 
     toDependency :: GoGraphMod -> Dependency
     toDependency (MainMod name) = mkDependency name Nothing
-    toDependency (OtherMod name pkgVersion) = mkDependency name (Just $ toVersion pkgVersion)
+    toDependency (OtherMod name pkgVersion) = mkDependency name (Just $ toVerConstraint pkgVersion)
 
-    toVersion :: PackageVersion -> VerConstraint
-    toVersion v = case v of
-      NonCanonical n -> CEq n
-      Pseudo commitHash -> CEq commitHash
-      Semantic semver -> CEq ("v" <> SemVer.toText semver{_versionMeta = []})
+toVerConstraint :: PackageVersion -> VerConstraint
+toVerConstraint v = case v of
+  NonCanonical n -> CEq n
+  Pseudo commitHash -> CEq commitHash
+  Semantic semver -> CEq ("v" <> SemVer.toText semver{_versionMeta = []})
 
 newtype ModWithReplacement = ModWithReplacement {unModWithReplacement :: (GoGraphMod, GoGraphMod)}
 newtype GoModReplacements = GoModReplacements (Map GoGraphMod GoGraphMod)
