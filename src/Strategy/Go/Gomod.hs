@@ -21,6 +21,7 @@ import Control.Effect.Diagnostics (Diagnostics, context, recover, warnOnErr)
 import Data.Char (isSpace)
 import Data.Foldable (traverse_)
 import Data.Functor (void)
+import Data.Hashable (Hashable)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
@@ -37,6 +38,7 @@ import Diag.Common (
 import Effect.Exec (Exec)
 import Effect.Grapher (direct, label)
 import Effect.ReadFS (ReadFS, readContentsParser)
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, File, Path, parent)
 import Strategy.Go.Transitive (fillInTransitive)
@@ -97,7 +99,9 @@ data PackageVersion
   = NonCanonical Text -- Something like "master"
   | Pseudo Text
   | Semantic Version
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Hashable PackageVersion
 
 data Gomod = Gomod
   { modName :: PackageName
