@@ -44,23 +44,23 @@ gradleSettingsOnly =
       [reldir|gradle/sample/|]
       [reldir|.|]
 
--- testSpringBoot :: Spec
--- testSpringBoot =
---   aroundAll (withAnalysisOf springBoot) $ do
---     describe "gradle-java" $ do
---       it "should find targets (springBoot)" $ \(result, extractedDir) -> do
---         expectProject (GradleProjectType, extractedDir) result
---         length result `shouldBe` 1
+testSpringBoot :: Spec
+testSpringBoot =
+  aroundAll (withAnalysisOf springBoot) $ do
+    describe "gradle-java" $ do
+      it "should find targets" $ \(result, extractedDir) -> do
+        expectProject (GradleProjectType, extractedDir) result
+        length result `shouldBe` 1
 
 testGradleSettingsOnly :: Spec
 testGradleSettingsOnly =
   aroundAll (withAnalysisOf gradleSettingsOnly) $ do
     describe "gradle-java" $ do
-      it "should find targets (gradleSettingsOnly)" $ \(result, extractedDir) -> do
+      it "should find targets" $ \(result, extractedDir) -> do
         expectProject (GradleProjectType, extractedDir) result
         length result `shouldBe` 1
 
 spec :: Spec
 spec = do
---  testSpringBoot
+  testSpringBoot
   testGradleSettingsOnly
