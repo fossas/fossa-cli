@@ -32,6 +32,7 @@ jobs:
           ghcup set ghc 9.0.2
           ghcup install cabal 3.6.2.0
           ghcup set cabal 3.6.2.0
+          cabal update
 
       - name: Run dependency scan on Spectrometer
         env:
