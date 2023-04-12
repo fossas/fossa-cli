@@ -86,8 +86,7 @@ This should eliminate some false positives found by tactics that use `go list -m
 
 To enable a strategy that does this, run `fossa analyze` with the `--experimental-use-v3-go-resolver` flag.
 
-Currently, this strategy does not yet include path dependencies from Go `replace` directives.
-If `go list` includes transitive dependencies of path dependencies this strategy removes the path deps and creates edges between the parent and children of the path that was removed.
+Currently, this strategy does not yet include path dependencies or their transitive deps from Go `replace` directives.
 
 ## FAQ
 
