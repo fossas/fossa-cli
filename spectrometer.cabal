@@ -666,6 +666,7 @@ test-suite integration-tests
     Analysis.RubySpec
     Analysis.RustSpec
     Analysis.ScalaSpec
+    Analysis.SwiftSpec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.10.0.1
   build-depends:
