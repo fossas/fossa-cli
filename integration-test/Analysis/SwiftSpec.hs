@@ -25,4 +25,3 @@ exampleProject =
 spec :: Spec
 spec = do
   testSuiteDepResultSummary exampleProject SwiftProjectType (DependencyResultsSummary 6 6 0 1 Partial)
-
