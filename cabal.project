@@ -1,7 +1,10 @@
-packages: . ~/devel/upgraded-fossa-cli-deps/bzlib
+packages: .
 tests: True
 optimization: False
 
+package spectrometer
+  ghc-options: -ffull-laziness
+        
 allow-newer:
   -- git-config needs to relax its upper bound on megaparsec. PR submitted;
   -- no action from maintainer yet
