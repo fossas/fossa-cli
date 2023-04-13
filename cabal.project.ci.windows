@@ -2,7 +2,6 @@ executable-static: True
 split-sections: True
 tests: True
 optimization: 2
-jobs: $ncpus
 
 packages: .
 
@@ -84,4 +83,10 @@ source-repository-package
   location: https://github.com/fossas/codec-rpm.git
   tag: 37081e93b0fbdb3e560be6a390fa7f7120a1b95d
 
-index-state: hackage.haskell.org 2023-02-08T21:47:53Z
+-- Switch to using the hackage version of this when a new release incorporating https://github.com/kowainik/tomland/pull/422 happens.
+source-repository-package
+  type: git
+  location: https://github.com/kowainik/tomland.git
+  tag: 37f16460a6dfe4606d48b8b86c13635d409442cd
+
+index-state:  hackage.haskell.org 2023-03-06T20:09:15Z

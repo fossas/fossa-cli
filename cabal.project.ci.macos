@@ -76,10 +76,10 @@ source-repository-package
   location: https://github.com/fossas/bzlib
   tag: 6c4c6c9e3249ac76378f8ad16b48ccec5f253c89
 
--- TODO: Add commentary after making a PR against upstream
+-- Switch to using the hackage version of this when a new release incorporating https://github.com/kowainik/tomland/pull/422 happens.
 source-repository-package
   type: git
-  location: https://github.com/fossas/codec-rpm.git
-  tag: 37081e93b0fbdb3e560be6a390fa7f7120a1b95d
+  location: https://github.com/kowainik/tomland.git
+  tag: 37f16460a6dfe4606d48b8b86c13635d409442cd
 
-index-state: hackage.haskell.org 2023-02-08T21:47:53Z
+index-state: hackage.haskell.org 2023-03-06T20:09:15Z
