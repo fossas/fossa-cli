@@ -8,7 +8,7 @@ module Strategy.Swift.Xcode.Pbxproj (
   swiftPackageReferencesOf,
 ) where
 
-import Control.Effect.Diagnostics (Diagnostics, context, errCtx, fatalText, recover, warnOnErr, ToDiagnostic (renderDiagnostic))
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, errCtx, fatalText, recover, warnOnErr)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
@@ -19,6 +19,7 @@ import Diag.Common (MissingDeepDeps (MissingDeepDeps))
 import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsParser)
 import Graphing (Graphing, deeps, directs, promoteToDirect)
 import Path
+import Prettyprinter
 import Strategy.Swift.Errors (
   MissingPackageResolvedFile (MissingPackageResolvedFile),
  )
@@ -29,7 +30,6 @@ import Strategy.Swift.PackageSwift (
   toConstraint,
  )
 import Strategy.Swift.Xcode.PbxprojParser (AsciiValue (..), PbxProj (..), lookupText, objectsFromIsa, parsePbxProj, textOf)
-import Prettyprinter
 
 -- | Represents the version rules for a Swift Package as defined in Xcode project file.
 data XCRemoteSwiftPackageReference = XCRemoteSwiftPackageReference
