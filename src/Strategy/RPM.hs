@@ -13,7 +13,6 @@ module Strategy.RPM (
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
-import Control.Effect.Diagnostics qualified as Diag
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.List (isSuffixOf)
@@ -77,11 +76,11 @@ findProjects = walkWithFilters' $ \dir _ files -> do
 
   case specs of
     [] -> pure ([], WalkContinue)
-    _ -> pure ([RpmProject dir specs], WalkContinue)
+    _ -> pure (RpmProject dir <$> specs, WalkContinue)
 
 data RpmProject = RpmProject
   { rpmDir :: Path Abs Dir
-  , rpmFiles :: [Path Abs File]
+  , rpmFiles :: Path Abs File
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -103,19 +102,14 @@ mkProject project =
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RpmProject -> m DependencyResults
 getDeps = context "RPM" . context "Static analysis" . analyze . rpmFiles
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m DependencyResults
-analyze specFiles = do
-  graph <-
-    Diag.combineSuccessful @Text @Text
-      "Analysis failed for all discovered *.spec files"
-      "Failed to parse a spec file"
-      (map analyzeSingle specFiles)
-  -- TODO: Should each Dep have an origin path?
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
+analyze specFile = do
+  graph <- analyzeSingle specFile
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = Partial
-      , dependencyManifestFiles = []
+      , dependencyManifestFiles = [specFile]
       }
 
 analyzeSingle :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
