@@ -107,7 +107,7 @@ instance ToDiagnostic FailedToParseProjFile where
 hasSomeSwiftDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m Bool
 hasSomeSwiftDeps projFile = do
   xCodeProjContent <- recover $ warnOnErr (FailedToParseProjFile projFile) (readContentsParser parsePbxProj projFile)
-pure $ maybe False (not . null . swiftPackageReferencesOf) xCodeProjContent
+  pure $ maybe False (not . null . swiftPackageReferencesOf) xCodeProjContent
 
 analyzeXcodeProjForSwiftPkg :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> Maybe (Path Abs File) -> m (Graphing.Graphing Dependency)
 analyzeXcodeProjForSwiftPkg xcodeProjFile resolvedFile = do
