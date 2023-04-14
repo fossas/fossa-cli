@@ -3,6 +3,7 @@
 module Strategy.SwiftPM (
   discover,
   mkProject,
+  SwiftProject,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (..))

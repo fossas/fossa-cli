@@ -2,13 +2,17 @@
 
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
+## Unreleased
+
+- Swift: Do not stop analysis if we encounter a badly formatted project.pbxproj file ([#1177](https://github.com/fossas/fossa-cli/pull/1177))
+
 ## v3.7.5
 - Go: Introduce `--experimental-use-v3-go-resolver` to preview a new [tactic](./docs/references/strategies/languages/golang/gomodules.md#experimental-strategy-use-go-list-on-packages) for Go dependency scanning. ([#1168](https://github.com/fossas/fossa-cli/pull/1168),[#1173](https://github.com/fossas/fossa-cli/pull/1173))
 - Themis: Update tag to support a new rule for the libdivide dependency. ([#1172](https://github.com/fossas/fossa-cli/pull/1172)
-       
+
 ## v3.7.4
 - Gradle: Fix possible ConcurrentModificationException that can occur when getting dependencies ([#1171](https://github.com/fossas/fossa-cli/pull/1171))
-        
+
 ## v3.7.3
 - Go: Collects environment variables in debug bundle. ([#1132](https://github.com/fossas/fossa-cli/pull/1132))
 - Diagnostics: Improves user-facing error messages and debugging tips for external commands and some HTTP error conditions ([#1165](https://github.com/fossas/fossa-cli/pull/1165))
