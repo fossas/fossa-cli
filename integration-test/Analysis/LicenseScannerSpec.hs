@@ -66,7 +66,7 @@ spec = do
     it "should find licenses in nested archives" $ do
       extractedDir <- getArtifact recursiveArchive
       let scanDir = extractedDir </> [reldir|cli-license-scan-integration-test-fixtures-main/recursive-archive|]
-      units <- runStack . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO . fmap licenseSourceUnitLicenseUnits $ scanVendoredDep scanDir Nothing vendoredDep
+      units <- runStack . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO . fmap licenseSourceUnitLicenseUnits $ scanVendoredDep scanDir Nothing False vendoredDep
       PIO.removeDirRecur extractedDir
       case units of
         Failure ws eg -> fail (show (renderFailure ws eg "An issue occurred"))
@@ -85,7 +85,7 @@ spec = do
       extractedDir <- getArtifact recursiveArchive
       let scanDir = extractedDir </> [reldir|cli-license-scan-integration-test-fixtures-main/recursive-archive|]
       let licenseScanPathFilters = LicenseScanPathFilters{licenseScanPathFiltersOnly = [GlobFilter "**.rb"], licenseScanPathFiltersExclude = []}
-      units <- runStack . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO . fmap licenseSourceUnitLicenseUnits $ scanVendoredDep scanDir (Just licenseScanPathFilters) vendoredDep
+      units <- runStack . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO . fmap licenseSourceUnitLicenseUnits $ scanVendoredDep scanDir (Just licenseScanPathFilters) False vendoredDep
       PIO.removeDirRecur extractedDir
       case units of
         Failure ws eg -> fail (show (renderFailure ws eg "An issue occurred"))

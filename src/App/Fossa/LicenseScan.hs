@@ -106,4 +106,4 @@ runLicenseScan ::
   Maybe LicenseScanPathFilters ->
   NonEmpty VendoredDependency ->
   m (NonEmpty LicenseSourceUnit)
-runLicenseScan basedir licenseScanPathFilters vdeps = dedupVendoredDeps vdeps >>= traverse (scanVendoredDep basedir licenseScanPathFilters)
+runLicenseScan basedir licenseScanPathFilters vdeps = dedupVendoredDeps vdeps >>= traverse (scanVendoredDep basedir licenseScanPathFilters False)
