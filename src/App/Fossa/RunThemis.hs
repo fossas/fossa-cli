@@ -57,9 +57,9 @@ generateThemisArgs taggedThemisIndex pathPrefix flags =
     <> ["."]
 
 themisFlags :: Maybe LicenseScanPathFilters -> Bool -> [Text]
-themisFlags Nothing fullFileUploads = if fullFileUploads then ["srclib-with-full-files"] else ["--srclib-with-matches"]
+themisFlags Nothing fullFileUploads = if fullFileUploads then ["--srclib-with-full-files"] else ["--srclib-with-matches"]
 themisFlags (Just filters) fullFileUploads =
-  let defaultFilter = if fullFileUploads then ["srclib-with-full-files"] else ["--srclib-with-matches"]
+  let defaultFilter = if fullFileUploads then ["--srclib-with-full-files"] else ["--srclib-with-matches"]
       onlyFilters = concatMap (\only -> ["--only-paths", unGlobFilter only]) $ licenseScanPathFiltersOnly filters
       exceptFilters = concatMap (\exclude -> ["--exclude-paths", unGlobFilter exclude]) $ licenseScanPathFiltersExclude filters
    in defaultFilter ++ onlyFilters ++ exceptFilters
