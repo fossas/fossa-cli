@@ -2,6 +2,7 @@
 
 module App.Fossa.Config.Container.Analyze (
   NoUpload (..),
+  JsonOutput (..),
   ContainerAnalyzeConfig (..),
   ContainerAnalyzeOptions (..),
   cliParser,
@@ -58,11 +59,13 @@ import Options.Applicative (
  )
 
 data NoUpload = NoUpload
+data JsonOutput = JsonOutput deriving (Generic)
 
 data ContainerAnalyzeConfig = ContainerAnalyzeConfig
   { scanDestination :: ScanDestination
   , revisionOverride :: OverrideProject
   , imageLocator :: ImageText
+  , jsonOutput :: Flag JsonOutput
   , -- \* For Experimental Scanner
     usesExperimentalScanner :: Bool
   , dockerHost :: Text
@@ -79,6 +82,7 @@ instance ToJSON ContainerAnalyzeConfig where
 data ContainerAnalyzeOptions = ContainerAnalyzeOptions
   { analyzeCommons :: CommonOpts
   , containerNoUpload :: Flag NoUpload
+  , containerJsonOutput :: Flag JsonOutput
   , containerBranch :: Maybe Text
   , containerMetadata :: ProjectMetadata
   , containerAnalyzeImage :: ImageText
@@ -107,6 +111,7 @@ cliParser =
           <> short 'o'
           <> help "Output results to stdout instead of uploading to fossa"
       )
+    <*> flagOpt JsonOutput (long "json" <> help "Output project metadata as json to the console. Useful for communicating with the FOSSA API")
     <*> optional
       ( strOption
           ( long "branch"
@@ -129,6 +134,7 @@ mergeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
   let scanDest = collectScanDestination cfgfile envvars cliOpts
       severity = getSeverity cliOpts
       imageLoc = containerAnalyzeImage
+      jsonOutput = containerJsonOutput
       arch = collectArch
       onlySystemDeps = containerExperimentalOnlySysDependencies
       scanFilters = collectFilters cfgfile
@@ -143,6 +149,7 @@ mergeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
     <$> scanDest
     <*> pure revOverride
     <*> pure imageLoc
+    <*> pure jsonOutput
     <*> pure containerExperimentalScanner
     <*> collectDockerHost envvars
     <*> pure arch
