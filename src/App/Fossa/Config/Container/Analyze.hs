@@ -125,7 +125,7 @@ cliParser =
     <*> switch (long "only-system-deps" <> help "Only analyzes system dependencies (e.g. apk, dep, rpm).")
 
 mergeOpts ::
-  Has Diagnostics sig m =>
+  (Has Diagnostics sig m) =>
   Maybe ConfigFile ->
   EnvVars ->
   ContainerAnalyzeOptions ->
@@ -158,7 +158,7 @@ mergeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
     <*> pure scanFilters
 
 collectScanDestination ::
-  Has Diagnostics sig m =>
+  (Has Diagnostics sig m) =>
   Maybe ConfigFile ->
   EnvVars ->
   ContainerAnalyzeOptions ->

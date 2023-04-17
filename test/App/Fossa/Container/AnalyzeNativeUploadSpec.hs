@@ -1,18 +1,18 @@
 module App.Fossa.Container.AnalyzeNativeUploadSpec (spec) where
 
+import App.Fossa.Config.Container.Analyze (JsonOutput (..))
 import App.Fossa.Container.AnalyzeNative (uploadScan)
 import App.Types (ProjectMetadata (..), ProjectRevision (..))
 import Container.Types (ContainerScan (..), ContainerScanImage (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
+import Data.Flag (Flag, toFlag)
 import Fossa.API.Types (Organization (..), uploadLocator)
 import Srclib.Types (Locator)
 import Test.Effect (expectFatal', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe)
 import Test.MockApi (MockApi, alwaysReturns)
-import Data.Flag (Flag, toFlag)
-import App.Fossa.Config.Container.Analyze (JsonOutput (..))
 
 spec :: Spec
 spec = do
@@ -53,7 +53,7 @@ fixtureRevision = ProjectRevision "some-tag" "some-digest" $ Just "master"
 fixtureJsonOutput :: Bool -> Flag JsonOutput
 fixtureJsonOutput = toFlag JsonOutput
 
-expectUploadSuccess :: Has MockApi sig m => m ()
+expectUploadSuccess :: (Has MockApi sig m) => m ()
 expectUploadSuccess =
   UploadNativeContainerScan fixtureRevision fixtureProjectMetadata fixtureContainerScan
     `alwaysReturns` Fixtures.uploadResponse
