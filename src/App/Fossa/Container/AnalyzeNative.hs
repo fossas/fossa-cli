@@ -142,7 +142,7 @@ uploadScan revision projectMeta jsonOutput containerScan =
 
         when (fromFlag JsonOutput jsonOutput) $ do
           summary <-
-            context "i don't know what's going on here" $
+            context "Analysis upload succeeded" $
               buildJsonSummary revision locator buildUrl
           logStdout . decodeUtf8 $ Aeson.encode summary
         -- We return locator for purely for testing.
