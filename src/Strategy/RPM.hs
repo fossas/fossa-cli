@@ -80,7 +80,7 @@ findProjects = walkWithFilters' $ \dir _ files -> do
 
 data RpmProject = RpmProject
   { rpmDir :: Path Abs Dir
-  , rpmFiles :: Path Abs File
+  , rpmFile :: Path Abs File
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -100,7 +100,7 @@ mkProject project =
     }
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RpmProject -> m DependencyResults
-getDeps = context "RPM" . context "Static analysis" . analyze . rpmFiles
+getDeps = context "RPM" . context "Static analysis" . analyze . rpmFile
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze specFile = do
