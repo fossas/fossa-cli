@@ -1,11 +1,12 @@
 # FOSSA CLI Changelog
 
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
+## Unreleased
+- Adds `--json` flag to `fossa container analyze`
 
 ## v3.7.6
 - RPM: Support origin paths for RPM spec file analysis ([#1178](https://github.com/fossas/fossa-cli/pull/1178))
 - Swift: Do not stop analysis if we encounter a badly formatted project.pbxproj file ([#1177](https://github.com/fossas/fossa-cli/pull/1177))
-- Adds `--json` flag to `fossa container analyze`
 
 ## v3.7.5
 - Go: Introduce `--experimental-use-v3-go-resolver` to preview a new [tactic](./docs/references/strategies/languages/golang/gomodules.md#experimental-strategy-use-go-list-on-packages) for Go dependency scanning. ([#1168](https://github.com/fossas/fossa-cli/pull/1168),[#1173](https://github.com/fossas/fossa-cli/pull/1173))

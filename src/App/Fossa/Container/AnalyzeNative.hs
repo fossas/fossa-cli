@@ -12,9 +12,8 @@ import App.Fossa.Config.Common (
   ScanDestination (OutputStdout, UploadScan),
  )
 import App.Fossa.Config.Container.Analyze (
-  ContainerAnalyzeConfig (arch, dockerHost, filterSet, imageLocator, onlySystemDeps, revisionOverride, scanDestination),
+  ContainerAnalyzeConfig (..),
   JsonOutput (JsonOutput),
-  jsonOutput,
  )
 import App.Fossa.Config.Container.Analyze qualified as Config
 import App.Fossa.Container.Scan (extractRevision, scanImage)
