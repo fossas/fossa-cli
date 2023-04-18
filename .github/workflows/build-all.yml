@@ -77,7 +77,7 @@ jobs:
       run: cargo build --release
 
     # Build FOSSA CLI.
-    - uses: actions/cache@v2
+    - uses: actions/cache@v3
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
