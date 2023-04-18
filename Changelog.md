@@ -2,7 +2,8 @@
 
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 ## Unreleased
-- Adds `--json` flag to `fossa container analyze`
+- Adds `--json` flag to `fossa container analyze` ([#1180](https://github.com/fossas/fossa-cli/pull/1180))
+- License Scanning: Reduce false positives caused by indicator matches. This is done by only reporting indicator matches to SPDX keys and license names when we are scanning a manifest file ([#1182](https://github.com/fossas/fossa-cli/pull/1182))
 
 ## v3.7.6
 - RPM: Support origin paths for RPM spec file analysis ([#1178](https://github.com/fossas/fossa-cli/pull/1178))
