@@ -1,6 +1,8 @@
 # FOSSA CLI Changelog
 
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
+## Unreleased
+- Adds `--json` flag to `fossa container analyze`
 
 ## v3.7.6
 - RPM: Support origin paths for RPM spec file analysis ([#1178](https://github.com/fossas/fossa-cli/pull/1178))
