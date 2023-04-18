@@ -472,7 +472,7 @@ instance FromJSON Organization where
         .:? "supportsDependenciesCachePolling"
         .!= False
       <*> obj
-        .:? "requiresFullFileUPloads"
+        .:? "requireFullFileUploads"
         .!= False
 
 data Project = Project
