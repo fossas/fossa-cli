@@ -366,7 +366,7 @@ licenseScanSourceUnit vendoredDependencyScanMode licenseScanPathFilters fullFile
 
   -- finalizeLicenseScan takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
-  finalizeLicenseScan $ ArchiveComponents (NE.toList archives) (vendoredDependencyScanMode == SkippingDisabledViaFlag)
+  finalizeLicenseScan $ ArchiveComponents (NE.toList archives) (vendoredDependencyScanMode == SkippingDisabledViaFlag) fullFileUploads
 
   let archivesWithOrganization :: OrgId -> NonEmpty Archive -> NonEmpty Archive
       archivesWithOrganization org = NE.map $ includeOrgId org

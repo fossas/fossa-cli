@@ -116,6 +116,7 @@ instance FromJSON SignedURL where
 data ArchiveComponents = ArchiveComponents
   { archives :: [Archive]
   , forceRebuild :: Bool
+  , fullFiles :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -124,6 +125,7 @@ instance ToJSON ArchiveComponents where
     object
       [ "archives" .= archives
       , "forceRebuild" .= forceRebuild
+      , "fullFiles" .= fullFiles
       ]
 
 data Archive = Archive

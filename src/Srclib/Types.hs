@@ -117,7 +117,7 @@ data LicenseUnitData = LicenseUnitData
   , licenseUnitDataThemisVersion :: Text
   , licenseUnitDataMatchData :: Maybe (NonEmpty LicenseUnitMatchData)
   , licenseUnitDataCopyrights :: Maybe (NonEmpty Text)
-  , licenseUnitDataContents :: Maybe Text
+  , licenseUnitDataContents :: Maybe (NonEmpty Text)
   }
   deriving (Eq, Ord, Show)
 

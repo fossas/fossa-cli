@@ -7,7 +7,7 @@ import App.Fossa.VendoredDependency (VendoredDependencyScanMode (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (..))
 import Data.List.NonEmpty qualified as NE
-import Fossa.API.Types (Archive, ArchiveComponents (ArchiveComponents, archives, forceRebuild))
+import Fossa.API.Types (Archive, ArchiveComponents (ArchiveComponents, archives, forceRebuild, fullFiles))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
 import Srclib.Types (
@@ -191,8 +191,8 @@ expectUploadLicenseScanResult licenseUnit =
 
 expectFinalizeScan :: Has MockApi sig m => [Archive] -> m ()
 expectFinalizeScan as =
-  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = False}) `returnsOnce` ()
+  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = False, fullFiles = False}) `returnsOnce` ()
 
 expectFinalizeScanWithForceRebuild :: Has MockApi sig m => [Archive] -> m ()
 expectFinalizeScanWithForceRebuild as =
-  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = True}) `returnsOnce` ()
+  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = True, fullFiles = False}) `returnsOnce` ()
