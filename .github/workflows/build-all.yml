@@ -75,17 +75,53 @@ jobs:
 
     - name: Build Rust dependencies
       run: cargo build --release
+      
+    # Compute cache key and save to a temporary file.
+    #
+    # We compute the cache key based on the solved install plan instead of just
+    # hashing the `.cabal` file, since there are many kinds of changes that will
+    # cause `.cabal` to change (e.g. adding new source modules).
+    - name: Compute cache key
+      id: compute-cache-key
+      run: |
+        cabal --project-file=${{ matrix.project-file }} update
+        cabal --project-file=${{ matrix.project-file }} configure
+        cat dist-newstyle/cache/plan.json | jq '."install-plan"[]."id"' | sort > /tmp/cabal-cache-key
+        echo "Install plan:"
+        cat /tmp/cabal-cache-key
+        export CABAL_CACHE_KEY=$(sha256sum /tmp/cabal-cache-key | awk '{print $1}')-${{ matrix.os }}
+        echo "Cabal cache key: $CABAL_CACHE_KEY"
+        echo "cabal-cache-key=$CABAL_CACHE_KEY" >> $GITHUB_OUTPUT
+        
+    - name: Get parent commit hash for local package caching
+      # running git rev-parse HEAD^ results in a "detected dubious ownership in repository"
+      # error. So we configure git to consider the directory safe.
+      run: |
+        git config --global --add safe.directory /__w/fossa-cli/fossa-cli # Still not sure about the __w/ and what it is
+        echo "parent_commit=$(git rev-parse HEAD^)" >> $GITHUB_ENV
 
+    # TODO: Evalute if we want to still cache on test failure
     # Build FOSSA CLI.
     - uses: actions/cache@v3
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
-        key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('**/*.cabal', format('{0}', matrix.project-file)) }}
+        # key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('**/*.cabal', format('{0}', matrix.project-file)) }}
+        key:  ${{ runner.os }}-${{ matrix.ghc }}-{{ cabal-cache-key }}-dotcabal
+        # TODO: Remove of restore before PR.
+        # There isn't really a partial match for this that will actually have a good cache I don't think
         restore-keys: |
-          ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
           ${{ runner.os }}-${{ matrix.ghc }}-
-          ${{ runner.os }}-
+          # ${{ runner.os }}-
+          
+    - name: Restore local package cache
+      uses: actions/cache/restore@v3
+      with:
+        path: ./dist-newstyle
+        key: ${{ matrix.ghc }}-cabal-dist-newstyle-${{ github.sha }}
+        restore-keys: |
+          ${{ matrix.ghc }}-cabal-dist-newstyle-${{ env.parent_commit }}
+          ${{ matrix.ghc }}-cabal-dist-newstyle-
 
     - name: Update vendored binaries
       run: |
@@ -113,6 +149,13 @@ jobs:
       run: |
         cabal update
         $RUN_CMD || $RUN_CMD
+        
+    # Cache local Cabal packages.
+    - name: Save local package cache
+      uses: actions/cache/save@v3
+      with:
+        path: ./dist-newstyle
+        key: ${{ matrix.ghc }}-cabal-dist-newstyle-${{ github.sha }}
 
     - name: Run unit tests
       run: |
