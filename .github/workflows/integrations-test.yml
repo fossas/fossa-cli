@@ -59,7 +59,8 @@ jobs:
         rustc -V || echo "no rustc"
         cargo -V || echo "no cargo"
 
-    - uses: Swatinem/rust-cache@v1.3.0
+    - uses: Swatinem/rust-cache@v2
+    
     - uses: actions/cache@v3
       name: Cache cabal store
       with:
