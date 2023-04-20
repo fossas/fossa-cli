@@ -1,4 +1,4 @@
-   # FOSSA CLI Changelog
+# FOSSA CLI Changelog
 
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
