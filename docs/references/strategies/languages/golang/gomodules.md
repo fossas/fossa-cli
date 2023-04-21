@@ -86,10 +86,7 @@ This should eliminate some false positives found by tactics that use `go list -m
 
 To enable a strategy that does this, run `fossa analyze` with the `--experimental-use-v3-go-resolver` flag.
 
-Currently there are a few limitations to this strategy:
-1. Does not exclude test dependencies.
-2. Does not properly report packages with [pseudo-versions](https://go.dev/ref/mod#pseudo-versions).
-3. Like our other strategies, this strategy does not yet report on path dependencies from Go `replace` directives.
+Currently, this strategy does not yet include path dependencies or their transitive deps from Go `replace` directives.
 
 ## FAQ
 

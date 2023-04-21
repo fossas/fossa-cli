@@ -19,7 +19,9 @@ module Effect.Grapher (
   -- * Labeling
   LabeledGrapher,
   LabeledGrapherC,
+  Labels,
   label,
+  runLabeledGrapher,
   withLabeling,
 
   -- * Mapping
@@ -129,8 +131,27 @@ withLabeling f act = do
   (graph, (labels, _)) <- runGrapher . runState Map.empty $ act
   pure (unlabel f labels graph)
 
+-- |This function will run a 'LabeledGrapherC', returning the graph as well as the labels with no post-processing.
+--
+-- Occasionally it isn't possible to transform a graph node and its labels in isolation like 'withLabeling' does.
+-- Suppose 'withLabeling' were given a function from =(ty -> Set lbl -> res)= which maps several =ty= to one =res=.
+-- There could be multiple =res='s which should be the same, but aren't because each was created from a different =ty= and its associated =res=s.
+--
+-- A concrete example of this is in the GoListPackages tactic.
+-- Multiple packages may be associated with production or development envs, but all map to a single module.
+-- It is necessary then to collect the labels from multiple packages (=ty=) before producing the final 'Dependency' (=res=).
+--
+-- Prefer 'withLabeling' if it is enough to examine each =ty= and its set of labels in isolation.
+runLabeledGrapher :: (Ord ty, Monad m, Algebra sig m) => LabeledGrapherC ty lbl m a -> m (G.Graphing ty, Labels ty lbl)
+runLabeledGrapher act = do
+  (graph, (labels, _)) <- runGrapher . runState Map.empty $ act
+  pure (graph, labels)
+
 -- | Transform a @Graphing ty@ into a @Graphing ty'@, given a function that
--- transforms the old node type @ty@ and a set of labels on that node
+-- transforms the old node type @ty@ and a set of labels on that node.
+--
+-- This function assumes a 1-1 mapping between ty and ty'.
+-- If multiple ty map onto a single ty', then this function will not combine the labels from all the ty when making ty'.
 unlabel :: (Ord ty, Ord ty') => (ty -> Set lbl -> ty') -> Labels ty lbl -> G.Graphing ty -> G.Graphing ty'
 unlabel f labels = G.gmap (\ty -> f ty (findLabels ty))
   where

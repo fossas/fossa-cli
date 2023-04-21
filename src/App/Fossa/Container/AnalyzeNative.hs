@@ -12,7 +12,8 @@ import App.Fossa.Config.Common (
   ScanDestination (OutputStdout, UploadScan),
  )
 import App.Fossa.Config.Container.Analyze (
-  ContainerAnalyzeConfig (arch, dockerHost, filterSet, imageLocator, onlySystemDeps, revisionOverride, scanDestination),
+  ContainerAnalyzeConfig (..),
+  JsonOutput (JsonOutput),
  )
 import App.Fossa.Config.Container.Analyze qualified as Config
 import App.Fossa.Container.Scan (extractRevision, scanImage)
@@ -27,13 +28,15 @@ import Container.Types (ContainerScan (..))
 import Control.Carrier.Debug (Debug, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.FossaApiClient (runFossaApiClient)
-import Control.Effect.Diagnostics (Diagnostics, fatal)
+import Control.Effect.Diagnostics (Diagnostics, context, fatal, fromMaybeText)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, uploadNativeContainerScan)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Telemetry (Telemetry)
-import Control.Monad (void)
+import Control.Monad (void, when)
+import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
+import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (
@@ -55,7 +58,7 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (Organization (orgSupportsNativeContainerScan), UploadResponse (uploadError), uploadLocator)
 import Path (Abs, File, Path)
-import Srclib.Types (Locator)
+import Srclib.Types (Locator (locatorRevision), locatorProject, renderLocator)
 
 data ContainerImageSource
   = DockerArchive (Path Abs File)
@@ -109,18 +112,20 @@ analyze cfg = do
   case scanDestination cfg of
     OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode scannedImage
     UploadScan apiOpts projectMeta ->
-      void $ runFossaApiClient apiOpts $ uploadScan revision projectMeta scannedImage
+      void $ runFossaApiClient apiOpts $ uploadScan revision projectMeta (jsonOutput cfg) scannedImage
 
 uploadScan ::
   ( Has Diagnostics sig m
   , Has FossaApiClient sig m
   , Has Logger sig m
+  , Has (Lift IO) sig m
   ) =>
   ProjectRevision ->
   ProjectMetadata ->
+  Flag JsonOutput ->
   ContainerScan ->
   m Locator
-uploadScan revision projectMeta containerScan =
+uploadScan revision projectMeta jsonOutput containerScan =
   do
     supportsNativeScan <- orgSupportsNativeContainerScan <$> getOrganization
     if not supportsNativeScan
@@ -134,5 +139,22 @@ uploadScan revision projectMeta containerScan =
         logInfo ("  " <> pretty buildUrl)
         traverse_ (\err -> logError $ "FOSSA error: " <> viaShow err) (uploadError resp)
 
+        when (fromFlag JsonOutput jsonOutput) $ do
+          summary <-
+            context "Analysis upload succeeded" $
+              buildJsonSummary revision locator buildUrl
+          logStdout . decodeUtf8 $ Aeson.encode summary
         -- We return locator for purely for testing.
         pure locator
+
+buildJsonSummary :: (Has Diagnostics sig m) => ProjectRevision -> Locator -> Text -> m Aeson.Value
+buildJsonSummary project locator projectUrl = do
+  revision <- fromMaybeText "Server returned an invalid project revision" $ locatorRevision locator
+  pure $
+    Aeson.object
+      [ "project" .= locatorProject locator
+      , "revision" .= revision
+      , "branch" .= projectBranch project
+      , "url" .= projectUrl
+      , "id" .= renderLocator locator
+      ]

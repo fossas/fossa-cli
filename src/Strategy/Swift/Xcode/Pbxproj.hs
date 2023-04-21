@@ -8,7 +8,7 @@ module Strategy.Swift.Xcode.Pbxproj (
   swiftPackageReferencesOf,
 ) where
 
-import Control.Effect.Diagnostics (Diagnostics, context, errCtx, fatalText, recover, warnOnErr)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, errCtx, fatalText, recover, warnOnErr)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
@@ -19,6 +19,7 @@ import Diag.Common (MissingDeepDeps (MissingDeepDeps))
 import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsParser)
 import Graphing (Graphing, deeps, directs, promoteToDirect)
 import Path
+import Prettyprinter
 import Strategy.Swift.Errors (
   MissingPackageResolvedFile (MissingPackageResolvedFile),
  )
@@ -97,12 +98,16 @@ buildGraph projFile maybeResolvedContent =
     isDirect :: Dependency -> Bool
     isDirect dep = (dependencyName dep) `member` fromList (map urlOf $ swiftPackageReferencesOf projFile)
 
+newtype FailedToParseProjFile = FailedToParseProjFile (Path Abs File)
+instance ToDiagnostic FailedToParseProjFile where
+  renderDiagnostic (FailedToParseProjFile path) = "Could not parse project.pbxproj file " <> viaShow path
+
 -- | Checks if XCode Project File has at-least one swift dependency.
 -- It does by counting instances of `XCRemoteSwiftPackageReference` in the project file.
 hasSomeSwiftDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m Bool
 hasSomeSwiftDeps projFile = do
-  xCodeProjContent <- readContentsParser parsePbxProj projFile
-  pure $ (not . null) (swiftPackageReferencesOf xCodeProjContent)
+  xCodeProjContent <- recover $ warnOnErr (FailedToParseProjFile projFile) (readContentsParser parsePbxProj projFile)
+  pure $ maybe False (not . null . swiftPackageReferencesOf) xCodeProjContent
 
 analyzeXcodeProjForSwiftPkg :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> Maybe (Path Abs File) -> m (Graphing.Graphing Dependency)
 analyzeXcodeProjForSwiftPkg xcodeProjFile resolvedFile = do

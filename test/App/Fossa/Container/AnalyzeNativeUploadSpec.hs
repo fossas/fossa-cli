@@ -1,10 +1,12 @@
 module App.Fossa.Container.AnalyzeNativeUploadSpec (spec) where
 
+import App.Fossa.Config.Container.Analyze (JsonOutput (..))
 import App.Fossa.Container.AnalyzeNative (uploadScan)
 import App.Types (ProjectMetadata (..), ProjectRevision (..))
 import Container.Types (ContainerScan (..), ContainerScanImage (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
+import Data.Flag (Flag, toFlag)
 import Fossa.API.Types (Organization (..), uploadLocator)
 import Srclib.Types (Locator)
 import Test.Effect (expectFatal', it', shouldBe')
@@ -20,14 +22,24 @@ spec = do
       GetOrganization `alwaysReturns` org
       GetApiOpts `alwaysReturns` Fixtures.apiOpts
       expectUploadSuccess
-      locator <- uploadScan fixtureRevision fixtureProjectMetadata fixtureContainerScan
+      locator <- uploadScan fixtureRevision fixtureProjectMetadata (fixtureJsonOutput False) fixtureContainerScan
       locator `shouldBe'` expectedLocator
 
     it' "should fail uploading native container scan, when org does not supports native container scanning" $ do
       let org = Fixtures.organization{orgSupportsNativeContainerScan = False}
       GetOrganization `alwaysReturns` org
       GetApiOpts `alwaysReturns` Fixtures.apiOpts
-      expectFatal' $ uploadScan fixtureRevision fixtureProjectMetadata fixtureContainerScan
+      expectFatal' $ uploadScan fixtureRevision fixtureProjectMetadata (fixtureJsonOutput False) fixtureContainerScan
+
+    -- As with the version of this test for App.Fossa.Analyze.UploadSpec, this
+    -- is just checking it doesn't fail.
+    it' "should render JSON when requested" $ do
+      let org = Fixtures.organization{orgSupportsNativeContainerScan = True}
+      GetOrganization `alwaysReturns` org
+      GetApiOpts `alwaysReturns` Fixtures.apiOpts
+      expectUploadSuccess
+      locator <- uploadScan fixtureRevision fixtureProjectMetadata (fixtureJsonOutput True) fixtureContainerScan
+      locator `shouldBe'` expectedLocator
 
 fixtureProjectMetadata :: ProjectMetadata
 fixtureProjectMetadata = ProjectMetadata Nothing Nothing Nothing Nothing Nothing Nothing ["label-1", "label-2"] Nothing
@@ -38,7 +50,10 @@ fixtureContainerScan = ContainerScan (ContainerScanImage "alpine" "3.1.4" []) "s
 fixtureRevision :: ProjectRevision
 fixtureRevision = ProjectRevision "some-tag" "some-digest" $ Just "master"
 
-expectUploadSuccess :: Has MockApi sig m => m ()
+fixtureJsonOutput :: Bool -> Flag JsonOutput
+fixtureJsonOutput = toFlag JsonOutput
+
+expectUploadSuccess :: (Has MockApi sig m) => m ()
 expectUploadSuccess =
   UploadNativeContainerScan fixtureRevision fixtureProjectMetadata fixtureContainerScan
     `alwaysReturns` Fixtures.uploadResponse
