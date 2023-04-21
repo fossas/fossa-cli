@@ -7,7 +7,7 @@ import App.Fossa.VendoredDependency (VendoredDependencyScanMode (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (..))
 import Data.List.NonEmpty qualified as NE
-import Fossa.API.Types (Archive, ArchiveComponents (ArchiveComponents, archives, forceRebuild, fullFiles))
+import Fossa.API.Types (Archive, ArchiveComponents (ArchiveComponents, archives, forceRebuild, fullFiles), Organization (orgRequiresFullFileUploads))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
 import Srclib.Types (
@@ -155,12 +155,28 @@ spec = do
       locators <- licenseScanSourceUnit SkippingDisabledViaFlag Nothing False scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
+    it' "should upload with the fullFiles flag if the org requires full files" $ do
+      expectGetApiOpts
+      expectGetOrganizationThatRequiresFullFiles
+      expectNothingScannedYet
+      expectGetSignedUrl PackageRevision{packageName = "first-archive-test", packageVersion = "0.0.1"}
+      expectUploadLicenseScanResult Fixtures.firstLicenseSourceUnit
+      expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
+      expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
+      expectFinalizeScanWithFullFiles Fixtures.archives
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing True scanDir Fixtures.vendoredDeps
+      locators `shouldBe'` Fixtures.locators
+
+
 expectGetApiOpts :: Has MockApi sig m => m ()
 expectGetApiOpts =
   GetApiOpts `alwaysReturns` Fixtures.apiOpts
 
 expectGetOrganization :: Has MockApi sig m => m ()
 expectGetOrganization = GetOrganization `alwaysReturns` Fixtures.organization
+
+expectGetOrganizationThatRequiresFullFiles :: Has MockApi sig m => m ()
+expectGetOrganizationThatRequiresFullFiles = GetOrganization `alwaysReturns` Fixtures.organization{orgRequiresFullFileUploads = True}
 
 expectGetSignedUrl :: Has MockApi sig m => PackageRevision -> m ()
 expectGetSignedUrl packageRevision = GetSignedLicenseScanUrl packageRevision `alwaysReturns` Fixtures.signedUrl
@@ -196,3 +212,7 @@ expectFinalizeScan as =
 expectFinalizeScanWithForceRebuild :: Has MockApi sig m => [Archive] -> m ()
 expectFinalizeScanWithForceRebuild as =
   (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = True, fullFiles = False}) `returnsOnce` ()
+
+expectFinalizeScanWithFullFiles :: Has MockApi sig m => [Archive] -> m ()
+expectFinalizeScanWithFullFiles as =
+  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = False, fullFiles = True}) `returnsOnce` ()
