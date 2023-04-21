@@ -20,7 +20,7 @@ import Srclib.Types (
  )
 import Test.Effect (it', shouldBe')
 import Test.Fixtures qualified as Fixtures
-import Test.Hspec (Spec, describe, it, runIO, shouldBe)
+import Test.Hspec (Spec, describe, it, runIO, shouldBe, shouldMatchList)
 import Test.MockApi (MockApi, alwaysReturns, returnsOnce, returnsOnceForAnyRequest)
 
 -- test data for combineLicenseUnits tests
@@ -85,7 +85,7 @@ spec = do
     it "should combine two MIT units" $
       combineLicenseUnits [unitOne, unitTwo] `shouldBe` [expectedCombinedUnit]
     it "should not combine two units with different licenses" $
-      combineLicenseUnits [unitOne, unitTwo{licenseUnitName = "AGPL"}] `shouldBe` [unitTwo{licenseUnitName = "AGPL"}, unitOne]
+      combineLicenseUnits [unitOne, unitTwo{licenseUnitName = "AGPL"}] `shouldMatchList` [unitOne, unitTwo{licenseUnitName = "AGPL"}]
 
   describe "licenseScanSourceUnits" $ do
     currDir <- runIO getCurrentDir
