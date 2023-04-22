@@ -28,6 +28,7 @@ import App.Fossa.VendoredDependency (
   arcToLocator,
   forceVendoredToArchive,
  )
+import App.Types (FullFileUploads (..))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
@@ -60,7 +61,6 @@ import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
 import Types (ArchiveUploadType (..), GraphBreadth (..))
-import App.Types (FullFileUploads(..))
 
 data FoundDepsFile
   = ManualYaml (Path Abs File)

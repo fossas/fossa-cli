@@ -55,9 +55,10 @@ import App.Support (
   requestReportIfPersists,
  )
 import App.Types (
+  FullFileUploads (FullFileUploads),
   ProjectMetadata (..),
   ProjectRevision (..),
-  ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease), FullFileUploads (FullFileUploads),
+  ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
  )
 import App.Version (versionNumber)
 import Codec.Compression.GZip qualified as GZIP
