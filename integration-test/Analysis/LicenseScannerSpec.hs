@@ -27,7 +27,8 @@ import Srclib.Types (
   LicenseSourceUnit (licenseSourceUnitLicenseUnits),
   LicenseUnit (licenseUnitData, licenseUnitFiles, licenseUnitName),
   LicenseUnitData (licenseUnitDataContents, licenseUnitDataMatchData),
-  emptyLicenseUnit, LicenseUnitMatchData (licenseUnitMatchDataMatchString),
+  LicenseUnitMatchData (licenseUnitMatchDataMatchString),
+  emptyLicenseUnit,
  )
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Types (GlobFilter (GlobFilter), LicenseScanPathFilters (..))
@@ -106,7 +107,7 @@ spec = do
           NE.sort (licenseUnitFiles mitUnit) `shouldBe` NE.fromList ["vendor/foo/bar/MIT_LICENSE", "vendor/foo/bar/baz/SOMETHING_LICENSE", "vendor/foo/bar/baz/quux/QUUX_LICENSE"]
           NE.sort (licenseUnitFiles apacheUnit) `shouldBe` NE.fromList ["vendor/foo/bar/bar_apache.rb", "vendor/foo/bar/baz/something.rb"]
           -- matchData should exist
-          let matchData = concatMap NE.toList $ NE.toList (fromMaybe ( NE.fromList [] ) . licenseUnitDataMatchData <$> licenseUnitData mitUnit)
+          let matchData = concatMap NE.toList $ NE.toList (fromMaybe (NE.fromList []) . licenseUnitDataMatchData <$> licenseUnitData mitUnit)
           licenseUnitMatchDataMatchString <$> matchData `shouldBe` [Just mitLicense, Just mitLicense, Just mitLicense]
           -- no Contents since we're running themis with --srclib-with-matches
           licenseUnitDataContents <$> licenseUnitData mitUnit `shouldBe` NE.fromList [Nothing, Nothing, Nothing]
@@ -131,7 +132,7 @@ spec = do
           -- We should get Contents since we're running themis with --srclib-with-full-files
           licenseUnitDataContents <$> licenseUnitData mitUnit `shouldBe` NE.fromList [Just mitLicense, Just mitLicense, Just mitLicense]
           -- matchData should be all Nothing
-          let matchData = concatMap NE.toList $ NE.toList (fromMaybe ( NE.fromList [] ) . licenseUnitDataMatchData <$> licenseUnitData mitUnit)
+          let matchData = concatMap NE.toList $ NE.toList (fromMaybe (NE.fromList []) . licenseUnitDataMatchData <$> licenseUnitData mitUnit)
           licenseUnitMatchDataMatchString <$> matchData `shouldBe` [Nothing, Nothing, Nothing]
           where
             mitUnit :: LicenseUnit
