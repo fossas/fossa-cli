@@ -22,6 +22,7 @@ import Test.Effect (it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Test.MockApi (MockApi, alwaysReturns, returnsOnce, returnsOnceForAnyRequest)
+import App.Types (FullFileUploads(..))
 
 -- test data for combineLicenseUnits tests
 info :: LicenseUnitInfo
@@ -96,7 +97,7 @@ spec = do
       expectGetOrganization
       expectEverythingScannedAlready
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing False scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing (FullFileUploads False) scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should scan all if Core does not know about the revisions" $ do
@@ -108,7 +109,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing False scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing (FullFileUploads False) scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should scan all if the revisions are still being scanned" $ do
@@ -120,7 +121,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing False scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing (FullFileUploads False) scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should scan one if one revision is still being scanned" $ do
@@ -130,7 +131,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "first-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.firstLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing False scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing (FullFileUploads False) scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should always scan all if vendor dependency skipping is not supported" $ do
@@ -141,7 +142,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkippingNotSupported Nothing False scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkippingNotSupported Nothing (FullFileUploads False) scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should always scan all if the --force-vendor-dependency-rescans flag is used" $ do
@@ -152,7 +153,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScanWithForceRebuild Fixtures.archives
-      locators <- licenseScanSourceUnit SkippingDisabledViaFlag Nothing False scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkippingDisabledViaFlag Nothing (FullFileUploads False) scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should upload with the fullFiles flag if the org requires full files" $ do
@@ -164,7 +165,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScanWithFullFiles Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing True scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing (FullFileUploads True) scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
 
@@ -207,12 +208,12 @@ expectUploadLicenseScanResult licenseUnit =
 
 expectFinalizeScan :: Has MockApi sig m => [Archive] -> m ()
 expectFinalizeScan as =
-  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = False, fullFiles = False}) `returnsOnce` ()
+  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = False, fullFiles = (FullFileUploads False)}) `returnsOnce` ()
 
 expectFinalizeScanWithForceRebuild :: Has MockApi sig m => [Archive] -> m ()
 expectFinalizeScanWithForceRebuild as =
-  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = True, fullFiles = False}) `returnsOnce` ()
+  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = True, fullFiles = (FullFileUploads False)}) `returnsOnce` ()
 
 expectFinalizeScanWithFullFiles :: Has MockApi sig m => [Archive] -> m ()
 expectFinalizeScanWithFullFiles as =
-  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = False, fullFiles = True}) `returnsOnce` ()
+  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = False, fullFiles = (FullFileUploads True)}) `returnsOnce` ()

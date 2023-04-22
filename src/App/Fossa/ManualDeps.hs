@@ -60,6 +60,7 @@ import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
 import Types (ArchiveUploadType (..), GraphBreadth (..))
+import App.Types (FullFileUploads(..))
 
 data FoundDepsFile
   = ManualYaml (Path Abs File)
@@ -167,7 +168,7 @@ scanAndUpload ::
 scanAndUpload root vdeps vendoredDepsOptions = do
   org <- getOrganization
   (archiveOrCLI, vendoredDependencyScanMode) <- getScanCfg org vendoredDepsOptions
-  let fullFileUploads = orgRequiresFullFileUploads org
+  let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
   let pathFilters = licenseScanPathFilters vendoredDepsOptions
   let scanner = case archiveOrCLI of
         ArchiveUpload -> archiveUploadSourceUnit

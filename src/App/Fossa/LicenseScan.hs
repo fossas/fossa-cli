@@ -21,7 +21,7 @@ import App.Fossa.VendoredDependency (
   VendoredDependency,
   dedupVendoredDeps,
  )
-import App.Types (BaseDir (BaseDir))
+import App.Types (BaseDir (BaseDir), FullFileUploads (FullFileUploads))
 import Control.Carrier.StickyLogger (
   Has,
   StickyLogger,
@@ -106,4 +106,4 @@ runLicenseScan ::
   Maybe LicenseScanPathFilters ->
   NonEmpty VendoredDependency ->
   m (NonEmpty LicenseSourceUnit)
-runLicenseScan basedir licenseScanPathFilters vdeps = dedupVendoredDeps vdeps >>= traverse (scanVendoredDep basedir licenseScanPathFilters False)
+runLicenseScan basedir licenseScanPathFilters vdeps = dedupVendoredDeps vdeps >>= traverse (scanVendoredDep basedir licenseScanPathFilters $ FullFileUploads False)

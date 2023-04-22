@@ -57,7 +57,7 @@ import App.Support (
 import App.Types (
   ProjectMetadata (..),
   ProjectRevision (..),
-  ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
+  ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease), FullFileUploads (FullFileUploads),
  )
 import App.Version (versionNumber)
 import Codec.Compression.GZip qualified as GZIP
@@ -804,7 +804,7 @@ archiveBuildUpload apiOpts archive = runEmpty $
     let opts = "dependency" =: True <> "rawLicenseScan" =: True
     -- The API route expects an array of archives, but doesn't properly handle multiple archives so we upload
     -- an array of a single archive.
-    let archiveProjects = ArchiveComponents [archive] False False
+    let archiveProjects = ArchiveComponents [archive] False $ FullFileUploads False
     -- The response appears to either be "Created" for new builds, or an error message for existing builds.
     -- Making the actual return value of "Created" essentially worthless.
     resp <-

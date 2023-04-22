@@ -73,6 +73,7 @@ import Srclib.Types (
   Locator (..),
  )
 import Types (LicenseScanPathFilters)
+import App.Types (FullFileUploads)
 
 data LicenseScanErr
   = NoSuccessfulScans
@@ -100,7 +101,7 @@ runLicenseScanOnDir ::
   ) =>
   Text ->
   Maybe LicenseScanPathFilters ->
-  Bool ->
+  FullFileUploads ->
   Path Abs Dir ->
   m [LicenseUnit]
 runLicenseScanOnDir pathPrefix licenseScanPathFilters fullFileUploads scanDir = do
@@ -120,7 +121,7 @@ recursivelyScanArchives ::
   ) =>
   Text ->
   Maybe LicenseScanPathFilters ->
-  Bool ->
+  FullFileUploads ->
   Path Abs Dir ->
   m [LicenseUnit]
 recursivelyScanArchives pathPrefix licenseScanPathFilters fullFileUploads dir = flip walk' dir $
@@ -163,13 +164,13 @@ themisRunner ::
   ) =>
   Text ->
   Maybe LicenseScanPathFilters ->
-  Bool ->
+  FullFileUploads ->
   Path Abs Dir ->
   ThemisBins ->
   m [LicenseUnit]
 themisRunner pathPrefix licenseScanPathFilters fullFileUploads scanDir themisBins = runThemis themisBins pathPrefix licenseScanPathFilters fullFileUploads scanDir
 
-runThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Maybe LicenseScanPathFilters -> Bool -> Path Abs Dir -> m [LicenseUnit]
+runThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Maybe LicenseScanPathFilters -> FullFileUploads -> Path Abs Dir -> m [LicenseUnit]
 runThemis themisBins pathPrefix licenseScanPathFilters fullFileUploads scanDir = do
   context "Running license scan binary" $ execThemis themisBins pathPrefix scanDir $ themisFlags licenseScanPathFilters fullFileUploads
 
@@ -188,7 +189,7 @@ scanAndUploadVendoredDep ::
   ) =>
   Path Abs Dir ->
   Maybe LicenseScanPathFilters ->
-  Bool ->
+  FullFileUploads ->
   VendoredDependency ->
   m (Maybe Archive)
 scanAndUploadVendoredDep baseDir licenseScanPathFilters fullFileUploads vdep = context "Processing vendored dependency" $ do
@@ -206,7 +207,7 @@ scanVendoredDep ::
   ) =>
   Path Abs Dir ->
   Maybe LicenseScanPathFilters ->
-  Bool ->
+  FullFileUploads ->
   VendoredDependency ->
   m LicenseSourceUnit
 scanVendoredDep baseDir licenseScanPathFilters fullFileUploads VendoredDependency{..} = context "Scanning vendored deps for license data" $ do
@@ -234,7 +235,7 @@ scanArchive ::
   ) =>
   Path Abs Dir ->
   Maybe LicenseScanPathFilters ->
-  Bool ->
+  FullFileUploads ->
   ScannableArchive ->
   m (NonEmpty LicenseUnit)
 scanArchive baseDir licenseScanPathFilters fullFileUploads file = runFinally $ do
@@ -257,7 +258,7 @@ scanDirectory ::
   Maybe ScannableArchive ->
   Text ->
   Maybe LicenseScanPathFilters ->
-  Bool ->
+  FullFileUploads ->
   Path Abs Dir ->
   m (NonEmpty LicenseUnit)
 scanDirectory origin pathPrefix licenseScanPathFilters fullFileUploads path = do
@@ -291,7 +292,7 @@ scanNonEmptyDirectory ::
   ) =>
   Text ->
   Maybe LicenseScanPathFilters ->
-  Bool ->
+  FullFileUploads ->
   Path Abs Dir ->
   m (NonEmpty LicenseUnit)
 scanNonEmptyDirectory pathPrefix licenseScanPathFilters fullFileUploads cliScanDir = do
@@ -335,7 +336,7 @@ licenseScanSourceUnit ::
   ) =>
   VendoredDependencyScanMode ->
   Maybe LicenseScanPathFilters ->
-  Bool ->
+  FullFileUploads ->
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
   m (NonEmpty Locator)

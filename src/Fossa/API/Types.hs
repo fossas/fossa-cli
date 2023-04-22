@@ -76,6 +76,7 @@ import Text.URI (URI, render)
 import Text.URI.QQ (uri)
 import Types (ArchiveUploadType (..))
 import Unsafe.Coerce qualified as Unsafe
+import App.Types ( FullFileUploads(..) )
 
 newtype ApiKey = ApiKey {unApiKey :: Text}
   deriving (Eq, Ord)
@@ -116,7 +117,7 @@ instance FromJSON SignedURL where
 data ArchiveComponents = ArchiveComponents
   { archives :: [Archive]
   , forceRebuild :: Bool
-  , fullFiles :: Bool
+  , fullFiles :: FullFileUploads
   }
   deriving (Eq, Ord, Show)
 
@@ -125,7 +126,7 @@ instance ToJSON ArchiveComponents where
     object
       [ "archives" .= archives
       , "forceRebuild" .= forceRebuild
-      , "fullFiles" .= fullFiles
+      , "fullFiles" .= unFullFileUploads fullFiles
       ]
 
 data Archive = Archive

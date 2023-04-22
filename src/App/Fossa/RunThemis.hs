@@ -29,6 +29,7 @@ import Effect.Exec (
 import Path (Abs, Dir, Path, parent)
 import Srclib.Types (LicenseUnit)
 import Types (GlobFilter (unGlobFilter), LicenseScanPathFilters (..))
+import App.Types (FullFileUploads (unFullFileUploads))
 
 execRawThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> [Text] -> m BL.ByteString
 execRawThemis themisBins scanDir flags = execThrow scanDir $ themisCommand themisBins "" flags
@@ -56,10 +57,10 @@ generateThemisArgs taggedThemisIndex pathPrefix flags =
     <> flags
     <> ["."]
 
-themisFlags :: Maybe LicenseScanPathFilters -> Bool -> [Text]
-themisFlags Nothing fullFileUploads = if fullFileUploads then ["--srclib-with-full-files"] else ["--srclib-with-matches"]
+themisFlags :: Maybe LicenseScanPathFilters -> FullFileUploads -> [Text]
+themisFlags Nothing fullFileUploads = if unFullFileUploads fullFileUploads then ["--srclib-with-full-files"] else ["--srclib-with-matches"]
 themisFlags (Just filters) fullFileUploads =
-  let defaultFilter = if fullFileUploads then ["--srclib-with-full-files"] else ["--srclib-with-matches"]
+  let defaultFilter = if unFullFileUploads fullFileUploads then ["--srclib-with-full-files"] else ["--srclib-with-matches"]
       onlyFilters = concatMap (\only -> ["--only-paths", unGlobFilter only]) $ licenseScanPathFiltersOnly filters
       exceptFilters = concatMap (\exclude -> ["--exclude-paths", unGlobFilter exclude]) $ licenseScanPathFiltersExclude filters
    in defaultFilter ++ onlyFilters ++ exceptFilters
