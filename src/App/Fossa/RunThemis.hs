@@ -14,6 +14,7 @@ import App.Fossa.EmbeddedBinary (
   ThemisIndex,
   toPath,
  )
+import App.Types (FullFileUploads (unFullFileUploads))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.ByteString.Lazy qualified as BL
 import Data.String.Conversion (toText)
@@ -29,7 +30,6 @@ import Effect.Exec (
 import Path (Abs, Dir, Path, parent)
 import Srclib.Types (LicenseUnit)
 import Types (GlobFilter (unGlobFilter), LicenseScanPathFilters (..))
-import App.Types (FullFileUploads (unFullFileUploads))
 
 execRawThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> [Text] -> m BL.ByteString
 execRawThemis themisBins scanDir flags = execThrow scanDir $ themisCommand themisBins "" flags

@@ -4,6 +4,7 @@ module App.Fossa.LicenseScannerSpec (spec) where
 
 import App.Fossa.LicenseScanner (combineLicenseUnits, licenseScanSourceUnit)
 import App.Fossa.VendoredDependency (VendoredDependencyScanMode (..))
+import App.Types (FullFileUploads (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (..))
 import Data.List.NonEmpty qualified as NE
@@ -22,7 +23,6 @@ import Test.Effect (it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Test.MockApi (MockApi, alwaysReturns, returnsOnce, returnsOnceForAnyRequest)
-import App.Types (FullFileUploads(..))
 
 -- test data for combineLicenseUnits tests
 info :: LicenseUnitInfo
@@ -167,7 +167,6 @@ spec = do
       expectFinalizeScanWithFullFiles Fixtures.archives
       locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing (FullFileUploads True) scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
-
 
 expectGetApiOpts :: Has MockApi sig m => m ()
 expectGetApiOpts =

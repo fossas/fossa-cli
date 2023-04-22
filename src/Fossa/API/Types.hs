@@ -31,6 +31,7 @@ module Fossa.API.Types (
   defaultApiPollDelay,
 ) where
 
+import App.Types (FullFileUploads (..))
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, fatalText)
 import Control.Timeout (Duration (Seconds))
@@ -76,7 +77,6 @@ import Text.URI (URI, render)
 import Text.URI.QQ (uri)
 import Types (ArchiveUploadType (..))
 import Unsafe.Coerce qualified as Unsafe
-import App.Types ( FullFileUploads(..) )
 
 newtype ApiKey = ApiKey {unApiKey :: Text}
   deriving (Eq, Ord)

@@ -24,6 +24,7 @@ import App.Fossa.VendoredDependency (
   hashFile,
   skippedDepsDebugLog,
  )
+import App.Types (FullFileUploads)
 import Control.Carrier.Finally (Finally, runFinally)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (renderLocatorUrl)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, fatal, fromMaybe, recover)
@@ -73,7 +74,6 @@ import Srclib.Types (
   Locator (..),
  )
 import Types (LicenseScanPathFilters)
-import App.Types (FullFileUploads)
 
 data LicenseScanErr
   = NoSuccessfulScans

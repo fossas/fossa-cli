@@ -1,9 +1,9 @@
 module App.Fossa.RunThemisSpec (spec) where
 
 import App.Fossa.RunThemis (themisFlags)
+import App.Types (FullFileUploads (..))
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Types (GlobFilter (GlobFilter), LicenseScanPathFilters (..))
-import App.Types (FullFileUploads(..))
 
 spec :: Spec
 spec = do
