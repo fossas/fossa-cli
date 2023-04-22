@@ -110,8 +110,6 @@ spec = do
           licenseUnitMatchDataMatchString <$> matchData `shouldBe` [Just mitLicense, Just mitLicense, Just mitLicense]
           -- no Contents since we're running themis with --srclib-with-matches
           licenseUnitDataContents <$> licenseUnitData mitUnit `shouldBe` NE.fromList [Nothing, Nothing, Nothing]
-
-          -- let match = maybe (NE.fromList []) (licenseUnitDataMatchData <$> licenseUnitData mitUnit)
           where
             mitUnit :: LicenseUnit
             mitUnit = fromMaybe emptyLicenseUnit (head' $ NE.filter (\u -> licenseUnitName u == "mit") us)
