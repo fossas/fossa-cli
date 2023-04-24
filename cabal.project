@@ -3,6 +3,12 @@ tests: True
 optimization: False
 
 package spectrometer
+  -- Building with file-embed fails on GHC >= 9.2 on Mac OS X when using no optimizations (-O0).
+  -- I found that we can keep most of the speed of compiling with -O0 and compile succesfully by enabling this one extension.
+  -- In CI, we use either -O1 or -O2 so this should not be a problem.
+  -- 
+  -- When upgrading to GHC 9.4 consumers of spectrometer may also need to enable this flag if they use -O0.
+  -- Bug filed here: https://github.com/snoyberg/file-embed/issues/45
   ghc-options: -ffull-laziness
         
 allow-newer:
@@ -62,25 +68,20 @@ source-repository-package
   location: https://github.com/fossas/tar
   tag: 6bd13acc541ae60b5c831823243040e18bd1d957
 
--- TODO: Add commentary after making a PR against upstream
+-- This can be removed once https://github.com/hackage-trustees/bzlib/pull/3 merges.
+-- The main changes were simply to version ranges.
 source-repository-package
   type: git
   location: https://github.com/fossas/bzlib
   tag: 6c4c6c9e3249ac76378f8ad16b48ccec5f253c89
 
--- TODO: Add commentary after making a PR against upstream
+-- This can be removed once https://github.com/weldr/codec-rpm/pull/40 merges and is available on hackage.
 source-repository-package
   type: git
   location: https://github.com/fossas/codec-rpm
   tag: 0f7431423d47fdf36945e4ff31fbee76005b7e68
 
--- -- TODO: Add commentary after making a PR against upstream
--- source-repository-package
---   type: git
---   location: https://github.com/fossas/codec-rpm
---   tag: 37081e93b0fbdb3e560be6a390fa7f7120a1b95d
-
--- Switch to using the hackage version of this when a new release incorporating https://github.com/kowainik/tomland/pull/422 happens.
+-- Use the hackage version of when a new release incorporating https://github.com/kowainik/tomland/pull/422 happens.
 source-repository-package
   type: git
   location: https://github.com/kowainik/tomland.git

@@ -68,8 +68,10 @@ common deps
     , base64-bytestring            ^>=1.2.1.0
     , binary                       ^>=0.8.8.0
     , bytestring                   ^>=0.11
+    -- bzlib is installed via cabal.project, so this number is an expected future version.
     , bzlib                        ^>=0.6.0.0
     , cgroup-rts-threads           ^>=0.2.0.0
+    -- codec-rpm is installed via cabal.project, so this number is an expected future version.
     , codec-rpm                    ^>=0.2.3
     , concurrent-output            ^>=1.10.12
     , conduit                      ^>=1.3.2
