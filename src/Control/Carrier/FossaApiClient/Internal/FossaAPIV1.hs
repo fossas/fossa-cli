@@ -114,7 +114,7 @@ import Fossa.API.Types (
   Contributors,
   Issues,
   OrgId,
-  Organization (orgSupportsIssueDiffs, orgSupportsNativeContainerScan, organizationId),
+  Organization (orgSupportsIssueDiffs, orgSupportsNativeContainerScan, organizationId, orgRequiresFullFileUploads, Organization),
   Project,
   RevisionDependencyCache,
   SignedURL (signedURL),
@@ -207,8 +207,9 @@ instance (Has (Lift IO) sig m, Has Diagnostics sig m) => MonadHttp (FossaReqAllo
       allow401 :: HttpException -> EmptyC m a
       allow401 err = maybe empty fatal (allow401' err)
 
-newtype GetAnalyzedRevisionsBody = GetAnalyzedRevisionsBody
+data GetAnalyzedRevisionsBody = GetAnalyzedRevisionsBody
   { getAnalyzedRevisionsBodyLocators :: NonEmpty Text
+  , getAnalyzedRevisionsBodyFullFileUploads :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -216,6 +217,7 @@ instance ToJSON GetAnalyzedRevisionsBody where
   toJSON GetAnalyzedRevisionsBody{..} =
     object
       [ "locators" .= getAnalyzedRevisionsBodyLocators
+      , "fullFileUploads" .= getAnalyzedRevisionsBodyFullFileUploads
       ]
 
 fossaReq :: FossaReq m a -> m a
@@ -749,9 +751,9 @@ getAnalyzedRevisions ::
   NonEmpty VendoredDependency ->
   m [Text]
 getAnalyzedRevisions apiOpts vDeps = fossaReq $ do
-  orgId <- organizationId <$> getOrganization apiOpts
+  Organization{organizationId=orgId, orgRequiresFullFileUploads=fullFileUploads} <- getOrganization apiOpts
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  let locatorBody = GetAnalyzedRevisionsBody $ NE.map (renderLocatorUrl orgId . vendoredDepToLocator) vDeps
+  let locatorBody = GetAnalyzedRevisionsBody (NE.map (renderLocatorUrl orgId . vendoredDepToLocator) vDeps) fullFileUploads
   responseBody <$> req POST (getAnalyzedRevisionsEndpoint baseUrl) (ReqBodyJson locatorBody) jsonResponse baseOpts
 
 -----
