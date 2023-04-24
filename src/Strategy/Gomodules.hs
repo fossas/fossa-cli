@@ -92,7 +92,6 @@ getDeps project goDynamicTactic = do
         case goDynamicTactic of
           GoPackagesBasedTactic ->
             context "analysis using go list (V3 Resolver)" (GoListPackages.analyze (gomodulesDir project))
-              <||> defaultDynamicAnalysis
           GoModulesBasedTactic -> defaultDynamicAnalysis
 
     defaultDynamicAnalysis :: (Has Diagnostics sig m, Has Exec sig m) => m (Graphing Dependency, GraphBreadth)
