@@ -103,9 +103,3 @@ instance Monoid OverrideDynamicAnalysisBinary where
   mempty = OverrideDynamicAnalysisBinary mempty
 
 newtype FullFileUploads = FullFileUploads {unFullFileUploads :: Bool} deriving (Eq, Ord, Show, Generic)
-
--- instance ToJSON FullFileUploads where
---   toEncoding = genericToEncoding defaultOptions
-
--- instance FromJSON FullFileUploads where
---   parseJSON obj = FullFileUploads <$> obj
