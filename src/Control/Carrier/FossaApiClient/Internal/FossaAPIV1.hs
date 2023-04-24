@@ -114,7 +114,7 @@ import Fossa.API.Types (
   Contributors,
   Issues,
   OrgId,
-  Organization (orgSupportsIssueDiffs, orgSupportsNativeContainerScan, organizationId, orgRequiresFullFileUploads, Organization),
+  Organization (Organization, orgRequiresFullFileUploads, orgSupportsIssueDiffs, orgSupportsNativeContainerScan, organizationId),
   Project,
   RevisionDependencyCache,
   SignedURL (signedURL),
@@ -751,7 +751,7 @@ getAnalyzedRevisions ::
   NonEmpty VendoredDependency ->
   m [Text]
 getAnalyzedRevisions apiOpts vDeps = fossaReq $ do
-  Organization{organizationId=orgId, orgRequiresFullFileUploads=fullFileUploads} <- getOrganization apiOpts
+  Organization{organizationId = orgId, orgRequiresFullFileUploads = fullFileUploads} <- getOrganization apiOpts
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   let locatorBody = GetAnalyzedRevisionsBody (NE.map (renderLocatorUrl orgId . vendoredDepToLocator) vDeps) fullFileUploads
   responseBody <$> req POST (getAnalyzedRevisionsEndpoint baseUrl) (ReqBodyJson locatorBody) jsonResponse baseOpts
