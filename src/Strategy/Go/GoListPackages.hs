@@ -21,7 +21,7 @@ import Control.Effect.State (gets)
 import Control.Monad (unless, when, (>=>))
 import Data.Aeson (FromJSON (parseJSON), Value, withObject, (.!=), (.:), (.:?))
 import Data.Aeson.Encode.Pretty (encodePretty)
-import Data.Aeson.Internal (formatError)
+import Data.Aeson.Types (formatError)
 import Data.Foldable (traverse_)
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet

@@ -10,7 +10,7 @@ module Strategy.Go.GoList (
 import Control.Effect.Diagnostics hiding (fromMaybe)
 import Control.Monad (void)
 import Data.Aeson (FromJSON, withObject, (.!=), (.:), (.:?))
-import Data.Aeson.Internal (formatError)
+import Data.Aeson.Types (formatError)
 import Data.Aeson.Types (parseJSON)
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)

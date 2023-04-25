@@ -29,7 +29,7 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
-import Data.Aeson.Internal (formatError, iparse)
+import Data.Aeson.Types (formatError, iparse)
 import Data.Aeson.Parser (eitherDecodeWith)
 import Data.Attoparsec.ByteString qualified as A
 import Data.ByteString.Lazy qualified as BL

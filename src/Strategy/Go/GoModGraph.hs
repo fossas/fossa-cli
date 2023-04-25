@@ -23,7 +23,7 @@ import Control.Effect.Diagnostics (
   fromMaybeText,
  )
 import Control.Monad (void)
-import Data.Aeson.Internal (formatError)
+import Data.Aeson.Types (formatError)
 import Data.Bifunctor (Bifunctor (bimap))
 import Data.Foldable (find)
 import Data.Map (Map)
