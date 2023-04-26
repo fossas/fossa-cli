@@ -2,7 +2,6 @@
 
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 ## v3.7.9
-
 - License Scanning: Add support for "full file uploads" for CLI-side license scans. ([#1181](https://github.com/fossas/fossa-cli/pull/1181))
 
 ## v3.7.8
