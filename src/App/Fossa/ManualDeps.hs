@@ -28,6 +28,7 @@ import App.Fossa.VendoredDependency (
   arcToLocator,
   forceVendoredToArchive,
  )
+import App.Types (FullFileUploads (..))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
@@ -167,10 +168,11 @@ scanAndUpload ::
 scanAndUpload root vdeps vendoredDepsOptions = do
   org <- getOrganization
   (archiveOrCLI, vendoredDependencyScanMode) <- getScanCfg org vendoredDepsOptions
+  let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
   let pathFilters = licenseScanPathFilters vendoredDepsOptions
   let scanner = case archiveOrCLI of
         ArchiveUpload -> archiveUploadSourceUnit
-        CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode pathFilters
+        CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode pathFilters fullFileUploads
 
   when (archiveOrCLI == ArchiveUpload && isJust pathFilters) $
     fatalText "You have provided path filters in the vendoredDependencies.licenseScanPathFilters section of your .fossa.yml file. Path filters are not allowed when doing archive uploads."

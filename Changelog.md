@@ -1,10 +1,12 @@
 # FOSSA CLI Changelog
 
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
+## v3.7.9
+- License Scanning: Add support for "full file uploads" for CLI-side license scans. ([#1181](https://github.com/fossas/fossa-cli/pull/1181))
 
 ## v3.7.8
 - Go: Do not fall back to module based analysis when using `--experimental-use-go-v3-resolver`. ([#1184](https://github.com/fossas/fossa-cli/pull/1184))
-        
+
 ## v3.7.7
 - Adds `--json` flag to `fossa container analyze` ([#1180](https://github.com/fossas/fossa-cli/pull/1180))
 - License Scanning: Reduce false positives caused by indicator matches. This is done by only reporting indicator matches to SPDX keys and license names when we are scanning a manifest file ([#1182](https://github.com/fossas/fossa-cli/pull/1182))

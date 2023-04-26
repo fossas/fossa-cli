@@ -55,6 +55,7 @@ import App.Support (
   requestReportIfPersists,
  )
 import App.Types (
+  FullFileUploads (FullFileUploads),
   ProjectMetadata (..),
   ProjectRevision (..),
   ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
@@ -113,7 +114,7 @@ import Fossa.API.Types (
   Contributors,
   Issues,
   OrgId,
-  Organization (orgSupportsIssueDiffs, orgSupportsNativeContainerScan, organizationId),
+  Organization (Organization, orgRequiresFullFileUploads, orgSupportsIssueDiffs, orgSupportsNativeContainerScan, organizationId),
   Project,
   RevisionDependencyCache,
   SignedURL (signedURL),
@@ -206,8 +207,9 @@ instance (Has (Lift IO) sig m, Has Diagnostics sig m) => MonadHttp (FossaReqAllo
       allow401 :: HttpException -> EmptyC m a
       allow401 err = maybe empty fatal (allow401' err)
 
-newtype GetAnalyzedRevisionsBody = GetAnalyzedRevisionsBody
+data GetAnalyzedRevisionsBody = GetAnalyzedRevisionsBody
   { getAnalyzedRevisionsBodyLocators :: NonEmpty Text
+  , getAnalyzedRevisionsBodyFullFileUploads :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -215,6 +217,7 @@ instance ToJSON GetAnalyzedRevisionsBody where
   toJSON GetAnalyzedRevisionsBody{..} =
     object
       [ "locators" .= getAnalyzedRevisionsBodyLocators
+      , "fullFileUploads" .= getAnalyzedRevisionsBodyFullFileUploads
       ]
 
 fossaReq :: FossaReq m a -> m a
@@ -748,9 +751,9 @@ getAnalyzedRevisions ::
   NonEmpty VendoredDependency ->
   m [Text]
 getAnalyzedRevisions apiOpts vDeps = fossaReq $ do
-  orgId <- organizationId <$> getOrganization apiOpts
+  Organization{organizationId = orgId, orgRequiresFullFileUploads = fullFileUploads} <- getOrganization apiOpts
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  let locatorBody = GetAnalyzedRevisionsBody $ NE.map (renderLocatorUrl orgId . vendoredDepToLocator) vDeps
+  let locatorBody = GetAnalyzedRevisionsBody (NE.map (renderLocatorUrl orgId . vendoredDepToLocator) vDeps) fullFileUploads
   responseBody <$> req POST (getAnalyzedRevisionsEndpoint baseUrl) (ReqBodyJson locatorBody) jsonResponse baseOpts
 
 -----
@@ -804,7 +807,8 @@ archiveBuildUpload apiOpts archive = runEmpty $
     let opts = "dependency" =: True <> "rawLicenseScan" =: True
     -- The API route expects an array of archives, but doesn't properly handle multiple archives so we upload
     -- an array of a single archive.
-    let archiveProjects = ArchiveComponents [archive] False
+    -- forceRebuild and fullFiles are ignored by this endpoint. They are only used by the licenseScanFinalize endpoint.
+    let archiveProjects = ArchiveComponents [archive] False $ FullFileUploads False
     -- The response appears to either be "Created" for new builds, or an error message for existing builds.
     -- Making the actual return value of "Created" essentially worthless.
     resp <-
