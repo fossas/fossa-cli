@@ -29,7 +29,7 @@ runFirstPartyScan ::
 runFirstPartyScan root maybeApiOpts firstPartyScanFlag = do
   -- if we do not have api opts, then we act as if the org defaults to not running first-party scans
   case maybeApiOpts of
-    Nothing -> firstPartyScanMaybe root firstPartyScanFlag False
+    Nothing -> firstPartyScanMain root firstPartyScanFlag False
     Just apiOpts -> runFossaApiClient apiOpts $ firstPartyScanWithOrgInfo root firstPartyScanFlag
 
 firstPartyScanWithOrgInfo ::
@@ -45,7 +45,7 @@ firstPartyScanWithOrgInfo ::
   m (Maybe LicenseSourceUnit)
 firstPartyScanWithOrgInfo root firstPartyScanFlag = do
   org <- getOrganization
-  firstPartyScanMaybe root firstPartyScanFlag $ orgDefaultsToFirstPartyScans org
+  firstPartyScanMain root firstPartyScanFlag $ orgDefaultsToFirstPartyScans org
 
 shouldRunFirstPartyScans :: FirstPartyScansFlag -> Bool -> Bool
 shouldRunFirstPartyScans firstPartyScansFlag orgDefaultsToFirstParty =
@@ -54,7 +54,7 @@ shouldRunFirstPartyScans firstPartyScansFlag orgDefaultsToFirstParty =
     (FirstPartyScansOffFromFlag, _) -> False
     (FirstPartyScansUseDefault, orgDefault) -> orgDefault
 
-firstPartyScanMaybe ::
+firstPartyScanMain ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
@@ -65,22 +65,9 @@ firstPartyScanMaybe ::
   FirstPartyScansFlag ->
   Bool ->
   m (Maybe LicenseSourceUnit)
-firstPartyScanMaybe base firstPartyScansFlag orgDefaultsToFirstParty = do
+firstPartyScanMain base firstPartyScansFlag orgDefaultsToFirstParty = do
   let runFirstPartyScans = shouldRunFirstPartyScans firstPartyScansFlag orgDefaultsToFirstParty
-  case runFirstPartyScans of
-    (True) -> Just <$> firstPartyScanMain base
-    (False) -> pure Nothing
-
-
-firstPartyScanMain ::
-  ( Has Diagnostics sig m
-  , Has (Lift IO) sig m
-  , Has StickyLogger sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
-  ) =>
-  Path Abs Dir ->
-  m LicenseSourceUnit
-firstPartyScanMain base = do
   let vdep = VendoredDependency "first-party" "." Nothing
-  scanVendoredDep base Nothing ( FullFileUploads False ) vdep
+  case runFirstPartyScans of
+    (True) -> Just <$> scanVendoredDep base Nothing ( FullFileUploads False ) vdep
+    (False) -> pure Nothing
