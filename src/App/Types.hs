@@ -7,6 +7,7 @@ module App.Types (
   ProjectRevision (..),
   OverrideDynamicAnalysisBinary (..),
   FullFileUploads (..),
+  FirstPartyScansFlag (..),
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, withObject, (.:))
@@ -94,3 +95,9 @@ instance Monoid OverrideDynamicAnalysisBinary where
   mempty = OverrideDynamicAnalysisBinary mempty
 
 newtype FullFileUploads = FullFileUploads {unFullFileUploads :: Bool} deriving (Eq, Ord, Show, Generic)
+
+data FirstPartyScansFlag = FirstPartyScansOnFromFlag | FirstPartyScansOffFromFlag | FirstPartyScansUseDefault
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON FirstPartyScansFlag where
+  toEncoding = genericToEncoding defaultOptions

@@ -6,6 +6,8 @@ module App.Fossa.Config.Analyze (
   BinaryDiscovery (..),
   ExperimentalAnalyzeConfig (..),
   ForceVendoredDependencyRescans (..),
+  ForceFirstPartyScans (..),
+  ForceNoFirstPartyScans (..),
   IATAssertion (..),
   DynamicLinkInspect (..),
   IncludeAll (..),
@@ -57,7 +59,7 @@ import App.Types (
   OverrideDynamicAnalysisBinary (..),
   OverrideProject (OverrideProject),
   ProjectMetadata (projectLabel),
-  ProjectRevision,
+  ProjectRevision, FirstPartyScansFlag (..),
  )
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -107,6 +109,8 @@ import Types (ArchiveUploadType (..), LicenseScanPathFilters (..), TargetFilter)
 -- CLI flags, for use with 'Data.Flag'
 data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan deriving (Generic)
 data ForceVendoredDependencyRescans = ForceVendoredDependencyRescans deriving (Generic)
+data ForceFirstPartyScans = ForceFirstPartyScans deriving (Generic)
+data ForceNoFirstPartyScans = ForceNoFirstPartyScans deriving (Generic)
 
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
 data IncludeAll = IncludeAll deriving (Generic)
@@ -187,6 +191,8 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeSkipVSIGraphResolution :: [VSI.Locator]
   , analyzeBaseDir :: FilePath
   , analyzeDynamicGoAnalysisType :: GoDynamicTactic
+  , analyzeForceFirstPartyScans :: Flag ForceFirstPartyScans
+  , analyzeForceNoFirstPartyScans :: Flag ForceNoFirstPartyScans
   }
   deriving (Eq, Ord, Show)
 
@@ -213,6 +219,7 @@ data AnalyzeConfig = AnalyzeConfig
   , includeAllDeps :: Flag IncludeAll
   , noDiscoveryExclusion :: Flag NoDiscoveryExclusion
   , overrideDynamicAnalysis :: OverrideDynamicAnalysisBinary
+  , firstPartyScansFlag :: FirstPartyScansFlag
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -260,6 +267,8 @@ cliParser =
     <*> many skipVSIGraphResolutionOpt
     <*> baseDirArg
     <*> experimentalUseV3GoResolver
+    <*> flagOpt ForceFirstPartyScans (long "experimental-force-first-party-scans" <> help "Force first party scans")
+    <*> flagOpt ForceNoFirstPartyScans (long "experimental-force-no-first-party-scans" <> help "Force no first party scans")
 
 data GoDynamicTactic
   = GoModulesBasedTactic
@@ -379,6 +388,12 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       experimentalCfgs = collectExperimental maybeConfig cliOpts
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
       dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
+      firstPartyScansFlag =
+        case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
+          (True, _) -> FirstPartyScansOnFromFlag
+          (_, True) -> FirstPartyScansOffFromFlag
+          (False, False) -> FirstPartyScansUseDefault
+
 
   AnalyzeConfig
     <$> basedir
@@ -394,6 +409,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure analyzeIncludeAllDeps
     <*> pure analyzeNoDiscoveryExclusion
     <*> pure dynamicAnalysisOverrides
+    <*> pure firstPartyScansFlag
 
 collectFilters ::
   ( Has Diagnostics sig m
