@@ -192,6 +192,7 @@ library
     App.Fossa.Container.Test
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
+    App.Fossa.FirstPartyScan
     App.Fossa.LicenseScan
     App.Fossa.LicenseScanner
     App.Fossa.ListTargets

@@ -46,7 +46,7 @@ import App.Fossa.Config.Analyze (
   IncludeAll (IncludeAll),
   NoDiscoveryExclusion (NoDiscoveryExclusion),
   ScanDestination (..),
-  StandardAnalyzeConfig (severity),
+  StandardAnalyzeConfig (severity, firstPartyScansFlag),
   UnpackArchives (UnpackArchives),
  )
 import App.Fossa.Config.Analyze qualified as Config
@@ -61,6 +61,7 @@ import App.Types (
   BaseDir (..),
   OverrideDynamicAnalysisBinary,
   ProjectRevision (..),
+  FirstPartyScansFlag (..),
  )
 import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
@@ -123,6 +124,7 @@ import Prettyprinter.Render.Terminal (
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (Locator, SourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
+import App.Fossa.FirstPartyScan (runFirstPartyScan)
 
 debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json.gz"
@@ -291,6 +293,14 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let additionalSourceUnits :: [SourceUnit]
       additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults, dynamicLinkedResults]
   traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults, binarySearchResults, manualSrcUnits, dynamicLinkedResults]
+
+  firstPartyScanResults <-
+    Diag.errorBoundaryIO . diagToDebug $
+      if firstPartyScansFlag cfg == FirstPartyScansOffFromFlag
+        then do
+          logInfo "first party scans forced off from flag. Skipping first party scans"
+          pure Nothing
+        else Diag.context "first-party-scans" . runStickyLogger SevInfo $ runFirstPartyScan basedir maybeApiOpts (firstPartyScansFlag cfg)
 
   let discoveryFilters = if fromFlag NoDiscoveryExclusion noDiscoveryExclusion then mempty else filters
   (projectScans, ()) <-
