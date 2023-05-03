@@ -44,9 +44,11 @@ import App.Fossa.Config.Analyze (
   IncludeAll (IncludeAll),
   NoDiscoveryExclusion (NoDiscoveryExclusion),
   ScanDestination (..),
+  StandardAnalyzeConfig (firstPartyScansFlag, severity),
   UnpackArchives (UnpackArchives),
  )
 import App.Fossa.Config.Analyze qualified as Config
+import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
@@ -55,6 +57,7 @@ import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VSIDeps (analyzeVSIDeps)
 import App.Types (
   BaseDir (..),
+  FirstPartyScansFlag (..),
   OverrideDynamicAnalysisBinary,
   ProjectRevision (..),
  )
@@ -272,8 +275,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     Diag.errorBoundaryIO
       . diagToDebug
       . runReader filters
-      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget
-      $ Config.vsiOptions cfg
+      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget $
+        Config.vsiOptions cfg
   binarySearchResults <-
     Diag.errorBoundaryIO . diagToDebug $
       Diag.context "discover-binaries" $
@@ -290,6 +293,14 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let additionalSourceUnits :: [SourceUnit]
       additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults, dynamicLinkedResults]
   traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults, binarySearchResults, manualSrcUnits, dynamicLinkedResults]
+
+  firstPartyScanResults <-
+    Diag.errorBoundaryIO . diagToDebug $
+      if firstPartyScansFlag cfg == FirstPartyScansOffFromFlag
+        then do
+          logInfo "first party scans forced off from flag. Skipping first party scans"
+          pure Nothing
+        else Diag.context "first-party-scans" . runStickyLogger SevInfo $ runFirstPartyScan basedir maybeApiOpts (firstPartyScansFlag cfg)
 
   let discoveryFilters = if fromFlag NoDiscoveryExclusion noDiscoveryExclusion then mempty else filters
   (projectScans, ()) <-

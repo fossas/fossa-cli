@@ -468,6 +468,7 @@ data Organization = Organization
   , orgSupportsNativeContainerScan :: Bool
   , orgSupportsDependenciesCachePolling :: Bool
   , orgRequiresFullFileUploads :: Bool
+  , orgDefaultsToFirstPartyScans :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -499,6 +500,9 @@ instance FromJSON Organization where
         .!= False
       <*> obj
         .:? "requireFullFileUploads"
+        .!= False
+      <*> obj
+        .:? "defaultToFirstPartyScans"
         .!= False
 
 data Project = Project
