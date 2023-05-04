@@ -38,6 +38,55 @@ instance ToText LicenseScanType where
 instance ToJSON LicenseScanType where
   toJSON = toJSON . toText
 
+-- export interface SourceUnit {
+--   Name?: string;
+--   Type?: string;
+--   Repo?: string;
+--   Dir?: string;
+--   Ops?: {
+--     scan?: any;
+--     depresolve?: any;
+--     graph?: any;
+--   };
+--   ThemisVersion?: string;
+--   SourceUnits?: SourceUnit[];
+--   LicenseUnits?: SourceUnit[];
+--   Info?: any;
+--   Data?: SourceUnitNomosData[] | any;
+--   Licenses?: { [licenseId: string]: SourceUnitLicenseMatch[] }
+--   DeclaredLicenses?: SourceUnitLicense[];
+--   HiddenLicenses?: HiddenLicense[];
+--   NoticeFiles?: { [noticeFilePath: string]: string };
+--   Dependencies?: SourceUnitDependency[];
+--   DependencyLocks?: DependencyLock[];
+--   Build?: SourceUnitBuild;
+--   OriginPaths?: string[];
+--   AdditionalDependencyData?: {
+--     UserDefinedDependencies?: CLIUserDefinedDependency[];
+--     RemoteDependencies?: RemoteDependency[];
+--   };
+
+--   /**
+--    * Represents Manifest attribute
+--    *
+--    * For older CLI version submitted source unit,
+--    * It provides equivalent value to @OriginPaths
+--    */
+--   Manifest?: string;
+-- }
+
+data FullSourceUnit = FullSourceUnit
+  { fullSourceUnitName :: Maybe Text
+  , fullSourceUnitType :: Maybe Text
+  , fullSourceUnitManifest :: Maybe Text
+  , fullSourceUnitBuild :: Maybe SourceUnitBuild
+  , fullSourceUnitGraphBreadth :: GraphBreadth
+  , fullSourceUnitOriginPaths :: [SomeBase File]
+  , fullSourceUnitAdditionalData :: Maybe AdditionalDepData
+  , fullSourceUnitLicenseUnits :: (NonEmpty LicenseUnit)
+  }
+
+
 -- | LicenseSourceUnit is the base of the results sent to Core for a CLI-side license scan
 -- licenseSourceUnitLicenseUnits will be empty if you scan an empty directory.
 data LicenseSourceUnit = LicenseSourceUnit
