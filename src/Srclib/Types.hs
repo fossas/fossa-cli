@@ -14,10 +14,13 @@ module Srclib.Types (
   LicenseUnitData (..),
   LicenseUnitInfo (..),
   LicenseUnitMatchData (..),
+  FullSourceUnit (..),
   renderLocator,
   parseLocator,
   emptyLicenseUnit,
   emptyLicenseUnitData,
+  sourceUnitToFullSourceUnit,
+  licenseUnitToFullSourceUnit,
 ) where
 
 import Data.Aeson
@@ -76,16 +79,62 @@ instance ToJSON LicenseScanType where
 -- }
 
 data FullSourceUnit = FullSourceUnit
-  { fullSourceUnitName :: Maybe Text
-  , fullSourceUnitType :: Maybe Text
+  { fullSourceUnitName :: Text
+  , fullSourceUnitType :: Text
   , fullSourceUnitManifest :: Maybe Text
   , fullSourceUnitBuild :: Maybe SourceUnitBuild
   , fullSourceUnitGraphBreadth :: GraphBreadth
   , fullSourceUnitOriginPaths :: [SomeBase File]
   , fullSourceUnitAdditionalData :: Maybe AdditionalDepData
-  , fullSourceUnitLicenseUnits :: (NonEmpty LicenseUnit)
+  , fullSourceUnitFiles :: Maybe (NonEmpty Text)
+  , fullSourceUnitData :: Maybe (NonEmpty LicenseUnitData)
+  , fullSourceUnitInfo :: Maybe LicenseUnitInfo
   }
 
+licenseUnitToFullSourceUnit ::  LicenseUnit -> FullSourceUnit
+licenseUnitToFullSourceUnit LicenseUnit{..} =
+  FullSourceUnit
+  { fullSourceUnitName = licenseUnitName
+  , fullSourceUnitType = licenseUnitType
+  , fullSourceUnitManifest = Nothing
+  , fullSourceUnitBuild = Nothing
+  , fullSourceUnitGraphBreadth = Complete
+  , fullSourceUnitOriginPaths = []
+  , fullSourceUnitAdditionalData = Nothing
+  , fullSourceUnitFiles = Just licenseUnitFiles
+  , fullSourceUnitData = Just licenseUnitData
+  , fullSourceUnitInfo = Just licenseUnitInfo
+  }
+
+sourceUnitToFullSourceUnit :: SourceUnit -> FullSourceUnit
+sourceUnitToFullSourceUnit SourceUnit{..} =
+  FullSourceUnit
+  { fullSourceUnitName = sourceUnitName
+  , fullSourceUnitType = sourceUnitType
+  , fullSourceUnitManifest = Just sourceUnitManifest
+  , fullSourceUnitBuild = sourceUnitBuild
+  , fullSourceUnitGraphBreadth = sourceUnitGraphBreadth
+  , fullSourceUnitOriginPaths = sourceUnitOriginPaths
+  , fullSourceUnitAdditionalData = additionalData
+  , fullSourceUnitFiles = Nothing
+  , fullSourceUnitData = Nothing
+  , fullSourceUnitInfo = Nothing
+  }
+
+instance ToJSON FullSourceUnit where
+  toJSON FullSourceUnit{..} =
+    object
+    [ "Name" .= fullSourceUnitName
+    , "Type" .= fullSourceUnitType
+    , "Manifest" .= fullSourceUnitManifest
+    , "Build" .= fullSourceUnitBuild
+    , "GraphBreadth" .= fullSourceUnitGraphBreadth
+    , "OriginPaths" .= fullSourceUnitOriginPaths
+    , "AdditionalDependencyData" .= fullSourceUnitAdditionalData
+    , "Files" .= fullSourceUnitFiles
+    , "Data" .= fullSourceUnitData
+    , "Info" .= fullSourceUnitInfo
+    ]
 
 -- | LicenseSourceUnit is the base of the results sent to Core for a CLI-side license scan
 -- licenseSourceUnitLicenseUnits will be empty if you scan an empty directory.
