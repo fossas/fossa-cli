@@ -294,13 +294,14 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults, dynamicLinkedResults]
   traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults, binarySearchResults, manualSrcUnits, dynamicLinkedResults]
 
-  firstPartyScanResults <-
+  maybeFirstPartyScanResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if firstPartyScansFlag cfg == FirstPartyScansOffFromFlag
         then do
           logInfo "first party scans forced off from flag. Skipping first party scans"
           pure Nothing
         else Diag.context "first-party-scans" . runStickyLogger SevInfo $ runFirstPartyScan basedir maybeApiOpts (firstPartyScansFlag cfg)
+  let firstPartyScanResults = join . resultToMaybe $ maybeFirstPartyScanResults
 
   let discoveryFilters = if fromFlag NoDiscoveryExclusion noDiscoveryExclusion then mempty else filters
   (projectScans, ()) <-
@@ -347,7 +348,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         Diag.context "upload-results"
           . runFossaApiClient apiOpts
           $ do
-            locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision sourceUnits
+            locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision sourceUnits firstPartyScanResults
             doAssertRevisionBinaries iatAssertion locator
   pure result
 

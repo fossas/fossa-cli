@@ -49,7 +49,11 @@ import Srclib.Types (
   Locator (locatorProject, locatorRevision),
   SourceUnit,
   renderLocator,
+  LicenseSourceUnit,
  )
+
+mergeSourceAndLicenseUnits :: NE.NonEmpty SourceUnit -> LicenseSourceUnit -> NE.NonEmpty SourceUnit
+mergeSourceAndLicenseUnits units _licenseUnits = units
 
 uploadSuccessfulAnalysis ::
   ( Has Diagnostics sig m
@@ -63,8 +67,9 @@ uploadSuccessfulAnalysis ::
   Flag JsonOutput ->
   ProjectRevision ->
   NE.NonEmpty SourceUnit ->
+  Maybe LicenseSourceUnit ->
   m Locator
-uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units =
+uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units licenseUnits =
   context "Uploading analysis" $ do
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
@@ -74,7 +79,12 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units =
 
     dieOnMonorepoUpload revision
 
-    uploadResult <- uploadAnalysis revision metadata units
+    uploadResult <- case licenseUnits of
+      Nothing -> uploadAnalysis revision metadata units
+      Just licenses -> do
+        let mergedUnits = mergeSourceAndLicenseUnits units licenses
+        -- uploadFirstPartyAnalysisToS3AndCore revision metadata mergedUnits
+        uploadAnalysis revision metadata mergedUnits
     let locator = uploadLocator uploadResult
     buildUrl <- getFossaBuildUrl revision locator
     traverse_
