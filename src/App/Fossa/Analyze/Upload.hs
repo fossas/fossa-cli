@@ -8,7 +8,7 @@ import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
 import App.Types (
   BaseDir (BaseDir),
   ProjectMetadata,
-  ProjectRevision (projectBranch, projectName, projectRevision),
+  ProjectRevision (..),
  )
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -21,7 +21,7 @@ import Control.Effect.FossaApiClient (
   FossaApiClient,
   getProject,
   uploadAnalysis,
-  uploadContributors,
+  uploadContributors, PackageRevision (..), getSignedLicenseScanUrl,
  )
 import Control.Effect.Git (Git, fetchGitContributors)
 import Control.Effect.Lift (Lift)
@@ -44,7 +44,7 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
-import Fossa.API.Types (Project (projectIsMonorepo), UploadResponse (uploadError, uploadLocator, UploadResponse))
+import Fossa.API.Types (Project (projectIsMonorepo), UploadResponse (uploadError, uploadLocator, UploadResponse), SignedURL, ApiOpts)
 import Path (Abs, Dir, Path)
 import Srclib.Types (
   Locator (..),
@@ -52,7 +52,14 @@ import Srclib.Types (
   renderLocator,
   LicenseSourceUnit (..), FullSourceUnit, sourceUnitToFullSourceUnit, licenseUnitToFullSourceUnit,
  )
+import qualified Control.Carrier.FossaApiClient.Internal.FossaAPIV1 as API
+import Control.Carrier.Reader (Reader)
+import Control.Effect.Reader (ask)
+import Control.Carrier.StickyLogger (StickyLogger, logSticky)
 
+-- units come from standard `fossa analyze`.
+-- LicenseSourceUnit comes from running a first-party license scan on the project
+-- merge these into an array before uploading to S3
 mergeSourceAndLicenseUnits :: NE.NonEmpty SourceUnit -> LicenseSourceUnit -> [FullSourceUnit]
 mergeSourceAndLicenseUnits units LicenseSourceUnit{..} =
   fromSourceUnits ++ fromLicenseUnits
@@ -113,18 +120,25 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units li
 
     pure locator
 
-uploadFirstPartyAnalysisToS3AndCore :: Applicative m => ProjectRevision -> ProjectMetadata -> [FullSourceUnit] -> m UploadResponse
-uploadFirstPartyAnalysisToS3AndCore revision _metadata _mergedUnits =
-  pure UploadResponse
-    { uploadLocator = locator
-    , uploadError = Nothing
-    }
-  where
-    locator =  Locator
-      { locatorFetcher = "custom"
-      , locatorProject = projectName revision
-      , locatorRevision = Just $ projectRevision revision
-      }
+uploadFirstPartyAnalysisToS3AndCore ::
+  ( Has Diagnostics sig m
+  , Has FossaApiClient sig m
+  , Has StickyLogger sig m
+  ) => ProjectRevision -> ProjectMetadata -> [FullSourceUnit] -> m UploadResponse
+uploadFirstPartyAnalysisToS3AndCore revision metadata mergedUnits = do
+  uploadFirstPartyAnalysisToS3 revision mergedUnits
+
+uploadFirstPartyAnalysisToS3 ::
+  ( Has Diagnostics sig m
+  , Has FossaApiClient sig m
+  , Has StickyLogger sig m
+  ) => ProjectRevision -> [FullSourceUnit] -> m UploadResponse
+uploadFirstPartyAnalysisToS3 revision mergedUnits = do
+  -- TODO: change this to getSignedFirstPartyScanUrl
+  signedURL <- getSignedLicenseScanUrl $ PackageRevision{packageVersion = projectRevision revision, packageName = projectName revision}
+  logSticky $ "Uploading '" <> projectName revision <> "' to secure S3 bucket"
+  -- TODO: copy/paste/modify of uploadLicenseScanResult
+  uploadFirstPartyScanResult signedURL mergedUnits
 
 dieOnMonorepoUpload :: (Has Diagnostics sig m, Has FossaApiClient sig m) => ProjectRevision -> m ()
 dieOnMonorepoUpload revision = do
