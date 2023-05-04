@@ -30,5 +30,5 @@ please [create a support ticket](https://support.fossa.com) to express interest!
 
 ### Where can I go for more in-depth debugging?
 
-The [debugging FOSSA CLI](./references/debugging/README.md) reference may be useful.
+The [debugging FOSSA CLI](../references/debugging/README.md) reference may be useful.
 Alternately, [create a support ticket](https://support.fossa.com)!
