@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 module App.Fossa.Analyze.Upload (
   uploadSuccessfulAnalysis,
 ) where
@@ -43,17 +44,21 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
-import Fossa.API.Types (Project (projectIsMonorepo), UploadResponse (uploadError, uploadLocator))
+import Fossa.API.Types (Project (projectIsMonorepo), UploadResponse (uploadError, uploadLocator, UploadResponse))
 import Path (Abs, Dir, Path)
 import Srclib.Types (
-  Locator (locatorProject, locatorRevision),
+  Locator (..),
   SourceUnit,
   renderLocator,
-  LicenseSourceUnit,
+  LicenseSourceUnit (..), FullSourceUnit, sourceUnitToFullSourceUnit, licenseUnitToFullSourceUnit,
  )
 
-mergeSourceAndLicenseUnits :: NE.NonEmpty SourceUnit -> LicenseSourceUnit -> NE.NonEmpty SourceUnit
-mergeSourceAndLicenseUnits units _licenseUnits = units
+mergeSourceAndLicenseUnits :: NE.NonEmpty SourceUnit -> LicenseSourceUnit -> [FullSourceUnit]
+mergeSourceAndLicenseUnits units LicenseSourceUnit{..} =
+  fromSourceUnits ++ fromLicenseUnits
+  where
+    fromSourceUnits = map sourceUnitToFullSourceUnit $ NE.toList units
+    fromLicenseUnits = map licenseUnitToFullSourceUnit $ NE.toList licenseSourceUnitLicenseUnits
 
 uploadSuccessfulAnalysis ::
   ( Has Diagnostics sig m
@@ -83,8 +88,8 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units li
       Nothing -> uploadAnalysis revision metadata units
       Just licenses -> do
         let mergedUnits = mergeSourceAndLicenseUnits units licenses
-        -- uploadFirstPartyAnalysisToS3AndCore revision metadata mergedUnits
-        uploadAnalysis revision metadata mergedUnits
+        uploadFirstPartyAnalysisToS3AndCore revision metadata mergedUnits
+        -- uploadAnalysis revision metadata mergedUnits
     let locator = uploadLocator uploadResult
     buildUrl <- getFossaBuildUrl revision locator
     traverse_
@@ -107,6 +112,19 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units li
       logStdout . decodeUtf8 $ Aeson.encode summary
 
     pure locator
+
+uploadFirstPartyAnalysisToS3AndCore :: Applicative m => ProjectRevision -> ProjectMetadata -> [FullSourceUnit] -> m UploadResponse
+uploadFirstPartyAnalysisToS3AndCore revision _metadata _mergedUnits =
+  pure UploadResponse
+    { uploadLocator = locator
+    , uploadError = Nothing
+    }
+  where
+    locator =  Locator
+      { locatorFetcher = "custom"
+      , locatorProject = projectName revision
+      , locatorRevision = Just $ projectRevision revision
+      }
 
 dieOnMonorepoUpload :: (Has Diagnostics sig m, Has FossaApiClient sig m) => ProjectRevision -> m ()
 dieOnMonorepoUpload revision = do
