@@ -168,6 +168,7 @@ mergeFileCmdMetadata meta file =
     , projectPolicy = projectPolicy meta <|> (configProject file >>= configPolicy)
     , projectLabel = projectLabel meta <|> (maybe [] configLabel (configProject file))
     , projectReleaseGroup = projectReleaseGroup meta <|> (configProject file >>= configReleaseGroup)
+    , projectPolicyId = projectPolicyId meta <|> (configProject file >>= configPolicyId)
     }
 
 empty :: ConfigFile
@@ -197,6 +198,7 @@ data ConfigProject = ConfigProject
   , configPolicy :: Maybe Text
   , configLabel :: [Text]
   , configReleaseGroup :: Maybe ReleaseGroupMetadata
+  , configPolicyId :: Maybe Int
   }
   deriving (Eq, Ord, Show)
 
@@ -262,6 +264,7 @@ instance FromJSON ConfigProject where
       <*> obj .:? "policy"
       <*> obj .:? "labels" .!= []
       <*> obj .:? "releaseGroup"
+      <*> obj .:? "policyId"
 
 instance FromJSON ConfigRevision where
   parseJSON = withObject "ConfigRevision" $ \obj ->

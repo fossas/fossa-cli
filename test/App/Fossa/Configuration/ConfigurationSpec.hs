@@ -55,6 +55,7 @@ expectedConfigProject =
     , configPolicy = Just "license-policy"
     , configLabel = ["project-label", "label-2"]
     , configReleaseGroup = Just expectedReleaseGroup
+    , configPolicyId = Just 0
     }
 
 expectedConfigRevision :: ConfigRevision

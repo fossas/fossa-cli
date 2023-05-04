@@ -101,12 +101,14 @@ import Options.Applicative (
   Parser,
   ReadM,
   argument,
+  auto,
   eitherReader,
   help,
   long,
   metavar,
   option,
   optional,
+  readerError,
   short,
   str,
   strOption,
@@ -138,6 +140,9 @@ data CacheAction
 defaultTimeoutDuration :: Duration
 defaultTimeoutDuration = Minutes 60
 
+readMWithError :: Read a => String -> ReadM a
+readMWithError errMsg = auto <|> readerError errMsg
+
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =
   ProjectMetadata
@@ -146,7 +151,8 @@ metadataOpts =
     <*> optional (strOption (long "jira-project-key" <> short 'j' <> help "this repository's JIRA project key"))
     <*> optional (strOption (long "link" <> short 'L' <> help "a link to attach to the current build"))
     <*> optional (strOption (long "team" <> short 'T' <> help "this repository's team inside your organization"))
-    <*> optional (strOption (long "policy" <> help "the policy to assign to this project in FOSSA"))
+    <*> optional (strOption (long "policy" <> help "The id of the policy to assign to this project in FOSSA. Mutually excludes --policy-id."))
+    <*> optional (option (readMWithError "failed to parse --policy-id, expecting int") (long "policy-id" <> help "The id of the policy to assign to this project in FOSSA. Mutually excludes --policy."))
     <*> many (strOption (long "project-label" <> help "assign up to 5 labels to the project"))
     <*> optional releaseGroupMetadataOpts
 

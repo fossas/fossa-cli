@@ -38,6 +38,9 @@ data ProjectMetadata = ProjectMetadata
   , projectLink :: Maybe Text
   , projectTeam :: Maybe Text
   , projectPolicy :: Maybe Text
+  , projectPolicyId :: Maybe Int -- This is mutually exclusive with policy.
+  -- Consider making a proper Policy type which reflects the alternatives.
+  -- I tried this but ran into some trouble getting optparse-applicative to do mutually exclusive options so I'm doing a naive approach first.
   , projectLabel :: [Text]
   , projectReleaseGroup :: Maybe ReleaseGroupMetadata
   }

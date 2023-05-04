@@ -42,7 +42,7 @@ spec = do
       locator `shouldBe'` expectedLocator
 
 fixtureProjectMetadata :: ProjectMetadata
-fixtureProjectMetadata = ProjectMetadata Nothing Nothing Nothing Nothing Nothing Nothing ["label-1", "label-2"] Nothing
+fixtureProjectMetadata = ProjectMetadata Nothing Nothing Nothing Nothing Nothing Nothing Nothing ["label-1", "label-2"] Nothing
 
 fixtureContainerScan :: ContainerScan
 fixtureContainerScan = ContainerScan (ContainerScanImage "alpine" "3.1.4" []) "some-digest" "some-tag"
