@@ -14,7 +14,7 @@ import App.Fossa.Config.ConfigFile (
   VendoredDependencyConfigs (..),
   resolveConfigFile,
  )
-import App.Types (ReleaseGroupMetadata (..))
+import App.Types (ReleaseGroupMetadata (..), Policy (PolicyName))
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Stack (runStack)
 import Data.Set qualified as Set
@@ -52,7 +52,7 @@ expectedConfigProject =
     , configTeam = Just "fossa-team"
     , configJiraKey = Just "key"
     , configUrl = Just "fossa.com"
-    , configPolicy = Just "license-policy"
+    , configPolicy = Just (PolicyName "license-policy")
     , configLabel = ["project-label", "label-2"]
     , configReleaseGroup = Just expectedReleaseGroup
     , configPolicyId = Just 0

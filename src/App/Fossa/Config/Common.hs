@@ -68,7 +68,7 @@ import App.Types (
   OverrideProject (..),
   ProjectMetadata (ProjectMetadata),
   ProjectRevision,
-  ReleaseGroupMetadata (ReleaseGroupMetadata),
+  ReleaseGroupMetadata (ReleaseGroupMetadata), Policy (..),
  )
 import Control.Carrier.Telemetry.Types (
   TelemetrySink (TelemetrySinkToEndpoint, TelemetrySinkToFile),
@@ -151,10 +151,19 @@ metadataOpts =
     <*> optional (strOption (long "jira-project-key" <> short 'j' <> help "this repository's JIRA project key"))
     <*> optional (strOption (long "link" <> short 'L' <> help "a link to attach to the current build"))
     <*> optional (strOption (long "team" <> short 'T' <> help "this repository's team inside your organization"))
-    <*> optional (strOption (long "policy" <> help "The id of the policy to assign to this project in FOSSA. Mutually excludes --policy-id."))
-    <*> optional (option (readMWithError "failed to parse --policy-id, expecting int") (long "policy-id" <> help "The id of the policy to assign to this project in FOSSA. Mutually excludes --policy."))
+    <*> parsePolicyOptions
     <*> many (strOption (long "project-label" <> help "assign up to 5 labels to the project"))
     <*> optional releaseGroupMetadataOpts
+  where policy :: Parser Policy
+        policy = PolicyName <$> (strOption (long "policy" <> help "The name of the policy to assign to this project in FOSSA. Mutually excludes --policy-id."))
+
+        policyId :: Parser Policy
+        policyId = PolicyId <$> (option
+                                      (readMWithError "failed to parse --policy-id, expecting int")
+                                      (long "policy-id" <> help "The id of the policy to assign to this project in FOSSA. Mutually excludes --policy."))
+        
+        parsePolicyOptions :: Parser (Maybe Policy)
+        parsePolicyOptions = optional (policy <|> policyId) -- For Parsers '<|>' tries every alternative and fails if they all succeed.
 
 releaseGroupMetadataOpts :: Parser ReleaseGroupMetadata
 releaseGroupMetadataOpts =

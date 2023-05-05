@@ -105,7 +105,6 @@ projectMetadata =
     , App.projectLink = Nothing
     , App.projectTeam = Nothing
     , App.projectPolicy = Nothing
-    , App.projectPolicyId = Nothing
     , App.projectLabel = ["label-1", "label-2"]
     , App.projectReleaseGroup = Nothing
     }

@@ -59,7 +59,7 @@ generateMonorepoArgs MonorepoAnalysisOpts{..} PathFilters{..} logSeverity Projec
     ++ ["-project", projectName, "-revision", projectRevision]
     ++ optMaybeText "-jira-project-key" projectJiraKey
     ++ optMaybeText "-link" projectLink
-    ++ optMaybeText "-policy" projectPolicy
+    ++ optMaybeText "-policy" (Just "foo") -- projectPolicy
     ++ optMaybeText "-project-url" projectUrl
     ++ optMaybeText "-team" projectTeam
     ++ optMaybeText "-title" projectTitle

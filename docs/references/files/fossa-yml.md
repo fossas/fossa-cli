@@ -114,7 +114,10 @@ The name field sets the projects visible name in the FOSSA dashboard. By default
 The name of the team in your FOSSA organization to associate this project with.
 
 #### `project.policy:`
-The name of the policy in your FOSSA organization to associate this project with.
+The name of the policy in your FOSSA organization to associate this project with. Mutually excludes `project.policyId`.
+
+#### `project.policyId:`
+The id of the policy in your FOSSA organization to associate this project with. Mutually excludes `project.policy`.
 
 #### `project.link:`
 An external link that will appear in the FOSSA UI for this specific project.

@@ -59,6 +59,7 @@ import App.Types (
   ProjectMetadata (..),
   ProjectRevision (..),
   ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
+  Policy (..),
  )
 import App.Version (versionNumber)
 import Codec.Compression.GZip qualified as GZIP
@@ -624,11 +625,15 @@ mkMetadataOpts ProjectMetadata{..} projectName = mconcat totalOptions
       , ("jiraProjectKey" =:) <$> projectJiraKey
       , ("link" =:) <$> projectLink
       , ("team" =:) <$> projectTeam
-      , ("policy" =:) <$> projectPolicy
+      , policyOpt <$> projectPolicy
       , ("releaseGroup" =:) . releaseGroupName <$> projectReleaseGroup
       , ("releaseGroupRelease" =:) . releaseGroupRelease <$> projectReleaseGroup
       , ("title" =:) <$> title
       ]
+      
+    policyOpt (PolicyName n) = ("policy" =: n)
+    policyOpt (PolicyId i)   = ("policyId" =: i)
+    
     labelOptions = map ("labels[]" =:) projectLabel
     totalOptions = catMaybes maybeOptions ++ labelOptions
 

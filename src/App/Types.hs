@@ -7,6 +7,7 @@ module App.Types (
   ProjectRevision (..),
   MonorepoAnalysisOpts (..),
   OverrideDynamicAnalysisBinary (..),
+  Policy(..),
   FullFileUploads (..),
 ) where
 
@@ -31,16 +32,21 @@ data OverrideProject = OverrideProject
 instance ToJSON OverrideProject where
   toEncoding = genericToEncoding defaultOptions
 
+data Policy =
+  PolicyName Text
+  | PolicyId Int
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON Policy where
+  toEncoding = genericToEncoding defaultOptions
+
 data ProjectMetadata = ProjectMetadata
   { projectTitle :: Maybe Text
   , projectUrl :: Maybe Text
   , projectJiraKey :: Maybe Text
   , projectLink :: Maybe Text
   , projectTeam :: Maybe Text
-  , projectPolicy :: Maybe Text
-  , projectPolicyId :: Maybe Int -- This is mutually exclusive with policy.
-  -- Consider making a proper Policy type which reflects the alternatives.
-  -- I tried this but ran into some trouble getting optparse-applicative to do mutually exclusive options so I'm doing a naive approach first.
+  , projectPolicy :: Maybe Policy
   , projectLabel :: [Text]
   , projectReleaseGroup :: Maybe ReleaseGroupMetadata
   }
