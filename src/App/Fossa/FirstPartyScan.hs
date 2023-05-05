@@ -4,7 +4,7 @@ module App.Fossa.FirstPartyScan (
 import Srclib.Types (LicenseSourceUnit)
 import App.Types (FirstPartyScansFlag (..), FullFileUploads (FullFileUploads))
 import Fossa.API.Types (ApiOpts(..), Organization (..))
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger)
@@ -47,13 +47,14 @@ firstPartyScanWithOrgInfo root firstPartyScanFlag = do
   org <- getOrganization
   firstPartyScanMain root firstPartyScanFlag (orgDefaultsToFirstPartyScans org) (orgSupportsFirstPartyScans org)
 
-shouldRunFirstPartyScans :: FirstPartyScansFlag -> Bool -> Bool -> Bool
+shouldRunFirstPartyScans :: (Has Diagnostics sig m) => FirstPartyScansFlag -> Bool -> Bool -> m Bool
 shouldRunFirstPartyScans firstPartyScansFlag orgDefaultsToFirstParty instanceSupportsFirstPartyScans =
   case (firstPartyScansFlag, orgDefaultsToFirstParty, instanceSupportsFirstPartyScans) of
-    (_, _, False) -> False
-    (FirstPartyScansOnFromFlag, _, True) -> True
-    (FirstPartyScansOffFromFlag, _, True) -> False
-    (FirstPartyScansUseDefault, orgDefault, True) -> orgDefault
+    (FirstPartyScansOnFromFlag, _, False) -> fatalText "You provided the --experimental-force-first-party-scans flag but the FOSSA server does not support first-party scans"
+    (_, _, False) -> pure False
+    (FirstPartyScansOnFromFlag, _, True) -> pure True
+    (FirstPartyScansOffFromFlag, _, True) -> pure False
+    (FirstPartyScansUseDefault, orgDefault, True) -> pure orgDefault
 
 firstPartyScanMain ::
   ( Has Diagnostics sig m
@@ -68,7 +69,7 @@ firstPartyScanMain ::
   Bool ->
   m (Maybe LicenseSourceUnit)
 firstPartyScanMain base firstPartyScansFlag orgDefaultsToFirstParty orgSupportsFirstPartyScans = do
-  let runFirstPartyScans = shouldRunFirstPartyScans firstPartyScansFlag orgDefaultsToFirstParty orgSupportsFirstPartyScans
+  runFirstPartyScans <- shouldRunFirstPartyScans firstPartyScansFlag orgDefaultsToFirstParty orgSupportsFirstPartyScans
   let vdep = VendoredDependency "first-party" "." Nothing
   case runFirstPartyScans of
     (True) -> Just <$> scanVendoredDep base Nothing ( FullFileUploads False ) vdep
