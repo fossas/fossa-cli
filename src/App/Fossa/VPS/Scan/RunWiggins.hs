@@ -11,8 +11,9 @@ module App.Fossa.VPS.Scan.RunWiggins (
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath)
 import App.Types (
   MonorepoAnalysisOpts (..),
+  Policy (..),
   ProjectMetadata (..),
-  ProjectRevision (..), Policy (..),
+  ProjectRevision (..),
  )
 import Control.Carrier.Error.Either (Has)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic))
@@ -27,12 +28,13 @@ import Effect.Exec (
   AllowErr (Never),
   Command (..),
   Exec,
-  execThrow,)
+  execThrow,
+ )
 import Effect.Logger (Severity (SevDebug))
 import Fossa.API.Types (ApiKey (unApiKey), ApiOpts (..))
 import Path (Abs, Dir, Path, Rel, fromAbsFile)
-import Text.URI (render)
 import Prettyprinter (pretty)
+import Text.URI (render)
 
 data WigginsOpts = WigginsOpts
   { scanDir :: Path Abs Dir
@@ -65,24 +67,24 @@ generateMonorepoArgs MonorepoAnalysisOpts{..} PathFilters{..} logSeverity Projec
     Just (PolicyId _) -> Left MonorepoPolicyIdError
     Just (PolicyName n) -> Right $ policyArgs (Just n)
     Nothing -> Right $ policyArgs Nothing
-    where policyArgs p = 
-            "monorepo"
-            : optMaybeText "-endpoint" (render <$> apiOptsUri)
-             ++ ["-fossa-api-key", unApiKey apiOptsApiKey]
-             ++ ["-project", projectName, "-revision", projectRevision]
-             ++ optMaybeText "-jira-project-key" projectJiraKey
-             ++ optMaybeText "-link" projectLink
-             ++ optMaybeText "-policy" p
-             ++ optMaybeText "-project-url" projectUrl
-             ++ optMaybeText "-team" projectTeam
-             ++ optMaybeText "-title" projectTitle
-             ++ optMaybeText "-branch" projectBranch
-             ++ optExplodeText "-only-path" (optPathAsFilter <$> onlyPaths)
-             ++ optExplodeText "-exclude-path" (optPathAsFilter <$> excludePaths)
-             ++ optBool "-debug" (logSeverity == SevDebug)
-             ++ optMaybeText "-type" monorepoAnalysisType
-             ++ ["."]
-          
+  where
+    policyArgs p =
+      "monorepo"
+        : optMaybeText "-endpoint" (render <$> apiOptsUri)
+        ++ ["-fossa-api-key", unApiKey apiOptsApiKey]
+        ++ ["-project", projectName, "-revision", projectRevision]
+        ++ optMaybeText "-jira-project-key" projectJiraKey
+        ++ optMaybeText "-link" projectLink
+        ++ optMaybeText "-policy" p
+        ++ optMaybeText "-project-url" projectUrl
+        ++ optMaybeText "-team" projectTeam
+        ++ optMaybeText "-title" projectTitle
+        ++ optMaybeText "-branch" projectBranch
+        ++ optExplodeText "-only-path" (optPathAsFilter <$> onlyPaths)
+        ++ optExplodeText "-exclude-path" (optPathAsFilter <$> excludePaths)
+        ++ optBool "-debug" (logSeverity == SevDebug)
+        ++ optMaybeText "-type" monorepoAnalysisType
+        ++ ["."]
 
 optBool :: Text -> Bool -> [Text]
 optBool flag True = [flag]

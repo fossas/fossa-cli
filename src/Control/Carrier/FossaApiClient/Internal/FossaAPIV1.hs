@@ -56,10 +56,10 @@ import App.Support (
  )
 import App.Types (
   FullFileUploads (FullFileUploads),
+  Policy (..),
   ProjectMetadata (..),
   ProjectRevision (..),
   ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
-  Policy (..),
  )
 import App.Version (versionNumber)
 import Codec.Compression.GZip qualified as GZIP
@@ -630,10 +630,10 @@ mkMetadataOpts ProjectMetadata{..} projectName = mconcat totalOptions
       , ("releaseGroupRelease" =:) . releaseGroupRelease <$> projectReleaseGroup
       , ("title" =:) <$> title
       ]
-      
+
     policyOpt (PolicyName n) = ("policy" =: n)
-    policyOpt (PolicyId i)   = ("policyId" =: i)
-    
+    policyOpt (PolicyId i) = ("policyId" =: i)
+
     labelOptions = map ("labels[]" =:) projectLabel
     totalOptions = catMaybes maybeOptions ++ labelOptions
 

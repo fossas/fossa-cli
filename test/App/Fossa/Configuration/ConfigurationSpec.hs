@@ -14,7 +14,7 @@ import App.Fossa.Config.ConfigFile (
   VendoredDependencyConfigs (..),
   resolveConfigFile,
  )
-import App.Types (ReleaseGroupMetadata (..), Policy (PolicyName))
+import App.Types (Policy (PolicyName), ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Stack (runStack)
 import Data.Set qualified as Set

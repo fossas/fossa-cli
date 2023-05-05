@@ -7,7 +7,7 @@ module App.Types (
   ProjectRevision (..),
   MonorepoAnalysisOpts (..),
   OverrideDynamicAnalysisBinary (..),
-  Policy(..),
+  Policy (..),
   FullFileUploads (..),
 ) where
 
@@ -32,8 +32,8 @@ data OverrideProject = OverrideProject
 instance ToJSON OverrideProject where
   toEncoding = genericToEncoding defaultOptions
 
-data Policy =
-  PolicyName Text
+data Policy
+  = PolicyName Text
   | PolicyId Int
   deriving (Eq, Ord, Show, Generic)
 

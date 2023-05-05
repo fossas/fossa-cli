@@ -20,7 +20,7 @@ module App.Fossa.Config.ConfigFile (
 ) where
 
 import App.Docs (fossaYmlDocUrl)
-import App.Types (ProjectMetadata (..), ReleaseGroupMetadata, Policy (..))
+import App.Types (Policy (..), ProjectMetadata (..), ReleaseGroupMetadata)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -264,12 +264,13 @@ instance FromJSON ConfigProject where
       <*> obj .:? "labels" .!= []
       <*> obj .:? "releaseGroup"
       <*> obj .:? "policyId"
-    where parsePolicy obj = do
-            pName <- obj .:? "policy"
-            pId <- obj .:? "policyId"
-            case (pName, pId) of
-              (Just _, Just _) -> fail "Only one of 'policy' or 'policyId' can be set at a time."
-              _ -> pure $ (PolicyName <$> pName) <|> (PolicyId <$> pId)
+    where
+      parsePolicy obj = do
+        pName <- obj .:? "policy"
+        pId <- obj .:? "policyId"
+        case (pName, pId) of
+          (Just _, Just _) -> fail "Only one of 'policy' or 'policyId' can be set at a time."
+          _ -> pure $ (PolicyName <$> pName) <|> (PolicyId <$> pId)
 
 instance FromJSON ConfigRevision where
   parseJSON = withObject "ConfigRevision" $ \obj ->

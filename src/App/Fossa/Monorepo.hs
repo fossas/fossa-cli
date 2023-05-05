@@ -18,7 +18,8 @@ import App.Fossa.VPS.Scan.RunWiggins (
 import App.Types (BaseDir (unBaseDir))
 import Control.Effect.Diagnostics (
   Diagnostics,
-  context, fatal,
+  context,
+  fatal,
  )
 import Control.Effect.Lift (Lift)
 import Data.Text (Text)
@@ -45,12 +46,11 @@ monorepoScan MonorepoAnalyzeConfig{..} = withWigginsBinary $ \binaryPaths -> do
 
   case wigginsOpts of
     Left e -> fatal e
-    Right wigginsOpts' -> do logInfo "Running monorepo scan"
-                             stdout <- context "Monorepo" $ runExecIO $ runWiggins binaryPaths wigginsOpts'
-                             logInfo $ pretty stdout
+    Right wigginsOpts' -> do
+      logInfo "Running monorepo scan"
+      stdout <- context "Monorepo" $ runExecIO $ runWiggins binaryPaths wigginsOpts'
+      logInfo $ pretty stdout
 
 runWiggins :: (Has Exec sig m, Has Diagnostics sig m) => BinaryPaths -> WigginsOpts -> m Text
 runWiggins binaryPaths opts = do
   context "Running monorepo binary" $ execWiggins binaryPaths opts
-
-
