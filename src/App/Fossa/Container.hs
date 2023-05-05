@@ -20,6 +20,7 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Lift (Lift)
 import Control.Effect.Telemetry (Telemetry)
+import Control.Monad (void)
 import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
@@ -77,6 +78,6 @@ dispatch = \case
             , indent 4 $ pretty supportUrl
             ]
 
-    AnalyzeNative.analyzeExperimental cfg
+    void $ AnalyzeNative.analyzeExperimental cfg
   TestCfg cfg -> Test.test cfg
   ListTargetsCfg cfg -> listTargets cfg
