@@ -65,6 +65,7 @@ import Fossa.API.Types (
  )
 import Path (File, Path, Rel)
 import Srclib.Types (LicenseSourceUnit, Locator, SourceUnit, FullSourceUnit)
+import qualified Data.List.NonEmpty as NE
 
 -- | PackageRevisions are like ProjectRevisions, but they never have a branch.
 data PackageRevision = PackageRevision
@@ -114,7 +115,7 @@ data FossaApiClientF a where
     Contributors ->
     FossaApiClientF ()
   UploadLicenseScanResult :: SignedURL -> LicenseSourceUnit -> FossaApiClientF ()
-  UploadFirstPartyScanResult :: SignedURL -> [FullSourceUnit] -> FossaApiClientF ()
+  UploadFirstPartyScanResult :: SignedURL -> NE.NonEmpty FullSourceUnit -> FossaApiClientF ()
 
 deriving instance Show (FossaApiClientF a)
 
@@ -186,7 +187,7 @@ finalizeLicenseScan = sendSimple . FinalizeLicenseScan
 uploadLicenseScanResult :: Has FossaApiClient sig m => SignedURL -> LicenseSourceUnit -> m ()
 uploadLicenseScanResult signedUrl licenseSourceUnit = sendSimple (UploadLicenseScanResult signedUrl licenseSourceUnit)
 
-uploadFirstPartyScanResult :: Has FossaApiClient sig m => SignedURL -> [FullSourceUnit] -> m ()
+uploadFirstPartyScanResult :: Has FossaApiClient sig m => SignedURL -> NE.NonEmpty FullSourceUnit -> m ()
 uploadFirstPartyScanResult signedUrl fullSourceUnits = sendSimple (UploadFirstPartyScanResult signedUrl fullSourceUnits)
 
 resolveUserDefinedBinary :: Has FossaApiClient sig m => IAT.UserDep -> m IAT.UserDefinedAssertionMeta

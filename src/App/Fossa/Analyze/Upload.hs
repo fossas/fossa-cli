@@ -57,12 +57,12 @@ import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 -- units come from standard `fossa analyze`.
 -- LicenseSourceUnit comes from running a first-party license scan on the project
 -- merge these into an array before uploading to S3
-mergeSourceAndLicenseUnits :: NE.NonEmpty SourceUnit -> LicenseSourceUnit -> [FullSourceUnit]
+mergeSourceAndLicenseUnits :: NE.NonEmpty SourceUnit -> LicenseSourceUnit -> NE.NonEmpty FullSourceUnit
 mergeSourceAndLicenseUnits units LicenseSourceUnit{..} =
-  fromSourceUnits ++ fromLicenseUnits
+  fromSourceUnits <> fromLicenseUnits
   where
-    fromSourceUnits = map sourceUnitToFullSourceUnit $ NE.toList units
-    fromLicenseUnits = map licenseUnitToFullSourceUnit $ NE.toList licenseSourceUnitLicenseUnits
+    fromSourceUnits = NE.map sourceUnitToFullSourceUnit units
+    fromLicenseUnits = NE.map licenseUnitToFullSourceUnit licenseSourceUnitLicenseUnits
 
 uploadSuccessfulAnalysis ::
   ( Has Diagnostics sig m
@@ -121,7 +121,7 @@ uploadFirstPartyAnalysisToS3AndCore ::
   ( Has Diagnostics sig m
   , Has FossaApiClient sig m
   , Has StickyLogger sig m
-  ) => ProjectRevision -> ProjectMetadata -> [FullSourceUnit] -> m UploadResponse
+  ) => ProjectRevision -> ProjectMetadata -> NE.NonEmpty FullSourceUnit -> m UploadResponse
 uploadFirstPartyAnalysisToS3AndCore revision _metadata mergedUnits = do
   _ <- uploadFirstPartyAnalysisToS3 revision mergedUnits
   pure UploadResponse
@@ -139,7 +139,7 @@ uploadFirstPartyAnalysisToS3 ::
   ( Has Diagnostics sig m
   , Has FossaApiClient sig m
   , Has StickyLogger sig m
-  ) => ProjectRevision -> [FullSourceUnit] -> m ()
+  ) => ProjectRevision -> NE.NonEmpty FullSourceUnit -> m ()
 uploadFirstPartyAnalysisToS3 revision mergedUnits = do
   -- TODO: change this to getSignedFirstPartyScanUrl
   signedURL <- getSignedLicenseScanUrl $ PackageRevision{packageVersion = projectRevision revision, packageName = projectName revision}
