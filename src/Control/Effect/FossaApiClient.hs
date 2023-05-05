@@ -29,6 +29,7 @@ module Control.Effect.FossaApiClient (
   resolveProjectDependencies,
   resolveUserDefinedBinary,
   uploadAnalysis,
+  uploadFirstPartyAnalysis,
   uploadArchive,
   uploadNativeContainerScan,
   uploadContributors,
@@ -110,6 +111,10 @@ data FossaApiClientF a where
     ProjectMetadata ->
     NonEmpty SourceUnit ->
     FossaApiClientF UploadResponse
+  UploadFirstPartyAnalysis ::
+    ProjectRevision ->
+    ProjectMetadata ->
+    FossaApiClientF UploadResponse
   UploadArchive :: SignedURL -> FilePath -> FossaApiClientF ByteString
   UploadNativeContainerScan ::
     ProjectRevision ->
@@ -145,6 +150,10 @@ getApiOpts = sendSimple GetApiOpts
 -- | Uploads the results of an analysis and associates it to a project
 uploadAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NonEmpty SourceUnit -> m UploadResponse
 uploadAnalysis revision metadata units = sendSimple (UploadAnalysis revision metadata units)
+
+-- | Uploads the results of an analysis and associates it to a project
+uploadFirstPartyAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> m UploadResponse
+uploadFirstPartyAnalysis revision metadata = sendSimple (UploadFirstPartyAnalysis revision metadata)
 
 -- | Uploads results of container analysis performed by native scanner to a project
 uploadNativeContainerScan :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NativeContainer.ContainerScan -> m UploadResponse
