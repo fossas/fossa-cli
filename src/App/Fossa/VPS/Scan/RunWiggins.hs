@@ -12,10 +12,10 @@ import App.Fossa.EmbeddedBinary (BinaryPaths, toPath)
 import App.Types (
   MonorepoAnalysisOpts (..),
   ProjectMetadata (..),
-  ProjectRevision (..),
+  ProjectRevision (..), Policy (..),
  )
 import Control.Carrier.Error.Either (Has)
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic))
 import Data.ByteString.Lazy qualified as BL
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toText)
@@ -27,12 +27,12 @@ import Effect.Exec (
   AllowErr (Never),
   Command (..),
   Exec,
-  execThrow,
- )
+  execThrow,)
 import Effect.Logger (Severity (SevDebug))
 import Fossa.API.Types (ApiKey (unApiKey), ApiOpts (..))
 import Path (Abs, Dir, Path, Rel, fromAbsFile)
 import Text.URI (render)
+import Prettyprinter (pretty)
 
 data WigginsOpts = WigginsOpts
   { scanDir :: Path Abs Dir
@@ -47,28 +47,42 @@ data PathFilters = PathFilters
 toPathFilters :: AllFilters -> PathFilters
 toPathFilters AllFilters{includeFilters, excludeFilters} = PathFilters (combinedPaths includeFilters) (combinedPaths excludeFilters)
 
-generateWigginsMonorepoOpts :: Path Abs Dir -> MonorepoAnalysisOpts -> PathFilters -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> WigginsOpts
-generateWigginsMonorepoOpts scanDir monorepoAnalysisOpts filters logSeverity projectRevision apiOpts metadata =
-  WigginsOpts scanDir $ generateMonorepoArgs monorepoAnalysisOpts filters logSeverity projectRevision apiOpts metadata
+data MonorepoPolicyIdError = MonorepoPolicyIdError
+  deriving (Eq, Ord, Show)
 
-generateMonorepoArgs :: MonorepoAnalysisOpts -> PathFilters -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> [Text]
+instance ToDiagnostic MonorepoPolicyIdError where
+  renderDiagnostic _ = pretty @Text "The --policy-id or policyId directives are not supported for monorepo scans. Check your .fossa.yml or fossa invocation."
+
+generateWigginsMonorepoOpts :: Path Abs Dir -> MonorepoAnalysisOpts -> PathFilters -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> Either MonorepoPolicyIdError WigginsOpts
+generateWigginsMonorepoOpts scanDir monorepoAnalysisOpts filters logSeverity projectRevision apiOpts metadata =
+  WigginsOpts scanDir <$> generateMonorepoArgs monorepoAnalysisOpts filters logSeverity projectRevision apiOpts metadata
+
+-- A project config containing a PolicyId should be rejected by the caller.
+-- This function will totally ignore policy ids because wiggins doesn't support it.
+generateMonorepoArgs :: MonorepoAnalysisOpts -> PathFilters -> Severity -> ProjectRevision -> ApiOpts -> ProjectMetadata -> Either MonorepoPolicyIdError [Text]
 generateMonorepoArgs MonorepoAnalysisOpts{..} PathFilters{..} logSeverity ProjectRevision{..} ApiOpts{..} ProjectMetadata{..} =
-  "monorepo"
-    : optMaybeText "-endpoint" (render <$> apiOptsUri)
-    ++ ["-fossa-api-key", unApiKey apiOptsApiKey]
-    ++ ["-project", projectName, "-revision", projectRevision]
-    ++ optMaybeText "-jira-project-key" projectJiraKey
-    ++ optMaybeText "-link" projectLink
-    ++ optMaybeText "-policy" (Just "foo") -- projectPolicy
-    ++ optMaybeText "-project-url" projectUrl
-    ++ optMaybeText "-team" projectTeam
-    ++ optMaybeText "-title" projectTitle
-    ++ optMaybeText "-branch" projectBranch
-    ++ optExplodeText "-only-path" (optPathAsFilter <$> onlyPaths)
-    ++ optExplodeText "-exclude-path" (optPathAsFilter <$> excludePaths)
-    ++ optBool "-debug" (logSeverity == SevDebug)
-    ++ optMaybeText "-type" monorepoAnalysisType
-    ++ ["."]
+  case projectPolicy of
+    Just (PolicyId _) -> Left MonorepoPolicyIdError
+    Just (PolicyName n) -> Right $ policyArgs (Just n)
+    Nothing -> Right $ policyArgs Nothing
+    where policyArgs p = 
+            "monorepo"
+            : optMaybeText "-endpoint" (render <$> apiOptsUri)
+             ++ ["-fossa-api-key", unApiKey apiOptsApiKey]
+             ++ ["-project", projectName, "-revision", projectRevision]
+             ++ optMaybeText "-jira-project-key" projectJiraKey
+             ++ optMaybeText "-link" projectLink
+             ++ optMaybeText "-policy" p
+             ++ optMaybeText "-project-url" projectUrl
+             ++ optMaybeText "-team" projectTeam
+             ++ optMaybeText "-title" projectTitle
+             ++ optMaybeText "-branch" projectBranch
+             ++ optExplodeText "-only-path" (optPathAsFilter <$> onlyPaths)
+             ++ optExplodeText "-exclude-path" (optPathAsFilter <$> excludePaths)
+             ++ optBool "-debug" (logSeverity == SevDebug)
+             ++ optMaybeText "-type" monorepoAnalysisType
+             ++ ["."]
+          
 
 optBool :: Text -> Bool -> [Text]
 optBool flag True = [flag]
