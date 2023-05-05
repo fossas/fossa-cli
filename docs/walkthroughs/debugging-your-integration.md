@@ -11,7 +11,7 @@ fossa analyze --debug
 ```
 
 Note that the output is likely to be very noisy: our project discovery process is very lenient,
-nd can produce many false-positives. 
+and can produce many false-positives. 
 False-positive projects almost always fail during the dependency analysis step,
 so we don't show analysis failures by default.
 
