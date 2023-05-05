@@ -4,6 +4,7 @@
 
 module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   uploadAnalysis,
+  uploadFirstPartyAnalysis,
   uploadContributors,
   uploadNativeContainerScan,
   mkMetadataOpts,
@@ -242,6 +243,9 @@ cliVersion = fromMaybe "" versionNumber
 
 uploadUrl :: Url scheme -> Url scheme
 uploadUrl baseurl = baseurl /: "api" /: "builds" /: "custom"
+
+uploadWithFirstPartyUrl :: Url scheme -> Url scheme
+uploadWithFirstPartyUrl baseurl = baseurl /: "api" /: "builds" /: "custom_with_first_party"
 
 -- | This renders an organization + locator into a path piece for the fossa API
 renderLocatorUrl :: OrgId -> Locator -> Text
@@ -613,6 +617,28 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
   resp <- req POST (uploadUrl baseUrl) (ReqBodyJson $ NE.toList sourceUnits) jsonResponse (baseOpts <> opts)
+  pure (responseBody resp)
+
+uploadFirstPartyAnalysis ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  ProjectMetadata ->
+  m UploadResponse
+uploadFirstPartyAnalysis apiOpts ProjectRevision{..} metadata = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts =
+        "locator"
+          =: renderLocator (Locator "custom" projectName (Just projectRevision))
+          <> "cliVersion"
+            =: cliVersion
+          <> "managedBuild"
+            =: True
+          <> mkMetadataOpts metadata projectName
+          -- Don't include branch if it doesn't exist, core may not handle empty string properly.
+          <> maybe mempty ("branch" =:) projectBranch
+  resp <- req POST (uploadWithFirstPartyUrl baseUrl) (NoReqBody) jsonResponse (baseOpts <> opts)
   pure (responseBody resp)
 
 mkMetadataOpts :: ProjectMetadata -> Text -> Option scheme
