@@ -29,7 +29,7 @@ runFirstPartyScan ::
 runFirstPartyScan root maybeApiOpts firstPartyScanFlag = do
   -- if we do not have api opts, then we act as if the org defaults to not running first-party scans
   case maybeApiOpts of
-    Nothing -> firstPartyScanMain root firstPartyScanFlag False
+    Nothing -> firstPartyScanMain root firstPartyScanFlag False True
     Just apiOpts -> runFossaApiClient apiOpts $ firstPartyScanWithOrgInfo root firstPartyScanFlag
 
 firstPartyScanWithOrgInfo ::
@@ -45,14 +45,15 @@ firstPartyScanWithOrgInfo ::
   m (Maybe LicenseSourceUnit)
 firstPartyScanWithOrgInfo root firstPartyScanFlag = do
   org <- getOrganization
-  firstPartyScanMain root firstPartyScanFlag $ orgDefaultsToFirstPartyScans org
+  firstPartyScanMain root firstPartyScanFlag (orgDefaultsToFirstPartyScans org) (orgSupportsFirstPartyScans org)
 
-shouldRunFirstPartyScans :: FirstPartyScansFlag -> Bool -> Bool
-shouldRunFirstPartyScans firstPartyScansFlag orgDefaultsToFirstParty =
-  case (firstPartyScansFlag, orgDefaultsToFirstParty) of
-    (FirstPartyScansOnFromFlag, _) -> True
-    (FirstPartyScansOffFromFlag, _) -> False
-    (FirstPartyScansUseDefault, orgDefault) -> orgDefault
+shouldRunFirstPartyScans :: FirstPartyScansFlag -> Bool -> Bool -> Bool
+shouldRunFirstPartyScans firstPartyScansFlag orgDefaultsToFirstParty instanceSupportsFirstPartyScans =
+  case (firstPartyScansFlag, orgDefaultsToFirstParty, instanceSupportsFirstPartyScans) of
+    (_, _, False) -> False
+    (FirstPartyScansOnFromFlag, _, True) -> True
+    (FirstPartyScansOffFromFlag, _, True) -> False
+    (FirstPartyScansUseDefault, orgDefault, True) -> orgDefault
 
 firstPartyScanMain ::
   ( Has Diagnostics sig m
@@ -64,9 +65,10 @@ firstPartyScanMain ::
   Path Abs Dir ->
   FirstPartyScansFlag ->
   Bool ->
+  Bool ->
   m (Maybe LicenseSourceUnit)
-firstPartyScanMain base firstPartyScansFlag orgDefaultsToFirstParty = do
-  let runFirstPartyScans = shouldRunFirstPartyScans firstPartyScansFlag orgDefaultsToFirstParty
+firstPartyScanMain base firstPartyScansFlag orgDefaultsToFirstParty orgSupportsFirstPartyScans = do
+  let runFirstPartyScans = shouldRunFirstPartyScans firstPartyScansFlag orgDefaultsToFirstParty orgSupportsFirstPartyScans
   let vdep = VendoredDependency "first-party" "." Nothing
   case runFirstPartyScans of
     (True) -> Just <$> scanVendoredDep base Nothing ( FullFileUploads False ) vdep
