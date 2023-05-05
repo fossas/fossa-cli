@@ -469,6 +469,7 @@ data Organization = Organization
   , orgSupportsDependenciesCachePolling :: Bool
   , orgRequiresFullFileUploads :: Bool
   , orgDefaultsToFirstPartyScans :: Bool
+  , orgSupportsFirstPartyScans :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -503,6 +504,9 @@ instance FromJSON Organization where
         .!= False
       <*> obj
         .:? "defaultToFirstPartyScans"
+        .!= False
+      <*> obj
+        .:? "supportsFirstPartyScans"
         .!= False
 
 data Project = Project
