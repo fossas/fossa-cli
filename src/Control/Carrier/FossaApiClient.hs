@@ -58,4 +58,5 @@ runFossaApiClient apiOpts =
           UploadNativeContainerScan revision metadata scan -> Core.uploadNativeContainerScan revision metadata scan
           UploadContributors locator contributors -> Core.uploadContributors locator contributors
           UploadLicenseScanResult signedUrl licenseSourceUnit -> LicenseScanning.uploadLicenseScanResult signedUrl licenseSourceUnit
+          UploadFirstPartyScanResult signedUrl fullSourceUnits -> LicenseScanning.uploadFirstPartyScanResult signedUrl fullSourceUnits
       )

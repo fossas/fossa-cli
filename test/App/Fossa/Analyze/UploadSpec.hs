@@ -63,6 +63,7 @@ spec =
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
             Fixtures.sourceUnits
+            Nothing
         locator `shouldBe'` expectedLocator
     -- Currently our StdOut logging just writes directly to StdOut, so this is
     -- just checking it doesn't fail.  In the future we should extract that so
@@ -80,6 +81,7 @@ spec =
             (toFlag (JsonOutput) True)
             Fixtures.projectRevision
             Fixtures.sourceUnits
+            Nothing
         locator `shouldBe'` expectedLocator
     it' "aborts when uploading to a monorepo"
       . expectFatal'
@@ -92,6 +94,7 @@ spec =
           (toFlag (JsonOutput) False)
           Fixtures.projectRevision
           Fixtures.sourceUnits
+          Nothing
     it' "continues if fetching the project fails"
       . withGit mockGit
       $ do
@@ -108,6 +111,7 @@ spec =
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
             Fixtures.sourceUnits
+            Nothing
         locator `shouldBe'` expectedLocator
     it' "continues if fetching contributors fails"
       . withGit (\_ -> fatalText "Mocked failure of fetching contributors from git")
@@ -121,6 +125,7 @@ spec =
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
             Fixtures.sourceUnits
+            Nothing
         locator `shouldBe'` expectedLocator
     it' "continues if uploading contributors fails"
       . withGit mockGit
@@ -135,4 +140,5 @@ spec =
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
             Fixtures.sourceUnits
+            Nothing
         locator `shouldBe'` expectedLocator

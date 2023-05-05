@@ -32,7 +32,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   vsiDownloadInferences,
   renderLocatorUrl,
   getEndpointVersion,
-) where
+firstPartyScanResultUpload) where
 
 import App.Docs (fossaSslCertDocsUrl)
 import App.Fossa.Config.Report
@@ -162,7 +162,7 @@ import Srclib.Types (
   Locator (..),
   SourceUnit,
   parseLocator,
-  renderLocator,
+  renderLocator, FullSourceUnit,
  )
 import System.FilePath (pathSeparator, splitDirectories)
 import Text.URI qualified as URI
@@ -918,6 +918,28 @@ licenseScanResultUpload signedArcURI licenseScanResult = fossaReq $ do
   where
     zippedLicenseResult :: BS.ByteString
     zippedLicenseResult = toStrict $ GZIP.compress $ encode licenseScanResult
+    -- We send gzipped json, so we can't use req's JSON utilities.
+    uploadArchiveRequest :: (MonadHttp m) => Url scheme -> Option scheme -> m LbsResponse
+    uploadArchiveRequest url options = reqCb PUT url (ReqBodyBs zippedLicenseResult) lbsResponse options (pure . requestEncoder)
+
+---------- The first-party scan result upload function uploads the JSON license result directly to the signed URL it is provided.
+firstPartyScanResultUpload ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  SignedURL ->
+  [FullSourceUnit] ->
+  m LbsResponse
+firstPartyScanResultUpload signedArcURI firstPartyScanResult = fossaReq $ do
+  let arcURL = URI.mkURI $ signedURL signedArcURI
+
+  uri <- fromMaybeText ("Invalid URL: " <> signedURL signedArcURI) arcURL
+  validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
+
+  context ("Uploading first-party scan result to " <> signedURL signedArcURI) $ case validatedURI of
+    Left (httpUrl, httpOptions) -> uploadArchiveRequest httpUrl httpOptions
+    Right (httpsUrl, httpsOptions) -> uploadArchiveRequest httpsUrl httpsOptions
+  where
+    zippedLicenseResult :: BS.ByteString
+    zippedLicenseResult = toStrict $ GZIP.compress $ encode firstPartyScanResult
     -- We send gzipped json, so we can't use req's JSON utilities.
     uploadArchiveRequest :: (MonadHttp m) => Url scheme -> Option scheme -> m LbsResponse
     uploadArchiveRequest url options = reqCb PUT url (ReqBodyBs zippedLicenseResult) lbsResponse options (pure . requestEncoder)

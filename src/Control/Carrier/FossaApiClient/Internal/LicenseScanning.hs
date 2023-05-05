@@ -4,6 +4,7 @@ module Control.Carrier.FossaApiClient.Internal.LicenseScanning (
   getSignedLicenseScanUrl,
   finalizeLicenseScan,
   uploadLicenseScanResult,
+  uploadFirstPartyScanResult,
 ) where
 
 import Control.Algebra (Has)
@@ -14,7 +15,7 @@ import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Control.Monad (void)
 import Fossa.API.Types (ApiOpts, ArchiveComponents, SignedURL)
-import Srclib.Types (LicenseSourceUnit)
+import Srclib.Types (LicenseSourceUnit, FullSourceUnit)
 
 getSignedLicenseScanUrl ::
   ( Has (Lift IO) sig m
@@ -47,3 +48,13 @@ uploadLicenseScanResult ::
   m ()
 uploadLicenseScanResult signedUrl licenseSourceUnit = do
   void $ API.licenseScanResultUpload signedUrl licenseSourceUnit
+
+uploadFirstPartyScanResult ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  ) =>
+  SignedURL ->
+  [FullSourceUnit] ->
+  m ()
+uploadFirstPartyScanResult signedUrl fullSourceUnits = do
+  void $ API.firstPartyScanResultUpload signedUrl fullSourceUnits
