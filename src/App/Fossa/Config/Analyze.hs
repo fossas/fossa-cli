@@ -468,11 +468,12 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       experimentalCfgs = collectExperimental maybeConfig cliOpts
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
       dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
-      firstPartyScansFlag =
+  firstPartyScansFlag <-
         case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
-          (True, _) -> FirstPartyScansOnFromFlag
-          (_, True) -> FirstPartyScansOffFromFlag
-          (False, False) -> FirstPartyScansUseDefault
+          (True, True) -> fatalText "You provided both the --experimental-force-first-party-scans and --experimental-force-no-first-party-scans flags. Only one of these flags may be used"
+          (True, _) -> pure FirstPartyScansOnFromFlag
+          (_, True) -> pure FirstPartyScansOffFromFlag
+          (False, False) -> pure FirstPartyScansUseDefault
 
 
   StandardAnalyzeConfig
