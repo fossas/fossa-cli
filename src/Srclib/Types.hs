@@ -90,6 +90,7 @@ data FullSourceUnit = FullSourceUnit
   , fullSourceUnitData :: Maybe (NonEmpty LicenseUnitData)
   , fullSourceUnitInfo :: Maybe LicenseUnitInfo
   }
+  deriving (Eq, Ord, Show)
 
 licenseUnitToFullSourceUnit ::  LicenseUnit -> FullSourceUnit
 licenseUnitToFullSourceUnit LicenseUnit{..} =
