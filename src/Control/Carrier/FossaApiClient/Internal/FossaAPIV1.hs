@@ -926,7 +926,7 @@ licenseScanResultUpload signedArcURI licenseScanResult = fossaReq $ do
 firstPartyScanResultUpload ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   SignedURL ->
-  [FullSourceUnit] ->
+  NE.NonEmpty FullSourceUnit ->
   m LbsResponse
 firstPartyScanResultUpload signedArcURI firstPartyScanResult = fossaReq $ do
   let arcURL = URI.mkURI $ signedURL signedArcURI
