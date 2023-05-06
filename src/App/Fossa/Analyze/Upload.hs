@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.Analyze.Upload (
   uploadSuccessfulAnalysis,
 ) where
@@ -10,6 +11,7 @@ import App.Types (
   ProjectMetadata,
   ProjectRevision (..),
  )
+import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
@@ -19,9 +21,13 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.FossaApiClient (
   FossaApiClient,
+  PackageRevision (..),
   getProject,
+  getSignedLicenseScanUrl,
   uploadAnalysis,
-  uploadContributors, PackageRevision (..), getSignedLicenseScanUrl, uploadFirstPartyScanResult, uploadFirstPartyAnalysis,
+  uploadContributors,
+  uploadFirstPartyAnalysis,
+  uploadFirstPartyScanResult,
  )
 import Control.Effect.Git (Git, fetchGitContributors)
 import Control.Effect.Lift (Lift)
@@ -39,20 +45,23 @@ import Effect.Logger (
   Has,
   Logger,
   Pretty (pretty),
+  Severity (SevInfo),
   logError,
   logInfo,
   logStdout,
-  viaShow, Severity (SevInfo),
+  viaShow,
  )
 import Fossa.API.Types (Project (projectIsMonorepo), UploadResponse (..))
 import Path (Abs, Dir, Path)
 import Srclib.Types (
+  FullSourceUnit,
+  LicenseSourceUnit (..),
   Locator (..),
   SourceUnit,
+  licenseUnitToFullSourceUnit,
   renderLocator,
-  LicenseSourceUnit (..), FullSourceUnit, sourceUnitToFullSourceUnit, licenseUnitToFullSourceUnit,
+  sourceUnitToFullSourceUnit,
  )
-import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 
 -- units come from standard `fossa analyze`.
 -- LicenseSourceUnit comes from running a first-party license scan on the project
@@ -120,7 +129,11 @@ uploadFirstPartyAnalysisToS3AndCore ::
   ( Has Diagnostics sig m
   , Has FossaApiClient sig m
   , Has StickyLogger sig m
-  ) => ProjectRevision -> ProjectMetadata -> NE.NonEmpty FullSourceUnit -> m UploadResponse
+  ) =>
+  ProjectRevision ->
+  ProjectMetadata ->
+  NE.NonEmpty FullSourceUnit ->
+  m UploadResponse
 uploadFirstPartyAnalysisToS3AndCore revision metadata mergedUnits = do
   _ <- uploadFirstPartyAnalysisToS3 revision mergedUnits
   uploadFirstPartyAnalysis revision metadata
@@ -129,7 +142,10 @@ uploadFirstPartyAnalysisToS3 ::
   ( Has Diagnostics sig m
   , Has FossaApiClient sig m
   , Has StickyLogger sig m
-  ) => ProjectRevision -> NE.NonEmpty FullSourceUnit -> m ()
+  ) =>
+  ProjectRevision ->
+  NE.NonEmpty FullSourceUnit ->
+  m ()
 uploadFirstPartyAnalysisToS3 revision mergedUnits = do
   -- TODO: change this to getSignedFirstPartyScanUrl
   signedURL <- getSignedLicenseScanUrl $ PackageRevision{packageVersion = projectRevision revision, packageName = projectName revision}

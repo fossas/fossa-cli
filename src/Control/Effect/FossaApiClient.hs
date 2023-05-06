@@ -49,6 +49,7 @@ import Control.Carrier.Simple (Simple, sendSimple)
 import Data.ByteString.Char8 qualified as C8
 import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Text (Text)
 import Fossa.API.Types (
@@ -65,8 +66,7 @@ import Fossa.API.Types (
   UploadResponse,
  )
 import Path (File, Path, Rel)
-import Srclib.Types (LicenseSourceUnit, Locator, SourceUnit, FullSourceUnit)
-import qualified Data.List.NonEmpty as NE
+import Srclib.Types (FullSourceUnit, LicenseSourceUnit, Locator, SourceUnit)
 
 -- | PackageRevisions are like ProjectRevisions, but they never have a branch.
 data PackageRevision = PackageRevision

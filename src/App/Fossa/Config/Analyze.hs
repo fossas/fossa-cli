@@ -56,10 +56,12 @@ import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverit
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (
   BaseDir,
+  FirstPartyScansFlag (..),
+  MonorepoAnalysisOpts (MonorepoAnalysisOpts, monorepoAnalysisType),
   OverrideDynamicAnalysisBinary (..),
   OverrideProject (OverrideProject),
   ProjectMetadata (projectLabel),
-  ProjectRevision, FirstPartyScansFlag (..),
+  ProjectRevision,
  )
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -389,12 +391,11 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
       dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
   firstPartyScansFlag <-
-        case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
-          (True, True) -> fatalText "You provided both the --experimental-force-first-party-scans and --experimental-force-no-first-party-scans flags. Only one of these flags may be used"
-          (True, _) -> pure FirstPartyScansOnFromFlag
-          (_, True) -> pure FirstPartyScansOffFromFlag
-          (False, False) -> pure FirstPartyScansUseDefault
-
+    case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
+      (True, True) -> fatalText "You provided both the --experimental-force-first-party-scans and --experimental-force-no-first-party-scans flags. Only one of these flags may be used"
+      (True, _) -> pure FirstPartyScansOnFromFlag
+      (_, True) -> pure FirstPartyScansOffFromFlag
+      (False, False) -> pure FirstPartyScansUseDefault
 
   AnalyzeConfig
     <$> basedir

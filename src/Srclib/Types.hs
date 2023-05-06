@@ -92,50 +92,50 @@ data FullSourceUnit = FullSourceUnit
   }
   deriving (Eq, Ord, Show)
 
-licenseUnitToFullSourceUnit ::  LicenseUnit -> FullSourceUnit
+licenseUnitToFullSourceUnit :: LicenseUnit -> FullSourceUnit
 licenseUnitToFullSourceUnit LicenseUnit{..} =
   FullSourceUnit
-  { fullSourceUnitName = licenseUnitName
-  , fullSourceUnitType = licenseUnitType
-  , fullSourceUnitManifest = Nothing
-  , fullSourceUnitBuild = Nothing
-  , fullSourceUnitGraphBreadth = Complete
-  , fullSourceUnitOriginPaths = []
-  , fullSourceUnitAdditionalData = Nothing
-  , fullSourceUnitFiles = Just licenseUnitFiles
-  , fullSourceUnitData = Just licenseUnitData
-  , fullSourceUnitInfo = Just licenseUnitInfo
-  }
+    { fullSourceUnitName = licenseUnitName
+    , fullSourceUnitType = licenseUnitType
+    , fullSourceUnitManifest = Nothing
+    , fullSourceUnitBuild = Nothing
+    , fullSourceUnitGraphBreadth = Complete
+    , fullSourceUnitOriginPaths = []
+    , fullSourceUnitAdditionalData = Nothing
+    , fullSourceUnitFiles = Just licenseUnitFiles
+    , fullSourceUnitData = Just licenseUnitData
+    , fullSourceUnitInfo = Just licenseUnitInfo
+    }
 
 sourceUnitToFullSourceUnit :: SourceUnit -> FullSourceUnit
 sourceUnitToFullSourceUnit SourceUnit{..} =
   FullSourceUnit
-  { fullSourceUnitName = sourceUnitName
-  , fullSourceUnitType = sourceUnitType
-  , fullSourceUnitManifest = Just sourceUnitManifest
-  , fullSourceUnitBuild = sourceUnitBuild
-  , fullSourceUnitGraphBreadth = sourceUnitGraphBreadth
-  , fullSourceUnitOriginPaths = sourceUnitOriginPaths
-  , fullSourceUnitAdditionalData = additionalData
-  , fullSourceUnitFiles = Nothing
-  , fullSourceUnitData = Nothing
-  , fullSourceUnitInfo = Nothing
-  }
+    { fullSourceUnitName = sourceUnitName
+    , fullSourceUnitType = sourceUnitType
+    , fullSourceUnitManifest = Just sourceUnitManifest
+    , fullSourceUnitBuild = sourceUnitBuild
+    , fullSourceUnitGraphBreadth = sourceUnitGraphBreadth
+    , fullSourceUnitOriginPaths = sourceUnitOriginPaths
+    , fullSourceUnitAdditionalData = additionalData
+    , fullSourceUnitFiles = Nothing
+    , fullSourceUnitData = Nothing
+    , fullSourceUnitInfo = Nothing
+    }
 
 instance ToJSON FullSourceUnit where
   toJSON FullSourceUnit{..} =
     object
-    [ "Name" .= fullSourceUnitName
-    , "Type" .= fullSourceUnitType
-    , "Manifest" .= fullSourceUnitManifest
-    , "Build" .= fullSourceUnitBuild
-    , "GraphBreadth" .= fullSourceUnitGraphBreadth
-    , "OriginPaths" .= fullSourceUnitOriginPaths
-    , "AdditionalDependencyData" .= fullSourceUnitAdditionalData
-    , "Files" .= fullSourceUnitFiles
-    , "Data" .= fullSourceUnitData
-    , "Info" .= fullSourceUnitInfo
-    ]
+      [ "Name" .= fullSourceUnitName
+      , "Type" .= fullSourceUnitType
+      , "Manifest" .= fullSourceUnitManifest
+      , "Build" .= fullSourceUnitBuild
+      , "GraphBreadth" .= fullSourceUnitGraphBreadth
+      , "OriginPaths" .= fullSourceUnitOriginPaths
+      , "AdditionalDependencyData" .= fullSourceUnitAdditionalData
+      , "Files" .= fullSourceUnitFiles
+      , "Data" .= fullSourceUnitData
+      , "Info" .= fullSourceUnitInfo
+      ]
 
 -- | LicenseSourceUnit is the base of the results sent to Core for a CLI-side license scan
 -- licenseSourceUnitLicenseUnits will be empty if you scan an empty directory.
@@ -286,8 +286,8 @@ instance FromJSON LicenseUnitMatchData where
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
   , sourceUnitType :: Text
-  , sourceUnitManifest :: Text
-  -- ^ path to manifest file
+  , -- | path to manifest file
+    sourceUnitManifest :: Text
   , sourceUnitBuild :: Maybe SourceUnitBuild
   , sourceUnitGraphBreadth :: GraphBreadth
   , sourceUnitOriginPaths :: [SomeBase File]
@@ -296,10 +296,10 @@ data SourceUnit = SourceUnit
   deriving (Eq, Ord, Show)
 
 data SourceUnitBuild = SourceUnitBuild
-  { buildArtifact :: Text
-  -- ^ always "default"
-  , buildSucceeded :: Bool
-  -- ^ always true
+  { -- | always "default"
+    buildArtifact :: Text
+  , -- | always true
+    buildSucceeded :: Bool
   , buildImports :: [Locator]
   , buildDependencies :: [SourceUnitDependency]
   }
