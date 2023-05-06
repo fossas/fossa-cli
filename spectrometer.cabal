@@ -502,6 +502,7 @@ test-suite unit-tests
     App.Fossa.Configuration.TelemetryConfigSpec
     App.Fossa.Container.AnalyzeNativeSpec
     App.Fossa.Container.AnalyzeNativeUploadSpec
+    App.Fossa.FirstPartyScanSpec
     App.Fossa.LicenseScannerSpec
     App.Fossa.ManualDepsSpec
     App.Fossa.ProjectInferenceSpec
