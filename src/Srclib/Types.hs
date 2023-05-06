@@ -286,8 +286,8 @@ instance FromJSON LicenseUnitMatchData where
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
   , sourceUnitType :: Text
-  , -- | path to manifest file
-    sourceUnitManifest :: Text
+  -- | path to manifest file
+  , sourceUnitManifest :: Text
   , sourceUnitBuild :: Maybe SourceUnitBuild
   , sourceUnitGraphBreadth :: GraphBreadth
   , sourceUnitOriginPaths :: [SomeBase File]
@@ -296,10 +296,10 @@ data SourceUnit = SourceUnit
   deriving (Eq, Ord, Show)
 
 data SourceUnitBuild = SourceUnitBuild
-  { -- | always "default"
-    buildArtifact :: Text
-  , -- | always true
-    buildSucceeded :: Bool
+  { buildArtifact :: Text
+  -- ^ always "default"
+  , buildSucceeded :: Bool
+  -- ^ always true
   , buildImports :: [Locator]
   , buildDependencies :: [SourceUnitDependency]
   }
