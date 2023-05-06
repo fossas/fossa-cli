@@ -1,5 +1,6 @@
 module App.Fossa.FirstPartyScan (
   runFirstPartyScan,
+  firstPartyScanWithOrgInfo,
 ) where
 import Srclib.Types (LicenseSourceUnit)
 import App.Types (FirstPartyScansFlag (..), FullFileUploads (FullFileUploads))
@@ -28,6 +29,7 @@ runFirstPartyScan ::
   m (Maybe LicenseSourceUnit)
 runFirstPartyScan root maybeApiOpts firstPartyScanFlag = do
   -- if we do not have api opts, then we act as if the org defaults to not running first-party scans
+  -- and the FOSSA server does support first-party scans
   case maybeApiOpts of
     Nothing -> firstPartyScanMain root firstPartyScanFlag False True
     Just apiOpts -> runFossaApiClient apiOpts $ firstPartyScanWithOrgInfo root firstPartyScanFlag
