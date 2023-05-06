@@ -55,7 +55,6 @@ runFossaApiClient apiOpts =
           ResolveUserDefinedBinary deps -> VSI.resolveUserDefinedBinary deps
           UploadAnalysis rev metadata units -> Core.uploadAnalysis rev metadata units
           UploadFirstPartyAnalysis rev metadata -> Core.uploadFirstPartyAnalysis rev metadata
-
           UploadArchive url path -> Core.uploadArchive url path
           UploadNativeContainerScan revision metadata scan -> Core.uploadNativeContainerScan revision metadata scan
           UploadContributors locator contributors -> Core.uploadContributors locator contributors

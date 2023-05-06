@@ -33,7 +33,8 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   vsiDownloadInferences,
   renderLocatorUrl,
   getEndpointVersion,
-firstPartyScanResultUpload) where
+  firstPartyScanResultUpload,
+) where
 
 import App.Docs (fossaSslCertDocsUrl)
 import App.Fossa.Config.Report
@@ -159,11 +160,12 @@ import Parse.XML (FromXML (..), child, parseXML, xmlErrorPretty)
 import Path (File, Path, Rel, toFilePath)
 import Prettyprinter (viaShow)
 import Srclib.Types (
+  FullSourceUnit,
   LicenseSourceUnit,
   Locator (..),
   SourceUnit,
   parseLocator,
-  renderLocator, FullSourceUnit,
+  renderLocator,
  )
 import System.FilePath (pathSeparator, splitDirectories)
 import Text.URI qualified as URI

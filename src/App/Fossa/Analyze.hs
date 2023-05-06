@@ -46,10 +46,11 @@ import App.Fossa.Config.Analyze (
   IncludeAll (IncludeAll),
   NoDiscoveryExclusion (NoDiscoveryExclusion),
   ScanDestination (..),
-  StandardAnalyzeConfig (severity, firstPartyScansFlag),
+  StandardAnalyzeConfig (firstPartyScansFlag, severity),
   UnpackArchives (UnpackArchives),
  )
 import App.Fossa.Config.Analyze qualified as Config
+import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.Monorepo (monorepoScan)
 import App.Fossa.Subcommand (SubCommand)
@@ -59,9 +60,9 @@ import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VSIDeps (analyzeVSIDeps)
 import App.Types (
   BaseDir (..),
+  FirstPartyScansFlag (..),
   OverrideDynamicAnalysisBinary,
   ProjectRevision (..),
-  FirstPartyScansFlag (..),
  )
 import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
@@ -124,7 +125,6 @@ import Prettyprinter.Render.Terminal (
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (Locator, SourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
-import App.Fossa.FirstPartyScan (runFirstPartyScan)
 
 debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json.gz"
@@ -275,8 +275,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     Diag.errorBoundaryIO
       . diagToDebug
       . runReader filters
-      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget
-      $ Config.vsiOptions cfg
+      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget $
+        Config.vsiOptions cfg
   binarySearchResults <-
     Diag.errorBoundaryIO . diagToDebug $
       Diag.context "discover-binaries" $

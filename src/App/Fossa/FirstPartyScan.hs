@@ -2,19 +2,20 @@ module App.Fossa.FirstPartyScan (
   runFirstPartyScan,
   firstPartyScanWithOrgInfo,
 ) where
-import Srclib.Types (LicenseSourceUnit)
+
+import App.Fossa.LicenseScanner (scanVendoredDep)
+import App.Fossa.ManualDeps (VendoredDependency (..))
 import App.Types (FirstPartyScansFlag (..), FullFileUploads (FullFileUploads))
-import Fossa.API.Types (ApiOpts(..), Organization (..))
+import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger)
 import Effect.Exec (Exec)
-import Control.Carrier.FossaApiClient (runFossaApiClient)
-import App.Fossa.ManualDeps (VendoredDependency(..))
-import App.Fossa.LicenseScanner (scanVendoredDep)
-import Effect.ReadFS (ReadFS, Has)
-import Path (Abs, Path, Dir)
+import Effect.ReadFS (Has, ReadFS)
+import Fossa.API.Types (ApiOpts (..), Organization (..))
+import Path (Abs, Dir, Path)
+import Srclib.Types (LicenseSourceUnit)
 
 runFirstPartyScan ::
   ( Has Diagnostics sig m
@@ -74,5 +75,5 @@ firstPartyScanMain base firstPartyScansFlag orgDefaultsToFirstParty orgSupportsF
   runFirstPartyScans <- shouldRunFirstPartyScans firstPartyScansFlag orgDefaultsToFirstParty orgSupportsFirstPartyScans
   let vdep = VendoredDependency "first-party" "." Nothing
   case runFirstPartyScans of
-    (True) -> Just <$> scanVendoredDep base Nothing ( FullFileUploads False ) vdep
+    (True) -> Just <$> scanVendoredDep base Nothing (FullFileUploads False) vdep
     (False) -> pure Nothing

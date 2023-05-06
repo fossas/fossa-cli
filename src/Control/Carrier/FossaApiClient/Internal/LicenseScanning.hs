@@ -14,9 +14,9 @@ import Control.Effect.FossaApiClient (PackageRevision (..))
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Control.Monad (void)
+import Data.List.NonEmpty qualified as NE
 import Fossa.API.Types (ApiOpts, ArchiveComponents, SignedURL)
-import Srclib.Types (LicenseSourceUnit, FullSourceUnit)
-import qualified Data.List.NonEmpty as NE
+import Srclib.Types (FullSourceUnit, LicenseSourceUnit)
 
 getSignedLicenseScanUrl ::
   ( Has (Lift IO) sig m
