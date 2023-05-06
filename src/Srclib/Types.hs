@@ -286,8 +286,8 @@ instance FromJSON LicenseUnitMatchData where
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
   , sourceUnitType :: Text
-  -- | path to manifest file
   , sourceUnitManifest :: Text
+  -- ^ path to manifest file
   , sourceUnitBuild :: Maybe SourceUnitBuild
   , sourceUnitGraphBreadth :: GraphBreadth
   , sourceUnitOriginPaths :: [SomeBase File]
