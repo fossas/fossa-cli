@@ -4,7 +4,7 @@
 # FOSSA CLI
 
 <!-- markdown-link-check-disable -->
-<!-- GITHUB_ACTION_DOWNLOADS_BADGE_HERE -->
+<!-- NOTE: If you change the format of the "FOSSA Downloads" badge, make sure to also update the CI action at `./github/workflows/badges.yml` that updates the download count. -->
 [![FOSSA Downloads](https://img.shields.io/badge/downloads-5.8M-brightgreen)](https://github.com/fossas/fossa-cli/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/fossas/fossa-cli/build.yml)](https://github.com/fossas/fossa-cli/actions/workflows/build.yml)
 [![Dependency scan](https://img.shields.io/github/actions/workflow/status/fossas/fossa-cli/dependency-scan.yml?label=dependency%20scan)](https://github.com/fossas/fossa-cli/actions/workflows/dependency-scan.yml)
