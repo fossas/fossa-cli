@@ -637,6 +637,8 @@ uploadFirstPartyAnalysis apiOpts ProjectRevision{..} metadata = fossaReq $ do
             =: cliVersion
           <> "managedBuild"
             =: True
+          <> "cliLicenseScanType"
+            =: ("match_data" :: Text)
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
