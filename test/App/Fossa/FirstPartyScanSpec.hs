@@ -6,13 +6,15 @@ import App.Fossa.FirstPartyScan (firstPartyScanWithOrgInfo)
 import App.Types (FirstPartyScansFlag (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
+import Data.List.NonEmpty qualified as NE
+import Data.Maybe (isJust)
 import Fossa.API.Types (Organization (..))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
-import Srclib.Types (LicenseSourceUnit (..))
+import Srclib.Types (LicenseSourceUnit (..), LicenseUnit (licenseUnitData), LicenseUnitData (licenseUnitDataContents))
 import Test.Effect (expectFatal', expectationFailure', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
-import Test.Hspec (Spec, describe, runIO)
+import Test.Hspec (Spec, describe, runIO, shouldNotBe)
 import Test.MockApi (MockApi, alwaysReturns)
 
 fixtureDir :: Path Rel Dir
@@ -57,6 +59,26 @@ spec = do
       licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir FirstPartyScansOffFromFlag
       licenseSourceUnit `shouldBe'` Nothing
 
+    it' "should do full file uploads if the org defaults to full file uploads" $ do
+      expectGetOrganizationThatDefaultsToFirstPartyScansAndFullFileUploads
+      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir FirstPartyScansUseDefault
+      case licenseSourceUnit of
+        Nothing -> expectationFailure' "first party scan should have run"
+        Just LicenseSourceUnit{licenseSourceUnitLicenseUnits = units} -> do
+          length units `shouldBe'` 2
+          let unitData = NE.head . licenseUnitData $ NE.head units
+          isJust (licenseUnitDataContents unitData) `shouldBe'` True
+
+    it' "should upload matchData if the org does not default to full-file uploads" $ do
+      expectGetOrganizationThatDefaultsToFirstPartyScans
+      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir FirstPartyScansUseDefault
+      case licenseSourceUnit of
+        Nothing -> expectationFailure' "first party scan should have run"
+        Just LicenseSourceUnit{licenseSourceUnitLicenseUnits = units} -> do
+          length units `shouldBe'` 2
+          let unitData = NE.head . licenseUnitData $ NE.head units
+          licenseUnitDataContents unitData `shouldBe'` Nothing
+
 -- The default org defaults to not running first party scans but has first-party scans enabled
 expectGetOrganizationThatDefaultsToNoFirstPartyScans :: Has MockApi sig m => m ()
 expectGetOrganizationThatDefaultsToNoFirstPartyScans = GetOrganization `alwaysReturns` Fixtures.organization
@@ -66,3 +88,6 @@ expectGetOrganizationThatDoesNotSupportFirstPartyScans = GetOrganization `always
 
 expectGetOrganizationThatDefaultsToFirstPartyScans :: Has MockApi sig m => m ()
 expectGetOrganizationThatDefaultsToFirstPartyScans = GetOrganization `alwaysReturns` Fixtures.organization{orgDefaultsToFirstPartyScans = True}
+
+expectGetOrganizationThatDefaultsToFirstPartyScansAndFullFileUploads :: Has MockApi sig m => m ()
+expectGetOrganizationThatDefaultsToFirstPartyScansAndFullFileUploads = GetOrganization `alwaysReturns` Fixtures.organization{orgDefaultsToFirstPartyScans = True, orgRequiresFullFileUploads = True}
