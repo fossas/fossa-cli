@@ -23,7 +23,7 @@ import Control.Effect.FossaApiClient (
   FossaApiClient,
   PackageRevision (..),
   getProject,
-  getSignedLicenseScanUrl,
+  getSignedFirstPartyScanUrl,
   uploadAnalysis,
   uploadContributors,
   uploadFirstPartyAnalysis,
@@ -147,8 +147,7 @@ uploadFirstPartyAnalysisToS3 ::
   NE.NonEmpty FullSourceUnit ->
   m ()
 uploadFirstPartyAnalysisToS3 revision mergedUnits = do
-  -- TODO: change this to getSignedFirstPartyScanUrl
-  signedURL <- getSignedLicenseScanUrl $ PackageRevision{packageVersion = projectRevision revision, packageName = projectName revision}
+  signedURL <- getSignedFirstPartyScanUrl $ PackageRevision{packageVersion = projectRevision revision, packageName = projectName revision}
   logSticky $ "Uploading '" <> projectName revision <> "' to secure S3 bucket"
   -- TODO: copy/paste/modify of uploadLicenseScanResult
   uploadFirstPartyScanResult signedURL mergedUnits

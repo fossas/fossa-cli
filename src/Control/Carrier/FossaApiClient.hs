@@ -43,6 +43,7 @@ runFossaApiClient apiOpts =
           GetOrganization -> Core.getOrganization
           GetProject rev -> Core.getProject rev
           GetAnalyzedRevisions vdeps -> Core.getAnalyzedRevisions vdeps
+          GetSignedFirstPartyScanUrl rev -> LicenseScanning.getSignedFirstPartyScanUrl rev
           GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev
           GetSignedUploadUrl rev -> Core.getSignedUploadUrl rev
           GetVsiInferences scanId -> VSI.getVsiInferences scanId

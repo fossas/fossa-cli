@@ -19,6 +19,11 @@ module Control.Effect.FossaApiClient (
   getProject,
   getRevisionDependencyCacheStatus,
   getAnalyzedRevisions,
+<<<<<<< HEAD
+=======
+  getScan,
+  getSignedFirstPartyScanUrl,
+>>>>>>> add getSignedFirstPartyScanUrl and use it to upload first-party results to the right spot
   getSignedLicenseScanUrl,
   getSignedUploadUrl,
   getVsiInferences,
@@ -186,6 +191,9 @@ assertUserDefinedBinaries meta fprints = sendSimple (AssertUserDefinedBinaries m
 
 getAnalyzedRevisions :: Has FossaApiClient sig m => NonEmpty VendoredDependency -> m ([Text])
 getAnalyzedRevisions = sendSimple . GetAnalyzedRevisions
+
+getSignedFirstPartyScanUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
+getSignedFirstPartyScanUrl = sendSimple . GetSignedFirstPartyScanUrl
 
 getSignedLicenseScanUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
 getSignedLicenseScanUrl = sendSimple . GetSignedLicenseScanUrl
