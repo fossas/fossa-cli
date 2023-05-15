@@ -21,6 +21,7 @@ module Control.Effect.FossaApiClient (
   getRevisionDependencyCacheStatus,
   getAnalyzedRevisions,
   getScan,
+  getSignedFirstPartyScanUrl,
   getSignedLicenseScanUrl,
   getSignedUploadUrl,
   getVsiInferences,
@@ -99,6 +100,7 @@ data FossaApiClientF a where
   GetProject :: ProjectRevision -> FossaApiClientF Project
   GetAnalyzedRevisions :: NonEmpty VendoredDependency -> FossaApiClientF [Text]
   GetScan :: Locator -> ScanId -> FossaApiClientF ScanResponse
+  GetSignedFirstPartyScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetVsiInferences :: VSI.ScanID -> FossaApiClientF [Locator]
@@ -198,6 +200,9 @@ assertUserDefinedBinaries meta fprints = sendSimple (AssertUserDefinedBinaries m
 
 getAnalyzedRevisions :: Has FossaApiClient sig m => NonEmpty VendoredDependency -> m ([Text])
 getAnalyzedRevisions = sendSimple . GetAnalyzedRevisions
+
+getSignedFirstPartyScanUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
+getSignedFirstPartyScanUrl = sendSimple . GetSignedFirstPartyScanUrl
 
 getSignedLicenseScanUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
 getSignedLicenseScanUrl = sendSimple . GetSignedLicenseScanUrl

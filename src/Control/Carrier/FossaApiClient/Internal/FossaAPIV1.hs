@@ -15,6 +15,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getAttribution,
   getAnalyzedRevisions,
   getRevisionDependencyCacheStatus,
+  getSignedFirstPartyScanURL,
   getSignedLicenseScanURL,
   getSignedURL,
   getProject,
@@ -886,6 +887,27 @@ getSignedURL apiOpts revision packageName = fossaReq $ do
   response <-
     context ("Retrieving a signed S3 URL for " <> packageName) $
       req GET (signedURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
+  pure (responseBody response)
+
+---------- The signed First-Party Scan URL endpoint returns a URL endpoint that can be used to directly upload the results of a first-party scan to an S3 bucket.
+
+signedFirstPartyScanURLEndpoint :: Url 'Https -> Url 'Https
+signedFirstPartyScanURLEndpoint baseUrl = baseUrl /: "api" /: "first_party_scan" /: "signed_url"
+
+getSignedFirstPartyScanURL ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  Text ->
+  Text ->
+  m SignedURL
+getSignedFirstPartyScanURL apiOpts revision packageName = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts = "packageSpec" =: packageName <> "revision" =: revision
+
+  response <-
+    context ("Retrieving a signed S3 URL for license scan results of " <> packageName) $
+      req GET (signedFirstPartyScanURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
   pure (responseBody response)
 
 ---------- The signed License Scan URL endpoint returns a URL endpoint that can be used to directly upload the results of a license scan to an S3 bucket.
