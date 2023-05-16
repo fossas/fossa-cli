@@ -2,6 +2,7 @@
 
 module App.Fossa.FirstPartyScanSpec (spec) where
 
+import App.Fossa.Config.Analyze (StandardAnalyzeConfig (..))
 import App.Fossa.FirstPartyScan (firstPartyScanWithOrgInfo)
 import App.Types (FirstPartyScansFlag (..))
 import Control.Algebra (Has)
@@ -14,7 +15,7 @@ import Path.IO (getCurrentDir)
 import Srclib.Types (LicenseSourceUnit (..), LicenseUnit (licenseUnitData), LicenseUnitData (licenseUnitDataContents))
 import Test.Effect (expectFatal', expectationFailure', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
-import Test.Hspec (Spec, describe, runIO, shouldNotBe)
+import Test.Hspec (Spec, describe, runIO)
 import Test.MockApi (MockApi, alwaysReturns)
 
 fixtureDir :: Path Rel Dir
@@ -28,40 +29,40 @@ spec = do
 
     it' "should fail if the organization does not support first party scans and you force it on" $ do
       expectGetOrganizationThatDoesNotSupportFirstPartyScans
-      expectFatal' $ firstPartyScanWithOrgInfo scanDir FirstPartyScansOnFromFlag
+      expectFatal' $ firstPartyScanWithOrgInfo scanDir Fixtures.standardAnalyzeConfig{firstPartyScansFlag = FirstPartyScansOnFromFlag}
 
     it' "should not run if the organization does not support first-party scans and it is not forced on" $ do
       expectGetOrganizationThatDoesNotSupportFirstPartyScans
-      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir FirstPartyScansUseDefault
+      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir Fixtures.standardAnalyzeConfig
       licenseSourceUnit `shouldBe'` Nothing
 
     it' "should not run if the organization defaults to no first-party scans and it is not forced on" $ do
       expectGetOrganizationThatDefaultsToNoFirstPartyScans
-      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir FirstPartyScansUseDefault
+      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir Fixtures.standardAnalyzeConfig
       licenseSourceUnit `shouldBe'` Nothing
 
     it' "should run if the organization defaults to not running first-party scans but is forced on" $ do
       expectGetOrganizationThatDefaultsToNoFirstPartyScans
-      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir FirstPartyScansOnFromFlag
+      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir Fixtures.standardAnalyzeConfig{firstPartyScansFlag = FirstPartyScansOnFromFlag}
       case licenseSourceUnit of
         Nothing -> expectationFailure' "first party scan should have run"
         Just LicenseSourceUnit{licenseSourceUnitLicenseUnits = units} -> length units `shouldBe'` 2
 
     it' "should run if the organization defaults to running first-party scans and is not forced on" $ do
       expectGetOrganizationThatDefaultsToFirstPartyScans
-      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir FirstPartyScansUseDefault
+      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir Fixtures.standardAnalyzeConfig
       case licenseSourceUnit of
         Nothing -> expectationFailure' "first party scan should have run"
         Just LicenseSourceUnit{licenseSourceUnitLicenseUnits = units} -> length units `shouldBe'` 2
 
     it' "should not run if the organization defaults to running first-party scans and is forced off" $ do
       expectGetOrganizationThatDefaultsToFirstPartyScans
-      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir FirstPartyScansOffFromFlag
+      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir Fixtures.standardAnalyzeConfig{firstPartyScansFlag = FirstPartyScansOffFromFlag}
       licenseSourceUnit `shouldBe'` Nothing
 
     it' "should do full file uploads if the org defaults to full file uploads" $ do
       expectGetOrganizationThatDefaultsToFirstPartyScansAndFullFileUploads
-      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir FirstPartyScansUseDefault
+      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir Fixtures.standardAnalyzeConfig
       case licenseSourceUnit of
         Nothing -> expectationFailure' "first party scan should have run"
         Just LicenseSourceUnit{licenseSourceUnitLicenseUnits = units} -> do
@@ -71,7 +72,7 @@ spec = do
 
     it' "should upload matchData if the org does not default to full-file uploads" $ do
       expectGetOrganizationThatDefaultsToFirstPartyScans
-      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir FirstPartyScansUseDefault
+      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDir Fixtures.standardAnalyzeConfig
       case licenseSourceUnit of
         Nothing -> expectationFailure' "first party scan should have run"
         Just LicenseSourceUnit{licenseSourceUnitLicenseUnits = units} -> do
