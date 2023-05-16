@@ -88,8 +88,8 @@ fossa test
 
 #### 1. Why doesn't FOSSA offer native Conan package manager analysis?
 
-FOSSA is actively working to develop native Conan support. We want to build the functionality that
-provides accurate and repeatable analysis for all versions of the Conan package manager.
+FOSSA is actively working to develop native Conan support. We want to build a functionality that provides accurate and repeatable analysis for all versions of the Conan package manager. This integration
+the script is supplied as a potential option if you want to start using FOSSA for Conan immediately. 
 
 #### 2. Why do I need Conan `v2` or greater?
 
