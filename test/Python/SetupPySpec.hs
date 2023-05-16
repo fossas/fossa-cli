@@ -83,6 +83,10 @@ spec = do
       setupPyWithoutComment `shouldParseInto` [mkReq "PyYAML", mkReq "pandas", mkReq "numpy"]
       setupPyWithoutComment2 `shouldParseInto` [mkReq "PyYAML", mkReq "pandas", mkReq "numpy"]
 
+    it "should parse setup.py with backslash" $ do
+      let shouldParseInto = parseMatch installRequiresParser
+      setupPyWithBackslash `shouldParseInto` [mkReq "PyYAML", mkReq "pandas", mkReq "numpy"]
+
     it "should parse setup.py with comments" $ do
       let shouldParseInto = parseMatch installRequiresParser
 
@@ -228,6 +232,17 @@ setup(
         # 'PyYAML',
         # 'pandas==0.23.3',
         # 'numpy>=1.14.5'
+    ],
+)
+|]
+
+setupPyWithBackslash :: Text
+setupPyWithBackslash =
+  [r|from setuptools import setup, find_packages
+setup(
+    install_requires=[ 'PyYAML', \
+      'pandas', \
+      'numpy'
     ],
 )
 |]
