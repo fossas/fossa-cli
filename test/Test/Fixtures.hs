@@ -36,21 +36,34 @@ module Test.Fixtures (
   secondLicenseSourceUnit,
   diffRevision,
   issuesDiffAvailable,
+  standardAnalyzeConfig,
 ) where
 
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), StandardAnalyzeConfig (StandardAnalyzeConfig), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
+import App.Fossa.Config.Analyze qualified as ANZ
+import App.Fossa.Config.Analyze qualified as VSI
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
+import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency (..))
+import App.Types (OverrideDynamicAnalysisBinary (..))
 import App.Types qualified as App
 import Control.Effect.FossaApiClient qualified as App
+import Control.Monad.RWS qualified as Set
 import Control.Timeout (Duration (MilliSeconds))
+import Data.Flag (toFlag)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text.Extra (showT)
+import Discovery.Filters (
+  AllFilters,
+ )
+import Effect.Logger (Severity (..))
 import Fossa.API.Types (Archive (..))
 import Fossa.API.Types qualified as API
-import Path (mkRelDir, parseAbsDir, (</>))
+import Path (Abs, Dir, mkAbsDir, mkRelDir, parseAbsDir, (</>))
+import Path.Posix (Path)
 import Srclib.Types (
   LicenseScanType (..),
   LicenseSourceUnit (..),
@@ -337,4 +350,54 @@ secondLicenseSourceUnit =
     { licenseSourceUnitName = "vendored/foo"
     , licenseSourceUnitType = CliLicenseScanned
     , licenseSourceUnitLicenseUnits = NE.fromList [emptyLicenseUnit]
+    }
+
+vsiOptions :: VSI.VSIModeOptions
+vsiOptions =
+  VSI.VSIModeOptions
+    { vsiAnalysisEnabled = toFlag VSI.VSIAnalysis False
+    , vsiSkipSet = VSI.SkipResolution Set.mempty
+    , iatAssertion = VSI.IATAssertion Nothing
+    , dynamicLinkingTarget = VSI.DynamicLinkInspect Nothing
+    , binaryDiscoveryEnabled = toFlag VSI.BinaryDiscovery False
+    }
+
+filterSet :: AllFilters
+filterSet = mempty
+
+experimentalConfig :: ExperimentalAnalyzeConfig
+experimentalConfig =
+  ExperimentalAnalyzeConfig
+    { allowedGradleConfigs = Nothing
+    , useV3GoResolver = GoModulesBasedTactic
+    }
+
+vendoredDepsOptions :: VendoredDependencyOptions
+vendoredDepsOptions =
+  VendoredDependencyOptions
+    { forceRescans = False
+    , licenseScanMethod = Just CLILicenseScan
+    , licenseScanPathFilters = Nothing
+    }
+
+absDir :: Path Abs Dir
+absDir = $(mkAbsDir "/")
+
+standardAnalyzeConfig :: StandardAnalyzeConfig
+standardAnalyzeConfig =
+  StandardAnalyzeConfig
+    { ANZ.baseDir = App.BaseDir absDir
+    , ANZ.severity = SevDebug
+    , ANZ.scanDestination = OutputStdout
+    , ANZ.projectRevision = projectRevision
+    , ANZ.vsiOptions = vsiOptions
+    , ANZ.filterSet = filterSet
+    , ANZ.experimental = experimentalConfig
+    , ANZ.vendoredDeps = vendoredDepsOptions
+    , ANZ.unpackArchives = toFlag UnpackArchives False
+    , ANZ.jsonOutput = toFlag JsonOutput False
+    , ANZ.includeAllDeps = toFlag IncludeAll False
+    , ANZ.noDiscoveryExclusion = toFlag NoDiscoveryExclusion False
+    , ANZ.overrideDynamicAnalysis = App.OverrideDynamicAnalysisBinary{unOverrideDynamicAnalysisBinary = mempty}
+    , ANZ.firstPartyScansFlag = App.FirstPartyScansUseDefault
     }
