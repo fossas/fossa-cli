@@ -19,10 +19,12 @@ import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics, fatalText)
+import Control.Monad (when)
 import Crypto.Hash (Digest, MD5, hashlazy)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.:), (.:?))
 import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers)
 import Data.ByteString.Lazy qualified as BS
+import Data.Foldable (for_)
 import Data.Functor.Extra ((<$$>))
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty)
@@ -34,7 +36,7 @@ import Data.String.Conversion (
   ToString (toString),
   ToText (toText),
  )
-import Data.Text (Text)
+import Data.Text (Text, isInfixOf)
 import Data.Text qualified as Text
 import Data.UUID.V4 (nextRandom)
 import Fossa.API.Types (Archive (..))
@@ -51,12 +53,29 @@ data VendoredDependency = VendoredDependency
   deriving (Eq, Ord, Show)
 
 instance FromJSON VendoredDependency where
-  parseJSON = withObject "VendoredDependency" $ \obj ->
-    VendoredDependency
-      <$> obj .: "name"
-      <*> obj .: "path"
-      <*> (unTextLike <$$> obj .:? "version")
-      <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
+  parseJSON = withObject "VendoredDependency" $ \obj -> do
+    vendorDep <-
+      VendoredDependency
+        <$> obj .: "name"
+        <*> obj .: "path"
+        <*> (unTextLike <$$> obj .:? "version")
+        <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
+
+    case vendoredVersion vendorDep of
+      Nothing -> pure vendorDep
+      Just version' -> do
+        for_ forbiddenChars $ \fbc -> do
+          when (fbc `isInfixOf` version') $
+            fail $
+              "field 'version' conatins forbidden character '" <> toString fbc <> "'! Do not use anyof: " <> show forbiddenChars
+        pure vendorDep
+    where
+      -- If following charcters are allowed in version
+      -- We end up with 403 error from S3. This is likely
+      -- due to encoding/escaping issue. Refer to backlog.
+      forbiddenChars :: [Text]
+      forbiddenChars = ["?", "#"]
+
 data VendoredDependencyScanMode
   = SkipPreviouslyScanned
   | SkippingNotSupported
