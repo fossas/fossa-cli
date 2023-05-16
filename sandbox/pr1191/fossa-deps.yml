@@ -1,9 +1,0 @@
-remote-dependencies:
-  - name: "xx"
-    version: "ss"
-    url: "ss"
-
-vendored-dependencies:
-  - name: "hello"
-    version: "1#1"
-    path: .
