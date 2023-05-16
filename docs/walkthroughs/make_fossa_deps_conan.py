@@ -30,6 +30,7 @@ import logging
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 from datetime import datetime
+import urllib.parse
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -63,7 +64,7 @@ class FossaDep:
 
     def dump(self):
         comments = [
-            "# This is auto-generated fossa-deps file for conan.",
+            "# This is auto-generated fossa-deps file for Conan project.",
             "# This file was generated at: " + datetime.now().isoformat(),
             "# ",
             "# Docs: https://github.com/fossas/fossa-cli/blob/master/docs/walkthroughs/conan.md",
@@ -126,8 +127,11 @@ def mk_fossa_deps(graph):
     custom_deps = []
     for node in graph.get('nodes', []):
         label = node.get("label")
-        if "conanfile.txt" == label:
-            logging.info(f"excluding {label} from fossa-deps, as this is manifest file not a dependency")
+        if label.lower() in ["conanfile.txt", "conanfile.py"]:
+            logging.info(f"excluding {label} from fossa-deps, as this is a manifest file, not a dependency")
+            continue
+
+        if node.get("test", False):
             continue
 
         # https://docs.conan.io/2.0/tutorial/consuming_packages/cross_building_with_conan.html
@@ -135,7 +139,11 @@ def mk_fossa_deps(graph):
             logging.info(f"excluding {label} from fossa-deps, as this package as build context, and is build dependency.")
             continue
 
-        name, version = name_version_of(label)
+        pkg_id = node.get("package_id", "none")
+        name, raw_version = name_version_of(label)
+        version_params = urllib.parse.urlencode({'package_id': pkg_id}, doseq=True)
+        version = f"{raw_version},{version_params}"
+
         license = license_of(node)
         homepage = homepage_of(node)
         description = description_of(node)
