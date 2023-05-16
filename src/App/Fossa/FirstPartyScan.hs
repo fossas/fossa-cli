@@ -3,6 +3,7 @@ module App.Fossa.FirstPartyScan (
   firstPartyScanWithOrgInfo,
 ) where
 
+import App.Fossa.Config.Analyze (StandardAnalyzeConfig (..), VendoredDependencyOptions (licenseScanPathFilters))
 import App.Fossa.LicenseScanner (scanVendoredDep)
 import App.Fossa.ManualDeps (VendoredDependency (..))
 import App.Types (FirstPartyScansFlag (..), FullFileUploads (FullFileUploads))
@@ -13,7 +14,7 @@ import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger)
 import Effect.Exec (Exec)
 import Effect.ReadFS (Has, ReadFS)
-import Fossa.API.Types (ApiOpts (..), Organization (..))
+import Fossa.API.Types (ApiOpts (..), Organization (..), blankOrganization)
 import Path (Abs, Dir, Path)
 import Srclib.Types (LicenseSourceUnit)
 
@@ -26,14 +27,16 @@ runFirstPartyScan ::
   ) =>
   Path Abs Dir ->
   Maybe ApiOpts ->
-  FirstPartyScansFlag ->
+  StandardAnalyzeConfig ->
   m (Maybe LicenseSourceUnit)
-runFirstPartyScan root maybeApiOpts firstPartyScanFlag = do
+runFirstPartyScan root maybeApiOpts cfg = do
   -- if we do not have api opts, then we act as if the org defaults to not running first-party scans
-  -- and the FOSSA server does support first-party scans
+  -- but the FOSSA server supports first-party scans
   case maybeApiOpts of
-    Nothing -> firstPartyScanMain root firstPartyScanFlag False True $ FullFileUploads False
-    Just apiOpts -> runFossaApiClient apiOpts $ firstPartyScanWithOrgInfo root firstPartyScanFlag
+    Nothing -> firstPartyScanMain root cfg defaultOrg
+    Just apiOpts -> runFossaApiClient apiOpts $ firstPartyScanWithOrgInfo root cfg
+  where
+    defaultOrg = blankOrganization{orgDefaultsToFirstPartyScans = False, orgSupportsFirstPartyScans = True, orgRequiresFullFileUploads = False}
 
 firstPartyScanWithOrgInfo ::
   ( Has Diagnostics sig m
@@ -44,16 +47,15 @@ firstPartyScanWithOrgInfo ::
   , Has FossaApiClient sig m
   ) =>
   Path Abs Dir ->
-  FirstPartyScansFlag ->
+  StandardAnalyzeConfig ->
   m (Maybe LicenseSourceUnit)
-firstPartyScanWithOrgInfo root firstPartyScanFlag = do
+firstPartyScanWithOrgInfo root cfg = do
   org <- getOrganization
-  let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
-  firstPartyScanMain root firstPartyScanFlag (orgDefaultsToFirstPartyScans org) (orgSupportsFirstPartyScans org) fullFileUploads
+  firstPartyScanMain root cfg org
 
-shouldRunFirstPartyScans :: (Has Diagnostics sig m) => FirstPartyScansFlag -> Bool -> Bool -> m Bool
-shouldRunFirstPartyScans firstPartyScansFlag orgDefaultsToFirstParty instanceSupportsFirstPartyScans =
-  case (firstPartyScansFlag, orgDefaultsToFirstParty, instanceSupportsFirstPartyScans) of
+shouldRunFirstPartyScans :: (Has Diagnostics sig m) => StandardAnalyzeConfig -> Organization -> m Bool
+shouldRunFirstPartyScans cfg org =
+  case (firstPartyScansFlag cfg, orgDefaultsToFirstPartyScans org, orgSupportsFirstPartyScans org) of
     (FirstPartyScansOnFromFlag, _, False) -> fatalText "You provided the --experimental-force-first-party-scans flag but the FOSSA server does not support first-party scans"
     (_, _, False) -> pure False
     (FirstPartyScansOnFromFlag, _, True) -> pure True
@@ -68,14 +70,14 @@ firstPartyScanMain ::
   , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
-  FirstPartyScansFlag ->
-  Bool ->
-  Bool ->
-  FullFileUploads ->
+  StandardAnalyzeConfig ->
+  Organization ->
   m (Maybe LicenseSourceUnit)
-firstPartyScanMain base firstPartyScansFlag orgDefaultsToFirstParty orgSupportsFirstPartyScans fullFileUploads = do
-  runFirstPartyScans <- shouldRunFirstPartyScans firstPartyScansFlag orgDefaultsToFirstParty orgSupportsFirstPartyScans
+firstPartyScanMain base cfg org = do
+  runFirstPartyScans <- shouldRunFirstPartyScans cfg org
   let vdep = VendoredDependency "first-party" "." Nothing
+      fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
+      pathFilters = licenseScanPathFilters $ vendoredDeps cfg
   case runFirstPartyScans of
-    (True) -> Just <$> scanVendoredDep base Nothing fullFileUploads vdep
+    (True) -> Just <$> scanVendoredDep base pathFilters fullFileUploads vdep
     (False) -> pure Nothing
