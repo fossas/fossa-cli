@@ -117,9 +117,12 @@ echo
 echo "Marking binaries executable"
 chmod +x vendor-bins/*
 
-echo "Compressing binaries"
+echo "Compressing index.gob"
 xz vendor-bins/index.gob
-find vendor-bins -type f -not -name '*.xz' | xargs upx || echo "WARN: 'upx' command not found, binaries will not be compressed"
+if [ $ASSET_POSTFIX != "darwin" ]; then
+  echo "Compressing binaries"
+  find vendor-bins -type f -not -name '*.xz' | xargs upx || echo "WARN: 'upx' command not found, binaries will not be compressed"
+fi
 
 echo "Vendored binaries are ready for use"
 ls -lh vendor-bins/
