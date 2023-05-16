@@ -17,7 +17,7 @@ import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 import Text.RawString.QQ (r)
 
 import Data.Void (Void)
-import Strategy.Python.SetupPy (installRequiresParserSetupCfg)
+import Strategy.Python.SetupPy (installRequiresParser, installRequiresParserSetupCfg)
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (Parsec, parse)
 
@@ -77,6 +77,19 @@ expected = run . evalGrapher $ do
 spec :: Spec
 spec = do
   setupCfgSpec
+  describe "parse" $ do
+    it "should parse setup.py without comments" $ do
+      let shouldParseInto = parseMatch installRequiresParser
+      setupPyWithoutComment `shouldParseInto` [mkReq "PyYAML", mkReq "pandas", mkReq "numpy"]
+      setupPyWithoutComment2 `shouldParseInto` [mkReq "PyYAML", mkReq "pandas", mkReq "numpy"]
+
+    it "should parse setup.py with comments" $ do
+      let shouldParseInto = parseMatch installRequiresParser
+
+      setupPyWithCommentAfterComma `shouldParseInto` [mkReq "PyYAML", mkReq "pandas", mkReq "numpy"]
+      setupPyWithCommentBeforeReq `shouldParseInto` [mkReq "PyYAML", mkReq "numpy"]
+      setupPyWithAllComments `shouldParseInto` []
+
   describe "analyze" $
     it "should produce expected output" $ do
       let result = buildGraph setupPyInput
@@ -157,4 +170,64 @@ install_requires =
     # weird
     # numpy
     pandas
+|]
+
+setupPyWithoutComment :: Text
+setupPyWithoutComment =
+  [r|from setuptools import setup, find_packages
+setup(
+    install_requires=[
+        'PyYAML',
+        'pandas',
+        'numpy'
+    ],
+)
+|]
+
+setupPyWithoutComment2 :: Text
+setupPyWithoutComment2 =
+  [r|from setuptools import setup, find_packages
+setup(
+    install_requires=[
+        'PyYAML',
+        'pandas',
+        'numpy',
+    ],
+)
+|]
+
+setupPyWithCommentAfterComma :: Text
+setupPyWithCommentAfterComma =
+  [r|from setuptools import setup, find_packages
+setup(
+    install_requires=[
+        'PyYAML', # should not fail
+        'pandas',
+        'numpy'
+    ],
+)
+|]
+
+setupPyWithCommentBeforeReq :: Text
+setupPyWithCommentBeforeReq =
+  [r|from setuptools import setup, find_packages
+setup(
+    install_requires=[
+        'PyYAML', # should not fail
+        # 'pandas==0.23.3',
+        'numpy'
+    ],
+)
+|]
+
+setupPyWithAllComments :: Text
+setupPyWithAllComments =
+  [r|from setuptools import setup, find_packages
+setup(
+    install_requires=[
+        # 'PyYAML',
+        # 'pandas==0.23.3',
+        # 'numpy>=1.14.5'
+    ],
+)
 |]
