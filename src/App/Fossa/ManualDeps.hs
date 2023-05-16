@@ -42,7 +42,7 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
-import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers)
+import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers, neText)
 import Data.Aeson.Types (Object, Parser, prependFailure)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty (NonEmpty)
@@ -446,19 +446,25 @@ instance FromJSON ReferencedDependency where
 instance FromJSON CustomDependency where
   parseJSON = withObject "CustomDependency" $ \obj ->
     CustomDependency
-      <$> obj .: "name"
-      <*> (unTextLike <$> obj .: "version")
-      <*> obj .: "license"
-      <*> obj .:? "metadata"
+      <$> obj
+      `neText` "name"
+      <*> (unTextLike <$> obj `neText` "version")
+      <*> obj
+      `neText` "license"
+      <*> obj
+      .:? "metadata"
       <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
 
 instance FromJSON RemoteDependency where
-  parseJSON = withObject "RemoteDependency" $ \obj ->
+  parseJSON = withObject "RemoteDependency" $ \obj -> do
     RemoteDependency
-      <$> obj .: "name"
-      <*> (unTextLike <$> obj .: "version")
-      <*> obj .: "url"
-      <*> obj .:? "metadata"
+      <$> obj
+      `neText` "name"
+      <*> (unTextLike <$> obj `neText` "version")
+      <*> obj
+      `neText` "url"
+      <*> obj
+      .:? "metadata"
       <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
 
 -- Dependency "metadata" section for both Remote and Custom Dependencies

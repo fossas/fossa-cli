@@ -1,5 +1,6 @@
 module Data.Aeson.Extra (
   forbidMembers,
+  neText,
   TextLike (..),
   encodeJSONToText,
 ) where
@@ -8,10 +9,11 @@ import Control.Applicative ((<|>))
 import Control.Monad (when)
 import Data.Aeson qualified as Aeson
 import Data.Aeson.KeyMap qualified as Object
-import Data.Aeson.Types (FromJSON (parseJSON), Key, Object, Parser, ToJSON)
+import Data.Aeson.Types (FromJSON (parseJSON), Key, Object, Parser, ToJSON, (.:))
 import Data.Foldable (traverse_)
-import Data.String.Conversion (decodeUtf8, toString, toText)
+import Data.String.Conversion (ToString, decodeUtf8, toString, toText)
 import Data.Text (Text)
+import Data.Text qualified as Text (null, strip)
 
 -- | A Text-like field
 --
@@ -28,7 +30,13 @@ import Data.Text (Text)
 -- This makes things really hard to parse.
 --
 -- As a workaround, we try parsing as Text, then Int, then Double
-newtype TextLike = TextLike {unTextLike :: Text} deriving (Eq, Ord, Show)
+newtype TextLike = TextLike {unTextLike :: Text} deriving (Eq, Ord)
+
+instance Show TextLike where
+  show (TextLike val) = toString val
+
+instance ToString TextLike where
+  toString (TextLike val) = toString val
 
 instance FromJSON TextLike where
   parseJSON val = parseAsText <|> parseAsInt <|> parseAsDouble
@@ -50,6 +58,22 @@ forbidMembers typename names obj = traverse_ (badMember obj) names
       when (Object.member name hashmap) $
         fail . toString $
           "Invalid field name for " <> typename <> ": " <> toText name
+
+-- | Parses non-empty string value. It considers string with only
+-- whitespaces to be empty.
+--
+-- >  parseJSON = withObject "MyDataType" $ \obj ->
+-- >   MyDataType <$> obj `neText` "my-data-field"
+neText :: (ToString a, FromJSON a) => Object -> Key -> Parser a
+neText obj key = do
+  (val :: a) <- obj .: key
+  onlyNonEmpty key val
+
+onlyNonEmpty :: (ToString a) => Key -> a -> Parser a
+onlyNonEmpty key val =
+  if (Text.null . Text.strip . toText $ toString val)
+    then fail $ "expected field '" <> toString key <> "' to be non-empty, but recieved: '" <> toString val <> "'"
+    else pure val
 
 -- | Like 'Data.Aeson.encode', but produces @Text@ instead of @ByteString@
 encodeJSONToText :: ToJSON a => a -> Text
