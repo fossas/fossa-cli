@@ -45,7 +45,7 @@ import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency)
-import App.Types (ProjectMetadata, ProjectRevision)
+import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
@@ -116,6 +116,7 @@ data FossaApiClientF a where
   UploadFirstPartyAnalysis ::
     ProjectRevision ->
     ProjectMetadata ->
+    FullFileUploads ->
     FossaApiClientF UploadResponse
   UploadArchive :: SignedURL -> FilePath -> FossaApiClientF ByteString
   UploadNativeContainerScan ::
@@ -153,9 +154,9 @@ getApiOpts = sendSimple GetApiOpts
 uploadAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NonEmpty SourceUnit -> m UploadResponse
 uploadAnalysis revision metadata units = sendSimple (UploadAnalysis revision metadata units)
 
--- | Uploads the results of an analysis and associates it to a project
-uploadFirstPartyAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> m UploadResponse
-uploadFirstPartyAnalysis revision metadata = sendSimple (UploadFirstPartyAnalysis revision metadata)
+-- | Uploads the results of a first-party analysis and associates it to a project
+uploadFirstPartyAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> FullFileUploads -> m UploadResponse
+uploadFirstPartyAnalysis revision metadata fullFileUploads = sendSimple (UploadFirstPartyAnalysis revision metadata fullFileUploads)
 
 -- | Uploads results of container analysis performed by native scanner to a project
 uploadNativeContainerScan :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NativeContainer.ContainerScan -> m UploadResponse
