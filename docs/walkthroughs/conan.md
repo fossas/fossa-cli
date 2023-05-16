@@ -7,7 +7,7 @@ Visual Studio (MSBuild), Makefiles, etc., including proprietary ones.
 
 ## Prerequisite
 
-- Conan v2 (you can check the version by running: `conan -v`)
+- Conan v2.0.0 or greater (you can check the version by running: `conan -v`)
 - Python v3 (so you can run the script)
 
 ## Integration
@@ -85,7 +85,7 @@ fossa test
 #### 1. Why doesn't FOSSA offer native Conan package manager analysis?
 
 FOSSA is actively working to develop native Conan support. We want to build a functionality that provides accurate and repeatable analysis for all versions of the Conan package manager. This integration
-the script is supplied as a potential option if you want to start using FOSSA for Conan immediately. 
+script is supplied as a potential option if you want to start using FOSSA for Conan immediately.
 
 #### 2. Why do I need Conan `v2` or greater?
 
@@ -94,8 +94,7 @@ This integration example uses the `conan graph info` command with `--format json
 
 #### 3. I want to use a custom profile or provide additional options. 
 
-You can provide any additional [`conan graph info`](https://docs.conan.io/2.0/reference/commands/graph/info.html) options, 
-other than `--format`. 
+You can provide any additional [`conan graph info`](https://docs.conan.io/2.0/reference/commands/graph/info.html) options (except `--format` or `-f`)
 
 To do so, provide options to the Python script. For example, 
 
