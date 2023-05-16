@@ -8,6 +8,7 @@ import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
 import App.Types (
   BaseDir (BaseDir),
+  FullFileUploads (FullFileUploads),
   ProjectMetadata,
   ProjectRevision (..),
  )
@@ -22,6 +23,7 @@ import Control.Effect.Diagnostics (
 import Control.Effect.FossaApiClient (
   FossaApiClient,
   PackageRevision (..),
+  getOrganization,
   getProject,
   getSignedFirstPartyScanUrl,
   uploadAnalysis,
@@ -51,7 +53,7 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
-import Fossa.API.Types (Project (projectIsMonorepo), UploadResponse (..))
+import Fossa.API.Types (Organization (orgRequiresFullFileUploads), Project (projectIsMonorepo), UploadResponse (..))
 import Path (Abs, Dir, Path)
 import Srclib.Types (
   FullSourceUnit,
@@ -100,8 +102,10 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units li
     uploadResult <- case licenseUnits of
       Nothing -> uploadAnalysis revision metadata units
       Just licenses -> do
+        org <- getOrganization
+        let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
         let mergedUnits = mergeSourceAndLicenseUnits units licenses
-        runStickyLogger SevInfo $ uploadFirstPartyAnalysisToS3AndCore revision metadata mergedUnits
+        runStickyLogger SevInfo $ uploadFirstPartyAnalysisToS3AndCore revision metadata mergedUnits fullFileUploads
     let locator = uploadLocator uploadResult
     buildUrl <- getFossaBuildUrl revision locator
     traverse_
@@ -133,10 +137,11 @@ uploadFirstPartyAnalysisToS3AndCore ::
   ProjectRevision ->
   ProjectMetadata ->
   NE.NonEmpty FullSourceUnit ->
+  FullFileUploads ->
   m UploadResponse
-uploadFirstPartyAnalysisToS3AndCore revision metadata mergedUnits = do
+uploadFirstPartyAnalysisToS3AndCore revision metadata mergedUnits fullFileUploads = do
   _ <- uploadFirstPartyAnalysisToS3 revision mergedUnits
-  uploadFirstPartyAnalysis revision metadata
+  uploadFirstPartyAnalysis revision metadata fullFileUploads
 
 uploadFirstPartyAnalysisToS3 ::
   ( Has Diagnostics sig m

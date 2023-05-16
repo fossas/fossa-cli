@@ -21,7 +21,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Config.Test (DiffRevision)
 import App.Fossa.VendoredDependency (VendoredDependency (..))
-import App.Types (ProjectMetadata, ProjectRevision (..))
+import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision (..))
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
@@ -102,10 +102,11 @@ uploadFirstPartyAnalysis ::
   ) =>
   ProjectRevision ->
   ProjectMetadata ->
+  FullFileUploads ->
   m UploadResponse
-uploadFirstPartyAnalysis revision metadata = do
+uploadFirstPartyAnalysis revision metadata fullFileUploads = do
   apiOpts <- ask
-  API.uploadFirstPartyAnalysis apiOpts revision metadata
+  API.uploadFirstPartyAnalysis apiOpts revision metadata fullFileUploads
 
 uploadNativeContainerScan ::
   ( Has (Lift IO) sig m

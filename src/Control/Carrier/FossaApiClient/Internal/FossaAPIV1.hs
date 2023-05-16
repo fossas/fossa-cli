@@ -62,6 +62,7 @@ import App.Types (
   ProjectMetadata (..),
   ProjectRevision (..),
   ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
+  fullFileUploadsToCliLicenseScanType,
  )
 import App.Version (versionNumber)
 import Codec.Compression.GZip qualified as GZIP
@@ -627,8 +628,9 @@ uploadFirstPartyAnalysis ::
   ApiOpts ->
   ProjectRevision ->
   ProjectMetadata ->
+  FullFileUploads ->
   m UploadResponse
-uploadFirstPartyAnalysis apiOpts ProjectRevision{..} metadata = fossaReq $ do
+uploadFirstPartyAnalysis apiOpts ProjectRevision{..} metadata fullFileUploads = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts =
@@ -639,7 +641,7 @@ uploadFirstPartyAnalysis apiOpts ProjectRevision{..} metadata = fossaReq $ do
           <> "managedBuild"
             =: True
           <> "cliLicenseScanType"
-            =: ("match_data" :: Text)
+            =: (fullFileUploadsToCliLicenseScanType fullFileUploads)
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
