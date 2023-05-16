@@ -73,12 +73,15 @@ conan install . --output-folder=build --build=missing
 # download make_fossa_deps_conan.py
 wget https://raw.githubusercontent.com/fossas/fossa-cli/master/docs/walkthroughs/make_fossa_deps_conan.py
 
+# Set your API key. Get this from the FOSSA web application.
+export FOSSA_API_KEY=XXXX
+
 # Perform analysis
 python3 make_fossa_deps_conan.py
-FOSSA_API_KEY=XXX fossa analyze
+fossa analyze
 
 # Perform test
-FOSSA_API_KEY=XXX fossa test
+fossa test
 ```
 
 ## F.A.Q
