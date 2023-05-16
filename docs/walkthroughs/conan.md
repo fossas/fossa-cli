@@ -52,7 +52,7 @@ recipe.
 
 ### Example
 
-```
+```bash
 # install Conan and some prerequisites
 apt-get -y install python3 pip git wget
 pip3 install conan
@@ -66,8 +66,12 @@ conan --version
 git clone https://github.com/conan-io/examples2.git
 cd /examples2/tutorial/consuming_packages/simple_cmake_project
 
+# build
+conan profile detect --force
+conan install . --output-folder=build --build=missing
+
 # download make_fossa_deps_conan.py
-wget https://github.com/fossas/fossa-cli/blob/master/docs/walkthroughs/make_fossa_deps_conan.py
+wget https://raw.githubusercontent.com/fossas/fossa-cli/master/docs/walkthroughs/make_fossa_deps_conan.py
 
 # Perform analysis
 python3 make_fossa_deps_conan.py
