@@ -139,6 +139,7 @@ You're left with the following:
 ```
 bundleCLIVersion      # Describes the version of FOSSA CLI
 bundleSystem          # Records system information
+bundleOutput          # The output of your analysis
 bundleArgs            # Records the arguments for FOSSA CLI
 bundleConfig          # Records the effective config for FOSSA CLI
 bundleEnvVariables    # Records the environment variables provided to FOSSA CLI
@@ -162,6 +163,11 @@ bundleJournals        # Records information about IO actions, such as reading fi
   although this is different for Docker containers.
 - The number of processors available to the system.
 - System memory statistics.
+
+##### `bundleOutput`
+
+The raw output of what FOSSA CLI found when analyzing your project.
+This is the same output generated when running `fossa analyze -o`.
 
 ##### `bundleArgs`
 
