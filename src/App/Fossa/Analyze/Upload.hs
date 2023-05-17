@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Analyze.Upload (
+  mergeSourceAndLicenseUnits,
   uploadSuccessfulAnalysis,
 ) where
 
