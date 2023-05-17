@@ -72,7 +72,7 @@ neText obj key = do
 onlyNonEmpty :: (ToString a) => Key -> a -> Parser a
 onlyNonEmpty key val =
   if (Text.null . Text.strip . toText . toString $ val)
-    then fail $ "expected field '" <> toString key <> "' to be non-empty, but recieved: '" <> toString val <> "'"
+    then fail $ "expected field '" <> toString key <> "' to be non-empty, but received: '" <> toString val <> "'"
     else pure val
 
 -- | Like 'Data.Aeson.encode', but produces @Text@ instead of @ByteString@
