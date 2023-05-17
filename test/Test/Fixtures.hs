@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -381,7 +382,11 @@ vendoredDepsOptions =
     }
 
 absDir :: Path Abs Dir
+#ifdef mingw32_HOST_OS
+absDir = $(mkAbsDir "C:/")
+#else
 absDir = $(mkAbsDir "/")
+#endif
 
 standardAnalyzeConfig :: StandardAnalyzeConfig
 standardAnalyzeConfig =
