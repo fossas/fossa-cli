@@ -19,12 +19,10 @@ import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics, fatalText)
-import Control.Monad (when)
 import Crypto.Hash (Digest, MD5, hashlazy)
-import Data.Aeson (FromJSON (parseJSON), withObject, (.:), (.:?))
+import Data.Aeson (FromJSON (parseJSON), withObject, (.:?))
 import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers, neText)
 import Data.ByteString.Lazy qualified as BS
-import Data.Foldable (for_)
 import Data.Functor.Extra ((<$$>))
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty)
@@ -69,9 +67,9 @@ instance FromJSON VendoredDependency where
           then pure vendorDep
           else
             fail $
-              "field 'version' conatins forbidden character '"
+              "field 'version' conatins forbidden character(s): "
                 <> show fcInVersion
-                <> "'! Do not use anyof: "
+                <> "! Do not use anyof: "
                 <> show forbiddenChars
     where
       -- If following charcters are allowed in version
