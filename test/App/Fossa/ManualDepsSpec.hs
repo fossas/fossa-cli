@@ -223,11 +223,11 @@ vendorDepSpec = do
     it "should fail when vendor dependency has version with not supported character" $ do
       exceptionContains
         (encodeUtf8 vendorDepWithHashtagInVersion)
-        "field 'version' conatins forbidden character '#'"
+        "field 'version' conatins forbidden character(s): [\"#\"]"
 
       exceptionContains
         (encodeUtf8 vendorDepWithQuestionInVersion)
-        "field 'version' conatins forbidden character '?'"
+        "field 'version' conatins forbidden character(s): [\"?\"]"
 
 linuxReferenceDep :: Text
 linuxReferenceDep =
