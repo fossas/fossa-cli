@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- `fossa-deps.yml`: Adds strict parsing to so that required field with only whitespace strings are prohibited early. Also throws an error, if incompatible character is used in vendor dependency's version field. ([#1192](https://github.com/fossas/fossa-cli/pull/1192))
+
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 ## v3.7.9
 - License Scanning: Add support for "full file uploads" for CLI-side license scans. ([#1181](https://github.com/fossas/fossa-cli/pull/1181))
