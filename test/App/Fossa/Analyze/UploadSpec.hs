@@ -12,8 +12,9 @@ import Control.Effect.Diagnostics (fatalText)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (..))
 import Control.Effect.Git (GitF (FetchGitContributors))
 import Data.Flag (toFlag)
+import Data.List.NonEmpty qualified as NE
 import Fossa.API.Types (Organization (..), Project (..), UploadResponse (..))
-import Srclib.Types (Locator)
+import Srclib.Types (FullSourceUnit (..), LicenseUnitInfo (..), Locator, emptyLicenseUnitData)
 import Test.Effect (expectFatal', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe)
@@ -25,6 +26,7 @@ import Test.MockApi (
   returnsOnce,
   returnsOnceForAnyRequest,
  )
+import Types (GraphBreadth (Complete))
 
 withGit :: (forall x. GitF x -> m x) -> GitC m a -> m a
 withGit = interpret
@@ -70,10 +72,41 @@ expectUploadFirstPartyDataToS3 = do
   let mergedUnits = mergeSourceAndLicenseUnits Fixtures.sourceUnits Fixtures.firstLicenseSourceUnit
   UploadFirstPartyScanResult Fixtures.signedUrl mergedUnits `returnsOnceForAnyRequest` ()
 
-spec :: Spec
-spec =
-  describe "uploadSuccessfulAnalysis" $
-    do
+expectedMergedFullSourceUnits :: NE.NonEmpty FullSourceUnit
+expectedMergedFullSourceUnits = NE.fromList [fullSourceUnit, fullLicenseUnit]
+  where
+    fullSourceUnit =
+      FullSourceUnit
+        { fullSourceUnitName = "testSourceUnitName"
+        , fullSourceUnitType = "testSourceUnitType"
+        , fullSourceUnitManifest = Just "testSourceUnitManifest"
+        , fullSourceUnitBuild = Nothing
+        , fullSourceUnitGraphBreadth = Complete
+        , fullSourceUnitOriginPaths = []
+        , fullSourceUnitAdditionalData = Nothing
+        , fullSourceUnitFiles = Nothing
+        , fullSourceUnitData = Nothing
+        , fullSourceUnitInfo = Nothing
+        }
+    fullLicenseUnit =
+      FullSourceUnit
+        { fullSourceUnitName = "empty"
+        , fullSourceUnitType = "LicenseUnit"
+        , fullSourceUnitManifest = Nothing
+        , fullSourceUnitBuild = Nothing
+        , fullSourceUnitGraphBreadth = Complete
+        , fullSourceUnitOriginPaths = []
+        , fullSourceUnitAdditionalData = Nothing
+        , fullSourceUnitFiles = Just $ "" NE.:| []
+        , fullSourceUnitData = Just $ emptyLicenseUnitData NE.:| []
+        , fullSourceUnitInfo = Just LicenseUnitInfo{licenseUnitInfoDescription = Nothing}
+        }
+
+uploadSuccessfulAnalysisSpec :: Spec
+uploadSuccessfulAnalysisSpec = do
+  describe
+    "uploadSuccessfulAnalysis"
+    $ do
       baseDir <- runIO Fixtures.baseDir
       it' "uploads analysis and git contributors"
         . withGit mockGit
@@ -204,3 +237,18 @@ spec =
               Fixtures.sourceUnits
               (Just Fixtures.firstLicenseSourceUnit)
           locator `shouldBe'` expectedLocator
+
+mergeSourceAndLicenseUnitsSpec :: Spec
+mergeSourceAndLicenseUnitsSpec =
+  describe
+    "mergeSourceAndLicenseUnits"
+    $ do
+      it' "merges source and license units" $ do
+        let mergedUnits = mergeSourceAndLicenseUnits Fixtures.sourceUnits Fixtures.firstLicenseSourceUnit
+        mergedUnits `shouldBe'` expectedMergedFullSourceUnits
+
+spec :: Spec
+spec = do
+  uploadSuccessfulAnalysisSpec
+
+  mergeSourceAndLicenseUnitsSpec
