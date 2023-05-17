@@ -79,7 +79,7 @@ analyzeExperimental ::
   , Has Telemetry sig m
   ) =>
   ContainerAnalyzeConfig ->
-  m ()
+  m Aeson.Value
 analyzeExperimental cfg =
   case Config.severity cfg of
     SevDebug -> do
@@ -98,7 +98,7 @@ analyze ::
   , Has Debug sig m
   ) =>
   ContainerAnalyzeConfig ->
-  m ()
+  m Aeson.Value
 analyze cfg = do
   scannedImage <- scanImage (filterSet cfg) (onlySystemDeps cfg) (imageLocator cfg) (dockerHost cfg) (arch cfg)
   let revision = extractRevision (revisionOverride cfg) scannedImage
@@ -113,6 +113,8 @@ analyze cfg = do
     OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode scannedImage
     UploadScan apiOpts projectMeta ->
       void $ runFossaApiClient apiOpts $ uploadScan revision projectMeta (jsonOutput cfg) scannedImage
+
+  pure $ Aeson.toJSON scannedImage
 
 uploadScan ::
   ( Has Diagnostics sig m

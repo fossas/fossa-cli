@@ -86,7 +86,7 @@ import Control.Effect.Git (Git)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent)
-import Control.Monad (join, unless, when)
+import Control.Monad (join, unless, void, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
@@ -143,7 +143,7 @@ dispatch ::
   m ()
 dispatch = \case
   Monorepo cfg -> monorepoScan cfg
-  Standard cfg -> analyzeMain cfg
+  Standard cfg -> void $ analyzeMain cfg
 
 -- This is just a handler for the Debug effect.
 -- The real logic is in the inner analyze
@@ -157,7 +157,7 @@ analyzeMain ::
   , Has Telemetry sig m
   ) =>
   StandardAnalyzeConfig ->
-  m ()
+  m Aeson.Value
 analyzeMain cfg = case Config.severity cfg of
   SevDebug -> do
     (scope, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
@@ -241,7 +241,7 @@ analyze ::
   , Has Telemetry sig m
   ) =>
   StandardAnalyzeConfig ->
-  m ()
+  m Aeson.Value
 analyze cfg = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
 
@@ -328,19 +328,19 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult $ Config.filterSet cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
+  let result = buildResult includeAll additionalSourceUnits filteredProjects
   case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll -> Diag.fatal ErrFilteredAllProjects
     FoundSome sourceUnits -> case destination of
-      OutputStdout -> logStdout . decodeUtf8 . Aeson.encode $ buildResult includeAll additionalSourceUnits filteredProjects
+      OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
       UploadScan apiOpts metadata ->
         Diag.context "upload-results"
           . runFossaApiClient apiOpts
           $ do
-            --
-
             locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision sourceUnits
             doAssertRevisionBinaries iatAssertion locator
+  pure result
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
 toProjectResult (SkippedDueToProvidedFilter _) = Nothing
