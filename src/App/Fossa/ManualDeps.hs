@@ -365,7 +365,7 @@ instance FromJSON ReferencedDependency where
       parseManagedDependency obj depType =
         Managed
           <$> ( ManagedReferenceDependency
-                  <$> obj .: "name"
+                  <$> (obj `neText` "name")
                   <*> pure depType
                   <*> (unTextLike <$$> obj .:? "version")
                   <* forbidNonRefDepFields obj
@@ -390,7 +390,7 @@ instance FromJSON ReferencedDependency where
       parseLinuxDependency :: Object -> DepType -> Parser LinuxReferenceDependency
       parseLinuxDependency obj depType =
         LinuxReferenceDependency
-          <$> obj .: "name"
+          <$> (obj `neText` "name")
           <*> pure depType
           <*> (unTextLike <$$> obj .:? "version")
           <*> parseArch obj
@@ -446,25 +446,19 @@ instance FromJSON ReferencedDependency where
 instance FromJSON CustomDependency where
   parseJSON = withObject "CustomDependency" $ \obj ->
     CustomDependency
-      <$> obj
-      `neText` "name"
+      <$> (obj `neText` "name")
       <*> (unTextLike <$> obj `neText` "version")
-      <*> obj
-      `neText` "license"
-      <*> obj
-      .:? "metadata"
+      <*> (obj `neText` "license")
+      <*> obj .:? "metadata"
       <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
 
 instance FromJSON RemoteDependency where
   parseJSON = withObject "RemoteDependency" $ \obj -> do
     RemoteDependency
-      <$> obj
-      `neText` "name"
+      <$> (obj `neText` "name")
       <*> (unTextLike <$> obj `neText` "version")
-      <*> obj
-      `neText` "url"
-      <*> obj
-      .:? "metadata"
+      <*> (obj `neText` "url")
+      <*> obj .:? "metadata"
       <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
 
 -- Dependency "metadata" section for both Remote and Custom Dependencies

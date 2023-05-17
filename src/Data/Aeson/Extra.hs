@@ -59,7 +59,7 @@ forbidMembers typename names obj = traverse_ (badMember obj) names
         fail . toString $
           "Invalid field name for " <> typename <> ": " <> toText name
 
--- | Parses non-empty string value. It considers string with only
+-- | Parses non-empty value. It considers string of value with only
 -- whitespaces to be empty.
 --
 -- >  parseJSON = withObject "MyDataType" $ \obj ->
@@ -71,7 +71,7 @@ neText obj key = do
 
 onlyNonEmpty :: (ToString a) => Key -> a -> Parser a
 onlyNonEmpty key val =
-  if (Text.null . Text.strip . toText $ toString val)
+  if (Text.null . Text.strip . toText . toString $ val)
     then fail $ "expected field '" <> toString key <> "' to be non-empty, but recieved: '" <> toString val <> "'"
     else pure val
 
