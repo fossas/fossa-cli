@@ -166,6 +166,11 @@ referenceDepSpec = do
         (encodeUtf8 managedReferenceDepWithOS)
         "Invalid field name for referenced dependencies (of dependency type: gem): os"
 
+    it "should fail when linux reference dependency of deb or apk contains epoch" $
+      exceptionContains
+        (encodeUtf8 managedReferenceDepWithEmptyName)
+        "expected field 'name' to be non-empty"
+
 remoteDepSpec :: Spec
 remoteDepSpec = do
   describe "remote dependency" $ do
@@ -205,6 +210,16 @@ customDepSpec = do
 vendorDepSpec :: Spec
 vendorDepSpec = do
   describe "vendor dependency" $ do
+    it "should fail when vendor dependency has empty name or only whitespace" $ do
+      exceptionContains
+        (encodeUtf8 vendorDepWithEmptyName)
+        "expected field 'name' to be non-empty"
+
+    it "should fail when vendor dependency has empty path or only whitespace" $ do
+      exceptionContains
+        (encodeUtf8 vendorDepWithEmptyPath)
+        "expected field 'path' to be non-empty"
+
     it "should fail when vendor dependency has version with not supported character" $ do
       exceptionContains
         (encodeUtf8 vendorDepWithHashtagInVersion)
@@ -373,4 +388,30 @@ vendored-dependencies:
 - name: example
   version: "1?os=linux"
   path: .
+|]
+
+vendorDepWithEmptyName :: Text
+vendorDepWithEmptyName =
+  [r|
+vendored-dependencies:
+- name: " "
+  version: "1"
+  path: .
+|]
+
+vendorDepWithEmptyPath :: Text
+vendorDepWithEmptyPath =
+  [r|
+vendored-dependencies:
+- name: example
+  version: "1"
+  path: " "
+|]
+
+managedReferenceDepWithEmptyName :: Text
+managedReferenceDepWithEmptyName =
+  [r|
+referenced-dependencies:
+- name: " "
+  type: gem
 |]
