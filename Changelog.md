@@ -1,9 +1,10 @@
 # FOSSA CLI Changelog
+<!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
-## Unreleased
+## v3.8.0
+- License Scanning: Fix a bug where the license scanner did not run on MacOS 13 on M1 Macs ([#1193](https://github.com/fossas/fossa-cli/pull/1193))
 - Debug bundle: The raw dependency graph FOSSA CLI discovers is output in the FOSSA Debug Bundle. ([#1188](https://github.com/fossas/fossa-cli/pull/1188))
 
-<!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 ## v3.7.9
 - License Scanning: Add support for "full file uploads" for CLI-side license scans. ([#1181](https://github.com/fossas/fossa-cli/pull/1181))
 
