@@ -47,11 +47,13 @@ findProjects = walkWithFilters' $ \dir _ files -> do
           files
 
   let setupPyFile = findFileNamed "setup.py" files
+  let setupCfgFile = findFileNamed "setup.cfg" files
 
   let project =
         SetuptoolsProject
           { setuptoolsReqTxt = reqTxtFiles
           , setuptoolsSetupPy = setupPyFile
+          , setuptoolsSetupCfg = setupCfgFile
           , setuptoolsDir = dir
           }
 
@@ -80,11 +82,12 @@ analyzeReqTxts = context "Analyzing requirements.txt files" . fmap mconcat . tra
 analyzeSetupPy :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
 analyzeSetupPy project = context "Analyzing setup.py" $ do
   setupPy <- Diag.fromMaybeText "No setup.py found in this project" (setuptoolsSetupPy project)
-  SetupPy.analyze' setupPy
+  SetupPy.analyze' setupPy (setuptoolsSetupCfg project)
 
 data SetuptoolsProject = SetuptoolsProject
   { setuptoolsReqTxt :: [Path Abs File]
   , setuptoolsSetupPy :: Maybe (Path Abs File)
+  , setuptoolsSetupCfg :: Maybe (Path Abs File)
   , setuptoolsDir :: Path Abs Dir
   }
   deriving (Eq, Ord, Show, Generic)
