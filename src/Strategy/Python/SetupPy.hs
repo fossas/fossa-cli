@@ -44,7 +44,7 @@ installRequiresParser = do
     symbol :: Text -> Parser Text
     symbol = L.symbol space
 
--- | Parses install requirements listed in setup.cfg 
+-- | Parses install requirements listed in setup.cfg
 -- Docs: https://setuptools.pypa.io/en/latest/userguide/declarative_config.html
 installRequiresParserSetupCfg :: Parser [Req]
 installRequiresParserSetupCfg = do
