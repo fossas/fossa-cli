@@ -17,6 +17,7 @@ import Control.Concurrent.CGroup (initRTSThreads)
 import Control.Monad (join)
 import Data.Aeson (ToJSON)
 import Data.String.Conversion (toString)
+import Debug.Trace
 import Options.Applicative (
   CommandFields,
   InfoMod,
@@ -46,9 +47,12 @@ import Options.Applicative (
   (<**>),
   (<|>),
  )
+import System.Environment (getEnvironment)
 
 appMain :: IO ()
 appMain = do
+  vars <- getEnvironment
+  _ <- traceM $ show vars
   initRTSThreads
   join $ customExecParser mainPrefs $ info (subcommands <**> helper <**> versionOpt) progData
 
