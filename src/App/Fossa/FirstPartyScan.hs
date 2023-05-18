@@ -17,11 +17,13 @@ import Effect.ReadFS (Has, ReadFS)
 import Fossa.API.Types (ApiOpts (..), Organization (..), blankOrganization)
 import Path (Abs, Dir, Path)
 import Srclib.Types (LicenseSourceUnit)
+import Effect.Logger (Logger, logDebug)
 
 runFirstPartyScan ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
+  , Has Logger sig m
   , Has Exec sig m
   , Has ReadFS sig m
   ) =>
@@ -42,6 +44,7 @@ firstPartyScanWithOrgInfo ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
+  , Has Logger sig m
   , Has Exec sig m
   , Has ReadFS sig m
   , Has FossaApiClient sig m
@@ -66,6 +69,7 @@ firstPartyScanMain ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
+  , Has Logger sig m
   , Has Exec sig m
   , Has ReadFS sig m
   ) =>
@@ -79,5 +83,7 @@ firstPartyScanMain base cfg org = do
       fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
       pathFilters = licenseScanPathFilters $ vendoredDeps cfg
   case runFirstPartyScans of
-    (True) -> Just <$> scanVendoredDep base pathFilters fullFileUploads vdep
+    (True) -> do
+      _ <- logDebug "Running a first-party license scan on the code in this repository. Licenses found in this repository will show up as 'Directly in code' in the FOSSA UI"
+      Just <$> scanVendoredDep base pathFilters fullFileUploads vdep
     (False) -> pure Nothing
