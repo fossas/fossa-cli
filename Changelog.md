@@ -1,4 +1,8 @@
 # FOSSA CLI Changelog
+
+## v3.7.11
+- `fossa-deps.yml`: Adds strict parsing to so that required field with only whitespace strings are prohibited early. Also throws an error, if incompatible character is used in vendor dependency's version field. ([#1192](https://github.com/fossas/fossa-cli/pull/1192))
+
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
 ## v3.7.10
