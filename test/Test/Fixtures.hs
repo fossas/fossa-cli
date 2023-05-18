@@ -63,7 +63,7 @@ import Discovery.Filters (
 import Effect.Logger (Severity (..))
 import Fossa.API.Types (Archive (..))
 import Fossa.API.Types qualified as API
-import Path (Path, Abs, Dir, mkAbsDir, mkRelDir, parseAbsDir, (</>))
+import Path (Abs, Dir, Path, mkAbsDir, mkRelDir, parseAbsDir, (</>))
 import Srclib.Types (
   LicenseScanType (..),
   LicenseSourceUnit (..),
