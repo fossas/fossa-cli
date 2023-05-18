@@ -12,6 +12,7 @@ module App.Fossa.ManualDeps (
   ManualDependencies (..),
   FoundDepsFile (..),
   analyzeFossaDepsFile,
+  findAndReadFossaDepsFile,
   findFossaDepsFile,
   readFoundDeps,
   getScanCfg,
@@ -85,6 +86,19 @@ analyzeFossaDepsFile root maybeApiOpts vendoredDepsOptions = do
     Just depsFile -> do
       manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
       context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
+
+findAndReadFossaDepsFile ::
+  ( Has Diagnostics sig m
+  , Has ReadFS sig m
+  ) =>
+  Path Abs Dir -> m (Maybe ManualDependencies)
+findAndReadFossaDepsFile root = do
+  maybeDepsFile <- findFossaDepsFile root
+  case maybeDepsFile of
+    Nothing -> pure Nothing
+    Just depsFile -> do
+      manualDeps <- readFoundDeps depsFile
+      pure $ Just manualDeps
 
 readFoundDeps :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundDepsFile -> m ManualDependencies
 readFoundDeps (ManualJSON path) = readContentsJson path

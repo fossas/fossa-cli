@@ -5,7 +5,7 @@ module App.Fossa.FirstPartyScan (
 
 import App.Fossa.Config.Analyze (StandardAnalyzeConfig (..), VendoredDependencyOptions (licenseScanPathFilters))
 import App.Fossa.LicenseScanner (scanVendoredDep)
-import App.Fossa.ManualDeps (VendoredDependency (..))
+import App.Fossa.ManualDeps (VendoredDependency (..), findAndReadFossaDepsFile, ManualDependencies (vendoredDependencies))
 import App.Types (FirstPartyScansFlag (..), FullFileUploads (FullFileUploads))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
@@ -13,11 +13,12 @@ import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, logDebug)
 import Effect.ReadFS (Has, ReadFS)
 import Fossa.API.Types (ApiOpts (..), Organization (..), blankOrganization)
 import Path (Abs, Dir, Path)
 import Srclib.Types (LicenseSourceUnit)
+import Effect.Logger (Logger, logDebug, Pretty (pretty))
+import Types (LicenseScanPathFilters (..), GlobFilter (GlobFilter))
 
 runFirstPartyScan ::
   ( Has Diagnostics sig m
@@ -79,11 +80,34 @@ firstPartyScanMain ::
   m (Maybe LicenseSourceUnit)
 firstPartyScanMain base cfg org = do
   runFirstPartyScans <- shouldRunFirstPartyScans cfg org
+  manualDeps <- findAndReadFossaDepsFile base
   let vdep = VendoredDependency "first-party" "." Nothing
       fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
-      pathFilters = licenseScanPathFilters $ vendoredDeps cfg
+      pathFilters = mergePathFilters manualDeps ( licenseScanPathFilters $ vendoredDeps cfg )
   case runFirstPartyScans of
     (True) -> do
       _ <- logDebug "Running a first-party license scan on the code in this repository. Licenses found in this repository will show up as 'Directly in code' in the FOSSA UI"
+      _ <- logDebug . pretty $ "path filters = " ++ show pathFilters
       Just <$> scanVendoredDep base pathFilters fullFileUploads vdep
     (False) -> pure Nothing
+
+mergePathFilters :: Maybe ManualDependencies -> Maybe LicenseScanPathFilters -> Maybe LicenseScanPathFilters
+mergePathFilters maybeManualDeps existingPathFilters =
+  case (maybeManualDeps, existingPathFilters) of
+    (Nothing, Nothing) -> Nothing
+    (Just manualDeps, Nothing) -> Just $ filtersFromManualDeps manualDeps
+    (Nothing, Just existingFilters) -> Just existingFilters
+    (Just manualDeps, Just existingFilters) -> Just $
+       mergeFilters (filtersFromManualDeps manualDeps) existingFilters
+  where
+    filtersFromManualDeps :: ManualDependencies -> LicenseScanPathFilters
+    filtersFromManualDeps manualDeps = do
+      let paths = map vendoredPath $ vendoredDependencies manualDeps
+      let excludes = concatMap (\path -> [GlobFilter (path <> "/*"), GlobFilter (path <> "/**")]) paths
+      LicenseScanPathFilters{licenseScanPathFiltersOnly = [], licenseScanPathFiltersExclude = excludes}
+
+    mergeFilters :: LicenseScanPathFilters -> LicenseScanPathFilters -> LicenseScanPathFilters
+    mergeFilters manualDepsFilters existingFilters =
+      existingFilters{
+        licenseScanPathFiltersExclude = (licenseScanPathFiltersExclude manualDepsFilters) <> (licenseScanPathFiltersExclude existingFilters)
+      }
