@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+
 module App.Fossa.FirstPartyScan (
   runFirstPartyScan,
   firstPartyScanWithOrgInfo,
@@ -14,6 +15,7 @@ import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger)
+import Control.Monad (foldM)
 import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text)
 import Diag.Result
@@ -21,11 +23,10 @@ import Effect.Exec (Exec)
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (Has, ReadFS, resolvePath')
 import Fossa.API.Types (ApiOpts (..), Organization (..), blankOrganization)
-import Path (Abs, Dir, Path, SomeBase (..), (</>), mkRelDir)
+import Path (Abs, Dir, Path, SomeBase (..), mkRelDir, (</>))
 import Path.Extra
 import Srclib.Types (LicenseSourceUnit)
 import Types (GlobFilter (GlobFilter), LicenseScanPathFilters (..))
-import Control.Monad (foldM)
 
 runFirstPartyScan ::
   ( Has Diagnostics sig m
@@ -167,10 +168,10 @@ addFilter root existingFilter path = do
     -- if it is a file, add it to licenseScanPathFilterFileExclude
     Success _ (SomeFile (Abs p)) -> do
       let existing = licenseScanPathFilterFileExclude existingFilter
-      pure existingFilter{ licenseScanPathFilterFileExclude = p : existing }
+      pure existingFilter{licenseScanPathFilterFileExclude = p : existing}
     -- if it is a dir, add it to licenseScanPathFiltersExclude
     Success _ (SomeDir (Abs p)) -> do
       let globs = [GlobFilter (toText $ p </> $(mkRelDir "*")), GlobFilter (toText $ p </> $(mkRelDir "**"))]
       let existing = licenseScanPathFiltersExclude existingFilter
-      pure existingFilter{ licenseScanPathFiltersExclude = existing <> globs}
+      pure existingFilter{licenseScanPathFiltersExclude = existing <> globs}
     _ -> pure existingFilter
