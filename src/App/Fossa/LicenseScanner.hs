@@ -131,10 +131,11 @@ recursivelyScanArchives pathPrefix licenseScanPathFilters fullFileUploads dir = 
           currentDirResults <- withThemisAndIndex $ themisRunner updatedPathPrefix licenseScanPathFilters fullFileUploads unpackedDir
           recursiveResults <- recursivelyScanArchives updatedPathPrefix licenseScanPathFilters fullFileUploads unpackedDir
           pure $ currentDirResults <> recursiveResults
-    -- withArchive' emits Nothing when archive type is not supported.
-    -- filter out files that match licenseScanCompressedFilesExclude
+    -- filter out files that match licenseScanCompressedFilesExclude. Currently, these are only created by firstPartyScanMain
+    -- but it would be easy to allow customers to filter out single files too.
     let archivesToSkip = maybe [] licenseScanCompressedFilesExclude licenseScanPathFilters
     let filesToProcess = filter (`notElem` archivesToSkip) files
+    -- withArchive' emits Nothing when archive type is not supported.
     archives <- traverse (\file -> withArchive' file (process file)) filesToProcess
     pure (concat (catMaybes archives), WalkContinue)
 

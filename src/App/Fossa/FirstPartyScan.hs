@@ -97,6 +97,10 @@ firstPartyScanMain base cfg org = do
       Just <$> scanVendoredDep base pathFilters fullFileUploads vdep
     (False) -> pure Nothing
 
+-- mergePathFilters takes the existing filters from the config and merges them with filters constructed by looking at the vendored dependencies
+-- We do this because we want to skip scanning the contents of all directories that are vendored dependencies,
+-- and we also want to add all vendored dependencies that point at files to `licenseScanCompressedFileExclude`,
+-- so that we do not decompress and license-scan them
 mergePathFilters ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m) =>
@@ -113,6 +117,9 @@ mergePathFilters base maybeManualDeps existingPathFilters = do
       let merged = mergeFilters fromManual existingFilters
       pure $ Just merged
   where
+    -- mergeFilters takes the filters from manualDeps and the existing filters from the config and merges them
+    -- the existing filters are the only one of the two that can contain licenseScanPathFiltersOnly entries,
+    -- but both can contain licenseScanPathFiltersExclude or licenseScanCompressedFilesExclude entries
     mergeFilters :: LicenseScanPathFilters -> LicenseScanPathFilters -> LicenseScanPathFilters
     mergeFilters manualDepsFilters existingFilters =
       existingFilters
@@ -120,25 +127,29 @@ mergePathFilters base maybeManualDeps existingPathFilters = do
       , licenseScanCompressedFilesExclude = (licenseScanCompressedFilesExclude manualDepsFilters) <> (licenseScanCompressedFilesExclude existingFilters)
       }
 
+-- create LicenseScanPathFilters by looking at the vendored dependencies
+-- We want to skip scanning all directories that are vendored dependencies,
+-- and we also want to add all vendored dependencies that point at files to `licenseScanCompressedFileExclude`,
+-- so that we do not decompress and license-scan them
 filtersFromManualDeps ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m) =>
   Path Abs Dir -> ManualDependencies -> m LicenseScanPathFilters
 filtersFromManualDeps base manualDeps = do
   let paths = map vendoredPath $ vendoredDependencies manualDeps
-  compressedManualDepsFiles <- traverse (fullPath base) paths
+  vendoredDepFiles <- traverse (fullPathToVendoredDepFile base) paths
   let excludes = concatMap (\path -> [GlobFilter (path <> "/*"), GlobFilter (path <> "/**")]) paths
   pure LicenseScanPathFilters
     { licenseScanPathFiltersOnly = []
     , licenseScanPathFiltersExclude = excludes
-    , licenseScanCompressedFilesExclude = catMaybes compressedManualDepsFiles
+    , licenseScanCompressedFilesExclude = catMaybes vendoredDepFiles
     }
 
-fullPath ::
+fullPathToVendoredDepFile ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m) =>
   Path Abs Dir -> Text -> m (Maybe (Path Abs File))
-fullPath root p = do
+fullPathToVendoredDepFile root p = do
   scanPath <- Diag.runDiagnostics $ resolvePath' root $ toString p
   case scanPath of
     Success _ (SomeFile (Abs path)) -> pure $ Just path
