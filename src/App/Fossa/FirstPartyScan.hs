@@ -13,12 +13,18 @@ import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger)
 import Effect.Exec (Exec)
-import Effect.ReadFS (Has, ReadFS)
+import Effect.ReadFS (Has, ReadFS, resolvePath')
 import Fossa.API.Types (ApiOpts (..), Organization (..), blankOrganization)
-import Path (Abs, Dir, Path)
+import Path (Abs, Dir, Path, SomeBase (..), File)
 import Srclib.Types (LicenseSourceUnit)
 import Effect.Logger (Logger, logDebug, Pretty (pretty))
 import Types (LicenseScanPathFilters (..), GlobFilter (GlobFilter))
+import Data.Text (Text)
+import Path.Extra
+import Data.Maybe (catMaybes)
+import Data.String.Conversion (ToString (toString))
+import qualified Control.Carrier.Diagnostics as Diag
+import Diag.Result
 
 runFirstPartyScan ::
   ( Has Diagnostics sig m
@@ -83,7 +89,7 @@ firstPartyScanMain base cfg org = do
   manualDeps <- findAndReadFossaDepsFile base
   let vdep = VendoredDependency "first-party" "." Nothing
       fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
-      pathFilters = mergePathFilters manualDeps ( licenseScanPathFilters $ vendoredDeps cfg )
+  pathFilters <- mergePathFilters base manualDeps (licenseScanPathFilters $ vendoredDeps cfg)
   case runFirstPartyScans of
     (True) -> do
       _ <- logDebug "Running a first-party license scan on the code in this repository. Licenses found in this repository will show up as 'Directly in code' in the FOSSA UI"
@@ -91,23 +97,52 @@ firstPartyScanMain base cfg org = do
       Just <$> scanVendoredDep base pathFilters fullFileUploads vdep
     (False) -> pure Nothing
 
-mergePathFilters :: Maybe ManualDependencies -> Maybe LicenseScanPathFilters -> Maybe LicenseScanPathFilters
-mergePathFilters maybeManualDeps existingPathFilters =
+mergePathFilters ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m) =>
+  Path Abs Dir -> Maybe ManualDependencies -> Maybe LicenseScanPathFilters -> m (Maybe LicenseScanPathFilters)
+mergePathFilters base maybeManualDeps existingPathFilters = do
   case (maybeManualDeps, existingPathFilters) of
-    (Nothing, Nothing) -> Nothing
-    (Just manualDeps, Nothing) -> Just $ filtersFromManualDeps manualDeps
-    (Nothing, Just existingFilters) -> Just existingFilters
-    (Just manualDeps, Just existingFilters) -> Just $
-       mergeFilters (filtersFromManualDeps manualDeps) existingFilters
+    (Nothing, Nothing) -> pure Nothing
+    (Just manualDeps, Nothing) -> do
+      fromManual <- filtersFromManualDeps base manualDeps
+      pure $ Just fromManual
+    (Nothing, Just existingFilters) -> pure $ Just existingFilters
+    (Just manualDeps, Just existingFilters) -> do
+      fromManual <- filtersFromManualDeps base manualDeps
+      let merged = mergeFilters fromManual existingFilters
+      pure $ Just merged
   where
-    filtersFromManualDeps :: ManualDependencies -> LicenseScanPathFilters
-    filtersFromManualDeps manualDeps = do
-      let paths = map vendoredPath $ vendoredDependencies manualDeps
-      let excludes = concatMap (\path -> [GlobFilter (path <> "/*"), GlobFilter (path <> "/**")]) paths
-      LicenseScanPathFilters{licenseScanPathFiltersOnly = [], licenseScanPathFiltersExclude = excludes}
-
     mergeFilters :: LicenseScanPathFilters -> LicenseScanPathFilters -> LicenseScanPathFilters
     mergeFilters manualDepsFilters existingFilters =
-      existingFilters{
-        licenseScanPathFiltersExclude = (licenseScanPathFiltersExclude manualDepsFilters) <> (licenseScanPathFiltersExclude existingFilters)
+      existingFilters
+      { licenseScanPathFiltersExclude = (licenseScanPathFiltersExclude manualDepsFilters) <> (licenseScanPathFiltersExclude existingFilters)
+      , licenseScanCompressedFilesExclude = (licenseScanCompressedFilesExclude manualDepsFilters) <> (licenseScanCompressedFilesExclude existingFilters)
       }
+
+filtersFromManualDeps ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m) =>
+  Path Abs Dir -> ManualDependencies -> m LicenseScanPathFilters
+filtersFromManualDeps base manualDeps = do
+  let paths = map vendoredPath $ vendoredDependencies manualDeps
+  compressedManualDepsFiles <- traverse (fullPath base) paths
+  let excludes = concatMap (\path -> [GlobFilter (path <> "/*"), GlobFilter (path <> "/**")]) paths
+  pure LicenseScanPathFilters
+    { licenseScanPathFiltersOnly = []
+    , licenseScanPathFiltersExclude = excludes
+    , licenseScanCompressedFilesExclude = catMaybes compressedManualDepsFiles
+    }
+
+fullPath ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m) =>
+  Path Abs Dir -> Text -> m (Maybe (Path Abs File))
+fullPath root p = do
+  scanPath <- Diag.runDiagnostics $ resolvePath' root $ toString p
+  case scanPath of
+    Success _ (SomeFile (Abs path)) -> pure $ Just path
+    Success _ (SomeFile _) -> pure Nothing
+    Success _ (SomeDir _) -> pure Nothing
+    _ -> pure Nothing
+
