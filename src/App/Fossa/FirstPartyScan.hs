@@ -119,12 +119,12 @@ mergePathFilters base maybeManualDeps existingPathFilters = do
   where
     -- mergeFilters takes the filters from manualDeps and the existing filters from the config and merges them
     -- the existing filters are the only one of the two that can contain licenseScanPathFiltersOnly entries,
-    -- but both can contain licenseScanPathFiltersExclude or licenseScanCompressedFilesExclude entries
+    -- but both can contain licenseScanPathFiltersExclude or licenseScanFilePathExclude entries
     mergeFilters :: LicenseScanPathFilters -> LicenseScanPathFilters -> LicenseScanPathFilters
     mergeFilters manualDepsFilters existingFilters =
       existingFilters
       { licenseScanPathFiltersExclude = (licenseScanPathFiltersExclude manualDepsFilters) <> (licenseScanPathFiltersExclude existingFilters)
-      , licenseScanCompressedFilesExclude = (licenseScanCompressedFilesExclude manualDepsFilters) <> (licenseScanCompressedFilesExclude existingFilters)
+      , licenseScanFilePathExclude = (licenseScanFilePathExclude manualDepsFilters) <> (licenseScanFilePathExclude existingFilters)
       }
 
 -- create LicenseScanPathFilters by looking at the vendored dependencies
@@ -142,7 +142,7 @@ filtersFromManualDeps base manualDeps = do
   pure LicenseScanPathFilters
     { licenseScanPathFiltersOnly = []
     , licenseScanPathFiltersExclude = excludes
-    , licenseScanCompressedFilesExclude = catMaybes vendoredDepFiles
+    , licenseScanFilePathExclude = catMaybes vendoredDepFiles
     }
 
 fullPathToVendoredDepFile ::
