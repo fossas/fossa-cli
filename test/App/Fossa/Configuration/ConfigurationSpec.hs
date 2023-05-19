@@ -97,6 +97,7 @@ expectedVendoredDependencyFilters =
   LicenseScanPathFilters
     { licenseScanPathFiltersOnly = [GlobFilter "**/*.rb"]
     , licenseScanPathFiltersExclude = [GlobFilter ".git/**", GlobFilter "test/**/*.rb"]
+    , licenseScanFilePathExclude = []
     }
 
 simpleTarget :: TargetFilter
