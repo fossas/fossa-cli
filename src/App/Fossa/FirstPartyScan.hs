@@ -5,26 +5,26 @@ module App.Fossa.FirstPartyScan (
 
 import App.Fossa.Config.Analyze (StandardAnalyzeConfig (..), VendoredDependencyOptions (licenseScanPathFilters))
 import App.Fossa.LicenseScanner (scanVendoredDep)
-import App.Fossa.ManualDeps (VendoredDependency (..), findAndReadFossaDepsFile, ManualDependencies (vendoredDependencies))
+import App.Fossa.ManualDeps (ManualDependencies (vendoredDependencies), VendoredDependency (..), findAndReadFossaDepsFile)
 import App.Types (FirstPartyScansFlag (..), FullFileUploads (FullFileUploads))
+import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger)
-import Effect.Exec (Exec)
-import Effect.ReadFS (Has, ReadFS, resolvePath')
-import Fossa.API.Types (ApiOpts (..), Organization (..), blankOrganization)
-import Path (Abs, Dir, Path, SomeBase (..), File)
-import Srclib.Types (LicenseSourceUnit)
-import Effect.Logger (Logger, logDebug, Pretty (pretty))
-import Types (LicenseScanPathFilters (..), GlobFilter (GlobFilter))
-import Data.Text (Text)
-import Path.Extra
 import Data.Maybe (catMaybes)
 import Data.String.Conversion (ToString (toString))
-import qualified Control.Carrier.Diagnostics as Diag
+import Data.Text (Text)
 import Diag.Result
+import Effect.Exec (Exec)
+import Effect.Logger (Logger, Pretty (pretty), logDebug)
+import Effect.ReadFS (Has, ReadFS, resolvePath')
+import Fossa.API.Types (ApiOpts (..), Organization (..), blankOrganization)
+import Path (Abs, Dir, File, Path, SomeBase (..))
+import Path.Extra
+import Srclib.Types (LicenseSourceUnit)
+import Types (GlobFilter (GlobFilter), LicenseScanPathFilters (..))
 
 runFirstPartyScan ::
   ( Has Diagnostics sig m
@@ -103,8 +103,12 @@ firstPartyScanMain base cfg org = do
 -- so that we do not decompress and license-scan them
 mergePathFilters ::
   ( Has ReadFS sig m
-  , Has Diagnostics sig m) =>
-  Path Abs Dir -> Maybe ManualDependencies -> Maybe LicenseScanPathFilters -> m (Maybe LicenseScanPathFilters)
+  , Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  Maybe ManualDependencies ->
+  Maybe LicenseScanPathFilters ->
+  m (Maybe LicenseScanPathFilters)
 mergePathFilters base maybeManualDeps existingPathFilters = do
   case (maybeManualDeps, existingPathFilters) of
     (Nothing, Nothing) -> pure Nothing
@@ -123,9 +127,9 @@ mergePathFilters base maybeManualDeps existingPathFilters = do
     mergeFilters :: LicenseScanPathFilters -> LicenseScanPathFilters -> LicenseScanPathFilters
     mergeFilters manualDepsFilters existingFilters =
       existingFilters
-      { licenseScanPathFiltersExclude = (licenseScanPathFiltersExclude manualDepsFilters) <> (licenseScanPathFiltersExclude existingFilters)
-      , licenseScanFilePathExclude = (licenseScanFilePathExclude manualDepsFilters) <> (licenseScanFilePathExclude existingFilters)
-      }
+        { licenseScanPathFiltersExclude = (licenseScanPathFiltersExclude manualDepsFilters) <> (licenseScanPathFiltersExclude existingFilters)
+        , licenseScanFilePathExclude = (licenseScanFilePathExclude manualDepsFilters) <> (licenseScanFilePathExclude existingFilters)
+        }
 
 -- create LicenseScanPathFilters by looking at the vendored dependencies
 -- We want to skip scanning all directories that are vendored dependencies,
@@ -133,22 +137,29 @@ mergePathFilters base maybeManualDeps existingPathFilters = do
 -- so that we do not decompress and license-scan them
 filtersFromManualDeps ::
   ( Has ReadFS sig m
-  , Has Diagnostics sig m) =>
-  Path Abs Dir -> ManualDependencies -> m LicenseScanPathFilters
+  , Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  ManualDependencies ->
+  m LicenseScanPathFilters
 filtersFromManualDeps base manualDeps = do
   let paths = map vendoredPath $ vendoredDependencies manualDeps
   vendoredDepFiles <- traverse (fullPathToVendoredDepFile base) paths
   let excludes = concatMap (\path -> [GlobFilter (path <> "/*"), GlobFilter (path <> "/**")]) paths
-  pure LicenseScanPathFilters
-    { licenseScanPathFiltersOnly = []
-    , licenseScanPathFiltersExclude = excludes
-    , licenseScanFilePathExclude = catMaybes vendoredDepFiles
-    }
+  pure
+    LicenseScanPathFilters
+      { licenseScanPathFiltersOnly = []
+      , licenseScanPathFiltersExclude = excludes
+      , licenseScanFilePathExclude = catMaybes vendoredDepFiles
+      }
 
 fullPathToVendoredDepFile ::
   ( Has ReadFS sig m
-  , Has Diagnostics sig m) =>
-  Path Abs Dir -> Text -> m (Maybe (Path Abs File))
+  , Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  Text ->
+  m (Maybe (Path Abs File))
 fullPathToVendoredDepFile root p = do
   scanPath <- Diag.runDiagnostics $ resolvePath' root $ toString p
   case scanPath of
@@ -156,4 +167,3 @@ fullPathToVendoredDepFile root p = do
     Success _ (SomeFile _) -> pure Nothing
     Success _ (SomeDir _) -> pure Nothing
     _ -> pure Nothing
-

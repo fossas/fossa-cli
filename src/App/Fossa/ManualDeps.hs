@@ -91,7 +91,8 @@ findAndReadFossaDepsFile ::
   ( Has Diagnostics sig m
   , Has ReadFS sig m
   ) =>
-  Path Abs Dir -> m (Maybe ManualDependencies)
+  Path Abs Dir ->
+  m (Maybe ManualDependencies)
 findAndReadFossaDepsFile root = do
   maybeDepsFile <- findFossaDepsFile root
   case maybeDepsFile of
