@@ -13,11 +13,11 @@ import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger)
 import Effect.Exec (Exec)
+import Effect.Logger (Logger, logDebug)
 import Effect.ReadFS (Has, ReadFS)
 import Fossa.API.Types (ApiOpts (..), Organization (..), blankOrganization)
 import Path (Abs, Dir, Path)
 import Srclib.Types (LicenseSourceUnit)
-import Effect.Logger (Logger, logDebug)
 
 runFirstPartyScan ::
   ( Has Diagnostics sig m
