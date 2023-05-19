@@ -314,7 +314,7 @@ instance ToJSON ArchiveUploadType where
 data LicenseScanPathFilters = LicenseScanPathFilters
   { licenseScanPathFiltersOnly :: [GlobFilter]
   , licenseScanPathFiltersExclude :: [GlobFilter]
-  , licenseScanFilePathExclude :: [Path Abs File]
+  , licenseScanPathFilterFileExclude :: [Path Abs File]
   }
   deriving (Eq, Ord, Show)
 

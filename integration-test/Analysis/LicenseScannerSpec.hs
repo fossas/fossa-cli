@@ -139,7 +139,7 @@ spec = do
     it "should filter licenses if LicenseScanPathFilters is set" $ do
       extractedDir <- getArtifact recursiveArchive
       let scanDir = extractedDir </> [reldir|cli-license-scan-integration-test-fixtures-main/recursive-archive|]
-      let licenseScanPathFilters = LicenseScanPathFilters{licenseScanPathFiltersOnly = [GlobFilter "**.rb"], licenseScanPathFiltersExclude = [], licenseScanFilePathExclude = []}
+      let licenseScanPathFilters = LicenseScanPathFilters{licenseScanPathFiltersOnly = [GlobFilter "**.rb"], licenseScanPathFiltersExclude = [], licenseScanPathFilterFileExclude = []}
       units <- runStack . runDiagnostics . ignoreStickyLogger . runExecIO . runReadFSIO . fmap licenseSourceUnitLicenseUnits $ scanVendoredDep scanDir (Just licenseScanPathFilters) (FullFileUploads False) vendoredDep
       PIO.removeDirRecur extractedDir
       case units of

@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 module App.Fossa.FirstPartyScan (
   runFirstPartyScan,
   firstPartyScanWithOrgInfo,
@@ -13,18 +14,18 @@ import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger)
-import Data.Maybe (catMaybes)
-import Data.String.Conversion (ToString (toString))
+import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text)
 import Diag.Result
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (Has, ReadFS, resolvePath')
 import Fossa.API.Types (ApiOpts (..), Organization (..), blankOrganization)
-import Path (Abs, Dir, File, Path, SomeBase (..))
+import Path (Abs, Dir, Path, SomeBase (..), (</>), mkRelDir)
 import Path.Extra
 import Srclib.Types (LicenseSourceUnit)
 import Types (GlobFilter (GlobFilter), LicenseScanPathFilters (..))
+import Control.Monad (foldM)
 
 runFirstPartyScan ::
   ( Has Diagnostics sig m
@@ -123,12 +124,12 @@ mergePathFilters base maybeManualDeps existingPathFilters = do
   where
     -- mergeFilters takes the filters from manualDeps and the existing filters from the config and merges them
     -- the existing filters are the only one of the two that can contain licenseScanPathFiltersOnly entries,
-    -- but both can contain licenseScanPathFiltersExclude or licenseScanFilePathExclude entries
+    -- but both can contain licenseScanPathFiltersExclude or licenseScanPathFilterFileExclude entries
     mergeFilters :: LicenseScanPathFilters -> LicenseScanPathFilters -> LicenseScanPathFilters
     mergeFilters manualDepsFilters existingFilters =
       existingFilters
         { licenseScanPathFiltersExclude = (licenseScanPathFiltersExclude manualDepsFilters) <> (licenseScanPathFiltersExclude existingFilters)
-        , licenseScanFilePathExclude = (licenseScanFilePathExclude manualDepsFilters) <> (licenseScanFilePathExclude existingFilters)
+        , licenseScanPathFilterFileExclude = (licenseScanPathFilterFileExclude manualDepsFilters) <> (licenseScanPathFilterFileExclude existingFilters)
         }
 
 -- create LicenseScanPathFilters by looking at the vendored dependencies
@@ -144,26 +145,32 @@ filtersFromManualDeps ::
   m LicenseScanPathFilters
 filtersFromManualDeps base manualDeps = do
   let paths = map vendoredPath $ vendoredDependencies manualDeps
-  vendoredDepFiles <- traverse (fullPathToVendoredDepFile base) paths
-  let excludes = concatMap (\path -> [GlobFilter (path <> "/*"), GlobFilter (path <> "/**")]) paths
-  pure
-    LicenseScanPathFilters
-      { licenseScanPathFiltersOnly = []
-      , licenseScanPathFiltersExclude = excludes
-      , licenseScanFilePathExclude = catMaybes vendoredDepFiles
-      }
+  let emptyFilter =
+        LicenseScanPathFilters
+          { licenseScanPathFiltersOnly = []
+          , licenseScanPathFiltersExclude = []
+          , licenseScanPathFilterFileExclude = []
+          }
+  foldM (addFilter base) emptyFilter paths
 
-fullPathToVendoredDepFile ::
+addFilter ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   ) =>
   Path Abs Dir ->
+  LicenseScanPathFilters ->
   Text ->
-  m (Maybe (Path Abs File))
-fullPathToVendoredDepFile root p = do
-  scanPath <- Diag.runDiagnostics $ resolvePath' root $ toString p
+  m LicenseScanPathFilters
+addFilter root existingFilter path = do
+  scanPath <- Diag.runDiagnostics $ resolvePath' root $ toString path
   case scanPath of
-    Success _ (SomeFile (Abs path)) -> pure $ Just path
-    Success _ (SomeFile _) -> pure Nothing
-    Success _ (SomeDir _) -> pure Nothing
-    _ -> pure Nothing
+    -- if it is a file, add it to licenseScanPathFilterFileExclude
+    Success _ (SomeFile (Abs p)) -> do
+      let existing = licenseScanPathFilterFileExclude existingFilter
+      pure existingFilter{ licenseScanPathFilterFileExclude = p : existing }
+    -- if it is a dir, add it to licenseScanPathFiltersExclude
+    Success _ (SomeDir (Abs p)) -> do
+      let globs = [GlobFilter (toText $ p </> $(mkRelDir "*")), GlobFilter (toText $ p </> $(mkRelDir "**"))]
+      let existing = licenseScanPathFiltersExclude existingFilter
+      pure existingFilter{ licenseScanPathFiltersExclude = existing <> globs}
+    _ -> pure existingFilter

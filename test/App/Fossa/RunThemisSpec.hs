@@ -20,7 +20,7 @@ spec = do
               LicenseScanPathFilters
                 { licenseScanPathFiltersOnly = [GlobFilter "**.rb", GlobFilter "**.html"]
                 , licenseScanPathFiltersExclude = []
-                , licenseScanFilePathExclude = []
+                , licenseScanPathFilterFileExclude = []
                 }
        in themisFlags licenseScanPathFilters (FullFileUploads False) `shouldBe` ["--srclib-with-matches", "--only-paths", "**.rb", "--only-paths", "**.html"]
 
@@ -30,6 +30,6 @@ spec = do
               LicenseScanPathFilters
                 { licenseScanPathFiltersOnly = [GlobFilter "**.rb", GlobFilter "**.html"]
                 , licenseScanPathFiltersExclude = [GlobFilter "**.jsx"]
-                , licenseScanFilePathExclude = []
+                , licenseScanPathFilterFileExclude = []
                 }
        in themisFlags licenseScanPathFilters (FullFileUploads False) `shouldBe` ["--srclib-with-matches", "--only-paths", "**.rb", "--only-paths", "**.html", "--exclude-paths", "**.jsx"]
