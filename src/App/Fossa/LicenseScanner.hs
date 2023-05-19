@@ -73,7 +73,7 @@ import Srclib.Types (
   LicenseUnit (..),
   Locator (..),
  )
-import Types (LicenseScanPathFilters)
+import Types (LicenseScanPathFilters (licenseScanCompressedFilesExclude))
 
 data LicenseScanErr
   = NoSuccessfulScans
@@ -132,7 +132,10 @@ recursivelyScanArchives pathPrefix licenseScanPathFilters fullFileUploads dir = 
           recursiveResults <- recursivelyScanArchives updatedPathPrefix licenseScanPathFilters fullFileUploads unpackedDir
           pure $ currentDirResults <> recursiveResults
     -- withArchive' emits Nothing when archive type is not supported.
-    archives <- traverse (\file -> withArchive' file (process file)) files
+    -- filter out files that match licenseScanCompressedFilesExclude
+    let archivesToSkip = maybe [] licenseScanCompressedFilesExclude licenseScanPathFilters
+    let filesToProcess = filter (`notElem` archivesToSkip) files
+    archives <- traverse (\file -> withArchive' file (process file)) filesToProcess
     pure (concat (catMaybes archives), WalkContinue)
 
 -- When we recursively scan archives, we end up with an array of LicenseUnits that may have multiple entries for a single license.
