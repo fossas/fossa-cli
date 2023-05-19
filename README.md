@@ -51,6 +51,12 @@ Alternatively, install using [Scoop](https://scoop.sh/):
 ```
 scoop install fossa
 ```
+<!-- markdown-link-check-disable-next-line -->
+Or [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/):
+
+```
+winget install FOSSA.FOSSA-cli
+```
 
 Please refer to detailed walkthrough [Installing FOSSA CLI](./docs/walkthroughs/installing-fossa-cli.md), for installing [FOSSA CLI 1.x](./docs/walkthroughs/installing-fossa-cli.md#installing-cli-1x-using-installation-script) and using [GitHub Releases](https://github.com/fossas/fossa-cli/releases) to install [FOSSA CLI manually](./docs/walkthroughs/installing-fossa-cli.md#installing-manually-with-github-releases).
 
