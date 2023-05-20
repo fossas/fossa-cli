@@ -51,8 +51,7 @@ Likewise, if you are using `podman-remote`, you should be able to use generate u
 Refer to documentation here:
 - https://web.archive.org/web/20230405171636/https://podman.io/blogs/2020/07/01/rest-versioning.html
 - https://docs.podman.io/en/latest/_static/api.html
-- https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/building_running_and_managing_containers/assembly_using-the-container-tools-api_building-running-and-managing-containers
-
+- https://web.archive.org/web/20220926013308/https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/building_running_and_managing_containers/assembly_using-the-container-tools-api_building-running-and-managing-containers
 
 # Integration via Podman Executables
 
