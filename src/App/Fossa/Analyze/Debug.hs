@@ -253,8 +253,12 @@ readFSToDebug = interpret $ \case
   cons@ResolveFile'{} -> recording cons
   cons@ResolveDir'{} -> recording cons
   cons@ResolvePath{} -> recording cons
+  -- These are redacted, so it's safe to record them, they'll redact themselves
+  cons@ReadRedactedContentsBS'{} -> recording cons
+  cons@ReadRedactedContentsText'{} -> recording cons
   -- Unneeded or excessive for debug bundles
   cons@ReadContentsBSLimit'{} -> ignoring cons
+  cons@ReadRedactedContentsBSLimit'{} -> ignoring cons
   cons@ListDir{} -> ignoring cons
   cons@GetIdentifier{} -> ignoring cons
   cons@GetCurrentDir{} -> ignoring cons
