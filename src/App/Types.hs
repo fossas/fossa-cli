@@ -7,6 +7,7 @@ module App.Types (
   ProjectRevision (..),
   MonorepoAnalysisOpts (..),
   OverrideDynamicAnalysisBinary (..),
+  FullFileUploads (..),
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, withObject, (.:))
@@ -100,3 +101,5 @@ instance Semigroup OverrideDynamicAnalysisBinary where
 
 instance Monoid OverrideDynamicAnalysisBinary where
   mempty = OverrideDynamicAnalysisBinary mempty
+
+newtype FullFileUploads = FullFileUploads {unFullFileUploads :: Bool} deriving (Eq, Ord, Show, Generic)

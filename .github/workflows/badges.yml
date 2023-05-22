@@ -1,0 +1,19 @@
+name: Update badges
+on:
+  schedule:
+    - cron: "0 0 * * 0" # At 00:00 every Sunday
+  workflow_dispatch:
+
+jobs:
+  downloads:
+    name: update-downloads-badge
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Update badge
+        run: |
+          CLI_DOWNLOADS=$(gh api /repos/fossas/fossa-cli/releases --paginate --cache 1h | jq '.[] | .assets | .[] | .download_count' | jq --slurp 'add')
+          SPECTROMETER_DOWNLOADS=$(gh api /repos/fossas/spectrometer/releases --paginate --cache 1h | jq '.[] | .assets | .[] | .download_count' | jq --slurp 'add')
+          DOWNLOADS=$(numfmt --to=si $(($CLI_DOWNLOADS + $SPECTROMETER_DOWNLOADS)))
+          SED_CMD='s/\[!\[FOSSA Downloads\](https:\/\/img\.shields\.io\/badge\/downloads-.*-brightgreen)\](https:\/\/github\.com\/fossas\/fossa-cli\/releases)/\[!\[FOSSA Downloads\](https:\/\/img\.shields\.io\/badge\/downloads-'$DOWNLOADS'-brightgreen)\](https:\/\/github\.com\/fossas\/fossa-cli\/releases)/g'
+          sed --in-place $SED_CMD ./README.md

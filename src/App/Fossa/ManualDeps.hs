@@ -28,6 +28,7 @@ import App.Fossa.VendoredDependency (
   arcToLocator,
   forceVendoredToArchive,
  )
+import App.Types (FullFileUploads (..))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
@@ -41,7 +42,7 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
-import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers)
+import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers, neText)
 import Data.Aeson.Types (Object, Parser, prependFailure)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty (NonEmpty)
@@ -167,10 +168,11 @@ scanAndUpload ::
 scanAndUpload root vdeps vendoredDepsOptions = do
   org <- getOrganization
   (archiveOrCLI, vendoredDependencyScanMode) <- getScanCfg org vendoredDepsOptions
+  let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
   let pathFilters = licenseScanPathFilters vendoredDepsOptions
   let scanner = case archiveOrCLI of
         ArchiveUpload -> archiveUploadSourceUnit
-        CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode pathFilters
+        CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode pathFilters fullFileUploads
 
   when (archiveOrCLI == ArchiveUpload && isJust pathFilters) $
     fatalText "You have provided path filters in the vendoredDependencies.licenseScanPathFilters section of your .fossa.yml file. Path filters are not allowed when doing archive uploads."
@@ -363,7 +365,7 @@ instance FromJSON ReferencedDependency where
       parseManagedDependency obj depType =
         Managed
           <$> ( ManagedReferenceDependency
-                  <$> obj .: "name"
+                  <$> (obj `neText` "name")
                   <*> pure depType
                   <*> (unTextLike <$$> obj .:? "version")
                   <* forbidNonRefDepFields obj
@@ -388,7 +390,7 @@ instance FromJSON ReferencedDependency where
       parseLinuxDependency :: Object -> DepType -> Parser LinuxReferenceDependency
       parseLinuxDependency obj depType =
         LinuxReferenceDependency
-          <$> obj .: "name"
+          <$> (obj `neText` "name")
           <*> pure depType
           <*> (unTextLike <$$> obj .:? "version")
           <*> parseArch obj
@@ -444,18 +446,18 @@ instance FromJSON ReferencedDependency where
 instance FromJSON CustomDependency where
   parseJSON = withObject "CustomDependency" $ \obj ->
     CustomDependency
-      <$> obj .: "name"
-      <*> (unTextLike <$> obj .: "version")
-      <*> obj .: "license"
+      <$> (obj `neText` "name")
+      <*> (unTextLike <$> obj `neText` "version")
+      <*> (obj `neText` "license")
       <*> obj .:? "metadata"
       <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
 
 instance FromJSON RemoteDependency where
-  parseJSON = withObject "RemoteDependency" $ \obj ->
+  parseJSON = withObject "RemoteDependency" $ \obj -> do
     RemoteDependency
-      <$> obj .: "name"
-      <*> (unTextLike <$> obj .: "version")
-      <*> obj .: "url"
+      <$> (obj `neText` "name")
+      <*> (unTextLike <$> obj `neText` "version")
+      <*> (obj `neText` "url")
       <*> obj .:? "metadata"
       <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
 

@@ -1,6 +1,20 @@
 # FOSSA CLI Changelog
 
+## v3.7.11
+- `fossa-deps.yml`: Adds strict parsing to so that required field with only whitespace strings are prohibited early. Also throws an error, if incompatible character is used in vendor dependency's version field. ([#1192](https://github.com/fossas/fossa-cli/pull/1192))
+
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
+
+## v3.7.10
+- License Scanning: Fix a bug where the license scanner did not run on MacOS 13 on M1 Macs ([#1193](https://github.com/fossas/fossa-cli/pull/1193))
+- Debug bundle: The raw dependency graph FOSSA CLI discovers is output in the FOSSA Debug Bundle. ([#1188](https://github.com/fossas/fossa-cli/pull/1188))
+
+## v3.7.9
+- License Scanning: Add support for "full file uploads" for CLI-side license scans. ([#1181](https://github.com/fossas/fossa-cli/pull/1181))
+
+## v3.7.8
+- Go: Do not fall back to module based analysis when using `--experimental-use-go-v3-resolver`. ([#1184](https://github.com/fossas/fossa-cli/pull/1184))
+
 ## v3.7.7
 - Adds `--json` flag to `fossa container analyze` ([#1180](https://github.com/fossas/fossa-cli/pull/1180))
 - License Scanning: Reduce false positives caused by indicator matches. This is done by only reporting indicator matches to SPDX keys and license names when we are scanning a manifest file ([#1182](https://github.com/fossas/fossa-cli/pull/1182))

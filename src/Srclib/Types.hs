@@ -117,6 +117,7 @@ data LicenseUnitData = LicenseUnitData
   , licenseUnitDataThemisVersion :: Text
   , licenseUnitDataMatchData :: Maybe (NonEmpty LicenseUnitMatchData)
   , licenseUnitDataCopyrights :: Maybe (NonEmpty Text)
+  , licenseUnitDataContents :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -128,6 +129,7 @@ emptyLicenseUnitData =
     , licenseUnitDataThemisVersion = ""
     , licenseUnitDataMatchData = Nothing
     , licenseUnitDataCopyrights = Nothing
+    , licenseUnitDataContents = Nothing
     }
 
 instance ToJSON LicenseUnitData where
@@ -138,6 +140,7 @@ instance ToJSON LicenseUnitData where
       , "ThemisVersion" .= licenseUnitDataThemisVersion
       , "match_data" .= licenseUnitDataMatchData
       , "Copyrights" .= licenseUnitDataCopyrights
+      , "Contents" .= licenseUnitDataContents
       ]
 
 instance FromJSON LicenseUnitData where
@@ -148,6 +151,7 @@ instance FromJSON LicenseUnitData where
       <*> obj .: "ThemisVersion"
       <*> obj .:? "match_data"
       <*> obj .:? "Copyrights"
+      <*> obj .:? "Contents"
 
 data LicenseUnitMatchData = LicenseUnitMatchData
   { licenseUnitMatchDataMatchString :: Maybe Text

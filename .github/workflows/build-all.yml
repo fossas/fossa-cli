@@ -43,7 +43,7 @@ jobs:
     - name: Install MacOS binary dependencies
       if: ${{ contains(matrix.os, 'macos') }}
       run: |
-        brew install upx jq
+        brew install jq
 
     # Set up Haskell.
     - uses: haskell/actions/setup@v1

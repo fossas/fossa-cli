@@ -31,6 +31,7 @@ module Fossa.API.Types (
   defaultApiPollDelay,
 ) where
 
+import App.Types (FullFileUploads (..))
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, fatalText)
 import Control.Timeout (Duration (Seconds))
@@ -116,6 +117,7 @@ instance FromJSON SignedURL where
 data ArchiveComponents = ArchiveComponents
   { archives :: [Archive]
   , forceRebuild :: Bool
+  , fullFiles :: FullFileUploads
   }
   deriving (Eq, Ord, Show)
 
@@ -124,6 +126,7 @@ instance ToJSON ArchiveComponents where
     object
       [ "archives" .= archives
       , "forceRebuild" .= forceRebuild
+      , "fullFiles" .= unFullFileUploads fullFiles
       ]
 
 data Archive = Archive
@@ -441,6 +444,7 @@ data Organization = Organization
   , orgSupportsIssueDiffs :: Bool
   , orgSupportsNativeContainerScan :: Bool
   , orgSupportsDependenciesCachePolling :: Bool
+  , orgRequiresFullFileUploads :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -469,6 +473,9 @@ instance FromJSON Organization where
         .!= False
       <*> obj
         .:? "supportsDependenciesCachePolling"
+        .!= False
+      <*> obj
+        .:? "requireFullFileUploads"
         .!= False
 
 data Project = Project

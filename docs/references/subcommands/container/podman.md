@@ -1,12 +1,12 @@
 ## Experimental Scanner - Podman
 
-`fossa-cli` can use podman client to perform container image scanning analysis. 
+`fossa-cli` can use podman client to perform container image scanning analysis.
 
 # Integration via Podman's Docker Compatible API
 
 `fossa-cli` will look for environment variable `DOCKER_HOST`,
 to infer docker engine api's socket location. As of now, `fossa-cli`
-only works with `unix://` socket. 
+only works with `unix://` socket.
 
 For podman, you can use `podman machine start` command, to retrieve
 Docker client compatible `DOCKER_HOST`.
@@ -19,7 +19,7 @@ Mounting volume... /Users/fossa:/Users/fossa
 
 This machine is currently configured in rootless mode. If your containers
 require root permissions (e.g. ports < 1024), or if you run into compatibility
-issues with non-podman clients, you can switch using the following command: 
+issues with non-podman clients, you can switch using the following command:
 
 	podman machine set --rootful
 
@@ -40,7 +40,7 @@ following command in your terminal session:
 Machine "podman-machine-default" started successfully
 ```
 
-Now we can specify `DOCKER_HOST` when running `fossa-cli`. 
+Now we can specify `DOCKER_HOST` when running `fossa-cli`.
 
 ```bash
 DOCKER_HOST='unix:///Users/fossa/.local/share/containers/podman/machine/podman-machine-default/podman.sock' fossa container analyze
@@ -49,10 +49,9 @@ DOCKER_HOST='unix:///Users/fossa/.local/share/containers/podman/machine/podman-m
 Likewise, if you are using `podman-remote`, you should be able to use generate unix socket, and use it with `fossa-cli`. Refer to documentation below for more details.
 
 Refer to documentation here:
-- https://podman.io/blogs/2020/07/01/rest-versioning.html
+- https://web.archive.org/web/20230405171636/https://podman.io/blogs/2020/07/01/rest-versioning.html
 - https://docs.podman.io/en/latest/_static/api.html
-- https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/building_running_and_managing_containers/assembly_using-the-container-tools-api_building-running-and-managing-containers
-
+- https://web.archive.org/web/20220926013308/https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/building_running_and_managing_containers/assembly_using-the-container-tools-api_building-running-and-managing-containers
 
 # Integration via Podman Executables
 
@@ -62,7 +61,7 @@ Refer to documentation here:
 # check if image exists
 podman image inspect <ARG>
 
-# export said image to temporary location, 
+# export said image to temporary location,
 # and perform analysis on exported image.
 podman save --format docker-archive -o <temp-path>
 ```
@@ -74,7 +73,7 @@ podman save --format docker-archive -o <temp-path>
 # Integration via Docker Archive
 
 We can manually export image using podman, and analyze such image
-with `fossa-cli`.  
+with `fossa-cli`.
 
 ```bash
 podman build . -t someImg:1.0.0
