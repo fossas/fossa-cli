@@ -71,3 +71,4 @@ Reference guides provide an exhaustive listing of all CLI functionality. If you 
   - CLI Commands
     - [`fossa experimental-link-user-defined-dependency-binary`](./references/experimental/subcommands/experimental-link-user-defined-dependency-binary.md)
 - [CLI Telemetry](./telemetry.md)
+- [Debugging FOSSA CLI](./references/debugging/README.md)
