@@ -212,12 +212,10 @@ matchExpectation a@(GetApiOpts) (ApiExpectation _ requestExpectation b@(GetApiOp
 matchExpectation a@(GetAttribution{}) (ApiExpectation _ requestExpectation b@(GetAttribution{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetIssues{}) (ApiExpectation _ requestExpectation b@(GetIssues{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetLatestBuild{}) (ApiExpectation _ requestExpectation b@(GetLatestBuild{}) resp) = checkResult requestExpectation a b resp
-matchExpectation a@(GetLatestScan{}) (ApiExpectation _ requestExpectation b@(GetLatestScan{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetOrganization{}) (ApiExpectation _ requestExpectation b@(GetOrganization{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetEndpointVersion{}) (ApiExpectation _ requestExpectation b@(GetEndpointVersion{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetProject{}) (ApiExpectation _ requestExpectation b@(GetProject{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetRevisionDependencyCacheStatus{}) (ApiExpectation _ requestExpectation b@(GetRevisionDependencyCacheStatus{}) resp) = checkResult requestExpectation a b resp
-matchExpectation a@(GetScan{}) (ApiExpectation _ requestExpectation b@(GetScan{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetSignedLicenseScanUrl{}) (ApiExpectation _ requestExpectation b@(GetSignedLicenseScanUrl{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetSignedUploadUrl{}) (ApiExpectation _ requestExpectation b@(GetSignedUploadUrl{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(QueueArchiveBuild{}) (ApiExpectation _ requestExpectation b@(QueueArchiveBuild{}) resp) = checkResult requestExpectation a b resp

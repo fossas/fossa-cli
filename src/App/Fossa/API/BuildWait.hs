@@ -6,7 +6,7 @@ module App.Fossa.API.BuildWait (
 ) where
 
 import App.Fossa.Config.Test (DiffRevision)
-import App.Types (ProjectRevision (projectName))
+import App.Types (ProjectRevision)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -21,33 +21,25 @@ import Control.Effect.FossaApiClient (
   getApiOpts,
   getIssues,
   getLatestBuild,
-  getLatestScan,
   getOrganization,
   getProject,
   getRevisionDependencyCacheStatus,
-  getScan,
  )
 import Control.Effect.StickyLogger (StickyLogger, logSticky')
 import Control.Monad (void, when)
 import Control.Timeout (Cancel, checkForCancel, delay)
-import Data.Text (Text)
-import Data.Text.Extra (showT)
-import Effect.Logger (Logger, pretty, viaShow)
+import Effect.Logger (Logger, viaShow)
 import Fossa.API.Types (
   ApiOpts (apiOptsPollDelay),
   Build (buildTask),
   BuildStatus (StatusFailed, StatusSucceeded),
   BuildTask (buildTaskStatus),
   Issues (issuesStatus),
-  OrgId,
-  Organization (orgSupportsDependenciesCachePolling, organizationId),
+  Organization (orgSupportsDependenciesCachePolling),
   Project (projectIsMonorepo),
   RevisionDependencyCache (status),
   RevisionDependencyCacheStatus (Ready, UnknownDependencyCacheStatus, Waiting),
-  ScanId,
-  ScanResponse (..),
  )
-import Srclib.Types (Locator (..))
 
 data WaitError
   = -- | We encountered the FAILED status on a build
@@ -75,12 +67,8 @@ waitForScanCompletion ::
 waitForScanCompletion revision cancelFlag = do
   -- Route is new, this may fail on on-prem if they haven't updated
   project <- recover $ getProject revision
-
-  -- Try inferring, fallback to standard.
-  let runAsMonorepo = maybe False projectIsMonorepo project
-
-  if runAsMonorepo
-    then waitForMonorepoScan revision cancelFlag
+  if maybe False projectIsMonorepo project
+    then fatalText "The project you are attempting to test is a monorepo project. Monorepo projects are no longer supported by FOSSA."
     else waitForBuild revision cancelFlag
 
 waitForIssues ::
@@ -124,62 +112,6 @@ waitForBuild revision cancelFlag = do
       logSticky' $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
       pauseForRetry
       waitForBuild revision cancelFlag
-
--- | Wait for monorepo scan completion
-waitForMonorepoScan ::
-  ( Has Diagnostics sig m
-  , Has FossaApiClient sig m
-  , Has Logger sig m
-  , Has StickyLogger sig m
-  , Has (Lift IO) sig m
-  ) =>
-  ProjectRevision ->
-  Cancel ->
-  m ()
-waitForMonorepoScan revision cancelFlag = do
-  checkForTimeout cancelFlag
-  orgId <- organizationId <$> getOrganization
-  let locator = createCustomLocator (projectName revision) orgId
-
-  logSticky' "[ Getting latest scan ID ]"
-  scan <- getLatestScan locator revision
-
-  logSticky' "[ Waiting for monorepo scan... ]"
-  waitForScotlandYardScan locator cancelFlag (responseScanId scan)
-
--- | Wait for Scotland Yard scan completion (VPS)
-waitForScotlandYardScan ::
-  ( Has Diagnostics sig m
-  , Has FossaApiClient sig m
-  , Has Logger sig m
-  , Has StickyLogger sig m
-  , Has (Lift IO) sig m
-  ) =>
-  Locator ->
-  Cancel ->
-  ScanId ->
-  m ()
-waitForScotlandYardScan locator cancelFlag scanId = do
-  checkForTimeout cancelFlag
-  scan <- getScan locator scanId
-  case responseScanStatus scan of
-    Just "AVAILABLE" -> pure ()
-    Just "ERROR" -> fatalText "The component scan failed. Check the FOSSA webapp for more details."
-    Just otherStatus -> do
-      logSticky' $ "[ Waiting for component scan... last status: " <> pretty otherStatus <> " ]"
-      pauseForRetry
-      waitForScotlandYardScan locator cancelFlag scanId
-    Nothing -> do
-      pauseForRetry
-      waitForScotlandYardScan locator cancelFlag scanId
-
-createCustomLocator :: Text -> OrgId -> Locator
-createCustomLocator projectName organizationId =
-  Locator
-    { locatorFetcher = "custom"
-    , locatorProject = showT organizationId <> "/" <> projectName
-    , locatorRevision = Nothing
-    }
 
 -- | Specialized version of 'checkForCancel' which represents
 -- a backend build/issue scan timeout.

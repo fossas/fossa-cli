@@ -38,7 +38,6 @@ import App.Fossa.Analyze.Upload (uploadSuccessfulAnalysis)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.Config.Analyze (
   AnalyzeCliOpts,
-  AnalyzeConfig (..),
   BinaryDiscovery (BinaryDiscovery),
   DynamicLinkInspect (DynamicLinkInspect),
   ExperimentalAnalyzeConfig,
@@ -46,12 +45,11 @@ import App.Fossa.Config.Analyze (
   IncludeAll (IncludeAll),
   NoDiscoveryExclusion (NoDiscoveryExclusion),
   ScanDestination (..),
-  StandardAnalyzeConfig (severity),
+  StandardAnalyzeConfig (..),
   UnpackArchives (UnpackArchives),
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
-import App.Fossa.Monorepo (monorepoScan)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
@@ -127,7 +125,7 @@ import Types (DiscoveredProject (..), FoundTargets)
 debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json.gz"
 
-analyzeSubCommand :: SubCommand AnalyzeCliOpts AnalyzeConfig
+analyzeSubCommand :: SubCommand AnalyzeCliOpts StandardAnalyzeConfig
 analyzeSubCommand = Config.mkSubCommand dispatch
 
 dispatch ::
@@ -139,11 +137,9 @@ dispatch ::
   , Has ReadFS sig m
   , Has Telemetry sig m
   ) =>
-  AnalyzeConfig ->
+  StandardAnalyzeConfig ->
   m ()
-dispatch = \case
-  Monorepo cfg -> monorepoScan cfg
-  Standard cfg -> void $ analyzeMain cfg
+dispatch cfg = void $ analyzeMain cfg
 
 -- This is just a handler for the Debug effect.
 -- The real logic is in the inner analyze
