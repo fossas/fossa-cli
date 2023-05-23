@@ -90,7 +90,7 @@ waitForIssues revision diffRevision cancelFlag = do
       waitForIssues revision diffRevision cancelFlag
     _ -> pure issues
 
--- | Wait for a "normal" (non-VPS) build completion
+-- | Wait for build completion
 waitForBuild ::
   ( Has Diagnostics sig m
   , Has Logger sig m

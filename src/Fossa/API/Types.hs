@@ -380,7 +380,6 @@ instance FromJSON Issue where
       .:? "priorityString"
       <*> obj
       .: "resolved"
-      -- VPS issues don't have a revisionId
       <*> obj
       .:? "revisionId"
       .!= "unknown project"
