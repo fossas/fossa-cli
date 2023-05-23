@@ -1,9 +1,12 @@
 # FOSSA CLI Changelog
 
+<!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
+
+## Unreleased
+- `setup.cfg`: Adds support for setup.cfg, in conjuction with `setup.py`. ([#1195](https://github.com/fossas/fossa-cli/pull/1195))
+
 ## v3.7.11
 - `fossa-deps.yml`: Adds strict parsing to so that required field with only whitespace strings are prohibited early. Also throws an error, if incompatible character is used in vendor dependency's version field. ([#1192](https://github.com/fossas/fossa-cli/pull/1192))
-
-<!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
 ## v3.7.10
 - License Scanning: Fix a bug where the license scanner did not run on MacOS 13 on M1 Macs ([#1193](https://github.com/fossas/fossa-cli/pull/1193))
