@@ -45,6 +45,19 @@ installRequiresParser = do
     symbol = L.symbol space
 
 -- | Parses install requirements listed in setup.cfg
+-- Setup.cfg has install_requires attribute in [options] block
+-- which is formatted as danfling list.
+-- -
+-- Example setup.cfg's install_requires block
+-- -
+-- > install_requires =
+-- >     importlib-metadata; python_version<"3.8"
+-- >     # platformdirs>=2
+-- >     configupdater>=3.0  # some comment
+-- >     packaging>=20.7
+-- >     colorama>=0.4.4; sys_platform == "win32"
+-- >
+-- >
 -- Docs: https://setuptools.pypa.io/en/latest/userguide/declarative_config.html
 installRequiresParserSetupCfg :: Parser [Req]
 installRequiresParserSetupCfg = do
