@@ -25,6 +25,7 @@ import Effect.ReadFS (Has, ReadFS, resolvePath')
 import Fossa.API.Types (ApiOpts (..), Organization (..), blankOrganization)
 import Path (Abs, Dir, Path, SomeBase (..), mkRelDir, (</>))
 import Path.Extra
+import Path.IO
 import Srclib.Types (LicenseSourceUnit)
 import Types (GlobFilter (GlobFilter), LicenseScanPathFilters (..))
 
@@ -171,7 +172,10 @@ addFilter root existingFilter path = do
       pure existingFilter{licenseScanPathFilterFileExclude = p : existing}
     -- if it is a dir, add it to licenseScanPathFiltersExclude
     Success _ (SomeDir (Abs p)) -> do
-      let globs = [GlobFilter (toText $ p </> $(mkRelDir "*")), GlobFilter (toText $ p </> $(mkRelDir "**"))]
       let existing = licenseScanPathFiltersExclude existingFilter
-      pure existingFilter{licenseScanPathFiltersExclude = existing <> globs}
+      case makeRelative root p of
+        Nothing -> pure existingFilter
+        Just relPath -> do
+          let globs = [GlobFilter (toText $ relPath </> $(mkRelDir "*")), GlobFilter (toText $ relPath </> $(mkRelDir "**"))]
+          pure existingFilter{licenseScanPathFiltersExclude = existing <> globs}
     _ -> pure existingFilter
