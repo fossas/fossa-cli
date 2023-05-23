@@ -16,14 +16,17 @@ import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger)
 import Control.Monad (foldM)
+import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text)
+import Data.Text qualified as Text
+import Debug.Trace (traceM)
 import Diag.Result
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (Has, ReadFS, resolvePath')
 import Fossa.API.Types (ApiOpts (..), Organization (..), blankOrganization)
-import Path (Abs, Dir, Path, SomeBase (..), mkRelDir, (</>))
+import Path (Abs, Dir, Path, Rel, SomeBase (..), mkRelDir, (</>))
 import Path.Extra
 import Path.IO
 import Srclib.Types (LicenseSourceUnit)
@@ -97,6 +100,7 @@ firstPartyScanMain base cfg org = do
     (True) -> do
       _ <- logDebug "Running a first-party license scan on the code in this repository. Licenses found in this repository will show up as 'Directly in code' in the FOSSA UI"
       _ <- logDebug . pretty $ "path filters = " ++ show pathFilters
+      traceM $ "filters: " ++ show pathFilters
       Just <$> scanVendoredDep base pathFilters fullFileUploads vdep
     (False) -> pure Nothing
 
@@ -176,6 +180,12 @@ addFilter root existingFilter path = do
       case makeRelative root p of
         Nothing -> pure existingFilter
         Just relPath -> do
-          let globs = [GlobFilter (toText $ relPath </> $(mkRelDir "*")), GlobFilter (toText $ relPath </> $(mkRelDir "**"))]
+          let globs = [GlobFilter (pathWithoutTrailingSlash $ relPath </> $(mkRelDir "*")), GlobFilter (pathWithoutTrailingSlash $ relPath </> $(mkRelDir "**"))]
           pure existingFilter{licenseScanPathFiltersExclude = existing <> globs}
     _ -> pure existingFilter
+
+-- `toText Path Rel Dir` has a trailing /, but themis path filters need those removed
+pathWithoutTrailingSlash :: Path Rel Dir -> Text
+pathWithoutTrailingSlash p = fromMaybe t $ Text.stripSuffix "/" t
+  where
+    t = toText p
