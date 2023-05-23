@@ -58,9 +58,9 @@ instance FromJSON ReleaseGroupMetadata where
   parseJSON = withObject "ReleaseGroupMetadata" $ \obj ->
     ReleaseGroupMetadata
       <$> obj
-      .: "name"
+        .: "name"
       <*> obj
-      .: "release"
+        .: "release"
 
 data ProjectRevision = ProjectRevision
   { projectName :: Text
