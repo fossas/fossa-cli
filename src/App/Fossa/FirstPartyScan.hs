@@ -101,7 +101,7 @@ firstPartyScanMain base cfg org = do
 
 -- mergePathFilters takes the existing filters from the config and merges them with filters constructed by looking at the vendored dependencies
 -- We do this because we want to skip scanning the contents of all directories that are vendored dependencies,
--- and we also want to add all vendored dependencies that point at files to `licenseScanCompressedFileExclude`,
+-- and we also want to add all vendored dependencies that point at files to `licenseScanPathFilterFileExclude`,
 -- so that we do not decompress and license-scan them
 mergePathFilters ::
   ( Has ReadFS sig m

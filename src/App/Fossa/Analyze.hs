@@ -34,7 +34,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Analyze.Upload (uploadSuccessfulAnalysis)
+import App.Fossa.Analyze.Upload (mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.Config.Analyze (
   AnalyzeCliOpts,
@@ -94,6 +94,7 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
@@ -123,7 +124,7 @@ import Prettyprinter.Render.Terminal (
   color,
  )
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (Locator, SourceUnit)
+import Srclib.Types (LicenseSourceUnit, Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
 
 debugBundlePath :: FilePath
@@ -275,8 +276,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     Diag.errorBoundaryIO
       . diagToDebug
       . runReader filters
-      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget
-      $ Config.vsiOptions cfg
+      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget $
+        Config.vsiOptions cfg
   binarySearchResults <-
     Diag.errorBoundaryIO . diagToDebug $
       Diag.context "discover-binaries" $
@@ -339,7 +340,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult $ Config.filterSet cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
-  let result = buildResult includeAll additionalSourceUnits filteredProjects
+  let result = buildResult includeAll additionalSourceUnits filteredProjects firstPartyScanResults
   case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll -> Diag.fatal ErrFilteredAllProjects
@@ -458,13 +459,16 @@ instance Diag.ToDiagnostic AnalyzeError where
       , ""
       ]
 
-buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Aeson.Value
-buildResult includeAll srcUnits projects =
+buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Aeson.Value
+buildResult includeAll srcUnits projects firstPartyScanResults =
   Aeson.object
     [ "projects" .= map buildProject projects
-    , "sourceUnits" .= finalSourceUnits
+    , "sourceUnits" .= mergedUnits
     ]
   where
+    mergedUnits = case firstPartyScanResults of
+      Nothing -> NE.map sourceUnitToFullSourceUnit $ NE.fromList finalSourceUnits
+      Just licenseUnits -> mergeSourceAndLicenseUnits (NE.fromList finalSourceUnits) licenseUnits
     finalSourceUnits = srcUnits ++ scannedUnits
     scannedUnits = map (Srclib.toSourceUnit (fromFlag IncludeAll includeAll)) projects
 
