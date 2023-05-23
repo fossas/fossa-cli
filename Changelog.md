@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+### Unreleased
+
+- Doc only: Fixed an issue in the `fossa-deps` schema suggesting against the use of `name` for referenced RPM dependencies [#1199](https://github.com/fossas/fossa-cli/pull/1199). If your IDE is utilizing SchemaStore, this file should now lint properly.
+
 ## v3.7.11
 - `fossa-deps.yml`: Adds strict parsing to so that required field with only whitespace strings are prohibited early. Also throws an error, if incompatible character is used in vendor dependency's version field. ([#1192](https://github.com/fossas/fossa-cli/pull/1192))
 
