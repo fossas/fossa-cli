@@ -1,0 +1,5 @@
+vendored-dependencies:
+  - name: bar
+    path: vendored/bar
+  - name: foo
+    path: vendored/foo
