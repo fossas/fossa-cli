@@ -34,7 +34,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Analyze.Upload (mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
+import App.Fossa.Analyze.Upload (uploadSuccessfulAnalysis)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.Config.Analyze (
   AnalyzeCliOpts,
@@ -124,7 +124,7 @@ import Prettyprinter.Render.Terminal (
   color,
  )
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (LicenseSourceUnit, Locator, SourceUnit, sourceUnitToFullSourceUnit)
+import Srclib.Types (LicenseSourceUnit (licenseSourceUnitLicenseUnits), Locator, SourceUnit, licenseUnitToFullSourceUnit, sourceUnitToFullSourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
 
 debugBundlePath :: FilePath
@@ -467,8 +467,12 @@ buildResult includeAll srcUnits projects firstPartyScanResults =
     ]
   where
     mergedUnits = case firstPartyScanResults of
-      Nothing -> NE.map sourceUnitToFullSourceUnit $ NE.fromList finalSourceUnits
-      Just licenseUnits -> mergeSourceAndLicenseUnits (NE.fromList finalSourceUnits) licenseUnits
+      Nothing -> map sourceUnitToFullSourceUnit finalSourceUnits
+      Just licenseUnits -> do
+        fromLicenseUnits ++ fromSourceUnits
+        where
+          fromSourceUnits = map sourceUnitToFullSourceUnit finalSourceUnits
+          fromLicenseUnits = NE.toList . NE.map licenseUnitToFullSourceUnit $ licenseSourceUnitLicenseUnits licenseUnits
     finalSourceUnits = srcUnits ++ scannedUnits
     scannedUnits = map (Srclib.toSourceUnit (fromFlag IncludeAll includeAll)) projects
 
