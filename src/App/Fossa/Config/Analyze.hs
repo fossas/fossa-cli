@@ -12,7 +12,7 @@ module App.Fossa.Config.Analyze (
   JsonOutput (..),
   NoDiscoveryExclusion (..),
   ScanDestination (..),
-  StandardAnalyzeConfig (..),
+  AnalyzeConfig (..),
   UnpackArchives (..),
   VendoredDependencyOptions (..),
   VSIAnalysis (..),
@@ -199,7 +199,7 @@ instance GetCommonOpts AnalyzeCliOpts where
 instance GetSeverity AnalyzeCliOpts where
   getSeverity AnalyzeCliOpts{commons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo
 
-data StandardAnalyzeConfig = StandardAnalyzeConfig
+data AnalyzeConfig = AnalyzeConfig
   { baseDir :: BaseDir
   , severity :: Severity
   , scanDestination :: ScanDestination
@@ -216,7 +216,7 @@ data StandardAnalyzeConfig = StandardAnalyzeConfig
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON StandardAnalyzeConfig where
+instance ToJSON AnalyzeConfig where
   toEncoding = genericToEncoding defaultOptions
 
 data ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
@@ -228,7 +228,7 @@ data ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
 instance ToJSON ExperimentalAnalyzeConfig where
   toEncoding = genericToEncoding defaultOptions
 
-mkSubCommand :: (StandardAnalyzeConfig -> EffStack ()) -> SubCommand AnalyzeCliOpts StandardAnalyzeConfig
+mkSubCommand :: (AnalyzeConfig -> EffStack ()) -> SubCommand AnalyzeCliOpts AnalyzeConfig
 mkSubCommand = SubCommand "analyze" analyzeInfo cliParser loadConfig mergeOpts
 
 analyzeInfo :: InfoMod a
@@ -339,7 +339,7 @@ mergeOpts ::
   Maybe ConfigFile ->
   EnvVars ->
   AnalyzeCliOpts ->
-  m StandardAnalyzeConfig
+  m AnalyzeConfig
 mergeOpts cfg env cliOpts = do
   let experimentalNativeLicenseScanFlagUsed = fromFlag DeprecatedAllowNativeLicenseScan $ analyzeDeprecatedAllowNativeLicenseScan cliOpts
   when experimentalNativeLicenseScanFlagUsed $ do
@@ -366,7 +366,7 @@ mergeStandardOpts ::
   Maybe ConfigFile ->
   EnvVars ->
   AnalyzeCliOpts ->
-  m StandardAnalyzeConfig
+  m AnalyzeConfig
 mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
   let basedir = collectBaseDir analyzeBaseDir
       logSeverity = getSeverity cliOpts
@@ -380,7 +380,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
       dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
 
-  StandardAnalyzeConfig
+  AnalyzeConfig
     <$> basedir
     <*> pure logSeverity
     <*> scanDestination

@@ -38,6 +38,7 @@ import App.Fossa.Analyze.Upload (uploadSuccessfulAnalysis)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.Config.Analyze (
   AnalyzeCliOpts,
+  AnalyzeConfig (..),
   BinaryDiscovery (BinaryDiscovery),
   DynamicLinkInspect (DynamicLinkInspect),
   ExperimentalAnalyzeConfig,
@@ -45,7 +46,6 @@ import App.Fossa.Config.Analyze (
   IncludeAll (IncludeAll),
   NoDiscoveryExclusion (NoDiscoveryExclusion),
   ScanDestination (..),
-  StandardAnalyzeConfig (..),
   UnpackArchives (UnpackArchives),
  )
 import App.Fossa.Config.Analyze qualified as Config
@@ -125,7 +125,7 @@ import Types (DiscoveredProject (..), FoundTargets)
 debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json.gz"
 
-analyzeSubCommand :: SubCommand AnalyzeCliOpts StandardAnalyzeConfig
+analyzeSubCommand :: SubCommand AnalyzeCliOpts AnalyzeConfig
 analyzeSubCommand = Config.mkSubCommand dispatch
 
 dispatch ::
@@ -137,7 +137,7 @@ dispatch ::
   , Has ReadFS sig m
   , Has Telemetry sig m
   ) =>
-  StandardAnalyzeConfig ->
+  AnalyzeConfig ->
   m ()
 dispatch cfg = void $ analyzeMain cfg
 
@@ -152,7 +152,7 @@ analyzeMain ::
   , Has ReadFS sig m
   , Has Telemetry sig m
   ) =>
-  StandardAnalyzeConfig ->
+  AnalyzeConfig ->
   m Aeson.Value
 analyzeMain cfg = case Config.severity cfg of
   SevDebug -> do
@@ -236,7 +236,7 @@ analyze ::
   , Has ReadFS sig m
   , Has Telemetry sig m
   ) =>
-  StandardAnalyzeConfig ->
+  AnalyzeConfig ->
   m Aeson.Value
 analyze cfg = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
