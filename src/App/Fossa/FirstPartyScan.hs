@@ -28,6 +28,7 @@ import Path.Extra
 import Path.IO
 import Srclib.Types (LicenseSourceUnit)
 import Types (GlobFilter (GlobFilter), LicenseScanPathFilters (..))
+import Debug.Trace (traceM)
 
 runFirstPartyScan ::
   ( Has Diagnostics sig m
@@ -93,6 +94,7 @@ firstPartyScanMain base cfg org = do
   let vdep = VendoredDependency "first-party" "." Nothing
       fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
   pathFilters <- mergePathFilters base manualDeps (licenseScanPathFilters $ vendoredDeps cfg)
+  traceM $ "filters: " ++ show pathFilters
   case runFirstPartyScans of
     (True) -> do
       _ <- logDebug "Running a first-party license scan on the code in this repository. Licenses found in this repository will show up as 'Directly in code' in the FOSSA UI"
