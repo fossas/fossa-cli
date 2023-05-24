@@ -1,13 +1,13 @@
 # FOSSA CLI Changelog
 
-### Unreleased
-
+<!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
+## Unreleased
 - Doc only: Fixed an issue in the `fossa-deps` schema suggesting against the use of `name` for referenced RPM dependencies [#1199](https://github.com/fossas/fossa-cli/pull/1199). If your IDE is utilizing SchemaStore, this file should now lint properly.
+- `setup.cfg`: Adds support for setup.cfg, in conjuction with `setup.py`. ([#1195](https://github.com/fossas/fossa-cli/pull/1195))
+- Default Filters: Default filters are applied prior to analysis. Improves overall runtime performance. ([#1193](https://github.com/fossas/fossa-cli/pull/1194))
 
 ## v3.7.11
 - `fossa-deps.yml`: Adds strict parsing to so that required field with only whitespace strings are prohibited early. Also throws an error, if incompatible character is used in vendor dependency's version field. ([#1192](https://github.com/fossas/fossa-cli/pull/1192))
-
-<!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 
 ## v3.7.10
 - License Scanning: Fix a bug where the license scanner did not run on MacOS 13 on M1 Macs ([#1193](https://github.com/fossas/fossa-cli/pull/1193))
