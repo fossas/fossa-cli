@@ -960,13 +960,13 @@ licenseScanResultUpload ::
   SignedURL ->
   LicenseSourceUnit ->
   m LbsResponse
-licenseScanResultUpload signedArcURI licenseScanResult = fossaReq $ do
-  let arcURL = URI.mkURI $ signedURL signedArcURI
+licenseScanResultUpload signedUploadURI licenseScanResult = fossaReq $ do
+  let uploadURL = URI.mkURI $ signedURL signedUploadURI
 
-  uri <- fromMaybeText ("Invalid URL: " <> signedURL signedArcURI) arcURL
+  uri <- fromMaybeText ("Invalid URL: " <> signedURL signedUploadURI) uploadURL
   validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
 
-  context ("Uploading license scan result to " <> signedURL signedArcURI) $ case validatedURI of
+  context ("Uploading license scan result to " <> signedURL signedUploadURI) $ case validatedURI of
     Left (httpUrl, httpOptions) -> uploadArchiveRequest httpUrl httpOptions
     Right (httpsUrl, httpsOptions) -> uploadArchiveRequest httpsUrl httpsOptions
   where
@@ -977,18 +977,19 @@ licenseScanResultUpload signedArcURI licenseScanResult = fossaReq $ do
     uploadArchiveRequest url options = reqCb PUT url (ReqBodyBs zippedLicenseResult) lbsResponse options (pure . requestEncoder)
 
 ---------- The first-party scan result upload function uploads the JSON license result directly to the signed URL it is provided.
+
 firstPartyScanResultUpload ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   SignedURL ->
   NE.NonEmpty FullSourceUnit ->
   m LbsResponse
-firstPartyScanResultUpload signedArcURI firstPartyScanResult = fossaReq $ do
-  let arcURL = URI.mkURI $ signedURL signedArcURI
+firstPartyScanResultUpload signedUploadURI firstPartyScanResult = fossaReq $ do
+  let uploadURL = URI.mkURI $ signedURL signedUploadURI
 
-  uri <- fromMaybeText ("Invalid URL: " <> signedURL signedArcURI) arcURL
+  uri <- fromMaybeText ("Invalid URL: " <> signedURL signedUploadURI) uploadURL
   validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
 
-  context ("Uploading first-party scan result to " <> signedURL signedArcURI) $ case validatedURI of
+  context ("Uploading first-party scan result to " <> signedURL signedUploadURI) $ case validatedURI of
     Left (httpUrl, httpOptions) -> uploadArchiveRequest httpUrl httpOptions
     Right (httpsUrl, httpsOptions) -> uploadArchiveRequest httpsUrl httpsOptions
   where
