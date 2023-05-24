@@ -26,7 +26,7 @@ import Effect.Exec (Exec)
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (Has, ReadFS, resolvePath')
 import Fossa.API.Types (ApiOpts (..), Organization (..), blankOrganization)
-import Path (Abs, Dir, Path, Rel, SomeBase (..), mkRelDir, (</>))
+import Path (Abs, Dir, Path, Rel, SomeBase (..))
 import Path.Extra
 import Path.IO
 import Srclib.Types (LicenseSourceUnit)
@@ -180,7 +180,7 @@ addFilter root existingFilter path = do
       case makeRelative root p of
         Nothing -> pure existingFilter
         Just relPath -> do
-          let globs = [GlobFilter (pathWithoutTrailingSlash $ relPath </> $(mkRelDir "*")), GlobFilter (pathWithoutTrailingSlash $ relPath </> $(mkRelDir "**"))]
+          let globs = [GlobFilter (pathWithoutTrailingSlash relPath <> "/*"), GlobFilter (pathWithoutTrailingSlash  relPath <> "/**")]
           pure existingFilter{licenseScanPathFiltersExclude = existing <> globs}
     _ -> pure existingFilter
 
