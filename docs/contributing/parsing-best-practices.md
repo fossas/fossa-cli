@@ -6,7 +6,7 @@ We use `megaparsec` for text parsing.  There are [several][tut1] [good][tut2] [t
 [google results](https://www.google.com/search?q=megaparsec+tutorial).  *Note: FOSSA employees can also talk to the analysis team directly, we can walk you through this.*
 
 [tut1]: https://markkarpov.com/tutorial/megaparsec.html
-[tut2]: https://mmhaskell.com/parsing/megaparsec
+[tut2]: https://web.archive.org/web/20220516032908/https://mmhaskell.com/parsing/megaparsec
 [tut3]: https://github.com/mrkkrp/megaparsec-site/blob/master/tutorials/parsing-simple-imperative-language.md
 
 Some of this advice is directly given in the first tutorial, and is repeated here for emphasis.  PLEASE READ THE TUTORIALS.
