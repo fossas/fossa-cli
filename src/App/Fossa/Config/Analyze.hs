@@ -3,7 +3,6 @@
 
 module App.Fossa.Config.Analyze (
   AnalyzeCliOpts (..),
-  AnalyzeConfig (..),
   BinaryDiscovery (..),
   ExperimentalAnalyzeConfig (..),
   ForceVendoredDependencyRescans (..),
@@ -11,10 +10,9 @@ module App.Fossa.Config.Analyze (
   DynamicLinkInspect (..),
   IncludeAll (..),
   JsonOutput (..),
-  MonorepoAnalyzeConfig (..),
   NoDiscoveryExclusion (..),
   ScanDestination (..),
-  StandardAnalyzeConfig (..),
+  AnalyzeConfig (..),
   UnpackArchives (..),
   VendoredDependencyOptions (..),
   VSIAnalysis (..),
@@ -31,7 +29,6 @@ import App.Fossa.Config.Common (
   CommonOpts (..),
   ScanDestination (..),
   baseDirArg,
-  collectAPIMetadata,
   collectApiOpts,
   collectBaseDir,
   collectConfigFileFilters,
@@ -57,7 +54,6 @@ import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverit
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (
   BaseDir,
-  MonorepoAnalysisOpts (MonorepoAnalysisOpts, monorepoAnalysisType),
   OverrideDynamicAnalysisBinary (..),
   OverrideProject (OverrideProject),
   ProjectMetadata (projectLabel),
@@ -72,7 +68,6 @@ import Control.Effect.Lift (Lift)
 import Control.Monad (when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Flag (Flag, flagOpt, fromFlag)
-import Data.Maybe (isJust)
 import Data.Monoid.Extra (isMempty)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -87,7 +82,6 @@ import Effect.Exec (
  )
 import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn, vsep)
 import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
-import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
 import Options.Applicative (
   Alternative (many),
@@ -108,7 +102,6 @@ import Options.Applicative (
  )
 import Path (Abs, Dir, Path, Rel)
 import Path.Extra (SomePath)
-import System.Info qualified as SysInfo
 import Types (ArchiveUploadType (..), LicenseScanPathFilters (..), TargetFilter)
 
 -- CLI flags, for use with 'Data.Flag'
@@ -192,7 +185,6 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeAssertMode :: Maybe (FilePath)
   , analyzeDynamicLinkTarget :: Maybe (FilePath)
   , analyzeSkipVSIGraphResolution :: [VSI.Locator]
-  , monorepoAnalysisOpts :: MonorepoAnalysisOpts
   , analyzeBaseDir :: FilePath
   , analyzeDynamicGoAnalysisType :: GoDynamicTactic
   }
@@ -207,29 +199,7 @@ instance GetCommonOpts AnalyzeCliOpts where
 instance GetSeverity AnalyzeCliOpts where
   getSeverity AnalyzeCliOpts{commons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo
 
-data AnalyzeConfig
-  = Monorepo MonorepoAnalyzeConfig
-  | Standard StandardAnalyzeConfig
-  deriving (Show, Generic)
-
-instance ToJSON AnalyzeConfig where
-  toEncoding = genericToEncoding defaultOptions
-
-data MonorepoAnalyzeConfig = MonorepoAnalyzeConfig
-  { monorepoAnalyzeOpts :: MonorepoAnalysisOpts
-  , monorepoApiOpts :: ApiOpts
-  , monorepoBasedir :: BaseDir
-  , monorepoFilters :: AllFilters
-  , monorepoMetadata :: ProjectMetadata
-  , monorepoRevision :: ProjectRevision
-  , monorepoSeverity :: Severity
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToJSON MonorepoAnalyzeConfig where
-  toEncoding = genericToEncoding defaultOptions
-
-data StandardAnalyzeConfig = StandardAnalyzeConfig
+data AnalyzeConfig = AnalyzeConfig
   { baseDir :: BaseDir
   , severity :: Severity
   , scanDestination :: ScanDestination
@@ -246,7 +216,7 @@ data StandardAnalyzeConfig = StandardAnalyzeConfig
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON StandardAnalyzeConfig where
+instance ToJSON AnalyzeConfig where
   toEncoding = genericToEncoding defaultOptions
 
 data ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
@@ -288,7 +258,6 @@ cliParser =
     <*> optional (strOption (long "experimental-link-project-binary" <> metavar "DIR" <> help "Links output binary files to this project in FOSSA"))
     <*> optional dynamicLinkInspectOpt
     <*> many skipVSIGraphResolutionOpt
-    <*> monorepoOpts
     <*> baseDirArg
     <*> experimentalUseV3GoResolver
 
@@ -347,11 +316,6 @@ skipVSIGraphResolutionOpt = (option (eitherReader parseLocator) details)
       Left err -> Left $ toString (toText err)
       Right loc -> pure loc
 
-monorepoOpts :: Parser MonorepoAnalysisOpts
-monorepoOpts =
-  MonorepoAnalysisOpts
-    <$> optional (strOption (long "experimental-enable-monorepo" <> metavar "MODE" <> help "scan the project in the experimental monorepo mode. Supported modes: aosp"))
-
 loadConfig ::
   ( Has Diagnostics sig m
   , Has Logger sig m
@@ -390,51 +354,7 @@ mergeOpts cfg env cliOpts = do
         , "In the future, usage of the --experimental-native-license-scan flag may result in fatal error."
         ]
 
-  if isJust $ monorepoAnalysisType $ monorepoAnalysisOpts cliOpts
-    then Monorepo <$> mergeMonorepoOpts cfg env cliOpts
-    else Standard <$> mergeStandardOpts cfg env cliOpts
-
-mergeMonorepoOpts ::
-  ( Has Diagnostics sig m
-  , Has Exec sig m
-  , Has (Lift IO) sig m
-  , Has Logger sig m
-  , Has ReadFS sig m
-  ) =>
-  Maybe ConfigFile ->
-  EnvVars ->
-  AnalyzeCliOpts ->
-  m MonorepoAnalyzeConfig
-mergeMonorepoOpts cfgfile envvars cliOpts@AnalyzeCliOpts{..} = do
-  let monoOpts = monorepoAnalysisOpts
-      metadata = collectAPIMetadata cfgfile analyzeMetadata
-      severity = getSeverity cliOpts
-      apiopts = collectApiOpts cfgfile envvars commons
-      basedir = collectBaseDir analyzeBaseDir
-      filters = collectFilters cfgfile cliOpts
-      revision =
-        collectRevisionData' basedir cfgfile WriteOnly $
-          OverrideProject (optProjectName commons) (optProjectRevision commons) (analyzeBranch)
-      failureOnWindows = fatalOnWindows "Monorepo analysis is not supported on windows"
-      failureOnOutput = when analyzeOutput $ fatalText "Monorepo analysis does not support the `--output` flag"
-
-  MonorepoAnalyzeConfig
-    monoOpts
-    <$> apiopts
-    <*> basedir
-    <*> filters
-    <*> pure metadata
-    <*> revision
-    <*> pure severity
-    -- Add phantom failures here (no data to return)
-    <* failureOnWindows
-    <* failureOnOutput
-
-windowsOsName :: String
-windowsOsName = "mingw32"
-
-fatalOnWindows :: Has Diagnostics sig m => Text -> m ()
-fatalOnWindows msg = when (SysInfo.os == windowsOsName) $ fatalText msg
+  mergeStandardOpts cfg env cliOpts
 
 mergeStandardOpts ::
   ( Has Diagnostics sig m
@@ -446,7 +366,7 @@ mergeStandardOpts ::
   Maybe ConfigFile ->
   EnvVars ->
   AnalyzeCliOpts ->
-  m StandardAnalyzeConfig
+  m AnalyzeConfig
 mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
   let basedir = collectBaseDir analyzeBaseDir
       logSeverity = getSeverity cliOpts
@@ -460,7 +380,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
       dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
 
-  StandardAnalyzeConfig
+  AnalyzeConfig
     <$> basedir
     <*> pure logSeverity
     <*> scanDestination

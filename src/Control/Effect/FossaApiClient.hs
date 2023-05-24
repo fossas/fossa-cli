@@ -14,13 +14,11 @@ module Control.Effect.FossaApiClient (
   getAttribution,
   getIssues,
   getLatestBuild,
-  getLatestScan,
   getEndpointVersion,
   getOrganization,
   getProject,
   getRevisionDependencyCacheStatus,
   getAnalyzedRevisions,
-  getScan,
   getSignedLicenseScanUrl,
   getSignedUploadUrl,
   getVsiInferences,
@@ -61,8 +59,6 @@ import Fossa.API.Types (
   Organization,
   Project,
   RevisionDependencyCache,
-  ScanId,
-  ScanResponse,
   SignedURL,
   UploadResponse,
  )
@@ -91,11 +87,9 @@ data FossaApiClientF a where
   GetEndpointVersion :: FossaApiClientF Text
   GetRevisionDependencyCacheStatus :: ProjectRevision -> FossaApiClientF RevisionDependencyCache
   GetLatestBuild :: ProjectRevision -> FossaApiClientF Build
-  GetLatestScan :: Locator -> ProjectRevision -> FossaApiClientF ScanResponse
   GetOrganization :: FossaApiClientF Organization
   GetProject :: ProjectRevision -> FossaApiClientF Project
   GetAnalyzedRevisions :: NonEmpty VendoredDependency -> FossaApiClientF [Text]
-  GetScan :: Locator -> ScanId -> FossaApiClientF ScanResponse
   GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetVsiInferences :: VSI.ScanID -> FossaApiClientF [Locator]
@@ -159,12 +153,6 @@ getRevisionDependencyCacheStatus = sendSimple . GetRevisionDependencyCacheStatus
 
 getIssues :: (Has FossaApiClient sig m) => ProjectRevision -> Maybe DiffRevision -> m Issues
 getIssues projectRevision diffRevision = sendSimple $ GetIssues projectRevision diffRevision
-
-getScan :: Has FossaApiClient sig m => Locator -> ScanId -> m ScanResponse
-getScan locator scanId = sendSimple $ GetScan locator scanId
-
-getLatestScan :: Has FossaApiClient sig m => Locator -> ProjectRevision -> m ScanResponse
-getLatestScan locator revision = sendSimple $ GetLatestScan locator revision
 
 getAttribution :: Has FossaApiClient sig m => ProjectRevision -> ReportOutputFormat -> m Text
 getAttribution revision format = sendSimple $ GetAttribution revision format

@@ -44,12 +44,10 @@ import App.Fossa.Config.Analyze (
   IncludeAll (IncludeAll),
   NoDiscoveryExclusion (NoDiscoveryExclusion),
   ScanDestination (..),
-  StandardAnalyzeConfig (severity),
   UnpackArchives (UnpackArchives),
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
-import App.Fossa.Monorepo (monorepoScan)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
@@ -139,9 +137,7 @@ dispatch ::
   ) =>
   AnalyzeConfig ->
   m ()
-dispatch = \case
-  Monorepo cfg -> monorepoScan cfg
-  Standard cfg -> void $ analyzeMain cfg
+dispatch cfg = void $ analyzeMain cfg
 
 -- This is just a handler for the Debug effect.
 -- The real logic is in the inner analyze
@@ -154,7 +150,7 @@ analyzeMain ::
   , Has ReadFS sig m
   , Has Telemetry sig m
   ) =>
-  StandardAnalyzeConfig ->
+  AnalyzeConfig ->
   m Aeson.Value
 analyzeMain cfg = case Config.severity cfg of
   SevDebug -> do
@@ -243,7 +239,7 @@ analyze ::
   , Has ReadFS sig m
   , Has Telemetry sig m
   ) =>
-  StandardAnalyzeConfig ->
+  AnalyzeConfig ->
   m Aeson.Value
 analyze cfg = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
