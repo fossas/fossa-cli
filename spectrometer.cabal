@@ -198,7 +198,6 @@ library
     App.Fossa.ListTargets
     App.Fossa.Main
     App.Fossa.ManualDeps
-    App.Fossa.Monorepo
     App.Fossa.ProjectInference
     App.Fossa.Report
     App.Fossa.Report.Attribution
@@ -206,8 +205,6 @@ library
     App.Fossa.Subcommand
     App.Fossa.Test
     App.Fossa.VendoredDependency
-    App.Fossa.VPS.Scan.RunWiggins
-    App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
     App.Fossa.VSI.DynLinked
     App.Fossa.VSI.DynLinked.Internal.Binary
@@ -259,7 +256,6 @@ library
     Control.Carrier.FossaApiClient.Internal.Core
     Control.Carrier.FossaApiClient.Internal.FossaAPIV1
     Control.Carrier.FossaApiClient.Internal.LicenseScanning
-    Control.Carrier.FossaApiClient.Internal.ScotlandYard
     Control.Carrier.FossaApiClient.Internal.VSI
     Control.Carrier.Git
     Control.Carrier.Output.IO

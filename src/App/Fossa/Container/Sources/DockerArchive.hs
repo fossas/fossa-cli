@@ -9,7 +9,6 @@ module App.Fossa.Container.Sources.DockerArchive (
 import App.Fossa.Analyze (applyFiltersToProject, toProjectResult, updateProgress)
 import App.Fossa.Analyze.Debug (diagToDebug)
 import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc))
-import App.Fossa.Analyze.Filter (skipNonProdProjectsBasedOnPath)
 import App.Fossa.Analyze.Project (mkResult)
 import App.Fossa.Analyze.Types (
   AnalyzeProject (analyzeProject'),
@@ -19,7 +18,6 @@ import App.Fossa.Analyze.Types (
  )
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic))
 import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
-import App.Types (BaseDir (BaseDir))
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Docker.Manifest (getImageDigest, getRepoTags)
 import Container.OsRelease (OsInfo (nameId, version), getOsInfo)
@@ -63,7 +61,7 @@ import Data.Maybe (listToMaybe, mapMaybe)
 import Data.String.Conversion (ToString (toString))
 import Data.Text (Text)
 import Data.Text.Extra (breakOnEndAndRemove, showT)
-import Discovery.Filters (AllFilters)
+import Discovery.Filters (AllFilters, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec)
 import Effect.Logger (
@@ -185,7 +183,6 @@ analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball = do
     toSourceUnit =
       map (Srclib.toSourceUnit False)
         . mapMaybe toProjectResult
-        . skipNonProdProjectsBasedOnPath (BaseDir . Path $ "./")
 
 runAnalyzers ::
   ( AnalyzeStaticTaskEffs sig m
@@ -225,11 +222,16 @@ runDependencyAnalysis ::
   m ()
 runDependencyAnalysis basedir filters project@DiscoveredProject{..} = do
   let dpi = DiscoveredProjectIdentifier projectPath projectType
-  case applyFiltersToProject basedir filters project of
-    Nothing -> do
+  let hasNonProductionPath = isDefaultNonProductionPath basedir projectPath
+
+  case (applyFiltersToProject basedir filters project, hasNonProductionPath) of
+    (Nothing, _) -> do
       logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> ": no filters matched"
       output $ SkippedDueToProvidedFilter dpi
-    Just targets -> do
+    (Just _, True) -> do
+      logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> " (default non-production path filtering)"
+      output $ SkippedDueToDefaultProductionFilter dpi
+    (Just targets, False) -> do
       logInfo $ "Analyzing " <> pretty projectType <> " project at " <> pretty (toFilePath projectPath)
       let ctxMessage = "Project Analysis: " <> showT projectType
       graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $

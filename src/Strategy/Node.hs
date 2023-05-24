@@ -19,7 +19,6 @@ import Control.Effect.Diagnostics (
   context,
   errCtx,
   fatalText,
-  fromEither,
   fromEitherShow,
   fromMaybe,
   recover,
@@ -220,7 +219,7 @@ detectYarnVersion ::
   m YarnVersion
 detectYarnVersion yarnfile = do
   -- we expect the v1 header to end at char 82
-  contents <- decodeUtf8 <$> (readContentsBSLimit yarnfile 100 >>= fromEither)
+  contents <- decodeUtf8 <$> readContentsBSLimit yarnfile 100
   if "yarn lockfile v1" `Text.isInfixOf` contents
     then pure V1
     else pure V2Compatible

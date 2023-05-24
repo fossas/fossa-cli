@@ -246,7 +246,7 @@ summarizeProjectScan :: DiscoveredProjectScan -> Doc AnsiStyle
 summarizeProjectScan (Scanned dpi (Failure _ _)) = failColorCoded $ renderDiscoveredProjectIdentifier dpi <> renderFailed
 summarizeProjectScan (Scanned _ (Success wg pr)) = successColorCoded wg $ renderProjectResult pr <> renderSucceeded wg
 summarizeProjectScan (SkippedDueToProvidedFilter dpi) = renderDiscoveredProjectIdentifier dpi <> skippedDueFilter
-summarizeProjectScan (SkippedDueToDefaultProductionFilter dpi) = renderDiscoveredProjectIdentifier dpi <> skippedDueProductionPathFiltering
+summarizeProjectScan (SkippedDueToDefaultProductionFilter dpi) = renderDiscoveredProjectIdentifier dpi <> skippedDueNonProductionPathFiltering
 
 ---------- Rendering Helpers
 
@@ -277,8 +277,8 @@ failColorCoded = annotate $ color Red
 skippedDueFilter :: Doc AnsiStyle
 skippedDueFilter = ": skipped (exclusion filters)"
 
-skippedDueProductionPathFiltering :: Doc AnsiStyle
-skippedDueProductionPathFiltering = ": skipped (production path filtering)"
+skippedDueNonProductionPathFiltering :: Doc AnsiStyle
+skippedDueNonProductionPathFiltering = ": skipped (non-production path filtering)"
 
 renderSucceeded :: [EmittedWarn] -> Doc AnsiStyle
 renderSucceeded ew =

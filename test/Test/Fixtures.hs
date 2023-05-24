@@ -13,8 +13,6 @@ module Test.Fixtures (
   project,
   projectMetadata,
   projectRevision,
-  scanId,
-  scanResponse,
   sourceUnits,
   uploadResponse,
   emptyIssues,
@@ -199,16 +197,6 @@ pendingBuild =
         API.BuildTask
           { API.buildTaskStatus = API.StatusRunning
           }
-    }
-
-scanId :: API.ScanId
-scanId = API.ScanId "TestScanId"
-
-scanResponse :: API.ScanResponse
-scanResponse =
-  API.ScanResponse
-    { API.responseScanId = scanId
-    , API.responseScanStatus = Nothing
     }
 
 emptyIssues :: API.Issues

@@ -28,6 +28,7 @@ import Control.Effect.FossaApiClient (
   getProject,
   getSignedFirstPartyScanUrl,
   uploadAnalysis,
+  uploadAnalysisWithFirstPartyLicenses,
   uploadContributors,
   uploadAnalysisWithFirstPartyLicenses,
   uploadFirstPartyScanResult,
@@ -161,7 +162,7 @@ dieOnMonorepoUpload :: (Has Diagnostics sig m, Has FossaApiClient sig m) => Proj
 dieOnMonorepoUpload revision = do
   project <- recover $ getProject revision
   when (maybe False projectIsMonorepo project) $
-    fatalText "This project already exists as a monorepo project. Perhaps you meant to supply '--experimental-enable-monorepo', or meant to run 'fossa vps analyze' instead?"
+    fatalText "This project already exists as a monorepo project. Monorepo projects are no longer supported; please create a new project instead."
 
 tryUploadContributors ::
   ( Has Diagnostics sig m

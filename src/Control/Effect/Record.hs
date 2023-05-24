@@ -6,6 +6,7 @@
 
 module Control.Effect.Record (
   Recordable (..),
+  Redacted (..),
   RecordableValue (..),
   RecordC (..),
   runRecord,
@@ -26,7 +27,8 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Kind
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.String.Conversion (decodeUtf8)
+import Data.String.Conversion (ToText, decodeUtf8, toText)
+import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as LText
 import Data.Void (Void)
@@ -185,3 +187,33 @@ instance RecordableValue ExitCode where
 
 instance RecordableValue (Doc a) where
   toRecordedValue = toJSON . renderStrict . layoutPretty defaultLayoutOptions
+
+-- | Wraps any value, causing it to be redacted when it would normally have been recorded or otherwise shown.
+-- To actually obtain the underlying value, use `unRedact`.
+newtype Redacted a = Redacted {unRedact :: a} deriving (Functor)
+
+redactedLiteral :: String
+redactedLiteral = "<REDACTED>"
+
+instance RecordableValue (Redacted a) where
+  toRecordedValue :: Redacted a -> Value
+  toRecordedValue _ = toJSON redactedLiteral
+
+instance Show (Redacted a) where
+  show :: Redacted a -> String
+  show _ = redactedLiteral
+
+instance ToText (Redacted a) where
+  toText :: Redacted a -> Text
+  toText _ = toText redactedLiteral
+
+instance Applicative Redacted where
+  pure :: a -> Redacted a
+  pure = Redacted
+
+  (<*>) :: Redacted (a -> b) -> Redacted a -> Redacted b
+  (Redacted f) <*> other = fmap f other
+
+instance Monad Redacted where
+  (>>=) :: Redacted a -> (a -> Redacted b) -> Redacted b
+  (Redacted a) >>= f = f a

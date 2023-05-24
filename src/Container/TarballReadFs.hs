@@ -62,6 +62,9 @@ import Effect.ReadFS (
     ReadContentsBS',
     ReadContentsBSLimit',
     ReadContentsText',
+    ReadRedactedContentsBS',
+    ReadRedactedContentsBSLimit',
+    ReadRedactedContentsText',
     ResolveDir',
     ResolveFile',
     ResolvePath
@@ -75,6 +78,9 @@ import Path.Extra (SomePath (..))
 -- We use internal module, as we cannot use parse_B_T (e.g. parseAbsFile), etc. to craft
 -- Path b t, since tarball paths are not representative of POSIX, or windows
 -- and such, parse__B_T is not useful.
+
+import Control.Effect.Record (Redacted (..))
+import Data.Either.Combinators (mapRight)
 import Path.Internal (Path (Path))
 import System.IO (IOMode (ReadMode), withFile)
 
@@ -278,6 +284,18 @@ runTarballReadFSIO fs tarball = interpret $ \case
       `catchingIO` FileReadError (toString file)
   ReadContentsText' file ->
     readContentText fs tarball file
+      `catchingIO` FileReadError (toString file)
+  ReadRedactedContentsBS' file -> do
+    mapRight Redacted
+      <$> readContentBS fs tarball 0 file
+      `catchingIO` FileReadError (toString file)
+  ReadRedactedContentsBSLimit' file limit -> do
+    mapRight Redacted
+      <$> readContentsBSLimit fs tarball file limit
+      `catchingIO` FileReadError (toString file)
+  ReadRedactedContentsText' file -> do
+    mapRight Redacted
+      <$> readContentText fs tarball file
       `catchingIO` FileReadError (toString file)
   ResolveFile' dir path ->
     resolveFile fs tarball dir path
