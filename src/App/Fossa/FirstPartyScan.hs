@@ -18,10 +18,9 @@ import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Debug.Trace (traceM)
 import Diag.Result
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, Pretty (pretty), logDebug)
+import Effect.Logger (Logger, logDebug)
 import Effect.ReadFS (Has, ReadFS, resolvePath')
 import Fossa.API.Types (ApiOpts (..), Organization (..), blankOrganization)
 import Path (Abs, Dir, Path, Rel, SomeBase (..))
