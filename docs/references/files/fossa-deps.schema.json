@@ -103,6 +103,11 @@
         },
         "referenced-rpm-dependency": {
             "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Name of the dependency. This name will be used to search for dependency in relevant registries."
+                  },
                 "type": {
                     "enum": [
                         "rpm-generic"

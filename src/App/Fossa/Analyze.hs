@@ -21,8 +21,6 @@ import App.Fossa.Analyze.Discover (
 import App.Fossa.Analyze.Filter (
   CountedResult (FilteredAll, FoundSome, NoneDiscovered),
   checkForEmptyUpload,
-  ignoredPaths,
-  skipNonProdProjectsBasedOnPath,
  )
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
@@ -95,7 +93,7 @@ import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
-import Discovery.Filters (AllFilters, applyFilters, filterIsVSIOnly)
+import Discovery.Filters (AllFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec)
 import Effect.Logger (
@@ -184,11 +182,16 @@ runDependencyAnalysis ::
   m ()
 runDependencyAnalysis basedir filters project@DiscoveredProject{..} = do
   let dpi = DiscoveredProjectIdentifier projectPath projectType
-  case applyFiltersToProject basedir filters project of
-    Nothing -> do
+  let hasNonProductionPath = isDefaultNonProductionPath basedir projectPath
+
+  case (applyFiltersToProject basedir filters project, hasNonProductionPath) of
+    (Nothing, _) -> do
       logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> ": no filters matched"
       output $ SkippedDueToProvidedFilter dpi
-    Just targets -> do
+    (Just _, True) -> do
+      logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> " (default non-production path filtering)"
+      output $ SkippedDueToDefaultProductionFilter dpi
+    (Just targets, False) -> do
       logInfo $ "Analyzing " <> pretty projectType <> " project at " <> pretty (toFilePath projectPath)
       let ctxMessage = "Project Analysis: " <> showT projectType
       graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context ctxMessage $ do
@@ -306,11 +309,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
             res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (`runAnalyzers` filters) basedir
             Diag.withResult SevError SevWarn res (const (pure ()))
 
-  let projectScansWithSkippedProdPath = skipNonProdProjectsBasedOnPath (BaseDir basedir) projectScans
   let projectResults = mapMaybe toProjectResult projectScans
-  let filteredProjects = mapMaybe toProjectResult projectScansWithSkippedProdPath
+  let filteredProjects = mapMaybe toProjectResult projectScans
 
-  let analysisResult = AnalysisScanResult projectScansWithSkippedProdPath vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults
+  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults
 
   maybeEndpointAppVersion <- case destination of
     UploadScan apiOpts _ -> runFossaApiClient apiOpts $ do
