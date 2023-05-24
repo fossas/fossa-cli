@@ -99,8 +99,6 @@ firstPartyScanMain base cfg org = do
   case runFirstPartyScans of
     (True) -> do
       _ <- logDebug "Running a first-party license scan on the code in this repository. Licenses found in this repository will show up as 'Directly in code' in the FOSSA UI"
-      _ <- logDebug . pretty $ "path filters = " ++ show pathFilters
-      traceM $ "filters: " ++ show pathFilters
       Just <$> scanVendoredDep base pathFilters fullFileUploads vdep
     (False) -> pure Nothing
 
