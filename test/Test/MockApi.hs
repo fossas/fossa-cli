@@ -223,7 +223,7 @@ matchExpectation a@(QueueArchiveBuild{}) (ApiExpectation _ requestExpectation b@
 matchExpectation a@(ResolveProjectDependencies{}) (ApiExpectation _ requestExpectation b@(ResolveProjectDependencies{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(ResolveUserDefinedBinary{}) (ApiExpectation _ requestExpectation b@(ResolveUserDefinedBinary{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadAnalysis{}) (ApiExpectation _ requestExpectation b@(UploadAnalysis{}) resp) = checkResult requestExpectation a b resp
-matchExpectation a@(UploadFirstPartyAnalysis{}) (ApiExpectation _ requestExpectation b@(UploadFirstPartyAnalysis{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(UploadAnalysisWithFirstPartyLicenses{}) (ApiExpectation _ requestExpectation b@(UploadAnalysisWithFirstPartyLicenses{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadFirstPartyScanResult{}) (ApiExpectation _ requestExpectation b@(UploadFirstPartyScanResult{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadArchive{}) (ApiExpectation _ requestExpectation b@(UploadArchive{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadNativeContainerScan{}) (ApiExpectation _ requestExpectation b@(UploadNativeContainerScan{}) resp) = checkResult requestExpectation a b resp

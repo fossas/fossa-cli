@@ -11,7 +11,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   getSignedUploadUrl,
   queueArchiveBuild,
   uploadAnalysis,
-  uploadFirstPartyAnalysis,
+  uploadAnalysisWithFirstPartyLicenses,
   uploadArchive,
   uploadNativeContainerScan,
   uploadContributors,
@@ -95,7 +95,7 @@ uploadAnalysis revision metadata units = do
   apiOpts <- ask
   API.uploadAnalysis apiOpts revision metadata units
 
-uploadFirstPartyAnalysis ::
+uploadAnalysisWithFirstPartyLicenses ::
   ( Has (Lift IO) sig m
   , Has (Reader ApiOpts) sig m
   , Has Diagnostics sig m
@@ -104,9 +104,9 @@ uploadFirstPartyAnalysis ::
   ProjectMetadata ->
   FullFileUploads ->
   m UploadResponse
-uploadFirstPartyAnalysis revision metadata fullFileUploads = do
+uploadAnalysisWithFirstPartyLicenses revision metadata fullFileUploads = do
   apiOpts <- ask
-  API.uploadFirstPartyAnalysis apiOpts revision metadata fullFileUploads
+  API.uploadAnalysisWithFirstPartyLicenses apiOpts revision metadata fullFileUploads
 
 uploadNativeContainerScan ::
   ( Has (Lift IO) sig m

@@ -29,7 +29,7 @@ import Control.Effect.FossaApiClient (
   getSignedFirstPartyScanUrl,
   uploadAnalysis,
   uploadContributors,
-  uploadFirstPartyAnalysis,
+  uploadAnalysisWithFirstPartyLicenses,
   uploadFirstPartyScanResult,
  )
 import Control.Effect.Git (Git, fetchGitContributors)
@@ -106,7 +106,7 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units li
         org <- getOrganization
         let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
         let mergedUnits = mergeSourceAndLicenseUnits units licenses
-        runStickyLogger SevInfo $ uploadFirstPartyAnalysisToS3AndCore revision metadata mergedUnits fullFileUploads
+        runStickyLogger SevInfo $ uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads
     let locator = uploadLocator uploadResult
     buildUrl <- getFossaBuildUrl revision locator
     traverse_
@@ -130,7 +130,7 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units li
 
     pure locator
 
-uploadFirstPartyAnalysisToS3AndCore ::
+uploadAnalysisWithFirstPartyLicensesToS3AndCore ::
   ( Has Diagnostics sig m
   , Has FossaApiClient sig m
   , Has StickyLogger sig m
@@ -140,11 +140,11 @@ uploadFirstPartyAnalysisToS3AndCore ::
   NE.NonEmpty FullSourceUnit ->
   FullFileUploads ->
   m UploadResponse
-uploadFirstPartyAnalysisToS3AndCore revision metadata mergedUnits fullFileUploads = do
-  _ <- uploadFirstPartyAnalysisToS3 revision mergedUnits
-  uploadFirstPartyAnalysis revision metadata fullFileUploads
+uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads = do
+  _ <- uploadAnalysisWithFirstPartyLicensesToS3 revision mergedUnits
+  uploadAnalysisWithFirstPartyLicenses revision metadata fullFileUploads
 
-uploadFirstPartyAnalysisToS3 ::
+uploadAnalysisWithFirstPartyLicensesToS3 ::
   ( Has Diagnostics sig m
   , Has FossaApiClient sig m
   , Has StickyLogger sig m
@@ -152,7 +152,7 @@ uploadFirstPartyAnalysisToS3 ::
   ProjectRevision ->
   NE.NonEmpty FullSourceUnit ->
   m ()
-uploadFirstPartyAnalysisToS3 revision mergedUnits = do
+uploadAnalysisWithFirstPartyLicensesToS3 revision mergedUnits = do
   signedURL <- getSignedFirstPartyScanUrl $ PackageRevision{packageVersion = projectRevision revision, packageName = projectName revision}
   logSticky $ "Uploading '" <> projectName revision <> "' to secure S3 bucket"
   uploadFirstPartyScanResult signedURL mergedUnits

@@ -4,7 +4,7 @@
 
 module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   uploadAnalysis,
-  uploadFirstPartyAnalysis,
+  uploadAnalysisWithFirstPartyLicenses,
   uploadContributors,
   uploadNativeContainerScan,
   mkMetadataOpts,
@@ -623,14 +623,14 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
   resp <- req POST (uploadUrl baseUrl) (ReqBodyJson $ NE.toList sourceUnits) jsonResponse (baseOpts <> opts)
   pure (responseBody resp)
 
-uploadFirstPartyAnalysis ::
+uploadAnalysisWithFirstPartyLicenses ::
   (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   ProjectRevision ->
   ProjectMetadata ->
   FullFileUploads ->
   m UploadResponse
-uploadFirstPartyAnalysis apiOpts ProjectRevision{..} metadata fullFileUploads = fossaReq $ do
+uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata fullFileUploads = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts =
