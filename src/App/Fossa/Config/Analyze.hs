@@ -300,7 +300,7 @@ cliParser =
     <*> baseDirArg
     <*> experimentalUseV3GoResolver
     <*> flagOpt ForceFirstPartyScans (long "experimental-force-first-party-scans" <> help "Force first party scans")
-    <*> flagOpt ForceNoFirstPartyScans (long "experimental-force-no-first-party-scans" <> help "Force no first party scans")
+    <*> flagOpt ForceNoFirstPartyScans (long "experimental-block-first-party-scans" <> help "Block first party scans. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans.")
 
 data GoDynamicTactic
   = GoModulesBasedTactic
@@ -471,7 +471,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
   firstPartyScansFlag <-
     case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
-      (True, True) -> fatalText "You provided both the --experimental-force-first-party-scans and --experimental-force-no-first-party-scans flags. Only one of these flags may be used"
+      (True, True) -> fatalText "You provided both the --experimental-force-first-party-scans and --experimental-block-first-party-scans flags. Only one of these flags may be used"
       (True, _) -> pure FirstPartyScansOnFromFlag
       (_, True) -> pure FirstPartyScansOffFromFlag
       (False, False) -> pure FirstPartyScansUseDefault
