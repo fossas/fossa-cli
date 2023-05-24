@@ -21,7 +21,8 @@ In addition to the [usual FOSSA project flags](#common-fossa-project-flags) supp
 | `--jira-project-key 'some-key'`       | `-j`  | Add a Jira project key to the FOSSA project                                                                                                           |
 | `--link 'https://example.com'`        | `-L`  | Attach a link to the current FOSSA build                                                                                                              |
 | `--team 'some team'`                  | `-T`  | Specify a team within your FOSSA organization                                                                                                         |
-| `--policy 'some policy'`              |       | Assign a specific FOSSA policy to this project                                                                                                        |
+| `--policy 'some policy'`              |       | Assign a specific FOSSA policy to this project. Mutually excludes `--policy-id`.                                                                      |
+| `--policy-id 'some policy id'`        |       | Assign a specific FOSSA policy to this project by id. Mutually excludes `--policy`.                                                                   |
 | `--config /path/to/file`              | `-c`  | Path to a [configuration file](../files/fossa-yml.md) including filename. By default we look for `.fossa.yml` in target directory of analyze command. |
 
 ### Printing results without uploading to FOSSA
