@@ -32,7 +32,7 @@ runFirstPartyScan ::
   StandardAnalyzeConfig ->
   m (Maybe LicenseSourceUnit)
 runFirstPartyScan root maybeApiOpts cfg = do
-  -- if we do not have api opts, then we act as if the org defaults to not running first-party scans
+  -- if we do not have api opts (i.e. the --output flag was used), then we act as if the org defaults to not running first-party scans
   -- but the FOSSA server supports first-party scans
   case maybeApiOpts of
     Nothing -> firstPartyScanMain root cfg defaultOrg
