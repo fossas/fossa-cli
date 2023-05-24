@@ -55,7 +55,7 @@ expectedConfigProject =
     , configPolicy = Just (PolicyName "license-policy")
     , configLabel = ["project-label", "label-2"]
     , configReleaseGroup = Just expectedReleaseGroup
-    , configPolicyId = Just 0
+    , configPolicyId = Nothing
     }
 
 expectedConfigRevision :: ConfigRevision
@@ -127,6 +127,9 @@ invalidDefaultDir = maintestdir </> $(mkRelDir "invalid-default")
 invalidScanMethodDir :: Path Rel Dir
 invalidScanMethodDir = maintestdir </> $(mkRelDir "invalid-scan-method")
 
+invalidPoliciesDir :: Path Rel Dir
+invalidPoliciesDir = maintestdir </> $(mkRelDir "invalid-policies")
+
 expectSuccessfulParse :: Result (Maybe ConfigFile) -> T.Expectation
 expectSuccessfulParse act =
   assertOnSuccess act $ \_ a -> case a of
@@ -154,6 +157,7 @@ spec = do
   -- so we error here
   invalidDefault <- runIt invalidDefaultDir Nothing
   invalidScanMethod <- runIt invalidScanMethodDir Nothing
+  invalidPolicies <- runIt invalidPoliciesDir Nothing
 
   -- @Just file@ informs us that the file is specified manually, so we fail
   -- instead of trying to recover, so we don't ignore the file and do the wrong thing
@@ -173,6 +177,7 @@ spec = do
       expectFailure invalidSpecified
       expectFailure invalidDefault
       expectFailure invalidScanMethod
+      expectFailure invalidPolicies
 
     T.it "returns Nothing for missing default file" $
       assertOnSuccess missingDefault $
