@@ -19,7 +19,7 @@ import App.Fossa.Analyze.Discover (
   discoverFuncs,
  )
 import App.Fossa.Analyze.Filter (
-  CountedResult (FilteredAll, FoundSome, NoneDiscovered),
+  CountedResult (FilteredAll, FoundSome, NoneDiscovered, FoundLicensesOnly),
   checkForEmptyUpload,
  )
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
@@ -339,18 +339,23 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   let result = buildResult includeAll additionalSourceUnits filteredProjects firstPartyScanResults
-  case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits of
+  case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits firstPartyScanResults of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll -> Diag.fatal ErrFilteredAllProjects
-    FoundSome sourceUnits -> case destination of
-      OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
-      UploadScan apiOpts metadata ->
-        Diag.context "upload-results"
-          . runFossaApiClient apiOpts
-          $ do
-            locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision sourceUnits firstPartyScanResults
-            doAssertRevisionBinaries iatAssertion locator
+    FoundSome sourceUnits -> doUpload result iatAssertion destination basedir jsonOutput revision (Just sourceUnits) firstPartyScanResults
+    FoundLicensesOnly -> doUpload result iatAssertion destination basedir jsonOutput revision Nothing firstPartyScanResults
   pure result
+  where
+    doUpload result iatAssertion destination basedir jsonOutput revision sourceUnits firstPartyScanResults =
+      case destination of
+        OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
+        UploadScan apiOpts metadata ->
+          Diag.context "upload-results"
+            . runFossaApiClient apiOpts
+            $ do
+              locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision sourceUnits firstPartyScanResults
+              doAssertRevisionBinaries iatAssertion locator
+
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
 toProjectResult (SkippedDueToProvidedFilter _) = Nothing

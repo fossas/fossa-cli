@@ -69,11 +69,13 @@ import Srclib.Types (
 -- units come from standard `fossa analyze`.
 -- LicenseSourceUnit comes from running a first-party license scan on the project
 -- merge these into an array before uploading to S3
-mergeSourceAndLicenseUnits :: NE.NonEmpty SourceUnit -> LicenseSourceUnit -> NE.NonEmpty FullSourceUnit
+mergeSourceAndLicenseUnits :: [SourceUnit] -> LicenseSourceUnit -> NE.NonEmpty FullSourceUnit
 mergeSourceAndLicenseUnits units LicenseSourceUnit{..} =
-  fromSourceUnits <> fromLicenseUnits
+  -- Replace with `NE.prependList fromLicenseUnits fromSourceUnits` after upgrading to > 4.16
+  -- https://hackage.haskell.org/package/base-4.18.0.0/docs/Data-List-NonEmpty.html#v:prependList
+  foldr NE.cons fromLicenseUnits fromSourceUnits
   where
-    fromSourceUnits = NE.map sourceUnitToFullSourceUnit units
+    fromSourceUnits = map sourceUnitToFullSourceUnit units
     fromLicenseUnits = NE.map licenseUnitToFullSourceUnit licenseSourceUnitLicenseUnits
 
 uploadSuccessfulAnalysis ::
@@ -87,10 +89,10 @@ uploadSuccessfulAnalysis ::
   ProjectMetadata ->
   Flag JsonOutput ->
   ProjectRevision ->
-  NE.NonEmpty SourceUnit ->
+  Maybe (NE.NonEmpty SourceUnit) ->
   Maybe LicenseSourceUnit ->
   m Locator
-uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units licenseUnits =
+uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision maybeUnits maybeLicenseUnits =
   context "Uploading analysis" $ do
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
@@ -100,13 +102,15 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units li
 
     dieOnMonorepoUpload revision
 
-    uploadResult <- case licenseUnits of
-      Nothing -> uploadAnalysis revision metadata units
-      Just licenses -> do
+    uploadResult <- case (maybeUnits, maybeLicenseUnits) of
+      (Just units, Nothing) -> uploadAnalysis revision metadata units
+      (mUnits, Just licenses) -> do
         org <- getOrganization
         let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
+        let units = maybe [] NE.toList mUnits
         let mergedUnits = mergeSourceAndLicenseUnits units licenses
         runStickyLogger SevInfo $ uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads
+      (Nothing, Nothing) -> fatalText "Attempted to upload with no results" -- This should never happen, as the caller to this function checks for this before calling
     let locator = uploadLocator uploadResult
     buildUrl <- getFossaBuildUrl revision locator
     traverse_
