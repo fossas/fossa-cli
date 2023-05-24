@@ -18,6 +18,7 @@ import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Debug.Trace (traceM)
 import Diag.Result
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, logDebug)
@@ -28,7 +29,6 @@ import Path.Extra
 import Path.IO
 import Srclib.Types (LicenseSourceUnit)
 import Types (GlobFilter (GlobFilter), LicenseScanPathFilters (..))
-import Debug.Trace (traceM)
 
 runFirstPartyScan ::
   ( Has Diagnostics sig m
