@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module App.Fossa.FirstPartyScan (
   runFirstPartyScan,
   firstPartyScanWithOrgInfo,
