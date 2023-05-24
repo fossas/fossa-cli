@@ -155,7 +155,6 @@ uploadFirstPartyAnalysisToS3 ::
 uploadFirstPartyAnalysisToS3 revision mergedUnits = do
   signedURL <- getSignedFirstPartyScanUrl $ PackageRevision{packageVersion = projectRevision revision, packageName = projectName revision}
   logSticky $ "Uploading '" <> projectName revision <> "' to secure S3 bucket"
-  -- TODO: copy/paste/modify of uploadLicenseScanResult
   uploadFirstPartyScanResult signedURL mergedUnits
 
 dieOnMonorepoUpload :: (Has Diagnostics sig m, Has FossaApiClient sig m) => ProjectRevision -> m ()
