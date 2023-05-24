@@ -94,6 +94,7 @@ data FossaApiClientF a where
   GetOrganization :: FossaApiClientF Organization
   GetProject :: ProjectRevision -> FossaApiClientF Project
   GetAnalyzedRevisions :: NonEmpty VendoredDependency -> FossaApiClientF [Text]
+  GetSignedFirstPartyScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetVsiInferences :: VSI.ScanID -> FossaApiClientF [Locator]
