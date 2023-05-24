@@ -32,6 +32,11 @@ import Path.IO
 import Srclib.Types (LicenseSourceUnit)
 import Types (GlobFilter (GlobFilter), LicenseScanPathFilters (..))
 
+#ifdef mingw32_HOST_OS
+import System.FilePath (splitPath)
+import Path (toFilePath)
+#endif
+
 runFirstPartyScan ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -190,8 +195,8 @@ addFilter root existingFilter path = do
 globbablePath :: Path Rel Dir -> Text
 globbablePath p = fromMaybe t $ Text.stripSuffix "/" t
   where
-    elems = splitPath p
-    t = intercalate "/" (map toText elems)
+    elems = splitPath $ toFilePath p
+    t = Text.intercalate "/" (map toText elems)
 #else
 globbablePath :: Path Rel Dir -> Text
 globbablePath p = fromMaybe t $ Text.stripSuffix "/" t
