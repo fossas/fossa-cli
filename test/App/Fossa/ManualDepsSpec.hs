@@ -85,6 +85,9 @@ spec = do
       exceptionContains licenseInRefDepBS "Invalid field name for referenced dependencies: license"
 
     referenceDepSpec
+    remoteDepSpec
+    customDepSpec
+    vendorDepSpec
 
   describe "getScanCfg" $ do
     it' "should fail if you try to force a license scan but the FOSSA server does not support it" $ do
@@ -162,6 +165,69 @@ referenceDepSpec = do
       exceptionContains
         (encodeUtf8 managedReferenceDepWithOS)
         "Invalid field name for referenced dependencies (of dependency type: gem): os"
+
+    it "should fail when linux reference dependency of deb or apk contains epoch" $
+      exceptionContains
+        (encodeUtf8 managedReferenceDepWithEmptyName)
+        "expected field 'name' to be non-empty"
+
+remoteDepSpec :: Spec
+remoteDepSpec = do
+  describe "remote dependency" $ do
+    it "should fail when remote dependency has empty name or only whitespace" $
+      exceptionContains
+        (encodeUtf8 remoteDepWithEmptyName)
+        "expected field 'name' to be non-empty"
+
+    it "should fail when remote dependency has empty version or only whitespace" $
+      exceptionContains
+        (encodeUtf8 remoteDepWithEmptyVersion)
+        "expected field 'version' to be non-empty"
+
+    it "should fail when remote dependency has empty url or only whitespace" $
+      exceptionContains
+        (encodeUtf8 remoteDepWithEmptyUrl)
+        "expected field 'url' to be non-empty"
+
+customDepSpec :: Spec
+customDepSpec = do
+  describe "custom dependency" $ do
+    it "should fail when custom dependency has empty name or only whitespace" $
+      exceptionContains
+        (encodeUtf8 customDepWithEmptyName)
+        "expected field 'name' to be non-empty"
+
+    it "should fail when custom dependency has empty version or only whitespace" $
+      exceptionContains
+        (encodeUtf8 customDepWithEmptyVersion)
+        "expected field 'version' to be non-empty"
+
+    it "should fail when custom dependency has empty license or only whitespace" $
+      exceptionContains
+        (encodeUtf8 customDepWithEmptyLicense)
+        "expected field 'license' to be non-empty"
+
+vendorDepSpec :: Spec
+vendorDepSpec = do
+  describe "vendor dependency" $ do
+    it "should fail when vendor dependency has empty name or only whitespace" $ do
+      exceptionContains
+        (encodeUtf8 vendorDepWithEmptyName)
+        "expected field 'name' to be non-empty"
+
+    it "should fail when vendor dependency has empty path or only whitespace" $ do
+      exceptionContains
+        (encodeUtf8 vendorDepWithEmptyPath)
+        "expected field 'path' to be non-empty"
+
+    it "should fail when vendor dependency has version with not supported character" $ do
+      exceptionContains
+        (encodeUtf8 vendorDepWithHashtagInVersion)
+        "field 'version' conatins forbidden character(s): [\"#\"]"
+
+      exceptionContains
+        (encodeUtf8 vendorDepWithQuestionInVersion)
+        "field 'version' conatins forbidden character(s): [\"?\"]"
 
 linuxReferenceDep :: Text
 linuxReferenceDep =
@@ -251,3 +317,101 @@ linuxRefManualDep os epoch =
     mempty
     mempty
     mempty
+
+customDepWithEmptyVersion :: Text
+customDepWithEmptyVersion =
+  [r|
+custom-dependencies:
+- name: example
+  version: " "
+  license: "mit"
+|]
+
+customDepWithEmptyName :: Text
+customDepWithEmptyName =
+  [r|
+custom-dependencies:
+- name: ""
+  version: 1.0
+  license: "mit"
+|]
+
+customDepWithEmptyLicense :: Text
+customDepWithEmptyLicense =
+  [r|
+custom-dependencies:
+- name: example
+  version: 1.0
+  license: " "
+|]
+
+remoteDepWithEmptyName :: Text
+remoteDepWithEmptyName =
+  [r|
+remote-dependencies:
+- name: " "
+  version: "1"
+  url: "https://github.com/fossas/fossa-cli/archive/refs/heads/master.zip"
+|]
+
+remoteDepWithEmptyVersion :: Text
+remoteDepWithEmptyVersion =
+  [r|
+remote-dependencies:
+- name: example
+  version: " "
+  url: "https://github.com/fossas/fossa-cli/archive/refs/heads/master.zip"
+|]
+
+remoteDepWithEmptyUrl :: Text
+remoteDepWithEmptyUrl =
+  [r|
+remote-dependencies:
+- name: example
+  version: "1.0.0"
+  url: " "
+|]
+
+vendorDepWithHashtagInVersion :: Text
+vendorDepWithHashtagInVersion =
+  [r|
+vendored-dependencies:
+- name: example
+  version: "1#1"
+  path: .
+|]
+
+vendorDepWithQuestionInVersion :: Text
+vendorDepWithQuestionInVersion =
+  [r|
+vendored-dependencies:
+- name: example
+  version: "1?os=linux"
+  path: .
+|]
+
+vendorDepWithEmptyName :: Text
+vendorDepWithEmptyName =
+  [r|
+vendored-dependencies:
+- name: " "
+  version: "1"
+  path: .
+|]
+
+vendorDepWithEmptyPath :: Text
+vendorDepWithEmptyPath =
+  [r|
+vendored-dependencies:
+- name: example
+  version: "1"
+  path: " "
+|]
+
+managedReferenceDepWithEmptyName :: Text
+managedReferenceDepWithEmptyName =
+  [r|
+referenced-dependencies:
+- name: " "
+  type: gem
+|]
