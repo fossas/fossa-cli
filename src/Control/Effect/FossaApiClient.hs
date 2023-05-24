@@ -19,11 +19,7 @@ module Control.Effect.FossaApiClient (
   getProject,
   getRevisionDependencyCacheStatus,
   getAnalyzedRevisions,
-<<<<<<< HEAD
-=======
-  getScan,
   getSignedFirstPartyScanUrl,
->>>>>>> add getSignedFirstPartyScanUrl and use it to upload first-party results to the right spot
   getSignedLicenseScanUrl,
   getSignedUploadUrl,
   getVsiInferences,
