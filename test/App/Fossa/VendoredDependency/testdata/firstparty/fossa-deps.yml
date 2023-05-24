@@ -1,5 +1,5 @@
 vendored-dependencies:
   - name: bar
-    path: vendored/bar
+    path: vendored/bar.zip
   - name: foo
     path: vendored/foo
