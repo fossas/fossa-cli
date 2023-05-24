@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module App.Fossa.FirstPartyScan (
   runFirstPartyScan,
   firstPartyScanWithOrgInfo,
@@ -177,12 +179,22 @@ addFilter root existingFilter path = do
       case makeRelative root p of
         Nothing -> pure existingFilter
         Just relPath -> do
-          let globs = [GlobFilter (pathWithoutTrailingSlash relPath <> "/*"), GlobFilter (pathWithoutTrailingSlash relPath <> "/**")]
+          let globs = [GlobFilter (globbablePath relPath <> "/*"), GlobFilter (globbablePath relPath <> "/**")]
           pure existingFilter{licenseScanPathFiltersExclude = existing <> globs}
     _ -> pure existingFilter
 
 -- `toText Path Rel Dir` has a trailing /, but themis path filters need those removed
-pathWithoutTrailingSlash :: Path Rel Dir -> Text
-pathWithoutTrailingSlash p = fromMaybe t $ Text.stripSuffix "/" t
+-- Also, Themis requires the path separator to be / even on Windows, so replace "\\" with /
+-- if you are on windows
+#ifdef mingw32_HOST_OS
+globbablePath :: Path Rel Dir -> Text
+globbablePath p = fromMaybe t $ Text.stripSuffix "/" t
+  where
+    elems = splitPath p
+    t = intercalate "/" (map toText elems)
+#else
+globbablePath :: Path Rel Dir -> Text
+globbablePath p = fromMaybe t $ Text.stripSuffix "/" t
   where
     t = toText p
+#endif
