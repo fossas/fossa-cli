@@ -180,7 +180,7 @@ addFilter root existingFilter path = do
       case makeRelative root p of
         Nothing -> pure existingFilter
         Just relPath -> do
-          let globs = [GlobFilter (pathWithoutTrailingSlash relPath <> "/*"), GlobFilter (pathWithoutTrailingSlash  relPath <> "/**")]
+          let globs = [GlobFilter (pathWithoutTrailingSlash relPath <> "/*"), GlobFilter (pathWithoutTrailingSlash relPath <> "/**")]
           pure existingFilter{licenseScanPathFiltersExclude = existing <> globs}
     _ -> pure existingFilter
 
