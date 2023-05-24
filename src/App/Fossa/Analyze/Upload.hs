@@ -28,8 +28,8 @@ import Control.Effect.FossaApiClient (
   getProject,
   getSignedFirstPartyScanUrl,
   uploadAnalysis,
-  uploadContributors,
   uploadAnalysisWithFirstPartyLicenses,
+  uploadContributors,
   uploadFirstPartyScanResult,
  )
 import Control.Effect.Git (Git, fetchGitContributors)
