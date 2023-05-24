@@ -32,6 +32,12 @@ unintended consequences!), reliable output from setup.py is difficult to obtain.
 Entries in the `install_requires` array are parsed compliant to the
 [PEP-508][pep-508] spec, similar to requirements.txt
 
+If `setup.cfg` exists in the same directory as `setup.py`, `fossa-cli` also naively 
+scans for its `install_requires=[...]` attributes, similar to `setup.py`. If both `setup.cfg` and
+`setup.py` exists and both have `install_requires` attribute, `fossa-cli` concatenates requirements
+from both files.
+
+[setup.cfg docs]: https://setuptools.pypa.io/en/latest/userguide/declarative_config.html
 [requirements-file-format]: https://pip.pypa.io/en/stable/cli/pip_install/#requirements-file-format
 [pep-508]: https://www.python.org/dev/peps/pep-0508/
 
