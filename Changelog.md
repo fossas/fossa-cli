@@ -2,6 +2,7 @@
 
 <!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
 ## Unreleased
+- Doc only: Fixed an issue in the `fossa-deps` schema suggesting against the use of `name` for referenced RPM dependencies [#1199](https://github.com/fossas/fossa-cli/pull/1199). If your IDE is utilizing SchemaStore, this file should now lint properly.
 - `setup.cfg`: Adds support for setup.cfg, in conjuction with `setup.py`. ([#1195](https://github.com/fossas/fossa-cli/pull/1195))
 - Default Filters: Default filters are applied prior to analysis. Improves overall runtime performance. ([#1193](https://github.com/fossas/fossa-cli/pull/1194))
 
