@@ -62,7 +62,7 @@ expectContributorUploadSuccess =
 
 expectFirstPartyAnalysisUploadSuccess :: FullFileUploads -> Has MockApi sig m => m ()
 expectFirstPartyAnalysisUploadSuccess fullFileUploads = do
-  UploadFirstPartyAnalysis Fixtures.projectRevision Fixtures.projectMetadata fullFileUploads `alwaysReturns` Fixtures.uploadResponse
+  UploadAnalysisWithFirstPartyLicenses Fixtures.projectRevision Fixtures.projectMetadata fullFileUploads `alwaysReturns` Fixtures.uploadResponse
 
 expectGetFirstPartySignedUrl :: Has MockApi sig m => PackageRevision -> m ()
 expectGetFirstPartySignedUrl packageRevision = GetSignedFirstPartyScanUrl packageRevision `alwaysReturns` Fixtures.signedUrl
