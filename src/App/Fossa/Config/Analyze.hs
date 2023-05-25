@@ -396,7 +396,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       (_, True) -> pure FirstPartyScansOffFromFlag
       (False, False) -> pure FirstPartyScansUseDefault
 
-  StandardAnalyzeConfig
+  AnalyzeConfig
     <$> basedir
     <*> pure logSeverity
     <*> scanDestination
