@@ -5,7 +5,7 @@ module App.Fossa.FirstPartyScan (
   firstPartyScanWithOrgInfo,
 ) where
 
-import App.Fossa.Config.Analyze (StandardAnalyzeConfig (..), VendoredDependencyOptions (licenseScanPathFilters))
+import App.Fossa.Config.Analyze (AnalyzeConfig (..), VendoredDependencyOptions (licenseScanPathFilters))
 import App.Fossa.LicenseScanner (scanVendoredDep)
 import App.Fossa.ManualDeps (ManualDependencies (vendoredDependencies), VendoredDependency (..), findAndReadFossaDepsFile)
 import App.Types (FirstPartyScansFlag (..), FullFileUploads (FullFileUploads))
@@ -47,7 +47,7 @@ runFirstPartyScan ::
   ) =>
   Path Abs Dir ->
   Maybe ApiOpts ->
-  StandardAnalyzeConfig ->
+  AnalyzeConfig ->
   m (Maybe LicenseSourceUnit)
 runFirstPartyScan root maybeApiOpts cfg = do
   -- if we do not have api opts (i.e. the --output flag was used), then we act as if the org defaults to not running first-party scans
@@ -68,13 +68,13 @@ firstPartyScanWithOrgInfo ::
   , Has FossaApiClient sig m
   ) =>
   Path Abs Dir ->
-  StandardAnalyzeConfig ->
+  AnalyzeConfig ->
   m (Maybe LicenseSourceUnit)
 firstPartyScanWithOrgInfo root cfg = do
   org <- getOrganization
   firstPartyScanMain root cfg org
 
-shouldRunFirstPartyScans :: (Has Diagnostics sig m) => StandardAnalyzeConfig -> Organization -> m Bool
+shouldRunFirstPartyScans :: (Has Diagnostics sig m) => AnalyzeConfig -> Organization -> m Bool
 shouldRunFirstPartyScans cfg org =
   case (firstPartyScansFlag cfg, orgDefaultsToFirstPartyScans org, orgSupportsFirstPartyScans org) of
     (FirstPartyScansOnFromFlag, _, False) -> fatalText "You provided the --experimental-force-first-party-scans flag but the FOSSA server does not support first-party scans"
@@ -92,7 +92,7 @@ firstPartyScanMain ::
   , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
-  StandardAnalyzeConfig ->
+  AnalyzeConfig ->
   Organization ->
   m (Maybe LicenseSourceUnit)
 firstPartyScanMain base cfg org = do

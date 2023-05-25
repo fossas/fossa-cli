@@ -44,7 +44,6 @@ import App.Fossa.Config.Analyze (
   IncludeAll (IncludeAll),
   NoDiscoveryExclusion (NoDiscoveryExclusion),
   ScanDestination (..),
-  StandardAnalyzeConfig (firstPartyScansFlag, severity),
   UnpackArchives (UnpackArchives),
  )
 import App.Fossa.Config.Analyze qualified as Config
