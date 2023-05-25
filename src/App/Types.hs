@@ -5,7 +5,6 @@ module App.Types (
   ProjectMetadata (..),
   ReleaseGroupMetadata (..),
   ProjectRevision (..),
-  MonorepoAnalysisOpts (..),
   OverrideDynamicAnalysisBinary (..),
   Policy (..),
   FullFileUploads (..),
@@ -71,14 +70,6 @@ instance FromJSON ReleaseGroupMetadata where
         .: "name"
       <*> obj
         .: "release"
-
-newtype MonorepoAnalysisOpts = MonorepoAnalysisOpts
-  { monorepoAnalysisType :: Maybe Text
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToJSON MonorepoAnalysisOpts where
-  toEncoding = genericToEncoding defaultOptions
 
 data ProjectRevision = ProjectRevision
   { projectName :: Text

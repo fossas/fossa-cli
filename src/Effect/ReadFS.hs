@@ -45,6 +45,11 @@ module Effect.ReadFS (
   readContentsYaml,
   readContentsXML,
 
+  -- * Reading file contents, redacting the content from logging and diagnostics.
+  readRedactedContentsBS,
+  readRedactedContentsBSLimit,
+  readRedactedContentsText,
+
   -- * File identity information
   contentIsBinary,
   DirID (..),
@@ -72,7 +77,7 @@ import Control.Effect.Diagnostics (
   fromEither,
  )
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Record (RecordableValue)
+import Control.Effect.Record (RecordableValue, Redacted (..))
 import Control.Effect.Record.TH (deriveRecordable)
 import Control.Effect.Replay (ReplayableValue)
 import Control.Exception qualified as E
@@ -82,6 +87,7 @@ import Data.Aeson (FromJSON, ToJSON, eitherDecodeStrict)
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
+import Data.Either.Combinators (mapRight)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text.Extra (showT)
@@ -128,6 +134,9 @@ data ReadFSF a where
   ReadContentsBS' :: SomeBase File -> ReadFSF (Either ReadFSErr ByteString)
   ReadContentsBSLimit' :: SomeBase File -> Int -> ReadFSF (Either ReadFSErr ByteString)
   ReadContentsText' :: SomeBase File -> ReadFSF (Either ReadFSErr Text)
+  ReadRedactedContentsBS' :: SomeBase File -> ReadFSF (Either ReadFSErr (Redacted ByteString))
+  ReadRedactedContentsBSLimit' :: SomeBase File -> Int -> ReadFSF (Either ReadFSErr (Redacted ByteString))
+  ReadRedactedContentsText' :: SomeBase File -> ReadFSF (Either ReadFSErr (Redacted Text))
   DoesFileExist :: SomeBase File -> ReadFSF Bool
   DoesDirExist :: SomeBase Dir -> ReadFSF Bool
   ResolveFile' :: Path Abs Dir -> Text -> ReadFSF (Either ReadFSErr (Path Abs File))
@@ -203,13 +212,17 @@ instance ToDiagnostic ReadFSErr where
 readContentsBS' :: Has ReadFS sig m => Path Abs File -> m (Either ReadFSErr ByteString)
 readContentsBS' path = sendSimple (ReadContentsBS' (Abs path))
 
--- | Read at most n bytes of file content into a strict 'ByteString'
-readContentsBSLimit :: Has ReadFS sig m => Path Abs File -> Int -> m (Either ReadFSErr ByteString)
-readContentsBSLimit path limit = sendSimple (ReadContentsBSLimit' (Abs path) limit)
-
 -- | Read file contents into a strict 'ByteString'
 readContentsBS :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m ByteString
 readContentsBS = fromEither <=< readContentsBS'
+
+-- | Read at most n bytes of file content into a strict 'ByteString'
+readContentsBSLimit' :: Has ReadFS sig m => Path Abs File -> Int -> m (Either ReadFSErr ByteString)
+readContentsBSLimit' path limit = sendSimple (ReadContentsBSLimit' (Abs path) limit)
+
+-- | Read at most n bytes of file content into a strict 'ByteString'
+readContentsBSLimit :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> Int -> m ByteString
+readContentsBSLimit path limit = readContentsBSLimit' path limit >>= fromEither
 
 -- | Read file contents into a strict 'Text'
 readContentsText' :: Has ReadFS sig m => Path Abs File -> m (Either ReadFSErr Text)
@@ -218,6 +231,29 @@ readContentsText' path = sendSimple (ReadContentsText' (Abs path))
 -- | Read file contents into a strict 'Text'
 readContentsText :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m Text
 readContentsText = fromEither <=< readContentsText'
+
+-- | Read file contents into a strict 'ByteString', redacting the content from debug and log output
+readRedactedContentsBS' :: Has ReadFS sig m => Path Abs File -> m (Either ReadFSErr (Redacted ByteString))
+readRedactedContentsBS' path = sendSimple (ReadRedactedContentsBS' (Abs path))
+
+-- | Read file contents into a strict 'ByteString', redacting the content from debug and log output
+readRedactedContentsBS :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Redacted ByteString)
+readRedactedContentsBS = fromEither <=< readRedactedContentsBS'
+
+-- | Read at most n bytes of file content into a strict 'ByteString', redacting the content from debug and log output
+readRedactedContentsBSLimit' :: Has ReadFS sig m => Path Abs File -> Int -> m (Either ReadFSErr (Redacted ByteString))
+readRedactedContentsBSLimit' path limit = sendSimple (ReadRedactedContentsBSLimit' (Abs path) limit)
+
+readRedactedContentsBSLimit :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> Int -> m (Redacted ByteString)
+readRedactedContentsBSLimit path limit = readRedactedContentsBSLimit' path limit >>= fromEither
+
+-- | Read file contents into a strict 'Text', redacting the content from debug and log output
+readRedactedContentsText' :: Has ReadFS sig m => Path Abs File -> m (Either ReadFSErr (Redacted Text))
+readRedactedContentsText' path = sendSimple (ReadRedactedContentsText' (Abs path))
+
+-- | Read file contents into a strict 'Text', redacting the content from debug and log output
+readRedactedContentsText :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Redacted Text)
+readRedactedContentsText = fromEither <=< readRedactedContentsText'
 
 -- | Resolve a relative filepath to a file
 resolveFile' :: Has ReadFS sig m => Path Abs Dir -> Text -> m (Either ReadFSErr (Path Abs File))
@@ -270,9 +306,9 @@ getIdentifier path = fromEither =<< getIdentifier' path
 -- "is there a zero byte in the first 8000 bytes of the file"
 contentIsBinary :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m Bool
 contentIsBinary file = do
-  attemptedContent <- readContentsBSLimit file 8000
+  attemptedContent <- readRedactedContentsBSLimit' file 8000
   content <- fromEither attemptedContent
-  pure $ BS.elem 0 content
+  pure . BS.elem 0 $ unRedact content
 
 -- | Get the current directory of the process.
 getCurrentDir' :: (Has ReadFS sig m) => m (Either ReadFSErr (Path Abs Dir))
@@ -339,10 +375,22 @@ runReadFSIO = interpret $ \case
     BS.readFile (toString file)
       `catchingIO` FileReadError (toString file)
   ReadContentsBSLimit' file limit -> do
-    readContentsBSLimit' file limit
+    readContentsBSLimitIO file limit
       `catchingIO` FileReadError (toString file)
   ReadContentsText' file -> do
     (decodeUtf8 <$> BS.readFile (toString file))
+      `catchingIO` FileReadError (toString file)
+  ReadRedactedContentsBS' file -> do
+    mapRight Redacted
+      <$> BS.readFile (toString file)
+      `catchingIO` FileReadError (toString file)
+  ReadRedactedContentsBSLimit' file limit -> do
+    mapRight Redacted
+      <$> readContentsBSLimitIO file limit
+      `catchingIO` FileReadError (toString file)
+  ReadRedactedContentsText' file -> do
+    mapRight Redacted
+      <$> (decodeUtf8 <$> BS.readFile (toString file))
       `catchingIO` FileReadError (toString file)
   ResolveFile' dir path -> do
     PIO.resolveFile dir (toString path)
@@ -383,8 +431,8 @@ identifyPath path stat = case (isDirectory stat, isRegularFile stat) of
     mangle :: E.SomeException -> ReadFSErr
     mangle = FileReadError path . showT
 
-readContentsBSLimit' :: SomeBase File -> Int -> IO ByteString
-readContentsBSLimit' file limit = withFile (fromSomeFile file) ReadMode $ \handle -> BS.hGetSome handle limit
+readContentsBSLimitIO :: SomeBase File -> Int -> IO ByteString
+readContentsBSLimitIO file limit = withFile (fromSomeFile file) ReadMode $ \handle -> BS.hGetSome handle limit
 
 catchingIO :: Has (Lift IO) sig m => IO a -> (Text -> ReadFSErr) -> m (Either ReadFSErr a)
 catchingIO io mangle = (Right <$> sendIO io) `safeCatch` (\(e :: E.IOException) -> pure . Left . mangle . toText $ show e)
