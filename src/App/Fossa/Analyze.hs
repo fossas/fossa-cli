@@ -19,7 +19,7 @@ import App.Fossa.Analyze.Discover (
   discoverFuncs,
  )
 import App.Fossa.Analyze.Filter (
-  CountedResult (FilteredAll, FoundSome, NoneDiscovered, FoundLicensesOnly),
+  CountedResult (FilteredAll, FoundLicensesOnly, FoundSome, NoneDiscovered),
   checkForEmptyUpload,
  )
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
@@ -355,7 +355,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
             $ do
               locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision sourceUnits firstPartyScanResults
               doAssertRevisionBinaries iatAssertion locator
-
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
 toProjectResult (SkippedDueToProvidedFilter _) = Nothing

@@ -7,9 +7,9 @@ import App.Fossa.Analyze.Project (ProjectResult)
 import App.Fossa.Config.Analyze (IncludeAll (..))
 import Data.Flag (Flag, fromFlag)
 import Data.List.NonEmpty (NonEmpty, fromList)
+import Data.List.NonEmpty qualified as NE
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (SourceUnit, LicenseSourceUnit (licenseSourceUnitLicenseUnits), LicenseUnit (licenseUnitName))
-import qualified Data.List.NonEmpty as NE
+import Srclib.Types (LicenseSourceUnit (licenseSourceUnitLicenseUnits), LicenseUnit (licenseUnitName), SourceUnit)
 
 data CountedResult
   = NoneDiscovered
@@ -27,9 +27,10 @@ checkForEmptyUpload includeAll xs ys additionalUnits firstPartyScanResults = do
   if null additionalUnits
     then case (xlen, ylen) of
       -- We didn't discover, so we also didn't filter
-      (0, 0) -> if licensesFound
-                  then FoundLicensesOnly
-                  else NoneDiscovered
+      (0, 0) ->
+        if licensesFound
+          then FoundLicensesOnly
+          else NoneDiscovered
       -- If either list is empty, we have nothing to upload
       (0, _) -> FilteredAll
       (_, 0) -> FilteredAll
