@@ -57,7 +57,6 @@ import App.Fossa.VSI.Types qualified as VSI
 import App.Types (
   BaseDir,
   FirstPartyScansFlag (..),
-  MonorepoAnalysisOpts (MonorepoAnalysisOpts, monorepoAnalysisType),
   OverrideDynamicAnalysisBinary (..),
   OverrideProject (OverrideProject),
   ProjectMetadata (projectLabel),

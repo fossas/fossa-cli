@@ -2,7 +2,7 @@
 
 module App.Fossa.FirstPartyScanSpec (spec) where
 
-import App.Fossa.Config.Analyze (StandardAnalyzeConfig (..))
+import App.Fossa.Config.Analyze (AnalyzeConfig (..))
 import App.Fossa.FirstPartyScan (firstPartyScanWithOrgInfo)
 import App.Types (FirstPartyScansFlag (..))
 import Control.Algebra (Has)
