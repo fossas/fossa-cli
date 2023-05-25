@@ -30,7 +30,6 @@ import Control.Effect.FossaApiClient (
   uploadAnalysis,
   uploadAnalysisWithFirstPartyLicenses,
   uploadContributors,
-  uploadAnalysisWithFirstPartyLicenses,
   uploadFirstPartyScanResult,
  )
 import Control.Effect.Git (Git, fetchGitContributors)
