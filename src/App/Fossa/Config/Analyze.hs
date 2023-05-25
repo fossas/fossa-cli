@@ -423,7 +423,7 @@ mergeMonorepoOpts cfgfile envvars cliOpts@AnalyzeCliOpts{..} = do
     <$> apiopts
     <*> basedir
     <*> filters
-    <*> pure metadata
+    <*> metadata
     <*> revision
     <*> pure severity
     -- Add phantom failures here (no data to return)
@@ -546,7 +546,7 @@ collectScanDestination maybeCfgFile envvars AnalyzeCliOpts{..} =
     then pure OutputStdout
     else do
       apiOpts <- collectApiOpts maybeCfgFile envvars commons
-      let metaMerged = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
+      metaMerged <- maybe (pure analyzeMetadata) (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
       when (length (projectLabel metaMerged) > 5) $ fatalText "Projects are only allowed to have 5 associated project labels"
       pure $ UploadScan apiOpts metaMerged
 

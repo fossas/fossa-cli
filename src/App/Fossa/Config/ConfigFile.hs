@@ -157,18 +157,29 @@ resolveLocation base (Just filepath) = do
       Abs path -> path
       Rel path -> base </> path
 
-mergeFileCmdMetadata :: ProjectMetadata -> ConfigFile -> ProjectMetadata
-mergeFileCmdMetadata meta file =
-  ProjectMetadata
-    { projectTitle = projectTitle meta <|> (configProject file >>= configName)
-    , projectUrl = projectUrl meta <|> (configProject file >>= configUrl)
-    , projectJiraKey = projectJiraKey meta <|> (configProject file >>= configJiraKey)
-    , projectLink = projectLink meta <|> (configProject file >>= configLink)
-    , projectTeam = projectTeam meta <|> (configProject file >>= configTeam)
-    , projectPolicy = projectPolicy meta <|> (configProject file >>= configPolicy)
-    , projectLabel = projectLabel meta <|> (maybe [] configLabel (configProject file))
-    , projectReleaseGroup = projectReleaseGroup meta <|> (configProject file >>= configReleaseGroup)
-    }
+mergeFileCmdMetadata :: Has Diagnostics sig m => ProjectMetadata -> ConfigFile -> m ProjectMetadata
+mergeFileCmdMetadata meta cfgFile = do
+  let metaPolicy = projectPolicy meta
+      cfgFilePolicy = configProject cfgFile >>= configPolicy
+
+  case (metaPolicy, cfgFilePolicy) of
+    (Just (PolicyId _), Just (PolicyId _)) -> pure $ mkMeta metaPolicy
+    (Just (PolicyName _), Just (PolicyName _)) -> pure $ mkMeta metaPolicy
+    (Nothing, Just _) -> pure $ mkMeta cfgFilePolicy
+    (Just _, Nothing) -> pure $ mkMeta metaPolicy
+    (Nothing, Nothing) -> pure $ mkMeta Nothing
+    _ -> fatalText "Only one of policy or policyId can be set. Check your cli options and '.fossa.yml' to ensure you aren't specifying both."
+  where mkMeta policy =
+          ProjectMetadata
+          { projectTitle = projectTitle meta <|> (configProject cfgFile >>= configName)
+          , projectUrl = projectUrl meta <|> (configProject cfgFile >>= configUrl)
+          , projectJiraKey = projectJiraKey meta <|> (configProject cfgFile >>= configJiraKey)
+          , projectLink = projectLink meta <|> (configProject cfgFile >>= configLink)
+          , projectTeam = projectTeam meta <|> (configProject cfgFile >>= configTeam)
+          , projectPolicy = policy
+          , projectLabel = projectLabel meta <|> (maybe [] configLabel (configProject cfgFile))
+          , projectReleaseGroup = projectReleaseGroup meta <|> (configProject cfgFile >>= configReleaseGroup)
+          }
 
 empty :: ConfigFile
 empty = ConfigFile 3 Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing

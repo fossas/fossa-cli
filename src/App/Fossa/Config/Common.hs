@@ -322,8 +322,8 @@ collectRevisionData' basedir cfg cache override = do
   basedir' <- errCtx ("Cannot collect revision data without a valid base directory" :: Text) basedir
   collectRevisionData basedir' cfg cache override
 
-collectAPIMetadata :: Maybe ConfigFile -> ProjectMetadata -> ProjectMetadata
-collectAPIMetadata cfgfile cliMeta = maybe cliMeta (mergeFileCmdMetadata cliMeta) cfgfile
+collectAPIMetadata :: Has Diagnostics sig m => Maybe ConfigFile -> ProjectMetadata -> m ProjectMetadata
+collectAPIMetadata cfgfile cliMeta = maybe (pure cliMeta) (mergeFileCmdMetadata cliMeta) cfgfile
 
 collectTelemetrySink :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> Maybe CommonOpts -> m (Maybe TelemetrySink)
 collectTelemetrySink maybeConfigFile envvars maybeOpts = do
