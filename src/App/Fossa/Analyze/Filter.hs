@@ -7,7 +7,6 @@ import App.Fossa.Analyze.Project (ProjectResult)
 import App.Fossa.Config.Analyze (IncludeAll (..))
 import Data.Flag (Flag, fromFlag)
 import Data.List.NonEmpty (NonEmpty, fromList)
-import Data.List.NonEmpty qualified as NE
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit (licenseSourceUnitLicenseUnits), LicenseUnit (licenseUnitName), SourceUnit)
 
@@ -47,7 +46,7 @@ checkForEmptyUpload includeAll xs ys additionalUnits firstPartyScanResults = do
     discoveredUnits = map (Srclib.toSourceUnit (fromFlag IncludeAll includeAll)) filtered
     licensesFound = case firstPartyScanResults of
       Nothing -> False
-      Just scanResults -> any isActualLicense (NE.toList (licenseSourceUnitLicenseUnits scanResults))
+      Just scanResults -> any isActualLicense $ licenseSourceUnitLicenseUnits scanResults
 
     isActualLicense :: LicenseUnit -> Bool
     isActualLicense licenseUnit = licenseUnitName licenseUnit /= "No_license_found"
