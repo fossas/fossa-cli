@@ -158,28 +158,28 @@ resolveLocation base (Just filepath) = do
       Rel path -> base </> path
 
 mergeFileCmdMetadata :: Has Diagnostics sig m => ProjectMetadata -> ConfigFile -> m ProjectMetadata
-mergeFileCmdMetadata meta cfgFile = do
-  let metaPolicy = projectPolicy meta
-      cfgFilePolicy = configProject cfgFile >>= configPolicy
-
+mergeFileCmdMetadata meta cfgFile =
   case (metaPolicy, cfgFilePolicy) of
-    (Just (PolicyId _), Just (PolicyId _)) -> pure $ mkMeta metaPolicy
-    (Just (PolicyName _), Just (PolicyName _)) -> pure $ mkMeta metaPolicy
-    (Nothing, Just _) -> pure $ mkMeta cfgFilePolicy
-    (Just _, Nothing) -> pure $ mkMeta metaPolicy
-    (Nothing, Nothing) -> pure $ mkMeta Nothing
-    _ -> fatalText "Only one of policy or policyId can be set. Check your cli options and '.fossa.yml' to ensure you aren't specifying both."
-  where mkMeta policy =
-          ProjectMetadata
-          { projectTitle = projectTitle meta <|> (configProject cfgFile >>= configName)
-          , projectUrl = projectUrl meta <|> (configProject cfgFile >>= configUrl)
-          , projectJiraKey = projectJiraKey meta <|> (configProject cfgFile >>= configJiraKey)
-          , projectLink = projectLink meta <|> (configProject cfgFile >>= configLink)
-          , projectTeam = projectTeam meta <|> (configProject cfgFile >>= configTeam)
-          , projectPolicy = policy
-          , projectLabel = projectLabel meta <|> (maybe [] configLabel (configProject cfgFile))
-          , projectReleaseGroup = projectReleaseGroup meta <|> (configProject cfgFile >>= configReleaseGroup)
-          }
+    (Just (PolicyId _), Just (PolicyName _)) -> err
+    (Just (PolicyName _), Just (PolicyId _)) -> err
+    _ -> pure . mkMeta $ metaPolicy <|> cfgFilePolicy
+  where
+    err = fatalText "Only one of policy or policyId can be set. Check your cli options and .fossa.yml to ensure you aren't specifying both."
+    metaPolicy = projectPolicy meta
+    cfgFilePolicy = configProject cfgFile >>= configPolicy
+
+    mkMeta :: Maybe Policy -> ProjectMetadata
+    mkMeta policy =
+      ProjectMetadata
+        { projectTitle = projectTitle meta <|> (configProject cfgFile >>= configName)
+        , projectUrl = projectUrl meta <|> (configProject cfgFile >>= configUrl)
+        , projectJiraKey = projectJiraKey meta <|> (configProject cfgFile >>= configJiraKey)
+        , projectLink = projectLink meta <|> (configProject cfgFile >>= configLink)
+        , projectTeam = projectTeam meta <|> (configProject cfgFile >>= configTeam)
+        , projectPolicy = policy
+        , projectLabel = projectLabel meta <|> (maybe [] configLabel (configProject cfgFile))
+        , projectReleaseGroup = projectReleaseGroup meta <|> (configProject cfgFile >>= configReleaseGroup)
+        }
 
 empty :: ConfigFile
 empty = ConfigFile 3 Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
