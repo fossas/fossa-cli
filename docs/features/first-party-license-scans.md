@@ -6,7 +6,7 @@ Normally, FOSSA will find licenses in your dependencies but not scan for license
 
 However, if you do need to find licenses in your code you can do this by running a first-party license scans. The licenses found in your code will show up as "Directly In Code" in the FOSSA UI.
 
-![](./assets/first-party-scan-directly-in-code.png)
+![](../assets/first-party-scan.png)
 
 By default you will not run first-party license scans on your code. There is a feature flag that can be turned on for your organization that will make the FOSSA CLI default to running first party scans. If you are interested in turning this feature on for your organization, please [contact us](https://support.fossa.com).
 
