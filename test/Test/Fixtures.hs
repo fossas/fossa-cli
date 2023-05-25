@@ -38,7 +38,7 @@ module Test.Fixtures (
   standardAnalyzeConfig,
 ) where
 
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), AnalyzeConfig (AnalyzeConfig), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
+import App.Fossa.Config.Analyze (AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
 import App.Fossa.Config.Analyze qualified as ANZ
 import App.Fossa.Config.Analyze qualified as VSI
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
