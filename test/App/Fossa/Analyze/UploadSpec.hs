@@ -218,6 +218,24 @@ uploadSuccessfulAnalysisSpec = do
               (Just Fixtures.firstLicenseSourceUnit)
           locator `shouldBe'` expectedLocator
 
+      it' "uploads to S3 and to /api/builds/custom_with_first_party_licenses if there are licenses and no targets were found"
+        . withGit mockGit
+        $ do
+          expectGetSuccess
+          expectGetFirstPartySignedUrl PackageRevision{packageName = "testProjectName", packageVersion = "testRevision"}
+          expectUploadFirstPartyDataToS3
+          expectFirstPartyAnalysisUploadSuccess $ FullFileUploads False
+          expectContributorUploadSuccess
+          locator <-
+            uploadSuccessfulAnalysis
+              baseDir
+              Fixtures.projectMetadata
+              (toFlag (JsonOutput) False)
+              Fixtures.projectRevision
+              Nothing
+              (Just Fixtures.firstLicenseSourceUnit)
+          locator `shouldBe'` expectedLocator
+
       it' "uploads to S3 and to /api/builds/custom_with_first_party_licenses if there are licenses and full file uploads is set on the org"
         . withGit mockGit
         $ do
