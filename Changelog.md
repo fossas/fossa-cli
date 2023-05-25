@@ -1,6 +1,7 @@
 # FOSSA CLI Changelog
 
 ## Unreleased
+- License Scanning: You can license scan your first-party code with the `--experimental-force-first-party-scans` flag ([#1187](https://github.com/fossas/fossa-cli/pull/1187))
 - Monorepo is no longer a supported feature of FOSSA. ([#1202](https://github.com/fossas/fossa-cli/pull/1202))
 - `experimental-enable-binary-discovery`, `detect-vendored`: Redact file contents in debug bundles. ([#1201](https://github.com/fossas/fossa-cli/pull/1201))
 - `setup.cfg`: Adds support for setup.cfg, in conjuction with `setup.py`. ([#1195](https://github.com/fossas/fossa-cli/pull/1195))
