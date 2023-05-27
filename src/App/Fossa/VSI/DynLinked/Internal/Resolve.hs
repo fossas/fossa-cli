@@ -11,7 +11,8 @@ module App.Fossa.VSI.DynLinked.Internal.Resolve (
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.BinaryDeps (analyzeSingleBinary)
 import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxDistro (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
-import App.Fossa.VSI.DynLinked.Util (fsRoot, runningLinux)
+import App.Fossa.VSI.DynLinked.Util (fsRoot)
+import App.Util (SupportedOS (Linux), runningInOS)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import Control.Effect.Lift (Lift)
@@ -126,7 +127,7 @@ sortResolvedUnresolved = partitionEithers . map forkEither . toList
 -- Exits via @Diagnostics@ on parse errors.
 environmentDistro :: (Has Diagnostics sig m, Has ReadFS sig m) => m (Maybe LinuxDistro)
 environmentDistro
-  | runningLinux = Just <$> (readOsReleaseAt primaryPath <||> readOsReleaseAt fallbackPath)
+  | runningInOS Linux = Just <$> (readOsReleaseAt primaryPath <||> readOsReleaseAt fallbackPath)
   | otherwise = pure Nothing
   where
     primaryPath :: Path Abs File

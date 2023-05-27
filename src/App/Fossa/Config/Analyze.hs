@@ -58,6 +58,8 @@ import App.Types (
   OverrideProject (OverrideProject),
   ProjectMetadata (projectLabel),
   ProjectRevision,
+  SystemPath,
+  SystemPathExt,
  )
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -213,6 +215,8 @@ data AnalyzeConfig = AnalyzeConfig
   , includeAllDeps :: Flag IncludeAll
   , noDiscoveryExclusion :: Flag NoDiscoveryExclusion
   , overrideDynamicAnalysis :: OverrideDynamicAnalysisBinary
+  , systemPaths :: SystemPath
+  , systemPathExt :: SystemPathExt
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -367,7 +371,7 @@ mergeStandardOpts ::
   EnvVars ->
   AnalyzeCliOpts ->
   m AnalyzeConfig
-mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
+mergeStandardOpts maybeConfig envvars@EnvVars{..} cliOpts@AnalyzeCliOpts{..} = do
   let basedir = collectBaseDir analyzeBaseDir
       logSeverity = getSeverity cliOpts
       scanDestination = collectScanDestination maybeConfig envvars cliOpts
@@ -378,7 +382,6 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       filters = collectFilters maybeConfig cliOpts
       experimentalCfgs = collectExperimental maybeConfig cliOpts
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
-      dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
 
   AnalyzeConfig
     <$> basedir
@@ -393,7 +396,9 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure analyzeJsonOutput
     <*> pure analyzeIncludeAllDeps
     <*> pure analyzeNoDiscoveryExclusion
-    <*> pure dynamicAnalysisOverrides
+    <*> pure (OverrideDynamicAnalysisBinary envCmdOverrides)
+    <*> pure envSystemPath
+    <*> pure envSystemPathExt
 
 collectFilters ::
   ( Has Diagnostics sig m

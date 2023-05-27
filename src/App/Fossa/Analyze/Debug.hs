@@ -78,7 +78,10 @@ collectEnvVariables =
     envOfInterest =
       map
         toLower
-        [ -- Golang
+        [ -- Generic system
+          "PATH"
+        , "PATHEXT"
+        , -- Golang
           -- Ref: https://pkg.go.dev/cmd/go#hdr-Environment_variables
           "GCCGO"
         , "GO111MODULE"

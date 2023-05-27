@@ -7,6 +7,8 @@ module App.Types (
   ProjectRevision (..),
   OverrideDynamicAnalysisBinary (..),
   FullFileUploads (..),
+  SystemPath (..),
+  SystemPathExt (..),
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, withObject, (.:))
@@ -58,9 +60,9 @@ instance FromJSON ReleaseGroupMetadata where
   parseJSON = withObject "ReleaseGroupMetadata" $ \obj ->
     ReleaseGroupMetadata
       <$> obj
-        .: "name"
+      .: "name"
       <*> obj
-        .: "release"
+      .: "release"
 
 data ProjectRevision = ProjectRevision
   { projectName :: Text
@@ -94,3 +96,10 @@ instance Monoid OverrideDynamicAnalysisBinary where
   mempty = OverrideDynamicAnalysisBinary mempty
 
 newtype FullFileUploads = FullFileUploads {unFullFileUploads :: Bool} deriving (Eq, Ord, Show, Generic)
+
+-- | Locations to search on the current system for executables.
+newtype SystemPath = SystemPath {unSystemPath :: [Path Abs Dir]} deriving (Eq, Ord, Show, Semigroup, Monoid, ToJSON)
+
+-- | Executable extensions for the current system.
+-- Only means anything on Windows; other platforms always evaluate to an empty list.
+newtype SystemPathExt = SystemPathExt {unSystemPathExt :: [String]} deriving (Eq, Ord, Show, Semigroup, Monoid, ToJSON)

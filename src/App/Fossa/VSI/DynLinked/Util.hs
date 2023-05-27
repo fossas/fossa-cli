@@ -3,12 +3,10 @@
 
 module App.Fossa.VSI.DynLinked.Util (
   hasSetUID,
-  runningLinux,
   fsRoot,
 ) where
 
 import Path (Abs, Dir, File, Path, mkAbsDir)
-import System.Info qualified as SysInfo
 
 -- Have to use CPP pragmas here so we can import @System.Posix.Files@.
 #ifdef mingw32_HOST_OS
@@ -42,6 +40,3 @@ fsRoot :: Path Abs Dir
 fsRoot = $(mkAbsDir "/")
 
 #endif
-
-runningLinux :: Bool
-runningLinux = SysInfo.os == "linux"

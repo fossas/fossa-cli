@@ -20,6 +20,7 @@ module Strategy.Maven.Plugin (
   mavenCmdCandidates,
 ) where
 
+import App.Util (SupportedOS (Windows), runningInOS)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, recover, warn)
 import Control.Effect.Exception (Lift, bracket)
@@ -213,8 +214,6 @@ mavenCmdCandidates dir =
     Just wrapper -> pure . mkCmd $ (toText wrapper) :| ["mvn"]
     Nothing -> pure . mkCmd $ NE.singleton "mvn"
   where
-    runningWindows :: Bool
-    runningWindows = SysInfo.os == "mingw32"
     mkCmd :: NonEmpty Text -> CandidateAnalysisCommands
     mkCmd cmds = CandidateAnalysisCommands cmds ["-v"] $ Just MavenType
     -- Unlike with the gradle wrapper, it's not _expected_ for maven projects to use the maven wrapper.
@@ -222,7 +221,7 @@ mavenCmdCandidates dir =
     mvnWrapperPath :: (Has ReadFS sig m, Has Diagnostics sig m) => m (Maybe (Path Abs File))
     mvnWrapperPath =
       recover $
-        if runningWindows
+        if runningInOS Windows
           then findFileInAncestor dir "mvnw.bat"
           else findFileInAncestor dir "mvnw"
 

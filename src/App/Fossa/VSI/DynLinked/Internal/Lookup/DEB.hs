@@ -4,7 +4,7 @@ module App.Fossa.VSI.DynLinked.Internal.Lookup.DEB (
 ) where
 
 import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
-import App.Fossa.VSI.DynLinked.Util (runningLinux)
+import App.Util (SupportedOS (Linux), runningInOS)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Monad (void)
@@ -30,7 +30,7 @@ debTactic ::
   Path Abs Dir ->
   Path Abs File ->
   m (Maybe DynamicDependency)
-debTactic root file | runningLinux = do
+debTactic root file | runningInOS Linux = do
   packageForFile root file >>= \case
     Nothing -> pure Nothing
     Just name -> do
@@ -39,7 +39,7 @@ debTactic root file | runningLinux = do
 debTactic _ _ = pure Nothing
 
 packageForFile :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe Text)
-packageForFile root file | runningLinux = Just <$> execParser parsePackageForFileOutput root (dpkgQueryFileCommand file)
+packageForFile root file | runningInOS Linux = Just <$> execParser parsePackageForFileOutput root (dpkgQueryFileCommand file)
 packageForFile _ _ = pure Nothing
 
 dpkgQueryFileCommand :: Path Abs File -> Command
@@ -62,7 +62,7 @@ parsePackageForFileOutput = do
   pure . fromMaybe output $ Text.stripSuffix ":" output
 
 packageMeta :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Text -> m (Maybe LinuxPackageMetadata)
-packageMeta _ _ | not runningLinux = pure Nothing
+packageMeta _ _ | not (runningInOS Linux) = pure Nothing
 packageMeta root name = Just <$> execParser dpkgParseQueryPackageInfo root (dpkgQueryPackageInfoCommand name)
 
 dpkgQueryPackageInfoCommand :: Text -> Command

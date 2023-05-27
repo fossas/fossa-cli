@@ -28,7 +28,9 @@ module Effect.Exec (
 ) where
 
 import App.Support (reportDefectMsg)
-import App.Types (OverrideDynamicAnalysisBinary (..))
+import App.Types (OverrideDynamicAnalysisBinary (..), SystemPath (unSystemPath), SystemPathExt (..))
+import App.Util (SupportedOS (Windows), runningInOS)
+import Conduit (MonadIO, MonadThrow, await, runConduitRes, (.|))
 import Control.Algebra (Has)
 import Control.Carrier.Reader (Reader, ask)
 import Control.Carrier.Simple (
@@ -42,6 +44,8 @@ import Control.Effect.Diagnostics (
   ToDiagnostic (..),
   context,
   fatal,
+  fatalOnIOException,
+  fatalOnSomeException,
   fatalText,
   recover,
   warnOnErr,
@@ -63,6 +67,8 @@ import Data.Aeson (
  )
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BL
+import Data.Conduit (ConduitT, yield)
+import Data.Foldable (foldlM, foldrM)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
@@ -70,12 +76,14 @@ import Data.String (fromString)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Text.Extra (showT)
 import Data.Void (Void)
 import DepTypes (DepType (..))
-import Effect.ReadFS (ReadFS, getCurrentDir)
+import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir)
 import GHC.Generics (Generic)
-import Path (Abs, Dir, Path, SomeBase (..), fromAbsDir)
+import Path (Abs, Dir, File, Path, Rel, SomeBase (..), addExtension, fromAbsDir, parent, parseRelFile, (</>))
 import Path.IO (AnyPath (makeAbsolute))
+import Path.IO qualified as PIO
 import Prettyprinter (Doc, indent, pretty, viaShow, vsep)
 import Prettyprinter.Render.Terminal (AnsiStyle)
 import System.Exit (ExitCode (..))
@@ -130,9 +138,9 @@ instance FromJSON CmdFailure where
   parseJSON = withObject "CmdFailure" $ \obj ->
     CmdFailure
       <$> obj
-        .: "cmdFailureCmd"
+      .: "cmdFailureCmd"
       <*> obj
-        .: "cmdFailureDir"
+      .: "cmdFailureDir"
       <*> (obj .: "cmdFailureExit" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStdout" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStderr" >>= fromRecordedValue)
@@ -286,6 +294,197 @@ instance ToDiagnostic ExecErr where
         , ""
         , reportDefectMsg
         ]
+
+-- | It is recommended that, if using @which@ or @which'@ to execute a binary,
+-- binaries accessible in the system path are called simply by their name
+-- on supported platforms.
+--
+-- This type provides the ability to disambiguate:
+-- the @FoundInSystemPath@ case provides the path but additionally provides
+-- the argument that is recommended to pass as the @commandName@ in a @Command@.
+data FoundLocation
+  = FoundInWorkDir (Path Abs File)
+  | FoundInSystemPath (Path Abs File) Text
+
+-- | Find the full path to an executable on the system.
+--
+-- The function searches for the first found in the list of @Binaries@,
+-- with the first found of @Extensions@, in the first of provided @Directories@.
+-- The search is conducted in the order of directories -> binaries -> extensions.
+--
+-- If all directories, binaries, and extensions are exhausted without finding a match,
+-- the function returns @Nothing@.
+--
+-- * @Directories@
+-- The function begins its search in the provided working directory and all of its parent directories.
+-- After that, it searches all entries in the system @$PATH@ environment variable.
+--
+-- * @Extensions@
+-- In Unix-based systems, @Extensions@ is always an empty list.
+-- In Windows-based systems, the function considers all entries in the system's
+-- @$PATHEXT@ environment variable.
+--
+-- * @Binaries@
+-- The function can be provided with multiple binary names.
+-- This is useful in cases where a binary might have different names,
+-- but the usage of the binary is exactly the same regardless of the name used.
+-- The binary names are searched in order, and the function returns the path of the first one found.
+--
+-- * Examples:
+--
+-- __Windows__
+--
+-- > Binaries: [ "mvn", "mvnw" ]
+-- > PATH    : "C:\System32"
+-- > PATHEXT : ".bat;.exe"
+-- > WORKDIR : "C:\Users\me\projects\example"
+--
+-- Searches:
+--
+-- > C:\System32\mvn.exe
+-- > C:\System32\mvn.bat
+-- > C:\System32\mvnw.exe
+-- > C:\System32\mvnw.bat
+-- > C:\Users\me\projects\example\mvn.exe
+-- > C:\Users\me\projects\example\mvn.bat
+-- > C:\Users\me\projects\example\mvnw.exe
+-- > C:\Users\me\projects\example\mvnw.bat
+-- > C:\Users\me\projects\mvn.exe
+-- > C:\Users\me\projects\mvn.bat
+-- > C:\Users\me\projects\mvnw.exe
+-- > C:\Users\me\projects\mvnw.bat
+-- > C:\Users\me\mvn.exe
+-- > C:\Users\me\mvn.bat
+-- > C:\Users\me\mvnw.exe
+-- > C:\Users\me\mvnw.bat
+-- > C:\Users\mvn.exe
+-- > C:\Users\mvn.bat
+-- > C:\Users\mvnw.exe
+-- > C:\Users\mvnw.bat
+-- > C:\mvn.exe
+-- > C:\mvn.bat
+-- > C:\mvnw.exe
+-- > C:\mvnw.bat
+--
+-- __Linux, macOS__
+--
+-- > Binaries: ["mvn", "mvnw"]
+-- > PATH    : "/usr/local/bin"
+-- > WORKDIR : "/home/me/projects/example"
+--
+-- Searches:
+--
+-- > /usr/local/bin/mvn
+-- > /usr/local/bin/mvnw
+-- > /home/me/projects/example/mvn
+-- > /home/me/projects/example/mvnw
+-- > /home/me/projects/mvn
+-- > /home/me/projects/mvnw
+-- > /home/me/mvn
+-- > /home/me/mvnw
+-- > /home/mvn
+-- > /home/mvnw
+-- > /mvn
+-- > /mvnw
+which' ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has (Reader SystemPath) sig m
+  , Has (Reader SystemPathExt) sig m
+  ) =>
+  Path Abs Dir ->
+  NonEmpty Text ->
+  m (Maybe FoundLocation)
+which' workdir bins = context describe $ do
+  (systemPaths :: SystemPath) <- ask
+  (systemPathExts :: SystemPathExt) <- ask
+
+  -- Implemented with conduit because:
+  --
+  --  * We should lazily create the list of candidates, but
+  --  * Resolving a constructed file path + extension to a @Path Rel File@ requires IO, and
+  --  * Doing this in a standard function requires a ton of error boilerplate,
+  --  * or breaks laziness, requiring us to generate all candidate paths up front.
+  --
+  -- Given these constraints, we construct a simple two-step "pipeline"
+  -- in conduit: a source, which produces candidates in a streaming manner,
+  -- and a sink, which consumes candidates one by one until one is valid
+  -- or no valid candidate is found.
+  found <-
+    (fatalOnIOException "run conduit") . sendIO . runConduitRes $
+      candidatesC systemPaths systemPathExts
+        .| selectCandidateC
+  pure $ toFoundLocation <$> found
+  where
+    describe :: Text
+    describe =
+      toText $
+        concat
+          [ "which' { binaries: "
+          , show bins
+          , ", target workdir: "
+          , show workdir
+          , " }"
+          ]
+
+    toFoundLocation :: (Path Abs File, Maybe Text) -> FoundLocation
+    toFoundLocation (path, cmdName) = case cmdName of
+      Just cmdName' -> FoundInSystemPath path cmdName'
+      Nothing -> FoundInWorkDir path
+
+    candidatesC :: MonadThrow m => SystemPath -> SystemPathExt -> ConduitT () (Path Abs File, Maybe Text) m ()
+    candidatesC systemPaths systemPathExts = do
+      let names = NE.toList bins
+          exts = unSystemPathExt systemPathExts
+      let workPaths = enumerateWithParents workdir
+          systemPaths' = unSystemPath systemPaths
+
+      nextPath (const Nothing) workPaths names exts
+      nextPath renderNameInSystemPath systemPaths' names exts
+      where
+        renderNameInSystemPath :: Text -> Maybe Text
+        renderNameInSystemPath name =
+          if runningInOS Windows
+            then Just name
+            else Nothing
+
+        nextPath :: MonadThrow m => (Text -> Maybe Text) -> [Path Abs Dir] -> [Text] -> [String] -> ConduitT () (Path Abs File, Maybe Text) m ()
+        nextPath render (path : paths) names exts = do
+          nextName render path names exts
+          nextPath render paths names exts
+        nextPath _ [] _ _ = pure ()
+
+        nextName :: MonadThrow m => (Text -> Maybe Text) -> Path Abs Dir -> [Text] -> [String] -> ConduitT () (Path Abs File, Maybe Text) m ()
+        nextName render path (name : names) exts = do
+          nextExt render path name exts
+          nextName render path names exts
+        nextName _ _ [] _ = pure ()
+
+        nextExt :: MonadThrow m => (Text -> Maybe Text) -> Path Abs Dir -> Text -> [String] -> ConduitT () (Path Abs File, Maybe Text) m ()
+        nextExt render path name (ext : exts) = do
+          file <- parseRelFile $ toString name <> ext
+          yield (path </> file, render name)
+          nextExt render path name exts
+        nextExt _ _ _ [] = pure ()
+
+    selectCandidateC :: MonadIO m => ConduitT (Path Abs File, Maybe Text) Void m (Maybe (Path Abs File, Maybe Text))
+    selectCandidateC = evaluateNext
+      where
+        evaluateNext = do
+          next <- await
+          case next of
+            Nothing -> pure Nothing
+            Just file ->
+              PIO.doesFileExist (fst file) >>= \case
+                True -> pure $ Just file
+                False -> evaluateNext
+
+    enumerateWithParents :: Path Abs Dir -> [Path Abs Dir]
+    enumerateWithParents path = do
+      let next = parent path
+      if next /= path
+        then ([next] ++) $ enumerateWithParents next
+        else [next]
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
 exec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure Stdout)

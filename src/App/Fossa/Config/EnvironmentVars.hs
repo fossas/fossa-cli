@@ -4,6 +4,8 @@ module App.Fossa.Config.EnvironmentVars (
 ) where
 
 import App.Fossa.Config.ConfigFile (ConfigTelemetryScope (FullTelemetry, NoTelemetry))
+import App.Types (SystemPath (..), SystemPathExt (..))
+import App.Util (SupportedOS (Windows), runningInOS)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.Functor.Extra ((<$$>))
 import Data.Map (Map)
@@ -15,7 +17,9 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (DepType (..))
 import Effect.Logger (Logger, Pretty (pretty), logWarn)
+import Path (parseAbsDir)
 import System.Environment (lookupEnv)
+import System.FilePath (splitSearchPath)
 
 data EnvVars = EnvVars
   { envApiKey :: Maybe Text
@@ -23,6 +27,8 @@ data EnvVars = EnvVars
   , envTelemetryDebug :: Bool
   , envTelemetryScope :: Maybe ConfigTelemetryScope
   , envDockerHost :: Maybe Text
+  , envSystemPath :: SystemPath
+  , envSystemPathExt :: SystemPathExt
   , envCmdOverrides :: Map DepType Text
   }
   deriving (Eq, Ord, Show)
@@ -53,10 +59,35 @@ getEnvVars =
     <*> lookupBool telemetryDebugName
     <*> lookUpTelemetryScope telemetryScopeKeyName
     <*> lookupName dockerHostName
+    <*> lookupSystemPath
+    <*> lookupSystemPathExt
     <*> lookupNames mkCommandOverrideVar overridableCommands
 
 lookupName :: Has (Lift IO) sig m => String -> m (Maybe Text)
 lookupName name = toText <$$> sendIO (lookupEnv name)
+
+lookupSystemPath :: Has (Lift IO) sig m => m SystemPath
+lookupSystemPath = do
+  env <- sendIO $ lookupEnv systemPath
+  sendIO $ case env of
+    Nothing -> pure mempty
+    Just env' -> SystemPath <$> traverse parseAbsDir (splitSearchPath env')
+  where
+    systemPath :: String
+    systemPath = "PATH"
+
+lookupSystemPathExt :: Has (Lift IO) sig m => m SystemPathExt
+lookupSystemPathExt =
+  if runningInOS Windows
+    then do
+      env <- sendIO $ lookupEnv systemPathExt
+      sendIO $ case env of
+        Nothing -> pure mempty
+        Just env' -> pure . SystemPathExt $ splitSearchPath env'
+    else pure mempty
+  where
+    systemPathExt :: String
+    systemPathExt = "PATHEXT"
 
 lookupBool :: Has (Lift IO) sig m => String -> m Bool
 lookupBool name = do

@@ -5,7 +5,7 @@ module App.Fossa.VSI.DynLinked.Internal.Binary (
   LocalDependency (..),
 ) where
 
-import App.Fossa.VSI.DynLinked.Util (runningLinux)
+import App.Util (SupportedOS (Linux), runningInOS)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, recover, renderDiagnostic, warnOnErr)
 import Control.Effect.Reader (Reader)
@@ -39,7 +39,7 @@ dynamicLinkedDependencies ::
   ) =>
   SomeResolvedPath ->
   m (Set (Path Abs File))
-dynamicLinkedDependencies target | runningLinux = case target of
+dynamicLinkedDependencies target | runningInOS Linux = case target of
   ResolvedDir dir -> dynamicLinkedDependenciesRecursive dir
   ResolvedFile file -> dynamicLinkedDependenciesSingle file
 dynamicLinkedDependencies _ = pure Set.empty
