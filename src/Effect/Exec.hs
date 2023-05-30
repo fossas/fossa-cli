@@ -28,12 +28,12 @@ module Effect.Exec (
   which,
   which',
   FoundLocation (..),
+  foundLocationToCommand,
 ) where
 
 import App.Support (reportDefectMsg)
 import App.Types (OverrideDynamicAnalysisBinary (..), SystemPath (unSystemPath), SystemPathExt (..))
 import App.Util (SupportedOS (Windows), runningInOS)
-import Conduit (MonadIO, MonadThrow, await, runConduitRes, (.|))
 import Control.Algebra (Has)
 import Control.Carrier.Reader (Reader, ask)
 import Control.Carrier.Simple (
@@ -69,7 +69,6 @@ import Data.Aeson (
  )
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BL
-import Data.Conduit (ConduitT, yield)
 import Data.List.NonEmpty (NonEmpty, singleton)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
@@ -79,11 +78,10 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes (DepType (..))
-import Effect.ReadFS (ReadFS, getCurrentDir)
+import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, SomeBase (..), fromAbsDir, parent, parseRelFile, (</>))
 import Path.IO (AnyPath (makeAbsolute))
-import Path.IO qualified as PIO
 import Prettyprinter (Doc, indent, pretty, viaShow, vsep)
 import Prettyprinter.Render.Terminal (AnsiStyle)
 import System.Exit (ExitCode (..))
@@ -310,6 +308,20 @@ data FoundLocation
   = FoundInWorkDir (Path Abs File)
   | FoundInSystemPath (Path Abs File) Text
 
+-- | Convert a @FoundLocation@ to a @Command@ directly with the provided options.
+foundLocationToCommand :: [Text] -> AllowErr -> FoundLocation -> Command
+foundLocationToCommand args err = \case
+  FoundInWorkDir path -> Command (toText path) args err
+  FoundInSystemPath _ cmdName -> Command cmdName args err
+
+type WhichEffs sig m =
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has (Reader SystemPath) sig m
+  , Has (Reader SystemPathExt) sig m
+  , Has ReadFS sig m
+  )
+
 -- | Find the full path to an executable on the system.
 --
 -- The function searches for the binary with the first found of @Extensions@,
@@ -368,15 +380,7 @@ data FoundLocation
 -- > /home/mvn
 -- > /mvn
 -- > /usr/local/bin/mvn
-which ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has (Reader SystemPath) sig m
-  , Has (Reader SystemPathExt) sig m
-  ) =>
-  Path Abs Dir ->
-  Text ->
-  m (Maybe FoundLocation)
+which :: (WhichEffs sig m) => Path Abs Dir -> Text -> m (Maybe FoundLocation)
 which workdir bin = which' workdir (singleton bin)
 
 -- | Find the full path to an executable on the system.
@@ -459,37 +463,24 @@ which workdir bin = which' workdir (singleton bin)
 -- > /mvnw
 -- > /usr/local/bin/mvn
 -- > /usr/local/bin/mvnw
-which' ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has (Reader SystemPath) sig m
-  , Has (Reader SystemPathExt) sig m
-  ) =>
-  Path Abs Dir ->
-  NonEmpty Text ->
-  m (Maybe FoundLocation)
+which' :: (WhichEffs sig m) => Path Abs Dir -> NonEmpty Text -> m (Maybe FoundLocation)
 which' workdir bins = context describe $ do
   (systemPaths :: SystemPath) <- ask
   (systemPathExts :: SystemPathExt) <- ask
 
-  -- Implemented with conduit because:
-  --
-  --  * We should lazily create the list of candidates, but
-  --  * Resolving a constructed file path + extension to a @Path Rel File@ requires IO, and
-  --  * Doing this in a standard function requires a ton of boilerplate or breaks laziness.
-  --
-  -- Laziness is preferred here so that we can avoid creating candidates (and possibly erroring)
-  -- when a valid candidate would have been found earlier in the search.
-  --
-  -- Given these constraints, we construct a simple two-step "pipeline"
-  -- in conduit: a source, which produces candidates in a streaming manner,
-  -- and a sink, which consumes candidates one by one until one is valid
-  -- or no valid candidate is found.
-  found <-
-    (fatalOnIOException "run conduit") . sendIO . runConduitRes $
-      candidatesC systemPaths systemPathExts
-        .| selectCandidateC
-  pure $ toFoundLocation <$> found
+  let names = NE.toList bins
+      exts = unSystemPathExt systemPathExts
+      workdirPaths = enumerateWithParents workdir
+      systemPaths' = unSystemPath systemPaths
+
+  context "find in workdir ancestors" $
+    nextPath workdirPaths names exts >>= \case
+      Just (path, _) -> pure . Just $ FoundInWorkDir path
+      Nothing ->
+        context "find in system path" $
+          nextPath systemPaths' names exts >>= \case
+            Just (path, name) -> pure . Just $ systemPathFoundLocation (path, name)
+            Nothing -> pure Nothing
   where
     describe :: Text
     describe =
@@ -502,57 +493,9 @@ which' workdir bins = context describe $ do
           , " }"
           ]
 
-    toFoundLocation :: (Path Abs File, Maybe Text) -> FoundLocation
-    toFoundLocation (path, cmdName) = case cmdName of
-      Just cmdName' -> FoundInSystemPath path cmdName'
-      Nothing -> FoundInWorkDir path
-
-    candidatesC :: MonadThrow m => SystemPath -> SystemPathExt -> ConduitT () (Path Abs File, Maybe Text) m ()
-    candidatesC systemPaths systemPathExts = do
-      let names = NE.toList bins
-          exts = unSystemPathExt systemPathExts
-      let workPaths = enumerateWithParents workdir
-          systemPaths' = unSystemPath systemPaths
-
-      nextPath (const Nothing) workPaths names exts
-      nextPath renderNameInSystemPath systemPaths' names exts
-      where
-        renderNameInSystemPath :: Text -> Maybe Text
-        renderNameInSystemPath name =
-          if runningInOS Windows
-            then Just name
-            else Nothing
-
-        nextPath :: MonadThrow m => (Text -> Maybe Text) -> [Path Abs Dir] -> [Text] -> [String] -> ConduitT () (Path Abs File, Maybe Text) m ()
-        nextPath render (path : paths) names exts = do
-          nextName render path names exts
-          nextPath render paths names exts
-        nextPath _ [] _ _ = pure ()
-
-        nextName :: MonadThrow m => (Text -> Maybe Text) -> Path Abs Dir -> [Text] -> [String] -> ConduitT () (Path Abs File, Maybe Text) m ()
-        nextName render path (name : names) exts = do
-          nextExt render path name exts
-          nextName render path names exts
-        nextName _ _ [] _ = pure ()
-
-        nextExt :: MonadThrow m => (Text -> Maybe Text) -> Path Abs Dir -> Text -> [String] -> ConduitT () (Path Abs File, Maybe Text) m ()
-        nextExt render path name (ext : exts) = do
-          file <- parseRelFile $ toString name <> ext
-          yield (path </> file, render name)
-          nextExt render path name exts
-        nextExt _ _ _ [] = pure ()
-
-    selectCandidateC :: MonadIO m => ConduitT (Path Abs File, Maybe Text) Void m (Maybe (Path Abs File, Maybe Text))
-    selectCandidateC = evaluateNext
-      where
-        evaluateNext = do
-          next <- await
-          case next of
-            Nothing -> pure Nothing
-            Just file ->
-              PIO.doesFileExist (fst file) >>= \case
-                True -> pure $ Just file
-                False -> evaluateNext
+    systemPathFoundLocation :: (Path Abs File, Text) -> FoundLocation
+    systemPathFoundLocation (path, cmdName) | runningInOS Windows = FoundInSystemPath path cmdName
+    systemPathFoundLocation (path, _) = FoundInSystemPath path $ toText path
 
     enumerateWithParents :: Path Abs Dir -> [Path Abs Dir]
     enumerateWithParents path = do
@@ -560,6 +503,34 @@ which' workdir bins = context describe $ do
       if next /= path
         then ([next] ++) $ enumerateWithParents next
         else [next]
+
+    nextPath :: (WhichEffs sig m) => [Path Abs Dir] -> [Text] -> [String] -> m (Maybe (Path Abs File, Text))
+    nextPath (path : paths) names exts = do
+      found <- nextName path names exts
+      case found of
+        Just file -> pure $ Just file
+        Nothing -> nextPath paths names exts
+    nextPath [] _ _ = pure Nothing
+
+    nextName :: (WhichEffs sig m) => Path Abs Dir -> [Text] -> [String] -> m (Maybe (Path Abs File, Text))
+    nextName path (name : names) exts = do
+      found <- nextExt path name exts
+      case found of
+        Just file -> pure $ Just file
+        Nothing -> nextName path names exts
+    nextName _ [] _ = pure Nothing
+
+    nextExt :: (WhichEffs sig m) => Path Abs Dir -> Text -> [String] -> m (Maybe (Path Abs File, Text))
+    nextExt path name (ext : exts) = do
+      file <-
+        (fatalOnIOException "parse constructed candidate") . sendIO . parseRelFile $
+          toString name <> ext
+      let candidate = path </> file
+      exists <- doesFileExist candidate
+      if exists
+        then pure $ Just (candidate, name)
+        else nextExt path name exts
+    nextExt _ _ [] = pure Nothing
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
 exec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure Stdout)
