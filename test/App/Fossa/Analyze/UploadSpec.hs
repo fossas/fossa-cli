@@ -2,7 +2,7 @@
 
 module App.Fossa.Analyze.UploadSpec (spec) where
 
-import App.Fossa.Analyze.Upload (mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis, ScanUnits (..))
+import App.Fossa.Analyze.Upload (ScanUnits (..), mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
 import App.Types (FullFileUploads (FullFileUploads))
 import Control.Algebra (Has)
