@@ -278,9 +278,10 @@ http_download_wget() {
 }
 http_download() {
   log_debug "http_download $2"
-  if is_command curl; then
-    http_download_curl "$@"
-  elif is_command wget; then
+  # if is_command curl; then
+  #   http_download_curl "$@"
+  # elif 
+  if is_command wget; then
     http_download_wget "$@"
   else
     log_crit "http_download unable to find wget or curl"
