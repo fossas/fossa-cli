@@ -25,6 +25,9 @@ module Effect.Exec (
   CandidateAnalysisCommands (..),
   mkAnalysisCommand,
   mkSingleCandidateAnalysisCommand,
+  which,
+  which',
+  FoundLocation (..),
 ) where
 
 import App.Support (reportDefectMsg)
@@ -45,7 +48,6 @@ import Control.Effect.Diagnostics (
   context,
   fatal,
   fatalOnIOException,
-  fatalOnSomeException,
   fatalText,
   recover,
   warnOnErr,
@@ -68,20 +70,18 @@ import Data.Aeson (
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BL
 import Data.Conduit (ConduitT, yield)
-import Data.Foldable (foldlM, foldrM)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty, singleton)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
 import Data.String (fromString)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Text.Extra (showT)
 import Data.Void (Void)
 import DepTypes (DepType (..))
-import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir)
+import Effect.ReadFS (ReadFS, getCurrentDir)
 import GHC.Generics (Generic)
-import Path (Abs, Dir, File, Path, Rel, SomeBase (..), addExtension, fromAbsDir, parent, parseRelFile, (</>))
+import Path (Abs, Dir, File, Path, SomeBase (..), fromAbsDir, parent, parseRelFile, (</>))
 import Path.IO (AnyPath (makeAbsolute))
 import Path.IO qualified as PIO
 import Prettyprinter (Doc, indent, pretty, viaShow, vsep)
@@ -299,12 +299,85 @@ instance ToDiagnostic ExecErr where
 -- binaries accessible in the system path are called simply by their name
 -- on supported platforms.
 --
+-- This is because we've seen issues in some platforms where users have
+-- a binary in their path and we provide the full path to the binary
+-- the shell fails to run it, but if we provide just the name it works.
+--
 -- This type provides the ability to disambiguate:
 -- the @FoundInSystemPath@ case provides the path but additionally provides
 -- the argument that is recommended to pass as the @commandName@ in a @Command@.
 data FoundLocation
   = FoundInWorkDir (Path Abs File)
   | FoundInSystemPath (Path Abs File) Text
+
+-- | Find the full path to an executable on the system.
+--
+-- The function searches for the binary with the first found of @Extensions@,
+-- in the first of provided @Directories@.
+-- The search is conducted in the order of directories -> extensions.
+--
+-- If multiple binaries are intended, see @which'@.
+--
+-- If all directories and extensions are exhausted without finding a match,
+-- the function returns @Nothing@.
+--
+-- * @Directories@
+-- The function begins its search in the provided working directory and all of its parent directories.
+-- After that, it searches all entries in the system @$PATH@ environment variable.
+--
+-- * @Extensions@
+-- In Unix-based systems, @Extensions@ is always an empty list.
+-- In Windows-based systems, the function considers all entries in the system's
+-- @$PATHEXT@ environment variable.
+--
+-- * Examples:
+--
+-- __Windows__
+--
+-- > Binary : "mvn"
+-- > PATH   : "C:\System32"
+-- > PATHEXT: ".bat;.exe"
+-- > WORKDIR: "C:\Users\me\projects\example"
+--
+-- Searches:
+--
+-- > C:\Users\me\projects\example\mvn.exe
+-- > C:\Users\me\projects\example\mvn.bat
+-- > C:\Users\me\projects\mvn.exe
+-- > C:\Users\me\projects\mvn.bat
+-- > C:\Users\me\mvn.exe
+-- > C:\Users\me\mvn.bat
+-- > C:\Users\mvn.exe
+-- > C:\Users\mvn.bat
+-- > C:\mvn.exe
+-- > C:\mvn.bat
+-- > C:\System32\mvn.exe
+-- > C:\System32\mvn.bat
+--
+-- __Linux, macOS__
+--
+-- > Binary : "mvn"
+-- > PATH   : "/usr/local/bin"
+-- > WORKDIR: "/home/me/projects/example"
+--
+-- Searches:
+--
+-- > /home/me/projects/example/mvn
+-- > /home/me/projects/mvn
+-- > /home/me/mvn
+-- > /home/mvn
+-- > /mvn
+-- > /usr/local/bin/mvn
+which ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has (Reader SystemPath) sig m
+  , Has (Reader SystemPathExt) sig m
+  ) =>
+  Path Abs Dir ->
+  Text ->
+  m (Maybe FoundLocation)
+which workdir bin = which' workdir (singleton bin)
 
 -- | Find the full path to an executable on the system.
 --
@@ -341,10 +414,6 @@ data FoundLocation
 --
 -- Searches:
 --
--- > C:\System32\mvn.exe
--- > C:\System32\mvn.bat
--- > C:\System32\mvnw.exe
--- > C:\System32\mvnw.bat
 -- > C:\Users\me\projects\example\mvn.exe
 -- > C:\Users\me\projects\example\mvn.bat
 -- > C:\Users\me\projects\example\mvnw.exe
@@ -365,6 +434,10 @@ data FoundLocation
 -- > C:\mvn.bat
 -- > C:\mvnw.exe
 -- > C:\mvnw.bat
+-- > C:\System32\mvn.exe
+-- > C:\System32\mvn.bat
+-- > C:\System32\mvnw.exe
+-- > C:\System32\mvnw.bat
 --
 -- __Linux, macOS__
 --
@@ -374,8 +447,6 @@ data FoundLocation
 --
 -- Searches:
 --
--- > /usr/local/bin/mvn
--- > /usr/local/bin/mvnw
 -- > /home/me/projects/example/mvn
 -- > /home/me/projects/example/mvnw
 -- > /home/me/projects/mvn
@@ -386,6 +457,8 @@ data FoundLocation
 -- > /home/mvnw
 -- > /mvn
 -- > /mvnw
+-- > /usr/local/bin/mvn
+-- > /usr/local/bin/mvnw
 which' ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
@@ -403,8 +476,10 @@ which' workdir bins = context describe $ do
   --
   --  * We should lazily create the list of candidates, but
   --  * Resolving a constructed file path + extension to a @Path Rel File@ requires IO, and
-  --  * Doing this in a standard function requires a ton of error boilerplate,
-  --  * or breaks laziness, requiring us to generate all candidate paths up front.
+  --  * Doing this in a standard function requires a ton of boilerplate or breaks laziness.
+  --
+  -- Laziness is preferred here so that we can avoid creating candidates (and possibly erroring)
+  -- when a valid candidate would have been found earlier in the search.
   --
   -- Given these constraints, we construct a simple two-step "pipeline"
   -- in conduit: a source, which produces candidates in a streaming manner,
