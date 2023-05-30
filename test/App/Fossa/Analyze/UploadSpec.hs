@@ -2,7 +2,7 @@
 
 module App.Fossa.Analyze.UploadSpec (spec) where
 
-import App.Fossa.Analyze.Upload (mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
+import App.Fossa.Analyze.Upload (mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis, ScanUnits (..))
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
 import App.Types (FullFileUploads (FullFileUploads))
 import Control.Algebra (Has)
@@ -121,7 +121,6 @@ uploadSuccessfulAnalysisSpec = do
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
               (SourceUnitOnly Fixtures.sourceUnits)
-              Nothing
           locator `shouldBe'` expectedLocator
       -- Currently our StdOut logging just writes directly to StdOut, so this is
       -- just checking it doesn't fail.  In the future we should extract that so
@@ -139,7 +138,6 @@ uploadSuccessfulAnalysisSpec = do
               (toFlag (JsonOutput) True)
               Fixtures.projectRevision
               (SourceUnitOnly Fixtures.sourceUnits)
-              Nothing
           locator `shouldBe'` expectedLocator
       it' "aborts when uploading to a monorepo"
         . expectFatal'
@@ -152,7 +150,6 @@ uploadSuccessfulAnalysisSpec = do
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
             (SourceUnitOnly Fixtures.sourceUnits)
-            Nothing
       it' "continues if fetching the project fails"
         . withGit mockGit
         $ do
@@ -169,7 +166,6 @@ uploadSuccessfulAnalysisSpec = do
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
               (SourceUnitOnly Fixtures.sourceUnits)
-              Nothing
           locator `shouldBe'` expectedLocator
       it' "continues if fetching contributors fails"
         . withGit (\_ -> fatalText "Mocked failure of fetching contributors from git")
@@ -183,7 +179,6 @@ uploadSuccessfulAnalysisSpec = do
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
               (SourceUnitOnly Fixtures.sourceUnits)
-              Nothing
           locator `shouldBe'` expectedLocator
       it' "continues if uploading contributors fails"
         . withGit mockGit
@@ -198,7 +193,6 @@ uploadSuccessfulAnalysisSpec = do
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
               (SourceUnitOnly Fixtures.sourceUnits)
-              Nothing
           locator `shouldBe'` expectedLocator
       it' "uploads to S3 and to /api/builds/custom_with_first_party_licenses if there are licenses"
         . withGit mockGit
@@ -231,7 +225,6 @@ uploadSuccessfulAnalysisSpec = do
               Fixtures.projectMetadata
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
-              Nothing
               (LicenseSourceUnitOnly Fixtures.firstLicenseSourceUnit)
           locator `shouldBe'` expectedLocator
 
