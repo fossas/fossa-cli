@@ -120,7 +120,7 @@ uploadSuccessfulAnalysisSpec = do
               Fixtures.projectMetadata
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
-              (Just Fixtures.sourceUnits)
+              (SourceUnitOnly Fixtures.sourceUnits)
               Nothing
           locator `shouldBe'` expectedLocator
       -- Currently our StdOut logging just writes directly to StdOut, so this is
@@ -138,7 +138,7 @@ uploadSuccessfulAnalysisSpec = do
               Fixtures.projectMetadata
               (toFlag (JsonOutput) True)
               Fixtures.projectRevision
-              (Just Fixtures.sourceUnits)
+              (SourceUnitOnly Fixtures.sourceUnits)
               Nothing
           locator `shouldBe'` expectedLocator
       it' "aborts when uploading to a monorepo"
@@ -151,7 +151,7 @@ uploadSuccessfulAnalysisSpec = do
             Fixtures.projectMetadata
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
-            (Just Fixtures.sourceUnits)
+            (SourceUnitOnly Fixtures.sourceUnits)
             Nothing
       it' "continues if fetching the project fails"
         . withGit mockGit
@@ -168,7 +168,7 @@ uploadSuccessfulAnalysisSpec = do
               Fixtures.projectMetadata
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
-              (Just Fixtures.sourceUnits)
+              (SourceUnitOnly Fixtures.sourceUnits)
               Nothing
           locator `shouldBe'` expectedLocator
       it' "continues if fetching contributors fails"
@@ -182,7 +182,7 @@ uploadSuccessfulAnalysisSpec = do
               Fixtures.projectMetadata
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
-              (Just Fixtures.sourceUnits)
+              (SourceUnitOnly Fixtures.sourceUnits)
               Nothing
           locator `shouldBe'` expectedLocator
       it' "continues if uploading contributors fails"
@@ -197,7 +197,7 @@ uploadSuccessfulAnalysisSpec = do
               Fixtures.projectMetadata
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
-              (Just Fixtures.sourceUnits)
+              (SourceUnitOnly Fixtures.sourceUnits)
               Nothing
           locator `shouldBe'` expectedLocator
       it' "uploads to S3 and to /api/builds/custom_with_first_party_licenses if there are licenses"
@@ -214,8 +214,7 @@ uploadSuccessfulAnalysisSpec = do
               Fixtures.projectMetadata
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
-              (Just Fixtures.sourceUnits)
-              (Just Fixtures.firstLicenseSourceUnit)
+              (SourceAndLicenseUnits Fixtures.sourceUnits Fixtures.firstLicenseSourceUnit)
           locator `shouldBe'` expectedLocator
 
       it' "uploads to S3 and to /api/builds/custom_with_first_party_licenses if there are licenses and no targets were found"
@@ -233,7 +232,7 @@ uploadSuccessfulAnalysisSpec = do
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
               Nothing
-              (Just Fixtures.firstLicenseSourceUnit)
+              (LicenseSourceUnitOnly Fixtures.firstLicenseSourceUnit)
           locator `shouldBe'` expectedLocator
 
       it' "uploads to S3 and to /api/builds/custom_with_first_party_licenses if there are licenses and full file uploads is set on the org"
@@ -252,8 +251,7 @@ uploadSuccessfulAnalysisSpec = do
               Fixtures.projectMetadata
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
-              (Just Fixtures.sourceUnits)
-              (Just Fixtures.firstLicenseSourceUnit)
+              (SourceAndLicenseUnits Fixtures.sourceUnits Fixtures.firstLicenseSourceUnit)
           locator `shouldBe'` expectedLocator
 
 mergeSourceAndLicenseUnitsSpec :: Spec
