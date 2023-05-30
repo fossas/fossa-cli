@@ -13,8 +13,9 @@ import Srclib.Types (LicenseSourceUnit (licenseSourceUnitLicenseUnits), LicenseU
 data CountedResult
   = NoneDiscovered
   | FilteredAll
-  | FoundSome (NonEmpty SourceUnit)
-  | FoundLicensesOnly
+  | FoundDependenciesOnly (NonEmpty SourceUnit)
+  | FoundDependenciesAndLicenses (NonEmpty SourceUnit) LicenseSourceUnit
+  | FoundLicensesOnly LicenseSourceUnit
 
 -- | Return some state of the projects found, since we can't upload empty result arrays.
 -- Takes a list of all projects analyzed, and the list after filtering.  We assume
@@ -24,29 +25,37 @@ data CountedResult
 checkForEmptyUpload :: Flag IncludeAll -> [ProjectResult] -> [ProjectResult] -> [SourceUnit] -> Maybe LicenseSourceUnit -> CountedResult
 checkForEmptyUpload includeAll xs ys additionalUnits firstPartyScanResults = do
   if null additionalUnits
-    then case (xlen, ylen) of
+    then case (xlen, ylen, licensesMaybeFound) of
       -- We didn't discover, so we also didn't filter
-      (0, 0) ->
-        if licensesFound
-          then FoundLicensesOnly
-          else NoneDiscovered
+      (0, 0, Nothing) ->
+        NoneDiscovered
+      (0, 0, Just licenseSourceUnit) ->
+        FoundLicensesOnly licenseSourceUnit
       -- If either list is empty, we have nothing to upload
-      (0, _) -> FilteredAll
-      (_, 0) -> FilteredAll
+      (0, _, Nothing) -> FilteredAll
+      (_, 0, Nothing) -> FilteredAll
       -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
-      _ -> FoundSome $ fromList discoveredUnits
+      (0, _, Just licenseSourceUnit) -> FoundLicensesOnly licenseSourceUnit
+      (_, 0, Just licenseSourceUnit) -> FoundLicensesOnly licenseSourceUnit
+      (_, _, Just licenseSourceUnit) -> FoundDependenciesAndLicenses (fromList discoveredUnits)  licenseSourceUnit
+      (_, _, Nothing) -> FoundDependenciesOnly $ fromList discoveredUnits
     else -- If we have a additional source units, then there's always something to upload.
-      FoundSome $ fromList (additionalUnits ++ discoveredUnits)
+      case licensesMaybeFound of
+        Nothing -> FoundDependenciesOnly $ fromList (additionalUnits ++ discoveredUnits)
+        Just licenseSourceUnit -> FoundDependenciesAndLicenses (fromList (additionalUnits ++ discoveredUnits)) licenseSourceUnit
   where
     xlen = length xs
     ylen = length ys
+    licensesMaybeFound = case firstPartyScanResults of
+      Nothing -> Nothing
+      Just scanResults -> if any isActualLicense $ licenseSourceUnitLicenseUnits scanResults
+        then
+          Just scanResults
+        else
+          Nothing
 
     -- The smaller list is the post-filter list, since filtering cannot add projects
     filtered = if xlen > ylen then ys else xs
     discoveredUnits = map (Srclib.toSourceUnit (fromFlag IncludeAll includeAll)) filtered
-    licensesFound = case firstPartyScanResults of
-      Nothing -> False
-      Just scanResults -> any isActualLicense $ licenseSourceUnitLicenseUnits scanResults
-
     isActualLicense :: LicenseUnit -> Bool
     isActualLicense licenseUnit = licenseUnitName licenseUnit /= "No_license_found"

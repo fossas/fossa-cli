@@ -19,7 +19,7 @@ import App.Fossa.Analyze.Discover (
   discoverFuncs,
  )
 import App.Fossa.Analyze.Filter (
-  CountedResult (FilteredAll, FoundLicensesOnly, FoundSome, NoneDiscovered),
+  CountedResult (..),
   checkForEmptyUpload,
  )
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
@@ -32,7 +32,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Analyze.Upload (mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
+import App.Fossa.Analyze.Upload (mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis, ScanUnits (..))
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.Config.Analyze (
   AnalyzeCliOpts,
@@ -342,18 +342,19 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits firstPartyScanResults of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll -> Diag.fatal ErrFilteredAllProjects
-    FoundSome sourceUnits -> doUpload result iatAssertion destination basedir jsonOutput revision (Just sourceUnits) firstPartyScanResults
-    FoundLicensesOnly -> doUpload result iatAssertion destination basedir jsonOutput revision Nothing firstPartyScanResults
+    FoundDependenciesAndLicenses sourceUnits licenseSourceUnit -> doUpload result iatAssertion destination basedir jsonOutput revision $ SourceAndLicenseUnits sourceUnits licenseSourceUnit
+    FoundDependenciesOnly sourceUnits -> doUpload result iatAssertion destination basedir jsonOutput revision $ SourceUnitOnly sourceUnits
+    FoundLicensesOnly licenseSourceUnits -> doUpload result iatAssertion destination basedir jsonOutput revision  $ LicenseSourceUnitOnly licenseSourceUnits
   pure result
   where
-    doUpload result iatAssertion destination basedir jsonOutput revision sourceUnits firstPartyScanResults =
+    doUpload result iatAssertion destination basedir jsonOutput revision scanUnits =
       case destination of
         OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
         UploadScan apiOpts metadata ->
           Diag.context "upload-results"
             . runFossaApiClient apiOpts
             $ do
-              locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision sourceUnits firstPartyScanResults
+              locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits
               doAssertRevisionBinaries iatAssertion locator
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
