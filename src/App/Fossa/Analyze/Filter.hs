@@ -37,22 +37,21 @@ checkForEmptyUpload includeAll xs ys additionalUnits firstPartyScanResults = do
       -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
       (0, _, Just licenseSourceUnit) -> FoundLicensesOnly licenseSourceUnit
       (_, 0, Just licenseSourceUnit) -> FoundLicensesOnly licenseSourceUnit
-      (_, _, Just licenseSourceUnit) -> FoundDependenciesAndLicenses (fromList discoveredUnits)  licenseSourceUnit
+      (_, _, Just licenseSourceUnit) -> FoundDependenciesAndLicenses (fromList discoveredUnits) licenseSourceUnit
       (_, _, Nothing) -> FoundDependenciesOnly $ fromList discoveredUnits
     else -- If we have a additional source units, then there's always something to upload.
-      case licensesMaybeFound of
-        Nothing -> FoundDependenciesOnly $ fromList (additionalUnits ++ discoveredUnits)
-        Just licenseSourceUnit -> FoundDependenciesAndLicenses (fromList (additionalUnits ++ discoveredUnits)) licenseSourceUnit
+    case licensesMaybeFound of
+      Nothing -> FoundDependenciesOnly $ fromList (additionalUnits ++ discoveredUnits)
+      Just licenseSourceUnit -> FoundDependenciesAndLicenses (fromList (additionalUnits ++ discoveredUnits)) licenseSourceUnit
   where
     xlen = length xs
     ylen = length ys
     licensesMaybeFound = case firstPartyScanResults of
       Nothing -> Nothing
-      Just scanResults -> if any isActualLicense $ licenseSourceUnitLicenseUnits scanResults
-        then
-          Just scanResults
-        else
-          Nothing
+      Just scanResults ->
+        if any isActualLicense $ licenseSourceUnitLicenseUnits scanResults
+          then Just scanResults
+          else Nothing
 
     -- The smaller list is the post-filter list, since filtering cannot add projects
     filtered = if xlen > ylen then ys else xs
