@@ -67,8 +67,8 @@ import Srclib.Types (
   sourceUnitToFullSourceUnit,
  )
 
-data ScanUnits =
-  SourceUnitOnly (NE.NonEmpty SourceUnit)
+data ScanUnits
+  = SourceUnitOnly (NE.NonEmpty SourceUnit)
   | LicenseSourceUnitOnly LicenseSourceUnit
   | SourceAndLicenseUnits (NE.NonEmpty SourceUnit) LicenseSourceUnit
 

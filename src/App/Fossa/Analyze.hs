@@ -32,7 +32,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Analyze.Upload (mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis, ScanUnits (..))
+import App.Fossa.Analyze.Upload (ScanUnits (..), mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.Config.Analyze (
   AnalyzeCliOpts,
@@ -344,7 +344,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     FilteredAll -> Diag.fatal ErrFilteredAllProjects
     FoundDependenciesAndLicenses sourceUnits licenseSourceUnit -> doUpload result iatAssertion destination basedir jsonOutput revision $ SourceAndLicenseUnits sourceUnits licenseSourceUnit
     FoundDependenciesOnly sourceUnits -> doUpload result iatAssertion destination basedir jsonOutput revision $ SourceUnitOnly sourceUnits
-    FoundLicensesOnly licenseSourceUnits -> doUpload result iatAssertion destination basedir jsonOutput revision  $ LicenseSourceUnitOnly licenseSourceUnits
+    FoundLicensesOnly licenseSourceUnits -> doUpload result iatAssertion destination basedir jsonOutput revision $ LicenseSourceUnitOnly licenseSourceUnits
   pure result
   where
     doUpload result iatAssertion destination basedir jsonOutput revision scanUnits =
