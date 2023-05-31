@@ -299,6 +299,7 @@ instance ToDiagnostic ExecErr where
 data FoundLocation
   = FoundInWorkDir (Path Abs File)
   | FoundInSystemPath (Path Abs File) Text
+  deriving (Show, Eq)
 
 -- | Convert a @FoundLocation@ to a @Command@ directly with the provided options.
 foundLocationToCommand :: [Text] -> AllowErr -> FoundLocation -> Command
