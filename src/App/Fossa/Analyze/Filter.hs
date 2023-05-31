@@ -4,18 +4,17 @@ module App.Fossa.Analyze.Filter (
 ) where
 
 import App.Fossa.Analyze.Project (ProjectResult)
+import App.Fossa.Analyze.Upload (ScanUnits (..))
 import App.Fossa.Config.Analyze (IncludeAll (..))
 import Data.Flag (Flag, fromFlag)
-import Data.List.NonEmpty (NonEmpty, fromList)
+import Data.List.NonEmpty (fromList)
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit (licenseSourceUnitLicenseUnits), LicenseUnit (licenseUnitName), SourceUnit)
 
 data CountedResult
   = NoneDiscovered
   | FilteredAll
-  | FoundDependenciesOnly (NonEmpty SourceUnit)
-  | FoundDependenciesAndLicenses (NonEmpty SourceUnit) LicenseSourceUnit
-  | FoundLicensesOnly LicenseSourceUnit
+  | CountedScanUnits ScanUnits
 
 -- | Return some state of the projects found, since we can't upload empty result arrays.
 -- Takes a list of all projects analyzed, and the list after filtering.  We assume
@@ -30,19 +29,19 @@ checkForEmptyUpload includeAll xs ys additionalUnits firstPartyScanResults = do
       (0, 0, Nothing) ->
         NoneDiscovered
       (0, 0, Just licenseSourceUnit) ->
-        FoundLicensesOnly licenseSourceUnit
+        CountedScanUnits $ LicenseSourceUnitOnly licenseSourceUnit
       -- If either list is empty, we have nothing to upload
       (0, _, Nothing) -> FilteredAll
       (_, 0, Nothing) -> FilteredAll
       -- NE.fromList is a partial, but is safe since we confirm the length is > 0.
-      (0, _, Just licenseSourceUnit) -> FoundLicensesOnly licenseSourceUnit
-      (_, 0, Just licenseSourceUnit) -> FoundLicensesOnly licenseSourceUnit
-      (_, _, Just licenseSourceUnit) -> FoundDependenciesAndLicenses (fromList discoveredUnits) licenseSourceUnit
-      (_, _, Nothing) -> FoundDependenciesOnly $ fromList discoveredUnits
+      (0, _, Just licenseSourceUnit) -> CountedScanUnits $ LicenseSourceUnitOnly licenseSourceUnit
+      (_, 0, Just licenseSourceUnit) -> CountedScanUnits $ LicenseSourceUnitOnly licenseSourceUnit
+      (_, _, Just licenseSourceUnit) -> CountedScanUnits $ SourceAndLicenseUnits (fromList discoveredUnits) licenseSourceUnit
+      (_, _, Nothing) -> CountedScanUnits . SourceUnitOnly $ fromList discoveredUnits
     else -- If we have a additional source units, then there's always something to upload.
     case licensesMaybeFound of
-      Nothing -> FoundDependenciesOnly $ fromList (additionalUnits ++ discoveredUnits)
-      Just licenseSourceUnit -> FoundDependenciesAndLicenses (fromList (additionalUnits ++ discoveredUnits)) licenseSourceUnit
+      Nothing -> CountedScanUnits . SourceUnitOnly $ fromList (additionalUnits ++ discoveredUnits)
+      Just licenseSourceUnit -> CountedScanUnits $ SourceAndLicenseUnits (fromList (additionalUnits ++ discoveredUnits)) licenseSourceUnit
   where
     xlen = length xs
     ylen = length ys
