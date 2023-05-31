@@ -1,6 +1,9 @@
 # FOSSA CLI Changelog
 
-## v3.8
+## Unreleased
+- Setup.py: Fixes an defect with `setup.py` parser, caused by failing to account for line comments or backslash. ([#1191](https://github.com/fossas/fossa-cli/pull/1191))
+
+## v3.8.0
 - License Scanning: You can license scan your first-party code with the `--experimental-force-first-party-scans` flag ([#1187](https://github.com/fossas/fossa-cli/pull/1187))
 - Network requests: `fossa-cli` retries network requests, if it experiences timeout error. ([#1203](https://github.com/fossas/fossa-cli/pull/1203))
 - Monorepo is no longer a supported feature of FOSSA. ([#1202](https://github.com/fossas/fossa-cli/pull/1202))
