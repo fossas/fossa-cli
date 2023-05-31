@@ -3,6 +3,7 @@
 module App.Fossa.Analyze.Upload (
   mergeSourceAndLicenseUnits,
   uploadSuccessfulAnalysis,
+  ScanUnits (..),
 ) where
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
@@ -66,14 +67,21 @@ import Srclib.Types (
   sourceUnitToFullSourceUnit,
  )
 
+data ScanUnits
+  = SourceUnitOnly (NE.NonEmpty SourceUnit)
+  | LicenseSourceUnitOnly LicenseSourceUnit
+  | SourceAndLicenseUnits (NE.NonEmpty SourceUnit) LicenseSourceUnit
+
 -- units come from standard `fossa analyze`.
 -- LicenseSourceUnit comes from running a first-party license scan on the project
 -- merge these into an array before uploading to S3
-mergeSourceAndLicenseUnits :: NE.NonEmpty SourceUnit -> LicenseSourceUnit -> NE.NonEmpty FullSourceUnit
+mergeSourceAndLicenseUnits :: [SourceUnit] -> LicenseSourceUnit -> NE.NonEmpty FullSourceUnit
 mergeSourceAndLicenseUnits units LicenseSourceUnit{..} =
-  fromSourceUnits <> fromLicenseUnits
+  -- Replace with `NE.prependList fromLicenseUnits fromSourceUnits` after upgrading to > 4.16
+  -- https://hackage.haskell.org/package/base-4.18.0.0/docs/Data-List-NonEmpty.html#v:prependList
+  foldr NE.cons fromLicenseUnits fromSourceUnits
   where
-    fromSourceUnits = NE.map sourceUnitToFullSourceUnit units
+    fromSourceUnits = map sourceUnitToFullSourceUnit units
     fromLicenseUnits = NE.map licenseUnitToFullSourceUnit licenseSourceUnitLicenseUnits
 
 uploadSuccessfulAnalysis ::
@@ -87,10 +95,9 @@ uploadSuccessfulAnalysis ::
   ProjectMetadata ->
   Flag JsonOutput ->
   ProjectRevision ->
-  NE.NonEmpty SourceUnit ->
-  Maybe LicenseSourceUnit ->
+  ScanUnits ->
   m Locator
-uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units licenseUnits =
+uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits =
   context "Uploading analysis" $ do
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
@@ -100,12 +107,17 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units li
 
     dieOnMonorepoUpload revision
 
-    uploadResult <- case licenseUnits of
-      Nothing -> uploadAnalysis revision metadata units
-      Just licenses -> do
+    uploadResult <- case scanUnits of
+      SourceUnitOnly units -> uploadAnalysis revision metadata units
+      LicenseSourceUnitOnly licenseSourceUnit -> do
         org <- getOrganization
         let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
-        let mergedUnits = mergeSourceAndLicenseUnits units licenses
+        let mergedUnits = mergeSourceAndLicenseUnits [] licenseSourceUnit
+        runStickyLogger SevInfo $ uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads
+      SourceAndLicenseUnits sourceUnits licenseSourceUnit -> do
+        org <- getOrganization
+        let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
+        let mergedUnits = mergeSourceAndLicenseUnits (NE.toList sourceUnits) licenseSourceUnit
         runStickyLogger SevInfo $ uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads
     let locator = uploadLocator uploadResult
     buildUrl <- getFossaBuildUrl revision locator

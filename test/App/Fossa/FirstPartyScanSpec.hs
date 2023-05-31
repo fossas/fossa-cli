@@ -7,12 +7,13 @@ import App.Fossa.FirstPartyScan (firstPartyScanWithOrgInfo)
 import App.Types (FirstPartyScansFlag (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
+import Data.List qualified as List
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (isJust)
 import Fossa.API.Types (Organization (..))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
-import Srclib.Types (LicenseSourceUnit (..), LicenseUnit (licenseUnitData), LicenseUnitData (licenseUnitDataContents))
+import Srclib.Types (LicenseSourceUnit (..), LicenseUnit (licenseUnitData, licenseUnitName), LicenseUnitData (licenseUnitDataContents))
 import Test.Effect (expectFatal', expectationFailure', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, runIO)
@@ -21,11 +22,15 @@ import Test.MockApi (MockApi, alwaysReturns)
 fixtureDir :: Path Rel Dir
 fixtureDir = $(mkRelDir "test/App/Fossa/VendoredDependency/testdata/repo")
 
+fixtureDirWithVendoredDeps :: Path Rel Dir
+fixtureDirWithVendoredDeps = $(mkRelDir "test/App/Fossa/VendoredDependency/testdata/firstparty")
+
 spec :: Spec
 spec = do
   describe "runFirstPartyScan" $ do
     currDir <- runIO getCurrentDir
     let scanDir = currDir </> fixtureDir
+    let scanDirWithVendoredDeps = currDir </> fixtureDirWithVendoredDeps
 
     it' "should fail if the organization does not support first party scans and you force it on" $ do
       expectGetOrganizationThatDoesNotSupportFirstPartyScans
@@ -78,6 +83,20 @@ spec = do
         Just LicenseSourceUnit{licenseSourceUnitLicenseUnits = units} -> do
           length units `shouldBe'` 2
           let unitData = NE.head . licenseUnitData $ NE.head units
+          licenseUnitDataContents unitData `shouldBe'` Nothing
+
+    it' "should skip scanning manual deps" $ do
+      expectGetOrganizationThatDefaultsToFirstPartyScans
+      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDirWithVendoredDeps Fixtures.standardAnalyzeConfig
+      case licenseSourceUnit of
+        Nothing -> expectationFailure' "first party scan should have run"
+        Just LicenseSourceUnit{licenseSourceUnitLicenseUnits = units} -> do
+          length units `shouldBe'` 2
+          let firstUnit = NE.head units
+          let secondUnit = List.head $ NE.tail units
+          let unitData = NE.head . licenseUnitData $ secondUnit
+          licenseUnitName firstUnit `shouldBe'` "No_license_found"
+          licenseUnitName secondUnit `shouldBe'` "apache-2.0"
           licenseUnitDataContents unitData `shouldBe'` Nothing
 
 -- The default org defaults to not running first party scans but has first-party scans enabled
