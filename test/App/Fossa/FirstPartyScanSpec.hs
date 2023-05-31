@@ -10,7 +10,6 @@ import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Data.List qualified as List
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (isJust)
-import Debug.Trace (traceM)
 import Fossa.API.Types (Organization (..))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
@@ -92,7 +91,6 @@ spec = do
       case licenseSourceUnit of
         Nothing -> expectationFailure' "first party scan should have run"
         Just LicenseSourceUnit{licenseSourceUnitLicenseUnits = units} -> do
-          traceM $ "units: " ++ show units
           length units `shouldBe'` 2
           let firstUnit = NE.head units
           let secondUnit = List.head $ NE.tail units

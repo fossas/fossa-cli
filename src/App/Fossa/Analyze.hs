@@ -19,7 +19,7 @@ import App.Fossa.Analyze.Discover (
   discoverFuncs,
  )
 import App.Fossa.Analyze.Filter (
-  CountedResult (FilteredAll, FoundSome, NoneDiscovered),
+  CountedResult (..),
   checkForEmptyUpload,
  )
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
@@ -32,7 +32,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Analyze.Upload (uploadSuccessfulAnalysis)
+import App.Fossa.Analyze.Upload (mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.Config.Analyze (
   AnalyzeCliOpts,
@@ -120,7 +120,7 @@ import Prettyprinter.Render.Terminal (
   color,
  )
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (LicenseSourceUnit (licenseSourceUnitLicenseUnits), Locator, SourceUnit, licenseUnitToFullSourceUnit, sourceUnitToFullSourceUnit)
+import Srclib.Types (LicenseSourceUnit, Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
 
 debugBundlePath :: FilePath
@@ -339,18 +339,21 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   let result = buildResult includeAll additionalSourceUnits filteredProjects firstPartyScanResults
-  case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits of
+  case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits firstPartyScanResults of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll -> Diag.fatal ErrFilteredAllProjects
-    FoundSome sourceUnits -> case destination of
-      OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
-      UploadScan apiOpts metadata ->
-        Diag.context "upload-results"
-          . runFossaApiClient apiOpts
-          $ do
-            locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision sourceUnits firstPartyScanResults
-            doAssertRevisionBinaries iatAssertion locator
+    CountedScanUnits scanUnits -> doUpload result iatAssertion destination basedir jsonOutput revision scanUnits
   pure result
+  where
+    doUpload result iatAssertion destination basedir jsonOutput revision scanUnits =
+      case destination of
+        OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
+        UploadScan apiOpts metadata ->
+          Diag.context "upload-results"
+            . runFossaApiClient apiOpts
+            $ do
+              locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits
+              doAssertRevisionBinaries iatAssertion locator
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
 toProjectResult (SkippedDueToProvidedFilter _) = Nothing
@@ -467,10 +470,7 @@ buildResult includeAll srcUnits projects firstPartyScanResults =
     mergedUnits = case firstPartyScanResults of
       Nothing -> map sourceUnitToFullSourceUnit finalSourceUnits
       Just licenseUnits -> do
-        fromLicenseUnits ++ fromSourceUnits
-        where
-          fromSourceUnits = map sourceUnitToFullSourceUnit finalSourceUnits
-          fromLicenseUnits = NE.toList . NE.map licenseUnitToFullSourceUnit $ licenseSourceUnitLicenseUnits licenseUnits
+        NE.toList $ mergeSourceAndLicenseUnits finalSourceUnits licenseUnits
     finalSourceUnits = srcUnits ++ scannedUnits
     scannedUnits = map (Srclib.toSourceUnit (fromFlag IncludeAll includeAll)) projects
 
