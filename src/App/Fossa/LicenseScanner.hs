@@ -73,7 +73,7 @@ import Srclib.Types (
   LicenseUnit (..),
   Locator (..),
  )
-import Types (LicenseScanPathFilters)
+import Types (LicenseScanPathFilters (licenseScanPathFilterFileExclude))
 
 data LicenseScanErr
   = NoSuccessfulScans
@@ -131,8 +131,12 @@ recursivelyScanArchives pathPrefix licenseScanPathFilters fullFileUploads dir = 
           currentDirResults <- withThemisAndIndex $ themisRunner updatedPathPrefix licenseScanPathFilters fullFileUploads unpackedDir
           recursiveResults <- recursivelyScanArchives updatedPathPrefix licenseScanPathFilters fullFileUploads unpackedDir
           pure $ currentDirResults <> recursiveResults
+    -- filter out files that match licenseScanPathFilterFileExclude. Currently, these are only created by firstPartyScanMain
+    -- but it would be easy to allow customers to filter out single files too.
+    let archivesToSkip = maybe [] licenseScanPathFilterFileExclude licenseScanPathFilters
+    let filesToProcess = filter (`notElem` archivesToSkip) files
     -- withArchive' emits Nothing when archive type is not supported.
-    archives <- traverse (\file -> withArchive' file (process file)) files
+    archives <- traverse (\file -> withArchive' file (process file)) filesToProcess
     pure (concat (catMaybes archives), WalkContinue)
 
 -- When we recursively scan archives, we end up with an array of LicenseUnits that may have multiple entries for a single license.

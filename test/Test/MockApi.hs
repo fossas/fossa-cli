@@ -217,11 +217,14 @@ matchExpectation a@(GetEndpointVersion{}) (ApiExpectation _ requestExpectation b
 matchExpectation a@(GetProject{}) (ApiExpectation _ requestExpectation b@(GetProject{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetRevisionDependencyCacheStatus{}) (ApiExpectation _ requestExpectation b@(GetRevisionDependencyCacheStatus{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetSignedLicenseScanUrl{}) (ApiExpectation _ requestExpectation b@(GetSignedLicenseScanUrl{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetSignedFirstPartyScanUrl{}) (ApiExpectation _ requestExpectation b@(GetSignedFirstPartyScanUrl{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetSignedUploadUrl{}) (ApiExpectation _ requestExpectation b@(GetSignedUploadUrl{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(QueueArchiveBuild{}) (ApiExpectation _ requestExpectation b@(QueueArchiveBuild{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(ResolveProjectDependencies{}) (ApiExpectation _ requestExpectation b@(ResolveProjectDependencies{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(ResolveUserDefinedBinary{}) (ApiExpectation _ requestExpectation b@(ResolveUserDefinedBinary{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadAnalysis{}) (ApiExpectation _ requestExpectation b@(UploadAnalysis{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(UploadAnalysisWithFirstPartyLicenses{}) (ApiExpectation _ requestExpectation b@(UploadAnalysisWithFirstPartyLicenses{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(UploadFirstPartyScanResult{}) (ApiExpectation _ requestExpectation b@(UploadFirstPartyScanResult{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadArchive{}) (ApiExpectation _ requestExpectation b@(UploadArchive{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadNativeContainerScan{}) (ApiExpectation _ requestExpectation b@(UploadNativeContainerScan{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadContributors{}) (ApiExpectation _ requestExpectation b@(UploadContributors{}) resp) = checkResult requestExpectation a b resp
