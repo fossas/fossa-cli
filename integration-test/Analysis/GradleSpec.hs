@@ -28,9 +28,9 @@ springBoot =
     gradleEnv
     Nothing
     $ FixtureArtifact
-      "https://github.com/spring-projects/spring-boot/archive/refs/tags/v3.0.0-M1.tar.gz"
+      "https://github.com/spring-projects/spring-boot/archive/refs/tags/v3.1.0-M1.tar.gz"
       [reldir|gradle/sample/|]
-      [reldir|spring-boot-3.0.0-M1|]
+      [reldir|spring-boot-3.1.0-M1|]
 
 gradleSettingsOnly :: AnalysisTestFixture (Gradle.GradleProject)
 gradleSettingsOnly =
@@ -47,7 +47,7 @@ gradleSettingsOnly =
 testSpringBoot :: Spec
 testSpringBoot =
   aroundAll (withAnalysisOf springBoot) $ do
-    describe "gradle-java" $ do
+    describe "gradle-java springboot" $ do
       it "should find targets" $ \(result, extractedDir) -> do
         expectProject (GradleProjectType, extractedDir) result
         length result `shouldBe` 1
@@ -55,7 +55,7 @@ testSpringBoot =
 testGradleSettingsOnly :: Spec
 testGradleSettingsOnly =
   aroundAll (withAnalysisOf gradleSettingsOnly) $ do
-    describe "gradle-java" $ do
+    describe "gradle-java gradle settings only" $ do
       it "should find targets" $ \(result, extractedDir) -> do
         expectProject (GradleProjectType, extractedDir) result
         length result `shouldBe` 1
