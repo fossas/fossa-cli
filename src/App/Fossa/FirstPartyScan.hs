@@ -20,7 +20,6 @@ import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Debug.Trace (traceM)
 import Diag.Result
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, logDebug)
@@ -101,7 +100,6 @@ firstPartyScanMain base cfg org = do
   let vdep = VendoredDependency "first-party" "." Nothing
       fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
   pathFilters <- mergePathFilters base manualDeps (licenseScanPathFilters $ vendoredDeps cfg)
-  traceM $ "filters: " ++ show pathFilters
   case runFirstPartyScans of
     (True) -> do
       _ <- logDebug "Running a first-party license scan on the code in this repository. Licenses found in this repository will show up as 'Directly in code' in the FOSSA UI"
