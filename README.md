@@ -40,15 +40,20 @@ FOSSA CLI provides an install script that downloads the latest release from GitH
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash
 ```
 
-#### Windows with Powershell
+#### Windows
 
+With newer versions of Windows and FOSSA CLI, we recommend installing via
+[winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/):
+```
+winget install FOSSA.FOSSA-cli
+```
+
+Alternately, install using our PowerShell installation script or [Scoop](https://scoop.sh/):
 ```powershell
+# Install with our PowerShell script
 Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.ps1'))
-```
-<!-- markdown-link-check-disable-next-line -->
-Alternatively, install using [Scoop](https://scoop.sh/):
 
-```
+# Or install with the Scoop package manager
 scoop install fossa
 ```
 
