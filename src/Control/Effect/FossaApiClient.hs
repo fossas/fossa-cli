@@ -19,6 +19,7 @@ module Control.Effect.FossaApiClient (
   getProject,
   getRevisionDependencyCacheStatus,
   getAnalyzedRevisions,
+  getSignedFirstPartyScanUrl,
   getSignedLicenseScanUrl,
   getSignedUploadUrl,
   getVsiInferences,
@@ -27,10 +28,12 @@ module Control.Effect.FossaApiClient (
   resolveProjectDependencies,
   resolveUserDefinedBinary,
   uploadAnalysis,
+  uploadAnalysisWithFirstPartyLicenses,
   uploadArchive,
   uploadNativeContainerScan,
   uploadContributors,
   uploadLicenseScanResult,
+  uploadFirstPartyScanResult,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
@@ -40,13 +43,14 @@ import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency)
-import App.Types (ProjectMetadata, ProjectRevision)
+import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
 import Data.ByteString.Char8 qualified as C8
 import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Text (Text)
 import Fossa.API.Types (
@@ -63,7 +67,7 @@ import Fossa.API.Types (
   UploadResponse,
  )
 import Path (File, Path, Rel)
-import Srclib.Types (LicenseSourceUnit, Locator, SourceUnit)
+import Srclib.Types (FullSourceUnit, LicenseSourceUnit, Locator, SourceUnit)
 
 -- | PackageRevisions are like ProjectRevisions, but they never have a branch.
 data PackageRevision = PackageRevision
@@ -90,6 +94,7 @@ data FossaApiClientF a where
   GetOrganization :: FossaApiClientF Organization
   GetProject :: ProjectRevision -> FossaApiClientF Project
   GetAnalyzedRevisions :: NonEmpty VendoredDependency -> FossaApiClientF [Text]
+  GetSignedFirstPartyScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetVsiInferences :: VSI.ScanID -> FossaApiClientF [Locator]
@@ -102,6 +107,11 @@ data FossaApiClientF a where
     ProjectMetadata ->
     NonEmpty SourceUnit ->
     FossaApiClientF UploadResponse
+  UploadAnalysisWithFirstPartyLicenses ::
+    ProjectRevision ->
+    ProjectMetadata ->
+    FullFileUploads ->
+    FossaApiClientF UploadResponse
   UploadArchive :: SignedURL -> FilePath -> FossaApiClientF ByteString
   UploadNativeContainerScan ::
     ProjectRevision ->
@@ -113,6 +123,7 @@ data FossaApiClientF a where
     Contributors ->
     FossaApiClientF ()
   UploadLicenseScanResult :: SignedURL -> LicenseSourceUnit -> FossaApiClientF ()
+  UploadFirstPartyScanResult :: SignedURL -> NE.NonEmpty FullSourceUnit -> FossaApiClientF ()
 
 deriving instance Show (FossaApiClientF a)
 
@@ -136,6 +147,10 @@ getApiOpts = sendSimple GetApiOpts
 -- | Uploads the results of an analysis and associates it to a project
 uploadAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NonEmpty SourceUnit -> m UploadResponse
 uploadAnalysis revision metadata units = sendSimple (UploadAnalysis revision metadata units)
+
+-- | Uploads the results of a first-party analysis and associates it to a project
+uploadAnalysisWithFirstPartyLicenses :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> FullFileUploads -> m UploadResponse
+uploadAnalysisWithFirstPartyLicenses revision metadata fullFileUploads = sendSimple (UploadAnalysisWithFirstPartyLicenses revision metadata fullFileUploads)
 
 -- | Uploads results of container analysis performed by native scanner to a project
 uploadNativeContainerScan :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NativeContainer.ContainerScan -> m UploadResponse
@@ -175,6 +190,9 @@ assertUserDefinedBinaries meta fprints = sendSimple (AssertUserDefinedBinaries m
 getAnalyzedRevisions :: Has FossaApiClient sig m => NonEmpty VendoredDependency -> m ([Text])
 getAnalyzedRevisions = sendSimple . GetAnalyzedRevisions
 
+getSignedFirstPartyScanUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
+getSignedFirstPartyScanUrl = sendSimple . GetSignedFirstPartyScanUrl
+
 getSignedLicenseScanUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
 getSignedLicenseScanUrl = sendSimple . GetSignedLicenseScanUrl
 
@@ -183,6 +201,9 @@ finalizeLicenseScan = sendSimple . FinalizeLicenseScan
 
 uploadLicenseScanResult :: Has FossaApiClient sig m => SignedURL -> LicenseSourceUnit -> m ()
 uploadLicenseScanResult signedUrl licenseSourceUnit = sendSimple (UploadLicenseScanResult signedUrl licenseSourceUnit)
+
+uploadFirstPartyScanResult :: Has FossaApiClient sig m => SignedURL -> NE.NonEmpty FullSourceUnit -> m ()
+uploadFirstPartyScanResult signedUrl fullSourceUnits = sendSimple (UploadFirstPartyScanResult signedUrl fullSourceUnits)
 
 resolveUserDefinedBinary :: Has FossaApiClient sig m => IAT.UserDep -> m IAT.UserDefinedAssertionMeta
 resolveUserDefinedBinary = sendSimple . ResolveUserDefinedBinary

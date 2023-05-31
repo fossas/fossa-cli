@@ -1,14 +1,20 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.Analyze.Upload (
+  mergeSourceAndLicenseUnits,
   uploadSuccessfulAnalysis,
+  ScanUnits (..),
 ) where
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
 import App.Types (
   BaseDir (BaseDir),
+  FullFileUploads (FullFileUploads),
   ProjectMetadata,
-  ProjectRevision (projectBranch, projectName, projectRevision),
+  ProjectRevision (..),
  )
+import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
@@ -18,9 +24,14 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.FossaApiClient (
   FossaApiClient,
+  PackageRevision (..),
+  getOrganization,
   getProject,
+  getSignedFirstPartyScanUrl,
   uploadAnalysis,
+  uploadAnalysisWithFirstPartyLicenses,
   uploadContributors,
+  uploadFirstPartyScanResult,
  )
 import Control.Effect.Git (Git, fetchGitContributors)
 import Control.Effect.Lift (Lift)
@@ -38,18 +49,40 @@ import Effect.Logger (
   Has,
   Logger,
   Pretty (pretty),
+  Severity (SevInfo),
   logError,
   logInfo,
   logStdout,
   viaShow,
  )
-import Fossa.API.Types (Project (projectIsMonorepo), UploadResponse (uploadError, uploadLocator))
+import Fossa.API.Types (Organization (orgRequiresFullFileUploads), Project (projectIsMonorepo), UploadResponse (..))
 import Path (Abs, Dir, Path)
 import Srclib.Types (
-  Locator (locatorProject, locatorRevision),
+  FullSourceUnit,
+  LicenseSourceUnit (..),
+  Locator (..),
   SourceUnit,
+  licenseUnitToFullSourceUnit,
   renderLocator,
+  sourceUnitToFullSourceUnit,
  )
+
+data ScanUnits
+  = SourceUnitOnly (NE.NonEmpty SourceUnit)
+  | LicenseSourceUnitOnly LicenseSourceUnit
+  | SourceAndLicenseUnits (NE.NonEmpty SourceUnit) LicenseSourceUnit
+
+-- units come from standard `fossa analyze`.
+-- LicenseSourceUnit comes from running a first-party license scan on the project
+-- merge these into an array before uploading to S3
+mergeSourceAndLicenseUnits :: [SourceUnit] -> LicenseSourceUnit -> NE.NonEmpty FullSourceUnit
+mergeSourceAndLicenseUnits units LicenseSourceUnit{..} =
+  -- Replace with `NE.prependList fromLicenseUnits fromSourceUnits` after upgrading to > 4.16
+  -- https://hackage.haskell.org/package/base-4.18.0.0/docs/Data-List-NonEmpty.html#v:prependList
+  foldr NE.cons fromLicenseUnits fromSourceUnits
+  where
+    fromSourceUnits = map sourceUnitToFullSourceUnit units
+    fromLicenseUnits = NE.map licenseUnitToFullSourceUnit licenseSourceUnitLicenseUnits
 
 uploadSuccessfulAnalysis ::
   ( Has Diagnostics sig m
@@ -62,9 +95,9 @@ uploadSuccessfulAnalysis ::
   ProjectMetadata ->
   Flag JsonOutput ->
   ProjectRevision ->
-  NE.NonEmpty SourceUnit ->
+  ScanUnits ->
   m Locator
-uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units =
+uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits =
   context "Uploading analysis" $ do
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
@@ -74,7 +107,18 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units =
 
     dieOnMonorepoUpload revision
 
-    uploadResult <- uploadAnalysis revision metadata units
+    uploadResult <- case scanUnits of
+      SourceUnitOnly units -> uploadAnalysis revision metadata units
+      LicenseSourceUnitOnly licenseSourceUnit -> do
+        org <- getOrganization
+        let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
+        let mergedUnits = mergeSourceAndLicenseUnits [] licenseSourceUnit
+        runStickyLogger SevInfo $ uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads
+      SourceAndLicenseUnits sourceUnits licenseSourceUnit -> do
+        org <- getOrganization
+        let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
+        let mergedUnits = mergeSourceAndLicenseUnits (NE.toList sourceUnits) licenseSourceUnit
+        runStickyLogger SevInfo $ uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads
     let locator = uploadLocator uploadResult
     buildUrl <- getFossaBuildUrl revision locator
     traverse_
@@ -97,6 +141,33 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision units =
       logStdout . decodeUtf8 $ Aeson.encode summary
 
     pure locator
+
+uploadAnalysisWithFirstPartyLicensesToS3AndCore ::
+  ( Has Diagnostics sig m
+  , Has FossaApiClient sig m
+  , Has StickyLogger sig m
+  ) =>
+  ProjectRevision ->
+  ProjectMetadata ->
+  NE.NonEmpty FullSourceUnit ->
+  FullFileUploads ->
+  m UploadResponse
+uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads = do
+  _ <- uploadAnalysisWithFirstPartyLicensesToS3 revision mergedUnits
+  uploadAnalysisWithFirstPartyLicenses revision metadata fullFileUploads
+
+uploadAnalysisWithFirstPartyLicensesToS3 ::
+  ( Has Diagnostics sig m
+  , Has FossaApiClient sig m
+  , Has StickyLogger sig m
+  ) =>
+  ProjectRevision ->
+  NE.NonEmpty FullSourceUnit ->
+  m ()
+uploadAnalysisWithFirstPartyLicensesToS3 revision mergedUnits = do
+  signedURL <- getSignedFirstPartyScanUrl $ PackageRevision{packageVersion = projectRevision revision, packageName = projectName revision}
+  logSticky $ "Uploading '" <> projectName revision <> "' to secure S3 bucket"
+  uploadFirstPartyScanResult signedURL mergedUnits
 
 dieOnMonorepoUpload :: (Has Diagnostics sig m, Has FossaApiClient sig m) => ProjectRevision -> m ()
 dieOnMonorepoUpload revision = do
