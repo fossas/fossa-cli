@@ -168,7 +168,7 @@ collectScanDestination maybeCfgFile envvars ContainerAnalyzeOptions{..} =
     then pure OutputStdout
     else do
       apiOpts <- collectApiOpts maybeCfgFile envvars analyzeCommons
-      let metaMerged = collectAPIMetadata maybeCfgFile containerMetadata
+      metaMerged <- collectAPIMetadata maybeCfgFile containerMetadata
       pure $ UploadScan apiOpts metaMerged
 
 collectFilters :: Maybe ConfigFile -> AllFilters

@@ -59,6 +59,7 @@ import App.Support (
  )
 import App.Types (
   FullFileUploads (FullFileUploads),
+  Policy (..),
   ProjectMetadata (..),
   ProjectRevision (..),
   ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
@@ -657,11 +658,15 @@ mkMetadataOpts ProjectMetadata{..} projectName = mconcat totalOptions
       , ("jiraProjectKey" =:) <$> projectJiraKey
       , ("link" =:) <$> projectLink
       , ("team" =:) <$> projectTeam
-      , ("policy" =:) <$> projectPolicy
+      , policyOpt <$> projectPolicy
       , ("releaseGroup" =:) . releaseGroupName <$> projectReleaseGroup
       , ("releaseGroupRelease" =:) . releaseGroupRelease <$> projectReleaseGroup
       , ("title" =:) <$> title
       ]
+
+    policyOpt (PolicyName n) = ("policy" =: n)
+    policyOpt (PolicyId i) = ("policyId" =: i)
+
     labelOptions = map ("labels[]" =:) projectLabel
     totalOptions = catMaybes maybeOptions ++ labelOptions
 

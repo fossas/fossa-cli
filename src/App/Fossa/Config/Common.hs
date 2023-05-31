@@ -66,6 +66,7 @@ import App.OptionExtensions (uriOption)
 import App.Types (
   BaseDir (BaseDir),
   OverrideProject (..),
+  Policy (..),
   ProjectMetadata (ProjectMetadata),
   ProjectRevision,
   ReleaseGroupMetadata (ReleaseGroupMetadata),
@@ -101,12 +102,14 @@ import Options.Applicative (
   Parser,
   ReadM,
   argument,
+  auto,
   eitherReader,
   help,
   long,
   metavar,
   option,
   optional,
+  readerError,
   short,
   str,
   strOption,
@@ -138,6 +141,9 @@ data CacheAction
 defaultTimeoutDuration :: Duration
 defaultTimeoutDuration = Minutes 60
 
+readMWithError :: Read a => String -> ReadM a
+readMWithError errMsg = auto <|> readerError errMsg
+
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =
   ProjectMetadata
@@ -146,9 +152,23 @@ metadataOpts =
     <*> optional (strOption (long "jira-project-key" <> short 'j' <> help "this repository's JIRA project key"))
     <*> optional (strOption (long "link" <> short 'L' <> help "a link to attach to the current build"))
     <*> optional (strOption (long "team" <> short 'T' <> help "this repository's team inside your organization"))
-    <*> optional (strOption (long "policy" <> help "the policy to assign to this project in FOSSA"))
+    <*> parsePolicyOptions
     <*> many (strOption (long "project-label" <> help "assign up to 5 labels to the project"))
     <*> optional releaseGroupMetadataOpts
+  where
+    policy :: Parser Policy
+    policy = PolicyName <$> (strOption (long "policy" <> help "The name of the policy to assign to this project in FOSSA. Mutually excludes --policy-id."))
+
+    policyId :: Parser Policy
+    policyId =
+      PolicyId
+        <$> ( option
+                (readMWithError "failed to parse --policy-id, expecting int")
+                (long "policy-id" <> help "The id of the policy to assign to this project in FOSSA. Mutually excludes --policy.")
+            )
+
+    parsePolicyOptions :: Parser (Maybe Policy)
+    parsePolicyOptions = optional (policy <|> policyId) -- For Parsers '<|>' tries every alternative and fails if they all succeed.
 
 releaseGroupMetadataOpts :: Parser ReleaseGroupMetadata
 releaseGroupMetadataOpts =
@@ -302,8 +322,8 @@ collectRevisionData' basedir cfg cache override = do
   basedir' <- errCtx ("Cannot collect revision data without a valid base directory" :: Text) basedir
   collectRevisionData basedir' cfg cache override
 
-collectAPIMetadata :: Maybe ConfigFile -> ProjectMetadata -> ProjectMetadata
-collectAPIMetadata cfgfile cliMeta = maybe cliMeta (mergeFileCmdMetadata cliMeta) cfgfile
+collectAPIMetadata :: Has Diagnostics sig m => Maybe ConfigFile -> ProjectMetadata -> m ProjectMetadata
+collectAPIMetadata cfgfile cliMeta = maybe (pure cliMeta) (mergeFileCmdMetadata cliMeta) cfgfile
 
 collectTelemetrySink :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> Maybe CommonOpts -> m (Maybe TelemetrySink)
 collectTelemetrySink maybeConfigFile envvars maybeOpts = do
