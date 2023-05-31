@@ -1,10 +1,14 @@
 # FOSSA CLI Changelog
 
-<!-- - title: description ([#](https://github.com/fossas/fossa-cli/pull/#)) -->
-## Unreleased
+## v3.8
+- License Scanning: You can license scan your first-party code with the `--experimental-force-first-party-scans` flag ([#1187](https://github.com/fossas/fossa-cli/pull/1187))
+- Network requests: `fossa-cli` retries network requests, if it experiences timeout error. ([#1203](https://github.com/fossas/fossa-cli/pull/1203))
+- Monorepo is no longer a supported feature of FOSSA. ([#1202](https://github.com/fossas/fossa-cli/pull/1202))
+- `experimental-enable-binary-discovery`, `detect-vendored`: Redact file contents in debug bundles. ([#1201](https://github.com/fossas/fossa-cli/pull/1201))
 - `setup.cfg`: Adds support for setup.cfg, in conjuction with `setup.py`. ([#1195](https://github.com/fossas/fossa-cli/pull/1195))
 - Default Filters: Default filters are applied prior to analysis. Improves overall runtime performance. ([#1193](https://github.com/fossas/fossa-cli/pull/1194))
 - Setup.py: Fixes an defect with `setup.py` parser, caused by failing to account for line comments or backslash. ([#1191](https://github.com/fossas/fossa-cli/pull/1191))
+- Doc only: Fixed an issue in the `fossa-deps` schema suggesting against the use of `name` for referenced RPM dependencies. If your editor utilizes SchemaStore, this file should now lint properly after this change propagates. ([#1199](https://github.com/fossas/fossa-cli/pull/1199)).
 
 ## v3.7.11
 - `fossa-deps.yml`: Adds strict parsing to so that required field with only whitespace strings are prohibited early. Also throws an error, if incompatible character is used in vendor dependency's version field. ([#1192](https://github.com/fossas/fossa-cli/pull/1192))

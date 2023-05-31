@@ -156,7 +156,6 @@ type Stdout = BL.ByteString
 
 type Stderr = BL.ByteString
 
--- TODO: add a "shell command" method; this would help in App.Fossa.VPS.NinjaGraph
 data ExecF a where
   -- | Exec runs a command and returns either:
   -- - stdout when the command succeeds

@@ -5,9 +5,10 @@ module App.Types (
   ProjectMetadata (..),
   ReleaseGroupMetadata (..),
   ProjectRevision (..),
-  MonorepoAnalysisOpts (..),
   OverrideDynamicAnalysisBinary (..),
   FullFileUploads (..),
+  FirstPartyScansFlag (..),
+  fullFileUploadsToCliLicenseScanType,
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, withObject, (.:))
@@ -63,14 +64,6 @@ instance FromJSON ReleaseGroupMetadata where
       <*> obj
         .: "release"
 
-newtype MonorepoAnalysisOpts = MonorepoAnalysisOpts
-  { monorepoAnalysisType :: Maybe Text
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToJSON MonorepoAnalysisOpts where
-  toEncoding = genericToEncoding defaultOptions
-
 data ProjectRevision = ProjectRevision
   { projectName :: Text
   , projectRevision :: Text
@@ -103,3 +96,12 @@ instance Monoid OverrideDynamicAnalysisBinary where
   mempty = OverrideDynamicAnalysisBinary mempty
 
 newtype FullFileUploads = FullFileUploads {unFullFileUploads :: Bool} deriving (Eq, Ord, Show, Generic)
+fullFileUploadsToCliLicenseScanType :: FullFileUploads -> Text
+fullFileUploadsToCliLicenseScanType (FullFileUploads True) = "full_files"
+fullFileUploadsToCliLicenseScanType (FullFileUploads False) = "match_data"
+
+data FirstPartyScansFlag = FirstPartyScansOnFromFlag | FirstPartyScansOffFromFlag | FirstPartyScansUseDefault
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON FirstPartyScansFlag where
+  toEncoding = genericToEncoding defaultOptions
