@@ -7,6 +7,7 @@
 - `experimental-enable-binary-discovery`, `detect-vendored`: Redact file contents in debug bundles. ([#1201](https://github.com/fossas/fossa-cli/pull/1201))
 - `setup.cfg`: Adds support for setup.cfg, in conjuction with `setup.py`. ([#1195](https://github.com/fossas/fossa-cli/pull/1195))
 - Default Filters: Default filters are applied prior to analysis. Improves overall runtime performance. ([#1193](https://github.com/fossas/fossa-cli/pull/1194))
+- `.fossa.yml` and CLI args: Allow setting a policy by id in addition to by name. ([#1203](https://github.com/fossas/fossa-cli/pull/1203))
 - Doc only: Fixed an issue in the `fossa-deps` schema suggesting against the use of `name` for referenced RPM dependencies. If your editor utilizes SchemaStore, this file should now lint properly after this change propagates. ([#1199](https://github.com/fossas/fossa-cli/pull/1199)).
 
 ## v3.7.11

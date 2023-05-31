@@ -20,7 +20,7 @@ module App.Fossa.Config.ConfigFile (
 ) where
 
 import App.Docs (fossaYmlDocUrl)
-import App.Types (ProjectMetadata (..), ReleaseGroupMetadata)
+import App.Types (Policy (..), ProjectMetadata (..), ReleaseGroupMetadata)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -157,18 +157,29 @@ resolveLocation base (Just filepath) = do
       Abs path -> path
       Rel path -> base </> path
 
-mergeFileCmdMetadata :: ProjectMetadata -> ConfigFile -> ProjectMetadata
-mergeFileCmdMetadata meta file =
-  ProjectMetadata
-    { projectTitle = projectTitle meta <|> (configProject file >>= configName)
-    , projectUrl = projectUrl meta <|> (configProject file >>= configUrl)
-    , projectJiraKey = projectJiraKey meta <|> (configProject file >>= configJiraKey)
-    , projectLink = projectLink meta <|> (configProject file >>= configLink)
-    , projectTeam = projectTeam meta <|> (configProject file >>= configTeam)
-    , projectPolicy = projectPolicy meta <|> (configProject file >>= configPolicy)
-    , projectLabel = projectLabel meta <|> (maybe [] configLabel (configProject file))
-    , projectReleaseGroup = projectReleaseGroup meta <|> (configProject file >>= configReleaseGroup)
-    }
+mergeFileCmdMetadata :: Has Diagnostics sig m => ProjectMetadata -> ConfigFile -> m ProjectMetadata
+mergeFileCmdMetadata meta cfgFile =
+  case (metaPolicy, cfgFilePolicy) of
+    (Just (PolicyId _), Just (PolicyName _)) -> err
+    (Just (PolicyName _), Just (PolicyId _)) -> err
+    _ -> pure . mkMeta $ metaPolicy <|> cfgFilePolicy
+  where
+    err = fatalText "Only one of policy or policyId can be set. Check your cli options and .fossa.yml to ensure you aren't specifying both."
+    metaPolicy = projectPolicy meta
+    cfgFilePolicy = configProject cfgFile >>= configPolicy
+
+    mkMeta :: Maybe Policy -> ProjectMetadata
+    mkMeta policy =
+      ProjectMetadata
+        { projectTitle = projectTitle meta <|> (configProject cfgFile >>= configName)
+        , projectUrl = projectUrl meta <|> (configProject cfgFile >>= configUrl)
+        , projectJiraKey = projectJiraKey meta <|> (configProject cfgFile >>= configJiraKey)
+        , projectLink = projectLink meta <|> (configProject cfgFile >>= configLink)
+        , projectTeam = projectTeam meta <|> (configProject cfgFile >>= configTeam)
+        , projectPolicy = policy
+        , projectLabel = projectLabel meta <|> (maybe [] configLabel (configProject cfgFile))
+        , projectReleaseGroup = projectReleaseGroup meta <|> (configProject cfgFile >>= configReleaseGroup)
+        }
 
 empty :: ConfigFile
 empty = ConfigFile 3 Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
@@ -194,9 +205,10 @@ data ConfigProject = ConfigProject
   , configTeam :: Maybe Text
   , configJiraKey :: Maybe Text
   , configUrl :: Maybe Text
-  , configPolicy :: Maybe Text
+  , configPolicy :: Maybe Policy
   , configLabel :: [Text]
   , configReleaseGroup :: Maybe ReleaseGroupMetadata
+  , configPolicyId :: Maybe Int
   }
   deriving (Eq, Ord, Show)
 
@@ -259,9 +271,17 @@ instance FromJSON ConfigProject where
       <*> obj .:? "team"
       <*> obj .:? "jiraProjectKey"
       <*> obj .:? "url"
-      <*> obj .:? "policy"
+      <*> parsePolicy obj
       <*> obj .:? "labels" .!= []
       <*> obj .:? "releaseGroup"
+      <*> obj .:? "policyId"
+    where
+      parsePolicy obj = do
+        pName <- obj .:? "policy"
+        pId <- obj .:? "policyId"
+        case (pName, pId) of
+          (Just _, Just _) -> fail "Only one of 'policy' or 'policyId' can be set at a time."
+          _ -> pure $ (PolicyName <$> pName) <|> (PolicyId <$> pId)
 
 instance FromJSON ConfigRevision where
   parseJSON = withObject "ConfigRevision" $ \obj ->
