@@ -4,6 +4,7 @@
 
 module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   uploadAnalysis,
+  uploadAnalysisWithFirstPartyLicenses,
   uploadContributors,
   uploadNativeContainerScan,
   mkMetadataOpts,
@@ -14,6 +15,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getAttribution,
   getAnalyzedRevisions,
   getRevisionDependencyCacheStatus,
+  getSignedFirstPartyScanURL,
   getSignedLicenseScanURL,
   getSignedURL,
   getProject,
@@ -32,6 +34,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   vsiDownloadInferences,
   renderLocatorUrl,
   getEndpointVersion,
+  firstPartyScanResultUpload,
 ) where
 
 import App.Docs (fossaSslCertDocsUrl)
@@ -60,6 +63,7 @@ import App.Types (
   ProjectMetadata (..),
   ProjectRevision (..),
   ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
+  fullFileUploadsToCliLicenseScanType,
  )
 import App.Version (versionNumber)
 import Codec.Compression.GZip qualified as GZIP
@@ -159,6 +163,7 @@ import Parse.XML (FromXML (..), child, parseXML, xmlErrorPretty)
 import Path (File, Path, Rel, toFilePath)
 import Prettyprinter (viaShow)
 import Srclib.Types (
+  FullSourceUnit,
   LicenseSourceUnit,
   Locator (..),
   SourceUnit,
@@ -243,6 +248,9 @@ cliVersion = fromMaybe "" versionNumber
 
 uploadUrl :: Url scheme -> Url scheme
 uploadUrl baseurl = baseurl /: "api" /: "builds" /: "custom"
+
+uploadWithFirstPartyUrl :: Url scheme -> Url scheme
+uploadWithFirstPartyUrl baseurl = baseurl /: "api" /: "builds" /: "custom_with_first_party"
 
 -- | This renders an organization + locator into a path piece for the fossa API
 renderLocatorUrl :: OrgId -> Locator -> Text
@@ -616,6 +624,31 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
   resp <- req POST (uploadUrl baseUrl) (ReqBodyJson $ NE.toList sourceUnits) jsonResponse (baseOpts <> opts)
   pure (responseBody resp)
 
+uploadAnalysisWithFirstPartyLicenses ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  ProjectMetadata ->
+  FullFileUploads ->
+  m UploadResponse
+uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata fullFileUploads = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts =
+        "locator"
+          =: renderLocator (Locator "custom" projectName (Just projectRevision))
+          <> "cliVersion"
+            =: cliVersion
+          <> "managedBuild"
+            =: True
+          <> "cliLicenseScanType"
+            =: (fullFileUploadsToCliLicenseScanType fullFileUploads)
+          <> mkMetadataOpts metadata projectName
+          -- Don't include branch if it doesn't exist, core may not handle empty string properly.
+          <> maybe mempty ("branch" =:) projectBranch
+  resp <- req POST (uploadWithFirstPartyUrl baseUrl) (NoReqBody) jsonResponse (baseOpts <> opts)
+  pure (responseBody resp)
+
 mkMetadataOpts :: ProjectMetadata -> Text -> Option scheme
 mkMetadataOpts ProjectMetadata{..} projectName = mconcat totalOptions
   where
@@ -863,6 +896,27 @@ getSignedURL apiOpts revision packageName = fossaReq $ do
       req GET (signedURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
   pure (responseBody response)
 
+---------- The signed First-Party Scan URL endpoint returns a URL endpoint that can be used to directly upload the results of a first-party scan to an S3 bucket.
+
+signedFirstPartyScanURLEndpoint :: Url 'Https -> Url 'Https
+signedFirstPartyScanURLEndpoint baseUrl = baseUrl /: "api" /: "first_party_scan" /: "signed_url"
+
+getSignedFirstPartyScanURL ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  Text ->
+  Text ->
+  m SignedURL
+getSignedFirstPartyScanURL apiOpts revision packageName = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts = "packageSpec" =: packageName <> "revision" =: revision
+
+  response <-
+    context ("Retrieving a signed S3 URL for license scan results of " <> packageName) $
+      req GET (signedFirstPartyScanURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
+  pure (responseBody response)
+
 ---------- The signed License Scan URL endpoint returns a URL endpoint that can be used to directly upload the results of a license scan to an S3 bucket.
 
 signedLicenseScanURLEndpoint :: Url 'Https -> Url 'Https
@@ -911,18 +965,41 @@ licenseScanResultUpload ::
   SignedURL ->
   LicenseSourceUnit ->
   m LbsResponse
-licenseScanResultUpload signedArcURI licenseScanResult = fossaReq $ do
-  let arcURL = URI.mkURI $ signedURL signedArcURI
+licenseScanResultUpload signedUploadURI licenseScanResult = fossaReq $ do
+  let uploadURL = URI.mkURI $ signedURL signedUploadURI
 
-  uri <- fromMaybeText ("Invalid URL: " <> signedURL signedArcURI) arcURL
+  uri <- fromMaybeText ("Invalid URL: " <> signedURL signedUploadURI) uploadURL
   validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
 
-  context ("Uploading license scan result to " <> signedURL signedArcURI) $ case validatedURI of
+  context ("Uploading license scan result to " <> signedURL signedUploadURI) $ case validatedURI of
     Left (httpUrl, httpOptions) -> uploadArchiveRequest httpUrl httpOptions
     Right (httpsUrl, httpsOptions) -> uploadArchiveRequest httpsUrl httpsOptions
   where
     zippedLicenseResult :: BS.ByteString
     zippedLicenseResult = toStrict $ GZIP.compress $ encode licenseScanResult
+    -- We send gzipped json, so we can't use req's JSON utilities.
+    uploadArchiveRequest :: (MonadHttp m) => Url scheme -> Option scheme -> m LbsResponse
+    uploadArchiveRequest url options = reqCb PUT url (ReqBodyBs zippedLicenseResult) lbsResponse options (pure . requestEncoder)
+
+---------- The first-party scan result upload function uploads the JSON license result directly to the signed URL it is provided.
+
+firstPartyScanResultUpload ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  SignedURL ->
+  NE.NonEmpty FullSourceUnit ->
+  m LbsResponse
+firstPartyScanResultUpload signedUploadURI firstPartyScanResult = fossaReq $ do
+  let uploadURL = URI.mkURI $ signedURL signedUploadURI
+
+  uri <- fromMaybeText ("Invalid URL: " <> signedURL signedUploadURI) uploadURL
+  validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
+
+  context ("Uploading first-party scan result to " <> signedURL signedUploadURI) $ case validatedURI of
+    Left (httpUrl, httpOptions) -> uploadArchiveRequest httpUrl httpOptions
+    Right (httpsUrl, httpsOptions) -> uploadArchiveRequest httpsUrl httpsOptions
+  where
+    zippedLicenseResult :: BS.ByteString
+    zippedLicenseResult = toStrict $ GZIP.compress $ encode firstPartyScanResult
     -- We send gzipped json, so we can't use req's JSON utilities.
     uploadArchiveRequest :: (MonadHttp m) => Url scheme -> Option scheme -> m LbsResponse
     uploadArchiveRequest url options = reqCb PUT url (ReqBodyBs zippedLicenseResult) lbsResponse options (pure . requestEncoder)

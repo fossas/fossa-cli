@@ -8,6 +8,8 @@ module App.Types (
   OverrideDynamicAnalysisBinary (..),
   Policy (..),
   FullFileUploads (..),
+  FirstPartyScansFlag (..),
+  fullFileUploadsToCliLicenseScanType,
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, withObject, (.:))
@@ -103,3 +105,12 @@ instance Monoid OverrideDynamicAnalysisBinary where
   mempty = OverrideDynamicAnalysisBinary mempty
 
 newtype FullFileUploads = FullFileUploads {unFullFileUploads :: Bool} deriving (Eq, Ord, Show, Generic)
+fullFileUploadsToCliLicenseScanType :: FullFileUploads -> Text
+fullFileUploadsToCliLicenseScanType (FullFileUploads True) = "full_files"
+fullFileUploadsToCliLicenseScanType (FullFileUploads False) = "match_data"
+
+data FirstPartyScansFlag = FirstPartyScansOnFromFlag | FirstPartyScansOffFromFlag | FirstPartyScansUseDefault
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON FirstPartyScansFlag where
+  toEncoding = genericToEncoding defaultOptions

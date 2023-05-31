@@ -11,6 +11,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   getSignedUploadUrl,
   queueArchiveBuild,
   uploadAnalysis,
+  uploadAnalysisWithFirstPartyLicenses,
   uploadArchive,
   uploadNativeContainerScan,
   uploadContributors,
@@ -20,7 +21,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Config.Test (DiffRevision)
 import App.Fossa.VendoredDependency (VendoredDependency (..))
-import App.Types (ProjectMetadata, ProjectRevision (..))
+import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision (..))
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
@@ -93,6 +94,19 @@ uploadAnalysis ::
 uploadAnalysis revision metadata units = do
   apiOpts <- ask
   API.uploadAnalysis apiOpts revision metadata units
+
+uploadAnalysisWithFirstPartyLicenses ::
+  ( Has (Lift IO) sig m
+  , Has (Reader ApiOpts) sig m
+  , Has Diagnostics sig m
+  ) =>
+  ProjectRevision ->
+  ProjectMetadata ->
+  FullFileUploads ->
+  m UploadResponse
+uploadAnalysisWithFirstPartyLicenses revision metadata fullFileUploads = do
+  apiOpts <- ask
+  API.uploadAnalysisWithFirstPartyLicenses apiOpts revision metadata fullFileUploads
 
 uploadNativeContainerScan ::
   ( Has (Lift IO) sig m

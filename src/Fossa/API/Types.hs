@@ -27,6 +27,7 @@ module Fossa.API.Types (
   UploadResponse (..),
   useApiOpts,
   defaultApiPollDelay,
+  blankOrganization,
 ) where
 
 import App.Types (FullFileUploads (..))
@@ -468,8 +469,26 @@ data Organization = Organization
   , orgSupportsNativeContainerScan :: Bool
   , orgSupportsDependenciesCachePolling :: Bool
   , orgRequiresFullFileUploads :: Bool
+  , orgDefaultsToFirstPartyScans :: Bool
+  , orgSupportsFirstPartyScans :: Bool
   }
   deriving (Eq, Ord, Show)
+
+blankOrganization :: Organization
+blankOrganization =
+  Organization
+    { organizationId = OrgId 0
+    , orgUsesSAML = False
+    , orgCoreSupportsLocalLicenseScan = True
+    , orgSupportsAnalyzedRevisionsQuery = True
+    , orgDefaultVendoredDependencyScanType = CLILicenseScan
+    , orgSupportsIssueDiffs = True
+    , orgSupportsNativeContainerScan = True
+    , orgSupportsDependenciesCachePolling = True
+    , orgRequiresFullFileUploads = False
+    , orgDefaultsToFirstPartyScans = False
+    , orgSupportsFirstPartyScans = True
+    }
 
 instance FromJSON Organization where
   parseJSON = withObject "Organization" $ \obj ->
@@ -499,6 +518,12 @@ instance FromJSON Organization where
         .!= False
       <*> obj
         .:? "requireFullFileUploads"
+        .!= False
+      <*> obj
+        .:? "defaultToFirstPartyScans"
+        .!= False
+      <*> obj
+        .:? "supportsFirstPartyScans"
         .!= False
 
 data Project = Project
