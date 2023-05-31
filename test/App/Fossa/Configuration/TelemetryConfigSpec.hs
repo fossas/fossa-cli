@@ -36,6 +36,8 @@ defaultEnvVars =
     , envTelemetryScope = Nothing
     , envDockerHost = Nothing
     , envCmdOverrides = mempty
+    , envSystemPath = mempty
+    , envSystemPathExt = mempty
     }
 
 defaultCommonOpts :: CommonOpts

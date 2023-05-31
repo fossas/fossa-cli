@@ -24,6 +24,8 @@ import App.Fossa.Subcommand (GetCommonOpts, GetSeverity, SubCommand (SubCommand)
 import App.Types (
   BaseDir (..),
   OverrideDynamicAnalysisBinary,
+  SystemPath,
+  SystemPathExt,
  )
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (debugMetadata, ignoreDebug)
@@ -126,6 +128,8 @@ analyzeForLog4j basedir = do
   runReader withoutAnyExperimentalPreferences
     . runReader (mempty :: AllFilters)
     . runReader (mempty :: OverrideDynamicAnalysisBinary)
+    . runReader (mempty :: SystemPath)
+    . runReader (mempty :: SystemPathExt)
     . ignoreDebug
     $ do
       (projectResults, ()) <-
@@ -177,6 +181,8 @@ runDependencyAnalysisForLog4j ::
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   , Has (Reader AllFilters) sig m
   , Has (Reader OverrideDynamicAnalysisBinary) sig m
+  , Has (Reader SystemPath) sig m
+  , Has (Reader SystemPathExt) sig m
   , Has Stack sig m
   , Has Telemetry sig m
   ) =>

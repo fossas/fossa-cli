@@ -6,10 +6,14 @@ module App.Util (
   SupportedOS (..),
   runningInOS,
   whenRuningInOS,
+  userOverrideCommand,
 ) where
 
 import App.Types
 import Control.Monad (unless, when)
+import Data.Map qualified as Map
+import Data.Text (Text)
+import DepTypes (DepType)
 import Path (Abs, File, Path)
 import Path.IO qualified as P
 import System.Exit (die)
@@ -54,3 +58,7 @@ runningInOS = (SysInfo.os ==) . osName
 -- | Run the applicative function when the current program is executing inside the specified operating system.
 whenRuningInOS :: Applicative f => SupportedOS -> f () -> f ()
 whenRuningInOS os = when (runningInOS os)
+
+-- | Get the user override command for a given dependency type.
+userOverrideCommand :: DepType -> OverrideDynamicAnalysisBinary -> Maybe Text
+userOverrideCommand depType = Map.lookup depType . unOverrideDynamicAnalysisBinary

@@ -14,7 +14,6 @@ import Control.Effect.Diagnostics (
   warnOnErr,
   (<||>),
  )
-import Control.Effect.Lift (Lift)
 import Control.Monad (when)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
@@ -27,16 +26,15 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Effect.Exec (CandidateCommandEffs)
 import Effect.Grapher (Grapher, edge, evalGrapher)
 import Effect.Grapher qualified as Grapher
-import Effect.ReadFS (ReadFS)
 import Graphing (Graphing, shrinkRoots)
 import Path (Abs, Dir, Path)
 import Strategy.Maven.Plugin (
   Artifact (..),
   DepGraphPlugin,
   Edge (..),
+  MavenEffs,
   PluginOutput (..),
   ReactorOutput (ReactorOutput),
   depGraphPlugin,
@@ -52,44 +50,19 @@ import Strategy.Maven.Plugin (
  )
 import Types (GraphBreadth (..))
 
-analyze' ::
-  ( CandidateCommandEffs sig m
-  , Has (Lift IO) sig m
-  , Has ReadFS sig m
-  ) =>
-  Path Abs Dir ->
-  m (Graphing Dependency, GraphBreadth)
+analyze' :: MavenEffs sig m => Path Abs Dir -> m (Graphing Dependency, GraphBreadth)
 analyze' dir = analyze dir depGraphPlugin
 
-analyzeLegacy' ::
-  ( CandidateCommandEffs sig m
-  , Has (Lift IO) sig m
-  , Has ReadFS sig m
-  ) =>
-  Path Abs Dir ->
-  m (Graphing Dependency, GraphBreadth)
+analyzeLegacy' :: MavenEffs sig m => Path Abs Dir -> m (Graphing Dependency, GraphBreadth)
 analyzeLegacy' dir = analyze dir depGraphPluginLegacy
 
-runReactor ::
-  ( CandidateCommandEffs sig m
-  , Has ReadFS sig m
-  ) =>
-  Path Abs Dir ->
-  DepGraphPlugin ->
-  m ReactorOutput
+runReactor :: MavenEffs sig m => Path Abs Dir -> DepGraphPlugin -> m ReactorOutput
 runReactor dir plugin =
   context "Running plugin to get submodule names" $
     warnOnErr MayIncludeSubmodule (execPluginReactor dir plugin >> parseReactorOutput dir)
       <||> pure (ReactorOutput [])
 
-analyze ::
-  ( CandidateCommandEffs sig m
-  , Has (Lift IO) sig m
-  , Has ReadFS sig m
-  ) =>
-  Path Abs Dir ->
-  DepGraphPlugin ->
-  m (Graphing Dependency, GraphBreadth)
+analyze :: MavenEffs sig m => Path Abs Dir -> DepGraphPlugin -> m (Graphing Dependency, GraphBreadth)
 analyze dir plugin = do
   graph <- withUnpackedPlugin plugin $ \filepath -> do
     context "Installing plugin" $ errCtx MvnPluginInstallFailed $ installPlugin dir filepath plugin

@@ -11,6 +11,7 @@ module App.Fossa.Analyze.Types (
 
 import App.Fossa.Analyze.Project (ProjectResult)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
+import App.Types (OverrideDynamicAnalysisBinary, SystemPath, SystemPathExt)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Effect.Lift (Lift)
@@ -20,7 +21,7 @@ import Data.Set (Set)
 import Data.Text (Text)
 import Diag.Result (Result (Failure, Success))
 import Discovery.Filters (AllFilters)
-import Effect.Exec (CandidateCommandEffs, Exec)
+import Effect.Exec (Exec)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path)
@@ -46,7 +47,11 @@ type DiscoverTaskEffs sig m =
 
 -- | Effects needed to analyze projects dynamically.
 type AnalyzeTaskEffs sig m =
-  ( CandidateCommandEffs sig m
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has (Reader OverrideDynamicAnalysisBinary) sig m
+  , Has (Reader SystemPath) sig m
+  , Has (Reader SystemPathExt) sig m
   , DiscoverTaskEffs sig m
   )
 

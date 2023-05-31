@@ -15,12 +15,12 @@ import Data.Aeson (ToJSON)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
-import Effect.Exec (CandidateCommandEffs, Exec)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, Path, parent)
 import Strategy.Maven.DepTree qualified as DepTreeCmd
+import Strategy.Maven.Plugin (MavenEffs)
 import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure)
@@ -60,15 +60,7 @@ instance AnalyzeProject MavenProject where
 instance LicenseAnalyzeProject MavenProject where
   licenseAnalyzeProject = pure . Pom.getLicenses . unMavenProject
 
-getDeps ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has ReadFS sig m
-  , Has Exec sig m
-  , CandidateCommandEffs sig m
-  ) =>
-  MavenProject ->
-  m DependencyResults
+getDeps :: MavenEffs sig m => MavenProject -> m DependencyResults
 getDeps (MavenProject closure) = do
   (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis closure <||> getStaticAnalysis closure
   pure $
@@ -93,48 +85,20 @@ getDeps' (MavenProject closure) = do
       , dependencyManifestFiles = [PomClosure.closurePath closure]
       }
 
-getDepsDynamicAnalysis ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has ReadFS sig m
-  , Has Exec sig m
-  , CandidateCommandEffs sig m
-  ) =>
-  MavenProjectClosure ->
-  m (Graphing Dependency, GraphBreadth)
+getDepsDynamicAnalysis :: MavenEffs sig m => MavenProjectClosure -> m (Graphing Dependency, GraphBreadth)
 getDepsDynamicAnalysis closure =
   context "Dynamic Analysis"
     $ warnOnErr MissingEdges
       . warnOnErr MissingDeepDeps
     $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
 
-getDepsPlugin ::
-  ( CandidateCommandEffs sig m
-  , Has (Lift IO) sig m
-  , Has ReadFS sig m
-  ) =>
-  MavenProjectClosure ->
-  m (Graphing Dependency, GraphBreadth)
+getDepsPlugin :: MavenEffs sig m => MavenProjectClosure -> m (Graphing Dependency, GraphBreadth)
 getDepsPlugin closure = context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
 
-getDepsPluginLegacy ::
-  ( CandidateCommandEffs sig m
-  , Has (Lift IO) sig m
-  , Has ReadFS sig m
-  ) =>
-  MavenProjectClosure ->
-  m (Graphing Dependency, GraphBreadth)
+getDepsPluginLegacy :: MavenEffs sig m => MavenProjectClosure -> m (Graphing Dependency, GraphBreadth)
 getDepsPluginLegacy closure = context "Legacy Plugin analysis" (Plugin.analyzeLegacy' . parent $ PomClosure.closurePath closure)
 
-getDepsTreeCmd ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has ReadFS sig m
-  , Has Exec sig m
-  , CandidateCommandEffs sig m
-  ) =>
-  MavenProjectClosure ->
-  m (Graphing Dependency, GraphBreadth)
+getDepsTreeCmd :: MavenEffs sig m => MavenProjectClosure -> m (Graphing Dependency, GraphBreadth)
 getDepsTreeCmd closure =
   context "Dynamic analysis" $
     DepTreeCmd.analyze . parent $

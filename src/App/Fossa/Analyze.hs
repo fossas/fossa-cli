@@ -57,6 +57,8 @@ import App.Types (
   BaseDir (..),
   OverrideDynamicAnalysisBinary,
   ProjectRevision (..),
+  SystemPath,
+  SystemPathExt,
  )
 import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
@@ -173,6 +175,8 @@ runDependencyAnalysis ::
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   , Has (Reader AllFilters) sig m
   , Has (Reader OverrideDynamicAnalysisBinary) sig m
+  , Has (Reader SystemPath) sig m
+  , Has (Reader SystemPathExt) sig m
   , Has Telemetry sig m
   ) =>
   -- | Analysis base directory
@@ -302,6 +306,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       . runReader (Config.experimental cfg)
       . runReader discoveryFilters
       . runReader (Config.overrideDynamicAnalysis cfg)
+      . runReader (Config.systemPaths cfg)
+      . runReader (Config.systemPathExt cfg)
       $ do
         runAnalyzers basedir filters
         when (fromFlag UnpackArchives $ Config.unpackArchives cfg) $

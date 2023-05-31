@@ -13,7 +13,7 @@ import Control.Algebra (Has, run)
 import Control.Applicative (some, (<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, fatal)
 import Control.Effect.Exception (SomeException, finally)
-import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Lift (sendIO)
 import Control.Exception.Extra (safeTry)
 import Data.Char (isSpace)
 import Data.Foldable (for_)
@@ -28,13 +28,13 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Effect.Exec (AllowErr (..), CandidateCommandEffs, Command (..), Exec, exec, mkAnalysisCommand)
+import Effect.Exec (AllowErr (..), Command (..), exec)
 import Effect.Grapher (direct, edge, evalGrapher)
-import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser)
+import Effect.ReadFS (doesFileExist, readContentsParser)
 import Graphing (Graphing, gmap, shrinkRoots)
 import Path (Abs, Dir, File, Path, Rel, fromAbsFile, parseRelFile, (</>))
 import Path.IO (getTempDir, removeFile)
-import Strategy.Maven.Plugin (mavenCmdCandidates)
+import Strategy.Maven.Plugin (MavenEffs, mavenCommand)
 import System.Random (randomIO)
 import Text.Megaparsec (
   Parsec,
@@ -48,10 +48,8 @@ import Text.Megaparsec.Char.Lexer qualified as Lexer
 import Types (GraphBreadth (Complete))
 
 -- Construct the Command for running `mvn dependency:tree` correctly.
-deptreeCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Maybe (Path Abs File) -> Path Abs File -> m Command
-deptreeCmd workdir settingsFile outputFile = do
-  candidates <- mavenCmdCandidates workdir
-  mkAnalysisCommand candidates workdir args allowErr
+deptreeCmd :: MavenEffs sig m => Path Abs Dir -> Maybe (Path Abs File) -> Path Abs File -> m Command
+deptreeCmd workdir settingsFile outputFile = mavenCommand workdir args allowErr
   where
     args =
       [ -- Run `dependency:tree`.
@@ -94,15 +92,7 @@ deptreeCmd workdir settingsFile outputFile = do
     -- TODO: We should emit a warning on non-zero exit.
     allowErr = Always
 
-analyze ::
-  ( Has Exec sig m
-  , Has ReadFS sig m
-  , Has Diagnostics sig m
-  , Has (Lift IO) sig m
-  , CandidateCommandEffs sig m
-  ) =>
-  Path Abs Dir ->
-  m (Graphing Dependency, GraphBreadth)
+analyze :: MavenEffs sig m => Path Abs Dir -> m (Graphing Dependency, GraphBreadth)
 analyze dir = do
   -- Construct the Maven command invocation.
   --
@@ -132,7 +122,7 @@ analyze dir = do
     -- Note that we do both of these in a single action so that the `finally`
     -- above runs for both exceptions in the exec and in the parsing. Do not
     -- separate these two into different actions.
-    execAndParse :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Maybe (Path Abs File) -> Path Abs File -> m [DotGraph]
+    execAndParse :: MavenEffs sig m => Maybe (Path Abs File) -> Path Abs File -> m [DotGraph]
     execAndParse settingsFile tmpFile = do
       cmd <- context "Build maven command" $ deptreeCmd dir settingsFile tmpFile
       _ <- context ("Running '" <> cmdName cmd <> " dependency:tree'") $ exec dir cmd

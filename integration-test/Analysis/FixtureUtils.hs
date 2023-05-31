@@ -14,7 +14,7 @@ module Analysis.FixtureUtils (
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic))
-import App.Types (OverrideDynamicAnalysisBinary)
+import App.Types (OverrideDynamicAnalysisBinary, SystemPath, SystemPathExt)
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
@@ -110,6 +110,8 @@ type TestC m =
     $ ReaderC OverrideDynamicAnalysisBinary
     $ ReaderC AllFilters
     $ ReaderC ExperimentalAnalyzeConfig
+    $ ReaderC SystemPath
+    $ ReaderC SystemPathExt
     $ FinallyC
     $ StackC
     $ IgnoreTelemetryC m
@@ -124,6 +126,8 @@ testRunnerWithLogger f env =
     & runReader (mempty :: OverrideDynamicAnalysisBinary)
     & runReader (mempty :: AllFilters)
     & runReader (ExperimentalAnalyzeConfig Nothing GoModulesBasedTactic)
+    & runReader (mempty :: SystemPath)
+    & runReader (mempty :: SystemPathExt)
     & runFinally
     & runStack
     & withoutTelemetry

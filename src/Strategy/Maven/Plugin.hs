@@ -2,6 +2,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Maven.Plugin (
+  MavenEffs,
+  mavenCommand,
   withUnpackedPlugin,
   installPlugin,
   parsePluginOutput,
@@ -17,12 +19,13 @@ module Strategy.Maven.Plugin (
   textArtifactToPluginOutput,
   execPluginAggregate,
   execPluginReactor,
-  mavenCmdCandidates,
 ) where
 
-import App.Util (SupportedOS (Windows), runningInOS)
+import App.Types (OverrideDynamicAnalysisBinary (..))
+import App.Util (userOverrideCommand)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, recover, warn)
+import Control.Carrier.Reader (Reader, ask)
+import Control.Effect.Diagnostics (Diagnostics, fatalText, warn)
 import Control.Effect.Exception (Lift, bracket)
 import Control.Effect.Lift (sendIO)
 import Control.Monad (when)
@@ -33,7 +36,6 @@ import Data.FileEmbed.Extra (embedFile')
 import Data.Foldable (Foldable (fold), foldl')
 import Data.Functor (void)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, isNothing)
@@ -42,15 +44,14 @@ import Data.Text (Text)
 import Data.Traversable (for)
 import Data.Tree (Tree (..))
 import DepTypes (DepType (MavenType))
-import Discovery.Walk (findFileInAncestor)
 import Effect.Exec (
   AllowErr (Never),
-  CandidateAnalysisCommands (..),
-  CandidateCommandEffs,
   Command (..),
   Exec,
+  WhichEffs,
   execThrow,
-  mkAnalysisCommand,
+  foundLocationToCommand,
+  which',
  )
 import Effect.ReadFS (
   ReadFS,
@@ -71,7 +72,6 @@ import Path (
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
 import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
 import System.FilePath qualified as FP
-import System.Info qualified as SysInfo
 
 data DepGraphPlugin = DepGraphPlugin
   { group :: Text
@@ -117,20 +117,23 @@ withUnpackedPlugin plugin act =
 
       act pluginJarFilepath
 
-installPlugin :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> FP.FilePath -> DepGraphPlugin -> m ()
+type MavenEffs sig m = (Has Exec sig m, OverrideWhichEffs sig m)
+type OverrideWhichEffs sig m = (Has (Reader OverrideDynamicAnalysisBinary) sig m, WhichEffs sig m)
+
+installPlugin :: MavenEffs sig m => Path Abs Dir -> FP.FilePath -> DepGraphPlugin -> m ()
 installPlugin dir path plugin = do
   cmd <- mavenInstallPluginCmd dir path plugin
   void $ execThrow dir cmd
 
-execPlugin :: (Has Exec sig m, Has Diagnostics sig m) => (DepGraphPlugin -> Command) -> Path Abs Dir -> DepGraphPlugin -> m ()
+execPlugin :: MavenEffs sig m => (DepGraphPlugin -> Command) -> Path Abs Dir -> DepGraphPlugin -> m ()
 execPlugin pluginToCmd dir plugin = void $ execThrow dir $ pluginToCmd plugin
 
-execPluginAggregate :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginAggregate :: MavenEffs sig m => Path Abs Dir -> DepGraphPlugin -> m ()
 execPluginAggregate dir plugin = do
   cmd <- mavenPluginDependenciesCmd dir plugin
   execPlugin (const cmd) dir plugin
 
-execPluginReactor :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginReactor :: MavenEffs sig m => Path Abs Dir -> DepGraphPlugin -> m ()
 execPluginReactor dir plugin = do
   cmd <- mavenPluginReactorCmd dir plugin
   execPlugin (const cmd) dir plugin
@@ -207,73 +210,62 @@ textArtifactToPluginOutput
                   , outEdges = newEdges <> cEdges
                   }
 
--- | Search for maven wrappers in the closest parent directory and if found use them as a candidate command.
-mavenCmdCandidates :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m CandidateAnalysisCommands
-mavenCmdCandidates dir =
-  mvnWrapperPath >>= \case
-    Just wrapper -> pure . mkCmd $ (toText wrapper) :| ["mvn"]
-    Nothing -> pure . mkCmd $ NE.singleton "mvn"
-  where
-    mkCmd :: NonEmpty Text -> CandidateAnalysisCommands
-    mkCmd cmds = CandidateAnalysisCommands cmds ["-v"] $ Just MavenType
-    -- Unlike with the gradle wrapper, it's not _expected_ for maven projects to use the maven wrapper.
-    -- Given that, don't warn on failure to find a wrapper; only warn if we find a wrapper and it fails to execute.
-    mvnWrapperPath :: (Has ReadFS sig m, Has Diagnostics sig m) => m (Maybe (Path Abs File))
-    mvnWrapperPath =
-      recover $
-        if runningInOS Windows
-          then findFileInAncestor dir "mvnw.bat"
-          else findFileInAncestor dir "mvnw"
+mavenCommand :: OverrideWhichEffs sig m => Path Abs Dir -> [Text] -> AllowErr -> m Command
+mavenCommand workdir args allowErr = do
+  override <- userOverrideCommand MavenType <$> ask
+  case override of
+    Just cmd -> pure $ Command cmd args allowErr
+    Nothing ->
+      which' workdir ("mvn" :| ["mvnw"]) >>= \case
+        Just mvn -> pure $ foundLocationToCommand args allowErr mvn
+        Nothing -> fatalText "Could not find maven executable"
 
-mavenInstallPluginCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> FP.FilePath -> DepGraphPlugin -> m Command
-mavenInstallPluginCmd workdir pluginFilePath plugin = do
-  candidates <- mavenCmdCandidates workdir
-  mkAnalysisCommand candidates workdir args Never
-  where
-    args =
-      [ "org.apache.maven.plugins:maven-install-plugin:3.0.0-M1:install-file"
-      , "-DgroupId=" <> group plugin
-      , "-DartifactId=" <> artifact plugin
-      , "-Dversion=" <> version plugin
-      , "-Dpackaging=jar"
-      , "-Dfile=" <> toText pluginFilePath
-      ]
+mavenCommand' :: OverrideWhichEffs sig m => Path Abs Dir -> [Text] -> m Command
+mavenCommand' workdir args = mavenCommand workdir args Never
+
+mavenInstallPluginCmd :: OverrideWhichEffs sig m => Path Abs Dir -> FP.FilePath -> DepGraphPlugin -> m Command
+mavenInstallPluginCmd workdir pluginFilePath plugin =
+  mavenCommand'
+    workdir
+    [ "org.apache.maven.plugins:maven-install-plugin:3.0.0-M1:install-file"
+    , "-DgroupId=" <> group plugin
+    , "-DartifactId=" <> artifact plugin
+    , "-Dversion=" <> version plugin
+    , "-Dpackaging=jar"
+    , "-Dfile=" <> toText pluginFilePath
+    ]
 
 -- | The aggregate command is documented
 --  [here.](https://ferstl.github.io/depgraph-maven-plugin/aggregate-mojo.html)
-mavenPluginDependenciesCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m Command
-mavenPluginDependenciesCmd workdir plugin = do
-  candidates <- mavenCmdCandidates workdir
-  mkAnalysisCommand candidates workdir args Never
-  where
-    args =
-      [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":aggregate"
-      , "-DgraphFormat=text"
-      , -- display deps that appear multiple times in different scopes as a single node
-        "-DmergeScopes"
-      , -- Don't omit edges for deps appearing in multiple places in the graph
-        "-DreduceEdges=false"
-      , "-DshowVersions=true"
-      , "-DshowGroupIds=true"
-      , -- Deps that are optional in the graph will be tagged optional in the cli's output
-        -- this does not exclude them from sourceUnits.
-        "-DshowOptional=true"
-      , -- Repeat transitive deps for packages that appear multiple times
-        "-DrepeatTransitiveDependenciesInTextGraph=true"
-      ]
+mavenPluginDependenciesCmd :: OverrideWhichEffs sig m => Path Abs Dir -> DepGraphPlugin -> m Command
+mavenPluginDependenciesCmd workdir plugin =
+  mavenCommand'
+    workdir
+    [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":aggregate"
+    , "-DgraphFormat=text"
+    , -- display deps that appear multiple times in different scopes as a single node
+      "-DmergeScopes"
+    , -- Don't omit edges for deps appearing in multiple places in the graph
+      "-DreduceEdges=false"
+    , "-DshowVersions=true"
+    , "-DshowGroupIds=true"
+    , -- Deps that are optional in the graph will be tagged optional in the cli's output
+      -- this does not exclude them from sourceUnits.
+      "-DshowOptional=true"
+    , -- Repeat transitive deps for packages that appear multiple times
+      "-DrepeatTransitiveDependenciesInTextGraph=true"
+    ]
 
 -- | The reactor command is documented
 --  [here.](https://ferstl.github.io/depgraph-maven-plugin/reactor-mojo.html)
-mavenPluginReactorCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m Command
-mavenPluginReactorCmd workdir plugin = do
-  candidates <- mavenCmdCandidates workdir
-  mkAnalysisCommand candidates workdir args Never
-  where
-    args =
-      [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":reactor"
-      , "-DgraphFormat=json"
-      , "-DoutputFileName=" <> toText reactorOutputFilename
-      ]
+mavenPluginReactorCmd :: OverrideWhichEffs sig m => Path Abs Dir -> DepGraphPlugin -> m Command
+mavenPluginReactorCmd workdir plugin =
+  mavenCommand'
+    workdir
+    [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":reactor"
+    , "-DgraphFormat=json"
+    , "-DoutputFileName=" <> toText reactorOutputFilename
+    ]
 
 newtype ReactorArtifact = ReactorArtifact
   { reactorArtifactName :: Text
