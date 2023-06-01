@@ -25,7 +25,12 @@
                 "policy": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The name of the policy in your FOSSA organization to associate this project with."
+                    "description": "The name of the policy in your FOSSA organization to associate this project with. Mutually excludes `project.policyId`."
+                },
+                "policy": {
+                    "type": "integer",
+                    "minLength": 1,
+                    "description": "The id of the policy in your FOSSA organization to associate this project with. Mutually excludes `project.policy`."
                 },
                 "link": {
                     "type": "string",

@@ -6,6 +6,7 @@ module App.Types (
   ReleaseGroupMetadata (..),
   ProjectRevision (..),
   OverrideDynamicAnalysisBinary (..),
+  Policy (..),
   FullFileUploads (..),
   FirstPartyScansFlag (..),
   fullFileUploadsToCliLicenseScanType,
@@ -32,13 +33,21 @@ data OverrideProject = OverrideProject
 instance ToJSON OverrideProject where
   toEncoding = genericToEncoding defaultOptions
 
+data Policy
+  = PolicyName Text
+  | PolicyId Int
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON Policy where
+  toEncoding = genericToEncoding defaultOptions
+
 data ProjectMetadata = ProjectMetadata
   { projectTitle :: Maybe Text
   , projectUrl :: Maybe Text
   , projectJiraKey :: Maybe Text
   , projectLink :: Maybe Text
   , projectTeam :: Maybe Text
-  , projectPolicy :: Maybe Text
+  , projectPolicy :: Maybe Policy
   , projectLabel :: [Text]
   , projectReleaseGroup :: Maybe ReleaseGroupMetadata
   }
