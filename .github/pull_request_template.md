@@ -27,6 +27,12 @@ _Highlight any areas that you're unsure of, want feedback on, or want reviewers 
 
 _Example: I'm not sure I did X correctly, can reviewers please double-check that for me?_
 
+## Metrics
+
+_Optional at the moment_
+
+_Is this change something that can or should be tracked? If so, can we do it today? And how? If its easy, do it_
+
 ## References
 
 _Add links to any referenced GitHub issues, Zendesk tickets, Jira tickets, Slack threads, etc._
