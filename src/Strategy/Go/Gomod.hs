@@ -20,7 +20,7 @@ import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, recover, warnOnErr)
 import Data.Char (isSpace)
 import Data.Foldable (traverse_)
-import Data.Functor (void)
+import Data.Functor (void, ($>))
 import Data.Hashable (Hashable)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -58,6 +58,7 @@ import Text.Megaparsec (
   oneOf,
   optional,
   parse,
+  sepBy,
   some,
   (<|>),
  )
@@ -66,8 +67,6 @@ import Text.Megaparsec.Char.Lexer qualified as L
 import Types (GraphBreadth (..))
 
 -- For the file's grammar, see https://golang.org/ref/mod#go-mod-file-grammar.
---
--- TODO: handle retract statements
 data Statement
   = -- | package, version
     RequireStatement PackageName PackageVersion
@@ -77,6 +76,11 @@ data Statement
     LocalReplaceStatement PackageName Text
   | -- | package, version
     ExcludeStatement PackageName PackageVersion
+  | -- | we do not care about values
+    -- associated with retract block for dependency graphing,
+    -- as they do not signify any relationship with dependencies
+    -- of go.mod, refer to: https://go.dev/ref/mod#go-mod-file-retract
+    RetractStatement
   | GoVersionStatement Text
   deriving (Eq, Ord, Show)
 
@@ -217,6 +221,7 @@ gomodParser = do
         <|> requireStatements
         <|> replaceStatements
         <|> excludeStatements
+        <|> retractStatements
 
     -- top-level go version statement
     -- e.g., go 1.12
@@ -269,6 +274,23 @@ gomodParser = do
     singleExclude :: Parser Statement
     singleExclude = ExcludeStatement <$> packageName <*> version
 
+    -- top-level retract statements
+    -- e.g.:
+    --  retract v1.0.0
+    --  retract [v1.0.0, v1.9.9]
+    --  retract (
+    --    v1.0.0
+    --    [v1.0.0, v1.9.9]
+    --  )
+    retractStatements :: Parser [Statement]
+    retractStatements = block "retract" (singleRetract <|> multipleRetract)
+
+    singleRetract :: Parser Statement
+    singleRetract = version $> RetractStatement
+
+    multipleRetract :: Parser Statement
+    multipleRetract = squareBrackets (version `sepBy` (symbol ",")) $> RetractStatement
+
     version :: Parser PackageVersion
     version = parsePackageVersion lexeme
 
@@ -308,6 +330,7 @@ gomodParser = do
 
     -- lexer combinators
     parens = between (symbol "(") (symbol ")")
+    squareBrackets = between (symbol "[") (symbol "]")
     symbol = L.symbol scn
     lexeme = L.lexeme sc
 

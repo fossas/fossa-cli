@@ -3,6 +3,7 @@
 ## Unreleased
 - Setup.py: Fixes an defect with `setup.py` parser, caused by failing to account for line comments or backslash. ([#1191](https://github.com/fossas/fossa-cli/pull/1191))
 - Installation: `install-latest.sh` now directs `curl` and `wget` to pass `Cache-Control: no-cache` headers to the server. ([#1206](https://github.com/fossas/fossa-cli/pull/1206))
+- `Go.mod`: Anaysis does not fail if `go.mod` includes `retract` block. ([#1213](https://github.com/fossas/fossa-cli/pull/1213))
 
 ## v3.8.0
 - License Scanning: You can license scan your first-party code with the `--experimental-force-first-party-scans` flag ([#1187](https://github.com/fossas/fossa-cli/pull/1187))
