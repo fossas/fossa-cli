@@ -29,8 +29,6 @@ _Example: I'm not sure I did X correctly, can reviewers please double-check that
 
 ## Metrics
 
-_Optional at the moment_
-
 _Is this change something that can or should be tracked? If so, can we do it today? And how? If its easy, do it_
 
 ## References
