@@ -274,7 +274,7 @@ gomodParser = do
     singleExclude :: Parser Statement
     singleExclude = ExcludeStatement <$> packageName <*> version
 
-    -- top-level retract statment
+    -- top-level retract statements
     -- e.g.:
     --  retract v1.0.0
     --  retract [v1.0.0, v1.9.9]
