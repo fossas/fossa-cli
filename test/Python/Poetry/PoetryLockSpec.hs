@@ -35,7 +35,7 @@ expectedPoetryLock =
         [ PoetryLockPackage
             { poetryLockPackageName = PackageName "pkgWithGitSource"
             , poetryLockPackageVersion = "5.22.0.post0"
-            , poetryLockPackageCategory = "main"
+            , poetryLockPackageCategory = Just "main"
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies = Map.empty
             , poetryLockPackagePythonVersions = "*"
@@ -51,7 +51,7 @@ expectedPoetryLock =
         , PoetryLockPackage
             { poetryLockPackageName = PackageName "pkgSourcedFromFile"
             , poetryLockPackageVersion = "1.21.0"
-            , poetryLockPackageCategory = "main"
+            , poetryLockPackageCategory = Just "main"
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies = Map.empty
             , poetryLockPackagePythonVersions = "*"
@@ -67,7 +67,7 @@ expectedPoetryLock =
         , PoetryLockPackage
             { poetryLockPackageName = PackageName "pkgSourcedFromUrl"
             , poetryLockPackageVersion = "3.92.1"
-            , poetryLockPackageCategory = "main"
+            , poetryLockPackageCategory = Just "main"
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies = Map.empty
             , poetryLockPackagePythonVersions = "*"
@@ -83,7 +83,7 @@ expectedPoetryLock =
         , PoetryLockPackage
             { poetryLockPackageName = PackageName "pkgOne"
             , poetryLockPackageVersion = "1.21.0"
-            , poetryLockPackageCategory = "main"
+            , poetryLockPackageCategory = Just "main"
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies =
                 Map.fromList
@@ -103,7 +103,7 @@ expectedPoetryLock =
         , PoetryLockPackage
             { poetryLockPackageName = PackageName "pkgOneChildofOne"
             , poetryLockPackageVersion = "11.4"
-            , poetryLockPackageCategory = "main"
+            , poetryLockPackageCategory = Just "main"
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies = Map.empty
             , poetryLockPackagePythonVersions = "*"
@@ -112,7 +112,7 @@ expectedPoetryLock =
         , PoetryLockPackage
             { poetryLockPackageName = PackageName "pkgTwoChildofOne"
             , poetryLockPackageVersion = "5.4"
-            , poetryLockPackageCategory = "main"
+            , poetryLockPackageCategory = Just "main"
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies = Map.empty
             , poetryLockPackagePythonVersions = "*"
@@ -121,7 +121,7 @@ expectedPoetryLock =
         , PoetryLockPackage
             { poetryLockPackageName = PackageName "pkgThreeChildofOne"
             , poetryLockPackageVersion = "1.6.1"
-            , poetryLockPackageCategory = "main"
+            , poetryLockPackageCategory = Just "main"
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies = Map.empty
             , poetryLockPackagePythonVersions = "*"
@@ -130,7 +130,7 @@ expectedPoetryLock =
         , PoetryLockPackage
             { poetryLockPackageName = PackageName "myprivatepkg"
             , poetryLockPackageVersion = "0.0.1"
-            , poetryLockPackageCategory = "main"
+            , poetryLockPackageCategory = Just "main"
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies = Map.empty
             , poetryLockPackagePythonVersions = ">=3.6"

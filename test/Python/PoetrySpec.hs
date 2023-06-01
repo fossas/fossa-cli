@@ -34,7 +34,7 @@ candidatePoetryLock =
     [ PoetryLockPackage
         { poetryLockPackageName = PackageName "flow_pipes"
         , poetryLockPackageVersion = "1.21.0"
-        , poetryLockPackageCategory = "main"
+        , poetryLockPackageCategory = Just "main"
         , poetryLockPackageOptional = False
         , poetryLockPackageDependencies = Map.fromList [("flow_pipes_gravity", TextVersion "^1.1")]
         , poetryLockPackagePythonVersions = "*"
@@ -43,7 +43,7 @@ candidatePoetryLock =
     , PoetryLockPackage
         { poetryLockPackageName = PackageName "flow_pipes_gravity"
         , poetryLockPackageVersion = "1.1.1"
-        , poetryLockPackageCategory = "main"
+        , poetryLockPackageCategory = Just "main"
         , poetryLockPackageOptional = False
         , poetryLockPackageDependencies = Map.empty
         , poetryLockPackagePythonVersions = "*"
@@ -81,7 +81,7 @@ spec = do
                 [ PoetryLockPackage
                     { poetryLockPackageName = PackageName "somePkg"
                     , poetryLockPackageVersion = "1.21.0"
-                    , poetryLockPackageCategory = "main"
+                    , poetryLockPackageCategory = Just "main"
                     , poetryLockPackageOptional = False
                     , poetryLockPackageDependencies = Map.empty
                     , poetryLockPackagePythonVersions = "*"
@@ -97,7 +97,7 @@ spec = do
                   [ PoetryLockPackage
                       { poetryLockPackageName = PackageName "somePkg"
                       , poetryLockPackageVersion = "1.21.0"
-                      , poetryLockPackageCategory = "main"
+                      , poetryLockPackageCategory = Just "main"
                       , poetryLockPackageOptional = False
                       , poetryLockPackageDependencies = Map.fromList [("pkgOneChildOne", TextVersion "*")]
                       , poetryLockPackagePythonVersions = "*"
@@ -106,7 +106,7 @@ spec = do
                   , PoetryLockPackage
                       { poetryLockPackageName = PackageName "pkgOneChildOne"
                       , poetryLockPackageVersion = "1.22.0"
-                      , poetryLockPackageCategory = "main"
+                      , poetryLockPackageCategory = Just "main"
                       , poetryLockPackageOptional = False
                       , poetryLockPackageDependencies = Map.empty
                       , poetryLockPackagePythonVersions = "*"

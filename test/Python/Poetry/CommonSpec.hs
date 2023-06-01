@@ -109,7 +109,7 @@ notSupportedPoetryLockDependency =
   PoetryLockPackage
     { poetryLockPackageName = PackageName "pkgSourcedFromFile"
     , poetryLockPackageVersion = "1.1.0"
-    , poetryLockPackageCategory = "main"
+    , poetryLockPackageCategory = Just "main"
     , poetryLockPackageOptional = False
     , poetryLockPackageDependencies = Map.empty
     , poetryLockPackagePythonVersions = "*"
@@ -182,7 +182,7 @@ spec = do
         [ PoetryLockPackage
             { poetryLockPackageName = PackageName "pkgOne"
             , poetryLockPackageVersion = "1.21.0"
-            , poetryLockPackageCategory = "main"
+            , poetryLockPackageCategory = Just "main"
             , poetryLockPackageOptional = False
             , poetryLockPackageDependencies =
                 Map.fromList
@@ -214,7 +214,7 @@ spec = do
           [ PoetryLockPackage
               { poetryLockPackageName = PackageName "pkgWithGitSource"
               , poetryLockPackageVersion = "5.22.0.post0"
-              , poetryLockPackageCategory = "main"
+              , poetryLockPackageCategory = Just "main"
               , poetryLockPackageOptional = False
               , poetryLockPackageDependencies = Map.empty
               , poetryLockPackagePythonVersions = "*"
@@ -241,7 +241,7 @@ spec = do
           [ PoetryLockPackage
               { poetryLockPackageName = PackageName "pkgSourcedFromUrl"
               , poetryLockPackageVersion = "3.92.1"
-              , poetryLockPackageCategory = "main"
+              , poetryLockPackageCategory = Just "main"
               , poetryLockPackageOptional = False
               , poetryLockPackageDependencies = Map.empty
               , poetryLockPackagePythonVersions = "*"
@@ -268,7 +268,7 @@ spec = do
           [ PoetryLockPackage
               { poetryLockPackageName = PackageName "pkgSourcedFromFile"
               , poetryLockPackageVersion = "1.21.0"
-              , poetryLockPackageCategory = "main"
+              , poetryLockPackageCategory = Just "main"
               , poetryLockPackageOptional = False
               , poetryLockPackageDependencies = Map.empty
               , poetryLockPackagePythonVersions = "*"
@@ -283,7 +283,7 @@ spec = do
           [ PoetryLockPackage
               { poetryLockPackageName = PackageName "myprivatepkg"
               , poetryLockPackageVersion = "0.0.1"
-              , poetryLockPackageCategory = "main"
+              , poetryLockPackageCategory = Just "main"
               , poetryLockPackageOptional = False
               , poetryLockPackageDependencies = Map.empty
               , poetryLockPackagePythonVersions = ">=3.6"
