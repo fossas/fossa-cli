@@ -262,7 +262,7 @@ http_download_curl() {
   if [ ! -z "$3" ]; then
     header="-H $header"
   fi
-  HTTP_CODE=$(curl -w '%{HTTP_CODE}' -sL $header -o "$local_file" "$source_url") || (log_debug "curl command failed." && return 1)
+  HTTP_CODE=$(curl -w '%{HTTP_CODE}' -sL $header -H "Cache-Control: no-cache" -o "$local_file" "$source_url") || (log_debug "curl command failed." && return 1)
   return 0
 }
 http_download_wget() {
@@ -271,7 +271,7 @@ http_download_wget() {
   if [ ! -z $3 ]; then
     header="--header $3"
   fi
-  HTTP_CODE=$(wget -q $header --server-response -O "$local_file" "$source_url" 2>&1 | awk 'NR==1{print $2}') || (log_debug "wget command failed." && return 1)
+  HTTP_CODE=$(wget -q $header --no-cache --server-response -O "$local_file" "$source_url" 2>&1 | awk 'NR==1{print $2}') || (log_debug "wget command failed." && return 1)
   return 0
 }
 http_download() {
