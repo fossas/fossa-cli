@@ -5,9 +5,11 @@ module App.Types (
   ProjectMetadata (..),
   ReleaseGroupMetadata (..),
   ProjectRevision (..),
-  MonorepoAnalysisOpts (..),
   OverrideDynamicAnalysisBinary (..),
+  Policy (..),
   FullFileUploads (..),
+  FirstPartyScansFlag (..),
+  fullFileUploadsToCliLicenseScanType,
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, withObject, (.:))
@@ -31,13 +33,21 @@ data OverrideProject = OverrideProject
 instance ToJSON OverrideProject where
   toEncoding = genericToEncoding defaultOptions
 
+data Policy
+  = PolicyName Text
+  | PolicyId Int
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON Policy where
+  toEncoding = genericToEncoding defaultOptions
+
 data ProjectMetadata = ProjectMetadata
   { projectTitle :: Maybe Text
   , projectUrl :: Maybe Text
   , projectJiraKey :: Maybe Text
   , projectLink :: Maybe Text
   , projectTeam :: Maybe Text
-  , projectPolicy :: Maybe Text
+  , projectPolicy :: Maybe Policy
   , projectLabel :: [Text]
   , projectReleaseGroup :: Maybe ReleaseGroupMetadata
   }
@@ -62,14 +72,6 @@ instance FromJSON ReleaseGroupMetadata where
         .: "name"
       <*> obj
         .: "release"
-
-newtype MonorepoAnalysisOpts = MonorepoAnalysisOpts
-  { monorepoAnalysisType :: Maybe Text
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToJSON MonorepoAnalysisOpts where
-  toEncoding = genericToEncoding defaultOptions
 
 data ProjectRevision = ProjectRevision
   { projectName :: Text
@@ -103,3 +105,12 @@ instance Monoid OverrideDynamicAnalysisBinary where
   mempty = OverrideDynamicAnalysisBinary mempty
 
 newtype FullFileUploads = FullFileUploads {unFullFileUploads :: Bool} deriving (Eq, Ord, Show, Generic)
+fullFileUploadsToCliLicenseScanType :: FullFileUploads -> Text
+fullFileUploadsToCliLicenseScanType (FullFileUploads True) = "full_files"
+fullFileUploadsToCliLicenseScanType (FullFileUploads False) = "match_data"
+
+data FirstPartyScansFlag = FirstPartyScansOnFromFlag | FirstPartyScansOffFromFlag | FirstPartyScansUseDefault
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON FirstPartyScansFlag where
+  toEncoding = genericToEncoding defaultOptions

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -12,8 +13,6 @@ module Test.Fixtures (
   project,
   projectMetadata,
   projectRevision,
-  scanId,
-  scanResponse,
   sourceUnits,
   uploadResponse,
   emptyIssues,
@@ -36,21 +35,33 @@ module Test.Fixtures (
   secondLicenseSourceUnit,
   diffRevision,
   issuesDiffAvailable,
+  standardAnalyzeConfig,
 ) where
 
+import App.Fossa.Config.Analyze (AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
+import App.Fossa.Config.Analyze qualified as ANZ
+import App.Fossa.Config.Analyze qualified as VSI
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
+import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency (..))
+import App.Types (OverrideDynamicAnalysisBinary (..))
 import App.Types qualified as App
 import Control.Effect.FossaApiClient qualified as App
+import Control.Monad.RWS qualified as Set
 import Control.Timeout (Duration (MilliSeconds))
+import Data.Flag (toFlag)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text.Extra (showT)
+import Discovery.Filters (
+  AllFilters,
+ )
+import Effect.Logger (Severity (..))
 import Fossa.API.Types (Archive (..))
 import Fossa.API.Types qualified as API
-import Path (mkRelDir, parseAbsDir, (</>))
+import Path (Abs, Dir, Path, mkAbsDir, mkRelDir, parseAbsDir, (</>))
 import Srclib.Types (
   LicenseScanType (..),
   LicenseSourceUnit (..),
@@ -71,7 +82,7 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False
+organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False True
 
 project :: API.Project
 project =
@@ -186,16 +197,6 @@ pendingBuild =
         API.BuildTask
           { API.buildTaskStatus = API.StatusRunning
           }
-    }
-
-scanId :: API.ScanId
-scanId = API.ScanId "TestScanId"
-
-scanResponse :: API.ScanResponse
-scanResponse =
-  API.ScanResponse
-    { API.responseScanId = scanId
-    , API.responseScanStatus = Nothing
     }
 
 emptyIssues :: API.Issues
@@ -337,4 +338,59 @@ secondLicenseSourceUnit =
     { licenseSourceUnitName = "vendored/foo"
     , licenseSourceUnitType = CliLicenseScanned
     , licenseSourceUnitLicenseUnits = NE.fromList [emptyLicenseUnit]
+    }
+
+vsiOptions :: VSI.VSIModeOptions
+vsiOptions =
+  VSI.VSIModeOptions
+    { vsiAnalysisEnabled = toFlag VSI.VSIAnalysis False
+    , vsiSkipSet = VSI.SkipResolution Set.mempty
+    , iatAssertion = VSI.IATAssertion Nothing
+    , dynamicLinkingTarget = VSI.DynamicLinkInspect Nothing
+    , binaryDiscoveryEnabled = toFlag VSI.BinaryDiscovery False
+    }
+
+filterSet :: AllFilters
+filterSet = mempty
+
+experimentalConfig :: ExperimentalAnalyzeConfig
+experimentalConfig =
+  ExperimentalAnalyzeConfig
+    { allowedGradleConfigs = Nothing
+    , useV3GoResolver = GoModulesBasedTactic
+    }
+
+vendoredDepsOptions :: VendoredDependencyOptions
+vendoredDepsOptions =
+  VendoredDependencyOptions
+    { forceRescans = False
+    , licenseScanMethod = Just CLILicenseScan
+    , licenseScanPathFilters = Nothing
+    }
+
+#ifdef mingw32_HOST_OS
+absDir :: Path Abs Dir
+absDir = $(mkAbsDir "C:/")
+#else
+absDir :: Path Abs Dir
+absDir = $(mkAbsDir "/")
+#endif
+
+standardAnalyzeConfig :: AnalyzeConfig
+standardAnalyzeConfig =
+  AnalyzeConfig
+    { ANZ.baseDir = App.BaseDir absDir
+    , ANZ.severity = SevDebug
+    , ANZ.scanDestination = OutputStdout
+    , ANZ.projectRevision = projectRevision
+    , ANZ.vsiOptions = vsiOptions
+    , ANZ.filterSet = filterSet
+    , ANZ.experimental = experimentalConfig
+    , ANZ.vendoredDeps = vendoredDepsOptions
+    , ANZ.unpackArchives = toFlag UnpackArchives False
+    , ANZ.jsonOutput = toFlag JsonOutput False
+    , ANZ.includeAllDeps = toFlag IncludeAll False
+    , ANZ.noDiscoveryExclusion = toFlag NoDiscoveryExclusion False
+    , ANZ.overrideDynamicAnalysis = App.OverrideDynamicAnalysisBinary{unOverrideDynamicAnalysisBinary = mempty}
+    , ANZ.firstPartyScansFlag = App.FirstPartyScansUseDefault
     }

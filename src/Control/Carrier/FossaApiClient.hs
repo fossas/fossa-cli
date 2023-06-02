@@ -5,7 +5,6 @@ module Control.Carrier.FossaApiClient (FossaApiClientC, runFossaApiClient) where
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.Core qualified as Core
 import Control.Carrier.FossaApiClient.Internal.LicenseScanning qualified as LicenseScanning
-import Control.Carrier.FossaApiClient.Internal.ScotlandYard qualified as ScotlandYard
 import Control.Carrier.FossaApiClient.Internal.VSI qualified as VSI
 import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.Simple (SimpleC, interpret)
@@ -41,11 +40,10 @@ runFossaApiClient apiOpts =
           GetEndpointVersion -> Core.getEndpointVersion
           GetLatestBuild rev -> Core.getLatestBuild rev
           GetRevisionDependencyCacheStatus rev -> Core.getRevisionDependencyCacheStatus rev
-          GetLatestScan locator rev -> ScotlandYard.getLatestScan locator rev
           GetOrganization -> Core.getOrganization
           GetProject rev -> Core.getProject rev
           GetAnalyzedRevisions vdeps -> Core.getAnalyzedRevisions vdeps
-          GetScan locator scanId -> ScotlandYard.getScan locator scanId
+          GetSignedFirstPartyScanUrl rev -> LicenseScanning.getSignedFirstPartyScanUrl rev
           GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev
           GetSignedUploadUrl rev -> Core.getSignedUploadUrl rev
           GetVsiInferences scanId -> VSI.getVsiInferences scanId
@@ -54,8 +52,10 @@ runFossaApiClient apiOpts =
           ResolveProjectDependencies locator -> VSI.resolveProjectDependencies locator
           ResolveUserDefinedBinary deps -> VSI.resolveUserDefinedBinary deps
           UploadAnalysis rev metadata units -> Core.uploadAnalysis rev metadata units
+          UploadAnalysisWithFirstPartyLicenses rev metadata fullFileUploads -> Core.uploadAnalysisWithFirstPartyLicenses rev metadata fullFileUploads
           UploadArchive url path -> Core.uploadArchive url path
           UploadNativeContainerScan revision metadata scan -> Core.uploadNativeContainerScan revision metadata scan
           UploadContributors locator contributors -> Core.uploadContributors locator contributors
           UploadLicenseScanResult signedUrl licenseSourceUnit -> LicenseScanning.uploadLicenseScanResult signedUrl licenseSourceUnit
+          UploadFirstPartyScanResult signedUrl fullSourceUnits -> LicenseScanning.uploadFirstPartyScanResult signedUrl fullSourceUnits
       )

@@ -56,29 +56,6 @@ esac
 TAG="latest"
 echo "Downloading asset information from latest tag for architecture '$ASSET_POSTFIX'"
 
-WIGGINS_TAG="2022-01-19-a647d17"
-echo "Downloading wiggins binary"
-echo "Using wiggins release: $WIGGINS_TAG"
-WIGGINS_RELEASE_JSON=vendor-bins/wiggins-release.json
-curl -sSL \
-    -H "Authorization: token $GITHUB_TOKEN" \
-    -H "Accept: application/vnd.github.v3.raw" \
-    https://api.github.com/repos/fossas/basis/releases/tags/$WIGGINS_TAG > $WIGGINS_RELEASE_JSON
-
-WIGGINS_TAG=$(jq -cr ".name" $WIGGINS_RELEASE_JSON)
-FILTER=".name == \"scotland_yard-wiggins-$BASIS_ASSET_POSTFIX\""
-jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $WIGGINS_RELEASE_JSON | while read ASSET; do
-  URL="$(echo $ASSET | jq -c -r '.url')"
-  NAME="$(echo $ASSET | jq -c -r '.name')"
-  OUTPUT="$(echo vendor-bins/$NAME | sed 's/scotland_yard-//' | sed 's/-'$BASIS_ASSET_POSTFIX'$//')"
-
-  echo "Downloading '$NAME' to '$OUTPUT'"
-  curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s $URL > $OUTPUT
-done
-rm $WIGGINS_RELEASE_JSON
-echo "Wiggins download successful"
-echo
-
 THEMIS_TAG="2023-04-25-95b18b6-1682456045"
 echo "Downloading themis binary"
 echo "Using themis release: $THEMIS_TAG"

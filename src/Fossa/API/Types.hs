@@ -25,10 +25,9 @@ module Fossa.API.Types (
   RevisionDependencyCacheStatus (..),
   SignedURL (..),
   UploadResponse (..),
-  ScanId (..),
-  ScanResponse (..),
   useApiOpts,
   defaultApiPollDelay,
+  blankOrganization,
 ) where
 
 import App.Types (FullFileUploads (..))
@@ -166,9 +165,12 @@ newtype BuildTask = BuildTask
 instance FromJSON Build where
   parseJSON = withObject "Build" $ \obj ->
     Build
-      <$> obj .: "id"
-      <*> obj .:? "error"
-      <*> obj .: "task"
+      <$> obj
+        .: "id"
+      <*> obj
+        .:? "error"
+      <*> obj
+        .: "task"
 
 instance FromJSON BuildTask where
   parseJSON = withObject "BuildTask" $ \obj ->
@@ -303,10 +305,15 @@ newtype IssueRule = IssueRule
 instance FromJSON Issues where
   parseJSON = withObject "Issues" $ \obj ->
     Issues
-      <$> obj .: "count"
-      <*> obj .:? "issues" .!= []
-      <*> obj .: "status"
-      <*> obj .:? "summary"
+      <$> obj
+        .: "count"
+      <*> obj
+        .:? "issues"
+        .!= []
+      <*> obj
+        .: "status"
+      <*> obj
+        .:? "summary"
 
 instance ToJSON Issues where
   toJSON Issues{..} =
@@ -320,8 +327,10 @@ instance ToJSON Issues where
 instance FromJSON IssuesSummary where
   parseJSON = withObject "IssuesSummary" $ \obj ->
     IssuesSummary
-      <$> obj .: "revision"
-      <*> obj .: "targets"
+      <$> obj
+        .: "revision"
+      <*> obj
+        .: "targets"
 
 instance ToJSON IssuesSummary where
   toJSON IssuesSummary{..} =
@@ -333,9 +342,12 @@ instance ToJSON IssuesSummary where
 instance FromJSON IssueSummaryRevision where
   parseJSON = withObject "IssueSummaryRevision" $ \obj ->
     IssueSummaryRevision
-      <$> obj .: "projectTitle"
-      <*> obj .: "projectRevision"
-      <*> obj .:? "isPublic"
+      <$> obj
+        .: "projectTitle"
+      <*> obj
+        .: "projectRevision"
+      <*> obj
+        .:? "isPublic"
 
 instance ToJSON IssueSummaryRevision where
   toJSON IssueSummaryRevision{..} =
@@ -348,8 +360,10 @@ instance ToJSON IssueSummaryRevision where
 instance FromJSON IssueSummaryTarget where
   parseJSON = withObject "IssueSummaryTarget" $ \obj ->
     IssueSummaryTarget
-      <$> obj .: "type"
-      <*> obj .: "originPaths"
+      <$> obj
+        .: "type"
+      <*> obj
+        .: "originPaths"
 
 instance ToJSON IssueSummaryTarget where
   toJSON IssueSummaryTarget{..} =
@@ -361,17 +375,27 @@ instance ToJSON IssueSummaryTarget where
 instance FromJSON Issue where
   parseJSON = withObject "Issue" $ \obj ->
     Issue
-      <$> obj .: "id"
-      <*> obj .:? "priorityString"
-      <*> obj .: "resolved"
-      -- VPS issues don't have a revisionId
-      <*> obj .:? "revisionId" .!= "unknown project"
-      <*> obj .: "type"
-      <*> obj .:? "rule"
-      <*> obj .:? "license"
-      <*> obj .:? "issueDashURL"
-      <*> obj .:? "cve"
-      <*> obj .:? "fixedIn"
+      <$> obj
+        .: "id"
+      <*> obj
+        .:? "priorityString"
+      <*> obj
+        .: "resolved"
+      <*> obj
+        .:? "revisionId"
+        .!= "unknown project"
+      <*> obj
+        .: "type"
+      <*> obj
+        .:? "rule"
+      <*> obj
+        .:? "license"
+      <*> obj
+        .:? "issueDashURL"
+      <*> obj
+        .:? "cve"
+      <*> obj
+        .:? "fixedIn"
 
 instance ToJSON Issue where
   toJSON Issue{..} =
@@ -445,8 +469,26 @@ data Organization = Organization
   , orgSupportsNativeContainerScan :: Bool
   , orgSupportsDependenciesCachePolling :: Bool
   , orgRequiresFullFileUploads :: Bool
+  , orgDefaultsToFirstPartyScans :: Bool
+  , orgSupportsFirstPartyScans :: Bool
   }
   deriving (Eq, Ord, Show)
+
+blankOrganization :: Organization
+blankOrganization =
+  Organization
+    { organizationId = OrgId 0
+    , orgUsesSAML = False
+    , orgCoreSupportsLocalLicenseScan = True
+    , orgSupportsAnalyzedRevisionsQuery = True
+    , orgDefaultVendoredDependencyScanType = CLILicenseScan
+    , orgSupportsIssueDiffs = True
+    , orgSupportsNativeContainerScan = True
+    , orgSupportsDependenciesCachePolling = True
+    , orgRequiresFullFileUploads = False
+    , orgDefaultsToFirstPartyScans = False
+    , orgSupportsFirstPartyScans = True
+    }
 
 instance FromJSON Organization where
   parseJSON = withObject "Organization" $ \obj ->
@@ -477,6 +519,12 @@ instance FromJSON Organization where
       <*> obj
         .:? "requireFullFileUploads"
         .!= False
+      <*> obj
+        .:? "defaultToFirstPartyScans"
+        .!= False
+      <*> obj
+        .:? "supportsFirstPartyScans"
+        .!= False
 
 data Project = Project
   { projectId :: Text
@@ -506,25 +554,6 @@ instance FromJSON UploadResponse where
     UploadResponse
       <$> (parseLocator <$> obj .: "locator")
       <*> obj .:? "error"
-
-newtype ScanId = ScanId Text deriving (Eq, Ord, FromJSON, ToJSON)
-
-instance Show ScanId where
-  show (ScanId scanId) = show scanId
-
-data ScanResponse = ScanResponse
-  { responseScanId :: ScanId
-  , responseScanStatus :: Maybe Text
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON ScanResponse where
-  parseJSON = withObject "ScanResponse" $ \obj ->
-    ScanResponse
-      <$> obj
-        .: "id"
-      <*> obj
-        .:? "status"
 
 data RevisionDependencyCacheStatus
   = Ready
