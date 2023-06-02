@@ -1,3 +1,5 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module Go.GomodSpec (spec) where
 
 import Control.Algebra (run)
@@ -15,6 +17,7 @@ import Strategy.Go.Types (graphingGolang)
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (runParser)
+import Text.RawString.QQ (r)
 
 -- Helpers for building fixtures.
 
@@ -195,3 +198,141 @@ spec_parse = do
 
     it "parses different kinds of module versions" $ do
       runParser gomodParser "" versionsInput `shouldParse` versionsGomod
+
+    it "parses without failure when retract statements are included" $ do
+      runParser gomodParser "" goModWithSingleRetract `shouldParse` gomodWithRetract
+      runParser gomodParser "" goModWithMultipleRetract `shouldParse` gomodWithRetract
+      runParser gomodParser "" goModWithMultipleRetractListLike `shouldParse` gomodWithRetract
+      runParser gomodParser "" goModWithMultipleRetractComb `shouldParse` gomodWithRetract
+
+    it "parses without failure when retract statements are included with comments" $ do
+      runParser gomodParser "" goModWithRetractComment `shouldParse` gomodWithRetract
+      runParser gomodParser "" goModWithRetractComment2 `shouldParse` gomodWithRetract
+      runParser gomodParser "" goModWithRetractComment3 `shouldParse` gomodWithRetract
+      runParser gomodParser "" goModWithRetractComment4 `shouldParse` gomodWithRetract
+
+gomodWithRetract :: Gomod
+gomodWithRetract =
+  Gomod
+    { modName = "github.com/some/some"
+    , modRequires =
+        [ Require
+            { reqPackage = "github.com/some/some"
+            , reqVersion = Semantic (version 1 44 263 [] [])
+            }
+        ]
+    , modReplaces = mempty
+    , modLocalReplaces = mempty
+    , modExcludes = []
+    }
+
+goModWithSingleRetract :: Text
+goModWithSingleRetract =
+  [r|module github.com/some/some
+
+go 1.19
+
+require (
+	github.com/some/some v1.44.263
+)
+
+retract v0.76.2
+|]
+
+goModWithMultipleRetract :: Text
+goModWithMultipleRetract =
+  [r|module github.com/some/some
+
+go 1.19
+
+require (
+	github.com/some/some v1.44.263
+)
+
+retract (
+	v0.76.2
+	v0.76.1
+	v0.65.0
+)
+|]
+
+goModWithMultipleRetractListLike :: Text
+goModWithMultipleRetractListLike =
+  [r|module github.com/some/some
+
+go 1.19
+
+require (
+	github.com/some/some v1.44.263
+)
+
+retract [v0.76.2, v0.76.3] 
+|]
+
+goModWithMultipleRetractComb :: Text
+goModWithMultipleRetractComb =
+  [r|module github.com/some/some
+
+go 1.19
+
+require (
+	github.com/some/some v1.44.263
+)
+
+retract (
+	v0.76.2
+	v0.76.1
+	v0.65.0
+  [v0.10.1, v0.10.2]
+)|]
+
+goModWithRetractComment :: Text
+goModWithRetractComment =
+  [r|module github.com/some/some
+
+require (
+	github.com/some/some v1.44.263
+)
+
+retract v0.76.2 // comment.
+|]
+
+goModWithRetractComment2 :: Text
+goModWithRetractComment2 =
+  [r|module github.com/some/some
+
+require (
+	github.com/some/some v1.44.263
+)
+
+retract  [v0.10.1, v0.10.2] // some comment
+|]
+
+goModWithRetractComment3 :: Text
+goModWithRetractComment3 =
+  [r|module github.com/some/some
+
+require (
+	github.com/some/some v1.44.263
+)
+
+retract (
+	v0.76.2 // some comment.
+	v0.76.1
+	v0.65.0
+)|]
+
+goModWithRetractComment4 :: Text
+goModWithRetractComment4 =
+  [r|module github.com/some/some
+
+require (
+	github.com/some/some v1.44.263
+)
+
+retract (
+	v0.76.2 // some comment
+	v0.76.1
+	v0.65.0
+  [v0.10.1, v0.10.2] // some comment
+)|]
