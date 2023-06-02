@@ -463,9 +463,13 @@ which' workdir bins = context describe $ do
   (systemPathExts :: SystemPathExt) <- ask
 
   let names = NE.toList bins
-      exts = unSystemPathExt systemPathExts
       workdirPaths = enumerateWithParents workdir
       systemPaths' = unSystemPath systemPaths
+
+  -- In Windows, the PATHEXT environment variable contains a list of file extensions.
+  -- In Unix, this is always empty, _but_ we use "empty list" as a signal that we're done searching for extensions.
+  -- Given this, in Unix we force this to be a single empty string.
+  let exts = if runningInOS Windows then unSystemPathExt systemPathExts else [""]
 
   context "find in workdir ancestors" $
     nextPath workdirPaths names exts >>= \case
@@ -495,8 +499,8 @@ which' workdir bins = context describe $ do
     enumerateWithParents path = do
       let next = parent path
       if next /= path
-        then ([next] ++) $ enumerateWithParents next
-        else [next]
+        then path : enumerateWithParents next
+        else [path]
 
     nextPath :: (WhichEffs sig m) => [Path Abs Dir] -> [Text] -> [String] -> m (Maybe (Path Abs File, Text))
     nextPath (path : paths) names exts = do

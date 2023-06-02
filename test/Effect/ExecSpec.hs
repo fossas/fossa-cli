@@ -11,6 +11,7 @@ import Control.Carrier.Finally (runFinally)
 import Control.Carrier.Reader (runReader)
 import Control.Carrier.Stack (runStack)
 import Data.Either (isLeft)
+import Data.String.Conversion (toString)
 import Diag.Result (Result (..))
 import Effect.Exec (
   AllowErr (..),
@@ -33,6 +34,7 @@ import Test.Hspec (
   it,
   runIO,
   shouldBe,
+  shouldEndWith,
   shouldSatisfy,
  )
 import Prelude
@@ -70,13 +72,13 @@ spec = do
     it "should report binary name correctly" $ do
       assertOnSuccess result $ \_ location -> do
         case location of
-          Just (FoundInSystemPath _ name) -> name `shouldBe` "cabal"
+          Just (FoundInSystemPath _ name) -> (toString name) `shouldEndWith` "cabal"
           _ -> expectationFailure "cabal not found in system path"
 
   describe "Working directory search" $ do
     systemPath <- runIO lookupSystemPath
     systemPathExt <- runIO lookupSystemPathExt
-    let testdataDir = dir </> $(mkRelDir "testdata")
+    let testdataDir = dir </> $(mkRelDir "test/Effect/testdata")
 
     fakebin <-
       runIO
@@ -118,8 +120,9 @@ spec = do
 
     it "should not find a binary that doesn't exist" $ do
       case fakebinNonExistent of
-        Success _ _ -> expectationFailure "fakebin_does_not_exist should not be found"
-        Failure _ _ -> pure ()
+        Success _ (Just loc) -> expectationFailure ("fakebin_does_not_exist should not be found, but got: " <> show loc)
+        Success _ Nothing -> pure ()
+        Failure _ _ -> expectationFailure "fakebin_does_not_exist should not be found, but got failure running test"
 
 lookupSystemPath :: IO SystemPath
 lookupSystemPath = do
