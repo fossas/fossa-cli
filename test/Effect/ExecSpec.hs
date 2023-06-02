@@ -114,13 +114,13 @@ spec = do
     it "should find a binary in working directory" $ do
       assertOnSuccess fakebin $ \_ location -> do
         if runningInOS Windows
-          then location `shouldBe` (Just . FoundInWorkDir $ testdataDir </> $(mkRelFile "fakebin.exe"))
+          then location `shouldBe` (Just . FoundInWorkDir $ testdataDir </> $(mkRelFile "fakebin.EXE"))
           else location `shouldBe` (Just . FoundInWorkDir $ testdataDir </> $(mkRelFile "fakebin"))
 
     it "should prefer working directory to system path" $ do
       assertOnSuccess cabalInWorkingDir $ \_ location -> do
         if runningInOS Windows
-          then location `shouldBe` (Just . FoundInWorkDir $ testdataDir </> $(mkRelFile "cabal.exe"))
+          then location `shouldBe` (Just . FoundInWorkDir $ testdataDir </> $(mkRelFile "cabal.EXE"))
           else location `shouldBe` (Just . FoundInWorkDir $ testdataDir </> $(mkRelFile "cabal"))
 
     it "should not find a binary that doesn't exist" $ do
