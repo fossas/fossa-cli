@@ -35,7 +35,6 @@ import Test.Hspec (
   runIO,
   shouldBe,
   shouldContain,
-  shouldEndWith,
   shouldSatisfy,
  )
 import Prelude
