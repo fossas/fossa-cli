@@ -34,6 +34,7 @@ import Test.Hspec (
   it,
   runIO,
   shouldBe,
+  shouldContain,
   shouldEndWith,
   shouldSatisfy,
  )
@@ -72,7 +73,8 @@ spec = do
     it "should report binary name correctly" $ do
       assertOnSuccess result $ \_ location -> do
         case location of
-          Just (FoundInSystemPath _ name) -> (toString name) `shouldEndWith` "cabal"
+          -- shouldContain because on windows this may have arbitrary extensions, and in all platforms it has an arbitrary path.
+          Just (FoundInSystemPath _ name) -> (toString name) `shouldContain` "cabal"
           _ -> expectationFailure "cabal not found in system path"
 
   describe "Working directory search" $ do
@@ -112,11 +114,15 @@ spec = do
 
     it "should find a binary in working directory" $ do
       assertOnSuccess fakebin $ \_ location -> do
-        location `shouldBe` (Just . FoundInWorkDir $ testdataDir </> $(mkRelFile "fakebin"))
+        if runningInOS Windows
+          then location `shouldBe` (Just . FoundInWorkDir $ testdataDir </> $(mkRelFile "fakebin.exe"))
+          else location `shouldBe` (Just . FoundInWorkDir $ testdataDir </> $(mkRelFile "fakebin"))
 
     it "should prefer working directory to system path" $ do
       assertOnSuccess cabalInWorkingDir $ \_ location -> do
-        location `shouldBe` (Just . FoundInWorkDir $ testdataDir </> $(mkRelFile "cabal"))
+        if runningInOS Windows
+          then location `shouldBe` (Just . FoundInWorkDir $ testdataDir </> $(mkRelFile "cabal.exe"))
+          else location `shouldBe` (Just . FoundInWorkDir $ testdataDir </> $(mkRelFile "cabal"))
 
     it "should not find a binary that doesn't exist" $ do
       case fakebinNonExistent of
