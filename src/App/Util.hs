@@ -40,7 +40,7 @@ validateFile file = do
 -- This is intended to be used to support easily changing runtime operations.
 --
 -- Sometimes different imports are required for different operating systems.
--- In those situations, you'll need to use @{-# LANGUAGE CPP #-}@ and @#ifdef mingw32_HOST_OS@ pragmas instead.
+-- In those situations, you'll need to use @{\-# LANGUAGE CPP #-\}@ and @#ifdef mingw32_HOST_OS@ pragmas instead.
 data SupportedOS
   = Windows
   | Linux
