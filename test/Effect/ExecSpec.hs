@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Effect.ExecSpec (
@@ -12,7 +11,6 @@ import Control.Carrier.Finally (runFinally)
 import Control.Carrier.Reader (runReader)
 import Control.Carrier.Stack (runStack)
 import Data.Either (isLeft)
-import Data.Maybe (isJust)
 import Diag.Result (Result (..))
 import Effect.Exec (
   AllowErr (..),
