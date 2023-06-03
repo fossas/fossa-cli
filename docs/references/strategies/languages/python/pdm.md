@@ -62,7 +62,7 @@ flowchart TD
 
 would be hydrated to following graph:
 
-```
+```mermaid
 flowchart TD
     A("requests@2.25.1") -->  B("certifi@2023.5.7"):::prod
     A:::prod --> C("chardet@4.0.0"):::prod
