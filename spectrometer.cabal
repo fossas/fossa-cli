@@ -106,7 +106,7 @@ common deps
     , path                         ^>=0.9.0
     , path-io                      ^>=1.8.0
     , pretty-simple                ^>=4.1.1.0
-    , prettyprinter                >=1.6      && <1.8
+    , prettyprinter                >=1.6       && <1.8
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , random                       ^>=1.2.0
     , raw-strings-qq               ^>=1.1
@@ -119,7 +119,7 @@ common deps
     , template-haskell             ^>=2.17
     , text                         ^>=1.2.3
     , th-lift-instances            ^>=0.1.17
-    , time                         >=1.9      && <1.11
+    , time                         >=1.9       && <1.11
     , tomland                      ^>=1.3.3.0
     , transformers
     , typed-process                ^>=0.2.6
@@ -599,8 +599,8 @@ test-suite unit-tests
     NuGet.PaketSpec
     NuGet.ProjectAssetsJsonSpec
     NuGet.ProjectJsonSpec
-    Pdm.PdmSpec
     Pdm.PdmLockSpec
+    Pdm.PdmSpec
     Perl.PerlSpec
     Pnpm.PnpmLockSpec
     Python.PipenvSpec
