@@ -1,6 +1,6 @@
 # PDM
 
-[PDM](https://python-poetry.org/) is a tool for dependency management and packaging in Python.
+[PDM](https://pdm.fming.dev/latest/) is a tool for dependency management and packaging in Python.
 
 ## Project Discovery
 
@@ -81,8 +81,9 @@ whereas white signifies unknown environment. If a dependency shared parent who h
 
 ### Limitations
 
-- Any [path dependencies](https://python-poetry.org/docs/dependency-specification/#path-dependencies) will not be reported.
-- Any dependeny using: `s`, `s`, `s`, `s` vcs will not be reported.
+- Any [local dependencies](https://pdm.fming.dev/latest/usage/dependency/#local-dependencies) will not be reported.
+- Any dependeny using: `hg` (merurial), `svn` (subversion), `bzr` (bazaar) source, will not be reported.
+
 
 ## Example
 
@@ -247,5 +248,5 @@ in the analysis.
 
 ### References
 
-- [PDM Source Code](https://github.com/python-poetry/poetry)
-- [PDM Documentation](https://python-poetry.org/docs/)
+- [PDM Source Code](https://github.com/pdm-project/pdm)
+- [PDM Documentation](https://pdm.fming.dev/latest/)
