@@ -91,6 +91,7 @@ data DiscoveredProjectType
   | PackageReferenceProjectType
   | PackagesConfigProjectType
   | PaketProjectType
+  | PdmProjectType
   | PerlProjectType
   | PipenvProjectType
   | PnpmProjectType
@@ -140,6 +141,7 @@ projectTypeToText = \case
   PackageReferenceProjectType -> "packagereference"
   PackagesConfigProjectType -> "packagesconfig"
   PaketProjectType -> "paket"
+  PdmProjectType -> "pdm"
   PerlProjectType -> "perl"
   PipenvProjectType -> "pipenv"
   PnpmProjectType -> "pnpm"

@@ -125,6 +125,8 @@ data DepType
     CarthageType
   | -- | A Swift Package Dependency -- effectively a "git" dependency. Name is repo path and version is tag/branch/hash
     SwiftType
+  | -- | Path Type -- effectively any dependency which is referred from filesystem.
+    PathType
   deriving (Eq, Ord, Show, Generic, Enum, Bounded)
 
 data VerConstraint

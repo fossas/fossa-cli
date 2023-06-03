@@ -42,6 +42,7 @@ import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
 import Strategy.NuGet.Paket qualified as Paket
 import Strategy.NuGet.ProjectAssetsJson qualified as ProjectAssetsJson
 import Strategy.NuGet.ProjectJson qualified as ProjectJson
+import Strategy.Pdm qualified as Pdm
 import Strategy.Perl qualified as Perl
 import Strategy.Pub qualified as Pub
 import Strategy.Python.Pipenv qualified as Pipenv
@@ -88,6 +89,7 @@ managedDepsDiscoveryF =
   , DiscoverFunc PackageReference.discover
   , DiscoverFunc PackagesConfig.discover
   , DiscoverFunc Paket.discover
+  , DiscoverFunc Pdm.discover
   , DiscoverFunc Perl.discover
   , DiscoverFunc Pipenv.discover
   , DiscoverFunc Poetry.discover

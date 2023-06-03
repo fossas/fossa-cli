@@ -418,9 +418,12 @@ library
     Strategy.NuGet.Paket
     Strategy.NuGet.ProjectAssetsJson
     Strategy.NuGet.ProjectJson
+    Strategy.Pdm
     Strategy.Perl
     Strategy.Pub
     Strategy.Python.Errors
+    Strategy.Python.PDM.Pdm
+    Strategy.Python.PDM.PdmLock
     Strategy.Python.Pipenv
     Strategy.Python.Poetry
     Strategy.Python.Poetry.Common
@@ -596,6 +599,8 @@ test-suite unit-tests
     NuGet.PaketSpec
     NuGet.ProjectAssetsJsonSpec
     NuGet.ProjectJsonSpec
+    Pdm.PdmSpec
+    Pdm.PdmLockSpec
     Perl.PerlSpec
     Pnpm.PnpmLockSpec
     Python.PipenvSpec

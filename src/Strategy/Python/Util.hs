@@ -6,6 +6,8 @@ module Strategy.Python.Util (
   MarkerOp (..),
   Operator (..),
   Req (..),
+  reqCodec,
+  toConstraint,
 ) where
 
 import Control.Monad (join)
@@ -21,6 +23,7 @@ import Graphing qualified
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.URI qualified as URI
+import Toml qualified
 
 buildGraph :: [Req] -> Graphing Dependency
 buildGraph = Graphing.fromList . map toDependency
@@ -113,6 +116,14 @@ data Req
   = NameReq Text (Maybe [Text]) (Maybe [Version]) (Maybe Marker) -- name, extras, ...
   | UrlReq Text (Maybe [Text]) URI.URI (Maybe Marker) -- name, extras, ...
   deriving (Eq, Ord, Show)
+
+reqCodec :: Toml.TomlBiMap Req Toml.AnyValue
+reqCodec = Toml._TextBy (toText . show) parseReq
+
+parseReq :: Text -> Either Text Req
+parseReq candidate = case runParser requirementParser "" candidate of
+  Left peb -> Left $ toText $ errorBundlePretty peb
+  Right rr -> Right rr
 
 -- grammar extracted from https://www.python.org/dev/peps/pep-0508/
 requirementParser :: Parser Req
@@ -222,6 +233,6 @@ requirementParser = specification
     extras = label "extras" $ char '[' *> whitespace *> optional extras_list <* whitespace <* char ']'
 
     name_req = label "name_req" $ NameReq <$> name <* whitespace <*> (join <$> optional extras) <* whitespace <*> optional versionspec <* whitespace <*> optional quoted_marker
-    url_req = label "url_req" $ UrlReq <$> name <* whitespace <*> (join <$> optional extras) <* whitespace <*> urlspec <* whitespace1 <*> optional quoted_marker
+    url_req = label "url_req" $ UrlReq <$> name <* whitespace <*> (join <$> optional extras) <* whitespace <*> urlspec <* whitespace <*> optional quoted_marker
 
     specification = label "specification" $ whitespace *> (try url_req <|> name_req) <* whitespace

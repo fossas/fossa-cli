@@ -99,12 +99,13 @@ isOtherEnv :: DepEnvironment -> Bool
 isOtherEnv (EnvOther _) = True
 isOtherEnv _ = False
 
--- core can't handle subprojects or conantype yet!
+-- core can't handle subprojects, conantype or path types
 isSupportedType :: Dependency -> Bool
 isSupportedType Dependency{dependencyType} =
   dependencyType /= SubprojectType
     && dependencyType /= GooglesourceType
     && dependencyType /= ConanType
+    && dependencyType /= PathType
 
 toLocator :: Dependency -> Locator
 toLocator dep =
@@ -159,6 +160,7 @@ depTypeToFetcher = \case
   UserType -> "user"
   PubType -> "pub"
   SwiftType -> "swift"
+  PathType -> "url"
 
 -- | GooglesourceType and SubprojectType are not supported with this function, since they're ambiguous.
 fetcherToDepType :: Text -> Maybe DepType
