@@ -60,7 +60,7 @@ import Strategy.Conan.Version (guardConanVersion2Gt)
 -- Why not `conan graph info` command? This is because, if
 -- end-user HAS not installed dependencies using "tools.build:download_source=True"
 -- option, than simply source directory will be empty, regardless even if we
--- pass this option in `conan graph info` command. This is not documented, 
+-- pass this option in `conan graph info` command. This is not documented,
 -- but was communicated in: https://github.com/conan-io/conan/issues/13939
 --
 -- >> conan install . -f json
