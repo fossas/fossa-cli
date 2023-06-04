@@ -77,7 +77,7 @@ conanV2GraphCmd :: [Text] -> Command
 conanV2GraphCmd extraArgs =
   Command
     { cmdName = "conan"
-    , cmdArgs = ["graph", "info", ".", "-f", "json"] <> extraArgs
+    , cmdArgs = ["install", ".", "-f", "json", "-c", "tools.build:download_source=True"] <> extraArgs
     , cmdAllowErr = Never
     }
 
