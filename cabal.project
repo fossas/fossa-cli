@@ -64,4 +64,4 @@ index-state: hackage.haskell.org 2023-01-11T00:56:49Z
 package *
   extra-include-dirs: /opt/homebrew/include
   extra-lib-dirs: /opt/homebrew/lib
-  ghc-options: -I/Library/Developer/CommandLineTools/SDKs/MacOSX11.sdk/usr/include/ffi
+  ghc-options: -I/Library/Developer/CommandLineTools/SDKs/MacOSX12.sdk/usr/include/ffi
