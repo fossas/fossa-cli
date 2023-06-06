@@ -31,7 +31,7 @@ import App.Fossa.VendoredDependency (
  )
 import App.Types (FullFileUploads (..))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
-import Control.Effect.Diagnostics (Diagnostics, context, fatalText, fatal)
+import Control.Effect.Diagnostics (Diagnostics, context, fatal, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Has, Lift)
 import Control.Effect.StickyLogger (StickyLogger)
@@ -55,7 +55,7 @@ import Data.Text qualified as Text
 import DepTypes (DepType (..))
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, vsep, pretty, indent)
+import Effect.Logger (Logger, indent, pretty, vsep)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
 import Fossa.API.Types (ApiOpts, Organization (..))
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
@@ -149,8 +149,8 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
     -- Don't do anything if there are no vendored deps.
     (_, Nothing) -> pure []
 
-    -- Some manual deps, such as remote dependencies in source unit cannot be
-    -- validated without endpoint interactions.
+  -- Some manual deps, such as remote dependencies in source unit cannot be
+  -- validated without endpoint interactions.
   rdeps <- case maybeApiOpts of
     Just apiOpts -> runFossaApiClient apiOpts $ do
       traverse (\r -> validateRemoteDep r =<< getOrganization) remoteDependencies
@@ -485,9 +485,10 @@ instance FromJSON RemoteDependency where
       <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
 
 validateRemoteDep :: (Has Diagnostics sig m) => RemoteDependency -> Organization -> m RemoteDependency
-validateRemoteDep r org = if locatorLen > maxLocatorLength
-      then fatal $ RemoteDepLengthIsGtThanAllowed (r, maxUrlRevLength)
-      else pure r
+validateRemoteDep r org =
+  if locatorLen > maxLocatorLength
+    then fatal $ RemoteDepLengthIsGtThanAllowed (r, maxUrlRevLength)
+    else pure r
   where
     orgId :: Text
     orgId = toText . show . organizationId $ org
@@ -509,21 +510,24 @@ validateRemoteDep r org = if locatorLen > maxLocatorLength
 
 newtype RemoteDepLengthIsGtThanAllowed = RemoteDepLengthIsGtThanAllowed (RemoteDependency, Int)
 instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
-  renderDiagnostic (RemoteDepLengthIsGtThanAllowed (r, maxLen)) = vsep [
-      "You provided remote-dependency: ",
-      "",
-      indent 2 $ pretty $ "Name: " <> remoteName r,
-      indent 2 $ pretty $ "Url: " <> remoteUrl r,
-      indent 2 $ pretty $ "Version: " <> remoteVersion r,
-      "",
-      pretty $ "The combined length of url and version is: "
-        <> show urlRevLength
-        <> ". It must be below: " <> show maxLen <> "."
-    ]
+  renderDiagnostic (RemoteDepLengthIsGtThanAllowed (r, maxLen)) =
+    vsep
+      [ "You provided remote-dependency: "
+      , ""
+      , indent 2 . pretty $ "Name: " <> remoteName r
+      , indent 2 . pretty $ "Url: " <> remoteUrl r
+      , indent 2 . pretty $ "Version: " <> remoteVersion r
+      , ""
+      , pretty $
+          "The combined length of url and version is: "
+            <> show urlRevLength
+            <> ". It must be below: "
+            <> show maxLen
+            <> "."
+      ]
     where
       urlRevLength :: Int
       urlRevLength = Text.length $ Text.intercalate "" [remoteUrl r, remoteVersion r]
-
 
 -- Dependency "metadata" section for both Remote and Custom Dependencies
 instance FromJSON DependencyMetadata where
