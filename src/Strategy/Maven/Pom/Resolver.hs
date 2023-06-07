@@ -36,10 +36,12 @@ import Effect.ReadFS (
  )
 import Path (Abs, Dir, File, Path, mkRelFile, parent, (</>))
 import Strategy.Maven.Pom.PomFile (
-  MavenCoordinate,
-  Pom (pomCoord, pomParentCoord),
+  MavenCoordinate (MavenCoordinate),
+  Pom (Pom, pomCoord, pomParentCoord),
   RawParent (rawParentRelativePath),
   RawPom (rawPomModules, rawPomParent),
+  coordArtifact,
+  pomModules,
   validatePom,
  )
 
@@ -74,9 +76,20 @@ buildGlobalClosure files = do
                 [ (parentCoord, pomCoord pom)
                 | pom <- Map.elems cache
                 , Just parentCoord <- [pomParentCoord pom]
+                , isSubmoduleChild parentCoord (coordArtifact . pomCoord $ pom)
                 ]
-        , globalPoms = indexBy (pomCoord . snd) (Map.toList cache)
+        , globalPoms = allPoms
         }
+      where
+        allPoms :: Map MavenCoordinate (Path Abs File, Pom)
+        allPoms = indexBy (pomCoord . snd) (Map.toList cache)
+
+        -- This check isn't foolproof because a `<module>` tag only includes a module name not a full coordinate.
+        -- This means we could potentially match a module A with its parent (B) if B references a child
+        -- with the same artifact id as A but that isn't actually A.
+        -- In practice, this is probably uncommon.
+        isSubmoduleChild :: MavenCoordinate -> Text -> Bool
+        isSubmoduleChild parentMod childName = maybe False (\(_, pom) -> childName `elem` pomModules pom) $ Map.lookup parentMod allPoms
 
 -- TODO: reuse this in other strategies
 indexBy :: Ord k => (v -> k) -> [v] -> Map k v
