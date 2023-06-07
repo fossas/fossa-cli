@@ -36,8 +36,8 @@ import Effect.ReadFS (
  )
 import Path (Abs, Dir, File, Path, mkRelFile, parent, (</>))
 import Strategy.Maven.Pom.PomFile (
-  MavenCoordinate (MavenCoordinate),
-  Pom (Pom, pomCoord, pomParentCoord),
+  MavenCoordinate,
+  Pom (pomCoord, pomParentCoord),
   RawParent (rawParentRelativePath),
   RawPom (rawPomModules, rawPomParent),
   coordArtifact,
