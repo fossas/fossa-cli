@@ -153,7 +153,8 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
   -- validated without endpoint interactions.
   rdeps <- case maybeApiOpts of
     Just apiOpts -> runFossaApiClient apiOpts $ do
-      traverse (\r -> validateRemoteDep r =<< getOrganization) remoteDependencies
+      org <- getOrganization
+      traverse (\r -> validateRemoteDep r org) remoteDependencies
     Nothing -> pure remoteDependencies
 
   let renderedPath = toText root
