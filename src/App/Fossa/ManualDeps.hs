@@ -154,7 +154,7 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
   rdeps <- case maybeApiOpts of
     Just apiOpts -> runFossaApiClient apiOpts $ do
       org <- getOrganization
-      traverse (\r -> validateRemoteDep r org) remoteDependencies
+      traverse (`validateRemoteDep` org) remoteDependencies
     Nothing -> pure remoteDependencies
 
   let renderedPath = toText root
