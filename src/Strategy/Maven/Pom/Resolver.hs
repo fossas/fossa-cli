@@ -3,7 +3,6 @@
 module Strategy.Maven.Pom.Resolver (
   GlobalClosure (..),
   buildGlobalClosure,
-
   -- exported for testing
   buildClosure,
 ) where

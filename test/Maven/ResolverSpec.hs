@@ -100,7 +100,7 @@ expectedClosure dir =
                 , coordVersion = "1.3.5.RELEASE"
                 }
             ,
-              ( dir </> minimalExampleWithParent 
+              ( dir </> minimalExampleWithParent
               , Pom
                   { pomCoord =
                       MavenCoordinate
