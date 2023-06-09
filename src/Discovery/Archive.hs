@@ -80,6 +80,7 @@ selectUnarchiver file
   | ".zip" `isSuffixOf` file = Just extractZip
   | ".jar" `isSuffixOf` file = Just extractZip
   | ".rpm" `isSuffixOf` file = Just extractRpm
+  | ".aar" `isSuffixOf` file = Just extractZip
   | otherwise = Nothing
 
 -- | Extract an archive to a temporary directory, and run the provided callback

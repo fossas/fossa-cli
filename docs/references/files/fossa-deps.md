@@ -55,6 +55,13 @@ Denotes listing of dependencies, whose source code is to be downloaded from prov
 - `metadata.homepage`: Homepage of the dependency. This metadata is used to enrich reporting provided in FOSSA's web interface.
 - `metadata.description`: Description of the dependency. This metadata is used to enrich reporting provided in FOSSA's web interface.
 
+> Combined length of url and version has upper bound. It depends on your organization identifier. You can
+find your organization identifier in FOSSA Webapp, by going to any project's "settings" page, and retrieving
+numeric value from project's locator. For example, project locator of `custom+123/some-project-id`, means
+`123` is your organization identifier. 
+
+> Combined length of `url`, `version`, and your `organizaion id` must be less than `241`.
+
 For more details, please refer to the [feature](../../features/manual-dependencies.md) walk through. 
 
 ### `vendored-dependencies:`
