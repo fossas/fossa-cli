@@ -49,7 +49,7 @@ jobs:
         brew install jq
 
     # Set up Haskell.
-    - uses: haskell/actions/setup@v1
+    - uses: haskell/actions/setup@v2
       id: setup-haskell
       name: Setup ghc/cabal (non-alpine)
       if: ${{ !contains(matrix.os, 'ubuntu') }}
