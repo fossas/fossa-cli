@@ -82,7 +82,7 @@ whereas white signifies unknown environment. If a dependency shared parent who h
 ### Limitations
 
 - Any [local dependencies](https://pdm.fming.dev/latest/usage/dependency/#local-dependencies) will not be reported.
-- Any dependeny using: `hg` (merurial), `svn` (subversion), `bzr` (bazaar) source, will not be reported.
+- Any dependeny using: `hg` (mercurial), `svn` (subversion), `bzr` (bazaar) source, will not be reported.
 
 
 ## Example
@@ -219,7 +219,7 @@ paths:
 
 ### F.A.Q
 
-1. How do I perform analysis for `pdm`?
+1. How do I perform analysis for only `pdm`?
 
 Explicitly specify an analysis target in `.fossa.yml` file. The example below excludes all other analysis targets:
 
