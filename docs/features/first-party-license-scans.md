@@ -24,6 +24,28 @@ If your organization has first-party scans on by default, you can turn off first
 fossa analyze --experimental-block-first-party-scans .
 ```
 
+## Path filtering First-Party License Scans
+
+You can use path filters to exclude and include paths that are license scanned.
+
+This is done in exactly the same way that you do path filtering for [Vendored Dependencies](./vendored-dependencies.md#path-filtering). You add a section to `.fossa.yml`that will look something like this. This `vendoredDependencies.licenseScanPathFilters` section will affect the paths scanned for both vendored dependency and first-party license scans.
+
+```yaml
+version: 3
+vendoredDependencies:
+  licenseScanPathFilters:
+    only:
+      - "**/*.rb"
+      - "**/LICENSE"
+    exclude:
+      - "**/test/**"
+      - "**/test/*"
+      - "**/spec/**"
+      - "**/spec/*"
+```
+
+For a full explanation of how this works, see the documentation for [Vendored Dependencies](./vendored-dependencies.md#path-filtering).
+
 ## First-Party License Scans and Vendored Dependencies
 
 The FOSSA CLI's [Vendored Dependency](./vendored-dependencies.md) feature allows you to run a license scan on vendored dependencies.
