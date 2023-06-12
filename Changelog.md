@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.8.1
 - Setup.py: Fixes an defect with `setup.py` parser, caused by failing to account for line comments or backslash. ([#1191](https://github.com/fossas/fossa-cli/pull/1191))
 - Installation: `install-latest.sh` now directs `curl` and `wget` to pass `Cache-Control: no-cache` headers to the server. ([#1206](https://github.com/fossas/fossa-cli/pull/1206))
 - `Go.mod`: Anaysis does not fail if `go.mod` includes `retract` block. ([#1213](https://github.com/fossas/fossa-cli/pull/1213))
