@@ -30,9 +30,9 @@ poetryLockCodec :: TomlCodec PoetryLock
 poetryLockCodec =
   PoetryLock
     <$> Toml.list poetryLockPackageCodec "package"
-    .= poetryLockPackages
+      .= poetryLockPackages
     <*> Toml.table poetryMetadataCodec "metadata"
-    .= poetryLockMetadata
+      .= poetryLockMetadata
 
 -- | Metadata of poetry lock file.
 data PoetryMetadata = PoetryMetadata
@@ -46,11 +46,11 @@ poetryMetadataCodec :: TomlCodec PoetryMetadata
 poetryMetadataCodec =
   PoetryMetadata
     <$> Toml.text "lock-version"
-    .= poetryMetadataLockVersion
+      .= poetryMetadataLockVersion
     <*> Toml.text "content-hash"
-    .= poetryMetadataContentHash
+      .= poetryMetadataContentHash
     <*> Toml.text "python-versions"
-    .= poetryMetadataPythonVersions
+      .= poetryMetadataPythonVersions
 
 -- | A PoetryLockPackageSource represents [package.source] field in poetry.lock.
 -- Source indicates from where the package was retrieved.
@@ -78,31 +78,31 @@ poetryLockPackageCodec :: TomlCodec PoetryLockPackage
 poetryLockPackageCodec =
   PoetryLockPackage
     <$> Toml.diwrap (Toml.text "name")
-    .= poetryLockPackageName
+      .= poetryLockPackageName
     <*> Toml.text "version"
-    .= poetryLockPackageVersion
+      .= poetryLockPackageVersion
     <*> Toml.dioptional (Toml.text "category")
-    .= poetryLockPackageCategory
+      .= poetryLockPackageCategory
     <*> Toml.bool "optional"
-    .= poetryLockPackageOptional
+      .= poetryLockPackageOptional
     <*> Toml.text "python-versions"
-    .= poetryLockPackagePythonVersions
+      .= poetryLockPackagePythonVersions
     <*> Toml.tableMap Toml._KeyText poetryLockPackagePoetryLockDependencySpecCodec "dependencies"
-    .= poetryLockPackageDependencies
+      .= poetryLockPackageDependencies
     <*> Toml.dioptional (Toml.table poetryLockPackageSourceCodec "source")
-    .= poetryLockPackageSource
+      .= poetryLockPackageSource
 
 poetryLockPackageSourceCodec :: TomlCodec PoetryLockPackageSource
 poetryLockPackageSourceCodec =
   PoetryLockPackageSource
     <$> Toml.text "type"
-    .= poetryLockPackageSourceType
+      .= poetryLockPackageSourceType
     <*> Toml.text "url"
-    .= poetryLockPackageSourceUrl
+      .= poetryLockPackageSourceUrl
     <*> Toml.dioptional (Toml.text "reference")
-    .= poetryLockPackageSourceReference
+      .= poetryLockPackageSourceReference
     <*> Toml.dioptional (Toml.text "resolved_reference")
-    .= poetryLockPackageSourceResolvedReference
+      .= poetryLockPackageSourceResolvedReference
 
 data PoetryLockDependencySpec
   = TextVersion Text
@@ -119,7 +119,7 @@ objectVersionCodec :: TomlCodec ObjectVersion
 objectVersionCodec =
   ObjectVersion
     <$> Toml.text "version"
-    .= unObjectVersion
+      .= unObjectVersion
 
 matchTextVersion :: PoetryLockDependencySpec -> Maybe Text
 matchTextVersion (TextVersion version) = Just version
