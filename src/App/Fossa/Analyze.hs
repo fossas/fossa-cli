@@ -298,7 +298,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     Diag.errorBoundaryIO . diagToDebug $
       if firstPartyScansFlag cfg == FirstPartyScansOffFromFlag
         then do
-          logInfo "first party scans forced off by the experimental-block-first-party-scans flag. Skipping first party scans"
+          logInfo "first party scans forced off by the --experimental-block-first-party-scans flag. Skipping first party scans"
           pure Nothing
         else Diag.context "first-party-scans" . runStickyLogger SevInfo $ runFirstPartyScan basedir maybeApiOpts cfg
   let firstPartyScanResults = join . resultToMaybe $ maybeFirstPartyScanResults
