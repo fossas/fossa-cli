@@ -6,6 +6,7 @@
 - `Go.mod`: Anaysis does not fail if `go.mod` includes `retract` block. ([#1213](https://github.com/fossas/fossa-cli/pull/1213))
 - `.aar`: Supports `.aar` archive files with native license scanning, and with `--unpack-archives` option. ([#1217](https://github.com/fossas/fossa-cli/pull/1217))
 - `remote-dependencies`: Analysis of `fossa-deps` fails, if remote-dependencies's character length is greater than maximum. It only applies during non-output mode. ([#1216](https://github.com/fossas/fossa-cli/pull/1216))
+- Network requests: `fossa-cli` retries network requests which return response with status code of 502. ([#1220](https://github.com/fossas/fossa-cli/pull/1220))
 
 ## v3.8.0
 - License Scanning: You can license scan your first-party code with the `--experimental-force-first-party-scans` flag ([#1187](https://github.com/fossas/fossa-cli/pull/1187))

@@ -25,7 +25,7 @@ import Network.HTTP.Types (statusCode)
 -- | Status Code | Description                   | Result  |
 -- |-------------|-------------------------------|---------|
 -- | 500         | Internal Server Failure       | Fails   |
--- | 502         | Bad Gateway                   | Fails   |
+-- | 502         | Bad Gateway                   | Retries |
 -- | 503         | Service Unavailable           | Fails   |
 -- | 408         | Request Timeout               | Retries |
 -- | 504         | Gateway Timeout               | Retries |
@@ -48,6 +48,7 @@ httpConfigRetryTimeouts =
           `elem` [
                    -- https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
                    408 -- request timeout
+                 , 502 -- bad gateway
                  , 504 -- gateway timeout
                  , 524 -- a timeout occurred
                  , 598 -- network read timeout error
