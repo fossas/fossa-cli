@@ -7,6 +7,7 @@
 - `.aar`: Supports `.aar` archive files with native license scanning, and with `--unpack-archives` option. ([#1217](https://github.com/fossas/fossa-cli/pull/1217))
 - `remote-dependencies`: Analysis of `fossa-deps` fails, if remote-dependencies's character length is greater than maximum. It only applies during non-output mode. ([#1216](https://github.com/fossas/fossa-cli/pull/1216))
 - Maven: Analyze a package separately from its parents if the module does not appear in its parent's `<modules>` tag when both the module and its parents are discovered as candidate targets. ([#1218](https://github.com/fossas/fossa-cli/pull/1218))
+- Network requests: `fossa-cli` retries network requests which return response with status code of 502. ([#1220](https://github.com/fossas/fossa-cli/pull/1220))
 
 ## v3.8.0
 - License Scanning: You can license scan your first-party code with the `--experimental-force-first-party-scans` flag ([#1187](https://github.com/fossas/fossa-cli/pull/1187))
