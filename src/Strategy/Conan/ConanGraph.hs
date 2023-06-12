@@ -271,7 +271,7 @@ getEnv ConanGraphNode{..} = case (test, context) of
   _ -> EnvProduction
 
 -- | Retrieves conan package's version.
--- If the package has settings (os, compiler, etc.) 
+-- If the package has settings (os, compiler, etc.)
 -- they are appended as URI params. Package ID as
 -- determined by conan is also added as URI param.
 -- -
