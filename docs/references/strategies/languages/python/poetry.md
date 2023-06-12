@@ -16,7 +16,7 @@ We parse `pyproject.toml` to find direct dependencies and their [version constra
 If `poetry.lock` file is discovered, following will be analyzed from lockfile to supplement the analyses:
 
 - `[package.dependencies]` - package's dependencies
-- `package.category` - package's environment (dev, test, etc.)
+- `package.category` - package's environment (dev, test, etc.). If not present, defaults to `main`.
 - `package.name` - name of the package
 - `package.version` - resolved version of the package
 
