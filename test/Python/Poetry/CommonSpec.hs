@@ -40,6 +40,8 @@ expectedPyProject :: PyProject
 expectedPyProject =
   PyProject
     { pyprojectBuildSystem = Just $ PyProjectBuildSystem{buildBackend = "poetry.core.masonry.api"}
+    , pyprojectProject = Nothing
+    , pyprojectPdmDevDependencies = Nothing
     , pyprojectPoetry =
         Just $
           PyProjectPoetry
