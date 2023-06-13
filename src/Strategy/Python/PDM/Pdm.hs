@@ -3,7 +3,7 @@ module Strategy.Python.PDM.Pdm (
   analyze,
 ) where
 
-import Control.Effect.Diagnostics ( Diagnostics, Diagnostics )
+import Control.Effect.Diagnostics (Diagnostics)
 import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text, isPrefixOf)
@@ -15,7 +15,7 @@ import DepTypes (
  )
 import Effect.ReadFS (Has, ReadFS, readContentsToml)
 import Graphing (Graphing, directs)
-import Path ( Abs, File, Path, Dir )
+import Path (Abs, Dir, File, Path)
 import Strategy.Python.PDM.PdmLock (buildGraph, pdmLockCodec)
 import Strategy.Python.Poetry.PyProject (PyProject (..), PyProjectMetadata (..), pyProjectCodec)
 import Strategy.Python.Util (Req (..), toConstraint)
@@ -84,7 +84,6 @@ getDeps project = do
       , dependencyGraphBreadth = if isNothing (pdmlock project) then Partial else Complete
       , dependencyManifestFiles = [pyproject project]
       }
-
 
 analyze ::
   ( Has ReadFS sig m
