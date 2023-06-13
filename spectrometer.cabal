@@ -418,7 +418,6 @@ library
     Strategy.NuGet.Paket
     Strategy.NuGet.ProjectAssetsJson
     Strategy.NuGet.ProjectJson
-    Strategy.Pdm
     Strategy.Perl
     Strategy.Pub
     Strategy.Python.Errors
