@@ -99,9 +99,12 @@ isOtherEnv :: DepEnvironment -> Bool
 isOtherEnv (EnvOther _) = True
 isOtherEnv _ = False
 
--- core can't handle subprojects
+-- core can't handle subprojects or conantype yet!
 isSupportedType :: Dependency -> Bool
-isSupportedType Dependency{dependencyType} = dependencyType /= SubprojectType && dependencyType /= GooglesourceType
+isSupportedType Dependency{dependencyType} =
+  dependencyType /= SubprojectType
+    && dependencyType /= GooglesourceType
+    && dependencyType /= ConanType
 
 toLocator :: Dependency -> Locator
 toLocator dep =
@@ -131,6 +134,7 @@ depTypeToFetcher = \case
   CarthageType -> "cart"
   CargoType -> "cargo"
   ComposerType -> "comp"
+  ConanType -> "conan"
   CondaType -> "conda"
   CpanType -> "cpan"
   CranType -> "cran"

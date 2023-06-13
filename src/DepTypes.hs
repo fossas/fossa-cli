@@ -70,6 +70,8 @@ data DepType
     BowerType
   | -- | A first-party subproject
     SubprojectType
+  | -- | Dependency found from the conan fetcher.
+    ConanType
   | -- | Dependency found from the composer fetcher.
     ComposerType
   | -- | Conda dependency
