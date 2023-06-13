@@ -135,6 +135,8 @@ In the event caching is causing problems, FOSSA can be made to rescan this kind 
 
 > Note: This section does not apply to archive uploads. Path filtering is only available when doing a CLI License Scan. See [here](#how-vendored-dependencies-are-scanned) for more info on the difference between these two methods.
 
+> Note: these path filters also work for and affect [first-party license scans](./first-party-license-scans.md).
+
 Path filtering can be used to omit some files or directories from license scanning. Path filtering is set up in the `.fossa.yml` file. Here is an example:
 
 ```yaml
