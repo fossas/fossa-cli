@@ -3,6 +3,8 @@
 module Strategy.Maven.Pom.Resolver (
   GlobalClosure (..),
   buildGlobalClosure,
+  -- exported for testing
+  buildClosure,
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
@@ -40,6 +42,8 @@ import Strategy.Maven.Pom.PomFile (
   Pom (pomCoord, pomParentCoord),
   RawParent (rawParentRelativePath),
   RawPom (rawPomModules, rawPomParent),
+  coordArtifact,
+  pomModules,
   validatePom,
  )
 
@@ -58,25 +62,36 @@ buildGlobalClosure files = do
       validated = Map.mapMaybe (validatePom =<<) loadResults
 
   pure (buildClosure validated)
+
+-- notably, we're not building edges based on <relativePath> from poms.
+--
+-- From the docs:
+-- "However, the group ID, artifact ID and version are still required, and must match the file in the location given or it will revert to the repository for the POM."
+--
+-- Because the group/artifact/version are required to match, we can just build edges between _coordinates_, rather than between _pom files_
+buildClosure :: Map (Path Abs File) Pom -> GlobalClosure
+buildClosure cache =
+  GlobalClosure
+    { globalGraph =
+        AM.vertices (map pomCoord (Map.elems cache))
+          `AM.overlay` AM.edges
+            [ (parentCoord, pomCoord pom)
+            | pom <- Map.elems cache
+            , Just parentCoord <- [pomParentCoord pom]
+            , isSubmoduleChild parentCoord (coordArtifact . pomCoord $ pom)
+            ]
+    , globalPoms = allPoms
+    }
   where
-    -- notably, we're not building edges based on <relativePath> from poms.
-    --
-    -- From the docs:
-    -- "However, the group ID, artifact ID and version are still required, and must match the file in the location given or it will revert to the repository for the POM."
-    --
-    -- Because the group/artifact/version are required to match, we can just build edges between _coordinates_, rather than between _pom files_
-    buildClosure :: Map (Path Abs File) Pom -> GlobalClosure
-    buildClosure cache =
-      GlobalClosure
-        { globalGraph =
-            AM.vertices (map pomCoord (Map.elems cache))
-              `AM.overlay` AM.edges
-                [ (parentCoord, pomCoord pom)
-                | pom <- Map.elems cache
-                , Just parentCoord <- [pomParentCoord pom]
-                ]
-        , globalPoms = indexBy (pomCoord . snd) (Map.toList cache)
-        }
+    allPoms :: Map MavenCoordinate (Path Abs File, Pom)
+    allPoms = indexBy (pomCoord . snd) (Map.toList cache)
+
+    -- This check isn't foolproof because a `<module>` tag only includes a module name not a full coordinate.
+    -- This means we could potentially match a module A with its parent (B) if B references a child
+    -- with the same artifact id as A but that isn't actually A.
+    -- In practice, this is probably uncommon.
+    isSubmoduleChild :: MavenCoordinate -> Text -> Bool
+    isSubmoduleChild parentMod childName = maybe False (\(_, pom) -> childName `elem` pomModules pom) $ Map.lookup parentMod allPoms
 
 -- TODO: reuse this in other strategies
 indexBy :: Ord k => (v -> k) -> [v] -> Map k v
