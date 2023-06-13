@@ -1,5 +1,6 @@
 module Strategy.Python.Poetry.PyProject (
   PyProject (..),
+  PyProjectMetadata (..),
   PyProjectPoetry (..),
   PyProjectBuildSystem (..),
   PoetryDependency (..),
@@ -35,6 +36,7 @@ import DepTypes (
     COr
   ),
  )
+import Strategy.Python.Util (Req, reqCodec)
 import Text.Megaparsec (
   Parsec,
   empty,
@@ -62,6 +64,8 @@ newtype PackageName = PackageName {unPackageName :: Text} deriving (Eq, Ord, Sho
 data PyProject = PyProject
   { pyprojectBuildSystem :: Maybe PyProjectBuildSystem
   , pyprojectPoetry :: Maybe PyProjectPoetry
+  , pyprojectProject :: Maybe PyProjectMetadata
+  , pyprojectPdmDevDependencies :: Maybe (Map Text [Req])
   }
   deriving (Show, Eq, Ord)
 
@@ -70,6 +74,29 @@ pyProjectCodec =
   PyProject
     <$> Toml.dioptional (Toml.table pyProjectBuildSystemCodec "build-system") .= pyprojectBuildSystem
     <*> Toml.dioptional (Toml.table pyProjectPoetryCodec "tool.poetry") .= pyprojectPoetry
+    <*> Toml.dioptional (Toml.table pyPyProjectMetadataCodec "project") .= pyprojectProject
+    <*> Toml.dioptional (Toml.tableMap Toml._KeyText (Toml.arrayOf reqCodec) "tool.pdm.dev-dependencies") .= pyprojectPdmDevDependencies
+
+-- | Represents [project] block
+-- > [project]
+-- > dependencies = [...]
+-- >
+-- > [project.optional-dependencies]
+-- > gui = ["PyQt5"]
+-- > cli = ["click"]
+-- >
+-- Refer to: https://packaging.python.org/en/latest/specifications/declaring-project-metadata/#dependencies-optional-dependencies
+data PyProjectMetadata = PyProjectMetadata
+  { pyprojectDependencies :: Maybe [Req]
+  , pyprojectOptionalDependencies :: Maybe (Map Text [Req])
+  }
+  deriving (Show, Eq, Ord)
+
+pyPyProjectMetadataCodec :: TomlCodec PyProjectMetadata
+pyPyProjectMetadataCodec =
+  PyProjectMetadata
+    <$> Toml.dioptional (Toml.arrayOf reqCodec "dependencies") .= pyprojectDependencies
+    <*> Toml.dioptional (Toml.tableMap Toml._KeyText (Toml.arrayOf reqCodec) "optional-dependencies") .= pyprojectOptionalDependencies
 
 newtype PyProjectBuildSystem = PyProjectBuildSystem
   { buildBackend :: Text
