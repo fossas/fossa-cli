@@ -186,6 +186,7 @@ ignoredPaths =
   , "examples/"
   , "vendor/"
   , "node_modules/"
+  , ".venv/" -- python pdm package manager's pkgyard (similar to node_modules/)
   , ".srclib-cache/"
   , "spec/"
   , "Godeps/"
