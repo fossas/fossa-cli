@@ -1,4 +1,5 @@
 {-# LANGUAGE ViewPatterns #-}
+
 module Control.Carrier.Telemetry.Utils (
   getCurrentCliEnvironment,
   getCurrentCliVersion,
@@ -127,11 +128,10 @@ getSystemInfo = do
 -- If the parse fails for some reason, there is no warning.
 -- This is intended for telemetry, if we fail to find a value it isn't supposed to be reported or recovered from.
 parseOsRelease :: Text -> Map.Map Text Text
-parseOsRelease = Map.fromList . map splitOnEqual . Text.lines 
-  where splitOnEqual :: Text -> (Text, Text)
-        splitOnEqual (Text.span (== '=') -> (pre, post)) = (pre, Text.dropWhile (== '=') post)
-
-
+parseOsRelease = Map.fromList . map splitOnEqual . Text.lines
+  where
+    splitOnEqual :: Text -> (Text, Text)
+    splitOnEqual (Text.span (== '=') -> (pre, post)) = (pre, Text.dropWhile (== '=') post)
 
 lookupCIEnvironment :: IO (Maybe CIEnvironment)
 lookupCIEnvironment = do
