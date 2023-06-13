@@ -9,6 +9,7 @@ module Control.Carrier.Telemetry.Utils (
 
 import App.Version (isDirty, versionOrBranch)
 import Control.Algebra (Has)
+import Control.Applicative ((<|>))
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Telemetry.Types (
   CIEnvironment (..),
@@ -20,11 +21,15 @@ import Control.Carrier.Telemetry.Types (
  )
 import Control.Concurrent.STM (STM, atomically, newEmptyTMVarIO, tryReadTMVar)
 import Control.Concurrent.STM.TBMQueue (TBMQueue, newTBMQueueIO, tryReadTBMQueue)
+import Control.Effect.Exception (SomeException)
+import Control.Exception (try)
 import Control.Monad (join, replicateM)
+import Data.ByteString qualified as BS
 import Data.Foldable (asum)
 import Data.Functor.Extra ((<$$>))
+import Data.Map qualified as Map
 import Data.Maybe (catMaybes)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Time (diffUTCTime, getCurrentTime, nominalDiffTimeToSeconds)
@@ -93,12 +98,25 @@ getCurrentCliEnvironment =
     else CliProductionEnvironment
 
 getSystemInfo :: IO SystemInfo
-getSystemInfo =
+getSystemInfo = do
   SystemInfo
     Info.os
     Info.arch
     <$> Conc.getNumCapabilities
     <*> Conc.getNumProcessors
+    -- Info.os only collects OS type, but for linux there isn't any info about distribution.
+    <*> if Info.os == "linux" then readOsRelease else pure Nothing
+  where
+    readFileStrict :: FilePath -> IO (Either SomeException Text)
+    readFileStrict = try . fmap decodeUtf8 . BS.readFile
+
+    readOsRelease :: IO (Maybe Text)
+    readOsRelease = do
+      -- read more about os-release: https://www.commandlinux.com/man-page/man5/os-release.5.html
+      rawOsRelease <- readFileStrict "/etc/os-release" <|> readFileStrict "/usr/lib/os-release"
+      pure $ do
+        osReleaseMap <- Map.fromList . map (Text.partition (== '=')) . Text.lines <$> either (const Nothing) Just rawOsRelease
+        Map.lookup "PRETTY_NAME" osReleaseMap <|> Map.lookup "NAME" osReleaseMap
 
 lookupCIEnvironment :: IO (Maybe CIEnvironment)
 lookupCIEnvironment = do
