@@ -1,3 +1,4 @@
+{-# LANGUAGE ViewPatterns #-}
 module Control.Carrier.Telemetry.Utils (
   getCurrentCliEnvironment,
   getCurrentCliVersion,
@@ -115,8 +116,22 @@ getSystemInfo = do
       -- read more about os-release: https://www.commandlinux.com/man-page/man5/os-release.5.html
       rawOsRelease <- readFileStrict "/etc/os-release" <|> readFileStrict "/usr/lib/os-release"
       pure $ do
-        osReleaseMap <- Map.fromList . map (Text.partition (== '=')) . Text.lines <$> either (const Nothing) Just rawOsRelease
+        osReleaseMap <- parseOsRelease <$> either (const Nothing) Just rawOsRelease
         Map.lookup "PRETTY_NAME" osReleaseMap <|> Map.lookup "NAME" osReleaseMap
+
+-- |Optimistically parse a piece of text matching the syntax of os-release:
+--
+-- NAME="name"
+-- VERSION="version"
+--
+-- If the parse fails for some reason, there is no warning.
+-- This is intended for telemetry, if we fail to find a value it isn't supposed to be reported or recovered from.
+parseOsRelease :: Text -> Map.Map Text Text
+parseOsRelease = Map.fromList . map splitOnEqual . Text.lines 
+  where splitOnEqual :: Text -> (Text, Text)
+        splitOnEqual (Text.span (== '=') -> (pre, post)) = (pre, Text.dropWhile (== '=') post)
+
+
 
 lookupCIEnvironment :: IO (Maybe CIEnvironment)
 lookupCIEnvironment = do
