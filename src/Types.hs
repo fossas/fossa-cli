@@ -72,6 +72,7 @@ data DiscoveredProjectType
   | CargoProjectType
   | CarthageProjectType
   | CocoapodsProjectType
+  | ConanProjectType
   | ComposerProjectType
   | CondaProjectType
   | DpkgDatabaseProjectType
@@ -120,6 +121,7 @@ projectTypeToText = \case
   CargoProjectType -> "cargo"
   CarthageProjectType -> "carthage"
   CocoapodsProjectType -> "cocoapods"
+  ConanProjectType -> "conan"
   ComposerProjectType -> "composer"
   CondaProjectType -> "conda"
   DpkgDatabaseProjectType -> "dpkgdb"

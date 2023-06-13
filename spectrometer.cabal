@@ -350,6 +350,8 @@ library
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer
+    Strategy.Conan.ConanGraph
+    Strategy.Conan.Version
     Strategy.Conda
     Strategy.Conda.CondaEnvCreate
     Strategy.Conda.EnvironmentYml
@@ -525,6 +527,8 @@ test-suite unit-tests
     Cocoapods.PodfileSpec
     Composer.ComposerJsonSpec
     Composer.ComposerLockSpec
+    Conan.ConanGraphSpec
+    Conan.VersionSpec
     Conda.CondaEnvCreateSpec
     Conda.EnvironmentYmlSpec
     Container.Docker.CredentialsSpec

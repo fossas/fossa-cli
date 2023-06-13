@@ -1,0 +1,704 @@
+{
+    "graph": {
+        "nodes": [
+            {
+                "ref": "",
+                "id": 0,
+                "recipe": "Consumer",
+                "package_id": "e982649002579f1faa063c390c3788c91140d20d",
+                "prev": null,
+                "build_id": null,
+                "binary": null,
+                "invalid_build": false,
+                "info_invalid": null,
+                "revision_mode": "hash",
+                "default_options": {
+                    "zlib/*:shared": false
+                },
+                "package_type": "unknown",
+                "settings": {
+                    "os": "Macos",
+                    "arch": "armv8",
+                    "compiler": "clang",
+                    "compiler.cppstd": "gnu14",
+                    "compiler.libcxx": "libc++",
+                    "compiler.version": "13",
+                    "build_type": "Release"
+                },
+                "options": {},
+                "options_definitions": {},
+                "generators": [
+                    "CMakeToolchain",
+                    "CMakeDeps"
+                ],
+                "requires": {
+                    "1": "zlib/1.2.13#e377bee636333ae348d51ca90874e353",
+                    "2": "openssl/3.1.0#8eadf484563de6cdd24daafb9c3813db",
+                    "3": "cmake/3.22.6#32cced101c6df0fab43e8d00bd2483eb"
+                },
+                "system_requires": {},
+                "recipe_folder": "/Users/dev/code/conanexample/examples2/tutorial/consuming_packages/conanfile_py",
+                "source_folder": "/Users/dev/code/conanexample/examples2/tutorial/consuming_packages/conanfile_py",
+                "build_folder": "/Users/dev/code/conanexample/examples2/tutorial/consuming_packages/conanfile_py",
+                "generators_folder": "/Users/dev/code/conanexample/examples2/tutorial/consuming_packages/conanfile_py",
+                "package_folder": null,
+                "cpp_info": {
+                    "root": {
+                        "includedirs": [
+                            "include"
+                        ],
+                        "srcdirs": null,
+                        "libdirs": [
+                            "lib"
+                        ],
+                        "resdirs": null,
+                        "bindirs": [
+                            "bin"
+                        ],
+                        "builddirs": null,
+                        "frameworkdirs": null,
+                        "system_libs": null,
+                        "frameworks": null,
+                        "libs": null,
+                        "defines": null,
+                        "cflags": null,
+                        "cxxflags": null,
+                        "sharedlinkflags": null,
+                        "exelinkflags": null,
+                        "objects": null,
+                        "sysroot": null,
+                        "requires": null,
+                        "properties": null
+                    }
+                },
+                "label": "conanfile.py",
+                "context": "host",
+                "test": false
+            },
+            {
+                "ref": "zlib/1.2.13#e377bee636333ae348d51ca90874e353",
+                "id": 1,
+                "recipe": "Cache",
+                "package_id": "6ee94108e5a809f66e5396a0549a9ff4ed7621e8",
+                "prev": "14fc80dda17a3a84a6ea12023455b8bd",
+                "build_id": null,
+                "binary": "Cache",
+                "invalid_build": false,
+                "info_invalid": null,
+                "name": "zlib",
+                "url": "https://github.com/conan-io/conan-center-index",
+                "license": "Zlib",
+                "description": "A Massively Spiffy Yet Delicately Unobtrusive Compression Library (Also Free, Not to Mention Unencumbered by Patents)",
+                "homepage": "https://zlib.net",
+                "revision_mode": "hash",
+                "default_options": {
+                    "shared": false,
+                    "fPIC": true
+                },
+                "version": "1.2.13",
+                "topics": [
+                    "zlib",
+                    "compression"
+                ],
+                "package_type": "static-library",
+                "settings": {
+                    "os": "Macos",
+                    "arch": "armv8",
+                    "compiler": "clang",
+                    "compiler.version": "13",
+                    "build_type": "Release"
+                },
+                "options": {
+                    "fPIC": "True",
+                    "shared": "False"
+                },
+                "options_definitions": {
+                    "shared": [
+                        "True",
+                        "False"
+                    ],
+                    "fPIC": [
+                        "True",
+                        "False"
+                    ]
+                },
+                "generators": [],
+                "requires": {},
+                "system_requires": {},
+                "recipe_folder": "/Users/dev/.conan2/p/zlib15353192ba4c5/e",
+                "source_folder": null,
+                "build_folder": null,
+                "generators_folder": null,
+                "package_folder": "/Users/dev/.conan2/p/b/zlib85f1e1bec33f5/p",
+                "cpp_info": {
+                    "root": {
+                        "includedirs": [
+                            "/Users/dev/.conan2/p/b/zlib85f1e1bec33f5/p/include"
+                        ],
+                        "srcdirs": null,
+                        "libdirs": [
+                            "/Users/dev/.conan2/p/b/zlib85f1e1bec33f5/p/lib"
+                        ],
+                        "resdirs": null,
+                        "bindirs": [
+                            "/Users/dev/.conan2/p/b/zlib85f1e1bec33f5/p/bin"
+                        ],
+                        "builddirs": null,
+                        "frameworkdirs": null,
+                        "system_libs": null,
+                        "frameworks": null,
+                        "libs": [
+                            "z"
+                        ],
+                        "defines": null,
+                        "cflags": null,
+                        "cxxflags": null,
+                        "sharedlinkflags": null,
+                        "exelinkflags": null,
+                        "objects": null,
+                        "sysroot": null,
+                        "requires": [],
+                        "properties": {
+                            "cmake_find_mode": "both",
+                            "cmake_file_name": "ZLIB",
+                            "cmake_target_name": "ZLIB::ZLIB",
+                            "pkg_config_name": "zlib"
+                        }
+                    }
+                },
+                "label": "zlib/1.2.13",
+                "context": "host",
+                "test": false
+            },
+            {
+                "ref": "openssl/3.1.0#8eadf484563de6cdd24daafb9c3813db",
+                "id": 2,
+                "recipe": "Cache",
+                "package_id": "c6f0d27a6f6fc6a1f1861a5b4bf6b5001d4a6565",
+                "prev": "b03e625ff79352626173e4887d1a18b6",
+                "build_id": null,
+                "binary": "Cache",
+                "invalid_build": false,
+                "info_invalid": null,
+                "name": "openssl",
+                "url": "https://github.com/conan-io/conan-center-index",
+                "license": "Apache-2.0",
+                "description": "A toolkit for the Transport Layer Security (TLS) and Secure Sockets Layer (SSL) protocols",
+                "homepage": "https://github.com/openssl/openssl",
+                "revision_mode": "hash",
+                "default_options": {
+                    "shared": false,
+                    "fPIC": true,
+                    "enable_weak_ssl_ciphers": false,
+                    "386": false,
+                    "capieng_dialog": false,
+                    "enable_capieng": false,
+                    "no_aria": false,
+                    "no_asm": false,
+                    "no_async": false,
+                    "no_blake2": false,
+                    "no_bf": false,
+                    "no_camellia": false,
+                    "no_chacha": false,
+                    "no_cms": false,
+                    "no_comp": false,
+                    "no_ct": false,
+                    "no_cast": false,
+                    "no_deprecated": false,
+                    "no_des": false,
+                    "no_dgram": false,
+                    "no_dh": false,
+                    "no_dsa": false,
+                    "no_dso": false,
+                    "no_ec": false,
+                    "no_ecdh": false,
+                    "no_ecdsa": false,
+                    "no_engine": false,
+                    "no_filenames": false,
+                    "no_fips": false,
+                    "no_gost": false,
+                    "no_idea": false,
+                    "no_legacy": false,
+                    "no_md2": true,
+                    "no_md4": false,
+                    "no_mdc2": false,
+                    "no_module": false,
+                    "no_ocsp": false,
+                    "no_pinshared": false,
+                    "no_rc2": false,
+                    "no_rc4": false,
+                    "no_rc5": false,
+                    "no_rfc3779": false,
+                    "no_rmd160": false,
+                    "no_sm2": false,
+                    "no_sm3": false,
+                    "no_sm4": false,
+                    "no_srp": false,
+                    "no_srtp": false,
+                    "no_sse2": false,
+                    "no_ssl": false,
+                    "no_stdio": false,
+                    "no_seed": false,
+                    "no_sock": false,
+                    "no_ssl3": false,
+                    "no_threads": false,
+                    "no_tls1": false,
+                    "no_ts": false,
+                    "no_whirlpool": false,
+                    "no_zlib": false,
+                    "openssldir": null
+                },
+                "version": "3.1.0",
+                "topics": [
+                    "ssl",
+                    "tls",
+                    "encryption",
+                    "security"
+                ],
+                "package_type": "static-library",
+                "settings": {
+                    "os": "Macos",
+                    "arch": "armv8",
+                    "compiler": "clang",
+                    "compiler.version": "13",
+                    "build_type": "Release"
+                },
+                "options": {
+                    "386": "False",
+                    "enable_weak_ssl_ciphers": "False",
+                    "openssldir": null,
+                    "shared": "False"
+                },
+                "options_definitions": {
+                    "shared": [
+                        "True",
+                        "False"
+                    ],
+                    "fPIC": [
+                        "True",
+                        "False"
+                    ],
+                    "enable_weak_ssl_ciphers": [
+                        "True",
+                        "False"
+                    ],
+                    "386": [
+                        "True",
+                        "False"
+                    ],
+                    "no_aria": [
+                        "True",
+                        "False"
+                    ],
+                    "no_asm": [
+                        "True",
+                        "False"
+                    ],
+                    "no_async": [
+                        "True",
+                        "False"
+                    ],
+                    "no_blake2": [
+                        "True",
+                        "False"
+                    ],
+                    "no_bf": [
+                        "True",
+                        "False"
+                    ],
+                    "no_camellia": [
+                        "True",
+                        "False"
+                    ],
+                    "no_chacha": [
+                        "True",
+                        "False"
+                    ],
+                    "no_cms": [
+                        "True",
+                        "False"
+                    ],
+                    "no_comp": [
+                        "True",
+                        "False"
+                    ],
+                    "no_ct": [
+                        "True",
+                        "False"
+                    ],
+                    "no_cast": [
+                        "True",
+                        "False"
+                    ],
+                    "no_deprecated": [
+                        "True",
+                        "False"
+                    ],
+                    "no_des": [
+                        "True",
+                        "False"
+                    ],
+                    "no_dgram": [
+                        "True",
+                        "False"
+                    ],
+                    "no_dh": [
+                        "True",
+                        "False"
+                    ],
+                    "no_dsa": [
+                        "True",
+                        "False"
+                    ],
+                    "no_dso": [
+                        "True",
+                        "False"
+                    ],
+                    "no_ec": [
+                        "True",
+                        "False"
+                    ],
+                    "no_ecdh": [
+                        "True",
+                        "False"
+                    ],
+                    "no_ecdsa": [
+                        "True",
+                        "False"
+                    ],
+                    "no_engine": [
+                        "True",
+                        "False"
+                    ],
+                    "no_filenames": [
+                        "True",
+                        "False"
+                    ],
+                    "no_fips": [
+                        "True",
+                        "False"
+                    ],
+                    "no_gost": [
+                        "True",
+                        "False"
+                    ],
+                    "no_idea": [
+                        "True",
+                        "False"
+                    ],
+                    "no_legacy": [
+                        "True",
+                        "False"
+                    ],
+                    "no_md2": [
+                        "True",
+                        "False"
+                    ],
+                    "no_md4": [
+                        "True",
+                        "False"
+                    ],
+                    "no_mdc2": [
+                        "True",
+                        "False"
+                    ],
+                    "no_module": [
+                        "True",
+                        "False"
+                    ],
+                    "no_ocsp": [
+                        "True",
+                        "False"
+                    ],
+                    "no_pinshared": [
+                        "True",
+                        "False"
+                    ],
+                    "no_rc2": [
+                        "True",
+                        "False"
+                    ],
+                    "no_rc4": [
+                        "True",
+                        "False"
+                    ],
+                    "no_rc5": [
+                        "True",
+                        "False"
+                    ],
+                    "no_rfc3779": [
+                        "True",
+                        "False"
+                    ],
+                    "no_rmd160": [
+                        "True",
+                        "False"
+                    ],
+                    "no_sm2": [
+                        "True",
+                        "False"
+                    ],
+                    "no_sm3": [
+                        "True",
+                        "False"
+                    ],
+                    "no_sm4": [
+                        "True",
+                        "False"
+                    ],
+                    "no_srp": [
+                        "True",
+                        "False"
+                    ],
+                    "no_srtp": [
+                        "True",
+                        "False"
+                    ],
+                    "no_sse2": [
+                        "True",
+                        "False"
+                    ],
+                    "no_ssl": [
+                        "True",
+                        "False"
+                    ],
+                    "no_stdio": [
+                        "True",
+                        "False"
+                    ],
+                    "no_seed": [
+                        "True",
+                        "False"
+                    ],
+                    "no_sock": [
+                        "True",
+                        "False"
+                    ],
+                    "no_ssl3": [
+                        "True",
+                        "False"
+                    ],
+                    "no_threads": [
+                        "True",
+                        "False"
+                    ],
+                    "no_tls1": [
+                        "True",
+                        "False"
+                    ],
+                    "no_ts": [
+                        "True",
+                        "False"
+                    ],
+                    "no_whirlpool": [
+                        "True",
+                        "False"
+                    ],
+                    "no_zlib": [
+                        "True",
+                        "False"
+                    ],
+                    "openssldir": [
+                        null,
+                        "ANY"
+                    ]
+                },
+                "generators": [],
+                "requires": {
+                    "1": "zlib/1.2.13#e377bee636333ae348d51ca90874e353"
+                },
+                "system_requires": {},
+                "recipe_folder": "/Users/dev/.conan2/p/opens146668b7c681b/e",
+                "source_folder": null,
+                "build_folder": null,
+                "generators_folder": null,
+                "package_folder": "/Users/dev/.conan2/p/b/opens362f6f247d322/p",
+                "cpp_info": {
+                    "root": {
+                        "includedirs": [
+                            "/Users/dev/.conan2/p/b/opens362f6f247d322/p/include"
+                        ],
+                        "srcdirs": null,
+                        "libdirs": [
+                            "/Users/dev/.conan2/p/b/opens362f6f247d322/p/lib"
+                        ],
+                        "resdirs": null,
+                        "bindirs": [
+                            "/Users/dev/.conan2/p/b/opens362f6f247d322/p/bin"
+                        ],
+                        "builddirs": null,
+                        "frameworkdirs": null,
+                        "system_libs": null,
+                        "frameworks": null,
+                        "libs": null,
+                        "defines": null,
+                        "cflags": null,
+                        "cxxflags": null,
+                        "sharedlinkflags": null,
+                        "exelinkflags": null,
+                        "objects": null,
+                        "sysroot": null,
+                        "requires": [],
+                        "properties": {
+                            "cmake_file_name": "OpenSSL",
+                            "cmake_find_mode": "both",
+                            "pkg_config_name": "openssl",
+                            "cmake_build_modules": [
+                                "/Users/dev/.conan2/p/b/opens362f6f247d322/p/lib/cmake/conan-official-openssl-variables.cmake"
+                            ]
+                        }
+                    },
+                    "ssl": {
+                        "includedirs": [
+                            "/Users/dev/.conan2/p/b/opens362f6f247d322/p/include"
+                        ],
+                        "srcdirs": null,
+                        "libdirs": [
+                            "/Users/dev/.conan2/p/b/opens362f6f247d322/p/lib"
+                        ],
+                        "resdirs": [],
+                        "bindirs": [
+                            "/Users/dev/.conan2/p/b/opens362f6f247d322/p/bin"
+                        ],
+                        "builddirs": [
+                            "/Users/dev/.conan2/p/b/opens362f6f247d322/p/lib/cmake"
+                        ],
+                        "frameworkdirs": [],
+                        "system_libs": [],
+                        "frameworks": [],
+                        "libs": [
+                            "ssl"
+                        ],
+                        "defines": [],
+                        "cflags": [],
+                        "cxxflags": [],
+                        "sharedlinkflags": [],
+                        "exelinkflags": [],
+                        "objects": [],
+                        "sysroot": null,
+                        "requires": [
+                            "crypto"
+                        ],
+                        "properties": {
+                            "cmake_build_modules": [
+                                "/Users/dev/.conan2/p/b/opens362f6f247d322/p/lib/cmake/conan-official-openssl-variables.cmake"
+                            ],
+                            "cmake_target_name": "OpenSSL::SSL",
+                            "pkg_config_name": "libssl"
+                        }
+                    },
+                    "crypto": {
+                        "includedirs": [
+                            "/Users/dev/.conan2/p/b/opens362f6f247d322/p/include"
+                        ],
+                        "srcdirs": null,
+                        "libdirs": [
+                            "/Users/dev/.conan2/p/b/opens362f6f247d322/p/lib"
+                        ],
+                        "resdirs": [],
+                        "bindirs": [
+                            "/Users/dev/.conan2/p/b/opens362f6f247d322/p/bin"
+                        ],
+                        "builddirs": [
+                            "/Users/dev/.conan2/p/b/opens362f6f247d322/p/lib/cmake"
+                        ],
+                        "frameworkdirs": [],
+                        "system_libs": [],
+                        "frameworks": [],
+                        "libs": [
+                            "crypto"
+                        ],
+                        "defines": [],
+                        "cflags": [],
+                        "cxxflags": [],
+                        "sharedlinkflags": [],
+                        "exelinkflags": [],
+                        "objects": [],
+                        "sysroot": null,
+                        "requires": [
+                            "zlib::zlib"
+                        ],
+                        "properties": {
+                            "cmake_build_modules": [
+                                "/Users/dev/.conan2/p/b/opens362f6f247d322/p/lib/cmake/conan-official-openssl-variables.cmake"
+                            ],
+                            "cmake_target_name": "OpenSSL::Crypto",
+                            "pkg_config_name": "libcrypto"
+                        }
+                    }
+                },
+                "label": "openssl/3.1.0",
+                "context": "host",
+                "test": false
+            },
+            {
+                "ref": "cmake/3.22.6#32cced101c6df0fab43e8d00bd2483eb",
+                "id": 3,
+                "recipe": "Cache",
+                "package_id": "9e5323c65b94ae38c3c733fe12637776db0119a5",
+                "prev": "7b5af65c2e837696ee8227674734cedf",
+                "build_id": null,
+                "binary": "Cache",
+                "invalid_build": false,
+                "info_invalid": null,
+                "name": "cmake",
+                "url": "https://github.com/conan-io/conan-center-index",
+                "license": "BSD-3-Clause",
+                "description": "CMake, the cross-platform, open-source build system.",
+                "homepage": "https://github.com/Kitware/CMake",
+                "revision_mode": "hash",
+                "version": "3.22.6",
+                "topics": [
+                    "build",
+                    "installer"
+                ],
+                "package_type": "application",
+                "settings": {
+                    "os": "Macos",
+                    "arch": "armv8"
+                },
+                "options": {},
+                "options_definitions": {},
+                "generators": [],
+                "requires": {},
+                "system_requires": {},
+                "recipe_folder": "/Users/dev/.conan2/p/cmake0fba9ec230149/e",
+                "source_folder": null,
+                "build_folder": null,
+                "generators_folder": null,
+                "package_folder": "/Users/dev/.conan2/p/cmakedf2c94b672dad/p",
+                "cpp_info": {
+                    "root": {
+                        "includedirs": [],
+                        "srcdirs": null,
+                        "libdirs": [],
+                        "resdirs": null,
+                        "bindirs": [
+                            "/Users/dev/.conan2/p/cmakedf2c94b672dad/p/CMake.app/Contents/bin"
+                        ],
+                        "builddirs": null,
+                        "frameworkdirs": null,
+                        "system_libs": null,
+                        "frameworks": null,
+                        "libs": null,
+                        "defines": null,
+                        "cflags": null,
+                        "cxxflags": null,
+                        "sharedlinkflags": null,
+                        "exelinkflags": null,
+                        "objects": null,
+                        "sysroot": null,
+                        "requires": [],
+                        "properties": null
+                    }
+                },
+                "label": "cmake/3.22.6",
+                "context": "build",
+                "test": false
+            }
+        ],
+        "root": {
+            "0": ""
+        }
+    }
+}
