@@ -202,7 +202,14 @@ toMap pkgs = Map.fromList $ (\x -> (canonicalPkgName x, toDependency x)) <$> (fi
 
     toDepEnvironment :: PoetryLockPackage -> DepEnvironment
     toDepEnvironment pkg = case poetryLockPackageCategory pkg of
-      "dev" -> EnvDevelopment
-      "main" -> EnvProduction
-      "test" -> EnvTesting
-      other -> EnvOther other
+      Just category -> case category of
+        "dev" -> EnvDevelopment
+        "main" -> EnvProduction
+        "test" -> EnvTesting
+        other -> EnvOther other
+      Nothing -> defaultDepEnvironment
+
+    defaultDepEnvironment :: DepEnvironment
+    -- Poetry made this field optional. When not present, it defaults to `main`, which maps to `EnvProduction`.
+    -- https://github.com/python-poetry/poetry/pull/7637
+    defaultDepEnvironment = EnvProduction
