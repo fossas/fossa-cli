@@ -35,8 +35,7 @@ validatePom raw = do
       dependencyManagement = rawDepsToDeps (rawPomDependencyManagement raw)
       dependencies = rawDepsToDeps (rawPomDependencies raw)
       licenses = rawPomLicenses raw
-      modules = rawPomModules raw
-  pure (Pom coord parentCoord properties dependencyManagement dependencies licenses modules)
+  pure (Pom coord parentCoord properties dependencyManagement dependencies licenses)
 
 rawDepsToDeps :: [RawDependency] -> Map (Group, Artifact) MvnDepBody
 rawDepsToDeps = Map.fromList . map (\dep -> (depToKey dep, depToBody dep))
@@ -85,7 +84,6 @@ data Pom = Pom
   , pomDependencyManagement :: Map (Group, Artifact) MvnDepBody
   , pomDependencies :: Map (Group, Artifact) MvnDepBody
   , pomLicenses :: [PomLicense]
-  , pomModules :: [Text]
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -127,7 +125,6 @@ instance Semigroup Pom where
       , pomDependencyManagement = Map.unionWith (<>) (pomDependencyManagement childPom) (pomDependencyManagement parentPom)
       , pomDependencies = Map.unionWith (<>) (pomDependencies childPom) (pomDependencies parentPom)
       , pomLicenses = pomLicenses childPom
-      , pomModules = pomModules parentPom <> pomModules childPom
       }
 
 instance Semigroup MvnDepBody where
