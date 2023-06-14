@@ -8,9 +8,12 @@ module Strategy.Gomodules (
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (useV3GoResolver), GoDynamicTactic (..))
+import Control.Carrier.Diagnostics (warn)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText, recover, (<||>))
 import Control.Effect.Reader (Reader, asks)
+import Control.Monad (when)
 import Data.Aeson (ToJSON)
+import Data.Text (Text)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -23,9 +26,7 @@ import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path)
-import Strategy.Go.GoList qualified as GoList
 import Strategy.Go.GoListPackages qualified as GoListPackages
-import Strategy.Go.GoModGraph qualified as GoModGraph
 import Strategy.Go.Gomod qualified as Gomod
 import Strategy.Go.Gostd (GoStdlibDep, filterGoStdlibPackages, listGoStdlibPackages)
 import Types (
@@ -35,9 +36,6 @@ import Types (
   DiscoveredProjectType (GomodProjectType),
   GraphBreadth,
  )
-import Control.Monad (when)
-import Control.Carrier.Diagnostics (warn)
-import Data.Text (Text)
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject GomodulesProject]
 discover = simpleDiscover findProjects mkProject GomodProjectType
@@ -93,7 +91,8 @@ getDeps project goDynamicTactic = do
     dynamicAnalysis =
       context "Dynamic analysis" $ do
         when (goDynamicTactic == GoPackagesBasedTactic) $
-          warn @Text "--experimental-use-v3-go-resolver is now deprecated because the v3 resolver is the default. \
-                     \This option will be removed in a future release and result in an error."
+          warn @Text
+            "--experimental-use-v3-go-resolver is now deprecated because the v3 resolver is the default. \
+            \This option will be removed in a future release and result in an error."
 
         context "analysis using go list (V3 Resolver)" (GoListPackages.analyze (gomodulesDir project))
