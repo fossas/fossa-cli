@@ -105,7 +105,13 @@ import Options.Applicative (
  )
 import Path (Abs, Dir, Path, Rel)
 import Path.Extra (SomePath)
+import Prettyprinter (Doc, annotate, defaultLayoutOptions, layoutPretty)
+import Prettyprinter.Render.Terminal (AnsiStyle, Color (Red), color, renderStrict)
 import Types (ArchiveUploadType (..), LicenseScanPathFilters (..), TargetFilter)
+
+-- Utility functions
+coloredText :: Color -> Doc AnsiStyle -> String
+coloredText clr str = toString . renderStrict . layoutPretty defaultLayoutOptions $ annotate (color clr) str
 
 -- CLI flags, for use with 'Data.Flag'
 data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan deriving (Generic)
@@ -288,7 +294,10 @@ experimentalUseV3GoResolver =
     )
     . switch
     $ long "experimental-use-v3-go-resolver"
-      <> help "For Go: generate a graph of module deps based on package deps. This will be the default in the future."
+      <> help
+        ( coloredText Red "DEPRECATED: This is now default and will be removed in the future."
+            <> " For Go: generate a graph of module deps based on package deps. This will be the default in the future."
+        )
 
 vendoredDependencyModeOpt :: Parser ArchiveUploadType
 vendoredDependencyModeOpt = option (eitherReader parseType) (long "force-vendored-dependency-scan-method" <> metavar "METHOD" <> help "Force the vendored dependency scan method. The options are 'CLILicenseScan' or 'ArchiveUpload'. 'CLILicenseScan' is usually the default unless your organization has overridden this.")

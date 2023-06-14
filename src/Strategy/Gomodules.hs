@@ -35,6 +35,9 @@ import Types (
   DiscoveredProjectType (GomodProjectType),
   GraphBreadth,
  )
+import Control.Monad (when)
+import Control.Carrier.Diagnostics (warn)
+import Data.Text (Text)
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject GomodulesProject]
 discover = simpleDiscover findProjects mkProject GomodProjectType
@@ -88,16 +91,9 @@ getDeps project goDynamicTactic = do
 
     dynamicAnalysis :: (Has Exec sig m, Has Diagnostics sig m) => m (Graphing Dependency, GraphBreadth)
     dynamicAnalysis =
-      context "Dynamic analysis" $
-        case goDynamicTactic of
-          GoPackagesBasedTactic ->
-            context "analysis using go list (V3 Resolver)" (GoListPackages.analyze (gomodulesDir project))
-          GoModulesBasedTactic -> defaultDynamicAnalysis
+      context "Dynamic analysis" $ do
+        when (goDynamicTactic == GoPackagesBasedTactic) $
+          warn @Text "--experimental-use-v3-go-resolver is now deprecated because the v3 resolver is the default. \
+                     \This option will be removed in a future release and result in an error."
 
-    defaultDynamicAnalysis :: (Has Diagnostics sig m, Has Exec sig m) => m (Graphing Dependency, GraphBreadth)
-    defaultDynamicAnalysis =
-      context "analysis using go mod graph" (GoModGraph.analyze (gomodulesDir project))
-        -- Go List tactic is only kept in consideration, in event go mod graph fails.
-        -- In reality, this is highly unlikely scenario, and should almost never happen.
-        -- This tactic uses `go list -m -json all`
-        <||> context "analysis using go list (modules)" (GoList.analyze' (gomodulesDir project))
+        context "analysis using go list (V3 Resolver)" (GoListPackages.analyze (gomodulesDir project))
