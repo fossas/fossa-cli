@@ -1,5 +1,3 @@
-{-# LANGUAGE QuasiQuotes #-}
-
 module Go.GoListPackagesSpec (
   spec,
 ) where
