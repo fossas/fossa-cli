@@ -20,7 +20,6 @@ import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess)
 import Strategy.Go.GoListPackages (GoModule (..), GoPackage (..), ImportPath (..), ModulePath (ModulePath), buildGraph, toGoModVersion)
 import Test.Hspec (Spec, describe, it, runIO)
-import Text.RawString.QQ (r)
 
 -- In this set of packages there are two main modules.
 -- In the resulting graph expect each main module to be absent, with it's dependencies
