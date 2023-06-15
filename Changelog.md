@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- License Scanning: Fix a bug where we were identifying the "GPL with autoconf macro exception" license as "GPL with autoconf exception" in a few cases ([#1225](https://github.com/fossas/fossa-cli/pull/1225))
+
 ## v3.8.2
 - Poetry: Defaults `category` to `main` if not present in lockfile. ([#1211](https://github.com/fossas/fossa-cli/pull/1211))
 - Maven: Revert ([#1218](https://github.com/fossas/fossa-cli/pull/1218)) from v3.8.2 due to performance impacts.
