@@ -2,7 +2,12 @@
 #
 # Binaries on each platform are stripped. This removes debug symbols.
 name: Build
-on: [push]
+on:
+  push:
+    paths-ignore:
+      - Changelog.md
+      - README.md
+      - docs/**
 
 jobs:
   build-all:
