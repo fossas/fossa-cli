@@ -113,7 +113,8 @@ data SystemInfo = SystemInfo
   , systemInfoArch :: String
   , systemCapabilities :: Int
   , systemProcessors :: Int
-  , systemDistroInfo :: Maybe Text
+  , systemDistroInfo :: Maybe String
+  , systemUnameString :: Maybe Text
   }
   deriving (Eq, Ord, Show, Generic)
 
