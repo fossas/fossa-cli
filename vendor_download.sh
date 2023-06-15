@@ -56,7 +56,7 @@ esac
 TAG="latest"
 echo "Downloading asset information from latest tag for architecture '$ASSET_POSTFIX'"
 
-THEMIS_TAG="2023-04-25-95b18b6-1682456045"
+THEMIS_TAG="2023-06-14-ee69aa9-1686783828"
 echo "Downloading themis binary"
 echo "Using themis release: $THEMIS_TAG"
 THEMIS_RELEASE_JSON=vendor-bins/themis-release.json
