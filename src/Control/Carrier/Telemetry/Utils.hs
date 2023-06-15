@@ -114,7 +114,7 @@ getSystemInfo = do
 
     readUname :: IO (Maybe Text)
     readUname = do
-      (exitCode, out) <- readProcessStdout "uname -a"
+      (exitCode, out) <- readProcessStdout "uname -mrsv"
       pure $ case exitCode of
         ExitFailure _ -> Nothing
         ExitSuccess -> Just (decodeUtf8 out) -- utf8 isn't a given, but seems likely.

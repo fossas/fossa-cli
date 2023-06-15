@@ -1,7 +1,7 @@
 # FOSSA CLI Changelog
 
 ## Unreleased
-- Telemetry: Collect GNU/Linux distribution information and `uname -a` output. ([#1222](https://github.com/fossas/fossa-cli/pull/1222))
+- Telemetry: Collect GNU/Linux distribution information and `uname` output. ([#1222](https://github.com/fossas/fossa-cli/pull/1222))
 
 ## v3.8.2
 - Poetry: Defaults `category` to `main` if not present in lockfile. ([#1211](https://github.com/fossas/fossa-cli/pull/1211))
