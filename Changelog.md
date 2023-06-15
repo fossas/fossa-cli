@@ -1,7 +1,6 @@
 # FOSSA CLI Changelog
 
-## DONE Unreleased
-   CLOSED: [2023-6-15 12:58]
+## Unreleased
 - License Scanning: Fix a bug where we were identifying the "GPL with autoconf macro exception" license as "GPL with autoconf exception" in a few cases ([#1225](https://github.com/fossas/fossa-cli/pull/1225))
 
 ## v3.8.2
