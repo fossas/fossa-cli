@@ -1,7 +1,7 @@
 # Sourced from git repository
 
 [[package]]
-category = "main"
+category = "some_other_category"
 description = "some package with git source"
 name = "pkgWithGitSource"
 optional = false
@@ -31,7 +31,6 @@ url = "pkgTwo-1.21.0.tar.gz"
 # Sourced from url
 
 [[package]]
-category = "main"
 description = "some package three"
 name = "pkgSourcedFromUrl"
 optional = false
@@ -43,7 +42,6 @@ type = "url"
 url = "https://some-url.com/some-dir/pkgThree-3.92.1.tar.gz"
 
 [[package]]
-category = "main"
 description = "some package one"
 name = "pkgOne"
 optional = false
@@ -61,7 +59,6 @@ pkgTwoChildofOne = {version = "5.4", markers = "extra == \"idna2008\""}
 # Resolved dependencies of pkgOne
 
 [[package]]
-category = "main"
 description = "description of pkgOneChildofOne"
 name = "pkgOneChildofOne"
 optional = false
@@ -69,7 +66,6 @@ python-versions = "*"
 version = "11.4"
 
 [[package]]
-category = "main"
 description = "description of pkgTwoChildofOne"
 name = "pkgTwoChildofOne"
 optional = false
@@ -77,7 +73,6 @@ python-versions = "*"
 version = "5.4"
 
 [[package]]
-category = "main"
 description = "description of pkgThreeChildofOne"
 name = "pkgThreeChildofOne"
 optional = false
@@ -85,7 +80,6 @@ python-versions = "*"
 version = "1.6.1"
 
 [[package]]
-category = "main"
 description = "A small example package"
 name = "myprivatepkg"
 optional = false
