@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- Logging: Don't output the `[INFO]` prefix for regular CLI messages. ([#1226](https://github.com/fossas/fossa-cli/pull/1226))
+
 ## v3.8.2
 - Poetry: Defaults `category` to `main` if not present in lockfile. ([#1211](https://github.com/fossas/fossa-cli/pull/1211))
 - Maven: Revert ([#1218](https://github.com/fossas/fossa-cli/pull/1218)) from v3.8.2 due to performance impacts.
