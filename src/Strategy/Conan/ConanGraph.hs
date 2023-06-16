@@ -261,7 +261,9 @@ toDependency cn =
 getLocations :: ConanGraphNode -> [Text]
 getLocations cn = case packgeType cn of
   SharedLibrary -> maybeToList $ buildFolder cn
-  _ -> maybeToList $ sourceFolder cn
+  _ -> case sourceFolder cn of
+    Just srcFolder -> [srcFolder]
+    _ -> maybeToList $ buildFolder cn
 
 getEnv :: ConanGraphNode -> DepEnvironment
 getEnv ConanGraphNode{..} = case (test, context) of

@@ -3,7 +3,6 @@
 
 module App.Fossa.LicenseScanner (
   licenseScanSourceUnit,
-  licenseScanSourceUnit',
   combineLicenseUnits,
   scanVendoredDep,
 ) where
@@ -16,7 +15,6 @@ import App.Fossa.RunThemis (
 import App.Fossa.VendoredDependency (
   NeedScanningDeps (..),
   SkippableDeps (..),
-  UploadedVendoredDependency (UploadedVendoredDependency, uploadedArchiveOf, uploadedVendorDepOf),
   VendoredDependency (..),
   VendoredDependencyScanMode (..),
   arcToLocator,
@@ -197,7 +195,7 @@ scanAndUploadVendoredDep ::
   Maybe LicenseScanPathFilters ->
   FullFileUploads ->
   VendoredDependency ->
-  m (Maybe UploadedVendoredDependency)
+  m (Maybe Archive)
 scanAndUploadVendoredDep baseDir licenseScanPathFilters fullFileUploads vdep = context "Processing vendored dependency" $ do
   maybeLicenseUnits <- recover $ scanVendoredDep baseDir licenseScanPathFilters fullFileUploads vdep
   case maybeLicenseUnits of
@@ -316,22 +314,22 @@ uploadVendoredDep ::
   Path Abs Dir ->
   VendoredDependency ->
   LicenseSourceUnit ->
-  m (Maybe UploadedVendoredDependency)
-uploadVendoredDep baseDir vDep licenseSourceUnit = do
-  depVersion <- case vendoredVersion vDep of
-    Nothing -> sendIO $ withSystemTempDir "fossa-temp" (calculateVendoredHash baseDir $ vendoredPath vDep)
+  m (Maybe Archive)
+uploadVendoredDep baseDir VendoredDependency{..} licenseSourceUnit = do
+  depVersion <- case vendoredVersion of
+    Nothing -> sendIO $ withSystemTempDir "fossa-temp" (calculateVendoredHash baseDir vendoredPath)
     Just version -> pure version
 
-  signedURL <- getSignedLicenseScanUrl $ PackageRevision{packageVersion = depVersion, packageName = vendoredName vDep}
+  signedURL <- getSignedLicenseScanUrl $ PackageRevision{packageVersion = depVersion, packageName = vendoredName}
 
-  logSticky $ "Uploading '" <> vendoredName vDep <> "' to secure S3 bucket"
+  logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
   uploadLicenseScanResult signedURL licenseSourceUnit
 
-  pure . Just $ UploadedVendoredDependency vDep $ Archive (vendoredName vDep) depVersion
+  pure $ Just $ Archive vendoredName depVersion
 
--- | licenseScanSourceUnit' is like licenseScanSourceUnit, but it provides
--- both vendor dep and it's associated locator.
-licenseScanSourceUnit' ::
+-- | licenseScanSourceUnit receives a list of vendored dependencies, a root path, and API settings.
+-- Using this information, it license scans each vendored dependency, uploads the license scan results and then queues a build for the dependency.
+licenseScanSourceUnit ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
@@ -345,8 +343,8 @@ licenseScanSourceUnit' ::
   FullFileUploads ->
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
-  m (NonEmpty (VendoredDependency, Locator))
-licenseScanSourceUnit' vendoredDependencyScanMode licenseScanPathFilters fullFileUploads baseDir vendoredDeps = do
+  m (NonEmpty Locator)
+licenseScanSourceUnit vendoredDependencyScanMode licenseScanPathFilters fullFileUploads baseDir vendoredDeps = do
   uniqDeps <- dedupVendoredDeps vendoredDeps
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API automatically prefixes the locator when queuing the build
@@ -373,39 +371,15 @@ licenseScanSourceUnit' vendoredDependencyScanMode licenseScanPathFilters fullFil
 
   -- finalizeLicenseScan takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.
-  finalizeLicenseScan $ ArchiveComponents (map uploadedArchiveOf $ NE.toList archives) (vendoredDependencyScanMode == SkippingDisabledViaFlag) fullFileUploads
+  finalizeLicenseScan $ ArchiveComponents (NE.toList archives) (vendoredDependencyScanMode == SkippingDisabledViaFlag) fullFileUploads
 
-  let archivesWithOrganization :: OrgId -> NonEmpty UploadedVendoredDependency -> NonEmpty UploadedVendoredDependency
+  let archivesWithOrganization :: OrgId -> NonEmpty Archive -> NonEmpty Archive
       archivesWithOrganization org = NE.map $ includeOrgId org
 
-      includeOrgId :: OrgId -> UploadedVendoredDependency -> UploadedVendoredDependency
-      includeOrgId org ud = ud{uploadedArchiveOf = includeOrgId' org $ uploadedArchiveOf ud}
+      includeOrgId :: OrgId -> Archive -> Archive
+      includeOrgId org arc = arc{archiveName = showT org <> "/" <> archiveName arc}
 
-      includeOrgId' :: OrgId -> Archive -> Archive
-      includeOrgId' org arc = arc{archiveName = showT org <> "/" <> archiveName arc}
-
-  pure $ NE.map (\v -> (uploadedVendorDepOf v, arcToLocator . uploadedArchiveOf $ v)) $ archivesWithOrganization orgId archives
-
--- | licenseScanSourceUnit receives a list of vendored dependencies, a root path, and API settings.
--- Using this information, it license scans each vendored dependency, uploads the license scan results and then queues a build for the dependency.
-licenseScanSourceUnit ::
-  ( Has Diagnostics sig m
-  , Has (Lift IO) sig m
-  , Has StickyLogger sig m
-  , Has Logger sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
-  , Has FossaApiClient sig m
-  ) =>
-  VendoredDependencyScanMode ->
-  Maybe LicenseScanPathFilters ->
-  FullFileUploads ->
-  Path Abs Dir ->
-  NonEmpty VendoredDependency ->
-  m (NonEmpty Locator)
-licenseScanSourceUnit vendoredDependencyScanMode licenseScanPathFilters fullFileUploads baseDir vendoredDeps = do
-  vendorDepAndLocator <- licenseScanSourceUnit' vendoredDependencyScanMode licenseScanPathFilters fullFileUploads baseDir vendoredDeps
-  pure $ NE.map snd vendorDepAndLocator
+  pure $ NE.map arcToLocator (archivesWithOrganization orgId archives)
 
 ensureVendoredDepVersion ::
   Has (Lift IO) sig m =>

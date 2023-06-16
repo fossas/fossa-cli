@@ -13,14 +13,14 @@ import Data.Map (Map)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import DepTypes (DepEnvironment (EnvDevelopment), DepType (ArchiveType, NodeJSType, PathType), Dependency (..), VerConstraint (CEq))
+import DepTypes (DepEnvironment (EnvDevelopment), DepType (ArchiveType, ConanType, NodeJSType), Dependency (..), VerConstraint (CEq))
 import Fossa.API.Types (Archive (Archive), ArchiveComponents (..))
 import Graphing (directs, edges)
-import Graphing.Enrich (pathToArchives)
+import Graphing.Enrich (conanToArchives)
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
 import Srclib.Types (LicenseSourceUnit, Locator (Locator), renderLocator)
-import Test.Effect (expectFatal', it', shouldBe')
+import Test.Effect (expectFatal', it', shouldBe', xit')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, runIO)
 import Test.MockApi (MockApi, alwaysReturns, returnsOnce, returnsOnceForAnyRequest)
@@ -39,18 +39,25 @@ spec = do
       expectGetOrganization
       expectEverythingScannedAlready
       expectFinalizeScan [archiveFoo]
-      res <- pathToArchives scanDir (directs [pathDepFoo])
-      res `shouldBe'` (directs [archiveDepFoo])
+
+      let graph = directs [conanDepFoo]
+      let graph' = directs [archiveDepFoo]
+
+      res <- conanToArchives scanDir graph
+      res `shouldBe'` graph'
 
     it' "should transform path dependency into archive dependency, with scanning if core does not know about the revisions" $ do
       expectGetApiOpts
       expectGetOrganization
       expectNothingScannedYet
-      expectGetSignedUrl PackageRevision{packageName = "foo", packageVersion = "fbd355fe946fab6928e91f76585054a1"}
+      expectGetSignedUrl PackageRevision{packageName = "foo", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.firstLicenseSourceUnit
       expectFinalizeScan [archiveFoo]
-      let graph = directs [pathDepFoo]
-      expectFatal' $ pathToArchives scanDir graph
+      let graph = directs [conanDepFoo]
+      let graph' = directs [archiveDepFoo]
+
+      res <- conanToArchives scanDir graph
+      res `shouldBe'` graph'
 
     it' "should preserve dependency environment" $ do
       expectGetApiOpts
@@ -58,10 +65,10 @@ spec = do
       expectEverythingScannedAlready
       expectFinalizeScan [archiveFoo]
       res <-
-        pathToArchives
+        conanToArchives
           scanDir
           ( directs
-              [ mkPathDep
+              [ mkConanDep
                   "foo"
                   "vendored/foo"
                   (Set.singleton EnvDevelopment)
@@ -72,7 +79,7 @@ spec = do
         `shouldBe'` ( directs
                         [ mkArchiveDep
                             "42/foo"
-                            "fbd355fe946fab6928e91f76585054a1"
+                            "0.0.1"
                             "vendored/foo"
                             (Set.singleton EnvDevelopment)
                             mempty
@@ -86,22 +93,22 @@ spec = do
       expectFinalizeScan [archiveFoo]
       -- -
       -- A -> path+foo -> B
-      let graph = directs [npmA] <> edges [(npmA, pathDepFoo), (pathDepFoo, npmB)]
+      let graph = directs [npmA] <> edges [(npmA, conanDepFoo), (conanDepFoo, npmB)]
       -- -
       -- A -> archive+42/foo -> B
       let graph' = directs [npmA] <> edges [(npmA, archiveDepFoo), (archiveDepFoo, npmB)]
 
-      result <- pathToArchives scanDir graph
+      result <- conanToArchives scanDir graph
       result `shouldBe'` graph'
 
-    it' "should return supplied graph if there are no paths dependencies in the graph" $ do
+    it' "should return supplied graph if there are no conan dependencies in the graph" $ do
       let graph = directs [npmA]
-      result <- pathToArchives scanDir graph
+      result <- conanToArchives scanDir graph
       result `shouldBe'` graph
 
     it' "should fail if there are path dependencies without dependency locations" $ do
-      let graph = directs [pathDepEvil]
-      expectFatal' $ pathToArchives scanDir graph
+      let graph = directs [conanDepEvil]
+      expectFatal' $ conanToArchives scanDir graph
 
 -- Npm Dependency Fixture
 
@@ -116,19 +123,19 @@ mkNpmDep name ver = Dependency NodeJSType name (Just $ CEq ver) mempty mempty me
 
 -- Path Dependency Fixture
 
-pathDepFoo :: Dependency
-pathDepFoo = mkPathDep "foo" "vendored/foo" mempty mempty
+conanDepFoo :: Dependency
+conanDepFoo = mkConanDep "foo" "vendored/foo" mempty mempty
 
-pathDepEvil :: Dependency
-pathDepEvil = Dependency PathType "evil" Nothing mempty mempty mempty
+conanDepEvil :: Dependency
+conanDepEvil = Dependency ConanType "evil" (Just $ CEq "0.0.1") mempty mempty mempty
 
-mkPathDep :: Text -> Text -> Set DepEnvironment -> Map Text [Text] -> Dependency
-mkPathDep name loc = Dependency PathType name Nothing [loc]
+mkConanDep :: Text -> Text -> Set DepEnvironment -> Map Text [Text] -> Dependency
+mkConanDep name loc = Dependency ConanType name (Just $ CEq "0.0.1") [loc]
 
 -- Archive Dependency Fixtures
 
 archiveDepFoo :: Dependency
-archiveDepFoo = mkArchiveDep "42/foo" "fbd355fe946fab6928e91f76585054a1" "vendored/foo" mempty mempty
+archiveDepFoo = mkArchiveDep "42/foo" "0.0.1" "vendored/foo" mempty mempty
 
 mkArchiveDep :: Text -> Text -> Text -> Set DepEnvironment -> Map Text [Text] -> Dependency
 mkArchiveDep name ver loc = Dependency ArchiveType name (Just $ CEq ver) [loc]
@@ -136,7 +143,7 @@ mkArchiveDep name ver loc = Dependency ArchiveType name (Just $ CEq ver) [loc]
 -- Vendor Dependency
 
 vendorDepFoo :: VendoredDependency
-vendorDepFoo = mkVendorDep "foo" "vendored/foo" "fbd355fe946fab6928e91f76585054a1"
+vendorDepFoo = mkVendorDep "foo" "vendored/foo" "0.0.1"
 
 mkVendorDep :: Text -> Text -> Text -> VendoredDependency
 mkVendorDep name path ver = VendoredDependency name path (Just ver)
@@ -144,7 +151,7 @@ mkVendorDep name path ver = VendoredDependency name path (Just ver)
 -- Locator
 
 locatorFoo :: Locator
-locatorFoo = mkLocator "foo" "fbd355fe946fab6928e91f76585054a1"
+locatorFoo = mkLocator "foo" "0.0.1"
 
 mkLocator :: Text -> Text -> Locator
 mkLocator name ver = Locator "archive" ("42" <> "/" <> name) (Just ver)
@@ -152,7 +159,7 @@ mkLocator name ver = Locator "archive" ("42" <> "/" <> name) (Just ver)
 -- Archives
 
 archiveFoo :: Archive
-archiveFoo = mkArchive "foo" "fbd355fe946fab6928e91f76585054a1"
+archiveFoo = mkArchive "foo" "0.0.1"
 
 mkArchive :: Text -> Text -> Archive
 mkArchive = Archive

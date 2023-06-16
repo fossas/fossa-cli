@@ -24,7 +24,6 @@ import App.Fossa.Config.Analyze (
  )
 import App.Fossa.LicenseScanner (licenseScanSourceUnit)
 import App.Fossa.VendoredDependency (
-  UploadedVendoredDependency (uploadedArchiveOf),
   VendoredDependency (..),
   VendoredDependencyScanMode (..),
   arcToLocator,
@@ -226,7 +225,7 @@ getScanCfg Organization{..} VendoredDependencyOptions{..} = do
 
 -- | Used when users run `fossa analyze -o` and do not upload their source units.
 noSourceUnits :: [VendoredDependency] -> [Locator]
-noSourceUnits = map (arcToLocator . uploadedArchiveOf . forceVendoredToArchive)
+noSourceUnits = map (arcToLocator . forceVendoredToArchive)
 
 toBuildData :: NE.NonEmpty Locator -> SourceUnitBuild
 toBuildData locators =
