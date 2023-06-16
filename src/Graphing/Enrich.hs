@@ -3,7 +3,7 @@ module Graphing.Enrich (
 ) where
 
 import App.Fossa.LicenseScanner (licenseScanSourceUnit)
-import App.Fossa.VendoredDependency (VendoredDependency (..), VendoredDependencyScanMode (SkipPreviouslyScanned))
+import App.Fossa.VendoredDependency (VendoredDependency (..), VendoredDependencyScanMode (SkippingNotSupported))
 import App.Types (FullFileUploads (..))
 import Control.Algebra (Has)
 import Control.Carrier.Lift (Lift)
@@ -36,7 +36,7 @@ import Srclib.Types (Locator (locatorFetcher, locatorProject, locatorRevision))
 -- transformation,
 -- -
 -- * It preserves edges of conan dependencies in the transformation.
--- * It DOES NOT ignores the non-production dependency in transformation.
+-- * TODO: Ignore non-production dependency in transformation
 conanToArchives ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -63,15 +63,16 @@ conanToArchives rootPath g =
       -- before they can be referenced in graph as archive deps!
       archiveLocators <-
         licenseScanSourceUnit
-          SkipPreviouslyScanned
-          Nothing
+          -- always perform scan as vendor deps's
+          -- manifest are rarely updated with changes in practice
+          SkippingNotSupported
+          Nothing -- Ignore path filters
           (FullFileUploads False)
           rootPath
           vendorDeps
 
-      -- 2. We replace all conan dependencies with
-      -- archive dependency by transforming archive locators to
-      -- archive dependency
+      -- 2. We make archive archive dependencies from locators, and original
+      -- conan dependencies.
       let (failed, archiveDeps) =
             partitionEithers $
               map (locatorToArchiveDep allConanDeps) $
@@ -81,9 +82,9 @@ conanToArchives rootPath g =
         fatal $
           FailedToTransformLocators failed
 
-      -- 3. Now we replace all archive deps with conan deps
-      -- in original graph. If we are unable to find twin of archive dep
-      -- (i.e. conan dep), we fail fatally!
+      -- 3. We replace all conan dependencies with archive dependencies from
+      -- original graph. If we are unable to find twin of archive dep
+      -- (e.g. sourcing conan dep), we fail fatally!
       case fromList <$> archiveToConanDep archiveDeps of
         Left lonelyArchiveDeps -> fatal $ UnableToFindTwinOfArchiveDep lonelyArchiveDeps
         Right registry -> pure $ gmap (\graphDep -> Map.findWithDefault graphDep graphDep registry) g
@@ -103,7 +104,7 @@ conanToArchives rootPath g =
     archiveToConanDep :: [Dependency] -> Either [Dependency] [(Dependency, Dependency)]
     archiveToConanDep archiveDeps = sequence' $ map (findArchiveTwin archiveDeps) allConanDeps
 
--- | True if dependency is conan dependency
+-- | True if dependency is a conan dependency, otherwise False.
 isConanDep :: Dependency -> Bool
 isConanDep d = dependencyType d == ConanType
 
@@ -125,6 +126,8 @@ conanDepToVendorDep d =
     depName :: Text
     depName = dependencyName d
 
+    -- Conan dependencies are expected to have version with package identifier hash
+    -- which is unique to build system, and build configuration.
     depVersion :: Maybe Text
     depVersion = verConstraintToRevision =<< dependencyVersion d
 
