@@ -331,6 +331,7 @@ library
     Fossa.API.Types
     Graphing
     Graphing.Debug
+    Graphing.Enrich
     Graphing.Hydrate
     Network.HTTP.Req.Extra
     Parse.XML
@@ -579,6 +580,7 @@ test-suite unit-tests
     Googlesource.RepoManifestSpec
     Gradle.CommonSpec
     Gradle.ResolutionApiSpec
+    Graphing.EnrichSpec
     Graphing.HydrateSpec
     GraphingSpec
     GraphUtil

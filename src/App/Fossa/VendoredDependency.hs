@@ -13,6 +13,7 @@ module App.Fossa.VendoredDependency (
   SkippableDeps (..),
   NeedScanningDeps (..),
   SkippedDepsLogMsg (..),
+  UploadedVendoredDependency (..),
 ) where
 
 import Codec.Archive.Tar qualified as Tar
@@ -37,11 +38,17 @@ import Data.String.Conversion (
 import Data.Text (Text, isInfixOf)
 import Data.Text qualified as Text
 import Data.UUID.V4 (nextRandom)
-import Fossa.API.Types (Archive (..))
+import Fossa.API.Types (Archive (Archive, archiveName, archiveVersion))
 import Path (Abs, Dir, Path)
 import Prettyprinter (Pretty (pretty), vsep)
 import Srclib.Types (Locator (..))
 import System.FilePath.Posix (splitDirectories, (</>))
+
+data UploadedVendoredDependency = UploadedVendoredDependency
+  { uploadedVendorDepOf :: VendoredDependency
+  , uploadedArchiveOf :: Archive
+  }
+  deriving (Eq, Ord, Show)
 
 data VendoredDependency = VendoredDependency
   { vendoredName :: Text
@@ -143,8 +150,8 @@ duplicateFailureBundle names =
     <> "Vendored dependency entries may not specify duplicate names.\n"
     <> "Please ensure that each vendored dependency entry has a unique name."
 
-forceVendoredToArchive :: VendoredDependency -> Archive
-forceVendoredToArchive dep = Archive (vendoredName dep) (fromMaybe "" $ vendoredVersion dep)
+forceVendoredToArchive :: VendoredDependency -> UploadedVendoredDependency
+forceVendoredToArchive dep = UploadedVendoredDependency dep $ Archive (vendoredName dep) (fromMaybe "" $ vendoredVersion dep)
 
 arcToLocator :: Archive -> Locator
 arcToLocator arc =
