@@ -46,6 +46,8 @@ spec = do
 
     it "should not parse comments in release info " $ do
       alpineWithComment `shouldOsReleaseParseInto` OsInfo "alpine" "3.15.4"
+      alpineWithComment2 `shouldOsReleaseParseInto` OsInfo "alpine" "3.15.4"
+      alpineWithComment3 `shouldOsReleaseParseInto` OsInfo "alpine" "3.15.4"
 
     it "should parse busybox release info" $ do
       busyBoxContent `shouldBusyBoxParser` OsInfo "busybox" "1.34.1"
@@ -68,6 +70,31 @@ ID=alpine
 # VERSION_ID=0
 VERSION_ID=3.15.4
 PRETTY_NAME="Alpine Linux v3.15"
+HOME_URL="https://alpinelinux.org/"
+BUG_REPORT_URL="https://bugs.alpinelinux.org/"
+|]
+
+alpineWithComment2 :: Text
+alpineWithComment2 =
+  [r|# /etc/space/nepture.conf
+NAME="Alpine Linux"
+ID=alpine
+# VERSION_ID=0
+VERSION_ID=3.15.4
+PRETTY_NAME="Alpine Linux v3.15"
+HOME_URL="https://alpinelinux.org/"
+BUG_REPORT_URL="https://bugs.alpinelinux.org/"
+
+# some additional comments
+  # and some more!!
+|]
+
+alpineWithComment3 :: Text
+alpineWithComment3 =
+  [r|NAME="Alpine Linux"
+ID=alpine # it's alpine
+VERSION_ID=3.15.4
+PRETTY_NAME="Alpine Linux v3.15" # comments
 HOME_URL="https://alpinelinux.org/"
 BUG_REPORT_URL="https://bugs.alpinelinux.org/"
 |]
