@@ -190,12 +190,15 @@ termLoggerFormatter :: LogFormatter Text
 termLoggerFormatter sev msg = renderIt $ formatCommon sev msg <> line
 
 formatCommon :: Severity -> Doc AnsiStyle -> Doc AnsiStyle
-formatCommon sev msg = hang 2 (pretty '[' <> showSev sev <> pretty @String "] " <> msg)
+formatCommon sev msg = hang 2 (showSev sev <> msg)
   where
-    showSev SevError = annotate (color Red) (pretty @String "ERROR")
-    showSev SevWarn = annotate (color Yellow) (pretty @String " WARN")
-    showSev SevInfo = annotate (color Cyan) (pretty @String " INFO")
-    showSev SevDebug = annotate (color White) (pretty @String "DEBUG")
+    showSev SevError = withBrackets $ annotate (color Red) (pretty @String "ERROR")
+    showSev SevWarn = withBrackets $ annotate (color Yellow) (pretty @String "WARN")
+    showSev SevInfo = ""
+    showSev SevDebug = withBrackets $ annotate (color White) (pretty @String "DEBUG")
+
+    withBrackets :: Doc AnsiStyle -> Doc AnsiStyle
+    withBrackets s = pretty '[' <> s <> pretty @String "] "
 
 type LoggerC = SimpleC LoggerF
 
