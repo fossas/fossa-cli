@@ -14,6 +14,7 @@ import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Telemetry.Types (
   CIEnvironment (..),
   CliEnvironment (..),
+  LddVersionErr (LddVersionErr),
   SystemInfo (SystemInfo),
   TelemetryCmdConfig (TelemetryCmdConfig),
   TelemetryCtx (TelemetryCtx, telCounters, telFossaConfig, telId, telLogsQ, telStartUtcTime, telTimeSpentQ),
@@ -39,7 +40,7 @@ import System.Args (getCommandArgs)
 import System.Environment (lookupEnv)
 import System.Info qualified as Info
 import System.OsRelease (OsRelease (name, pretty_name), osRelease, parseOsRelease)
-import System.Process.Typed (ExitCode (..), readProcessStdout)
+import System.Process.Typed (ExitCode (..), readProcess, readProcessStdout)
 
 maxQueueSize :: Int
 maxQueueSize = 1000
@@ -104,7 +105,8 @@ getSystemInfo = do
     <*> Conc.getNumProcessors
     -- Info.os only collects OS type, but for linux there isn't any info about distribution.
     <*> (if Info.os == "linux" then readOsRelease else pure Nothing)
-    <*> if Info.os /= "mingw32" then readUname else pure Nothing
+    <*> (if Info.os /= "mingw32" then readUname else pure Nothing)
+    <*> if Info.os == "linux" then Just <$> findLddVersion else pure Nothing
   where
     -- read more about os-release: https://www.commandlinux.com/man-page/man5/os-release.5.html
     readOsRelease :: IO (Maybe String)
@@ -118,6 +120,17 @@ getSystemInfo = do
       pure $ case exitCode of
         ExitFailure _ -> Nothing
         ExitSuccess -> Just (decodeUtf8 out) -- utf8 isn't a given, but seems likely.
+    findLddVersion :: IO (Either LddVersionErr Text)
+    findLddVersion = do
+      (exitCode, stdout, stderr) <- readProcess "ldd --version"
+      pure $ case exitCode of
+        ExitFailure code ->
+          Left . LddVersionErr $
+            "Exit code: "
+              <> (toText . show $ code)
+              <> " Message: "
+              <> decodeUtf8 stderr
+        ExitSuccess -> Right $ decodeUtf8 stdout
 
 lookupCIEnvironment :: IO (Maybe CIEnvironment)
 lookupCIEnvironment = do

@@ -1,5 +1,8 @@
+{-# LANGUAGE DerivingStrategies #-}
+
 module Control.Carrier.Telemetry.Types (
   CliEnvironment (..),
+  LddVersionErr (..),
   SystemInfo (..),
   TelemetryRecord (..),
   TimedLogRecord (..),
@@ -108,6 +111,12 @@ instance Show CliEnvironment where
 instance ToJSON CliEnvironment where
   toJSON = String . showT
 
+newtype LddVersionErr = LddVersionErr Text
+  deriving (Eq, Ord, Generic)
+  deriving newtype (Show)
+
+instance ToJSON LddVersionErr
+
 data SystemInfo = SystemInfo
   { systemInfoOs :: String
   , systemInfoArch :: String
@@ -115,6 +124,7 @@ data SystemInfo = SystemInfo
   , systemProcessors :: Int
   , systemDistroInfo :: Maybe String
   , systemUnameString :: Maybe Text
+  , systemLddVersion :: Maybe (Either LddVersionErr Text)
   }
   deriving (Eq, Ord, Show, Generic)
 
