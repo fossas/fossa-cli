@@ -3,7 +3,6 @@
 module App.Fossa.Analyze (
   analyzeMain,
   updateProgress,
-  runAnalyzers,
   runDependencyAnalysis,
   analyzeSubCommand,
 
@@ -122,6 +121,7 @@ import Prettyprinter.Render.Terminal (
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit, Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
+import Discovery.Archive (ancestryDirect)
 
 debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json.gz"
@@ -220,10 +220,10 @@ runAnalyzers ::
   , Has TaskPool sig m
   , Has AtomicCounter sig m
   ) =>
-  Path Abs Dir ->
   AllFilters ->
+  Path Abs Dir ->
   m ()
-runAnalyzers basedir filters = do
+runAnalyzers filters basedir = do
   if filterIsVSIOnly filters
     then do
       logInfo "Running in VSI only mode, skipping other analyzers"
@@ -315,10 +315,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       . runReader discoveryFilters
       . runReader (Config.overrideDynamicAnalysis cfg)
       $ do
-        runAnalyzers basedir filters
+        runAnalyzers filters basedir
         when (fromFlag UnpackArchives $ Config.unpackArchives cfg) $
           forkTask $ do
-            res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (`runAnalyzers` filters) basedir
+            res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (runAnalyzers filters) basedir ancestryDirect
             Diag.withResult SevError SevWarn res (const (pure ()))
 
   let projectResults = mapMaybe toProjectResult projectScans

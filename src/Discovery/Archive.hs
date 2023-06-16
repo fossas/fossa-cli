@@ -10,6 +10,7 @@ module Discovery.Archive (
   extractZip,
   selectUnarchiver,
   unpackFailurePath,
+  ancestryDirect,
 ) where
 
 import Codec.Archive.Tar qualified as Tar
@@ -17,7 +18,7 @@ import Codec.Archive.Zip qualified as Zip
 import Codec.Compression.BZip qualified as BZip
 import Codec.Compression.GZip qualified as GZip
 import Conduit (runConduit, runResourceT, sourceFileBS, (.|))
-import Control.Effect.Diagnostics (Diagnostics, Has, ToDiagnostic (renderDiagnostic), context, warnOnSomeException)
+import Control.Effect.Diagnostics (Diagnostics, Has, ToDiagnostic (renderDiagnostic), context, warnOnSomeException, fatalText)
 import Control.Effect.Exception (SomeException)
 import Control.Effect.Finally (Finally, onExit)
 import Control.Effect.Lift (Lift, sendIO)
@@ -43,6 +44,10 @@ import Path (
 import Path.IO qualified as PIO
 import Prettyprinter (Pretty (pretty), hsep, viaShow, vsep)
 import Prelude hiding (zip)
+import Path.Posix (SomeBase(..), Rel, (</>))
+import Path.Extra (tryMakeRelative)
+import qualified Path.Posix as P
+import Control.Carrier.Diagnostics (fromEither)
 
 data ArchiveUnpackFailure = ArchiveUnpackFailure (Path Abs File) SomeException
 
@@ -57,15 +62,53 @@ instance ToDiagnostic ArchiveUnpackFailure where
       , hsep ["Error text:", viaShow exc]
       ]
 
+-- | Renders the relative path from the provided directory to the file.
+-- If the path cannot be made relative, fatally exits through the diagnostic effect.
+ancestryDirect :: Has Diagnostics sig m => Path Abs Dir -> Path Abs File -> m (Path Rel File)
+ancestryDirect dir file = case tryMakeRelative dir file of
+  Abs _ -> fatalText $ "failed to make " <> toText (toFilePath file) <> " relative to " <> toText (toFilePath dir)
+  Rel rel -> pure rel
+
+-- | Renders the relative path from the provided directory to the file, prepended with the provided relative directory as a parent.
+-- If the path cannot be made relative, fatally exits through the diagnostic effect.
+ancestryDerived :: Has Diagnostics sig m => Path Rel Dir -> Path Abs Dir -> Path Abs File -> m (Path Rel File)
+ancestryDerived parent dir file = do
+  rel <- ancestryDirect dir file
+  pure $ parent </> rel
+
+-- | Converts a relative file path into a relative directory, where the passed in file path is suffixed by the archive suffix literal.
+-- In other words, this:
+--
+-- > "external/lib.zip" :: Path Rel File
+--
+-- Becomes this:
+--
+-- > "external/lib.zip :: Path Rel Dir
+convertArchiveToDir :: (Has Diagnostics sig m) => Path Rel File -> m (Path Rel Dir)
+convertArchiveToDir file = do
+  name <- fromEither . P.parseRelDir $ P.toFilePath (P.filename file)
+  pure $ P.parent file </> name
+
 -- | Given a function to run over unarchived contents, recursively unpack archives
-discover :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has TaskPool sig m) => (Path Abs Dir -> m ()) -> Path Abs Dir -> m ()
-discover go dir = context "Finding archives" $
+discover ::
+  (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has TaskPool sig m) =>
+  -- | Callback to run on the discovered file
+  (Path Abs Dir -> m ()) ->
+  -- | Path to the archive
+  Path Abs Dir ->
+  -- | Path rendering
+  (Path Abs Dir -> Path Abs File -> m (Path Rel File)) ->
+  m ()
+discover go dir renderAncestry = context "Finding archives" $ do
   flip walk dir $ \_ _ files -> do
     -- To process an unpacked archive, run the provided function on the archive
     -- contents, and recursively call discover
     let process file unpackedDir = context (toText (fileName file)) $ do
+          logicalPath <- renderAncestry dir file
+          logicalParent <- convertArchiveToDir logicalPath
+          sendIO . print $ "calling 'go' on " <> toText file <> " with dir = " <> toText dir <> " and logicalParent = " <> toText logicalParent
           go unpackedDir
-          discover go unpackedDir
+          discover go unpackedDir $ ancestryDerived logicalParent
 
     traverse_ (\file -> forkTask $ withArchive' file (process file)) files
     pure WalkContinue
