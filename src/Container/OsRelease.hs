@@ -155,6 +155,9 @@ osInfoParser =
 initComments :: Parser ()
 initComments = void $ many $ (symbol "#") *> takeWhileP (Just "character") (/= '\n') <* "\n"
 
+-- NOTE: For telemetry purposes we use a pre-existing library to do this.
+-- If we find issues in this parser in the future, consider using that.
+
 -- | Parses os-release file for OS release information.
 osReleaseParser :: Parser OsInfo
 osReleaseParser = do
