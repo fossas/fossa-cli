@@ -152,9 +152,15 @@ osInfoParser =
     <|> try centOsOldFmtParser
     <|> busyBoxParser
 
+initComments :: Parser ()
+initComments = void $ many $ (symbol "#") *> takeWhileP (Just "character") (/= '\n') <* "\n"
+
 -- | Parses os-release file for OS release information.
 osReleaseParser :: Parser OsInfo
 osReleaseParser = do
+  -- consume any initial comments as we have yet
+  -- to consume parser using line comment aware lexer!
+  _ <- try . optional $ lexeme initComments
   properties <- propertiesParser
   let nameId =
         asum
@@ -185,11 +191,14 @@ osReleaseParser = do
     -- >> parseTest valueParser "'1.0.2'" = 1.0.2
     -- >> parseTest valueParser "\"Abc\"" = Abc
     valueParser :: Parser Text
-    valueParser = do
-      void $ optional (char '"' <|> char '\'')
-      value <- takeWhileP (Just "entry value") (not . (`elem` ("\r\n\"" :: String)))
-      void $ optional (char '"' <|> char '\'')
-      pure value
+    valueParser = lexeme $ do
+      quote <- optional (char '"' <|> char '\'')
+      case quote of
+        Nothing -> toText <$> some (alphaNumChar <|> char '_' <|> char '-' <|> char '.')
+        Just _ -> do
+          value <- takeWhileP (Just "entry value") (not . (`elem` ("\r\n\"\'" :: String)))
+          void $ optional (char '"' <|> char '\'')
+          pure value
 
 -- | Parses content of /bin/busybox to identify OsInfo.
 --
