@@ -19,10 +19,14 @@ import Control.Carrier.Telemetry.Types (
   TelemetryCmdConfig (TelemetryCmdConfig),
   TelemetryCtx (TelemetryCtx, telCounters, telFossaConfig, telId, telLogsQ, telStartUtcTime, telTimeSpentQ),
   TelemetryRecord (..),
+  UnameExecErr (UnameExecErr),
  )
 import Control.Concurrent.STM (STM, atomically, newEmptyTMVarIO, tryReadTMVar)
 import Control.Concurrent.STM.TBMQueue (TBMQueue, newTBMQueueIO, tryReadTBMQueue)
+import Control.Exception.Safe (Exception (displayException), SomeException, catchAny)
 import Control.Monad (join, replicateM)
+import Data.Bifunctor (first)
+import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (asum)
 import Data.Functor.Extra ((<$$>))
 import Data.Maybe (catMaybes)
@@ -40,7 +44,7 @@ import System.Args (getCommandArgs)
 import System.Environment (lookupEnv)
 import System.Info qualified as Info
 import System.OsRelease (OsRelease (name, pretty_name), osRelease, parseOsRelease)
-import System.Process.Typed (ExitCode (..), readProcess, readProcessStdout)
+import System.Process.Typed (ExitCode (..), readProcess)
 
 maxQueueSize :: Int
 maxQueueSize = 1000
@@ -105,7 +109,7 @@ getSystemInfo = do
     <*> Conc.getNumProcessors
     -- Info.os only collects OS type, but for linux there isn't any info about distribution.
     <*> (if Info.os == "linux" then readOsRelease else pure Nothing)
-    <*> (if Info.os /= "mingw32" then readUname else pure Nothing)
+    <*> (if Info.os /= "mingw32" then Just <$> readUname else pure Nothing)
     <*> if Info.os == "linux" then Just <$> findLddVersion else pure Nothing
   where
     -- read more about os-release: https://www.commandlinux.com/man-page/man5/os-release.5.html
@@ -114,23 +118,27 @@ getSystemInfo = do
       releaseInfo <- fmap osRelease <$> parseOsRelease
       pure $ (pretty_name <$> releaseInfo) <|> (name <$> releaseInfo)
 
-    readUname :: IO (Maybe Text)
-    readUname = do
-      (exitCode, out) <- readProcessStdout "uname -mrsv"
-      pure $ case exitCode of
-        ExitFailure _ -> Nothing
-        ExitSuccess -> Just (decodeUtf8 out) -- utf8 isn't a given, but seems likely.
+    readUname :: IO (Either UnameExecErr Text)
+    readUname =
+      first UnameExecErr
+        <$> catchAny (processOutput <$> readProcess "uname -mrsv") exceptionToText
+
     findLddVersion :: IO (Either LddVersionErr Text)
-    findLddVersion = do
-      (exitCode, stdout, stderr) <- readProcess "ldd --version"
-      pure $ case exitCode of
-        ExitFailure code ->
-          Left . LddVersionErr $
-            "Exit code: "
-              <> (toText . show $ code)
-              <> " Message: "
-              <> decodeUtf8 stderr
-        ExitSuccess -> Right $ decodeUtf8 stdout
+    findLddVersion =
+      first LddVersionErr
+        <$> catchAny (processOutput <$> readProcess "ldd --version") exceptionToText
+
+    processOutput :: (ExitCode, BL.ByteString, BL.ByteString) -> (Either Text Text)
+    processOutput (ExitFailure code, _, stderr) =
+      Left $
+        "Exit code: "
+          <> (toText . show $ code)
+          <> " Message: "
+          <> decodeUtf8 stderr
+    processOutput (ExitSuccess, stdout, _) = Right $ decodeUtf8 stdout
+
+    exceptionToText :: SomeException -> IO (Either Text a)
+    exceptionToText = (pure . Left . toText . displayException)
 
 lookupCIEnvironment :: IO (Maybe CIEnvironment)
 lookupCIEnvironment = do

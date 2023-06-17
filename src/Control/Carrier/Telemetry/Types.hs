@@ -10,6 +10,7 @@ module Control.Carrier.Telemetry.Types (
   TelemetryCtx (..),
   TelemetryTimeSpent (..),
   TelemetryCmdConfig (..),
+  UnameExecErr (..),
   CountableCliFeature (..),
   CIEnvironment (..),
 ) where
@@ -117,13 +118,19 @@ newtype LddVersionErr = LddVersionErr Text
 
 instance ToJSON LddVersionErr
 
+newtype UnameExecErr = UnameExecErr Text
+  deriving (Eq, Ord, Generic)
+  deriving newtype (Show)
+
+instance ToJSON UnameExecErr
+
 data SystemInfo = SystemInfo
   { systemInfoOs :: String
   , systemInfoArch :: String
   , systemCapabilities :: Int
   , systemProcessors :: Int
   , systemDistroInfo :: Maybe String
-  , systemUnameString :: Maybe Text
+  , systemUname :: Maybe (Either UnameExecErr Text)
   , systemLddVersion :: Maybe (Either LddVersionErr Text)
   }
   deriving (Eq, Ord, Show, Generic)
