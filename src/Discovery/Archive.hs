@@ -10,16 +10,16 @@ module Discovery.Archive (
   extractZip,
   selectUnarchiver,
   unpackFailurePath,
-  ancestryDirect,
 ) where
 
+import App.Util (ancestryDerived)
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Zip qualified as Zip
 import Codec.Compression.BZip qualified as BZip
 import Codec.Compression.GZip qualified as GZip
 import Conduit (runConduit, runResourceT, sourceFileBS, (.|))
 import Control.Carrier.Diagnostics (fromEither)
-import Control.Effect.Diagnostics (Diagnostics, Has, ToDiagnostic (renderDiagnostic), context, fatalText, warnOnSomeException)
+import Control.Effect.Diagnostics (Diagnostics, Has, ToDiagnostic (renderDiagnostic), context, warnOnSomeException)
 import Control.Effect.Exception (SomeException)
 import Control.Effect.Finally (Finally, onExit)
 import Control.Effect.Lift (Lift, sendIO)
@@ -42,9 +42,8 @@ import Path (
   fromAbsFile,
   toFilePath,
  )
-import Path.Extra (tryMakeRelative)
 import Path.IO qualified as PIO
-import Path.Posix (Rel, SomeBase (..), (</>))
+import Path.Posix (Rel, (</>))
 import Path.Posix qualified as P
 import Prettyprinter (Pretty (pretty), hsep, viaShow, vsep)
 import Prelude hiding (zip)
@@ -61,20 +60,6 @@ instance ToDiagnostic ArchiveUnpackFailure where
       , hsep ["Archive path:", pretty $ toText file]
       , hsep ["Error text:", viaShow exc]
       ]
-
--- | Renders the relative path from the provided directory to the file.
--- If the path cannot be made relative, fatally exits through the diagnostic effect.
-ancestryDirect :: Has Diagnostics sig m => Path Abs Dir -> Path Abs File -> m (Path Rel File)
-ancestryDirect dir file = case tryMakeRelative dir file of
-  Abs _ -> fatalText $ "failed to make " <> toText (toFilePath file) <> " relative to " <> toText (toFilePath dir)
-  Rel rel -> pure rel
-
--- | Renders the relative path from the provided directory to the file, prepended with the provided relative directory as a parent.
--- If the path cannot be made relative, fatally exits through the diagnostic effect.
-ancestryDerived :: Has Diagnostics sig m => Path Rel Dir -> Path Abs Dir -> Path Abs File -> m (Path Rel File)
-ancestryDerived parent dir file = do
-  rel <- ancestryDirect dir file
-  pure $ parent </> rel
 
 -- | Converts a relative file path into a relative directory, where the passed in file path is suffixed by the archive suffix literal.
 -- In other words, this:
