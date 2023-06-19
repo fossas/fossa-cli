@@ -10,6 +10,7 @@ import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types (ScanID (..))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
+import App.Util (ancestryDerived, ancestryDirect)
 import Control.Algebra (Has)
 import Control.Carrier.AtomicCounter (runAtomicCounter)
 import Control.Carrier.Diagnostics (runDiagnosticsIO, withResult)
@@ -36,9 +37,8 @@ import Discovery.Filters (AllFilters, combinedPaths, excludeFilters, includeFilt
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk)
 import Effect.Logger (Color (..), Logger, Severity (SevError, SevInfo, SevWarn), annotate, color, hsep, logDebug, logInfo, plural, pretty)
 import Effect.ReadFS (ReadFS)
-import Path (Dir, File, Path, isProperPrefixOf, (</>), Rel, Abs)
+import Path (Abs, Dir, File, Path, Rel, isProperPrefixOf, (</>))
 import Path qualified as P
-import App.Util (ancestryDirect, ancestryDerived)
 
 runVsiAnalysis ::
   ( Has (Lift IO) sig m

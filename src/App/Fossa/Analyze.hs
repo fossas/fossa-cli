@@ -181,8 +181,11 @@ runDependencyAnalysis ::
   ) =>
   -- | Analysis base directory
   Path Abs Dir ->
+  -- | Filters
   AllFilters ->
+  -- | An optional path prefix to prepend to paths of discovered manifestFiles
   Maybe (Path Rel Dir) ->
+  -- | The project to analyze
   DiscoveredProject proj ->
   m ()
 runDependencyAnalysis basedir filters pathPrefix project@DiscoveredProject{..} = do
