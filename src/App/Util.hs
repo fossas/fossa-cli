@@ -8,14 +8,14 @@ module App.Util (
 ) where
 
 import App.Types
-import Control.Monad (unless)
-import Path (Abs, File, Path, Dir, Rel, SomeBase (..), toFilePath, (</>))
-import Path.IO qualified as P
-import System.Exit (die)
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics, fatalText)
+import Control.Monad (unless)
+import Data.String.Conversion (ToText (..))
+import Path (Abs, Dir, File, Path, Rel, SomeBase (..), toFilePath, (</>))
 import Path.Extra (tryMakeRelative)
-import Data.String.Conversion (ToText(..))
+import Path.IO qualified as P
+import System.Exit (die)
 
 -- | Validate that a filepath points to a directory and the directory exists
 validateDir :: FilePath -> IO BaseDir
@@ -47,4 +47,3 @@ ancestryDerived :: Has Diagnostics sig m => Path Rel Dir -> Path Abs Dir -> Path
 ancestryDerived parent dir file = do
   rel <- ancestryDirect dir file
   pure $ parent </> rel
-
