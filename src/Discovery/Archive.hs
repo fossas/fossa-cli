@@ -38,14 +38,14 @@ import Path (
   Dir,
   File,
   Path,
+  Rel,
   fromAbsDir,
   fromAbsFile,
   toFilePath,
-  Rel,
   (</>),
  )
-import Path.IO qualified as PIO
 import Path qualified as P
+import Path.IO qualified as PIO
 import Prettyprinter (Pretty (pretty), hsep, viaShow, vsep)
 import Prelude hiding (zip)
 
