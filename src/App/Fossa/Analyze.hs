@@ -94,6 +94,7 @@ import Data.Maybe (mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Diag.Result (resultToMaybe)
+import Discovery.Archive (ancestryDirect)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
@@ -105,7 +106,7 @@ import Effect.Logger (
   logStdout,
  )
 import Effect.ReadFS (ReadFS)
-import Path (Abs, Dir, Path, toFilePath, Rel)
+import Path (Abs, Dir, Path, Rel, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
   Doc,
@@ -121,7 +122,6 @@ import Prettyprinter.Render.Terminal (
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit, Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
-import Discovery.Archive (ancestryDirect)
 
 debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json.gz"

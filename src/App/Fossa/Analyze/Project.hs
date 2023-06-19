@@ -32,7 +32,7 @@ mkResult basedir project pathPrefix dependencyResults =
     relativeManifestFiles = map (tryMakeRelative basedir) $ dependencyManifestFiles dependencyResults
     prefixedManifestFiles = map (addPrefix pathPrefix) relativeManifestFiles
     addPrefix :: Maybe (Path Rel Dir) -> SomeBase File -> SomeBase File
-    addPrefix maybePrefix relativeFile  =
+    addPrefix maybePrefix relativeFile =
       case (maybePrefix, relativeFile) of
         (Nothing, relFile) -> relFile
         (Just prefix, Rel relFile) -> Rel $ prefix </> relFile

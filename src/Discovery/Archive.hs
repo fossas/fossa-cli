@@ -18,7 +18,8 @@ import Codec.Archive.Zip qualified as Zip
 import Codec.Compression.BZip qualified as BZip
 import Codec.Compression.GZip qualified as GZip
 import Conduit (runConduit, runResourceT, sourceFileBS, (.|))
-import Control.Effect.Diagnostics (Diagnostics, Has, ToDiagnostic (renderDiagnostic), context, warnOnSomeException, fatalText)
+import Control.Carrier.Diagnostics (fromEither)
+import Control.Effect.Diagnostics (Diagnostics, Has, ToDiagnostic (renderDiagnostic), context, fatalText, warnOnSomeException)
 import Control.Effect.Exception (SomeException)
 import Control.Effect.Finally (Finally, onExit)
 import Control.Effect.Lift (Lift, sendIO)
@@ -41,13 +42,12 @@ import Path (
   fromAbsFile,
   toFilePath,
  )
+import Path.Extra (tryMakeRelative)
 import Path.IO qualified as PIO
+import Path.Posix (Rel, SomeBase (..), (</>))
+import Path.Posix qualified as P
 import Prettyprinter (Pretty (pretty), hsep, viaShow, vsep)
 import Prelude hiding (zip)
-import Path.Posix (SomeBase(..), Rel, (</>))
-import Path.Extra (tryMakeRelative)
-import qualified Path.Posix as P
-import Control.Carrier.Diagnostics (fromEither)
 
 data ArchiveUnpackFailure = ArchiveUnpackFailure (Path Abs File) SomeException
 
