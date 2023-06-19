@@ -93,7 +93,7 @@ convertArchiveToDir file = do
 discover ::
   (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has TaskPool sig m) =>
   -- | Callback to run on the discovered file
-  (Path Abs Dir -> m ()) ->
+  (Path Abs Dir -> Maybe (Path Rel Dir) -> m ()) ->
   -- | Path to the archive
   Path Abs Dir ->
   -- | Path rendering
@@ -107,7 +107,7 @@ discover go dir renderAncestry = context "Finding archives" $ do
           logicalPath <- renderAncestry dir file
           logicalParent <- convertArchiveToDir logicalPath
           sendIO . print $ "calling 'go' on " <> toText file <> " with dir = " <> toText dir <> " and logicalParent = " <> toText logicalParent
-          go unpackedDir
+          go unpackedDir (Just logicalParent)
           discover go unpackedDir $ ancestryDerived logicalParent
 
     traverse_ (\file -> forkTask $ withArchive' file (process file)) files
