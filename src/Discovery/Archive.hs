@@ -91,7 +91,6 @@ discover go dir renderAncestry = context "Finding archives" $ do
     let process file unpackedDir = context (toText (fileName file)) $ do
           logicalPath <- renderAncestry dir file
           logicalParent <- convertArchiveToDir logicalPath
-          sendIO . print $ "calling 'go' on " <> toText file <> " with dir = " <> toText dir <> " and logicalParent = " <> toText logicalParent
           go unpackedDir (Just logicalParent)
           discover go unpackedDir $ ancestryDerived logicalParent
 

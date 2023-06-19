@@ -3,6 +3,7 @@
 module App.Fossa.Analyze (
   analyzeMain,
   updateProgress,
+  runAnalyzers,
   runDependencyAnalysis,
   analyzeSubCommand,
 
