@@ -41,10 +41,11 @@ import Path (
   fromAbsDir,
   fromAbsFile,
   toFilePath,
+  Rel,
+  (</>),
  )
 import Path.IO qualified as PIO
-import Path.Posix (Rel, (</>))
-import Path.Posix qualified as P
+import Path qualified as P
 import Prettyprinter (Pretty (pretty), hsep, viaShow, vsep)
 import Prelude hiding (zip)
 
