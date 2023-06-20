@@ -1,10 +1,11 @@
 # FOSSA CLI Changelog
 
-## Unreleased
-- Telemetry: Collect GNU/Linux distribution information and `uname` output. ([#1222](https://github.com/fossas/fossa-cli/pull/1222))
+## v3.8.3
 - Logging: Don't output the `[INFO]` prefix for regular CLI messages. ([#1226](https://github.com/fossas/fossa-cli/pull/1226))
 - License Scanning: Fix a bug where we were identifying the "GPL with autoconf macro exception" license as "GPL with autoconf exception" in a few cases ([#1225](https://github.com/fossas/fossa-cli/pull/1225))
 - Container Scanning: More resiliant os-release parser, accounting initial line comments in the file ([#1230](https://github.com/fossas/fossa-cli/pull/1230))
+- Analysis: full paths to the files in archives are shown when running `fossa analyze --unpack-archives` ([#1231](https://github.com/fossas/fossa-cli/pull/1231))
+- Telemetry: Collect GNU/Linux distribution information and `uname` output. ([#1222](https://github.com/fossas/fossa-cli/pull/1222))
 
 ## v3.8.2
 - Poetry: Defaults `category` to `main` if not present in lockfile. ([#1211](https://github.com/fossas/fossa-cli/pull/1211))
