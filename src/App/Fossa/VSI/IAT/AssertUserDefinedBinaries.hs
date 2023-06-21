@@ -13,6 +13,7 @@ import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.Fingerprint (fingerprintContentsRaw)
 import App.Types (BaseDir (..))
 import Control.Algebra (Has)
+import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient qualified as API
@@ -36,4 +37,4 @@ assertUserDefinedBinaries LinkUserBinsConfig{..} = do
   fingerprints <- fingerprintContentsRaw $ unBaseDir baseDir
 
   logInfo "Uploading assertion to FOSSA"
-  runFossaApiClient apiOpts $ API.assertUserDefinedBinaries binMetadata fingerprints
+  ignoreDebug . runFossaApiClient apiOpts $ API.assertUserDefinedBinaries binMetadata fingerprints

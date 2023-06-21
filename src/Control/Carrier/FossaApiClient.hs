@@ -8,6 +8,7 @@ import Control.Carrier.FossaApiClient.Internal.LicenseScanning qualified as Lice
 import Control.Carrier.FossaApiClient.Internal.VSI qualified as VSI
 import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.Simple (SimpleC, interpret)
+import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift)
@@ -19,6 +20,7 @@ type FossaApiClientC m = SimpleC FossaApiClientF (ReaderC ApiOpts m)
 -- | Runs FossaAPI effects as IO operations
 runFossaApiClient ::
   ( Has (Lift IO) sig m
+  , Has Debug sig m
   , Has Diagnostics sig m
   ) =>
   ApiOpts ->
