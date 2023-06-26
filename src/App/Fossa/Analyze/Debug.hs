@@ -22,6 +22,7 @@ module App.Fossa.Analyze.Debug (
 
 import App.Fossa.EmbeddedBinary (withThemisAndIndex)
 import App.Fossa.RunThemis (getThemisVersion)
+import Control.Carrier.Diagnostics qualified as Diag
 import App.Version (fullVersionDescription)
 import Control.Carrier.Debug (
   Algebra (..),
@@ -121,7 +122,10 @@ collectDebugBundle cfg act = do
   sysInfo <- sendIO collectSystemInfo
   args <- sendIO getCommandArgs
   envVars <- collectEnvVariables
-  themisVersion <- withThemisAndIndex getThemisVersion
+  themisVersionUnsafe <- Diag.errorBoundaryIO $ withThemisAndIndex getThemisVersion
+  let themisVersion = case themisVersionUnsafe of
+        Success _ t -> t
+        _ -> "versionunavailable"
 
   let output :: Aeson.Value = case res of
         Failure _ _ -> "scan was not successful, no output"
