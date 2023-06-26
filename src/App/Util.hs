@@ -5,6 +5,7 @@ module App.Util (
   ancestryDirect,
   validateDir,
   validateFile,
+  FileAncestry (..),
 ) where
 
 import App.Types
@@ -16,6 +17,7 @@ import Path (Abs, Dir, File, Path, Rel, SomeBase (..), toFilePath, (</>))
 import Path.Extra (tryMakeRelative)
 import Path.IO qualified as P
 import System.Exit (die)
+import GHC.Generics (Generic)
 
 -- | Validate that a filepath points to a directory and the directory exists
 validateDir :: FilePath -> IO BaseDir
@@ -41,9 +43,11 @@ ancestryDirect dir file = case tryMakeRelative dir file of
   Abs _ -> fatalText $ "failed to make " <> toText (toFilePath file) <> " relative to " <> toText (toFilePath dir)
   Rel rel -> pure rel
 
+newtype FileAncestry = FileAncestry { fileAncestryPath :: Path Rel Dir } deriving (Eq, Ord, Show, Generic)
+
 -- | Renders the relative path from the provided directory to the file, prepended with the provided relative directory as a parent.
 -- If the path cannot be made relative, fatally exits through the diagnostic effect.
-ancestryDerived :: Has Diagnostics sig m => Path Rel Dir -> Path Abs Dir -> Path Abs File -> m (Path Rel File)
+ancestryDerived :: Has Diagnostics sig m => FileAncestry -> Path Abs Dir -> Path Abs File -> m (Path Rel File)
 ancestryDerived parent dir file = do
   rel <- ancestryDirect dir file
-  pure $ parent </> rel
+  pure $ fileAncestryPath parent </> rel

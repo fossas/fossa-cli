@@ -60,7 +60,7 @@ import App.Types (
   OverrideDynamicAnalysisBinary,
   ProjectRevision (..),
  )
-import App.Util (ancestryDirect)
+import App.Util (ancestryDirect, FileAncestry)
 import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)
@@ -107,7 +107,7 @@ import Effect.Logger (
   logStdout,
  )
 import Effect.ReadFS (ReadFS)
-import Path (Abs, Dir, Path, Rel, toFilePath)
+import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
   Doc,
@@ -184,7 +184,7 @@ runDependencyAnalysis ::
   -- | Filters
   AllFilters ->
   -- | An optional path prefix to prepend to paths of discovered manifestFiles
-  Maybe (Path Rel Dir) ->
+  Maybe FileAncestry ->
   -- | The project to analyze
   DiscoveredProject proj ->
   m ()
@@ -227,7 +227,7 @@ runAnalyzers ::
   ) =>
   AllFilters ->
   Path Abs Dir ->
-  Maybe (Path Rel Dir) ->
+  Maybe FileAncestry ->
   m ()
 runAnalyzers filters basedir pathPrefix = do
   if filterIsVSIOnly filters

@@ -10,7 +10,7 @@ import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types (ScanID (..))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
-import App.Util (ancestryDerived, ancestryDirect)
+import App.Util (ancestryDerived, ancestryDirect, FileAncestry (..))
 import Control.Algebra (Has)
 import Control.Carrier.AtomicCounter (runAtomicCounter)
 import Control.Carrier.Diagnostics (runDiagnosticsIO, withResult)
@@ -264,7 +264,7 @@ discover output filters root renderAncestry =
       forkTask . recover . fatalOnSomeException "extract archive" . withArchive' file $ \archiveRoot -> context "walking into child archive" $ do
         logDebug . pretty $ "walking into " <> toText file <> " as archive"
         logicalParent <- convertArchiveSuffix logicalPath
-        discover output filters archiveRoot $ ancestryDerived logicalParent
+        discover output filters archiveRoot $ ancestryDerived $ FileAncestry logicalParent
 
       -- Report the fingerprint and logical path for computing this chunk.
       logDebug . pretty $ "report logical path: " <> toText logicalPath

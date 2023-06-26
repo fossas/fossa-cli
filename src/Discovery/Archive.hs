@@ -12,7 +12,7 @@ module Discovery.Archive (
   unpackFailurePath,
 ) where
 
-import App.Util (ancestryDerived)
+import App.Util (ancestryDerived, FileAncestry (..))
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Zip qualified as Zip
 import Codec.Compression.BZip qualified as BZip
@@ -79,7 +79,7 @@ convertArchiveToDir file = do
 discover ::
   (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has TaskPool sig m) =>
   -- | Callback to run on the discovered file
-  (Path Abs Dir -> Maybe (Path Rel Dir) -> m ()) ->
+  (Path Abs Dir -> Maybe FileAncestry -> m ()) ->
   -- | Path to the archive
   Path Abs Dir ->
   -- | Path rendering
@@ -92,8 +92,8 @@ discover go dir renderAncestry = context "Finding archives" $ do
     let process file unpackedDir = context (toText (fileName file)) $ do
           logicalPath <- renderAncestry dir file
           logicalParent <- convertArchiveToDir logicalPath
-          go unpackedDir (Just logicalParent)
-          discover go unpackedDir $ ancestryDerived logicalParent
+          go unpackedDir (Just $ FileAncestry logicalParent)
+          discover go unpackedDir $ ancestryDerived $ FileAncestry logicalParent
 
     traverse_ (\file -> forkTask $ withArchive' file (process file)) files
     pure WalkContinue

@@ -9,8 +9,9 @@ import Graphing qualified
 import Path
 import Path.Extra (tryMakeRelative)
 import Types
+import App.Util (FileAncestry (..))
 
-mkResult :: Path Abs Dir -> DiscoveredProject n -> Maybe (Path Rel Dir) -> (DependencyResults) -> ProjectResult
+mkResult :: Path Abs Dir -> DiscoveredProject n -> Maybe FileAncestry -> (DependencyResults) -> ProjectResult
 mkResult basedir project pathPrefix dependencyResults =
   ProjectResult
     { projectResultType = projectType project
@@ -30,7 +31,7 @@ mkResult basedir project pathPrefix dependencyResults =
   where
     graph = dependencyGraph dependencyResults
     relativeManifestFiles = map (tryMakeRelative basedir) $ dependencyManifestFiles dependencyResults
-    prefixedManifestFiles = map (addPrefix pathPrefix) relativeManifestFiles
+    prefixedManifestFiles = map (addPrefix $ fileAncestryPath <$> pathPrefix) relativeManifestFiles
     addPrefix :: Maybe (Path Rel Dir) -> SomeBase File -> SomeBase File
     addPrefix maybePrefix relativeFile =
       case (maybePrefix, relativeFile) of
