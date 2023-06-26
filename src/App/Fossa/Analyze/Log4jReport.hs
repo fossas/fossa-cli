@@ -193,7 +193,7 @@ runDependencyAnalysisForLog4j basedir filters project = do
       graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context "Project Analysis" $ do
         debugMetadata "DiscoveredProject" project
         analyzeProject targets (projectData project)
-      Diag.withResult SevWarn SevWarn graphResult (output . mkResult basedir project)
+      Diag.withResult SevWarn SevWarn graphResult (output . mkResult basedir project Nothing)
 
 data VulnerableDependency = VulnerableDependency
   { vdName :: Text
