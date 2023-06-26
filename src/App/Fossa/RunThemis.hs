@@ -18,9 +18,10 @@ import App.Fossa.EmbeddedBinary (
 import App.Types (FullFileUploads (unFullFileUploads))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.ByteString.Lazy qualified as BL
-import Data.String.Conversion (toText)
+import Data.String.Conversion (ConvertUtf8 (decodeUtf8), toText)
 import Data.Tagged (Tagged, unTag)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Effect.Exec (
   AllowErr (Never),
   Command (..),
@@ -38,8 +39,15 @@ execRawThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path A
 execRawThemis themisBins scanDir flags = execThrow scanDir $ themisCommand themisBins "" flags
 
 -- get the themis version without requiring a directory to run in
-getThemisVersion :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => ThemisBins -> m BL.ByteString
-getThemisVersion themisBins = execThrow' $ themisCommand themisBins "" ["--version"]
+-- The output will look something like
+-- 2023/06/26 14:37:54 Version: ee69aa92245697a5f6d32a27129ec2b4d77dc423
+-- So we just split on the first space, counting from the end of the string
+getThemisVersion :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => ThemisBins -> m Text
+getThemisVersion themisBins = do
+  bytes <- execThrow' $ themisCommand themisBins "" ["--version"]
+  let versionText = decodeUtf8 bytes
+  let version = T.takeWhileEnd (/= ' ') $ T.strip versionText
+  pure version
 
 execThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Path Abs Dir -> [Text] -> m [LicenseUnit]
 execThemis themisBins pathPrefix scanDir flags = do

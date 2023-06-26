@@ -49,7 +49,7 @@ import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Aeson qualified as Aeson
 import Data.Bifunctor (bimap)
 import Data.Map qualified as Map
-import Data.String.Conversion (decodeUtf8, toText)
+import Data.String.Conversion (toText)
 import Data.Text (Text, toLower)
 import Data.Word (Word64)
 import Diag.Result (Result (..))
@@ -122,7 +122,6 @@ collectDebugBundle cfg act = do
   args <- sendIO getCommandArgs
   envVars <- collectEnvVariables
   themisVersion <- withThemisAndIndex getThemisVersion
-  let themisVersionText = decodeUtf8 themisVersion
 
   let output :: Aeson.Value = case res of
         Failure _ _ -> "scan was not successful, no output"
@@ -132,7 +131,7 @@ collectDebugBundle cfg act = do
         DebugBundle
           { bundleSystem = sysInfo
           , bundleCLIVersion = fullVersionDescription
-          , bundleThemisVersion = themisVersionText
+          , bundleThemisVersion = themisVersion
           , bundleArgs = args
           , bundleConfig = cfg
           , bundleEnvVariables = envVars
