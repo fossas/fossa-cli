@@ -10,7 +10,7 @@ import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types (ScanID (..))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
-import App.Util (ancestryDerived, ancestryDirect, FileAncestry (..))
+import App.Util (FileAncestry (..), ancestryDerived, ancestryDirect)
 import Control.Algebra (Has)
 import Control.Carrier.AtomicCounter (runAtomicCounter)
 import Control.Carrier.Diagnostics (runDiagnosticsIO, withResult)

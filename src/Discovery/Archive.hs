@@ -12,7 +12,7 @@ module Discovery.Archive (
   unpackFailurePath,
 ) where
 
-import App.Util (ancestryDerived, FileAncestry (..))
+import App.Util (FileAncestry (..), ancestryDerived)
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Zip qualified as Zip
 import Codec.Compression.BZip qualified as BZip

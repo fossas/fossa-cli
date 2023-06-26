@@ -3,13 +3,13 @@ module App.Fossa.Analyze.Project (
   mkResult,
 ) where
 
+import App.Util (FileAncestry (..))
 import DepTypes
 import Graphing (Graphing)
 import Graphing qualified
 import Path
 import Path.Extra (tryMakeRelative)
 import Types
-import App.Util (FileAncestry (..))
 
 mkResult :: Path Abs Dir -> DiscoveredProject n -> Maybe FileAncestry -> (DependencyResults) -> ProjectResult
 mkResult basedir project pathPrefix dependencyResults =

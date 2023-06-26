@@ -60,7 +60,7 @@ import App.Types (
   OverrideDynamicAnalysisBinary,
   ProjectRevision (..),
  )
-import App.Util (ancestryDirect, FileAncestry)
+import App.Util (FileAncestry, ancestryDirect)
 import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)

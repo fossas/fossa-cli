@@ -13,11 +13,11 @@ import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics, fatalText)
 import Control.Monad (unless)
 import Data.String.Conversion (ToText (..))
+import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (..), toFilePath, (</>))
 import Path.Extra (tryMakeRelative)
 import Path.IO qualified as P
 import System.Exit (die)
-import GHC.Generics (Generic)
 
 -- | Validate that a filepath points to a directory and the directory exists
 validateDir :: FilePath -> IO BaseDir
@@ -43,7 +43,7 @@ ancestryDirect dir file = case tryMakeRelative dir file of
   Abs _ -> fatalText $ "failed to make " <> toText (toFilePath file) <> " relative to " <> toText (toFilePath dir)
   Rel rel -> pure rel
 
-newtype FileAncestry = FileAncestry { fileAncestryPath :: Path Rel Dir } deriving (Eq, Ord, Show, Generic)
+newtype FileAncestry = FileAncestry {fileAncestryPath :: Path Rel Dir} deriving (Eq, Ord, Show, Generic)
 
 -- | Renders the relative path from the provided directory to the file, prepended with the provided relative directory as a parent.
 -- If the path cannot be made relative, fatally exits through the diagnostic effect.
