@@ -6,6 +6,7 @@ module App.Fossa.RunThemis (
   -- `themisCommand` is used by Hubble.
   themisCommand,
   themisFlags,
+  getThemisVersion,
 ) where
 
 import App.Fossa.EmbeddedBinary (
@@ -26,7 +27,9 @@ import Effect.Exec (
   Exec,
   execJson,
   execThrow,
+  execThrow',
  )
+import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path, parent)
 import Srclib.Types (LicenseUnit)
 import Types (GlobFilter (unGlobFilter), LicenseScanPathFilters (..))
@@ -34,7 +37,10 @@ import Types (GlobFilter (unGlobFilter), LicenseScanPathFilters (..))
 execRawThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> [Text] -> m BL.ByteString
 execRawThemis themisBins scanDir flags = execThrow scanDir $ themisCommand themisBins "" flags
 
--- TODO: We should log the themis version and index version
+-- get the themis version without requiring a directory to run in
+getThemisVersion :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => ThemisBins -> m BL.ByteString
+getThemisVersion themisBins = execThrow' $ themisCommand themisBins "" ["--version"]
+
 execThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Path Abs Dir -> [Text] -> m [LicenseUnit]
 execThemis themisBins pathPrefix scanDir flags = do
   execJson @[LicenseUnit] scanDir $ themisCommand themisBins pathPrefix flags

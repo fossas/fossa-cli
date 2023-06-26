@@ -20,6 +20,8 @@ module App.Fossa.Analyze.Debug (
   debugEverything,
 ) where
 
+import App.Fossa.EmbeddedBinary (withThemisAndIndex)
+import App.Fossa.RunThemis (getThemisVersion)
 import App.Version (fullVersionDescription)
 import Control.Carrier.Debug (
   Algebra (..),
@@ -47,7 +49,7 @@ import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Aeson qualified as Aeson
 import Data.Bifunctor (bimap)
 import Data.Map qualified as Map
-import Data.String.Conversion (toText)
+import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text, toLower)
 import Data.Word (Word64)
 import Diag.Result (Result (..))
@@ -119,6 +121,8 @@ collectDebugBundle cfg act = do
   sysInfo <- sendIO collectSystemInfo
   args <- sendIO getCommandArgs
   envVars <- collectEnvVariables
+  themisVersion <- withThemisAndIndex getThemisVersion
+  let themisVersionText = decodeUtf8 themisVersion
 
   let output :: Aeson.Value = case res of
         Failure _ _ -> "scan was not successful, no output"
@@ -128,6 +132,7 @@ collectDebugBundle cfg act = do
         DebugBundle
           { bundleSystem = sysInfo
           , bundleCLIVersion = fullVersionDescription
+          , bundleThemisVersion = themisVersionText
           , bundleArgs = args
           , bundleConfig = cfg
           , bundleEnvVariables = envVars
@@ -163,6 +168,7 @@ collectSystemInfo = do
 data DebugBundle cfg = DebugBundle
   { bundleSystem :: SystemInfo
   , bundleCLIVersion :: Text
+  , bundleThemisVersion :: Text
   , bundleArgs :: [Text]
   , bundleConfig :: cfg
   , bundleEnvVariables :: Map.Map Text Text
