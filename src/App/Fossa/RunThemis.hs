@@ -21,7 +21,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.String.Conversion (ConvertUtf8 (decodeUtf8), toText)
 import Data.Tagged (Tagged, unTag)
 import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Text qualified as Text
 import Effect.Exec (
   AllowErr (Never),
   Command (..),
@@ -46,7 +46,7 @@ getThemisVersion :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) =>
 getThemisVersion themisBins = do
   bytes <- execThrow' $ themisCommand themisBins "" ["--version"]
   let versionText = decodeUtf8 bytes
-  let version = T.takeWhileEnd (/= ' ') $ T.strip versionText
+  let version = Text.takeWhileEnd (/= ' ') $ Text.strip versionText
   pure version
 
 execThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Path Abs Dir -> [Text] -> m [LicenseUnit]
