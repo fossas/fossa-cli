@@ -16,14 +16,12 @@ import App.Fossa.EmbeddedBinary (
   toPath,
  )
 import App.Types (FullFileUploads (unFullFileUploads))
-import Control.Carrier.Diagnostics qualified as Diag
-import Control.Effect.Diagnostics (Diagnostics, Has, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.ByteString.Lazy qualified as BL
 import Data.String.Conversion (ConvertUtf8 (decodeUtf8), toText)
 import Data.Tagged (Tagged, unTag)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Diag.Result
 import Effect.Exec (
   AllowErr (Never),
   Command (..),
@@ -46,13 +44,10 @@ execRawThemis themisBins scanDir flags = execThrow scanDir $ themisCommand themi
 -- So we just split on the first space, counting from the end of the string
 getThemisVersion :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => ThemisBins -> m Text
 getThemisVersion themisBins = do
-  bytes <- Diag.runDiagnostics (execThrow' (themisCommand themisBins "" ["--version"]) <||> pure BL.empty)
-  case bytes of
-    Success _ bs -> do
-      let versionText = decodeUtf8 bs
-      let version = T.takeWhileEnd (/= ' ') $ T.strip versionText
-      pure version
-    _ -> pure ""
+  bytes <- execThrow' $ themisCommand themisBins "" ["--version"]
+  let versionText = decodeUtf8 bytes
+  let version = T.takeWhileEnd (/= ' ') $ T.strip versionText
+  pure version
 
 execThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Path Abs Dir -> [Text] -> m [LicenseUnit]
 execThemis themisBins pathPrefix scanDir flags = do
