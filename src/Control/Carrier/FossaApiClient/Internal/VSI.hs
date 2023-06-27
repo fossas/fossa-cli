@@ -122,7 +122,7 @@ getVsiInferences ::
   , Has (Reader ApiOpts) sig m
   ) =>
   VSI.ScanID ->
-  m [Locator]
+  m VSI.VsiExportedInferencesBody
 getVsiInferences scanId = do
   apiOpts <- ask
   API.vsiDownloadInferences apiOpts scanId

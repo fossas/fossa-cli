@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.VSI.Types (
@@ -14,10 +15,17 @@ module App.Fossa.VSI.Types (
   isTopLevelProject,
   toDependency,
   parseAnalysisStatus,
+  uniqueVsiLocators,
+  VsiFilePath (..), -- data constructor only exported for testing
+  VsiInference (..),
+  VsiExportedInferencesBody (..),
 ) where
 
 import Control.Effect.Diagnostics (ToDiagnostic, renderDiagnostic)
-import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, withObject, (.:))
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, withObject, (.!=), (.:), (.:?))
+import Data.Aeson.KeyMap qualified as KeyMap
+import Data.Aeson.Types (Parser)
+import Data.Map qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String (IsString)
@@ -141,3 +149,45 @@ userDefinedFetcher = "iat"
 
 isTopLevelProject :: Locator -> Bool
 isTopLevelProject loc = locatorFetcher loc == depTypeToFetcher CustomType
+
+newtype VsiFilePath = VsiFilePath Text
+  deriving newtype (Eq, Ord, Show, FromJSON)
+
+-- |Locator output of /inferences.
+-- The output of the /inferences endpoint will sometimes return a locator of "".
+-- Dealing with this is left to the caller which is why it is only a wrapper of Text.
+newtype VsiLocator = VsiLocator Text
+  deriving newtype (Eq, Ord, Show, FromJSON, ToText, IsString)
+
+-- There are other fields on the returned data, but we don't use them.
+newtype VsiInference = VsiInference
+  { -- TODO: Is it let confusing to just make this a "Maybe"?
+    -- Unparsed text because the endpoint can return "".
+    -- Dealing with this is left to the caller.
+    inferenceLocator :: VsiLocator
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON VsiInference where
+  parseJSON = withObject "VsiInference" $ \obj -> do
+    VsiInference <$> obj .: "Locator"
+
+newtype VsiExportedInferencesBody = VsiExportedInferencesBody
+  { unVsiExportedInferencesBody :: Map.Map VsiFilePath VsiInference
+  }
+  deriving (Eq, Ord, Show)
+
+uniqueVsiLocators :: VsiExportedInferencesBody -> [VsiLocator]
+uniqueVsiLocators =
+  Set.toList
+    . Map.foldl' addLocators Set.empty
+    . unVsiExportedInferencesBody
+  where
+    addLocators :: Set.Set VsiLocator -> VsiInference -> Set.Set VsiLocator
+    addLocators s VsiInference{inferenceLocator} = Set.insert inferenceLocator s
+
+instance FromJSON VsiExportedInferencesBody where
+  parseJSON = withObject "VsiExportedInferencesBody" $ \obj -> do
+    inferences <- (obj .:? "InferencesByFilePath") .!= KeyMap.empty
+    parsedVals <- traverse parseJSON inferences :: Parser (KeyMap.KeyMap VsiInference)
+    pure . VsiExportedInferencesBody . Map.mapKeys VsiFilePath . KeyMap.toMapText $ parsedVals
