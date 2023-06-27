@@ -40,14 +40,11 @@ execRawThemis themisBins scanDir flags = execThrow scanDir $ themisCommand themi
 
 -- get the themis version without requiring a directory to run in
 -- The output will look something like
--- 2023/06/26 14:37:54 Version: ee69aa92245697a5f6d32a27129ec2b4d77dc423
--- So we just split on the first space, counting from the end of the string
+-- Version: ee69aa92245697a5f6d32a27129ec2b4d77dc423
 getThemisVersion :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => ThemisBins -> m Text
 getThemisVersion themisBins = do
   bytes <- execThrow' $ themisCommand themisBins "" ["--version"]
-  let versionText = decodeUtf8 bytes
-  let version = Text.takeWhileEnd (/= ' ') $ Text.strip versionText
-  pure version
+  pure $ Text.takeWhileEnd (/= ' ') (Text.strip $ decodeUtf8 bytes)
 
 execThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Path Abs Dir -> [Text] -> m [LicenseUnit]
 execThemis themisBins pathPrefix scanDir flags = do
