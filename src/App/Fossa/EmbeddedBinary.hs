@@ -189,7 +189,7 @@ themisVersion = $$themisVersionQ
 -- To build this, run `make build` or `cargo build --release`.
 #ifdef mingw32_HOST_OS
 embeddedBinaryBerkeleyDB :: ByteString
-embeddedBinaryBerkeleyDB = $embedFileIfExists "target/release/berkeleydb.exe"
+embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb.exe")
 #else
 embeddedBinaryBerkeleyDB :: ByteString
 embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb")
