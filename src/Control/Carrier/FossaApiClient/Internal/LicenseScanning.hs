@@ -10,6 +10,7 @@ module Control.Carrier.FossaApiClient.Internal.LicenseScanning (
 
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
+import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient (PackageRevision (..))
 import Control.Effect.Lift (Lift)
@@ -22,6 +23,7 @@ import Srclib.Types (FullSourceUnit, LicenseSourceUnit)
 getSignedFirstPartyScanUrl ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   PackageRevision ->
@@ -33,6 +35,7 @@ getSignedFirstPartyScanUrl PackageRevision{..} = do
 getSignedLicenseScanUrl ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   PackageRevision ->
@@ -44,6 +47,7 @@ getSignedLicenseScanUrl PackageRevision{..} = do
 finalizeLicenseScan ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   ArchiveComponents ->

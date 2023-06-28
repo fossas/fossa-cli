@@ -31,6 +31,7 @@ import App.Fossa.VendoredDependency (
  )
 import App.Types (FullFileUploads (..))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
+import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics, context, fatal, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Has, Lift)
@@ -74,6 +75,7 @@ analyzeFossaDepsFile ::
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
   , Has Logger sig m
+  , Has Debug sig m
   , Has Exec sig m
   ) =>
   Path Abs Dir ->
@@ -131,6 +133,7 @@ toSourceUnit ::
   , Has StickyLogger sig m
   , Has Logger sig m
   , Has Exec sig m
+  , Has Debug sig m
   , Has ReadFS sig m
   ) =>
   Path Abs Dir ->

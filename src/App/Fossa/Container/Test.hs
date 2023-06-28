@@ -16,6 +16,7 @@ import App.Fossa.Config.Container (
 import App.Fossa.Config.Container qualified as Config
 import App.Fossa.Container.Scan (scanImageNoAnalysis)
 import App.Types (OverrideProject (OverrideProject, overrideBranch, overrideName, overrideRevision), ProjectRevision (..))
+import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
@@ -54,28 +55,32 @@ test ::
   ) =>
   ContainerTestConfig ->
   m ()
-test ContainerTestConfig{..} = runStickyLogger SevInfo $
-  runFossaApiClient apiOpts . timeout' timeoutDuration $ \cancelToken -> do
-    (imageTag, imageDigest) <- scanImageNoAnalysis testImageLocator testDockerHost testArch
-    let revision = extractRevision testRevisionOverride imageTag imageDigest
+test ContainerTestConfig{..} =
+  runStickyLogger SevInfo
+    . ignoreDebug -- Ignore the debug effect because we don't generate a bundle.
+    . runFossaApiClient apiOpts
+    . timeout' timeoutDuration
+    $ \cancelToken -> do
+      (imageTag, imageDigest) <- scanImageNoAnalysis testImageLocator testDockerHost testArch
+      let revision = extractRevision testRevisionOverride imageTag imageDigest
 
-    logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
-    logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
+      logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
+      logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
 
-    logSticky "[ Waiting for build completion ]"
-    waitForBuild revision cancelToken
+      logSticky "[ Waiting for build completion ]"
+      waitForBuild revision cancelToken
 
-    logSticky "[ Waiting for issue scan completion ]"
-    issues <- waitForIssues revision Nothing cancelToken
-    logSticky ""
+      logSticky "[ Waiting for issue scan completion ]"
+      issues <- waitForIssues revision Nothing cancelToken
+      logSticky ""
 
-    case issuesCount issues of
-      0 -> logInfo "Test passed! 0 issues found"
-      n -> do
-        logError $ "Test failed. Number of issues found: " <> pretty n
-        if null (issuesIssues issues)
-          then logError "Check webapp for more details, or use a full-access API key (currently using a push-only API key)"
-          else case outputFormat of
-            TestOutputPretty -> logError $ pretty issues
-            TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
-        sendIO exitFailure
+      case issuesCount issues of
+        0 -> logInfo "Test passed! 0 issues found"
+        n -> do
+          logError $ "Test failed. Number of issues found: " <> pretty n
+          if null (issuesIssues issues)
+            then logError "Check webapp for more details, or use a full-access API key (currently using a push-only API key)"
+            else case outputFormat of
+              TestOutputPretty -> logError $ pretty issues
+              TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
+          sendIO exitFailure

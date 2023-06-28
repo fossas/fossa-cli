@@ -11,6 +11,7 @@ import App.Fossa.ManualDeps (ManualDependencies (vendoredDependencies), Vendored
 import App.Types (FirstPartyScansFlag (..), FullFileUploads (FullFileUploads))
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.FossaApiClient (runFossaApiClient)
+import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Lift)
@@ -42,6 +43,7 @@ runFirstPartyScan ::
   , Has StickyLogger sig m
   , Has Logger sig m
   , Has Exec sig m
+  , Has Debug sig m
   , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
