@@ -1,164 +1,102 @@
-# Supported Languages
+# Supported Package Managers
 
-<!-- add table here
+Package managers supported by FOSSA CLI can have multiple strategies for detecting dependencies,
+one primary strategy that yields ideal results and zero or more fallback strategies.
 
-- Analyzers
-  - By language
-  - By platform
-    - Might have duplicates
-      - Carthage is both "iOS" as platform and "Objective-C" as language
-      - .NET is platform, C# is language
-      - Conda is platform, Python is language
-    - TODO: add scripting/linting to let us say "file at this folder location is the same as other file" and check that their contents are identical (e.g. so we can duplicate Carthage file under both iOS and Objective-C)
-  - System deps
-  - Others
-    - Docker
--->
+Within this list of strategies, we have the concept of _static_ and _dynamic_ strategies.
+Static strategies parse files to find a dependency graph (example: parse a `package-lock.json` file).
+Dynamic strategies are required when analyzing package managers that do not offer complete lockfiles, such as Gradle or Go.
+Dynamic strategies require a working build environment to operate in.
 
-### clojure
+It is important to note that neither type of strategy has an inherent benefit when detecting dependencies.
+If a supported package manager has only a static or only a dynamic strategy, 
+this does not necessarily mean it is less supported than a package manager that has both.
 
-- [leiningen](languages/clojure/leiningen.md)
+However, if a package manager does have multiple strategies,
+the first one is _generally_ considered ideal.
+Click through to the package manager details from this table for more information.
 
-### C/C++
+> If FOSSA CLI is forced to utilize a fallback strategy,
+> meaning it did not detect ideal results,
+> a warning is emitted in the scan summary after running `fossa analyze`.
 
-- [C](languages/c-cpp/c-cpp.md)
-- [C++](languages/c-cpp/c-cpp.md)
+This table is organized by language primarily; if a language has multiple supported package managers
+they are listed in `(parenthesis)` after the name of the language. 
+For example, `Go (gomodules)` means "The Go language, using the 'gomodules' package manager".
 
-In order to use these strategies special options must be provided to the CLI.
-See the linked documentation above for details.
+> When we refer to "fallback strategies", these are _within_ the overall strategy of a given package manager.
+> In other words, `Go (gomodules)` is _not_ a "fallback strategy" of `Go (dep)`. They are two different package managers.
+> To see more details (including the primary and fallback strategies) for a specific language & package manager,
+> click the table entry.
 
-### dart
+| Language/Package Manager                                               | Dynamic            | Static             | Report Vulnerabilities | Primary Strategy |
+|------------------------------------------------------------------------|--------------------|--------------------|------------------------|------------------|
+| [C#](./languages/dotnet/README.md)                                     | :white_check_mark: | :white_check_mark: | :grey_question:        | Dynamic          |
+| [Clojure (leiningen)](./languages/clojure/clojure.md)                  | :white_check_mark: | :x:                | :grey_question:        | Dynamic          |
+| [Dart (pub)](./languages/dart/dart.md)                                 | :white_check_mark: | :white_check_mark: | :grey_question:        | Dynamic          |
+| [Elixer (mix)](./languages/elixir/elixir.md)                           | :white_check_mark: | :x:                | :grey_question:        | Dynamic          |
+| [Erlang (rebar3)](./languages/erlang/erlang.md)                        | :white_check_mark: | :x:                | :grey_question:        | Dynamic          |
+| [Fortran](./languages/fortran/fortran.md)                              | :x:                | :white_check_mark: | :grey_question:        | Static           |
+| [Go (dep)](./languages/golang/godep.md)                                | :x:                | :white_check_mark: | :grey_question:        | Static           |
+| [Go (glide)](./languages/golang/glide.md)                              | :x:                | :white_check_mark: | :grey_question:        | Static           |
+| [Go (gomodules)](./languages/golang/gomodules.md)                      | :white_check_mark: | :white_check_mark: | :grey_question:        | Dynamic          |
+| [Gradle](./languages/gradle/gradle.md)                                 | :white_check_mark: | :x:                | :grey_question:        | Dynamic          |
+| [Haskell (cabal)](./languages/haskell/cabal.md)                        | :white_check_mark: | :x:                | :grey_question:        | Dynamic          |
+| [Haskell (stack)](./languages/haskell/stack.md)                        | :white_check_mark: | :x:                | :grey_question:        | Dynamic          |
+| [iOS (carthage)](./platforms/ios/carthage.md)                          | :x:                | :white_check_mark: | :grey_question:        | Static           |
+| [iOS (cocoapods)](./platforms/ios/cocoapods.md)                        | :x:                | :white_check_mark: | :grey_question:        | Static           |
+| [iOS (swift)](./platforms/ios/swift.md)                                | :x:                | :white_check_mark: | :grey_question:        | Static           |
+| [Maven](./languages/maven/maven.md)                                    | :white_check_mark: | :white_check_mark: | :grey_question:        | Dynamic          |
+| [NodeJS (NPM/Yarn/pnpm)](./languages/nodejs/nodejs.md)                 | :x:                | :white_check_mark: | :grey_question:        | Static           |
+| [Perl](./languages/perl/perl.md)                                       | :x:                | :white_check_mark: | :grey_question:        | Static           |
+| [PHP (Composer)](./languages/php/composer.md)                          | :x:                | :white_check_mark: | :grey_question:        | Static           |
+| [Python (Conda)](./languages/python/conda.md)                          | :white_check_mark: | :white_check_mark: | :grey_question:        | Dynamic          |
+| [Python (Pdm)](./languages/python/pdm.md)                              | :x:                | :white_check_mark: | :grey_question:        | Static           |
+| [Python (Pipenv)](./languages/python/pipenv.md)                        | :white_check_mark: | :white_check_mark: | :grey_question:        | Dynamic          |
+| [Python (Poetry)](./languages/python/poetry.md)                        | :x:                | :white_check_mark: | :grey_question:        | Static           |
+| [Python (setup.py/requirements.txt)](./languages/python/setuptools.md) | :x:                | :white_check_mark: | :grey_question:        | Static           |
+| [R (renv)](./languages/r/renv.md)                                      | :x:                | :white_check_mark: | :grey_question:        | Static           |
+| [Ruby (bundler)](./languages/ruby/ruby.md)                             | :white_check_mark: | :white_check_mark: | :grey_question:        | Static           |
+| [Rust (cargo)](./languages/rust/rust.md)                               | :white_check_mark: | :x:                | :grey_question:        | Dynamic          |
+| [Scala (sbt)](./languages/scala/sbt.md)                                | :white_check_mark: | :x:                | :grey_question:        | Dynamic          |
 
-- [pub](languages/dart/pub.md)
+# Additional strategies
 
-### erlang
+These are strategies that do not integrate with a package manager,
+but instead work in some other method that is usually unique to the strategy.
 
-- [rebar3](languages/erlang/erlang.md)
+For more information, click through to the documentation for the strategy.
 
-### elixir
+| Strategy                                                                                                | Report Vulnerabilities | Strategy kind |
+|---------------------------------------------------------------------------------------------------------|------------------------|---------------|
+| [C](./languages/c-cpp/c-cpp.md)                                                                         | :white_check_mark:     | Manual        |
+| [C++](./languages/c-cpp/c-cpp.md)                                                                       | :white_check_mark:     | Manual        |
+| [`fossa-deps` (referenced-dependencies)](../../features/manual-dependencies.md#referenced-dependencies) | :white_check_mark:     | Static        |
+| [`fossa-deps` (custom-dependencies)](../../features/manual-dependencies.md#custom-dependencies)         | :x:                    | Static        |
+| [`fossa-deps` (remote-dependencies)](../../features/manual-dependencies.md#remote-dependencies)         | :x:                    | Static        |
+| [`fossa-deps` (vendored-dependencies)](../../features/vendored-dependencies.md)                         | :x:                    | Static        |
 
-- [mix](languages/elixir/mix.md)
+> "Manual" strategies listed here indicate that this strategy does not run by default, only if a user opts in via command-line argument.
+> This means that for any import method in which one might want to consider whether a strategy is "static" or "dynamic", 
+> these are not included since they require a user to manually opt in to their use.
 
-### fortran
+# Other import methods
 
-- [fortran](languages/fortran/fortran.md)
+FOSSA also supports other ways of scanning projects that have some other entrypoint than `fossa analyze`.
+If these sound useful to you, follow these links for more information.
 
-### go
+Note: The main area in which "dynamic" vs "static" strategies matter is in the context of using _Quick Import_, _Broker_, and _Container Scanning_.
+These import methods utilize only "static" strategies, since they do not run in the context of your build environment.
 
-- [gomodules (`go mod`)](languages/golang/gomodules.md)
-- [dep](languages/golang/godep.md)
-- [glide](languages/golang/glide.md)
+As such, depending on the language and package manager, it may be extremely beneficial to use FOSSA CLI inside your CI instead:
+Any package manager which does not provide a "static" strategy is generally unsupported in these environments,
+and any package manager with a "dynamic" _primary_ strategy is better supported in CI.
 
-### haskell
 
-- [cabal](languages/haskell/cabal.md)
-- [stack](languages/haskell/stack.md)
-
-### java
-
-- [maven](languages/maven/maven.md)
-- [gradle](languages/gradle/gradle.md)
-
-### javascript/typescript
-
-- [yarn](languages/nodejs/yarn.md)
-- [npm](languages/nodejs/npm.md)
-- [pnpm](languages/nodejs/pnpm.md)
-
-### nim
-
-- [Nimble](languages/nim/nimble.md)
-
-### .NET
-
-- [NuGet](languages/dotnet/nuget.md)
-- [Paket](languages/dotnet/paket.md)
-
-### objective-c
-
-- [carthage](platforms/ios/carthage.md)
-- [cocoapods](platforms/ios/cocoapods.md)
-
-### perl
-
-- [perl](languages/perl/perl.md)
-
-### php
-
-- [php](languages/php/composer.md)
-
-### python
-
-- [conda](languages/python/conda.md)
-- [`requirements.txt`/`setup.py`](languages/python/python.md)
-- [pipenv](languages/python/pipenv.md)
-- [poetry](languages/python/poetry.md)
-- [pdm](languages/python/pdm.md)
-
-### r
-
-- [renv](languages/r/renv.md)
-
-### ruby
-
-- [bundler](languages/ruby/bundler.md)
-
-### rust
-
-- [cargo](languages/rust/cargo.md)
-
-### scala
-
-- [sbt](languages/scala/sbt.md)
-- [gradle](languages/gradle/gradle.md)
-- [maven](languages/maven/maven.md)
-
-### swift
-
-- [carthage](platforms/ios/carthage.md)
-- [cocoapods](platforms/ios/cocoapods.md)
-- [swiftPM](platforms/ios/swift.md)
-
-## Strategies by type
-
-Languages supported by FOSSA CLI can have multiple strategies for detecting dependencies, one primary strategy that yields ideal results and zero or more fallback strategies. Within this list of strategies, we have the concept of _static_ and _dynamic_ strategies. Static strategies parse files to find a dependency graph (example: parse a `package-lock.json` file). Dynamic strategies are required when analyzing package managers that do not offer complete lockfiles, such as Gradle or Go. Dynamic strategies require a working build environment to operate in.
-
-It is important to note that neither type of strategy has an inherent benefit when detecting dependencies. If a supported language has only a static or only a dynamic strategy, this does not mean it is less supported than a language that
-
-> If the FOSSA CLI is forced to utilize a fallback strategy, meaning it did not detect ideal results, a warning is emitted in the scan summary after running `fossa analyze`.
-
-| Language/Package Manager                                                                                                                        | Dynamic   | Static    | Detect Vendored Code | Primary Strategy |
-| ----------------------------------------------------------------------------------------------------------------------------------------------- | --------- | --------- | -------------------- | ---------------- |
-| [C#](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/dotnet)                                               | ✅         | ✅         | ❌                    | Dynamic          |
-| [C](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/c-cpp/c-cpp.md)                                        | :warning: | :warning: | ✅                    | None             |
-| [C++](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/c-cpp/c-cpp.md)                                      | :warning: | :warning: | ✅                    | None             |
-| [Clojure (leiningen)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/clojure/clojure.md)                  | ✅         | ❌         | ❌                    | Dynamic          |
-| [Dart (pub)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/dart/dart.md)                                 | ✅         | ✅         | ❌                    | Dynamic          |
-| [Elixer (mix)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/elixir/elixir.md)                           | ✅         | ❌         | ❌                    | Dynamic          |
-| [Erlang (rebar3)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/erlang/erlang.md)                        | ✅         | ❌         | ❌                    | Dynamic          |
-| [Fortran](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/fortran/fortran.md)                              | ❌         | ✅         | ❌                    | Static           |
-| [Go (dep)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/golang/godep.md)                                | ❌         | ✅         | ❌                    | Static           |
-| [Go (glide)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/golang/glide.md)                              | ❌         | ✅         | ❌                    | Static           |
-| [Go (gomodules)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/golang/gomodules.md)                      | ✅         | ✅         | ❌                    | Dynamic          |
-| [Gradle](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/gradle/gradle.md)                                 | ✅         | ❌         | ❌                    | Dynamic          |
-| [Haskell (cabal)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/haskell/cabal.md)                        | ✅         | ❌         | ❌                    | Dynamic          |
-| [Haskell (stack)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/haskell/stack.md)                        | ✅         | ❌         | ❌                    | Dynamic          |
-| [iOS (carthage)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/platforms/ios/carthage.md)                          | ❌         | ✅         | ❌                    | Static           |
-| [iOS (cocoapods)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/platforms/ios/cocoapods.md)                        | ❌         | ✅         | ❌                    | Static           |
-| [iOS (swift)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/platforms/ios/swift.md)                                | ❌         | ✅         | ❌                    | Static           |
-| [Maven](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/maven/maven.md)                                    | ✅         | ✅         | ❌                    | Dynamic          |
-| [NodeJS (NPM/Yarn/pnpm)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/nodejs/nodejs.md)                 | ❌         | ✅         | ❌                    | Static           |
-| [Perl](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/perl/perl.md)                                       | ❌         | ✅         | ❌                    | Static           |
-| [PHP (Composer)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/php/composer.md)                          | ❌         | ✅         | ❌                    | Static           |
-| [Python (Conda)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/conda.md)                          | ✅         | ✅         | ❌                    | Dynamic          |
-| [Python (Pipenv)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/pipenv.md)                        | ✅         | ✅         | ❌                    | Dynamic          |
-| [Python (Poetry)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/poetry.md)                        | ❌         | ✅         | ❌                    | Static           |
-| [Python (Pdm)](./languages/python/pdm.md)                                                                                                       | ❌         | ✅         | ❌                    | Static           |
-| [Python (setup.py/requirements.txt)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/setuptools.md) | ❌         | ✅         | ❌                    | Static           |
-| [R (renv)](./languages/r/renv.md)                                                                                                               | ❌         | ✅         | ❌                    | Static           |
-| [Ruby (bundler)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/ruby/ruby.md)                             | ✅         | ✅         | ❌                    | Static           |
-| [Rust (cargo)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/rust/rust.md)                               | ✅         | ❌         | ❌                    | Dynamic          |
-| [Scala (sbt)](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/scala)                                       | ✅         | ❌         | ❌                    | Dynamic          |
-
-:warning:: Note that these strategies support _static_ and _dynamic_ detection differently than other strategies, and are not run by default.
-   Please make sure to check their linked documentation in the table above for more details.
+| Tool                                                     | Summary                                                                                     | Strategies supported                                            |
+|----------------------------------------------------------|---------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
+| [Container Scanning](../subcommands/container.md)        | Report system dependencies, and dependencies of detected projects, inside a container image | Any _static_ strategy                                           |
+| [Quick Import](https://docs.fossa.com/docs/quick-import) | Scan your projects without configuring CI                                                   | Any _static_ strategy                                           |
+| [Broker](https://github.com/fossas/broker)               | Scan your projects inside your firewall, without configuring CI or running FOSSA on premise | Any _static_ strategy                                           |
+| [Yocto](https://github.com/fossas/meta-fossa)            | Report the licenses for your dependencies when building an OS with Yocto                    | `fossa-deps`: `vendored-dependencies` and `custom-dependencies` |
+| [GitHub Action](https://github.com/fossas/fossa-action)  | Integrate with GitHub Actions instead of using FOSSA CLI directly                           | Any _static_ or _dynamic_ strategy                              |

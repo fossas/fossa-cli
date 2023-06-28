@@ -1,8 +1,8 @@
 # Maven plugin
 
-| Strategy           | Direct Deps | Transitive Deps | Edges | Tags       |
-| ---                | ---         | ---       | ---   | ---        |
-| depgraph plugin    | ✅          | ✅        | ✅   | Optional   |
+| Strategy        | Direct Deps        | Transitive Deps    | Edges              | Tags     |
+|-----------------|--------------------|--------------------|--------------------|----------|
+| depgraph plugin | :white_check_mark: | :white_check_mark: | :white_check_mark: | Optional |
 
 Maven projects are notoriously difficult to resolve into final dependency
 graphs. While many dependencies are declared as XML, these dependency
