@@ -78,7 +78,9 @@ runVsiAnalysis dir projectRevision filters = context "VSI" $ do
   logInfo "Waiting for cloud analysis"
   context "Wait for cloud analysis" $ waitForAnalysis scanID
 
-  discoveredRawLocators <- context "Download analysis results" $ filter (/= "") . VSI.uniqueVsiLocators <$> getVsiInferences scanID
+  discoveredRawLocators <- context "Download analysis results" $ do
+    inferences <- getVsiInferences scanID
+    pure . filter (/= "") . VSI.uniqueVsiLocators $ inferences
   when (null discoveredRawLocators) $ fatalText "No dependencies discovered with VSI"
 
   parsedLocators <- context "Parse analysis results" . fromEither $ traverse VSI.parseLocator discoveredRawLocators
