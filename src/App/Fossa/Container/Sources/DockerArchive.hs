@@ -238,7 +238,7 @@ runDependencyAnalysis basedir filters project@DiscoveredProject{..} = do
         Diag.context ctxMessage $ do
           analyzeProject' targets projectData
       Diag.flushLogs SevError SevDebug graphResult
-      output $ Scanned dpi (mkResult basedir project <$> graphResult)
+      output $ Scanned dpi (mkResult basedir project Nothing <$> graphResult)
 
 -- | Extracts Repository Name.
 --

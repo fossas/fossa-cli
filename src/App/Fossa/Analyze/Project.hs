@@ -3,6 +3,7 @@ module App.Fossa.Analyze.Project (
   mkResult,
 ) where
 
+import App.Util (FileAncestry (..))
 import DepTypes
 import Graphing (Graphing)
 import Graphing qualified
@@ -10,8 +11,8 @@ import Path
 import Path.Extra (tryMakeRelative)
 import Types
 
-mkResult :: Path Abs Dir -> DiscoveredProject n -> (DependencyResults) -> ProjectResult
-mkResult basedir project dependencyResults =
+mkResult :: Path Abs Dir -> DiscoveredProject n -> Maybe FileAncestry -> (DependencyResults) -> ProjectResult
+mkResult basedir project pathPrefix dependencyResults =
   ProjectResult
     { projectResultType = projectType project
     , projectResultPath = projectPath project
@@ -25,11 +26,18 @@ mkResult basedir project dependencyResults =
           then graph
           else Graphing.pruneUnreachable graph
     , projectResultGraphBreadth = dependencyGraphBreadth dependencyResults
-    , projectResultManifestFiles = relativeManifestFiles
+    , projectResultManifestFiles = prefixedManifestFiles
     }
   where
     graph = dependencyGraph dependencyResults
     relativeManifestFiles = map (tryMakeRelative basedir) $ dependencyManifestFiles dependencyResults
+    prefixedManifestFiles = map (addPrefix $ fileAncestryPath <$> pathPrefix) relativeManifestFiles
+    addPrefix :: Maybe (Path Rel Dir) -> SomeBase File -> SomeBase File
+    addPrefix maybePrefix relativeFile =
+      case (maybePrefix, relativeFile) of
+        (Nothing, relFile) -> relFile
+        (Just prefix, Rel relFile) -> Rel $ prefix </> relFile
+        (Just _, Abs absFile) -> Abs absFile
 
 data ProjectResult = ProjectResult
   { projectResultType :: DiscoveredProjectType

@@ -12,11 +12,13 @@ module Discovery.Archive (
   unpackFailurePath,
 ) where
 
+import App.Util (FileAncestry (..), ancestryDerived)
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Zip qualified as Zip
 import Codec.Compression.BZip qualified as BZip
 import Codec.Compression.GZip qualified as GZip
 import Conduit (runConduit, runResourceT, sourceFileBS, (.|))
+import Control.Carrier.Diagnostics (fromEither)
 import Control.Effect.Diagnostics (Diagnostics, Has, ToDiagnostic (renderDiagnostic), context, warnOnSomeException)
 import Control.Effect.Exception (SomeException)
 import Control.Effect.Finally (Finally, onExit)
@@ -36,10 +38,13 @@ import Path (
   Dir,
   File,
   Path,
+  Rel,
   fromAbsDir,
   fromAbsFile,
   toFilePath,
+  (</>),
  )
+import Path qualified as P
 import Path.IO qualified as PIO
 import Prettyprinter (Pretty (pretty), hsep, viaShow, vsep)
 import Prelude hiding (zip)
@@ -57,15 +62,38 @@ instance ToDiagnostic ArchiveUnpackFailure where
       , hsep ["Error text:", viaShow exc]
       ]
 
+-- | Converts a relative file path into a relative directory, where the passed in file path is suffixed by the archive suffix literal.
+-- In other words, this:
+--
+-- > "external/lib.zip" :: Path Rel File
+--
+-- Becomes this:
+--
+-- > "external/lib.zip :: Path Rel Dir
+convertArchiveToDir :: (Has Diagnostics sig m) => Path Rel File -> m (Path Rel Dir)
+convertArchiveToDir file = do
+  name <- fromEither . P.parseRelDir $ P.toFilePath (P.filename file)
+  pure $ P.parent file </> name
+
 -- | Given a function to run over unarchived contents, recursively unpack archives
-discover :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has TaskPool sig m) => (Path Abs Dir -> m ()) -> Path Abs Dir -> m ()
-discover go dir = context "Finding archives" $
+discover ::
+  (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has TaskPool sig m) =>
+  -- | Callback to run on the discovered file
+  (Path Abs Dir -> Maybe FileAncestry -> m ()) ->
+  -- | Path to the archive
+  Path Abs Dir ->
+  -- | Path rendering
+  (Path Abs Dir -> Path Abs File -> m (Path Rel File)) ->
+  m ()
+discover go dir renderAncestry = context "Finding archives" $ do
   flip walk dir $ \_ _ files -> do
     -- To process an unpacked archive, run the provided function on the archive
     -- contents, and recursively call discover
     let process file unpackedDir = context (toText (fileName file)) $ do
-          go unpackedDir
-          discover go unpackedDir
+          logicalPath <- renderAncestry dir file
+          logicalParent <- convertArchiveToDir logicalPath
+          go unpackedDir (Just $ FileAncestry logicalParent)
+          discover go unpackedDir $ ancestryDerived $ FileAncestry logicalParent
 
     traverse_ (\file -> forkTask $ withArchive' file (process file)) files
     pure WalkContinue
