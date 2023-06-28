@@ -29,6 +29,11 @@ For example, `Go (gomodules)` means "The Go language, using the 'gomodules' pack
 > To see more details (including the primary and fallback strategies) for a specific language & package manager,
 > click the table entry.
 
+TODO: Fix up the doc links to match this format
+TODO: Remove "QR" ("quick reference") docs
+TODO: Answer about whether these support vulns
+TODO: Report whether they support dependency scope filtering
+
 | Language/Package Manager                                               | Dynamic            | Static             | Report Vulnerabilities | Primary Strategy |
 |------------------------------------------------------------------------|--------------------|--------------------|------------------------|------------------|
 | [C#](./languages/dotnet/README.md)                                     | :white_check_mark: | :white_check_mark: | :grey_question:        | Dynamic          |
@@ -85,12 +90,12 @@ For more information, click through to the documentation for the strategy.
 FOSSA also supports other ways of scanning projects that have some other entrypoint than `fossa analyze`.
 If these sound useful to you, follow these links for more information.
 
-Note: The main area in which "dynamic" vs "static" strategies matter is in the context of using _Quick Import_, _Broker_, and _Container Scanning_.
-These import methods utilize only "static" strategies, since they do not run in the context of your build environment.
-
-As such, depending on the language and package manager, it may be extremely beneficial to use FOSSA CLI inside your CI instead:
-Any package manager which does not provide a "static" strategy is generally unsupported in these environments,
-and any package manager with a "dynamic" _primary_ strategy is better supported in CI.
+> The main area in which "dynamic" vs "static" strategies matter is in the context of using `Quick Import`, `Broker`, and `Container Scanning`.
+> These import methods utilize only "static" strategies, since they do not run in the context of your build environment.
+> 
+> As such, depending on the language and package manager, it may be extremely beneficial to use FOSSA CLI inside your CI instead:
+> Any package manager which does not provide a "static" strategy is generally unsupported in these environments,
+> and any package manager with a "dynamic" _primary_ strategy is better supported in CI.
 
 
 | Tool                                                     | Summary                                                                                     | Strategies supported                                            |
