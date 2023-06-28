@@ -6,7 +6,6 @@ module App.Fossa.RunThemis (
   -- `themisCommand` is used by Hubble.
   themisCommand,
   themisFlags,
-  getThemisVersion,
 ) where
 
 import App.Fossa.EmbeddedBinary (
@@ -18,33 +17,22 @@ import App.Fossa.EmbeddedBinary (
 import App.Types (FullFileUploads (unFullFileUploads))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.ByteString.Lazy qualified as BL
-import Data.String.Conversion (ConvertUtf8 (decodeUtf8), toText)
+import Data.String.Conversion (toText)
 import Data.Tagged (Tagged, unTag)
 import Data.Text (Text)
-import Data.Text qualified as Text
 import Effect.Exec (
   AllowErr (Never),
   Command (..),
   Exec,
   execJson,
   execThrow,
-  execThrow',
  )
-import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path, parent)
 import Srclib.Types (LicenseUnit)
 import Types (GlobFilter (unGlobFilter), LicenseScanPathFilters (..))
 
 execRawThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> [Text] -> m BL.ByteString
 execRawThemis themisBins scanDir flags = execThrow scanDir $ themisCommand themisBins "" flags
-
--- get the themis version without requiring a directory to run in
--- The output will look something like
--- Version: ee69aa92245697a5f6d32a27129ec2b4d77dc423
-getThemisVersion :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => ThemisBins -> m Text
-getThemisVersion themisBins = do
-  bytes <- execThrow' $ themisCommand themisBins "" ["--version"]
-  pure $ Text.takeWhileEnd (/= ' ') (Text.strip $ decodeUtf8 bytes)
 
 execThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Path Abs Dir -> [Text] -> m [LicenseUnit]
 execThemis themisBins pathPrefix scanDir flags = do

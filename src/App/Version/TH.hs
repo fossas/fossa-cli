@@ -8,6 +8,7 @@
 
 module App.Version.TH (
   getCurrentTag,
+  themisVersionQ,
 ) where
 
 import Control.Carrier.Diagnostics (runDiagnostics)
@@ -20,6 +21,10 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Versions (errorBundlePretty, semver)
 import Diag.Result (Result (Success))
+import Language.Haskell.TH.Syntax
+    ( runIO, Quasi(qAddDependentFile), reportWarning, runIO )
+import Language.Haskell.TH
+    ( bindCode, Code, Q, bindCode_, joinCode )
 import Effect.Exec (
   AllowErr (Always),
   Command (..),
@@ -31,8 +36,7 @@ import Effect.Exec (
 import Effect.ReadFS (ReadFS, getCurrentDir, runReadFSIO)
 import GitHash (giHash, tGitInfoCwdTry)
 import Instances.TH.Lift ()
-import Language.Haskell.TH (Code, Q, bindCode_, joinCode)
-import Language.Haskell.TH.Syntax (reportWarning, runIO)
+import System.Process.Typed (readProcess)
 
 gitTagPointCommand :: Text -> Command
 gitTagPointCommand commit =
@@ -87,3 +91,13 @@ validateSingleTag tag = do
   case semver normalized of
     Left err -> reportWarning (errorBundlePretty err) `bindCode_` [||Nothing||]
     Right _ -> [||Just normalized||]
+
+themisVersionQ :: Code Q String
+themisVersionQ =
+  (do qAddDependentFile "vendor-bins/themis-cli"
+      runIO (readProcess "vendor-bins/themis-cli --version"))
+  `bindCode` spliceVersion
+  where spliceVersion (_exitCode, stdOut, _stdErr) = do
+          let versionStr = decodeUtf8 stdOut
+          [||versionStr||]
+

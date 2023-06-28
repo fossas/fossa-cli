@@ -11,6 +11,7 @@ module App.Fossa.EmbeddedBinary (
   withBerkeleyBinary,
   allBins,
   dumpEmbeddedBinary,
+  themisVersion,
 ) where
 
 import Codec.Compression.Lzma qualified as Lzma
@@ -20,7 +21,7 @@ import Data.ByteString (ByteString, writeFile)
 import Data.ByteString.Lazy qualified as BL
 import Data.FileEmbed.Extra (embedFileIfExists)
 import Data.Foldable (traverse_)
-import Data.String.Conversion (toLazy, toString)
+import Data.String.Conversion (toLazy, toString, ToText (toText))
 import Data.Tagged (Tagged, applyTag, unTag)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Path (
@@ -45,6 +46,9 @@ import Path.IO (
   setPermissions,
  )
 import Prelude hiding (writeFile)
+import App.Version.TH (themisVersionQ)
+import Data.Text (Text)
+import qualified Data.Text as T
 
 data PackagedBinary
   = Themis
@@ -180,10 +184,13 @@ embeddedBinaryThemis = $(embedFileIfExists "vendor-bins/themis-cli")
 embeddedBinaryThemisIndex :: ByteString
 embeddedBinaryThemisIndex = $(embedFileIfExists "vendor-bins/index.gob.xz")
 
+themisVersion :: Text
+themisVersion =  T.takeWhileEnd (/= ' ') $ T.strip $ toText $$themisVersionQ
+
 -- To build this, run `make build` or `cargo build --release`.
 #ifdef mingw32_HOST_OS
 embeddedBinaryBerkeleyDB :: ByteString
-embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb.exe")
+embeddedBinaryBerkeleyDB = $embedFileIfExists "target/release/berkeleydb.exe"
 #else
 embeddedBinaryBerkeleyDB :: ByteString
 embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb")
