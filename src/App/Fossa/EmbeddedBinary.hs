@@ -14,6 +14,7 @@ module App.Fossa.EmbeddedBinary (
   themisVersion,
 ) where
 
+import App.Version.TH (themisVersionQ)
 import Codec.Compression.Lzma qualified as Lzma
 import Control.Effect.Exception (bracket)
 import Control.Effect.Lift (Has, Lift, sendIO)
@@ -21,8 +22,9 @@ import Data.ByteString (ByteString, writeFile)
 import Data.ByteString.Lazy qualified as BL
 import Data.FileEmbed.Extra (embedFileIfExists)
 import Data.Foldable (traverse_)
-import Data.String.Conversion (toLazy, toString, ToText (toText))
+import Data.String.Conversion (toLazy, toString)
 import Data.Tagged (Tagged, applyTag, unTag)
+import Data.Text (Text)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Path (
   Abs,
@@ -46,9 +48,6 @@ import Path.IO (
   setPermissions,
  )
 import Prelude hiding (writeFile)
-import App.Version.TH (themisVersionQ)
-import Data.Text (Text)
-import qualified Data.Text as T
 
 data PackagedBinary
   = Themis
@@ -185,7 +184,7 @@ embeddedBinaryThemisIndex :: ByteString
 embeddedBinaryThemisIndex = $(embedFileIfExists "vendor-bins/index.gob.xz")
 
 themisVersion :: Text
-themisVersion =  T.takeWhileEnd (/= ' ') $ T.strip $ toText $$themisVersionQ
+themisVersion = $$themisVersionQ
 
 -- To build this, run `make build` or `cargo build --release`.
 #ifdef mingw32_HOST_OS

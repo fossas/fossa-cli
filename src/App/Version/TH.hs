@@ -14,6 +14,10 @@ module App.Version.TH (
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Control.Effect.Diagnostics (Diagnostics, fromEitherShow)
+import Control.Effect.Exception (Exception (displayException), SomeException)
+import Control.Exception.Safe (catchAny)
+import Control.Monad (when)
+import Data.ByteString.Lazy qualified as BL
 import Data.ByteString.Lazy qualified as BSL
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
@@ -21,10 +25,6 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Versions (errorBundlePretty, semver)
 import Diag.Result (Result (Success))
-import Language.Haskell.TH.Syntax
-    ( runIO, Quasi(qAddDependentFile), reportWarning, runIO )
-import Language.Haskell.TH
-    ( bindCode, Code, Q, bindCode_, joinCode )
 import Effect.Exec (
   AllowErr (Always),
   Command (..),
@@ -36,7 +36,21 @@ import Effect.Exec (
 import Effect.ReadFS (ReadFS, getCurrentDir, runReadFSIO)
 import GitHash (giHash, tGitInfoCwdTry)
 import Instances.TH.Lift ()
-import System.Process.Typed (readProcess)
+import Language.Haskell.TH (
+  Code,
+  Q,
+  bindCode,
+  bindCode_,
+  joinCode,
+ )
+import Language.Haskell.TH.Syntax (
+  Quasi (qAddDependentFile),
+  reportWarning,
+  runIO,
+ )
+import Path (parseRelFile)
+import Path.IO (doesFileExist)
+import System.Process.Typed (ExitCode (ExitFailure, ExitSuccess), readProcess)
 
 gitTagPointCommand :: Text -> Command
 gitTagPointCommand commit =
@@ -92,12 +106,31 @@ validateSingleTag tag = do
     Left err -> reportWarning (errorBundlePretty err) `bindCode_` [||Nothing||]
     Right _ -> [||Just normalized||]
 
-themisVersionQ :: Code Q String
-themisVersionQ =
-  (do qAddDependentFile "vendor-bins/themis-cli"
-      runIO (readProcess "vendor-bins/themis-cli --version"))
-  `bindCode` spliceVersion
-  where spliceVersion (_exitCode, stdOut, _stdErr) = do
-          let versionStr = decodeUtf8 stdOut
-          [||versionStr||]
+themisVersionQ :: Code Q Text
+themisVersionQ = do
+  -- qAddDependentFile is meant to signal that when this file changes we should rebuild, but it doesn't seem to actually do that
+  ( do
+      case parseRelFile "vendor-bins/themis-cli" of
+        Just path' -> do
+          fileExists <- runIO $ doesFileExist path'
+          when fileExists (qAddDependentFile "vendor-bins/themis-cli")
+        Nothing -> pure ()
+      runIO (catchAny readProcess' exceptionToText)
+    )
+    `bindCode` spliceVersion
+  where
+    spliceVersion output = do
+      case output of
+        Left _ -> [||""||]
+        Right t ->
+          let t' = Text.takeWhileEnd (/= ' ') $ Text.strip t in [||t'||]
+    readProcess' :: (IO (Either String Text))
+    readProcess' = do
+      processOutput <$> readProcess "vendor-bins/themis-cli --version"
 
+processOutput :: (ExitCode, BL.ByteString, BL.ByteString) -> (Either String Text)
+processOutput (ExitFailure _, _, _) = Left ""
+processOutput (ExitSuccess, stdout, _) = Right $ decodeUtf8 stdout
+
+exceptionToText :: SomeException -> IO (Either String a)
+exceptionToText = (pure . Left . displayException)
