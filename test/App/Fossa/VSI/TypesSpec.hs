@@ -1,11 +1,12 @@
 {-# LANGUAGE QuasiQuotes #-}
 
 module App.Fossa.VSI.TypesSpec (spec) where
-import App.Fossa.VSI.Types (Locator (..), VsiExportedInferencesBody (VsiExportedInferencesBody), VsiFilePath (..), VsiInference (VsiInference), generateRules, VsiLocator (..))
+
+import App.Fossa.VSI.Types (VsiExportedInferencesBody (VsiExportedInferencesBody), VsiFilePath (..), VsiInference (VsiInference), VsiLocator (..), VsiRule (VsiRule), generateRules)
 import Data.Aeson (eitherDecode)
 import Data.ByteString.Lazy.Char8 qualified as BS
 import Data.Map qualified as Map
-import Test.Hspec (Spec, describe, it, shouldBe, fdescribe, shouldMatchList)
+import Test.Hspec (Spec, describe, it, shouldBe, shouldMatchList)
 import Text.RawString.QQ
 
 inferencesBody :: BS.ByteString
@@ -22,62 +23,47 @@ inferencesBody =
   }
 }
 |]
-    
+
 expectedSingleInference :: VsiExportedInferencesBody
 expectedSingleInference =
   VsiExportedInferencesBody $ Map.fromList singleInference
 
 singleInference :: [(VsiFilePath, VsiInference)]
-singleInference = 
-      [
-        ( VsiFilePath "/foo/bar.h"
-        , VsiInference "git+github.com/facebook/folly$v2016.08.08.00"
-        )
-      ]
+singleInference =
+  [
+    ( VsiFilePath "/foo/bar.h"
+    , VsiInference "git+github.com/facebook/folly$v2016.08.08.00"
+    )
+  ]
 
-singleRuleExpected :: [(VsiFilePath, VsiLocator)]
-singleRuleExpected = [(VsiFilePath "/foo", VsiLocator "git+github.com/facebook/folly$v2016.08.08.00")]
-  
+singleRuleExpected :: [VsiRule]
+singleRuleExpected = [VsiRule (VsiFilePath "/foo", VsiLocator "git+github.com/facebook/folly$v2016.08.08.00")]
+
 commonPrefixInferences :: [(VsiFilePath, VsiInference)]
 commonPrefixInferences =
   (VsiFilePath "/foo/bar/baz.c", VsiInference "git+github.com/facebook/folly$v2016.08.08.00") : singleInference
-  
+
 multipleInferences :: [(VsiFilePath, VsiInference)]
 multipleInferences =
   (VsiFilePath "/otherProject/Readme.md", VsiInference "git+github.com/otherProject$2.0.0")
-  : (VsiFilePath "/baz/hello.c", VsiInference "git+github.com/someProject$1.0.0")
-  : commonPrefixInferences 
+    : (VsiFilePath "/baz/hello.c", VsiInference "git+github.com/someProject$1.0.0")
+    : commonPrefixInferences
 
-multipleRulesExpected :: [(VsiFilePath, VsiLocator)]
+multipleRulesExpected :: [VsiRule]
 multipleRulesExpected =
-  (VsiFilePath "/otherProject", VsiLocator "git+github.com/otherProject$2.0.0")
-  : (VsiFilePath "/baz", VsiLocator "git+github.com/someProject$1.0.0")
-  : singleRuleExpected
+  VsiRule (VsiFilePath "/otherProject", VsiLocator "git+github.com/otherProject$2.0.0")
+    : VsiRule (VsiFilePath "/baz", VsiLocator "git+github.com/someProject$1.0.0")
+    : singleRuleExpected
 
 nestedProjectInferences :: [(VsiFilePath, VsiInference)]
 nestedProjectInferences =
   (VsiFilePath "/foo/bar/g.c", VsiInference "git+github.com/facebook/follyNested$1.0.0") : singleInference
 
-nestedProjectRulesExpected :: [(VsiFilePath, VsiLocator)]
-nestedProjectRulesExpected = (VsiFilePath "/foo/bar", VsiLocator "git+github.com/facebook/follyNested$1.0.0")
-                             : singleRuleExpected
-  
-noRevisionBody :: BS.ByteString
-noRevisionBody =
-  [r|
-{
-  "InferencesByFilePath": {
-    "/foo/bar.h": {
-      "RawSha256": "YmIwMTg2NTNlOTVlY2U5M2VmMDYwMTQ3YjA0ZjZhYzRkZjhlMzFhZDc1OWFjYmExZWJmMjIwZDVjZTJlM2ZkZQ==",
-      "ComponentID": "0f4ba6a8-5b3f-436f-8c36-828e7375aef7",
-      "Locator": "git+github.com/facebook/folly$",
-      "Confidence": 1
-    }
-  }
-}
-|]
+nestedProjectRulesExpected :: [VsiRule]
+nestedProjectRulesExpected =
+  VsiRule (VsiFilePath "/foo/bar", VsiLocator "git+github.com/facebook/follyNested$1.0.0")
+    : singleRuleExpected
 
-    
 vsiTypesSpec :: Spec
 vsiTypesSpec = describe "VSI Types" $ do
   it "Parses a VsiExportedInferencesBody" $ do
@@ -85,7 +71,7 @@ vsiTypesSpec = describe "VSI Types" $ do
     body `shouldBe` Right expectedSingleInference
 
 generateRulesSpec :: Spec
-generateRulesSpec = fdescribe "generateRules" $ do
+generateRulesSpec = describe "generateRules" $ do
   it "Generates a rule correctly" $
     generateRules expectedSingleInference `shouldBe` singleRuleExpected
   it "Reduces rules to common prefixes" $
@@ -94,12 +80,11 @@ generateRulesSpec = fdescribe "generateRules" $ do
     generateRules' multipleInferences `shouldMatchList` multipleRulesExpected
   it "Reports distinct locators for nested projects" $
     generateRules' nestedProjectInferences `shouldMatchList` nestedProjectRulesExpected
+  where
+    generateRules' :: [(VsiFilePath, VsiInference)] -> [VsiRule]
+    generateRules' = generateRules . VsiExportedInferencesBody . Map.fromList
 
-  where generateRules' :: [(VsiFilePath, VsiInference)] -> [(VsiFilePath, VsiLocator)]
-        generateRules' = generateRules . VsiExportedInferencesBody . Map.fromList  
-
-
-  
 spec :: Spec
-spec = do vsiTypesSpec
-          generateRulesSpec
+spec = do
+  vsiTypesSpec
+  generateRulesSpec

@@ -19,29 +19,29 @@ module App.Fossa.VSI.Types (
   VsiFilePath (..), -- data constructor only exported for testing
   VsiInference (..),
   VsiLocator (..), -- data constructor only exported for testing
+  VsiRule (..),
   VsiExportedInferencesBody (..),
   generateRules,
-
 ) where
 
-import Diag.Diagnostic ( ToDiagnostic, renderDiagnostic )
-import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, withObject, (.!=), (.:), (.:?))
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding, toJSON), ToJSONKey, defaultOptions, genericToEncoding, withObject, (.!=), (.:), (.:?))
 import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Aeson.Types (Parser)
-import Data.Map qualified as Map
+import Data.List.NonEmpty (sort, (<|))
+import Data.List.NonEmpty qualified as NE
+import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String (IsString)
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text, isPrefixOf)
+import Data.Text qualified as Text
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
+import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
 import Effect.Logger (Pretty (pretty), viaShow)
 import GHC.Generics (Generic)
 import Srclib.Converter (depTypeToFetcher, fetcherToDepType)
 import Srclib.Types qualified as Srclib
-import qualified Data.List.NonEmpty as NE
-import Data.List.NonEmpty (sort, (<|))
-import qualified Data.Text as Text
 
 -- | The VSI backend returns a scan ID when a scan is created, which is then used to add files to the scan and get inferred OSS dependencies.
 newtype ScanID = ScanID {unScanID :: Text} deriving (ToJSON, FromJSON, Eq, Ord, IsString)
@@ -157,13 +157,13 @@ isTopLevelProject :: Locator -> Bool
 isTopLevelProject loc = locatorFetcher loc == depTypeToFetcher CustomType
 
 newtype VsiFilePath = VsiFilePath {unVsiFilePath :: Text}
-  deriving newtype (Eq, Ord, Show, FromJSON)
+  deriving newtype (Eq, Ord, Show, FromJSON, ToJSON, ToJSONKey)
 
 -- |Locator output of /inferences.
 -- The output of the /inferences endpoint will sometimes return a locator of "".
 -- Dealing with this is left to the caller which is why it is only a wrapper of Text.
 newtype VsiLocator = VsiLocator Text
-  deriving newtype (Eq, Ord, Show, FromJSON, ToText, IsString)
+  deriving newtype (Eq, Ord, Show, FromJSON, ToJSON, ToText, IsString)
 
 -- There are other fields on the returned data, but we don't use them.
 newtype VsiInference = VsiInference
@@ -198,26 +198,35 @@ instance FromJSON VsiExportedInferencesBody where
     parsedVals <- traverse parseJSON inferences :: Parser (KeyMap.KeyMap VsiInference)
     pure . VsiExportedInferencesBody . Map.mapKeys VsiFilePath . KeyMap.toMapText $ parsedVals
 
+newtype VsiRule = VsiRule (VsiFilePath, VsiLocator)
+  deriving newtype (Eq, Ord, Show)
+
+instance ToJSON VsiRule where
+  toJSON (VsiRule rule) = toJSON . uncurry Map.singleton $ rule
+
 -- |  Match each inference locator to the shortest filepath directory prefix for that locator.
-generateRules :: VsiExportedInferencesBody -> [(VsiFilePath, VsiLocator)]
-generateRules inferenceBody = do (loc, paths) <- locatorPaths
-                                 path <- NE.toList paths
-                                 [(path, loc)]
-  where locatorPaths :: [(VsiLocator, NE.NonEmpty VsiFilePath)]
-        locatorPaths = Map.toList
-                       . (fmap getPrefixes)
-                       . Map.foldrWithKey makeLocatorPathLists Map.empty
-                       . unVsiExportedInferencesBody
-                       $ inferenceBody
+generateRules :: VsiExportedInferencesBody -> [VsiRule]
+generateRules inferenceBody = do
+  (loc, paths) <- locatorPaths
+  path <- NE.toList paths
+  [VsiRule (path, loc)]
+  where
+    locatorPaths :: [(VsiLocator, NE.NonEmpty VsiFilePath)]
+    locatorPaths =
+      Map.toList
+        . (fmap getPrefixes)
+        . Map.foldrWithKey makeLocatorPathLists Map.empty
+        . unVsiExportedInferencesBody
+        $ inferenceBody
 
-        makeLocatorPathLists :: VsiFilePath -> VsiInference -> Map.Map VsiLocator (NE.NonEmpty VsiFilePath) -> Map.Map VsiLocator (NE.NonEmpty VsiFilePath)
-        makeLocatorPathLists filePath VsiInference{inferenceLocator} m =
-          if inferenceLocator /= "" then
-            Map.insertWith (<>) inferenceLocator (NE.singleton . deleteFileName $ filePath) m
-          else m
+    makeLocatorPathLists :: VsiFilePath -> VsiInference -> Map.Map VsiLocator (NE.NonEmpty VsiFilePath) -> Map.Map VsiLocator (NE.NonEmpty VsiFilePath)
+    makeLocatorPathLists filePath VsiInference{inferenceLocator} m =
+      if inferenceLocator /= ""
+        then Map.insertWith (<>) inferenceLocator (NE.singleton . deleteFileName $ filePath) m
+        else m
 
-        deleteFileName :: VsiFilePath -> VsiFilePath
-        deleteFileName (VsiFilePath p) = VsiFilePath (Text.dropEnd 1 . Text.dropWhileEnd (/= '/') $ p)
+    deleteFileName :: VsiFilePath -> VsiFilePath
+    deleteFileName (VsiFilePath p) = VsiFilePath (Text.dropEnd 1 . Text.dropWhileEnd (/= '/') $ p)
 
 -- |Get the shortest prefixes for every filepath in a list.
 -- This works by first sorting the list lexicographically and then storing only the parent directories that begin each group of filepaths.
@@ -225,12 +234,14 @@ generateRules inferenceBody = do (loc, paths) <- locatorPaths
 -- Ex: ["/foo/bar/baz.c", "/foo/hello.c". "/other/dir/world.c"] -> ["/foo", "/other/dir"]
 getPrefixes :: NE.NonEmpty VsiFilePath -> NE.NonEmpty VsiFilePath
 getPrefixes paths = snd $ foldr foldFn (unVsiFilePath sortedHead, NE.singleton sortedHead) (NE.tail sorted)
-  where sorted :: NE.NonEmpty VsiFilePath
-        sorted = sort paths
-        sortedHead :: VsiFilePath
-        sortedHead = NE.head sorted
+  where
+    sorted :: NE.NonEmpty VsiFilePath
+    sorted = sort paths
+    sortedHead :: VsiFilePath
+    sortedHead = NE.head sorted
 
-        foldFn :: VsiFilePath -> (Text, NE.NonEmpty VsiFilePath) -> (Text, NE.NonEmpty VsiFilePath)
-        foldFn filePath (currPrefix, acc) =  if currPrefix `isPrefixOf` unVsiFilePath filePath then
-                                              (currPrefix, acc)
-                                            else (unVsiFilePath filePath, filePath <| acc)
+    foldFn :: VsiFilePath -> (Text, NE.NonEmpty VsiFilePath) -> (Text, NE.NonEmpty VsiFilePath)
+    foldFn filePath (currPrefix, acc) =
+      if currPrefix `isPrefixOf` unVsiFilePath filePath
+        then (currPrefix, acc)
+        else (unVsiFilePath filePath, filePath <| acc)

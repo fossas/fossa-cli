@@ -7,7 +7,7 @@ module App.Fossa.VSI.Analyze (
 
 import App.Fossa.VSI.Fingerprint (Combined, fingerprint)
 import App.Fossa.VSI.IAT.Types qualified as IAT
-import App.Fossa.VSI.Types (ScanID (..))
+import App.Fossa.VSI.Types (ScanID (..), generateRules)
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
 import App.Util (FileAncestry (..), ancestryDerived, ancestryDirect)
@@ -27,9 +27,10 @@ import Control.Effect.Stack (Stack)
 import Control.Effect.StickyLogger (StickyLogger, logSticky, logSticky')
 import Control.Effect.TaskPool (TaskPool, forkTask)
 import Control.Monad (when)
+import Data.Aeson (encode)
 import Data.Foldable (traverse_)
 import Data.Map qualified as Map
-import Data.String.Conversion (toText)
+import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Archive (withArchive')
@@ -80,6 +81,7 @@ runVsiAnalysis dir projectRevision filters = context "VSI" $ do
 
   discoveredRawLocators <- context "Download analysis results" $ do
     inferences <- getVsiInferences scanID
+    logDebug . pretty $ "Generated Rules: " <> (decodeUtf8 @Text . encode . generateRules $ inferences)
     pure . filter (/= "") . VSI.uniqueVsiLocators $ inferences
   when (null discoveredRawLocators) $ fatalText "No dependencies discovered with VSI"
 
