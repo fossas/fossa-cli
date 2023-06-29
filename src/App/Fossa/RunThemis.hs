@@ -34,7 +34,6 @@ import Types (GlobFilter (unGlobFilter), LicenseScanPathFilters (..))
 execRawThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> [Text] -> m BL.ByteString
 execRawThemis themisBins scanDir flags = execThrow scanDir $ themisCommand themisBins "" flags
 
--- TODO: We should log the themis version and index version
 execThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Path Abs Dir -> [Text] -> m [LicenseUnit]
 execThemis themisBins pathPrefix scanDir flags = do
   execJson @[LicenseUnit] scanDir $ themisCommand themisBins pathPrefix flags
