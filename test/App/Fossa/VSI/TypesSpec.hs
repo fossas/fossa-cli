@@ -2,12 +2,14 @@
 
 module App.Fossa.VSI.TypesSpec (spec) where
 
-import App.Fossa.VSI.Types (VsiExportedInferencesBody (VsiExportedInferencesBody), VsiFilePath (..), VsiInference (VsiInference), VsiLocator (..), VsiRule (VsiRule), VsiRulePath (..), generateRules)
+import App.Fossa.VSI.Types (VsiExportedInferencesBody (VsiExportedInferencesBody), VsiFilePath (..), VsiInference (VsiInference), VsiRule (VsiRule), VsiRulePath (..), generateRules, Locator (..))
 import Data.Aeson (eitherDecode)
 import Data.ByteString.Lazy.Char8 qualified as BS
 import Data.Map qualified as Map
-import Test.Hspec (Spec, describe, it, shouldBe, shouldMatchList)
+import Test.Hspec (Spec, describe, it, shouldBe, shouldMatchList, shouldSatisfy)
 import Text.RawString.QQ
+import Test.Hspec.Core.Spec (focus)
+import Data.Either (isLeft)
 
 inferencesBody :: BS.ByteString
 inferencesBody =
@@ -24,6 +26,45 @@ inferencesBody =
 }
 |]
 
+emptyLocatorInference :: BS.ByteString
+emptyLocatorInference =
+  [r|
+{
+  "InferencesByFilePath": {
+    "/foo/bar.h": {
+      "RawSha256": "",
+      "ComponentID": "",
+      "Locator": "",
+      "Confidence": 1
+    }
+  }
+}
+|]
+    
+invalidLocatorInference :: BS.ByteString
+invalidLocatorInference =
+  [r|
+{
+  "InferencesByFilePath": {
+    "/foo/bar.h": {
+      "RawSha256": "",
+      "ComponentID": "",
+      "Locator": "bad-locator",
+      "Confidence": 1
+    }
+  }
+}
+|]
+
+expectedEmptyLocatorInference :: VsiExportedInferencesBody
+expectedEmptyLocatorInference =
+  VsiExportedInferencesBody $ Map.fromList
+  [
+    ( VsiFilePath "/foo/bar.h"
+    , VsiInference Nothing
+    )
+  ]
+
 expectedSingleInference :: VsiExportedInferencesBody
 expectedSingleInference =
   VsiExportedInferencesBody $ Map.fromList singleInference
@@ -32,43 +73,50 @@ singleInference :: [(VsiFilePath, VsiInference)]
 singleInference =
   [
     ( VsiFilePath "/foo/bar.h"
-    , VsiInference "git+github.com/facebook/folly$v2016.08.08.00"
+    , VsiInference . Just $ Locator "git" "github.com/facebook/folly" "v2016.08.08.00"
     )
   ]
 
 singleRuleExpected :: [VsiRule]
-singleRuleExpected = [VsiRule (VsiRulePath "/foo", VsiLocator "git+github.com/facebook/folly$v2016.08.08.00")]
+singleRuleExpected = [VsiRule (VsiRulePath "/foo") (Locator "git" "github.com/facebook/folly" "v2016.08.08.00")]
 
 commonPrefixInferences :: [(VsiFilePath, VsiInference)]
 commonPrefixInferences =
-  (VsiFilePath "/foo/bar/baz.c", VsiInference "git+github.com/facebook/folly$v2016.08.08.00") : singleInference
+  (VsiFilePath "/foo/bar/baz.c", VsiInference . Just $ Locator "git" "github.com/facebook/folly" "v2016.08.08.00") : singleInference
 
 multipleInferences :: [(VsiFilePath, VsiInference)]
 multipleInferences =
-  (VsiFilePath "/otherProject/Readme.md", VsiInference "git+github.com/otherProject$2.0.0")
-    : (VsiFilePath "/baz/hello.c", VsiInference "git+github.com/someProject$1.0.0")
+  (VsiFilePath "/otherProject/Readme.md", VsiInference . Just $ Locator "git" "github.com/otherProject" "2.0.0")
+    : (VsiFilePath "/baz/hello.c", VsiInference . Just $ Locator "git" "github.com/someProject" "1.0.0")
     : commonPrefixInferences
 
 multipleRulesExpected :: [VsiRule]
 multipleRulesExpected =
-  VsiRule (VsiRulePath "/otherProject", VsiLocator "git+github.com/otherProject$2.0.0")
-    : VsiRule (VsiRulePath "/baz", VsiLocator "git+github.com/someProject$1.0.0")
+  VsiRule (VsiRulePath "/otherProject") (Locator "git" "github.com/otherProject" "2.0.0")
+    : VsiRule (VsiRulePath "/baz") (Locator "git" "github.com/someProject" "1.0.0")
     : singleRuleExpected
 
 nestedProjectInferences :: [(VsiFilePath, VsiInference)]
 nestedProjectInferences =
-  (VsiFilePath "/foo/bar/g.c", VsiInference "git+github.com/facebook/follyNested$1.0.0") : singleInference
+  (VsiFilePath "/foo/bar/g.c"
+  , VsiInference . Just $ Locator "git" "github.com/facebook/follyNested" "1.0.0") : singleInference
 
 nestedProjectRulesExpected :: [VsiRule]
 nestedProjectRulesExpected =
-  VsiRule (VsiRulePath "/foo/bar", VsiLocator "git+github.com/facebook/follyNested$1.0.0")
+  VsiRule (VsiRulePath "/foo/bar") (Locator "git" "github.com/facebook/follyNested" "1.0.0")
     : singleRuleExpected
 
 vsiTypesSpec :: Spec
 vsiTypesSpec = describe "VSI Types" $ do
   it "Parses a VsiExportedInferencesBody" $ do
-    let body = eitherDecode inferencesBody :: Either String VsiExportedInferencesBody
+    let body = eitherDecode inferencesBody
     body `shouldBe` Right expectedSingleInference
+  it "Accepts an empty string locator" $ do
+    let body = eitherDecode emptyLocatorInference
+    body `shouldBe` Right expectedEmptyLocatorInference
+  it "Will not parse with an invalid locator" $ do
+    let body = eitherDecode invalidLocatorInference :: Either String VsiExportedInferencesBody
+    body `shouldSatisfy` isLeft
 
 generateRulesSpec :: Spec
 generateRulesSpec = describe "generateRules" $ do
@@ -85,6 +133,6 @@ generateRulesSpec = describe "generateRules" $ do
     generateRules' = generateRules . VsiExportedInferencesBody . Map.fromList
 
 spec :: Spec
-spec = do
+spec = focus $ do
   vsiTypesSpec
   generateRulesSpec

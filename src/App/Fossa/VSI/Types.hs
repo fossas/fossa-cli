@@ -15,11 +15,10 @@ module App.Fossa.VSI.Types (
   isTopLevelProject,
   toDependency,
   parseAnalysisStatus,
-  uniqueVsiLocators,
   VsiFilePath (..), -- data constructor only exported for testing
   VsiRulePath (..), -- data constructor only exported for testing
   VsiInference (..),
-  VsiLocator (..), -- data constructor only exported for testing
+  -- VsiLocator (..), -- data constructor only exported for testing
   VsiRule (..),
   VsiExportedInferencesBody (..),
   generateRules,
@@ -168,36 +167,36 @@ newtype VsiFilePath = VsiFilePath {unVsiFilePath :: Text}
 newtype VsiRulePath = VsiRulePath {unVsiRulePath :: Text}
   deriving newtype (Eq, Ord, Show, ToJSON, ToJSONKey)
 
--- |Locator output of /inferences.
--- The output of the /inferences endpoint will sometimes return a locator of "".
--- Dealing with this is left to the caller which is why it is only a wrapper of Text.
-newtype VsiLocator = VsiLocator Text
-  deriving newtype (Eq, Ord, Show, FromJSON, ToJSON, ToText, IsString)
+-- -- |Locator output of /inferences.
+-- newtype VsiLocator = VsiLocator { unVsiLocator :: Locator}
+--   deriving newtype (Eq, Ord, Show)
+
+-- instance ToText VsiLocator where
+--   toText (VsiLocator loc) = renderLocator loc
+
+-- This instance is not derived because 
+-- instance FromJSON VsiLocator where
+--   parseJSON = withText "VsiLocator" $ \str ->
+--     case parseLocator str of
+--       Left locParse -> fail $ show locParse
+--       Right loc -> pure $ VsiLocator loc
 
 newtype VsiInference = VsiInference
-  { -- Unparsed text because the endpoint can return "".
-    -- Dealing with this is left to the caller.
-    inferenceLocator :: VsiLocator
-  }
+  {inferenceLocator :: Maybe Locator}
   deriving (Eq, Ord, Show)
 
 instance FromJSON VsiInference where
   parseJSON = withObject "VsiInference" $ \obj -> do
-    VsiInference <$> obj .: "Locator"
+    loc <- obj .: "Locator"
+    -- An empty string locator is Nothing, but a missing or malformed one is not ok.
+    case loc :: Text of
+      "" -> pure $ VsiInference Nothing
+      s -> either (fail . show) (pure . VsiInference . Just) (parseLocator s)
 
 newtype VsiExportedInferencesBody = VsiExportedInferencesBody
   { unVsiExportedInferencesBody :: Map.Map VsiFilePath VsiInference
   }
   deriving (Eq, Ord, Show)
-
-uniqueVsiLocators :: VsiExportedInferencesBody -> [VsiLocator]
-uniqueVsiLocators =
-  Set.toList
-    . Map.foldl' addLocators Set.empty
-    . unVsiExportedInferencesBody
-  where
-    addLocators :: Set.Set VsiLocator -> VsiInference -> Set.Set VsiLocator
-    addLocators s VsiInference{inferenceLocator} = Set.insert inferenceLocator s
 
 instance FromJSON VsiExportedInferencesBody where
   parseJSON = withObject "VsiExportedInferencesBody" $ \obj -> do
@@ -205,20 +204,21 @@ instance FromJSON VsiExportedInferencesBody where
     parsedVals <- traverse parseJSON inferences
     pure . VsiExportedInferencesBody . Map.mapKeys VsiFilePath . KeyMap.toMapText $ parsedVals
 
-newtype VsiRule = VsiRule (VsiRulePath, VsiLocator)
-  deriving newtype (Eq, Ord, Show)
+data VsiRule = VsiRule { vsiRulePath :: VsiRulePath
+                       , vsiRuleLocator :: Locator}
+  deriving (Eq, Ord, Show)
 
 instance ToJSON VsiRule where
-  toJSON (VsiRule rule) = toJSON . uncurry Map.singleton $ rule
+  toJSON (VsiRule rulePath ruleLocator) = toJSON $ Map.singleton rulePath (renderLocator ruleLocator)
 
 -- |  Match each inference locator to the shortest filepath directory prefix for that locator.
 generateRules :: VsiExportedInferencesBody -> [VsiRule]
 generateRules inferenceBody = do
   (loc, paths) <- locatorPaths
   path <- NE.toList paths
-  [VsiRule (path, loc)]
+  [VsiRule path loc]
   where
-    locatorPaths :: [(VsiLocator, NE.NonEmpty VsiRulePath)]
+    locatorPaths :: [(Locator, NE.NonEmpty VsiRulePath)]
     locatorPaths =
       Map.toList
         . (fmap getPrefixes)
@@ -227,11 +227,11 @@ generateRules inferenceBody = do
         $ inferenceBody
 
     -- Turn locators into rule paths and skipping empty paths.
-    makeLocatorPathLists :: VsiFilePath -> VsiInference -> Map.Map VsiLocator (NE.NonEmpty VsiFilePath) -> Map.Map VsiLocator (NE.NonEmpty VsiFilePath)
+    makeLocatorPathLists :: VsiFilePath -> VsiInference -> Map.Map Locator (NE.NonEmpty VsiFilePath) -> Map.Map Locator (NE.NonEmpty VsiFilePath)
     makeLocatorPathLists filePath VsiInference{inferenceLocator} m =
-      if inferenceLocator /= ""
-        then Map.insertWith (<>) inferenceLocator (NE.singleton filePath) m
-        else m
+      case inferenceLocator of
+        Nothing -> m
+        Just inferenceLocator' -> Map.insertWith (<>) inferenceLocator' (NE.singleton filePath) m
 
 -- |Get the shortest prefixes for every filepath in a list.
 -- This works by first sorting the list lexicographically and then storing only the initial path that prefixes each group of filepaths.

@@ -7,7 +7,7 @@ module App.Fossa.VSI.Analyze (
 
 import App.Fossa.VSI.Fingerprint (Combined, fingerprint)
 import App.Fossa.VSI.IAT.Types qualified as IAT
-import App.Fossa.VSI.Types (ScanID (..), generateRules)
+import App.Fossa.VSI.Types (ScanID (..), generateRules, VsiRule (..))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
 import App.Util (FileAncestry (..), ancestryDerived, ancestryDirect)
@@ -79,16 +79,17 @@ runVsiAnalysis dir projectRevision filters = context "VSI" $ do
   logInfo "Waiting for cloud analysis"
   context "Wait for cloud analysis" $ waitForAnalysis scanID
 
-  discoveredRawLocators <- context "Download analysis results" $ do
+  rules <- context "Download analysis results" $ do
     inferences <- getVsiInferences scanID
-    logDebug . pretty $ "Generated Rules: " <> (decodeUtf8 @Text . encode . generateRules $ inferences)
-    pure . filter (/= "") . VSI.uniqueVsiLocators $ inferences
-  when (null discoveredRawLocators) $ fatalText "No dependencies discovered with VSI"
+    let rules = generateRules inferences
+    logDebug . pretty $ "Generated Rules: " <> (decodeUtf8 @Text . encode $ rules)
+    pure rules
+--    pure . filter (/= "") . VSI.uniqueVsiLocators $ inferences
+  when (null rules) $ fatalText "No dependencies discovered with VSI"
 
-  parsedLocators <- context "Parse analysis results" . fromEither $ traverse VSI.parseLocator discoveredRawLocators
-
-  let userDefinedDeps = map IAT.toUserDep $ filter VSI.isUserDefined parsedLocators
-  let allOtherDeps = filter (not . VSI.isUserDefined) parsedLocators
+  let allLocators = vsiRuleLocator <$> rules
+  let userDefinedDeps = map IAT.toUserDep $ filter VSI.isUserDefined allLocators
+  let allOtherDeps = filter (not . VSI.isUserDefined) allLocators
   pure (allOtherDeps, userDefinedDeps)
 
 uploadBufferSize :: Int
