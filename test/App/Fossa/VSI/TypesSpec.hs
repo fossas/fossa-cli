@@ -2,7 +2,7 @@
 
 module App.Fossa.VSI.TypesSpec (spec) where
 
-import App.Fossa.VSI.Types (VsiExportedInferencesBody (VsiExportedInferencesBody), VsiFilePath (..), VsiInference (VsiInference), VsiLocator (..), VsiRule (VsiRule), generateRules)
+import App.Fossa.VSI.Types (VsiExportedInferencesBody (VsiExportedInferencesBody), VsiFilePath (..), VsiInference (VsiInference), VsiLocator (..), VsiRule (VsiRule), VsiRulePath (..), generateRules)
 import Data.Aeson (eitherDecode)
 import Data.ByteString.Lazy.Char8 qualified as BS
 import Data.Map qualified as Map
@@ -14,7 +14,7 @@ inferencesBody =
   [r|
 {
   "InferencesByFilePath": {
-    "/foo.h": {
+    "/foo/bar.h": {
       "RawSha256": "YmIwMTg2NTNlOTVlY2U5M2VmMDYwMTQ3YjA0ZjZhYzRkZjhlMzFhZDc1OWFjYmExZWJmMjIwZDVjZTJlM2ZkZQ==",
       "ComponentID": "0f4ba6a8-5b3f-436f-8c36-828e7375aef7",
       "Locator": "git+github.com/facebook/folly$v2016.08.08.00",
@@ -37,7 +37,7 @@ singleInference =
   ]
 
 singleRuleExpected :: [VsiRule]
-singleRuleExpected = [VsiRule (VsiFilePath "/foo", VsiLocator "git+github.com/facebook/folly$v2016.08.08.00")]
+singleRuleExpected = [VsiRule (VsiRulePath "/foo", VsiLocator "git+github.com/facebook/folly$v2016.08.08.00")]
 
 commonPrefixInferences :: [(VsiFilePath, VsiInference)]
 commonPrefixInferences =
@@ -51,8 +51,8 @@ multipleInferences =
 
 multipleRulesExpected :: [VsiRule]
 multipleRulesExpected =
-  VsiRule (VsiFilePath "/otherProject", VsiLocator "git+github.com/otherProject$2.0.0")
-    : VsiRule (VsiFilePath "/baz", VsiLocator "git+github.com/someProject$1.0.0")
+  VsiRule (VsiRulePath "/otherProject", VsiLocator "git+github.com/otherProject$2.0.0")
+    : VsiRule (VsiRulePath "/baz", VsiLocator "git+github.com/someProject$1.0.0")
     : singleRuleExpected
 
 nestedProjectInferences :: [(VsiFilePath, VsiInference)]
@@ -61,7 +61,7 @@ nestedProjectInferences =
 
 nestedProjectRulesExpected :: [VsiRule]
 nestedProjectRulesExpected =
-  VsiRule (VsiFilePath "/foo/bar", VsiLocator "git+github.com/facebook/follyNested$1.0.0")
+  VsiRule (VsiRulePath "/foo/bar", VsiLocator "git+github.com/facebook/follyNested$1.0.0")
     : singleRuleExpected
 
 vsiTypesSpec :: Spec

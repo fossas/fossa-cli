@@ -17,6 +17,7 @@ module App.Fossa.VSI.Types (
   parseAnalysisStatus,
   uniqueVsiLocators,
   VsiFilePath (..), -- data constructor only exported for testing
+  VsiRulePath (..), -- data constructor only exported for testing
   VsiInference (..),
   VsiLocator (..), -- data constructor only exported for testing
   VsiRule (..),
@@ -26,8 +27,7 @@ module App.Fossa.VSI.Types (
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding, toJSON), ToJSONKey, defaultOptions, genericToEncoding, withObject, (.!=), (.:), (.:?))
 import Data.Aeson.KeyMap qualified as KeyMap
-import Data.Aeson.Types (Parser)
-import Data.List.NonEmpty (sort, (<|))
+import Data.List.NonEmpty ((<|))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
@@ -156,8 +156,17 @@ userDefinedFetcher = "iat"
 isTopLevelProject :: Locator -> Bool
 isTopLevelProject loc = locatorFetcher loc == depTypeToFetcher CustomType
 
+-- |A path returned on inferences from sherlock-api.
+--
+-- While 'VsiFilePath's look like filepaths, we treat them as text rather than 'FilePath' or 'Path's.
+-- Those packages behave based on on the platform they're compiled on, while VSI always uses unix-style paths.
 newtype VsiFilePath = VsiFilePath {unVsiFilePath :: Text}
-  deriving newtype (Eq, Ord, Show, FromJSON, ToJSON, ToJSONKey)
+  deriving newtype (Eq, Ord, Show, FromJSON, ToJSON)
+
+-- |A path for a VSI rule.
+-- During processing we change a list of file paths to directory paths for inclusion in rules.
+newtype VsiRulePath = VsiRulePath {unVsiRulePath :: Text}
+  deriving newtype (Eq, Ord, Show, ToJSON, ToJSONKey)
 
 -- |Locator output of /inferences.
 -- The output of the /inferences endpoint will sometimes return a locator of "".
@@ -165,10 +174,8 @@ newtype VsiFilePath = VsiFilePath {unVsiFilePath :: Text}
 newtype VsiLocator = VsiLocator Text
   deriving newtype (Eq, Ord, Show, FromJSON, ToJSON, ToText, IsString)
 
--- There are other fields on the returned data, but we don't use them.
 newtype VsiInference = VsiInference
-  { -- TODO: Is it let confusing to just make this a "Maybe"?
-    -- Unparsed text because the endpoint can return "".
+  { -- Unparsed text because the endpoint can return "".
     -- Dealing with this is left to the caller.
     inferenceLocator :: VsiLocator
   }
@@ -195,10 +202,10 @@ uniqueVsiLocators =
 instance FromJSON VsiExportedInferencesBody where
   parseJSON = withObject "VsiExportedInferencesBody" $ \obj -> do
     inferences <- (obj .:? "InferencesByFilePath") .!= KeyMap.empty
-    parsedVals <- traverse parseJSON inferences :: Parser (KeyMap.KeyMap VsiInference)
+    parsedVals <- traverse parseJSON inferences
     pure . VsiExportedInferencesBody . Map.mapKeys VsiFilePath . KeyMap.toMapText $ parsedVals
 
-newtype VsiRule = VsiRule (VsiFilePath, VsiLocator)
+newtype VsiRule = VsiRule (VsiRulePath, VsiLocator)
   deriving newtype (Eq, Ord, Show)
 
 instance ToJSON VsiRule where
@@ -211,7 +218,7 @@ generateRules inferenceBody = do
   path <- NE.toList paths
   [VsiRule (path, loc)]
   where
-    locatorPaths :: [(VsiLocator, NE.NonEmpty VsiFilePath)]
+    locatorPaths :: [(VsiLocator, NE.NonEmpty VsiRulePath)]
     locatorPaths =
       Map.toList
         . (fmap getPrefixes)
@@ -219,29 +226,39 @@ generateRules inferenceBody = do
         . unVsiExportedInferencesBody
         $ inferenceBody
 
+    -- Turn locators into rule paths and skipping empty paths.
     makeLocatorPathLists :: VsiFilePath -> VsiInference -> Map.Map VsiLocator (NE.NonEmpty VsiFilePath) -> Map.Map VsiLocator (NE.NonEmpty VsiFilePath)
     makeLocatorPathLists filePath VsiInference{inferenceLocator} m =
       if inferenceLocator /= ""
-        then Map.insertWith (<>) inferenceLocator (NE.singleton . deleteFileName $ filePath) m
+        then Map.insertWith (<>) inferenceLocator (NE.singleton filePath) m
         else m
 
-    deleteFileName :: VsiFilePath -> VsiFilePath
-    deleteFileName (VsiFilePath p) = VsiFilePath (Text.dropEnd 1 . Text.dropWhileEnd (/= '/') $ p)
-
 -- |Get the shortest prefixes for every filepath in a list.
--- This works by first sorting the list lexicographically and then storing only the parent directories that begin each group of filepaths.
+-- This works by first sorting the list lexicographically and then storing only the initial path that prefixes each group of filepaths.
 --
 -- Ex: ["/foo/bar/baz.c", "/foo/hello.c". "/other/dir/world.c"] -> ["/foo", "/other/dir"]
-getPrefixes :: NE.NonEmpty VsiFilePath -> NE.NonEmpty VsiFilePath
-getPrefixes paths = snd $ foldr foldFn (unVsiFilePath sortedHead, NE.singleton sortedHead) (NE.tail sorted)
+getPrefixes :: NE.NonEmpty VsiFilePath -> NE.NonEmpty VsiRulePath
+getPrefixes paths = snd . foldr accumPrefixes startVal $ (NE.tail sorted)
   where
-    sorted :: NE.NonEmpty VsiFilePath
-    sorted = sort paths
-    sortedHead :: VsiFilePath
-    sortedHead = NE.head sorted
+    startVal :: (VsiRulePath, NE.NonEmpty VsiRulePath)
+    startVal = (sortedHead, NE.singleton sortedHead)
 
-    foldFn :: VsiFilePath -> (Text, NE.NonEmpty VsiFilePath) -> (Text, NE.NonEmpty VsiFilePath)
-    foldFn filePath (currPrefix, acc) =
-      if currPrefix `isPrefixOf` unVsiFilePath filePath
+    sorted :: NE.NonEmpty VsiFilePath
+    sorted = NE.sort paths
+
+    sortedHead :: VsiRulePath
+    sortedHead = parentDir . NE.head $ sorted
+
+    accumPrefixes :: VsiFilePath -> (VsiRulePath, NE.NonEmpty VsiRulePath) -> (VsiRulePath, NE.NonEmpty VsiRulePath)
+    accumPrefixes filePath (currPrefix, acc) =
+      if currPrefix `prefixesFilePath` filePath
         then (currPrefix, acc)
-        else (unVsiFilePath filePath, filePath <| acc)
+        else
+          let parent = parentDir filePath
+           in (parent, parent <| acc)
+
+    parentDir :: VsiFilePath -> VsiRulePath
+    parentDir = VsiRulePath . Text.dropEnd 1 . Text.dropWhileEnd (/= '/') . unVsiFilePath
+
+    prefixesFilePath :: VsiRulePath -> VsiFilePath -> Bool
+    prefixesFilePath rp fp = unVsiRulePath rp `isPrefixOf` unVsiFilePath fp
