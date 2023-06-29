@@ -6,9 +6,8 @@
 # Requires binary dependencies in $PATH:
 #   jq              Parse and manipulate json structures.
 #   curl            Download data over HTTP(s)
-#   sed             Modify syft tag
+#   sed             Modify executable names
 #   xz              compress the license index
-#   upx             Compress binaries (optional)
 #
 
 set -e
@@ -56,16 +55,15 @@ esac
 TAG="latest"
 echo "Downloading asset information from latest tag for architecture '$ASSET_POSTFIX'"
 
-THEMIS_TAG="2023-06-14-ee69aa9-1686783828"
-echo "Downloading themis binary"
-echo "Using themis release: $THEMIS_TAG"
+echo "Downloading themis binary from latest release"
 THEMIS_RELEASE_JSON=vendor-bins/themis-release.json
 curl -sSL \
     -H "Authorization: token $GITHUB_TOKEN" \
     -H "Accept: application/vnd.github.v3.raw" \
-    https://api.github.com/repos/fossas/basis/releases/tags/$THEMIS_TAG > $THEMIS_RELEASE_JSON
+    https://api.github.com/repos/fossas/basis/releases/latest > $THEMIS_RELEASE_JSON
 
 THEMIS_TAG=$(jq -cr ".name" $THEMIS_RELEASE_JSON)
+echo "Using themis release: $THEMIS_TAG"
 FILTER=".name == \"themis-cli-$BASIS_ASSET_POSTFIX\""
 jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $THEMIS_RELEASE_JSON | while read ASSET; do
   URL="$(echo $ASSET | jq -c -r '.url')"
