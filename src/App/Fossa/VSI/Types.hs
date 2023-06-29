@@ -167,20 +167,6 @@ newtype VsiFilePath = VsiFilePath {unVsiFilePath :: Text}
 newtype VsiRulePath = VsiRulePath {unVsiRulePath :: Text}
   deriving newtype (Eq, Ord, Show, ToJSON, ToJSONKey)
 
--- -- |Locator output of /inferences.
--- newtype VsiLocator = VsiLocator { unVsiLocator :: Locator}
---   deriving newtype (Eq, Ord, Show)
-
--- instance ToText VsiLocator where
---   toText (VsiLocator loc) = renderLocator loc
-
--- This instance is not derived because 
--- instance FromJSON VsiLocator where
---   parseJSON = withText "VsiLocator" $ \str ->
---     case parseLocator str of
---       Left locParse -> fail $ show locParse
---       Right loc -> pure $ VsiLocator loc
-
 newtype VsiInference = VsiInference
   {inferenceLocator :: Maybe Locator}
   deriving (Eq, Ord, Show)
