@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.8.4
+- Maven: Loosens checks performed on Maven binaries at runtime and expands search pattern in Windows ([#1209](https://github.com/fossas/fossa-cli/pull/1209)).
+
 ## v3.8.3
 - Logging: Don't output the `[INFO]` prefix for regular CLI messages. ([#1226](https://github.com/fossas/fossa-cli/pull/1226))
 - License Scanning: Fix a bug where we were identifying the "GPL with autoconf macro exception" license as "GPL with autoconf exception" in a few cases ([#1225](https://github.com/fossas/fossa-cli/pull/1225))
