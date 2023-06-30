@@ -17,11 +17,12 @@ import App.Fossa.Analyze.Types (
 import App.Version (fullVersionDescription)
 import Control.Carrier.Lift
 import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
-import Control.Monad (when)
+import Control.Monad (join, when)
 import Data.Foldable (foldl', traverse_)
 import Data.List (sort)
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
 import Data.Monoid.Extra (isMempty)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Diag.Result (EmittedWarn (IgnoredErrGroup), Result (Failure, Success), renderFailure, renderSuccess)
@@ -71,6 +72,7 @@ import Srclib.Types (
   SourceUnitBuild (buildDependencies),
   SourceUnitDependency (sourceDepLocator),
   SourceUserDefDep (srcUserDepName),
+  sourceUnitOriginPaths,
  )
 import Types (DepType (ArchiveType), DiscoveredProjectType, projectTypeToText)
 
@@ -167,21 +169,25 @@ summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicL
         ]
           <> itemize listSymbol summarizeProjectScan projects
           <> ["-"]
-          <> summarizeSrcUnit "vsi analysis" Nothing vsi
+          <> vsiResults
           <> summarizeSrcUnit "binary-deps analysis" (Just getBinaryIdentifier) binary
           <> summarizeSrcUnit "dynamic linked dependency analysis" (Just getBinaryIdentifier) dynamicLinkingDeps
           <> summarizeSrcUnit "fossa-deps file analysis" (Just getManualVendorDepsIdentifier) manualDeps
           <> [""]
   where
+    vsiResults = summarizeSrcUnit "vsi analysis" (Just vsiSourceUnits) vsi
     projects = sort dps
     totalScanCount =
       mconcat
         [ getScanCount projects
-        , srcUnitToScanCount vsi
+        , vsiSrcUnitsToScanCount vsi
         , srcUnitToScanCount binary
         , srcUnitToScanCount manualDeps
         , srcUnitToScanCount dynamicLinkingDeps
         ]
+
+    vsiSourceUnits :: [SourceUnit] -> [Text]
+    vsiSourceUnits = map toText . join . map sourceUnitOriginPaths
 
 listSymbol :: Doc AnsiStyle
 listSymbol = "* "
@@ -223,6 +229,13 @@ getManualVendorDepsIdentifier srcUnit = refDeps ++ foundRemoteDeps ++ customDeps
     withPostfix :: Text -> [Text] -> [Text]
     withPostfix bracketText = map (<> " (" <> bracketText <> ")")
 
+vsiSrcUnitsToScanCount :: Result (Maybe [SourceUnit]) -> ScanCount
+vsiSrcUnitsToScanCount (Failure _ _) = ScanCount 0 0 0 0 0
+vsiSrcUnitsToScanCount (Success wg (Just units)) =
+  let unitLen = length units
+   in ScanCount unitLen 0 unitLen 0 (length wg)
+vsiSrcUnitsToScanCount (Success _ Nothing) = ScanCount 0 0 0 0 0
+
 srcUnitToScanCount :: Result (Maybe SourceUnit) -> ScanCount
 srcUnitToScanCount (Failure _ _) = ScanCount 1 0 0 1 0
 srcUnitToScanCount (Success _ Nothing) = ScanCount 0 0 0 0 0
@@ -230,8 +243,8 @@ srcUnitToScanCount (Success wg (Just _)) = ScanCount 1 0 1 0 (countWarnings wg)
 
 summarizeSrcUnit ::
   Doc AnsiStyle ->
-  Maybe (SourceUnit -> [Text]) ->
-  Result (Maybe SourceUnit) ->
+  Maybe (a -> [Text]) ->
+  Result (Maybe a) ->
   [Doc AnsiStyle]
 summarizeSrcUnit analysisHeader maybeGetter (Success wg (Just unit)) =
   case maybeGetter <*> Just unit of
@@ -331,9 +344,9 @@ dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary
     scanSummary :: [Doc AnsiStyle]
     scanSummary = maybeToList (vsep <$> summarize endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps))
 
-    renderSourceUnit :: Doc AnsiStyle -> Result (Maybe SourceUnit) -> Maybe (Doc AnsiStyle)
+    renderSourceUnit :: Doc AnsiStyle -> Result (Maybe a) -> Maybe (Doc AnsiStyle)
     renderSourceUnit header (Failure ws eg) = Just $ renderFailure ws eg $ vsep $ summarizeSrcUnit header Nothing (Failure ws eg)
-    renderSourceUnit header (Success ws (Just res)) = renderSuccess ws $ vsep $ summarizeSrcUnit header Nothing (Success ws (Just res))
+    renderSourceUnit header success@(Success ws (Just _)) = renderSuccess ws $ vsep $ summarizeSrcUnit header Nothing success
     renderSourceUnit _ _ = Nothing
 
     renderDiscoveredProjectScanResult :: DiscoveredProjectScan -> Maybe (Doc AnsiStyle)

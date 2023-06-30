@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.VSIDeps (
   analyzeVSIDeps,
 ) where
@@ -5,14 +7,19 @@ module App.Fossa.VSIDeps (
 import App.Fossa.Analyze.Project (ProjectResult (ProjectResult))
 import App.Fossa.VSI.Analyze (runVsiAnalysis)
 import App.Fossa.VSI.IAT.Resolve (resolveGraph, resolveUserDefined)
+import App.Fossa.VSI.IAT.Types qualified as IAT
+import App.Fossa.VSI.Types (VsiRule (..))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, fromEither)
+import Control.Effect.Diagnostics (Diagnostics, fatal, fromEither)
 import Control.Effect.Finally (Finally)
 import Control.Effect.FossaApiClient (FossaApiClient)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger)
+import Data.Bifunctor (first)
+import Data.List (partition)
+import Data.String.Conversion (toString, toText)
 import DepTypes (Dependency)
 import Discovery.Filters (AllFilters)
 import Effect.Logger (Logger)
@@ -20,6 +27,7 @@ import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, Path)
+import Path.Posix (parseAbsDir)
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
 import Types (DiscoveredProjectType (VsiProjectType), GraphBreadth (Complete))
@@ -39,18 +47,35 @@ analyzeVSIDeps ::
   ProjectRevision ->
   AllFilters ->
   VSI.SkipResolution ->
-  m SourceUnit
+  m (Maybe [SourceUnit])
 analyzeVSIDeps dir projectRevision filters skipResolving = do
-  (direct, userDeps) <- runVsiAnalysis dir projectRevision filters
+  -- (direct, userDeps) <- runVsiAnalysis dir projectRevision filters
+  rules <- runVsiAnalysis dir projectRevision filters
+
+  let (userDeps, directRules) =
+        first (map (IAT.toUserDep . vsiRuleLocator))
+          . partition (VSI.isUserDefined . vsiRuleLocator)
+          $ rules
 
   resolvedUserDeps <- resolveUserDefined userDeps
-  resolvedGraph <- resolveGraph direct skipResolving
-  dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
+  directSrcUnits <- traverse ruleToSourceUnit directRules
 
-  pure $ toSourceUnit (toProject dir dependencies) resolvedUserDeps
+  -- These deps have to get up to the backend somehow on a 'SourceUnit's 'additionalData'.
+  -- This generates an empty-graph source unit and puts the userdeps on it.
+  let userDepSrcUnits = toSourceUnit (toProject dir mempty) resolvedUserDeps
+
+  pure . Just $ userDepSrcUnits : directSrcUnits
+  where
+    ruleToSourceUnit :: (Has Diagnostics sig m, Has FossaApiClient sig m) => VSI.VsiRule -> m (SourceUnit)
+    ruleToSourceUnit VSI.VsiRule{..} = do
+      resolvedGraph <- resolveGraph [vsiRuleLocator] skipResolving
+      dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
+      case parseAbsDir (toString vsiRulePath) of
+        Just ruleDir -> pure $ toSourceUnit (toProject ruleDir dependencies) Nothing
+        Nothing -> fatal $ "Could not parse rule path: " <> show vsiRulePath
 
 toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
-toProject dir graph = ProjectResult VsiProjectType dir graph Complete []
+toProject dir graph = ProjectResult VsiProjectType dir graph Complete [toText dir]
 
 toSourceUnit :: ProjectResult -> Maybe [SourceUserDefDep] -> SourceUnit
 toSourceUnit project deps = do

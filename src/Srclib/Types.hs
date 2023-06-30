@@ -84,7 +84,7 @@ data FullSourceUnit = FullSourceUnit
   , fullSourceUnitManifest :: Maybe Text
   , fullSourceUnitBuild :: Maybe SourceUnitBuild
   , fullSourceUnitGraphBreadth :: GraphBreadth
-  , fullSourceUnitOriginPaths :: [SomeBase File]
+  , fullSourceUnitOriginPaths :: [Text]
   , fullSourceUnitAdditionalData :: Maybe AdditionalDepData
   , fullSourceUnitFiles :: Maybe (NonEmpty Text)
   , fullSourceUnitData :: Maybe (NonEmpty LicenseUnitData)
@@ -290,7 +290,7 @@ data SourceUnit = SourceUnit
   -- ^ path to manifest file
   , sourceUnitBuild :: Maybe SourceUnitBuild
   , sourceUnitGraphBreadth :: GraphBreadth
-  , sourceUnitOriginPaths :: [SomeBase File]
+  , sourceUnitOriginPaths :: [Text]
   , additionalData :: Maybe AdditionalDepData
   }
   deriving (Eq, Ord, Show)

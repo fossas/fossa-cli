@@ -4,6 +4,8 @@ module App.Fossa.Analyze.Project (
 ) where
 
 import App.Util (FileAncestry (..))
+import Data.String.Conversion (toText)
+import Data.Text (Text)
 import DepTypes
 import Graphing (Graphing)
 import Graphing qualified
@@ -31,7 +33,7 @@ mkResult basedir project pathPrefix dependencyResults =
   where
     graph = dependencyGraph dependencyResults
     relativeManifestFiles = map (tryMakeRelative basedir) $ dependencyManifestFiles dependencyResults
-    prefixedManifestFiles = map (addPrefix $ fileAncestryPath <$> pathPrefix) relativeManifestFiles
+    prefixedManifestFiles = map (toText . addPrefix (fileAncestryPath <$> pathPrefix)) relativeManifestFiles
     addPrefix :: Maybe (Path Rel Dir) -> SomeBase File -> SomeBase File
     addPrefix maybePrefix relativeFile =
       case (maybePrefix, relativeFile) of
@@ -44,7 +46,7 @@ data ProjectResult = ProjectResult
   , projectResultPath :: Path Abs Dir
   , projectResultGraph :: Graphing Dependency
   , projectResultGraphBreadth :: GraphBreadth
-  , projectResultManifestFiles :: [SomeBase File]
+  , projectResultManifestFiles :: [Text]
   }
   deriving (Show)
 

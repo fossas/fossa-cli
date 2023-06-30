@@ -53,7 +53,7 @@ runVsiAnalysis ::
   Path Abs Dir ->
   ProjectRevision ->
   AllFilters ->
-  m ([VSI.Locator], [IAT.UserDep])
+  m [VSI.VsiRule]
 runVsiAnalysis dir projectRevision filters = context "VSI" $ do
   -- If we try to run with fewer than 2 capabilities, STM will deadlock
   capabilities <- max 2 <$> sendIO getNumCapabilities
@@ -84,13 +84,10 @@ runVsiAnalysis dir projectRevision filters = context "VSI" $ do
     let rules = generateRules inferences
     logDebug . pretty $ "Generated Rules: " <> (decodeUtf8 @Text . encode $ rules)
     pure rules
-  --    pure . filter (/= "") . VSI.uniqueVsiLocators $ inferences
+
   when (null rules) $ fatalText "No dependencies discovered with VSI"
 
-  let allLocators = vsiRuleLocator <$> rules
-  let userDefinedDeps = map IAT.toUserDep $ filter VSI.isUserDefined allLocators
-  let allOtherDeps = filter (not . VSI.isUserDefined) allLocators
-  pure (allOtherDeps, userDefinedDeps)
+  pure rules
 
 uploadBufferSize :: Int
 uploadBufferSize = 1000
