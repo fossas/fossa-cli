@@ -2,13 +2,20 @@
 
 The `packages.config` XML file is used in some project types to maintain the list of packages referenced by the project.
 
-Note: projects that use `PackageReference` do not use `packages.config`.
+_Not sure how to read this reference?_
+_Check the [Primer: strategies in FOSSA CLI](../../README.md#primer-strategies-in-fossa-cli) first!_
 
 ## Project Discovery
 
-Walk the directory and find all files names `packages.config`
+Walk the directory and find all files names `packages.config`.
 
 ## Analysis
+
+| Tactic                                         | Analysis Method | Vulnerabilities | Full Graph Support | Dependency Scopes |
+|------------------------------------------------|-----------------|-----------------|--------------------|-------------------|
+| [Parse packages.config](#parse-packagesconfig) | Static          | :grey_question: | :grey_question:    | :grey_question:   |
+
+### Parse `packages.config`
 
 Parse the XML file, and collect dependency data from all `package` tags within the `packages` section:
 

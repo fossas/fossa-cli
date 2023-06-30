@@ -1,19 +1,29 @@
 # nuspec
 
-A `.nuspec` file is an XML manifest that contains package metadata for Nuget packages. This manifest is used both to build the package and to provide information to consumers.
+A `.nuspec` file is an XML manifest that contains package metadata for Nuget packages.
+This manifest is used both to build the package and to provide information to consumers.
 
-## Project Discovery
+_Not sure how to read this reference?_
+_Check the [Primer: strategies in FOSSA CLI](../../README.md#primer-strategies-in-fossa-cli) first!_
 
-Walk the directory and find all files with a  `.nuspec` suffix
+## Discovery
+
+Walk the scan directory and find all files with a  `.nuspec` suffix.
 
 ## Analysis
 
-Depending on the version of Nuget in use, dependencies can be specified in two ways
+| Tactic                                          | Analysis Method | Vulnerabilities | Full Graph Support | Dependency Scopes |
+|-------------------------------------------------|-----------------|-----------------|--------------------|-------------------|
+| [Dependencies Metadata](#dependencies-metadata) | Static          | :grey_question: | :grey_question:    | :grey_question:   |
+| [Dependency Groups](#dependency-groups)         | Static          | :grey_question: | :grey_question:    | :grey_question:   |
 
-TODO: do we ONLY look at dependency groups????
-### Dependencies element
+### Dependencies Metadata
 
-The <dependencies> element within <metadata> contains any number of <dependency> elements that identify other packages upon which the top-level package depends. Example:
+The <dependencies> element within <metadata> contains
+any number of <dependency> elements that identify other packages
+upon which the top-level package depends.
+
+Example:
 
 ```
 <?xml version="1.0"?>
@@ -34,9 +44,11 @@ The <dependencies> element within <metadata> contains any number of <dependency>
 </package>
 ```
 
-### Dependency groups
+### Dependency Groups
 
-As an alternative to a single flat list, dependencies can be specified according to the framework profile of the target project using <group> elements within <dependencies>.
+As an alternative to a single flat list, dependencies can be specified
+according to the framework profile of the target project
+using <group> elements within <dependencies>.
 
 ```
 <?xml version="1.0"?>
