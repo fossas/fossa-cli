@@ -190,8 +190,10 @@ instance FromJSON VsiExportedInferencesBody where
     parsedVals <- traverse parseJSON inferences
     pure . VsiExportedInferencesBody . Map.mapKeys VsiFilePath . KeyMap.toMapText $ parsedVals
 
-data VsiRule = VsiRule { vsiRulePath :: VsiRulePath
-                       , vsiRuleLocator :: Locator}
+data VsiRule = VsiRule
+  { vsiRulePath :: VsiRulePath
+  , vsiRuleLocator :: Locator
+  }
   deriving (Eq, Ord, Show)
 
 instance ToJSON VsiRule where

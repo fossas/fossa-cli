@@ -2,14 +2,14 @@
 
 module App.Fossa.VSI.TypesSpec (spec) where
 
-import App.Fossa.VSI.Types (VsiExportedInferencesBody (VsiExportedInferencesBody), VsiFilePath (..), VsiInference (VsiInference), VsiRule (VsiRule), VsiRulePath (..), generateRules, Locator (..))
+import App.Fossa.VSI.Types (Locator (..), VsiExportedInferencesBody (VsiExportedInferencesBody), VsiFilePath (..), VsiInference (VsiInference), VsiRule (VsiRule), VsiRulePath (..), generateRules)
 import Data.Aeson (eitherDecode)
 import Data.ByteString.Lazy.Char8 qualified as BS
+import Data.Either (isLeft)
 import Data.Map qualified as Map
 import Test.Hspec (Spec, describe, it, shouldBe, shouldMatchList, shouldSatisfy)
-import Text.RawString.QQ
 import Test.Hspec.Core.Spec (focus)
-import Data.Either (isLeft)
+import Text.RawString.QQ
 
 inferencesBody :: BS.ByteString
 inferencesBody =
@@ -40,7 +40,7 @@ emptyLocatorInference =
   }
 }
 |]
-    
+
 invalidLocatorInference :: BS.ByteString
 invalidLocatorInference =
   [r|
@@ -58,12 +58,13 @@ invalidLocatorInference =
 
 expectedEmptyLocatorInference :: VsiExportedInferencesBody
 expectedEmptyLocatorInference =
-  VsiExportedInferencesBody $ Map.fromList
-  [
-    ( VsiFilePath "/foo/bar.h"
-    , VsiInference Nothing
-    )
-  ]
+  VsiExportedInferencesBody $
+    Map.fromList
+      [
+        ( VsiFilePath "/foo/bar.h"
+        , VsiInference Nothing
+        )
+      ]
 
 expectedSingleInference :: VsiExportedInferencesBody
 expectedSingleInference =
@@ -98,8 +99,10 @@ multipleRulesExpected =
 
 nestedProjectInferences :: [(VsiFilePath, VsiInference)]
 nestedProjectInferences =
-  (VsiFilePath "/foo/bar/g.c"
-  , VsiInference . Just $ Locator "git" "github.com/facebook/follyNested" "1.0.0") : singleInference
+  ( VsiFilePath "/foo/bar/g.c"
+  , VsiInference . Just $ Locator "git" "github.com/facebook/follyNested" "1.0.0"
+  )
+    : singleInference
 
 nestedProjectRulesExpected :: [VsiRule]
 nestedProjectRulesExpected =

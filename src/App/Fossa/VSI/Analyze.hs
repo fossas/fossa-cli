@@ -7,7 +7,7 @@ module App.Fossa.VSI.Analyze (
 
 import App.Fossa.VSI.Fingerprint (Combined, fingerprint)
 import App.Fossa.VSI.IAT.Types qualified as IAT
-import App.Fossa.VSI.Types (ScanID (..), generateRules, VsiRule (..))
+import App.Fossa.VSI.Types (ScanID (..), VsiRule (..), generateRules)
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
 import App.Util (FileAncestry (..), ancestryDerived, ancestryDirect)
@@ -84,7 +84,7 @@ runVsiAnalysis dir projectRevision filters = context "VSI" $ do
     let rules = generateRules inferences
     logDebug . pretty $ "Generated Rules: " <> (decodeUtf8 @Text . encode $ rules)
     pure rules
---    pure . filter (/= "") . VSI.uniqueVsiLocators $ inferences
+  --    pure . filter (/= "") . VSI.uniqueVsiLocators $ inferences
   when (null rules) $ fatalText "No dependencies discovered with VSI"
 
   let allLocators = vsiRuleLocator <$> rules
