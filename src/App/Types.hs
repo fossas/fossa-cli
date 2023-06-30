@@ -6,7 +6,10 @@ module App.Types (
   ReleaseGroupMetadata (..),
   ProjectRevision (..),
   OverrideDynamicAnalysisBinary (..),
+  Policy (..),
   FullFileUploads (..),
+  FirstPartyScansFlag (..),
+  fullFileUploadsToCliLicenseScanType,
   SystemPath (..),
   SystemPathExt (..),
 ) where
@@ -32,13 +35,21 @@ data OverrideProject = OverrideProject
 instance ToJSON OverrideProject where
   toEncoding = genericToEncoding defaultOptions
 
+data Policy
+  = PolicyName Text
+  | PolicyId Int
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON Policy where
+  toEncoding = genericToEncoding defaultOptions
+
 data ProjectMetadata = ProjectMetadata
   { projectTitle :: Maybe Text
   , projectUrl :: Maybe Text
   , projectJiraKey :: Maybe Text
   , projectLink :: Maybe Text
   , projectTeam :: Maybe Text
-  , projectPolicy :: Maybe Text
+  , projectPolicy :: Maybe Policy
   , projectLabel :: [Text]
   , projectReleaseGroup :: Maybe ReleaseGroupMetadata
   }
@@ -96,6 +107,16 @@ instance Monoid OverrideDynamicAnalysisBinary where
   mempty = OverrideDynamicAnalysisBinary mempty
 
 newtype FullFileUploads = FullFileUploads {unFullFileUploads :: Bool} deriving (Eq, Ord, Show, Generic)
+
+fullFileUploadsToCliLicenseScanType :: FullFileUploads -> Text
+fullFileUploadsToCliLicenseScanType (FullFileUploads True) = "full_files"
+fullFileUploadsToCliLicenseScanType (FullFileUploads False) = "match_data"
+
+data FirstPartyScansFlag = FirstPartyScansOnFromFlag | FirstPartyScansOffFromFlag | FirstPartyScansUseDefault
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON FirstPartyScansFlag where
+  toEncoding = genericToEncoding defaultOptions
 
 -- | Locations to search on the current system for executables.
 newtype SystemPath = SystemPath {unSystemPath :: [Path Abs Dir]} deriving (Eq, Ord, Show, Semigroup, Monoid, ToJSON)

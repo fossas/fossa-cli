@@ -20,6 +20,7 @@ module App.Fossa.Analyze.Debug (
   debugEverything,
 ) where
 
+import App.Fossa.EmbeddedBinary (themisVersion)
 import App.Version (fullVersionDescription)
 import Control.Carrier.Debug (
   Algebra (..),
@@ -131,6 +132,7 @@ collectDebugBundle cfg act = do
         DebugBundle
           { bundleSystem = sysInfo
           , bundleCLIVersion = fullVersionDescription
+          , bundleThemisVersion = themisVersion
           , bundleArgs = args
           , bundleConfig = cfg
           , bundleEnvVariables = envVars
@@ -166,6 +168,7 @@ collectSystemInfo = do
 data DebugBundle cfg = DebugBundle
   { bundleSystem :: SystemInfo
   , bundleCLIVersion :: Text
+  , bundleThemisVersion :: Text
   , bundleArgs :: [Text]
   , bundleConfig :: cfg
   , bundleEnvVariables :: Map.Map Text Text

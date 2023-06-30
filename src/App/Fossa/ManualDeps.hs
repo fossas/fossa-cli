@@ -12,6 +12,7 @@ module App.Fossa.ManualDeps (
   ManualDependencies (..),
   FoundDepsFile (..),
   analyzeFossaDepsFile,
+  findAndReadFossaDepsFile,
   findFossaDepsFile,
   readFoundDeps,
   getScanCfg,
@@ -30,7 +31,8 @@ import App.Fossa.VendoredDependency (
  )
 import App.Types (FullFileUploads (..))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
-import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
+import Control.Effect.Debug (Debug)
+import Control.Effect.Diagnostics (Diagnostics, context, fatal, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Has, Lift)
 import Control.Effect.StickyLogger (StickyLogger)
@@ -52,8 +54,9 @@ import Data.String.Conversion (toString, toText)
 import Data.Text (Text, toLower)
 import Data.Text qualified as Text
 import DepTypes (DepType (..))
+import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
-import Effect.Logger (Logger)
+import Effect.Logger (Logger, indent, pretty, vsep)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
 import Fossa.API.Types (ApiOpts, Organization (..))
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
@@ -72,6 +75,7 @@ analyzeFossaDepsFile ::
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
   , Has Logger sig m
+  , Has Debug sig m
   , Has Exec sig m
   ) =>
   Path Abs Dir ->
@@ -85,6 +89,20 @@ analyzeFossaDepsFile root maybeApiOpts vendoredDepsOptions = do
     Just depsFile -> do
       manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
       context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
+
+findAndReadFossaDepsFile ::
+  ( Has Diagnostics sig m
+  , Has ReadFS sig m
+  ) =>
+  Path Abs Dir ->
+  m (Maybe ManualDependencies)
+findAndReadFossaDepsFile root = do
+  maybeDepsFile <- findFossaDepsFile root
+  case maybeDepsFile of
+    Nothing -> pure Nothing
+    Just depsFile -> do
+      manualDeps <- readFoundDeps depsFile
+      pure $ Just manualDeps
 
 readFoundDeps :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundDepsFile -> m ManualDependencies
 readFoundDeps (ManualJSON path) = readContentsJson path
@@ -115,6 +133,7 @@ toSourceUnit ::
   , Has StickyLogger sig m
   , Has Logger sig m
   , Has Exec sig m
+  , Has Debug sig m
   , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
@@ -133,9 +152,17 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
     -- Don't do anything if there are no vendored deps.
     (_, Nothing) -> pure []
 
+  -- Some manual deps, such as remote dependencies in source unit cannot be
+  -- validated without endpoint interactions.
+  rdeps <- case maybeApiOpts of
+    Just apiOpts -> runFossaApiClient apiOpts $ do
+      org <- getOrganization
+      traverse (`validateRemoteDep` org) remoteDependencies
+    Nothing -> pure remoteDependencies
+
   let renderedPath = toText root
       referenceLocators = refToLocator <$> referencedDependencies
-      additional = toAdditionalData (NE.nonEmpty customDependencies) (NE.nonEmpty remoteDependencies)
+      additional = toAdditionalData (NE.nonEmpty customDependencies) (NE.nonEmpty rdeps)
       build = toBuildData <$> NE.nonEmpty (referenceLocators <> archiveLocators)
       originPath = case depsFile of
         (ManualJSON path) -> tryMakeRelative root path
@@ -460,6 +487,51 @@ instance FromJSON RemoteDependency where
       <*> (obj `neText` "url")
       <*> obj .:? "metadata"
       <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
+
+validateRemoteDep :: (Has Diagnostics sig m) => RemoteDependency -> Organization -> m RemoteDependency
+validateRemoteDep r org =
+  if locatorLen > maxLocatorLength
+    then fatal $ RemoteDepLengthIsGtThanAllowed (r, maxUrlRevLength)
+    else pure r
+  where
+    orgId :: Text
+    orgId = toText . show . organizationId $ org
+
+    maxLocatorLength :: Int
+    maxLocatorLength = 255
+
+    locatorLen :: Int
+    locatorLen = Text.length $ Text.intercalate "" [requiredChars, urlRevChars]
+
+    requiredChars :: Text
+    requiredChars = Text.intercalate "" ["url-private+", orgId, "/", "$"]
+
+    urlRevChars :: Text
+    urlRevChars = Text.intercalate "" [remoteUrl r, remoteVersion r]
+
+    maxUrlRevLength :: Int
+    maxUrlRevLength = maxLocatorLength - Text.length requiredChars
+
+newtype RemoteDepLengthIsGtThanAllowed = RemoteDepLengthIsGtThanAllowed (RemoteDependency, Int)
+instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
+  renderDiagnostic (RemoteDepLengthIsGtThanAllowed (r, maxLen)) =
+    vsep
+      [ "You provided remote-dependency: "
+      , ""
+      , indent 2 . pretty $ "Name: " <> remoteName r
+      , indent 2 . pretty $ "Url: " <> remoteUrl r
+      , indent 2 . pretty $ "Version: " <> remoteVersion r
+      , ""
+      , pretty $
+          "The combined length of url and version is: "
+            <> show urlRevLength
+            <> ". It must be below: "
+            <> show maxLen
+            <> "."
+      ]
+    where
+      urlRevLength :: Int
+      urlRevLength = Text.length $ Text.intercalate "" [remoteUrl r, remoteVersion r]
 
 -- Dependency "metadata" section for both Remote and Custom Dependencies
 instance FromJSON DependencyMetadata where

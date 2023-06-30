@@ -121,7 +121,7 @@ instance FromXML ItemGroup where
 instance FromXML Package where
   parseElement el =
     Package
-      <$> attr "Include" el
+      <$> (attr "Include" el <|> attr "Update" el)
       <*> optional (attr "Version" el <|> child "Version" el)
 
 buildGraph :: PackageReference -> Graphing Dependency

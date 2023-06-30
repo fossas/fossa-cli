@@ -8,6 +8,7 @@ import Control.Carrier.FossaApiClient.Internal.LicenseScanning qualified as Lice
 import Control.Carrier.FossaApiClient.Internal.VSI qualified as VSI
 import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.Simple (SimpleC, interpret)
+import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Effect.Lift (Lift)
@@ -19,6 +20,7 @@ type FossaApiClientC m = SimpleC FossaApiClientF (ReaderC ApiOpts m)
 -- | Runs FossaAPI effects as IO operations
 runFossaApiClient ::
   ( Has (Lift IO) sig m
+  , Has Debug sig m
   , Has Diagnostics sig m
   ) =>
   ApiOpts ->
@@ -43,6 +45,7 @@ runFossaApiClient apiOpts =
           GetOrganization -> Core.getOrganization
           GetProject rev -> Core.getProject rev
           GetAnalyzedRevisions vdeps -> Core.getAnalyzedRevisions vdeps
+          GetSignedFirstPartyScanUrl rev -> LicenseScanning.getSignedFirstPartyScanUrl rev
           GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev
           GetSignedUploadUrl rev -> Core.getSignedUploadUrl rev
           GetVsiInferences scanId -> VSI.getVsiInferences scanId
@@ -51,8 +54,10 @@ runFossaApiClient apiOpts =
           ResolveProjectDependencies locator -> VSI.resolveProjectDependencies locator
           ResolveUserDefinedBinary deps -> VSI.resolveUserDefinedBinary deps
           UploadAnalysis rev metadata units -> Core.uploadAnalysis rev metadata units
+          UploadAnalysisWithFirstPartyLicenses rev metadata fullFileUploads -> Core.uploadAnalysisWithFirstPartyLicenses rev metadata fullFileUploads
           UploadArchive url path -> Core.uploadArchive url path
           UploadNativeContainerScan revision metadata scan -> Core.uploadNativeContainerScan revision metadata scan
           UploadContributors locator contributors -> Core.uploadContributors locator contributors
           UploadLicenseScanResult signedUrl licenseSourceUnit -> LicenseScanning.uploadLicenseScanResult signedUrl licenseSourceUnit
+          UploadFirstPartyScanResult signedUrl fullSourceUnits -> LicenseScanning.uploadFirstPartyScanResult signedUrl fullSourceUnits
       )

@@ -18,6 +18,7 @@ vendor-bins/
 /fossa-?dev
 /release
 /fourmolu
+/hlint
 
 # Debug output
 fossa.debug.json

@@ -1,11 +1,34 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.8.3
+- Logging: Don't output the `[INFO]` prefix for regular CLI messages. ([#1226](https://github.com/fossas/fossa-cli/pull/1226))
+- License Scanning: Fix a bug where we were identifying the "GPL with autoconf macro exception" license as "GPL with autoconf exception" in a few cases ([#1225](https://github.com/fossas/fossa-cli/pull/1225))
+- Container Scanning: More resiliant os-release parser, accounting initial line comments in the file ([#1230](https://github.com/fossas/fossa-cli/pull/1230))
+- Analysis: full paths to the files in archives are shown when running `fossa analyze --unpack-archives` ([#1231](https://github.com/fossas/fossa-cli/pull/1231))
+- Telemetry: Collect GNU/Linux distribution information and `uname` output. ([#1222](https://github.com/fossas/fossa-cli/pull/1222))
+
+## v3.8.2
+- Poetry: Defaults `category` to `main` if not present in lockfile. ([#1211](https://github.com/fossas/fossa-cli/pull/1211))
+- Maven: Revert ([#1218](https://github.com/fossas/fossa-cli/pull/1218)) from v3.8.2 due to performance impacts.
+
+## v3.8.1
+- Setup.py: Fixes an defect with `setup.py` parser, caused by failing to account for line comments or backslash. ([#1191](https://github.com/fossas/fossa-cli/pull/1191))
+- Installation: `install-latest.sh` now directs `curl` and `wget` to pass `Cache-Control: no-cache` headers to the server. ([#1206](https://github.com/fossas/fossa-cli/pull/1206))
+- `Go.mod`: Anaysis does not fail if `go.mod` includes `retract` block. ([#1213](https://github.com/fossas/fossa-cli/pull/1213))
+- `.aar`: Supports `.aar` archive files with native license scanning, and with `--unpack-archives` option. ([#1217](https://github.com/fossas/fossa-cli/pull/1217))
+- `remote-dependencies`: Analysis of `fossa-deps` fails, if remote-dependencies's character length is greater than maximum. It only applies during non-output mode. ([#1216](https://github.com/fossas/fossa-cli/pull/1216))
+- Maven: Analyze a package separately from its parents if the module does not appear in its parent's `<modules>` tag when both the module and its parents are discovered as candidate targets. ([#1218](https://github.com/fossas/fossa-cli/pull/1218))
+- Network requests: `fossa-cli` retries network requests which return response with status code of 502. ([#1220](https://github.com/fossas/fossa-cli/pull/1220))
+- `PDM`: Adds support for PDM package manager. ([#1214](https://github.com/fossas/fossa-cli/pull/1214))
+
+## v3.8.0
+- License Scanning: You can license scan your first-party code with the `--experimental-force-first-party-scans` flag ([#1187](https://github.com/fossas/fossa-cli/pull/1187))
 - Network requests: `fossa-cli` retries network requests, if it experiences timeout error. ([#1203](https://github.com/fossas/fossa-cli/pull/1203))
 - Monorepo is no longer a supported feature of FOSSA. ([#1202](https://github.com/fossas/fossa-cli/pull/1202))
 - `experimental-enable-binary-discovery`, `detect-vendored`: Redact file contents in debug bundles. ([#1201](https://github.com/fossas/fossa-cli/pull/1201))
 - `setup.cfg`: Adds support for setup.cfg, in conjuction with `setup.py`. ([#1195](https://github.com/fossas/fossa-cli/pull/1195))
 - Default Filters: Default filters are applied prior to analysis. Improves overall runtime performance. ([#1193](https://github.com/fossas/fossa-cli/pull/1194))
+- `.fossa.yml` and CLI args: Allow setting a policy by id in addition to by name. ([#1203](https://github.com/fossas/fossa-cli/pull/1203))
 - Doc only: Fixed an issue in the `fossa-deps` schema suggesting against the use of `name` for referenced RPM dependencies. If your editor utilizes SchemaStore, this file should now lint properly after this change propagates. ([#1199](https://github.com/fossas/fossa-cli/pull/1199)).
 
 ## v3.7.11

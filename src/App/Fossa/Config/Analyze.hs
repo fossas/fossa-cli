@@ -6,6 +6,8 @@ module App.Fossa.Config.Analyze (
   BinaryDiscovery (..),
   ExperimentalAnalyzeConfig (..),
   ForceVendoredDependencyRescans (..),
+  ForceFirstPartyScans (..),
+  ForceNoFirstPartyScans (..),
   IATAssertion (..),
   DynamicLinkInspect (..),
   IncludeAll (..),
@@ -54,6 +56,7 @@ import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverit
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (
   BaseDir,
+  FirstPartyScansFlag (..),
   OverrideDynamicAnalysisBinary (..),
   OverrideProject (OverrideProject),
   ProjectMetadata (projectLabel),
@@ -109,6 +112,8 @@ import Types (ArchiveUploadType (..), LicenseScanPathFilters (..), TargetFilter)
 -- CLI flags, for use with 'Data.Flag'
 data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan deriving (Generic)
 data ForceVendoredDependencyRescans = ForceVendoredDependencyRescans deriving (Generic)
+data ForceFirstPartyScans = ForceFirstPartyScans deriving (Generic)
+data ForceNoFirstPartyScans = ForceNoFirstPartyScans deriving (Generic)
 
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
 data IncludeAll = IncludeAll deriving (Generic)
@@ -189,6 +194,8 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeSkipVSIGraphResolution :: [VSI.Locator]
   , analyzeBaseDir :: FilePath
   , analyzeDynamicGoAnalysisType :: GoDynamicTactic
+  , analyzeForceFirstPartyScans :: Flag ForceFirstPartyScans
+  , analyzeForceNoFirstPartyScans :: Flag ForceNoFirstPartyScans
   }
   deriving (Eq, Ord, Show)
 
@@ -217,6 +224,7 @@ data AnalyzeConfig = AnalyzeConfig
   , overrideDynamicAnalysis :: OverrideDynamicAnalysisBinary
   , systemPaths :: SystemPath
   , systemPathExt :: SystemPathExt
+  , firstPartyScansFlag :: FirstPartyScansFlag
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -264,6 +272,8 @@ cliParser =
     <*> many skipVSIGraphResolutionOpt
     <*> baseDirArg
     <*> experimentalUseV3GoResolver
+    <*> flagOpt ForceFirstPartyScans (long "experimental-force-first-party-scans" <> help "Force first party scans")
+    <*> flagOpt ForceNoFirstPartyScans (long "experimental-block-first-party-scans" <> help "Block first party scans. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans.")
 
 data GoDynamicTactic
   = GoModulesBasedTactic
@@ -382,6 +392,13 @@ mergeStandardOpts maybeConfig envvars@EnvVars{..} cliOpts@AnalyzeCliOpts{..} = d
       filters = collectFilters maybeConfig cliOpts
       experimentalCfgs = collectExperimental maybeConfig cliOpts
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
+      dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
+  firstPartyScansFlag <-
+    case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
+      (True, True) -> fatalText "You provided both the --experimental-force-first-party-scans and --experimental-block-first-party-scans flags. Only one of these flags may be used"
+      (True, _) -> pure FirstPartyScansOnFromFlag
+      (_, True) -> pure FirstPartyScansOffFromFlag
+      (False, False) -> pure FirstPartyScansUseDefault
 
   AnalyzeConfig
     <$> basedir
@@ -399,6 +416,8 @@ mergeStandardOpts maybeConfig envvars@EnvVars{..} cliOpts@AnalyzeCliOpts{..} = d
     <*> pure (OverrideDynamicAnalysisBinary envCmdOverrides)
     <*> pure envSystemPath
     <*> pure envSystemPathExt
+    <*> pure dynamicAnalysisOverrides
+    <*> pure firstPartyScansFlag
 
 collectFilters ::
   ( Has Diagnostics sig m
@@ -471,7 +490,7 @@ collectScanDestination maybeCfgFile envvars AnalyzeCliOpts{..} =
     then pure OutputStdout
     else do
       apiOpts <- collectApiOpts maybeCfgFile envvars commons
-      let metaMerged = maybe analyzeMetadata (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
+      metaMerged <- maybe (pure analyzeMetadata) (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
       when (length (projectLabel metaMerged) > 5) $ fatalText "Projects are only allowed to have 5 associated project labels"
       pure $ UploadScan apiOpts metaMerged
 

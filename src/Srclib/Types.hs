@@ -14,10 +14,13 @@ module Srclib.Types (
   LicenseUnitData (..),
   LicenseUnitInfo (..),
   LicenseUnitMatchData (..),
+  FullSourceUnit (..),
   renderLocator,
   parseLocator,
   emptyLicenseUnit,
   emptyLicenseUnitData,
+  sourceUnitToFullSourceUnit,
+  licenseUnitToFullSourceUnit,
 ) where
 
 import Data.Aeson
@@ -37,6 +40,102 @@ instance ToText LicenseScanType where
 
 instance ToJSON LicenseScanType where
   toJSON = toJSON . toText
+
+-- export interface SourceUnit {
+--   Name?: string;
+--   Type?: string;
+--   Repo?: string;
+--   Dir?: string;
+--   Ops?: {
+--     scan?: any;
+--     depresolve?: any;
+--     graph?: any;
+--   };
+--   ThemisVersion?: string;
+--   SourceUnits?: SourceUnit[];
+--   LicenseUnits?: SourceUnit[];
+--   Info?: any;
+--   Data?: SourceUnitNomosData[] | any;
+--   Licenses?: { [licenseId: string]: SourceUnitLicenseMatch[] }
+--   DeclaredLicenses?: SourceUnitLicense[];
+--   HiddenLicenses?: HiddenLicense[];
+--   NoticeFiles?: { [noticeFilePath: string]: string };
+--   Dependencies?: SourceUnitDependency[];
+--   DependencyLocks?: DependencyLock[];
+--   Build?: SourceUnitBuild;
+--   OriginPaths?: string[];
+--   AdditionalDependencyData?: {
+--     UserDefinedDependencies?: CLIUserDefinedDependency[];
+--     RemoteDependencies?: RemoteDependency[];
+--   };
+
+--   /**
+--    * Represents Manifest attribute
+--    *
+--    * For older CLI version submitted source unit,
+--    * It provides equivalent value to @OriginPaths
+--    */
+--   Manifest?: string;
+-- }
+
+data FullSourceUnit = FullSourceUnit
+  { fullSourceUnitName :: Text
+  , fullSourceUnitType :: Text
+  , fullSourceUnitManifest :: Maybe Text
+  , fullSourceUnitBuild :: Maybe SourceUnitBuild
+  , fullSourceUnitGraphBreadth :: GraphBreadth
+  , fullSourceUnitOriginPaths :: [SomeBase File]
+  , fullSourceUnitAdditionalData :: Maybe AdditionalDepData
+  , fullSourceUnitFiles :: Maybe (NonEmpty Text)
+  , fullSourceUnitData :: Maybe (NonEmpty LicenseUnitData)
+  , fullSourceUnitInfo :: Maybe LicenseUnitInfo
+  }
+  deriving (Eq, Ord, Show)
+
+licenseUnitToFullSourceUnit :: LicenseUnit -> FullSourceUnit
+licenseUnitToFullSourceUnit LicenseUnit{..} =
+  FullSourceUnit
+    { fullSourceUnitName = licenseUnitName
+    , fullSourceUnitType = licenseUnitType
+    , fullSourceUnitManifest = Nothing
+    , fullSourceUnitBuild = Nothing
+    , fullSourceUnitGraphBreadth = Complete
+    , fullSourceUnitOriginPaths = []
+    , fullSourceUnitAdditionalData = Nothing
+    , fullSourceUnitFiles = Just licenseUnitFiles
+    , fullSourceUnitData = Just licenseUnitData
+    , fullSourceUnitInfo = Just licenseUnitInfo
+    }
+
+sourceUnitToFullSourceUnit :: SourceUnit -> FullSourceUnit
+sourceUnitToFullSourceUnit SourceUnit{..} =
+  FullSourceUnit
+    { fullSourceUnitName = sourceUnitName
+    , fullSourceUnitType = sourceUnitType
+    , fullSourceUnitManifest = Just sourceUnitManifest
+    , fullSourceUnitBuild = sourceUnitBuild
+    , fullSourceUnitGraphBreadth = sourceUnitGraphBreadth
+    , fullSourceUnitOriginPaths = sourceUnitOriginPaths
+    , fullSourceUnitAdditionalData = additionalData
+    , fullSourceUnitFiles = Nothing
+    , fullSourceUnitData = Nothing
+    , fullSourceUnitInfo = Nothing
+    }
+
+instance ToJSON FullSourceUnit where
+  toJSON FullSourceUnit{..} =
+    object
+      [ "Name" .= fullSourceUnitName
+      , "Type" .= fullSourceUnitType
+      , "Manifest" .= fullSourceUnitManifest
+      , "Build" .= fullSourceUnitBuild
+      , "GraphBreadth" .= fullSourceUnitGraphBreadth
+      , "OriginPaths" .= fullSourceUnitOriginPaths
+      , "AdditionalDependencyData" .= fullSourceUnitAdditionalData
+      , "Files" .= fullSourceUnitFiles
+      , "Data" .= fullSourceUnitData
+      , "Info" .= fullSourceUnitInfo
+      ]
 
 -- | LicenseSourceUnit is the base of the results sent to Core for a CLI-side license scan
 -- licenseSourceUnitLicenseUnits will be empty if you scan an empty directory.

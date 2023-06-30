@@ -10,6 +10,7 @@ import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types (ScanID (..))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
+import App.Util (FileAncestry (..), ancestryDerived, ancestryDirect)
 import Control.Algebra (Has)
 import Control.Carrier.AtomicCounter (runAtomicCounter)
 import Control.Carrier.Diagnostics (runDiagnosticsIO, withResult)
@@ -36,9 +37,8 @@ import Discovery.Filters (AllFilters, combinedPaths, excludeFilters, includeFilt
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk)
 import Effect.Logger (Color (..), Logger, Severity (SevError, SevInfo, SevWarn), annotate, color, hsep, logDebug, logInfo, plural, pretty)
 import Effect.ReadFS (ReadFS)
-import Path (Abs, Dir, File, Path, Rel, SomeBase (Abs, Rel), isProperPrefixOf, toFilePath, (</>))
+import Path (Abs, Dir, File, Path, Rel, isProperPrefixOf, (</>))
 import Path qualified as P
-import Path.Extra (tryMakeRelative)
 
 runVsiAnalysis ::
   ( Has (Lift IO) sig m
@@ -264,25 +264,11 @@ discover output filters root renderAncestry =
       forkTask . recover . fatalOnSomeException "extract archive" . withArchive' file $ \archiveRoot -> context "walking into child archive" $ do
         logDebug . pretty $ "walking into " <> toText file <> " as archive"
         logicalParent <- convertArchiveSuffix logicalPath
-        discover output filters archiveRoot $ ancestryDerived logicalParent
+        discover output filters archiveRoot $ ancestryDerived $ FileAncestry logicalParent
 
       -- Report the fingerprint and logical path for computing this chunk.
       logDebug . pretty $ "report logical path: " <> toText logicalPath
       sendIO . atomically $ writeTBMChan output (logicalPath, fp)
-
--- | Renders the relative path from the provided directory to the file.
--- If the path cannot be made relative, fatally exits through the diagnostic effect.
-ancestryDirect :: Has Diagnostics sig m => Path Abs Dir -> Path Abs File -> m (Path Rel File)
-ancestryDirect dir file = case tryMakeRelative dir file of
-  Abs _ -> fatalText $ "failed to make " <> toText (toFilePath file) <> " relative to " <> toText (toFilePath dir)
-  Rel rel -> pure rel
-
--- | Renders the relative path from the provided directory to the file, prepended with the provided relative directory as a parent.
--- If the path cannot be made relative, fatally exits through the diagnostic effect.
-ancestryDerived :: Has Diagnostics sig m => Path Rel Dir -> Path Abs Dir -> Path Abs File -> m (Path Rel File)
-ancestryDerived parent dir file = do
-  rel <- ancestryDirect dir file
-  pure $ parent </> rel
 
 -- | Converts a relative file path into a relative directory, where the passed in file path is suffixed by the archive suffix literal.
 -- In other words, this:
