@@ -393,4 +393,6 @@ standardAnalyzeConfig =
     , ANZ.noDiscoveryExclusion = toFlag NoDiscoveryExclusion False
     , ANZ.overrideDynamicAnalysis = App.OverrideDynamicAnalysisBinary{unOverrideDynamicAnalysisBinary = mempty}
     , ANZ.firstPartyScansFlag = App.FirstPartyScansUseDefault
+    , ANZ.systemPaths = mempty
+    , ANZ.systemPathExt = mempty
     }
