@@ -392,7 +392,6 @@ mergeStandardOpts maybeConfig envvars@EnvVars{..} cliOpts@AnalyzeCliOpts{..} = d
       filters = collectFilters maybeConfig cliOpts
       experimentalCfgs = collectExperimental maybeConfig cliOpts
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
-      dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
   firstPartyScansFlag <-
     case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
       (True, True) -> fatalText "You provided both the --experimental-force-first-party-scans and --experimental-block-first-party-scans flags. Only one of these flags may be used"
@@ -416,7 +415,6 @@ mergeStandardOpts maybeConfig envvars@EnvVars{..} cliOpts@AnalyzeCliOpts{..} = d
     <*> pure (OverrideDynamicAnalysisBinary envCmdOverrides)
     <*> pure envSystemPath
     <*> pure envSystemPathExt
-    <*> pure dynamicAnalysisOverrides
     <*> pure firstPartyScansFlag
 
 collectFilters ::
