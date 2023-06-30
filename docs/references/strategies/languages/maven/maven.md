@@ -18,6 +18,7 @@ FOSSA CLI uses [strategy command selection](../../../../features/strategy-comman
 FOSSA CLI searches for the commands `mvnw` and `mvn` in order using the algorithm specified in that documentation.
 
 Users may also override the Maven command with the `FOSSA_MAVEN_CMD` environment variable.
+Note that this command override must be the _path_ to a Maven binary; specifying arguments in this variable is not supported.
 
 ## FAQ
 
