@@ -128,9 +128,9 @@ instance FromJSON CmdFailure where
   parseJSON = withObject "CmdFailure" $ \obj ->
     CmdFailure
       <$> obj
-        .: "cmdFailureCmd"
+      .: "cmdFailureCmd"
       <*> obj
-        .: "cmdFailureDir"
+      .: "cmdFailureDir"
       <*> (obj .: "cmdFailureExit" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStdout" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStderr" >>= fromRecordedValue)
@@ -285,27 +285,18 @@ instance ToDiagnostic ExecErr where
         , reportDefectMsg
         ]
 
--- | It is recommended that, if using @which@ or @which'@ to execute a binary,
--- binaries accessible in the system path are called simply by their name
--- on supported platforms.
---
--- This is because we've seen issues in some platforms where users have
--- a binary in their path and we provide the full path to the binary
--- the shell fails to run it, but if we provide just the name it works.
---
--- This type provides the ability to disambiguate:
--- the @FoundInSystemPath@ case provides the path but additionally provides
--- the argument that is recommended to pass as the @commandName@ in a @Command@.
+-- | The discovered location of a binary, and its name without the path segment.
+-- These are provided in case it is important for the caller to disambiguate the difference.
 data FoundLocation
-  = FoundInWorkDir (Path Abs File)
+  = FoundInWorkDir (Path Abs File) Text
   | FoundInSystemPath (Path Abs File) Text
   deriving (Show, Eq)
 
 -- | Convert a @FoundLocation@ to a @Command@ directly with the provided options.
 foundLocationToCommand :: [Text] -> AllowErr -> FoundLocation -> Command
 foundLocationToCommand args err = \case
-  FoundInWorkDir path -> Command (toText path) args err
-  FoundInSystemPath _ cmdName -> Command cmdName args err
+  FoundInWorkDir path _ -> Command (toText path) args err
+  FoundInSystemPath path _ -> Command (toText path) args err
 
 -- | Effects used for @which@ and @which'@.
 type WhichEffs sig m =
@@ -473,11 +464,11 @@ which' workdir bins = context describe $ do
 
   context "find in workdir ancestors" $
     nextPath workdirPaths names exts >>= \case
-      Just (path, _) -> pure . Just $ FoundInWorkDir path
+      Just (path, name) -> pure . Just $ FoundInWorkDir path name
       Nothing ->
         context "find in system path" $
           nextPath systemPaths' names exts >>= \case
-            Just (path, name) -> pure . Just $ systemPathFoundLocation (path, name)
+            Just (path, name) -> pure . Just $ FoundInSystemPath path name
             Nothing -> pure Nothing
   where
     describe :: Text
@@ -490,10 +481,6 @@ which' workdir bins = context describe $ do
           , show workdir
           , " }"
           ]
-
-    systemPathFoundLocation :: (Path Abs File, Text) -> FoundLocation
-    systemPathFoundLocation (path, cmdName) | runningInOS Windows = FoundInSystemPath path cmdName
-    systemPathFoundLocation (path, _) = FoundInSystemPath path $ toText path
 
     enumerateWithParents :: Path Abs Dir -> [Path Abs Dir]
     enumerateWithParents path = do

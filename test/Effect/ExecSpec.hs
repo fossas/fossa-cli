@@ -11,13 +11,15 @@ import Control.Carrier.Finally (runFinally)
 import Control.Carrier.Reader (runReader)
 import Control.Carrier.Stack (runStack)
 import Data.Either (isLeft)
-import Data.String.Conversion (toString)
+import Data.String.Conversion (ConvertUtf8 (decodeUtf8), toString, toText)
+import Data.Text (Text)
 import Diag.Result (Result (..))
 import Effect.Exec (
   AllowErr (..),
   Command (..),
   FoundLocation (..),
   exec,
+  foundLocationToCommand,
   runExecIO,
   which,
  )
@@ -81,6 +83,36 @@ spec = do
     systemPathExt <- runIO lookupSystemPathExt
     let testdataDir = dir </> $(mkRelDir "test/Effect/testdata")
 
+    helloDiscovery <-
+      runIO
+        . runStack
+        . runFinally
+        . runDiagnostics
+        . runReadFSIO
+        . runReader systemPath
+        . runReader systemPathExt
+        $ which testdataDir "hello"
+
+    helloExecution <-
+      runIO
+        . runStack
+        . runFinally
+        . runDiagnostics
+        . runReadFSIO
+        . runReader systemPath
+        . runReader systemPathExt
+        . runExecIO
+        $ do
+          case helloDiscovery of
+            Success _ (Just loc) -> do
+              let cmd = foundLocationToCommand [] Never loc
+              result <- exec testdataDir cmd
+              case result of
+                Left cf -> pure . Left . toText $ "failed to run command: " <> show cf
+                Right bs -> pure . Right $ decodeUtf8 @Text bs
+            Success _ Nothing -> pure $ Left "hellobin should be found, but was not"
+            Failure _ _ -> pure $ Left "hellobin should be found, but got failure running test"
+
     fakebin <-
       runIO
         . runStack
@@ -114,20 +146,27 @@ spec = do
     it "should find a binary in working directory" $ do
       assertOnSuccess fakebin $ \_ location -> do
         if runningInOS Windows
-          then location `shouldBe` (Just . FoundInWorkDir $ testdataDir </> $(mkRelFile "fakebin.EXE"))
-          else location `shouldBe` (Just . FoundInWorkDir $ testdataDir </> $(mkRelFile "fakebin"))
+          then location `shouldBe` Just (FoundInWorkDir (testdataDir </> $(mkRelFile "fakebin.EXE")) "fakebin")
+          else location `shouldBe` Just (FoundInWorkDir (testdataDir </> $(mkRelFile "fakebin")) "fakebin")
 
     it "should prefer working directory to system path" $ do
       assertOnSuccess cabalInWorkingDir $ \_ location -> do
         if runningInOS Windows
-          then location `shouldBe` (Just . FoundInWorkDir $ testdataDir </> $(mkRelFile "cabal.EXE"))
-          else location `shouldBe` (Just . FoundInWorkDir $ testdataDir </> $(mkRelFile "cabal"))
+          then location `shouldBe` Just (FoundInWorkDir (testdataDir </> $(mkRelFile "cabal.EXE")) "cabal")
+          else location `shouldBe` Just (FoundInWorkDir (testdataDir </> $(mkRelFile "cabal")) "cabal")
 
     it "should not find a binary that doesn't exist" $ do
       case fakebinNonExistent of
         Success _ (Just loc) -> expectationFailure ("fakebin_does_not_exist should not be found, but got: " <> show loc)
         Success _ Nothing -> pure ()
         Failure _ _ -> expectationFailure "fakebin_does_not_exist should not be found, but got failure running test"
+
+    it "should be able to execute a discovered binary" $ do
+      case helloExecution of
+        Success _ e -> case e of
+          Right output -> output `shouldBe` "hello"
+          Left err -> expectationFailure $ "hellobin should have been executed, but failed: " <> toString err
+        Failure _ _ -> expectationFailure "hellobin should have been executed, but got failure running test"
 
 lookupSystemPath :: IO SystemPath
 lookupSystemPath = do
