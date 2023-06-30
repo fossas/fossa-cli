@@ -6,64 +6,113 @@ FOSSA refers to such strategies as "dynamic analysis strategies".
 Some dynamic analysis strategies have multiple command options to use, preferred in a fallback manner.
 FOSSA refers to these as "candidate commands".
 
-FOSSA CLI chooses which command in a list of _candidate commands_ to use by running each command
-with a set of flags suitable for determining whether the candidate will work for FOSSA CLI.
-The particular flags used are up to each strategy; sometimes they simply test whether the command is able to run,
-and sometimes they may test that the command is of a particular minimum version or supports some capability.
-FOSSA refers to these flags as _evaluation flags_.
+FOSSA CLI builds candidate commands with a matrix of the following:
 
-If the command, run with the _evaluation flags_, exits with a non-zero exit code FOSSA CLI
-determines that the candidate command is unsuitable and moves on to the next candidate.
-If no suitable command is found, the overall strategy fails.
+- Command names (also called "binaries").
+- The scan directory and its ancestors.
+- PATH locations (`$PATH` in macOS and Linux; `%PATH%` in Windows).
+- Extensions the current system can execute (empty list in macOS and Linux; `%PATHEXT%` in Windows).
 
-If a _candidate command_ was chosen, but then later fails, FOSSA CLI treats
-this as an overall strategy failure since that command was determined to be the correct
-one to use for the project.
+FOSSA CLI chooses which command in a list of _candidate commands_ to use by checking for its existence on disk.
+If all directories, commands, and extensions are exhausted without finding a match, FOSSA analysis fails.
 
 ## Concrete example: Maven
 
-For example the "Maven" strategy prefers, in order:
+_Note: The command for Maven can be overriden with `FOSSA_MAVEN_CMD` as well._
+_The below is what happens when this override is not provided._
 
-1. The command provided by the user via `FOSSA_MAVEN_CMD`, if present.
-2. The local `mvnw` command, if one is found in the project or an ancestor directory.
-3. The `mvn` command in `$PATH`.
+The "Maven" strategy prefers, in order:
 
-Suppose FOSSA CLI is analyzing the following project:
+1. The `mvnw` command.
+2. The `mvn` command.
+
+FOSSA CLI searches for the first found in the list of desired _commands_,
+with the first found of system-supplied _execution extensions_,
+in the first of discovered _directories_.
+The search is conducted in the order of `directories -> commands -> extensions`.
+
+FOSSA CLI builds the list of _directories_ in two phases:
+First, it considers the scan directory and all its parent directories, up to the root of the drive.
+After that, it considers all entries in the system `PATH` environment variable.
+
+In Unix-based systems, _execution extensions_ are always an empty list.<br>
+In Windows-based systems, _execution extensions_ are determined using the system's
+`%PATHEXT%` environment variable. This variable allows Windows to tell programs
+the list of file extensions it considers "executable programs".
+
+Finally, the list of _commands_ depends on the strategy being executed.
+In this example (the Maven strategy), this list is comprised of `mvnw` followed by `mvn`.
+
+FOSSA CLI then generates a set of paths at which the command may exist
+based on the information collected up to this point.
+It then checks each location in order to see if a file exists at that location;
+if it does, FOSSA CLI uses that as the command to run.
+
+Below are two examples, one for Windows and one for macOS/Linux,
+demonstrating how these paths are built and the order in which they are checked.
+
+**These examples are simplified in an attempt to keep this document from becoming overly long.**
+**Note that in a real system, there are many more entries in `PATH` and `PATHEXT`.**
+
+**Windows**
+
 ```
-.
-├── mvnw
-├── pom.xml
-├── readme.md
-└── src
-   └── main
-      └── java
-         └── org
-            └── apache
-               └── maven
-                  └── wrapper
-                     └── BootstrapMainStarter.java
+Binaries: [ "mvn", "mvnw" ]
+PATH    : "C:\System32"
+PATHEXT : ".bat;.exe"
+SCANDIR : "C:\Users\me\projects\example"
 ```
 
-And that FOSSA CLI is being run with the following command:
+Searches:
+
 ```
-FOSSA_MAVEN_CMD=/usr/local/bin/custom-mvn fossa analyze
+C:\Users\me\projects\example\mvn.exe
+C:\Users\me\projects\example\mvn.bat
+C:\Users\me\projects\example\mvnw.exe
+C:\Users\me\projects\example\mvnw.bat
+C:\Users\me\projects\mvn.exe
+C:\Users\me\projects\mvn.bat
+C:\Users\me\projects\mvnw.exe
+C:\Users\me\projects\mvnw.bat
+C:\Users\me\mvn.exe
+C:\Users\me\mvn.bat
+C:\Users\me\mvnw.exe
+C:\Users\me\mvnw.bat
+C:\Users\mvn.exe
+C:\Users\mvn.bat
+C:\Users\mvnw.exe
+C:\Users\mvnw.bat
+C:\mvn.exe
+C:\mvn.bat
+C:\mvnw.exe
+C:\mvnw.bat
+C:\System32\mvn.exe
+C:\System32\mvn.bat
+C:\System32\mvnw.exe
+C:\System32\mvnw.bat
 ```
 
-This results in the following list of candidate commands,
-where the earlier in the list the command appears, the higher priority that command has:
+**macOS, Linux**
+
 ```
-[ "/usr/local/bin/custom-mvn"
-, "./mvnw"
-, "mvn"
-]
+Binaries: ["mvn", "mvnw"]
+PATH    : "/usr/local/bin"
+SCANDIR : "/home/me/projects/example"
 ```
 
-FOSSA CLI evaluates these candidates with the following commands in sequence,
-stopping after the first one evaluates with exit code zero (signifying no error):
-```
-; /usr/local/bin/custom-mvn -v # exit code 1
-; ./mvnw -v # exit code 0
-```
+Searches:
 
-Since `./mvnw` appears suitable, FOSSA CLI chooses that as the command to use
-and performs analysis on this Maven project using the `./mvnw` command.
+```
+/home/me/projects/example/mvn
+/home/me/projects/example/mvnw
+/home/me/projects/mvn
+/home/me/projects/mvnw
+/home/me/mvn
+/home/me/mvnw
+/home/mvn
+/home/mvnw
+/mvn
+/mvnw
+/usr/local/bin/mvn
+/usr/local/bin/mvnw
+```

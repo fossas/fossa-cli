@@ -14,12 +14,10 @@ Maven analysis attempts these analysis methods in order:
 3. Run the maven plugin command version 3.3.0.
 4. Scan `pom.xml` files located in the file tree.
 
-FOSSA CLI uses [strategy command selection](../../../../features/strategy-command-selection.md) for Maven commands:
-- Maven _candidate commands_ are:
-  - If present, the command specified by the `FOSSA_MAVEN_CMD` environment variable.
-  - If present, the `mvnw` or `mvnw.bat` script in the project directory or any ancestor directory.
-  - Finally, the `mvn` command, which is searched for in `$PATH`.
-- To choose a command from the candidates, FOSSA CLI runs each candidate with `-v` and selects the first one that succeeds.
+FOSSA CLI uses [strategy command selection](../../../../features/strategy-command-selection.md) for Maven commands.
+FOSSA CLI searches for the commands `mvnw` and `mvn` in order using the algorithm specified in that documentation.
+
+Users may also override the Maven command with the `FOSSA_MAVEN_CMD` environment variable.
 
 ## FAQ
 
