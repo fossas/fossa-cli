@@ -70,6 +70,7 @@ whenRuningInOS os = when (runningInOS os)
 -- | Get the user override command for a given dependency type.
 userOverrideCommand :: DepType -> OverrideDynamicAnalysisBinary -> Maybe Text
 userOverrideCommand depType = Map.lookup depType . unOverrideDynamicAnalysisBinary
+
 -- | Renders the relative path from the provided directory to the file.
 -- If the path cannot be made relative, fatally exits through the diagnostic effect.
 ancestryDirect :: Has Diagnostics sig m => Path Abs Dir -> Path Abs File -> m (Path Rel File)
