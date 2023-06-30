@@ -128,9 +128,9 @@ instance FromJSON CmdFailure where
   parseJSON = withObject "CmdFailure" $ \obj ->
     CmdFailure
       <$> obj
-        .: "cmdFailureCmd"
+      .: "cmdFailureCmd"
       <*> obj
-        .: "cmdFailureDir"
+      .: "cmdFailureDir"
       <*> (obj .: "cmdFailureExit" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStdout" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStderr" >>= fromRecordedValue)
@@ -396,58 +396,58 @@ which workdir bin = which' workdir (singleton bin)
 --
 -- __Windows__
 --
--- > Binaries: [ "mvn", "mvnw" ]
+-- > Binaries: [ "mvnw", "mvn" ]
 -- > PATH    : "C:\System32"
 -- > PATHEXT : ".bat;.exe"
 -- > WORKDIR : "C:\Users\me\projects\example"
 --
 -- Searches:
 --
--- > C:\Users\me\projects\example\mvn.exe
--- > C:\Users\me\projects\example\mvn.bat
 -- > C:\Users\me\projects\example\mvnw.exe
 -- > C:\Users\me\projects\example\mvnw.bat
--- > C:\Users\me\projects\mvn.exe
--- > C:\Users\me\projects\mvn.bat
+-- > C:\Users\me\projects\example\mvn.exe
+-- > C:\Users\me\projects\example\mvn.bat
 -- > C:\Users\me\projects\mvnw.exe
 -- > C:\Users\me\projects\mvnw.bat
--- > C:\Users\me\mvn.exe
--- > C:\Users\me\mvn.bat
+-- > C:\Users\me\projects\mvn.exe
+-- > C:\Users\me\projects\mvn.bat
 -- > C:\Users\me\mvnw.exe
 -- > C:\Users\me\mvnw.bat
--- > C:\Users\mvn.exe
--- > C:\Users\mvn.bat
+-- > C:\Users\me\mvn.exe
+-- > C:\Users\me\mvn.bat
 -- > C:\Users\mvnw.exe
 -- > C:\Users\mvnw.bat
--- > C:\mvn.exe
--- > C:\mvn.bat
+-- > C:\Users\mvn.exe
+-- > C:\Users\mvn.bat
 -- > C:\mvnw.exe
 -- > C:\mvnw.bat
--- > C:\System32\mvn.exe
--- > C:\System32\mvn.bat
+-- > C:\mvn.exe
+-- > C:\mvn.bat
 -- > C:\System32\mvnw.exe
 -- > C:\System32\mvnw.bat
+-- > C:\System32\mvn.exe
+-- > C:\System32\mvn.bat
 --
 -- __Linux, macOS__
 --
--- > Binaries: ["mvn", "mvnw"]
+-- > Binaries: [ "mvnw", "mvn" ]
 -- > PATH    : "/usr/local/bin"
 -- > WORKDIR : "/home/me/projects/example"
 --
 -- Searches:
 --
--- > /home/me/projects/example/mvn
 -- > /home/me/projects/example/mvnw
--- > /home/me/projects/mvn
+-- > /home/me/projects/example/mvn
 -- > /home/me/projects/mvnw
--- > /home/me/mvn
+-- > /home/me/projects/mvn
 -- > /home/me/mvnw
--- > /home/mvn
+-- > /home/me/mvn
 -- > /home/mvnw
--- > /mvn
+-- > /home/mvn
 -- > /mvnw
--- > /usr/local/bin/mvn
+-- > /mvn
 -- > /usr/local/bin/mvnw
+-- > /usr/local/bin/mvn
 which' :: (WhichEffs sig m) => Path Abs Dir -> NonEmpty Text -> m (Maybe FoundLocation)
 which' workdir bins = context describe $ do
   (systemPaths :: SystemPath) <- ask

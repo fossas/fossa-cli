@@ -216,7 +216,7 @@ mavenCommand workdir args allowErr = do
   case override of
     Just cmd -> pure $ Command cmd args allowErr
     Nothing ->
-      which' workdir ("mvn" :| ["mvnw"]) >>= \case
+      which' workdir ("mvnw" :| ["mvn"]) >>= \case
         Just mvn -> pure $ foundLocationToCommand args allowErr mvn
         Nothing -> fatalText "Could not find maven executable"
 
