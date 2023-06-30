@@ -30,6 +30,7 @@ import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Path (File, SomeBase)
+import Path.Extra (SomePath)
 import Types (GraphBreadth (..))
 
 data LicenseScanType = CliLicenseScanned
@@ -84,7 +85,7 @@ data FullSourceUnit = FullSourceUnit
   , fullSourceUnitManifest :: Maybe Text
   , fullSourceUnitBuild :: Maybe SourceUnitBuild
   , fullSourceUnitGraphBreadth :: GraphBreadth
-  , fullSourceUnitOriginPaths :: [Text]
+  , fullSourceUnitOriginPaths :: [SomePath]
   , fullSourceUnitAdditionalData :: Maybe AdditionalDepData
   , fullSourceUnitFiles :: Maybe (NonEmpty Text)
   , fullSourceUnitData :: Maybe (NonEmpty LicenseUnitData)
@@ -290,7 +291,7 @@ data SourceUnit = SourceUnit
   -- ^ path to manifest file
   , sourceUnitBuild :: Maybe SourceUnitBuild
   , sourceUnitGraphBreadth :: GraphBreadth
-  , sourceUnitOriginPaths :: [Text]
+  , sourceUnitOriginPaths :: [SomePath]
   , additionalData :: Maybe AdditionalDepData
   }
   deriving (Eq, Ord, Show)

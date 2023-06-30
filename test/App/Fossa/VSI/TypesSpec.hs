@@ -136,6 +136,6 @@ generateRulesSpec = describe "generateRules" $ do
     generateRules' = generateRules . VsiExportedInferencesBody . Map.fromList
 
 spec :: Spec
-spec = focus $ do
+spec = do
   vsiTypesSpec
   generateRulesSpec

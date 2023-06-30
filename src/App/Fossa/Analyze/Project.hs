@@ -10,7 +10,7 @@ import DepTypes
 import Graphing (Graphing)
 import Graphing qualified
 import Path
-import Path.Extra (tryMakeRelative)
+import Path.Extra (SomePath (SomeFile), tryMakeRelative)
 import Types
 
 mkResult :: Path Abs Dir -> DiscoveredProject n -> Maybe FileAncestry -> (DependencyResults) -> ProjectResult
@@ -33,7 +33,7 @@ mkResult basedir project pathPrefix dependencyResults =
   where
     graph = dependencyGraph dependencyResults
     relativeManifestFiles = map (tryMakeRelative basedir) $ dependencyManifestFiles dependencyResults
-    prefixedManifestFiles = map (toText . addPrefix (fileAncestryPath <$> pathPrefix)) relativeManifestFiles
+    prefixedManifestFiles = map (SomeFile . addPrefix (fileAncestryPath <$> pathPrefix)) relativeManifestFiles
     addPrefix :: Maybe (Path Rel Dir) -> SomeBase File -> SomeBase File
     addPrefix maybePrefix relativeFile =
       case (maybePrefix, relativeFile) of
@@ -46,7 +46,7 @@ data ProjectResult = ProjectResult
   , projectResultPath :: Path Abs Dir
   , projectResultGraph :: Graphing Dependency
   , projectResultGraphBreadth :: GraphBreadth
-  , projectResultManifestFiles :: [Text]
+  , projectResultManifestFiles :: [SomePath]
   }
   deriving (Show)
 

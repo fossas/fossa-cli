@@ -19,15 +19,15 @@ import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger)
 import Data.Bifunctor (first)
 import Data.List (partition)
-import Data.String.Conversion (toString, toText)
+import Data.String.Conversion (toString)
 import DepTypes (Dependency)
 import Discovery.Filters (AllFilters)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
 import Graphing qualified
-import Path (Abs, Dir, Path)
-import Path.Posix (parseAbsDir)
+import Path (Abs, Dir, Path, SomeBase (..), parseAbsDir)
+import Path.Extra (SomePath (SomeDir))
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
 import Types (DiscoveredProjectType (VsiProjectType), GraphBreadth (Complete))
@@ -75,7 +75,7 @@ analyzeVSIDeps dir projectRevision filters skipResolving = do
         Nothing -> fatal $ "Could not parse rule path: " <> show vsiRulePath
 
 toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
-toProject dir graph = ProjectResult VsiProjectType dir graph Complete [toText dir]
+toProject dir graph = ProjectResult VsiProjectType dir graph Complete [SomeDir . Abs $ dir]
 
 toSourceUnit :: ProjectResult -> Maybe [SourceUserDefDep] -> SourceUnit
 toSourceUnit project deps = do

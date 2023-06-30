@@ -60,7 +60,7 @@ import Effect.Logger (Logger, indent, pretty, vsep)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
 import Fossa.API.Types (ApiOpts, Organization (..))
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
-import Path.Extra (tryMakeRelative)
+import Path.Extra (SomePath (SomeFile), tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
 import Types (ArchiveUploadType (..), GraphBreadth (..))
@@ -174,7 +174,7 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
       , sourceUnitType = "user-specific-yaml"
       , sourceUnitBuild = build
       , sourceUnitGraphBreadth = Complete
-      , sourceUnitOriginPaths = [showText originPath]
+      , sourceUnitOriginPaths = [SomeFile originPath]
       , additionalData = additional
       }
 
