@@ -10,7 +10,7 @@ module Path.Extra (
 
 import Control.Effect.Record (RecordableValue)
 import Control.Effect.Replay (ReplayableValue)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON, ToJSON (toJSON))
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
 import GHC.Generics (Generic)
@@ -23,7 +23,10 @@ data SomePath
   | SomeDir (SomeBase Dir)
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON SomePath
+instance ToJSON SomePath where
+  toJSON (SomeFile f) = toJSON f
+  toJSON (SomeDir d) = toJSON d
+  
 instance RecordableValue SomePath
 instance FromJSON SomePath
 instance ReplayableValue SomePath
