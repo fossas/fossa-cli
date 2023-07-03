@@ -26,7 +26,7 @@ data SomePath
 instance ToJSON SomePath where
   toJSON (SomeFile f) = toJSON f
   toJSON (SomeDir d) = toJSON d
-  
+
 instance RecordableValue SomePath
 instance FromJSON SomePath
 instance ReplayableValue SomePath

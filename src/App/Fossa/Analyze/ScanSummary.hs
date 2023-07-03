@@ -68,10 +68,11 @@ import Srclib.Types (
   AdditionalDepData (remoteDeps, userDefinedDeps),
   Locator (locatorFetcher, locatorProject),
   SourceRemoteDep (srcRemoteDepName),
-  SourceUnit (additionalData, sourceUnitBuild),
-  SourceUnitBuild (buildDependencies),
+  SourceUnit (SourceUnit, additionalData, sourceUnitBuild),
+  SourceUnitBuild (..),
   SourceUnitDependency (sourceDepLocator),
   SourceUserDefDep (srcUserDepName),
+  renderLocator,
   sourceUnitOriginPaths,
  )
 import Types (DepType (ArchiveType), DiscoveredProjectType, projectTypeToText)
@@ -175,7 +176,7 @@ summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicL
           <> summarizeSrcUnit "fossa-deps file analysis" (Just getManualVendorDepsIdentifier) manualDeps
           <> [""]
   where
-    vsiResults = summarizeSrcUnit "vsi analysis" (Just vsiSourceUnits) vsi
+    vsiResults = summarizeSrcUnit "vsi analysis" (Just (join . map vsiSourceUnits)) vsi
     projects = sort dps
     totalScanCount =
       mconcat
@@ -186,8 +187,19 @@ summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicL
         , srcUnitToScanCount dynamicLinkingDeps
         ]
 
-    vsiSourceUnits :: [SourceUnit] -> [Text]
-    vsiSourceUnits = map toText . join . map sourceUnitOriginPaths
+    -- This function relies on the fact that there is only ever one package in a vsi source unit dep graph.
+    -- It is not generally usable forall all SourceUnits.
+    vsiSourceUnits :: SourceUnit -> [Text]
+    vsiSourceUnits sUnit =
+      let renderOriginPath =
+            case vsiSrcUnitLocator sUnit of
+              Just loc -> \originPath -> toText originPath <> " (locator: " <> renderLocator loc <> ")"
+              _ -> toText
+       in map renderOriginPath (sourceUnitOriginPaths sUnit)
+
+    vsiSrcUnitLocator :: SourceUnit -> Maybe Locator
+    vsiSrcUnitLocator SourceUnit{sourceUnitBuild = Just SourceUnitBuild{buildImports = [locator]}} = Just locator
+    vsiSrcUnitLocator _ = Nothing
 
 listSymbol :: Doc AnsiStyle
 listSymbol = "* "
