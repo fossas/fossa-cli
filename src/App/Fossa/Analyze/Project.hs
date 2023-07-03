@@ -4,8 +4,6 @@ module App.Fossa.Analyze.Project (
 ) where
 
 import App.Util (FileAncestry (..))
-import Data.String.Conversion (toText)
-import Data.Text (Text)
 import DepTypes
 import Graphing (Graphing)
 import Graphing qualified

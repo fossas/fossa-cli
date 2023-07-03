@@ -50,7 +50,7 @@ import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, isJust)
-import Data.String.Conversion (showText, toString, toText)
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text, toLower)
 import Data.Text qualified as Text
 import DepTypes (DepType (..))
