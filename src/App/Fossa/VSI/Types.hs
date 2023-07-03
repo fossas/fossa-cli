@@ -18,7 +18,6 @@ module App.Fossa.VSI.Types (
   VsiFilePath (..), -- data constructor only exported for testing
   VsiRulePath (..), -- data constructor only exported for testing
   VsiInference (..),
-  -- VsiLocator (..), -- data constructor only exported for testing
   VsiRule (..),
   VsiExportedInferencesBody (..),
   generateRules,
