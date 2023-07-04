@@ -1,5 +1,9 @@
-module Graphing.Enrich (
+module Strategy.Conan.Enrich (
   conanToArchives,
+  -- for testing
+  conanDepToVendorDep,
+  locatorToArchiveDep,
+  findArchiveTwin,
 ) where
 
 import App.Fossa.LicenseScanner (licenseScanSourceUnit)
@@ -31,6 +35,9 @@ import Path (Abs, Dir, Path)
 import Srclib.Converter (fetcherToDepType, toLocator, verConstraintToRevision)
 import Srclib.Types (Locator (locatorFetcher, locatorProject, locatorRevision))
 
+newtype LonelyDeps = LonelyDeps {unLonelyDeps :: [Dependency]}
+  deriving (Eq, Ord, Show)
+
 -- | Transform all 'Conan' dependency to 'Archive' dependency.
 -- It performs cli-side license scanning and upload of results. In this,
 -- transformation,
@@ -47,9 +54,10 @@ conanToArchives ::
   , Has FossaApiClient sig m
   ) =>
   Path Abs Dir -> -- directory of the project's manifest
+  FullFileUploads ->
   Graphing Dependency -> -- graph whose conan dependency to make archives
   m (Graphing Dependency) -- graph with archive dependencies
-conanToArchives rootPath g =
+conanToArchives rootPath fullfileUploads g =
   -- If we do not have any conan dependencies, we do not
   -- need to do any work!
   case (null unableToTransformConanDep, transformedVendorDep) of
@@ -67,7 +75,7 @@ conanToArchives rootPath g =
           -- manifest are rarely updated with changes in practice
           SkippingNotSupported
           Nothing -- Ignore path filters
-          (FullFileUploads False)
+          fullfileUploads
           rootPath
           vendorDeps
 
@@ -101,22 +109,22 @@ conanToArchives rootPath g =
     transformedVendorDep :: Maybe (NonEmpty (Dependency, VendoredDependency))
     transformedVendorDep = nonEmpty . snd $ toVendorDeps allConanDeps
 
-    archiveToConanDep :: [Dependency] -> Either [Dependency] [(Dependency, Dependency)]
-    archiveToConanDep archiveDeps = sequence' $ map (findArchiveTwin archiveDeps) allConanDeps
+    archiveToConanDep :: [Dependency] -> Either LonelyDeps [(Dependency, Dependency)]
+    archiveToConanDep archiveDeps = partitionEithers' $ map (findArchiveTwin archiveDeps) allConanDeps
 
 -- | True if dependency is a conan dependency, otherwise False.
 isConanDep :: Dependency -> Bool
 isConanDep d = dependencyType d == ConanType
 
-sequence' :: [Either a b] -> Either [a] [b]
-sequence' r = case partitionEithers r of
+partitionEithers' :: [Either Dependency a] -> Either LonelyDeps [a]
+partitionEithers' r = case partitionEithers r of
   ([], xs) -> Right xs
-  (xs, _) -> Left xs
+  (xs, _) -> Left $ LonelyDeps xs
 
 toVendorDeps :: [Dependency] -> ([Dependency], [(Dependency, VendoredDependency)])
 toVendorDeps deps = partitionEithers $ map conanDepToVendorDep deps
 
--- | Trasnforms Conan dependency to Vendor Dependency.
+-- | Transforms Conan dependency to Vendor Dependency.
 conanDepToVendorDep :: Dependency -> Either Dependency (Dependency, VendoredDependency)
 conanDepToVendorDep d =
   case listToMaybe $ dependencyLocations d of
@@ -158,7 +166,7 @@ locatorToArchiveDep deps l = case (fetcherToDepType $ locatorFetcher l, depOfLoc
       find
         ( \d ->
             dependencyName d == (unOrg . locatorProject $ l)
-              && dependencyType d == ConanType
+              && isConanDep d
               && dependencyVersion d == (CEq <$> locatorRevision l)
         )
         deps
@@ -218,9 +226,9 @@ instance ToDiagnostic FailedToTransformLocators where
       , "This is likely a defect, please contact FOSSA support!"
       ]
 
-newtype UnableToFindTwinOfArchiveDep = UnableToFindTwinOfArchiveDep [Dependency]
+newtype UnableToFindTwinOfArchiveDep = UnableToFindTwinOfArchiveDep LonelyDeps
 instance ToDiagnostic UnableToFindTwinOfArchiveDep where
-  renderDiagnostic (UnableToFindTwinOfArchiveDep deps) =
+  renderDiagnostic (UnableToFindTwinOfArchiveDep (LonelyDeps deps)) =
     vsep
       [ "We could not identify conan dependency for following dependencies:"
       , ""

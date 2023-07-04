@@ -1,7 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Graphing.EnrichSpec (spec) where
+module Conan.EnrichSpec (spec) where
 
+import App.Fossa.VendoredDependency (VendoredDependency (..))
 import App.Types (FullFileUploads (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (
@@ -26,13 +27,13 @@ import DepTypes (
  )
 import Fossa.API.Types (Archive (Archive), ArchiveComponents (..))
 import Graphing (directs, edges)
-import Graphing.Enrich (conanToArchives)
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
-import Srclib.Types (LicenseSourceUnit)
+import Srclib.Types (LicenseSourceUnit, Locator (..))
+import Strategy.Conan.Enrich (conanDepToVendorDep, conanToArchives, findArchiveTwin, locatorToArchiveDep)
 import Test.Effect (expectFatal', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
-import Test.Hspec (Spec, describe, runIO)
+import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Test.MockApi (MockApi, alwaysReturns, returnsOnce, returnsOnceForAnyRequest)
 
 fixtureDir :: Path Rel Dir
@@ -40,9 +41,14 @@ fixtureDir = $(mkRelDir "test/App/Fossa/VendoredDependency/testdata/repo")
 
 spec :: Spec
 spec = do
+  conanToVendoredDepSpec
+  locatorToArchiveDepSpec
+  findArchiveTwinSpec
+
   describe "enrich" $ do
     currDir <- runIO getCurrentDir
     let scanDir = currDir </> fixtureDir
+    let conanToArchives' root = conanToArchives root (FullFileUploads False)
 
     it' "should transform conan dependency into archive dependency" $ do
       expectGetApiOpts
@@ -54,7 +60,7 @@ spec = do
       let graph = directs [conanDepFoo]
       let graph' = directs [archiveDepFoo]
 
-      res <- conanToArchives scanDir graph
+      res <- conanToArchives' scanDir graph
       res `shouldBe'` graph'
 
     it' "should preserve dependency environment" $ do
@@ -82,7 +88,7 @@ spec = do
                   mempty
               ]
 
-      res <- conanToArchives scanDir graph
+      res <- conanToArchives' scanDir graph
       res `shouldBe'` graph'
 
     it' "should preserve dependency edges" $ do
@@ -99,17 +105,17 @@ spec = do
       -- A -> archive+42/foo -> B
       let graph' = directs [npmA] <> edges [(npmA, archiveDepFoo), (archiveDepFoo, npmB)]
 
-      result <- conanToArchives scanDir graph
+      result <- conanToArchives' scanDir graph
       result `shouldBe'` graph'
 
     it' "should return supplied graph if there are no conan dependencies in the graph" $ do
       let graph = directs [npmA]
-      result <- conanToArchives scanDir graph
+      result <- conanToArchives' scanDir graph
       result `shouldBe'` graph
 
     it' "should fail if there are conan dependencies without dependency locations" $ do
       let graph = directs [conanDepEvil]
-      expectFatal' $ conanToArchives scanDir graph
+      expectFatal' $ conanToArchives' scanDir graph
 
 -- Npm Dependency Fixture
 
@@ -166,3 +172,44 @@ expectGetSignedUrl packageRevision = GetSignedLicenseScanUrl packageRevision `al
 expectUploadLicenseScanResult :: Has MockApi sig m => LicenseSourceUnit -> m ()
 expectUploadLicenseScanResult licenseUnit =
   (UploadLicenseScanResult Fixtures.signedUrl licenseUnit) `returnsOnceForAnyRequest` ()
+
+conanToVendoredDepSpec :: Spec
+conanToVendoredDepSpec =
+  describe "conanToVendoredDep" $ do
+    it "should transforms conan to vendor dep, when dep has location" $ do
+      let res = conanDepToVendorDep conanDepFoo
+      res `shouldBe` Right (conanDepFoo, VendoredDependency "foo" "vendored/foo" $ Just "0.0.1")
+
+    it "should not transforms conan to vendor dep, when dep does not have location" $ do
+      let dep = conanDepFoo{dependencyLocations = []}
+      let res = conanDepToVendorDep dep
+      res `shouldBe` (Left dep)
+
+locatorToArchiveDepSpec :: Spec
+locatorToArchiveDepSpec =
+  describe "locatorToArchiveDep" $ do
+    it "should transforms archive locator to vendor dep" $ do
+      let loc = Locator "archive" "42/foo" $ Just "0.0.1"
+      let res = locatorToArchiveDep [conanDepFoo] loc
+      res `shouldBe` (Right archiveDepFoo)
+
+    it "should not transforms non-archive locator to vendor dep" $ do
+      let loc = Locator "pip" "foo" $ Just "1.0.0"
+      let res = locatorToArchiveDep [conanDepFoo] loc
+      res `shouldBe` (Left loc)
+
+findArchiveTwinSpec :: Spec
+findArchiveTwinSpec =
+  describe "findArchiveTwin" $ do
+    it "should find archive sibling for given conan dependency" $ do
+      let res = findArchiveTwin [archiveDepFoo] conanDepFoo
+      res `shouldBe` (Right (conanDepFoo, archiveDepFoo))
+
+    it "should not find archive sibling for inequivalent conan dependency (dep name differs)" $ do
+      let res = findArchiveTwin [archiveDepFoo] conanDepEvil
+      res `shouldBe` (Left conanDepEvil)
+
+    it "should not find archive sibling for inequivalent conan dependency (location differs)" $ do
+      let dep' = conanDepFoo{dependencyLocations = []}
+      let res = findArchiveTwin [archiveDepFoo] dep'
+      res `shouldBe` (Left dep')

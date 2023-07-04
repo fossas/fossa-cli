@@ -331,7 +331,6 @@ library
     Fossa.API.Types
     Graphing
     Graphing.Debug
-    Graphing.Enrich
     Graphing.Hydrate
     Network.HTTP.Req.Extra
     Parse.XML
@@ -354,6 +353,7 @@ library
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer
     Strategy.Conan.ConanGraph
+    Strategy.Conan.Enrich
     Strategy.Conan.Version
     Strategy.Conda
     Strategy.Conda.CondaEnvCreate
@@ -534,6 +534,7 @@ test-suite unit-tests
     Composer.ComposerJsonSpec
     Composer.ComposerLockSpec
     Conan.ConanGraphSpec
+    Conan.EnrichSpec
     Conan.VersionSpec
     Conda.CondaEnvCreateSpec
     Conda.EnvironmentYmlSpec
@@ -580,7 +581,6 @@ test-suite unit-tests
     Googlesource.RepoManifestSpec
     Gradle.CommonSpec
     Gradle.ResolutionApiSpec
-    Graphing.EnrichSpec
     Graphing.HydrateSpec
     GraphingSpec
     GraphUtil
