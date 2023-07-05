@@ -60,6 +60,7 @@ import App.Types (
   OverrideDynamicAnalysisBinary,
   ProjectRevision (..),
  )
+import App.Util (FileAncestry, ancestryDirect)
 import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)
@@ -180,10 +181,14 @@ runDependencyAnalysis ::
   ) =>
   -- | Analysis base directory
   Path Abs Dir ->
+  -- | Filters
   AllFilters ->
+  -- | An optional path prefix to prepend to paths of discovered manifestFiles
+  Maybe FileAncestry ->
+  -- | The project to analyze
   DiscoveredProject proj ->
   m ()
-runDependencyAnalysis basedir filters project@DiscoveredProject{..} = do
+runDependencyAnalysis basedir filters pathPrefix project@DiscoveredProject{..} = do
   let dpi = DiscoveredProjectIdentifier projectPath projectType
   let hasNonProductionPath = isDefaultNonProductionPath basedir projectPath
 
@@ -202,7 +207,7 @@ runDependencyAnalysis basedir filters project@DiscoveredProject{..} = do
         trackTimeSpent (showT projectType) $ analyzeProject targets projectData
       Diag.flushLogs SevError SevDebug graphResult
       trackResult graphResult
-      output $ Scanned dpi (mkResult basedir project <$> graphResult)
+      output $ Scanned dpi (mkResult basedir project pathPrefix <$> graphResult)
 
 applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
 applyFiltersToProject basedir filters DiscoveredProject{..} =
@@ -220,17 +225,18 @@ runAnalyzers ::
   , Has TaskPool sig m
   , Has AtomicCounter sig m
   ) =>
-  Path Abs Dir ->
   AllFilters ->
+  Path Abs Dir ->
+  Maybe FileAncestry ->
   m ()
-runAnalyzers basedir filters = do
+runAnalyzers filters basedir pathPrefix = do
   if filterIsVSIOnly filters
     then do
       logInfo "Running in VSI only mode, skipping other analyzers"
       pure ()
     else traverse_ single discoverFuncs
   where
-    single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters)
+    single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters pathPrefix)
 
 analyze ::
   ( Has Debug sig m
@@ -315,10 +321,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       . runReader discoveryFilters
       . runReader (Config.overrideDynamicAnalysis cfg)
       $ do
-        runAnalyzers basedir filters
+        runAnalyzers filters basedir Nothing
         when (fromFlag UnpackArchives $ Config.unpackArchives cfg) $
           forkTask $ do
-            res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (`runAnalyzers` filters) basedir
+            res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (runAnalyzers filters) basedir ancestryDirect
             Diag.withResult SevError SevWarn res (const (pure ()))
 
   let projectResults = mapMaybe toProjectResult projectScans

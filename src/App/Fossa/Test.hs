@@ -20,6 +20,7 @@ import App.Types (
   ProjectRevision (projectName, projectRevision),
  )
 import Control.Algebra (Has)
+import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
@@ -50,51 +51,53 @@ testMain ::
   ) =>
   TestConfig ->
   m ()
-testMain config = runStickyLogger SevInfo
-  . runFossaApiClient (Config.apiOpts config)
-  . timeout' (Config.timeout config)
-  $ \cancelFlag -> do
-    let revision = Config.projectRevision config
-        outputType = Config.outputFormat config
-        diffRev = diffRevision config
+testMain config =
+  runStickyLogger SevInfo
+    . ignoreDebug -- Ignore the debug effect because we don't generate a bundle.
+    . runFossaApiClient (Config.apiOpts config)
+    . timeout' (Config.timeout config)
+    $ \cancelFlag -> do
+      let revision = Config.projectRevision config
+          outputType = Config.outputFormat config
+          diffRev = diffRevision config
 
-    logInfo ""
-    logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
-    logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
+      logInfo ""
+      logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
+      logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
 
-    case diffRev of
-      Nothing -> logInfo ""
-      Just (DiffRevision rev) -> do
-        logInfo ("diffing against revision: `" <> pretty rev <> "`")
-        logSticky $ "[ Waiting for build completion of " <> rev <> "... ]"
-        waitForScanCompletion revision{projectRevision = rev} cancelFlag
+      case diffRev of
+        Nothing -> logInfo ""
+        Just (DiffRevision rev) -> do
+          logInfo ("diffing against revision: `" <> pretty rev <> "`")
+          logSticky $ "[ Waiting for build completion of " <> rev <> "... ]"
+          waitForScanCompletion revision{projectRevision = rev} cancelFlag
 
-    logSticky "[ Waiting for build completion... ]"
-    waitForScanCompletion revision cancelFlag
+      logSticky "[ Waiting for build completion... ]"
+      waitForScanCompletion revision cancelFlag
 
-    logSticky "[ Waiting for issue scan completion... ]"
-    issues <- waitForIssues revision diffRev cancelFlag
-    logSticky ""
-    logInfo ""
+      logSticky "[ Waiting for issue scan completion... ]"
+      issues <- waitForIssues revision diffRev cancelFlag
+      logSticky ""
+      logInfo ""
 
-    case issuesCount issues of
-      0 -> do
-        logInfo . pretty $ successMsg diffRev
-        case outputType of
-          TestOutputPretty -> pure ()
-          TestOutputJson -> renderJson issues
-      n -> do
-        if null (issuesIssues issues)
-          then
-            logError $
-              vsep
-                [ "A push-only API key was used, so issue details cannot be displayed."
-                , "Check the webapp for issue details, or rerun this command with a full-access API key."
-                ]
-          else case outputType of
-            TestOutputPretty -> logError $ pretty issues
+      case issuesCount issues of
+        0 -> do
+          logInfo . pretty $ successMsg diffRev
+          case outputType of
+            TestOutputPretty -> pure ()
             TestOutputJson -> renderJson issues
-        fatalText $ issesFoundMsg diffRev n
+        n -> do
+          if null (issuesIssues issues)
+            then
+              logError $
+                vsep
+                  [ "A push-only API key was used, so issue details cannot be displayed."
+                  , "Check the webapp for issue details, or rerun this command with a full-access API key."
+                  ]
+            else case outputType of
+              TestOutputPretty -> logError $ pretty issues
+              TestOutputJson -> renderJson issues
+          fatalText $ issesFoundMsg diffRev n
   where
     successMsg :: Maybe DiffRevision -> Text
     successMsg diffRevision = case diffRevision of
