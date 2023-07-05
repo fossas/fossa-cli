@@ -65,7 +65,7 @@ In those languages including a dependency in a package manager and importing any
 In this case, a dependency is an artifact for both code distribution and code use. 
 Because Go modules have both of those concepts separately, we can end up with a situation like the following dependency diagram:
 
-![Diagram of a Go project's packages and modules](./go-pkg-mod-diagram.svg).
+![Diagram of a Go project's packages and modules](./go-pkg-mod-diagram.png).
 
 In this diagram modules are denoted using boxes and packages are denoted using ovals. 
 At the module level it’s pretty clear what is happening. The Main Module depends on Module A which depends on Module B. 
