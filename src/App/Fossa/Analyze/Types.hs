@@ -70,7 +70,7 @@ type AnalyzeStaticTaskEffs sig m =
 
 data AnalysisScanResult = AnalysisScanResult
   { analyzersScanResult :: [DiscoveredProjectScan]
-  , vsiScanResult :: Result (Maybe SourceUnit)
+  , vsiScanResult :: Result (Maybe [SourceUnit])
   , binaryDepsScanResult :: Result (Maybe SourceUnit)
   , fossaDepsScanResult :: Result (Maybe SourceUnit)
   , dynamicLinkingResult :: Result (Maybe SourceUnit)

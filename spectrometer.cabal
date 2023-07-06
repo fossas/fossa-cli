@@ -518,6 +518,7 @@ test-suite unit-tests
     App.Fossa.VSI.DynLinked.UtilSpec
     App.Fossa.VSI.FingerprintSpec
     App.Fossa.VSI.IAT.ResolveSpec
+    App.Fossa.VSI.TypesSpec
     BerkeleyDB.BerkeleyDBSpec
     BundlerSpec
     Cargo.CargoTomlSpec

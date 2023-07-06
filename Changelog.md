@@ -3,6 +3,9 @@
 ## Unreleased
 - Go: `--experimental-use-v3-go-resolver` is now the default. ([Documentation](./docs/references/strategies/languages/golang/v3-go-resolver-transition-qa.md). ([1224](https://github.com/fossas/fossa-cli/pull/1224))
 
+## v3.8.4
+- VSI: Report VSI rules and display them in FOSSA's UI. ([#1237](https://github.com/fossas/fossa-cli/pull/1237), [#1235](https://github.com/fossas/fossa-cli/pull/1235))
+
 ## v3.8.3
 - Logging: Don't output the `[INFO]` prefix for regular CLI messages. ([#1226](https://github.com/fossas/fossa-cli/pull/1226))
 - License Scanning: Fix a bug where we were identifying the "GPL with autoconf macro exception" license as "GPL with autoconf exception" in a few cases ([#1225](https://github.com/fossas/fossa-cli/pull/1225))
