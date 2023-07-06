@@ -1,3 +1,6 @@
+The V3 Go resolver is a new dynamic strategy to find dependences in go modules projects.
+It was first released in v3.8.5 on <Month> <Day>, <Year>
+
 # What is the new package-based Go modules analysis strategy?
 
 In the past, we asked the Go tools for a list of the modules used in an analyzed dependency. 

@@ -52,8 +52,8 @@ This should eliminate some false positives found by older tactics that use `go l
 
 Currently, this strategy does not yet include path dependencies or their transitive deps from Go `replace` directives.
 
-This strategy was previously availabe only under the `--experimental-use-v3-go-resolver` flag but is now the default.
-For more information about this transiton please see this [document](./v3-go-resolver-transition-qa.md).
+This strategy was previously available only under the `--experimental-use-v3-go-resolver` flag but is now the default.
+For more information about this transition please see this [document](./v3-go-resolver-transition-qa.md).
 
 ## Strategy: gomod
 
