@@ -31,7 +31,7 @@ import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String (IsString)
-import Data.String.Conversion (ToText, toText)
+import Data.String.Conversion (ToString, ToText, toText)
 import Data.Text (Text, isPrefixOf)
 import Data.Text qualified as Text
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
@@ -164,7 +164,7 @@ newtype VsiFilePath = VsiFilePath {unVsiFilePath :: Text}
 -- |A path for a VSI rule.
 -- During processing we change a list of file paths to directory paths for inclusion in rules.
 newtype VsiRulePath = VsiRulePath {unVsiRulePath :: Text}
-  deriving newtype (Eq, Ord, Show, ToJSON, ToJSONKey)
+  deriving newtype (Eq, Ord, Show, ToJSON, ToJSONKey, ToString)
 
 newtype VsiInference = VsiInference
   {inferenceLocator :: Maybe Locator}

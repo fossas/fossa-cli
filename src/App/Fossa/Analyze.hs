@@ -92,7 +92,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Diag.Result (resultToMaybe)
@@ -296,9 +296,18 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir maybeApiOpts vendoredDepsOptions
-  let additionalSourceUnits :: [SourceUnit]
-      additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults, dynamicLinkedResults]
-  traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults, binarySearchResults, manualSrcUnits, dynamicLinkedResults]
+
+  let -- This makes nice with additionalSourceUnits below, but throws out additional Result data.
+      -- This is ok because 'resultToMaybe' would do that anyway.
+      -- We'll use the original results to output warnings/errors below.
+      vsiResults' :: [SourceUnit]
+      vsiResults' = fromMaybe [] $ join (resultToMaybe vsiResults)
+
+      additionalSourceUnits :: [SourceUnit]
+      additionalSourceUnits = vsiResults' <> mapMaybe (join . resultToMaybe) [manualSrcUnits, binarySearchResults, dynamicLinkedResults]
+  traverse_ (Diag.flushLogs SevError SevDebug) [manualSrcUnits, binarySearchResults, dynamicLinkedResults]
+  -- Flush logs using the original Result from VSI.
+  traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults]
 
   maybeFirstPartyScanResults <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -379,7 +388,7 @@ analyzeVSI ::
   ProjectRevision ->
   AllFilters ->
   VSI.SkipResolution ->
-  m (Maybe SourceUnit)
+  m (Maybe [SourceUnit])
 analyzeVSI dir revision filters skipResolving = do
   logInfo "Running VSI analysis"
 
@@ -389,8 +398,7 @@ analyzeVSI dir revision filters skipResolving = do
       logInfo "Skipping resolution of the following locators:"
       traverse_ (logInfo . pretty . VSI.renderLocator) skippedLocators
 
-  results <- analyzeVSIDeps dir revision filters skipResolving
-  pure $ Just results
+  analyzeVSIDeps dir revision filters skipResolving
 
 analyzeDiscoverBinaries ::
   ( Has Diag.Diagnostics sig m

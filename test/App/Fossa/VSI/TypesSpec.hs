@@ -8,7 +8,6 @@ import Data.ByteString.Lazy.Char8 qualified as BS
 import Data.Either (isLeft)
 import Data.Map qualified as Map
 import Test.Hspec (Spec, describe, it, shouldBe, shouldMatchList, shouldSatisfy)
-import Test.Hspec.Core.Spec (focus)
 import Text.RawString.QQ
 
 inferencesBody :: BS.ByteString
@@ -136,6 +135,6 @@ generateRulesSpec = describe "generateRules" $ do
     generateRules' = generateRules . VsiExportedInferencesBody . Map.fromList
 
 spec :: Spec
-spec = focus $ do
+spec = do
   vsiTypesSpec
   generateRulesSpec

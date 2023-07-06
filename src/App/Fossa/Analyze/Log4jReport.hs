@@ -72,7 +72,8 @@ import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (directList, getRootsOf, hasPredecessors, vertexList)
 import Options.Applicative (InfoMod, progDesc)
-import Path (Abs, Dir, File, Path, SomeBase, toFilePath)
+import Path (Abs, Dir, Path, toFilePath)
+import Path.Extra (SomePath)
 import Prettyprinter (Doc, Pretty (pretty), annotate, vsep)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Yellow), color)
 import Srclib.Converter (verConstraintToRevision)
@@ -236,7 +237,7 @@ data Log4jVulnerableReportItem = Log4jVulnerableReportItem
   deriving (Show, Eq, Ord)
 
 data VulnerableDependencyOrigin
-  = VulnerableDependencyManifestFiles [SomeBase File]
+  = VulnerableDependencyManifestFiles [SomePath]
   | VulnerableDependencyRootDependency [Dependency]
   deriving (Eq, Ord)
 

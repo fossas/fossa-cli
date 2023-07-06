@@ -9,6 +9,7 @@ module Data.String.Conversion (
   ToLText (..),
   ToString (..),
   LazyStrict (..),
+  showText,
 ) where
 
 import Data.Aeson.Key (Key)
@@ -87,6 +88,11 @@ instance ToText (SomeBase t) where
 
 instance ToText Key where
   toText = Key.toText
+
+-- |Avoid this function in favor of using 'toText' or some other direct conversion if possible.
+-- Unfortunately sometimes this is the best way to convert something to text.
+showText :: Show a => a -> Text.Text
+showText = toText . show
 
 ----- ToLText
 
