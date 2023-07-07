@@ -13,6 +13,7 @@ import App.Fossa.API.BuildWait (
 import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), ReportOutputFormat (ReportJson), mkSubCommand)
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (ProjectRevision (..))
+import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
@@ -52,6 +53,7 @@ report config@ReportConfig{..} = do
     * Above includes errors, types, and scaffolding
   -}
   runStickyLogger SevInfo
+    . ignoreDebug
     . runFossaApiClient apiOpts
     $ fetchReport config
 

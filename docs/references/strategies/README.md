@@ -93,6 +93,7 @@ See the linked documentation above for details.
 - [`requirements.txt`/`setup.py`](languages/python/python.md)
 - [pipenv](languages/python/pipenv.md)
 - [poetry](languages/python/poetry.md)
+- [pdm](languages/python/pdm.md)
 
 ### r
 
@@ -127,7 +128,7 @@ It is important to note that neither type of strategy has an inherent benefit wh
 > If the FOSSA CLI is forced to utilize a fallback strategy, meaning it did not detect ideal results, a warning is emitted in the scan summary after running `fossa analyze`.
 
 | Language/Package Manager                                                                                                                        | Dynamic   | Static    | Detect Vendored Code | Primary Strategy |
-|-------------------------------------------------------------------------------------------------------------------------------------------------|-----------|-----------|----------------------|------------------|
+| ----------------------------------------------------------------------------------------------------------------------------------------------- | --------- | --------- | -------------------- | ---------------- |
 | [C#](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/dotnet)                                               | ✅         | ✅         | ❌                    | Dynamic          |
 | [C](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/c-cpp/c-cpp.md)                                        | :warning: | :warning: | ✅                    | None             |
 | [C++](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/c-cpp/c-cpp.md)                                      | :warning: | :warning: | ✅                    | None             |
@@ -152,6 +153,7 @@ It is important to note that neither type of strategy has an inherent benefit wh
 | [Python (Conda)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/conda.md)                          | ✅         | ✅         | ❌                    | Dynamic          |
 | [Python (Pipenv)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/pipenv.md)                        | ✅         | ✅         | ❌                    | Dynamic          |
 | [Python (Poetry)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/poetry.md)                        | ❌         | ✅         | ❌                    | Static           |
+| [Python (Pdm)](./languages/python/pdm.md)                                                                                                       | ❌         | ✅         | ❌                    | Static           |
 | [Python (setup.py/requirements.txt)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/setuptools.md) | ❌         | ✅         | ❌                    | Static           |
 | [R (renv)](./languages/r/renv.md)                                                                                                               | ❌         | ✅         | ❌                    | Static           |
 | [Ruby (bundler)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/ruby/ruby.md)                             | ✅         | ✅         | ❌                    | Static           |

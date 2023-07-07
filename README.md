@@ -3,15 +3,15 @@
 
 # FOSSA CLI
 
-[![Build](https://github.com/fossas/fossa-cli/actions/workflows/build-all.yml/badge.svg)](https://github.com/fossas/fossa-cli/actions/workflows/build.yml)
-[![Dependency scan](https://github.com/fossas/fossa-cli/actions/workflows/dependency-scan.yml/badge.svg)](https://github.com/fossas/fossa-cli/actions/workflows/dependency-scan.yml) 
-<!-- markdown-link-check-disable-next-line -->
-[![FOSSA License Status](https://app.fossa.com/api/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli.svg?type=shield)](https://app.fossa.com/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli?ref=badge_shield) 
-<!-- markdown-link-check-disable-next-line -->
-[![FOSSA Security Status](https://app.fossa.com/api/projects/custom%2B1%2Fgithub.com%2Ffossas%2Ffossa-cli.svg?type=shield&issueType=security)](https://app.fossa.com/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli?ref=badge_shield) 
-<!-- markdown-link-check-disable-next-line -->
-[![FOSSA Downloads](https://img.shields.io/github/downloads/fossas/fossa-cli/total.svg)](https://github.com/fossas/fossa-cli/releases)
+<!-- markdown-link-check-disable -->
+<!-- NOTE: If you change the format of the "FOSSA Downloads" badge, make sure to also update the CI action at `./github/workflows/badges.yml` that updates the download count. -->
+[![FOSSA Downloads](https://img.shields.io/badge/downloads-5.8M-brightgreen)](https://github.com/fossas/fossa-cli/releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/fossas/fossa-cli/build.yml)](https://github.com/fossas/fossa-cli/actions/workflows/build.yml)
+[![Dependency scan](https://img.shields.io/github/actions/workflow/status/fossas/fossa-cli/dependency-scan.yml?label=dependency%20scan)](https://github.com/fossas/fossa-cli/actions/workflows/dependency-scan.yml)
+[![FOSSA Security Status](https://app.fossa.com/api/projects/custom%2B1%2Fgithub.com%2Ffossas%2Ffossa-cli.svg?type=shield&issueType=security)](https://app.fossa.com/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli?ref=badge_shield)
 
+[![FOSSA License Status](https://app.fossa.com/api/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli.svg?type=large)](https://app.fossa.com/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli?ref=badge_large)
+<!-- markdown-link-check-enable-->
 
 `fossa-cli` is a zero-configuration polyglot dependency analysis tool. You can point fossa CLI at any codebase or build, and it will automatically detect dependencies being used by your project.
 
@@ -157,14 +157,3 @@ We'll try to respond to issues opened in this repository on a best-effort basis,
 ## Contributing
 
 If you're interested in contributing, check out our [contributor documentation](./docs/contributing/README.md). PRs are welcome!
-
-## Licensing Data
-
-Some of the data used for CLI-side license scanning is provided by nexB under a [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode) license. This data can be found here: https://github.com/nexB/scancode-toolkit/tree/develop/src/licensedcode/data.
-
-The licensing data is Copyright (c) nexB Inc. and others. All rights reserved.
-    ScanCode is a trademark of nexB Inc.
-    SPDX-License-Identifier: CC-BY-4.0
-    See https://creativecommons.org/licenses/by/4.0/legalcode for the license text.
-    See https://github.com/nexB/scancode-toolkit for support or download.
-    See https://aboutcode.org for more information about nexB OSS projects.

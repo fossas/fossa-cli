@@ -35,7 +35,6 @@ jobs:
             ghc: '9.0.2'
 
     steps:
-    - uses: Swatinem/rust-cache@v1.3.0
 
     - uses: actions/checkout@v3
       with:
@@ -44,10 +43,10 @@ jobs:
     - name: Install MacOS binary dependencies
       if: ${{ contains(matrix.os, 'macos') }}
       run: |
-        brew install upx jq
+        brew install jq
 
     # Set up Haskell.
-    - uses: haskell/actions/setup@v1
+    - uses: haskell/actions/setup@v2
       id: setup-haskell
       name: Setup ghc/cabal (non-alpine)
       if: ${{ !contains(matrix.os, 'ubuntu') }}
@@ -60,6 +59,8 @@ jobs:
         profile: minimal
         toolchain: stable
     - uses: taiki-e/install-action@nextest
+    
+    - uses: Swatinem/rust-cache@v2
 
     - name: Debugging information
       run: |
@@ -77,7 +78,7 @@ jobs:
       run: cargo build --release
 
     # Build FOSSA CLI.
-    - uses: actions/cache@v2
+    - uses: actions/cache@v3
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}

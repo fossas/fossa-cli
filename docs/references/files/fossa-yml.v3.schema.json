@@ -25,7 +25,12 @@
                 "policy": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The name of the policy in your FOSSA organization to associate this project with."
+                    "description": "The name of the policy in your FOSSA organization to associate this project with. Mutually excludes `project.policyId`."
+                },
+                "policy": {
+                    "type": "integer",
+                    "minLength": 1,
+                    "description": "The id of the policy in your FOSSA organization to associate this project with. Mutually excludes `project.policy`."
                 },
                 "link": {
                     "type": "string",
@@ -249,6 +254,10 @@
                         {
                             "const": "pnpm",
                             "description": "For pnpm targets (javascript)"
+                        },
+                        {
+                            "const": "pdm",
+                            "description": "For pdm targets (python)"
                         }
                     ],
                     "description": "Target (package manager)"
@@ -305,20 +314,20 @@
                     "type": "object",
                     "description": "licenseScanPathFilters allows you to filter which files are scanned when doing a CLILicenseScan. This setting does not apply if you use the ArchiveUpload method of scanning vendoredDependencies.",
                     "properties": {
-                      "only": {
-                          "type": "array",
-                          "description": "A list of globs that will be used to filter paths. If there are any entries in the `only` list, then only paths that match one or more of the globs in the `only` list will be scanned for licenses.",
-                          "items": {
-                              "type": "string"
-                          }
-                      },
-                      "exclude": {
-                          "type": "array",
-                          "description": "A list of globs that will be used to filter paths. If there are any entries in the `exclude` list, then paths that match any of the `exclude` entries will not be scanned for licenses.",
-                          "items": {
-                              "type": "string"
-                          }
-                      }
+                        "only": {
+                            "type": "array",
+                            "description": "A list of globs that will be used to filter paths. If there are any entries in the `only` list, then only paths that match one or more of the globs in the `only` list will be scanned for licenses.",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "exclude": {
+                            "type": "array",
+                            "description": "A list of globs that will be used to filter paths. If there are any entries in the `exclude` list, then paths that match any of the `exclude` entries will not be scanned for licenses.",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
                     }
                 }
             }

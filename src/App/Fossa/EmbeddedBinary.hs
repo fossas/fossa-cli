@@ -7,13 +7,14 @@ module App.Fossa.EmbeddedBinary (
   ThemisIndex,
   ThemisBins (..),
   toPath,
-  withWigginsBinary,
   withThemisAndIndex,
   withBerkeleyBinary,
   allBins,
   dumpEmbeddedBinary,
+  themisVersion,
 ) where
 
+import App.Version.TH (themisVersionQ)
 import Codec.Compression.Lzma qualified as Lzma
 import Control.Effect.Exception (bracket)
 import Control.Effect.Lift (Has, Lift, sendIO)
@@ -23,6 +24,7 @@ import Data.FileEmbed.Extra (embedFileIfExists)
 import Data.Foldable (traverse_)
 import Data.String.Conversion (toLazy, toString)
 import Data.Tagged (Tagged, applyTag, unTag)
+import Data.Text (Text)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Path (
   Abs,
@@ -48,8 +50,7 @@ import Path.IO (
 import Prelude hiding (writeFile)
 
 data PackagedBinary
-  = Wiggins
-  | Themis
+  = Themis
   | ThemisIndex
   | BerkeleyDB
   deriving (Show, Eq, Enum, Bounded)
@@ -98,13 +99,6 @@ extractThemisFiles = do
   _ <- sendIO $ BL.writeFile (toString $ toPath decompressedThemisIndex) (Lzma.decompress $ toLazy embeddedBinaryThemisIndex)
   pure $ ThemisBins themisActual $ applyTag @ThemisIndex decompressedThemisIndex
 
-withWigginsBinary ::
-  ( Has (Lift IO) sig m
-  ) =>
-  (BinaryPaths -> m c) ->
-  m c
-withWigginsBinary = withEmbeddedBinary Wiggins
-
 withBerkeleyBinary ::
   ( Has (Lift IO) sig m
   ) =>
@@ -140,7 +134,6 @@ dumpEmbeddedBinary dir bin = writeBinary path bin
 
 writeBinary :: (Has (Lift IO) sig m) => Path Abs File -> PackagedBinary -> m ()
 writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
-  Wiggins -> embeddedBinaryWiggins
   Themis -> embeddedBinaryThemis
   ThemisIndex -> embeddedBinaryThemisIndex
   BerkeleyDB -> embeddedBinaryBerkeleyDB
@@ -153,9 +146,6 @@ writeExecutable path content = do
 
 extractedPath :: PackagedBinary -> Path Rel File
 extractedPath bin = case bin of
-  -- Rename wiggins upon local extraction so that we can provide a better status line to users during the VSI strategy.
-  -- Users don't know what "wiggins" is, but they explicitly enable the VSI plugin, so this is more intuitive.
-  Wiggins -> $(mkRelFile "vsi-plugin")
   Themis -> $(mkRelFile "themis-cli")
   ThemisIndex -> $(mkRelFile "index.gob.xz")
   BerkeleyDB -> $(mkRelFile "berkeleydb-plugin")
@@ -187,14 +177,14 @@ makeExecutable path = do
 -- built binaries of the appropriate architecture.
 -- The below functions are expected to warn since the vendor-bins directory is typically populated in CI.
 -- If you wish to run these on your local system, populate these binaries via `vendor_download.sh`.
-embeddedBinaryWiggins :: ByteString
-embeddedBinaryWiggins = $(embedFileIfExists "vendor-bins/wiggins")
-
 embeddedBinaryThemis :: ByteString
 embeddedBinaryThemis = $(embedFileIfExists "vendor-bins/themis-cli")
 
 embeddedBinaryThemisIndex :: ByteString
 embeddedBinaryThemisIndex = $(embedFileIfExists "vendor-bins/index.gob.xz")
+
+themisVersion :: Text
+themisVersion = $$themisVersionQ
 
 -- To build this, run `make build` or `cargo build --release`.
 #ifdef mingw32_HOST_OS

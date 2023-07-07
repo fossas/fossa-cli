@@ -2,6 +2,8 @@
 
 FOSSA offers the ability to license scan your code directly. This is used primarily if a package manager is not yet supported or if you are vendoring dependencies. Using the license scanning feature will allow you to capture the licenses for dependencies that may otherwise be missed from normal fossa analysis that relies on package manager information.
 
+If you would like to license scan your whole project, you may want to use the [first-party license scan](./first-party-license-scans.md) feature.
+
 In order to specify a file path, modify your `fossa-deps.yml` file and add a `vendored-dependencies` section like the following:
 
 ```yml
@@ -132,6 +134,8 @@ In the event caching is causing problems, FOSSA can be made to rescan this kind 
 ## Path Filtering
 
 > Note: This section does not apply to archive uploads. Path filtering is only available when doing a CLI License Scan. See [here](#how-vendored-dependencies-are-scanned) for more info on the difference between these two methods.
+
+> Note: these path filters also work for and affect [first-party license scans](./first-party-license-scans.md).
 
 Path filtering can be used to omit some files or directories from license scanning. Path filtering is set up in the `.fossa.yml` file. Here is an example:
 

@@ -72,6 +72,7 @@ data DiscoveredProjectType
   | CargoProjectType
   | CarthageProjectType
   | CocoapodsProjectType
+  | ConanProjectType
   | ComposerProjectType
   | CondaProjectType
   | DpkgDatabaseProjectType
@@ -90,6 +91,7 @@ data DiscoveredProjectType
   | PackageReferenceProjectType
   | PackagesConfigProjectType
   | PaketProjectType
+  | PdmProjectType
   | PerlProjectType
   | PipenvProjectType
   | PnpmProjectType
@@ -120,6 +122,7 @@ projectTypeToText = \case
   CargoProjectType -> "cargo"
   CarthageProjectType -> "carthage"
   CocoapodsProjectType -> "cocoapods"
+  ConanProjectType -> "conan"
   ComposerProjectType -> "composer"
   CondaProjectType -> "conda"
   DpkgDatabaseProjectType -> "dpkgdb"
@@ -138,6 +141,7 @@ projectTypeToText = \case
   PackageReferenceProjectType -> "packagereference"
   PackagesConfigProjectType -> "packagesconfig"
   PaketProjectType -> "paket"
+  PdmProjectType -> "pdm"
   PerlProjectType -> "perl"
   PipenvProjectType -> "pipenv"
   PnpmProjectType -> "pnpm"
@@ -314,6 +318,7 @@ instance ToJSON ArchiveUploadType where
 data LicenseScanPathFilters = LicenseScanPathFilters
   { licenseScanPathFiltersOnly :: [GlobFilter]
   , licenseScanPathFiltersExclude :: [GlobFilter]
+  , licenseScanPathFilterFileExclude :: [Path Abs File]
   }
   deriving (Eq, Ord, Show)
 
@@ -322,6 +327,7 @@ instance FromJSON LicenseScanPathFilters where
     LicenseScanPathFilters
       <$> (obj .:? "only" .!= [])
       <*> (obj .:? "exclude" .!= [])
+      <*> (obj .:? "filePathExclude" .!= [])
 
 instance ToJSON LicenseScanPathFilters where
   toJSON LicenseScanPathFilters{..} =

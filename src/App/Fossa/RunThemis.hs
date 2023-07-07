@@ -14,6 +14,7 @@ import App.Fossa.EmbeddedBinary (
   ThemisIndex,
   toPath,
  )
+import App.Types (FullFileUploads (unFullFileUploads))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.ByteString.Lazy qualified as BL
 import Data.String.Conversion (toText)
@@ -33,7 +34,6 @@ import Types (GlobFilter (unGlobFilter), LicenseScanPathFilters (..))
 execRawThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Path Abs Dir -> [Text] -> m BL.ByteString
 execRawThemis themisBins scanDir flags = execThrow scanDir $ themisCommand themisBins "" flags
 
--- TODO: We should log the themis version and index version
 execThemis :: (Has Exec sig m, Has Diagnostics sig m) => ThemisBins -> Text -> Path Abs Dir -> [Text] -> m [LicenseUnit]
 execThemis themisBins pathPrefix scanDir flags = do
   execJson @[LicenseUnit] scanDir $ themisCommand themisBins pathPrefix flags
@@ -56,10 +56,10 @@ generateThemisArgs taggedThemisIndex pathPrefix flags =
     <> flags
     <> ["."]
 
-themisFlags :: Maybe LicenseScanPathFilters -> [Text]
-themisFlags Nothing = ["--srclib-with-matches"]
-themisFlags (Just filters) =
-  let defaultFilter = ["--srclib-with-matches"]
+themisFlags :: Maybe LicenseScanPathFilters -> FullFileUploads -> [Text]
+themisFlags Nothing fullFileUploads = if unFullFileUploads fullFileUploads then ["--srclib-with-full-files"] else ["--srclib-with-matches"]
+themisFlags (Just filters) fullFileUploads =
+  let defaultFilter = if unFullFileUploads fullFileUploads then ["--srclib-with-full-files"] else ["--srclib-with-matches"]
       onlyFilters = concatMap (\only -> ["--only-paths", unGlobFilter only]) $ licenseScanPathFiltersOnly filters
       exceptFilters = concatMap (\exclude -> ["--exclude-paths", unGlobFilter exclude]) $ licenseScanPathFiltersExclude filters
    in defaultFilter ++ onlyFilters ++ exceptFilters

@@ -14,7 +14,7 @@ import App.Fossa.Config.ConfigFile (
   VendoredDependencyConfigs (..),
   resolveConfigFile,
  )
-import App.Types (ReleaseGroupMetadata (..))
+import App.Types (Policy (PolicyName), ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Stack (runStack)
 import Data.Set qualified as Set
@@ -52,9 +52,10 @@ expectedConfigProject =
     , configTeam = Just "fossa-team"
     , configJiraKey = Just "key"
     , configUrl = Just "fossa.com"
-    , configPolicy = Just "license-policy"
+    , configPolicy = Just (PolicyName "license-policy")
     , configLabel = ["project-label", "label-2"]
     , configReleaseGroup = Just expectedReleaseGroup
+    , configPolicyId = Nothing
     }
 
 expectedConfigRevision :: ConfigRevision
@@ -97,6 +98,7 @@ expectedVendoredDependencyFilters =
   LicenseScanPathFilters
     { licenseScanPathFiltersOnly = [GlobFilter "**/*.rb"]
     , licenseScanPathFiltersExclude = [GlobFilter ".git/**", GlobFilter "test/**/*.rb"]
+    , licenseScanPathFilterFileExclude = []
     }
 
 simpleTarget :: TargetFilter
@@ -126,6 +128,9 @@ invalidDefaultDir = maintestdir </> $(mkRelDir "invalid-default")
 invalidScanMethodDir :: Path Rel Dir
 invalidScanMethodDir = maintestdir </> $(mkRelDir "invalid-scan-method")
 
+invalidPoliciesDir :: Path Rel Dir
+invalidPoliciesDir = maintestdir </> $(mkRelDir "invalid-policies")
+
 expectSuccessfulParse :: Result (Maybe ConfigFile) -> T.Expectation
 expectSuccessfulParse act =
   assertOnSuccess act $ \_ a -> case a of
@@ -153,6 +158,7 @@ spec = do
   -- so we error here
   invalidDefault <- runIt invalidDefaultDir Nothing
   invalidScanMethod <- runIt invalidScanMethodDir Nothing
+  invalidPolicies <- runIt invalidPoliciesDir Nothing
 
   -- @Just file@ informs us that the file is specified manually, so we fail
   -- instead of trying to recover, so we don't ignore the file and do the wrong thing
@@ -172,6 +178,7 @@ spec = do
       expectFailure invalidSpecified
       expectFailure invalidDefault
       expectFailure invalidScanMethod
+      expectFailure invalidPolicies
 
     T.it "returns Nothing for missing default file" $
       assertOnSuccess missingDefault $

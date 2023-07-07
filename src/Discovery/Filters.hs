@@ -20,12 +20,14 @@ module Discovery.Filters (
   toolAllowed,
   withMultiToolFilter,
   withToolFilter,
+  ignoredPaths,
+  isDefaultNonProductionPath,
 ) where
 
 import Control.Effect.Reader (Has, Reader, ask)
 import Control.Monad ((<=<))
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
-import Data.List ((\\))
+import Data.List (isInfixOf, stripPrefix, (\\))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -38,7 +40,7 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
 import GHC.Generics (Generic)
-import Path (Dir, Path, Rel, isProperPrefixOf, parseRelDir)
+import Path (Abs, Dir, Path, Rel, fromAbsDir, isProperPrefixOf, parseRelDir)
 import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, try),
   Parsec,
@@ -162,6 +164,39 @@ pathAllowed AllFilters{..} path = isIncluded && not isExcluded
     isParentOfIncludeMember = any (path `isProperPrefixOf`) includedPaths
     includedPaths = combinedPaths includeFilters
     excludedPaths = combinedPaths excludeFilters
+
+isDefaultNonProductionPath :: Path Abs Dir -> Path Abs Dir -> Bool
+isDefaultNonProductionPath baseDir projPath =
+  isNonProductionPath $
+    dropPrefix (fromAbsDir baseDir) (fromAbsDir projPath)
+  where
+    isNonProductionPath :: FilePath -> Bool
+    isNonProductionPath path = any (`isInfixOf` path) ignoredPaths
+
+    dropPrefix :: String -> String -> String
+    dropPrefix prefix str = fromMaybe str (stripPrefix prefix str)
+
+ignoredPaths :: [[Char]]
+ignoredPaths =
+  [ "dist-newstyle"
+  , "doc/"
+  , "docs/"
+  , "test/"
+  , "example/"
+  , "examples/"
+  , "vendor/"
+  , "node_modules/"
+  , ".venv/" -- python pdm package manager's pkgyard (similar to node_modules/)
+  , ".srclib-cache/"
+  , "spec/"
+  , "Godeps/"
+  , ".git/"
+  , "bower_components/"
+  , "third_party/"
+  , "third-party/"
+  , "Carthage/"
+  , "Checkouts/"
+  ]
 
 comboInclude :: [TargetFilter] -> [Path Rel Dir] -> FilterCombination Include
 comboInclude = FilterCombination

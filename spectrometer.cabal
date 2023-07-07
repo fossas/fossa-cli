@@ -104,6 +104,7 @@ common deps
     , network                      ^>=3.1.2.0
     , network-uri                  ^>=2.6.4.0
     , optparse-applicative         ^>=0.17.0.0
+    , os-release                   ^>=1.0.2
     , parser-combinators           ^>=1.3
     , path                         ^>=0.9.0
     , path-io                      ^>=1.8.0
@@ -114,6 +115,7 @@ common deps
     , raw-strings-qq               ^>=1.1
     , req                          ^>=3.13.0
     , retry                        ^>=0.9.0.0
+    , safe-exceptions              ^>=0.1.7
     , semver                       ^>=0.4.0.1
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
@@ -194,12 +196,12 @@ library
     App.Fossa.Container.Test
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
+    App.Fossa.FirstPartyScan
     App.Fossa.LicenseScan
     App.Fossa.LicenseScanner
     App.Fossa.ListTargets
     App.Fossa.Main
     App.Fossa.ManualDeps
-    App.Fossa.Monorepo
     App.Fossa.ProjectInference
     App.Fossa.Report
     App.Fossa.Report.Attribution
@@ -207,8 +209,6 @@ library
     App.Fossa.Subcommand
     App.Fossa.Test
     App.Fossa.VendoredDependency
-    App.Fossa.VPS.Scan.RunWiggins
-    App.Fossa.VPS.Types
     App.Fossa.VSI.Analyze
     App.Fossa.VSI.DynLinked
     App.Fossa.VSI.DynLinked.Internal.Binary
@@ -260,7 +260,6 @@ library
     Control.Carrier.FossaApiClient.Internal.Core
     Control.Carrier.FossaApiClient.Internal.FossaAPIV1
     Control.Carrier.FossaApiClient.Internal.LicenseScanning
-    Control.Carrier.FossaApiClient.Internal.ScotlandYard
     Control.Carrier.FossaApiClient.Internal.VSI
     Control.Carrier.Git
     Control.Carrier.Output.IO
@@ -355,6 +354,8 @@ library
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer
+    Strategy.Conan.ConanGraph
+    Strategy.Conan.Version
     Strategy.Conda
     Strategy.Conda.CondaEnvCreate
     Strategy.Conda.EnvironmentYml
@@ -424,6 +425,8 @@ library
     Strategy.Perl
     Strategy.Pub
     Strategy.Python.Errors
+    Strategy.Python.PDM.Pdm
+    Strategy.Python.PDM.PdmLock
     Strategy.Python.Pipenv
     Strategy.Python.Poetry
     Strategy.Python.Poetry.Common
@@ -503,6 +506,7 @@ test-suite unit-tests
     App.Fossa.Configuration.TelemetryConfigSpec
     App.Fossa.Container.AnalyzeNativeSpec
     App.Fossa.Container.AnalyzeNativeUploadSpec
+    App.Fossa.FirstPartyScanSpec
     App.Fossa.LicenseScannerSpec
     App.Fossa.ManualDepsSpec
     App.Fossa.ProjectInferenceSpec
@@ -518,6 +522,7 @@ test-suite unit-tests
     App.Fossa.VSI.DynLinked.UtilSpec
     App.Fossa.VSI.FingerprintSpec
     App.Fossa.VSI.IAT.ResolveSpec
+    App.Fossa.VSI.TypesSpec
     BerkeleyDB.BerkeleyDBSpec
     BundlerSpec
     Cargo.CargoTomlSpec
@@ -529,6 +534,8 @@ test-suite unit-tests
     Cocoapods.PodfileSpec
     Composer.ComposerJsonSpec
     Composer.ComposerLockSpec
+    Conan.ConanGraphSpec
+    Conan.VersionSpec
     Conda.CondaEnvCreateSpec
     Conda.EnvironmentYmlSpec
     Container.Docker.CredentialsSpec
@@ -596,6 +603,8 @@ test-suite unit-tests
     NuGet.PaketSpec
     NuGet.ProjectAssetsJsonSpec
     NuGet.ProjectJsonSpec
+    Pdm.PdmLockSpec
+    Pdm.PdmSpec
     Perl.PerlSpec
     Pnpm.PnpmLockSpec
     Python.PipenvSpec

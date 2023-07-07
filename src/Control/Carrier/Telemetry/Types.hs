@@ -1,5 +1,8 @@
+{-# LANGUAGE DerivingStrategies #-}
+
 module Control.Carrier.Telemetry.Types (
   CliEnvironment (..),
+  LddVersionErr (..),
   SystemInfo (..),
   TelemetryRecord (..),
   TimedLogRecord (..),
@@ -7,6 +10,7 @@ module Control.Carrier.Telemetry.Types (
   TelemetryCtx (..),
   TelemetryTimeSpent (..),
   TelemetryCmdConfig (..),
+  UnameExecErr (..),
   CountableCliFeature (..),
   CIEnvironment (..),
 ) where
@@ -108,11 +112,26 @@ instance Show CliEnvironment where
 instance ToJSON CliEnvironment where
   toJSON = String . showT
 
+newtype LddVersionErr = LddVersionErr Text
+  deriving (Eq, Ord, Generic)
+  deriving newtype (Show)
+
+instance ToJSON LddVersionErr
+
+newtype UnameExecErr = UnameExecErr Text
+  deriving (Eq, Ord, Generic)
+  deriving newtype (Show)
+
+instance ToJSON UnameExecErr
+
 data SystemInfo = SystemInfo
   { systemInfoOs :: String
   , systemInfoArch :: String
   , systemCapabilities :: Int
   , systemProcessors :: Int
+  , systemDistroInfo :: Maybe String
+  , systemUname :: Maybe (Either UnameExecErr Text)
+  , systemLddVersion :: Maybe (Either LddVersionErr Text)
   }
   deriving (Eq, Ord, Show, Generic)
 

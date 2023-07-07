@@ -17,6 +17,7 @@ import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
+import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
@@ -28,6 +29,7 @@ import Srclib.Types (Locator)
 assertRevisionBinaries ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   Locator ->
@@ -40,6 +42,7 @@ assertRevisionBinaries meta fingerprints = do
 assertUserDefinedBinaries ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   IAT.UserDefinedAssertionMeta ->
@@ -52,6 +55,7 @@ assertUserDefinedBinaries meta fingerprints = do
 resolveUserDefinedBinary ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   IAT.UserDep ->
@@ -63,6 +67,7 @@ resolveUserDefinedBinary dep = do
 resolveProjectDependencies ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   VSI.Locator ->
@@ -74,6 +79,7 @@ resolveProjectDependencies locator = do
 createVsiScan ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->
@@ -85,6 +91,7 @@ createVsiScan revision = do
 addFilesToVsiScan ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   VSI.ScanID ->
@@ -97,6 +104,7 @@ addFilesToVsiScan scanId files = do
 completeVsiScan ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   VSI.ScanID ->
@@ -108,6 +116,7 @@ completeVsiScan scanId = do
 getVsiScanAnalysisStatus ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   VSI.ScanID ->
@@ -119,10 +128,11 @@ getVsiScanAnalysisStatus scanId = do
 getVsiInferences ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   VSI.ScanID ->
-  m [Locator]
+  m VSI.VsiExportedInferencesBody
 getVsiInferences scanId = do
   apiOpts <- ask
   API.vsiDownloadInferences apiOpts scanId

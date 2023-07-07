@@ -9,22 +9,28 @@ module Control.Carrier.Telemetry.Utils (
 
 import App.Version (isDirty, versionOrBranch)
 import Control.Algebra (Has)
+import Control.Applicative ((<|>))
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Telemetry.Types (
   CIEnvironment (..),
   CliEnvironment (..),
+  LddVersionErr (LddVersionErr),
   SystemInfo (SystemInfo),
   TelemetryCmdConfig (TelemetryCmdConfig),
   TelemetryCtx (TelemetryCtx, telCounters, telFossaConfig, telId, telLogsQ, telStartUtcTime, telTimeSpentQ),
   TelemetryRecord (..),
+  UnameExecErr (UnameExecErr),
  )
 import Control.Concurrent.STM (STM, atomically, newEmptyTMVarIO, tryReadTMVar)
 import Control.Concurrent.STM.TBMQueue (TBMQueue, newTBMQueueIO, tryReadTBMQueue)
+import Control.Exception.Safe (Exception (displayException), SomeException, catchAny)
 import Control.Monad (join, replicateM)
+import Data.Bifunctor (first)
+import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (asum)
 import Data.Functor.Extra ((<$$>))
 import Data.Maybe (catMaybes)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Time (diffUTCTime, getCurrentTime, nominalDiffTimeToSeconds)
@@ -37,6 +43,8 @@ import GHC.Conc.Sync qualified as Conc
 import System.Args (getCommandArgs)
 import System.Environment (lookupEnv)
 import System.Info qualified as Info
+import System.OsRelease (OsRelease (name, pretty_name), osRelease, parseOsRelease)
+import System.Process.Typed (ExitCode (..), readProcess)
 
 maxQueueSize :: Int
 maxQueueSize = 1000
@@ -93,12 +101,44 @@ getCurrentCliEnvironment =
     else CliProductionEnvironment
 
 getSystemInfo :: IO SystemInfo
-getSystemInfo =
+getSystemInfo = do
   SystemInfo
     Info.os
     Info.arch
     <$> Conc.getNumCapabilities
     <*> Conc.getNumProcessors
+    -- Info.os only collects OS type, but for linux there isn't any info about distribution.
+    <*> (if Info.os == "linux" then readOsRelease else pure Nothing)
+    <*> (if Info.os /= "mingw32" then Just <$> readUname else pure Nothing)
+    <*> if Info.os == "linux" then Just <$> findLddVersion else pure Nothing
+  where
+    -- read more about os-release: https://www.commandlinux.com/man-page/man5/os-release.5.html
+    readOsRelease :: IO (Maybe String)
+    readOsRelease = do
+      releaseInfo <- fmap osRelease <$> parseOsRelease
+      pure $ (pretty_name <$> releaseInfo) <|> (name <$> releaseInfo)
+
+    readUname :: IO (Either UnameExecErr Text)
+    readUname =
+      first UnameExecErr
+        <$> catchAny (processOutput <$> readProcess "uname -mrsv") exceptionToText
+
+    findLddVersion :: IO (Either LddVersionErr Text)
+    findLddVersion =
+      first LddVersionErr
+        <$> catchAny (processOutput <$> readProcess "ldd --version") exceptionToText
+
+    processOutput :: (ExitCode, BL.ByteString, BL.ByteString) -> (Either Text Text)
+    processOutput (ExitFailure code, _, stderr) =
+      Left $
+        "Exit code: "
+          <> (toText . show $ code)
+          <> " Message: "
+          <> decodeUtf8 stderr
+    processOutput (ExitSuccess, stdout, _) = Right $ decodeUtf8 stdout
+
+    exceptionToText :: SomeException -> IO (Either Text a)
+    exceptionToText = (pure . Left . toText . displayException)
 
 lookupCIEnvironment :: IO (Maybe CIEnvironment)
 lookupCIEnvironment = do

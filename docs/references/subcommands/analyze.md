@@ -21,7 +21,8 @@ In addition to the [usual FOSSA project flags](#common-fossa-project-flags) supp
 | `--jira-project-key 'some-key'`       | `-j`  | Add a Jira project key to the FOSSA project                                                                                                           |
 | `--link 'https://example.com'`        | `-L`  | Attach a link to the current FOSSA build                                                                                                              |
 | `--team 'some team'`                  | `-T`  | Specify a team within your FOSSA organization                                                                                                         |
-| `--policy 'some policy'`              |       | Assign a specific FOSSA policy to this project                                                                                                        |
+| `--policy 'some policy'`              |       | Assign a specific FOSSA policy to this project. Mutually excludes `--policy-id`.                                                                      |
+| `--policy-id 'some policy id'`        |       | Assign a specific FOSSA policy to this project by id. Mutually excludes `--policy`.                                                                   |
 | `--config /path/to/file`              | `-c`  | Path to a [configuration file](../files/fossa-yml.md) including filename. By default we look for `.fossa.yml` in target directory of analyze command. |
 
 ### Printing results without uploading to FOSSA
@@ -65,6 +66,7 @@ We support the following archive formats:
 - `.tar.xz`
 - `.tar.bz2`
 - `.jar`
+- `.aar`
 - `.rpm`, with...
   - `gzip` compression
   - `lzma` compression
@@ -92,7 +94,6 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 | [`--experimental-enable-binary-discovery`](../experimental/binary-discovery/README.md)   | Enable reporting binary files as unlicensed dependencies. For more information, see the [binary discovery overview](../experimental/binary-discovery/README.md). |
 | [`--experimental-link-project-binary './some-dir'`](../experimental/msb/README.md)       | Link the provided binary files to the project being analyzed. For more information, see the [multi stage builds overview](../experimental/msb/README.md).        |
 | [`--experimental-skip-vsi-graph 'custom+1/some$locator'`](../experimental/msb/README.md) | Skip resolving the dependencies of the given project that was previously linked via `--experimental-link-project-binary`.                                        |
-| [`--experimental-enable-monorepo 'monorepo-type'`](../experimental/monorepo/README.md)   | Scan the project in monorepo mode. For more information, see the [monorepo overview](../experimental/monorepo/README.md).                                        |
 
 ### F.A.Q.
 

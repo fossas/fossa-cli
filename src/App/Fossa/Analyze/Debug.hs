@@ -20,6 +20,7 @@ module App.Fossa.Analyze.Debug (
   debugEverything,
 ) where
 
+import App.Fossa.EmbeddedBinary (themisVersion)
 import App.Version (fullVersionDescription)
 import Control.Carrier.Debug (
   Algebra (..),
@@ -44,11 +45,13 @@ import Control.Effect.Stack (Stack (Context))
 import Control.Effect.Sum (Member, inj)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
+import Data.Aeson qualified as Aeson
 import Data.Bifunctor (bimap)
 import Data.Map qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text, toLower)
 import Data.Word (Word64)
+import Diag.Result (Result (..))
 import Effect.Exec (Exec, ExecF (..))
 import Effect.Logger (Logger, LoggerF (..))
 import Effect.ReadFS (ReadFS, ReadFSF (..))
@@ -107,23 +110,31 @@ collectDebugBundle ::
   , Has Diagnostics sig m
   , Has Logger sig m
   , Has (Lift IO) sig m
+  , ToJSON a
   ) =>
   cfg ->
-  DebugEverythingC (RecordC ReadFSF (RecordC ExecF (DebugC m))) a ->
-  m (DebugBundle cfg, a)
+  DebugEverythingC (RecordC ReadFSF (RecordC ExecF (DebugC m))) (Result a) ->
+  m (DebugBundle cfg, (Result a))
 collectDebugBundle cfg act = do
   (scope, (execJournal, (readFSJournal, res))) <- runDebug . runRecord @ExecF . runRecord @ReadFSF . debugEverything $ act
   sysInfo <- sendIO collectSystemInfo
   args <- sendIO getCommandArgs
   envVars <- collectEnvVariables
+
+  let output :: Aeson.Value = case res of
+        Failure _ _ -> "scan was not successful, no output"
+        Success _ a -> Aeson.toJSON a
+
   let bundle =
         DebugBundle
-          { bundleScope = scope
-          , bundleSystem = sysInfo
+          { bundleSystem = sysInfo
           , bundleCLIVersion = fullVersionDescription
+          , bundleThemisVersion = themisVersion
           , bundleArgs = args
           , bundleConfig = cfg
           , bundleEnvVariables = envVars
+          , bundleOutput = output
+          , bundleScope = scope
           , bundleJournals =
               BundleJournals
                 { bundleJournalReadFS = readFSJournal
@@ -152,12 +163,14 @@ collectSystemInfo = do
       systemMemory
 
 data DebugBundle cfg = DebugBundle
-  { bundleScope :: Scope
-  , bundleSystem :: SystemInfo
+  { bundleSystem :: SystemInfo
   , bundleCLIVersion :: Text
+  , bundleThemisVersion :: Text
   , bundleArgs :: [Text]
   , bundleConfig :: cfg
   , bundleEnvVariables :: Map.Map Text Text
+  , bundleOutput :: Aeson.Value
+  , bundleScope :: Scope
   , bundleJournals :: BundleJournals
   }
   deriving (Show, Generic)
@@ -243,8 +256,12 @@ readFSToDebug = interpret $ \case
   cons@ResolveFile'{} -> recording cons
   cons@ResolveDir'{} -> recording cons
   cons@ResolvePath{} -> recording cons
+  -- These are redacted, so it's safe to record them, they'll redact themselves
+  cons@ReadRedactedContentsBS'{} -> recording cons
+  cons@ReadRedactedContentsText'{} -> recording cons
   -- Unneeded or excessive for debug bundles
   cons@ReadContentsBSLimit'{} -> ignoring cons
+  cons@ReadRedactedContentsBSLimit'{} -> ignoring cons
   cons@ListDir{} -> ignoring cons
   cons@GetIdentifier{} -> ignoring cons
   cons@GetCurrentDir{} -> ignoring cons
