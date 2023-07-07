@@ -263,7 +263,7 @@ parseBytesRaw n = do
     else fail $ "short read: expected " <> show n <> " bytes, read " <> show (length buf)
 
 -- | Convenience for 'showHex' to avoid having to provide an empty string every time.
-showHex' :: (Integral a, Show a) => a -> String
+showHex' :: (Integral a) => a -> String
 showHex' a = showHex a ""
 
 -- | Parsers are lazy, so use unbounded slices.

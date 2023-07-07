@@ -142,7 +142,7 @@ withLabeling f act = do
 -- It is necessary then to collect the labels from multiple packages (=ty=) before producing the final 'Dependency' (=res=).
 --
 -- Prefer 'withLabeling' if it is enough to examine each =ty= and its set of labels in isolation.
-runLabeledGrapher :: (Ord ty, Monad m, Algebra sig m) => LabeledGrapherC ty lbl m a -> m (G.Graphing ty, Labels ty lbl)
+runLabeledGrapher :: (Ord ty, Algebra sig m) => LabeledGrapherC ty lbl m a -> m (G.Graphing ty, Labels ty lbl)
 runLabeledGrapher act = do
   (graph, (labels, _)) <- runGrapher . runState Map.empty $ act
   pure (graph, labels)
