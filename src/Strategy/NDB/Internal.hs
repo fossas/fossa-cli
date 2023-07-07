@@ -1,5 +1,10 @@
 {-# LANGUAGE RecordWildCards #-}
 
+-- This pragma is here because showHex used in showHex' below requires a Show constraint with base-4.15 (ghc 9.0) but does not in (ghc 9.4).
+-- This means when compiled with GHC 9.4 a warning is emitted that fails the build.
+-- Please remove this pragma when GHC 9.0 no longer supported.
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
+
 -- | This implementation of the NDB format is heavily based on the Go project here:
 --   https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go
 --
@@ -262,8 +267,10 @@ parseBytesRaw n = do
     then pure buf
     else fail $ "short read: expected " <> show n <> " bytes, read " <> show (length buf)
 
+-- Remove the Show constraint when the GHC 9.4 upgrade is complete.
+-- Then remove the pragma at the top of this file.
 -- | Convenience for 'showHex' to avoid having to provide an empty string every time.
-showHex' :: (Integral a) => a -> String
+showHex' :: (Integral a, Show a) => a -> String
 showHex' a = showHex a ""
 
 -- | Parsers are lazy, so use unbounded slices.
