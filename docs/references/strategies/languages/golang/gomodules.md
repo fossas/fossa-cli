@@ -19,7 +19,7 @@ We attempt to perform the following strategies in order (first succeeding strate
 
 Discovery: find go.mod files
 
-We run `go list -json -deps all`, which produces, e.g.,:
+We run `go list -json -deps all` which produces something like:
 
 ```json
 {

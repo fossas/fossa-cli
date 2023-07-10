@@ -1,5 +1,5 @@
 The V3 Go resolver is a new dynamic strategy to find dependences in go modules projects.
-It was first released in v3.8.5 on <Month> <Day>, <Year>
+It was first released in v3.8.5 on 2023-06-10.
 
 # What is the new package-based Go modules analysis strategy?
 
@@ -26,7 +26,7 @@ You may also notice different results if previously your scans were falling back
 No, test dependencies should be excluded from the results using the new strategy. If they are included, it is likely a bug. Please file a report at https://support.fossa.com.
 
 # How do I use the new package-based Go modules analysis?
-This new form of dynamic analysis should be available if you use a version of fossa-cli >= VERSION. # TODO: PUT IN THIS VERSION
+This new form of dynamic analysis should be available if you use a version of fossa-cli >= v3.8.5.
 Additionally, the system which performs the analysis using fossa-cli should have a Go tool-chain installed. 
 Basically, analyzing a project on a system which can successfully build the project should make use of the new strategy. 
 
@@ -37,7 +37,7 @@ You can verify that the strategy is running by using the `--debug` flag and look
 They are the same.
 In order to get some initial feedback from users on how this new strategy works we initially released it under the --experimental-use-v3-go-resolver flag.
 The package-based Go module analysis is the same as the functionality under this flag except it is now the default. 
-When using a version of the CLI >= VERSION where it is now the default you can expect to see a warning if you use this flag. 
+When using a version of the CLI >= v3.8.5 where it is now the default you can expect to see a warning if you use this flag. 
 Eventually, this flag will be fully removed so we recommend removing it from any scripts where you currently have it active.
 
 # Does the package-based Go modules strategy handle local path replacements?
