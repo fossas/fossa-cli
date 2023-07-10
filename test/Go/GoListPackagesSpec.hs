@@ -18,8 +18,7 @@ import Graphing qualified (Graphing, direct, edge)
 import Path (Abs, Dir, Path)
 import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess)
-import Strategy.Go.GoListPackages (GoModule (..), GoPackage (..), ImportPath (..), ModulePath (ModulePath), buildGraph)
-import Strategy.Go.GoModGraph (toGoModVersion)
+import Strategy.Go.GoListPackages (GoModule (..), GoPackage (..), ImportPath (..), ModulePath (ModulePath), buildGraph, toGoModVersion)
 import Test.Hspec (Spec, describe, it, runIO)
 
 -- In this set of packages there are two main modules.

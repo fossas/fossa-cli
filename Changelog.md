@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.8.5
+- Go: `--experimental-use-v3-go-resolver` is now the default. ([Documentation](./docs/references/strategies/languages/golang/v3-go-resolver-transition-qa.md). ([1224](https://github.com/fossas/fossa-cli/pull/1224))
+
 ## v3.8.4
 - VSI: Report VSI rules and display them in FOSSA's UI. ([#1237](https://github.com/fossas/fossa-cli/pull/1237), [#1235](https://github.com/fossas/fossa-cli/pull/1235))
 
