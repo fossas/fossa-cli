@@ -97,7 +97,7 @@ data FossaApiClientF a where
   GetSignedFirstPartyScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
-  GetVsiInferences :: VSI.ScanID -> FossaApiClientF [Locator]
+  GetVsiInferences :: VSI.ScanID -> FossaApiClientF VSI.VsiExportedInferencesBody
   GetVsiScanAnalysisStatus :: VSI.ScanID -> FossaApiClientF VSI.AnalysisStatus
   QueueArchiveBuild :: Archive -> FossaApiClientF (Maybe C8.ByteString)
   ResolveProjectDependencies :: VSI.Locator -> FossaApiClientF [VSI.Locator]
@@ -223,7 +223,7 @@ completeVsiScan = sendSimple . CompleteVsiScan
 getVsiScanAnalysisStatus :: Has FossaApiClient sig m => VSI.ScanID -> m VSI.AnalysisStatus
 getVsiScanAnalysisStatus = sendSimple . GetVsiScanAnalysisStatus
 
-getVsiInferences :: Has FossaApiClient sig m => VSI.ScanID -> m [Locator]
+getVsiInferences :: Has FossaApiClient sig m => VSI.ScanID -> m VSI.VsiExportedInferencesBody
 getVsiInferences = sendSimple . GetVsiInferences
 
 getEndpointVersion :: Has FossaApiClient sig m => m Text

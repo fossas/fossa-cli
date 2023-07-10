@@ -6,8 +6,7 @@ module App.Fossa.VSI.Analyze (
 ) where
 
 import App.Fossa.VSI.Fingerprint (Combined, fingerprint)
-import App.Fossa.VSI.IAT.Types qualified as IAT
-import App.Fossa.VSI.Types (ScanID (..))
+import App.Fossa.VSI.Types (ScanID (..), generateRules)
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
 import App.Util (FileAncestry (..), ancestryDerived, ancestryDirect)
@@ -27,9 +26,10 @@ import Control.Effect.Stack (Stack)
 import Control.Effect.StickyLogger (StickyLogger, logSticky, logSticky')
 import Control.Effect.TaskPool (TaskPool, forkTask)
 import Control.Monad (when)
+import Data.Aeson (encode)
 import Data.Foldable (traverse_)
 import Data.Map qualified as Map
-import Data.String.Conversion (toText)
+import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Archive (withArchive')
@@ -52,7 +52,7 @@ runVsiAnalysis ::
   Path Abs Dir ->
   ProjectRevision ->
   AllFilters ->
-  m ([VSI.Locator], [IAT.UserDep])
+  m [VSI.VsiRule]
 runVsiAnalysis dir projectRevision filters = context "VSI" $ do
   -- If we try to run with fewer than 2 capabilities, STM will deadlock
   capabilities <- max 2 <$> sendIO getNumCapabilities
@@ -78,14 +78,15 @@ runVsiAnalysis dir projectRevision filters = context "VSI" $ do
   logInfo "Waiting for cloud analysis"
   context "Wait for cloud analysis" $ waitForAnalysis scanID
 
-  discoveredRawLocators <- context "Download analysis results" $ getVsiInferences scanID
-  when (null discoveredRawLocators) $ fatalText "No dependencies discovered with VSI"
+  rules <- context "Download analysis results" $ do
+    inferences <- getVsiInferences scanID
+    let rules = generateRules inferences
+    logDebug . pretty $ "Generated Rules: " <> (decodeUtf8 @Text . encode $ rules)
+    pure rules
 
-  parsedLocators <- context "Parse analysis results" . fromEither $ traverse VSI.parseLocator discoveredRawLocators
+  when (null rules) $ fatalText "No dependencies discovered with VSI"
 
-  let userDefinedDeps = map IAT.toUserDep $ filter VSI.isUserDefined parsedLocators
-  let allOtherDeps = filter (not . VSI.isUserDefined) parsedLocators
-  pure (allOtherDeps, userDefinedDeps)
+  pure rules
 
 uploadBufferSize :: Int
 uploadBufferSize = 1000

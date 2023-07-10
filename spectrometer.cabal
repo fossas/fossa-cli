@@ -353,6 +353,7 @@ library
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer
     Strategy.Conan.ConanGraph
+    Strategy.Conan.Enrich
     Strategy.Conan.Version
     Strategy.Conda
     Strategy.Conda.CondaEnvCreate
@@ -371,10 +372,8 @@ library
     Strategy.Fpm
     Strategy.Glide
     Strategy.Go.GlideLock
-    Strategy.Go.GoList
     Strategy.Go.GoListPackages
     Strategy.Go.Gomod
-    Strategy.Go.GoModGraph
     Strategy.Go.GopkgLock
     Strategy.Go.GopkgToml
     Strategy.Go.Gostd
@@ -520,6 +519,7 @@ test-suite unit-tests
     App.Fossa.VSI.DynLinked.UtilSpec
     App.Fossa.VSI.FingerprintSpec
     App.Fossa.VSI.IAT.ResolveSpec
+    App.Fossa.VSI.TypesSpec
     BerkeleyDB.BerkeleyDBSpec
     BundlerSpec
     Cargo.CargoTomlSpec
@@ -532,6 +532,7 @@ test-suite unit-tests
     Composer.ComposerJsonSpec
     Composer.ComposerLockSpec
     Conan.ConanGraphSpec
+    Conan.EnrichSpec
     Conan.VersionSpec
     Conda.CondaEnvCreateSpec
     Conda.EnvironmentYmlSpec
@@ -568,8 +569,6 @@ test-suite unit-tests
     Fossa.API.TypesSpec
     Go.GlideLockSpec
     Go.GoListPackagesSpec
-    Go.GoListSpec
-    Go.GoModGraphSpec
     Go.GomodSpec
     Go.GopkgLockSpec
     Go.GopkgTomlSpec
