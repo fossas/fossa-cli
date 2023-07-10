@@ -5,6 +5,7 @@ module Srclib.Converter (
   depTypeToFetcher,
   fetcherToDepType,
   verConstraintToRevision,
+  toLocator,
 ) where
 
 import Prelude
