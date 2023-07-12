@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- Node (PNPM): Fixes a bug where analyses would fail when the `lockfileVersion` attribute was a string in `pnpm-lock.yaml`. ([1239](https://github.com/fossas/fossa-cli/pull/1239))
+
 ## v3.8.5
 - Go: `--experimental-use-v3-go-resolver` is now the default. ([Documentation](./docs/references/strategies/languages/golang/v3-go-resolver-transition-qa.md). ([1224](https://github.com/fossas/fossa-cli/pull/1224))
 
