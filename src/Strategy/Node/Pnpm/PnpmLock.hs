@@ -80,15 +80,13 @@ import Path (Abs, File, Path)
 --    - [pnpm](https://pnpm.io/)
 --    - [pnpm-lockfile](https://github.com/pnpm/pnpm/blob/5cfd6d01946edcce86f62580bddc788d02f93ed6/packages/lockfile-types/src/index.ts)
 data PnpmLockfile = PnpmLockfile
-  { lockFileVersion :: Float
-  , importers :: Map Text ProjectMap
+  { importers :: Map Text ProjectMap
   , packages :: Map Text PackageData
   }
   deriving (Show, Eq, Ord)
 
 instance FromJSON PnpmLockfile where
   parseJSON = Yaml.withObject "pnpm-lock content" $ \obj -> do
-    lockFileVersion <- obj .: "lockfileVersion"
     importers <- obj .:? "importers" .!= mempty
     packages <- obj .:? "packages" .!= mempty
 
@@ -109,7 +107,7 @@ instance FromJSON PnpmLockfile where
             then Map.insert "." virtualRootWs importers
             else importers
 
-    pure $ PnpmLockfile lockFileVersion refinedImporters packages
+    pure $ PnpmLockfile refinedImporters packages
 
 data ProjectMap = ProjectMap
   { directDependencies :: Map Text Text
