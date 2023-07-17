@@ -49,7 +49,6 @@ analyzeVSIDeps ::
   VSI.SkipResolution ->
   m (Maybe [SourceUnit])
 analyzeVSIDeps dir projectRevision filters skipResolving = do
-  -- (direct, userDeps) <- runVsiAnalysis dir projectRevision filters
   rules <- runVsiAnalysis dir projectRevision filters
 
   let (userDeps, directRules) =
