@@ -142,6 +142,7 @@ mod util {
 #[cfg(windows)]
 mod util {
     use stable_eyre::Result;
+    use std::path::Path;
     use winapi_util::{file, Handle};
 
     pub fn device_num(path: &Path) -> Result<u64> {
