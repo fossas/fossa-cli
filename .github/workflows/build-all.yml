@@ -119,6 +119,10 @@ jobs:
       run: |
         cabal test --project-file=${{ matrix.project-file }} unit-tests
 
+    - name: Validate diagnose commands run on the platform
+      run: |
+        cargo run --bin diagnose -- walk --trace-spans none --trace-level info
+
     # Save artifacts.
     - name: Find and move binaries (Windows)
       if: ${{ contains(matrix.os, 'windows') }}
