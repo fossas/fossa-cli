@@ -1,7 +1,7 @@
 [workspace]
 members = [
   "extlib/berkeleydb",
-  "tools/fs-diagnose",
+  "tools/diagnose",
 ]
 exclude = [
   "integration-test/artifacts/rust/fd/fd-8.3.0",

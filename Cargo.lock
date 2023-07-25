@@ -214,6 +214,7 @@ dependencies = [
  "anstream",
  "anstyle",
  "clap_lex 0.5.0",
+ "once_cell",
  "strsim",
 ]
 
@@ -275,6 +276,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "diagnose"
+version = "1.0.0"
+dependencies = [
+ "clap 4.3.19",
+ "getset",
+ "metrics",
+ "regex",
+ "stable-eyre",
+ "strum",
+ "tracing",
+ "tracing-subscriber",
+ "walkdir",
+ "winapi-util",
+]
+
+[[package]]
 name = "errno"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -303,22 +320,6 @@ checksum = "4c2b6b5a29c02cdc822728b7d7b8ae1bab3e3b05d44522770ddd49722eeac7eb"
 dependencies = [
  "indenter",
  "once_cell",
-]
-
-[[package]]
-name = "fs-diagnose"
-version = "0.1.0"
-dependencies = [
- "clap 4.3.19",
- "getset",
- "metrics",
- "regex",
- "stable-eyre",
- "strum",
- "tracing",
- "tracing-subscriber",
- "walkdir",
- "winapi-util",
 ]
 
 [[package]]

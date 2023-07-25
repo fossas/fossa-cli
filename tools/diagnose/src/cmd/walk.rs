@@ -12,9 +12,11 @@ use walkdir::{DirEntry, WalkDir};
 pub struct WalkArgs {
     /// Don't walk paths that match any of the provided regular expressions.
     ///
+    /// File paths that consist of invalid UTF-8 data are lossily converted
+    /// using the unicode replacement character (U+FFFD).
+    ///
     /// Note: this includes subdirectories;
     /// FOSSA CLI filtering is much more complicated so is not a 1:1 comparison.
-    ///
     /// For more information, see: https://github.com/fossas/fossa-cli/blob/master/docs/contributing/filtering.md
     #[clap(long = "filter")]
     filters: Vec<Regex>,
