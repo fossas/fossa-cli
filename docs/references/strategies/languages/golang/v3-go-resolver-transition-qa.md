@@ -15,9 +15,12 @@ Several of our users noticed with the old strategy that they were getting depend
 This was increasing the burden on their compliance and engineering teams by requiring them to fix policy or vulnerability issues reported by FOSSA for packages that weren’t actually being used by the built software. 
 
 # What differences can I expect to see in my results from the new package-based Go module analysis?
-The main difference you can expect to see is a reduced number of dependencies and their associated issues. 
-For example, if a module includes a package that depends on another module, but that package isn’t actually used by the software under analysis then technically that other module is not a dependency of the final build product. 
-The old go modules strategy could not detect this case while the new one will correctly exclude the extra module. 
+The main difference you can expect to see is a reduced number of dependencies and their associated issues.
+
+For example, if a module includes a package that depends on another module, but that package isn’t actually used by the software under analysis then technically that other module is not a dependency of the final build product.
+The old go modules strategy could not detect this case while the new one will correctly exclude the extra module.
+This also can apply to seemingly direct dependencies; for more information see the [Go strategy FAQ](./gomodules.md#why-do-i-see-a-dependency-in-gomod-but-it-is-not-reflected-in-fossa).
+
 Additionally, this new strategy should be able to detect test dependencies better than the previous one which results in a further reduction in packages.
         
 You may also notice different results if previously your scans were falling back to a static analysis strategy where now with the new Go modules strategy it is able to complete dynamic analysis successfully.
