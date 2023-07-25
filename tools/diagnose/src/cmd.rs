@@ -9,6 +9,7 @@ use tracing_subscriber::fmt::format::FmtSpan;
 
 use self::walk::WalkArgs;
 
+pub mod debug_output_format;
 pub mod walk;
 
 #[derive(Debug, Parser, Getters, CopyGetters)]
