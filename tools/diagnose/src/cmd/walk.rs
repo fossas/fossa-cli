@@ -127,8 +127,7 @@ mod util {
 
 #[cfg(unix)]
 mod util {
-    use stable_eyre::eyre::Context;
-    use stable_eyre::Result;
+    use stable_eyre::{eyre::Context, Result};
     use std::os::unix::fs::MetadataExt;
     use std::path::Path;
 
@@ -141,13 +140,15 @@ mod util {
 
 #[cfg(windows)]
 mod util {
-    use stable_eyre::Result;
+    use stable_eyre::{eyre::Context, Result};
     use std::path::Path;
     use winapi_util::{file, Handle};
 
     pub fn device_num(path: &Path) -> Result<u64> {
         let h = Handle::from_path_any(path)
             .wrap_err_with(|| format!("create system handle for '{}'", path.display()))?;
-        file::information(h).map(|info| info.volume_serial_number())
+        file::information(h)
+            .wrap_err_with(|| format!("get file information for path '{}'", path.display()))
+            .map(|info| info.volume_serial_number())
     }
 }
