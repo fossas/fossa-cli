@@ -139,7 +139,7 @@ jobs:
         strip release/*
 
     - name: Install Cosign (Linux)
-      if: ${{ contains(matrix.os, 'linux') }}
+      if: ${{ contains(matrix.os, 'ubuntu') }}
       uses: sigstore/cosign-installer@v3.1.1
 
     - name: Sign Binaries (Linux)
