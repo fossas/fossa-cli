@@ -146,7 +146,7 @@ jobs:
       if: ${{ contains(matrix.os, 'ubuntu') }}
       run: |
         cosign version
-        cosign sign-blob --yes release/fossa --bundle release/fossa_linux_amd64.bundle
+        cosign sign-blob --yes --oidc-issuer='https://token.actions.githubusercontent.com' --bundle release/fossa_linux_amd64.bundle release/fossa
 
     - uses: actions/upload-artifact@v2
       with:
