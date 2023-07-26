@@ -43,9 +43,10 @@ FOSSA CLI runs `go list -json -e -deps all` which produces something like:
 FOSSA CLI generates a graph of *packages* and then resolves these back to their parent modules.
 Every `Main` module it finds in this graph will have its dependencies promoted to be a direct dependency of the project.
 
-The reason that FOSSA CLI starts with a graph of packages is because a Go module distributes source code for one or more packages.
-However, only packages are `import`ed in Go source code.
-An implication of this is that the graph of module dependencies does not necessarily correspond to how different packages in a Go project depend on each other.
+The reason that FOSSA CLI starts with a graph of packages is because Go modules distribute source code for one or more packages.
+However, only _packages_, not _modules_, are `import`ed in Go source code.
+An implication of this is that the graph of _module_ dependencies does not necessarily correspond to the graph of _package_ dependencies,
+which are the real deciding factor in whether a given module is actually used in the end program.
 By looking at how packages import one another, FOSSA CLI can get more information about what packages and modules are actually used in a final build product than by looking at modules alone.
 This should eliminate some false positives found by tactics in older versions of FOSSA CLI that use `go list -m`.
 
