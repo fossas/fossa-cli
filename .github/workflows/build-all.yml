@@ -138,9 +138,12 @@ jobs:
       run: |
         strip release/*
 
-    - name: Sign Binaries (Linux)
+    - name: Install Cosign (Linux)
       if: ${{ contains(matrix.os, 'linux') }}
       uses: sigstore/cosign-installer@v3.1.1
+
+    - name: Sign Binaries (Linux)
+      if: ${{ contains(matrix.os, 'linux') }}
       run: |
         cosign version
         cosign sign-blob --yes release/fossa --bundle release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle
