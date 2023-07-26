@@ -82,7 +82,7 @@ where:
 
 To explain how this can be the case, it's important to note that just because a package is in `go.mod` doesn't mean that it's actually used in the project;
 and just because it's in `go.mod` without an `// indirect` comment doesn't mean it's actually direct.
-Instead, Go defines direct dependencies as:
+Instead, [the Go language defines direct dependencies as](https://go.dev/ref/mod#glos-direct-dependency):
 
 > A package whose path appears in an `import` declaration in a `.go` source file for a package or test in the main module, 
 > or the module containing such a package.
