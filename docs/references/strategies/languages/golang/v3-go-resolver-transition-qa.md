@@ -43,10 +43,10 @@ are not actually used in the final build product of the project.
 For more information see ["how could a module be referenced by a Go project and not be a dependency?"](#how-could-a-module-be-referenced-by-a-go-project-and-not-be-a-dependency).
 
 ## Test dependencies
-It is possible to see a different (usually reduced) set of test dependencies.
+Test dependencies should not be reported with this strategy at all.
 
 We expect a reduced set of dependencies to occur in some cases where the previous analyzer had issues
-telling whether a given module was only used for tests.
+determining whether a given module was only used for tests.
 
 If test dependencies are reported, it is likely a bug. Please file a report at https://support.fossa.com.
 
