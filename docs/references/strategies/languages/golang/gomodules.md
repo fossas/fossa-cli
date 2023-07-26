@@ -40,10 +40,10 @@ FOSSA CLI runs `go list -json -e -deps all` which produces something like:
 }
 ```
 
-We generate a graph of *packages* and then resolve these back to their parent modules.
-Every `Main` module we find in this graph will have its dependencies promoted to be a direct dependency.
+FOSSA CLI generates a graph of *packages* and then resolves these back to their parent modules.
+Every `Main` module it finds in this graph will have its dependencies promoted to be a direct dependency of the project.
 
-The reason that we started with a graph of packages is because a Go module distributes source code for one or more packages.
+The reason that FOSSA CLI starts with a graph of packages is because a Go module distributes source code for one or more packages.
 However, only packages are `import`ed in Go source code.
 An implication of this is that the graph of module dependencies does not necessarily correspond to how different packages in a Go project depend on each other.
 By looking at how packages import one another, FOSSA CLI can get more information about what packages and modules are actually used in a final build product than by looking at modules alone.
@@ -56,7 +56,7 @@ For more information about this transition please see this [document](./v3-go-re
 
 ## Strategy: gomod
 
-We parse the go.mod file, which looks something like:
+FOSSA CLI parses the go.mod file, which looks something like:
 
 ```
 module our/package/path
@@ -78,7 +78,7 @@ where:
 
 ### Why do I see a dependency in `go.mod`, but it is not reflected in FOSSA?
 
-To explain how this can be the case, it's important to note that just because a package is in `go.mod`` doesn't mean that it's actually used in the project;
+To explain how this can be the case, it's important to note that just because a package is in `go.mod` doesn't mean that it's actually used in the project;
 and just because it's in `go.mod` without an `// indirect` comment doesn't mean it's actually direct.
 Instead, Go defines direct dependencies as:
 
@@ -203,5 +203,5 @@ require github.com/cenkalti/backoff/v4 v4.2.1
 not using backoff!
 ```
 
-As a concrete next step, we recommend running `go mod tidy` on the project,
-which should remove any dependencies that are not used and update the `//indirect` comments for any that are used.
+As a concrete step towards resolving this sort of discrepancy, we recommend running `go mod tidy` on the project;
+this command should synchronize the `go.mod` file with the actual state of the project.
