@@ -143,10 +143,11 @@ jobs:
       uses: sigstore/cosign-installer@v3.1.1
 
     - name: Sign Binaries (Linux)
-      if: ${{ contains(matrix.os, 'linux') }}
+      if: ${{ contains(matrix.os, 'ubuntu') }}
       run: |
         cosign version
-        cosign sign-blob --yes release/fossa --bundle release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle
+        cosign sign-blob --yes release/fossa --bundle release/fossa_linux_amd64.bundle
+
     - uses: actions/upload-artifact@v2
       with:
         name: ${{ runner.os }}-binaries
@@ -202,7 +203,7 @@ jobs:
         ls -R
 
         chmod +x Linux-binaries/*
-        cp Linux-binaries/*.bundle release/
+        cp Linux-binaries/fossa_linux_amd64.bundle release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/fossa
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/pathfinder
         tar --create --gzip --verbose --file release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz --directory Linux-binaries fossa
