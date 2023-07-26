@@ -16,9 +16,12 @@ This was increasing the burden on their compliance and engineering teams by requ
 
 # What differences can I expect to see in my results from the new package-based Go module analysis?
 The main difference you can expect to see is a reduced number of dependencies and their associated issues.
+However the strategy is overall more accurate so it is possible, just less common, to see an increased number of dependencies as well.
 
 Results may also be different if scans of a project were previously falling back to a less preferred analysis strategy;
 the new strategy is more resilient to errors in the project so should be forced to fall back less often.
+In such cases, it's common to see an increased number of dependencies due to more accurate analysis, but they could be reduced as well.
+
 For more information about different strategies used to analyze Go modules projects,
 see the [Go modules strategy documentation](./gomodules.md).
 
