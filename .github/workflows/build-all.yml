@@ -9,6 +9,8 @@ jobs:
     name: ${{ matrix.os-name }}-build
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
+    permissions:
+        id-token: write
 
     defaults:
       run:
@@ -146,7 +148,7 @@ jobs:
       if: ${{ contains(matrix.os, 'ubuntu') }}
       run: |
         cosign version
-        cosign sign-blob --yes --oidc-provider='github-actions' --bundle release/fossa_linux_amd64.bundle release/fossa
+        cosign sign-blob --yes --bundle release/fossa_linux_amd64.bundle release/fossa
 
     - uses: actions/upload-artifact@v2
       with:
