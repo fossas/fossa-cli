@@ -205,5 +205,5 @@ require github.com/cenkalti/backoff/v4 v4.2.1
 not using backoff!
 ```
 
-As a concrete step towards resolving this sort of discrepancy, we recommend running `go mod tidy` on the project;
+As a concrete step towards resolving this sort of discrepancy, we recommend running `go mod tidy` on projects regularly;
 this command should synchronize the `go.mod` file with the actual state of the project.
