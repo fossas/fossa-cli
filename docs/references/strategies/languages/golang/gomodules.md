@@ -47,7 +47,8 @@ The reason that FOSSA CLI starts with a graph of packages is because Go modules 
 However, only _packages_, not _modules_, are `import`ed in Go source code.
 An implication of this is that the graph of _module_ dependencies does not necessarily correspond to the graph of _package_ dependencies,
 which are the real deciding factor in whether a given module is actually used in the end program.
-By looking at how packages import one another, FOSSA CLI can get more information about what packages and modules are actually used in a final build product than by looking at modules alone.
+By looking at how packages import one another, FOSSA CLI can get more information about what packages
+(and therefore modules) are actually used in a final build product than by looking at modules alone.
 This should eliminate some false positives found by tactics in older versions of FOSSA CLI that use `go list -m`.
 
 Currently, this strategy does not yet include path dependencies or their transitive deps from Go `replace` directives.
