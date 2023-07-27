@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use regex::{Regex, RegexSet};
 use stable_eyre::{eyre::Context, Result};
+use strum::Display;
 use tracing::{debug, info, trace, warn};
 use walkdir::{DirEntry, WalkDir};
 
@@ -20,12 +21,32 @@ pub struct WalkArgs {
     /// For more information, see: https://github.com/fossas/fossa-cli/blob/master/docs/contributing/filtering.md
     #[clap(long = "filter")]
     filters: Vec<Regex>,
+
+    /// Control whether symbolic links (symlinks) are followed.
+    ///
+    /// FOSSA CLI follows symlinks by default, so this is defaulted to following symlinks.
+    /// Broken or looping symlinks are warned and then ignored.
+    #[clap(long, default_value_t = SymlinkStrategy::Follow)]
+    symlinks: SymlinkStrategy,
+}
+
+/// The strategy for how to handle symbolic links while walking the file system.
+#[derive(Debug, Clone, Copy, ValueEnum, Display)]
+pub enum SymlinkStrategy {
+    /// Symbolic links are followed.
+    #[strum(serialize = "follow")]
+    Follow,
+
+    /// Symbolic links are ignored.
+    #[strum(serialize = "skip")]
+    Skip,
 }
 
 #[tracing::instrument(skip(args), fields(root_device_id))]
 pub fn main(root: PathBuf, args: &WalkArgs) -> Result<()> {
     info!("inspecting root: {}", root.display());
     trace!("inspecting root: {}", root.display());
+    debug!("walk options: {args:?}");
 
     let root_device_id = util::device_num(&root).wrap_err("get device ID")?;
     tracing::Span::current().record("root_device_id", root_device_id);
@@ -33,10 +54,11 @@ pub fn main(root: PathBuf, args: &WalkArgs) -> Result<()> {
 
     let regexes = args.filters.iter().map(|rx| rx.as_str());
     let filters = RegexSet::new(regexes).wrap_err("parse provided regular expressions as a set")?;
-    debug!("user-provided filters: {filters:?}");
+    debug!("parsed user-provided filters: {filters:?}");
+    debug!("symbolic link strategy: {:?}", args.symlinks);
 
     let walker = WalkDir::new(&root)
-        .follow_links(true)
+        .follow_links(matches!(args.symlinks, SymlinkStrategy::Follow))
         .into_iter()
         .filter_entry(|entry| {
             let path = entry.path().as_os_str().to_string_lossy().to_string();
