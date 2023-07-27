@@ -61,7 +61,7 @@ jobs:
         profile: minimal
         toolchain: stable
     - uses: taiki-e/install-action@nextest
-    
+
     - uses: Swatinem/rust-cache@v2
 
     - name: Debugging information
@@ -140,16 +140,6 @@ jobs:
       run: |
         strip release/*
 
-    - name: Install Cosign (Linux)
-      if: ${{ contains(matrix.os, 'ubuntu') }}
-      uses: sigstore/cosign-installer@v3.1.1
-
-    - name: Sign Binaries (Linux)
-      if: ${{ contains(matrix.os, 'ubuntu') }}
-      run: |
-        cosign version
-        cosign sign-blob --yes --output-certificate release/fossa_linux_amd64.pem --output-signature release/fossa_linux_amd64.sig release/fossa
-
     - uses: actions/upload-artifact@v2
       with:
         name: ${{ runner.os }}-binaries
@@ -205,8 +195,7 @@ jobs:
         ls -R
 
         chmod +x Linux-binaries/*
-        cp Linux-binaries/fossa_linux_amd64.pem release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.pem
-        cp Linux-binaries/fossa_linux_amd64.sig release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.sig
+        cp Linux-binaries/fossa_linux_amd64.bundle release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/fossa
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/pathfinder
         tar --create --gzip --verbose --file release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz --directory Linux-binaries fossa
@@ -232,6 +221,14 @@ jobs:
         echo "Sanity-checking the checksums."
 
         cat *.sha256 | sha256sum --check --status
+
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@v3.1.1
+
+    - name: Sign Binaries (Linux)
+      run: |
+        cosign version
+        cosign sign-blob --yes --bundle "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle" release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz
 
     # Uploads the generated archives (tar.gz/zip) as build artifacts to allow
     # verifying them without needing to do an actual release. This step does not
