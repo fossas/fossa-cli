@@ -228,6 +228,9 @@ jobs:
         cosign version
         cosign sign-blob --yes --bundle "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle" "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz"
 
+    - name: Install OIDC Client from Core Package
+      run: npm install @actions/core@1.6.0 @actions/http-client
+
     - name: Get Id Token
       uses: actions/github-script@v6
       id: get-id-token
