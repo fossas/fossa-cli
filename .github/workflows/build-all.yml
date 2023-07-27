@@ -195,7 +195,6 @@ jobs:
         ls -R
 
         chmod +x Linux-binaries/*
-        cp Linux-binaries/fossa_linux_amd64.bundle release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/fossa
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/pathfinder
         tar --create --gzip --verbose --file release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz --directory Linux-binaries fossa
@@ -228,7 +227,7 @@ jobs:
     - name: Sign Binaries (Linux)
       run: |
         cosign version
-        cosign sign-blob --yes --bundle "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle" release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz
+        cosign sign-blob --yes --bundle "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle" release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz
 
     # Uploads the generated archives (tar.gz/zip) as build artifacts to allow
     # verifying them without needing to do an actual release. This step does not
