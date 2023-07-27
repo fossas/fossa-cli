@@ -9,9 +9,6 @@ jobs:
     name: ${{ matrix.os-name }}-build
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
-    permissions:
-        id-token: write
-
     defaults:
       run:
         shell: bash
@@ -149,6 +146,8 @@ jobs:
     name: create-release
     runs-on: ubuntu-latest
     needs: ['build-all']
+    permissions:
+        id-token: write
 
     steps:
     - uses: actions/download-artifact@v2
