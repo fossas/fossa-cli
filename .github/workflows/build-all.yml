@@ -220,13 +220,28 @@ jobs:
 
         cat *.sha256 | sha256sum --check --status
 
-    - name: Install Cosign
-      uses: sigstore/cosign-installer@v3.1.1
-
     - name: Sign Binaries (Linux)
-      run: |
-        cosign version
-        cosign sign-blob --yes --bundle "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle" release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz
+      env:
+        Bundle_Path: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle"
+        Archive_Path: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz"
+      steps:
+        - name: Install Cosign
+          uses: sigstore/cosign-installer@v3.1.1
+        - name: Print Version
+          run: cosign version
+        - name: Sign Release
+          run: cosign sign-blob --yes --bundle "$Bundle_Path" "$Archive_Path"
+        - name: Get Id Token
+          id: get-id-token
+          with:
+            script: |
+              const coreObj = require('@actions/core');
+              let token = await coreObj.getIdToken();
+              core.setOutput('cert_identity', `https://github.com/${token.job_workflow_ref}`);
+              core.setOutput('odic_issuer', token.iss);
+        - name: Verify Signature
+          run:
+            cosign verify-blob --bundle "$Bundle_Path" --certificate-oidc-issuer "${{ steps.get-id-token.cert_identity}}" --certificate-identity '${{ steps.get-id-token.oidc_issuer }}' "$Archive_Path"
 
     # Uploads the generated archives (tar.gz/zip) as build artifacts to allow
     # verifying them without needing to do an actual release. This step does not
