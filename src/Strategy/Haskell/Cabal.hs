@@ -117,11 +117,11 @@ instance FromJSON InstallPlan where
     InstallPlan
       <$> (obj .: "type" >>= parsePlanType)
       <*> obj
-      .: "id"
+        .: "id"
       <*> obj
-      .: "pkg-name"
+        .: "pkg-name"
       <*> obj
-      .: "pkg-version"
+        .: "pkg-version"
       <*> (obj .:? "depends" .!= Set.empty)
       <*> (obj .:? "style" >>= traverse parsePlanStyle)
       <*> fmap mergeComponents (obj .:? "components" .!= Map.empty)
