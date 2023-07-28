@@ -220,9 +220,9 @@ doGraph plan = do
     edge parentId dep
     when (isDirectDep plan) (direct dep)
 
--- | Just include everything for now!
+-- | We're working on improving how we handle multi-module Cabal projects.
 --
--- We need to research the correct way to filter dependencies.
+-- For now, just remove all the filters to get some baseline data.
 -- I think basically right now the concrete effect of not having any filters is that test deps are reported.
 shouldInclude :: InstallPlan -> Bool
 shouldInclude _ = True

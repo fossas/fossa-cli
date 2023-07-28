@@ -8,10 +8,12 @@ import Data.Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Set qualified as Set
 import DepTypes
+import Effect.Logger (Severity (SevError), withDefaultLogger)
 import GraphUtil
 import Graphing
 import ResultUtil
 import Strategy.Haskell.Cabal
+import Test.Hspec (runIO)
 import Test.Hspec qualified as Test
 
 buildPlan :: [InstallPlan]
@@ -44,7 +46,7 @@ spec = do
         Left err -> Test.expectationFailure $ "failed to parse: " ++ err
         Right result -> installPlans result `Test.shouldMatchList` buildPlan
   Test.describe "cabal plan graph builder" $ do
-    let result = run . runStack . runDiagnostics . buildGraph $ BuildPlan buildPlan
+    result <- runIO . runStack . withDefaultLogger SevError . runDiagnostics . buildGraph $ BuildPlan buildPlan
 
     Test.it "should build a correct graph" $
       assertOnSuccess result $ \_ graph -> do
