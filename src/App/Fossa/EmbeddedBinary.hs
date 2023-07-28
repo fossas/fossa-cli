@@ -4,6 +4,7 @@
 
 module App.Fossa.EmbeddedBinary (
   BinaryPaths,
+  Lernie,
   ThemisIndex,
   ThemisBins (..),
   toPath,
@@ -53,6 +54,7 @@ data PackagedBinary
   = Themis
   | ThemisIndex
   | BerkeleyDB
+  | Lernie
   deriving (Show, Eq, Enum, Bounded)
 
 allBins :: [PackagedBinary]
@@ -67,6 +69,8 @@ data BinaryPaths = BinaryPaths
 data ThemisBinary
 
 data ThemisIndex
+
+data Lernie
 
 data ThemisBins = ThemisBins
   { themisBinaryPaths :: Tagged ThemisBinary BinaryPaths
@@ -137,6 +141,7 @@ writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
   Themis -> embeddedBinaryThemis
   ThemisIndex -> embeddedBinaryThemisIndex
   BerkeleyDB -> embeddedBinaryBerkeleyDB
+  Lernie -> embeddedBinaryLernie
 
 writeExecutable :: Path Abs File -> ByteString -> IO ()
 writeExecutable path content = do
@@ -149,6 +154,7 @@ extractedPath bin = case bin of
   Themis -> $(mkRelFile "themis-cli")
   ThemisIndex -> $(mkRelFile "index.gob.xz")
   BerkeleyDB -> $(mkRelFile "berkeleydb-plugin")
+  Lernie -> $(mkRelFile "lernie")
 
 -- | Extract to @$TMP/fossa-vendor/<timestamp>
 -- We used to extract everything to @$TMP/fossa-vendor@, but there's a subtle issue with that.
@@ -186,10 +192,14 @@ embeddedBinaryThemisIndex = $(embedFileIfExists "vendor-bins/index.gob.xz")
 themisVersion :: Text
 themisVersion = $$themisVersionQ
 
+embeddedBinaryLernie :: ByteString
+embeddedBinaryLernie = $(embedFileIfExists "vendor-bins/lernie")
+
 -- To build this, run `make build` or `cargo build --release`.
 #ifdef mingw32_HOST_OS
 embeddedBinaryBerkeleyDB :: ByteString
 embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb.exe")
+
 #else
 embeddedBinaryBerkeleyDB :: ByteString
 embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb")
