@@ -223,7 +223,10 @@ doGraph plan = do
 -- | We're working on improving how we handle multi-module Cabal projects.
 --
 -- For now, just remove all the filters to get some baseline data.
--- I think basically right now the concrete effect of not having any filters is that test deps are reported.
+-- Consequences of this:
+-- 1. Test-only deps will likely be reported.
+-- 2. Standard lib deps (e.g. @base@) will likely be reported, and may not resolve in the FOSSA backend.
+-- 3. The project itself may be reported as a dep.
 shouldInclude :: InstallPlan -> Bool
 shouldInclude _ = True
 

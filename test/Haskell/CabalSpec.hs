@@ -45,12 +45,28 @@ spec = do
       case eitherDecode metaBytes of
         Left err -> Test.expectationFailure $ "failed to parse: " ++ err
         Right result -> installPlans result `Test.shouldMatchList` buildPlan
+
   Test.describe "cabal plan graph builder" $ do
     result <- runIO . runStack . withDefaultLogger SevError . runDiagnostics . buildGraph $ BuildPlan buildPlan
 
     Test.it "should build a correct graph" $
       assertOnSuccess result $ \_ graph -> do
         let gr = gmap dependencyName graph
-        expectDeps ["aeson", "with-components", "deepdep"] gr
-        expectDirect ["aeson", "with-components"] gr
-        expectEdges [("aeson", "deepdep")] gr
+        -- These values are likely not correct long term, but are modified based on the fact that
+        -- `shouldInclude` is currently set to always include any reported dependency.
+        expectDeps ["aeson", "base", "deepdep", "rts", "spectrometer", "with-components"] gr
+        expectDirect ["aeson", "base", "spectrometer", "with-components"] gr
+        expectEdges expectedEdges gr
+  where
+    expectedEdges =
+      [ ("aeson", "deepdep")
+      , ("aeson", "base")
+      , ("base", "rts")
+      , ("deepdep", "base")
+      , ("spectrometer", "base")
+      , ("spectrometer", "spectrometer")
+      , ("spectrometer", "aeson")
+      , ("spectrometer", "base")
+      , ("spectrometer", "with-components")
+      , ("with-components", "base")
+      ]
