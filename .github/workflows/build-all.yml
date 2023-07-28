@@ -228,20 +228,9 @@ jobs:
         cosign version
         cosign sign-blob --yes --bundle "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle" "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz"
 
-    - name: Get Id Token
-      uses: actions/github-script@v6
-      id: get-id-token
-      with:
-        script: |
-          let token = await core.getIDToken();
-          console.log(`https://github.com/${token.job_workflow_ref}`);
-          console.log(token.iss);
-          return {'cert_identity': `https://github.com/${token.job_workflow_ref}`,
-                  'oidc_issuer': token.iss};
-
     - name: Verify Signature
       run:
-        cosign verify-blob --bundle "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle" --certificate-oidc-issuer "${{ steps.get-id-token.outputs.result.oidc_issuer}}" --certificate-identity "${{ steps.get-id-token.outputs.result.cert_identity }}" "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz"
+        cosign verify-blob --bundle "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz"
 
     # Uploads the generated archives (tar.gz/zip) as build artifacts to allow
     # verifying them without needing to do an actual release. This step does not
