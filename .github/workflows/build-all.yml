@@ -237,7 +237,7 @@ jobs:
       with:
         script: |
           const coreObj = require('@actions/core');
-          let token = await coreObj.getIdToken();
+          let token = await coreObj.getIDToken();
           core.setOutput('cert_identity', `https://github.com/${token.job_workflow_ref}`);
           core.setOutput('odic_issuer', token.iss);
 
