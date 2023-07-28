@@ -40,7 +40,7 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.String.Conversion (toString)
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Filters (AllFilters)
@@ -63,6 +63,7 @@ import Effect.Grapher (
   mapping,
   withMapping,
  )
+import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
@@ -115,9 +116,12 @@ instance FromJSON InstallPlan where
   parseJSON = withObject "InstallPlan" $ \obj ->
     InstallPlan
       <$> (obj .: "type" >>= parsePlanType)
-      <*> obj .: "id"
-      <*> obj .: "pkg-name"
-      <*> obj .: "pkg-version"
+      <*> obj
+      .: "id"
+      <*> obj
+      .: "pkg-name"
+      <*> obj
+      .: "pkg-version"
       <*> (obj .:? "depends" .!= Set.empty)
       <*> (obj .:? "style" >>= traverse parsePlanStyle)
       <*> fmap mergeComponents (obj .:? "components" .!= Map.empty)
@@ -183,7 +187,7 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CabalProject -> m DependencyResults
+getDeps :: (Has Logger sig m, Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => CabalProject -> m DependencyResults
 getDeps project =
   context "Cabal" $
     context "Dynamic analysis" $
@@ -201,21 +205,32 @@ instance AnalyzeProject CabalProject where
   analyzeProject _ = getDeps
   analyzeProject' _ = const $ fatalText "Cannot analyze cabal project statically"
 
-doGraph :: Has (MappedGrapher PlanId InstallPlan) sig m => InstallPlan -> m ()
+doGraph :: (Has Logger sig m, Has (MappedGrapher PlanId InstallPlan) sig m) => InstallPlan -> m ()
 doGraph plan = do
   let parentId = planId plan
+  logDebug . pretty . toText $ ("graph: " <> unPlanId parentId)
+  logDebug . pretty . toText $ " ^ is direct: " <> show (isDirectDep plan)
+  logDebug . pretty . toText $ " ^ plan type: " <> show (planType plan)
+  logDebug . pretty . toText $ " ^ filtered: " <> show (not $ shouldInclude plan)
+
+  logDebug " ^ dependencies: "
   mapping parentId plan
   for_ (installPlanDepends plan) $ \dep -> do
+    logDebug . pretty . toText $ " -> " <> unPlanId dep
     edge parentId dep
     when (isDirectDep plan) (direct dep)
 
+-- | Just include everything for now!
+--
+-- We need to research the correct way to filter dependencies.
+-- I think basically right now the concrete effect of not having any filters is that test deps are reported.
 shouldInclude :: InstallPlan -> Bool
-shouldInclude plan = not $ isDirectDep plan || planType plan == PreExisting
+shouldInclude _ = True
 
 ignorePlanId :: PlanId -> InstallPlan -> InstallPlan
 ignorePlanId _ x = x
 
-buildGraph :: Has Diagnostics sig m => BuildPlan -> m (Graphing Dependency)
+buildGraph :: (Has Logger sig m, Has Diagnostics sig m) => BuildPlan -> m (Graphing Dependency)
 buildGraph plan = do
   result <- withMapping ignorePlanId $ traverse doGraph (installPlans plan)
   case result of
@@ -233,7 +248,7 @@ toDependency plan =
     , dependencyTags = Map.empty
     }
 
-analyze :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => CabalProject -> m DependencyResults
+analyze :: (Has Logger sig m, Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => CabalProject -> m DependencyResults
 analyze project = do
   let dir = cabalDir project
   _ <- errCtx FailedToGenCabalPlan $ execThrow dir cabalGenPlanCmd
