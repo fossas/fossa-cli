@@ -17,7 +17,7 @@ import System.Info (compilerName, compilerVersion)
 
 versionNumber :: Maybe Text
 -- This is just for testing, revert before merging
-versionNumber = Just "v0.0.0" -- $$(getCurrentTag)
+versionNumber = Just "3.8.5" -- $$(getCurrentTag)
 
 info :: Either String GitInfo
 info = $$(tGitInfoCwdTry)
