@@ -236,14 +236,13 @@ jobs:
       id: get-id-token
       with:
         script: |
-          const coreObj = require('@actions/core');
-          let token = await coreObj.getIDToken();
-          coreObj.setOutput('cert_identity', `https://github.com/${token.job_workflow_ref}`);
-          coreObj.setOutput('odic_issuer', token.iss);
+          let token = await core.getIDToken();
+          return {'cert_identity': `https://github.com/${token.job_workflow_ref}`,
+                  'oidc_issuer': token.iss};
 
     - name: Verify Signature
       run:
-        cosign verify-blob --bundle "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle" --certificate-oidc-issuer "${{ steps.get-id-token.cert_identity}}" --certificate-identity '${{ steps.get-id-token.oidc_issuer }}' "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz"
+        cosign verify-blob --bundle "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle" --certificate-oidc-issuer "${{ steps.get-id-token.outputs.result.oidc_issuer}}" --certificate-identity "${{ steps.get-id-token.outputs.result.cert_identity }}" "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz"
 
     # Uploads the generated archives (tar.gz/zip) as build artifacts to allow
     # verifying them without needing to do an actual release. This step does not
