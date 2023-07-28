@@ -149,9 +149,6 @@ jobs:
     permissions:
         id-token: write
 
-    env:
-      NEEDS_RELEASE_SIGNATURE: "${{ github.ref_type == 'tag' }}"
-
     steps:
     - uses: actions/download-artifact@v2
 
@@ -224,17 +221,17 @@ jobs:
         cat *.sha256 | sha256sum --check --status
 
     - name: Install Cosign
-      if: ${{ "$NEEDS_RELEASE_SIGNATURE" == 'true' }}
+      if: ${{ github.ref_type == 'tag' }}
       uses: sigstore/cosign-installer@v3.1.1
 
     - name: Sign Release
-      if: ${{ "$NEEDS_RELEASE_SIGNATURE" == 'true' }}
+      if: ${{ github.ref_type == 'tag' }}
       run: |
         cosign version
         cosign sign-blob --yes --bundle "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle" "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz"
 
     - name: Verify Signature
-      if: ${{ "$NEEDS_RELEASE_SIGNATURE" == 'true' }}
+      if: ${{ github.ref_type == 'tag' }}
       run:
         cosign verify-blob --bundle "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz"
 
