@@ -8,6 +8,7 @@ module App.Version (
   versionOrBranch,
 ) where
 
+import App.Version.TH (getCurrentTag)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -16,8 +17,7 @@ import GitHash (GitInfo, giBranch, giDirty, giHash, tGitInfoCwdTry)
 import System.Info (compilerName, compilerVersion)
 
 versionNumber :: Maybe Text
--- This is just for testing, revert before merging
-versionNumber = Just "3.8.5" -- $$(getCurrentTag)
+versionNumber = $$(getCurrentTag)
 
 info :: Either String GitInfo
 info = $$(tGitInfoCwdTry)
