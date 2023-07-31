@@ -15,15 +15,40 @@ Several of our users noticed with the old strategy that they were getting depend
 This was increasing the burden on their compliance and engineering teams by requiring them to fix policy or vulnerability issues reported by FOSSA for packages that weren’t actually being used by the built software. 
 
 # What differences can I expect to see in my results from the new package-based Go module analysis?
-The main difference you can expect to see is a reduced number of dependencies and their associated issues. 
-For example, if a module includes a package that depends on another module, but that package isn’t actually used by the software under analysis then technically that other module is not a dependency of the final build product. 
-The old go modules strategy could not detect this case while the new one will correctly exclude the extra module. 
-Additionally, this new strategy should be able to detect test dependencies better than the previous one which results in a further reduction in packages.
-        
-You may also notice different results if previously your scans were falling back to a static analysis strategy where now with the new Go modules strategy it is able to complete dynamic analysis successfully.
+The main difference you can expect to see is a reduced number of dependencies and their associated issues.
+However the strategy is overall more accurate so it is possible, just less common, to see an increased number of dependencies as well.
 
-# Should I expect to see test dependencies in the results?
-No, test dependencies should be excluded from the results using the new strategy. If they are included, it is likely a bug. Please file a report at https://support.fossa.com.
+Results may also be different if scans of a project were previously falling back to a less preferred analysis strategy;
+the new strategy is more resilient to errors in the project so should be forced to fall back less often.
+In such cases, it's common to see an increased number of dependencies due to more accurate analysis, but they could be reduced as well.
+
+For more information about different strategies used to analyze Go modules projects,
+see the [Go modules strategy documentation](./gomodules.md).
+
+## Direct dependencies
+It is possible to see a different (usually reduced) set of direct dependencies.
+
+We expect a reduced set of dependencies to occur especially in situations where
+a dependency is implied by `go.mod` to be a direct dependency, but is not actually used.
+
+For more information see the [Go strategy FAQ](./gomodules.md#why-do-i-see-a-dependency-in-gomod-but-it-is-not-reflected-in-fossa).
+
+## Transitive dependencies
+It is possible to see a different (usually reduced) set of transitive dependencies.
+
+We expect a reduced set of dependencies to occur especially in situations where
+a transitive dependency is implied by the module imports, but the package(s) the transitive dependency provides
+are not actually used in the final build product of the project.
+
+For more information see ["how could a module be referenced by a Go project and not be a dependency?"](#how-could-a-module-be-referenced-by-a-go-project-and-not-be-a-dependency).
+
+## Test dependencies
+Test dependencies should not be reported with this strategy at all.
+
+We expect a reduced set of dependencies to occur in some cases where the previous analyzer had issues
+determining whether a given module was only used for tests.
+
+If test dependencies are reported, it is likely a bug. Please file a report at https://support.fossa.com.
 
 # How do I use the new package-based Go modules analysis?
 This new form of dynamic analysis should be available if you use a version of fossa-cli >= v3.8.5.
