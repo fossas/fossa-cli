@@ -12,7 +12,7 @@ import App.Fossa.Config.ConfigFile (
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (ExperimentalGradleConfigs),
   VendoredDependencyConfigs (..),
-  resolveConfigFile,
+  resolveConfigFile, ConfigGrepEntry (..),
  )
 import App.Types (Policy (PolicyName), ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
@@ -41,6 +41,8 @@ expectedConfigFile =
     , configExperimental = Just expectedExperimentalConfig
     , configVendoredDependencies = Just expectedVendoredDependencies
     , configTelemetry = Nothing
+    , configCustomLicenseSearch = Just expectedLicenseSearch
+    , configExperimentalKeywordSearch = Just expectedKeywordSearch
     }
 
 expectedConfigProject :: ConfigProject
@@ -100,6 +102,29 @@ expectedVendoredDependencyFilters =
     , licenseScanPathFiltersExclude = [GlobFilter ".git/**", GlobFilter "test/**/*.rb"]
     , licenseScanPathFilterFileExclude = []
     }
+
+expectedLicenseGrepEntry :: ConfigGrepEntry
+expectedLicenseGrepEntry =
+  ConfigGrepEntry
+    {
+      matchCriteria = "(?i)proprietary"
+    , name = "Proprietary License"
+    }
+
+expectedLicenseSearch :: [ConfigGrepEntry]
+expectedLicenseSearch = [expectedLicenseGrepEntry]
+
+expectedKeywordGrepEntry :: ConfigGrepEntry
+expectedKeywordGrepEntry =
+  ConfigGrepEntry
+    {
+
+      matchCriteria = "\\w*(_token)"
+    , name = "token search"
+    }
+
+expectedKeywordSearch :: [ConfigGrepEntry]
+expectedKeywordSearch = [expectedKeywordGrepEntry]
 
 simpleTarget :: TargetFilter
 simpleTarget = TypeTarget "pip"

@@ -63,6 +63,8 @@ defaultConfigFile =
     , configExperimental = Nothing
     , configVendoredDependencies = Nothing
     , configTelemetry = Nothing
+    , configCustomLicenseSearch = Nothing
+    , configExperimentalKeywordSearch = Nothing
     }
 
 mockApiKeyRaw :: Text
