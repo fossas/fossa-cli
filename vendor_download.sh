@@ -116,7 +116,6 @@ LERNIE_TAG=$(jq -cr ".name" $LERNIE_RELEASE_JSON)
 # Strip the leading 'v' off of the tag
 LERNIE_VERSION=$(echo $LERNIE_TAG | sed -e 's/^v//')
 FILTER=".name == \"lernie-$LERNIE_VERSION-$LERNIE_ASSET_POSTFIX\""
-echo "looking for lernie with filter: $FILTER"
 jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $LERNIE_RELEASE_JSON | while read ASSET; do
   URL="$(echo $ASSET | jq -c -r '.url')"
   NAME="$(echo $ASSET | jq -c -r '.name')"
