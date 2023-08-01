@@ -36,6 +36,10 @@ jobs:
 
     steps:
 
+    - name: Check for codesign, remove me later (Mac OS)
+      if: ${{ contains(matrix.os, 'macos') }}
+      run: codesign --invalid
+
     - uses: actions/checkout@v3
       with:
         lfs: true
@@ -138,6 +142,41 @@ jobs:
       run: |
         strip release/*
 
+    - name: Sign Binaries (Mac OS)
+      if: ${{ contains(matrix.os, 'macos') }}
+      env:
+        BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+        P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          # I'm not sure we need provisioning profiles since we aren't using xcode.
+          # BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+        KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # create variables
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          # PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          # import certificate and provisioning profile from secrets
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          # echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+          # create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # import certificate to keychain
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          codesign -s 'Fossa, Inc.' release/fossa
+          # Maybe not necessary, who uses pathfinder?
+          codesign -s 'Fossa, Inc.' release/pathfinder
+
+          # apply provisioning profile
+          # mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          # cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+        
     - uses: actions/upload-artifact@v2
       with:
         name: ${{ runner.os }}-binaries
