@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.Grep (
   analyzeWithGrep,
 ) where
@@ -9,7 +11,7 @@ import Control.Effect.StickyLogger (StickyLogger)
 import Data.List.NonEmpty (NonEmpty)
 
 import App.Fossa.Config.Analyze (GrepEntry (grepEntryMatchCriteria, grepEntryName), GrepOptions (..))
-import Data.Aeson (ToJSON (toEncoding, toJSON), defaultOptions, encode, genericToEncoding)
+import Data.Aeson (KeyValue ((.=)), ToJSON (toEncoding, toJSON), defaultOptions, encode, genericToEncoding, object)
 import Data.Functor.Extra ((<$$>))
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
@@ -28,7 +30,11 @@ data LernieConfig = LernieConfig
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON LernieConfig where
-  toEncoding = genericToEncoding defaultOptions
+  toJSON LernieConfig{..} =
+    object
+      [ "root_dir" .= toText rootDir
+      , "regexes" .= toJSON regexes
+      ]
 
 data LernieRegex = LernieRegex
   { pattern :: Text
@@ -38,7 +44,12 @@ data LernieRegex = LernieRegex
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON LernieRegex where
-  toEncoding = genericToEncoding defaultOptions
+  toJSON LernieRegex{..} =
+    object
+      [ "pattern" .= toText pattern
+      , "name" .= toText name
+      , "scan_type" .= toText scanType
+      ]
 
 data GrepScanType = CustomLicense | KeywordSearch
   deriving (Eq, Ord, Show, Generic)
@@ -64,8 +75,8 @@ analyzeWithGrep ::
 analyzeWithGrep rootDir maybeApiOpts grepOptions = do
   -- TODO: convert grepOptions to lernieOpts
   let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
-  let t = regexes <$> maybeLernieConfig
   logInfo . pretty $ "lernie config: " <> show maybeLernieConfig
+  logInfo . pretty $ show $ encode maybeLernieConfig
   pure Nothing
 
 grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Maybe LernieConfig
