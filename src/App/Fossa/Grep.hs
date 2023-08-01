@@ -1,18 +1,19 @@
 module App.Fossa.Grep (
   analyzeWithGrep,
 ) where
-import Data.List.NonEmpty (NonEmpty)
+
 import Control.Carrier.Diagnostics (Diagnostics)
+import Control.Effect.Debug (Debug)
 import Control.Effect.Lift (Has, Lift)
 import Control.Effect.StickyLogger (StickyLogger)
-import Control.Effect.Debug (Debug)
+import Data.List.NonEmpty (NonEmpty)
 
-import Fossa.API.Types (ApiOpts)
-import Path (Abs, Dir, Path)
+import App.Fossa.Config.Analyze (GrepEntry, GrepOptions)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger)
+import Fossa.API.Types (ApiOpts)
+import Path (Abs, Dir, Path)
 import Srclib.Types (SourceUnit (..))
-import App.Fossa.Config.Analyze (GrepEntry, GrepOptions)
 
 analyzeWithGrep ::
   ( Has Diagnostics sig m

@@ -6,17 +6,19 @@ module App.Fossa.Configuration.ConfigurationSpec (
 
 import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
+  ConfigGrepEntry (..),
   ConfigProject (..),
   ConfigRevision (..),
   ConfigTargets (..),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (ExperimentalGradleConfigs),
   VendoredDependencyConfigs (..),
-  resolveConfigFile, ConfigGrepEntry (..),
+  resolveConfigFile,
  )
 import App.Types (Policy (PolicyName), ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Stack (runStack)
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Set qualified as Set
 import Diag.Result (Result)
@@ -28,7 +30,6 @@ import ResultUtil (assertOnSuccess, expectFailure)
 import Test.Hspec qualified as T
 import Test.Hspec.Core.Spec (SpecM)
 import Types (ArchiveUploadType (..), BuildTarget (..), GlobFilter (GlobFilter), LicenseScanPathFilters (..), TargetFilter (..))
-import Data.List.NonEmpty (NonEmpty)
 
 expectedConfigFile :: ConfigFile
 expectedConfigFile =
@@ -108,8 +109,7 @@ expectedVendoredDependencyFilters =
 expectedLicenseGrepEntry :: ConfigGrepEntry
 expectedLicenseGrepEntry =
   ConfigGrepEntry
-    {
-      configGrepMatchCriteria = "(?i)proprietary"
+    { configGrepMatchCriteria = "(?i)proprietary"
     , configGrepName = "Proprietary License"
     }
 
@@ -119,9 +119,7 @@ expectedLicenseSearch = NE.fromList [expectedLicenseGrepEntry]
 expectedKeywordGrepEntry :: ConfigGrepEntry
 expectedKeywordGrepEntry =
   ConfigGrepEntry
-    {
-
-      configGrepMatchCriteria = "\\w*(_token)"
+    { configGrepMatchCriteria = "\\w*(_token)"
     , configGrepName = "token search"
     }
 
