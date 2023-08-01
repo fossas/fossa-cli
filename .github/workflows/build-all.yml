@@ -182,18 +182,18 @@ jobs:
         [ "$(Linux-binaries/fossa --version)" = "fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.0)" ] && echo "CLI version OK"
 
     - name: Install Cosign
-      # if: ${{ github.ref_type == 'tag' }}
+      if: ${{ github.ref_type == 'tag' }}
       uses: sigstore/cosign-installer@v3.1.1
 
     - name: Sign Release (Linux)
-      # if: ${{ github.ref_type == 'tag' }}
+      if: ${{ github.ref_type == 'tag' }}
       run: |
         cosign version
         cosign sign-blob --yes --bundle "Linux-binaries/fossa.bundle" "Linux-binaries/fossa"
         cosign sign-blob --yes --bundle "Linux-binaries/pathfinder.bundle" "Linux-binaries/pathfinder"
 
     - name: Verify Signatures
-      # if: ${{ github.ref_type == 'tag' }}
+      if: ${{ github.ref_type == 'tag' }}
       run: |
         cosign verify-blob --bundle "Linux-binaries/fossa.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/fossa"
         cosign verify-blob --bundle "Linux-binaries/pathfinder.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/pathfinder"
@@ -222,12 +222,12 @@ jobs:
         tar --create --verbose --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa
         tar --create --verbose --file "$LINUX_PATHFINDER_TAR_PATH" --directory Linux-binaries pathfinder
 
-        #if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+        if [ "$GITHUB_REF_TYPE" = "tag" ]; then
         tar --append --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa.bundle
         tar --append --file "$LINUX_PATHFINDER_TAR_PATH" --directory Linux-binaries pathfinder.bundle
         zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa.bundle
         zip -j "$LINUX_PATHFINDER_ZIP_PATH" Linux-binaries/pathfinder.bundle
-        # fi
+        fi
 
         gzip "$LINUX_PATHFINDER_TAR_PATH"
         gzip "$LINUX_FOSSA_TAR_PATH"
