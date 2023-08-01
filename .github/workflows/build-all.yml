@@ -181,6 +181,23 @@ jobs:
         [ "$GITHUB_REF_TYPE" = "tag" ] && echo "Ref type OK"
         [ "$(Linux-binaries/fossa --version)" = "fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.0)" ] && echo "CLI version OK"
 
+    - name: Install Cosign
+      # if: ${{ github.ref_type == 'tag' }}
+      uses: sigstore/cosign-installer@v3.1.1
+
+    - name: Sign Release (Linux)
+      # if: ${{ github.ref_type == 'tag' }}
+      run: |
+        cosign version
+        cosign sign-blob --yes --bundle "Linux-binaries/fossa.bundle" "Linux-binaries/fossa"
+        cosign sign-blob --yes --bundle "Linux-binaries/pathfinder.bundle" "Linux-binaries/pathfinder"
+
+    - name: Verify Signatures
+      # if: ${{ github.ref_type == 'tag' }}
+      run:
+        cosign verify-blob --bundle "release/fossa.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "release/fossa"
+        cosign verify-blob --bundle "release/pathfinder.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "release/pathfinder"
+
     # This uses names compatible with our install script.
     #
     # Originally, CLI >=2.x Linux releases were only packaged as zip files, but
@@ -189,16 +206,31 @@ jobs:
     # default. To avoid breaking compatibility with older install scripts, we
     # release both formats but default to using tar.gz when installing.
     - name: Bundle binaries
+      env:
+        LINUX_PATHFINDER_TAR_PATH: "release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar"
+        LINUX_FOSSA_TAR_PATH: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar"
+        LINUX_PATHFINDER_ZIP_PATH: "release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
+        LINUX_FOSSA_ZIP_PATH: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
       run: |
         mkdir release
 
         ls -R
 
         chmod +x Linux-binaries/*
-        zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/fossa
-        zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/pathfinder
-        tar --create --gzip --verbose --file release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz --directory Linux-binaries fossa
-        tar --create --gzip --verbose --file release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz --directory Linux-binaries pathfinder
+        zip -j "$LINUX_PATHFINDER_ZIP_PATH" Linux-binaries/fossa
+        zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/pathfinder
+        tar --create --verbose --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa
+        tar --create --verbose --file "$LINUX_PATHFINDER_TAR_PATH" --directory Linux-binaries pathfinder
+
+        #if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+        tar --append --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa.bundle
+        tar --append --file "$LINUX_PATHFINDER_TAR_PATH" --directory Linux-binaries pathfinder.bundle
+        zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa.bundle
+        zip -j "$LINUX_PATHFINDER_ZIP_PATH" Linux-binaries/pathfinder.bundle
+        # fi
+
+        gzip "$LINUX_PATHFINDER_TAR_PATH"
+        gzip "$LINUX_FOSSA_TAR_PATH"
 
         chmod +x macOS-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/fossa
@@ -220,21 +252,6 @@ jobs:
         echo "Sanity-checking the checksums."
 
         cat *.sha256 | sha256sum --check --status
-
-    - name: Install Cosign
-      if: ${{ github.ref_type == 'tag' }}
-      uses: sigstore/cosign-installer@v3.1.1
-
-    - name: Sign Release
-      if: ${{ github.ref_type == 'tag' }}
-      run: |
-        cosign version
-        cosign sign-blob --yes --bundle "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle" "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz"
-
-    - name: Verify Signature
-      if: ${{ github.ref_type == 'tag' }}
-      run:
-        cosign verify-blob --bundle "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz"
 
     # Uploads the generated archives (tar.gz/zip) as build artifacts to allow
     # verifying them without needing to do an actual release. This step does not
