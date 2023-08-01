@@ -36,10 +36,6 @@ jobs:
 
     steps:
 
-    - name: Check for codesign, remove me later (Mac OS)
-      if: ${{ contains(matrix.os, 'macos') }}
-      run: codesign --invalid
-
     - uses: actions/checkout@v3
       with:
         lfs: true
