@@ -31,7 +31,7 @@ both flow downwards, creating purple when they join.
 - In the yellow isolated graph, we have no trace of blue or red anywhere, meaning that graph hydration
 allows for isolation of subgraphs.
 - In the cyclic graph, we ended up with all nodes being the same color.  This is again due to combining
-the colors, but if we defined the behvior to overwrite existing colors (or to reject all colors after
+the colors, but if we defined the behavior to overwrite existing colors (or to reject all colors after
 the first), we could end up with VERY different graphs.
 
 Graph hydration is handled through the `Hydrateable` typeclass, in the `Graphing.Hydrate` module.
