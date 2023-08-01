@@ -143,7 +143,7 @@ Note: When parsed, YAML considers text that could be a decimal number (such as 1
 
 FOSSA also supports dependencies when the user has a URL to an archive of the source code of the dependency.
 
-To specify a remote dependency, you must provide the name, version, and download URL of the dependency. The FOSSA backend will attempt to download and scan any source code contained in an archive hosted at this URL. The following archive types are supported *.zip, *.tar, *.tar.gz, *.tar.bz2, *.tar.xz.
+To specify a remote dependency, you must provide the name, version, and download URL of the dependency. The FOSSA backend will attempt to download and scan any source code contained in an archive hosted at this URL. The following archive types are supported: *.zip, *.tar, *.tar.gz, *.tar.bz2, *.tar.xz.
 
 For example, for a dependency released on a GitHub release, your URL might look like: `https://github.com/fossas/fossa-cli/archive/refs/tags/v3.3.12.tar.gz`.
 
