@@ -11,16 +11,16 @@ import Control.Effect.StickyLogger (StickyLogger)
 import Data.List.NonEmpty (NonEmpty)
 
 import App.Fossa.Config.Analyze (GrepEntry (grepEntryMatchCriteria, grepEntryName), GrepOptions (..))
-import Data.Aeson (KeyValue ((.=)), ToJSON (toEncoding, toJSON), defaultOptions, encode, genericToEncoding, object)
+import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), encode, object)
 import Data.Functor.Extra ((<$$>))
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
-import Data.Text.Prettyprint.Doc (pretty)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, logInfo)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)
+import Prettyprinter (Pretty (pretty))
 import Srclib.Types (SourceUnit (..))
 
 data LernieConfig = LernieConfig
