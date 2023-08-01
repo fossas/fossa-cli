@@ -46,12 +46,13 @@ import App.Fossa.Config.Common (
  )
 import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
+  ConfigGrepEntry (..),
   ConfigTelemetryScope (NoTelemetry),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
   VendoredDependencyConfigs (..),
   mergeFileCmdMetadata,
-  resolveConfigFile, ConfigGrepEntry (..),
+  resolveConfigFile,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
@@ -73,6 +74,8 @@ import Control.Effect.Lift (Lift)
 import Control.Monad (when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Flag (Flag, flagOpt, fromFlag)
+import Data.Functor.Extra ((<$$>))
+import Data.List.NonEmpty (NonEmpty)
 import Data.Monoid.Extra (isMempty)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -110,8 +113,6 @@ import Path.Extra (SomePath)
 import Prettyprinter (Doc, annotate, defaultLayoutOptions, layoutPretty)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Red), color, renderStrict)
 import Types (ArchiveUploadType (..), LicenseScanPathFilters (..), TargetFilter)
-import Data.List.NonEmpty (NonEmpty)
-import Data.Functor.Extra ((<$$>))
 
 -- Utility functions
 coloredText :: Color -> Doc AnsiStyle -> String
@@ -248,8 +249,9 @@ instance ToJSON AnalyzeConfig where
   toEncoding = genericToEncoding defaultOptions
 
 data GrepEntry = GrepEntry
-  { matchCriteria :: Text
-  , name :: Text }
+  { grepEntryMatchCriteria :: Text
+  , grepEntryName :: Text
+  }
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON GrepEntry where
