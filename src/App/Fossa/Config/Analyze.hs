@@ -20,6 +20,8 @@ module App.Fossa.Config.Analyze (
   VSIAnalysis (..),
   VSIModeOptions (..),
   GoDynamicTactic (..),
+  GrepEntry (..),
+  GrepOptions (..),
   mkSubCommand,
   loadConfig,
   cliParser,
@@ -49,7 +51,7 @@ import App.Fossa.Config.ConfigFile (
   ExperimentalGradleConfigs (..),
   VendoredDependencyConfigs (..),
   mergeFileCmdMetadata,
-  resolveConfigFile,
+  resolveConfigFile, ConfigGrepEntry (..),
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
@@ -108,6 +110,8 @@ import Path.Extra (SomePath)
 import Prettyprinter (Doc, annotate, defaultLayoutOptions, layoutPretty)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Red), color, renderStrict)
 import Types (ArchiveUploadType (..), LicenseScanPathFilters (..), TargetFilter)
+import Data.List.NonEmpty (NonEmpty)
+import Data.Functor.Extra ((<$$>))
 
 -- Utility functions
 coloredText :: Color -> Doc AnsiStyle -> String
@@ -175,6 +179,15 @@ data VendoredDependencyOptions = VendoredDependencyOptions
 instance ToJSON VendoredDependencyOptions where
   toEncoding = genericToEncoding defaultOptions
 
+data GrepOptions = GrepOptions
+  { customLicenseSearch :: Maybe (NonEmpty GrepEntry)
+  , keywordSearch :: Maybe (NonEmpty GrepEntry)
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON GrepOptions where
+  toEncoding = genericToEncoding defaultOptions
+
 data AnalyzeCliOpts = AnalyzeCliOpts
   { commons :: CommonOpts
   , analyzeOutput :: Bool
@@ -227,10 +240,19 @@ data AnalyzeConfig = AnalyzeConfig
   , noDiscoveryExclusion :: Flag NoDiscoveryExclusion
   , overrideDynamicAnalysis :: OverrideDynamicAnalysisBinary
   , firstPartyScansFlag :: FirstPartyScansFlag
+  , grepOptions :: GrepOptions
   }
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON AnalyzeConfig where
+  toEncoding = genericToEncoding defaultOptions
+
+data GrepEntry = GrepEntry
+  { matchCriteria :: Text
+  , name :: Text }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON GrepEntry where
   toEncoding = genericToEncoding defaultOptions
 
 data ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
@@ -398,6 +420,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       experimentalCfgs = collectExperimental maybeConfig cliOpts
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
       dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
+      grepOptions = collectGrepOptions maybeConfig
   firstPartyScansFlag <-
     case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
       (True, True) -> fatalText "You provided both the --experimental-force-first-party-scans and --experimental-block-first-party-scans flags. Only one of these flags may be used"
@@ -420,6 +443,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure analyzeNoDiscoveryExclusion
     <*> pure dynamicAnalysisOverrides
     <*> pure firstPartyScansFlag
+    <*> pure grepOptions
 
 collectFilters ::
   ( Has Diagnostics sig m
@@ -479,6 +503,16 @@ collectVendoredDepsFromConfig maybeCfg =
       defaultScanType = maybeCfg >>= configVendoredDependencies >>= configLicenseScanMethod
       pathFilters = maybeCfg >>= configVendoredDependencies >>= configLicenseScanPathFilters
    in (forceRescans, defaultScanType, pathFilters)
+
+collectGrepOptions :: Maybe ConfigFile -> GrepOptions
+collectGrepOptions maybeCfg =
+  case maybeCfg of
+    Nothing -> GrepOptions Nothing Nothing
+    Just cfg ->
+      GrepOptions (configGrepToGrep <$$> configCustomLicenseSearch cfg) (configGrepToGrep <$$> configKeywordSearch cfg)
+
+configGrepToGrep :: ConfigGrepEntry -> GrepEntry
+configGrepToGrep configGrep = GrepEntry (configGrepMatchCriteria configGrep) (configGrepName configGrep)
 
 collectScanDestination ::
   ( Has Diagnostics sig m

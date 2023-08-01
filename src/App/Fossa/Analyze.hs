@@ -123,6 +123,7 @@ import Prettyprinter.Render.Terminal (
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit, Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
+import App.Fossa.Grep (analyzeWithGrep)
 
 debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json.gz"
@@ -266,6 +267,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       revision = Config.projectRevision cfg
       skipResolutionSet = Config.vsiSkipSet $ Config.vsiOptions cfg
       vendoredDepsOptions = Config.vendoredDeps cfg
+      grepOptions = Config.grepOptions cfg
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
@@ -296,6 +298,13 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir maybeApiOpts vendoredDepsOptions
+  grepResults <-
+    Diag.errorBoundaryIO . diagToDebug $
+      if filterIsVSIOnly filters
+        then do
+          logInfo "Running in VSI only mode, skipping keyword search and custom-license search"
+          pure Nothing
+        else Diag.context "grep" . runStickyLogger SevInfo $ analyzeWithGrep basedir maybeApiOpts grepOptions
 
   let -- This makes nice with additionalSourceUnits below, but throws out additional Result data.
       -- This is ok because 'resultToMaybe' would do that anyway.

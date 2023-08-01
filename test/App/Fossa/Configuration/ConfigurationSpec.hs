@@ -17,6 +17,7 @@ import App.Fossa.Config.ConfigFile (
 import App.Types (Policy (PolicyName), ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Stack (runStack)
+import Data.List.NonEmpty qualified as NE
 import Data.Set qualified as Set
 import Diag.Result (Result)
 import Effect.Logger (ignoreLogger)
@@ -27,6 +28,7 @@ import ResultUtil (assertOnSuccess, expectFailure)
 import Test.Hspec qualified as T
 import Test.Hspec.Core.Spec (SpecM)
 import Types (ArchiveUploadType (..), BuildTarget (..), GlobFilter (GlobFilter), LicenseScanPathFilters (..), TargetFilter (..))
+import Data.List.NonEmpty (NonEmpty)
 
 expectedConfigFile :: ConfigFile
 expectedConfigFile =
@@ -42,7 +44,7 @@ expectedConfigFile =
     , configVendoredDependencies = Just expectedVendoredDependencies
     , configTelemetry = Nothing
     , configCustomLicenseSearch = Just expectedLicenseSearch
-    , configExperimentalKeywordSearch = Just expectedKeywordSearch
+    , configKeywordSearch = Just expectedKeywordSearch
     }
 
 expectedConfigProject :: ConfigProject
@@ -107,24 +109,24 @@ expectedLicenseGrepEntry :: ConfigGrepEntry
 expectedLicenseGrepEntry =
   ConfigGrepEntry
     {
-      matchCriteria = "(?i)proprietary"
-    , name = "Proprietary License"
+      configGrepMatchCriteria = "(?i)proprietary"
+    , configGrepName = "Proprietary License"
     }
 
-expectedLicenseSearch :: [ConfigGrepEntry]
-expectedLicenseSearch = [expectedLicenseGrepEntry]
+expectedLicenseSearch :: NonEmpty ConfigGrepEntry
+expectedLicenseSearch = NE.fromList [expectedLicenseGrepEntry]
 
 expectedKeywordGrepEntry :: ConfigGrepEntry
 expectedKeywordGrepEntry =
   ConfigGrepEntry
     {
 
-      matchCriteria = "\\w*(_token)"
-    , name = "token search"
+      configGrepMatchCriteria = "\\w*(_token)"
+    , configGrepName = "token search"
     }
 
-expectedKeywordSearch :: [ConfigGrepEntry]
-expectedKeywordSearch = [expectedKeywordGrepEntry]
+expectedKeywordSearch :: NonEmpty ConfigGrepEntry
+expectedKeywordSearch = NE.fromList [expectedKeywordGrepEntry]
 
 simpleTarget :: TargetFilter
 simpleTarget = TypeTarget "pip"

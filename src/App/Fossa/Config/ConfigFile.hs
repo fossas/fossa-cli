@@ -69,6 +69,7 @@ import Path (
   (</>),
  )
 import Types (ArchiveUploadType, LicenseScanPathFilters, TargetFilter)
+import Data.List.NonEmpty (NonEmpty)
 
 defaultConfigFileNames :: [Path Rel File]
 defaultConfigFileNames =
@@ -196,8 +197,8 @@ data ConfigFile = ConfigFile
   , configExperimental :: Maybe ExperimentalConfigs
   , configVendoredDependencies :: Maybe VendoredDependencyConfigs
   , configTelemetry :: Maybe ConfigTelemetry
-  , configCustomLicenseSearch :: Maybe [ConfigGrepEntry]
-  , configExperimentalKeywordSearch :: Maybe [ConfigGrepEntry]
+  , configCustomLicenseSearch :: Maybe (NonEmpty ConfigGrepEntry)
+  , configKeywordSearch :: Maybe (NonEmpty ConfigGrepEntry)
   }
   deriving (Eq, Ord, Show)
 
@@ -234,8 +235,8 @@ data ConfigPaths = ConfigPaths
   deriving (Eq, Ord, Show)
 
 data ConfigGrepEntry = ConfigGrepEntry
-  { matchCriteria :: Text
-  , name :: Text }
+  { configGrepMatchCriteria :: Text
+  , configGrepName :: Text }
   deriving (Eq, Ord, Show)
 
 newtype ConfigTelemetry = ConfigTelemetry
