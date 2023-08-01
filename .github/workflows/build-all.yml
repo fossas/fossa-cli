@@ -139,22 +139,18 @@ jobs:
         strip release/*
 
     - name: Sign Binaries (Mac OS)
-      if: ${{ contains(matrix.os, 'macos') }}
+      if: ${{ contains(matrix.os, 'macos') && github.ref_type == 'tag' }}
       env:
         MACOS_BUILD_CERT_BASE64: ${{ secrets.MACOS_BUILD_CERT_BASE64 }}
         MACOS_BUILD_CERT_P12_PASSWORD: ${{ secrets.MACOS_BUILD_CERT_P12_PASSWORD }}
-          # I'm not sure we need provisioning profiles since we aren't using xcode.
-          # BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
         MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
       run: |
         # create variables
         CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-        # PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
         KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
         # import certificate and provisioning profile from secrets
         echo -n "$MACOS_BUILD_CERT_BASE64" | base64 --decode -o $CERTIFICATE_PATH
-        # echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
 
         # create temporary keychain
         security create-keychain -p "$MACOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
@@ -166,12 +162,7 @@ jobs:
         security list-keychain -d user -s $KEYCHAIN_PATH
 
         codesign -s 'Fossa, Inc.' release/fossa
-        # Maybe not necessary, who uses pathfinder?
         codesign -s 'Fossa, Inc.' release/pathfinder
-
-        # apply provisioning profile
-        # mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-        # cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
 
     - uses: actions/upload-artifact@v2
       with:
