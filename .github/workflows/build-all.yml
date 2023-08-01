@@ -194,7 +194,7 @@ jobs:
 
     - name: Verify Signatures
       # if: ${{ github.ref_type == 'tag' }}
-      run:
+      run: |
         cosign verify-blob --bundle "release/fossa.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "release/fossa"
         cosign verify-blob --bundle "release/pathfinder.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "release/pathfinder"
 
