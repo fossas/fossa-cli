@@ -217,16 +217,16 @@ jobs:
         ls -R
 
         chmod +x Linux-binaries/*
-        zip -j "$LINUX_PATHFINDER_ZIP_PATH" Linux-binaries/fossa
-        zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/pathfinder
+        zip -j "$LINUX_PATHFINDER_ZIP_PATH" Linux-binaries/pathfinder
+        zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa
         tar --create --verbose --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa
         tar --create --verbose --file "$LINUX_PATHFINDER_TAR_PATH" --directory Linux-binaries pathfinder
 
         if [ "$GITHUB_REF_TYPE" = "tag" ]; then
-        tar --append --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa.bundle
-        tar --append --file "$LINUX_PATHFINDER_TAR_PATH" --directory Linux-binaries pathfinder.bundle
-        zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa.bundle
-        zip -j "$LINUX_PATHFINDER_ZIP_PATH" Linux-binaries/pathfinder.bundle
+          tar --append --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa.bundle
+          tar --append --file "$LINUX_PATHFINDER_TAR_PATH" --directory Linux-binaries pathfinder.bundle
+          zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa.bundle
+          zip -j "$LINUX_PATHFINDER_ZIP_PATH" Linux-binaries/pathfinder.bundle
         fi
 
         gzip "$LINUX_PATHFINDER_TAR_PATH"
