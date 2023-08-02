@@ -13,6 +13,7 @@ module Effect.Exec (
   CmdFailure (..),
   AllowErr (..),
   execParser,
+  execParser',
   execJson,
   execJson',
   ExecIOC,
@@ -89,12 +90,12 @@ import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 
 data Command = Command
-  { cmdName :: Text
-  -- ^ Command name to use. E.g., "pip", "pip3", "./gradlew".
-  , cmdArgs :: [Text]
-  -- ^ Arguments for the command
-  , cmdAllowErr :: AllowErr
-  -- ^ Error (i.e. non-zero exit code) tolerance policy for running commands. This is helpful for commands like @npm@, that nonsensically return non-zero exit codes when a command succeeds
+  { -- | Command name to use. E.g., "pip", "pip3", "./gradlew".
+    cmdName :: Text
+  , -- | Arguments for the command
+    cmdArgs :: [Text]
+  , -- | Error (i.e. non-zero exit code) tolerance policy for running commands. This is helpful for commands like @npm@, that nonsensically return non-zero exit codes when a command succeeds
+    cmdAllowErr :: AllowErr
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -304,6 +305,18 @@ execParser parser dir cmd = do
   case runParser parser "" (decodeUtf8 stdout) of
     Left err -> fatal (CommandParseError cmd (toText (errorBundlePretty err)))
     Right a -> pure a
+
+-- | Parse the stdout of a command, but execute the command with stdin and run the command in the current directory
+execParser' :: forall a sig m. (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Parser a -> Command -> Text -> m a
+execParser' parser cmd stdin = do
+  dir <- getCurrentDir
+  result <- exec' dir cmd stdin
+  case result of
+    Left failure -> fatal (CommandFailed failure)
+    Right stdout ->
+      case runParser parser "" (decodeUtf8 stdout) of
+        Left err -> fatal (CommandParseError cmd (toText (errorBundlePretty err)))
+        Right a -> pure a
 
 -- | Parse the JSON stdout of a command
 execJson :: (FromJSON a, Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> Command -> m a

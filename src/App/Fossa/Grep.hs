@@ -4,24 +4,28 @@ module App.Fossa.Grep (
   analyzeWithGrep,
 ) where
 
-import Control.Carrier.Diagnostics (Diagnostics)
+import Control.Carrier.Diagnostics (Diagnostics, context)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Lift (Has, Lift)
 import Control.Effect.StickyLogger (StickyLogger)
 import Data.List.NonEmpty (NonEmpty)
 
 import App.Fossa.Config.Analyze (GrepEntry (grepEntryMatchCriteria, grepEntryName), GrepOptions (..))
+import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withLernieBinary)
 import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), encode, object)
+import Data.Aeson qualified as Aeson
 import Data.Functor.Extra ((<$$>))
-import Data.String.Conversion (ToText (toText))
+import Data.String.Conversion (ToText (toText), decodeUtf8)
 import Data.Text (Text)
-import Effect.Exec (Exec)
+import Data.Void (Void)
+import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser')
 import Effect.Logger (Logger, logInfo)
+import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)
 import Prettyprinter (Pretty (pretty))
-import Srclib.Types (SourceUnit (..))
+import Text.Megaparsec (Parsec)
 
 data LernieConfig = LernieConfig
   { rootDir :: Path Abs Dir
@@ -63,21 +67,23 @@ instance ToJSON GrepScanType where
 
 analyzeWithGrep ::
   ( Has Diagnostics sig m
-  , Has StickyLogger sig m
   , Has Logger sig m
-  , Has Debug sig m
   , Has Exec sig m
+  , Has ReadFS sig m
+  , Has (Lift IO) sig m
   ) =>
   Path Abs Dir ->
   Maybe ApiOpts ->
   GrepOptions ->
-  m (Maybe SourceUnit) -- TODO: make the types that we actually want to return
+  m (Maybe Text) -- TODO: make the types that we actually want to return
 analyzeWithGrep rootDir maybeApiOpts grepOptions = do
   -- TODO: convert grepOptions to lernieOpts
   let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
   logInfo . pretty $ "lernie config: " <> show maybeLernieConfig
   logInfo . pretty $ show $ encode maybeLernieConfig
-  pure Nothing
+  case maybeLernieConfig of
+    Just (lernieConfig) -> Just <$> runLernie lernieConfig
+    Nothing -> pure Nothing
 
 grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Maybe LernieConfig
 grepOptionsToLernieConfig rootDir grepOptions =
@@ -97,3 +103,29 @@ grepOptionsToLernieConfig rootDir grepOptions =
 grepEntryToLernieRegex :: GrepScanType -> GrepEntry -> LernieRegex
 grepEntryToLernieRegex scanType grepEntry =
   LernieRegex (grepEntryMatchCriteria grepEntry) (grepEntryName grepEntry) scanType
+
+runLernie ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  ) =>
+  LernieConfig ->
+  m Text
+runLernie lernieConfig = withLernieBinary $ \bin -> do
+  -- Handle the JSON response.
+  let lernieConfigJSON = decodeUtf8 $ Aeson.encode lernieConfig
+  execParser' parseLernieOutput (lernieCommand bin) lernieConfigJSON
+
+type Parser = Parsec Void Text
+
+lernieCommand :: BinaryPaths -> Command
+lernieCommand bin =
+  Command
+    { cmdName = toText $ toPath bin
+    , cmdArgs = ["--config", "-"]
+    , cmdAllowErr = Never
+    }
+
+parseLernieOutput :: Parser Text
+parseLernieOutput = "type"
