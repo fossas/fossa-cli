@@ -207,7 +207,6 @@ embeddedBinaryLernie = $(embedFileIfExists "vendor-bins/lernie")
 #ifdef mingw32_HOST_OS
 embeddedBinaryBerkeleyDB :: ByteString
 embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb.exe")
-
 #else
 embeddedBinaryBerkeleyDB :: ByteString
 embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb")
