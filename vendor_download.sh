@@ -52,14 +52,14 @@ case "$(uname -s)" in
   Linux)
     ASSET_POSTFIX="linux"
     BASIS_ASSET_POSTFIX="linux-amd64"
-    LERNIE_ASSET_POSTFIX="linux"
+    LERNIE_ASSET_POSTFIX="x86_64-linux"
     ;;
 
   *)
     echo "Warn: Assuming $(uname -s) is Windows"
     ASSET_POSTFIX="windows.exe"
     BASIS_ASSET_POSTFIX="windows-amd64"
-    LERNIE_ASSET_POSTFIX="windows"
+    LERNIE_ASSET_POSTFIX="x86_64-windows.exe"
     OS_WINDOWS=true
     ;;
 esac
