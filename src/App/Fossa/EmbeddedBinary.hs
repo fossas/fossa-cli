@@ -10,6 +10,7 @@ module App.Fossa.EmbeddedBinary (
   toPath,
   withThemisAndIndex,
   withBerkeleyBinary,
+  withLernieBinary,
   allBins,
   dumpEmbeddedBinary,
   themisVersion,
@@ -109,6 +110,13 @@ withBerkeleyBinary ::
   (BinaryPaths -> m c) ->
   m c
 withBerkeleyBinary = withEmbeddedBinary BerkeleyDB
+
+withLernieBinary ::
+  ( Has (Lift IO) sig m
+  ) =>
+  (BinaryPaths -> m c) ->
+  m c
+withLernieBinary = withEmbeddedBinary Lernie
 
 withEmbeddedBinary ::
   ( Has (Lift IO) sig m
