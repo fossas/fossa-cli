@@ -75,7 +75,7 @@ With [`fossa-deps.{yml,json}` file](features/manual-dependencies.md), 3.x suppor
 - License scanning vendor dependencies 
 <!-- markdown-link-check-disable-next-line -->
 - Analyzing archives that are located at a specific web address (e.g. https://my-deps-source/v1.zip)
-- Manually specifying dependency by it's name and license (e.g. my-custom-dep with MIT licence)
+- Manually specifying dependency by it's name and license (e.g. my-custom-dep with MIT license)
 - Manually specifying dependency for analysis by its name and dependency type (e.g. pip dependency: request)
 
 This is very useful when working with a package manager that is not supported, or when you have a custom and nonstandard dependency management solution. The FOSSA CLI will automatically read a fossa-deps.yml or a fossa-deps.json file in the root directory (usually the current working directory) when fossa analyze is run and parse dependencies from it. These dependencies will be added to the dependencies that are normally found when fossa analysis is run in the directory.
