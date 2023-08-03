@@ -114,7 +114,7 @@ We construct these string representations like so:
 Given the analysis target tuple `(type, path, [list, of, subtargets])`,
 we emit one target per subtarget, plus a target with no subtargets.  The target
 without a subtarget component is ALWAYS present, even when no subtargets are
-found.  This is the most commmon scenario, since most analyzers do not make use
+found.  This is the most common scenario, since most analyzers do not make use
 of subtargets.  For example, the tuple `(cargo, foo/bar, [])` would emit the
 single target `cargo@foo/bar`.  The tuple of `(gradle, foo/baz, [subA, subB])`
 would emit three targets:
@@ -148,7 +148,7 @@ exclude a/b AND include a/b/c
 -- rewritten:
 Do not include a/b (or its children)
 AND
-Do not incluse anything that is not a/b/c (or its children)
+Do not include anything that is not a/b/c (or its children)
 ```
 
 In this wording, it is clear that we must not include `a/b/c`, because it has
