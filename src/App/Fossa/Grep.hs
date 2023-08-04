@@ -11,7 +11,7 @@ import App.Fossa.Config.Analyze (GrepEntry (grepEntryMatchCriteria, grepEntryNam
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withLernieBinary)
 import Control.Carrier.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift)
-import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), decode, encode, object, withObject, withText)
+import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), decode, eitherDecode, encode, object, withObject, withText)
 import Data.Aeson qualified as A
 import Data.Aeson qualified as Aeson
 import Data.Aeson.Types ((.:))
@@ -21,6 +21,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToText (toText), decodeUtf8)
 import Data.Text (Text)
+import Debug.Trace (traceM)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execThrow'')
 import Effect.Logger (Logger, logInfo)
 import Effect.ReadFS (ReadFS)
@@ -89,7 +90,7 @@ instance FromJSON LernieMessageType where
 
 data LernieMatch = LernieMatch
   { lernieMatchPath :: Text
-  , lernieMatchMatches :: LernieMatchData
+  , lernieMatchMatches :: [LernieMatchData]
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -126,7 +127,6 @@ instance FromJSON LernieError where
 data LernieMatchData = LernieMatchData
   { lernieMatchDataPattern :: Text
   , lernieMatchDataMatchString :: Text
-  , lernieMatchDataPath :: Text
   , lernieMatchDataScanType :: GrepScanType
   , lernieMatchDataName :: Text
   , lernieMatchDataStartByte :: Int
@@ -140,8 +140,7 @@ instance FromJSON LernieMatchData where
   parseJSON = withObject "LernieMatchData" $ \obj ->
     LernieMatchData
       <$> (obj .: "pattern")
-      <*> (obj .: "match_string")
-      <*> (obj .: "path")
+      <*> (obj .: "match_str")
       <*> (obj .: "scan_type")
       <*> (obj .: "name")
       <*> (obj .: "start_byte")
@@ -167,6 +166,7 @@ emptyLernieMessages = LernieMessages [] [] []
 instance FromJSON LernieMessage where
   parseJSON (Object o) = do
     messageType <- o .: "type"
+    traceM $ "message type = " ++ show messageType
     case messageType of
       LernieMessageTypeWarning -> do
         Object d <- o .: "data"
@@ -250,13 +250,20 @@ runLernie lernieConfig = withLernieBinary $ \bin -> do
   -- _ <- pure $ runIt $ lernieCommand bin
   result <- execThrow'' (lernieCommand bin) lernieConfigJSON
   logInfo . pretty $ "Lernie result: " <> show result
-  pure $ parseLernieJson result
+  let messageLines = BL.splitWith (== 10) result
+      inds :: [Either String LernieMessage]
+      inds = map eitherDecode messageLines
+  logInfo . pretty $ "parsing this many lines: " ++ show messageLines
+  logInfo . pretty $ "Lernie messages " <> show inds
+  let messages = parseLernieJson result
+  logInfo . pretty $ "Lernie messages " <> show messages
+  pure messages
 
 parseLernieJson :: BL.ByteString -> LernieMessages
 parseLernieJson out =
   foldr addLernieMessage emptyLernieMessages parsedLines
   where
-    messageLines = BL.splitWith (== 97) out
+    messageLines = BL.splitWith (== 10) out
     parsedLines :: [LernieMessage]
     parsedLines = mapMaybe decode messageLines
 
