@@ -219,6 +219,7 @@ jobs:
         LINUX_FOSSA_TAR_PATH: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar"
         LINUX_PATHFINDER_ZIP_PATH: "release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
         LINUX_FOSSA_ZIP_PATH: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
+        LINUX_DIAGNOSE_ZIP_PATH: "release/diagnose_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
       run: |
         mkdir release
 
@@ -229,24 +230,29 @@ jobs:
         zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa
         tar --create --verbose --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa
         tar --create --verbose --file "$LINUX_PATHFINDER_TAR_PATH" --directory Linux-binaries pathfinder
+        tar --create --verbose --file "$LINUX_DIAGNOSE_TAR_PATH" --directory Linux-binaries diagnose
 
         if [ "$GITHUB_REF_TYPE" = "tag" ]; then
           tar --append --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa.bundle
           tar --append --file "$LINUX_PATHFINDER_TAR_PATH" --directory Linux-binaries pathfinder.bundle
           zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa.bundle
           zip -j "$LINUX_PATHFINDER_ZIP_PATH" Linux-binaries/pathfinder.bundle
+          zip -j "$LINUX_DIAGNOSE_ZIP_PATH" Linux-binaries/diagnose.bundle
         fi
 
         gzip "$LINUX_PATHFINDER_TAR_PATH"
         gzip "$LINUX_FOSSA_TAR_PATH"
+        gzip "$LINUX_DIAGNOSE_TAR_PATH"
 
         chmod +x macOS-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/fossa
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/pathfinder
+        zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/diagnose
 
         chmod +x Windows-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/fossa.exe
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/pathfinder.exe
+        zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/diagnose.exe
 
     - name: Create checksums
       # We have to run from within the release dir so that "release" isn't prepended to the relative path of the zip file.
