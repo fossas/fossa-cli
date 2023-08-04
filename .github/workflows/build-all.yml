@@ -204,7 +204,7 @@ jobs:
       run: |
         cosign verify-blob --bundle "Linux-binaries/fossa.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/fossa"
         cosign verify-blob --bundle "Linux-binaries/pathfinder.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/pathfinder"
-        cosign verify-blob --bundle "Linux-binaries/pathfinder.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/diagnose"
+        cosign verify-blob --bundle "Linux-binaries/diagnose.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/diagnose"
 
     # This uses names compatible with our install script.
     #
