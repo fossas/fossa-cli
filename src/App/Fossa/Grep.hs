@@ -234,12 +234,9 @@ runLernie ::
   LernieConfig ->
   m LernieMessages
 runLernie lernieConfig = withLernieBinary $ \bin -> do
-  -- Handle the JSON response.
   let lernieConfigJSON = decodeUtf8 $ Aeson.encode lernieConfig
-  -- _ <- pure $ runIt $ lernieCommand bin
   result <- execThrow'' (lernieCommand bin) lernieConfigJSON
-  let messages = parseLernieJson result
-  pure messages
+  pure $ parseLernieJson result
 
 parseLernieJson :: BL.ByteString -> LernieMessages
 parseLernieJson out =
