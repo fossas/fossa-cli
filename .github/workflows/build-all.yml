@@ -169,6 +169,7 @@ jobs:
 
         codesign -s 'Fossa, Inc.' release/fossa
         codesign -s 'Fossa, Inc.' release/pathfinder
+        codesign -s 'Fossa, Inc.' release/diagnose
 
     - uses: actions/upload-artifact@v2
       with:
