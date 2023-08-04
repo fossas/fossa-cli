@@ -144,6 +144,33 @@ jobs:
       run: |
         strip release/*
 
+    - name: Sign Binaries (Mac OS)
+      if: ${{ contains(matrix.os, 'macos') && github.ref_type == 'tag' }}
+      env:
+        MACOS_BUILD_CERT_BASE64: ${{ secrets.MACOS_BUILD_CERT_BASE64 }}
+        MACOS_BUILD_CERT_P12_PASSWORD: ${{ secrets.MACOS_BUILD_CERT_P12_PASSWORD }}
+        MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+      run: |
+        # create variables
+        CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+        # import certificate and provisioning profile from secrets
+        echo -n "$MACOS_BUILD_CERT_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+
+        # create temporary keychain
+        security create-keychain -p "$MACOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security unlock-keychain -p "$MACOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+        # import certificate to keychain
+        security import $CERTIFICATE_PATH -P "$MACOS_BUILD_CERT_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security list-keychain -d user -s $KEYCHAIN_PATH
+
+        codesign -s 'Fossa, Inc.' release/fossa
+        codesign -s 'Fossa, Inc.' release/pathfinder
+        codesign -s 'Fossa, Inc.' release/diagnose
+
     - uses: actions/upload-artifact@v2
       with:
         name: ${{ runner.os }}-binaries

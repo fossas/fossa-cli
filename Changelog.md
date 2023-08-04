@@ -1,6 +1,7 @@
 # FOSSA CLI Changelog
 
-## 3.8.7
+## v3.8.7
+- CLI Binaries: Sign Mac OS builds using codesign. ([#1251](https://github.com/fossas/fossa-cli/pull/1251))
 - CLI Binaries: Sign Linux builds using cosign. ([#1243](https://github.com/fossas/fossa-cli/pull/1243))
 
 ## v3.8.6
