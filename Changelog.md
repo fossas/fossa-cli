@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.8.7
+- CLI Binaries: Sign Linux builds using cosign. ([#1243](https://github.com/fossas/fossa-cli/pull/1243))
+
 ## v3.8.6
 - VSI: Fix a bug where root dependencies would cause analysis to fail. ([#1240](https://github.com/fossas/fossa-cli/pull/1240))
 - Node (PNPM): Fixes a bug where analyses would fail when the `lockfileVersion` attribute was a string in `pnpm-lock.yaml`. ([1239](https://github.com/fossas/fossa-cli/pull/1239))
