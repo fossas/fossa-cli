@@ -216,9 +216,10 @@ jobs:
     - name: Bundle binaries
       env:
         LINUX_PATHFINDER_TAR_PATH: "release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar"
-        LINUX_FOSSA_TAR_PATH: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar"
         LINUX_PATHFINDER_ZIP_PATH: "release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
+        LINUX_FOSSA_TAR_PATH: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar"
         LINUX_FOSSA_ZIP_PATH: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
+        LINUX_DIAGNOSE_TAR_PATH: "release/diagnose_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar"
         LINUX_DIAGNOSE_ZIP_PATH: "release/diagnose_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
       run: |
         mkdir release
@@ -228,6 +229,7 @@ jobs:
         chmod +x Linux-binaries/*
         zip -j "$LINUX_PATHFINDER_ZIP_PATH" Linux-binaries/pathfinder
         zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa
+        zip -j "$LINUX_DIAGNOSE_ZIP_PATH" Linux-binaries/diagnose
         tar --create --verbose --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa
         tar --create --verbose --file "$LINUX_PATHFINDER_TAR_PATH" --directory Linux-binaries pathfinder
         tar --create --verbose --file "$LINUX_DIAGNOSE_TAR_PATH" --directory Linux-binaries diagnose
@@ -235,6 +237,7 @@ jobs:
         # if [ "$GITHUB_REF_TYPE" = "tag" ]; then
           tar --append --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa.bundle
           tar --append --file "$LINUX_PATHFINDER_TAR_PATH" --directory Linux-binaries pathfinder.bundle
+          tar --append --file "$LINUX_DIAGNOSE_TAR_PATH" --directory Linux-binaries diagnose.bundle
           zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa.bundle
           zip -j "$LINUX_PATHFINDER_ZIP_PATH" Linux-binaries/pathfinder.bundle
           zip -j "$LINUX_DIAGNOSE_ZIP_PATH" Linux-binaries/diagnose.bundle
