@@ -1,7 +1,4 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use join" #-}
 
 module App.Fossa.Grep (
   analyzeWithGrep,
@@ -11,7 +8,7 @@ import App.Fossa.Config.Analyze (GrepEntry (grepEntryMatchCriteria, grepEntryNam
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withLernieBinary)
 import Control.Carrier.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift)
-import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), decode, eitherDecode, encode, object, withObject, withText)
+import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), decode, object, withObject, withText)
 import Data.Aeson qualified as A
 import Data.Aeson qualified as Aeson
 import Data.Aeson.Types ((.:))
@@ -21,14 +18,11 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToText (toText), decodeUtf8)
 import Data.Text (Text)
-import Debug.Trace (traceM)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execThrow'')
-import Effect.Logger (Logger, logInfo)
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)
-import Prettyprinter (Pretty (pretty))
 
 data LernieConfig = LernieConfig
   { rootDir :: Path Abs Dir
@@ -166,7 +160,6 @@ emptyLernieMessages = LernieMessages [] [] []
 instance FromJSON LernieMessage where
   parseJSON (Object o) = do
     messageType <- o .: "type"
-    traceM $ "message type = " ++ show messageType
     case messageType of
       LernieMessageTypeWarning -> do
         Object d <- o .: "data"
@@ -196,7 +189,6 @@ addLernieMessage message existing = case message of
 
 analyzeWithGrep ::
   ( Has Diagnostics sig m
-  , Has Logger sig m
   , Has Exec sig m
   , Has ReadFS sig m
   , Has (Lift IO) sig m
@@ -208,8 +200,6 @@ analyzeWithGrep ::
 analyzeWithGrep rootDir _maybeApiOpts grepOptions = do
   -- TODO: convert grepOptions to lernieOpts
   let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
-  logInfo . pretty $ "lernie config: " <> show maybeLernieConfig
-  logInfo . pretty $ show $ encode maybeLernieConfig
   case maybeLernieConfig of
     Just (lernieConfig) -> do
       messages <- runLernie lernieConfig
@@ -240,7 +230,6 @@ runLernie ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   , Has Exec sig m
-  , Has Logger sig m
   ) =>
   LernieConfig ->
   m LernieMessages
@@ -249,14 +238,7 @@ runLernie lernieConfig = withLernieBinary $ \bin -> do
   let lernieConfigJSON = decodeUtf8 $ Aeson.encode lernieConfig
   -- _ <- pure $ runIt $ lernieCommand bin
   result <- execThrow'' (lernieCommand bin) lernieConfigJSON
-  logInfo . pretty $ "Lernie result: " <> show result
-  let messageLines = BL.splitWith (== 10) result
-      inds :: [Either String LernieMessage]
-      inds = map eitherDecode messageLines
-  logInfo . pretty $ "parsing this many lines: " ++ show messageLines
-  logInfo . pretty $ "Lernie messages " <> show inds
   let messages = parseLernieJson result
-  logInfo . pretty $ "Lernie messages " <> show messages
   pure messages
 
 parseLernieJson :: BL.ByteString -> LernieMessages
@@ -274,22 +256,3 @@ lernieCommand bin =
     , cmdArgs = ["--config", "-"]
     , cmdAllowErr = Never
     }
-
--- runIt :: (Has (Lift IO) sig m) => Command -> m ()
--- runIt cmd = do
---   let path = toString $ cmdName cmd
---   let args = " --config /Users/scott/tmp/lernie.json"
---   (CP.Inherited, fromProcess, CP.ClosedStream, cph) <- sendIO $ CP.streamingProcess (CP.shell $ path ++ args)
---   -- res <- runConduit $ yieldMany [1 .. 10] .| iterMC print .| sumC
---   -- print res
---   -- pure "foo"
---   let output = runConduit $ fromProcess .| CL.mapM_ (\bs -> putStrLn $ "from process: " ++ show bs)
---   -- o <- runConduit $ fromProcess .| (CB.sourceHandle stdout) .| maybeValueParser
---   -- let output = runConduit $ stdout .| CL.mapM_ (\bs -> putStrLn $ "from process: " ++ show bs)
---   ec <- sendIO . runConcurrently $ Concurrently output *> Concurrently (CP.waitForStreamingProcess cph)
---   -- ec <- out
---   pure ()
-
--- -- ec <- runConcurrently $ Concurrently output *> Concurrently (waitForStreamingProcess cph)
--- putStrLn $ "Process exit code: " ++ show ec
--- pure ec
