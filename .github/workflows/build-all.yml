@@ -119,6 +119,10 @@ jobs:
       run: |
         cabal test --project-file=${{ matrix.project-file }} unit-tests
 
+    - name: Validate diagnose commands run on the platform
+      run: |
+        cargo run --bin diagnose -- walk --trace-spans none --trace-level info
+
     # Save artifacts.
     - name: Find and move binaries (Windows)
       if: ${{ contains(matrix.os, 'windows') }}
@@ -126,6 +130,7 @@ jobs:
         mkdir release
         find . -type f -path '*/fossa/fossa.exe' -exec cp {} release \;
         find . -type f -path '*/pathfinder/pathfinder.exe' -exec cp {} release \;
+        cp target/release/diagnose.exe release
 
     - name: Find and move binaries (non-Windows)
       if: ${{ !contains(matrix.os, 'windows') }}
@@ -133,6 +138,7 @@ jobs:
         mkdir release
         find . -type f -path '*/fossa/fossa' -exec cp {} release \;
         find . -type f -path '*/pathfinder/pathfinder' -exec cp {} release \;
+        cp target/release/diagnose release
 
     - name: Strip binaries
       run: |
