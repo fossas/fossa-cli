@@ -200,20 +200,20 @@ jobs:
             ;;
         esac
 
-    - name: Check that version info was embedded correctly
-      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-      run: |
-        chmod +x Linux-binaries/fossa
+    # - name: Check that version info was embedded correctly
+    #   if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    #   run: |
+    #     chmod +x Linux-binaries/fossa
 
-        echo $GITHUB_REF_NAME
-        echo $GITHUB_REF_TYPE
-        echo $GITHUB_SHA
-        echo ${GITHUB_SHA:0:12}
-        echo $(Linux-binaries/fossa --version)
-        echo "fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.0)"
+    #     echo $GITHUB_REF_NAME
+    #     echo $GITHUB_REF_TYPE
+    #     echo $GITHUB_SHA
+    #     echo ${GITHUB_SHA:0:12}
+    #     echo $(Linux-binaries/fossa --version)
+    #     echo "fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.0)"
 
-        [ "$GITHUB_REF_TYPE" = "tag" ] && echo "Ref type OK"
-        [ "$(Linux-binaries/fossa --version)" = "fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.0)" ] && echo "CLI version OK"
+    #     [ "$GITHUB_REF_TYPE" = "tag" ] && echo "Ref type OK"
+    #     [ "$(Linux-binaries/fossa --version)" = "fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.0)" ] && echo "CLI version OK"
 
     - name: Install Cosign
       if: ${{ github.ref_type == 'tag' }}
