@@ -5,7 +5,7 @@
 - CLI Binaries: Sign Linux builds using cosign. ([#1243](https://github.com/fossas/fossa-cli/pull/1243))
 
 ## v3.8.7
-- Due to an issue with our release process [#1254](https://github.com/fossas/fossa-cli/pull/1254), this tag exists but was not released. Those changes were released with v3.8.8.
+- Due to an issue with our release process [#1254](https://github.com/fossas/fossa-cli/pull/1254), this tag exists but was not released. The changes that would have been in 3.8.7 were released as v3.8.8.
 
 ## v3.8.6
 - VSI: Fix a bug where root dependencies would cause analysis to fail. ([#1240](https://github.com/fossas/fossa-cli/pull/1240))
