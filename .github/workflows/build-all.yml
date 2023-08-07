@@ -182,6 +182,7 @@ jobs:
     needs: ['build-all']
     permissions:
         id-token: write
+        contents: write
 
     steps:
     - uses: actions/download-artifact@v2
