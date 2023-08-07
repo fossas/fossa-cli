@@ -1,8 +1,11 @@
 # FOSSA CLI Changelog
 
-## v3.8.7
+## v3.8.8
 - CLI Binaries: Sign Mac OS builds using codesign. ([#1251](https://github.com/fossas/fossa-cli/pull/1251))
 - CLI Binaries: Sign Linux builds using cosign. ([#1243](https://github.com/fossas/fossa-cli/pull/1243))
+
+## v3.8.7
+- Due to an issue with our release process [#1254](https://github.com/fossas/fossa-cli/pull/1254), this tag exists but was not released. Those changes were released with v3.8.8.
 
 ## v3.8.6
 - VSI: Fix a bug where root dependencies would cause analysis to fail. ([#1240](https://github.com/fossas/fossa-cli/pull/1240))
