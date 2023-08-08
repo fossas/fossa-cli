@@ -15,6 +15,7 @@ import Data.Aeson.Types ((.:))
 import Data.ByteString.Lazy qualified as BL
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToText (toText), decodeUtf8)
 import Data.Text (Text)
@@ -23,6 +24,7 @@ import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)
+import Srclib.Types (LicenseSourceUnit)
 
 data LernieConfig = LernieConfig
   { rootDir :: Path Abs Dir
@@ -143,6 +145,35 @@ instance FromJSON LernieMatchData where
       <*> (obj .: "end_line")
 
 instance ToJSON LernieMatchData
+
+data LernieResults = LernieResults
+  { lernieResultsWarnings :: Maybe (NonEmpty LernieWarning)
+  , lernieResultsErrors :: Maybe (NonEmpty LernieError)
+  , lernieResultsSourceUnit :: Maybe LicenseSourceUnit
+  , lernieResultsKeywordSearches :: Maybe (NonEmpty LernieMatch)
+  , lernieResultsCustomLicenses :: Maybe (NonEmpty LernieMatch)
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+lernieMessagesToLernieResults :: LernieMessages -> LernieResults
+lernieMessagesToLernieResults LernieMessages{..} =
+  LernieResults
+    { lernieResultsWarnings = warnings
+    , lernieResultsErrors = errors
+    , lernieResultsKeywordSearches = keywordSearches
+    , lernieResultsCustomLicenses = customLicenses
+    , lernieResultsSourceUnit = sourceUnit
+    }
+  where
+    warnings = NE.nonEmpty lernieMessageWarnings
+    errors = NE.nonEmpty lernieMessageErrors
+    -- TODO: filter to lernieMessageMatches only including the match.lernieMatchMatches where lernieMatchDataScanType is KeywordSearch
+    keywordSearches = Nothing
+    -- TODO: filter to lernieMessageMatches only including the match.lernieMatchMatches where lernieMatchDataScanType is CustomLicense
+    customLicenses = Nothing
+    -- TODO: start with customLicenses and convert it into a sourceUnit, flipping around the files and the license names
+    -- We should have one LicenseUnit per lernieMatchDataName, I think
+    sourceUnit = Nothing
 
 data LernieMessages = LernieMessages
   { lernieMessageWarnings :: [LernieWarning]
