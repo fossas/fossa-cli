@@ -167,13 +167,21 @@ lernieMessagesToLernieResults LernieMessages{..} =
   where
     warnings = NE.nonEmpty lernieMessageWarnings
     errors = NE.nonEmpty lernieMessageErrors
-    -- TODO: filter to lernieMessageMatches only including the match.lernieMatchMatches where lernieMatchDataScanType is KeywordSearch
-    keywordSearches = Nothing
-    -- TODO: filter to lernieMessageMatches only including the match.lernieMatchMatches where lernieMatchDataScanType is CustomLicense
-    customLicenses = Nothing
+    keywordSearches = filterLernieMessages lernieMessageMatches KeywordSearch
+    customLicenses = filterLernieMessages lernieMessageMatches CustomLicense
     -- TODO: start with customLicenses and convert it into a sourceUnit, flipping around the files and the license names
     -- We should have one LicenseUnit per lernieMatchDataName, I think
     sourceUnit = Nothing
+
+-- | filter lernie matches to a specific scan type, filtering out any lernie matches with no messages after they have been filtered out
+filterLernieMessages :: [LernieMatch] -> GrepScanType -> Maybe (NonEmpty LernieMatch)
+filterLernieMessages matches scanType =
+  NE.nonEmpty lernieMatchesWithoutEmpties
+  where
+    byScanType :: LernieMatchData -> Bool
+    byScanType m = scanType == lernieMatchDataScanType m
+    lernieMatchesFilteredToScanType = map (\lm -> LernieMatch (lernieMatchPath lm) (filter byScanType $ lernieMatchMatches lm)) matches
+    lernieMatchesWithoutEmpties = filter (not . null . lernieMatchMatches) lernieMatchesFilteredToScanType
 
 data LernieMessages = LernieMessages
   { lernieMessageWarnings :: [LernieWarning]
@@ -227,14 +235,14 @@ analyzeWithGrep ::
   Path Abs Dir ->
   Maybe ApiOpts ->
   GrepOptions ->
-  m (Maybe LernieMessages)
+  m (Maybe LernieResults)
 analyzeWithGrep rootDir _maybeApiOpts grepOptions = do
   -- TODO: convert grepOptions to lernieOpts
   let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
   case maybeLernieConfig of
     Just (lernieConfig) -> do
       messages <- runLernie lernieConfig
-      pure $ Just messages
+      pure $ Just $ lernieMessagesToLernieResults messages
     Nothing -> pure Nothing
 
 grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Maybe LernieConfig
