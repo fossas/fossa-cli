@@ -13,7 +13,6 @@ module Effect.Exec (
   CmdFailure (..),
   AllowErr (..),
   execParser,
-  execParser',
   execJson,
   execJson',
   ExecIOC,
@@ -306,18 +305,6 @@ execParser parser dir cmd = do
   case runParser parser "" (decodeUtf8 stdout) of
     Left err -> fatal (CommandParseError cmd (toText (errorBundlePretty err)))
     Right a -> pure a
-
--- | Parse the stdout of a command, but execute the command with stdin and run the command in the current directory
-execParser' :: forall a sig m. (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Parser a -> Command -> Text -> m a
-execParser' parser cmd stdin = do
-  dir <- getCurrentDir
-  result <- exec' dir cmd stdin
-  case result of
-    Left failure -> fatal (CommandFailed failure)
-    Right stdout ->
-      case runParser parser "" (decodeUtf8 stdout) of
-        Left err -> fatal (CommandParseError cmd (toText (errorBundlePretty err)))
-        Right a -> pure a
 
 -- | Parse the JSON stdout of a command
 execJson :: (FromJSON a, Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> Command -> m a
