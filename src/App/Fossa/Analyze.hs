@@ -48,7 +48,7 @@ import App.Fossa.Config.Analyze (
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
-import App.Fossa.Grep (analyzeWithGrep)
+import App.Fossa.Grep (LernieResults (..), analyzeWithGrep)
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
@@ -122,7 +122,7 @@ import Prettyprinter.Render.Terminal (
   color,
  )
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (LicenseSourceUnit, Locator, SourceUnit, sourceUnitToFullSourceUnit)
+import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
 
 debugBundlePath :: FilePath
@@ -365,8 +365,9 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult $ Config.filterSet cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
-  let result = buildResult includeAll additionalSourceUnits filteredProjects firstPartyScanResults
-  case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits firstPartyScanResults of
+  let licenseSourceUnits = mergeLicenseSourceUnits firstPartyScanResults $ lernieResultsSourceUnit =<< grepResults
+  let result = buildResult includeAll additionalSourceUnits filteredProjects licenseSourceUnits
+  case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits licenseSourceUnits of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll -> Diag.fatal ErrFilteredAllProjects
     CountedScanUnits scanUnits -> doUpload result iatAssertion destination basedir jsonOutput revision scanUnits
@@ -487,18 +488,32 @@ instance Diag.ToDiagnostic AnalyzeError where
       ]
 
 buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Aeson.Value
-buildResult includeAll srcUnits projects firstPartyScanResults =
+buildResult includeAll srcUnits projects licenseSourceUnits =
   Aeson.object
     [ "projects" .= map buildProject projects
     , "sourceUnits" .= mergedUnits
     ]
   where
-    mergedUnits = case firstPartyScanResults of
+    mergedUnits = case licenseSourceUnits of
       Nothing -> map sourceUnitToFullSourceUnit finalSourceUnits
       Just licenseUnits -> do
         NE.toList $ mergeSourceAndLicenseUnits finalSourceUnits licenseUnits
     finalSourceUnits = srcUnits ++ scannedUnits
     scannedUnits = map (Srclib.toSourceUnit (fromFlag IncludeAll includeAll)) projects
+
+-- | Merge two license source units, keeping the name and type from the first unit
+mergeLicenseSourceUnits :: Maybe LicenseSourceUnit -> Maybe LicenseSourceUnit -> Maybe LicenseSourceUnit
+mergeLicenseSourceUnits maybeFirst maybeSecond =
+  case (maybeFirst, maybeSecond) of
+    (Nothing, Nothing) -> Nothing
+    (Just first, Nothing) -> Just first
+    (Nothing, Just second) -> Just second
+    (Just first, Just second) ->
+      Just first{licenseSourceUnitLicenseUnits = mergedLicenseUnits}
+      where
+        firstLicenseUnits = licenseSourceUnitLicenseUnits first
+        secondLicenseUnits = licenseSourceUnitLicenseUnits second
+        mergedLicenseUnits = foldr NE.cons firstLicenseUnits secondLicenseUnits
 
 buildProject :: ProjectResult -> Aeson.Value
 buildProject project =

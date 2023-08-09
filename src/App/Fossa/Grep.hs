@@ -2,6 +2,7 @@
 
 module App.Fossa.Grep (
   analyzeWithGrep,
+  LernieResults (..),
 ) where
 
 import App.Fossa.Config.Analyze (GrepEntry (grepEntryMatchCriteria, grepEntryName), GrepOptions (..))
