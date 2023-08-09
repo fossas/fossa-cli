@@ -239,7 +239,7 @@ addMatchDataToLicenseUnits path matchData existingUnits =
     newUnit = case H.lookup name existingUnits of
       Nothing ->
         LicenseUnit
-          { licenseUnitName = "customlicense"
+          { licenseUnitName = "custom-license"
           , licenseUnitType = "LicenseUnit"
           , licenseUnitTitle = Just name
           , licenseUnitDir = ""
