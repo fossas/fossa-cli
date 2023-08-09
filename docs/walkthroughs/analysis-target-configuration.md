@@ -4,7 +4,7 @@ FOSSA CLI can be configured to discover and analyze, based on the target type (e
 
 To do so, we will use the following:
 
-- [fossa list-target](./../references/subcommands/list-targets.md) command
+- [fossa list-targets](./../references/subcommands/list-targets.md) command
 - [.fossa.yml](./../references/files/fossa-yml.md) configuration file
 
 ## Example
@@ -69,7 +69,7 @@ When command is executed, it would produce a list of target and their path:
 [ INFO] Found target: gradle@test-suite/integration/:
 ```
 
-So, 
+So,
 
 1. Let's select any targets under `src/back-end` and `src/front-end/v2/` directory using [`paths.only`](./../references/files/fossa-yml.md#`paths.only:`) directive:
 
@@ -93,7 +93,6 @@ paths:
         - src/front-end/v2/
         - utils/
 ```
-
 
 3. We want to exclude any targets in `utils/migration-tests/` directory, to do so, use [`paths.exclude`](./../references/files/fossa-yml.md#`paths.exclude:`) directive. This will ensure cli does not scan `utils/migrations/` directory for analysis.
 
