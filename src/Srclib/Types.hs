@@ -82,6 +82,7 @@ instance ToJSON LicenseScanType where
 data FullSourceUnit = FullSourceUnit
   { fullSourceUnitName :: Text
   , fullSourceUnitType :: Text
+  , fullSourceUnitTitle :: Maybe Text
   , fullSourceUnitManifest :: Maybe Text
   , fullSourceUnitBuild :: Maybe SourceUnitBuild
   , fullSourceUnitGraphBreadth :: GraphBreadth
@@ -98,6 +99,7 @@ licenseUnitToFullSourceUnit LicenseUnit{..} =
   FullSourceUnit
     { fullSourceUnitName = licenseUnitName
     , fullSourceUnitType = licenseUnitType
+    , fullSourceUnitTitle = licenseUnitTitle
     , fullSourceUnitManifest = Nothing
     , fullSourceUnitBuild = Nothing
     , fullSourceUnitGraphBreadth = Complete
@@ -113,6 +115,7 @@ sourceUnitToFullSourceUnit SourceUnit{..} =
   FullSourceUnit
     { fullSourceUnitName = sourceUnitName
     , fullSourceUnitType = sourceUnitType
+    , fullSourceUnitTitle = Nothing
     , fullSourceUnitManifest = Just sourceUnitManifest
     , fullSourceUnitBuild = sourceUnitBuild
     , fullSourceUnitGraphBreadth = sourceUnitGraphBreadth
@@ -128,6 +131,7 @@ instance ToJSON FullSourceUnit where
     object
       [ "Name" .= fullSourceUnitName
       , "Type" .= fullSourceUnitType
+      , "Title" .= fullSourceUnitTitle
       , "Manifest" .= fullSourceUnitManifest
       , "Build" .= fullSourceUnitBuild
       , "GraphBreadth" .= fullSourceUnitGraphBreadth
@@ -160,6 +164,7 @@ instance ToJSON LicenseSourceUnit where
 data LicenseUnit = LicenseUnit
   { licenseUnitName :: Text
   , licenseUnitType :: Text
+  , licenseUnitTitle :: Maybe Text
   , licenseUnitDir :: Text
   , licenseUnitFiles :: (NonEmpty Text)
   , licenseUnitData :: (NonEmpty LicenseUnitData)
@@ -172,6 +177,7 @@ emptyLicenseUnit =
   LicenseUnit
     { licenseUnitName = "empty"
     , licenseUnitType = "LicenseUnit"
+    , licenseUnitTitle = Nothing
     , licenseUnitDir = ""
     , licenseUnitFiles = "" :| []
     , licenseUnitData = emptyLicenseUnitData :| []
@@ -193,6 +199,7 @@ instance FromJSON LicenseUnit where
     LicenseUnit
       <$> obj .: "Name"
       <*> obj .: "Type"
+      <*> obj .:? "Title"
       <*> obj .: "Dir"
       <*> obj .: "Files"
       <*> obj .: "Data"
@@ -287,8 +294,10 @@ instance FromJSON LicenseUnitMatchData where
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
   , sourceUnitType :: Text
-  , sourceUnitManifest :: Text
-  -- ^ path to manifest file
+  , -- | the title of a custom license
+    sourceUnitTitle :: Maybe Text
+  , -- | path to manifest file
+    sourceUnitManifest :: Text
   , sourceUnitBuild :: Maybe SourceUnitBuild
   , sourceUnitGraphBreadth :: GraphBreadth
   , sourceUnitOriginPaths :: [SomePath]
@@ -297,10 +306,10 @@ data SourceUnit = SourceUnit
   deriving (Eq, Ord, Show)
 
 data SourceUnitBuild = SourceUnitBuild
-  { buildArtifact :: Text
-  -- ^ always "default"
-  , buildSucceeded :: Bool
-  -- ^ always true
+  { -- | always "default"
+    buildArtifact :: Text
+  , -- | always true
+    buildSucceeded :: Bool
   , buildImports :: [Locator]
   , buildDependencies :: [SourceUnitDependency]
   }
@@ -376,6 +385,7 @@ instance FromJSON SourceUnit where
     SourceUnit
       <$> obj .: "Name"
       <*> obj .: "Type"
+      <*> obj .:? "Title"
       <*> obj .: "Manifest"
       <*> obj .:? "Build"
       <*> obj .: "GraphBreadth"

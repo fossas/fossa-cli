@@ -172,6 +172,7 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
       { sourceUnitName = renderedPath
       , sourceUnitManifest = renderedPath
       , sourceUnitType = "user-specific-yaml"
+      , sourceUnitTitle = Nothing
       , sourceUnitBuild = build
       , sourceUnitGraphBreadth = Complete
       , sourceUnitOriginPaths = [SomeFile originPath]

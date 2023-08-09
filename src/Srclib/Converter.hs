@@ -49,6 +49,7 @@ toSourceUnit leaveUnfiltered ProjectResult{..} =
   SourceUnit
     { sourceUnitName = renderedPath
     , sourceUnitType = toText projectResultType
+    , sourceUnitTitle = Nothing
     , sourceUnitManifest = renderedPath
     , sourceUnitBuild =
         Just $

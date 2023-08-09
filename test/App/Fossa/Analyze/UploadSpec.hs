@@ -79,6 +79,7 @@ expectedMergedFullSourceUnits = NE.fromList [fullSourceUnit, fullLicenseUnit]
       FullSourceUnit
         { fullSourceUnitName = "testSourceUnitName"
         , fullSourceUnitType = "testSourceUnitType"
+        , fullSourceUnitTitle = Nothing
         , fullSourceUnitManifest = Just "testSourceUnitManifest"
         , fullSourceUnitBuild = Nothing
         , fullSourceUnitGraphBreadth = Complete
@@ -92,6 +93,7 @@ expectedMergedFullSourceUnits = NE.fromList [fullSourceUnit, fullLicenseUnit]
       FullSourceUnit
         { fullSourceUnitName = "empty"
         , fullSourceUnitType = "LicenseUnit"
+        , fullSourceUnitTitle = Nothing
         , fullSourceUnitManifest = Nothing
         , fullSourceUnitBuild = Nothing
         , fullSourceUnitGraphBreadth = Complete
