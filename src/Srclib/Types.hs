@@ -183,6 +183,7 @@ emptyLicenseUnit =
     , licenseUnitData = emptyLicenseUnitData :| []
     , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Nothing}
     }
+
 instance ToJSON LicenseUnit where
   toJSON LicenseUnit{..} =
     object

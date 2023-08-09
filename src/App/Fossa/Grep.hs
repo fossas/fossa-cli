@@ -14,6 +14,8 @@ import Data.Aeson qualified as Aeson
 import Data.Aeson.Types ((.:))
 import Data.ByteString.Lazy qualified as BL
 import Data.Functor.Extra ((<$$>))
+import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as H
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
@@ -24,7 +26,7 @@ import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)
-import Srclib.Types (LicenseSourceUnit)
+import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), LicenseUnit (..), LicenseUnitData (..), LicenseUnitInfo (..), LicenseUnitMatchData (..))
 
 data LernieConfig = LernieConfig
   { rootDir :: Path Abs Dir
@@ -125,10 +127,10 @@ data LernieMatchData = LernieMatchData
   , lernieMatchDataMatchString :: Text
   , lernieMatchDataScanType :: GrepScanType
   , lernieMatchDataName :: Text
-  , lernieMatchDataStartByte :: Int
-  , lernieMatchDataEndByte :: Int
-  , lernieMatchDataStartLine :: Int
-  , lernieMatchDataEndLine :: Int
+  , lernieMatchDataStartByte :: Integer
+  , lernieMatchDataEndByte :: Integer
+  , lernieMatchDataStartLine :: Integer
+  , lernieMatchDataEndLine :: Integer
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -155,8 +157,8 @@ data LernieResults = LernieResults
   }
   deriving (Eq, Ord, Show, Generic)
 
-lernieMessagesToLernieResults :: LernieMessages -> LernieResults
-lernieMessagesToLernieResults LernieMessages{..} =
+lernieMessagesToLernieResults :: LernieMessages -> Path Abs Dir -> LernieResults
+lernieMessagesToLernieResults LernieMessages{..} rootDir =
   LernieResults
     { lernieResultsWarnings = warnings
     , lernieResultsErrors = errors
@@ -171,7 +173,9 @@ lernieMessagesToLernieResults LernieMessages{..} =
     customLicenses = filterLernieMessages lernieMessageMatches CustomLicense
     -- TODO: start with customLicenses and convert it into a sourceUnit, flipping around the files and the license names
     -- We should have one LicenseUnit per lernieMatchDataName, I think
-    sourceUnit = Nothing
+    sourceUnit = case customLicenses of
+      Nothing -> Nothing
+      Just licenses -> Just $ lernieMatchToSourceUnit licenses rootDir
 
 -- | filter lernie matches to a specific scan type, filtering out any lernie matches with no messages after they have been filtered out
 filterLernieMessages :: [LernieMatch] -> GrepScanType -> Maybe (NonEmpty LernieMatch)
@@ -182,6 +186,70 @@ filterLernieMessages matches scanType =
     byScanType m = scanType == lernieMatchDataScanType m
     lernieMatchesFilteredToScanType = map (\lm -> LernieMatch (lernieMatchPath lm) (filter byScanType $ lernieMatchMatches lm)) matches
     lernieMatchesWithoutEmpties = filter (not . null . lernieMatchMatches) lernieMatchesFilteredToScanType
+
+-- | convert a list of lernie matches (of type CustomLicense, typically) into a LicenseSourceUnit
+lernieMatchToSourceUnit :: NonEmpty LernieMatch -> Path Abs Dir -> LicenseSourceUnit
+lernieMatchToSourceUnit matches rootDir =
+  LicenseSourceUnit
+    { licenseSourceUnitName = toText rootDir
+    , licenseSourceUnitType = CliLicenseScanned
+    , licenseSourceUnitLicenseUnits = licenseUnits
+    }
+  where
+    licenseUnits = licenseUnitsFromLernieMatches matches
+
+-- Create LicenseUnits from the LernieMatches. There will be one LernieMatch per custom-license name
+licenseUnitsFromLernieMatches :: NonEmpty LernieMatch -> NonEmpty LicenseUnit
+licenseUnitsFromLernieMatches matches =
+  NE.fromList $ H.elems $ foldr addMatchesToLicenseUnits H.empty matches
+
+-- Add a lernieMatch to the licenseUnits
+addMatchesToLicenseUnits :: LernieMatch -> HashMap Text LicenseUnit -> HashMap Text LicenseUnit
+addMatchesToLicenseUnits match existingUnits =
+  foldr (addMatchDataToLicenseUnits $ lernieMatchPath match) existingUnits $ lernieMatchMatches match
+
+-- Add a LernieMatchData to the existing licenseUnits, creating a new LicenseUnit if one with that title does not already exist
+addMatchDataToLicenseUnits :: Text -> LernieMatchData -> HashMap Text LicenseUnit -> HashMap Text LicenseUnit
+addMatchDataToLicenseUnits path matchData existingUnits =
+  H.insert name newUnit existingUnits
+  where
+    name = lernieMatchDataName matchData
+    startByte = lernieMatchDataStartByte matchData
+    endByte = lernieMatchDataEndByte matchData
+    licenseUnitMatchData =
+      LicenseUnitMatchData
+        { licenseUnitMatchDataMatchString = Just $ lernieMatchDataMatchString matchData
+        , licenseUnitMatchDataLocation = startByte
+        , licenseUnitMatchDataLength = startByte + endByte
+        , licenseUnitMatchDataIndex = 1
+        , licenseUnitDataStartLine = lernieMatchDataStartLine matchData
+        , licenseUnitDataEndLine = lernieMatchDataEndLine matchData
+        }
+    newUnitData =
+      LicenseUnitData
+        { licenseUnitDataPath = path
+        , licenseUnitDataCopyright = Nothing
+        , licenseUnitDataThemisVersion = ""
+        , licenseUnitDataMatchData = Just $ NE.singleton licenseUnitMatchData
+        , licenseUnitDataCopyrights = Nothing
+        , licenseUnitDataContents = Nothing
+        }
+    newUnit = case H.lookup name existingUnits of
+      Nothing ->
+        LicenseUnit
+          { licenseUnitName = "customlicense"
+          , licenseUnitType = "LicenseUnit"
+          , licenseUnitTitle = Just name
+          , licenseUnitDir = ""
+          , licenseUnitFiles = NE.singleton path
+          , licenseUnitData = NE.singleton newUnitData
+          , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Just ""}
+          }
+      Just existingUnit -> do
+        existingUnit
+          { licenseUnitFiles = NE.cons path $ licenseUnitFiles existingUnit
+          , licenseUnitData = NE.cons newUnitData $ licenseUnitData existingUnit
+          }
 
 data LernieMessages = LernieMessages
   { lernieMessageWarnings :: [LernieWarning]
@@ -242,7 +310,7 @@ analyzeWithGrep rootDir _maybeApiOpts grepOptions = do
   case maybeLernieConfig of
     Just (lernieConfig) -> do
       messages <- runLernie lernieConfig
-      pure $ Just $ lernieMessagesToLernieResults messages
+      pure $ Just $ lernieMessagesToLernieResults messages rootDir
     Nothing -> pure Nothing
 
 grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Maybe LernieConfig
