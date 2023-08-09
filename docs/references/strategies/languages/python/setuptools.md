@@ -48,11 +48,11 @@ from both files.
 synchronization between them.
 * Since we don't actually run `setup.py` or do our own interpretation of the Python code therein, `install_requires` not defined as a literal array of string literals done in the `setup.py` file will hide the
 true `install_requires` list from our view. For example, we don't have a way to find `install_requires` set up this way:
-```python
-a = ['package1==1.0.0']
-b = ['package2==2.0.0']
-install_requires = a + b
-```
+    ```python
+    a = ['package1==1.0.0']
+    b = ['package2==2.0.0']
+    install_requires = a + b
+    ```
 However, we do catch *variables* named `install_requires`, as long as they are declared earlier in the file than the `install_requires` keyword argument to `setup`.
 * Often, the `requirements.txt` file entirely overlaps the `setup.py` file.  This is almost always by design.
 
