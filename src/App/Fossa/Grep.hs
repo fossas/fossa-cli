@@ -198,7 +198,7 @@ lernieMatchToSourceUnit matches rootDir =
   where
     licenseUnits = licenseUnitsFromLernieMatches matches
 
--- Create LicenseUnits from the LernieMatches. There will be one LernieMatch per custom-license name
+-- Create LicenseUnits from the LernieMatches. There will be one LicenseUnit per custom-license name
 licenseUnitsFromLernieMatches :: NonEmpty LernieMatch -> NonEmpty LicenseUnit
 licenseUnitsFromLernieMatches matches =
   NE.fromList $ H.elems $ foldr addMatchesToLicenseUnits H.empty matches
@@ -225,6 +225,7 @@ addMatchDataToLicenseUnits path matchData existingUnits =
         , licenseUnitDataStartLine = lernieMatchDataStartLine matchData
         , licenseUnitDataEndLine = lernieMatchDataEndLine matchData
         }
+    -- TODO: What happens if we find the same custom license twice in one file?
     newUnitData =
       LicenseUnitData
         { licenseUnitDataPath = path
