@@ -298,7 +298,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir maybeApiOpts vendoredDepsOptions
-  logInfo . pretty $ "srcunits:" <> show manualSrcUnits
   maybeGrepResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
@@ -307,7 +306,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           pure Nothing
         else Diag.context "grep" . runStickyLogger SevInfo $ analyzeWithGrep basedir maybeApiOpts grepOptions
   let grepResults = join . resultToMaybe $ maybeGrepResults
-  logInfo . pretty $ "grep results:" <> show grepResults
 
   let -- This makes nice with additionalSourceUnits below, but throws out additional Result data.
       -- This is ok because 'resultToMaybe' would do that anyway.
