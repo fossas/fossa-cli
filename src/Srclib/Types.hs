@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Srclib.Types (
@@ -15,8 +16,12 @@ module Srclib.Types (
   LicenseUnitInfo (..),
   LicenseUnitMatchData (..),
   FullSourceUnit (..),
+  OriginPath,
   renderLocator,
   parseLocator,
+  pathToOriginPath,
+  someBaseToOriginPath,
+  somePathToOriginPath,
   emptyLicenseUnit,
   emptyLicenseUnitData,
   sourceUnitToFullSourceUnit,
@@ -29,8 +34,8 @@ import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Path (File, SomeBase)
-import Path.Extra (SomePath)
+import Path (File, Path, SomeBase (..), toFilePath)
+import Path.Extra (SomePath (..))
 import Types (GraphBreadth (..))
 
 data LicenseScanType = CliLicenseScanned
@@ -41,6 +46,20 @@ instance ToText LicenseScanType where
 
 instance ToJSON LicenseScanType where
   toJSON = toJSON . toText
+
+newtype OriginPath = OriginPath FilePath
+  deriving newtype (Eq, Ord, Show, ToJSON, FromJSON, ToText)
+
+pathToOriginPath :: Path b t -> OriginPath
+pathToOriginPath = OriginPath . toFilePath
+
+someBaseToOriginPath :: SomeBase b -> OriginPath
+someBaseToOriginPath (Abs p) = pathToOriginPath p
+someBaseToOriginPath (Rel p) = pathToOriginPath p
+
+somePathToOriginPath :: SomePath -> OriginPath
+somePathToOriginPath (SomeFile f) = someBaseToOriginPath f
+somePathToOriginPath (SomeDir d) = someBaseToOriginPath d
 
 -- export interface SourceUnit {
 --   Name?: string;
@@ -85,7 +104,7 @@ data FullSourceUnit = FullSourceUnit
   , fullSourceUnitManifest :: Maybe Text
   , fullSourceUnitBuild :: Maybe SourceUnitBuild
   , fullSourceUnitGraphBreadth :: GraphBreadth
-  , fullSourceUnitOriginPaths :: [SomePath]
+  , fullSourceUnitOriginPaths :: [OriginPath]
   , fullSourceUnitAdditionalData :: Maybe AdditionalDepData
   , fullSourceUnitFiles :: Maybe (NonEmpty Text)
   , fullSourceUnitData :: Maybe (NonEmpty LicenseUnitData)
@@ -291,7 +310,7 @@ data SourceUnit = SourceUnit
   -- ^ path to manifest file
   , sourceUnitBuild :: Maybe SourceUnitBuild
   , sourceUnitGraphBreadth :: GraphBreadth
-  , sourceUnitOriginPaths :: [SomePath]
+  , sourceUnitOriginPaths :: [OriginPath]
   , additionalData :: Maybe AdditionalDepData
   }
   deriving (Eq, Ord, Show)

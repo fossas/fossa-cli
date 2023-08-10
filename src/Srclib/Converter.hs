@@ -42,6 +42,7 @@ import Srclib.Types (
     buildSucceeded
   ),
   SourceUnitDependency (..),
+  somePathToOriginPath,
  )
 
 toSourceUnit :: Bool -> ProjectResult -> SourceUnit
@@ -59,7 +60,7 @@ toSourceUnit leaveUnfiltered ProjectResult{..} =
             , buildDependencies = deps
             }
     , sourceUnitGraphBreadth = projectResultGraphBreadth
-    , sourceUnitOriginPaths = projectResultManifestFiles
+    , sourceUnitOriginPaths = map somePathToOriginPath projectResultManifestFiles
     , additionalData = Nothing
     }
   where
