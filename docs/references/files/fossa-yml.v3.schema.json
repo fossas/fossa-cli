@@ -27,7 +27,7 @@
                     "minLength": 1,
                     "description": "The name of the policy in your FOSSA organization to associate this project with. Mutually excludes `project.policyId`."
                 },
-                "policy": {
+                "policyId": {
                     "type": "integer",
                     "minLength": 1,
                     "description": "The id of the policy in your FOSSA organization to associate this project with. Mutually excludes `project.policy`."
@@ -331,6 +331,23 @@
                     }
                 }
             }
+        },
+        "grepDefinition": {
+            "type": "object",
+            "description": "defines a search for a custom license or a keyword.",
+            "required": ["matchCriteria", "name"],
+            "properties": {
+                "matchCriteria": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A regular expression used to find a keyword or custom license"
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The name of the keyword or custom license found by the regular expression defined in matchCriteria"
+                }
+            }
         }
     },
     "type": "object",
@@ -363,6 +380,18 @@
             "type": "array",
             "items": {
                 "$ref": "#/$defs/revision"
+            }
+        },
+        "customLicenseSearch": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/grepDefinition"
+            }
+        },
+        "experimentalKeywordSearch": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/grepDefinition"
             }
         },
         "targets": {
