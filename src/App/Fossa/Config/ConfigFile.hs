@@ -42,6 +42,7 @@ import Data.Aeson (
  )
 import Data.Foldable (asum)
 import Data.Functor (($>))
+import Data.List.NonEmpty (NonEmpty)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (ToString (toString), ToText (toText))
@@ -69,7 +70,6 @@ import Path (
   (</>),
  )
 import Types (ArchiveUploadType, LicenseScanPathFilters, TargetFilter)
-import Data.List.NonEmpty (NonEmpty)
 
 defaultConfigFileNames :: [Path Rel File]
 defaultConfigFileNames =
@@ -236,7 +236,8 @@ data ConfigPaths = ConfigPaths
 
 data ConfigGrepEntry = ConfigGrepEntry
   { configGrepMatchCriteria :: Text
-  , configGrepName :: Text }
+  , configGrepName :: Text
+  }
   deriving (Eq, Ord, Show)
 
 newtype ConfigTelemetry = ConfigTelemetry
@@ -327,8 +328,8 @@ instance FromJSON ConfigTelemetry where
 instance FromJSON ConfigGrepEntry where
   parseJSON = withObject "ConfigGrepEntry" $ \obj ->
     ConfigGrepEntry
-    <$> ( obj .: "matchCriteria")
-    <*> ( obj .: "name")
+      <$> (obj .: "matchCriteria")
+      <*> (obj .: "name")
 
 instance FromJSON ConfigTelemetryScope where
   parseJSON = withText "ConfigTelemetryScope" $ \scope ->
