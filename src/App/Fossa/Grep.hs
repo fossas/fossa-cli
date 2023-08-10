@@ -3,6 +3,19 @@
 module App.Fossa.Grep (
   analyzeWithGrep,
   LernieResults (..),
+  LernieMatch (..),
+  LernieWarning (..),
+  LernieError (..),
+  emptyLernieMessages,
+  LernieMessage (..),
+  LernieMessages (..),
+  LernieConfig (..),
+  LernieRegex (..),
+  LernieMatchData (..),
+  addLernieMessage,
+  GrepScanType (..),
+  lernieMessagesToLernieResults,
+  grepOptionsToLernieConfig,
 ) where
 
 import App.Fossa.Config.Analyze (GrepEntry (grepEntryMatchCriteria, grepEntryName), GrepOptions (..))
@@ -221,7 +234,7 @@ addMatchDataToLicenseUnits path matchData existingUnits =
       LicenseUnitMatchData
         { licenseUnitMatchDataMatchString = Just $ lernieMatchDataMatchString matchData
         , licenseUnitMatchDataLocation = startByte
-        , licenseUnitMatchDataLength = startByte + endByte
+        , licenseUnitMatchDataLength = endByte - startByte
         , licenseUnitMatchDataIndex = 1
         , licenseUnitDataStartLine = lernieMatchDataStartLine matchData
         , licenseUnitDataEndLine = lernieMatchDataEndLine matchData
