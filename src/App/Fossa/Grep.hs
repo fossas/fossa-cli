@@ -43,7 +43,7 @@ instance ToJSON LernieConfig where
       ]
 
 data LernieRegex = LernieRegex
-  { pattern :: Text
+  { pat :: Text
   , name :: Text
   , scanType :: GrepScanType
   }
@@ -52,7 +52,7 @@ data LernieRegex = LernieRegex
 instance ToJSON LernieRegex where
   toJSON LernieRegex{..} =
     object
-      [ "pattern" .= toText pattern
+      [ "pattern" .= toText pat
       , "name" .= toText name
       , "scan_type" .= toText scanType
       ]
