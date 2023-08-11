@@ -167,9 +167,14 @@ jobs:
         security import $CERTIFICATE_PATH -P "$MACOS_BUILD_CERT_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         security list-keychain -d user -s $KEYCHAIN_PATH
 
-        codesign -s 'Fossa, Inc.' release/fossa
-        codesign -s 'Fossa, Inc.' release/pathfinder
-        codesign -s 'Fossa, Inc.' release/diagnose
+        codesign --options runtime -s 'Fossa, Inc.' release/fossa
+        codesign --options runtime -s 'Fossa, Inc.' release/pathfinder
+        codesign --options runtime -s 'Fossa, Inc.' release/diagnose
+
+        # Perform notarization
+        zip notarization-archive.zip release
+        xcrun notarytool submit notarization-archive.zip --apple-id "$NOTARIZATION_DEV_ID" --password "$NOTARIZATION_APP_PASS" --team-id "$APPLE_TEAM_ID" --wait
+        rm notarization-archive.zip
 
     - uses: actions/upload-artifact@v2
       with:
