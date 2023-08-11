@@ -175,7 +175,7 @@ jobs:
         codesign --options runtime -s 'Fossa, Inc.' release/diagnose
 
         # Perform notarization
-        zip notarization-archive.zip release
+        zip -rj notarization-archive.zip release
         xcrun notarytool submit notarization-archive.zip --apple-id "$APPLE_NOTARIZATION_DEV_ID" --password "$APPLE_NOTARIZATION_DEV_PASS" --team-id "$APPLE_TEAM_ID" --wait
         rm notarization-archive.zip
 
