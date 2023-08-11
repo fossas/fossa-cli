@@ -180,7 +180,7 @@ jobs:
         echo "$NOTARY_RESULTS"
         # The notarization tool doesn't set $?
         rm notarization-archive.zip
-        if ! grep "status: Accepted" "$NOTARY_RESULTS"; then
+        if ! grep "status: Accepted" ""; then
            exit 1
         fi
 
