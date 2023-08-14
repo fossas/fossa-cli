@@ -27,6 +27,7 @@ import Strategy.Maven qualified as Maven
 import Strategy.Mix qualified as Mix
 import Strategy.Nim qualified as Nim
 import Strategy.Node qualified as Node
+import Strategy.NDB qualified as NDB
 import Strategy.NuGet.Nuspec qualified as Nuspec
 import Strategy.NuGet.PackageReference qualified as PackageReference
 import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
@@ -45,6 +46,7 @@ import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
 import Strategy.SwiftPM qualified as SwiftPM
 import Types (DiscoveredProject)
+import Container.OsRelease (OsInfo(..))
 
 discoverFuncs :: DiscoverTaskEffs sig m => [DiscoverFunc m]
 discoverFuncs =
@@ -84,6 +86,7 @@ discoverFuncs =
   , DiscoverFunc Setuptools.discover
   , DiscoverFunc Stack.discover
   , DiscoverFunc SwiftPM.discover
+  , DiscoverFunc $ NDB.discover OsInfo{nameId = "foo", version = "bar"}
   ]
 
 -- DiscoverFunc is a workaround for the lack of impredicative types.

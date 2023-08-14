@@ -31,7 +31,7 @@ import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BSL
 import Data.Rpm.DbHeaderBlob (PkgInfo (..), readPackageInfo)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (toText, showText)
 import Data.Text (Text)
 import Data.Void (Void)
 import Data.Word (Word32, Word8)
@@ -43,7 +43,7 @@ import Text.Megaparsec (
   count,
   runParser,
   some,
-  (<?>),
+  (<?>), takeP, ParsecT,
  )
 import Text.Megaparsec.Byte.Binary (word32le, word8)
 
@@ -90,24 +90,26 @@ readNDB' file = do
   -- - Slicing a ByteString is O(1).
   --
   -- If any of the above change in the future this may need to be rethought.
-  content <- readContentsBS file
+  content <- context "read file contents" $ readContentsBS file
 
   -- Equivalent to 'Open': https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L93-L127
-  header <- fromEitherParser $ runParser parseRawNdb "ndb header" content
-  entries <- fromEitherParser . runParser (parseSlotEntries header) "slot entries" $ slice ndbHeaderLength content
+  header <- context "parse header" $  fromEitherParser $ runParser parseRawNdb "ndb header" content
+  entries <- context "parse entries" $  fromEitherParser . runParser (parseSlotEntries header) "slot entries" $ slice ndbHeaderLength content
 
   -- Equivalent to 'Read', without the needless channel: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L129-L192
-  readBlobs content $ filter ndbSlotEntryShouldProcess entries
+  context ("parse " <> showText (length entries) <> " entries") $ readBlobs content $ filter ndbSlotEntryShouldProcess entries
   where
     readBlobs :: (Has Diagnostics sig m) => ByteString -> [NdbSlotEntry] -> m [ByteString]
     readBlobs content (entry : entries) = do
-      let content' = slice (ndbSlotBlkOffset entry * ndbBlobHeaderSize) content
-      blobHeader <- fromEitherParser $ runParser (parseNdbBlobHeader entry) "blob header" content'
-      blob <- fromEitherParser . runParser (parseNdbBlob blobHeader) "blob" $ slice ndbBlobHeaderSize content'
+      content' <- context "slice blob header" $ pure $ slice (ndbSlotBlkOffset entry * ndbBlobHeaderSize) content
+      blobHeader <- context "parse blob header" $ fromEitherParser $ runParser parseNdbBlobHeader "blob header" content'
+      x <- context "slice blob body" $ pure $ slice ndbBlobHeaderSize content'
+      blob <- context "parse blob body" $ fromEitherParser . runParser (parseNdbBlob blobHeader) "blob" $ x
       rest <- readBlobs content entries
       pure $ blob : rest
     readBlobs _ [] = pure []
 
+-- type Parser m = ParsecT Void ByteString m
 type Parser = Parsec Void ByteString
 
 data NdbHeader = NdbHeader
@@ -126,13 +128,18 @@ data NdbSlotEntry = NdbSlotEntry
   }
   deriving (Show)
 
-data NdbBlobHeader = NdbBlobHeader
-  { ndbBlobHeaderMagic :: Word32
-  , ndbBlobHeaderPkgIndex :: Word32
-  , ndbBlobHeaderChecksum :: Word32
-  , ndbBlobHeaderLen :: Word32
+newtype NdbBlobHeader = NdbBlobHeader
+  { ndbBlobHeaderLen :: Word32
   }
   deriving (Show)
+
+-- data NdbBlobHeader = NdbBlobHeader
+--   { ndbBlobHeaderMagic :: Word32
+--   , ndbBlobHeaderPkgIndex :: Word32
+--   , ndbBlobHeaderChecksum :: Word32
+--   , ndbBlobHeaderLen :: Word32
+--   }
+--   deriving (Show)
 
 -- | Parse the slot entries in the header section of the DB.
 -- The original structure contains the file handle too, but as mentioned in 'readNdb'' this code doesn't use a file handle,
@@ -194,26 +201,27 @@ parseNdbSlotEntry =
 -- Structure: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L75-L80
 -- Parse: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L159-L167
 -- Validate: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L168-L178
-parseNdbBlobHeader :: NdbSlotEntry -> Parser NdbBlobHeader
-parseNdbBlobHeader slot =
-  NdbBlobHeader
-    <$> (word32le <?> "magic")
-    <*> (word32le <?> "package index")
-    <*> (word32le <?> "checksum")
-    <*> (word32le <?> "len")
-    >>= validate slot
-  where
-    validate :: (MonadFail m) => NdbSlotEntry -> NdbBlobHeader -> m NdbBlobHeader
-    validate _ NdbBlobHeader{..} | ndbBlobHeaderMagic /= ndbBlobMagicExpected = fail $ "expected magic '" <> showHex' ndbBlobMagicExpected <> "' but got: " <> showHex' ndbBlobHeaderMagic
-    validate NdbSlotEntry{..} NdbBlobHeader{..} | ndbSlotPkgIndex /= ndbBlobHeaderPkgIndex = fail $ "expected pkg index '" <> show ndbSlotPkgIndex <> "', but got: " <> show ndbBlobHeaderPkgIndex
-    validate _ header = pure header
+parseNdbBlobHeader :: Parser NdbBlobHeader
+parseNdbBlobHeader =
+  NdbBlobHeader <$> (takeP Nothing 3 *> word32le)
+  -- NdbBlobHeader
+  --   <$> (word32le)
+  --   <*> (word32le)
+  --   <*> (word32le)
+  --   <*> (word32le)
+  --   -- >>= validate slot
+  -- where
+  --   validate :: (MonadFail m) => NdbSlotEntry -> NdbBlobHeader -> m NdbBlobHeader
+  --   validate _ NdbBlobHeader{..} | ndbBlobHeaderMagic /= ndbBlobMagicExpected = fail $ "expected magic '" <> showHex' ndbBlobMagicExpected <> "' but got: " <> showHex' ndbBlobHeaderMagic
+  --   validate NdbSlotEntry{..} NdbBlobHeader{..} | ndbSlotPkgIndex /= ndbBlobHeaderPkgIndex = fail $ "expected pkg index '" <> show ndbSlotPkgIndex <> "', but got: " <> show ndbBlobHeaderPkgIndex
+  --   validate _ header = pure header
 
 -- | Parse a blob.
 -- Contains no real structure (other than that it is, in Haskell terms, a '[Word8]') or validation.
 --
 -- Parse: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L182-L187
 parseNdbBlob :: NdbBlobHeader -> Parser ByteString
-parseNdbBlob NdbBlobHeader{..} = BS.pack <$> parseBytesRaw (fromIntegral ndbBlobHeaderLen)
+parseNdbBlob NdbBlobHeader{ndbBlobHeaderLen} = BS.pack <$> parseBytesRaw (fromIntegral ndbBlobHeaderLen)
 
 -- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L88
 ndbHeaderMagicExpected :: Word32
