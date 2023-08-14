@@ -170,6 +170,7 @@ jobs:
         security import $CERTIFICATE_PATH -P "$MACOS_BUILD_CERT_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         security list-keychain -d user -s $KEYCHAIN_PATH
 
+        chmod +x release/*
         # '--options runtime' enables the hardened runtime: https://developer.apple.com/documentation/security/hardened_runtime
         # The hardened runtime is required for notarization.
         codesign --options runtime -s 'FOSSA, Inc.' release/fossa
