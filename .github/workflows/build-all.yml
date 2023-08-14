@@ -172,9 +172,9 @@ jobs:
 
         # '--options runtime' enables the hardened runtime: https://developer.apple.com/documentation/security/hardened_runtime
         # The hardened runtime is required for notarization.
-        codesign --options runtime -s 'Fossa, Inc.' release/fossa
-        codesign --options runtime -s 'Fossa, Inc.' release/pathfinder
-        codesign --options runtime -s 'Fossa, Inc.' release/diagnose
+        codesign --options runtime -s 'FOSSA, Inc.' release/fossa
+        codesign --options runtime -s 'FOSSA, Inc.' release/pathfinder
+        codesign --options runtime -s 'FOSSA, Inc.' release/diagnose
 
         # Perform notarization
         zip -rj notarization-archive.zip release
