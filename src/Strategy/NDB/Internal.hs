@@ -9,13 +9,14 @@ module Strategy.NDB.Internal (
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, fromEitherParser)
+import Control.Effect.Diagnostics (Diagnostics, fatalText, fromEitherParser, fromEitherShow)
 import Control.Monad (void, when)
 import Data.Bits (zeroBits)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BSL
 import Data.Char (ord)
+import Data.Functor.Extra ((<$$>))
 import Data.Rpm.DbHeaderBlob (PkgInfo (..), readPackageInfo)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -42,7 +43,14 @@ import Text.Megaparsec.Byte.Binary (word32le)
 readNDB :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs File -> m [NdbEntry]
 readNDB file = do
   contents <- readContentsBS file
-  fromEitherParser $ runParser parseNDB (show file) contents
+  blobs <- fromEitherParser $ BSL.fromStrict <$$> runParser parseNDB (show file) contents
+  pkgInfos <- traverse fromEitherShow $ readPackageInfo <$> blobs
+  traverse parsePkgInfo pkgInfos
+  where
+    -- FOSSA _requires_ that architecture is provided: https://github.com/fossas/FOSSA/blob/e61713dec1ef80dc6b6114f79622c14df5278235/modules/fetchers/README.md#locators-for-linux-packages
+    parsePkgInfo :: (Has Diagnostics sig m) => PkgInfo -> m NdbEntry
+    parsePkgInfo (PkgInfo (Just pkgName) (Just pkgVersion) (Just pkgRelease) (Just pkgArch) pkgEpoch) = pure $ NdbEntry pkgArch pkgName (pkgVersion <> "-" <> pkgRelease) (fmap (toText . show) pkgEpoch)
+    parsePkgInfo pkg = fatalText . toText $ "package '" <> show pkg <> "' is missing one or more fields; all fields are required"
 
 -- When parsing ByteStrings, the associated token is a Word8 (a byte).
 --
@@ -83,7 +91,7 @@ data NdbEntry = NdbEntry
 -- of its @\/var\/lib\/rpm\/Packages.db@ (e.g. @hexdump -Cv Packages.db@).
 --
 -- See also: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L34-L58
-parseNDB :: Parser [NdbEntry]
+parseNDB :: Parser [ByteString]
 parseNDB = do
   -- Parse the header.
   header <- parseHeader
@@ -166,7 +174,7 @@ parseSlot =
 
 -- | Parse all blobs of an NDB database. The slots tell us how many blobs to
 -- expect to parse, and how to parse them.
-parseBlobs :: [NdbSlotEntry] -> Parser [NdbEntry]
+parseBlobs :: [NdbSlotEntry] -> Parser [ByteString]
 parseBlobs = label "blobs" . traverse parseBlob
 
 -- | Each blob contains, in order:
@@ -192,7 +200,7 @@ parseBlobs = label "blobs" . traverse parseBlob
 -- headers (which are text) but stores and indexes data differently.
 --
 -- For layout documentation, see: https://github.com/rpm-software-management/rpm/blob/3e74e8ba2dd5e76a5353d238dc7fc38651ce27b3/lib/backend/ndb/rpmpkg.c#L512-L513
-parseBlob :: NdbSlotEntry -> Parser NdbEntry
+parseBlob :: NdbSlotEntry -> Parser ByteString
 parseBlob NdbSlotEntry{ndbSlotPkgIndex, ndbSlotBlkCount} = label "blob" $ do
   -- Parse header.
   magicS
@@ -216,17 +224,11 @@ parseBlob NdbSlotEntry{ndbSlotPkgIndex, ndbSlotBlkCount} = label "blob" $ do
   take32 <?> "tail len"
   magicE
 
-  -- Parse body contents.
-  parseBlobData blob
+  -- Return body blob directly.
+  pure blob
   where
     magicS = parseMagic ['B', 'l', 'b', 'S'] <?> "magicS"
     magicE = parseMagic ['B', 'l', 'b', 'E'] <?> "magicE"
-
-    -- FOSSA _requires_ that architecture is provided: https://github.com/fossas/FOSSA/blob/e61713dec1ef80dc6b6114f79622c14df5278235/modules/fetchers/README.md#locators-for-linux-packages
-    parseBlobData blob = case readPackageInfo $ BSL.fromStrict blob of
-      Left err -> fail err
-      Right (PkgInfo (Just pkgName) (Just pkgVersion) (Just pkgRelease) (Just pkgArch) pkgEpoch) -> pure $ NdbEntry pkgArch pkgName (pkgVersion <> "-" <> pkgRelease) (fmap (toText . show) pkgEpoch)
-      Right pkg -> fail $ "package '" <> show pkg <> "' is missing one or more fields; all fields are required"
 
 -- | Take a single Word32 (i.e. 32 bits == 4 bytes) without parsing it.
 take32 :: Parser ()
