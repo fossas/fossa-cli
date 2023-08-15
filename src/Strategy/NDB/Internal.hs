@@ -34,7 +34,6 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Byte (string)
 import Text.Megaparsec.Byte.Binary (word32le)
-import Text.Megaparsec.Debug (dbg)
 
 -- | Read an NDB database. These are commonly found at @\/var\/lib\/rpm\/Packages.db@.
 --
@@ -87,12 +86,12 @@ data NdbEntry = NdbEntry
 parseNDB :: Parser [NdbEntry]
 parseNDB = do
   -- Parse the header.
-  header <- dbg "header" parseHeader
-  dbg "unused" (label "unused" $ void $ takeP Nothing 16)
+  header <- parseHeader
+  (label "unused" $ void $ takeP Nothing 16)
   -- Parse the slot pages.
-  slots <- dbg "slots" $ parseSlots header
+  slots <- parseSlots header
   -- Parse the blobs.
-  blobs <- dbg "blobs" $ parseBlobs slots
+  blobs <- parseBlobs slots
   eof
   pure blobs
 
@@ -137,7 +136,7 @@ data NdbSlotEntry = NdbSlotEntry
 -- all valid slots will always have package indexes greater than 0.
 parseSlots :: NdbHeader -> Parser [NdbSlotEntry]
 parseSlots NdbHeader{ndbHeaderSlotNPages} =
-  takeWhile ((/= 0) . ndbSlotPkgIndex) <$> count (fromIntegral $ slotsToParse ndbHeaderSlotNPages) (dbg "slot" parseSlot)
+  label "slots" $ takeWhile ((/= 0) . ndbSlotPkgIndex) <$> count (fromIntegral $ slotsToParse ndbHeaderSlotNPages) parseSlot
   where
     slotsPerPage = 256
 
@@ -168,7 +167,7 @@ parseSlot =
 -- | Parse all blobs of an NDB database. The slots tell us how many blobs to
 -- expect to parse, and how to parse them.
 parseBlobs :: [NdbSlotEntry] -> Parser [NdbEntry]
-parseBlobs = traverse (dbg "blob" . parseBlob)
+parseBlobs = label "blobs" . traverse parseBlob
 
 -- | Each blob contains, in order:
 --
@@ -194,34 +193,34 @@ parseBlobs = traverse (dbg "blob" . parseBlob)
 --
 -- For layout documentation, see: https://github.com/rpm-software-management/rpm/blob/3e74e8ba2dd5e76a5353d238dc7fc38651ce27b3/lib/backend/ndb/rpmpkg.c#L512-L513
 parseBlob :: NdbSlotEntry -> Parser NdbEntry
-parseBlob NdbSlotEntry{ndbSlotPkgIndex, ndbSlotBlkCount} = do
+parseBlob NdbSlotEntry{ndbSlotPkgIndex, ndbSlotBlkCount} = label "blob" $ do
   -- Parse header.
-  dbg "magicS" magicS
-  index <- dbg "package index" (word32le <?> "package index")
+  magicS
+  index <- word32le <?> "package index"
   when (index /= ndbSlotPkgIndex) $ fail $ "expected pkg index '" <> show ndbSlotPkgIndex <> "', but got: " <> show index
-  dbg "generation" (take32 <?> "generation")
-  len <- dbg "len" ((subtract 16) . fromIntegral <$> word32le <?> "len")
+  take32 <?> "generation"
+  len <- (subtract 16) . fromIntegral <$> word32le <?> "len"
 
   -- Parse body.
   --
   -- We subtract 16 here because this length is from the start of the blob
   -- (including the 16 byte header) to the end of its data.
-  blob <- dbg "data" (takeP Nothing (len - 16) <?> "blob")
+  blob <- takeP Nothing (len - 16) <?> "blob"
 
   -- Parse tail.
   --
   -- Padding = total blob size - length from start to end-of-data - length of constant-size tail.
   let tailLength = (fromIntegral ndbSlotBlkCount) * 16 - fromIntegral len - 12
-  dbg "tail" $ label "tail" $ void $ takeP Nothing tailLength
-  dbg "checksum" (take32 <?> "checksum")
-  dbg "tail len" (take32 <?> "tail len")
-  dbg "magicE" magicE
+  label "tail" $ void $ takeP Nothing tailLength
+  take32 <?> "checksum"
+  take32 <?> "tail len"
+  magicE
 
   -- Parse body contents.
   parseBlobData blob
   where
-    magicS = label "magicS" $ parseMagic ['B', 'l', 'b', 'S']
-    magicE = label "magicE" $ parseMagic ['B', 'l', 'b', 'E']
+    magicS = parseMagic ['B', 'l', 'b', 'S'] <?> "magicS"
+    magicE = parseMagic ['B', 'l', 'b', 'E'] <?> "magicE"
 
     -- FOSSA _requires_ that architecture is provided: https://github.com/fossas/FOSSA/blob/e61713dec1ef80dc6b6114f79622c14df5278235/modules/fetchers/README.md#locators-for-linux-packages
     parseBlobData blob = case readPackageInfo $ BSL.fromStrict blob of
