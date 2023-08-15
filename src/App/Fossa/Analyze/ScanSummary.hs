@@ -193,7 +193,7 @@ summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicL
     vsiSourceUnits sUnit =
       let renderOriginPath =
             case vsiSrcUnitLocator sUnit of
-              Just loc -> \originPath -> toText originPath <> " (locator: " <> renderLocator loc <> ")"
+              Just loc -> \originPath -> (toText originPath) <> " (locator: " <> renderLocator loc <> ")"
               _ -> toText
        in map renderOriginPath (sourceUnitOriginPaths sUnit)
 
