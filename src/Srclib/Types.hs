@@ -47,6 +47,13 @@ instance ToText LicenseScanType where
 instance ToJSON LicenseScanType where
   toJSON = toJSON . toText
 
+-- |This type is meant to represent the paths in a project where a particular set of dependencies were discovered.
+-- For example, in a project directory that has a @go.mod@ the OriginPath might be 'foo/bar/go.mod'.
+-- In a project with VSI dependencies the OriginPath would be the directory the dep was found in, such as 'vendored/zlib/'
+--
+-- OriginPaths were previously `SomeBase File`, however with support for VSI OriginPaths can now be a directory in addition to a file path.
+-- The reason we cannot use `SomePath` for this is that outputting an `OriginPath` to JSON in a form like @/foo/bar/path_end@ doesn't say whether the path is a file or directory which is required for parsing to a `SomePath` in `FromJSON`.
+-- This type and its exported smart constructors describe that OriginPath is a path, but has no information about whether the path is a file or directory.
 newtype OriginPath = OriginPath FilePath
   deriving newtype (Eq, Ord, Show, ToJSON, FromJSON, ToText)
 
