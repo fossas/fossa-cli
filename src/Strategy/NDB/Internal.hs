@@ -43,6 +43,9 @@ readNDB file = do
   pure $ mapMaybe parsePkgInfo entries
   where
     -- FOSSA _requires_ that architecture is provided: https://github.com/fossas/FOSSA/blob/e61713dec1ef80dc6b6114f79622c14df5278235/modules/fetchers/README.md#locators-for-linux-packages
+    --
+    -- RPM packages that don't have all the required fields are dropped from the
+    -- parsed list.
     parsePkgInfo :: PkgInfo -> Maybe NdbEntry
     parsePkgInfo (PkgInfo (Just pkgName) (Just pkgVersion) (Just pkgRelease) (Just pkgArch) pkgEpoch) =
       Just $ NdbEntry pkgArch pkgName (pkgVersion <> "-" <> pkgRelease) (fmap (toText . show) pkgEpoch)
@@ -103,8 +106,8 @@ parseNDB = do
   -- Parse the blobs.
   --
   -- We don't parse EOF after this because we might not have actually reached
-  -- EOF. The last valid block might extra unused or garbage blocks following it
-  -- depending on the database has been used.
+  -- EOF. The last valid block might have extra unused or garbage blocks
+  -- following it depending on the database has been used.
   parseBlocks slots
 
 -- | The header of an NDB database.
@@ -113,7 +116,7 @@ newtype NdbHeader = NdbHeader
   }
   deriving (Show)
 
--- | The header of an NDB database contains, in order:
+-- | NDB databases begin with a header. Headers contain, in order:
 --
 --   1. A magic sequence (@\"RpmP\"@) (4 bytes).
 --   2. An NDB header version (we only support version 0) (4 bytes).
@@ -129,7 +132,7 @@ parseHeader =
     magic = label "magic" $ parseMagic ['R', 'p', 'm', 'P']
     version = label "version" $ void $ string $ BS.pack $ replicate 4 zeroBits
     generation = toss4 <?> "generation"
-    slotPagesCount = word32le <?> "slot pages count"
+    slotPagesCount = take4 <?> "slot pages count"
 
 -- | A "slot" representing a package in an NDB database.
 data NdbSlotEntry = NdbSlotEntry
@@ -140,7 +143,7 @@ data NdbSlotEntry = NdbSlotEntry
   deriving (Show)
 
 -- | Parse all the slots of an NDB database. The header tells us how many slot
--- pages to expect to parse.
+-- pages to expect to parse. Slots are located immediately after headers.
 --
 -- We filter out all slots where the package index is 0, because those slots do
 -- not point to valid blocks. They might be unused slots at the end of the page,
@@ -172,9 +175,9 @@ parseSlot :: Parser NdbSlotEntry
 parseSlot =
   label "slot" $
     NdbSlotEntry
-      <$> (magic *> word32le <?> "package index")
-      <*> (word32le <?> "block offset")
-      <*> (word32le <?> "block count")
+      <$> (magic *> take4 <?> "package index")
+      <*> (take4 <?> "block offset")
+      <*> (take4 <?> "block count")
   where
     magic = label "magic" $ parseMagic ['S', 'l', 'o', 't']
 
@@ -224,10 +227,10 @@ parseBlock NdbSlotEntry{ndbSlotPkgIndex, ndbSlotBlkOffset, ndbSlotBlkCount} = la
 
   -- Parse header.
   magicS
-  index <- word32le <?> "package index"
+  index <- take4 <?> "package index"
   when (index /= ndbSlotPkgIndex) $ fail $ "expected pkg index '" <> show ndbSlotPkgIndex <> "', but got: " <> show index
   toss4 <?> "generation"
-  len <- fromIntegral <$> word32le <?> "len"
+  len <- fromIntegral <$> take4 <?> "len"
 
   -- Parse blob.
   --
@@ -266,6 +269,13 @@ tossBytes = void . takeBytes
 -- | Consume and discard 4 bytes (a common field size in NDB).
 toss4 :: Parser ()
 toss4 = tossBytes 4
+
+-- | Consume 4 bytes (a common field size in NDB).
+--
+-- This is an alias for 'word32le' because the different unit sizes (a 'Word32'
+-- has 32 _bits_, which is equal to 4 _bytes_) kept tripping me up.
+take4 :: Parser Word32
+take4 = word32le
 
 -- | Parse a series of exact 'Word8'-sized 'Char's.
 parseMagic :: [Char] -> Parser ()
