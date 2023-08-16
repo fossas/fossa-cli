@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.8.9
+- CLI Binaries: Notarize Mac OS binaries. ([#1261](https://github.com/fossas/fossa-cli/pull/1261))
+
 ## v3.8.8
 - CLI Binaries: Sign Mac OS builds using codesign. ([#1251](https://github.com/fossas/fossa-cli/pull/1251))
 - CLI Binaries: Sign Linux builds using cosign. ([#1243](https://github.com/fossas/fossa-cli/pull/1243))

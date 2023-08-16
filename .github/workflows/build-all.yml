@@ -144,12 +144,15 @@ jobs:
       run: |
         strip release/*
 
-    - name: Sign Binaries (Mac OS)
-      if: ${{ contains(matrix.os, 'macos') && github.ref_type == 'tag' }}
+    - name: Sign and Notarize Binaries (Mac OS)
+      if: ${{ contains(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/v') }}
       env:
         MACOS_BUILD_CERT_BASE64: ${{ secrets.MACOS_BUILD_CERT_BASE64 }}
         MACOS_BUILD_CERT_P12_PASSWORD: ${{ secrets.MACOS_BUILD_CERT_P12_PASSWORD }}
         MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+        APPLE_NOTARIZATION_DEV_PASS: ${{ secrets.APPLE_NOTARIZATION_DEV_PASS }}
+        APPLE_NOTARIZATION_DEV_ID: ${{ secrets.APPLE_NOTARIZATION_DEV_ID }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
         # create variables
         CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
@@ -167,9 +170,22 @@ jobs:
         security import $CERTIFICATE_PATH -P "$MACOS_BUILD_CERT_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         security list-keychain -d user -s $KEYCHAIN_PATH
 
-        codesign -s 'Fossa, Inc.' release/fossa
-        codesign -s 'Fossa, Inc.' release/pathfinder
-        codesign -s 'Fossa, Inc.' release/diagnose
+        chmod +x release/*
+        # '--options runtime' enables the hardened runtime: https://developer.apple.com/documentation/security/hardened_runtime
+        # The hardened runtime is required for notarization.
+        codesign --options runtime -s 'FOSSA, Inc.' release/fossa
+        codesign --options runtime -s 'FOSSA, Inc.' release/pathfinder
+        codesign --options runtime -s 'FOSSA, Inc.' release/diagnose
+
+        # Perform notarization
+        zip -rj notarization-archive.zip release
+        NOTARY_RESULTS=$(xcrun notarytool submit notarization-archive.zip --apple-id "$APPLE_NOTARIZATION_DEV_ID" --password "$APPLE_NOTARIZATION_DEV_PASS" --team-id "$APPLE_TEAM_ID" --wait)
+        echo "$NOTARY_RESULTS"
+        rm notarization-archive.zip
+        # The notarization tool doesn't set $?, so examine the output.
+        if ! echo "$NOTARY_RESULTS" | grep -q "status: Accepted"; then
+           exit 1
+        fi
 
     - uses: actions/upload-artifact@v2
       with:
