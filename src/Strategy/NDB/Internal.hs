@@ -17,6 +17,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BSL
 import Data.Char (ord)
 import Data.Functor.Extra ((<$$>))
+import Data.List (sortOn)
 import Data.Rpm.DbHeaderBlob (PkgInfo (..), readPackageInfo)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -28,6 +29,7 @@ import Text.Megaparsec (
   Parsec,
   count,
   eof,
+  getOffset,
   label,
   runParser,
   takeP,
@@ -36,7 +38,8 @@ import Text.Megaparsec (
 import Text.Megaparsec.Byte (string)
 import Text.Megaparsec.Byte.Binary (word32le)
 
--- | Read an NDB database. These are commonly found at @\/var\/lib\/rpm\/Packages.db@.
+-- | Read an NDB database. These are commonly found at
+-- @\/var\/lib\/rpm\/Packages.db@.
 --
 -- Reading this database provides us with a list of installed RPM packages. It
 -- does not provide edges between package dependencies.
@@ -82,24 +85,30 @@ data NdbEntry = NdbEntry
 --      number of installed packages is not a multiple of the slot page size, a
 --      slot page might have a bunch of empty slots at the end of it.
 --   4. A sequence of "blocks". Blocks contain an RPM package's actual header
---      data. Blocks are variable-length, densely packed, and always padded to
---      be 16-aligned.
+--      data. Blocks are variable-length and always padded to be 16-aligned.
+--      Note that blocks are not densely packed! As you uninstall and upgrade
+--      packages, old blocks can be resized to be smaller without any other
+--      blocks being moved. This means that gaps filled with garbage data can be
+--      created between blocks.
 --
 -- For details on each type (e.g. slots, blocks, etc.), see the comment for the
 -- associated parser. To see this structure for yourself, find an RPM NDB file
 -- (e.g. @docker run registry.suse.com\/bci\/bci-base@) and examine the hex dump
 -- of its @\/var\/lib\/rpm\/Packages.db@ (e.g. @hexdump -Cv Packages.db@).
 --
--- See also: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L34-L58
+-- See also:
+-- - Go parser (comments have some errors): https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L34-L58
+-- - Original C parser: https://github.com/rpm-software-management/rpm/blob/rpm-4.17.0-release/lib/backend/ndb/rpmpkg.c
+--   - Look at @rpmpkg{Get,Put}Internal@ and @rpmpkg{Read,Write}Blob@.
 parseNDB :: Parser [ByteString]
 parseNDB = do
   -- Parse the header.
   header <- parseHeader
-  (label "unused" $ void $ takeP Nothing 16)
+  tossBytes 16 <?> "unused"
   -- Parse the slot pages.
   slots <- parseSlots header
   -- Parse the blobs.
-  blobs <- parseBlobs slots
+  blobs <- parseBlocks slots
   eof
   pure blobs
 
@@ -124,7 +133,7 @@ parseHeader =
   where
     magic = label "magic" $ parseMagic ['R', 'p', 'm', 'P']
     version = label "version" $ void $ string $ BS.pack $ replicate 4 zeroBits
-    generation = take32 <?> "generation"
+    generation = toss4 <?> "generation"
     slotPagesCount = word32le <?> "slot pages count"
 
 -- | A "slot" representing a package in an NDB database.
@@ -135,8 +144,8 @@ data NdbSlotEntry = NdbSlotEntry
   }
   deriving (Show)
 
--- | Parse all the slots of an NDB database. The header tells us how many slots
--- to expect to parse.
+-- | Parse all the slots of an NDB database. The header tells us how many slot
+-- pages to expect to parse.
 --
 -- We filter out all slots where the package index is 0, because those slots are
 -- empty padding at the end of a not-fully-filled slot page. The first slot
@@ -148,8 +157,8 @@ parseSlots NdbHeader{ndbHeaderSlotNPages} =
   where
     slotsPerPage = 256
 
-    -- The first page only 254 slots, since its first two slots are overridden
-    -- with the NDB database's header.
+    -- The first page has only 254 slots, since its first two slots are
+    -- overridden with the NDB database's header.
     --
     -- See also: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L115
     slotsToParse pages = pages * slotsPerPage - 2
@@ -162,6 +171,8 @@ parseSlots NdbHeader{ndbHeaderSlotNPages} =
 --      16-byte rows. All blocks begin at 16-aligned addresses (4 bytes).
 --   4. A block count, indicating the total length of the block, counted in
 --      16-byte rows (4 bytes).
+--
+-- We use slot data to know when blocks start and how long blocks are.
 parseSlot :: Parser NdbSlotEntry
 parseSlot =
   label "slot" $
@@ -172,67 +183,94 @@ parseSlot =
   where
     magic = label "magic" $ parseMagic ['S', 'l', 'o', 't']
 
--- | Parse all blobs of an NDB database. The slots tell us how many blobs to
+-- | Parse all blocks of an NDB database. The slots tell us how many blocks to
 -- expect to parse, and how to parse them.
-parseBlobs :: [NdbSlotEntry] -> Parser [ByteString]
-parseBlobs = label "blobs" . traverse parseBlob
+--
+-- Since blocks are not contiguous, but we still want to parse every block in a
+-- single pass, we order the parsed slots by block offset. We then parse each
+-- block in offset order, skipping to the block's offset if needed at the
+-- beginning of each block.
+parseBlocks :: [NdbSlotEntry] -> Parser [ByteString]
+parseBlocks = label "blocks" . traverse parseBlock . sortOn ndbSlotBlkOffset
 
--- | Each blob contains, in order:
+-- | Each block contains, in order:
 --
 --   1. A magic sequence (@\"BlbS\"@) (4 bytes).
---   2. The package index of this blob's package, which matches its
+--   2. The package index of this block's package, which matches its
 --      corresponding slot's package index (4 bytes).
---   3. The generation of this package (I have no idea what this is for) (4 bytes).
---   4. The length of the blob's variable-length data in bytes (4 bytes).
---   5. The blob's data, which contains the package's actual headers
+--   3. The generation of this package (I have no idea what this is for) (4
+--      bytes).
+--   4. The length of the block's variable-length data blob in bytes (4 bytes).
+--   5. The blob data, which contains the package's actual headers
 --      (variable-length).
---   6. The blob's "tail", which is zero-padded so that the blob will end on a
+--   6. The block's "tail", which is padded so that the block will end on a
 --      16-aligned address (0-15 bytes).
---   7. An Adler-32 (RFC 1950) checksum of this blob's data (32 bytes).
---   8. The length of the blob's variable-length data in bytes, identical to
---      field 4 (4 bytes).
+--   7. An Adler-32 (RFC 1950) checksum of this block's data blob (32 bytes).
+--   8. The length of the block's variable-length data blob in bytes, identical
+--      to field 4 (4 bytes).
 --   9. An ending magic sequence (@\"BlbE\"@) (4 bytes).
 --
--- We then pass the blob's data to 'readPackageInfo', which is provides the
--- logic for parsing the package headers themselves. This logic is shared
--- between several different RPM backends. RPM supports different database
--- storage backends, each of which shares a content format for its package
--- headers (which are text) but stores and indexes data differently.
+-- We later pass the parsed blob to 'readPackageInfo', which provides the logic
+-- for parsing the package headers themselves. This logic is shared between
+-- several different RPM backends. RPM supports different database storage
+-- backends, each of which shares a content format for its package headers
+-- (which are text) but stores and indexes data differently.
 --
 -- For layout documentation, see: https://github.com/rpm-software-management/rpm/blob/3e74e8ba2dd5e76a5353d238dc7fc38651ce27b3/lib/backend/ndb/rpmpkg.c#L512-L513
-parseBlob :: NdbSlotEntry -> Parser ByteString
-parseBlob NdbSlotEntry{ndbSlotPkgIndex, ndbSlotBlkCount} = label "blob" $ do
+parseBlock :: NdbSlotEntry -> Parser ByteString
+parseBlock NdbSlotEntry{ndbSlotPkgIndex, ndbSlotBlkOffset, ndbSlotBlkCount} = label "block" $ do
+  -- Jump to block offset if needed. This is sometimes needed because there is a
+  -- gap between where the previous block ended and where the current block
+  -- begins.
+  currentOffset <- getOffset
+  let blockStartOffset = (fromIntegral ndbSlotBlkOffset) * rowSize
+      gap = blockStartOffset - currentOffset
+  when (gap > 0) $ tossBytes gap
+
   -- Parse header.
   magicS
   index <- word32le <?> "package index"
   when (index /= ndbSlotPkgIndex) $ fail $ "expected pkg index '" <> show ndbSlotPkgIndex <> "', but got: " <> show index
-  take32 <?> "generation"
-  len <- (subtract 16) . fromIntegral <$> word32le <?> "len"
+  toss4 <?> "generation"
+  len <- fromIntegral <$> word32le <?> "len"
 
-  -- Parse body.
+  -- Parse blob.
   --
-  -- We subtract 16 here because this length is from the start of the blob
-  -- (including the 16 byte header) to the end of its data.
-  blob <- takeP Nothing (len - 16) <?> "blob"
+  -- We subtract 16 here because this length is from the start of the block
+  -- (including the 16 byte header) to the end of its blob.
+  blob <- takeBytes (len - 16) <?> "blob"
 
   -- Parse tail.
   --
-  -- Padding = total blob size - length from start to end-of-data - length of constant-size tail.
-  let tailLength = (fromIntegral ndbSlotBlkCount) * 16 - fromIntegral len - 12
-  label "tail" $ void $ takeP Nothing tailLength
-  take32 <?> "checksum"
-  take32 <?> "tail len"
+  -- Padding = total block size - length from start to end-of-blob - length of constant-size tail.
+  let tailLength = (fromIntegral ndbSlotBlkCount) * rowSize - fromIntegral len - 12
+  tossBytes tailLength <?> "tail"
+  toss4 <?> "checksum"
+  toss4 <?> "tail len"
   magicE
 
-  -- Return body blob directly.
+  -- Return blob directly. We parse the blob contents later so that errors in
+  -- constructing the locator don't appear as confusing parsing errors.
   pure blob
   where
     magicS = parseMagic ['B', 'l', 'b', 'S'] <?> "magicS"
     magicE = parseMagic ['B', 'l', 'b', 'E'] <?> "magicE"
 
--- | Take a single Word32 (i.e. 32 bits == 4 bytes) without parsing it.
-take32 :: Parser ()
-take32 = void $ takeP Nothing 4
+-- | The size of a "row" in the NDB format.
+rowSize :: Int
+rowSize = 16
+
+-- | Consume a certain number of bytes.
+takeBytes :: Int -> Parser ByteString
+takeBytes = takeP Nothing
+
+-- | Consume and discard a certain number of bytes.
+tossBytes :: Int -> Parser ()
+tossBytes = void . takeBytes
+
+-- | Consume and discard 4 bytes (a common field size in NDB).
+toss4 :: Parser ()
+toss4 = tossBytes 4
 
 -- | Parse a series of exact 'Word8'-sized 'Char's.
 parseMagic :: [Char] -> Parser ()
