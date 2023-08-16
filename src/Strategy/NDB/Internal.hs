@@ -9,7 +9,7 @@ module Strategy.NDB.Internal (
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, fatalText, fromEitherParser, fromEitherShow)
+import Control.Effect.Diagnostics (Diagnostics, fromEitherParser, fromEitherShow)
 import Control.Monad (void, when)
 import Data.Bits (zeroBits)
 import Data.ByteString (ByteString)
@@ -18,6 +18,7 @@ import Data.ByteString.Lazy qualified as BSL
 import Data.Char (ord)
 import Data.Functor.Extra ((<$$>))
 import Data.List (sortOn)
+import Data.Maybe (mapMaybe)
 import Data.Rpm.DbHeaderBlob (PkgInfo (..), readPackageInfo)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -38,13 +39,14 @@ readNDB :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs File -> m [NdbE
 readNDB file = do
   contents <- readContentsBS file
   blobs <- fromEitherParser $ BSL.fromStrict <$$> runParser parseNDB (show file) contents
-  pkgInfos <- traverse fromEitherShow $ readPackageInfo <$> blobs
-  traverse parsePkgInfo pkgInfos
+  entries <- traverse fromEitherShow $ readPackageInfo <$> blobs
+  pure $ mapMaybe parsePkgInfo entries
   where
     -- FOSSA _requires_ that architecture is provided: https://github.com/fossas/FOSSA/blob/e61713dec1ef80dc6b6114f79622c14df5278235/modules/fetchers/README.md#locators-for-linux-packages
-    parsePkgInfo :: (Has Diagnostics sig m) => PkgInfo -> m NdbEntry
-    parsePkgInfo (PkgInfo (Just pkgName) (Just pkgVersion) (Just pkgRelease) (Just pkgArch) pkgEpoch) = pure $ NdbEntry pkgArch pkgName (pkgVersion <> "-" <> pkgRelease) (fmap (toText . show) pkgEpoch)
-    parsePkgInfo pkg = fatalText . toText $ "package '" <> show pkg <> "' is missing one or more fields; all fields are required"
+    parsePkgInfo :: PkgInfo -> Maybe NdbEntry
+    parsePkgInfo (PkgInfo (Just pkgName) (Just pkgVersion) (Just pkgRelease) (Just pkgArch) pkgEpoch) =
+      Just $ NdbEntry pkgArch pkgName (pkgVersion <> "-" <> pkgRelease) (fmap (toText . show) pkgEpoch)
+    parsePkgInfo _ = Nothing
 
 -- When parsing ByteStrings, the associated token is a Word8 (a byte).
 --
