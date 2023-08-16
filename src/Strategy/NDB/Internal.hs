@@ -25,16 +25,7 @@ import Data.Void (Void)
 import Data.Word (Word32)
 import Effect.ReadFS (ReadFS, readContentsBS)
 import Path (Abs, File, Path)
-import Text.Megaparsec (
-  Parsec,
-  count,
-  eof,
-  getOffset,
-  label,
-  runParser,
-  takeP,
-  (<?>),
- )
+import Text.Megaparsec (Parsec, count, getOffset, label, runParser, takeP, (<?>))
 import Text.Megaparsec.Byte (string)
 import Text.Megaparsec.Byte.Binary (word32le)
 
@@ -108,9 +99,11 @@ parseNDB = do
   -- Parse the slot pages.
   slots <- parseSlots header
   -- Parse the blobs.
-  blobs <- parseBlocks slots
-  eof
-  pure blobs
+  --
+  -- We don't parse EOF after this because we might not have actually reached
+  -- EOF. The last valid block might extra unused or garbage blocks following it
+  -- depending on the database has been used.
+  parseBlocks slots
 
 -- | The header of an NDB database.
 newtype NdbHeader = NdbHeader
