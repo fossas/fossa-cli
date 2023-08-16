@@ -142,13 +142,13 @@ data NdbSlotEntry = NdbSlotEntry
 -- | Parse all the slots of an NDB database. The header tells us how many slot
 -- pages to expect to parse.
 --
--- We filter out all slots where the package index is 0, because those slots are
--- empty padding at the end of a not-fully-filled slot page. The first slot
--- begins with index 1 and each subsequent slot has an incrementing index, so
--- all valid slots will always have package indexes greater than 0.
+-- We filter out all slots where the package index is 0, because those slots do
+-- not point to valid blocks. They might be unused slots at the end of the page,
+-- or they might be slots that used to be occupied but whose packages have since
+-- been uninstalled.
 parseSlots :: NdbHeader -> Parser [NdbSlotEntry]
 parseSlots NdbHeader{ndbHeaderSlotNPages} =
-  label "slots" $ takeWhile ((/= 0) . ndbSlotPkgIndex) <$> count (fromIntegral $ slotsToParse ndbHeaderSlotNPages) parseSlot
+  label "slots" $ filter ((/= 0) . ndbSlotPkgIndex) <$> count (fromIntegral $ slotsToParse ndbHeaderSlotNPages) parseSlot
   where
     slotsPerPage = 256
 
