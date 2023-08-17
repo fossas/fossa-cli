@@ -15,7 +15,13 @@ serde = { version = "1.0.144", features = ["derive"] }
 serde_json = "1.0.85"
 simple_logger = { version = "2.3.0", features = ["stderr", "colors"], default-features = false }
 stable-eyre = "0.2.2"
+tikv-jemallocator = "0.5.4"
 typed-builder = "0.10.0"
 
+[[bench]]
+name = "parse"
+harness = false
+
 [dev-dependencies]
+criterion = { version = "0.5.1", features = ["html_reports"] }
 lexical-sort = "0.3.1"
