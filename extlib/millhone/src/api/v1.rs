@@ -27,7 +27,7 @@ impl Client {
 }
 
 impl ApiClient for Client {
-    #[tracing::instrument(skip(self), ret, err)]
+    #[tracing::instrument(skip(self))]
     fn health(&self) -> Result<super::Health, super::Error> {
         ping::run(&self.agent, &self.base_url)
     }
