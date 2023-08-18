@@ -58,7 +58,17 @@ jobs:
       with:
         profile: minimal
         toolchain: stable
-    - uses: taiki-e/install-action@nextest
+
+    - uses: actions-rs/install@v0.1
+      if: ${{ matrix.os-name == 'linux' }}
+      with:
+        crate: cross
+        version: latest
+
+    - uses: actions-rs/install@v0.1
+      with:
+        crate: cargo-nextest
+        version: latest
 
     - uses: Swatinem/rust-cache@v2
 
