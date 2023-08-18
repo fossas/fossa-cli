@@ -6,11 +6,12 @@ edition = "2021"
 [features]
 default = ["binary"]
 binary = ["dep:clap", "dep:stable-eyre", "dep:tikv-jemallocator", "dep:traceconf", "dep:tracing-subscriber"]
+jemalloc = ["dep:tikv-jemallocator"]
 
 [dependencies]
+tikv-jemallocator = { version = "0.5.4", optional = true }
 clap = { version = "4.3.21", features = ["derive"], optional = true }
 stable-eyre = { version = "0.2.2", optional = true }
-tikv-jemallocator = { version = "0.5.4", optional = true }
 traceconf = { git = "https://github.com/fossas/foundation-libs", version = "1.1.0", optional = true }
 tracing-subscriber = { version = "0.3.17", features = ["json"], optional = true }
 serde = { version = "1.0.183", features = ["derive"] }

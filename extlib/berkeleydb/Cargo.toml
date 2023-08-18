@@ -3,9 +3,12 @@ name = "berkeleydb"
 version = "1.0.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = []
+jemalloc = ["dep:tikv-jemallocator"]
 
 [dependencies]
+tikv-jemallocator = { version = "0.5.4", optional = true }
 base64 = "0.13.0"
 byteorder = "1.4.3"
 clap = { version = "3.2.17", features = ["derive"] }
@@ -15,7 +18,6 @@ serde = { version = "1.0.144", features = ["derive"] }
 serde_json = "1.0.85"
 simple_logger = { version = "2.3.0", features = ["stderr", "colors"], default-features = false }
 stable-eyre = "0.2.2"
-tikv-jemallocator = "0.5.4"
 typed-builder = "0.10.0"
 
 [[bench]]

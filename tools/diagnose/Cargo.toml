@@ -3,14 +3,18 @@ name = "diagnose"
 version = "1.0.0"
 edition = "2021"
 
+[features]
+default = []
+jemalloc = ["dep:tikv-jemallocator"]
+
 [dependencies]
+tikv-jemallocator = { version = "0.5.4", optional = true }
 clap = { version = "4.3.19", features = ["derive", "cargo"] }
 getset = "0.1.2"
 metrics = "0.21.1"
 regex = "1.9.1"
 stable-eyre = "0.2.2"
 strum = { version = "0.25.0", features = ["derive"] }
-tikv-jemallocator = "0.5.4"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["json"] }
 walkdir = "2.3.3"

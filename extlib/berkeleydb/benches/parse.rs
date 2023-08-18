@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use berkeleydb::BerkeleyDB;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
+#[cfg(feature = "jemalloc")]
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 

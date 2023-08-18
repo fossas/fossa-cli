@@ -87,7 +87,7 @@ jobs:
     - name: Build Rust dependencies (Linux)
       if: ${{ matrix.os-name == 'linux' }}
       run: |
-        cross build --target=x86_64-unknown-linux-musl --release
+        cross build --features jemalloc --target=x86_64-unknown-linux-musl --release
         rm -rf target/release
         mv target/x86_64-unknown-linux-musl/release target/release
 
