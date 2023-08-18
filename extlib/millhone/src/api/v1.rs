@@ -7,7 +7,7 @@ use crate::url::BaseUrl;
 mod ping;
 
 // v1 is expected to use types directly. Translation shouldn't be needed until/unless there's a v2.
-pub(self) use super::prelude::*;
+pub(self) use super::types::*;
 
 /// Implements the client for v1 of the Millhone API.
 #[derive(Debug, Clone)]
@@ -26,9 +26,9 @@ impl Client {
     }
 }
 
-impl ApiClient for Client {
+impl super::Client for Client {
     #[tracing::instrument(skip(self))]
-    fn health(&self) -> Result<super::Health, super::Error> {
+    fn health(&self) -> Result<Health, Error> {
         ping::run(&self.agent, &self.base_url)
     }
 }
