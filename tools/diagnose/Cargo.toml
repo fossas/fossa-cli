@@ -3,7 +3,12 @@ name = "diagnose"
 version = "1.0.0"
 edition = "2021"
 
+[features]
+default = []
+jemalloc = ["dep:tikv-jemallocator"]
+
 [dependencies]
+tikv-jemallocator = { version = "0.5.4", optional = true }
 clap = { version = "4.3.19", features = ["derive", "cargo"] }
 getset = "0.1.2"
 metrics = "0.21.1"

@@ -5,6 +5,14 @@ use tracing_subscriber::{prelude::*, Layer, Registry};
 
 mod cmd;
 
+/// Static builds on Linux suffer immensely with the default libc allocator,
+/// but jemalloc suffers a lot less (~30% performance hit, compared to ~600%).
+///
+/// Reference: https://github.com/fossas/broker/blob/main/docs/dev/reference/static-binary.md
+#[cfg(feature = "jemalloc")]
+#[global_allocator]
+static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
 fn main() -> Result<()> {
     stable_eyre::install()?;
 
