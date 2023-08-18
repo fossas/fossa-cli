@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Containers: RPM packages installed in containers that use the NDB format for their RPM database are now parsed much faster. ([#1262](https://github.com/fossas/fossa-cli/pull/1262))
+
 ## v3.8.9
 - CLI Binaries: Notarize Mac OS binaries. ([#1261](https://github.com/fossas/fossa-cli/pull/1261))
 
