@@ -5,7 +5,7 @@ edition = "2021"
 
 [features]
 default = ["binary"]
-binary = ["dep:clap", "dep:stable-eyre", "dep:tikv-jemallocator", "dep:traceconf", "dep:tracing-subscriber"]
+binary = ["dep:clap", "dep:stable-eyre", "dep:traceconf", "dep:tracing-subscriber"]
 jemalloc = ["dep:tikv-jemallocator"]
 
 [dependencies]
