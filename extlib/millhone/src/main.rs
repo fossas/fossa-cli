@@ -39,7 +39,7 @@ struct Application {
     #[clap(
         long,
         global = true,
-        default_value = "https://api.staging.millhone.fossa.team"
+        default_value = "https://api.millhone-staging.sherlock.fossa.team"
     )]
     direct_endpoint: BaseUrl,
 
