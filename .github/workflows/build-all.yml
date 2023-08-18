@@ -79,10 +79,6 @@ jobs:
         rustc -V || echo "no rustc"
         cargo -V || echo "no cargo"
 
-    # Test and build Rust crates, which must be present when the CLI builds.
-    - name: Test Rust dependencies
-      run: cargo nextest run
-
     # Linux builds are run in Alpine, which builds them statically;
     # using jemalloc reduces the performance impact of this
     # over the default libc allocator (which performs very poorly in static builds).
@@ -95,6 +91,10 @@ jobs:
     - name: Build Rust dependencies (non-Linux)
       if: ${{ matrix.os-name != 'linux' }}
       run: cargo build --release
+
+    # Run tests in release mode to reduce the need for rebuilds.
+    - name: Test Rust dependencies
+      run: cargo nextest run --release
 
     # Build FOSSA CLI.
     - uses: actions/cache@v3
