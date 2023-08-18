@@ -129,7 +129,7 @@ parseHeader :: Parser NdbHeader
 parseHeader =
   label "header" $ NdbHeader <$> (magic *> version *> generation *> slotPagesCount)
   where
-    magic = label "magic" $ parseMagic ['R', 'p', 'm', 'P']
+    magic = parseMagic ['R', 'p', 'm', 'P'] <?> "magic"
     version = label "version" $ void $ string $ BS.pack $ replicate 4 zeroBits
     generation = toss4 <?> "generation"
     slotPagesCount = take4 <?> "slot pages count"
@@ -179,7 +179,7 @@ parseSlot =
       <*> (take4 <?> "block offset")
       <*> (take4 <?> "block count")
   where
-    magic = label "magic" $ parseMagic ['S', 'l', 'o', 't']
+    magic = parseMagic ['S', 'l', 'o', 't'] <?> "magic"
 
 -- | Parse all blocks of an NDB database. The slots tell us how many blocks to
 -- expect to parse, and how to parse them.
