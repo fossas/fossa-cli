@@ -83,22 +83,17 @@ jobs:
     - name: Test Rust dependencies
       run: cargo nextest run
 
-    # Currently this build does not statically link libc.
-    #
-    # This has the potential to cause problems for users that are on incompatible versions of libc,
-    # and use the parts of FOSSA CLI that depend upon built Rust binaries.
-    #
-    # This isn't ideal, but is tabled for now because:
-    # - It's existed this way for a bit with no complaints.
-    # - To fix this we need to set up Docker-in-Docker (so that we can run `cross`),
-    #   or set up the base image with the tooling it needs to run a build targeting `x86_64-unknown-linux-musl`.
-    #
-    # Once we've done one of the above, this should be as simple as running a build with:
-    # `cross build --features jemalloc --target=x86_64-unknown-linux-musl --release`.
-    # 
-    # For more details on static compilation, see:
-    # https://github.com/fossas/broker/blob/main/docs/dev/reference/static-binary.md
-    - name: Build Rust dependencies
+    # Linux builds are run in Alpine, which builds them statically;
+    # using jemalloc reduces the performance impact of this
+    # over the default libc allocator (which performs very poorly in static builds).
+    - name: Build Rust dependencies (Linux)
+      if: ${{ matrix.os-name == 'linux' }}
+      run: cargo build --features jemalloc --release
+
+    # Non-Linux environments generally don't need `jemalloc`
+    # and in particular Windows doesn't support it.
+    - name: Build Rust dependencies (non-Linux)
+      if: ${{ matrix.os-name != 'linux' }}
       run: cargo build --release
 
     # Build FOSSA CLI.
