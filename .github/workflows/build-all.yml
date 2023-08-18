@@ -59,11 +59,17 @@ jobs:
         profile: minimal
         toolchain: stable
 
-    - uses: actions-rs/install@v0.1
+    - name: Install additional Rust tooling (non-Linux)
+      uses: taiki-e/install-action@v2
+      if: ${{ matrix.os-name != 'linux' }}
+      with:
+        tool: nextest
+
+    - name: Install additional Rust tooling (Linux)
+      uses: taiki-e/install-action@v2
       if: ${{ matrix.os-name == 'linux' }}
       with:
-        crate: cross
-        version: latest
+        tool: nextest,cross
 
     - uses: actions-rs/install@v0.1
       with:
