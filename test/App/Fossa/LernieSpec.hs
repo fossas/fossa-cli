@@ -214,8 +214,12 @@ spec = do
   describe "analyzeWithLernie" $ do
     currDir <- runIO getCurrentDir
     let scanDir = currDir </> fixtureDir
-    let somethingPath = fromMaybe "" (Text.stripSuffix "/" $ toText . toFilePath $ scanDir </> $(mkRelDir "something.txt"))
-    let onePath = fromMaybe "" (Text.stripSuffix "/" $ toText . toFilePath $ scanDir </> $(mkRelDir "one.txt"))
+    -- We want to strip the trailing "/" off of the paths, but if there is no
+    -- trailing "/", then just return the path
+    let somethingPath = toText . toFilePath $ scanDir </> $(mkRelDir "something.txt")
+    let fixedSomethingPath = fromMaybe somethingPath (Text.stripSuffix "/" somethingPath)
+    let onePath = toText . toFilePath $ scanDir </> $(mkRelDir "one.txt")
+    let fixedOnePath = fromMaybe onePath (Text.stripSuffix "/" onePath)
     result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO $ analyzeWithLernie scanDir Nothing grepOptions
 
     it "should analyze a directory" $ do
@@ -223,11 +227,11 @@ spec = do
       -- Fix the paths in the expected data
       let actualUnitData =
             expectedUnitData
-              { licenseUnitDataPath = onePath
+              { licenseUnitDataPath = fixedOnePath
               }
           actualLicenseUnit =
             expectedLicenseUnit
-              { licenseUnitFiles = NE.singleton onePath
+              { licenseUnitFiles = NE.singleton fixedOnePath
               , licenseUnitData = NE.singleton actualUnitData
               }
           actualSourceUnit =
@@ -243,6 +247,6 @@ spec = do
           Just res -> do
             (lernieResultsWarnings res) `shouldBe` Nothing
             (lernieResultsErrors res) `shouldBe` Nothing
-            (lernieResultsKeywordSearches res) `shouldBe` Just (NE.singleton keywordSearchMatchMessage{lernieMatchPath = somethingPath})
+            (lernieResultsKeywordSearches res) `shouldBe` Just (NE.singleton keywordSearchMatchMessage{lernieMatchPath = fixedSomethingPath})
             (lernieResultsCustomLicenses res) `shouldBe` Just (NE.singleton customLicenseMatchMessage{lernieMatchPath = onePath})
             (lernieResultsSourceUnit res) `shouldBe` Just actualSourceUnit
