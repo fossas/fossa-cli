@@ -7,7 +7,8 @@ module App.Fossa.GrepSpec (
 ) where
 
 import App.Fossa.Config.Analyze (GrepEntry (..), GrepOptions (..))
-import App.Fossa.Grep (GrepScanType (..), LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieWarning (..), addLernieMessage, analyzeWithGrep, emptyLernieMessages, grepOptionsToLernieConfig, lernieMessagesToLernieResults)
+import App.Fossa.Lernie.Analyze (addLernieMessage, analyzeWithGrep, grepOptionsToLernieConfig, lernieMessagesToLernieResults)
+import App.Fossa.Lernie.Types (LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieScanType (..), LernieWarning (..), emptyLernieMessages)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Lift (sendIO)
 import Control.Carrier.Stack (runStack)

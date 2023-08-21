@@ -1,31 +1,31 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.Fossa.Grep (
+module App.Fossa.Lernie.Analyze (
   analyzeWithGrep,
-  LernieResults (..),
-  LernieMatch (..),
-  LernieWarning (..),
-  LernieError (..),
-  emptyLernieMessages,
-  LernieMessage (..),
-  LernieMessages (..),
-  LernieConfig (..),
-  LernieRegex (..),
-  LernieMatchData (..),
   addLernieMessage,
-  GrepScanType (..),
   lernieMessagesToLernieResults,
   grepOptionsToLernieConfig,
 ) where
 
 import App.Fossa.Config.Analyze (GrepEntry (grepEntryMatchCriteria, grepEntryName), GrepOptions (..))
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withLernieBinary)
+import App.Fossa.Lernie.Types (
+  LernieConfig (..),
+  LernieError (..),
+  LernieMatch (..),
+  LernieMatchData (..),
+  LernieMessage (..),
+  LernieMessages (..),
+  LernieRegex (..),
+  LernieResults (..),
+  LernieScanType (..),
+  LernieWarning (..),
+  emptyLernieMessages,
+ )
 import Control.Carrier.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift)
 import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), decode, object, withObject, withText)
-import Data.Aeson qualified as A
 import Data.Aeson qualified as Aeson
-import Data.Aeson.Types ((.:))
 import Data.ByteString.Lazy qualified as BL
 import Data.Functor.Extra ((<$$>))
 import Data.HashMap.Strict (HashMap)
@@ -42,135 +42,6 @@ import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), LicenseUnit (..), LicenseUnitData (..), LicenseUnitInfo (..), LicenseUnitMatchData (..))
 
-data LernieConfig = LernieConfig
-  { rootDir :: Path Abs Dir
-  , regexes :: NonEmpty LernieRegex
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToJSON LernieConfig where
-  toJSON LernieConfig{..} =
-    object
-      [ "root_dir" .= toText rootDir
-      , "regexes" .= toJSON regexes
-      ]
-
-data LernieRegex = LernieRegex
-  { pat :: Text
-  , name :: Text
-  , scanType :: GrepScanType
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToJSON LernieRegex where
-  toJSON LernieRegex{..} =
-    object
-      [ "pattern" .= toText pat
-      , "name" .= toText name
-      , "scan_type" .= toText scanType
-      ]
-
-data GrepScanType = CustomLicense | KeywordSearch
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToText GrepScanType where
-  toText CustomLicense = "CustomLicense"
-  toText KeywordSearch = "KeywordSearch"
-
-instance ToJSON GrepScanType where
-  toJSON = toJSON . toText
-
-instance FromJSON GrepScanType
-
-data LernieMessageType = LernieMessageTypeMatch | LernieMessageTypeError | LernieMessageTypeWarning
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToText LernieMessageType where
-  toText LernieMessageTypeMatch = "Match"
-  toText LernieMessageTypeError = "Error"
-  toText LernieMessageTypeWarning = "Warning"
-
-instance ToJSON LernieMessageType where
-  toJSON = toJSON . toText
-
-instance FromJSON LernieMessageType where
-  parseJSON = withText "LernieMessageType" $ \msg -> do
-    case msg of
-      "Match" -> pure LernieMessageTypeMatch
-      "Error" -> pure LernieMessageTypeError
-      _ -> pure LernieMessageTypeWarning
-
-data LernieMatch = LernieMatch
-  { lernieMatchPath :: Text
-  , lernieMatchMatches :: [LernieMatchData]
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance FromJSON LernieMatch where
-  parseJSON = withObject "LernieMatch" $ \obj ->
-    LernieMatch
-      <$> (obj .: "path")
-      <*> (obj .: "matches")
-
-data LernieWarning = LernieWarning
-  { lernieWarningMessage :: Text
-  , lernieWarningType :: Text
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance FromJSON LernieWarning where
-  parseJSON = withObject "LernieWarning" $ \obj ->
-    LernieWarning
-      <$> (obj .: "message")
-      <*> (obj .: "type")
-
-data LernieError = LernieError
-  { lernieErrorMessage :: Text
-  , lernieErrorType :: Text
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance FromJSON LernieError where
-  parseJSON = withObject "LernieError" $ \obj ->
-    LernieError
-      <$> (obj .: "message")
-      <*> (obj .: "type")
-
-data LernieMatchData = LernieMatchData
-  { lernieMatchDataPattern :: Text
-  , lernieMatchDataMatchString :: Text
-  , lernieMatchDataScanType :: GrepScanType
-  , lernieMatchDataName :: Text
-  , lernieMatchDataStartByte :: Integer
-  , lernieMatchDataEndByte :: Integer
-  , lernieMatchDataStartLine :: Integer
-  , lernieMatchDataEndLine :: Integer
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance FromJSON LernieMatchData where
-  parseJSON = withObject "LernieMatchData" $ \obj ->
-    LernieMatchData
-      <$> (obj .: "pattern")
-      <*> (obj .: "match_str")
-      <*> (obj .: "scan_type")
-      <*> (obj .: "name")
-      <*> (obj .: "start_byte")
-      <*> (obj .: "end_byte")
-      <*> (obj .: "start_line")
-      <*> (obj .: "end_line")
-
-instance ToJSON LernieMatchData
-
-data LernieResults = LernieResults
-  { lernieResultsWarnings :: Maybe (NonEmpty LernieWarning)
-  , lernieResultsErrors :: Maybe (NonEmpty LernieError)
-  , lernieResultsSourceUnit :: Maybe LicenseSourceUnit
-  , lernieResultsKeywordSearches :: Maybe (NonEmpty LernieMatch)
-  , lernieResultsCustomLicenses :: Maybe (NonEmpty LernieMatch)
-  }
-  deriving (Eq, Ord, Show, Generic)
-
 lernieMessagesToLernieResults :: LernieMessages -> Path Abs Dir -> LernieResults
 lernieMessagesToLernieResults LernieMessages{..} rootDir =
   LernieResults
@@ -185,14 +56,12 @@ lernieMessagesToLernieResults LernieMessages{..} rootDir =
     errors = NE.nonEmpty lernieMessageErrors
     keywordSearches = filterLernieMessages lernieMessageMatches KeywordSearch
     customLicenses = filterLernieMessages lernieMessageMatches CustomLicense
-    -- TODO: start with customLicenses and convert it into a sourceUnit, flipping around the files and the license names
-    -- We should have one LicenseUnit per lernieMatchDataName, I think
     sourceUnit = case customLicenses of
       Nothing -> Nothing
       Just licenses -> lernieMatchToSourceUnit licenses rootDir
 
 -- | filter lernie matches to a specific scan type, filtering out any lernie matches with no messages after they have been filtered out
-filterLernieMessages :: [LernieMatch] -> GrepScanType -> Maybe (NonEmpty LernieMatch)
+filterLernieMessages :: [LernieMatch] -> LernieScanType -> Maybe (NonEmpty LernieMatch)
 filterLernieMessages matches scanType =
   NE.nonEmpty lernieMatchesWithoutEmpties
   where
@@ -270,43 +139,6 @@ addMatchDataToLicenseUnits path matchData existingUnits =
           , licenseUnitData = NE.cons newUnitData $ licenseUnitData existingUnit
           }
 
-data LernieMessages = LernieMessages
-  { lernieMessageWarnings :: [LernieWarning]
-  , lernieMessageErrors :: [LernieError]
-  , lernieMessageMatches :: [LernieMatch]
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-data LernieMessage = LernieMessageLernieMatch LernieMatch | LernieMessageLernieWarning LernieWarning | LernieMessageLernieError LernieError
-  deriving (Eq, Ord, Show, Generic)
-
-emptyLernieMessages :: LernieMessages
-emptyLernieMessages = LernieMessages [] [] []
-
-instance FromJSON LernieMessage where
-  parseJSON (Object o) = do
-    messageType <- o .: "type"
-    case messageType of
-      LernieMessageTypeWarning -> do
-        Object d <- o .: "data"
-        let message = d .: "message"
-        let message_type = d .: "type"
-        warning <- LernieWarning <$> message_type <*> message
-        pure $ LernieMessageLernieWarning warning
-      LernieMessageTypeError -> do
-        Object d <- o .: "data"
-        let message_type = d .: "type"
-        let message = d .: "message"
-        err <- LernieError <$> message_type <*> message
-        pure $ LernieMessageLernieError err
-      LernieMessageTypeMatch -> do
-        Object d <- o .: "data"
-        let path = d .: "path"
-        let matches = d .: "matches"
-        match <- LernieMatch <$> path <*> matches
-        pure $ LernieMessageLernieMatch match
-  parseJSON _ = fail "Invalid schema for LernieMessage. It must be an object"
-
 addLernieMessage :: LernieMessage -> LernieMessages -> LernieMessages
 addLernieMessage message existing = case message of
   LernieMessageLernieMatch msg -> existing{lernieMessageMatches = msg : lernieMessageMatches existing}
@@ -324,7 +156,6 @@ analyzeWithGrep ::
   GrepOptions ->
   m (Maybe LernieResults)
 analyzeWithGrep rootDir _maybeApiOpts grepOptions = do
-  -- TODO: convert grepOptions to lernieOpts
   let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
   case maybeLernieConfig of
     Just (lernieConfig) -> do
@@ -347,7 +178,7 @@ grepOptionsToLernieConfig rootDir grepOptions =
       (Just customLicenseEntries, Just keywordEntries) -> Just $ customLicenseEntries <> keywordEntries
       (Nothing, Nothing) -> Nothing
 
-grepEntryToLernieRegex :: GrepScanType -> GrepEntry -> LernieRegex
+grepEntryToLernieRegex :: LernieScanType -> GrepEntry -> LernieRegex
 grepEntryToLernieRegex scanType grepEntry =
   LernieRegex (grepEntryMatchCriteria grepEntry) (grepEntryName grepEntry) scanType
 

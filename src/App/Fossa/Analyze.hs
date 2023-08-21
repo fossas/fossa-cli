@@ -48,7 +48,8 @@ import App.Fossa.Config.Analyze (
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
-import App.Fossa.Grep (LernieResults (..), analyzeWithGrep)
+import App.Fossa.Lernie.Analyze (analyzeWithGrep)
+import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
@@ -283,8 +284,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     Diag.errorBoundaryIO
       . diagToDebug
       . runReader filters
-      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget
-      $ Config.vsiOptions cfg
+      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget $
+        Config.vsiOptions cfg
   binarySearchResults <-
     Diag.errorBoundaryIO . diagToDebug $
       Diag.context "discover-binaries" $
