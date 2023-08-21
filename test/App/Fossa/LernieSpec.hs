@@ -2,7 +2,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.Fossa.GrepSpec (
+module App.Fossa.LernieSpec (
   spec,
 ) where
 
@@ -185,7 +185,7 @@ customLicenseLernieRegex =
     }
 
 fixtureDir :: Path Rel Dir
-fixtureDir = $(mkRelDir "test/App/Fossa/Grep/testdata/repo")
+fixtureDir = $(mkRelDir "test/App/Fossa/Lernie/testdata/repo")
 
 spec :: Spec
 spec = do
