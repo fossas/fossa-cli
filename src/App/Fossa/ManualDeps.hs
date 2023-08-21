@@ -60,9 +60,9 @@ import Effect.Logger (Logger, indent, pretty, vsep)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
 import Fossa.API.Types (ApiOpts, Organization (..))
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
-import Path.Extra (SomePath (SomeFile), tryMakeRelative)
+import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
-import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
+import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..), someBaseToOriginPath)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
 
 data FoundDepsFile
@@ -175,7 +175,7 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
       , sourceUnitTitle = Nothing
       , sourceUnitBuild = build
       , sourceUnitGraphBreadth = Complete
-      , sourceUnitOriginPaths = [SomeFile originPath]
+      , sourceUnitOriginPaths = [someBaseToOriginPath originPath]
       , additionalData = additional
       }
 

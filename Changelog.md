@@ -1,5 +1,19 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Containers: RPM packages installed in containers that use the NDB format for their RPM database are now parsed much faster. ([#1262](https://github.com/fossas/fossa-cli/pull/1262))
+
+## v3.8.9
+- CLI Binaries: Notarize Mac OS binaries. ([#1261](https://github.com/fossas/fossa-cli/pull/1261))
+
+## v3.8.8
+- CLI Binaries: Sign Mac OS builds using codesign. ([#1251](https://github.com/fossas/fossa-cli/pull/1251))
+- CLI Binaries: Sign Linux builds using cosign. ([#1243](https://github.com/fossas/fossa-cli/pull/1243))
+
+## v3.8.7
+- Due to an issue with our release process [#1254](https://github.com/fossas/fossa-cli/pull/1254), this tag exists but was not released. The changes that would have been in 3.8.7 were released as v3.8.8.
+
 ## v3.8.6
 - VSI: Fix a bug where root dependencies would cause analysis to fail. ([#1240](https://github.com/fossas/fossa-cli/pull/1240))
 - Node (PNPM): Fixes a bug where analyses would fail when the `lockfileVersion` attribute was a string in `pnpm-lock.yaml`. ([1239](https://github.com/fossas/fossa-cli/pull/1239))
