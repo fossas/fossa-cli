@@ -30,10 +30,10 @@ customLicenseLernieMatchData =
     , lernieMatchDataMatchString = "Proprietary License"
     , lernieMatchDataScanType = CustomLicense
     , lernieMatchDataName = "Proprietary License"
-    , lernieMatchDataStartByte = 123
-    , lernieMatchDataEndByte = 195
-    , lernieMatchDataStartLine = 3
-    , lernieMatchDataEndLine = 3
+    , lernieMatchDataStartByte = 10
+    , lernieMatchDataEndByte = 29
+    , lernieMatchDataStartLine = 1
+    , lernieMatchDataEndLine = 1
     }
 
 customLicenseMatchMessage :: LernieMatch
@@ -132,11 +132,11 @@ expectedLicenseUnitMatchData :: LicenseUnitMatchData
 expectedLicenseUnitMatchData =
   LicenseUnitMatchData
     { licenseUnitMatchDataMatchString = Just "Proprietary License"
-    , licenseUnitMatchDataLocation = 123
+    , licenseUnitMatchDataLocation = 10
     , licenseUnitMatchDataLength = 72
     , licenseUnitMatchDataIndex = 1
-    , licenseUnitDataStartLine = 3
-    , licenseUnitDataEndLine = 3
+    , licenseUnitDataStartLine = 1
+    , licenseUnitDataEndLine = 1
     }
 
 grepOptions :: GrepOptions
