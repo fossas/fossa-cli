@@ -215,6 +215,23 @@ spec = do
 
     it "should analyze a directory" $ do
       sendIO . print $ "scanDir: " ++ show scanDir
+      -- Fix the paths in the expected data
+      let actualUnitData =
+            expectedUnitData
+              { licenseUnitDataPath = onePath
+              }
+          actualLicenseUnit =
+            expectedLicenseUnit
+              { licenseUnitFiles = NE.singleton onePath
+              , licenseUnitData = NE.singleton actualUnitData
+              }
+          actualSourceUnit =
+            LicenseSourceUnit
+              { licenseSourceUnitName = toText . toFilePath $ scanDir
+              , licenseSourceUnitType = CliLicenseScanned
+              , licenseSourceUnitLicenseUnits = NE.singleton actualLicenseUnit
+              }
+
       assertOnSuccess result $ \_ maybeRes ->
         case maybeRes of
           Nothing -> expectationFailure "analyzeWithGrep should not return Nothing"
@@ -223,9 +240,4 @@ spec = do
             (lernieResultsErrors res) `shouldBe` Nothing
             (lernieResultsKeywordSearches res) `shouldBe` Just (NE.singleton keywordSearchMatchMessage{lernieMatchPath = somethingPath})
             (lernieResultsCustomLicenses res) `shouldBe` Just (NE.singleton customLicenseMatchMessage{lernieMatchPath = onePath})
-
--- res `shouldBe` (Just expectedLernieResults{lernieResultsWarnings = Nothing, lernieResultsErrors = Nothing})
-
--- , lernieResultsKeywordSearches = Just $ NE.singleton keywordSearchMatchMessage
--- , lernieResultsCustomLicenses = Just $ NE.singleton customLicenseMatchMessage
--- , lernieResultsSourceUnit = Just expectedSourceUnit
+            (lernieResultsSourceUnit res) `shouldBe` Just actualSourceUnit
