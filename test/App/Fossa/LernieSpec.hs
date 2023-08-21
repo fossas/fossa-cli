@@ -7,7 +7,7 @@ module App.Fossa.LernieSpec (
 ) where
 
 import App.Fossa.Config.Analyze (GrepEntry (..), GrepOptions (..))
-import App.Fossa.Lernie.Analyze (addLernieMessage, analyzeWithGrep, grepOptionsToLernieConfig, lernieMessagesToLernieResults)
+import App.Fossa.Lernie.Analyze (addLernieMessage, analyzeWithLernie, grepOptionsToLernieConfig, lernieMessagesToLernieResults)
 import App.Fossa.Lernie.Types (LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieScanType (..), LernieWarning (..), emptyLernieMessages)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Lift (sendIO)
@@ -211,12 +211,12 @@ spec = do
     it "should create a lernie config" $ do
       (grepOptionsToLernieConfig absDir grepOptions) `shouldBe` Just expectedLernieConfig
 
-  describe "analyzeWithGrep" $ do
+  describe "analyzeWithLernie" $ do
     currDir <- runIO getCurrentDir
     let scanDir = currDir </> fixtureDir
     let somethingPath = fromMaybe "" (Text.stripSuffix "/" $ toText . toFilePath $ scanDir </> $(mkRelDir "something.txt"))
     let onePath = fromMaybe "" (Text.stripSuffix "/" $ toText . toFilePath $ scanDir </> $(mkRelDir "one.txt"))
-    result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO $ analyzeWithGrep scanDir Nothing grepOptions
+    result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO $ analyzeWithLernie scanDir Nothing grepOptions
 
     it "should analyze a directory" $ do
       sendIO . print $ "scanDir: " ++ show scanDir
@@ -239,7 +239,7 @@ spec = do
 
       assertOnSuccess result $ \_ maybeRes ->
         case maybeRes of
-          Nothing -> expectationFailure "analyzeWithGrep should not return Nothing"
+          Nothing -> expectationFailure "analyzeWithLernie should not return Nothing"
           Just res -> do
             (lernieResultsWarnings res) `shouldBe` Nothing
             (lernieResultsErrors res) `shouldBe` Nothing

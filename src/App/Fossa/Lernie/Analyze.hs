@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Lernie.Analyze (
-  analyzeWithGrep,
+  analyzeWithLernie,
   addLernieMessage,
   lernieMessagesToLernieResults,
   grepOptionsToLernieConfig,
@@ -11,7 +11,6 @@ import App.Fossa.Config.Analyze (GrepEntry (grepEntryMatchCriteria, grepEntryNam
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withLernieBinary)
 import App.Fossa.Lernie.Types (
   LernieConfig (..),
-  LernieError (..),
   LernieMatch (..),
   LernieMatchData (..),
   LernieMessage (..),
@@ -19,12 +18,11 @@ import App.Fossa.Lernie.Types (
   LernieRegex (..),
   LernieResults (..),
   LernieScanType (..),
-  LernieWarning (..),
   emptyLernieMessages,
  )
 import Control.Carrier.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift)
-import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), decode, object, withObject, withText)
+import Data.Aeson (decode)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Functor.Extra ((<$$>))
@@ -38,7 +36,6 @@ import Data.Text (Text)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execThrow'')
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
-import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), LicenseUnit (..), LicenseUnitData (..), LicenseUnitInfo (..), LicenseUnitMatchData (..))
 
@@ -145,7 +142,7 @@ addLernieMessage message existing = case message of
   LernieMessageLernieWarning msg -> existing{lernieMessageWarnings = msg : lernieMessageWarnings existing}
   LernieMessageLernieError msg -> existing{lernieMessageErrors = msg : lernieMessageErrors existing}
 
-analyzeWithGrep ::
+analyzeWithLernie ::
   ( Has Diagnostics sig m
   , Has Exec sig m
   , Has ReadFS sig m
@@ -155,7 +152,7 @@ analyzeWithGrep ::
   Maybe ApiOpts ->
   GrepOptions ->
   m (Maybe LernieResults)
-analyzeWithGrep rootDir _maybeApiOpts grepOptions = do
+analyzeWithLernie rootDir _maybeApiOpts grepOptions = do
   let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
   case maybeLernieConfig of
     Just (lernieConfig) -> do

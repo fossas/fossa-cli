@@ -14,12 +14,11 @@ module App.Fossa.Lernie.Types (
   emptyLernieMessages,
 ) where
 
-import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), decode, object, withObject, withText)
+import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), object, withObject, withText)
 import Data.Aeson qualified as A
-import Data.Aeson qualified as Aeson
 import Data.Aeson.Types ((.:))
 import Data.List.NonEmpty (NonEmpty)
-import Data.String.Conversion (ToText (toText), decodeUtf8)
+import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)

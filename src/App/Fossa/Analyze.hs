@@ -48,7 +48,7 @@ import App.Fossa.Config.Analyze (
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
-import App.Fossa.Lernie.Analyze (analyzeWithGrep)
+import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.Subcommand (SubCommand)
@@ -305,7 +305,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         then do
           logInfo "Running in VSI only mode, skipping keyword search and custom-license search"
           pure Nothing
-        else Diag.context "grep" . runStickyLogger SevInfo $ analyzeWithGrep basedir maybeApiOpts grepOptions
+        else Diag.context "grep" . runStickyLogger SevInfo $ analyzeWithLernie basedir maybeApiOpts grepOptions
   let grepResults = join . resultToMaybe $ maybeGrepResults
 
   let -- This makes nice with additionalSourceUnits below, but throws out additional Result data.
