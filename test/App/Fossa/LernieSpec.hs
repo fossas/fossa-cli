@@ -96,7 +96,11 @@ expectedLernieResults =
     }
 
 absDir :: Path Abs Dir
+#ifdef mingw32_HOST_OS
+absDir = $(mkAbsDir "C:\\")
+#else
 absDir = $(mkAbsDir "/tmp/one")
+#endif
 
 expectedSourceUnit :: LicenseSourceUnit
 expectedSourceUnit =
