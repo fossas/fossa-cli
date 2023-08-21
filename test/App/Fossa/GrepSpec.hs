@@ -7,17 +7,27 @@ module App.Fossa.GrepSpec (
 ) where
 
 import App.Fossa.Config.Analyze (GrepEntry (..), GrepOptions (..))
-import App.Fossa.Grep (GrepScanType (..), LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieWarning (..), addLernieMessage, emptyLernieMessages, grepOptionsToLernieConfig, lernieMessagesToLernieResults)
+import App.Fossa.Grep (GrepScanType (..), LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieWarning (..), addLernieMessage, analyzeWithGrep, emptyLernieMessages, grepOptionsToLernieConfig, lernieMessagesToLernieResults)
+import Control.Carrier.Diagnostics (runDiagnostics)
+import Control.Carrier.Lift (sendIO)
+import Control.Carrier.Stack (runStack)
 import Data.List.NonEmpty qualified as NE
-import Path (Abs, Dir, Path, mkAbsDir)
+import Data.Maybe (fromMaybe)
+import Data.String.Conversion (ToText (toText))
+import Data.Text qualified as Text
+import Effect.Exec (runExecIO)
+import Effect.ReadFS (runReadFSIO)
+import Path (Abs, Dir, Path, Rel, mkAbsDir, mkRelDir, toFilePath, (</>))
+import Path.IO (getCurrentDir)
+import ResultUtil (assertOnSuccess)
 import Srclib.Types (LicenseScanType (CliLicenseScanned), LicenseSourceUnit (..), LicenseUnit (..), LicenseUnitData (..), LicenseUnitInfo (..), LicenseUnitMatchData (..))
-import Test.Hspec (Spec, describe, it, shouldBe)
+import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
 
 customLicenseLernieMatchData :: LernieMatchData
 customLicenseLernieMatchData =
   LernieMatchData
-    { lernieMatchDataPattern = "[Pp]roprietary"
-    , lernieMatchDataMatchString = "proprietary"
+    { lernieMatchDataPattern = "[Pp]roprietary [Ll]icense"
+    , lernieMatchDataMatchString = "Proprietary License"
     , lernieMatchDataScanType = CustomLicense
     , lernieMatchDataName = "Proprietary License"
     , lernieMatchDataStartByte = 123
@@ -29,29 +39,30 @@ customLicenseLernieMatchData =
 customLicenseMatchMessage :: LernieMatch
 customLicenseMatchMessage =
   LernieMatch
-    { lernieMatchPath = "/tmp/one/two"
+    { lernieMatchPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
     , lernieMatchMatches = [customLicenseLernieMatchData]
     }
 
 keywordSearchLernieMatchData :: LernieMatchData
 keywordSearchLernieMatchData =
   LernieMatchData
-    { lernieMatchDataPattern = "[Kk]eyword"
-    , lernieMatchDataMatchString = "keyword"
+    { lernieMatchDataPattern = "[Kk]eyword [Ss]earch"
+    , lernieMatchDataMatchString = "Keyword Search"
     , lernieMatchDataScanType = KeywordSearch
     , lernieMatchDataName = "Keyword Search"
-    , lernieMatchDataStartByte = 111
-    , lernieMatchDataEndByte = 122
-    , lernieMatchDataStartLine = 4
-    , lernieMatchDataEndLine = 4
+    , lernieMatchDataStartByte = 0
+    , lernieMatchDataEndByte = 14
+    , lernieMatchDataStartLine = 1
+    , lernieMatchDataEndLine = 1
     }
 
 keywordSearchMatchMessage :: LernieMatch
 keywordSearchMatchMessage =
   LernieMatch
-    { lernieMatchPath = "/tmp/one/two"
+    { lernieMatchPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
     , lernieMatchMatches = [keywordSearchLernieMatchData]
     }
+
 warningMessage :: LernieWarning
 warningMessage =
   LernieWarning
@@ -62,7 +73,7 @@ warningMessage =
 errorMessage :: LernieError
 errorMessage =
   LernieError
-    { lernieErrorMessage = "this is a Error"
+    { lernieErrorMessage = "this is an Error"
     , lernieErrorType = "SomeWarningType"
     }
 
@@ -83,10 +94,13 @@ expectedLernieResults =
     , lernieResultsSourceUnit = Just expectedSourceUnit
     }
 
+absDir :: Path Abs Dir
+absDir = $(mkAbsDir "/tmp/one")
+
 expectedSourceUnit :: LicenseSourceUnit
 expectedSourceUnit =
   LicenseSourceUnit
-    { licenseSourceUnitName = "/tmp/one/"
+    { licenseSourceUnitName = toText . toFilePath $ absDir
     , licenseSourceUnitType = CliLicenseScanned
     , licenseSourceUnitLicenseUnits = NE.singleton expectedLicenseUnit
     }
@@ -98,7 +112,7 @@ expectedLicenseUnit =
     , licenseUnitType = "LicenseUnit"
     , licenseUnitTitle = Just "Proprietary License"
     , licenseUnitDir = ""
-    , licenseUnitFiles = NE.singleton "/tmp/one/two"
+    , licenseUnitFiles = NE.singleton $ toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
     , licenseUnitData = NE.singleton expectedUnitData
     , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Just ""}
     }
@@ -106,7 +120,7 @@ expectedLicenseUnit =
 expectedUnitData :: LicenseUnitData
 expectedUnitData =
   LicenseUnitData
-    { licenseUnitDataPath = "/tmp/one/two"
+    { licenseUnitDataPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
     , licenseUnitDataCopyright = Nothing
     , licenseUnitDataThemisVersion = ""
     , licenseUnitDataMatchData = Just $ NE.singleton expectedLicenseUnitMatchData
@@ -117,21 +131,13 @@ expectedUnitData =
 expectedLicenseUnitMatchData :: LicenseUnitMatchData
 expectedLicenseUnitMatchData =
   LicenseUnitMatchData
-    { licenseUnitMatchDataMatchString = Just "proprietary"
+    { licenseUnitMatchDataMatchString = Just "Proprietary License"
     , licenseUnitMatchDataLocation = 123
     , licenseUnitMatchDataLength = 72
     , licenseUnitMatchDataIndex = 1
     , licenseUnitDataStartLine = 3
     , licenseUnitDataEndLine = 3
     }
-
-#ifdef mingw32_HOST_OS
-absDir :: Path Abs Dir
-absDir = $(mkAbsDir "C:/")
-#else
-absDir :: Path Abs Dir
-absDir = $(mkAbsDir "/tmp/one")
-#endif
 
 grepOptions :: GrepOptions
 grepOptions =
@@ -143,15 +149,15 @@ grepOptions =
 customLicenseGrepEntry :: GrepEntry
 customLicenseGrepEntry =
   GrepEntry
-    { grepEntryMatchCriteria = "customLicensePattern"
-    , grepEntryName = "some custom license"
+    { grepEntryMatchCriteria = "[Pp]roprietary [Ll]icense"
+    , grepEntryName = "Proprietary License"
     }
 
 keywordSearchGrepEntry :: GrepEntry
 keywordSearchGrepEntry =
   GrepEntry
-    { grepEntryMatchCriteria = "keywordSearchPattern"
-    , grepEntryName = "some keyword search"
+    { grepEntryMatchCriteria = "[Kk]eyword [Ss]earch"
+    , grepEntryName = "Keyword Search"
     }
 
 expectedLernieConfig :: LernieConfig
@@ -164,18 +170,21 @@ expectedLernieConfig =
 keywordSearchLernieRegex :: LernieRegex
 keywordSearchLernieRegex =
   LernieRegex
-    { pat = "keywordSearchPattern"
-    , name = "some keyword search"
+    { pat = "[Kk]eyword [Ss]earch"
+    , name = "Keyword Search"
     , scanType = KeywordSearch
     }
 
 customLicenseLernieRegex :: LernieRegex
 customLicenseLernieRegex =
   LernieRegex
-    { pat = "customLicensePattern"
-    , name = "some custom license"
+    { pat = "[Pp]roprietary [Ll]icense"
+    , name = "Proprietary License"
     , scanType = CustomLicense
     }
+
+fixtureDir :: Path Rel Dir
+fixtureDir = $(mkRelDir "test/App/Fossa/Grep/testdata/repo")
 
 spec :: Spec
 spec = do
@@ -196,3 +205,27 @@ spec = do
   describe "grepOptionsToLernieConfig" $ do
     it "should create a lernie config" $ do
       (grepOptionsToLernieConfig absDir grepOptions) `shouldBe` Just expectedLernieConfig
+
+  describe "analyzeWithGrep" $ do
+    currDir <- runIO getCurrentDir
+    let scanDir = currDir </> fixtureDir
+    let somethingPath = fromMaybe "" (Text.stripSuffix "/" $ toText . toFilePath $ scanDir </> $(mkRelDir "something.txt"))
+    let twoPath = fromMaybe "" (Text.stripSuffix "/" $ toText . toFilePath $ scanDir </> $(mkRelDir "two.txt"))
+    result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO $ analyzeWithGrep scanDir Nothing grepOptions
+
+    it "should analyze a directory" $ do
+      sendIO . print $ "scanDir: " ++ show scanDir
+      assertOnSuccess result $ \_ maybeRes ->
+        case maybeRes of
+          Nothing -> expectationFailure "analyzeWithGrep should not return Nothing"
+          Just res -> do
+            (lernieResultsWarnings res) `shouldBe` Nothing
+            (lernieResultsErrors res) `shouldBe` Nothing
+            (lernieResultsKeywordSearches res) `shouldBe` Just (NE.singleton keywordSearchMatchMessage{lernieMatchPath = somethingPath})
+            (lernieResultsCustomLicenses res) `shouldBe` Just (NE.singleton customLicenseMatchMessage{lernieMatchPath = twoPath})
+
+-- res `shouldBe` (Just expectedLernieResults{lernieResultsWarnings = Nothing, lernieResultsErrors = Nothing})
+
+-- , lernieResultsKeywordSearches = Just $ NE.singleton keywordSearchMatchMessage
+-- , lernieResultsCustomLicenses = Just $ NE.singleton customLicenseMatchMessage
+-- , lernieResultsSourceUnit = Just expectedSourceUnit
