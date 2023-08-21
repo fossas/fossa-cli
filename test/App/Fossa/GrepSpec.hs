@@ -125,14 +125,13 @@ expectedLicenseUnitMatchData =
     , licenseUnitDataEndLine = 3
     }
 
--- #ifdef mingw32_HOST_OS
--- absDir :: Path Abs Dir
--- absDir = $(mkAbsDir "C:/")
--- #else
+#ifdef mingw32_HOST_OS
+absDir :: Path Abs Dir
+absDir = $(mkAbsDir "C:/")
+#else
 absDir :: Path Abs Dir
 absDir = $(mkAbsDir "/tmp/one")
-
--- #endif
+#endif
 
 grepOptions :: GrepOptions
 grepOptions =
