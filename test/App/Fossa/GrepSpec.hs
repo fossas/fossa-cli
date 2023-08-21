@@ -133,7 +133,7 @@ expectedLicenseUnitMatchData =
   LicenseUnitMatchData
     { licenseUnitMatchDataMatchString = Just "Proprietary License"
     , licenseUnitMatchDataLocation = 10
-    , licenseUnitMatchDataLength = 72
+    , licenseUnitMatchDataLength = 19
     , licenseUnitMatchDataIndex = 1
     , licenseUnitDataStartLine = 1
     , licenseUnitDataEndLine = 1
@@ -210,7 +210,7 @@ spec = do
     currDir <- runIO getCurrentDir
     let scanDir = currDir </> fixtureDir
     let somethingPath = fromMaybe "" (Text.stripSuffix "/" $ toText . toFilePath $ scanDir </> $(mkRelDir "something.txt"))
-    let twoPath = fromMaybe "" (Text.stripSuffix "/" $ toText . toFilePath $ scanDir </> $(mkRelDir "two.txt"))
+    let onePath = fromMaybe "" (Text.stripSuffix "/" $ toText . toFilePath $ scanDir </> $(mkRelDir "one.txt"))
     result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO $ analyzeWithGrep scanDir Nothing grepOptions
 
     it "should analyze a directory" $ do
@@ -222,7 +222,7 @@ spec = do
             (lernieResultsWarnings res) `shouldBe` Nothing
             (lernieResultsErrors res) `shouldBe` Nothing
             (lernieResultsKeywordSearches res) `shouldBe` Just (NE.singleton keywordSearchMatchMessage{lernieMatchPath = somethingPath})
-            (lernieResultsCustomLicenses res) `shouldBe` Just (NE.singleton customLicenseMatchMessage{lernieMatchPath = twoPath})
+            (lernieResultsCustomLicenses res) `shouldBe` Just (NE.singleton customLicenseMatchMessage{lernieMatchPath = onePath})
 
 -- res `shouldBe` (Just expectedLernieResults{lernieResultsWarnings = Nothing, lernieResultsErrors = Nothing})
 
