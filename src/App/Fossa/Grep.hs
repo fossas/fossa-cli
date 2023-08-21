@@ -189,7 +189,7 @@ lernieMessagesToLernieResults LernieMessages{..} rootDir =
     -- We should have one LicenseUnit per lernieMatchDataName, I think
     sourceUnit = case customLicenses of
       Nothing -> Nothing
-      Just licenses -> Just $ lernieMatchToSourceUnit licenses rootDir
+      Just licenses -> lernieMatchToSourceUnit licenses rootDir
 
 -- | filter lernie matches to a specific scan type, filtering out any lernie matches with no messages after they have been filtered out
 filterLernieMessages :: [LernieMatch] -> GrepScanType -> Maybe (NonEmpty LernieMatch)
@@ -202,20 +202,24 @@ filterLernieMessages matches scanType =
     lernieMatchesWithoutEmpties = filter (not . null . lernieMatchMatches) lernieMatchesFilteredToScanType
 
 -- | convert a list of lernie matches (of type CustomLicense, typically) into a LicenseSourceUnit
-lernieMatchToSourceUnit :: NonEmpty LernieMatch -> Path Abs Dir -> LicenseSourceUnit
+lernieMatchToSourceUnit :: NonEmpty LernieMatch -> Path Abs Dir -> Maybe LicenseSourceUnit
 lernieMatchToSourceUnit matches rootDir =
-  LicenseSourceUnit
-    { licenseSourceUnitName = toText rootDir
-    , licenseSourceUnitType = CliLicenseScanned
-    , licenseSourceUnitLicenseUnits = licenseUnits
-    }
+  case licenseUnits of
+    Just units ->
+      Just
+        LicenseSourceUnit
+          { licenseSourceUnitName = toText rootDir
+          , licenseSourceUnitType = CliLicenseScanned
+          , licenseSourceUnitLicenseUnits = units
+          }
+    Nothing -> Nothing
   where
     licenseUnits = licenseUnitsFromLernieMatches matches
 
 -- Create LicenseUnits from the LernieMatches. There will be one LicenseUnit per custom-license name
-licenseUnitsFromLernieMatches :: NonEmpty LernieMatch -> NonEmpty LicenseUnit
+licenseUnitsFromLernieMatches :: NonEmpty LernieMatch -> Maybe (NonEmpty LicenseUnit)
 licenseUnitsFromLernieMatches matches =
-  NE.fromList $ H.elems $ foldr addMatchesToLicenseUnits H.empty matches
+  NE.nonEmpty $ H.elems $ foldr addMatchesToLicenseUnits H.empty matches
 
 -- Add a lernieMatch to the licenseUnits
 addMatchesToLicenseUnits :: LernieMatch -> HashMap Text LicenseUnit -> HashMap Text LicenseUnit
