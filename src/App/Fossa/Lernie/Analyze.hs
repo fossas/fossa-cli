@@ -171,18 +171,18 @@ lernieMatchToSourceUnit matches rootDir =
   where
     licenseUnits = licenseUnitsFromLernieMatches matches
 
--- Create LicenseUnits from the LernieMatches. There will be one LicenseUnit per custom-license title
+-- Create LicenseUnits from the LernieMatches. All LicenseUnits will have a license ID of "custom-license".
+-- There will be one LicenseUnit per custom-license title, and each LicenseUnit can contain results from multiple files.
 licenseUnitsFromLernieMatches :: NonEmpty LernieMatch -> Maybe (NonEmpty LicenseUnit)
 licenseUnitsFromLernieMatches matches = do
   let allLicenseUnitMatchData = createAllLicenseUnitMatchData matches
   let allLicenseUnits = foldrWithKey createLicenseUnitsFromMatchDatas H.empty allLicenseUnitMatchData
   NE.nonEmpty $ H.elems allLicenseUnits
 
--- create a map of all LicenseUnitMatchData, with the key of the map being the path and the title of the custom license
 createAllLicenseUnitMatchData :: NonEmpty LernieMatch -> HashMap (CustomLicensePath, CustomLicenseTitle) (NonEmpty LicenseUnitMatchData)
 createAllLicenseUnitMatchData = foldr addLernieMatchToMatchData H.empty
 
--- add all of the matches in a LernieMatch to the existing match data
+-- Add all of the matches in a LernieMatch to the existing match data
 addLernieMatchToMatchData :: LernieMatch -> HashMap (CustomLicensePath, CustomLicenseTitle) (NonEmpty LicenseUnitMatchData) -> HashMap (CustomLicensePath, CustomLicenseTitle) (NonEmpty LicenseUnitMatchData)
 addLernieMatchToMatchData lernieMatch existingMatches =
   foldr (addLernieMatchDataToMatchData (CustomLicensePath $ lernieMatchPath lernieMatch)) existingMatches (lernieMatchMatches lernieMatch)
@@ -208,11 +208,12 @@ addLernieMatchDataToMatchData path lernieMatchData existingMatches =
       Nothing -> NE.singleton newMatchData
       Just existing -> NE.cons newMatchData existing
 
--- Take a list of LicenseUnitMatchData and their path and title and add them to the license units
+-- Take a list of LicenseUnitMatchData and their path and title and create the resulting license units
 createLicenseUnitsFromMatchDatas :: (CustomLicensePath, CustomLicenseTitle) -> NonEmpty LicenseUnitMatchData -> HashMap CustomLicenseTitle LicenseUnit -> HashMap CustomLicenseTitle LicenseUnit
 createLicenseUnitsFromMatchDatas (path, title) licenseUnits existingUnits = foldr (createLicenseUnitsFromMatchData path title) existingUnits licenseUnits
 
--- Given a LicenseUnitMatchData, its path and its title, add it to the license units
+-- Given a LicenseUnitMatchData, its path and its title, add it to the license already existing units
+-- If a license unit with that title already exists, then add it to that. Otherwise create a new one.
 createLicenseUnitsFromMatchData :: CustomLicensePath -> CustomLicenseTitle -> LicenseUnitMatchData -> HashMap CustomLicenseTitle LicenseUnit -> HashMap CustomLicenseTitle LicenseUnit
 createLicenseUnitsFromMatchData path title licenseUnitMatchData existingUnits =
   H.insert title newLicenseUnit existingUnits
@@ -238,4 +239,7 @@ createLicenseUnitsFromMatchData path title licenseUnitMatchData existingUnits =
           , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Just ""}
           }
       Just existingUnit ->
-        existingUnit{licenseUnitData = NE.cons newLicenseUnitData (licenseUnitData existingUnit)}
+        existingUnit
+          { licenseUnitData = NE.cons newLicenseUnitData (licenseUnitData existingUnit)
+          , licenseUnitFiles = NE.nub $ NE.cons (unCustomLicensePath path) (licenseUnitFiles existingUnit)
+          }
