@@ -84,18 +84,18 @@ lernieMatchToSourceUnit matches rootDir =
 
 -- Create LicenseUnits from the LernieMatches. There will be one LicenseUnit per custom-license name
 licenseUnitsFromLernieMatches :: NonEmpty LernieMatch -> Maybe (NonEmpty LicenseUnit)
-licenseUnitsFromLernieMatches matches =
+licenseUnitsFromLernieMatches matches = do
   NE.nonEmpty $ H.elems $ foldr addMatchesToLicenseUnits H.empty matches
 
 -- Add a lernieMatch to the licenseUnits
-addMatchesToLicenseUnits :: LernieMatch -> HashMap Text LicenseUnit -> HashMap Text LicenseUnit
+addMatchesToLicenseUnits :: LernieMatch -> HashMap (Text, Text) LicenseUnit -> HashMap (Text, Text) LicenseUnit
 addMatchesToLicenseUnits match existingUnits =
   foldr (addMatchDataToLicenseUnits $ lernieMatchPath match) existingUnits $ lernieMatchMatches match
 
 -- Add a LernieMatchData to the existing licenseUnits, creating a new LicenseUnit if one with that title does not already exist
-addMatchDataToLicenseUnits :: Text -> LernieMatchData -> HashMap Text LicenseUnit -> HashMap Text LicenseUnit
+addMatchDataToLicenseUnits :: Text -> LernieMatchData -> HashMap (Text, Text) LicenseUnit -> HashMap (Text, Text) LicenseUnit
 addMatchDataToLicenseUnits path matchData existingUnits =
-  H.insert name newUnit existingUnits
+  H.insert (name, path) newUnit existingUnits
   where
     name = lernieMatchDataName matchData
     startByte = lernieMatchDataStartByte matchData
@@ -109,7 +109,6 @@ addMatchDataToLicenseUnits path matchData existingUnits =
         , licenseUnitDataStartLine = lernieMatchDataStartLine matchData
         , licenseUnitDataEndLine = lernieMatchDataEndLine matchData
         }
-    -- TODO: What happens if we find the same custom license twice in one file?
     newUnitData =
       LicenseUnitData
         { licenseUnitDataPath = path
@@ -119,7 +118,7 @@ addMatchDataToLicenseUnits path matchData existingUnits =
         , licenseUnitDataCopyrights = Nothing
         , licenseUnitDataContents = Nothing
         }
-    newUnit = case H.lookup name existingUnits of
+    newUnit = case H.lookup (name, path) existingUnits of
       Nothing ->
         LicenseUnit
           { licenseUnitName = "custom-license"
@@ -132,7 +131,7 @@ addMatchDataToLicenseUnits path matchData existingUnits =
           }
       Just existingUnit -> do
         existingUnit
-          { licenseUnitFiles = NE.cons path $ licenseUnitFiles existingUnit
+          { licenseUnitFiles = NE.nub $ NE.cons path $ licenseUnitFiles existingUnit
           , licenseUnitData = NE.cons newUnitData $ licenseUnitData existingUnit
           }
 

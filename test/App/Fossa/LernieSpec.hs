@@ -37,11 +37,27 @@ customLicenseLernieMatchData =
     , lernieMatchDataEndLine = 1
     }
 
+secondCustomLicenseLernieMatchData :: LernieMatchData
+secondCustomLicenseLernieMatchData =
+  customLicenseLernieMatchData
+    { lernieMatchDataStartByte = 100
+    , lernieMatchDataEndByte = 119
+    , lernieMatchDataStartLine = 3
+    , lernieMatchDataEndLine = 3
+    }
+
 customLicenseMatchMessage :: LernieMatch
 customLicenseMatchMessage =
   LernieMatch
     { lernieMatchPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
     , lernieMatchMatches = [customLicenseLernieMatchData]
+    }
+
+secondCustomLicenseMatchMessage :: LernieMatch
+secondCustomLicenseMatchMessage =
+  LernieMatch
+    { lernieMatchPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
+    , lernieMatchMatches = [secondCustomLicenseLernieMatchData]
     }
 
 keywordSearchLernieMatchData :: LernieMatchData
@@ -85,6 +101,9 @@ filledInMessages =
       addLernieMessage (LernieMessageLernieMatch keywordSearchMatchMessage) $
         addLernieMessage (LernieMessageLernieMatch customLicenseMatchMessage) emptyLernieMessages
 
+doubleMessages :: LernieMessages
+doubleMessages = addLernieMessage (LernieMessageLernieMatch secondCustomLicenseMatchMessage) filledInMessages
+
 expectedLernieResults :: LernieResults
 expectedLernieResults =
   LernieResults
@@ -93,6 +112,13 @@ expectedLernieResults =
     , lernieResultsKeywordSearches = Just $ NE.singleton keywordSearchMatchMessage
     , lernieResultsCustomLicenses = Just $ NE.singleton customLicenseMatchMessage
     , lernieResultsSourceUnit = Just expectedSourceUnit
+    }
+
+expectedDoubleLernieResults :: LernieResults
+expectedDoubleLernieResults =
+  expectedLernieResults
+    { lernieResultsCustomLicenses = Just $ NE.fromList [secondCustomLicenseMatchMessage, customLicenseMatchMessage]
+    , lernieResultsSourceUnit = Just expectedDoubleSourceUnit
     }
 
 absDir :: Path Abs Dir
@@ -125,6 +151,16 @@ expectedLicenseUnit =
     , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Just ""}
     }
 
+expectedDoubleSourceUnit :: LicenseSourceUnit
+expectedDoubleSourceUnit =
+  expectedSourceUnit
+    { licenseSourceUnitLicenseUnits = NE.singleton expectedDoubleLicenseUnit
+    }
+
+expectedDoubleLicenseUnit :: LicenseUnit
+expectedDoubleLicenseUnit =
+  expectedLicenseUnit{licenseUnitData = NE.fromList [expectedSecondUnitData, expectedUnitData]}
+
 expectedUnitData :: LicenseUnitData
 expectedUnitData =
   LicenseUnitData
@@ -145,6 +181,18 @@ expectedLicenseUnitMatchData =
     , licenseUnitMatchDataIndex = 1
     , licenseUnitDataStartLine = 1
     , licenseUnitDataEndLine = 1
+    }
+
+expectedSecondUnitData :: LicenseUnitData
+expectedSecondUnitData =
+  expectedUnitData{licenseUnitDataMatchData = Just $ NE.singleton expectedSecondLicenseUnitMatchData}
+
+expectedSecondLicenseUnitMatchData :: LicenseUnitMatchData
+expectedSecondLicenseUnitMatchData =
+  expectedLicenseUnitMatchData
+    { licenseUnitMatchDataLocation = 100
+    , licenseUnitDataStartLine = 3
+    , licenseUnitDataEndLine = 3
     }
 
 grepOptions :: GrepOptions
@@ -199,6 +247,9 @@ spec = do
   describe "lernieMessagesToLernieResults" $ do
     it "should create a proper LernieResults" $ do
       lernieMessagesToLernieResults filledInMessages absDir `shouldBe` expectedLernieResults
+
+    it "should deal properly with two of the same license found in one file" $ do
+      lernieMessagesToLernieResults doubleMessages absDir `shouldBe` expectedDoubleLernieResults
 
   describe "addLernieMessage" $ do
     it "should add a match to matches" $ do
