@@ -122,6 +122,7 @@ import Prettyprinter.Render.Terminal (
   Color (Cyan, Green, Yellow),
   color,
  )
+import Srclib.Converter (mergeLicenseSourceUnits)
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
@@ -284,8 +285,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     Diag.errorBoundaryIO
       . diagToDebug
       . runReader filters
-      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget
-      $ Config.vsiOptions cfg
+      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget $
+        Config.vsiOptions cfg
   binarySearchResults <-
     Diag.errorBoundaryIO . diagToDebug $
       Diag.context "discover-binaries" $
@@ -499,20 +500,6 @@ buildResult includeAll srcUnits projects licenseSourceUnits =
         NE.toList $ mergeSourceAndLicenseUnits finalSourceUnits licenseUnits
     finalSourceUnits = srcUnits ++ scannedUnits
     scannedUnits = map (Srclib.toSourceUnit (fromFlag IncludeAll includeAll)) projects
-
--- | Merge two license source units, keeping the name and type from the first unit
-mergeLicenseSourceUnits :: Maybe LicenseSourceUnit -> Maybe LicenseSourceUnit -> Maybe LicenseSourceUnit
-mergeLicenseSourceUnits maybeFirst maybeSecond =
-  case (maybeFirst, maybeSecond) of
-    (Nothing, Nothing) -> Nothing
-    (Just first, Nothing) -> Just first
-    (Nothing, Just second) -> Just second
-    (Just first, Just second) ->
-      Just first{licenseSourceUnitLicenseUnits = mergedLicenseUnits}
-      where
-        firstLicenseUnits = licenseSourceUnitLicenseUnits first
-        secondLicenseUnits = licenseSourceUnitLicenseUnits second
-        mergedLicenseUnits = foldr NE.cons firstLicenseUnits secondLicenseUnits
 
 buildProject :: ProjectResult -> Aeson.Value
 buildProject project =
