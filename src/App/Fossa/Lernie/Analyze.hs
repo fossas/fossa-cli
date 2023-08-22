@@ -46,7 +46,7 @@ newtype CustomLicensePath = CustomLicensePath {unCustomLicensePath :: Text}
 newtype CustomLicenseTitle = CustomLicenseTitle {unCustomLicenseTitle :: Text}
   deriving (Eq, Ord, Show, Hashable)
 
--- scan rootDir with Lernie, using the given GrepOptions. This is the main entry point to this module
+-- | scan rootDir with Lernie, using the given GrepOptions. This is the main entry point to this module
 analyzeWithLernie ::
   ( Has Diagnostics sig m
   , Has Exec sig m
@@ -64,6 +64,57 @@ analyzeWithLernie rootDir _maybeApiOpts grepOptions = do
       messages <- runLernie lernieConfig
       pure $ Just $ lernieMessagesToLernieResults messages rootDir
     Nothing -> pure Nothing
+
+grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Maybe LernieConfig
+grepOptionsToLernieConfig rootDir grepOptions =
+  case regexes of
+    Nothing -> Nothing
+    Just res -> Just $ LernieConfig rootDir res
+  where
+    customLicenseSearches = grepEntryToLernieRegex CustomLicense <$$> customLicenseSearch grepOptions
+    keywordSearches = grepEntryToLernieRegex KeywordSearch <$$> keywordSearch grepOptions
+
+    regexes = case (customLicenseSearches, keywordSearches) of
+      (Nothing, Just grepEntries) -> Just grepEntries
+      (Just grepEntries, Nothing) -> Just grepEntries
+      (Just customLicenseEntries, Just keywordEntries) -> Just $ customLicenseEntries <> keywordEntries
+      (Nothing, Nothing) -> Nothing
+
+grepEntryToLernieRegex :: LernieScanType -> GrepEntry -> LernieRegex
+grepEntryToLernieRegex scanType grepEntry =
+  LernieRegex (grepEntryMatchCriteria grepEntry) (grepEntryName grepEntry) scanType
+
+runLernie ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has ReadFS sig m
+  , Has Exec sig m
+  ) =>
+  LernieConfig ->
+  m LernieMessages
+runLernie lernieConfig = withLernieBinary $ \bin -> do
+  let lernieConfigJSON = decodeUtf8 $ Aeson.encode lernieConfig
+  result <- execThrow'' (lernieCommand bin) lernieConfigJSON
+  pure $ parseLernieJson result
+
+-- Run Lernie, passing "--config -" as its arg so that it gets its config from STDIN
+lernieCommand :: BinaryPaths -> Command
+lernieCommand bin =
+  Command
+    { cmdName = toText $ toPath bin
+    , cmdArgs = ["--config", "-"]
+    , cmdAllowErr = Never
+    }
+
+-- Parse Lernie's NDJson output by splitting on newlines (character 10) and
+-- then decoding each line
+parseLernieJson :: BL.ByteString -> LernieMessages
+parseLernieJson out =
+  foldr addLernieMessage emptyLernieMessages parsedLines
+  where
+    messageLines = BL.splitWith (== 10) out
+    parsedLines :: [LernieMessage]
+    parsedLines = mapMaybe decode messageLines
 
 lernieMessagesToLernieResults :: LernieMessages -> Path Abs Dir -> LernieResults
 lernieMessagesToLernieResults LernieMessages{..} rootDir =
@@ -83,7 +134,14 @@ lernieMessagesToLernieResults LernieMessages{..} rootDir =
       Nothing -> Nothing
       Just licenses -> lernieMatchToSourceUnit licenses rootDir
 
--- | filter lernie matches to a specific scan type, filtering out any lernie matches with no messages after they have been filtered out
+-- add a LernieMessage to the corresponding entry in LernieMessages
+addLernieMessage :: LernieMessage -> LernieMessages -> LernieMessages
+addLernieMessage message existing = case message of
+  LernieMessageLernieMatch msg -> existing{lernieMessageMatches = msg : lernieMessageMatches existing}
+  LernieMessageLernieWarning msg -> existing{lernieMessageWarnings = msg : lernieMessageWarnings existing}
+  LernieMessageLernieError msg -> existing{lernieMessageErrors = msg : lernieMessageErrors existing}
+
+-- filter lernie matches to a specific scan type, filtering out any lernie matches with no messages after they have been filtered out
 filterLernieMessages :: [LernieMatch] -> LernieScanType -> Maybe (NonEmpty LernieMatch)
 filterLernieMessages matches scanType =
   NE.nonEmpty lernieMatchesWithoutEmpties
@@ -93,7 +151,12 @@ filterLernieMessages matches scanType =
     lernieMatchesFilteredToScanType = map (\lm -> LernieMatch (lernieMatchPath lm) (filter byScanType $ lernieMatchMatches lm)) matches
     lernieMatchesWithoutEmpties = filter (not . null . lernieMatchMatches) lernieMatchesFilteredToScanType
 
--- | convert a list of lernie matches (of type CustomLicense, typically) into a LicenseSourceUnit
+-- Convert a list of lernie matches into a LicenseSourceUnit
+-- The hard part is constructing the licenseSourceUnitLicenseUnits. This is an array of LicenseUnit, one per license found.
+-- A LicenseUnit contains info about multiple files. Each file shows up in the Files attribute and in the
+-- same position in the Data attribute.
+-- So this function takes all of the Lernie Messages, which contain information about a single match in a single file,
+-- and flips it around to get a list of licenses and the files they apply to.
 lernieMatchToSourceUnit :: NonEmpty LernieMatch -> Path Abs Dir -> Maybe LicenseSourceUnit
 lernieMatchToSourceUnit matches rootDir =
   case licenseUnits of
@@ -108,7 +171,7 @@ lernieMatchToSourceUnit matches rootDir =
   where
     licenseUnits = licenseUnitsFromLernieMatches matches
 
--- Create LicenseUnits from the LernieMatches. There will be one LicenseUnit per custom-license name
+-- Create LicenseUnits from the LernieMatches. There will be one LicenseUnit per custom-license title
 licenseUnitsFromLernieMatches :: NonEmpty LernieMatch -> Maybe (NonEmpty LicenseUnit)
 licenseUnitsFromLernieMatches matches = do
   let allLicenseUnitMatchData = createAllLicenseUnitMatchData matches
@@ -176,58 +239,3 @@ createLicenseUnitsFromMatchData path title licenseUnitMatchData existingUnits =
           }
       Just existingUnit ->
         existingUnit{licenseUnitData = NE.cons newLicenseUnitData (licenseUnitData existingUnit)}
-
--- add a LernieMessage to proper entry in LernieMessages
-addLernieMessage :: LernieMessage -> LernieMessages -> LernieMessages
-addLernieMessage message existing = case message of
-  LernieMessageLernieMatch msg -> existing{lernieMessageMatches = msg : lernieMessageMatches existing}
-  LernieMessageLernieWarning msg -> existing{lernieMessageWarnings = msg : lernieMessageWarnings existing}
-  LernieMessageLernieError msg -> existing{lernieMessageErrors = msg : lernieMessageErrors existing}
-
-grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Maybe LernieConfig
-grepOptionsToLernieConfig rootDir grepOptions =
-  case regexes of
-    Nothing -> Nothing
-    Just res -> Just $ LernieConfig rootDir res
-  where
-    customLicenseSearches = grepEntryToLernieRegex CustomLicense <$$> customLicenseSearch grepOptions
-    keywordSearches = grepEntryToLernieRegex KeywordSearch <$$> keywordSearch grepOptions
-
-    regexes = case (customLicenseSearches, keywordSearches) of
-      (Nothing, Just grepEntries) -> Just grepEntries
-      (Just grepEntries, Nothing) -> Just grepEntries
-      (Just customLicenseEntries, Just keywordEntries) -> Just $ customLicenseEntries <> keywordEntries
-      (Nothing, Nothing) -> Nothing
-
-grepEntryToLernieRegex :: LernieScanType -> GrepEntry -> LernieRegex
-grepEntryToLernieRegex scanType grepEntry =
-  LernieRegex (grepEntryMatchCriteria grepEntry) (grepEntryName grepEntry) scanType
-
-runLernie ::
-  ( Has Diagnostics sig m
-  , Has (Lift IO) sig m
-  , Has ReadFS sig m
-  , Has Exec sig m
-  ) =>
-  LernieConfig ->
-  m LernieMessages
-runLernie lernieConfig = withLernieBinary $ \bin -> do
-  let lernieConfigJSON = decodeUtf8 $ Aeson.encode lernieConfig
-  result <- execThrow'' (lernieCommand bin) lernieConfigJSON
-  pure $ parseLernieJson result
-
-parseLernieJson :: BL.ByteString -> LernieMessages
-parseLernieJson out =
-  foldr addLernieMessage emptyLernieMessages parsedLines
-  where
-    messageLines = BL.splitWith (== 10) out
-    parsedLines :: [LernieMessage]
-    parsedLines = mapMaybe decode messageLines
-
-lernieCommand :: BinaryPaths -> Command
-lernieCommand bin =
-  Command
-    { cmdName = toText $ toPath bin
-    , cmdArgs = ["--config", "-"]
-    , cmdAllowErr = Never
-    }
