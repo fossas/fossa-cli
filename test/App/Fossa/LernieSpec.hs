@@ -278,8 +278,7 @@ spec = do
     result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO $ analyzeWithLernie scanDir Nothing grepOptions
 
     it "should analyze a directory" $ do
-      sendIO . print $ "scanDir: " ++ show scanDir
-      -- Fix the paths in the expected data
+      -- Fix the paths in the expected data. We need to do this here because they include the full path to the file
       let actualUnitData =
             expectedUnitData
               { licenseUnitDataPath = fixedOnePath
