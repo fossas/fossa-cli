@@ -214,12 +214,18 @@ spec = do
   describe "analyzeWithLernie" $ do
     currDir <- runIO getCurrentDir
     let scanDir = currDir </> fixtureDir
-    -- We want to strip the trailing "/" off of the paths, but if there is no
-    -- trailing "/", then just return the path
+
     let somethingPath = toText . toFilePath $ scanDir </> $(mkRelDir "something.txt")
-    let fixedSomethingPath = fromMaybe somethingPath (Text.stripSuffix "/" somethingPath)
     let onePath = toText . toFilePath $ scanDir </> $(mkRelDir "one.txt")
+
+    #ifdef mingw32_HOST_OS
+    let fixedSomethingPath = fromMaybe somethingPath (Text.stripSuffix "\\" somethingPath)
+    let fixedOnePath = fromMaybe onePath (Text.stripSuffix "\\" onePath)
+    #else
+    let fixedSomethingPath = fromMaybe somethingPath (Text.stripSuffix "/" somethingPath)
     let fixedOnePath = fromMaybe onePath (Text.stripSuffix "/" onePath)
+    #endif
+
     result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO $ analyzeWithLernie scanDir Nothing grepOptions
 
     it "should analyze a directory" $ do
@@ -248,5 +254,5 @@ spec = do
             (lernieResultsWarnings res) `shouldBe` Nothing
             (lernieResultsErrors res) `shouldBe` Nothing
             (lernieResultsKeywordSearches res) `shouldBe` Just (NE.singleton keywordSearchMatchMessage{lernieMatchPath = fixedSomethingPath})
-            (lernieResultsCustomLicenses res) `shouldBe` Just (NE.singleton customLicenseMatchMessage{lernieMatchPath = onePath})
+            (lernieResultsCustomLicenses res) `shouldBe` Just (NE.singleton customLicenseMatchMessage{lernieMatchPath = fixedOnePath})
             (lernieResultsSourceUnit res) `shouldBe` Just actualSourceUnit
