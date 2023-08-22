@@ -10,7 +10,6 @@ import App.Fossa.Config.Analyze (GrepEntry (..), GrepOptions (..))
 import App.Fossa.Lernie.Analyze (addLernieMessage, analyzeWithLernie, grepOptionsToLernieConfig, lernieMessagesToLernieResults)
 import App.Fossa.Lernie.Types (LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieScanType (..), LernieWarning (..), emptyLernieMessages)
 import Control.Carrier.Diagnostics (runDiagnostics)
-import Control.Carrier.Lift (sendIO)
 import Control.Carrier.Stack (runStack)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
