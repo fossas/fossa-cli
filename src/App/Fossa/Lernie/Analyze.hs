@@ -26,6 +26,7 @@ import Data.Aeson (decode)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Functor.Extra ((<$$>))
+import Data.HashMap.Lazy (foldrWithKey)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as H
 import Data.List.NonEmpty (NonEmpty)
@@ -38,6 +39,25 @@ import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import Path (Abs, Dir, Path)
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), LicenseUnit (..), LicenseUnitData (..), LicenseUnitInfo (..), LicenseUnitMatchData (..))
+
+-- scan rootDir with Lernie, using the given GrepOptions. This is the main entry point to this module
+analyzeWithLernie ::
+  ( Has Diagnostics sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
+  , Has (Lift IO) sig m
+  ) =>
+  Path Abs Dir ->
+  Maybe ApiOpts ->
+  GrepOptions ->
+  m (Maybe LernieResults)
+analyzeWithLernie rootDir _maybeApiOpts grepOptions = do
+  let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
+  case maybeLernieConfig of
+    Just (lernieConfig) -> do
+      messages <- runLernie lernieConfig
+      pure $ Just $ lernieMessagesToLernieResults messages rootDir
+    Nothing -> pure Nothing
 
 lernieMessagesToLernieResults :: LernieMessages -> Path Abs Dir -> LernieResults
 lernieMessagesToLernieResults LernieMessages{..} rootDir =
@@ -85,31 +105,50 @@ lernieMatchToSourceUnit matches rootDir =
 -- Create LicenseUnits from the LernieMatches. There will be one LicenseUnit per custom-license name
 licenseUnitsFromLernieMatches :: NonEmpty LernieMatch -> Maybe (NonEmpty LicenseUnit)
 licenseUnitsFromLernieMatches matches = do
-  NE.nonEmpty $ H.elems $ foldr addMatchesToLicenseUnits H.empty matches
+  let allLicenseUnitMatchData = createAllLicenseUnitMatchData matches
+  let allLicenseUnits = foldrWithKey createLicenseUnitsFromMatchDatas H.empty allLicenseUnitMatchData
+  NE.nonEmpty $ H.elems allLicenseUnits
 
--- Add a lernieMatch to the licenseUnits
-addMatchesToLicenseUnits :: LernieMatch -> HashMap (Text, Text) LicenseUnit -> HashMap (Text, Text) LicenseUnit
-addMatchesToLicenseUnits match existingUnits =
-  foldr (addMatchDataToLicenseUnits $ lernieMatchPath match) existingUnits $ lernieMatchMatches match
+-- create a map of all LicenseUnitMatchData, with the key of the map being the path and the title of the custom license
+createAllLicenseUnitMatchData :: NonEmpty LernieMatch -> HashMap (Text, Text) (NonEmpty LicenseUnitMatchData)
+createAllLicenseUnitMatchData = foldr addLernieMatchToMatchData H.empty
 
--- Add a LernieMatchData to the existing licenseUnits, creating a new LicenseUnit if one with that title does not already exist
-addMatchDataToLicenseUnits :: Text -> LernieMatchData -> HashMap (Text, Text) LicenseUnit -> HashMap (Text, Text) LicenseUnit
-addMatchDataToLicenseUnits path matchData existingUnits =
-  H.insert (name, path) newUnit existingUnits
+-- add all of the matches in a LernieMatch to the existing match data
+addLernieMatchToMatchData :: LernieMatch -> HashMap (Text, Text) (NonEmpty LicenseUnitMatchData) -> HashMap (Text, Text) (NonEmpty LicenseUnitMatchData)
+addLernieMatchToMatchData lernieMatch existingMatches =
+  foldr (addLernieMatchDataToMatchData $ lernieMatchPath lernieMatch) existingMatches (lernieMatchMatches lernieMatch)
+
+-- Add a single LernieMatchData to the existing match data
+addLernieMatchDataToMatchData :: Text -> LernieMatchData -> HashMap (Text, Text) (NonEmpty LicenseUnitMatchData) -> HashMap (Text, Text) (NonEmpty LicenseUnitMatchData)
+addLernieMatchDataToMatchData path lernieMatchData existingMatches =
+  H.insert (path, title) newMatchDatas existingMatches
   where
-    name = lernieMatchDataName matchData
-    startByte = lernieMatchDataStartByte matchData
-    endByte = lernieMatchDataEndByte matchData
-    licenseUnitMatchData =
+    title = lernieMatchDataName lernieMatchData
+    startByte = lernieMatchDataStartByte lernieMatchData
+    endByte = lernieMatchDataEndByte lernieMatchData
+    newMatchData =
       LicenseUnitMatchData
-        { licenseUnitMatchDataMatchString = Just $ lernieMatchDataMatchString matchData
+        { licenseUnitMatchDataMatchString = Just $ lernieMatchDataMatchString lernieMatchData
         , licenseUnitMatchDataLocation = startByte
         , licenseUnitMatchDataLength = endByte - startByte
         , licenseUnitMatchDataIndex = 1
-        , licenseUnitDataStartLine = lernieMatchDataStartLine matchData
-        , licenseUnitDataEndLine = lernieMatchDataEndLine matchData
+        , licenseUnitDataStartLine = lernieMatchDataStartLine lernieMatchData
+        , licenseUnitDataEndLine = lernieMatchDataEndLine lernieMatchData
         }
-    newUnitData =
+    newMatchDatas = case H.lookup (path, title) existingMatches of
+      Nothing -> NE.singleton newMatchData
+      Just existing -> NE.cons newMatchData existing
+
+-- Take a list of LicenseUnitMatchData and their path and title and add them to the license units
+createLicenseUnitsFromMatchDatas :: (Text, Text) -> NonEmpty LicenseUnitMatchData -> HashMap Text LicenseUnit -> HashMap Text LicenseUnit
+createLicenseUnitsFromMatchDatas (path, title) licenseUnits existingUnits = foldr (createLicenseUnitsFromMatchData path title) existingUnits licenseUnits
+
+-- Given a LicenseUnitMatchData, its path and its title, add it to the license units
+createLicenseUnitsFromMatchData :: Text -> Text -> LicenseUnitMatchData -> HashMap Text LicenseUnit -> HashMap Text LicenseUnit
+createLicenseUnitsFromMatchData path title licenseUnitMatchData existingUnits =
+  H.insert title newLicenseUnit existingUnits
+  where
+    newLicenseUnitData =
       LicenseUnitData
         { licenseUnitDataPath = path
         , licenseUnitDataCopyright = Nothing
@@ -118,46 +157,26 @@ addMatchDataToLicenseUnits path matchData existingUnits =
         , licenseUnitDataCopyrights = Nothing
         , licenseUnitDataContents = Nothing
         }
-    newUnit = case H.lookup (name, path) existingUnits of
-      Nothing ->
+    newLicenseUnit = case H.lookup title existingUnits of
+      Nothing -> do
         LicenseUnit
           { licenseUnitName = "custom-license"
           , licenseUnitType = "LicenseUnit"
-          , licenseUnitTitle = Just name
+          , licenseUnitTitle = Just title
           , licenseUnitDir = ""
-          , licenseUnitFiles = NE.singleton path
-          , licenseUnitData = NE.singleton newUnitData
+          , licenseUnitFiles = path NE.:| []
+          , licenseUnitData = newLicenseUnitData NE.:| []
           , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Just ""}
           }
-      Just existingUnit -> do
-        existingUnit
-          { licenseUnitFiles = NE.nub $ NE.cons path $ licenseUnitFiles existingUnit
-          , licenseUnitData = NE.cons newUnitData $ licenseUnitData existingUnit
-          }
+      Just existingUnit ->
+        existingUnit{licenseUnitData = NE.cons newLicenseUnitData (licenseUnitData existingUnit)}
 
+-- add a LernieMessage to proper entry in LernieMessages
 addLernieMessage :: LernieMessage -> LernieMessages -> LernieMessages
 addLernieMessage message existing = case message of
   LernieMessageLernieMatch msg -> existing{lernieMessageMatches = msg : lernieMessageMatches existing}
   LernieMessageLernieWarning msg -> existing{lernieMessageWarnings = msg : lernieMessageWarnings existing}
   LernieMessageLernieError msg -> existing{lernieMessageErrors = msg : lernieMessageErrors existing}
-
-analyzeWithLernie ::
-  ( Has Diagnostics sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
-  , Has (Lift IO) sig m
-  ) =>
-  Path Abs Dir ->
-  Maybe ApiOpts ->
-  GrepOptions ->
-  m (Maybe LernieResults)
-analyzeWithLernie rootDir _maybeApiOpts grepOptions = do
-  let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
-  case maybeLernieConfig of
-    Just (lernieConfig) -> do
-      messages <- runLernie lernieConfig
-      pure $ Just $ lernieMessagesToLernieResults messages rootDir
-    Nothing -> pure Nothing
 
 grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Maybe LernieConfig
 grepOptionsToLernieConfig rootDir grepOptions =
