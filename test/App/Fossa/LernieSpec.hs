@@ -96,10 +96,13 @@ expectedLernieResults =
     }
 
 absDir :: Path Abs Dir
+pathSuffix :: Text.Text
 #ifdef mingw32_HOST_OS
 absDir = $(mkAbsDir "C:/")
+pathSuffix = "\\"
 #else
 absDir = $(mkAbsDir "/tmp/one")
+pathSuffix = "/"
 #endif
 
 expectedSourceUnit :: LicenseSourceUnit
@@ -218,13 +221,8 @@ spec = do
     let somethingPath = toText . toFilePath $ scanDir </> $(mkRelDir "something.txt")
     let onePath = toText . toFilePath $ scanDir </> $(mkRelDir "one.txt")
 
-    #ifdef mingw32_HOST_OS
-    let fixedSomethingPath = fromMaybe somethingPath (Text.stripSuffix "\\" somethingPath)
-    let fixedOnePath = fromMaybe onePath (Text.stripSuffix "\\" onePath)
-    #else
-    let fixedSomethingPath = fromMaybe somethingPath (Text.stripSuffix "/" somethingPath)
-    let fixedOnePath = fromMaybe onePath (Text.stripSuffix "/" onePath)
-    #endif
+    let fixedSomethingPath = fromMaybe somethingPath (Text.stripSuffix pathSuffix somethingPath)
+    let fixedOnePath = fromMaybe onePath (Text.stripSuffix pathSuffix onePath)
 
     result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO $ analyzeWithLernie scanDir Nothing grepOptions
 
