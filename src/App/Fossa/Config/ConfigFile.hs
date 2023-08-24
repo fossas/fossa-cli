@@ -235,8 +235,8 @@ data ConfigPaths = ConfigPaths
   deriving (Eq, Ord, Show)
 
 data ConfigGrepEntry = ConfigGrepEntry
-  { configGrepMatchCriteria :: Text
-  , configGrepName :: Text
+  { configGrepName :: Text
+  , configGrepMatchCriteria :: Text
   }
   deriving (Eq, Ord, Show)
 

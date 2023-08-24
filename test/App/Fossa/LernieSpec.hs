@@ -21,6 +21,7 @@ import Path (Abs, Dir, Path, Rel, mkAbsDir, mkRelDir, toFilePath, (</>))
 import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess)
 import Srclib.Types (LicenseScanType (CliLicenseScanned), LicenseSourceUnit (..), LicenseUnit (..), LicenseUnitData (..), LicenseUnitInfo (..), LicenseUnitMatchData (..))
+import System.FilePath (pathSeparator)
 import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
 
 customLicenseLernieMatchData :: LernieMatchData
@@ -121,13 +122,10 @@ expectedDoubleLernieResults =
     }
 
 absDir :: Path Abs Dir
-pathSuffix :: Text.Text
 #ifdef mingw32_HOST_OS
 absDir = $(mkAbsDir "C:/")
-pathSuffix = "\\"
 #else
 absDir = $(mkAbsDir "/tmp/one")
-pathSuffix = "/"
 #endif
 
 expectedSourceUnit :: LicenseSourceUnit
@@ -271,8 +269,8 @@ spec = do
     let somethingPath = toText . toFilePath $ scanDir </> $(mkRelDir "something.txt")
     let onePath = toText . toFilePath $ scanDir </> $(mkRelDir "one.txt")
 
-    let fixedSomethingPath = fromMaybe somethingPath (Text.stripSuffix pathSuffix somethingPath)
-    let fixedOnePath = fromMaybe onePath (Text.stripSuffix pathSuffix onePath)
+    let fixedSomethingPath = fromMaybe somethingPath (Text.stripSuffix (toText pathSeparator) somethingPath)
+    let fixedOnePath = fromMaybe onePath (Text.stripSuffix (toText pathSeparator) onePath)
 
     result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO $ analyzeWithLernie scanDir Nothing grepOptions
 

@@ -1,3 +1,4 @@
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.Configuration.ConfigurationSpec (
@@ -29,6 +30,7 @@ import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess, expectFailure)
 import Test.Hspec qualified as T
 import Test.Hspec.Core.Spec (SpecM)
+import Text.RawString.QQ (r)
 import Types (ArchiveUploadType (..), BuildTarget (..), GlobFilter (GlobFilter), LicenseScanPathFilters (..), TargetFilter (..))
 
 expectedConfigFile :: ConfigFile
@@ -119,7 +121,7 @@ expectedLicenseSearch = NE.fromList [expectedLicenseGrepEntry]
 expectedKeywordGrepEntry :: ConfigGrepEntry
 expectedKeywordGrepEntry =
   ConfigGrepEntry
-    { configGrepMatchCriteria = "\\w*(_token)"
+    { configGrepMatchCriteria = [r|\w*(_token)|]
     , configGrepName = "token search"
     }
 

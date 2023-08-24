@@ -80,7 +80,8 @@ instance FromJSON LernieMessageType where
     case msg of
       "Match" -> pure LernieMessageTypeMatch
       "Error" -> pure LernieMessageTypeError
-      _ -> pure LernieMessageTypeWarning
+      "Warning" -> pure LernieMessageTypeWarning
+      _ -> fail "invalid Lernie message type"
 
 data LernieMatch = LernieMatch
   { lernieMatchPath :: Text
