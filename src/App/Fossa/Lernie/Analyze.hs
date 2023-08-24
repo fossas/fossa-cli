@@ -2,7 +2,7 @@
 
 module App.Fossa.Lernie.Analyze (
   analyzeWithLernie,
-  addLernieMessage,
+  singletonLernieMessage,
   lernieMessagesToLernieResults,
   grepOptionsToLernieConfig,
 ) where
@@ -18,19 +18,18 @@ import App.Fossa.Lernie.Types (
   LernieRegex (..),
   LernieResults (..),
   LernieScanType (..),
-  emptyLernieMessages,
  )
 import Control.Carrier.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift)
 import Data.Aeson (decode)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
+import Data.Foldable (fold)
 import Data.Functor.Extra ((<$$>))
 import Data.HashMap.Lazy (foldrWithKey)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as H
 import Data.Hashable (Hashable)
-import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToText (toText), decodeUtf8)
@@ -110,19 +109,19 @@ lernieCommand bin =
 -- then decoding each line
 parseLernieJson :: BL.ByteString -> LernieMessages
 parseLernieJson out =
-  foldr addLernieMessage emptyLernieMessages parsedLines
+  fold messages
   where
     messageLines = BL.splitWith (== 10) out
-    parsedLines :: [LernieMessage]
     parsedLines = mapMaybe decode messageLines
+    messages = map singletonLernieMessage parsedLines
 
 lernieMessagesToLernieResults :: LernieMessages -> Path Abs Dir -> LernieResults
 lernieMessagesToLernieResults LernieMessages{..} rootDir =
   LernieResults
     { lernieResultsWarnings = warnings
     , lernieResultsErrors = errors
-    , lernieResultsKeywordSearches = keywordSearches
-    , lernieResultsCustomLicenses = customLicenses
+    , lernieResultsKeywordSearches = NE.nonEmpty keywordSearches
+    , lernieResultsCustomLicenses = NE.nonEmpty customLicenses
     , lernieResultsSourceUnit = sourceUnit
     }
   where
@@ -130,21 +129,21 @@ lernieMessagesToLernieResults LernieMessages{..} rootDir =
     errors = NE.nonEmpty lernieMessageErrors
     keywordSearches = filterLernieMessages lernieMessageMatches KeywordSearch
     customLicenses = filterLernieMessages lernieMessageMatches CustomLicense
-    sourceUnit = case customLicenses of
+    sourceUnit = case NE.nonEmpty customLicenses of
       Nothing -> Nothing
-      Just licenses -> lernieMatchToSourceUnit licenses rootDir
+      Just licenses -> lernieMatchToSourceUnit (NE.toList licenses) rootDir
 
--- add a LernieMessage to the corresponding entry in LernieMessages
-addLernieMessage :: LernieMessage -> LernieMessages -> LernieMessages
-addLernieMessage message existing = case message of
-  LernieMessageLernieMatch msg -> existing{lernieMessageMatches = msg : lernieMessageMatches existing}
-  LernieMessageLernieWarning msg -> existing{lernieMessageWarnings = msg : lernieMessageWarnings existing}
-  LernieMessageLernieError msg -> existing{lernieMessageErrors = msg : lernieMessageErrors existing}
+-- add a LernieMessage to the corresponding entry of an empty LernieMessages
+singletonLernieMessage :: LernieMessage -> LernieMessages
+singletonLernieMessage message = case message of
+  LernieMessageLernieMatch msg -> mempty{lernieMessageMatches = [msg]}
+  LernieMessageLernieWarning msg -> mempty{lernieMessageWarnings = [msg]}
+  LernieMessageLernieError msg -> mempty{lernieMessageErrors = [msg]}
 
 -- filter lernie matches to a specific scan type, filtering out any lernie matches with no messages after they have been filtered out
-filterLernieMessages :: [LernieMatch] -> LernieScanType -> Maybe (NonEmpty LernieMatch)
+filterLernieMessages :: [LernieMatch] -> LernieScanType -> [LernieMatch]
 filterLernieMessages matches scanType =
-  NE.nonEmpty lernieMatchesWithoutEmpties
+  lernieMatchesWithoutEmpties
   where
     byScanType :: LernieMatchData -> Bool
     byScanType m = scanType == lernieMatchDataScanType m
@@ -157,9 +156,9 @@ filterLernieMessages matches scanType =
 -- same position in the Data attribute.
 -- So this function takes all of the Lernie Messages, which contain information about a single match in a single file,
 -- and flips it around to get a list of licenses and the files they apply to.
-lernieMatchToSourceUnit :: NonEmpty LernieMatch -> Path Abs Dir -> Maybe LicenseSourceUnit
+lernieMatchToSourceUnit :: [LernieMatch] -> Path Abs Dir -> Maybe LicenseSourceUnit
 lernieMatchToSourceUnit matches rootDir =
-  case licenseUnits of
+  case NE.nonEmpty licenseUnits of
     Just units ->
       Just
         LicenseSourceUnit
@@ -173,22 +172,22 @@ lernieMatchToSourceUnit matches rootDir =
 
 -- Create LicenseUnits from the LernieMatches. All LicenseUnits will have a license ID of "custom-license".
 -- There will be one LicenseUnit per custom-license title, and each LicenseUnit can contain results from multiple files.
-licenseUnitsFromLernieMatches :: NonEmpty LernieMatch -> Maybe (NonEmpty LicenseUnit)
+licenseUnitsFromLernieMatches :: [LernieMatch] -> [LicenseUnit]
 licenseUnitsFromLernieMatches matches = do
   let allLicenseUnitMatchData = createAllLicenseUnitMatchData matches
   let allLicenseUnits = foldrWithKey createLicenseUnitsFromMatchDatas H.empty allLicenseUnitMatchData
-  NE.nonEmpty $ H.elems allLicenseUnits
+  H.elems allLicenseUnits
 
-createAllLicenseUnitMatchData :: NonEmpty LernieMatch -> HashMap (CustomLicensePath, CustomLicenseTitle) (NonEmpty LicenseUnitMatchData)
+createAllLicenseUnitMatchData :: [LernieMatch] -> HashMap (CustomLicensePath, CustomLicenseTitle) [LicenseUnitMatchData]
 createAllLicenseUnitMatchData = foldr addLernieMatchToMatchData H.empty
 
 -- Add all of the matches in a LernieMatch to the existing match data
-addLernieMatchToMatchData :: LernieMatch -> HashMap (CustomLicensePath, CustomLicenseTitle) (NonEmpty LicenseUnitMatchData) -> HashMap (CustomLicensePath, CustomLicenseTitle) (NonEmpty LicenseUnitMatchData)
+addLernieMatchToMatchData :: LernieMatch -> HashMap (CustomLicensePath, CustomLicenseTitle) [LicenseUnitMatchData] -> HashMap (CustomLicensePath, CustomLicenseTitle) [LicenseUnitMatchData]
 addLernieMatchToMatchData lernieMatch existingMatches =
   foldr (addLernieMatchDataToMatchData (CustomLicensePath $ lernieMatchPath lernieMatch)) existingMatches (lernieMatchMatches lernieMatch)
 
 -- Add a single LernieMatchData to the existing match data
-addLernieMatchDataToMatchData :: CustomLicensePath -> LernieMatchData -> HashMap (CustomLicensePath, CustomLicenseTitle) (NonEmpty LicenseUnitMatchData) -> HashMap (CustomLicensePath, CustomLicenseTitle) (NonEmpty LicenseUnitMatchData)
+addLernieMatchDataToMatchData :: CustomLicensePath -> LernieMatchData -> HashMap (CustomLicensePath, CustomLicenseTitle) [LicenseUnitMatchData] -> HashMap (CustomLicensePath, CustomLicenseTitle) [LicenseUnitMatchData]
 addLernieMatchDataToMatchData path lernieMatchData existingMatches =
   H.insert (path, title) newMatchDatas existingMatches
   where
@@ -205,11 +204,11 @@ addLernieMatchDataToMatchData path lernieMatchData existingMatches =
         , licenseUnitDataEndLine = lernieMatchDataEndLine lernieMatchData
         }
     newMatchDatas = case H.lookup (path, title) existingMatches of
-      Nothing -> NE.singleton newMatchData
-      Just existing -> NE.cons newMatchData existing
+      Nothing -> [newMatchData]
+      Just existing -> newMatchData : existing
 
 -- Take a list of LicenseUnitMatchData and their path and title and create the resulting license units
-createLicenseUnitsFromMatchDatas :: (CustomLicensePath, CustomLicenseTitle) -> NonEmpty LicenseUnitMatchData -> HashMap CustomLicenseTitle LicenseUnit -> HashMap CustomLicenseTitle LicenseUnit
+createLicenseUnitsFromMatchDatas :: (CustomLicensePath, CustomLicenseTitle) -> [LicenseUnitMatchData] -> HashMap CustomLicenseTitle LicenseUnit -> HashMap CustomLicenseTitle LicenseUnit
 createLicenseUnitsFromMatchDatas (path, title) licenseUnits existingUnits = foldr (createLicenseUnitsFromMatchData path title) existingUnits licenseUnits
 
 -- Given a LicenseUnitMatchData, its path and its title, add it to the license already existing units

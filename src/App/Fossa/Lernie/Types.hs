@@ -11,7 +11,6 @@ module App.Fossa.Lernie.Types (
   LernieRegex (..),
   LernieMatchData (..),
   LernieScanType (..),
-  emptyLernieMessages,
 ) where
 
 import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), object, withObject, withText)
@@ -161,11 +160,14 @@ data LernieMessages = LernieMessages
   }
   deriving (Eq, Ord, Show, Generic)
 
+instance Semigroup LernieMessages where
+  LernieMessages w1 e1 m1 <> LernieMessages w2 e2 m2 = LernieMessages (w1 <> w2) (e1 <> e2) (m1 <> m2)
+
+instance Monoid LernieMessages where
+  mempty = LernieMessages [] [] []
+
 data LernieMessage = LernieMessageLernieMatch LernieMatch | LernieMessageLernieWarning LernieWarning | LernieMessageLernieError LernieError
   deriving (Eq, Ord, Show, Generic)
-
-emptyLernieMessages :: LernieMessages
-emptyLernieMessages = LernieMessages [] [] []
 
 instance FromJSON LernieMessage where
   parseJSON (Object o) = do

@@ -7,8 +7,8 @@ module App.Fossa.LernieSpec (
 ) where
 
 import App.Fossa.Config.Analyze (GrepEntry (..), GrepOptions (..))
-import App.Fossa.Lernie.Analyze (addLernieMessage, analyzeWithLernie, grepOptionsToLernieConfig, lernieMessagesToLernieResults)
-import App.Fossa.Lernie.Types (LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieScanType (..), LernieWarning (..), emptyLernieMessages)
+import App.Fossa.Lernie.Analyze (analyzeWithLernie, grepOptionsToLernieConfig, lernieMessagesToLernieResults, singletonLernieMessage)
+import App.Fossa.Lernie.Types (LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieScanType (..), LernieWarning (..))
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Data.List.NonEmpty qualified as NE
@@ -96,13 +96,13 @@ errorMessage =
 
 filledInMessages :: LernieMessages
 filledInMessages =
-  addLernieMessage (LernieMessageLernieError errorMessage) $
-    addLernieMessage (LernieMessageLernieWarning warningMessage) $
-      addLernieMessage (LernieMessageLernieMatch keywordSearchMatchMessage) $
-        addLernieMessage (LernieMessageLernieMatch customLicenseMatchMessage) emptyLernieMessages
+  singletonLernieMessage (LernieMessageLernieError errorMessage)
+    <> singletonLernieMessage (LernieMessageLernieWarning warningMessage)
+    <> singletonLernieMessage (LernieMessageLernieMatch keywordSearchMatchMessage)
+    <> singletonLernieMessage (LernieMessageLernieMatch customLicenseMatchMessage)
 
 doubleMessages :: LernieMessages
-doubleMessages = addLernieMessage (LernieMessageLernieMatch secondCustomLicenseMatchMessage) filledInMessages
+doubleMessages = singletonLernieMessage (LernieMessageLernieMatch secondCustomLicenseMatchMessage) <> filledInMessages
 
 expectedLernieResults :: LernieResults
 expectedLernieResults =
