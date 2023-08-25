@@ -145,7 +145,7 @@ expectedLicenseUnit =
     , licenseUnitDir = ""
     , licenseUnitFiles = NE.singleton $ toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
     , licenseUnitData = NE.singleton expectedUnitData
-    , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Just ""}
+    , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Just "custom license search Proprietary License"}
     }
 
 expectedDoubleSourceUnit :: LicenseSourceUnit
