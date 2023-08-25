@@ -176,14 +176,14 @@ instance FromJSON LernieMessage where
       LernieMessageTypeWarning -> do
         Object d <- o .: "data"
         let message = d .: "message"
-        let message_type = d .: "type"
-        warning <- LernieWarning <$> message_type <*> message
+        let warningType = d .: "type"
+        warning <- LernieWarning <$> warningType <*> message
         pure $ LernieMessageLernieWarning warning
       LernieMessageTypeError -> do
         Object d <- o .: "data"
-        let message_type = d .: "type"
+        let errorType = d .: "type"
         let message = d .: "message"
-        err <- LernieError <$> message_type <*> message
+        err <- LernieError <$> errorType <*> message
         pure $ LernieMessageLernieError err
       LernieMessageTypeMatch -> do
         Object d <- o .: "data"
