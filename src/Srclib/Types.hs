@@ -324,10 +324,10 @@ instance FromJSON LicenseUnitMatchData where
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
   , sourceUnitType :: Text
-  , -- | the title of a custom license
-    sourceUnitTitle :: Maybe Text
-  , -- | path to manifest file
-    sourceUnitManifest :: Text
+  , sourceUnitTitle :: Maybe Text
+  -- ^ the title of a custom license
+  , sourceUnitManifest :: Text
+  -- ^ path to manifest file
   , sourceUnitBuild :: Maybe SourceUnitBuild
   , sourceUnitGraphBreadth :: GraphBreadth
   , sourceUnitOriginPaths :: [OriginPath]
@@ -336,10 +336,10 @@ data SourceUnit = SourceUnit
   deriving (Eq, Ord, Show)
 
 data SourceUnitBuild = SourceUnitBuild
-  { -- | always "default"
-    buildArtifact :: Text
-  , -- | always true
-    buildSucceeded :: Bool
+  { buildArtifact :: Text
+  -- ^ always "default"
+  , buildSucceeded :: Bool
+  -- ^ always true
   , buildImports :: [Locator]
   , buildDependencies :: [SourceUnitDependency]
   }
