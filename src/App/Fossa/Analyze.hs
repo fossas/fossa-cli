@@ -122,7 +122,6 @@ import Prettyprinter.Render.Terminal (
   Color (Cyan, Green, Yellow),
   color,
  )
-import Srclib.Converter (mergeLicenseSourceUnits)
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
@@ -285,8 +284,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     Diag.errorBoundaryIO
       . diagToDebug
       . runReader filters
-      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget
-      $ Config.vsiOptions cfg
+      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget $
+        Config.vsiOptions cfg
   binarySearchResults <-
     Diag.errorBoundaryIO . diagToDebug $
       Diag.context "discover-binaries" $
@@ -365,7 +364,12 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult $ Config.filterSet cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
-  let licenseSourceUnits = mergeLicenseSourceUnits firstPartyScanResults $ lernieResultsSourceUnit =<< grepResults
+  let licenseSourceUnits =
+        case (firstPartyScanResults, lernieResultsSourceUnit =<< grepResults) of
+          (Nothing, Nothing) -> Nothing
+          (Just firstParty, Just lernie) -> Just $ firstParty <> lernie
+          (Nothing, Just lernie) -> Just lernie
+          (Just firstParty, Nothing) -> Just firstParty
   let result = buildResult includeAll additionalSourceUnits filteredProjects licenseSourceUnits
   case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits licenseSourceUnits of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered

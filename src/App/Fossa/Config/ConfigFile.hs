@@ -328,8 +328,8 @@ instance FromJSON ConfigTelemetry where
 instance FromJSON ConfigGrepEntry where
   parseJSON = withObject "ConfigGrepEntry" $ \obj ->
     ConfigGrepEntry
-      <$> (obj .: "matchCriteria")
-      <*> (obj .: "name")
+      <$> (obj .: "name")
+      <*> (obj .: "matchCriteria")
 
 instance FromJSON ConfigTelemetryScope where
   parseJSON = withText "ConfigTelemetryScope" $ \scope ->

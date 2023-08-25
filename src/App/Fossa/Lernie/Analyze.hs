@@ -211,7 +211,7 @@ addLernieMatchDataToMatchData path lernieMatchData existingMatches =
 createLicenseUnitsFromMatchDatas :: (CustomLicensePath, CustomLicenseTitle) -> [LicenseUnitMatchData] -> HashMap CustomLicenseTitle LicenseUnit -> HashMap CustomLicenseTitle LicenseUnit
 createLicenseUnitsFromMatchDatas (path, title) licenseUnits existingUnits = foldr (createLicenseUnitsFromMatchData path title) existingUnits licenseUnits
 
--- Given a LicenseUnitMatchData, its path and its title, add it to the license already existing units
+-- Given a LicenseUnitMatchData, its path and its title, add it to the already existing units
 -- If a license unit with that title already exists, then add it to that. Otherwise create a new one.
 createLicenseUnitsFromMatchData :: CustomLicensePath -> CustomLicenseTitle -> LicenseUnitMatchData -> HashMap CustomLicenseTitle LicenseUnit -> HashMap CustomLicenseTitle LicenseUnit
 createLicenseUnitsFromMatchData path title licenseUnitMatchData existingUnits =

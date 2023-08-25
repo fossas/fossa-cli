@@ -173,9 +173,12 @@ instance ToJSON FullSourceUnit where
 data LicenseSourceUnit = LicenseSourceUnit
   { licenseSourceUnitName :: Text
   , licenseSourceUnitType :: LicenseScanType
-  , licenseSourceUnitLicenseUnits :: (NonEmpty LicenseUnit)
+  , licenseSourceUnitLicenseUnits :: NonEmpty LicenseUnit
   }
   deriving (Eq, Ord, Show)
+
+instance Semigroup LicenseSourceUnit where
+  LicenseSourceUnit name unitType licenseUnits1 <> LicenseSourceUnit _ _ licenseUnits2 = LicenseSourceUnit name unitType $ licenseUnits1 <> licenseUnits2
 
 instance ToJSON LicenseSourceUnit where
   toJSON LicenseSourceUnit{..} =
@@ -321,10 +324,10 @@ instance FromJSON LicenseUnitMatchData where
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
   , sourceUnitType :: Text
-  , sourceUnitTitle :: Maybe Text
-  -- ^ the title of a custom license
-  , sourceUnitManifest :: Text
-  -- ^ path to manifest file
+  , -- | the title of a custom license
+    sourceUnitTitle :: Maybe Text
+  , -- | path to manifest file
+    sourceUnitManifest :: Text
   , sourceUnitBuild :: Maybe SourceUnitBuild
   , sourceUnitGraphBreadth :: GraphBreadth
   , sourceUnitOriginPaths :: [OriginPath]
@@ -333,10 +336,10 @@ data SourceUnit = SourceUnit
   deriving (Eq, Ord, Show)
 
 data SourceUnitBuild = SourceUnitBuild
-  { buildArtifact :: Text
-  -- ^ always "default"
-  , buildSucceeded :: Bool
-  -- ^ always true
+  { -- | always "default"
+    buildArtifact :: Text
+  , -- | always true
+    buildSucceeded :: Bool
   , buildImports :: [Locator]
   , buildDependencies :: [SourceUnitDependency]
   }

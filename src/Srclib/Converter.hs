@@ -6,7 +6,6 @@ module Srclib.Converter (
   fetcherToDepType,
   verConstraintToRevision,
   toLocator,
-  mergeLicenseSourceUnits,
 ) where
 
 import Prelude
@@ -14,7 +13,6 @@ import Prelude
 import Algebra.Graph.AdjacencyMap qualified as AM
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import Control.Applicative ((<|>))
-import Data.List.NonEmpty qualified as NE
 import Data.Set qualified as Set
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -34,7 +32,6 @@ import Graphing (Graphing)
 import Graphing qualified
 import Path (toFilePath)
 import Srclib.Types (
-  LicenseSourceUnit (..),
   Locator (..),
   SourceUnit (..),
   SourceUnitBuild (
@@ -197,17 +194,3 @@ fetcherToDepType fetcher | depTypeToFetcher URLType == fetcher = Just URLType
 fetcherToDepType fetcher | depTypeToFetcher UserType == fetcher = Just UserType
 fetcherToDepType fetcher | depTypeToFetcher PubType == fetcher = Just PubType
 fetcherToDepType _ = Nothing
-
--- | Merge two license source units, keeping the name and type from the first unit
-mergeLicenseSourceUnits :: Maybe LicenseSourceUnit -> Maybe LicenseSourceUnit -> Maybe LicenseSourceUnit
-mergeLicenseSourceUnits maybeFirst maybeSecond =
-  case (maybeFirst, maybeSecond) of
-    (Nothing, Nothing) -> Nothing
-    (Just first, Nothing) -> Just first
-    (Nothing, Just second) -> Just second
-    (Just first, Just second) ->
-      Just first{licenseSourceUnitLicenseUnits = mergedLicenseUnits}
-      where
-        firstLicenseUnits = licenseSourceUnitLicenseUnits first
-        secondLicenseUnits = licenseSourceUnitLicenseUnits second
-        mergedLicenseUnits = foldr NE.cons firstLicenseUnits secondLicenseUnits
