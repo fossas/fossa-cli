@@ -235,7 +235,7 @@ createLicenseUnitsFromMatchData path title licenseUnitMatchData existingUnits =
           , licenseUnitDir = ""
           , licenseUnitFiles = (unCustomLicensePath path) NE.:| []
           , licenseUnitData = newLicenseUnitData NE.:| []
-          , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Just ""}
+          , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Just $ "custom license search " <> unCustomLicenseTitle title}
           }
       Just existingUnit ->
         existingUnit
