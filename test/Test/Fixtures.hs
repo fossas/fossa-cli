@@ -145,7 +145,6 @@ sourceUnits = NE.fromList [unit]
       SourceUnit
         { sourceUnitName = "testSourceUnitName"
         , sourceUnitType = "testSourceUnitType"
-        , sourceUnitTitle = Nothing
         , sourceUnitManifest = "testSourceUnitManifest"
         , sourceUnitBuild = Nothing
         , sourceUnitGraphBreadth = Complete

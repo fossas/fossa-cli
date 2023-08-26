@@ -324,10 +324,8 @@ instance FromJSON LicenseUnitMatchData where
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
   , sourceUnitType :: Text
-  , sourceUnitTitle :: Maybe Text
-  -- ^ the title of a custom license
-  , sourceUnitManifest :: Text
-  -- ^ path to manifest file
+  , -- | path to manifest file
+    sourceUnitManifest :: Text
   , sourceUnitBuild :: Maybe SourceUnitBuild
   , sourceUnitGraphBreadth :: GraphBreadth
   , sourceUnitOriginPaths :: [OriginPath]
@@ -336,10 +334,10 @@ data SourceUnit = SourceUnit
   deriving (Eq, Ord, Show)
 
 data SourceUnitBuild = SourceUnitBuild
-  { buildArtifact :: Text
-  -- ^ always "default"
-  , buildSucceeded :: Bool
-  -- ^ always true
+  { -- | always "default"
+    buildArtifact :: Text
+  , -- | always true
+    buildSucceeded :: Bool
   , buildImports :: [Locator]
   , buildDependencies :: [SourceUnitDependency]
   }
@@ -415,7 +413,6 @@ instance FromJSON SourceUnit where
     SourceUnit
       <$> obj .: "Name"
       <*> obj .: "Type"
-      <*> obj .:? "Title"
       <*> obj .: "Manifest"
       <*> obj .:? "Build"
       <*> obj .: "GraphBreadth"
