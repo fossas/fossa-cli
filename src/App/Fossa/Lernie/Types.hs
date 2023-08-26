@@ -25,7 +25,7 @@ import Srclib.Types (LicenseSourceUnit)
 
 data LernieConfig = LernieConfig
   { rootDir :: Path Abs Dir
-  , regexes :: NonEmpty LernieRegex
+  , regexes :: [LernieRegex]
   }
   deriving (Eq, Ord, Show, Generic)
 

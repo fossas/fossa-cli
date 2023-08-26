@@ -217,7 +217,7 @@ expectedLernieConfig :: LernieConfig
 expectedLernieConfig =
   LernieConfig
     { rootDir = absDir
-    , regexes = NE.fromList [customLicenseLernieRegex, keywordSearchLernieRegex]
+    , regexes = [customLicenseLernieRegex, keywordSearchLernieRegex]
     }
 
 keywordSearchLernieRegex :: LernieRegex

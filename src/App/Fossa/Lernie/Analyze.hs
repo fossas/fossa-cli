@@ -66,18 +66,12 @@ analyzeWithLernie rootDir _maybeApiOpts grepOptions = do
 
 grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Maybe LernieConfig
 grepOptionsToLernieConfig rootDir grepOptions =
-  case regexes of
-    Nothing -> Nothing
-    Just res -> Just $ LernieConfig rootDir res
+  case (customLicenseSearches <> keywordSearches) of
+    [] -> Nothing
+    res -> Just $ LernieConfig rootDir res
   where
-    customLicenseSearches = grepEntryToLernieRegex CustomLicense <$$> customLicenseSearch grepOptions
-    keywordSearches = grepEntryToLernieRegex KeywordSearch <$$> keywordSearch grepOptions
-
-    regexes = case (customLicenseSearches, keywordSearches) of
-      (Nothing, Just grepEntries) -> Just grepEntries
-      (Just grepEntries, Nothing) -> Just grepEntries
-      (Just customLicenseEntries, Just keywordEntries) -> Just $ customLicenseEntries <> keywordEntries
-      (Nothing, Nothing) -> Nothing
+    customLicenseSearches = maybe [] (grepEntryToLernieRegex CustomLicense <$$> NE.toList) (customLicenseSearch grepOptions)
+    keywordSearches = maybe [] (grepEntryToLernieRegex KeywordSearch <$$> NE.toList) (keywordSearch grepOptions)
 
 grepEntryToLernieRegex :: LernieScanType -> GrepEntry -> LernieRegex
 grepEntryToLernieRegex scanType grepEntry =
