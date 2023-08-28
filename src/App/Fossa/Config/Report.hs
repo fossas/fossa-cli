@@ -31,7 +31,7 @@ import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.List (intercalate)
 import Data.String.Conversion (ToText, toText)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, Severity (..), pretty)
+import Effect.Logger (Logger, Severity (..))
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
@@ -46,10 +46,11 @@ import Options.Applicative (
   metavar,
   option,
   optional,
-  progDesc,
   strOption,
-  switch,
+  switch, progDescDoc,
  )
+import Prettyprinter (punctuate, comma, pretty, Doc, hardline, viaShow, softline)
+import Prettyprinter.Render.Terminal (AnsiStyle)
 
 data ReportType = Attribution deriving (Eq, Ord, Enum, Bounded, Generic)
 
@@ -109,15 +110,19 @@ instance ToJSON ReportOutputFormat where
   toEncoding = genericToEncoding defaultOptions
 
 reportInfo :: InfoMod a
-reportInfo = progDesc desc
+reportInfo = progDescDoc (Just desc)
   where
     allReports :: [ReportType]
     allReports = enumFromTo minBound maxBound
 
+    desc :: Doc AnsiStyle
     desc =
-      "Access various reports from FOSSA and print to stdout.  Currently available reports: ("
-        <> intercalate ", " (map show allReports)
-        <> ")"
+      "Access various reports from FOSSA and print to stdout."
+      <> softline <> "Currently available reports: (" <> mconcat (punctuate comma (map viaShow allReports)) <> ")"
+      <> hardline
+      <> "Examples: "
+      <> hardline
+      <> "fossa report --format html attribution"
 
 mkSubCommand :: (ReportConfig -> EffStack ()) -> SubCommand ReportCliOptions ReportConfig
 mkSubCommand = SubCommand "report" reportInfo parser loadConfig mergeOpts
