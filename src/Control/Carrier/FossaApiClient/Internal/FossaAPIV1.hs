@@ -1097,10 +1097,17 @@ attributionEndpoint :: Url 'Https -> OrgId -> Locator -> ReportOutputFormat -> U
 attributionEndpoint baseurl orgId locator format = appendSegment format $ baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution"
   where
     appendSegment :: ReportOutputFormat -> Url a -> Url a
-    appendSegment ReportJson input = input /: "json"
-    appendSegment ReportMarkdown input = input /: "full" /: "MD"
-    appendSegment ReportSpdx input = input /: "full" /: "spdx"
-    appendSegment ReportPlainText input = input /: "full" /: "TXT"
+    appendSegment fmt input =
+      case fmt of
+        ReportJson -> input /: "json"
+        ReportMarkdown -> input /: "full" /: "MD"
+        ReportSpdx -> input /: "full" /: "spdx"
+        ReportSpdxJSON -> input /: "full" /: "SPDX_JSON"
+        ReportCycloneDXJSON -> input /: "full" /: "CYCLONEDX_JSON"
+        ReportCycloneDXXML -> input /: "full" /: "CYCLONEDX_XML"
+        ReportPlainText -> input /: "full" /: "TXT"
+        ReportHTML -> input /: "full" /: "HTML"
+        ReportCSV -> input /: "full" /: "CSV"
 
 getAttributionJson ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
