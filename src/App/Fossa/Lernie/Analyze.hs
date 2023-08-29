@@ -34,7 +34,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToText (toText), decodeUtf8)
 import Data.Text (Text)
-import Effect.Exec (AllowErr (Never), Command (..), Exec, execThrow'')
+import Effect.Exec (AllowErr (Never), Command (..), Exec, execCurrentDirStdinThrow)
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import Path (Abs, Dir, Path)
@@ -87,7 +87,7 @@ runLernie ::
   m LernieMessages
 runLernie lernieConfig = withLernieBinary $ \bin -> do
   let lernieConfigJSON = decodeUtf8 $ Aeson.encode lernieConfig
-  result <- execThrow'' (lernieCommand bin) lernieConfigJSON
+  result <- execCurrentDirStdinThrow (lernieCommand bin) lernieConfigJSON
   pure $ parseLernieJson result
 
 -- Run Lernie, passing "--config -" as its arg so that it gets its config from STDIN
