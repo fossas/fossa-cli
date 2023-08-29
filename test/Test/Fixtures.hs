@@ -371,8 +371,8 @@ vendoredDepsOptions =
 grepOptions :: GrepOptions
 grepOptions =
   GrepOptions
-    { customLicenseSearch = Nothing
-    , keywordSearch = Nothing
+    { customLicenseSearch = []
+    , keywordSearch = []
     }
 
 #ifdef mingw32_HOST_OS

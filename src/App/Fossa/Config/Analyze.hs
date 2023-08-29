@@ -74,8 +74,7 @@ import Control.Effect.Lift (Lift)
 import Control.Monad (when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Flag (Flag, flagOpt, fromFlag)
-import Data.Functor.Extra ((<$$>))
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Monoid.Extra (isMempty)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -181,8 +180,8 @@ instance ToJSON VendoredDependencyOptions where
   toEncoding = genericToEncoding defaultOptions
 
 data GrepOptions = GrepOptions
-  { customLicenseSearch :: Maybe (NonEmpty GrepEntry)
-  , keywordSearch :: Maybe (NonEmpty GrepEntry)
+  { customLicenseSearch :: [GrepEntry]
+  , keywordSearch :: [GrepEntry]
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -509,9 +508,12 @@ collectVendoredDepsFromConfig maybeCfg =
 collectGrepOptions :: Maybe ConfigFile -> GrepOptions
 collectGrepOptions maybeCfg =
   case maybeCfg of
-    Nothing -> GrepOptions Nothing Nothing
+    Nothing -> GrepOptions [] []
     Just cfg ->
-      GrepOptions (configGrepToGrep <$$> configCustomLicenseSearch cfg) (configGrepToGrep <$$> configKeywordSearch cfg)
+      GrepOptions customLicenseList keywordSearchList
+      where
+        customLicenseList = map configGrepToGrep $ maybe [] NE.toList (configCustomLicenseSearch cfg)
+        keywordSearchList = map configGrepToGrep $ maybe [] NE.toList (configKeywordSearch cfg)
 
 configGrepToGrep :: ConfigGrepEntry -> GrepEntry
 configGrepToGrep configGrep = GrepEntry (configGrepMatchCriteria configGrep) (configGrepName configGrep)

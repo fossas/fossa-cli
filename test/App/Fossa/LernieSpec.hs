@@ -195,8 +195,8 @@ expectedSecondLicenseUnitMatchData =
 grepOptions :: GrepOptions
 grepOptions =
   GrepOptions
-    { customLicenseSearch = Just $ NE.singleton customLicenseGrepEntry
-    , keywordSearch = Just $ NE.singleton keywordSearchGrepEntry
+    { customLicenseSearch = [customLicenseGrepEntry]
+    , keywordSearch = [keywordSearchGrepEntry]
     }
 
 customLicenseGrepEntry :: GrepEntry

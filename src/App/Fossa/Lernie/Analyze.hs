@@ -25,7 +25,6 @@ import Data.Aeson (decode)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (fold)
-import Data.Functor.Extra ((<$$>))
 import Data.HashMap.Lazy (foldrWithKey)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as H
@@ -70,8 +69,8 @@ grepOptionsToLernieConfig rootDir grepOptions =
     [] -> Nothing
     res -> Just $ LernieConfig rootDir res
   where
-    customLicenseSearches = maybe [] (grepEntryToLernieRegex CustomLicense <$$> NE.toList) (customLicenseSearch grepOptions)
-    keywordSearches = maybe [] (grepEntryToLernieRegex KeywordSearch <$$> NE.toList) (keywordSearch grepOptions)
+    customLicenseSearches = map (grepEntryToLernieRegex CustomLicense) (customLicenseSearch grepOptions)
+    keywordSearches = map (grepEntryToLernieRegex KeywordSearch) (keywordSearch grepOptions)
 
 grepEntryToLernieRegex :: LernieScanType -> GrepEntry -> LernieRegex
 grepEntryToLernieRegex scanType grepEntry =
