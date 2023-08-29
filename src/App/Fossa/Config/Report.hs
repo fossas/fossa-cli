@@ -46,10 +46,11 @@ import Options.Applicative (
   metavar,
   option,
   optional,
+  progDescDoc,
   strOption,
-  switch, progDescDoc,
+  switch,
  )
-import Prettyprinter (punctuate, comma, pretty, Doc, hardline, viaShow, softline)
+import Prettyprinter (Doc, comma, hardline, pretty, punctuate, softline, viaShow)
 import Prettyprinter.Render.Terminal (AnsiStyle)
 
 data ReportType = Attribution deriving (Eq, Ord, Enum, Bounded, Generic)
@@ -62,9 +63,9 @@ instance Show ReportType where
 
 data ReportOutputFormat
   = ReportCSV
-  -- Core will return the cyclonedx report with license data encoded in base64.
-  -- This is specified in the bom schema: https://github.com/CycloneDX/specification/blob/1.4/schema/bom-1.4.schema.json#L529
-  | ReportCycloneDXJSON
+  | -- Core will return the cyclonedx report with license data encoded in base64.
+    -- This is specified in the bom schema: https://github.com/CycloneDX/specification/blob/1.4/schema/bom-1.4.schema.json#L529
+    ReportCycloneDXJSON
   | ReportCycloneDXXML
   | ReportHTML
   | ReportJson
@@ -118,11 +119,14 @@ reportInfo = progDescDoc (Just desc)
     desc :: Doc AnsiStyle
     desc =
       "Access various reports from FOSSA and print to stdout."
-      <> softline <> "Currently available reports: (" <> mconcat (punctuate comma (map viaShow allReports)) <> ")"
-      <> hardline
-      <> "Examples: "
-      <> hardline
-      <> "fossa report --format html attribution"
+        <> softline
+        <> "Currently available reports: ("
+        <> mconcat (punctuate comma (map viaShow allReports))
+        <> ")"
+        <> hardline
+        <> "Examples: "
+        <> hardline
+        <> "fossa report --format html attribution"
 
 mkSubCommand :: (ReportConfig -> EffStack ()) -> SubCommand ReportCliOptions ReportConfig
 mkSubCommand = SubCommand "report" reportInfo parser loadConfig mergeOpts
