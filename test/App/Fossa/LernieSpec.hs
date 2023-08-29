@@ -107,17 +107,17 @@ doubleMessages = singletonLernieMessage (LernieMessageLernieMatch secondCustomLi
 expectedLernieResults :: LernieResults
 expectedLernieResults =
   LernieResults
-    { lernieResultsWarnings = Just $ NE.singleton warningMessage
-    , lernieResultsErrors = Just $ NE.singleton errorMessage
-    , lernieResultsKeywordSearches = Just $ NE.singleton keywordSearchMatchMessage
-    , lernieResultsCustomLicenses = Just $ NE.singleton customLicenseMatchMessage
+    { lernieResultsWarnings = [warningMessage]
+    , lernieResultsErrors = [errorMessage]
+    , lernieResultsKeywordSearches = [keywordSearchMatchMessage]
+    , lernieResultsCustomLicenses = [customLicenseMatchMessage]
     , lernieResultsSourceUnit = Just expectedSourceUnit
     }
 
 expectedDoubleLernieResults :: LernieResults
 expectedDoubleLernieResults =
   expectedLernieResults
-    { lernieResultsCustomLicenses = Just $ NE.fromList [secondCustomLicenseMatchMessage, customLicenseMatchMessage]
+    { lernieResultsCustomLicenses = [secondCustomLicenseMatchMessage, customLicenseMatchMessage]
     , lernieResultsSourceUnit = Just expectedDoubleSourceUnit
     }
 
@@ -296,8 +296,8 @@ spec = do
         case maybeRes of
           Nothing -> expectationFailure "analyzeWithLernie should not return Nothing"
           Just res -> do
-            (lernieResultsWarnings res) `shouldBe` Nothing
-            (lernieResultsErrors res) `shouldBe` Nothing
-            (lernieResultsKeywordSearches res) `shouldBe` Just (NE.singleton keywordSearchMatchMessage{lernieMatchPath = fixedSomethingPath})
-            (lernieResultsCustomLicenses res) `shouldBe` Just (NE.singleton customLicenseMatchMessage{lernieMatchPath = fixedOnePath})
+            (lernieResultsWarnings res) `shouldBe` []
+            (lernieResultsErrors res) `shouldBe` []
+            (lernieResultsKeywordSearches res) `shouldBe` [keywordSearchMatchMessage{lernieMatchPath = fixedSomethingPath}]
+            (lernieResultsCustomLicenses res) `shouldBe` [customLicenseMatchMessage{lernieMatchPath = fixedOnePath}]
             (lernieResultsSourceUnit res) `shouldBe` Just actualSourceUnit

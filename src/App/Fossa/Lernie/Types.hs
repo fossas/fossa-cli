@@ -16,7 +16,6 @@ module App.Fossa.Lernie.Types (
 import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), object, withObject, withText)
 import Data.Aeson qualified as A
 import Data.Aeson.Types ((.:))
-import Data.List.NonEmpty (NonEmpty)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
 import GHC.Generics (Generic)
@@ -145,11 +144,11 @@ instance FromJSON LernieMatchData where
 instance ToJSON LernieMatchData
 
 data LernieResults = LernieResults
-  { lernieResultsWarnings :: Maybe (NonEmpty LernieWarning)
-  , lernieResultsErrors :: Maybe (NonEmpty LernieError)
+  { lernieResultsWarnings :: [LernieWarning]
+  , lernieResultsErrors :: [LernieError]
   , lernieResultsSourceUnit :: Maybe LicenseSourceUnit
-  , lernieResultsKeywordSearches :: Maybe (NonEmpty LernieMatch)
-  , lernieResultsCustomLicenses :: Maybe (NonEmpty LernieMatch)
+  , lernieResultsKeywordSearches :: [LernieMatch]
+  , lernieResultsCustomLicenses :: [LernieMatch]
   }
   deriving (Eq, Ord, Show, Generic)
 

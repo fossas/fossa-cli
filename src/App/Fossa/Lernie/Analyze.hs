@@ -111,15 +111,13 @@ parseLernieJson out =
 lernieMessagesToLernieResults :: LernieMessages -> Path Abs Dir -> LernieResults
 lernieMessagesToLernieResults LernieMessages{..} rootDir =
   LernieResults
-    { lernieResultsWarnings = warnings
-    , lernieResultsErrors = errors
-    , lernieResultsKeywordSearches = NE.nonEmpty keywordSearches
-    , lernieResultsCustomLicenses = NE.nonEmpty customLicenses
+    { lernieResultsWarnings = lernieMessageWarnings
+    , lernieResultsErrors = lernieMessageErrors
+    , lernieResultsKeywordSearches = keywordSearches
+    , lernieResultsCustomLicenses = customLicenses
     , lernieResultsSourceUnit = sourceUnit
     }
   where
-    warnings = NE.nonEmpty lernieMessageWarnings
-    errors = NE.nonEmpty lernieMessageErrors
     keywordSearches = filterLernieMessages lernieMessageMatches KeywordSearch
     customLicenses = filterLernieMessages lernieMessageMatches CustomLicense
     sourceUnit = case NE.nonEmpty customLicenses of
