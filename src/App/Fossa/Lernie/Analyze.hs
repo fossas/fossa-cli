@@ -28,6 +28,7 @@ import Data.Foldable (fold)
 import Data.HashMap.Lazy (foldrWithKey)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as H
+import Data.HashMap.Strict qualified as HashMap
 import Data.Hashable (Hashable)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
@@ -165,38 +166,30 @@ lernieMatchToSourceUnit matches rootDir =
 -- There will be one LicenseUnit per custom-license title, and each LicenseUnit can contain results from multiple files.
 licenseUnitsFromLernieMatches :: [LernieMatch] -> [LicenseUnit]
 licenseUnitsFromLernieMatches matches = do
-  let allLicenseUnitMatchData = createAllLicenseUnitMatchData matches
+  let allLicenseUnitMatchData = HashMap.fromListWith (++) $ concatMap lernieMatchToLicenseUnitMatchData matches
   let allLicenseUnits = foldrWithKey createLicenseUnitsFromMatchDatas H.empty allLicenseUnitMatchData
   H.elems allLicenseUnits
 
-createAllLicenseUnitMatchData :: [LernieMatch] -> HashMap (CustomLicensePath, CustomLicenseTitle) [LicenseUnitMatchData]
-createAllLicenseUnitMatchData = foldr addLernieMatchToMatchData H.empty
+lernieMatchToLicenseUnitMatchData :: LernieMatch -> [((CustomLicensePath, CustomLicenseTitle), [LicenseUnitMatchData])]
+lernieMatchToLicenseUnitMatchData LernieMatch{..} =
+  map (createSingleLicenseUnitMatchData $ CustomLicensePath lernieMatchPath) lernieMatchMatches
 
--- Add all of the matches in a LernieMatch to the existing match data
-addLernieMatchToMatchData :: LernieMatch -> HashMap (CustomLicensePath, CustomLicenseTitle) [LicenseUnitMatchData] -> HashMap (CustomLicensePath, CustomLicenseTitle) [LicenseUnitMatchData]
-addLernieMatchToMatchData lernieMatch existingMatches =
-  foldr (addLernieMatchDataToMatchData (CustomLicensePath $ lernieMatchPath lernieMatch)) existingMatches (lernieMatchMatches lernieMatch)
-
--- Add a single LernieMatchData to the existing match data
-addLernieMatchDataToMatchData :: CustomLicensePath -> LernieMatchData -> HashMap (CustomLicensePath, CustomLicenseTitle) [LicenseUnitMatchData] -> HashMap (CustomLicensePath, CustomLicenseTitle) [LicenseUnitMatchData]
-addLernieMatchDataToMatchData path lernieMatchData existingMatches =
-  H.insert (path, title) newMatchDatas existingMatches
+createSingleLicenseUnitMatchData :: CustomLicensePath -> LernieMatchData -> ((CustomLicensePath, CustomLicenseTitle), [LicenseUnitMatchData])
+createSingleLicenseUnitMatchData path lernieMatchData =
+  ((path, title), [lernieMatchDataToLicenseUnitMatchData lernieMatchData])
   where
     title = CustomLicenseTitle $ lernieMatchDataName lernieMatchData
-    startByte = lernieMatchDataStartByte lernieMatchData
-    endByte = lernieMatchDataEndByte lernieMatchData
-    newMatchData =
-      LicenseUnitMatchData
-        { licenseUnitMatchDataMatchString = Just $ lernieMatchDataMatchString lernieMatchData
-        , licenseUnitMatchDataLocation = startByte
-        , licenseUnitMatchDataLength = endByte - startByte
-        , licenseUnitMatchDataIndex = 1
-        , licenseUnitDataStartLine = lernieMatchDataStartLine lernieMatchData
-        , licenseUnitDataEndLine = lernieMatchDataEndLine lernieMatchData
-        }
-    newMatchDatas = case H.lookup (path, title) existingMatches of
-      Nothing -> [newMatchData]
-      Just existing -> newMatchData : existing
+
+lernieMatchDataToLicenseUnitMatchData :: LernieMatchData -> LicenseUnitMatchData
+lernieMatchDataToLicenseUnitMatchData LernieMatchData{..} =
+  LicenseUnitMatchData
+    { licenseUnitMatchDataMatchString = Just lernieMatchDataMatchString
+    , licenseUnitMatchDataLocation = lernieMatchDataStartByte
+    , licenseUnitMatchDataLength = lernieMatchDataEndByte - lernieMatchDataStartByte
+    , licenseUnitMatchDataIndex = 1
+    , licenseUnitDataStartLine = lernieMatchDataStartLine
+    , licenseUnitDataEndLine = lernieMatchDataEndLine
+    }
 
 -- Take a list of LicenseUnitMatchData and their path and title and create the resulting license units
 createLicenseUnitsFromMatchDatas :: (CustomLicensePath, CustomLicenseTitle) -> [LicenseUnitMatchData] -> HashMap CustomLicenseTitle LicenseUnit -> HashMap CustomLicenseTitle LicenseUnit
