@@ -74,7 +74,6 @@ import Control.Effect.Lift (Lift)
 import Control.Monad (when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Flag (Flag, flagOpt, fromFlag)
-import Data.List.NonEmpty qualified as NE
 import Data.Monoid.Extra (isMempty)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -512,8 +511,8 @@ collectGrepOptions maybeCfg =
     Just cfg ->
       GrepOptions customLicenseList keywordSearchList
       where
-        customLicenseList = map configGrepToGrep $ maybe [] NE.toList (configCustomLicenseSearch cfg)
-        keywordSearchList = map configGrepToGrep $ maybe [] NE.toList (configKeywordSearch cfg)
+        customLicenseList = maybe [] (map configGrepToGrep) (configCustomLicenseSearch cfg)
+        keywordSearchList = maybe [] (map configGrepToGrep) (configKeywordSearch cfg)
 
 configGrepToGrep :: ConfigGrepEntry -> GrepEntry
 configGrepToGrep configGrep = GrepEntry (configGrepMatchCriteria configGrep) (configGrepName configGrep)

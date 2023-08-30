@@ -19,8 +19,6 @@ import App.Fossa.Config.ConfigFile (
 import App.Types (Policy (PolicyName), ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Stack (runStack)
-import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NE
 import Data.Set qualified as Set
 import Diag.Result (Result)
 import Effect.Logger (ignoreLogger)
@@ -115,8 +113,8 @@ expectedLicenseGrepEntry =
     , configGrepName = "Proprietary License"
     }
 
-expectedLicenseSearch :: NonEmpty ConfigGrepEntry
-expectedLicenseSearch = NE.fromList [expectedLicenseGrepEntry]
+expectedLicenseSearch :: [ConfigGrepEntry]
+expectedLicenseSearch = [expectedLicenseGrepEntry]
 
 expectedKeywordGrepEntry :: ConfigGrepEntry
 expectedKeywordGrepEntry =
@@ -125,8 +123,8 @@ expectedKeywordGrepEntry =
     , configGrepName = "token search"
     }
 
-expectedKeywordSearch :: NonEmpty ConfigGrepEntry
-expectedKeywordSearch = NE.fromList [expectedKeywordGrepEntry]
+expectedKeywordSearch :: [ConfigGrepEntry]
+expectedKeywordSearch = [expectedKeywordGrepEntry]
 
 simpleTarget :: TargetFilter
 simpleTarget = TypeTarget "pip"

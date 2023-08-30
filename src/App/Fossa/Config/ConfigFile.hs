@@ -42,7 +42,6 @@ import Data.Aeson (
  )
 import Data.Foldable (asum)
 import Data.Functor (($>))
-import Data.List.NonEmpty (NonEmpty)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (ToString (toString), ToText (toText))
@@ -197,8 +196,8 @@ data ConfigFile = ConfigFile
   , configExperimental :: Maybe ExperimentalConfigs
   , configVendoredDependencies :: Maybe VendoredDependencyConfigs
   , configTelemetry :: Maybe ConfigTelemetry
-  , configCustomLicenseSearch :: Maybe (NonEmpty ConfigGrepEntry)
-  , configKeywordSearch :: Maybe (NonEmpty ConfigGrepEntry)
+  , configCustomLicenseSearch :: Maybe [ConfigGrepEntry]
+  , configKeywordSearch :: Maybe [ConfigGrepEntry]
   }
   deriving (Eq, Ord, Show)
 
