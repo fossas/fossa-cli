@@ -25,8 +25,6 @@ import Data.Aeson (decode)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (fold)
-import Data.HashMap.Lazy (foldrWithKey)
-import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as H
 import Data.HashMap.Strict qualified as HashMap
 import Data.Hashable (Hashable)
@@ -164,19 +162,25 @@ lernieMatchToSourceUnit matches rootDir =
 
 -- Create LicenseUnits from the LernieMatches. All LicenseUnits will have a license ID of "custom-license".
 -- There will be one LicenseUnit per custom-license title, and each LicenseUnit can contain results from multiple files.
+-- A LicenseUnit has many LicenseUnitData
+-- A LicenseUnitData has many LicenseUnitMatchData
+-- A licenseUnitMatchData can be built from a LernieMatch
 licenseUnitsFromLernieMatches :: [LernieMatch] -> [LicenseUnit]
 licenseUnitsFromLernieMatches matches = do
-  let allLicenseUnitMatchData = HashMap.fromListWith (++) $ concatMap lernieMatchToLicenseUnitMatchData matches
-  let allLicenseUnits = foldrWithKey createLicenseUnitsFromMatchDatas H.empty allLicenseUnitMatchData
-  H.elems allLicenseUnits
+  let licenseUnitMatchDataSingles = concatMap lernieMatchToLicenseUnitMatchData matches
+  let allLicenseUnitData = map createLicenseUnitDataSingles licenseUnitMatchDataSingles
+  let allLicenseUnits = map createLicenseUnitSingles allLicenseUnitData
+  H.elems $ HashMap.fromListWith addToLicenseUnit allLicenseUnits
 
-lernieMatchToLicenseUnitMatchData :: LernieMatch -> [((CustomLicensePath, CustomLicenseTitle), [LicenseUnitMatchData])]
+-- Create a list with keys of (path, title) and a value of a single LicenseUnitMatchData
+lernieMatchToLicenseUnitMatchData :: LernieMatch -> [((CustomLicensePath, CustomLicenseTitle), LicenseUnitMatchData)]
 lernieMatchToLicenseUnitMatchData LernieMatch{..} =
-  map (createSingleLicenseUnitMatchData $ CustomLicensePath lernieMatchPath) lernieMatchMatches
+  map (createLicenseUnitMatchDataSingles $ CustomLicensePath lernieMatchPath) lernieMatchMatches
 
-createSingleLicenseUnitMatchData :: CustomLicensePath -> LernieMatchData -> ((CustomLicensePath, CustomLicenseTitle), [LicenseUnitMatchData])
-createSingleLicenseUnitMatchData path lernieMatchData =
-  ((path, title), [lernieMatchDataToLicenseUnitMatchData lernieMatchData])
+-- Given a path and a LernieMatchData, create a single LicenseUnitMatchData
+createLicenseUnitMatchDataSingles :: CustomLicensePath -> LernieMatchData -> ((CustomLicensePath, CustomLicenseTitle), LicenseUnitMatchData)
+createLicenseUnitMatchDataSingles path lernieMatchData =
+  ((path, title), lernieMatchDataToLicenseUnitMatchData lernieMatchData)
   where
     title = CustomLicenseTitle $ lernieMatchDataName lernieMatchData
 
@@ -191,15 +195,9 @@ lernieMatchDataToLicenseUnitMatchData LernieMatchData{..} =
     , licenseUnitDataEndLine = lernieMatchDataEndLine
     }
 
--- Take a list of LicenseUnitMatchData and their path and title and create the resulting license units
-createLicenseUnitsFromMatchDatas :: (CustomLicensePath, CustomLicenseTitle) -> [LicenseUnitMatchData] -> HashMap CustomLicenseTitle LicenseUnit -> HashMap CustomLicenseTitle LicenseUnit
-createLicenseUnitsFromMatchDatas (path, title) licenseUnits existingUnits = foldr (createLicenseUnitsFromMatchData path title) existingUnits licenseUnits
-
--- Given a LicenseUnitMatchData, its path and its title, add it to the already existing units
--- If a license unit with that title already exists, then add it to that. Otherwise create a new one.
-createLicenseUnitsFromMatchData :: CustomLicensePath -> CustomLicenseTitle -> LicenseUnitMatchData -> HashMap CustomLicenseTitle LicenseUnit -> HashMap CustomLicenseTitle LicenseUnit
-createLicenseUnitsFromMatchData path title licenseUnitMatchData existingUnits =
-  H.insert title newLicenseUnit existingUnits
+createLicenseUnitDataSingles :: ((CustomLicensePath, CustomLicenseTitle), LicenseUnitMatchData) -> ((CustomLicensePath, CustomLicenseTitle), LicenseUnitData)
+createLicenseUnitDataSingles ((path, title), licenseUnitMatchData) =
+  ((path, title), newLicenseUnitData)
   where
     newLicenseUnitData =
       LicenseUnitData
@@ -210,19 +208,25 @@ createLicenseUnitsFromMatchData path title licenseUnitMatchData existingUnits =
         , licenseUnitDataCopyrights = Nothing
         , licenseUnitDataContents = Nothing
         }
-    newLicenseUnit = case H.lookup title existingUnits of
-      Nothing -> do
-        LicenseUnit
-          { licenseUnitName = "custom-license"
-          , licenseUnitType = "LicenseUnit"
-          , licenseUnitTitle = Just $ unCustomLicenseTitle title
-          , licenseUnitDir = ""
-          , licenseUnitFiles = (unCustomLicensePath path) NE.:| []
-          , licenseUnitData = newLicenseUnitData NE.:| []
-          , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Just $ "custom license search " <> unCustomLicenseTitle title}
-          }
-      Just existingUnit ->
-        existingUnit
-          { licenseUnitData = NE.cons newLicenseUnitData (licenseUnitData existingUnit)
-          , licenseUnitFiles = NE.nub $ NE.cons (unCustomLicensePath path) (licenseUnitFiles existingUnit)
-          }
+
+addToLicenseUnit :: LicenseUnit -> LicenseUnit -> LicenseUnit
+addToLicenseUnit existingUnit newUnit =
+  existingUnit{licenseUnitFiles = concattedFiles, licenseUnitData = concattedData}
+  where
+    concattedFiles = NE.nub $ foldr NE.cons (licenseUnitFiles existingUnit) (licenseUnitFiles newUnit)
+    concattedData = foldr NE.cons (licenseUnitData existingUnit) (licenseUnitData newUnit)
+
+createLicenseUnitSingles :: ((CustomLicensePath, CustomLicenseTitle), LicenseUnitData) -> ((CustomLicensePath, CustomLicenseTitle), LicenseUnit)
+createLicenseUnitSingles ((path, title), licenseUnitData) =
+  ((path, title), lu)
+  where
+    lu =
+      LicenseUnit
+        { licenseUnitName = "custom-license"
+        , licenseUnitType = "LicenseUnit"
+        , licenseUnitTitle = Just $ unCustomLicenseTitle title
+        , licenseUnitDir = ""
+        , licenseUnitFiles = NE.singleton (unCustomLicensePath path)
+        , licenseUnitData = NE.singleton licenseUnitData
+        , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Just $ "custom license search " <> unCustomLicenseTitle title}
+        }
