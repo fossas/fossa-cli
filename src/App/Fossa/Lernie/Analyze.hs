@@ -167,33 +167,31 @@ lernieMatchToSourceUnit matches rootDir =
 -- A licenseUnitMatchData can be built from a LernieMatch
 licenseUnitsFromLernieMatches :: [LernieMatch] -> [LicenseUnit]
 licenseUnitsFromLernieMatches matches = do
-  let licenseUnitMatchDataSingles = concatMap lernieMatchToLicenseUnitMatchData matches
-  let allLicenseUnitData = map createLicenseUnitDataSingles licenseUnitMatchDataSingles
+  let allLicenseUnitMatchData = concatMap lernieMatchToLicenseUnitMatchData matches
+  let allLicenseUnitData = map createLicenseUnitDataSingles allLicenseUnitMatchData
   let allLicenseUnits = map createLicenseUnitSingles allLicenseUnitData
   H.elems $ HashMap.fromListWith addToLicenseUnit allLicenseUnits
 
 -- Create a list with keys of (path, title) and a value of a single LicenseUnitMatchData
 lernieMatchToLicenseUnitMatchData :: LernieMatch -> [((CustomLicensePath, CustomLicenseTitle), LicenseUnitMatchData)]
 lernieMatchToLicenseUnitMatchData LernieMatch{..} =
-  map (createLicenseUnitMatchDataSingles $ CustomLicensePath lernieMatchPath) lernieMatchMatches
+  map (createLicenseUnitMatchData $ CustomLicensePath lernieMatchPath) lernieMatchMatches
 
 -- Given a path and a LernieMatchData, create a single LicenseUnitMatchData
-createLicenseUnitMatchDataSingles :: CustomLicensePath -> LernieMatchData -> ((CustomLicensePath, CustomLicenseTitle), LicenseUnitMatchData)
-createLicenseUnitMatchDataSingles path lernieMatchData =
-  ((path, title), lernieMatchDataToLicenseUnitMatchData lernieMatchData)
+createLicenseUnitMatchData :: CustomLicensePath -> LernieMatchData -> ((CustomLicensePath, CustomLicenseTitle), LicenseUnitMatchData)
+createLicenseUnitMatchData path LernieMatchData{..} =
+  ((path, title), licenseUnitMatchData)
   where
-    title = CustomLicenseTitle $ lernieMatchDataName lernieMatchData
-
-lernieMatchDataToLicenseUnitMatchData :: LernieMatchData -> LicenseUnitMatchData
-lernieMatchDataToLicenseUnitMatchData LernieMatchData{..} =
-  LicenseUnitMatchData
-    { licenseUnitMatchDataMatchString = Just lernieMatchDataMatchString
-    , licenseUnitMatchDataLocation = lernieMatchDataStartByte
-    , licenseUnitMatchDataLength = lernieMatchDataEndByte - lernieMatchDataStartByte
-    , licenseUnitMatchDataIndex = 1
-    , licenseUnitDataStartLine = lernieMatchDataStartLine
-    , licenseUnitDataEndLine = lernieMatchDataEndLine
-    }
+    title = CustomLicenseTitle lernieMatchDataName
+    licenseUnitMatchData =
+      LicenseUnitMatchData
+        { licenseUnitMatchDataMatchString = Just lernieMatchDataMatchString
+        , licenseUnitMatchDataLocation = lernieMatchDataStartByte
+        , licenseUnitMatchDataLength = lernieMatchDataEndByte - lernieMatchDataStartByte
+        , licenseUnitMatchDataIndex = 1
+        , licenseUnitDataStartLine = lernieMatchDataStartLine
+        , licenseUnitDataEndLine = lernieMatchDataEndLine
+        }
 
 createLicenseUnitDataSingles :: ((CustomLicensePath, CustomLicenseTitle), LicenseUnitMatchData) -> ((CustomLicensePath, CustomLicenseTitle), LicenseUnitData)
 createLicenseUnitDataSingles ((path, title), licenseUnitMatchData) =
