@@ -162,15 +162,21 @@ lernieMatchToSourceUnit matches rootDir =
 
 -- Create LicenseUnits from the LernieMatches. All LicenseUnits will have a license ID of "custom-license".
 -- There will be one LicenseUnit per custom-license title, and each LicenseUnit can contain results from multiple files.
--- A LicenseUnit has many LicenseUnitData
--- A LicenseUnitData has many LicenseUnitMatchData
 -- A licenseUnitMatchData can be built from a LernieMatch
+-- A LicenseUnitData has many LicenseUnitMatchData. There will be one
+-- LicenseUnitData per (path, title) pair, containing all of the
+-- LicenseUnitMatchData for that pair
+-- A LicenseUnit has many LicenseUnitData
 licenseUnitsFromLernieMatches :: [LernieMatch] -> [LicenseUnit]
 licenseUnitsFromLernieMatches matches = do
   let allLicenseUnitMatchData = concatMap lernieMatchToLicenseUnitMatchData matches
   let allLicenseUnitData = map createLicenseUnitDataSingles allLicenseUnitMatchData
-  let allLicenseUnits = map createLicenseUnitSingles allLicenseUnitData
-  H.elems $ HashMap.fromListWith (<>) allLicenseUnits
+  -- collectedLicenseUnitData has one LicenseUnitData per (path, title) pair, each one containing
+  -- all of the LicenseUnitMatchData for that (path, title) pair
+  let collectedLicenseUnitData = HashMap.fromListWith (<>) allLicenseUnitData
+  let allLicenseUnits = map createLicenseUnitSingles $ HashMap.toList collectedLicenseUnitData
+  let licenseUnitsByTitle = map (\((_, title), lu) -> (title, lu)) allLicenseUnits
+  H.elems $ HashMap.fromListWith (<>) licenseUnitsByTitle
 
 -- Create a list with keys of (path, title) and a value of a single LicenseUnitMatchData
 lernieMatchToLicenseUnitMatchData :: LernieMatch -> [((CustomLicensePath, CustomLicenseTitle), LicenseUnitMatchData)]

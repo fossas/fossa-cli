@@ -277,6 +277,13 @@ emptyLicenseUnitData =
     , licenseUnitDataContents = Nothing
     }
 
+instance Semigroup LicenseUnitData where
+  LicenseUnitData path copyright themisVersion matchData1 copyrights1 contents
+    <> LicenseUnitData _ _ _ matchData2 copyrights2 _ =
+      LicenseUnitData path copyright themisVersion (matchData1 <> matchData2) (copyrights1 <> copyrights2) contents
+
+-- instance Semigroup LicenseSourceUnit where
+--   LicenseSourceUnit name unitType licenseUnits1 <> LicenseSourceUnit _ _ licenseUnits2 = LicenseSourceUnit name unitType $ licenseUnits1 <> licenseUnits2
 instance ToJSON LicenseUnitData where
   toJSON LicenseUnitData{..} =
     object
@@ -332,8 +339,8 @@ instance FromJSON LicenseUnitMatchData where
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
   , sourceUnitType :: Text
-  , sourceUnitManifest :: Text
-  -- ^ path to manifest file
+  , -- | path to manifest file
+    sourceUnitManifest :: Text
   , sourceUnitBuild :: Maybe SourceUnitBuild
   , sourceUnitGraphBreadth :: GraphBreadth
   , sourceUnitOriginPaths :: [OriginPath]
@@ -342,10 +349,10 @@ data SourceUnit = SourceUnit
   deriving (Eq, Ord, Show)
 
 data SourceUnitBuild = SourceUnitBuild
-  { buildArtifact :: Text
-  -- ^ always "default"
-  , buildSucceeded :: Bool
-  -- ^ always true
+  { -- | always "default"
+    buildArtifact :: Text
+  , -- | always true
+    buildSucceeded :: Bool
   , buildImports :: [Locator]
   , buildDependencies :: [SourceUnitDependency]
   }
