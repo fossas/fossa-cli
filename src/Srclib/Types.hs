@@ -30,6 +30,7 @@ module Srclib.Types (
 
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
@@ -212,6 +213,13 @@ emptyLicenseUnit =
     , licenseUnitData = emptyLicenseUnitData :| []
     , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Nothing}
     }
+
+instance Semigroup LicenseUnit where
+  licenseUnit1 <> licenseUnit2 =
+    licenseUnit1
+      { licenseUnitData = licenseUnitData licenseUnit1 <> licenseUnitData licenseUnit2
+      , licenseUnitFiles = NE.nub $ licenseUnitFiles licenseUnit1 <> licenseUnitFiles licenseUnit2
+      }
 
 instance ToJSON LicenseUnit where
   toJSON LicenseUnit{..} =

@@ -170,7 +170,7 @@ licenseUnitsFromLernieMatches matches = do
   let allLicenseUnitMatchData = concatMap lernieMatchToLicenseUnitMatchData matches
   let allLicenseUnitData = map createLicenseUnitDataSingles allLicenseUnitMatchData
   let allLicenseUnits = map createLicenseUnitSingles allLicenseUnitData
-  H.elems $ HashMap.fromListWith addToLicenseUnit allLicenseUnits
+  H.elems $ HashMap.fromListWith (<>) allLicenseUnits
 
 -- Create a list with keys of (path, title) and a value of a single LicenseUnitMatchData
 lernieMatchToLicenseUnitMatchData :: LernieMatch -> [((CustomLicensePath, CustomLicenseTitle), LicenseUnitMatchData)]
@@ -206,13 +206,6 @@ createLicenseUnitDataSingles ((path, title), licenseUnitMatchData) =
         , licenseUnitDataCopyrights = Nothing
         , licenseUnitDataContents = Nothing
         }
-
-addToLicenseUnit :: LicenseUnit -> LicenseUnit -> LicenseUnit
-addToLicenseUnit existingUnit newUnit =
-  existingUnit{licenseUnitFiles = concattedFiles, licenseUnitData = concattedData}
-  where
-    concattedFiles = NE.nub $ foldr NE.cons (licenseUnitFiles existingUnit) (licenseUnitFiles newUnit)
-    concattedData = foldr NE.cons (licenseUnitData existingUnit) (licenseUnitData newUnit)
 
 createLicenseUnitSingles :: ((CustomLicensePath, CustomLicenseTitle), LicenseUnitData) -> ((CustomLicensePath, CustomLicenseTitle), LicenseUnit)
 createLicenseUnitSingles ((path, title), licenseUnitData) =

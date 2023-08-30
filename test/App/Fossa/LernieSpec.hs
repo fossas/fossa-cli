@@ -156,7 +156,7 @@ expectedDoubleSourceUnit =
 
 expectedDoubleLicenseUnit :: LicenseUnit
 expectedDoubleLicenseUnit =
-  expectedLicenseUnit{licenseUnitData = NE.fromList [expectedSecondUnitData, expectedUnitData]}
+  expectedLicenseUnit{licenseUnitData = NE.fromList [expectedUnitData, expectedSecondUnitData]}
 
 expectedUnitData :: LicenseUnitData
 expectedUnitData =
