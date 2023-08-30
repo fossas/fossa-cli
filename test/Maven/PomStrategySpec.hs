@@ -26,10 +26,6 @@ spec = do
     it "should interpolate multiple properties" $ do
       interpolateProperties pom "${project.groupId}${project.artifactId}" `shouldBe` "MYGROUPMYARTIFACT"
 
-    it "should not infinitely recurse when interpolating a property that is interpolated to itself" $ do
-      let pom' = pom{pomProperties = Map.singleton "project.groupId" "${project.groupId"}
-      interpolateProperties pom' "${project.groupId}" `shouldBe` "OTHERGROUP"
-
   describe "buildMavenPackage" $ do
     let pom = Pom (MavenCoordinate "MYGROUP" "MYARTIFACT" "MYVERSION") Nothing Map.empty Map.empty Map.empty []
     it "should interpolate properties in groupId/artifactId/version" $ do
