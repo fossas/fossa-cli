@@ -6,6 +6,8 @@ module App.Fossa.Config.Report (
   ReportOutputFormat (..),
   ReportType (..),
   mkSubCommand,
+  -- Exported for testing
+  parseReportOutputFormat,
 ) where
 
 import App.Fossa.Config.Common (
@@ -29,7 +31,7 @@ import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.List (intercalate)
 import Data.String.Conversion (ToText, toText)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, Severity (..), pretty)
+import Effect.Logger (Logger, Severity (..))
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
@@ -44,10 +46,12 @@ import Options.Applicative (
   metavar,
   option,
   optional,
-  progDesc,
+  progDescDoc,
   strOption,
   switch,
  )
+import Prettyprinter (Doc, comma, hardline, pretty, punctuate, softline, viaShow)
+import Prettyprinter.Render.Terminal (AnsiStyle)
 
 data ReportType = Attribution deriving (Eq, Ord, Enum, Bounded, Generic)
 
@@ -58,10 +62,17 @@ instance Show ReportType where
   show Attribution = "attribution"
 
 data ReportOutputFormat
-  = ReportJson
+  = ReportCSV
+  | -- Core will return the cyclonedx report with license data encoded in base64.
+    -- This is specified in the bom schema: https://github.com/CycloneDX/specification/blob/1.4/schema/bom-1.4.schema.json#L529
+    ReportCycloneDXJSON
+  | ReportCycloneDXXML
+  | ReportHTML
+  | ReportJson
   | ReportMarkdown
-  | ReportSpdx
   | ReportPlainText
+  | ReportSpdx
+  | ReportSpdxJSON
   deriving (Eq, Ord, Enum, Bounded, Generic)
 
 parseReportOutputFormat :: String -> Maybe ReportOutputFormat
@@ -69,6 +80,11 @@ parseReportOutputFormat s | s == show ReportJson = Just ReportJson
 parseReportOutputFormat s | s == show ReportSpdx = Just ReportSpdx
 parseReportOutputFormat s | s == show ReportMarkdown = Just ReportMarkdown
 parseReportOutputFormat s | s == show ReportPlainText = Just ReportPlainText
+parseReportOutputFormat s | s == show ReportSpdxJSON = Just ReportSpdxJSON
+parseReportOutputFormat s | s == show ReportCycloneDXJSON = Just ReportCycloneDXJSON
+parseReportOutputFormat s | s == show ReportCycloneDXXML = Just ReportCycloneDXXML
+parseReportOutputFormat s | s == show ReportHTML = Just ReportHTML
+parseReportOutputFormat s | s == show ReportCSV = Just ReportCSV
 parseReportOutputFormat _ = Nothing
 
 instance ToText ReportOutputFormat where
@@ -79,6 +95,11 @@ instance Show ReportOutputFormat where
   show ReportMarkdown = "markdown"
   show ReportSpdx = "spdx"
   show ReportPlainText = "text"
+  show ReportSpdxJSON = "spdx-json"
+  show ReportCycloneDXJSON = "cyclonedx-json"
+  show ReportCycloneDXXML = "cyclonedx-xml"
+  show ReportHTML = "html"
+  show ReportCSV = "csv"
 
 reportOutputFormatList :: String
 reportOutputFormatList = intercalate ", " $ map show allFormats
@@ -90,15 +111,22 @@ instance ToJSON ReportOutputFormat where
   toEncoding = genericToEncoding defaultOptions
 
 reportInfo :: InfoMod a
-reportInfo = progDesc desc
+reportInfo = progDescDoc (Just desc)
   where
     allReports :: [ReportType]
     allReports = enumFromTo minBound maxBound
 
+    desc :: Doc AnsiStyle
     desc =
-      "Access various reports from FOSSA and print to stdout.  Currently available reports: ("
-        <> intercalate ", " (map show allReports)
+      "Access various reports from FOSSA and print to stdout."
+        <> softline
+        <> "Currently available reports: ("
+        <> mconcat (punctuate comma (map viaShow allReports))
         <> ")"
+        <> hardline
+        <> "Examples: "
+        <> hardline
+        <> "fossa report --format html attribution"
 
 mkSubCommand :: (ReportConfig -> EffStack ()) -> SubCommand ReportCliOptions ReportConfig
 mkSubCommand = SubCommand "report" reportInfo parser loadConfig mergeOpts
