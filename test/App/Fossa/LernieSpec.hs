@@ -40,10 +40,19 @@ customLicenseLernieMatchData =
 secondCustomLicenseLernieMatchData :: LernieMatchData
 secondCustomLicenseLernieMatchData =
   customLicenseLernieMatchData
-    { lernieMatchDataStartByte = 100
-    , lernieMatchDataEndByte = 119
+    { lernieMatchDataStartByte = 42
+    , lernieMatchDataEndByte = 61
     , lernieMatchDataStartLine = 3
     , lernieMatchDataEndLine = 3
+    }
+
+thirdCustomLicenseLernieMatchData :: LernieMatchData
+thirdCustomLicenseLernieMatchData =
+  customLicenseLernieMatchData
+    { lernieMatchDataStartByte = 85
+    , lernieMatchDataEndByte = 104
+    , lernieMatchDataStartLine = 5
+    , lernieMatchDataEndLine = 5
     }
 
 customLicenseMatchMessage :: LernieMatch
@@ -156,7 +165,7 @@ expectedDoubleSourceUnit =
 
 expectedDoubleLicenseUnit :: LicenseUnit
 expectedDoubleLicenseUnit =
-  expectedLicenseUnit{licenseUnitData = NE.fromList [expectedUnitData, expectedSecondUnitData]}
+  expectedLicenseUnit{licenseUnitData = NE.singleton expectedDoubleUnitData}
 
 expectedUnitData :: LicenseUnitData
 expectedUnitData =
@@ -167,6 +176,12 @@ expectedUnitData =
     , licenseUnitDataMatchData = Just $ NE.singleton expectedLicenseUnitMatchData
     , licenseUnitDataCopyrights = Nothing
     , licenseUnitDataContents = Nothing
+    }
+
+expectedDoubleUnitData :: LicenseUnitData
+expectedDoubleUnitData =
+  expectedUnitData
+    { licenseUnitDataMatchData = Just $ NE.fromList [expectedLicenseUnitMatchData, expectedSecondLicenseUnitMatchData]
     }
 
 expectedLicenseUnitMatchData :: LicenseUnitMatchData
@@ -180,16 +195,20 @@ expectedLicenseUnitMatchData =
     , licenseUnitDataEndLine = 1
     }
 
-expectedSecondUnitData :: LicenseUnitData
-expectedSecondUnitData =
-  expectedUnitData{licenseUnitDataMatchData = Just $ NE.singleton expectedSecondLicenseUnitMatchData}
-
 expectedSecondLicenseUnitMatchData :: LicenseUnitMatchData
 expectedSecondLicenseUnitMatchData =
   expectedLicenseUnitMatchData
-    { licenseUnitMatchDataLocation = 100
+    { licenseUnitMatchDataLocation = 42
     , licenseUnitDataStartLine = 3
     , licenseUnitDataEndLine = 3
+    }
+
+expectedThirdLicenseUnitMatchData :: LicenseUnitMatchData
+expectedThirdLicenseUnitMatchData =
+  expectedLicenseUnitMatchData
+    { licenseUnitMatchDataLocation = 85
+    , licenseUnitDataStartLine = 5
+    , licenseUnitDataEndLine = 5
     }
 
 grepOptions :: GrepOptions
@@ -279,6 +298,7 @@ spec = do
       let actualUnitData =
             expectedUnitData
               { licenseUnitDataPath = fixedOnePath
+              , licenseUnitDataMatchData = Just $ NE.fromList [expectedThirdLicenseUnitMatchData, expectedSecondLicenseUnitMatchData, expectedLicenseUnitMatchData]
               }
           actualLicenseUnit =
             expectedLicenseUnit
@@ -299,5 +319,10 @@ spec = do
             (lernieResultsWarnings res) `shouldBe` []
             (lernieResultsErrors res) `shouldBe` []
             (lernieResultsKeywordSearches res) `shouldBe` [keywordSearchMatchMessage{lernieMatchPath = fixedSomethingPath}]
-            (lernieResultsCustomLicenses res) `shouldBe` [customLicenseMatchMessage{lernieMatchPath = fixedOnePath}]
+            (lernieResultsCustomLicenses res)
+              `shouldBe` [ customLicenseMatchMessage
+                            { lernieMatchPath = fixedOnePath
+                            , lernieMatchMatches = [customLicenseLernieMatchData, secondCustomLicenseLernieMatchData, thirdCustomLicenseLernieMatchData]
+                            }
+                         ]
             (lernieResultsSourceUnit res) `shouldBe` Just actualSourceUnit

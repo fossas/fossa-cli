@@ -174,6 +174,8 @@ licenseUnitsFromLernieMatches matches = do
   -- collectedLicenseUnitData has one LicenseUnitData per (path, title) pair, each one containing
   -- all of the LicenseUnitMatchData for that (path, title) pair
   let collectedLicenseUnitData = HashMap.fromListWith (<>) allLicenseUnitData
+  -- Now that we have all of the LicenseUnitData, we need to create LicenseUnits for them.
+  -- LicenseUnits do not have paths on them, so we group them up by title
   let allLicenseUnits = map createLicenseUnitSingles $ HashMap.toList collectedLicenseUnitData
   let licenseUnitsByTitle = map (\((_, title), lu) -> (title, lu)) allLicenseUnits
   H.elems $ HashMap.fromListWith (<>) licenseUnitsByTitle
