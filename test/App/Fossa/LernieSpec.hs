@@ -210,7 +210,7 @@ expectedLicenseUnitMatchData =
 expectedSecondLicenseUnitMatchData :: LicenseUnitMatchData
 expectedSecondLicenseUnitMatchData =
   expectedLicenseUnitMatchData
-    { licenseUnitMatchDataLocation = 42
+    { licenseUnitMatchDataLocation = 42 + extraLineBytes * 2
     , licenseUnitDataStartLine = 3
     , licenseUnitDataEndLine = 3
     }
@@ -218,7 +218,7 @@ expectedSecondLicenseUnitMatchData =
 expectedThirdLicenseUnitMatchData :: LicenseUnitMatchData
 expectedThirdLicenseUnitMatchData =
   expectedLicenseUnitMatchData
-    { licenseUnitMatchDataLocation = 85
+    { licenseUnitMatchDataLocation = 85 + extraLineBytes * 4
     , licenseUnitDataStartLine = 5
     , licenseUnitDataEndLine = 5
     }
