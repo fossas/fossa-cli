@@ -187,10 +187,10 @@ interpolate properties text =
     Just (before, property, after) ->
       case (Map.lookup property properties) of
         Nothing -> interpolate properties $ before <> "PROPERTY NOT FOUND: " <> property <> after
-        -- foundProp == text catches an infinite loop case in the Map. 
+        -- This block catches an infinite loop with interpolate
         -- For the example of: <junit5.version>${junit5.version}</junit5.version>
         -- The map will have ("junit5.version","${junit5.version}")
-        -- splitMavenProperty will remove the "${}" from the value and return the same key which causes infinite recursion
+        -- splitMavenProperty will remove the "${}" from the value and return the same key which causes infinite recursion.
         Just foundProp -> if foundProp == text then property else interpolate properties foundProp
 
 -- find the first maven property in the string, e.g., `${foo}`, returning text
