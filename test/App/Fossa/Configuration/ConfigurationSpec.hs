@@ -1,3 +1,4 @@
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.Configuration.ConfigurationSpec (
@@ -6,6 +7,7 @@ module App.Fossa.Configuration.ConfigurationSpec (
 
 import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
+  ConfigGrepEntry (..),
   ConfigProject (..),
   ConfigRevision (..),
   ConfigTargets (..),
@@ -26,6 +28,7 @@ import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess, expectFailure)
 import Test.Hspec qualified as T
 import Test.Hspec.Core.Spec (SpecM)
+import Text.RawString.QQ (r)
 import Types (ArchiveUploadType (..), BuildTarget (..), GlobFilter (GlobFilter), LicenseScanPathFilters (..), TargetFilter (..))
 
 expectedConfigFile :: ConfigFile
@@ -41,6 +44,8 @@ expectedConfigFile =
     , configExperimental = Just expectedExperimentalConfig
     , configVendoredDependencies = Just expectedVendoredDependencies
     , configTelemetry = Nothing
+    , configCustomLicenseSearch = Just expectedLicenseSearch
+    , configKeywordSearch = Just expectedKeywordSearch
     }
 
 expectedConfigProject :: ConfigProject
@@ -100,6 +105,26 @@ expectedVendoredDependencyFilters =
     , licenseScanPathFiltersExclude = [GlobFilter ".git/**", GlobFilter "test/**/*.rb"]
     , licenseScanPathFilterFileExclude = []
     }
+
+expectedLicenseGrepEntry :: ConfigGrepEntry
+expectedLicenseGrepEntry =
+  ConfigGrepEntry
+    { configGrepMatchCriteria = "(?i)proprietary"
+    , configGrepName = "Proprietary License"
+    }
+
+expectedLicenseSearch :: [ConfigGrepEntry]
+expectedLicenseSearch = [expectedLicenseGrepEntry]
+
+expectedKeywordGrepEntry :: ConfigGrepEntry
+expectedKeywordGrepEntry =
+  ConfigGrepEntry
+    { configGrepMatchCriteria = [r|\w*(_token)|]
+    , configGrepName = "token search"
+    }
+
+expectedKeywordSearch :: [ConfigGrepEntry]
+expectedKeywordSearch = [expectedKeywordGrepEntry]
 
 simpleTarget :: TargetFilter
 simpleTarget = TypeTarget "pip"

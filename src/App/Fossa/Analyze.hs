@@ -48,6 +48,8 @@ import App.Fossa.Config.Analyze (
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
+import App.Fossa.Lernie.Analyze (analyzeWithLernie)
+import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
@@ -121,7 +123,7 @@ import Prettyprinter.Render.Terminal (
   color,
  )
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (LicenseSourceUnit, Locator, SourceUnit, sourceUnitToFullSourceUnit)
+import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
 
 debugBundlePath :: FilePath
@@ -266,6 +268,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       revision = Config.projectRevision cfg
       skipResolutionSet = Config.vsiSkipSet $ Config.vsiOptions cfg
       vendoredDepsOptions = Config.vendoredDeps cfg
+      grepOptions = Config.grepOptions cfg
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
@@ -296,6 +299,14 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir maybeApiOpts vendoredDepsOptions
+  maybeGrepResults <-
+    Diag.errorBoundaryIO . diagToDebug $
+      if filterIsVSIOnly filters
+        then do
+          logInfo "Running in VSI only mode, skipping keyword search and custom-license search"
+          pure Nothing
+        else Diag.context "custom-license & keyword search" . runStickyLogger SevInfo $ analyzeWithLernie basedir maybeApiOpts grepOptions
+  let grepResults = join . resultToMaybe $ maybeGrepResults
 
   let -- This makes nice with additionalSourceUnits below, but throws out additional Result data.
       -- This is ok because 'resultToMaybe' would do that anyway.
@@ -353,8 +364,14 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult $ Config.filterSet cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
-  let result = buildResult includeAll additionalSourceUnits filteredProjects firstPartyScanResults
-  case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits firstPartyScanResults of
+  let licenseSourceUnits =
+        case (firstPartyScanResults, lernieResultsSourceUnit =<< grepResults) of
+          (Nothing, Nothing) -> Nothing
+          (Just firstParty, Just lernie) -> Just $ firstParty <> lernie
+          (Nothing, Just lernie) -> Just lernie
+          (Just firstParty, Nothing) -> Just firstParty
+  let result = buildResult includeAll additionalSourceUnits filteredProjects licenseSourceUnits
+  case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits licenseSourceUnits of
     NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
     FilteredAll -> Diag.fatal ErrFilteredAllProjects
     CountedScanUnits scanUnits -> doUpload result iatAssertion destination basedir jsonOutput revision scanUnits
@@ -475,13 +492,13 @@ instance Diag.ToDiagnostic AnalyzeError where
       ]
 
 buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Aeson.Value
-buildResult includeAll srcUnits projects firstPartyScanResults =
+buildResult includeAll srcUnits projects licenseSourceUnits =
   Aeson.object
     [ "projects" .= map buildProject projects
     , "sourceUnits" .= mergedUnits
     ]
   where
-    mergedUnits = case firstPartyScanResults of
+    mergedUnits = case licenseSourceUnits of
       Nothing -> map sourceUnitToFullSourceUnit finalSourceUnits
       Just licenseUnits -> do
         NE.toList $ mergeSourceAndLicenseUnits finalSourceUnits licenseUnits

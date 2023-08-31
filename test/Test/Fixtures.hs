@@ -38,7 +38,7 @@ module Test.Fixtures (
   standardAnalyzeConfig,
 ) where
 
-import App.Fossa.Config.Analyze (AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
+import App.Fossa.Config.Analyze (AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), GrepOptions (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
 import App.Fossa.Config.Analyze qualified as ANZ
 import App.Fossa.Config.Analyze qualified as VSI
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
@@ -368,6 +368,13 @@ vendoredDepsOptions =
     , licenseScanPathFilters = Nothing
     }
 
+grepOptions :: GrepOptions
+grepOptions =
+  GrepOptions
+    { customLicenseSearch = []
+    , keywordSearch = []
+    }
+
 #ifdef mingw32_HOST_OS
 absDir :: Path Abs Dir
 absDir = $(mkAbsDir "C:/")
@@ -393,4 +400,5 @@ standardAnalyzeConfig =
     , ANZ.noDiscoveryExclusion = toFlag NoDiscoveryExclusion False
     , ANZ.overrideDynamicAnalysis = App.OverrideDynamicAnalysisBinary{unOverrideDynamicAnalysisBinary = mempty}
     , ANZ.firstPartyScansFlag = App.FirstPartyScansUseDefault
+    , ANZ.grepOptions = grepOptions
     }

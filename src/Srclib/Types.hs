@@ -30,6 +30,7 @@ module Srclib.Types (
 
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
@@ -108,6 +109,7 @@ somePathToOriginPath (SomeDir d) = someBaseToOriginPath d
 data FullSourceUnit = FullSourceUnit
   { fullSourceUnitName :: Text
   , fullSourceUnitType :: Text
+  , fullSourceUnitTitle :: Maybe Text
   , fullSourceUnitManifest :: Maybe Text
   , fullSourceUnitBuild :: Maybe SourceUnitBuild
   , fullSourceUnitGraphBreadth :: GraphBreadth
@@ -124,6 +126,7 @@ licenseUnitToFullSourceUnit LicenseUnit{..} =
   FullSourceUnit
     { fullSourceUnitName = licenseUnitName
     , fullSourceUnitType = licenseUnitType
+    , fullSourceUnitTitle = licenseUnitTitle
     , fullSourceUnitManifest = Nothing
     , fullSourceUnitBuild = Nothing
     , fullSourceUnitGraphBreadth = Complete
@@ -139,6 +142,7 @@ sourceUnitToFullSourceUnit SourceUnit{..} =
   FullSourceUnit
     { fullSourceUnitName = sourceUnitName
     , fullSourceUnitType = sourceUnitType
+    , fullSourceUnitTitle = Nothing
     , fullSourceUnitManifest = Just sourceUnitManifest
     , fullSourceUnitBuild = sourceUnitBuild
     , fullSourceUnitGraphBreadth = sourceUnitGraphBreadth
@@ -154,6 +158,7 @@ instance ToJSON FullSourceUnit where
     object
       [ "Name" .= fullSourceUnitName
       , "Type" .= fullSourceUnitType
+      , "Title" .= fullSourceUnitTitle
       , "Manifest" .= fullSourceUnitManifest
       , "Build" .= fullSourceUnitBuild
       , "GraphBreadth" .= fullSourceUnitGraphBreadth
@@ -169,9 +174,12 @@ instance ToJSON FullSourceUnit where
 data LicenseSourceUnit = LicenseSourceUnit
   { licenseSourceUnitName :: Text
   , licenseSourceUnitType :: LicenseScanType
-  , licenseSourceUnitLicenseUnits :: (NonEmpty LicenseUnit)
+  , licenseSourceUnitLicenseUnits :: NonEmpty LicenseUnit
   }
   deriving (Eq, Ord, Show)
+
+instance Semigroup LicenseSourceUnit where
+  LicenseSourceUnit name unitType licenseUnits1 <> LicenseSourceUnit _ _ licenseUnits2 = LicenseSourceUnit name unitType $ licenseUnits1 <> licenseUnits2
 
 instance ToJSON LicenseSourceUnit where
   toJSON LicenseSourceUnit{..} =
@@ -186,6 +194,7 @@ instance ToJSON LicenseSourceUnit where
 data LicenseUnit = LicenseUnit
   { licenseUnitName :: Text
   , licenseUnitType :: Text
+  , licenseUnitTitle :: Maybe Text
   , licenseUnitDir :: Text
   , licenseUnitFiles :: (NonEmpty Text)
   , licenseUnitData :: (NonEmpty LicenseUnitData)
@@ -198,11 +207,20 @@ emptyLicenseUnit =
   LicenseUnit
     { licenseUnitName = "empty"
     , licenseUnitType = "LicenseUnit"
+    , licenseUnitTitle = Nothing
     , licenseUnitDir = ""
     , licenseUnitFiles = "" :| []
     , licenseUnitData = emptyLicenseUnitData :| []
     , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Nothing}
     }
+
+instance Semigroup LicenseUnit where
+  licenseUnit1 <> licenseUnit2 =
+    licenseUnit1
+      { licenseUnitData = licenseUnitData licenseUnit1 <> licenseUnitData licenseUnit2
+      , licenseUnitFiles = NE.nub $ licenseUnitFiles licenseUnit1 <> licenseUnitFiles licenseUnit2
+      }
+
 instance ToJSON LicenseUnit where
   toJSON LicenseUnit{..} =
     object
@@ -219,6 +237,7 @@ instance FromJSON LicenseUnit where
     LicenseUnit
       <$> obj .: "Name"
       <*> obj .: "Type"
+      <*> obj .:? "Title"
       <*> obj .: "Dir"
       <*> obj .: "Files"
       <*> obj .: "Data"
@@ -258,6 +277,13 @@ emptyLicenseUnitData =
     , licenseUnitDataContents = Nothing
     }
 
+instance Semigroup LicenseUnitData where
+  LicenseUnitData path copyright themisVersion matchData1 copyrights1 contents
+    <> LicenseUnitData _ _ _ matchData2 copyrights2 _ =
+      LicenseUnitData path copyright themisVersion (matchData1 <> matchData2) (copyrights1 <> copyrights2) contents
+
+-- instance Semigroup LicenseSourceUnit where
+--   LicenseSourceUnit name unitType licenseUnits1 <> LicenseSourceUnit _ _ licenseUnits2 = LicenseSourceUnit name unitType $ licenseUnits1 <> licenseUnits2
 instance ToJSON LicenseUnitData where
   toJSON LicenseUnitData{..} =
     object
