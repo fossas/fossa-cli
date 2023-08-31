@@ -56,6 +56,14 @@ paths:
 
 telemetry:
   scope: full
+
+customLicenseSearch:
+  - matchCriteria: "[Pp]roprietary [Ll]icense"
+    name: "Proprietary License"
+
+experimentalKeywordSearch:
+  - matchCriteria: "[Pp]roprietary and [Cc]onfidential"
+    name: "Proprietary and Confidential match"
 ```
 
 
@@ -114,12 +122,12 @@ The name field sets the projects visible name in the FOSSA dashboard. By default
 The name of the team in your FOSSA organization to associate this project with.
 
 #### `project.policy:`
-The name of the policy in your FOSSA organization to associate this project with. 
+The name of the policy in your FOSSA organization to associate this project with.
 Mutually excludes `project.policyId`.
 If a policy is provided on the command line using `--policy` then that value will override this one.
 
 #### `project.policyId:`
-The id of the policy in your FOSSA organization to associate this project with. 
+The id of the policy in your FOSSA organization to associate this project with.
 Mutually excludes `project.policy`.
 If a policy is provided on the command line using `--policy-id` then that value will override this one.
 
