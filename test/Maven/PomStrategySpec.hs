@@ -25,7 +25,7 @@ spec = do
 
     it "should interpolate multiple properties" $ do
       interpolateProperties pom "${project.groupId}${project.artifactId}" `shouldBe` "MYGROUPMYARTIFACT"
-    
+
     it "should not infinitely recurse when interpolating a property that is interpolated to itself" $ do
       let pom' = pom{pomProperties = Map.singleton "project.groupId" "${project.groupId"}
       interpolateProperties pom' "${project.groupId}" `shouldBe` "project.groupId"
