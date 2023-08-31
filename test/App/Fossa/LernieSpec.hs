@@ -37,11 +37,23 @@ customLicenseLernieMatchData =
     , lernieMatchDataEndLine = 1
     }
 
+-- Every newline in Windows adds one more byte than a newLine on macOS or Linux
+-- To calculate byte offsets that work on both Windows and other OSes, add
+-- `extraLineBytes * (lineNumber - 1)` to the bytes.
+-- (line-numbers are 1-indexed, and you have only encountered lineNumber - 1 newLines when you are on line n,
+-- so you have to subtract 1 from them).
+extraLineBytes :: Integer
+#ifdef mingw32_HOST_OS
+extraLineBytes = 1
+#else
+extraLineBytes = 0
+#endif
+
 secondCustomLicenseLernieMatchData :: LernieMatchData
 secondCustomLicenseLernieMatchData =
   customLicenseLernieMatchData
-    { lernieMatchDataStartByte = 42
-    , lernieMatchDataEndByte = 61
+    { lernieMatchDataStartByte = 42 + extraLineBytes * 2
+    , lernieMatchDataEndByte = 61 + extraLineBytes * 2
     , lernieMatchDataStartLine = 3
     , lernieMatchDataEndLine = 3
     }
@@ -49,8 +61,8 @@ secondCustomLicenseLernieMatchData =
 thirdCustomLicenseLernieMatchData :: LernieMatchData
 thirdCustomLicenseLernieMatchData =
   customLicenseLernieMatchData
-    { lernieMatchDataStartByte = 85
-    , lernieMatchDataEndByte = 104
+    { lernieMatchDataStartByte = 85 + extraLineBytes * 4
+    , lernieMatchDataEndByte = 104 + extraLineBytes * 4
     , lernieMatchDataStartLine = 5
     , lernieMatchDataEndLine = 5
     }
