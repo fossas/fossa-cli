@@ -18,21 +18,21 @@ jobs:
       matrix:
         os: ['windows-latest', 'ubuntu-latest', 'macos-latest']
         include:
-          - os: ubuntu-latest
-            os-name: Linux
-            container: fossa/haskell-static-alpine:ghc-9.0.2
-            project-file: cabal.project.ci.linux
-            ghc: '9.0.2'
+        - os: ubuntu-latest
+          os-name: Linux
+          container: fossa/haskell-static-alpine:ghc-9.0.2
+          project-file: cabal.project.ci.linux
+          ghc: '9.0.2'
 
-          - os: macos-latest
-            os-name: macOS
-            project-file: cabal.project.ci.macos
-            ghc: '9.0.2'
+        - os: macos-latest
+          os-name: macOS
+          project-file: cabal.project.ci.macos
+          ghc: '9.0.2'
 
-          - os: windows-latest
-            os-name: Windows
-            project-file: cabal.project.ci.windows
-            ghc: '9.0.2'
+        - os: windows-latest
+          os-name: Windows
+          project-file: cabal.project.ci.windows
+          ghc: '9.0.2'
 
     steps:
 
@@ -58,7 +58,16 @@ jobs:
       with:
         profile: minimal
         toolchain: stable
-    - uses: taiki-e/install-action@nextest
+
+    - name: Install additional Rust tooling
+      uses: taiki-e/install-action@v2
+      with:
+        tool: nextest
+
+    - uses: actions-rs/install@v0.1
+      with:
+        crate: cargo-nextest
+        version: latest
 
     - uses: Swatinem/rust-cache@v2
 
@@ -70,12 +79,22 @@ jobs:
         rustc -V || echo "no rustc"
         cargo -V || echo "no cargo"
 
-    # Build Rust crates, which must be present when the CLI builds.
-    - name: Test Rust dependencies
-      run: cargo nextest run
+    # Linux builds are run in Alpine, which builds them statically;
+    # using jemalloc reduces the performance impact of this
+    # over the default libc allocator (which performs very poorly in static builds).
+    - name: Build Rust dependencies (Linux)
+      if: ${{ matrix.os-name == 'linux' }}
+      run: cargo build --features jemalloc --release
 
-    - name: Build Rust dependencies
+    # Non-Linux environments generally don't need `jemalloc`
+    # and in particular Windows doesn't support it.
+    - name: Build Rust dependencies (non-Linux)
+      if: ${{ matrix.os-name != 'linux' }}
       run: cargo build --release
+
+    # Run tests in release mode to reduce the need for rebuilds.
+    - name: Test Rust dependencies
+      run: cargo nextest run --release
 
     # Build FOSSA CLI.
     - uses: actions/cache@v3
@@ -144,12 +163,15 @@ jobs:
       run: |
         strip release/*
 
-    - name: Sign Binaries (Mac OS)
-      if: ${{ contains(matrix.os, 'macos') && github.ref_type == 'tag' }}
+    - name: Sign and Notarize Binaries (Mac OS)
+      if: ${{ contains(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/v') }}
       env:
         MACOS_BUILD_CERT_BASE64: ${{ secrets.MACOS_BUILD_CERT_BASE64 }}
         MACOS_BUILD_CERT_P12_PASSWORD: ${{ secrets.MACOS_BUILD_CERT_P12_PASSWORD }}
         MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+        APPLE_NOTARIZATION_DEV_PASS: ${{ secrets.APPLE_NOTARIZATION_DEV_PASS }}
+        APPLE_NOTARIZATION_DEV_ID: ${{ secrets.APPLE_NOTARIZATION_DEV_ID }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
         # create variables
         CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
@@ -167,9 +189,22 @@ jobs:
         security import $CERTIFICATE_PATH -P "$MACOS_BUILD_CERT_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         security list-keychain -d user -s $KEYCHAIN_PATH
 
-        codesign -s 'Fossa, Inc.' release/fossa
-        codesign -s 'Fossa, Inc.' release/pathfinder
-        codesign -s 'Fossa, Inc.' release/diagnose
+        chmod +x release/*
+        # '--options runtime' enables the hardened runtime: https://developer.apple.com/documentation/security/hardened_runtime
+        # The hardened runtime is required for notarization.
+        codesign --options runtime -s 'FOSSA, Inc.' release/fossa
+        codesign --options runtime -s 'FOSSA, Inc.' release/pathfinder
+        codesign --options runtime -s 'FOSSA, Inc.' release/diagnose
+
+        # Perform notarization
+        zip -rj notarization-archive.zip release
+        NOTARY_RESULTS=$(xcrun notarytool submit notarization-archive.zip --apple-id "$APPLE_NOTARIZATION_DEV_ID" --password "$APPLE_NOTARIZATION_DEV_PASS" --team-id "$APPLE_TEAM_ID" --wait)
+        echo "$NOTARY_RESULTS"
+        rm notarization-archive.zip
+        # The notarization tool doesn't set $?, so examine the output.
+        if ! echo "$NOTARY_RESULTS" | grep -q "status: Accepted"; then
+           exit 1
+        fi
 
     - uses: actions/upload-artifact@v2
       with:
@@ -181,8 +216,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: ['build-all']
     permissions:
-        id-token: write
-        contents: write
+      id-token: write
+      contents: write
 
     steps:
     - uses: actions/download-artifact@v2
