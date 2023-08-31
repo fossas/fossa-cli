@@ -2,6 +2,7 @@
 
 module App.Fossa.Lernie.Analyze (
   analyzeWithLernie,
+  -- Exported for testing
   singletonLernieMessage,
   lernieMessagesToLernieResults,
   grepOptionsToLernieConfig,
