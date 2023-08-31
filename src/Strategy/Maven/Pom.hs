@@ -25,7 +25,6 @@ import Path.IO qualified as Path
 import Strategy.Maven.Pom.Closure
 import Strategy.Maven.Pom.PomFile
 import Types
-import Data.Time.Calendar.Easter (sundayAfter)
 
 data MavenStrategyOpts = MavenStrategyOpts
   { strategyPath :: Path Rel File
@@ -185,16 +184,16 @@ interpolate :: Map Text Text -> Text -> Text
 interpolate properties initialProperty =
   case splitMavenProperty initialProperty of
     Nothing -> initialProperty
-    Just (before, property, after) ->
+    Just (prefix, property, suffix) ->
       case (Map.lookup property properties) of
-        Nothing -> interpolate properties $ before <> "PROPERTY NOT FOUND: " <> property <> after
+        Nothing -> interpolate properties $ prefix <> "PROPERTY NOT FOUND: " <> property <> suffix
         -- This block catches an infinite loop with interpolate
         -- For the example of: <junit5.version>${junit5.version}</junit5.version>
         -- The map will have ("junit5.version","${junit5.version}")
         -- splitMavenProperty will remove the "${}" from the value and return the same key which causes infinite recursion.
         Just foundProperty -> if foundProperty == initialProperty then fullProp else interpolate properties fullProp
           where
-            fullProp = before <> foundProperty <> after
+            fullProp = prefix <> foundProperty <> suffix
 
 -- find the first maven property in the string, e.g., `${foo}`, returning text
 -- before the property, the property, and the text after the property
