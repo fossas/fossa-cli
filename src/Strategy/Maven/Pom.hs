@@ -191,7 +191,7 @@ interpolate properties initialProperty =
         -- For the example of: <junit5.version>${junit5.version}</junit5.version>
         -- The map will have ("junit5.version","${junit5.version}")
         -- splitMavenProperty will remove the "${}" from the value and return the same key which causes infinite recursion.
-        Just foundProperty -> if foundProperty == initialProperty then foundProperty else interpolate properties $ prefix <> foundProperty <> suffix
+        Just foundProperty -> if foundProperty == initialProperty then property else interpolate properties $ prefix <> property <> suffix
 
 -- find the first maven property in the string, e.g., `${foo}`, returning text
 -- before the property, the property, and the text after the property
