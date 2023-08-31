@@ -46,3 +46,11 @@ vendoredDependencies:
     exclude:
       - ".git/**"
       - "test/**/*.rb"
+
+customLicenseSearch:
+   - matchCriteria: (?i)proprietary
+     name: "Proprietary License"
+
+experimentalKeywordSearch:
+   - matchCriteria: \w*(_token)
+     name: "token search"

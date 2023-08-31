@@ -195,6 +195,8 @@ library
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
     App.Fossa.FirstPartyScan
+    App.Fossa.Lernie.Analyze
+    App.Fossa.Lernie.Types
     App.Fossa.LicenseScan
     App.Fossa.LicenseScanner
     App.Fossa.ListTargets
@@ -504,6 +506,7 @@ test-suite unit-tests
     App.Fossa.Container.AnalyzeNativeSpec
     App.Fossa.Container.AnalyzeNativeUploadSpec
     App.Fossa.FirstPartyScanSpec
+    App.Fossa.LernieSpec
     App.Fossa.LicenseScannerSpec
     App.Fossa.ManualDepsSpec
     App.Fossa.ProjectInferenceSpec

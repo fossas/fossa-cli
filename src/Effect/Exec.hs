@@ -20,6 +20,7 @@ module Effect.Exec (
   renderCommand,
   module System.Exit,
   execThrow',
+  execCurrentDirStdinThrow,
   Has,
   CandidateCommandEffs,
   CandidateAnalysisCommands (..),
@@ -337,6 +338,15 @@ execThrow' :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Comma
 execThrow' cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
   dir <- getCurrentDir
   execThrow dir cmd
+
+-- | A variant of 'execThrow' that runs the command in the current directory and accepts stdin
+execCurrentDirStdinThrow :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Command -> Text -> m BL.ByteString
+execCurrentDirStdinThrow cmd stdin = do
+  dir <- getCurrentDir
+  result <- exec' dir cmd stdin
+  case result of
+    Left failure -> fatal (CommandFailed failure)
+    Right stdout -> pure stdout
 
 -- | Shorthand for the effects needed to select a candidate analysis command.
 type CandidateCommandEffs sig m = (Has Diagnostics sig m, Has Exec sig m, Has (Reader OverrideDynamicAnalysisBinary) sig m)

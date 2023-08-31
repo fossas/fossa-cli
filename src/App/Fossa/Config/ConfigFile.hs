@@ -4,6 +4,7 @@
 module App.Fossa.Config.ConfigFile (
   defaultConfigFileNames,
   resolveConfigFile,
+  ConfigGrepEntry (..),
   ConfigFile (..),
   ConfigProject (..),
   ConfigRevision (..),
@@ -182,7 +183,7 @@ mergeFileCmdMetadata meta cfgFile =
         }
 
 empty :: ConfigFile
-empty = ConfigFile 3 Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+empty = ConfigFile 3 Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
 data ConfigFile = ConfigFile
   { configVersion :: Int
@@ -195,6 +196,8 @@ data ConfigFile = ConfigFile
   , configExperimental :: Maybe ExperimentalConfigs
   , configVendoredDependencies :: Maybe VendoredDependencyConfigs
   , configTelemetry :: Maybe ConfigTelemetry
+  , configCustomLicenseSearch :: Maybe [ConfigGrepEntry]
+  , configKeywordSearch :: Maybe [ConfigGrepEntry]
   }
   deriving (Eq, Ord, Show)
 
@@ -230,6 +233,12 @@ data ConfigPaths = ConfigPaths
   }
   deriving (Eq, Ord, Show)
 
+data ConfigGrepEntry = ConfigGrepEntry
+  { configGrepName :: Text
+  , configGrepMatchCriteria :: Text
+  }
+  deriving (Eq, Ord, Show)
+
 newtype ConfigTelemetry = ConfigTelemetry
   { telemetryScope :: ConfigTelemetryScope
   }
@@ -261,6 +270,8 @@ instance FromJSON ConfigFile where
       <*> obj .:? "experimental"
       <*> obj .:? "vendoredDependencies"
       <*> obj .:? "telemetry"
+      <*> obj .:? "customLicenseSearch"
+      <*> obj .:? "experimentalKeywordSearch"
 
 instance FromJSON ConfigProject where
   parseJSON = withObject "ConfigProject" $ \obj ->
@@ -312,6 +323,12 @@ instance FromJSON ExperimentalGradleConfigs where
 instance FromJSON ConfigTelemetry where
   parseJSON = withObject "ConfigTelemetry" $ \obj ->
     ConfigTelemetry <$> (obj .: "scope")
+
+instance FromJSON ConfigGrepEntry where
+  parseJSON = withObject "ConfigGrepEntry" $ \obj ->
+    ConfigGrepEntry
+      <$> (obj .: "name")
+      <*> (obj .: "matchCriteria")
 
 instance FromJSON ConfigTelemetryScope where
   parseJSON = withText "ConfigTelemetryScope" $ \scope ->
