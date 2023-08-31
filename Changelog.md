@@ -1,7 +1,8 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.8.10
 
+- Reports: Can now export reports formatted as CycloneDX (json/xml), CSV, HTML, and JSON SPDX. ([#1266](https://github.com/fossas/fossa-cli/pull/1266))
 - Containers: RPM packages installed in containers that use the NDB format for their RPM database are now parsed much faster. ([#1262](https://github.com/fossas/fossa-cli/pull/1262))
 
 ## v3.8.9
