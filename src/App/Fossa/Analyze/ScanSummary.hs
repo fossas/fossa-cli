@@ -14,7 +14,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (dpiProjectPath, dpiProjectType),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Lernie.Types (LernieResults (..))
+import App.Fossa.Lernie.Types (LernieMatch (..), LernieResults (..), LernieScanType (..))
 import App.Version (fullVersionDescription)
 import Control.Carrier.Lift
 import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
@@ -175,11 +175,11 @@ summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicL
           <> summarizeSrcUnit "binary-deps analysis" (Just getBinaryIdentifier) binary
           <> summarizeSrcUnit "dynamic linked dependency analysis" (Just getBinaryIdentifier) dynamicLinkingDeps
           <> summarizeSrcUnit "fossa-deps file analysis" (Just getManualVendorDepsIdentifier) manualDeps
-          <> lernieResults
+          <> summarizeSrcUnit "Keyword Search" (Just $ getLernieIdentifier KeywordSearch) lernie
+          <> summarizeSrcUnit "Custom LicenseSearch" (Just $ getLernieIdentifier CustomLicense) lernie
           <> [""]
   where
     vsiResults = summarizeSrcUnit "vsi analysis" (Just (join . map vsiSourceUnits)) vsi
-    lernieResults = summarizeLernieResults lernie
     projects = sort dps
     totalScanCount =
       mconcat
@@ -188,6 +188,7 @@ summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicL
         , srcUnitToScanCount binary
         , srcUnitToScanCount manualDeps
         , srcUnitToScanCount dynamicLinkingDeps
+        -- , lernieResultToScanCount lernie
         ]
 
     -- This function relies on the fact that there is only ever one package in a vsi source unit dep graph.
@@ -212,6 +213,16 @@ itemize symbol f = map ((symbol <>) . f)
 
 getBinaryIdentifier :: SourceUnit -> [Text]
 getBinaryIdentifier srcUnit = maybe [] (srcUserDepName <$>) (userDefinedDeps =<< additionalData srcUnit)
+
+getLernieIdentifier :: LernieScanType -> LernieResults -> [Text]
+getLernieIdentifier scanType LernieResults{..} = map renderLernieMatch lernieResults
+  where
+    lernieResults = case scanType of
+      CustomLicense -> lernieResultsKeywordSearches
+      KeywordSearch -> lernieResultsCustomLicenses
+
+renderLernieMatch :: LernieMatch -> Text
+renderLernieMatch LernieMatch{..} = lernieMatchPath <> ": found " <> toText (show $ length lernieMatchMatches) <> " entries"
 
 getManualVendorDepsIdentifier :: SourceUnit -> [Text]
 getManualVendorDepsIdentifier srcUnit = refDeps ++ foundRemoteDeps ++ customDeps ++ vendorDeps
@@ -241,8 +252,8 @@ getManualVendorDepsIdentifier srcUnit = refDeps ++ foundRemoteDeps ++ customDeps
       withPostfix "remote" $
         maybe [] (srcRemoteDepName <$>) (remoteDeps =<< additionalData srcUnit)
 
-    withPostfix :: Text -> [Text] -> [Text]
-    withPostfix bracketText = map (<> " (" <> bracketText <> ")")
+withPostfix :: Text -> [Text] -> [Text]
+withPostfix bracketText = map (<> " (" <> bracketText <> ")")
 
 vsiSrcUnitsToScanCount :: Result (Maybe [SourceUnit]) -> ScanCount
 vsiSrcUnitsToScanCount (Failure _ _) = ScanCount 0 0 0 0 0
@@ -275,17 +286,6 @@ summarizeProjectScan (Scanned dpi (Failure _ _)) = failColorCoded $ renderDiscov
 summarizeProjectScan (Scanned _ (Success wg pr)) = successColorCoded wg $ renderProjectResult pr <> renderSucceeded wg
 summarizeProjectScan (SkippedDueToProvidedFilter dpi) = renderDiscoveredProjectIdentifier dpi <> skippedDueFilter
 summarizeProjectScan (SkippedDueToDefaultProductionFilter dpi) = renderDiscoveredProjectIdentifier dpi <> skippedDueNonProductionPathFiltering
-
-summarizeLernieResults :: Result (Maybe LernieResults) -> [Doc AnsiStyle]
-summarizeLernieResults (Success wg (Just lernieResults)) = do
-  let msg :: Doc AnsiStyle
-      msg = successColorCoded wg $ renderLernieResults lernieResults <> renderSucceeded wg
-  [msg]
-summarizeLernieResults (Failure _ _) = [failColorCoded $ annotate bold $ listSymbol <> "lernie" <> renderFailed]
-summarizeLernieResults _ = []
-
-renderLernieResults :: LernieResults -> Doc AnsiStyle
-renderLernieResults lernieResults = pretty $ show ("Lernie" :: String)
 
 ---------- Rendering Helpers
 
