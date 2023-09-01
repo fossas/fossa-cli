@@ -63,20 +63,8 @@ analyzeWithLernie rootDir _maybeApiOpts grepOptions = do
     Just (lernieConfig) -> do
       messages <- runLernie lernieConfig
       let lernieResults = lernieMessagesToLernieResults messages rootDir
-      _ <- outputWarnings lernieResults
       pure $ Just lernieResults
     Nothing -> pure Nothing
-
-outputWarnings :: (Has Diagnostics sig m) => LernieResults -> m ()
-outputWarnings LernieResults{..} = do
-  -- logDebug . pretty $ displayLernieWarning $ head lernieResultsWarnings
-  traverse_ (warn . displayLernieWarning) lernieResultsWarnings
-  traverse_ (fatal . displayLernieError) lernieResultsErrors
-  where
-    displayLernieWarning :: LernieWarning -> Text
-    displayLernieWarning LernieWarning{..} = lernieWarningType <> ": " <> lernieWarningMessage
-    displayLernieError :: LernieError -> Text
-    displayLernieError LernieError{..} = lernieErrorType <> ": " <> lernieErrorMessage
 
 grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Maybe LernieConfig
 grepOptionsToLernieConfig rootDir grepOptions =
@@ -102,7 +90,15 @@ runLernie ::
 runLernie lernieConfig = withLernieBinary $ \bin -> do
   let lernieConfigJSON = decodeUtf8 $ Aeson.encode lernieConfig
   result <- execCurrentDirStdinThrow (lernieCommand bin) lernieConfigJSON
-  pure $ parseLernieJson result
+  let messages = parseLernieJson result
+  traverse_ (fatal . displayLernieError) $ lernieMessageErrors messages
+  traverse_ (warn . displayLernieWarning) $ lernieMessageWarnings messages
+  pure messages
+  where
+    displayLernieWarning :: LernieWarning -> Text
+    displayLernieWarning LernieWarning{..} = lernieWarningType <> ": " <> lernieWarningMessage
+    displayLernieError :: LernieError -> Text
+    displayLernieError LernieError{..} = lernieErrorType <> ": " <> lernieErrorMessage
 
 -- Run Lernie, passing "--config -" as its arg so that it gets its config from STDIN
 lernieCommand :: BinaryPaths -> Command
@@ -126,9 +122,7 @@ parseLernieJson out =
 lernieMessagesToLernieResults :: LernieMessages -> Path Abs Dir -> LernieResults
 lernieMessagesToLernieResults LernieMessages{..} rootDir =
   LernieResults
-    { lernieResultsWarnings = lernieMessageWarnings
-    , lernieResultsErrors = lernieMessageErrors
-    , lernieResultsKeywordSearches = keywordSearches
+    { lernieResultsKeywordSearches = keywordSearches
     , lernieResultsCustomLicenses = customLicenses
     , lernieResultsSourceUnit = sourceUnit
     }
