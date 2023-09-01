@@ -181,12 +181,17 @@ computeBuiltinProperties pom =
     ]
 
 interpolate :: Map Text Text -> Text -> Text
-interpolate properties text =
-  case splitMavenProperty text of
-    Nothing -> text
-    Just (before, property, after) ->
-      interpolate properties $
-        before <> fromMaybe ("PROPERTY NOT FOUND: " <> property) (Map.lookup property properties) <> after
+interpolate properties initialProperty =
+  case splitMavenProperty initialProperty of
+    Nothing -> initialProperty
+    Just (prefix, property, suffix) ->
+      case (Map.lookup property properties) of
+        Nothing -> interpolate properties $ prefix <> "PROPERTY NOT FOUND: " <> property <> suffix
+        -- This block catches an infinite loop with interpolate
+        -- For the example of: <junit5.version>${junit5.version}</junit5.version>
+        -- The map will have ("junit5.version","${junit5.version}")
+        -- splitMavenProperty will remove the "${}" from the value and return the same key which causes infinite recursion.
+        Just foundProperty -> if foundProperty == initialProperty then property else interpolate properties $ prefix <> foundProperty <> suffix
 
 -- find the first maven property in the string, e.g., `${foo}`, returning text
 -- before the property, the property, and the text after the property
