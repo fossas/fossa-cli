@@ -12,6 +12,7 @@ import App.Fossa.Config.Analyze (GrepEntry (grepEntryMatchCriteria, grepEntryNam
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withLernieBinary)
 import App.Fossa.Lernie.Types (
   LernieConfig (..),
+  LernieError (..),
   LernieMatch (..),
   LernieMatchData (..),
   LernieMessage (..),
@@ -19,13 +20,14 @@ import App.Fossa.Lernie.Types (
   LernieRegex (..),
   LernieResults (..),
   LernieScanType (..),
+  LernieWarning (..),
  )
-import Control.Carrier.Diagnostics (Diagnostics)
+import Control.Carrier.Diagnostics (Diagnostics, fatal, warn)
 import Control.Effect.Lift (Has, Lift)
 import Data.Aeson (decode)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
-import Data.Foldable (fold)
+import Data.Foldable (fold, traverse_)
 import Data.HashMap.Strict qualified as H
 import Data.HashMap.Strict qualified as HashMap
 import Data.Hashable (Hashable)
@@ -60,8 +62,21 @@ analyzeWithLernie rootDir _maybeApiOpts grepOptions = do
   case maybeLernieConfig of
     Just (lernieConfig) -> do
       messages <- runLernie lernieConfig
-      pure $ Just $ lernieMessagesToLernieResults messages rootDir
+      let lernieResults = lernieMessagesToLernieResults messages rootDir
+      _ <- outputWarnings lernieResults
+      pure $ Just lernieResults
     Nothing -> pure Nothing
+
+outputWarnings :: (Has Diagnostics sig m) => LernieResults -> m ()
+outputWarnings LernieResults{..} = do
+  -- logDebug . pretty $ displayLernieWarning $ head lernieResultsWarnings
+  traverse_ (warn . displayLernieWarning) lernieResultsWarnings
+  traverse_ (fatal . displayLernieError) lernieResultsErrors
+  where
+    displayLernieWarning :: LernieWarning -> Text
+    displayLernieWarning LernieWarning{..} = lernieWarningType <> ": " <> lernieWarningMessage
+    displayLernieError :: LernieError -> Text
+    displayLernieError LernieError{..} = lernieErrorType <> ": " <> lernieErrorMessage
 
 grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Maybe LernieConfig
 grepOptionsToLernieConfig rootDir grepOptions =

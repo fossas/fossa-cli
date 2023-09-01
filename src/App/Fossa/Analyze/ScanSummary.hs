@@ -14,6 +14,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (dpiProjectPath, dpiProjectType),
   DiscoveredProjectScan (..),
  )
+import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Version (fullVersionDescription)
 import Control.Carrier.Lift
 import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
@@ -154,7 +155,7 @@ renderScanSummary severity maybeEndpointVersion analysisResults filters = do
       logInfo "------------"
 
 summarize :: Text -> AnalysisScanResult -> Maybe ([Doc AnsiStyle])
-summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps) =
+summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps lernie) =
   if (numProjects totalScanCount <= 0)
     then Nothing
     else
@@ -174,9 +175,11 @@ summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicL
           <> summarizeSrcUnit "binary-deps analysis" (Just getBinaryIdentifier) binary
           <> summarizeSrcUnit "dynamic linked dependency analysis" (Just getBinaryIdentifier) dynamicLinkingDeps
           <> summarizeSrcUnit "fossa-deps file analysis" (Just getManualVendorDepsIdentifier) manualDeps
+          <> lernieResults
           <> [""]
   where
     vsiResults = summarizeSrcUnit "vsi analysis" (Just (join . map vsiSourceUnits)) vsi
+    lernieResults = summarizeLernieResults lernie
     projects = sort dps
     totalScanCount =
       mconcat
@@ -273,6 +276,17 @@ summarizeProjectScan (Scanned _ (Success wg pr)) = successColorCoded wg $ render
 summarizeProjectScan (SkippedDueToProvidedFilter dpi) = renderDiscoveredProjectIdentifier dpi <> skippedDueFilter
 summarizeProjectScan (SkippedDueToDefaultProductionFilter dpi) = renderDiscoveredProjectIdentifier dpi <> skippedDueNonProductionPathFiltering
 
+summarizeLernieResults :: Result (Maybe LernieResults) -> [Doc AnsiStyle]
+summarizeLernieResults (Success wg (Just lernieResults)) = do
+  let msg :: Doc AnsiStyle
+      msg = successColorCoded wg $ renderLernieResults lernieResults <> renderSucceeded wg
+  [msg]
+summarizeLernieResults (Failure _ _) = [failColorCoded $ annotate bold $ listSymbol <> "lernie" <> renderFailed]
+summarizeLernieResults _ = []
+
+renderLernieResults :: LernieResults -> Doc AnsiStyle
+renderLernieResults lernieResults = pretty $ show ("Lernie" :: String)
+
 ---------- Rendering Helpers
 
 logInfoVsep :: (Has Logger sig m) => [Doc AnsiStyle] -> m ()
@@ -334,7 +348,7 @@ countWarnings ws =
     isIgnoredErrGroup _ = False
 
 dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => Text -> AnalysisScanResult -> m (Path Abs File)
-dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps) = do
+dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernie) = do
   let doc =
         renderStrict
           . layoutPretty defaultLayoutOptions
@@ -354,7 +368,7 @@ dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary
   pure (tmpDir </> scanSummaryFileName)
   where
     scanSummary :: [Doc AnsiStyle]
-    scanSummary = maybeToList (vsep <$> summarize endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps))
+    scanSummary = maybeToList (vsep <$> summarize endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernie))
 
     renderSourceUnit :: Doc AnsiStyle -> Result (Maybe a) -> Maybe (Doc AnsiStyle)
     renderSourceUnit header (Failure ws eg) = Just $ renderFailure ws eg $ vsep $ summarizeSrcUnit header Nothing (Failure ws eg)

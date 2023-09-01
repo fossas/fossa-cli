@@ -299,14 +299,14 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir maybeApiOpts vendoredDepsOptions
-  maybeGrepResults <-
+  maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
         then do
           logInfo "Running in VSI only mode, skipping keyword search and custom-license search"
           pure Nothing
         else Diag.context "custom-license & keyword search" . runStickyLogger SevInfo $ analyzeWithLernie basedir maybeApiOpts grepOptions
-  let grepResults = join . resultToMaybe $ maybeGrepResults
+  let lernieResults = join . resultToMaybe $ maybeLernieResults
 
   let -- This makes nice with additionalSourceUnits below, but throws out additional Result data.
       -- This is ok because 'resultToMaybe' would do that anyway.
@@ -350,7 +350,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let projectResults = mapMaybe toProjectResult projectScans
   let filteredProjects = mapMaybe toProjectResult projectScans
 
-  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults
+  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
 
   maybeEndpointAppVersion <- case destination of
     UploadScan apiOpts _ -> runFossaApiClient apiOpts $ do
@@ -365,7 +365,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   let licenseSourceUnits =
-        case (firstPartyScanResults, lernieResultsSourceUnit =<< grepResults) of
+        case (firstPartyScanResults, lernieResultsSourceUnit =<< lernieResults) of
           (Nothing, Nothing) -> Nothing
           (Just firstParty, Just lernie) -> Just $ firstParty <> lernie
           (Nothing, Just lernie) -> Just lernie
