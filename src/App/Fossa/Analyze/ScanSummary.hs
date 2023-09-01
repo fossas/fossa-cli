@@ -14,7 +14,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (dpiProjectPath, dpiProjectType),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Lernie.Types (LernieMatch (..), LernieResults (..), LernieScanType (..))
+import App.Fossa.Lernie.Types (LernieMatch (..), LernieMatchData (..), LernieResults (..), LernieScanType (..))
 import App.Version (fullVersionDescription)
 import Control.Carrier.Lift
 import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
@@ -215,14 +215,17 @@ getBinaryIdentifier :: SourceUnit -> [Text]
 getBinaryIdentifier srcUnit = maybe [] (srcUserDepName <$>) (userDefinedDeps =<< additionalData srcUnit)
 
 getLernieIdentifier :: LernieScanType -> LernieResults -> [Text]
-getLernieIdentifier scanType LernieResults{..} = map renderLernieMatch lernieResults
+getLernieIdentifier scanType LernieResults{..} = concatMap renderLernieMatch lernieResults
   where
     lernieResults = case scanType of
       CustomLicense -> lernieResultsKeywordSearches
       KeywordSearch -> lernieResultsCustomLicenses
 
-renderLernieMatch :: LernieMatch -> Text
-renderLernieMatch LernieMatch{..} = lernieMatchPath <> ": found " <> toText (show $ length lernieMatchMatches) <> " entries"
+    renderLernieMatch :: LernieMatch -> [Text]
+    renderLernieMatch LernieMatch{..} = map (renderLernieMatchData lernieMatchPath) lernieMatchMatches
+
+    renderLernieMatchData :: Text -> LernieMatchData -> Text
+    renderLernieMatchData path LernieMatchData{..} = lernieMatchDataName <> " - " <> path <> " (lines " <> toText (show lernieMatchDataStartLine) <> "-" <> toText (show lernieMatchDataEndLine) <> ")"
 
 getManualVendorDepsIdentifier :: SourceUnit -> [Text]
 getManualVendorDepsIdentifier srcUnit = refDeps ++ foundRemoteDeps ++ customDeps ++ vendorDeps
