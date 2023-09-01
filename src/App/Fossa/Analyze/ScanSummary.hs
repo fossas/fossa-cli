@@ -188,7 +188,7 @@ summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicL
         , srcUnitToScanCount binary
         , srcUnitToScanCount manualDeps
         , srcUnitToScanCount dynamicLinkingDeps
-        -- , lernieResultToScanCount lernie
+        , srcUnitToScanCount lernie
         ]
 
     -- This function relies on the fact that there is only ever one package in a vsi source unit dep graph.
@@ -255,8 +255,8 @@ getManualVendorDepsIdentifier srcUnit = refDeps ++ foundRemoteDeps ++ customDeps
       withPostfix "remote" $
         maybe [] (srcRemoteDepName <$>) (remoteDeps =<< additionalData srcUnit)
 
-withPostfix :: Text -> [Text] -> [Text]
-withPostfix bracketText = map (<> " (" <> bracketText <> ")")
+    withPostfix :: Text -> [Text] -> [Text]
+    withPostfix bracketText = map (<> " (" <> bracketText <> ")")
 
 vsiSrcUnitsToScanCount :: Result (Maybe [SourceUnit]) -> ScanCount
 vsiSrcUnitsToScanCount (Failure _ _) = ScanCount 0 0 0 0 0
@@ -265,7 +265,7 @@ vsiSrcUnitsToScanCount (Success wg (Just units)) =
    in ScanCount unitLen 0 unitLen 0 (length wg)
 vsiSrcUnitsToScanCount (Success _ Nothing) = ScanCount 0 0 0 0 0
 
-srcUnitToScanCount :: Result (Maybe SourceUnit) -> ScanCount
+srcUnitToScanCount :: Result (Maybe a) -> ScanCount
 srcUnitToScanCount (Failure _ _) = ScanCount 1 0 0 1 0
 srcUnitToScanCount (Success _ Nothing) = ScanCount 0 0 0 0 0
 srcUnitToScanCount (Success wg (Just _)) = ScanCount 1 0 1 0 (countWarnings wg)

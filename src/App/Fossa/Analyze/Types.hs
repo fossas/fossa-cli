@@ -11,7 +11,7 @@ module App.Fossa.Analyze.Types (
 
 import App.Fossa.Analyze.Project (ProjectResult)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
-import App.Fossa.Lernie.Types (LernieResults (..))
+import App.Fossa.Lernie.Types (LernieResults)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Effect.Lift (Lift)
