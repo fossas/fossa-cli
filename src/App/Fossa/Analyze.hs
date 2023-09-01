@@ -319,6 +319,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   traverse_ (Diag.flushLogs SevError SevDebug) [manualSrcUnits, binarySearchResults, dynamicLinkedResults]
   -- Flush logs using the original Result from VSI.
   traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults]
+  -- Flush logs from lernie
+  traverse_ (Diag.flushLogs SevError SevDebug) [maybeLernieResults]
 
   maybeFirstPartyScanResults <-
     Diag.errorBoundaryIO . diagToDebug $
