@@ -361,6 +361,7 @@ dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary
               , renderSourceUnit "binary-deps analysis" binary
               , renderSourceUnit "dynamic linked dependency analysis" dynamicLinkingDeps
               , renderSourceUnit "fossa-deps analysis" manualDeps
+              , renderSourceUnit "Custom-license scan & Keyword Search" lernie
               ]
 
   tmpDir <- sendIO getTempDir
