@@ -128,9 +128,7 @@ doubleMessages = singletonLernieMessage (LernieMessageLernieMatch secondCustomLi
 expectedLernieResults :: LernieResults
 expectedLernieResults =
   LernieResults
-    { lernieResultsWarnings = [warningMessage]
-    , lernieResultsErrors = [errorMessage]
-    , lernieResultsKeywordSearches = [keywordSearchMatchMessage]
+    { lernieResultsKeywordSearches = [keywordSearchMatchMessage]
     , lernieResultsCustomLicenses = [customLicenseMatchMessage]
     , lernieResultsSourceUnit = Just expectedSourceUnit
     }
@@ -328,8 +326,6 @@ spec = do
         case maybeRes of
           Nothing -> expectationFailure "analyzeWithLernie should not return Nothing"
           Just res -> do
-            (lernieResultsWarnings res) `shouldBe` []
-            (lernieResultsErrors res) `shouldBe` []
             (lernieResultsKeywordSearches res) `shouldBe` [keywordSearchMatchMessage{lernieMatchPath = fixedSomethingPath}]
             (lernieResultsCustomLicenses res)
               `shouldBe` [ customLicenseMatchMessage
