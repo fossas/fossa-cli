@@ -14,12 +14,13 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (dpiProjectPath, dpiProjectType),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Lernie.Types (LernieMatch (..), LernieMatchData (..), LernieResults (..), LernieScanType (..))
+import App.Fossa.Lernie.Types (LernieMatch (..), LernieMatchData (..), LernieResults (..))
 import App.Version (fullVersionDescription)
 import Control.Carrier.Lift
 import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
 import Control.Monad (join, when)
 import Data.Foldable (foldl', traverse_)
+import Data.Functor.Extra ((<$$>))
 import Data.List (sort)
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
 import Data.Monoid.Extra (isMempty)
@@ -175,8 +176,8 @@ summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicL
           <> summarizeSrcUnit "binary-deps analysis" (Just getBinaryIdentifier) binary
           <> summarizeSrcUnit "dynamic linked dependency analysis" (Just getBinaryIdentifier) dynamicLinkingDeps
           <> summarizeSrcUnit "fossa-deps file analysis" (Just getManualVendorDepsIdentifier) manualDeps
-          <> summarizeSrcUnit "Keyword Search" (Just $ getLernieIdentifier KeywordSearch) lernie
-          <> summarizeSrcUnit "Custom LicenseSearch" (Just $ getLernieIdentifier CustomLicense) lernie
+          <> summarizeSrcUnit "Keyword Search" (Just getLernieIdentifier) (lernieResultsKeywordSearches <$$> lernie)
+          <> summarizeSrcUnit "Custom LicenseSearch" (Just getLernieIdentifier) (lernieResultsCustomLicenses <$$> lernie)
           <> [""]
   where
     vsiResults = summarizeSrcUnit "vsi analysis" (Just (join . map vsiSourceUnits)) vsi
@@ -214,13 +215,9 @@ itemize symbol f = map ((symbol <>) . f)
 getBinaryIdentifier :: SourceUnit -> [Text]
 getBinaryIdentifier srcUnit = maybe [] (srcUserDepName <$>) (userDefinedDeps =<< additionalData srcUnit)
 
-getLernieIdentifier :: LernieScanType -> LernieResults -> [Text]
-getLernieIdentifier scanType LernieResults{..} = concatMap renderLernieMatch lernieResults
+getLernieIdentifier :: [LernieMatch] -> [Text]
+getLernieIdentifier = concatMap renderLernieMatch
   where
-    lernieResults = case scanType of
-      CustomLicense -> lernieResultsKeywordSearches
-      KeywordSearch -> lernieResultsCustomLicenses
-
     renderLernieMatch :: LernieMatch -> [Text]
     renderLernieMatch LernieMatch{..} = map (renderLernieMatchData lernieMatchPath) lernieMatchMatches
 
