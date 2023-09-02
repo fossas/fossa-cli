@@ -215,6 +215,10 @@ itemize symbol f = map ((symbol <>) . f)
 getBinaryIdentifier :: SourceUnit -> [Text]
 getBinaryIdentifier srcUnit = maybe [] (srcUserDepName <$>) (userDefinedDeps =<< additionalData srcUnit)
 
+-- A LernieMatch has many LernieMatchData. getLernieIdentifier creates one line of output per LernieMatchData.
+-- Example output:
+-- Proprietary License - /Users/scott/fossa/license-scan-dirs/grepper/one.txt (lines 1-1)
+-- <name of regex from config> - <path to file> (lines <startLine>-<endLine>)
 getLernieIdentifier :: [LernieMatch] -> [Text]
 getLernieIdentifier = concatMap renderLernieMatch
   where
