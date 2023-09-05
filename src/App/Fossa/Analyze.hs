@@ -285,7 +285,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     Diag.errorBoundaryIO
       . diagToDebug
       . runReader filters
-      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget 
+      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget
       $ Config.vsiOptions cfg
   binarySearchResults <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -376,7 +376,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let result = buildResult includeAll additionalSourceUnits filteredProjects licenseSourceUnits
   case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits licenseSourceUnits of
     NoneDiscovered -> fatalWithKeywordSearchExplanation (isJust $ lernieResultsKeywordSearches <$> lernieResults) ErrNoProjectsDiscovered
-    FilteredAll -> fatalWithKeywordSearchExplanation (isJust $ lernieResultsKeywordSearches <$> lernieResults) ErrFilteredAllProjects
+    FilteredAll -> fatalWithKeywordSearchExplanation (maybe False (not . null . lernieResultsKeywordSearches) lernieResults) ErrFilteredAllProjects
     CountedScanUnits scanUnits -> doUpload result iatAssertion destination basedir jsonOutput revision scanUnits
   pure result
   where
@@ -401,15 +401,13 @@ fatalWithKeywordSearchExplanation ::
   AnalyzeError ->
   m b
 fatalWithKeywordSearchExplanation lernieMatchesFound analyzeError = do
-  if lernieMatchesFound
-    then
-      logWarn $
-        vsep
-          [ "Matches to your keyword searches were found, but no other analysis targets were found."
-          , "This will result in exiting with an error."
-          , "This error can be safely ignored if you are only expecting keyword search results."
-          ]
-    else pure ()
+  when lernieMatchesFound $
+    logWarn $
+      vsep
+        [ "Matches to your keyword searches were found, but no other analysis targets were found."
+        , "This will result in exiting with an error."
+        , "This error can be safely ignored if you are only expecting keyword search results."
+        ]
   Diag.fatal analyzeError
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
