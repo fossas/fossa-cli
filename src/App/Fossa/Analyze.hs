@@ -391,6 +391,9 @@ analyze cfg = Diag.context "fossa-analyze" $ do
               locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits
               doAssertRevisionBinaries iatAssertion locator
 
+-- | If we find nothing but keyword search, we exit with a "No projects discovered" or "All projects filtered" error.
+-- | We do not want to succeed, because nothing gets uploaded to the API for keyword searches, so `fossa test` will fail.
+-- | So the solution is to still fail, but give a hopefully useful explanation that the error can be ignored if all you were expecting is keyword search results.
 fatalWithKeywordSearchExplanation ::
   ( Has Diag.Diagnostics sig m
   , Has Logger sig m
