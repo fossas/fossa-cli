@@ -1,4 +1,3 @@
-{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Analyze (
