@@ -375,7 +375,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Just firstParty, Nothing) -> Just firstParty
   let result = buildResult includeAll additionalSourceUnits filteredProjects licenseSourceUnits
   case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits licenseSourceUnits of
-    NoneDiscovered -> fatalWithKeywordSearchExplanation (isJust $ lernieResultsKeywordSearches <$> lernieResults) ErrNoProjectsDiscovered
+    NoneDiscovered -> fatalWithKeywordSearchExplanation (maybe False (not . null . lernieResultsKeywordSearches) lernieResults) ErrNoProjectsDiscovered
     FilteredAll -> fatalWithKeywordSearchExplanation (maybe False (not . null . lernieResultsKeywordSearches) lernieResults) ErrFilteredAllProjects
     CountedScanUnits scanUnits -> doUpload result iatAssertion destination basedir jsonOutput revision scanUnits
   pure result
