@@ -1,5 +1,28 @@
 # FOSSA CLI Changelog
 
+## v3.8.10
+
+- Reports: Can now export reports formatted as CycloneDX (json/xml), CSV, HTML, and JSON SPDX. ([#1266](https://github.com/fossas/fossa-cli/pull/1266))
+- Containers: RPM packages installed in containers that use the NDB format for their RPM database are now parsed much faster. ([#1262](https://github.com/fossas/fossa-cli/pull/1262))
+
+## v3.8.9
+- CLI Binaries: Notarize Mac OS binaries. ([#1261](https://github.com/fossas/fossa-cli/pull/1261))
+
+## v3.8.8
+- CLI Binaries: Sign Mac OS builds using codesign. ([#1251](https://github.com/fossas/fossa-cli/pull/1251))
+- CLI Binaries: Sign Linux builds using cosign. ([#1243](https://github.com/fossas/fossa-cli/pull/1243))
+
+## v3.8.7
+- Due to an issue with our release process [#1254](https://github.com/fossas/fossa-cli/pull/1254), this tag exists but was not released. The changes that would have been in 3.8.7 were released as v3.8.8.
+
+## v3.8.6
+- VSI: Fix a bug where root dependencies would cause analysis to fail. ([#1240](https://github.com/fossas/fossa-cli/pull/1240))
+- Node (PNPM): Fixes a bug where analyses would fail when the `lockfileVersion` attribute was a string in `pnpm-lock.yaml`. ([1239](https://github.com/fossas/fossa-cli/pull/1239))
+- License Scanning: Add a new "IBM type1 interpreter" license (no PR).
+
+## v3.8.5
+- Go: `--experimental-use-v3-go-resolver` is now the default. ([Documentation](./docs/references/strategies/languages/golang/v3-go-resolver-transition-qa.md). ([1224](https://github.com/fossas/fossa-cli/pull/1224))
+
 ## v3.8.4
 - VSI: Report VSI rules and display them in FOSSA's UI. ([#1237](https://github.com/fossas/fossa-cli/pull/1237), [#1235](https://github.com/fossas/fossa-cli/pull/1235))
 

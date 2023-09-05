@@ -1,6 +1,6 @@
-# Golang Modules
+# Go Modules
 
-Golang 1.11 has first-class support for "modules", which is now the preferred
+Go 1.11 has first-class support for "modules", which is now the preferred
 way to do dependency management.
 
 ## Project Discovery
@@ -9,56 +9,56 @@ Find all files named `go.mod`
 
 ## Analysis
 
-We attempt to perform the following strategies in order (first succeeding strategy's results are selected):
+FOSSA CLI attempts to perform the following strategies in order (the results of the first succeeding strategy are selected):
 
-1. go mod graph and golist
-2. go list
-3. gomod
-
-## Strategy: go mod graph and golist
-
-Discovery: find go.mod files
-
-1. We execute `go mod graph` to retrieve all edges, and all considered versions of the module.
-2. We execute `go list -m -json all` to identify the main module, selected version of the module, and whether the module is direct dependency (using `Indirect` field from the command response)
-3. We create a dependencies graph from using the result of (1) in the following fashion:
-   a. We remove the main module from the dependency graph
-   b. We label all direct modules, as a direct dependency
-   c. We filter out module versions that were not selected - we know selected module versions from step (2). We do this, since the output of `go mod graph`, does return only the selected version, used in the build list! 
-   d. If replacements were specified in the output of (2) we reflect them in our output as well.
+1. go list
+2. gomod
 
 ## Strategy: golist
 
 Discovery: find go.mod files
 
-We run `go list -m -json all`, which produces, e.g.,:
+FOSSA CLI runs `go list -json -e -deps all` which produces something like:
 
 ```json
 {
-        "Path": "example.com/foo/bar",
-        "Main": true,
-        "Dir": "/Users/example/Codes/golang/simple",
-        "GoMod": "/Users/example/Codes/golang/simple/go.mod",
-        "GoVersion": "1.16"
-}
-{
-        "Path": "github.com/kr/pretty",
-        "Version": "v0.1.0",
-        "Time": "2018-05-06T08:33:45Z",
-        "Indirect": true,
-        "Dir": "/Users/example/go/pkg/mod/github.com/kr/pretty@v0.1.0",
-        "GoMod": "/Users/example/go/pkg/mod/cache/download/github.com/kr/pretty/@v/v0.1.0.mod"
+        "Dir": "go/pkg/mod/github.com/cespare/xxhash/v2@v2.1.2",
+        "ImportPath": "github.com/cespare/xxhash/v2",
+        "Name": "xxhash",
+        "Doc": "Package xxhash implements the 64-bit variant of xxHash (XXH64) as described at http://cyan4973.github.io/xxHash/.",
+        "Root": "go/pkg/mod/github.com/cespare/xxhash/v2@v2.1.2",
+        "Module": {
+                "Path": "github.com/cespare/xxhash/v2",
+                "Version": "v2.1.2",
+                "Time": "2021-08-24T09:58:46Z",
+                "Indirect": true,
+                "Dir": "go/pkg/mod/github.com/cespare/xxhash/v2@v2.1.2",
+                "GoMod": "go/pkg/mod/cache/download/github.com/cespare/xxhash/v2/@v/v2.1.2.mod",
+                "GoVersion": "1.11"
+        },
+...
 }
 ```
 
-- To infer direct dependencies, we filter out any module, which has `Main` field with value of true, and `Indirect` field with value of true.
-- To infer transitive dependencies, we execute `go list -json all`, and parse it's output for `Imports`, `ImportPath`, `Module`, `Standard` data, and fill in the transitive dependencies.
+FOSSA CLI generates a graph of *packages* and then resolves these back to their parent modules.
+Every `Main` module it finds in this graph will have its dependencies promoted to be a direct dependency of the project.
 
-For package dependencies that aren't using gomodules, a pseudo-version (`v0.0.0-TIMESTAMP-COMMITID`) is present instead. We use the commit ID as the version.
+The reason that FOSSA CLI starts with a graph of packages is because Go modules distribute source code for one or more packages.
+However, only _packages_, not _modules_, are `import`ed in Go source code.
+An implication of this is that the graph of _module_ dependencies does not necessarily correspond to the graph of _package_ dependencies,
+which are the real deciding factor in whether a given module is actually used in the end program.
+By looking at how packages import one another, FOSSA CLI can get more information about what packages
+(and therefore modules) are actually used in a final build product than by looking at modules alone.
+This should eliminate some false positives found by tactics in older versions of FOSSA CLI that use `go list -m`.
+
+Currently, this strategy does not yet include path dependencies or their transitive deps from Go `replace` directives.
+
+This strategy was previously available only under the `--experimental-use-v3-go-resolver` flag but is now the default.
+For more information about this transition please see this [document](./v3-go-resolver-transition-qa.md).
 
 ## Strategy: gomod
 
-We parse the go.mod file, which looks something like:
+FOSSA CLI parses the go.mod file, which looks something like:
 
 ```
 module our/package/path
@@ -76,22 +76,134 @@ where:
 - `replace` rewrites `require`s. In this example, our requires resolve to
   `[github.com/example/one v1.2.3, github.com/example/other v2.0.0]`
 
-## Experimental Strategy: Use Go List on Packages
-
-This strategy instead generates a graph of modules based on the required packages output by `go list -json -deps all`.
-A Go module distributes source code for one or more packages. However, only packages are `import`ed in Go source code.
-An implication of this is that the graph of module dependencies does not necessarily correspond to how different packages in a Go project depend on each other.
-By looking at how packages import one another, the CLI can get more information about what packages and modules are actually used in a final build product than by looking at modules alone.
-This should eliminate some false positives found by tactics that use `go list -m`.
-
-To enable a strategy that does this, run `fossa analyze` with the `--experimental-use-v3-go-resolver` flag.
-
-Currently, this strategy does not yet include path dependencies or their transitive deps from Go `replace` directives.
-
 ## FAQ
 
-### Why `go list -m -json all` is used instead of `go list -json -deps` to infer dependencies?
+### Why do I see a dependency in `go.mod`, but it is not reflected in FOSSA?
 
-We use `go list -m -json all` in combination with the `go list -json all`, to infer direct and transitive dependencies. The reason, we do not use solely use `go list -json -deps` command at this moment, is because it does not include transitive dependencies imported with test imports. 
+To explain how this can be the case, it's important to note that just because a package is in `go.mod` doesn't mean that it's actually used in the project;
+and just because it's in `go.mod` without an `// indirect` comment doesn't mean it's actually direct.
+Instead, [the Go language defines direct dependencies as](https://go.dev/ref/mod#glos-direct-dependency):
 
-This go module functionality is actively being worked on, such that we can label dependencies environment (e.g. Test) correctly, for all types of Go project configurations.
+> A package whose path appears in an `import` declaration in a `.go` source file for a package or test in the main module, 
+> or the module containing such a package.
+
+This disconnect, where the `go.mod` file is not representative of the actual project,
+occurs because Go considers packages in the `go.mod` advisory
+(as in, it is not a build error to build a project that does not use a referenced package).
+It also considers the `// indirect` comment to be "cosmetic", which means that the only way
+this comment gets added or removed is via `go mod tidy` (or manually, by editing the `go.mod` directly).
+
+To illustrate this, we have created a very simple reproduction case and copied the results below.
+Note that at the end, despite the `go.mod` file being outdated (the dependency is neither used, nor marked `// indirect`),
+Go did not complain at all when the project was built. 
+
+Shell commands are prefixed by `;`, and comments about those commands are prefixed by `#`:
+```
+; fossa -V
+fossa-cli version 3.8.6 (revision b2657cb78351 compiled with ghc-9.0)
+
+# Created the initial repro case project.
+; cat go.mod
+module github.com/jssblck/gomodtest
+
+go 1.20
+
+require github.com/cenkalti/backoff/v4 v4.2.1
+
+# Used the `backoff` package in the actual code.
+; cat main.go
+package main
+
+import (
+	"fmt"
+
+	"github.com/cenkalti/backoff/v4"
+)
+
+func main() {
+	fmt.Printf("default initial backoff interval: %v\n", backoff.DefaultInitialInterval)
+}
+
+# FOSSA reports `backoff` as a dependency.
+; fossa analyze -o 2> /dev/null | jq '.sourceUnits'
+[
+  {
+    "AdditionalDependencyData": null,
+    "Build": {
+      "Artifact": "default",
+      "Dependencies": [
+        {
+          "imports": [],
+          "locator": "go+github.com/cenkalti/backoff/v4$v4.2.1"
+        }
+      ],
+      "Imports": [
+        "go+github.com/cenkalti/backoff/v4$v4.2.1"
+      ],
+      "Succeeded": true
+    },
+    "Data": null,
+    "Files": null,
+    "GraphBreadth": "complete",
+    "Info": null,
+    "Manifest": "/Users/jessica/projects/scratch/gomodtest/",
+    "Name": "/Users/jessica/projects/scratch/gomodtest/",
+    "OriginPaths": [
+      "go.mod"
+    ],
+    "Type": "gomod"
+  }
+]
+
+# Edited to remove references to the `backoff` package.
+; cat main.go
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	fmt.Println("not using backoff!")
+}
+
+# Left `go.mod` unchanged.
+; cat go.mod
+module github.com/jssblck/gomodtest
+
+go 1.20
+
+require github.com/cenkalti/backoff/v4 v4.2.1
+
+# FOSSA no longer reports `backoff` as a dependency.
+; fossa analyze -o 2> /dev/null | jq '.sourceUnits'
+[
+  {
+    "AdditionalDependencyData": null,
+    "Build": {
+      "Artifact": "default",
+      "Dependencies": [],
+      "Imports": [],
+      "Succeeded": true
+    },
+    "Data": null,
+    "Files": null,
+    "GraphBreadth": "complete",
+    "Info": null,
+    "Manifest": "/Users/jessica/projects/scratch/gomodtest/",
+    "Name": "/Users/jessica/projects/scratch/gomodtest/",
+    "OriginPaths": [
+      "go.mod"
+    ],
+    "Type": "gomod"
+  }
+]
+
+# Even though `go.mod` is outdated, it can still build with no warnings or errors.
+; go build
+; ./gomodtest
+not using backoff!
+```
+
+As a concrete step towards resolving this sort of discrepancy, we recommend running `go mod tidy` on projects regularly;
+this command should synchronize the `go.mod` file with the actual state of the project.

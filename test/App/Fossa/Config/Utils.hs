@@ -37,6 +37,8 @@ configFile =
     , configExperimental = Nothing
     , configVendoredDependencies = Nothing
     , configTelemetry = Nothing
+    , configCustomLicenseSearch = Nothing
+    , configKeywordSearch = Nothing
     }
 
 -- | Tests that the config loader uses the directory set in the arguments

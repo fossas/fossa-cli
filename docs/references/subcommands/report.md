@@ -28,9 +28,14 @@ Where `60` is the maximum number of seconds to wait for the report to be downloa
 
 `fossa report` supports customizing the format used to render a report via the `--format` flag.
 Available options are:
+- `csv`
+- `cyclonedx-json`
+- `cyclonedx-xml`
+- `html`
 - `json`
 - `markdown`
 - `spdx`
+- `spdx-json`
 - `text`
 
 For example, to render the report in JSON format, use `fossa report attribution --format json`.

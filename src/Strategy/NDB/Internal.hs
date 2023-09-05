@@ -1,58 +1,65 @@
-{-# LANGUAGE RecordWildCards #-}
-
--- This pragma is here because showHex used in showHex' below requires a Show constraint with base-4.15 (ghc 9.0) but does not in (ghc 9.4).
--- This means when compiled with GHC 9.4 a warning is emitted that fails the build.
--- Please remove this pragma when GHC 9.0 no longer supported.
-{-# OPTIONS_GHC -Wno-redundant-constraints #-}
-
--- | This implementation of the NDB format is heavily based on the Go project here:
---   https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go
+-- | Reads NDB databases.
 --
---   The "New" Database format by RPM is not well documented outside the original source code, located here:
---   https://github.com/rpm-software-management/rpm/blob/rpm-4.17.0-release/lib/backend/ndb/rpmpkg.c
---
---   Packages.db File Format Summary:
---   ================================
---
---   32 bytes "NDB Header": Format Magic header, with version number etc. Provides the
---   Slot Pages count "SlotNPages".
---
---   Immediately following the NDB Header is an array of "SlotNPages" count Slot Pages.
---   Each Slot Page is exactly 4k in size and contains NDB_SlotEntriesPerPage individual Slots.
---
---   Each Slot Entry can be referring to a Package with an identifier or be a free slot entry (Package index is zero).
---   If a Slot Entry is non-free, the BlkOffset points to the "Block".
---
---   The "Block" has a "Blob Header", directly followed by the "Blob" (the actual package headers)
---   and a Blob "tail" of up to 16 bytes. The "Blob" is checksummed using Adler32 (ignored by this implementation).
+-- See also:
+-- - Go parser: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go
+-- - Original C parser with useful comments: https://github.com/rpm-software-management/rpm/blob/3e74e8ba2dd5e76a5353d238dc7fc38651ce27b3/lib/backend/ndb/rpmpkg.c
 module Strategy.NDB.Internal (
   readNDB,
   NdbEntry (..),
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, context, fatalText, fromEitherParser, fromEitherShow)
+import Control.Effect.Diagnostics (Diagnostics, fromEitherParser, fromEitherShow)
+import Control.Monad (void, when)
+import Data.Bits (zeroBits)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BSL
+import Data.Char (ord)
+import Data.Functor.Extra ((<$$>))
+import Data.List (sortOn)
+import Data.Maybe (mapMaybe)
 import Data.Rpm.DbHeaderBlob (PkgInfo (..), readPackageInfo)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
-import Data.Word (Word32, Word8)
+import Data.Word (Word32)
 import Effect.ReadFS (ReadFS, readContentsBS)
-import Numeric (showHex)
 import Path (Abs, File, Path)
-import Text.Megaparsec (
-  Parsec,
-  count,
-  runParser,
-  some,
-  (<?>),
- )
-import Text.Megaparsec.Byte.Binary (word32le, word8)
+import Text.Megaparsec (Parsec, count, getOffset, label, runParser, takeP, (<?>))
+import Text.Megaparsec.Byte (string)
+import Text.Megaparsec.Byte.Binary (word32le)
 
--- | An entry in the database, consisting of the architecture, package, and version.
+-- | Read an NDB database. These are commonly found at
+-- @\/var\/lib\/rpm\/Packages.db@.
+--
+-- Reading this database provides us with a list of installed RPM packages. It
+-- does not provide edges between package dependencies.
+readNDB :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs File -> m [NdbEntry]
+readNDB file = do
+  contents <- readContentsBS file
+  blobs <- fromEitherParser $ BSL.fromStrict <$$> runParser parseNDB (show file) contents
+  entries <- traverse fromEitherShow $ readPackageInfo <$> blobs
+  pure $ mapMaybe parsePkgInfo entries
+  where
+    -- FOSSA _requires_ that architecture is provided: https://github.com/fossas/FOSSA/blob/e61713dec1ef80dc6b6114f79622c14df5278235/modules/fetchers/README.md#locators-for-linux-packages
+    --
+    -- RPM packages that don't have all the required fields are dropped from the
+    -- parsed list.
+    parsePkgInfo :: PkgInfo -> Maybe NdbEntry
+    parsePkgInfo (PkgInfo (Just pkgName) (Just pkgVersion) (Just pkgRelease) (Just pkgArch) pkgEpoch) =
+      Just $ NdbEntry pkgArch pkgName (pkgVersion <> "-" <> pkgRelease) (fmap (toText . show) pkgEpoch)
+    parsePkgInfo _ = Nothing
+
+-- When parsing ByteStrings, the associated token is a Word8 (a byte).
+--
+-- See also:
+-- - https://hackage.haskell.org/package/megaparsec-9.4.1/docs/Text-Megaparsec-Stream.html#t:Token
+-- - https://hackage.haskell.org/package/megaparsec-9.4.1/docs/Text-Megaparsec-Stream.html#t:ShareInput
+type Parser = Parsec Void ByteString
+
+-- | An entry in an NDB database, consisting of the architecture, package, and
+-- version.
 data NdbEntry = NdbEntry
   { ndbEntryArch :: Text
   , ndbEntryPackage :: Text
@@ -61,218 +68,215 @@ data NdbEntry = NdbEntry
   }
   deriving (Eq, Ord, Show)
 
--- | FOSSA _requires_ that architecture is provided: https://github.com/fossas/FOSSA/blob/e61713dec1ef80dc6b6114f79622c14df5278235/modules/fetchers/README.md#locators-for-linux-packages
-parsePkgInfo :: (Has Diagnostics sig m) => PkgInfo -> m NdbEntry
-parsePkgInfo (PkgInfo (Just pkgName) (Just pkgVersion) (Just pkgRelease) (Just pkgArch) pkgEpoch) = pure $ NdbEntry pkgArch pkgName (pkgVersion <> "-" <> pkgRelease) (fmap (toText . show) pkgEpoch)
-parsePkgInfo pkg = fatalText . toText $ "package '" <> show pkg <> "' is missing one or more fields; all fields are required"
-
--- | Packages are read as a JSON array of base64 strings.
-readNDB ::
-  ( Has Diagnostics sig m
-  , Has ReadFS sig m
-  ) =>
-  Path Abs File ->
-  m [NdbEntry]
-readNDB file = do
-  blobs <- context "read blobs" $ readNDB' file
-  entries <- context "parse blobs" . traverse fromEitherShow $ readPackageInfo <$> fmap BSL.fromStrict blobs
-  context "parse package info" $ traverse parsePkgInfo entries
-
-readNDB' ::
-  ( Has Diagnostics sig m
-  , Has ReadFS sig m
-  ) =>
-  Path Abs File ->
-  m [ByteString]
-readNDB' file = do
-  -- The Go code this module is based on uses a file handle, but doing that is rough in Haskell.
-  -- Instead this code buffers the entire file and then treats the resulting ByteString as a seekable cursor.
+-- | A parser for NDB databases.
+--
+-- An NDB database is a binary file with the following structure:
+--
+--   1. The header of the database. This is 16 bytes long, and contains some
+--      metadata and the count of the number of "slot pages".
+--   2. 16 bytes of unused data.
+--   3. A sequence of "slot pages". Each slot page is 4096 bytes in size, and
+--      contains 256 slots that are 16 bytes each. Each slot represents a single
+--      installed package, and a pointer to the "block" for this package. If the
+--      number of installed packages is not a multiple of the slot page size, a
+--      slot page might have a bunch of empty slots at the end of it.
+--   4. A sequence of "blocks". Blocks contain an RPM package's actual header
+--      data. Blocks are variable-length and always padded to be 16-aligned.
+--      Note that blocks are not densely packed! As you uninstall and upgrade
+--      packages, old blocks can be resized to be smaller without any other
+--      blocks being moved. This means that gaps filled with garbage data can be
+--      created between blocks.
+--
+-- For details on each type (e.g. slots, blocks, etc.), see the comment for the
+-- associated parser. To see this structure for yourself, find an RPM NDB file
+-- (e.g. @docker run registry.suse.com\/bci\/bci-base@) and examine the hex dump
+-- of its @\/var\/lib\/rpm\/Packages.db@ (e.g. @hexdump -Cv Packages.db@).
+--
+-- See also:
+-- - Go parser (comments have some errors): https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L34-L58
+-- - Original C parser: https://github.com/rpm-software-management/rpm/blob/rpm-4.17.0-release/lib/backend/ndb/rpmpkg.c
+--   - Look at @rpmpkg{Get,Put}Internal@ and @rpmpkg{Read,Write}Blob@.
+parseNDB :: Parser [ByteString]
+parseNDB = do
+  -- Parse the header.
+  header <- parseHeader
+  tossBytes 16 <?> "unused"
+  -- Parse the slot pages.
+  slots <- parseSlots header
+  -- Parse the blobs.
   --
-  -- This works because:
-  -- - The file is small enough to reasonably buffer.
-  -- - The parsers operate on ByteString.
-  -- - The parsers are lazy, only reading the minimum amount of data to work.
-  -- - Slicing a ByteString is O(1).
-  --
-  -- If any of the above change in the future this may need to be rethought.
-  content <- readContentsBS file
+  -- We don't parse EOF after this because we might not have actually reached
+  -- EOF. The last valid block might have extra unused or garbage blocks
+  -- following it depending on the database has been used.
+  parseBlocks slots
 
-  -- Equivalent to 'Open': https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L93-L127
-  header <- fromEitherParser $ runParser parseRawNdb "ndb header" content
-  entries <- fromEitherParser . runParser (parseSlotEntries header) "slot entries" $ slice ndbHeaderLength content
-
-  -- Equivalent to 'Read', without the needless channel: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L129-L192
-  readBlobs content $ filter ndbSlotEntryShouldProcess entries
-  where
-    readBlobs :: (Has Diagnostics sig m) => ByteString -> [NdbSlotEntry] -> m [ByteString]
-    readBlobs content (entry : entries) = do
-      let content' = slice (ndbSlotBlkOffset entry * ndbBlobHeaderSize) content
-      blobHeader <- fromEitherParser $ runParser (parseNdbBlobHeader entry) "blob header" content'
-      blob <- fromEitherParser . runParser (parseNdbBlob blobHeader) "blob" $ slice ndbBlobHeaderSize content'
-      rest <- readBlobs content entries
-      pure $ blob : rest
-    readBlobs _ [] = pure []
-
-type Parser = Parsec Void ByteString
-
-data NdbHeader = NdbHeader
-  { ndbHeaderMagic :: Word32
-  , ndbHeaderVersion :: Word32
-  , ndbHeaderGeneration :: Word32
-  , ndbHeaderSlotNPages :: Word32
+-- | The header of an NDB database.
+newtype NdbHeader = NdbHeader
+  { ndbHeaderSlotNPages :: Word32
   }
   deriving (Show)
 
+-- | NDB databases begin with a header. Headers contain, in order:
+--
+--   1. A magic sequence (@\"RpmP\"@) (4 bytes).
+--   2. An NDB header version (we only support version 0) (4 bytes).
+--   3. An NDB header generation (I have no idea what this is for) (4 bytes).
+--   4. A count of "slot pages" in this NDB database (4 bytes).
+--
+-- Of these, we really only need the slot page count, but we parse the others
+-- for clarity.
+parseHeader :: Parser NdbHeader
+parseHeader =
+  label "header" $ NdbHeader <$> (magic *> version *> generation *> slotPagesCount)
+  where
+    magic = parseMagic ['R', 'p', 'm', 'P'] <?> "magic"
+    version = label "version" $ void $ string $ BS.pack $ replicate 4 zeroBits
+    generation = toss4 <?> "generation"
+    slotPagesCount = take4 <?> "slot pages count"
+
+-- | A "slot" representing a package in an NDB database.
 data NdbSlotEntry = NdbSlotEntry
-  { ndbSlotMagic :: Word32
-  , ndbSlotPkgIndex :: Word32
+  { ndbSlotPkgIndex :: Word32
   , ndbSlotBlkOffset :: Word32
   , ndbSlotBlkCount :: Word32
   }
   deriving (Show)
 
-data NdbBlobHeader = NdbBlobHeader
-  { ndbBlobHeaderMagic :: Word32
-  , ndbBlobHeaderPkgIndex :: Word32
-  , ndbBlobHeaderChecksum :: Word32
-  , ndbBlobHeaderLen :: Word32
-  }
-  deriving (Show)
-
--- | Parse the slot entries in the header section of the DB.
--- The original structure contains the file handle too, but as mentioned in 'readNdb'' this code doesn't use a file handle,
--- so instead it just parses the entries themselves instead of a container type.
+-- | Parse all the slots of an NDB database. The header tells us how many slot
+-- pages to expect to parse. Slots are located immediately after headers.
 --
--- Structure: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L82-L85
--- Parse: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L93-L127
--- Validation is handled by the child parsers.
-parseRawNdb :: Parser NdbHeader
-parseRawNdb = parseNdbHeader <?> "header"
-
-parseSlotEntries :: NdbHeader -> Parser [NdbSlotEntry]
-parseSlotEntries header = count (ndbHeaderEntryCount header) (parseNdbSlotEntry <?> "slot entry")
-
--- | Parse the header for the database.
--- Due to the way in which this module buffers the file content for parsers, parsing the unused portion of the struct is technically not needed.
--- It's kept in for completeness, so that in the future if this module needs to move to handle based parsing it can do so with less surprises.
---
--- Structure: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L60-L66
--- Parse: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L99-L103
--- Validate: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L105-L113
-parseNdbHeader :: Parser NdbHeader
-parseNdbHeader =
-  NdbHeader
-    <$> (word32le <?> "magic")
-    <*> (word32le <?> "version")
-    <*> (word32le <?> "generation")
-    <*> (word32le <?> "slot pages count")
-    <* (parseBytesRaw 16 <?> "unused")
-    >>= validate
+-- We filter out all slots where the package index is 0, because those slots do
+-- not point to valid blocks. They might be unused slots at the end of the page,
+-- or they might be slots that used to be occupied but whose packages have since
+-- been uninstalled.
+parseSlots :: NdbHeader -> Parser [NdbSlotEntry]
+parseSlots NdbHeader{ndbHeaderSlotNPages} =
+  label "slots" $ filter ((/= 0) . ndbSlotPkgIndex) <$> count (fromIntegral $ slotsToParse ndbHeaderSlotNPages) parseSlot
   where
-    validate :: (MonadFail m) => NdbHeader -> m NdbHeader
-    validate NdbHeader{..} | ndbHeaderSlotNPages == 0 = fail "expected >0 pages but got zero"
-    validate NdbHeader{..} | ndbHeaderSlotNPages > ndbHeaderMaxPages = fail $ "slot page limit exceeded: " <> show ndbHeaderSlotNPages
-    validate NdbHeader{..} | ndbHeaderVersion /= ndbHeaderSupportedVersion = fail $ "expected version '0' but got: " <> show ndbHeaderVersion
-    validate NdbHeader{..} | ndbHeaderMagic /= ndbHeaderMagicExpected = fail $ "expected magic '" <> showHex' ndbHeaderMagicExpected <> "' but got: " <> showHex' ndbHeaderMagic
-    validate header = pure header
+    slotsPerPage = 256
 
--- | Parse a slot entry.
+    -- The first page has only 254 slots, since its first two slots are
+    -- overridden with the NDB database's header.
+    --
+    -- See also: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L115
+    slotsToParse pages = pages * slotsPerPage - 2
+
+-- | Each slot contains, in order:
 --
--- Structure: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L68-L73
--- Parse: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L116-L117
--- Validate: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L138-L145
-parseNdbSlotEntry :: Parser NdbSlotEntry
-parseNdbSlotEntry =
-  NdbSlotEntry
-    <$> (word32le <?> "magic")
-    <*> (word32le <?> "package index")
-    <*> (word32le <?> "block offset")
-    <*> (word32le <?> "block count")
-    >>= validate
+--   1. A magic sequence (@\"Slot\"@) (4 bytes).
+--   2. A package index, identifying the package entry of this slot (4 bytes).
+--   3. A block offset, indicating where the block's data begins, counted in
+--      16-byte rows. All blocks begin at 16-aligned addresses (4 bytes).
+--   4. A block count, indicating the total length of the block, counted in
+--      16-byte rows (4 bytes).
+--
+-- We use slot data to know when blocks start and how long blocks are.
+parseSlot :: Parser NdbSlotEntry
+parseSlot =
+  label "slot" $
+    NdbSlotEntry
+      <$> (magic *> take4 <?> "package index")
+      <*> (take4 <?> "block offset")
+      <*> (take4 <?> "block count")
   where
-    validate :: (MonadFail m) => NdbSlotEntry -> m NdbSlotEntry
-    validate NdbSlotEntry{..} | ndbSlotMagic /= ndbSlotMagicExpected = fail $ "expected magic '" <> showHex' ndbSlotMagicExpected <> "' but got: " <> showHex' ndbSlotMagic
-    validate entry = pure entry
+    magic = parseMagic ['S', 'l', 'o', 't'] <?> "magic"
 
--- | Parse the header for a specific blob.
+-- | Parse all blocks of an NDB database. The slots tell us how many blocks to
+-- expect to parse, and how to parse them.
 --
--- Structure: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L75-L80
--- Parse: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L159-L167
--- Validate: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L168-L178
-parseNdbBlobHeader :: NdbSlotEntry -> Parser NdbBlobHeader
-parseNdbBlobHeader slot =
-  NdbBlobHeader
-    <$> (word32le <?> "magic")
-    <*> (word32le <?> "package index")
-    <*> (word32le <?> "checksum")
-    <*> (word32le <?> "len")
-    >>= validate slot
+-- Since blocks are not contiguous, but we still want to parse every block in a
+-- single pass, we order the parsed slots by block offset. We then parse each
+-- block in offset order, skipping to the block's offset if needed at the
+-- beginning of each block.
+parseBlocks :: [NdbSlotEntry] -> Parser [ByteString]
+parseBlocks = label "blocks" . traverse parseBlock . sortOn ndbSlotBlkOffset
+
+-- | Each block contains, in order:
+--
+--   1. A magic sequence (@\"BlbS\"@) (4 bytes).
+--   2. The package index of this block's package, which matches its
+--      corresponding slot's package index (4 bytes).
+--   3. The generation of this package (I have no idea what this is for) (4
+--      bytes).
+--   4. The length of the block's variable-length data blob in bytes (4 bytes).
+--   5. The blob data, which contains the package's actual headers
+--      (variable-length).
+--   6. The block's "tail", which is padded so that the block will end on a
+--      16-aligned address (0-15 bytes).
+--   7. An Adler-32 (RFC 1950) checksum of this block's data blob (32 bytes).
+--   8. The length of the block's variable-length data blob in bytes, identical
+--      to field 4 (4 bytes).
+--   9. An ending magic sequence (@\"BlbE\"@) (4 bytes).
+--
+-- We later pass the parsed blob to 'readPackageInfo', which provides the logic
+-- for parsing the package headers themselves. This logic is shared between
+-- several different RPM backends. RPM supports different database storage
+-- backends, each of which shares a content format for its package headers
+-- (which are text) but stores and indexes data differently.
+--
+-- For layout documentation, see: https://github.com/rpm-software-management/rpm/blob/3e74e8ba2dd5e76a5353d238dc7fc38651ce27b3/lib/backend/ndb/rpmpkg.c#L512-L513
+parseBlock :: NdbSlotEntry -> Parser ByteString
+parseBlock NdbSlotEntry{ndbSlotPkgIndex, ndbSlotBlkOffset, ndbSlotBlkCount} = label "block" $ do
+  -- Jump to block offset if needed. This is sometimes needed because there is a
+  -- gap between where the previous block ended and where the current block
+  -- begins.
+  currentOffset <- getOffset
+  let blockStartOffset = (fromIntegral ndbSlotBlkOffset) * rowSize
+      gap = blockStartOffset - currentOffset
+  when (gap > 0) $ tossBytes gap
+
+  -- Parse header.
+  magicS
+  index <- take4 <?> "package index"
+  when (index /= ndbSlotPkgIndex) $ fail $ "expected pkg index '" <> show ndbSlotPkgIndex <> "', but got: " <> show index
+  toss4 <?> "generation"
+  len <- fromIntegral <$> take4 <?> "len"
+
+  -- Parse blob.
+  --
+  -- We subtract 16 here because this length is from the start of the block
+  -- (including the 16 byte header) to the end of its blob.
+  blob <- takeBytes (len - 16) <?> "blob"
+
+  -- Parse tail.
+  --
+  -- Padding = total block size - length from start to end-of-blob - length of constant-size tail.
+  let tailLength = (fromIntegral ndbSlotBlkCount) * rowSize - fromIntegral len - 12
+  tossBytes tailLength <?> "tail"
+  toss4 <?> "checksum"
+  toss4 <?> "tail len"
+  magicE
+
+  -- Return blob directly. We parse the blob contents later so that errors in
+  -- constructing the locator don't appear as confusing parsing errors.
+  pure blob
   where
-    validate :: (MonadFail m) => NdbSlotEntry -> NdbBlobHeader -> m NdbBlobHeader
-    validate _ NdbBlobHeader{..} | ndbBlobHeaderMagic /= ndbBlobMagicExpected = fail $ "expected magic '" <> showHex' ndbBlobMagicExpected <> "' but got: " <> showHex' ndbBlobHeaderMagic
-    validate NdbSlotEntry{..} NdbBlobHeader{..} | ndbSlotPkgIndex /= ndbBlobHeaderPkgIndex = fail $ "expected pkg index '" <> show ndbSlotPkgIndex <> "', but got: " <> show ndbBlobHeaderPkgIndex
-    validate _ header = pure header
+    magicS = parseMagic ['B', 'l', 'b', 'S'] <?> "magicS"
+    magicE = parseMagic ['B', 'l', 'b', 'E'] <?> "magicE"
 
--- | Parse a blob.
--- Contains no real structure (other than that it is, in Haskell terms, a '[Word8]') or validation.
+-- | The size of a "row" in the NDB format.
+rowSize :: Int
+rowSize = 16
+
+-- | Consume a certain number of bytes.
+takeBytes :: Int -> Parser ByteString
+takeBytes = takeP Nothing
+
+-- | Consume and discard a certain number of bytes.
+tossBytes :: Int -> Parser ()
+tossBytes = void . takeBytes
+
+-- | Consume and discard 4 bytes (a common field size in NDB).
+toss4 :: Parser ()
+toss4 = tossBytes 4
+
+-- | Consume 4 bytes (a common field size in NDB).
 --
--- Parse: https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L182-L187
-parseNdbBlob :: NdbBlobHeader -> Parser ByteString
-parseNdbBlob NdbBlobHeader{..} = BS.pack <$> parseBytesRaw (fromIntegral ndbBlobHeaderLen)
+-- This is an alias for 'word32le' because the different unit sizes (a 'Word32'
+-- has 32 _bits_, which is equal to 4 _bytes_) kept tripping me up.
+take4 :: Parser Word32
+take4 = word32le
 
--- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L88
-ndbHeaderMagicExpected :: Word32
-ndbHeaderMagicExpected = 1349349458
-
--- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L138
-ndbSlotMagicExpected :: Word32
-ndbSlotMagicExpected = 1953459283
-
--- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L168
-ndbBlobMagicExpected :: Word32
-ndbBlobMagicExpected = 1398959170
-
--- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L111
-ndbHeaderMaxPages :: Word32
-ndbHeaderMaxPages = 2048
-
--- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L89
-ndbHeaderSupportedVersion :: Word32
-ndbHeaderSupportedVersion = 0
-
--- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L87
-ndbSlotEntriesPerPage :: Word32
-ndbSlotEntriesPerPage = 256
-
--- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L135
-ndbBlobHeaderSize :: Word32
-ndbBlobHeaderSize = 16
-
--- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L116
-ndbHeaderEntryCount :: NdbHeader -> Int
-ndbHeaderEntryCount NdbHeader{ndbHeaderSlotNPages} = fromIntegral $ ndbHeaderSlotNPages * ndbSlotEntriesPerPage - 2
-
--- | https://github.com/knqyf263/go-rpmdb/blob/1369b2ee40b762e48586531810d5b2564e2c1063/pkg/ndb/ndb.go#L146-L149
-ndbSlotEntryShouldProcess :: NdbSlotEntry -> Bool
-ndbSlotEntryShouldProcess NdbSlotEntry{ndbSlotPkgIndex} = ndbSlotPkgIndex /= 0
-
-ndbHeaderLength :: Int
-ndbHeaderLength = 32
-
--- | Just read raw bytes. Fails if the read is short.
-parseBytesRaw :: Int -> Parser [Word8]
-parseBytesRaw n = do
-  buf <- take n <$> some word8
-  if length buf == n
-    then pure buf
-    else fail $ "short read: expected " <> show n <> " bytes, read " <> show (length buf)
-
--- Remove the Show constraint when the GHC 9.4 upgrade is complete.
--- Then remove the pragma at the top of this file.
--- | Convenience for 'showHex' to avoid having to provide an empty string every time.
-showHex' :: (Integral a, Show a) => a -> String
-showHex' a = showHex a ""
-
--- | Parsers are lazy, so use unbounded slices.
-slice :: (Integral a) => a -> ByteString -> ByteString
-slice = BS.drop . fromIntegral
+-- | Parse a series of exact 'Word8'-sized 'Char's.
+parseMagic :: [Char] -> Parser ()
+parseMagic = void . string . BS.pack . fmap (fromIntegral . ord)

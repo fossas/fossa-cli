@@ -18,21 +18,21 @@ jobs:
       matrix:
         os: ['windows-latest', 'ubuntu-latest', 'macos-latest']
         include:
-          - os: ubuntu-latest
-            os-name: Linux
-            container: fossa/haskell-static-alpine:ghc-9.0.2
-            project-file: cabal.project.ci.linux
-            ghc: '9.0.2'
+        - os: ubuntu-latest
+          os-name: Linux
+          container: fossa/haskell-static-alpine:ghc-9.0.2
+          project-file: cabal.project.ci.linux
+          ghc: '9.0.2'
 
-          - os: macos-latest
-            os-name: macOS
-            project-file: cabal.project.ci.macos
-            ghc: '9.0.2'
+        - os: macos-latest
+          os-name: macOS
+          project-file: cabal.project.ci.macos
+          ghc: '9.0.2'
 
-          - os: windows-latest
-            os-name: Windows
-            project-file: cabal.project.ci.windows
-            ghc: '9.0.2'
+        - os: windows-latest
+          os-name: Windows
+          project-file: cabal.project.ci.windows
+          ghc: '9.0.2'
 
     steps:
 
@@ -58,8 +58,17 @@ jobs:
       with:
         profile: minimal
         toolchain: stable
-    - uses: taiki-e/install-action@nextest
-    
+
+    - name: Install additional Rust tooling
+      uses: taiki-e/install-action@v2
+      with:
+        tool: nextest
+
+    - uses: actions-rs/install@v0.1
+      with:
+        crate: cargo-nextest
+        version: latest
+
     - uses: Swatinem/rust-cache@v2
 
     - name: Debugging information
@@ -70,12 +79,22 @@ jobs:
         rustc -V || echo "no rustc"
         cargo -V || echo "no cargo"
 
-    # Build Rust crates, which must be present when the CLI builds.
-    - name: Test Rust dependencies
-      run: cargo nextest run
+    # Linux builds are run in Alpine, which builds them statically;
+    # using jemalloc reduces the performance impact of this
+    # over the default libc allocator (which performs very poorly in static builds).
+    - name: Build Rust dependencies (Linux)
+      if: ${{ matrix.os-name == 'linux' }}
+      run: cargo build --features jemalloc --release
 
-    - name: Build Rust dependencies
+    # Non-Linux environments generally don't need `jemalloc`
+    # and in particular Windows doesn't support it.
+    - name: Build Rust dependencies (non-Linux)
+      if: ${{ matrix.os-name != 'linux' }}
       run: cargo build --release
+
+    # Run tests in release mode to reduce the need for rebuilds.
+    - name: Test Rust dependencies
+      run: cargo nextest run --release
 
     # Build FOSSA CLI.
     - uses: actions/cache@v3
@@ -119,6 +138,10 @@ jobs:
       run: |
         cabal test --project-file=${{ matrix.project-file }} unit-tests
 
+    - name: Validate diagnose commands run on the platform
+      run: |
+        cargo run --bin diagnose -- walk --trace-spans none --trace-level info
+
     # Save artifacts.
     - name: Find and move binaries (Windows)
       if: ${{ contains(matrix.os, 'windows') }}
@@ -126,6 +149,7 @@ jobs:
         mkdir release
         find . -type f -path '*/fossa/fossa.exe' -exec cp {} release \;
         find . -type f -path '*/pathfinder/pathfinder.exe' -exec cp {} release \;
+        cp target/release/diagnose.exe release
 
     - name: Find and move binaries (non-Windows)
       if: ${{ !contains(matrix.os, 'windows') }}
@@ -133,10 +157,54 @@ jobs:
         mkdir release
         find . -type f -path '*/fossa/fossa' -exec cp {} release \;
         find . -type f -path '*/pathfinder/pathfinder' -exec cp {} release \;
+        cp target/release/diagnose release
 
     - name: Strip binaries
       run: |
         strip release/*
+
+    - name: Sign and Notarize Binaries (Mac OS)
+      if: ${{ contains(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/v') }}
+      env:
+        MACOS_BUILD_CERT_BASE64: ${{ secrets.MACOS_BUILD_CERT_BASE64 }}
+        MACOS_BUILD_CERT_P12_PASSWORD: ${{ secrets.MACOS_BUILD_CERT_P12_PASSWORD }}
+        MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+        APPLE_NOTARIZATION_DEV_PASS: ${{ secrets.APPLE_NOTARIZATION_DEV_PASS }}
+        APPLE_NOTARIZATION_DEV_ID: ${{ secrets.APPLE_NOTARIZATION_DEV_ID }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      run: |
+        # create variables
+        CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+        # import certificate and provisioning profile from secrets
+        echo -n "$MACOS_BUILD_CERT_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+
+        # create temporary keychain
+        security create-keychain -p "$MACOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security unlock-keychain -p "$MACOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+        # import certificate to keychain
+        security import $CERTIFICATE_PATH -P "$MACOS_BUILD_CERT_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security list-keychain -d user -s $KEYCHAIN_PATH
+
+        chmod +x release/*
+        # '--options runtime' enables the hardened runtime: https://developer.apple.com/documentation/security/hardened_runtime
+        # The hardened runtime is required for notarization.
+        codesign --options runtime -s 'FOSSA, Inc.' release/fossa
+        codesign --options runtime -s 'FOSSA, Inc.' release/pathfinder
+        codesign --options runtime -s 'FOSSA, Inc.' release/diagnose
+
+        # Perform notarization
+        zip -rj notarization-archive.zip release
+        NOTARY_RESULTS=$(xcrun notarytool submit notarization-archive.zip --apple-id "$APPLE_NOTARIZATION_DEV_ID" --password "$APPLE_NOTARIZATION_DEV_PASS" --team-id "$APPLE_TEAM_ID" --wait)
+        echo "$NOTARY_RESULTS"
+        rm notarization-archive.zip
+        # The notarization tool doesn't set $?, so examine the output.
+        if ! echo "$NOTARY_RESULTS" | grep -q "status: Accepted"; then
+           exit 1
+        fi
 
     - uses: actions/upload-artifact@v2
       with:
@@ -147,6 +215,9 @@ jobs:
     name: create-release
     runs-on: ubuntu-latest
     needs: ['build-all']
+    permissions:
+      id-token: write
+      contents: write
 
     steps:
     - uses: actions/download-artifact@v2
@@ -179,6 +250,25 @@ jobs:
         [ "$GITHUB_REF_TYPE" = "tag" ] && echo "Ref type OK"
         [ "$(Linux-binaries/fossa --version)" = "fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.0)" ] && echo "CLI version OK"
 
+    - name: Install Cosign
+      if: ${{ github.ref_type == 'tag' }}
+      uses: sigstore/cosign-installer@v3.1.1
+
+    - name: Sign Release (Linux)
+      if: ${{ github.ref_type == 'tag' }}
+      run: |
+        cosign version
+        cosign sign-blob --yes --bundle "Linux-binaries/fossa.bundle" "Linux-binaries/fossa"
+        cosign sign-blob --yes --bundle "Linux-binaries/pathfinder.bundle" "Linux-binaries/pathfinder"
+        cosign sign-blob --yes --bundle "Linux-binaries/diagnose.bundle" "Linux-binaries/diagnose"
+
+    - name: Verify Signatures
+      if: ${{ github.ref_type == 'tag' }}
+      run: |
+        cosign verify-blob --bundle "Linux-binaries/fossa.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/fossa"
+        cosign verify-blob --bundle "Linux-binaries/pathfinder.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/pathfinder"
+        cosign verify-blob --bundle "Linux-binaries/diagnose.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/diagnose"
+
     # This uses names compatible with our install script.
     #
     # Originally, CLI >=2.x Linux releases were only packaged as zip files, but
@@ -187,24 +277,48 @@ jobs:
     # default. To avoid breaking compatibility with older install scripts, we
     # release both formats but default to using tar.gz when installing.
     - name: Bundle binaries
+      env:
+        LINUX_PATHFINDER_TAR_PATH: "release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar"
+        LINUX_PATHFINDER_ZIP_PATH: "release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
+        LINUX_FOSSA_TAR_PATH: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar"
+        LINUX_FOSSA_ZIP_PATH: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
+        LINUX_DIAGNOSE_TAR_PATH: "release/diagnose_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar"
+        LINUX_DIAGNOSE_ZIP_PATH: "release/diagnose_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
       run: |
         mkdir release
 
         ls -R
 
         chmod +x Linux-binaries/*
-        zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/fossa
-        zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip Linux-binaries/pathfinder
-        tar --create --gzip --verbose --file release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz --directory Linux-binaries fossa
-        tar --create --gzip --verbose --file release/pathfinder_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz --directory Linux-binaries pathfinder
+        zip -j "$LINUX_PATHFINDER_ZIP_PATH" Linux-binaries/pathfinder
+        zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa
+        zip -j "$LINUX_DIAGNOSE_ZIP_PATH" Linux-binaries/diagnose
+        tar --create --verbose --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa
+        tar --create --verbose --file "$LINUX_PATHFINDER_TAR_PATH" --directory Linux-binaries pathfinder
+        tar --create --verbose --file "$LINUX_DIAGNOSE_TAR_PATH" --directory Linux-binaries diagnose
+
+        if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+          tar --append --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa.bundle
+          tar --append --file "$LINUX_PATHFINDER_TAR_PATH" --directory Linux-binaries pathfinder.bundle
+          tar --append --file "$LINUX_DIAGNOSE_TAR_PATH" --directory Linux-binaries diagnose.bundle
+          zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa.bundle
+          zip -j "$LINUX_PATHFINDER_ZIP_PATH" Linux-binaries/pathfinder.bundle
+          zip -j "$LINUX_DIAGNOSE_ZIP_PATH" Linux-binaries/diagnose.bundle
+        fi
+
+        gzip "$LINUX_PATHFINDER_TAR_PATH"
+        gzip "$LINUX_FOSSA_TAR_PATH"
+        gzip "$LINUX_DIAGNOSE_TAR_PATH"
 
         chmod +x macOS-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/fossa
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/pathfinder
+        zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/diagnose
 
         chmod +x Windows-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/fossa.exe
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/pathfinder.exe
+        zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/diagnose.exe
 
     - name: Create checksums
       # We have to run from within the release dir so that "release" isn't prepended to the relative path of the zip file.

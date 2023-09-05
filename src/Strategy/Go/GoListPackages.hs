@@ -11,14 +11,15 @@ module Strategy.Go.GoListPackages (
   ImportPath (..),
   GoModule (..),
   ModulePath (..),
+  toGoModVersion,
 ) where
 
 import Control.Algebra (Has)
-import Control.Applicative ((<|>))
+import Control.Applicative (Alternative (some), (<|>))
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, fatal)
 import Control.Effect.Diagnostics qualified as Diagnostics
 import Control.Effect.State (gets)
-import Control.Monad (unless, when, (>=>))
+import Control.Monad (unless, void, when, (>=>))
 import Data.Aeson (FromJSON (parseJSON), Value, withObject, (.!=), (.:), (.:?))
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.Aeson.Types (formatError)
@@ -29,13 +30,17 @@ import Data.Hashable (Hashable)
 import Data.List (foldl')
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
+import Data.SemVer qualified as SemVer
+import Data.SemVer.Internal (Version (..))
 import Data.Set qualified as Set
 import Data.String.Conversion (ToText, decodeUtf8, toText)
 import Data.Text (Text, isPrefixOf)
+import Data.Void (Void)
 import DepTypes (
   DepEnvironment (..),
   DepType (GoType),
   Dependency (..),
+  VerConstraint (CEq),
  )
 import Effect.Exec (AllowErr (Never), Command (Command, cmdAllowErr, cmdArgs, cmdName), Exec, ExecErr (CommandParseError), execThrow, renderCommand)
 import Effect.Grapher (Grapher, LabeledGrapherC, Labels, deep, direct, edge, label, runLabeledGrapher)
@@ -43,9 +48,12 @@ import GHC.Generics (Generic)
 import Graphing qualified
 import Path (Abs, Dir, Path)
 import Prettyprinter (pretty)
-import Strategy.Go.GoModGraph qualified as GoModGraph
+import Strategy.Go.Gomod (PackageVersion, parsePackageVersion)
 import Strategy.Go.Gomod qualified as Gomod
 import Strategy.Go.Transitive (decodeMany)
+import Text.Megaparsec (Parsec, empty, errorBundlePretty, parse)
+import Text.Megaparsec.Char (char)
+import Text.Megaparsec.Char.Lexer qualified as Lexer
 import Types (GraphBreadth (Complete))
 
 -- * Types
@@ -116,7 +124,7 @@ instance FromJSON GoModule where
     \obj ->
       GoModule
         <$> obj .: "Path"
-        <*> ((>>= GoModGraph.toGoModVersion) <$> (obj .:? "Version"))
+        <*> ((>>= toGoModVersion) <$> (obj .:? "Version"))
         <*> obj .:? "Indirect" .!= False
         <*> obj .:? "Main" .!= False
         <*> obj .:? "Replace"
@@ -271,6 +279,26 @@ instance ToDiagnostic MissingMainModuleErr where
 isPathDep :: GoModule -> Bool
 isPathDep GoModule{modulePath = ModulePath mP} = any (`isPrefixOf` mP) ["./", "../"]
 
+toVerConstraint :: Gomod.PackageVersion -> VerConstraint
+toVerConstraint v = case v of
+  Gomod.NonCanonical n -> CEq n
+  Gomod.Pseudo commitHash -> CEq commitHash
+  Gomod.Semantic semver -> CEq ("v" <> SemVer.toText semver{_versionMeta = []})
+
+type Parser = Parsec Void Text
+
+-- |Convenience function to parse a go module version that is potentially surrounded by spaces.
+toGoModVersion :: Text -> Maybe PackageVersion
+toGoModVersion modVersion = case parse (parsePackageVersion lexeme) "go module version" modVersion of
+  Left err -> fail $ errorBundlePretty err
+  Right vc -> Just vc
+  where
+    sc :: Parser ()
+    sc = Lexer.space (void $ some $ char ' ') empty empty
+
+    lexeme :: Parser a -> Parser a
+    lexeme = Lexer.lexeme sc
+
 modToDep :: GoModule -> Set.Set DepEnvironment -> Dependency
 modToDep
   GoModule
@@ -281,7 +309,7 @@ modToDep
     Dependency
       { dependencyType = GoType
       , dependencyName = modPath
-      , dependencyVersion = GoModGraph.toVerConstraint <$> version
+      , dependencyVersion = toVerConstraint <$> version
       , dependencyLocations = []
       , dependencyEnvironments = labels
       , dependencyTags = Map.empty

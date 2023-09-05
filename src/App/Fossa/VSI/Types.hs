@@ -245,7 +245,7 @@ getPrefixes paths = snd . foldr accumPrefixes startVal $ (NE.tail sorted)
            in (parent, parent <| acc)
 
     parentDir :: VsiFilePath -> VsiRulePath
-    parentDir = VsiRulePath . Text.dropEnd 1 . Text.dropWhileEnd (/= '/') . unVsiFilePath
+    parentDir = VsiRulePath . Text.dropWhileEnd (/= '/') . unVsiFilePath
 
     prefixesFilePath :: VsiRulePath -> VsiFilePath -> Bool
     prefixesFilePath rp fp = unVsiRulePath rp `isPrefixOf` unVsiFilePath fp

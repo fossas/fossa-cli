@@ -1,14 +1,15 @@
 module App.Fossa.ReportSpec (spec) where
 
-import App.Fossa.Config.Report (ReportConfig (..), ReportOutputFormat (ReportJson), ReportType (..))
+import App.Fossa.Config.Report (ReportConfig (..), ReportOutputFormat (ReportJson), ReportType (..), parseReportOutputFormat)
 import App.Fossa.Report (fetchReport)
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Timeout (Duration (MilliSeconds))
+import Data.Foldable (for_)
 import Fossa.API.Types (RevisionDependencyCache (RevisionDependencyCache), RevisionDependencyCacheStatus (Ready))
 import Test.Effect (expectFatal', it')
 import Test.Fixtures qualified as Fixtures
-import Test.Hspec (Spec, describe, runIO)
+import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Test.MockApi (MockApi, alwaysReturns, fails, returnsOnce)
 
 reportConfig :: IO ReportConfig
@@ -60,6 +61,16 @@ spec =
       expectFetchRevisionDependencyCacheSuccess
       expectFetchReportError
       expectFatal' $ fetchReport config
+
+    parseReportOutputSpec
+
+parseReportOutputSpec :: Spec
+parseReportOutputSpec =
+  describe "Every value of ReportOutputJson can be parsed from a string matching its Show instance" $
+    for_ (enumFromTo minBound maxBound) $
+      \reportFmt ->
+        let fmt = show reportFmt
+         in it ("Parses \"" <> fmt <> "\"") $ (parseReportOutputFormat fmt) `shouldBe` Just reportFmt
 
 expectBuildSuccess :: (Has MockApi sig m) => m ()
 expectBuildSuccess = do

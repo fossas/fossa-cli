@@ -78,7 +78,7 @@ singleInference =
   ]
 
 singleRuleExpected :: [VsiRule]
-singleRuleExpected = [VsiRule (VsiRulePath "/foo") (Locator "git" "github.com/facebook/folly" "v2016.08.08.00")]
+singleRuleExpected = [VsiRule (VsiRulePath "/foo/") (Locator "git" "github.com/facebook/folly" "v2016.08.08.00")]
 
 commonPrefixInferences :: [(VsiFilePath, VsiInference)]
 commonPrefixInferences =
@@ -92,8 +92,8 @@ multipleInferences =
 
 multipleRulesExpected :: [VsiRule]
 multipleRulesExpected =
-  VsiRule (VsiRulePath "/otherProject") (Locator "git" "github.com/otherProject" "2.0.0")
-    : VsiRule (VsiRulePath "/baz") (Locator "git" "github.com/someProject" "1.0.0")
+  VsiRule (VsiRulePath "/otherProject/") (Locator "git" "github.com/otherProject" "2.0.0")
+    : VsiRule (VsiRulePath "/baz/") (Locator "git" "github.com/someProject" "1.0.0")
     : singleRuleExpected
 
 nestedProjectInferences :: [(VsiFilePath, VsiInference)]
@@ -105,8 +105,19 @@ nestedProjectInferences =
 
 nestedProjectRulesExpected :: [VsiRule]
 nestedProjectRulesExpected =
-  VsiRule (VsiRulePath "/foo/bar") (Locator "git" "github.com/facebook/follyNested" "1.0.0")
+  VsiRule (VsiRulePath "/foo/bar/") (Locator "git" "github.com/facebook/follyNested" "1.0.0")
     : singleRuleExpected
+
+rootRuleInferences :: [(VsiFilePath, VsiInference)]
+rootRuleInferences =
+  [
+    ( VsiFilePath "/"
+    , VsiInference . Just $ Locator "git" "github.com/foo" "1.0"
+    )
+  ]
+
+rootRuleExpected :: [VsiRule]
+rootRuleExpected = [VsiRule (VsiRulePath "/") (Locator "git" "github.com/foo" "1.0")]
 
 vsiTypesSpec :: Spec
 vsiTypesSpec = describe "VSI Types" $ do
@@ -130,6 +141,8 @@ generateRulesSpec = describe "generateRules" $ do
     generateRules' multipleInferences `shouldMatchList` multipleRulesExpected
   it "Reports distinct locators for nested projects" $
     generateRules' nestedProjectInferences `shouldMatchList` nestedProjectRulesExpected
+  it "Reports root rules correctly" $
+    generateRules' rootRuleInferences `shouldMatchList` rootRuleExpected
   where
     generateRules' :: [(VsiFilePath, VsiInference)] -> [VsiRule]
     generateRules' = generateRules . VsiExportedInferencesBody . Map.fromList

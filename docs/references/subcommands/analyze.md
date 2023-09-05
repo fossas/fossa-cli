@@ -180,3 +180,15 @@ For a workaround, create an empty `reqs.txt` file before running `fossa analyze,
 ```bash
 touch reqs.txt && fossa analyze && rm reqs.txt && fossa test
 ```
+
+## Common FOSSA Project Flags
+
+All `fossa` commands support the following FOSSA-project-related flags:
+
+| Name                               | Short | Description                                                                                                                                            |
+| ---------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--project 'some project'`         | `-p`  | Override the detected project name                                                                                                                     |
+| `--revision 'some revision'`       | `-r`  | -Override the detected project revision                                                                                                                |
+| `--fossa-api-key 'my-api-key'`     |       | An alternative to using the `FOSSA_API_KEY` environment variable to specify a FOSSA API key                                                            |
+| `--endpoint 'https://example.com'` | `-e`  | Override the FOSSA API server base URL                                                                                                                 |
+| `--config /path/to/file`           | `-c`  | Path to a [configuration file](../files/fossa-yml.md) including filename. By default we look for `.fossa.yml` in base working directory. |

@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Srclib.Types (
@@ -15,8 +16,12 @@ module Srclib.Types (
   LicenseUnitInfo (..),
   LicenseUnitMatchData (..),
   FullSourceUnit (..),
+  OriginPath,
   renderLocator,
   parseLocator,
+  pathToOriginPath,
+  someBaseToOriginPath,
+  somePathToOriginPath,
   emptyLicenseUnit,
   emptyLicenseUnitData,
   sourceUnitToFullSourceUnit,
@@ -25,12 +30,13 @@ module Srclib.Types (
 
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Path (File, SomeBase)
-import Path.Extra (SomePath)
+import Path (File, Path, SomeBase (..), toFilePath)
+import Path.Extra (SomePath (..))
 import Types (GraphBreadth (..))
 
 data LicenseScanType = CliLicenseScanned
@@ -41,6 +47,27 @@ instance ToText LicenseScanType where
 
 instance ToJSON LicenseScanType where
   toJSON = toJSON . toText
+
+-- |This type is meant to represent the paths in a project where a particular set of dependencies were discovered.
+-- For example, in a project directory that has a @go.mod@ the OriginPath might be 'foo/bar/go.mod'.
+-- In a project with VSI dependencies the OriginPath would be the directory the dep was found in, such as 'vendored/zlib/'
+--
+-- OriginPaths were previously `SomeBase File`, however with support for VSI OriginPaths can now be a directory in addition to a file path.
+-- The reason we cannot use `SomePath` for this is that outputting an `OriginPath` to JSON in a form like @/foo/bar/path_end@ doesn't say whether the path is a file or directory which is required for parsing to a `SomePath` in `FromJSON`.
+-- This type and its exported smart constructors describe that OriginPath is a path, but has no information about whether the path is a file or directory.
+newtype OriginPath = OriginPath FilePath
+  deriving newtype (Eq, Ord, Show, ToJSON, FromJSON, ToText)
+
+pathToOriginPath :: Path b t -> OriginPath
+pathToOriginPath = OriginPath . toFilePath
+
+someBaseToOriginPath :: SomeBase b -> OriginPath
+someBaseToOriginPath (Abs p) = pathToOriginPath p
+someBaseToOriginPath (Rel p) = pathToOriginPath p
+
+somePathToOriginPath :: SomePath -> OriginPath
+somePathToOriginPath (SomeFile f) = someBaseToOriginPath f
+somePathToOriginPath (SomeDir d) = someBaseToOriginPath d
 
 -- export interface SourceUnit {
 --   Name?: string;
@@ -82,10 +109,11 @@ instance ToJSON LicenseScanType where
 data FullSourceUnit = FullSourceUnit
   { fullSourceUnitName :: Text
   , fullSourceUnitType :: Text
+  , fullSourceUnitTitle :: Maybe Text
   , fullSourceUnitManifest :: Maybe Text
   , fullSourceUnitBuild :: Maybe SourceUnitBuild
   , fullSourceUnitGraphBreadth :: GraphBreadth
-  , fullSourceUnitOriginPaths :: [SomePath]
+  , fullSourceUnitOriginPaths :: [OriginPath]
   , fullSourceUnitAdditionalData :: Maybe AdditionalDepData
   , fullSourceUnitFiles :: Maybe (NonEmpty Text)
   , fullSourceUnitData :: Maybe (NonEmpty LicenseUnitData)
@@ -98,6 +126,7 @@ licenseUnitToFullSourceUnit LicenseUnit{..} =
   FullSourceUnit
     { fullSourceUnitName = licenseUnitName
     , fullSourceUnitType = licenseUnitType
+    , fullSourceUnitTitle = licenseUnitTitle
     , fullSourceUnitManifest = Nothing
     , fullSourceUnitBuild = Nothing
     , fullSourceUnitGraphBreadth = Complete
@@ -113,6 +142,7 @@ sourceUnitToFullSourceUnit SourceUnit{..} =
   FullSourceUnit
     { fullSourceUnitName = sourceUnitName
     , fullSourceUnitType = sourceUnitType
+    , fullSourceUnitTitle = Nothing
     , fullSourceUnitManifest = Just sourceUnitManifest
     , fullSourceUnitBuild = sourceUnitBuild
     , fullSourceUnitGraphBreadth = sourceUnitGraphBreadth
@@ -128,6 +158,7 @@ instance ToJSON FullSourceUnit where
     object
       [ "Name" .= fullSourceUnitName
       , "Type" .= fullSourceUnitType
+      , "Title" .= fullSourceUnitTitle
       , "Manifest" .= fullSourceUnitManifest
       , "Build" .= fullSourceUnitBuild
       , "GraphBreadth" .= fullSourceUnitGraphBreadth
@@ -143,9 +174,12 @@ instance ToJSON FullSourceUnit where
 data LicenseSourceUnit = LicenseSourceUnit
   { licenseSourceUnitName :: Text
   , licenseSourceUnitType :: LicenseScanType
-  , licenseSourceUnitLicenseUnits :: (NonEmpty LicenseUnit)
+  , licenseSourceUnitLicenseUnits :: NonEmpty LicenseUnit
   }
   deriving (Eq, Ord, Show)
+
+instance Semigroup LicenseSourceUnit where
+  LicenseSourceUnit name unitType licenseUnits1 <> LicenseSourceUnit _ _ licenseUnits2 = LicenseSourceUnit name unitType $ licenseUnits1 <> licenseUnits2
 
 instance ToJSON LicenseSourceUnit where
   toJSON LicenseSourceUnit{..} =
@@ -160,6 +194,7 @@ instance ToJSON LicenseSourceUnit where
 data LicenseUnit = LicenseUnit
   { licenseUnitName :: Text
   , licenseUnitType :: Text
+  , licenseUnitTitle :: Maybe Text
   , licenseUnitDir :: Text
   , licenseUnitFiles :: (NonEmpty Text)
   , licenseUnitData :: (NonEmpty LicenseUnitData)
@@ -172,11 +207,20 @@ emptyLicenseUnit =
   LicenseUnit
     { licenseUnitName = "empty"
     , licenseUnitType = "LicenseUnit"
+    , licenseUnitTitle = Nothing
     , licenseUnitDir = ""
     , licenseUnitFiles = "" :| []
     , licenseUnitData = emptyLicenseUnitData :| []
     , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Nothing}
     }
+
+instance Semigroup LicenseUnit where
+  licenseUnit1 <> licenseUnit2 =
+    licenseUnit1
+      { licenseUnitData = licenseUnitData licenseUnit1 <> licenseUnitData licenseUnit2
+      , licenseUnitFiles = NE.nub $ licenseUnitFiles licenseUnit1 <> licenseUnitFiles licenseUnit2
+      }
+
 instance ToJSON LicenseUnit where
   toJSON LicenseUnit{..} =
     object
@@ -193,6 +237,7 @@ instance FromJSON LicenseUnit where
     LicenseUnit
       <$> obj .: "Name"
       <*> obj .: "Type"
+      <*> obj .:? "Title"
       <*> obj .: "Dir"
       <*> obj .: "Files"
       <*> obj .: "Data"
@@ -232,6 +277,13 @@ emptyLicenseUnitData =
     , licenseUnitDataContents = Nothing
     }
 
+instance Semigroup LicenseUnitData where
+  LicenseUnitData path copyright themisVersion matchData1 copyrights1 contents
+    <> LicenseUnitData _ _ _ matchData2 copyrights2 _ =
+      LicenseUnitData path copyright themisVersion (matchData1 <> matchData2) (copyrights1 <> copyrights2) contents
+
+-- instance Semigroup LicenseSourceUnit where
+--   LicenseSourceUnit name unitType licenseUnits1 <> LicenseSourceUnit _ _ licenseUnits2 = LicenseSourceUnit name unitType $ licenseUnits1 <> licenseUnits2
 instance ToJSON LicenseUnitData where
   toJSON LicenseUnitData{..} =
     object
@@ -291,7 +343,7 @@ data SourceUnit = SourceUnit
   -- ^ path to manifest file
   , sourceUnitBuild :: Maybe SourceUnitBuild
   , sourceUnitGraphBreadth :: GraphBreadth
-  , sourceUnitOriginPaths :: [SomePath]
+  , sourceUnitOriginPaths :: [OriginPath]
   , additionalData :: Maybe AdditionalDepData
   }
   deriving (Eq, Ord, Show)
