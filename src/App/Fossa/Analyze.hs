@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Analyze (
@@ -94,7 +95,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Diag.Result (resultToMaybe)
@@ -107,6 +108,7 @@ import Effect.Logger (
   Severity (..),
   logInfo,
   logStdout,
+  logWarn,
  )
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path, toFilePath)
@@ -284,8 +286,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     Diag.errorBoundaryIO
       . diagToDebug
       . runReader filters
-      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget
-      $ Config.vsiOptions cfg
+      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget $
+        Config.vsiOptions cfg
   binarySearchResults <-
     Diag.errorBoundaryIO . diagToDebug $
       Diag.context "discover-binaries" $
@@ -374,8 +376,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Just firstParty, Nothing) -> Just firstParty
   let result = buildResult includeAll additionalSourceUnits filteredProjects licenseSourceUnits
   case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits licenseSourceUnits of
-    NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
-    FilteredAll -> Diag.fatal ErrFilteredAllProjects
+    NoneDiscovered -> fatalWithKeywordSearchExplanation (isJust $ lernieResultsKeywordSearches <$> lernieResults) ErrNoProjectsDiscovered
+    FilteredAll -> fatalWithKeywordSearchExplanation (isJust $ lernieResultsKeywordSearches <$> lernieResults) ErrFilteredAllProjects
     CountedScanUnits scanUnits -> doUpload result iatAssertion destination basedir jsonOutput revision scanUnits
   pure result
   where
@@ -389,6 +391,24 @@ analyze cfg = Diag.context "fossa-analyze" $ do
               locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits
               doAssertRevisionBinaries iatAssertion locator
 
+fatalWithKeywordSearchExplanation ::
+  ( Has Diag.Diagnostics sig m
+  , Has Logger sig m
+  ) =>
+  Bool ->
+  AnalyzeError ->
+  m b
+fatalWithKeywordSearchExplanation lernieMatchesFound analyzeError = do
+  if lernieMatchesFound
+    then
+      logWarn $
+        vsep
+          [ "Matches to your keyword searches were found, but no other analysis targets were found."
+          , "This will result in exiting with an error."
+          , "This error can be safely ignored if you are only expecting keyword search results."
+          ]
+    else pure ()
+  Diag.fatal analyzeError
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
 toProjectResult (SkippedDueToProvidedFilter _) = Nothing
 toProjectResult (SkippedDueToDefaultProductionFilter _) = Nothing
