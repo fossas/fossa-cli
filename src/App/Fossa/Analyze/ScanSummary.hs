@@ -353,7 +353,7 @@ countWarnings ws =
     isIgnoredErrGroup _ = False
 
 dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => Text -> AnalysisScanResult -> m (Path Abs File)
-dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernie) = do
+dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults) = do
   let doc =
         renderStrict
           . layoutPretty defaultLayoutOptions
@@ -366,7 +366,7 @@ dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary
               , renderSourceUnit "binary-deps analysis" binary
               , renderSourceUnit "dynamic linked dependency analysis" dynamicLinkingDeps
               , renderSourceUnit "fossa-deps analysis" manualDeps
-              , renderSourceUnit "Custom-license scan & Keyword Search" lernie
+              , renderSourceUnit "Custom-license scan & Keyword Search" lernieResults
               ]
 
   tmpDir <- sendIO getTempDir
@@ -374,7 +374,7 @@ dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary
   pure (tmpDir </> scanSummaryFileName)
   where
     scanSummary :: [Doc AnsiStyle]
-    scanSummary = maybeToList (vsep <$> summarize endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernie))
+    scanSummary = maybeToList (vsep <$> summarize endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults))
 
     renderSourceUnit :: Doc AnsiStyle -> Result (Maybe a) -> Maybe (Doc AnsiStyle)
     renderSourceUnit header (Failure ws eg) = Just $ renderFailure ws eg $ vsep $ summarizeSrcUnit header Nothing (Failure ws eg)
