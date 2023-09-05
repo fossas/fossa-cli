@@ -220,7 +220,8 @@ getBinaryIdentifier srcUnit = maybe [] (srcUserDepName <$>) (userDefinedDeps =<<
 -- Proprietary License - /Users/scott/fossa/license-scan-dirs/grepper/one.txt (lines 1-1)
 -- <name of regex from config> - <path to file> (lines <startLine>-<endLine>)
 getLernieIdentifier :: [LernieMatch] -> [Text]
-getLernieIdentifier = concatMap renderLernieMatch
+getLernieIdentifier [] = ["No results found"]
+getLernieIdentifier matches = concatMap renderLernieMatch matches
   where
     renderLernieMatch :: LernieMatch -> [Text]
     renderLernieMatch LernieMatch{..} = map (renderLernieMatchData lernieMatchPath) lernieMatchMatches
