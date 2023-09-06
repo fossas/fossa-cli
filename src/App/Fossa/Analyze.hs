@@ -107,7 +107,6 @@ import Effect.Logger (
   Severity (..),
   logInfo,
   logStdout,
-  logWarn,
  )
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path, toFilePath)
@@ -285,8 +284,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     Diag.errorBoundaryIO
       . diagToDebug
       . runReader filters
-      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget
-      $ Config.vsiOptions cfg
+      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget $
+        Config.vsiOptions cfg
   binarySearchResults <-
     Diag.errorBoundaryIO . diagToDebug $
       Diag.context "discover-binaries" $
@@ -374,10 +373,17 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Nothing, Just lernie) -> Just lernie
           (Just firstParty, Nothing) -> Just firstParty
   let result = buildResult includeAll additionalSourceUnits filteredProjects licenseSourceUnits
-  case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits licenseSourceUnits of
-    NoneDiscovered -> fatalWithKeywordSearchExplanation (maybe False (not . null . lernieResultsKeywordSearches) lernieResults) ErrNoProjectsDiscovered
-    FilteredAll -> fatalWithKeywordSearchExplanation (maybe False (not . null . lernieResultsKeywordSearches) lernieResults) ErrFilteredAllProjects
-    CountedScanUnits scanUnits -> doUpload result iatAssertion destination basedir jsonOutput revision scanUnits
+  let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
+
+  -- If we find nothing but keyword search, we exit with an error, but explain that the error may be ignorable.
+  -- We do not want to succeed, because nothing gets uploaded to the API for keyword searches, so `fossa test` will fail.
+  -- So the solution is to still fail, but give a hopefully useful explanation that the error can be ignored if all you were expecting is keyword search results.
+  case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits licenseSourceUnits) of
+    (False, NoneDiscovered) -> Diag.fatal ErrNoProjectsDiscovered
+    (True, NoneDiscovered) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
+    (False, FilteredAll) -> Diag.fatal ErrFilteredAllProjects
+    (True, FilteredAll) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
+    (_, CountedScanUnits scanUnits) -> doUpload result iatAssertion destination basedir jsonOutput revision scanUnits
   pure result
   where
     doUpload result iatAssertion destination basedir jsonOutput revision scanUnits =
@@ -389,26 +395,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
             $ do
               locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits
               doAssertRevisionBinaries iatAssertion locator
-
--- | If we find nothing but keyword search, we exit with a "No projects discovered" or "All projects filtered" error.
--- | We do not want to succeed, because nothing gets uploaded to the API for keyword searches, so `fossa test` will fail.
--- | So the solution is to still fail, but give a hopefully useful explanation that the error can be ignored if all you were expecting is keyword search results.
-fatalWithKeywordSearchExplanation ::
-  ( Has Diag.Diagnostics sig m
-  , Has Logger sig m
-  ) =>
-  Bool ->
-  AnalyzeError ->
-  m b
-fatalWithKeywordSearchExplanation lernieMatchesFound analyzeError = do
-  when lernieMatchesFound $
-    logWarn $
-      vsep
-        [ "Matches to your keyword searches were found, but no other analysis targets were found."
-        , "This will result in exiting with an error."
-        , "This error can be safely ignored if you are only expecting keyword search results."
-        ]
-  Diag.fatal analyzeError
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
 toProjectResult (SkippedDueToProvidedFilter _) = Nothing
@@ -489,6 +475,7 @@ doAnalyzeDynamicLinkedBinary _ _ = pure Nothing
 data AnalyzeError
   = ErrNoProjectsDiscovered
   | ErrFilteredAllProjects
+  | ErrOnlyKeywordSearchResultsFound
 
 instance Diag.ToDiagnostic AnalyzeError where
   renderDiagnostic :: AnalyzeError -> Doc ann
@@ -512,6 +499,11 @@ instance Diag.ToDiagnostic AnalyzeError where
       , "See the user guide for details:"
       , "    " <> pretty userGuideUrl
       , ""
+      ]
+  renderDiagnostic (ErrOnlyKeywordSearchResultsFound) =
+    vsep
+      [ "Matches to your keyword searches were found, but no other analysis targets were found."
+      , "This error can be safely ignored if you are only expecting keyword search results."
       ]
 
 buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Aeson.Value
