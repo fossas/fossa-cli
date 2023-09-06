@@ -24,7 +24,7 @@ import Data.Functor.Extra ((<$$>))
 import Data.List (sort)
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
 import Data.Monoid.Extra (isMempty)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (showText, toText)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Diag.Result (EmittedWarn (IgnoredErrGroup), Result (Failure, Success), renderFailure, renderSuccess)
@@ -227,7 +227,7 @@ getLernieIdentifier matches = concatMap renderLernieMatch matches
     renderLernieMatch LernieMatch{..} = map (renderLernieMatchData lernieMatchPath) lernieMatchMatches
 
     renderLernieMatchData :: Text -> LernieMatchData -> Text
-    renderLernieMatchData path LernieMatchData{..} = lernieMatchDataName <> " - " <> path <> " (lines " <> toText (show lernieMatchDataStartLine) <> "-" <> toText (show lernieMatchDataEndLine) <> ")"
+    renderLernieMatchData path LernieMatchData{..} = lernieMatchDataName <> " - " <> path <> " (lines " <> showText lernieMatchDataStartLine <> "-" <> showText lernieMatchDataEndLine <> ")"
 
 getManualVendorDepsIdentifier :: SourceUnit -> [Text]
 getManualVendorDepsIdentifier srcUnit = refDeps ++ foundRemoteDeps ++ customDeps ++ vendorDeps
