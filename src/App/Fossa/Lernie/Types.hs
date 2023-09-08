@@ -144,9 +144,7 @@ instance FromJSON LernieMatchData where
 instance ToJSON LernieMatchData
 
 data LernieResults = LernieResults
-  { lernieResultsWarnings :: [LernieWarning]
-  , lernieResultsErrors :: [LernieError]
-  , lernieResultsSourceUnit :: Maybe LicenseSourceUnit
+  { lernieResultsSourceUnit :: Maybe LicenseSourceUnit
   , lernieResultsKeywordSearches :: [LernieMatch]
   , lernieResultsCustomLicenses :: [LernieMatch]
   }
