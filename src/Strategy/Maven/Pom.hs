@@ -25,6 +25,7 @@ import Path.IO qualified as Path
 import Strategy.Maven.Pom.Closure
 import Strategy.Maven.Pom.PomFile
 import Types
+import Debug.Trace (traceM)
 
 data MavenStrategyOpts = MavenStrategyOpts
   { strategyPath :: Path Rel File
@@ -191,12 +192,14 @@ interpolate properties initialProperty =
         -- For the example of: <junit5.version>${junit5.version}</junit5.version>
         -- The map will have ("junit5.version","${junit5.version}")
         -- splitMavenProperty will remove the "${}" from the value and return the same key which causes infinite recursion.
-        Just foundProperty -> if foundProperty == initialProperty then property else interpolate properties $ prefix <> foundProperty <> suffix
+        Just foundProperty -> if prefix <> foundProperty <> suffix == initialProperty then property else interpolate properties $ prefix <> foundProperty <> suffix
 
 -- find the first maven property in the string, e.g., `${foo}`, returning text
 -- before the property, the property, and the text after the property
 splitMavenProperty :: Text -> Maybe (Text, Text, Text)
 splitMavenProperty text = do
+  traceM $ show text
   (beforeBegin, afterBegin) <- breakOnAndRemove "${" text
   (property, afterEnd) <- breakOnAndRemove "}" afterBegin
+  traceM $ show property
   pure (beforeBegin, property, afterEnd)
