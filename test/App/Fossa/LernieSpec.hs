@@ -6,9 +6,9 @@ module App.Fossa.LernieSpec (
   spec,
 ) where
 
-import App.Fossa.Config.Analyze (GrepEntry (..), GrepOptions (..))
 import App.Fossa.Lernie.Analyze (analyzeWithLernie, grepOptionsToLernieConfig, lernieMessagesToLernieResults, singletonLernieMessage)
-import App.Fossa.Lernie.Types (LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieScanType (..), LernieWarning (..))
+import App.Fossa.Lernie.Types (GrepEntry (..), GrepOptions (..), LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieScanType (..), LernieWarning (..))
+import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Data.List.NonEmpty qualified as NE
@@ -301,7 +301,7 @@ spec = do
     let fixedSomethingPath = fromMaybe somethingPath (Text.stripSuffix (toText pathSeparator) somethingPath)
     let fixedOnePath = fromMaybe onePath (Text.stripSuffix (toText pathSeparator) onePath)
 
-    result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO $ analyzeWithLernie scanDir Nothing grepOptions
+    result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO . ignoreDebug $ analyzeWithLernie scanDir Nothing grepOptions
 
     it "should analyze a directory" $ do
       -- Fix the paths in the expected data. We need to do this here because they include the full path to the file

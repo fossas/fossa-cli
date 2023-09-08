@@ -20,8 +20,6 @@ module App.Fossa.Config.Analyze (
   VSIAnalysis (..),
   VSIModeOptions (..),
   GoDynamicTactic (..),
-  GrepEntry (..),
-  GrepOptions (..),
   mkSubCommand,
   loadConfig,
   cliParser,
@@ -55,6 +53,7 @@ import App.Fossa.Config.ConfigFile (
   resolveConfigFile,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
+import App.Fossa.Lernie.Types (GrepEntry (..), GrepOptions (..))
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (
@@ -178,15 +177,6 @@ data VendoredDependencyOptions = VendoredDependencyOptions
 instance ToJSON VendoredDependencyOptions where
   toEncoding = genericToEncoding defaultOptions
 
-data GrepOptions = GrepOptions
-  { customLicenseSearch :: [GrepEntry]
-  , keywordSearch :: [GrepEntry]
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToJSON GrepOptions where
-  toEncoding = genericToEncoding defaultOptions
-
 data AnalyzeCliOpts = AnalyzeCliOpts
   { commons :: CommonOpts
   , analyzeOutput :: Bool
@@ -244,15 +234,6 @@ data AnalyzeConfig = AnalyzeConfig
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON AnalyzeConfig where
-  toEncoding = genericToEncoding defaultOptions
-
-data GrepEntry = GrepEntry
-  { grepEntryMatchCriteria :: Text
-  , grepEntryName :: Text
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToJSON GrepEntry where
   toEncoding = genericToEncoding defaultOptions
 
 data ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig

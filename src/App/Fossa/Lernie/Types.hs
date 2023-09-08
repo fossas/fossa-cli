@@ -1,6 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Lernie.Types (
+  GrepOptions (..),
+  GrepEntry (..),
   LernieResults (..),
   LernieMatch (..),
   LernieWarning (..),
@@ -13,7 +15,7 @@ module App.Fossa.Lernie.Types (
   LernieScanType (..),
 ) where
 
-import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), object, withObject, withText)
+import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), defaultOptions, genericToEncoding, object, withObject, withText)
 import Data.Aeson qualified as A
 import Data.Aeson.Types ((.:))
 import Data.String.Conversion (ToText (toText))
@@ -21,6 +23,32 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)
 import Srclib.Types (LicenseSourceUnit)
+
+data GrepOptions = GrepOptions
+  { customLicenseSearch :: [GrepEntry]
+  , keywordSearch :: [GrepEntry]
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON GrepOptions where
+  toEncoding = genericToEncoding defaultOptions
+
+data GrepEntry = GrepEntry
+  { grepEntryMatchCriteria :: Text
+  , grepEntryName :: Text
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON GrepEntry where
+  toEncoding = genericToEncoding defaultOptions
+
+instance FromJSON GrepEntry where
+  parseJSON = withObject "GrepEntry" $ \obj ->
+    GrepEntry
+      <$> obj
+        .: "matchCriteria"
+      <*> obj
+        .: "name"
 
 data LernieConfig = LernieConfig
   { rootDir :: Path Abs Dir

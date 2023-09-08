@@ -8,9 +8,10 @@ module App.Fossa.Lernie.Analyze (
   grepOptionsToLernieConfig,
 ) where
 
-import App.Fossa.Config.Analyze (GrepEntry (grepEntryMatchCriteria, grepEntryName), GrepOptions (..))
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withLernieBinary)
 import App.Fossa.Lernie.Types (
+  GrepEntry (..),
+  GrepOptions (..),
   LernieConfig (..),
   LernieError (..),
   LernieMatch (..),
@@ -22,7 +23,10 @@ import App.Fossa.Lernie.Types (
   LernieScanType (..),
   LernieWarning (..),
  )
+import Control.Carrier.Debug (Debug)
 import Control.Carrier.Diagnostics (Diagnostics, fatal, warn)
+import Control.Carrier.FossaApiClient (runFossaApiClient)
+import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Has, Lift)
 import Data.Aeson (decode)
 import Data.Aeson qualified as Aeson
@@ -31,13 +35,14 @@ import Data.Foldable (fold, traverse_)
 import Data.HashMap.Strict qualified as H
 import Data.HashMap.Strict qualified as HashMap
 import Data.Hashable (Hashable)
+import Data.List (nub)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToText (toText), decodeUtf8)
 import Data.Text (Text)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execCurrentDirStdinThrow)
 import Effect.ReadFS (ReadFS)
-import Fossa.API.Types (ApiOpts)
+import Fossa.API.Types (ApiOpts, Organization (..))
 import Path (Abs, Dir, Path)
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), LicenseUnit (..), LicenseUnitData (..), LicenseUnitInfo (..), LicenseUnitMatchData (..))
 
@@ -49,22 +54,35 @@ newtype CustomLicenseTitle = CustomLicenseTitle {unCustomLicenseTitle :: Text}
 -- | scan rootDir with Lernie, using the given GrepOptions. This is the main entry point to this module
 analyzeWithLernie ::
   ( Has Diagnostics sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
   , Has (Lift IO) sig m
+  , Has Exec sig m
+  , Has Debug sig m
+  , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
   Maybe ApiOpts ->
   GrepOptions ->
   m (Maybe LernieResults)
-analyzeWithLernie rootDir _maybeApiOpts grepOptions = do
-  let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
+analyzeWithLernie rootDir maybeApiOpts grepOptions = do
+  orgWideCustomLicenses <- case maybeApiOpts of
+    Nothing -> pure []
+    Just apiOpts -> runFossaApiClient apiOpts getOrgWideCustomLicenseConfig
+  let mergedGrepOptions = grepOptions{customLicenseSearch = nub $ orgWideCustomLicenses <> customLicenseSearch grepOptions}
+  let maybeLernieConfig = grepOptionsToLernieConfig rootDir mergedGrepOptions
   case maybeLernieConfig of
     Just (lernieConfig) -> do
       messages <- runLernie lernieConfig
       let lernieResults = lernieMessagesToLernieResults messages rootDir
       pure $ Just lernieResults
     Nothing -> pure Nothing
+
+getOrgWideCustomLicenseConfig ::
+  ( Has Diagnostics sig m
+  , Has FossaApiClient sig m
+  ) =>
+  m [GrepEntry]
+getOrgWideCustomLicenseConfig = do
+  orgCustomLicenseScanConfigs <$> getOrganization
 
 grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Maybe LernieConfig
 grepOptionsToLernieConfig rootDir grepOptions =
