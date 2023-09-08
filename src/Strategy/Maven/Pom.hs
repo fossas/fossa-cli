@@ -25,7 +25,6 @@ import Path.IO qualified as Path
 import Strategy.Maven.Pom.Closure
 import Strategy.Maven.Pom.PomFile
 import Types
-import Debug.Trace (traceM)
 
 data MavenStrategyOpts = MavenStrategyOpts
   { strategyPath :: Path Rel File
@@ -198,8 +197,6 @@ interpolate properties initialProperty =
 -- before the property, the property, and the text after the property
 splitMavenProperty :: Text -> Maybe (Text, Text, Text)
 splitMavenProperty text = do
-  traceM $ show text
   (beforeBegin, afterBegin) <- breakOnAndRemove "${" text
   (property, afterEnd) <- breakOnAndRemove "}" afterBegin
-  traceM $ show property
   pure (beforeBegin, property, afterEnd)

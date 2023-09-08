@@ -1,7 +1,12 @@
 # FOSSA CLI Changelog
 
-## v3.8.10
+## v3.8.12
+- Maven analysis: Address another case not solved by 1268 ([#1271](https://github.com/fossas/fossa-cli/pull/1271))
 
+## v3.8.11
+- Maven analysis: Prevent maven analysis from infinitely recursing when it encounters a recursive property ([#1268](https://github.com/fossas/fossa-cli/pull/1268))
+
+## v3.8.10
 - Reports: Can now export reports formatted as CycloneDX (json/xml), CSV, HTML, and JSON SPDX. ([#1266](https://github.com/fossas/fossa-cli/pull/1266))
 - Containers: RPM packages installed in containers that use the NDB format for their RPM database are now parsed much faster. ([#1262](https://github.com/fossas/fossa-cli/pull/1262))
 
