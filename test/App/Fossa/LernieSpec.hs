@@ -339,5 +339,5 @@ spec = do
         Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
         Just res -> do
           -- Just assert that we find matches for "Confidential" (from the org API) and "Proprietary License" (from grepOptions)
-          let matchNames = lernieMatchDataName <$> concat (lernieMatchMatches <$> lernieResultsCustomLicenses res)
+          let matchNames = lernieMatchDataName <$> concatMap lernieMatchMatches (lernieResultsCustomLicenses res)
           sort (nub matchNames) `shouldBe'` ["Confidential", "Proprietary License"]
