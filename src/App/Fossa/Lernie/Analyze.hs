@@ -3,6 +3,7 @@
 module App.Fossa.Lernie.Analyze (
   analyzeWithLernie,
   -- Exported for testing
+  analyzeWithLernieWithOrgInfo,
   singletonLernieMessage,
   lernieMessagesToLernieResults,
   grepOptionsToLernieConfig,
@@ -55,8 +56,8 @@ newtype CustomLicenseTitle = CustomLicenseTitle {unCustomLicenseTitle :: Text}
 analyzeWithLernie ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
-  , Has Exec sig m
   , Has Debug sig m
+  , Has Exec sig m
   , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
@@ -64,25 +65,41 @@ analyzeWithLernie ::
   GrepOptions ->
   m (Maybe LernieResults)
 analyzeWithLernie rootDir maybeApiOpts grepOptions = do
-  orgWideCustomLicenses <- case maybeApiOpts of
-    Nothing -> pure []
-    Just apiOpts -> runFossaApiClient apiOpts getOrgWideCustomLicenseConfig
-  let mergedGrepOptions = grepOptions{customLicenseSearch = nub $ orgWideCustomLicenses <> customLicenseSearch grepOptions}
-  let maybeLernieConfig = grepOptionsToLernieConfig rootDir mergedGrepOptions
+  case maybeApiOpts of
+    Nothing -> analyzeWithLernieMain rootDir grepOptions
+    Just apiOpts -> runFossaApiClient apiOpts $ analyzeWithLernieWithOrgInfo rootDir grepOptions
+
+analyzeWithLernieWithOrgInfo ::
+  ( Has Diagnostics sig m
+  , Has FossaApiClient sig m
+  , Has (Lift IO) sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
+  ) =>
+  Path Abs Dir ->
+  GrepOptions ->
+  m (Maybe LernieResults)
+analyzeWithLernieWithOrgInfo rootDir grepOptions = do
+  orgWideCustomLicenses <- orgCustomLicenseScanConfigs <$> getOrganization
+  analyzeWithLernieMain rootDir grepOptions{customLicenseSearch = nub $ orgWideCustomLicenses <> customLicenseSearch grepOptions}
+
+analyzeWithLernieMain ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
+  ) =>
+  Path Abs Dir ->
+  GrepOptions ->
+  m (Maybe LernieResults)
+analyzeWithLernieMain rootDir grepOptions = do
+  let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
   case maybeLernieConfig of
     Just (lernieConfig) -> do
       messages <- runLernie lernieConfig
       let lernieResults = lernieMessagesToLernieResults messages rootDir
       pure $ Just lernieResults
     Nothing -> pure Nothing
-
-getOrgWideCustomLicenseConfig ::
-  ( Has Diagnostics sig m
-  , Has FossaApiClient sig m
-  ) =>
-  m [GrepEntry]
-getOrgWideCustomLicenseConfig = do
-  orgCustomLicenseScanConfigs <$> getOrganization
 
 grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Maybe LernieConfig
 grepOptionsToLernieConfig rootDir grepOptions =

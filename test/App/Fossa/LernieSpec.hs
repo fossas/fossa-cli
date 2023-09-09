@@ -6,23 +6,24 @@ module App.Fossa.LernieSpec (
   spec,
 ) where
 
-import App.Fossa.Lernie.Analyze (analyzeWithLernie, grepOptionsToLernieConfig, lernieMessagesToLernieResults, singletonLernieMessage)
+import App.Fossa.Lernie.Analyze (analyzeWithLernie, analyzeWithLernieWithOrgInfo, grepOptionsToLernieConfig, lernieMessagesToLernieResults, singletonLernieMessage)
 import App.Fossa.Lernie.Types (GrepEntry (..), GrepOptions (..), LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieScanType (..), LernieWarning (..))
 import Control.Carrier.Debug (ignoreDebug)
-import Control.Carrier.Diagnostics (runDiagnostics)
-import Control.Carrier.Stack (runStack)
+import Control.Effect.FossaApiClient (FossaApiClientF (..))
+import Data.List (nub, sort)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToText (toText))
 import Data.Text qualified as Text
-import Effect.Exec (runExecIO)
-import Effect.ReadFS (runReadFSIO)
+import Fossa.API.Types (Organization (..))
 import Path (Abs, Dir, Path, Rel, mkAbsDir, mkRelDir, toFilePath, (</>))
 import Path.IO (getCurrentDir)
-import ResultUtil (assertOnSuccess)
 import Srclib.Types (LicenseScanType (CliLicenseScanned), LicenseSourceUnit (..), LicenseUnit (..), LicenseUnitData (..), LicenseUnitInfo (..), LicenseUnitMatchData (..))
 import System.FilePath (pathSeparator)
-import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
+import Test.Effect (expectationFailure', it', shouldBe')
+import Test.Fixtures qualified as Fixtures
+import Test.Hspec (Spec, describe, it, runIO, shouldBe)
+import Test.MockApi (alwaysReturns)
 
 customLicenseLernieMatchData :: LernieMatchData
 customLicenseLernieMatchData =
@@ -43,11 +44,7 @@ customLicenseLernieMatchData =
 -- (line-numbers are 1-indexed, and you have only encountered lineNumber - 1 newLines when you are on line n,
 -- so you have to subtract 1 from them).
 extraLineBytes :: Integer
-#ifdef mingw32_HOST_OS
-extraLineBytes = 1
-#else
 extraLineBytes = 0
-#endif
 
 secondCustomLicenseLernieMatchData :: LernieMatchData
 secondCustomLicenseLernieMatchData =
@@ -141,11 +138,7 @@ expectedDoubleLernieResults =
     }
 
 absDir :: Path Abs Dir
-#ifdef mingw32_HOST_OS
-absDir = $(mkAbsDir "C:/")
-#else
 absDir = $(mkAbsDir "/tmp/one")
-#endif
 
 expectedSourceUnit :: LicenseSourceUnit
 expectedSourceUnit =
@@ -235,6 +228,13 @@ customLicenseGrepEntry =
     , grepEntryName = "Proprietary License"
     }
 
+secondCustomLicenseGrepEntry :: GrepEntry
+secondCustomLicenseGrepEntry =
+  GrepEntry
+    { grepEntryMatchCriteria = "[Cc]onfidential"
+    , grepEntryName = "Confidential"
+    }
+
 keywordSearchGrepEntry :: GrepEntry
 keywordSearchGrepEntry =
   GrepEntry
@@ -301,9 +301,8 @@ spec = do
     let fixedSomethingPath = fromMaybe somethingPath (Text.stripSuffix (toText pathSeparator) somethingPath)
     let fixedOnePath = fromMaybe onePath (Text.stripSuffix (toText pathSeparator) onePath)
 
-    result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO . ignoreDebug $ analyzeWithLernie scanDir Nothing grepOptions
-
-    it "should analyze a directory" $ do
+    it' "should analyze a directory with the provided config if no API keys are passed in" $ do
+      result <- ignoreDebug $ analyzeWithLernie scanDir Nothing grepOptions
       -- Fix the paths in the expected data. We need to do this here because they include the full path to the file
       let actualUnitData =
             expectedUnitData
@@ -321,16 +320,24 @@ spec = do
               , licenseSourceUnitType = CliLicenseScanned
               , licenseSourceUnitLicenseUnits = NE.singleton actualLicenseUnit
               }
-
-      assertOnSuccess result $ \_ maybeRes ->
-        case maybeRes of
-          Nothing -> expectationFailure "analyzeWithLernie should not return Nothing"
-          Just res -> do
-            (lernieResultsKeywordSearches res) `shouldBe` [keywordSearchMatchMessage{lernieMatchPath = fixedSomethingPath}]
-            (lernieResultsCustomLicenses res)
-              `shouldBe` [ customLicenseMatchMessage
+      case result of
+        Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
+        Just res -> do
+          (lernieResultsKeywordSearches res) `shouldBe'` [keywordSearchMatchMessage{lernieMatchPath = fixedSomethingPath}]
+          (lernieResultsCustomLicenses res)
+            `shouldBe'` [ customLicenseMatchMessage
                             { lernieMatchPath = fixedOnePath
                             , lernieMatchMatches = [customLicenseLernieMatchData, secondCustomLicenseLernieMatchData, thirdCustomLicenseLernieMatchData]
                             }
-                         ]
-            (lernieResultsSourceUnit res) `shouldBe` Just actualSourceUnit
+                        ]
+          (lernieResultsSourceUnit res) `shouldBe'` Just actualSourceUnit
+
+    it' "should merge the config from fossa.yml and the org" $ do
+      GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry]}
+      result <- ignoreDebug $ analyzeWithLernieWithOrgInfo scanDir grepOptions
+      case result of
+        Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
+        Just res -> do
+          -- Just assert that we find matches for "Confidential" (from the org API) and "Proprietary License" (from grepOptions)
+          let matchNames = lernieMatchDataName <$> concat (lernieMatchMatches <$> lernieResultsCustomLicenses res)
+          sort (nub matchNames) `shouldBe'` ["Confidential", "Proprietary License"]
