@@ -27,6 +27,7 @@ import Srclib.Types (LicenseSourceUnit)
 data GrepOptions = GrepOptions
   { customLicenseSearch :: [GrepEntry]
   , keywordSearch :: [GrepEntry]
+  , ignoreOrgWideCustomLicenseScanConfigs :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
 

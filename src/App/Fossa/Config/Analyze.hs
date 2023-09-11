@@ -120,6 +120,7 @@ data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan derivin
 data ForceVendoredDependencyRescans = ForceVendoredDependencyRescans deriving (Generic)
 data ForceFirstPartyScans = ForceFirstPartyScans deriving (Generic)
 data ForceNoFirstPartyScans = ForceNoFirstPartyScans deriving (Generic)
+data IgnoreOrgWideCustomLicenseScanConfigs = IgnoreOrgWideCustomLicenseScanConfigs deriving (Generic)
 
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
 data IncludeAll = IncludeAll deriving (Generic)
@@ -202,6 +203,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeDynamicGoAnalysisType :: GoDynamicTactic
   , analyzeForceFirstPartyScans :: Flag ForceFirstPartyScans
   , analyzeForceNoFirstPartyScans :: Flag ForceNoFirstPartyScans
+  , analyzeIgnoreOrgWideCustomLicenseScanConfigs :: Flag IgnoreOrgWideCustomLicenseScanConfigs
   }
   deriving (Eq, Ord, Show)
 
@@ -279,6 +281,7 @@ cliParser =
     <*> experimentalUseV3GoResolver
     <*> flagOpt ForceFirstPartyScans (long "experimental-force-first-party-scans" <> help "Force first party scans")
     <*> flagOpt ForceNoFirstPartyScans (long "experimental-block-first-party-scans" <> help "Block first party scans. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans.")
+    <*> flagOpt IgnoreOrgWideCustomLicenseScanConfigs (long "ignore-org-wide-custom-license-scan-configs" <> help "Ignore org-wide custom-license-scan configs.")
 
 data GoDynamicTactic
   = GoModulesBasedTactic
@@ -401,7 +404,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       experimentalCfgs = collectExperimental maybeConfig cliOpts
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
       dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
-      grepOptions = collectGrepOptions maybeConfig
+      grepOptions = collectGrepOptions maybeConfig cliOpts
   firstPartyScansFlag <-
     case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
       (True, True) -> fatalText "You provided both the --experimental-force-first-party-scans and --experimental-block-first-party-scans flags. Only one of these flags may be used"
@@ -485,15 +488,18 @@ collectVendoredDepsFromConfig maybeCfg =
       pathFilters = maybeCfg >>= configVendoredDependencies >>= configLicenseScanPathFilters
    in (forceRescans, defaultScanType, pathFilters)
 
-collectGrepOptions :: Maybe ConfigFile -> GrepOptions
-collectGrepOptions maybeCfg =
+collectGrepOptions :: Maybe ConfigFile -> AnalyzeCliOpts -> GrepOptions
+collectGrepOptions maybeCfg AnalyzeCliOpts{..} =
   case maybeCfg of
-    Nothing -> GrepOptions [] []
+    Nothing -> GrepOptions [] [] ignoreOrgWideCustomLicenseScanConfigsFromFlag
     Just cfg ->
-      GrepOptions customLicenseList keywordSearchList
+      GrepOptions customLicenseList keywordSearchList (ignoreOrgWideCustomLicenseScanConfigsFromFlag || ignoreOrgWideCustomLicenseScanConfigsFromConfig)
       where
         customLicenseList = maybe [] (map configGrepToGrep) (configCustomLicenseSearch cfg)
         keywordSearchList = maybe [] (map configGrepToGrep) (configKeywordSearch cfg)
+        ignoreOrgWideCustomLicenseScanConfigsFromConfig = configIgnoreOrgWideCustomLicenseScanConfigs cfg
+  where
+    ignoreOrgWideCustomLicenseScanConfigsFromFlag = fromFlag IgnoreOrgWideCustomLicenseScanConfigs analyzeIgnoreOrgWideCustomLicenseScanConfigs
 
 configGrepToGrep :: ConfigGrepEntry -> GrepEntry
 configGrepToGrep configGrep = GrepEntry (configGrepMatchCriteria configGrep) (configGrepName configGrep)

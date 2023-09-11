@@ -183,7 +183,7 @@ mergeFileCmdMetadata meta cfgFile =
         }
 
 empty :: ConfigFile
-empty = ConfigFile 3 Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+empty = ConfigFile 3 Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing False
 
 data ConfigFile = ConfigFile
   { configVersion :: Int
@@ -198,6 +198,7 @@ data ConfigFile = ConfigFile
   , configTelemetry :: Maybe ConfigTelemetry
   , configCustomLicenseSearch :: Maybe [ConfigGrepEntry]
   , configKeywordSearch :: Maybe [ConfigGrepEntry]
+  , configIgnoreOrgWideCustomLicenseScanConfigs :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -272,6 +273,7 @@ instance FromJSON ConfigFile where
       <*> obj .:? "telemetry"
       <*> obj .:? "customLicenseSearch"
       <*> obj .:? "experimentalKeywordSearch"
+      <*> obj .:? "ignoreOrgWideKeywordSearch" .!= False
 
 instance FromJSON ConfigProject where
   parseJSON = withObject "ConfigProject" $ \obj ->

@@ -46,6 +46,7 @@ expectedConfigFile =
     , configTelemetry = Nothing
     , configCustomLicenseSearch = Just expectedLicenseSearch
     , configKeywordSearch = Just expectedKeywordSearch
+    , configIgnoreOrgWideCustomLicenseScanConfigs = False
     }
 
 expectedConfigProject :: ConfigProject

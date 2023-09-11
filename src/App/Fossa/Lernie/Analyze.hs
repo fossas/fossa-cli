@@ -65,9 +65,10 @@ analyzeWithLernie ::
   GrepOptions ->
   m (Maybe LernieResults)
 analyzeWithLernie rootDir maybeApiOpts grepOptions = do
-  case maybeApiOpts of
-    Nothing -> analyzeWithLernieMain rootDir grepOptions
-    Just apiOpts -> runFossaApiClient apiOpts $ analyzeWithLernieWithOrgInfo rootDir grepOptions
+  case (maybeApiOpts, ignoreOrgWideCustomLicenseScanConfigs grepOptions) of
+    (_, True) -> analyzeWithLernieMain rootDir grepOptions
+    (Nothing, False) -> analyzeWithLernieMain rootDir grepOptions
+    (Just apiOpts, False) -> runFossaApiClient apiOpts $ analyzeWithLernieWithOrgInfo rootDir grepOptions
 
 analyzeWithLernieWithOrgInfo ::
   ( Has Diagnostics sig m
@@ -95,7 +96,7 @@ analyzeWithLernieMain ::
 analyzeWithLernieMain rootDir grepOptions = do
   let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
   case maybeLernieConfig of
-    Just (lernieConfig) -> do
+    Just lernieConfig -> do
       messages <- runLernie lernieConfig
       let lernieResults = lernieMessagesToLernieResults messages rootDir
       pure $ Just lernieResults
