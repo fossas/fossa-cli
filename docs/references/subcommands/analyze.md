@@ -30,14 +30,14 @@ In addition to the [usual FOSSA project flags](#common-fossa-project-flags) supp
 
 The paths and targets filtering options allow you to specify the exact targets which be should be scanned.
 
-| Name                             | Short | Description                                                                                                              |
-|----------------------------------|-------|--------------------------------------------------------------------------------------------------------------------------|
-| `--only-target`                  |       | Only scan these targets. See [targets.only](../files/fossa-yml.md#targets.only) in the fossa.yml spec.                   |
-| `--exclude-target`               |       | Exclude these targets from scanning. See [targets.exclude](../files/fossa-yml.md#targets.exclude) in the fossa.yml spec. |
-| `--only-path`                    |       | Only scan these paths. See [paths.only](../files/fossa-yml.md#paths.only) in the fossa.yml spec.                         |
-| `--exclude-path`                 |       | Exclude these paths from scannig. See [paths.exclude](../files/fossa-yml.md#paths.exclude) in the fossa.yml spec.        |
-| `--include-unused-deps`          |       | Include all deps found, instead of filtering non-production deps.  Ignored by VSI.                                       |
-| `--debug-no-discovery-exclusion` |       | Ignore these filters during discovery phase.  This flag is for debugging only and may be removed without warning.        |
+| Name                             | Description                                                                                                              |
+|----------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `--only-target`                  | Only scan these targets. See [targets.only](../files/fossa-yml.md#targets.only) in the fossa.yml spec.                   |
+| `--exclude-target`               | Exclude these targets from scanning. See [targets.exclude](../files/fossa-yml.md#targets.exclude) in the fossa.yml spec. |
+| `--only-path`                    | Only scan these paths. See [paths.only](../files/fossa-yml.md#paths.only) in the fossa.yml spec.                         |
+| `--exclude-path`                 | Exclude these paths from scannig. See [paths.exclude](../files/fossa-yml.md#paths.exclude) in the fossa.yml spec.        |
+| `--include-unused-deps`          | Include all deps found, instead of filtering non-production deps.  Ignored by VSI.                                       |
+| `--debug-no-discovery-exclusion` | Ignore these filters during discovery phase.  This flag is for debugging only and may be removed without warning.        |
 
 ### Printing results without uploading to FOSSA
 
@@ -62,10 +62,10 @@ fossa analyze --json
 
 The Vendored Dependencies feature allows you to scan for licenses directly in your code. For more information, please see the [Vendored Dependencies documentation](../../features/vendored-dependencies.md).
 
-| Name                                      | Short | Description                                                                                                                                                                           |
-|-------------------------------------------|-------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `--force-vendored-dependency-scan-method` |       | Force the vendored dependency scan method. The options are 'CLILicenseScan' or 'ArchiveUpload'. 'CLILicenseScan' is usually the default unless your organization has overridden this. |
-| `--force-vendored-dependency-rescans`     |       | Force vendored dependencies to be rescanned even if the revision has been previously analyzed by FOSSA. This currently only works for CLI-side license scans.                         |
+| Name                                      | Description                                                                                                                                                                           |
+|-------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--force-vendored-dependency-scan-method` | Force the vendored dependency scan method. The options are 'CLILicenseScan' or 'ArchiveUpload'. 'CLILicenseScan' is usually the default unless your organization has overridden this. |
+| `--force-vendored-dependency-rescans`     | Force vendored dependencies to be rescanned even if the revision has been previously analyzed by FOSSA. This currently only works for CLI-side license scans.                         |
 
 ### Running in a specific directory
 
@@ -112,13 +112,13 @@ _Important: For support and other general information, refer to the [experimenta
 
 In addition to the [standard flags](#specifying-fossa-project-details), the analyze command supports the following experimental flags:
 
-| Name                                                                                     | Description                                                                                                                                                      |
-|------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`--experimental-enable-binary-discovery`](../experimental/binary-discovery/README.md)   | Enable reporting binary files as unlicensed dependencies. For more information, see the [binary discovery overview](../experimental/binary-discovery/README.md). |
-| [`--experimental-link-project-binary './some-dir'`](../experimental/msb/README.md)       | Link the provided binary files to the project being analyzed. For more information, see the [multi stage builds overview](../experimental/msb/README.md).        |
-| [`--experimental-skip-vsi-graph 'custom+1/some$locator'`](../experimental/msb/README.md) | Skip resolving the dependencies of the given project that was previously linked via `--experimental-link-project-binary`.                                        |
-| `--experimental-force-first-party-scans` | Force [first party scans](../../features/first-party-license-scans.md) to run |
-| `--experimental-block-first-party-scans` | Force [first party scans](../../features/first-party-license-scans.md) to not run. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans.|
+| Name                                                                                     | Description                                                                                                                                                                                    |
+|------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`--experimental-enable-binary-discovery`](../experimental/binary-discovery/README.md)   | Enable reporting binary files as unlicensed dependencies. For more information, see the [binary discovery overview](../experimental/binary-discovery/README.md).                               |
+| [`--experimental-link-project-binary './some-dir'`](../experimental/msb/README.md)       | Link the provided binary files to the project being analyzed. For more information, see the [multi stage builds overview](../experimental/msb/README.md).                                      |
+| [`--experimental-skip-vsi-graph 'custom+1/some$locator'`](../experimental/msb/README.md) | Skip resolving the dependencies of the given project that was previously linked via `--experimental-link-project-binary`.                                                                      |
+| `--experimental-force-first-party-scans`                                                 | Force [first party scans](../../features/first-party-license-scans.md) to run                                                                                                                  |
+| `--experimental-block-first-party-scans`                                                 | Force [first party scans](../../features/first-party-license-scans.md) to not run. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans. |
 
 ### F.A.Q.
 
