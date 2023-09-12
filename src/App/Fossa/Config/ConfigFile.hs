@@ -273,7 +273,7 @@ instance FromJSON ConfigFile where
       <*> obj .:? "telemetry"
       <*> obj .:? "customLicenseSearch"
       <*> obj .:? "experimentalKeywordSearch"
-      <*> obj .:? "ignoreOrgWideKeywordSearch" .!= False
+      <*> obj .:? "ignoreOrgWideCustomLicenseScanConfigs" .!= False
 
 instance FromJSON ConfigProject where
   parseJSON = withObject "ConfigProject" $ \obj ->

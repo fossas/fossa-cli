@@ -281,7 +281,7 @@ cliParser =
     <*> experimentalUseV3GoResolver
     <*> flagOpt ForceFirstPartyScans (long "experimental-force-first-party-scans" <> help "Force first party scans")
     <*> flagOpt ForceNoFirstPartyScans (long "experimental-block-first-party-scans" <> help "Block first party scans. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans.")
-    <*> flagOpt IgnoreOrgWideCustomLicenseScanConfigs (long "ignore-org-wide-custom-license-scan-configs" <> help "Ignore org-wide custom-license-scan configs.")
+    <*> flagOpt IgnoreOrgWideCustomLicenseScanConfigs (long "ignore-org-wide-custom-license-scan-configs" <> help "Ignore custom-license scan configurations for your organization. These configurations are defined in the Integrations section of the Admin settings in the FOSSA web app")
 
 data GoDynamicTactic
   = GoModulesBasedTactic
