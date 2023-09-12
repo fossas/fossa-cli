@@ -1,5 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Strategy.Conda.EnvironmentYml (
   analyze,
@@ -18,11 +20,23 @@ import Effect.ReadFS
 import Graphing (Graphing, fromList)
 import Path
 import Types
+import qualified Data.Aeson.KeyMap as KeyMap
+import Control.Applicative ((<|>))
+import Strategy.Python.Util (Req, reqToDependency)
+import Data.Aeson.Types (Parser)
+import qualified Data.Vector as Vector
+import Text.Megaparsec (runParser, errorBundlePretty)
+import Strategy.Python.ReqTxt (requirementsTxtParser)
+import Debug.Trace (trace)
+import Data.String.Conversion (toString)
 
 buildGraph :: EnvironmentYmlFile -> Graphing Dependency
-buildGraph envYmlFile = Graphing.fromList (map toDependency allDeps)
+buildGraph envYmlFile = Graphing.fromList (condaPkgToDependency =<< (dependencies envYmlFile))
   where
-    allDeps = map getCondaDepFromText (dependencies envYmlFile)
+    condaPkgToDependency :: CondaPkg -> [Dependency]
+    condaPkgToDependency (Pkg text) = [toDependency . getCondaDepFromText $ text]
+    condaPkgToDependency (PipPkg req) = reqToDependency <$> req
+
     toDependency :: CondaDep -> Dependency
     toDependency CondaDep{..} =
       Dependency
@@ -73,9 +87,34 @@ getCondaDepFromText rcd =
             Nothing -> ""
       pure (aVal <> bVal)
 
+newtype PackageManager = PackageManager Text
+  deriving newtype (Eq, Ord, Show, FromJSON)
+
+data CondaPkg = Pkg Text
+              | PipPkg [Req]
+  deriving (Eq, Ord, Show)
+
+instance FromJSON CondaPkg where
+  parseJSON cd = (Pkg <$> parseJSON cd) <|> withObject "CondaPipPkg" parseOtherPkgManager cd
+   where parseOtherPkgManager :: Object -> Parser CondaPkg
+         parseOtherPkgManager (KeyMap.toList -> [("pip", deps)]) = trace "Pip package!" $ withArray "Pip Packages" parseReqs deps
+
+         parseOtherPkgManager obj = fail ("Expected object with a single key (\"pip\") and list of deps. Got: " <> show obj)
+
+         parseReqs :: Array -> Parser CondaPkg
+         parseReqs = fmap (PipPkg . mconcat)
+                       . traverse (withText "pip depstring parse" parseReq')
+                       . Vector.toList
+
+         parseReq' :: Text -> Parser [Req]
+         parseReq' s = case runParser requirementsTxtParser "" s of
+                         Left err -> fail . errorBundlePretty $ err
+                         Right [] -> fail . toString $ "Could not parse \"" <> s <> "\""
+                         Right req -> pure req
+
 data EnvironmentYmlFile = EnvironmentYmlFile
   { name :: Text
-  , dependencies :: [Text]
+  , dependencies :: [CondaPkg]
   }
   deriving (Eq, Ord, Show)
 

@@ -6,6 +6,8 @@ module Strategy.Python.Util (
   MarkerOp (..),
   Operator (..),
   Req (..),
+  requirementParser,
+  reqToDependency,
   reqCodec,
   toConstraint,
 ) where
@@ -25,10 +27,8 @@ import Text.Megaparsec.Char
 import Text.URI qualified as URI
 import Toml qualified
 
-buildGraph :: [Req] -> Graphing Dependency
-buildGraph = Graphing.fromList . map toDependency
-  where
-    toDependency req =
+reqToDependency :: Req -> Dependency
+reqToDependency req =
       Dependency
         { dependencyType = PipType
         , dependencyName = depName req
@@ -37,7 +37,7 @@ buildGraph = Graphing.fromList . map toDependency
         , dependencyEnvironments = mempty
         , dependencyTags = maybe Map.empty toTags (depMarker req)
         }
-
+  where
     depName (NameReq nm _ _ _) = nm
     depName (UrlReq nm _ _ _) = nm
 
@@ -46,6 +46,9 @@ buildGraph = Graphing.fromList . map toDependency
 
     depMarker (NameReq _ _ _ marker) = marker
     depMarker (UrlReq _ _ _ marker) = marker
+
+buildGraph :: [Req] -> Graphing Dependency
+buildGraph = Graphing.fromList . map reqToDependency
 
 -- we pull out tags naively. we don't respect and/or semantics, and ignore operators
 -- FUTURE: more useful tagging? in particular: only pull out sys_platform?
