@@ -1,19 +1,20 @@
+{-# LANGUAGE QuasiQuotes #-}
 module Conda.EnvironmentYmlSpec (
   spec,
 ) where
 
 import Data.ByteString qualified as BS
 import Data.Map.Strict qualified as Map
+import Text.RawString.QQ (r)
 import Data.Yaml (decodeEither', prettyPrintParseException)
 import DepTypes (
-  DepType (CondaType),
+  DepType (CondaType, PipType),
   Dependency (..),
   VerConstraint (CEq),
  )
 import Effect.Grapher
-import GraphUtil (expectDeps)
 import Graphing (Graphing)
-import Strategy.Conda.EnvironmentYml (EnvironmentYmlFile (..), buildGraph)
+import Strategy.Conda.EnvironmentYml (buildGraph)
 import Test.Hspec
 import Test.Hspec qualified as T
 
@@ -52,6 +53,7 @@ dependencyThree =
 
 expectedGraph :: Graphing Dependency
 expectedGraph = run . evalGrapher $ do
+  direct dependencyTwo
   direct $
     Dependency
       { dependencyType = CondaType
@@ -79,17 +81,33 @@ expectedGraph = run . evalGrapher $ do
       , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
       }
+  direct $
+    Dependency {
+       dependencyType = PipType
+      , dependencyName = "pytest-httpserver"
+      , dependencyVersion = Just (CEq "1.0.6")
+      , dependencyLocations = []
+      , dependencyEnvironments = mempty
+      , dependencyTags = Map.empty
+      }
 
-envFile :: EnvironmentYmlFile
-envFile = EnvironmentYmlFile "Name" ["name=version1=build", "name=version2", "name"]
+condaEnvFile :: BS.ByteString
+condaEnvFile =
+  [r|name: testName
+channels:
+  - defaults
+dependencies:
+  - biopython=1.78=py38haf1e3a3_0
+  - blas=1.0=mkl
+  - name=version2
+  - ca-certificates=2021.1.19=hecd8cb5_1
+  - pip:
+    - pytest-httpserver==1.0.6
+prefix: /path/to/env
+|]
 
 spec :: T.Spec
 spec = do
-  condaEnvFile <- runIO (BS.readFile "test/Conda/testdata/environment.yml")
-  T.describe "buildGraph" $
-    T.it "can parse EnvironmentYmlFile" $
-      expectDeps [dependencyOne, dependencyTwo, dependencyThree] $
-        buildGraph envFile
   T.describe "buildGraph with real environment.yml" $
     T.it "can parse environment.yml" $ do
       case decodeEither' condaEnvFile of

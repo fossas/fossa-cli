@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Conda: Support simple Pip packages in `environment.yml`.
+
 ## v3.8.10
 
 - Reports: Can now export reports formatted as CycloneDX (json/xml), CSV, HTML, and JSON SPDX. ([#1266](https://github.com/fossas/fossa-cli/pull/1266))

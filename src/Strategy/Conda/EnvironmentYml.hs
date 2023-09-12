@@ -31,7 +31,7 @@ import Debug.Trace (trace)
 import Data.String.Conversion (toString)
 
 buildGraph :: EnvironmentYmlFile -> Graphing Dependency
-buildGraph envYmlFile = Graphing.fromList (condaPkgToDependency =<< (dependencies envYmlFile))
+buildGraph envYmlFile = Graphing.fromList (condaPkgToDependency =<< dependencies envYmlFile)
   where
     condaPkgToDependency :: CondaPkg -> [Dependency]
     condaPkgToDependency (Pkg text) = [toDependency . getCondaDepFromText $ text]
