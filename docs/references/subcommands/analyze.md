@@ -117,8 +117,8 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 | [`--experimental-enable-binary-discovery`](../experimental/binary-discovery/README.md)   | Enable reporting binary files as unlicensed dependencies. For more information, see the [binary discovery overview](../experimental/binary-discovery/README.md). |
 | [`--experimental-link-project-binary './some-dir'`](../experimental/msb/README.md)       | Link the provided binary files to the project being analyzed. For more information, see the [multi stage builds overview](../experimental/msb/README.md).        |
 | [`--experimental-skip-vsi-graph 'custom+1/some$locator'`](../experimental/msb/README.md) | Skip resolving the dependencies of the given project that was previously linked via `--experimental-link-project-binary`.                                        |
-| `--experimental-force-first-party-scans` | | Force [first party scans](../../features/first-party-license-scans.md) to run|
-| `--experimental-block-first-party-scans` | | Force [first party scans](../../features/first-party-license-scans.md) to not run. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans.|
+| `--experimental-force-first-party-scans` | Force [first party scans](../../features/first-party-license-scans.md) to run |
+| `--experimental-block-first-party-scans` | Force [first party scans](../../features/first-party-license-scans.md) to not run. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans.|
 
 ### F.A.Q.
 
