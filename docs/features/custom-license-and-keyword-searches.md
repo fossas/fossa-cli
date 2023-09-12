@@ -56,6 +56,9 @@ If your project is set to raise issues for a license of type "Custom License", t
 
 ## Regular expression format
 
+The regular expressions in Custom License and Keyword searches use Rust's regular expression syntax. Here are a few examples. You can also view the [full regular expression syntax documentation](./custom-license-and-keyword-search-regular-expression-syntax.md).
+
+### Searching for a phrase with some characters
 ## Configuring custom-license searches for your whole organization
 
 If you want to scan for the same custom licenses for every project you analyze with `fossa analyze`, you can set up custom license scans in FOSSA's admin UI.
@@ -73,6 +76,12 @@ You can then add custom license searches. Once you do this, anyone in your organ
 Any custom-license searches configured in the repositories `.fossa.yml` file will also be run.
 
 ### Turning off organization-wide custom-license searches
+
+You can ignore the organization wide custom-license searches by providing the `--ignore-org-wide-custom-license-scan-configs` flag when you run `fossa analyze`:
+
+```
+fossa analyze --ignore-org-wide-custom-license-scan-configs
+```
 
 
 
