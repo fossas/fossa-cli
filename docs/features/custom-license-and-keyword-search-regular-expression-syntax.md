@@ -31,6 +31,10 @@ DEALINGS IN THE SOFTWARE.
 
 # Regular Expression Syntax for Custom License and Keyword Searches
 
+Custom License and Keyword Searches use version 1.9.5 of the Rust regular expression library, [regex](https://docs.rs/regex/latest/regex).
+
+This document describes the syntax supported by this library.
+
 ## Matching one character
 
 <pre class="rust">
