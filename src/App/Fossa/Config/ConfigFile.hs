@@ -16,7 +16,6 @@ module App.Fossa.Config.ConfigFile (
   ExperimentalGradleConfigs (..),
   VendoredDependencyConfigs (..),
   mergeFileCmdMetadata,
-  empty,
   resolveLocalConfigFile,
 ) where
 
@@ -181,9 +180,6 @@ mergeFileCmdMetadata meta cfgFile =
         , projectLabel = projectLabel meta <|> (maybe [] configLabel (configProject cfgFile))
         , projectReleaseGroup = projectReleaseGroup meta <|> (configProject cfgFile >>= configReleaseGroup)
         }
-
-empty :: ConfigFile
-empty = ConfigFile 3 Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing False
 
 data ConfigFile = ConfigFile
   { configVersion :: Int
