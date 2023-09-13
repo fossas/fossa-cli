@@ -1,5 +1,4 @@
 module Strategy.Python.Util (
-  requirementParser,
   buildGraph,
   Version (..),
   Marker (..),
