@@ -187,6 +187,12 @@ If this setting is not present, then we will use the default for your organizati
 
 For a description of what these methods are and the difference between them, see the [documentation for vendored dependencies](https://github.com/fossas/fossa-cli/blob/master/docs/features/vendored-dependencies.md).
 
+#### `vendoredDependencies.licenseScanPathFilters`
+
+Path filtering can be used to omit some files or directories from license scanning.
+
+For more details, see the [vendored-dependencies feature reference](../../features/vendored-dependencies.md#path-filtering).
+
 ### `targets:`
 The targets filtering section allows you to specify the exact targets which be should be scanned.
 
