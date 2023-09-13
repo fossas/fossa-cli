@@ -29,14 +29,14 @@ import Toml qualified
 
 reqToDependency :: Req -> Dependency
 reqToDependency req =
-      Dependency
-        { dependencyType = PipType
-        , dependencyName = depName req
-        , dependencyVersion = depVersion req
-        , dependencyLocations = []
-        , dependencyEnvironments = mempty
-        , dependencyTags = maybe Map.empty toTags (depMarker req)
-        }
+  Dependency
+    { dependencyType = PipType
+    , dependencyName = depName req
+    , dependencyVersion = depVersion req
+    , dependencyLocations = []
+    , dependencyEnvironments = mempty
+    , dependencyTags = maybe Map.empty toTags (depMarker req)
+    }
   where
     depName (NameReq nm _ _ _) = nm
     depName (UrlReq nm _ _ _) = nm

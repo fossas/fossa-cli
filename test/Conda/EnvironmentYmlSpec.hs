@@ -1,11 +1,11 @@
 {-# LANGUAGE QuasiQuotes #-}
+
 module Conda.EnvironmentYmlSpec (
   spec,
 ) where
 
 import Data.ByteString qualified as BS
 import Data.Map.Strict qualified as Map
-import Text.RawString.QQ (r)
 import Data.Yaml (decodeEither', prettyPrintParseException)
 import DepTypes (
   DepType (CondaType, PipType),
@@ -17,6 +17,7 @@ import Graphing (Graphing)
 import Strategy.Conda.EnvironmentYml (buildGraph)
 import Test.Hspec
 import Test.Hspec qualified as T
+import Text.RawString.QQ (r)
 
 dependencyOne :: Dependency
 dependencyOne =
@@ -82,8 +83,8 @@ expectedGraph = run . evalGrapher $ do
       , dependencyTags = Map.empty
       }
   direct $
-    Dependency {
-       dependencyType = PipType
+    Dependency
+      { dependencyType = PipType
       , dependencyName = "pytest-httpserver"
       , dependencyVersion = Just (CEq "1.0.6")
       , dependencyLocations = []
