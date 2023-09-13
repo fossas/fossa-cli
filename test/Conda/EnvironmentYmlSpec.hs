@@ -19,34 +19,12 @@ import Test.Hspec
 import Test.Hspec qualified as T
 import Text.RawString.QQ (r)
 
-dependencyOne :: Dependency
-dependencyOne =
-  Dependency
-    { dependencyType = CondaType
-    , dependencyName = "name"
-    , dependencyVersion = Just (CEq "version1")
-    , dependencyLocations = []
-    , dependencyEnvironments = mempty
-    , dependencyTags = Map.empty
-    }
-
 dependencyTwo :: Dependency
 dependencyTwo =
   Dependency
     { dependencyType = CondaType
     , dependencyName = "name"
     , dependencyVersion = Just (CEq "version2")
-    , dependencyLocations = []
-    , dependencyEnvironments = mempty
-    , dependencyTags = Map.empty
-    }
-
-dependencyThree :: Dependency
-dependencyThree =
-  Dependency
-    { dependencyType = CondaType
-    , dependencyName = "name"
-    , dependencyVersion = Nothing
     , dependencyLocations = []
     , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
