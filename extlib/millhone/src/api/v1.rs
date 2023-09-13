@@ -7,7 +7,7 @@ use crate::url::BaseUrl;
 mod ping;
 
 // v1 is expected to use types directly. Translation shouldn't be needed until/unless there's a v2.
-pub(self) use super::types::*;
+use super::types::*;
 
 /// Implements the client for v1 of the Millhone API.
 #[derive(Debug, Clone)]

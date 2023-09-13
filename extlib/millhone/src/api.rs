@@ -38,7 +38,7 @@ pub mod prelude {
     pub use super::types::TransportErrorKind as ApiTransportErrorKind;
 }
 
-pub(self) fn build_default_agent() -> Agent {
+fn build_default_agent() -> Agent {
     let app_name = env!("CARGO_PKG_NAME");
     let app_version = env!("CARGO_PKG_VERSION");
     AgentBuilder::new()
