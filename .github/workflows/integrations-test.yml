@@ -13,10 +13,10 @@ jobs:
     name: integration-test
     runs-on: ubuntu-latest
     # Be sure to update the env below too
-    container: fossa/haskell-static-alpine:ghc-9.0.2
+    container: fossa/haskell-static-alpine:ghc-9.4.7
 
     env:
-      GHC_VERSION: '9.0.2'
+      GHC_VERSION: '9.4.7'
 
     steps:
     - uses: actions-rs/toolchain@v1
