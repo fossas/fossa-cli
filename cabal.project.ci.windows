@@ -1,5 +1,6 @@
 executable-static: True
-split-sections: True
+-- This appears to cause segfaults on Windows, this is an experiment in not using it.
+split-sections: False
 tests: True
 optimization: 2
 jobs: $ncpus
