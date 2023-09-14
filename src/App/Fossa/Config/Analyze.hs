@@ -105,7 +105,7 @@ import Options.Applicative (
   switch,
   (<|>),
  )
-import Path (Abs, Dir, File, Path, Rel)
+import Path (Abs, Dir, Path, Rel)
 import Path.Extra (SomePath)
 import Prettyprinter (Doc, annotate, defaultLayoutOptions, layoutPretty)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Red), color, renderStrict)
@@ -232,7 +232,6 @@ data AnalyzeConfig = AnalyzeConfig
   , overrideDynamicAnalysis :: OverrideDynamicAnalysisBinary
   , firstPartyScansFlag :: FirstPartyScansFlag
   , grepOptions :: GrepOptions
-  , configFilePath :: Maybe (Path Abs File)
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -406,7 +405,6 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
       dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
       grepOptions = collectGrepOptions maybeConfig cliOpts
-      configPath = configConfigFilePath <$> maybeConfig
   firstPartyScansFlag <-
     case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
       (True, True) -> fatalText "You provided both the --experimental-force-first-party-scans and --experimental-block-first-party-scans flags. Only one of these flags may be used"
@@ -430,7 +428,6 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure dynamicAnalysisOverrides
     <*> pure firstPartyScansFlag
     <*> pure grepOptions
-    <*> pure configPath
 
 collectFilters ::
   ( Has Diagnostics sig m

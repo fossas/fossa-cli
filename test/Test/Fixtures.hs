@@ -404,5 +404,4 @@ standardAnalyzeConfig =
     , ANZ.overrideDynamicAnalysis = App.OverrideDynamicAnalysisBinary{unOverrideDynamicAnalysisBinary = mempty}
     , ANZ.firstPartyScansFlag = App.FirstPartyScansUseDefault
     , ANZ.grepOptions = grepOptions
-    , ANZ.configFilePath = Nothing
     }
