@@ -35,6 +35,17 @@ Custom License and Keyword Searches use version 1.9.5 of the Rust regular expres
 
 This document describes the syntax supported by this library.
 
+In this document, the following terms are used:
+
+Haystack
+: The text being searched
+
+Pattern
+: The string used to create a regular expression. An uncompiled regular expression
+
+Regex or Regular Expression
+: A regular expression compiled from a pattern.
+
 ## Matching one character
 
 <pre class="rust">
@@ -88,22 +99,6 @@ x|y   alternation (x or y, prefer x)
 This example shows how an alternation works, and what it means to prefer a
 branch in the alternation over subsequent branches.
 
-```
-use regex::Regex;
-
-let haystack = "samwise";
-// If 'samwise' comes first in our alternation, then it is
-// preferred as a match, even if the regex engine could
-// technically detect that 'sam' led to a match earlier.
-let re = Regex::new(r"samwise|sam").unwrap();
-assert_eq!("samwise", re.find(haystack).unwrap().as_str());
-// But if 'sam' comes first, then it will match instead.
-// In this case, it is impossible for 'samwise' to match
-// because 'sam' is a prefix of it.
-let re = Regex::new(r"sam|samwise").unwrap();
-assert_eq!("sam", re.find(haystack).unwrap().as_str());
-```
-
 ## Repetitions
 
 <pre class="rust">
@@ -136,17 +131,7 @@ The empty regex is valid and matches the empty string. For example, the
 empty regex matches `abc` at positions `0`, `1`, `2` and `3`. When using the
 top-level [`Regex`] on `&str` haystacks, an empty match that splits a codepoint
 is guaranteed to never be returned. However, such matches are permitted when
-using a [`bytes::Regex`]. For example:
-
-```rust
-let re = regex::Regex::new(r"").unwrap();
-let ranges: Vec<_> = re.find_iter("💩").map(|m| m.range()).collect();
-assert_eq!(ranges, vec![0..0, 4..4]);
-
-let re = regex::bytes::Regex::new(r"").unwrap();
-let ranges: Vec<_> = re.find_iter("💩".as_bytes()).map(|m| m.range()).collect();
-assert_eq!(ranges, vec![0..0, 1..1, 2..2, 3..3, 4..4]);
-```
+using a [`bytes::Regex`].
 
 Note that an empty regex is distinct from a regex that can never match.
 For example, the regex `[a&&b]` is a character class that represents the
@@ -195,47 +180,33 @@ For example, `\ ` or `\x20` for an ASCII space.
 Flags can be toggled within a pattern. Here's an example that matches
 case-insensitively for the first part but case-sensitively for the second part:
 
-```rust
-use regex::Regex;
-
-let re = Regex::new(r"(?i)a+(?-i)b+").unwrap();
-let m = re.find("AaAaAbbBBBb").unwrap();
-assert_eq!(m.as_str(), "AaAaAbb");
+```regex
+(?i)a+(?-i)b+
 ```
 
 Notice that the `a+` matches either `a` or `A`, but the `b+` only matches
 `b`.
 
 Multi-line mode means `^` and `$` no longer match just at the beginning/end of
-the input, but also at the beginning/end of lines:
+the input, but also at the beginning/end of lines. This regular expression:
 
-```
-use regex::Regex;
-
-let re = Regex::new(r"(?m)^line \d+").unwrap();
-let m = re.find("line one\nline 2\n").unwrap();
-assert_eq!(m.as_str(), "line 2");
+```regex
+(?m)^line \d+
 ```
 
-Note that `^` matches after new lines, even at the end of input:
+Will match "line " at the beginning of a line followed by some numbers. If the `(?m)` switch was not there, it would match "line " followed by some numbers only if it was at the beginning of the file being matched.
 
-```
-use regex::Regex;
+> line one
+>
+> line 2
+>
 
-let re = Regex::new(r"(?m)^").unwrap();
-let m = re.find_iter("test\n").last().unwrap();
-assert_eq!((m.start(), m.end()), (5, 5));
-```
 
 When both CRLF mode and multi-line mode are enabled, then `^` and `$` will
 match either `\r` and `\n`, but never in the middle of a `\r\n`:
 
-```
-use regex::Regex;
-
-let re = Regex::new(r"(?mR)^foo$").unwrap();
-let m = re.find("\r\nfoo\r\n").unwrap();
-assert_eq!(m.as_str(), "foo");
+```regex
+(?mR)^foo$
 ```
 
 Unicode mode can also be selectively disabled, although only when the result
@@ -243,12 +214,8 @@ Unicode mode can also be selectively disabled, although only when the result
 word boundary instead of a Unicode word boundary, which might make some regex
 searches run faster:
 
-```rust
-use regex::Regex;
-
-let re = Regex::new(r"(?-u:\b).+(?-u:\b)").unwrap();
-let m = re.find("$$abc$$").unwrap();
-assert_eq!(m.as_str(), "abc");
+```regex
+(?-u:\b).+(?-u:\b)
 ```
 
 ## Escape sequences

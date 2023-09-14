@@ -4,7 +4,7 @@ FOSSA offers the ability to search your codebase using regular expressions and t
 
 For both of these searches, you provide a `name` and a `matchCriteria`. The `name` is a description of what you are searching for. The `matchCriteria` is a regular expression used to find the thing you are searching for.
 
-The simplest way to provide these values is in your `.fossa.yml` config file. Here is an example config file that does both a Keyword Search and a Custom-License Search. It is searching case-insensitively for the phrase "this project is provided under a proprietary license" as a custom license with a name of "Proprietary License". It is search for the string "abc123" as a keyword search with a name of "Password".
+The simplest way to provide these values is in your `.fossa.yml` config file. Here is an example config file that does both a Keyword Search and a Custom-License Search. It is searching case-insensitively for the phrase "this project is provided under a proprietary license" as a custom license with a name of "Proprietary License". It is also searching for the string "abc123" as a keyword search with a name of "Password".
 
 ```yaml
 version: 3
@@ -32,7 +32,7 @@ If a match to a keyword search is found, then the results of that search are out
 
 ## Custom License Searches
 
-If a match to a custom-license search is found, then the CLI will add the match to the licenses reported for the project being scanned. The license will be identified as a "Custom License", and the name that you provided will be used in the FOSSA UI and in reports when displaying tha license.
+If a match to a custom-license search is found, then the CLI will add the match to the licenses reported for the project being scanned. The license will be identified as a "Custom License", and the name that you provided will be used in the FOSSA UI and in reports when displaying that license.
 
 The result will also be output in the scan summary, just as it is for [Keyword Searches](#keyword-searches).
 
@@ -52,7 +52,7 @@ The custom license will also be included in reports, and will look something lik
 
 ![A Custom License in a FOSSA Licensing report](../assets/custom-license-scan-report.png)
 
-Note that the name will be used as the license's name in the UI, so set it to something that is understandable to someone looking at license issues and viewing a report.
+Note that the name will be used as the license's name in the UI, so it is important to use names that are understandable to someone looking at license issues and viewing a report.
 
 If your project is set to raise issues for a license of type "Custom License", then an issue will be raised for any custom licenses found.
 
@@ -87,6 +87,7 @@ If you have some text that has newlines in it, you can match it by using `\s+` w
 For example, if you had this text in a file:
 
 > This is one of of my license
+>
 > and this is the second line
 
 Then you could match this with this regular expression:
@@ -97,7 +98,7 @@ This is line one of my license\s+and this is the second line
 
 We use `\s+` instead of just `\s` so that this will match both Unix-style newlines (which are a single character) and Windows style newlines (which consist of two characters).
 
-The `\s+` character class will match to spaces as well. So the following text will also match this regular expression:
+The `\s+` character class will match to spaces as well as newlines. So the following text will also match:
 
 > This is one of of my license and this is the second line
 
