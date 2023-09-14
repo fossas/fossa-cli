@@ -494,9 +494,9 @@ collectVendoredDepsFromConfig maybeCfg =
 collectGrepOptions :: Maybe ConfigFile -> AnalyzeCliOpts -> GrepOptions
 collectGrepOptions maybeCfg AnalyzeCliOpts{..} =
   case maybeCfg of
-    Nothing -> GrepOptions [] [] ignoreOrgWideCustomLicenseScanConfigsFromFlag
+    Nothing -> GrepOptions [] [] ignoreOrgWideCustomLicenseScanConfigsFromFlag Nothing
     Just cfg ->
-      GrepOptions customLicenseList keywordSearchList (ignoreOrgWideCustomLicenseScanConfigsFromFlag || ignoreOrgWideCustomLicenseScanConfigsFromConfig)
+      GrepOptions customLicenseList keywordSearchList (ignoreOrgWideCustomLicenseScanConfigsFromFlag || ignoreOrgWideCustomLicenseScanConfigsFromConfig) (configConfigFilePath <$> maybeCfg)
       where
         customLicenseList = maybe [] (map configGrepToGrep) (configCustomLicenseSearch cfg)
         keywordSearchList = maybe [] (map configGrepToGrep) (configKeywordSearch cfg)

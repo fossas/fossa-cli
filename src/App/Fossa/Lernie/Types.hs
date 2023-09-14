@@ -21,13 +21,14 @@ import Data.Aeson.Types ((.:))
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Path (Abs, Dir, Path)
+import Path (Abs, Dir, File, Path)
 import Srclib.Types (LicenseSourceUnit)
 
 data GrepOptions = GrepOptions
   { customLicenseSearch :: [GrepEntry]
   , keywordSearch :: [GrepEntry]
   , ignoreOrgWideCustomLicenseScanConfigs :: Bool
+  , configFilePath :: Maybe (Path Abs File)
   }
   deriving (Eq, Ord, Show, Generic)
 

@@ -228,6 +228,7 @@ grepOptions =
     { customLicenseSearch = [customLicenseGrepEntry]
     , keywordSearch = [keywordSearchGrepEntry]
     , ignoreOrgWideCustomLicenseScanConfigs = False
+    , configFilePath = Nothing
     }
 
 customLicenseGrepEntry :: GrepEntry
