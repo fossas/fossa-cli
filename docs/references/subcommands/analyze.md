@@ -73,7 +73,7 @@ The "Custom License Searches" feature allows you to define regular expressions t
 
 An administrator of your organization can set up custom license searches that are always run when you analyze your codebase with `fossa analyze`. Using the `--ignore-org-wide-custom-license-scan-configs` flag will ignore those organization-wide custom license searches.
 
-See the [Custom License and Keyword Searches documentation](../../features/custom-license-and-keyword-searches) for more details.
+See the [Custom License and Keyword Searches documentation](../../features/custom-license-and-keyword-searches.md) for more details.
 
 ### Running in a specific directory
 
