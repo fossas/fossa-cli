@@ -64,7 +64,7 @@ The regular expressions in Custom License and Keyword searches use Rust's regula
 
 If you want to search for the phrase "proprietary license", but you know that the "P" and the "L" are sometimes capitalized, you can use a [character class](./custom-license-and-keyword-search-regular-expression-syntax.md#character-classes) to match the capitalized and uncapitalized versions.
 
-```regex
+```
 [Pp]roprietary [Ll]icense
 ```
 
@@ -74,7 +74,7 @@ This will match "Proprietary License", "proprietary license", "proprietary Licen
 
 You can ignore case by using the case-insensitive [flag](./custom-license-and-keyword-search-regular-expression-syntax.md#character-classes#groupings-and-flags), `i`. This is done by adding `(i?)` to your regular expression. Everything after `(?i)` will be matched case-insenitively.
 
-```regex
+```
 (i?)custom license
 ```
 
@@ -92,7 +92,7 @@ For example, if you had this text in a file:
 
 Then you could match this with this regular expression:
 
-```regex
+```
 This is line one of my license\s+and this is the second line
 ```
 
@@ -102,11 +102,36 @@ The `\s+` character class will match to spaces as well as newlines. So the follo
 
 > This is one of of my license and this is the second line
 
+### Matching at the beginning or end of a line
+
+In a regular expression, `^` matches to the beginning of the string we are searching in (the haystack) and `$` to the end of the haystack. If you turn on multi-line mode using [`(?m)`](./custom-license-and-keyword-search-regular-expression-syntax.md#character-classes#groupings-and-flags), then `^` matches to the beginning of a line in the haystack and `$` matches to the end of a line.
+
+So if you want to find the string "Permission is hereby granted, free of charge", but only if it happens at the beginning of a line, then you would use this regular expression:
+
+```
+(?m)^Permission is hereby granted, free of charge
+```
+
+If you wanted to allow some optional whitespace before permission, you could add a `\s*` after the  `(?m)` flag, as `\s*` matches zero or more space characters:
+
+```
+(?m)^\s*Permission is hereby granted, free of charge
+```
+
+Finally, if you also wanted to allow an optional comment delimiter before the license, you could do this:
+
+```
+# is for Bash, Perl, Ruby, etc
+/*, // and * are for c-like comments
+-- is for Haskell
+(?m)\s*(#|/\*|\*|//|--)?\s*Permission is hereby granted, free of charge
+```
+
 ### Matching to a year
 
 To match to a year, you can use the number [character class](./custom-license-and-keyword-search-regular-expression-syntax.md#perl-character-classes-unicode-friendly)) four times. This will match a four digit year:
 
-```regex
+```
 [Cc]opyright \d\d\d\d
 ```
 
