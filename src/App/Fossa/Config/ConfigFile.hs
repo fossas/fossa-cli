@@ -43,6 +43,7 @@ import Data.Aeson (
 import Data.ByteString.Lazy (fromStrict)
 import Data.Foldable (asum)
 import Data.Functor (($>))
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (ToString (toString), ToText (toText))
@@ -134,7 +135,9 @@ resolveConfigFile base path = do
         then -- file requested, but missing
           fatalText ("requested config file does not exist: " <> toText realpath)
         else do
-          configFile <- readConfigFileYaml realpath
+          configFile1 <- readConfigFileYaml realpath
+          let maybeConfigFile = fmap ($ realpath) configFile1
+          let configFile = fromMaybe Nothing maybeConfigFile
           let version = configVersion configFile
           if version >= 3
             then pure $ Just configFile
