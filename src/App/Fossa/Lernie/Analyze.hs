@@ -156,7 +156,6 @@ parseLernieJson out configFilePath =
     parsedLines = filter (notConfigFile configFilePath) $ mapMaybe decode messageLines
     messages = map singletonLernieMessage parsedLines
 
--- Filter out LernieMessages that are of type LernieMatch and are from the .fossa.yml file
 notConfigFile :: Maybe (Path Abs File) -> LernieMessage -> Bool
 notConfigFile (Just configFilePath) (LernieMessageLernieMatch lernieMessage) = lernieMatchPath lernieMessage /= toText configFilePath
 notConfigFile _ _ = True
