@@ -9,7 +9,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString qualified as BS
 import Data.Flag ()
 import Options.Applicative (Parser, execParserPure, getParseResult, handleParseResult, header, info, prefs)
-import Path (mkRelFile, toFilePath, (</>))
+import Path (Abs, File, Path, mkRelFile, toFilePath, (</>))
 import Test.Effect (EffectStack, expectFatal', it', shouldBe', withTempDir)
 import Test.Hspec (Spec)
 
@@ -24,8 +24,8 @@ parseArgString parser = sendIO . handleParseResult . execParserPure (prefs mempt
     progInfo =
       header "Test Arg Parser"
 
-configFile :: ConfigFile
-configFile =
+configFile :: Path Abs File -> ConfigFile
+configFile path =
   ConfigFile
     { configVersion = 42
     , configServer = Nothing
@@ -40,6 +40,7 @@ configFile =
     , configCustomLicenseSearch = Nothing
     , configKeywordSearch = Nothing
     , configIgnoreOrgWideCustomLicenseScanConfigs = False
+    , configConfigFilePath = path
     }
 
 -- | Tests that the config loader uses the directory set in the arguments
@@ -50,10 +51,11 @@ itShouldLoadFromTheConfiguredBaseDir parser loadConfig =
     . withTempDir "AnalyzeSpec"
     $ \tempDir ->
       do
-        sendIO $ BS.writeFile (toFilePath (tempDir </> $(mkRelFile ".fossa.yml"))) "version: 42\n"
+        let absFilePath = tempDir </> $(mkRelFile ".fossa.yml")
+        sendIO $ BS.writeFile (toFilePath absFilePath) "version: 42\n"
         options <- sendIO $ parseArgString parser (toFilePath tempDir)
         maybeConfigFile <- loadConfig options
-        maybeConfigFile `shouldBe'` Just configFile
+        maybeConfigFile `shouldBe'` Just (configFile absFilePath)
 
 itShouldFailWhenLabelsExceedFive :: Parser AnalyzeCliOpts -> Spec
 itShouldFailWhenLabelsExceedFive parser =
