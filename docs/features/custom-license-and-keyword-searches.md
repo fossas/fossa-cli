@@ -10,12 +10,12 @@ The simplest way to provide these values is in your `.fossa.yml` config file. He
 version: 3
 
 customLicenseSearch:
-  - matchCriteria: "(?i)this project is provided under a proprietary license"
-    name: "Proprietary License"
+  - matchCriteria: (?i)this project is provided under a proprietary license
+    name: Proprietary License
 
 experimentalKeywordSearch:
-  - matchCriteria: "abc123"
-    name: "Password"
+  - matchCriteria: abc123
+    name: Password
 ```
 
 Both of these searches will run the regular expression provided in the `matchCriteria` field on every non-binary file in the directory that you are scanning. The difference is in how the results are used.
@@ -59,6 +59,30 @@ If your project is set to raise issues for a license of type "Custom License", t
 ## Regular expression format
 
 The regular expressions in Custom License and Keyword searches use Rust's regular expression syntax. Here are a few examples. You can also view the [full regular expression syntax documentation](./custom-license-and-keyword-search-regular-expression-syntax.md).
+
+### Escapes in your regular expressions
+
+If you wrap your `matchCriteria` in single quotes or no quotes in `.fossa.yml`, then you should use a single backslash (`\`) to escape characters.
+
+If you use double quotes, then you will need to use two backslashes (`\\`) to escape characters.
+
+So in the example below, we are using the same regular expression three times. Once with double quotes, once with no quotes and the final time with single quotes.
+
+Note that we have to escape the double-quotes in the regular expression when we wrap it in double-quotes.
+
+```yaml
+version: 3
+
+customLicenseSearch:
+  - matchCriteria: "to any person obtaining a copy of this software and associated documentation files \\(the \"Software\"\\)"
+    name: Obtaining Clause, double quotes
+  - matchCriteria: to any person obtaining a copy of this software and associated documentation files \(the "Software"\)
+    name: Obtaining Clause, no quotes
+  - matchCriteria: 'to any person obtaining a copy of this software and associated documentation files \(the "Software"\)'
+    name: Obtaining Clause, single quotes
+```
+
+We recommend using single quotes or no quotes.
 
 ### Searching for a phrase with some characters capitalized
 
@@ -132,10 +156,10 @@ Finally, if you also wanted to allow an optional comment delimiter before the li
 To match to a year, you can use the number [character class](./custom-license-and-keyword-search-regular-expression-syntax.md#perl-character-classes-unicode-friendly)) four times. This will match a four digit year:
 
 ```
-[Cc]opyright \d\d\d\d
+(?i)this document was last updated in \d\d\d\d
 ```
 
-This will match, for example, "Copyright 2023".
+This will match, for example, "This document was last updated in 2023".
 
 ## Configuring custom-license searches for your whole organization
 
@@ -150,6 +174,14 @@ In order to do this you must have permission to edit your admin's Integration Se
 You can then add custom license searches. Once you do this, anyone in your organization who runs `fossa analyze` will run the configured custom-license searches.
 
 Any custom-license searches configured in the repositories `.fossa.yml` file will also be run.
+
+### Escape characters in custom-license searches for your whole organization
+
+The match criteria in the admin interface should be escaped with single backslashes (`\`). For example, if you wanted to match a phrase containing a four-digit year, you would use
+
+```
+(?i)this document was last updated in \d\d\d\d
+```
 
 ### Turning off organization-wide custom-license searches
 
