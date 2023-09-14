@@ -57,7 +57,6 @@ common lang
     -Wmissing-export-lists -Wredundant-constraints
 
 -- TODO: Switch `semver` back to `versions` since https://github.com/fosskers/versions/issues/47 is fixed. This package maintainer seems much more responsive. Contrast https://github.com/brendanhay/semver/issues/12.
--- bzlib is installed via cabal.project, so this number is an expected future version.
 -- codec-rpm is installed via cabal.project, so this number is an expected future version.
 -- Upgrade text and mtl after codec-rpm conflict is fixed, probably as part of 9.4 upgrade.
 -- Upgrade zip after text is upgraded
@@ -72,7 +71,7 @@ common deps
     , base64-bytestring            ^>=1.2.1.0
     , binary                       ^>=0.8.8.0
     , bytestring                   ^>=0.11
-    , bzlib                        ^>=0.6.0.0
+    , bzlib                        ^>=0.5.1.0
     , cgroup-rts-threads           ^>=0.2.0.0
     , codec-rpm                    ^>=0.2.3
     , concurrent-output            ^>=1.10.12
