@@ -46,11 +46,11 @@ For example, if you have just the `customLicenseSearch` entry in the example `.f
 
 This will create a custom license match in your project in FOSSA. The results of that in the UI will look something like this:
 
-<TODO>
+![A Custom License in the FOSSA UI](../assets/custom-license-scan-licenses-in-ui.png)
 
 The custom license will also be included in reports, and will look something like this:
 
-<TODO>
+![A Custom License in a FOSSA Licensing report](../assets/custom-license-scan-report.png)
 
 If your project is set to raise issues for a license of type "Custom License", then an issue will be raised for any custom licenses found.
 
@@ -65,11 +65,9 @@ If you want to scan for the same custom licenses for every project you analyze w
 
 In order to do this you must have permission to edit your admin's Integration Settings. If you have this permission, you can go to the "account settings" page, click on the "Integrations" tab and then the "Custom License Scans" sub-navigation.
 
-<TODO>
+![The settings dropdown](../assets/settings-page.png)
 
-<TODO>
-
-<TODO>
+![The Custom License Scans settings page](../assets/custom-license-scans-settings-page.png)
 
 You can then add custom license searches. Once you do this, anyone in your organization who runs `fossa analyze` will run the configured custom-license searches.
 
@@ -81,6 +79,13 @@ You can ignore the organization wide custom-license searches by providing the `-
 
 ```
 fossa analyze --ignore-org-wide-custom-license-scan-configs
+```
+
+You can also set the `ignoreOrgWideCustomLicenseScanConfigs` flag to `true` in your `.fossa.yml` file. For example:
+
+```yaml
+version: 3
+ignoreOrgWideCustomLicenseScanConfigs: true
 ```
 
 
