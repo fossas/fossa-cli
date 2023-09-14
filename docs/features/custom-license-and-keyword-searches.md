@@ -52,6 +52,8 @@ The custom license will also be included in reports, and will look something lik
 
 ![A Custom License in a FOSSA Licensing report](../assets/custom-license-scan-report.png)
 
+Note that the name will be used as the license's name in the UI, so set it to something that is understandable to someone looking at license issues and viewing a report.
+
 If your project is set to raise issues for a license of type "Custom License", then an issue will be raised for any custom licenses found.
 
 ## Regular expression format
@@ -65,7 +67,7 @@ If you want to scan for the same custom licenses for every project you analyze w
 
 In order to do this you must have permission to edit your admin's Integration Settings. If you have this permission, you can go to the "account settings" page, click on the "Integrations" tab and then the "Custom License Scans" sub-navigation.
 
-![The settings dropdown](../assets/settings-page.png)
+![The settings dropdown](../assets/settings-dropdown.png)
 
 ![The Custom License Scans settings page](../assets/custom-license-scans-settings-page.png)
 
