@@ -44,7 +44,7 @@ import Data.Text (Text)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execCurrentDirStdinThrow)
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts, Organization (..))
-import Path (Abs, Dir, Path)
+import Path (Abs, Dir, File, Path)
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), LicenseUnit (..), LicenseUnitData (..), LicenseUnitInfo (..), LicenseUnitMatchData (..))
 
 newtype CustomLicensePath = CustomLicensePath {unCustomLicensePath :: Text}
@@ -97,7 +97,7 @@ analyzeWithLernieMain rootDir grepOptions = do
   let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
   case maybeLernieConfig of
     Just lernieConfig -> do
-      messages <- runLernie lernieConfig
+      messages <- runLernie lernieConfig (configFilePath grepOptions)
       let lernieResults = lernieMessagesToLernieResults messages rootDir
       pure $ Just lernieResults
     Nothing -> pure Nothing
@@ -122,11 +122,12 @@ runLernie ::
   , Has Exec sig m
   ) =>
   LernieConfig ->
+  Maybe (Path Abs File) ->
   m LernieMessages
-runLernie lernieConfig = withLernieBinary $ \bin -> do
+runLernie lernieConfig configFilePath = withLernieBinary $ \bin -> do
   let lernieConfigJSON = decodeUtf8 $ Aeson.encode lernieConfig
   result <- execCurrentDirStdinThrow (lernieCommand bin) lernieConfigJSON
-  let messages = parseLernieJson result
+  let messages = parseLernieJson result configFilePath
   traverse_ (fatal . displayLernieError) $ lernieMessageErrors messages
   traverse_ (warn . displayLernieWarning) $ lernieMessageWarnings messages
   pure messages
@@ -147,13 +148,18 @@ lernieCommand bin =
 
 -- Parse Lernie's NDJson output by splitting on newlines (character 10) and
 -- then decoding each line
-parseLernieJson :: BL.ByteString -> LernieMessages
-parseLernieJson out =
+parseLernieJson :: BL.ByteString -> Maybe (Path Abs File) -> LernieMessages
+parseLernieJson out configFilePath =
   fold messages
   where
     messageLines = BL.splitWith (== 10) out
-    parsedLines = mapMaybe decode messageLines
+    parsedLines = filter (notConfigFile configFilePath) $ mapMaybe decode messageLines
     messages = map singletonLernieMessage parsedLines
+
+-- Filter out LernieMessages that are of type LernieMatch and are from the .fossa.yml file
+notConfigFile :: Maybe (Path Abs File) -> LernieMessage -> Bool
+notConfigFile (Just configFilePath) (LernieMessageLernieMatch lernieMessage) = lernieMatchPath lernieMessage /= toText configFilePath
+notConfigFile _ _ = True
 
 lernieMessagesToLernieResults :: LernieMessages -> Path Abs Dir -> LernieResults
 lernieMessagesToLernieResults LernieMessages{..} rootDir =
