@@ -33,22 +33,18 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Lift (Lift)
 import Data.Aeson (
   FromJSON (parseJSON),
-  decode,
   withObject,
   withText,
   (.!=),
   (.:),
   (.:?),
  )
-import Data.ByteString.Lazy (fromStrict)
 import Data.Foldable (asum)
 import Data.Functor (($>))
-import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text, strip, toLower)
-import Data.Yaml (decodeEither', prettyPrintParseException)
 import Effect.Logger (
   AnsiStyle,
   Doc,
@@ -59,7 +55,7 @@ import Effect.Logger (
   viaShow,
   vsep,
  )
-import Effect.ReadFS (ReadFS, ReadFSErr (FileParseError), doesFileExist, getCurrentDir, readContentsBS, readContentsYaml)
+import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir, readContentsYaml)
 import Path (
   Abs,
   Dir,
@@ -122,7 +118,7 @@ resolveConfigFile base path = do
             defaultConfigFileNames
       case possibleConfigFilePath of
         Just actualConfigFilePath -> do
-          configFile <- readContentsYaml actualConfigFilePath
+          configFile <- ($ actualConfigFilePath) <$> readContentsYaml actualConfigFilePath
           let version = configVersion configFile
           if version >= 3
             then pure $ Just configFile
@@ -135,19 +131,12 @@ resolveConfigFile base path = do
         then -- file requested, but missing
           fatalText ("requested config file does not exist: " <> toText realpath)
         else do
-          configFile1 <- readConfigFileYaml realpath
-          let maybeConfigFile = fmap ($ realpath) configFile1
-          let configFile = fromMaybe Nothing maybeConfigFile
+          configFile <- ($ realpath) <$> readContentsYaml realpath
           let version = configVersion configFile
           if version >= 3
             then pure $ Just configFile
             else -- Invalid config with --config specified: fail with message.
               fatal $ warnMsgForOlderConfig @AnsiStyle version
-
-readConfigFileYaml :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Maybe (Path Abs File -> ConfigFile))
-readConfigFileYaml file = do
-  contents <- readContentsBS file
-  pure $ decode (fromStrict contents)
 
 warnMsgForOlderConfig :: Int -> Doc ann
 warnMsgForOlderConfig foundVersion =
