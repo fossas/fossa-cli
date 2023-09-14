@@ -60,7 +60,57 @@ If your project is set to raise issues for a license of type "Custom License", t
 
 The regular expressions in Custom License and Keyword searches use Rust's regular expression syntax. Here are a few examples. You can also view the [full regular expression syntax documentation](./custom-license-and-keyword-search-regular-expression-syntax.md).
 
-### Searching for a phrase with some characters
+### Searching for a phrase with some characters capitalized
+
+If you want to search for the phrase "proprietary license", but you know that the "P" and the "L" are sometimes capitalized, you can use a [character class](./custom-license-and-keyword-search-regular-expression-syntax.md#character-classes) to match the capitalized and uncapitalized versions.
+
+```regex
+[Pp]roprietary [Ll]icense
+```
+
+This will match "Proprietary License", "proprietary license", "proprietary License" and "Proprietary License". It will not match if any of the other characters are capitalized. For example, "PROPRIETARY LICENSE" will not match.
+
+### Ignoring case
+
+You can ignore case by using the case-insensitive [flag](./custom-license-and-keyword-search-regular-expression-syntax.md#character-classes#groupings-and-flags), `i`. This is done by adding `(i?)` to your regular expression. Everything after `(?i)` will be matched case-insenitively.
+
+```regex
+(i?)custom license
+```
+
+This will match "Custom License", "CUSTOM LICENSE", "custom license" or "CusTOm LiCenSe".
+
+### Matching newlines
+
+If you have some text that has newlines in it, you can match it by using `\s+` wherever there is a newline.
+
+For example, if you had this text in a file:
+
+> This is one of of my license
+> and this is the second line
+
+Then you could match this with this regular expression:
+
+```regex
+This is line one of my license\s+and this is the second line
+```
+
+We use `\s+` instead of just `\s` so that this will match both Unix-style newlines (which are a single character) and Windows style newlines (which consist of two characters).
+
+The `\s+` character class will match to spaces as well. So the following text will also match this regular expression:
+
+> This is one of of my license and this is the second line
+
+### Matching to a year
+
+To match to a year, you can use the number [character class](./custom-license-and-keyword-search-regular-expression-syntax.md#perl-character-classes-unicode-friendly)) four times. This will match a four digit year:
+
+```regex
+[Cc]opyright \d\d\d\d
+```
+
+This will match, for example, "Copyright 2023".
+
 ## Configuring custom-license searches for your whole organization
 
 If you want to scan for the same custom licenses for every project you analyze with `fossa analyze`, you can set up custom license scans in FOSSA's admin UI.
