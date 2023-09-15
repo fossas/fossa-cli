@@ -23,7 +23,7 @@ import Data.Set qualified as Set
 import Diag.Result (Result)
 import Effect.Logger (ignoreLogger)
 import Effect.ReadFS (runReadFSIO)
-import Path (Dir, Path, Rel, mkRelDir, (</>), Abs, File, mkRelFile)
+import Path (Abs, Dir, File, Path, Rel, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess, expectFailure)
 import Test.Hspec qualified as T
