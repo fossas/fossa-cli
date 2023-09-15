@@ -161,6 +161,8 @@ parseLernieJson out configFilePath =
   fold messages
   where
     messageLines = BL.splitWith (== 10) out
+    -- Once Lernie supports file filtering we'll do this by passing the config file path into Lernie
+    -- and Lernie will skip scanning the config file. But for now let's just filter post-scan
     parsedLines = filter (notConfigFile configFilePath) $ mapMaybe decode messageLines
     messages = map singletonLernieMessage parsedLines
 
