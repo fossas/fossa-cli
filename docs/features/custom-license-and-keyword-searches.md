@@ -136,7 +136,9 @@ So if you want to find the string "Permission is hereby granted, free of charge"
 (?m)^Permission is hereby granted, free of charge
 ```
 
-If you wanted to allow some optional whitespace before permission, you could add a `\s*` after the  `(?m)` flag, as `\s*` matches zero or more space characters:
+Without the `(?m)`, it would only match at the beginning of a file.
+
+If you wanted to allow some optional whitespace before "Permission", you could add a `\s*` after the  `(?m)` flag, as `\s*` matches zero or more space characters:
 
 ```
 (?m)^\s*Permission is hereby granted, free of charge
