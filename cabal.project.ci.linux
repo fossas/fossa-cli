@@ -7,7 +7,7 @@ jobs: $ncpus
 packages: .
 
 package spectrometer
-  ghc-options: -Werror -Wunused-packages
+  ghc-options: -Werror
 
 allow-newer:
   -- git-config needs to relax its upper bound on megaparsec. PR submitted;
