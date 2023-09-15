@@ -18,11 +18,11 @@ experimentalKeywordSearch:
     name: Password
 ```
 
-Both of these searches will run the regular expression provided in the `matchCriteria` field on every non-binary file in the directory that you are scanning. The difference is in how the results are used.
+Both of these searches will run the regular expression provided in the `matchCriteria` field on every non-binary file in the directory that you are searching. The difference is in how the results are used.
 
 ## Keyword Searches
 
-If a match to a keyword search is found, then the results of that search are output in the scan summary that `fossa analyze` outputs. For example, if you have just the `experimentalKeywordSearch` entry in the above `.fossa.yml` file and scan a project that contains the string "abc123" in two files, then you will see something like this in the scan summary:
+If a match to a keyword search is found, then the results of that search are output in the scan summary that `fossa analyze` outputs. For example, if you have just the `experimentalKeywordSearch` entry in the above `.fossa.yml` file and search a project that contains the string "abc123" in two files, then you will see something like this in the scan summary:
 
 ```
 * Keyword Search: succeeded
@@ -32,7 +32,7 @@ If a match to a keyword search is found, then the results of that search are out
 
 ## Custom License Searches
 
-If a match to a custom-license search is found, then the CLI will add the match to the licenses reported for the project being scanned. The license will be identified as a "Custom License", and the name that you provided will be used in the FOSSA UI and in reports when displaying that license.
+If a match to a custom-license search is found, then the CLI will add the match to the licenses reported for the project being searched. The license will be identified as a "Custom License", and the name that you provided will be used in the FOSSA UI and in reports when displaying that license.
 
 The result will also be output in the scan summary, just as it is for [Keyword Searches](#keyword-searches).
 
@@ -163,7 +163,7 @@ This will match, for example, "This document was last updated in 2023".
 
 ## Configuring custom-license searches for your whole organization
 
-If you want to scan for the same custom licenses for every project you analyze with `fossa analyze`, you can set up custom license scans in FOSSA's admin UI.
+If you want to search for the same custom licenses for every project you analyze with `fossa analyze`, you can set up custom license searches in FOSSA's admin UI.
 
 In order to do this you must have permission to edit your admin's Integration Settings. If you have this permission, you can go to the "account settings" page, click on the "Integrations" tab and then the "Custom License Scans" sub-navigation.
 
