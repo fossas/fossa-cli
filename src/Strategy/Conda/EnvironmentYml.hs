@@ -21,7 +21,6 @@ import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Vector qualified as Vector
-import Debug.Trace (trace)
 import Effect.ReadFS
 import Graphing (Graphing, fromList)
 import Path
@@ -95,11 +94,34 @@ data CondaPkg
   | PipPkg [Req]
   deriving (Eq, Ord, Show)
 
+-- | A valid package for the purpose of conda can be:
+--
+-- * Just a Conda package specifier, @biopython=1.78=py38haf1e3a3_0@
+-- * A pip package, which looks like:
+--
+-- @
+--  pip:
+--    - pytest-httpserver==1.0.6
+-- @
+--
+-- Conda also allows forms like:
+--
+-- @
+-- pip:
+--   - git+https://github.com/blaze/dask.git#egg=dask[complete]
+--   - -r requirements.txt
+-- @
+--
+-- Urls are not currently supported because Pip normally requires a format like @<pkg name> \@ <url>@.
+-- For to generate a Pip dep, it's not clear what name to give the Pip package.
+-- Supporting URLs like this is will require more research.
+--
+-- The @-r requirements.txt@ is also not currently supported due to time constraints and because no customer has reported an issue with this.
 instance FromJSON CondaPkg where
   parseJSON cd = (Pkg <$> parseJSON cd) <|> withObject "CondaPipPkg" parseOtherPkgManager cd
     where
       parseOtherPkgManager :: Object -> Parser CondaPkg
-      parseOtherPkgManager (KeyMap.toList -> [("pip", deps)]) = trace "Pip package!" $ withArray "Pip Packages" parseReqs deps
+      parseOtherPkgManager (KeyMap.toList -> [("pip", deps)]) = withArray "Pip Packages" parseReqs deps
       parseOtherPkgManager obj = fail ("Expected object with a single key (\"pip\") and list of deps. Got: " <> show obj)
 
       parseReqs :: Array -> Parser CondaPkg

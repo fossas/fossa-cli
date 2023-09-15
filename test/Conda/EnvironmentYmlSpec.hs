@@ -19,20 +19,17 @@ import Test.Hspec
 import Test.Hspec qualified as T
 import Text.RawString.QQ (r)
 
-dependencyTwo :: Dependency
-dependencyTwo =
-  Dependency
-    { dependencyType = CondaType
-    , dependencyName = "name"
-    , dependencyVersion = Just (CEq "version2")
-    , dependencyLocations = []
-    , dependencyEnvironments = mempty
-    , dependencyTags = Map.empty
-    }
-
 expectedGraph :: Graphing Dependency
 expectedGraph = run . evalGrapher $ do
-  direct dependencyTwo
+  direct $
+    Dependency
+      { dependencyType = CondaType
+      , dependencyName = "name"
+      , dependencyVersion = Just (CEq "version2")
+      , dependencyLocations = []
+      , dependencyEnvironments = mempty
+      , dependencyTags = Map.empty
+      }
   direct $
     Dependency
       { dependencyType = CondaType
