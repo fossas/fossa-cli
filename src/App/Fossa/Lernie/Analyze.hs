@@ -27,8 +27,10 @@ import App.Fossa.Lernie.Types (
 import Control.Carrier.Debug (Debug)
 import Control.Carrier.Diagnostics (Diagnostics, fatal, warn)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
+import Control.Carrier.Telemetry.Types
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Has, Lift)
+import Control.Effect.Telemetry (Telemetry, trackUsage)
 import Data.Aeson (decode)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
@@ -59,6 +61,7 @@ analyzeWithLernie ::
   , Has Debug sig m
   , Has Exec sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   Path Abs Dir ->
   Maybe ApiOpts ->
@@ -76,6 +79,7 @@ analyzeWithLernieWithOrgInfo ::
   , Has (Lift IO) sig m
   , Has Exec sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   Path Abs Dir ->
   GrepOptions ->
@@ -89,6 +93,7 @@ analyzeWithLernieMain ::
   , Has (Lift IO) sig m
   , Has Exec sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   Path Abs Dir ->
   GrepOptions ->
@@ -97,6 +102,14 @@ analyzeWithLernieMain rootDir grepOptions = do
   let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
   case maybeLernieConfig of
     Just lernieConfig -> do
+      _ <-
+        if (not . null $ customLicenseSearch grepOptions)
+          then trackUsage CustomLicenseSearchUsage
+          else pure ()
+      _ <-
+        if (not . null $ keywordSearch grepOptions)
+          then trackUsage ExperimentalKeywordSearchUsage
+          else pure ()
       messages <- runLernie lernieConfig (configFilePath grepOptions)
       let lernieResults = lernieMessagesToLernieResults messages rootDir
       pure $ Just lernieResults
