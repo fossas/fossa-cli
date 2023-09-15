@@ -1,9 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE QuasiQuotes #-}
-
-#ifndef mingw32_HOST_OS
 {-# LANGUAGE TemplateHaskell #-}
-#endif
 
 module App.Fossa.Configuration.TelemetryConfigSpec (
   spec,
@@ -31,7 +28,7 @@ import Fossa.API.Types (
   ApiOpts (ApiOpts),
   defaultApiPollDelay,
  )
-import Path (mkAbsFile, Path, Abs, File)
+import Path (Abs, File, Path, mkAbsFile)
 import Test.Effect (it', shouldBe')
 import Test.Hspec (Spec, describe)
 
