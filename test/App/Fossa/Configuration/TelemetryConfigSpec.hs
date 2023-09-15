@@ -56,7 +56,11 @@ defaultCommonOpts =
     }
 
 configPath :: Path Abs File
+#ifdef mingw32_HOST_OS
+configPath = $(mkAbsFile "C:/.fossa.yml")
+#else
 configPath = $(mkAbsFile "/tmp/.fossa.yml")
+#endif
 
 defaultConfigFile :: ConfigFile
 defaultConfigFile =
