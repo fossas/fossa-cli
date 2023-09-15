@@ -31,6 +31,7 @@ import Control.Carrier.Telemetry.Types
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Has, Lift)
 import Control.Effect.Telemetry (Telemetry, trackUsage)
+import Control.Monad (unless)
 import Data.Aeson (decode)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
@@ -102,14 +103,8 @@ analyzeWithLernieMain rootDir grepOptions = do
   let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
   case maybeLernieConfig of
     Just lernieConfig -> do
-      _ <-
-        if (not . null $ customLicenseSearch grepOptions)
-          then trackUsage CustomLicenseSearchUsage
-          else pure ()
-      _ <-
-        if (not . null $ keywordSearch grepOptions)
-          then trackUsage ExperimentalKeywordSearchUsage
-          else pure ()
+      unless (null $ customLicenseSearch grepOptions) $ trackUsage CustomLicenseSearchUsage
+      unless (null $ keywordSearch grepOptions) $ trackUsage ExperimentalKeywordSearchUsage
       messages <- runLernie lernieConfig (configFilePath grepOptions)
       let lernieResults = lernieMessagesToLernieResults messages rootDir
       pure $ Just lernieResults
