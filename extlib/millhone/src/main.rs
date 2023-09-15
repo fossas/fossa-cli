@@ -49,6 +49,10 @@ struct Application {
 enum Commands {
     /// Ping the Millhone backend.
     Ping,
+
+    /// Ingest snippets to the Millhone backend.
+    // Boxed to reduce size difference between variants, a clippy lint.
+    Ingest(Box<cmd::types::ingest::Options>),
 }
 
 fn main() -> stable_eyre::Result<()> {
@@ -63,5 +67,6 @@ fn main() -> stable_eyre::Result<()> {
     // And then dispatch to the subcommand.
     match app.commands {
         Commands::Ping => cmd::ping::main(&app.direct_endpoint),
+        Commands::Ingest(opts) => cmd::ingest::main(&app.direct_endpoint, *opts),
     }
 }
