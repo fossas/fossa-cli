@@ -159,7 +159,13 @@ To match to a year, you can use the number [character class](./custom-license-an
 (?i)this document was last updated in \d\d\d\d
 ```
 
-This will match, for example, "This document was last updated in 2023".
+You could also specify the number of [repetitions](./custom-license-and-keyword-search-regular-expression-syntax.md#repetitions), by putting the number of repetitions in curly quotes (`{4}`), like this:
+
+```
+(?i)this document was last updated in \d{4}
+```
+
+These regular expressions will both match, for example, "This document was last updated in 2023".
 
 ## Configuring custom-license searches for your whole organization
 
