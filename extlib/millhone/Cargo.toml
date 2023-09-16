@@ -24,7 +24,6 @@ derive_more = "0.99.17"
 strum = { version = "0.25.0", features = ["derive"] }
 itertools = "0.11.0"
 typed-builder = "0.16.0"
-sha2 = "0.10.7"
 tap = "1.0.1"
 base64 = "0.21.4"
 walkdir = "2.4.0"

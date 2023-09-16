@@ -834,7 +834,6 @@ dependencies = [
  "retry",
  "secrecy",
  "serde",
- "sha2",
  "snippets",
  "srclib",
  "stable-eyre",

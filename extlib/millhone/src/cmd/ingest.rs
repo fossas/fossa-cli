@@ -45,6 +45,8 @@ pub fn main(endpoint: &BaseUrl, opts: Options) -> stable_eyre::Result<()> {
     let mut total_count_entries = 0usize;
     let mut total_count_snippets = 0usize;
     let mut total_count_files = 0usize;
+
+    // Future enhancement: walk and upload in parallel with rayon.
     for entry in walk.into_iter() {
         total_count_entries += 1;
         let Some(entry) = unwrap_entry(entry) else {

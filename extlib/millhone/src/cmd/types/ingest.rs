@@ -71,31 +71,12 @@ impl From<Target> for snippets::Target {
 #[strum(serialize_all = "snake_case")]
 pub enum Kind {
     /// The signature of the snippet.
-    ///
-    /// ```ignore
-    /// fn say_happy_birthday(age: usize) -> String            // <- included
-    /// {                                                      // <- omitted
-    ///   println!("Happy birthday! You're {age} years old!"); // <- omitted
-    /// }                                                      // <- omitted
-    /// ```
     Signature,
 
     /// The body of the snippet.
-    ///
-    /// ```ignore
-    /// fn say_happy_birthday(age: usize) -> String {          // <- omitted
-    ///   println!("Happy birthday! You're {age} years old!"); // <- included
-    /// }                                                      // <- omitted
-    /// ```
     Body,
 
     /// Both signature and body in one snippet.
-    ///
-    /// ```ignore
-    /// fn say_happy_birthday(age: usize) -> String {          // <- included
-    ///   println!("Happy birthday! You're {age} years old!"); // <- included
-    /// }                                                      // <- included
-    /// ```
     Full,
 }
 
@@ -114,63 +95,12 @@ impl From<Kind> for snippets::Kind {
 #[strum(serialize_all = "snake_case")]
 pub enum Transform {
     /// Transform the text to have any comments removed and whitespace normalized.
-    /// Equivalent to [`Transform::Comment`] followed by [`Transform::Space`].
-    ///
-    /// # Example
-    ///
-    /// The original input:
-    /// ```ignore
-    /// fn say_happy_birthday(age: usize) -> String {
-    ///   // TODO: make 'years' smart plural.
-    ///   println!("Happy birthday! You're {age} years old!");
-    /// }
-    /// ```
-    ///
-    /// Is normalized to this:
-    /// ```ignore
-    /// fn say_happy_birthday(age: usize) -> String { println!("Happy birthday! You're {age} years old!"); }
-    /// ```
     Code,
 
-    /// Generated with any comments removed. Exactly what constitutes a comment is up to the implementation
-    /// of the [`Extractor`] for the language being analyzed.
-    ///
-    /// # Example
-    ///
-    /// The original input:
-    /// ```ignore
-    /// fn say_happy_birthday(age: usize) -> String {
-    ///   // TODO: make 'years' smart plural.
-    ///   println!("Happy birthday! You're {age} years old!");
-    /// }
-    /// ```
-    ///
-    /// Is normalized to this:
-    /// ```ignore
-    /// fn say_happy_birthday(age: usize) -> String {
-    ///   println!("Happy birthday! You're {age} years old!");
-    /// }
-    /// ```
+    /// Generated with any comments removed.
     Comment,
 
     /// Generated with any whitespace characters (including newlines) normalized to a single space.
-    /// Contiguous spaces are also collapsed to a single space. The specific test for whether
-    /// a character is considered "whitespace" is the Unicode property `White_Space=yes`.
-    ///
-    /// # Example
-    ///
-    /// The original input:
-    /// ```ignore
-    /// fn say_happy_birthday(age: usize) -> String {
-    ///   // TODO: make 'years' smart plural.
-    ///   println!("Happy birthday! You're {age} years old!");
-    /// }
-    /// ```
-    ///
-    /// Is normalized to this:
-    /// ```ignore
-    /// fn say_happy_birthday(age: usize) -> String { // TODO: make 'years' smart plural. println!("Happy birthday! You're {age} years old!"); }
-    /// ```
     Space,
 }
 

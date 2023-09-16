@@ -7,7 +7,6 @@ use derive_more::From;
 use getset::{CopyGetters, Getters};
 use secrecy::{ExposeSecret, Secret};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use snippets::{Language, Location};
 use srclib::Locator;
 use tap::{Conv, Pipe};
@@ -171,46 +170,7 @@ impl Snippet {
             .ingest_id(ingest_id.to_string())
             .build()
     }
-
-    /// Get the unique key for a snippet as a tuple of fields.
-    pub fn unique_key(&self) -> SnippetUniqueKey<'_> {
-        SnippetUniqueKey {
-            fingerprint: &self.fingerprint,
-            locator: &self.locator,
-            target: &self.target,
-            kind: &self.kind,
-            method: &self.method,
-            file_path: &self.file_path,
-            byte_start: self.byte_start,
-            byte_end: self.byte_end,
-        }
-    }
 }
-
-/// The unique key for a snippet.
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub struct SnippetUniqueKey<'a> {
-    fingerprint: &'a Fingerprint,
-    locator: &'a Locator,
-    target: &'a str,
-    kind: &'a str,
-    method: &'a str,
-    file_path: &'a str,
-    byte_start: i64,
-    byte_end: i64,
-}
-
-impl<'a> SnippetUniqueKey<'a> {
-    /// Get the unique key for a snippet as a single hashed value.
-    pub fn as_hash(&self) -> SnippetUniqueKeyHash {
-        let hash = Sha256::new().chain_update(&self.fingerprint.0).finalize();
-        hash.as_slice().to_vec().pipe(SnippetUniqueKeyHash)
-    }
-}
-
-/// A [`SnippetUniqueKey`] as a single hashed value.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SnippetUniqueKeyHash(Vec<u8>);
 
 /// A deterministic representation of source code.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, From)]
