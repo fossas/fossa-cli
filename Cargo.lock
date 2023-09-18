@@ -30,9 +30,9 @@ dependencies = [
 
 [[package]]
 name = "aho-corasick"
-version = "1.0.5"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c378d78423fdad8089616f827526ee33c19f2fddbd5de1629152c9593ba4783"
+checksum = "0f2135563fb5c609d2b2b87c1e8ce7bc41b0b45430fa9661f457981503dd5bf0"
 dependencies = [
  "memchr",
 ]
@@ -285,9 +285,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.4.3"
+version = "4.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84ed82781cea27b43c9b106a979fe450a13a31aab0500595fb3fc06616de08e6"
+checksum = "b1d7b8d5ec32af0fadc644bf1fd509a688c2103b185644bb1e29d164e0703136"
 dependencies = [
  "clap_builder",
  "clap_derive 4.4.2",
@@ -295,9 +295,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.4.2"
+version = "4.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bb9faaa7c2ef94b2743a21f5a29e6f0010dff4caa69ac8e9d6cf8b6fa74da08"
+checksum = "5179bb514e4d7c2051749d8fcefa2ed6d06a9f4e6d69faf3805f5d80b8cf8d56"
 dependencies = [
  "anstream",
  "anstyle",
@@ -327,7 +327,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 2.0.35",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -411,7 +411,7 @@ dependencies = [
  "anes",
  "cast",
  "ciborium",
- "clap 4.4.3",
+ "clap 4.4.4",
  "criterion-plot",
  "is-terminal",
  "itertools 0.10.5",
@@ -519,7 +519,7 @@ dependencies = [
 name = "diagnose"
 version = "1.0.0"
 dependencies = [
- "clap 4.4.3",
+ "clap 4.4.4",
  "getset",
  "metrics",
  "regex",
@@ -819,7 +819,7 @@ checksum = "ddece26afd34c31585c74a4db0630c376df271c285d682d1e55012197830b6df"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.35",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -827,7 +827,7 @@ name = "millhone"
 version = "0.1.0"
 dependencies = [
  "base64 0.21.4",
- "clap 4.4.3",
+ "clap 4.4.4",
  "derive_more",
  "getset",
  "itertools 0.11.0",
@@ -843,7 +843,7 @@ dependencies = [
  "tikv-jemallocator",
  "traceconf",
  "tracing",
- "typed-builder 0.16.0",
+ "typed-builder 0.16.1",
  "ureq",
  "url",
  "uuid",
@@ -1308,7 +1308,7 @@ checksum = "4eca7ac642d82aa35b60049a6eccb4be6be75e599bd2e9adb5f875a737654af2"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.35",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -1363,7 +1363,7 @@ checksum = "62bb4feee49fdd9f707ef802e22365a35de4b7b299de4763d44bfea899442ff9"
 [[package]]
 name = "snippets"
 version = "0.1.1"
-source = "git+https://github.com/fossas/foundation-libs?branch=snippets/snippet-interop#de51ae1fdc17e0964027694778c5ef84ec10b2bc"
+source = "git+https://github.com/fossas/foundation-libs#d3f67c0920ff710fbb4daa35afa801557a5ee443"
 dependencies = [
  "base64 0.21.4",
  "derivative",
@@ -1394,7 +1394,7 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 [[package]]
 name = "srclib"
 version = "0.1.0"
-source = "git+https://github.com/fossas/foundation-libs#da90d320230bb728b9f8f4afa34c6cf6992f495a"
+source = "git+https://github.com/fossas/foundation-libs#d3f67c0920ff710fbb4daa35afa801557a5ee443"
 dependencies = [
  "getset",
  "lazy_static",
@@ -1463,7 +1463,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rustversion",
- "syn 2.0.35",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -1479,9 +1479,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.35"
+version = "2.0.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59bf04c28bee9043ed9ea1e41afc0552288d3aba9c6efdd78903b802926f4879"
+checksum = "7303ef2c05cd654186cb250d29049a24840ca25d2747c25c0381c8d9e2f582e8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1526,7 +1526,7 @@ checksum = "49922ecae66cc8a249b77e68d1d0623c1b2c514f0060c27cdc68bd62a1219d35"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.35",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -1587,10 +1587,10 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "traceconf"
 version = "1.1.0"
-source = "git+https://github.com/fossas/foundation-libs#da90d320230bb728b9f8f4afa34c6cf6992f495a"
+source = "git+https://github.com/fossas/foundation-libs#d3f67c0920ff710fbb4daa35afa801557a5ee443"
 dependencies = [
  "atty",
- "clap 4.4.3",
+ "clap 4.4.4",
  "getset",
  "strum 0.25.0",
  "tracing",
@@ -1617,7 +1617,7 @@ checksum = "5f4f31f56159e98206da9efd823404b79b6ef3143b4a7ab76e67b1751b25a4ab"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.35",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -1719,11 +1719,11 @@ dependencies = [
 
 [[package]]
 name = "typed-builder"
-version = "0.16.0"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6605aaa56cce0947127ffa0675a8a1b181f87773364390174de60a86ab9085f1"
+checksum = "76f727af476880274a8a198e1276d56fe61fbb07832b19884d2ecee72715f593"
 dependencies = [
- "typed-builder-macro 0.16.0",
+ "typed-builder-macro 0.16.1",
 ]
 
 [[package]]
@@ -1734,18 +1734,18 @@ checksum = "29a3151c41d0b13e3d011f98adc24434560ef06673a155a6c7f66b9879eecce2"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.35",
+ "syn 2.0.37",
 ]
 
 [[package]]
 name = "typed-builder-macro"
-version = "0.16.0"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a6a6884f6a890a012adcc20ce498f30ebdc70fb1ea242c333cc5f435b0b3871"
+checksum = "d8edc122087639fa8f8dff897ca93c9b8eec999e1c0a94d72c40ed429edac2f2"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.35",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -1876,7 +1876,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.35",
+ "syn 2.0.37",
  "wasm-bindgen-shared",
 ]
 
@@ -1898,7 +1898,7 @@ checksum = "54681b18a46765f095758388f2d0cf16eb8d4169b639ab575a8f5693af210c7b"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.35",
+ "syn 2.0.37",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
