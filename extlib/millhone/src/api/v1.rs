@@ -44,7 +44,7 @@ impl super::Client for Client {
     }
 
     #[tracing::instrument(skip_all, fields(snippet_count = %snippets.len()))]
-    fn add_snippets(&self, snippets: HashSet<super::Snippet>) -> Result<(), Error> {
+    fn add_snippets(&self, snippets: HashSet<super::IngestionSnippet>) -> Result<(), Error> {
         ingest::run(&self.agent, &self.base_url, snippets)
     }
 }

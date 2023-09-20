@@ -52,7 +52,7 @@ enum Commands {
 
     /// Ingest snippets to the Millhone backend.
     // Boxed to reduce size difference between variants, a clippy lint.
-    Ingest(Box<cmd::types::ingest::Options>),
+    Ingest(Box<cmd::ingest::Options>),
 }
 
 fn main() -> stable_eyre::Result<()> {

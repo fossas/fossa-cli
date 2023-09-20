@@ -1,16 +1,14 @@
-use std::{collections::HashSet, fs};
+use std::fs;
 
 use clap::Parser;
 use getset::Getters;
 use millhone::{
-    api::{prelude::*, Credentials, IngestionSnippet},
+    api::{prelude::*, Credentials},
     extract::Snippet,
 };
 use secrecy::Secret;
-use srclib::Locator;
 use stable_eyre::eyre::Context;
 use tracing::{debug, info, warn};
-use uuid::Uuid;
 use walkdir::WalkDir;
 
 /// Options for snippet ingestion.
@@ -18,11 +16,6 @@ use walkdir::WalkDir;
 #[getset(get = "pub")]
 #[clap(version)]
 pub struct Options {
-    /// Provide the locator to which this snippet should be ingested.
-    /// Note that this must be a full locator (including revision).
-    #[clap(long, value_parser = Locator::parse)]
-    locator: Locator,
-
     /// Provide the API Key ID for authentication.
     #[clap(long)]
     api_key_id: String,
@@ -31,22 +24,15 @@ pub struct Options {
     #[clap(long)]
     api_secret: Secret<String>,
 
-    /// Provide the ingest ID for the ingestion.
-    /// If not provided, defaults to a new UUID.
-    #[clap(long, default_value_t = Uuid::new_v4().to_string())]
-    ingest_id: String,
-
     #[clap(flatten)]
     extract: millhone::extract::Options,
 }
 
-#[tracing::instrument(skip_all, fields(target = %opts.extract().target().display()))]
+#[tracing::instrument(skip_all, fields(target = %opts.extract.target().display()))]
 pub fn main(endpoint: &BaseUrl, opts: Options) -> stable_eyre::Result<()> {
     info!(
-        ingest_id = %opts.ingest_id(),
         api_key_id = %opts.api_key_id(),
-        locator = %opts.locator(),
-        "Ingesting snippets",
+        "Analyzing local snippet matches",
     );
 
     let creds = Credentials::new(opts.api_key_id().clone(), opts.api_secret().clone());
@@ -63,7 +49,7 @@ pub fn main(endpoint: &BaseUrl, opts: Options) -> stable_eyre::Result<()> {
     let mut total_count_snippets = 0usize;
     let mut total_count_files = 0usize;
 
-    // Future enhancement: walk and upload in parallel with rayon.
+    // Future enhancement: walk and analyze in parallel with rayon.
     let snippet_opts = opts.extract().into();
     for entry in walk.into_iter() {
         total_count_entries += 1;
@@ -85,18 +71,13 @@ pub fn main(endpoint: &BaseUrl, opts: Options) -> stable_eyre::Result<()> {
         }
 
         total_count_files += 1;
-        info!(path = %path.display(), "ingest");
-        let snippets = Snippet::from_file(&snippet_opts, &path)
-            .wrap_err_with(|| format!("process '{}'", path.display()))?
-            .into_iter()
-            .map(|snippet| IngestionSnippet::from(opts.ingest_id(), opts.locator(), snippet))
-            .collect::<HashSet<_>>();
+        info!(path = %path.display(), "analyze");
 
-        info!(snippet_count = %snippets.len(), "upload snippets");
+        let snippets = Snippet::from_file(&snippet_opts, &path)
+            .wrap_err_with(|| format!("process '{}'", path.display()))?;
+
+        info!(snippet_count = %snippets.len(), "match snippets");
         total_count_snippets += snippets.len();
-        client
-            .add_snippets(snippets)
-            .wrap_err_with(|| format!("upload snippets from '{}'", path.display()))?;
     }
 
     info!(

@@ -1,17 +1,17 @@
 //! Communicates with the Millhone backend.
 
-use std::{collections::HashSet, path::Path, time::Duration};
+use std::{collections::HashSet, time::Duration};
 
 use base64::prelude::*;
-use derive_more::From;
 use getset::{CopyGetters, Getters};
 use secrecy::{ExposeSecret, Secret};
 use serde::{Deserialize, Serialize};
-use snippets::{Language, Location};
 use srclib::Locator;
-use tap::{Conv, Pipe};
+use tap::Conv;
 use typed_builder::TypedBuilder;
 use ureq::{Agent, AgentBuilder, MiddlewareNext, Request};
+
+use crate::extract;
 
 pub mod types;
 pub mod v1;
@@ -22,7 +22,7 @@ pub trait Client {
     fn health(&self) -> Result<types::Health, types::Error>;
 
     /// Store a set of snippets.
-    fn add_snippets(&self, snippets: HashSet<Snippet>) -> Result<(), types::Error>;
+    fn add_snippets(&self, snippets: HashSet<IngestionSnippet>) -> Result<(), types::Error>;
 }
 
 /// Provides types commonly used in the API module.
@@ -50,162 +50,6 @@ pub mod prelude {
     pub use super::types::TransportErrorKind as ApiTransportErrorKind;
 }
 
-/// A snippet is a specific unit of code that the service wants to match later.
-///
-/// A snippet fingerprint is a deterministic representation of the code
-/// present in the project at the provided byte range (indicated by `byte_start` and `byte_end`)
-/// in the provided `file_path` (relative to the root of the package)
-/// as rendered with the provided `target`, `kind`, and `method`.
-///
-/// The definitions and possible values for most of these properties,
-/// especially `target`, `kind`, `method`, and `language`, are in the snippet library.
-/// They don't intrinsically mean anything to the Millhone server or databases.
-///
-/// Multiple snippets may validly exist for any combination of
-/// `(fingerprint, locator, target, kind, method, file_path, start_byte, end_byte)`,
-/// so these properties together constitute the "unique key" of a collection of snippets.
-///
-/// The rest of the data on the type is meant for more human-friendly display of information
-/// (for example line and column ranges intead of byte ranges)
-/// along with diagnostics or additional filtering criteria
-/// (for example the detected language and ingestion id).
-///
-/// For more information on how snippets are generated, see: https://github.com/fossas/foundation-libs/tree/master/snippets
-#[derive(
-    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, CopyGetters, Getters, TypedBuilder,
-)]
-pub struct Snippet {
-    /// A snippet fingerprint is a deterministic representation of the code
-    /// present in the project at the provided byte range (indicated by `byte_start` and `byte_end`)
-    /// in the provided `file_path` (relative to the root of the package)
-    /// as rendered with the provided `target`, `kind`, and `method`.
-    #[getset(get = "pub")]
-    pub fingerprint: Fingerprint,
-
-    /// The full locator of the project from which this locator was extracted.
-    #[getset(get = "pub")]
-    pub locator: Locator,
-
-    /// The target in the source code that was found and used to extract this snippet.
-    #[getset(get = "pub")]
-    pub target: String,
-
-    /// The kind of snippet this represents.
-    #[getset(get = "pub")]
-    pub kind: String,
-
-    /// The method used to normalize the snippet.
-    #[getset(get = "pub")]
-    pub method: String,
-
-    /// The file path, relative to a project's root, which contained this snippet.
-    #[getset(get = "pub")]
-    pub file_path: String,
-
-    /// The byte index at which the snippet starts in the code file.
-    #[getset(get_copy = "pub")]
-    pub byte_start: i64,
-
-    /// The byte index at which the snippet ends in the code file.
-    #[getset(get_copy = "pub")]
-    pub byte_end: i64,
-
-    /// The line index at which the snippet starts in the code file.
-    #[getset(get_copy = "pub")]
-    pub line_start: i32,
-
-    /// The line index at which the snippet ends in the code file.
-    #[getset(get_copy = "pub")]
-    pub line_end: i32,
-
-    /// The col index at which the snippet starts in the code file.
-    #[getset(get_copy = "pub")]
-    pub col_start: i32,
-
-    /// The col index at which the snippet ends in the code file.
-    #[getset(get_copy = "pub")]
-    pub col_end: i32,
-
-    /// The detected code language for the snippet.
-    #[getset(get = "pub")]
-    pub language: String,
-
-    /// The ID of the ingestion run.
-    /// This ID only means anything in the context of the ingesting application.
-    #[getset(get = "pub")]
-    pub ingest_id: String,
-}
-
-impl Snippet {
-    /// Create a new snippet from an extracted snippet.
-    pub fn from<L: Language>(
-        ingest_id: &str,
-        locator: &Locator,
-        path: &Path,
-        content: &[u8],
-        snippet: snippets::Snippet<L>,
-    ) -> Self {
-        let location = snippet.metadata().location();
-        let text_loc = TextLocation::new(&location, content);
-        Self::builder()
-            .fingerprint(
-                snippet
-                    .fingerprint()
-                    .as_bytes()
-                    .to_owned()
-                    .pipe(Fingerprint),
-            )
-            .locator(locator.to_owned())
-            .target(snippets::Target::Function.to_string())
-            .kind(snippet.metadata().kind().to_string())
-            .method(snippet.metadata().method().to_string())
-            .file_path(path.to_string_lossy().to_string())
-            .byte_start(location.start_byte() as _)
-            .byte_end(location.end_byte() as _)
-            .line_start(text_loc.line_start as _)
-            .line_end(text_loc.line_end as _)
-            .col_start(text_loc.col_start as _)
-            .col_end(text_loc.col_end as _)
-            .language(L::display().to_string())
-            .ingest_id(ingest_id.to_string())
-            .build()
-    }
-}
-
-/// A deterministic representation of source code.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, From)]
-pub struct Fingerprint(Vec<u8>);
-
-impl Fingerprint {
-    /// Read the fingerprint as a byte vec.
-    pub fn to_vec(self) -> Vec<u8> {
-        self.0
-    }
-}
-
-impl Serialize for Fingerprint {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let encoded = BASE64_STANDARD.encode(&self.0);
-        serializer.serialize_str(&encoded)
-    }
-}
-
-impl<'de> Deserialize<'de> for Fingerprint {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let raw = String::deserialize(deserializer)?;
-        let decoded = BASE64_STANDARD
-            .decode(raw)
-            .map_err(serde::de::Error::custom)?;
-        Self(decoded).pipe(Ok)
-    }
-}
-
 fn build_default_agent(creds: Option<Credentials>) -> Agent {
     let app_name = env!("CARGO_PKG_NAME");
     let app_version = env!("CARGO_PKG_VERSION");
@@ -226,78 +70,6 @@ fn build_default_agent(creds: Option<Credentials>) -> Agent {
     }
 
     builder.build()
-}
-
-/// The location, using textual "line, column" indicators, for a snippet.
-///
-/// Line end is inclusive: if a snippet starts on line 1 and ends before
-/// the end of the line, `line_end` is line 1 as well.
-///
-/// Column end is inclusive: when displaying the snippet, the column
-/// _indicated by_ this number should be included.
-///
-/// For example, if the full text was "hello world!",
-/// and the snippet starts on byte 6 and ends on byte 10,
-/// the returned `TextLocation` looks like:
-/// ```ignore
-/// TextLocation {
-///   line_start: 1,
-///   line_end: 1,
-///   col_start: 7,
-///   col_end: 11,
-/// }
-/// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, TypedBuilder)]
-struct TextLocation {
-    /// The line number on which the snippet starts.
-    line_start: usize,
-
-    /// The line number on which the snippet ends, inclusive.
-    line_end: usize,
-
-    /// The column at which the snippet starts on the line specified by `line_start`.
-    col_start: usize,
-
-    /// The column at which the snippet ends on the line specified by `line_end`, inclusive.
-    col_end: usize,
-}
-
-impl TextLocation {
-    /// Translate a [`Location`] in the given content into its textual indicators.
-    fn new(loc: &Location, content: &[u8]) -> Self {
-        let start_byte = loc.start_byte();
-        let end_byte = loc.end_byte();
-        let mut line_start = 1;
-        let mut col_start = 1;
-
-        const NEWLINE: u8 = b'\n';
-        for b in content[..start_byte].iter().copied() {
-            if b == NEWLINE {
-                line_start += 1;
-                col_start = 1;
-            } else {
-                col_start += 1;
-            }
-        }
-
-        let mut line_end = line_start;
-        let mut col_end = col_start;
-        for b in content[start_byte..=end_byte].iter().copied() {
-            if b == NEWLINE {
-                line_end += 1;
-                col_end = 1;
-            } else {
-                col_end += 1;
-            }
-        }
-
-        Self {
-            line_start,
-            line_end,
-            col_start,
-            col_end,
-        }
-    }
 }
 
 /// API credential provided via [`HEADER_AUTHORIZATION`] on requests.
@@ -344,14 +116,38 @@ impl std::fmt::Display for Credentials {
     }
 }
 
+/// An [`extract::Snippet`] augmented with ingestion metadata.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, CopyGetters, Getters)]
+pub struct IngestionSnippet {
+    #[serde(flatten)]
+    snippet: extract::Snippet,
+
+    /// The full locator of the project from which this locator was extracted.
+    #[getset(get = "pub")]
+    locator: Locator,
+
+    /// The ID of the ingestion run.
+    /// This ID only means anything in the context of the ingesting application.
+    #[getset(get = "pub")]
+    ingest_id: String,
+}
+
+impl IngestionSnippet {
+    /// Create a new instance from an extracted snippet with provided ingestion metadata.
+    pub fn from(ingest_id: &str, locator: &Locator, snippet: extract::Snippet) -> Self {
+        Self {
+            snippet,
+            locator: locator.to_owned(),
+            ingest_id: ingest_id.to_string(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-
-    use snippets::Location;
-
     use crate::collection;
 
-    use super::{types::*, TextLocation};
+    use super::types::*;
 
     #[test]
     fn health_overall() {
@@ -363,39 +159,5 @@ mod tests {
 
         let health: Health = collection! { "a" => State::Down, "b" => State::Degraded };
         assert_eq!(health.overall(), State::Down);
-    }
-
-    #[test]
-    fn text_location_simple() {
-        let input = b"hello world";
-        //            ^     ^   ^
-        // columns:   1     7   11
-        let location = Location::from(6..10);
-        let expected = TextLocation::builder()
-            .line_start(1)
-            .line_end(1)
-            .col_start(7)
-            .col_end(11)
-            .build();
-        let got = TextLocation::new(&location, input);
-        assert_eq!(got, expected);
-    }
-
-    #[test]
-    fn text_location_complicated() {
-        // Remember that while `\n` is two columns as typed, it's 1 in actual text.
-        let input = b"hello\nworld\nand beyond!";
-        //            ^   ^  ^   ^  ^        ^
-        // columns:   1   5  1   5  1        11
-        //   lines:   1      2      3
-        let location = Location::from(6..22);
-        let expected = TextLocation::builder()
-            .line_start(2)
-            .line_end(3)
-            .col_start(1)
-            .col_end(11)
-            .build();
-        let got = TextLocation::new(&location, input);
-        assert_eq!(got, expected);
     }
 }
