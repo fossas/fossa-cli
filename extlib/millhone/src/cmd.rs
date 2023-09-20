@@ -1,11 +1,35 @@
 use std::borrow::Cow;
 
+use clap::Parser;
+use getset::Getters;
+use millhone::api;
+use secrecy::Secret;
 use tracing::warn;
 use walkdir::DirEntry;
 
 pub mod analyze;
 pub mod ingest;
 pub mod ping;
+
+/// Arguments for API authentication.
+#[derive(Debug, Parser, Getters)]
+#[getset(get = "pub")]
+pub struct ApiAuthentication {
+    /// Provide the API Key ID for authentication.
+    #[clap(long)]
+    api_key_id: String,
+
+    /// Provide the API Secret for authentication.
+    #[clap(long)]
+    api_secret: Secret<String>,
+}
+
+impl ApiAuthentication {
+    /// Create credentials from these options.
+    fn as_credentials(&self) -> api::Credentials {
+        api::Credentials::new(self.api_key_id.clone(), self.api_secret.clone())
+    }
+}
 
 /// Unwrap a directory entry, warning on error.
 #[tracing::instrument]

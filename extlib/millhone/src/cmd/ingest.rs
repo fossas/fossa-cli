@@ -3,10 +3,9 @@ use std::{collections::HashSet, fs};
 use clap::Parser;
 use getset::Getters;
 use millhone::{
-    api::{prelude::*, ApiSnippet, Credentials},
+    api::{prelude::*, ApiSnippet},
     extract::Snippet,
 };
-use secrecy::Secret;
 use srclib::Locator;
 use stable_eyre::eyre::Context;
 use tracing::{debug, info, warn};
@@ -23,14 +22,6 @@ pub struct Subcommand {
     #[clap(long, value_parser = Locator::parse)]
     locator: Locator,
 
-    /// Provide the API Key ID for authentication.
-    #[clap(long)]
-    api_key_id: String,
-
-    /// Provide the API Secret for authentication.
-    #[clap(long)]
-    api_secret: Secret<String>,
-
     /// Provide the ingest ID for the ingestion.
     /// If not provided, defaults to a new UUID.
     #[clap(long, default_value_t = Uuid::new_v4().to_string())]
@@ -38,18 +29,21 @@ pub struct Subcommand {
 
     #[clap(flatten)]
     extract: millhone::extract::Options,
+
+    #[clap(flatten)]
+    auth: super::ApiAuthentication,
 }
 
 #[tracing::instrument(skip_all, fields(target = %opts.extract().target().display()))]
 pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> stable_eyre::Result<()> {
     info!(
         ingest_id = %opts.ingest_id(),
-        api_key_id = %opts.api_key_id(),
+        api_key_id = %opts.auth.api_key_id(),
         locator = %opts.locator(),
         "Ingesting snippets",
     );
 
-    let creds = Credentials::new(opts.api_key_id().clone(), opts.api_secret().clone());
+    let creds = opts.auth.as_credentials();
     let client = ApiClientV1::authenticated(endpoint, creds);
     let root = opts.extract().target();
     let walk = WalkDir::new(root)

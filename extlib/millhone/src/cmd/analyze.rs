@@ -2,11 +2,7 @@ use std::fs;
 
 use clap::Parser;
 use getset::Getters;
-use millhone::{
-    api::{prelude::*, Credentials},
-    extract::Snippet,
-};
-use secrecy::Secret;
+use millhone::{api::prelude::*, extract::Snippet};
 use stable_eyre::{eyre::Context, Report};
 use tracing::{debug, info, warn};
 use walkdir::WalkDir;
@@ -16,13 +12,8 @@ use walkdir::WalkDir;
 #[getset(get = "pub")]
 #[clap(version)]
 pub struct Subcommand {
-    /// Provide the API Key ID for authentication.
-    #[clap(long)]
-    api_key_id: String,
-
-    /// Provide the API Secret for authentication.
-    #[clap(long)]
-    api_secret: Secret<String>,
+    #[clap(flatten)]
+    auth: super::ApiAuthentication,
 
     #[clap(flatten)]
     extract: millhone::extract::Options,
@@ -31,11 +22,11 @@ pub struct Subcommand {
 #[tracing::instrument(skip_all, fields(target = %opts.extract.target().display()))]
 pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
     info!(
-        api_key_id = %opts.api_key_id(),
+        api_key_id = %opts.auth.api_key_id(),
         "Analyzing local snippet matches",
     );
 
-    let creds = Credentials::new(opts.api_key_id().clone(), opts.api_secret().clone());
+    let creds = opts.auth.as_credentials();
     let client = ApiClientV1::authenticated(endpoint, creds);
     let root = opts.extract().target();
     let walk = WalkDir::new(root)
