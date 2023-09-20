@@ -217,12 +217,14 @@ pub struct Snippet {
 impl Snippet {
     /// Create a new instance from an extracted snippet.
     pub fn from<L: snippets::Language>(
+        scan_root: &Path,
         path: &Path,
         content: &[u8],
         snippet: snippets::Snippet<L>,
     ) -> Self {
         let location = snippet.metadata().location();
         let text_loc = TextLocation::new(&location, content);
+        let display_path = path.strip_prefix(scan_root).unwrap_or(path);
         Self::builder()
             .fingerprint(
                 snippet
@@ -234,7 +236,7 @@ impl Snippet {
             .target(snippets::Target::Function.to_string())
             .kind(snippet.metadata().kind().to_string())
             .method(snippet.metadata().method().to_string())
-            .file_path(path.to_string_lossy().to_string())
+            .file_path(display_path.to_string_lossy().to_string())
             .byte_start(location.start_byte() as _)
             .byte_end(location.end_byte() as _)
             .line_start(text_loc.line_start as _)
@@ -247,7 +249,11 @@ impl Snippet {
 
     /// Extract instances from a file on disk.
     #[tracing::instrument]
-    pub fn from_file(opts: &snippets::Options, path: &Path) -> Result<HashSet<Self>, Error> {
+    pub fn from_file(
+        scan_root: &Path,
+        opts: &snippets::Options,
+        path: &Path,
+    ) -> Result<HashSet<Self>, Error> {
         match Support::by_ext(path) {
             Support::Unknown => {
                 debug!("skipping: unknown support status for file");
@@ -263,7 +269,7 @@ impl Snippet {
                 match language {
                     Language::C => c99_tc3::Extractor::extract(opts, &content)?
                         .into_iter()
-                        .map(|snippet| Self::from(path, &content, snippet))
+                        .map(|snippet| Self::from(scan_root, path, &content, snippet))
                         .collect::<HashSet<_>>()
                         .pipe(Ok),
                 }
@@ -273,13 +279,36 @@ impl Snippet {
 }
 
 /// A deterministic representation of source code.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, From)]
+#[derive(Clone, PartialEq, Eq, Hash, From)]
 pub struct Fingerprint(Vec<u8>);
 
 impl Fingerprint {
     /// Read the fingerprint as a byte vec.
     pub fn to_vec(self) -> Vec<u8> {
         self.0
+    }
+
+    /// Read the fingerprint as a URL-safe Base64 encoded string.
+    pub fn as_base64_url(&self) -> String {
+        BASE64_URL_SAFE.encode(&self.0)
+    }
+}
+
+impl std::fmt::Display for Fingerprint {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&BASE64_STANDARD.encode(&self.0))
+    }
+}
+
+impl std::fmt::Debug for Fingerprint {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if f.alternate() {
+            f.debug_tuple("Fingerprint")
+                .field(&self.to_string())
+                .finish()
+        } else {
+            f.debug_tuple("Fingerprint").field(&self.0).finish()
+        }
     }
 }
 

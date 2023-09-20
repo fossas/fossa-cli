@@ -3,7 +3,7 @@ use std::{collections::HashSet, fs};
 use clap::Parser;
 use getset::Getters;
 use millhone::{
-    api::{prelude::*, Credentials, IngestionSnippet},
+    api::{prelude::*, ApiSnippet, Credentials},
     extract::Snippet,
 };
 use secrecy::Secret;
@@ -17,7 +17,7 @@ use walkdir::WalkDir;
 #[derive(Debug, Parser, Getters)]
 #[getset(get = "pub")]
 #[clap(version)]
-pub struct Options {
+pub struct Subcommand {
     /// Provide the locator to which this snippet should be ingested.
     /// Note that this must be a full locator (including revision).
     #[clap(long, value_parser = Locator::parse)]
@@ -41,7 +41,7 @@ pub struct Options {
 }
 
 #[tracing::instrument(skip_all, fields(target = %opts.extract().target().display()))]
-pub fn main(endpoint: &BaseUrl, opts: Options) -> stable_eyre::Result<()> {
+pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> stable_eyre::Result<()> {
     info!(
         ingest_id = %opts.ingest_id(),
         api_key_id = %opts.api_key_id(),
@@ -51,7 +51,8 @@ pub fn main(endpoint: &BaseUrl, opts: Options) -> stable_eyre::Result<()> {
 
     let creds = Credentials::new(opts.api_key_id().clone(), opts.api_secret().clone());
     let client = ApiClientV1::authenticated(endpoint, creds);
-    let walk = WalkDir::new(opts.extract().target())
+    let root = opts.extract().target();
+    let walk = WalkDir::new(root)
         // Follow symlinks; loops are yielded as errors automatically.
         .follow_links(true)
         // Not chosen for a specific reason, just seems reasonable.
@@ -86,10 +87,10 @@ pub fn main(endpoint: &BaseUrl, opts: Options) -> stable_eyre::Result<()> {
 
         total_count_files += 1;
         info!(path = %path.display(), "ingest");
-        let snippets = Snippet::from_file(&snippet_opts, &path)
+        let snippets = Snippet::from_file(root, &snippet_opts, &path)
             .wrap_err_with(|| format!("process '{}'", path.display()))?
             .into_iter()
-            .map(|snippet| IngestionSnippet::from(opts.ingest_id(), opts.locator(), snippet))
+            .map(|snippet| ApiSnippet::from(opts.ingest_id(), opts.locator(), snippet))
             .collect::<HashSet<_>>();
 
         info!(snippet_count = %snippets.len(), "upload snippets");

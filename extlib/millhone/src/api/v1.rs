@@ -4,9 +4,10 @@ use std::collections::HashSet;
 
 use ureq::Agent;
 
-use crate::url::BaseUrl;
+use crate::{extract::Fingerprint, url::BaseUrl};
 
 mod ingest;
+mod lookup;
 mod ping;
 
 // v1 is expected to use types directly. Translation shouldn't be needed until/unless there's a v2.
@@ -44,7 +45,12 @@ impl super::Client for Client {
     }
 
     #[tracing::instrument(skip_all, fields(snippet_count = %snippets.len()))]
-    fn add_snippets(&self, snippets: HashSet<super::IngestionSnippet>) -> Result<(), Error> {
+    fn add_snippets(&self, snippets: HashSet<super::ApiSnippet>) -> Result<(), Error> {
         ingest::run(&self.agent, &self.base_url, snippets)
+    }
+
+    #[tracing::instrument(skip_all, fields(fingerprint = %fp))]
+    fn lookup_snippets(&self, fp: &Fingerprint) -> Result<HashSet<ApiSnippet>, Error> {
+        lookup::run(&self.agent, &self.base_url, fp)
     }
 }

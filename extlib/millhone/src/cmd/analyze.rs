@@ -7,7 +7,7 @@ use millhone::{
     extract::Snippet,
 };
 use secrecy::Secret;
-use stable_eyre::eyre::Context;
+use stable_eyre::{eyre::Context, Report};
 use tracing::{debug, info, warn};
 use walkdir::WalkDir;
 
@@ -15,7 +15,7 @@ use walkdir::WalkDir;
 #[derive(Debug, Parser, Getters)]
 #[getset(get = "pub")]
 #[clap(version)]
-pub struct Options {
+pub struct Subcommand {
     /// Provide the API Key ID for authentication.
     #[clap(long)]
     api_key_id: String,
@@ -29,7 +29,7 @@ pub struct Options {
 }
 
 #[tracing::instrument(skip_all, fields(target = %opts.extract.target().display()))]
-pub fn main(endpoint: &BaseUrl, opts: Options) -> stable_eyre::Result<()> {
+pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
     info!(
         api_key_id = %opts.api_key_id(),
         "Analyzing local snippet matches",
@@ -37,7 +37,8 @@ pub fn main(endpoint: &BaseUrl, opts: Options) -> stable_eyre::Result<()> {
 
     let creds = Credentials::new(opts.api_key_id().clone(), opts.api_secret().clone());
     let client = ApiClientV1::authenticated(endpoint, creds);
-    let walk = WalkDir::new(opts.extract().target())
+    let root = opts.extract().target();
+    let walk = WalkDir::new(root)
         // Follow symlinks; loops are yielded as errors automatically.
         .follow_links(true)
         // Not chosen for a specific reason, just seems reasonable.
@@ -73,11 +74,23 @@ pub fn main(endpoint: &BaseUrl, opts: Options) -> stable_eyre::Result<()> {
         total_count_files += 1;
         info!(path = %path.display(), "analyze");
 
-        let snippets = Snippet::from_file(&snippet_opts, &path)
+        let snippets = Snippet::from_file(root, &snippet_opts, &path)
             .wrap_err_with(|| format!("process '{}'", path.display()))?;
 
-        info!(snippet_count = %snippets.len(), "match snippets");
+        info!(snippet_count = %snippets.len(), "extracted snippets");
         total_count_snippets += snippets.len();
+
+        for snippet in snippets {
+            let fingerprint = snippet.fingerprint();
+            let matching_snippets = client
+                .lookup_snippets(fingerprint)
+                .wrap_err_with(|| format!("lookup snippet for fingerprint '{fingerprint}'"))?;
+
+            // As of now just log matching snippets; functionality to write to disk is coming in another PR.
+            for matching_snippet in matching_snippets {
+                info!(%fingerprint, "matching snippet: {matching_snippet:#?}");
+            }
+        }
     }
 
     info!(

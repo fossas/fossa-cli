@@ -7,6 +7,10 @@ pub enum Error {
     #[error("transport error")]
     Transport(#[from] TransportError),
 
+    /// The request URL wasn't able to be encoded.
+    #[error("encode request URL")]
+    EncodeReqUrl(#[from] url::ParseError),
+
     /// The server responded with a non-success status.
     #[error("status code '{0}'")]
     Status(u16),

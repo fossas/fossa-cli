@@ -3,26 +3,29 @@
 use std::{collections::HashSet, time::Duration};
 
 use base64::prelude::*;
-use getset::{CopyGetters, Getters};
+use getset::Getters;
 use secrecy::{ExposeSecret, Secret};
-use serde::{Deserialize, Serialize};
-use srclib::Locator;
 use tap::Conv;
 use typed_builder::TypedBuilder;
 use ureq::{Agent, AgentBuilder, MiddlewareNext, Request};
 
-use crate::extract;
+use crate::extract::Fingerprint;
 
 pub mod types;
 pub mod v1;
 
+pub use types::*;
+
 /// Describes a client for the Millhone service.
 pub trait Client {
     /// Get the current service health.
-    fn health(&self) -> Result<types::Health, types::Error>;
+    fn health(&self) -> Result<Health, Error>;
 
     /// Store a set of snippets.
-    fn add_snippets(&self, snippets: HashSet<IngestionSnippet>) -> Result<(), types::Error>;
+    fn add_snippets(&self, snippets: HashSet<ApiSnippet>) -> Result<(), Error>;
+
+    /// Lookup snippets with the same fingerprint.
+    fn lookup_snippets(&self, fp: &Fingerprint) -> Result<HashSet<ApiSnippet>, Error>;
 }
 
 /// Provides types commonly used in the API module.
@@ -113,33 +116,6 @@ impl PartialEq for Credentials {
 impl std::fmt::Display for Credentials {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.key_id)
-    }
-}
-
-/// An [`extract::Snippet`] augmented with ingestion metadata.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, CopyGetters, Getters)]
-pub struct IngestionSnippet {
-    #[serde(flatten)]
-    snippet: extract::Snippet,
-
-    /// The full locator of the project from which this locator was extracted.
-    #[getset(get = "pub")]
-    locator: Locator,
-
-    /// The ID of the ingestion run.
-    /// This ID only means anything in the context of the ingesting application.
-    #[getset(get = "pub")]
-    ingest_id: String,
-}
-
-impl IngestionSnippet {
-    /// Create a new instance from an extracted snippet with provided ingestion metadata.
-    pub fn from(ingest_id: &str, locator: &Locator, snippet: extract::Snippet) -> Self {
-        Self {
-            snippet,
-            locator: locator.to_owned(),
-            ingest_id: ingest_id.to_string(),
-        }
     }
 }
 
