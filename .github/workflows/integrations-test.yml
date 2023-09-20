@@ -12,7 +12,7 @@ jobs:
   integration-test:
     name: integration-test
     runs-on:
-      group: fossa-cli-runner
+      group: "FOSSA CLI Runner"
     # Be sure to update the env below too
     container: fossa/haskell-static-alpine:ghc-9.0.2
 
