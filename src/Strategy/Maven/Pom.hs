@@ -193,7 +193,7 @@ interpolate properties initialProperty =
         -- splitMavenProperty will remove the "${}" from the value and return the same key which causes infinite recursion.
         -- Just foundProperty -> if fullProperty == initialProperty then property else interpolate properties fullProperty
         Just foundProperty -> case splitMavenProperty $ prefix <> foundProperty <> suffix of
-          Nothing -> property
+          Nothing -> prefix <> foundProperty <> suffix
           Just (_, property2, _) -> if property2 == property then property else interpolate properties $ prefix <> foundProperty <> suffix
 
 -- where
