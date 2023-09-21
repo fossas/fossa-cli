@@ -2,6 +2,7 @@
 
 module App.Fossa.Lernie.Analyze (
   analyzeWithLernie,
+  -- Exported for testing
   singletonLernieMessage,
   lernieMessagesToLernieResults,
   grepOptionsToLernieConfig,
@@ -11,6 +12,7 @@ import App.Fossa.Config.Analyze (GrepEntry (grepEntryMatchCriteria, grepEntryNam
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withLernieBinary)
 import App.Fossa.Lernie.Types (
   LernieConfig (..),
+  LernieError (..),
   LernieMatch (..),
   LernieMatchData (..),
   LernieMessage (..),
@@ -18,13 +20,14 @@ import App.Fossa.Lernie.Types (
   LernieRegex (..),
   LernieResults (..),
   LernieScanType (..),
+  LernieWarning (..),
  )
-import Control.Carrier.Diagnostics (Diagnostics)
+import Control.Carrier.Diagnostics (Diagnostics, fatal, warn)
 import Control.Effect.Lift (Has, Lift)
 import Data.Aeson (decode)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
-import Data.Foldable (fold)
+import Data.Foldable (fold, traverse_)
 import Data.HashMap.Strict qualified as H
 import Data.HashMap.Strict qualified as HashMap
 import Data.Hashable (Hashable)
@@ -59,7 +62,8 @@ analyzeWithLernie rootDir _maybeApiOpts grepOptions = do
   case maybeLernieConfig of
     Just (lernieConfig) -> do
       messages <- runLernie lernieConfig
-      pure $ Just $ lernieMessagesToLernieResults messages rootDir
+      let lernieResults = lernieMessagesToLernieResults messages rootDir
+      pure $ Just lernieResults
     Nothing -> pure Nothing
 
 grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Maybe LernieConfig
@@ -86,7 +90,15 @@ runLernie ::
 runLernie lernieConfig = withLernieBinary $ \bin -> do
   let lernieConfigJSON = decodeUtf8 $ Aeson.encode lernieConfig
   result <- execCurrentDirStdinThrow (lernieCommand bin) lernieConfigJSON
-  pure $ parseLernieJson result
+  let messages = parseLernieJson result
+  traverse_ (fatal . displayLernieError) $ lernieMessageErrors messages
+  traverse_ (warn . displayLernieWarning) $ lernieMessageWarnings messages
+  pure messages
+  where
+    displayLernieWarning :: LernieWarning -> Text
+    displayLernieWarning LernieWarning{..} = lernieWarningType <> ": " <> lernieWarningMessage
+    displayLernieError :: LernieError -> Text
+    displayLernieError LernieError{..} = lernieErrorType <> ": " <> lernieErrorMessage
 
 -- Run Lernie, passing "--config -" as its arg so that it gets its config from STDIN
 lernieCommand :: BinaryPaths -> Command
@@ -110,9 +122,7 @@ parseLernieJson out =
 lernieMessagesToLernieResults :: LernieMessages -> Path Abs Dir -> LernieResults
 lernieMessagesToLernieResults LernieMessages{..} rootDir =
   LernieResults
-    { lernieResultsWarnings = lernieMessageWarnings
-    , lernieResultsErrors = lernieMessageErrors
-    , lernieResultsKeywordSearches = keywordSearches
+    { lernieResultsKeywordSearches = keywordSearches
     , lernieResultsCustomLicenses = customLicenses
     , lernieResultsSourceUnit = sourceUnit
     }

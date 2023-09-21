@@ -45,3 +45,4 @@ _Example:_
 - [ ] If this PR introduced a user-visible change, I added documentation into `docs/`.
 - [ ] If this change is externally visible, I updated `Changelog.md`. If this PR did not mark a release, I added my changes into an `# Unreleased` section at the top.
 - [ ] If I made changes to `.fossa.yml` or `fossa-deps.{json.yml}`, I updated `docs/references/files/*.schema.json`. You may also need to update these if you have added/removed new dependency type (e.g. `pip`) or analysis target type (e.g. `poetry`).
+- [ ] If I made changes to a subcommand's options, I updated `docs/references/subcommands/<subcommand>.md`.

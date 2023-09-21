@@ -299,14 +299,14 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir maybeApiOpts vendoredDepsOptions
-  maybeGrepResults <-
+  maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
         then do
           logInfo "Running in VSI only mode, skipping keyword search and custom-license search"
           pure Nothing
         else Diag.context "custom-license & keyword search" . runStickyLogger SevInfo $ analyzeWithLernie basedir maybeApiOpts grepOptions
-  let grepResults = join . resultToMaybe $ maybeGrepResults
+  let lernieResults = join . resultToMaybe $ maybeLernieResults
 
   let -- This makes nice with additionalSourceUnits below, but throws out additional Result data.
       -- This is ok because 'resultToMaybe' would do that anyway.
@@ -319,6 +319,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   traverse_ (Diag.flushLogs SevError SevDebug) [manualSrcUnits, binarySearchResults, dynamicLinkedResults]
   -- Flush logs using the original Result from VSI.
   traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults]
+  -- Flush logs from lernie
+  traverse_ (Diag.flushLogs SevError SevDebug) [maybeLernieResults]
 
   maybeFirstPartyScanResults <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -350,7 +352,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let projectResults = mapMaybe toProjectResult projectScans
   let filteredProjects = mapMaybe toProjectResult projectScans
 
-  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults
+  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
 
   maybeEndpointAppVersion <- case destination of
     UploadScan apiOpts _ -> runFossaApiClient apiOpts $ do
@@ -365,16 +367,23 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   let licenseSourceUnits =
-        case (firstPartyScanResults, lernieResultsSourceUnit =<< grepResults) of
+        case (firstPartyScanResults, lernieResultsSourceUnit =<< lernieResults) of
           (Nothing, Nothing) -> Nothing
           (Just firstParty, Just lernie) -> Just $ firstParty <> lernie
           (Nothing, Just lernie) -> Just lernie
           (Just firstParty, Nothing) -> Just firstParty
   let result = buildResult includeAll additionalSourceUnits filteredProjects licenseSourceUnits
-  case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits licenseSourceUnits of
-    NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
-    FilteredAll -> Diag.fatal ErrFilteredAllProjects
-    CountedScanUnits scanUnits -> doUpload result iatAssertion destination basedir jsonOutput revision scanUnits
+  let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
+
+  -- If we find nothing but keyword search, we exit with an error, but explain that the error may be ignorable.
+  -- We do not want to succeed, because nothing gets uploaded to the API for keyword searches, so `fossa test` will fail.
+  -- So the solution is to still fail, but give a hopefully useful explanation that the error can be ignored if all you were expecting is keyword search results.
+  case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits licenseSourceUnits) of
+    (False, NoneDiscovered) -> Diag.fatal ErrNoProjectsDiscovered
+    (True, NoneDiscovered) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
+    (False, FilteredAll) -> Diag.fatal ErrFilteredAllProjects
+    (True, FilteredAll) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
+    (_, CountedScanUnits scanUnits) -> doUpload result iatAssertion destination basedir jsonOutput revision scanUnits
   pure result
   where
     doUpload result iatAssertion destination basedir jsonOutput revision scanUnits =
@@ -466,6 +475,7 @@ doAnalyzeDynamicLinkedBinary _ _ = pure Nothing
 data AnalyzeError
   = ErrNoProjectsDiscovered
   | ErrFilteredAllProjects
+  | ErrOnlyKeywordSearchResultsFound
 
 instance Diag.ToDiagnostic AnalyzeError where
   renderDiagnostic :: AnalyzeError -> Doc ann
@@ -489,6 +499,11 @@ instance Diag.ToDiagnostic AnalyzeError where
       , "See the user guide for details:"
       , "    " <> pretty userGuideUrl
       , ""
+      ]
+  renderDiagnostic (ErrOnlyKeywordSearchResultsFound) =
+    vsep
+      [ "Matches to your keyword searches were found, but no other analysis targets were found."
+      , "This error can be safely ignored if you are only expecting keyword search results."
       ]
 
 buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Aeson.Value

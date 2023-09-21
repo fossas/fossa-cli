@@ -14,15 +14,17 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (dpiProjectPath, dpiProjectType),
   DiscoveredProjectScan (..),
  )
+import App.Fossa.Lernie.Types (LernieMatch (..), LernieMatchData (..), LernieResults (..))
 import App.Version (fullVersionDescription)
 import Control.Carrier.Lift
 import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
 import Control.Monad (join, when)
 import Data.Foldable (foldl', traverse_)
+import Data.Functor.Extra ((<$$>))
 import Data.List (sort)
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
 import Data.Monoid.Extra (isMempty)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (showText, toText)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Diag.Result (EmittedWarn (IgnoredErrGroup), Result (Failure, Success), renderFailure, renderSuccess)
@@ -154,7 +156,7 @@ renderScanSummary severity maybeEndpointVersion analysisResults filters = do
       logInfo "------------"
 
 summarize :: Text -> AnalysisScanResult -> Maybe ([Doc AnsiStyle])
-summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps) =
+summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps lernie) =
   if (numProjects totalScanCount <= 0)
     then Nothing
     else
@@ -174,6 +176,8 @@ summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicL
           <> summarizeSrcUnit "binary-deps analysis" (Just getBinaryIdentifier) binary
           <> summarizeSrcUnit "dynamic linked dependency analysis" (Just getBinaryIdentifier) dynamicLinkingDeps
           <> summarizeSrcUnit "fossa-deps file analysis" (Just getManualVendorDepsIdentifier) manualDeps
+          <> summarizeSrcUnit "Keyword Search" (Just getLernieIdentifier) (lernieResultsKeywordSearches <$$> lernie)
+          <> summarizeSrcUnit "Custom LicenseSearch" (Just getLernieIdentifier) (lernieResultsCustomLicenses <$$> lernie)
           <> [""]
   where
     vsiResults = summarizeSrcUnit "vsi analysis" (Just (join . map vsiSourceUnits)) vsi
@@ -185,6 +189,7 @@ summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicL
         , srcUnitToScanCount binary
         , srcUnitToScanCount manualDeps
         , srcUnitToScanCount dynamicLinkingDeps
+        , srcUnitToScanCount lernie
         ]
 
     -- This function relies on the fact that there is only ever one package in a vsi source unit dep graph.
@@ -209,6 +214,20 @@ itemize symbol f = map ((symbol <>) . f)
 
 getBinaryIdentifier :: SourceUnit -> [Text]
 getBinaryIdentifier srcUnit = maybe [] (srcUserDepName <$>) (userDefinedDeps =<< additionalData srcUnit)
+
+-- A LernieMatch has many LernieMatchData. getLernieIdentifier creates one line of output per LernieMatchData.
+-- Example output:
+-- Proprietary License - /Users/scott/fossa/license-scan-dirs/grepper/one.txt (lines 1-1)
+-- <name of regex from config> - <path to file> (lines <startLine>-<endLine>)
+getLernieIdentifier :: [LernieMatch] -> [Text]
+getLernieIdentifier [] = ["No results found"]
+getLernieIdentifier matches = concatMap renderLernieMatch matches
+  where
+    renderLernieMatch :: LernieMatch -> [Text]
+    renderLernieMatch LernieMatch{..} = map (renderLernieMatchData lernieMatchPath) lernieMatchMatches
+
+    renderLernieMatchData :: Text -> LernieMatchData -> Text
+    renderLernieMatchData path LernieMatchData{..} = lernieMatchDataName <> " - " <> path <> " (lines " <> showText lernieMatchDataStartLine <> "-" <> showText lernieMatchDataEndLine <> ")"
 
 getManualVendorDepsIdentifier :: SourceUnit -> [Text]
 getManualVendorDepsIdentifier srcUnit = refDeps ++ foundRemoteDeps ++ customDeps ++ vendorDeps
@@ -248,7 +267,7 @@ vsiSrcUnitsToScanCount (Success wg (Just units)) =
    in ScanCount unitLen 0 unitLen 0 (length wg)
 vsiSrcUnitsToScanCount (Success _ Nothing) = ScanCount 0 0 0 0 0
 
-srcUnitToScanCount :: Result (Maybe SourceUnit) -> ScanCount
+srcUnitToScanCount :: Result (Maybe a) -> ScanCount
 srcUnitToScanCount (Failure _ _) = ScanCount 1 0 0 1 0
 srcUnitToScanCount (Success _ Nothing) = ScanCount 0 0 0 0 0
 srcUnitToScanCount (Success wg (Just _)) = ScanCount 1 0 1 0 (countWarnings wg)
@@ -334,7 +353,7 @@ countWarnings ws =
     isIgnoredErrGroup _ = False
 
 dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => Text -> AnalysisScanResult -> m (Path Abs File)
-dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps) = do
+dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults) = do
   let doc =
         renderStrict
           . layoutPretty defaultLayoutOptions
@@ -347,6 +366,7 @@ dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary
               , renderSourceUnit "binary-deps analysis" binary
               , renderSourceUnit "dynamic linked dependency analysis" dynamicLinkingDeps
               , renderSourceUnit "fossa-deps analysis" manualDeps
+              , renderSourceUnit "Custom-license scan & Keyword Search" lernieResults
               ]
 
   tmpDir <- sendIO getTempDir
@@ -354,7 +374,7 @@ dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary
   pure (tmpDir </> scanSummaryFileName)
   where
     scanSummary :: [Doc AnsiStyle]
-    scanSummary = maybeToList (vsep <$> summarize endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps))
+    scanSummary = maybeToList (vsep <$> summarize endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults))
 
     renderSourceUnit :: Doc AnsiStyle -> Result (Maybe a) -> Maybe (Doc AnsiStyle)
     renderSourceUnit header (Failure ws eg) = Just $ renderFailure ws eg $ vsep $ summarizeSrcUnit header Nothing (Failure ws eg)

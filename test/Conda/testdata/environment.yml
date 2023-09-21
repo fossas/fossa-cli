@@ -1,8 +1,0 @@
-name: testName
-channels:
-  - defaults
-dependencies:
-  - biopython=1.78=py38haf1e3a3_0
-  - blas=1.0=mkl
-  - ca-certificates=2021.1.19=hecd8cb5_1
-prefix: /path/to/env
