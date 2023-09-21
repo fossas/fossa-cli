@@ -69,7 +69,7 @@ The Vendored Dependencies feature allows you to scan for licenses directly in yo
 
 ### Custom License Searches
 
-The "Custom License Searches" feature allows you to define regular expressions that are used to search through your codebase. If a match to the regular expression is found, then a custom license is reported for that match.
+The "Custom License Searches" feature allows you to define text strings or regular expressions that are used to search through your codebase. If a match to the text string or regular expression is found, then a custom license is reported for that match.
 
 An administrator of your organization can set up custom license searches that are always run when you analyze your codebase with `fossa analyze`. Using the `--ignore-org-wide-custom-license-scan-configs` flag will ignore those organization-wide custom license searches.
 
