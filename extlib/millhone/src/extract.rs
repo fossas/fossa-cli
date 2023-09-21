@@ -4,6 +4,7 @@
 
 use std::{
     collections::HashSet,
+    hash::Hash,
     path::{Path, PathBuf},
 };
 
@@ -11,6 +12,7 @@ use base64::prelude::*;
 use clap::{Parser, ValueEnum};
 use derive_more::From;
 use getset::{CopyGetters, Getters};
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use snippets::{language::c99_tc3, Extractor};
 use strum::{Display, EnumIter, IntoEnumIterator};
@@ -279,7 +281,7 @@ impl Snippet {
                 let content = std::fs::read(path).map_err(Error::ReadFile)?;
                 match language {
                     Language::C => c99_tc3::Extractor::extract(opts, &content)?
-                        .into_iter()
+                        .pipe(collapse_raw)
                         .map(|snippet| Self::from(scan_root, path, &content, snippet))
                         .collect::<HashSet<_>>()
                         .pipe(|found| (found, content))
@@ -405,9 +407,9 @@ impl<'de> serde::Deserialize<'de> for Fingerprint {
 ///
 /// For example, if the full text was "hello world!",
 /// and the snippet starts on byte 6 and ends on byte 10,
-/// the returned `TextLocation` looks like:
+/// the returned `Location` looks like:
 /// ```ignore
-/// TextLocation {
+/// Location {
 ///   byte_start: 6,
 ///   byte_end: 10,
 ///   line_start: 1,
@@ -540,6 +542,59 @@ impl Language {
     }
 }
 
+/// Collapse a set of extracted snippets such that snippets that are identical
+/// other than along the axis of [`snippets::Kind`] and [`snippets::Method`] are collapsed into
+/// the highest specificity form.
+///
+/// When scanning a project for a set of snippets, one code item (for example, a function)
+/// will potentially generate many snippets of varying [`snippets::Kind`]s and [`snippets::Method`]s.
+///
+/// However, it's also possible for a given code item to be the same between different combinations;
+/// consider the following sample:
+/// ```not_rust
+/// int main() {
+///   printf("hello world\n");
+///   return 0;
+/// }
+/// ```
+///
+/// This same results in the same output for all [`snippets::Kind`]s for [`snippets::Method::Raw`]
+/// and [`snippets::Method::Normalized`] with the [`snippets::Transform::Comment`] transform.
+/// This introduces noise both in the database and for the user when matches are performed!
+///
+/// Fortunately, [`snippets::Method`] implements [`Ord`], such that "higher specificity" snippets
+/// are ordered higher when compared with [`Ord`]. This means that to choose the most correct
+/// single representative, we can bucket equivalent snippets together and then pick the one
+/// that is highest sorted. Specificity is sorted by [`snippets::Kind`], then [`snippets::Method`].
+///
+/// Snippets are considered equivalent when the [`snippets::Snippet::fingerprint`] field matches
+/// and the [`snippets::Metadata::location`] field inside [`snippets::Snippet::metadata`] matches.
+#[tracing::instrument(skip_all, fields(input_count, collapsed_count))]
+fn collapse_raw<L>(
+    snippets: impl IntoIterator<Item = snippets::Snippet<L>>,
+) -> impl Iterator<Item = snippets::Snippet<L>> {
+    let mut input_count = 0usize;
+    let mut grouped = snippets
+        .into_iter()
+        .inspect(|_| input_count += 1)
+        .into_group_map_by(|snippet| {
+            (snippet.fingerprint().clone(), snippet.metadata().location())
+        });
+
+    for (_, group) in grouped.iter_mut() {
+        group.sort_by_key(|s| (s.metadata().kind(), s.metadata().method()));
+    }
+
+    // Returning an iter so can't count directly,
+    // but it's known that at most one value per key is returned.
+    tracing::Span::current().record("input_count", input_count);
+    tracing::Span::current().record("collapsed_count", grouped.len());
+
+    // Pop from the end, since `sort_by_key` sorts in ascending order
+    // (so higher specificity snippets are sorted later in the vec).
+    grouped.into_values().filter_map(|mut group| group.pop())
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -547,6 +602,7 @@ mod tests {
     use itertools::Itertools;
     use maplit::hashmap;
     use pretty_assertions::assert_eq;
+    use rand::{seq::SliceRandom, thread_rng, Rng};
 
     use super::*;
 
@@ -660,5 +716,127 @@ mod tests {
 
         let got = location.extract_from(example.as_bytes());
         assert_eq!(got, b"int main()");
+    }
+
+    #[test]
+    fn collapse_snippets_works() {
+        let buffer = |bytes: &[u8]| snippets::text::Buffer::new(bytes);
+        let kinds = snippets::Kind::iter().collect_vec();
+        let methods = snippets::Transform::iter()
+            .map(snippets::Method::Normalized)
+            .chain(std::iter::once(snippets::Method::Raw))
+            .collect_vec();
+
+        let rng_buf = || {
+            thread_rng()
+                .gen::<[u8; 32]>()
+                .pipe(snippets::text::Buffer::new)
+        };
+        let rng_loc = || -> snippets::Location {
+            (thread_rng().gen_range(1000..10000)..thread_rng().gen_range(10000..100000)).into()
+        };
+        let rng_kind = || {
+            kinds
+                .choose(&mut thread_rng())
+                .copied()
+                .expect("choose kind")
+        };
+        let rng_method = || {
+            methods
+                .choose(&mut thread_rng())
+                .copied()
+                .expect("choose method")
+        };
+
+        let known_content = buffer(b"some content");
+        let known_fp = buffer(b"some fingerprint");
+        let known_loc = snippets::Location::from(10..20);
+
+        // These snippets should all be collapsed. All possible kinds and methods are represented here,
+        // with a fully equivalent fingerprint and location.
+        // Content isn't considered by the function, but make it known too for completeness.
+        let homogenous = kinds
+            .clone()
+            .into_iter()
+            .cartesian_product(methods.clone())
+            .map(|(kind, method)| -> snippets::Snippet<c99_tc3::Language> {
+                snippets::Snippet::builder()
+                    .content(known_content.clone())
+                    .fingerprint(known_fp.clone())
+                    .metadata(snippets::Metadata::new(kind, method, known_loc))
+                    .build()
+            });
+
+        // These snippets should match either the fingerprint or the location
+        // of the homogenous snippets, but not both.
+        // The uniqueness call is here to ensure the interleaved sample below gets a good range.
+        let almost_homogenous =
+            std::iter::repeat_with(|| -> snippets::Snippet<c99_tc3::Language> {
+                let matching_fp = thread_rng().gen_bool(0.5);
+                snippets::Snippet::builder()
+                    .content(known_content.clone())
+                    .fingerprint(if matching_fp {
+                        known_fp.clone()
+                    } else {
+                        rng_buf()
+                    })
+                    .metadata(snippets::Metadata::new(
+                        rng_kind(),
+                        rng_method(),
+                        if matching_fp { rng_loc() } else { known_loc },
+                    ))
+                    .build()
+            })
+            .unique_by(|snippet| (snippet.fingerprint().clone(), snippet.metadata().location()));
+
+        // These snippets shouldn't match the homogenous snippets in any way.
+        // The uniqueness call is here to ensure the interleaved sample below gets a good range.
+        let heterogenous = std::iter::repeat_with(|| -> snippets::Snippet<c99_tc3::Language> {
+            snippets::Snippet::builder()
+                .content(rng_buf())
+                .fingerprint(rng_buf())
+                .metadata(snippets::Metadata::new(rng_kind(), rng_method(), rng_loc()))
+                .build()
+        })
+        .unique_by(|snippet| (snippet.fingerprint().clone(), snippet.metadata().location()));
+
+        let combined = homogenous
+            .interleave(heterogenous)
+            .interleave(almost_homogenous)
+            .take(100)
+            .collect_vec();
+
+        // All the random data is really just there to smoke test the function.
+        // At the end of the day, we just want to see that the homogenous snippets were collapsed down to
+        // a single result (and that it was the highest precedence one),
+        // and that the almost homogenous snippets didn't subtly mess this up.
+        let collapsed = collapse_raw(combined)
+            .filter(|snippet| {
+                snippet.fingerprint() == &known_fp && snippet.metadata().location() == known_loc
+            })
+            .collect_vec();
+
+        // Leave it up to `snippets` to tell us which of the kinds and methods are highest precedence.
+        let highest_precedence_homogenous = snippets::Snippet::builder()
+            .content(known_content)
+            .fingerprint(known_fp)
+            .metadata(snippets::Metadata::new(
+                kinds
+                    .iter()
+                    .sorted_unstable()
+                    .last()
+                    .copied()
+                    .expect("get highest precedence kind"),
+                methods
+                    .iter()
+                    .sorted_unstable()
+                    .last()
+                    .copied()
+                    .expect("get highest precedence method"),
+                known_loc,
+            ))
+            .build();
+
+        assert_eq!(collapsed, vec![highest_precedence_homogenous]);
     }
 }

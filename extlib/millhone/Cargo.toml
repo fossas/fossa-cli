@@ -37,3 +37,4 @@ serde_json = "1.0.107"
 [dev-dependencies]
 maplit = "1.0.2"
 pretty_assertions = "1.4.0"
+rand = "0.8.5"

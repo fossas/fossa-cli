@@ -852,6 +852,7 @@ dependencies = [
  "maplit",
  "once_cell",
  "pretty_assertions",
+ "rand",
  "retry",
  "secrecy",
  "serde",
