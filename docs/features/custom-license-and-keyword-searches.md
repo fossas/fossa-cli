@@ -60,7 +60,44 @@ If your project is set to raise issues for a license of type "Custom License", t
 
 The regular expressions in Custom License and Keyword searches use Rust's regular expression syntax. Here are a few examples. You can also view the [full regular expression syntax documentation](./custom-license-and-keyword-search-regular-expression-syntax.md).
 
+### Searching for an exact match to some text
+
+Most of the time, if you are searching for an exact match to some text you can just use the text. For example, if you wanted to find the phrase "This code has been released into the public domain", you could just use that as your match criteria:
+
+```yaml
+customLicenseSearch:
+  - matchCriteria: This code has been released into the public domain
+    name: public domain
+```
+
+If the text you are searching for contains any special characters that need to be escaped, then you will need to escape those characters by prepending a `\` to them. Please see the next section for a list of these special characters and some examples.
+
 ### Escapes in your regular expressions
+
+If the text you are searching for has one of the following special characters in it, then you will need to "escape" that character by prepending a `\` to it.
+
+Special Characters:
+
+| `.` |
+| `^` |
+| `$` |
+| `*` |
+| `+` |
+| `?` |
+| `(` |
+| `)` |
+| `[` |
+| `{` |
+| `\` |
+| `|` |
+
+For example, if you were searching for the text 'associated documentation files (the "Software").', then you would have to escape the opening and closing parentheses and the final period in the sentence, like this:
+
+```yaml
+customLicenseSearch:
+  - matchCriteria: associated documentation files \(the "Software"\)\.
+    name: associated documentation
+```
 
 If you wrap your `matchCriteria` in single quotes or no quotes in `.fossa.yml`, then you should use a single backslash (`\`) to escape characters.
 
@@ -168,6 +205,12 @@ You could also specify the number of [repetitions](./custom-license-and-keyword-
 ```
 
 These regular expressions will both match, for example, "This document was last updated in 2023".
+
+## Troubleshooting Regular Expressions
+
+It can be extremely useful to use a tool that allows you to debug your regular expressions. We recommend using [Regex 101](https://regex101.com/), as it has support for Rust regular expressions.
+
+To use this tool, go to [Regex 101](https://regex101.com/) and select "Rust" for your regular expression flavor. Then, after removing any sensitive data, enter the text you would like to search for in the "Test String" box and the regular expression in the "Regular Expression" box.
 
 ## Configuring custom-license searches for your whole organization
 
