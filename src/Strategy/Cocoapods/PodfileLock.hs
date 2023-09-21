@@ -26,7 +26,7 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.State (State, get, put)
 import Control.Monad (when)
-import Data.Aeson (FromJSON (parseJSON), (.!=), (.:?))
+import Data.Aeson (FromJSON (parseJSON), (.!=))
 import Data.Aeson qualified as JSON
 import Data.Aeson.KeyMap qualified as Object
 import Data.Aeson.Types (FromJSONKey)
