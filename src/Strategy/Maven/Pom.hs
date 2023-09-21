@@ -169,7 +169,7 @@ reifyDeps pom = Map.mapWithKey overlayDepManagement (pomDependencies pom)
 -- interpolates both computed/built-in properties and user-specified properties,
 -- preferring user-specified properties
 interpolateProperties :: Pom -> Text -> Text
-interpolateProperties pom = interpolate (pomProperties pom <> computeBuiltinProperties pom)
+interpolateProperties pom = interpolate (pomProperties pom <> computeBuiltinProperties pom) Set.empty
 
 -- | Compute the most-commonly-used builtin properties for package resolution
 computeBuiltinProperties :: Pom -> Map Text Text
@@ -180,24 +180,25 @@ computeBuiltinProperties pom =
     , ("project.version", coordVersion (pomCoord pom))
     ]
 
-interpolate :: Map Text Text -> Text -> Text
-interpolate properties initialProperty =
+interpolate :: Map Text Text -> Set Text -> Text -> Text
+interpolate properties recursionCheck initialProperty =
   case splitMavenProperty initialProperty of
     Nothing -> initialProperty
     Just (prefix, property, suffix) ->
-      case (Map.lookup property properties) of
-        Nothing -> interpolate properties $ prefix <> "PROPERTY NOT FOUND: " <> property <> suffix
-        -- This block catches an infinite loop with interpolate
-        -- For the example of: <junit5.version>${junit5.version}</junit5.version>
-        -- The map will have ("junit5.version","${junit5.version}")
-        -- splitMavenProperty will remove the "${}" from the value and return the same key which causes infinite recursion.
-        -- Just foundProperty -> if fullProperty == initialProperty then property else interpolate properties fullProperty
-        Just foundProperty -> case splitMavenProperty $ prefix <> foundProperty <> suffix of
-          Nothing -> prefix <> foundProperty <> suffix
-          Just (_, property2, _) -> if property2 == property then property else interpolate properties $ prefix <> foundProperty <> suffix
+      -- This block catches an infinite loop with interpolate
+      -- For the example of: <junit5.version>${junit5.version}</junit5.version>
+      -- The map will have ("junit5.version","${junit5.version}")
+      -- splitMavenProperty will remove the "${}" from the value and return the same key which causes infinite recursion.
+      if Set.member property recursionCheck
+        then prefix <> property <> suffix
+        else
+          ( case (Map.lookup property properties) of
+              Nothing -> interpolate properties Set.empty $ prefix <> "PROPERTY NOT FOUND: " <> property <> suffix
+              Just foundProperty -> interpolate properties (Set.insert property recursionCheck) finalProperty
+                where
+                  finalProperty = prefix <> foundProperty <> suffix
+          )
 
--- where
---   fullProperty = prefix <> foundProperty <> suffix
 -- find the first maven property in the string, e.g., `${foo}`, returning text
 -- before the property, the property, and the text after the property
 splitMavenProperty :: Text -> Maybe (Text, Text, Text)
