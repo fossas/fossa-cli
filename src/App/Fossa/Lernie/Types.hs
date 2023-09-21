@@ -42,7 +42,7 @@ instance ToJSON OrgWideCustomLicenseConfigPolicy where
 data GrepOptions = GrepOptions
   { customLicenseSearch :: [GrepEntry]
   , keywordSearch :: [GrepEntry]
-  , ignoreOrgWideCustomLicenseScanConfigs :: OrgWideCustomLicenseConfigPolicy
+  , orgWideCustomLicenseScanConfigPolicy :: OrgWideCustomLicenseConfigPolicy
   }
   deriving (Eq, Ord, Show, Generic)
 

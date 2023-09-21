@@ -66,7 +66,7 @@ analyzeWithLernie ::
   GrepOptions ->
   m (Maybe LernieResults)
 analyzeWithLernie rootDir maybeApiOpts grepOptions = do
-  case (maybeApiOpts, ignoreOrgWideCustomLicenseScanConfigs grepOptions) of
+  case (maybeApiOpts, orgWideCustomLicenseScanConfigPolicy grepOptions) of
     (_, Ignore) -> analyzeWithLernieMain rootDir grepOptions
     (Nothing, Use) -> analyzeWithLernieMain rootDir grepOptions
     (Just apiOpts, Use) -> runFossaApiClient apiOpts $ analyzeWithLernieWithOrgInfo rootDir grepOptions

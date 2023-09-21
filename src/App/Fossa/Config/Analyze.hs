@@ -492,15 +492,15 @@ collectVendoredDepsFromConfig maybeCfg =
 collectGrepOptions :: Maybe ConfigFile -> AnalyzeCliOpts -> GrepOptions
 collectGrepOptions maybeCfg AnalyzeCliOpts{..} =
   case maybeCfg of
-    Nothing -> GrepOptions [] [] ignoreOrgWideCustomLicenseScanConfigsFromFlag
+    Nothing -> GrepOptions [] [] orgWideCustomLicenseScanConfigPolicyFromFlag
     Just cfg ->
-      GrepOptions customLicenseList keywordSearchList (ignoreOrgWideCustomLicenseScanConfigsFromFlag <> orgWideCustomLicenseConfigPolicyFromConfig)
+      GrepOptions customLicenseList keywordSearchList (orgWideCustomLicenseScanConfigPolicyFromFlag <> orgWideCustomLicenseConfigPolicyFromConfig)
       where
         customLicenseList = maybe [] (map configGrepToGrep) (configCustomLicenseSearch cfg)
         keywordSearchList = maybe [] (map configGrepToGrep) (configKeywordSearch cfg)
         orgWideCustomLicenseConfigPolicyFromConfig = configOrgWideCustomLicenseConfigPolicy cfg
   where
-    ignoreOrgWideCustomLicenseScanConfigsFromFlag = if (fromFlag IgnoreOrgWideCustomLicenseScanConfigs analyzeIgnoreOrgWideCustomLicenseScanConfigs) then Ignore else Use
+    orgWideCustomLicenseScanConfigPolicyFromFlag = if (fromFlag IgnoreOrgWideCustomLicenseScanConfigs analyzeIgnoreOrgWideCustomLicenseScanConfigs) then Ignore else Use
 
 configGrepToGrep :: ConfigGrepEntry -> GrepEntry
 configGrepToGrep configGrep = GrepEntry (configGrepMatchCriteria configGrep) (configGrepName configGrep)

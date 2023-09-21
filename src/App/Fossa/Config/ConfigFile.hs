@@ -278,7 +278,7 @@ instance FromJSON ConfigFile where
       <*> parseIgnoreOrgWideCustomLicenseScanConfigs obj
     where
       parseIgnoreOrgWideCustomLicenseScanConfigs obj = do
-        ignoreIt <- obj .:? "ignoreOrgWideCustomLicenseScanConfigs" .!= False
+        ignoreIt <- obj .:? "orgWideCustomLicenseScanConfigPolicy" .!= False
         if ignoreIt then pure Ignore else pure Use
 
 instance FromJSON ConfigProject where
