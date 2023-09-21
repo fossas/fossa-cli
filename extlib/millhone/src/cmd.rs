@@ -1,9 +1,12 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, path::PathBuf};
 
 use clap::Parser;
 use getset::Getters;
+use itertools::Itertools;
 use millhone::api;
+use once_cell::sync::Lazy;
 use secrecy::Secret;
+use tap::Pipe;
 use tracing::warn;
 use walkdir::DirEntry;
 
@@ -52,5 +55,74 @@ fn unwrap_dir_entry(entry: Result<DirEntry, walkdir::Error>) -> Option<DirEntry>
             }
             None
         }
+    }
+}
+
+static TEMP_PREFIX: Lazy<String> = Lazy::new(|| {
+    let name = env!("CARGO_PKG_NAME");
+    format!("{name}_")
+});
+
+/// Create a temporary directory prefixed by the name of the current crate in the system temp directory.
+pub fn namespaced_temp_dir() -> Result<PathBuf, std::io::Error> {
+    tempfile::Builder::new()
+        .prefix(TEMP_PREFIX.as_str())
+        .tempdir()
+        .map(|tf| tf.into_path())
+}
+
+/// Find the latest temporary directory created by [`namespaced_temp_dir`].
+///
+/// Note: this is allowed as dead code for now but code that uses it (via the `commit` subcommand)
+/// is coming in another PR.
+#[allow(dead_code)]
+pub fn latest_temp_dir() -> Result<Option<PathBuf>, std::io::Error> {
+    let temp = std::env::temp_dir();
+    let mut files = std::fs::read_dir(temp)?
+        .filter_ok(|entry| {
+            entry
+                .file_name()
+                .to_str()
+                .map(|name| name.starts_with(TEMP_PREFIX.as_str()))
+                .unwrap_or_default()
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // `sort_by_key` operates in ascending order; we want the first in descending order
+    // (which is equivalent to "the one created most recently").
+    files.sort_by_key(|entry| entry.metadata().and_then(|m| m.created()).ok());
+    files.last().map(|entry| entry.path()).pipe(Ok)
+}
+
+#[cfg(test)]
+mod tests {
+
+    use std::path::Path;
+
+    use super::*;
+
+    use tap::TapFallible;
+
+    fn cleanup(dir: &Path) {
+        if let Err(err) = std::fs::remove_dir_all(dir) {
+            eprintln!(
+                "[warn] failed to clean up directory '{}': {err:#}",
+                dir.display()
+            );
+        }
+    }
+
+    #[test]
+    fn finds_latest_temp_dir() {
+        let a = namespaced_temp_dir().expect("create 'a'");
+        let b = namespaced_temp_dir()
+            .tap_err(|_| cleanup(&a))
+            .expect("create 'b'");
+        let latest = latest_temp_dir()
+            .tap_err(|_| cleanup(&a))
+            .tap_err(|_| cleanup(&b))
+            .expect("find latest");
+
+        assert_eq!(latest, Some(b));
     }
 }

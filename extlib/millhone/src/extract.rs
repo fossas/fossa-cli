@@ -222,8 +222,7 @@ impl Snippet {
         content: &[u8],
         snippet: snippets::Snippet<L>,
     ) -> Self {
-        let location = snippet.metadata().location();
-        let text_loc = TextLocation::new(&location, content);
+        let location = Location::new(snippet.metadata().location(), content);
         let display_path = path.strip_prefix(scan_root).unwrap_or(path);
         Self::builder()
             .fingerprint(
@@ -237,12 +236,12 @@ impl Snippet {
             .kind(snippet.metadata().kind().to_string())
             .method(snippet.metadata().method().to_string())
             .file_path(display_path.to_string_lossy().to_string())
-            .byte_start(location.start_byte() as _)
-            .byte_end(location.end_byte() as _)
-            .line_start(text_loc.line_start as _)
-            .line_end(text_loc.line_end as _)
-            .col_start(text_loc.col_start as _)
-            .col_end(text_loc.col_end as _)
+            .byte_start(location.byte_start() as _)
+            .byte_end(location.byte_end() as _)
+            .line_start(location.line_start as _)
+            .line_end(location.line_end as _)
+            .col_start(location.col_start as _)
+            .col_end(location.col_end as _)
             .language(L::display().to_string())
             .build()
     }
@@ -254,14 +253,26 @@ impl Snippet {
         opts: &snippets::Options,
         path: &Path,
     ) -> Result<HashSet<Self>, Error> {
+        Self::from_file_with_content(scan_root, opts, path).map(|(found, _)| found)
+    }
+
+    /// Extract instances from a file on disk,
+    /// returning the content of the file along with the snippet.
+    ///
+    /// If the file is not supported, the returned file content is empty.
+    pub fn from_file_with_content(
+        scan_root: &Path,
+        opts: &snippets::Options,
+        path: &Path,
+    ) -> Result<(HashSet<Self>, Vec<u8>), Error> {
         match Support::by_ext(path) {
             Support::Unknown => {
                 debug!("skipping: unknown support status for file");
-                Ok(Default::default())
+                Ok((Default::default(), Default::default()))
             }
             Support::Unsupported => {
                 debug!("skipping: file extension not supported");
-                Ok(Default::default())
+                Ok((Default::default(), Default::default()))
             }
             Support::Supported(language) => {
                 debug!("extracting snippets of language: {language}");
@@ -271,10 +282,59 @@ impl Snippet {
                         .into_iter()
                         .map(|snippet| Self::from(scan_root, path, &content, snippet))
                         .collect::<HashSet<_>>()
+                        .pipe(|found| (found, content))
                         .pipe(Ok),
                 }
             }
         }
+    }
+
+    /// Get the [`Location`] referenced by the snippet.
+    pub fn location(&self) -> Location {
+        Location::builder()
+            .byte_start(self.byte_start as _)
+            .byte_end(self.byte_end as _)
+            .line_start(self.line_start as _)
+            .line_end(self.line_end as _)
+            .col_start(self.col_start as _)
+            .col_end(self.col_end as _)
+            .build()
+    }
+}
+
+/// Equivalent to [`Snippet`], with the content copied from the input file.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Getters, TypedBuilder)]
+#[getset(get = "pub")]
+pub struct ContentSnippet {
+    /// The snippet that was found.
+    #[serde(flatten)]
+    snippet: Snippet,
+
+    /// The content of the file from which the snippet was extracted
+    /// at the location indicated by the snippet.
+    content: Vec<u8>,
+}
+
+impl ContentSnippet {
+    /// Extract instances from a file on disk.
+    #[tracing::instrument]
+    pub fn from_file(
+        scan_root: &Path,
+        opts: &snippets::Options,
+        path: &Path,
+    ) -> Result<HashSet<Self>, Error> {
+        let (found, content) = Snippet::from_file_with_content(scan_root, opts, path)?;
+        found
+            .into_iter()
+            .map(|snippet| {
+                let location = snippet.location();
+                Self {
+                    snippet,
+                    content: location.extract_from(&content).to_owned(),
+                }
+            })
+            .collect::<HashSet<_>>()
+            .pipe(Ok)
     }
 }
 
@@ -348,14 +408,23 @@ impl<'de> serde::Deserialize<'de> for Fingerprint {
 /// the returned `TextLocation` looks like:
 /// ```ignore
 /// TextLocation {
+///   byte_start: 6,
+///   byte_end: 10,
 ///   line_start: 1,
 ///   line_end: 1,
 ///   col_start: 7,
 ///   col_end: 11,
 /// }
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, TypedBuilder)]
-struct TextLocation {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, CopyGetters, TypedBuilder)]
+#[getset(get_copy = "pub")]
+pub struct Location {
+    /// The byte index at which the snippet starts.
+    byte_start: usize,
+
+    /// The byte index at which the snippet ends.
+    byte_end: usize,
+
     /// The line number on which the snippet starts.
     line_start: usize,
 
@@ -369,16 +438,16 @@ struct TextLocation {
     col_end: usize,
 }
 
-impl TextLocation {
-    /// Translate a [`Location`] in the given content into its textual indicators.
-    fn new(loc: &snippets::Location, content: &[u8]) -> Self {
-        let start_byte = loc.start_byte();
-        let end_byte = loc.end_byte();
+impl Location {
+    /// Derive an instance from a [`snippets::Location`] and the content to which it points.
+    fn new(loc: snippets::Location, content: &[u8]) -> Self {
+        let byte_start = loc.start_byte();
+        let byte_end = loc.end_byte();
         let mut line_start = 1;
         let mut col_start = 1;
 
         const NEWLINE: u8 = b'\n';
-        for b in content[..start_byte].iter().copied() {
+        for b in content[..byte_start].iter().copied() {
             if b == NEWLINE {
                 line_start += 1;
                 col_start = 1;
@@ -389,7 +458,7 @@ impl TextLocation {
 
         let mut line_end = line_start;
         let mut col_end = col_start;
-        for b in content[start_byte..=end_byte].iter().copied() {
+        for b in content[byte_start..=byte_end].iter().copied() {
             if b == NEWLINE {
                 line_end += 1;
                 col_end = 1;
@@ -399,11 +468,19 @@ impl TextLocation {
         }
 
         Self {
+            byte_start,
+            // The end byte of `snippets::Location` is inclusive.
+            byte_end: byte_end + 1,
             line_start,
             line_end,
             col_start,
             col_end,
         }
+    }
+
+    /// Extract the bytes indicated by a [`Location`] from a buffer.
+    pub fn extract_from<'a>(&self, buf: &'a [u8]) -> &'a [u8] {
+        &buf[self.byte_start..self.byte_end]
     }
 }
 
@@ -527,13 +604,15 @@ mod tests {
         //            ^     ^   ^
         // columns:   1     7   11
         let location = snippets::Location::from(6..10);
-        let expected = TextLocation::builder()
+        let expected = Location::builder()
+            .byte_start(6)
+            .byte_end(10)
             .line_start(1)
             .line_end(1)
             .col_start(7)
             .col_end(11)
             .build();
-        let got = TextLocation::new(&location, input);
+        let got = Location::new(location, input);
         assert_eq!(got, expected);
     }
 
@@ -545,13 +624,41 @@ mod tests {
         // columns:   1   5  1   5  1        11
         //   lines:   1      2      3
         let location = snippets::Location::from(6..22);
-        let expected = TextLocation::builder()
+        let expected = Location::builder()
+            .byte_start(6)
+            .byte_end(22)
             .line_start(2)
             .line_end(3)
             .col_start(1)
             .col_end(11)
             .build();
-        let got = TextLocation::new(&location, input);
+        let got = Location::new(location, input);
         assert_eq!(got, expected);
+    }
+
+    #[test]
+    fn location_extract_from() {
+        let example = "#include <stdio.h>  int main() {}";
+        let location = Location::builder()
+            .byte_start(20)
+            .byte_end(30)
+            .line_start(1)
+            .line_end(1)
+            .col_start(21)
+            .col_end(31)
+            .build();
+
+        let got = location.extract_from(example.as_bytes());
+        assert_eq!(got, b"int main()");
+    }
+
+    #[test]
+    fn snippets_location_extract_from() {
+        let example = "#include <stdio.h>  int main() {}";
+        let location = snippets::Location::from(20..30);
+        let location = Location::new(location, example.as_bytes());
+
+        let got = location.extract_from(example.as_bytes());
+        assert_eq!(got, b"int main()");
     }
 }
