@@ -26,10 +26,10 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.State (State, get, put)
 import Control.Monad (when)
-import Data.Aeson (FromJSON (parseJSON), (.!=), withObject, (.:?))
+import Data.Aeson (FromJSON (parseJSON), (.!=), (.:?))
 import Data.Aeson qualified as JSON
 import Data.Aeson.KeyMap qualified as Object
-import Data.Aeson.Types (FromJSONKey, Parser)
+import Data.Aeson.Types (FromJSONKey)
 import Data.Bifunctor (first)
 import Data.Char qualified as C
 import Data.Foldable (asum, find, traverse_)
@@ -354,7 +354,7 @@ parseNameAndVersion :: Parser (Text, Text)
 parseNameAndVersion = (,) <$> parseName <*> parseVersion
 
 instance FromJSON PodLock where
-  parseJSON = withObject "Podfile.lock content" $ \obj ->
+  parseJSON = Yaml.withObject "Podfile.lock content" $ \obj ->
     PodLock
       <$> obj .: "PODS"
       <*> obj .: "DEPENDENCIES"
