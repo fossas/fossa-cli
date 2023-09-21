@@ -115,7 +115,11 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
             .to_string_lossy()
             .replace(std::path::MAIN_SEPARATOR_STR, "_");
 
-        let record_path = output_dir.join(&record_name).with_extension("json");
+        let current_ext = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+        let record_path = output_dir
+            .join(&record_name)
+            .with_extension(format!("{current_ext}.json"));
+
         let encoded = serde_json::to_string_pretty(&records).context("encode record")?;
         std::fs::write(&record_path, encoded).context("write records")?;
 
