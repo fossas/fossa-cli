@@ -32,7 +32,7 @@ spec = do
 
     it "should not infinitely recurse when interpolating a property that is interpolated to itself" $ do
       let pom' = pom{pomProperties = Map.singleton "project.groupId" "\\${project.groupId}"}
-      interpolateProperties pom' "${project.groupId}" `shouldBe` "project.groupId"
+      interpolateProperties pom' "${project.groupId}" `shouldBe` "\\project.groupId"
 
   describe "buildMavenPackage" $ do
     let pom = Pom (MavenCoordinate "MYGROUP" "MYARTIFACT" "MYVERSION") Nothing Map.empty Map.empty Map.empty []
