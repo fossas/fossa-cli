@@ -39,7 +39,7 @@ configFile =
     , configTelemetry = Nothing
     , configCustomLicenseSearch = Nothing
     , configKeywordSearch = Nothing
-    , configIgnoreOrgWideCustomLicenseScanConfigs = Use
+    , configOrgWideCustomLicenseConfigPolicy = Use
     }
 
 -- | Tests that the config loader uses the directory set in the arguments

@@ -66,7 +66,7 @@ defaultConfigFile =
     , configTelemetry = Nothing
     , configCustomLicenseSearch = Nothing
     , configKeywordSearch = Nothing
-    , configIgnoreOrgWideCustomLicenseScanConfigs = Use
+    , configOrgWideCustomLicenseConfigPolicy = Use
     }
 
 mockApiKeyRaw :: Text

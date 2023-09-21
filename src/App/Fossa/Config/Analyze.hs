@@ -494,11 +494,11 @@ collectGrepOptions maybeCfg AnalyzeCliOpts{..} =
   case maybeCfg of
     Nothing -> GrepOptions [] [] ignoreOrgWideCustomLicenseScanConfigsFromFlag
     Just cfg ->
-      GrepOptions customLicenseList keywordSearchList (ignoreOrgWideCustomLicenseScanConfigsFromFlag <> ignoreOrgWideCustomLicenseScanConfigsFromConfig)
+      GrepOptions customLicenseList keywordSearchList (ignoreOrgWideCustomLicenseScanConfigsFromFlag <> orgWideCustomLicenseConfigPolicyFromConfig)
       where
         customLicenseList = maybe [] (map configGrepToGrep) (configCustomLicenseSearch cfg)
         keywordSearchList = maybe [] (map configGrepToGrep) (configKeywordSearch cfg)
-        ignoreOrgWideCustomLicenseScanConfigsFromConfig = configIgnoreOrgWideCustomLicenseScanConfigs cfg
+        orgWideCustomLicenseConfigPolicyFromConfig = configOrgWideCustomLicenseConfigPolicy cfg
   where
     ignoreOrgWideCustomLicenseScanConfigsFromFlag = if (fromFlag IgnoreOrgWideCustomLicenseScanConfigs analyzeIgnoreOrgWideCustomLicenseScanConfigs) then Ignore else Use
 

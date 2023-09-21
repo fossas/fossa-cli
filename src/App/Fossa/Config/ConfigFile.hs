@@ -200,7 +200,7 @@ data ConfigFile = ConfigFile
   , configTelemetry :: Maybe ConfigTelemetry
   , configCustomLicenseSearch :: Maybe [ConfigGrepEntry]
   , configKeywordSearch :: Maybe [ConfigGrepEntry]
-  , configIgnoreOrgWideCustomLicenseScanConfigs :: OrgWideCustomLicenseConfigPolicy
+  , configOrgWideCustomLicenseConfigPolicy :: OrgWideCustomLicenseConfigPolicy
   }
   deriving (Eq, Ord, Show)
 
