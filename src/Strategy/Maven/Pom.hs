@@ -25,9 +25,6 @@ import Path.IO qualified as Path
 import Strategy.Maven.Pom.Closure
 import Strategy.Maven.Pom.PomFile
 import Types
-import Debug.Trace
-import Data.SemVer (initial)
-import Language.Haskell.TH (prefixPatSyn)
 
 data MavenStrategyOpts = MavenStrategyOpts
   { strategyPath :: Path Rel File
@@ -198,8 +195,9 @@ interpolate properties initialProperty =
         Just foundProperty -> case splitMavenProperty $ prefix <> foundProperty <> suffix of
           Nothing -> property
           Just (_, property2, _) -> if property2 == property then property else interpolate properties $ prefix <> foundProperty <> suffix
-        -- where
-        --   fullProperty = prefix <> foundProperty <> suffix
+
+-- where
+--   fullProperty = prefix <> foundProperty <> suffix
 -- find the first maven property in the string, e.g., `${foo}`, returning text
 -- before the property, the property, and the text after the property
 splitMavenProperty :: Text -> Maybe (Text, Text, Text)
