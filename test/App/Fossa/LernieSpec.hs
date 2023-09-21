@@ -7,7 +7,7 @@ module App.Fossa.LernieSpec (
 ) where
 
 import App.Fossa.Lernie.Analyze (analyzeWithLernie, analyzeWithLernieWithOrgInfo, grepOptionsToLernieConfig, lernieMessagesToLernieResults, singletonLernieMessage)
-import App.Fossa.Lernie.Types (GrepEntry (..), GrepOptions (..), LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieScanType (..), LernieWarning (..))
+import App.Fossa.Lernie.Types (GrepEntry (..), GrepOptions (..), LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieScanType (..), LernieWarning (..), OrgWideCustomLicenseConfigPolicy (..))
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Data.List (nub, sort)
@@ -227,7 +227,7 @@ grepOptions =
   GrepOptions
     { customLicenseSearch = [customLicenseGrepEntry]
     , keywordSearch = [keywordSearchGrepEntry]
-    , ignoreOrgWideCustomLicenseScanConfigs = False
+    , ignoreOrgWideCustomLicenseScanConfigs = Use
     }
 
 customLicenseGrepEntry :: GrepEntry

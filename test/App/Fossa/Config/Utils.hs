@@ -3,7 +3,7 @@
 module App.Fossa.Config.Utils (parseArgString, itShouldLoadFromTheConfiguredBaseDir, itShouldFailWhenLabelsExceedFive) where
 
 import App.Fossa.Config.Analyze (AnalyzeCliOpts, mergeOpts)
-import App.Fossa.Config.ConfigFile (ConfigFile (..))
+import App.Fossa.Config.ConfigFile (ConfigFile (..), OrgWideCustomLicenseConfigPolicy (..))
 import App.Fossa.Config.EnvironmentVars (EnvVars (EnvVars))
 import Control.Effect.Lift (Lift, sendIO)
 import Data.ByteString qualified as BS
@@ -39,7 +39,7 @@ configFile =
     , configTelemetry = Nothing
     , configCustomLicenseSearch = Nothing
     , configKeywordSearch = Nothing
-    , configIgnoreOrgWideCustomLicenseScanConfigs = False
+    , configIgnoreOrgWideCustomLicenseScanConfigs = Use
     }
 
 -- | Tests that the config loader uses the directory set in the arguments

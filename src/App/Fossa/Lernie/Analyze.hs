@@ -23,6 +23,7 @@ import App.Fossa.Lernie.Types (
   LernieResults (..),
   LernieScanType (..),
   LernieWarning (..),
+  OrgWideCustomLicenseConfigPolicy (..),
  )
 import Control.Carrier.Debug (Debug)
 import Control.Carrier.Diagnostics (Diagnostics, fatal, warn)
@@ -66,9 +67,9 @@ analyzeWithLernie ::
   m (Maybe LernieResults)
 analyzeWithLernie rootDir maybeApiOpts grepOptions = do
   case (maybeApiOpts, ignoreOrgWideCustomLicenseScanConfigs grepOptions) of
-    (_, True) -> analyzeWithLernieMain rootDir grepOptions
-    (Nothing, False) -> analyzeWithLernieMain rootDir grepOptions
-    (Just apiOpts, False) -> runFossaApiClient apiOpts $ analyzeWithLernieWithOrgInfo rootDir grepOptions
+    (_, Ignore) -> analyzeWithLernieMain rootDir grepOptions
+    (Nothing, Use) -> analyzeWithLernieMain rootDir grepOptions
+    (Just apiOpts, Use) -> runFossaApiClient apiOpts $ analyzeWithLernieWithOrgInfo rootDir grepOptions
 
 analyzeWithLernieWithOrgInfo ::
   ( Has Diagnostics sig m

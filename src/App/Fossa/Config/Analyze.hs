@@ -48,6 +48,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigTelemetryScope (NoTelemetry),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
+  OrgWideCustomLicenseConfigPolicy (..),
   VendoredDependencyConfigs (..),
   mergeFileCmdMetadata,
   resolveConfigFile,
@@ -493,13 +494,13 @@ collectGrepOptions maybeCfg AnalyzeCliOpts{..} =
   case maybeCfg of
     Nothing -> GrepOptions [] [] ignoreOrgWideCustomLicenseScanConfigsFromFlag
     Just cfg ->
-      GrepOptions customLicenseList keywordSearchList (ignoreOrgWideCustomLicenseScanConfigsFromFlag || ignoreOrgWideCustomLicenseScanConfigsFromConfig)
+      GrepOptions customLicenseList keywordSearchList (ignoreOrgWideCustomLicenseScanConfigsFromFlag <> ignoreOrgWideCustomLicenseScanConfigsFromConfig)
       where
         customLicenseList = maybe [] (map configGrepToGrep) (configCustomLicenseSearch cfg)
         keywordSearchList = maybe [] (map configGrepToGrep) (configKeywordSearch cfg)
         ignoreOrgWideCustomLicenseScanConfigsFromConfig = configIgnoreOrgWideCustomLicenseScanConfigs cfg
   where
-    ignoreOrgWideCustomLicenseScanConfigsFromFlag = fromFlag IgnoreOrgWideCustomLicenseScanConfigs analyzeIgnoreOrgWideCustomLicenseScanConfigs
+    ignoreOrgWideCustomLicenseScanConfigsFromFlag = if (fromFlag IgnoreOrgWideCustomLicenseScanConfigs analyzeIgnoreOrgWideCustomLicenseScanConfigs) then Ignore else Use
 
 configGrepToGrep :: ConfigGrepEntry -> GrepEntry
 configGrepToGrep configGrep = GrepEntry (configGrepMatchCriteria configGrep) (configGrepName configGrep)

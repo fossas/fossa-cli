@@ -42,7 +42,7 @@ import App.Fossa.Config.Analyze (AnalyzeConfig (AnalyzeConfig), ExperimentalAnal
 import App.Fossa.Config.Analyze qualified as ANZ
 import App.Fossa.Config.Analyze qualified as VSI
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
-import App.Fossa.Lernie.Types (GrepOptions (..))
+import App.Fossa.Lernie.Types (GrepOptions (..), OrgWideCustomLicenseConfigPolicy (..))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency (..))
 import App.Types (OverrideDynamicAnalysisBinary (..))
@@ -374,7 +374,7 @@ grepOptions =
   GrepOptions
     { customLicenseSearch = []
     , keywordSearch = []
-    , ignoreOrgWideCustomLicenseScanConfigs = False
+    , ignoreOrgWideCustomLicenseScanConfigs = Use
     }
 
 #ifdef mingw32_HOST_OS
