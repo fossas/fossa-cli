@@ -30,7 +30,6 @@ module Effect.Exec (
 ) where
 
 import App.Support (reportDefectMsg)
-import App.Types (SystemPath (unSystemPath), SystemPathExt (..))
 import App.Util (SupportedOS (Windows), runningInOS)
 import Control.Algebra (Has)
 import Control.Carrier.Reader (Reader, ask)
@@ -86,6 +85,8 @@ import System.Process.Typed (
  )
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
+import DepTypes (DepType)
+import App.Types (SystemPath (unSystemPath), SystemPathExt (unSystemPathExt))
 
 data Command = Command
   { cmdName :: Text
@@ -578,9 +579,6 @@ execCurrentDirStdinThrow cmd stdin = do
     Left failure -> fatal (CommandFailed failure)
     Right stdout -> pure stdout
 
--- | Shorthand for the effects needed to select a candidate analysis command.
-type CandidateCommandEffs sig m = (Has Diagnostics sig m, Has Exec sig m, Has (Reader OverrideDynamicAnalysisBinary) sig m)
-
 -- | Describe a set of command names and the arguments used to validate the command names.
 -- Optionally, also specify the override kind for the command, which is used
 -- to look for a potential override command provided by the user from the environment.
@@ -590,56 +588,6 @@ data CandidateAnalysisCommands = CandidateAnalysisCommands
   , candidateOverrideKind :: Maybe DepType
   }
   deriving (Show)
-
--- | Convenience function for creating a @CandidateAnalysisCommands@ with a single candidate command.
-mkSingleCandidateAnalysisCommand :: Text -> [Text] -> Maybe DepType -> CandidateAnalysisCommands
-mkSingleCandidateAnalysisCommand cmd = CandidateAnalysisCommands (NE.singleton cmd)
-
--- | Create a @Command@ for dynamic analysis of a project of the given @DepType@ from the list of provided commands.
---
--- This function selects the appropriate binary to use given the environment
--- and creates the command with the provided args and error handling semantics.
---
--- It is also possible that no supported command is valid in the provided context;
--- in such a case a diagnostics error is thrown in @m@.
-mkAnalysisCommand ::
-  ( CandidateCommandEffs sig m
-  ) =>
-  CandidateAnalysisCommands ->
-  Path Abs Dir ->
-  [Text] ->
-  AllowErr ->
-  m Command
-mkAnalysisCommand candidates@CandidateAnalysisCommands{..} workdir args allowErr =
-  context ("Make analysis command from " <> toText (show candidates)) $ do
-    (overrideBinaries :: OverrideDynamicAnalysisBinary) <- ask
-    cmd <- case candidateOverrideKind of
-      Just dt -> case Map.lookup dt (unOverrideDynamicAnalysisBinary overrideBinaries) of
-        Nothing -> context "Command override supported, but not specified" $ selectBestCmd workdir candidates
-        Just cmd -> context ("Command override provided: " <> cmd) . selectBestCmd workdir $ withCmdOverride cmd
-      Nothing -> context "Override not supported for this command" $ selectBestCmd workdir candidates
-    pure $ Command{cmdName = cmd, cmdArgs = args, cmdAllowErr = allowErr}
-  where
-    withCmdOverride :: Text -> CandidateAnalysisCommands
-    withCmdOverride override =
-      CandidateAnalysisCommands
-        { candidateCmdNames = NE.cons override candidateCmdNames
-        , candidateCmdArgs = candidateCmdArgs
-        , candidateOverrideKind = candidateOverrideKind
-        }
-
--- | Given a set of possible binaries to try, choose the best one to use for dynamic analysis of this @DepType@.
-selectBestCmd :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> CandidateAnalysisCommands -> m Text
-selectBestCmd workdir CandidateAnalysisCommands{..} = selectBestCmd' (NE.toList candidateCmdNames)
-  where
-    selectBestCmd' :: (Has Diagnostics sig m, Has Exec sig m) => [Text] -> m Text
-    selectBestCmd' (cmd : remaining) = context ("Evaluate command: " <> cmd) $ do
-      let attempt = Command{cmdName = cmd, cmdArgs = candidateCmdArgs, cmdAllowErr = Never}
-      output <- recover . warnOnErr (CandidateCommandFailed cmd candidateCmdArgs) $ execThrow workdir attempt
-      case output of
-        Nothing -> selectBestCmd' remaining
-        Just _ -> pure cmd
-    selectBestCmd' [] = fatalText "unable to select best binary to analyze project: none passed validation"
 
 data CandidateCommandFailed = CandidateCommandFailed {failedCommand :: Text, failedArgs :: [Text]}
 instance ToDiagnostic CandidateCommandFailed where
