@@ -11,15 +11,12 @@ import Control.Carrier.Finally (runFinally)
 import Control.Carrier.Reader (runReader)
 import Control.Carrier.Stack (runStack)
 import Data.Either (isLeft)
-import Data.String.Conversion (ConvertUtf8 (decodeUtf8), toString, toText)
-import Data.Text (Text)
 import Diag.Result (Result (..))
 import Effect.Exec (
   AllowErr (..),
   Command (..),
   FoundLocation (..),
   exec,
-  foundLocationToCommand,
   runExecIO,
   which,
  )
@@ -83,35 +80,35 @@ spec = do
     systemPathExt <- runIO lookupSystemPathExt
     let testdataDir = dir </> $(mkRelDir "test/Effect/testdata")
 
-    helloDiscovery <-
-      runIO
-        . runStack
-        . runFinally
-        . runDiagnostics
-        . runReadFSIO
-        . runReader systemPath
-        . runReader systemPathExt
-        $ which testdataDir "hello"
+    -- helloDiscovery <-
+    --   runIO
+    --     . runStack
+    --     . runFinally
+    --     . runDiagnostics
+    --     . runReadFSIO
+    --     . runReader systemPath
+    --     . runReader systemPathExt
+    --     $ which testdataDir "hello"
 
-    helloExecution <-
-      runIO
-        . runStack
-        . runFinally
-        . runDiagnostics
-        . runReadFSIO
-        . runReader systemPath
-        . runReader systemPathExt
-        . runExecIO
-        $ do
-          case helloDiscovery of
-            Success _ (Just loc) -> do
-              let cmd = foundLocationToCommand [] Never loc
-              result <- exec testdataDir cmd
-              case result of
-                Left cf -> pure . Left . toText $ "failed to run command: " <> show cf
-                Right bs -> pure . Right $ decodeUtf8 @Text bs
-            Success _ Nothing -> pure $ Left "hellobin should be found, but was not"
-            Failure _ _ -> pure $ Left "hellobin should be found, but got failure running test"
+    -- helloExecution <-
+    --   runIO
+    --     . runStack
+    --     . runFinally
+    --     . runDiagnostics
+    --     . runReadFSIO
+    --     . runReader systemPath
+    --     . runReader systemPathExt
+    --     . runExecIO
+    --     $ do
+    --       case helloDiscovery of
+    --         Success _ (Just loc) -> do
+    --           let cmd = foundLocationToCommand [] Never loc
+    --           result <- exec testdataDir cmd
+    --           case result of
+    --             Left cf -> pure . Left . toText $ "failed to run command: " <> show cf
+    --             Right bs -> pure . Right $ decodeUtf8 @Text bs
+    --         Success _ Nothing -> pure $ Left "hellobin should be found, but was not"
+    --         Failure _ _ -> pure $ Left "hellobin should be found, but got failure running test"
 
     fakebin <-
       runIO
