@@ -116,6 +116,35 @@ impl From<Kind> for snippets::Kind {
 }
 
 /// The normalization used to extract this snippet.
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Display)]
+#[strum(serialize_all = "snake_case")]
+pub enum Method {
+    /// Generated from the text with the specified normalization applied.
+    Normalized(Transform),
+
+    /// Generated from the text as written.
+    Raw,
+}
+
+impl Method {
+    /// Create an iterator over possible methods used for snippet extraction.
+    pub fn iter() -> impl Iterator<Item = Method> {
+        Self::iter_constrained(Transform::iter())
+    }
+
+    /// Create an iterator over possible methods used for snippet extraction,
+    /// constrained to the provided transforms.
+    pub fn iter_constrained(
+        transforms: impl IntoIterator<Item = Transform>,
+    ) -> impl Iterator<Item = Method> {
+        std::iter::once(Method::Raw)
+            .chain(transforms.into_iter().map(Method::Normalized))
+            .collect_vec()
+            .into_iter()
+    }
+}
+
+/// The normalization used to extract this snippet.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter)]
 #[strum(serialize_all = "snake_case")]
 pub enum Transform {
@@ -364,13 +393,9 @@ impl std::fmt::Display for Fingerprint {
 
 impl std::fmt::Debug for Fingerprint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if f.alternate() {
-            f.debug_tuple("Fingerprint")
-                .field(&self.to_string())
-                .finish()
-        } else {
-            f.debug_tuple("Fingerprint").field(&self.0).finish()
-        }
+        f.debug_tuple("Fingerprint")
+            .field(&self.to_string())
+            .finish()
     }
 }
 

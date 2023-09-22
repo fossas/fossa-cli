@@ -90,7 +90,9 @@ pub enum State {
 /// An [`extract::Snippet`] augmented with ingestion metadata.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, CopyGetters, Getters)]
 pub struct ApiSnippet {
+    /// The snippet represented.
     #[serde(flatten)]
+    #[getset(get = "pub")]
     snippet: extract::Snippet,
 
     /// The full locator of the project from which this locator was extracted.
