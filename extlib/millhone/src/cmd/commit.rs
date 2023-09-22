@@ -14,7 +14,7 @@ use strum::{Display, IntoEnumIterator};
 use tap::{Pipe, Tap, TapFallible};
 use tracing::{debug, info, warn};
 
-use crate::cmd::{latest_temp_dir, MatchingSnippet};
+use crate::cmd::MatchingSnippet;
 
 /// Options for snippet ingestion.
 #[derive(Debug, Parser, Getters)]
@@ -22,11 +22,8 @@ use crate::cmd::{latest_temp_dir, MatchingSnippet};
 #[clap(version)]
 pub struct Subcommand {
     /// The path to the directory in which the `analyze` subcommand wrote its output.
-    ///
-    /// If not specified, attempts to discover the most recent
-    /// temporary directory created by the `analyze` subcommand.
     #[clap(long)]
-    analyze_output_dir: Option<PathBuf>,
+    analyze_output_dir: PathBuf,
 
     /// The output format for the generated `fossa-deps` file.
     #[clap(long, default_value_t = OutputFormat::Json)]
@@ -78,7 +75,7 @@ pub enum OutputFormat {
 #[tracing::instrument(skip_all, fields(target = %opts.target().display()))]
 pub fn main(opts: Subcommand) -> Result<(), Report> {
     info!(
-        analyze_dir = ?opts.analyze_output_dir,
+        analyze_output_dir = ?opts.analyze_output_dir,
         format = %opts.format,
         targets = ?opts.targets,
         kinds = ?opts.kinds,
@@ -97,15 +94,12 @@ pub fn main(opts: Subcommand) -> Result<(), Report> {
         );
     }
 
-    let analyze_output_dir = opts
-        .analyze_output_dir()
-        .as_ref()
-        .cloned()
-        .map(Ok)
-        .or_else(|| latest_temp_dir().transpose())
-        .transpose()
-        .context("discover most recently created temp dir")?
-        .ok_or_else(|| eyre!("Unable to find the output of previous `analyze` subcommand"))?;
+    if !opts.analyze_output_dir().exists() {
+        bail!(
+            "The directory specified for `analyze` output, '{}', does not exist.",
+            opts.analyze_output_dir().display()
+        );
+    }
 
     let match_targets = default_if_empty(opts.targets(), Target::iter);
     let match_kinds = default_if_empty(opts.kinds(), Kind::iter);
@@ -122,9 +116,9 @@ pub fn main(opts: Subcommand) -> Result<(), Report> {
             .collect::<HashSet<_>>()
     };
 
-    let deps = std::fs::read_dir(&analyze_output_dir)
-        .wrap_err_with(|| format!("list contents of '{}'", analyze_output_dir.display()))?
-        .inspect(|entry| debug!(analyze_output_dir = %analyze_output_dir.display(), ?entry, "walk contents"))
+    let deps = std::fs::read_dir(opts.analyze_output_dir())
+        .wrap_err_with(|| format!("list contents of '{}'", opts.analyze_output_dir().display()))?
+        .inspect(|entry| debug!(analyze_output_dir = %opts.analyze_output_dir().display(), ?entry, "walk contents"))
         .filter_ok(|entry| {
             let path = entry.path();
             path.extension()

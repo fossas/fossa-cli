@@ -3,7 +3,10 @@ use std::{fs, path::PathBuf};
 use clap::Parser;
 use getset::Getters;
 use millhone::{api::prelude::*, extract::ContentSnippet};
-use stable_eyre::{eyre::Context, Report};
+use stable_eyre::{
+    eyre::{bail, Context},
+    Report,
+};
 use tracing::{debug, info, warn};
 use walkdir::WalkDir;
 
@@ -15,12 +18,12 @@ use crate::cmd::MatchingSnippet;
 #[clap(version)]
 pub struct Subcommand {
     /// The directory to which matches are output.
-    ///
-    /// If not specified, matches are output to a temporary directory, which is not cleaned up on exit.
-    /// The path to this temporary directory is written to `stdout` follwed by a newline.
-    /// It is the responsibility of the user to clean up this directory after analysis.
     #[clap(long, short)]
-    output: Option<PathBuf>,
+    output: PathBuf,
+
+    /// If specified, overwrites the output directory if it exists.
+    #[clap(long)]
+    overwrite_output: bool,
 
     #[clap(flatten)]
     auth: super::ApiAuthentication,
@@ -51,10 +54,19 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
     let mut total_count_snippets = 0usize;
     let mut total_count_files = 0usize;
 
-    let output_dir = match opts.output() {
-        Some(dir) => dir.to_owned(),
-        None => super::namespaced_temp_dir()?,
-    };
+    if opts.output().exists() {
+        if opts.overwrite_output {
+            std::fs::remove_dir_all(opts.output()).context("remove existing output directory")?;
+        } else {
+            bail!(
+                "The output directory '{}' already exists.",
+                opts.output().display(),
+            );
+        }
+    }
+    if !opts.output().exists() {
+        std::fs::create_dir_all(opts.output()).context("create output directory")?;
+    }
 
     // Future enhancement: walk and analyze in parallel with rayon.
     let snippet_opts = opts.extract().into();
@@ -120,7 +132,8 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
             .replace(std::path::MAIN_SEPARATOR_STR, "_");
 
         let current_ext = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
-        let record_path = output_dir
+        let record_path = opts
+            .output()
             .join(&record_name)
             .with_extension(format!("{current_ext}.json"));
 
@@ -142,6 +155,5 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
         "Finished extracting snippets",
     );
 
-    println!("{}", output_dir.display());
     Ok(())
 }

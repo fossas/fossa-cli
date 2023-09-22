@@ -108,6 +108,3 @@ After running `millhone analyze`, the next step is to run `millhone commit`.
 
 These are separate steps to give users the ability to edit or review the matched data
 prior to submitting the results to FOSSA.
-
-If this separation is not desired, users can also run `millhone analyze --commit`,
-which merges the two operations into one step.
