@@ -97,7 +97,7 @@ pub fn latest_temp_dir() -> Result<Option<PathBuf>, std::io::Error> {
 #[cfg(test)]
 mod tests {
 
-    use std::path::Path;
+    use std::{path::Path, thread::sleep, time::Duration};
 
     use super::*;
 
@@ -115,6 +115,10 @@ mod tests {
     #[test]
     fn finds_latest_temp_dir() {
         let a = namespaced_temp_dir().expect("create 'a'");
+
+        // Windows, unfortunately, was flaky without this.
+        sleep(Duration::from_secs(1));
+
         let b = namespaced_temp_dir()
             .tap_err(|_| cleanup(&a))
             .expect("create 'b'");
