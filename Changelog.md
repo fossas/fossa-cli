@@ -1,5 +1,13 @@
 # FOSSA CLI Changelog
 
+## v3.8.12
+
+- Conda: Support simple Pip packages in `environment.yml`. ([#1275](https://github.com/fossas/fossa-cli/pull/1275))
+
+## v3.8.11
+
+- Maven: Prevent infinite recursion from Pom file property interpolation. ([#1268](https://github.com/fossas/fossa-cli/pull/1268))
+
 ## v3.8.10
 
 - Reports: Can now export reports formatted as CycloneDX (json/xml), CSV, HTML, and JSON SPDX. ([#1266](https://github.com/fossas/fossa-cli/pull/1266))
