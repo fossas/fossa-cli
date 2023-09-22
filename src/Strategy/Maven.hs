@@ -71,7 +71,6 @@ getDeps ::
   m DependencyResults
 getDeps (MavenProject closure) = do
   (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis closure <||> getStaticAnalysis closure
-  -- (graph, graphBreadth) <- context "Maven" $ getStaticAnalysis closure
   pure $
     DependencyResults
       { dependencyGraph = graph
