@@ -399,6 +399,16 @@ impl<'de> serde::Deserialize<'de> for Fingerprint {
 
 /// The location, using textual "line, column" indicators, for a snippet.
 ///
+/// Byte locations are 0-based, while line and column indexes are 1-based:
+/// ```ignore
+/// // Remember that while `\n` is two columns as typed, it's 1 in actual text.
+/// let input = b"hello\nworld\nand beyond!";
+/// //            ^   ^  ^   ^  ^        ^
+/// //   bytes:   0   4  6   10 12       21
+/// // columns:   1   5  1   5  1        11
+/// //   lines:   1      2      3
+///```
+///
 /// Line end is inclusive: if a snippet starts on line 1 and ends before
 /// the end of the line, `line_end` is line 1 as well.
 ///
