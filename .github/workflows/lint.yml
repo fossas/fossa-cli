@@ -6,7 +6,7 @@ jobs:
   linter-check:
     name: linter-check
     runs-on: ubuntu-latest
-    container: ghcr.io/fossas/haskell-dev-tools:9.0.2
+    container: ghcr.io/fossas/haskell-dev-tools:9.4.7
 
     steps:
       - uses: actions-rs/toolchain@v1
@@ -41,7 +41,7 @@ jobs:
   format-check:
     name: formatter-check
     runs-on: ubuntu-latest
-    container: ghcr.io/fossas/haskell-dev-tools:9.0.2
+    container: ghcr.io/fossas/haskell-dev-tools:9.4.7
 
     steps:
       - uses: actions-rs/toolchain@v1
@@ -60,7 +60,7 @@ jobs:
   cabal-format-check:
     name: cabal-format-check
     runs-on: ubuntu-latest
-    container: ghcr.io/fossas/haskell-dev-tools:9.0.2
+    container: ghcr.io/fossas/haskell-dev-tools:9.4.7
 
     steps:
       - uses: actions/checkout@v2
@@ -74,10 +74,10 @@ jobs:
     name: cabal-install-check
     runs-on: ubuntu-latest
     # Be sure to update the env var below
-    container: ghcr.io/fossas/haskell-dev-tools:9.0.2
+    container: ghcr.io/fossas/haskell-dev-tools:9.4.7
 
     env:
-      GHC_VERSION: '9.0.2'
+      GHC_VERSION: '9.4.7'
 
     steps:
       - uses: actions/checkout@v3
