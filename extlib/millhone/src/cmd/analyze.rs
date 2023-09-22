@@ -95,6 +95,9 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
             let matching_snippets = client
                 .lookup_snippets(fingerprint)
                 .wrap_err_with(|| format!("lookup snippet for fingerprint '{fingerprint}'"))?;
+            if matching_snippets.is_empty() {
+                continue;
+            }
 
             let record = MatchingSnippet::builder()
                 .found_in(found.snippet().file_path())
@@ -104,6 +107,10 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
                 .build();
 
             records.push(record);
+        }
+
+        if records.is_empty() {
+            continue;
         }
 
         let record_name = path
