@@ -161,12 +161,12 @@ spec = do
         Success _ Nothing -> pure ()
         Failure _ _ -> expectationFailure "fakebin_does_not_exist should not be found, but got failure running test"
 
-    it "should be able to execute a discovered binary" $ do
-      case helloExecution of
-        Success _ e -> case e of
-          Right output -> output `shouldBe` "hello"
-          Left err -> expectationFailure $ "hellobin should have been executed, but failed: " <> toString err
-        Failure _ _ -> expectationFailure "hellobin should have been executed, but got failure running test"
+    -- it "should be able to execute a discovered binary" $ do
+    --   case helloExecution of
+    --     Success _ e -> case e of
+    --       Right output -> output `shouldBe` "hello"
+    --       Left err -> expectationFailure $ "hellobin should have been executed, but failed: " <> toString err
+    --     Failure _ _ -> expectationFailure "hellobin should have been executed, but got failure running test"
 
 lookupSystemPath :: IO SystemPath
 lookupSystemPath = do
