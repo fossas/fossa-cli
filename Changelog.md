@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.8.13
+
+- Cocoapods: Allow Podfile.lock without EXTERNAL SOURCES field ([#1279](https://github.com/fossas/fossa-cli/pull/1279))
+
 ## v3.8.12
 
 - Conda: Support simple Pip packages in `environment.yml`. ([#1275](https://github.com/fossas/fossa-cli/pull/1275))
