@@ -270,7 +270,7 @@ headerBlobSpec bs = describe "header blob parsing" $ do
 
     it "Parses entries" $ do
       -- this database is large, so we'll only check the first 2 entries
-      let entries = fromRight [] $ (NonEmpty.take 2 . entryMetadatas) <$> eBlob
+      let entries = either (const []) (NonEmpty.take 2 . entryMetadatas) eBlob
 
       entries
         `shouldMatchList` [ EntryMetadata

@@ -111,9 +111,7 @@ spec = do
 buildImportsOf :: ContainerScan -> [Locator]
 buildImportsOf scan =
   concatMap buildImports $
-    mapMaybe
-      sourceUnitBuild
-      (concatMap srcUnits $ imageLayers . imageData $ scan)
+    concatMap (mapMaybe sourceUnitBuild . srcUnits) (imageLayers . imageData $ scan)
 
 exampleImgWithoutTag :: Text
 exampleImgWithoutTag = "redis"
