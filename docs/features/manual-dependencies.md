@@ -6,7 +6,16 @@ FOSSA offers a way to manually upload dependencies provided we support the depen
 
 The FOSSA CLI will automatically read a `fossa-deps.yml` or a `fossa-deps.json` file in the root directory (usually the current working directory) when `fossa analyze` is run and parse dependencies from it. These dependencies will be added to the dependencies that are normally found when `fossa analyze` is run in the directory.
 
+FOSSA CLI supports 3 types of manual dependencies:
+1. Referenced dependencies: Used for packages that originate from a known package manager.
+2. Custom dependencies: Used to add a unique dependency to your dependency graph and the metadata you wish to associate with it.
+3. Remote dependencies: Used when all you have is the URL to an archive.
+
+Referenced dependencies are the only type that supports vulnerabilities, custom and remote dependencies do not.
+
 > Tip: Use a script to generate this file before running `fossa analyze` to keep your results updated.
+
+### Referenced Dependencies
 
 To manually specify a dependency, you must provide the package type, package name, and optionally a package version, under the `referenced-dependencies` array, as shown here:
 
@@ -19,13 +28,13 @@ referenced-dependencies:
   version: "2.1.7"
 ```
 
-The `name` and `type` fields are required and specify the name of the dependency and where to find it. The `version` field is optional and specifies the preferred version of dependency.
+The `name` and `type` fields are required and specify the name of the dependency and where to find it. The `version` field is optional and specifies the preferred version of the dependency.
 
-Note: When parsed, YAML considers text that could be a decimal number (such as 1.0 or 2.0) to be a number, not a string. This means that we'd parse the version 1.0 as 1. This probably isn't what you want. To avoid this, surround your version with quotes, as in "1.0".
+Note: When parsed, YAML considers text that could be a decimal number (such as 1.0 or 2.0) to be a number, not a string. This means that 1.0 would be parsed as 1. This probably isn't what you want. To avoid this, surround your version with quotes, as in "1.0".
 
 Supported dependency types:
 
-- `bower` - Bower dependencies that are typically found at found at [bower.io](https://registry.bower.io).
+- `bower` - Bower dependencies that are typically found at [bower.io](https://registry.bower.io).
 <!-- markdown-link-check-disable-next-line -->
 - `cargo` - Rust dependencies that are typically found at [crates.io](https://crates.io/).
 - `carthage` - Dependencies as specified by the [Carthage](https://github.com/Carthage/Carthage) package manager.
@@ -33,7 +42,7 @@ Supported dependency types:
 - `cpan` - Dependencies located on the [CPAN package manager](https://www.cpan.org/).
 - `cran` - Dependencies located on the [CRAN](https://cran.r-project.org/) like repository.
 - `gem` - Dependencies which can be found at [RubyGems.org](https://rubygems.org/).
-- `git` - Github projects (which appear as dependencies in many package managers). Specified as the full github repository `https://github.com/fossas/fossa-cli`.
+- `git` - Github projects (which appear as dependencies in many package managers). Specified as the full GitHub repository `https://github.com/fossas/fossa-cli`.
 - `go` - Go specific dependency. Many Go dependencies are located on Github, but there are some which look like the following `go.mongodb.org/mongo-driver` that have custom Go URLs.
 - `hackage` - Haskell dependencies found at [Hackage](https://hackage.haskell.org/).
 - `hex` - Erlang and Elixir dependencies that are found at [Hex.pm](https://hex.pm/).
@@ -45,9 +54,8 @@ Supported dependency types:
 - `pypi` - Python dependencies that are typically found at [Pypi.org](https://pypi.org/).
 - `swift` - Swift dependencies using the [Swift Package Manager](https://www.swift.org/package-manager/).
 - `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
-- `url` - The URL type allows you to specify only the download location of an archive (e.g.: `.zip`, .`tar.gz`, etc.) in the `name` field and the FOSSA backend will attempt to download and scan it. Example for a github source dependency `https://github.com/fossas/fossa-cli/archive/refs/tags/v3.3.12.tar.gz`. The `version` field will be silently ignored for `url` type dependencies.
 
-Following dependency types are also supported but they require `arch`, `os`, and `osVersion` attributes:
+The following dependency types are also supported but they require `arch`, `os`, and `osVersion` attributes:
 
 - `apk` - Alpine packages. 
 - `deb` - Debian packages.
@@ -129,11 +137,13 @@ custom-dependencies:
 
 Note: When parsed, YAML considers text that could be a decimal number (such as 1.0 or 2.0) to be a number, not a string. This means that we'd parse the version 1.0 as 1. This probably isn't what you want. To avoid this, surround your version with quotes, as in "1.0".
 
+> Note: Custom dependencies **do not** support vulnerabilites.
+
 ### Remote dependencies
 
-FOSSA also supports dependencies that can't be automatically discovered or identified, but where the user has a URL where FOSSA can download the source code of the dependency.
+FOSSA also supports dependencies when the user has a URL to an archive of the source code of the dependency.
 
-To specify a remote dependency, you must provide the name, version, and download URL of the dependency. The FOSSA backend will attempt to download and scan any source code contained in an archive hosted at this URL.
+To specify a remote dependency, you must provide the name, version, and download URL of the dependency. The FOSSA backend will attempt to download and scan any source code contained in an archive hosted at this URL. The following archive types are supported: *.zip, *.tar, *.tar.gz, *.tar.bz2, *.tar.xz.
 
 For example, for a dependency released on a GitHub release, your URL might look like: `https://github.com/fossas/fossa-cli/archive/refs/tags/v3.3.12.tar.gz`.
 
@@ -141,7 +151,7 @@ You can also optionally add metadata fields ("description" and "homepage") to po
 
 ```yaml
 remote-dependencies:
-# Remote dependencies need name, version, and url
+# Remote dependencies require name, version, and URL fields.
 - name: foo
   version: 1.2.3
   url: https://www.fooarchive.tar.gz
@@ -153,6 +163,8 @@ remote-dependencies:
     description: Provides foo and a helpful interface around foo-like tasks.
     homepage: https://www.foowrapper-home.com
 ```
+
+> Note: Remote dependencies **do not** support vulnerabilites.
 
 ## Performance
 

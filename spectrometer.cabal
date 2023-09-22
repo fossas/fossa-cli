@@ -57,12 +57,14 @@ common lang
     -Wmissing-export-lists -Wredundant-constraints
 
 -- TODO: Switch `semver` back to `versions` since https://github.com/fosskers/versions/issues/47 is fixed. This package maintainer seems much more responsive. Contrast https://github.com/brendanhay/semver/issues/12.
+-- Upgrade text and mtl after codec-rpm conflict is fixed, probably as part of 9.4 upgrade.
+-- Upgrade zip after text is upgraded
 common deps
   build-depends:
-    , aeson                        ^>=2.1.0.0
+    , aeson                        ^>=2.1.2.0
     , aeson-pretty                 ^>=0.8.9
     , algebraic-graphs             ^>=0.7
-    , ansi-terminal                ^>=0.11
+    , ansi-terminal                ^>=1.0
     , async                        ^>=2.2.2
     , attoparsec                   ^>=0.14.1
     , base64-bytestring            ^>=1.2.1.0
@@ -77,8 +79,8 @@ common deps
     , conduit-zstd                 ^>=0.0.2.0
     , containers                   ^>=0.6.0
     , cpio-conduit                 ^>=0.7.0
-    , cryptonite                   ^>=0.30
-    , deepseq                      >=1.4.5.0
+    , crypton                      ^>=0.33
+    , deepseq                      ^>=1.4
     , direct-sqlite                ^>=2.3.27
     , directory                    ^>=1.3.6.1
     , either                       ^>=5.0.2
@@ -94,14 +96,14 @@ common deps
     , http-client                  ^>=0.7.1
     , http-conduit                 ^>=2.3.0
     , http-types                   ^>=0.12.3
-    , lzma                         ^>=0.0.0.3
+    , lzma                         ^>=0.0.1.0
     , lzma-conduit                 ^>=1.2.1
-    , megaparsec                   ^>=9.2.0
-    , modern-uri                   ^>=0.3.4
+    , megaparsec                   ^>=9.4.0
+    , modern-uri                   ^>=0.3.6
     , mtl                          ^>=2.2.2
     , network                      ^>=3.1.2.0
     , network-uri                  ^>=2.6.4.0
-    , optparse-applicative         ^>=0.17.0.0
+    , optparse-applicative         ^>=0.18.0.0
     , os-release                   ^>=1.0.2
     , parser-combinators           ^>=1.3
     , path                         ^>=0.9.0
@@ -121,16 +123,16 @@ common deps
     , template-haskell             ^>=2.17
     , text                         ^>=1.2.3
     , th-lift-instances            ^>=0.1.17
-    , time                         >=1.9      && <1.11
+    , time                         >=1.9      && <1.13
     , tomland                      ^>=1.3.3.0
     , transformers
     , typed-process                ^>=0.2.6
-    , unix-compat                  ^>=0.6
+    , unix-compat                  ^>=0.7
     , unliftio-core                ^>=0.2.0.1
     , unordered-containers         ^>=0.2.10
     , uuid                         ^>=1.3.15
     , vector                       ^>=0.13.0.0
-    , versions                     ^>=5.0.0
+    , versions                     ^>=6.0.0
     , word8                        ^>=0.1.3
     , xml                          ^>=1.3.14
     , yaml                         ^>=0.11.8
@@ -139,6 +141,7 @@ common deps
     , zlib                         ^>=0.6.2.1
 
   if !os(windows)
+    -- included with GHC, consider upgrading this as part of a ghc upgrade
     build-depends: unix ^>=2.7.2.2
 
 library
@@ -195,6 +198,8 @@ library
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
     App.Fossa.FirstPartyScan
+    App.Fossa.Lernie.Analyze
+    App.Fossa.Lernie.Types
     App.Fossa.LicenseScan
     App.Fossa.LicenseScanner
     App.Fossa.ListTargets
@@ -353,6 +358,7 @@ library
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer
     Strategy.Conan.ConanGraph
+    Strategy.Conan.Enrich
     Strategy.Conan.Version
     Strategy.Conda
     Strategy.Conda.CondaEnvCreate
@@ -371,10 +377,8 @@ library
     Strategy.Fpm
     Strategy.Glide
     Strategy.Go.GlideLock
-    Strategy.Go.GoList
     Strategy.Go.GoListPackages
     Strategy.Go.Gomod
-    Strategy.Go.GoModGraph
     Strategy.Go.GopkgLock
     Strategy.Go.GopkgToml
     Strategy.Go.Gostd
@@ -505,6 +509,7 @@ test-suite unit-tests
     App.Fossa.Container.AnalyzeNativeSpec
     App.Fossa.Container.AnalyzeNativeUploadSpec
     App.Fossa.FirstPartyScanSpec
+    App.Fossa.LernieSpec
     App.Fossa.LicenseScannerSpec
     App.Fossa.ManualDepsSpec
     App.Fossa.ProjectInferenceSpec
@@ -520,6 +525,7 @@ test-suite unit-tests
     App.Fossa.VSI.DynLinked.UtilSpec
     App.Fossa.VSI.FingerprintSpec
     App.Fossa.VSI.IAT.ResolveSpec
+    App.Fossa.VSI.TypesSpec
     BerkeleyDB.BerkeleyDBSpec
     BundlerSpec
     Cargo.CargoTomlSpec
@@ -532,6 +538,7 @@ test-suite unit-tests
     Composer.ComposerJsonSpec
     Composer.ComposerLockSpec
     Conan.ConanGraphSpec
+    Conan.EnrichSpec
     Conan.VersionSpec
     Conda.CondaEnvCreateSpec
     Conda.EnvironmentYmlSpec
@@ -568,8 +575,6 @@ test-suite unit-tests
     Fossa.API.TypesSpec
     Go.GlideLockSpec
     Go.GoListPackagesSpec
-    Go.GoListSpec
-    Go.GoModGraphSpec
     Go.GomodSpec
     Go.GopkgLockSpec
     Go.GopkgTomlSpec
@@ -639,9 +644,9 @@ test-suite unit-tests
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.10.0.1
   build-depends:
-    , hedgehog          ^>=1.1.1
-    , hspec             ^>=2.10.0.1
-    , hspec-core        ^>=2.10.0.1
+    , hedgehog          ^>=1.4
+    , hspec             ^>=2.11
+    , hspec-core        ^>=2.11
     , hspec-hedgehog    ^>=0.0.1.2
     , hspec-megaparsec  ^>=2.2
     , HUnit             ^>=1.6.0
@@ -678,8 +683,8 @@ test-suite integration-tests
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.10.0.1
   build-depends:
-    , hedgehog      ^>=1.1.1
-    , hspec         ^>=2.10.0.1
+    , hedgehog      ^>=1.4
+    , hspec         ^>=2.11
     , req-conduit   ^>=1.0.1
     , spectrometer
 

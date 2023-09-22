@@ -12,6 +12,7 @@ module App.Fossa.Analyze.Types (
 import App.Fossa.Analyze.Project (ProjectResult)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
 import App.Types (OverrideDynamicAnalysisBinary, SystemPath, SystemPathExt)
+import App.Fossa.Lernie.Types (LernieResults)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Effect.Lift (Lift)
@@ -75,10 +76,11 @@ type AnalyzeStaticTaskEffs sig m =
 
 data AnalysisScanResult = AnalysisScanResult
   { analyzersScanResult :: [DiscoveredProjectScan]
-  , vsiScanResult :: Result (Maybe SourceUnit)
+  , vsiScanResult :: Result (Maybe [SourceUnit])
   , binaryDepsScanResult :: Result (Maybe SourceUnit)
   , fossaDepsScanResult :: Result (Maybe SourceUnit)
   , dynamicLinkingResult :: Result (Maybe SourceUnit)
+  , lernieResult :: Result (Maybe LernieResults)
   }
 
 data DiscoveredProjectScan

@@ -22,12 +22,12 @@ parsers correctly, and links to a few tutorials.
 
 If a top-level component of a graph of dependencies is a test dependency, then its direct children are also test
 dependencies, as are their direct children, and so on.  In some cases, the build tool/manifest files/lock files will
-tell us this information, but sometimes, we have to propogate these environments downwards ourselves.  This is called
+tell us this information, but sometimes, we have to propagate these environments downwards ourselves.  This is called
 [`graph hydration`](graph-hydration.md), and is handled by the `Graphing.Hydrate` module.
 
 ## Testing with effects
 
-Testing with `hspec` provides several useful assertion/organization methods.  Wrtiting business logic with
+Testing with `hspec` provides several useful assertion/organization methods.  Writing business logic with
 `fused-effects` allows us to write expressive, convenient, and safe code.  Testing those `fused-effects`-based
 functions with `hspec` is a nightmare.  In short, `hspec` is `IO`-only, and `fused-effects` operates on free-ish
 monads (not really, but it does work similarly).  To make this easier for us, we created the `Test.Effect` module,

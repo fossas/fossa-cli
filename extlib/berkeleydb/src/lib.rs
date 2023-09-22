@@ -43,7 +43,7 @@ impl BerkeleyDB {
     /// Open the database and parse its metadata, which is used for future reading.
     pub fn open(path: &PathBuf) -> Result<Self> {
         debug!("📂 Open DB from file system: {path:?}");
-        let mut file = File::open(&path).context("open file")?;
+        let mut file = File::open(path).context("open file")?;
 
         let mut input = Vec::new();
         file.read_to_end(&mut input).context("buffer file")?;

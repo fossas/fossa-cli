@@ -8,11 +8,7 @@ allow-newer:
   --
   -- we can remove this if/when 0.1.3 is released on hackage
   , git-config:megaparsec
-  -- tomland neesd a relaxed upper bound on megaparsec. PR open at
-  -- https://github.com/kowainik/tomland/pull/386
-  --
-  -- we can remove this if/when 1.3.3.1 is released on hackage
-  , tomland:megaparsec
+
   -- codec-rpm needs a bump to its attoparsec bound. latest upload to hackage
   -- was in 2018, so we may have to fork when breakage occurs
   , codec-rpm:attoparsec
@@ -59,7 +55,7 @@ source-repository-package
   location: https://github.com/fossas/tar
   tag: 6bd13acc541ae60b5c831823243040e18bd1d957
 
-index-state: hackage.haskell.org 2023-01-11T00:56:49Z
+index-state: hackage.haskell.org 2023-08-28T22:23:10Z
 
 package *
   extra-include-dirs: /opt/homebrew/include

@@ -48,6 +48,8 @@ import App.Fossa.Config.Analyze (
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
+import App.Fossa.Lernie.Analyze (analyzeWithLernie)
+import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
@@ -94,7 +96,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Diag.Result (resultToMaybe)
@@ -123,7 +125,7 @@ import Prettyprinter.Render.Terminal (
   color,
  )
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (LicenseSourceUnit, Locator, SourceUnit, sourceUnitToFullSourceUnit)
+import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
 
 debugBundlePath :: FilePath
@@ -270,6 +272,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       revision = Config.projectRevision cfg
       skipResolutionSet = Config.vsiSkipSet $ Config.vsiOptions cfg
       vendoredDepsOptions = Config.vendoredDeps cfg
+      grepOptions = Config.grepOptions cfg
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
@@ -300,9 +303,28 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir maybeApiOpts vendoredDepsOptions
-  let additionalSourceUnits :: [SourceUnit]
-      additionalSourceUnits = mapMaybe (join . resultToMaybe) [manualSrcUnits, vsiResults, binarySearchResults, dynamicLinkedResults]
-  traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults, binarySearchResults, manualSrcUnits, dynamicLinkedResults]
+  maybeLernieResults <-
+    Diag.errorBoundaryIO . diagToDebug $
+      if filterIsVSIOnly filters
+        then do
+          logInfo "Running in VSI only mode, skipping keyword search and custom-license search"
+          pure Nothing
+        else Diag.context "custom-license & keyword search" . runStickyLogger SevInfo $ analyzeWithLernie basedir maybeApiOpts grepOptions
+  let lernieResults = join . resultToMaybe $ maybeLernieResults
+
+  let -- This makes nice with additionalSourceUnits below, but throws out additional Result data.
+      -- This is ok because 'resultToMaybe' would do that anyway.
+      -- We'll use the original results to output warnings/errors below.
+      vsiResults' :: [SourceUnit]
+      vsiResults' = fromMaybe [] $ join (resultToMaybe vsiResults)
+
+      additionalSourceUnits :: [SourceUnit]
+      additionalSourceUnits = vsiResults' <> mapMaybe (join . resultToMaybe) [manualSrcUnits, binarySearchResults, dynamicLinkedResults]
+  traverse_ (Diag.flushLogs SevError SevDebug) [manualSrcUnits, binarySearchResults, dynamicLinkedResults]
+  -- Flush logs using the original Result from VSI.
+  traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults]
+  -- Flush logs from lernie
+  traverse_ (Diag.flushLogs SevError SevDebug) [maybeLernieResults]
 
   maybeFirstPartyScanResults <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -336,7 +358,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let projectResults = mapMaybe toProjectResult projectScans
   let filteredProjects = mapMaybe toProjectResult projectScans
 
-  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults
+  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
 
   maybeEndpointAppVersion <- case destination of
     UploadScan apiOpts _ -> runFossaApiClient apiOpts $ do
@@ -350,11 +372,24 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult $ Config.filterSet cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
-  let result = buildResult includeAll additionalSourceUnits filteredProjects firstPartyScanResults
-  case checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits firstPartyScanResults of
-    NoneDiscovered -> Diag.fatal ErrNoProjectsDiscovered
-    FilteredAll -> Diag.fatal ErrFilteredAllProjects
-    CountedScanUnits scanUnits -> doUpload result iatAssertion destination basedir jsonOutput revision scanUnits
+  let licenseSourceUnits =
+        case (firstPartyScanResults, lernieResultsSourceUnit =<< lernieResults) of
+          (Nothing, Nothing) -> Nothing
+          (Just firstParty, Just lernie) -> Just $ firstParty <> lernie
+          (Nothing, Just lernie) -> Just lernie
+          (Just firstParty, Nothing) -> Just firstParty
+  let result = buildResult includeAll additionalSourceUnits filteredProjects licenseSourceUnits
+  let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
+
+  -- If we find nothing but keyword search, we exit with an error, but explain that the error may be ignorable.
+  -- We do not want to succeed, because nothing gets uploaded to the API for keyword searches, so `fossa test` will fail.
+  -- So the solution is to still fail, but give a hopefully useful explanation that the error can be ignored if all you were expecting is keyword search results.
+  case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits licenseSourceUnits) of
+    (False, NoneDiscovered) -> Diag.fatal ErrNoProjectsDiscovered
+    (True, NoneDiscovered) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
+    (False, FilteredAll) -> Diag.fatal ErrFilteredAllProjects
+    (True, FilteredAll) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
+    (_, CountedScanUnits scanUnits) -> doUpload result iatAssertion destination basedir jsonOutput revision scanUnits
   pure result
   where
     doUpload result iatAssertion destination basedir jsonOutput revision scanUnits =
@@ -385,7 +420,7 @@ analyzeVSI ::
   ProjectRevision ->
   AllFilters ->
   VSI.SkipResolution ->
-  m (Maybe SourceUnit)
+  m (Maybe [SourceUnit])
 analyzeVSI dir revision filters skipResolving = do
   logInfo "Running VSI analysis"
 
@@ -395,8 +430,7 @@ analyzeVSI dir revision filters skipResolving = do
       logInfo "Skipping resolution of the following locators:"
       traverse_ (logInfo . pretty . VSI.renderLocator) skippedLocators
 
-  results <- analyzeVSIDeps dir revision filters skipResolving
-  pure $ Just results
+  analyzeVSIDeps dir revision filters skipResolving
 
 analyzeDiscoverBinaries ::
   ( Has Diag.Diagnostics sig m
@@ -447,6 +481,7 @@ doAnalyzeDynamicLinkedBinary _ _ = pure Nothing
 data AnalyzeError
   = ErrNoProjectsDiscovered
   | ErrFilteredAllProjects
+  | ErrOnlyKeywordSearchResultsFound
 
 instance Diag.ToDiagnostic AnalyzeError where
   renderDiagnostic :: AnalyzeError -> Doc ann
@@ -471,15 +506,20 @@ instance Diag.ToDiagnostic AnalyzeError where
       , "    " <> pretty userGuideUrl
       , ""
       ]
+  renderDiagnostic (ErrOnlyKeywordSearchResultsFound) =
+    vsep
+      [ "Matches to your keyword searches were found, but no other analysis targets were found."
+      , "This error can be safely ignored if you are only expecting keyword search results."
+      ]
 
 buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Aeson.Value
-buildResult includeAll srcUnits projects firstPartyScanResults =
+buildResult includeAll srcUnits projects licenseSourceUnits =
   Aeson.object
     [ "projects" .= map buildProject projects
     , "sourceUnits" .= mergedUnits
     ]
   where
-    mergedUnits = case firstPartyScanResults of
+    mergedUnits = case licenseSourceUnits of
       Nothing -> map sourceUnitToFullSourceUnit finalSourceUnits
       Just licenseUnits -> do
         NE.toList $ mergeSourceAndLicenseUnits finalSourceUnits licenseUnits

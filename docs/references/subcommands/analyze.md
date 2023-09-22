@@ -13,17 +13,31 @@ For supported command-line flags, use `fossa analyze --help`
 
 In addition to the [usual FOSSA project flags](#common-fossa-project-flags) supported by all commands, the analyze command supports the following FOSSA-project-related flags:
 
-| Name                                  | Short | Description                                                                                                                                           |
-|---------------------------------------|-------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `--title 'some title'`                | `-t`  | Set the title of the FOSSA project                                                                                                                    |
-| `--branch 'some branch'`              | `-b`  | Override the detected FOSSA project branch                                                                                                            |
-| `--project-url 'https://example.com'` | `-P`  | Add a URL to the FOSSA project                                                                                                                        |
-| `--jira-project-key 'some-key'`       | `-j`  | Add a Jira project key to the FOSSA project                                                                                                           |
-| `--link 'https://example.com'`        | `-L`  | Attach a link to the current FOSSA build                                                                                                              |
-| `--team 'some team'`                  | `-T`  | Specify a team within your FOSSA organization                                                                                                         |
-| `--policy 'some policy'`              |       | Assign a specific FOSSA policy to this project. Mutually excludes `--policy-id`.                                                                      |
-| `--policy-id 'some policy id'`        |       | Assign a specific FOSSA policy to this project by id. Mutually excludes `--policy`.                                                                   |
-| `--config /path/to/file`              | `-c`  | Path to a [configuration file](../files/fossa-yml.md) including filename. By default we look for `.fossa.yml` in target directory of analyze command. |
+| Name                                  | Short | Description                                                                         |
+|---------------------------------------|-------|-------------------------------------------------------------------------------------|
+| `--title 'some title'`                | `-t`  | Set the title of the FOSSA project                                                  |
+| `--branch 'some branch'`              | `-b`  | Override the detected FOSSA project branch                                          |
+| `--project-url 'https://example.com'` | `-P`  | Add a URL to the FOSSA project                                                      |
+| `--jira-project-key 'some-key'`       | `-j`  | Add a Jira project key to the FOSSA project                                         |
+| `--link 'https://example.com'`        | `-L`  | Attach a link to the current FOSSA build                                            |
+| `--team 'some team'`                  | `-T`  | Specify a team within your FOSSA organization                                       |
+| `--policy 'some policy'`              |       | Assign a specific FOSSA policy to this project. Mutually excludes `--policy-id`.    |
+| `--policy-id 'some policy id'`        |       | Assign a specific FOSSA policy to this project by id. Mutually excludes `--policy`. |
+| `--project-label`                     |       | assign up to 5 labels to the project                                                |
+| `--release-group-name`                |       | the name of the release group to add this project to                                |
+
+### Filtering Paths and Targets
+
+The paths and targets filtering options allow you to specify the exact targets which be should be scanned.
+
+| Name                             | Description                                                                                                              |
+|----------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `--only-target`                  | Only scan these targets. See [targets.only](../files/fossa-yml.md#targets.only) in the fossa.yml spec.                   |
+| `--exclude-target`               | Exclude these targets from scanning. See [targets.exclude](../files/fossa-yml.md#targets.exclude) in the fossa.yml spec. |
+| `--only-path`                    | Only scan these paths. See [paths.only](../files/fossa-yml.md#paths.only) in the fossa.yml spec.                         |
+| `--exclude-path`                 | Exclude these paths from scannig. See [paths.exclude](../files/fossa-yml.md#paths.exclude) in the fossa.yml spec.        |
+| `--include-unused-deps`          | Include all deps found, instead of filtering non-production deps.  Ignored by VSI.                                       |
+| `--debug-no-discovery-exclusion` | Ignore these filters during discovery phase.  This flag is for debugging only and may be removed without warning.        |
 
 ### Printing results without uploading to FOSSA
 
@@ -43,6 +57,15 @@ fossa analyze --json
 ```json
 {"project":{"name":"custom@new-project","branch":"master","revision":"123","url":"https://app.fossa.com/projects/custom+<org-id>/new-project/refs/branch/master/123","id":"custom+<org-id>/new-project$123"}}
 ```
+
+### Vendored Dependencies
+
+The Vendored Dependencies feature allows you to scan for licenses directly in your code. For more information, please see the [Vendored Dependencies documentation](../../features/vendored-dependencies.md).
+
+| Name                                      | Description                                                                                                                                                                           |
+|-------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--force-vendored-dependency-scan-method` | Force the vendored dependency scan method. The options are 'CLILicenseScan' or 'ArchiveUpload'. 'CLILicenseScan' is usually the default unless your organization has overridden this. |
+| `--force-vendored-dependency-rescans`     | Force vendored dependencies to be rescanned even if the revision has been previously analyzed by FOSSA. This currently only works for CLI-side license scans.                         |
 
 ### Running in a specific directory
 
@@ -79,7 +102,7 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 
 | Name                                                             | Description                                                                                                                                                              |
 |------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`--detect-vendored`](./analyze/detect-vendored.md)              | Enable the vendored source indentification engine. For more information, see the [C and C++ overview](../strategies/languages/c-cpp/c-cpp.md).                           |
+| [`--detect-vendored`](./analyze/detect-vendored.md)              | Enable the vendored source identification engine. For more information, see the [C and C++ overview](../strategies/languages/c-cpp/c-cpp.md).                            |
 | [`--detect-dynamic './some-binary`](./analyze/detect-dynamic.md) | Analyze the binary at the provided path for dynamically linked dependencies. For more information, see the [C and C++ overview](../strategies/languages/c-cpp/c-cpp.md). |
 
 
@@ -89,11 +112,13 @@ _Important: For support and other general information, refer to the [experimenta
 
 In addition to the [standard flags](#specifying-fossa-project-details), the analyze command supports the following experimental flags:
 
-| Name                                                                                     | Description                                                                                                                                                      |
-|------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`--experimental-enable-binary-discovery`](../experimental/binary-discovery/README.md)   | Enable reporting binary files as unlicensed dependencies. For more information, see the [binary discovery overview](../experimental/binary-discovery/README.md). |
-| [`--experimental-link-project-binary './some-dir'`](../experimental/msb/README.md)       | Link the provided binary files to the project being analyzed. For more information, see the [multi stage builds overview](../experimental/msb/README.md).        |
-| [`--experimental-skip-vsi-graph 'custom+1/some$locator'`](../experimental/msb/README.md) | Skip resolving the dependencies of the given project that was previously linked via `--experimental-link-project-binary`.                                        |
+| Name                                                                                     | Description                                                                                                                                                                                    |
+|------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`--experimental-enable-binary-discovery`](../experimental/binary-discovery/README.md)   | Enable reporting binary files as unlicensed dependencies. For more information, see the [binary discovery overview](../experimental/binary-discovery/README.md).                               |
+| [`--experimental-link-project-binary './some-dir'`](../experimental/msb/README.md)       | Link the provided binary files to the project being analyzed. For more information, see the [multi stage builds overview](../experimental/msb/README.md).                                      |
+| [`--experimental-skip-vsi-graph 'custom+1/some$locator'`](../experimental/msb/README.md) | Skip resolving the dependencies of the given project that was previously linked via `--experimental-link-project-binary`.                                                                      |
+| `--experimental-force-first-party-scans`                                                 | Force [first party scans](../../features/first-party-license-scans.md) to run                                                                                                                  |
+| `--experimental-block-first-party-scans`                                                 | Force [first party scans](../../features/first-party-license-scans.md) to not run. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans. |
 
 ### F.A.Q.
 
@@ -105,13 +130,13 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 [ INFO] Scan Summary
 [ INFO] ------------
 [ INFO] 3 projects scanned;  2 skipped,  1 succeeded,  0 failed,  1 analysis warning
-[ INFO] 
+[ INFO]
 [ INFO] * setuptools project in "sandbox/": succeeded with 1 warning
 [ INFO] * setuptools project in "sandbox/example/": skipped (production path filtering)
 [ INFO] * setuptools project in "sandbox/external/": skipped (exclusion filters)
 ```
 
-`fossa-cli` skips analysis, if and only if 
+`fossa-cli` skips analysis, if and only if
 
 - (a) Target is excluded via [fossa configuration file](https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-yml.md#analysis-target-configuration) (this filtering is referred to as "exclusion filters").
 - (b) Target is skipped because the `fossa-cli` does not consider the target to be a production target (this filtering is referred to as "production path filtering").
@@ -134,9 +159,9 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 - `third_party/`
 - `third-party/`
 - `Carthage/`
-- `Checkouts/` 
+- `Checkouts/`
 
-As `fossa-cli` relies on manifest and lock files provided in the project's directory, we 
+As `fossa-cli` relies on manifest and lock files provided in the project's directory, we
 intentionally skip `node_modules/` and such directories. If `fossa-cli` discovers and
 analyzes project found in `node_modules/`: `fossa-cli` will not be able to infer
 the dependency's scope (development or production) and may double count dependencies.
@@ -180,3 +205,15 @@ For a workaround, create an empty `reqs.txt` file before running `fossa analyze,
 ```bash
 touch reqs.txt && fossa analyze && rm reqs.txt && fossa test
 ```
+
+## Common FOSSA Project Flags
+
+All `fossa` commands support the following FOSSA-project-related flags:
+
+| Name                               | Short | Description                                                                                                                              |
+|------------------------------------|-------|------------------------------------------------------------------------------------------------------------------------------------------|
+| `--project 'some project'`         | `-p`  | Override the detected project name                                                                                                       |
+| `--revision 'some revision'`       | `-r`  | -Override the detected project revision                                                                                                  |
+| `--fossa-api-key 'my-api-key'`     |       | An alternative to using the `FOSSA_API_KEY` environment variable to specify a FOSSA API key                                              |
+| `--endpoint 'https://example.com'` | `-e`  | Override the FOSSA API server base URL                                                                                                   |
+| `--config /path/to/file`           | `-c`  | Path to a [configuration file](../files/fossa-yml.md) including filename. By default we look for `.fossa.yml` in base working directory. |

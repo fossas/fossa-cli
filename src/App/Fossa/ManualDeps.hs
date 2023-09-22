@@ -62,7 +62,7 @@ import Fossa.API.Types (ApiOpts, Organization (..))
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
-import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..))
+import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..), someBaseToOriginPath)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
 
 data FoundDepsFile
@@ -174,7 +174,7 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
       , sourceUnitType = "user-specific-yaml"
       , sourceUnitBuild = build
       , sourceUnitGraphBreadth = Complete
-      , sourceUnitOriginPaths = [originPath]
+      , sourceUnitOriginPaths = [someBaseToOriginPath originPath]
       , additionalData = additional
       }
 

@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -86,9 +87,7 @@ import Data.Aeson (
   encode,
   object,
   withObject,
-  (.!=),
   (.:),
-  (.:?),
  )
 import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
@@ -172,7 +171,6 @@ import Srclib.Types (
   LicenseSourceUnit,
   Locator (..),
   SourceUnit,
-  parseLocator,
   renderLocator,
  )
 import System.FilePath (pathSeparator, splitDirectories)
@@ -1099,10 +1097,17 @@ attributionEndpoint :: Url 'Https -> OrgId -> Locator -> ReportOutputFormat -> U
 attributionEndpoint baseurl orgId locator format = appendSegment format $ baseurl /: "api" /: "revisions" /: renderLocatorUrl orgId locator /: "attribution"
   where
     appendSegment :: ReportOutputFormat -> Url a -> Url a
-    appendSegment ReportJson input = input /: "json"
-    appendSegment ReportMarkdown input = input /: "full" /: "MD"
-    appendSegment ReportSpdx input = input /: "full" /: "spdx"
-    appendSegment ReportPlainText input = input /: "full" /: "TXT"
+    appendSegment fmt input =
+      case fmt of
+        ReportJson -> input /: "json"
+        ReportMarkdown -> input /: "full" /: "MD"
+        ReportSpdx -> input /: "full" /: "spdx"
+        ReportSpdxJSON -> input /: "full" /: "SPDX_JSON"
+        ReportCycloneDXJSON -> input /: "full" /: "CYCLONEDX_JSON"
+        ReportCycloneDXXML -> input /: "full" /: "CYCLONEDX_XML"
+        ReportPlainText -> input /: "full" /: "TXT"
+        ReportHTML -> input /: "full" /: "HTML"
+        ReportCSV -> input /: "full" /: "CSV"
 
 getAttributionJson ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
@@ -1372,21 +1377,13 @@ vsiScanAnalysisStatus apiOpts scanID = fossaReq $ do
   body <- responseBody <$> req GET (vsiScanAnalysisStatusEndpoint baseUrl scanID) NoReqBody jsonResponse baseOpts
   pure $ unVSIScanAnalysisStatusBody body
 
-newtype VSIExportedInferencesBody = VSIExportedInferencesBody {unVSIExportedInferencesBody :: [Locator]}
-
-instance FromJSON VSIExportedInferencesBody where
-  parseJSON = withObject "VSIExportedInferencesBody" $ \obj -> do
-    plainLocators <- obj .:? "locators" .!= []
-    pure . VSIExportedInferencesBody $ fmap parseLocator plainLocators
-
 vsiDownloadInferencesEndpoint :: Url scheme -> VSI.ScanID -> Url scheme
-vsiDownloadInferencesEndpoint baseurl (VSI.ScanID scanID) = baseVsiUrl baseurl /: "scans" /: scanID /: "inferences" /: "locator"
+vsiDownloadInferencesEndpoint baseurl (VSI.ScanID scanID) = baseVsiUrl baseurl /: "scans" /: scanID /: "inferences"
 
-vsiDownloadInferences :: (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) => ApiOpts -> VSI.ScanID -> m [Locator]
+vsiDownloadInferences :: (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) => ApiOpts -> VSI.ScanID -> m VSI.VsiExportedInferencesBody
 vsiDownloadInferences apiOpts scanID = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  body <- responseBody <$> req GET (vsiDownloadInferencesEndpoint baseUrl scanID) NoReqBody jsonResponse baseOpts
-  pure $ unVSIExportedInferencesBody body
+  responseBody <$> req GET (vsiDownloadInferencesEndpoint baseUrl scanID) NoReqBody jsonResponse baseOpts
 
 endpointAppManifest :: Url scheme -> Url scheme
 endpointAppManifest baseurl = baseurl /: "rest" /: "applinks" /: "*" /: "manifest"

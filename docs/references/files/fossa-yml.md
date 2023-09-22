@@ -56,6 +56,14 @@ paths:
 
 telemetry:
   scope: full
+
+customLicenseSearch:
+  - matchCriteria: "[Pp]roprietary [Ll]icense"
+    name: "Proprietary License"
+
+experimentalKeywordSearch:
+  - matchCriteria: "[Pp]roprietary and [Cc]onfidential"
+    name: "Proprietary and Confidential match"
 ```
 
 
@@ -114,12 +122,12 @@ The name field sets the projects visible name in the FOSSA dashboard. By default
 The name of the team in your FOSSA organization to associate this project with.
 
 #### `project.policy:`
-The name of the policy in your FOSSA organization to associate this project with. 
+The name of the policy in your FOSSA organization to associate this project with.
 Mutually excludes `project.policyId`.
 If a policy is provided on the command line using `--policy` then that value will override this one.
 
 #### `project.policyId:`
-The id of the policy in your FOSSA organization to associate this project with. 
+The id of the policy in your FOSSA organization to associate this project with.
 Mutually excludes `project.policy`.
 If a policy is provided on the command line using `--policy-id` then that value will override this one.
 
@@ -178,6 +186,12 @@ The possible values are `ArchiveUpload` or `CLILicenseScan`.
 If this setting is not present, then we will use the default for your organization. This is most likely "CLI License Scan", but it is possible that your organization has changed the default to "Archive Upload".
 
 For a description of what these methods are and the difference between them, see the [documentation for vendored dependencies](https://github.com/fossas/fossa-cli/blob/master/docs/features/vendored-dependencies.md).
+
+#### `vendoredDependencies.licenseScanPathFilters`
+
+Path filtering can be used to omit some files or directories from license scanning.
+
+For more details, see the [vendored-dependencies feature reference](../../features/vendored-dependencies.md#path-filtering).
 
 ### `targets:`
 The targets filtering section allows you to specify the exact targets which be should be scanned.

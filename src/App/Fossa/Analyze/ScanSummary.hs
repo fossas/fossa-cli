@@ -14,14 +14,17 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (dpiProjectPath, dpiProjectType),
   DiscoveredProjectScan (..),
  )
+import App.Fossa.Lernie.Types (LernieMatch (..), LernieMatchData (..), LernieResults (..))
 import App.Version (fullVersionDescription)
 import Control.Carrier.Lift
 import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
-import Control.Monad (when)
+import Control.Monad (join, when)
 import Data.Foldable (foldl', traverse_)
+import Data.Functor.Extra ((<$$>))
 import Data.List (sort)
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
 import Data.Monoid.Extra (isMempty)
+import Data.String.Conversion (showText, toText)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Diag.Result (EmittedWarn (IgnoredErrGroup), Result (Failure, Success), renderFailure, renderSuccess)
@@ -67,10 +70,12 @@ import Srclib.Types (
   AdditionalDepData (remoteDeps, userDefinedDeps),
   Locator (locatorFetcher, locatorProject),
   SourceRemoteDep (srcRemoteDepName),
-  SourceUnit (additionalData, sourceUnitBuild),
-  SourceUnitBuild (buildDependencies),
+  SourceUnit (SourceUnit, additionalData, sourceUnitBuild),
+  SourceUnitBuild (..),
   SourceUnitDependency (sourceDepLocator),
   SourceUserDefDep (srcUserDepName),
+  renderLocator,
+  sourceUnitOriginPaths,
  )
 import Types (DepType (ArchiveType), DiscoveredProjectType, projectTypeToText)
 
@@ -151,7 +156,7 @@ renderScanSummary severity maybeEndpointVersion analysisResults filters = do
       logInfo "------------"
 
 summarize :: Text -> AnalysisScanResult -> Maybe ([Doc AnsiStyle])
-summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps) =
+summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps lernie) =
   if (numProjects totalScanCount <= 0)
     then Nothing
     else
@@ -167,21 +172,39 @@ summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicL
         ]
           <> itemize listSymbol summarizeProjectScan projects
           <> ["-"]
-          <> summarizeSrcUnit "vsi analysis" Nothing vsi
+          <> vsiResults
           <> summarizeSrcUnit "binary-deps analysis" (Just getBinaryIdentifier) binary
           <> summarizeSrcUnit "dynamic linked dependency analysis" (Just getBinaryIdentifier) dynamicLinkingDeps
           <> summarizeSrcUnit "fossa-deps file analysis" (Just getManualVendorDepsIdentifier) manualDeps
+          <> summarizeSrcUnit "Keyword Search" (Just getLernieIdentifier) (lernieResultsKeywordSearches <$$> lernie)
+          <> summarizeSrcUnit "Custom LicenseSearch" (Just getLernieIdentifier) (lernieResultsCustomLicenses <$$> lernie)
           <> [""]
   where
+    vsiResults = summarizeSrcUnit "vsi analysis" (Just (join . map vsiSourceUnits)) vsi
     projects = sort dps
     totalScanCount =
       mconcat
         [ getScanCount projects
-        , srcUnitToScanCount vsi
+        , vsiSrcUnitsToScanCount vsi
         , srcUnitToScanCount binary
         , srcUnitToScanCount manualDeps
         , srcUnitToScanCount dynamicLinkingDeps
+        , srcUnitToScanCount lernie
         ]
+
+    -- This function relies on the fact that there is only ever one package in a vsi source unit dep graph.
+    -- It is not generally usable forall all SourceUnits.
+    vsiSourceUnits :: SourceUnit -> [Text]
+    vsiSourceUnits sUnit =
+      let renderOriginPath =
+            case vsiSrcUnitLocator sUnit of
+              Just loc -> \originPath -> (toText originPath) <> " (locator: " <> renderLocator loc <> ")"
+              _ -> toText
+       in map renderOriginPath (sourceUnitOriginPaths sUnit)
+
+    vsiSrcUnitLocator :: SourceUnit -> Maybe Locator
+    vsiSrcUnitLocator SourceUnit{sourceUnitBuild = Just SourceUnitBuild{buildImports = [locator]}} = Just locator
+    vsiSrcUnitLocator _ = Nothing
 
 listSymbol :: Doc AnsiStyle
 listSymbol = "* "
@@ -191,6 +214,20 @@ itemize symbol f = map ((symbol <>) . f)
 
 getBinaryIdentifier :: SourceUnit -> [Text]
 getBinaryIdentifier srcUnit = maybe [] (srcUserDepName <$>) (userDefinedDeps =<< additionalData srcUnit)
+
+-- A LernieMatch has many LernieMatchData. getLernieIdentifier creates one line of output per LernieMatchData.
+-- Example output:
+-- Proprietary License - /Users/scott/fossa/license-scan-dirs/grepper/one.txt (lines 1-1)
+-- <name of regex from config> - <path to file> (lines <startLine>-<endLine>)
+getLernieIdentifier :: [LernieMatch] -> [Text]
+getLernieIdentifier [] = ["No results found"]
+getLernieIdentifier matches = concatMap renderLernieMatch matches
+  where
+    renderLernieMatch :: LernieMatch -> [Text]
+    renderLernieMatch LernieMatch{..} = map (renderLernieMatchData lernieMatchPath) lernieMatchMatches
+
+    renderLernieMatchData :: Text -> LernieMatchData -> Text
+    renderLernieMatchData path LernieMatchData{..} = lernieMatchDataName <> " - " <> path <> " (lines " <> showText lernieMatchDataStartLine <> "-" <> showText lernieMatchDataEndLine <> ")"
 
 getManualVendorDepsIdentifier :: SourceUnit -> [Text]
 getManualVendorDepsIdentifier srcUnit = refDeps ++ foundRemoteDeps ++ customDeps ++ vendorDeps
@@ -223,15 +260,22 @@ getManualVendorDepsIdentifier srcUnit = refDeps ++ foundRemoteDeps ++ customDeps
     withPostfix :: Text -> [Text] -> [Text]
     withPostfix bracketText = map (<> " (" <> bracketText <> ")")
 
-srcUnitToScanCount :: Result (Maybe SourceUnit) -> ScanCount
+vsiSrcUnitsToScanCount :: Result (Maybe [SourceUnit]) -> ScanCount
+vsiSrcUnitsToScanCount (Failure _ _) = ScanCount 0 0 0 0 0
+vsiSrcUnitsToScanCount (Success wg (Just units)) =
+  let unitLen = length units
+   in ScanCount unitLen 0 unitLen 0 (length wg)
+vsiSrcUnitsToScanCount (Success _ Nothing) = ScanCount 0 0 0 0 0
+
+srcUnitToScanCount :: Result (Maybe a) -> ScanCount
 srcUnitToScanCount (Failure _ _) = ScanCount 1 0 0 1 0
 srcUnitToScanCount (Success _ Nothing) = ScanCount 0 0 0 0 0
 srcUnitToScanCount (Success wg (Just _)) = ScanCount 1 0 1 0 (countWarnings wg)
 
 summarizeSrcUnit ::
   Doc AnsiStyle ->
-  Maybe (SourceUnit -> [Text]) ->
-  Result (Maybe SourceUnit) ->
+  Maybe (a -> [Text]) ->
+  Result (Maybe a) ->
   [Doc AnsiStyle]
 summarizeSrcUnit analysisHeader maybeGetter (Success wg (Just unit)) =
   case maybeGetter <*> Just unit of
@@ -309,7 +353,7 @@ countWarnings ws =
     isIgnoredErrGroup _ = False
 
 dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => Text -> AnalysisScanResult -> m (Path Abs File)
-dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps) = do
+dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults) = do
   let doc =
         renderStrict
           . layoutPretty defaultLayoutOptions
@@ -322,6 +366,7 @@ dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary
               , renderSourceUnit "binary-deps analysis" binary
               , renderSourceUnit "dynamic linked dependency analysis" dynamicLinkingDeps
               , renderSourceUnit "fossa-deps analysis" manualDeps
+              , renderSourceUnit "Custom-license scan & Keyword Search" lernieResults
               ]
 
   tmpDir <- sendIO getTempDir
@@ -329,11 +374,11 @@ dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary
   pure (tmpDir </> scanSummaryFileName)
   where
     scanSummary :: [Doc AnsiStyle]
-    scanSummary = maybeToList (vsep <$> summarize endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps))
+    scanSummary = maybeToList (vsep <$> summarize endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults))
 
-    renderSourceUnit :: Doc AnsiStyle -> Result (Maybe SourceUnit) -> Maybe (Doc AnsiStyle)
+    renderSourceUnit :: Doc AnsiStyle -> Result (Maybe a) -> Maybe (Doc AnsiStyle)
     renderSourceUnit header (Failure ws eg) = Just $ renderFailure ws eg $ vsep $ summarizeSrcUnit header Nothing (Failure ws eg)
-    renderSourceUnit header (Success ws (Just res)) = renderSuccess ws $ vsep $ summarizeSrcUnit header Nothing (Success ws (Just res))
+    renderSourceUnit header success@(Success ws (Just _)) = renderSuccess ws $ vsep $ summarizeSrcUnit header Nothing success
     renderSourceUnit _ _ = Nothing
 
     renderDiscoveredProjectScanResult :: DiscoveredProjectScan -> Maybe (Doc AnsiStyle)

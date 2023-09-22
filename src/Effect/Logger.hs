@@ -21,6 +21,9 @@ module Effect.Logger (
   logWarn,
   logError,
   logStdout,
+  redText,
+  whiteText,
+  yellowText,
   renderIt,
   module X,
   newlineTrailing,
@@ -189,13 +192,25 @@ rawLoggerFormatter sev msg = renderIt . unAnnotate $ formatCommon sev msg <> lin
 termLoggerFormatter :: LogFormatter Text
 termLoggerFormatter sev msg = renderIt $ formatCommon sev msg <> line
 
+coloredText :: Color -> Doc AnsiStyle -> Doc AnsiStyle
+coloredText clr = annotate (color clr)
+
+redText :: Doc AnsiStyle -> Doc AnsiStyle
+redText = coloredText Red
+
+yellowText :: Doc AnsiStyle -> Doc AnsiStyle
+yellowText = coloredText Yellow
+
+whiteText :: Doc AnsiStyle -> Doc AnsiStyle
+whiteText = coloredText White
+
 formatCommon :: Severity -> Doc AnsiStyle -> Doc AnsiStyle
 formatCommon sev msg = hang 2 (showSev sev <> msg)
   where
-    showSev SevError = withBrackets $ annotate (color Red) (pretty @String "ERROR")
-    showSev SevWarn = withBrackets $ annotate (color Yellow) (pretty @String "WARN")
+    showSev SevError = withBrackets $ redText (pretty @String "ERROR")
+    showSev SevWarn = withBrackets $ yellowText (pretty @String "WARN")
     showSev SevInfo = ""
-    showSev SevDebug = withBrackets $ annotate (color White) (pretty @String "DEBUG")
+    showSev SevDebug = withBrackets $ whiteText (pretty @String "DEBUG")
 
     withBrackets :: Doc AnsiStyle -> Doc AnsiStyle
     withBrackets s = pretty '[' <> s <> pretty @String "] "
