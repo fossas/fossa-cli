@@ -76,7 +76,7 @@ impl From<&Options> for snippets::Options {
 }
 
 /// The targets of snippets to extract.
-#[derive(Debug, Clone, Copy, ValueEnum, Display)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter)]
 #[strum(serialize_all = "snake_case")]
 pub enum Target {
     /// Targets function defintions as snippets.
@@ -92,7 +92,7 @@ impl From<Target> for snippets::Target {
 }
 
 /// The kind of item this snippet represents.
-#[derive(Debug, Clone, Copy, ValueEnum, Display)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter)]
 #[strum(serialize_all = "snake_case")]
 pub enum Kind {
     /// The signature of the snippet.
@@ -116,7 +116,7 @@ impl From<Kind> for snippets::Kind {
 }
 
 /// The normalization used to extract this snippet.
-#[derive(Debug, Clone, Copy, ValueEnum, Display)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter)]
 #[strum(serialize_all = "snake_case")]
 pub enum Transform {
     /// Transform the text to have any comments removed and whitespace normalized.

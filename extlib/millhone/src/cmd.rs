@@ -1,16 +1,22 @@
-use std::{borrow::Cow, path::PathBuf};
+use std::{borrow::Cow, collections::HashSet, path::PathBuf};
 
 use clap::Parser;
 use getset::Getters;
 use itertools::Itertools;
-use millhone::api;
+use millhone::{
+    api::{self, ApiSnippet},
+    extract::Snippet,
+};
 use once_cell::sync::Lazy;
 use secrecy::Secret;
+use serde::{Deserialize, Serialize};
 use tap::Pipe;
 use tracing::warn;
+use typed_builder::TypedBuilder;
 use walkdir::DirEntry;
 
 pub mod analyze;
+pub mod commit;
 pub mod ingest;
 pub mod ping;
 
@@ -32,6 +38,27 @@ impl ApiAuthentication {
     fn as_credentials(&self) -> api::Credentials {
         api::Credentials::new(self.api_key_id.clone(), self.api_secret.clone())
     }
+}
+
+/// A snippet match found in a local file during analysis.
+#[derive(Debug, Clone, Serialize, Deserialize, TypedBuilder)]
+pub struct MatchingSnippet {
+    /// The local path in which the match was found, rendered as a string.
+    /// Any invalid UTF8 content is replaced by `U+FFFD`.
+    #[builder(setter(into))]
+    found_in: String,
+
+    /// A copy of the file content indicated by `found_at`, rendered as a string.
+    /// Any invalid UTF8 content is replaced by `U+FFFD`.
+    #[builder(setter(into))]
+    local_text: String,
+
+    /// The snippet that was identified in the local project.
+    local_snippet: Snippet,
+
+    /// Snippets in the knowledgebase that match this snippet.
+    #[builder(setter(into))]
+    matching_snippets: HashSet<ApiSnippet>,
 }
 
 /// Unwrap a directory entry, warning on error.

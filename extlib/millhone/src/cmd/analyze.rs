@@ -1,16 +1,13 @@
-use std::{collections::HashSet, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 
 use clap::Parser;
 use getset::Getters;
-use millhone::{
-    api::{prelude::*, ApiSnippet},
-    extract::{ContentSnippet, Snippet},
-};
-use serde::{Deserialize, Serialize};
+use millhone::{api::prelude::*, extract::ContentSnippet};
 use stable_eyre::{eyre::Context, Report};
 use tracing::{debug, info, warn};
-use typed_builder::TypedBuilder;
 use walkdir::WalkDir;
+
+use crate::cmd::MatchingSnippet;
 
 /// Options for snippet ingestion.
 #[derive(Debug, Parser, Getters)]
@@ -140,25 +137,4 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
 
     println!("{}", output_dir.display());
     Ok(())
-}
-
-/// A snippet match found in a local file during analysis.
-#[derive(Debug, Clone, Serialize, Deserialize, TypedBuilder)]
-pub struct MatchingSnippet {
-    /// The local path in which the match was found, rendered as a string.
-    /// Any invalid UTF8 content is replaced by `U+FFFD`.
-    #[builder(setter(into))]
-    found_in: String,
-
-    /// A copy of the file content indicated by `found_at`, rendered as a string.
-    /// Any invalid UTF8 content is replaced by `U+FFFD`.
-    #[builder(setter(into))]
-    local_text: String,
-
-    /// The snippet that was identified in the local project.
-    local_snippet: Snippet,
-
-    /// Snippets in the knowledgebase that match this snippet.
-    #[builder(setter(into))]
-    matching_snippets: HashSet<ApiSnippet>,
 }
