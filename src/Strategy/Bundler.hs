@@ -100,10 +100,8 @@ findLicenses gemspecPath = do
   pure [LicenseResult gemSpecFp (License UnknownType <$> licenses)]
   where
     isLicenseKey Assignment{label = label} =
-      "license"
-        `isSuffixOf` label
-        || "licenses"
-        `isSuffixOf` label
+      "license" `isSuffixOf` label
+        || "licenses" `isSuffixOf` label
     gemSpecFp = toFilePath gemspecPath
 
 mkProject :: BundlerProject -> DiscoveredProject BundlerProject

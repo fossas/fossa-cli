@@ -123,7 +123,7 @@ analyze file flatdeps workspacePackages = context "Analyzing Npm Lockfile" $ do
       Set.map pkgName $
         (unTag @Production $ directDeps flatdeps) <> (unTag @Development $ devDeps flatdeps)
 
--- |Node in the package-lock.json dep graph
+-- | Node in the package-lock.json dep graph
 data NpmDepVertex = NpmDepVertex
   { lockName :: Text
   , lockVersion :: Text
@@ -135,14 +135,14 @@ type NpmGrapher = LabeledGrapher NpmDepVertex NpmDepVertexLabel
 data NpmDepVertexLabel = NpmDepVertexEnv DepEnvironment | NpmDepVertexLocation Text
   deriving (Eq, Ord, Show)
 
--- |The @packages@ object contains keys which are file paths to a package npm
--- downloaded to @node_modules@. This function will adjust map keys to be names
--- like in the @dependencies@ key by stripping out path components besides the final one..
+-- | The @packages@ object contains keys which are file paths to a package npm
+--  downloaded to @node_modules@. This function will adjust map keys to be names
+--  like in the @dependencies@ key by stripping out path components besides the final one..
 --
--- When npm installs a dep inside of another dep (for version conflicts) we get the string
--- @node_modules/a/node_modules/b@.  We actually don't want to do sub-package matching here,
--- so we only drop the first @node_modules/@, and if it has a sub-package, then we just
--- won't ever query for that key.
+--  When npm installs a dep inside of another dep (for version conflicts) we get the string
+--  @node_modules/a/node_modules/b@.  We actually don't want to do sub-package matching here,
+--  so we only drop the first @node_modules/@, and if it has a sub-package, then we just
+--  won't ever query for that key.
 packagePathsToNames :: Map Text a -> Map Text a
 packagePathsToNames = Map.mapKeys (TE.dropPrefix "node_modules/")
 

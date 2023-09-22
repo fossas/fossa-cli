@@ -152,7 +152,7 @@ instance FromXML Nuspec where
     metadata <- child "metadata" el
     Nuspec
       <$> optional (child "dependencies" metadata >>= children "group")
-      `defaultsTo` []
+        `defaultsTo` []
       <*> children "license" metadata
       <*> optional (child "licenseUrl" metadata)
 
@@ -160,7 +160,7 @@ instance FromXML NuspecLicense where
   parseElement el =
     NuspecLicense
       <$> optional (attr "type" el)
-      `defaultsTo` ""
+        `defaultsTo` ""
       <*> content el
 
 instance FromXML Group where

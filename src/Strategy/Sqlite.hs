@@ -135,7 +135,7 @@ readSqliteDBPackages sqlDbFile =
 
 writeTempFileAndFetchPkgRows ::
   Has (Lift IO) sig m =>
-  -- |Bytestring for a sqlite package database
+  -- | Bytestring for a sqlite package database
   BS.ByteString ->
   m [(Int64, BS.ByteString)]
 writeTempFileAndFetchPkgRows sqliteBlob =

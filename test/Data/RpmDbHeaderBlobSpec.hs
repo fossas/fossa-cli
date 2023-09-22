@@ -304,12 +304,9 @@ headerBlobErrSpec =
     let checkErr (size, offset) suffix res =
           case res of
             Left (size', offset', errStr) ->
-              size'
-                == size
-                && offset'
-                == offset
-                && suffix
-                `isSuffixOf` errStr
+              size' == size
+                && offset' == offset
+                && suffix `isSuffixOf` errStr
             _ -> False
 
     it "Should report failure when parsing nonexistent index count" $

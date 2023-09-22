@@ -154,15 +154,15 @@ userDefinedFetcher = "iat"
 isTopLevelProject :: Locator -> Bool
 isTopLevelProject loc = locatorFetcher loc == depTypeToFetcher CustomType
 
--- |A path returned on inferences from sherlock-api.
+-- | A path returned on inferences from sherlock-api.
 --
--- While 'VsiFilePath's look like filepaths, we treat them as text rather than 'FilePath' or 'Path's.
--- Those packages behave based on on the platform they're compiled on, while VSI always uses unix-style paths.
+--  While 'VsiFilePath's look like filepaths, we treat them as text rather than 'FilePath' or 'Path's.
+--  Those packages behave based on on the platform they're compiled on, while VSI always uses unix-style paths.
 newtype VsiFilePath = VsiFilePath {unVsiFilePath :: Text}
   deriving newtype (Eq, Ord, Show, FromJSON, ToJSON)
 
--- |A path for a VSI rule.
--- During processing we change a list of file paths to directory paths for inclusion in rules.
+-- | A path for a VSI rule.
+--  During processing we change a list of file paths to directory paths for inclusion in rules.
 newtype VsiRulePath = VsiRulePath {unVsiRulePath :: Text}
   deriving newtype (Eq, Ord, Show, ToJSON, ToJSONKey, ToString)
 
@@ -220,10 +220,10 @@ generateRules inferenceBody = do
         Nothing -> m
         Just inferenceLocator' -> Map.insertWith (<>) inferenceLocator' (NE.singleton filePath) m
 
--- |Get the shortest prefixes for every filepath in a list.
--- This works by first sorting the list lexicographically and then storing only the initial path that prefixes each group of filepaths.
+-- | Get the shortest prefixes for every filepath in a list.
+--  This works by first sorting the list lexicographically and then storing only the initial path that prefixes each group of filepaths.
 --
--- Ex: ["/foo/bar/baz.c", "/foo/hello.c". "/other/dir/world.c"] -> ["/foo", "/other/dir"]
+--  Ex: ["/foo/bar/baz.c", "/foo/hello.c". "/other/dir/world.c"] -> ["/foo", "/other/dir"]
 getPrefixes :: NE.NonEmpty VsiFilePath -> NE.NonEmpty VsiRulePath
 getPrefixes paths = snd . foldr accumPrefixes startVal $ (NE.tail sorted)
   where

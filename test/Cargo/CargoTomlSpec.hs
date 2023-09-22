@@ -51,8 +51,8 @@ cargoProject baseDir =
     , cargoToml = baseDir </> $(mkRelFile "Cargo.toml")
     }
 
--- |The license-related fields for a Cargo.toml file are documented
--- [here](https://doc.rust-lang.org/cargo/reference/manifest.html#the-license-and-license-file-fields)
+-- | The license-related fields for a Cargo.toml file are documented
+--  [here](https://doc.rust-lang.org/cargo/reference/manifest.html#the-license-and-license-file-fields)
 licenseSpecs :: Spec
 licenseSpecs = do
   currentDir <- runIO getCurrentDir
