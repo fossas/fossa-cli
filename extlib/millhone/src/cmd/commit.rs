@@ -185,9 +185,9 @@ pub fn main(opts: Subcommand) -> Result<(), Report> {
     let deps_file = FossaDeps { referenced: deps };
     let rendered = match opts.format {
         OutputFormat::Json => {
-            serde_json::to_string_pretty(&deps_file).context("render fossa-deps to json")?
+            serde_json::to_string_pretty(&deps_file).context("render fossa-deps")?
         }
-        OutputFormat::Yml => unimplemented!(),
+        OutputFormat::Yml => serde_yaml::to_string(&deps_file).context("render fossa-deps")?,
     };
     std::fs::write(&output_file, rendered)
         .wrap_err_with(|| format!("write fossa-deps at '{}'", output_file.display()))?;
