@@ -16,9 +16,9 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use snippets::{language::c99_tc3, Extractor};
 use strum::{Display, EnumIter, IntoEnumIterator};
-use tap::Pipe;
+use tap::{Pipe, Tap};
 use thiserror::Error;
-use tracing::debug;
+use tracing::{debug, trace};
 use typed_builder::TypedBuilder;
 
 /// Errors encountered in this module.
@@ -278,46 +278,57 @@ impl Snippet {
     }
 
     /// Extract instances from a file on disk.
-    #[tracing::instrument]
+    /// If the file is not supported, the returned results are empty.
+    #[tracing::instrument(skip_all, fields(path = %path.display()))]
     pub fn from_file(
         scan_root: &Path,
         opts: &snippets::Options,
         path: &Path,
     ) -> Result<HashSet<Self>, Error> {
-        Self::from_file_with_content(scan_root, opts, path).map(|(found, _)| found)
+        match Support::by_ext(path) {
+            Support::Unknown => {
+                debug!("file extension support unknown");
+                HashSet::new().pipe(Ok)
+            }
+            Support::Unsupported => {
+                debug!("file extension not supported");
+                HashSet::new().pipe(Ok)
+            }
+            Support::Supported(language) => {
+                let content = std::fs::read(path).map_err(Error::ReadFile)?;
+                Self::from_content(scan_root, opts, path, language, &content)
+            }
+        }
     }
 
-    /// Extract instances from a file on disk,
-    /// returning the content of the file along with the snippet.
+    /// Extract instances from content already read from disk.
     ///
-    /// If the file is not supported, the returned file content is empty.
-    pub fn from_file_with_content(
+    /// It's recommended to use [`Support`] to determine the [`Language`]
+    /// to pass to this function.
+    #[tracing::instrument(skip_all)]
+    pub fn from_content(
         scan_root: &Path,
         opts: &snippets::Options,
         path: &Path,
-    ) -> Result<(HashSet<Self>, Vec<u8>), Error> {
-        match Support::by_ext(path) {
-            Support::Unknown => {
-                debug!("skipping: unknown support status for file");
-                Ok((Default::default(), Default::default()))
-            }
-            Support::Unsupported => {
-                debug!("skipping: file extension not supported");
-                Ok((Default::default(), Default::default()))
-            }
-            Support::Supported(language) => {
-                debug!("extracting snippets of language: {language}");
-                let content = std::fs::read(path).map_err(Error::ReadFile)?;
-                match language {
-                    Language::C => c99_tc3::Extractor::extract(opts, &content)?
-                        .pipe(collapse_raw)
-                        .map(|snippet| Self::from(scan_root, path, &content, snippet))
-                        .collect::<HashSet<_>>()
-                        .pipe(|found| (found, content))
-                        .pipe(Ok),
-                }
-            }
+        language: Language,
+        content: &[u8],
+    ) -> Result<HashSet<Self>, Error> {
+        match language {
+            Language::C => c99_tc3::Extractor::extract(opts, content)?
+                .pipe(collapse_raw)
+                .map(|snippet| Self::from(scan_root, path, content, snippet))
+                .inspect(|snippet| trace!(?snippet, "extracted snippet"))
+                .collect::<HashSet<Self>>(),
         }
+        .tap(|found| {
+            debug!(
+                %language,
+                count = %found.len(),
+                content_len = %content.len(),
+                "extracted snippets",
+            )
+        })
+        .pipe(Ok)
     }
 
     /// Get the [`Location`] referenced by the snippet.
@@ -348,24 +359,37 @@ pub struct ContentSnippet {
 
 impl ContentSnippet {
     /// Extract instances from a file on disk.
-    #[tracing::instrument]
+    /// If the file is not supported, the returned results are empty.
+    #[tracing::instrument(skip_all, fields(path = %path.display()))]
     pub fn from_file(
         scan_root: &Path,
         opts: &snippets::Options,
         path: &Path,
     ) -> Result<HashSet<Self>, Error> {
-        let (found, content) = Snippet::from_file_with_content(scan_root, opts, path)?;
-        found
-            .into_iter()
-            .map(|snippet| {
-                let location = snippet.location();
-                Self {
-                    snippet,
-                    content: location.extract_from(&content).to_owned(),
-                }
-            })
-            .collect::<HashSet<_>>()
-            .pipe(Ok)
+        match Support::by_ext(path) {
+            Support::Unknown => {
+                debug!("file extension support unknown");
+                HashSet::new().pipe(Ok)
+            }
+            Support::Unsupported => {
+                debug!("file extension not supported");
+                HashSet::new().pipe(Ok)
+            }
+            Support::Supported(language) => {
+                let content = std::fs::read(path).map_err(Error::ReadFile)?;
+                Snippet::from_content(scan_root, opts, path, language, &content)?
+                    .into_iter()
+                    .map(|snippet| {
+                        let location = snippet.location();
+                        Self {
+                            snippet,
+                            content: location.extract_from(&content).to_owned(),
+                        }
+                    })
+                    .collect::<HashSet<_>>()
+                    .pipe(Ok)
+            }
+        }
     }
 }
 

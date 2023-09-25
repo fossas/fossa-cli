@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fs};
+use std::collections::HashSet;
 
 use clap::Parser;
 use getset::Getters;
@@ -6,11 +6,14 @@ use millhone::{
     api::{prelude::*, ApiSnippet},
     extract::Snippet,
 };
+use rayon::prelude::*;
 use srclib::Locator;
-use stable_eyre::eyre::Context;
+use stable_eyre::{eyre::Context, Report};
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 use walkdir::WalkDir;
+
+use crate::cmd::AtomicCounter;
 
 /// Options for snippet ingestion.
 #[derive(Debug, Parser, Getters)]
@@ -35,69 +38,71 @@ pub struct Subcommand {
 }
 
 #[tracing::instrument(skip_all, fields(target = %opts.extract().target().display()))]
-pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> stable_eyre::Result<()> {
+pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
     info!(
         ingest_id = %opts.ingest_id(),
         api_key_id = %opts.auth.api_key_id(),
         locator = %opts.locator(),
+        extract_opts = ?opts.extract,
         "Ingesting snippets",
     );
 
     let creds = opts.auth.as_credentials();
     let client = ApiClientV1::authenticated(endpoint, creds);
     let root = opts.extract().target();
-    let walk = WalkDir::new(root)
+    let snippet_opts = opts.extract().into();
+
+    let total_count_entries = AtomicCounter::default();
+    let total_count_snippets = AtomicCounter::default();
+    let total_count_files = AtomicCounter::default();
+
+    WalkDir::new(root)
         // Follow symlinks; loops are yielded as errors automatically.
         .follow_links(true)
         // Not chosen for a specific reason, just seems reasonable.
         .max_depth(1000)
         // Just make the walk deterministic (per directory anyway).
-        .sort_by_file_name();
+        .sort_by_file_name()
+        .into_iter()
+        .inspect(|_| total_count_entries.increment())
+        .filter_map(super::unwrap_dir_entry)
+        // Bridge into rayon for parallelization.
+        .par_bridge()
+        // Execute each entry in parallel.
+        .try_for_each(|entry| -> Result<(), Report> {
+            let path = super::resolve_path(&entry).context("resolve path for entry")?;
+            if !path.is_file() {
+                debug!(path = %path.display(), "skipped: not a file");
+                return Ok(());
+            }
 
-    let mut total_count_entries = 0usize;
-    let mut total_count_snippets = 0usize;
-    let mut total_count_files = 0usize;
+            total_count_files.increment();
+            debug!(path = %path.display(), "extract snippets");
+            let snippets = Snippet::from_file(root, &snippet_opts, &path)
+                .wrap_err_with(|| format!("extract snippets from '{}'", path.display()))?
+                .into_iter()
+                .map(|snippet| ApiSnippet::from(opts.ingest_id(), opts.locator(), snippet))
+                .collect::<HashSet<_>>();
 
-    // Future enhancement: walk and upload in parallel with rayon.
-    let snippet_opts = opts.extract().into();
-    for entry in walk.into_iter() {
-        total_count_entries += 1;
-        let Some(entry) = super::unwrap_dir_entry(entry) else {
-            continue;
-        };
+            if snippets.is_empty() {
+                info!(path = %path.display(), "no snippets extracted");
+                return Ok(());
+            }
 
-        let path = if entry.path_is_symlink() {
-            let path = entry.path();
-            fs::read_link(path)
-                .wrap_err_with(|| format!("resolve symlink of '{}'", path.display()))?
-        } else {
-            entry.path().to_path_buf()
-        };
+            let snippet_count = snippets.len();
+            client.add_snippets(snippets).wrap_err_with(|| {
+                format!("upload {snippet_count} snippets from '{}'", path.display())
+            })?;
 
-        if !path.is_file() {
-            debug!(path = %path.display(), "skipped: not a file");
-            continue;
-        }
-
-        total_count_files += 1;
-        info!(path = %path.display(), "ingest");
-        let snippets = Snippet::from_file(root, &snippet_opts, &path)
-            .wrap_err_with(|| format!("process '{}'", path.display()))?
-            .into_iter()
-            .map(|snippet| ApiSnippet::from(opts.ingest_id(), opts.locator(), snippet))
-            .collect::<HashSet<_>>();
-
-        info!(snippet_count = %snippets.len(), "upload snippets");
-        total_count_snippets += snippets.len();
-        client
-            .add_snippets(snippets)
-            .wrap_err_with(|| format!("upload snippets from '{}'", path.display()))?;
-    }
+            total_count_snippets.increment_by(snippet_count);
+            info!(path = %path.display(), %snippet_count, "extracted snippets");
+            Ok(())
+        })?;
 
     info!(
-        %total_count_entries,
-        %total_count_snippets,
-        %total_count_files,
+        total_count_entries = %total_count_entries.into_inner(),
+        total_count_snippets = %total_count_snippets.into_inner(),
+        total_count_files = %total_count_files.into_inner(),
         "Finished extracting snippets",
     );
     Ok(())

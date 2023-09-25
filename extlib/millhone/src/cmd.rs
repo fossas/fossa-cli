@@ -1,4 +1,9 @@
-use std::{borrow::Cow, collections::HashSet};
+use std::{
+    borrow::Cow,
+    collections::HashSet,
+    path::PathBuf,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use clap::Parser;
 use getset::Getters;
@@ -8,6 +13,8 @@ use millhone::{
 };
 use secrecy::Secret;
 use serde::{Deserialize, Serialize};
+use stable_eyre::{eyre::Context, Report};
+use tap::Pipe;
 use tracing::warn;
 use typed_builder::TypedBuilder;
 use walkdir::DirEntry;
@@ -79,5 +86,40 @@ fn unwrap_dir_entry(entry: Result<DirEntry, walkdir::Error>) -> Option<DirEntry>
             }
             None
         }
+    }
+}
+
+/// Resolves the path for an entry, with special handling for symlinks.
+#[tracing::instrument]
+fn resolve_path(entry: &DirEntry) -> Result<PathBuf, Report> {
+    if entry.path_is_symlink() {
+        std::fs::read_link(entry.path())
+            .wrap_err_with(|| format!("resolve symlink of '{}'", entry.path().display()))
+    } else {
+        entry.path().to_path_buf().pipe(Ok)
+    }
+}
+
+/// A simple atomic counter.
+#[derive(Debug, Default)]
+struct AtomicCounter {
+    inner: AtomicUsize,
+}
+
+impl AtomicCounter {
+    /// Increment the counter by 1.
+    fn increment(&self) {
+        self.increment_by(1)
+    }
+
+    /// Increment the counter by `n`.
+    fn increment_by(&self, n: usize) {
+        self.inner.fetch_add(n, Ordering::Relaxed);
+    }
+
+    /// Consumes the counter and returns the contained value.
+    /// This is safe because passing self by value guarantees that no other threads are concurrently accessing the atomic data.
+    fn into_inner(self) -> usize {
+        self.inner.into_inner()
     }
 }
