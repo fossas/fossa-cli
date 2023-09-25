@@ -1,4 +1,7 @@
-use std::{path::PathBuf, collections::{HashMap, HashSet}};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+};
 
 use clap::Parser;
 use getset::Getters;
@@ -95,7 +98,7 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
             } else {
                 debug!(path = %path.display(), "skipped: not a file");
                 None
-            } 
+            }
         })
         // Extract snippets from each file in parallel.
         .filter_map(|path| -> Option<(PathBuf, HashSet<ContentSnippet>)> {
