@@ -123,12 +123,10 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
             let fingerprint = found.snippet().fingerprint();
             let matching_snippets = client
                 .lookup_snippets(fingerprint)
-                .wrap_err_with(|| format!("lookup snippet for fingerprint '{fingerprint}'"))
-                .map_err(|err| warn!(path = %path.display(), "lookup snippet: {err:#}"))
+                .map_err(|err| warn!(path = %path.display(), %fingerprint, "lookup snippet: {err:#}"))
                 .ok()?;
             if matching_snippets.is_empty() {
                 trace!(%fingerprint, "no matches in corpus");
-                debug!(path = %path.display(), "no snippets matched corpus");
                 return None;
             }
             for matched in matching_snippets.iter() {
@@ -145,8 +143,7 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
                 .pipe(Some)
         })
         // Snippet lookups were parallelized. Join them back together by path.
-        // Need both fold and reduce because fold is still parallelized;
-        // see https://docs.rs/rayon/latest/rayon/iter/trait.ParallelIterator.html#method.fold
+        // Need both fold and reduce; see https://docs.rs/rayon/latest/rayon/iter/trait.ParallelIterator.html#method.fold
         .fold(HashMap::new, |mut acc, (path, record)| {
             acc.entry(path).or_insert_with(Vec::new).push(record);
             acc
