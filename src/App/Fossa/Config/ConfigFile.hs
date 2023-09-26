@@ -4,6 +4,7 @@
 module App.Fossa.Config.ConfigFile (
   defaultConfigFileNames,
   resolveConfigFile,
+  OrgWideCustomLicenseConfigPolicy (..),
   ConfigGrepEntry (..),
   ConfigFile (..),
   ConfigProject (..),
@@ -20,6 +21,7 @@ module App.Fossa.Config.ConfigFile (
 ) where
 
 import App.Docs (fossaYmlDocUrl)
+import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
 import App.Types (Policy (..), ProjectMetadata (..), ReleaseGroupMetadata)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (
@@ -194,7 +196,7 @@ data ConfigFile = ConfigFile
   , configTelemetry :: Maybe ConfigTelemetry
   , configCustomLicenseSearch :: Maybe [ConfigGrepEntry]
   , configKeywordSearch :: Maybe [ConfigGrepEntry]
-  , configIgnoreOrgWideCustomLicenseScanConfigs :: Bool
+  , configOrgWideCustomLicenseConfigPolicy :: OrgWideCustomLicenseConfigPolicy
   , configConfigFilePath :: Path Abs File
   }
   deriving (Eq, Ord, Show)
@@ -270,7 +272,11 @@ instance FromJSON (Path Abs File -> ConfigFile) where
       <*> obj .:? "telemetry"
       <*> obj .:? "customLicenseSearch"
       <*> obj .:? "experimentalKeywordSearch"
-      <*> obj .:? "ignoreOrgWideCustomLicenseScanConfigs" .!= False
+      <*> parseIgnoreOrgWideCustomLicenseScanConfigs obj
+    where
+      parseIgnoreOrgWideCustomLicenseScanConfigs obj = do
+        ignoreIt <- obj .:? "orgWideCustomLicenseScanConfigPolicy" .!= False
+        if ignoreIt then pure Ignore else pure Use
 
 instance FromJSON ConfigProject where
   parseJSON = withObject "ConfigProject" $ \obj ->

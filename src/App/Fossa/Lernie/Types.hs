@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Lernie.Types (
+  OrgWideCustomLicenseConfigPolicy (..),
   GrepOptions (..),
   GrepEntry (..),
   LernieResults (..),
@@ -24,10 +25,24 @@ import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
 import Srclib.Types (LicenseSourceUnit)
 
+data OrgWideCustomLicenseConfigPolicy = Use | Ignore
+  deriving (Eq, Ord, Show)
+
+instance Semigroup OrgWideCustomLicenseConfigPolicy where
+  (<>) Use Use = Use
+  (<>) _ _ = Ignore
+
+instance ToText OrgWideCustomLicenseConfigPolicy where
+  toText Use = "Use"
+  toText Ignore = "Ignore"
+
+instance ToJSON OrgWideCustomLicenseConfigPolicy where
+  toJSON = toJSON . toText
+
 data GrepOptions = GrepOptions
   { customLicenseSearch :: [GrepEntry]
   , keywordSearch :: [GrepEntry]
-  , ignoreOrgWideCustomLicenseScanConfigs :: Bool
+  , orgWideCustomLicenseScanConfigPolicy :: OrgWideCustomLicenseConfigPolicy
   , configFilePath :: Maybe (Path Abs File)
   }
   deriving (Eq, Ord, Show, Generic)
