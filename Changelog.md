@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.8.14
 
 - Custom License Searches and Keyword Searches allow you to search through your codebase, find matches to regular expressions and then either log the results to the scan summary (keyword search) or create a custom license match (custom license searches) ([#1274](https://github.com/fossas/fossa-cli/pull/1274))
 
