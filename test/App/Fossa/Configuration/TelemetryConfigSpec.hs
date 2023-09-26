@@ -14,6 +14,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
   ConfigTelemetry (ConfigTelemetry),
   ConfigTelemetryScope (FullTelemetry, NoTelemetry),
+  OrgWideCustomLicenseConfigPolicy (..),
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import Control.Carrier.Telemetry.Sink.Common (
@@ -77,7 +78,7 @@ defaultConfigFile =
     , configTelemetry = Nothing
     , configCustomLicenseSearch = Nothing
     , configKeywordSearch = Nothing
-    , configIgnoreOrgWideCustomLicenseScanConfigs = False
+    , configOrgWideCustomLicenseConfigPolicy = Use
     , configConfigFilePath = configPath
     }
 

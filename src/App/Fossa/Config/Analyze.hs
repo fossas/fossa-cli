@@ -48,6 +48,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigTelemetryScope (NoTelemetry),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
+  OrgWideCustomLicenseConfigPolicy (..),
   VendoredDependencyConfigs (..),
   mergeFileCmdMetadata,
   resolveConfigFile,
@@ -281,7 +282,7 @@ cliParser =
     <*> experimentalUseV3GoResolver
     <*> flagOpt ForceFirstPartyScans (long "experimental-force-first-party-scans" <> help "Force first party scans")
     <*> flagOpt ForceNoFirstPartyScans (long "experimental-block-first-party-scans" <> help "Block first party scans. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans.")
-    <*> flagOpt IgnoreOrgWideCustomLicenseScanConfigs (long "ignore-org-wide-custom-license-scan-configs" <> help "Ignore custom-license scan configurations for your organization. These configurations are defined in the Integrations section of the Admin settings in the FOSSA web app")
+    <*> flagOpt IgnoreOrgWideCustomLicenseScanConfigs (long "ignore-org-wide-custom-license-scan-configs" <> help "Ignore custom-license scan configurations for your organization. These configurations are defined in the \"Integrations\" section of the Admin settings in the FOSSA web app")
 
 data GoDynamicTactic
   = GoModulesBasedTactic
@@ -491,15 +492,15 @@ collectVendoredDepsFromConfig maybeCfg =
 collectGrepOptions :: Maybe ConfigFile -> AnalyzeCliOpts -> GrepOptions
 collectGrepOptions maybeCfg AnalyzeCliOpts{..} =
   case maybeCfg of
-    Nothing -> GrepOptions [] [] ignoreOrgWideCustomLicenseScanConfigsFromFlag Nothing
+    Nothing -> GrepOptions [] [] orgWideCustomLicenseScanConfigPolicyFromFlag Nothing
     Just cfg ->
-      GrepOptions customLicenseList keywordSearchList (ignoreOrgWideCustomLicenseScanConfigsFromFlag || ignoreOrgWideCustomLicenseScanConfigsFromConfig) (configConfigFilePath <$> maybeCfg)
+      GrepOptions customLicenseList keywordSearchList (orgWideCustomLicenseScanConfigPolicyFromFlag <> orgWideCustomLicenseConfigPolicyFromConfig) (configConfigFilePath <$> maybeCfg)
       where
         customLicenseList = maybe [] (map configGrepToGrep) (configCustomLicenseSearch cfg)
         keywordSearchList = maybe [] (map configGrepToGrep) (configKeywordSearch cfg)
-        ignoreOrgWideCustomLicenseScanConfigsFromConfig = configIgnoreOrgWideCustomLicenseScanConfigs cfg
+        orgWideCustomLicenseConfigPolicyFromConfig = configOrgWideCustomLicenseConfigPolicy cfg
   where
-    ignoreOrgWideCustomLicenseScanConfigsFromFlag = fromFlag IgnoreOrgWideCustomLicenseScanConfigs analyzeIgnoreOrgWideCustomLicenseScanConfigs
+    orgWideCustomLicenseScanConfigPolicyFromFlag = if (fromFlag IgnoreOrgWideCustomLicenseScanConfigs analyzeIgnoreOrgWideCustomLicenseScanConfigs) then Ignore else Use
 
 configGrepToGrep :: ConfigGrepEntry -> GrepEntry
 configGrepToGrep configGrep = GrepEntry (configGrepMatchCriteria configGrep) (configGrepName configGrep)

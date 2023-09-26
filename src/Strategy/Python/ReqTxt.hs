@@ -35,7 +35,7 @@ instance ToDiagnostic ReqsTxtFailed where
 
 type Parser = Parsec Void Text
 
--- https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format
+-- https://pip.pypa.io/en/stable/reference/requirements-file-format/
 requirementsTxtParser :: Parser [Req]
 requirementsTxtParser = concat <$> manyTill reqParser eof
 
