@@ -53,6 +53,8 @@ data TelemetryCtx = TelemetryCtx
 
 data CountableCliFeature
   = ExperimentalGradleSingleConfigurationUsage
+  | ExperimentalKeywordSearchUsage
+  | CustomLicenseSearchUsage
   deriving (Show, Eq, Ord, Generic)
 
 instance ToJSONKey CountableCliFeature where

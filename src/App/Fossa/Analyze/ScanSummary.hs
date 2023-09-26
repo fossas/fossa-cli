@@ -177,7 +177,7 @@ summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicL
           <> summarizeSrcUnit "dynamic linked dependency analysis" (Just getBinaryIdentifier) dynamicLinkingDeps
           <> summarizeSrcUnit "fossa-deps file analysis" (Just getManualVendorDepsIdentifier) manualDeps
           <> summarizeSrcUnit "Keyword Search" (Just getLernieIdentifier) (lernieResultsKeywordSearches <$$> lernie)
-          <> summarizeSrcUnit "Custom LicenseSearch" (Just getLernieIdentifier) (lernieResultsCustomLicenses <$$> lernie)
+          <> summarizeSrcUnit "Custom-License Search" (Just getLernieIdentifier) (lernieResultsCustomLicenses <$$> lernie)
           <> [""]
   where
     vsiResults = summarizeSrcUnit "vsi analysis" (Just (join . map vsiSourceUnits)) vsi
