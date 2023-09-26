@@ -24,7 +24,7 @@ import Data.Set qualified as Set
 import Diag.Result (Result)
 import Effect.Logger (ignoreLogger)
 import Effect.ReadFS (runReadFSIO)
-import Path (Dir, Path, Rel, mkRelDir, (</>))
+import Path (Abs, Dir, File, Path, Rel, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import ResultUtil (assertOnSuccess, expectFailure)
 import Test.Hspec qualified as T
@@ -32,8 +32,8 @@ import Test.Hspec.Core.Spec (SpecM)
 import Text.RawString.QQ (r)
 import Types (ArchiveUploadType (..), BuildTarget (..), GlobFilter (GlobFilter), LicenseScanPathFilters (..), TargetFilter (..))
 
-expectedConfigFile :: ConfigFile
-expectedConfigFile =
+expectedConfigFile :: Path Abs File -> ConfigFile
+expectedConfigFile path =
   ConfigFile
     { configVersion = 3
     , configServer = Just "https://app.fossa.com"
@@ -48,6 +48,7 @@ expectedConfigFile =
     , configCustomLicenseSearch = Just expectedLicenseSearch
     , configKeywordSearch = Just expectedKeywordSearch
     , configOrgWideCustomLicenseConfigPolicy = Use
+    , configConfigFilePath = path
     }
 
 expectedConfigProject :: ConfigProject
@@ -158,11 +159,11 @@ invalidScanMethodDir = maintestdir </> $(mkRelDir "invalid-scan-method")
 invalidPoliciesDir :: Path Rel Dir
 invalidPoliciesDir = maintestdir </> $(mkRelDir "invalid-policies")
 
-expectSuccessfulParse :: Result (Maybe ConfigFile) -> T.Expectation
-expectSuccessfulParse act =
+expectSuccessfulParse :: Result (Maybe ConfigFile) -> Path Abs File -> T.Expectation
+expectSuccessfulParse act configFilePath =
   assertOnSuccess act $ \_ a -> case a of
     Nothing -> T.expectationFailure "config file was Nothing after parsing"
-    Just result -> result `T.shouldBe` expectedConfigFile
+    Just result -> result `T.shouldBe` (expectedConfigFile configFilePath)
 
 spec :: T.Spec
 spec = do
@@ -195,11 +196,11 @@ spec = do
   ver2Specified <- runIt maintestdir $ Just "ver2-specified.yml"
 
   T.describe "config file parser" $ do
-    T.it "parses a full config file in the default location" $ expectSuccessfulParse validDefault
+    T.it "parses a full config file in the default location" $ expectSuccessfulParse validDefault $ curdir </> validDefaultDir </> $(mkRelFile ".fossa.yml")
 
-    T.it "parses a full config file with the `yaml` extension in the default location" $ expectSuccessfulParse validDefaultYaml
+    T.it "parses a full config file with the `yaml` extension in the default location" $ expectSuccessfulParse validDefaultYaml $ curdir </> validDefaultYamlDir </> $(mkRelFile ".fossa.yaml")
 
-    T.it "parses a full config file in a specified location" $ expectSuccessfulParse validSpecified
+    T.it "parses a full config file in a specified location" $ expectSuccessfulParse validSpecified $ curdir </> validDefaultDir </> $(mkRelFile ".fossa.yml")
 
     T.it "always returns failure for a bad file" $ do
       expectFailure invalidSpecified

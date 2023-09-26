@@ -9,6 +9,7 @@ module App.Fossa.LernieSpec (
 import App.Fossa.Lernie.Analyze (analyzeWithLernie, analyzeWithLernieWithOrgInfo, grepOptionsToLernieConfig, lernieMessagesToLernieResults, singletonLernieMessage)
 import App.Fossa.Lernie.Types (GrepEntry (..), GrepOptions (..), LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieScanType (..), LernieWarning (..), OrgWideCustomLicenseConfigPolicy (..))
 import Control.Carrier.Debug (ignoreDebug)
+import Control.Carrier.Telemetry (withoutTelemetry)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Data.List (nub, sort)
 import Data.List.NonEmpty qualified as NE
@@ -16,7 +17,7 @@ import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToText (toText))
 import Data.Text qualified as Text
 import Fossa.API.Types (Organization (..))
-import Path (Abs, Dir, Path, Rel, mkAbsDir, mkRelDir, toFilePath, (</>))
+import Path (Abs, Dir, Path, Rel, mkAbsDir, mkRelDir, mkRelFile, toFilePath, (</>))
 import Path.IO (getCurrentDir)
 import Srclib.Types (LicenseScanType (CliLicenseScanned), LicenseSourceUnit (..), LicenseUnit (..), LicenseUnitData (..), LicenseUnitInfo (..), LicenseUnitMatchData (..))
 import System.FilePath (pathSeparator)
@@ -228,6 +229,7 @@ grepOptions =
     { customLicenseSearch = [customLicenseGrepEntry]
     , keywordSearch = [keywordSearchGrepEntry]
     , orgWideCustomLicenseScanConfigPolicy = Use
+    , configFilePath = Nothing
     }
 
 customLicenseGrepEntry :: GrepEntry
@@ -311,7 +313,7 @@ spec = do
     let fixedOnePath = fromMaybe onePath (Text.stripSuffix (toText pathSeparator) onePath)
 
     it' "should analyze a directory with the provided config if no API keys are passed in" $ do
-      result <- ignoreDebug $ analyzeWithLernie scanDir Nothing grepOptions
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernie scanDir Nothing grepOptions{configFilePath = (Just $ scanDir </> $(mkRelFile ".fossa.yml"))}
       -- Fix the paths in the expected data. We need to do this here because they include the full path to the file
       let actualUnitData =
             expectedUnitData
@@ -343,7 +345,7 @@ spec = do
 
     it' "should merge the config from fossa.yml and the org" $ do
       GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry]}
-      result <- ignoreDebug $ analyzeWithLernieWithOrgInfo scanDir grepOptions
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernieWithOrgInfo scanDir grepOptions
       case result of
         Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
         Just res -> do

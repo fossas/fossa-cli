@@ -28,8 +28,11 @@ import App.Fossa.Lernie.Types (
 import Control.Carrier.Debug (Debug)
 import Control.Carrier.Diagnostics (Diagnostics, fatal, warn)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
+import Control.Carrier.Telemetry.Types
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Has, Lift)
+import Control.Effect.Telemetry (Telemetry, trackUsage)
+import Control.Monad (unless)
 import Data.Aeson (decode)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
@@ -45,7 +48,7 @@ import Data.Text (Text)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execCurrentDirStdinThrow)
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts, Organization (..))
-import Path (Abs, Dir, Path)
+import Path (Abs, Dir, File, Path)
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), LicenseUnit (..), LicenseUnitData (..), LicenseUnitInfo (..), LicenseUnitMatchData (..))
 
 newtype CustomLicensePath = CustomLicensePath {unCustomLicensePath :: Text}
@@ -60,6 +63,7 @@ analyzeWithLernie ::
   , Has Debug sig m
   , Has Exec sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   Path Abs Dir ->
   Maybe ApiOpts ->
@@ -77,6 +81,7 @@ analyzeWithLernieWithOrgInfo ::
   , Has (Lift IO) sig m
   , Has Exec sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   Path Abs Dir ->
   GrepOptions ->
@@ -90,6 +95,7 @@ analyzeWithLernieMain ::
   , Has (Lift IO) sig m
   , Has Exec sig m
   , Has ReadFS sig m
+  , Has Telemetry sig m
   ) =>
   Path Abs Dir ->
   GrepOptions ->
@@ -98,7 +104,9 @@ analyzeWithLernieMain rootDir grepOptions = do
   let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
   case maybeLernieConfig of
     Just lernieConfig -> do
-      messages <- runLernie lernieConfig
+      unless (null $ customLicenseSearch grepOptions) $ trackUsage CustomLicenseSearchUsage
+      unless (null $ keywordSearch grepOptions) $ trackUsage ExperimentalKeywordSearchUsage
+      messages <- runLernie lernieConfig (configFilePath grepOptions)
       let lernieResults = lernieMessagesToLernieResults messages rootDir
       pure $ Just lernieResults
     Nothing -> pure Nothing
@@ -123,11 +131,12 @@ runLernie ::
   , Has Exec sig m
   ) =>
   LernieConfig ->
+  Maybe (Path Abs File) ->
   m LernieMessages
-runLernie lernieConfig = withLernieBinary $ \bin -> do
+runLernie lernieConfig configFilePath = withLernieBinary $ \bin -> do
   let lernieConfigJSON = decodeUtf8 $ Aeson.encode lernieConfig
   result <- execCurrentDirStdinThrow (lernieCommand bin) lernieConfigJSON
-  let messages = parseLernieJson result
+  let messages = parseLernieJson result configFilePath
   traverse_ (fatal . displayLernieError) $ lernieMessageErrors messages
   traverse_ (warn . displayLernieWarning) $ lernieMessageWarnings messages
   pure messages
@@ -148,13 +157,19 @@ lernieCommand bin =
 
 -- Parse Lernie's NDJson output by splitting on newlines (character 10) and
 -- then decoding each line
-parseLernieJson :: BL.ByteString -> LernieMessages
-parseLernieJson out =
+parseLernieJson :: BL.ByteString -> Maybe (Path Abs File) -> LernieMessages
+parseLernieJson out configFilePath =
   fold messages
   where
     messageLines = BL.splitWith (== 10) out
-    parsedLines = mapMaybe decode messageLines
+    -- Once Lernie supports file filtering we'll do this by passing the config file path into Lernie
+    -- and Lernie will skip scanning the config file. But for now let's just filter post-scan
+    parsedLines = filter (notConfigFile configFilePath) $ mapMaybe decode messageLines
     messages = map singletonLernieMessage parsedLines
+
+notConfigFile :: Maybe (Path Abs File) -> LernieMessage -> Bool
+notConfigFile (Just configFilePath) (LernieMessageLernieMatch lernieMessage) = lernieMatchPath lernieMessage /= toText configFilePath
+notConfigFile _ _ = True
 
 lernieMessagesToLernieResults :: LernieMessages -> Path Abs Dir -> LernieResults
 lernieMessagesToLernieResults LernieMessages{..} rootDir =

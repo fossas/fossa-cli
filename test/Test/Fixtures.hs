@@ -375,6 +375,7 @@ grepOptions =
     { customLicenseSearch = []
     , keywordSearch = []
     , orgWideCustomLicenseScanConfigPolicy = Use
+    , configFilePath = Nothing
     }
 
 #ifdef mingw32_HOST_OS
