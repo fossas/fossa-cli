@@ -41,17 +41,23 @@ pub enum Error {
 #[clap(version)]
 pub struct Options {
     /// Extract this combination of targets.
+    ///
     /// Specify the argument multiple times to indicate additional options.
-    #[clap(long = "target", default_value = "function")]
+    /// If none are specified, defaults to all supported options.
+    #[clap(long = "target")]
     targets: Vec<Target>,
 
     /// Extract this combination of kinds.
+    ///
     /// Specify the argument multiple times to indicate additional options.
-    #[clap(long = "kind", default_value = "full")]
+    /// If none are specified, defaults to all supported options.
+    #[clap(long = "kind")]
     kinds: Vec<Kind>,
 
     /// Use this combination of transforms.
+    ///
     /// Specify the argument multiple times to indicate additional options.
+    /// If none are specified, defaults to all supported options.
     #[clap(long = "transform")]
     transforms: Vec<Transform>,
 
@@ -66,11 +72,25 @@ impl From<Options> for snippets::Options {
 }
 
 impl From<&Options> for snippets::Options {
-    fn from(value: &Options) -> Self {
+    #[tracing::instrument(level = "DEBUG", ret)]
+    fn from(opts: &Options) -> Self {
+        macro_rules! default_if_empty {
+            ($property:ident, $t:ty) => {
+                if opts.$property().is_empty() {
+                    <$t>::iter().collect()
+                } else {
+                    opts.$property().to_vec()
+                }
+            };
+        }
+
+        let match_targets = default_if_empty!(targets, Target);
+        let match_kinds = default_if_empty!(kinds, Kind);
+        let match_transforms = default_if_empty!(transforms, Transform);
         snippets::Options::new(
-            value.targets().iter().copied().map(Into::into),
-            value.kinds().iter().copied().map(Into::into),
-            value.transforms().iter().copied().map(Into::into),
+            match_targets.into_iter().map(Into::into),
+            match_kinds.into_iter().map(Into::into),
+            match_transforms.into_iter().map(Into::into),
         )
     }
 }
