@@ -5,7 +5,7 @@ use retry::{
     retry_with_index,
 };
 use tap::{Pipe, TapFallible};
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 use ureq::Agent;
 use url::Url;
 
@@ -27,7 +27,7 @@ pub fn run(agent: &Agent, base: &BaseUrl, fp: &Fingerprint) -> Result<HashSet<Ap
         agent
             .get(target.as_str())
             .call()
-            .tap_ok(|_| info!(%retry, "fetched matching snippets"))
+            .tap_ok(|_| debug!(%retry, "fetched matching snippets"))
     });
 
     match response {

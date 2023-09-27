@@ -1,16 +1,26 @@
-use std::{borrow::Cow, path::PathBuf};
+use std::{
+    borrow::Cow,
+    collections::HashSet,
+    path::PathBuf,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use clap::Parser;
 use getset::Getters;
-use itertools::Itertools;
-use millhone::api;
-use once_cell::sync::Lazy;
+use millhone::{
+    api::{self, ApiSnippet},
+    extract::Snippet,
+};
 use secrecy::Secret;
+use serde::{Deserialize, Serialize};
+use stable_eyre::{eyre::Context, Report};
 use tap::Pipe;
 use tracing::warn;
+use typed_builder::TypedBuilder;
 use walkdir::DirEntry;
 
 pub mod analyze;
+pub mod commit;
 pub mod ingest;
 pub mod ping;
 
@@ -32,6 +42,27 @@ impl ApiAuthentication {
     fn as_credentials(&self) -> api::Credentials {
         api::Credentials::new(self.api_key_id.clone(), self.api_secret.clone())
     }
+}
+
+/// A snippet match found in a local file during analysis.
+#[derive(Debug, Clone, Serialize, Deserialize, TypedBuilder)]
+pub struct MatchingSnippet {
+    /// The local path in which the match was found, rendered as a string.
+    /// Any invalid UTF8 content is replaced by `U+FFFD`.
+    #[builder(setter(into))]
+    found_in: String,
+
+    /// A copy of the file content indicated by `found_at`, rendered as a string.
+    /// Any invalid UTF8 content is replaced by `U+FFFD`.
+    #[builder(setter(into))]
+    local_text: String,
+
+    /// The snippet that was identified in the local project.
+    local_snippet: Snippet,
+
+    /// Snippets in the knowledgebase that match this snippet.
+    #[builder(setter(into))]
+    matching_snippets: HashSet<ApiSnippet>,
 }
 
 /// Unwrap a directory entry, warning on error.
@@ -58,75 +89,37 @@ fn unwrap_dir_entry(entry: Result<DirEntry, walkdir::Error>) -> Option<DirEntry>
     }
 }
 
-static TEMP_PREFIX: Lazy<String> = Lazy::new(|| {
-    let name = env!("CARGO_PKG_NAME");
-    format!("{name}_")
-});
-
-/// Create a temporary directory prefixed by the name of the current crate in the system temp directory.
-pub fn namespaced_temp_dir() -> Result<PathBuf, std::io::Error> {
-    tempfile::Builder::new()
-        .prefix(TEMP_PREFIX.as_str())
-        .tempdir()
-        .map(|tf| tf.into_path())
+/// Resolves the path for an entry, with special handling for symlinks.
+#[tracing::instrument]
+fn resolve_path(entry: &DirEntry) -> Result<PathBuf, Report> {
+    if entry.path_is_symlink() {
+        std::fs::read_link(entry.path())
+            .wrap_err_with(|| format!("resolve symlink of '{}'", entry.path().display()))
+    } else {
+        entry.path().to_path_buf().pipe(Ok)
+    }
 }
 
-/// Find the latest temporary directory created by [`namespaced_temp_dir`].
-///
-/// Note: this is allowed as dead code for now but code that uses it (via the `commit` subcommand)
-/// is coming in another PR.
-#[allow(dead_code)]
-pub fn latest_temp_dir() -> Result<Option<PathBuf>, std::io::Error> {
-    let temp = std::env::temp_dir();
-    let mut files = std::fs::read_dir(temp)?
-        .filter_ok(|entry| {
-            entry
-                .file_name()
-                .to_str()
-                .map(|name| name.starts_with(TEMP_PREFIX.as_str()))
-                .unwrap_or_default()
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    // `sort_by_key` operates in ascending order; we want the first in descending order
-    // (which is equivalent to "the one created most recently").
-    files.sort_by_key(|entry| entry.metadata().and_then(|m| m.created()).ok());
-    files.last().map(|entry| entry.path()).pipe(Ok)
+/// A simple atomic counter.
+#[derive(Debug, Default)]
+struct AtomicCounter {
+    inner: AtomicUsize,
 }
 
-#[cfg(test)]
-mod tests {
-
-    use std::{path::Path, thread::sleep, time::Duration};
-
-    use super::*;
-
-    use tap::TapFallible;
-
-    fn cleanup(dir: &Path) {
-        if let Err(err) = std::fs::remove_dir_all(dir) {
-            eprintln!(
-                "[warn] failed to clean up directory '{}': {err:#}",
-                dir.display()
-            );
-        }
+impl AtomicCounter {
+    /// Increment the counter by 1.
+    fn increment(&self) {
+        self.increment_by(1)
     }
 
-    #[test]
-    fn finds_latest_temp_dir() {
-        let a = namespaced_temp_dir().expect("create 'a'");
+    /// Increment the counter by `n`.
+    fn increment_by(&self, n: usize) {
+        self.inner.fetch_add(n, Ordering::Relaxed);
+    }
 
-        // Windows, unfortunately, was flaky without this.
-        sleep(Duration::from_secs(1));
-
-        let b = namespaced_temp_dir()
-            .tap_err(|_| cleanup(&a))
-            .expect("create 'b'");
-        let latest = latest_temp_dir()
-            .tap_err(|_| cleanup(&a))
-            .tap_err(|_| cleanup(&b))
-            .expect("find latest");
-
-        assert_eq!(latest, Some(b));
+    /// Consumes the counter and returns the contained value.
+    /// This is safe because passing self by value guarantees that no other threads are concurrently accessing the atomic data.
+    fn into_inner(self) -> usize {
+        self.inner.into_inner()
     }
 }
