@@ -1403,8 +1403,8 @@ checksum = "942b4a808e05215192e39f4ab80813e599068285906cc91aa64f923db842bd5a"
 
 [[package]]
 name = "snippets"
-version = "0.1.1"
-source = "git+https://github.com/fossas/foundation-libs#6f910a61bf3dd06655770aea9d65c219815a5fd2"
+version = "0.1.2"
+source = "git+https://github.com/fossas/foundation-libs#0b97d709291c7cad9ec23b24b5ec736c4feb8063"
 dependencies = [
  "base64 0.21.4",
  "derivative",
@@ -1435,7 +1435,7 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 [[package]]
 name = "srclib"
 version = "0.1.0"
-source = "git+https://github.com/fossas/foundation-libs#6f910a61bf3dd06655770aea9d65c219815a5fd2"
+source = "git+https://github.com/fossas/foundation-libs#0b97d709291c7cad9ec23b24b5ec736c4feb8063"
 dependencies = [
  "getset",
  "lazy_static",
@@ -1628,7 +1628,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "traceconf"
 version = "1.1.0"
-source = "git+https://github.com/fossas/foundation-libs#6f910a61bf3dd06655770aea9d65c219815a5fd2"
+source = "git+https://github.com/fossas/foundation-libs#0b97d709291c7cad9ec23b24b5ec736c4feb8063"
 dependencies = [
  "atty",
  "clap 4.4.5",
