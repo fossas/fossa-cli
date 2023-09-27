@@ -394,6 +394,11 @@
                 "$ref": "#/$defs/grepDefinition"
             }
         },
+        "ignoreOrgWideCustomLicenseScanConfigs": {
+            "type": "boolean",
+            "default": false,
+            "description": "Ignore custom-license scan configurations for your organization. These configurations are defined in the Integrations section of the Admin settings in the FOSSA web app."
+        },
         "targets": {
             "type": "object",
             "description": "The targets filtering allows you to specify the exact targets which be should be scanned.",

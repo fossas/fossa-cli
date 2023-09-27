@@ -1,7 +1,19 @@
 # FOSSA CLI Changelog
 
-## v3.8.10
+## v3.8.14
 
+- Custom License Searches and Keyword Searches allow you to search through your codebase, find matches to regular expressions and then either log the results to the scan summary (keyword search) or create a custom license match (custom license searches) ([#1274](https://github.com/fossas/fossa-cli/pull/1274))
+
+## v3.8.13
+- Maven: Prevent infinite recursion from Pom file property interpolation. ([#1271](https://github.com/fossas/fossa-cli/pull/1271))
+
+## v3.8.12
+- Conda: Support simple Pip packages in `environment.yml`. ([#1275](https://github.com/fossas/fossa-cli/pull/1275))
+
+## v3.8.11
+- Maven analysis: Prevent maven analysis from infinitely recursing when it encounters a recursive property ([#1268](https://github.com/fossas/fossa-cli/pull/1268))
+
+## v3.8.10
 - Reports: Can now export reports formatted as CycloneDX (json/xml), CSV, HTML, and JSON SPDX. ([#1266](https://github.com/fossas/fossa-cli/pull/1266))
 - Containers: RPM packages installed in containers that use the NDB format for their RPM database are now parsed much faster. ([#1262](https://github.com/fossas/fossa-cli/pull/1262))
 
