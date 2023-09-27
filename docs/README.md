@@ -50,6 +50,7 @@ Feature guides explain how to use specific features. These are most useful if th
 
 - [Manual dependencies](./features/manual-dependencies.md)
 - [Vendored dependencies](./features/vendored-dependencies.md)
+- [Custom License and Keyword Searches](./features/custom-license-and-keyword-searches.md)
 
 ## References
 
