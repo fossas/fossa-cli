@@ -4,6 +4,7 @@
 
 use std::{
     collections::HashSet,
+    hash::Hash,
     path::{Path, PathBuf},
 };
 
@@ -11,12 +12,13 @@ use base64::prelude::*;
 use clap::{Parser, ValueEnum};
 use derive_more::From;
 use getset::{CopyGetters, Getters};
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use snippets::{language::c99_tc3, Extractor};
 use strum::{Display, EnumIter, IntoEnumIterator};
-use tap::Pipe;
+use tap::{Pipe, Tap};
 use thiserror::Error;
-use tracing::debug;
+use tracing::{debug, trace};
 use typed_builder::TypedBuilder;
 
 /// Errors encountered in this module.
@@ -74,7 +76,7 @@ impl From<&Options> for snippets::Options {
 }
 
 /// The targets of snippets to extract.
-#[derive(Debug, Clone, Copy, ValueEnum, Display)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter)]
 #[strum(serialize_all = "snake_case")]
 pub enum Target {
     /// Targets function defintions as snippets.
@@ -90,7 +92,7 @@ impl From<Target> for snippets::Target {
 }
 
 /// The kind of item this snippet represents.
-#[derive(Debug, Clone, Copy, ValueEnum, Display)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter)]
 #[strum(serialize_all = "snake_case")]
 pub enum Kind {
     /// The signature of the snippet.
@@ -114,7 +116,36 @@ impl From<Kind> for snippets::Kind {
 }
 
 /// The normalization used to extract this snippet.
-#[derive(Debug, Clone, Copy, ValueEnum, Display)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Display)]
+#[strum(serialize_all = "snake_case")]
+pub enum Method {
+    /// Generated from the text with the specified normalization applied.
+    Normalized(Transform),
+
+    /// Generated from the text as written.
+    Raw,
+}
+
+impl Method {
+    /// Create an iterator over possible methods used for snippet extraction.
+    pub fn iter() -> impl Iterator<Item = Method> {
+        Self::iter_constrained(Transform::iter())
+    }
+
+    /// Create an iterator over possible methods used for snippet extraction,
+    /// constrained to the provided transforms.
+    pub fn iter_constrained(
+        transforms: impl IntoIterator<Item = Transform>,
+    ) -> impl Iterator<Item = Method> {
+        std::iter::once(Method::Raw)
+            .chain(transforms.into_iter().map(Method::Normalized))
+            .collect_vec()
+            .into_iter()
+    }
+}
+
+/// The normalization used to extract this snippet.
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter)]
 #[strum(serialize_all = "snake_case")]
 pub enum Transform {
     /// Transform the text to have any comments removed and whitespace normalized.
@@ -222,8 +253,7 @@ impl Snippet {
         content: &[u8],
         snippet: snippets::Snippet<L>,
     ) -> Self {
-        let location = snippet.metadata().location();
-        let text_loc = TextLocation::new(&location, content);
+        let location = Location::new(snippet.metadata().location(), content);
         let display_path = path.strip_prefix(scan_root).unwrap_or(path);
         Self::builder()
             .fingerprint(
@@ -237,18 +267,19 @@ impl Snippet {
             .kind(snippet.metadata().kind().to_string())
             .method(snippet.metadata().method().to_string())
             .file_path(display_path.to_string_lossy().to_string())
-            .byte_start(location.start_byte() as _)
-            .byte_end(location.end_byte() as _)
-            .line_start(text_loc.line_start as _)
-            .line_end(text_loc.line_end as _)
-            .col_start(text_loc.col_start as _)
-            .col_end(text_loc.col_end as _)
+            .byte_start(location.byte_start() as _)
+            .byte_end(location.byte_end() as _)
+            .line_start(location.line_start as _)
+            .line_end(location.line_end as _)
+            .col_start(location.col_start as _)
+            .col_end(location.col_end as _)
             .language(L::display().to_string())
             .build()
     }
 
     /// Extract instances from a file on disk.
-    #[tracing::instrument]
+    /// If the file is not supported, the returned results are empty.
+    #[tracing::instrument(skip_all, fields(path = %path.display()))]
     pub fn from_file(
         scan_root: &Path,
         opts: &snippets::Options,
@@ -256,23 +287,107 @@ impl Snippet {
     ) -> Result<HashSet<Self>, Error> {
         match Support::by_ext(path) {
             Support::Unknown => {
-                debug!("skipping: unknown support status for file");
-                Ok(Default::default())
+                debug!("file extension support unknown");
+                HashSet::new().pipe(Ok)
             }
             Support::Unsupported => {
-                debug!("skipping: file extension not supported");
-                Ok(Default::default())
+                debug!("file extension not supported");
+                HashSet::new().pipe(Ok)
             }
             Support::Supported(language) => {
-                debug!("extracting snippets of language: {language}");
                 let content = std::fs::read(path).map_err(Error::ReadFile)?;
-                match language {
-                    Language::C => c99_tc3::Extractor::extract(opts, &content)?
-                        .into_iter()
-                        .map(|snippet| Self::from(scan_root, path, &content, snippet))
-                        .collect::<HashSet<_>>()
-                        .pipe(Ok),
-                }
+                Self::from_content(scan_root, opts, path, language, &content)
+            }
+        }
+    }
+
+    /// Extract instances from content already read from disk.
+    ///
+    /// It's recommended to use [`Support`] to determine the [`Language`]
+    /// to pass to this function.
+    #[tracing::instrument(skip_all)]
+    pub fn from_content(
+        scan_root: &Path,
+        opts: &snippets::Options,
+        path: &Path,
+        language: Language,
+        content: &[u8],
+    ) -> Result<HashSet<Self>, Error> {
+        match language {
+            Language::C => c99_tc3::Extractor::extract(opts, content)?
+                .pipe(collapse_raw)
+                .map(|snippet| Self::from(scan_root, path, content, snippet))
+                .inspect(|snippet| trace!(?snippet, "extracted snippet"))
+                .collect::<HashSet<Self>>(),
+        }
+        .tap(|found| {
+            debug!(
+                %language,
+                count = %found.len(),
+                content_len = %content.len(),
+                "extracted snippets",
+            )
+        })
+        .pipe(Ok)
+    }
+
+    /// Get the [`Location`] referenced by the snippet.
+    pub fn location(&self) -> Location {
+        Location::builder()
+            .byte_start(self.byte_start as _)
+            .byte_end(self.byte_end as _)
+            .line_start(self.line_start as _)
+            .line_end(self.line_end as _)
+            .col_start(self.col_start as _)
+            .col_end(self.col_end as _)
+            .build()
+    }
+}
+
+/// Equivalent to [`Snippet`], with the content copied from the input file.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Getters, TypedBuilder)]
+#[getset(get = "pub")]
+pub struct ContentSnippet {
+    /// The snippet that was found.
+    #[serde(flatten)]
+    snippet: Snippet,
+
+    /// The content of the file from which the snippet was extracted
+    /// at the location indicated by the snippet.
+    content: Vec<u8>,
+}
+
+impl ContentSnippet {
+    /// Extract instances from a file on disk.
+    /// If the file is not supported, the returned results are empty.
+    #[tracing::instrument(skip_all, fields(path = %path.display()))]
+    pub fn from_file(
+        scan_root: &Path,
+        opts: &snippets::Options,
+        path: &Path,
+    ) -> Result<HashSet<Self>, Error> {
+        match Support::by_ext(path) {
+            Support::Unknown => {
+                debug!("file extension support unknown");
+                HashSet::new().pipe(Ok)
+            }
+            Support::Unsupported => {
+                debug!("file extension not supported");
+                HashSet::new().pipe(Ok)
+            }
+            Support::Supported(language) => {
+                let content = std::fs::read(path).map_err(Error::ReadFile)?;
+                Snippet::from_content(scan_root, opts, path, language, &content)?
+                    .into_iter()
+                    .map(|snippet| {
+                        let location = snippet.location();
+                        Self {
+                            snippet,
+                            content: location.extract_from(&content).to_owned(),
+                        }
+                    })
+                    .collect::<HashSet<_>>()
+                    .pipe(Ok)
             }
         }
     }
@@ -302,13 +417,9 @@ impl std::fmt::Display for Fingerprint {
 
 impl std::fmt::Debug for Fingerprint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if f.alternate() {
-            f.debug_tuple("Fingerprint")
-                .field(&self.to_string())
-                .finish()
-        } else {
-            f.debug_tuple("Fingerprint").field(&self.0).finish()
-        }
+        f.debug_tuple("Fingerprint")
+            .field(&self.to_string())
+            .finish()
     }
 }
 
@@ -337,6 +448,16 @@ impl<'de> serde::Deserialize<'de> for Fingerprint {
 
 /// The location, using textual "line, column" indicators, for a snippet.
 ///
+/// Byte locations are 0-based, while line and column indexes are 1-based:
+/// ```ignore
+/// // Remember that while `\n` is two columns as typed, it's 1 in actual text.
+/// let input = b"hello\nworld\nand beyond!";
+/// //            ^   ^  ^   ^  ^        ^
+/// //   bytes:   0   4  6   10 12       21
+/// // columns:   1   5  1   5  1        11
+/// //   lines:   1      2      3
+///```
+///
 /// Line end is inclusive: if a snippet starts on line 1 and ends before
 /// the end of the line, `line_end` is line 1 as well.
 ///
@@ -345,17 +466,26 @@ impl<'de> serde::Deserialize<'de> for Fingerprint {
 ///
 /// For example, if the full text was "hello world!",
 /// and the snippet starts on byte 6 and ends on byte 10,
-/// the returned `TextLocation` looks like:
+/// the returned `Location` looks like:
 /// ```ignore
-/// TextLocation {
+/// Location {
+///   byte_start: 6,
+///   byte_end: 10,
 ///   line_start: 1,
 ///   line_end: 1,
 ///   col_start: 7,
 ///   col_end: 11,
 /// }
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, TypedBuilder)]
-struct TextLocation {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, CopyGetters, TypedBuilder)]
+#[getset(get_copy = "pub")]
+pub struct Location {
+    /// The byte index at which the snippet starts.
+    byte_start: usize,
+
+    /// The byte index at which the snippet ends.
+    byte_end: usize,
+
     /// The line number on which the snippet starts.
     line_start: usize,
 
@@ -369,16 +499,16 @@ struct TextLocation {
     col_end: usize,
 }
 
-impl TextLocation {
-    /// Translate a [`Location`] in the given content into its textual indicators.
-    fn new(loc: &snippets::Location, content: &[u8]) -> Self {
-        let start_byte = loc.start_byte();
-        let end_byte = loc.end_byte();
+impl Location {
+    /// Derive an instance from a [`snippets::Location`] and the content to which it points.
+    fn new(loc: snippets::Location, content: &[u8]) -> Self {
+        let byte_start = loc.start_byte();
+        let byte_end = loc.end_byte();
         let mut line_start = 1;
         let mut col_start = 1;
 
         const NEWLINE: u8 = b'\n';
-        for b in content[..start_byte].iter().copied() {
+        for b in content[..byte_start].iter().copied() {
             if b == NEWLINE {
                 line_start += 1;
                 col_start = 1;
@@ -389,7 +519,7 @@ impl TextLocation {
 
         let mut line_end = line_start;
         let mut col_end = col_start;
-        for b in content[start_byte..=end_byte].iter().copied() {
+        for b in content[byte_start..=byte_end].iter().copied() {
             if b == NEWLINE {
                 line_end += 1;
                 col_end = 1;
@@ -399,11 +529,19 @@ impl TextLocation {
         }
 
         Self {
+            byte_start,
+            // The end byte of `snippets::Location` is inclusive.
+            byte_end: byte_end + 1,
             line_start,
             line_end,
             col_start,
             col_end,
         }
+    }
+
+    /// Extract the bytes indicated by a [`Location`] from a buffer.
+    pub fn extract_from<'a>(&self, buf: &'a [u8]) -> &'a [u8] {
+        &buf[self.byte_start..self.byte_end]
     }
 }
 
@@ -463,6 +601,59 @@ impl Language {
     }
 }
 
+/// Collapse a set of extracted snippets such that snippets that are identical
+/// other than along the axis of [`snippets::Kind`] and [`snippets::Method`] are collapsed into
+/// the highest specificity form.
+///
+/// When scanning a project for a set of snippets, one code item (for example, a function)
+/// will potentially generate many snippets of varying [`snippets::Kind`]s and [`snippets::Method`]s.
+///
+/// However, it's also possible for a given code item to be the same between different combinations;
+/// consider the following sample:
+/// ```not_rust
+/// int main() {
+///   printf("hello world\n");
+///   return 0;
+/// }
+/// ```
+///
+/// This same results in the same output for all [`snippets::Kind`]s for [`snippets::Method::Raw`]
+/// and [`snippets::Method::Normalized`] with the [`snippets::Transform::Comment`] transform.
+/// This introduces noise both in the database and for the user when matches are performed!
+///
+/// Fortunately, [`snippets::Method`] implements [`Ord`], such that "higher specificity" snippets
+/// are ordered higher when compared with [`Ord`]. This means that to choose the most correct
+/// single representative, we can bucket equivalent snippets together and then pick the one
+/// that is highest sorted. Specificity is sorted by [`snippets::Kind`], then [`snippets::Method`].
+///
+/// Snippets are considered equivalent when the [`snippets::Snippet::fingerprint`] field matches
+/// and the [`snippets::Metadata::location`] field inside [`snippets::Snippet::metadata`] matches.
+#[tracing::instrument(skip_all, fields(input_count, collapsed_count))]
+fn collapse_raw<L>(
+    snippets: impl IntoIterator<Item = snippets::Snippet<L>>,
+) -> impl Iterator<Item = snippets::Snippet<L>> {
+    let mut input_count = 0usize;
+    let mut grouped = snippets
+        .into_iter()
+        .inspect(|_| input_count += 1)
+        .into_group_map_by(|snippet| {
+            (snippet.fingerprint().clone(), snippet.metadata().location())
+        });
+
+    for (_, group) in grouped.iter_mut() {
+        group.sort_by_key(|s| (s.metadata().kind(), s.metadata().method()));
+    }
+
+    // Returning an iter so can't count directly,
+    // but it's known that at most one value per key is returned.
+    tracing::Span::current().record("input_count", input_count);
+    tracing::Span::current().record("collapsed_count", grouped.len());
+
+    // Pop from the end, since `sort_by_key` sorts in ascending order
+    // (so higher specificity snippets are sorted later in the vec).
+    grouped.into_values().filter_map(|mut group| group.pop())
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -470,6 +661,7 @@ mod tests {
     use itertools::Itertools;
     use maplit::hashmap;
     use pretty_assertions::assert_eq;
+    use rand::{seq::SliceRandom, thread_rng, Rng};
 
     use super::*;
 
@@ -527,13 +719,15 @@ mod tests {
         //            ^     ^   ^
         // columns:   1     7   11
         let location = snippets::Location::from(6..10);
-        let expected = TextLocation::builder()
+        let expected = Location::builder()
+            .byte_start(6)
+            .byte_end(10)
             .line_start(1)
             .line_end(1)
             .col_start(7)
             .col_end(11)
             .build();
-        let got = TextLocation::new(&location, input);
+        let got = Location::new(location, input);
         assert_eq!(got, expected);
     }
 
@@ -545,13 +739,163 @@ mod tests {
         // columns:   1   5  1   5  1        11
         //   lines:   1      2      3
         let location = snippets::Location::from(6..22);
-        let expected = TextLocation::builder()
+        let expected = Location::builder()
+            .byte_start(6)
+            .byte_end(22)
             .line_start(2)
             .line_end(3)
             .col_start(1)
             .col_end(11)
             .build();
-        let got = TextLocation::new(&location, input);
+        let got = Location::new(location, input);
         assert_eq!(got, expected);
+    }
+
+    #[test]
+    fn location_extract_from() {
+        let example = "#include <stdio.h>  int main() {}";
+        let location = Location::builder()
+            .byte_start(20)
+            .byte_end(30)
+            .line_start(1)
+            .line_end(1)
+            .col_start(21)
+            .col_end(31)
+            .build();
+
+        let got = location.extract_from(example.as_bytes());
+        assert_eq!(got, b"int main()");
+    }
+
+    #[test]
+    fn snippets_location_extract_from() {
+        let example = "#include <stdio.h>  int main() {}";
+        let location = snippets::Location::from(20..30);
+        let location = Location::new(location, example.as_bytes());
+
+        let got = location.extract_from(example.as_bytes());
+        assert_eq!(got, b"int main()");
+    }
+
+    #[test]
+    fn collapse_snippets_works() {
+        let buffer = |bytes: &[u8]| snippets::text::Buffer::new(bytes);
+        let kinds = snippets::Kind::iter().collect_vec();
+        let methods = snippets::Transform::iter()
+            .map(snippets::Method::Normalized)
+            .chain(std::iter::once(snippets::Method::Raw))
+            .collect_vec();
+
+        let rng_buf = || {
+            thread_rng()
+                .gen::<[u8; 32]>()
+                .pipe(snippets::text::Buffer::new)
+        };
+        let rng_loc = || -> snippets::Location {
+            (thread_rng().gen_range(1000..10000)..thread_rng().gen_range(10000..100000)).into()
+        };
+        let rng_kind = || {
+            kinds
+                .choose(&mut thread_rng())
+                .copied()
+                .expect("choose kind")
+        };
+        let rng_method = || {
+            methods
+                .choose(&mut thread_rng())
+                .copied()
+                .expect("choose method")
+        };
+
+        let known_content = buffer(b"some content");
+        let known_fp = buffer(b"some fingerprint");
+        let known_loc = snippets::Location::from(10..20);
+
+        // These snippets should all be collapsed. All possible kinds and methods are represented here,
+        // with a fully equivalent fingerprint and location.
+        // Content isn't considered by the function, but make it known too for completeness.
+        let homogenous = kinds
+            .clone()
+            .into_iter()
+            .cartesian_product(methods.clone())
+            .map(|(kind, method)| -> snippets::Snippet<c99_tc3::Language> {
+                snippets::Snippet::builder()
+                    .content(known_content.clone())
+                    .fingerprint(known_fp.clone())
+                    .metadata(snippets::Metadata::new(kind, method, known_loc))
+                    .build()
+            });
+
+        // These snippets should match either the fingerprint or the location
+        // of the homogenous snippets, but not both.
+        // The uniqueness call is here to ensure the interleaved sample below gets a good range.
+        let almost_homogenous =
+            std::iter::repeat_with(|| -> snippets::Snippet<c99_tc3::Language> {
+                let matching_fp = thread_rng().gen_bool(0.5);
+                snippets::Snippet::builder()
+                    .content(known_content.clone())
+                    .fingerprint(if matching_fp {
+                        known_fp.clone()
+                    } else {
+                        rng_buf()
+                    })
+                    .metadata(snippets::Metadata::new(
+                        rng_kind(),
+                        rng_method(),
+                        if matching_fp { rng_loc() } else { known_loc },
+                    ))
+                    .build()
+            })
+            .unique_by(|snippet| (snippet.fingerprint().clone(), snippet.metadata().location()));
+
+        // These snippets shouldn't match the homogenous snippets in any way.
+        // The uniqueness call is here to ensure the interleaved sample below gets a good range.
+        let heterogenous = std::iter::repeat_with(|| -> snippets::Snippet<c99_tc3::Language> {
+            snippets::Snippet::builder()
+                .content(rng_buf())
+                .fingerprint(rng_buf())
+                .metadata(snippets::Metadata::new(rng_kind(), rng_method(), rng_loc()))
+                .build()
+        })
+        .unique_by(|snippet| (snippet.fingerprint().clone(), snippet.metadata().location()));
+
+        let combined = homogenous
+            .interleave(heterogenous)
+            .interleave(almost_homogenous)
+            .take(100)
+            .collect_vec();
+
+        // All the random data is really just there to smoke test the function.
+        // At the end of the day, we just want to see that the homogenous snippets were collapsed down to
+        // a single result (and that it was the highest precedence one),
+        // and that the almost homogenous snippets didn't subtly mess this up.
+        let collapsed = collapse_raw(combined)
+            .filter(|snippet| {
+                snippet.fingerprint() == &known_fp && snippet.metadata().location() == known_loc
+            })
+            .collect_vec();
+
+        // Leave it up to `snippets` to tell us which of the kinds and methods are highest precedence.
+        let highest_precedence_homogenous = snippets::Snippet::builder()
+            .content(known_content)
+            .fingerprint(known_fp)
+            .metadata(snippets::Metadata::new(
+                kinds
+                    .iter()
+                    .sorted_unstable()
+                    .last()
+                    .copied()
+                    .expect("get highest precedence kind"),
+                methods
+                    .iter()
+                    .sorted_unstable()
+                    .last()
+                    .copied()
+                    .expect("get highest precedence method"),
+                known_loc,
+            ))
+            .build();
+
+        assert_eq!(collapsed, vec![highest_precedence_homogenous]);
     }
 }
