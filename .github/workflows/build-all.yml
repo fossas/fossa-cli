@@ -304,7 +304,7 @@ jobs:
         tar --create --verbose --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa
         tar --create --verbose --file "$LINUX_PATHFINDER_TAR_PATH" --directory Linux-binaries pathfinder
         tar --create --verbose --file "$LINUX_DIAGNOSE_TAR_PATH" --directory Linux-binaries diagnose
-        tar --create --verbose --file "$LINUX_MILLHONE_ZIP_PATH" --directory Linux-binaries millhone
+        tar --create --verbose --file "$LINUX_MILLHONE_TAR_PATH" --directory Linux-binaries millhone
 
         if [ "$GITHUB_REF_TYPE" = "tag" ]; then
           tar --append --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa.bundle
