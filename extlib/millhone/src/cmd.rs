@@ -29,11 +29,41 @@ pub mod ping;
 #[getset(get = "pub")]
 pub struct ApiAuthentication {
     /// Provide the API Key ID for authentication.
+    ///
+    /// The default value is a generic API token for Millhone which allows
+    /// matching snippets against the API.
+    ///
+    /// When connection is implemented via FOSSA API reverse proxy
+    /// instead of direct connection to the millhone API,
+    /// these keys will be revoked.
     #[clap(long, env = "MILLHONE_API_KEY_ID")]
+    #[cfg_attr(
+        debug_assertions,
+        clap(default_value = "462fce0f-f282-4b2b-85c3-00362d10394a")
+    )]
+    #[cfg_attr(
+        not(debug_assertions),
+        clap(default_value = "3cc46e2f-0a4d-4f9d-967e-66d2aaf4378d")
+    )]
     api_key_id: String,
 
     /// Provide the API Secret for authentication.
+    ///
+    /// The default value is a generic API token for Millhone which allows
+    /// matching snippets against the API.
+    ///
+    /// When connection is implemented via FOSSA API reverse proxy
+    /// instead of direct connection to the millhone API,
+    /// these keys will be revoked.
     #[clap(long, env = "MILLHONE_API_SECRET")]
+    #[cfg_attr(
+        debug_assertions,
+        clap(default_value = "7dfe4c82-b558-4838-aa7c-a68657aff44e")
+    )]
+    #[cfg_attr(
+        not(debug_assertions),
+        clap(default_value = "ef469165-8c4d-4a15-9233-5832ba5f0a6b")
+    )]
     api_secret: Secret<String>,
 }
 
