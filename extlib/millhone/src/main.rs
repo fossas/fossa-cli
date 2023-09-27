@@ -52,7 +52,13 @@ enum Commands {
 
     /// Ingest snippets to the Millhone backend.
     // Boxed to reduce size difference between variants, a clippy lint.
-    Ingest(Box<cmd::types::ingest::Options>),
+    Ingest(cmd::ingest::Subcommand),
+
+    /// Analyze a local project for matches.
+    Analyze(cmd::analyze::Subcommand),
+
+    /// Commit matches discovered during analyze into a fossa-deps file.
+    Commit(cmd::commit::Subcommand),
 }
 
 fn main() -> stable_eyre::Result<()> {
@@ -67,6 +73,8 @@ fn main() -> stable_eyre::Result<()> {
     // And then dispatch to the subcommand.
     match app.commands {
         Commands::Ping => cmd::ping::main(&app.direct_endpoint),
-        Commands::Ingest(opts) => cmd::ingest::main(&app.direct_endpoint, *opts),
+        Commands::Ingest(opts) => cmd::ingest::main(&app.direct_endpoint, opts),
+        Commands::Analyze(opts) => cmd::analyze::main(&app.direct_endpoint, opts),
+        Commands::Commit(opts) => cmd::commit::main(opts),
     }
 }

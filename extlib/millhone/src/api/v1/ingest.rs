@@ -12,14 +12,14 @@ use ureq::Agent;
 use url::Url;
 
 use super::Error;
-use crate::{api::Snippet, ext::api::declare_route, url::BaseUrl};
+use crate::{api::ApiSnippet, ext::api::declare_route, url::BaseUrl};
 
 const MAX_SNIPPET_BATCH: usize = 1000;
 
 declare_route!("api/v1/ingest");
 
 #[tracing::instrument(skip_all, fields(url))]
-pub fn run(agent: &Agent, base: &BaseUrl, snippets: HashSet<Snippet>) -> Result<(), Error> {
+pub fn run(agent: &Agent, base: &BaseUrl, snippets: HashSet<ApiSnippet>) -> Result<(), Error> {
     if snippets.is_empty() {
         debug!("no snippets to upload");
         return Ok(());
@@ -63,5 +63,5 @@ pub fn run(agent: &Agent, base: &BaseUrl, snippets: HashSet<Snippet>) -> Result<
 
 #[derive(Debug, Serialize)]
 pub struct Ingest {
-    snippets: HashSet<Snippet>,
+    snippets: HashSet<ApiSnippet>,
 }
