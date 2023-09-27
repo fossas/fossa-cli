@@ -3,14 +3,14 @@
 This subcommand adds an open-source library to the FOSSA knowledge base.
 For more information on possible options, run `millhone ingest --help`.
 
-# Internal Users
+# FOSSA employees
 
 This subcommand is run by internal FOSSA employees;
 end users are not able to use this command to ingest matches.
 
 This is controlled by the permissions granted to the API keys for the service.
 
-# Ingesting a library
+## Ingesting a library
 
 First, download the library locally, and determine the locator that FOSSA would use
 to refer to this library in the future.
@@ -30,6 +30,6 @@ millhone ingest \
 
 For more information on possible options, run `millhone ingest --help`.
 
-# Next Steps
+## Next Steps
 
 Now that the library is ingested, you can discover matches via `millhone analyze`.
