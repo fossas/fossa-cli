@@ -29,11 +29,11 @@ pub mod ping;
 #[getset(get = "pub")]
 pub struct ApiAuthentication {
     /// Provide the API Key ID for authentication.
-    #[clap(long)]
+    #[clap(long, env = "MILLHONE_API_KEY_ID")]
     api_key_id: String,
 
     /// Provide the API Secret for authentication.
-    #[clap(long)]
+    #[clap(long, env = "MILLHONE_API_SECRET")]
     api_secret: Secret<String>,
 }
 
