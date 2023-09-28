@@ -1,11 +1,15 @@
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
+    str::FromStr,
 };
 
 use clap::Parser;
 use getset::Getters;
-use millhone::{api::prelude::*, extract::ContentSnippet};
+use millhone::{
+    api::prelude::*,
+    extract::{ContentSnippet, Kind, Language},
+};
 use rayon::prelude::*;
 use stable_eyre::{
     eyre::{bail, Context},
@@ -116,6 +120,10 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
             debug!(path = %path.display(), %snippet_count, "extracted snippets");
             total_count_snippets.increment_by(snippet_count);
 
+            let snippets = snippets.into_iter().filter(|m| !snippet_is_noise(m)).collect::<HashSet<_>>();
+            let snippet_count = snippets.len();
+            debug!(path = %path.display(), %snippet_count, "filtered to non-noisy snippets");
+
             (path, snippets).pipe(Some)
         })
         // The goal is to then parallelize API calls, so flatten collections of snippets.
@@ -195,4 +203,26 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
     );
 
     Ok(())
+}
+
+/// Some snippets are just too noisy, for example basically every C program has an `int main`.
+/// This function is meant to use to filter such snippets.
+fn snippet_is_noise(m: &ContentSnippet) -> bool {
+    let Ok(language) = Language::from_str(m.snippet().language()) else {
+        warn!(snippet = ?m.snippet(), "unknown language, can't determine if noise");
+        return false;
+    };
+
+    match language {
+        Language::C => {
+            m.snippet().kind() == &Kind::Signature.to_string()
+                && contains_bytes(m.content(), b"int main")
+        }
+    }
+}
+
+fn contains_bytes(haystack: &[u8], needle: &[u8]) -> bool {
+    haystack
+        .windows(needle.len())
+        .any(|window| window.eq(needle))
 }

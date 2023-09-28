@@ -6,6 +6,7 @@ use std::{
     collections::HashSet,
     hash::Hash,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
 use base64::prelude::*;
@@ -618,6 +619,23 @@ impl Language {
     /// Report whether the language declares it supports files with the given file extension.
     pub fn supports_file_extension(self, ext: &str) -> bool {
         self.supported_file_extensions().contains(&ext)
+    }
+
+    /// Report the language identifier, rendered by mapping to a [`snippets::Language`].
+    pub fn identifier(self) -> String {
+        match self {
+            Language::C => snippets::language::c99_tc3::Language.to_string(),
+        }
+    }
+}
+
+impl FromStr for Language {
+    type Err = stable_eyre::Report;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::iter()
+            .find(|l| l.identifier() == s)
+            .ok_or_else(|| stable_eyre::eyre::eyre!("language identifier unknown: '{s}'"))
     }
 }
 
