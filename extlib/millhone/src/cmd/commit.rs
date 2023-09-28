@@ -12,7 +12,7 @@ use stable_eyre::{
 };
 use strum::{Display, IntoEnumIterator};
 use tap::{Pipe, Tap, TapFallible};
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::cmd::MatchingSnippet;
 
@@ -118,8 +118,9 @@ pub fn main(opts: Subcommand) -> Result<(), Report> {
 
     let deps = std::fs::read_dir(opts.analyze_output_dir())
         .wrap_err_with(|| format!("list contents of '{}'", opts.analyze_output_dir().display()))?
+        .filter_map(|entry| entry.tap_err(|err| error!(analyze_output_dir = %opts.analyze_output_dir().display(), "walk contents: {err:#}")).ok())
         .inspect(|entry| debug!(analyze_output_dir = %opts.analyze_output_dir().display(), ?entry, "walk contents"))
-        .filter_ok(|entry| {
+        .filter(|entry| {
             let path = entry.path();
             path.extension()
                 .and_then(|ext| ext.to_str())
@@ -127,41 +128,38 @@ pub fn main(opts: Subcommand) -> Result<(), Report> {
                 .unwrap_or_default()
                 .tap(|valid| debug!(path = %entry.path().display(), %valid, "filter to json"))
         })
-        .map_ok(|entry| {
+        .filter_map(|entry| {
             std::fs::read(entry.path())
                 .wrap_err_with(|| format!("read '{}'", entry.path().display()))
                 .tap_ok(|_| debug!(path = %entry.path().display(), "read entry"))
+                .tap_err(|err| debug!(path = %entry.path().display(), "read entry: {err:#}"))
+                .map(|content| (entry, content))
+                .ok()
+        })
+        .filter_map(|(entry, content)| {
+            serde_json::from_slice::<Vec<MatchingSnippet>>(&content)
+                .tap_err(|err| debug!(path = %entry.path().display(), "read entry: {err:#}"))
+                .ok()
         })
         .flatten()
-        .map_ok(|content| serde_json::from_slice::<Vec<MatchingSnippet>>(&content))
-        .flatten()
-        .flatten_ok()
-        .map_ok(|m| {
-            m.matching_snippets
-                .iter()
-                .filter_map(|m| {
-                    let matches = match_kinds.contains(m.snippet().kind())
-                        && match_targets.contains(m.snippet().target())
-                        && match_methods.contains(m.snippet().method());
-                    debug!(
-                        ?match_kinds,
-                        ?match_targets,
-                        ?match_methods,
-                        "snippet {m:?} matches criteria: {matches}"
-                    );
+        .flat_map(|m| m.matching_snippets)
+        .filter_map(|m| {
+            let matches = match_kinds.contains(m.snippet().kind())
+                && match_targets.contains(m.snippet().target())
+                && match_methods.contains(m.snippet().method());
+            debug!(
+                ?match_kinds,
+                ?match_targets,
+                ?match_methods,
+                "snippet {m:?} matches criteria: {matches}"
+            );
 
-                    if matches {
-                        Some(m.locator().clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect_vec()
+            if matches {
+                m.locator().clone().pipe(Some)
+            } else {
+                None
+            }
         })
-        .flatten_ok()
-        .collect::<Result<HashSet<_>, _>>()
-        .context("find matching snippets")?
-        .into_iter()
         .filter_map(|loc| {
             ReferencedDependency::try_from(loc)
                 .tap_err(|(loc, err)| {
