@@ -141,8 +141,8 @@ pub fn main(opts: Subcommand) -> Result<(), Report> {
                 .iter()
                 .filter_map(|m| {
                     let matches = match_kinds.contains(m.snippet().kind())
-                        || match_targets.contains(m.snippet().target())
-                        || match_methods.contains(m.snippet().method());
+                        && match_targets.contains(m.snippet().target())
+                        && match_methods.contains(m.snippet().method());
                     debug!(
                         ?match_kinds,
                         ?match_targets,
