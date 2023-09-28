@@ -33,10 +33,14 @@ struct Application {
     /// FOSSA's backend, similar to VSI functionality.
     /// At such time this argument will be hidden and only used for debugging,
     /// replaced with `endpoint`.
-    #[clap(
-        long,
-        global = true,
-        default_value = "https://api.millhone-staging.sherlock.fossa.team"
+    #[clap(long, global = true)]
+    #[cfg_attr(
+        debug_assertions,
+        clap(default_value = "https://api.millhone-staging.sherlock.fossa.team")
+    )]
+    #[cfg_attr(
+        not(debug_assertions),
+        clap(default_value = "https://api.millhone-prod.sherlock.fossa.team")
     )]
     direct_endpoint: BaseUrl,
 
