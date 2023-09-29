@@ -160,6 +160,7 @@ pub fn main(opts: Subcommand) -> Result<(), Report> {
                 None
             }
         })
+        .unique()
         .sorted_by_key(|loc| loc.to_string())
         .filter_map(|loc| {
             ReferencedDependency::try_from(loc)
