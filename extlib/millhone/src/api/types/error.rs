@@ -7,10 +7,27 @@ pub enum Error {
     #[error("transport error")]
     Transport(#[from] TransportError),
 
+    /// The request URL wasn't able to be encoded.
+    #[error("encode request URL")]
+    EncodeReqUrl(#[from] url::ParseError),
+
+    /// The server responded with a non-success status.
+    #[error("status code '{0}'")]
+    Status(u16),
+
     /// The request was sent and a response received,
     /// but the body failed to download or decode.
     #[error("read response body")]
     ReadResponseBody(#[source] std::io::Error),
+}
+
+impl From<ureq::Error> for Error {
+    fn from(value: ureq::Error) -> Self {
+        match value {
+            ureq::Error::Status(code, _) => Self::Status(code),
+            ureq::Error::Transport(err) => Self::from(err),
+        }
+    }
 }
 
 impl From<ureq::Transport> for Error {

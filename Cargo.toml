@@ -9,6 +9,8 @@ exclude = [
   "integration-test/artifacts/rust/bat/bat-0.18.3"
 ]
 
+resolver = "2"
+
 [profile.release]
 lto = "fat"
 strip = true
