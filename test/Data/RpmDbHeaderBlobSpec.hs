@@ -2,7 +2,6 @@ module Data.RpmDbHeaderBlobSpec (spec) where
 
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BLS
-import Data.Either (fromRight)
 import Data.Int (Int32)
 import Data.List (isSuffixOf)
 import Data.List.NonEmpty qualified as NonEmpty
