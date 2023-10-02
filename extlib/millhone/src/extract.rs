@@ -15,7 +15,7 @@ use derive_more::From;
 use getset::{CopyGetters, Getters};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use snippets::{language::c99_tc3, Extractor};
+use snippets::{language::c99_tc3, language::cpp_98, Extractor};
 use strum::{Display, EnumIter, IntoEnumIterator};
 use tap::{Pipe, Tap};
 use thiserror::Error;
@@ -340,6 +340,11 @@ impl Snippet {
                 .map(|snippet| Self::from(scan_root, path, content, snippet))
                 .inspect(|snippet| trace!(?snippet, "extracted snippet"))
                 .collect::<HashSet<Self>>(),
+            Language::CPP => cpp_98::Extractor::extract(opts, content)?
+                .pipe(collapse_raw)
+                .map(|snippet| Self::from(scan_root, path, content, snippet))
+                .inspect(|snippet| trace!(?snippet, "extracted snippet"))
+                .collect::<HashSet<Self>>(),
         }
         .tap(|found| {
             debug!(
@@ -602,6 +607,8 @@ impl Support {
 pub enum Language {
     /// The C programming language.
     C,
+    /// The C++ programming language.
+    CPP,
 }
 
 impl Language {
@@ -613,6 +620,14 @@ impl Language {
     pub fn supported_file_extensions(self) -> &'static [&'static str] {
         match self {
             Language::C => &["c"],
+            // These values are from a combination of the C++ wiki page: https://en.wikipedia.org/wiki/C%2B%2B
+            // As well as GCC's documentation: http://gcc.gnu.org/onlinedocs/gcc-4.4.1/gcc/Overall-Options.html#index-file-name-suffix-71
+            // I could not find an Clang equivalent document.
+            // Because it's distributed with a GCC compatible front-end it should match GCC.
+            // Header file extensions that apply _only_ to C++ are included.
+            Language::CPP => &[
+                "cpp", "cc", "C", "cxx", "c++", "H", "hpp", "h++", "hp", "hh", "tc",
+            ],
         }
     }
 
@@ -625,6 +640,7 @@ impl Language {
     pub fn identifier(self) -> String {
         match self {
             Language::C => snippets::language::c99_tc3::Language.to_string(),
+            Language::CPP => snippets::language::cpp_98::Language.to_string(),
         }
     }
 }
