@@ -151,6 +151,7 @@ jobs:
         find . -type f -path '*/fossa/fossa.exe' -exec cp {} release \;
         find . -type f -path '*/pathfinder/pathfinder.exe' -exec cp {} release \;
         cp target/release/diagnose.exe release
+        cp target/release/millhone.exe release
 
     - name: Find and move binaries (non-Windows)
       if: ${{ !contains(matrix.os, 'windows') }}
@@ -159,6 +160,7 @@ jobs:
         find . -type f -path '*/fossa/fossa' -exec cp {} release \;
         find . -type f -path '*/pathfinder/pathfinder' -exec cp {} release \;
         cp target/release/diagnose release
+        cp target/release/millhone release
 
     - name: Strip binaries
       run: |
@@ -196,6 +198,7 @@ jobs:
         codesign --options runtime -s 'FOSSA, Inc.' release/fossa
         codesign --options runtime -s 'FOSSA, Inc.' release/pathfinder
         codesign --options runtime -s 'FOSSA, Inc.' release/diagnose
+        codesign --options runtime -s 'FOSSA, Inc.' release/millhone
 
         # Perform notarization
         zip -rj notarization-archive.zip release
@@ -262,6 +265,7 @@ jobs:
         cosign sign-blob --yes --bundle "Linux-binaries/fossa.bundle" "Linux-binaries/fossa"
         cosign sign-blob --yes --bundle "Linux-binaries/pathfinder.bundle" "Linux-binaries/pathfinder"
         cosign sign-blob --yes --bundle "Linux-binaries/diagnose.bundle" "Linux-binaries/diagnose"
+        cosign sign-blob --yes --bundle "Linux-binaries/millhone.bundle" "Linux-binaries/millhone"
 
     - name: Verify Signatures
       if: ${{ github.ref_type == 'tag' }}
@@ -269,6 +273,7 @@ jobs:
         cosign verify-blob --bundle "Linux-binaries/fossa.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/fossa"
         cosign verify-blob --bundle "Linux-binaries/pathfinder.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/pathfinder"
         cosign verify-blob --bundle "Linux-binaries/diagnose.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/diagnose"
+        cosign verify-blob --bundle "Linux-binaries/millhone.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/millhone"
 
     # This uses names compatible with our install script.
     #
@@ -285,6 +290,8 @@ jobs:
         LINUX_FOSSA_ZIP_PATH: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
         LINUX_DIAGNOSE_TAR_PATH: "release/diagnose_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar"
         LINUX_DIAGNOSE_ZIP_PATH: "release/diagnose_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
+        LINUX_MILLHONE_TAR_PATH: "release/millhone_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar"
+        LINUX_MILLHONE_ZIP_PATH: "release/millhone_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
       run: |
         mkdir release
 
@@ -294,32 +301,39 @@ jobs:
         zip -j "$LINUX_PATHFINDER_ZIP_PATH" Linux-binaries/pathfinder
         zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa
         zip -j "$LINUX_DIAGNOSE_ZIP_PATH" Linux-binaries/diagnose
+        zip -j "$LINUX_MILLHONE_ZIP_PATH" Linux-binaries/millhone
         tar --create --verbose --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa
         tar --create --verbose --file "$LINUX_PATHFINDER_TAR_PATH" --directory Linux-binaries pathfinder
         tar --create --verbose --file "$LINUX_DIAGNOSE_TAR_PATH" --directory Linux-binaries diagnose
+        tar --create --verbose --file "$LINUX_MILLHONE_TAR_PATH" --directory Linux-binaries millhone
 
         if [ "$GITHUB_REF_TYPE" = "tag" ]; then
           tar --append --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa.bundle
           tar --append --file "$LINUX_PATHFINDER_TAR_PATH" --directory Linux-binaries pathfinder.bundle
           tar --append --file "$LINUX_DIAGNOSE_TAR_PATH" --directory Linux-binaries diagnose.bundle
+          tar --append --file "$LINUX_MILLHONE_TAR_PATH" --directory Linux-binaries millhone.bundle
           zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa.bundle
           zip -j "$LINUX_PATHFINDER_ZIP_PATH" Linux-binaries/pathfinder.bundle
           zip -j "$LINUX_DIAGNOSE_ZIP_PATH" Linux-binaries/diagnose.bundle
+          zip -j "$LINUX_MILLHONE_ZIP_PATH" Linux-binaries/millhone.bundle
         fi
 
         gzip "$LINUX_PATHFINDER_TAR_PATH"
         gzip "$LINUX_FOSSA_TAR_PATH"
         gzip "$LINUX_DIAGNOSE_TAR_PATH"
+        gzip "$LINUX_MILLHONE_TAR_PATH"
 
         chmod +x macOS-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/fossa
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/pathfinder
         zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/diagnose
+        zip -j release/millhone_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/millhone
 
         chmod +x Windows-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/fossa.exe
         zip -j release/pathfinder_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/pathfinder.exe
         zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/diagnose.exe
+        zip -j release/millhone_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/millhone.exe
 
     - name: Create checksums
       # We have to run from within the release dir so that "release" isn't prepended to the relative path of the zip file.

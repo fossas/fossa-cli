@@ -4,6 +4,7 @@
 module App.Fossa.Config.ConfigFile (
   defaultConfigFileNames,
   resolveConfigFile,
+  OrgWideCustomLicenseConfigPolicy (..),
   ConfigGrepEntry (..),
   ConfigFile (..),
   ConfigProject (..),
@@ -16,11 +17,11 @@ module App.Fossa.Config.ConfigFile (
   ExperimentalGradleConfigs (..),
   VendoredDependencyConfigs (..),
   mergeFileCmdMetadata,
-  empty,
   resolveLocalConfigFile,
 ) where
 
 import App.Docs (fossaYmlDocUrl)
+import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
 import App.Types (Policy (..), ProjectMetadata (..), ReleaseGroupMetadata)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (
@@ -119,7 +120,7 @@ resolveConfigFile base path = do
             defaultConfigFileNames
       case possibleConfigFilePath of
         Just actualConfigFilePath -> do
-          configFile <- readContentsYaml actualConfigFilePath
+          configFile <- ($ actualConfigFilePath) <$> readContentsYaml actualConfigFilePath
           let version = configVersion configFile
           if version >= 3
             then pure $ Just configFile
@@ -132,7 +133,7 @@ resolveConfigFile base path = do
         then -- file requested, but missing
           fatalText ("requested config file does not exist: " <> toText realpath)
         else do
-          configFile <- readContentsYaml realpath
+          configFile <- ($ realpath) <$> readContentsYaml realpath
           let version = configVersion configFile
           if version >= 3
             then pure $ Just configFile
@@ -182,9 +183,6 @@ mergeFileCmdMetadata meta cfgFile =
         , projectReleaseGroup = projectReleaseGroup meta <|> (configProject cfgFile >>= configReleaseGroup)
         }
 
-empty :: ConfigFile
-empty = ConfigFile 3 Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
-
 data ConfigFile = ConfigFile
   { configVersion :: Int
   , configServer :: Maybe Text
@@ -198,6 +196,8 @@ data ConfigFile = ConfigFile
   , configTelemetry :: Maybe ConfigTelemetry
   , configCustomLicenseSearch :: Maybe [ConfigGrepEntry]
   , configKeywordSearch :: Maybe [ConfigGrepEntry]
+  , configOrgWideCustomLicenseConfigPolicy :: OrgWideCustomLicenseConfigPolicy
+  , configConfigFilePath :: Path Abs File
   }
   deriving (Eq, Ord, Show)
 
@@ -257,7 +257,7 @@ newtype ExperimentalGradleConfigs = ExperimentalGradleConfigs
   {gradleConfigsOnly :: Set Text}
   deriving (Eq, Ord, Show)
 
-instance FromJSON ConfigFile where
+instance FromJSON (Path Abs File -> ConfigFile) where
   parseJSON = withObject "ConfigFile" $ \obj ->
     ConfigFile
       <$> obj .: "version"
@@ -272,6 +272,11 @@ instance FromJSON ConfigFile where
       <*> obj .:? "telemetry"
       <*> obj .:? "customLicenseSearch"
       <*> obj .:? "experimentalKeywordSearch"
+      <*> parseIgnoreOrgWideCustomLicenseScanConfigs obj
+    where
+      parseIgnoreOrgWideCustomLicenseScanConfigs obj = do
+        ignoreIt <- obj .:? "orgWideCustomLicenseScanConfigPolicy" .!= False
+        if ignoreIt then pure Ignore else pure Use
 
 instance FromJSON ConfigProject where
   parseJSON = withObject "ConfigProject" $ \obj ->

@@ -1,3 +1,7 @@
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module App.Fossa.Configuration.TelemetryConfigSpec (
   spec,
 ) where
@@ -10,6 +14,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
   ConfigTelemetry (ConfigTelemetry),
   ConfigTelemetryScope (FullTelemetry, NoTelemetry),
+  OrgWideCustomLicenseConfigPolicy (..),
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import Control.Carrier.Telemetry.Sink.Common (
@@ -24,6 +29,7 @@ import Fossa.API.Types (
   ApiOpts (ApiOpts),
   defaultApiPollDelay,
  )
+import Path (Abs, File, Path, mkAbsFile)
 import Test.Effect (it', shouldBe')
 import Test.Hspec (Spec, describe)
 
@@ -50,6 +56,13 @@ defaultCommonOpts =
     , optTelemetry = Nothing
     }
 
+configPath :: Path Abs File
+#ifdef mingw32_HOST_OS
+configPath = $(mkAbsFile "C:/.fossa.yml")
+#else
+configPath = $(mkAbsFile "/tmp/.fossa.yml")
+#endif
+
 defaultConfigFile :: ConfigFile
 defaultConfigFile =
   ConfigFile
@@ -65,6 +78,8 @@ defaultConfigFile =
     , configTelemetry = Nothing
     , configCustomLicenseSearch = Nothing
     , configKeywordSearch = Nothing
+    , configOrgWideCustomLicenseConfigPolicy = Use
+    , configConfigFilePath = configPath
     }
 
 mockApiKeyRaw :: Text
