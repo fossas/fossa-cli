@@ -218,6 +218,10 @@ fn snippet_is_noise(m: &ContentSnippet) -> bool {
             m.snippet().kind() == &Kind::Signature.to_string()
                 && contains_bytes(m.content(), b"int main")
         }
+        Language::CPP => {
+            m.snippet().kind() == &Kind::Signature.to_string()
+                && contains_bytes(m.content(), b"int main")
+        }
     }
 }
 
