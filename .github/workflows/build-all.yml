@@ -135,6 +135,10 @@ jobs:
         cabal update
         $RUN_CMD || $RUN_CMD
 
+    - name: Check `cabal install`
+      run: |
+        cabal install --project-file=${{ matrix.project-file }} all
+
     - name: Run unit tests
       run: |
         cabal test --project-file=${{ matrix.project-file }} unit-tests

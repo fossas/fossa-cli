@@ -70,48 +70,6 @@ jobs:
         run: |
           cabal-fmt --check spectrometer.cabal
 
-  cabal-install-check:
-    name: cabal-install-check
-    runs-on: ubuntu-latest
-    # Be sure to update the env var below
-    container: ghcr.io/fossas/haskell-dev-tools:9.4.7
-
-    env:
-      GHC_VERSION: '9.4.7'
-
-    steps:
-      - uses: actions/checkout@v3
-
-      # Run `cabal install`.
-      - uses: actions/cache@v3
-        name: Cache cabal store
-        with:
-          path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
-          key: ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-${{ hashFiles('**/*.cabal', 'cabal.project.ci.linux') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-
-            ${{ runner.os }}-${{ env.GHC_VERSION }}-
-            ${{ runner.os }}-
-
-      # Cabal or GHC don't seem to let -Wwarn from the cli override -Werror from the project file.
-      # This means that without vendor bins the build fails with warnings about missing embedded files.
-      # This step just touches several files that the build can use for embedding.
-      - name: Setup mock vendor-bins
-        run: |
-          mkdir vendor-bins && \
-          touch vendor-bins/themis-cli && \
-          touch vendor-bins/index.gob.xz && \
-          touch vendor-bins/lernie
-
-      - name: Run `cabal install`
-        run: |
-          apk add xz-dev bzip2-dev bzip2-static
-          cabal update
-
-          # A previous version used --ghc-options=-Wwarn.
-          # For reasons written in the above step that doesn't work now.
-          cabal install --project-file=cabal.project.ci.linux
-
   schema-lint-check:
     name: "schema lint check"
     runs-on: ubuntu-latest
