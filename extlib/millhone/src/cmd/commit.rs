@@ -26,7 +26,7 @@ pub struct Subcommand {
     analyze_output_dir: PathBuf,
 
     /// The output format for the generated `fossa-deps` file.
-    #[clap(long, default_value_t = OutputFormat::Json)]
+    #[clap(long, default_value_t = OutputFormat::default())]
     format: OutputFormat,
 
     /// If specified, overwrites the output file if it exists.
@@ -62,14 +62,15 @@ pub struct Subcommand {
 }
 
 /// The output format for the generated `fossa-deps` file.
-#[derive(Debug, Clone, Copy, ValueEnum, Display)]
+#[derive(Debug, Clone, Copy, Default, ValueEnum, Display)]
 #[strum(serialize_all = "snake_case")]
 pub enum OutputFormat {
+    /// Commit as `fossa-deps.yml`.
+    #[default]
+    Yml,
+
     /// Commit as `fossa-deps.json`.
     Json,
-
-    /// Commit as `fossa-deps.yml`.
-    Yml,
 }
 
 #[tracing::instrument(skip_all, fields(target = %opts.target().display()))]
