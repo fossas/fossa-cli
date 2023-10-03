@@ -75,14 +75,8 @@ pub enum OutputFormat {
 
 #[tracing::instrument(skip_all, fields(target = %opts.target().display()))]
 pub fn main(opts: Subcommand) -> Result<(), Report> {
-    info!(
-        analyze_output_dir = ?opts.analyze_output_dir,
-        format = %opts.format,
-        targets = ?opts.targets,
-        kinds = ?opts.kinds,
-        transforms = ?opts.transforms,
-        "Committing local snippet matches",
-    );
+    debug!(?opts, "committing local snippet matches");
+    info!("Committing local snippet matches");
 
     let output_file = opts
         .target()

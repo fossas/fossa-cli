@@ -43,13 +43,8 @@ pub struct Subcommand {
 
 #[tracing::instrument(skip_all, fields(target = %opts.extract.target().display()))]
 pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
-    info!(
-        api_key_id = %opts.auth.api_key_id(),
-        output = %opts.output.display(),
-        overwrite_output = %opts.overwrite_output,
-        extract_opts = ?opts.extract,
-        "analyzing local snippet matches",
-    );
+    debug!(?endpoint, ?opts, "analyzing local snippet matches");
+    info!("Analyzing local snippet matches");
 
     if opts.output().exists() {
         if opts.overwrite_output {
@@ -185,21 +180,21 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
                 .context("encode records")
                 .and_then(|encoded| std::fs::write(&record_path, encoded).context("write records"));
             match written {
-                Ok(_) => info!(
-                    "wrote {} matches for '{}' to '{}'",
-                    records.len(),
-                    path.display(),
-                    record_path.display()
+                Ok(_) => debug!(
+                    match_count = %records.len(),
+                    file = %path.display(),
+                    record = %record_path.display(),
+                    "wrote matches",
                 ),
                 Err(err) => warn!(record_path = %record_path.display(), "failed to write match records: {err:#}"),
             }
         });
 
     info!(
-        total_count_entries = %total_count_entries.into_inner(),
-        total_count_snippets = %total_count_snippets.into_inner(),
-        total_count_files = %total_count_files.into_inner(),
-        "finished extracting snippets",
+        "Finished extracting {} snippets out of {} entries, of which {} were files",
+        total_count_snippets.into_inner(),
+        total_count_entries.into_inner(),
+        total_count_files.into_inner(),
     );
 
     Ok(())

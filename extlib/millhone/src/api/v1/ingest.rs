@@ -7,7 +7,7 @@ use retry::{
 };
 use serde::Serialize;
 use tap::{Conv, Pipe, TapFallible};
-use tracing::{debug, info};
+use tracing::debug;
 use ureq::Agent;
 use url::Url;
 
@@ -51,7 +51,7 @@ pub fn run(agent: &Agent, base: &BaseUrl, snippets: HashSet<ApiSnippet>) -> Resu
             agent
                 .post(target.as_str())
                 .send_json(&batch)
-                .tap_ok(|_| info!(%retry, %batch_num, %batch_count, "uploaded batch"))
+                .tap_ok(|_| debug!(%retry, %batch_num, %batch_count, "uploaded batch"))
         });
         if let Err(retry::Error { error, .. }) = upload {
             return error.conv::<Error>().pipe(Err);
