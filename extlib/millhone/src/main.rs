@@ -7,7 +7,9 @@
 use clap::{Parser, Subcommand};
 use millhone::url::BaseUrl;
 use stable_eyre::eyre::Context;
-use traceconf::TracingConfig;
+use tap::Pipe;
+use traceconf::{Colors, Format, Level};
+use tracing_subscriber::prelude::*;
 
 mod cmd;
 
@@ -23,9 +25,17 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 #[derive(Debug, Parser)]
 #[clap(version)]
 struct Application {
-    /// Tracing configuration.
-    #[clap(flatten)]
-    tracing: TracingConfig,
+    /// Set the minimum level for logs. Logs below this level are dropped.
+    #[clap(long, default_value_t = Level::default())]
+    log_level: Level,
+
+    /// The formatter to use for logs.
+    #[clap(long, default_value_t = Format::default())]
+    log_format: Format,
+
+    /// The coloring mode to use for log and span traces.
+    #[clap(long, default_value_t = Colors::default())]
+    log_colors: Colors,
 
     /// The URL for the Millhone service.
     ///
@@ -49,6 +59,22 @@ struct Application {
     commands: Commands,
 }
 
+impl Application {
+    /// Determine whether colors should be enabled for tracing output.
+    pub fn colors_enabled(&self) -> bool {
+        match self.log_colors {
+            Colors::Auto => atty::is(atty::Stream::Stderr),
+            Colors::Enable => true,
+            _ => false,
+        }
+    }
+
+    /// Translate the level selected by the user into the format used by [`tracing`].
+    pub fn level_filter(&self) -> tracing_subscriber::filter::LevelFilter {
+        self.log_level.into()
+    }
+}
+
 #[derive(Debug, Subcommand)]
 enum Commands {
     /// Ping the Millhone backend.
@@ -69,10 +95,31 @@ fn main() -> stable_eyre::Result<()> {
     stable_eyre::install()?;
     let app = Application::parse();
 
-    // Set up tracing according to the defaults.
-    // We can customize this later if desired.
-    let subscriber = app.tracing.subscriber();
-    tracing::subscriber::set_global_default(subscriber).context("install tracing")?;
+    match app.log_format {
+        Format::Json => tracing_subscriber::Registry::default()
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .json()
+                    .with_ansi(app.colors_enabled())
+                    .with_writer(std::io::stdout)
+                    .with_span_events(tracing_subscriber::fmt::format::FmtSpan::ACTIVE)
+                    .with_filter(app.level_filter()),
+            )
+            .pipe(tracing::subscriber::set_global_default)
+            .context("install tracing")?,
+        _ => tracing_subscriber::Registry::default()
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_ansi(app.colors_enabled())
+                    .with_writer(std::io::stdout)
+                    .with_file(false)
+                    .with_line_number(false)
+                    .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
+                    .with_filter(app.level_filter()),
+            )
+            .pipe(tracing::subscriber::set_global_default)
+            .context("install tracing")?,
+    }
 
     // And then dispatch to the subcommand.
     match app.commands {
