@@ -93,24 +93,12 @@ jobs:
             ${{ runner.os }}-${{ env.GHC_VERSION }}-
             ${{ runner.os }}-
 
-      # Cabal or GHC don't seem to let -Wwarn from the cli override -Werror from the project file.
-      # This means that without vendor bins the build fails with warnings about missing embedded files.
-      # This step just touches several files that the build can use for embedding.
-      - name: Setup mock vendor-bins
-        run: |
-          mkdir vendor-bins && \
-          touch vendor-bins/themis-cli && \
-          touch vendor-bins/index.gob.xz && \
-          touch vendor-bins/lernie
-
       - name: Run `cabal install`
         run: |
           apk add xz-dev bzip2-dev bzip2-static
           cabal update
 
-          # A previous version used --ghc-options=-Wwarn.
-          # For reasons written in the above step that doesn't work now.
-          cabal install --project-file=cabal.project.ci.linux
+          cabal install --ghc-options=-Wwarn
 
   schema-lint-check:
     name: "schema lint check"
