@@ -9,7 +9,7 @@ use millhone::url::BaseUrl;
 use stable_eyre::eyre::Context;
 use tap::Pipe;
 use traceconf::{Colors, Format, Level};
-use tracing_subscriber::prelude::*;
+use tracing_subscriber::{filter::filter_fn, prelude::*};
 
 mod cmd;
 
@@ -103,7 +103,8 @@ fn main() -> stable_eyre::Result<()> {
                     .with_ansi(app.colors_enabled())
                     .with_writer(std::io::stdout)
                     .with_span_events(tracing_subscriber::fmt::format::FmtSpan::ACTIVE)
-                    .with_filter(app.level_filter()),
+                    .with_filter(app.level_filter())
+                    .with_filter(self_sourced_events(app.log_level)),
             )
             .pipe(tracing::subscriber::set_global_default)
             .context("install tracing")?,
@@ -115,7 +116,8 @@ fn main() -> stable_eyre::Result<()> {
                     .with_file(false)
                     .with_line_number(false)
                     .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
-                    .with_filter(app.level_filter()),
+                    .with_filter(app.level_filter())
+                    .with_filter(self_sourced_events(app.log_level)),
             )
             .pipe(tracing::subscriber::set_global_default)
             .context("install tracing")?,
@@ -128,4 +130,15 @@ fn main() -> stable_eyre::Result<()> {
         Commands::Analyze(opts) => cmd::analyze::main(&app.direct_endpoint, opts),
         Commands::Commit(opts) => cmd::commit::main(opts),
     }
+}
+
+/// Filters traces from other crates if debug log level isn't set.
+fn self_sourced_events<S>(log_level: Level) -> impl tracing_subscriber::layer::Filter<S> {
+    const CURRENT_CRATE: &str = env!("CARGO_PKG_NAME");
+    fn is_current_crate(meta: &tracing::Metadata<'_>) -> bool {
+        meta.target().starts_with(CURRENT_CRATE)
+    }
+
+    let enable_debug_logging = log_level >= Level::Debug;
+    filter_fn(move |meta| is_current_crate(meta) || enable_debug_logging)
 }
