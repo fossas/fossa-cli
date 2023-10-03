@@ -89,7 +89,7 @@ jobs:
       # We don't really lose anything here since it's run with -Werror in other workflows.
       - name: Delete ghc-options -Werror
         run: |
-          sed -i bak '/ghc-options: -Werror/d' cabal.project.ci.linux
+          sed -i '/ghc-options: -Werror/d' cabal.project.ci.linux
 
       # Run `cabal install`.
       - uses: actions/cache@v3
