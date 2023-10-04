@@ -16,7 +16,9 @@ declare_route!("api/v1/lookup/");
 
 #[tracing::instrument(skip_all, fields(url))]
 pub fn run(agent: &Agent, base: &BaseUrl, fp: &Fingerprint) -> Result<HashSet<ApiSnippet>, Error> {
-    let target = route_url(base).join(&fp.as_base64_url())?;
+    let target = route_url(base)
+        .join(&fp.as_base64_url())
+        .map_err(|err| Error::EncodeReqUrl(base.to_string(), fp.as_base64_url(), err))?;
     tracing::Span::current().record("url", target.as_str());
 
     // In the future we may want to parallelize this, but we're also parallelizing across files.
@@ -32,6 +34,8 @@ pub fn run(agent: &Agent, base: &BaseUrl, fp: &Fingerprint) -> Result<HashSet<Ap
 
     match response {
         Err(retry::Error { error, .. }) => Error::from(error).pipe(Err),
-        Ok(response) => response.into_json().map_err(Error::ReadResponseBody),
+        Ok(response) => response
+            .into_json()
+            .map_err(|err| Error::ReadResponseBody(target.to_string(), err)),
     }
 }

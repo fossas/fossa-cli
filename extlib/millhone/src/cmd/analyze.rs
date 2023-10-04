@@ -39,13 +39,8 @@ pub struct Subcommand {
 
 #[tracing::instrument(skip_all, fields(target = %opts.extract.target().display()))]
 pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
-    info!(
-        api_key_id = %opts.auth.api_key_id(),
-        output = %opts.output.display(),
-        overwrite_output = %opts.overwrite_output,
-        extract_opts = ?opts.extract,
-        "analyzing local snippet matches",
-    );
+    debug!(?endpoint, ?opts, "analyzing local snippet matches");
+    info!("Analyzing local snippet matches");
 
     if opts.output().exists() {
         if opts.overwrite_output {
@@ -68,8 +63,8 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
     let root = opts.extract().target();
     let snippet_opts = opts.extract().into();
 
-    let total_count_entries = AtomicCounter::default();
     let total_count_snippets = AtomicCounter::default();
+    let total_count_matches = AtomicCounter::default();
     let total_count_files = AtomicCounter::default();
 
     WalkDir::new(root)
@@ -80,7 +75,6 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
         // Just make the walk deterministic (per directory anyway).
         .sort_by_file_name()
         .into_iter()
-        .inspect(|_| total_count_entries.increment())
         .filter_map(super::unwrap_dir_entry)
         // Bridge into rayon for parallelization.
         .par_bridge()
@@ -88,6 +82,7 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
         .filter_map(|entry| -> Option<PathBuf> {
             debug!(path = %entry.path().display(), "resolve path");
             let path = super::resolve_path(&entry)
+                .map_err(Report::from)
                 .map_err(|err| warn!(path = %entry.path().display(), "failed to resolve symlink to path: {err:#}"))
                 .ok()?;
 
@@ -104,6 +99,7 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
         .filter_map(|path| -> Option<(PathBuf, HashSet<ContentSnippet>)> {
             debug!(path = %path.display(), "extract snippets");
             let snippets = ContentSnippet::from_file(root, &snippet_opts, &path)
+                .map_err(Report::from)
                 .map_err(|err| warn!(path = %path.display(), "extract snippets: {err:#}"))
                 .ok()?;
 
@@ -126,6 +122,7 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
             let fingerprint = found.snippet().fingerprint();
             let matching_snippets = client
                 .lookup_snippets(fingerprint)
+                .map_err(Report::from)
                 .map_err(|err| warn!(path = %path.display(), %fingerprint, "lookup snippet: {err:#}"))
                 .ok()?;
             if matching_snippets.is_empty() {
@@ -135,6 +132,7 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
             for matched in matching_snippets.iter() {
                 trace!(%fingerprint, ?matched, "matched snippet");
             }
+            total_count_matches.increment_by(matching_snippets.len());
 
             MatchingSnippet::builder()
                 .found_in(found.snippet().file_path())
@@ -177,21 +175,21 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
                 .context("encode records")
                 .and_then(|encoded| std::fs::write(&record_path, encoded).context("write records"));
             match written {
-                Ok(_) => info!(
-                    "wrote {} matches for '{}' to '{}'",
-                    records.len(),
-                    path.display(),
-                    record_path.display()
+                Ok(_) => debug!(
+                    match_count = %records.len(),
+                    file = %path.display(),
+                    record = %record_path.display(),
+                    "wrote matches",
                 ),
                 Err(err) => warn!(record_path = %record_path.display(), "failed to write match records: {err:#}"),
             }
         });
 
     info!(
-        total_count_entries = %total_count_entries.into_inner(),
-        total_count_snippets = %total_count_snippets.into_inner(),
-        total_count_files = %total_count_files.into_inner(),
-        "finished extracting snippets",
+        "Finished matching {} snippets out of {} files to {} matches",
+        total_count_snippets.into_inner(),
+        total_count_files.into_inner(),
+        total_count_matches.into_inner(),
     );
 
     Ok(())
