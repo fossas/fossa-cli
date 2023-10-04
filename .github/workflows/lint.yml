@@ -91,6 +91,10 @@ jobs:
         run: |
           sed -i '/ghc-options: -Werror/d' cabal.project.ci.linux
 
+      path:
+        - ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
+        - 'dist-newstyle/'
+
       # Run `cabal install`.
       - uses: actions/cache@v3
         name: Cache cabal store
