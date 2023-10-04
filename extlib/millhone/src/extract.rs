@@ -14,12 +14,13 @@ use clap::{Parser, ValueEnum};
 use derive_more::From;
 use getset::{CopyGetters, Getters};
 use itertools::Itertools;
+use lazy_regex::regex_is_match;
 use serde::{Deserialize, Serialize};
 use snippets::{language::c99_tc3, language::cpp_98, Extractor};
 use strum::{Display, EnumIter, EnumVariantNames, IntoEnumIterator, VariantNames};
 use tap::{Pipe, Tap};
 use thiserror::Error;
-use tracing::{debug, trace};
+use tracing::{debug, trace, warn};
 use typed_builder::TypedBuilder;
 
 /// Errors encountered in this module.
@@ -101,9 +102,7 @@ impl From<&Options> for snippets::Options {
 }
 
 /// The targets of snippets to extract.
-#[derive(
-    Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter, EnumVariantNames,
-)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter)]
 #[strum(serialize_all = "snake_case")]
 pub enum Target {
     /// Targets function defintions as snippets.
@@ -118,12 +117,8 @@ impl From<Target> for snippets::Target {
     }
 }
 
-impl ParseEnumValue for Target {}
-
 /// The kind of item this snippet represents.
-#[derive(
-    Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter, EnumVariantNames,
-)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter)]
 #[strum(serialize_all = "snake_case")]
 pub enum Kind {
     /// The signature of the snippet.
@@ -145,8 +140,6 @@ impl From<Kind> for snippets::Kind {
         }
     }
 }
-
-impl ParseEnumValue for Kind {}
 
 /// The normalization used to extract this snippet.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Display)]
@@ -177,24 +170,8 @@ impl Method {
     }
 }
 
-impl Method {
-    /// Parse a `Method` from a string.
-    pub fn parse(input: &str) -> Result<Self, Error> {
-        if input == Self::Raw.to_string() {
-            Ok(Self::Raw)
-        } else {
-            let input = input.trim_start_matches("normalized(");
-            let input = input.trim_end_matches(')');
-            let transform = Transform::parse(input)?;
-            Self::Normalized(transform).pipe(Ok)
-        }
-    }
-}
-
 /// The normalization used to extract this snippet.
-#[derive(
-    Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter, EnumVariantNames,
-)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter)]
 #[strum(serialize_all = "snake_case")]
 pub enum Transform {
     /// Transform the text to have any comments removed and whitespace normalized.
@@ -214,23 +191,6 @@ impl From<Transform> for snippets::Transform {
             Transform::Comment => snippets::Transform::Comment,
             Transform::Space => snippets::Transform::Space,
         }
-    }
-}
-
-impl ParseEnumValue for Transform {}
-
-trait ParseEnumValue: std::fmt::Display + strum::IntoEnumIterator + strum::VariantNames {
-    /// Attempt to parse from a string.
-    fn parse(input: &str) -> Result<Self, Error> {
-        Self::iter()
-            .find(|variant| variant.to_string() == input)
-            .map(Ok)
-            .unwrap_or_else(|| {
-                Err(Error::Parse(
-                    input.to_string(),
-                    Self::VARIANTS.iter().map(|s| s.to_string()).collect(),
-                ))
-            })
     }
 }
 
@@ -382,11 +342,13 @@ impl Snippet {
         match language {
             Language::C => c99_tc3::Extractor::extract(opts, content)?
                 .pipe(collapse_raw)
+                .filter(|snippet| snippet.is_significant(content))
                 .map(|snippet| Self::from(scan_root, path, content, snippet))
                 .inspect(|snippet| trace!(?snippet, "extracted snippet"))
                 .collect::<HashSet<Self>>(),
             Language::CPP => cpp_98::Extractor::extract(opts, content)?
                 .pipe(collapse_raw)
+                .filter(|snippet| snippet.is_significant(content))
                 .map(|snippet| Self::from(scan_root, path, content, snippet))
                 .inspect(|snippet| trace!(?snippet, "extracted snippet"))
                 .collect::<HashSet<Self>>(),
@@ -412,14 +374,6 @@ impl Snippet {
             .col_start(self.col_start as _)
             .col_end(self.col_end as _)
             .build()
-    }
-
-    /// Attempt to parse the metadata of a snippet retrieved from the API.
-    pub fn parse_meta(&self) -> Result<(Language, Target, Kind), Error> {
-        let language = self.language().pipe_borrow(Language::from_str)?;
-        let kind = Kind::parse(&self.kind)?;
-        let target = Target::parse(&self.target)?;
-        (language, target, kind).pipe(Ok)
     }
 }
 
@@ -459,11 +413,8 @@ impl ContentSnippet {
                 Snippet::from_content(scan_root, opts, path, language, &content)?
                     .into_iter()
                     .map(|snippet| {
-                        let location = snippet.location();
-                        Self {
-                            snippet,
-                            content: location.extract_from(&content).to_owned(),
-                        }
+                        let content = snippet.extract_content_from(&content).to_owned();
+                        Self { snippet, content }
                     })
                     .collect::<HashSet<_>>()
                     .pipe(Ok)
@@ -762,6 +713,72 @@ fn collapse_raw<L>(
     // Pop from the end, since `sort_by_key` sorts in ascending order
     // (so higher specificity snippets are sorted later in the vec).
     grouped.into_values().filter_map(|mut group| group.pop())
+}
+
+trait SnippetContent {
+    /// Extract the snippet content from a larger block of content.
+    fn extract_content_from<'a>(&self, content: &'a [u8]) -> &'a [u8];
+}
+
+impl<L> SnippetContent for snippets::Snippet<L> {
+    fn extract_content_from<'a>(&self, content: &'a [u8]) -> &'a [u8] {
+        self.metadata().location().extract_from(content)
+    }
+}
+
+impl SnippetContent for Snippet {
+    fn extract_content_from<'a>(&self, content: &'a [u8]) -> &'a [u8] {
+        self.location().extract_from(content)
+    }
+}
+
+trait SnippetNoiseFilter: SnippetContent {
+    /// Determine whether a snippet is significant.
+    /// Significant snippets are not noise and are not fully whitespace.
+    fn is_significant(&self, content: &[u8]) -> bool {
+        let content = self.extract_content_from(content);
+        !is_whitespace(content) && !self.is_noise(content)
+    }
+
+    /// Return whether the snippet is noise.
+    /// Callers who wish to filter snippets should prefer `is_significant`.
+    ///
+    /// This is usually the function that snippets implement.
+    fn is_noise(&self, content: &[u8]) -> bool;
+}
+
+impl SnippetNoiseFilter for snippets::Snippet<c99_tc3::Language> {
+    fn is_noise(&self, content: &[u8]) -> bool {
+        match self.metadata().kind() {
+            snippets::Kind::Signature => contains_bytes(b"int main", content),
+            snippets::Kind::Body => regex_is_match!(r"\s*\{\s*\}\s*"B, content),
+            _ => false,
+        }
+    }
+}
+
+impl SnippetNoiseFilter for snippets::Snippet<cpp_98::Language> {
+    fn is_noise(&self, content: &[u8]) -> bool {
+        match self.metadata().kind() {
+            snippets::Kind::Signature => contains_bytes(b"int main", content),
+            snippets::Kind::Body => regex_is_match!(r"\s*\{\s*\}\s*"B, content),
+            _ => false,
+        }
+    }
+}
+
+fn is_whitespace(content: &[u8]) -> bool {
+    regex_is_match!(r"^\s*$"B, content)
+}
+
+fn contains_bytes(needle: &[u8], haystack: &[u8]) -> bool {
+    if needle.len() > haystack.len() {
+        return false;
+    }
+
+    haystack
+        .windows(needle.len())
+        .any(|window| window.eq(needle))
 }
 
 #[cfg(test)]

@@ -5,11 +5,7 @@ use std::{
 
 use clap::Parser;
 use getset::Getters;
-use lazy_regex::regex_is_match;
-use millhone::{
-    api::prelude::*,
-    extract::{ContentSnippet, Kind, Language, Target},
-};
+use millhone::{api::prelude::*, extract::ContentSnippet};
 use rayon::prelude::*;
 use stable_eyre::{
     eyre::{bail, Context},
@@ -68,7 +64,7 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
     let snippet_opts = opts.extract().into();
 
     let total_count_snippets = AtomicCounter::default();
-    let noise_count_snippets = AtomicCounter::default();
+    let total_count_matches = AtomicCounter::default();
     let total_count_files = AtomicCounter::default();
 
     WalkDir::new(root)
@@ -112,14 +108,10 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
                 return None;
             }
 
-            let total_snippet_count = snippets.len();
-            let snippets = snippets.into_iter().filter(|m| !snippet_is_noise(m)).collect::<HashSet<_>>();
             let snippet_count = snippets.len();
-            let noisy_snippet_count = total_snippet_count - snippet_count;
-
-            debug!(path = %path.display(), %snippet_count, %noisy_snippet_count, "extracted snippets");
+            debug!(path = %path.display(), %snippet_count, "extracted snippets");
             total_count_snippets.increment_by(snippet_count);
-            noise_count_snippets.increment_by(noisy_snippet_count);
+
             (path, snippets).pipe(Some)
         })
         // The goal is to then parallelize API calls, so flatten collections of snippets.
@@ -140,6 +132,7 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
             for matched in matching_snippets.iter() {
                 trace!(%fingerprint, ?matched, "matched snippet");
             }
+            total_count_matches.increment_by(matching_snippets.len());
 
             MatchingSnippet::builder()
                 .found_in(found.snippet().file_path())
@@ -193,45 +186,11 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
         });
 
     info!(
-        "Finished matching {} snippets out of {} files, of which {} were discarded as too noisy",
+        "Finished matching {} snippets out of {} files to {} matches",
         total_count_snippets.into_inner(),
         total_count_files.into_inner(),
-        noise_count_snippets.into_inner(),
+        total_count_matches.into_inner(),
     );
 
     Ok(())
-}
-
-/// Some snippets are just too noisy, for example basically every C program has an `int main`.
-/// This function is meant to use to filter such snippets.
-#[tracing::instrument(level = "DEBUG", skip_all, fields(fingerprint = %m.snippet().fingerprint()), ret)]
-fn snippet_is_noise(m: &ContentSnippet) -> bool {
-    const DEFAULT: bool = false;
-
-    // Empty snippets are automatically too noisy.
-    if regex_is_match!(r"^\s*$"B, m.content()) {
-        return true;
-    }
-
-    // Metadata is needed to determine the kind of strategy to use for determining noise.
-    let Ok((language, target, kind)) = m.snippet().parse_meta() else {
-        warn!(snippet = ?m.snippet(), "failed to parse snippet metadata");
-        return DEFAULT;
-    };
-
-    match language {
-        Language::C | Language::CPP => match target {
-            Target::Function => match kind {
-                Kind::Signature => contains_bytes(m.content(), b"int main"),
-                Kind::Body => regex_is_match!(r"\s*\{\s*\}\s*"B, m.content()),
-                Kind::Full => DEFAULT,
-            },
-        },
-    }
-}
-
-fn contains_bytes(haystack: &[u8], needle: &[u8]) -> bool {
-    haystack
-        .windows(needle.len())
-        .any(|window| window.eq(needle))
 }
