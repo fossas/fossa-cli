@@ -55,7 +55,7 @@ jobs:
       with:
         path: |
           ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
-          'dist-newstyle/'
+          "${{ github.workspace }}/dist-newstyle/"
         key: ${{ runner.os }}-benchmarks-cabal-cache-${{ hashFiles('**/*.cabal', 'cabal.project.ci.linux') }}
         restore-keys: |
           ${{ runner.os }}-benchmarks-cabal-cache-
