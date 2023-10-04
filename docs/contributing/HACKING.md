@@ -2,14 +2,21 @@
 
 [Back to development doc homepage](README.md)
 
+## Prerequisites
+
+* lzma (libarchive on Mac OS X)
+* pkg-config
+
+On Macs you need to have installed the developer tooling using `xcode-select --install` or equivalent.
+
 ## Quickstart
 
 Use [ghcup][ghcup] to install the `cabal` cli tool and the ghc version we're using:
 
 ```sh
-$ ghcup install ghc 9.0
+$ ghcup install ghc 9.4
 <long running output, about 4 min on my machine>
-$ ghcup set ghc 9.0
+$ ghcup set ghc 9.4
 $ cabal update
 $ cabal build
 ```
@@ -22,16 +29,16 @@ In previous GHC versions (8.10), `llvm` was required
 
 Ok, the quickstart worked for you, but why, and how?
 
-> `ghcup install ghc 9.0`
+> `ghcup install ghc 9.4`
 
 When you install `ghcup`, `ghc` and `cabal-install` are installed automatically as part of the initial installation (see [Tools](#Tools) for descriptions of `ghc` and `cabal-install`).
-The `ghc` version that is automatically installed may not be the correct version we use (though it may work just fine).  So we install the correct version with `ghcup install ghc 9.0`.
+The `ghc` version that is automatically installed may not be the correct version we use (though it may work just fine).  So we install the correct version with `ghcup install ghc 9.4`.
 Currently, the best place to check the correct version is our CI build files (try `.github/workflows/build.yml`).
 
-> `ghcup set ghc 9.0`
+> `ghcup set ghc 9.4`
 
-`ghcup` works by setting symlinks to the "active" version of the tool you're using.  Here, we're telling `ghcup` to set GHC 9.0 as the active GHC version.
-Now, when you run `ghc`, you'll be running GHC 9.0.
+`ghcup` works by setting symlinks to the "active" version of the tool you're using.  Here, we're telling `ghcup` to set GHC 9.4 as the active GHC version.
+Now, when you run `ghc`, you'll be running GHC 9.4.
 
 > `cabal update`
 
@@ -52,7 +59,7 @@ In the base directory, run `cabal build`.  if you want to build the full binary,
 Currently, building the full-featured binary requires the use of external binaries fetched from closed-source repos in the FOSSA organization (`fossas`).
 If you build without these binaries, a compiler warning will be emitted.  If ghc's `-Werror` option is enabled, this will fail the build, and is therefore not enabled by default.
 
-There is no supported way for Non-FOSSA users to obtain these binaries, though we are working on a solution to allow this in the future.  As a result, **we cannot accept pull requests from any forked repository**, since those builds will fail in CI.  This means that outside contributions are effectively impossible until we resolve these build limitations.
+There is no supported way for Non-FOSSA users to obtain these binaries, though we are working on a solution to allow this in the future.  As a result, **we cannot accept pull requests from any forked repository**, since those builds will fail in CI.  This means that outside contributions are possible, but a FOSSA employee needs to cherry pick the commits and create a new PR with them.
 
 ### Running tests
 
@@ -127,7 +134,7 @@ or having to install the formatter yourself.  This also makes sure you're using 
 | [hoogle][hoogle]   | Search for type signatures or symbols                                          |
 | [hackage][hackage] | Package repository; can be used to browse individual package docs ("haddocks") |
 
-If on macOS, [dash](https://kapeli.com/dash) is a great tool that allows for downloading searchable package haddocks
+If on macOS, [dash](https://kapeli.com/dash) is a great tool that allows for downloading searchable package haddocks.
 
 On linux, you can use [zeal](https://zealdocs.org/).  (Currently there is an issue with building third-party docsets, if you discover a solution to get e.g.: `aeson` docs in `zeal`, please file an issue or submit a PR to fix these docs.)
 

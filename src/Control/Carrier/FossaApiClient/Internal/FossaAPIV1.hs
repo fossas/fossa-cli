@@ -604,7 +604,7 @@ uploadNativeContainerScan apiOpts ProjectRevision{..} metadata scan = fossaReq $
       resp <- req POST (containerUploadUrl baseUrl) (ReqBodyJson scan) jsonResponse (baseOpts <> opts)
       pure $ responseBody resp
 
--- |Replacement for @Data.HTTP.Req.req@ that additionally logs information about a request in a debug bundle.
+-- | Replacement for @Data.HTTP.Req.req@ that additionally logs information about a request in a debug bundle.
 req ::
   forall method body sig m scheme b.
   ( Req.HttpBodyAllowed (Req.AllowsBody method) (Req.ProvidesBody body)

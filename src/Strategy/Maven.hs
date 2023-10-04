@@ -15,7 +15,7 @@ import Data.Aeson (ToJSON)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
-import Effect.Exec (CandidateCommandEffs, Exec)
+import Effect.Exec (CandidateCommandEffs)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
@@ -62,9 +62,7 @@ instance LicenseAnalyzeProject MavenProject where
 
 getDeps ::
   ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
   , Has ReadFS sig m
-  , Has Exec sig m
   , CandidateCommandEffs sig m
   ) =>
   MavenProject ->
@@ -95,9 +93,7 @@ getDeps' (MavenProject closure) = do
 
 getDepsDynamicAnalysis ::
   ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
   , Has ReadFS sig m
-  , Has Exec sig m
   , CandidateCommandEffs sig m
   ) =>
   MavenProjectClosure ->
@@ -128,9 +124,7 @@ getDepsPluginLegacy closure = context "Legacy Plugin analysis" (Plugin.analyzeLe
 
 getDepsTreeCmd ::
   ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
   , Has ReadFS sig m
-  , Has Exec sig m
   , CandidateCommandEffs sig m
   ) =>
   MavenProjectClosure ->

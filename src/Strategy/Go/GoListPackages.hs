@@ -58,7 +58,7 @@ import Types (GraphBreadth (Complete))
 
 -- * Types
 
--- |Path used in a Go project to import a package.
+-- | Path used in a Go project to import a package.
 newtype ImportPath = ImportPath Text
   deriving (Eq, Ord, Show, ToText, Generic, Hashable)
 
@@ -100,7 +100,7 @@ instance FromJSON GoPackage where
         <*> obj .:? "Error"
         <*> (obj .:? "TestImports" .!= [])
 
--- |Get module info from a 'GoPackage', respecting replacements
+-- | Get module info from a 'GoPackage', respecting replacements
 getFinalModuleInfo :: GoPackage -> Maybe GoModule
 getFinalModuleInfo GoPackage{moduleInfo} = (moduleInfo >>= replacement) <|> moduleInfo
 
@@ -287,7 +287,7 @@ toVerConstraint v = case v of
 
 type Parser = Parsec Void Text
 
--- |Convenience function to parse a go module version that is potentially surrounded by spaces.
+-- | Convenience function to parse a go module version that is potentially surrounded by spaces.
 toGoModVersion :: Text -> Maybe PackageVersion
 toGoModVersion modVersion = case parse (parsePackageVersion lexeme) "go module version" modVersion of
   Left err -> fail $ errorBundlePretty err

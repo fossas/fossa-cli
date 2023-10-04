@@ -6,7 +6,7 @@ jobs:
   linter-check:
     name: linter-check
     runs-on: ubuntu-latest
-    container: ghcr.io/fossas/haskell-dev-tools:9.0.2
+    container: ghcr.io/fossas/haskell-dev-tools:9.4.7
 
     steps:
       - uses: actions-rs/toolchain@v1
@@ -41,7 +41,7 @@ jobs:
   format-check:
     name: formatter-check
     runs-on: ubuntu-latest
-    container: ghcr.io/fossas/haskell-dev-tools:9.0.2
+    container: ghcr.io/fossas/haskell-dev-tools:9.4.7
 
     steps:
       - uses: actions-rs/toolchain@v1
@@ -60,7 +60,7 @@ jobs:
   cabal-format-check:
     name: cabal-format-check
     runs-on: ubuntu-latest
-    container: ghcr.io/fossas/haskell-dev-tools:9.0.2
+    container: ghcr.io/fossas/haskell-dev-tools:9.4.7
 
     steps:
       - uses: actions/checkout@v2
@@ -74,13 +74,22 @@ jobs:
     name: cabal-install-check
     runs-on: ubuntu-latest
     # Be sure to update the env var below
-    container: ghcr.io/fossas/haskell-dev-tools:9.0.2
+    container: ghcr.io/fossas/haskell-dev-tools:9.4.7
 
     env:
-      GHC_VERSION: '9.0.2'
+      GHC_VERSION: '9.4.7'
 
     steps:
       - uses: actions/checkout@v3
+
+      # For some reason newer cabal or newer ghc doesn't prioritize cli options like -Wwarn over project file -Werror.
+      # Because -Werror is specified in the project file, we get errors due to missing vendor binaries.
+      # So edit the project file temporarily to not care about warnings.
+      # This is what -Wwarn is supposed to do below.
+      # We don't really lose anything here since it's run with -Werror in other workflows.
+      - name: Delete ghc-options -Werror
+        run: |
+          sed -i '/ghc-options: -Werror/d' cabal.project.ci.linux
 
       # Run `cabal install`.
       - uses: actions/cache@v3
@@ -97,8 +106,8 @@ jobs:
         run: |
           apk add xz-dev bzip2-dev bzip2-static
           cabal update
-          # -Wwarn switch because warnings about missing vendor bins would be emitted
-          cabal install --project-file=cabal.project.ci.linux --ghc-options="-Wwarn"
+
+          cabal install --project=cabal.project.ci.linux --ghc-options="-Wwarn"
 
   schema-lint-check:
     name: "schema lint check"

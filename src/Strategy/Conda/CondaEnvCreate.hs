@@ -74,7 +74,7 @@ analyze ::
 analyze dir file = do
   buildGraph <$> (parseEnvCreateDeps =<< execJson @CondaEnvCreateOut dir (condaEnvCmd file))
 
-parseEnvCreateDeps :: (Monad m, Has Diagnostics sig m) => CondaEnvCreateOut -> m [CondaEnvDep]
+parseEnvCreateDeps :: (Has Diagnostics sig m) => CondaEnvCreateOut -> m [CondaEnvDep]
 parseEnvCreateDeps CondaEnvCreateOut{dependencies = deps} = do
   let (lefts, rights) = partitionEithers . map (parse parseCondaEnvDep "") $ deps
   traverse_ (warn . errorBundlePretty) lefts
