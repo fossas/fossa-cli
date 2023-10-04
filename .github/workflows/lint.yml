@@ -91,15 +91,13 @@ jobs:
         run: |
           sed -i '/ghc-options: -Werror/d' cabal.project.ci.linux
 
-      path:
-        - ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
-        - 'dist-newstyle/'
-
       # Run `cabal install`.
       - uses: actions/cache@v3
         name: Cache cabal store
         with:
-          path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
+            'dist-newstyle/'
           key: ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-${{ hashFiles('**/*.cabal', 'cabal.project.ci.linux') }}
           restore-keys: |
             ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-
