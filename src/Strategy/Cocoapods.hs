@@ -83,9 +83,9 @@ instance AnalyzeProject CocoapodsProject where
 instance LicenseAnalyzeProject CocoapodsProject where
   licenseAnalyzeProject = traverse readLicense . cocoapodsSpecFiles
 
--- |For now, if the 'license' assignment statement is a dictionary this
--- code only extracts the value in the `:type` key. It also only looks at
--- the first `license` assignment it finds in the spec file.
+-- | For now, if the 'license' assignment statement is a dictionary this
+--  code only extracts the value in the `:type` key. It also only looks at
+--  the first `license` assignment it finds in the spec file.
 readLicense :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m LicenseResult
 readLicense specFile = do
   assignments <- readContentsParser (readAssignments podspecAssignmentValuesP) specFile

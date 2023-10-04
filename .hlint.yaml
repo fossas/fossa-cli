@@ -3,6 +3,13 @@
 - ignore: {name: "Redundant bracket"}
 - ignore: {name: "Use list comprehension"}
 
+# Hlint 3.6.1 has a bug where typed TH splices are not recognized so it reports
+# TemplateHaskell as an unused pragma: https://github.com/ndmitchell/hlint/issues/1531
+# A fix is merged, but has not yet been released.
+# Remove the ignore directive when this commit makes it into a release and is part of haskell-dev-tools.
+# https://github.com/ndmitchell/hlint/commit/505a4d57b972f3ba605ad7a59721cef1f3d98a84
+- ignore: {name: "Unused LANGUAGE pragma", within: [App.Version.TH, App.Version]}
+
 # Import Preferences
 - modules:
   - {name: Data.Set, as: Set, message: "Use complete name for qualified import of Set"}

@@ -288,15 +288,15 @@ runTarballReadFSIO fs tarball = interpret $ \case
   ReadRedactedContentsBS' file -> do
     mapRight Redacted
       <$> readContentBS fs tarball 0 file
-      `catchingIO` FileReadError (toString file)
+        `catchingIO` FileReadError (toString file)
   ReadRedactedContentsBSLimit' file limit -> do
     mapRight Redacted
       <$> readContentsBSLimit fs tarball file limit
-      `catchingIO` FileReadError (toString file)
+        `catchingIO` FileReadError (toString file)
   ReadRedactedContentsText' file -> do
     mapRight Redacted
       <$> readContentText fs tarball file
-      `catchingIO` FileReadError (toString file)
+        `catchingIO` FileReadError (toString file)
   ResolveFile' dir path ->
     resolveFile fs tarball dir path
       `catchingIO` ResolveError (toString dir) (toString path)

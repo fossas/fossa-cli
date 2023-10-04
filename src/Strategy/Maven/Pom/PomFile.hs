@@ -189,15 +189,15 @@ instance FromXML RawPom where
       <*> optional (child "version" el)
       <*> optional (child "name" el)
       <*> optional (child "properties" el)
-      `defaultsTo` Map.empty
+        `defaultsTo` Map.empty
       <*> optional (child "modules" el >>= children "module")
-      `defaultsTo` []
+        `defaultsTo` []
       <*> optional (child "dependencyManagement" el >>= children "dependency")
-      `defaultsTo` []
+        `defaultsTo` []
       <*> optional (child "dependencies" el >>= children "dependency")
-      `defaultsTo` []
+        `defaultsTo` []
       <*> optional (child "licenses" el >>= children "license")
-      `defaultsTo` []
+        `defaultsTo` []
 
 instance FromXML RawParent where
   -- TODO: move this documentation

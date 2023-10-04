@@ -27,7 +27,7 @@ import Text.Megaparsec.Char (char, space1, string)
 
 type Parser = Parsec Void Text
 
--- |Given a single start delimiter, return start/end delimiters
+-- | Given a single start delimiter, return start/end delimiters
 selectDelim :: Char -> (Char, Char)
 selectDelim = \case
   '{' -> ('{', '}')
@@ -53,33 +53,33 @@ betweenDelim (d1, d2) =
     -- escaped ending delimiter before 'between' sees it and stops parsing.
     delimEscape = string $ "\\" <> toText d2
 
--- |This is a parser for a ruby string literal. The strings it parses could look
--- these:
+-- | This is a parser for a ruby string literal. The strings it parses could look
+--  these:
 --
--- > "foo"
--- > 'foo'
+--  > "foo"
+--  > 'foo'
 --
--- The ending ' or " can be escaped within the string by '\'
+--  The ending ' or " can be escaped within the string by '\'
 --
--- > %q{foo}
--- > %Q{foo}
--- > %#foo#
--- > %^foo^
+--  > %q{foo}
+--  > %Q{foo}
+--  > %#foo#
+--  > %^foo^
 --
--- The character after the 'Q' or '%' in the above examples is the delimiter
--- for the string. If that character is '{', '(', '<', or '[' then its
--- matching right-hand side is the closing delimiter. As with quotes, the
--- ending delimiter can be escaped using '\'
+--  The character after the 'Q' or '%' in the above examples is the delimiter
+--  for the string. If that character is '{', '(', '<', or '[' then its
+--  matching right-hand side is the closing delimiter. As with quotes, the
+--  ending delimiter can be escaped using '\'
 --
--- Beyond the above, this parser also will consume and ignore '.freeze' or
--- '.freeze()' that appears at the end of the string. It is a ruby idiom that
--- turns a string into an immutable version of itself. It appears in some
--- gemspec files and is safe to ignore.
+--  Beyond the above, this parser also will consume and ignore '.freeze' or
+--  '.freeze()' that appears at the end of the string. It is a ruby idiom that
+--  turns a string into an immutable version of itself. It appears in some
+--  gemspec files and is safe to ignore.
 --
--- An edge-case I ignore here is string interpolation. Ruby allows strings
--- to contain text like `#{<expr>}`. The `<expr>` is evaluated and inserted
--- into the string in place of the interpolation text. This parser ignores
--- these and treats them like regular text.
+--  An edge-case I ignore here is string interpolation. Ruby allows strings
+--  to contain text like `#{<expr>}`. The `<expr>` is evaluated and inserted
+--  into the string in place of the interpolation text. This parser ignores
+--  these and treats them like regular text.
 rubyString :: Parser Text
 rubyString = stringText <* optional freezeMethod
   where
@@ -99,13 +99,13 @@ data Assignment a = Assignment
   }
   deriving (Eq, Show)
 
--- |Parser for a single assignment statement of the form:
+-- | Parser for a single assignment statement of the form:
 --
--- > righthand.side = some-value
+--  > righthand.side = some-value
 --
--- whitespace around the '=' is ignored. '<lhs> = ' portion of the assignment
--- must appear on one line. The right-hand side is taken care of by the argument
--- parser.
+--  whitespace around the '=' is ignored. '<lhs> = ' portion of the assignment
+--  must appear on one line. The right-hand side is taken care of by the argument
+--  parser.
 parseRubyAssignment ::
   -- | Parser for the right-hand side of an assignment
   Parser a ->
@@ -116,8 +116,8 @@ parseRubyAssignment rhs = Assignment <$> (labelP <* lexeme (char '=')) <*> value
     labelP = takeWhile1P Nothing (\c -> c /= '=' && not (isSpace c))
     valueP = rhs
 
--- |Consume 0 or more spaces or comments. A comment in ruby starts with
--- '#' and extends to the end of the line.
+-- | Consume 0 or more spaces or comments. A comment in ruby starts with
+--  '#' and extends to the end of the line.
 rubySpc :: Parser ()
 rubySpc = many (space1 <|> commentP) $> ()
   where
@@ -139,15 +139,15 @@ parseRubyArray p = char '[' *> sepBy (lexeme p) (char ',') <* char ']'
 newtype Symbol = Symbol {unSymbol :: Text}
   deriving (Show, Eq)
 
--- |Parses a ruby symbol. Ex:
--- > :this_is_a_symbol
--- > :"this is also a symbol"
--- > :'single quote symbol'
+-- | Parses a ruby symbol. Ex:
+--  > :this_is_a_symbol
+--  > :"this is also a symbol"
+--  > :'single quote symbol'
 --
--- The top-most example stops when a space or '=>' appears. There are likely
--- other strings that should stop the parsing of a keyword in this case, but
--- this parser is designed specifically for usages where the keyword is used
--- as the key in a Ruby dictionary.
+--  The top-most example stops when a space or '=>' appears. There are likely
+--  other strings that should stop the parsing of a keyword in this case, but
+--  this parser is designed specifically for usages where the keyword is used
+--  as the key in a Ruby dictionary.
 parseRubySymbol :: Parser Symbol
 parseRubySymbol =
   Symbol
@@ -169,11 +169,11 @@ parseRubySymbol =
     doubleQuoteSymbol = betweenDelim ('"', '"')
     singleQuoteSymbol = betweenDelim ('\'', '\'')
 
--- |Parse a dictionary of the form:
+-- | Parse a dictionary of the form:
 --
--- > { :key => val, :key2 => val2 }
+--  > { :key => val, :key2 => val2 }
 --
--- The keys in the text should be symbols that 'parseRubySymbol' can parse.
+--  The keys in the text should be symbols that 'parseRubySymbol' can parse.
 parseRubyDict :: Parser a -> Parser [(Symbol, a)]
 parseRubyDict rhs = between (char '{') (char '}') (sepBy keyValParse $ char ',')
   where
@@ -193,15 +193,15 @@ podspecAssignmentValuesP :: Parser PodSpecAssignmentValue
 podspecAssignmentValuesP =
   (PodspecStr <$> rubyString) <|> (PodspecDict <$> parseRubyDict rubyString)
 
--- |Ruby has a special syntax for making an array of strings that looks like
--- these examples:
+-- | Ruby has a special syntax for making an array of strings that looks like
+--  these examples:
 --
--- > %w(foo bar)
--- > %W[foo bar baz]
+--  > %w(foo bar)
+--  > %W[foo bar baz]
 --
--- This is interpreted as an array of strings. The delimiter after the 'w' can
--- be arbitrary as with '%q'. The 'W' variant also allows interpolation, but as
--- with 'rubyString' these are treated as ordinary text.
+--  This is interpreted as an array of strings. The delimiter after the 'w' can
+--  be arbitrary as with '%q'. The 'W' variant also allows interpolation, but as
+--  with 'rubyString' these are treated as ordinary text.
 parseRubyWordsArray :: Parser [Text]
 parseRubyWordsArray = do
   (d1, d2) <- parsePrefix
@@ -221,9 +221,9 @@ parseRubyWordsArray = do
                 *> lookAhead anySingle
             )
 
--- |Try to parse any value that could potentially be a license.
--- This parser only works for licenses that are a string literal or an
--- array of string literals.
+-- | Try to parse any value that could potentially be a license.
+--  This parser only works for licenses that are a string literal or an
+--  array of string literals.
 gemspecLicenseValuesP :: Parser [Text]
 gemspecLicenseValuesP = rubyArrayP <|> (singleton <$> rubyString)
   where

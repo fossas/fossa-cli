@@ -2,7 +2,29 @@ indentation: 2
 comma-style: leading # for lists, tuples etc. - can also be 'trailing'
 record-brace-space: false # rec {x = 1} vs. rec{x = 1}
 indent-wheres: true # 'false' means save space by only half-indenting the 'where' keyword
-diff-friendly-import-export: true # 'false' uses Ormolu-style lists
+import-export-style: diff-friendly
 respectful: true # don't be too opinionated about newlines etc.
 haddock-style: single-line # '--' vs. '{-'
 newlines-between-decls: 1 # number of newlines between top-level declarations
+single-constraint-parens: auto
+let-style: inline
+
+# The fixity of operators affects how Fourmolu formats them.
+# Without this directive, we'd get really wonky corrections that would do things like turn this:
+# ```
+# exprA && exprB
+# ```
+# Into
+# ```
+# expr
+#  && exprB
+# ``
+# For operator heavy code, like Aeson parsers, it would be even worse than this.
+# Fourmolu says that it can automatically detect fixities in most cases,
+# but I had to specify these manually to get reasonable formatting.
+# Docs: https://github.com/fourmolu/fourmolu#language-extensions-dependencies-and-fixities
+# If you have issues with operator formatting, usually you can find the right fixity in the haddocks.
+fixities:
+    - infixl 3 <|>
+    - infix 4 ==
+    - infixr 3 &&

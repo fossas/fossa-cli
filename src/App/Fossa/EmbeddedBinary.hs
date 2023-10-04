@@ -198,7 +198,7 @@ embeddedBinaryThemisIndex :: ByteString
 embeddedBinaryThemisIndex = $(embedFileIfExists "vendor-bins/index.gob.xz")
 
 themisVersion :: Text
-themisVersion = $$themisVersionQ
+themisVersion = $$(themisVersionQ)
 
 embeddedBinaryLernie :: ByteString
 embeddedBinaryLernie = $(embedFileIfExists "vendor-bins/lernie")
