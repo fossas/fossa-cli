@@ -132,13 +132,13 @@ fn main() -> stable_eyre::Result<()> {
     }
 }
 
-/// Filters traces from other crates if debug log level isn't set.
+/// Filters traces from other crates if trace log level isn't set.
 fn self_sourced_events<S>(log_level: Level) -> impl tracing_subscriber::layer::Filter<S> {
     const CURRENT_CRATE: &str = env!("CARGO_PKG_NAME");
     fn is_current_crate(meta: &tracing::Metadata<'_>) -> bool {
         meta.target().starts_with(CURRENT_CRATE)
     }
 
-    let enable_debug_logging = log_level >= Level::Debug;
+    let enable_debug_logging = log_level >= Level::Trace;
     filter_fn(move |meta| is_current_crate(meta) || enable_debug_logging)
 }

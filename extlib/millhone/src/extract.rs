@@ -16,7 +16,7 @@ use getset::{CopyGetters, Getters};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use snippets::{language::c99_tc3, language::cpp_98, Extractor};
-use strum::{Display, EnumIter, IntoEnumIterator};
+use strum::{Display, EnumIter, EnumVariantNames, IntoEnumIterator, VariantNames};
 use tap::{Pipe, Tap};
 use thiserror::Error;
 use tracing::{debug, trace};
@@ -34,6 +34,10 @@ pub enum Error {
     /// Encountered when extracting snippets from a file.
     #[error("extract snippets")]
     ExtractSnippets(#[from] snippets::Error),
+
+    /// Encountered when parsing a type fails.
+    #[error("parse '{0}': value is not valid, options: {}", .1.join(", "))]
+    Parse(String, Vec<String>),
 }
 
 /// Options for snippet extraction.
@@ -97,7 +101,9 @@ impl From<&Options> for snippets::Options {
 }
 
 /// The targets of snippets to extract.
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter)]
+#[derive(
+    Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter, EnumVariantNames,
+)]
 #[strum(serialize_all = "snake_case")]
 pub enum Target {
     /// Targets function defintions as snippets.
@@ -112,8 +118,12 @@ impl From<Target> for snippets::Target {
     }
 }
 
+impl ParseEnumValue for Target {}
+
 /// The kind of item this snippet represents.
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter)]
+#[derive(
+    Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter, EnumVariantNames,
+)]
 #[strum(serialize_all = "snake_case")]
 pub enum Kind {
     /// The signature of the snippet.
@@ -135,6 +145,8 @@ impl From<Kind> for snippets::Kind {
         }
     }
 }
+
+impl ParseEnumValue for Kind {}
 
 /// The normalization used to extract this snippet.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Display)]
@@ -165,8 +177,24 @@ impl Method {
     }
 }
 
+impl Method {
+    /// Parse a `Method` from a string.
+    pub fn parse(input: &str) -> Result<Self, Error> {
+        if input == Self::Raw.to_string() {
+            Ok(Self::Raw)
+        } else {
+            let input = input.trim_start_matches("normalized(");
+            let input = input.trim_end_matches(')');
+            let transform = Transform::parse(input)?;
+            Self::Normalized(transform).pipe(Ok)
+        }
+    }
+}
+
 /// The normalization used to extract this snippet.
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter)]
+#[derive(
+    Debug, Clone, Copy, Hash, PartialEq, Eq, ValueEnum, Display, EnumIter, EnumVariantNames,
+)]
 #[strum(serialize_all = "snake_case")]
 pub enum Transform {
     /// Transform the text to have any comments removed and whitespace normalized.
@@ -186,6 +214,23 @@ impl From<Transform> for snippets::Transform {
             Transform::Comment => snippets::Transform::Comment,
             Transform::Space => snippets::Transform::Space,
         }
+    }
+}
+
+impl ParseEnumValue for Transform {}
+
+trait ParseEnumValue: std::fmt::Display + strum::IntoEnumIterator + strum::VariantNames {
+    /// Attempt to parse from a string.
+    fn parse(input: &str) -> Result<Self, Error> {
+        Self::iter()
+            .find(|variant| variant.to_string() == input)
+            .map(Ok)
+            .unwrap_or_else(|| {
+                Err(Error::Parse(
+                    input.to_string(),
+                    Self::VARIANTS.iter().map(|s| s.to_string()).collect(),
+                ))
+            })
     }
 }
 
@@ -367,6 +412,14 @@ impl Snippet {
             .col_start(self.col_start as _)
             .col_end(self.col_end as _)
             .build()
+    }
+
+    /// Attempt to parse the metadata of a snippet retrieved from the API.
+    pub fn parse_meta(&self) -> Result<(Language, Target, Kind), Error> {
+        let language = self.language().pipe_borrow(Language::from_str)?;
+        let kind = Kind::parse(&self.kind)?;
+        let target = Target::parse(&self.target)?;
+        (language, target, kind).pipe(Ok)
     }
 }
 
@@ -602,7 +655,7 @@ impl Support {
 }
 
 /// Languages detected in source code.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display, EnumIter)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display, EnumIter, EnumVariantNames)]
 #[strum(serialize_all = "snake_case")]
 pub enum Language {
     /// The C programming language.
@@ -646,12 +699,15 @@ impl Language {
 }
 
 impl FromStr for Language {
-    type Err = stable_eyre::Report;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::iter()
-            .find(|l| l.identifier() == s)
-            .ok_or_else(|| stable_eyre::eyre::eyre!("language identifier unknown: '{s}'"))
+        Self::iter().find(|l| l.identifier() == s).ok_or_else(|| {
+            Error::Parse(
+                s.to_string(),
+                Language::VARIANTS.iter().map(|v| v.to_string()).collect(),
+            )
+        })
     }
 }
 

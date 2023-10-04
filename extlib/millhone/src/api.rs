@@ -62,7 +62,7 @@ fn build_default_agent(creds: Option<Credentials>) -> Agent {
         // so that we can track deployed app versions over time.
         .user_agent(&format!("{app_name}/{app_version}"))
         // Not based on anything specific but seems reasonable.
-        .timeout(Duration::from_secs(30));
+        .timeout(Duration::from_secs(300));
 
     // Inject authorization into every request here so that each method doesn't have to remember to.
     if let Some(creds) = creds {
