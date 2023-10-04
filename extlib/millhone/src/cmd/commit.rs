@@ -12,7 +12,7 @@ use stable_eyre::{
 };
 use strum::{Display, IntoEnumIterator};
 use tap::{Pipe, Tap, TapFallible};
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::cmd::MatchingSnippet;
 
@@ -26,7 +26,7 @@ pub struct Subcommand {
     analyze_output_dir: PathBuf,
 
     /// The output format for the generated `fossa-deps` file.
-    #[clap(long, default_value_t = OutputFormat::Json)]
+    #[clap(long, default_value_t = OutputFormat::default())]
     format: OutputFormat,
 
     /// If specified, overwrites the output file if it exists.
@@ -62,26 +62,21 @@ pub struct Subcommand {
 }
 
 /// The output format for the generated `fossa-deps` file.
-#[derive(Debug, Clone, Copy, ValueEnum, Display)]
+#[derive(Debug, Clone, Copy, Default, ValueEnum, Display)]
 #[strum(serialize_all = "snake_case")]
 pub enum OutputFormat {
+    /// Commit as `fossa-deps.yml`.
+    #[default]
+    Yml,
+
     /// Commit as `fossa-deps.json`.
     Json,
-
-    /// Commit as `fossa-deps.yml`.
-    Yml,
 }
 
 #[tracing::instrument(skip_all, fields(target = %opts.target().display()))]
 pub fn main(opts: Subcommand) -> Result<(), Report> {
-    info!(
-        analyze_output_dir = ?opts.analyze_output_dir,
-        format = %opts.format,
-        targets = ?opts.targets,
-        kinds = ?opts.kinds,
-        transforms = ?opts.transforms,
-        "Committing local snippet matches",
-    );
+    debug!(?opts, "committing local snippet matches");
+    info!("Committing local snippet matches");
 
     let output_file = opts
         .target()
@@ -118,8 +113,9 @@ pub fn main(opts: Subcommand) -> Result<(), Report> {
 
     let deps = std::fs::read_dir(opts.analyze_output_dir())
         .wrap_err_with(|| format!("list contents of '{}'", opts.analyze_output_dir().display()))?
+        .filter_map(|entry| entry.tap_err(|err| error!(analyze_output_dir = %opts.analyze_output_dir().display(), "walk contents: {err:#}")).ok())
         .inspect(|entry| debug!(analyze_output_dir = %opts.analyze_output_dir().display(), ?entry, "walk contents"))
-        .filter_ok(|entry| {
+        .filter(|entry| {
             let path = entry.path();
             path.extension()
                 .and_then(|ext| ext.to_str())
@@ -127,41 +123,40 @@ pub fn main(opts: Subcommand) -> Result<(), Report> {
                 .unwrap_or_default()
                 .tap(|valid| debug!(path = %entry.path().display(), %valid, "filter to json"))
         })
-        .map_ok(|entry| {
+        .filter_map(|entry| {
             std::fs::read(entry.path())
                 .wrap_err_with(|| format!("read '{}'", entry.path().display()))
                 .tap_ok(|_| debug!(path = %entry.path().display(), "read entry"))
+                .tap_err(|err| debug!(path = %entry.path().display(), "read entry: {err:#}"))
+                .map(|content| (entry, content))
+                .ok()
+        })
+        .filter_map(|(entry, content)| {
+            serde_json::from_slice::<Vec<MatchingSnippet>>(&content)
+                .tap_err(|err| debug!(path = %entry.path().display(), "read entry: {err:#}"))
+                .ok()
         })
         .flatten()
-        .map_ok(|content| serde_json::from_slice::<Vec<MatchingSnippet>>(&content))
-        .flatten()
-        .flatten_ok()
-        .map_ok(|m| {
-            m.matching_snippets
-                .iter()
-                .filter_map(|m| {
-                    let matches = match_kinds.contains(m.snippet().kind())
-                        || match_targets.contains(m.snippet().target())
-                        || match_methods.contains(m.snippet().method());
-                    debug!(
-                        ?match_kinds,
-                        ?match_targets,
-                        ?match_methods,
-                        "snippet {m:?} matches criteria: {matches}"
-                    );
+        .flat_map(|m| m.matching_snippets)
+        .filter_map(|m| {
+            let matches = match_kinds.contains(m.snippet().kind())
+                && match_targets.contains(m.snippet().target())
+                && match_methods.contains(m.snippet().method());
+            debug!(
+                ?match_kinds,
+                ?match_targets,
+                ?match_methods,
+                "snippet {m:?} matches criteria: {matches}"
+            );
 
-                    if matches {
-                        Some(m.locator().clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect_vec()
+            if matches {
+                m.locator().clone().pipe(Some)
+            } else {
+                None
+            }
         })
-        .flatten_ok()
-        .collect::<Result<HashSet<_>, _>>()
-        .context("find matching snippets")?
-        .into_iter()
+        .unique()
+        .sorted_by_key(|loc| loc.to_string())
         .filter_map(|loc| {
             ReferencedDependency::try_from(loc)
                 .tap_err(|(loc, err)| {
