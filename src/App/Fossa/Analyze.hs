@@ -219,7 +219,7 @@ applyFiltersToProject basedir filters DiscoveredProject{..} =
     -- will always fail
     Nothing -> Just projectBuildTargets
     Just relative -> do
-      applyFilters filters (toText projectType) rel projectBuildTargets
+      applyFilters filters (toText projectType) relative projectBuildTargets
 
 runAnalyzers ::
   ( AnalyzeTaskEffs sig m
