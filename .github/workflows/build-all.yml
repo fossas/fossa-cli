@@ -103,7 +103,7 @@ jobs:
       with:
         path: |
           ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
-          "${{ github.workspace }}/dist-newstyle/"
+          dist-newstyle/
         key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('**/*.cabal', format('{0}', matrix.project-file)) }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
