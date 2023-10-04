@@ -82,15 +82,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # For some reason newer cabal or newer ghc doesn't prioritize cli options like -Wwarn over project file -Werror.
-      # Because -Werror is specified in the project file, we get errors due to missing vendor binaries.
-      # So edit the project file temporarily to not care about warnings.
-      # This is what -Wwarn is supposed to do below.
-      # We don't really lose anything here since it's run with -Werror in other workflows.
-      - name: Delete ghc-options -Werror
-        run: |
-          sed -i '/ghc-options: -Werror/d' cabal.project.ci.linux
-
       # Run `cabal install`.
       - uses: actions/cache@v3
         name: Cache cabal store
@@ -103,6 +94,17 @@ jobs:
             ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-
             ${{ runner.os }}-${{ env.GHC_VERSION }}-
             ${{ runner.os }}-
+
+      # ALWAYS run this after the cache action so we don't screw up the cache key.
+      #
+      # For some reason newer cabal or newer ghc doesn't prioritize cli options like -Wwarn over project file -Werror.
+      # Because -Werror is specified in the project file, we get errors due to missing vendor binaries.
+      # So edit the project file temporarily to not care about warnings.
+      # This is what -Wwarn is supposed to do below.
+      # We don't really lose anything here since it's run with -Werror in other workflows.
+      - name: Delete ghc-options -Werror
+        run: |
+          sed -i '/ghc-options: -Werror/d' cabal.project.ci.linux
 
       - name: Run `cabal install`
         run: |
