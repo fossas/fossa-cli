@@ -6,6 +6,7 @@ use std::{
     collections::HashSet,
     hash::Hash,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
 use base64::prelude::*;
@@ -13,12 +14,13 @@ use clap::{Parser, ValueEnum};
 use derive_more::From;
 use getset::{CopyGetters, Getters};
 use itertools::Itertools;
+use lazy_regex::regex_is_match;
 use serde::{Deserialize, Serialize};
-use snippets::{language::c99_tc3, Extractor};
-use strum::{Display, EnumIter, IntoEnumIterator};
+use snippets::{language::c99_tc3, language::cpp_98, Extractor};
+use strum::{Display, EnumIter, EnumVariantNames, IntoEnumIterator, VariantNames};
 use tap::{Pipe, Tap};
 use thiserror::Error;
-use tracing::{debug, trace};
+use tracing::{debug, trace, warn};
 use typed_builder::TypedBuilder;
 
 /// Errors encountered in this module.
@@ -33,6 +35,10 @@ pub enum Error {
     /// Encountered when extracting snippets from a file.
     #[error("extract snippets")]
     ExtractSnippets(#[from] snippets::Error),
+
+    /// Encountered when parsing a type fails.
+    #[error("parse '{0}': value is not valid, options: {}", .1.join(", "))]
+    Parse(String, Vec<String>),
 }
 
 /// Options for snippet extraction.
@@ -336,6 +342,13 @@ impl Snippet {
         match language {
             Language::C => c99_tc3::Extractor::extract(opts, content)?
                 .pipe(collapse_raw)
+                .filter(|snippet| snippet.is_significant(content))
+                .map(|snippet| Self::from(scan_root, path, content, snippet))
+                .inspect(|snippet| trace!(?snippet, "extracted snippet"))
+                .collect::<HashSet<Self>>(),
+            Language::CPP => cpp_98::Extractor::extract(opts, content)?
+                .pipe(collapse_raw)
+                .filter(|snippet| snippet.is_significant(content))
                 .map(|snippet| Self::from(scan_root, path, content, snippet))
                 .inspect(|snippet| trace!(?snippet, "extracted snippet"))
                 .collect::<HashSet<Self>>(),
@@ -400,11 +413,8 @@ impl ContentSnippet {
                 Snippet::from_content(scan_root, opts, path, language, &content)?
                     .into_iter()
                     .map(|snippet| {
-                        let location = snippet.location();
-                        Self {
-                            snippet,
-                            content: location.extract_from(&content).to_owned(),
-                        }
+                        let content = snippet.extract_content_from(&content).to_owned();
+                        Self { snippet, content }
                     })
                     .collect::<HashSet<_>>()
                     .pipe(Ok)
@@ -596,11 +606,13 @@ impl Support {
 }
 
 /// Languages detected in source code.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display, EnumIter)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display, EnumIter, EnumVariantNames)]
 #[strum(serialize_all = "snake_case")]
 pub enum Language {
     /// The C programming language.
     C,
+    /// The C++ programming language.
+    CPP,
 }
 
 impl Language {
@@ -612,12 +624,41 @@ impl Language {
     pub fn supported_file_extensions(self) -> &'static [&'static str] {
         match self {
             Language::C => &["c"],
+            // These values are from a combination of the C++ wiki page: https://en.wikipedia.org/wiki/C%2B%2B
+            // As well as GCC's documentation: http://gcc.gnu.org/onlinedocs/gcc-4.4.1/gcc/Overall-Options.html#index-file-name-suffix-71
+            // I could not find an Clang equivalent document.
+            // Because it's distributed with a GCC compatible front-end it should match GCC.
+            // Header file extensions that apply _only_ to C++ are included.
+            Language::CPP => &[
+                "cpp", "cc", "C", "cxx", "c++", "H", "hpp", "h++", "hp", "hh", "tc",
+            ],
         }
     }
 
     /// Report whether the language declares it supports files with the given file extension.
     pub fn supports_file_extension(self, ext: &str) -> bool {
         self.supported_file_extensions().contains(&ext)
+    }
+
+    /// Report the language identifier, rendered by mapping to a [`snippets::Language`].
+    pub fn identifier(self) -> String {
+        match self {
+            Language::C => snippets::language::c99_tc3::Language.to_string(),
+            Language::CPP => snippets::language::cpp_98::Language.to_string(),
+        }
+    }
+}
+
+impl FromStr for Language {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::iter().find(|l| l.identifier() == s).ok_or_else(|| {
+            Error::Parse(
+                s.to_string(),
+                Language::VARIANTS.iter().map(|v| v.to_string()).collect(),
+            )
+        })
     }
 }
 
@@ -672,6 +713,72 @@ fn collapse_raw<L>(
     // Pop from the end, since `sort_by_key` sorts in ascending order
     // (so higher specificity snippets are sorted later in the vec).
     grouped.into_values().filter_map(|mut group| group.pop())
+}
+
+trait SnippetContent {
+    /// Extract the snippet content from a larger block of content.
+    fn extract_content_from<'a>(&self, content: &'a [u8]) -> &'a [u8];
+}
+
+impl<L> SnippetContent for snippets::Snippet<L> {
+    fn extract_content_from<'a>(&self, content: &'a [u8]) -> &'a [u8] {
+        self.metadata().location().extract_from(content)
+    }
+}
+
+impl SnippetContent for Snippet {
+    fn extract_content_from<'a>(&self, content: &'a [u8]) -> &'a [u8] {
+        self.location().extract_from(content)
+    }
+}
+
+trait SnippetNoiseFilter: SnippetContent {
+    /// Determine whether a snippet is significant.
+    /// Significant snippets are not noise and are not fully whitespace.
+    fn is_significant(&self, content: &[u8]) -> bool {
+        let content = self.extract_content_from(content);
+        !is_whitespace(content) && !self.is_noise(content)
+    }
+
+    /// Return whether the snippet is noise.
+    /// Callers who wish to filter snippets should prefer `is_significant`.
+    ///
+    /// This is usually the function that snippets implement.
+    fn is_noise(&self, content: &[u8]) -> bool;
+}
+
+impl SnippetNoiseFilter for snippets::Snippet<c99_tc3::Language> {
+    fn is_noise(&self, content: &[u8]) -> bool {
+        match self.metadata().kind() {
+            snippets::Kind::Signature => contains_bytes(b"int main", content),
+            snippets::Kind::Body => regex_is_match!(r"^\s*\{\s*\}\s*$"B, content),
+            _ => false,
+        }
+    }
+}
+
+impl SnippetNoiseFilter for snippets::Snippet<cpp_98::Language> {
+    fn is_noise(&self, content: &[u8]) -> bool {
+        match self.metadata().kind() {
+            snippets::Kind::Signature => contains_bytes(b"int main", content),
+            snippets::Kind::Body => regex_is_match!(r"^\s*\{\s*\}\s*$"B, content),
+            _ => false,
+        }
+    }
+}
+
+fn is_whitespace(content: &[u8]) -> bool {
+    regex_is_match!(r"^\s*$"B, content)
+}
+
+fn contains_bytes(needle: &[u8], haystack: &[u8]) -> bool {
+    if needle.len() > haystack.len() {
+        return false;
+    }
+
+    haystack
+        .windows(needle.len())
+        .any(|window| window.eq(needle))
 }
 
 #[cfg(test)]

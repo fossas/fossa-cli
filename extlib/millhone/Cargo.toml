@@ -1,6 +1,6 @@
 [package]
 name = "millhone"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 
 [features]
@@ -12,7 +12,7 @@ tikv-jemallocator = { version = "0.5.4", optional = true }
 clap = { version = "4.3.21", features = ["derive", "env", "cargo"] }
 stable-eyre = "0.2.2"
 srclib = { version = "*", git = "https://github.com/fossas/foundation-libs" }
-snippets = { version = "0.1.2", git = "https://github.com/fossas/foundation-libs", features = ["lang-all"] }
+snippets = { version = "0.1.3", git = "https://github.com/fossas/foundation-libs", features = ["lang-all"] }
 traceconf = { git = "https://github.com/fossas/foundation-libs", version = "1.1.0" }
 serde = { version = "1.0.183", features = ["derive"] }
 thiserror = "1.0.46"
@@ -33,6 +33,9 @@ secrecy = "0.8.0"
 serde_json = "1.0.107"
 serde_yaml = "0.9.25"
 rayon = "1.8.0"
+atty = "0.2.14"
+tracing-subscriber = { version = "0.3.17", features = ["json"] }
+lazy-regex = { version = "3.0.2", features = ["std", "regex"] }
 
 [dev-dependencies]
 maplit = "1.0.2"

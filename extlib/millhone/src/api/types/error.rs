@@ -4,27 +4,27 @@ use strum::Display;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Communication failed at the transport level.
-    #[error("transport error")]
-    Transport(#[from] TransportError),
+    #[error("transport error in '{0}'")]
+    Transport(String, #[source] TransportError),
 
     /// The request URL wasn't able to be encoded.
-    #[error("encode request URL")]
-    EncodeReqUrl(#[from] url::ParseError),
+    #[error("join URL segment '{0}' to base '{1}'")]
+    EncodeReqUrl(String, String, #[source] url::ParseError),
 
     /// The server responded with a non-success status.
-    #[error("status code '{0}'")]
-    Status(u16),
+    #[error("status code '{1}' in '{0}'")]
+    Status(String, u16),
 
     /// The request was sent and a response received,
     /// but the body failed to download or decode.
-    #[error("read response body")]
-    ReadResponseBody(#[source] std::io::Error),
+    #[error("read response body from '{0}'")]
+    ReadResponseBody(String, #[source] std::io::Error),
 }
 
 impl From<ureq::Error> for Error {
     fn from(value: ureq::Error) -> Self {
         match value {
-            ureq::Error::Status(code, _) => Self::Status(code),
+            ureq::Error::Status(code, res) => Self::Status(res.get_url().to_string(), code),
             ureq::Error::Transport(err) => Self::from(err),
         }
     }
@@ -32,7 +32,13 @@ impl From<ureq::Error> for Error {
 
 impl From<ureq::Transport> for Error {
     fn from(value: ureq::Transport) -> Self {
-        Self::Transport(value.into())
+        Self::Transport(
+            value
+                .url()
+                .map(|u| u.to_string())
+                .unwrap_or_else(|| String::from("<unknown url>")),
+            value.into(),
+        )
     }
 }
 
