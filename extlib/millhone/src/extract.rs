@@ -751,7 +751,7 @@ impl SnippetNoiseFilter for snippets::Snippet<c99_tc3::Language> {
     fn is_noise(&self, content: &[u8]) -> bool {
         match self.metadata().kind() {
             snippets::Kind::Signature => contains_bytes(b"int main", content),
-            snippets::Kind::Body => regex_is_match!(r"\s*\{\s*\}\s*"B, content),
+            snippets::Kind::Body => regex_is_match!(r"^\s*\{\s*\}\s*$"B, content),
             _ => false,
         }
     }
@@ -761,7 +761,7 @@ impl SnippetNoiseFilter for snippets::Snippet<cpp_98::Language> {
     fn is_noise(&self, content: &[u8]) -> bool {
         match self.metadata().kind() {
             snippets::Kind::Signature => contains_bytes(b"int main", content),
-            snippets::Kind::Body => regex_is_match!(r"\s*\{\s*\}\s*"B, content),
+            snippets::Kind::Body => regex_is_match!(r"^\s*\{\s*\}\s*$"B, content),
             _ => false,
         }
     }
