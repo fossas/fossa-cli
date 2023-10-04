@@ -14,5 +14,7 @@ pub fn run(agent: &Agent, base: &BaseUrl) -> Result<Health, Error> {
     let response = agent.get(target.as_str()).call().or_any_status()?;
     tracing::Span::current().record("status", response.status());
 
-    response.into_json().map_err(Error::ReadResponseBody)
+    response
+        .into_json()
+        .map_err(|err| Error::ReadResponseBody(target.to_string(), err))
 }
