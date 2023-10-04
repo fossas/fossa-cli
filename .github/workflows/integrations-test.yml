@@ -62,15 +62,17 @@ jobs:
 
     - uses: Swatinem/rust-cache@v2
     
+    # Integration tests run on a different runner with more space and CPUs.
+    # Therefore, it gets its own cache to avoid clobbering other Linux builds caches.
     - uses: actions/cache@v3
       name: Cache cabal store
       with:
         path: |
           ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
           dist-newstyle/
-        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-${{ hashFiles('**/*.cabal', 'cabal.project.ci.linux') }}
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-integration-test-${{ hashFiles('**/*.cabal', 'cabal.project.ci.linux') }}
         restore-keys: |
-          ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-integration-test
           ${{ runner.os }}-${{ env.GHC_VERSION }}-
           ${{ runner.os }}-
 
