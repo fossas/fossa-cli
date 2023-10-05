@@ -6,7 +6,7 @@ build-type:         Simple
 extra-source-files:
   scripts/*.gradle
   scripts/*.jar
-
+-- Comment to trigger cache rebuild
 common lang
   build-depends:      base >=4.15 && <5
   default-language:   Haskell2010
