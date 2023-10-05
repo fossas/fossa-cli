@@ -83,8 +83,12 @@ jobs:
       - uses: actions/checkout@v3
 
       # Run `cabal install`.
-      - uses: actions/cache@v3
-        name: Cache cabal store
+
+      # Cabal install stores build products in a different location than a regular build.
+      # This means its caches are useless for the other Linux workflows.
+      # This will only restore caches for this check and not save them.
+      - uses: actions/cache/restore@v3
+        name: Restore cabal store
         with:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
@@ -95,8 +99,6 @@ jobs:
             ${{ runner.os }}-${{ env.GHC_VERSION }}-
             ${{ runner.os }}-
 
-      # ALWAYS run this after the cache action so we don't screw up the cache key.
-      #
       # For some reason newer cabal or newer ghc doesn't prioritize cli options like -Wwarn over project file -Werror.
       # Because -Werror is specified in the project file, we get errors due to missing vendor binaries.
       # So edit the project file temporarily to not care about warnings.
