@@ -16,7 +16,8 @@ module App.Fossa.ManualDeps (
   findFossaDepsFile,
   readFoundDeps,
   getScanCfg,
-) where
+)
+where
 
 import App.Fossa.ArchiveUploader (archiveUploadSourceUnit)
 import App.Fossa.Config.Analyze (
@@ -53,6 +54,7 @@ import Data.Maybe (fromMaybe, isJust)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text, toLower)
 import Data.Text qualified as Text
+import Debug.Trace (traceM)
 import DepTypes (DepType (..))
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
@@ -88,6 +90,7 @@ analyzeFossaDepsFile root maybeApiOpts vendoredDepsOptions = do
     Nothing -> pure Nothing
     Just depsFile -> do
       manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
+      traceM ("Locator Dependencies ------" ++ show (locatorDependencies manualDeps))
       context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
 
 findAndReadFossaDepsFile ::
@@ -161,12 +164,13 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
     Nothing -> pure remoteDependencies
 
   let renderedPath = toText root
-      referenceLocators = refToLocator <$> referencedDependencies
+      referenceLocators = locatorDependencies ++ (refToLocator <$> referencedDependencies)
       additional = toAdditionalData (NE.nonEmpty customDependencies) (NE.nonEmpty rdeps)
       build = toBuildData <$> NE.nonEmpty (referenceLocators <> archiveLocators)
       originPath = case depsFile of
         (ManualJSON path) -> tryMakeRelative root path
         (ManualYaml path) -> tryMakeRelative root path
+  traceM ("Build ------" ++ show (build))
   pure $
     SourceUnit
       { sourceUnitName = renderedPath
@@ -303,6 +307,7 @@ hasNoDeps ManualDependencies{..} =
     && null customDependencies
     && null vendoredDependencies
     && null remoteDependencies
+    && null locatorDependencies
 
 -- TODO: Change these to Maybe NonEmpty
 data ManualDependencies = ManualDependencies
@@ -310,6 +315,7 @@ data ManualDependencies = ManualDependencies
   , customDependencies :: [CustomDependency]
   , vendoredDependencies :: [VendoredDependency]
   , remoteDependencies :: [RemoteDependency]
+  , locatorDependencies :: [Locator]
   }
   deriving (Eq, Ord, Show)
 
@@ -366,6 +372,7 @@ instance FromJSON ManualDependencies where
       <*> (obj .:? "custom-dependencies" .!= [])
       <*> (obj .:? "vendored-dependencies" .!= [])
       <*> (obj .:? "remote-dependencies" .!= [])
+      <*> (obj .:? "locator-dependencies" .!= [])
     where
       isMissingOr1 :: Maybe Int -> Parser ()
       isMissingOr1 (Just x) | x /= 1 = fail $ "Invalid fossa-deps version: " <> show x
@@ -513,6 +520,7 @@ validateRemoteDep r org =
     maxUrlRevLength = maxLocatorLength - Text.length requiredChars
 
 newtype RemoteDepLengthIsGtThanAllowed = RemoteDepLengthIsGtThanAllowed (RemoteDependency, Int)
+
 instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
   renderDiagnostic (RemoteDepLengthIsGtThanAllowed (r, maxLen)) =
     vsep
