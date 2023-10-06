@@ -54,7 +54,6 @@ import Data.Maybe (fromMaybe, isJust)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text, toLower)
 import Data.Text qualified as Text
-import Debug.Trace (traceM)
 import DepTypes (DepType (..))
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
@@ -90,7 +89,6 @@ analyzeFossaDepsFile root maybeApiOpts vendoredDepsOptions = do
     Nothing -> pure Nothing
     Just depsFile -> do
       manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
-      traceM ("Locator Dependencies ------" ++ show (locatorDependencies manualDeps))
       context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
 
 findAndReadFossaDepsFile ::
@@ -170,9 +168,9 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
       originPath = case depsFile of
         (ManualJSON path) -> tryMakeRelative root path
         (ManualYaml path) -> tryMakeRelative root path
-  traceM ("Build ------" ++ show (build))
-  pure $
-    SourceUnit
+
+  pure
+    $ SourceUnit
       { sourceUnitName = renderedPath
       , sourceUnitManifest = renderedPath
       , sourceUnitType = "user-specific-yaml"
@@ -205,8 +203,8 @@ scanAndUpload root vdeps vendoredDepsOptions = do
         ArchiveUpload -> archiveUploadSourceUnit
         CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode pathFilters fullFileUploads
 
-  when (archiveOrCLI == ArchiveUpload && isJust pathFilters) $
-    fatalText "You have provided path filters in the vendoredDependencies.licenseScanPathFilters section of your .fossa.yml file. Path filters are not allowed when doing archive uploads."
+  when (archiveOrCLI == ArchiveUpload && isJust pathFilters)
+    $ fatalText "You have provided path filters in the vendoredDependencies.licenseScanPathFilters section of your .fossa.yml file. Path filters are not allowed when doing archive uploads."
 
   scanner root vdeps
 
@@ -440,12 +438,13 @@ instance FromJSON ReferencedDependency where
       parseOS :: Object -> Parser Text
       parseOS obj = do
         os <- requiredFieldMsg "os" $ obj .: "os"
-        unless (toLower os `elem` supportedOSs) $
-          fail . toString $
-            "Provided os: "
-              <> (toLower os)
-              <> " is not supported! Please provide oneOf: "
-              <> Text.intercalate ", " supportedOSs
+        unless (toLower os `elem` supportedOSs)
+          $ fail
+          . toString
+          $ "Provided os: "
+          <> (toLower os)
+          <> " is not supported! Please provide oneOf: "
+          <> Text.intercalate ", " supportedOSs
         pure os
 
       requiredFieldMsg :: String -> Parser a -> Parser a
@@ -483,7 +482,8 @@ instance FromJSON CustomDependency where
       <$> (obj `neText` "name")
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "license")
-      <*> obj .:? "metadata"
+      <*> obj
+      .:? "metadata"
       <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
 
 instance FromJSON RemoteDependency where
@@ -492,7 +492,8 @@ instance FromJSON RemoteDependency where
       <$> (obj `neText` "name")
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "url")
-      <*> obj .:? "metadata"
+      <*> obj
+      .:? "metadata"
       <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
 
 validateRemoteDep :: (Has Diagnostics sig m) => RemoteDependency -> Organization -> m RemoteDependency
@@ -530,12 +531,12 @@ instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
       , indent 2 . pretty $ "Url: " <> remoteUrl r
       , indent 2 . pretty $ "Version: " <> remoteVersion r
       , ""
-      , pretty $
-          "The combined length of url and version is: "
-            <> show urlRevLength
-            <> ". It must be below: "
-            <> show maxLen
-            <> "."
+      , pretty
+          $ "The combined length of url and version is: "
+          <> show urlRevLength
+          <> ". It must be below: "
+          <> show maxLen
+          <> "."
       ]
     where
       urlRevLength :: Int
@@ -545,8 +546,10 @@ instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
 instance FromJSON DependencyMetadata where
   parseJSON = withObject "metadata" $ \obj ->
     DependencyMetadata
-      <$> obj .:? "description"
-      <*> obj .:? "homepage"
+      <$> obj
+      .:? "description"
+      <*> obj
+      .:? "homepage"
       <* forbidMembers "metadata" ["url"] obj
 
 -- Parse supported dependency types into their respective type or return Nothing.

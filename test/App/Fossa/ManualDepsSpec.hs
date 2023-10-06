@@ -242,7 +242,7 @@ locatorDepSpec = do
     it "should fail when locator dependency is empty"
       $ exceptionContains
         (encodeUtf8 locatorDepWithEmptyDep)
-        "expected locator dependency to be non-empty"
+        "parsing Locator failed, expected String, but encountered Null"
 
 linuxReferenceDep :: Text
 linuxReferenceDep =
@@ -436,5 +436,5 @@ locatorDepWithEmptyDep :: Text
 locatorDepWithEmptyDep =
   [r|
 locator-dependencies:
-- " "
+- 
 |]
