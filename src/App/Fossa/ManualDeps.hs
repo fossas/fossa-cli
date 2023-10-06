@@ -169,8 +169,8 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
         (ManualJSON path) -> tryMakeRelative root path
         (ManualYaml path) -> tryMakeRelative root path
 
-  pure
-    $ SourceUnit
+  pure $
+    SourceUnit
       { sourceUnitName = renderedPath
       , sourceUnitManifest = renderedPath
       , sourceUnitType = "user-specific-yaml"
@@ -203,8 +203,8 @@ scanAndUpload root vdeps vendoredDepsOptions = do
         ArchiveUpload -> archiveUploadSourceUnit
         CLILicenseScan -> licenseScanSourceUnit vendoredDependencyScanMode pathFilters fullFileUploads
 
-  when (archiveOrCLI == ArchiveUpload && isJust pathFilters)
-    $ fatalText "You have provided path filters in the vendoredDependencies.licenseScanPathFilters section of your .fossa.yml file. Path filters are not allowed when doing archive uploads."
+  when (archiveOrCLI == ArchiveUpload && isJust pathFilters) $
+    fatalText "You have provided path filters in the vendoredDependencies.licenseScanPathFilters section of your .fossa.yml file. Path filters are not allowed when doing archive uploads."
 
   scanner root vdeps
 
@@ -440,11 +440,11 @@ instance FromJSON ReferencedDependency where
         os <- requiredFieldMsg "os" $ obj .: "os"
         unless (toLower os `elem` supportedOSs)
           $ fail
-          . toString
+            . toString
           $ "Provided os: "
-          <> (toLower os)
-          <> " is not supported! Please provide oneOf: "
-          <> Text.intercalate ", " supportedOSs
+            <> (toLower os)
+            <> " is not supported! Please provide oneOf: "
+            <> Text.intercalate ", " supportedOSs
         pure os
 
       requiredFieldMsg :: String -> Parser a -> Parser a
@@ -483,7 +483,7 @@ instance FromJSON CustomDependency where
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "license")
       <*> obj
-      .:? "metadata"
+        .:? "metadata"
       <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
 
 instance FromJSON RemoteDependency where
@@ -493,7 +493,7 @@ instance FromJSON RemoteDependency where
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "url")
       <*> obj
-      .:? "metadata"
+        .:? "metadata"
       <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
 
 validateRemoteDep :: (Has Diagnostics sig m) => RemoteDependency -> Organization -> m RemoteDependency
@@ -531,12 +531,12 @@ instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
       , indent 2 . pretty $ "Url: " <> remoteUrl r
       , indent 2 . pretty $ "Version: " <> remoteVersion r
       , ""
-      , pretty
-          $ "The combined length of url and version is: "
-          <> show urlRevLength
-          <> ". It must be below: "
-          <> show maxLen
-          <> "."
+      , pretty $
+          "The combined length of url and version is: "
+            <> show urlRevLength
+            <> ". It must be below: "
+            <> show maxLen
+            <> "."
       ]
     where
       urlRevLength :: Int
@@ -547,9 +547,9 @@ instance FromJSON DependencyMetadata where
   parseJSON = withObject "metadata" $ \obj ->
     DependencyMetadata
       <$> obj
-      .:? "description"
+        .:? "description"
       <*> obj
-      .:? "homepage"
+        .:? "homepage"
       <* forbidMembers "metadata" ["url"] obj
 
 -- Parse supported dependency types into their respective type or return Nothing.

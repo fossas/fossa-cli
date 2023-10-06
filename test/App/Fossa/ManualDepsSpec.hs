@@ -71,15 +71,15 @@ spec :: Spec
 spec = do
   describe "fossa-deps json parser" $ do
     theWorksBS <- getTestDataFile "the-works.json"
-    it "should parse json correctly"
-      $ case Json.eitherDecodeStrict' theWorksBS of
+    it "should parse json correctly" $
+      case Json.eitherDecodeStrict' theWorksBS of
         Left err -> expectationFailure err
         Right jsonDeps -> jsonDeps `shouldBe` theWorks
 
   describe "fossa-deps yaml parser" $ do
     theWorksBS <- getTestDataFile "the-works.yml"
-    it "should successfully parse all possible inputs"
-      $ case Yaml.decodeEither' theWorksBS of
+    it "should successfully parse all possible inputs" $
+      case Yaml.decodeEither' theWorksBS of
         Left err -> expectationFailure $ displayException err
         Right yamlDeps -> yamlDeps `shouldBe` theWorks
 
@@ -87,8 +87,8 @@ spec = do
     it "should report an unsupported type" $ exceptionContains unsupportedTypeBS "dep type: notafetcher not supported"
 
     licenseInRefDepBS <- getTestDataFile "license-in-ref-dep.yml"
-    it "should report license used on referenced deps"
-      $ exceptionContains licenseInRefDepBS "Invalid field name for referenced dependencies: license"
+    it "should report license used on referenced deps" $
+      exceptionContains licenseInRefDepBS "Invalid field name for referenced dependencies: license"
 
     referenceDepSpec
     remoteDepSpec
@@ -138,79 +138,79 @@ spec = do
 referenceDepSpec :: Spec
 referenceDepSpec = do
   describe "reference dependency" $ do
-    it "should parse linux reference dependency"
-      $ case Yaml.decodeEither' (encodeUtf8 linuxReferenceDep) of
+    it "should parse linux reference dependency" $
+      case Yaml.decodeEither' (encodeUtf8 linuxReferenceDep) of
         Left err -> expectationFailure $ displayException err
         Right yamlDeps -> yamlDeps `shouldBe` linuxRefManualDep "centos" Nothing
 
-    it "should parse rpm reference dependency with epoch"
-      $ case Yaml.decodeEither' (encodeUtf8 linuxReferenceDepWithEpoch) of
+    it "should parse rpm reference dependency with epoch" $
+      case Yaml.decodeEither' (encodeUtf8 linuxReferenceDepWithEpoch) of
         Left err -> expectationFailure $ displayException err
         Right yamlDeps -> yamlDeps `shouldBe` linuxRefManualDep "centos" (Just "1")
 
-    it "should fail when linux reference dependency of deb or apk contains epoch"
-      $ exceptionContains
+    it "should fail when linux reference dependency of deb or apk contains epoch" $
+      exceptionContains
         (encodeUtf8 apkReferenceDepWithEpoch)
         "Invalid field name for referenced dependencies (of dependency type: apk): epoch"
 
-    it "should fail when linux reference dependency does not include arch information"
-      $ exceptionContains
+    it "should fail when linux reference dependency does not include arch information" $
+      exceptionContains
         (encodeUtf8 linuxReferenceDepWithoutArch)
         "arch is required field for reference dependency (of dependency type: apk, deb, rpm-generic)"
 
-    it "should fail when linux reference dependency does not include os information"
-      $ exceptionContains
+    it "should fail when linux reference dependency does not include os information" $
+      exceptionContains
         (encodeUtf8 linuxReferenceDepWithoutOS)
         "os is required field for reference dependency (of dependency type: apk, deb, rpm-generic)"
 
-    it "should fail when linux reference dependency uses not supported os"
-      $ exceptionContains
+    it "should fail when linux reference dependency uses not supported os" $
+      exceptionContains
         (encodeUtf8 linuxReferenceDepWithUnsupportedOS)
         "Provided os: poky is not supported! Please provide oneOf:"
 
-    it "should fail when managed reference dependency provides os information"
-      $ exceptionContains
+    it "should fail when managed reference dependency provides os information" $
+      exceptionContains
         (encodeUtf8 managedReferenceDepWithOS)
         "Invalid field name for referenced dependencies (of dependency type: gem): os"
 
-    it "should fail when linux reference dependency of deb or apk contains epoch"
-      $ exceptionContains
+    it "should fail when linux reference dependency of deb or apk contains epoch" $
+      exceptionContains
         (encodeUtf8 managedReferenceDepWithEmptyName)
         "expected field 'name' to be non-empty"
 
 remoteDepSpec :: Spec
 remoteDepSpec = do
   describe "remote dependency" $ do
-    it "should fail when remote dependency has empty name or only whitespace"
-      $ exceptionContains
+    it "should fail when remote dependency has empty name or only whitespace" $
+      exceptionContains
         (encodeUtf8 remoteDepWithEmptyName)
         "expected field 'name' to be non-empty"
 
-    it "should fail when remote dependency has empty version or only whitespace"
-      $ exceptionContains
+    it "should fail when remote dependency has empty version or only whitespace" $
+      exceptionContains
         (encodeUtf8 remoteDepWithEmptyVersion)
         "expected field 'version' to be non-empty"
 
-    it "should fail when remote dependency has empty url or only whitespace"
-      $ exceptionContains
+    it "should fail when remote dependency has empty url or only whitespace" $
+      exceptionContains
         (encodeUtf8 remoteDepWithEmptyUrl)
         "expected field 'url' to be non-empty"
 
 customDepSpec :: Spec
 customDepSpec = do
   describe "custom dependency" $ do
-    it "should fail when custom dependency has empty name or only whitespace"
-      $ exceptionContains
+    it "should fail when custom dependency has empty name or only whitespace" $
+      exceptionContains
         (encodeUtf8 customDepWithEmptyName)
         "expected field 'name' to be non-empty"
 
-    it "should fail when custom dependency has empty version or only whitespace"
-      $ exceptionContains
+    it "should fail when custom dependency has empty version or only whitespace" $
+      exceptionContains
         (encodeUtf8 customDepWithEmptyVersion)
         "expected field 'version' to be non-empty"
 
-    it "should fail when custom dependency has empty license or only whitespace"
-      $ exceptionContains
+    it "should fail when custom dependency has empty license or only whitespace" $
+      exceptionContains
         (encodeUtf8 customDepWithEmptyLicense)
         "expected field 'license' to be non-empty"
 
@@ -239,8 +239,8 @@ vendorDepSpec = do
 locatorDepSpec :: Spec
 locatorDepSpec = do
   describe "locator dependency" $ do
-    it "should fail when locator dependency is empty"
-      $ exceptionContains
+    it "should fail when locator dependency is empty" $
+      exceptionContains
         (encodeUtf8 locatorDepWithEmptyDep)
         "parsing Locator failed, expected String, but encountered Null"
 
