@@ -55,8 +55,8 @@ appMain = do
 
 versionOpt :: Parser (a -> a)
 versionOpt =
-  infoOption (toString fullVersionDescription)
-    $ mconcat
+  infoOption (toString fullVersionDescription) $
+    mconcat
       [long "version", short 'V', help "show version information and exit"]
 
 progData :: InfoMod (IO ())
@@ -69,8 +69,8 @@ subcommands :: Parser (IO ())
 subcommands = public <|> private
   where
     private =
-      subparser
-        $ mconcat
+      subparser $
+        mconcat
           [ internal
           , initCommand
           , experimentalLicenseScanCommand
@@ -79,8 +79,8 @@ subcommands = public <|> private
           , decodeSubCommand LicenseScan.licenseScanSubCommand
           ]
     public =
-      hsubparser
-        $ mconcat
+      hsubparser $
+        mconcat
           [ decodeSubCommand Analyze.analyzeSubCommand
           , decodeSubCommand Test.testSubCommand
           , decodeSubCommand Report.reportSubCommand
@@ -107,8 +107,8 @@ decodeSubCommand cmd@SubCommand{..} = command commandName $ info (runSubCommand 
 
 mainPrefs :: ParserPrefs
 mainPrefs =
-  prefs
-    $ mconcat
+  prefs $
+    mconcat
       [ showHelpOnEmpty
       , showHelpOnError
       , subparserInline

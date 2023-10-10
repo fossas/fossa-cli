@@ -137,9 +137,9 @@ instance FromJSON CmdFailure where
   parseJSON = withObject "CmdFailure" $ \obj ->
     CmdFailure
       <$> obj
-      .: "cmdFailureCmd"
+        .: "cmdFailureCmd"
       <*> obj
-      .: "cmdFailureDir"
+        .: "cmdFailureDir"
       <*> (obj .: "cmdFailureExit" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStdout" >>= fromRecordedValue)
       <*> (obj .: "cmdFailureStderr" >>= fromRecordedValue)
@@ -441,12 +441,12 @@ selectBestCmd workdir CandidateAnalysisCommands{..} = selectBestCmd' (NE.toList 
 data CandidateCommandFailed = CandidateCommandFailed {failedCommand :: Text, failedArgs :: [Text]}
 instance ToDiagnostic CandidateCommandFailed where
   renderDiagnostic CandidateCommandFailed{..} =
-    pretty
-      $ "Command "
-      <> show failedCommand
-      <> " not suitable: running with args "
-      <> show failedArgs
-      <> " resulted in a non-zero exit code"
+    pretty $
+      "Command "
+        <> show failedCommand
+        <> " not suitable: running with args "
+        <> show failedArgs
+        <> " resulted in a non-zero exit code"
 
 argFromPath :: Path a b -> Text
 argFromPath = toText . toFilePath
