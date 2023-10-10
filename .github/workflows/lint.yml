@@ -127,3 +127,14 @@ jobs:
       - name: "Check for incorrect FOSSA wording"
         run: |
           ! grep 'Fossa ' **/*.md
+
+  shellcheck-check:
+    name: "Lint bash scripts"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: run shellcheck
+        uses: sudo-bot/action-shellcheck@latest
+        with:
+            # https://github.com/koalaman/shellcheck#how-to-use
+            cli-args: "*.sh"
