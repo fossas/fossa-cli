@@ -49,15 +49,13 @@ execute() {
   (cd "${tmpdir}" && untar "${TARBALL}")
   log_debug "setting up bindir: $BINDIR"
   mkdir -p "$BINDIR" 2> /dev/null || sudo mkdir -p "$BINDIR"
-  for binexe in "fossa" ; do
-    if [ "$OS" = "windows" ]; then
-      binexe="${binexe}.exe"
-    fi
-    log_debug "installing binary: $binexe"
-    # Use mv instead of cp, as copying when a binary already exists in that spot can create an invalid binary on macOS
-    mv "${srcdir}/${binexe}" "${BINDIR}/${binexe}" 2> /dev/null || sudo cp "${srcdir}/${binexe}" "${BINDIR}/"
-    log_info "installed ${BINDIR}/${binexe}"
-  done
+  if [ "$OS" = "windows" ]; then
+    binexe="${binexe}.exe"
+  fi
+  log_debug "installing binary: $binexe"
+  # Use mv instead of cp, as copying when a binary already exists in that spot can create an invalid binary on macOS
+  mv "${srcdir}/${binexe}" "${BINDIR}/${binexe}" 2> /dev/null || sudo cp "${srcdir}/${binexe}" "${BINDIR}/"
+  log_info "installed ${BINDIR}/${binexe}"
 }
 is_supported_platform() {
   platform=$1
@@ -135,9 +133,6 @@ is_command() {
 echoerr() {
   echo "$@" 1>&2
 }
-log_prefix() {
-  echo "$0"
-}
 _logp=6
 log_set_priority() {
   _logp="$1"
@@ -198,7 +193,7 @@ uname_arch() {
     armv6*) arch="armv6" ;;
     armv7*) arch="armv7" ;;
   esac
-  echo ${arch}
+  echo "${arch}"
 }
 uname_os_check() {
   os=$(uname_os)
@@ -260,19 +255,19 @@ http_download_curl() {
   local_file=$1
   source_url=$2
   header=$3
-  if [ ! -z "$3" ]; then
+  if [ -n "$3" ]; then
     header="-H $header"
   fi
-  HTTP_CODE=$(curl -w '%{HTTP_CODE}' -sL $header -H "Cache-Control: no-cache" -o "$local_file" "$source_url") || (log_debug "curl command failed." && return 1)
+  HTTP_CODE=$(curl -w '%{HTTP_CODE}' -sL "$header" -H "Cache-Control: no-cache" -o "$local_file" "$source_url") || (log_debug "curl command failed." && return 1)
   return 0
 }
 http_download_wget() {
   local_file=$1
   source_url=$2
-  if [ ! -z $3 ]; then
+  if [ -n "$3" ]; then
     header="--header $3"
   fi
-  HTTP_CODE=$(wget -q $header --no-cache --server-response -O "$local_file" "$source_url" 2>&1 | awk 'NR==1{print $2}') || (log_debug "wget command failed." && return 1)
+  HTTP_CODE=$(wget -q "$header" --no-cache --server-response -O "$local_file" "$source_url" 2>&1 | awk 'NR==1{print $2}') || (log_debug "wget command failed." && return 1)
   return 0
 }
 http_download() {
