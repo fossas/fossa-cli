@@ -49,7 +49,7 @@ execute() {
   (cd "${tmpdir}" && untar "${TARBALL}")
   log_debug "setting up bindir: $BINDIR"
   mkdir -p "$BINDIR" 2> /dev/null || sudo mkdir -p "$BINDIR"
-  binexe=binexe
+  binexe="fossa"
   if [ "$OS" = "windows" ]; then
     binexe="${binexe}.exe"
   fi
