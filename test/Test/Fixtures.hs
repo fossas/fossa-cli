@@ -64,7 +64,7 @@ import Effect.Logger (Severity (..))
 import Fossa.API.Types (Archive (..))
 import Fossa.API.Types qualified as API
 import Path (Abs, Dir, Path, mkAbsDir, mkRelDir, parseAbsDir, (</>))
-import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
+import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), OriginPath, SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
 import System.Directory (getTemporaryDirectory)
 import Text.URI.QQ (uri)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
@@ -148,6 +148,13 @@ sourceUnits = NE.fromList [unit]
         , additionalData = Nothing
         }
 
+vsiOriginPath :: OriginPath
+#ifdef mingw32_HOST_OS
+vsiOriginPath = "D:\\tmp\\one\\two"
+#else
+vsiOriginPath = "/tmp/one/two"
+#endif
+
 vsiSourceUnit :: SourceUnit
 vsiSourceUnit =
   SourceUnit
@@ -179,7 +186,7 @@ vsiSourceUnit =
                 ]
             }
     , sourceUnitGraphBreadth = Complete
-    , sourceUnitOriginPaths = ["/tmp/one/two/"]
+    , sourceUnitOriginPaths = [vsiOriginPath]
     , additionalData = Nothing
     }
 
