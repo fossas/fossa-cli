@@ -28,8 +28,9 @@ import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
 import Graphing qualified
-import Path (Abs, Dir, Path, SomeBase (..), parseAbsDir)
+import Path (Abs, Dir, Path, SomeBase (..))
 import Path.Extra (SomePath (SomeDir))
+import Path.Posix (parseAbsDir) -- This needs to be Path.Posix as we are parsing unix-style paths
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
 import Types (DiscoveredProjectType (VsiProjectType), GraphBreadth (Complete))
