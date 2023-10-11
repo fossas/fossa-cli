@@ -31,10 +31,13 @@ mkCmd :: BinaryPaths -> Path Abs Dir -> AnalyzeConfig -> Command
 mkCmd bin root AnalyzeConfig{..} =
   Command
     { cmdName = toText $ toPath bin
-    , cmdArgs = "analyze" : argFromPath root : concat [output, overwriteOutput, targets, kinds, transforms]
+    , cmdArgs = concat [debug, cmd, output, overwriteOutput, targets, kinds, transforms, dir]
     , cmdAllowErr = Never
     }
   where
+    cmd = ["analyze"]
+    dir = [argFromPath root]
+    debug = if analyzeDebug then ["--log-level", "debug", "--log-format", "json"] else []
     targets = if null analyzeTargets then [] else argsLabeled labelForTarget analyzeTargets
     kinds = if null analyzeKinds then [] else argsLabeled labelForKind analyzeKinds
     transforms = if null analyzeTransforms then [] else argsLabeled labelForTransform analyzeTransforms

@@ -31,10 +31,13 @@ mkCmd :: BinaryPaths -> Path Abs Dir -> CommitConfig -> Command
 mkCmd bin root CommitConfig{..} =
   Command
     { cmdName = toText $ toPath bin
-    , cmdArgs = "commit" : argFromPath root : concat [output, format, overwriteOutput, targets, kinds, transforms]
+    , cmdArgs = concat [debug, cmd, output, format, overwriteOutput, targets, kinds, transforms, dir]
     , cmdAllowErr = Never
     }
   where
+    cmd = ["commit"]
+    dir = [argFromPath root]
+    debug = if commitDebug then ["--log-level", "debug", "--log-format", "json"] else []
     targets = if null commitTargets then [] else argsLabeled labelForTarget commitTargets
     kinds = if null commitKinds then [] else argsLabeled labelForKind commitKinds
     transforms = if null commitTransforms then [] else argsLabeled labelForTransform commitTransforms

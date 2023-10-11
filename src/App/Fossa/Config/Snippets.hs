@@ -13,8 +13,9 @@ module App.Fossa.Config.Snippets (
   labelForTransform,
 ) where
 
-import App.Fossa.Config.Common (baseDirArg, collectBaseDir)
+import App.Fossa.Config.Common (baseDirArg, collectBaseDir, fossaApiKeyCmdText)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts, GetSeverity (..), SubCommand (..))
+import App.OptionExtensions (uriOption)
 import App.Types (BaseDir)
 import Control.Carrier.Lift (sendIO)
 import Control.Effect.Diagnostics (Diagnostics, Has)
@@ -29,11 +30,14 @@ import GHC.Generics (Generic)
 import Options.Applicative (InfoMod, Parser, command, eitherReader, help, hsubparser, info, long, many, metavar, option, optional, progDesc, short, strOption, switch, (<|>))
 import Path (Abs, Dir, Path)
 import Path.IO qualified as Path
+import Text.URI (URI)
 
 data SnippetsCommand
   = CommandAnalyze
       FilePath -- Scan root
       Bool -- Debug
+      (Maybe URI) -- The FOSSA endpoint. Not currently used, but accepted for backwards compatibility.
+      (Maybe Text) -- The FOSSA API key. Not currently used, but accepted for backwards compatibility.
       FilePath -- Output directory
       Bool -- Whether to overwrite output directory
       [SnippetTarget]
@@ -42,8 +46,10 @@ data SnippetsCommand
   | CommandCommit
       FilePath -- Scan root
       Bool -- Debug
-      FilePath -- Output directory
-      Bool -- Whether to overwrite output directory
+      (Maybe URI) -- The FOSSA endpoint. Not currently used, but accepted for backwards compatibility.
+      (Maybe Text) -- The FOSSA API key. Not currently used, but accepted for backwards compatibility.
+      FilePath -- Analyze's output directory
+      Bool -- Whether to overwrite output file
       (Maybe CommitOutputFormat)
       [SnippetTarget]
       [SnippetKind]
@@ -60,8 +66,8 @@ snippetsCommitInfo = progDesc "Commit matches discovered during analyze into a f
 
 instance GetSeverity SnippetsCommand where
   getSeverity :: SnippetsCommand -> Severity
-  getSeverity (CommandAnalyze _ analyzeDebug _ _ _ _ _) = if analyzeDebug then SevDebug else SevInfo
-  getSeverity (CommandCommit _ commitDebug _ _ _ _ _ _) = if commitDebug then SevDebug else SevInfo
+  getSeverity (CommandAnalyze _ analyzeDebug _ _ _ _ _ _ _) = if analyzeDebug then SevDebug else SevInfo
+  getSeverity (CommandCommit _ commitDebug _ _ _ _ _ _ _ _) = if commitDebug then SevDebug else SevInfo
 
 instance GetCommonOpts SnippetsCommand
 
@@ -78,6 +84,8 @@ cliParser = analyze <|> commit
       CommandAnalyze
         <$> baseDirArg
         <*> switch (long "debug" <> help "Enable debug logging")
+        <*> optional (uriOption (long "endpoint" <> short 'e' <> metavar "URL" <> help "The FOSSA API server base URL (default: https://app.fossa.com)"))
+        <*> optional (strOption (long fossaApiKeyCmdText <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
         <*> strOption (long "output" <> short 'o' <> help "The directory to which matches are output")
         <*> switch (long "overwrite-output" <> help "If specified, overwrites the output directory if it exists")
         <*> many (option (eitherReader parseTarget) (long "target" <> help ("Analyze this combination of targets") <> metavar "TARGET"))
@@ -88,6 +96,8 @@ cliParser = analyze <|> commit
       CommandCommit
         <$> baseDirArg
         <*> switch (long "debug" <> help "Enable debug logging")
+        <*> optional (uriOption (long "endpoint" <> short 'e' <> metavar "URL" <> help "The FOSSA API server base URL (default: https://app.fossa.com)"))
+        <*> optional (strOption (long fossaApiKeyCmdText <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
         <*> strOption (long "analyze-output" <> help "The directory to which 'analyze' matches were saved")
         <*> switch (long "overwrite-fossa-deps" <> help "If specified, overwrites the 'fossa-deps' file if it exists")
         <*> optional (option (eitherReader parseCommitOutputFormat) (long "format" <> help ("The output format for the generated `fossa-deps` file") <> metavar "FORMAT"))
@@ -104,11 +114,11 @@ mergeOpts ::
   b ->
   SnippetsCommand ->
   m SnippetsConfig
-mergeOpts _ _ (CommandAnalyze path debug output overwrite targets kinds transforms) = do
+mergeOpts _ _ (CommandAnalyze path debug _ _ output overwrite targets kinds transforms) = do
   root <- collectBaseDir path
   output' <- sendIO $ Path.resolveDir' output
   pure . Analyze $ AnalyzeConfig root debug output' overwrite targets kinds transforms
-mergeOpts _ _ (CommandCommit path debug analyzeOutput overwrite format targets kinds transforms) = do
+mergeOpts _ _ (CommandCommit path debug _ _ analyzeOutput overwrite format targets kinds transforms) = do
   root <- collectBaseDir path
   analyzeOutput' <- sendIO $ Path.resolveDir' analyzeOutput
   pure . Commit $ CommitConfig root debug analyzeOutput' overwrite format targets kinds transforms
