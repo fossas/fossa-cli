@@ -1,7 +1,22 @@
-# `analyze`
+## `fossa snippets analyze`
 
-This subcommand analyzes a local project for snippets that match snippets in the FOSSA knowledgebase.
-For more information on possible options, run `millhone analyze --help`.
+This subcommand extracts snippets from a user project and compares them to the FOSSA database of snippets.
+Any matches are then written to the directory provided.
+
+## Options
+
+Argument             | Required | Default                | Description
+---------------------|----------|------------------------|--------------------------------------------------------------------------------------------------------------------------------------
+`-o` / `--output`    | Yes      | None                   | The directory to which matches are output.
+`--debug`            | No       | No                     | Enables debug mode. Note that debug bundles are not currently exported with `fossa snippets`, but this output is similarly useful.
+`--overwrite-output` | No       | No                     | If specified, overwrites the directory indicated by `--output`.
+`--target`           | No       | `function`             | If specified, extracts and matches only the specified targets. Specify multiple options by providing this argument multiple times.
+`--kind`             | No       | `full, snippet, body`  | If specified, extracts and matches only the specified kinds. Specify multiple options by providing this argument multiple times.
+`--transform`        | No       | `space, comment, code` | If specified, extracts and matches only the specified transforms. Specify multiple options by providing this argument multiple times.
+
+> [!NOTE]
+> `--transform` corresponds to the `Normalized` methods [listed here](../snippets.md#how-does-fossa-snippet-scanning-work).
+> The `Raw` method is always enabled and cannot be disabled.
 
 ## Output
 
