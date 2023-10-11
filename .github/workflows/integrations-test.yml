@@ -78,7 +78,7 @@ jobs:
         path: ${{ github.workspace }}/dist-newstyle
         key: ${{ runner.os }}-${{ env.GHC_VERSION }}-integration-tests-dist-newstyle-${{ github.ref_name }}
         restore-keys: |
-          ${{ runner.os }}-${{ env.GHC_VERSION }}integration-tests-dist-newstyle-
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-integration-tests-dist-newstyle-
           ${{ runner.os }}-${{ env.GHC_VERSION }}-
           ${{ runner.os }}-
 
