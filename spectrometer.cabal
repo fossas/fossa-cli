@@ -523,7 +523,6 @@ test-suite unit-tests
     App.Fossa.ReportSpec
     App.Fossa.RunThemisSpec
     App.Fossa.VendoredDependencySpec
-    App.Fossa.VSIDepsSpec
     App.Fossa.VSI.DynLinked.Internal.BinarySpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.DEBSpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.RPMSpec
@@ -532,6 +531,7 @@ test-suite unit-tests
     App.Fossa.VSI.FingerprintSpec
     App.Fossa.VSI.IAT.ResolveSpec
     App.Fossa.VSI.TypesSpec
+    App.Fossa.VSIDepsSpec
     BerkeleyDB.BerkeleyDBSpec
     BundlerSpec
     Cargo.CargoTomlSpec
