@@ -32,7 +32,7 @@ import Path (Abs, Dir, Path, SomeBase (..), parseAbsDir)
 import Path.Extra (SomePath (SomeDir))
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
-import System.FilePath (makeValid)
+import System.FilePath (normalise)
 import Types (DiscoveredProjectType (VsiProjectType), GraphBreadth (Complete))
 
 -- | VSI analysis is sufficiently different from other analysis types that it cannot be just another strategy.
@@ -72,9 +72,9 @@ ruleToSourceUnit :: (Has Diagnostics sig m, Has FossaApiClient sig m) => VSI.Ski
 ruleToSourceUnit skipResolving VSI.VsiRule{..} = do
   resolvedGraph <- resolveGraph [vsiRuleLocator] skipResolving
   dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
-  case parseAbsDir (makeValid $ toString vsiRulePath) of
+  case parseAbsDir (normalise $ toString vsiRulePath) of
     Just ruleDir -> pure $ toSourceUnit (toProject ruleDir dependencies) Nothing
-    Nothing -> fatal $ "Could not parse rule path: " <> (show vsiRulePath) <> ", valid: " <> makeValid (toString vsiRulePath)
+    Nothing -> fatal $ "Could not parse rule path: " <> (show vsiRulePath) <> ", normalized: " <> normalise (toString vsiRulePath)
 
 toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
 toProject dir graph = ProjectResult VsiProjectType dir graph Complete [SomeDir . Abs $ dir]
