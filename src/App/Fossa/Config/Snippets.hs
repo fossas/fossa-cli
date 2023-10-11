@@ -183,7 +183,7 @@ instance ToText SnippetTarget where
 
 instance ToString SnippetTarget where
   toString :: SnippetTarget -> String
-  toString = toString
+  toString = toString . toText
 
 labelForTarget :: Text
 labelForTarget = "--target"
@@ -207,7 +207,7 @@ instance ToText SnippetKind where
 
 instance ToString SnippetKind where
   toString :: SnippetKind -> String
-  toString = toString
+  toString = toString . toText
 
 parseKind :: String -> Either String SnippetKind
 parseKind input = case List.find (\t -> toString t == input) optionsKind of
@@ -239,7 +239,7 @@ instance ToText SnippetTransform where
 
 instance ToString SnippetTransform where
   toString :: SnippetTransform -> String
-  toString = toString
+  toString = toString . toText
 
 parseTransform :: String -> Either String SnippetTransform
 parseTransform input = case List.find (\t -> toString t == input) optionsTransform of
@@ -267,7 +267,7 @@ instance ToText CommitOutputFormat where
 
 instance ToString CommitOutputFormat where
   toString :: CommitOutputFormat -> String
-  toString = toString
+  toString = toString . toText
 
 parseCommitOutputFormat :: String -> Either String CommitOutputFormat
 parseCommitOutputFormat input = case List.find (\t -> toString t == input) optionsCommitOutputFormat of
