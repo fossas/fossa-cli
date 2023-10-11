@@ -26,7 +26,7 @@ import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger)
+import Effect.Logger (Logger, logInfo)
 
 snippetsSubCommand :: SubCommand SnippetsCommand SnippetsConfig
 snippetsSubCommand = mkSubCommand snippetsMain
@@ -39,6 +39,8 @@ snippetsMain ::
   ) =>
   SnippetsConfig ->
   m ()
-snippetsMain = \case
-  Analyze cfg -> analyzeWithMillhone cfg
-  Commit cfg -> commitWithMillhone cfg
+snippetsMain subcommand = do
+  logInfo "Running FOSSA snippets"
+  case subcommand of
+    Analyze cfg -> analyzeWithMillhone cfg
+    Commit cfg -> commitWithMillhone cfg
