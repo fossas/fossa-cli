@@ -1,6 +1,6 @@
 [package]
 name = "millhone"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2021"
 
 [features]
@@ -36,6 +36,9 @@ rayon = "1.8.0"
 atty = "0.2.14"
 tracing-subscriber = { version = "0.3.17", features = ["json"] }
 lazy-regex = { version = "3.0.2", features = ["std", "regex"] }
+tokio = { version = "1.33.0", features = ["full"] }
+reqwest = { version = "0.11.22", features = ["default-tls", "rustls-native-certs", "gzip", "brotli", "deflate", "json"], default-features = false }
+async-trait = "0.1.73"
 
 [dev-dependencies]
 maplit = "1.0.2"

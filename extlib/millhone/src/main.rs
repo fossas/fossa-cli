@@ -91,7 +91,8 @@ enum Commands {
     Commit(cmd::commit::Subcommand),
 }
 
-fn main() -> stable_eyre::Result<()> {
+#[tokio::main]
+async fn main() -> stable_eyre::Result<()> {
     stable_eyre::install()?;
     let app = Application::parse();
 
@@ -127,7 +128,7 @@ fn main() -> stable_eyre::Result<()> {
 
     // And then dispatch to the subcommand.
     match app.commands {
-        Commands::Ping => cmd::ping::main(&app.direct_endpoint),
+        Commands::Ping => cmd::ping::main(&app.direct_endpoint).await,
         Commands::Ingest(opts) => cmd::ingest::main(&app.direct_endpoint, opts),
         Commands::Analyze(opts) => cmd::analyze::main(&app.direct_endpoint, opts),
         Commands::Commit(opts) => cmd::commit::main(opts),

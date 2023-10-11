@@ -2,6 +2,7 @@
 
 use std::collections::HashSet;
 
+use stable_eyre::{eyre::Context, Report};
 use ureq::Agent;
 
 use crate::{extract::Fingerprint, url::BaseUrl};
@@ -18,30 +19,34 @@ use super::{types::*, Credentials};
 pub struct Client {
     base_url: BaseUrl,
     agent: Agent,
+    client: reqwest::Client,
 }
 
 impl Client {
     /// Construct a new client instance.
-    pub fn new(base_url: &BaseUrl) -> Self {
-        Self {
+    pub fn new(base_url: &BaseUrl) -> Result<Self, Report> {
+        Ok(Self {
             base_url: base_url.to_owned(),
             agent: super::build_default_agent(None),
-        }
+            client: super::build_default_client(None).context("configure default client")?,
+        })
     }
 
     /// Construct a new client instance with credentials.
-    pub fn authenticated(base_url: &BaseUrl, creds: Credentials) -> Self {
-        Self {
+    pub fn authenticated(base_url: &BaseUrl, creds: Credentials) -> Result<Self, Report> {
+        Ok(Self {
             base_url: base_url.to_owned(),
-            agent: super::build_default_agent(Some(creds)),
-        }
+            agent: super::build_default_agent(Some(creds.clone())),
+            client: super::build_default_client(Some(creds)).context("configure default client")?,
+        })
     }
 }
 
+#[async_trait::async_trait]
 impl super::Client for Client {
     #[tracing::instrument(skip(self))]
-    fn health(&self) -> Result<Health, Error> {
-        ping::run(&self.agent, &self.base_url)
+    async fn health(&self) -> Result<Health, Error> {
+        ping::run(&self.client, &self.base_url).await
     }
 
     #[tracing::instrument(skip_all, fields(snippet_count = %snippets.len()))]

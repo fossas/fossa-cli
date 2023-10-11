@@ -43,7 +43,7 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
     info!("Ingesting snippets");
 
     let creds = opts.auth.as_credentials();
-    let client = ApiClientV1::authenticated(endpoint, creds);
+    let client = ApiClientV1::authenticated(endpoint, creds).context("create client")?;
     let root = opts.extract().target();
     let snippet_opts = opts.extract().into();
 

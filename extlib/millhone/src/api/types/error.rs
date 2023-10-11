@@ -3,6 +3,10 @@ use strum::Display;
 /// Errors accessing the API.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// The request failed.
+    #[error("run request")]
+    Request(String, #[source] reqwest::Error),
+
     /// Communication failed at the transport level.
     #[error("transport error in '{0}'")]
     Transport(String, #[source] TransportError),
@@ -19,6 +23,11 @@ pub enum Error {
     /// but the body failed to download or decode.
     #[error("read response body from '{0}'")]
     ReadResponseBody(String, #[source] std::io::Error),
+
+    /// The request was sent and a response received,
+    /// but the body failed to download or decode.
+    #[error("parse response body from '{0}'")]
+    ParseResponseBody(String, #[source] reqwest::Error),
 }
 
 impl From<ureq::Error> for Error {

@@ -4,8 +4,13 @@ use std::{collections::HashSet, time::Duration};
 
 use base64::prelude::*;
 use getset::Getters;
+use reqwest::{
+    header::{HeaderMap, HeaderValue, AUTHORIZATION},
+    ClientBuilder,
+};
 use secrecy::{ExposeSecret, Secret};
-use tap::Conv;
+use stable_eyre::{eyre::Context, Report};
+use tap::{Conv, TapFallible};
 use typed_builder::TypedBuilder;
 use ureq::{Agent, AgentBuilder, MiddlewareNext, Request};
 
@@ -17,9 +22,10 @@ pub mod v1;
 pub use types::*;
 
 /// Describes a client for the Millhone service.
+#[async_trait::async_trait]
 pub trait Client {
     /// Get the current service health.
-    fn health(&self) -> Result<Health, Error>;
+    async fn health(&self) -> Result<Health, Error>;
 
     /// Store a set of snippets.
     fn add_snippets(&self, snippets: HashSet<ApiSnippet>) -> Result<(), Error>;
@@ -73,6 +79,33 @@ fn build_default_agent(creds: Option<Credentials>) -> Agent {
     }
 
     builder.build()
+}
+
+fn build_default_client(creds: Option<Credentials>) -> Result<reqwest::Client, Report> {
+    let app_name = env!("CARGO_PKG_NAME");
+    let app_version = env!("CARGO_PKG_VERSION");
+
+    let mut builder = ClientBuilder::new()
+        // The intention is to provide the service with the name and version
+        // so that we can track deployed app versions over time.
+        .user_agent(format!("{app_name}/{app_version}"))
+        // Not based on anything specific but seems reasonable.
+        .timeout(Duration::from_secs(30));
+
+    // Inject authorization into every request here so that each method doesn't have to remember to.
+    if let Some(creds) = creds {
+        let auth = sensitive_header_value(creds.as_basic()).context("set auth header")?;
+        let headers = HeaderMap::from_iter([(AUTHORIZATION, auth)]);
+        builder = builder.default_headers(headers);
+    }
+
+    builder.build().context("build client")
+}
+
+fn sensitive_header_value(value: impl AsRef<str>) -> Result<HeaderValue, Report> {
+    HeaderValue::from_str(value.as_ref())
+        .context("parse value as header")
+        .tap_ok_mut(|value| value.set_sensitive(true))
 }
 
 /// API credential provided via [`HEADER_AUTHORIZATION`] on requests.
