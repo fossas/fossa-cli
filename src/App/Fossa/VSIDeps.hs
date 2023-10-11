@@ -74,7 +74,7 @@ ruleToSourceUnit skipResolving VSI.VsiRule{..} = do
   dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
   case parseAbsDir (makeValid $ toString vsiRulePath) of
     Just ruleDir -> pure $ toSourceUnit (toProject ruleDir dependencies) Nothing
-    Nothing -> fatal $ "Could not parse rule path: " <> show vsiRulePath
+    Nothing -> fatal $ "Could not parse rule path: " <> (show vsiRulePath) <> ", valid: " <> makeValid (toString vsiRulePath)
 
 toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
 toProject dir graph = ProjectResult VsiProjectType dir graph Complete [SomeDir . Abs $ dir]
