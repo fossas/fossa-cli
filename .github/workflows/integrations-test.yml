@@ -61,7 +61,7 @@ jobs:
         cargo -V || echo "no cargo"
 
     - uses: Swatinem/rust-cache@v2
-    
+
     - uses: actions/cache@v3
       name: Cache cabal store
       with:
@@ -69,6 +69,16 @@ jobs:
         key: ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-${{ hashFiles('**/*.cabal', 'cabal.project.ci.linux') }}
         restore-keys: |
           ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-
+          ${{ runner.os }}-
+
+    - uses: actions/cache@v3
+      name: Cache dist-newstyle
+      with:
+        path: ${{ 'dist-newstyle/' }}
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-integration-tests-dist-newstyle-${{ env.GITHUB_REF_NAME }}
+        restore-keys: |
+          ${{ runner.os }}-${{ env.GHC_VERSION }}integration-tests-dist-newstyle-
           ${{ runner.os }}-${{ env.GHC_VERSION }}-
           ${{ runner.os }}-
 
