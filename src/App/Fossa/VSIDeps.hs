@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.VSIDeps (
@@ -32,8 +33,13 @@ import Path (Abs, Dir, Path, SomeBase (..), parseAbsDir)
 import Path.Extra (SomePath (SomeDir))
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
-import System.FilePath (normalise)
 import Types (DiscoveredProjectType (VsiProjectType), GraphBreadth (Complete))
+
+#ifdef mingw32_HOST_OS
+import Path (fromAbsDir)
+import Effect.ReadFS (getCurrentDir)
+import System.FilePath (joinDrive, normalise, takeDrive)
+#endif
 
 -- | VSI analysis is sufficiently different from other analysis types that it cannot be just another strategy.
 -- Instead, VSI analysis is run separately over the entire scan directory, outputting its own source unit.
@@ -68,13 +74,26 @@ analyzeVSIDeps dir projectRevision filters skipResolving = do
 
   pure . Just $ userDepSrcUnits : directSrcUnits
 
+#ifdef mingw32_HOST_OS
+ruleToSourceUnit :: (Has Diagnostics sig m, Has FossaApiClient sig m, Has ReadFS sig m) => VSI.SkipResolution -> VSI.VsiRule -> m (SourceUnit)
+ruleToSourceUnit skipResolving VSI.VsiRule{..} = do
+  resolvedGraph <- resolveGraph [vsiRuleLocator] skipResolving
+  dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
+  cwd <- getCurrentDir
+  let drive = takeDrive $ fromAbsDir cwd
+  let absPath = normalise $ joinDrive drive $ toString vsiRulePath
+  case parseAbsDir absPath of
+    Just ruleDir -> pure $ toSourceUnit (toProject ruleDir dependencies) Nothing
+    Nothing -> fatal $ "Could not parse rule path: " <> (show vsiRulePath) <> ", normalized: " <> normalise (toString vsiRulePath)
+#else
 ruleToSourceUnit :: (Has Diagnostics sig m, Has FossaApiClient sig m) => VSI.SkipResolution -> VSI.VsiRule -> m (SourceUnit)
 ruleToSourceUnit skipResolving VSI.VsiRule{..} = do
   resolvedGraph <- resolveGraph [vsiRuleLocator] skipResolving
   dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
-  case parseAbsDir (normalise $ toString vsiRulePath) of
+  case parseAbsDir (toString vsiRulePath) of
     Just ruleDir -> pure $ toSourceUnit (toProject ruleDir dependencies) Nothing
-    Nothing -> fatal $ "Could not parse rule path: " <> (show vsiRulePath) <> ", normalized: " <> normalise (toString vsiRulePath)
+    Nothing -> fatal $ "Could not parse rule path: " <> show vsiRulePath
+#endif
 
 toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
 toProject dir graph = ProjectResult VsiProjectType dir graph Complete [SomeDir . Abs $ dir]
