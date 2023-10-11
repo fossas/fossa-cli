@@ -147,6 +147,7 @@ dispatch cfg = void $ analyzeMain cfg
 
 -- This is just a handler for the Debug effect.
 -- The real logic is in the inner analyze
+-- Small change, revert me.
 analyzeMain ::
   ( Has Diag.Diagnostics sig m
   , Has Exec sig m
