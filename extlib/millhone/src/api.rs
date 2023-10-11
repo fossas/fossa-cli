@@ -31,7 +31,7 @@ pub trait Client {
     fn add_snippets(&self, snippets: HashSet<ApiSnippet>) -> Result<(), Error>;
 
     /// Lookup snippets with the same fingerprint.
-    fn lookup_snippets(&self, fp: &Fingerprint) -> Result<HashSet<ApiSnippet>, Error>;
+    async fn lookup_snippets(&self, fp: &Fingerprint) -> Result<HashSet<ApiSnippet>, Error>;
 }
 
 /// Provides types commonly used in the API module.

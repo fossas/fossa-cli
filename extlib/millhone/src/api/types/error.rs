@@ -25,9 +25,14 @@ pub enum Error {
     ReadResponseBody(String, #[source] std::io::Error),
 
     /// The request was sent and a response received,
-    /// but the body failed to download or decode.
-    #[error("parse response body from '{0}'")]
-    ParseResponseBody(String, #[source] reqwest::Error),
+    /// but the body failed to download.
+    #[error("download response body from '{0}'")]
+    DownloadResponseBody(String, #[source] reqwest::Error),
+
+    /// The request was sent and a response received,
+    /// but the body failed to be parsed.
+    #[error("parse response body from '{0}': {}", String::from_utf8_lossy(.1))]
+    ParseResponseBody(String, Vec<u8>, #[source] serde_json::Error),
 }
 
 impl From<ureq::Error> for Error {

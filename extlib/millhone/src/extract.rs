@@ -394,7 +394,7 @@ impl ContentSnippet {
     /// Extract instances from a file on disk.
     /// If the file is not supported, the returned results are empty.
     #[tracing::instrument(skip_all, fields(path = %path.display()))]
-    pub fn from_file(
+    pub async fn from_file(
         scan_root: &Path,
         opts: &snippets::Options,
         path: &Path,
@@ -409,7 +409,7 @@ impl ContentSnippet {
                 HashSet::new().pipe(Ok)
             }
             Support::Supported(language) => {
-                let content = std::fs::read(path).map_err(Error::ReadFile)?;
+                let content = tokio::fs::read(path).await.map_err(Error::ReadFile)?;
                 Snippet::from_content(scan_root, opts, path, language, &content)?
                     .into_iter()
                     .map(|snippet| {

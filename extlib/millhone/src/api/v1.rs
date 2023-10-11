@@ -55,7 +55,7 @@ impl super::Client for Client {
     }
 
     #[tracing::instrument(skip_all, fields(fingerprint = %fp))]
-    fn lookup_snippets(&self, fp: &Fingerprint) -> Result<HashSet<ApiSnippet>, Error> {
-        lookup::run(&self.agent, &self.base_url, fp)
+    async fn lookup_snippets(&self, fp: &Fingerprint) -> Result<HashSet<ApiSnippet>, Error> {
+        lookup::run(&self.client, &self.base_url, fp).await
     }
 }

@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use clap::Parser;
+use futures::executor::block_on;
 use getset::Getters;
 use millhone::{
     api::{prelude::*, ApiSnippet},
@@ -9,6 +10,7 @@ use millhone::{
 use rayon::prelude::*;
 use srclib::Locator;
 use stable_eyre::{eyre::Context, Report};
+use tap::Pipe;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 use walkdir::WalkDir;
@@ -65,7 +67,9 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
         .par_bridge()
         // Execute each entry in parallel.
         .try_for_each(|entry| -> Result<(), Report> {
-            let path = super::resolve_path(&entry).context("resolve path for entry")?;
+            let path = super::resolve_path(&entry)
+                .pipe(block_on)
+                .context("resolve path for entry")?;
             if !path.is_file() {
                 debug!(path = %path.display(), "skipped: not a file");
                 return Ok(());

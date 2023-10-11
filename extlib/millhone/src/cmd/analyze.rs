@@ -1,19 +1,16 @@
-use std::{
-    collections::{HashMap, HashSet},
-    path::PathBuf,
-};
+use std::path::{Path, PathBuf};
 
+use walkdir::WalkDir;
 use clap::Parser;
+use futures::{stream, StreamExt};
 use getset::Getters;
 use millhone::{api::prelude::*, extract::ContentSnippet};
-use rayon::prelude::*;
 use stable_eyre::{
     eyre::{bail, Context},
     Report,
 };
 use tap::Pipe;
 use tracing::{debug, info, trace, warn};
-use walkdir::WalkDir;
 
 use crate::cmd::{AtomicCounter, MatchingSnippet};
 
@@ -37,8 +34,8 @@ pub struct Subcommand {
     extract: millhone::extract::Options,
 }
 
-#[tracing::instrument(skip_all, fields(target = %opts.extract.target().display()))]
-pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
+// #[tracing::instrument(skip_all, fields(target = %opts.extract.target().display()))]
+pub async fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
     debug!(?endpoint, ?opts, "analyzing local snippet matches");
     info!("Analyzing local snippet matches");
 
@@ -75,122 +72,140 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
         // Just make the walk deterministic (per directory anyway).
         .sort_by_file_name()
         .into_iter()
+        // Convert walk errors into warnings, then ignore that item.
         .filter_map(super::unwrap_dir_entry)
-        // Bridge into rayon for parallelization.
-        .par_bridge()
+        // Turn this into a stream, which is an async iterator.
+        .pipe(futures::stream::iter)
         // Resolve symlinks into full paths and filter to only files.
-        .filter_map(|entry| -> Option<PathBuf> {
-            debug!(path = %entry.path().display(), "resolve path");
-            let path = super::resolve_path(&entry)
-                .map_err(Report::from)
-                .map_err(|err| warn!(path = %entry.path().display(), "failed to resolve symlink to path: {err:#}"))
-                .ok()?;
+        .filter_map(|entry| {
+            let total_count_files = &total_count_files;
+            async move {
+                debug!(path = %entry.path().display(), "resolve path");
+                let path = super::resolve_path(&entry)
+                    .await
+                    .map_err(Report::from)
+                    .map_err(|err| warn!(path = %entry.path().display(), "failed to resolve symlink to path: {err:#}"))
+                    .ok()?;
 
-            if path.is_file() {
-                debug!(path = %path.display(), "enqueued for processing");
-                total_count_files.increment();
-                Some(path)
-            } else {
-                debug!(path = %path.display(), "skipped: not a file");
-                None
+                if path.is_file() {
+                    debug!(path = %path.display(), "enqueued for processing");
+                    total_count_files.increment();
+                    Some(path)
+                } else {
+                    debug!(path = %path.display(), "skipped: not a file");
+                    None
+                }
             }
         })
-        // Extract snippets from each file in parallel.
-        .filter_map(|path| -> Option<(PathBuf, HashSet<ContentSnippet>)> {
-            debug!(path = %path.display(), "extract snippets");
-            let snippets = ContentSnippet::from_file(root, &snippet_opts, &path)
-                .map_err(Report::from)
-                .map_err(|err| warn!(path = %path.display(), "extract snippets: {err:#}"))
-                .ok()?;
+        // Extract snippets from each file.
+        .filter_map(|path| {
+            let total_count_snippets = &total_count_snippets;
+            async move {
+                debug!(path = %path.display(), "extract snippets");
+                let snippets = ContentSnippet::from_file(root, &snippet_opts, &path)
+                    .await
+                    .map_err(Report::from)
+                    .map_err(|err| warn!(path = %path.display(), "extract snippets: {err:#}"))
+                    .ok()?;
 
-            if snippets.is_empty() {
-                debug!(path = %path.display(), "no snippets extracted");
-                return None;
+                if snippets.is_empty() {
+                    debug!(path = %path.display(), "no snippets extracted");
+                    return None;
+                }
+
+                let snippet_count = snippets.len();
+                debug!(path = %path.display(), %snippet_count, "extracted snippets");
+                total_count_snippets.increment_by(snippet_count);
+
+                (path, snippets).pipe(Some)
             }
-
-            let snippet_count = snippets.len();
-            debug!(path = %path.display(), %snippet_count, "extracted snippets");
-            total_count_snippets.increment_by(snippet_count);
-
-            (path, snippets).pipe(Some)
         })
-        // The goal is to then parallelize API calls, so flatten collections of snippets.
-        // Using the serial `flat_map_iter` because this inner iterator has no computation aside from a clone.
-        .flat_map_iter(|(path, snippets)| std::iter::repeat(path).zip(snippets))
-        // Now match snippets up with the API into collections of matches.
-        .filter_map(|(path, found)| -> Option<(PathBuf, MatchingSnippet)> {
-            let fingerprint = found.snippet().fingerprint();
-            let matching_snippets = client
-                .lookup_snippets(fingerprint)
-                .map_err(Report::from)
-                .map_err(|err| warn!(path = %path.display(), %fingerprint, "lookup snippet: {err:#}"))
-                .ok()?;
-            if matching_snippets.is_empty() {
-                trace!(%fingerprint, "no matches in corpus");
-                return None;
-            }
-            for matched in matching_snippets.iter() {
-                trace!(%fingerprint, ?matched, "matched snippet");
-            }
-            total_count_matches.increment_by(matching_snippets.len());
+        // Handle each file and its extracted snippets in parallel.
+        .for_each_concurrent(None, |(path, snippets)| {
+            let opts = &opts;
+            let client = &client;
+            let total_count_matches = &total_count_matches;
+            async move {
+                // The API accepts a single fingerprint at a time.
+                let matches = stream::iter(snippets).filter_map(|found| {
+                    let client = client.clone();
+                    let total_count_matches = total_count_matches.clone();
+                    let path = path.clone();
+                    async move {
+                        let fingerprint = found.snippet().fingerprint();
+                        let matching_snippets = client
+                            .lookup_snippets(fingerprint)
+                            .await
+                            .map_err(Report::from)
+                            .map_err(|err| warn!(path = %path.display(), %fingerprint, "lookup snippet: {err:#}"))
+                            .ok()?;
+                        if matching_snippets.is_empty() {
+                            trace!(%fingerprint, "no matches in corpus");
+                            return None;
+                        }
+                        for matched in matching_snippets.iter() {
+                            trace!(%fingerprint, ?matched, "matched snippet");
+                        }
+                        total_count_matches.increment_by(matching_snippets.len());
+        
+                        MatchingSnippet::builder()
+                            .found_in(found.snippet().file_path())
+                            .local_snippet(found.snippet().clone())
+                            .local_text(String::from_utf8_lossy(found.content()))
+                            .matching_snippets(matching_snippets)
+                            .build()
+                            .pipe(Some)
+                    }
+                })
+                .collect::<Vec<_>>()
+                .await;
 
-            MatchingSnippet::builder()
-                .found_in(found.snippet().file_path())
-                .local_snippet(found.snippet().clone())
-                .local_text(String::from_utf8_lossy(found.content()))
-                .matching_snippets(matching_snippets)
-                .build()
-                .pipe(|record| (path, record))
-                .pipe(Some)
-        })
-        // Snippet lookups were parallelized. Join them back together by path.
-        // Need both fold and reduce; see https://docs.rs/rayon/latest/rayon/iter/trait.ParallelIterator.html#method.fold
-        .fold(HashMap::new, |mut acc, (path, record)| {
-            acc.entry(path).or_insert_with(Vec::new).push(record);
-            acc
-        })
-        .reduce(HashMap::new, |mut acc, partial| {
-            for (k, v) in partial {
-                acc.entry(k).or_insert_with(Vec::new).extend(v);
+                match write_match_records(root, opts, &path, &matches).await {
+                    Ok(record_path) => debug!(
+                        match_count = %matches.len(),
+                        file = %path.display(),
+                        record = %record_path.display(),
+                        "wrote matches",
+                    ),
+                    Err(err) => warn!(file = %path.display(), "failed to write match records: {err:#}"),
+                }
             }
-            acc
         })
-        // Reduce handed back a hashmap. Spread it back out into an iterator,
-        // such that each path corresponds to a single set of records.
-        .into_par_iter()
-        .for_each(|(path, records)| {
-            let record_name = path
-                .strip_prefix(root)
-                .unwrap_or(&path)
-                .to_string_lossy()
-                .replace(std::path::MAIN_SEPARATOR_STR, "_");
-
-            let current_ext = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
-            let record_path = opts
-                .output()
-                .join(record_name)
-                .with_extension(format!("{current_ext}.json"));
-
-            let written = serde_json::to_string_pretty(&records)
-                .context("encode records")
-                .and_then(|encoded| std::fs::write(&record_path, encoded).context("write records"));
-            match written {
-                Ok(_) => debug!(
-                    match_count = %records.len(),
-                    file = %path.display(),
-                    record = %record_path.display(),
-                    "wrote matches",
-                ),
-                Err(err) => warn!(record_path = %record_path.display(), "failed to write match records: {err:#}"),
-            }
-        });
+        .await;
 
     info!(
         "Finished matching {} snippets out of {} files to {} matches",
-        total_count_snippets.into_inner(),
-        total_count_files.into_inner(),
-        total_count_matches.into_inner(),
+        total_count_snippets.snapshot(),
+        total_count_files.snapshot(),
+        total_count_matches.snapshot(),
     );
 
     Ok(())
+}
+
+#[tracing::instrument(skip_all, fields(for_file = %path.display(), match_count = %records.len()))]
+async fn write_match_records(
+    root: &Path,
+    opts: &Subcommand,
+    path: &Path,
+    records: &[MatchingSnippet],
+) -> Result<PathBuf, Report> {
+    let record_name = path
+        .strip_prefix(root)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .replace(std::path::MAIN_SEPARATOR_STR, "_");
+
+    let current_ext = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+    let record_path = opts
+        .output()
+        .join(record_name)
+        .with_extension(format!("{current_ext}.json"));
+
+    let rendered = serde_json::to_string_pretty(&records).context("encode match records")?;
+    tokio::fs::write(&record_path, rendered)
+        .await
+        .wrap_err_with(|| format!("write match records to '{}'", record_path.display(),))?;
+
+    Ok(record_path)
 }

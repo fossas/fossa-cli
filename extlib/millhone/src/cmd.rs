@@ -75,7 +75,7 @@ impl ApiAuthentication {
 }
 
 /// A snippet match found in a local file during analysis.
-#[derive(Debug, Clone, Serialize, Deserialize, TypedBuilder)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TypedBuilder)]
 pub struct MatchingSnippet {
     /// The local path in which the match was found, rendered as a string.
     /// Any invalid UTF8 content is replaced by `U+FFFD`.
@@ -121,9 +121,10 @@ fn unwrap_dir_entry(entry: Result<DirEntry, walkdir::Error>) -> Option<DirEntry>
 
 /// Resolves the path for an entry, with special handling for symlinks.
 #[tracing::instrument]
-fn resolve_path(entry: &DirEntry) -> Result<PathBuf, Report> {
+async fn resolve_path(entry: &DirEntry) -> Result<PathBuf, Report> {
     if entry.path_is_symlink() {
-        std::fs::read_link(entry.path())
+        tokio::fs::read_link(entry.path())
+            .await
             .wrap_err_with(|| format!("resolve symlink of '{}'", entry.path().display()))
     } else {
         entry.path().to_path_buf().pipe(Ok)
@@ -145,6 +146,11 @@ impl AtomicCounter {
     /// Increment the counter by `n`.
     fn increment_by(&self, n: usize) {
         self.inner.fetch_add(n, Ordering::Relaxed);
+    }
+
+    /// Reports the current state of the counter.
+    fn snapshot(&self) -> usize {
+        self.inner.load(Ordering::Relaxed)
     }
 
     /// Consumes the counter and returns the contained value.
