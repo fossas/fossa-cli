@@ -91,8 +91,9 @@ withProjectOfType result (projType, projPath) =
   find (\(dr, _) -> projectType dr == projType && projectPath dr == projPath) result
 
 testSuiteHasSomeDepResults :: (AnalyzeProject a, Show a, Eq a) => AnalysisTestFixture a -> DiscoveredProjectType -> Spec
-testSuiteHasSomeDepResults fixture projType = aroundAll (withAnalysisOf fixture) $
-  describe (toString $ testName fixture) $ do
+testSuiteHasSomeDepResults fixture projType = aroundAll (withAnalysisOf fixture)
+  $ describe (toString $ testName fixture)
+  $ do
     it "should find targets" $ \(result, extractedDir) ->
       expectProject (projType, extractedDir) result
 
@@ -101,8 +102,9 @@ testSuiteHasSomeDepResults fixture projType = aroundAll (withAnalysisOf fixture)
 
 testSuiteDepResultSummary :: (AnalyzeProject a, Show a, Eq a) => AnalysisTestFixture a -> DiscoveredProjectType -> DependencyResultsSummary -> Spec
 testSuiteDepResultSummary fixture projType depResultSummary =
-  aroundAll (withAnalysisOf fixture) $
-    describe (toString $ testName fixture) $ do
+  aroundAll (withAnalysisOf fixture)
+    $ describe (toString $ testName fixture)
+    $ do
       it "should find targets" $ \(result, extractedDir) ->
         expectProject (projType, extractedDir) result
 

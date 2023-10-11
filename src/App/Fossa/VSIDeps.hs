@@ -2,6 +2,8 @@
 
 module App.Fossa.VSIDeps (
   analyzeVSIDeps,
+  -- exported for testing
+  ruleToSourceUnit,
 ) where
 
 import App.Fossa.Analyze.Project (ProjectResult (ProjectResult))
@@ -57,21 +59,21 @@ analyzeVSIDeps dir projectRevision filters skipResolving = do
           $ rules
 
   resolvedUserDeps <- resolveUserDefined userDeps
-  directSrcUnits <- traverse ruleToSourceUnit directRules
+  directSrcUnits <- traverse (ruleToSourceUnit skipResolving) directRules
 
   -- These deps have to get up to the backend somehow on a 'SourceUnit's 'additionalData'.
   -- This generates an empty-graph source unit and puts the userdeps on it.
   let userDepSrcUnits = toSourceUnit (toProject dir mempty) resolvedUserDeps
 
   pure . Just $ userDepSrcUnits : directSrcUnits
-  where
-    ruleToSourceUnit :: (Has Diagnostics sig m, Has FossaApiClient sig m) => VSI.VsiRule -> m (SourceUnit)
-    ruleToSourceUnit VSI.VsiRule{..} = do
-      resolvedGraph <- resolveGraph [vsiRuleLocator] skipResolving
-      dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
-      case parseAbsDir (toString vsiRulePath) of
-        Just ruleDir -> pure $ toSourceUnit (toProject ruleDir dependencies) Nothing
-        Nothing -> fatal $ "Could not parse rule path: " <> show vsiRulePath
+
+ruleToSourceUnit :: (Has Diagnostics sig m, Has FossaApiClient sig m) => VSI.SkipResolution -> VSI.VsiRule -> m (SourceUnit)
+ruleToSourceUnit skipResolving VSI.VsiRule{..} = do
+  resolvedGraph <- resolveGraph [vsiRuleLocator] skipResolving
+  dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
+  case parseAbsDir (toString vsiRulePath) of
+    Just ruleDir -> pure $ toSourceUnit (toProject ruleDir dependencies) Nothing
+    Nothing -> fatal $ "Could not parse rule path: " <> show vsiRulePath
 
 toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
 toProject dir graph = ProjectResult VsiProjectType dir graph Complete [SomeDir . Abs $ dir]

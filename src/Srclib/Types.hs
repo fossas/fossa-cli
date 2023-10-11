@@ -32,6 +32,7 @@ import Data.Aeson
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
+import Data.String (IsString)
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -56,7 +57,7 @@ instance ToJSON LicenseScanType where
 --  The reason we cannot use `SomePath` for this is that outputting an `OriginPath` to JSON in a form like @/foo/bar/path_end@ doesn't say whether the path is a file or directory which is required for parsing to a `SomePath` in `FromJSON`.
 --  This type and its exported smart constructors describe that OriginPath is a path, but has no information about whether the path is a file or directory.
 newtype OriginPath = OriginPath FilePath
-  deriving newtype (Eq, Ord, Show, ToJSON, FromJSON, ToText)
+  deriving newtype (Eq, Ord, Show, ToJSON, FromJSON, ToText, IsString)
 
 pathToOriginPath :: Path b t -> OriginPath
 pathToOriginPath = OriginPath . toFilePath
@@ -235,13 +236,20 @@ instance ToJSON LicenseUnit where
 instance FromJSON LicenseUnit where
   parseJSON = withObject "LicenseUnit" $ \obj ->
     LicenseUnit
-      <$> obj .: "Name"
-      <*> obj .: "Type"
-      <*> obj .:? "Title"
-      <*> obj .: "Dir"
-      <*> obj .: "Files"
-      <*> obj .: "Data"
-      <*> obj .: "Info"
+      <$> obj
+      .: "Name"
+      <*> obj
+      .: "Type"
+      <*> obj
+      .:? "Title"
+      <*> obj
+      .: "Dir"
+      <*> obj
+      .: "Files"
+      <*> obj
+      .: "Data"
+      <*> obj
+      .: "Info"
 
 newtype LicenseUnitInfo = LicenseUnitInfo
   {licenseUnitInfoDescription :: Maybe Text}
@@ -298,12 +306,18 @@ instance ToJSON LicenseUnitData where
 instance FromJSON LicenseUnitData where
   parseJSON = withObject "LicenseUnitData" $ \obj ->
     LicenseUnitData
-      <$> obj .: "path"
-      <*> obj .:? "Copyright"
-      <*> obj .: "ThemisVersion"
-      <*> obj .:? "match_data"
-      <*> obj .:? "Copyrights"
-      <*> obj .:? "Contents"
+      <$> obj
+      .: "path"
+      <*> obj
+      .:? "Copyright"
+      <*> obj
+      .: "ThemisVersion"
+      <*> obj
+      .:? "match_data"
+      <*> obj
+      .:? "Copyrights"
+      <*> obj
+      .:? "Contents"
 
 data LicenseUnitMatchData = LicenseUnitMatchData
   { licenseUnitMatchDataMatchString :: Maybe Text
@@ -329,12 +343,18 @@ instance ToJSON LicenseUnitMatchData where
 instance FromJSON LicenseUnitMatchData where
   parseJSON = withObject "LicenseUnitMatchData" $ \obj ->
     LicenseUnitMatchData
-      <$> obj .:? "match_string"
-      <*> obj .: "location"
-      <*> obj .: "length"
-      <*> obj .: "index"
-      <*> obj .: "start_line"
-      <*> obj .: "end_line"
+      <$> obj
+      .:? "match_string"
+      <*> obj
+      .: "location"
+      <*> obj
+      .: "length"
+      <*> obj
+      .: "index"
+      <*> obj
+      .: "start_line"
+      <*> obj
+      .: "end_line"
 
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
@@ -426,13 +446,20 @@ instance ToJSON SourceUnit where
 instance FromJSON SourceUnit where
   parseJSON = withObject "SourceUnit" $ \obj ->
     SourceUnit
-      <$> obj .: "Name"
-      <*> obj .: "Type"
-      <*> obj .: "Manifest"
-      <*> obj .:? "Build"
-      <*> obj .: "GraphBreadth"
-      <*> obj .: "OriginPaths"
-      <*> obj .:? "AdditionalDependencyData"
+      <$> obj
+      .: "Name"
+      <*> obj
+      .: "Type"
+      <*> obj
+      .: "Manifest"
+      <*> obj
+      .:? "Build"
+      <*> obj
+      .: "GraphBreadth"
+      <*> obj
+      .: "OriginPaths"
+      <*> obj
+      .:? "AdditionalDependencyData"
 
 instance ToJSON SourceUnitBuild where
   toJSON SourceUnitBuild{..} =
@@ -446,10 +473,14 @@ instance ToJSON SourceUnitBuild where
 instance FromJSON SourceUnitBuild where
   parseJSON = withObject "SourceUnitBuild" $ \obj ->
     SourceUnitBuild
-      <$> obj .: "Artifact"
-      <*> obj .: "Succeeded"
-      <*> obj .: "Imports"
-      <*> obj .: "Dependencies"
+      <$> obj
+      .: "Artifact"
+      <*> obj
+      .: "Succeeded"
+      <*> obj
+      .: "Imports"
+      <*> obj
+      .: "Dependencies"
 
 instance ToJSON SourceUnitDependency where
   toJSON SourceUnitDependency{..} =
@@ -461,8 +492,10 @@ instance ToJSON SourceUnitDependency where
 instance FromJSON SourceUnitDependency where
   parseJSON = withObject "SourceUnitDependency" $ \obj ->
     SourceUnitDependency
-      <$> obj .: "locator"
-      <*> obj .: "imports"
+      <$> obj
+      .: "locator"
+      <*> obj
+      .: "imports"
 
 instance ToJSON AdditionalDepData where
   toJSON AdditionalDepData{..} =
@@ -474,8 +507,10 @@ instance ToJSON AdditionalDepData where
 instance FromJSON AdditionalDepData where
   parseJSON = withObject "AdditionalDepData" $ \obj ->
     AdditionalDepData
-      <$> obj .:? "UserDefinedDependencies"
-      <*> obj .:? "RemoteDependencies"
+      <$> obj
+      .:? "UserDefinedDependencies"
+      <*> obj
+      .:? "RemoteDependencies"
 
 instance ToJSON SourceUserDefDep where
   toJSON SourceUserDefDep{..} =
@@ -491,12 +526,18 @@ instance ToJSON SourceUserDefDep where
 instance FromJSON SourceUserDefDep where
   parseJSON = withObject "SourceUserDefDep" $ \obj ->
     SourceUserDefDep
-      <$> obj .: "Name"
-      <*> obj .: "Version"
-      <*> obj .: "License"
-      <*> obj .:? "Description"
-      <*> obj .:? "Homepage"
-      <*> obj .:? "Origin"
+      <$> obj
+      .: "Name"
+      <*> obj
+      .: "Version"
+      <*> obj
+      .: "License"
+      <*> obj
+      .:? "Description"
+      <*> obj
+      .:? "Homepage"
+      <*> obj
+      .:? "Origin"
 
 instance ToJSON SourceRemoteDep where
   toJSON SourceRemoteDep{..} =
@@ -511,11 +552,16 @@ instance ToJSON SourceRemoteDep where
 instance FromJSON SourceRemoteDep where
   parseJSON = withObject "SourceRemoteDep" $ \obj ->
     SourceRemoteDep
-      <$> obj .: "Name"
-      <*> obj .: "Version"
-      <*> obj .: "Url"
-      <*> obj .:? "Description"
-      <*> obj .:? "Homepage"
+      <$> obj
+      .: "Name"
+      <*> obj
+      .: "Version"
+      <*> obj
+      .: "Url"
+      <*> obj
+      .:? "Description"
+      <*> obj
+      .:? "Homepage"
 
 instance ToJSON Locator where
   -- render as text

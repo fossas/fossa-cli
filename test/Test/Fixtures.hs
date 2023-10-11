@@ -36,6 +36,7 @@ module Test.Fixtures (
   diffRevision,
   issuesDiffAvailable,
   standardAnalyzeConfig,
+  vsiSourceUnit,
 ) where
 
 import App.Fossa.Config.Analyze (AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
@@ -63,13 +64,7 @@ import Effect.Logger (Severity (..))
 import Fossa.API.Types (Archive (..))
 import Fossa.API.Types qualified as API
 import Path (Abs, Dir, Path, mkAbsDir, mkRelDir, parseAbsDir, (</>))
-import Srclib.Types (
-  LicenseScanType (..),
-  LicenseSourceUnit (..),
-  Locator (..),
-  SourceUnit (..),
-  emptyLicenseUnit,
- )
+import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
 import System.Directory (getTemporaryDirectory)
 import Text.URI.QQ (uri)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
@@ -153,6 +148,41 @@ sourceUnits = NE.fromList [unit]
         , additionalData = Nothing
         }
 
+vsiSourceUnit :: SourceUnit
+vsiSourceUnit =
+  SourceUnit
+    { sourceUnitName = "/tmp/one/two/"
+    , sourceUnitType = "vsi"
+    , sourceUnitManifest = "/tmp/one/two/"
+    , sourceUnitBuild =
+        Just
+          SourceUnitBuild
+            { buildArtifact = "default"
+            , buildSucceeded = True
+            , buildImports =
+                [ Locator
+                    { locatorFetcher = "mvn"
+                    , locatorProject = "something/mavenish"
+                    , locatorRevision = Just "1.2.3"
+                    }
+                ]
+            , buildDependencies =
+                [ SourceUnitDependency
+                    { sourceDepLocator =
+                        Locator
+                          { locatorFetcher = "mvn"
+                          , locatorProject = "something/mavenish"
+                          , locatorRevision = Just "1.2.3"
+                          }
+                    , sourceDepImports = []
+                    }
+                ]
+            }
+    , sourceUnitGraphBreadth = Complete
+    , sourceUnitOriginPaths = ["/tmp/one/two/"]
+    , additionalData = Nothing
+    }
+
 -- | A base dir for testing.  This directory is not guaranteed to exist.  If you
 -- want a real directory you should use `withTempDir`.
 baseDir :: IO App.BaseDir
@@ -162,10 +192,11 @@ baseDir = do
 
 contributors :: API.Contributors
 contributors =
-  API.Contributors . Map.fromList $
-    [ ("testContributor1", "testContributor1")
-    , ("testContributor2", "testContributor2")
-    ]
+  API.Contributors
+    . Map.fromList
+    $ [ ("testContributor1", "testContributor1")
+      , ("testContributor2", "testContributor2")
+      ]
 
 build :: API.Build
 build =
