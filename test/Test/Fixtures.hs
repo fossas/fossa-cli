@@ -55,6 +55,7 @@ import Data.Flag (toFlag)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
+import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Discovery.Filters (
@@ -158,9 +159,9 @@ vsiOriginPath = "/tmp/one/two/"
 vsiSourceUnit :: SourceUnit
 vsiSourceUnit =
   SourceUnit
-    { sourceUnitName = "/tmp/one/two/"
+    { sourceUnitName = toText vsiOriginPath
     , sourceUnitType = "vsi"
-    , sourceUnitManifest = "/tmp/one/two/"
+    , sourceUnitManifest = toText vsiOriginPath
     , sourceUnitBuild =
         Just
           SourceUnitBuild
