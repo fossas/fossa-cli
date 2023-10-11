@@ -91,22 +91,22 @@ withProjectOfType result (projType, projPath) =
   find (\(dr, _) -> projectType dr == projType && projectPath dr == projPath) result
 
 testSuiteHasSomeDepResults :: (AnalyzeProject a, Show a, Eq a) => AnalysisTestFixture a -> DiscoveredProjectType -> Spec
-testSuiteHasSomeDepResults fixture projType = aroundAll (withAnalysisOf fixture)
-  $ describe (toString $ testName fixture)
-  $ do
-    it "should find targets" $ \(result, extractedDir) ->
-      expectProject (projType, extractedDir) result
-
-    it "should have some dependency results" $ \(result, extractedDir) ->
-      isJust (getDepResultsOf result (projType, extractedDir)) `shouldBe` True
-
-testSuiteDepResultSummary :: (AnalyzeProject a, Show a, Eq a) => AnalysisTestFixture a -> DiscoveredProjectType -> DependencyResultsSummary -> Spec
-testSuiteDepResultSummary fixture projType depResultSummary =
-  aroundAll (withAnalysisOf fixture)
-    $ describe (toString $ testName fixture)
-    $ do
+testSuiteHasSomeDepResults fixture projType = aroundAll (withAnalysisOf fixture) $
+  describe (toString $ testName fixture) $
+    do
       it "should find targets" $ \(result, extractedDir) ->
         expectProject (projType, extractedDir) result
 
-      it "should have expected dependency results" $ \(result, extractedDir) ->
-        depResultSummary `expectDepResultsSummary` getDepResultsOf result (projType, extractedDir)
+      it "should have some dependency results" $ \(result, extractedDir) ->
+        isJust (getDepResultsOf result (projType, extractedDir)) `shouldBe` True
+
+testSuiteDepResultSummary :: (AnalyzeProject a, Show a, Eq a) => AnalysisTestFixture a -> DiscoveredProjectType -> DependencyResultsSummary -> Spec
+testSuiteDepResultSummary fixture projType depResultSummary =
+  aroundAll (withAnalysisOf fixture) $
+    describe (toString $ testName fixture) $
+      do
+        it "should find targets" $ \(result, extractedDir) ->
+          expectProject (projType, extractedDir) result
+
+        it "should have expected dependency results" $ \(result, extractedDir) ->
+          depResultSummary `expectDepResultsSummary` getDepResultsOf result (projType, extractedDir)

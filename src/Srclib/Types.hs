@@ -237,19 +237,19 @@ instance FromJSON LicenseUnit where
   parseJSON = withObject "LicenseUnit" $ \obj ->
     LicenseUnit
       <$> obj
-      .: "Name"
+        .: "Name"
       <*> obj
-      .: "Type"
+        .: "Type"
       <*> obj
-      .:? "Title"
+        .:? "Title"
       <*> obj
-      .: "Dir"
+        .: "Dir"
       <*> obj
-      .: "Files"
+        .: "Files"
       <*> obj
-      .: "Data"
+        .: "Data"
       <*> obj
-      .: "Info"
+        .: "Info"
 
 newtype LicenseUnitInfo = LicenseUnitInfo
   {licenseUnitInfoDescription :: Maybe Text}
@@ -307,17 +307,17 @@ instance FromJSON LicenseUnitData where
   parseJSON = withObject "LicenseUnitData" $ \obj ->
     LicenseUnitData
       <$> obj
-      .: "path"
+        .: "path"
       <*> obj
-      .:? "Copyright"
+        .:? "Copyright"
       <*> obj
-      .: "ThemisVersion"
+        .: "ThemisVersion"
       <*> obj
-      .:? "match_data"
+        .:? "match_data"
       <*> obj
-      .:? "Copyrights"
+        .:? "Copyrights"
       <*> obj
-      .:? "Contents"
+        .:? "Contents"
 
 data LicenseUnitMatchData = LicenseUnitMatchData
   { licenseUnitMatchDataMatchString :: Maybe Text
@@ -344,17 +344,17 @@ instance FromJSON LicenseUnitMatchData where
   parseJSON = withObject "LicenseUnitMatchData" $ \obj ->
     LicenseUnitMatchData
       <$> obj
-      .:? "match_string"
+        .:? "match_string"
       <*> obj
-      .: "location"
+        .: "location"
       <*> obj
-      .: "length"
+        .: "length"
       <*> obj
-      .: "index"
+        .: "index"
       <*> obj
-      .: "start_line"
+        .: "start_line"
       <*> obj
-      .: "end_line"
+        .: "end_line"
 
 data SourceUnit = SourceUnit
   { sourceUnitName :: Text
@@ -447,19 +447,19 @@ instance FromJSON SourceUnit where
   parseJSON = withObject "SourceUnit" $ \obj ->
     SourceUnit
       <$> obj
-      .: "Name"
+        .: "Name"
       <*> obj
-      .: "Type"
+        .: "Type"
       <*> obj
-      .: "Manifest"
+        .: "Manifest"
       <*> obj
-      .:? "Build"
+        .:? "Build"
       <*> obj
-      .: "GraphBreadth"
+        .: "GraphBreadth"
       <*> obj
-      .: "OriginPaths"
+        .: "OriginPaths"
       <*> obj
-      .:? "AdditionalDependencyData"
+        .:? "AdditionalDependencyData"
 
 instance ToJSON SourceUnitBuild where
   toJSON SourceUnitBuild{..} =
@@ -474,13 +474,13 @@ instance FromJSON SourceUnitBuild where
   parseJSON = withObject "SourceUnitBuild" $ \obj ->
     SourceUnitBuild
       <$> obj
-      .: "Artifact"
+        .: "Artifact"
       <*> obj
-      .: "Succeeded"
+        .: "Succeeded"
       <*> obj
-      .: "Imports"
+        .: "Imports"
       <*> obj
-      .: "Dependencies"
+        .: "Dependencies"
 
 instance ToJSON SourceUnitDependency where
   toJSON SourceUnitDependency{..} =
@@ -493,9 +493,9 @@ instance FromJSON SourceUnitDependency where
   parseJSON = withObject "SourceUnitDependency" $ \obj ->
     SourceUnitDependency
       <$> obj
-      .: "locator"
+        .: "locator"
       <*> obj
-      .: "imports"
+        .: "imports"
 
 instance ToJSON AdditionalDepData where
   toJSON AdditionalDepData{..} =
@@ -508,9 +508,9 @@ instance FromJSON AdditionalDepData where
   parseJSON = withObject "AdditionalDepData" $ \obj ->
     AdditionalDepData
       <$> obj
-      .:? "UserDefinedDependencies"
+        .:? "UserDefinedDependencies"
       <*> obj
-      .:? "RemoteDependencies"
+        .:? "RemoteDependencies"
 
 instance ToJSON SourceUserDefDep where
   toJSON SourceUserDefDep{..} =
@@ -527,17 +527,17 @@ instance FromJSON SourceUserDefDep where
   parseJSON = withObject "SourceUserDefDep" $ \obj ->
     SourceUserDefDep
       <$> obj
-      .: "Name"
+        .: "Name"
       <*> obj
-      .: "Version"
+        .: "Version"
       <*> obj
-      .: "License"
+        .: "License"
       <*> obj
-      .:? "Description"
+        .:? "Description"
       <*> obj
-      .:? "Homepage"
+        .:? "Homepage"
       <*> obj
-      .:? "Origin"
+        .:? "Origin"
 
 instance ToJSON SourceRemoteDep where
   toJSON SourceRemoteDep{..} =
@@ -553,15 +553,15 @@ instance FromJSON SourceRemoteDep where
   parseJSON = withObject "SourceRemoteDep" $ \obj ->
     SourceRemoteDep
       <$> obj
-      .: "Name"
+        .: "Name"
       <*> obj
-      .: "Version"
+        .: "Version"
       <*> obj
-      .: "Url"
+        .: "Url"
       <*> obj
-      .:? "Description"
+        .:? "Description"
       <*> obj
-      .:? "Homepage"
+        .:? "Homepage"
 
 instance ToJSON Locator where
   -- render as text
