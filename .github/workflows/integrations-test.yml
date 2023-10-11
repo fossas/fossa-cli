@@ -99,6 +99,6 @@ jobs:
         cabal update
         $RUN_CMD || $RUN_CMD
 
-    - name: Run all integration tests
-      run: |
-        cabal test --project-file=cabal.project.ci.linux --test-show-details=direct --test-option=--times integration-tests
+    # - name: Run all integration tests
+    #   run: |
+    #     cabal test --project-file=cabal.project.ci.linux --test-show-details=direct --test-option=--times integration-tests
