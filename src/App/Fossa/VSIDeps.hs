@@ -30,7 +30,7 @@ import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, Path, SomeBase (..))
 import Path.Extra (SomePath (SomeDir))
-import Path.Posix (parseAbsDir) -- This needs to be Path.Posix as we are parsing unix-style paths
+import Path.Posix qualified as Posix -- This needs to be Path.Posix as we are parsing unix-style paths
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
 import Types (DiscoveredProjectType (VsiProjectType), GraphBreadth (Complete))
@@ -72,7 +72,7 @@ ruleToSourceUnit :: (Has Diagnostics sig m, Has FossaApiClient sig m) => VSI.Ski
 ruleToSourceUnit skipResolving VSI.VsiRule{..} = do
   resolvedGraph <- resolveGraph [vsiRuleLocator] skipResolving
   dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
-  case parseAbsDir (toString vsiRulePath) of
+  case Posix.parseAbsDir (toString vsiRulePath) of
     Just ruleDir -> pure $ toSourceUnit (toProject ruleDir dependencies) Nothing
     Nothing -> fatal $ "Could not parse rule path: " <> show vsiRulePath
 
