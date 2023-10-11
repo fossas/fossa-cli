@@ -150,9 +150,9 @@ sourceUnits = NE.fromList [unit]
 
 vsiOriginPath :: OriginPath
 #ifdef mingw32_HOST_OS
-vsiOriginPath = "D:\\tmp\\one\\two"
+vsiOriginPath = "D:\\tmp\\one\\two\\"
 #else
-vsiOriginPath = "/tmp/one/two"
+vsiOriginPath = "/tmp/one/two/"
 #endif
 
 vsiSourceUnit :: SourceUnit
