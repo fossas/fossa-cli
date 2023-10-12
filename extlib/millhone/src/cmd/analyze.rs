@@ -84,6 +84,12 @@ pub async fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
         .pipe(futures::stream::iter)
         // Resolve symlinks into full paths and filter to only files.
         .filter_map(|entry| {
+            // These let bindings are awkward,
+            // but needed since we're using `move` for the async block.
+            //
+            // In the future we should probably clean this up a bit
+            // (extract some of these closures into functions and/or
+            // use macros to make this a little more ergonomic).
             let total_count_files = &total_count_files;
             let concurrency_limiter = &concurrency_limiter;
             async move {
