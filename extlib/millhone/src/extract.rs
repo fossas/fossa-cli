@@ -49,15 +49,9 @@ pub struct Options {
     ///
     /// Each running IO operation (reading or writing files, running network requests)
     /// counts against this limit.
-    ///
-    /// The higher this limit the better. It's set low by default for compatibility,
-    /// but if you're trying to scan a huge project increasing this may benefit a lot.
-    ///
-    /// If this is increased and you start running into file handle limits in Linux,
-    /// consider using `ulimit` to increase the handle limit.
     #[clap(
         long = "concurrency",
-        default_value_t = 200,
+        default_value_t = 100,
         env = "FOSSA_SNIPPETS_CONCURRENCY"
     )]
     #[getset(get_copy = "pub")]
