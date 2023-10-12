@@ -34,6 +34,7 @@ import Path.Extra (SomePath (SomeDir))
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
 import Types (DiscoveredProjectType (VsiProjectType), GraphBreadth (Complete))
+import qualified Control.Carrier.Accum.Strict as it
 
 #ifdef mingw32_HOST_OS
 import Path (fromAbsDir)
@@ -75,6 +76,9 @@ analyzeVSIDeps dir projectRevision filters skipResolving = do
   pure . Just $ userDepSrcUnits : directSrcUnits
 
 #ifdef mingw32_HOST_OS
+-- The path we get back from Core is a Unix-style path, so we need to turn it into a Windows-style path by
+-- prepending a drive (e.g. "C:\") to it and running `normalise` on it.
+-- For example, if we get a path like "/Framework/Common/fjlic/private/WINx64/", we want to end up with "C:\Framework\Common\fjlic\private\WINx64\"
 ruleToSourceUnit :: (Has Diagnostics sig m, Has FossaApiClient sig m, Has ReadFS sig m) => VSI.SkipResolution -> VSI.VsiRule -> m (SourceUnit)
 ruleToSourceUnit skipResolving VSI.VsiRule{..} = do
   resolvedGraph <- resolveGraph [vsiRuleLocator] skipResolving
