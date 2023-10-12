@@ -1,7 +1,7 @@
 ## `fossa snippets commit`
 
-This subcommand commits the analysis performed in the `analyze` subcommand into a `fossa-deps` file.
-For more information on possible options, run `millhone commit --help`.
+This subcommand commits the analysis performed in the `analyze` subcommand into a `fossa-deps` file ([reference](../../files/fossa-deps.md)).
+For more information on possible options, run `fossa snippets commit --help`.
 
 ## Options
 
@@ -13,6 +13,7 @@ Argument                 | Required | Default                | Description
 `--target`               | No       | `function`             | If specified, commits matches consisting of only the specified targets. Specify multiple options by providing this argument multiple times.
 `--kind`                 | No       | `full, snippet, body`  | If specified, commits matches consisting of only the specified kinds. Specify multiple options by providing this argument multiple times.
 `--transform`            | No       | `space, comment, code` | If specified, commits matches consisting of only the specified transforms. Specify multiple options by providing this argument multiple times.
+`--format`               | No       | `yml`                  | Allows configuring the format of the generated `fossa-deps` file.
 
 > [!NOTE]
 > `--transform` corresponds to the `Normalized` methods [listed here](../snippets.md#how-does-fossa-snippet-scanning-work).
