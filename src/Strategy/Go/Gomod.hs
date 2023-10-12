@@ -406,7 +406,8 @@ buildGraph = traverse_ go . resolve
       -- 3. The raw version text for non-canonical versions. Nothing else we can
       --    do here.
       label pkg $
-        GolangLabelVersion $ case reqVersion of
-          NonCanonical n -> n
-          Pseudo commitHash -> commitHash
-          Semantic semver -> "v" <> SemVer.toText semver{_versionMeta = []}
+        GolangLabelVersion $
+          case reqVersion of
+            NonCanonical n -> n
+            Pseudo commitHash -> commitHash
+            Semantic semver -> "v" <> SemVer.toText semver{_versionMeta = []}

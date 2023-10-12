@@ -1,5 +1,10 @@
 # FOSSA CLI Changelog
 
+## v3.8.17
+
+Integrates FOSSA snippet scanning into the main application.
+For more details and a quick start guide, see [the subcommand reference](./docs/references/subcommands/snippets.md).
+
 ## v3.8.16
 
 Delivers another update to the `millhone` early preview of FOSSA snippet scanning:
