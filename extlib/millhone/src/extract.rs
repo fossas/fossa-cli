@@ -42,15 +42,33 @@ pub enum Error {
 }
 
 /// Options for snippet extraction.
-#[derive(Debug, Parser, Getters)]
-#[getset(get = "pub")]
+#[derive(Debug, Parser, Getters, CopyGetters)]
 #[clap(version)]
 pub struct Options {
+    /// The total concurrency to allow.
+    ///
+    /// Each running IO operation (reading or writing files, running network requests)
+    /// counts against this limit.
+    ///
+    /// The higher this limit the better. It's set low by default for compatibility,
+    /// but if you're trying to scan a huge project increasing this may benefit a lot.
+    ///
+    /// If this is increased and you start running into file handle limits in Linux,
+    /// consider using `ulimit` to increase the handle limit.
+    #[clap(
+        long = "concurrency",
+        default_value_t = 200,
+        env = "FOSSA_SNIPPETS_CONCURRENCY"
+    )]
+    #[getset(get_copy = "pub")]
+    concurrency: usize,
+
     /// Extract this combination of targets.
     ///
     /// Specify the argument multiple times to indicate additional options.
     /// If none are specified, defaults to all supported options.
     #[clap(long = "target")]
+    #[getset(get = "pub")]
     targets: Vec<Target>,
 
     /// Extract this combination of kinds.
@@ -58,6 +76,7 @@ pub struct Options {
     /// Specify the argument multiple times to indicate additional options.
     /// If none are specified, defaults to all supported options.
     #[clap(long = "kind")]
+    #[getset(get = "pub")]
     kinds: Vec<Kind>,
 
     /// Use this combination of transforms.
@@ -65,9 +84,11 @@ pub struct Options {
     /// Specify the argument multiple times to indicate additional options.
     /// If none are specified, defaults to all supported options.
     #[clap(long = "transform")]
+    #[getset(get = "pub")]
     transforms: Vec<Transform>,
 
     /// Target the provided directory for snippet ingestion.
+    #[getset(get = "pub")]
     target: PathBuf,
 }
 

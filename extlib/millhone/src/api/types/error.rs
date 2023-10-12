@@ -16,8 +16,8 @@ pub enum Error {
     EncodeReqUrl(String, String, #[source] url::ParseError),
 
     /// The server responded with a non-success status.
-    #[error("status code '{1}' in '{0}'")]
-    Status(String, u16),
+    #[error("status code '{2}' from '{0}' with body '{1}'")]
+    Status(String, String, u16),
 
     /// The request was sent and a response received,
     /// but the body failed to download or decode.
@@ -38,7 +38,12 @@ pub enum Error {
 impl From<ureq::Error> for Error {
     fn from(value: ureq::Error) -> Self {
         match value {
-            ureq::Error::Status(code, res) => Self::Status(res.get_url().to_string(), code),
+            ureq::Error::Status(code, res) => Self::Status(
+                res.get_url().to_string(),
+                res.into_string()
+                    .unwrap_or_else(|err| format!("unable to download body: {err}")),
+                code,
+            ),
             ureq::Error::Transport(err) => Self::from(err),
         }
     }

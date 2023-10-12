@@ -98,7 +98,6 @@ async fn main() -> stable_eyre::Result<()> {
 
     match app.log_format {
         Format::Json => tracing_subscriber::Registry::default()
-            .with(console_subscriber::spawn())
             .with(
                 tracing_subscriber::fmt::layer()
                     .json()
@@ -111,7 +110,6 @@ async fn main() -> stable_eyre::Result<()> {
             .pipe(tracing::subscriber::set_global_default)
             .context("install tracing")?,
         _ => tracing_subscriber::Registry::default()
-            .with(console_subscriber::spawn())
             .with(
                 tracing_subscriber::fmt::layer()
                     .with_ansi(app.colors_enabled())

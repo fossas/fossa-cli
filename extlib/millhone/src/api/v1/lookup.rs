@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use reqwest::Client;
 use tokio_retry::{
     strategy::{jitter, ExponentialBackoff},
-    Retry,
+    RetryIf,
 };
 use url::Url;
 
@@ -24,7 +24,12 @@ pub async fn run(
     tracing::Span::current().record("url", target.as_str());
 
     let strategy = ExponentialBackoff::from_millis(10).map(jitter).take(5);
-    Retry::spawn(strategy, || async { fetch(agent, target.as_str()).await }).await
+    RetryIf::spawn(
+        strategy,
+        || async { fetch(agent, target.as_str()).await },
+        |err: &Error| !matches!(err, Error::Status(_, _, 401)),
+    )
+    .await
 }
 
 #[tracing::instrument(skip_all)]
@@ -35,14 +40,16 @@ async fn fetch(agent: &Client, url: &str) -> Result<HashSet<ApiSnippet>, Error> 
         .await
         .map_err(|err| Error::Request(url.to_string(), err))?;
 
-    if !response.status().is_success() {
-        return Err(Error::Status(url.to_string(), response.status().as_u16()));
-    }
-
+    let status = response.status();
     let body = response
         .bytes()
         .await
         .map_err(|err| Error::DownloadResponseBody(url.to_string(), err))?;
+
+    if !status.is_success() {
+        let body = String::from_utf8_lossy(&body).to_string();
+        return Err(Error::Status(url.to_string(), body, status.as_u16()));
+    }
 
     serde_json::from_slice(&body)
         .map_err(|err| Error::ParseResponseBody(url.to_string(), body.to_vec(), err))
