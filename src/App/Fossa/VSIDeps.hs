@@ -34,7 +34,6 @@ import Path.Extra (SomePath (SomeDir))
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
 import Types (DiscoveredProjectType (VsiProjectType), GraphBreadth (Complete))
-import qualified Control.Carrier.Accum.Strict as it
 
 #ifdef mingw32_HOST_OS
 import Path (fromAbsDir)
