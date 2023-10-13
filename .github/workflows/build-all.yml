@@ -249,7 +249,7 @@ jobs:
         echo $GITHUB_SHA
         echo ${GITHUB_SHA:0:12}
         echo $(Linux-binaries/fossa --version)
-        echo "fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.0)"
+        echo "fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.4)"
 
         [ "$GITHUB_REF_TYPE" = "tag" ] && echo "Ref type OK"
         [ "$(Linux-binaries/fossa --version)" = "fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.0)" ] && echo "CLI version OK"
