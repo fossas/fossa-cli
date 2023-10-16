@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## v3.8.18
+## Unreleased
 
 - `fossa list-targets`: list-target command supports `--format` option with: `ndjson`, `text`, and `legacy`. ([#1296](https://github.com/fossas/fossa-cli/pull/1296))
 
