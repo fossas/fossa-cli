@@ -82,10 +82,10 @@ data Statement
     -- of go.mod, refer to: https://go.dev/ref/mod#go-mod-file-retract
     RetractStatement
   | GoVersionStatement Text
-    -- | we do not care about values associated with
+  | -- | we do not care about values associated with
     -- the toolchain block as they are of no use to us today.
     -- Refer to: https://go.dev/doc/modules/gomod-ref#toolchain
-  | ToolchainStatement Text
+    ToolchainStatement Text
   deriving (Eq, Ord, Show)
 
 type PackageName = Text
@@ -222,7 +222,7 @@ gomodParser = do
   where
     statement =
       (singleton <$> goVersionStatement) -- singleton wraps the Parser Statement into a Parser [Statement]
-      <|> (singleton <$> toolChainStatements)
+        <|> (singleton <$> toolChainStatements)
         <|> requireStatements
         <|> replaceStatements
         <|> excludeStatements
