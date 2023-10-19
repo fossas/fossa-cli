@@ -66,7 +66,7 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/fossas/tar
-  tag: 2817f71ffca7fa234ce88b0af0fe725be9777342
+  tag: 5f833d3a6840edb436f6083bf6e7159cd7649490
 
 -- This can be removed once https://github.com/weldr/codec-rpm/pull/40 merges and is available on hackage.
 source-repository-package
