@@ -46,7 +46,7 @@ import Network.HTTP.Client (
   applyBearerAuth,
   parseRequest,
  )
-import Network.HTTP.Types (methodGet, statusCode)
+import Network.HTTP.Types (methodGet, statusCode, methodHead)
 import Network.HTTP.Types.Header (
   hAuthorization,
   hWWWAuthenticate,
@@ -100,7 +100,7 @@ applyAuthToken (Just (BearerAuthToken token)) r =
 -- blobs/manifest are retrieved cloud vendor may throw 'Bad Request' error.
 stripAuthHeaderOnRedirect :: Request -> Request
 stripAuthHeaderOnRedirect r =
-  if ((isAwsECR || isAzure) && method r == methodGet)
+  if ((isAwsECR || isAzure) && (method r == methodGet || method r == methodHead))
     then r{shouldStripHeaderOnRedirect = (== hAuthorization)}
     else r
   where
