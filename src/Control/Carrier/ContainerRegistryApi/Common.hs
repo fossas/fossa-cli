@@ -46,7 +46,7 @@ logHttp req manager = do
   pure resp
   where
     summarizeRequest :: Doc AnsiStyle
-    summarizeRequest = pretty $ "Requesting: " <> show (method req) <> " " <> show (getUri req)
+    summarizeRequest = pretty $ "Requesting: " <> show (method req) <> " " <> show (getUri req) <> " " <> show (requestHeaders req)
 
     summarizeResponse :: Response ByteStringLazy.ByteString -> Doc AnsiStyle
     summarizeResponse r =
@@ -57,6 +57,7 @@ logHttp req manager = do
           <> show (getContentType . responseHeaders $ r)
           <> ")"
           <> (errResponseBody r)
+          <> show (responseHeaders r)
     
     errResponseBody :: Response ByteStringLazy.ByteString -> String
     errResponseBody r = if (responseStatus r == status400 || responseStatus r == status404) 
