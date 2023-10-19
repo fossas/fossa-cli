@@ -46,7 +46,7 @@ import Network.HTTP.Client (
   applyBearerAuth,
   parseRequest,
  )
-import Network.HTTP.Types (methodGet, statusCode)
+import Network.HTTP.Types (methodGet, statusCode, methodHead)
 import Network.HTTP.Types.Header (
   hAuthorization,
   hWWWAuthenticate,
@@ -99,16 +99,19 @@ applyAuthToken (Just (BearerAuthToken token)) r =
 -- If we don't strip auth headers, on redirect, depending on how
 -- blobs/manifest are retrieved cloud vendor may throw 'Bad Request' error.
 stripAuthHeaderOnRedirect :: Request -> Request
-stripAuthHeaderOnRedirect r =
-  if ((isAwsECR || isAzure) && method r == methodGet)
-    then r{shouldStripHeaderOnRedirect = (== hAuthorization)}
-    else r
-  where
-    isAwsECR :: Bool
-    isAwsECR = "amazonaws.com" `isInfixOf` decodeUtf8 (host r)
+stripAuthHeaderOnRedirect r = r{shouldStripHeaderOnRedirect = (== hAuthorization)}
+  -- if ((isAwsECR || isAzure || isDocker) && (method r == methodGet || method r == methodHead))
+  --   then r{shouldStripHeaderOnRedirect = (== hAuthorization)}
+  --   else r
+  -- where
+  --   isAwsECR :: Bool
+  --   isAwsECR = "amazonaws.com" `isInfixOf` decodeUtf8 (host r)
 
-    isAzure :: Bool
-    isAzure = "azurecr.io" `isInfixOf` decodeUtf8 (host r)
+  --   isAzure :: Bool
+  --   isAzure = "azurecr.io" `isInfixOf` decodeUtf8 (host r)
+
+  --   isDocker :: Bool
+  --   isDocker = "docker.io" `isInfixOf` decodeUtf8 (host r)
 
 -- | Generates Auth Token For Request.
 --
