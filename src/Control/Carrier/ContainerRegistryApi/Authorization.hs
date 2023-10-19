@@ -46,7 +46,7 @@ import Network.HTTP.Client (
   applyBearerAuth,
   parseRequest,
  )
-import Network.HTTP.Types (methodGet, statusCode, methodHead)
+import Network.HTTP.Types (methodGet, methodHead, statusCode)
 import Network.HTTP.Types.Header (
   hAuthorization,
   hWWWAuthenticate,

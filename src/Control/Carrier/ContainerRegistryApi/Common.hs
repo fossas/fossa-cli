@@ -58,11 +58,12 @@ logHttp req manager = do
           <> ")"
           <> (errResponseBody r)
           <> show (responseHeaders r)
-    
+
     errResponseBody :: Response ByteStringLazy.ByteString -> String
-    errResponseBody r = if (responseStatus r == status400 || responseStatus r == status404) 
-      then " Content: " <> show (responseBody r) 
-      else ""
+    errResponseBody r =
+      if (responseStatus r == status400 || responseStatus r == status404)
+        then " Content: " <> show (responseBody r)
+        else ""
 
 -- | Throws Diagnostics Error for Api Errors, and unexpected responses.
 fromResponse :: Has Diagnostics sig m => Response ByteStringLazy.ByteString -> m (Response ByteStringLazy.ByteString)
