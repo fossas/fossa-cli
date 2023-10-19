@@ -46,7 +46,7 @@ logHttp req manager = do
   pure resp
   where
     summarizeRequest :: Doc AnsiStyle
-    summarizeRequest = pretty $ "Requesting: " <> show (method req) <> " " <> show (getUri req) <> " " <> show (requestHeaders req)
+    summarizeRequest = pretty $ "Requesting: " <> show (method req) <> " " <> show (getUri req)
 
     summarizeResponse :: Response ByteStringLazy.ByteString -> Doc AnsiStyle
     summarizeResponse r =
