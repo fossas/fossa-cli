@@ -100,18 +100,6 @@ applyAuthToken (Just (BearerAuthToken token)) r =
 -- blobs/manifest are retrieved cloud vendor may throw 'Bad Request' error.
 stripAuthHeaderOnRedirect :: Request -> Request
 stripAuthHeaderOnRedirect r = r{shouldStripHeaderOnRedirect = (== hAuthorization)}
-  -- if ((isAwsECR || isAzure || isDocker) && (method r == methodGet || method r == methodHead))
-  --   then r{shouldStripHeaderOnRedirect = (== hAuthorization)}
-  --   else r
-  -- where
-  --   isAwsECR :: Bool
-  --   isAwsECR = "amazonaws.com" `isInfixOf` decodeUtf8 (host r)
-
-  --   isAzure :: Bool
-  --   isAzure = "azurecr.io" `isInfixOf` decodeUtf8 (host r)
-
-  --   isDocker :: Bool
-  --   isDocker = "docker.io" `isInfixOf` decodeUtf8 (host r)
 
 -- | Generates Auth Token For Request.
 --
