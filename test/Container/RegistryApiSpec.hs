@@ -68,6 +68,16 @@ registryApiSpec :: Spec
 registryApiSpec =
   describe "Container Registry API" $
     describe "Public Registry APIs" $ do
+      describe "Microsoft registry" $ do
+        it' "should get manifest with digest" $ do
+          confDigest <- getImageConfig amd64 mcrRegistryImage
+          confDigest `shouldBe'` mcrRegistryImageDigest
+
+      describe "gcr (google cloud) registry" $ do
+        it' "should get manifest with digest" $ do
+          confDigest <- getImageConfig amd64 debian2gcrImage
+          confDigest `shouldBe'` debian2gcrImageDigest
+
       describe "Custom Registry" $ do
         it' "should get manifest with tag" $ do
           confDigest <- getImageConfig amd64 githubImage
@@ -136,3 +146,15 @@ dhMultiArchImage = "grafana/grafana:8.1.7-ubuntu"
 dhMultiArchImageDigest :: RepoDigest
 dhMultiArchImageDigest =
   RepoDigest "sha256:86618e1e78e4962b5abec6cc7fabe89010ebfbbf0885cbba1aada7287457c263"
+
+mcrRegistryImage :: Text
+mcrRegistryImage = "mcr.microsoft.com/dotnet/sdk:7.0"
+
+mcrRegistryImageDigest :: RepoDigest
+mcrRegistryImageDigest = RepoDigest "sha256:bd36eac352dbb2d27a63f4714b9063fc8c7e9c615e430006dbeb7e3448cd5780"
+
+debian2gcrImage :: Text
+debian2gcrImage = "gcr.io/google-containers/debian-base:v2.0.0"
+
+debian2gcrImageDigest :: RepoDigest
+debian2gcrImageDigest = RepoDigest "sha256:9bd6154724425e6083550fd85a91952fa2f79ef0b9844f0d009c37a72d075757"
