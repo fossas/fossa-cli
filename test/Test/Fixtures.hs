@@ -200,11 +200,10 @@ baseDir = do
 
 contributors :: API.Contributors
 contributors =
-  API.Contributors
-    . Map.fromList
-    $ [ ("testContributor1", "testContributor1")
-      , ("testContributor2", "testContributor2")
-      ]
+  API.Contributors . Map.fromList $
+    [ ("testContributor1", "testContributor1")
+    , ("testContributor2", "testContributor2")
+    ]
 
 build :: API.Build
 build =
