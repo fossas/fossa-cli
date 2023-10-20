@@ -1,7 +1,7 @@
 # FOSSA CLI Changelog
 
 ## Unreleased
-- Deprecates/removes `fossa log4j` command which helped users determine if a project was vulnerable to the Log4j Vulnerability
+- Removes the `fossa log4j` subcommand.
 
 ## v3.8.14
 
