@@ -2,7 +2,6 @@ module Data.RpmDbHeaderBlobSpec (spec) where
 
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BLS
-import Data.Either (fromRight)
 import Data.Int (Int32)
 import Data.List (isSuffixOf)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -270,7 +269,7 @@ headerBlobSpec bs = describe "header blob parsing" $ do
 
     it "Parses entries" $ do
       -- this database is large, so we'll only check the first 2 entries
-      let entries = fromRight [] $ (NonEmpty.take 2 . entryMetadatas) <$> eBlob
+      let entries = either (const []) (NonEmpty.take 2 . entryMetadatas) eBlob
 
       entries
         `shouldMatchList` [ EntryMetadata
@@ -304,12 +303,9 @@ headerBlobErrSpec =
     let checkErr (size, offset) suffix res =
           case res of
             Left (size', offset', errStr) ->
-              size'
-                == size
-                && offset'
-                == offset
-                && suffix
-                `isSuffixOf` errStr
+              size' == size
+                && offset' == offset
+                && suffix `isSuffixOf` errStr
             _ -> False
 
     it "Should report failure when parsing nonexistent index count" $

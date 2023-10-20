@@ -49,8 +49,8 @@ readBerkeleyDB file = withBerkeleyBinary $ \bin -> do
 
   -- Handle the JSON response.
   (bdbJsonOutput :: [Text]) <- context "read raw blobs" . execJson' cwd (bdbCommand bin) . decodeUtf8 $ B64.encode fileContent
-  bdbByteOutput <- context "decode base64" . traverse fromEitherShow $ B64.decode <$> fmap encodeUtf8 bdbJsonOutput
-  entries <- context "parse blobs" . traverse fromEitherShow $ readPackageInfo <$> fmap BSL.fromStrict bdbByteOutput
+  bdbByteOutput <- context "decode base64" (traverse (fromEitherShow . B64.decode . encodeUtf8) bdbJsonOutput)
+  entries <- context "parse blobs" (traverse (fromEitherShow . readPackageInfo . BSL.fromStrict) bdbByteOutput)
   context "parse package info" $ traverse parsePkgInfo entries
 
 bdbCommand :: BinaryPaths -> Command

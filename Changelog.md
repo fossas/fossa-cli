@@ -1,7 +1,39 @@
 # FOSSA CLI Changelog
 
 ## Unreleased
-- Removes the `fossa log4j` subcommand.
+
+- Removes the `fossa log4j` subcommand. ([#1291](https://github.com/fossas/fossa-cli/pull/1291))
+- golang: Updates go.mod parser to be compatible with golang v1.21. ([#1304](https://github.com/fossas/fossa-cli/pull/1304))
+- `fossa list-targets`: list-target command supports `--format` option with: `ndjson`, `text`, and `legacy`. ([#1296](https://github.com/fossas/fossa-cli/pull/1296))
+
+## v3.8.17
+
+Integrates FOSSA snippet scanning into the main application.
+For more details and a quick start guide, see [the subcommand reference](./docs/references/subcommands/snippets.md).
+
+## v3.8.16
+
+Delivers another update to the `millhone` early preview of FOSSA snippet scanning:
+
+- Fixes surprising semantics in some subcommands, especially `commit`.
+- Sorts and makes unique dependencies written to `fossa-deps` files.
+- Overly noisy snippets are filtered entirely.
+- Adds C++ snippet parsing.
+- Reduces config and logging verbosity.
+
+## v3.8.15
+
+This version is a special release: it does not alter anything in FOSSA CLI, but instead adds `millhone`,
+the new snippet scanning functionality for FOSSA, as a release asset.
+
+Future releases will bundle this functionality into FOSSA CLI instead,
+but we're making this CLI available standalone for now to enable immediate use!
+
+Initial documentation for this functionality is here.
+When we integrate this functionality into FOSSA CLI itself we'll have improved documentation as well.
+
+Note: FOSSA is still ingesting sources into the snippet scanning database;
+
 
 ## v3.8.14
 

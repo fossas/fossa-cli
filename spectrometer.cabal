@@ -8,7 +8,7 @@ extra-source-files:
   scripts/*.jar
 
 common lang
-  build-depends:      base ^>=4.15
+  build-depends:      base >=4.15 && <5
   default-language:   Haskell2010
   default-extensions:
     BangPatterns
@@ -57,6 +57,7 @@ common lang
     -Wmissing-export-lists -Wredundant-constraints
 
 -- TODO: Switch `semver` back to `versions` since https://github.com/fosskers/versions/issues/47 is fixed. This package maintainer seems much more responsive. Contrast https://github.com/brendanhay/semver/issues/12.
+-- codec-rpm is installed via cabal.project, so this number is an expected future version.
 -- Upgrade text and mtl after codec-rpm conflict is fixed, probably as part of 9.4 upgrade.
 -- Upgrade zip after text is upgraded
 common deps
@@ -69,10 +70,10 @@ common deps
     , attoparsec                   ^>=0.14.1
     , base64-bytestring            ^>=1.2.1.0
     , binary                       ^>=0.8.8.0
-    , bytestring                   ^>=0.10.8
-    , bzlib                        ^>=0.5.0.0
+    , bytestring                   ^>=0.11
+    , bzlib                        ^>=0.5.1.0
     , cgroup-rts-threads           ^>=0.2.0.0
-    , codec-rpm                    ^>=0.2.2
+    , codec-rpm                    ^>=0.2.3
     , concurrent-output            ^>=1.10.12
     , conduit                      ^>=1.3.2
     , conduit-extra                ^>=1.3.5
@@ -84,7 +85,7 @@ common deps
     , direct-sqlite                ^>=2.3.27
     , directory                    ^>=1.3.6.1
     , either                       ^>=5.0.2
-    , file-embed                   ^>=0.0.11
+    , file-embed                   ^>=0.0.15
     , filepath                     ^>=1.4.2.1
     , filepattern                  ^>=0.1.2
     , fused-effects                ^>=1.1.2.0
@@ -109,7 +110,7 @@ common deps
     , path                         ^>=0.9.0
     , path-io                      ^>=1.8.0
     , pretty-simple                ^>=4.1.1.0
-    , prettyprinter                >=1.6      && <1.8
+    , prettyprinter                >=1.6       && <1.8
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , random                       ^>=1.2.0
     , raw-strings-qq               ^>=1.1
@@ -120,10 +121,10 @@ common deps
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
     , tar                          ^>=0.6.0.0
-    , template-haskell             ^>=2.17
-    , text                         ^>=1.2.3
+    , template-haskell
+    , text                         ^>=2.0.0
     , th-lift-instances            ^>=0.1.17
-    , time                         >=1.9      && <1.13
+    , time                         >=1.9       && <1.13
     , tomland                      ^>=1.3.3.0
     , transformers
     , typed-process                ^>=0.2.6
@@ -183,6 +184,7 @@ library
     App.Fossa.Config.LinkUserBinaries
     App.Fossa.Config.ListTargets
     App.Fossa.Config.Report
+    App.Fossa.Config.Snippets
     App.Fossa.Config.Test
     App.Fossa.Container
     App.Fossa.Container.AnalyzeNative
@@ -208,6 +210,9 @@ library
     App.Fossa.Report
     App.Fossa.Report.Attribution
     App.Fossa.RunThemis
+    App.Fossa.Snippets
+    App.Fossa.Snippets.Analyze
+    App.Fossa.Snippets.Commit
     App.Fossa.Subcommand
     App.Fossa.Test
     App.Fossa.VendoredDependency

@@ -229,25 +229,25 @@ cargoPackageCodec =
     <$> dioptional (Toml.text "license") .= license
     <*> dioptional (Toml.string "license-file") .= cargoLicenseFile
 
--- |Representation of a Cargo.toml file. See
--- [here](https://doc.rust-lang.org/cargo/reference/manifest.html)
--- for a description of this format.
+-- | Representation of a Cargo.toml file. See
+--  [here](https://doc.rust-lang.org/cargo/reference/manifest.html)
+--  for a description of this format.
 newtype CargoToml = CargoToml
   {cargoPackage :: CargoPackage}
   deriving (Eq, Show)
 
 cargoTomlCodec :: TomlCodec CargoToml
 cargoTomlCodec = diwrap (Toml.table cargoPackageCodec "package")
--- ^^ The above is a bit obscure. It's generating a TomlCodec CargoPackage and
--- then using 'diwrap'/Coercible to make a TomlCodec CargoToml.  I can't use
--- 'CargoToml <$>' because TomlCodec aliases (Codec a a) and only (Codec a)
--- has a Functor instance, so I'd end up with a (Codec CargoPackage CargoToml).
+-- ^ ^ The above is a bit obscure. It's generating a TomlCodec CargoPackage and
+--  then using 'diwrap'/Coercible to make a TomlCodec CargoToml.  I can't use
+--  'CargoToml <$>' because TomlCodec aliases (Codec a a) and only (Codec a)
+--  has a Functor instance, so I'd end up with a (Codec CargoPackage CargoToml).
 
 instance LicenseAnalyzeProject CargoProject where
   licenseAnalyzeProject = analyzeLicenses . cargoToml
 
--- |Analyze a Cargo.toml for license information. The format is documented
--- (here)[https://doc.rust-lang.org/cargo/reference/manifest.html#the-license-and-license-file-fields]
+-- | Analyze a Cargo.toml for license information. The format is documented
+--  (here)[https://doc.rust-lang.org/cargo/reference/manifest.html#the-license-and-license-file-fields]
 analyzeLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m [LicenseResult]
 analyzeLicenses tomlPath = do
   pkg <- cargoPackage <$> readContentsToml cargoTomlCodec tomlPath

@@ -283,7 +283,7 @@ getV3RegionCount entryMetadatas dataLength dataStart blobData = do
 trd :: (a, b, c) -> c
 trd (_, _, c) = c
 
--- |'runGetOrFail' but don't include parse locations/remaining data in output
+-- | 'runGetOrFail' but don't include parse locations/remaining data in output
 runGetOrFail' :: Get d -> BLS.ByteString -> Either String d
 runGetOrFail' r = bimap trd trd . runGetOrFail r
 

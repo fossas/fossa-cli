@@ -39,13 +39,8 @@ pub struct Subcommand {
 
 #[tracing::instrument(skip_all, fields(target = %opts.extract().target().display()))]
 pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
-    info!(
-        ingest_id = %opts.ingest_id(),
-        api_key_id = %opts.auth.api_key_id(),
-        locator = %opts.locator(),
-        extract_opts = ?opts.extract,
-        "Ingesting snippets",
-    );
+    debug!(?opts, "ingesting snippets");
+    info!("Ingesting snippets");
 
     let creds = opts.auth.as_credentials();
     let client = ApiClientV1::authenticated(endpoint, creds);
@@ -85,7 +80,7 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
                 .collect::<HashSet<_>>();
 
             if snippets.is_empty() {
-                info!(path = %path.display(), "no snippets extracted");
+                debug!(path = %path.display(), "no snippets extracted");
                 return Ok(());
             }
 
@@ -95,15 +90,15 @@ pub fn main(endpoint: &BaseUrl, opts: Subcommand) -> Result<(), Report> {
             })?;
 
             total_count_snippets.increment_by(snippet_count);
-            info!(path = %path.display(), %snippet_count, "extracted snippets");
+            debug!(path = %path.display(), %snippet_count, "extracted snippets");
             Ok(())
         })?;
 
     info!(
-        total_count_entries = %total_count_entries.into_inner(),
-        total_count_snippets = %total_count_snippets.into_inner(),
-        total_count_files = %total_count_files.into_inner(),
-        "Finished extracting snippets",
+        "Finished extracting {} snippets out of {} entries, of which {} were files",
+        total_count_snippets.into_inner(),
+        total_count_entries.into_inner(),
+        total_count_files.into_inner(),
     );
     Ok(())
 }

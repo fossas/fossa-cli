@@ -1,5 +1,11 @@
 executable-static: True
-split-sections: True
+-- -split-sections causes errors on Windows with GHC 9.4 and is off by default.
+-- I filed a bug about it here: https://gitlab.haskell.org/ghc/ghc/-/issues/23961
+-- -split-sections are meant to reduce executable size: https://downloads.haskell.org/ghc/9.4.7/docs/users_guide/phases.html?highlight=split%20sections#ghc-flag--split-sections
+-- The binaries made in CI without this were ~122 MB to ~116 MB with this option.
+-- Compressed, the differences is < 1 MB so I don't think holding off the upgrade for this is worthwhile.
+-- It may be worth looking into in the future to see if this can be turned back on though.
+split-sections: False
 tests: True
 optimization: 2
 jobs: $ncpus
@@ -61,5 +67,11 @@ source-repository-package
   type: git
   location: https://github.com/fossas/tar
   tag: 6bd13acc541ae60b5c831823243040e18bd1d957
+
+-- This can be removed once https://github.com/weldr/codec-rpm/pull/40 merges and is available on hackage.
+source-repository-package
+  type: git
+  location: https://github.com/fossas/codec-rpm.git
+  tag: 0f7431423d47fdf36945e4ff31fbee76005b7e68
 
 index-state: hackage.haskell.org 2023-08-28T22:23:10Z

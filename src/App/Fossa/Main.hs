@@ -8,6 +8,7 @@ import App.Fossa.DumpBinaries qualified as Dump
 import App.Fossa.LicenseScan qualified as LicenseScan (licenseScanSubCommand)
 import App.Fossa.ListTargets qualified as ListTargets
 import App.Fossa.Report qualified as Report
+import App.Fossa.Snippets qualified as Snippets
 import App.Fossa.Subcommand (GetCommonOpts, GetSeverity, SubCommand (..), runSubCommand)
 import App.Fossa.Test qualified as Test
 import App.Fossa.VSI.IAT.AssertUserDefinedBinaries qualified as LinkBins
@@ -84,6 +85,7 @@ subcommands = public <|> private
           , decodeSubCommand Container.containerSubCommand
           , decodeSubCommand ListTargets.listSubCommand
           , decodeSubCommand LinkBins.linkBinsSubCommand
+          , decodeSubCommand Snippets.snippetsSubCommand
           ]
 
 initCommand :: Mod CommandFields (IO ())

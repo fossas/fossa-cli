@@ -11,6 +11,7 @@ module App.Fossa.EmbeddedBinary (
   withThemisAndIndex,
   withBerkeleyBinary,
   withLernieBinary,
+  withMillhoneBinary,
   allBins,
   dumpEmbeddedBinary,
   themisVersion,
@@ -56,6 +57,7 @@ data PackagedBinary
   | ThemisIndex
   | BerkeleyDB
   | Lernie
+  | Millhone
   deriving (Show, Eq, Enum, Bounded)
 
 allBins :: [PackagedBinary]
@@ -118,6 +120,13 @@ withLernieBinary ::
   m c
 withLernieBinary = withEmbeddedBinary Lernie
 
+withMillhoneBinary ::
+  ( Has (Lift IO) sig m
+  ) =>
+  (BinaryPaths -> m c) ->
+  m c
+withMillhoneBinary = withEmbeddedBinary Millhone
+
 withEmbeddedBinary ::
   ( Has (Lift IO) sig m
   ) =>
@@ -150,6 +159,7 @@ writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
   ThemisIndex -> embeddedBinaryThemisIndex
   BerkeleyDB -> embeddedBinaryBerkeleyDB
   Lernie -> embeddedBinaryLernie
+  Millhone -> embeddedBinaryMillhone
 
 writeExecutable :: Path Abs File -> ByteString -> IO ()
 writeExecutable path content = do
@@ -163,6 +173,7 @@ extractedPath bin = case bin of
   ThemisIndex -> $(mkRelFile "index.gob.xz")
   BerkeleyDB -> $(mkRelFile "berkeleydb-plugin")
   Lernie -> $(mkRelFile "lernie")
+  Millhone -> $(mkRelFile "millhone")
 
 -- | Extract to @$TMP/fossa-vendor/<timestamp>
 -- We used to extract everything to @$TMP/fossa-vendor@, but there's a subtle issue with that.
@@ -198,10 +209,19 @@ embeddedBinaryThemisIndex :: ByteString
 embeddedBinaryThemisIndex = $(embedFileIfExists "vendor-bins/index.gob.xz")
 
 themisVersion :: Text
-themisVersion = $$themisVersionQ
+themisVersion = $$(themisVersionQ)
 
 embeddedBinaryLernie :: ByteString
 embeddedBinaryLernie = $(embedFileIfExists "vendor-bins/lernie")
+
+-- To build this, run `make build` or `cargo build --release`.
+#ifdef mingw32_HOST_OS
+embeddedBinaryMillhone :: ByteString
+embeddedBinaryMillhone = $(embedFileIfExists "target/release/millhone.exe")
+#else
+embeddedBinaryMillhone :: ByteString
+embeddedBinaryMillhone = $(embedFileIfExists "target/release/millhone")
+#endif
 
 -- To build this, run `make build` or `cargo build --release`.
 #ifdef mingw32_HOST_OS

@@ -98,7 +98,7 @@ discover go dir renderAncestry = context "Finding archives" $ do
     traverse_ (\file -> forkTask $ withArchive' file (process file)) files
     pure WalkContinue
 
--- |Given a file extension, return an extraction function for that file type.
+-- | Given a file extension, return an extraction function for that file type.
 selectUnarchiver :: Has (Lift IO) sig m => String -> Maybe (Path Abs Dir -> Path Abs File -> m ())
 selectUnarchiver file
   | ".tar" `isSuffixOf` file = Just extractTar
