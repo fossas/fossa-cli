@@ -36,8 +36,8 @@ collectArch :: Text
 collectArch =
   toText $
     case arch of
-      ("x86_64") -> "amd64"
-      ("aarch64") -> "arm64"
+      ("x86_64") -> "amd64" -- x86_64 is equivalent to amd64
+      ("aarch64") -> "arm64" -- aarch64 is equivalent to arm64
       other -> other
 
 collectDockerHost :: Has Diagnostics sig m => EnvVars -> m Text
