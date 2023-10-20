@@ -104,8 +104,15 @@ registryApiSpec =
           confDigest <- getImageConfig arm dhMultiArchImage
           confDigest `shouldBe'` dhMultiArchImageDigest
 
+        it' "should get manifest for multi-platform images (chooses target platform)" $ do
+          redisDigest <- getImageConfig arm64 redisImage
+          redisDigest `shouldBe'` redisImageDigest
+
 amd64 :: Text
 amd64 = "amd64"
+
+arm64 :: Text
+arm64 = "arm64"
 
 arm :: Text
 arm = "arm"
@@ -158,3 +165,9 @@ debian2gcrImage = "gcr.io/google-containers/debian-base:v2.0.0"
 
 debian2gcrImageDigest :: RepoDigest
 debian2gcrImageDigest = RepoDigest "sha256:9bd6154724425e6083550fd85a91952fa2f79ef0b9844f0d009c37a72d075757"
+
+redisImage :: Text
+redisImage = "redis:7.0.14-alpine"
+
+redisImageDigest :: RepoDigest
+redisImageDigest = RepoDigest "sha256:8deeb318badaf246e2c6b591dd511c712e89c27738199f8213c421d13fc216c9"
