@@ -7,7 +7,6 @@ module App.Fossa.VSIDeps (
   ruleToSourceUnit,
 ) where
 
-import App.Fossa.Analyze.Project (ProjectResult (ProjectResult))
 import App.Fossa.VSI.Analyze (runVsiAnalysis)
 import App.Fossa.VSI.IAT.Resolve (resolveGraph, resolveUserDefined)
 import App.Fossa.VSI.IAT.Types qualified as IAT
@@ -15,25 +14,25 @@ import App.Fossa.VSI.Types (VsiRule (..))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, fatal, fromEither)
+import Control.Effect.Diagnostics (Diagnostics, fromEither)
 import Control.Effect.Finally (Finally)
 import Control.Effect.FossaApiClient (FossaApiClient)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger)
 import Data.Bifunctor (first)
 import Data.List (partition)
-import Data.String.Conversion (toString)
+import Data.String.Conversion (toText)
+import Data.Text (Text)
 import DepTypes (Dependency)
 import Discovery.Filters (AllFilters)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
 import Graphing qualified
-import Path (Abs, Dir, Path, SomeBase (..), parseAbsDir)
-import Path.Extra (SomePath (SomeDir))
+import Path (Abs, Dir, Path, toFilePath)
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
-import Types (DiscoveredProjectType (VsiProjectType), GraphBreadth (Complete))
+import Types (DiscoveredProjectType (..))
 
 #ifdef mingw32_HOST_OS
 import Path (fromAbsDir)
@@ -70,40 +69,21 @@ analyzeVSIDeps dir projectRevision filters skipResolving = do
 
   -- These deps have to get up to the backend somehow on a 'SourceUnit's 'additionalData'.
   -- This generates an empty-graph source unit and puts the userdeps on it.
-  let userDepSrcUnits = toSourceUnit (toProject dir mempty) resolvedUserDeps
+
+  let renderedPath = toText (toFilePath dir)
+  let userDepSrcUnits = toSourceUnit renderedPath mempty resolvedUserDeps
 
   pure . Just $ userDepSrcUnits : directSrcUnits
 
-#ifdef mingw32_HOST_OS
--- The path we get back from Core is a Unix-style path, so we need to turn it into a Windows-style path by
--- prepending a drive (e.g. "C:\") to it and running `normalise` on it.
--- For example, if we get a path like "/Framework/Common/fjlic/private/WINx64/", we want to end up with "C:\Framework\Common\fjlic\private\WINx64\"
-ruleToSourceUnit :: (Has Diagnostics sig m, Has FossaApiClient sig m, Has ReadFS sig m) => VSI.SkipResolution -> VSI.VsiRule -> m (SourceUnit)
-ruleToSourceUnit skipResolving VSI.VsiRule{..} = do
-  resolvedGraph <- resolveGraph [vsiRuleLocator] skipResolving
-  dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
-  cwd <- getCurrentDir
-  let drive = takeDrive $ fromAbsDir cwd
-  let absPath = normalise $ joinDrive drive $ toString vsiRulePath
-  case parseAbsDir absPath of
-    Just ruleDir -> pure $ toSourceUnit (toProject ruleDir dependencies) Nothing
-    Nothing -> fatal $ "Could not parse rule path: " <> (show vsiRulePath) <> ", normalized: " <> normalise (toString vsiRulePath)
-#else
 ruleToSourceUnit :: (Has Diagnostics sig m, Has FossaApiClient sig m) => VSI.SkipResolution -> VSI.VsiRule -> m (SourceUnit)
 ruleToSourceUnit skipResolving VSI.VsiRule{..} = do
   resolvedGraph <- resolveGraph [vsiRuleLocator] skipResolving
   dependencies <- fromEither $ Graphing.gtraverse VSI.toDependency resolvedGraph
-  case parseAbsDir (toString vsiRulePath) of
-    Just ruleDir -> pure $ toSourceUnit (toProject ruleDir dependencies) Nothing
-    Nothing -> fatal $ "Could not parse rule path: " <> show vsiRulePath
-#endif
+  pure $ toSourceUnit (VSI.unVsiRulePath vsiRulePath) dependencies Nothing
 
-toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
-toProject dir graph = ProjectResult VsiProjectType dir graph Complete [SomeDir . Abs $ dir]
-
-toSourceUnit :: ProjectResult -> Maybe [SourceUserDefDep] -> SourceUnit
-toSourceUnit project deps = do
-  let unit = Srclib.toSourceUnit False project
-  unit{additionalData = fmap toDepData deps}
+toSourceUnit :: Text -> Graphing Dependency -> Maybe [SourceUserDefDep] -> SourceUnit
+toSourceUnit path deps additionalDeps = do
+  let unit = Srclib.toSourceUnit False path deps VsiProjectType
+  unit{additionalData = fmap toDepData additionalDeps}
   where
     toDepData d = AdditionalDepData (Just d) Nothing

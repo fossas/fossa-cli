@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Srclib.Converter (
+  projectToSourceUnit,
   toSourceUnit,
   depTypeToFetcher,
   fetcherToDepType,
@@ -42,15 +43,21 @@ import Srclib.Types (
     buildSucceeded
   ),
   SourceUnitDependency (..),
-  somePathToOriginPath,
  )
+import Types (DiscoveredProjectType, GraphBreadth (..))
 
-toSourceUnit :: Bool -> ProjectResult -> SourceUnit
-toSourceUnit leaveUnfiltered ProjectResult{..} =
+projectToSourceUnit :: Bool -> ProjectResult -> SourceUnit
+projectToSourceUnit leaveUnfiltered ProjectResult{..} =
+  toSourceUnit leaveUnfiltered renderedPath projectResultGraph projectResultType
+  where
+    renderedPath = toText (toFilePath projectResultPath)
+
+toSourceUnit :: Bool -> Text -> Graphing Dependency -> DiscoveredProjectType -> SourceUnit
+toSourceUnit leaveUnfiltered vsiRulePath dependencies projectType =
   SourceUnit
-    { sourceUnitName = renderedPath
-    , sourceUnitType = toText projectResultType
-    , sourceUnitManifest = renderedPath
+    { sourceUnitName = toText vsiRulePath
+    , sourceUnitType = toText projectType
+    , sourceUnitManifest = toText vsiRulePath
     , sourceUnitBuild =
         Just $
           SourceUnitBuild
@@ -59,15 +66,13 @@ toSourceUnit leaveUnfiltered ProjectResult{..} =
             , buildImports = imports
             , buildDependencies = deps
             }
-    , sourceUnitGraphBreadth = projectResultGraphBreadth
-    , sourceUnitOriginPaths = map somePathToOriginPath projectResultManifestFiles
+    , sourceUnitGraphBreadth = Complete
+    , sourceUnitOriginPaths = []
     , additionalData = Nothing
     }
   where
-    renderedPath = toText (toFilePath projectResultPath)
-
     filteredGraph :: Graphing Dependency
-    filteredGraph = Graphing.shrinkWithoutPromotionToDirect ff projectResultGraph
+    filteredGraph = Graphing.shrinkWithoutPromotionToDirect ff dependencies
       where
         ff =
           if leaveUnfiltered
