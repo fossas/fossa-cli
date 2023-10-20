@@ -54,11 +54,11 @@ projectToSourceUnit leaveUnfiltered ProjectResult{..} =
     renderedPath = toText (toFilePath projectResultPath)
 
 toSourceUnit :: Bool -> Text -> Graphing Dependency -> DiscoveredProjectType -> SourceUnit
-toSourceUnit leaveUnfiltered vsiRulePath dependencies projectType =
+toSourceUnit leaveUnfiltered path dependencies projectType =
   SourceUnit
-    { sourceUnitName = vsiRulePath
+    { sourceUnitName = path
     , sourceUnitType = toText projectType
-    , sourceUnitManifest = vsiRulePath
+    , sourceUnitManifest = path
     , sourceUnitBuild =
         Just $
           SourceUnitBuild
@@ -68,7 +68,7 @@ toSourceUnit leaveUnfiltered vsiRulePath dependencies projectType =
             , buildDependencies = deps
             }
     , sourceUnitGraphBreadth = Complete
-    , sourceUnitOriginPaths = [textToOriginPath vsiRulePath]
+    , sourceUnitOriginPaths = [textToOriginPath path]
     , additionalData = Nothing
     }
   where
