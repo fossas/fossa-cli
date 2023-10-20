@@ -55,7 +55,6 @@ import Data.Flag (toFlag)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
-import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Discovery.Filters (
@@ -65,7 +64,7 @@ import Effect.Logger (Severity (..))
 import Fossa.API.Types (Archive (..))
 import Fossa.API.Types qualified as API
 import Path (Abs, Dir, Path, mkAbsDir, mkRelDir, parseAbsDir, (</>))
-import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), OriginPath, SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
+import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
 import System.Directory (getTemporaryDirectory)
 import Text.URI.QQ (uri)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
@@ -149,19 +148,12 @@ sourceUnits = NE.fromList [unit]
         , additionalData = Nothing
         }
 
-vsiOriginPath :: OriginPath
-#ifdef mingw32_HOST_OS
-vsiOriginPath = "D:\\tmp\\one\\two\\"
-#else
-vsiOriginPath = "/tmp/one/two/"
-#endif
-
 vsiSourceUnit :: SourceUnit
 vsiSourceUnit =
   SourceUnit
-    { sourceUnitName = toText vsiOriginPath
+    { sourceUnitName = "/tmp/one/two"
     , sourceUnitType = "vsi"
-    , sourceUnitManifest = toText vsiOriginPath
+    , sourceUnitManifest = "/tmp/one/two"
     , sourceUnitBuild =
         Just
           SourceUnitBuild
@@ -187,7 +179,7 @@ vsiSourceUnit =
                 ]
             }
     , sourceUnitGraphBreadth = Complete
-    , sourceUnitOriginPaths = [vsiOriginPath]
+    , sourceUnitOriginPaths = ["/tmp/one/two"]
     , additionalData = Nothing
     }
 

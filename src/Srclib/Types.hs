@@ -26,6 +26,7 @@ module Srclib.Types (
   emptyLicenseUnitData,
   sourceUnitToFullSourceUnit,
   licenseUnitToFullSourceUnit,
+  textToOriginPath,
 ) where
 
 import Data.Aeson
@@ -33,7 +34,7 @@ import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.String (IsString)
-import Data.String.Conversion (ToText, toText)
+import Data.String.Conversion (ToString (toString), ToText, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Path (File, Path, SomeBase (..), toFilePath)
@@ -69,6 +70,9 @@ someBaseToOriginPath (Rel p) = pathToOriginPath p
 somePathToOriginPath :: SomePath -> OriginPath
 somePathToOriginPath (SomeFile f) = someBaseToOriginPath f
 somePathToOriginPath (SomeDir d) = someBaseToOriginPath d
+
+textToOriginPath :: Text -> OriginPath
+textToOriginPath = OriginPath . toString
 
 -- export interface SourceUnit {
 --   Name?: string;

@@ -43,6 +43,7 @@ import Srclib.Types (
     buildSucceeded
   ),
   SourceUnitDependency (..),
+  textToOriginPath,
  )
 import Types (DiscoveredProjectType, GraphBreadth (..))
 
@@ -55,9 +56,9 @@ projectToSourceUnit leaveUnfiltered ProjectResult{..} =
 toSourceUnit :: Bool -> Text -> Graphing Dependency -> DiscoveredProjectType -> SourceUnit
 toSourceUnit leaveUnfiltered vsiRulePath dependencies projectType =
   SourceUnit
-    { sourceUnitName = toText vsiRulePath
+    { sourceUnitName = vsiRulePath
     , sourceUnitType = toText projectType
-    , sourceUnitManifest = toText vsiRulePath
+    , sourceUnitManifest = vsiRulePath
     , sourceUnitBuild =
         Just $
           SourceUnitBuild
@@ -67,7 +68,7 @@ toSourceUnit leaveUnfiltered vsiRulePath dependencies projectType =
             , buildDependencies = deps
             }
     , sourceUnitGraphBreadth = Complete
-    , sourceUnitOriginPaths = []
+    , sourceUnitOriginPaths = [textToOriginPath vsiRulePath]
     , additionalData = Nothing
     }
   where
