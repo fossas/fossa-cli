@@ -91,6 +91,10 @@ registryApiSpec =
           confDigest <- getImageConfig amd64 githubMultiArchImage
           confDigest `shouldBe'` githubMultiArchImageConfigDigest
 
+        it' "should get manifest for multi-platform image (chooses target platform) in oci image index" $ do
+          confDigest <- getImageConfig amd64 fossaCliImage
+          confDigest `shouldBe'` fossaCliImageDigest
+
       describe "Default Index (docker)" $ do
         it' "should get manifest with tag" $ do
           confDigest <- getImageConfig amd64 dhImage
@@ -171,3 +175,9 @@ redisImage = "redis:7.0.14-alpine"
 
 redisImageDigest :: RepoDigest
 redisImageDigest = RepoDigest "sha256:8deeb318badaf246e2c6b591dd511c712e89c27738199f8213c421d13fc216c9"
+
+fossaCliImage :: Text
+fossaCliImage = "ghcr.io/fossas/haskell-dev-tools:9.4.7"
+
+fossaCliImageDigest :: RepoDigest
+fossaCliImageDigest = RepoDigest "sha256:10ba4a4661507aa7974eae873644b740ea0e168f2fc1e56c10adc845f1cffa25"
