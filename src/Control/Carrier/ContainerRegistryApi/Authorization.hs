@@ -33,20 +33,20 @@ import Data.Aeson (FromJSON (parseJSON), decode', eitherDecode, withObject, (.:)
 import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.String.Conversion (ConvertUtf8 (decodeUtf8), encodeUtf8, toString, toText)
-import Data.Text (Text, isInfixOf)
+import Data.String.Conversion (encodeUtf8, toString, toText)
+import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import Effect.Logger (Logger)
 import Network.HTTP.Client (
   Manager,
-  Request (host, method, shouldStripHeaderOnRedirect),
+  Request (method, shouldStripHeaderOnRedirect),
   Response (responseBody, responseHeaders, responseStatus),
   applyBasicAuth,
   applyBearerAuth,
   parseRequest,
  )
-import Network.HTTP.Types (methodGet, statusCode, methodHead)
+import Network.HTTP.Types (statusCode)
 import Network.HTTP.Types.Header (
   hAuthorization,
   hWWWAuthenticate,

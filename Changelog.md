@@ -12,7 +12,7 @@
 
 - golang: Updates go.mod parser to be compatible with golang v1.21. ([#1304](https://github.com/fossas/fossa-cli/pull/1304))
 - `fossa list-targets`: list-target command supports `--format` option with: `ndjson`, `text`, and `legacy`. ([#1296](https://github.com/fossas/fossa-cli/pull/1296))
-- container scanning: fixes transaction errors due to redirection ([]())
+- container scanning: Fixes a network error defect, when interacting with container registry redirects. ([#1308](https://github.com/fossas/fossa-cli/pull/1308/))
 
 ## v3.8.17
 
