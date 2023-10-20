@@ -30,8 +30,8 @@ import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, Path, toFilePath)
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
-import Types (DiscoveredProjectType (..))
+import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep, textToOriginPath)
+import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
 
 -- | VSI analysis is sufficiently different from other analysis types that it cannot be just another strategy.
 -- Instead, VSI analysis is run separately over the entire scan directory, outputting its own source unit.
@@ -62,9 +62,8 @@ analyzeVSIDeps dir projectRevision filters skipResolving = do
 
   -- These deps have to get up to the backend somehow on a 'SourceUnit's 'additionalData'.
   -- This generates an empty-graph source unit and puts the userdeps on it.
-
   let renderedPath = toText (toFilePath dir)
-  let userDepSrcUnits = toSourceUnit renderedPath mempty resolvedUserDeps
+      userDepSrcUnits = toSourceUnit renderedPath mempty resolvedUserDeps
 
   pure . Just $ userDepSrcUnits : directSrcUnits
 
@@ -76,7 +75,7 @@ ruleToSourceUnit skipResolving VSI.VsiRule{..} = do
 
 toSourceUnit :: Text -> Graphing Dependency -> Maybe [SourceUserDefDep] -> SourceUnit
 toSourceUnit path deps additionalDeps = do
-  let unit = Srclib.toSourceUnit False path deps VsiProjectType
+  let unit = Srclib.toSourceUnit False path deps VsiProjectType Complete [textToOriginPath path]
   unit{additionalData = fmap toDepData additionalDeps}
   where
     toDepData d = AdditionalDepData (Just d) Nothing

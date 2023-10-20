@@ -34,6 +34,7 @@ import Graphing qualified
 import Path (toFilePath)
 import Srclib.Types (
   Locator (..),
+  OriginPath,
   SourceUnit (..),
   SourceUnitBuild (
     SourceUnitBuild,
@@ -43,18 +44,19 @@ import Srclib.Types (
     buildSucceeded
   ),
   SourceUnitDependency (..),
-  textToOriginPath,
+  somePathToOriginPath,
  )
 import Types (DiscoveredProjectType, GraphBreadth (..))
 
 projectToSourceUnit :: Bool -> ProjectResult -> SourceUnit
 projectToSourceUnit leaveUnfiltered ProjectResult{..} =
-  toSourceUnit leaveUnfiltered renderedPath projectResultGraph projectResultType
+  toSourceUnit leaveUnfiltered renderedPath projectResultGraph projectResultType projectResultGraphBreadth originPaths
   where
     renderedPath = toText (toFilePath projectResultPath)
+    originPaths = map somePathToOriginPath projectResultManifestFiles
 
-toSourceUnit :: Bool -> Text -> Graphing Dependency -> DiscoveredProjectType -> SourceUnit
-toSourceUnit leaveUnfiltered path dependencies projectType =
+toSourceUnit :: Bool -> Text -> Graphing Dependency -> DiscoveredProjectType -> GraphBreadth -> [OriginPath] -> SourceUnit
+toSourceUnit leaveUnfiltered path dependencies projectType graphBreadth originPaths =
   SourceUnit
     { sourceUnitName = path
     , sourceUnitType = toText projectType
@@ -67,8 +69,8 @@ toSourceUnit leaveUnfiltered path dependencies projectType =
             , buildImports = imports
             , buildDependencies = deps
             }
-    , sourceUnitGraphBreadth = Complete
-    , sourceUnitOriginPaths = [textToOriginPath path]
+    , sourceUnitGraphBreadth = graphBreadth
+    , sourceUnitOriginPaths = originPaths
     , additionalData = Nothing
     }
   where
