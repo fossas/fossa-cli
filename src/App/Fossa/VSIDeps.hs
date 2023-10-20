@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.VSIDeps (
@@ -33,12 +32,6 @@ import Path (Abs, Dir, Path, toFilePath)
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep)
 import Types (DiscoveredProjectType (..))
-
-#ifdef mingw32_HOST_OS
-import Path (fromAbsDir)
-import Effect.ReadFS (getCurrentDir)
-import System.FilePath (joinDrive, normalise, takeDrive)
-#endif
 
 -- | VSI analysis is sufficiently different from other analysis types that it cannot be just another strategy.
 -- Instead, VSI analysis is run separately over the entire scan directory, outputting its own source unit.
