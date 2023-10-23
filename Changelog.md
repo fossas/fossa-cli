@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- container scanning: fixes a defect which led to incorrect `NotTarFormat` errors when parsing container layer. ([#1305](https://github.com/fossas/fossa-cli/pull/1305))
+
+## v3.8.18
+
 - golang: Updates go.mod parser to be compatible with golang v1.21. ([#1304](https://github.com/fossas/fossa-cli/pull/1304))
 - `fossa list-targets`: list-target command supports `--format` option with: `ndjson`, `text`, and `legacy`. ([#1296](https://github.com/fossas/fossa-cli/pull/1296))
 
