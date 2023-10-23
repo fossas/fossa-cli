@@ -57,7 +57,6 @@ logHttp req manager = do
           <> show (getContentType . responseHeaders $ r)
           <> ")"
           <> (errResponseBody r)
-          <> show (responseHeaders r)
 
     errResponseBody :: Response ByteStringLazy.ByteString -> String
     errResponseBody r =
