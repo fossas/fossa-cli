@@ -80,14 +80,14 @@ data LicenseScanErr
   = NoSuccessfulScans
   | NoLicenseResults (Path Abs Dir)
   | EmptyDirectory (Path Abs Dir)
-  | EmptyArchive (Path Abs File)
+  | EmptyOrCorruptedArchive (Path Abs File)
   | UnsupportedArchive (Path Abs File)
 
 instance ToDiagnostic LicenseScanErr where
   renderDiagnostic NoSuccessfulScans = "No native license scans were successful"
   renderDiagnostic (NoLicenseResults path) = "No license results found after scanning directory: " <> pretty (toText path)
   renderDiagnostic (EmptyDirectory path) = "vendored-dependencies path has no files and cannot be scanned: " <> pretty (toString path)
-  renderDiagnostic (EmptyArchive path) = "vendored-dependencies archive contains no files and cannot be scanned: " <> pretty (toString path)
+  renderDiagnostic (EmptyOrCorruptedArchive path) = "vendored-dependencies archive is malformed or contains no files: " <> pretty (toString path)
   renderDiagnostic (UnsupportedArchive path) = case fileExtension path of
     Just ext -> "fossa-cli does not support archives of type " <> squotes (pretty ext) <> ": " <> pretty (toString path)
     Nothing -> "fossa-cli does not support archives without file extensions: " <> pretty (toString path)
@@ -249,7 +249,7 @@ scanArchive baseDir licenseScanPathFilters fullFileUploads file = runFinally $ d
   case result of
     Left _ -> fatal . UnsupportedArchive $ scanFile file
     Right r -> case r of
-      Nothing -> fatal . EmptyArchive $ scanFile file
+      Nothing -> fatal . EmptyOrCorruptedArchive $ scanFile file
       Just units -> pure units
   where
     pathPrefix :: Text
@@ -271,7 +271,7 @@ scanDirectory origin pathPrefix licenseScanPathFilters fullFileUploads path = do
   hasFiles <- hasAnyFiles path
   if hasFiles
     then scanNonEmptyDirectory pathPrefix licenseScanPathFilters fullFileUploads path
-    else maybe (fatal $ EmptyDirectory path) (fatal . EmptyArchive . scanFile) origin
+    else maybe (fatal $ EmptyDirectory path) (fatal . EmptyOrCorruptedArchive . scanFile) origin
 
 hasAnyFiles ::
   ( Has Diagnostics sig m
