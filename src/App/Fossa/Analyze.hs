@@ -518,7 +518,7 @@ buildResult includeAll srcUnits projects licenseSourceUnits =
       Just licenseUnits -> do
         NE.toList $ mergeSourceAndLicenseUnits finalSourceUnits licenseUnits
     finalSourceUnits = srcUnits ++ scannedUnits
-    scannedUnits = map (Srclib.toSourceUnit (fromFlag IncludeAll includeAll)) projects
+    scannedUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) projects
 
 buildProject :: ProjectResult -> Aeson.Value
 buildProject project =
