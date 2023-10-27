@@ -40,11 +40,11 @@ import Control.Effect.FossaApiClient (
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
+import Data.Either.Combinators (rightToMaybe)
 import Data.HashMap.Strict qualified as HM
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
-import Data.Either.Combinators (rightToMaybe)
 import Data.Semigroup (Any (..))
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)

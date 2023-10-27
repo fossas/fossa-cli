@@ -189,13 +189,14 @@ removeTarLinks Tar.Done = Tar.Done
 removeTarLinks (Tar.Fail e) = Tar.Fail e
 
 readTar :: BL.ByteString -> Tar.Entries Tar.FormatError
-readTar bs = if BL.null bs
-  -- Although .tar file spec requires that two 512 block of zero bytes 
-  -- are required to mark end of the tar file. GNU tar 
-  -- and BSD tar utilities consider empty file to be a
-  -- valid tar file.
-  then Tar.Done
-  else Tar.read bs
+readTar bs =
+  if BL.null bs
+    then -- Although .tar file spec requires that two 512 block of zero bytes
+    -- are required to mark end of the tar file. GNU tar
+    -- and BSD tar utilities consider empty file to be a
+    -- valid tar file.
+      Tar.Done
+    else Tar.read bs
 
 ---------- Zip files
 
