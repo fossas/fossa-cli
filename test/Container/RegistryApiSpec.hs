@@ -159,10 +159,10 @@ dhMultiArchImageDigest =
   RepoDigest "sha256:86618e1e78e4962b5abec6cc7fabe89010ebfbbf0885cbba1aada7287457c263"
 
 mcrRegistryImage :: Text
-mcrRegistryImage = "mcr.microsoft.com/dotnet/sdk:7.0"
+mcrRegistryImage = "mcr.microsoft.com/azure-cli:0.10.13"
 
 mcrRegistryImageDigest :: RepoDigest
-mcrRegistryImageDigest = RepoDigest "sha256:bd36eac352dbb2d27a63f4714b9063fc8c7e9c615e430006dbeb7e3448cd5780"
+mcrRegistryImageDigest = RepoDigest "sha256:37b1e1b1484d540b96f8f30f4c4da24b704a110aa662f79b641f5ab375ee8094"
 
 debian2gcrImage :: Text
 debian2gcrImage = "gcr.io/google-containers/debian-base:v2.0.0"
