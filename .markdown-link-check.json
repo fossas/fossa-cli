@@ -4,6 +4,9 @@
   "ignorePatterns": [
     {
       "pattern": "https://support.fossa.com"
+    },
+    {
+      "pattern": "https://cran.r-project.org"
     }
   ]
 }
