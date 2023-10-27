@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- container scanning: Fixes registry network calls, to ensure `fossa-cli` uses `Accept` header on `HEAD` network calls.
+
 ## v3.8.19
 
 - container scanning: fixes a defect which led to incorrect `NotTarFormat` errors when parsing container layer. ([#1305](https://github.com/fossas/fossa-cli/pull/1305))
@@ -9,7 +12,6 @@
 
 - golang: Updates go.mod parser to be compatible with golang v1.21. ([#1304](https://github.com/fossas/fossa-cli/pull/1304))
 - `fossa list-targets`: list-target command supports `--format` option with: `ndjson`, `text`, and `legacy`. ([#1296](https://github.com/fossas/fossa-cli/pull/1296))
-- container scanning: Fixes registry network calls, to ensure `fossa-cli` uses `Accept` header on `HEAD` network calls.
 
 ## v3.8.17
 
