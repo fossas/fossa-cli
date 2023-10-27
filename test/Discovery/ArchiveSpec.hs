@@ -56,6 +56,9 @@ spec = do
         contentB <- sendIO . TIO.readFile . toFilePath $ dir </> $(mkRelDir "simple") </> $(mkRelFile "b.txt")
         pure (dir, contentA, contentB)
 
+    emptyTarget <- runIO emptyTarPath
+    emptyResult <- runIO . runStack . runDiagnostics . runFinally $ withArchive extractTar emptyTarget (pure . const ())
+
     it "should have extracted the correct contents" $ do
       assertOnSuccess result $ \_ (_, _, extractedContentB) -> extractedContentB `shouldBe` expectedSimpleContentB
       assertOnSuccess result $ \_ (_, extractedContentA, _) -> extractedContentA `shouldBe` expectedSimpleContentA
@@ -64,6 +67,9 @@ spec = do
       assertOnSuccess result $ \_ (extractedDir, _, _) -> do
         tempDirExists <- sendIO $ PIO.doesDirExist extractedDir
         tempDirExists `shouldBe` False
+
+    it "should not thrown an error when working with empty tar file" $ do
+      assertOnSuccess emptyResult $ \warns _ -> (length warns) `shouldBe` 0
 
   describe "extract tar.gz archive to a temporary location" $ do
     target <- runIO simpleTarGzPath
@@ -148,6 +154,9 @@ brokenZipPath = PIO.resolveFile' "test/Discovery/testdata/broken.zip"
 
 simpleTarPath :: IO (Path Abs File)
 simpleTarPath = PIO.resolveFile' "test/Discovery/testdata/simple.tar"
+
+emptyTarPath :: IO (Path Abs File)
+emptyTarPath = PIO.resolveFile' "test/Discovery/testdata/empty.tar"
 
 simpleTarGzPath :: IO (Path Abs File)
 simpleTarGzPath = PIO.resolveFile' "test/Discovery/testdata/simple.tar.gz"

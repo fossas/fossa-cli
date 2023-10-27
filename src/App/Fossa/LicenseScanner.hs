@@ -44,6 +44,7 @@ import Data.HashMap.Strict qualified as HM
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
+import Data.Either.Combinators (rightToMaybe)
 import Data.Semigroup (Any (..))
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -135,8 +136,8 @@ recursivelyScanArchives pathPrefix licenseScanPathFilters fullFileUploads dir = 
     -- but it would be easy to allow customers to filter out single files too.
     let archivesToSkip = maybe [] licenseScanPathFilterFileExclude licenseScanPathFilters
     let filesToProcess = filter (`notElem` archivesToSkip) files
-    -- withArchive' emits Nothing when archive type is not supported.
-    archives <- traverse (\file -> withArchive' file (process file)) filesToProcess
+
+    archives <- catMaybes <$> traverse (\file -> rightToMaybe <$> withArchive' file (process file)) filesToProcess
     pure (concat (catMaybes archives), WalkContinue)
 
 -- When we recursively scan archives, we end up with an array of LicenseUnits that may have multiple entries for a single license.
@@ -243,12 +244,13 @@ scanArchive ::
   ScannableArchive ->
   m (NonEmpty LicenseUnit)
 scanArchive baseDir licenseScanPathFilters fullFileUploads file = runFinally $ do
-  -- withArchive' emits Nothing when archive type is not supported.
   logSticky $ "scanning archive at " <> toText (scanFile file)
   result <- withArchive' (scanFile file) (scanDirectory (Just file) pathPrefix licenseScanPathFilters fullFileUploads)
   case result of
-    Nothing -> fatal . UnsupportedArchive $ scanFile file
-    Just units -> pure units
+    Left _ -> fatal . UnsupportedArchive $ scanFile file
+    Right r -> case r of
+      Nothing -> fatal . EmptyArchive $ scanFile file
+      Just units -> pure units
   where
     pathPrefix :: Text
     pathPrefix = getPathPrefix baseDir (parent $ scanFile file)

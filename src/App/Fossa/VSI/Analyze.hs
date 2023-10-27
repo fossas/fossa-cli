@@ -262,7 +262,7 @@ discover output filters root renderAncestry =
       -- Fork an async task to walk the contents of the archive, if the file is an archive.
       -- Note: if you're ever looking at the @TaskPool@ progress message and are like "why does it show 2x the files as are actually in the project?"
       -- This is the reason. We fork a task for every file to process its fingerprint, then fork a second task to (maybe) extract it as an archive.
-      forkTask . recover . fatalOnSomeException "extract archive" . withArchive' file $ \archiveRoot -> context "walking into child archive" $ do
+      forkTask . recover . fatalOnSomeException "extract archive" $ withArchive' file $ \archiveRoot -> context "walking into child archive" $ do
         logDebug . pretty $ "walking into " <> toText file <> " as archive"
         logicalParent <- convertArchiveSuffix logicalPath
         discover output filters archiveRoot $ ancestryDerived $ FileAncestry logicalParent
