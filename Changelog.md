@@ -1,8 +1,9 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.8.19
 
 - container scanning: fixes a defect which led to incorrect `NotTarFormat` errors when parsing container layer. ([#1305](https://github.com/fossas/fossa-cli/pull/1305))
+- `--detect-vendored`: fix a defect which caused the `--detect-vendored` flag to fail on Windows ([#1300](https://github.com/fossas/fossa-cli/pull/1300))
 
 ## v3.8.18
 
