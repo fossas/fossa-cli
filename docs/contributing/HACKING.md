@@ -94,7 +94,7 @@ If you installed HLS in the old, complicated way, you can safely remove it.  HLS
 
 You should also set the `FOSSA_SKIP_EMBED_FILE_IN_HLS` environment variable for HLS. This prevents HLS from embedding binaries, which helps to avoid a giant memory footprint for HLS.
 
-You can also tell the Fourmolu plugin to use an external config. This ensures that it picks up our `fourmolu.yaml` file.
+You can also tell the Fourmolu plugin to use an external config. This will tell the language server to use an external executable that you've installed, which ensures that it picks up our `fourmolu.yaml` file.
 
 In VSCode, this is done by adding this to your `settings.json`:
 
