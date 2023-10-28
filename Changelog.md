@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- container scanning: Fixes registry network calls, to ensure `fossa-cli` uses `Accept` header on `HEAD` network calls.
+
 ## v3.8.19
 
 - container scanning: fixes a defect which led to incorrect `NotTarFormat` errors when parsing container layer. ([#1305](https://github.com/fossas/fossa-cli/pull/1305))
