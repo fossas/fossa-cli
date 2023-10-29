@@ -50,6 +50,7 @@ jobs:
         shell: bash
         if: ${{ contains(matrix.os, 'macos') }}
         run: |
+          brew update
           brew install --cask fossa
           fossa --version
           brew uninstall fossa
