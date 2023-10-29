@@ -44,10 +44,18 @@ jobs:
         run: |
           ./install-v1.sh -b .
           ./fossa --version | cut -d " " -f 3 | head -c 1 | grep -q '1' || exit 1
-      
+
+      # Refer to: https://github.com/Homebrew/homebrew-cask/blob/master/Casks/f/fossa.rb
+      - name: brew install and uninstall
+        shell: bash
+        if: ${{ contains(matrix.os, 'macos') }}
+        run: |
+          brew install --cask fossa
+          fossa --version
+          brew uninstall fossa
 
   test-windows:
-    runs-on: 'windows-latest'
+    runs-on: "windows-latest"
     steps:
       - uses: actions/checkout@v2
 
@@ -76,14 +84,14 @@ jobs:
           if (-Not $cliVersionMajor -eq "1") {
             Write-Output "Got: $cliVersionMajor instead!"
             exit 1
-          }          
+          }
 
       - name: install latest script performs installation
         shell: pwsh
         run: |
           Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
           .\install-latest.ps1
-          
+
           $cliVersionCmdOutput = cmd /c 'fossa.exe' '--version'
           $cliVersion = $cliVersionCmdOutput.Split(" ")[2]
           $cliVersionMajor = $cliVersion.Split(".")[0]
@@ -126,7 +134,6 @@ jobs:
           #   Write-Output "Latest version is $env:LATEST_RELEASE_VERSION but installed $cliVersion instead!"
           #  exit 1
           # }
-
 
       - name: install-v1 script does not install v2 or greater version
         shell: pwsh
