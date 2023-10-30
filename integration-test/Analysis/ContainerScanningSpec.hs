@@ -38,10 +38,13 @@ import System.Environment (lookupEnv)
 spec :: Spec
 spec = testPrivateRepos
 
+-- Integeration tests to catch, if registry api implementation changes
+-- abruptly.
 testPrivateRepos :: Spec
 testPrivateRepos =
     describe "private registries" $ do
         it "dockerhub" $ do
+            -- Refer to 1Password for creds or Github Action Env Keys
             img <- withAuth "FOSSA_DOCKERHUB_WWW_STYLE_USER_PASS" dockerHubImage
             res <- runEff $ getImageConfig "amd64" img
             case res of
