@@ -3,7 +3,7 @@
 
 module Analysis.ContainerScanningSpec (spec) where
 
-import Test.Hspec ( it, shouldBe, Spec, fdescribe )
+import Test.Hspec ( it, shouldBe, Spec, describe )
 import Control.Effect.ContainerRegistryApi
     ( ContainerRegistryApi, getImageManifest, ContainerRegistryApiF )
 import Control.Effect.Diagnostics (Diagnostics)
@@ -40,7 +40,7 @@ spec = testPrivateRepos
 
 testPrivateRepos :: Spec
 testPrivateRepos =
-    fdescribe "private registries" $ do
+    describe "private registries" $ do
         it "dockerhub" $ do
             img <- withAuth "FOSSA_DOCKERHUB_WWW_STYLE_USER_PASS" dockerHubImage
             res <- runEff $ getImageConfig "amd64" img
