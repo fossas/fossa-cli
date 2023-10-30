@@ -1,39 +1,49 @@
 {-# LANGUAGE DataKinds #-}
 
-
 module Analysis.ContainerScanningSpec (spec) where
 
-import Test.Hspec ( it, shouldBe, Spec, describe )
-import Control.Effect.ContainerRegistryApi
-    ( ContainerRegistryApi, getImageManifest, ContainerRegistryApiF )
-import Control.Effect.Diagnostics (Diagnostics)
+import Container.Docker.OciManifest (OciManifestConfig (..), OciManifestV2 (..))
+import Container.Docker.SourceParser (
+  RegistryImageSource,
+  RepoDigest (..),
+  parseImageUrl,
+ )
 import Control.Algebra (Has)
-import Control.Carrier.Lift (Lift)
-import Data.Text (Text)
-import Container.Docker.SourceParser
-    ( RepoDigest(..), RegistryImageSource, parseImageUrl )
-import Control.Carrier.Diagnostics
-    ( fromEitherShow, runDiagnostics, DiagnosticsC )
-import Container.Docker.OciManifest (OciManifestV2(..), OciManifestConfig(..))
-import Text.Megaparsec (ParseErrorBundle, parse)
-import Data.Void (Void)
-import Control.Carrier.Stack ( runStack, StackC )
-import Control.Carrier.StickyLogger
-    ( ignoreStickyLogger, IgnoreStickyLoggerC )
-import Effect.Logger ( ignoreLogger, IgnoreLoggerC )
-import Effect.Exec ( runExecIO, ExecIOC )
-import Control.Carrier.Reader (runReader, ReaderC)
 import Control.Carrier.ContainerRegistryApi (runContainerRegistryApi)
-import Control.Carrier.Finally ( runFinally, FinallyC )
-import Diag.Result ( Result(..), renderFailure )
-import Effect.ReadFS ( runReadFSIO, ReadFSIOC )
 import Control.Carrier.ContainerRegistryApi.Common (RegistryCtx)
-import Discovery.Filters (AllFilters)
+import Control.Carrier.Diagnostics (
+  DiagnosticsC,
+  fromEitherShow,
+  runDiagnostics,
+ )
+import Control.Carrier.Finally (FinallyC, runFinally)
+import Control.Carrier.Lift (Lift)
+import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.Simple (SimpleC)
-import Type.Operator (type ($))
+import Control.Carrier.Stack (StackC, runStack)
+import Control.Carrier.StickyLogger (
+  IgnoreStickyLoggerC,
+  ignoreStickyLogger,
+ )
+import Control.Effect.ContainerRegistryApi (
+  ContainerRegistryApi,
+  ContainerRegistryApiF,
+  getImageManifest,
+ )
+import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (sendIO)
-import Data.String.Conversion ( toText )
+import Data.String.Conversion (toText)
+import Data.Text (Text)
+import Data.Void (Void)
+import Diag.Result (Result (..), renderFailure)
+import Discovery.Filters (AllFilters)
+import Effect.Exec (ExecIOC, runExecIO)
+import Effect.Logger (IgnoreLoggerC, ignoreLogger)
+import Effect.ReadFS (ReadFSIOC, runReadFSIO)
 import System.Environment (lookupEnv)
+import Test.Hspec (Spec, describe, it, shouldBe)
+import Text.Megaparsec (ParseErrorBundle, parse)
+import Type.Operator (type ($))
 
 spec :: Spec
 spec = testPrivateRepos
@@ -42,14 +52,14 @@ spec = testPrivateRepos
 -- abruptly.
 testPrivateRepos :: Spec
 testPrivateRepos =
-    describe "private registries" $ do
-        it "dockerhub" $ do
-            -- Refer to 1Password for creds or Github Action Env Keys
-            img <- withAuth "FOSSA_DOCKERHUB_WWW_STYLE_USER_PASS" dockerHubImage
-            res <- runEff $ getImageConfig "amd64" img
-            case res of
-                Failure ws eg -> fail (show (renderFailure ws eg "An issue occurred"))
-                Success _ res' -> res' `shouldBe` dockerHubImageConfigDigest
+  describe "private registries" $ do
+    it "dockerhub" $ do
+      -- Refer to 1Password for creds or Github Action Env Keys
+      img <- withAuth "FOSSA_DOCKERHUB_WWW_STYLE_USER_PASS" dockerHubImage
+      res <- runEff $ getImageConfig "amd64" img
+      case res of
+        Failure ws eg -> fail (show (renderFailure ws eg "An issue occurred"))
+        Success _ res' -> res' `shouldBe` dockerHubImageConfigDigest
 
 dockerHubImage :: Text
 dockerHubImage = "index.docker.io/fossabot/container-test-fixture:0"
@@ -72,7 +82,8 @@ type EffectStack m =
     $ StackC IO
 
 runEff :: EffectStack IO a -> IO (Result a)
-runEff = runStack
+runEff =
+  runStack
     . ignoreStickyLogger
     . ignoreLogger
     . runDiagnostics
@@ -99,7 +110,7 @@ getImageConfig arch img =
 
 withAuth :: Has (Lift IO) sig m => String -> Text -> m Text
 withAuth authEnvKey target = do
-    auth <- sendIO $ lookupEnv authEnvKey
-    case auth of
-        Nothing -> pure target
-        Just auth' -> pure $ (toText auth') <> "@" <> target
+  auth <- sendIO $ lookupEnv authEnvKey
+  case auth of
+    Nothing -> pure target
+    Just auth' -> pure $ (toText auth') <> "@" <> target
