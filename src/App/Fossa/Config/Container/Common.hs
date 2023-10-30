@@ -35,9 +35,10 @@ imageTextArg = ImageText <$> argument str (metavar "IMAGE" <> help "The image to
 collectArch :: Text
 collectArch =
   toText $
-    if arch == "x86_64" -- x86_64 is equivalent to amd64
-      then "amd64"
-      else arch
+    case arch of
+      ("x86_64") -> "amd64" -- x86_64 is equivalent to amd64
+      ("aarch64") -> "arm64" -- aarch64 is equivalent to arm64
+      other -> other
 
 collectDockerHost :: Has Diagnostics sig m => EnvVars -> m Text
 collectDockerHost EnvVars{envDockerHost} =

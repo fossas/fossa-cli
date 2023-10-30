@@ -120,7 +120,7 @@ common deps
     , semver                       ^>=0.4.0.1
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
-    , tar                          ^>=0.6.0.0
+    , tar                          ^>=0.7.0.0
     , template-haskell
     , text                         ^>=2.0.0
     , th-lift-instances            ^>=0.1.17
@@ -185,6 +185,7 @@ library
     App.Fossa.Config.LinkUserBinaries
     App.Fossa.Config.ListTargets
     App.Fossa.Config.Report
+    App.Fossa.Config.Snippets
     App.Fossa.Config.Test
     App.Fossa.Container
     App.Fossa.Container.AnalyzeNative
@@ -210,6 +211,9 @@ library
     App.Fossa.Report
     App.Fossa.Report.Attribution
     App.Fossa.RunThemis
+    App.Fossa.Snippets
+    App.Fossa.Snippets.Analyze
+    App.Fossa.Snippets.Commit
     App.Fossa.Subcommand
     App.Fossa.Test
     App.Fossa.VendoredDependency
@@ -527,6 +531,7 @@ test-suite unit-tests
     App.Fossa.VSI.FingerprintSpec
     App.Fossa.VSI.IAT.ResolveSpec
     App.Fossa.VSI.TypesSpec
+    App.Fossa.VSIDepsSpec
     BerkeleyDB.BerkeleyDBSpec
     BundlerSpec
     Cargo.CargoTomlSpec

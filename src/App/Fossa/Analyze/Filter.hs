@@ -54,6 +54,6 @@ checkForEmptyUpload includeAll xs ys additionalUnits firstPartyScanResults = do
 
     -- The smaller list is the post-filter list, since filtering cannot add projects
     filtered = if xlen > ylen then ys else xs
-    discoveredUnits = map (Srclib.toSourceUnit (fromFlag IncludeAll includeAll)) filtered
+    discoveredUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) filtered
     isActualLicense :: LicenseUnit -> Bool
     isActualLicense licenseUnit = licenseUnitName licenseUnit /= "No_license_found"

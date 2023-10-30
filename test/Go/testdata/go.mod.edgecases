@@ -5,6 +5,8 @@ module test/package
 
 go 1.12
 
+toolchain go1.21.1
+
 require repo/name/A v1.0.0 // indirect
 
 require (

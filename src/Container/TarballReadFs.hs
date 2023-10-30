@@ -27,8 +27,10 @@ import Control.Exception (
   Exception (fromException, toException),
   IOException,
   SomeAsyncException (SomeAsyncException),
+  SomeException,
   catch,
   throwIO,
+  try,
  )
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as ByteString
@@ -82,13 +84,20 @@ import Path.Extra (SomePath (..))
 import Control.Effect.Record (Redacted (..))
 import Data.Either.Combinators (mapRight)
 import Path.Internal (Path (Path))
-import System.IO (IOMode (ReadMode), withFile)
+import System.IO (Handle, IOMode (ReadMode), withFile)
 
 maxHopsOf20 :: Int
 maxHopsOf20 = 20
 
 ensureSlashSuffix :: Text -> Text
 ensureSlashSuffix t = if Text.isSuffixOf "/" t then t else (t <> "/")
+
+hReadEntry' :: Handle -> TarEntryOffset -> IO Entry
+hReadEntry' hdl offset = do
+  result <- try (hReadEntry hdl offset) :: IO (Either SomeException Entry)
+  case result of
+    Left err -> throw . userError $ "TarReadEntryErr at:" <> show offset <> " (" <> show err <> ")"
+    Right res -> pure res
 
 readContentBS ::
   SomeFileTree TarEntryOffset ->
@@ -106,7 +115,7 @@ readContentBS fs tarball hop target =
           <> (toString tarball)
     Just tarOffset ->
       withFile (toString tarball) ReadMode $ \handle -> do
-        (getContent fs tarball hop) =<< hReadEntry handle tarOffset
+        (getContent fs tarball hop) =<< hReadEntry' handle tarOffset
 
 getContent ::
   SomeFileTree TarEntryOffset ->
