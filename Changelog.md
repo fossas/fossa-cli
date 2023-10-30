@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.8.20
 - container scanning: Fixes registry network calls, to ensure `fossa-cli` uses `Accept` header on `HEAD` network calls.
 
 ## v3.8.19
