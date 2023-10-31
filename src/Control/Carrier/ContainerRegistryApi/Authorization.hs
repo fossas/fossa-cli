@@ -33,20 +33,20 @@ import Data.Aeson (FromJSON (parseJSON), decode', eitherDecode, withObject, (.:)
 import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.String.Conversion (ConvertUtf8 (decodeUtf8), encodeUtf8, toString, toText)
-import Data.Text (Text, isInfixOf)
+import Data.String.Conversion (encodeUtf8, toString, toText)
+import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import Effect.Logger (Logger)
 import Network.HTTP.Client (
   Manager,
-  Request (host, method, shouldStripHeaderOnRedirect),
+  Request (method, shouldStripHeaderOnRedirect),
   Response (responseBody, responseHeaders, responseStatus),
   applyBasicAuth,
   applyBearerAuth,
   parseRequest,
  )
-import Network.HTTP.Types (methodGet, statusCode)
+import Network.HTTP.Types (statusCode)
 import Network.HTTP.Types.Header (
   hAuthorization,
   hWWWAuthenticate,
@@ -99,16 +99,7 @@ applyAuthToken (Just (BearerAuthToken token)) r =
 -- If we don't strip auth headers, on redirect, depending on how
 -- blobs/manifest are retrieved cloud vendor may throw 'Bad Request' error.
 stripAuthHeaderOnRedirect :: Request -> Request
-stripAuthHeaderOnRedirect r =
-  if ((isAwsECR || isAzure) && method r == methodGet)
-    then r{shouldStripHeaderOnRedirect = (== hAuthorization)}
-    else r
-  where
-    isAwsECR :: Bool
-    isAwsECR = "amazonaws.com" `isInfixOf` decodeUtf8 (host r)
-
-    isAzure :: Bool
-    isAzure = "azurecr.io" `isInfixOf` decodeUtf8 (host r)
+stripAuthHeaderOnRedirect r = r{shouldStripHeaderOnRedirect = (== hAuthorization)}
 
 -- | Generates Auth Token For Request.
 --

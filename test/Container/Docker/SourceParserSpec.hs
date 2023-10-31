@@ -127,6 +127,16 @@ spec = do
                               fixtureArch
                           )
 
+      "https://user:pass-pass_pass@ghcr.io/fossas/haskell-dev-tools:9.0.2"
+        `shouldParseInto` ( RegistryImageSource
+                              "ghcr.io"
+                              defaultHttpScheme
+                              (Just ("user", "pass-pass_pass"))
+                              "fossas/haskell-dev-tools"
+                              (mkTagRef "9.0.2")
+                              fixtureArch
+                          )
+
 fixtureArch :: Text
 fixtureArch = "amd64"
 

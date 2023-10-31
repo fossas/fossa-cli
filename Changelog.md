@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- container scanning: Fixes a network error defect, when interacting with container registry redirects. ([#1308](https://github.com/fossas/fossa-cli/pull/1308/))
+
 ## v3.8.20
 - container scanning: Fixes registry network calls, to ensure `fossa-cli` uses `Accept` header on `HEAD` network calls. ([#1309](https://github.com/fossas/fossa-cli/pull/1309))
 

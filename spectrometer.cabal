@@ -669,6 +669,7 @@ test-suite integration-tests
     Analysis.CarthageSpec
     Analysis.ClojureSpec
     Analysis.CocoapodsSpec
+    Analysis.ContainerScanningSpec
     Analysis.ElixirSpec
     Analysis.ErlangSpec
     Analysis.FixtureExpectationUtils

@@ -246,7 +246,7 @@ parseAuthCred :: Parser (Text, Text)
 parseAuthCred = do
   user <- toText <$> some alphaNumChar
   void (char ':')
-  password <- toText <$> (some alphaNumChar)
+  password <- toText <$> some (alphaNumChar <|> char '_' <|> char '-')
   void (char '@')
   pure (user, password)
 
