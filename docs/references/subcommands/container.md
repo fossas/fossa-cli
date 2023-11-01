@@ -15,6 +15,11 @@ The `fossa container` subcommand supports analysis and testing of containers for
 2) Docker Engine (accessed via unix socket `/var/lib/docker.sock`)
 3) OCI Registry
 
+> Note: `fossa-cli` currently does not support exported OCI images (image archives in OCI format).
+> For such scenarios, we recommend,
+> you perform: `docker save <IMG>:<TAG> > img.tar`, and use `img.tar`
+> for your analysis, with `fossa container analyze img.tar`
+
 No arguments are required to specify the kind of image being analyzed:
 `fossa-cli` automatically identifies the appropriate image source.
 
