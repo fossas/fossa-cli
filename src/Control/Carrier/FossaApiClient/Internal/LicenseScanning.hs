@@ -39,10 +39,11 @@ getSignedLicenseScanUrl ::
   , Has (Reader ApiOpts) sig m
   ) =>
   PackageRevision ->
+  Bool ->
   m SignedURL
-getSignedLicenseScanUrl PackageRevision{..} = do
+getSignedLicenseScanUrl PackageRevision{..} isPathDependency = do
   apiOpts <- ask
-  API.getSignedLicenseScanURL apiOpts packageVersion packageName
+  API.getSignedLicenseScanURL apiOpts packageVersion packageName isPathDependency
 
 finalizeLicenseScan ::
   ( Has (Lift IO) sig m
@@ -51,10 +52,11 @@ finalizeLicenseScan ::
   , Has (Reader ApiOpts) sig m
   ) =>
   ArchiveComponents ->
+  Bool ->
   m ()
-finalizeLicenseScan components = do
+finalizeLicenseScan components isPathDependency = do
   apiOpts <- ask
-  void $ API.licenseScanFinalize apiOpts components
+  void $ API.licenseScanFinalize apiOpts components isPathDependency
 
 uploadLicenseScanResult ::
   ( Has (Lift IO) sig m

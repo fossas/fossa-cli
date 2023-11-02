@@ -889,12 +889,13 @@ licenseScanFinalize ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   ArchiveComponents ->
+  Bool -> 
   m (Maybe ())
-licenseScanFinalize apiOpts archiveProjects = runEmpty $
+licenseScanFinalize apiOpts archiveProjects isPathDependency = runEmpty $
   fossaReqAllow401 $ do
     (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-    let opts = "dependency" =: True <> "rawLicenseScan" =: True
+    let opts = "dependency" =: True <> "rawLicenseScan" =: True <> "isPathDependency" =: isPathDependency
 
     _ <-
       context "Queuing a build for all license scan uploads" $
@@ -953,11 +954,12 @@ getSignedLicenseScanURL ::
   ApiOpts ->
   Text ->
   Text ->
+  Bool -> 
   m SignedURL
-getSignedLicenseScanURL apiOpts revision packageName = fossaReq $ do
+getSignedLicenseScanURL apiOpts revision packageName isPathDependency = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = "packageSpec" =: packageName <> "revision" =: revision
+  let opts = "packageSpec" =: packageName <> "revision" =: revision <> "isPathDependency" =: isPathDependency
 
   response <-
     context ("Retrieving a signed S3 URL for license scan results of " <> packageName) $

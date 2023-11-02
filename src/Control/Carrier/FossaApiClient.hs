@@ -35,7 +35,8 @@ runFossaApiClient apiOpts =
           AssertUserDefinedBinaries meta fingerprints -> VSI.assertUserDefinedBinaries meta fingerprints
           CompleteVsiScan scanId -> VSI.completeVsiScan scanId
           CreateVsiScan rev -> VSI.createVsiScan rev
-          FinalizeLicenseScan components -> LicenseScanning.finalizeLicenseScan components
+          FinalizeLicenseScan components -> LicenseScanning.finalizeLicenseScan components False
+          FinalizeLicenseScanForPathDependency components -> LicenseScanning.finalizeLicenseScan components True
           GetApiOpts -> pure apiOpts
           GetAttribution rev format -> Core.getAttribution rev format
           GetIssues rev diffRev -> Core.getIssues rev diffRev
@@ -46,7 +47,8 @@ runFossaApiClient apiOpts =
           GetProject rev -> Core.getProject rev
           GetAnalyzedRevisions vdeps -> Core.getAnalyzedRevisions vdeps
           GetSignedFirstPartyScanUrl rev -> LicenseScanning.getSignedFirstPartyScanUrl rev
-          GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev
+          GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev False
+          GetSignedLicenseScanUrlForPathDependency rev -> LicenseScanning.getSignedLicenseScanUrl rev True
           GetSignedUploadUrl rev -> Core.getSignedUploadUrl rev
           GetVsiInferences scanId -> VSI.getVsiInferences scanId
           GetVsiScanAnalysisStatus scanId -> VSI.getVsiScanAnalysisStatus scanId

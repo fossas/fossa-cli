@@ -10,6 +10,7 @@ module Discovery.Archive (
   extractZip,
   selectUnarchiver,
   unpackFailurePath,
+  mkZip,
 ) where
 
 import App.Util (FileAncestry (..), ancestryDerived)
@@ -203,3 +204,6 @@ readTar bs =
 extractZip :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
 extractZip dir zipFile =
   sendIO $ Zip.withArchive (fromAbsFile zipFile) (Zip.unpackInto (fromAbsDir dir))
+
+mkZip :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
+mkZip dir zipFile = sendIO $ Zip.createArchive (toFilePath zipFile) (Zip.packDirRecur Zip.Deflate Zip.mkEntrySelector (toFilePath dir))

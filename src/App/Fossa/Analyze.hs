@@ -125,6 +125,7 @@ import Prettyprinter.Render.Terminal (
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
+import App.Fossa.PathDependency (enrichPathDependencies)
 
 debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json.gz"
@@ -353,8 +354,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let projectResults = mapMaybe toProjectResult projectScans
   let filteredProjects = mapMaybe toProjectResult projectScans
 
-  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
-
   maybeEndpointAppVersion <- case destination of
     UploadScan apiOpts _ -> runFossaApiClient apiOpts $ do
       -- Using 'recovery' as API corresponding to 'getEndpointVersion',
@@ -364,6 +363,18 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       pure version
     _ -> pure Nothing
 
+  -- In our graph, we may have path+ dependencies
+  -- If we are in output mode, do nothing. If we are in upload mode
+  -- license scan all path+ dependencies, and upload findings to Endpoint,
+  -- and queue a build for all path+ dependencies
+  filteredProjects' <- case destination of
+    UploadScan apiOpts _ -> Diag.context "path-dependencies" 
+      . runFossaApiClient apiOpts
+      $ runStickyLogger SevInfo 
+      $ traverse (enrichPathDependencies includeAll) filteredProjects
+    _ -> pure filteredProjects
+
+  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult $ Config.filterSet cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
@@ -373,7 +384,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Just firstParty, Just lernie) -> Just $ firstParty <> lernie
           (Nothing, Just lernie) -> Just lernie
           (Just firstParty, Nothing) -> Just firstParty
-  let result = buildResult includeAll additionalSourceUnits filteredProjects licenseSourceUnits
+  let result = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
 
   -- If we find nothing but keyword search, we exit with an error, but explain that the error may be ignorable.

@@ -7,6 +7,7 @@ module Srclib.Converter (
   fetcherToDepType,
   verConstraintToRevision,
   toLocator,
+  shouldPublishDep,
 ) where
 
 import Prelude
@@ -115,7 +116,7 @@ isSupportedType Dependency{dependencyType} =
   dependencyType /= SubprojectType
     && dependencyType /= GooglesourceType
     && dependencyType /= ConanType
-    && dependencyType /= PathType
+    -- && dependencyType /= PathType
 
 toLocator :: Dependency -> Locator
 toLocator dep =

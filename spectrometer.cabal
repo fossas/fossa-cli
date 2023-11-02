@@ -469,6 +469,7 @@ library
     Text.URI.Builder
     Type.Operator
     Types
+    App.Fossa.PathDependency
 
   hs-source-dirs:  src
 
@@ -516,6 +517,7 @@ test-suite unit-tests
     App.Fossa.LernieSpec
     App.Fossa.LicenseScannerSpec
     App.Fossa.ManualDepsSpec
+    App.Fossa.PathDependencySpec
     App.Fossa.ProjectInferenceSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.ReportSpec
