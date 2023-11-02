@@ -268,7 +268,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       skipResolutionSet = Config.vsiSkipSet $ Config.vsiOptions cfg
       vendoredDepsOptions = Config.vendoredDeps cfg
       grepOptions = Config.grepOptions cfg
-      BaseDir fossaDepsDir = Config.fossaDepsDir cfg
+      customFossaDepsPath = Config.customFossaDepsPath cfg
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
@@ -306,7 +306,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         then do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure Nothing
-        else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile fossaDepsDir maybeApiOpts vendoredDepsOptions
+        else do Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsPath maybeApiOpts vendoredDepsOptions
   maybeLernieResults <-
     Diag.errorBoundaryIO
       . diagToDebug

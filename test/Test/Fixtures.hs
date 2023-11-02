@@ -379,6 +379,9 @@ grepOptions =
     , configFilePath = Nothing
     }
 
+customFossaDepsPath :: Maybe FilePath
+customFossaDepsPath = Nothing
+
 #ifdef mingw32_HOST_OS
 absDir :: Path Abs Dir
 absDir = $(mkAbsDir "C:/")
@@ -405,5 +408,5 @@ standardAnalyzeConfig =
     , ANZ.overrideDynamicAnalysis = App.OverrideDynamicAnalysisBinary{unOverrideDynamicAnalysisBinary = mempty}
     , ANZ.firstPartyScansFlag = App.FirstPartyScansUseDefault
     , ANZ.grepOptions = grepOptions
-    , ANZ.fossaDepsDir = App.BaseDir absDir
+    , ANZ.customFossaDepsPath = customFossaDepsPath
     }

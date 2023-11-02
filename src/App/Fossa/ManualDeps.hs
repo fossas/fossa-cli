@@ -22,6 +22,7 @@ import App.Fossa.ArchiveUploader (archiveUploadSourceUnit)
 import App.Fossa.Config.Analyze (
   VendoredDependencyOptions (..),
  )
+import App.Fossa.Config.Common (validateFile)
 import App.Fossa.LicenseScanner (licenseScanSourceUnit)
 import App.Fossa.VendoredDependency (
   VendoredDependency (..),
@@ -63,6 +64,7 @@ import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..), someBaseToOriginPath)
+import System.FilePath (takeExtension)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
 
 data FoundDepsFile
@@ -79,16 +81,38 @@ analyzeFossaDepsFile ::
   , Has Exec sig m
   ) =>
   Path Abs Dir ->
+  Maybe FilePath ->
   Maybe ApiOpts ->
   VendoredDependencyOptions ->
   m (Maybe SourceUnit)
-analyzeFossaDepsFile root maybeApiOpts vendoredDepsOptions = do
-  maybeDepsFile <- findFossaDepsFile root
+analyzeFossaDepsFile root maybeCustomFossaDepsPath maybeApiOpts vendoredDepsOptions = do
+  maybeDepsFile <-
+    case maybeCustomFossaDepsPath of
+      Nothing -> findFossaDepsFile root
+      Just filePath -> retrieveCustomFossaDepsFile filePath
   case maybeDepsFile of
     Nothing -> pure Nothing
     Just depsFile -> do
       manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
       context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
+
+retrieveCustomFossaDepsFile ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has ReadFS sig m
+  ) =>
+  FilePath ->
+  m (Maybe FoundDepsFile)
+retrieveCustomFossaDepsFile fossaDepsPath = do
+  let extension = takeExtension fossaDepsPath
+  file <- (validateFile fossaDepsPath)
+
+  if extension == ".yml" || extension == ".yaml"
+    then pure $ Just $ ManualYaml file
+    else
+      if extension == ".json"
+        then pure $ Just $ ManualJSON file
+        else pure Nothing
 
 findAndReadFossaDepsFile ::
   ( Has Diagnostics sig m
