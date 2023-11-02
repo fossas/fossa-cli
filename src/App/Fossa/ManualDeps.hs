@@ -127,6 +127,7 @@ findAndReadFossaDepsFile root = do
     Just depsFile -> do
       manualDeps <- readFoundDeps depsFile
       pure $ Just manualDeps
+
 readFoundDeps :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundDepsFile -> m ManualDependencies
 readFoundDeps (ManualJSON path) = readContentsJson path
 readFoundDeps (ManualYaml path) = readContentsYaml path
@@ -168,6 +169,7 @@ toSourceUnit ::
 toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendoredDepsOptions = do
   -- If the file exists and we have no dependencies to report, that's a failure.
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
+
   archiveLocators <- case (maybeApiOpts, NE.nonEmpty vendoredDependencies) of
     (Just apiOpts, Just vdeps) -> NE.toList <$> runFossaApiClient apiOpts (scanAndUpload root vdeps vendoredDepsOptions)
     (Nothing, Just vdeps) -> pure $ noSourceUnits $ NE.toList vdeps
@@ -455,13 +457,12 @@ instance FromJSON ReferencedDependency where
       parseOS :: Object -> Parser Text
       parseOS obj = do
         os <- requiredFieldMsg "os" $ obj .: "os"
-        unless (toLower os `elem` supportedOSs)
-          $ fail
-            . toString
-          $ "Provided os: "
-            <> (toLower os)
-            <> " is not supported! Please provide oneOf: "
-            <> Text.intercalate ", " supportedOSs
+        unless (toLower os `elem` supportedOSs) $
+          fail . toString $
+            "Provided os: "
+              <> (toLower os)
+              <> " is not supported! Please provide oneOf: "
+              <> Text.intercalate ", " supportedOSs
         pure os
 
       requiredFieldMsg :: String -> Parser a -> Parser a
@@ -499,8 +500,7 @@ instance FromJSON CustomDependency where
       <$> (obj `neText` "name")
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "license")
-      <*> obj
-        .:? "metadata"
+      <*> obj .:? "metadata"
       <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
 
 instance FromJSON RemoteDependency where
@@ -509,8 +509,7 @@ instance FromJSON RemoteDependency where
       <$> (obj `neText` "name")
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "url")
-      <*> obj
-        .:? "metadata"
+      <*> obj .:? "metadata"
       <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
 
 validateRemoteDep :: (Has Diagnostics sig m) => RemoteDependency -> Organization -> m RemoteDependency
@@ -562,10 +561,8 @@ instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
 instance FromJSON DependencyMetadata where
   parseJSON = withObject "metadata" $ \obj ->
     DependencyMetadata
-      <$> obj
-        .:? "description"
-      <*> obj
-        .:? "homepage"
+      <$> obj .:? "description"
+      <*> obj .:? "homepage"
       <* forbidMembers "metadata" ["url"] obj
 
 -- Parse supported dependency types into their respective type or return Nothing.

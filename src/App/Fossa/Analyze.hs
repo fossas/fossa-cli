@@ -254,6 +254,7 @@ analyze ::
   m Aeson.Value
 analyze cfg = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
+
   let maybeApiOpts = case destination of
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
@@ -272,12 +273,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
-  vsiResults <- Diag.errorBoundaryIO
-    . diagToDebug
-    $ Diag.context "analyze-vsi"
-      . runStickyLogger SevInfo
-      . runFinally
-    $ do
+  vsiResults <- Diag.errorBoundaryIO . diagToDebug $
+    Diag.context "analyze-vsi" . runStickyLogger SevInfo . runFinally $ do
       let shouldRunVSI = fromFlag Config.VSIAnalysis $ Config.vsiAnalysisEnabled $ Config.vsiOptions cfg
       case (shouldRunVSI, maybeApiOpts) of
         (True, Just apiOpts') ->
@@ -288,29 +285,24 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     Diag.errorBoundaryIO
       . diagToDebug
       . runReader filters
-      $ Diag.context "discover-dynamic-linking"
-        . doAnalyzeDynamicLinkedBinary basedir
-        . Config.dynamicLinkingTarget
+      $ Diag.context "discover-dynamic-linking" . doAnalyzeDynamicLinkedBinary basedir . Config.dynamicLinkingTarget
       $ Config.vsiOptions cfg
   binarySearchResults <-
-    Diag.errorBoundaryIO
-      . diagToDebug
-      $ Diag.context "discover-binaries"
-      $ if (fromFlag BinaryDiscovery $ Config.binaryDiscoveryEnabled $ Config.vsiOptions cfg)
-        then analyzeDiscoverBinaries basedir filters
-        else pure Nothing
+    Diag.errorBoundaryIO . diagToDebug $
+      Diag.context "discover-binaries" $
+        if (fromFlag BinaryDiscovery $ Config.binaryDiscoveryEnabled $ Config.vsiOptions cfg)
+          then analyzeDiscoverBinaries basedir filters
+          else pure Nothing
   manualSrcUnits <-
-    Diag.errorBoundaryIO
-      . diagToDebug
-      $ if filterIsVSIOnly filters
+    Diag.errorBoundaryIO . diagToDebug $
+      if filterIsVSIOnly filters
         then do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure Nothing
         else do Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsPath maybeApiOpts vendoredDepsOptions
   maybeLernieResults <-
-    Diag.errorBoundaryIO
-      . diagToDebug
-      $ if filterIsVSIOnly filters
+    Diag.errorBoundaryIO . diagToDebug $
+      if filterIsVSIOnly filters
         then do
           logInfo "Running in VSI only mode, skipping keyword search and custom-license search"
           pure Nothing
@@ -355,10 +347,9 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       $ do
         runAnalyzers filters basedir Nothing
         when (fromFlag UnpackArchives $ Config.unpackArchives cfg) $
-          forkTask $
-            do
-              res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (runAnalyzers filters) basedir ancestryDirect
-              Diag.withResult SevError SevWarn res (const (pure ()))
+          forkTask $ do
+            res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (runAnalyzers filters) basedir ancestryDirect
+            Diag.withResult SevError SevWarn res (const (pure ()))
 
   let projectResults = mapMaybe toProjectResult projectScans
   let filteredProjects = mapMaybe toProjectResult projectScans
