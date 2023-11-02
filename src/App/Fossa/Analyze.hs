@@ -324,9 +324,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   traverse_ (Diag.flushLogs SevError SevDebug) [maybeLernieResults]
 
   maybeFirstPartyScanResults <-
-    Diag.errorBoundaryIO
-      . diagToDebug
-      $ if firstPartyScansFlag cfg == FirstPartyScansOffFromFlag
+    Diag.errorBoundaryIO . diagToDebug $
+      if firstPartyScansFlag cfg == FirstPartyScansOffFromFlag
         then do
           logInfo "first party scans forced off by the --experimental-block-first-party-scans flag. Skipping first party scans"
           pure Nothing
