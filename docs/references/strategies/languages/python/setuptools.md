@@ -38,7 +38,7 @@ scans for its `install_requires=[...]` attributes, similar to `setup.py`. If bot
 from both files.
 
 [setup.cfg docs]: https://setuptools.pypa.io/en/latest/userguide/declarative_config.html
-[requirements-file-format]: https://pip.pypa.io/en/stable/cli/pip_install/#requirements-file-format
+[requirements-file-format]: https://pip.pypa.io/en/stable/reference/requirements-file-format/
 [pep-508]: https://www.python.org/dev/peps/pep-0508/
 
 ## Limitations

@@ -33,7 +33,7 @@ import Network.HTTP.Client (
   getUri,
   httpLbs,
  )
-import Network.HTTP.Types (ResponseHeaders, hAccept, hContentType, ok200)
+import Network.HTTP.Types (ResponseHeaders, hAccept, hContentType, ok200, status400, status404)
 import Network.HTTP.Types.Header (HeaderName)
 import Network.URI (URI)
 
@@ -48,7 +48,7 @@ logHttp req manager = do
     summarizeRequest :: Doc AnsiStyle
     summarizeRequest = pretty $ "Requesting: " <> show (method req) <> " " <> show (getUri req)
 
-    summarizeResponse :: Response a -> Doc AnsiStyle
+    summarizeResponse :: Response ByteStringLazy.ByteString -> Doc AnsiStyle
     summarizeResponse r =
       pretty $
         "Received: "
@@ -56,6 +56,13 @@ logHttp req manager = do
           <> " (Content-Type:"
           <> show (getContentType . responseHeaders $ r)
           <> ")"
+          <> (errResponseBody r)
+
+    errResponseBody :: Response ByteStringLazy.ByteString -> String
+    errResponseBody r =
+      if (responseStatus r == status400 || responseStatus r == status404)
+        then " Content: " <> show (responseBody r)
+        else ""
 
 -- | Throws Diagnostics Error for Api Errors, and unexpected responses.
 fromResponse :: Has Diagnostics sig m => Response ByteStringLazy.ByteString -> m (Response ByteStringLazy.ByteString)

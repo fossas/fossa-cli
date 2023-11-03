@@ -16,7 +16,8 @@ module App.Fossa.ManualDeps (
   findFossaDepsFile,
   readFoundDeps,
   getScanCfg,
-) where
+)
+where
 
 import App.Fossa.ArchiveUploader (archiveUploadSourceUnit)
 import App.Fossa.Config.Analyze (
@@ -185,12 +186,13 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
     Nothing -> pure remoteDependencies
 
   let renderedPath = toText root
-      referenceLocators = refToLocator <$> referencedDependencies
+      referenceLocators = locatorDependencies ++ (refToLocator <$> referencedDependencies)
       additional = toAdditionalData (NE.nonEmpty customDependencies) (NE.nonEmpty rdeps)
       build = toBuildData <$> NE.nonEmpty (referenceLocators <> archiveLocators)
       originPath = case depsFile of
         (ManualJSON path) -> tryMakeRelative root path
         (ManualYaml path) -> tryMakeRelative root path
+
   pure $
     SourceUnit
       { sourceUnitName = renderedPath
@@ -327,6 +329,7 @@ hasNoDeps ManualDependencies{..} =
     && null customDependencies
     && null vendoredDependencies
     && null remoteDependencies
+    && null locatorDependencies
 
 -- TODO: Change these to Maybe NonEmpty
 data ManualDependencies = ManualDependencies
@@ -334,6 +337,7 @@ data ManualDependencies = ManualDependencies
   , customDependencies :: [CustomDependency]
   , vendoredDependencies :: [VendoredDependency]
   , remoteDependencies :: [RemoteDependency]
+  , locatorDependencies :: [Locator]
   }
   deriving (Eq, Ord, Show)
 
@@ -390,6 +394,7 @@ instance FromJSON ManualDependencies where
       <*> (obj .:? "custom-dependencies" .!= [])
       <*> (obj .:? "vendored-dependencies" .!= [])
       <*> (obj .:? "remote-dependencies" .!= [])
+      <*> (obj .:? "locator-dependencies" .!= [])
     where
       isMissingOr1 :: Maybe Int -> Parser ()
       isMissingOr1 (Just x) | x /= 1 = fail $ "Invalid fossa-deps version: " <> show x
@@ -457,12 +462,13 @@ instance FromJSON ReferencedDependency where
       parseOS :: Object -> Parser Text
       parseOS obj = do
         os <- requiredFieldMsg "os" $ obj .: "os"
-        unless (toLower os `elem` supportedOSs) $
-          fail . toString $
-            "Provided os: "
-              <> (toLower os)
-              <> " is not supported! Please provide oneOf: "
-              <> Text.intercalate ", " supportedOSs
+        unless (toLower os `elem` supportedOSs)
+          $ fail
+            . toString
+          $ "Provided os: "
+            <> (toLower os)
+            <> " is not supported! Please provide oneOf: "
+            <> Text.intercalate ", " supportedOSs
         pure os
 
       requiredFieldMsg :: String -> Parser a -> Parser a
@@ -500,7 +506,8 @@ instance FromJSON CustomDependency where
       <$> (obj `neText` "name")
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "license")
-      <*> obj .:? "metadata"
+      <*> obj
+        .:? "metadata"
       <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
 
 instance FromJSON RemoteDependency where
@@ -509,7 +516,8 @@ instance FromJSON RemoteDependency where
       <$> (obj `neText` "name")
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "url")
-      <*> obj .:? "metadata"
+      <*> obj
+        .:? "metadata"
       <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
 
 validateRemoteDep :: (Has Diagnostics sig m) => RemoteDependency -> Organization -> m RemoteDependency
@@ -537,6 +545,7 @@ validateRemoteDep r org =
     maxUrlRevLength = maxLocatorLength - Text.length requiredChars
 
 newtype RemoteDepLengthIsGtThanAllowed = RemoteDepLengthIsGtThanAllowed (RemoteDependency, Int)
+
 instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
   renderDiagnostic (RemoteDepLengthIsGtThanAllowed (r, maxLen)) =
     vsep
@@ -561,8 +570,10 @@ instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
 instance FromJSON DependencyMetadata where
   parseJSON = withObject "metadata" $ \obj ->
     DependencyMetadata
-      <$> obj .:? "description"
-      <*> obj .:? "homepage"
+      <$> obj
+        .:? "description"
+      <*> obj
+        .:? "homepage"
       <* forbidMembers "metadata" ["url"] obj
 
 -- Parse supported dependency types into their respective type or return Nothing.

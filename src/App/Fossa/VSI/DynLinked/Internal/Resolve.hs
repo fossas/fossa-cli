@@ -53,7 +53,7 @@ toSourceUnit root distro dependencies = do
   binaries <- traverse (analyzeSingleBinary root) unresolved
 
   let project = toProject root . Graphing.directs $ map (toDependency distro) resolved
-  let unit = Srclib.toSourceUnit False project
+  let unit = Srclib.projectToSourceUnit False project
   pure $ unit{additionalData = fmap toDepData (Just binaries)}
   where
     toDepData :: [SourceUserDefDep] -> AdditionalDepData

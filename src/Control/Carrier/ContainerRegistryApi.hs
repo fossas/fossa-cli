@@ -259,7 +259,7 @@ exportBlob manager imgSrc dir (digest, isGzip, targetFilename) = do
 
   -- Prepare request with necessary authorization
   req <- blobEndpoint imgSrc'
-  token <- getAuthToken (registryCred imgSrc) req manager =<< getToken ctx
+  token <- getAuthToken (registryCred imgSrc) req manager Nothing =<< getToken ctx
   let req' = applyAuthToken token req
 
   -- Download image artifact

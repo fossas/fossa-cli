@@ -4,6 +4,7 @@ module App.Fossa.Config.ListTargets (
   mkSubCommand,
   ListTargetsCliOpts,
   ListTargetsConfig (..),
+  ListTargetOutputFormat (..),
 ) where
 
 import App.Fossa.Config.Analyze (
@@ -28,10 +29,30 @@ import App.Types (BaseDir)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
+import Data.Maybe (fromMaybe)
+import Data.String.Conversion (toText)
+import Data.Text (strip, toLower)
 import Effect.Logger (Has, Logger, Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Options.Applicative (InfoMod, Parser, progDesc)
+import Options.Applicative (InfoMod, Parser, ReadM, eitherReader, help, long, option, optional, progDesc)
+
+data ListTargetOutputFormat
+  = Legacy
+  | NdJSON
+  | Text
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ListTargetOutputFormat where
+  toEncoding = genericToEncoding defaultOptions
+
+parseListTargetOutput :: ReadM ListTargetOutputFormat
+parseListTargetOutput = eitherReader $ \scope ->
+  case toLower . strip . toText $ scope of
+    "legacy" -> Right Legacy
+    "ndjson" -> Right NdJSON
+    "text" -> Right Text
+    _ -> Left "Failed to parse format, expected one of: legacy, ndjson, or text"
 
 mkSubCommand :: (ListTargetsConfig -> EffStack ()) -> SubCommand ListTargetsCliOpts ListTargetsConfig
 mkSubCommand = SubCommand "list-targets" listTargetsInfo parser loadConfig mergeOpts
@@ -50,7 +71,17 @@ listTargetsInfo :: InfoMod a
 listTargetsInfo = progDesc "List available analysis-targets in a directory (projects and sub-projects)"
 
 parser :: Parser ListTargetsCliOpts
-parser = ListTargetsCliOpts <$> commonOpts <*> baseDirArg
+parser =
+  ListTargetsCliOpts
+    <$> commonOpts
+    <*> baseDirArg
+    <*> optional
+      ( option
+          parseListTargetOutput
+          ( long "format"
+              <> help "output format to use: legacy, ndjson, text (default: legacy)"
+          )
+      )
 
 mergeOpts ::
   ( Has Diagnostics sig m
@@ -64,9 +95,12 @@ mergeOpts ::
 mergeOpts cfgfile _envvars ListTargetsCliOpts{..} = do
   let basedir = collectBaseDir cliBaseDir
       experimentalPrefs = collectExperimental cfgfile
+      outputFmt = fromMaybe Legacy cliListTargetOutputFormat
+
   ListTargetsConfig
     <$> basedir
     <*> pure experimentalPrefs
+    <*> pure outputFmt
 
 collectExperimental :: Maybe ConfigFile -> ExperimentalAnalyzeConfig
 collectExperimental maybeCfg =
@@ -80,6 +114,7 @@ collectExperimental maybeCfg =
 data ListTargetsCliOpts = ListTargetsCliOpts
   { commons :: CommonOpts
   , cliBaseDir :: FilePath
+  , cliListTargetOutputFormat :: Maybe ListTargetOutputFormat
   }
 
 instance GetSeverity ListTargetsCliOpts where
@@ -91,6 +126,7 @@ instance GetCommonOpts ListTargetsCliOpts where
 data ListTargetsConfig = ListTargetsConfig
   { baseDir :: BaseDir
   , experimental :: ExperimentalAnalyzeConfig
+  , listTargetOutputFormat :: ListTargetOutputFormat
   }
   deriving (Show, Generic)
 

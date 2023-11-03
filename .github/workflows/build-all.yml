@@ -248,11 +248,14 @@ jobs:
         echo $GITHUB_REF_TYPE
         echo $GITHUB_SHA
         echo ${GITHUB_SHA:0:12}
-        echo $(Linux-binaries/fossa --version)
-        echo "fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.0)"
+
+        VERSION=$(echo $(Linux-binaries/fossa --version))
+        EXPECTED="fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.4)"
+        echo " VERSION: $VERSION"
+        echo "EXPECTED: $EXPECTED"
 
         [ "$GITHUB_REF_TYPE" = "tag" ] && echo "Ref type OK"
-        [ "$(Linux-binaries/fossa --version)" = "fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.0)" ] && echo "CLI version OK"
+        [ "$VERSION" = "$EXPECTED" ] && echo "CLI version OK"
 
     - name: Install Cosign
       if: ${{ github.ref_type == 'tag' }}

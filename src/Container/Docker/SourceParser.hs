@@ -86,6 +86,8 @@ data RepoReference
   deriving (Eq, Ord)
 
 newtype RepoTag = RepoTag Text deriving (Show, Eq, Ord)
+
+-- TODO: Rename to Digest, as it is more representative
 newtype RepoDigest = RepoDigest Text deriving (Show, Eq, Ord)
 
 instance Show RepoReference where

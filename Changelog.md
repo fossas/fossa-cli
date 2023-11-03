@@ -1,5 +1,27 @@
 # FOSSA CLI Changelog
 
+## v3.8.21
+
+- install-latest.sh: Fixed a bug where install-latest.sh would result in a broken binary when run on some versions of macOS ([#1317](https://github.com/fossas/fossa-cli/pull/1317))
+
+## v3.8.20
+- container scanning: Fixes registry network calls, to ensure `fossa-cli` uses `Accept` header on `HEAD` network calls. ([#1309](https://github.com/fossas/fossa-cli/pull/1309))
+
+## v3.8.19
+
+- container scanning: fixes a defect which led to incorrect `NotTarFormat` errors when parsing container layer. ([#1305](https://github.com/fossas/fossa-cli/pull/1305))
+- `--detect-vendored`: fix a defect which caused the `--detect-vendored` flag to fail on Windows ([#1300](https://github.com/fossas/fossa-cli/pull/1300))
+
+## v3.8.18
+
+- golang: Updates go.mod parser to be compatible with golang v1.21. ([#1304](https://github.com/fossas/fossa-cli/pull/1304))
+- `fossa list-targets`: list-target command supports `--format` option with: `ndjson`, `text`, and `legacy`. ([#1296](https://github.com/fossas/fossa-cli/pull/1296))
+
+## v3.8.17
+
+Integrates FOSSA snippet scanning into the main application.
+For more details and a quick start guide, see [the subcommand reference](./docs/references/subcommands/snippets.md).
+
 ## v3.8.16
 
 Delivers another update to the `millhone` early preview of FOSSA snippet scanning:
