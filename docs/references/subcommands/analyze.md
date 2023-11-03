@@ -58,6 +58,16 @@ fossa analyze --json
 {"project":{"name":"custom@new-project","branch":"master","revision":"123","url":"https://app.fossa.com/projects/custom+<org-id>/new-project/refs/branch/master/123","id":"custom+<org-id>/new-project$123"}}
 ```
 
+### Running a specific fossa-deps file
+
+The `--fossa-deps-config` flag can be used to specify the `fossa-deps` configuration that you want to use. The name of the file is arbitrary.
+
+See the [fossa-deps documentation](../files/fossa-deps.md) for configuration.
+
+```sh
+fossa analyze --fossa-deps-config /path/to/file
+```
+
 ### Vendored Dependencies
 
 The Vendored Dependencies feature allows you to scan for licenses directly in your code. For more information, please see the [Vendored Dependencies documentation](../../features/vendored-dependencies.md).
