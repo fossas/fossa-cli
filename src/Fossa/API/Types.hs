@@ -23,6 +23,8 @@ module Fossa.API.Types (
   Project (..),
   RevisionDependencyCache (..),
   RevisionDependencyCacheStatus (..),
+  PathDependencyUpload(..),
+  UploadedPathDependencyLocator(..),
   SignedURL (..),
   UploadResponse (..),
   useApiOpts,
@@ -104,6 +106,30 @@ instance ToJSON ApiOpts where
 
 defaultApiPollDelay :: Duration
 defaultApiPollDelay = Seconds 8
+
+data PathDependencyUpload = PathDependencyUpload 
+  { pdSignedURL :: SignedURL,
+    pdLocator :: UploadedPathDependencyLocator
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON PathDependencyUpload where
+  parseJSON = withObject "PathDependencyUpload" $ \obj -> do
+    signedUrl <- obj .: "signedUrl"
+    locator <- obj .: "locator"
+    pure $ PathDependencyUpload (SignedURL signedUrl) locator
+
+data UploadedPathDependencyLocator = UploadedPathDependencyLocator
+  { updlName :: Text,
+    updlVersion :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON UploadedPathDependencyLocator where
+  parseJSON = withObject "UploadedPathDependencyLocator" $ \obj ->
+    UploadedPathDependencyLocator 
+      <$> obj .: "name"
+      <*> obj .: "version"
 
 newtype SignedURL = SignedURL
   { signedURL :: Text
@@ -471,6 +497,7 @@ data Organization = Organization
   , orgSupportsDependenciesCachePolling :: Bool
   , orgRequiresFullFileUploads :: Bool
   , orgDefaultsToFirstPartyScans :: Bool
+  , orgSupportsPathDependencyScans :: Bool
   , orgSupportsFirstPartyScans :: Bool
   , orgCustomLicenseScanConfigs :: [GrepEntry]
   }
@@ -489,6 +516,7 @@ blankOrganization =
     , orgSupportsDependenciesCachePolling = True
     , orgRequiresFullFileUploads = False
     , orgDefaultsToFirstPartyScans = False
+    , orgSupportsPathDependencyScans = False
     , orgSupportsFirstPartyScans = True
     , orgCustomLicenseScanConfigs = []
     }
@@ -524,6 +552,9 @@ instance FromJSON Organization where
         .!= False
       <*> obj
         .:? "defaultToFirstPartyScans"
+        .!= False
+      <*> obj
+        .:? "supportsPathDependency"
         .!= False
       <*> obj
         .:? "supportsFirstPartyScans"

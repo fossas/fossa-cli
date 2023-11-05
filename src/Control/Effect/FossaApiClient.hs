@@ -22,7 +22,7 @@ module Control.Effect.FossaApiClient (
   getAnalyzedRevisions,
   getSignedFirstPartyScanUrl,
   getSignedLicenseScanUrl,
-  getSignedLicenseScanUrlForPathDependency,
+  uploadPathDependencyScan,
   getSignedUploadUrl,
   getVsiInferences,
   getVsiScanAnalysisStatus,
@@ -66,7 +66,7 @@ import Fossa.API.Types (
   Project,
   RevisionDependencyCache,
   SignedURL,
-  UploadResponse,
+  UploadResponse, PathDependencyUpload,
  )
 import Path (File, Path, Rel)
 import Srclib.Types (FullSourceUnit, LicenseSourceUnit, Locator, SourceUnit)
@@ -87,7 +87,7 @@ data FossaApiClientF a where
   CompleteVsiScan :: VSI.ScanID -> FossaApiClientF ()
   CreateVsiScan :: ProjectRevision -> FossaApiClientF VSI.ScanID
   FinalizeLicenseScan :: ArchiveComponents -> FossaApiClientF ()
-  FinalizeLicenseScanForPathDependency :: ArchiveComponents -> FossaApiClientF ()
+  FinalizeLicenseScanForPathDependency :: [Locator] -> Bool -> FossaApiClientF ()
   GetApiOpts :: FossaApiClientF ApiOpts
   GetAttribution :: ProjectRevision -> ReportOutputFormat -> FossaApiClientF Text
   GetIssues :: ProjectRevision -> Maybe DiffRevision -> FossaApiClientF Issues
@@ -99,7 +99,7 @@ data FossaApiClientF a where
   GetAnalyzedRevisions :: NonEmpty VendoredDependency -> FossaApiClientF [Text]
   GetSignedFirstPartyScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
-  GetSignedLicenseScanUrlForPathDependency :: PackageRevision -> FossaApiClientF SignedURL
+  GetPathDependencyScanUrl :: PackageRevision -> FossaApiClientF PathDependencyUpload
   GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetVsiInferences :: VSI.ScanID -> FossaApiClientF VSI.VsiExportedInferencesBody
   GetVsiScanAnalysisStatus :: VSI.ScanID -> FossaApiClientF VSI.AnalysisStatus
@@ -200,14 +200,14 @@ getSignedFirstPartyScanUrl = sendSimple . GetSignedFirstPartyScanUrl
 getSignedLicenseScanUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
 getSignedLicenseScanUrl = sendSimple . GetSignedLicenseScanUrl
 
-getSignedLicenseScanUrlForPathDependency :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
-getSignedLicenseScanUrlForPathDependency = sendSimple . GetSignedLicenseScanUrlForPathDependency
+uploadPathDependencyScan :: Has FossaApiClient sig m => PackageRevision -> m PathDependencyUpload
+uploadPathDependencyScan = sendSimple . GetPathDependencyScanUrl
 
 finalizeLicenseScan :: Has FossaApiClient sig m => ArchiveComponents -> m ()
 finalizeLicenseScan = sendSimple . FinalizeLicenseScan
 
-finalizeLicenseScanForPathDependency :: Has FossaApiClient sig m => ArchiveComponents -> m ()
-finalizeLicenseScanForPathDependency = sendSimple . FinalizeLicenseScanForPathDependency
+finalizeLicenseScanForPathDependency :: Has FossaApiClient sig m => [Locator] -> Bool -> m ()
+finalizeLicenseScanForPathDependency locators forceRebuild = sendSimple $ FinalizeLicenseScanForPathDependency locators forceRebuild
 
 uploadLicenseScanResult :: Has FossaApiClient sig m => SignedURL -> LicenseSourceUnit -> m ()
 uploadLicenseScanResult signedUrl licenseSourceUnit = sendSimple (UploadLicenseScanResult signedUrl licenseSourceUnit)

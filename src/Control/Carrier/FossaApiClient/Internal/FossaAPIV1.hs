@@ -37,6 +37,8 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   renderLocatorUrl,
   getEndpointVersion,
   firstPartyScanResultUpload,
+  getUploadURLForPathDependency,
+  finalizePathDependencyScan,
 ) where
 
 import App.Docs (fossaSslCertDocsUrl)
@@ -126,7 +128,7 @@ import Fossa.API.Types (
   RevisionDependencyCache,
   SignedURL (signedURL),
   UploadResponse,
-  useApiOpts,
+  useApiOpts, PathDependencyUpload,
  )
 import Network.HTTP.Client (responseStatus)
 import Network.HTTP.Client qualified as C
@@ -1402,3 +1404,42 @@ getEndpointVersion apiOpts = fossaReq $ do
   case parseXML (decodeUtf8 body) of
     Left err -> fatalText (xmlErrorPretty err)
     Right (appManifest :: AppManifest) -> pure $ endpointAppVersion appManifest
+
+
+---- Path Dependency
+
+signedLicenseScanPathDependencyURLEndpoint :: Url 'Https -> Url 'Https
+signedLicenseScanPathDependencyURLEndpoint baseUrl = baseUrl /: "api" /: "cli" /: "path_dependency" /: "upload"
+
+getUploadURLForPathDependency ::
+  (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  Text ->
+  Text ->
+  m PathDependencyUpload
+getUploadURLForPathDependency apiOpts revision path = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts = "path" =: path <> "version" =: revision
+
+  response <-
+    context ("Retrieving a signed S3 URL for license scan results of " <> path) $
+      req GET (signedLicenseScanPathDependencyURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
+  pure (responseBody response)
+
+pathDependencyFinalizeUrl :: Url 'Https -> Url 'Https
+pathDependencyFinalizeUrl baseUrl = baseUrl /: "api" /: "cli" /: "path_dependency" /: "finalize"
+
+finalizePathDependencyScan ::
+  (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  [Locator] ->
+  Bool ->
+  m (Maybe ())
+finalizePathDependencyScan apiOpts locators forceRebuild = runEmpty $
+  fossaReqAllow401 $ do
+    (baseUrl, baseOpts) <- useApiOpts apiOpts
+    _ <-
+      context "Queuing a build for all license scan uploads" $
+        req POST (pathDependencyFinalizeUrl baseUrl) (ReqBodyJson locators) ignoreResponse (baseOpts)
+    pure ()

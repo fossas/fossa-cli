@@ -125,8 +125,10 @@ data DepType
     CarthageType
   | -- | A Swift Package Dependency -- effectively a "git" dependency. Name is repo path and version is tag/branch/hash
     SwiftType
-  | -- | Path Type -- effectively any dependency which is referred from filesystem.
-    PathType
+  | -- | Unresolved Path Type -- effectively any dependency which is referred from filesystem.
+    UnresolvedPathType
+  | -- | Path Type
+    PathType -- effectively any dependency which have been license scanned from filesystem. 
   deriving (Eq, Ord, Show, Generic, Enum, Bounded)
 
 data VerConstraint

@@ -116,7 +116,7 @@ isSupportedType Dependency{dependencyType} =
   dependencyType /= SubprojectType
     && dependencyType /= GooglesourceType
     && dependencyType /= ConanType
-    -- && dependencyType /= PathType
+    && dependencyType /= UnresolvedPathType
 
 toLocator :: Dependency -> Locator
 toLocator dep =
@@ -171,6 +171,7 @@ depTypeToFetcher = \case
   UserType -> "user"
   PubType -> "pub"
   SwiftType -> "swift"
+  UnresolvedPathType -> "upath"
   PathType -> "path"
 
 -- | GooglesourceType and SubprojectType are not supported with this function, since they're ambiguous.
