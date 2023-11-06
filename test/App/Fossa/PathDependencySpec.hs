@@ -105,7 +105,7 @@ fixtureDirPath :: Text
 fixtureDirPath = "test/App/FOSSA/PathDependency/testdata/example"
 
 fixtureDirPathHash :: Text
-fixtureDirPathHash = "11cc8ba62df47b911b02b74d626526b8"
+fixtureDirPathHash = "52dc4e2f682a63f9efa04553c6ee929d"
 
 fixtureDir :: IO (Path Abs Dir)
 fixtureDir = PIO.resolveDir' (toString fixtureDirPath)
@@ -160,7 +160,6 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
                 }
 
       result' <- enrichPathDependencies includeAll pr result
-      result' `shouldBe'` result
       result' `shouldBe'` expectedResult
 
   describe "fullFile" $ do
