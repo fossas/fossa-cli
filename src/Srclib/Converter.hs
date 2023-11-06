@@ -202,4 +202,5 @@ fetcherToDepType fetcher | depTypeToFetcher RPMType == fetcher = Just RPMType
 fetcherToDepType fetcher | depTypeToFetcher URLType == fetcher = Just URLType
 fetcherToDepType fetcher | depTypeToFetcher UserType == fetcher = Just UserType
 fetcherToDepType fetcher | depTypeToFetcher PubType == fetcher = Just PubType
+fetcherToDepType fetcher | depTypeToFetcher PathType == fetcher = Just PathType
 fetcherToDepType _ = Nothing

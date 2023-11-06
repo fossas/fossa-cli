@@ -21,6 +21,7 @@ import Control.Monad (void)
 import Data.List.NonEmpty qualified as NE
 import Fossa.API.Types (ApiOpts, ArchiveComponents, SignedURL, PathDependencyUpload)
 import Srclib.Types (FullSourceUnit, LicenseSourceUnit, Locator)
+import App.Types (FullFileUploads, ProjectRevision)
 
 getSignedFirstPartyScanUrl ::
   ( Has (Lift IO) sig m
@@ -54,11 +55,10 @@ finalizeLicenseScan ::
   , Has (Reader ApiOpts) sig m
   ) =>
   ArchiveComponents ->
-  Bool ->
   m ()
-finalizeLicenseScan components isPathDependency = do
+finalizeLicenseScan components = do
   apiOpts <- ask
-  void $ API.licenseScanFinalize apiOpts components isPathDependency
+  void $ API.licenseScanFinalize apiOpts components
 
 uploadLicenseScanResult ::
   ( Has (Lift IO) sig m
@@ -87,10 +87,12 @@ uploadPathDependencyScanResult ::
   , Has (Reader ApiOpts) sig m
   ) =>
   PackageRevision ->
+  ProjectRevision ->
+  FullFileUploads -> 
   m PathDependencyUpload
-uploadPathDependencyScanResult PackageRevision{..} = do
+uploadPathDependencyScanResult PackageRevision{..} projectRevision fullFileUpload = do
   apiOpts <- ask
-  API.getUploadURLForPathDependency apiOpts packageName packageVersion
+  API.getUploadURLForPathDependency apiOpts packageName packageVersion projectRevision fullFileUpload
 
 finalizePathDependencyScan :: 
   ( Has (Lift IO) sig m

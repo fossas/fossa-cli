@@ -38,7 +38,7 @@ import Data.Text (Text, isPrefixOf)
 import Data.Void (Void)
 import DepTypes (
   DepEnvironment (..),
-  DepType (GoType, PathType),
+  DepType (GoType, UnresolvedPathType),
   Dependency (..),
   VerConstraint (CEq),
  )
@@ -302,7 +302,7 @@ toGoModVersion modVersion = case parse (parsePackageVersion lexeme) "go module v
 modToDep :: GoModule -> Set.Set DepEnvironment -> Dependency
 modToDep goMod labels =
     Dependency
-      { dependencyType = if isPathDep goMod then PathType else GoType
+      { dependencyType = if isPathDep goMod then UnresolvedPathType else GoType
       , dependencyName = pathOf goMod
       , dependencyVersion = toVerConstraint <$> (versionOf goMod)
       , dependencyLocations = []

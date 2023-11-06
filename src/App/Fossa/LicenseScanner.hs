@@ -97,6 +97,23 @@ instance ToDiagnostic LicenseScanErr where
 
 newtype ScannableArchive = ScannableArchive {scanFile :: Path Abs File} deriving (Eq, Ord, Show)
 
+runLicenseScanOnFile ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
+  ) =>
+  Text ->
+  Maybe LicenseScanPathFilters ->
+  FullFileUploads ->
+  Path Abs Dir ->
+  m [LicenseUnit]
+runLicenseScanOnFile pathPrefix licenseScanPathFilters fullFileUploads scanFile = do 
+  -- license scan the root directory
+  rootDirUnits <- withThemisAndIndex $ themisRunner pathPrefix licenseScanPathFilters fullFileUploads scanFile
+  -- when we scan multiple archives, we need to combine the results
+  pure $ combineLicenseUnits (rootDirUnits)
+
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m

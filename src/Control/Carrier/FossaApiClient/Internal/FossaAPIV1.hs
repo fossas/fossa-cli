@@ -128,7 +128,7 @@ import Fossa.API.Types (
   RevisionDependencyCache,
   SignedURL (signedURL),
   UploadResponse,
-  useApiOpts, PathDependencyUpload,
+  useApiOpts, PathDependencyUpload, PathDependencyUploadReq(..), PathDependencyFinalizeReq (..),
  )
 import Network.HTTP.Client (responseStatus)
 import Network.HTTP.Client qualified as C
@@ -891,13 +891,12 @@ licenseScanFinalize ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   ArchiveComponents ->
-  Bool -> 
   m (Maybe ())
-licenseScanFinalize apiOpts archiveProjects isPathDependency = runEmpty $
+licenseScanFinalize apiOpts archiveProjects = runEmpty $
   fossaReqAllow401 $ do
     (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-    let opts = "dependency" =: True <> "rawLicenseScan" =: True <> "isPathDependency" =: isPathDependency
+    let opts = "dependency" =: True <> "rawLicenseScan" =: True
 
     _ <-
       context "Queuing a build for all license scan uploads" $
@@ -1416,15 +1415,16 @@ getUploadURLForPathDependency ::
   ApiOpts ->
   Text ->
   Text ->
+  ProjectRevision ->
+  FullFileUploads -> 
   m PathDependencyUpload
-getUploadURLForPathDependency apiOpts revision path = fossaReq $ do
+getUploadURLForPathDependency apiOpts path version ProjectRevision{..} fullFileUpload = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-
-  let opts = "path" =: path <> "version" =: revision
-
+  let projectLocator = Locator "custom" projectName (Just projectRevision)
+  let req' = PathDependencyUploadReq path version projectLocator fullFileUpload
   response <-
     context ("Retrieving a signed S3 URL for license scan results of " <> path) $
-      req GET (signedLicenseScanPathDependencyURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
+      req POST (signedLicenseScanPathDependencyURLEndpoint baseUrl) (ReqBodyJson req') jsonResponse baseOpts
   pure (responseBody response)
 
 pathDependencyFinalizeUrl :: Url 'Https -> Url 'Https
@@ -1439,7 +1439,8 @@ finalizePathDependencyScan ::
 finalizePathDependencyScan apiOpts locators forceRebuild = runEmpty $
   fossaReqAllow401 $ do
     (baseUrl, baseOpts) <- useApiOpts apiOpts
+    let req' = PathDependencyFinalizeReq locators forceRebuild
     _ <-
       context "Queuing a build for all license scan uploads" $
-        req POST (pathDependencyFinalizeUrl baseUrl) (ReqBodyJson locators) ignoreResponse (baseOpts)
+        req POST (pathDependencyFinalizeUrl baseUrl) (ReqBodyJson req') ignoreResponse (baseOpts)
     pure ()

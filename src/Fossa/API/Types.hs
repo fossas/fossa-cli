@@ -27,13 +27,15 @@ module Fossa.API.Types (
   UploadedPathDependencyLocator(..),
   SignedURL (..),
   UploadResponse (..),
+  PathDependencyUploadReq(..),
+  PathDependencyFinalizeReq(..),
   useApiOpts,
   defaultApiPollDelay,
   blankOrganization,
 ) where
 
 import App.Fossa.Lernie.Types (GrepEntry)
-import App.Types (FullFileUploads (..))
+import App.Types (FullFileUploads (..), fullFileUploadsToCliLicenseScanType)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, fatalText)
 import Control.Timeout (Duration (Seconds))
@@ -106,30 +108,6 @@ instance ToJSON ApiOpts where
 
 defaultApiPollDelay :: Duration
 defaultApiPollDelay = Seconds 8
-
-data PathDependencyUpload = PathDependencyUpload 
-  { pdSignedURL :: SignedURL,
-    pdLocator :: UploadedPathDependencyLocator
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON PathDependencyUpload where
-  parseJSON = withObject "PathDependencyUpload" $ \obj -> do
-    signedUrl <- obj .: "signedUrl"
-    locator <- obj .: "locator"
-    pure $ PathDependencyUpload (SignedURL signedUrl) locator
-
-data UploadedPathDependencyLocator = UploadedPathDependencyLocator
-  { updlName :: Text,
-    updlVersion :: Text
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON UploadedPathDependencyLocator where
-  parseJSON = withObject "UploadedPathDependencyLocator" $ \obj ->
-    UploadedPathDependencyLocator 
-      <$> obj .: "name"
-      <*> obj .: "version"
 
 newtype SignedURL = SignedURL
   { signedURL :: Text
@@ -792,3 +770,57 @@ useApiOpts opts = case useURI serverURI of
 
 authHeader :: ApiKey -> Option 'Https
 authHeader key = header "Authorization" (encodeUtf8 ("Bearer " <> unApiKey key))
+
+--- Path Dependency
+
+data PathDependencyUploadReq = PathDependencyUploadReq {
+    path :: Text,
+    version :: Text,
+    projectLocator :: Locator,
+    scanType :: FullFileUploads
+  }
+
+instance ToJSON PathDependencyUploadReq where
+  toJSON PathDependencyUploadReq{..} =
+    object
+      [ "path" .= path,
+        "version" .= version,
+        "projectLocator" .= projectLocator,
+        "scanType" .= fullFileUploadsToCliLicenseScanType scanType
+      ]
+
+data PathDependencyFinalizeReq = PathDependencyFinalizeReq {
+    locators :: [Locator],
+    pathDepForceRebuild :: Bool
+  }
+
+instance ToJSON PathDependencyFinalizeReq where
+  toJSON PathDependencyFinalizeReq{..} =
+    object
+      [ "locators" .= locators,
+        "forceRebuild" .= pathDepForceRebuild
+      ]
+
+data PathDependencyUpload = PathDependencyUpload 
+  { pdSignedURL :: SignedURL,
+    pdLocator :: UploadedPathDependencyLocator
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON PathDependencyUpload where
+  parseJSON = withObject "PathDependencyUpload" $ \obj -> do
+    signedUrl <- obj .: "signedUrl"
+    locator <- obj .: "locator"
+    pure $ PathDependencyUpload (SignedURL signedUrl) locator
+
+data UploadedPathDependencyLocator = UploadedPathDependencyLocator
+  { updlName :: Text,
+    updlVersion :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON UploadedPathDependencyLocator where
+  parseJSON = withObject "UploadedPathDependencyLocator" $ \obj ->
+    UploadedPathDependencyLocator 
+      <$> obj .: "name"
+      <*> obj .: "version"

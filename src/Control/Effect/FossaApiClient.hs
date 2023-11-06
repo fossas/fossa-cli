@@ -99,7 +99,7 @@ data FossaApiClientF a where
   GetAnalyzedRevisions :: NonEmpty VendoredDependency -> FossaApiClientF [Text]
   GetSignedFirstPartyScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
-  GetPathDependencyScanUrl :: PackageRevision -> FossaApiClientF PathDependencyUpload
+  GetPathDependencyScanUrl :: PackageRevision -> ProjectRevision -> FullFileUploads -> FossaApiClientF PathDependencyUpload
   GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetVsiInferences :: VSI.ScanID -> FossaApiClientF VSI.VsiExportedInferencesBody
   GetVsiScanAnalysisStatus :: VSI.ScanID -> FossaApiClientF VSI.AnalysisStatus
@@ -200,8 +200,8 @@ getSignedFirstPartyScanUrl = sendSimple . GetSignedFirstPartyScanUrl
 getSignedLicenseScanUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
 getSignedLicenseScanUrl = sendSimple . GetSignedLicenseScanUrl
 
-uploadPathDependencyScan :: Has FossaApiClient sig m => PackageRevision -> m PathDependencyUpload
-uploadPathDependencyScan = sendSimple . GetPathDependencyScanUrl
+uploadPathDependencyScan :: Has FossaApiClient sig m => PackageRevision -> ProjectRevision -> FullFileUploads -> m PathDependencyUpload
+uploadPathDependencyScan pkgRev projectRevision fullFileUpload = sendSimple $ GetPathDependencyScanUrl pkgRev projectRevision fullFileUpload
 
 finalizeLicenseScan :: Has FossaApiClient sig m => ArchiveComponents -> m ()
 finalizeLicenseScan = sendSimple . FinalizeLicenseScan

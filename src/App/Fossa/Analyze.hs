@@ -106,7 +106,7 @@ import Effect.Logger (
   Logger,
   Severity (..),
   logInfo,
-  logStdout,
+  logStdout, logDebug,
  )
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path, toFilePath)
@@ -371,7 +371,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     UploadScan apiOpts _ -> Diag.context "path-dependencies" 
       . runFossaApiClient apiOpts
       $ runStickyLogger SevInfo 
-      $ traverse (enrichPathDependencies includeAll) filteredProjects
+      $ traverse (enrichPathDependencies includeAll revision) filteredProjects
     _ -> pure filteredProjects
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
@@ -390,7 +390,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   -- If we find nothing but keyword search, we exit with an error, but explain that the error may be ignorable.
   -- We do not want to succeed, because nothing gets uploaded to the API for keyword searches, so `fossa test` will fail.
   -- So the solution is to still fail, but give a hopefully useful explanation that the error can be ignored if all you were expecting is keyword search results.
-  case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits licenseSourceUnits) of
+  case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectResults filteredProjects' additionalSourceUnits licenseSourceUnits) of
     (False, NoneDiscovered) -> Diag.fatal ErrNoProjectsDiscovered
     (True, NoneDiscovered) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
     (False, FilteredAll) -> Diag.fatal ErrFilteredAllProjects
@@ -405,6 +405,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           Diag.context "upload-results"
             . runFossaApiClient apiOpts
             $ do
+              logDebug . pretty $ show scanUnits
               locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits
               doAssertRevisionBinaries iatAssertion locator
 
