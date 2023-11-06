@@ -2,8 +2,6 @@ module Test.Effect (
   EffectStack,
   expectationFailure',
   expectFailure',
-  expectSuccess',
-  expectNonFatal',
   expectFatal',
   shouldBe',
   shouldBeSupersetOf',
