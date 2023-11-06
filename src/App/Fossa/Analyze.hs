@@ -106,7 +106,6 @@ import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
   Severity (..),
-  logDebug,
   logInfo,
   logStdout,
  )
@@ -364,9 +363,9 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       pure version
     _ -> pure Nothing
 
-  -- In our graph, we may have path+ dependencies
+  -- In our graph, we may have unresolved path dependencies
   -- If we are in output mode, do nothing. If we are in upload mode
-  -- license scan all path+ dependencies, and upload findings to Endpoint,
+  -- license scan all path dependencies, and upload findings to Endpoint,
   -- and queue a build for all path+ dependencies
   filteredProjects' <- case destination of
     UploadScan apiOpts _ ->

@@ -57,7 +57,7 @@ absPathOfSpec = describe "absPathOfSpec" $ do
   mkPathSpec cwd "Changelog.md" isAbsFile
 
 hashSpec :: Spec
-hashSpec = fdescribe "hash" $ do
+hashSpec = describe "hash" $ do
   emptyDir' <- runIO emptyDir
   emptyFile' <- runIO emptyFile
   fixtureDir' <- runIO fixtureDir
@@ -113,7 +113,7 @@ fixtureDir = PIO.resolveDir' (toString fixtureDirPath)
 -- Api
 
 enrichPathDependenciesSpec :: Spec
-enrichPathDependenciesSpec = fdescribe "enrichPathDependencies" $ do
+enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
   cwd <- runIO PIO.getCurrentDir
   let pr = Fixtures.projectRevision
   let includeAll = toFlag IncludeAll True

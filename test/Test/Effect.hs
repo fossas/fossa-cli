@@ -43,7 +43,7 @@ import Effect.Logger (IgnoreLoggerC, ignoreLogger, renderIt)
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
 import Path (Abs, Dir, Path, parseAbsDir, parseRelDir, (</>))
 import Path.IO (createDirIfMissing, removeDirRecur)
-import ResultUtil (assertOnSuccess, expectFailure, expectSuccess)
+import ResultUtil (expectFailure)
 import System.Directory (getTemporaryDirectory)
 import System.Random (randomIO)
 import Test.Hspec (
@@ -150,13 +150,7 @@ shouldBeSupersetOf' list sublist = sendIO $ shouldSatisfy (fromList list) $ isSu
 expectFailure' :: Has (Lift IO) sig m => Result a -> m ()
 expectFailure' res = sendIO $ expectFailure res
 
-expectSuccess' :: Has (Lift IO) sig m => Result a -> m ()
-expectSuccess' res = sendIO $ expectSuccess res
-
 -- | Succeeds if the action fails and fails otherwise.
 expectFatal' :: (Has Diagnostics sig m, Has (Lift IO) sig m) => m a -> m ()
 expectFatal' f = do
   errorBoundary f >>= expectFailure'
-
-expectNonFatal' :: (Has Diagnostics sig m, Has (Lift IO) sig m) => m a -> m ()
-expectNonFatal' f = errorBoundary f >>= expectSuccess'

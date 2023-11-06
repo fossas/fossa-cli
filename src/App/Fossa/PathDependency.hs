@@ -59,8 +59,9 @@ import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator)
 import System.FilePath (normalise)
 import Types (LicenseScanPathFilters)
 
--- | Updates 'ProjectResult' dependency graph, by updating path dependency,
--- as well as performing license scan and license scan result upload
+-- | Updates 'ProjectResult' dependency graph, by updating
+-- unresolved path dependency, as well as performing license
+-- scan and license scan result upload
 enrichPathDependencies ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -103,11 +104,9 @@ resolvePaths leaveUnfiltered projectRevision org baseDir graph = do
   let fullFile = FullFileUploads $ orgRequiresFullFileUploads org
   let maybePathDeps = NE.nonEmpty $ filter (isValidDep leaveUnfiltered) $ vertexList graph
   case maybePathDeps of
-    -- If there are no valid path dependencies
+    -- If there are no resolvable path dependencies
     -- we need to do nothing!
     Nothing -> pure graph
-    -- If there are valid unresolved path dependencies, we
-    -- scan only dependencies that have yet to be uploaded!
     Just pathDeps -> do
       -- 1. Get only unique dependencies, since we may have
       -- duplicate dependencies in the graph!
@@ -157,7 +156,6 @@ scanAndUpload ::
   m (Dependency, Maybe Dependency)
 scanAndUpload pathFilters fullFileUpload projectRevision (rawDep, resolvedPath, version) = context "Path Dependency" $ do
   maybeLicenseUnits <- recover scan
-  --  (rawDep,) <$> upload maybeLicenseUnits
   case maybeLicenseUnits of
     Nothing -> pure (rawDep, Nothing)
     Just licenseUnits -> (rawDep,) <$> upload licenseUnits
@@ -221,7 +219,7 @@ absPathOf baseDir relativeOrAbsPath = do
   case (dirExists, fileExists) of
     (True, _) -> pure $ ResolvedDir dir'
     (_, True) -> pure $ ResolvedFile file'
-    _ -> fatalText $ "Provided path: " <> relativeOrAbsPath <> " does not exist! " <> toText baseDir
+    _ -> fatalText $ "Provided path: " <> relativeOrAbsPath <> " could not be resolved!"
 
 metadataOf ::
   ( Has (Lift IO) sig m
