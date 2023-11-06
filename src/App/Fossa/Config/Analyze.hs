@@ -205,6 +205,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeForceFirstPartyScans :: Flag ForceFirstPartyScans
   , analyzeForceNoFirstPartyScans :: Flag ForceNoFirstPartyScans
   , analyzeIgnoreOrgWideCustomLicenseScanConfigs :: Flag IgnoreOrgWideCustomLicenseScanConfigs
+  , analyzeCustomFossaDepsFile :: Maybe FilePath
   }
   deriving (Eq, Ord, Show)
 
@@ -233,6 +234,7 @@ data AnalyzeConfig = AnalyzeConfig
   , overrideDynamicAnalysis :: OverrideDynamicAnalysisBinary
   , firstPartyScansFlag :: FirstPartyScansFlag
   , grepOptions :: GrepOptions
+  , customFossaDepsFile :: Maybe FilePath
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -283,6 +285,7 @@ cliParser =
     <*> flagOpt ForceFirstPartyScans (long "experimental-force-first-party-scans" <> help "Force first party scans")
     <*> flagOpt ForceNoFirstPartyScans (long "experimental-block-first-party-scans" <> help "Block first party scans. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans.")
     <*> flagOpt IgnoreOrgWideCustomLicenseScanConfigs (long "ignore-org-wide-custom-license-scan-configs" <> help "Ignore custom-license scan configurations for your organization. These configurations are defined in the \"Integrations\" section of the Admin settings in the FOSSA web app")
+    <*> optional (strOption (long "fossa-deps-file" <> help "Path to fossa-deps file including filename (default: fossa-deps.{yaml|yml|json})"))
 
 data GoDynamicTactic
   = GoModulesBasedTactic
@@ -406,6 +409,8 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
       dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
       grepOptions = collectGrepOptions maybeConfig cliOpts
+      customFossaDepsFile = analyzeCustomFossaDepsFile
+
   firstPartyScansFlag <-
     case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
       (True, True) -> fatalText "You provided both the --experimental-force-first-party-scans and --experimental-block-first-party-scans flags. Only one of these flags may be used"
@@ -429,6 +434,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure dynamicAnalysisOverrides
     <*> pure firstPartyScansFlag
     <*> pure grepOptions
+    <*> pure customFossaDepsFile
 
 collectFilters ::
   ( Has Diagnostics sig m
