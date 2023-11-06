@@ -408,8 +408,8 @@ grepOptions =
     , configFilePath = Nothing
     }
 
-customFossaDepsPath :: Maybe FilePath
-customFossaDepsPath = Nothing
+customFossaDepsFile :: Maybe FilePath
+customFossaDepsFile = Nothing
 
 #ifdef mingw32_HOST_OS
 absDir :: Path Abs Dir
@@ -437,5 +437,5 @@ standardAnalyzeConfig =
     , ANZ.overrideDynamicAnalysis = App.OverrideDynamicAnalysisBinary{unOverrideDynamicAnalysisBinary = mempty}
     , ANZ.firstPartyScansFlag = App.FirstPartyScansUseDefault
     , ANZ.grepOptions = grepOptions
-    , ANZ.customFossaDepsPath = customFossaDepsPath
+    , ANZ.customFossaDepsFile = customFossaDepsFile
     }
