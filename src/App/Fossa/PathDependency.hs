@@ -56,7 +56,6 @@ import Path.IO (withSystemTempDir)
 import Path.IO qualified as PathIO
 import Srclib.Converter (shouldPublishDep, toLocator)
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator)
-import System.FilePath (normalise)
 import Types (LicenseScanPathFilters)
 
 -- | Updates 'ProjectResult' dependency graph, by updating
