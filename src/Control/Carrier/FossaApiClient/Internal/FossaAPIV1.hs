@@ -1409,7 +1409,7 @@ getEndpointVersion apiOpts = fossaReq $ do
 ---- Path Dependency
 
 signedLicenseScanPathDependencyURLEndpoint :: Url 'Https -> Url 'Https
-signedLicenseScanPathDependencyURLEndpoint baseUrl = baseUrl /: "api" /: "cli" /: "path_dependency" /: "upload"
+signedLicenseScanPathDependencyURLEndpoint baseUrl = baseUrl /: "api" /: "cli" /: "path_dependency_scan" /: "upload"
 
 getUploadURLForPathDependency ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
@@ -1429,7 +1429,7 @@ getUploadURLForPathDependency apiOpts path version ProjectRevision{..} fullFileU
   pure (responseBody response)
 
 pathDependencyFinalizeUrl :: Url 'Https -> Url 'Https
-pathDependencyFinalizeUrl baseUrl = baseUrl /: "api" /: "cli" /: "path_dependency" /: "finalize"
+pathDependencyFinalizeUrl baseUrl = baseUrl /: "api" /: "cli" /: "path_dependency_scan" /: "finalize"
 
 finalizePathDependencyScan ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
