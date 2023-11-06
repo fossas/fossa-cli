@@ -46,7 +46,7 @@ runFossaApiClient apiOpts =
           GetProject rev -> Core.getProject rev
           GetAnalyzedRevisions vdeps -> Core.getAnalyzedRevisions vdeps
           GetSignedFirstPartyScanUrl rev -> LicenseScanning.getSignedFirstPartyScanUrl rev
-          GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev False
+          GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev
           GetSignedUploadUrl rev -> Core.getSignedUploadUrl rev
           GetVsiInferences scanId -> VSI.getVsiInferences scanId
           GetVsiScanAnalysisStatus scanId -> VSI.getVsiScanAnalysisStatus scanId
@@ -60,8 +60,7 @@ runFossaApiClient apiOpts =
           UploadContributors locator contributors -> Core.uploadContributors locator contributors
           UploadLicenseScanResult signedUrl licenseSourceUnit -> LicenseScanning.uploadLicenseScanResult signedUrl licenseSourceUnit
           UploadFirstPartyScanResult signedUrl fullSourceUnits -> LicenseScanning.uploadFirstPartyScanResult signedUrl fullSourceUnits
-
           -- Path Dependencies
-          GetPathDependencyScanUrl rev parentLocator fullFileUpload -> LicenseScanning.uploadPathDependencyScanResult rev parentLocator fullFileUpload
+          GetPathDependencyScanUrl rev projectRevision fullFileUpload -> LicenseScanning.uploadPathDependencyScanResult rev projectRevision fullFileUpload
           FinalizeLicenseScanForPathDependency locators forceRebuild -> LicenseScanning.finalizePathDependencyScan locators forceRebuild
       )

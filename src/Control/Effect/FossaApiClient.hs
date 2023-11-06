@@ -63,10 +63,11 @@ import Fossa.API.Types (
   Contributors,
   Issues,
   Organization,
+  PathDependencyUpload,
   Project,
   RevisionDependencyCache,
   SignedURL,
-  UploadResponse, PathDependencyUpload,
+  UploadResponse,
  )
 import Path (File, Path, Rel)
 import Srclib.Types (FullSourceUnit, LicenseSourceUnit, Locator, SourceUnit)

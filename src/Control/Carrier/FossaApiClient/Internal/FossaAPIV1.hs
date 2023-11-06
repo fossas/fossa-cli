@@ -124,11 +124,14 @@ import Fossa.API.Types (
   Issues,
   OrgId,
   Organization (Organization, orgRequiresFullFileUploads, orgSupportsIssueDiffs, orgSupportsNativeContainerScan, organizationId),
+  PathDependencyFinalizeReq (..),
+  PathDependencyUpload,
+  PathDependencyUploadReq (..),
   Project,
   RevisionDependencyCache,
   SignedURL (signedURL),
   UploadResponse,
-  useApiOpts, PathDependencyUpload, PathDependencyUploadReq(..), PathDependencyFinalizeReq (..),
+  useApiOpts,
  )
 import Network.HTTP.Client (responseStatus)
 import Network.HTTP.Client qualified as C
@@ -955,12 +958,11 @@ getSignedLicenseScanURL ::
   ApiOpts ->
   Text ->
   Text ->
-  Bool -> 
   m SignedURL
-getSignedLicenseScanURL apiOpts revision packageName isPathDependency = fossaReq $ do
+getSignedLicenseScanURL apiOpts revision packageName = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = "packageSpec" =: packageName <> "revision" =: revision <> "isPathDependency" =: isPathDependency
+  let opts = "packageSpec" =: packageName <> "revision" =: revision
 
   response <-
     context ("Retrieving a signed S3 URL for license scan results of " <> packageName) $
@@ -1404,7 +1406,6 @@ getEndpointVersion apiOpts = fossaReq $ do
     Left err -> fatalText (xmlErrorPretty err)
     Right (appManifest :: AppManifest) -> pure $ endpointAppVersion appManifest
 
-
 ---- Path Dependency
 
 signedLicenseScanPathDependencyURLEndpoint :: Url 'Https -> Url 'Https
@@ -1416,7 +1417,7 @@ getUploadURLForPathDependency ::
   Text ->
   Text ->
   ProjectRevision ->
-  FullFileUploads -> 
+  FullFileUploads ->
   m PathDependencyUpload
 getUploadURLForPathDependency apiOpts path version ProjectRevision{..} fullFileUpload = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts

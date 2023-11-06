@@ -43,7 +43,7 @@ import Effect.Logger (IgnoreLoggerC, ignoreLogger, renderIt)
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
 import Path (Abs, Dir, Path, parseAbsDir, parseRelDir, (</>))
 import Path.IO (createDirIfMissing, removeDirRecur)
-import ResultUtil (expectFailure, assertOnSuccess, expectSuccess)
+import ResultUtil (assertOnSuccess, expectFailure, expectSuccess)
 import System.Directory (getTemporaryDirectory)
 import System.Random (randomIO)
 import Test.Hspec (
@@ -158,6 +158,5 @@ expectFatal' :: (Has Diagnostics sig m, Has (Lift IO) sig m) => m a -> m ()
 expectFatal' f = do
   errorBoundary f >>= expectFailure'
 
-expectNonFatal' ::  (Has Diagnostics sig m, Has (Lift IO) sig m) => m a -> m ()
+expectNonFatal' :: (Has Diagnostics sig m, Has (Lift IO) sig m) => m a -> m ()
 expectNonFatal' f = errorBoundary f >>= expectSuccess'
-  

@@ -10,6 +10,7 @@ module Control.Carrier.FossaApiClient.Internal.LicenseScanning (
   finalizePathDependencyScan,
 ) where
 
+import App.Types (FullFileUploads, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
 import Control.Effect.Debug (Debug)
@@ -19,9 +20,8 @@ import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Control.Monad (void)
 import Data.List.NonEmpty qualified as NE
-import Fossa.API.Types (ApiOpts, ArchiveComponents, SignedURL, PathDependencyUpload)
+import Fossa.API.Types (ApiOpts, ArchiveComponents, PathDependencyUpload, SignedURL)
 import Srclib.Types (FullSourceUnit, LicenseSourceUnit, Locator)
-import App.Types (FullFileUploads, ProjectRevision)
 
 getSignedFirstPartyScanUrl ::
   ( Has (Lift IO) sig m
@@ -42,11 +42,10 @@ getSignedLicenseScanUrl ::
   , Has (Reader ApiOpts) sig m
   ) =>
   PackageRevision ->
-  Bool ->
   m SignedURL
-getSignedLicenseScanUrl PackageRevision{..} isPathDependency = do
+getSignedLicenseScanUrl PackageRevision{..} = do
   apiOpts <- ask
-  API.getSignedLicenseScanURL apiOpts packageVersion packageName isPathDependency
+  API.getSignedLicenseScanURL apiOpts packageVersion packageName
 
 finalizeLicenseScan ::
   ( Has (Lift IO) sig m
@@ -88,20 +87,20 @@ uploadPathDependencyScanResult ::
   ) =>
   PackageRevision ->
   ProjectRevision ->
-  FullFileUploads -> 
+  FullFileUploads ->
   m PathDependencyUpload
 uploadPathDependencyScanResult PackageRevision{..} projectRevision fullFileUpload = do
   apiOpts <- ask
   API.getUploadURLForPathDependency apiOpts packageName packageVersion projectRevision fullFileUpload
 
-finalizePathDependencyScan :: 
+finalizePathDependencyScan ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   [Locator] ->
-  Bool -> 
+  Bool ->
   m ()
 finalizePathDependencyScan locators forceRebuild = do
   apiOpts <- ask

@@ -128,7 +128,7 @@ data DepType
   | -- | Unresolved Path Type -- effectively any dependency which is referred from filesystem.
     UnresolvedPathType
   | -- | Path Type
-    PathType -- effectively any dependency which have been license scanned from filesystem. 
+    PathType -- effectively any dependency which have been license scanned from filesystem.
   deriving (Eq, Ord, Show, Generic, Enum, Bounded)
 
 data VerConstraint

@@ -10,7 +10,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
   DepEnvironment (..),
-  DepType (GitType, UnresolvedPathType, PipType, URLType),
+  DepType (GitType, PipType, URLType, UnresolvedPathType),
   Dependency (..),
   VerConstraint (..),
  )

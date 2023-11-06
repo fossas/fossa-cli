@@ -3,35 +3,46 @@ module App.Fossa.PathDependencySpec (
 )
 where
 
-import Path (File, Path, Abs, File, Dir)
-import Test.Effect (it', shouldBe', expectSuccess', expectNonFatal', shouldSatisfy')
-import Test.Hspec
-import Path.IO qualified as PIO
 import App.Fossa.PathDependency
-import Path.Extra (SomeResolvedPath(..))
-import ResultUtil (expectFailure)
-import Data.Text (Text)
-import Test.MockApi (MockApi)
 import Control.Algebra (Has)
+import Data.Text (Text)
+import Path (Abs, Dir, File, Path)
+import Path.Extra (SomeResolvedPath (..))
+import Path.IO qualified as PIO
+import Test.Effect (it', shouldBe', shouldSatisfy')
+import Test.Hspec
+import Test.MockApi (MockApi)
 
 spec :: Spec
-spec = do 
+spec = do
   hashSpec
   absPathOfSpec
 
-enrichPathDependenciesSpec :: Spec
-enrichPathDependenciesSpec = fdescribe "enrichPathDependencies" $ do
-  -- it' "should do nothing, if path dependency scanning is not supported!" $ do
-  -- it' "should do nothing, if there are no path dependencies!" $ do
-  -- it' "should do nothing, if there are no prod path dependencies!" $ do
+-- enrichPathDependenciesSpec :: Spec
+-- enrichPathDependenciesSpec = fdescribe "enrichPathDependencies" $ do
+-- Path dependency NOOP
+-- it' "should do nothing, if path dependency scanning is not supported!" $ do
+-- it' "should do nothing, if there are no path dependencies!" $ do
+-- it' "should do nothing, if there are no prod path dependencies!" $ do
 
-  -- it' "should perform enrichment!" $ do
-  -- it' "should perform enrichment!" $ do
+-- Path dependency Scanning
+-- it' "should perform enrichment!" $ do
+-- it' "should perform enrichment!" $ do
+-- it' "should scan all, if endpoint does not know about all path dependencies!" $ do
 
+-- Path dependency Skipping
+-- it' "should skip, endpoint knows about all path dependencies!" $ do
+-- it' "should always scan all, if dependency skipping is not supported!" $ do
+-- it' "should always scan all, if force dependency scanning flag is provided!" $ do
 
+-- Scanning kind Flag
+-- it' "should always upload with matchData flag if the org does not require full files!" $ do
+-- it' "should always upload with fullFiles flag if the org requires full files!" $ do
+
+-- FS specs
 
 absPathOfSpec :: Spec
-absPathOfSpec = fdescribe "absPathOfSpec" $ do
+absPathOfSpec = describe "absPathOfSpec" $ do
   cwd <- runIO PIO.getCurrentDir
   mkPathSpec cwd "../" isAbsDir
   mkPathSpec cwd "./" isAbsDir
@@ -49,7 +60,6 @@ absPathOfSpec = fdescribe "absPathOfSpec" $ do
 
   mkPathSpec cwd "./Changelog.md" isAbsFile
   mkPathSpec cwd "Changelog.md" isAbsFile
-
 
 hashSpec :: Spec
 hashSpec = describe "hash" $ do
@@ -82,7 +92,7 @@ isAbsFile :: SomeResolvedPath -> Bool
 isAbsFile = not . isAbsDir
 
 mkPathSpec :: Path Abs Dir -> Text -> (SomeResolvedPath -> Bool) -> SpecWith ()
-mkPathSpec cwd path comp = 
+mkPathSpec cwd path comp =
   it' "should resolve absolute path" $ do
     path' <- absPathOf cwd path
     path' `shouldSatisfy'` comp
@@ -90,10 +100,10 @@ mkPathSpec cwd path comp =
 emptyDir :: IO (Path Abs Dir)
 emptyDir = PIO.resolveDir' "test/App/FOSSA/PathDependency/testdata/empty"
 
-emptyFile ::  IO (Path Abs File)
+emptyFile :: IO (Path Abs File)
 emptyFile = PIO.resolveFile' "test/App/FOSSA/PathDependency/testdata/emptyfile.txt"
 
-fixtureFile ::  IO (Path Abs File)
+fixtureFile :: IO (Path Abs File)
 fixtureFile = PIO.resolveFile' "test/App/FOSSA/PathDependency/testdata/example.txt"
 
 fixtureDir :: IO (Path Abs Dir)

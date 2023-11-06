@@ -7,7 +7,6 @@ module App.Fossa.LicenseScanner (
   scanVendoredDep,
   calculateVendoredHash,
   scanDirectory,
-  getPathPrefix,
 ) where
 
 import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)
@@ -96,23 +95,6 @@ instance ToDiagnostic LicenseScanErr where
     Nothing -> "fossa-cli does not support archives without file extensions: " <> pretty (toString path)
 
 newtype ScannableArchive = ScannableArchive {scanFile :: Path Abs File} deriving (Eq, Ord, Show)
-
-runLicenseScanOnFile ::
-  ( Has Diagnostics sig m
-  , Has (Lift IO) sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
-  ) =>
-  Text ->
-  Maybe LicenseScanPathFilters ->
-  FullFileUploads ->
-  Path Abs Dir ->
-  m [LicenseUnit]
-runLicenseScanOnFile pathPrefix licenseScanPathFilters fullFileUploads scanFile = do 
-  -- license scan the root directory
-  rootDirUnits <- withThemisAndIndex $ themisRunner pathPrefix licenseScanPathFilters fullFileUploads scanFile
-  -- when we scan multiple archives, we need to combine the results
-  pure $ combineLicenseUnits (rootDirUnits)
 
 runLicenseScanOnDir ::
   ( Has Diagnostics sig m

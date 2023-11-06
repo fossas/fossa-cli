@@ -206,6 +206,7 @@ library
     App.Fossa.ListTargets
     App.Fossa.Main
     App.Fossa.ManualDeps
+    App.Fossa.PathDependency
     App.Fossa.ProjectInference
     App.Fossa.Report
     App.Fossa.Report.Attribution
@@ -469,7 +470,6 @@ library
     Text.URI.Builder
     Type.Operator
     Types
-    App.Fossa.PathDependency
 
   hs-source-dirs:  src
 

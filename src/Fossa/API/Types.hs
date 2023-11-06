@@ -23,12 +23,12 @@ module Fossa.API.Types (
   Project (..),
   RevisionDependencyCache (..),
   RevisionDependencyCacheStatus (..),
-  PathDependencyUpload(..),
-  UploadedPathDependencyLocator(..),
+  PathDependencyUpload (..),
+  UploadedPathDependencyLocator (..),
   SignedURL (..),
   UploadResponse (..),
-  PathDependencyUploadReq(..),
-  PathDependencyFinalizeReq(..),
+  PathDependencyUploadReq (..),
+  PathDependencyFinalizeReq (..),
   useApiOpts,
   defaultApiPollDelay,
   blankOrganization,
@@ -773,37 +773,37 @@ authHeader key = header "Authorization" (encodeUtf8 ("Bearer " <> unApiKey key))
 
 --- Path Dependency
 
-data PathDependencyUploadReq = PathDependencyUploadReq {
-    path :: Text,
-    version :: Text,
-    projectLocator :: Locator,
-    scanType :: FullFileUploads
+data PathDependencyUploadReq = PathDependencyUploadReq
+  { path :: Text
+  , version :: Text
+  , projectLocator :: Locator
+  , scanType :: FullFileUploads
   }
 
 instance ToJSON PathDependencyUploadReq where
   toJSON PathDependencyUploadReq{..} =
     object
-      [ "path" .= path,
-        "version" .= version,
-        "projectLocator" .= projectLocator,
-        "scanType" .= fullFileUploadsToCliLicenseScanType scanType
+      [ "path" .= path
+      , "version" .= version
+      , "projectLocator" .= projectLocator
+      , "scanType" .= fullFileUploadsToCliLicenseScanType scanType
       ]
 
-data PathDependencyFinalizeReq = PathDependencyFinalizeReq {
-    locators :: [Locator],
-    pathDepForceRebuild :: Bool
+data PathDependencyFinalizeReq = PathDependencyFinalizeReq
+  { locators :: [Locator]
+  , pathDepForceRebuild :: Bool
   }
 
 instance ToJSON PathDependencyFinalizeReq where
   toJSON PathDependencyFinalizeReq{..} =
     object
-      [ "locators" .= locators,
-        "forceRebuild" .= pathDepForceRebuild
+      [ "locators" .= locators
+      , "forceRebuild" .= pathDepForceRebuild
       ]
 
-data PathDependencyUpload = PathDependencyUpload 
-  { pdSignedURL :: SignedURL,
-    pdLocator :: UploadedPathDependencyLocator
+data PathDependencyUpload = PathDependencyUpload
+  { pdSignedURL :: SignedURL
+  , pdLocator :: UploadedPathDependencyLocator
   }
   deriving (Eq, Ord, Show)
 
@@ -814,13 +814,13 @@ instance FromJSON PathDependencyUpload where
     pure $ PathDependencyUpload (SignedURL signedUrl) locator
 
 data UploadedPathDependencyLocator = UploadedPathDependencyLocator
-  { updlName :: Text,
-    updlVersion :: Text
+  { updlName :: Text
+  , updlVersion :: Text
   }
   deriving (Eq, Ord, Show)
 
 instance FromJSON UploadedPathDependencyLocator where
   parseJSON = withObject "UploadedPathDependencyLocator" $ \obj ->
-    UploadedPathDependencyLocator 
+    UploadedPathDependencyLocator
       <$> obj .: "name"
       <*> obj .: "version"

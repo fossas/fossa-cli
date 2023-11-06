@@ -15,7 +15,6 @@ expectSuccess :: Result a -> Expectation
 expectSuccess (Failure _ _) = expectationFailure "expected success"
 expectSuccess (Success _ _) = pure ()
 
-
 assertOnSuccess :: Result a -> ([EmittedWarn] -> a -> Expectation) -> Expectation
 assertOnSuccess (Failure ws eg) _ = expectationFailure (show (renderFailure ws eg "An issue occurred"))
 assertOnSuccess (Success ws a) f = f ws a

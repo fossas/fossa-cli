@@ -51,6 +51,7 @@ import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
+import App.Fossa.PathDependency (enrichPathDependencies)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
@@ -105,8 +106,9 @@ import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
   Severity (..),
+  logDebug,
   logInfo,
-  logStdout, logDebug,
+  logStdout,
  )
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path, toFilePath)
@@ -125,7 +127,6 @@ import Prettyprinter.Render.Terminal (
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
-import App.Fossa.PathDependency (enrichPathDependencies)
 
 debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json.gz"
@@ -368,10 +369,11 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   -- license scan all path+ dependencies, and upload findings to Endpoint,
   -- and queue a build for all path+ dependencies
   filteredProjects' <- case destination of
-    UploadScan apiOpts _ -> Diag.context "path-dependencies" 
-      . runFossaApiClient apiOpts
-      $ runStickyLogger SevInfo 
-      $ traverse (enrichPathDependencies includeAll revision) filteredProjects
+    UploadScan apiOpts _ ->
+      Diag.context "path-dependencies"
+        . runFossaApiClient apiOpts
+        $ runStickyLogger SevInfo
+        $ traverse (enrichPathDependencies includeAll revision) filteredProjects
     _ -> pure filteredProjects
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
@@ -405,7 +407,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           Diag.context "upload-results"
             . runFossaApiClient apiOpts
             $ do
-              logDebug . pretty $ show scanUnits
               locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits
               doAssertRevisionBinaries iatAssertion locator
 
