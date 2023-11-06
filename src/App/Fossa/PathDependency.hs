@@ -4,11 +4,6 @@ module App.Fossa.PathDependency (
   -- * for testing only,
   hashOf,
   absPathOf,
-  normalizePathOf,
-  -- licenseScanSourceUnit,
-  -- combineLicenseUnits,
-  -- scanVendoredDep,
-  -- scanAndUploadPathDependency,
 ) where
 
 import App.Fossa.Analyze.Project (ProjectResult (projectResultGraph, projectResultPath))
@@ -162,6 +157,7 @@ scanAndUpload ::
   m (Dependency, Maybe Dependency)
 scanAndUpload pathFilters fullFileUpload projectRevision (rawDep, resolvedPath, version) = context "Path Dependency" $ do
   maybeLicenseUnits <- recover scan
+  --  (rawDep,) <$> upload maybeLicenseUnits
   case maybeLicenseUnits of
     Nothing -> pure (rawDep, Nothing)
     Just licenseUnits -> (rawDep,) <$> upload licenseUnits
@@ -195,9 +191,6 @@ scanAndUpload pathFilters fullFileUpload projectRevision (rawDep, resolvedPath, 
 
 -- * Helpers
 
-normalizePathOf :: FilePath -> FilePath
-normalizePathOf = normalise
-
 canResolve :: Dependency -> Bool
 canResolve d = dependencyType d == UnresolvedPathType
 
@@ -228,7 +221,7 @@ absPathOf baseDir relativeOrAbsPath = do
   case (dirExists, fileExists) of
     (True, _) -> pure $ ResolvedDir dir'
     (_, True) -> pure $ ResolvedFile file'
-    _ -> fatalText $ "Provided path: " <> relativeOrAbsPath <> " does not exist!"
+    _ -> fatalText $ "Provided path: " <> relativeOrAbsPath <> " does not exist! " <> toText baseDir
 
 metadataOf ::
   ( Has (Lift IO) sig m

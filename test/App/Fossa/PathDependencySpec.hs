@@ -3,43 +3,38 @@ module App.Fossa.PathDependencySpec (
 )
 where
 
+import App.Fossa.Analyze.Project (ProjectResult (..))
+import App.Fossa.Config.Analyze (IncludeAll (..))
 import App.Fossa.PathDependency
+import App.Types (FullFileUploads (FullFileUploads))
 import Control.Algebra (Has)
+import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (PackageRevision))
+import Data.Flag (toFlag)
+import Data.Set qualified as Set
+import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Path (Abs, Dir, File, Path)
+import DepTypes (
+  DepEnvironment (EnvTesting),
+  DepType (..),
+  Dependency (..),
+ )
+import Fossa.API.Types (Organization (..), PathDependencyUpload (..), UploadedPathDependencyLocator (..))
+import Graphing (Graphing, direct)
+import Path
 import Path.Extra (SomeResolvedPath (..))
 import Path.IO qualified as PIO
+import Srclib.Types (Locator (Locator))
 import Test.Effect (it', shouldBe', shouldSatisfy')
+import Test.Fixtures qualified as Fixtures
 import Test.Hspec
-import Test.MockApi (MockApi)
+import Test.MockApi (MockApi, alwaysReturns, returnsOnce, returnsOnceForAnyRequest)
+import Types (DiscoveredProjectType (..), GraphBreadth (..), VerConstraint (..))
 
 spec :: Spec
 spec = do
   hashSpec
   absPathOfSpec
-
--- enrichPathDependenciesSpec :: Spec
--- enrichPathDependenciesSpec = fdescribe "enrichPathDependencies" $ do
--- Path dependency NOOP
--- it' "should do nothing, if path dependency scanning is not supported!" $ do
--- it' "should do nothing, if there are no path dependencies!" $ do
--- it' "should do nothing, if there are no prod path dependencies!" $ do
-
--- Path dependency Scanning
--- it' "should perform enrichment!" $ do
--- it' "should perform enrichment!" $ do
--- it' "should scan all, if endpoint does not know about all path dependencies!" $ do
-
--- Path dependency Skipping
--- it' "should skip, endpoint knows about all path dependencies!" $ do
--- it' "should always scan all, if dependency skipping is not supported!" $ do
--- it' "should always scan all, if force dependency scanning flag is provided!" $ do
-
--- Scanning kind Flag
--- it' "should always upload with matchData flag if the org does not require full files!" $ do
--- it' "should always upload with fullFiles flag if the org requires full files!" $ do
-
--- FS specs
+  enrichPathDependenciesSpec
 
 absPathOfSpec :: Spec
 absPathOfSpec = describe "absPathOfSpec" $ do
@@ -62,7 +57,7 @@ absPathOfSpec = describe "absPathOfSpec" $ do
   mkPathSpec cwd "Changelog.md" isAbsFile
 
 hashSpec :: Spec
-hashSpec = describe "hash" $ do
+hashSpec = fdescribe "hash" $ do
   emptyDir' <- runIO emptyDir
   emptyFile' <- runIO emptyFile
   fixtureDir' <- runIO fixtureDir
@@ -74,7 +69,7 @@ hashSpec = describe "hash" $ do
 
   it' "should hash directory" $ do
     hash <- hashOf (ResolvedDir fixtureDir')
-    hash `shouldBe'` "20a2312b420bf049db1adcef93a3b48c"
+    hash `shouldBe'` fixtureDirPathHash
 
   it' "should hash empty file" $ do
     hash <- hashOf (ResolvedFile emptyFile')
@@ -106,20 +101,154 @@ emptyFile = PIO.resolveFile' "test/App/FOSSA/PathDependency/testdata/emptyfile.t
 fixtureFile :: IO (Path Abs File)
 fixtureFile = PIO.resolveFile' "test/App/FOSSA/PathDependency/testdata/example.txt"
 
-fixtureDir :: IO (Path Abs Dir)
-fixtureDir = PIO.resolveDir' "test/App/FOSSA/PathDependency/testdata/example"
+fixtureDirPath :: Text
+fixtureDirPath = "test/App/FOSSA/PathDependency/testdata/example"
 
--- Api Mocks
+fixtureDirPathHash :: Text
+fixtureDirPathHash = "11cc8ba62df47b911b02b74d626526b8"
+
+fixtureDir :: IO (Path Abs Dir)
+fixtureDir = PIO.resolveDir' (toString fixtureDirPath)
+
+-- Api
+
+enrichPathDependenciesSpec :: Spec
+enrichPathDependenciesSpec = fdescribe "enrichPathDependencies" $ do
+  cwd <- runIO PIO.getCurrentDir
+  let pr = Fixtures.projectRevision
+  let includeAll = toFlag IncludeAll True
+  let notIncludeAll = toFlag IncludeAll False
+
+  it' "should not perform path dependency enrichment, if org does not support it" $ do
+    expectGetApiOpts
+    expectOrg orgDoesNotSupportPathDeps
+
+    let result = mkProjectResult cwd graphWithUnPathDep
+    result' <- enrichPathDependencies includeAll pr result
+    result' `shouldBe'` result
+
+  it' "should not perform path dependency enrichment, if result has no unresolved deps" $ do
+    expectGetApiOpts
+    expectOrg orgSupportPathDeps
+
+    let result = mkProjectResult cwd graphWithPathDep
+    result' <- enrichPathDependencies includeAll pr result
+    result' `shouldBe'` result
+
+  describe "includeAll [--include-unused-deps]" $ do
+    it' "should not perform enrichment for non-production path deps" $ do
+      expectGetApiOpts
+      expectOrg orgSupportPathDeps
+
+      let result = mkProjectResult cwd (direct nonProdUPathDepOnly)
+      result' <- enrichPathDependencies notIncludeAll pr result
+      result' `shouldBe'` result
+
+    it' "should perform enrichment for non-production path deps, when flag is included" $ do
+      expectOrg orgSupportPathDeps{orgRequiresFullFileUploads = False}
+      expectPathDependencyMatchData
+      expectLicenseScanUpload
+      expectPathDependencyFinalize
+
+      let result = mkProjectResult cwd (direct nonProdUPathDepOnly)
+      let expectedResult =
+            mkProjectResult cwd . direct $
+              nonProdUPathDepOnly
+                { dependencyType = PathType
+                , dependencyName = "1"
+                , dependencyVersion = Just . CEq $ fixtureDirPathHash
+                }
+
+      result' <- enrichPathDependencies includeAll pr result
+      result' `shouldBe'` result
+      result' `shouldBe'` expectedResult
+
+  describe "fullFile" $ do
+    it' "should upload with fullFile, if org requires fullfile" $ do
+      expectOrg orgRequiresFullFile
+      expectPathDependencyFullFile
+      expectLicenseScanUpload
+      expectPathDependencyFinalize
+
+      let result = mkProjectResult cwd graphWithUnPathDep
+      let expectedResult = mkProjectResult cwd . direct $ resolvedPathDep
+      result' <- enrichPathDependencies includeAll pr result
+      result' `shouldBe'` expectedResult
+
+    it' "should upload with matchData, if org does not requires fullfile" $ do
+      expectOrg orgSupportPathDeps
+      expectPathDependencyMatchData
+      expectLicenseScanUpload
+      expectPathDependencyFinalize
+
+      let result = mkProjectResult cwd graphWithUnPathDep
+      let expectedResult = mkProjectResult cwd . direct $ resolvedPathDep
+      result' <- enrichPathDependencies includeAll pr result
+      result' `shouldBe'` expectedResult
+
+mkDep :: DepType -> Dependency
+mkDep dt = Dependency dt fixtureDirPath Nothing mempty mempty mempty
+
+nonProdUPathDepOnly :: Dependency
+nonProdUPathDepOnly =
+  (mkDep UnresolvedPathType)
+    { dependencyEnvironments = Set.singleton EnvTesting
+    }
+
+resolvedPathDep :: Dependency
+resolvedPathDep = (mkDep PathType){dependencyName = "1", dependencyVersion = Just . CEq $ fixtureDirPathHash}
+
+graphWithUnPathDep :: Graphing Dependency
+graphWithUnPathDep = direct $ mkDep UnresolvedPathType
+
+graphWithPathDep :: Graphing Dependency
+graphWithPathDep = direct $ mkDep PathType
+
+mkProjectResult :: Path Abs Dir -> Graphing Dependency -> ProjectResult
+mkProjectResult path deps =
+  ProjectResult
+    { projectResultType = YarnProjectType
+    , projectResultPath = path
+    , projectResultGraph = deps
+    , projectResultGraphBreadth = Partial
+    , projectResultManifestFiles = mempty
+    }
 
 expectGetApiOpts :: Has MockApi sig m => m ()
-expectGetApiOpts =
-  GetApiOpts `alwaysReturns` Fixtures.apiOpts
+expectGetApiOpts = GetApiOpts `alwaysReturns` Fixtures.apiOpts
 
-expectGetOrganization :: Has MockApi sig m => m ()
-expectGetOrganization = GetOrganization `alwaysReturns` Fixtures.organization
+orgSupportPathDeps :: Organization
+orgSupportPathDeps = Fixtures.organization{orgSupportsPathDependencyScans = True}
 
-expectGetOrganization' :: Has MockApi sig m => m ()
-expectGetOrganization' = GetOrganization `alwaysReturns` Fixtures.organization
+orgRequiresFullFile :: Organization
+orgRequiresFullFile = Fixtures.organization{orgSupportsPathDependencyScans = True, orgRequiresFullFileUploads = True}
 
-expectNothingScannedYet :: Has MockApi sig m => m ()
-expectNothingScannedYet = GetAnalyzedRevisions Fixtures.vendoredDeps `returnsOnce` []
+orgDoesNotSupportPathDeps :: Organization
+orgDoesNotSupportPathDeps = Fixtures.organization{orgSupportsPathDependencyScans = False}
+
+expectOrg :: Has MockApi sig m => Organization -> m ()
+expectOrg org = GetOrganization `returnsOnce` org
+
+expectPathDependencyFullFile :: Has MockApi sig m => m ()
+expectPathDependencyFullFile =
+  ( GetPathDependencyScanUrl
+      (PackageRevision fixtureDirPath fixtureDirPathHash)
+      (Fixtures.projectRevision)
+      (FullFileUploads True)
+  )
+    `returnsOnce` PathDependencyUpload (Fixtures.signedUrl) (UploadedPathDependencyLocator "1" fixtureDirPathHash)
+
+expectPathDependencyMatchData :: Has MockApi sig m => m ()
+expectPathDependencyMatchData =
+  ( GetPathDependencyScanUrl
+      (PackageRevision fixtureDirPath fixtureDirPathHash)
+      (Fixtures.projectRevision)
+      (FullFileUploads False)
+  )
+    `returnsOnce` PathDependencyUpload (Fixtures.signedUrl) (UploadedPathDependencyLocator "1" fixtureDirPathHash)
+
+expectLicenseScanUpload :: Has MockApi sig m => m ()
+expectLicenseScanUpload = (UploadLicenseScanResult Fixtures.signedUrl Fixtures.firstLicenseSourceUnit) `returnsOnceForAnyRequest` ()
+
+expectPathDependencyFinalize :: Has MockApi sig m => m ()
+expectPathDependencyFinalize = (FinalizeLicenseScanForPathDependency [Locator "path" "1" $ Just fixtureDirPathHash]) False `returnsOnce` ()
