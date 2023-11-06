@@ -54,7 +54,8 @@ execute() {
       binexe="${binexe}.exe"
     fi
     log_debug "installing binary: $binexe"
-    cp "${srcdir}/${binexe}" "${BINDIR}/${binexe}" 2> /dev/null || sudo cp "${srcdir}/${binexe}" "${BINDIR}/"
+    # Use mv instead of cp, as copying when a binary already exists in that spot can create an invalid binary on macOS
+    mv "${srcdir}/${binexe}" "${BINDIR}/${binexe}" 2> /dev/null || sudo cp "${srcdir}/${binexe}" "${BINDIR}/"
     log_info "installed ${BINDIR}/${binexe}"
   done
 }
@@ -103,15 +104,15 @@ adjust_format() {
 adjust_os() {
   # adjust archive name based on OS
   case $(uname_os) in
-   linux) 
+   linux)
     # Before 3.4.7 fossa was distributed in .zip archives on linux.
     # 3.4.7 and later distributed fossa in tar.gz because it is more common than zip on linux.
-	if version_less_than "$VERSION" "3.4.7" 
+	if version_less_than "$VERSION" "3.4.7"
 	then
 	  FORMAT=zip
     else
       FORMAT=tar.gz
-	fi ;;	
+	fi ;;
   esac
   true
 }
@@ -399,7 +400,7 @@ get_binary_name() {
 }
 # Check if one version is less than another.
 # Versions are expected to be of the for X.X.X where X is some integer.
-# 
+#
 # Given version strings X1.X2.X3 and Y1.Y2.Y3:
 # A version is less than another if there exists an Xn/Yn pair where Xn < Yn where for every preceding Xn/Yn pair in the sequence Xn == Yn.
 # Example:
@@ -413,7 +414,7 @@ version_less_than() {
     for i in 1 2 3
     do
         VERSION_PIECE1=$(echo "$1" | cut -d '.' -f $i)
-        VERSION_PIECE2=$(echo "$2" | cut -d '.' -f $i)    
+        VERSION_PIECE2=$(echo "$2" | cut -d '.' -f $i)
 
         if [ "$VERSION_PIECE1" -lt "$VERSION_PIECE2" ]
         then
@@ -435,11 +436,11 @@ print_telemetry_disclaimer() {
   log_info "------"
   log_info ""
   log_info "FOSSA collects warnings, errors, and usage data to improve"
-	log_info "the FOSSA CLI and your experience."  
+	log_info "the FOSSA CLI and your experience."
   log_info ""
   log_info "Read more: https://github.com/fossas/fossa-cli/blob/master/docs/telemetry.md"
   log_info ""
-  log_info "If you want to prevent any telemetry data from being sent to" 
+  log_info "If you want to prevent any telemetry data from being sent to"
   log_info "the server, you can opt out of telemetry by setting"
   log_info "FOSSA_TELEMETRY_SCOPE environment variable to 'off' in your shell."
   log_info ""
