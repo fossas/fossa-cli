@@ -60,12 +60,12 @@ fossa analyze --json
 
 ### Running a specific fossa-deps file
 
-The `--fossa-deps-config` flag can be used to specify the `fossa-deps` configuration that you want to use. The name of the file is arbitrary.
+The `--fossa-deps-config` flag can be used to specify the `fossa-deps` file that you want to use. The name of the file is arbitrary.
 
 See the [fossa-deps documentation](../files/fossa-deps.md) for configuration.
 
 ```sh
-fossa analyze --fossa-deps-config /path/to/file
+fossa analyze --fossa-deps-file /path/to/file
 ```
 
 ### Vendored Dependencies

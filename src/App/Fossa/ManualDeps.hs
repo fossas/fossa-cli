@@ -106,14 +106,13 @@ retrieveCustomFossaDepsFile ::
   m (Maybe FoundDepsFile)
 retrieveCustomFossaDepsFile fossaDepsPath = do
   let extension = takeExtension fossaDepsPath
-  file <- (validateFile fossaDepsPath)
+  file <- validateFile fossaDepsPath
 
-  if extension == ".yml" || extension == ".yaml"
-    then pure $ Just $ ManualYaml file
-    else
-      if extension == ".json"
-        then pure $ Just $ ManualJSON file
-        else pure Nothing
+  case extension of
+    ".yml" -> pure $ Just $ ManualYaml file
+    ".yaml" -> pure $ Just $ ManualYaml file
+    ".json" -> pure $ Just $ ManualJSON file
+    _ -> fatalText $ "Expected <name-of-file>.{yml|yaml|json} but received: " <> toText fossaDepsPath
 
 findAndReadFossaDepsFile ::
   ( Has Diagnostics sig m

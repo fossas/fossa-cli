@@ -2,7 +2,7 @@
 
 `fossa-deps` file is a file named `fossa-deps.{yaml, yml, json}` at the root of the project. It can be used to provide manual and vendor dependencies. 
 
-By default, the `fossa-deps.{yaml, yml, json}` file at the root of the project is used. However, if the `--fossa-deps-config` flag is present, then the provided `<name-of-file>.{yaml, yaml, json}` file will be used instead.
+By default, the `fossa-deps.{yaml, yml, json}` file at the root of the project is used. However, if the `--fossa-deps-file` flag is present, then the provided `<name-of-file>.{yaml, yaml, json}` file will be used instead.
 
 For more details on specifying a fossa-deps file, please refer to the [subcommand](../subcommands/analyze.md) documentation.
 

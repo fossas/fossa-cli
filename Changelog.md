@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.8.22
+
+- Introduce `fossa-deps-file` to specify custom fossa-deps file ([#1303](https://github.com/fossas/fossa-cli/pull/1303))
+
 ## v3.8.21
 
 - install-latest.sh: Fixed a bug where install-latest.sh would result in a broken binary when run on some versions of macOS ([#1317](https://github.com/fossas/fossa-cli/pull/1317))
