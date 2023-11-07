@@ -11,7 +11,6 @@ import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (PackageRevision))
 import Data.Flag (toFlag)
 import Data.Set qualified as Set
-import Data.String.Conversion (toString)
 import Data.Text (Text)
 import DepTypes (
   DepEnvironment (EnvTesting),
@@ -58,20 +57,21 @@ absPathOfSpec = describe "absPathOfSpec" $ do
 
 hashSpec :: Spec
 hashSpec = describe "hash" $ do
-  emptyFile' <- runIO emptyFile
-  fixtureDir' <- runIO fixtureDir
-  fixtureFile' <- runIO fixtureFile
+  cwd <- runIO PIO.getCurrentDir
 
   it' "should hash directory" $ do
-    hash <- hashOf (ResolvedDir fixtureDir')
-    hash `shouldBe'` fixtureDirPathHash
+    fixtureDir' <- absPathOf cwd fixtureDir
+    hash <- hashOf fixtureDir'
+    hash `shouldBe'` fixtureDirHash
 
   it' "should hash empty file" $ do
-    hash <- hashOf (ResolvedFile emptyFile')
+    emptyFile' <- absPathOf cwd emptyFile
+    hash <- hashOf emptyFile'
     hash `shouldBe'` "d41d8cd98f00b204e9800998ecf8427e"
 
   it' "should hash file" $ do
-    hash <- hashOf (ResolvedFile fixtureFile')
+    fixtureFile' <- absPathOf cwd fixtureFile
+    hash <- hashOf fixtureFile'
     hash `shouldBe'` "6eee9de91973024bafcdeb60aed2a0c8"
 
 isAbsDir :: SomeResolvedPath -> Bool
@@ -87,20 +87,17 @@ mkPathSpec cwd path comp =
     path' <- absPathOf cwd path
     path' `shouldSatisfy'` comp
 
-emptyFile :: IO (Path Abs File)
-emptyFile = PIO.resolveFile' "test/App/FOSSA/PathDependency/testdata/emptyfile.txt"
+emptyFile :: Text
+emptyFile = "test/App/FOSSA/PathDependency/testdata/emptyfile.txt"
 
-fixtureFile :: IO (Path Abs File)
-fixtureFile = PIO.resolveFile' "test/App/FOSSA/PathDependency/testdata/example.txt"
+fixtureFile :: Text
+fixtureFile = "test/App/FOSSA/PathDependency/testdata/example.txt"
 
-fixtureDirPath :: Text
-fixtureDirPath = "test/App/FOSSA/PathDependency/testdata/example"
+fixtureDir :: Text
+fixtureDir = "test/App/FOSSA/PathDependency/testdata/example"
 
-fixtureDirPathHash :: Text
-fixtureDirPathHash = "026ab8bcf9ac68ae7ded65922f8f83c8"
-
-fixtureDir :: IO (Path Abs Dir)
-fixtureDir = PIO.resolveDir' (toString fixtureDirPath)
+fixtureDirHash :: Text
+fixtureDirHash = "026ab8bcf9ac68ae7ded65922f8f83c8"
 
 -- Api
 
@@ -148,7 +145,7 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
               nonProdUPathDepOnly
                 { dependencyType = PathType
                 , dependencyName = "1"
-                , dependencyVersion = Just . CEq $ fixtureDirPathHash
+                , dependencyVersion = Just . CEq $ fixtureDirHash
                 }
 
       result' <- enrichPathDependencies includeAll pr result
@@ -178,7 +175,7 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
       result' `shouldBe'` expectedResult
 
 mkDep :: DepType -> Dependency
-mkDep dt = Dependency dt fixtureDirPath Nothing mempty mempty mempty
+mkDep dt = Dependency dt fixtureDir Nothing mempty mempty mempty
 
 nonProdUPathDepOnly :: Dependency
 nonProdUPathDepOnly =
@@ -187,7 +184,7 @@ nonProdUPathDepOnly =
     }
 
 resolvedPathDep :: Dependency
-resolvedPathDep = (mkDep PathType){dependencyName = "1", dependencyVersion = Just . CEq $ fixtureDirPathHash}
+resolvedPathDep = (mkDep PathType){dependencyName = "1", dependencyVersion = Just . CEq $ fixtureDirHash}
 
 graphWithUnPathDep :: Graphing Dependency
 graphWithUnPathDep = direct $ mkDep UnresolvedPathType
@@ -223,23 +220,23 @@ expectOrg org = GetOrganization `returnsOnce` org
 expectPathDependencyFullFile :: Has MockApi sig m => m ()
 expectPathDependencyFullFile =
   ( GetPathDependencyScanUrl
-      (PackageRevision fixtureDirPath fixtureDirPathHash)
+      (PackageRevision fixtureDir fixtureDirHash)
       (Fixtures.projectRevision)
       (FullFileUploads True)
   )
-    `returnsOnce` PathDependencyUpload (Fixtures.signedUrl) (UploadedPathDependencyLocator "1" fixtureDirPathHash)
+    `returnsOnce` PathDependencyUpload (Fixtures.signedUrl) (UploadedPathDependencyLocator "1" fixtureDirHash)
 
 expectPathDependencyMatchData :: Has MockApi sig m => m ()
 expectPathDependencyMatchData =
   ( GetPathDependencyScanUrl
-      (PackageRevision fixtureDirPath fixtureDirPathHash)
+      (PackageRevision fixtureDir fixtureDirHash)
       (Fixtures.projectRevision)
       (FullFileUploads False)
   )
-    `returnsOnce` PathDependencyUpload (Fixtures.signedUrl) (UploadedPathDependencyLocator "1" fixtureDirPathHash)
+    `returnsOnce` PathDependencyUpload (Fixtures.signedUrl) (UploadedPathDependencyLocator "1" fixtureDirHash)
 
 expectLicenseScanUpload :: Has MockApi sig m => m ()
 expectLicenseScanUpload = (UploadLicenseScanResult Fixtures.signedUrl Fixtures.firstLicenseSourceUnit) `returnsOnceForAnyRequest` ()
 
 expectPathDependencyFinalize :: Has MockApi sig m => m ()
-expectPathDependencyFinalize = (FinalizeLicenseScanForPathDependency [Locator "path" "1" $ Just fixtureDirPathHash]) False `returnsOnce` ()
+expectPathDependencyFinalize = (FinalizeLicenseScanForPathDependency [Locator "path" "1" $ Just fixtureDirHash]) False `returnsOnce` ()
