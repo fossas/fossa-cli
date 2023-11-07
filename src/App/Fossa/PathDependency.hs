@@ -9,8 +9,9 @@ module App.Fossa.PathDependency (
 import App.Fossa.Analyze.Project (ProjectResult (projectResultGraph, projectResultPath))
 import App.Fossa.Config.Analyze (IncludeAll (..))
 import App.Fossa.LicenseScanner (scanDirectory)
-import App.Fossa.VendoredDependency (hashFile)
+import App.Fossa.VendoredDependency (hashBs, hashFile)
 import App.Types (FullFileUploads (..), ProjectRevision)
+import Codec.Archive.Tar qualified as Tar
 import Control.Carrier.StickyLogger (logSticky)
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -38,7 +39,6 @@ import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
-import Discovery.Archive (mkZip)
 import Effect.Exec (Exec)
 import Effect.ReadFS (
   Has,
@@ -50,10 +50,8 @@ import Effect.ReadFS (
  )
 import Fossa.API.Types (Organization (..), PathDependencyUpload (..), UploadedPathDependencyLocator (..))
 import Graphing (Graphing, gmap, vertexList)
-import Path (Abs, Dir, Path, toFilePath)
+import Path (Abs, Dir, Path, dirname, parent, toFilePath)
 import Path.Extra (SomeResolvedPath (ResolvedDir, ResolvedFile))
-import Path.IO (withSystemTempDir)
-import Path.IO qualified as PathIO
 import Srclib.Converter (shouldPublishDep, toLocator)
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator)
 import Types (LicenseScanPathFilters)
@@ -198,14 +196,17 @@ isValidDep leaveOtherEnvDeps d =
     else (canResolve d && shouldPublishDep d)
 
 hashOf :: Has (Lift IO) sig m => SomeResolvedPath -> m Text
-hashOf (ResolvedDir dir) = sendIO $ withSystemTempDir "fossa-path-dep" (calculateHash dir)
+hashOf (ResolvedDir dir) = sendIO $ hashDir dir
 hashOf (ResolvedFile file) = sendIO $ hashFile (toFilePath file)
 
-calculateHash :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs Dir -> m Text
-calculateHash targetDir tempFileDir = do
-  filePath <- sendIO $ PathIO.resolveFile tempFileDir "fosse-path-dep.zip"
-  mkZip targetDir filePath
-  sendIO $ hashFile (toFilePath filePath)
+hashDir :: Has (Lift IO) sig m => Path Abs Dir -> m Text
+hashDir targetDir = do
+  let baseDir = parent targetDir
+  let dirToPack = dirname targetDir
+
+  -- >> equivalent to: tar -C baseDir -c dirToPack
+  es <- sendIO $ Tar.pack (toFilePath baseDir) [toFilePath dirToPack]
+  sendIO $ hashBs $ Tar.write es
 
 absPathOf :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (SomeResolvedPath)
 absPathOf baseDir relativeOrAbsPath = do

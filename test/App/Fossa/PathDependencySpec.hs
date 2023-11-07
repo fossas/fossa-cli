@@ -65,7 +65,7 @@ hashSpec = describe "hash" $ do
 
   it' "should hash empty directory" $ do
     hash <- hashOf (ResolvedDir emptyDir')
-    hash `shouldBe'` "76cdb2bad9582d23c1f6f4d868218d6c"
+    hash `shouldBe'` "da08351c1a8113f6afd30a402339b70c"
 
   it' "should hash directory" $ do
     hash <- hashOf (ResolvedDir fixtureDir')
@@ -105,7 +105,7 @@ fixtureDirPath :: Text
 fixtureDirPath = "test/App/FOSSA/PathDependency/testdata/example"
 
 fixtureDirPathHash :: Text
-fixtureDirPathHash = "52dc4e2f682a63f9efa04553c6ee929d"
+fixtureDirPathHash = "1b2ba9111f44b878ad95fd1a769dba11"
 
 fixtureDir :: IO (Path Abs Dir)
 fixtureDir = PIO.resolveDir' (toString fixtureDirPath)
