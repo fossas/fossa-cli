@@ -88,13 +88,13 @@ mkPathSpec cwd path comp =
     path' `shouldSatisfy'` comp
 
 emptyFile :: Text
-emptyFile = "test/App/FOSSA/PathDependency/testdata/emptyfile.txt"
+emptyFile = "test/App/Fossa/PathDependency/testdata/emptyfile.txt"
 
 fixtureFile :: Text
-fixtureFile = "test/App/FOSSA/PathDependency/testdata/example.txt"
+fixtureFile = "test/App/Fossa/PathDependency/testdata/example.txt"
 
 fixtureDir :: Text
-fixtureDir = "test/App/FOSSA/PathDependency/testdata/example"
+fixtureDir = "test/App/Fossa/PathDependency/testdata/example"
 
 fixtureDirHash :: Text
 fixtureDirHash = "026ab8bcf9ac68ae7ded65922f8f83c8"
