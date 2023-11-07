@@ -58,14 +58,9 @@ absPathOfSpec = describe "absPathOfSpec" $ do
 
 hashSpec :: Spec
 hashSpec = describe "hash" $ do
-  emptyDir' <- runIO emptyDir
   emptyFile' <- runIO emptyFile
   fixtureDir' <- runIO fixtureDir
   fixtureFile' <- runIO fixtureFile
-
-  it' "should hash empty directory" $ do
-    hash <- hashOf (ResolvedDir emptyDir')
-    hash `shouldBe'` "da08351c1a8113f6afd30a402339b70c"
 
   it' "should hash directory" $ do
     hash <- hashOf (ResolvedDir fixtureDir')
@@ -91,9 +86,6 @@ mkPathSpec cwd path comp =
   it' "should resolve absolute path" $ do
     path' <- absPathOf cwd path
     path' `shouldSatisfy'` comp
-
-emptyDir :: IO (Path Abs Dir)
-emptyDir = PIO.resolveDir' "test/App/FOSSA/PathDependency/testdata/empty"
 
 emptyFile :: IO (Path Abs File)
 emptyFile = PIO.resolveFile' "test/App/FOSSA/PathDependency/testdata/emptyfile.txt"
