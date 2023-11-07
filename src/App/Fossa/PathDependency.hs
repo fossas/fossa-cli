@@ -12,6 +12,8 @@ import App.Fossa.LicenseScanner (scanDirectory)
 import App.Fossa.VendoredDependency (hashBs, hashFile)
 import App.Types (FullFileUploads (..), ProjectRevision)
 import Codec.Archive.Tar qualified as Tar
+import Codec.Archive.Tar.Entry (Entry (..))
+import Codec.Archive.Tar.Entry qualified as Tar
 import Control.Carrier.StickyLogger (logSticky)
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -206,7 +208,25 @@ hashDir targetDir = do
 
   -- >> equivalent to: tar -C baseDir -c dirToPack
   es <- sendIO $ Tar.pack (toFilePath baseDir) [toFilePath dirToPack]
-  sendIO $ hashBs $ Tar.write es
+
+  -- We want to ignore permissions, and time
+  -- in our packing, since this may lead to different
+  -- hash, even if the content remained the same.
+  --
+  -- For example, consider, user storing vendor
+  -- dependency in 'git'. Git by default, does not
+  -- track modification time, file permission, etc.
+  -- This means that in CI, each 'git clone' can
+  -- lead to FOSSA inferring new version from hash,
+  -- even though content is the same!
+  let es' = map (setUnknownOwner . setZeroTime) es
+  sendIO $ hashBs . Tar.write $ es'
+  where
+    setUnknownOwner :: Tar.Entry -> Tar.Entry
+    setUnknownOwner e = e{entryOwnership = Tar.Ownership "" "" 0 0}
+
+    setZeroTime :: Tar.Entry -> Tar.Entry
+    setZeroTime e = e{entryTime = 0}
 
 absPathOf :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (SomeResolvedPath)
 absPathOf baseDir relativeOrAbsPath = do

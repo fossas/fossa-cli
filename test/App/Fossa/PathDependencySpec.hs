@@ -97,7 +97,7 @@ fixtureDirPath :: Text
 fixtureDirPath = "test/App/FOSSA/PathDependency/testdata/example"
 
 fixtureDirPathHash :: Text
-fixtureDirPathHash = "1b2ba9111f44b878ad95fd1a769dba11"
+fixtureDirPathHash = "026ab8bcf9ac68ae7ded65922f8f83c8"
 
 fixtureDir :: IO (Path Abs Dir)
 fixtureDir = PIO.resolveDir' (toString fixtureDirPath)
