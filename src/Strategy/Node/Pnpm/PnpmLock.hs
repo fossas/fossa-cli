@@ -25,6 +25,10 @@ import Effect.Grapher (deep, direct, edge, evalGrapher, run)
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing, shrink)
 import Path (Abs, File, Path)
+import Data.Traversable (for)
+import Data.Aeson.KeyMap qualified as Object
+import Data.Aeson.Key (toText)
+import Text.Pretty.Simple (pPrint)
 
 -- | Pnpm Lockfile
 --
@@ -82,11 +86,17 @@ import Path (Abs, File, Path)
 data PnpmLockfile = PnpmLockfile
   { importers :: Map Text ProjectMap
   , packages :: Map Text PackageData
+  , lockFileVersion :: PnpmLockFileVersion
   }
   deriving (Show, Eq, Ord)
 
+data PnpmLockFileVersion = PnpmLock5 | PnpmLock6 deriving (Show, Eq, Ord)
+
 instance FromJSON PnpmLockfile where
   parseJSON = Yaml.withObject "pnpm-lock content" $ \obj -> do
+    rawLockFileVersion <- obj .:? "lockfileVersion" .!= mempty
+    let lockFileVersion = if Text.isPrefixOf "6" rawLockFileVersion then PnpmLock6 else PnpmLock5
+
     importers <- obj .:? "importers" .!= mempty
     packages <- obj .:? "packages" .!= mempty
 
@@ -107,11 +117,11 @@ instance FromJSON PnpmLockfile where
             then Map.insert "." virtualRootWs importers
             else importers
 
-    pure $ PnpmLockfile refinedImporters packages
+    pure $ PnpmLockfile refinedImporters packages lockFileVersion
 
 data ProjectMap = ProjectMap
-  { directDependencies :: Map Text Text
-  , directDevDependencies :: Map Text Text
+  { directDependencies :: Map Text ProjectMapDepMetadata
+  , directDevDependencies :: Map Text ProjectMapDepMetadata
   }
   deriving (Show, Eq, Ord)
 
@@ -120,6 +130,15 @@ instance FromJSON ProjectMap where
     ProjectMap
       <$> obj .:? "dependencies" .!= mempty
       <*> obj .:? "devDependencies" .!= mempty
+
+data ProjectMapDepMetadata = ProjectMapDepMetadata {
+  version :: Text
+} deriving (Show, Eq, Ord)
+
+instance FromJSON ProjectMapDepMetadata where
+  parseJSON (Yaml.String r) = pure $ ProjectMapDepMetadata r -- This is v5 lock format
+  parseJSON (Yaml.Object obj) = -- This is v6 lock format
+    ProjectMapDepMetadata <$> obj .: "version"
 
 data PackageData = PackageData
   { isDev :: Bool
@@ -185,7 +204,7 @@ buildGraph lockFile = withoutLocalPackages $
             toList (directDependencies projectSnapshot)
               <> toList (directDevDependencies projectSnapshot)
 
-      for_ allDirectDependencies $ \(depName, depVersion) ->
+      for_ allDirectDependencies $ \(depName, (ProjectMapDepMetadata depVersion)) ->
         maybe (pure ()) direct $ toResolvedDependency depName depVersion
 
     -- Add edges and deep dependencies by iterating over all packages.
@@ -223,14 +242,35 @@ buildGraph lockFile = withoutLocalPackages $
       for_ deepDependencies $ \(deepName, deepVersion) -> do
         maybe (pure ()) (edge parentDep) (toResolvedDependency deepName deepVersion)
   where
+    getPkgNameVersion :: Text -> Maybe (Text, Text)
+    getPkgNameVersion = case lockFileVersion lockFile of
+      PnpmLock5 -> getPkgNameVersionV5
+      PnpmLock6 -> getPkgNameVersionV6
+
     -- Gets package name and version from package's key.
     --
-    -- >> getPkgNameVersion "" = Nothing
-    -- >> getPkgNameVersion "github.com/something" = Nothing
-    -- >> getPkgNameVersion "/pkg-a/1.0.0" = Just ("pkg-a", "1.0.0")
-    -- >> getPkgNameVersion "/@angular/core/1.0.0" = Just ("@angular/core", "1.0.0")
-    getPkgNameVersion :: Text -> Maybe (Text, Text)
-    getPkgNameVersion pkgKey = case (Text.stripPrefix "/" pkgKey) of
+    -- >> getPkgNameVersionV6 "" = Nothing
+    -- >> getPkgNameVersionV6 "github.com/something" = Nothing
+    -- >> getPkgNameVersionV6 "/pkg-a@1.0.0" = Just ("pkg-a", "1.0.0")
+    -- >> getPkgNameVersionV6 "/@angular/core@1.0.0" = Just ("@angular/core", "1.0.0")
+    getPkgNameVersionV6 :: Text -> Maybe (Text, Text)
+    getPkgNameVersionV6 pkgKey = case (Text.stripPrefix "/" pkgKey) of
+      Nothing -> Nothing
+      Just txt -> do
+        let (nameAndVersion, peerDepInfo) = Text.breakOn "(" txt
+        let (nameWithSlash, version) = Text.breakOnEnd "@" nameAndVersion
+        case (Text.stripSuffix "/" nameWithSlash, version) of
+          (Just name, v) -> Just (name, v <> peerDepInfo)
+          _ -> Nothing
+
+    -- Gets package name and version from package's key.
+    --
+    -- >> getPkgNameVersionV5 "" = Nothing
+    -- >> getPkgNameVersionV5 "github.com/something" = Nothing
+    -- >> getPkgNameVersionV5 "/pkg-a/1.0.0" = Just ("pkg-a", "1.0.0")
+    -- >> getPkgNameVersionV5 "/@angular/core/1.0.0" = Just ("@angular/core", "1.0.0")
+    getPkgNameVersionV5 :: Text -> Maybe (Text, Text)
+    getPkgNameVersionV5 pkgKey = case (Text.stripPrefix "/" pkgKey) of
       Nothing -> Nothing
       Just txt -> do
         let (nameWithSlash, version) = Text.breakOnEnd "/" txt
@@ -265,14 +305,19 @@ buildGraph lockFile = withoutLocalPackages $
       case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
         (Nothing, Nothing) -> Nothing
         (Just nonRegistryPkg, _) -> Just $ toDependency depName Nothing nonRegistryPkg
-        (Nothing, Just registryPkg) -> Just $ toDependency depName (Just depVersion) registryPkg
+        (Nothing, Just registryPkg) -> Just $ toDependency depName (Just $ cleanVersion depVersion) registryPkg
+
+    cleanVersion :: Text -> Text
+    cleanVersion = fst . Text.breakOn "("
 
     -- Makes representative key if the package was
     -- resolved via registry resolver.
     --
     -- >> mkPkgKey "pkg-a" "1.0.0" = "/pkg-a/1.0.0"
     mkPkgKey :: Text -> Text -> Text
-    mkPkgKey name version = "/" <> name <> "/" <> version
+    mkPkgKey name version = case lockFileVersion lockFile of
+      PnpmLock5 -> "/" <> name <> "/" <> version
+      PnpmLock6 -> "/" <> name
 
     toDependency :: Text -> Maybe Text -> PackageData -> Dependency
     toDependency name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) =
@@ -302,3 +347,13 @@ buildGraph lockFile = withoutLocalPackages $
 
     withoutLocalPackages :: Graphing Dependency -> Graphing Dependency
     withoutLocalPackages = Graphing.shrink (\dep -> dependencyType dep /= UserType)
+
+
+debug :: IO ()
+debug = do
+  c :: Either Yaml.ParseException PnpmLockfile <- Yaml.decodeFileEither "./sandbox/pnpm-lock.yaml"
+  case c of
+    Left _ -> pure ()
+    Right c' -> do 
+      let g = buildGraph c'
+      pPrint g 
