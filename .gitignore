@@ -12,6 +12,7 @@ dist-newstyle/
 vendor/
 vendor-bins/
 .vscode/
+sandbox/
 
 # Executables
 /fossa
