@@ -1,7 +1,7 @@
 # FOSSA CLI Changelog
 
 ## Unreleased
-- `pnpm`: Supports `6.0` version of `pnpm-lockfile.yaml` ([])()
+- `pnpm`: Supports `6.0` version of `pnpm-lockfile.yaml` ([#1320])(https://github.com/fossas/fossa-cli/pull/1320)
 
 
 ## v3.8.21
