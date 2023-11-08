@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- archive: considers 0-byte tar file to be valid tar file. ([#1311](https://github.com/fossas/fossa-cli/pull/1311)) 
+
+
 ## v3.8.22
 
 - `fossa-deps`: `--fossa-deps-file` to specify custom fossa-deps file ([#1303](https://github.com/fossas/fossa-cli/pull/1303))
