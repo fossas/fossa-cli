@@ -9,9 +9,11 @@ import Control.Carrier.Output.IO
 import Control.Carrier.Stack.StickyLog
 import Control.Effect.AtomicCounter (AtomicCounter)
 import Control.Effect.Lift
+import Control.Effect.Reader (Reader)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.TaskPool
 import Data.Foldable (traverse_)
+import Discovery.Filters (MavenScopeFilters)
 import Effect.Logger
 import Path
 import Types
@@ -25,6 +27,7 @@ withDiscoveredProjects ::
   , Has TaskPool sig m
   , Has Logger sig m
   , Has Stack sig m
+  , Has (Reader MavenScopeFilters) sig m
   ) =>
   -- | Discover function
   (Path Abs Dir -> StickyLogStackC (DiagDebugC (Diag.DiagnosticsC m)) [DiscoveredProject run]) ->
