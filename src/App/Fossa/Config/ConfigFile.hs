@@ -16,6 +16,7 @@ module App.Fossa.Config.ConfigFile (
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
   VendoredDependencyConfigs (..),
+  MavenScopeFilters (..),
   mergeFileCmdMetadata,
   resolveLocalConfigFile,
 ) where
@@ -196,8 +197,15 @@ data ConfigFile = ConfigFile
   , configTelemetry :: Maybe ConfigTelemetry
   , configCustomLicenseSearch :: Maybe [ConfigGrepEntry]
   , configKeywordSearch :: Maybe [ConfigGrepEntry]
+  , configMavenScopeFilters :: Maybe MavenScopeFilters
   , configOrgWideCustomLicenseConfigPolicy :: OrgWideCustomLicenseConfigPolicy
   , configConfigFilePath :: Path Abs File
+  }
+  deriving (Eq, Ord, Show)
+
+data MavenScopeFilters = MavenScopeFilters
+  { includeScope :: Set Text
+  , excludeScope :: Set Text
   }
   deriving (Eq, Ord, Show)
 
@@ -271,6 +279,7 @@ instance FromJSON (Path Abs File -> ConfigFile) where
       <*> obj .:? "vendoredDependencies"
       <*> obj .:? "telemetry"
       <*> obj .:? "customLicenseSearch"
+      <*> obj .:? "maven"
       <*> obj .:? "experimentalKeywordSearch"
       <*> parseIgnoreOrgWideCustomLicenseScanConfigs obj
     where
@@ -298,6 +307,12 @@ instance FromJSON ConfigProject where
         case (pName, pId) of
           (Just _, Just _) -> fail "Only one of 'policy' or 'policyId' can be set at a time."
           _ -> pure $ (PolicyName <$> pName) <|> (PolicyId <$> pId)
+
+instance FromJSON MavenScopeFilters where
+  parseJSON = withObject "MavenScopeFilters" $ \obj ->
+    MavenScopeFilters
+      <$> (obj .:? "only" .!= mempty)
+      <*> (obj .:? "exclude" .!= mempty)
 
 instance FromJSON ConfigRevision where
   parseJSON = withObject "ConfigRevision" $ \obj ->

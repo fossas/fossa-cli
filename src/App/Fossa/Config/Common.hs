@@ -39,6 +39,7 @@ module App.Fossa.Config.Common (
 import App.Fossa.Config.ConfigFile (
   ConfigFile (
     configApiKey,
+    configMavenScopeFilters,
     configPaths,
     configProject,
     configRevision,
@@ -52,6 +53,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigTargets (targetsExclude, targetsOnly),
   ConfigTelemetry (telemetryScope),
   ConfigTelemetryScope (..),
+  MavenScopeFilters (..),
   mergeFileCmdMetadata,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
@@ -399,3 +401,14 @@ collectConfigFileFilters configFile = do
       excludeP = pullFromFile pathsExclude configPaths
 
   AllFilters (comboInclude onlyT onlyP) (comboExclude excludeT excludeP)
+
+collectConfigMavenScopeFilters :: ConfigFile -> MavenScopeFilters
+collectConfigMavenScopeFilters configFile = fromMaybe noFilters (configMavenScopeFilters configFile)
+  where
+    -- when no filters are applied it is same
+    -- not having any include or exclude.
+    --
+    -- OR you could just return 'Maybe MavenScopeFilters'
+    -- and pass that Maybe to code of interest
+    noFilters :: MavenScopeFilters
+    noFilters = MavenScopeFilters mempty mempty
