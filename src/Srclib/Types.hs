@@ -26,13 +26,15 @@ module Srclib.Types (
   emptyLicenseUnitData,
   sourceUnitToFullSourceUnit,
   licenseUnitToFullSourceUnit,
+  textToOriginPath,
 ) where
 
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
-import Data.String.Conversion (ToText, toText)
+import Data.String (IsString)
+import Data.String.Conversion (ToString (toString), ToText, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Path (File, Path, SomeBase (..), toFilePath)
@@ -56,7 +58,7 @@ instance ToJSON LicenseScanType where
 --  The reason we cannot use `SomePath` for this is that outputting an `OriginPath` to JSON in a form like @/foo/bar/path_end@ doesn't say whether the path is a file or directory which is required for parsing to a `SomePath` in `FromJSON`.
 --  This type and its exported smart constructors describe that OriginPath is a path, but has no information about whether the path is a file or directory.
 newtype OriginPath = OriginPath FilePath
-  deriving newtype (Eq, Ord, Show, ToJSON, FromJSON, ToText)
+  deriving newtype (Eq, Ord, Show, ToJSON, FromJSON, ToText, IsString)
 
 pathToOriginPath :: Path b t -> OriginPath
 pathToOriginPath = OriginPath . toFilePath
@@ -68,6 +70,9 @@ someBaseToOriginPath (Rel p) = pathToOriginPath p
 somePathToOriginPath :: SomePath -> OriginPath
 somePathToOriginPath (SomeFile f) = someBaseToOriginPath f
 somePathToOriginPath (SomeDir d) = someBaseToOriginPath d
+
+textToOriginPath :: Text -> OriginPath
+textToOriginPath = OriginPath . toString
 
 -- export interface SourceUnit {
 --   Name?: string;

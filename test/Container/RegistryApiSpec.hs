@@ -68,6 +68,16 @@ registryApiSpec :: Spec
 registryApiSpec =
   describe "Container Registry API" $
     describe "Public Registry APIs" $ do
+      describe "Microsoft registry" $ do
+        it' "should get manifest with digest" $ do
+          confDigest <- getImageConfig amd64 mcrRegistryImage
+          confDigest `shouldBe'` mcrRegistryImageDigest
+
+      describe "gcr (google cloud) registry" $ do
+        it' "should get manifest with digest" $ do
+          confDigest <- getImageConfig amd64 debian2gcrImage
+          confDigest `shouldBe'` debian2gcrImageDigest
+
       describe "Custom Registry" $ do
         it' "should get manifest with tag" $ do
           confDigest <- getImageConfig amd64 githubImage
@@ -80,6 +90,10 @@ registryApiSpec =
         it' "should get manifest for multi-platform image (chooses target platform)" $ do
           confDigest <- getImageConfig amd64 githubMultiArchImage
           confDigest `shouldBe'` githubMultiArchImageConfigDigest
+
+        it' "should get manifest for multi-platform image (chooses target platform) in oci image index" $ do
+          confDigest <- getImageConfig amd64 haskellDevImage
+          confDigest `shouldBe'` haskellDevImageDigest
 
       describe "Default Index (docker)" $ do
         it' "should get manifest with tag" $ do
@@ -94,8 +108,15 @@ registryApiSpec =
           confDigest <- getImageConfig arm dhMultiArchImage
           confDigest `shouldBe'` dhMultiArchImageDigest
 
+        it' "should get manifest for multi-platform images (chooses target platform)" $ do
+          redisDigest <- getImageConfig arm64 redisImage
+          redisDigest `shouldBe'` redisImageDigest
+
 amd64 :: Text
 amd64 = "amd64"
+
+arm64 :: Text
+arm64 = "arm64"
 
 arm :: Text
 arm = "arm"
@@ -136,3 +157,27 @@ dhMultiArchImage = "grafana/grafana:8.1.7-ubuntu"
 dhMultiArchImageDigest :: RepoDigest
 dhMultiArchImageDigest =
   RepoDigest "sha256:86618e1e78e4962b5abec6cc7fabe89010ebfbbf0885cbba1aada7287457c263"
+
+mcrRegistryImage :: Text
+mcrRegistryImage = "mcr.microsoft.com/azure-cli:0.10.13"
+
+mcrRegistryImageDigest :: RepoDigest
+mcrRegistryImageDigest = RepoDigest "sha256:37b1e1b1484d540b96f8f30f4c4da24b704a110aa662f79b641f5ab375ee8094"
+
+debian2gcrImage :: Text
+debian2gcrImage = "gcr.io/google-containers/debian-base:v2.0.0"
+
+debian2gcrImageDigest :: RepoDigest
+debian2gcrImageDigest = RepoDigest "sha256:9bd6154724425e6083550fd85a91952fa2f79ef0b9844f0d009c37a72d075757"
+
+redisImage :: Text
+redisImage = "redis:6.0.14-buster"
+
+redisImageDigest :: RepoDigest
+redisImageDigest = RepoDigest "sha256:dd347200af9dbdb9a5f55851d1a0b8b5fb89462b94e84ac0bba89dfec30504fb"
+
+haskellDevImage :: Text
+haskellDevImage = "ghcr.io/fossas/haskell-dev-tools:9.4.7"
+
+haskellDevImageDigest :: RepoDigest
+haskellDevImageDigest = RepoDigest "sha256:10ba4a4661507aa7974eae873644b740ea0e168f2fc1e56c10adc845f1cffa25"

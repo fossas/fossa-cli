@@ -33,3 +33,7 @@ remote-dependencies:
 - name: url-dep-two
   version: 1.2.4
   url: www.url2.tar.gz
+  
+locator-dependencies:
+- "fetcher-1+one"
+- "fetcher-2+two$1.0.0"

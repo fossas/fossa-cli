@@ -120,7 +120,7 @@ common deps
     , semver                       ^>=0.4.0.1
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
-    , tar                          ^>=0.6.0.0
+    , tar                          ^>=0.7.0.0
     , template-haskell
     , text                         ^>=2.0.0
     , th-lift-instances            ^>=0.1.17
@@ -529,6 +529,7 @@ test-suite unit-tests
     App.Fossa.VSI.FingerprintSpec
     App.Fossa.VSI.IAT.ResolveSpec
     App.Fossa.VSI.TypesSpec
+    App.Fossa.VSIDepsSpec
     BerkeleyDB.BerkeleyDBSpec
     BundlerSpec
     Cargo.CargoTomlSpec

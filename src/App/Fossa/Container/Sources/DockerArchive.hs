@@ -181,7 +181,7 @@ analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball = do
         GoModulesBasedTactic -- Discovery is the same for both module and package centric analysis.
     toSourceUnit :: [DiscoveredProjectScan] -> [SourceUnit]
     toSourceUnit =
-      map (Srclib.toSourceUnit False)
+      map (Srclib.projectToSourceUnit False)
         . mapMaybe toProjectResult
 
 runAnalyzers ::
