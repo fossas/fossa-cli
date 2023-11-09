@@ -22,6 +22,10 @@ module Discovery.Filters (
   withToolFilter,
   ignoredPaths,
   isDefaultNonProductionPath,
+  MavenScopeFilters (..),
+  FilterSet,
+  setInclude,
+  setExclude,
 ) where
 
 import Control.Effect.Reader (Has, Reader, ask)
@@ -87,6 +91,36 @@ data FilterCombination a = FilterCombination
 instance ToJSON (FilterCombination a) where
   toEncoding = genericToEncoding defaultOptions
 
+-- Maven Scope Filter
+data MavenScopeFilters = MavenScopeFilters
+  { includeScope :: FilterSet Include
+  , excludeScope :: FilterSet Exclude
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON MavenScopeFilters where
+  toEncoding = genericToEncoding defaultOptions
+
+instance Semigroup MavenScopeFilters where
+  (MavenScopeFilters a1 b1) <> (MavenScopeFilters a2 b2) = MavenScopeFilters (a1 <> a2) (b1 <> b2)
+
+instance Monoid MavenScopeFilters where
+  mempty = MavenScopeFilters mempty mempty
+
+newtype FilterSet a = FilterSet
+  {scopes :: Set Text}
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON (FilterSet a) where
+  toEncoding = genericToEncoding defaultOptions
+
+instance Semigroup (FilterSet a) where
+  (FilterSet a1) <> (FilterSet a2) = FilterSet (a1 <> a2)
+
+instance Monoid (FilterSet a) where
+  mempty = FilterSet mempty
+
+type role FilterSet nominal
 type role FilterCombination nominal
 
 data Include
@@ -203,6 +237,12 @@ comboInclude = FilterCombination
 
 comboExclude :: [TargetFilter] -> [Path Rel Dir] -> FilterCombination Exclude
 comboExclude = FilterCombination
+
+setInclude :: (Set Text) -> FilterSet Include
+setInclude = FilterSet
+
+setExclude :: (Set Text) -> FilterSet Exclude
+setExclude = FilterSet
 
 combinedTargets :: FilterCombination a -> [TargetFilter]
 combinedTargets = _combinedTargets

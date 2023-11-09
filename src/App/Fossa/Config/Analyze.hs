@@ -34,6 +34,7 @@ import App.Fossa.Config.Common (
   collectApiOpts,
   collectBaseDir,
   collectConfigFileFilters,
+  collectConfigMavenScopeFilters,
   collectRevisionData',
   commonOpts,
   metadataOpts,
@@ -82,7 +83,8 @@ import Data.String.Conversion (
   ToText (toText),
  )
 import Data.Text (Text)
-import Discovery.Filters (AllFilters (AllFilters), comboExclude, comboInclude)
+import Debug.Trace (traceM)
+import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters, comboExclude, comboInclude)
 import Effect.Exec (
   Exec,
  )
@@ -225,6 +227,7 @@ data AnalyzeConfig = AnalyzeConfig
   , projectRevision :: ProjectRevision
   , vsiOptions :: VSIModeOptions
   , filterSet :: AllFilters
+  , mavenScopeFilterSet :: MavenScopeFilters
   , experimental :: ExperimentalAnalyzeConfig
   , vendoredDeps :: VendoredDependencyOptions
   , unpackArchives :: Flag UnpackArchives
@@ -356,6 +359,8 @@ loadConfig ::
 loadConfig AnalyzeCliOpts{analyzeBaseDir, commons = CommonOpts{optConfig}} = do
   cwd <- getCurrentDir
   configBaseDir <- resolveDir cwd (toText analyzeBaseDir)
+  resolvedConfig <- resolveConfigFile configBaseDir optConfig
+  traceM ("Resolved Config ----- " ++ show (resolvedConfig))
   resolveConfigFile configBaseDir optConfig
 
 mergeOpts ::
@@ -405,12 +410,15 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
           OverrideProject (optProjectName commons) (optProjectRevision commons) (analyzeBranch)
       modeOpts = collectModeOptions cliOpts
       filters = collectFilters maybeConfig cliOpts
+      mavenScopeFilters = collectMavenScopeFilters maybeConfig
       experimentalCfgs = collectExperimental maybeConfig cliOpts
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
       dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
       grepOptions = collectGrepOptions maybeConfig cliOpts
       customFossaDepsFile = analyzeCustomFossaDepsFile
 
+  traceM ("&&&& These are the AnalyzeOnly Targets" ++ show (analyzeOnlyTargets))
+  traceM ("&&&& These are the AnalyzeExclude Targets" ++ show (analyzeExcludeTargets))
   firstPartyScansFlag <-
     case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
       (True, True) -> fatalText "You provided both the --experimental-force-first-party-scans and --experimental-block-first-party-scans flags. Only one of these flags may be used"
@@ -425,6 +433,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> revisionData
     <*> modeOpts
     <*> filters
+    <*> mavenScopeFilters
     <*> pure experimentalCfgs
     <*> vendoredDepsOptions
     <*> pure analyzeUnpackArchives
@@ -435,6 +444,17 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure firstPartyScansFlag
     <*> pure grepOptions
     <*> pure customFossaDepsFile
+
+collectMavenScopeFilters ::
+  ( Has Diagnostics sig m
+  ) =>
+  Maybe ConfigFile ->
+  m MavenScopeFilters
+collectMavenScopeFilters maybeConfig = do
+  let cfgMavenScopeFilters = maybe mempty collectConfigMavenScopeFilters maybeConfig
+  if isMempty cfgMavenScopeFilters
+    then pure mempty
+    else pure cfgMavenScopeFilters
 
 collectFilters ::
   ( Has Diagnostics sig m

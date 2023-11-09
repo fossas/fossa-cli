@@ -21,6 +21,7 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
+import Debug.Trace (traceM)
 import DepTypes (
   DepEnvironment (..),
   DepType (MavenType),
@@ -147,6 +148,7 @@ buildGraph reactorOutput PluginOutput{..} =
     let byNumeric :: Map Int Artifact
         byNumeric = indexBy artifactNumericId outArtifacts
 
+    traceM ("byNumeric in Maven Plugin Strategy ---------- " ++ show (byNumeric))
     depsByNumeric <- traverse toDependency byNumeric
 
     traverse_ (visitEdge depsByNumeric) outEdges
@@ -174,7 +176,7 @@ buildGraph reactorOutput PluginOutput{..} =
                     ("scopes", artifactScopes)
                       : [("optional", ["true"]) | artifactOptional]
               }
-
+      traceM ("**** This is the dep in toDependency: " ++ show (dep))
       when
         (artifactIsDirect || artifactArtifactId `Set.member` knownSubmodules)
         (Grapher.direct dep)

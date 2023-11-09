@@ -47,6 +47,7 @@ import Data.Set.NonEmpty (nonEmpty, toSet)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Debug.Trace (traceM)
 import DepTypes (
   Dependency (..),
  )
@@ -236,6 +237,7 @@ getDeps ::
   GradleProject ->
   m DependencyResults
 getDeps targets project = context "Gradle" $ do
+  traceM ("Targets in getDeps Gradle.hs ----- " ++ show (targets))
   graph <- analyze targets (gradleDir project)
   pure $
     DependencyResults

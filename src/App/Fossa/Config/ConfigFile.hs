@@ -16,6 +16,7 @@ module App.Fossa.Config.ConfigFile (
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
   VendoredDependencyConfigs (..),
+  MavenScopeConfigs (..),
   mergeFileCmdMetadata,
   resolveLocalConfigFile,
 ) where
@@ -196,6 +197,7 @@ data ConfigFile = ConfigFile
   , configTelemetry :: Maybe ConfigTelemetry
   , configCustomLicenseSearch :: Maybe [ConfigGrepEntry]
   , configKeywordSearch :: Maybe [ConfigGrepEntry]
+  , configMavenScope :: Maybe MavenScopeConfigs
   , configOrgWideCustomLicenseConfigPolicy :: OrgWideCustomLicenseConfigPolicy
   , configConfigFilePath :: Path Abs File
   }
@@ -257,6 +259,12 @@ newtype ExperimentalGradleConfigs = ExperimentalGradleConfigs
   {gradleConfigsOnly :: Set Text}
   deriving (Eq, Ord, Show)
 
+data MavenScopeConfigs = MavenScopeConfigs
+  { scopeOnly :: Set Text
+  , scopeExclude :: Set Text
+  }
+  deriving (Eq, Ord, Show)
+
 instance FromJSON (Path Abs File -> ConfigFile) where
   parseJSON = withObject "ConfigFile" $ \obj ->
     ConfigFile
@@ -272,6 +280,7 @@ instance FromJSON (Path Abs File -> ConfigFile) where
       <*> obj .:? "telemetry"
       <*> obj .:? "customLicenseSearch"
       <*> obj .:? "experimentalKeywordSearch"
+      <*> obj .:? "maven"
       <*> parseIgnoreOrgWideCustomLicenseScanConfigs obj
     where
       parseIgnoreOrgWideCustomLicenseScanConfigs obj = do
@@ -324,6 +333,12 @@ instance FromJSON ExperimentalConfigs where
 instance FromJSON ExperimentalGradleConfigs where
   parseJSON = withObject "ExperimentalGradleConfigs" $ \obj ->
     ExperimentalGradleConfigs <$> (obj .: "configurations-only" .!= Set.fromList [])
+
+instance FromJSON MavenScopeConfigs where
+  parseJSON = withObject "MavenScopeConfigs" $ \obj ->
+    MavenScopeConfigs
+      <$> (obj .:? "scope-only" .!= mempty)
+      <*> (obj .:? "scope-exclude" .!= mempty)
 
 instance FromJSON ConfigTelemetry where
   parseJSON = withObject "ConfigTelemetry" $ \obj ->

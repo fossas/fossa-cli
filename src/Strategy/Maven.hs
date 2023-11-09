@@ -12,6 +12,7 @@ import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
+import Debug.Trace (traceM)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
@@ -35,7 +36,9 @@ discover ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject MavenProject]
-discover = simpleDiscover findProjects mkProject MavenProjectType
+discover = do
+  traceM ("find projects in Maven.hs Discover ------ " ++ show ())
+  simpleDiscover findProjects mkProject MavenProjectType
   where
     findProjects dir = map MavenProject <$> PomClosure.findProjects dir
 
@@ -68,7 +71,9 @@ getDeps ::
   MavenProject ->
   m DependencyResults
 getDeps (MavenProject closure) = do
+  traceM (" getDeps Maven.hs ----- " ++ show (MavenProject closure))
   (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis closure <||> getStaticAnalysis closure
+  traceM (" getDeps Maven.hs -> Graph ****  ----- " ++ show (graph))
   pure $
     DependencyResults
       { dependencyGraph = graph

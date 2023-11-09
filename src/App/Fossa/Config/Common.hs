@@ -26,6 +26,7 @@ module App.Fossa.Config.Common (
   collectApiOpts,
   collectTelemetrySink,
   collectConfigFileFilters,
+  collectConfigMavenScopeFilters,
 
   -- * Configuration Types
   ScanDestination (..),
@@ -39,6 +40,7 @@ module App.Fossa.Config.Common (
 import App.Fossa.Config.ConfigFile (
   ConfigFile (
     configApiKey,
+    configMavenScope,
     configPaths,
     configProject,
     configRevision,
@@ -52,6 +54,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigTargets (targetsExclude, targetsOnly),
   ConfigTelemetry (telemetryScope),
   ConfigTelemetryScope (..),
+  MavenScopeConfigs (scopeExclude, scopeOnly),
   mergeFileCmdMetadata,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
@@ -92,7 +95,7 @@ import Data.Maybe (fromMaybe)
 import Data.String (IsString)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text, null, strip, toLower)
-import Discovery.Filters (AllFilters (AllFilters), comboExclude, comboInclude, targetFilterParser)
+import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (MavenScopeFilters), comboExclude, comboInclude, setExclude, setInclude, targetFilterParser)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
@@ -244,7 +247,7 @@ validateExists fp =
 validateApiKey ::
   ( Has Diagnostics sig m
   ) =>
-  Maybe ConfigFile ->
+  Maybe App.Fossa.Config.ConfigFile.ConfigFile ->
   EnvVars ->
   CommonOpts ->
   m ApiKey
@@ -262,14 +265,14 @@ validateApiKey maybeConfigFile EnvVars{envApiKey} CommonOpts{optAPIKey} = do
     then fatalText "A FOSSA API key was specified, but it is an empty string"
     else pure $ ApiKey textkey
 
-collectApiOpts :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> CommonOpts -> m ApiOpts
+collectApiOpts :: (Has Diagnostics sig m) => Maybe App.Fossa.Config.ConfigFile.ConfigFile -> EnvVars -> CommonOpts -> m ApiOpts
 collectApiOpts maybeconfig envvars globals = do
   apikey <- validateApiKey maybeconfig envvars globals
   let configUri = maybeconfig >>= configServer >>= mkURI
       baseuri = optBaseUrl globals <|> configUri
   pure $ ApiOpts baseuri apikey defaultApiPollDelay
 
-collectRevisionOverride :: Maybe ConfigFile -> OverrideProject -> OverrideProject
+collectRevisionOverride :: Maybe App.Fossa.Config.ConfigFile.ConfigFile -> OverrideProject -> OverrideProject
 collectRevisionOverride maybeConfig OverrideProject{..} = override
   where
     override = OverrideProject projectName projectRevision projectBranch
@@ -291,7 +294,7 @@ collectRevisionData ::
   , Has ReadFS sig m
   ) =>
   BaseDir ->
-  Maybe ConfigFile ->
+  Maybe App.Fossa.Config.ConfigFile.ConfigFile ->
   CacheAction ->
   OverrideProject ->
   m ProjectRevision
@@ -314,7 +317,7 @@ collectRevisionData' ::
   , Has ReadFS sig m
   ) =>
   m BaseDir ->
-  Maybe ConfigFile ->
+  Maybe App.Fossa.Config.ConfigFile.ConfigFile ->
   CacheAction ->
   OverrideProject ->
   m ProjectRevision
@@ -322,12 +325,12 @@ collectRevisionData' basedir cfg cache override = do
   basedir' <- errCtx ("Cannot collect revision data without a valid base directory" :: Text) basedir
   collectRevisionData basedir' cfg cache override
 
-collectAPIMetadata :: Has Diagnostics sig m => Maybe ConfigFile -> ProjectMetadata -> m ProjectMetadata
-collectAPIMetadata cfgfile cliMeta = maybe (pure cliMeta) (mergeFileCmdMetadata cliMeta) cfgfile
+collectAPIMetadata :: Has Diagnostics sig m => Maybe App.Fossa.Config.ConfigFile.ConfigFile -> ProjectMetadata -> m ProjectMetadata
+collectAPIMetadata cfgfile cliMeta = maybe (pure cliMeta) (App.Fossa.Config.ConfigFile.mergeFileCmdMetadata cliMeta) cfgfile
 
-collectTelemetrySink :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> Maybe CommonOpts -> m (Maybe TelemetrySink)
+collectTelemetrySink :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Maybe App.Fossa.Config.ConfigFile.ConfigFile -> EnvVars -> Maybe CommonOpts -> m (Maybe TelemetrySink)
 collectTelemetrySink maybeConfigFile envvars maybeOpts = do
-  let defaultScope = FullTelemetry
+  let defaultScope = App.Fossa.Config.ConfigFile.FullTelemetry
   -- Precedence is
   --  (1) command line
   --  (2) environment variable
@@ -342,10 +345,10 @@ collectTelemetrySink maybeConfigFile envvars maybeOpts = do
 
   let isDebugMode = envTelemetryDebug envvars || (fmap optDebug maybeOpts == Just True)
   case (isDebugMode, providedScope) of
-    (True, FullTelemetry) -> pure $ Just TelemetrySinkToFile
-    (True, NoTelemetry) -> pure Nothing
-    (False, NoTelemetry) -> pure Nothing
-    (False, FullTelemetry) -> do
+    (True, App.Fossa.Config.ConfigFile.FullTelemetry) -> pure $ Just TelemetrySinkToFile
+    (True, App.Fossa.Config.ConfigFile.NoTelemetry) -> pure Nothing
+    (False, App.Fossa.Config.ConfigFile.NoTelemetry) -> pure Nothing
+    (False, App.Fossa.Config.ConfigFile.FullTelemetry) -> do
       let candidateOpts = fromMaybe emptyCommonOpts maybeOpts
 
       -- Not all commands require api key, if we do not have valid api key
@@ -361,18 +364,18 @@ data CommonOpts = CommonOpts
   , optProjectRevision :: Maybe Text
   , optAPIKey :: Maybe Text
   , optConfig :: Maybe FilePath
-  , optTelemetry :: Maybe ConfigTelemetryScope
+  , optTelemetry :: Maybe App.Fossa.Config.ConfigFile.ConfigTelemetryScope
   }
   deriving (Eq, Ord, Show)
 
 emptyCommonOpts :: CommonOpts
 emptyCommonOpts = CommonOpts False Nothing Nothing Nothing Nothing Nothing Nothing
 
-parseTelemetryScope :: ReadM ConfigTelemetryScope
+parseTelemetryScope :: ReadM App.Fossa.Config.ConfigFile.ConfigTelemetryScope
 parseTelemetryScope = eitherReader $ \scope ->
   case toLower . strip . toText $ scope of
-    "off" -> Right NoTelemetry
-    "full" -> Right FullTelemetry
+    "off" -> Right App.Fossa.Config.ConfigFile.NoTelemetry
+    "full" -> Right App.Fossa.Config.ConfigFile.FullTelemetry
     _ -> Left "Failed to parse telemetry scope, expected either: full or off"
 
 fossaApiKeyCmdText :: IsString a => a
@@ -389,9 +392,9 @@ commonOpts =
     <*> optional (strOption (long "config" <> short 'c' <> help "Path to configuration file including filename (default: .fossa.yml)"))
     <*> optional (option parseTelemetryScope (long "with-telemetry-scope" <> help "Scope of telemetry to use, the options are 'full' or 'off'. (default: 'full')"))
 
-collectConfigFileFilters :: ConfigFile -> AllFilters
+collectConfigFileFilters :: App.Fossa.Config.ConfigFile.ConfigFile -> AllFilters
 collectConfigFileFilters configFile = do
-  let pullFromFile :: (a -> [b]) -> (ConfigFile -> Maybe a) -> [b]
+  let pullFromFile :: (a -> [b]) -> (App.Fossa.Config.ConfigFile.ConfigFile -> Maybe a) -> [b]
       pullFromFile field section = maybe [] field (section configFile)
       onlyT = pullFromFile targetsOnly configTargets
       onlyP = pullFromFile pathsOnly configPaths
@@ -399,3 +402,10 @@ collectConfigFileFilters configFile = do
       excludeP = pullFromFile pathsExclude configPaths
 
   AllFilters (comboInclude onlyT onlyP) (comboExclude excludeT excludeP)
+
+collectConfigMavenScopeFilters :: App.Fossa.Config.ConfigFile.ConfigFile -> MavenScopeFilters
+collectConfigMavenScopeFilters configFile = do
+  let maybeMavenScopeConfigs = configMavenScope configFile
+  case maybeMavenScopeConfigs of
+    Nothing -> MavenScopeFilters mempty mempty
+    Just mavenScopeConfig -> MavenScopeFilters (setInclude (scopeOnly mavenScopeConfig)) (setExclude (scopeExclude mavenScopeConfig))
