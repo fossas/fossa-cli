@@ -1,19 +1,18 @@
 # # fossa-deps file for fossa-cli
 # # ------------------------------
-# #  With fossa-deps file, you can **manually** include
-# #  dependencies, stub dependencies that cannot be **automatically**
-# #  be discovered with `fossa analyze` command.
+# # With the fossa-deps file, you can **manually** include
+# # dependencies, stub dependencies that cannot be **automatically**
+# # discovered with the `fossa analyze` command.
 # #
-# #  Dependencies denoted in this file will be automatically
-# #  included with dependencies discovered from `fossa analyze` command.
-# #  Any dependencies originating from `fossa-deps` will be shown as direct
-# #  dependency in FOSSA.
+# # Dependencies denoted in this file will be automatically
+# # included with dependencies discovered from the `fossa analyze` command.
+# # Any dependencies originating from `fossa-deps` will be shown as a direct
+# # dependency in FOSSA.
+# # To learn more:
+# # - https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-deps.md
 # #
-# #  To learn more:
-# #   - https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-deps.md
-# #
-# #  If you need assistance, or would like to file a defect, contact support at:
-# #   - https://support.fossa.com/
+# # If you need assistance or would like to file a defect, contact support at:
+# # - https://support.fossa.com/
 # #
 # # -----
 #

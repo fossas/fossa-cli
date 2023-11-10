@@ -59,7 +59,7 @@ import Data.Text qualified as Text
 import DepTypes (DepType (..))
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, indent, logDebug, pretty, vsep)
+import Effect.Logger (Logger, indent, pretty, vsep)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
 import Fossa.API.Types (ApiOpts, Organization (..))
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
@@ -96,7 +96,11 @@ analyzeFossaDepsFile root maybeCustomFossaDepsPath maybeApiOpts vendoredDepsOpti
     Nothing -> pure Nothing
     Just depsFile -> do
       manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
-      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
+      if hasNoDeps manualDeps
+        then pure Nothing
+        else
+          context "Converting fossa-deps to partial API payload" $
+            Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
 
 retrieveCustomFossaDepsFile ::
   ( Has Diagnostics sig m
@@ -168,7 +172,7 @@ toSourceUnit ::
   VendoredDependencyOptions ->
   m SourceUnit
 toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendoredDepsOptions = do
-  when (hasNoDeps manualDeps) $ logDebug "No dependencies found in fossa-deps file"
+  when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
 
   archiveLocators <- case (maybeApiOpts, NE.nonEmpty vendoredDependencies) of
     (Just apiOpts, Just vdeps) -> NE.toList <$> runFossaApiClient apiOpts (scanAndUpload root vdeps vendoredDepsOptions)

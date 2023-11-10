@@ -19,7 +19,7 @@ import Control.Effect.Lift (Lift)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.FileEmbed.Extra (embedFileIfExists)
-import Effect.Logger (Logger, Severity (SevInfo), logInfo, pretty, vsep, withDefaultLogger)
+import Effect.Logger (Logger, Severity (SevInfo), logInfo, pretty, withDefaultLogger)
 import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir, runReadFSIO)
 import Options.Applicative (CommandFields, Mod, Parser, info, progDesc)
 import Options.Applicative.Builder (command)
