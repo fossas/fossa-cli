@@ -5,6 +5,7 @@ module App.Fossa.Main (appMain) where
 import App.Fossa.Analyze qualified as Analyze
 import App.Fossa.Container qualified as Container
 import App.Fossa.DumpBinaries qualified as Dump
+import App.Fossa.Init (initCommand)
 import App.Fossa.LicenseScan qualified as LicenseScan (licenseScanSubCommand)
 import App.Fossa.ListTargets qualified as ListTargets
 import App.Fossa.Report qualified as Report
@@ -71,7 +72,6 @@ subcommands = public <|> private
       subparser $
         mconcat
           [ internal
-          , initCommand
           , experimentalLicenseScanCommand
           , decodeSubCommand Dump.dumpSubCommand
           , decodeSubCommand LicenseScan.licenseScanSubCommand
@@ -86,13 +86,8 @@ subcommands = public <|> private
           , decodeSubCommand ListTargets.listSubCommand
           , decodeSubCommand LinkBins.linkBinsSubCommand
           , decodeSubCommand Snippets.snippetsSubCommand
+          , initCommand
           ]
-
-initCommand :: Mod CommandFields (IO ())
-initCommand = command "init" (info runInit $ progDesc "Deprecated, no longer has any effect.")
-  where
-    runInit :: Parser (IO ())
-    runInit = pure $ putStrLn "The 'init' command has been deprecated and no longer has any effect.  You may safely remove this command."
 
 experimentalLicenseScanCommand :: Mod CommandFields (IO ())
 experimentalLicenseScanCommand = command "experimental-license-scan" (info runInit $ progDesc "The 'experimental-license-scan' command has been deprecated and renamed to 'license-scan'")

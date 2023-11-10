@@ -41,6 +41,7 @@ import Control.Effect.StickyLogger (StickyLogger)
 import Control.Monad (unless, when)
 import Data.Aeson (
   FromJSON (parseJSON),
+  Value (Null, Object),
   withObject,
   (.!=),
   (.:),
@@ -58,7 +59,7 @@ import Data.Text qualified as Text
 import DepTypes (DepType (..))
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, indent, pretty, vsep)
+import Effect.Logger (Logger, indent, logDebug, pretty, vsep)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
 import Fossa.API.Types (ApiOpts, Organization (..))
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
@@ -167,8 +168,7 @@ toSourceUnit ::
   VendoredDependencyOptions ->
   m SourceUnit
 toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendoredDepsOptions = do
-  -- If the file exists and we have no dependencies to report, that's a failure.
-  when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
+  when (hasNoDeps manualDeps) $ logDebug "No dependencies found in fossa-deps file"
 
   archiveLocators <- case (maybeApiOpts, NE.nonEmpty vendoredDependencies) of
     (Just apiOpts, Just vdeps) -> NE.toList <$> runFossaApiClient apiOpts (scanAndUpload root vdeps vendoredDepsOptions)
@@ -386,7 +386,7 @@ data DependencyMetadata = DependencyMetadata
   deriving (Eq, Ord, Show)
 
 instance FromJSON ManualDependencies where
-  parseJSON = withObject "ManualDependencies" $ \obj ->
+  parseJSON (Object obj) =
     ManualDependencies
       <$ (obj .:? "version" >>= isMissingOr1)
       <*> (obj .:? "referenced-dependencies" .!= [])
@@ -398,6 +398,8 @@ instance FromJSON ManualDependencies where
       isMissingOr1 :: Maybe Int -> Parser ()
       isMissingOr1 (Just x) | x /= 1 = fail $ "Invalid fossa-deps version: " <> show x
       isMissingOr1 _ = pure ()
+  parseJSON (Null) = pure $ ManualDependencies mempty mempty mempty mempty mempty
+  parseJSON other = fail $ "Expected object or Null for ManualDependencies, but got: " <> show other
 
 depTypeParser :: Text -> Parser DepType
 depTypeParser text = case depTypeFromText text of
