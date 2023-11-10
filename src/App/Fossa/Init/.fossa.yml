@@ -1,8 +1,8 @@
-# # fossa-cli configuration file. 
-# # 
-# # All fields are optional except 'version' field. 
-# #  
-# #  To learn more: 
+# # fossa-cli configuration file.
+# #
+# # All fields are optional except 'version' field.
+# #
+# #  To learn more:
 # #   - https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-yml.md
 # #
 # #  If you need assistance, or would like to file a defect, contact support at:
@@ -11,7 +11,6 @@
 # # -----
 
 version: 3
-
 # server: https://app.fossa.com
 # apiKey: a1b2c3
 #
