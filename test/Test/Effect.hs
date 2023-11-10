@@ -13,6 +13,7 @@ module Test.Effect (
   shouldMatchList',
   runTestEffects',
   it',
+  itWithTempDir',
   fit',
   xit',
   withTempDir,
@@ -38,7 +39,7 @@ import Diag.Result (Result (..), renderFailure)
 import Discovery.Filters (AllFilters)
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (IgnoreLoggerC, ignoreLogger, renderIt)
-import Effect.ReadFS (ReadFSIOC, runReadFSIO)
+import Effect.ReadFS (ReadFS, ReadFSIOC, runReadFSIO)
 import Path (Abs, Dir, Path, parseAbsDir, parseRelDir, (</>))
 import Path.IO (createDirIfMissing, removeDirRecur)
 import ResultUtil (expectFailure)
@@ -86,6 +87,9 @@ type EffectStack =
 
 it' :: String -> EffectStack () -> SpecWith ()
 it' msg = it msg . runTestEffects
+
+itWithTempDir' :: String -> (Path Abs Dir -> EffectStack ()) -> SpecWith ()
+itWithTempDir' msg act = it' msg $ withTempDir "fossa-init" $ \dir -> act dir
 
 fit' :: String -> EffectStack () -> SpecWith ()
 fit' msg = fit msg . runTestEffects

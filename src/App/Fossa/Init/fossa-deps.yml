@@ -1,0 +1,42 @@
+# # fossa-deps file for fossa-cli
+# # ------------------------------
+# #  With fossa-deps file, you can **manually** include
+# #  dependencies, stub dependencies that cannot be **automatically**
+# #  be discovered with `fossa analyze` command.
+# #
+# #  Dependencies denoted in this file will be automatically
+# #  included with dependencies discovered from `fossa analyze` command.
+# #  Any dependencies originating from `fossa-deps` will be shown as direct
+# #  dependency in FOSSA.
+# #
+# #  To learn more:
+# #   - https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-deps.md
+# #
+# #  If you need assistance, or would like to file a defect, contact support at:
+# #   - https://support.fossa.com/
+# #
+# # -----
+#
+#
+# referenced-dependencies:
+# - type: npm
+#   name: colors
+#   version: 1.4.0
+#
+# custom-dependencies:
+# - name: foo-wrapper
+#   version: 1.2.3
+#   license: MIT
+#   metadata:
+#     homepage: https://www.foowrapper.com/about
+#     description: Provides foo and a helpful interface around foo-like tasks.
+#
+# remote-dependencies:
+# - name: jquery
+#   version: 3.6.0
+#   url: https://github.com/jquery/jquery/archive/refs/tags/3.6.0.zip
+#
+# vendored-dependencies:
+# - name: Django
+#   path: vendor/Django-3.4.16.zip
+#   version: 3.4.16
