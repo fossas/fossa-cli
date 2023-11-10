@@ -22,6 +22,7 @@
 
 ## v3.8.18
 
+- Removes the `fossa log4j` subcommand. ([#1291](https://github.com/fossas/fossa-cli/pull/1291))
 - golang: Updates go.mod parser to be compatible with golang v1.21. ([#1304](https://github.com/fossas/fossa-cli/pull/1304))
 - `fossa list-targets`: list-target command supports `--format` option with: `ndjson`, `text`, and `legacy`. ([#1296](https://github.com/fossas/fossa-cli/pull/1296))
 
@@ -52,7 +53,7 @@ Initial documentation for this functionality is here.
 When we integrate this functionality into FOSSA CLI itself we'll have improved documentation as well.
 
 Note: FOSSA is still ingesting sources into the snippet scanning database;
-while this CLI is available earlier results will steadily improve as we crawl more sources.
+
 
 ## v3.8.14
 
