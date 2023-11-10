@@ -8,6 +8,7 @@
 # # included with dependencies discovered from the `fossa analyze` command.
 # # Any dependencies originating from `fossa-deps` will be shown as a direct
 # # dependency in FOSSA.
+# #
 # # To learn more:
 # # - https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-deps.md
 # #
