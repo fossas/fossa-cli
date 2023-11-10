@@ -160,7 +160,6 @@ library
     App.Fossa.Analyze.Graph
     App.Fossa.Analyze.GraphBuilder
     App.Fossa.Analyze.GraphMangler
-    App.Fossa.Analyze.Log4jReport
     App.Fossa.Analyze.Project
     App.Fossa.Analyze.Record
     App.Fossa.Analyze.ScanSummary
@@ -519,7 +518,6 @@ test-suite unit-tests
     App.Fossa.ManualDepsSpec
     App.Fossa.ProjectInferenceSpec
     App.Fossa.Report.AttributionSpec
-    App.Fossa.Report.Log4jReportSpec
     App.Fossa.ReportSpec
     App.Fossa.RunThemisSpec
     App.Fossa.VendoredDependencySpec

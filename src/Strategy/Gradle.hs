@@ -237,7 +237,6 @@ getDeps ::
   GradleProject ->
   m DependencyResults
 getDeps targets project = context "Gradle" $ do
-  traceM ("Targets in getDeps Gradle.hs ----- " ++ show (targets))
   graph <- analyze targets (gradleDir project)
   pure $
     DependencyResults
