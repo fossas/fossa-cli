@@ -140,12 +140,6 @@ Now that your analysis is complete, there are a couple things you might want to 
 
 For most users, the FOSSA CLI will work out-of-the-box without any configuration. Just get an API key, run `fossa analyze`, and view your results in the FOSSA web application.
 
-Users who need advanced customization or features should see the [User Manual](./docs/README.md). Some common topics of interest include:
-
-- [Debugging your integration](./docs/walkthroughs/debugging-your-integration.md)
-- [Specifying vendored dependencies](docs/features/vendored-dependencies.md)
-- [Adding manual dependencies](docs/features/manual-dependencies.md)
-
 <details><summary><b>Supported Languages</b></summary>
 Languages supported by FOSSA CLI can have multiple strategies for detecting dependencies, 
 one primary strategy that yields ideal results and zero or more fallback strategies. Within
@@ -198,6 +192,11 @@ dynamic strategy, this does not mean it is less supported language.
    Please make sure to check their linked documentation in the table above for more details.
 </detail>
 
+Users who need advanced customization or features should see the [User Manual](./docs/README.md). Some common topics of interest include:
+
+- [Debugging your integration](./docs/walkthroughs/debugging-your-integration.md)
+- [Specifying vendored dependencies](docs/features/vendored-dependencies.md)
+- [Adding manual dependencies](docs/features/manual-dependencies.md)
 
 ## Reporting Issues
 
