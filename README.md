@@ -140,7 +140,11 @@ Now that your analysis is complete, there are a couple things you might want to 
 
 For most users, the FOSSA CLI will work out-of-the-box without any configuration. Just get an API key, run `fossa analyze`, and view your results in the FOSSA web application.
 
-<details><summary><b>Supported Languages</b></summary>
+<details>
+  <summary>
+    <b>Supported Languages</b>
+  </summary>
+
 Languages supported by FOSSA CLI can have multiple strategies for detecting dependencies, 
 one primary strategy that yields ideal results and zero or more fallback strategies. Within
 this list of strategies, we have the concept of _static_ and _dynamic_ strategies. Static 
@@ -190,6 +194,7 @@ dynamic strategy, this does not mean it is less supported language.
 
 :warning:: Note that these strategies support _static_ and _dynamic_ detection differently than other strategies, and are not run by default.
    Please make sure to check their linked documentation in the table above for more details.
+
 </detail>
 
 Users who need advanced customization or features should see the [User Manual](./docs/README.md). Some common topics of interest include:
