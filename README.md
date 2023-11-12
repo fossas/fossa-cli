@@ -146,6 +146,59 @@ Users who need advanced customization or features should see the [User Manual](.
 - [Specifying vendored dependencies](docs/features/vendored-dependencies.md)
 - [Adding manual dependencies](docs/features/manual-dependencies.md)
 
+<details><summary><b>Supported Languages</b></summary>
+Languages supported by FOSSA CLI can have multiple strategies for detecting dependencies, 
+one primary strategy that yields ideal results and zero or more fallback strategies. Within
+this list of strategies, we have the concept of _static_ and _dynamic_ strategies. Static 
+strategies parse files to find a dependency graph (example: parse a `package-lock.json` file). 
+Dynamic strategies are required when analyzing package managers that do not offer complete
+lockfiles, such as Gradle or Go. Dynamic strategies require a working build environment to operate in.
+
+It is important to note that neither type of strategy has an inherent benefit when 
+detecting dependencies. If a supported language has only a static or only a 
+dynamic strategy, this does not mean it is less supported language.
+
+> If the FOSSA CLI is forced to utilize a fallback strategy, meaning 
+> it did not detect ideal results, a warning is emitted in the scan summary after running `fossa analyze`.
+
+| Language/Package Manager                                                                          | Dynamic   | Static    | Detect Vendored Code | Primary Strategy |
+| ------------------------------------------------------------------------------------------------- | --------- | --------- | -------------------- | ---------------- |
+| [C#](./docs/references/strategies/languages/dotnet)                                               | ✅         | ✅         | ❌                    | Dynamic          |
+| [C](./docs/references/strategies/languages/c-cpp/c-cpp.md)                                        | :warning: | :warning: | ✅                    | None             |
+| [C++](./docs/references/strategies/languages/c-cpp/c-cpp.md)                                      | :warning: | :warning: | ✅                    | None             |
+| [Clojure (leiningen)](./docs/references/strategies/languages/clojure/clojure.md)                  | ✅         | ❌         | ❌                    | Dynamic          |
+| [Dart (pub)](./docs/references/strategies/languages/dart/dart.md)                                 | ✅         | ✅         | ❌                    | Dynamic          |
+| [Elixer (mix)](./docs/references/strategies/languages/elixir/elixir.md)                           | ✅         | ❌         | ❌                    | Dynamic          |
+| [Erlang (rebar3)](./docs/references/strategies/languages/erlang/erlang.md)                        | ✅         | ❌         | ❌                    | Dynamic          |
+| [Fortran](./docs/references/strategies/languages/fortran/fortran.md)                              | ❌         | ✅         | ❌                    | Static           |
+| [Go (dep)](./docs/references/strategies/languages/golang/godep.md)                                | ❌         | ✅         | ❌                    | Static           |
+| [Go (glide)](./docs/references/strategies/languages/golang/glide.md)                              | ❌         | ✅         | ❌                    | Static           |
+| [Go (gomodules)](./docs/references/strategies/languages/golang/gomodules.md)                      | ✅         | ✅         | ❌                    | Dynamic          |
+| [Gradle](./docs/references/strategies/languages/gradle/gradle.md)                                 | ✅         | ❌         | ❌                    | Dynamic          |
+| [Haskell (cabal)](./docs/references/strategies/languages/haskell/cabal.md)                        | ✅         | ❌         | ❌                    | Dynamic          |
+| [Haskell (stack)](./docs/references/strategies/languages/haskell/stack.md)                        | ✅         | ❌         | ❌                    | Dynamic          |
+| [iOS (carthage)](./docs/references/strategies/platforms/ios/carthage.md)                          | ❌         | ✅         | ❌                    | Static           |
+| [iOS (cocoapods)](./docs/references/strategies/platforms/ios/cocoapods.md)                        | ❌         | ✅         | ❌                    | Static           |
+| [iOS (swift)](./docs/references/strategies/platforms/ios/swift.md)                                | ❌         | ✅         | ❌                    | Static           |
+| [Maven](./docs/references/strategies/languages/maven/maven.md)                                    | ✅         | ✅         | ❌                    | Dynamic          |
+| [NodeJS (NPM/Yarn/pnpm)](./docs/references/strategies/languages/nodejs/nodejs.md)                 | ❌         | ✅         | ❌                    | Static           |
+| [Perl](./docs/references/strategies/languages/perl/perl.md)                                       | ❌         | ✅         | ❌                    | Static           |
+| [PHP (Composer)](./docs/references/strategies/languages/php/composer.md)                          | ❌         | ✅         | ❌                    | Static           |
+| [Python (Conda)](./docs/references/strategies/languages/python/conda.md)                          | ✅         | ✅         | ❌                    | Dynamic          |
+| [Python (Pipenv)](./docs/references/strategies/languages/python/pipenv.md)                        | ✅         | ✅         | ❌                    | Dynamic          |
+| [Python (Poetry)](./docs/references/strategies/languages/python/poetry.md)                        | ❌         | ✅         | ❌                    | Static           |
+| [Python (Pdm)](./docs/references/strategies/languages/python/pdm.md)                              | ❌         | ✅         | ❌                    | Static           |
+| [Python (setup.py/requirements.txt)](./docs/references/strategies/languages/python/setuptools.md) | ❌         | ✅         | ❌                    | Static           |
+| [R (renv)](./docs/references/strategies/languages/r/renv.md)                                      | ❌         | ✅         | ❌                    | Static           |
+| [Ruby (bundler)](./docs/references/strategies/languages/ruby/ruby.md)                             | ✅         | ✅         | ❌                    | Static           |
+| [Rust (cargo)](./docs/references/strategies/languages/rust/rust.md)                               | ✅         | ❌         | ❌                    | Dynamic          |
+| [Scala (sbt)](./docs/references/strategies/languages/scala)                                       | ✅         | ❌         | ❌                    | Dynamic          |
+
+:warning:: Note that these strategies support _static_ and _dynamic_ detection differently than other strategies, and are not run by default.
+   Please make sure to check their linked documentation in the table above for more details.
+</detail>
+
+
 ## Reporting Issues
 
 If you've found a bug or need support, the best way to get support is via the [FOSSA support portal](https://support.fossa.com).
