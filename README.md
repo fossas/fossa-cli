@@ -195,7 +195,7 @@ dynamic strategy, this does not mean it is less supported language.
 :warning:: Note that these strategies support _static_ and _dynamic_ detection differently than other strategies, and are not run by default.
    Please make sure to check their linked documentation in the table above for more details.
 
-</detail>
+</details>
 
 Users who need advanced customization or features should see the [User Manual](./docs/README.md). Some common topics of interest include:
 
