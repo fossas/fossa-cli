@@ -351,7 +351,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
             res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (runAnalyzers filters) basedir ancestryDirect
             Diag.withResult SevError SevWarn res (const (pure ()))
 
-  let projectResults = mapMaybe toProjectResult projectScans
   let filteredProjects = mapMaybe toProjectResult projectScans
 
   maybeEndpointAppVersion <- case destination of
@@ -391,7 +390,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   -- If we find nothing but keyword search, we exit with an error, but explain that the error may be ignorable.
   -- We do not want to succeed, because nothing gets uploaded to the API for keyword searches, so `fossa test` will fail.
   -- So the solution is to still fail, but give a hopefully useful explanation that the error can be ignored if all you were expecting is keyword search results.
-  case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectResults filteredProjects' additionalSourceUnits licenseSourceUnits) of
+  case (keywordSearchResultsFound, checkForEmptyUpload includeAll filteredProjects' filteredProjects' additionalSourceUnits licenseSourceUnits) of
     (False, NoneDiscovered) -> Diag.fatal ErrNoProjectsDiscovered
     (True, NoneDiscovered) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
     (False, FilteredAll) -> Diag.fatal ErrFilteredAllProjects
