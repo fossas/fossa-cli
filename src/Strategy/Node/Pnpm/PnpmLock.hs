@@ -11,7 +11,9 @@ import Data.Aeson.Extra (TextLike (..))
 import Data.Foldable (for_)
 import Data.Map (Map, toList)
 import Data.Map qualified as Map
+import Data.Maybe (listToMaybe)
 import Data.Set qualified as Set
+import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Yaml (FromJSON, Object, Parser, (.!=), (.:), (.:?))
@@ -91,7 +93,7 @@ import Path (Abs, File, Path)
 --      @
 --
 --    * Key of `packages` refer (e.g. "/buffer@4.9.2") denotes name of dependency and resolved version using '@' separator
---        - For dependency resolved via registry resolver, format is: "/${dependencyName}@${resolvedVersion}${peerDepsInBrackets}".
+--        - For dependency resolved via registry resolver, format is: "/${dependencyName}@${resolvedVersion}${peerDepsInParenthesis}".
 --      @
 --      >   /ieee754@1.1.13:
 --      >      resolution: {integrity: sha512...}
@@ -116,16 +118,14 @@ data PnpmLockfile = PnpmLockfile
   }
   deriving (Show, Eq, Ord)
 
-data PnpmLockFileVersion = PnpmLock5 | PnpmLock6 deriving (Show, Eq, Ord)
+data PnpmLockFileVersion
+  = PnpmLock4Or5
+  | PnpmLock6
+  deriving (Show, Eq, Ord)
 
 instance FromJSON PnpmLockfile where
   parseJSON = Yaml.withObject "pnpm-lock content" $ \obj -> do
-    rawLockFileVersion :: TextLike <- obj .:? "lockfileVersion" .!= (TextLike mempty)
-    let lockFileVersion =
-          if Text.isPrefixOf "6" (unTextLike rawLockFileVersion)
-            then PnpmLock6
-            else PnpmLock5
-
+    rawLockFileVersion <- getVersion =<< obj .:? "lockfileVersion" .!= (TextLike mempty)
     importers <- obj .:? "importers" .!= mempty
     packages <- obj .:? "packages" .!= mempty
 
@@ -146,7 +146,13 @@ instance FromJSON PnpmLockfile where
             then Map.insert "." virtualRootWs importers
             else importers
 
-    pure $ PnpmLockfile refinedImporters packages lockFileVersion
+    pure $ PnpmLockfile refinedImporters packages rawLockFileVersion
+    where
+      getVersion (TextLike ver) = case (listToMaybe . toString $ ver) of
+        (Just '4') -> pure PnpmLock4Or5
+        (Just '5') -> pure PnpmLock4Or5
+        (Just '6') -> pure PnpmLock6
+        _ -> fail ("expected lockfileVersion: 4.x, 5.x or 6.x but, got: " <> show ver)
 
 data ProjectMap = ProjectMap
   { directDependencies :: Map Text ProjectMapDepMetadata
@@ -170,7 +176,7 @@ instance FromJSON ProjectMapDepMetadata where
   parseJSON (Yaml.String r) = pure $ ProjectMapDepMetadata r
   -- This is v6 lock format
   parseJSON (Yaml.Object obj) = ProjectMapDepMetadata <$> obj .: "version"
-  parseJSON _ = fail "Expected to contain string or object with 'version' field!"
+  parseJSON other = fail ("Invalid format; expected pure string or an object with a `version` field, got: " <> show other)
 
 data PackageData = PackageData
   { isDev :: Bool
@@ -276,7 +282,7 @@ buildGraph lockFile = withoutLocalPackages $
   where
     getPkgNameVersion :: Text -> Maybe (Text, Text)
     getPkgNameVersion = case lockFileVersion lockFile of
-      PnpmLock5 -> getPkgNameVersionV5
+      PnpmLock4Or5 -> getPkgNameVersionV5
       PnpmLock6 -> getPkgNameVersionV6
 
     -- Gets package name and version from package's key.
@@ -349,7 +355,7 @@ buildGraph lockFile = withoutLocalPackages $
     -- >> mkPkgKey "pkg-a" "1.0.0(babal@1.0.0)" = "/pkg-a@1.0.0(babal@1.0.0)" -- for v6 fmt
     mkPkgKey :: Text -> Text -> Text
     mkPkgKey name version = case lockFileVersion lockFile of
-      PnpmLock5 -> "/" <> name <> "/" <> version
+      PnpmLock4Or5 -> "/" <> name <> "/" <> version
       PnpmLock6 -> "/" <> name <> "@" <> version
 
     toDependency :: Text -> Maybe Text -> PackageData -> Dependency
@@ -372,8 +378,9 @@ buildGraph lockFile = withoutLocalPackages $
     withoutSymConstraint :: Text -> Text
     withoutSymConstraint version = fst $ Text.breakOn "_" version
 
-    -- We do not care about peer dependency version
-    -- in the version postFix, for final transformation.
+    -- Sometimes package versions include resolved peer dependency version
+    -- in parentheses. This is used by pnpm for dependency resolution, we do
+    -- not care about them, as they do not represent package version.
     --
     -- >> withoutPeerDepSuffix "1.2.0" = "1.2.0"
     -- >> withoutPeerDepSuffix "1.2.0(babel@1.0.0)" = "1.2.0"
