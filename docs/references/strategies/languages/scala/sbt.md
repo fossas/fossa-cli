@@ -16,7 +16,8 @@ While the other analysis strategies for `gradle` and `maven` offer some scala pr
 
 ## Project Discovery
 
-Directories that contain `build.sbt` files are treated as sbt projects.
+Directories that contain `build.sbt` files are treated as sbt projects. `fossa-cli` subsequently executes, `sbt --no-colors --batch makePom` command, 
+to infer associated targets. 
 
 ## Analysis
 
