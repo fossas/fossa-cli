@@ -1,5 +1,3 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-
 module Strategy.Maven.Pom (
   analyze',
   getLicenses,
@@ -38,7 +36,7 @@ data MavenStrategyOpts = MavenStrategyOpts
   }
   deriving (Eq, Ord, Show)
 
-analyze' :: MavenProjectClosure -> Graphing Dependency
+analyze' :: Set Text -> Set Text -> MavenProjectClosure -> Graphing Dependency
 analyze' = buildProjectGraph
 
 getLicenses :: MavenProjectClosure -> [LicenseResult]
@@ -202,6 +200,14 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
           edge (coordToPackage coord) depPackage
           traverse_ (label depPackage . MavenLabelScope) (depScope body)
           traverse_ (label depPackage . MavenLabelOptional) (depOptional body)
+
+        applicableDep :: Maybe Text -> Bool
+        applicableDep Nothing = True
+        applicableDep (Just scope) = case (Set.null scopeIncludeSet, Set.null scopeExcludeSet) of
+          (True, True) -> True
+          (False, True) -> not (Set.member scope scopeExcludeSet)
+          (True, False) -> (Set.member scope scopeIncludeSet)
+          (False, False) -> (Set.member scope scopeIncludeSet) && (not (Set.member scope scopeExcludeSet))
 
         childPoms :: [(MavenCoordinate, Pom)]
         childPoms =
