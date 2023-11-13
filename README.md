@@ -145,6 +145,7 @@ Users who need advanced customization or features should see the [User Manual](.
 - [Debugging your integration](./docs/walkthroughs/debugging-your-integration.md)
 - [Specifying vendored dependencies](docs/features/vendored-dependencies.md)
 - [Adding manual dependencies](docs/features/manual-dependencies.md)
+- [Supported languages](docs/references/strategies/README.md)
 
 ## Reporting Issues
 
