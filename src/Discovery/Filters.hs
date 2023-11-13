@@ -23,7 +23,7 @@ module Discovery.Filters (
   ignoredPaths,
   isDefaultNonProductionPath,
   MavenScopeFilters (..),
-  FilterSet,
+  FilterSet (..),
   setInclude,
   setExclude,
 ) where

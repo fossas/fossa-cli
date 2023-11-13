@@ -15,10 +15,12 @@ import Control.Effect.Diagnostics (
   (<||>),
  )
 import Control.Effect.Lift (Lift)
+import Control.Effect.Reader (Reader, asks)
 import Control.Monad (when)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Debug.Trace (traceM)
@@ -28,6 +30,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
+import Discovery.Filters (FilterSet (scopes), MavenScopeFilters (excludeScope, includeScope))
 import Effect.Exec (CandidateCommandEffs)
 import Effect.Grapher (Grapher, edge, evalGrapher)
 import Effect.Grapher qualified as Grapher
@@ -57,6 +60,7 @@ analyze' ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
+  , Has (Reader MavenScopeFilters) sig m
   ) =>
   Path Abs Dir ->
   m (Graphing Dependency, GraphBreadth)
@@ -66,6 +70,7 @@ analyzeLegacy' ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
+  , Has (Reader MavenScopeFilters) sig m
   ) =>
   Path Abs Dir ->
   m (Graphing Dependency, GraphBreadth)
@@ -87,11 +92,16 @@ analyze ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
+  , Has (Reader MavenScopeFilters) sig m
   ) =>
   Path Abs Dir ->
   DepGraphPlugin ->
   m (Graphing Dependency, GraphBreadth)
 analyze dir plugin = do
+  includeScopeFilters <- asks includeScope
+  excludeScopeFilters <- asks excludeScope
+  let includeScopeFilterSet = scopes includeScopeFilters
+      excludeScopeFilterSet = scopes excludeScopeFilters
   graph <- withUnpackedPlugin plugin $ \filepath -> do
     context "Installing plugin" $ errCtx MvnPluginInstallFailed $ installPlugin dir filepath plugin
     reactorOutput <- runReactor dir plugin
@@ -99,7 +109,7 @@ analyze dir plugin = do
       errCtx MvnPluginExecFailed $
         execPluginAggregate dir plugin
     pluginOutput <- parsePluginOutput dir
-    context "Building dependency graph" $ pure (buildGraph reactorOutput pluginOutput)
+    context "Building dependency graph" $ pure (buildGraph reactorOutput pluginOutput includeScopeFilterSet excludeScopeFilterSet)
   pure (graph, Complete)
 
 data MvnPluginInstallFailed = MvnPluginInstallFailed
@@ -138,15 +148,16 @@ instance ToDiagnostic MayIncludeSubmodule where
 -- The multimodule case shows how one submodule can depend on another. In this
 -- case we want to remove the reference to submodule1 in submodule2's dependency
 -- tree and promote submodule1's dependency to be a root (direct) dependency.
-buildGraph :: ReactorOutput -> PluginOutput -> Graphing Dependency
-buildGraph reactorOutput PluginOutput{..} =
+buildGraph :: ReactorOutput -> PluginOutput -> Set Text -> Set Text -> Graphing Dependency
+buildGraph reactorOutput PluginOutput{..} scopeIncludeSet scopeExcludeSet =
   -- The root deps in the maven depgraph text graph output are either the
   -- toplevel package or submodules in a multi-module project. We don't want to
   -- consider those because they're the users' packages, so promote them to
   -- direct when building the graph using `shrinkRoots`.
+
   shrinkRoots . run . evalGrapher $ do
     let byNumeric :: Map Int Artifact
-        byNumeric = indexBy artifactNumericId outArtifacts
+        byNumeric = indexBy artifactNumericId applicableArtificats
 
     traceM ("byNumeric in Maven Plugin Strategy ---------- " ++ show (byNumeric))
     depsByNumeric <- traverse toDependency byNumeric
@@ -176,7 +187,9 @@ buildGraph reactorOutput PluginOutput{..} =
                     ("scopes", artifactScopes)
                       : [("optional", ["true"]) | artifactOptional]
               }
+
       traceM ("**** This is the dep in toDependency: " ++ show (dep))
+      traceM ("**** Artificat Scope : " ++ show (artifactScopes))
       when
         (artifactIsDirect || artifactArtifactId `Set.member` knownSubmodules)
         (Grapher.direct dep)
@@ -193,3 +206,9 @@ buildGraph reactorOutput PluginOutput{..} =
 
     indexBy :: Ord k => (v -> k) -> [v] -> Map k v
     indexBy f = Map.fromList . map (\v -> (f v, v))
+
+    applicableArtificats :: [Artifact]
+    applicableArtificats = filter (isArtifactIncludedScopeFilter . artifactScopes) outArtifacts
+
+    isArtifactIncludedScopeFilter :: [Text] -> Bool
+    isArtifactIncludedScopeFilter = all (\x -> (Set.member x scopeIncludeSet) && (not (Set.member x scopeExcludeSet)))

@@ -100,7 +100,7 @@ import Data.Text.Extra (showT)
 import Debug.Trace (traceM)
 import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
-import Discovery.Filters (AllFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
+import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec)
 import Effect.Logger (
@@ -178,6 +178,7 @@ runDependencyAnalysis ::
   , Has (Output DiscoveredProjectScan) sig m
   , Has Stack sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader MavenScopeFilters) sig m
   , Has (Reader AllFilters) sig m
   , Has (Reader OverrideDynamicAnalysisBinary) sig m
   , Has Telemetry sig m
@@ -344,6 +345,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
       . runReader (Config.experimental cfg)
+      . runReader (Config.mavenScopeFilterSet cfg)
       . runReader discoveryFilters
       . runReader (Config.overrideDynamicAnalysis cfg)
       $ do

@@ -1,3 +1,5 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+
 module Strategy.Maven.Pom (
   analyze',
   getLicenses,
@@ -17,6 +19,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text.Extra (breakOnAndRemove)
+import Debug.Trace (traceM)
 import DepTypes
 import Effect.Grapher
 import Graphing (Graphing)
@@ -32,7 +35,7 @@ data MavenStrategyOpts = MavenStrategyOpts
   }
   deriving (Eq, Ord, Show)
 
-analyze' :: MavenProjectClosure -> Graphing Dependency
+analyze' :: Set Text -> Set Text -> MavenProjectClosure -> Graphing Dependency
 analyze' = buildProjectGraph
 
 getLicenses :: MavenProjectClosure -> [LicenseResult]
@@ -91,8 +94,9 @@ toDependency (MavenPackage group artifact version) = foldr applyLabel start
     addTag key value dep = dep{dependencyTags = Map.insertWith (++) key [value] (dependencyTags dep)}
 
 -- TODO: set top-level direct deps as direct instead of the project?
-buildProjectGraph :: MavenProjectClosure -> Graphing Dependency
-buildProjectGraph closure = run . withLabeling toDependency $ do
+buildProjectGraph :: Set Text -> Set Text -> MavenProjectClosure -> Graphing Dependency
+buildProjectGraph scopeIncludeSet scopeExcludeSet closure = run . withLabeling toDependency $ do
+  traceM ("Maven Static Pom Analysis ----------")
   direct (coordToPackage (closureRootCoord closure))
   go (closureRootCoord closure) (closureRootPom closure)
   where
@@ -122,6 +126,14 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
           edge (coordToPackage coord) depPackage
           traverse_ (label depPackage . MavenLabelScope) (depScope body)
           traverse_ (label depPackage . MavenLabelOptional) (depOptional body)
+
+        applicableDep :: Maybe Text -> Bool
+        applicableDep Nothing = True
+        applicableDep (Just scope) = case (Set.null scopeIncludeSet, Set.null scopeExcludeSet) of
+          (True, True) -> True
+          (False, True) -> not (Set.member scope scopeExcludeSet)
+          (True, False) -> (Set.member scope scopeIncludeSet)
+          (False, False) -> (Set.member scope scopeIncludeSet) && (not (Set.member scope scopeExcludeSet))
 
         childPoms :: [(MavenCoordinate, Pom)]
         childPoms =

@@ -337,8 +337,8 @@ instance FromJSON ExperimentalGradleConfigs where
 instance FromJSON MavenScopeConfigs where
   parseJSON = withObject "MavenScopeConfigs" $ \obj ->
     MavenScopeConfigs
-      <$> (obj .:? "scope-only" .!= mempty)
-      <*> (obj .:? "scope-exclude" .!= mempty)
+      <$> (obj .:? "scope-only" .!= Set.fromList [])
+      <*> (obj .:? "scope-exclude" .!= Set.fromList [])
 
 instance FromJSON ConfigTelemetry where
   parseJSON = withObject "ConfigTelemetry" $ \obj ->

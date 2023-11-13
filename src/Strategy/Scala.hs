@@ -22,7 +22,7 @@ import Control.Effect.Diagnostics (
   warnOnErr,
   (<||>),
  )
-import Control.Effect.Reader (Reader)
+import Control.Effect.Reader (Reader, asks)
 import Control.Effect.Stack (context)
 import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
 import Data.ByteString.Lazy (ByteString)
@@ -32,7 +32,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TL
 import Diag.Common (MissingDeepDeps (MissingDeepDeps))
-import Discovery.Filters (AllFilters)
+import Discovery.Filters (AllFilters, FilterSet (scopes), MavenScopeFilters (excludeScope, includeScope))
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
@@ -132,7 +132,7 @@ mkProject (ScalaProject sbtBuildDir sbtTreeJson closure) =
     , projectData = ScalaProject sbtBuildDir sbtTreeJson closure
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => ScalaProject -> m DependencyResults
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader MavenScopeFilters) sig m) => ScalaProject -> m DependencyResults
 getDeps project =
   warnOnErr MissingDeepDeps (analyzeWithDepTreeJson project <||> analyzeWithSbtDepTree project)
     <||> analyzeWithPoms project
@@ -185,11 +185,15 @@ findProjects = walkWithFilters' $ \dir _ files -> do
             (_, Just _) -> pure ([SbtTargets depTreeStdOut [] projects], WalkSkipAll)
             (_, _) -> pure ([], WalkSkipAll)
 
-analyzeWithPoms :: (Has Diagnostics sig m) => ScalaProject -> m DependencyResults
+analyzeWithPoms :: (Has Diagnostics sig m, Has (Reader MavenScopeFilters) sig m) => ScalaProject -> m DependencyResults
 analyzeWithPoms (ScalaProject _ _ closure) = context "Analyzing sbt dependencies with generated pom" $ do
+  includeScopeFilters <- asks includeScope
+  excludeScopeFilters <- asks excludeScope
+  let includeScopeFilterSet = scopes includeScopeFilters
+      excludeScopeFilterSet = scopes excludeScopeFilters
   pure $
     DependencyResults
-      { dependencyGraph = Pom.analyze' closure
+      { dependencyGraph = Pom.analyze' includeScopeFilterSet excludeScopeFilterSet closure
       , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = [closurePath closure]
       }

@@ -10,11 +10,11 @@ import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift)
-import Control.Effect.Reader (Reader)
+import Control.Effect.Reader (Reader, asks)
 import Data.Aeson (ToJSON)
 import Debug.Trace (traceM)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
-import Discovery.Filters (AllFilters)
+import Discovery.Filters (AllFilters, FilterSet (scopes), MavenScopeFilters (excludeScope, includeScope))
 import Discovery.Simple (simpleDiscover)
 import Effect.Exec (CandidateCommandEffs)
 import Effect.ReadFS (ReadFS)
@@ -57,7 +57,7 @@ newtype MavenProject = MavenProject {unMavenProject :: PomClosure.MavenProjectCl
 instance ToJSON MavenProject
 
 instance AnalyzeProject MavenProject where
-  analyzeProject _ = getDeps
+  analyzeProject _ = getDeps'
   analyzeProject' _ = getDeps'
 
 instance LicenseAnalyzeProject MavenProject where
@@ -67,12 +67,15 @@ getDeps ::
   ( Has (Lift IO) sig m
   , Has ReadFS sig m
   , CandidateCommandEffs sig m
+  , Has (Reader MavenScopeFilters) sig m
   ) =>
   MavenProject ->
   m DependencyResults
 getDeps (MavenProject closure) = do
   traceM (" getDeps Maven.hs ----- " ++ show (MavenProject closure))
-  (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis closure <||> getStaticAnalysis closure
+  traceM ("Test new blah 9182882392")
+  -- (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis closure <||> getStaticAnalysis closure
+  (graph, graphBreadth) <- context "Maven" $ getStaticAnalysis closure
   traceM (" getDeps Maven.hs -> Graph ****  ----- " ++ show (graph))
   pure $
     DependencyResults
@@ -84,6 +87,7 @@ getDeps (MavenProject closure) = do
 getDeps' ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has (Reader MavenScopeFilters) sig m
   ) =>
   MavenProject ->
   m DependencyResults
@@ -96,53 +100,63 @@ getDeps' (MavenProject closure) = do
       , dependencyManifestFiles = [PomClosure.closurePath closure]
       }
 
-getDepsDynamicAnalysis ::
-  ( Has (Lift IO) sig m
-  , Has ReadFS sig m
-  , CandidateCommandEffs sig m
-  ) =>
-  MavenProjectClosure ->
-  m (Graphing Dependency, GraphBreadth)
-getDepsDynamicAnalysis closure =
-  context "Dynamic Analysis"
-    $ warnOnErr MissingEdges
-      . warnOnErr MissingDeepDeps
-    $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
+-- getDepsDynamicAnalysis ::
+--   ( Has (Lift IO) sig m
+--   , Has ReadFS sig m
+--   , CandidateCommandEffs sig m
+--   , Has (Reader MavenScopeFilters) sig m
+--   ) =>
+--   MavenProjectClosure ->
+--   m (Graphing Dependency, GraphBreadth)
+-- getDepsDynamicAnalysis closure =
+--   context "Dynamic Analysis"
+--     $ warnOnErr MissingEdges
+--       . warnOnErr MissingDeepDeps
+--     $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
 
-getDepsPlugin ::
-  ( CandidateCommandEffs sig m
-  , Has (Lift IO) sig m
-  , Has ReadFS sig m
-  ) =>
-  MavenProjectClosure ->
-  m (Graphing Dependency, GraphBreadth)
-getDepsPlugin closure = context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
+-- getDepsPlugin ::
+--   ( CandidateCommandEffs sig m
+--   , Has (Lift IO) sig m
+--   , Has ReadFS sig m
+--   , Has (Reader MavenScopeFilters) sig m
+--   ) =>
+--   MavenProjectClosure ->
+--   m (Graphing Dependency, GraphBreadth)
+-- getDepsPlugin closure = context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
 
-getDepsPluginLegacy ::
-  ( CandidateCommandEffs sig m
-  , Has (Lift IO) sig m
-  , Has ReadFS sig m
-  ) =>
-  MavenProjectClosure ->
-  m (Graphing Dependency, GraphBreadth)
-getDepsPluginLegacy closure = context "Legacy Plugin analysis" (Plugin.analyzeLegacy' . parent $ PomClosure.closurePath closure)
+-- getDepsPluginLegacy ::
+--   ( CandidateCommandEffs sig m
+--   , Has (Lift IO) sig m
+--   , Has ReadFS sig m
+--   , Has (Reader MavenScopeFilters) sig m
+--   ) =>
+--   MavenProjectClosure ->
+--   m (Graphing Dependency, GraphBreadth)
+-- getDepsPluginLegacy closure = context "Legacy Plugin analysis" (Plugin.analyzeLegacy' . parent $ PomClosure.closurePath closure)
 
-getDepsTreeCmd ::
-  ( Has (Lift IO) sig m
-  , Has ReadFS sig m
-  , CandidateCommandEffs sig m
-  ) =>
-  MavenProjectClosure ->
-  m (Graphing Dependency, GraphBreadth)
-getDepsTreeCmd closure =
-  context "Dynamic analysis" $
-    DepTreeCmd.analyze . parent $
-      PomClosure.closurePath closure
+-- getDepsTreeCmd ::
+--   ( Has (Lift IO) sig m
+--   , Has ReadFS sig m
+--   , CandidateCommandEffs sig m
+--   ) =>
+--   MavenProjectClosure ->
+--   m (Graphing Dependency, GraphBreadth)
+-- getDepsTreeCmd closure =
+--   context "Dynamic analysis" $
+--     DepTreeCmd.analyze . parent $
+--       PomClosure.closurePath closure
 
 getStaticAnalysis ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has (Reader MavenScopeFilters) sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing Dependency, GraphBreadth)
-getStaticAnalysis closure = context "Static analysis" $ pure (Pom.analyze' closure, Partial)
+getStaticAnalysis closure = do
+  includeScopeFilters <- asks includeScope
+  excludeScopeFilters <- asks excludeScope
+  traceM ("IN GET STATIC ANALYSIS ^^^^^^^")
+  let includeScopeFilterSet = scopes includeScopeFilters
+      excludeScopeFilterSet = scopes excludeScopeFilters
+  context "Static analysis" $ pure (Pom.analyze' includeScopeFilterSet excludeScopeFilterSet closure, Partial)

@@ -36,7 +36,7 @@ import Data.Bool (bool)
 import Data.ByteString.Lazy qualified as BL
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
-import Discovery.Filters (AllFilters)
+import Discovery.Filters (AllFilters, MavenScopeFilters)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec, runExecIO)
 import Effect.Logger (
@@ -140,6 +140,7 @@ scan basedir = runFinally $ do
       -- Pathfinder does not support filters.  When `fossa analyze` supports declared license scanning,
       -- we will need to support filters as well.
       . runReader (mempty :: AllFilters)
+      . runReader (mempty :: MavenScopeFilters)
       $ runAll basedir
 
   sendIO (BL.putStr (encode projectResults))

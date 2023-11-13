@@ -57,7 +57,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes (Dependency (..), VerConstraint)
-import Discovery.Filters (AllFilters)
+import Discovery.Filters (AllFilters, MavenScopeFilters (MavenScopeFilters))
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec)
 import Effect.Logger (
@@ -126,6 +126,7 @@ analyzeForLog4j basedir = do
 
   runReader withoutAnyExperimentalPreferences
     . runReader (mempty :: AllFilters)
+    . runReader (mempty :: MavenScopeFilters)
     . runReader (mempty :: OverrideDynamicAnalysisBinary)
     . ignoreDebug
     $ do
@@ -176,6 +177,7 @@ runDependencyAnalysisForLog4j ::
   , Has Exec sig m
   , Has (Output ProjectResult) sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader MavenScopeFilters) sig m
   , Has (Reader AllFilters) sig m
   , Has (Reader OverrideDynamicAnalysisBinary) sig m
   , Has Stack sig m
