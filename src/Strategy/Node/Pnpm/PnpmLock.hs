@@ -106,6 +106,9 @@ import Path (Abs, File, Path)
 --    * If project has set peerDependencies to be not auto installed, pnpm
 --      by default, does not include them in the lockfile. So, no additional
 --      work is required for newly introduced `settings.autoInstallPeers` field.
+--      This means, that if user has chosen, not to install peerDependencies, they
+--      won't be included in the lock-file, so no additional work is required by fossa-cli.
+--      Note that, fossa-cli by default includes peer dependencies.
 --
 --  References:
 --    - [pnpm](https://pnpm.io/)
