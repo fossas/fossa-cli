@@ -16,8 +16,12 @@ While the other analysis strategies for `gradle` and `maven` offer some scala pr
 
 ## Project Discovery
 
-Directories that contain `build.sbt` files are treated as sbt projects. `fossa-cli` subsequently executes, `sbt --no-colors --batch makePom` command, 
-to infer associated targets. 
+Directories that contain build.sbt files are treated as sbt project entry points.
+
+After finding an sbt entry point, FOSSA CLI then runs
+`sbt --no-colors --batch makePom` to infer the target to scan.
+
+Each target listed by the entrypoint is a different target scanned by FOSSA.
 
 ## Analysis
 
