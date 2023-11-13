@@ -68,7 +68,7 @@ newtype MavenProject = MavenProject {unMavenProject :: PomClosure.MavenProjectCl
 instance ToJSON MavenProject
 
 instance AnalyzeProject MavenProject where
-  analyzeProject _ = getDeps
+  analyzeProject _ = getDeps'
   analyzeProject' _ = getDeps'
 
 instance LicenseAnalyzeProject MavenProject where
@@ -110,6 +110,7 @@ getDeps (MavenProject closure) = do
 getDeps' ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has (Reader MavenScopeFilters) sig m
   ) =>
   MavenProject ->
   m DependencyResults
@@ -175,6 +176,7 @@ getDepsTreeCmd closure = do
 getStaticAnalysis ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has (Reader MavenScopeFilters) sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing Dependency, GraphBreadth)
