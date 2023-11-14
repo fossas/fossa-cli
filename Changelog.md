@@ -2,6 +2,7 @@
 
 ## Unreleased
 - archive: considers 0-byte tar file to be valid tar file. ([#1311](https://github.com/fossas/fossa-cli/pull/1311)) 
+- Cocoapods: Allow Podfile.lock without EXTERNAL SOURCES field ([#1279](https://github.com/fossas/fossa-cli/pull/1279))
 
 
 ## v3.8.22
