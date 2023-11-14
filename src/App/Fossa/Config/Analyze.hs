@@ -202,6 +202,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeSkipVSIGraphResolution :: [VSI.Locator]
   , analyzeBaseDir :: FilePath
   , analyzeDynamicGoAnalysisType :: GoDynamicTactic
+  , analyzePathDependency :: Bool
   , analyzeForceFirstPartyScans :: Flag ForceFirstPartyScans
   , analyzeForceNoFirstPartyScans :: Flag ForceNoFirstPartyScans
   , analyzeIgnoreOrgWideCustomLicenseScanConfigs :: Flag IgnoreOrgWideCustomLicenseScanConfigs
@@ -244,6 +245,7 @@ instance ToJSON AnalyzeConfig where
 data ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
   { allowedGradleConfigs :: Maybe (Set Text)
   , useV3GoResolver :: GoDynamicTactic
+  , analyzePathDependencies :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -282,6 +284,7 @@ cliParser =
     <*> many skipVSIGraphResolutionOpt
     <*> baseDirArg
     <*> experimentalUseV3GoResolver
+    <*> experimentalAnalyzePathDependency
     <*> flagOpt ForceFirstPartyScans (long "experimental-force-first-party-scans" <> help "Force first party scans")
     <*> flagOpt ForceNoFirstPartyScans (long "experimental-block-first-party-scans" <> help "Block first party scans. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans.")
     <*> flagOpt IgnoreOrgWideCustomLicenseScanConfigs (long "ignore-org-wide-custom-license-scan-configs" <> help "Ignore custom-license scan configurations for your organization. These configurations are defined in the \"Integrations\" section of the Admin settings in the FOSSA web app")
@@ -307,6 +310,14 @@ experimentalUseV3GoResolver =
       <> help
         ( coloredText Red "DEPRECATED: This is now default and will be removed in the future."
             <> " For Go: generate a graph of module deps based on package deps. This will be the default in the future."
+        )
+
+experimentalAnalyzePathDependency :: Parser Bool
+experimentalAnalyzePathDependency =
+  switch $
+    long "experimental-analyze-path-dependency"
+      <> help
+        ( "License scan dependencies sourced from file system, as indicated by manifest files. This will be the default in the future."
         )
 
 vendoredDependencyModeOpt :: Parser ArchiveUploadType
@@ -461,13 +472,14 @@ collectCLIFilters AnalyzeCliOpts{..} =
     (comboExclude analyzeExcludeTargets analyzeExcludePaths)
 
 collectExperimental :: Maybe ConfigFile -> AnalyzeCliOpts -> ExperimentalAnalyzeConfig
-collectExperimental maybeCfg AnalyzeCliOpts{analyzeDynamicGoAnalysisType = goDynamicAnalysisType} =
+collectExperimental maybeCfg AnalyzeCliOpts{analyzeDynamicGoAnalysisType = goDynamicAnalysisType, analyzePathDependency = usePathDependency} =
   ExperimentalAnalyzeConfig
     ( fmap
         gradleConfigsOnly
         (maybeCfg >>= configExperimental >>= gradle)
     )
     goDynamicAnalysisType
+    usePathDependency
 
 collectVendoredDeps ::
   ( Has Diagnostics sig m

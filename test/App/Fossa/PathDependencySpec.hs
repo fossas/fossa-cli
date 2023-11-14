@@ -4,7 +4,7 @@ module App.Fossa.PathDependencySpec (
 where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
-import App.Fossa.Config.Analyze (IncludeAll (..))
+import App.Fossa.Config.Analyze (IncludeAll (..), VendoredDependencyOptions (VendoredDependencyOptions))
 import App.Fossa.PathDependency
 import App.Types (FullFileUploads (FullFileUploads))
 import Control.Algebra (Has)
@@ -17,7 +17,7 @@ import DepTypes (
   DepType (..),
   Dependency (..),
  )
-import Fossa.API.Types (Organization (..), PathDependencyUpload (..), UploadedPathDependencyLocator (..))
+import Fossa.API.Types (AnalyzedPathDependency (AnalyzedPathDependency), Organization (..), PathDependencyUpload (..), UploadedPathDependencyLocator (..))
 import Graphing (Graphing, direct)
 import Path
 import Path.Extra (SomeResolvedPath (..))
@@ -113,7 +113,7 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
     expectOrg orgDoesNotSupportPathDeps
 
     let result = mkProjectResult cwd graphWithUnPathDep
-    result' <- enrichPathDependencies includeAll pr result
+    result' <- enrichPathDependencies includeAll noRescanOption pr result
     result' `shouldBe'` result
 
   it' "should not perform path dependency enrichment, if result has no unresolved deps" $ do
@@ -121,8 +121,31 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
     expectOrg orgSupportPathDeps
 
     let result = mkProjectResult cwd graphWithPathDep
-    result' <- enrichPathDependencies includeAll pr result
+    result' <- enrichPathDependencies includeAll noRescanOption pr result
     result' `shouldBe'` result
+
+  it' "should perform upload path deps, if path dependency is not already analyzed" $ do
+    expectOrg orgSupportPathDeps
+    expectPathDependencyMatchData
+    expectLicenseScanUpload
+    expectPathDependencyFinalize
+    expectNoAnalyzedPathRevisions
+
+    let result = mkProjectResult cwd graphWithUnPathDep
+    let expectedResult = mkProjectResult cwd . direct $ resolvedPathDep
+
+    result' <- enrichPathDependencies includeAll noRescanOption pr result
+    result' `shouldBe'` expectedResult
+
+  it' "should perform not upload path deps, if path dependency is already analyzed" $ do
+    expectOrg orgSupportPathDeps{orgRequiresFullFileUploads = False}
+    expectAnalyzedPathRevisions
+
+    let result = mkProjectResult cwd graphWithUnPathDep
+    let expectedResult = mkProjectResult cwd . direct $ resolvedPathDep
+
+    result' <- enrichPathDependencies includeAll noRescanOption pr result
+    result' `shouldBe'` expectedResult
 
   describe "includeAll [--include-unused-deps]" $ do
     it' "should not perform enrichment for non-production path deps" $ do
@@ -130,7 +153,7 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
       expectOrg orgSupportPathDeps
 
       let result = mkProjectResult cwd (direct nonProdUPathDepOnly)
-      result' <- enrichPathDependencies notIncludeAll pr result
+      result' <- enrichPathDependencies notIncludeAll noRescanOption pr result
       result' `shouldBe'` result
 
     it' "should perform enrichment for non-production path deps, when flag is included" $ do
@@ -138,6 +161,7 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
       expectPathDependencyMatchData
       expectLicenseScanUpload
       expectPathDependencyFinalize
+      expectNoAnalyzedPathRevisions
 
       let result = mkProjectResult cwd (direct nonProdUPathDepOnly)
       let expectedResult =
@@ -148,7 +172,7 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
                 , dependencyVersion = Just . CEq $ fixtureDirHash
                 }
 
-      result' <- enrichPathDependencies includeAll pr result
+      result' <- enrichPathDependencies includeAll noRescanOption pr result
       result' `shouldBe'` expectedResult
 
   describe "fullFile" $ do
@@ -157,10 +181,11 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
       expectPathDependencyFullFile
       expectLicenseScanUpload
       expectPathDependencyFinalize
+      expectNoAnalyzedPathRevisions
 
       let result = mkProjectResult cwd graphWithUnPathDep
       let expectedResult = mkProjectResult cwd . direct $ resolvedPathDep
-      result' <- enrichPathDependencies includeAll pr result
+      result' <- enrichPathDependencies includeAll noRescanOption pr result
       result' `shouldBe'` expectedResult
 
     it' "should upload with matchData, if org does not requires fullfile" $ do
@@ -168,11 +193,42 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
       expectPathDependencyMatchData
       expectLicenseScanUpload
       expectPathDependencyFinalize
+      expectNoAnalyzedPathRevisions
 
       let result = mkProjectResult cwd graphWithUnPathDep
       let expectedResult = mkProjectResult cwd . direct $ resolvedPathDep
-      result' <- enrichPathDependencies includeAll pr result
+      result' <- enrichPathDependencies includeAll noRescanOption pr result
       result' `shouldBe'` expectedResult
+
+  describe "forceRescan" $ do
+    it' "should not retrieve analyzed versions, if forceRescan is true" $ do
+      expectOrg orgRequiresFullFile
+      expectPathDependencyFullFile
+      expectLicenseScanUpload
+      expectPathDependencyFinalize
+
+      let result = mkProjectResult cwd graphWithUnPathDep
+      let expectedResult = mkProjectResult cwd . direct $ resolvedPathDep
+      result' <- enrichPathDependencies includeAll forceRescanOption pr result
+      result' `shouldBe'` expectedResult
+
+    it' "should retrieve analyzed versions, if forceRescan is false" $ do
+      expectOrg orgSupportPathDeps
+      expectPathDependencyMatchData
+      expectLicenseScanUpload
+      expectPathDependencyFinalize
+      expectNoAnalyzedPathRevisions
+
+      let result = mkProjectResult cwd graphWithUnPathDep
+      let expectedResult = mkProjectResult cwd . direct $ resolvedPathDep
+      result' <- enrichPathDependencies includeAll noRescanOption pr result
+      result' `shouldBe'` expectedResult
+
+forceRescanOption :: VendoredDependencyOptions
+forceRescanOption = VendoredDependencyOptions True Nothing Nothing
+
+noRescanOption :: VendoredDependencyOptions
+noRescanOption = VendoredDependencyOptions False Nothing Nothing
 
 mkDep :: DepType -> Dependency
 mkDep dt = Dependency dt fixtureDir Nothing mempty mempty mempty
@@ -240,3 +296,9 @@ expectLicenseScanUpload = (UploadLicenseScanResult Fixtures.signedUrl Fixtures.f
 
 expectPathDependencyFinalize :: Has MockApi sig m => m ()
 expectPathDependencyFinalize = (FinalizeLicenseScanForPathDependency [Locator "path" "1" $ Just fixtureDirHash]) False `returnsOnce` ()
+
+expectNoAnalyzedPathRevisions :: Has MockApi sig m => m ()
+expectNoAnalyzedPathRevisions = GetAnalyzedPathRevisions Fixtures.projectRevision `returnsOnce` []
+
+expectAnalyzedPathRevisions :: Has MockApi sig m => m ()
+expectAnalyzedPathRevisions = GetAnalyzedPathRevisions Fixtures.projectRevision `returnsOnce` [AnalyzedPathDependency fixtureDir "1" fixtureDirHash]

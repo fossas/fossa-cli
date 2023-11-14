@@ -76,6 +76,11 @@ where:
 - `replace` rewrites `require`s. In this example, our requires resolve to
   `[github.com/example/one v1.2.3, github.com/example/other v2.0.0]`
 
+
+### Experimental: Path dependencies
+
+To learn more about path dependencies, refer to: [overview of path dependency](./../../../experimental/path-dependency.md)
+
 ## FAQ
 
 ### Why do I see a dependency in `go.mod`, but it is not reflected in FOSSA?

@@ -7,7 +7,7 @@ module App.Fossa.PathDependency (
 ) where
 
 import App.Fossa.Analyze.Project (ProjectResult (projectResultGraph, projectResultPath))
-import App.Fossa.Config.Analyze (IncludeAll (..))
+import App.Fossa.Config.Analyze (IncludeAll (..), VendoredDependencyOptions, forceRescans)
 import App.Fossa.LicenseScanner (scanDirectory)
 import App.Fossa.VendoredDependency (hashBs, hashFile)
 import App.Types (FullFileUploads (..), ProjectRevision)
@@ -26,6 +26,7 @@ import Control.Effect.FossaApiClient (
   FossaApiClient,
   PackageRevision (..),
   finalizeLicenseScanForPathDependency,
+  getAnalyzedPathRevisions,
   getOrganization,
   uploadLicenseScanResult,
   uploadPathDependencyScan,
@@ -37,11 +38,12 @@ import Control.Monad (unless)
 import Data.Flag (Flag, fromFlag)
 import Data.List (find)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
 import Effect.Exec (Exec)
+import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (
   Has,
   ReadFS,
@@ -50,7 +52,7 @@ import Effect.ReadFS (
   resolveDir',
   resolveFile',
  )
-import Fossa.API.Types (Organization (..), PathDependencyUpload (..), UploadedPathDependencyLocator (..))
+import Fossa.API.Types (AnalyzedPathDependency (adpId, adpVersion, apdPath), Organization (..), PathDependencyUpload (..), UploadedPathDependencyLocator (..))
 import Graphing (Graphing, gmap, vertexList)
 import Path (Abs, Dir, Path, dirname, parent, toFilePath)
 import Path.Extra (SomeResolvedPath (ResolvedDir, ResolvedFile))
@@ -70,17 +72,18 @@ enrichPathDependencies ::
   , Has FossaApiClient sig m
   ) =>
   Flag IncludeAll ->
+  VendoredDependencyOptions ->
   ProjectRevision ->
   ProjectResult ->
   m ProjectResult
-enrichPathDependencies includeAll projectRevision pr = do
+enrichPathDependencies includeAll options projectRevision pr = do
   org <- getOrganization
   let baseDir = projectResultPath pr
   let graph = projectResultGraph pr
   let includeAll' = (fromFlag IncludeAll includeAll)
   if orgSupportsPathDependencyScans org
     then do
-      graph' <- resolvePaths includeAll' projectRevision org baseDir graph
+      graph' <- resolvePaths includeAll' options projectRevision org baseDir graph
       pure $ pr{projectResultGraph = graph'}
     else pure pr
 
@@ -94,12 +97,13 @@ resolvePaths ::
   , Has FossaApiClient sig m
   ) =>
   Bool ->
+  VendoredDependencyOptions ->
   ProjectRevision ->
   Organization ->
   Path Abs Dir ->
   Graphing Dependency ->
   m (Graphing Dependency)
-resolvePaths leaveUnfiltered projectRevision org baseDir graph = do
+resolvePaths leaveUnfiltered options projectRevision org baseDir graph = do
   let fullFile = FullFileUploads $ orgRequiresFullFileUploads org
   let maybePathDeps = NE.nonEmpty $ filter (isValidDep leaveUnfiltered) $ vertexList graph
   case maybePathDeps of
@@ -111,22 +115,27 @@ resolvePaths leaveUnfiltered projectRevision org baseDir graph = do
       -- duplicate dependencies in the graph!
       let uniqDeps = NE.nub pathDeps
 
-      -- 2. Get hash from the dependencies, and check
-      -- dependencies that can be skipped!
+      -- 2. Get hash from the dependencies
       depsWithMetadata <- catMaybes . NE.toList <$> traverse (metadataOf baseDir) uniqDeps
-      let needToScanDepsWithMetadata = depsWithMetadata
 
-      -- 3. We scan and upload dependencies, and retrieve transformed
-      -- dependencies!
-      scannedDeps <- traverse (scanAndUpload Nothing fullFile projectRevision) needToScanDepsWithMetadata
+      -- 3. Identify dependencies that have been already resolved!
+      alreadyAnalyzed <-
+        if forceRescans options
+          then pure []
+          else getAnalyzedPathRevisions projectRevision
+      let (alreadyAnalyzedMeta, notAnalyzedMeta) = filter' (isAnalyzed alreadyAnalyzed) depsWithMetadata
+      let alreadyScannedDeps = map (transformResolved alreadyAnalyzed) alreadyAnalyzedMeta
 
-      -- 4. Kickoff job to finalize the build process for path dependencies
+      -- 4. We scan and upload dependencies, and retrieve transformed dependencies!
+      scannedDeps <- traverse (scanUploadOrTransform Nothing fullFile projectRevision) notAnalyzedMeta
+
+      -- 5. Kickoff job to finalize the build process for path dependencies
       let resolvedLoc = resolvedLocators scannedDeps
       unless (null resolvedLoc) $
         finalizeLicenseScanForPathDependency resolvedLoc False
 
-      -- 5. Finally update the graph with resolved path dependencies!
-      pure $ replaceResolved scannedDeps
+      -- 6. Finally update the graph with resolved path dependencies!
+      pure $ replaceResolved (scannedDeps ++ alreadyScannedDeps)
   where
     replaceResolved :: [(Dependency, Maybe Dependency)] -> Graphing Dependency
     replaceResolved deps = gmap (replace deps) graph
@@ -139,8 +148,19 @@ resolvePaths leaveUnfiltered projectRevision org baseDir graph = do
     resolvedLocators :: [(Dependency, Maybe Dependency)] -> [Locator]
     resolvedLocators deps = map toLocator (mapMaybe snd deps)
 
+    isAnalyzed :: [AnalyzedPathDependency] -> (Dependency, SomeResolvedPath, Text) -> Bool
+    isAnalyzed alreadyAnalyzed (d, _, version) = isJust $ find (\aa -> apdPath aa == dependencyName d && adpVersion aa == version) alreadyAnalyzed
+
+transformResolved :: [AnalyzedPathDependency] -> (Dependency, SomeResolvedPath, Text) -> (Dependency, Maybe Dependency)
+transformResolved alreadyAnalyzed (rawDep, _, version) = case maybeAlreadyAnalyzed of
+  Nothing -> (rawDep, Nothing)
+  Just ap -> (rawDep, Just rawDep{dependencyType = PathType, dependencyName = adpId ap, dependencyVersion = Just . CEq $ adpVersion ap})
+  where
+    maybeAlreadyAnalyzed :: Maybe AnalyzedPathDependency
+    maybeAlreadyAnalyzed = find (\aa -> apdPath aa == dependencyName rawDep && adpVersion aa == version) alreadyAnalyzed
+
 -- | Performs license scanning and upload for single path dependency.
-scanAndUpload ::
+scanUploadOrTransform ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Exec sig m
@@ -153,7 +173,7 @@ scanAndUpload ::
   ProjectRevision ->
   (Dependency, SomeResolvedPath, Text) ->
   m (Dependency, Maybe Dependency)
-scanAndUpload pathFilters fullFileUpload projectRevision (rawDep, resolvedPath, version) = context "Path Dependency" $ do
+scanUploadOrTransform pathFilters fullFileUpload projectRevision (rawDep, resolvedPath, version) = context "Path Dependency" $ do
   maybeLicenseUnits <- recover scan
   case maybeLicenseUnits of
     Nothing -> pure (rawDep, Nothing)
@@ -256,3 +276,6 @@ metadataOf baseDir dep = case dependencyType dep of
     hash <- hashOf depPath'
     pure $ Just (dep, depPath', hash)
   _ -> pure Nothing
+
+filter' :: (a -> Bool) -> [a] -> ([a], [a])
+filter' f l = (filter f l, filter (not . f) l)

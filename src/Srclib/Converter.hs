@@ -49,15 +49,15 @@ import Srclib.Types (
  )
 import Types (DiscoveredProjectType, GraphBreadth (..))
 
-projectToSourceUnit :: Bool -> ProjectResult -> SourceUnit
-projectToSourceUnit leaveUnfiltered ProjectResult{..} =
-  toSourceUnit leaveUnfiltered renderedPath projectResultGraph projectResultType projectResultGraphBreadth originPaths
+projectToSourceUnit :: Bool -> Bool -> ProjectResult -> SourceUnit
+projectToSourceUnit isOutputOnly leaveUnfiltered ProjectResult{..} =
+  toSourceUnit isOutputOnly leaveUnfiltered renderedPath projectResultGraph projectResultType projectResultGraphBreadth originPaths
   where
     renderedPath = toText (toFilePath projectResultPath)
     originPaths = map somePathToOriginPath projectResultManifestFiles
 
-toSourceUnit :: Bool -> Text -> Graphing Dependency -> DiscoveredProjectType -> GraphBreadth -> [OriginPath] -> SourceUnit
-toSourceUnit leaveUnfiltered path dependencies projectType graphBreadth originPaths =
+toSourceUnit :: Bool -> Bool -> Text -> Graphing Dependency -> DiscoveredProjectType -> GraphBreadth -> [OriginPath] -> SourceUnit
+toSourceUnit isOutputOnly leaveUnfiltered path dependencies projectType graphBreadth originPaths =
   SourceUnit
     { sourceUnitName = path
     , sourceUnitType = toText projectType
@@ -78,10 +78,14 @@ toSourceUnit leaveUnfiltered path dependencies projectType graphBreadth originPa
     filteredGraph :: Graphing Dependency
     filteredGraph = Graphing.shrinkWithoutPromotionToDirect ff dependencies
       where
+        isSupportedType' :: Dependency -> Bool
+        isSupportedType' = if isOutputOnly then isSupportedForOutputDestination else isSupportedType
+
+        ff :: Dependency -> Bool
         ff =
           if leaveUnfiltered
-            then isSupportedType
-            else (\d -> shouldPublishDep d && isSupportedType d)
+            then isSupportedType'
+            else (\d -> shouldPublishDep d && isSupportedType' d)
 
     locatorGraph :: Graphing Locator
     locatorGraph = Graphing.gmap toLocator filteredGraph
@@ -117,6 +121,12 @@ isSupportedType Dependency{dependencyType} =
     && dependencyType /= GooglesourceType
     && dependencyType /= ConanType
     && dependencyType /= UnresolvedPathType
+
+isSupportedForOutputDestination :: Dependency -> Bool
+isSupportedForOutputDestination Dependency{dependencyType} =
+  dependencyType /= SubprojectType
+    && dependencyType /= GooglesourceType
+    && dependencyType /= ConanType
 
 toLocator :: Dependency -> Locator
 toLocator dep =
