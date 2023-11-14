@@ -360,7 +360,6 @@ instance FromJSON PodLock where
       <*> obj .: "DEPENDENCIES"
       <*> obj .:? "EXTERNAL SOURCES" .!= Map.empty
 
-
 instance FromJSON Pod where
   parseJSON (Yaml.String p) = parserPod p Nothing
   parseJSON (Yaml.Object obj) = case Object.toList obj of
