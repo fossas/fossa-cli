@@ -52,13 +52,11 @@ mkFossaYml baseDir = do
   sendIO $ BS.writeFile (toFilePath fossaYmlExample) exampleFossaYml
   logInfo . pretty $ "Wrote example configuration File: " <> (toFilePath fossaYmlExample)
 
-
 mkFossaDeps :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> m ()
 mkFossaDeps baseDir = do
   let fossaDepsYml = baseDir </> fossaDepsYmlFile
   sendIO $ BS.writeFile (toFilePath fossaDepsYml) exampleFossaDeps
   logInfo . pretty $ "Wrote example fossa-deps File: " <> (toFilePath fossaDepsYml)
-
 
 exampleFossaYml :: ByteString
 exampleFossaYml = $(embedFileIfExists "src/App/Fossa/Init/.fossa.yml")

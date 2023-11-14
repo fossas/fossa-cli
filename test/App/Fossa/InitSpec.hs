@@ -14,7 +14,6 @@ import Test.Hspec (Spec, describe)
 spec :: Spec
 spec = do
   describe ".fossa.yml" $ do
-
     itWithTempDir' "should write valid .fossa.yml.example file" $ \tmp -> do
       let expectedFossaYml = tmp </> $(mkRelFile ".fossa.yml.example")
 
@@ -38,7 +37,6 @@ spec = do
 
       fileShouldExist expectedFossaDeps
       rawContent `shouldBe'` Init.exampleFossaDeps
-
 
 fileShouldExist :: (Has (Lift IO) sig m, Has ReadFS sig m) => Path Abs File -> m ()
 fileShouldExist path = do
