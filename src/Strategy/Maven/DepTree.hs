@@ -17,11 +17,13 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception.Extra (safeTry)
 import Data.Char (isSpace)
 import Data.Foldable (for_)
+import Data.Maybe (maybeToList)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
+import Debug.Trace (trace, traceM)
 import DepTypes (
   DepEnvironment (..),
   DepType (MavenType),
@@ -30,11 +32,13 @@ import DepTypes (
  )
 import Effect.Exec (AllowErr (..), CandidateCommandEffs, Command (..), exec, mkAnalysisCommand)
 import Effect.Grapher (direct, edge, evalGrapher)
+import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser)
 import Graphing (Graphing, gmap, shrinkRoots)
 import Path (Abs, Dir, File, Path, Rel, fromAbsFile, parseRelFile, (</>))
 import Path.IO (getTempDir, removeFile)
 import Strategy.Maven.Plugin (mavenCmdCandidates)
+import Strategy.Maven.PluginStrategy (MavenDep (..))
 import System.Random (randomIO)
 import Text.Megaparsec (
   Parsec,
@@ -45,6 +49,7 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (space1)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
+import Text.Pretty.Simple (pShow)
 import Types (GraphBreadth (Complete))
 
 -- Construct the Command for running `mvn dependency:tree` correctly.
@@ -98,10 +103,12 @@ analyze ::
   ( Has ReadFS sig m
   , Has (Lift IO) sig m
   , CandidateCommandEffs sig m
+  , Has Logger sig m
   ) =>
   Path Abs Dir ->
-  m (Graphing Dependency, GraphBreadth)
+  m (Graphing MavenDep, GraphBreadth)
 analyze dir = do
+  traceM ("Dep Tree Analyze ***** ")
   -- Construct the Maven command invocation.
   --
   -- First, we need to determine whether there exists a `settings.xml` that we
@@ -125,6 +132,7 @@ analyze dir = do
   graphs <-
     execAndParse (if settingsExists then Just settingsPath else Nothing) tmp
       `finally` sendIO (safeTry @SomeException (removeFile tmp))
+  logDebug $ "The Graph in dep tree analyze " <> pretty (pShow (graphs))
   pure (buildGraph graphs, Complete)
   where
     -- Note that we do both of these in a single action so that the `finally`
@@ -141,22 +149,25 @@ analyze dir = do
       Just f' -> pure f'
       Nothing -> fatal $ toText $ "invalid file name: " <> f
 
-buildGraph :: [DotGraph] -> Graphing Dependency
+buildGraph :: [DotGraph] -> Graphing MavenDep
 buildGraph = withoutProjectAsDep . gmap toDependency . foldMap toGraph
   where
     withoutProjectAsDep = shrinkRoots
 
-toDependency :: PackageId -> Dependency
-toDependency PackageId{groupName, artifactName, artifactVersion, buildTag} =
-  Dependency
-    { dependencyType = MavenType
-    , dependencyName = groupName <> ":" <> artifactName
-    , dependencyVersion = Just $ CEq artifactVersion
-    , dependencyLocations = []
-    , -- TODO: cleanup logic, no need to use list
-      dependencyEnvironments = Set.fromList $ maybe [EnvProduction] ((: []) . toBuildTag) buildTag
-    , dependencyTags = mempty
-    }
+toDependency :: PackageId -> MavenDep
+toDependency PackageId{groupName, artifactName, artifactVersion, buildTag} = do
+  let dep =
+        Dependency
+          { dependencyType = MavenType
+          , dependencyName = groupName <> ":" <> artifactName
+          , dependencyVersion = Just $ CEq artifactVersion
+          , dependencyLocations = []
+          , -- TODO: cleanup logic, no need to use list
+            dependencyEnvironments = Set.fromList $ maybe [EnvProduction] ((: []) . toBuildTag) buildTag
+          , dependencyTags = mempty
+          }
+      dependencyScopes = Set.fromList $ maybeToList buildTag
+  MavenDep dep dependencyScopes
 
 toGraph :: DotGraph -> Graphing PackageId
 toGraph DotGraph{rootNode, edgeList} = run . evalGrapher $ do

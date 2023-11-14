@@ -185,15 +185,11 @@ findProjects = walkWithFilters' $ \dir _ files -> do
             (_, Just _) -> pure ([SbtTargets depTreeStdOut [] projects], WalkSkipAll)
             (_, _) -> pure ([], WalkSkipAll)
 
-analyzeWithPoms :: (Has Diagnostics sig m, Has (Reader MavenScopeFilters) sig m) => ScalaProject -> m DependencyResults
+analyzeWithPoms :: (Has Diagnostics sig m) => ScalaProject -> m DependencyResults
 analyzeWithPoms (ScalaProject _ _ closure) = context "Analyzing sbt dependencies with generated pom" $ do
-  includeScopeFilters <- asks includeScope
-  excludeScopeFilters <- asks excludeScope
-  let includeScopeFilterSet = scopes includeScopeFilters
-      excludeScopeFilterSet = scopes excludeScopeFilters
   pure $
     DependencyResults
-      { dependencyGraph = Pom.analyze' includeScopeFilterSet excludeScopeFilterSet closure
+      { dependencyGraph = Pom.analyze' closure
       , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = [closurePath closure]
       }

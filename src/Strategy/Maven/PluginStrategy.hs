@@ -4,6 +4,9 @@ module Strategy.Maven.PluginStrategy (
   analyze',
   analyzeLegacy',
   buildGraph,
+  mavenDepToDependency,
+  filterMavenDepByScope,
+  MavenDep (..),
 ) where
 
 import Control.Algebra (Has, run)
@@ -35,7 +38,7 @@ import Effect.Exec (CandidateCommandEffs)
 import Effect.Grapher (Grapher, edge, evalGrapher)
 import Effect.Grapher qualified as Grapher
 import Effect.ReadFS (ReadFS)
-import Graphing (Graphing, shrinkRoots)
+import Graphing (Graphing, filter, shrinkRoots)
 import Path (Abs, Dir, Path)
 import Strategy.Maven.Plugin (
   Artifact (..),
@@ -56,6 +59,12 @@ import Strategy.Maven.Plugin (
  )
 import Types (GraphBreadth (..))
 
+data MavenDep = MavenDep
+  { dependency :: Dependency
+  , dependencyScopes :: Set Text
+  }
+  deriving (Eq, Ord, Show)
+
 analyze' ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
@@ -63,7 +72,7 @@ analyze' ::
   , Has (Reader MavenScopeFilters) sig m
   ) =>
   Path Abs Dir ->
-  m (Graphing Dependency, GraphBreadth)
+  m (Graphing MavenDep, GraphBreadth)
 analyze' dir = analyze dir depGraphPlugin
 
 analyzeLegacy' ::
@@ -73,7 +82,7 @@ analyzeLegacy' ::
   , Has (Reader MavenScopeFilters) sig m
   ) =>
   Path Abs Dir ->
-  m (Graphing Dependency, GraphBreadth)
+  m (Graphing MavenDep, GraphBreadth)
 analyzeLegacy' dir = analyze dir depGraphPluginLegacy
 
 runReactor ::
@@ -96,7 +105,7 @@ analyze ::
   ) =>
   Path Abs Dir ->
   DepGraphPlugin ->
-  m (Graphing Dependency, GraphBreadth)
+  m (Graphing MavenDep, GraphBreadth)
 analyze dir plugin = do
   includeScopeFilters <- asks includeScope
   excludeScopeFilters <- asks excludeScope
@@ -148,7 +157,7 @@ instance ToDiagnostic MayIncludeSubmodule where
 -- The multimodule case shows how one submodule can depend on another. In this
 -- case we want to remove the reference to submodule1 in submodule2's dependency
 -- tree and promote submodule1's dependency to be a root (direct) dependency.
-buildGraph :: ReactorOutput -> PluginOutput -> Set Text -> Set Text -> Graphing Dependency
+buildGraph :: ReactorOutput -> PluginOutput -> Set Text -> Set Text -> Graphing MavenDep
 buildGraph reactorOutput PluginOutput{..} scopeIncludeSet scopeExcludeSet =
   -- The root deps in the maven depgraph text graph output are either the
   -- toplevel package or submodules in a multi-module project. We don't want to
@@ -157,9 +166,10 @@ buildGraph reactorOutput PluginOutput{..} scopeIncludeSet scopeExcludeSet =
 
   shrinkRoots . run . evalGrapher $ do
     let byNumeric :: Map Int Artifact
-        byNumeric = indexBy artifactNumericId applicableArtificats
+        -- byNumeric = indexBy artifactNumericId applicableArtificats
+        byNumeric = indexBy artifactNumericId outArtifacts
 
-    traceM ("byNumeric in Maven Plugin Strategy ---------- " ++ show (byNumeric))
+    -- traceM ("byNumeric in Maven Plugin Strategy ---------- " ++ show (byNumeric))
     depsByNumeric <- traverse toDependency byNumeric
 
     traverse_ (visitEdge depsByNumeric) outEdges
@@ -173,7 +183,7 @@ buildGraph reactorOutput PluginOutput{..} scopeIncludeSet scopeExcludeSet =
       "test" -> EnvTesting
       other -> EnvOther other
 
-    toDependency :: Has (Grapher Dependency) sig m => Artifact -> m Dependency
+    toDependency :: Has (Grapher MavenDep) sig m => Artifact -> m MavenDep
     toDependency Artifact{..} = do
       let dep =
             Dependency
@@ -187,15 +197,18 @@ buildGraph reactorOutput PluginOutput{..} scopeIncludeSet scopeExcludeSet =
                     ("scopes", artifactScopes)
                       : [("optional", ["true"]) | artifactOptional]
               }
+          dependencyScopes = Set.fromList artifactScopes
+          mavenDep = MavenDep dep dependencyScopes
 
       traceM ("**** This is the dep in toDependency: " ++ show (dep))
       traceM ("**** Artificat Scope : " ++ show (artifactScopes))
       when
         (artifactIsDirect || artifactArtifactId `Set.member` knownSubmodules)
-        (Grapher.direct dep)
-      pure dep
+        (Grapher.direct mavenDep)
+      -- pure dep
+      pure mavenDep
 
-    visitEdge :: Has (Grapher Dependency) sig m => Map Int Dependency -> Edge -> m ()
+    visitEdge :: Has (Grapher MavenDep) sig m => Map Int MavenDep -> Edge -> m ()
     visitEdge refsByNumeric Edge{..} = do
       let refs = do
             parentRef <- Map.lookup edgeFrom refsByNumeric
@@ -207,8 +220,23 @@ buildGraph reactorOutput PluginOutput{..} scopeIncludeSet scopeExcludeSet =
     indexBy :: Ord k => (v -> k) -> [v] -> Map k v
     indexBy f = Map.fromList . map (\v -> (f v, v))
 
-    applicableArtificats :: [Artifact]
-    applicableArtificats = filter (isArtifactIncludedScopeFilter . artifactScopes) outArtifacts
+-- applicableArtificats :: [Artifact]
+-- applicableArtificats = filter (isArtifactIncludedScopeFilter . artifactScopes) outArtifacts
 
-    isArtifactIncludedScopeFilter :: [Text] -> Bool
-    isArtifactIncludedScopeFilter = all (\x -> (Set.member x scopeIncludeSet) && (not (Set.member x scopeExcludeSet)))
+-- isArtifactIncludedScopeFilter :: [Text] -> Bool
+-- isArtifactIncludedScopeFilter = all (\x -> (Set.member x scopeIncludeSet) && (not (Set.member x scopeExcludeSet)))
+
+-- makeMavenDep :: Dependency -> MavenDep
+
+mavenDepToDependency :: MavenDep -> Dependency
+mavenDepToDependency MavenDep{..} = dependency
+
+filterMavenDepByScope :: Set Text -> Set Text -> Graphing MavenDep -> Graphing MavenDep
+filterMavenDepByScope scopeIncludeSet scopeExcludeSet = Graphing.filter includeDep
+  where
+    includeDep :: MavenDep -> Bool
+    includeDep MavenDep{..} = case (Set.null scopeIncludeSet, Set.null scopeExcludeSet) of
+      (True, True) -> True
+      (False, True) -> dependencyScopes `Set.isSubsetOf` scopeIncludeSet
+      (True, False) -> dependencyScopes `Set.disjoint` scopeExcludeSet
+      (False, False) -> (dependencyScopes `Set.isSubsetOf` scopeIncludeSet) && (dependencyScopes `Set.disjoint` scopeExcludeSet)

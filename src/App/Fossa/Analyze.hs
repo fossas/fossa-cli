@@ -357,8 +357,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   let projectResults = mapMaybe toProjectResult projectScans
   let filteredProjects = mapMaybe toProjectResult projectScans
-  traceM ("Project Result ------" ++ show (projectResults))
-  traceM ("Filtered Result ------" ++ show (projectResults))
+  -- traceM ("Project Result ------" ++ show (projectResults))
+  -- traceM ("Filtered Result ------" ++ show (projectResults))
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
   -- traceM ("Analysis Result ------" ++ show (analysisResult))
   maybeEndpointAppVersion <- case destination of
