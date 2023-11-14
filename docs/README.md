@@ -50,6 +50,7 @@ Feature guides explain how to use specific features. These are most useful if th
 
 - [Manual dependencies](./features/manual-dependencies.md)
 - [Vendored dependencies](./features/vendored-dependencies.md)
+- [Custom License and Keyword Searches](./features/custom-license-and-keyword-searches.md)
 
 ## References
 
@@ -60,6 +61,7 @@ Reference guides provide an exhaustive listing of all CLI functionality. If you 
   - [`fossa test`](./references/subcommands/test.md)
   - [`fossa report`](./references/subcommands/report.md)
   - [`fossa list-targets`](./references/subcommands/list-targets.md)
+  - [`fossa snippets`](./references/subcommands/snippets.md)
   <!-- TODO Write this README file
   - [Common flags and options] -->
 - CLI configuration files

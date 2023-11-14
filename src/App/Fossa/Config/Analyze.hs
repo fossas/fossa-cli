@@ -20,8 +20,6 @@ module App.Fossa.Config.Analyze (
   VSIAnalysis (..),
   VSIModeOptions (..),
   GoDynamicTactic (..),
-  GrepEntry (..),
-  GrepOptions (..),
   mkSubCommand,
   loadConfig,
   cliParser,
@@ -50,11 +48,13 @@ import App.Fossa.Config.ConfigFile (
   ConfigTelemetryScope (NoTelemetry),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
+  OrgWideCustomLicenseConfigPolicy (..),
   VendoredDependencyConfigs (..),
   mergeFileCmdMetadata,
   resolveConfigFile,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
+import App.Fossa.Lernie.Types (GrepEntry (..), GrepOptions (..))
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (
@@ -121,6 +121,7 @@ data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan derivin
 data ForceVendoredDependencyRescans = ForceVendoredDependencyRescans deriving (Generic)
 data ForceFirstPartyScans = ForceFirstPartyScans deriving (Generic)
 data ForceNoFirstPartyScans = ForceNoFirstPartyScans deriving (Generic)
+data IgnoreOrgWideCustomLicenseScanConfigs = IgnoreOrgWideCustomLicenseScanConfigs deriving (Generic)
 
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
 data IncludeAll = IncludeAll deriving (Generic)
@@ -178,15 +179,6 @@ data VendoredDependencyOptions = VendoredDependencyOptions
 instance ToJSON VendoredDependencyOptions where
   toEncoding = genericToEncoding defaultOptions
 
-data GrepOptions = GrepOptions
-  { customLicenseSearch :: [GrepEntry]
-  , keywordSearch :: [GrepEntry]
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToJSON GrepOptions where
-  toEncoding = genericToEncoding defaultOptions
-
 data AnalyzeCliOpts = AnalyzeCliOpts
   { commons :: CommonOpts
   , analyzeOutput :: Bool
@@ -212,6 +204,8 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeDynamicGoAnalysisType :: GoDynamicTactic
   , analyzeForceFirstPartyScans :: Flag ForceFirstPartyScans
   , analyzeForceNoFirstPartyScans :: Flag ForceNoFirstPartyScans
+  , analyzeIgnoreOrgWideCustomLicenseScanConfigs :: Flag IgnoreOrgWideCustomLicenseScanConfigs
+  , analyzeCustomFossaDepsFile :: Maybe FilePath
   }
   deriving (Eq, Ord, Show)
 
@@ -240,19 +234,11 @@ data AnalyzeConfig = AnalyzeConfig
   , overrideDynamicAnalysis :: OverrideDynamicAnalysisBinary
   , firstPartyScansFlag :: FirstPartyScansFlag
   , grepOptions :: GrepOptions
+  , customFossaDepsFile :: Maybe FilePath
   }
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON AnalyzeConfig where
-  toEncoding = genericToEncoding defaultOptions
-
-data GrepEntry = GrepEntry
-  { grepEntryMatchCriteria :: Text
-  , grepEntryName :: Text
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToJSON GrepEntry where
   toEncoding = genericToEncoding defaultOptions
 
 data ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
@@ -298,6 +284,8 @@ cliParser =
     <*> experimentalUseV3GoResolver
     <*> flagOpt ForceFirstPartyScans (long "experimental-force-first-party-scans" <> help "Force first party scans")
     <*> flagOpt ForceNoFirstPartyScans (long "experimental-block-first-party-scans" <> help "Block first party scans. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans.")
+    <*> flagOpt IgnoreOrgWideCustomLicenseScanConfigs (long "ignore-org-wide-custom-license-scan-configs" <> help "Ignore custom-license scan configurations for your organization. These configurations are defined in the \"Integrations\" section of the Admin settings in the FOSSA web app")
+    <*> optional (strOption (long "fossa-deps-file" <> help "Path to fossa-deps file including filename (default: fossa-deps.{yaml|yml|json})"))
 
 data GoDynamicTactic
   = GoModulesBasedTactic
@@ -420,7 +408,9 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       experimentalCfgs = collectExperimental maybeConfig cliOpts
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
       dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
-      grepOptions = collectGrepOptions maybeConfig
+      grepOptions = collectGrepOptions maybeConfig cliOpts
+      customFossaDepsFile = analyzeCustomFossaDepsFile
+
   firstPartyScansFlag <-
     case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
       (True, True) -> fatalText "You provided both the --experimental-force-first-party-scans and --experimental-block-first-party-scans flags. Only one of these flags may be used"
@@ -444,6 +434,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure dynamicAnalysisOverrides
     <*> pure firstPartyScansFlag
     <*> pure grepOptions
+    <*> pure customFossaDepsFile
 
 collectFilters ::
   ( Has Diagnostics sig m
@@ -504,15 +495,18 @@ collectVendoredDepsFromConfig maybeCfg =
       pathFilters = maybeCfg >>= configVendoredDependencies >>= configLicenseScanPathFilters
    in (forceRescans, defaultScanType, pathFilters)
 
-collectGrepOptions :: Maybe ConfigFile -> GrepOptions
-collectGrepOptions maybeCfg =
+collectGrepOptions :: Maybe ConfigFile -> AnalyzeCliOpts -> GrepOptions
+collectGrepOptions maybeCfg AnalyzeCliOpts{..} =
   case maybeCfg of
-    Nothing -> GrepOptions [] []
+    Nothing -> GrepOptions [] [] orgWideCustomLicenseScanConfigPolicyFromFlag Nothing
     Just cfg ->
-      GrepOptions customLicenseList keywordSearchList
+      GrepOptions customLicenseList keywordSearchList (orgWideCustomLicenseScanConfigPolicyFromFlag <> orgWideCustomLicenseConfigPolicyFromConfig) (configConfigFilePath <$> maybeCfg)
       where
         customLicenseList = maybe [] (map configGrepToGrep) (configCustomLicenseSearch cfg)
         keywordSearchList = maybe [] (map configGrepToGrep) (configKeywordSearch cfg)
+        orgWideCustomLicenseConfigPolicyFromConfig = configOrgWideCustomLicenseConfigPolicy cfg
+  where
+    orgWideCustomLicenseScanConfigPolicyFromFlag = if (fromFlag IgnoreOrgWideCustomLicenseScanConfigs analyzeIgnoreOrgWideCustomLicenseScanConfigs) then Ignore else Use
 
 configGrepToGrep :: ConfigGrepEntry -> GrepEntry
 configGrepToGrep configGrep = GrepEntry (configGrepMatchCriteria configGrep) (configGrepName configGrep)

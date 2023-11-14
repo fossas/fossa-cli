@@ -2,12 +2,16 @@
 
 mod error;
 pub use error::*;
+use getset::{CopyGetters, Getters};
+use srclib::Locator;
 
 use std::collections::HashMap;
 
 use derive_more::{AsRef, Display, From, Into};
 use itertools::intersperse;
 use serde::{Deserialize, Serialize};
+
+use crate::extract;
 
 /// A dependency specified by the Millhone service.
 /// These are dependencies of the actual service, not dependencies reported to users for their projects.
@@ -81,4 +85,33 @@ pub enum State {
 
     /// The resource is not responding.
     Down,
+}
+
+/// An [`extract::Snippet`] augmented with ingestion metadata.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, CopyGetters, Getters)]
+pub struct ApiSnippet {
+    /// The snippet represented.
+    #[serde(flatten)]
+    #[getset(get = "pub")]
+    snippet: extract::Snippet,
+
+    /// The full locator of the project from which this locator was extracted.
+    #[getset(get = "pub")]
+    locator: Locator,
+
+    /// The ID of the ingestion run.
+    /// This ID only means anything in the context of the ingesting application.
+    #[getset(get = "pub")]
+    ingest_id: String,
+}
+
+impl ApiSnippet {
+    /// Create a new instance from an extracted snippet with provided ingestion metadata.
+    pub fn from(ingest_id: &str, locator: &Locator, snippet: extract::Snippet) -> Self {
+        Self {
+            snippet,
+            locator: locator.to_owned(),
+            ingest_id: ingest_id.to_string(),
+        }
+    }
 }

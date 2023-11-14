@@ -2,7 +2,8 @@
 
 module App.Fossa.ManualDepsSpec (
   spec,
-) where
+)
+where
 
 import App.Fossa.Config.Analyze (VendoredDependencyOptions (..))
 import App.Fossa.ManualDeps (
@@ -25,6 +26,7 @@ import Data.Text (Text)
 import Data.Yaml qualified as Yaml
 import DepTypes (DepType (..))
 import Fossa.API.Types (Organization (..))
+import Srclib.Types (Locator (Locator))
 import Test.Effect (expectFatal', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe, shouldContain)
@@ -36,7 +38,7 @@ getTestDataFile :: String -> SpecM a BS.ByteString
 getTestDataFile name = runIO . BS.readFile $ "test/App/Fossa/testdata/" <> name
 
 theWorks :: ManualDependencies
-theWorks = ManualDependencies references customs vendors remotes
+theWorks = ManualDependencies references customs vendors remotes locators
   where
     references =
       [ Managed (ManagedReferenceDependency "one" GemType Nothing)
@@ -53,6 +55,10 @@ theWorks = ManualDependencies references customs vendors remotes
     vendors =
       [ VendoredDependency "vendored" "path" Nothing
       , VendoredDependency "versioned" "path/to/dep" (Just "2.1.0")
+      ]
+    locators =
+      [ Locator "fetcher-1" "one" Nothing
+      , Locator "fetcher-2" "two" $ Just "1.0.0"
       ]
 
 exceptionContains :: BS.ByteString -> String -> Expectation
@@ -88,6 +94,7 @@ spec = do
     remoteDepSpec
     customDepSpec
     vendorDepSpec
+    locatorDepSpec
 
   describe "getScanCfg" $ do
     it' "should fail if you try to force a license scan but the FOSSA server does not support it" $ do
@@ -229,6 +236,14 @@ vendorDepSpec = do
         (encodeUtf8 vendorDepWithQuestionInVersion)
         "field 'version' conatins forbidden character(s): [\"?\"]"
 
+locatorDepSpec :: Spec
+locatorDepSpec = do
+  describe "locator dependency" $ do
+    it "should fail when locator dependency is empty" $
+      exceptionContains
+        (encodeUtf8 locatorDepWithEmptyDep)
+        "parsing Locator failed, expected String, but encountered Null"
+
 linuxReferenceDep :: Text
 linuxReferenceDep =
   [r|
@@ -314,6 +329,7 @@ linuxRefManualDep :: Text -> Maybe Text -> ManualDependencies
 linuxRefManualDep os epoch =
   ManualDependencies
     [LinuxRpmDep (LinuxReferenceDependency "pkgName" LinuxRPM (Just "1.1") "x86" os "2.2") epoch]
+    mempty
     mempty
     mempty
     mempty
@@ -414,4 +430,11 @@ managedReferenceDepWithEmptyName =
 referenced-dependencies:
 - name: " "
   type: gem
+|]
+
+locatorDepWithEmptyDep :: Text
+locatorDepWithEmptyDep =
+  [r|
+locator-dependencies:
+- 
 |]

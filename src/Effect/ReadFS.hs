@@ -383,15 +383,15 @@ runReadFSIO = interpret $ \case
   ReadRedactedContentsBS' file -> do
     mapRight Redacted
       <$> BS.readFile (toString file)
-      `catchingIO` FileReadError (toString file)
+        `catchingIO` FileReadError (toString file)
   ReadRedactedContentsBSLimit' file limit -> do
     mapRight Redacted
       <$> readContentsBSLimitIO file limit
-      `catchingIO` FileReadError (toString file)
+        `catchingIO` FileReadError (toString file)
   ReadRedactedContentsText' file -> do
     mapRight Redacted
       <$> (decodeUtf8 <$> BS.readFile (toString file))
-      `catchingIO` FileReadError (toString file)
+        `catchingIO` FileReadError (toString file)
   ResolveFile' dir path -> do
     PIO.resolveFile dir (toString path)
       `catchingIO` ResolveError (toString dir) (toString path)

@@ -39,7 +39,7 @@ readNDB :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs File -> m [NdbE
 readNDB file = do
   contents <- readContentsBS file
   blobs <- fromEitherParser $ BSL.fromStrict <$$> runParser parseNDB (show file) contents
-  entries <- traverse fromEitherShow $ readPackageInfo <$> blobs
+  entries <- traverse (fromEitherShow . readPackageInfo) blobs
   pure $ mapMaybe parsePkgInfo entries
   where
     -- FOSSA _requires_ that architecture is provided: https://github.com/fossas/FOSSA/blob/e61713dec1ef80dc6b6114f79622c14df5278235/modules/fetchers/README.md#locators-for-linux-packages

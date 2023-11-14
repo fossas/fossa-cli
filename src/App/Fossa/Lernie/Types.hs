@@ -1,6 +1,9 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Lernie.Types (
+  OrgWideCustomLicenseConfigPolicy (..),
+  GrepOptions (..),
+  GrepEntry (..),
   LernieResults (..),
   LernieMatch (..),
   LernieWarning (..),
@@ -13,14 +16,56 @@ module App.Fossa.Lernie.Types (
   LernieScanType (..),
 ) where
 
-import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), object, withObject, withText)
+import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), defaultOptions, genericToEncoding, object, withObject, withText)
 import Data.Aeson qualified as A
 import Data.Aeson.Types ((.:))
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Path (Abs, Dir, Path)
+import Path (Abs, Dir, File, Path)
 import Srclib.Types (LicenseSourceUnit)
+
+data OrgWideCustomLicenseConfigPolicy = Use | Ignore
+  deriving (Eq, Ord, Show)
+
+instance Semigroup OrgWideCustomLicenseConfigPolicy where
+  (<>) Use Use = Use
+  (<>) _ _ = Ignore
+
+instance ToText OrgWideCustomLicenseConfigPolicy where
+  toText Use = "Use"
+  toText Ignore = "Ignore"
+
+instance ToJSON OrgWideCustomLicenseConfigPolicy where
+  toJSON = toJSON . toText
+
+data GrepOptions = GrepOptions
+  { customLicenseSearch :: [GrepEntry]
+  , keywordSearch :: [GrepEntry]
+  , orgWideCustomLicenseScanConfigPolicy :: OrgWideCustomLicenseConfigPolicy
+  , configFilePath :: Maybe (Path Abs File)
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON GrepOptions where
+  toEncoding = genericToEncoding defaultOptions
+
+data GrepEntry = GrepEntry
+  { grepEntryMatchCriteria :: Text
+  , grepEntryName :: Text
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON GrepEntry where
+  toEncoding = genericToEncoding defaultOptions
+
+instance FromJSON GrepEntry where
+  parseJSON = withObject "GrepEntry" $ \obj ->
+    GrepEntry
+      <$> obj
+        .: "matchCriteria"
+      <*> obj
+        .: "name"
 
 data LernieConfig = LernieConfig
   { rootDir :: Path Abs Dir

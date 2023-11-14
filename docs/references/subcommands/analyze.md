@@ -58,6 +58,16 @@ fossa analyze --json
 {"project":{"name":"custom@new-project","branch":"master","revision":"123","url":"https://app.fossa.com/projects/custom+<org-id>/new-project/refs/branch/master/123","id":"custom+<org-id>/new-project$123"}}
 ```
 
+### Running a specific fossa-deps file
+
+The `--fossa-deps-file` flag can be used to specify the `fossa-deps` file that you want to use. The name of the file is arbitrary.
+
+See the [fossa-deps documentation](../files/fossa-deps.md) for configuration.
+
+```sh
+fossa analyze --fossa-deps-file /path/to/file
+```
+
 ### Vendored Dependencies
 
 The Vendored Dependencies feature allows you to scan for licenses directly in your code. For more information, please see the [Vendored Dependencies documentation](../../features/vendored-dependencies.md).
@@ -66,6 +76,14 @@ The Vendored Dependencies feature allows you to scan for licenses directly in yo
 |-------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `--force-vendored-dependency-scan-method` | Force the vendored dependency scan method. The options are 'CLILicenseScan' or 'ArchiveUpload'. 'CLILicenseScan' is usually the default unless your organization has overridden this. |
 | `--force-vendored-dependency-rescans`     | Force vendored dependencies to be rescanned even if the revision has been previously analyzed by FOSSA. This currently only works for CLI-side license scans.                         |
+
+### Custom License Searches
+
+The "Custom License Searches" feature allows you to define text strings or regular expressions that are used to search through your codebase. If a match to the text string or regular expression is found, then a custom license is reported for that match.
+
+An administrator of your organization can set up custom license searches that are always run when you analyze your codebase with `fossa analyze`. Using the `--ignore-org-wide-custom-license-scan-configs` flag will ignore those organization-wide custom license searches.
+
+See the [Custom License and Keyword Searches documentation](../../features/custom-license-and-keyword-searches.md) for more details.
 
 ### Running in a specific directory
 

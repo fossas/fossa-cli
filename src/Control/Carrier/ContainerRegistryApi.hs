@@ -39,7 +39,7 @@ import Container.Docker.SourceParser (
   RepoDigest,
   RepoReference (RepoReferenceDigest),
  )
-import Control.Algebra (Algebra, Has)
+import Control.Algebra (Has)
 import Control.Carrier.AtomicCounter (runAtomicCounter)
 import Control.Carrier.ContainerRegistryApi.Authorization (applyAuthToken, getAuthToken, mkRequest)
 import Control.Carrier.ContainerRegistryApi.Common (
@@ -108,8 +108,7 @@ type ContainerRegistryApiC m = SimpleC ContainerRegistryApiF (ReaderC RegistryCt
 
 -- | Runs ContainerRegistryAPI effects as IO operations
 runContainerRegistryApi ::
-  ( Algebra sig m
-  , Has (Lift IO) sig m
+  ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has Logger sig m
   , Has ReadFS sig m
@@ -260,7 +259,7 @@ exportBlob manager imgSrc dir (digest, isGzip, targetFilename) = do
 
   -- Prepare request with necessary authorization
   req <- blobEndpoint imgSrc'
-  token <- getAuthToken (registryCred imgSrc) req manager =<< getToken ctx
+  token <- getAuthToken (registryCred imgSrc) req manager Nothing =<< getToken ctx
   let req' = applyAuthToken token req
 
   -- Download image artifact

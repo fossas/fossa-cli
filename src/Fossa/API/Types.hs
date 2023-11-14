@@ -30,6 +30,7 @@ module Fossa.API.Types (
   blankOrganization,
 ) where
 
+import App.Fossa.Lernie.Types (GrepEntry)
 import App.Types (FullFileUploads (..))
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, fatalText)
@@ -471,6 +472,7 @@ data Organization = Organization
   , orgRequiresFullFileUploads :: Bool
   , orgDefaultsToFirstPartyScans :: Bool
   , orgSupportsFirstPartyScans :: Bool
+  , orgCustomLicenseScanConfigs :: [GrepEntry]
   }
   deriving (Eq, Ord, Show)
 
@@ -488,6 +490,7 @@ blankOrganization =
     , orgRequiresFullFileUploads = False
     , orgDefaultsToFirstPartyScans = False
     , orgSupportsFirstPartyScans = True
+    , orgCustomLicenseScanConfigs = []
     }
 
 instance FromJSON Organization where
@@ -525,6 +528,9 @@ instance FromJSON Organization where
       <*> obj
         .:? "supportsFirstPartyScans"
         .!= False
+      <*> obj
+        .:? "customLicenseScanConfigs"
+        .!= []
 
 data Project = Project
   { projectId :: Text

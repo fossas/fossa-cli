@@ -219,7 +219,7 @@ parseDepSCM = try parseDepHex <|> parseDepSCMGit <|> parseDepSCMOther
 -- | True if a version is not resolved in `MixDepResolved`, otherwise False.
 -- This can happen, if dependencies are not retrieved or compiled.
 missingResolvedVersions :: Map PackageName MixDepResolved -> Bool
-missingResolvedVersions mdr = any isNothing (depResolvedVersion <$> map snd (Map.toList mdr))
+missingResolvedVersions mdr = any (isNothing . depResolvedVersion . snd) (Map.toList mdr)
 
 -- Parses `mix deps` output
 mixDepsCmdOutputParser :: Parser (Map PackageName MixDepResolved)

@@ -2,6 +2,15 @@ packages: .
 tests: True
 optimization: False
 
+package spectrometer
+  -- Building with file-embed fails on GHC >= 9.2 on Mac OS X when using no optimizations (-O0).
+  -- I found that we can keep most of the speed of compiling with -O0 and compile succesfully by enabling this one extension.
+  -- In CI, we use either -O1 or -O2 so this should not be a problem.
+  -- 
+  -- When upgrading to GHC 9.4 consumers of spectrometer may also need to enable this flag if they use -O0.
+  -- Bug filed here: https://github.com/snoyberg/file-embed/issues/45
+  ghc-options: -ffull-laziness
+        
 allow-newer:
   -- git-config needs to relax its upper bound on megaparsec. PR submitted;
   -- no action from maintainer yet
@@ -53,7 +62,13 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/fossas/tar
-  tag: 6bd13acc541ae60b5c831823243040e18bd1d957
+  tag: 5f833d3a6840edb436f6083bf6e7159cd7649490
+
+-- This can be removed once https://github.com/weldr/codec-rpm/pull/40 merges and is available on hackage.
+source-repository-package
+  type: git
+  location: https://github.com/fossas/codec-rpm
+  tag: 0f7431423d47fdf36945e4ff31fbee76005b7e68
 
 index-state: hackage.haskell.org 2023-08-28T22:23:10Z
 

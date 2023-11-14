@@ -28,7 +28,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Effect.Exec (AllowErr (..), CandidateCommandEffs, Command (..), Exec, exec, mkAnalysisCommand)
+import Effect.Exec (AllowErr (..), CandidateCommandEffs, Command (..), exec, mkAnalysisCommand)
 import Effect.Grapher (direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser)
 import Graphing (Graphing, gmap, shrinkRoots)
@@ -95,9 +95,7 @@ deptreeCmd workdir settingsFile outputFile = do
     allowErr = Always
 
 analyze ::
-  ( Has Exec sig m
-  , Has ReadFS sig m
-  , Has Diagnostics sig m
+  ( Has ReadFS sig m
   , Has (Lift IO) sig m
   , CandidateCommandEffs sig m
   ) =>

@@ -1,19 +1,75 @@
 # FOSSA CLI Changelog
 
-## v3.8.13
-
+## Unreleased
+- archive: considers 0-byte tar file to be valid tar file. ([#1311](https://github.com/fossas/fossa-cli/pull/1311)) 
 - Cocoapods: Allow Podfile.lock without EXTERNAL SOURCES field ([#1279](https://github.com/fossas/fossa-cli/pull/1279))
 
-## v3.8.12
 
+## v3.8.22
+
+- `fossa-deps`: `--fossa-deps-file` to specify custom fossa-deps file ([#1303](https://github.com/fossas/fossa-cli/pull/1303))
+
+## v3.8.21
+
+- install-latest.sh: Fixed a bug where install-latest.sh would result in a broken binary when run on some versions of macOS ([#1317](https://github.com/fossas/fossa-cli/pull/1317))
+
+## v3.8.20
+- container scanning: Fixes registry network calls, to ensure `fossa-cli` uses `Accept` header on `HEAD` network calls. ([#1309](https://github.com/fossas/fossa-cli/pull/1309))
+
+## v3.8.19
+
+- container scanning: fixes a defect which led to incorrect `NotTarFormat` errors when parsing container layer. ([#1305](https://github.com/fossas/fossa-cli/pull/1305))
+- `--detect-vendored`: fix a defect which caused the `--detect-vendored` flag to fail on Windows ([#1300](https://github.com/fossas/fossa-cli/pull/1300))
+
+## v3.8.18
+
+- Removes the `fossa log4j` subcommand. ([#1291](https://github.com/fossas/fossa-cli/pull/1291))
+- golang: Updates go.mod parser to be compatible with golang v1.21. ([#1304](https://github.com/fossas/fossa-cli/pull/1304))
+- `fossa list-targets`: list-target command supports `--format` option with: `ndjson`, `text`, and `legacy`. ([#1296](https://github.com/fossas/fossa-cli/pull/1296))
+
+## v3.8.17
+
+Integrates FOSSA snippet scanning into the main application.
+For more details and a quick start guide, see [the subcommand reference](./docs/references/subcommands/snippets.md).
+
+## v3.8.16
+
+Delivers another update to the `millhone` early preview of FOSSA snippet scanning:
+
+- Fixes surprising semantics in some subcommands, especially `commit`.
+- Sorts and makes unique dependencies written to `fossa-deps` files.
+- Overly noisy snippets are filtered entirely.
+- Adds C++ snippet parsing.
+- Reduces config and logging verbosity.
+
+## v3.8.15
+
+This version is a special release: it does not alter anything in FOSSA CLI, but instead adds `millhone`,
+the new snippet scanning functionality for FOSSA, as a release asset.
+
+Future releases will bundle this functionality into FOSSA CLI instead,
+but we're making this CLI available standalone for now to enable immediate use!
+
+Initial documentation for this functionality is here.
+When we integrate this functionality into FOSSA CLI itself we'll have improved documentation as well.
+
+Note: FOSSA is still ingesting sources into the snippet scanning database;
+
+
+## v3.8.14
+
+- Custom License Searches and Keyword Searches allow you to search through your codebase, find matches to regular expressions and then either log the results to the scan summary (keyword search) or create a custom license match (custom license searches) ([#1274](https://github.com/fossas/fossa-cli/pull/1274))
+
+## v3.8.13
+- Maven: Prevent infinite recursion from Pom file property interpolation. ([#1271](https://github.com/fossas/fossa-cli/pull/1271))
+
+## v3.8.12
 - Conda: Support simple Pip packages in `environment.yml`. ([#1275](https://github.com/fossas/fossa-cli/pull/1275))
 
 ## v3.8.11
-
-- Maven: Prevent infinite recursion from Pom file property interpolation. ([#1268](https://github.com/fossas/fossa-cli/pull/1268))
+- Maven analysis: Prevent maven analysis from infinitely recursing when it encounters a recursive property ([#1268](https://github.com/fossas/fossa-cli/pull/1268))
 
 ## v3.8.10
-
 - Reports: Can now export reports formatted as CycloneDX (json/xml), CSV, HTML, and JSON SPDX. ([#1266](https://github.com/fossas/fossa-cli/pull/1266))
 - Containers: RPM packages installed in containers that use the NDB format for their RPM database are now parsed much faster. ([#1262](https://github.com/fossas/fossa-cli/pull/1262))
 
