@@ -3,7 +3,7 @@
 ## Unreleased
 - archive: considers 0-byte tar file to be valid tar file. ([#1311](https://github.com/fossas/fossa-cli/pull/1311)) 
 - Cocoapods: Allow Podfile.lock without EXTERNAL SOURCES field ([#1279](https://github.com/fossas/fossa-cli/pull/1279))
-- `fossa init`: writes example `.fossa.yml` and `fossa-deps.yaml` file. ([#1323](https://github.com/fossas/fossa-cli/pull/1323))
+- `fossa init`: writes example `.fossa.yml.example` and `fossa-deps.yml.example` file. ([#1323](https://github.com/fossas/fossa-cli/pull/1323))
 
 ## v3.8.22
 
