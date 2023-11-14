@@ -1,0 +1,233 @@
+repo_name: fossas/fossa-cli
+report_id: 53b1e55c7941fd67fa32f1303bb6f356
+repo_type: Public
+timestamp: '2023-11-14T21:05:22+00:00'
+requested_by: zlav
+provider: github
+branch: master
+detected_tools_count: 20
+tools:
+- name: Haskell
+  description: An advanced purely-functional programming language
+  website_url: http://www.haskell.org/
+  open_source: true
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Languages
+  image_url: https://img.stackshare.io/service/1069/oCgm29k9.png
+  detection_source: Repo Metadata
+- name: JavaScript
+  description: Lightweight, interpreted, object-oriented language with first-class
+    functions
+  website_url: https://developer.mozilla.org/en-US/docs/Web/JavaScript
+  open_source: true
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Languages
+  image_url: https://img.stackshare.io/service/1209/javascript.jpeg
+  detection_source: extlib/millhone/Cargo.toml
+  last_updated_by: Jessica Black
+  last_updated_on: 2023-08-18 21:57:16.000000000 Z
+- name: Python
+  description: A clear and powerful object-oriented programming language, comparable
+    to Perl, Ruby, Scheme, or Java.
+  website_url: https://www.python.org
+  open_source: true
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Languages
+  image_url: https://img.stackshare.io/service/993/pUBY5pVj.png
+  detection_source: Repo Metadata
+- name: Ruby
+  description: A dynamic, interpreted, open source programming language with a focus
+    on simplicity and productivity
+  website_url: https://www.ruby-lang.org
+  open_source: true
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Languages
+  image_url: https://img.stackshare.io/service/989/ruby.png
+  detection_source: test/Ruby/testdata/gemspecs/Gemfile
+  last_updated_by: Christopher Sasarak
+  last_updated_on: 2022-03-07 16:00:08.000000000 Z
+- name: Rust
+  description: A safe, concurrent, practical language
+  website_url: http://www.rust-lang.org/
+  open_source: true
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Languages
+  image_url: https://img.stackshare.io/service/1070/v7txhrjp9pdqrkdtxxp0.png
+  detection_source: Repo Metadata
+- name: CircleCI
+  description: Automate your development process quickly, safely, and at scale
+  website_url: https://circleci.com/
+  open_source: false
+  hosted_saas: true
+  category: Build, Test, Deploy
+  sub_category: Continuous Integration
+  image_url: https://img.stackshare.io/service/190/CvqrSSFs_400x400.jpg
+  detection_source: ".circleci/config.yml"
+  last_updated_by: meghfossa
+  last_updated_on: 2021-11-17 01:53:39.000000000 Z
+- name: Git
+  description: Fast, scalable, distributed revision control system
+  website_url: http://git-scm.com/
+  open_source: true
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Version Control System
+  image_url: https://img.stackshare.io/service/1046/git.png
+  detection_source: Repo Metadata
+- name: GitHub Actions
+  description: Automate your workflow from idea to production
+  website_url: https://github.com/features/actions
+  open_source: false
+  hosted_saas: true
+  category: Build, Test, Deploy
+  sub_category: Continuous Integration
+  image_url: https://img.stackshare.io/service/11563/actions.png
+  detection_source: ".github/workflows/lint.yml"
+  last_updated_by: Leo Zhang
+  last_updated_on: 2023-05-13 06:23:53.000000000 Z
+- name: Gradle
+  description: A powerful build system for the JVM
+  website_url: https://www.gradle.org/
+  license: Apache-2.0
+  open_source: true
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Java Build Tools
+  image_url: https://img.stackshare.io/service/975/gradlephant-social-black-bg.png
+  detection_source: scripts/jsondeps.gradle
+  last_updated_by: Christopher Sasarak
+  last_updated_on: 2023-03-27 16:24:07.000000000 Z
+- name: Nix
+  description: 'A package manager for Linux and other Unix systems '
+  website_url: http://nixos.org/nix
+  license: LGPL-2.1
+  open_source: true
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Package Managers
+  image_url: https://img.stackshare.io/service/4348/ET9J1uY-_400x400.png
+  detection_source: Repo Metadata
+- name: PyPI
+  description: A repository of software for the Python programming language
+  website_url: https://pypi.org/
+  open_source: false
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Hosted Package Repository
+  image_url: https://img.stackshare.io/service/12572/-RIWgodF_400x400.jpg
+  detection_source: test/Pdm/testdata/without_lockfile/pyproject.toml
+  last_updated_by: meghfossa
+  last_updated_on: 2023-06-13 15:25:45.000000000 Z
+- name: RubyGems
+  description: Easily download, install, and use ruby software packages on your system
+  website_url: https://rubygems.org/
+  open_source: false
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Package Managers
+  image_url: https://img.stackshare.io/service/12795/5jL6-BA5_400x400.jpeg
+  detection_source: extlib/millhone/Cargo.toml
+  last_updated_by: Jessica Black
+  last_updated_on: 2022-09-07 16:01:05.000000000 Z
+- name: Yarn
+  description: A new package manager for JavaScript
+  website_url: https://yarnpkg.com/
+  open_source: true
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Front End Package Manager
+  image_url: https://img.stackshare.io/service/5848/44mC-kJ3.jpg
+  detection_source: test/Yarn/V1/testdata/yarn.lock
+  last_updated_by: Zach
+  last_updated_on: 2020-11-19 01:25:22.000000000 Z
+- name: npm
+  description: The package manager for JavaScript.
+  website_url: https://www.npmjs.com/
+  open_source: false
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Front End Package Manager
+  image_url: https://img.stackshare.io/service/1120/lejvzrnlpb308aftn31u.png
+  detection_source: extlib/millhone/Cargo.toml
+  last_updated_by: Jessica Black
+  last_updated_on: 2023-08-18 21:57:16.000000000 Z
+- name: CocoaPods
+  description: A dependency manager for Swift and Objective-C Cocoa projects
+  website_url: https://cocoapods.org/
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: CocoaPods Packages
+  image_url: https://img.stackshare.io/service/2426/e1cbdef9d4b11484049a033886578e54_400x400.png
+  detection_source: test/Cocoapods/testdata/Podfile.lock
+  last_updated_by: Zach
+  last_updated_on: 2020-02-12 22:07:51.000000000 Z
+- name: PowerShell
+  description: A task automation and configuration management framework
+  website_url: https://docs.microsoft.com/en-us/powershell/
+  open_source: false
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Languages
+  image_url: https://img.stackshare.io/service/3681/powershell-logo.png
+  detection_source: Repo Metadata
+- name: Shell
+  description: A shell is a text-based terminal, used for manipulating programs and
+    files. Shell scripts typically manage program execution.
+  website_url: https://en.wikipedia.org/wiki/Shell_script
+  open_source: false
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Languages
+  image_url: https://img.stackshare.io/service/4631/default_c2062d40130562bdc836c13dbca02d318205a962.png
+  detection_source: Repo Metadata
+- name: flake8
+  description: 'The modular source code checker: pep8, pyflakes and co'
+  package_url: https://pypi.org/flake8
+  license: MIT
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: PyPI Packages
+  image_url: https://img.stackshare.io/package/19920/default_c8be5290cb8d8a8b578535a2c6475d1057ff4ea4.png
+  detection_source: test/Pdm/testdata/without_lockfile/pyproject.toml
+  last_updated_by: meghfossa
+  last_updated_on: 2023-06-13 15:25:45.000000000 Z
+- name: pip
+  description: The PyPA recommended tool for installing Python packages
+  package_url: https://pypi.org/pip
+  license: MIT
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: PyPI Packages
+  image_url: https://img.stackshare.io/package/19919/default_e86399d4348daca8e669da75e38679ad87fc07db.png
+  detection_source: test/Pdm/testdata/without_lockfile/pyproject.toml
+  last_updated_by: meghfossa
+  last_updated_on: 2023-06-13 15:25:45.000000000 Z
+- name: requests
+  description: Python HTTP for Humans
+  package_url: https://pypi.org/requests
+  version: 2.25.1
+  license: Apache-2.0
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: PyPI Packages
+  image_url: https://img.stackshare.io/package/19826/default_d7c684bf2673f008a9f02ac93901229297a22d7e.png
+  detection_source_url: test/Pdm/testdata/basic/pyproject.toml
+  detection_source: test/Pdm/testdata/without_lockfile/pyproject.toml
+  last_updated_by: meghfossa
+  last_updated_on: 2023-06-13 15:25:45.000000000 Z
+  vulnerabilities:
+  - name: Unintended leak of Proxy-Authorization header in requests
+    cve_id: CVE-2023-32681
+    cve_url: https://github.com/advisories/GHSA-j8r2-6x86-q33q
+    detected_date: May 23
+    severity: moderate
+    first_patched: 2.31.0
