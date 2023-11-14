@@ -20,7 +20,7 @@ import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.FileEmbed.Extra (embedFileIfExists)
 import Effect.Logger (Logger, Severity (SevInfo), logInfo, pretty, withDefaultLogger)
-import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir, runReadFSIO)
+import Effect.ReadFS (ReadFS, getCurrentDir, runReadFSIO)
 import Options.Applicative (CommandFields, Mod, Parser, info, progDesc)
 import Options.Applicative.Builder (command)
 import Path (
@@ -35,7 +35,7 @@ import Path (
  )
 
 initCommand :: Mod CommandFields (IO ())
-initCommand = command "init" (info run $ progDesc "Creates example .fossa.yml and fossa-deps.yml file")
+initCommand = command "init" (info run $ progDesc "Creates .fossa.yml.example and fossa-deps.yml.example file")
   where
     run :: Parser (IO ())
     run = pure $ withTelemetry . runStack . withDefaultLogger SevInfo . logWithExit_ . runReadFSIO $ runInit
@@ -46,39 +46,19 @@ runInit = do
   mkFossaYml dir
   mkFossaDeps dir
 
-mkFossaYml :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has ReadFS sig m, Has Logger sig m) => Path Abs Dir -> m ()
+mkFossaYml :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> m ()
 mkFossaYml baseDir = do
-  (fossaYml, fossaYmlExist) <- checkFile (baseDir </> fossaYmlFile)
-  (fossaYaml, fossaYamlExist) <- checkFile (baseDir </> fossaYamlFile)
+  let fossaYmlExample = baseDir </> fossaYmlFile
+  sendIO $ BS.writeFile (toFilePath fossaYmlExample) exampleFossaYml
+  logInfo . pretty $ "Wrote example configuration File: " <> (toFilePath fossaYmlExample)
 
-  case (fossaYmlExist, fossaYamlExist) of
-    (True, _) -> fileAlreadyExists fossaYml
-    (_, True) -> fileAlreadyExists fossaYaml
-    _ -> do
-      sendIO $ BS.writeFile (toFilePath fossaYml) exampleFossaYml
-      logInfo . pretty $ "Created Example Configuration File: " <> (toFilePath fossaYml)
 
-mkFossaDeps :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has ReadFS sig m, Has Logger sig m) => Path Abs Dir -> m ()
+mkFossaDeps :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has Logger sig m) => Path Abs Dir -> m ()
 mkFossaDeps baseDir = do
-  (fossaDepsYml, fossaDepsYmlExist) <- checkFile (baseDir </> fossaDepsYmlFile)
-  (fossaDepsYaml, fossaDepsYamlExist) <- checkFile (baseDir </> fossaDepsYamlFile)
-  (fossaDepsJson, fossaDepsJsonExist) <- checkFile (baseDir </> fossaDepsJsonFile)
+  let fossaDepsYml = baseDir </> fossaDepsYmlFile
+  sendIO $ BS.writeFile (toFilePath fossaDepsYml) exampleFossaDeps
+  logInfo . pretty $ "Wrote example fossa-deps File: " <> (toFilePath fossaDepsYml)
 
-  case (fossaDepsYmlExist, fossaDepsYamlExist, fossaDepsJsonExist) of
-    (True, _, _) -> fileAlreadyExists fossaDepsYml
-    (_, True, _) -> fileAlreadyExists fossaDepsYaml
-    (_, _, True) -> fileAlreadyExists fossaDepsJson
-    _ -> do
-      sendIO $ BS.writeFile (toFilePath fossaDepsYml) exampleFossaDeps
-      logInfo . pretty $ "Created Example fossa-deps File: " <> (toFilePath fossaDepsYml)
-
-checkFile :: (Has Diagnostics sig m, Has ReadFS sig m) => Path Abs File -> m (Path Abs File, Bool)
-checkFile path = do
-  pathExists <- doesFileExist path
-  pure (path, pathExists)
-
-fileAlreadyExists :: Has Logger sig m => Path Abs File -> m ()
-fileAlreadyExists path = logInfo . pretty $ "File: " <> toFilePath path <> " already exists, so skipping!"
 
 exampleFossaYml :: ByteString
 exampleFossaYml = $(embedFileIfExists "src/App/Fossa/Init/.fossa.yml")
@@ -87,16 +67,7 @@ exampleFossaDeps :: ByteString
 exampleFossaDeps = $(embedFileIfExists "src/App/Fossa/Init/fossa-deps.yml")
 
 fossaYmlFile :: Path Rel File
-fossaYmlFile = $(mkRelFile ".fossa.yml")
-
-fossaYamlFile :: Path Rel File
-fossaYamlFile = $(mkRelFile ".fossa.yaml")
+fossaYmlFile = $(mkRelFile ".fossa.yml.example")
 
 fossaDepsYmlFile :: Path Rel File
-fossaDepsYmlFile = $(mkRelFile "fossa-deps.yml")
-
-fossaDepsYamlFile :: Path Rel File
-fossaDepsYamlFile = $(mkRelFile "fossa-deps.yaml")
-
-fossaDepsJsonFile :: Path Rel File
-fossaDepsJsonFile = $(mkRelFile "fossa-deps.json")
+fossaDepsYmlFile = $(mkRelFile "fossa-deps.yml.example")
