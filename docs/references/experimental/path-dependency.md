@@ -5,7 +5,7 @@
 Path dependency is a dependency, which is sourced from filesystem, as opposed to a package manager registry or URL. A path dependency may or may not have transitive dependencies. 
 Path dependency is also referred to as `local` or `vendor` dependency by some package managers.
 
-For example, in the following `go.mod` file, with `gomod` analysis and the `--experimental-analyze-path-dependencies` flag, `fossa-cli` would consider `../vendor/squirrel` a path dependency in the final dependency graph. If path dependency analysis is disabled, `fossa-cli` would ignore this dependency completely and only show transitive dependencies originating from `../vendor/squirrel`. In such a case, license and copyright obligations originating from `../vendor/squirrel` will not be captured in FOSSA's findings, and subsequent software bill of materials generated.
+For example, in the following `go.mod` file, with `gomod` analysis and the `--experimental-analyze-path-dependencies` flag, `fossa-cli` would consider `../vendor/squirrel`, to be a path dependency. If path dependency analysis is disabled, `fossa-cli` would ignore this dependency completely and only show transitive dependencies originating from `../vendor/squirrel`. In such a case, license and copyright obligations originating from `../vendor/squirrel` will not be captured in FOSSA's findings, and subsequent software bill of materials generated.
 
 ```go
 // Example go.mod file
@@ -55,4 +55,4 @@ disabled for all organizations. Please contact [FOSSA support](https://support.f
 
 ## How are path dependencies different from FOSSA's vendor dependencies?
 
-Path dependencies, unlike [vendored dependencies](./../../features/vendored-dependencies.md), can be either direct or transitive dependencies in the dependency graph. Furthermore, path dependencies are scoped to the project in FOSSA, as opposed to the entire organization.
+Path dependencies, unlike [vendored dependencies](./../../features/vendored-dependencies.md), can be either direct or transitive in the dependency graph. Furthermore, path dependencies are scoped to the project in FOSSA, as opposed to the entire organization.

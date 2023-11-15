@@ -75,14 +75,14 @@ replace github.com/Masterminds/squirrel => ../vendor/squirrel
 
 With this `go.mod` file and with [experimental path dependencies functionality](./../../../experimental/path-dependency.md) enabled, `fossa-cli` will
 correctly, include `../vendor/squirrel` in the dependency findings. It will identify transitive dependencies
-originating from package at `../vendor/squirrel`. Further, it will perform license scan in the directory to identify
+originating from package at `../vendor/squirrel`. It will also perform license scan in the directory to identify
 any license and copyright obligations. 
 
 Without [experimental path dependencies functionality](./../../../experimental/path-dependency.md) enabled, `fossa-cli` will not include `../vendor/squirrel` 
 in the dependency graph. Further, it will not show [path](https://docs.fossa.com/docs/dependencies-browser#transitive-dependencies) in FOSSA UI 
 for any of it's transitive dependencies.
 
-To learn how more, refer to [path dependency documentation](./../../../experimental/path-dependency.md)
+To learn more, refer to [path dependency documentation](./../../../experimental/path-dependency.md)
 
 ## Strategy: gomod
 
