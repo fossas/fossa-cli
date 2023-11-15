@@ -17,7 +17,7 @@
 # #
 # # -----
 #
-# # referenced-dependencies #
+# # referenced-dependencies
 # # --
 # # Denotes listing of dependencies, which are to be analyzed in 
 # # conjunction with the analysis. This is used for packages that 
@@ -52,18 +52,19 @@
 # referenced-dependencies:
 # - type: npm         # Type of dependency. (Required)
 #   name: colors      # Name of the dependency. It should be the same name as listed in dependencies registry. (Required)
-#   version: 1.4.0    # Revision of the dependency. If left unspecified, the latest version discovered from the registry will be used.
+#   version: 1.4.0    # Revision of the dependency. If left unspecified, the latest version discovered from the registry will be used. (Optional)
 #
 # # Note: If the dependency type is apk, deb, or rpm-generic, field of os, arch, and osVersion are required.
+# # --
 # - type: deb               # Type of dependency. (Required)
 #   name: bash              # Name of the dependency. (Required)
-#   version: 5.1-6ubuntu1   # Revision of the dependency (Optional)
+#   version: 5.1-6ubuntu1   # Revision of the dependency. (Optional)
 #   arch: amd64             # Arch associated with package. (Required)
 #   os: ubuntu              # OS (Required). Supported OS include: alpine, centos, debian, rehat, ubuntu, oraclelinux, busybox, seles, fedora.
-#   osVersion: 22.04        # Version of the OS (Required)
+#   osVersion: 22.04        # Version of the OS. (Required)
 #
 #
-# # custom-dependencies #
+# # custom-dependencies
 # # --
 # # Denotes listing of dependencies, which can't be automatically discovered 
 # # or identified but are to be stubbed and included in the analysis. This is used 
@@ -73,12 +74,12 @@
 # # Learn more: https://github.com/fossas/fossa-cli/blob/master/docs/features/manual-dependencies.md#custom-dependencies
 # # 
 # custom-dependencies:
-# - name: foo-wrapper # Name of the dependency (Required)
-#   version: 1.2.3    # Revision of the dependency (Required)
-#   license: MIT      # LICENSE of the dependency (Required)
-#   metadata:         # Metadata of the dependency (Optional)
-#     homepage: https://www.foowrapper.com/about
-#     description: Provides foo and a helpful interface around foo-like tasks.
+# - name: foo-wrapper                                     # Name of the dependency. (Required)
+#   version: 1.2.3                                        # Revision of the dependency. (Required)
+#   license: MIT                                          # LICENSE of the dependency (Required). LICENSE should be SPDX identifier of the license. Refer to: https://spdx.org/licenses/
+#   metadata:                                             # Metadata of the dependency. (Optional)
+#     description: Provides foo and a helpful interfaces. # Description of the dependency, this will be shown in FOSSA UI, and generated reports. (Optional)
+#     homepage: https://www.foowrapper.com/about          # Homepage of the dependency, this will be shown in FOSSA UI, and generated reports. (Optional)
 #
 #
 #
@@ -91,19 +92,19 @@
 # # Learn more: https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-deps.md#remote-dependencies
 # #
 # remote-dependencies:
-# - name: jquery    # Name of the dependency. (Required)
-#   version: 3.6.0  # Revision of the dependency. (Required)
-#   url: https://github.com/jquery/jquery/archive/refs/tags/3.6.0.zip  # URL of archived source code. (Required)
-#   metadata:                                                          # Metadata of the dependency (Optional)
-#     description: jquery
-#     homepage: https://jquery.com
+# - name: jquery                                                        # Name of the dependency. (Required)
+#   version: 3.6.0                                                      # Revision of the dependency. (Required)
+#   url: https://github.com/jquery/jquery/archive/refs/tags/3.6.0.zip   # URL of archived source code. (Required)
+#   metadata:                                                           # Metadata of the dependency (Optional)
+#     description: jquery                                               # Description of the dependency, this will be shown in FOSSA UI, and generated reports. (Optional)
+#     homepage: https://jquery.com                                      # Homepage of the dependency, this will be shown in FOSSA UI, and generated reports. (Optional)
 #
 #
 #
-# # vendored-dependencies #
+# # vendored-dependencies
 # # --
 # # Denotes listing of files or directories, which are to be 
-# # either, license scanned locally, or and uploaded to FOSSA backend for
+# # either, license scanned by fossa-cli, or and uploaded to FOSSA backend for
 # # license scanning.
 # #
 # # Learn more: https://github.com/fossas/fossa-cli/blob/master/docs/features/vendored-dependencies.md
