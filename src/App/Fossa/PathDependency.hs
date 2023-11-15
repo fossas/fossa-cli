@@ -135,7 +135,7 @@ resolvePaths leaveUnfiltered options projectRevision org baseDir graph = do
       let alreadyScannedDeps = map (transformResolved alreadyAnalyzed) alreadyAnalyzedMeta
 
       -- 4. We scan and upload dependencies, and retrieve transformed dependencies!
-      scannedDeps <- traverse (scanUploadOrTransform Nothing fullFile projectRevision) notAnalyzedMeta
+      scannedDeps <- traverse (scanAndUpload Nothing fullFile projectRevision) notAnalyzedMeta
 
       -- 5. Kickoff job to finalize the build process for path dependencies
       let resolvedLoc = resolvedLocators scannedDeps
@@ -168,7 +168,7 @@ transformResolved alreadyAnalyzed (rawDep, _, version) = case maybeAlreadyAnalyz
     maybeAlreadyAnalyzed = find (\aa -> apdPath aa == dependencyName rawDep && adpVersion aa == version) alreadyAnalyzed
 
 -- | Performs license scanning and upload for single path dependency.
-scanUploadOrTransform ::
+scanAndUpload ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Exec sig m
@@ -181,7 +181,7 @@ scanUploadOrTransform ::
   ProjectRevision ->
   (Dependency, SomeResolvedPath, Text) ->
   m (Dependency, Maybe Dependency)
-scanUploadOrTransform pathFilters fullFileUpload projectRevision (rawDep, resolvedPath, version) = context "Path Dependency" $ do
+scanAndUpload pathFilters fullFileUpload projectRevision (rawDep, resolvedPath, version) = context "Path Dependency" $ do
   maybeLicenseUnits <- recover scan
   case maybeLicenseUnits of
     Nothing -> pure (rawDep, Nothing)
