@@ -95,9 +95,10 @@ toDependency prodReqs devReqs pkg =
       _ -> mempty
 
     depName :: Text
-    depName = case (gitUrl pkg, url pkg) of
-      (Just url, _) -> url
-      (_, Just u) -> u
+    depName = case (gitUrl pkg, fsPath pkg, url pkg) of
+      (Just url, _, _) -> url
+      (_, _, Just u) -> u
+      (_, Just p, _) -> p
       _ -> name pkg
 
     depVersion :: Maybe VerConstraint

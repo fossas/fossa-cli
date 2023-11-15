@@ -1,54 +1,54 @@
 # Path Dependency
 
+## What is path dependency?
 
-## What is a path dependency?
+Path dependency is a reliance on the file system as the source, as opposed to a package manager registry or URL. A path dependency may or may not have transitive dependencies.
 
-Path dependencies, are dependencies which were sourced from file-system,
-as opposed to package manager registry, or internet URL. 
+For example, in the following `go.mod` file, with `gomod` analysis and the `--experimental-analyze-path-dependencies` flag, `fossa-cli` would consider `../vendor/squirrel` a path dependency in the final dependency graph. If path dependency analysis is disabled, `fossa-cli` would ignore this dependency completely and only show transitive dependencies originating from `../vendor/squirrel`. In such a case, license and copyright obligations originating from `../vendor/squirrel` will not be captured in FOSSA's findings, and subsequent software bill of materials generated.
 
-For example from following `go.mod` file, `fossa-cli` would consider `` to
-be a path dependency.  
+```go
+// Example go.mod file
+module tester
 
+go 1.14
+
+replace github.com/Masterminds/squirrel => ../vendor/squirrel
+require github.com/Masterminds/squirrel v1.4.0
 ```
-```
 
-In FOSSA UI, path dependencies will be shown with `Local` tag. 
+In the FOSSA UI, path dependencies are shown with the `Local` tag.
 
-## How path dependencies are scanned
+## How are path dependencies scanned?
 
-Path dependencies are scanned using "CLI license scan", similar to how vendor dependencies
-are scanned. A "CLI license scan" inspects path for licensing on the local system within the CLI, 
-and only uploads the matched license data to FOSSA's servers.
+Path dependencies are scanned using the "CLI license scan," similar to how [vendor dependencies](./../../features/vendored-dependencies.md) are scanned by default. A "CLI license scan" performs a license scan at the path and uploads the results of these scans to the provided FOSSA endpoint.
 
-The FOSSA service caches the results of a path dependency by the combination of its `(project id, path)`.
-Due to this caching setup, it is normal for the first analysis to take some time, especially for larger projects, 
-but future analysis of dependencies with the same information should be fast.
+For performance reasons, the FOSSA service caches the results of a path dependency by the combination of its `(project id, path, hash of path's content)`. Due to this caching setup, it is normal for the first analysis to take some time, especially for larger projects, but future analyses of dependencies with the same information should be fast.
 
-In the event caching is causing problems, FOSSA can be made to rescan this kind of dependency:
-- Run `fossa analyze` with the `--force-vendored-dependency-rescans` flag, or
-- Set `vendoredDependencies.forceRescans` to `true` in `.fossa.yml` at the root of the project.
+In the event that caching is causing problems, FOSSA can be made to rescan this kind of dependency by:
+- Running `fossa analyze` with the `--force-vendored-dependency-rescans` flag, or
+- Setting `vendoredDependencies.forceRescans` to `true` in `.fossa.yml` at the root of the project.
 
 ## Limitations
 
 - Currently, path dependencies do not support vulnerability scanning.
-- Currently, path dependencies are only supported for `golang`.
+- Currently, path dependencies are only supported in:
+  - `golang` using the [gomod strategy](./../strategies/languages/golang/gomodules.md).
+  - PDM (Python) projects via the [pdm strategy](./../strategies/languages/python/pdm.md).
 
 ## F.A.Q
 
-### How do I enable path dependency in analysis?
+### How do I enable path dependency in FOSSA analysis?
 
-Run `fossa analyze` with the `--force-vendored-dependency-rescans` flag
+Run `fossa analyze` with the `--experimental-analyze-path-dependencies` flag.
 
-### How do I disable path dependency in analysis?
+### How do I disable path dependency in FOSSA analysis?
 
-By default, path dependency analysis is disabled.
+By default, path dependency analysis is disabled. Note that, in the future, `fossa-cli` will enable path dependency analysis by default.
 
-### Is `fossa-cli` uploading content of my path dependency to server?
+### Is `fossa-cli` uploading the content of my path dependency to the server?
 
-`fossa-cli` only upload findings of license scan result. 
+`fossa-cli` only uploads findings of the license scan result.
 
-## How are path dependencies different from Vendor dependencies?
+## How are path dependencies different from vendor dependencies?
 
-Path dependencies, unlike vendor dependencies can be either direct
-or transitive dependencies in the analysis graph. Furthermore, path
-dependencies are scoped to Project, as opposed to entire organization.
+Path dependencies, unlike vendor dependencies, can be either direct or transitive dependencies in the dependency graph, unlike [vendored dependencies](./../../features/vendored-dependencies.md). Furthermore, path dependencies are scoped to the project in FOSSA, as opposed to the entire organization.

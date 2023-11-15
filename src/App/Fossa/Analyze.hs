@@ -51,7 +51,7 @@ import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
-import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies')
+import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
@@ -374,7 +374,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         $ runStickyLogger SevInfo
         $ traverse (enrichPathDependencies includeAll vendoredDepsOptions revision) filteredProjects
     (True, _) -> pure $ map enrichPathDependencies' filteredProjects
-    (False, _) -> pure filteredProjects
+    (False, _) -> traverse (withPathDependencyNudge includeAll) filteredProjects
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult $ Config.filterSet cfg

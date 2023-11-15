@@ -2,7 +2,7 @@ module App.DocsSpec (
   spec,
 ) where
 
-import App.Docs (fossaContainerScannerUrl, fossaYmlDocUrl, newIssueUrl, userGuideUrl)
+import App.Docs (fossaContainerScannerUrl, fossaYmlDocUrl, newIssueUrl, pathDependencyDocsUrl, userGuideUrl)
 import Data.Foldable (for_)
 import Data.Maybe (fromJust)
 import Data.String.Conversion (toString)
@@ -67,6 +67,7 @@ urlsToCheck =
   , refGradleDocUrl
   , scalaFossaDocUrl
   , sbtDepsGraphPluginUrl
+  , pathDependencyDocsUrl
   ]
 
 spec :: Spec

@@ -1,13 +1,15 @@
 module App.Fossa.PathDependency (
   enrichPathDependencies,
   enrichPathDependencies',
+  withPathDependencyNudge,
 
   -- * for testing only,
   hashOf,
   absPathOf,
 ) where
 
-import App.Fossa.Analyze.Project (ProjectResult (projectResultGraph, projectResultPath))
+import App.Docs (pathDependencyDocsUrl)
+import App.Fossa.Analyze.Project (ProjectResult (projectResultGraph, projectResultPath, projectResultType))
 import App.Fossa.Config.Analyze (IncludeAll (..), VendoredDependencyOptions, forceRescans)
 import App.Fossa.LicenseScanner (scanDirectory)
 import App.Fossa.VendoredDependency (hashBs, hashFile)
@@ -35,7 +37,7 @@ import Control.Effect.FossaApiClient (
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path ()
 import Control.Effect.StickyLogger (StickyLogger)
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import Data.Flag (Flag, fromFlag)
 import Data.List (find)
 import Data.List.NonEmpty qualified as NE
@@ -44,6 +46,7 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
 import Effect.Exec (Exec)
+import Effect.Logger (Logger, logInfo, pretty, redText)
 import Effect.ReadFS (
   Has,
   ReadFS,
@@ -94,6 +97,24 @@ enrichPathDependencies' pr = do
   let graph = projectResultGraph pr
   let graph' = gmap (\d -> if dependencyType d == UnresolvedPathType then d{dependencyType = PathType} else d) graph
   pr{projectResultGraph = graph'}
+
+withPathDependencyNudge :: Has Logger sig m => Flag IncludeAll -> ProjectResult -> m ProjectResult
+withPathDependencyNudge includeAll pr = do
+  let includeAll' = (fromFlag IncludeAll includeAll)
+  let maybePathDeps = NE.nonEmpty $ filter (isValidPathDep includeAll') $ vertexList $ projectResultGraph pr
+
+  -- Only nudge users, if they have any path dependencies!
+  when (isJust maybePathDeps) $ do
+    logInfo $
+      redText "NOTE: "
+        <> "path dependency detected in project: "
+        <> pretty projectLabel
+        <> "! To enable path dependency analysis. Use: --experimental-analyze-path-dependencies flag."
+        <> pretty ("See " <> pathDependencyDocsUrl <> " for more information.")
+  pure pr
+  where
+    projectLabel :: Text
+    projectLabel = toText (projectResultType pr) <> " at: " <> toText (projectResultPath pr)
 
 -- | Scan and Uploads path dependency from a graph
 resolvePaths ::
