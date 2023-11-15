@@ -1,16 +1,9 @@
 # FOSSA CLI Changelog
 
-## Unreleased
-- archive: considers 0-byte tar file to be valid tar file. ([#1311](https://github.com/fossas/fossa-cli/pull/1311)) 
-- Cocoapods: Allow Podfile.lock without EXTERNAL SOURCES field ([#1279](https://github.com/fossas/fossa-cli/pull/1279))
-
-
-## v3.8.22
-
-- `fossa-deps`: `--fossa-deps-file` to specify custom fossa-deps file ([#1303](https://github.com/fossas/fossa-cli/pull/1303))
-
 ## v3.8.21
-
+- archive: considers 0-byte tar file to be valid tar file. ([#1311](https://github.com/fossas/fossa-cli/pull/1311))
+- Cocoapods: Allow Podfile.lock without EXTERNAL SOURCES field ([#1279](https://github.com/fossas/fossa-cli/pull/1279))
+- `fossa-deps`: `--fossa-deps-file` to specify custom fossa-deps file ([#1303](https://github.com/fossas/fossa-cli/pull/1303))
 - install-latest.sh: Fixed a bug where install-latest.sh would result in a broken binary when run on some versions of macOS ([#1317](https://github.com/fossas/fossa-cli/pull/1317))
 
 ## v3.8.20
