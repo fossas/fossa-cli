@@ -2,7 +2,7 @@
 
 ## Unreleased
 - archive: considers 0-byte tar file to be valid tar file. ([#1311](https://github.com/fossas/fossa-cli/pull/1311)) 
-
+- path: adds path dependency scanning functionality. ([#1327](https://github.com/fossas/fossa-cli/pull/1327))
 
 ## v3.8.22
 
