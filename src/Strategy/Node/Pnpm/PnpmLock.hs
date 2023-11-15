@@ -25,6 +25,11 @@ import DepTypes (
   VerConstraint (CEq),
  )
 import Effect.Grapher (deep, direct, edge, evalGrapher, run)
+import Effect.Logger (
+  Logger,
+  logWarn,
+  pretty,
+ )
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing, shrink)
 import Path (Abs, File, Path)
@@ -122,8 +127,10 @@ data PnpmLockfile = PnpmLockfile
   deriving (Show, Eq, Ord)
 
 data PnpmLockFileVersion
-  = PnpmLock4Or5
+  = PnpmLockLt4 Text
+  | PnpmLock4Or5
   | PnpmLock6
+  | PnpmLockGt6 Text
   deriving (Show, Eq, Ord)
 
 instance FromJSON PnpmLockfile where
@@ -152,10 +159,14 @@ instance FromJSON PnpmLockfile where
     pure $ PnpmLockfile refinedImporters packages rawLockFileVersion
     where
       getVersion (TextLike ver) = case (listToMaybe . toString $ ver) of
+        (Just '1') -> pure $ PnpmLockLt4 ver
+        (Just '2') -> pure $ PnpmLockLt4 ver
+        (Just '3') -> pure $ PnpmLockLt4 ver
         (Just '4') -> pure PnpmLock4Or5
         (Just '5') -> pure PnpmLock4Or5
         (Just '6') -> pure PnpmLock6
-        _ -> fail ("expected lockfileVersion: 4.x, 5.x or 6.x but, got: " <> show ver)
+        (Just _) -> pure $ PnpmLockGt6 ver
+        _ -> fail ("expected numeric lockfileVersion, got: " <> show ver)
 
 data ProjectMap = ProjectMap
   { directDependencies :: Map Text ProjectMapDepMetadata
@@ -232,9 +243,15 @@ instance FromJSON Resolution where
       gitRes :: Object -> Parser Resolution
       gitRes obj = GitResolve <$> (GitResolution <$> obj .: "repo" <*> obj .: "commit")
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = context "Analyzing Npm Lockfile (v3)" $ do
   pnpmLockFile <- context "Parsing pnpm-lock file" $ readContentsYaml file
+
+  case lockFileVersion pnpmLockFile of
+    PnpmLockLt4 raw -> logWarn . pretty $ "pnpm-lock file is using older lockFileVersion: " <> raw <> " of, which is not officially supported!"
+    PnpmLockGt6 raw -> logWarn . pretty $ "pnpm-lock file is using newer lockFileVersion: " <> raw <> " of, which is not officially supported!"
+    _ -> pure ()
+
   context "Building dependency graph" $ pure $ buildGraph pnpmLockFile
 
 buildGraph :: PnpmLockfile -> Graphing Dependency
@@ -287,6 +304,8 @@ buildGraph lockFile = withoutLocalPackages $
     getPkgNameVersion = case lockFileVersion lockFile of
       PnpmLock4Or5 -> getPkgNameVersionV5
       PnpmLock6 -> getPkgNameVersionV6
+      PnpmLockLt4 _ -> getPkgNameVersionV5 -- v3 or below are deprecated and are not used in practice, fallback to closest
+      PnpmLockGt6 _ -> getPkgNameVersionV6 -- at the time of writing there is no v7, so default to closest
 
     -- Gets package name and version from package's key.
     --
@@ -360,6 +379,10 @@ buildGraph lockFile = withoutLocalPackages $
     mkPkgKey name version = case lockFileVersion lockFile of
       PnpmLock4Or5 -> "/" <> name <> "/" <> version
       PnpmLock6 -> "/" <> name <> "@" <> version
+      -- v3 or below are deprecated and are not used in practice, fallback to closest
+      PnpmLockLt4 _ -> "/" <> name <> "/" <> version
+      -- at the time of writing there is no v7, so default to closest
+      PnpmLockGt6 _ -> "/" <> name <> "@" <> version
 
     toDependency :: Text -> Maybe Text -> PackageData -> Dependency
     toDependency name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) =
