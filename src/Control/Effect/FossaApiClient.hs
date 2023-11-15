@@ -57,7 +57,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Text (Text)
 import Fossa.API.Types (
-  AnalyzedPathDependenciesResp,
   AnalyzedPathDependency,
   ApiOpts,
   Archive,

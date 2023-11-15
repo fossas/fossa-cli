@@ -1,5 +1,6 @@
 module App.Fossa.PathDependency (
   enrichPathDependencies,
+  enrichPathDependencies',
 
   -- * for testing only,
   hashOf,
@@ -43,7 +44,6 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (
   Has,
   ReadFS,
@@ -87,6 +87,14 @@ enrichPathDependencies includeAll options projectRevision pr = do
       pure $ pr{projectResultGraph = graph'}
     else pure pr
 
+-- | Updates 'ProjectResult' dependency graph, by updating
+-- unresolved path dependency, without license scan, or endpoint upload.
+enrichPathDependencies' :: ProjectResult -> ProjectResult
+enrichPathDependencies' pr = do
+  let graph = projectResultGraph pr
+  let graph' = gmap (\d -> if dependencyType d == UnresolvedPathType then d{dependencyType = PathType} else d) graph
+  pr{projectResultGraph = graph'}
+
 -- | Scan and Uploads path dependency from a graph
 resolvePaths ::
   ( Has Diagnostics sig m
@@ -105,7 +113,7 @@ resolvePaths ::
   m (Graphing Dependency)
 resolvePaths leaveUnfiltered options projectRevision org baseDir graph = do
   let fullFile = FullFileUploads $ orgRequiresFullFileUploads org
-  let maybePathDeps = NE.nonEmpty $ filter (isValidDep leaveUnfiltered) $ vertexList graph
+  let maybePathDeps = NE.nonEmpty $ filter (isValidPathDep leaveUnfiltered) $ vertexList graph
   case maybePathDeps of
     -- If there are no resolvable path dependencies
     -- we need to do nothing!
@@ -208,14 +216,14 @@ scanUploadOrTransform pathFilters fullFileUpload projectRevision (rawDep, resolv
 
 -- * Helpers
 
-canResolve :: Dependency -> Bool
-canResolve d = dependencyType d == UnresolvedPathType
+canResolvePathDep :: Dependency -> Bool
+canResolvePathDep d = dependencyType d == UnresolvedPathType
 
-isValidDep :: Bool -> Dependency -> Bool
-isValidDep leaveOtherEnvDeps d =
+isValidPathDep :: Bool -> Dependency -> Bool
+isValidPathDep leaveOtherEnvDeps d =
   if leaveOtherEnvDeps
-    then canResolve d
-    else (canResolve d && shouldPublishDep d)
+    then canResolvePathDep d
+    else (canResolvePathDep d && shouldPublishDep d)
 
 hashOf :: Has (Lift IO) sig m => SomeResolvedPath -> m Text
 hashOf (ResolvedDir dir) = sendIO $ hashDir dir

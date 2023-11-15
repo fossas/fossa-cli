@@ -51,7 +51,7 @@ import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
-import App.Fossa.PathDependency (enrichPathDependencies)
+import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies')
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
@@ -373,7 +373,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         . runFossaApiClient apiOpts
         $ runStickyLogger SevInfo
         $ traverse (enrichPathDependencies includeAll vendoredDepsOptions revision) filteredProjects
-    _ -> pure filteredProjects
+    (True, _) -> pure $ map enrichPathDependencies' filteredProjects
+    (False, _) -> pure filteredProjects
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult $ Config.filterSet cfg
@@ -386,7 +387,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Nothing, Just lernie) -> Just lernie
           (Just firstParty, Nothing) -> Just firstParty
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
-  let outputResult = buildResult destination includeAll additionalSourceUnits filteredProjects' licenseSourceUnits
+  let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits
 
   -- If we find nothing but keyword search, we exit with an error, but explain that the error may be ignorable.
   -- We do not want to succeed, because nothing gets uploaded to the API for keyword searches, so `fossa test` will fail.
@@ -519,8 +520,8 @@ instance Diag.ToDiagnostic AnalyzeError where
       , "This error can be safely ignored if you are only expecting keyword search results."
       ]
 
-buildResult :: ScanDestination -> Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Aeson.Value
-buildResult scanDestination includeAll srcUnits projects licenseSourceUnits =
+buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Aeson.Value
+buildResult includeAll srcUnits projects licenseSourceUnits =
   Aeson.object
     [ "projects" .= map buildProject projects
     , "sourceUnits" .= mergedUnits
@@ -531,7 +532,7 @@ buildResult scanDestination includeAll srcUnits projects licenseSourceUnits =
       Just licenseUnits -> do
         NE.toList $ mergeSourceAndLicenseUnits finalSourceUnits licenseUnits
     finalSourceUnits = srcUnits ++ scannedUnits
-    scannedUnits = map (Srclib.projectToSourceUnit (scanDestination == OutputStdout) (fromFlag IncludeAll includeAll)) projects
+    scannedUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) projects
 
 buildProject :: ProjectResult -> Aeson.Value
 buildProject project =
