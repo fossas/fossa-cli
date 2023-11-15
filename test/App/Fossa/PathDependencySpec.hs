@@ -124,7 +124,7 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
     result' <- enrichPathDependencies includeAll noRescanOption pr result
     result' `shouldBe'` result
 
-  it' "should perform upload path deps, if path dependency is not already analyzed" $ do
+  it' "should perform path dependency scan and upload, if path dependency is not already analyzed" $ do
     expectOrg orgSupportPathDeps
     expectPathDependencyMatchData
     expectLicenseScanUpload
@@ -137,7 +137,7 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
     result' <- enrichPathDependencies includeAll noRescanOption pr result
     result' `shouldBe'` expectedResult
 
-  it' "should perform not upload path deps, if path dependency is already analyzed" $ do
+  it' "should not perform path dependency scan and upload, if path dependency is already analyzed" $ do
     expectOrg orgSupportPathDeps{orgRequiresFullFileUploads = False}
     expectAnalyzedPathRevisions
 

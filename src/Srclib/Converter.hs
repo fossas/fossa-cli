@@ -78,7 +78,6 @@ toSourceUnit leaveUnfiltered path dependencies projectType graphBreadth originPa
     filteredGraph :: Graphing Dependency
     filteredGraph = Graphing.shrinkWithoutPromotionToDirect ff dependencies
       where
-        ff :: Dependency -> Bool
         ff =
           if leaveUnfiltered
             then isSupportedType
