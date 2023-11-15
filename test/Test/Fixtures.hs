@@ -389,6 +389,7 @@ experimentalConfig =
   ExperimentalAnalyzeConfig
     { allowedGradleConfigs = Nothing
     , useV3GoResolver = GoModulesBasedTactic
+    , analyzePathDependencies = False
     }
 
 vendoredDepsOptions :: VendoredDependencyOptions
