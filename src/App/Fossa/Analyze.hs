@@ -271,7 +271,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       vendoredDepsOptions = Config.vendoredDeps cfg
       grepOptions = Config.grepOptions cfg
       customFossaDepsFile = Config.customFossaDepsFile cfg
-      shouldAnalyzePathDependencies = analyzePathDependencies $ Config.experimental cfg
+      shouldAnalyzePathDependencies = resolvePathDependencies $ Config.experimental cfg
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).

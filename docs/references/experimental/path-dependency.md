@@ -51,4 +51,4 @@ By default, path dependency analysis is disabled. Note that, in the future, `fos
 
 ## How are path dependencies different from vendor dependencies?
 
-Path dependencies, unlike vendor dependencies, can be either direct or transitive dependencies in the dependency graph, unlike [vendored dependencies](./../../features/vendored-dependencies.md). Furthermore, path dependencies are scoped to the project in FOSSA, as opposed to the entire organization.
+Path dependencies, unlike [vendored dependencies](./../../features/vendored-dependencies.md), can be either direct or transitive dependencies in the dependency graph. Furthermore, path dependencies are scoped to the project in FOSSA, as opposed to the entire organization.
