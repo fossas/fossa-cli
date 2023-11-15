@@ -109,8 +109,8 @@ withPathDependencyNudge includeAll pr = do
       redText "NOTE: "
         <> "path dependency detected in project: "
         <> pretty projectLabel
-        <> "! To enable path dependency analysis. Use: --experimental-analyze-path-dependencies flag."
-        <> pretty ("See " <> pathDependencyDocsUrl <> " for more information.")
+        <> "! To enable path dependency analysis, use: --experimental-analyze-path-dependencies flag."
+        <> pretty (" See " <> pathDependencyDocsUrl <> " for more information.")
   pure pr
   where
     projectLabel :: Text
