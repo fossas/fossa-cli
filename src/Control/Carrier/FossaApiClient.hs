@@ -62,4 +62,5 @@ runFossaApiClient apiOpts =
           UploadContributors locator contributors -> Core.uploadContributors locator contributors
           UploadLicenseScanResult signedUrl licenseSourceUnit -> LicenseScanning.uploadLicenseScanResult signedUrl licenseSourceUnit
           UploadFirstPartyScanResult signedUrl fullSourceUnits -> LicenseScanning.uploadFirstPartyScanResult signedUrl fullSourceUnits
+          GetAnalyzedPathRevisions projectRevision -> LicenseScanning.alreadyAnalyzedPathRevision projectRevision
       )

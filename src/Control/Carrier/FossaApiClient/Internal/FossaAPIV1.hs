@@ -39,6 +39,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   firstPartyScanResultUpload,
   getUploadURLForPathDependency,
   finalizePathDependencyScan,
+  alreadyAnalyzedPathRevision,
 ) where
 
 import App.Docs (fossaSslCertDocsUrl)
@@ -116,6 +117,7 @@ import Effect.Logger (
   (<+>),
  )
 import Fossa.API.Types (
+  AnalyzedPathDependenciesResp,
   ApiOpts,
   Archive,
   ArchiveComponents (ArchiveComponents),
@@ -1445,3 +1447,20 @@ finalizePathDependencyScan apiOpts locators forceRebuild = runEmpty $
       context "Queuing a build for all license scan uploads" $
         req POST (pathDependencyFinalizeUrl baseUrl) (ReqBodyJson req') ignoreResponse (baseOpts)
     pure ()
+
+alreadyAnalyzedPathRevisionURLEndpoint :: Url 'Https -> Locator -> Url 'Https
+alreadyAnalyzedPathRevisionURLEndpoint baseUrl locator = baseUrl /: "api" /: "cli" /: "path_dependency_scan" /: renderLocator locator /: "analyzed"
+
+alreadyAnalyzedPathRevision ::
+  (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  m (AnalyzedPathDependenciesResp)
+alreadyAnalyzedPathRevision apiOpts ProjectRevision{..} = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  let projectLocator = Locator "custom" projectName (Just projectRevision)
+  let url = alreadyAnalyzedPathRevisionURLEndpoint baseUrl projectLocator
+  response <-
+    context ("Retrieving already analyzed path dependencies") $
+      req GET url NoReqBody jsonResponse baseOpts
+  pure (responseBody response)

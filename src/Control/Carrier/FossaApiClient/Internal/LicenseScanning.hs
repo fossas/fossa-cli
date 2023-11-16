@@ -8,6 +8,7 @@ module Control.Carrier.FossaApiClient.Internal.LicenseScanning (
   uploadFirstPartyScanResult,
   uploadPathDependencyScanResult,
   finalizePathDependencyScan,
+  alreadyAnalyzedPathRevision,
 ) where
 
 import App.Types (FullFileUploads, ProjectRevision)
@@ -20,7 +21,7 @@ import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Control.Monad (void)
 import Data.List.NonEmpty qualified as NE
-import Fossa.API.Types (ApiOpts, ArchiveComponents, PathDependencyUpload, SignedURL)
+import Fossa.API.Types (AnalyzedPathDependenciesResp (analyzedPathDeps), AnalyzedPathDependency, ApiOpts, ArchiveComponents, PathDependencyUpload, SignedURL)
 import Srclib.Types (FullSourceUnit, LicenseSourceUnit, Locator)
 
 getSignedFirstPartyScanUrl ::
@@ -105,3 +106,15 @@ finalizePathDependencyScan ::
 finalizePathDependencyScan locators forceRebuild = do
   apiOpts <- ask
   void $ API.finalizePathDependencyScan apiOpts locators forceRebuild
+
+alreadyAnalyzedPathRevision ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  ProjectRevision ->
+  m [AnalyzedPathDependency]
+alreadyAnalyzedPathRevision projectRevision = do
+  apiOpts <- ask
+  analyzedPathDeps <$> API.alreadyAnalyzedPathRevision apiOpts projectRevision

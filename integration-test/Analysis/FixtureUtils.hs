@@ -123,7 +123,7 @@ testRunnerWithLogger f env =
     & withDefaultLogger SevWarn
     & runReader (mempty :: OverrideDynamicAnalysisBinary)
     & runReader (mempty :: AllFilters)
-    & runReader (ExperimentalAnalyzeConfig Nothing GoModulesBasedTactic)
+    & runReader (ExperimentalAnalyzeConfig Nothing GoModulesBasedTactic False)
     & runFinally
     & runStack
     & withoutTelemetry

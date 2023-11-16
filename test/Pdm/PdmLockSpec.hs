@@ -5,7 +5,8 @@ module Pdm.PdmLockSpec (
 ) where
 
 import Data.Text (Text)
-import Strategy.Python.PDM.PdmLock (PdmLock (..), PdmLockPackage (..), pdmLockCodec)
+import DepTypes (DepType (..), Dependency (..), VerConstraint (..))
+import Strategy.Python.PDM.PdmLock (PdmLock (..), PdmLockPackage (..), pdmLockCodec, toDependency)
 import Strategy.Python.Util (Req (..))
 import Test.Hspec (
   Spec,
@@ -55,14 +56,7 @@ spec = do
     it "should parse lock file, with filepath deps" $ do
       let expected =
             PdmLock
-              [ PdmLockPackage
-                  "flake8"
-                  "6.0.0"
-                  Nothing
-                  Nothing
-                  (Just "./subpackage/flake8-6.0.0-py2.py3-none-any.whl")
-                  Nothing
-                  (Just [mkReq "mccabe"])
+              [ lockWithFilePathEntryPackage
               ]
       Toml.decode pdmLockCodec lockWithFilePathEntry `shouldBe` Right expected
 
@@ -79,6 +73,11 @@ spec = do
                   Nothing
               ]
       Toml.decode pdmLockCodec lockWithFileUrlEntry `shouldBe` Right expected
+
+  describe "toDependency" $
+    it "should handle pdm's local dependency correctly" $ do
+      let dep = toDependency mempty mempty lockWithFilePathEntryPackage
+      dep `shouldBe` lockWithFilePathEntryDependency
 
 lockNoContent :: Text
 lockNoContent = ""
@@ -132,6 +131,12 @@ dependencies = [
     "mccabe",
 ]
 |]
+
+lockWithFilePathEntryPackage :: PdmLockPackage
+lockWithFilePathEntryPackage = PdmLockPackage "flake8" "6.0.0" Nothing Nothing (Just "./subpackage/flake8-6.0.0-py2.py3-none-any.whl") Nothing (Just [mkReq "mccabe"])
+
+lockWithFilePathEntryDependency :: Dependency
+lockWithFilePathEntryDependency = Dependency UnresolvedPathType "./subpackage/flake8-6.0.0-py2.py3-none-any.whl" (Just $ CEq "6.0.0") ["./subpackage/flake8-6.0.0-py2.py3-none-any.whl"] mempty mempty
 
 lockWithFileUrlEntry :: Text
 lockWithFileUrlEntry =

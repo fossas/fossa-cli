@@ -29,6 +29,8 @@ module Fossa.API.Types (
   UploadResponse (..),
   PathDependencyUploadReq (..),
   PathDependencyFinalizeReq (..),
+  AnalyzedPathDependenciesResp (..),
+  AnalyzedPathDependency (..),
   useApiOpts,
   defaultApiPollDelay,
   blankOrganization,
@@ -823,4 +825,25 @@ instance FromJSON UploadedPathDependencyLocator where
   parseJSON = withObject "UploadedPathDependencyLocator" $ \obj ->
     UploadedPathDependencyLocator
       <$> obj .: "name"
+      <*> obj .: "version"
+
+newtype AnalyzedPathDependenciesResp = AnalyzedPathDependenciesResp {analyzedPathDeps :: [AnalyzedPathDependency]}
+  deriving (Eq, Ord, Show)
+
+instance FromJSON AnalyzedPathDependenciesResp where
+  parseJSON = withObject "AnalyzedPathDependenciesResp" $ \obj ->
+    AnalyzedPathDependenciesResp <$> obj .: "data"
+
+data AnalyzedPathDependency = AnalyzedPathDependency
+  { apdPath :: Text
+  , adpId :: Text
+  , adpVersion :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON AnalyzedPathDependency where
+  parseJSON = withObject "AnalyzedPathDependency" $ \obj ->
+    AnalyzedPathDependency
+      <$> obj .: "path"
+      <*> obj .: "id"
       <*> obj .: "version"
