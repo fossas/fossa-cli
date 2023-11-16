@@ -180,6 +180,7 @@ analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball = do
       ExperimentalAnalyzeConfig
         Nothing
         GoModulesBasedTactic -- Discovery is the same for both module and package centric analysis.
+        False -- Discovery has no consequence from path dependency analysis config
     toSourceUnit :: [DiscoveredProjectScan] -> [SourceUnit]
     toSourceUnit =
       map (Srclib.projectToSourceUnit False)
@@ -323,6 +324,7 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
       ( ExperimentalAnalyzeConfig
           Nothing
           GoModulesBasedTactic -- Targets aren't different between package/module centric analysis for Go.
+          False -- Targets are not impacted by path dependencies.
       )
     . runReader (mempty :: MavenScopeFilters)
     . runReader (mempty :: AllFilters)

@@ -56,6 +56,34 @@ Currently, this strategy does not yet include path dependencies or their transit
 This strategy was previously available only under the `--experimental-use-v3-go-resolver` flag but is now the default.
 For more information about this transition please see this [document](./v3-go-resolver-transition-qa.md).
 
+### Experimental: Path dependencies
+
+`golist` strategy, supports experimental [path dependencies](./../../../experimental/path-dependency.md). It is not, 
+enabled by default, and has to be explicitly enabled by using `--experimental-analyze-path-dependencies` flag with `fossa analyze` command.
+
+In your project, you may have path dependencies, which are sourced from file system. For example, 
+consider `go.mod` file, which looks something like:
+
+```go
+module tester
+
+go 1.14
+
+require github.com/Masterminds/squirrel v1.4.0
+replace github.com/Masterminds/squirrel => ../vendor/squirrel
+```
+
+With this `go.mod` file and with [experimental path dependencies functionality](./../../../experimental/path-dependency.md) enabled, `fossa-cli` will
+correctly, include `../vendor/squirrel` in the dependency findings. It will identify transitive dependencies
+originating from package at `../vendor/squirrel`. It will also perform license scan in the directory to identify
+any license and copyright obligations. 
+
+Without [experimental path dependencies functionality](./../../../experimental/path-dependency.md) enabled, `fossa-cli` will not include `../vendor/squirrel` 
+in the dependency graph. Further, it will not show [path](https://docs.fossa.com/docs/dependencies-browser#transitive-dependencies) in FOSSA UI 
+for any of it's transitive dependencies.
+
+To learn more, refer to [path dependency documentation](./../../../experimental/path-dependency.md)
+
 ## Strategy: gomod
 
 FOSSA CLI parses the go.mod file, which looks something like:

@@ -137,6 +137,8 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 | [`--experimental-skip-vsi-graph 'custom+1/some$locator'`](../experimental/msb/README.md) | Skip resolving the dependencies of the given project that was previously linked via `--experimental-link-project-binary`.                                                                      |
 | `--experimental-force-first-party-scans`                                                 | Force [first party scans](../../features/first-party-license-scans.md) to run                                                                                                                  |
 | `--experimental-block-first-party-scans`                                                 | Force [first party scans](../../features/first-party-license-scans.md) to not run. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans. |
+| `--experimental-analyze-path-dependencies`                                               | License scan path dependencies, and include them in the final analysis. For more information, see the [path dependency overview](../experimental/path-dependency.md).                          |
+
 
 ### F.A.Q.
 

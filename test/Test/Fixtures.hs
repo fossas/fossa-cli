@@ -76,7 +76,7 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False True []
+organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True []
 
 project :: API.Project
 project =
@@ -387,6 +387,7 @@ experimentalConfig =
   ExperimentalAnalyzeConfig
     { allowedGradleConfigs = Nothing
     , useV3GoResolver = GoModulesBasedTactic
+    , resolvePathDependencies = False
     }
 
 vendoredDepsOptions :: VendoredDependencyOptions

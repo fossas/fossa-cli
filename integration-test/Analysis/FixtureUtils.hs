@@ -125,7 +125,7 @@ testRunnerWithLogger f env =
     & runReader (mempty :: OverrideDynamicAnalysisBinary)
     & runReader (mempty :: AllFilters)
     & runReader (mempty :: MavenScopeFilters)
-    & runReader (ExperimentalAnalyzeConfig Nothing GoModulesBasedTactic)
+    & runReader (ExperimentalAnalyzeConfig Nothing GoModulesBasedTactic False)
     & runFinally
     & runStack
     & withoutTelemetry

@@ -10,7 +10,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
   DepEnvironment (..),
-  DepType (GitType, PathType, PipType, URLType),
+  DepType (GitType, PipType, URLType, UnresolvedPathType),
   Dependency (..),
   VerConstraint (..),
  )
@@ -143,7 +143,7 @@ spacyModelReq =
 flake8Req :: Dependency
 flake8Req =
   Dependency
-    PathType
+    UnresolvedPathType
     "flake8"
     Nothing
     mempty
