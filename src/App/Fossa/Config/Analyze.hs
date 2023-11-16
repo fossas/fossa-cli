@@ -358,7 +358,6 @@ loadConfig ::
 loadConfig AnalyzeCliOpts{analyzeBaseDir, commons = CommonOpts{optConfig}} = do
   cwd <- getCurrentDir
   configBaseDir <- resolveDir cwd (toText analyzeBaseDir)
-  resolvedConfig <- resolveConfigFile configBaseDir optConfig
   resolveConfigFile configBaseDir optConfig
 
 mergeOpts ::

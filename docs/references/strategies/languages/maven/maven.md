@@ -33,6 +33,24 @@ The mavenplugin and treecmd tactic can result in transitive dependencies which d
 ```
 `httpclient` will appear as a transitive dependency in the FOSSA UI, but it will not have any paths. There are a few things that contribute to this happening. `httpclient`'s only listed parent is `restassured` which is a `test` dependency, however, `httpclient` is a `compile`. This tells us that `httpclient` has another parent in the graph, but we are unable to determine where.
 
+## Filtering by Maven Dependency Scope 
+
+You can use [configuration file](../../../files/fossa-yml.md) to provide maven dependency scopes that you would like to filter. You can filter by either inclusion or exclusion.
+
+```yaml
+version: 3
+
+maven:
+  scope-only:
+    - compile
+    - runtime
+## OR
+  scope-exclude:
+    - provided
+    - system
+    - test
+```
+
 <!--
 
 TODO: write docs, like Gradle's.
