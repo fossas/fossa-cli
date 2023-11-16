@@ -399,11 +399,11 @@ library
     Strategy.Haskell.Stack
     Strategy.Leiningen
     Strategy.Maven
+    Strategy.Maven.Common
     Strategy.Maven.DepTree
     Strategy.Maven.Plugin
     Strategy.Maven.PluginStrategy
     Strategy.Maven.PluginTree
-    Strategy.Maven.Common 
     Strategy.Maven.Pom
     Strategy.Maven.Pom.Closure
     Strategy.Maven.Pom.PomFile
@@ -593,11 +593,11 @@ test-suite unit-tests
     GraphUtil
     Haskell.CabalSpec
     Haskell.StackSpec
+    Maven.CommonSpec
     Maven.DepTreeSpec
     Maven.PluginSpec
     Maven.PluginStrategySpec
     Maven.PluginTreeSpec
-    Maven.CommonSpec
     Maven.PomStrategySpec
     Ndb.NdbSpec
     Nim.NimbleSpec
