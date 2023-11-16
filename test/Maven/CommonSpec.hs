@@ -68,11 +68,11 @@ spec = do
 
     it "should filter multi scope deps not in include set when exclude set is empty" $ do
       -- Dep(compile, provided)
-      -- After filtering with includeSet = Set"runtime")
+      -- After filtering with includeSet = Set("compile")
       -- empty
       let compileProvidedDep = createDepFromScopes ["compile", "provided"]
       let graph = Graphing.directs [compileProvidedDep]
-      let includeSet = Set.fromList ["runtime"]
+      let includeSet = Set.fromList ["compile"]
       let graph' = filterMavenDependencyByScope includeSet (Set.fromList []) graph
 
       expectDirect [] graph'
