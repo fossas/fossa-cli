@@ -162,6 +162,7 @@ instance AnalyzeProject NodeProject where
 getDeps ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   ) =>
   NodeProject ->
   m DependencyResults
@@ -170,7 +171,7 @@ getDeps (NPMLock packageLockFile graph) = analyzeNpmLock packageLockFile graph
 getDeps (Pnpm pnpmLockFile _) = analyzePnpmLock pnpmLockFile
 getDeps (NPM graph) = analyzeNpm graph
 
-analyzePnpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> m DependencyResults
+analyzePnpmLock :: (Has Diagnostics sig m, Has ReadFS sig m, Has Logger sig m) => Manifest -> m DependencyResults
 analyzePnpmLock (Manifest pnpmLockFile) = do
   result <- PnpmLock.analyze pnpmLockFile
   pure $ DependencyResults result Complete [pnpmLockFile]

@@ -7,10 +7,13 @@ module Strategy.Node.Pnpm.PnpmLock (
 
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
+import Data.Aeson.Extra (TextLike (..))
 import Data.Foldable (for_)
 import Data.Map (Map, toList)
 import Data.Map qualified as Map
+import Data.Maybe (listToMaybe)
 import Data.Set qualified as Set
+import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Yaml (FromJSON, Object, Parser, (.!=), (.:), (.:?))
@@ -22,13 +25,18 @@ import DepTypes (
   VerConstraint (CEq),
  )
 import Effect.Grapher (deep, direct, edge, evalGrapher, run)
+import Effect.Logger (
+  Logger,
+  logWarn,
+  pretty,
+ )
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing, shrink)
 import Path (Abs, File, Path)
 
 -- | Pnpm Lockfile
 --
--- Pnpm lockfile (in yaml) has the following shape (irrelevant fields omitted):
+-- Pnpm lockfile (v5) (in yaml) has the following shape (irrelevant fields omitted):
 --
 -- @
 -- > lockFileVersion: 5.4
@@ -76,17 +84,58 @@ import Path (Abs, File, Path)
 --          - For dependency resolved via git resolver, format is: "${Url}".
 --          - For dependency resolved via directory resolver, format is: "file:${relativePath}".
 --
+--
+--  Pnpm lockfile (v6) differs (v5), in following manner:
+--  -----------------------------------------------------
+--
+--    * `importers` shape merges specifiers and version, in singular object:
+--      @
+--      > importers:
+--      >    dependencies:
+--      >      aws-sdk:
+--      >        specifier: 2.1148.0
+--      >        version: 2.1148.0
+--      @
+--
+--    * Key of `packages` refer (e.g. "/buffer@4.9.2") denotes name of dependency and resolved version using '@' separator
+--        - For dependency resolved via registry resolver, format is: "/${dependencyName}@${resolvedVersion}${peerDepsInParenthesis}".
+--      @
+--      >   /ieee754@1.1.13:
+--      >      resolution: {integrity: sha512...}
+--      >      dev: false
+--      >
+--      >   /@clerk/nextjs@4.22.1(next@13.4.10)(react-dom@18.2.0)(react@18.2.0):
+--      >       resolution: {integrity: sha512...}
+--      @
+--
+--    * If project has set peerDependencies to be not auto installed, pnpm
+--      by default, does not include them in the lockfile. So, no additional
+--      work is required for newly introduced `settings.autoInstallPeers` field.
+--      This means, that if user has chosen, not to install peerDependencies, they
+--      won't be included in the lock-file, so no additional work is required by fossa-cli.
+--      Note that, fossa-cli by default includes peer dependencies.
+--
 --  References:
 --    - [pnpm](https://pnpm.io/)
 --    - [pnpm-lockfile](https://github.com/pnpm/pnpm/blob/5cfd6d01946edcce86f62580bddc788d02f93ed6/packages/lockfile-types/src/index.ts)
+--    - [pnpm-lockfile-v6](https://github.com/pnpm/pnpm/pull/5810/files)
 data PnpmLockfile = PnpmLockfile
   { importers :: Map Text ProjectMap
   , packages :: Map Text PackageData
+  , lockFileVersion :: PnpmLockFileVersion
   }
+  deriving (Show, Eq, Ord)
+
+data PnpmLockFileVersion
+  = PnpmLockLt4 Text
+  | PnpmLock4Or5
+  | PnpmLock6
+  | PnpmLockGt6 Text
   deriving (Show, Eq, Ord)
 
 instance FromJSON PnpmLockfile where
   parseJSON = Yaml.withObject "pnpm-lock content" $ \obj -> do
+    rawLockFileVersion <- getVersion =<< obj .:? "lockfileVersion" .!= (TextLike mempty)
     importers <- obj .:? "importers" .!= mempty
     packages <- obj .:? "packages" .!= mempty
 
@@ -107,11 +156,21 @@ instance FromJSON PnpmLockfile where
             then Map.insert "." virtualRootWs importers
             else importers
 
-    pure $ PnpmLockfile refinedImporters packages
+    pure $ PnpmLockfile refinedImporters packages rawLockFileVersion
+    where
+      getVersion (TextLike ver) = case (listToMaybe . toString $ ver) of
+        (Just '1') -> pure $ PnpmLockLt4 ver
+        (Just '2') -> pure $ PnpmLockLt4 ver
+        (Just '3') -> pure $ PnpmLockLt4 ver
+        (Just '4') -> pure PnpmLock4Or5
+        (Just '5') -> pure PnpmLock4Or5
+        (Just '6') -> pure PnpmLock6
+        (Just _) -> pure $ PnpmLockGt6 ver
+        _ -> fail ("expected numeric lockfileVersion, got: " <> show ver)
 
 data ProjectMap = ProjectMap
-  { directDependencies :: Map Text Text
-  , directDevDependencies :: Map Text Text
+  { directDependencies :: Map Text ProjectMapDepMetadata
+  , directDevDependencies :: Map Text ProjectMapDepMetadata
   }
   deriving (Show, Eq, Ord)
 
@@ -120,6 +179,18 @@ instance FromJSON ProjectMap where
     ProjectMap
       <$> obj .:? "dependencies" .!= mempty
       <*> obj .:? "devDependencies" .!= mempty
+
+newtype ProjectMapDepMetadata = ProjectMapDepMetadata
+  { version :: Text
+  }
+  deriving (Show, Eq, Ord)
+
+instance FromJSON ProjectMapDepMetadata where
+  -- This is v5 lock format
+  parseJSON (Yaml.String r) = pure $ ProjectMapDepMetadata r
+  -- This is v6 lock format
+  parseJSON (Yaml.Object obj) = ProjectMapDepMetadata <$> obj .: "version"
+  parseJSON other = fail ("Invalid format; expected pure string or an object with a `version` field, got: " <> show other)
 
 data PackageData = PackageData
   { isDev :: Bool
@@ -172,9 +243,15 @@ instance FromJSON Resolution where
       gitRes :: Object -> Parser Resolution
       gitRes obj = GitResolve <$> (GitResolution <$> obj .: "repo" <*> obj .: "commit")
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = context "Analyzing Npm Lockfile (v3)" $ do
   pnpmLockFile <- context "Parsing pnpm-lock file" $ readContentsYaml file
+
+  case lockFileVersion pnpmLockFile of
+    PnpmLockLt4 raw -> logWarn . pretty $ "pnpm-lock file is using older lockFileVersion: " <> raw <> " of, which is not officially supported!"
+    PnpmLockGt6 raw -> logWarn . pretty $ "pnpm-lock file is using newer lockFileVersion: " <> raw <> " of, which is not officially supported!"
+    _ -> pure ()
+
   context "Building dependency graph" $ pure $ buildGraph pnpmLockFile
 
 buildGraph :: PnpmLockfile -> Graphing Dependency
@@ -185,7 +262,7 @@ buildGraph lockFile = withoutLocalPackages $
             toList (directDependencies projectSnapshot)
               <> toList (directDevDependencies projectSnapshot)
 
-      for_ allDirectDependencies $ \(depName, depVersion) ->
+      for_ allDirectDependencies $ \(depName, (ProjectMapDepMetadata depVersion)) ->
         maybe (pure ()) direct $ toResolvedDependency depName depVersion
 
     -- Add edges and deep dependencies by iterating over all packages.
@@ -223,14 +300,38 @@ buildGraph lockFile = withoutLocalPackages $
       for_ deepDependencies $ \(deepName, deepVersion) -> do
         maybe (pure ()) (edge parentDep) (toResolvedDependency deepName deepVersion)
   where
+    getPkgNameVersion :: Text -> Maybe (Text, Text)
+    getPkgNameVersion = case lockFileVersion lockFile of
+      PnpmLock4Or5 -> getPkgNameVersionV5
+      PnpmLock6 -> getPkgNameVersionV6
+      PnpmLockLt4 _ -> getPkgNameVersionV5 -- v3 or below are deprecated and are not used in practice, fallback to closest
+      PnpmLockGt6 _ -> getPkgNameVersionV6 -- at the time of writing there is no v7, so default to closest
+
     -- Gets package name and version from package's key.
     --
-    -- >> getPkgNameVersion "" = Nothing
-    -- >> getPkgNameVersion "github.com/something" = Nothing
-    -- >> getPkgNameVersion "/pkg-a/1.0.0" = Just ("pkg-a", "1.0.0")
-    -- >> getPkgNameVersion "/@angular/core/1.0.0" = Just ("@angular/core", "1.0.0")
-    getPkgNameVersion :: Text -> Maybe (Text, Text)
-    getPkgNameVersion pkgKey = case (Text.stripPrefix "/" pkgKey) of
+    -- >> getPkgNameVersionV6 "" = Nothing
+    -- >> getPkgNameVersionV6 "github.com/something" = Nothing
+    -- >> getPkgNameVersionV6 "/pkg-a@1.0.0" = Just ("pkg-a", "1.0.0")
+    -- >> getPkgNameVersionV6 "/@angular/core@1.0.0" = Just ("@angular/core", "1.0.0")
+    -- >> getPkgNameVersionV6 "/@angular/core@1.0.0(babel@1.0.0)" = Just ("@angular/core", "1.0.0(babel@1.0.0)")
+    getPkgNameVersionV6 :: Text -> Maybe (Text, Text)
+    getPkgNameVersionV6 pkgKey = case (Text.stripPrefix "/" pkgKey) of
+      Nothing -> Nothing
+      Just txt -> do
+        let (nameAndVersion, peerDepInfo) = Text.breakOn "(" txt
+        let (nameWithSlash, version) = Text.breakOnEnd "@" nameAndVersion
+        case (Text.stripSuffix "@" nameWithSlash, version) of
+          (Just name, v) -> Just (name, v <> peerDepInfo)
+          _ -> Nothing
+
+    -- Gets package name and version from package's key.
+    --
+    -- >> getPkgNameVersionV5 "" = Nothing
+    -- >> getPkgNameVersionV5 "github.com/something" = Nothing
+    -- >> getPkgNameVersionV5 "/pkg-a/1.0.0" = Just ("pkg-a", "1.0.0")
+    -- >> getPkgNameVersionV5 "/@angular/core/1.0.0" = Just ("@angular/core", "1.0.0")
+    getPkgNameVersionV5 :: Text -> Maybe (Text, Text)
+    getPkgNameVersionV5 pkgKey = case (Text.stripPrefix "/" pkgKey) of
       Nothing -> Nothing
       Just txt -> do
         let (nameWithSlash, version) = Text.breakOnEnd "/" txt
@@ -250,7 +351,8 @@ buildGraph lockFile = withoutLocalPackages $
     -- For any dependency resolved via registry resolver, it will use
     -- the following format for its `packages` key:
     --
-    --   /${depName}/${depVersion}
+    --   - /${depName}/${depVersion} -- for v5 fmt
+    --   - /${depName}@${depVersion} -- for v6 fmt
     --
     -- For dependency resolved via non-registry resolvers,
     -- it will use the dependency's version value for its `packages` key:
@@ -270,13 +372,21 @@ buildGraph lockFile = withoutLocalPackages $
     -- Makes representative key if the package was
     -- resolved via registry resolver.
     --
-    -- >> mkPkgKey "pkg-a" "1.0.0" = "/pkg-a/1.0.0"
+    -- >> mkPkgKey "pkg-a" "1.0.0" = "/pkg-a/1.0.0" -- for v5 fmt
+    -- >> mkPkgKey "pkg-a" "1.0.0" = "/pkg-a@1.0.0" -- for v6 fmt
+    -- >> mkPkgKey "pkg-a" "1.0.0(babal@1.0.0)" = "/pkg-a@1.0.0(babal@1.0.0)" -- for v6 fmt
     mkPkgKey :: Text -> Text -> Text
-    mkPkgKey name version = "/" <> name <> "/" <> version
+    mkPkgKey name version = case lockFileVersion lockFile of
+      PnpmLock4Or5 -> "/" <> name <> "/" <> version
+      PnpmLock6 -> "/" <> name <> "@" <> version
+      -- v3 or below are deprecated and are not used in practice, fallback to closest
+      PnpmLockLt4 _ -> "/" <> name <> "/" <> version
+      -- at the time of writing there is no v7, so default to closest
+      PnpmLockGt6 _ -> "/" <> name <> "@" <> version
 
     toDependency :: Text -> Maybe Text -> PackageData -> Dependency
     toDependency name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) =
-      toDep NodeJSType name (withoutSymConstraint <$> maybeVersion) isDev
+      toDep NodeJSType name (withoutPeerDepSuffix . withoutSymConstraint <$> maybeVersion) isDev
     toDependency _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) =
       toDep GitType url (Just rev) isDev
     toDependency _ _ (PackageData isDev _ (TarballResolve (TarballResolution url)) _ _) =
@@ -293,6 +403,15 @@ buildGraph lockFile = withoutLocalPackages $
     -- >> withoutSymConstraint "1.2.0_vue@3.0" = "1.2.0"
     withoutSymConstraint :: Text -> Text
     withoutSymConstraint version = fst $ Text.breakOn "_" version
+
+    -- Sometimes package versions include resolved peer dependency version
+    -- in parentheses. This is used by pnpm for dependency resolution, we do
+    -- not care about them, as they do not represent package version.
+    --
+    -- >> withoutPeerDepSuffix "1.2.0" = "1.2.0"
+    -- >> withoutPeerDepSuffix "1.2.0(babel@1.0.0)" = "1.2.0"
+    withoutPeerDepSuffix :: Text -> Text
+    withoutPeerDepSuffix version = fst $ Text.breakOn "(" version
 
     toDep :: DepType -> Text -> Maybe Text -> Bool -> Dependency
     toDep depType name version isDev = Dependency depType name (CEq <$> version) mempty (toEnv isDev) mempty

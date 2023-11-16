@@ -44,6 +44,36 @@ mkDep nameAtVersion env = do
     (maybe mempty Set.singleton env)
     mempty
 
+colors :: Dependency
+colors =
+  Dependency
+    GitType
+    "git+ssh://git@github.com/Marak/colors.js"
+    (Just $ CEq "6bc50e79eeaa1d87369bb3e7e608ebed18c5cf26")
+    mempty
+    (Set.singleton EnvProduction)
+    mempty
+
+colorsTarball :: Dependency
+colorsTarball =
+  Dependency
+    URLType
+    "https://codeload.github.com/Marak/colors.js/tar.gz/6bc50e79eeaa1d87369bb3e7e608ebed18c5cf26"
+    Nothing
+    mempty
+    (Set.singleton EnvProduction)
+    mempty
+
+lodash :: Dependency
+lodash =
+  Dependency
+    URLType
+    "https://github.com/lodash/lodash/archive/refs/heads/master.tar.gz"
+    Nothing
+    mempty
+    (Set.singleton EnvProduction)
+    mempty
+
 checkGraph :: Path Abs File -> (Graphing Dependency -> Spec) -> Spec
 checkGraph pathToFixture buildGraphSpec = do
   eitherDecodedLockFile <- runIO $ decodeFileEither (toString pathToFixture)
@@ -62,28 +92,18 @@ spec = do
   checkGraph pnpmLockPath pnpmLockGraphSpec
   checkGraph pnpmLockWithoutWorkspacePath pnpmLockGraphWithoutWorkspaceSpec
 
+  -- v6 format
+  let pnpmLockV6 = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v6.yaml")
+  let pnpmLockV6WithWorkspace = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v6-workspace.yaml")
+
+  describe "can work with v6.0 format" $ do
+    checkGraph pnpmLockV6WithWorkspace pnpmLockV6WithWorkspaceGraphSpec
+    checkGraph pnpmLockV6 pnpmLockV6GraphSpec
+
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
   let hasEdge :: Dependency -> Dependency -> Expectation
       hasEdge = expectEdge graph
-
-  let colors =
-        Dependency
-          GitType
-          "git+ssh://git@github.com/Marak/colors.js"
-          (Just $ CEq "6bc50e79eeaa1d87369bb3e7e608ebed18c5cf26")
-          mempty
-          (Set.singleton EnvProduction)
-          mempty
-
-  let lodash =
-        Dependency
-          URLType
-          "https://github.com/lodash/lodash/archive/refs/heads/master.tar.gz"
-          Nothing
-          mempty
-          (Set.singleton EnvProduction)
-          mempty
 
   describe "buildGraph with workspaces" $ do
     it "should include dependencies of root and workspace package as direct" $ do
@@ -201,3 +221,142 @@ pnpmLockGraphWithoutWorkspaceSpec graph = do
       --   └── js-tokens 4.0.0
       hasEdge (mkProdDep "react@18.1.0") (mkProdDep "loose-envify@1.4.0")
       hasEdge (mkProdDep "loose-envify@1.4.0") (mkProdDep "js-tokens@4.0.0")
+
+pnpmLockV6WithWorkspaceGraphSpec :: Graphing Dependency -> Spec
+pnpmLockV6WithWorkspaceGraphSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  describe "buildGraph with workspaces" $ do
+    it "should include dependencies of root and workspace package as direct" $ do
+      expectDirect
+        [ mkProdDep "aws-sdk@2.1148.0"
+        , colorsTarball
+        , lodash
+        , mkProdDep "chalk@5.3.0"
+        , mkDevDep "react@18.1.0"
+        , -- from workspace package
+          mkProdDep "aws-sdk@1.0.0"
+        , mkProdDep "commander@9.2.0"
+        ]
+        graph
+
+    it "should include all relevant edges and deps for example@1.0.0" $ do
+      -- aws-sdk 2.1148.0
+      -- ├─┬ buffer 4.9.2
+      -- │ ├── base64-js 1.5.1
+      -- │ ├── ieee754 1.1.13
+      -- │ └── isarray 1.0.0
+      -- ├── events 1.1.1
+      -- ├── ieee754 1.1.13
+      -- ├── jmespath 0.16.0
+      -- ├── querystring 0.2.0
+      -- ├── sax 1.2.1
+      -- ├─┬ url 0.10.3
+      -- │ ├── punycode 1.3.2
+      -- │ └── querystring 0.2.0
+      -- ├── uuid 8.0.0
+      -- └─┬ xml2js 0.4.19
+      --   ├── sax 1.2.1
+      --   └── xmlbuilder 9.0.7
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "buffer@4.9.2")
+      hasEdge (mkProdDep "buffer@4.9.2") (mkProdDep "base64-js@1.5.1")
+      hasEdge (mkProdDep "buffer@4.9.2") (mkProdDep "ieee754@1.1.13")
+      hasEdge (mkProdDep "buffer@4.9.2") (mkProdDep "isarray@1.0.0")
+
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "events@1.1.1")
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "ieee754@1.1.13")
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "jmespath@0.16.0")
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "sax@1.2.1")
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "url@0.10.3")
+
+      hasEdge (mkProdDep "url@0.10.3") (mkProdDep "punycode@1.3.2")
+      hasEdge (mkProdDep "url@0.10.3") (mkProdDep "querystring@0.2.0")
+      hasEdge (mkProdDep "url@0.10.3") (mkProdDep "punycode@1.3.2")
+      hasEdge (mkProdDep "url@0.10.3") (mkProdDep "querystring@0.2.0")
+
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "uuid@8.0.0")
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "xml2js@0.4.19")
+
+      hasEdge (mkProdDep "xml2js@0.4.19") (mkProdDep "sax@1.3.0")
+      hasEdge (mkProdDep "xml2js@0.4.19") (mkProdDep "xmlbuilder@9.0.7")
+
+      -- -- react 18.1.0
+      -- -- └─┬ loose-envify 1.4.0
+      -- --   └── js-tokens 4.0.0
+      hasEdge (mkDevDep "react@18.1.0") (mkDevDep "loose-envify@1.4.0")
+      hasEdge (mkDevDep "loose-envify@1.4.0") (mkDevDep "js-tokens@4.0.0")
+
+    it "should include all relevant edges and deps for workspace package" $ do
+      -- workspace: packages/a
+      -- dependencies:
+      -- aws-sdk 1.0.0
+      -- ├─┬ xml2js 0.2.4
+      -- │ └── sax 1.2.1
+      -- └── xmlbuilder 15.1.1
+      -- commander 9.2.0
+      hasEdge (mkProdDep "aws-sdk@1.0.0") (mkProdDep "xml2js@0.2.4")
+      hasEdge (mkProdDep "aws-sdk@1.0.0") (mkProdDep "xmlbuilder@15.1.1")
+      hasEdge (mkProdDep "xml2js@0.2.4") (mkProdDep "sax@1.3.0")
+
+pnpmLockV6GraphSpec :: Graphing Dependency -> Spec
+pnpmLockV6GraphSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  describe "buildGraph" $ do
+    it "should mark direct dependencies of project as direct" $ do
+      expectDirect
+        [ mkProdDep "aws-sdk@2.1148.0"
+        , colorsTarball
+        , lodash
+        , mkProdDep "chalk@5.3.0"
+        , mkDevDep "react@18.1.0"
+        ]
+        graph
+
+    it "should include all relevant edges and deps" $ do
+      -- aws-sdk 2.1148.0
+      -- ├─┬ buffer 4.9.2
+      -- │ ├── base64-js 1.5.1
+      -- │ ├── ieee754 1.1.13
+      -- │ └── isarray 1.0.0
+      -- ├── events 1.1.1
+      -- ├── ieee754 1.1.13
+      -- ├── jmespath 0.16.0
+      -- ├── querystring 0.2.0
+      -- ├── sax 1.2.1
+      -- ├─┬ url 0.10.3
+      -- │ ├── punycode 1.3.2
+      -- │ └── querystring 0.2.0
+      -- ├── uuid 8.0.0
+      -- └─┬ xml2js 0.4.19
+      --   ├── sax 1.2.1
+      --   └── xmlbuilder 9.0.7
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "buffer@4.9.2")
+      hasEdge (mkProdDep "buffer@4.9.2") (mkProdDep "base64-js@1.5.1")
+      hasEdge (mkProdDep "buffer@4.9.2") (mkProdDep "ieee754@1.1.13")
+      hasEdge (mkProdDep "buffer@4.9.2") (mkProdDep "isarray@1.0.0")
+
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "events@1.1.1")
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "ieee754@1.1.13")
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "jmespath@0.16.0")
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "sax@1.2.1")
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "url@0.10.3")
+
+      hasEdge (mkProdDep "url@0.10.3") (mkProdDep "punycode@1.3.2")
+      hasEdge (mkProdDep "url@0.10.3") (mkProdDep "querystring@0.2.0")
+      hasEdge (mkProdDep "url@0.10.3") (mkProdDep "punycode@1.3.2")
+      hasEdge (mkProdDep "url@0.10.3") (mkProdDep "querystring@0.2.0")
+
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "uuid@8.0.0")
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "xml2js@0.4.19")
+
+      hasEdge (mkProdDep "xml2js@0.4.19") (mkProdDep "sax@1.2.1")
+      hasEdge (mkProdDep "xml2js@0.4.19") (mkProdDep "xmlbuilder@9.0.7")
+
+      -- react 18.1.0
+      -- └─┬ loose-envify 1.4.0
+      --   └── js-tokens 4.0.0
+      hasEdge (mkDevDep "react@18.1.0") (mkDevDep "loose-envify@1.4.0")
+      hasEdge (mkDevDep "loose-envify@1.4.0") (mkDevDep "js-tokens@4.0.0")
