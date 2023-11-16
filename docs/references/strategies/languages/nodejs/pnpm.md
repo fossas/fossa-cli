@@ -151,6 +151,8 @@ CLI will infer the package name and version using `/${dependencyName}/${dependen
 * Pnpm workspaces are supported.
 * Development dependencies (`dev: true`) are ignored by default from analysis. To include them in the analysis, execute CLI with `--include-unused` flag e.g. `fossa analyze --include-unused`.
 * Optional dependencies are included in the analysis by default. They can be ignored in FOSSA UI.
+* `fossa-cli` supports lockFileVersion: 4.x, 5.x, and 6.x.
+
 
 # F.A.Q
 

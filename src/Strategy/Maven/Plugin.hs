@@ -31,6 +31,7 @@ import Data.ByteString qualified as BS
 import Data.FileEmbed.Extra (embedFile')
 import Data.Foldable (Foldable (fold), foldl')
 import Data.Functor (void)
+import Data.List (nub)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -151,11 +152,11 @@ textArtifactToPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m Pl
 textArtifactToPluginOutput
   ta = buildPluginOutput ta
     where
-      artifactNames :: [Text]
-      artifactNames = foldl' (\a c -> (artifactText c : a)) mempty ta
+      artifacts :: [TextArtifact]
+      artifacts = nub $ foldl' (flip (:)) mempty ta
 
-      namesToIds :: Map Text Int
-      namesToIds = Map.fromList . (\ns -> zip ns [0 ..]) $ artifactNames
+      artifactToIds :: Map TextArtifact Int
+      artifactToIds = Map.fromList . (\ns -> zip ns [0 ..]) $ artifacts
 
       textArtifactToArtifact :: Int -> TextArtifact -> Artifact
       textArtifactToArtifact numericId TextArtifact{..} =
@@ -169,12 +170,12 @@ textArtifactToPluginOutput
           , artifactIsDirect = isDirect
           }
 
-      lookupArtifactByName :: Has Diagnostics sig m => Text -> m (Maybe Int)
-      lookupArtifactByName aText = do
-        let res = Map.lookup aText namesToIds
+      lookupArtifact :: Has Diagnostics sig m => TextArtifact -> m (Maybe Int)
+      lookupArtifact artifactToLook = do
+        let res = Map.lookup artifactToLook artifactToIds
         when (isNothing res) $
           warn $
-            "Could not find artifact with name " <> aText
+            "Could not find artifact: " <> show artifactToLook
         pure res
 
       buildEdges :: Has Diagnostics sig m => Int -> [Tree TextArtifact] -> m [Edge]
@@ -182,12 +183,12 @@ textArtifactToPluginOutput
         catMaybes
           <$> for
             (map rootLabel children)
-            (\c -> fmap (Edge parentId) <$> lookupArtifactByName (artifactText c))
+            (fmap (fmap $ Edge parentId) . lookupArtifact)
 
       buildPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m PluginOutput
       buildPluginOutput
-        (Node t@(TextArtifact{artifactText = aText}) aChildren) = do
-          maybeId <- lookupArtifactByName aText
+        (Node t aChildren) = do
+          maybeId <- lookupArtifact t
           childInfo@PluginOutput
             { outArtifacts = cArtifacts
             , outEdges = cEdges
@@ -195,7 +196,7 @@ textArtifactToPluginOutput
             fold <$> traverse buildPluginOutput aChildren
           case maybeId of
             Nothing -> do
-              warn ("Could not find id for artifact " <> aText)
+              warn ("Could not find id for artifact: " <> show t)
               pure childInfo
             Just numericId -> do
               let artifact = textArtifactToArtifact numericId t
