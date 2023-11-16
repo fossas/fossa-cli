@@ -47,8 +47,8 @@ By default, path dependency analysis is disabled. Note that, in the future, `fos
 
 ### Is `fossa-cli` uploading the content of my path dependency to the server?
 
-`fossa-cli` only uploads findings of the license scan, not the entire directory. If `cliLicenseScanRequireFullFileUpload` is enabled in FOSSA endpoint
-for your organization, `fossa-cli` will upload content of any file that has licensing data. By default,  `cliLicenseScanRequireFullFileUpload` is
+`fossa-cli` only uploads the portions of the file that contain matches to licenses, not the entire file. If `cliLicenseScanRequireFullFileUpload` is enabled in FOSSA endpoint
+for your organization, `fossa-cli` will upload the full contents of any file that has licensing data. By default,  `cliLicenseScanRequireFullFileUpload` is
 disabled for all organizations. Please contact [FOSSA support](https://support.fossa.com) to enable, this functionality.
 
 
