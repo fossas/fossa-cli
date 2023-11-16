@@ -39,7 +39,7 @@ import Control.Effect.Path ()
 import Control.Effect.StickyLogger (StickyLogger)
 import Control.Monad (unless, when)
 import Data.Flag (Flag, fromFlag)
-import Data.List (find)
+import Data.List (find, partition)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe)
 import Data.String.Conversion (toText)
@@ -152,7 +152,7 @@ resolvePaths leaveUnfiltered options projectRevision org baseDir graph = do
         if forceRescans options
           then pure []
           else getAnalyzedPathRevisions projectRevision
-      let (alreadyAnalyzedMeta, notAnalyzedMeta) = filter' (isAnalyzed alreadyAnalyzed) depsWithMetadata
+      let (alreadyAnalyzedMeta, notAnalyzedMeta) = partition (isAnalyzed alreadyAnalyzed) depsWithMetadata
       let alreadyScannedDeps = map (transformResolved alreadyAnalyzed) alreadyAnalyzedMeta
 
       -- 4. We scan and upload dependencies, and retrieve transformed dependencies!
@@ -305,6 +305,3 @@ metadataOf baseDir dep = case dependencyType dep of
     hash <- hashOf depPath'
     pure $ Just (dep, depPath', hash)
   _ -> pure Nothing
-
-filter' :: (a -> Bool) -> [a] -> ([a], [a])
-filter' f l = (filter f l, filter (not . f) l)

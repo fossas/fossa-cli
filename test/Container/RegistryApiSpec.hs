@@ -177,7 +177,7 @@ redisImageDigest :: RepoDigest
 redisImageDigest = RepoDigest "sha256:dd347200af9dbdb9a5f55851d1a0b8b5fb89462b94e84ac0bba89dfec30504fb"
 
 haskellDevImage :: Text
-haskellDevImage = "ghcr.io/fossas/haskell-dev-tools:9.4.7"
+haskellDevImage = "ghcr.io/fossas/haskell-dev-tools:9.0.2"
 
 haskellDevImageDigest :: RepoDigest
-haskellDevImageDigest = RepoDigest "sha256:10ba4a4661507aa7974eae873644b740ea0e168f2fc1e56c10adc845f1cffa25"
+haskellDevImageDigest = RepoDigest "sha256:06541fab718090e2d346e0313d3f1e841d1ea2b157630ad76ca20eb1507a4223"

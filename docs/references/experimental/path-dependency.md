@@ -52,7 +52,6 @@ By default, path dependency analysis is disabled. Note that, in the future, `fos
 for your organization, `fossa-cli` will upload the full contents of any file that has licensing data. By default,  `cliLicenseScanRequireFullFileUpload` is
 disabled for all organizations. Please contact [FOSSA support](https://support.fossa.com) to enable, this functionality.
 
-
 ## How are path dependencies different from FOSSA's vendor dependencies?
 
 Path dependencies, unlike [vendored dependencies](./../../features/vendored-dependencies.md), can be either direct or transitive in the dependency graph. Furthermore, path dependencies are scoped to the project in FOSSA, as opposed to the entire organization.
