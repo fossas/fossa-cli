@@ -9,7 +9,7 @@ import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import DepTypes (
   DepEnvironment (EnvProduction),
-  DepType (GoType),
+  DepType (GoType, UnresolvedPathType),
   Dependency (..),
   VerConstraint (CEq),
  )
@@ -272,11 +272,35 @@ replacedModule =
     , dependencyTags = Map.empty
     }
 
+pathModule :: Dependency
+pathModule =
+  Dependency
+    { dependencyType = UnresolvedPathType
+    , dependencyName = "../local_package"
+    , dependencyVersion = Just $ CEq "1.0.0"
+    , dependencyLocations = []
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = Map.empty
+    }
+
+pathDepPkgModule :: Dependency
+pathDepPkgModule =
+  Dependency
+    { dependencyType = GoType
+    , dependencyName = "pathDepDependency"
+    , dependencyVersion = Just $ CEq "1.0.0"
+    , dependencyLocations = []
+    , dependencyEnvironments = Set.singleton EnvProduction
+    , dependencyTags = Map.empty
+    }
+
 expectedGraph :: Graphing.Graphing Dependency
 expectedGraph =
   Graphing.direct replacedModule
     <> Graphing.direct moduleA
+    <> Graphing.direct pathModule
     <> Graphing.edge replacedModule moduleA
+    <> Graphing.edge pathModule pathDepPkgModule
 
 buildGraphSpec :: Path Abs Dir -> Spec
 buildGraphSpec dummyPath = it "Graphs modules based on package dependencies" $ do

@@ -38,7 +38,7 @@ import Data.Text (Text, isPrefixOf)
 import Data.Void (Void)
 import DepTypes (
   DepEnvironment (..),
-  DepType (GoType),
+  DepType (GoType, UnresolvedPathType),
   Dependency (..),
   VerConstraint (CEq),
  )
@@ -212,21 +212,18 @@ buildGraph goModDir rawPackages = do
     -- Graph childPkg and its children with parentPkg as its parent, returning the Dependency for child if it was graphed.
     makeGraph :: (Has Diagnostics sig m) => DepEnvironment -> GoPackage -> GoLabeledGrapher m (Maybe GoPackage)
     makeGraph currentEnv pkg@GoPackage{packageDeps} = do
-      currentMod@GoModule{indirect, isMainModule} <- getModuleInfo pkg
+      GoModule{indirect, isMainModule} <- getModuleInfo pkg
 
-      if (isPathDep currentMod)
-        then pure Nothing
-        else do
-          -- This is a depth-first post-order traversal of an acyclic graph.
-          -- So if a vertex exists, its children also exist so skip graphing them a second time.
-          existsAlready <- gets (Graphing.hasVertex pkg)
-          unless existsAlready $
-            traverse_ (lookupPackage >=> makeGraph currentEnv >=> maybeEdge pkg) packageDeps
+      -- This is a depth-first post-order traversal of an acyclic graph.
+      -- So if a vertex exists, its children also exist so skip graphing them a second time.
+      existsAlready <- gets (Graphing.hasVertex pkg)
+      unless existsAlready $
+        traverse_ (lookupPackage >=> makeGraph currentEnv >=> maybeEdge pkg) packageDeps
 
-          when isMainModule $ direct pkg
-          if indirect then deep pkg else direct pkg
-          label pkg currentEnv
-          pure . Just $ pkg
+      when isMainModule $ direct pkg
+      if indirect then deep pkg else direct pkg
+      label pkg currentEnv
+      pure . Just $ pkg
 
     maybeEdge :: (Has Diagnostics sig m, Has (Grapher GoPackage) sig m) => GoPackage -> Maybe GoPackage -> m ()
     maybeEdge d = maybe (pure ()) (edge d)
@@ -300,17 +297,18 @@ toGoModVersion modVersion = case parse (parsePackageVersion lexeme) "go module v
     lexeme = Lexer.lexeme sc
 
 modToDep :: GoModule -> Set.Set DepEnvironment -> Dependency
-modToDep
-  GoModule
-    { modulePath = ModulePath modPath
-    , version
+modToDep goMod labels =
+  Dependency
+    { dependencyType = if isPathDep goMod then UnresolvedPathType else GoType
+    , dependencyName = pathOf goMod
+    , dependencyVersion = toVerConstraint <$> (versionOf goMod)
+    , dependencyLocations = []
+    , dependencyEnvironments = labels
+    , dependencyTags = Map.empty
     }
-  labels =
-    Dependency
-      { dependencyType = GoType
-      , dependencyName = modPath
-      , dependencyVersion = toVerConstraint <$> version
-      , dependencyLocations = []
-      , dependencyEnvironments = labels
-      , dependencyTags = Map.empty
-      }
+  where
+    pathOf :: GoModule -> Text
+    pathOf (GoModule (ModulePath path) _ _ _ _) = path
+
+    versionOf :: GoModule -> Maybe PackageVersion
+    versionOf (GoModule _ ver _ _ _) = ver

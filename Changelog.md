@@ -1,8 +1,9 @@
 # FOSSA CLI Changelog
 
 ## Unreleased
+- path: adds path dependency scanning functionality. ([#1327](https://github.com/fossas/fossa-cli/pull/1327))
 - `pnpm`: Supports `6.0` version of `pnpm-lockfile.yaml` ([#1320])(https://github.com/fossas/fossa-cli/pull/1320)
-- Maven: Fixes defect, where `fossa-cli` was sometimes ignoring dependency, if the dependency with scopes was part of the project. ([#1322](https://github.com/fossas/fossa-cli/pull/1322))
+- Maven: Fixes defect, where `fossa-cli` was sometimes ignoring dependency, if the dependency with multiple scopes was part of the project. ([#1322](https://github.com/fossas/fossa-cli/pull/1322))
 
 ## v3.8.21
 - archive: considers 0-byte tar file to be valid tar file. ([#1311](https://github.com/fossas/fossa-cli/pull/1311))

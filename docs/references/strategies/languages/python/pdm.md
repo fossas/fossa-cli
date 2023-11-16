@@ -81,9 +81,8 @@ whereas white signifies unknown environment. If a dependency shared parent who h
 
 ### Limitations
 
-- Any [local dependencies](https://pdm.fming.dev/latest/usage/dependency/#local-dependencies) will not be reported.
-- Any dependeny using: `hg` (mercurial), `svn` (subversion), `bzr` (bazaar) source, will not be reported.
-
+- Any [local dependencies](https://pdm.fming.dev/latest/usage/dependency/#local-dependencies) will not be reported, by default. To enable, local dependencies in analysis, enable experimental path dependencies. Learn more about [path dependencies and how to enable them](./../../../experimental/path-dependency.md).
+- Any dependency using: `hg` (mercurial), `svn` (subversion), `bzr` (bazaar) source, will not be reported.
 
 ## Example
 

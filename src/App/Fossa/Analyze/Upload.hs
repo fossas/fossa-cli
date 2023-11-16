@@ -71,6 +71,7 @@ data ScanUnits
   = SourceUnitOnly (NE.NonEmpty SourceUnit)
   | LicenseSourceUnitOnly LicenseSourceUnit
   | SourceAndLicenseUnits (NE.NonEmpty SourceUnit) LicenseSourceUnit
+  deriving (Show)
 
 -- units come from standard `fossa analyze`.
 -- LicenseSourceUnit comes from running a first-party license scan on the project

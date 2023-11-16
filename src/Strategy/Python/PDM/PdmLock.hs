@@ -11,7 +11,7 @@ import Data.List (find)
 import Data.Maybe (mapMaybe)
 import Data.Set (Set, singleton)
 import Data.Text (Text)
-import DepTypes (DepEnvironment (EnvDevelopment, EnvProduction), DepType (GitType, PathType, PipType, URLType), Dependency (..), VerConstraint (..), hydrateDepEnvs)
+import DepTypes (DepEnvironment (EnvDevelopment, EnvProduction), DepType (GitType, PipType, URLType, UnresolvedPathType), Dependency (..), VerConstraint (..), hydrateDepEnvs)
 import Effect.Grapher (deep, direct, edge, evalGrapher, run)
 import Graphing (Graphing, gmap)
 import Strategy.Python.Util (Req (..), reqCodec)
@@ -85,7 +85,7 @@ toDependency prodReqs devReqs pkg =
     depType :: DepType
     depType = case (gitUrl pkg, gitRevision pkg, fsPath pkg, url pkg) of
       (Just _, Just _, _, _) -> GitType
-      (_, _, Just _, _) -> PathType
+      (_, _, Just _, _) -> UnresolvedPathType
       (_, _, _, Just _) -> URLType
       _ -> PipType
 
@@ -95,9 +95,10 @@ toDependency prodReqs devReqs pkg =
       _ -> mempty
 
     depName :: Text
-    depName = case (gitUrl pkg, url pkg) of
-      (Just url, _) -> url
-      (_, Just u) -> u
+    depName = case (gitUrl pkg, fsPath pkg, url pkg) of
+      (Just url, _, _) -> url
+      (_, _, Just u) -> u
+      (_, Just p, _) -> p
       _ -> name pkg
 
     depVersion :: Maybe VerConstraint

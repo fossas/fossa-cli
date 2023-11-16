@@ -5,6 +5,8 @@ module App.Fossa.LicenseScanner (
   licenseScanSourceUnit,
   combineLicenseUnits,
   scanVendoredDep,
+  calculateVendoredHash,
+  scanDirectory,
 ) where
 
 import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)
