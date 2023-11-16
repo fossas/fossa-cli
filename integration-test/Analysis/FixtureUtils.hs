@@ -35,7 +35,7 @@ import Data.Text qualified as Text
 import Data.Traversable (for)
 import Diag.Result (EmittedWarn, Result (Failure, Success), renderFailure)
 import Discovery.Archive (selectUnarchiver)
-import Discovery.Filters (AllFilters)
+import Discovery.Filters (AllFilters, MavenScopeFilters)
 import Effect.Exec (
   Command (..),
   ExecF (Exec),
@@ -109,6 +109,7 @@ type TestC m =
     $ LoggerC
     $ ReaderC OverrideDynamicAnalysisBinary
     $ ReaderC AllFilters
+    $ ReaderC MavenScopeFilters
     $ ReaderC ExperimentalAnalyzeConfig
     $ FinallyC
     $ StackC
@@ -123,6 +124,7 @@ testRunnerWithLogger f env =
     & withDefaultLogger SevWarn
     & runReader (mempty :: OverrideDynamicAnalysisBinary)
     & runReader (mempty :: AllFilters)
+    & runReader (mempty :: MavenScopeFilters)
     & runReader (ExperimentalAnalyzeConfig Nothing GoModulesBasedTactic)
     & runFinally
     & runStack

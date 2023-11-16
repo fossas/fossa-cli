@@ -83,7 +83,6 @@ import Data.String.Conversion (
   ToText (toText),
  )
 import Data.Text (Text)
-import Debug.Trace (traceM)
 import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters, comboExclude, comboInclude)
 import Effect.Exec (
   Exec,
@@ -360,7 +359,6 @@ loadConfig AnalyzeCliOpts{analyzeBaseDir, commons = CommonOpts{optConfig}} = do
   cwd <- getCurrentDir
   configBaseDir <- resolveDir cwd (toText analyzeBaseDir)
   resolvedConfig <- resolveConfigFile configBaseDir optConfig
-  traceM ("Resolved Config ----- " ++ show (resolvedConfig))
   resolveConfigFile configBaseDir optConfig
 
 mergeOpts ::
@@ -417,8 +415,6 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       grepOptions = collectGrepOptions maybeConfig cliOpts
       customFossaDepsFile = analyzeCustomFossaDepsFile
 
-  traceM ("&&&& These are the AnalyzeOnly Targets" ++ show (analyzeOnlyTargets))
-  traceM ("&&&& These are the AnalyzeExclude Targets" ++ show (analyzeExcludeTargets))
   firstPartyScansFlag <-
     case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
       (True, True) -> fatalText "You provided both the --experimental-force-first-party-scans and --experimental-block-first-party-scans flags. Only one of these flags may be used"

@@ -5,17 +5,7 @@ module App.Fossa.Configuration.ConfigurationSpec (
   spec,
 ) where
 
-import App.Fossa.Config.ConfigFile (
-  ConfigFile (..),
-  ConfigGrepEntry (..),
-  ConfigProject (..),
-  ConfigRevision (..),
-  ConfigTargets (..),
-  ExperimentalConfigs (..),
-  ExperimentalGradleConfigs (ExperimentalGradleConfigs),
-  VendoredDependencyConfigs (..),
-  resolveConfigFile,
- )
+import App.Fossa.Config.ConfigFile (ConfigFile (..), ConfigGrepEntry (..), ConfigProject (..), ConfigRevision (..), ConfigTargets (..), ExperimentalConfigs (..), ExperimentalGradleConfigs (ExperimentalGradleConfigs), MavenScopeConfigs (..), VendoredDependencyConfigs (..), resolveConfigFile)
 import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
 import App.Types (Policy (PolicyName), ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
@@ -43,6 +33,7 @@ expectedConfigFile path =
     , configTargets = Just expectedConfigTargets
     , configPaths = Nothing
     , configExperimental = Just expectedExperimentalConfig
+    , configMavenScope = Just expectedMavenScopeConfig
     , configVendoredDependencies = Just expectedVendoredDependencies
     , configTelemetry = Nothing
     , configCustomLicenseSearch = Just expectedLicenseSearch
@@ -92,6 +83,10 @@ expectedExperimentalConfig =
   ExperimentalConfigs
     { gradle = Just $ ExperimentalGradleConfigs (Set.fromList ["onlyProdConfigs", "onlyProdConfigs2"])
     }
+
+expectedMavenScopeConfig :: MavenScopeConfigs
+expectedMavenScopeConfig =
+  MavenScopeConfigs{scopeOnly = Set.fromList ["compile", "runtime"], scopeExclude = Set.fromList ["provided"]}
 
 expectedVendoredDependencies :: VendoredDependencyConfigs
 expectedVendoredDependencies =

@@ -17,17 +17,14 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text.Extra (breakOnAndRemove)
-import Debug.Trace (traceM)
 import DepTypes
 import Effect.Grapher
-import Effect.Logger (Logger, Pretty (pretty), logDebug, runLogger)
 import Graphing (Graphing)
 import Path
 import Path.IO qualified as Path
-import Strategy.Maven.PluginStrategy (MavenDep (MavenDep, dependency, dependencyScopes))
+import Strategy.Maven.Common (MavenDependency (..))
 import Strategy.Maven.Pom.Closure
 import Strategy.Maven.Pom.PomFile
-import Text.Pretty.Simple (pShow)
 import Types
 
 data MavenStrategyOpts = MavenStrategyOpts
@@ -36,7 +33,7 @@ data MavenStrategyOpts = MavenStrategyOpts
   }
   deriving (Eq, Ord, Show)
 
-analyze' :: Set Text -> Set Text -> MavenProjectClosure -> Graphing Dependency
+analyze' :: MavenProjectClosure -> Graphing MavenDependency
 analyze' = buildProjectGraph
 
 getLicenses :: MavenProjectClosure -> [LicenseResult]
@@ -68,23 +65,30 @@ data MavenLabel
   | MavenLabelOptional Text
   deriving (Eq, Ord, Show)
 
-toDependency :: MavenPackage -> Set MavenLabel -> Dependency
-toDependency (MavenPackage group artifact version) = do
-  x <- foldr applyLabel start
-  -- logDebug $ "The Graph in dep tree analyze " <> pretty (pShow (x))
-  traceM ("to Dependency *(*&&)))))" ++ show (x))
-  foldr applyLabel start
+toDependency :: MavenPackage -> Set MavenLabel -> MavenDependency
+toDependency (MavenPackage group artifact version) = foldr applyLabelToMavenDep start
   where
-    start :: Dependency
-    start =
-      Dependency
-        { dependencyType = MavenType
-        , dependencyName = group <> ":" <> artifact
-        , dependencyVersion = CEq <$> version
-        , dependencyLocations = []
-        , dependencyEnvironments = mempty
-        , dependencyTags = Map.empty
-        }
+    start :: MavenDependency
+    start = do
+      let dep =
+            Dependency
+              { dependencyType = MavenType
+              , dependencyName = group <> ":" <> artifact
+              , dependencyVersion = CEq <$> version
+              , dependencyLocations = []
+              , dependencyEnvironments = mempty
+              , dependencyTags = Map.empty
+              }
+      MavenDependency dep (Set.fromList [])
+
+    applyLabelToMavenDep :: MavenLabel -> MavenDependency -> MavenDependency
+    applyLabelToMavenDep lbl mavenDep = do
+      case lbl of
+        MavenLabelScope scope ->
+          mavenDep{dependency = depWithLabel, dependencyScopes = Set.insert scope (dependencyScopes mavenDep)}
+        _ -> mavenDep{dependency = depWithLabel}
+      where
+        depWithLabel = applyLabel lbl (dependency mavenDep)
 
     applyLabel :: MavenLabel -> Dependency -> Dependency
     applyLabel lbl dep = case lbl of
@@ -98,78 +102,8 @@ toDependency (MavenPackage group artifact version) = do
     addTag :: Text -> Text -> Dependency -> Dependency
     addTag key value dep = dep{dependencyTags = Map.insertWith (++) key [value] (dependencyTags dep)}
 
--- toDependency' :: MavenPackage -> Set MavenLabel -> MavenDep
--- toDependency' (MavenPackage group artifact version) = do
---   traceM ("showsljflsj" ++ show (foldr applyLabel start))
---   x <- foldr applyLabel start
---   MavenDep x Set.empty
---   where
---     start :: Dependency
---     start =
---       Dependency
---         { dependencyType = MavenType
---         , dependencyName = group <> ":" <> artifact
---         , dependencyVersion = CEq <$> version
---         , dependencyLocations = []
---         , dependencyEnvironments = mempty
---         , dependencyTags = Map.empty
---         }
-
---     applyLabel :: MavenLabel -> Dependency -> Dependency
---     applyLabel lbl dep = case lbl of
---       MavenLabelScope scope ->
---         if scope == "test"
---           then insertEnvironment EnvTesting dep
---           else addTag "scope" scope dep
---       MavenLabelOptional opt -> addTag "optional" opt dep
-
---     -- TODO: reuse this in other strategies
---     addTag :: Text -> Text -> Dependency -> Dependency
---     addTag key value dep = dep{dependencyTags = Map.insertWith (++) key [value] (dependencyTags dep)}
-
--- buildProjectGraph' :: MavenProjectClosure -> Graphing MavenDep
--- buildProjectGraph' closure = run . withLabeling toDependency' $ do
---   direct (coordToPackage (closureRootCoord closure))
---   go (closureRootCoord closure) (closureRootPom closure)
---   where
---     go :: Has MavenGrapher sig m => MavenCoordinate -> Pom -> m ()
---     go coord incompletePom = do
---       _ <- Map.traverseWithKey addDep deps
---       for_ childPoms $ \(childCoord, childPom) -> do
---         edge (coordToPackage coord) (coordToPackage childCoord)
---         go childCoord childPom
---       where
---         completePom :: Pom
---         completePom = overlayParents incompletePom
-
---         overlayParents :: Pom -> Pom
---         overlayParents pom = fromMaybe pom $ do
---           parentCoord <- pomParentCoord pom
---           (_, parentPom) <- Map.lookup parentCoord (closurePoms closure)
---           pure (pom <> overlayParents parentPom)
-
---         deps :: Map (Group, Artifact) MvnDepBody
---         deps = reifyDeps completePom
-
---         addDep :: Has MavenGrapher sig m => (Group, Artifact) -> MvnDepBody -> m ()
---         addDep (group, artifact) body = do
---           let depPackage = buildMavenPackage completePom group artifact body
---           traceM ("fjsfjslfjslfs" ++ show (coordToPackage coord))
---           edge (coordToPackage coord) depPackage
---           traverse_ (label depPackage . MavenLabelScope) (depScope body)
---           traverse_ (label depPackage . MavenLabelOptional) (depOptional body)
-
---         childPoms :: [(MavenCoordinate, Pom)]
---         childPoms =
---           [ (childCoord, pom) | childCoord <- Set.toList (AM.postSet coord (closureGraph closure)), Just (_, pom) <- [Map.lookup childCoord (closurePoms closure)]
---           ]
-
--- TODO: set top-level direct deps as direct instead of the project?
-buildProjectGraph :: MavenProjectClosure -> Graphing Dependency
+buildProjectGraph :: MavenProjectClosure -> Graphing MavenDependency
 buildProjectGraph closure = run . withLabeling toDependency $ do
-  -- traceM ("Maven Static Pom Analysis ----------")
-
-  -- logDebug $ "The Graph in dep tree analyze " <> pretty (pShow (toDependency))
   direct (coordToPackage (closureRootCoord closure))
   go (closureRootCoord closure) (closureRootPom closure)
   where
@@ -195,19 +129,9 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
         addDep :: Has MavenGrapher sig m => (Group, Artifact) -> MvnDepBody -> m ()
         addDep (group, artifact) body = do
           let depPackage = buildMavenPackage completePom group artifact body
-          traceM ("fjsfjslfjslfs" ++ show (coordToPackage coord))
-
           edge (coordToPackage coord) depPackage
           traverse_ (label depPackage . MavenLabelScope) (depScope body)
           traverse_ (label depPackage . MavenLabelOptional) (depOptional body)
-
-        applicableDep :: Maybe Text -> Bool
-        applicableDep Nothing = True
-        applicableDep (Just scope) = case (Set.null scopeIncludeSet, Set.null scopeExcludeSet) of
-          (True, True) -> True
-          (False, True) -> not (Set.member scope scopeExcludeSet)
-          (True, False) -> (Set.member scope scopeIncludeSet)
-          (False, False) -> (Set.member scope scopeIncludeSet) && (not (Set.member scope scopeExcludeSet))
 
         childPoms :: [(MavenCoordinate, Pom)]
         childPoms =

@@ -97,7 +97,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
-import Debug.Trace (traceM)
 import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
@@ -273,7 +272,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       grepOptions = Config.grepOptions cfg
       customFossaDepsFile = Config.customFossaDepsFile cfg
 
-  traceM ("Filters from config ------ " ++ show (filters))
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
   vsiResults <- Diag.errorBoundaryIO . diagToDebug $
@@ -303,7 +301,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
-  traceM ("Manual Source Units ------" ++ show (manualSrcUnits))
+
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
@@ -357,10 +355,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   let projectResults = mapMaybe toProjectResult projectScans
   let filteredProjects = mapMaybe toProjectResult projectScans
-  -- traceM ("Project Result ------" ++ show (projectResults))
-  -- traceM ("Filtered Result ------" ++ show (projectResults))
+
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
-  -- traceM ("Analysis Result ------" ++ show (analysisResult))
   maybeEndpointAppVersion <- case destination of
     UploadScan apiOpts _ -> runFossaApiClient apiOpts $ do
       -- Using 'recovery' as API corresponding to 'getEndpointVersion',

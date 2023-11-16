@@ -403,6 +403,7 @@ library
     Strategy.Maven.Plugin
     Strategy.Maven.PluginStrategy
     Strategy.Maven.PluginTree
+    Strategy.Maven.Common 
     Strategy.Maven.Pom
     Strategy.Maven.Pom.Closure
     Strategy.Maven.Pom.PomFile
@@ -596,6 +597,7 @@ test-suite unit-tests
     Maven.PluginSpec
     Maven.PluginStrategySpec
     Maven.PluginTreeSpec
+    Maven.CommonSpec
     Maven.PomStrategySpec
     Ndb.NdbSpec
     Nim.NimbleSpec

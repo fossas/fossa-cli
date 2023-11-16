@@ -47,7 +47,6 @@ import Data.Set.NonEmpty (nonEmpty, toSet)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Debug.Trace (traceM)
 import DepTypes (
   Dependency (..),
  )

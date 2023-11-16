@@ -39,7 +39,7 @@ import Data.Aeson.Extra (encodeJSONToText)
 import Data.Foldable (for_, traverse_)
 import Data.Set.NonEmpty (toSet)
 import Data.String.Conversion (decodeUtf8, toText)
-import Discovery.Filters (AllFilters, MavenScopeFilters (MavenScopeFilters))
+import Discovery.Filters (AllFilters, MavenScopeFilters)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec)
 import Effect.Logger (

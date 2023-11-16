@@ -193,11 +193,11 @@ data ConfigFile = ConfigFile
   , configTargets :: Maybe ConfigTargets
   , configPaths :: Maybe ConfigPaths
   , configExperimental :: Maybe ExperimentalConfigs
+  , configMavenScope :: Maybe MavenScopeConfigs
   , configVendoredDependencies :: Maybe VendoredDependencyConfigs
   , configTelemetry :: Maybe ConfigTelemetry
   , configCustomLicenseSearch :: Maybe [ConfigGrepEntry]
   , configKeywordSearch :: Maybe [ConfigGrepEntry]
-  , configMavenScope :: Maybe MavenScopeConfigs
   , configOrgWideCustomLicenseConfigPolicy :: OrgWideCustomLicenseConfigPolicy
   , configConfigFilePath :: Path Abs File
   }
@@ -276,11 +276,11 @@ instance FromJSON (Path Abs File -> ConfigFile) where
       <*> obj .:? "targets"
       <*> obj .:? "paths"
       <*> obj .:? "experimental"
+      <*> obj .:? "maven"
       <*> obj .:? "vendoredDependencies"
       <*> obj .:? "telemetry"
       <*> obj .:? "customLicenseSearch"
       <*> obj .:? "experimentalKeywordSearch"
-      <*> obj .:? "maven"
       <*> parseIgnoreOrgWideCustomLicenseScanConfigs obj
     where
       parseIgnoreOrgWideCustomLicenseScanConfigs obj = do

@@ -37,6 +37,13 @@ experimental:
       - onlyProdConfigs
       - onlyProdConfigs2
 
+maven:
+  scope-only:
+    - compile
+    - runtime
+  scope-exclude:
+    - provided
+
 vendoredDependencies:
   forceRescans: true
   scanMethod: ArchiveUpload
