@@ -31,7 +31,7 @@ Ok, the quickstart worked for you, but why, and how?
 
 > `ghcup install ghc 9.4`
 
-When you install `ghcup`, `ghc` and `cabal-install` are installed automatically as part of the initial installation (see [Tools](#Tools) for descriptions of `ghc` and `cabal-install`).
+When you install `ghcup`, `ghc` and `cabal-install` are installed automatically as part of the initial installation (see [Tools](#tools) for descriptions of `ghc` and `cabal-install`).
 The `ghc` version that is automatically installed may not be the correct version we use (though it may work just fine).  So we install the correct version with `ghcup install ghc 9.4`.
 Currently, the best place to check the correct version is our CI build files (try `.github/workflows/build.yml`).
 

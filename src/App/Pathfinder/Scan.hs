@@ -85,7 +85,6 @@ runAll ::
   , Has Debug sig m
   , Has Stack sig m
   , Has (Reader AllFilters) sig m
-  , Has (Reader MavenScopeFilters) sig m
   , MonadIO m
   ) =>
   Path Abs Dir ->

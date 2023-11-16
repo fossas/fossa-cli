@@ -61,7 +61,7 @@ import Data.Maybe (listToMaybe, mapMaybe)
 import Data.String.Conversion (ToString (toString))
 import Data.Text (Text)
 import Data.Text.Extra (breakOnEndAndRemove, showT)
-import Discovery.Filters (AllFilters, MavenScopeFilters (MavenScopeFilters), isDefaultNonProductionPath)
+import Discovery.Filters (AllFilters, MavenScopeFilters, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec)
 import Effect.Logger (

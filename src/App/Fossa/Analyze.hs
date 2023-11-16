@@ -301,7 +301,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
-
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
@@ -357,6 +356,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let filteredProjects = mapMaybe toProjectResult projectScans
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
+
   maybeEndpointAppVersion <- case destination of
     UploadScan apiOpts _ -> runFossaApiClient apiOpts $ do
       -- Using 'recovery' as API corresponding to 'getEndpointVersion',
