@@ -110,7 +110,6 @@ transitiveExpected = run . evalGrapher $
       deep c
       edge dep c
 
-
 spec :: Spec
 spec =
   describe "analyze" $ do

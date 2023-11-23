@@ -49,7 +49,6 @@ installRequiresParser = do
       n <- optional nameParser
       reqs <- findRequires
       pure (reqs, n)
-
   where
     findName :: Parser (Maybe Text)
     findName = do
@@ -66,10 +65,13 @@ installRequiresParser = do
         Just _ -> entriesParser
 
     nameParser :: Parser Text
-    nameParser = toText <$> lexeme
-      ((between (symbol' "\"") (symbol "\"") packageName
-      <|> (between (symbol "\'") (symbol "\'") packageName)))
-
+    nameParser =
+      toText
+        <$> lexeme
+          ( ( between (symbol' "\"") (symbol "\"") packageName
+                <|> (between (symbol "\'") (symbol "\'") packageName)
+            )
+          )
 
     installRequires :: Parser Param
     installRequires = do
@@ -87,11 +89,11 @@ installRequiresParser = do
     entriesParser :: Parser [Req]
     entriesParser = entries `sepEndBy` (symbol' ",") <* symbol "]"
       where
-      entries :: Parser Req
-      entries = lexeme (requireSurroundedBy "\"" <|> requireSurroundedBy "\'")
+        entries :: Parser Req
+        entries = lexeme (requireSurroundedBy "\"" <|> requireSurroundedBy "\'")
 
-      requireSurroundedBy :: Text -> Parser Req
-      requireSurroundedBy quote = between (symbol quote) (symbol quote) requirementParser
+        requireSurroundedBy :: Text -> Parser Req
+        requireSurroundedBy quote = between (symbol quote) (symbol quote) requirementParser
 
     ignoreBackslash :: Parser ()
     ignoreBackslash = void $ symbol "\\"
@@ -110,10 +112,12 @@ packageName :: ParsecT Void Text Identity [Char]
 packageName = (:) <$> alphaNumChar <*> (concat <$> many nameEnd)
   where
     nameEnd :: ParsecT Void Text Identity [Char]
-    nameEnd = pure <$> alphaNumChar <|> do
-      special <- many (satisfy (\x -> x == '.' || x == '_' || x == '-'))
-      lod <- alphaNumChar
-      pure (special ++ [lod])
+    nameEnd =
+      pure <$> alphaNumChar <|> do
+        special <- many (satisfy (\x -> x == '.' || x == '_' || x == '-'))
+        lod <- alphaNumChar
+        pure (special ++ [lod])
+
 -- | Parses install requirements listed in setup.cfg
 -- Setup.cfg has install_requires attribute in [options] block
 -- which is formatted as danfling list.

@@ -81,29 +81,28 @@ pipShowParser = many (try parseMetadata <|> try parseSection)
     parseField :: Text -> Parser Text
     parseField field = skipManyTill anySingle $ symbol field *> symbol ":" *> ident
 
-    -- | Consume only spaces.
+    -- \| Consume only spaces.
     sc :: Parser ()
     sc = L.space (void $ some (char ' ')) empty empty
 
-    -- | Run the provided parser, then consume any trailing spaces.
+    -- \| Run the provided parser, then consume any trailing spaces.
     lexeme :: Parser a -> Parser a
     lexeme = L.lexeme sc
 
-    -- | Parse for the provided symbol, then consume any trailing spaces.
+    -- \| Parse for the provided symbol, then consume any trailing spaces.
     symbol :: Text -> Parser Text
     symbol = L.symbol sc
 
-    -- | Collect a contiguous list of characters into a @Text@, then consume any trailing spaces.
+    -- \| Collect a contiguous list of characters into a @Text@, then consume any trailing spaces.
     -- Requires that a space trails the identifier.
     ident :: Parser Text
     ident = lexeme $ toText <$> takeWhileP Nothing (/= '\n')
-
 
 -- | Maps package metadata into a package which contains the package's transitive dependencies.
 toPackages :: [PackageMetadata] -> [Package]
 toPackages packagesInfo = do
   map (toPackage [] packagesInfo) packagesInfo
- where
+  where
     toPackage seen metadata (PackageMetadata name version requires) =
       Package
         name

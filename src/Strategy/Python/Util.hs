@@ -20,7 +20,7 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
 import DepTypes
-import Effect.Grapher (Has, Grapher, run, evalGrapher, direct, deep, edge)
+import Effect.Grapher (Grapher, Has, deep, direct, edge, evalGrapher, run)
 import Graphing (Graphing)
 import Graphing qualified
 import Strategy.Python.Pip (Package (..))
