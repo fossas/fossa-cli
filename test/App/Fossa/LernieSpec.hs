@@ -359,6 +359,7 @@ spec = do
           let licenseUnits = licenseSourceUnitLicenseUnits (fromJust sourceUnit)
           let licenseUnitDatas = concatMap (NE.toList . licenseUnitData) licenseUnits
           let contents = map licenseUnitDataContents licenseUnitDatas
+          -- The result from the .fossa.yml file will be filtered out in actual usage
           contents
             `shouldBe'` [ Just "# I should not find a Proprietary License in this file, because it is the .fossa.yml file\nversion: 3\n"
                         , Just "This is a Proprietary License.\n\nIs this a Proprietary License too?\n\nThrow in a third Proprietary License just for fun\n"
