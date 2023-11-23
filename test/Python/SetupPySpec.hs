@@ -80,23 +80,23 @@ spec = do
   describe "parse" $ do
     it "should parse setup.py without comments" $ do
       let shouldParseInto = parseMatch installRequiresParser
-      setupPyWithoutComment `shouldParseInto` [mkReq "PyYAML", mkReq "pandas", mkReq "numpy"]
-      setupPyWithoutComment2 `shouldParseInto` [mkReq "PyYAML", mkReq "pandas", mkReq "numpy"]
+      setupPyWithoutComment `shouldParseInto` ([mkReq "PyYAML", mkReq "pandas", mkReq "numpy"], Just "foo")
+      setupPyWithoutComment2 `shouldParseInto` ([mkReq "PyYAML", mkReq "pandas", mkReq "numpy"], Nothing)
 
     it "should parse setup.py with backslash" $ do
       let shouldParseInto = parseMatch installRequiresParser
-      setupPyWithBackslash `shouldParseInto` [mkReq "PyYAML", mkReq "pandas", mkReq "numpy"]
+      setupPyWithBackslash `shouldParseInto` ([mkReq "PyYAML", mkReq "pandas", mkReq "numpy"], Nothing)
 
     it "should parse setup.py with comments" $ do
       let shouldParseInto = parseMatch installRequiresParser
 
-      setupPyWithCommentAfterComma `shouldParseInto` [mkReq "PyYAML", mkReq "pandas", mkReq "numpy"]
-      setupPyWithCommentBeforeReq `shouldParseInto` [mkReq "PyYAML", mkReq "numpy"]
-      setupPyWithAllComments `shouldParseInto` []
+      setupPyWithCommentAfterComma `shouldParseInto` ([mkReq "PyYAML", mkReq "pandas", mkReq "numpy"], Nothing)
+      setupPyWithCommentBeforeReq `shouldParseInto` ([mkReq "PyYAML", mkReq "numpy"], Nothing)
+      setupPyWithAllComments `shouldParseInto` ([], Just "foo")
 
   describe "analyze" $
     it "should produce expected output" $ do
-      let result = buildGraph setupPyInput
+      let result = buildGraph Nothing setupPyInput
 
       result `shouldBe` expected
 
@@ -105,14 +105,14 @@ setupCfgSpec =
   describe "setup.cfg parser" $ do
     it "should parse setup.cfg when it has no install_requires" $ do
       let shouldParseInto = parseMatch installRequiresParserSetupCfg
-      setupCgfWithoutInstallReqs `shouldParseInto` []
+      setupCgfWithoutInstallReqs `shouldParseInto` ([], Just "vnpy")
 
     it "should parse setup.cfg" $ do
       let shouldParseInto = parseMatch installRequiresParserSetupCfg
-      setupCgfSimple `shouldParseInto` [mkReq "PyYAML", mkReq "pandas"]
-      setupCgfSimple2 `shouldParseInto` [mkReq "PyYAML", mkReq "pandas"]
-      setupCgfSimple3 `shouldParseInto` [mkReq "PyYAML", mkReq "pandas"]
-      setupCgfSimpleComment `shouldParseInto` [mkReq "PyYAML", mkReq "pandas"]
+      setupCgfSimple `shouldParseInto` ([mkReq "PyYAML", mkReq "pandas"], Just "foo")
+      setupCgfSimple2 `shouldParseInto` ([mkReq "PyYAML", mkReq "pandas"], Nothing)
+      setupCgfSimple3 `shouldParseInto` ([mkReq "PyYAML", mkReq "pandas"], Nothing)
+      setupCgfSimpleComment `shouldParseInto` ([mkReq "PyYAML", mkReq "pandas"], Nothing)
 
 mkReq :: Text -> Req
 mkReq name = NameReq name Nothing Nothing Nothing
@@ -128,6 +128,7 @@ author = hey
 setupCgfSimple :: Text
 setupCgfSimple =
   [r|[options]
+name = foo
 packages = find:
 include_package_data = True
 zip_safe = False
@@ -180,6 +181,7 @@ setupPyWithoutComment :: Text
 setupPyWithoutComment =
   [r|from setuptools import setup, find_packages
 setup(
+    name='foo',
     install_requires=[
         'PyYAML',
         'pandas',
@@ -228,6 +230,7 @@ setupPyWithAllComments :: Text
 setupPyWithAllComments =
   [r|from setuptools import setup, find_packages
 setup(
+    name='foo',
     install_requires=[
         # 'PyYAML',
         # 'pandas==0.23.3',
