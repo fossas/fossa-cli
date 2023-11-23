@@ -46,7 +46,11 @@ customLicenseLernieMatchData =
 -- (line-numbers are 1-indexed, and you have only encountered lineNumber - 1 newLines when you are on line n,
 -- so you have to subtract 1 from them).
 extraLineBytes :: Integer
+#ifdef mingw32_HOST_OS
+extraLineBytes = 1
+#else
 extraLineBytes = 0
+#endif
 
 secondCustomLicenseLernieMatchData :: LernieMatchData
 secondCustomLicenseLernieMatchData =
