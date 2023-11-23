@@ -14,7 +14,7 @@ import Control.Carrier.Telemetry (withoutTelemetry)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Data.List (nub, sort)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromJust, fromMaybe)
+import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToText (toText))
 import Data.Text qualified as Text
 import Fossa.API.Types (Organization (..))
@@ -356,15 +356,18 @@ spec = do
         Just res -> do
           -- Just assert that we find the contents of the files
           let sourceUnit = lernieResultsSourceUnit res
-          let licenseUnits = licenseSourceUnitLicenseUnits (fromJust sourceUnit)
-          let licenseUnitDatas = concatMap (NE.toList . licenseUnitData) licenseUnits
-          let contents = map licenseUnitDataContents licenseUnitDatas
-          -- The result from the .fossa.yml file will be filtered out in actual usage
-          contents
-            `shouldBe'` [ Just "# I should not find a Proprietary License in this file, because it is the .fossa.yml file\nversion: 3\n"
-                        , Just "This is a Proprietary License.\n\nIs this a Proprietary License too?\n\nThrow in a third Proprietary License just for fun\n"
-                        , Just "Keyword Searches are great!\n\nThis file is very confidential\n"
-                        ]
+          let maybeLicenseUnits = licenseSourceUnitLicenseUnits <$> sourceUnit
+          case maybeLicenseUnits of
+            Nothing -> expectationFailure' "licenseUnits should not be Nothing"
+            Just licenseUnits -> do
+              let licenseUnitDatas = concatMap (NE.toList . licenseUnitData) licenseUnits
+              let contents = map licenseUnitDataContents licenseUnitDatas
+              -- The result from the .fossa.yml file will be filtered out in actual usage
+              contents
+                `shouldBe'` [ Just "# I should not find a Proprietary License in this file, because it is the .fossa.yml file\nversion: 3\n"
+                            , Just "This is a Proprietary License.\n\nIs this a Proprietary License too?\n\nThrow in a third Proprietary License just for fun\n"
+                            , Just "Keyword Searches are great!\n\nThis file is very confidential\n"
+                            ]
 
     it' "should not include the file contents if the org has the full-files flag off" $ do
       GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry], orgRequiresFullFileUploads = False}
@@ -374,10 +377,13 @@ spec = do
         Just res -> do
           -- Just assert that the contents are all `Nothing`
           let sourceUnit = lernieResultsSourceUnit res
-          let licenseUnits = licenseSourceUnitLicenseUnits (fromJust sourceUnit)
-          let licenseUnitDatas = concatMap (NE.toList . licenseUnitData) licenseUnits
-          let contents = map licenseUnitDataContents licenseUnitDatas
-          contents `shouldBe'` [Nothing, Nothing, Nothing]
+          let maybeLicenseUnits = licenseSourceUnitLicenseUnits <$> sourceUnit
+          case maybeLicenseUnits of
+            Nothing -> expectationFailure' "licenseUnits should not be Nothing"
+            Just licenseUnits -> do
+              let licenseUnitDatas = concatMap (NE.toList . licenseUnitData) licenseUnits
+              let contents = map licenseUnitDataContents licenseUnitDatas
+              contents `shouldBe'` [Nothing, Nothing, Nothing]
 
     it' "should merge the config from fossa.yml and the org" $ do
       GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry]}
