@@ -372,7 +372,7 @@ spec = do
       case result of
         Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
         Just res -> do
-          -- Just assert that we find the contents of the files
+          -- Just assert that the contents are all `Nothing`
           let sourceUnit = lernieResultsSourceUnit res
           let licenseUnits = licenseSourceUnitLicenseUnits (fromJust sourceUnit)
           let licenseUnitDatas = concatMap (NE.toList . licenseUnitData) licenseUnits
