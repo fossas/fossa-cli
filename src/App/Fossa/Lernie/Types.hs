@@ -70,6 +70,7 @@ instance FromJSON GrepEntry where
 data LernieConfig = LernieConfig
   { rootDir :: Path Abs Dir
   , regexes :: [LernieRegex]
+  , fullFiles :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -78,6 +79,7 @@ instance ToJSON LernieConfig where
     object
       [ "root_dir" .= toText rootDir
       , "regexes" .= toJSON regexes
+      , "full_files" .= fullFiles
       ]
 
 data LernieRegex = LernieRegex

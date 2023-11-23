@@ -71,8 +71,8 @@ analyzeWithLernie ::
   m (Maybe LernieResults)
 analyzeWithLernie rootDir maybeApiOpts grepOptions = do
   case (maybeApiOpts, orgWideCustomLicenseScanConfigPolicy grepOptions) of
-    (_, Ignore) -> analyzeWithLernieMain rootDir grepOptions
-    (Nothing, Use) -> analyzeWithLernieMain rootDir grepOptions
+    (_, Ignore) -> analyzeWithLernieMain rootDir grepOptions False
+    (Nothing, Use) -> analyzeWithLernieMain rootDir grepOptions False
     (Just apiOpts, Use) -> runFossaApiClient apiOpts $ analyzeWithLernieWithOrgInfo rootDir grepOptions
 
 analyzeWithLernieWithOrgInfo ::
@@ -88,7 +88,8 @@ analyzeWithLernieWithOrgInfo ::
   m (Maybe LernieResults)
 analyzeWithLernieWithOrgInfo rootDir grepOptions = do
   orgWideCustomLicenses <- orgCustomLicenseScanConfigs <$> getOrganization
-  analyzeWithLernieMain rootDir grepOptions{customLicenseSearch = nub $ orgWideCustomLicenses <> customLicenseSearch grepOptions}
+  fullFiles <- orgRequiresFullFileUploads <$> getOrganization
+  analyzeWithLernieMain rootDir grepOptions{customLicenseSearch = nub $ orgWideCustomLicenses <> customLicenseSearch grepOptions} fullFiles
 
 analyzeWithLernieMain ::
   ( Has Diagnostics sig m
@@ -99,9 +100,10 @@ analyzeWithLernieMain ::
   ) =>
   Path Abs Dir ->
   GrepOptions ->
+  Bool ->
   m (Maybe LernieResults)
-analyzeWithLernieMain rootDir grepOptions = do
-  let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
+analyzeWithLernieMain rootDir grepOptions fullFiles = do
+  let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions fullFiles
   case maybeLernieConfig of
     Just lernieConfig -> do
       unless (null $ customLicenseSearch grepOptions) $ trackUsage CustomLicenseSearchUsage
@@ -111,11 +113,11 @@ analyzeWithLernieMain rootDir grepOptions = do
       pure $ Just lernieResults
     Nothing -> pure Nothing
 
-grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Maybe LernieConfig
-grepOptionsToLernieConfig rootDir grepOptions =
+grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Bool -> Maybe LernieConfig
+grepOptionsToLernieConfig rootDir grepOptions fullFiles =
   case (customLicenseSearches <> keywordSearches) of
     [] -> Nothing
-    res -> Just $ LernieConfig rootDir res
+    res -> Just $ LernieConfig rootDir res fullFiles
   where
     customLicenseSearches = map (grepEntryToLernieRegex CustomLicense) (customLicenseSearch grepOptions)
     keywordSearches = map (grepEntryToLernieRegex KeywordSearch) (keywordSearch grepOptions)
