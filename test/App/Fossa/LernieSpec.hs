@@ -357,6 +357,19 @@ spec = do
                         , Just "Keyword Searches are great!\n\nThis file is very confidential\n"
                         ]
 
+    it' "should not include the file contents if the org has the full-files flag off" $ do
+      GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry], orgRequiresFullFileUploads = False}
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernieWithOrgInfo scanDir grepOptions
+      case result of
+        Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
+        Just res -> do
+          -- Just assert that we find the contents of the files
+          let sourceUnit = lernieResultsSourceUnit res
+          let licenseUnits = licenseSourceUnitLicenseUnits (fromJust sourceUnit)
+          let licenseUnitDatas = concatMap (NE.toList . licenseUnitData) licenseUnits
+          let contents = map licenseUnitDataContents licenseUnitDatas
+          contents `shouldBe'` [Nothing, Nothing, Nothing]
+
     it' "should merge the config from fossa.yml and the org" $ do
       GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry]}
       result <- ignoreDebug . withoutTelemetry $ analyzeWithLernieWithOrgInfo scanDir grepOptions
