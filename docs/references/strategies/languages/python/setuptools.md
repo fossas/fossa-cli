@@ -11,6 +11,18 @@ approach to dependency management in python projects.
 
 ## Analysis: requirements.txt
 
+For the CLI to detect transitive dependencies for requirement.txt, the dependencies
+must be installed before running the CLI via `pip install -r requirements.txt`.
+The CLI will only report transitive dependencies for packages that are discovered
+in a requirements.txt file and installed within the environment.
+
+The CLI uses the `python -m pip` command to interact with `pip`. For the CLI to
+report transitive dependencies the packages must be installed within a virtual
+environment and the CLI must be ran in the same virtual virtual environment.
+
+If neither python nor pip are installed the CLI will only to reporting only direct
+dependencies.
+
 requirements.txt contains direct dependencies, and is parsed compliant to its
 [file format spec][requirements-file-format].
 
@@ -24,6 +36,25 @@ tagged with environment markers.
 
 ## Analysis: setup.py
 
+### Installed packages
+
+For the CLI to determine packages referenced in a setup.py file's `install_requires`
+field. The package must be installed with `pip install .` or `python setup.py install`
+within a virtual environment. The CLI naively scans the setup.py for a `name`
+attribute and matches the name with a installed package to determine a list of
+packages required. If the name matches an installed package then the CLI will
+only report the packages required by the installed package. If a name is not matched
+ then the CLI will naively scan for install_requires as explained in the next section.
+
+The CLI uses the `python -m pip` command to interact with `pip`. For the CLI to report
+packages and their transitive dependencies the CLI must be ran within the same
+virtual environment the package was installed into.
+
+If neither python nor pip are installed the CLI will report dependencies found
+by naively scanning for install_requires as explained in the next section.
+
+### Naively scanning for install_requires
+
 setup.py is naively scanned for its `install_requires=[...]` field, which often
 fails on projects encountered in the wild. Short of implementing a robust python
 parser, or running a python script in their environment (which may have
@@ -32,7 +63,7 @@ unintended consequences!), reliable output from setup.py is difficult to obtain.
 Entries in the `install_requires` array are parsed compliant to the
 [PEP-508][pep-508] spec, similar to requirements.txt
 
-If `setup.cfg` exists in the same directory as `setup.py`, `fossa-cli` also naively 
+If `setup.cfg` exists in the same directory as `setup.py`, `fossa-cli` also naively
 scans for its `install_requires=[...]` attributes, similar to `setup.py`. If both `setup.cfg` and
 `setup.py` exists and both have `install_requires` attribute, `fossa-cli` concatenates requirements
 from both files.
@@ -58,7 +89,7 @@ true `install_requires` list from the CLI's view. For example, FOSSA CLI does no
 
 ## Examples
 
-Given the following files:
+Assuming no virtual environment, given the following files:
 
 `setup.py` (manually created):
 
@@ -72,13 +103,13 @@ setup(
     url='https://this.url/means#nothing',
     packages=['foo'],
     # And now the important part...
-    install_requires=[  
+    install_requires=[
         "requests",
     ],
 )
 ```
 
-`requirements.txt` (obtained by running `pip install requests && pip freeze > requirements.txt`):
+`requirements.txt`:
 *Note: your requirements file may have different versions. This file is just a reference example.*
 
 ```txt
