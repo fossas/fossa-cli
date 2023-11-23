@@ -71,6 +71,7 @@ customLicenseMatchMessage =
   LernieMatch
     { lernieMatchPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
     , lernieMatchMatches = [customLicenseLernieMatchData]
+    , lernieMatchContents = Nothing
     }
 
 secondCustomLicenseMatchMessage :: LernieMatch
@@ -78,6 +79,7 @@ secondCustomLicenseMatchMessage =
   LernieMatch
     { lernieMatchPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
     , lernieMatchMatches = [secondCustomLicenseLernieMatchData]
+    , lernieMatchContents = Nothing
     }
 
 keywordSearchLernieMatchData :: LernieMatchData
@@ -98,6 +100,7 @@ keywordSearchMatchMessage =
   LernieMatch
     { lernieMatchPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
     , lernieMatchMatches = [keywordSearchLernieMatchData]
+    , lernieMatchContents = Nothing
     }
 
 warningMessage :: LernieWarning
