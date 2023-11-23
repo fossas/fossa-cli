@@ -8,6 +8,7 @@ module App.Fossa.LernieSpec (
 
 import App.Fossa.Lernie.Analyze (analyzeWithLernie, analyzeWithLernieWithOrgInfo, grepOptionsToLernieConfig, lernieMessagesToLernieResults, singletonLernieMessage)
 import App.Fossa.Lernie.Types (GrepEntry (..), GrepOptions (..), LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieScanType (..), LernieWarning (..), OrgWideCustomLicenseConfigPolicy (..))
+import App.Types (FullFileUploads (..))
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Telemetry (withoutTelemetry)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
@@ -45,11 +46,7 @@ customLicenseLernieMatchData =
 -- (line-numbers are 1-indexed, and you have only encountered lineNumber - 1 newLines when you are on line n,
 -- so you have to subtract 1 from them).
 extraLineBytes :: Integer
-#ifdef mingw32_HOST_OS
-extraLineBytes = 1
-#else
 extraLineBytes = 0
-#endif
 
 secondCustomLicenseLernieMatchData :: LernieMatchData
 secondCustomLicenseLernieMatchData =
@@ -143,11 +140,7 @@ expectedDoubleLernieResults =
     }
 
 absDir :: Path Abs Dir
-#ifdef mingw32_HOST_OS
-absDir = $(mkAbsDir "C:/")
-#else
 absDir = $(mkAbsDir "/tmp/one")
-#endif
 
 expectedSourceUnit :: LicenseSourceUnit
 expectedSourceUnit =
@@ -258,6 +251,7 @@ expectedLernieConfig =
   LernieConfig
     { rootDir = absDir
     , regexes = [customLicenseLernieRegex, keywordSearchLernieRegex]
+    , fullFiles = False
     }
 
 keywordSearchLernieRegex :: LernieRegex
@@ -300,7 +294,7 @@ spec = do
 
   describe "grepOptionsToLernieConfig" $ do
     it "should create a lernie config" $ do
-      (grepOptionsToLernieConfig absDir grepOptions) `shouldBe` Just expectedLernieConfig
+      grepOptionsToLernieConfig absDir grepOptions (FullFileUploads False) `shouldBe` Just expectedLernieConfig
 
   describe "analyzeWithLernie" $ do
     currDir <- runIO getCurrentDir

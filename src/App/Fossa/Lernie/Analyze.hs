@@ -25,6 +25,7 @@ import App.Fossa.Lernie.Types (
   LernieWarning (..),
   OrgWideCustomLicenseConfigPolicy (..),
  )
+import App.Types (FullFileUploads (..))
 import Control.Carrier.Debug (Debug)
 import Control.Carrier.Diagnostics (Diagnostics, fatal, warn)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
@@ -71,8 +72,8 @@ analyzeWithLernie ::
   m (Maybe LernieResults)
 analyzeWithLernie rootDir maybeApiOpts grepOptions = do
   case (maybeApiOpts, orgWideCustomLicenseScanConfigPolicy grepOptions) of
-    (_, Ignore) -> analyzeWithLernieMain rootDir grepOptions False
-    (Nothing, Use) -> analyzeWithLernieMain rootDir grepOptions False
+    (_, Ignore) -> analyzeWithLernieMain rootDir grepOptions (FullFileUploads False)
+    (Nothing, Use) -> analyzeWithLernieMain rootDir grepOptions (FullFileUploads False)
     (Just apiOpts, Use) -> runFossaApiClient apiOpts $ analyzeWithLernieWithOrgInfo rootDir grepOptions
 
 analyzeWithLernieWithOrgInfo ::
@@ -89,7 +90,7 @@ analyzeWithLernieWithOrgInfo ::
 analyzeWithLernieWithOrgInfo rootDir grepOptions = do
   orgWideCustomLicenses <- orgCustomLicenseScanConfigs <$> getOrganization
   fullFiles <- orgRequiresFullFileUploads <$> getOrganization
-  analyzeWithLernieMain rootDir grepOptions{customLicenseSearch = nub $ orgWideCustomLicenses <> customLicenseSearch grepOptions} fullFiles
+  analyzeWithLernieMain rootDir grepOptions{customLicenseSearch = nub $ orgWideCustomLicenses <> customLicenseSearch grepOptions} $ FullFileUploads fullFiles
 
 analyzeWithLernieMain ::
   ( Has Diagnostics sig m
@@ -100,7 +101,7 @@ analyzeWithLernieMain ::
   ) =>
   Path Abs Dir ->
   GrepOptions ->
-  Bool ->
+  FullFileUploads ->
   m (Maybe LernieResults)
 analyzeWithLernieMain rootDir grepOptions fullFiles = do
   let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions fullFiles
@@ -113,11 +114,11 @@ analyzeWithLernieMain rootDir grepOptions fullFiles = do
       pure $ Just lernieResults
     Nothing -> pure Nothing
 
-grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Bool -> Maybe LernieConfig
+grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> FullFileUploads -> Maybe LernieConfig
 grepOptionsToLernieConfig rootDir grepOptions fullFiles =
   case (customLicenseSearches <> keywordSearches) of
     [] -> Nothing
-    res -> Just $ LernieConfig rootDir res fullFiles
+    res -> Just $ LernieConfig rootDir res $ unFullFileUploads fullFiles
   where
     customLicenseSearches = map (grepEntryToLernieRegex CustomLicense) (customLicenseSearch grepOptions)
     keywordSearches = map (grepEntryToLernieRegex KeywordSearch) (keywordSearch grepOptions)
@@ -276,7 +277,7 @@ createLicenseUnitDataSingles ((path, title), licenseUnitMatchData) =
         , licenseUnitDataThemisVersion = ""
         , licenseUnitDataMatchData = Just $ NE.singleton licenseUnitMatchData
         , licenseUnitDataCopyrights = Nothing
-        , licenseUnitDataContents = Nothing
+        , licenseUnitDataContents = Nothing -- TODO: This is where we need to add the file contents in
         }
 
 createLicenseUnitSingles :: ((CustomLicensePath, CustomLicenseTitle), LicenseUnitData) -> ((CustomLicensePath, CustomLicenseTitle), LicenseUnit)
