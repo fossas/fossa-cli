@@ -14,7 +14,7 @@ import Control.Carrier.Telemetry (withoutTelemetry)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Data.List (nub, sort)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromJust, fromMaybe)
 import Data.String.Conversion (ToText (toText))
 import Data.Text qualified as Text
 import Fossa.API.Types (Organization (..))
@@ -46,11 +46,7 @@ customLicenseLernieMatchData =
 -- (line-numbers are 1-indexed, and you have only encountered lineNumber - 1 newLines when you are on line n,
 -- so you have to subtract 1 from them).
 extraLineBytes :: Integer
-#ifdef mingw32_HOST_OS
-extraLineBytes = 1
-#else
 extraLineBytes = 0
-#endif
 
 secondCustomLicenseLernieMatchData :: LernieMatchData
 secondCustomLicenseLernieMatchData =
@@ -147,11 +143,7 @@ expectedDoubleLernieResults =
     }
 
 absDir :: Path Abs Dir
-#ifdef mingw32_HOST_OS
-absDir = $(mkAbsDir "C:/")
-#else
 absDir = $(mkAbsDir "/tmp/one")
-#endif
 
 expectedSourceUnit :: LicenseSourceUnit
 expectedSourceUnit =
@@ -347,6 +339,23 @@ spec = do
                             }
                         ]
           (lernieResultsSourceUnit res) `shouldBe'` Just actualSourceUnit
+
+    it' "should include the file contents if the org has the full-files flag on" $ do
+      GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry], orgRequiresFullFileUploads = True}
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernieWithOrgInfo scanDir grepOptions
+      case result of
+        Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
+        Just res -> do
+          -- Just assert that we find the contents of the files
+          let sourceUnit = lernieResultsSourceUnit res
+          let licenseUnits = licenseSourceUnitLicenseUnits (fromJust sourceUnit)
+          let licenseUnitDatas = concatMap (NE.toList . licenseUnitData) licenseUnits
+          let contents = map licenseUnitDataContents licenseUnitDatas
+          contents
+            `shouldBe'` [ Just "# I should not find a Proprietary License in this file, because it is the .fossa.yml file\nversion: 3\n"
+                        , Just "This is a Proprietary License.\n\nIs this a Proprietary License too?\n\nThrow in a third Proprietary License just for fun\n"
+                        , Just "Keyword Searches are great!\n\nThis file is very confidential\n"
+                        ]
 
     it' "should merge the config from fossa.yml and the org" $ do
       GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry]}
