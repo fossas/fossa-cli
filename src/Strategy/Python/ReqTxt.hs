@@ -16,11 +16,12 @@ import Strategy.Python.Util
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Types
+import Strategy.Python.Pip (Package)
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze' file = do
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe [Package] -> Path Abs File -> m (Graphing Dependency)
+analyze' packages file = do
   reqs <- errCtx (ReqsTxtFailed file) $ readContentsParser requirementsTxtParser file
-  context "Building dependency graph" $ pure (buildGraph reqs)
+  context "Building dependency graph" $ pure (buildGraph packages reqs)
 
 newtype ReqsTxtFailed = ReqsTxtFailed (Path Abs File)
 instance ToDiagnostic ReqsTxtFailed where

@@ -22,10 +22,12 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
+import Effect.Exec (Exec)
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path)
+import Strategy.Python.Pip (Package, getPackages)
 import Strategy.Python.ReqTxt qualified as ReqTxt
 import Strategy.Python.SetupPy qualified as SetupPy
 import Types (
@@ -36,11 +38,13 @@ import Types (
   GraphBreadth (Partial),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject SetuptoolsProject]
-discover = simpleDiscover findProjects mkProject SetuptoolsProjectType
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m, Has Exec sig m) => Path Abs Dir -> m [DiscoveredProject SetuptoolsProject]
+discover = do
+  simpleDiscover findProjects mkProject SetuptoolsProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [SetuptoolsProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m, Has Exec sig m) => Path Abs Dir -> m [SetuptoolsProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
+  installedPackages <- getPackages dir
   let reqTxtFiles =
         filter
           (\f -> "req" `isInfixOf` fileName f && ".txt" `isSuffixOf` fileName f)
@@ -55,6 +59,7 @@ findProjects = walkWithFilters' $ \dir _ files -> do
           , setuptoolsSetupPy = setupPyFile
           , setuptoolsSetupCfg = setupCfgFile
           , setuptoolsDir = dir
+          , packages = installedPackages
           }
 
   case (reqTxtFiles, setupPyFile) of
@@ -77,18 +82,20 @@ getDeps project = do
       }
 
 analyzeReqTxts :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
-analyzeReqTxts = context "Analyzing requirements.txt files" . fmap mconcat . traverse ReqTxt.analyze' . setuptoolsReqTxt
+analyzeReqTxts project = context "Analyzing requirements.txt files" $ do
+  mconcat <$> traverse (ReqTxt.analyze' (packages project)) (setuptoolsReqTxt project)
 
 analyzeSetupPy :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
 analyzeSetupPy project = context "Analyzing setup.py" $ do
   setupPy <- Diag.fromMaybeText "No setup.py found in this project" (setuptoolsSetupPy project)
-  SetupPy.analyze' setupPy (setuptoolsSetupCfg project)
+  SetupPy.analyze' (packages project) setupPy (setuptoolsSetupCfg project)
 
 data SetuptoolsProject = SetuptoolsProject
   { setuptoolsReqTxt :: [Path Abs File]
   , setuptoolsSetupPy :: Maybe (Path Abs File)
   , setuptoolsSetupCfg :: Maybe (Path Abs File)
   , setuptoolsDir :: Path Abs Dir
+  , packages :: Maybe [Package]
   }
   deriving (Eq, Ord, Show, Generic)
 
