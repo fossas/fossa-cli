@@ -45,6 +45,7 @@ customLicenseLernieMatchData =
 -- `extraLineBytes * (lineNumber - 1)` to the bytes.
 -- (line-numbers are 1-indexed, and you have only encountered lineNumber - 1 newLines when you are on line n,
 -- so you have to subtract 1 from them).
+
 extraLineBytes :: Integer
 #ifdef mingw32_HOST_OS
 extraLineBytes = 1
@@ -362,8 +363,10 @@ spec = do
             Just licenseUnits -> do
               let licenseUnitDatas = concatMap (NE.toList . licenseUnitData) licenseUnits
               let contents = map licenseUnitDataContents licenseUnitDatas
+              -- fix newlines on windows so that we get the same contents on both Windows and other OSes
+              let fixedContents = map (fmap $ Text.replace "\r\n" "\n") contents
               -- The result from the .fossa.yml file will be filtered out in actual usage
-              contents
+              fixedContents
                 `shouldBe'` [ Just "# I should not find a Proprietary License in this file, because it is the .fossa.yml file\nversion: 3\n"
                             , Just "This is a Proprietary License.\n\nIs this a Proprietary License too?\n\nThrow in a third Proprietary License just for fun\n"
                             , Just "Keyword Searches are great!\n\nThis file is very confidential\n"
