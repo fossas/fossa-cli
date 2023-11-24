@@ -78,7 +78,7 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False True []
+organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True []
 
 project :: API.Project
 project =
@@ -389,6 +389,7 @@ experimentalConfig =
   ExperimentalAnalyzeConfig
     { allowedGradleConfigs = Nothing
     , useV3GoResolver = GoModulesBasedTactic
+    , resolvePathDependencies = False
     }
 
 vendoredDepsOptions :: VendoredDependencyOptions
@@ -407,6 +408,9 @@ grepOptions =
     , orgWideCustomLicenseScanConfigPolicy = Use
     , configFilePath = Nothing
     }
+
+customFossaDepsFile :: Maybe FilePath
+customFossaDepsFile = Nothing
 
 #ifdef mingw32_HOST_OS
 absDir :: Path Abs Dir
@@ -434,4 +438,5 @@ standardAnalyzeConfig =
     , ANZ.overrideDynamicAnalysis = App.OverrideDynamicAnalysisBinary{unOverrideDynamicAnalysisBinary = mempty}
     , ANZ.firstPartyScansFlag = App.FirstPartyScansUseDefault
     , ANZ.grepOptions = grepOptions
+    , ANZ.customFossaDepsFile = customFossaDepsFile
     }

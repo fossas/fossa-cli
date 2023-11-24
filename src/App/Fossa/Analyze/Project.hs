@@ -46,7 +46,7 @@ data ProjectResult = ProjectResult
   , projectResultGraphBreadth :: GraphBreadth
   , projectResultManifestFiles :: [SomePath]
   }
-  deriving (Show)
+  deriving (Show, Eq)
 
 shouldKeepUnreachableDeps :: DiscoveredProjectType -> Bool
 shouldKeepUnreachableDeps SwiftProjectType = True

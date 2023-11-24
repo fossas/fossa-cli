@@ -37,6 +37,9 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   renderLocatorUrl,
   getEndpointVersion,
   firstPartyScanResultUpload,
+  getUploadURLForPathDependency,
+  finalizePathDependencyScan,
+  alreadyAnalyzedPathRevision,
 ) where
 
 import App.Docs (fossaSslCertDocsUrl)
@@ -114,6 +117,7 @@ import Effect.Logger (
   (<+>),
  )
 import Fossa.API.Types (
+  AnalyzedPathDependenciesResp,
   ApiOpts,
   Archive,
   ArchiveComponents (ArchiveComponents),
@@ -122,6 +126,9 @@ import Fossa.API.Types (
   Issues,
   OrgId,
   Organization (Organization, orgRequiresFullFileUploads, orgSupportsIssueDiffs, orgSupportsNativeContainerScan, organizationId),
+  PathDependencyFinalizeReq (..),
+  PathDependencyUpload,
+  PathDependencyUploadReq (..),
   Project,
   RevisionDependencyCache,
   SignedURL (signedURL),
@@ -1400,3 +1407,60 @@ getEndpointVersion apiOpts = fossaReq $ do
   case parseXML (decodeUtf8 body) of
     Left err -> fatalText (xmlErrorPretty err)
     Right (appManifest :: AppManifest) -> pure $ endpointAppVersion appManifest
+
+---- Path Dependency
+
+signedLicenseScanPathDependencyURLEndpoint :: Url 'Https -> Url 'Https
+signedLicenseScanPathDependencyURLEndpoint baseUrl = baseUrl /: "api" /: "cli" /: "path_dependency_scan" /: "upload"
+
+getUploadURLForPathDependency ::
+  (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  Text ->
+  Text ->
+  ProjectRevision ->
+  FullFileUploads ->
+  m PathDependencyUpload
+getUploadURLForPathDependency apiOpts path version ProjectRevision{..} fullFileUpload = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  let projectLocator = Locator "custom" projectName (Just projectRevision)
+  let req' = PathDependencyUploadReq path version projectLocator fullFileUpload
+  response <-
+    context ("Retrieving a signed S3 URL for license scan results of " <> path) $
+      req POST (signedLicenseScanPathDependencyURLEndpoint baseUrl) (ReqBodyJson req') jsonResponse baseOpts
+  pure (responseBody response)
+
+pathDependencyFinalizeUrl :: Url 'Https -> Url 'Https
+pathDependencyFinalizeUrl baseUrl = baseUrl /: "api" /: "cli" /: "path_dependency_scan" /: "finalize"
+
+finalizePathDependencyScan ::
+  (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  [Locator] ->
+  Bool ->
+  m (Maybe ())
+finalizePathDependencyScan apiOpts locators forceRebuild = runEmpty $
+  fossaReqAllow401 $ do
+    (baseUrl, baseOpts) <- useApiOpts apiOpts
+    let req' = PathDependencyFinalizeReq locators forceRebuild
+    _ <-
+      context "Queuing a build for all license scan uploads" $
+        req POST (pathDependencyFinalizeUrl baseUrl) (ReqBodyJson req') ignoreResponse (baseOpts)
+    pure ()
+
+alreadyAnalyzedPathRevisionURLEndpoint :: Url 'Https -> Locator -> Url 'Https
+alreadyAnalyzedPathRevisionURLEndpoint baseUrl locator = baseUrl /: "api" /: "cli" /: "path_dependency_scan" /: renderLocator locator /: "analyzed"
+
+alreadyAnalyzedPathRevision ::
+  (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  m (AnalyzedPathDependenciesResp)
+alreadyAnalyzedPathRevision apiOpts ProjectRevision{..} = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  let projectLocator = Locator "custom" projectName (Just projectRevision)
+  let url = alreadyAnalyzedPathRevisionURLEndpoint baseUrl projectLocator
+  response <-
+    context ("Retrieving already analyzed path dependencies") $
+      req GET url NoReqBody jsonResponse baseOpts
+  pure (responseBody response)

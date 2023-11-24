@@ -171,13 +171,13 @@ debian2gcrImageDigest :: RepoDigest
 debian2gcrImageDigest = RepoDigest "sha256:9bd6154724425e6083550fd85a91952fa2f79ef0b9844f0d009c37a72d075757"
 
 redisImage :: Text
-redisImage = "redis:7.0.14-alpine"
+redisImage = "redis:6.0.14-buster"
 
 redisImageDigest :: RepoDigest
-redisImageDigest = RepoDigest "sha256:8deeb318badaf246e2c6b591dd511c712e89c27738199f8213c421d13fc216c9"
+redisImageDigest = RepoDigest "sha256:dd347200af9dbdb9a5f55851d1a0b8b5fb89462b94e84ac0bba89dfec30504fb"
 
 haskellDevImage :: Text
-haskellDevImage = "ghcr.io/fossas/haskell-dev-tools:9.4.7"
+haskellDevImage = "ghcr.io/fossas/haskell-dev-tools:9.0.2"
 
 haskellDevImageDigest :: RepoDigest
-haskellDevImageDigest = RepoDigest "sha256:10ba4a4661507aa7974eae873644b740ea0e168f2fc1e56c10adc845f1cffa25"
+haskellDevImageDigest = RepoDigest "sha256:06541fab718090e2d346e0313d3f1e841d1ea2b157630ad76ca20eb1507a4223"

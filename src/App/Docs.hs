@@ -6,6 +6,7 @@ module App.Docs (
   platformDocUrl,
   fossaSslCertDocsUrl,
   fossaContainerScannerUrl,
+  pathDependencyDocsUrl,
 ) where
 
 import App.Version (versionOrBranch)
@@ -37,3 +38,6 @@ fossaSslCertDocsUrl = guidePathOf versionOrBranch "/docs/walkthroughs/ssl-cert.m
 
 fossaContainerScannerUrl :: Text
 fossaContainerScannerUrl = guidePathOf versionOrBranch "/docs/references/subcommands/container/scanner.md"
+
+pathDependencyDocsUrl :: Text
+pathDependencyDocsUrl = guidePathOf versionOrBranch "/docs/references/experimental/path-dependency.md"

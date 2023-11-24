@@ -5,6 +5,8 @@ module App.Fossa.LicenseScanner (
   licenseScanSourceUnit,
   combineLicenseUnits,
   scanVendoredDep,
+  calculateVendoredHash,
+  scanDirectory,
 ) where
 
 import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)
@@ -40,6 +42,7 @@ import Control.Effect.FossaApiClient (
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
+import Data.Either.Combinators (rightToMaybe)
 import Data.HashMap.Strict qualified as HM
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -79,14 +82,14 @@ data LicenseScanErr
   = NoSuccessfulScans
   | NoLicenseResults (Path Abs Dir)
   | EmptyDirectory (Path Abs Dir)
-  | EmptyArchive (Path Abs File)
+  | EmptyOrCorruptedArchive (Path Abs File)
   | UnsupportedArchive (Path Abs File)
 
 instance ToDiagnostic LicenseScanErr where
   renderDiagnostic NoSuccessfulScans = "No native license scans were successful"
   renderDiagnostic (NoLicenseResults path) = "No license results found after scanning directory: " <> pretty (toText path)
   renderDiagnostic (EmptyDirectory path) = "vendored-dependencies path has no files and cannot be scanned: " <> pretty (toString path)
-  renderDiagnostic (EmptyArchive path) = "vendored-dependencies archive contains no files and cannot be scanned: " <> pretty (toString path)
+  renderDiagnostic (EmptyOrCorruptedArchive path) = "vendored-dependencies archive is malformed or contains no files: " <> pretty (toString path)
   renderDiagnostic (UnsupportedArchive path) = case fileExtension path of
     Just ext -> "fossa-cli does not support archives of type " <> squotes (pretty ext) <> ": " <> pretty (toString path)
     Nothing -> "fossa-cli does not support archives without file extensions: " <> pretty (toString path)
@@ -135,8 +138,8 @@ recursivelyScanArchives pathPrefix licenseScanPathFilters fullFileUploads dir = 
     -- but it would be easy to allow customers to filter out single files too.
     let archivesToSkip = maybe [] licenseScanPathFilterFileExclude licenseScanPathFilters
     let filesToProcess = filter (`notElem` archivesToSkip) files
-    -- withArchive' emits Nothing when archive type is not supported.
-    archives <- traverse (\file -> withArchive' file (process file)) filesToProcess
+
+    archives <- catMaybes <$> traverse (\file -> rightToMaybe <$> withArchive' file (process file)) filesToProcess
     pure (concat (catMaybes archives), WalkContinue)
 
 -- When we recursively scan archives, we end up with an array of LicenseUnits that may have multiple entries for a single license.
@@ -243,12 +246,13 @@ scanArchive ::
   ScannableArchive ->
   m (NonEmpty LicenseUnit)
 scanArchive baseDir licenseScanPathFilters fullFileUploads file = runFinally $ do
-  -- withArchive' emits Nothing when archive type is not supported.
   logSticky $ "scanning archive at " <> toText (scanFile file)
   result <- withArchive' (scanFile file) (scanDirectory (Just file) pathPrefix licenseScanPathFilters fullFileUploads)
   case result of
-    Nothing -> fatal . UnsupportedArchive $ scanFile file
-    Just units -> pure units
+    Left _ -> fatal . UnsupportedArchive $ scanFile file
+    Right r -> case r of
+      Nothing -> fatal . EmptyOrCorruptedArchive $ scanFile file
+      Just units -> pure units
   where
     pathPrefix :: Text
     pathPrefix = getPathPrefix baseDir (parent $ scanFile file)
@@ -269,7 +273,7 @@ scanDirectory origin pathPrefix licenseScanPathFilters fullFileUploads path = do
   hasFiles <- hasAnyFiles path
   if hasFiles
     then scanNonEmptyDirectory pathPrefix licenseScanPathFilters fullFileUploads path
-    else maybe (fatal $ EmptyDirectory path) (fatal . EmptyArchive . scanFile) origin
+    else maybe (fatal $ EmptyDirectory path) (fatal . EmptyOrCorruptedArchive . scanFile) origin
 
 hasAnyFiles ::
   ( Has Diagnostics sig m

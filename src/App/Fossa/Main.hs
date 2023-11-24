@@ -3,7 +3,6 @@
 module App.Fossa.Main (appMain) where
 
 import App.Fossa.Analyze qualified as Analyze
-import App.Fossa.Analyze.Log4jReport qualified as Log4j
 import App.Fossa.Container qualified as Container
 import App.Fossa.DumpBinaries qualified as Dump
 import App.Fossa.LicenseScan qualified as LicenseScan (licenseScanSubCommand)
@@ -75,7 +74,6 @@ subcommands = public <|> private
           , initCommand
           , experimentalLicenseScanCommand
           , decodeSubCommand Dump.dumpSubCommand
-          , decodeSubCommand Log4j.log4jSubCommand
           , decodeSubCommand LicenseScan.licenseScanSubCommand
           ]
     public =

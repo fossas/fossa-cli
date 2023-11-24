@@ -1,5 +1,16 @@
 # FOSSA CLI Changelog
 
+## v3.8.22
+- path: adds path dependency scanning functionality. ([#1327](https://github.com/fossas/fossa-cli/pull/1327))
+- `pnpm`: Supports `6.0` version of `pnpm-lockfile.yaml` ([#1320])(https://github.com/fossas/fossa-cli/pull/1320)
+- Maven: Fixes defect, where `fossa-cli` was sometimes ignoring dependency, if the dependency with multiple scopes was part of the project. ([#1322](https://github.com/fossas/fossa-cli/pull/1322))
+
+## v3.8.21
+- archive: considers 0-byte tar file to be valid tar file. ([#1311](https://github.com/fossas/fossa-cli/pull/1311))
+- Cocoapods: Allow Podfile.lock without EXTERNAL SOURCES field ([#1279](https://github.com/fossas/fossa-cli/pull/1279))
+- `fossa-deps`: `--fossa-deps-file` to specify custom fossa-deps file ([#1303](https://github.com/fossas/fossa-cli/pull/1303))
+- install-latest.sh: Fixed a bug where install-latest.sh would result in a broken binary when run on some versions of macOS ([#1317](https://github.com/fossas/fossa-cli/pull/1317))
+
 ## v3.8.20
 - container scanning: Fixes registry network calls, to ensure `fossa-cli` uses `Accept` header on `HEAD` network calls. ([#1309](https://github.com/fossas/fossa-cli/pull/1309))
 
@@ -10,6 +21,7 @@
 
 ## v3.8.18
 
+- Removes the `fossa log4j` subcommand. ([#1291](https://github.com/fossas/fossa-cli/pull/1291))
 - golang: Updates go.mod parser to be compatible with golang v1.21. ([#1304](https://github.com/fossas/fossa-cli/pull/1304))
 - `fossa list-targets`: list-target command supports `--format` option with: `ndjson`, `text`, and `legacy`. ([#1296](https://github.com/fossas/fossa-cli/pull/1296))
 
@@ -40,7 +52,7 @@ Initial documentation for this functionality is here.
 When we integrate this functionality into FOSSA CLI itself we'll have improved documentation as well.
 
 Note: FOSSA is still ingesting sources into the snippet scanning database;
-while this CLI is available earlier results will steadily improve as we crawl more sources.
+
 
 ## v3.8.14
 

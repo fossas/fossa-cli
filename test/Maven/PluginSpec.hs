@@ -1,10 +1,15 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module Maven.PluginSpec (spec) where
 
+import Data.Text (Text)
 import Data.Tree (Tree (..))
 import Strategy.Maven.Plugin (Artifact (..), Edge (..), PluginOutput (..), textArtifactToPluginOutput)
-import Strategy.Maven.PluginTree (TextArtifact (..))
-import Test.Effect (it', shouldBe', shouldMatchList')
+import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
+import Test.Effect (expectationFailure', it', shouldBe', shouldContain', shouldMatchList')
 import Test.Hspec (Spec, describe)
+import Text.Megaparsec (parseMaybe)
+import Text.RawString.QQ (r)
 
 spec :: Spec
 spec = do
@@ -154,6 +159,15 @@ textArtifactConversionSpec =
       resArts `shouldMatchList'` (outArtifacts complexPluginOutputArtifacts)
       resEdges `shouldMatchList'` (outEdges complexPluginOutputArtifacts)
 
+    it' "should correctly include dependency with multiple scopes" $ do
+      let maybeArtifactTree = mkTreeTextArtifact depWithMultipleScopes
+      case maybeArtifactTree of
+        Nothing -> expectationFailure' "could not parse raw tree output!"
+        Just tree' -> do
+          PluginOutput{outArtifacts = resArts} <- textArtifactToPluginOutput tree'
+          resArts `shouldContain'` [kafkaClientCompile]
+          resArts `shouldContain'` [kafkaClientTest]
+
 simpleArtifact :: Artifact
 simpleArtifact =
   Artifact
@@ -165,3 +179,25 @@ simpleArtifact =
     , artifactScopes = ["test"]
     , artifactIsDirect = True
     }
+
+mkTreeTextArtifact :: Text -> Maybe (Tree TextArtifact)
+mkTreeTextArtifact = parseMaybe parseTextArtifact
+
+depWithMultipleScopes :: Text
+depWithMultipleScopes =
+  [r|com.mycompany.app:my-app:1.0-SNAPSHOT:compile
++- junit:junit:4.11:test
+|  \- org.hamcrest:hamcrest-core:1.3:test
++- org.apache.kafka:kafka-clients:3.0.2:compile
+|  +- com.github.luben:zstd-jni:1.5.0-2:runtime
+|  +- org.lz4:lz4-java:1.7.1:runtime
+|  +- org.xerial.snappy:snappy-java:1.1.8.1:runtime
+|  \- org.slf4j:slf4j-api:1.7.30:runtime
++- org.apache.kafka:kafka-clients:3.0.2:test
+\- joda-time:joda-time:2.9.2:compile|]
+
+kafkaClientCompile :: Artifact
+kafkaClientCompile = Artifact 6 "org.apache.kafka" "kafka-clients" "3.0.2" ["compile"] False False
+
+kafkaClientTest :: Artifact
+kafkaClientTest = kafkaClientCompile{artifactNumericId = 1, artifactScopes = ["test"]}

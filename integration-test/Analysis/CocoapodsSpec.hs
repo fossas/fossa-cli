@@ -36,5 +36,5 @@ sDWebImage =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary shadowsocksXNG CocoapodsProjectType (DependencyResultsSummary 6 6 0 1 Partial)
+  testSuiteDepResultSummary shadowsocksXNG CocoapodsProjectType (DependencyResultsSummary 7 6 2 1 Complete)
   testSuiteDepResultSummary sDWebImage CocoapodsProjectType (DependencyResultsSummary 4 4 0 1 Partial)
