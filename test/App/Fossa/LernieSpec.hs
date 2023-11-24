@@ -364,7 +364,7 @@ spec = do
               let licenseUnitDatas = concatMap (NE.toList . licenseUnitData) licenseUnits
               let contents = map licenseUnitDataContents licenseUnitDatas
               -- fix newlines on windows so that we get the same contents on both Windows and other OSes
-              let fixedContents = map (fmap $ Text.replace "\r\n" "\n") contents
+              let fixedContents = map (Text.replace "\r\n" "\n" <$>) contents
               -- The result from the .fossa.yml file will be filtered out in actual usage
               fixedContents
                 `shouldBe'` [ Just "# I should not find a Proprietary License in this file, because it is the .fossa.yml file\nversion: 3\n"
