@@ -364,12 +364,12 @@ spec = do
               let licenseUnitDatas = concatMap (NE.toList . licenseUnitData) licenseUnits
               let contents = map licenseUnitDataContents licenseUnitDatas
               -- fix newlines on windows so that we get the same contents on both Windows and other OSes
-              let fixedContents = map (Text.replace "\r\n" "\n" <$>) contents
+              let fixedContents = sort $ map (Text.replace "\r\n" "\n" <$>) contents
               -- The result from the .fossa.yml file will be filtered out in actual usage
               fixedContents
                 `shouldBe'` [ Just "# I should not find a Proprietary License in this file, because it is the .fossa.yml file\nversion: 3\n"
-                            , Just "This is a Proprietary License.\n\nIs this a Proprietary License too?\n\nThrow in a third Proprietary License just for fun\n"
                             , Just "Keyword Searches are great!\n\nThis file is very confidential\n"
+                            , Just "This is a Proprietary License.\n\nIs this a Proprietary License too?\n\nThrow in a third Proprietary License just for fun\n"
                             ]
 
     it' "should not include the file contents if the org has the full-files flag off" $ do
