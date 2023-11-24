@@ -7,7 +7,6 @@ module Strategy.Python.SetupPy (
 import Control.Effect.Diagnostics
 import Control.Monad (void)
 import Data.Functor.Identity (Identity)
-import Data.Maybe (catMaybes)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
@@ -25,8 +24,7 @@ analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe [Package] -> Path
 analyze' packages setupPy setupCfg = do
   (pyReqs, pyPackageName) <- readContentsParser installRequiresParser setupPy
   (cfgReqs, cfgPackageName) <- maybe (pure ([], Nothing)) (readContentsParser installRequiresParserSetupCfg) setupCfg
-  let pkgNames = catMaybes [pyPackageName, cfgPackageName]
-  context "Building dependency graph" $ pure (buildGraphSetupPy packages pkgNames (pyReqs ++ cfgReqs))
+  context "Building dependency graph" $ pure $ buildGraphSetupPy packages pyPackageName pyReqs cfgPackageName cfgReqs
 
 type Parser = Parsec Void Text
 

@@ -54,23 +54,27 @@ reqToDependency req =
     depMarker (NameReq _ _ _ marker) = marker
     depMarker (UrlReq _ _ _ marker) = marker
 
-buildGraphSetupPy :: Maybe [Package] -> [Text] -> [Req] -> Graphing Dependency
-buildGraphSetupPy maybePackages pkgNames reqs = do
-  if null pkgNames
-    then (buildGraph maybePackages reqs)
-    else Graphing.gmap reqToDependency $ do
-      case maybePackages of
-        Nothing -> Graphing.fromList reqs
-        Just packages ->
-          run . evalGrapher $
-            for_ pkgNames $ \n ->
-              case (find (\p -> (pkgName p) == n) packages) of
-                Nothing -> pure ()
-                Just pkg -> do
-                  for_ (requires pkg) $ \c -> do
-                    let r = pkgToReq c
-                    direct r
-                    addChildren r c
+buildGraphSetupPy :: Maybe [Package] -> Maybe Text -> [Req] -> Maybe Text -> [Req] -> Graphing Dependency
+buildGraphSetupPy maybePackages pyPackageName pyReqs cfgPackageName cfgReqs = do
+  Graphing.gmap reqToDependency $ do
+    case maybePackages of
+      Nothing -> Graphing.fromList (pyReqs ++ cfgReqs)
+      Just packages -> do
+        run . evalGrapher $ do
+          addDeps packages pyPackageName pyReqs
+          addDeps packages cfgPackageName cfgReqs
+  where
+    addDeps packages maybeName reqs = do
+      case maybeName of
+        Nothing -> for_ reqs direct
+        Just packageName ->
+          case (find (\p -> (pkgName p) == packageName) packages) of
+            Nothing -> for_ reqs direct
+            Just pkg ->
+              for_ (requires pkg) $ \c -> do
+                let r = pkgToReq c
+                direct r
+                addChildren r c
 
 buildGraph :: Maybe [Package] -> [Req] -> Graphing Dependency
 buildGraph maybePackages reqs = do
@@ -79,8 +83,7 @@ buildGraph maybePackages reqs = do
       Nothing -> Graphing.fromList reqs
       Just packages -> do
         run . evalGrapher $ do
-          for_ reqs $ \r -> do
-            direct r
+          for_ reqs direct
           for_ packages $ \p -> do
             case findParent (pkgName p) of
               Just parent -> addChildren parent p
