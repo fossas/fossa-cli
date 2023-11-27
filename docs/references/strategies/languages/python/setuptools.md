@@ -11,14 +11,16 @@ approach to dependency management in python projects.
 
 ## Analysis: requirements.txt
 
-For the CLI to detect transitive dependencies for requirement.txt, the dependencies
-must be installed before running the CLI via `pip install -r requirements.txt`.
-The CLI will only report transitive dependencies for packages that are discovered
-in a requirements.txt file and installed within the environment.
 
-The CLI uses the `python -m pip` command to interact with `pip`. For the CLI to
-report transitive dependencies the packages must be installed within a virtual
-environment and the CLI must be ran in the same virtual virtual environment.
+For the CLI to identify transitive dependencies from a requirements.txt file,
+certain conditions must be met. First, the specified packages must be installed
+using a command like `pip install -r requirements.txt`. The packages should be
+installed within a virtual environment, ensuring a clean and isolated environment.
+Subsequently, the CLI should be executed within the same virtual environment the
+packages were installed in. Finally, the environment should include both `python`
+and `pip`. Importantly, the CLI only reports transitive dependencies for packages
+explicitly listed in the requirements.txt file and installed within the current
+environment.
 
 If neither python nor pip are installed the CLI will only to reporting only direct
 dependencies.
@@ -38,17 +40,17 @@ tagged with environment markers.
 
 ### Installed packages
 
-For the CLI to determine packages referenced in a setup.py file's `install_requires`
-field. The package must be installed with `pip install .` or `python setup.py install`
-within a virtual environment. The CLI naively scans the setup.py for a `name`
-attribute and matches the name with a installed package to determine a list of
-packages required. If the name matches an installed package then the CLI will
-only report the packages required by the installed package. If a name is not matched
- then the CLI will naively scan for install_requires as explained in the next section.
-
-The CLI uses the `python -m pip` command to interact with `pip`. For the CLI to report
-packages and their transitive dependencies the CLI must be ran within the same
-virtual environment the package was installed into.
+For the CLI to detect transitives dependencies for packages specified in a
+`setup.py` or `setup.cfg` file's `install_requires` field, certain conditions must
+be met. The packages must be installed with command similar to `pip install .`. The
+packages should be installed within a virtual environment, ensuring a clean and
+isolated environment. Subsequently, the CLI should be executed with the same environment.
+Finally, the environment should include both `python` and `pip`. The CLI will naively
+scan a setuptools configuration file for a `name` attribute, and attempt to match
+the name with an installed package. If the name matches an installed package, the
+CLI will exclusively report the transitive dependencies required by the found package.
+If a name is not matched then the CLI will naively scan for install_requires as
+explained in the next section.
 
 If neither python nor pip are installed the CLI will report dependencies found
 by naively scanning for install_requires as explained in the next section.
