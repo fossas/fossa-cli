@@ -11,7 +11,6 @@ approach to dependency management in python projects.
 
 ## Analysis: requirements.txt
 
-
 For the CLI to identify transitive dependencies from a requirements.txt file,
 certain conditions must be met. First, the specified packages must be installed
 using a command like `pip install -r requirements.txt`. The packages should be
