@@ -16,7 +16,7 @@ module App.Fossa.Lernie.Types (
   LernieScanType (..),
 ) where
 
-import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), defaultOptions, genericToEncoding, object, withObject, withText)
+import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), defaultOptions, genericToEncoding, object, withObject, withText, (.:?))
 import Data.Aeson qualified as A
 import Data.Aeson.Types ((.:))
 import Data.String.Conversion (ToText (toText))
@@ -70,6 +70,7 @@ instance FromJSON GrepEntry where
 data LernieConfig = LernieConfig
   { rootDir :: Path Abs Dir
   , regexes :: [LernieRegex]
+  , fullFiles :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -78,6 +79,7 @@ instance ToJSON LernieConfig where
     object
       [ "root_dir" .= toText rootDir
       , "regexes" .= toJSON regexes
+      , "full_files" .= fullFiles
       ]
 
 data LernieRegex = LernieRegex
@@ -129,6 +131,7 @@ instance FromJSON LernieMessageType where
 data LernieMatch = LernieMatch
   { lernieMatchPath :: Text
   , lernieMatchMatches :: [LernieMatchData]
+  , lernieMatchContents :: Maybe Text
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -137,6 +140,7 @@ instance FromJSON LernieMatch where
     LernieMatch
       <$> (obj .: "path")
       <*> (obj .: "matches")
+      <*> (obj .:? "contents")
 
 data LernieWarning = LernieWarning
   { lernieWarningMessage :: Text
@@ -231,6 +235,7 @@ instance FromJSON LernieMessage where
         Object d <- o .: "data"
         let path = d .: "path"
         let matches = d .: "matches"
-        match <- LernieMatch <$> path <*> matches
+        let contents = d .:? "contents"
+        match <- LernieMatch <$> path <*> matches <*> contents
         pure $ LernieMessageLernieMatch match
   parseJSON _ = fail "Invalid schema for LernieMessage. It must be an object"
