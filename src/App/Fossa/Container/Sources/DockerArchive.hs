@@ -176,7 +176,7 @@ analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball = do
       )
   where
     noMavenScopeFilters :: MavenScopeFilters
-    noMavenScopeFilters = (MavenScopeIncludeFilters mempty)
+    noMavenScopeFilters = MavenScopeIncludeFilters mempty
     noExperimental :: ExperimentalAnalyzeConfig
     noExperimental =
       ExperimentalAnalyzeConfig

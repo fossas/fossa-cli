@@ -35,7 +35,7 @@ import Data.Text qualified as Text
 import Data.Traversable (for)
 import Diag.Result (EmittedWarn, Result (Failure, Success), renderFailure)
 import Discovery.Archive (selectUnarchiver)
-import Discovery.Filters (AllFilters, MavenScopeFilters)
+import Discovery.Filters (AllFilters, MavenScopeFilters (..))
 import Effect.Exec (
   Command (..),
   ExecF (Exec),
