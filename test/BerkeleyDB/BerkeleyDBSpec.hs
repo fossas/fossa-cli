@@ -22,7 +22,7 @@ spec = do
         c `shouldBe` expectedEntries
 
     slesTarget <- runIO testMissingEntryAttributesPackagesFile
-    slesResult <- runIO . runStack .runDiagnostics . runExecIO . runReadFSIO . withDefaultLogger SevError $ readBerkeleyDB slesTarget
+    slesResult <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO . withDefaultLogger SevError $ readBerkeleyDB slesTarget
 
     it "parses berkelydb contents with missing package attributes" $
       assertOnSuccess slesResult $ \_ c ->
@@ -159,7 +159,6 @@ expectedEntries =
   , BdbEntry "x86_64" "passwd" "0.73-2" Nothing
   , BdbEntry "x86_64" "libselinux-utils" "1.33.4-5.7.el5.centos" Nothing
   ]
-
 
 expectedPackagesMissingAttributesEntries :: [BdbEntry]
 expectedPackagesMissingAttributesEntries =
