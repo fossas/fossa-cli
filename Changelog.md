@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- Maven: add support for maven scope filtering ([#1331](https://github.com/fossas/fossa-cli/pull/1331))
+
 ## v3.8.22
 - path: adds path dependency scanning functionality. ([#1327](https://github.com/fossas/fossa-cli/pull/1327))
 - `pnpm`: Supports `6.0` version of `pnpm-lockfile.yaml` ([#1320])(https://github.com/fossas/fossa-cli/pull/1320)

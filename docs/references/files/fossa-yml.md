@@ -305,7 +305,7 @@ Found target: pipenv@prod
 
 ### Filtering by Maven Dependency Scope
 
-You can provide maven dependency scopes that you would like to filter. You can filter by either inclusion or exclusion.
+You can provide maven dependency scopes that you would like to filter. You can filter by either inclusion or exclusion. When both scope-only and scope-exclude are provided, scope-only will take precedence and be used for filtering.
 
 #### scope-only:
 
