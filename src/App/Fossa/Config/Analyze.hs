@@ -83,7 +83,7 @@ import Data.String.Conversion (
   ToText (toText),
  )
 import Data.Text (Text)
-import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters, comboExclude, comboInclude)
+import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (MavenScopeIncludeFilters), comboExclude, comboInclude)
 import Effect.Exec (
   Exec,
  )
@@ -456,11 +456,8 @@ collectMavenScopeFilters ::
   ) =>
   Maybe ConfigFile ->
   m MavenScopeFilters
-collectMavenScopeFilters maybeConfig = do
-  let cfgMavenScopeFilters = maybe mempty collectConfigMavenScopeFilters maybeConfig
-  if isMempty cfgMavenScopeFilters
-    then pure mempty
-    else pure cfgMavenScopeFilters
+collectMavenScopeFilters maybeConfig =
+  pure $ maybe (MavenScopeIncludeFilters mempty) collectConfigMavenScopeFilters maybeConfig
 
 collectFilters ::
   ( Has Diagnostics sig m

@@ -85,10 +85,8 @@ toDependency (MavenPackage group artifact version) = foldr applyLabelToMavenDep 
     applyLabelToMavenDep lbl mavenDep = do
       case lbl of
         MavenLabelScope scope ->
-          mavenDep{dependency = depWithLabel, dependencyScopes = Set.insert scope (dependencyScopes mavenDep)}
-        _ -> mavenDep{dependency = depWithLabel}
-      where
-        depWithLabel = applyLabel lbl (dependency mavenDep)
+          mavenDep{dependency = applyLabel lbl $ dependency mavenDep, dependencyScopes = Set.insert scope $ dependencyScopes mavenDep}
+        _ -> mavenDep{dependency = applyLabel lbl $ dependency mavenDep}
 
     applyLabel :: MavenLabel -> Dependency -> Dependency
     applyLabel lbl dep = case lbl of

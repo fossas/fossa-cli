@@ -61,7 +61,7 @@ import Data.Maybe (listToMaybe, mapMaybe)
 import Data.String.Conversion (ToString (toString))
 import Data.Text (Text)
 import Data.Text.Extra (breakOnEndAndRemove, showT)
-import Discovery.Filters (AllFilters, MavenScopeFilters, isDefaultNonProductionPath)
+import Discovery.Filters (AllFilters, MavenScopeFilters (..), isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec)
 import Effect.Logger (
@@ -163,7 +163,7 @@ analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball = do
           (projectResults, ()) <-
             runTarballReadFSIO layerFs tarball
               . runReader noExperimental
-              . runReader (mempty :: MavenScopeFilters)
+              . runReader noMavenScopeFilters
               . Diag.context "discovery/analysis tasks"
               . runOutput @DiscoveredProjectScan
               . runStickyLogger SevInfo
@@ -175,6 +175,8 @@ analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball = do
           pure projectResults
       )
   where
+    noMavenScopeFilters :: MavenScopeFilters
+    noMavenScopeFilters = (MavenScopeIncludeFilters mempty)
     noExperimental :: ExperimentalAnalyzeConfig
     noExperimental =
       ExperimentalAnalyzeConfig
@@ -326,7 +328,7 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
           GoModulesBasedTactic -- Targets aren't different between package/module centric analysis for Go.
           False -- Targets are not impacted by path dependencies.
       )
-    . runReader (mempty :: MavenScopeFilters)
+    . runReader (MavenScopeIncludeFilters mempty)
     . runReader (mempty :: AllFilters)
     $ run
   where

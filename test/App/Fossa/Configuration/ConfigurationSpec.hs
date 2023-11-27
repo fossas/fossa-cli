@@ -5,7 +5,7 @@ module App.Fossa.Configuration.ConfigurationSpec (
   spec,
 ) where
 
-import App.Fossa.Config.ConfigFile (ConfigFile (..), ConfigGrepEntry (..), ConfigProject (..), ConfigRevision (..), ConfigTargets (..), ExperimentalConfigs (..), ExperimentalGradleConfigs (ExperimentalGradleConfigs), MavenScopeConfigs (..), VendoredDependencyConfigs (..), resolveConfigFile)
+import App.Fossa.Config.ConfigFile (ConfigFile (..), ConfigGrepEntry (..), ConfigProject (..), ConfigRevision (..), ConfigTargets (..), ExperimentalConfigs (..), ExperimentalGradleConfigs (ExperimentalGradleConfigs), MavenScopeConfig (..), VendoredDependencyConfigs (..), resolveConfigFile)
 import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
 import App.Types (Policy (PolicyName), ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
@@ -84,9 +84,11 @@ expectedExperimentalConfig =
     { gradle = Just $ ExperimentalGradleConfigs (Set.fromList ["onlyProdConfigs", "onlyProdConfigs2"])
     }
 
-expectedMavenScopeConfig :: MavenScopeConfigs
+expectedMavenScopeConfig :: MavenScopeConfig
 expectedMavenScopeConfig =
-  MavenScopeConfigs{scopeOnly = Set.fromList ["compile", "runtime"], scopeExclude = Set.fromList ["provided"]}
+  MavenScopeOnlyConfig (Set.fromList ["compile", "runtime"])
+
+-- MavenScopeConfigs{scopeOnly = Set.fromList ["compile", "runtime"], scopeExclude = Set.fromList ["provided"]}
 
 expectedVendoredDependencies :: VendoredDependencyConfigs
 expectedVendoredDependencies =

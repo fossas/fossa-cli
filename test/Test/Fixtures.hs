@@ -57,7 +57,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text.Extra (showT)
-import Discovery.Filters (AllFilters, MavenScopeFilters)
+import Discovery.Filters (AllFilters, MavenScopeFilters (MavenScopeIncludeFilters))
 import Effect.Logger (Severity (..))
 import Fossa.API.Types (Archive (..))
 import Fossa.API.Types qualified as API
@@ -411,7 +411,7 @@ customFossaDepsFile :: Maybe FilePath
 customFossaDepsFile = Nothing
 
 mavenScopeFilterSet :: MavenScopeFilters
-mavenScopeFilterSet = mempty
+mavenScopeFilterSet = MavenScopeIncludeFilters mempty
 
 #ifdef mingw32_HOST_OS
 absDir :: Path Abs Dir

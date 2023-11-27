@@ -35,7 +35,7 @@ The mavenplugin and treecmd tactic can result in transitive dependencies which d
 
 ## Filtering by Maven Dependency Scope 
 
-You can use [configuration file](../../../files/fossa-yml.md) to provide maven dependency scopes that you would like to filter. You can filter by either inclusion or exclusion.
+You can use [configuration file](../../../files/fossa-yml.md) to provide maven dependency scopes that you would like to filter. You can filter by either inclusion or exclusion. When both scope-only and scope-exclude are provided, scope-only will take precedence and be used for filtering.
 
 ```yaml
 version: 3

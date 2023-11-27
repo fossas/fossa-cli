@@ -124,7 +124,7 @@ testRunnerWithLogger f env =
     & withDefaultLogger SevWarn
     & runReader (mempty :: OverrideDynamicAnalysisBinary)
     & runReader (mempty :: AllFilters)
-    & runReader (mempty :: MavenScopeFilters)
+    & runReader (MavenScopeIncludeFilters mempty)
     & runReader (ExperimentalAnalyzeConfig Nothing GoModulesBasedTactic False)
     & runFinally
     & runStack

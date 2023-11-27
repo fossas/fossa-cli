@@ -10,10 +10,11 @@ import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift)
-import Control.Effect.Reader (Reader, asks)
+import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
+import DepTypes (Dependency)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
-import Discovery.Filters (AllFilters, FilterSet (scopes), MavenScopeFilters (excludeScope, includeScope))
+import Discovery.Filters (AllFilters, MavenScopeFilters)
 import Discovery.Simple (simpleDiscover)
 import Effect.Exec (CandidateCommandEffs)
 import Effect.ReadFS (ReadFS)
@@ -71,18 +72,12 @@ getDeps ::
   MavenProject ->
   m DependencyResults
 getDeps (MavenProject closure) = do
-  includeScopeFilters <- asks includeScope
-  excludeScopeFilters <- asks excludeScope
-  let includeScopeFilterSet = scopes includeScopeFilters
-      excludeScopeFilterSet = scopes excludeScopeFilters
-
   (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis closure <||> getStaticAnalysis closure
-  let filteredGraph = filterMavenDependencyByScope includeScopeFilterSet excludeScopeFilterSet graph
-      newGraph = gmap mavenDependencyToDependency filteredGraph
+  filteredGraph <- withScopeFiltering graph
 
   pure $
     DependencyResults
-      { dependencyGraph = newGraph
+      { dependencyGraph = filteredGraph
       , dependencyGraphBreadth = graphBreadth
       , dependencyManifestFiles = [PomClosure.closurePath closure]
       }
@@ -95,18 +90,12 @@ getDeps' ::
   MavenProject ->
   m DependencyResults
 getDeps' (MavenProject closure) = do
-  includeScopeFilters <- asks includeScope
-  excludeScopeFilters <- asks excludeScope
-  let includeScopeFilterSet = scopes includeScopeFilters
-      excludeScopeFilterSet = scopes excludeScopeFilters
-
   (graph, graphBreadth) <- context "Maven" $ getStaticAnalysis closure
-  let filteredGraph = filterMavenDependencyByScope includeScopeFilterSet excludeScopeFilterSet graph
-      newGraph = gmap mavenDependencyToDependency filteredGraph
+  filteredGraph <- withScopeFiltering graph
 
   pure $
     DependencyResults
-      { dependencyGraph = newGraph
+      { dependencyGraph = filteredGraph
       , dependencyGraphBreadth = graphBreadth
       , dependencyManifestFiles = [PomClosure.closurePath closure]
       }
@@ -162,3 +151,8 @@ getStaticAnalysis ::
   m (Graphing MavenDependency, GraphBreadth)
 getStaticAnalysis closure = do
   context "Static analysis" $ pure (Pom.analyze' closure, Partial)
+
+withScopeFiltering :: Has (Reader MavenScopeFilters) sig m => Graphing MavenDependency -> m (Graphing Dependency)
+withScopeFiltering graph = do
+  mavenScopeFilters <- ask @(MavenScopeFilters)
+  pure $ gmap mavenDependencyToDependency $ filterMavenDependencyByScope mavenScopeFilters graph

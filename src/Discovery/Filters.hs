@@ -91,21 +91,17 @@ data FilterCombination a = FilterCombination
 instance ToJSON (FilterCombination a) where
   toEncoding = genericToEncoding defaultOptions
 
--- Maven Scope Filter
-data MavenScopeFilters = MavenScopeFilters
-  { includeScope :: FilterSet Include
-  , excludeScope :: FilterSet Exclude
-  }
+data MavenScopeFilters = MavenScopeIncludeFilters (FilterSet Include) | MavenScopeExcludeFilters (FilterSet Exclude)
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON MavenScopeFilters where
   toEncoding = genericToEncoding defaultOptions
 
-instance Semigroup MavenScopeFilters where
-  (MavenScopeFilters a1 b1) <> (MavenScopeFilters a2 b2) = MavenScopeFilters (a1 <> a2) (b1 <> b2)
+-- instance Semigroup MavenScopeFilters where
+--   (MavenScopeFilters a1 b1) <> (MavenScopeFilters a2 b2) = MavenScopeFilters (a1 <> a2) (b1 <> b2)
 
-instance Monoid MavenScopeFilters where
-  mempty = MavenScopeFilters mempty mempty
+-- instance Monoid MavenScopeFilters where
+--   mempty = MavenScopeFilters mempty mempty
 
 newtype FilterSet a = FilterSet
   {scopes :: Set Text}

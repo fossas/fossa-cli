@@ -54,7 +54,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigTargets (targetsExclude, targetsOnly),
   ConfigTelemetry (telemetryScope),
   ConfigTelemetryScope (..),
-  MavenScopeConfigs (scopeExclude, scopeOnly),
+  MavenScopeConfig (..),
   mergeFileCmdMetadata,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
@@ -95,7 +95,8 @@ import Data.Maybe (fromMaybe)
 import Data.String (IsString)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text, null, strip, toLower)
-import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (MavenScopeFilters), comboExclude, comboInclude, setExclude, setInclude, targetFilterParser)
+import Debug.Trace (traceM)
+import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (..), comboExclude, comboInclude, setExclude, setInclude, targetFilterParser)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
@@ -407,5 +408,7 @@ collectConfigMavenScopeFilters :: ConfigFile -> MavenScopeFilters
 collectConfigMavenScopeFilters configFile = do
   let maybeMavenScopeConfigs = configMavenScope configFile
   case maybeMavenScopeConfigs of
-    Nothing -> MavenScopeFilters mempty mempty
-    Just mavenScopeConfig -> MavenScopeFilters (setInclude (scopeOnly mavenScopeConfig)) (setExclude (scopeExclude mavenScopeConfig))
+    Nothing -> MavenScopeIncludeFilters mempty
+    Just mavenScopeConfig -> case mavenScopeConfig of
+      MavenScopeOnlyConfig filters -> MavenScopeIncludeFilters $ setInclude filters
+      MavenScopeExcludeConfig filters -> MavenScopeExcludeFilters $ setExclude filters

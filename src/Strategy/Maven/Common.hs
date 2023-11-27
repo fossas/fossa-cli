@@ -10,6 +10,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import DepTypes (Dependency)
+import Discovery.Filters (FilterSet (scopes), MavenScopeFilters (..))
 import Graphing (Graphing, shrink)
 
 data MavenDependency = MavenDependency
@@ -21,15 +22,21 @@ data MavenDependency = MavenDependency
 mavenDependencyToDependency :: MavenDependency -> Dependency
 mavenDependencyToDependency MavenDependency{..} = dependency
 
-filterMavenDependencyByScope :: Set Text -> Set Text -> Graphing MavenDependency -> Graphing MavenDependency
-filterMavenDependencyByScope scopeIncludeSet scopeExcludeSet = Graphing.shrink isMavenDependencyIncluded
+filterMavenDependencyByScope :: MavenScopeFilters -> Graphing MavenDependency -> Graphing MavenDependency
+filterMavenDependencyByScope scopeFilters = Graphing.shrink isMavenDependencyIncluded
   where
     isMavenDependencyIncluded :: MavenDependency -> Bool
-    isMavenDependencyIncluded MavenDependency{..} = case (Set.null dependencyScopes, Set.null scopeIncludeSet, Set.null scopeExcludeSet) of
-      (False, True, True) -> True
-      (False, False, True) -> dependencyScopes `Set.isSubsetOf` scopeIncludeSet
-      (False, True, False) -> dependencyScopes `Set.disjoint` scopeExcludeSet
-      (False, False, False) -> not (Set.null includedIntersectSet) && (includedIntersectSet `Set.disjoint` scopeExcludeSet)
-        where
-          includedIntersectSet = dependencyScopes `Set.intersection` scopeIncludeSet
-      (True, _, _) -> True
+    isMavenDependencyIncluded MavenDependency{..} = case scopeFilters of
+      MavenScopeIncludeFilters includeSet -> do
+        let includeScopes = scopes includeSet
+        case (Set.null dependencyScopes, Set.null includeScopes) of
+          (False, False) -> dependencyScopes `Set.isSubsetOf` includeScopes
+          (False, True) -> True
+          (True, False) -> False
+          (True, True) -> True
+      MavenScopeExcludeFilters excludeSet -> do
+        let excludeScopes = scopes excludeSet
+        case (Set.null dependencyScopes, Set.null excludeScopes) of
+          (False, False) -> dependencyScopes `Set.disjoint` excludeScopes
+          (False, True) -> True
+          (True, _) -> True
