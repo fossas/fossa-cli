@@ -3,6 +3,7 @@ module BerkeleyDB.BerkeleyDBSpec (spec) where
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Effect.Exec (runExecIO)
+import Effect.Logger (Severity (SevError), withDefaultLogger)
 import Effect.ReadFS (runReadFSIO)
 import Path (Abs, File, Path)
 import Path.IO qualified as PIO
@@ -14,7 +15,7 @@ spec :: Spec
 spec = do
   describe "Container BerkeleyDB Parser" $ do
     target <- runIO testPackagesFile
-    result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO $ readBerkeleyDB target
+    result <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO . withDefaultLogger SevError $ readBerkeleyDB target
 
     it "parses berkeleydb contents" $
       assertOnSuccess result $ \_ c ->
