@@ -21,11 +21,21 @@ spec = do
       assertOnSuccess result $ \_ c ->
         c `shouldBe` expectedEntries
 
+    slesTarget <- runIO testMissingEntryAttributesPackagesFile
+    slesResult <- runIO . runStack .runDiagnostics . runExecIO . runReadFSIO . withDefaultLogger SevError $ readBerkeleyDB slesTarget
+
+    it "parses berkelydb contents with missing package attributes" $
+      assertOnSuccess slesResult $ \_ c ->
+        c `shouldBe` expectedPackagesMissingAttributesEntries
+
 -- | 'extlib/berkeleydb/tests' contains a more complete set of tests for parsing various container formats.
 -- The goal of this test is to prove end-to-end flow; for that reason, we just test with the 'CentOS5 Plain' package list
 -- from https://github.com/jssblck/go-rpmdb/blob/9a3bd2ebb923399db2189c5d8963af27368ba2c8/pkg/rpmdb_test.go#L16-L20
 testPackagesFile :: IO (Path Abs File)
 testPackagesFile = PIO.resolveFile' "extlib/berkeleydb/testdata/centos5-plain/Packages"
+
+testMissingEntryAttributesPackagesFile :: IO (Path Abs File)
+testMissingEntryAttributesPackagesFile = PIO.resolveFile' "extlib/berkeleydb/testdata/sles12sp4/Packages"
 
 -- docker run --rm -it centos:5 bash
 -- rpm -qa --queryformat "BdbEntry \"%{ARCH}\"\ \"%{NAME}\" \"%{VERSION}-%{RELEASE}\" (Just \"%{EPOCH}\"),\n" | sed 's/(Just "(none)")/Nothing/g' | sed "s/(none)/0/g"
@@ -148,4 +158,115 @@ expectedEntries =
   , BdbEntry "x86_64" "openldap" "2.3.43-29.el5_11" Nothing
   , BdbEntry "x86_64" "passwd" "0.73-2" Nothing
   , BdbEntry "x86_64" "libselinux-utils" "1.33.4-5.7.el5.centos" Nothing
+  ]
+
+
+expectedPackagesMissingAttributesEntries :: [BdbEntry]
+expectedPackagesMissingAttributesEntries =
+  [ BdbEntry "x86_64" "filesystem" "13.1-14.15" Nothing
+  , BdbEntry "x86_64" "file-magic" "5.22-10.21.1" Nothing
+  , BdbEntry "x86_64" "glibc" "2.22-114.22.1" Nothing
+  , BdbEntry "x86_64" "libuuid1" "2.29.2-9.20.1" Nothing
+  , BdbEntry "x86_64" "libsasl2-3" "2.1.26-14.5.1" Nothing
+  , BdbEntry "x86_64" "libaudit1" "2.8.1-10.14.1" Nothing
+  , BdbEntry "x86_64" "libblkid1" "2.29.2-9.20.1" Nothing
+  , BdbEntry "x86_64" "libfdisk1" "2.29.2-9.20.1" Nothing
+  , BdbEntry "x86_64" "libustr-1_0-1" "1.0.4-31.197" Nothing
+  , BdbEntry "x86_64" "libgpg-error0" "1.13-1.79" Nothing
+  , BdbEntry "x86_64" "libattr1" "2.4.47-3.143" Nothing
+  , BdbEntry "x86_64" "libassuan0" "2.1.1-3.217" Nothing
+  , BdbEntry "x86_64" "libpth20" "2.0.7-140.1" Nothing
+  , BdbEntry "x86_64" "libpcre1" "8.45-8.12.1" Nothing
+  , BdbEntry "x86_64" "liblua5_1" "5.1.5-8.3.1" Nothing
+  , BdbEntry "x86_64" "libgmp10" "5.1.3-4.3.1" Nothing
+  , BdbEntry "x86_64" "libexpat1" "2.1.0-21.28.1" Nothing
+  , BdbEntry "x86_64" "libbz2-1" "1.0.6-30.14.1" Nothing
+  , BdbEntry "x86_64" "libmagic1" "5.22-10.21.1" Nothing
+  , BdbEntry "x86_64" "libksba8" "1.3.0-24.6.1" Nothing
+  , BdbEntry "x86_64" "libacl1" "2.2.52-7.3.1" Nothing
+  , BdbEntry "x86_64" "libstdc++6" "12.3.0+git1204-1.8.1" Nothing
+  , BdbEntry "x86_64" "libebl1" "0.158-7.13.3" Nothing
+  , BdbEntry "x86_64" "libncurses5" "5.9-81.1" Nothing
+  , BdbEntry "x86_64" "libsepol1" "2.5-3.143" Nothing
+  , BdbEntry "x86_64" "libverto1" "0.2.6-3.2.2" Nothing
+  , BdbEntry "x86_64" "libxml2-2" "2.9.4-46.62.1" Nothing
+  , BdbEntry "x86_64" "libudev1" "228-150.108.2" Nothing
+  , BdbEntry "x86_64" "libsemanage1" "2.5-9.3.1" Nothing
+  , BdbEntry "x86_64" "krb5" "1.12.5-40.49.1" Nothing
+  , BdbEntry "x86_64" "libmodman1" "2.0.1-15.75" Nothing
+  , BdbEntry "x86_64" "pinentry" "0.8.3-4.27" Nothing
+  , BdbEntry "x86_64" "libmount1" "2.29.2-9.20.1" Nothing
+  , BdbEntry "x86_64" "libcurl4" "7.60.0-4.56.1" Nothing
+  , BdbEntry "x86_64" "libusb-1_0-0" "1.0.20-5.3" Nothing
+  , BdbEntry "x86_64" "cracklib" "2.9.0-8.5.1" Nothing
+  , BdbEntry "x86_64" "grep" "2.16-4.6.1" Nothing
+  , BdbEntry "x86_64" "cpio" "2.11-36.15.1" Nothing
+  , BdbEntry "x86_64" "coreutils" "8.25-13.13.1" Nothing
+  , BdbEntry "x86_64" "libusb-0_1-4" "0.1.13-29.13" Nothing
+  , BdbEntry "x86_64" "procps" "3.3.9-11.24.1" Nothing
+  , BdbEntry "x86_64" "gpg2" "2.0.24-9.11.1" Nothing
+  , BdbEntry "x86_64" "permissions" "20170707-3.30.1" Nothing
+  , BdbEntry "x86_64" "libzypp" "16.22.7-48.2" Nothing
+  , BdbEntry "x86_64" "libutempter0" "1.1.6-5.114" Nothing
+  , BdbEntry "x86_64" "util-linux" "2.29.2-9.20.1" Nothing
+  , BdbEntry "x86_64" "shadow" "4.2.1-27.22.1" Nothing
+  , BdbEntry "x86_64" "libffi4" "5.3.1+r233831-12.1" Nothing
+  , BdbEntry "x86_64" "libtasn1-6" "4.9-3.13.1" Nothing
+  , BdbEntry "x86_64" "libp11-kit0" "0.20.7-3.6.1" Nothing
+  , BdbEntry "x86_64" "p11-kit-tools" "0.20.7-3.6.1" Nothing
+  , BdbEntry "x86_64" "container-suseconnect" "2.0.0-1.239" Nothing
+  , BdbEntry "noarch" "ca-certificates-mozilla" "2.60-12.40.1" Nothing
+  , BdbEntry "x86_64" "sles-release-POOL" "12.4-6.8.2" Nothing
+  , BdbEntry "x86_64" "cracklib-dict-small" "2.9.0-8.5.1" Nothing
+  , BdbEntry "x86_64" "terminfo-base" "5.9-81.1" Nothing
+  , BdbEntry "x86_64" "libz1" "1.2.11-3.9.1" Nothing
+  , BdbEntry "x86_64" "libsmartcols1" "2.29.2-9.20.1" Nothing
+  , BdbEntry "x86_64" "libcom_err2" "1.43.8-3.17.1" Nothing
+  , BdbEntry "x86_64" "libopenssl1_0_0" "1.0.2p-3.78.1" Nothing
+  , BdbEntry "x86_64" "libldap-2_4-2" "2.4.41-22.19.1" Nothing
+  , BdbEntry "noarch" "kubic-locale-archive" "2.22-4.5.3" Nothing
+  , BdbEntry "x86_64" "libpopt0" "1.16-26.128" Nothing
+  , BdbEntry "x86_64" "libcap-ng0" "0.7.3-4.125" Nothing
+  , BdbEntry "x86_64" "fillup" "1.42-270.64" Nothing
+  , BdbEntry "x86_64" "perl-base" "5.18.2-12.23.1" Nothing
+  , BdbEntry "x86_64" "libprocps3" "3.3.9-11.24.1" Nothing
+  , BdbEntry "x86_64" "liblzma5" "5.0.5-6.7.1" Nothing
+  , BdbEntry "x86_64" "libkeyutils1" "1.5.9-5.3.1" Nothing
+  , BdbEntry "x86_64" "libgcc_s1" "12.3.0+git1204-1.8.1" Nothing
+  , BdbEntry "x86_64" "libcap2" "2.26-14.6.1" Nothing
+  , BdbEntry "x86_64" "libadns1" "1.4-103.3.1" Nothing
+  , BdbEntry "x86_64" "libssh4" "0.6.3-12.12.1" Nothing
+  , BdbEntry "x86_64" "libgcrypt20" "1.6.1-16.83.1" Nothing
+  , BdbEntry "noarch" "insserv-compat" "0.1-14.3.1" Nothing
+  , BdbEntry "x86_64" "libdw1" "0.158-7.13.3" Nothing
+  , BdbEntry "x86_64" "libelf1" "0.158-7.13.3" Nothing
+  , BdbEntry "x86_64" "ncurses-utils" "5.9-81.1" Nothing
+  , BdbEntry "x86_64" "libselinux1" "2.5-8.79" Nothing
+  , BdbEntry "x86_64" "libnghttp2-14" "1.39.2-3.7.1" Nothing
+  , BdbEntry "x86_64" "libreadline6" "6.3-83.33.1" Nothing
+  , BdbEntry "x86_64" "libsystemd0" "228-150.108.2" Nothing
+  , BdbEntry "x86_64" "bash" "4.3-83.33.1" Nothing
+  , BdbEntry "x86_64" "libzio1" "1.00-9.188" Nothing
+  , BdbEntry "x86_64" "info" "4.13a-37.229" Nothing
+  , BdbEntry "x86_64" "diffutils" "3.3-5.40" Nothing
+  , BdbEntry "x86_64" "openssl-1_0_0" "1.0.2p-3.78.1" Nothing
+  , BdbEntry "x86_64" "libaugeas0" "1.2.0-17.12.1" Nothing
+  , BdbEntry "x86_64" "libcrack2" "2.9.0-8.5.1" Nothing
+  , BdbEntry "x86_64" "sed" "4.2.2-7.3.1" Nothing
+  , BdbEntry "x86_64" "findutils" "4.5.12-7.1" Nothing
+  , BdbEntry "x86_64" "libproxy1" "0.4.13-18.3.1" Nothing
+  , BdbEntry "noarch" "openssl" "1.0.2p-1.13" Nothing
+  , BdbEntry "x86_64" "rpm" "4.11.2-16.26.1" Nothing
+  , BdbEntry "x86_64" "dirmngr" "1.1.1-13.1" Nothing
+  , BdbEntry "x86_64" "sles-release" "12.4-6.8.2" Nothing
+  , BdbEntry "x86_64" "libsolv-tools" "0.6.39-2.39.2" Nothing
+  , BdbEntry "x86_64" "zypper" "1.13.64-21.55.2" Nothing
+  , BdbEntry "x86_64" "pam" "1.1.8-24.49.1" Nothing
+  , BdbEntry "x86_64" "aaa_base" "13.2+git20140911.61c1681-38.22.1" Nothing
+  , BdbEntry "noarch" "netcfg" "11.5-29.1" Nothing
+  , BdbEntry "noarch" "suse-build-key" "12.0-7.15.1" Nothing
+  , BdbEntry "x86_64" "libtasn1" "4.9-3.13.1" Nothing
+  , BdbEntry "x86_64" "p11-kit" "0.20.7-3.6.1" Nothing
+  , BdbEntry "x86_64" "base-container-licenses" "3.0-1.357" Nothing
+  , BdbEntry "noarch" "ca-certificates" "1_201403302107-6.2" Nothing
   ]
