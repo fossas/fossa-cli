@@ -88,8 +88,6 @@ expectedMavenScopeConfig :: MavenScopeConfig
 expectedMavenScopeConfig =
   MavenScopeOnlyConfig (Set.fromList ["compile", "runtime"])
 
--- MavenScopeConfigs{scopeOnly = Set.fromList ["compile", "runtime"], scopeExclude = Set.fromList ["provided"]}
-
 expectedVendoredDependencies :: VendoredDependencyConfigs
 expectedVendoredDependencies =
   VendoredDependencyConfigs
