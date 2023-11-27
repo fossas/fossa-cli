@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.8.23
+- Custom License Scans: Support full-file uploads for custom license scans ([#1333](https://github.com/fossas/fossa-cli/pull/1333))
+
 ## v3.8.22
 - path: adds path dependency scanning functionality. ([#1327](https://github.com/fossas/fossa-cli/pull/1327))
 - `pnpm`: Supports `6.0` version of `pnpm-lockfile.yaml` ([#1320])(https://github.com/fossas/fossa-cli/pull/1320)
