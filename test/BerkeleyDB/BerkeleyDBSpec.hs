@@ -21,12 +21,12 @@ spec = do
       assertOnSuccess result $ \_ c ->
         c `shouldBe` expectedEntries
 
-    slesTarget <- runIO testMissingEntryAttributesPackagesFile
-    slesResult <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO . withDefaultLogger SevError $ readBerkeleyDB slesTarget
+    missingEntriesTarget <- runIO testMissingEntriesPackagesFile
+    missingEntriesResult  <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO . withDefaultLogger SevError $ readBerkeleyDB missingEntriesTarget
 
     it "parses berkelydb contents with missing package attributes" $
-      assertOnSuccess slesResult $ \_ c ->
-        c `shouldBe` expectedPackagesMissingAttributesEntries
+      assertOnSuccess missingEntriesResult $ \_ c ->
+        c `shouldBe` expectedMissingEntries
 
 -- | 'extlib/berkeleydb/tests' contains a more complete set of tests for parsing various container formats.
 -- The goal of this test is to prove end-to-end flow; for that reason, we just test with the 'CentOS5 Plain' package list
@@ -34,8 +34,8 @@ spec = do
 testPackagesFile :: IO (Path Abs File)
 testPackagesFile = PIO.resolveFile' "extlib/berkeleydb/testdata/centos5-plain/Packages"
 
-testMissingEntryAttributesPackagesFile :: IO (Path Abs File)
-testMissingEntryAttributesPackagesFile = PIO.resolveFile' "extlib/berkeleydb/testdata/sles12sp4/Packages"
+testMissingEntriesPackagesFile :: IO (Path Abs File)
+testMissingEntriesPackagesFile = PIO.resolveFile' "extlib/berkeleydb/testdata/sles12sp4/Packages"
 
 -- docker run --rm -it centos:5 bash
 -- rpm -qa --queryformat "BdbEntry \"%{ARCH}\"\ \"%{NAME}\" \"%{VERSION}-%{RELEASE}\" (Just \"%{EPOCH}\"),\n" | sed 's/(Just "(none)")/Nothing/g' | sed "s/(none)/0/g"
@@ -160,8 +160,8 @@ expectedEntries =
   , BdbEntry "x86_64" "libselinux-utils" "1.33.4-5.7.el5.centos" Nothing
   ]
 
-expectedPackagesMissingAttributesEntries :: [BdbEntry]
-expectedPackagesMissingAttributesEntries =
+expectedMissingEntries :: [BdbEntry]
+expectedMissingEntries =
   [ BdbEntry "x86_64" "filesystem" "13.1-14.15" Nothing
   , BdbEntry "x86_64" "file-magic" "5.22-10.21.1" Nothing
   , BdbEntry "x86_64" "glibc" "2.22-114.22.1" Nothing
