@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Strategy.Maven.Pom (
   analyze',
   getLicenses,
@@ -17,8 +19,10 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text.Extra (breakOnAndRemove)
+import Debug.Trace (traceM, traceShowM)
 import DepTypes
 import Effect.Grapher
+import Effect.Logger (Logger, logDebug)
 import Graphing (Graphing)
 import Path
 import Path.IO qualified as Path
@@ -33,8 +37,10 @@ data MavenStrategyOpts = MavenStrategyOpts
   }
   deriving (Eq, Ord, Show)
 
-analyze' :: MavenProjectClosure -> Graphing MavenDependency
-analyze' = buildProjectGraph
+analyze' :: Set Text -> MavenProjectClosure -> Graphing Dependency
+analyze' = do
+  traceM ("Analyze of Pom ()()(())(()()())()()")
+  buildProjectGraph
 
 getLicenses :: MavenProjectClosure -> [LicenseResult]
 getLicenses closure = do
@@ -105,12 +111,24 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
   direct (coordToPackage (closureRootCoord closure))
   go (closureRootCoord closure) (closureRootPom closure)
   where
+    getTargetName :: MavenCoordinate -> Text
+    getTargetName MavenCoordinate{..} = mconcat [coordGroup, ":", coordArtifact]
+
     go :: Has MavenGrapher sig m => MavenCoordinate -> Pom -> m ()
     go coord incompletePom = do
+      traceM ("This is the coord artifact &&&&&&&&&&& : " ++ show (coordArtifact coord))
       _ <- Map.traverseWithKey addDep deps
       for_ childPoms $ \(childCoord, childPom) -> do
-        edge (coordToPackage coord) (coordToPackage childCoord)
-        go childCoord childPom
+        traceM ("this is the filter set " ++ show (submoduleFilterSet))
+        traceM ("this is the target name in go function for children " ++ show (getTargetName childCoord))
+        if getTargetName childCoord `Set.member` submoduleFilterSet
+          then do
+            traceM "Adding in goooooooo"
+            edge (coordToPackage coord) (coordToPackage childCoord)
+            go childCoord childPom
+          else do
+            traceM "Skippping in gooooooooooooo"
+            pure ()
       where
         completePom :: Pom
         completePom = overlayParents incompletePom
@@ -126,6 +144,7 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
 
         addDep :: Has MavenGrapher sig m => (Group, Artifact) -> MvnDepBody -> m ()
         addDep (group, artifact) body = do
+          traceM "Adding dEpsjfsljflsflsfjlslj"
           let depPackage = buildMavenPackage completePom group artifact body
           edge (coordToPackage coord) depPackage
           traverse_ (label depPackage . MavenLabelScope) (depScope body)
@@ -200,7 +219,7 @@ interpolate properties recursionCheck initialProperty =
       if Set.member property recursionCheck
         then prefix <> property <> suffix
         else
-          ( case (Map.lookup property properties) of
+          ( case Map.lookup property properties of
               Nothing -> interpolate properties Set.empty $ prefix <> "PROPERTY NOT FOUND: " <> property <> suffix
               Just foundProperty -> interpolate properties (Set.insert property recursionCheck) finalProperty
                 where

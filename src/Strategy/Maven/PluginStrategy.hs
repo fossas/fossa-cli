@@ -21,6 +21,7 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
+import Debug.Trace (traceM, traceShowM)
 import DepTypes (
   DepEnvironment (..),
   DepType (MavenType),
@@ -30,6 +31,7 @@ import DepTypes (
 import Effect.Exec (CandidateCommandEffs)
 import Effect.Grapher (Grapher, edge, evalGrapher)
 import Effect.Grapher qualified as Grapher
+import Effect.Logger (Logger, Pretty (pretty), logDebug, runLogger)
 import Effect.ReadFS (ReadFS)
 import Graphing (Graphing, shrinkRoots)
 import Path (Abs, Dir, Path)
@@ -51,6 +53,8 @@ import Strategy.Maven.Plugin (
   reactorArtifacts,
   withUnpackedPlugin,
  )
+import Text.Pretty.Simple (pPrint, pShow, pShowNoColor)
+import Text.Show.Pretty qualified as Pr
 import Types (GraphBreadth (..))
 
 analyze' ::
@@ -145,16 +149,39 @@ buildGraph reactorOutput PluginOutput{..} =
   -- consider those because they're the users' packages, so promote them to
   -- direct when building the graph using `shrinkRoots`.
 
-  shrinkRoots . run . evalGrapher $ do
+  run . evalGrapher $ do
+    -- shrinkRoots . run . evalGrapher $ do
     let byNumeric :: Map Int Artifact
         byNumeric = indexBy artifactNumericId outArtifacts
+    traceM ("This is by numeric: " ++ show (byNumeric))
 
-    depsByNumeric <- traverse toDependency byNumeric
+    traceM ("The original output Artifacts: =========")
+    traceShowM (outArtifacts)
+
+    traceM ("The original output Artifact edges: =========")
+    traceShowM (outEdges)
+
+    traceM ("The reactor out Artifacts: =========")
+    traceShowM (reactorArtifacts $ reactorOutput)
+
+    let filteredNumsByNumeric = Map.filterWithKey (\k _ -> k `Set.notMember` filterSubmoduleSet) byNumeric
+    traceM ("The filtered by numeric")
+    traceShowM filteredNumsByNumeric
+
+    depsByNumeric <- traverse toDependency filteredNumsByNumeric
+    traceM ("This is deps by numeric ***********")
+    traceShowM depsByNumeric
 
     traverse_ (visitEdge depsByNumeric) outEdges
   where
+    filterArtifact :: [Artifact] -> [Artifact]
+    filterArtifact = filter (\x -> artifactArtifactId x `Set.notMember` Set.fromList ["exec"])
+
     knownSubmodules :: Set.Set Text
     knownSubmodules = Set.fromList . map reactorArtifactName . reactorArtifacts $ reactorOutput
+
+    filterSubmoduleSet :: Set.Set Int
+    filterSubmoduleSet = Set.fromList [7]
 
     toBuildTag :: Text -> DepEnvironment
     toBuildTag = \case
@@ -164,6 +191,7 @@ buildGraph reactorOutput PluginOutput{..} =
 
     toDependency :: Has (Grapher MavenDependency) sig m => Artifact -> m MavenDependency
     toDependency Artifact{..} = do
+      -- traceM ("this is the artifact ********* : " ++ show (Artifact))
       let dep =
             Dependency
               { dependencyType = MavenType
@@ -186,12 +214,16 @@ buildGraph reactorOutput PluginOutput{..} =
 
     visitEdge :: Has (Grapher MavenDependency) sig m => Map Int MavenDependency -> Edge -> m ()
     visitEdge refsByNumeric Edge{..} = do
+      traceM ("WITH WHEN STATEMENT +++++++++ ")
       let refs = do
             parentRef <- Map.lookup edgeFrom refsByNumeric
             childRef <- Map.lookup edgeTo refsByNumeric
             Just (parentRef, childRef)
+      -- traverse_ (uncurry edge) refs
 
-      traverse_ (uncurry edge) refs
+      when
+        (edgeFrom `Set.notMember` filterSubmoduleSet && edgeTo `Set.notMember` filterSubmoduleSet)
+        $ traverse_ (uncurry edge) refs
 
     indexBy :: Ord k => (v -> k) -> [v] -> Map k v
     indexBy f = Map.fromList . map (\v -> (f v, v))

@@ -23,6 +23,7 @@ import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
+import Debug.Trace (traceM, traceShowM)
 import DepTypes (
   DepEnvironment (..),
   DepType (MavenType),
@@ -166,6 +167,10 @@ toDependency PackageId{groupName, artifactName, artifactVersion, buildTag} = do
 
 toGraph :: DotGraph -> Graphing PackageId
 toGraph DotGraph{rootNode, edgeList} = run . evalGrapher $ do
+  traceM ("The DOT GRAPH ------------- ")
+  traceShowM rootNode
+  traceShowM edgeList
+
   direct rootNode
   for_ edgeList $ uncurry edge
 

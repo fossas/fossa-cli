@@ -106,6 +106,7 @@ import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
   Severity (..),
+  logDebug,
   logInfo,
   logStdout,
  )
@@ -125,6 +126,7 @@ import Prettyprinter.Render.Terminal (
  )
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
+import Text.Pretty.Simple (pShow)
 import Types (DiscoveredProject (..), FoundTargets)
 
 debugBundlePath :: FilePath
@@ -199,6 +201,7 @@ runDependencyAnalysis basedir filters pathPrefix project@DiscoveredProject{..} =
   case (applyFiltersToProject basedir filters project, hasNonProductionPath) of
     (Nothing, _) -> do
       logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> ": no filters matched"
+      logDebug $ "WE ARE SKIPPING HERE -----"
       output $ SkippedDueToProvidedFilter dpi
     (Just _, True) -> do
       logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> " (default non-production path filtering)"
@@ -206,6 +209,10 @@ runDependencyAnalysis basedir filters pathPrefix project@DiscoveredProject{..} =
     (Just targets, False) -> do
       logInfo $ "Analyzing " <> pretty projectType <> " project at " <> pretty (toFilePath projectPath)
       let ctxMessage = "Project Analysis: " <> showT projectType
+      let x = project
+      logDebug $ "Here are the targets -----" <> pretty (pShow (targets))
+      -- logDebug $ "Project Data -----" <> pretty (showT (projectData))
+
       graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context ctxMessage $ do
         debugMetadata "DiscoveredProject" project
         trackTimeSpent (showT projectType) $ analyzeProject targets projectData
@@ -273,7 +280,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       grepOptions = Config.grepOptions cfg
       customFossaDepsFile = Config.customFossaDepsFile cfg
       shouldAnalyzePathDependencies = resolvePathDependencies $ Config.experimental cfg
-
+  logDebug $ "All Filters From Config: ----------" <> pretty (pShow (filters))
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
   vsiResults <- Diag.errorBoundaryIO . diagToDebug $

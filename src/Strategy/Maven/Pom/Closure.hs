@@ -26,11 +26,19 @@ import Path
 import Path.IO qualified as PIO
 import Strategy.Maven.Pom.PomFile
 import Strategy.Maven.Pom.Resolver
+import Text.Pretty.Simple (pShow)
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
+import Effect.Logger (Logger, Pretty (pretty), logDebug, runLogger)
+import Text.Pretty.Simple (pShow)
+
+import Effect.Logger (Logger, Pretty (pretty), logDebug, runLogger)
+
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has Logger sig m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects basedir = do
   pomFiles <- context "Finding pom files" $ findPomFiles basedir
   globalClosure <- context "Building global closure" $ buildGlobalClosure pomFiles
+  logDebug $ "List of Maven closures *******" <> pretty (pShow (buildProjectClosures basedir globalClosure))
+  logDebug $ "Maven Project Closure" <> pretty (pShow (globalClosure))
   context "Building project closures" $ pure (buildProjectClosures basedir globalClosure)
 
 findPomFiles :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Path Abs File]

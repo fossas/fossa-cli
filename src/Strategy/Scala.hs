@@ -27,6 +27,7 @@ import Control.Effect.Stack (context)
 import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
 import Data.ByteString.Lazy (ByteString)
 import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
+import Data.Set qualified as Set
 import Data.String.Conversion (ConvertUtf8 (decodeUtf8), toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text

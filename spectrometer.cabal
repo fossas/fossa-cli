@@ -110,6 +110,7 @@ common deps
     , path                         ^>=0.9.0
     , path-io                      ^>=1.8.0
     , pretty-simple                ^>=4.1.1.0
+    , pretty-show                  ^>=1.10
     , prettyprinter                >=1.6       && <1.8
     , prettyprinter-ansi-terminal  ^>=1.1.1
     , random                       ^>=1.2.0
