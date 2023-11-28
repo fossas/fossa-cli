@@ -4,17 +4,18 @@ module Python.ReqTxtSpec (
   spec,
 ) where
 
+import Control.Monad (void)
 import Data.Map.Strict qualified as Map
-import Text.URI.QQ (uri)
-
-import Data.Foldable
 import DepTypes
 import Effect.Grapher
 import Graphing (Graphing)
 import Strategy.Python.Pip (Package (..))
 import Strategy.Python.Util
+import Text.URI.QQ (uri)
 
 import Test.Hspec
+
+newtype ExpectedDependency = ExpectedDependency (Dependency, [ExpectedDependency])
 
 setupPyInput :: [Req]
 setupPyInput =
@@ -39,76 +40,96 @@ installedPackages =
   , Package "pkgNotThree" "https://example-not.com" [Package "ignored_me" "1" []]
   ]
 
-deps :: [(Dependency, [Dependency])]
-deps =
-  [
-    ( Dependency
-        { dependencyType = PipType
-        , dependencyName = "pkgOne"
-        , dependencyVersion =
-            Just
-              ( CAnd
-                  (CGreaterOrEq "1.0.0")
-                  (CLess "2.0.0")
-              )
-        , dependencyLocations = []
-        , dependencyEnvironments = mempty
-        , dependencyTags = Map.empty
-        }
-    ,
-      [ Dependency
+expectedDeps :: [ExpectedDependency]
+expectedDeps =
+  [ ExpectedDependency
+      ( Dependency
           { dependencyType = PipType
-          , dependencyName = "pkgOne_One"
-          , dependencyVersion = Just (CEq "3.0")
+          , dependencyName = "pkgOne"
+          , dependencyVersion =
+              Just
+                ( CAnd
+                    (CGreaterOrEq "1.0.0")
+                    (CLess "2.0.0")
+                )
           , dependencyLocations = []
           , dependencyEnvironments = mempty
           , dependencyTags = Map.empty
           }
-      ]
-    )
-  ,
-    ( Dependency
-        { dependencyType = PipType
-        , dependencyName = "pkgTwo"
-        , dependencyVersion = Nothing
-        , dependencyLocations = []
-        , dependencyEnvironments = mempty
-        , dependencyTags = Map.empty
-        }
-    ,
-      [ Dependency
+      ,
+        [ ExpectedDependency
+            ( Dependency
+                { dependencyType = PipType
+                , dependencyName = "pkgOne_One"
+                , dependencyVersion = Just (CEq "3.0")
+                , dependencyLocations = []
+                , dependencyEnvironments = mempty
+                , dependencyTags = Map.empty
+                }
+            , []
+            )
+        ]
+      )
+  , ExpectedDependency
+      ( Dependency
           { dependencyType = PipType
-          , dependencyName = "pkgTwo_One"
-          , dependencyVersion = Just (CEq "1")
+          , dependencyName = "pkgTwo"
+          , dependencyVersion = Nothing
           , dependencyLocations = []
           , dependencyEnvironments = mempty
           , dependencyTags = Map.empty
           }
-      ]
-    )
-  ,
-    ( Dependency
-        { dependencyType = PipType
-        , dependencyName = "pkgThree"
-        , dependencyVersion = Just (CURI "https://example.com")
-        , dependencyLocations = []
-        , dependencyEnvironments = mempty
-        , dependencyTags = Map.empty
-        }
-    , []
-    )
+      ,
+        [ ExpectedDependency
+            ( Dependency
+                { dependencyType = PipType
+                , dependencyName = "pkgTwo_One"
+                , dependencyVersion = Just (CEq "1")
+                , dependencyLocations = []
+                , dependencyEnvironments = mempty
+                , dependencyTags = Map.empty
+                }
+            , []
+            )
+        ]
+      )
+  , ExpectedDependency
+      ( Dependency
+          { dependencyType = PipType
+          , dependencyName = "pkgThree"
+          , dependencyVersion = Just (CURI "https://example.com")
+          , dependencyLocations = []
+          , dependencyEnvironments = mempty
+          , dependencyTags = Map.empty
+          }
+      , []
+      )
   ]
 
-expected :: Graphing Dependency
-expected = run . evalGrapher $ traverse (\(d, _) -> direct d) deps
+traverseDirect :: [ExpectedDependency] -> Graphing Dependency
+traverseDirect deps = run . evalGrapher $ do
+  traverse
+    ( \(ExpectedDependency (dep, _)) -> do
+        direct dep
+    )
+    deps
 
-transitiveExpected :: Graphing Dependency
-transitiveExpected = run . evalGrapher $
-  for_ deps $ \(dep, children) -> do
-    direct dep
-    for_ children $ \c -> do
-      deep c
-      edge dep c
+traverseDirectAndDeep :: [ExpectedDependency] -> Graphing Dependency
+traverseDirectAndDeep deps = run . evalGrapher $ do
+  traverse
+    ( \(ExpectedDependency (dep, deepDeps)) -> do
+        direct dep
+        traverseDeepDeps dep deepDeps
+    )
+    deps
+  where
+    traverseDeepDeps parent children = do
+      traverse addDeps children
+      where
+        addDeps (ExpectedDependency (child, deeperDeps)) = do
+          deep child
+          edge parent child
+          void $ traverseDeepDeps child deeperDeps
 
 spec :: Spec
 spec =
@@ -116,9 +137,9 @@ spec =
     it "should produce expected output" $ do
       let result = buildGraph Nothing setupPyInput
 
-      result `shouldBe` expected
+      result `shouldBe` traverseDirect expectedDeps
 
     it "should only report transitive dependencies for packages found in req.txt" $ do
       let result = buildGraph (Just installedPackages) setupPyInput
 
-      result `shouldBe` transitiveExpected
+      result `shouldBe` traverseDirectAndDeep expectedDeps

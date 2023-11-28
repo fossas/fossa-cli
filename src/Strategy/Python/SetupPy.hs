@@ -24,7 +24,7 @@ analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe [Package] -> Path
 analyze' packages setupPy setupCfg = do
   (pyReqs, pyPackageName) <- readContentsParser installRequiresParser setupPy
   (cfgReqs, cfgPackageName) <- maybe (pure ([], Nothing)) (readContentsParser installRequiresParserSetupCfg) setupCfg
-  context "Building dependency graph" $ pure $ buildGraphSetupPy packages pyPackageName pyReqs cfgPackageName cfgReqs
+  context "Building dependency graph" $ pure $ buildGraphSetupFile packages pyPackageName pyReqs cfgPackageName cfgReqs
 
 type Parser = Parsec Void Text
 

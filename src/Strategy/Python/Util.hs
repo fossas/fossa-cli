@@ -1,6 +1,6 @@
 module Strategy.Python.Util (
   buildGraph,
-  buildGraphSetupPy,
+  buildGraphSetupFile,
   Version (..),
   Marker (..),
   MarkerOp (..),
@@ -54,8 +54,8 @@ reqToDependency req =
     depMarker (NameReq _ _ _ marker) = marker
     depMarker (UrlReq _ _ _ marker) = marker
 
-buildGraphSetupPy :: Maybe [Package] -> Maybe Text -> [Req] -> Maybe Text -> [Req] -> Graphing Dependency
-buildGraphSetupPy maybePackages pyPackageName pyReqs cfgPackageName cfgReqs = do
+buildGraphSetupFile :: Maybe [Package] -> Maybe Text -> [Req] -> Maybe Text -> [Req] -> Graphing Dependency
+buildGraphSetupFile maybePackages pyPackageName pyReqs cfgPackageName cfgReqs = do
   Graphing.gmap reqToDependency $ do
     case maybePackages of
       Nothing -> Graphing.fromList (pyReqs ++ cfgReqs)
