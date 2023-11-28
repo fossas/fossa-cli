@@ -57,7 +57,11 @@ data GrepEntry = GrepEntry
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON GrepEntry where
-  toEncoding = genericToEncoding defaultOptions
+  toJSON (GrepEntry matchCriteria name) =
+    object
+      [ "matchCriteria" .= matchCriteria
+      , "name" .= name
+      ]
 
 instance FromJSON GrepEntry where
   parseJSON = withObject "GrepEntry" $ \obj ->
