@@ -22,7 +22,7 @@ spec = do
         c `shouldBe` expectedEntries
 
     missingEntriesTarget <- runIO testMissingEntriesPackagesFile
-    missingEntriesResult  <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO . withDefaultLogger SevError $ readBerkeleyDB missingEntriesTarget
+    missingEntriesResult <- runIO . runStack . runDiagnostics . runExecIO . runReadFSIO . withDefaultLogger SevError $ readBerkeleyDB missingEntriesTarget
 
     it "parses berkelydb contents with missing package attributes" $
       assertOnSuccess missingEntriesResult $ \_ c ->
