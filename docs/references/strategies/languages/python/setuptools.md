@@ -40,10 +40,10 @@ tagged with environment markers.
 ### Installed packages
 
 For the CLI to detect transitives dependencies for packages specified in a
-`setup.py` or `setup.cfg` file's `install_requires` field, certain conditions must
-be met. The packages must be installed with command similar to `pip install .`. The
-packages should be installed within a virtual environment, ensuring a clean and
-isolated environment. Subsequently, the CLI should be executed with the same environment.
+`setup.py` file's `install_requires` field, certain conditions must be met. The
+packages must be installed with command similar to `pip install .`. The packages
+should be installed within a virtual environment, ensuring a clean and isolated
+environment. Subsequently, the CLI should be executed with the same environment.
 Finally, the environment should include both `python` and `pip`. The CLI will naively
 scan a setuptools configuration file for a `name` attribute, and attempt to match
 the name with an installed package. If the name matches an installed package, the
