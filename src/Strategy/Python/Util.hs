@@ -13,23 +13,25 @@ module Strategy.Python.Util (
 ) where
 
 import Control.Monad (join)
+import Control.Monad.Identity (Identity)
 import Data.Char qualified as C
 import Data.Foldable (asum, find, for_)
 import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes
-import Effect.Grapher (Grapher, Has, deep, direct, edge, evalGrapher, run)
+import Effect.Grapher (Grapher, GrapherC, Has, deep, direct, edge, evalGrapher, run)
 import Graphing (Graphing)
 import Graphing qualified
-import Strategy.Python.Pip (Package (..))
+import Strategy.Python.Pip (PythonPackage (..))
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.URI qualified as URI
 import Toml qualified
 
-pkgToReq :: Package -> Req
+pkgToReq :: PythonPackage -> Req
 pkgToReq p =
   NameReq (pkgName p) Nothing (Just [Version OpEq (pkgVersion p)]) Nothing
 
@@ -54,7 +56,7 @@ reqToDependency req =
     depMarker (NameReq _ _ _ marker) = marker
     depMarker (UrlReq _ _ _ marker) = marker
 
-buildGraphSetupFile :: Maybe [Package] -> Maybe Text -> [Req] -> Maybe Text -> [Req] -> Graphing Dependency
+buildGraphSetupFile :: Maybe [PythonPackage] -> Maybe Text -> [Req] -> Maybe Text -> [Req] -> Graphing Dependency
 buildGraphSetupFile maybePackages pyPackageName pyReqs cfgPackageName cfgReqs = do
   Graphing.gmap reqToDependency $ do
     case maybePackages of
@@ -64,11 +66,12 @@ buildGraphSetupFile maybePackages pyPackageName pyReqs cfgPackageName cfgReqs = 
           addDeps packages pyPackageName pyReqs
           addDeps packages cfgPackageName cfgReqs
   where
+    addDeps :: [PythonPackage] -> Maybe Text -> [Req]-> GrapherC Req Identity ()
     addDeps packages maybeName reqs = do
       case maybeName of
         Nothing -> for_ reqs direct
         Just packageName ->
-          case (find (\p -> (pkgName p) == packageName) packages) of
+          case (find (\p -> Text.toLower(pkgName p) == Text.toLower(packageName)) packages) of
             Nothing -> for_ reqs direct
             Just pkg ->
               for_ (requires pkg) $ \c -> do
@@ -76,7 +79,7 @@ buildGraphSetupFile maybePackages pyPackageName pyReqs cfgPackageName cfgReqs = 
                 direct r
                 addChildren r c
 
-buildGraph :: Maybe [Package] -> [Req] -> Graphing Dependency
+buildGraph :: Maybe [PythonPackage] -> [Req] -> Graphing Dependency
 buildGraph maybePackages reqs = do
   Graphing.gmap reqToDependency $ do
     case maybePackages of
@@ -89,9 +92,11 @@ buildGraph maybePackages reqs = do
               Just parent -> addChildren parent p
               Nothing -> pure ()
   where
-    findParent packageName = find (\r -> depName r == packageName) reqs
+    findParent :: Text -> Maybe Req
+    findParent packageName = find (\r -> Text.toLower(depName r) == Text.toLower(packageName)) reqs
 
-addChildren :: (Has (Grapher Req) sig m) => Req -> Package -> m ()
+
+addChildren :: (Has (Grapher Req) sig m) => Req -> PythonPackage -> m ()
 addChildren parent pkg = do
   for_ (requires pkg) $ \c -> do
     let child = pkgToReq c

@@ -12,13 +12,13 @@ import Effect.ReadFS
 import Graphing (Graphing)
 import Path
 import Prettyprinter (Pretty (pretty), vsep)
-import Strategy.Python.Pip (Package)
+import Strategy.Python.Pip (PythonPackage)
 import Strategy.Python.Util
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Types
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe [Package] -> Path Abs File -> m (Graphing Dependency)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe [PythonPackage] -> Path Abs File -> m (Graphing Dependency)
 analyze' packages file = do
   reqs <- errCtx (ReqsTxtFailed file) $ readContentsParser requirementsTxtParser file
   context "Building dependency graph" $ pure (buildGraph packages reqs)

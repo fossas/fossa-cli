@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 
-module Strategy.Python.Pip (Package (..), PackageMetadata (..), getPackages, pipShowParser) where
+module Strategy.Python.Pip (PythonPackage (..), PackageMetadata (..), getPackages, pipShowParser) where
 
 import Control.Effect.Diagnostics (Diagnostics, recover)
 import Data.Aeson (FromJSON, ToJSON)
@@ -36,10 +36,10 @@ data InstalledPackage = InstalledPackage
 data PackageMetadata = PackageMetadata Text Text [Text]
   deriving (Show, Eq, Ord)
 
-data Package = Package
+data PythonPackage = PythonPackage
   { pkgName :: Text
   , pkgVersion :: Text
-  , requires :: [Package]
+  , requires :: [PythonPackage]
   }
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
@@ -47,19 +47,24 @@ pythonPip :: [Text] -> Command
 pythonPip args =
   Command
     { cmdName = "python"
-    , cmdArgs = ["-m", "pip", "--require-virtualenv"] <> args
+    , cmdArgs =
+        [ "-m"
+        , "pip"
+        ]
+          <> args
     , cmdAllowErr = Never
     }
 
--- | Executes pip list.
+-- | Executes pip list which will return a json data with name and version.
+-- See https://pip.pypa.io/en/stable/cli/pip_list/ for options / output.
 execPipList :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m [InstalledPackage]
-execPipList scanDir = do
+execPipList scanDir =
   execJson scanDir $ pythonPip ["list", "--format=json"]
 
--- | Executes pip show.
+-- | Executes pip show, we expect stdout to be a RFC-compliant mail header format.
+-- See https://pip.pypa.io/en/stable/cli/pip_show/ for options / output.
 execPipShow :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> [Text] -> m [PackageMetadata]
-execPipShow scanDir packages = do
-  -- pip show displays a RFC-compliant mail header format
+execPipShow scanDir packages =
   execParser pipShowParser scanDir (pythonPip $ ["show"] <> packages)
 
 -- | Parses package name, version and requires from the output from pip show.
@@ -99,19 +104,20 @@ pipShowParser = many (try parseMetadata <|> try parseSection)
     ident = lexeme $ toText <$> takeWhileP Nothing (/= '\n')
 
 -- | Maps package metadata into a package which contains the package's transitive dependencies.
-toPackages :: [PackageMetadata] -> [Package]
+toPackages :: [PackageMetadata] -> [PythonPackage]
 toPackages packagesInfo = do
   map (toPackage [] packagesInfo) packagesInfo
   where
+    toPackage :: [PackageMetadata] -> [PackageMetadata] -> PackageMetadata -> PythonPackage
     toPackage seen metadata (PackageMetadata name version requires) =
-      Package
+      PythonPackage
         name
         version
         (mapMaybe (findPackageByName seen metadata) requires)
 
-    findPackageByName seen metadata pkgName = do
-      let pkg = find (\(PackageMetadata name _ _) -> name == pkgName) metadata
-      case pkg of
+    findPackageByName :: [PackageMetadata] -> [PackageMetadata] -> Text -> Maybe PythonPackage
+    findPackageByName seen metadata pkgName =
+      case find (\(PackageMetadata name _ _) -> name == pkgName) metadata of
         Just p -> do
           if p `notElem` seen
             then Just $ toPackage (seen ++ [p]) metadata p
@@ -119,7 +125,7 @@ toPackages packagesInfo = do
         Nothing -> Nothing
 
 -- | Generates a list of packages and their transitive dependencies that are currently installed within the active environment.
-getPackages :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Maybe [Package])
+getPackages :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Maybe [PythonPackage])
 getPackages scanDir = do
   recover $ do
     installedPackages <- execPipList scanDir

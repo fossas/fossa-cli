@@ -13,14 +13,14 @@ import Data.Void (Void)
 import Effect.ReadFS
 import Graphing (Graphing)
 import Path
-import Strategy.Python.Pip (Package (..))
+import Strategy.Python.Pip (PythonPackage (..))
 import Strategy.Python.Util
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 import Types
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe [Package] -> Path Abs File -> Maybe (Path Abs File) -> m (Graphing Dependency)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe [PythonPackage] -> Path Abs File -> Maybe (Path Abs File) -> m (Graphing Dependency)
 analyze' packages setupPy setupCfg = do
   (pyReqs, pyPackageName) <- readContentsParser installRequiresParser setupPy
   (cfgReqs, cfgPackageName) <- maybe (pure ([], Nothing)) (readContentsParser installRequiresParserSetupCfg) setupCfg

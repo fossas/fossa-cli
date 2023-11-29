@@ -27,7 +27,7 @@ import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path)
-import Strategy.Python.Pip (Package, getPackages)
+import Strategy.Python.Pip (PythonPackage, getPackages)
 import Strategy.Python.ReqTxt qualified as ReqTxt
 import Strategy.Python.SetupPy qualified as SetupPy
 import Types (
@@ -39,8 +39,7 @@ import Types (
  )
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m, Has Exec sig m) => Path Abs Dir -> m [DiscoveredProject SetuptoolsProject]
-discover = do
-  simpleDiscover findProjects mkProject SetuptoolsProjectType
+discover = simpleDiscover findProjects mkProject SetuptoolsProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m, Has Exec sig m) => Path Abs Dir -> m [SetuptoolsProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
@@ -95,7 +94,7 @@ data SetuptoolsProject = SetuptoolsProject
   , setuptoolsSetupPy :: Maybe (Path Abs File)
   , setuptoolsSetupCfg :: Maybe (Path Abs File)
   , setuptoolsDir :: Path Abs Dir
-  , packages :: Maybe [Package]
+  , packages :: Maybe [PythonPackage]
   }
   deriving (Eq, Ord, Show, Generic)
 
