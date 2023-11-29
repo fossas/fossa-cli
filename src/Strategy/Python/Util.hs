@@ -66,12 +66,12 @@ buildGraphSetupFile maybePackages pyPackageName pyReqs cfgPackageName cfgReqs = 
           addDeps packages pyPackageName pyReqs
           addDeps packages cfgPackageName cfgReqs
   where
-    addDeps :: [PythonPackage] -> Maybe Text -> [Req]-> GrapherC Req Identity ()
+    addDeps :: [PythonPackage] -> Maybe Text -> [Req] -> GrapherC Req Identity ()
     addDeps packages maybeName reqs = do
       case maybeName of
         Nothing -> for_ reqs direct
         Just packageName ->
-          case (find (\p -> Text.toLower(pkgName p) == Text.toLower(packageName)) packages) of
+          case (find (\p -> Text.toLower (pkgName p) == Text.toLower (packageName)) packages) of
             Nothing -> for_ reqs direct
             Just pkg ->
               for_ (requires pkg) $ \c -> do
@@ -93,8 +93,7 @@ buildGraph maybePackages reqs = do
               Nothing -> pure ()
   where
     findParent :: Text -> Maybe Req
-    findParent packageName = find (\r -> Text.toLower(depName r) == Text.toLower(packageName)) reqs
-
+    findParent packageName = find (\r -> Text.toLower (depName r) == Text.toLower (packageName)) reqs
 
 addChildren :: (Has (Grapher Req) sig m) => Req -> PythonPackage -> m ()
 addChildren parent pkg = do
