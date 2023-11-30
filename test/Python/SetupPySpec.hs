@@ -18,7 +18,7 @@ import Text.RawString.QQ (r)
 
 import Control.Monad (void)
 import Data.Void (Void)
-import Strategy.Python.Pip (Package (Package))
+import Strategy.Python.Pip (PythonPackage (..))
 import Strategy.Python.SetupPy (installRequiresParser, installRequiresParserSetupCfg)
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (Parsec, parse)
@@ -199,11 +199,11 @@ spec = do
       result `shouldBe` expectedCombined
 
     it "should default to install_requires when the setupPy package name is not found" $ do
-      let result = buildGraphSetupFile (Just [(Package "non-bar" "1" [])]) (Just "bar") setupPyInput Nothing []
+      let result = buildGraphSetupFile (Just [(PythonPackage "non-bar" "1" [])]) (Just "bar") setupPyInput Nothing []
       result `shouldBe` expected
 
     it "should only report found package dependencies when the setupPy package name is found" $ do
-      let result = buildGraphSetupFile (Just [(Package "bar" "1" [(Package "pkgChild" "1" [(Package "pkgChildTwo" "1" [])])])]) (Just "bar") setupPyInput Nothing []
+      let result = buildGraphSetupFile (Just [(PythonPackage "bar" "1" [(PythonPackage "pkgChild" "1" [(PythonPackage "pkgChildTwo" "1" [])])])]) (Just "bar") setupPyInput Nothing []
       result `shouldBe` expectedBar
 
 setupCfgSpec :: Spec

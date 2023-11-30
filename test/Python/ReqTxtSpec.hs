@@ -9,7 +9,7 @@ import Data.Map.Strict qualified as Map
 import DepTypes
 import Effect.Grapher
 import Graphing (Graphing)
-import Strategy.Python.Pip (Package (..))
+import Strategy.Python.Pip (PythonPackage (..))
 import Strategy.Python.Util
 import Text.URI.QQ (uri)
 
@@ -32,12 +32,12 @@ setupPyInput =
   , UrlReq "pkgThree" Nothing [uri|https://example.com|] Nothing
   ]
 
-installedPackages :: [Package]
+installedPackages :: [PythonPackage]
 installedPackages =
-  [ Package "foo" "2" []
-  , Package "pkgOne" "1.0.0" [Package "pkgOne_One" "3.0" []]
-  , Package "pkgTwo" "1" [Package "pkgTwo_One" "1" []]
-  , Package "pkgNotThree" "https://example-not.com" [Package "ignored_me" "1" []]
+  [ PythonPackage "foo" "2" []
+  , PythonPackage "pkgOne" "1.0.0" [PythonPackage "pkgOne_One" "3.0" []]
+  , PythonPackage "pkgTwo" "1" [PythonPackage "pkgTwo_One" "1" []]
+  , PythonPackage "pkgNotThree" "https://example-not.com" [PythonPackage "ignored_me" "1" []]
   ]
 
 expectedDeps :: [ExpectedDependency]
