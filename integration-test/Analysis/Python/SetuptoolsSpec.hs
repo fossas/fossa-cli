@@ -38,7 +38,7 @@ flask =
 pipInstallProjectCmd :: Command
 pipInstallProjectCmd =
   Command
-    "python3"
+    "python"
     [ "-m"
     , "venv"
     , "../venv"
