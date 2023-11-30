@@ -38,12 +38,11 @@ import Types (
   GraphBreadth (Partial),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m, Has Exec sig m) => Path Abs Dir -> m [DiscoveredProject SetuptoolsProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject SetuptoolsProject]
 discover = simpleDiscover findProjects mkProject SetuptoolsProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m, Has Exec sig m) => Path Abs Dir -> m [SetuptoolsProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [SetuptoolsProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
-  installedPackages <- getPackages dir
   let reqTxtFiles =
         filter
           (\f -> "req" `isInfixOf` fileName f && ".txt" `isSuffixOf` fileName f)
@@ -58,21 +57,21 @@ findProjects = walkWithFilters' $ \dir _ files -> do
           , setuptoolsSetupPy = setupPyFile
           , setuptoolsSetupCfg = setupCfgFile
           , setuptoolsDir = dir
-          , packages = installedPackages
           }
 
   case (reqTxtFiles, setupPyFile) of
     ([], Nothing) -> pure ([], WalkContinue)
     _ -> pure ([project], WalkContinue)
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m DependencyResults
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig m) => SetuptoolsProject -> m DependencyResults
 getDeps project = do
+  packages <- getPackages (setuptoolsDir project)
   graph <-
     context "Setuptools" $
       Diag.combineSuccessful @Text @Text
         "Analysis failed for all requirements.txt/setup.py in the project"
         "Failed to parse python file"
-        [analyzeReqTxts project, analyzeSetupPy project]
+        [analyzeReqTxts packages project, analyzeSetupPy packages project]
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -80,21 +79,35 @@ getDeps project = do
       , dependencyManifestFiles = maybeToList (setuptoolsSetupPy project) ++ setuptoolsReqTxt project
       }
 
-analyzeReqTxts :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
-analyzeReqTxts project = context "Analyzing requirements.txt files" $ do
-  mconcat <$> traverse (ReqTxt.analyze' (packages project)) (setuptoolsReqTxt project)
+getDeps' :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m DependencyResults
+getDeps' project = do
+  graph <-
+    context "Setuptools" $
+      Diag.combineSuccessful @Text @Text
+        "Analysis failed for all requirements.txt/setup.py in the project"
+        "Failed to parse python file"
+        [analyzeReqTxts Nothing project, analyzeSetupPy Nothing project]
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Partial
+      , dependencyManifestFiles = maybeToList (setuptoolsSetupPy project) ++ setuptoolsReqTxt project
+      }
 
-analyzeSetupPy :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
-analyzeSetupPy project = context "Analyzing setup.py" $ do
+analyzeReqTxts :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe ([PythonPackage]) -> SetuptoolsProject -> m (Graphing Dependency)
+analyzeReqTxts packages project = context "Analyzing requirements.txt files" $ do
+  mconcat <$> traverse (ReqTxt.analyze' packages) (setuptoolsReqTxt project)
+
+analyzeSetupPy :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe ([PythonPackage]) -> SetuptoolsProject -> m (Graphing Dependency)
+analyzeSetupPy packages project = context "Analyzing setup.py" $ do
   setupPy <- Diag.fromMaybeText "No setup.py found in this project" (setuptoolsSetupPy project)
-  SetupPy.analyze' (packages project) setupPy (setuptoolsSetupCfg project)
+  SetupPy.analyze' packages setupPy (setuptoolsSetupCfg project)
 
 data SetuptoolsProject = SetuptoolsProject
   { setuptoolsReqTxt :: [Path Abs File]
   , setuptoolsSetupPy :: Maybe (Path Abs File)
   , setuptoolsSetupCfg :: Maybe (Path Abs File)
   , setuptoolsDir :: Path Abs Dir
-  , packages :: Maybe [PythonPackage]
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -102,7 +115,7 @@ instance ToJSON SetuptoolsProject
 
 instance AnalyzeProject SetuptoolsProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps
+  analyzeProject' _ = getDeps'
 
 mkProject :: SetuptoolsProject -> DiscoveredProject SetuptoolsProject
 mkProject project =

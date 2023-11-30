@@ -3,7 +3,7 @@
 
 module Strategy.Python.Pip (PythonPackage (..), PackageMetadata (..), getPackages, pipShowParser) where
 
-import Control.Effect.Diagnostics (Diagnostics, recover)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, recover, warnOnErr)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Functor (void)
 import Data.List (find)
@@ -12,6 +12,7 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
+import Diag.Diagnostic (ToDiagnostic (..))
 import Effect.Exec (
   AllowErr (Never),
   Command (..),
@@ -20,6 +21,7 @@ import Effect.Exec (
   execJson,
   execParser,
  )
+import Effect.Logger (vsep)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)
 import Text.Megaparsec
@@ -43,6 +45,14 @@ data PythonPackage = PythonPackage
   }
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
+data PipListCommandFailed = PipListCommandFailed
+
+instance ToDiagnostic PipListCommandFailed where
+  renderDiagnostic PipListCommandFailed =
+    vsep
+      [ "Failed to run pip command"
+      ]
+
 pythonPip :: [Text] -> Command
 pythonPip args =
   Command
@@ -50,6 +60,7 @@ pythonPip args =
     , cmdArgs =
         [ "-m"
         , "pip"
+        , "--disable-pip-version-check" -- suppresses pip version check warning
         ]
           <> args
     , cmdAllowErr = Never
@@ -126,7 +137,7 @@ toPackages packagesInfo = do
 
 -- | Generates a list of packages and their transitive dependencies that are currently installed within the active environment.
 getPackages :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Maybe [PythonPackage])
-getPackages scanDir = do
-  recover $ do
+getPackages scanDir =
+  recover . warnOnErr PipListCommandFailed $ do
     installedPackages <- execPipList scanDir
     toPackages <$> execPipShow scanDir (map (\InstalledPackage{name} -> name) installedPackages)
