@@ -52,6 +52,9 @@ jobs:
         INPUT_INSTALL_URL: ""
         INPUT_INSTALL_OPTIONS: ""
 
+    - name: Install python3
+      run: apk add --no-cache python3
+
     - name: Debugging information
       run: |
         ghc --version || echo "no ghc"
@@ -59,9 +62,10 @@ jobs:
         ghcup --version || echo "no ghcup"
         rustc -V || echo "no rustc"
         cargo -V || echo "no cargo"
+        python3 --version || echo "no python3"
 
     - uses: Swatinem/rust-cache@v2
-    
+
     - uses: actions/cache@v3
       name: Cache cabal store
       with:
