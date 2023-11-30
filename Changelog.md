@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.8.24
+
+- Python: use `pip` to determine transitive dependencies for setuptool projects that contain a req*.txt or setup.py file. ([#1334](https://github.com/fossas/fossa-cli/pull/1334))
+
 ## v3.8.23
 - Custom License Scans: Support full-file uploads for custom license scans ([#1333](https://github.com/fossas/fossa-cli/pull/1333))
 
