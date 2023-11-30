@@ -42,7 +42,7 @@ pipInstallProjectCmd =
     [ "-m"
     , "venv"
     , "../venv"
-    , "&& source .venv/bin/activate"
+    , "&& source ../venv/bin/activate"
     , "&& python -m pip install ."
     , "&& python -m pip install -r requirements.txt"
     ]
