@@ -134,3 +134,27 @@ idna==2.10
 requests==2.25.1
 urllib3==1.26.6
 ```
+
+## F.A.Q
+
+### Why is `fossa-cli` reporting incorrect transitive dependencies or edges?
+
+`fossa-cli` uses `python -m pip list` and `python -m pip show` command to infer
+transitive dependencies, and it's edges. It's paramount that you are in
+project's [venv](https://docs.python.org/3/tutorial/venv.html) prior to invoking
+`fossa analyze` command. If you are not in project's virtual environment,
+`fossa-cli` will use global python environment to infer transitive dependencies,
+edges, and dependency versions.
+
+For example, you should always invoke `fossa-cli` in project's python's virtual environment.
+```bash
+python -m venv ~/envs/my-venv
+source ~/envs/my-venv/bin/activate # this command may differ depending on your python version!
+pip install -r requirements.txt
+
+fossa analyze
+```
+
+If you are unable to get any transitive dependencies, ensure you can run following command in project's directory:
+- `python -m pip list --format json`
+- `python -m pip show`
