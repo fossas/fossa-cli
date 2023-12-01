@@ -22,10 +22,12 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
+import Effect.Exec (Exec)
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path)
+import Strategy.Python.Pip (PythonPackage, getPackages)
 import Strategy.Python.ReqTxt qualified as ReqTxt
 import Strategy.Python.SetupPy qualified as SetupPy
 import Types (
@@ -61,14 +63,15 @@ findProjects = walkWithFilters' $ \dir _ files -> do
     ([], Nothing) -> pure ([], WalkContinue)
     _ -> pure ([project], WalkContinue)
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m DependencyResults
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig m) => SetuptoolsProject -> m DependencyResults
 getDeps project = do
+  packages <- getPackages (setuptoolsDir project)
   graph <-
     context "Setuptools" $
       Diag.combineSuccessful @Text @Text
         "Analysis failed for all requirements.txt/setup.py in the project"
         "Failed to parse python file"
-        [analyzeReqTxts project, analyzeSetupPy project]
+        [analyzeReqTxts packages project, analyzeSetupPy packages project]
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -76,13 +79,29 @@ getDeps project = do
       , dependencyManifestFiles = maybeToList (setuptoolsSetupPy project) ++ setuptoolsReqTxt project
       }
 
-analyzeReqTxts :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
-analyzeReqTxts = context "Analyzing requirements.txt files" . fmap mconcat . traverse ReqTxt.analyze' . setuptoolsReqTxt
+getDeps' :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m DependencyResults
+getDeps' project = do
+  graph <-
+    context "Setuptools" $
+      Diag.combineSuccessful @Text @Text
+        "Analysis failed for all requirements.txt/setup.py in the project"
+        "Failed to parse python file"
+        [analyzeReqTxts Nothing project, analyzeSetupPy Nothing project]
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Partial
+      , dependencyManifestFiles = maybeToList (setuptoolsSetupPy project) ++ setuptoolsReqTxt project
+      }
 
-analyzeSetupPy :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m (Graphing Dependency)
-analyzeSetupPy project = context "Analyzing setup.py" $ do
+analyzeReqTxts :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe ([PythonPackage]) -> SetuptoolsProject -> m (Graphing Dependency)
+analyzeReqTxts packages project = context "Analyzing requirements.txt files" $ do
+  mconcat <$> traverse (ReqTxt.analyze' packages) (setuptoolsReqTxt project)
+
+analyzeSetupPy :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe ([PythonPackage]) -> SetuptoolsProject -> m (Graphing Dependency)
+analyzeSetupPy packages project = context "Analyzing setup.py" $ do
   setupPy <- Diag.fromMaybeText "No setup.py found in this project" (setuptoolsSetupPy project)
-  SetupPy.analyze' setupPy (setuptoolsSetupCfg project)
+  SetupPy.analyze' packages setupPy (setuptoolsSetupCfg project)
 
 data SetuptoolsProject = SetuptoolsProject
   { setuptoolsReqTxt :: [Path Abs File]
@@ -96,7 +115,7 @@ instance ToJSON SetuptoolsProject
 
 instance AnalyzeProject SetuptoolsProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps
+  analyzeProject' _ = getDeps'
 
 mkProject :: SetuptoolsProject -> DiscoveredProject SetuptoolsProject
 mkProject project =
