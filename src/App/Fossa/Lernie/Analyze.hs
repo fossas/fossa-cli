@@ -2,6 +2,8 @@
 
 module App.Fossa.Lernie.Analyze (
   analyzeWithLernie,
+  -- Exported for use in hubble
+  analyzeWithLernieMain,
   -- Exported for testing
   analyzeWithLernieWithOrgInfo,
   singletonLernieMessage,
