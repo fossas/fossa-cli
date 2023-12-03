@@ -11,31 +11,118 @@
 # # -----
 
 version: 3
+
+# # Sets the endpoint that the CLI will send requests to.
+# # Modify only if your FOSSA account lives on a different server than app.fossa.com.
+# # Default: https://app.fossa.com
 # server: https://app.fossa.com
+#
+#
+# # Sets the FOSSA API key required for accessing the FOSSA API and uploading/retrieving project data.
+# # FOSSA strongly recommends setting the API key with the $FOSSA_API_KEY environment variable for security.
+# # See documentation for details: https://docs.fossa.com/docs/api-reference
 # apiKey: a1b2c3
 #
+#
+# # Configures settings for the project you are interacting with through the FOSSA API.
 # project:
+#   # Defines a unique ID that the FOSSA API will use to reference this project.
+#   # Default:
+#   #   - Git: From .git/config file or project's remote "origin" URL.
+#   #   - SVN: From "Repository Root" obtained using 'svn info'.
+#   #   - No VCS: Name of the project's directory.
+#   # 
+#   # NOTE:
+#   #   A project's ID cannot be modified after a project is created. If you change the ID, 
+#   #   you will be interacting with a different project. If the new ID does not exist, 
+#   #   a new project will be created for it.
 #   id: github.com/fossas/fossa-cli
+#
+#   # Project Name Configuration
+#   # Sets the project's visible name in the FOSSA dashboard.
+#   # Default: Project's ID
+#   #
+#   # NOTE:
+#   #   Can only be set when creating a project (running fossa analyze for the first time),
+#   #   Otherwise, they will be silently ignored.
 #   name: fossa-cli
+#
+#   # Name of the team in your FOSSA organization to associate with this project.
+#   # NOTE:
+#   #   Can only be set when creating a project (running fossa analyze for the first time),
+#   #   Otherwise, they will be silently ignored.
 #   team: cli-team
+#
+#   # Name of the policy in your FOSSA organization to associate with this project.
+#   # NOTE:
+#   #   Can only be set when creating a project (running fossa analyze for the first time),
+#   #   Otherwise, they will be silently ignored.
 #   policy: custom-cli-policy
+#
+#   # An external link that will appear in the FOSSA UI for this specific project.
+#   # NOTE:
+#   #   Can only be set when creating a project (running fossa analyze for the first time),
+#   #   Otherwise, they will be silently ignored.
 #   link: fossa.com
-#   url: github.com/fossas/fossa-cli
+#
+#   # The URL of your project that will appear in FOSSA.
+#   # Intended to be the URL to the repository of this project.
+#   url: github.com/fossas/fossa-clif
+#
+#   # Jira Project Key to associate with your project for improved issue triage.
+#   # See documentation for details: https://docs.fossa.com/docs/atlassian-jira
+#   #
+#   # NOTE:
+#   #   Can only be set when creating a project (running fossa analyze for the first time),
+#   #   Otherwise, they will be silently ignored.
 #   jiraProjectKey: jira-key
+#
+#   # The 'name' and 'release' of the release group's release to add your project to in the FOSSA dashboard.
+#   # See documentation for details: https://docs.fossa.com/docs/release-groups
+#   #
+#   # NOTE:
+#   #   If you choose to associate a project with a release group, you must supply both name and release.
 #   releaseGroup:
 #     name: release-group-name
 #     release: 123-release-candidate
+#
+#   # Allows you to add labels to projects for classification in the FOSSA UI.
+#   # See documentation for details: https://docs.fossa.com/docs/projects-ui-whats-new#labels
 #   labels:
 #     - project-label-1
 #     - test-project
 #
+#
+# # Revision associated with project scan.
 # revision:
+#   # Used to identify a specific scan for a project.
+#   # Default:
+#   #   - Git: Commit hash of the HEAD branch (inferred from current HEAD state in the .git directory)
+#   #   - SVN: "Revision" obtained using 'svn info' command.
+#   #   - No VCS: Unix timestamp.
 #   commit: "12345"
+#
+#   # Optional setting used for organizing project revisions in the FOSSA UI.
+#   # Default:
+#   #   - Git: Current branch from .git/config file.
+#   #   - SVN: "URL" or "Repository Root" fields using `svn info` command.
+#   #   - No VCS: Empty.
 #   branch: master
 #
+#
+# # Vendored Dependencies Configuration
+# # See documentation for details: https://github.com/fossas/fossa-cli/blob/master/docs/features/vendored-dependencies.md
 # vendoredDependencies:
+#   # If true, forces a re-scan of all vendored dependencies on every run. Default: false
 #   forceRescans: false
+# 
+#   # Determines whether vendored dependencies are scanned using "Archive Upload" or "CLI License Scan" method.
+#   # Possible values: ArchiveUpload, CLILicenseScan. Default: CLI License Scan (organization default)
 #   scanMethod: CLILicenseScan
+# 
+#   # License Scan Path Filters Configuration
+#   # Path filtering to omit some files or directories from license scanning.
+#   # See documentation for details: https://github.com/fossas/fossa-cli/blob/master/docs/features/vendored-dependencies.md#path-filtering
 #   licenseScanPathFilters:
 #     only:
 #       - "**/*.rb"
@@ -43,27 +130,67 @@ version: 3
 #       - ".git/**"
 #       - "test/**/*.rb"
 #
+#
+# # Targets Configuration
+# # Filtering section to specify exact targets to be scanned.
+# # See documentation for details: https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-yml.md#analysis-target-configuration
+# # See walkthough for example usage: https://github.com/fossas/fossa-cli/blob/master/docs/walkthroughs/analysis-target-configuration.md
 # targets:
+#   # The list of only targets that should be scanned. When used alongside paths.only, 
+#   # the intersection of the two lists is taken to find targets for scanning.
 #   only:
 #     - type: maven
 #       path: foo/bar
+#
+#   # The list of exclude targets which should be excluded from scanning. 
+#   # The targets listed in the exclude section will override the targets listed in the only 
+#   # sections. This feature is used most effectively to remove specific targets from a directory. 
 #   exclude:
 #     - type: bundler
+#       path: prod/docker
 #
+#
+# # Paths Configuration
+# # Filtering section to specify which paths should be scanned or excluded.
+# # See documentation for details: https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-yml.md#paths
+# # See walkthough for example usage: https://github.com/fossas/fossa-cli/blob/master/docs/walkthroughs/analysis-target-configuration.md
 # paths:
+#   # The list of paths to only allow scanning within.
+#   # This section is most commonly used when you would like to restrict scanning 
+#   # to a certain list of directories from the root of your project.
 #   only:
-#     - ./vendor/django
-#     - ./test
+#     - ./production
+#
+#   # The list of paths to exclude from scanning in your directory.
+#   # This section is intended to be used as the inverse to paths.only. 
+#   # If you have a certain directory such as development you wish to exclude, 
+#   # paths.exclude enables you to do this.
 #   exclude:
 #     - ./vendor/django/test
 #
+#
+# # Telemetry Configuration
+# # Sets the telemetry configurations.
 # telemetry:
+#   # 'full' emits telemetry data to the server, 'off' does not. Default: 'full'.
 #   scope: full
-
+#
+#
+# # FOSSA offers the ability to search your codebase using regular expressions 
+# # and to report matches. 'customLicenseSearch' can be used to search codebase
+# # with regular expression to mark custom licenses, with project.
+# # See documentation for details: https://github.com/fossas/fossa-cli/blob/master/docs/features/custom-license-and-keyword-searches.md#custom-license-and-keyword-searches
 # customLicenseSearch:
+#     # matchCriteria is a regular expression used to find the thing you are searching for
+#     # https://github.com/fossas/fossa-cli/blob/master/docs/features/custom-license-and-keyword-searches.md#regular-expression-format
 #   - matchCriteria: "[Pp]roprietary [Ll]icense"
+#
+#     # name is a description of what you are searching for
 #     name: "Proprietary License"
-
+#
+#
+# # Defines experimental keyword search criteria.
+# # See documentation for details: https://github.com/fossas/fossa-cli/blob/master/docs/features/custom-license-and-keyword-searches.md#keyword-searches
 # experimentalKeywordSearch:
-#   - matchCriteria: "[Pp]roprietary and [Cc]onfidential"
-#     name: "Proprietary and Confidential match"
+#  - matchCriteria: abc123
+#    name: Password
