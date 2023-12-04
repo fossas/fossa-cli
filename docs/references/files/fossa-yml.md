@@ -309,11 +309,15 @@ You can provide maven dependency scopes that you would like to filter. You can f
 
 #### scope-only:
 
-the list of `only` scopes that should by scanned
+The list of `only` scopes that should by scanned. 
+
+When a dependency is multi-scope (i.e. [compile, runtime]) ALL of the scopes must be conatined in `scope-only` for the dependency to be included in the scan results. 
 
 #### scope-exclude:
 
-The list of `exclude` scopes that you would like to exclude from scanning
+The list of `exclude` scopes that you would like to exclude from scanning.
+
+When a dependency is multi-scope (i.e. [compile, runtime]), if ANY of the scopes are contained in `scope-exclude` it will be excluded from the scan results.
 
 
 ```yaml

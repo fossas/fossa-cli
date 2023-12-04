@@ -75,7 +75,7 @@ spec = do
     expectDeps [providedDep] graph'
     expectEdges [] graph'
 
-  it "should filter multi scope deps when dep scope is not fully conatined in include set" $ do
+  it "should filter multi scope deps when dep scope is not fully contained in include set" $ do
     -- Dep(compile, provided)
     -- After filtering with includeSet = Set("compile")
     -- empty
