@@ -7,19 +7,23 @@ module Python.SetupPySpec (
 import Data.Map.Strict qualified as Map
 import Text.URI.QQ (uri)
 
-import DepTypes (DepType (PipType), Dependency (..), VerConstraint (CAnd, CGreaterOrEq, CLess, CURI))
-import Effect.Grapher (direct, evalGrapher, run)
+import DepTypes (DepType (PipType), Dependency (..), VerConstraint (CAnd, CEq, CGreaterOrEq, CLess, CURI))
+import Effect.Grapher (deep, direct, edge, evalGrapher, run)
 import Graphing (Graphing)
-import Strategy.Python.Util (Operator (OpGtEq, OpLt), Req (..), Version (Version), buildGraph)
+import Strategy.Python.Util (Operator (OpEq, OpGtEq, OpLt), Req (..), Version (Version), buildGraphSetupFile)
 
 import Data.Text (Text)
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 import Text.RawString.QQ (r)
 
+import Control.Monad (void)
 import Data.Void (Void)
+import Strategy.Python.Pip (PythonPackage (..))
 import Strategy.Python.SetupPy (installRequiresParser, installRequiresParserSetupCfg)
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (Parsec, parse)
+
+newtype ExpectedDependency = ExpectedDependency (Dependency, [ExpectedDependency])
 
 parseMatch :: (Show a, Eq a) => Parsec Void Text a -> Text -> a -> Expectation
 parseMatch parser input parseExpected = parse parser "" input `shouldParse` parseExpected
@@ -39,40 +43,131 @@ setupPyInput =
   , UrlReq "pkgThree" Nothing [uri|https://example.com|] Nothing
   ]
 
+setupCfgInput :: [Req]
+setupCfgInput =
+  [ NameReq "pkgFour" Nothing (Just [Version OpEq "1"]) Nothing
+  , NameReq "pkgFive" Nothing Nothing Nothing
+  ]
+
+traverseDeps :: [ExpectedDependency] -> Graphing Dependency
+traverseDeps deps = run . evalGrapher $ do
+  traverse
+    ( \(ExpectedDependency (dep, deepDeps)) -> do
+        direct dep
+        traverseDeepDeps dep deepDeps
+    )
+    deps
+  where
+    traverseDeepDeps parent children = do
+      traverse addDeps children
+      where
+        addDeps (ExpectedDependency (child, deeperDeps)) = do
+          deep child
+          edge parent child
+          void $ traverseDeepDeps child deeperDeps
+
 expected :: Graphing Dependency
-expected = run . evalGrapher $ do
-  direct $
-    Dependency
-      { dependencyType = PipType
-      , dependencyName = "pkgOne"
-      , dependencyVersion =
-          Just
-            ( CAnd
-                (CGreaterOrEq "1.0.0")
-                (CLess "2.0.0")
+expected = traverseDeps setupPyExpectedDeps
+
+setupPyExpectedDeps :: [ExpectedDependency]
+setupPyExpectedDeps =
+  [ ExpectedDependency
+      ( Dependency
+          { dependencyType = PipType
+          , dependencyName = "pkgOne"
+          , dependencyVersion =
+              Just
+                ( CAnd
+                    (CGreaterOrEq "1.0.0")
+                    (CLess "2.0.0")
+                )
+          , dependencyLocations = []
+          , dependencyEnvironments = mempty
+          , dependencyTags = Map.empty
+          }
+      , []
+      )
+  , ExpectedDependency
+      ( Dependency
+          { dependencyType = PipType
+          , dependencyName = "pkgTwo"
+          , dependencyVersion = Nothing
+          , dependencyLocations = []
+          , dependencyEnvironments = mempty
+          , dependencyTags = Map.empty
+          }
+      , []
+      )
+  , ExpectedDependency
+      ( Dependency
+          { dependencyType = PipType
+          , dependencyName = "pkgThree"
+          , dependencyVersion = Just (CURI "https://example.com")
+          , dependencyLocations = []
+          , dependencyEnvironments = mempty
+          , dependencyTags = Map.empty
+          }
+      , []
+      )
+  ]
+
+setupCfgExpectedDeps :: [ExpectedDependency]
+setupCfgExpectedDeps =
+  [ ExpectedDependency
+      ( Dependency
+          { dependencyType = PipType
+          , dependencyName = "pkgFour"
+          , dependencyVersion = Just (CEq "1")
+          , dependencyLocations = []
+          , dependencyEnvironments = mempty
+          , dependencyTags = Map.empty
+          }
+      , []
+      )
+  , ExpectedDependency
+      ( Dependency
+          { dependencyType = PipType
+          , dependencyName = "pkgFive"
+          , dependencyVersion = Nothing
+          , dependencyLocations = []
+          , dependencyEnvironments = mempty
+          , dependencyTags = Map.empty
+          }
+      , []
+      )
+  ]
+
+setupPyBarDeps :: [ExpectedDependency]
+setupPyBarDeps =
+  [ ExpectedDependency
+      ( Dependency
+          { dependencyType = PipType
+          , dependencyName = "pkgChild"
+          , dependencyVersion = Just (CEq "1")
+          , dependencyLocations = []
+          , dependencyEnvironments = mempty
+          , dependencyTags = Map.empty
+          }
+      ,
+        [ ExpectedDependency
+            ( Dependency
+                { dependencyType = PipType
+                , dependencyName = "pkgChildTwo"
+                , dependencyVersion = Just (CEq "1")
+                , dependencyLocations = []
+                , dependencyEnvironments = mempty
+                , dependencyTags = Map.empty
+                }
+            , []
             )
-      , dependencyLocations = []
-      , dependencyEnvironments = mempty
-      , dependencyTags = Map.empty
-      }
-  direct $
-    Dependency
-      { dependencyType = PipType
-      , dependencyName = "pkgTwo"
-      , dependencyVersion = Nothing
-      , dependencyLocations = []
-      , dependencyEnvironments = mempty
-      , dependencyTags = Map.empty
-      }
-  direct $
-    Dependency
-      { dependencyType = PipType
-      , dependencyName = "pkgThree"
-      , dependencyVersion = Just (CURI "https://example.com")
-      , dependencyLocations = []
-      , dependencyEnvironments = mempty
-      , dependencyTags = Map.empty
-      }
+        ]
+      )
+  ]
+expectedCombined :: Graphing Dependency
+expectedCombined = traverseDeps (setupCfgExpectedDeps ++ setupPyExpectedDeps)
+
+expectedBar :: Graphing Dependency
+expectedBar = traverseDeps setupPyBarDeps
 
 spec :: Spec
 spec = do
@@ -80,39 +175,50 @@ spec = do
   describe "parse" $ do
     it "should parse setup.py without comments" $ do
       let shouldParseInto = parseMatch installRequiresParser
-      setupPyWithoutComment `shouldParseInto` [mkReq "PyYAML", mkReq "pandas", mkReq "numpy"]
-      setupPyWithoutComment2 `shouldParseInto` [mkReq "PyYAML", mkReq "pandas", mkReq "numpy"]
+      setupPyWithoutComment `shouldParseInto` ([mkReq "PyYAML", mkReq "pandas", mkReq "numpy"], Just "foo")
+      setupPyWithoutComment2 `shouldParseInto` ([mkReq "PyYAML", mkReq "pandas", mkReq "numpy"], Nothing)
 
     it "should parse setup.py with backslash" $ do
       let shouldParseInto = parseMatch installRequiresParser
-      setupPyWithBackslash `shouldParseInto` [mkReq "PyYAML", mkReq "pandas", mkReq "numpy"]
+      setupPyWithBackslash `shouldParseInto` ([mkReq "PyYAML", mkReq "pandas", mkReq "numpy"], Nothing)
 
     it "should parse setup.py with comments" $ do
       let shouldParseInto = parseMatch installRequiresParser
 
-      setupPyWithCommentAfterComma `shouldParseInto` [mkReq "PyYAML", mkReq "pandas", mkReq "numpy"]
-      setupPyWithCommentBeforeReq `shouldParseInto` [mkReq "PyYAML", mkReq "numpy"]
-      setupPyWithAllComments `shouldParseInto` []
+      setupPyWithCommentAfterComma `shouldParseInto` ([mkReq "PyYAML", mkReq "pandas", mkReq "numpy"], Nothing)
+      setupPyWithCommentBeforeReq `shouldParseInto` ([mkReq "PyYAML", mkReq "numpy"], Nothing)
+      setupPyWithAllComments `shouldParseInto` ([], Just "foo")
 
-  describe "analyze" $
+  describe "analyze" $ do
     it "should produce expected output" $ do
-      let result = buildGraph setupPyInput
-
+      let result = buildGraphSetupFile Nothing Nothing setupPyInput Nothing []
       result `shouldBe` expected
+
+    it "should combine setup.py and setup.cfg" $ do
+      let result = buildGraphSetupFile Nothing Nothing setupPyInput Nothing setupCfgInput
+      result `shouldBe` expectedCombined
+
+    it "should default to install_requires when the setupPy package name is not found" $ do
+      let result = buildGraphSetupFile (Just [(PythonPackage "non-bar" "1" [])]) (Just "bar") setupPyInput Nothing []
+      result `shouldBe` expected
+
+    it "should only report found package dependencies when the setupPy package name is found" $ do
+      let result = buildGraphSetupFile (Just [(PythonPackage "bar" "1" [(PythonPackage "pkgChild" "1" [(PythonPackage "pkgChildTwo" "1" [])])])]) (Just "bar") setupPyInput Nothing []
+      result `shouldBe` expectedBar
 
 setupCfgSpec :: Spec
 setupCfgSpec =
   describe "setup.cfg parser" $ do
     it "should parse setup.cfg when it has no install_requires" $ do
       let shouldParseInto = parseMatch installRequiresParserSetupCfg
-      setupCgfWithoutInstallReqs `shouldParseInto` []
+      setupCgfWithoutInstallReqs `shouldParseInto` ([], Just "vnpy")
 
     it "should parse setup.cfg" $ do
       let shouldParseInto = parseMatch installRequiresParserSetupCfg
-      setupCgfSimple `shouldParseInto` [mkReq "PyYAML", mkReq "pandas"]
-      setupCgfSimple2 `shouldParseInto` [mkReq "PyYAML", mkReq "pandas"]
-      setupCgfSimple3 `shouldParseInto` [mkReq "PyYAML", mkReq "pandas"]
-      setupCgfSimpleComment `shouldParseInto` [mkReq "PyYAML", mkReq "pandas"]
+      setupCgfSimple `shouldParseInto` ([mkReq "PyYAML", mkReq "pandas"], Just "foo")
+      setupCgfSimple2 `shouldParseInto` ([mkReq "PyYAML", mkReq "pandas"], Nothing)
+      setupCgfSimple3 `shouldParseInto` ([mkReq "PyYAML", mkReq "pandas"], Nothing)
+      setupCgfSimpleComment `shouldParseInto` ([mkReq "PyYAML", mkReq "pandas"], Nothing)
 
 mkReq :: Text -> Req
 mkReq name = NameReq name Nothing Nothing Nothing
@@ -128,6 +234,7 @@ author = hey
 setupCgfSimple :: Text
 setupCgfSimple =
   [r|[options]
+name = foo
 packages = find:
 include_package_data = True
 zip_safe = False
@@ -180,6 +287,7 @@ setupPyWithoutComment :: Text
 setupPyWithoutComment =
   [r|from setuptools import setup, find_packages
 setup(
+    name='foo',
     install_requires=[
         'PyYAML',
         'pandas',
@@ -228,6 +336,7 @@ setupPyWithAllComments :: Text
 setupPyWithAllComments =
   [r|from setuptools import setup, find_packages
 setup(
+    name='foo',
     install_requires=[
         # 'PyYAML',
         # 'pandas==0.23.3',

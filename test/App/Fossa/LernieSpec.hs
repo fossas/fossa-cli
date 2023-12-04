@@ -8,6 +8,7 @@ module App.Fossa.LernieSpec (
 
 import App.Fossa.Lernie.Analyze (analyzeWithLernie, analyzeWithLernieWithOrgInfo, grepOptionsToLernieConfig, lernieMessagesToLernieResults, singletonLernieMessage)
 import App.Fossa.Lernie.Types (GrepEntry (..), GrepOptions (..), LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieScanType (..), LernieWarning (..), OrgWideCustomLicenseConfigPolicy (..))
+import App.Types (FullFileUploads (..))
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Telemetry (withoutTelemetry)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
@@ -44,6 +45,7 @@ customLicenseLernieMatchData =
 -- `extraLineBytes * (lineNumber - 1)` to the bytes.
 -- (line-numbers are 1-indexed, and you have only encountered lineNumber - 1 newLines when you are on line n,
 -- so you have to subtract 1 from them).
+
 extraLineBytes :: Integer
 #ifdef mingw32_HOST_OS
 extraLineBytes = 1
@@ -74,6 +76,7 @@ customLicenseMatchMessage =
   LernieMatch
     { lernieMatchPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
     , lernieMatchMatches = [customLicenseLernieMatchData]
+    , lernieMatchContents = Nothing
     }
 
 secondCustomLicenseMatchMessage :: LernieMatch
@@ -81,6 +84,7 @@ secondCustomLicenseMatchMessage =
   LernieMatch
     { lernieMatchPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
     , lernieMatchMatches = [secondCustomLicenseLernieMatchData]
+    , lernieMatchContents = Nothing
     }
 
 keywordSearchLernieMatchData :: LernieMatchData
@@ -101,6 +105,7 @@ keywordSearchMatchMessage =
   LernieMatch
     { lernieMatchPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
     , lernieMatchMatches = [keywordSearchLernieMatchData]
+    , lernieMatchContents = Nothing
     }
 
 warningMessage :: LernieWarning
@@ -258,6 +263,7 @@ expectedLernieConfig =
   LernieConfig
     { rootDir = absDir
     , regexes = [customLicenseLernieRegex, keywordSearchLernieRegex]
+    , fullFiles = False
     }
 
 keywordSearchLernieRegex :: LernieRegex
@@ -300,7 +306,7 @@ spec = do
 
   describe "grepOptionsToLernieConfig" $ do
     it "should create a lernie config" $ do
-      (grepOptionsToLernieConfig absDir grepOptions) `shouldBe` Just expectedLernieConfig
+      grepOptionsToLernieConfig absDir grepOptions (FullFileUploads False) `shouldBe` Just expectedLernieConfig
 
   describe "analyzeWithLernie" $ do
     currDir <- runIO getCurrentDir
@@ -342,6 +348,45 @@ spec = do
                             }
                         ]
           (lernieResultsSourceUnit res) `shouldBe'` Just actualSourceUnit
+
+    it' "should include the file contents if the org has the full-files flag on" $ do
+      GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry], orgRequiresFullFileUploads = True}
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernieWithOrgInfo scanDir grepOptions
+      case result of
+        Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
+        Just res -> do
+          -- Just assert that we find the contents of the files
+          let sourceUnit = lernieResultsSourceUnit res
+          let maybeLicenseUnits = licenseSourceUnitLicenseUnits <$> sourceUnit
+          case maybeLicenseUnits of
+            Nothing -> expectationFailure' "licenseUnits should not be Nothing"
+            Just licenseUnits -> do
+              let licenseUnitDatas = concatMap (NE.toList . licenseUnitData) licenseUnits
+              let contents = map licenseUnitDataContents licenseUnitDatas
+              -- fix newlines on windows so that we get the same contents on both Windows and other OSes
+              let fixedContents = sort $ map (Text.replace "\r\n" "\n" <$>) contents
+              -- The result from the .fossa.yml file will be filtered out in actual usage
+              fixedContents
+                `shouldBe'` [ Just "# I should not find a Proprietary License in this file, because it is the .fossa.yml file\nversion: 3\n"
+                            , Just "Keyword Searches are great!\n\nThis file is very confidential\n"
+                            , Just "This is a Proprietary License.\n\nIs this a Proprietary License too?\n\nThrow in a third Proprietary License just for fun\n"
+                            ]
+
+    it' "should not include the file contents if the org has the full-files flag off" $ do
+      GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry], orgRequiresFullFileUploads = False}
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernieWithOrgInfo scanDir grepOptions
+      case result of
+        Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
+        Just res -> do
+          -- Just assert that the contents are all `Nothing`
+          let sourceUnit = lernieResultsSourceUnit res
+          let maybeLicenseUnits = licenseSourceUnitLicenseUnits <$> sourceUnit
+          case maybeLicenseUnits of
+            Nothing -> expectationFailure' "licenseUnits should not be Nothing"
+            Just licenseUnits -> do
+              let licenseUnitDatas = concatMap (NE.toList . licenseUnitData) licenseUnits
+              let contents = map licenseUnitDataContents licenseUnitDatas
+              contents `shouldBe'` [Nothing, Nothing, Nothing]
 
     it' "should merge the config from fossa.yml and the org" $ do
       GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry]}

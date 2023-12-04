@@ -435,6 +435,7 @@ library
     Strategy.Python.Errors
     Strategy.Python.PDM.Pdm
     Strategy.Python.PDM.PdmLock
+    Strategy.Python.Pip
     Strategy.Python.Pipenv
     Strategy.Python.Poetry
     Strategy.Python.Poetry.Common
@@ -618,6 +619,7 @@ test-suite unit-tests
     Perl.PerlSpec
     Pnpm.PnpmLockSpec
     Python.PipenvSpec
+    Python.PipSpec
     Python.Poetry.CommonSpec
     Python.Poetry.PoetryLockSpec
     Python.Poetry.PyProjectSpec

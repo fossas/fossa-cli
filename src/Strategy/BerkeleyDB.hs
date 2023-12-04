@@ -21,6 +21,7 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.Exec (Exec)
+import Effect.Logger (Logger)
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing, directs)
@@ -89,6 +90,7 @@ getDeps ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   , Has Exec sig m
+  , Has Logger sig m
   ) =>
   BerkeleyDatabase ->
   m DependencyResults
@@ -106,6 +108,7 @@ analyze ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   , Has Exec sig m
+  , Has Logger sig m
   ) =>
   Path Abs Dir ->
   Path Abs File ->

@@ -1,5 +1,6 @@
 module Strategy.Python.Util (
   buildGraph,
+  buildGraphSetupFile,
   Version (..),
   Marker (..),
   MarkerOp (..),
@@ -12,19 +13,31 @@ module Strategy.Python.Util (
 ) where
 
 import Control.Monad (join)
+import Control.Monad.Identity (Identity)
 import Data.Char qualified as C
-import Data.Foldable (asum)
+import Data.Foldable (asum, find, for_)
 import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes
+import Effect.Grapher (Grapher, GrapherC, Has, deep, direct, edge, evalGrapher, run)
 import Graphing (Graphing)
 import Graphing qualified
+import Strategy.Python.Pip (PythonPackage (..))
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.URI qualified as URI
 import Toml qualified
+
+pkgToReq :: PythonPackage -> Req
+pkgToReq p =
+  NameReq (pkgName p) Nothing (Just [Version OpEq (pkgVersion p)]) Nothing
+
+depName :: Req -> Text
+depName (NameReq nm _ _ _) = nm
+depName (UrlReq nm _ _ _) = nm
 
 reqToDependency :: Req -> Dependency
 reqToDependency req =
@@ -37,17 +50,58 @@ reqToDependency req =
     , dependencyTags = maybe Map.empty toTags (depMarker req)
     }
   where
-    depName (NameReq nm _ _ _) = nm
-    depName (UrlReq nm _ _ _) = nm
-
     depVersion (NameReq _ _ versions _) = toConstraint <$> versions
     depVersion (UrlReq _ _ uri _) = Just (CURI (URI.render uri))
 
     depMarker (NameReq _ _ _ marker) = marker
     depMarker (UrlReq _ _ _ marker) = marker
 
-buildGraph :: [Req] -> Graphing Dependency
-buildGraph = Graphing.fromList . map reqToDependency
+buildGraphSetupFile :: Maybe [PythonPackage] -> Maybe Text -> [Req] -> Maybe Text -> [Req] -> Graphing Dependency
+buildGraphSetupFile maybePackages pyPackageName pyReqs cfgPackageName cfgReqs = do
+  Graphing.gmap reqToDependency $ do
+    case maybePackages of
+      Nothing -> Graphing.fromList (pyReqs ++ cfgReqs)
+      Just packages -> do
+        run . evalGrapher $ do
+          addDeps packages pyPackageName pyReqs
+          addDeps packages cfgPackageName cfgReqs
+  where
+    addDeps :: [PythonPackage] -> Maybe Text -> [Req] -> GrapherC Req Identity ()
+    addDeps packages maybeName reqs = do
+      case maybeName of
+        Nothing -> for_ reqs direct
+        Just packageName ->
+          case (find (\p -> Text.toLower (pkgName p) == Text.toLower (packageName)) packages) of
+            Nothing -> for_ reqs direct
+            Just pkg ->
+              for_ (requires pkg) $ \c -> do
+                let r = pkgToReq c
+                direct r
+                addChildren r c
+
+buildGraph :: Maybe [PythonPackage] -> [Req] -> Graphing Dependency
+buildGraph maybePackages reqs = do
+  Graphing.gmap reqToDependency $ do
+    case maybePackages of
+      Nothing -> Graphing.fromList reqs
+      Just packages -> do
+        run . evalGrapher $ do
+          for_ reqs direct
+          for_ packages $ \p -> do
+            case findParent (pkgName p) of
+              Just parent -> addChildren parent p
+              Nothing -> pure ()
+  where
+    findParent :: Text -> Maybe Req
+    findParent packageName = find (\r -> Text.toLower (depName r) == Text.toLower (packageName)) reqs
+
+addChildren :: (Has (Grapher Req) sig m) => Req -> PythonPackage -> m ()
+addChildren parent pkg = do
+  for_ (requires pkg) $ \c -> do
+    let child = pkgToReq c
+    deep child
+    edge parent child
+    addChildren child c
 
 -- we pull out tags naively. we don't respect and/or semantics, and ignore operators
 -- FUTURE: more useful tagging? in particular: only pull out sys_platform?
