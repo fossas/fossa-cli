@@ -28,10 +28,9 @@ import Strategy.Maven.Pom.PomFile
 import Strategy.Maven.Pom.Resolver
 import Text.Pretty.Simple (pShow)
 
+import Data.Text (Text)
 import Effect.Logger (Logger, Pretty (pretty), logDebug, runLogger)
 import Text.Pretty.Simple (pShow)
-
-import Effect.Logger (Logger, Pretty (pretty), logDebug, runLogger)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has Logger sig m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects basedir = do
@@ -55,17 +54,24 @@ buildProjectClosures basedir global = closures
     closures = map (\(path, (coord, pom)) -> toClosure path coord pom) (Map.toList projectRoots)
 
     toClosure :: Path Abs File -> MavenCoordinate -> Pom -> MavenProjectClosure
-    toClosure path coord pom = MavenProjectClosure basedir path coord pom reachableGraph reachablePomMap
+    toClosure path coord pom = MavenProjectClosure basedir path coord pom reachableGraph reachablePomMap closureSubmodules
       where
         reachableGraph = AM.induce (`Set.member` reachablePoms) $ globalGraph global
         reachablePomMap = Map.filterWithKey (\k _ -> Set.member k reachablePoms) $ globalPoms global
         reachablePoms = bidirectionalReachable coord (globalGraph global)
+        closureSubmodules = submodulesFromCoordinate reachablePomMap
 
     projectRoots :: Map (Path Abs File) (MavenCoordinate, Pom)
     projectRoots = determineProjectRoots basedir global graphRoots
 
     graphRoots :: [MavenCoordinate]
     graphRoots = sourceVertices (globalGraph global)
+
+    submodulesFromCoordinate :: Map MavenCoordinate a -> Set Text
+    submodulesFromCoordinate = Set.fromList . Prelude.map extractSubmoduleFromCoordinate . Map.keys
+
+    extractSubmoduleFromCoordinate :: MavenCoordinate -> Text
+    extractSubmoduleFromCoordinate (MavenCoordinate group artifact _) = mconcat [group, ":", artifact]
 
 -- Find reachable nodes both below (children, grandchildren, ...) and above (parents, grandparents) the node
 bidirectionalReachable :: Ord a => a -> AM.AdjacencyMap a -> Set.Set a
@@ -115,6 +121,8 @@ data MavenProjectClosure = MavenProjectClosure
   , closureRootPom :: Pom
   , closureGraph :: AM.AdjacencyMap MavenCoordinate
   , closurePoms :: Map MavenCoordinate (Path Abs File, Pom)
+  , closureSubmodules :: Set Text
+  -- ^ used for submodule filtering
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -127,4 +135,5 @@ instance ToJSON MavenProjectClosure where
       , "closureRootPom" .= closureRootPom
       , "closureGraph" .= AM.adjacencyMap closureGraph
       , "closurePoms" .= closurePoms
+      , "closureSubmodules" .= closureSubmodules
       ]

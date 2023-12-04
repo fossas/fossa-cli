@@ -37,7 +37,7 @@ data MavenStrategyOpts = MavenStrategyOpts
   }
   deriving (Eq, Ord, Show)
 
-analyze' :: Set Text -> MavenProjectClosure -> Graphing Dependency
+analyze' :: Set Text -> MavenProjectClosure -> Graphing MavenDependency
 analyze' = do
   traceM ("Analyze of Pom ()()(())(()()())()()")
   buildProjectGraph
@@ -119,8 +119,8 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
       traceM ("This is the coord artifact &&&&&&&&&&& : " ++ show (coordArtifact coord))
       _ <- Map.traverseWithKey addDep deps
       for_ childPoms $ \(childCoord, childPom) -> do
-        traceM ("this is the filter set " ++ show (submoduleFilterSet))
-        traceM ("this is the target name in go function for children " ++ show (getTargetName childCoord))
+        -- traceM ("this is the filter set " ++ show (submoduleFilterSet))
+        -- traceM ("this is the target name in go function for children " ++ show (getTargetName childCoord))
         if getTargetName childCoord `Set.member` submoduleFilterSet
           then do
             traceM "Adding in goooooooo"
@@ -144,7 +144,7 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
 
         addDep :: Has MavenGrapher sig m => (Group, Artifact) -> MvnDepBody -> m ()
         addDep (group, artifact) body = do
-          traceM "Adding dEpsjfsljflsflsfjlslj"
+          -- traceM "Adding dEpsjfsljflsflsfjlslj"
           let depPackage = buildMavenPackage completePom group artifact body
           edge (coordToPackage coord) depPackage
           traverse_ (label depPackage . MavenLabelScope) (depScope body)

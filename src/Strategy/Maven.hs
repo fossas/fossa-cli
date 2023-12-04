@@ -14,10 +14,11 @@ import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
+import Data.Map.Strict (Map)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty, toSet)
-import Data.Text
+import Data.Text hiding (group)
 import DepTypes (Dependency)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Filters (AllFilters, MavenScopeFilters)
@@ -26,9 +27,9 @@ import Effect.Exec (CandidateCommandEffs)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Graphing (Graphing, gmap, toAdjacencyMap)
+import Graphing (Graphing, gmap, toAdjacencyMap, vertexList)
 import Path (Abs, Dir, Path, parent)
-import Strategy.Maven.Common (MavenDependency (..), filterMavenDependencyByScope, mavenDependencyToDependency)
+import Strategy.Maven.Common (MavenDependency (..), filterMavenDependencyByScope, filterMavenSubmodules, mavenDependencyToDependency)
 import Strategy.Maven.DepTree qualified as DepTreeCmd
 import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
@@ -39,8 +40,10 @@ import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), 
 
 import Effect.Logger (Logger, Pretty (pretty), logDebug, runLogger)
 
+import Data.Map qualified as Map
 import Debug.Trace (traceM)
 import Effect.Logger (Logger, Pretty (pretty), logDebug, runLogger)
+import Strategy.Maven.Pom.PomFile (MavenCoordinate (MavenCoordinate))
 
 discover ::
   ( Has (Lift IO) sig m
@@ -62,12 +65,10 @@ mkProject (MavenProject closure) = do
   DiscoveredProject
     { projectType = MavenProjectType
     , projectPath = parent $ PomClosure.closurePath closure
-    , projectBuildTargets = maybe ProjectWithoutTargets FoundTargets $ nonEmpty $ Set.map BuildTarget testSet
+    , -- , projectBuildTargets = maybe ProjectWithoutTargets FoundTargets $ nonEmpty $ Set.map BuildTarget testSet
+      projectBuildTargets = maybe ProjectWithoutTargets FoundTargets $ nonEmpty $ Set.map BuildTarget $ PomClosure.closureSubmodules closure
     , projectData = MavenProject closure
     }
-  where
-    testSet :: Set Text
-    testSet = Set.fromList ["com.fossa:lib", "com.fossa:exec", "com.fossa:example-multimodule-project"]
 
 newtype MavenProject = MavenProject {unMavenProject :: PomClosure.MavenProjectClosure}
   deriving (Eq, Ord, Show, Generic)
@@ -99,12 +100,16 @@ getDeps foundTargets (MavenProject closure) = do
         _ -> Set.empty
 
   logDebug $ "Targets in get Deps for Maven " <> pretty (pShow (targetSet))
+  logDebug $ "Closure submodule set " <> pretty (pShow (PomClosure.closureSubmodules closure))
   -- (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis closure <||> getStaticAnalysis closure
-  filteredGraph <- withScopeFiltering graph
+  (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis targetSet closure
 
-  (graph, graphBreadth) <- context "Maven" $ getStaticAnalysis targetSet closure
+  -- submodulesToDeleteGraph <- filterMavenSubmodules targetSet (PomClosure.closureSubmodules closure) graph
   logDebug $ "This is the Graph ((((((()))))))" <> pretty (pShow (graph))
+  -- logDebug $ "This is the Graph after filtering submodules **********" <> pretty (pShow (submodulesToDeleteGraph))
+  -- logDebug $ "This is vertex lsit of nodes to delete ((((((()))))))" <> pretty (pShow (vertexList submodulesToDeleteGraph))
   -- logDebug $ "This is the adjacency Map ((((((()))))))" <> pretty (pShow (Graphing.toAdjacencyMap graph))
+
   pure $
     DependencyResults
       { dependencyGraph = filteredGraph
@@ -135,21 +140,24 @@ getDepsDynamicAnalysis ::
   ( Has (Lift IO) sig m
   , Has ReadFS sig m
   , CandidateCommandEffs sig m
+  , Has Logger sig m
   ) =>
+  Set Text ->
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
 getDepsDynamicAnalysis closure = do
   context "Dynamic Analysis"
     $ warnOnErr MissingEdges
       . warnOnErr MissingDeepDeps
-    $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
+    $ getDepsTreeCmd submoduleFilters closure
 
--- \$ (getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
+-- (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
 
 getDepsPlugin ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
+  , Has Logger sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
@@ -168,12 +176,14 @@ getDepsTreeCmd ::
   ( Has (Lift IO) sig m
   , Has ReadFS sig m
   , CandidateCommandEffs sig m
+  , Has Logger sig m
   ) =>
+  Set Text ->
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
 getDepsTreeCmd closure = do
   context "Dynamic analysis" $
-    DepTreeCmd.analyze . parent $
+    DepTreeCmd.analyze submoduleFilters (PomClosure.closureSubmodules closure) . parent $
       PomClosure.closurePath closure
 
 getStaticAnalysis ::

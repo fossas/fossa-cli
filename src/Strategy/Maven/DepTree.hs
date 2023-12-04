@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Strategy.Maven.DepTree (
   analyze,
   parseDotGraphs,
@@ -16,8 +18,9 @@ import Control.Effect.Exception (SomeException, finally)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception.Extra (safeTry)
 import Data.Char (isSpace)
-import Data.Foldable (for_)
+import Data.Foldable (Foldable (foldl'), for_)
 import Data.Maybe (maybeToList)
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -32,6 +35,7 @@ import DepTypes (
  )
 import Effect.Exec (AllowErr (..), CandidateCommandEffs, Command (..), exec, mkAnalysisCommand)
 import Effect.Grapher (direct, edge, evalGrapher)
+import Effect.Logger (Logger, Pretty (pretty), logDebug, runLogger)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser)
 import Graphing (Graphing, gmap, shrinkRoots)
 import Path (Abs, Dir, File, Path, Rel, fromAbsFile, parseRelFile, (</>))
@@ -48,6 +52,7 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (space1)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
+import Text.Pretty.Simple (pShow)
 import Types (GraphBreadth (Complete))
 
 -- Construct the Command for running `mvn dependency:tree` correctly.
@@ -101,7 +106,10 @@ analyze ::
   ( Has ReadFS sig m
   , Has (Lift IO) sig m
   , CandidateCommandEffs sig m
+  , Has Logger sig m
   ) =>
+  Set Text ->
+  Set Text ->
   Path Abs Dir ->
   m (Graphing MavenDependency, GraphBreadth)
 analyze dir = do
@@ -167,9 +175,9 @@ toDependency PackageId{groupName, artifactName, artifactVersion, buildTag} = do
 
 toGraph :: DotGraph -> Graphing PackageId
 toGraph DotGraph{rootNode, edgeList} = run . evalGrapher $ do
-  traceM ("The DOT GRAPH ------------- ")
-  traceShowM rootNode
-  traceShowM edgeList
+  -- traceM ("The DOT GRAPH ------------- ")
+  -- traceM ("The rootNode ------------- " ++ show (rootNode))
+  -- traceM ("The edgeList------------- " ++ show (edgeList))
 
   direct rootNode
   for_ edgeList $ uncurry edge

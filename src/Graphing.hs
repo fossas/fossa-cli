@@ -48,6 +48,8 @@ module Graphing (
   promoteToDirect,
   shrinkRoots,
   subGraphOf,
+  deleteNodeAndChildren,
+  reachableNodes,
 
   -- * Conversions
   fromAdjacencyMap,
@@ -393,3 +395,39 @@ subGraphOf n (Graphing gr) =
     keepPredicate :: Node ty -> Bool
     keepPredicate Root = True
     keepPredicate (Node ty) = Set.member (Node ty) reachableNodes
+
+-- Delete a node and its children from the Graphing based on a condition
+deleteNodeAndChildren :: forall ty. Ord ty => (ty -> Bool) -> ty -> Graphing ty -> Graphing ty
+deleteNodeAndChildren f node (Graphing gr) =
+  Graphing $ AM.removeVertex (Node node) (AM.induce keepPredicate gr)
+  where
+    nodes :: [Node ty]
+    nodes = Prelude.filter (== Node node) $ AM.vertexList gr
+
+    reachableNodes :: Set.Set (Node ty)
+    reachableNodes = Set.fromList $ AMA.dfs gr nodes
+
+    keepPredicate :: Node ty -> Bool
+    keepPredicate Root = True
+    keepPredicate (Node ty) = Set.notMember (Node ty) reachableNodes || f ty
+
+reachableNodes :: forall ty. Ord ty => Set.Set ty -> Graphing ty -> Set.Set ty
+reachableNodes nodeSet (Graphing gr) = Set.fromList $ AMA.dfs (toAdjacencyMap (Graphing gr)) nodes
+  where
+    nodes :: [ty]
+    nodes = Prelude.filter (`Set.member` nodeSet) $ AM.vertexList (toAdjacencyMap (Graphing gr))
+
+-- where
+--   node' = if condition node then node else mempty
+
+--   removeChildren :: (ty -> Bool) -> [Node ty] -> [Node ty]
+--   removeChildren _ [] = []
+--   removeChildren cond (n:ns) =
+--     case n of
+--       Root -> if cond node then [] else n : removeChildren cond ns
+--       Node x -> if cond x then removeChildren cond (AMA.reachable gr [n]) ++ removeChildren cond ns else n : removeChildren cond ns
+
+-- Example usage:
+-- Let's say you have a Graphing 'myGraph' and you want to delete the node "exampleNode"
+-- for sure, and conditionally delete its reachable nodes based on a certain condition (e.g., conditionFunction):
+-- updatedGraph = deleteNodeAndChildrenWithCondition conditionFunction "exampleNode" myGraph
