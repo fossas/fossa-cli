@@ -67,7 +67,7 @@ version: 3
 #
 #   # The URL of your project that will appear in FOSSA.
 #   # Intended to be the URL to the repository of this project.
-#   url: github.com/fossas/fossa-clif
+#   url: github.com/fossas/fossa-cli
 #
 #   # Jira Project Key to associate with your project for improved issue triage.
 #   # See documentation for details: https://docs.fossa.com/docs/atlassian-jira
@@ -117,7 +117,8 @@ version: 3
 #   forceRescans: false
 # 
 #   # Determines whether vendored dependencies are scanned using "Archive Upload" or "CLI License Scan" method.
-#   # Possible values: ArchiveUpload, CLILicenseScan. Default: CLI License Scan (organization default)
+#   # Possible values: ArchiveUpload, CLILicenseScan.
+#   # The default is usually "CLILicenseScan", but your organization may have opted to default to "ArchiveUpload".
 #   scanMethod: CLILicenseScan
 # 
 #   # License Scan Path Filters Configuration
