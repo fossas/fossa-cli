@@ -35,10 +35,10 @@ import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure)
 import Strategy.Maven.Pom.Closure qualified as PomClosure
-import Text.Pretty.Simple (pShow)
-import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), FoundTargets (..), GraphBreadth (..))
 
 import Effect.Logger (Logger, Pretty (pretty), logDebug, runLogger)
+import Text.Pretty.Simple (pShow)
+import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), FoundTargets (..), GraphBreadth (..))
 
 import Data.Map qualified as Map
 import Debug.Trace (traceM)
