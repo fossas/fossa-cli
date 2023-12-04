@@ -28,51 +28,61 @@ import Strategy.Maven.Plugin (
   ReactorOutput (..),
  )
 import Strategy.Maven.PluginStrategy (buildGraph)
+
+import Strategy.Maven.Common (MavenDependency (..))
 import Test.Hspec (Spec, describe, it)
 
-packageOne :: Dependency
-packageOne =
-  Dependency
-    { dependencyType = MavenType
-    , dependencyName = "mygroup:packageOne"
-    , dependencyVersion = Just (CEq "1.0.0")
-    , dependencyLocations = []
-    , dependencyEnvironments = Set.fromList [EnvProduction, EnvTesting]
-    , dependencyTags = Map.fromList [("scopes", ["compile", "test"])]
-    }
+packageOne :: MavenDependency
+packageOne = do
+  let dep =
+        Dependency
+          { dependencyType = MavenType
+          , dependencyName = "mygroup:packageOne"
+          , dependencyVersion = Just (CEq "1.0.0")
+          , dependencyLocations = []
+          , dependencyEnvironments = Set.fromList [EnvProduction, EnvTesting]
+          , dependencyTags = Map.fromList [("scopes", ["compile", "test"])]
+          }
+  MavenDependency dep (Set.fromList ["compile", "test"])
 
-packageTwo :: Dependency
-packageTwo =
-  Dependency
-    { dependencyType = MavenType
-    , dependencyName = "mygroup:packageTwo"
-    , dependencyVersion = Just (CEq "2.0.0")
-    , dependencyLocations = []
-    , dependencyEnvironments = Set.singleton EnvProduction
-    , dependencyTags = Map.fromList [("scopes", ["compile"]), ("optional", ["true"])]
-    }
+packageTwo :: MavenDependency
+packageTwo = do
+  let dep =
+        Dependency
+          { dependencyType = MavenType
+          , dependencyName = "mygroup:packageTwo"
+          , dependencyVersion = Just (CEq "2.0.0")
+          , dependencyLocations = []
+          , dependencyEnvironments = Set.singleton EnvProduction
+          , dependencyTags = Map.fromList [("scopes", ["compile"]), ("optional", ["true"])]
+          }
+  MavenDependency dep (Set.fromList ["compile"])
 
-packageFour :: Dependency
-packageFour =
-  Dependency
-    { dependencyType = MavenType
-    , dependencyName = "mygroup2:packageFour"
-    , dependencyVersion = Just (CEq "4.0.0")
-    , dependencyLocations = []
-    , dependencyEnvironments = Set.singleton EnvProduction
-    , dependencyTags = Map.fromList [("scopes", ["compile"])]
-    }
+packageFour :: MavenDependency
+packageFour = do
+  let dep =
+        Dependency
+          { dependencyType = MavenType
+          , dependencyName = "mygroup2:packageFour"
+          , dependencyVersion = Just (CEq "4.0.0")
+          , dependencyLocations = []
+          , dependencyEnvironments = Set.singleton EnvProduction
+          , dependencyTags = Map.fromList [("scopes", ["compile"])]
+          }
+  MavenDependency dep (Set.fromList ["compile"])
 
-packageMultiScope :: Dependency
-packageMultiScope =
-  Dependency
-    { dependencyType = MavenType
-    , dependencyName = "multiscope:apple"
-    , dependencyVersion = Just (CEq "1.0.0")
-    , dependencyLocations = mempty
-    , dependencyEnvironments = Set.fromList [EnvProduction, EnvTesting, EnvOther "other"]
-    , dependencyTags = Map.singleton "scopes" ["compile", "test", "other"]
-    }
+packageMultiScope :: MavenDependency
+packageMultiScope = do
+  let dep =
+        Dependency
+          { dependencyType = MavenType
+          , dependencyName = "multiscope:apple"
+          , dependencyVersion = Just (CEq "1.0.0")
+          , dependencyLocations = mempty
+          , dependencyEnvironments = Set.fromList [EnvProduction, EnvTesting, EnvOther "other"]
+          , dependencyTags = Map.singleton "scopes" ["compile", "test", "other"]
+          }
+  MavenDependency dep (Set.fromList ["compile", "test", "other"])
 
 mavenOutput :: PluginOutput
 mavenOutput =

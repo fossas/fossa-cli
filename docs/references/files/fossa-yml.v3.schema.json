@@ -335,7 +335,10 @@
         "grepDefinition": {
             "type": "object",
             "description": "defines a search for a custom license or a keyword.",
-            "required": ["matchCriteria", "name"],
+            "required": [
+                "matchCriteria",
+                "name"
+            ],
             "properties": {
                 "matchCriteria": {
                     "type": "string",
@@ -438,6 +441,37 @@
                     }
                 }
             }
+        },
+        "maven": {
+            "type": "object",
+            "properties": {
+                "scope-only": {
+                    "type": "array",
+                    "description": "The list of scopes to only allow scanning in your maven project.",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "scope-exclude": {
+                    "type": "array",
+                    "description": "The list of scopes to exclude from scanning in your maven project.",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "oneOf": [
+                {
+                    "required": [
+                        "scope-only"
+                    ]
+                },
+                {
+                    "required": [
+                        "scope-exclude"
+                    ]
+                }
+            ]
         }
     },
     "required": [

@@ -39,7 +39,7 @@ import Data.Aeson.Extra (encodeJSONToText)
 import Data.Foldable (for_, traverse_)
 import Data.Set.NonEmpty (toSet)
 import Data.String.Conversion (decodeUtf8, toText)
-import Discovery.Filters (AllFilters)
+import Discovery.Filters (AllFilters, MavenScopeFilters (..))
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec)
 import Effect.Logger (
@@ -81,6 +81,8 @@ listTargetsMain ListTargetsConfig{..} = do
     . withTaskPool capabilities updateProgress
     . runAtomicCounter
     . runReader experimental
+    -- `fossa list-targets` does not support maven scope filters.
+    . runReader (MavenScopeIncludeFilters mempty)
     -- The current version of `fossa list-targets` does not support filters.
     -- TODO: support both discovery and post-discovery filtering.
     . runReader (mempty :: AllFilters)
@@ -96,6 +98,7 @@ runAll ::
   , Has Debug sig m
   , Has Stack sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader MavenScopeFilters) sig m
   , Has (Reader AllFilters) sig m
   , Has Telemetry sig m
   ) =>

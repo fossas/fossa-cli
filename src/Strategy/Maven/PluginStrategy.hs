@@ -33,6 +33,7 @@ import Effect.Grapher qualified as Grapher
 import Effect.ReadFS (ReadFS)
 import Graphing (Graphing, shrinkRoots)
 import Path (Abs, Dir, Path)
+import Strategy.Maven.Common (MavenDependency (..))
 import Strategy.Maven.Plugin (
   Artifact (..),
   DepGraphPlugin,
@@ -58,7 +59,7 @@ analyze' ::
   , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
-  m (Graphing Dependency, GraphBreadth)
+  m (Graphing MavenDependency, GraphBreadth)
 analyze' dir = analyze dir depGraphPlugin
 
 analyzeLegacy' ::
@@ -67,7 +68,7 @@ analyzeLegacy' ::
   , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
-  m (Graphing Dependency, GraphBreadth)
+  m (Graphing MavenDependency, GraphBreadth)
 analyzeLegacy' dir = analyze dir depGraphPluginLegacy
 
 runReactor ::
@@ -89,7 +90,7 @@ analyze ::
   ) =>
   Path Abs Dir ->
   DepGraphPlugin ->
-  m (Graphing Dependency, GraphBreadth)
+  m (Graphing MavenDependency, GraphBreadth)
 analyze dir plugin = do
   graph <- withUnpackedPlugin plugin $ \filepath -> do
     context "Installing plugin" $ errCtx MvnPluginInstallFailed $ installPlugin dir filepath plugin
@@ -137,12 +138,13 @@ instance ToDiagnostic MayIncludeSubmodule where
 -- The multimodule case shows how one submodule can depend on another. In this
 -- case we want to remove the reference to submodule1 in submodule2's dependency
 -- tree and promote submodule1's dependency to be a root (direct) dependency.
-buildGraph :: ReactorOutput -> PluginOutput -> Graphing Dependency
+buildGraph :: ReactorOutput -> PluginOutput -> Graphing MavenDependency
 buildGraph reactorOutput PluginOutput{..} =
   -- The root deps in the maven depgraph text graph output are either the
   -- toplevel package or submodules in a multi-module project. We don't want to
   -- consider those because they're the users' packages, so promote them to
   -- direct when building the graph using `shrinkRoots`.
+
   shrinkRoots . run . evalGrapher $ do
     let byNumeric :: Map Int Artifact
         byNumeric = indexBy artifactNumericId outArtifacts
@@ -160,7 +162,7 @@ buildGraph reactorOutput PluginOutput{..} =
       "test" -> EnvTesting
       other -> EnvOther other
 
-    toDependency :: Has (Grapher Dependency) sig m => Artifact -> m Dependency
+    toDependency :: Has (Grapher MavenDependency) sig m => Artifact -> m MavenDependency
     toDependency Artifact{..} = do
       let dep =
             Dependency
@@ -174,13 +176,15 @@ buildGraph reactorOutput PluginOutput{..} =
                     ("scopes", artifactScopes)
                       : [("optional", ["true"]) | artifactOptional]
               }
+          dependencyScopes = Set.fromList artifactScopes
+          mavenDep = MavenDependency dep dependencyScopes
 
       when
         (artifactIsDirect || artifactArtifactId `Set.member` knownSubmodules)
-        (Grapher.direct dep)
-      pure dep
+        (Grapher.direct mavenDep)
+      pure mavenDep
 
-    visitEdge :: Has (Grapher Dependency) sig m => Map Int Dependency -> Edge -> m ()
+    visitEdge :: Has (Grapher MavenDependency) sig m => Map Int MavenDependency -> Edge -> m ()
     visitEdge refsByNumeric Edge{..} = do
       let refs = do
             parentRef <- Map.lookup edgeFrom refsByNumeric

@@ -400,6 +400,7 @@ library
     Strategy.Haskell.Stack
     Strategy.Leiningen
     Strategy.Maven
+    Strategy.Maven.Common
     Strategy.Maven.DepTree
     Strategy.Maven.Plugin
     Strategy.Maven.PluginStrategy
@@ -595,6 +596,7 @@ test-suite unit-tests
     GraphUtil
     Haskell.CabalSpec
     Haskell.StackSpec
+    Maven.CommonSpec
     Maven.DepTreeSpec
     Maven.PluginSpec
     Maven.PluginStrategySpec

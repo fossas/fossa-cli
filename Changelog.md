@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- Maven: add support for maven scope filtering ([#1331](https://github.com/fossas/fossa-cli/pull/1331))
+
 ## v3.8.24
 
 - Python: use `pip` to determine transitive dependencies for setuptool projects that contain a req*.txt or setup.py file. ([#1334](https://github.com/fossas/fossa-cli/pull/1334))

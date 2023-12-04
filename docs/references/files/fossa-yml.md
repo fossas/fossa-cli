@@ -303,6 +303,37 @@ Found target: yarn@prod/docker
 Found target: pipenv@prod
 ```
 
+### Filtering by Maven Dependency Scope
+
+You can provide maven dependency scopes that you would like to filter. You can filter by either inclusion or exclusion. When both scope-only and scope-exclude are provided, scope-only will take precedence and be used for filtering.
+
+#### scope-only:
+
+The list of `only` scopes that should by scanned. 
+
+When a dependency is multi-scope (i.e. [compile, runtime]) ALL of the scopes must be conatined in `scope-only` for the dependency to be included in the scan results. 
+
+#### scope-exclude:
+
+The list of `exclude` scopes that you would like to exclude from scanning.
+
+When a dependency is multi-scope (i.e. [compile, runtime]), if ANY of the scopes are contained in `scope-exclude` it will be excluded from the scan results.
+
+
+```yaml
+version: 3
+
+maven:
+  scope-only:
+    - compile
+    - runtime
+## OR
+  scope-exclude:
+    - provided
+    - system
+    - test
+```
+
 ## FAQ
 
 ### Why are some configuration settings (name, team, policy, etc.) ignored by the FOSSA API after a project has already been created?

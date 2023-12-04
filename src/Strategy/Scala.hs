@@ -49,6 +49,7 @@ import Effect.Exec (
 import Effect.Logger (Logger, logDebug, viaShow)
 import Effect.ReadFS (ReadFS, readContentsXML)
 import GHC.Generics (Generic)
+import Graphing (gmap)
 import Path (
   Abs,
   Dir,
@@ -58,6 +59,7 @@ import Path (
   parseAbsFile,
   toFilePath,
  )
+import Strategy.Maven.Common (mavenDependencyToDependency)
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures, closurePath)
 import Strategy.Maven.Pom.PomFile (RawPom (rawPomArtifact, rawPomGroup, rawPomVersion))
@@ -189,7 +191,7 @@ analyzeWithPoms :: (Has Diagnostics sig m) => ScalaProject -> m DependencyResult
 analyzeWithPoms (ScalaProject _ _ closure) = context "Analyzing sbt dependencies with generated pom" $ do
   pure $
     DependencyResults
-      { dependencyGraph = Pom.analyze' closure
+      { dependencyGraph = gmap mavenDependencyToDependency $ Pom.analyze' closure
       , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = [closurePath closure]
       }

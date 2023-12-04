@@ -34,6 +34,7 @@ import App.Fossa.Config.Common (
   collectApiOpts,
   collectBaseDir,
   collectConfigFileFilters,
+  collectConfigMavenScopeFilters,
   collectRevisionData',
   commonOpts,
   metadataOpts,
@@ -82,7 +83,7 @@ import Data.String.Conversion (
   ToText (toText),
  )
 import Data.Text (Text)
-import Discovery.Filters (AllFilters (AllFilters), comboExclude, comboInclude)
+import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (MavenScopeIncludeFilters), comboExclude, comboInclude)
 import Effect.Exec (
   Exec,
  )
@@ -226,6 +227,7 @@ data AnalyzeConfig = AnalyzeConfig
   , projectRevision :: ProjectRevision
   , vsiOptions :: VSIModeOptions
   , filterSet :: AllFilters
+  , mavenScopeFilterSet :: MavenScopeFilters
   , experimental :: ExperimentalAnalyzeConfig
   , vendoredDeps :: VendoredDependencyOptions
   , unpackArchives :: Flag UnpackArchives
@@ -416,6 +418,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
           OverrideProject (optProjectName commons) (optProjectRevision commons) (analyzeBranch)
       modeOpts = collectModeOptions cliOpts
       filters = collectFilters maybeConfig cliOpts
+      mavenScopeFilters = collectMavenScopeFilters maybeConfig
       experimentalCfgs = collectExperimental maybeConfig cliOpts
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
       dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
@@ -436,6 +439,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> revisionData
     <*> modeOpts
     <*> filters
+    <*> mavenScopeFilters
     <*> pure experimentalCfgs
     <*> vendoredDepsOptions
     <*> pure analyzeUnpackArchives
@@ -446,6 +450,14 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure firstPartyScansFlag
     <*> pure grepOptions
     <*> pure customFossaDepsFile
+
+collectMavenScopeFilters ::
+  ( Has Diagnostics sig m
+  ) =>
+  Maybe ConfigFile ->
+  m MavenScopeFilters
+collectMavenScopeFilters maybeConfig =
+  pure $ maybe (MavenScopeIncludeFilters mempty) collectConfigMavenScopeFilters maybeConfig
 
 collectFilters ::
   ( Has Diagnostics sig m

@@ -10,6 +10,7 @@ import DepTypes (
   VerConstraint (..),
  )
 import GraphUtil
+import Strategy.Maven.Common (MavenDependency (..))
 import Strategy.Maven.DepTree (
   DotGraph (..),
   PackageId (..),
@@ -42,6 +43,8 @@ spec =
               []
               (Set.singleton EnvProduction)
               (mempty)
+      let mavenDepRngCore = MavenDependency depRngCore (Set.fromList ["compile"])
+
       let depMath3 =
             Dependency
               MavenType
@@ -50,6 +53,8 @@ spec =
               []
               (Set.singleton EnvTesting)
               (mempty)
+      let mavenDepMath3 = MavenDependency depMath3 (Set.fromList ["test"])
+
       let depJunit =
             Dependency
               MavenType
@@ -58,6 +63,8 @@ spec =
               []
               (Set.singleton EnvTesting)
               (mempty)
+      let mavenDepJunit = MavenDependency depJunit (Set.fromList ["test"])
+
       let depRngClientApi =
             Dependency
               MavenType
@@ -66,6 +73,8 @@ spec =
               []
               (Set.singleton EnvProduction)
               (mempty)
+      let mavenDepRngClientApi = MavenDependency depRngClientApi (Set.fromList ["compile"])
+
       let depHamcrestCore =
             Dependency
               MavenType
@@ -74,14 +83,15 @@ spec =
               []
               (Set.singleton EnvTesting)
               (mempty)
+      let mavenDepHamcrestCore = MavenDependency depHamcrestCore (Set.fromList ["test"])
 
       -- Act
       let graph = buildGraph fixtureSingleGraph
 
       -- Assert
-      expectDeps [depRngCore, depMath3, depJunit, depRngClientApi, depHamcrestCore] graph
-      expectDirect [depRngCore, depMath3, depJunit] graph
-      expectEdges [(depRngCore, depRngClientApi), (depJunit, depHamcrestCore)] graph
+      expectDeps [mavenDepRngCore, mavenDepMath3, mavenDepJunit, mavenDepRngClientApi, mavenDepHamcrestCore] graph
+      expectDirect [mavenDepRngCore, mavenDepMath3, mavenDepJunit] graph
+      expectEdges [(mavenDepRngCore, mavenDepRngClientApi), (mavenDepJunit, mavenDepHamcrestCore)] graph
 
     multi <- runIO $ TextIO.readFile fixtureMultiFile
     it "parses multiple dot graphs in one file" $
@@ -105,7 +115,7 @@ spec =
               , artifactPlatform = Nothing
               , buildTag = Nothing
               }
-      let d =
+      let dep =
             Dependency
               { dependencyType = MavenType
               , dependencyName = "org.apache.commons:commons-rng-parent"
@@ -114,6 +124,7 @@ spec =
               , dependencyEnvironments = Set.singleton EnvProduction
               , dependencyTags = mempty
               }
+      let d = MavenDependency dep (Set.fromList [])
       toDependency p `shouldBe` d
 
 fixtureSingleFile :: FilePath
