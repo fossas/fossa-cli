@@ -41,6 +41,7 @@ import Control.Effect.StickyLogger (StickyLogger)
 import Control.Monad (unless, when)
 import Data.Aeson (
   FromJSON (parseJSON),
+  Value (Null, Object),
   withObject,
   (.!=),
   (.:),
@@ -95,7 +96,11 @@ analyzeFossaDepsFile root maybeCustomFossaDepsPath maybeApiOpts vendoredDepsOpti
     Nothing -> pure Nothing
     Just depsFile -> do
       manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
-      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
+      if hasNoDeps manualDeps
+        then pure Nothing
+        else
+          context "Converting fossa-deps to partial API payload" $
+            Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
 
 retrieveCustomFossaDepsFile ::
   ( Has Diagnostics sig m
@@ -167,7 +172,6 @@ toSourceUnit ::
   VendoredDependencyOptions ->
   m SourceUnit
 toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendoredDepsOptions = do
-  -- If the file exists and we have no dependencies to report, that's a failure.
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
 
   archiveLocators <- case (maybeApiOpts, NE.nonEmpty vendoredDependencies) of
@@ -386,7 +390,7 @@ data DependencyMetadata = DependencyMetadata
   deriving (Eq, Ord, Show)
 
 instance FromJSON ManualDependencies where
-  parseJSON = withObject "ManualDependencies" $ \obj ->
+  parseJSON (Object obj) =
     ManualDependencies
       <$ (obj .:? "version" >>= isMissingOr1)
       <*> (obj .:? "referenced-dependencies" .!= [])
@@ -398,6 +402,8 @@ instance FromJSON ManualDependencies where
       isMissingOr1 :: Maybe Int -> Parser ()
       isMissingOr1 (Just x) | x /= 1 = fail $ "Invalid fossa-deps version: " <> show x
       isMissingOr1 _ = pure ()
+  parseJSON (Null) = pure $ ManualDependencies mempty mempty mempty mempty mempty
+  parseJSON other = fail $ "Expected object or Null for ManualDependencies, but got: " <> show other
 
 depTypeParser :: Text -> Parser DepType
 depTypeParser text = case depTypeFromText text of

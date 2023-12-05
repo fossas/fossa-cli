@@ -1,6 +1,7 @@
 module App.Docs (
   userGuideUrl,
   newIssueUrl,
+  fossaDepsDocUrl,
   fossaYmlDocUrl,
   strategyLangDocUrl,
   platformDocUrl,
@@ -23,6 +24,9 @@ userGuideUrl = guidePathOf versionOrBranch "/docs/README.md"
 
 fossaYmlDocUrl :: Text
 fossaYmlDocUrl = guidePathOf versionOrBranch "/docs/references/files/fossa-yml.md"
+
+fossaDepsDocUrl :: Text
+fossaDepsDocUrl = guidePathOf versionOrBranch "/docs/references/files/fossa-deps.md"
 
 newIssueUrl :: Text
 newIssueUrl = sourceCodeUrl <> "/issues/new"
