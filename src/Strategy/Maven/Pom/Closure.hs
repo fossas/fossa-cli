@@ -36,8 +36,8 @@ findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has 
 findProjects basedir = do
   pomFiles <- context "Finding pom files" $ findPomFiles basedir
   globalClosure <- context "Building global closure" $ buildGlobalClosure pomFiles
-  logDebug $ "List of Maven closures *******" <> pretty (pShow (buildProjectClosures basedir globalClosure))
-  logDebug $ "Maven Project Closure" <> pretty (pShow (globalClosure))
+  -- logDebug $ "List of Maven closures *******" <> pretty (pShow (buildProjectClosures basedir globalClosure))
+  -- logDebug $ "Maven Project Closure" <> pretty (pShow (globalClosure))
   context "Building project closures" $ pure (buildProjectClosures basedir globalClosure)
 
 findPomFiles :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Path Abs File]
@@ -122,7 +122,7 @@ data MavenProjectClosure = MavenProjectClosure
   , closureGraph :: AM.AdjacencyMap MavenCoordinate
   , closurePoms :: Map MavenCoordinate (Path Abs File, Pom)
   , closureSubmodules :: Set Text
-  -- ^ used for submodule filtering
+  -- ^ all of the submodules in the maven project ; used for submodule filtering
   }
   deriving (Eq, Ord, Show, Generic)
 

@@ -17,7 +17,7 @@ import DepTypes (Dependency (..))
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Data.Foldable (Foldable (foldl'), for_)
 import Debug.Trace (trace, traceM)
-import Graphing (Graphing, Node (Node), deleteNodeAndChildren, filter, reachableNodes, shrink, vertexList)
+import Graphing (Graphing, Node (Node), deleteNodeAndChildren, edgesList, filter, reachableNodes, shrink, vertexList)
 
 data MavenDependency = MavenDependency
   { dependency :: Dependency
@@ -30,48 +30,41 @@ mavenDependencyToDependency MavenDependency{..} = dependency
 
 filterMavenSubmodules :: Monad m => Set Text -> Set Text -> Graphing MavenDependency -> m (Graphing MavenDependency)
 filterMavenSubmodules targetSet submoduleSet graph = do
-  let submoduleNodesToDelete = Set.fromList . vertexList $ Graphing.filter isSubmoduleToRemove graph
-      reachableNodesFromDeletedSubmodules = (reachableNodes submoduleNodesToDelete graph)
-      allReachableNodes = Set.fromList $ vertexList graph
-      nodesToKeep = allReachableNodes `Set.difference` reachableNodesFromDeletedSubmodules
-  traceM ("These are reachable Nodes from deleted submodules +++++++ " ++ show (reachableNodesFromDeletedSubmodules))
-  traceM ("All Reachable Nodes +++++++ " ++ show (allReachableNodes))
-  traceM ("The difference +++++++ " ++ show (nodesToKeep))
+  let filteredSubmoduleNames = submoduleSet `Set.difference` targetSet
+      filteredSubmoduleNodes = Set.fromList $ Prelude.filter (\dep -> depNameFromMavenDependency dep `Set.member` filteredSubmoduleNames) $ vertexList graph
+      -- Find all the dependencies of the submodules that will be included in the scan
+      targetSubmoduleDependencies = resultSet targetSet
+      -- Find the dependencies of the filtered submodules
+      -- After, we want to take the intersection of filteredSubmoduleDependencies && targetSubmoduleDependencies to get all the shared dependencies
+      -- Next, take the difference of filteredSubmoduleDependencies && sharedDependencies to not filter out any shared dependencies
+      -- We also want to union all the filteredSubmoduleNodes with our previous result to get a fully complete set of nodes to exclude.
+      filteredSubmoduleDependencies = resultSet filteredSubmoduleNames
+      sharedDependencies = filteredSubmoduleDependencies `Set.intersection` targetSubmoduleDependencies
+      mavenDependenciesToRemove = filteredSubmoduleNodes `Set.union` (filteredSubmoduleDependencies `Set.difference` sharedDependencies)
 
-  pure $ Graphing.filter (`Set.member` nodesToKeep) graph
+  pure $ Graphing.filter (shouldIncludeMavenDependency mavenDependenciesToRemove) graph
   where
-    -- foldl' removeSubmoduleAndDependencies graph submoduleNodesToDelete
+    shouldIncludeMavenDependency :: Set MavenDependency -> MavenDependency -> Bool
+    shouldIncludeMavenDependency mavenDepExclusionSet mavenDep = mavenDep `Set.notMember` mavenDepExclusionSet
 
-    isSubmoduleToRemove :: MavenDependency -> Bool
-    isSubmoduleToRemove MavenDependency{..} = dependencyName dependency `Set.notMember` targetSet && dependencyName dependency `Set.member` submoduleSet
+    edgeList :: [(MavenDependency, MavenDependency)]
+    edgeList = edgesList graph
 
-    keepSubmodule :: MavenDependency -> Bool
-    keepSubmodule MavenDependency{..} = dependencyName dependency `Set.member` targetSet
+    depNameFromMavenDependency :: MavenDependency -> Text
+    depNameFromMavenDependency MavenDependency{..} = dependencyName dependency
 
-    removeSubmoduleAndDependencies :: Graphing MavenDependency -> MavenDependency -> Graphing MavenDependency
-    removeSubmoduleAndDependencies g (mavenDep) = deleteNodeAndChildren keepSubmodule mavenDep g
+    -- findTransitiveDependencies is used to find the all depedencies of a submodule excluding its submodule dependencies
+    -- it also does not include the input submodule as part of its set, just strictly its dependencies
+    findTransitiveDependencies :: Text -> [(MavenDependency, MavenDependency)] -> Set MavenDependency
+    findTransitiveDependencies vertexName edges = do
+      let directDependencies = [neighborDep | (sourceDep, neighborDep) <- edges, depNameFromMavenDependency sourceDep == vertexName && (depNameFromMavenDependency neighborDep) `Set.notMember` submoduleSet]
+          transitiveDependencies = Set.unions $ map (\dep -> findTransitiveDependencies (depNameFromMavenDependency dep) edges) directDependencies
+       in Set.fromList directDependencies `Set.union` transitiveDependencies
 
--- nodes :: Set MavenDependency -> [MavenDependency]
--- nodes submoduleNodes = Prelude.filter (`Set.member` submoduleNodes) $ AM.vertexList graph
-
--- filterMavenDependencyByScope :: MavenScopeFilters -> Graphing MavenDependency -> Graphing MavenDependency
--- filterMavenDependencyByScope scopeFilters = Graphing.shrink isMavenDependencyIncluded
---   where
---     isMavenDependencyIncluded :: MavenDependency -> Bool
---     isMavenDependencyIncluded MavenDependency{..} = case scopeFilters of
---       MavenScopeIncludeFilters includeSet -> do
---         let includeScopes = scopes includeSet
---         case (Set.null dependencyScopes, Set.null includeScopes) of
---           (False, False) -> dependencyScopes `Set.isSubsetOf` includeScopes
---           (False, True) -> True
---           (True, False) -> False
---           (True, True) -> True
---       MavenScopeExcludeFilters excludeSet -> do
---         let excludeScopes = scopes excludeSet
---         case (Set.null dependencyScopes, Set.null excludeScopes) of
---           (False, False) -> dependencyScopes `Set.disjoint` excludeScopes
---           (False, True) -> True
---           (True, _) -> True{-# LANGUAGE RecordWildCards #-}
+    -- given a set of submodules, resultSet combines all the transitive dependencies of every submodule in from the input set
+    resultSet :: Set Text -> Set MavenDependency
+    resultSet submodules = Set.foldr (\vertexName acc -> (findTransitiveDependencies vertexName edgeList) `Set.union` acc) Set.empty submodules
+{-# LANGUAGE RecordWildCards #-}
 
 module Strategy.Maven.Common (
   MavenDependency (..),

@@ -106,10 +106,7 @@ analyze ::
   ( Has ReadFS sig m
   , Has (Lift IO) sig m
   , CandidateCommandEffs sig m
-  , Has Logger sig m
   ) =>
-  Set Text ->
-  Set Text ->
   Path Abs Dir ->
   m (Graphing MavenDependency, GraphBreadth)
 analyze dir = do
@@ -175,10 +172,6 @@ toDependency PackageId{groupName, artifactName, artifactVersion, buildTag} = do
 
 toGraph :: DotGraph -> Graphing PackageId
 toGraph DotGraph{rootNode, edgeList} = run . evalGrapher $ do
-  -- traceM ("The DOT GRAPH ------------- ")
-  -- traceM ("The rootNode ------------- " ++ show (rootNode))
-  -- traceM ("The edgeList------------- " ++ show (edgeList))
-
   direct rootNode
   for_ edgeList $ uncurry edge
 

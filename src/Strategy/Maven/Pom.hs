@@ -116,14 +116,10 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
 
     go :: Has MavenGrapher sig m => MavenCoordinate -> Pom -> m ()
     go coord incompletePom = do
-      traceM ("This is the coord artifact &&&&&&&&&&& : " ++ show (coordArtifact coord))
       _ <- Map.traverseWithKey addDep deps
       for_ childPoms $ \(childCoord, childPom) -> do
-        -- traceM ("this is the filter set " ++ show (submoduleFilterSet))
-        -- traceM ("this is the target name in go function for children " ++ show (getTargetName childCoord))
         if getTargetName childCoord `Set.member` submoduleFilterSet
           then do
-            traceM "Adding in goooooooo"
             edge (coordToPackage coord) (coordToPackage childCoord)
             go childCoord childPom
           else do
@@ -144,7 +140,6 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
 
         addDep :: Has MavenGrapher sig m => (Group, Artifact) -> MvnDepBody -> m ()
         addDep (group, artifact) body = do
-          -- traceM "Adding dEpsjfsljflsflsfjlslj"
           let depPackage = buildMavenPackage completePom group artifact body
           edge (coordToPackage coord) depPackage
           traverse_ (label depPackage . MavenLabelScope) (depScope body)

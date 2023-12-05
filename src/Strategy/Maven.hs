@@ -27,7 +27,7 @@ import Effect.Exec (CandidateCommandEffs)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Graphing (Graphing, gmap, toAdjacencyMap, vertexList)
+import Graphing (Graphing, edgesList, gmap, shrinkRoots, toAdjacencyMap, vertexList)
 import Path (Abs, Dir, Path, parent)
 import Strategy.Maven.Common (MavenDependency (..), filterMavenDependencyByScope, filterMavenSubmodules, mavenDependencyToDependency)
 import Strategy.Maven.DepTree qualified as DepTreeCmd
@@ -40,6 +40,7 @@ import Effect.Logger (Logger, Pretty (pretty), logDebug, runLogger)
 import Text.Pretty.Simple (pShow)
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), FoundTargets (..), GraphBreadth (..))
 
+import Algebra.Graph.AdjacencyMap (edgeList)
 import Data.Map qualified as Map
 import Debug.Trace (traceM)
 import Effect.Logger (Logger, Pretty (pretty), logDebug, runLogger)
@@ -102,11 +103,13 @@ getDeps foundTargets (MavenProject closure) = do
   logDebug $ "Targets in get Deps for Maven " <> pretty (pShow (targetSet))
   logDebug $ "Closure submodule set " <> pretty (pShow (PomClosure.closureSubmodules closure))
   -- (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis closure <||> getStaticAnalysis closure
-  (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis targetSet closure
+  (graph, graphBreadth) <- context "Maven" $ getStaticAnalysis (PomClosure.closureSubmodules closure) closure
 
-  -- submodulesToDeleteGraph <- filterMavenSubmodules targetSet (PomClosure.closureSubmodules closure) graph
+  -- logDebug $ "This is the EdgeList((((((()))))))" <> pretty (pShow (edgesList graph))
+  submodulesToDeleteGraph <- filterMavenSubmodules targetSet (PomClosure.closureSubmodules closure) graph
   logDebug $ "This is the Graph ((((((()))))))" <> pretty (pShow (graph))
-  -- logDebug $ "This is the Graph after filtering submodules **********" <> pretty (pShow (submodulesToDeleteGraph))
+  -- logDebug $ "Shrink This is the Graph ((((((()))))))" <> pretty (pShow (shrinkRoots graph))
+  logDebug $ "This is the Graph after filtering submodules **********" <> pretty (pShow (submodulesToDeleteGraph))
   -- logDebug $ "This is vertex lsit of nodes to delete ((((((()))))))" <> pretty (pShow (vertexList submodulesToDeleteGraph))
   -- logDebug $ "This is the adjacency Map ((((((()))))))" <> pretty (pShow (Graphing.toAdjacencyMap graph))
 
@@ -142,14 +145,13 @@ getDepsDynamicAnalysis ::
   , CandidateCommandEffs sig m
   , Has Logger sig m
   ) =>
-  Set Text ->
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
 getDepsDynamicAnalysis closure = do
   context "Dynamic Analysis"
     $ warnOnErr MissingEdges
       . warnOnErr MissingDeepDeps
-    $ getDepsTreeCmd submoduleFilters closure
+    $ getDepsTreeCmd closure
 
 -- (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
 
@@ -167,6 +169,7 @@ getDepsPluginLegacy ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
+  , Has Logger sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
@@ -178,12 +181,11 @@ getDepsTreeCmd ::
   , CandidateCommandEffs sig m
   , Has Logger sig m
   ) =>
-  Set Text ->
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
 getDepsTreeCmd closure = do
   context "Dynamic analysis" $
-    DepTreeCmd.analyze submoduleFilters (PomClosure.closureSubmodules closure) . parent $
+    DepTreeCmd.analyze . parent $
       PomClosure.closurePath closure
 
 getStaticAnalysis ::
