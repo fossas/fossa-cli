@@ -143,6 +143,7 @@ buildGraph reactorOutput PluginOutput{..} =
   run . evalGrapher $ do
     let byNumeric :: Map Int Artifact
         byNumeric = indexBy artifactNumericId outArtifacts
+
     depsByNumeric <- traverse toDependency byNumeric
 
     traverse_ (visitEdge depsByNumeric) outEdges
@@ -184,6 +185,7 @@ buildGraph reactorOutput PluginOutput{..} =
             parentRef <- Map.lookup edgeFrom refsByNumeric
             childRef <- Map.lookup edgeTo refsByNumeric
             Just (parentRef, childRef)
+
       traverse_ (uncurry edge) refs
 
     indexBy :: Ord k => (v -> k) -> [v] -> Map k v

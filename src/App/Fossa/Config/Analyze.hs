@@ -87,12 +87,7 @@ import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (MavenScope
 import Effect.Exec (
   Exec,
  )
-import Effect.Logger (
-  Logger,
-  Severity (SevDebug, SevInfo),
-  logWarn,
-  vsep,
- )
+import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn, vsep)
 import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
 import GHC.Generics (Generic)
 import Options.Applicative (

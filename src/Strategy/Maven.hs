@@ -48,7 +48,6 @@ discover ::
   Path Abs Dir ->
   m [DiscoveredProject MavenProject]
 discover = do
-  -- logDebug $ "Maven Project Closure" <> pretty (pShow (findProjects mkProject MavenProjectType))
   simpleDiscover findProjects mkProject MavenProjectType
   where
     findProjects dir = Prelude.map MavenProject <$> PomClosure.findProjects dir

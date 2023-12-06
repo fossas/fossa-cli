@@ -394,16 +394,6 @@ subGraphOf n (Graphing gr) =
     keepPredicate Root = True
     keepPredicate (Node ty) = Set.member (Node ty) reachableNodes
 
--- where
---   node' = if condition node then node else mempty
-
---   removeChildren :: (ty -> Bool) -> [Node ty] -> [Node ty]
---   removeChildren _ [] = []
---   removeChildren cond (n:ns) =
---     case n of
---       Root -> if cond node then [] else n : removeChildren cond ns
---       Node x -> if cond x then removeChildren cond (AMA.reachable gr [n]) ++ removeChildren cond ns else n : removeChildren cond ns
-
 -- Example usage:
 -- Let's say you have a Graphing 'myGraph' and you want to delete the node "exampleNode"
 -- for sure, and conditionally delete its reachable nodes based on a certain condition (e.g., conditionFunction):

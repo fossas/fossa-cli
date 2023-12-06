@@ -106,7 +106,6 @@ import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
   Severity (..),
-  logDebug,
   logInfo,
   logStdout,
  )
