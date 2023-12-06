@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Strategy.Maven.Pom (
   analyze',
   getLicenses,

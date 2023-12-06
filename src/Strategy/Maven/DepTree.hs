@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Strategy.Maven.DepTree (
   analyze,
   parseDotGraphs,

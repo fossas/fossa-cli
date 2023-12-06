@@ -87,7 +87,12 @@ import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (MavenScope
 import Effect.Exec (
   Exec,
  )
-import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn, vsep)
+import Effect.Logger (
+  Logger,
+  Severity (SevDebug, SevInfo),
+  logWarn,
+  vsep,
+ )
 import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
 import GHC.Generics (Generic)
 import Options.Applicative (
@@ -111,10 +116,7 @@ import Path (Abs, Dir, Path, Rel)
 import Path.Extra (SomePath)
 import Prettyprinter (Doc, annotate, defaultLayoutOptions, layoutPretty)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Red), color, renderStrict)
-import Text.Pretty.Simple (pShow)
 import Types (ArchiveUploadType (..), LicenseScanPathFilters (..), TargetFilter)
-
-import Effect.Logger (Logger, Pretty (pretty), logDebug, runLogger)
 
 -- Utility functions
 coloredText :: Color -> Doc AnsiStyle -> String
