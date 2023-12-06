@@ -29,10 +29,7 @@ import Graphing (
   unfold,
   unfoldDeep,
   vertexList,
-  deleteNodeAndChildren,
-  filter,
  )
-import Debug.Trace (traceM)
 import Test.Hspec (
   Spec,
   context,
@@ -180,9 +177,6 @@ shrinkingSpec = context "Shrinking" $ do
           graph'' :: Graphing Int
           graph'' = Graphing.shrink (/= 1) (Graphing.direct 1 <> Graphing.edges [(1, 2), (2, 3), (3, 4)])
 
-      traceM("This is the graph" ++ show(graph))
-      traceM("This is the first filtered graph************" ++ show(graph'))
-      traceM("This is the second filtered graph----------" ++ show(graph''))
       expectDirect [] graph'
       expectDeps [1, 4, 5] graph'
       expectEdges [(1, 4), (4, 5)] graph'
@@ -207,28 +201,6 @@ shrinkingSpec = context "Shrinking" $ do
       expectDirect [1] graph'
       expectDeps [1, 2, 4, 6, 7] graph'
       expectEdges [(1, 2), (2, 4), (2, 6), (2, 7)] graph'
-
-    it "should delete node and children" $ do
-      -- 1 -> 2 -> 5 -> 6
-      --      \    \
-      --       \    7
-      -- 3 ----> 4
-
-      let graph :: Graphing Int
-          graph = Graphing.edges [(1, 2), (3, 4), (2, 4), (2, 5), (5, 7), (5, 6)] <> Graphing.directs [1, 3]
-
-          graph' :: Graphing Int -> Graphing Int
-          graph' g = Graphing.deleteNodeAndChildren (\x -> x == 4 ) 3 g
-
-          x = graph 
-          x' = graph' x
-
-      traceM("This is the graph---------------" ++ show(x))
-      traceM("This is the graph after delete ************" ++ show(x'))
-      traceM("This is the graph after invoking the delete---------------" ++ show(x))
-      expectDirect [1] x'
-      expectDeps [1, 2, 5, 6, 7] x'
-      expectEdges [(1, 2), (2, 5), (5, 7), (5, 6)] x'
 
     it "should not promote any deps to direct" $ do
       --   1 -> 2 -> 5 -> 6

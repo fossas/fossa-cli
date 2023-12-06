@@ -16,26 +16,22 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Lift (Lift)
 import Control.Monad (when)
-import Data.Foldable (Foldable (foldl'), traverse_)
-import Data.List (nub)
-import Data.Map.Strict (Map, delete, insert, member, (!))
+import Data.Foldable (traverse_)
+import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Debug.Trace
-import Debug.Trace (traceM, traceShowM)
 import DepTypes (
   DepEnvironment (..),
   DepType (MavenType),
   Dependency (..),
   VerConstraint (CEq),
  )
-import Effect.Exec (CandidateCommandEffs, exec)
+import Effect.Exec (CandidateCommandEffs)
 import Effect.Grapher (Grapher, edge, evalGrapher)
 import Effect.Grapher qualified as Grapher
-import Effect.Logger (Logger, Pretty (pretty), logDebug, runLogger)
 import Effect.ReadFS (ReadFS)
-import Graphing (Graphing, shrinkRoots)
+import Graphing (Graphing)
 import Path (Abs, Dir, Path)
 import Strategy.Maven.Common (MavenDependency (..))
 import Strategy.Maven.Plugin (
@@ -55,15 +51,12 @@ import Strategy.Maven.Plugin (
   reactorArtifacts,
   withUnpackedPlugin,
  )
-import Text.Pretty.Simple (pPrint, pShow, pShowNoColor)
-import Text.Show.Pretty qualified as Pr
 import Types (GraphBreadth (..))
 
 analyze' ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
-  , Has Logger sig m
   ) =>
   Path Abs Dir ->
   m (Graphing MavenDependency, GraphBreadth)
@@ -73,7 +66,6 @@ analyzeLegacy' ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
-  , Has Logger sig m
   ) =>
   Path Abs Dir ->
   m (Graphing MavenDependency, GraphBreadth)
@@ -148,57 +140,15 @@ instance ToDiagnostic MayIncludeSubmodule where
 -- tree and promote submodule1's dependency to be a root (direct) dependency.
 buildGraph :: ReactorOutput -> PluginOutput -> Graphing MavenDependency
 buildGraph reactorOutput PluginOutput{..} =
-  -- The root deps in the maven depgraph text graph output are either the
-  -- toplevel package or submodules in a multi-module project. We don't want to
-  -- consider those because they're the users' packages, so promote them to
-  -- direct when building the graph using `shrinkRoots`.
-
   run . evalGrapher $ do
-    -- shrinkRoots . run . evalGrapher $ do
     let byNumeric :: Map Int Artifact
         byNumeric = indexBy artifactNumericId outArtifacts
-    traceM ("This is by numeric: " ++ show (byNumeric))
-
-    traceM ("The original output Artifacts: =========")
-    traceShowM (outArtifacts)
-
-    traceM ("The original output Artifact edges: =========")
-    traceShowM (outEdges)
-
-    traceM ("The reactor out Artifacts: =========")
-    traceShowM (reactorArtifacts $ reactorOutput)
-
-    let filteredNumsByNumeric = Map.filterWithKey (\k _ -> k `Set.notMember` filterSubmoduleSet) byNumeric
-    traceM ("The filtered by numeric")
-    traceShowM filteredNumsByNumeric
-
-    -- depsByNumeric <- traverse toDependency filteredNumsByNumeric
     depsByNumeric <- traverse toDependency byNumeric
-    traceM ("This is deps by numeric ***********")
-    traceShowM depsByNumeric
-
-    let (updatedV, updatedE) = removeVertex 7 depsByNumeric outEdges
-    -- traceM ("This is updated Deps and ############" ++ show (updatedV))
-    -- -- traceM x
-
-    -- traceM ("This is updated edges ############" ++ show (updatedE))
-
-    let transativeDepExec = findTransitiveDependencies 7 outEdges
-    let transativeDepLib = findTransitiveDependencies 6 outEdges
-
-    traceM ("This si the transative edges of Exec ######### " ++ show (transativeDepExec))
-    traceM ("This si the transative edges of Lib ######### " ++ show (transativeDepLib))
 
     traverse_ (visitEdge depsByNumeric) outEdges
   where
-    filterArtifact :: [Artifact] -> [Artifact]
-    filterArtifact = filter (\x -> artifactArtifactId x `Set.notMember` Set.fromList ["exec"])
-
     knownSubmodules :: Set.Set Text
     knownSubmodules = Set.fromList . map reactorArtifactName . reactorArtifacts $ reactorOutput
-
-    filterSubmoduleSet :: Set.Set Int
-    filterSubmoduleSet = Set.fromList [7]
 
     toBuildTag :: Text -> DepEnvironment
     toBuildTag = \case
@@ -230,36 +180,11 @@ buildGraph reactorOutput PluginOutput{..} =
 
     visitEdge :: Has (Grapher MavenDependency) sig m => Map Int MavenDependency -> Edge -> m ()
     visitEdge refsByNumeric Edge{..} = do
-      traceM ("WITH WHEN STATEMENT +++++++++ ")
       let refs = do
             parentRef <- Map.lookup edgeFrom refsByNumeric
             childRef <- Map.lookup edgeTo refsByNumeric
             Just (parentRef, childRef)
       traverse_ (uncurry edge) refs
 
-    -- when
-    --   (edgeFrom `Set.notMember` filterSubmoduleSet && edgeTo `Set.notMember` filterSubmoduleSet)
-    --   $ traverse_ (uncurry edge) refs
-
     indexBy :: Ord k => (v -> k) -> [v] -> Map k v
     indexBy f = Map.fromList . map (\v -> (f v, v))
-
-    removeVertex :: Int -> Map Int Dependency -> [Edge] -> (Map Int Dependency, [Edge])
-    removeVertex targetVertex vertices edges =
-      let transitiveDependencies = findTransitiveDependencies targetVertex edges
-          allDependencies = targetVertex : transitiveDependencies
-          updatedVertices = foldl' (\acc v -> Map.delete v acc) vertices allDependencies
-          updatedEdges = filter (\(Edge from to) -> from `notElem` allDependencies && to `notElem` allDependencies) edges
-          sharedDependencies = nub $ concatMap (\dep -> findDirectDependencies dep edges) allDependencies
-          updatedEdgesWithShared = updatedEdges ++ filter (\(Edge from to) -> from `elem` sharedDependencies && to `elem` sharedDependencies) edges
-       in (updatedVertices, updatedEdgesWithShared)
-
-    findTransitiveDependencies :: Int -> [Edge] -> [Int]
-    findTransitiveDependencies vertexId edges =
-      let directDependencies = [to | Edge from to <- edges, from == vertexId && to /= 6]
-          transitiveDependencies = concatMap (\dep -> if dep /= 6 then findTransitiveDependencies dep edges else []) directDependencies
-       in directDependencies ++ transitiveDependencies
-
-    findDirectDependencies :: Int -> [Edge] -> [Int]
-    findDirectDependencies vertexId edges =
-      [to | Edge from to <- edges, from == vertexId]

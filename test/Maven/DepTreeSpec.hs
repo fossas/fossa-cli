@@ -10,6 +10,7 @@ import DepTypes (
   VerConstraint (..),
  )
 import GraphUtil
+import Graphing (shrinkRoots)
 import Strategy.Maven.Common (MavenDependency (..))
 import Strategy.Maven.DepTree (
   DotGraph (..),
@@ -86,7 +87,9 @@ spec =
       let mavenDepHamcrestCore = MavenDependency depHamcrestCore (Set.fromList ["test"])
 
       -- Act
-      let graph = buildGraph fixtureSingleGraph
+      -- NOTE: Previously shrinkRoots was applied at this level, but it has now been moved upstream to allow for submodule filtering
+      --       Adding shrinkRoots to our buildGraph function to mimic prior behavior
+      let graph = shrinkRoots $ buildGraph fixtureSingleGraph
 
       -- Assert
       expectDeps [mavenDepRngCore, mavenDepMath3, mavenDepJunit, mavenDepRngClientApi, mavenDepHamcrestCore] graph

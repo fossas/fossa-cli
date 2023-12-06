@@ -51,6 +51,67 @@ maven:
     - test
 ```
 
+## Filtering by submodules
+
+If you have maven project which has one or more subprojects, you may
+only want to analyze a specific set of subprojects in some cases.
+
+
+In `fossa-cli`, this can be achieved by using [exclusion filtering](./../../../files/fossa-yml.md).
+
+1) Run `fossa list-targets`, to identify project directory and identifier of subprojects.
+```bash
+[ INFO] Found project: maven@./
+[ INFO] Found target: maven@./:com.fossa:app
+[ INFO] Found target: maven@./:com.fossa:list
+[ INFO] Found target: maven@./:com.fossa:utilities
+```
+
+Note that, targets are denoted in following format `type@path:target`. For example `maven@./:com.fossa:utilities`:
+
+Note: maven submodules targets are composed of `<groupId>:<artifactId>`, so the utilities submodule here is referenced by "com.fossa:utilities"
+```
+maven   @           ./      :      com.fossa:utilities
+------ ---          ---    ---        -----------
+Type   Path         Path   Target      Target
+       separator           separator
+```
+
+2) Now to analyze only `utilities`, use a `.fossa.yml` file in the project root.
+
+```yaml
+# filename: .fossa.yml
+#
+# analyze only maven@./:com.fossa:utilities
+version: 3
+targets:
+  only:
+    - type: maven
+      path: ./
+      target: 'com.fossa:utilities'
+```
+
+Likewise, if you want to exclude specific set of subprojects, you can do following:
+
+```yaml
+# filename: .fossa.yml
+#
+# do not analyze maven@./:com.fossa:app, and maven@./:com.fossa:utilities
+version: 3
+targets:
+  only:
+    - type: maven
+  exclude:
+    - type: maven
+      path: ./
+      target: 'com.fossa:app'
+    - type: gradle
+      path: ./
+      target: 'com.fossa:utilities'
+```
+
+1) Running `fossa analyze --output -c .fossa.yml`, will only analyze `utilities` submodule.
+
 <!--
 
 TODO: write docs, like Gradle's.

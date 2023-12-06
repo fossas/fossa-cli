@@ -29,6 +29,7 @@ import Strategy.Maven.Plugin (
  )
 import Strategy.Maven.PluginStrategy (buildGraph)
 
+import Graphing (shrinkRoots)
 import Strategy.Maven.Common (MavenDependency (..))
 import Test.Hspec (Spec, describe, it)
 
@@ -275,30 +276,32 @@ mavenCrossDependentSubModules =
 spec :: Spec
 spec = do
   describe "buildGraph" $ do
+    -- NOTE: Previously shrinkRoots was applied at this level, but it has now been moved upstream to allow for submodule filtering
+    --       Adding shrinkRoots to our buildGraph function to mimic prior behavior
     it "should produce expected output" $ do
-      let graph = buildGraph (ReactorOutput []) mavenOutput
+      let graph = shrinkRoots $ buildGraph (ReactorOutput []) mavenOutput
 
       expectDeps [packageOne, packageTwo] graph
       expectDirect [] graph
       expectEdges [(packageOne, packageTwo)] graph
 
     it "Should promote children of root dep(s) to direct" $ do
-      let graph = buildGraph (ReactorOutput []) mavenOutputWithDirects
+      let graph = shrinkRoots $ buildGraph (ReactorOutput []) mavenOutputWithDirects
       expectDeps [packageTwo] graph
       expectDirect [packageTwo] graph
       expectEdges [] graph
 
     it "Should promote children of root dep(s) to direct in multimodule projects" $ do
-      let graph = buildGraph (ReactorOutput []) mavenMultimoduleOutputWithDirects
+      let graph = shrinkRoots $ buildGraph (ReactorOutput []) mavenMultimoduleOutputWithDirects
       expectDeps [packageTwo, packageFour] graph
       expectDirect [packageTwo, packageFour] graph
       expectEdges [] graph
 
     it "Should parse all scopes" $ do
-      let graph = buildGraph (ReactorOutput []) mavenMultiScopeOutput
+      let graph = shrinkRoots $ buildGraph (ReactorOutput []) mavenMultiScopeOutput
       expectDeps [packageMultiScope] graph
 
-    let graph = buildGraph (ReactorOutput [ReactorArtifact "packageThree"]) mavenCrossDependentSubModules
+    let graph = shrinkRoots $ buildGraph (ReactorOutput [ReactorArtifact "packageThree"]) mavenCrossDependentSubModules
     it "Should mark top-level graph artifacts and known submodules as direct, then shrinkRoots" $ do
       expectDirect [packageTwo, packageFour] graph
 

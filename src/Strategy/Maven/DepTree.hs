@@ -18,15 +18,13 @@ import Control.Effect.Exception (SomeException, finally)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception.Extra (safeTry)
 import Data.Char (isSpace)
-import Data.Foldable (Foldable (foldl'), for_)
+import Data.Foldable (for_)
 import Data.Maybe (maybeToList)
-import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import Debug.Trace (traceM, traceShowM)
 import DepTypes (
   DepEnvironment (..),
   DepType (MavenType),
@@ -35,7 +33,6 @@ import DepTypes (
  )
 import Effect.Exec (AllowErr (..), CandidateCommandEffs, Command (..), exec, mkAnalysisCommand)
 import Effect.Grapher (direct, edge, evalGrapher)
-import Effect.Logger (Logger, Pretty (pretty), logDebug, runLogger)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser)
 import Graphing (Graphing, gmap, shrinkRoots)
 import Path (Abs, Dir, File, Path, Rel, fromAbsFile, parseRelFile, (</>))
@@ -52,7 +49,6 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (space1)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
-import Text.Pretty.Simple (pShow)
 import Types (GraphBreadth (Complete))
 
 -- Construct the Command for running `mvn dependency:tree` correctly.
@@ -151,9 +147,7 @@ analyze dir = do
       Nothing -> fatal $ toText $ "invalid file name: " <> f
 
 buildGraph :: [DotGraph] -> Graphing MavenDependency
-buildGraph = withoutProjectAsDep . gmap toDependency . foldMap toGraph
-  where
-    withoutProjectAsDep = shrinkRoots
+buildGraph = gmap toDependency . foldMap toGraph
 
 toDependency :: PackageId -> MavenDependency
 toDependency PackageId{groupName, artifactName, artifactVersion, buildTag} = do
