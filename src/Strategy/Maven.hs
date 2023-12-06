@@ -1,6 +1,4 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-{-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 module Strategy.Maven (
   discover,
@@ -184,9 +182,9 @@ getStaticAnalysis submoduleTargets closure = do
   pure (filteredGraph, graphBreadth)
 
 applyMavenFilters :: Has (Reader MavenScopeFilters) sig m => Set Text -> Set Text -> Graphing MavenDependency -> m (Graphing Dependency)
-applyMavenFilters submoduleTargetSet completeSubmoduleSet graph = do
+applyMavenFilters targetSet submoduleSet graph = do
   mavenScopeFilters <- ask @(MavenScopeFilters)
-  let filteredSubmoduleGraph = filterMavenSubmodules submoduleTargetSet completeSubmoduleSet graph
+  let filteredSubmoduleGraph = filterMavenSubmodules targetSet submoduleSet graph
       filteredSubmoduleScopeGraph = filterMavenDependencyByScope mavenScopeFilters filteredSubmoduleGraph
 
   pure $ gmap mavenDependencyToDependency filteredSubmoduleScopeGraph

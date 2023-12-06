@@ -101,7 +101,6 @@ runAll ::
   , Has (Reader MavenScopeFilters) sig m
   , Has (Reader AllFilters) sig m
   , Has Telemetry sig m
-  , Has Logger sig m
   ) =>
   ListTargetOutputFormat ->
   Path Abs Dir ->

@@ -125,7 +125,6 @@ import Prettyprinter.Render.Terminal (
  )
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
-import Text.Pretty.Simple (pShow)
 import Types (DiscoveredProject (..), FoundTargets)
 
 debugBundlePath :: FilePath

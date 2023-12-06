@@ -200,7 +200,7 @@ interpolate properties recursionCheck initialProperty =
       if Set.member property recursionCheck
         then prefix <> property <> suffix
         else
-          ( case Map.lookup property properties of
+          ( case (Map.lookup property properties) of
               Nothing -> interpolate properties Set.empty $ prefix <> "PROPERTY NOT FOUND: " <> property <> suffix
               Just foundProperty -> interpolate properties (Set.insert property recursionCheck) finalProperty
                 where
