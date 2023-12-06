@@ -393,8 +393,3 @@ subGraphOf n (Graphing gr) =
     keepPredicate :: Node ty -> Bool
     keepPredicate Root = True
     keepPredicate (Node ty) = Set.member (Node ty) reachableNodes
-
--- Example usage:
--- Let's say you have a Graphing 'myGraph' and you want to delete the node "exampleNode"
--- for sure, and conditionally delete its reachable nodes based on a certain condition (e.g., conditionFunction):
--- updatedGraph = deleteNodeAndChildrenWithCondition conditionFunction "exampleNode" myGraph
