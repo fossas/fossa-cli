@@ -23,6 +23,8 @@ Analysis targets have exactly one type (which identifies which strategy is used 
 
 A single Analysis (i.e. a single run of the CLI) includes every analysis target discovered in the folder being analyzed.
 
+You can view a list of filterable targets for analysis using [`fossa list-targets`](../references/subcommands/list-targets.md).
+
 ### Discovery and analysis
 
 Strategies usually have two phases:

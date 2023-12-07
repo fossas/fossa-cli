@@ -16,7 +16,16 @@ Since this reference is likely to get quite long, keep in mind you can use
 GitHub's automated ["Table of Contents" interface](https://github.blog/changelog/2021-04-13-table-of-contents-support-in-markdown-files/)
 to jump around.
 
-## Debugging strategies
+## Debugging a Missing Project
+
+If your project wasn't found, make sure you meet the requirements in the
+[relevant language/build-tool's quick reference](../references/strategies/README.md)
+
+If your project meets the requirements, it's very likely `fossa analyze` found your project,
+but dependency analysis failed.
+The next step is to get more information to [debug the strategy](#debugging-strategies).
+
+## Debugging Strategies
 
 The most common scenario for needing to debug FOSSA CLI is when
 it uses an external program as part of its analysis, and that fails
@@ -94,7 +103,7 @@ so can be extracted with just `gzip`:
 ; gunzip fossa.debug.json.gz
 ```
 
-If you also want the JSON to be formatted, 
+If you also want the JSON to be formatted,
 you can do this in a single line
 (if you have `jq` installed):
 ```
@@ -106,7 +115,7 @@ you can do this in a single line
 The contents of the debug bundle are not stable, so rather
 than explain the format in detail, we'll keep this high level.
 
-If in doubt, always feel free to reach out to 
+If in doubt, always feel free to reach out to
 [FOSSA Support](https://support.fossa.com)
 (or, if you're a FOSSA employee, the Analysis team)
 for assistance.
@@ -117,14 +126,14 @@ Since debug bundles are often quite large,
 we recommend viewing the contents in a command-line tool
 that is able to handle a large JSON document.
 
-In practice, we've found `jless` 
+In practice, we've found `jless`
 ([website](https://jless.io/), [GitHub](https://github.com/PaulJuliusMartinez/jless))
 to be a good tool for this purpose.
 We recommend viewing its user guide.
 
-Alternative tools are `jq` ([website](https://stedolan.github.io/jq/)) 
+Alternative tools are `jq` ([website](https://stedolan.github.io/jq/))
 and `gron` ([GitHub](https://github.com/tomnomnom/gron)),
-alongside of course graphical tools like 
+alongside of course graphical tools like
 [Visual Studio Code](https://code.visualstudio.com/),
 although we have found that these tools can have issues
 parsing FOSSA CLI debug bundles due to their size.
@@ -133,7 +142,7 @@ The remainder of this section assumes use of `jless`.
 
 #### Top level fields
 
-When the debug bundle is first opened, select the 
+When the debug bundle is first opened, select the
 first field and press `c` to collapse the top-level fields.
 You're left with the following:
 ```
@@ -157,7 +166,7 @@ bundleJournals        # Records information about IO actions, such as reading fi
 
 - The operating system name, e.g. `linux`.
 - The architecture of the system, e.g. `x86_64`.
-- The "capabilities" of the system, 
+- The "capabilities" of the system,
   which is the number of parallel threads that may be run.
   Usually this corresponds to number of cores (for local systems)
   although this is different for Docker containers.
@@ -283,7 +292,7 @@ However, in general, the shape of this section is as follows:
 ```
 
 The objects under `events` can be in many forms,
-and different types of objects are interspersed in this array. 
+and different types of objects are interspersed in this array.
 
 Some examples:
 - Plain text lines, representing log output, may appear here.
