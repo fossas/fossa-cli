@@ -33,16 +33,20 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 
 ### Concepts
 
-[FOSSA CLI Concepts](./concepts/analysis-and-analyzers.md)
+#### [FOSSA CLI Concepts](./concepts/analysis-and-analyzers.md)
+
     - [Analysis Targets](./concepts/analysis-and-analyzers.md#analysis-targets)
     - [Discovery and Analysis](./concepts/analysis-and-analyzers.md#discovery-and-analysis)
     - [Strategy Tactics](./concepts/analysis-and-analyzers.md#discovery-and-analysis)
     - [Static and Dynamic Strategies](./references/strategies/README.md#static-and-dynamic-strategies)
     - [Dynamic Strategy Command Selection](./features/strategy-command-selection.md)
 <!-- Consider linking to each language, tool, or platform here -->
-[Language and Tool (Strategy) Support](./references/strategies/README.md#supported-languages)
-[Configuring Which Targets Are Analyzed](./walkthroughs/analysis-target-configuration.md)
-  - [Analyzing Specific Submodules](./walkthroughs/analysis-target-configuration.md#target-filtering-for-submodules)
+
+#### [Language and Tool (Strategy) Support](./references/strategies/README.md#supported-languages)
+
+#### [Configuring Which Targets Are Analyzed](./walkthroughs/analysis-target-configuration.md)
+
+- [Analyzing Specific Submodules](./walkthroughs/analysis-target-configuration.md#target-filtering-for-submodules)
 
 ### Features
 
