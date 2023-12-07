@@ -40,7 +40,7 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 Walkthrough guides explain how to accomplish specific tasks. They also include troubleshooting steps answer common questions.
 
 - [Integrating a project](./walkthroughs/integrating.md)
-- [Debugging a strategy](./walkthroughs/debugging-your-integration.md)
+- [Debugging an Integration](./references/debugging/README.md)
 - [Analysis target configuration](./walkthroughs/analysis-target-configuration.md)
 - [Custom integration](./walkthroughs/custom-integrating-with-bower-example.md)
 
