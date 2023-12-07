@@ -136,7 +136,7 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
   - [Debugging a Failing Strategy](./references/debugging/README.md#debugging-strategies)
   - [Debugging a FOSSA CLI Specific Error](./references/debugging/README.md#debugging-strategies)
   - [Debugging with the Debug Bundle](./references/debugging/README.md#debugging-with-the-debug-bundle)
-- [How to Debug Path Filters](./featuresvendore-dependencies.md#debugging-your-path-filters)
+- [How to Debug Path Filters](./features/vendored-dependencies.md#debugging-your-path-filters)
 - [Debugging Container Analysis](./references/subcommands/container/scanner.md#debugging)
 - [Contributing](contributing/README.md)
 - [Upgrading from FOSSA CLI v1 to a Supported FOSSA CLI](./differences-from-v1.md)
