@@ -101,9 +101,16 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 - [Path Dependencies](./references/experimental/path-dependency.md)
 - [SSL Certificates and FOSSA CLI](./walkthroughs/ssl-cert.md)
 
-#### Searching for Custom Keywords and Licenses
+#### Scanning Projects for Source Snippets
 
 - [Overview](./references/subcommands/snippets.md)
+- [Quickstart](./references/subcommands/snippets.md#quickstart)
+- [Frequently Asked Questions](./references/subcommands/snippets.md#faq)
+
+##### Subcommands
+
+- [`fossa snippets analyze`](./references/subcommands/snippets/analyze.md)
+- [`fossa snippets commit`](./references/subcommands/snippets/commit.md)
 
 ### References
 
