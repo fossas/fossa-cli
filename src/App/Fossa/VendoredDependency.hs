@@ -8,6 +8,7 @@ module App.Fossa.VendoredDependency (
   forceVendoredToArchive,
   compressFile,
   hashFile,
+  hashBs,
   dedupVendoredDeps,
   skippedDepsDebugLog,
   SkippableDeps (..),
@@ -171,6 +172,9 @@ compressFile outputDir directory fileToTar = do
 
 md5 :: BS.ByteString -> Digest MD5
 md5 = hashlazy
+
+hashBs :: BS.ByteString -> IO Text
+hashBs c = pure . toText . show $ md5 c
 
 hashFile :: FilePath -> IO Text
 hashFile fileToHash = do

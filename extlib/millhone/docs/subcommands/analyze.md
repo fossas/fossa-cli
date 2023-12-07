@@ -3,20 +3,9 @@
 This subcommand analyzes a local project for snippets that match snippets in the FOSSA knowledgebase.
 For more information on possible options, run `millhone analyze --help`.
 
-# Output
+## Output
 
 Matches are written to the location specified by the `--output` (or `-o`) argument.
-If this argument is not specified, `millhone` creates a temporary directory prefixed by "millhone_".
-
-> [!NOTE]
-> Millhone by default creates this directory in the system temporary directory.
-> If desired, this can be customized:
-> - On Linux and macOS: set the `TMPDIR` environment variable.
-> - On Windows, this uses the `GetTempPath` system call, which uses the first valid option of:
->   - The path specified by the `TMP` environment variable.
->   - The path specified by the `TEMP` environment variable.
->   - The path specified by the `USERPROFILE` environment variable.
->   - The Windows directory.
 
 The output directory consists of a set of flat files, each representing a file in the scan directory
 that had at least one matching snippet. These files are named with the path of the file relative to
@@ -24,29 +13,25 @@ the scan directory, with any path separators replaced by underscores, and a `.js
 
 For example, the following project:
 ```
-/Users/
-  me/
-    projects/
-      example-project/
-        lib/
-          lib.c
-          vendor/
-            openssh/
-              openssh.c
-        main.c
+example-project/
+  lib/
+    lib.c
+    vendor/
+      openssh/
+        openssh.c
+  main.c
 ```
 
-When scanned like `millhone analyze /Users/me/projects/example-project`,
+When scanned like `fossa snippets analyze -o snippets`,
 would be presented like the below if all files contained a snippet match:
 ```
-/tmp/
-  millhone_abcd1234/
-    lib_lib.c.json
-    lib_vendor_openssh_openssh.c.json
-    main.c.json
+snippets/
+  lib_lib.c.json
+  lib_vendor_openssh_openssh.c.json
+  main.c.json
 ```
 
-The contents of each of these files are a JSON encoded array of matches,
+The content of each of these files is a JSON encoded array of matches,
 where each object in the array consists of the following keys:
 
 Key                 | Description
@@ -104,7 +89,7 @@ committing these results in a FOSSA scan.
 
 # Next Steps
 
-After running `millhone analyze`, the next step is to run `millhone commit`.
+After running `fossa snippets analyze`, the next step is to run `fossa snippets commit`.
 
 These are separate steps to give users the ability to edit or review the matched data
 prior to submitting the results to FOSSA.

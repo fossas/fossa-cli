@@ -13,6 +13,7 @@ module Test.Effect (
   shouldMatchList',
   runTestEffects',
   it',
+  itWithTempDir',
   fit',
   xit',
   withTempDir,
@@ -86,6 +87,9 @@ type EffectStack =
 
 it' :: String -> EffectStack () -> SpecWith ()
 it' msg = it msg . runTestEffects
+
+itWithTempDir' :: String -> (Path Abs Dir -> EffectStack ()) -> SpecWith ()
+itWithTempDir' msg act = it' msg $ withTempDir "fossa-init" $ \dir -> act dir
 
 fit' :: String -> EffectStack () -> SpecWith ()
 fit' msg = fit msg . runTestEffects

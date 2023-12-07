@@ -31,7 +31,7 @@ Ok, the quickstart worked for you, but why, and how?
 
 > `ghcup install ghc 9.4`
 
-When you install `ghcup`, `ghc` and `cabal-install` are installed automatically as part of the initial installation (see [Tools](#Tools) for descriptions of `ghc` and `cabal-install`).
+When you install `ghcup`, `ghc` and `cabal-install` are installed automatically as part of the initial installation (see [Tools](#tools) for descriptions of `ghc` and `cabal-install`).
 The `ghc` version that is automatically installed may not be the correct version we use (though it may work just fine).  So we install the correct version with `ghcup install ghc 9.4`.
 Currently, the best place to check the correct version is our CI build files (try `.github/workflows/build.yml`).
 
@@ -94,12 +94,15 @@ If you installed HLS in the old, complicated way, you can safely remove it.  HLS
 
 You should also set the `FOSSA_SKIP_EMBED_FILE_IN_HLS` environment variable for HLS. This prevents HLS from embedding binaries, which helps to avoid a giant memory footprint for HLS.
 
+You can also tell the Fourmolu plugin to use an external config. This will tell the language server to use an external executable that you've installed, which ensures that it picks up our `fourmolu.yaml` file.
+
 In VSCode, this is done by adding this to your `settings.json`:
 
 ```json
     "haskell.serverEnvironment": {
         "FOSSA_SKIP_EMBED_FILE_IN_HLS": true,
     },
+    "haskell.plugin.fourmolu.config.external": true,
 ```
 
 ## Linting

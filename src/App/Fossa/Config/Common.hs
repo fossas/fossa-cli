@@ -26,6 +26,7 @@ module App.Fossa.Config.Common (
   collectApiOpts,
   collectTelemetrySink,
   collectConfigFileFilters,
+  collectConfigMavenScopeFilters,
 
   -- * Configuration Types
   ScanDestination (..),
@@ -39,6 +40,7 @@ module App.Fossa.Config.Common (
 import App.Fossa.Config.ConfigFile (
   ConfigFile (
     configApiKey,
+    configMavenScope,
     configPaths,
     configProject,
     configRevision,
@@ -52,6 +54,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigTargets (targetsExclude, targetsOnly),
   ConfigTelemetry (telemetryScope),
   ConfigTelemetryScope (..),
+  MavenScopeConfig (..),
   mergeFileCmdMetadata,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
@@ -92,7 +95,7 @@ import Data.Maybe (fromMaybe)
 import Data.String (IsString)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text, null, strip, toLower)
-import Discovery.Filters (AllFilters (AllFilters), comboExclude, comboInclude, targetFilterParser)
+import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (..), comboExclude, comboInclude, setExclude, setInclude, targetFilterParser)
 import Effect.Exec (Exec)
 import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
@@ -399,3 +402,12 @@ collectConfigFileFilters configFile = do
       excludeP = pullFromFile pathsExclude configPaths
 
   AllFilters (comboInclude onlyT onlyP) (comboExclude excludeT excludeP)
+
+collectConfigMavenScopeFilters :: ConfigFile -> MavenScopeFilters
+collectConfigMavenScopeFilters configFile = do
+  let maybeMavenScopeConfigs = configMavenScope configFile
+  case maybeMavenScopeConfigs of
+    Nothing -> MavenScopeIncludeFilters mempty
+    Just mavenScopeConfig -> case mavenScopeConfig of
+      MavenScopeOnlyConfig filters -> MavenScopeIncludeFilters $ setInclude filters
+      MavenScopeExcludeConfig filters -> MavenScopeExcludeFilters $ setExclude filters

@@ -121,7 +121,7 @@ common deps
     , semver                       ^>=0.4.0.1
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
-    , tar                          ^>=0.6.0.0
+    , tar                          ^>=0.7.0.0
     , template-haskell
     , text                         ^>=2.0.0
     , th-lift-instances            ^>=0.1.17
@@ -161,7 +161,6 @@ library
     App.Fossa.Analyze.Graph
     App.Fossa.Analyze.GraphBuilder
     App.Fossa.Analyze.GraphMangler
-    App.Fossa.Analyze.Log4jReport
     App.Fossa.Analyze.Project
     App.Fossa.Analyze.Record
     App.Fossa.Analyze.ScanSummary
@@ -186,6 +185,7 @@ library
     App.Fossa.Config.LinkUserBinaries
     App.Fossa.Config.ListTargets
     App.Fossa.Config.Report
+    App.Fossa.Config.Snippets
     App.Fossa.Config.Test
     App.Fossa.Container
     App.Fossa.Container.AnalyzeNative
@@ -200,6 +200,7 @@ library
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
     App.Fossa.FirstPartyScan
+    App.Fossa.Init
     App.Fossa.Lernie.Analyze
     App.Fossa.Lernie.Types
     App.Fossa.LicenseScan
@@ -207,10 +208,14 @@ library
     App.Fossa.ListTargets
     App.Fossa.Main
     App.Fossa.ManualDeps
+    App.Fossa.PathDependency
     App.Fossa.ProjectInference
     App.Fossa.Report
     App.Fossa.Report.Attribution
     App.Fossa.RunThemis
+    App.Fossa.Snippets
+    App.Fossa.Snippets.Analyze
+    App.Fossa.Snippets.Commit
     App.Fossa.Subcommand
     App.Fossa.Test
     App.Fossa.VendoredDependency
@@ -397,6 +402,7 @@ library
     Strategy.Haskell.Stack
     Strategy.Leiningen
     Strategy.Maven
+    Strategy.Maven.Common
     Strategy.Maven.DepTree
     Strategy.Maven.Plugin
     Strategy.Maven.PluginStrategy
@@ -431,6 +437,7 @@ library
     Strategy.Python.Errors
     Strategy.Python.PDM.Pdm
     Strategy.Python.PDM.PdmLock
+    Strategy.Python.Pip
     Strategy.Python.Pipenv
     Strategy.Python.Poetry
     Strategy.Python.Poetry.Common
@@ -511,12 +518,13 @@ test-suite unit-tests
     App.Fossa.Container.AnalyzeNativeSpec
     App.Fossa.Container.AnalyzeNativeUploadSpec
     App.Fossa.FirstPartyScanSpec
+    App.Fossa.InitSpec
     App.Fossa.LernieSpec
     App.Fossa.LicenseScannerSpec
     App.Fossa.ManualDepsSpec
+    App.Fossa.PathDependencySpec
     App.Fossa.ProjectInferenceSpec
     App.Fossa.Report.AttributionSpec
-    App.Fossa.Report.Log4jReportSpec
     App.Fossa.ReportSpec
     App.Fossa.RunThemisSpec
     App.Fossa.VendoredDependencySpec
@@ -528,6 +536,7 @@ test-suite unit-tests
     App.Fossa.VSI.FingerprintSpec
     App.Fossa.VSI.IAT.ResolveSpec
     App.Fossa.VSI.TypesSpec
+    App.Fossa.VSIDepsSpec
     BerkeleyDB.BerkeleyDBSpec
     BundlerSpec
     Cargo.CargoTomlSpec
@@ -590,6 +599,7 @@ test-suite unit-tests
     GraphUtil
     Haskell.CabalSpec
     Haskell.StackSpec
+    Maven.CommonSpec
     Maven.DepTreeSpec
     Maven.PluginSpec
     Maven.PluginStrategySpec
@@ -612,6 +622,7 @@ test-suite unit-tests
     Perl.PerlSpec
     Pnpm.PnpmLockSpec
     Python.PipenvSpec
+    Python.PipSpec
     Python.Poetry.CommonSpec
     Python.Poetry.PoetryLockSpec
     Python.Poetry.PyProjectSpec

@@ -36,6 +36,7 @@ module Test.Fixtures (
   diffRevision,
   issuesDiffAvailable,
   standardAnalyzeConfig,
+  vsiSourceUnit,
 ) where
 
 import App.Fossa.Config.Analyze (AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
@@ -56,20 +57,12 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text.Extra (showT)
-import Discovery.Filters (
-  AllFilters,
- )
+import Discovery.Filters (AllFilters, MavenScopeFilters (MavenScopeIncludeFilters))
 import Effect.Logger (Severity (..))
 import Fossa.API.Types (Archive (..))
 import Fossa.API.Types qualified as API
 import Path (Abs, Dir, Path, mkAbsDir, mkRelDir, parseAbsDir, (</>))
-import Srclib.Types (
-  LicenseScanType (..),
-  LicenseSourceUnit (..),
-  Locator (..),
-  SourceUnit (..),
-  emptyLicenseUnit,
- )
+import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
 import System.Directory (getTemporaryDirectory)
 import Text.URI.QQ (uri)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
@@ -83,7 +76,7 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False True []
+organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True []
 
 project :: API.Project
 project =
@@ -152,6 +145,41 @@ sourceUnits = NE.fromList [unit]
         , sourceUnitOriginPaths = []
         , additionalData = Nothing
         }
+
+vsiSourceUnit :: SourceUnit
+vsiSourceUnit =
+  SourceUnit
+    { sourceUnitName = "/tmp/one/two"
+    , sourceUnitType = "vsi"
+    , sourceUnitManifest = "/tmp/one/two"
+    , sourceUnitBuild =
+        Just
+          SourceUnitBuild
+            { buildArtifact = "default"
+            , buildSucceeded = True
+            , buildImports =
+                [ Locator
+                    { locatorFetcher = "mvn"
+                    , locatorProject = "something/mavenish"
+                    , locatorRevision = Just "1.2.3"
+                    }
+                ]
+            , buildDependencies =
+                [ SourceUnitDependency
+                    { sourceDepLocator =
+                        Locator
+                          { locatorFetcher = "mvn"
+                          , locatorProject = "something/mavenish"
+                          , locatorRevision = Just "1.2.3"
+                          }
+                    , sourceDepImports = []
+                    }
+                ]
+            }
+    , sourceUnitGraphBreadth = Complete
+    , sourceUnitOriginPaths = ["/tmp/one/two"]
+    , additionalData = Nothing
+    }
 
 -- | A base dir for testing.  This directory is not guaranteed to exist.  If you
 -- want a real directory you should use `withTempDir`.
@@ -359,6 +387,7 @@ experimentalConfig =
   ExperimentalAnalyzeConfig
     { allowedGradleConfigs = Nothing
     , useV3GoResolver = GoModulesBasedTactic
+    , resolvePathDependencies = False
     }
 
 vendoredDepsOptions :: VendoredDependencyOptions
@@ -378,6 +407,12 @@ grepOptions =
     , configFilePath = Nothing
     }
 
+customFossaDepsFile :: Maybe FilePath
+customFossaDepsFile = Nothing
+
+mavenScopeFilterSet :: MavenScopeFilters
+mavenScopeFilterSet = MavenScopeIncludeFilters mempty
+
 #ifdef mingw32_HOST_OS
 absDir :: Path Abs Dir
 absDir = $(mkAbsDir "C:/")
@@ -395,6 +430,7 @@ standardAnalyzeConfig =
     , ANZ.projectRevision = projectRevision
     , ANZ.vsiOptions = vsiOptions
     , ANZ.filterSet = filterSet
+    , ANZ.mavenScopeFilterSet = mavenScopeFilterSet
     , ANZ.experimental = experimentalConfig
     , ANZ.vendoredDeps = vendoredDepsOptions
     , ANZ.unpackArchives = toFlag UnpackArchives False
@@ -404,4 +440,5 @@ standardAnalyzeConfig =
     , ANZ.overrideDynamicAnalysis = App.OverrideDynamicAnalysisBinary{unOverrideDynamicAnalysisBinary = mempty}
     , ANZ.firstPartyScansFlag = App.FirstPartyScansUseDefault
     , ANZ.grepOptions = grepOptions
+    , ANZ.customFossaDepsFile = customFossaDepsFile
     }

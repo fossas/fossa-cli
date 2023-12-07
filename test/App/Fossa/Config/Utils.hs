@@ -42,6 +42,7 @@ configFile path =
     , configKeywordSearch = Nothing
     , configOrgWideCustomLicenseConfigPolicy = Use
     , configConfigFilePath = path
+    , configMavenScope = Nothing
     }
 
 fixtureDir :: Path Rel Dir

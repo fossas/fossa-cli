@@ -80,13 +80,13 @@ mkRequest ::
   m (Response ByteStringLazy.ByteString)
 mkRequest manager registryCred accepts req = do
   token <- getToken =<< ask
-  token' <- getAuthToken registryCred req manager token
+  token' <- getAuthToken registryCred req manager accepts token
   logHttp (applyContentType accepts $ applyAuthToken token' req) manager
-  where
-    applyContentType :: Maybe [Text] -> Request -> Request
-    applyContentType c r = case c of
-      Nothing -> req
-      Just c' -> r `acceptsContentType` (Text.intercalate ", " c')
+
+applyContentType :: Maybe [Text] -> Request -> Request
+applyContentType c r = case c of
+  Nothing -> r
+  Just c' -> r `acceptsContentType` (Text.intercalate ", " c')
 
 -- | Adds 'Authorization' header if token is provided otherwise id
 applyAuthToken :: Maybe AuthToken -> Request -> Request
@@ -144,11 +144,13 @@ getAuthToken ::
   -- | Request For which to Get Authorization Token
   Manager ->
   -- | Manager to use for requests
+  Maybe [Text] ->
+  -- | Content-Types for Accept Header
   Maybe AuthToken ->
   -- | Existing Token (if any)
   m (Maybe AuthToken)
-getAuthToken cred reqAttempt manager token = do
-  let request' = applyAuthForExistingToken $ reqAttempt{method = "HEAD"}
+getAuthToken cred reqAttempt manager accepts token = do
+  let request' = applyContentType accepts (applyAuthForExistingToken $ reqAttempt{method = "HEAD"})
   response <- logHttp request' manager
 
   case (decode' $ responseBody response, statusCode . responseStatus $ response) of

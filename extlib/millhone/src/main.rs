@@ -115,6 +115,8 @@ fn main() -> stable_eyre::Result<()> {
                     .with_writer(std::io::stdout)
                     .with_file(false)
                     .with_line_number(false)
+                    .without_time()
+                    .with_target(false)
                     .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
                     .with_filter(app.level_filter())
                     .with_filter(self_sourced_events(app.log_level)),

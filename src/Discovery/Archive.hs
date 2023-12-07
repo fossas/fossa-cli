@@ -10,6 +10,7 @@ module Discovery.Archive (
   extractZip,
   selectUnarchiver,
   unpackFailurePath,
+  mkZip,
 ) where
 
 import App.Util (FileAncestry (..), ancestryDerived)
@@ -50,6 +51,7 @@ import Prettyprinter (Pretty (pretty), hsep, viaShow, vsep)
 import Prelude hiding (zip)
 
 data ArchiveUnpackFailure = ArchiveUnpackFailure (Path Abs File) SomeException
+newtype UnsupportedArchiveErr = UnsupportedArchiveErr (Path Abs File)
 
 unpackFailurePath :: ArchiveUnpackFailure -> Path Abs File
 unpackFailurePath (ArchiveUnpackFailure path _) = path
@@ -125,11 +127,11 @@ withArchive' ::
   Path Abs File ->
   -- | Callback
   (Path Abs Dir -> m c) ->
-  m (Maybe c)
+  m (Either UnsupportedArchiveErr (Maybe c))
 withArchive' file go =
   case selectUnarchiver (fileName file) of
-    Just extract -> withArchive extract file go
-    Nothing -> pure Nothing
+    Just extract -> Right <$> withArchive extract file go
+    Nothing -> pure . Left . UnsupportedArchiveErr $ file
 
 -- | Extract an archive to a temporary directory, and run the provided callback
 -- on the temporary directory. Archive contents are removed when the callback
@@ -162,20 +164,20 @@ mkTempDir name = do
 
 extractTar :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
 extractTar dir tarFile =
-  sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read =<< BL.readFile (fromAbsFile tarFile)
+  sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . readTar =<< BL.readFile (fromAbsFile tarFile)
 
 extractTarGz :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
 extractTarGz dir tarGzFile =
-  sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read . GZip.decompress =<< BL.readFile (fromAbsFile tarGzFile)
+  sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . readTar . GZip.decompress =<< BL.readFile (fromAbsFile tarGzFile)
 
 extractTarXz :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
 extractTarXz dir tarXzFile = do
   decompressed <- sendIO (runResourceT . runConduit $ sourceFileBS (toFilePath tarXzFile) .| CLzma.decompress Nothing .| sinkLbs)
-  sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read $ decompressed
+  sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . readTar $ decompressed
 
 extractTarBz2 :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
 extractTarBz2 dir tarGzFile =
-  sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . Tar.read . BZip.decompress =<< BL.readFile (fromAbsFile tarGzFile)
+  sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . readTar . BZip.decompress =<< BL.readFile (fromAbsFile tarGzFile)
 
 -- The tar unpacker dies when tar files reference files outside of the archive root
 removeTarLinks :: Tar.Entries e -> Tar.Entries e
@@ -187,8 +189,21 @@ removeTarLinks (Tar.Next x xs) =
 removeTarLinks Tar.Done = Tar.Done
 removeTarLinks (Tar.Fail e) = Tar.Fail e
 
+readTar :: BL.ByteString -> Tar.Entries Tar.FormatError
+readTar bs =
+  if BL.null bs
+    then -- Although .tar file spec requires that two 512 block of zero bytes
+    -- are required to mark end of the tar file. GNU tar
+    -- and BSD tar utilities consider empty file to be a
+    -- valid tar file.
+      Tar.Done
+    else Tar.read bs
+
 ---------- Zip files
 
 extractZip :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
 extractZip dir zipFile =
   sendIO $ Zip.withArchive (fromAbsFile zipFile) (Zip.unpackInto (fromAbsDir dir))
+
+mkZip :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
+mkZip dir zipFile = sendIO $ Zip.createArchive (toFilePath zipFile) (Zip.packDirRecur Zip.Deflate Zip.mkEntrySelector (toFilePath dir))

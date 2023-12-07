@@ -1,5 +1,47 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- Maven: add support for maven scope filtering ([#1331](https://github.com/fossas/fossa-cli/pull/1331))
+- `fossa init`: adds new `fossa init` command which creates `.fossa.yml.example`, and `fossa-deps.yml.example` file. ([#1323](https://github.com/fossas/fossa-cli/pull/1323))
+
+## v3.8.24
+
+- Python: use `pip` to determine transitive dependencies for setuptool projects that contain a req*.txt or setup.py file. ([#1334](https://github.com/fossas/fossa-cli/pull/1334))
+- Container Scanning: warn and exclude rpm packages that are missing attributes. ([#1335](https://github.com/fossas/fossa-cli/pull/1335))
+
+## v3.8.23
+- Custom License Scans: Support full-file uploads for custom license scans ([#1333](https://github.com/fossas/fossa-cli/pull/1333))
+
+## v3.8.22
+- path: adds path dependency scanning functionality. ([#1327](https://github.com/fossas/fossa-cli/pull/1327))
+- `pnpm`: Supports `6.0` version of `pnpm-lockfile.yaml` ([#1320])(https://github.com/fossas/fossa-cli/pull/1320)
+- Maven: Fixes defect, where `fossa-cli` was sometimes ignoring dependency, if the dependency with multiple scopes was part of the project. ([#1322](https://github.com/fossas/fossa-cli/pull/1322))
+
+## v3.8.21
+- archive: considers 0-byte tar file to be valid tar file. ([#1311](https://github.com/fossas/fossa-cli/pull/1311))
+- Cocoapods: Allow Podfile.lock without EXTERNAL SOURCES field ([#1279](https://github.com/fossas/fossa-cli/pull/1279))
+- `fossa-deps`: `--fossa-deps-file` to specify custom fossa-deps file ([#1303](https://github.com/fossas/fossa-cli/pull/1303))
+- install-latest.sh: Fixed a bug where install-latest.sh would result in a broken binary when run on some versions of macOS ([#1317](https://github.com/fossas/fossa-cli/pull/1317))
+
+## v3.8.20
+- container scanning: Fixes registry network calls, to ensure `fossa-cli` uses `Accept` header on `HEAD` network calls. ([#1309](https://github.com/fossas/fossa-cli/pull/1309))
+
+## v3.8.19
+
+- container scanning: fixes a defect which led to incorrect `NotTarFormat` errors when parsing container layer. ([#1305](https://github.com/fossas/fossa-cli/pull/1305))
+- `--detect-vendored`: fix a defect which caused the `--detect-vendored` flag to fail on Windows ([#1300](https://github.com/fossas/fossa-cli/pull/1300))
+
+## v3.8.18
+
+- Removes the `fossa log4j` subcommand. ([#1291](https://github.com/fossas/fossa-cli/pull/1291))
+- golang: Updates go.mod parser to be compatible with golang v1.21. ([#1304](https://github.com/fossas/fossa-cli/pull/1304))
+- `fossa list-targets`: list-target command supports `--format` option with: `ndjson`, `text`, and `legacy`. ([#1296](https://github.com/fossas/fossa-cli/pull/1296))
+
+## v3.8.17
+
+Integrates FOSSA snippet scanning into the main application.
+For more details and a quick start guide, see [the subcommand reference](./docs/references/subcommands/snippets.md).
+
 ## v3.8.16
 
 Delivers another update to the `millhone` early preview of FOSSA snippet scanning:
@@ -22,7 +64,7 @@ Initial documentation for this functionality is here.
 When we integrate this functionality into FOSSA CLI itself we'll have improved documentation as well.
 
 Note: FOSSA is still ingesting sources into the snippet scanning database;
-while this CLI is available earlier results will steadily improve as we crawl more sources.
+
 
 ## v3.8.14
 

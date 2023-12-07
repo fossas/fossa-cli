@@ -1,11 +1,13 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Srclib.Converter (
+  projectToSourceUnit,
   toSourceUnit,
   depTypeToFetcher,
   fetcherToDepType,
   verConstraintToRevision,
   toLocator,
+  shouldPublishDep,
 ) where
 
 import Prelude
@@ -33,6 +35,7 @@ import Graphing qualified
 import Path (toFilePath)
 import Srclib.Types (
   Locator (..),
+  OriginPath,
   SourceUnit (..),
   SourceUnitBuild (
     SourceUnitBuild,
@@ -44,13 +47,21 @@ import Srclib.Types (
   SourceUnitDependency (..),
   somePathToOriginPath,
  )
+import Types (DiscoveredProjectType, GraphBreadth (..))
 
-toSourceUnit :: Bool -> ProjectResult -> SourceUnit
-toSourceUnit leaveUnfiltered ProjectResult{..} =
+projectToSourceUnit :: Bool -> ProjectResult -> SourceUnit
+projectToSourceUnit leaveUnfiltered ProjectResult{..} =
+  toSourceUnit leaveUnfiltered renderedPath projectResultGraph projectResultType projectResultGraphBreadth originPaths
+  where
+    renderedPath = toText (toFilePath projectResultPath)
+    originPaths = map somePathToOriginPath projectResultManifestFiles
+
+toSourceUnit :: Bool -> Text -> Graphing Dependency -> DiscoveredProjectType -> GraphBreadth -> [OriginPath] -> SourceUnit
+toSourceUnit leaveUnfiltered path dependencies projectType graphBreadth originPaths =
   SourceUnit
-    { sourceUnitName = renderedPath
-    , sourceUnitType = toText projectResultType
-    , sourceUnitManifest = renderedPath
+    { sourceUnitName = path
+    , sourceUnitType = toText projectType
+    , sourceUnitManifest = path
     , sourceUnitBuild =
         Just $
           SourceUnitBuild
@@ -59,15 +70,13 @@ toSourceUnit leaveUnfiltered ProjectResult{..} =
             , buildImports = imports
             , buildDependencies = deps
             }
-    , sourceUnitGraphBreadth = projectResultGraphBreadth
-    , sourceUnitOriginPaths = map somePathToOriginPath projectResultManifestFiles
+    , sourceUnitGraphBreadth = graphBreadth
+    , sourceUnitOriginPaths = originPaths
     , additionalData = Nothing
     }
   where
-    renderedPath = toText (toFilePath projectResultPath)
-
     filteredGraph :: Graphing Dependency
-    filteredGraph = Graphing.shrinkWithoutPromotionToDirect ff projectResultGraph
+    filteredGraph = Graphing.shrinkWithoutPromotionToDirect ff dependencies
       where
         ff =
           if leaveUnfiltered
@@ -107,7 +116,7 @@ isSupportedType Dependency{dependencyType} =
   dependencyType /= SubprojectType
     && dependencyType /= GooglesourceType
     && dependencyType /= ConanType
-    && dependencyType /= PathType
+    && dependencyType /= UnresolvedPathType
 
 toLocator :: Dependency -> Locator
 toLocator dep =
@@ -162,6 +171,7 @@ depTypeToFetcher = \case
   UserType -> "user"
   PubType -> "pub"
   SwiftType -> "swift"
+  UnresolvedPathType -> "upath"
   PathType -> "path"
 
 -- | GooglesourceType and SubprojectType are not supported with this function, since they're ambiguous.
@@ -192,4 +202,5 @@ fetcherToDepType fetcher | depTypeToFetcher RPMType == fetcher = Just RPMType
 fetcherToDepType fetcher | depTypeToFetcher URLType == fetcher = Just URLType
 fetcherToDepType fetcher | depTypeToFetcher UserType == fetcher = Just UserType
 fetcherToDepType fetcher | depTypeToFetcher PubType == fetcher = Just PubType
+fetcherToDepType fetcher | depTypeToFetcher PathType == fetcher = Just PathType
 fetcherToDepType _ = Nothing

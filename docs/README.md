@@ -57,10 +57,12 @@ Feature guides explain how to use specific features. These are most useful if th
 Reference guides provide an exhaustive listing of all CLI functionality. If you can't find documentation on how something works elsewhere, it should be here.
 
 - CLI commands
+  - [`fossa init`](./references/subcommands/init.md)
   - [`fossa analyze`](./references/subcommands/analyze.md)
   - [`fossa test`](./references/subcommands/test.md)
   - [`fossa report`](./references/subcommands/report.md)
   - [`fossa list-targets`](./references/subcommands/list-targets.md)
+  - [`fossa snippets`](./references/subcommands/snippets.md)
   <!-- TODO Write this README file
   - [Common flags and options] -->
 - CLI configuration files

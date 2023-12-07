@@ -39,7 +39,7 @@ import App.Fossa.Config.Analyze (
   AnalyzeConfig (..),
   BinaryDiscovery (BinaryDiscovery),
   DynamicLinkInspect (DynamicLinkInspect),
-  ExperimentalAnalyzeConfig,
+  ExperimentalAnalyzeConfig (..),
   IATAssertion (IATAssertion),
   IncludeAll (IncludeAll),
   NoDiscoveryExclusion (NoDiscoveryExclusion),
@@ -51,6 +51,7 @@ import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
+import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
@@ -99,7 +100,7 @@ import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
-import Discovery.Filters (AllFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
+import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec)
 import Effect.Logger (
@@ -177,6 +178,7 @@ runDependencyAnalysis ::
   , Has (Output DiscoveredProjectScan) sig m
   , Has Stack sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader MavenScopeFilters) sig m
   , Has (Reader AllFilters) sig m
   , Has (Reader OverrideDynamicAnalysisBinary) sig m
   , Has Telemetry sig m
@@ -269,6 +271,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       skipResolutionSet = Config.vsiSkipSet $ Config.vsiOptions cfg
       vendoredDepsOptions = Config.vendoredDeps cfg
       grepOptions = Config.grepOptions cfg
+      customFossaDepsFile = Config.customFossaDepsFile cfg
+      shouldAnalyzePathDependencies = resolvePathDependencies $ Config.experimental cfg
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
@@ -298,7 +302,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         then do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure Nothing
-        else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir maybeApiOpts vendoredDepsOptions
+        else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
@@ -340,6 +344,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
       . runReader (Config.experimental cfg)
+      . runReader (Config.mavenScopeFilterSet cfg)
       . runReader discoveryFilters
       . runReader (Config.overrideDynamicAnalysis cfg)
       $ do
@@ -349,10 +354,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
             res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (runAnalyzers filters) basedir ancestryDirect
             Diag.withResult SevError SevWarn res (const (pure ()))
 
-  let projectResults = mapMaybe toProjectResult projectScans
   let filteredProjects = mapMaybe toProjectResult projectScans
-
-  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
 
   maybeEndpointAppVersion <- case destination of
     UploadScan apiOpts _ -> runFossaApiClient apiOpts $ do
@@ -363,6 +365,20 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       pure version
     _ -> pure Nothing
 
+  -- In our graph, we may have unresolved path dependencies
+  -- If we are in output mode, do nothing. If we are in upload mode
+  -- license scan all path dependencies, and upload findings to Endpoint,
+  -- and queue a build for all path+ dependencies
+  filteredProjects' <- case (shouldAnalyzePathDependencies, destination) of
+    (True, UploadScan apiOpts _) ->
+      Diag.context "path-dependencies"
+        . runFossaApiClient apiOpts
+        $ runStickyLogger SevInfo
+        $ traverse (enrichPathDependencies includeAll vendoredDepsOptions revision) filteredProjects
+    (True, _) -> pure $ map enrichPathDependencies' filteredProjects
+    (False, _) -> traverse (withPathDependencyNudge includeAll) filteredProjects
+
+  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult $ Config.filterSet cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
@@ -372,19 +388,19 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Just firstParty, Just lernie) -> Just $ firstParty <> lernie
           (Nothing, Just lernie) -> Just lernie
           (Just firstParty, Nothing) -> Just firstParty
-  let result = buildResult includeAll additionalSourceUnits filteredProjects licenseSourceUnits
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
+  let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits
 
   -- If we find nothing but keyword search, we exit with an error, but explain that the error may be ignorable.
   -- We do not want to succeed, because nothing gets uploaded to the API for keyword searches, so `fossa test` will fail.
   -- So the solution is to still fail, but give a hopefully useful explanation that the error can be ignored if all you were expecting is keyword search results.
-  case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectResults filteredProjects additionalSourceUnits licenseSourceUnits) of
+  case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
     (False, NoneDiscovered) -> Diag.fatal ErrNoProjectsDiscovered
     (True, NoneDiscovered) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
     (False, FilteredAll) -> Diag.fatal ErrFilteredAllProjects
     (True, FilteredAll) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
-    (_, CountedScanUnits scanUnits) -> doUpload result iatAssertion destination basedir jsonOutput revision scanUnits
-  pure result
+    (_, CountedScanUnits scanUnits) -> doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits
+  pure outputResult
   where
     doUpload result iatAssertion destination basedir jsonOutput revision scanUnits =
       case destination of
@@ -518,7 +534,7 @@ buildResult includeAll srcUnits projects licenseSourceUnits =
       Just licenseUnits -> do
         NE.toList $ mergeSourceAndLicenseUnits finalSourceUnits licenseUnits
     finalSourceUnits = srcUnits ++ scannedUnits
-    scannedUnits = map (Srclib.toSourceUnit (fromFlag IncludeAll includeAll)) projects
+    scannedUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) projects
 
 buildProject :: ProjectResult -> Aeson.Value
 buildProject project =

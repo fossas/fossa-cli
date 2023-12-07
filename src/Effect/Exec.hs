@@ -4,10 +4,14 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Effect.Exec (
+  argFromPath,
+  argsLabeled,
+  argsLabeledWith,
   Exec,
   ExecF (..),
   ExecErr (..),
   exec,
+  execEffectful,
   execThrow,
   Command (..),
   CmdFailure (..),
@@ -64,18 +68,20 @@ import Data.Aeson (
  )
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BL
+import Data.Foldable (traverse_)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
 import Data.String (fromString)
-import Data.String.Conversion (decodeUtf8, toString, toText)
+import Data.String.Conversion (ToText, decodeUtf8, toStrict, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes (DepType (..))
+import Effect.Logger (Logger, logInfo)
 import Effect.ReadFS (ReadFS, getCurrentDir)
 import GHC.Generics (Generic)
-import Path (Abs, Dir, Path, SomeBase (..), fromAbsDir)
+import Path (Abs, Dir, Path, SomeBase (..), fromAbsDir, toFilePath)
 import Path.IO (AnyPath (makeAbsolute))
 import Prettyprinter (Doc, indent, pretty, viaShow, vsep)
 import Prettyprinter.Render.Terminal (AnsiStyle)
@@ -333,6 +339,27 @@ execThrow dir cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
     Left failure -> fatal (CommandFailed failure)
     Right stdout -> pure stdout
 
+-- | A variant of 'exec' that is run for its side effects:
+-- * Throws an 'ExecErr' when the command returns a non-zero exit code, like @execThrow@.
+-- * Logs each line of the subcommand's stdout via @logInfo@.
+--
+-- Note: currently this buffers subcommand output; a future version may stream instead.
+execEffectful ::
+  ( Has Exec sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  ) =>
+  Path Abs Dir ->
+  Command ->
+  m ()
+execEffectful dir cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
+  result <- exec dir cmd
+  case result of
+    Left failure -> fatal (CommandFailed failure)
+    Right stdout -> do
+      let outputLines :: [Text] = decodeUtf8 . toStrict <$> BL.splitWith (== 10) stdout
+      traverse_ (logInfo . pretty) outputLines
+
 -- | A variant of 'execThrow' that runs the command in the current directory
 execThrow' :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Command -> m BL.ByteString
 execThrow' cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
@@ -420,6 +447,16 @@ instance ToDiagnostic CandidateCommandFailed where
         <> " not suitable: running with args "
         <> show failedArgs
         <> " resulted in a non-zero exit code"
+
+argFromPath :: Path a b -> Text
+argFromPath = toText . toFilePath
+
+argsLabeled :: ToText a => Text -> [a] -> [Text]
+argsLabeled = argsLabeledWith toText
+
+argsLabeledWith :: (a -> Text) -> Text -> [a] -> [Text]
+argsLabeledWith render label (arg : args) = [label, render arg] ++ argsLabeledWith render label args
+argsLabeledWith _ _ [] = []
 
 type ExecIOC = SimpleC ExecF
 

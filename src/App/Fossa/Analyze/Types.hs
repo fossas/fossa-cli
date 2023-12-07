@@ -20,7 +20,7 @@ import Control.Effect.Telemetry (Telemetry)
 import Data.Set (Set)
 import Data.Text (Text)
 import Diag.Result (Result (Failure, Success))
-import Discovery.Filters (AllFilters)
+import Discovery.Filters (AllFilters, MavenScopeFilters)
 import Effect.Exec (CandidateCommandEffs, Exec)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
@@ -41,6 +41,7 @@ type DiscoverTaskEffs sig m =
   , Has Diagnostics sig m
   , Has Debug sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader MavenScopeFilters) sig m
   , Has (Reader AllFilters) sig m
   , Has Telemetry sig m
   )
@@ -65,6 +66,7 @@ type AnalyzeStaticTaskEffs sig m =
   , Has Diagnostics sig m
   , Has Debug sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader MavenScopeFilters) sig m
   , Has (Reader AllFilters) sig m
   , Has Telemetry sig m
   )

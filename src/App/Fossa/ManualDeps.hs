@@ -16,12 +16,14 @@ module App.Fossa.ManualDeps (
   findFossaDepsFile,
   readFoundDeps,
   getScanCfg,
-) where
+)
+where
 
 import App.Fossa.ArchiveUploader (archiveUploadSourceUnit)
 import App.Fossa.Config.Analyze (
   VendoredDependencyOptions (..),
  )
+import App.Fossa.Config.Common (validateFile)
 import App.Fossa.LicenseScanner (licenseScanSourceUnit)
 import App.Fossa.VendoredDependency (
   VendoredDependency (..),
@@ -39,6 +41,7 @@ import Control.Effect.StickyLogger (StickyLogger)
 import Control.Monad (unless, when)
 import Data.Aeson (
   FromJSON (parseJSON),
+  Value (Null, Object),
   withObject,
   (.!=),
   (.:),
@@ -63,6 +66,7 @@ import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..), someBaseToOriginPath)
+import System.FilePath (takeExtension)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
 
 data FoundDepsFile
@@ -79,16 +83,41 @@ analyzeFossaDepsFile ::
   , Has Exec sig m
   ) =>
   Path Abs Dir ->
+  Maybe FilePath ->
   Maybe ApiOpts ->
   VendoredDependencyOptions ->
   m (Maybe SourceUnit)
-analyzeFossaDepsFile root maybeApiOpts vendoredDepsOptions = do
-  maybeDepsFile <- findFossaDepsFile root
+analyzeFossaDepsFile root maybeCustomFossaDepsPath maybeApiOpts vendoredDepsOptions = do
+  maybeDepsFile <-
+    case maybeCustomFossaDepsPath of
+      Nothing -> findFossaDepsFile root
+      Just filePath -> retrieveCustomFossaDepsFile filePath
   case maybeDepsFile of
     Nothing -> pure Nothing
     Just depsFile -> do
       manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
-      context "Converting fossa-deps to partial API payload" $ Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
+      if hasNoDeps manualDeps
+        then pure Nothing
+        else
+          context "Converting fossa-deps to partial API payload" $
+            Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
+
+retrieveCustomFossaDepsFile ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has ReadFS sig m
+  ) =>
+  FilePath ->
+  m (Maybe FoundDepsFile)
+retrieveCustomFossaDepsFile fossaDepsPath = do
+  let extension = takeExtension fossaDepsPath
+  file <- validateFile fossaDepsPath
+
+  case extension of
+    ".yml" -> pure $ Just $ ManualYaml file
+    ".yaml" -> pure $ Just $ ManualYaml file
+    ".json" -> pure $ Just $ ManualJSON file
+    _ -> fatalText $ "Expected <name-of-file>.{yml|yaml|json} but received: " <> toText fossaDepsPath
 
 findAndReadFossaDepsFile ::
   ( Has Diagnostics sig m
@@ -143,7 +172,6 @@ toSourceUnit ::
   VendoredDependencyOptions ->
   m SourceUnit
 toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendoredDepsOptions = do
-  -- If the file exists and we have no dependencies to report, that's a failure.
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
 
   archiveLocators <- case (maybeApiOpts, NE.nonEmpty vendoredDependencies) of
@@ -161,12 +189,13 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
     Nothing -> pure remoteDependencies
 
   let renderedPath = toText root
-      referenceLocators = refToLocator <$> referencedDependencies
+      referenceLocators = locatorDependencies ++ (refToLocator <$> referencedDependencies)
       additional = toAdditionalData (NE.nonEmpty customDependencies) (NE.nonEmpty rdeps)
       build = toBuildData <$> NE.nonEmpty (referenceLocators <> archiveLocators)
       originPath = case depsFile of
         (ManualJSON path) -> tryMakeRelative root path
         (ManualYaml path) -> tryMakeRelative root path
+
   pure $
     SourceUnit
       { sourceUnitName = renderedPath
@@ -303,6 +332,7 @@ hasNoDeps ManualDependencies{..} =
     && null customDependencies
     && null vendoredDependencies
     && null remoteDependencies
+    && null locatorDependencies
 
 -- TODO: Change these to Maybe NonEmpty
 data ManualDependencies = ManualDependencies
@@ -310,6 +340,7 @@ data ManualDependencies = ManualDependencies
   , customDependencies :: [CustomDependency]
   , vendoredDependencies :: [VendoredDependency]
   , remoteDependencies :: [RemoteDependency]
+  , locatorDependencies :: [Locator]
   }
   deriving (Eq, Ord, Show)
 
@@ -359,17 +390,20 @@ data DependencyMetadata = DependencyMetadata
   deriving (Eq, Ord, Show)
 
 instance FromJSON ManualDependencies where
-  parseJSON = withObject "ManualDependencies" $ \obj ->
+  parseJSON (Object obj) =
     ManualDependencies
       <$ (obj .:? "version" >>= isMissingOr1)
       <*> (obj .:? "referenced-dependencies" .!= [])
       <*> (obj .:? "custom-dependencies" .!= [])
       <*> (obj .:? "vendored-dependencies" .!= [])
       <*> (obj .:? "remote-dependencies" .!= [])
+      <*> (obj .:? "locator-dependencies" .!= [])
     where
       isMissingOr1 :: Maybe Int -> Parser ()
       isMissingOr1 (Just x) | x /= 1 = fail $ "Invalid fossa-deps version: " <> show x
       isMissingOr1 _ = pure ()
+  parseJSON (Null) = pure $ ManualDependencies mempty mempty mempty mempty mempty
+  parseJSON other = fail $ "Expected object or Null for ManualDependencies, but got: " <> show other
 
 depTypeParser :: Text -> Parser DepType
 depTypeParser text = case depTypeFromText text of
@@ -433,12 +467,13 @@ instance FromJSON ReferencedDependency where
       parseOS :: Object -> Parser Text
       parseOS obj = do
         os <- requiredFieldMsg "os" $ obj .: "os"
-        unless (toLower os `elem` supportedOSs) $
-          fail . toString $
-            "Provided os: "
-              <> (toLower os)
-              <> " is not supported! Please provide oneOf: "
-              <> Text.intercalate ", " supportedOSs
+        unless (toLower os `elem` supportedOSs)
+          $ fail
+            . toString
+          $ "Provided os: "
+            <> (toLower os)
+            <> " is not supported! Please provide oneOf: "
+            <> Text.intercalate ", " supportedOSs
         pure os
 
       requiredFieldMsg :: String -> Parser a -> Parser a
@@ -476,7 +511,8 @@ instance FromJSON CustomDependency where
       <$> (obj `neText` "name")
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "license")
-      <*> obj .:? "metadata"
+      <*> obj
+        .:? "metadata"
       <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
 
 instance FromJSON RemoteDependency where
@@ -485,7 +521,8 @@ instance FromJSON RemoteDependency where
       <$> (obj `neText` "name")
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "url")
-      <*> obj .:? "metadata"
+      <*> obj
+        .:? "metadata"
       <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
 
 validateRemoteDep :: (Has Diagnostics sig m) => RemoteDependency -> Organization -> m RemoteDependency
@@ -513,6 +550,7 @@ validateRemoteDep r org =
     maxUrlRevLength = maxLocatorLength - Text.length requiredChars
 
 newtype RemoteDepLengthIsGtThanAllowed = RemoteDepLengthIsGtThanAllowed (RemoteDependency, Int)
+
 instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
   renderDiagnostic (RemoteDepLengthIsGtThanAllowed (r, maxLen)) =
     vsep
@@ -537,8 +575,10 @@ instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
 instance FromJSON DependencyMetadata where
   parseJSON = withObject "metadata" $ \obj ->
     DependencyMetadata
-      <$> obj .:? "description"
-      <*> obj .:? "homepage"
+      <$> obj
+        .:? "description"
+      <*> obj
+        .:? "homepage"
       <* forbidMembers "metadata" ["url"] obj
 
 -- Parse supported dependency types into their respective type or return Nothing.
