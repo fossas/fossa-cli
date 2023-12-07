@@ -67,23 +67,4 @@ Each strategy's documentation contains information about its tactics and how it 
 TODO: create a lookup table that categorizes these strategies by language or tool.
 -->
 
-The CLI supports the following strategies:
-
-- [clojure](../references/strategies/languages/golang/golang.md) (lein)
-- [dart](../references/strategies/languages/dart/dart.md) (pub)
-- [elixir](../references/strategies/languages/elixir/elixir.md) (mix)
-- [erlang](../references/strategies/languages/erlang/erlang.md) (rebar3)
-- [fortran](../references/strategies/languages/fortran/fortran.md)
-- [go](../references/strategies/languages/golang/golang.md) (gomodules, dep, glide)
-- [gradle](../references/strategies/languages/gradle/gradle.md)
-- [haskell](../references/strategies/languages/haskell/README.md) (cabal, stack)
-- [iOS](../references/strategies/platforms/ios/ios.md) (Carthage, Cocoapods, Swift package manager)
-- [maven](../references/strategies/languages/maven/maven.md)
-- [nodejs](../references/strategies/languages/nodejs/nodejs.md) (yarn, npmcli)
-- [php](../references/strategies/languages/php/composer.md) (composer)
-- [python](../references/strategies/languages/python/python.md) (conda, pipenv, setuptools)
-- [rpm](../references/strategies/system/rpm/rpm.md) (spec files)
-- [ruby](../references/strategies/languages/ruby/ruby.md) (bundler)
-- [rust](../references/strategies/languages/rust/rust.md) (cargo)
-- [sbt](../references/strategies/languages/scala/sbt.md) (sbt)
-- [.NET](../references/strategies/languages/dotnet/nuget.md) (NuGet, Paket)
+For more information on supported strategies, see the [strategies documentation](../references/strategies/README.md#supported-languages).
