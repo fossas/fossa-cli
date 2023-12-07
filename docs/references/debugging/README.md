@@ -19,7 +19,7 @@ to jump around.
 ## Debugging a Missing Project
 
 If your project wasn't found, make sure you meet the requirements in the
-[relevant language/build-tool's quick reference](../references/strategies/README.md)
+[relevant language/build-tool's quick reference](../strategies/README.md)
 
 If your project meets the requirements, it's very likely `fossa analyze` found your project,
 but dependency analysis failed.

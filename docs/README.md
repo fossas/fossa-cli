@@ -126,17 +126,17 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 
 #### Configuration
 
-- [Specifying Dependencies Manually with `foss-deps.yml`](./references/files/foss-deps.md)
-- [Specifying Project Settings with `.fossa.yml`](./references/files/foss-yml.md)
+- [Specifying Dependencies Manually with `fossa-deps.yml`](./references/files/fossa-deps.md)
+- [Specifying Project Settings with `.fossa.yml`](./references/files/fossa-yml.md)
 
 #### Troubleshooting
 
 - [Debugging FOSSA CLI](./references/debugging/README.md)
-  - [Debugging a Missing Project](./references/debugging/README.md#debuggin--missin-project)
-  - [Debugging a Failing Strategy](./references/debugging/README.md#debuggin-strategies)
-  - [Debugging a FOSSA CLI Specific Error](./references/debugging/README.md#debuggin-strategies)
-  - [Debugging with the Debug Bundle](./references/debugging/README.md#debuggin-wit-th-debu-bundle)
-- [How to Debug Path Filters](./featuresvendore-dependencies.md#debuggin-you-pat-filters)
+  - [Debugging a Missing Project](./references/debugging/README.md#debugging--missing-project)
+  - [Debugging a Failing Strategy](./references/debugging/README.md#debugging-strategies)
+  - [Debugging a FOSSA CLI Specific Error](./references/debugging/README.md#debugging-strategies)
+  - [Debugging with the Debug Bundle](./references/debugging/README.md#debugging-with-the-debug-bundle)
+- [How to Debug Path Filters](./featuresvendore-dependencies.md#debugging-your-path-filters)
 - [Debugging Container Analysis](./references/subcommands/container/scanner.md#debugging)
 - [Contributing](contributing/README.md)
 - [Upgrading from FOSSA CLI v1 to a Supported FOSSA CLI](./differences-from-v1.md)
