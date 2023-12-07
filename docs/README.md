@@ -33,26 +33,40 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 
 ### Concepts
 
-[FOSSA CLI Concepts](./concepts/analysis-and-analyzers.md)
+- [FOSSA CLI Concepts](./concepts/analysis-and-analyzers.md)
 - [Analysis Targets](./concepts/analysis-and-analyzers.md#analysis-targets)
 - [Discovery and Analysis](./concepts/analysis-and-analyzers.md#discovery-and-analysis)
-- [Strategy Tactics](./concepts/analysis-and-analyzers.md#discovery-and-analysis)
+- [Strategy Tactics](./concepts/analysis-and-analyzers.md#tactics)
 - [Static and Dynamic Strategies](./references/strategies/README.md#static-and-dynamic-strategies)
-- [Dynamic Strategy Command Selection](./features/strategy-command-selection.md)
-<!-- Consider linking to each language, tool, or platform here -->
-[Language and Tool (Strategy) Support](./references/strategies/README.md#supported-languages)
-[Configuring Which Targets Are Analyzed](./walkthroughs/analysis-target-configuration.md)
-- [Analyzing Specific Submodules](./walkthroughs/analysis-target-configuration.md#target-filtering-for-submodules)
+
+### Walkthroughs
+
+- [Integrating a project](./walkthroughs/integrating.md)
+- [Debugging an Integration](./references/debugging/README.md)
+- [Analysis target configuration](./walkthroughs/analysis-target-configuration.md)
+- [Custom integration](./walkthroughs/custom-integrating-with-bower-example.md)
+- [Integrating a Conan Project](./walkthroughs/conan.md)
+- [Configuring SSL/TLS Support Manually](./walkthroughs/ssl-cert.md)
+- [Integrating Container Scanning in CI](./walkthroughs/container-scanning-generic-ci.md)
 
 ### Features
 
+#### Analyzing Projects
+
+<!-- Consider linking to each language, tool, or platform here -->
+- [Language and Tool (Strategy) Support](./references/strategies/README.md)
+- [Configuring Which Targets Are Analyzed](./walkthroughs/analysis-target-configuration.md)
+  - [Analyzing Specific Submodules](./walkthroughs/analysis-target-configuration.md#target-filtering-for-submodules)
+- [Dynamic Strategy Command Selection](./features/strategy-command-selection.md)
+- [`fossa analyze` Reference](./references/subcommands/analyze.md)
+
 #### Manually Specifying Dependencies
 
-- [Overview](./features/manual-dependencies.md#manually-specifying-dependencies)
+- [Overview](./features/manual-dependencies.md)
 - [Deps from a Known Package Manager (Referenced Dependencies)](./features/manual-dependencies.md#referenced-dependencies)
 - [Fully Specifying a Dep and License Manually (Custom Dependencies)](./features/manual-dependencies.md#referenced-dependencies)
 - [Specifying a Source URL for Analysis (Remote Dependencies)](./features/manual-dependencies.md#referenced-dependencies)
-- [Performance Characteristics of Manual Dependencies](./features/manual-dependencies.md#referenced-dependencies-performance)
+- [Performance Characteristics of Manual Dependencies](./features/manual-dependencies.md#performance)
 
 #### Analyzing Vendored Dependencies
 
@@ -63,6 +77,7 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 - [Path Filtering on Windows](./features/vendored-dependencies.md#path-filtering-and-windows)
 - [How to Debug Path Filters](./features/vendored-dependencies.md#debugging-your-path-filters)
 - [Vendored Dependency Performance](./features/vendored-dependencies.md#performance)
+- [Detecting Vendored Source Code with Vendored Source Identification (VSI)](./references/subcommands/analyze/detect-vendored.md)
 
 #### Searching for Custom Keywords and Licenses
 
@@ -73,7 +88,6 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 - [Configuring Custom-License Searches Organization-Wide](./features/custom-license-and-keyword-searches.md#configuring-custom-license-searches-for-your-whole-organization)
   - [Escape characters in organization-wide custom licenses searches](./features/custom-license-and-keyword-searches.md#escape-characters-in-custom-license-searches-for-your-whole-organization)
   - [Turning Off Organization-Wide Custom-Licenses Searches](./features/custom-license-and-keyword-searches.md#turning-off-organization-wide-custom-licenses-searches)
-- [Detecting Vendored Source Code with Vendored Source Identification (VSI)](./references/subcommands/analyze/detect-vendored.md)
 
 #### Analyzing Containers
 
@@ -128,28 +142,17 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 
 - [Specifying Dependencies Manually with `fossa-deps.yml`](./references/files/fossa-deps.md)
 - [Specifying Project Settings with `.fossa.yml`](./references/files/fossa-yml.md)
+- [Upgrading from FOSSA CLI v1 to a Supported FOSSA CLI](./differences-from-v1.md)
 
 #### Troubleshooting
 
 - [Debugging FOSSA CLI](./references/debugging/README.md)
-  - [Debugging a Missing Project](./references/debugging/README.md#debugging--missing-project)
+  - [Debugging a Missing Project](./references/debugging/README.md#debugging-a-missing-project)
   - [Debugging a Failing Strategy](./references/debugging/README.md#debugging-strategies)
-  - [Debugging a FOSSA CLI Specific Error](./references/debugging/README.md#debugging-strategies)
+  - [Debugging a FOSSA CLI Specific Error](./references/debugging/README.md#debugging-fossa-cli-operation)
   - [Debugging with the Debug Bundle](./references/debugging/README.md#debugging-with-the-debug-bundle)
 - [How to Debug Path Filters](./features/vendored-dependencies.md#debugging-your-path-filters)
 - [Debugging Container Analysis](./references/subcommands/container/scanner.md#debugging)
-- [Contributing](contributing/README.md)
-- [Upgrading from FOSSA CLI v1 to a Supported FOSSA CLI](./differences-from-v1.md)
-
-### Walkthroughs
-
-- [Integrating a project](./walkthroughs/integrating.md)
-- [Debugging an Integration](./references/debugging/README.md)
-- [Analysis target configuration](./walkthroughs/analysis-target-configuration.md)
-- [Custom integration](./walkthroughs/custom-integrating-with-bower-example.md)
-- [Integrating a Conan Project](./walkthroughs/conan.md)
-- [Manually Setting a Root CA for FOSSA CLI](./walkthroughs/ssl-cert.md#manually-setting-a-root-ca)
-- [Integrating Container Scanning in CI](./walkthroughs/container-scanning-generic-ci.md)
 
 ## FAQs
 
@@ -161,3 +164,8 @@ please [create a support ticket](https://support.fossa.com) to express interest!
 ### What kind of data gets uploaded to FOSSA's servers?
 
 Please see our '[What data gets uploaded?](./walkthroughs/what-data-gets-uploaded.md)' doc for more information.
+
+### How can I contribute a change to FOSSA CLI?
+
+Please see our [contributing](./contributing/README.md) documentation.
+
