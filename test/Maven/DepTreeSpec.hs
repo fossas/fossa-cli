@@ -87,8 +87,6 @@ spec =
       let mavenDepHamcrestCore = MavenDependency depHamcrestCore (Set.fromList ["test"])
 
       -- Act
-      -- NOTE: Previously shrinkRoots was applied at this level, but it has now been moved upstream to allow for submodule filtering
-      --       Adding shrinkRoots to our buildGraph function to mimic prior behavior
       let graph = shrinkRoots $ buildGraph fixtureSingleGraph
 
       -- Assert

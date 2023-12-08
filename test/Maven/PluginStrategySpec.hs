@@ -276,9 +276,7 @@ mavenCrossDependentSubModules =
 spec :: Spec
 spec = do
   describe "buildGraph" $ do
-    -- NOTE: Previously shrinkRoots was applied at this level, but it has now been moved upstream to allow for submodule filtering
-    --       Adding shrinkRoots to our buildGraph function to mimic prior behavior
-    it "should produce expected output" $ do
+    it "Should produce expected output, without including submodules in test comparison" $ do
       let graph = shrinkRoots $ buildGraph (ReactorOutput []) mavenOutput
 
       expectDeps [packageOne, packageTwo] graph
@@ -297,7 +295,7 @@ spec = do
       expectDirect [packageTwo, packageFour] graph
       expectEdges [] graph
 
-    it "Should parse all scopes" $ do
+    it "Should parse all scopes, without including submodules in test comparison" $ do
       let graph = shrinkRoots $ buildGraph (ReactorOutput []) mavenMultiScopeOutput
       expectDeps [packageMultiScope] graph
 

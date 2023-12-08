@@ -172,7 +172,7 @@ buildGraph reactorOutput PluginOutput{..} =
                       : [("optional", ["true"]) | artifactOptional]
               }
           dependencyScopes = Set.fromList artifactScopes
-          mavenDep = MavenDependency dep dependencyScopes
+          mavenDep = MavenDependency dep dependencyScopes mempty
 
       when
         (artifactIsDirect || artifactArtifactId `Set.member` knownSubmodules)

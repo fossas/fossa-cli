@@ -189,6 +189,27 @@ scopeFilters = do
     expectDeps [compileDep, runtimeDep] graph'
     expectEdges [(compileDep, runtimeDep)] graph'
 
+submoduleDep1 :: MavenDependency
+submoduleDep1 = createDepFromName "com.fossa:submodule1"
+
+submoduleDep2 :: MavenDependency
+submoduleDep2 = createDepFromName "com.fossa:submodule2"
+
+sharedDep :: MavenDependency
+sharedDep = createDepFromName "com.fossa:sharedDep"
+
+sharedDepTransitive :: MavenDependency
+sharedDepTransitive = createDepFromName "com.fossa:sharedDepTransitive"
+
+filteredDep :: MavenDependency
+filteredDep = createDepFromName "com.fossa:filteredDep"
+
+includedSubmodules :: Set.Set Text
+includedSubmodules = Set.fromList ["com.fossa:submodule1"]
+
+allSubmodules :: Set.Set Text
+allSubmodules = Set.fromList ["com.fossa:submodule1", "com.fossa:submodule2"]
+
 submoduleFilters :: Spec
 submoduleFilters = do
   describe "Filter maven deps by submodule" $ do
@@ -200,13 +221,7 @@ submoduleFilters = do
       -- After filtering with includedSubmodules = Set("com.fossa:submodule1")
       --
       -- com.fossa:submodule1 ->  com.fossa:sharedDep -> com.fossa:sharedDepTransitive
-      let submoduleDep1 = createDepFromName "com.fossa:submodule1"
-      let submoduleDep2 = createDepFromName "com.fossa:submodule2"
-      let sharedDep = createDepFromName "com.fossa:sharedDep"
-      let sharedDepTransitive = createDepFromName "com.fossa:sharedDepTransitive"
-      let filteredDep = createDepFromName "com.fossa:filteredDep"
-      let includedSubmodules = Set.fromList ["com.fossa:submodule1"]
-      let allSubmodules = Set.fromList ["com.fossa:submodule1", "com.fossa:submodule2"]
+
       let graph = Graphing.directs [submoduleDep1, submoduleDep2] <> Graphing.edges [(submoduleDep1, sharedDep), (submoduleDep2, sharedDep), (submoduleDep2, filteredDep), (sharedDep, sharedDepTransitive)]
       let graph' = filterMavenSubmodules includedSubmodules allSubmodules graph
 
@@ -222,14 +237,7 @@ submoduleFilters = do
       -- After filtering with includedSubmodules = Set("com.fossa:submodule1")
       --
       -- com.fossa:submodule1 ->  com.fossa:sharedDep -> com.fossa:sharedDepTransitive
-      let submoduleDep1 = createDepFromName "com.fossa:submodule1"
-      let submoduleDep2 = createDepFromName "com.fossa:submodule2"
-      let sharedDep = createDepFromName "com.fossa:sharedDep"
-      let sharedDepTransitive = createDepFromName "com.fossa:sharedDepTransitive"
-      let filteredDep = createDepFromName "com.fossa:filteredDep"
       let filteredDepTransitive = createDepFromName "com.fossa:filteredDepTransitive"
-      let includedSubmodules = Set.fromList ["com.fossa:submodule1"]
-      let allSubmodules = Set.fromList ["com.fossa:submodule1", "com.fossa:submodule2"]
       let graph = Graphing.directs [submoduleDep1, submoduleDep2] <> Graphing.edges [(submoduleDep1, sharedDep), (submoduleDep1, submoduleDep2), (submoduleDep2, sharedDep), (submoduleDep2, filteredDep), (sharedDep, sharedDepTransitive), (filteredDep, filteredDepTransitive)]
       let graph' = filterMavenSubmodules includedSubmodules allSubmodules graph
 

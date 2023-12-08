@@ -160,7 +160,7 @@ toDependency PackageId{groupName, artifactName, artifactVersion, buildTag} = do
           , dependencyTags = mempty
           }
       dependencyScopes = Set.fromList $ maybeToList buildTag
-  MavenDependency dep dependencyScopes
+  MavenDependency dep dependencyScopes mempty
 
 toGraph :: DotGraph -> Graphing PackageId
 toGraph DotGraph{rootNode, edgeList} = run . evalGrapher $ do

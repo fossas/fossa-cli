@@ -63,7 +63,7 @@ buildProjectClosures basedir global = closures
     graphRoots = sourceVertices (globalGraph global)
 
     submodulesFromCoordinate :: Map MavenCoordinate a -> Set Text
-    submodulesFromCoordinate = Set.fromList . Prelude.map extractSubmoduleFromCoordinate . Map.keys
+    submodulesFromCoordinate = Set.fromList . map extractSubmoduleFromCoordinate . Map.keys
 
     extractSubmoduleFromCoordinate :: MavenCoordinate -> Text
     extractSubmoduleFromCoordinate (MavenCoordinate group artifact _) = group <> ":" <> artifact
