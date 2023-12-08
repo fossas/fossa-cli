@@ -53,7 +53,7 @@ jobs:
     - uses: actions/cache@v3
       name: Cache cabal store
       with:
-        path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cache/cabal' }}
+        path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
         key: ${{ runner.os }}-benchmarks-cabal-cache-${{ hashFiles('**/*.cabal', 'cabal.project.ci.linux') }}
         restore-keys: |
           ${{ runner.os }}-benchmarks-cabal-cache-
