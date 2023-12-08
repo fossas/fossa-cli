@@ -87,9 +87,7 @@ jobs:
         RUN_CMD: cabal build --project-file=cabal.project.ci.linux all
       run: |
         cabal update
-        ls -a "$HOME"
         $RUN_CMD || $RUN_CMD
-        ls "$HOME/.cabal/store"
 
     - name: Run all integration tests
       run: |
