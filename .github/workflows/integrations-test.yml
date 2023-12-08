@@ -60,7 +60,6 @@ jobs:
         rustc -V || echo "no rustc"
         cargo -V || echo "no cargo"
         echo "$HOME"
-        ls ~/.cabal
 
     - uses: Swatinem/rust-cache@v2
     
@@ -89,7 +88,9 @@ jobs:
         RUN_CMD: cabal build --project-file=cabal.project.ci.linux all
       run: |
         cabal update
+        ls "$HOME/.cabal"
         $RUN_CMD || $RUN_CMD
+        ls "$HOME/.cabal/store"
 
     - name: Run all integration tests
       run: |
