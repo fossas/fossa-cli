@@ -109,10 +109,6 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 #### Experimental Features
 
 - [Overview and Support Policy](./references/experimental/README.md)
-- [Flagging Binary Dependencies in the Project Source Tree](./references/experimental/binary-discovery/README.md)
-  - [Discovering Jar and Aar Dependencies](./references/experimental/binary-discovery/README.md#analyzing-jar-and-aar-dependencies)
-  - [Creating User-Defined Binary Dependencies](./references/experimental/binary-discovery/README.md#creating-user-defined-binary-dependencies)
-- [Path Dependencies](./references/experimental/path-dependency.md)
 
 #### Scanning Projects for Source Snippets
 
