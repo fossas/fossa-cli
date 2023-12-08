@@ -60,6 +60,7 @@ jobs:
         rustc -V || echo "no rustc"
         cargo -V || echo "no cargo"
         echo "$HOME"
+        echo "$XDG_CACHE_HOME"
 
     - uses: Swatinem/rust-cache@v2
     
