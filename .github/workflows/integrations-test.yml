@@ -59,6 +59,8 @@ jobs:
         ghcup --version || echo "no ghcup"
         rustc -V || echo "no rustc"
         cargo -V || echo "no cargo"
+        echo "$HOME"
+        ls ~/.cabal
 
     - uses: Swatinem/rust-cache@v2
     
