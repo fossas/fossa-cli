@@ -108,12 +108,11 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 
 #### Experimental Features
 
-- [Overview](./references/experimental/README.md)
+- [Overview and Support Policy](./references/experimental/README.md)
 - [Flagging Binary Dependencies in the Project Source Tree](./references/experimental/binary-discovery/README.md)
   - [Discovering Jar and Aar Dependencies](./references/experimental/binary-discovery/README.md#analyzing-jar-and-aar-dependencies)
   - [Creating User-Defined Binary Dependencies](./references/experimental/binary-discovery/README.md#creating-user-defined-binary-dependencies)
 - [Path Dependencies](./references/experimental/path-dependency.md)
-- [SSL Certificates and FOSSA CLI](./walkthroughs/ssl-cert.md)
 
 #### Scanning Projects for Source Snippets
 
@@ -135,7 +134,7 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 - [`fossa init`](./references/subcommands/init.md): Generate sample config files.
 - [`fossa list-targets`](./references/subcommands/list-targets.md): Retrieve a list of filterable targets in a project.
 - [`fossa report`](./references/subcommands/report.md): Download a report of the most recent scan of a project.
-- [`fossa snippets`](./references/subcommands/snippets.md): Analyze snippets of a project and check if they exist in other projects FOSSA knows about.
+- [`fossa snippets`](./references/subcommands/snippets.md): Analyze snippets of a project and check if they exist in other open source projects FOSSA knows about.
 - [`fossa test`](./references/subcommands/test.md): View the results of the most recent scan of a project.
 
 #### Configuration
@@ -153,6 +152,7 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
   - [Debugging with the Debug Bundle](./references/debugging/README.md#debugging-with-the-debug-bundle)
 - [How to Debug Path Filters](./features/vendored-dependencies.md#debugging-your-path-filters)
 - [Debugging Container Analysis](./references/subcommands/container/scanner.md#debugging)
+- [Understanding SSL/TLS Certificates and FOSSA](./walkthroughs/ssl-cert.md)
 
 ## FAQs
 
