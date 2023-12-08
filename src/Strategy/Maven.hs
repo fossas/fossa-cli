@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Strategy.Maven (
   discover,
   mkProject,
@@ -33,10 +31,7 @@ import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure (..))
 import Strategy.Maven.Pom.Closure qualified as PomClosure
-import Text.Pretty.Simple (pShow)
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), FoundTargets (..), GraphBreadth (..))
-
-import Effect.Logger (Logger, Pretty (pretty), logDebug, runLogger)
 
 discover ::
   ( Has (Lift IO) sig m
@@ -80,7 +75,6 @@ getDeps ::
   , Has ReadFS sig m
   , CandidateCommandEffs sig m
   , Has (Reader MavenScopeFilters) sig m
-  , Has Logger sig m
   ) =>
   FoundTargets ->
   MavenProject ->
@@ -88,8 +82,6 @@ getDeps ::
 getDeps foundTargets (MavenProject closure) = do
   let submoduleTargets = submoduleTargetSet foundTargets
   (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis submoduleTargets closure <||> getStaticAnalysis submoduleTargets closure
-  logDebug $ "This is the graph" <> pretty (pShow (graph))
-
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -121,7 +113,6 @@ getDepsDynamicAnalysis ::
   , Has ReadFS sig m
   , CandidateCommandEffs sig m
   , Has (Reader MavenScopeFilters) sig m
-  , Has Logger sig m
   ) =>
   Set Text ->
   MavenProjectClosure ->
@@ -133,9 +124,7 @@ getDepsDynamicAnalysis submoduleTargets closure = do
       $ warnOnErr MissingEdges
         . warnOnErr MissingDeepDeps
       $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
-  -- logDebug $ "This is the graph before ------- --- " <> pretty (pShow (graph))
   filteredGraph <- applyMavenFilters submoduleTargets allSubmodules graph
-  logDebug $ "This is the filtered ------- --- " <> pretty (pShow (filteredGraph))
   pure (withoutProjectAsDep filteredGraph, graphBreadth)
   where
     -- shrinkRoots is applied on all dynamic strategies.
@@ -191,10 +180,10 @@ getStaticAnalysis submoduleTargets closure = do
 applyMavenFilters :: Has (Reader MavenScopeFilters) sig m => Set Text -> Set Text -> Graphing MavenDependency -> m (Graphing Dependency)
 applyMavenFilters targetSet submoduleSet graph = do
   mavenScopeFilters <- ask @(MavenScopeFilters)
-  filteredSubmoduleGraph <- filterMavenSubmodules targetSet submoduleSet graph
-  -- filteredSubmoduleScopeGraph <- filterMavenDependencyByScope mavenScopeFilters filteredSubmoduleGraph
+  let filteredSubmoduleGraph = filterMavenSubmodules targetSet submoduleSet graph
+      filteredSubmoduleScopeGraph = filterMavenDependencyByScope mavenScopeFilters filteredSubmoduleGraph
 
-  pure $ gmap mavenDependencyToDependency filteredSubmoduleGraph
+  pure $ gmap mavenDependencyToDependency filteredSubmoduleScopeGraph
 
 submoduleTargetSet :: FoundTargets -> Set Text
 submoduleTargetSet foundTargets = case foundTargets of

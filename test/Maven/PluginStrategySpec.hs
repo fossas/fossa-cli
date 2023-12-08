@@ -44,7 +44,7 @@ packageOne = do
           , dependencyEnvironments = Set.fromList [EnvProduction, EnvTesting]
           , dependencyTags = Map.fromList [("scopes", ["compile", "test"])]
           }
-  MavenDependency dep (Set.fromList ["compile", "test"])
+  MavenDependency dep (Set.fromList ["compile", "test"]) mempty
 
 packageTwo :: MavenDependency
 packageTwo = do
@@ -57,7 +57,7 @@ packageTwo = do
           , dependencyEnvironments = Set.singleton EnvProduction
           , dependencyTags = Map.fromList [("scopes", ["compile"]), ("optional", ["true"])]
           }
-  MavenDependency dep (Set.fromList ["compile"])
+  MavenDependency dep (Set.fromList ["compile"]) mempty
 
 packageFour :: MavenDependency
 packageFour = do
@@ -70,7 +70,7 @@ packageFour = do
           , dependencyEnvironments = Set.singleton EnvProduction
           , dependencyTags = Map.fromList [("scopes", ["compile"])]
           }
-  MavenDependency dep (Set.fromList ["compile"])
+  MavenDependency dep (Set.fromList ["compile"]) mempty
 
 packageMultiScope :: MavenDependency
 packageMultiScope = do
@@ -83,7 +83,7 @@ packageMultiScope = do
           , dependencyEnvironments = Set.fromList [EnvProduction, EnvTesting, EnvOther "other"]
           , dependencyTags = Map.singleton "scopes" ["compile", "test", "other"]
           }
-  MavenDependency dep (Set.fromList ["compile", "test", "other"])
+  MavenDependency dep (Set.fromList ["compile", "test", "other"]) mempty
 
 mavenOutput :: PluginOutput
 mavenOutput =

@@ -49,7 +49,7 @@ module Graphing (
   shrinkRoots,
   subGraphOf,
   color,
-  reachableNodesOnCondition,
+  reachableSuccessorsWithCondition,
 
   -- * Conversions
   fromAdjacencyMap,
@@ -396,36 +396,51 @@ subGraphOf n (Graphing gr) =
     keepPredicate Root = True
     keepPredicate (Node ty) = Set.member (Node ty) reachableNodes
 
--- Adds color for all reachable children of 'a' on condition
+-- | Adds color to all nodesToColor, with the color being 'a's extractedProperty
+--
+-- data SimpleDep = SimpleDep{ name :: Text, colorTag :: Text, colors :: Set Text}
+--
+-- updateColors :: Set Text -> SimpleDep -> SimpleDep
+-- updateColors newColor dep = dep{colors = newColor}
+
+-- extractColors :: SimpleDep -> Set Text
+-- extractColors = colors
+
+-- extractColorTag :: SimpleDep -> Text
+-- extractColorTag = colorTag
+
+-- Example
+--
+--  d1("d1", "blue" mempty) -> d2("d2", "green" mempty) -> d3("d3", "red" mempty)
+--
+-- color gr extractColors updateColors d1 extractColorTag nodesToColor= Set.fromList["blue", "green", "red"] =
+--
+-- d1("d1", "blue" Set("blue")) -> d2("d2", "green" Set("blue")) -> d3("d3", "red" Set("blue"))
 color :: forall a b. (Ord a, Ord b) => Graphing a -> (a -> Set.Set b) -> (Set.Set b -> a -> a) -> a -> (a -> b) -> Set.Set b -> Graphing a
-color graph extractList update origin extractProperty nodesToColor = gmap applyColor graph
+color graph extractSet update origin extractProperty nodesToColor = gmap applyColor graph
   where
     applyColor :: a -> a
     applyColor node = do
-      let nodeSet = extractList node
+      let nodeSet = extractSet node
           coloredNodeSet = if (extractProperty node) `Set.member` nodesToColor then nodeSet `Set.union` Set.fromList [extractProperty origin] else nodeSet
       update coloredNodeSet node
 
--- All children nodes at any depth originating from 'a', including 'a' on condition
-reachableNodesOnCondition :: forall b. (Ord b) => [(b, b)] -> (b -> Set.Set b -> Bool) -> b -> Set.Set b -> Set.Set b
-reachableNodesOnCondition edgeList' f origin conditionalSet =
+-- | Gets all successors originating from 'a' on condition (excluding a)
+--
+-- Example
+--
+--   1 -> 2
+--    \    \
+--     3    \
+--      \    4
+--       6    \
+--             5
+--
+-- reachableSuccessorsWithCondition [(1, 2), (1, 3), (2, 4), (3, 6), (4, 5)]  1  (\x -> x `Set.notMember conditionalSet) conditionalSet= Set.fromList [2] =
+--
+-- Set (3, 6)
+reachableSuccessorsWithCondition :: forall a. (Ord a) => [(a, a)] -> a -> (a -> Set.Set a -> Bool) -> Set.Set a -> Set.Set a
+reachableSuccessorsWithCondition edgeList' origin f conditionalSet =
   let directDependencies = [child | (parent, child) <- edgeList', parent == origin && f child conditionalSet]
-      transitiveDependencies = Set.unions $ map (\node -> reachableNodesOnCondition edgeList' f node conditionalSet) directDependencies
+      transitiveDependencies = Set.unions $ map (\node -> reachableSuccessorsWithCondition edgeList' node f conditionalSet) directDependencies
    in Set.fromList directDependencies `Set.union` transitiveDependencies
-
--- -- Adds color for all reachable children of 'a' on condition
--- color :: forall a. Ord a => Graphing a -> (a -> Set.Set a) -> (Set.Set a -> a -> a) -> Set.Set a -> a -> Graphing a
--- color graph extractList update nodesToColor colorNode = gmap applyColor graph
---   where
---     applyColor :: a -> a
---     applyColor node = do
---       let nodeSet = extractList node
---           coloredNodeSet = if node `Set.member` nodesToColor then nodeSet `Set.union` Set.fromList [colorNode] else nodeSet
---       update coloredNodeSet node
-
--- -- All children nodes at any depth originating from 'a', including 'a' on condition
--- reachableNodesOnCondition :: forall a b. (Ord a, Ord b) => [(a, a)] -> (a -> b) -> (b -> Set.Set b -> Bool) -> a -> Set.Set b -> Set.Set b
--- reachableNodesOnCondition edgeList' extract f origin conditionalSet =
---   let directDependencies = [extract child | (parent, child) <- edgeList', extract parent == extract origin && f (extract child) conditionalSet]
---       transitiveDependencies = Set.unions $ map (\node -> reachableNodesOnCondition edgeList' extract f node conditionalSet) directDependencies
---    in Set.fromList directDependencies `Set.union` transitiveDependencies

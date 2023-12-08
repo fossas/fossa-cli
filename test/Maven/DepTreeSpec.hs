@@ -44,7 +44,7 @@ spec =
               []
               (Set.singleton EnvProduction)
               (mempty)
-      let mavenDepRngCore = MavenDependency depRngCore (Set.fromList ["compile"])
+      let mavenDepRngCore = MavenDependency depRngCore (Set.fromList ["compile"]) mempty
 
       let depMath3 =
             Dependency
@@ -54,7 +54,7 @@ spec =
               []
               (Set.singleton EnvTesting)
               (mempty)
-      let mavenDepMath3 = MavenDependency depMath3 (Set.fromList ["test"])
+      let mavenDepMath3 = MavenDependency depMath3 (Set.fromList ["test"]) mempty
 
       let depJunit =
             Dependency
@@ -64,7 +64,7 @@ spec =
               []
               (Set.singleton EnvTesting)
               (mempty)
-      let mavenDepJunit = MavenDependency depJunit (Set.fromList ["test"])
+      let mavenDepJunit = MavenDependency depJunit (Set.fromList ["test"]) mempty
 
       let depRngClientApi =
             Dependency
@@ -74,7 +74,7 @@ spec =
               []
               (Set.singleton EnvProduction)
               (mempty)
-      let mavenDepRngClientApi = MavenDependency depRngClientApi (Set.fromList ["compile"])
+      let mavenDepRngClientApi = MavenDependency depRngClientApi (Set.fromList ["compile"]) mempty
 
       let depHamcrestCore =
             Dependency
@@ -84,7 +84,7 @@ spec =
               []
               (Set.singleton EnvTesting)
               (mempty)
-      let mavenDepHamcrestCore = MavenDependency depHamcrestCore (Set.fromList ["test"])
+      let mavenDepHamcrestCore = MavenDependency depHamcrestCore (Set.fromList ["test"]) mempty
 
       -- Act
       let graph = shrinkRoots $ buildGraph fixtureSingleGraph
@@ -125,7 +125,7 @@ spec =
               , dependencyEnvironments = Set.singleton EnvProduction
               , dependencyTags = mempty
               }
-      let d = MavenDependency dep (Set.fromList [])
+      let d = MavenDependency dep (Set.fromList []) mempty
       toDependency p `shouldBe` d
 
 fixtureSingleFile :: FilePath

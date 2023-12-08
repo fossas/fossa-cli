@@ -1,8 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
-- Maven: add support for maven scope filtering ([#1331](https://github.com/fossas/fossa-cli/pull/1331))
-- `fossa init`: adds new `fossa init` command which creates `.fossa.yml.example`, and `fossa-deps.yml.example` file. ([#1323](https://github.com/fossas/fossa-cli/pull/1323))
+## v3.8.26
 - Maven: add support for maven submodule filtering [#1339](https://github.com/fossas/fossa-cli/pull/1339)
 
 ## v3.8.24

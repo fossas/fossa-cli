@@ -110,7 +110,7 @@ targets:
       target: 'com.fossa:utilities'
 ```
 
-1) Running `fossa analyze --output -c .fossa.yml`, will only analyze `list` submodule.
+1) Running `fossa analyze will only analyze `list` submodule.
 
 <!--
 
