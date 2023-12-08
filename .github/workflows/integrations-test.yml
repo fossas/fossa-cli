@@ -65,7 +65,7 @@ jobs:
     - uses: actions/cache@v3
       name: Cache cabal store
       with:
-        path: ${{ steps.setup-haskell.outputs.cabal-store || format('{0}.cabal/store', github.home) }}
+        path: ${{ steps.setup-haskell.outputs.cabal-store || format('{0}.cabal/store', env.HOME) }}
         key: ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-${{ hashFiles('**/*.cabal', 'cabal.project.ci.linux') }}
         restore-keys: |
           ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-
