@@ -76,10 +76,10 @@ curl -sSL \
 THEMIS_TAG=$(jq -cr ".name" $THEMIS_RELEASE_JSON)
 echo "Using themis release: $THEMIS_TAG"
 FILTER=".name == \"themis-cli-$THEMIS_ASSET_POSTFIX\""
-jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $THEMIS_RELEASE_JSON | while read ASSET; do
-  URL="$(echo $ASSET | jq -c -r '.url')"
-  NAME="$(echo $ASSET | jq -c -r '.name')"
-  OUTPUT="$(echo vendor-bins/$NAME | sed 's/-'$THEMIS_ASSET_POSTFIX'$//')"
+jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $THEMIS_RELEASE_JSON | while read -r ASSET; do
+  URL="$(echo "$ASSET" | jq -c -r '.url')"
+  NAME="$(echo "$ASSET" | jq -c -r '.name')"
+  OUTPUT="$(echo vendor-bins/"$NAME" | sed 's/-'$THEMIS_ASSET_POSTFIX'$//')"
 
   echo "Downloading '$NAME' to '$OUTPUT'"
   curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s "$URL" > "$OUTPUT"
