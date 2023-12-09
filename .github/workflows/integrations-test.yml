@@ -1,5 +1,5 @@
 name: Integration Tests
-# DELETE ME: trigger new build
+
 # Only run workflow manually
 # Refer to https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#workflow_dispatch
 on:
