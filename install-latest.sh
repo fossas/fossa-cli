@@ -257,18 +257,23 @@ http_download_curl() {
   source_url=$2
   header=$3
   if [ -n "$3" ]; then
-    header="-H $header"
+    HTTP_CODE=$(curl -w '%{HTTP_CODE}' -sL -H "$header" -H "Cache-Control: no-cache" -o "$local_file" "$source_url") || (log_debug "curl command failed." && return 1)
   fi
-  HTTP_CODE=$(curl -w '%{HTTP_CODE}' -sL "$header" -H "Cache-Control: no-cache" -o "$local_file" "$source_url") || (log_debug "curl command failed." && return 1)
+  if [ -z "$3" ]; then
+    HTTP_CODE=$(curl -w '%{HTTP_CODE}' -sL -H "Cache-Control: no-cache" -o "$local_file" "$source_url") || (log_debug "curl command failed." && return 1)
+  fi
   return 0
 }
 http_download_wget() {
   local_file=$1
   source_url=$2
-  if [ -n "$3" ]; then
-    header="--header $3"
+  header=$3
+  if [ -n "$header" ]; then
+    HTTP_CODE=$(wget -q --header "$header" --no-cache --server-response -O "$local_file" "$source_url" 2>&1 | awk 'NR==1{print $2}') || (log_debug "wget command failed." && return 1)
   fi
-  HTTP_CODE=$(wget -q "$header" --no-cache --server-response -O "$local_file" "$source_url" 2>&1 | awk 'NR==1{print $2}') || (log_debug "wget command failed." && return 1)
+  if [ -z "$header" ]; then
+    HTTP_CODE=$(wget -q --no-cache --server-response -O "$local_file" "$source_url" 2>&1 | awk 'NR==1{print $2}') || (log_debug "wget command failed." && return 1)
+  fi
   return 0
 }
 http_download() {
