@@ -90,8 +90,8 @@ jobs:
     - name: Compute cache key
       id: compute-cache-key
       run: |
-        cabal --project-file=cabal.project.ci update
-        cabal --project-file=cabal.project.ci build --dry-run
+        cabal --project-file=cabal.project.ci.linux update
+        cabal --project-file=cabal.project.ci.linux build --dry-run
         cat dist-newstyle/cache/plan.json | jq '."install-plan"[]."id"' | sort > /tmp/cabal-cache-key
         echo "Install plan:"
         cat /tmp/cabal-cache-key

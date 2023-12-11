@@ -108,8 +108,8 @@ jobs:
     - name: Compute cache key
       id: compute-cache-key
       run: |
-        cabal --project-file=cabal.project.ci update
-        cabal --project-file=cabal.project.ci build --dry-run
+        cabal --project-file=${{ matrix.project-file }}
+        cabal --project-file=${{ matrix.project-file }} build --dry-run
         cat dist-newstyle/cache/plan.json | jq '."install-plan"[]."id"' | sort > /tmp/cabal-cache-key
         echo "Install plan:"
         cat /tmp/cabal-cache-key
@@ -162,6 +162,7 @@ jobs:
       env:
         RUN_CMD: cabal build --project-file=${{ matrix.project-file }} all
       run: |
+        # TODO: I think this can removed, it's done in the cache key step
         cabal update
         $RUN_CMD || $RUN_CMD
 
