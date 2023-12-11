@@ -111,7 +111,7 @@ curl -sSL \
 
 LERNIE_TAG=$(jq -cr ".name" $LERNIE_RELEASE_JSON)
 # Strip the leading 'v' off of the tag
-LERNIE_VERSION=$("${LERNIE_TAG/^v//}")
+LERNIE_VERSION="${LERNIE_TAG/^v//}"
 FILTER=".name == \"lernie-$LERNIE_VERSION-$LERNIE_ASSET_POSTFIX\""
 jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $LERNIE_RELEASE_JSON | while read -r ASSET; do
   URL="$(echo "$ASSET" | jq -c -r '.url')"
