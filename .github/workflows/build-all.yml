@@ -104,7 +104,7 @@ jobs:
     - uses: actions/cache@v3
       name: Cache cabal store
       with:
-        path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
+        path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
         key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('**/*.cabal', format('{0}', matrix.project-file)) }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
