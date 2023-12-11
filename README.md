@@ -130,7 +130,7 @@ Once an analysis has been uploaded, you can view your results in the FOSSA web a
 
 Now that your analysis is complete, there are a couple things you might want to do after an initial integration:
 
-- **Double-check your results.** Some analysis methods may produce partial or unexpected results depending on what information was available when you ran the analysis. If something seems wrong, [our debugging guide](./docs/walkthroughs/debugging-your-integration.md) can help you diagnose and debug your integration.
+- **Double-check your results.** Some analysis methods may produce partial or unexpected results depending on what information was available when you ran the analysis. If something seems wrong, [our debugging guide](./docs/references/debugging/README.md) can help you diagnose and debug your integration.
 
 - **Scan for issues and generate a compliance report.** Once your analysis is ready, we'll automatically queue an issue scan and report the results in the web application. Once an issue scan is complete, you can also [generate a report](https://docs.fossa.com/docs/running-a-scan) from the web application.
 
@@ -142,7 +142,7 @@ For most users, the FOSSA CLI will work out-of-the-box without any configuration
 
 Users who need advanced customization or features should see the [User Manual](./docs/README.md). Some common topics of interest include:
 
-- [Debugging your integration](./docs/walkthroughs/debugging-your-integration.md)
+- [Debugging your integration](./docs/references/debugging/README.md)
 - [Specifying vendored dependencies](docs/features/vendored-dependencies.md)
 - [Adding manual dependencies](docs/features/manual-dependencies.md)
 - [Supported languages](docs/references/strategies/README.md)

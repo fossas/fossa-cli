@@ -204,6 +204,7 @@ The new container scanner scans in two steps:
 1. The base layer.
 2. The rest of the layers, squashed. 
 
+### Supported Container Package Managers
 The following package managers are supported in container scanning:
 
 | Analysis                             | Supported?         | Docs                                                             |
