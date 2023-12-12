@@ -1,6 +1,6 @@
 ## Quick Start
 
-Spectrometer is a tool that requires minimal configuration: usually, only a FOSSA API key is required.
+FOSSA CLI (occasionally referred to as Spectrometer) is a tool that requires minimal configuration: usually, only a FOSSA API key is required.
 
 If you do not have an API key, please check the [FOSSA documentation](https://docs.fossa.com/docs/api-reference) for instructions on generating an API key.
 
@@ -23,6 +23,8 @@ fossa analyze
 ```sh
 fossa test
 ```
+
+This may take some time to return while FOSSA downloads and scans each dependency for display in our web UI.
 
 For additional commands and command flags, use `--help`:
 
