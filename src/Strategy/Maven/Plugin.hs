@@ -64,7 +64,6 @@ import Path (
   Path,
   Rel,
   fromAbsDir,
-  mkRelDir,
   mkRelFile,
   (</>),
  )
@@ -130,10 +129,10 @@ execPluginAggregate dir plugin = do
   cmd <- mavenPluginDependenciesCmd dir plugin
   execPlugin (const cmd) dir plugin
 
-execPluginReactor :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
-execPluginReactor dir plugin = do
-  cmd <- mavenPluginReactorCmd dir plugin
-  execPlugin (const cmd) dir plugin
+execPluginReactor :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginReactor projectdir outputdir plugin = do
+  cmd <- mavenPluginReactorCmd projectdir outputdir plugin
+  execPlugin (const cmd) projectdir plugin
 
 outputFile :: Path Rel File
 outputFile = $(mkRelFile "target/dependency-graph.txt")
@@ -146,7 +145,7 @@ reactorOutputFilename :: Path Rel File
 reactorOutputFilename = $(mkRelFile "fossa-reactor-graph.json")
 
 parseReactorOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => (Path Abs Dir) -> m ReactorOutput
-parseReactorOutput dir = readContentsJson $ dir </> $(mkRelDir "target/") </> reactorOutputFilename
+parseReactorOutput dir = readContentsJson $ dir </> reactorOutputFilename
 
 textArtifactToPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m PluginOutput
 textArtifactToPluginOutput
@@ -266,8 +265,8 @@ mavenPluginDependenciesCmd workdir plugin = do
 
 -- | The reactor command is documented
 --  [here.](https://ferstl.github.io/depgraph-maven-plugin/reactor-mojo.html)
-mavenPluginReactorCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m Command
-mavenPluginReactorCmd workdir plugin = do
+mavenPluginReactorCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m Command
+mavenPluginReactorCmd workdir outputdir plugin = do
   candidates <- mavenCmdCandidates workdir
   mkAnalysisCommand candidates workdir args Never
   where
@@ -275,6 +274,7 @@ mavenPluginReactorCmd workdir plugin = do
       [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":reactor"
       , "-DgraphFormat=json"
       , "-DoutputFileName=" <> toText reactorOutputFilename
+      , "-DoutputDirectory=" <> toText outputdir
       ]
 
 newtype ReactorArtifact = ReactorArtifact
