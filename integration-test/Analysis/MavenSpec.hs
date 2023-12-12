@@ -56,6 +56,30 @@ guava =
       [reldir|maven/guava/|]
       [reldir|guava-31.1|]
 
+simplePomFile :: AnalysisTestFixture Maven.MavenProject
+simplePomFile =
+  AnalysisTestFixture
+    "simple-pom-file"
+    Maven.discover
+    mavenEnv
+    Nothing
+    $ FixtureArtifact
+      "https://github.com/fossas/example-pom-file/archive/refs/heads/main.tar.gz"
+      [reldir|maven/simple_pom_file/|]
+      [reldir|simple_pom_file|]
+
+pomFileWithBuildDirOverride :: AnalysisTestFixture Maven.MavenProject
+pomFileWithBuildDirOverride =
+  AnalysisTestFixture
+    "build-dir-override"
+    Maven.discover
+    mavenEnv
+    Nothing
+    $ FixtureArtifact
+      "https://github.com/fossas/example-pom-file/archive/refs/heads/override-build-directory.tar.gz"
+      [reldir|maven/build_dir_override/|]
+      [reldir|build_dir_override|]
+
 testKeycloak :: Spec
 testKeycloak = do
   aroundAll (withAnalysisOf keycloak) $ do
@@ -76,7 +100,35 @@ testGuava =
       , graphType = Complete
       }
 
+testSimplePomFile :: Spec
+testSimplePomFile =
+  testSuiteDepResultSummary
+    simplePomFile
+    Types.MavenProjectType
+    DependencyResultsSummary
+      { numDeps = 85
+      , numDirectDeps = 17
+      , numEdges = 75
+      , numManifestFiles = 1
+      , graphType = Complete
+      }
+
+testBuildDirOverride :: Spec
+testBuildDirOverride =
+  testSuiteDepResultSummary
+    pomFileWithBuildDirOverride
+    Types.MavenProjectType
+    DependencyResultsSummary
+      { numDeps = 85
+      , numDirectDeps = 17
+      , numEdges = 75
+      , numManifestFiles = 1
+      , graphType = Complete
+      }
+
 spec :: Spec
 spec = do
   testKeycloak
   testGuava
+  testBuildDirOverride
+  testSimplePomFile
