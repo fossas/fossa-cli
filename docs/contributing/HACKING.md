@@ -82,7 +82,7 @@ Both test suites will be run when you execute `cabal test`.
 | [haskell-language-server][hls] ("HLS") | LSP server for haskell projects                                                                              |
 | [hlint][hlint]                         | A linting + hints tool for haskell code. It provides really useful suggestions.  `hlint` is bundled with HLS |
 | [fourmolu][fourmolu]                   | A haskell source code formatter. `fourmolu` is bundled with HLS                                              |
-| [nix](#installing-nix)                                    | Used by integration tests                                                                                    |
+| [nix](#installing-nix)                 | Used by integration tests                                                                                    |
 
 ### Installing haskell-language-server
 
