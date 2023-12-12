@@ -106,9 +106,9 @@ testSimplePomFile = do
     simplePomFile
     Types.MavenProjectType
     DependencyResultsSummary
-      { numDeps = 3
-      , numDirectDeps = 1
-      , numEdges = 2
+      { numDeps = 25
+      , numDirectDeps = 2
+      , numEdges = 23
       , numManifestFiles = 1
       , graphType = Complete
       }
@@ -119,9 +119,9 @@ testBuildDirOverride = do
     pomFileWithBuildDirOverride
     Types.MavenProjectType
     DependencyResultsSummary
-      { numDeps = 3
-      , numDirectDeps = 1
-      , numEdges = 2
+      { numDeps = 25
+      , numDirectDeps = 2
+      , numEdges = 23
       , numManifestFiles = 1
       , graphType = Complete
       }
