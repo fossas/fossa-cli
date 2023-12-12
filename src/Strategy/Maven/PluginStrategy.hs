@@ -31,7 +31,7 @@ import Effect.Exec (CandidateCommandEffs)
 import Effect.Grapher (Grapher, edge, evalGrapher)
 import Effect.Grapher qualified as Grapher
 import Effect.ReadFS (ReadFS)
-import Graphing (Graphing, shrinkRoots)
+import Graphing (Graphing)
 import Path (Abs, Dir, Path)
 import Strategy.Maven.Common (MavenDependency (..))
 import Strategy.Maven.Plugin (
@@ -140,12 +140,7 @@ instance ToDiagnostic MayIncludeSubmodule where
 -- tree and promote submodule1's dependency to be a root (direct) dependency.
 buildGraph :: ReactorOutput -> PluginOutput -> Graphing MavenDependency
 buildGraph reactorOutput PluginOutput{..} =
-  -- The root deps in the maven depgraph text graph output are either the
-  -- toplevel package or submodules in a multi-module project. We don't want to
-  -- consider those because they're the users' packages, so promote them to
-  -- direct when building the graph using `shrinkRoots`.
-
-  shrinkRoots . run . evalGrapher $ do
+  run . evalGrapher $ do
     let byNumeric :: Map Int Artifact
         byNumeric = indexBy artifactNumericId outArtifacts
 
@@ -177,7 +172,7 @@ buildGraph reactorOutput PluginOutput{..} =
                       : [("optional", ["true"]) | artifactOptional]
               }
           dependencyScopes = Set.fromList artifactScopes
-          mavenDep = MavenDependency dep dependencyScopes
+          mavenDep = MavenDependency dep dependencyScopes mempty
 
       when
         (artifactIsDirect || artifactArtifactId `Set.member` knownSubmodules)
