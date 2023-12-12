@@ -79,7 +79,7 @@ toDependency (MavenPackage group artifact version) = foldr applyLabelToMavenDep 
               , dependencyEnvironments = mempty
               , dependencyTags = Map.empty
               }
-      MavenDependency dep (Set.fromList [])
+      MavenDependency dep (Set.fromList []) mempty
 
     applyLabelToMavenDep :: MavenLabel -> MavenDependency -> MavenDependency
     applyLabelToMavenDep lbl mavenDep = do

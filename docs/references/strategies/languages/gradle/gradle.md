@@ -338,7 +338,7 @@ targets:
 ```
 
 
-1) Running `fossa analyze --output -c .fossa.yml`, will only analyze `utilities` submodule.
+1) Running `fossa analyze` will only analyze `list` submodule.
 
 ## (Experimental) Only Selecting Set of Configurations For Analysis
 

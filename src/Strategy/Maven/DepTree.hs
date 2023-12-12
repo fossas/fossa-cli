@@ -32,7 +32,7 @@ import DepTypes (
 import Effect.Exec (AllowErr (..), CandidateCommandEffs, Command (..), exec, mkAnalysisCommand)
 import Effect.Grapher (direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser)
-import Graphing (Graphing, gmap, shrinkRoots)
+import Graphing (Graphing, gmap)
 import Path (Abs, Dir, File, Path, Rel, fromAbsFile, parseRelFile, (</>))
 import Path.IO (getTempDir, removeFile)
 import Strategy.Maven.Common (MavenDependency (..))
@@ -145,9 +145,7 @@ analyze dir = do
       Nothing -> fatal $ toText $ "invalid file name: " <> f
 
 buildGraph :: [DotGraph] -> Graphing MavenDependency
-buildGraph = withoutProjectAsDep . gmap toDependency . foldMap toGraph
-  where
-    withoutProjectAsDep = shrinkRoots
+buildGraph = gmap toDependency . foldMap toGraph
 
 toDependency :: PackageId -> MavenDependency
 toDependency PackageId{groupName, artifactName, artifactVersion, buildTag} = do
@@ -162,7 +160,7 @@ toDependency PackageId{groupName, artifactName, artifactVersion, buildTag} = do
           , dependencyTags = mempty
           }
       dependencyScopes = Set.fromList $ maybeToList buildTag
-  MavenDependency dep dependencyScopes
+  MavenDependency dep dependencyScopes mempty
 
 toGraph :: DotGraph -> Graphing PackageId
 toGraph DotGraph{rootNode, edgeList} = run . evalGrapher $ do
