@@ -68,7 +68,7 @@ There is no supported way for Non-FOSSA users to obtain these binaries, though w
 
 Run the unit tests by running `cabal test unit-tests` in the base directory.
 
-Integration tests require you first build test data by running `make build-test-data`.  Then you can run them with `cabal test integration-tests`.  Note that integration tests can take quite a while to run and do not have progress output.
+Integration tests require you first build test data by running `make build-test-data`.  Then you can run them with `cabal test integration-tests`.  Integration tests also require `nix`. See ["Installing Nix"](#installing-nix) below for installation instructions. Note that integration tests can take quite a while to run and do not have progress output.
 
 Both test suites will be run when you execute `cabal test`.
 
