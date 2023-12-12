@@ -102,17 +102,29 @@ testGuava =
 
 testSimplePomFile :: Spec
 testSimplePomFile = do
-  aroundAll (withAnalysisOf simplePomFile) $ do
-    describe "simple POM file" $ do
-      it "should find targets" $ \(result, extractedDir) ->
-        expectProject (MavenProjectType, extractedDir) result
+  testSuiteDepResultSummary
+    simplePomFile
+    Types.MavenProjectType
+    DependencyResultsSummary
+      { numDeps = 3
+      , numDirectDeps = 1
+      , numEdges = 2
+      , numManifestFiles = 1
+      , graphType = Complete
+      }
 
 testBuildDirOverride :: Spec
 testBuildDirOverride = do
-  aroundAll (withAnalysisOf pomFileWithBuildDirOverride) $ do
-    describe "POM file with build-directory override" $ do
-      it "should find targets" $ \(result, extractedDir) ->
-        expectProject (MavenProjectType, extractedDir) result
+  testSuiteDepResultSummary
+    pomFileWithBuildDirOverride
+    Types.MavenProjectType
+    DependencyResultsSummary
+      { numDeps = 3
+      , numDirectDeps = 1
+      , numEdges = 2
+      , numManifestFiles = 1
+      , graphType = Complete
+      }
 
 spec :: Spec
 spec = do
