@@ -66,7 +66,7 @@ simplePomFile =
     $ FixtureArtifact
       "https://github.com/fossas/example-pom-file/archive/refs/heads/main.tar.gz"
       [reldir|maven/simple_pom_file/|]
-      [reldir|simple_pom_file|]
+      [reldir|example-pom-file-main|]
 
 pomFileWithBuildDirOverride :: AnalysisTestFixture Maven.MavenProject
 pomFileWithBuildDirOverride =
@@ -78,7 +78,7 @@ pomFileWithBuildDirOverride =
     $ FixtureArtifact
       "https://github.com/fossas/example-pom-file/archive/refs/heads/override-build-directory.tar.gz"
       [reldir|maven/build_dir_override/|]
-      [reldir|build_dir_override|]
+      [reldir|example-pom-file-override-build-directory|]
 
 testKeycloak :: Spec
 testKeycloak = do
@@ -101,30 +101,18 @@ testGuava =
       }
 
 testSimplePomFile :: Spec
-testSimplePomFile =
-  testSuiteDepResultSummary
-    simplePomFile
-    Types.MavenProjectType
-    DependencyResultsSummary
-      { numDeps = 85
-      , numDirectDeps = 17
-      , numEdges = 75
-      , numManifestFiles = 1
-      , graphType = Complete
-      }
+testSimplePomFile = do
+  aroundAll (withAnalysisOf simplePomFile) $ do
+    describe "simple POM file" $ do
+      it "should find targets" $ \(result, extractedDir) ->
+        expectProject (MavenProjectType, extractedDir) result
 
 testBuildDirOverride :: Spec
-testBuildDirOverride =
-  testSuiteDepResultSummary
-    pomFileWithBuildDirOverride
-    Types.MavenProjectType
-    DependencyResultsSummary
-      { numDeps = 85
-      , numDirectDeps = 17
-      , numEdges = 75
-      , numManifestFiles = 1
-      , graphType = Complete
-      }
+testBuildDirOverride = do
+  aroundAll (withAnalysisOf pomFileWithBuildDirOverride) $ do
+    describe "POM file with build-directory override" $ do
+      it "should find targets" $ \(result, extractedDir) ->
+        expectProject (MavenProjectType, extractedDir) result
 
 spec :: Spec
 spec = do
