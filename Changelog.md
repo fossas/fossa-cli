@@ -1,9 +1,9 @@
 # FOSSA CLI Changelog
-## v3.8.27
-- Maven: Fix a bug that broke maven analysis if the build directory was in a non-standard location ([#1343](https://github.com/fossas/fossa-cli/pull/1343))
+## v3.8.28
+- VSI: no longer reports paths inside of extracted archives with the `!_fossa.virtual_!` literal [#1345](https://github.com/fossas/fossa-cli/pull/1345)
 
 ## v3.8.27
-- VSI: no longer reports paths inside of extracted archives with the `!_fossa.virtual_!` literal [#1345](https://github.com/fossas/fossa-cli/pull/1345)
+- Maven: Fix a bug that broke maven analysis if the build directory was in a non-standard location ([#1343](https://github.com/fossas/fossa-cli/pull/1343))
 
 ## v3.8.26
 - Maven: add support for maven submodule filtering [#1339](https://github.com/fossas/fossa-cli/pull/1339)
