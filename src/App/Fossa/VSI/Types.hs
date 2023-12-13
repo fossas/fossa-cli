@@ -78,11 +78,11 @@ instance FromJSON Locator where
   parseJSON = withObject "Locator" $ \obj -> do
     Locator
       <$> obj
-      .: "fetcher"
+        .: "fetcher"
       <*> obj
-      .: "package"
+        .: "package"
       <*> obj
-      .: "revision"
+        .: "revision"
 
 parseLocator :: (ToText a) => a -> Either LocatorParseError Locator
 parseLocator = validateLocator . Srclib.parseLocator . toText
