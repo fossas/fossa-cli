@@ -77,9 +77,12 @@ instance ToJSON Locator where
 instance FromJSON Locator where
   parseJSON = withObject "Locator" $ \obj -> do
     Locator
-      <$> obj .: "fetcher"
-      <*> obj .: "package"
-      <*> obj .: "revision"
+      <$> obj
+      .: "fetcher"
+      <*> obj
+      .: "package"
+      <*> obj
+      .: "revision"
 
 parseLocator :: (ToText a) => a -> Either LocatorParseError Locator
 parseLocator = validateLocator . Srclib.parseLocator . toText
@@ -187,7 +190,10 @@ instance FromJSON VsiExportedInferencesBody where
   parseJSON = withObject "VsiExportedInferencesBody" $ \obj -> do
     inferences <- (obj .:? "InferencesByFilePath") .!= KeyMap.empty
     parsedVals <- traverse parseJSON inferences
-    pure . VsiExportedInferencesBody . Map.mapKeys VsiFilePath . KeyMap.toMapText $ parsedVals
+    pure . VsiExportedInferencesBody . Map.mapKeys (VsiFilePath . stripFossaVirtual) . KeyMap.toMapText $ parsedVals
+
+stripFossaVirtual :: Text -> Text
+stripFossaVirtual = Text.replace "!_fossa.virtual_!" ""
 
 data VsiRule = VsiRule
   { vsiRulePath :: VsiRulePath

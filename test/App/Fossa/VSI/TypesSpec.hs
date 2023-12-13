@@ -25,6 +25,21 @@ inferencesBody =
 }
 |]
 
+inferencesInArchiveBody :: BS.ByteString
+inferencesInArchiveBody =
+  [r|
+{
+  "InferencesByFilePath": {
+    "/foo/container.zip!_fossa.virtual_!/bar.h": {
+      "RawSha256": "YmIwMTg2NTNlOTVlY2U5M2VmMDYwMTQ3YjA0ZjZhYzRkZjhlMzFhZDc1OWFjYmExZWJmMjIwZDVjZTJlM2ZkZQ==",
+      "ComponentID": "0f4ba6a8-5b3f-436f-8c36-828e7375aef7",
+      "Locator": "git+github.com/facebook/folly$v2016.08.08.00",
+      "Confidence": 1
+    }
+  }
+}
+|]
+
 emptyLocatorInference :: BS.ByteString
 emptyLocatorInference =
   [r|
@@ -57,8 +72,8 @@ invalidLocatorInference =
 
 expectedEmptyLocatorInference :: VsiExportedInferencesBody
 expectedEmptyLocatorInference =
-  VsiExportedInferencesBody $
-    Map.fromList
+  VsiExportedInferencesBody
+    $ Map.fromList
       [
         ( VsiFilePath "/foo/bar.h"
         , VsiInference Nothing
@@ -69,10 +84,22 @@ expectedSingleInference :: VsiExportedInferencesBody
 expectedSingleInference =
   VsiExportedInferencesBody $ Map.fromList singleInference
 
+expectedSingleInferenceInArchive :: VsiExportedInferencesBody
+expectedSingleInferenceInArchive =
+  VsiExportedInferencesBody $ Map.fromList singleInferenceInArchive
+
 singleInference :: [(VsiFilePath, VsiInference)]
 singleInference =
   [
     ( VsiFilePath "/foo/bar.h"
+    , VsiInference . Just $ Locator "git" "github.com/facebook/folly" "v2016.08.08.00"
+    )
+  ]
+
+singleInferenceInArchive :: [(VsiFilePath, VsiInference)]
+singleInferenceInArchive =
+  [
+    ( VsiFilePath "/foo/container.zip/bar.h"
     , VsiInference . Just $ Locator "git" "github.com/facebook/folly" "v2016.08.08.00"
     )
   ]
@@ -124,6 +151,9 @@ vsiTypesSpec = describe "VSI Types" $ do
   it "Parses a VsiExportedInferencesBody" $ do
     let body = eitherDecode inferencesBody
     body `shouldBe` Right expectedSingleInference
+  it "Strips 'fossa virtual' from archives" $ do
+    let body = eitherDecode inferencesInArchiveBody
+    body `shouldBe` Right expectedSingleInferenceInArchive
   it "Accepts an empty string locator" $ do
     let body = eitherDecode emptyLocatorInference
     body `shouldBe` Right expectedEmptyLocatorInference
@@ -133,16 +163,21 @@ vsiTypesSpec = describe "VSI Types" $ do
 
 generateRulesSpec :: Spec
 generateRulesSpec = describe "generateRules" $ do
-  it "Generates a rule correctly" $
-    generateRules expectedSingleInference `shouldBe` singleRuleExpected
-  it "Reduces rules to common prefixes" $
-    generateRules' commonPrefixInferences `shouldBe` singleRuleExpected
-  it "Reports multiple rules for a project" $
-    generateRules' multipleInferences `shouldMatchList` multipleRulesExpected
-  it "Reports distinct locators for nested projects" $
-    generateRules' nestedProjectInferences `shouldMatchList` nestedProjectRulesExpected
-  it "Reports root rules correctly" $
-    generateRules' rootRuleInferences `shouldMatchList` rootRuleExpected
+  it "Generates a rule correctly"
+    $ generateRules expectedSingleInference
+    `shouldBe` singleRuleExpected
+  it "Reduces rules to common prefixes"
+    $ generateRules' commonPrefixInferences
+    `shouldBe` singleRuleExpected
+  it "Reports multiple rules for a project"
+    $ generateRules' multipleInferences
+    `shouldMatchList` multipleRulesExpected
+  it "Reports distinct locators for nested projects"
+    $ generateRules' nestedProjectInferences
+    `shouldMatchList` nestedProjectRulesExpected
+  it "Reports root rules correctly"
+    $ generateRules' rootRuleInferences
+    `shouldMatchList` rootRuleExpected
   where
     generateRules' :: [(VsiFilePath, VsiInference)] -> [VsiRule]
     generateRules' = generateRules . VsiExportedInferencesBody . Map.fromList
