@@ -6,6 +6,14 @@ build-type:         Simple
 extra-source-files:
   scripts/*.gradle
   scripts/*.jar
+  -- Trigger rebuilds when these change because of:
+  -- https://github.com/haskell/cabal/issues/4746.
+  -- GHC itself behaves correctly, Cabal doesn't realize it needs to rebuild without these.
+  -- vendor-bins/* is invalid for globbing per Cabal's docs:
+  -- https://cabal.readthedocs.io/en/3.10/cabal-package.html#pkg-field-extra-source-files
+  vendor-bins/themis-cli
+  vendor-bins/index.gob.xz
+  vendor-bins/lernie
 
 -- Comment to trigger cache rebuild
 common lang
