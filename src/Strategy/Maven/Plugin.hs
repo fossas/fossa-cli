@@ -265,6 +265,8 @@ mavenPluginDependenciesCmd workdir plugin = do
 
 -- | The reactor command is documented
 --  [here.](https://ferstl.github.io/depgraph-maven-plugin/reactor-mojo.html)
+--  We set outputDirectory explicitly so that the file is written to a known spot even if the pom file
+--  overrides the build directory (See FDN-82 for more details)
 mavenPluginReactorCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m Command
 mavenPluginReactorCmd workdir outputdir plugin = do
   candidates <- mavenCmdCandidates workdir
