@@ -1,11 +1,11 @@
 repo_name: fossas/fossa-cli
-report_id: 53b1e55c7941fd67fa32f1303bb6f356
+report_id: 800aaa878d15e4ff0ab6619b3e3529aa
 repo_type: Public
-timestamp: '2023-11-14T21:05:22+00:00'
-requested_by: zlav
+timestamp: '2023-12-14T10:40:53+00:00'
+requested_by: spatten
 provider: github
 branch: master
-detected_tools_count: 20
+detected_tools_count: 29
 tools:
 - name: Haskell
   description: An advanced purely-functional programming language
@@ -25,9 +25,9 @@ tools:
   category: Languages & Frameworks
   sub_category: Languages
   image_url: https://img.stackshare.io/service/1209/javascript.jpeg
-  detection_source: extlib/millhone/Cargo.toml
-  last_updated_by: Jessica Black
-  last_updated_on: 2023-08-18 21:57:16.000000000 Z
+  detection_source: test/Cocoapods/testdata/Podfile
+  last_updated_by: Zach
+  last_updated_on: 2020-02-12 22:07:51.000000000 Z
 - name: Python
   description: A clear and powerful object-oriented programming language, comparable
     to Perl, Ruby, Scheme, or Java.
@@ -59,6 +59,39 @@ tools:
   sub_category: Languages
   image_url: https://img.stackshare.io/service/1070/v7txhrjp9pdqrkdtxxp0.png
   detection_source: Repo Metadata
+- name: Swift
+  description: 'An innovative new programming language for Cocoa and Cocoa Touch. '
+  website_url: https://developer.apple.com/swift/
+  license: Apache-2.0
+  open_source: true
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Languages
+  image_url: https://img.stackshare.io/service/1009/tuHsaI2U.png
+  detection_source: extlib/berkeleydb/Cargo.toml
+  last_updated_by: Jessica Black
+  last_updated_on: 2022-09-07 16:01:05.000000000 Z
+- name: Serde
+  description: Serialization framework for Rust
+  website_url: https://serde.rs
+  license: Apache-2.0
+  open_source: true
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Serialization Frameworks
+  image_url: https://img.stackshare.io/service/11028/no-img-open-source.png
+  detection_source: extlib/berkeleydb/Cargo.toml
+  last_updated_by: Jessica Black
+  last_updated_on: 2022-09-07 16:01:05.000000000 Z
+- name: pgvector
+  description: Open-source vector similarity search for Postgres
+  website_url: https://github.com/pgvector/pgvector/
+  open_source: false
+  hosted_saas: false
+  category: Data Stores
+  sub_category: Database Tools
+  image_url: https://img.stackshare.io/service/109221/default_b888cdf5617d936aa6aacf130911906955508639.png
+  detection_source: bench/benchdata/filepaths.txt
 - name: CircleCI
   description: Automate your development process quickly, safely, and at scale
   website_url: https://circleci.com/
@@ -87,7 +120,7 @@ tools:
   category: Build, Test, Deploy
   sub_category: Continuous Integration
   image_url: https://img.stackshare.io/service/11563/actions.png
-  detection_source: ".github/workflows/lint.yml"
+  detection_source: ".github/workflows/badges.yml"
   last_updated_by: Leo Zhang
   last_updated_on: 2023-05-13 06:23:53.000000000 Z
 - name: Gradle
@@ -120,7 +153,7 @@ tools:
   category: Build, Test, Deploy
   sub_category: Hosted Package Repository
   image_url: https://img.stackshare.io/service/12572/-RIWgodF_400x400.jpg
-  detection_source: test/Pdm/testdata/without_lockfile/pyproject.toml
+  detection_source: test/Pdm/testdata/basic/pyproject.toml
   last_updated_by: meghfossa
   last_updated_on: 2023-06-13 15:25:45.000000000 Z
 - name: RubyGems
@@ -131,7 +164,7 @@ tools:
   category: Build, Test, Deploy
   sub_category: Package Managers
   image_url: https://img.stackshare.io/service/12795/5jL6-BA5_400x400.jpeg
-  detection_source: extlib/millhone/Cargo.toml
+  detection_source: extlib/berkeleydb/Cargo.toml
   last_updated_by: Jessica Black
   last_updated_on: 2022-09-07 16:01:05.000000000 Z
 - name: Yarn
@@ -153,9 +186,9 @@ tools:
   category: Build, Test, Deploy
   sub_category: Front End Package Manager
   image_url: https://img.stackshare.io/service/1120/lejvzrnlpb308aftn31u.png
-  detection_source: extlib/millhone/Cargo.toml
-  last_updated_by: Jessica Black
-  last_updated_on: 2023-08-18 21:57:16.000000000 Z
+  detection_source: test/Cocoapods/testdata/Podfile
+  last_updated_by: Zach
+  last_updated_on: 2020-02-12 22:07:51.000000000 Z
 - name: CocoaPods
   description: A dependency manager for Swift and Objective-C Cocoa projects
   website_url: https://cocoapods.org/
@@ -167,6 +200,15 @@ tools:
   detection_source: test/Cocoapods/testdata/Podfile.lock
   last_updated_by: Zach
   last_updated_on: 2020-02-12 22:07:51.000000000 Z
+- name: LangChain
+  description: Build AI apps with LLMs through composability
+  website_url: https://github.com/hwchase17/langchain
+  open_source: true
+  hosted_saas: false
+  category: Communications
+  sub_category: Large Language Model Tools
+  image_url: https://img.stackshare.io/service/48790/default_5b6c6b73f1ff3775c85d2a1ba954cb87e30cbf13.jpg
+  detection_source: bench/benchdata/filepaths.txt
 - name: PowerShell
   description: A task automation and configuration management framework
   website_url: https://docs.microsoft.com/en-us/powershell/
@@ -186,33 +228,97 @@ tools:
   sub_category: Languages
   image_url: https://img.stackshare.io/service/4631/default_c2062d40130562bdc836c13dbca02d318205a962.png
   detection_source: Repo Metadata
+- name: Quick/Nimble
+  description: A Matcher Framework for Swift and Objective-C
+  package_url: https://github.com/Carthage/Quick/Nimble
+  version: 7.1.3
+  open_source: false
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Package Managers
+  image_url: https://img.stackshare.io/package/carthage/image.png
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/test/Carthage/testdata/testproject/Cartfile.resolved
+  detection_source: test/Carthage/testdata/testproject/Cartfile.private
+  last_updated_by: Connor James
+  last_updated_on: 2020-02-04 18:12:41.000000000 Z
+- name: Quick/Quick
+  description: The Swift
+  package_url: https://github.com/Carthage/Quick/Quick
+  version: 1.2.0
+  open_source: false
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Package Managers
+  image_url: https://img.stackshare.io/package/carthage/image.png
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/test/Carthage/testdata/testproject/Carthage/Checkouts/Swinject/Cartfile.resolved
+  detection_source: test/Carthage/testdata/testproject/Carthage/Checkouts/Swinject/Cartfile.private
+  last_updated_by: Connor James
+  last_updated_on: 2020-02-04 18:12:41.000000000 Z
+- name: Swinject/Swinject
+  description: Dependency injection framework for Swift with iOS/macOS/Linux
+  package_url: https://github.com/Carthage/Swinject/Swinject
+  version: 2.4.1
+  open_source: false
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Package Managers
+  image_url: https://img.stackshare.io/package/carthage/image.png
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/test/Carthage/testdata/testproject/Cartfile.resolved
+  detection_source: test/Carthage/testdata/testproject/Cartfile.private
+  last_updated_by: Connor James
+  last_updated_on: 2020-02-04 18:12:41.000000000 Z
+- name: erikdoe/ocmock
+  description: Mock objects for Objective-C
+  package_url: https://github.com/Carthage/erikdoe/ocmock
+  version: 3.4.2
+  open_source: false
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Package Managers
+  image_url: https://img.stackshare.io/package/carthage/image.png
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/test/Carthage/testdata/testproject/Cartfile.resolved
+  detection_source: test/Carthage/testdata/testproject/Cartfile
+  last_updated_by: Connor James
+  last_updated_on: 2020-02-04 18:12:41.000000000 Z
+- name: mattgallagher/CwlPreconditionTesting
+  description: A Mach exception handler that allows Swift precondition failures to
+    be caught and tested
+  package_url: https://github.com/Carthage/mattgallagher/CwlPreconditionTesting
+  open_source: false
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Package Managers
+  image_url: https://img.stackshare.io/package/carthage/image.png
+  detection_source: test/Carthage/testdata/testproject/Carthage/Checkouts/Nimble/Cartfile.private
+  last_updated_by: Connor James
+  last_updated_on: 2020-02-04 18:12:41.000000000 Z
 - name: flake8
   description: 'The modular source code checker: pep8, pyflakes and co'
-  package_url: https://pypi.org/flake8
+  package_url: https://pypi.org/project/flake8
   license: MIT
   open_source: true
   hosted_saas: false
   category: Libraries
   sub_category: PyPI Packages
   image_url: https://img.stackshare.io/package/19920/default_c8be5290cb8d8a8b578535a2c6475d1057ff4ea4.png
-  detection_source: test/Pdm/testdata/without_lockfile/pyproject.toml
+  detection_source: test/Pdm/testdata/basic/pyproject.toml
   last_updated_by: meghfossa
   last_updated_on: 2023-06-13 15:25:45.000000000 Z
 - name: pip
   description: The PyPA recommended tool for installing Python packages
-  package_url: https://pypi.org/pip
+  package_url: https://pypi.org/project/pip
   license: MIT
   open_source: true
   hosted_saas: false
   category: Libraries
   sub_category: PyPI Packages
   image_url: https://img.stackshare.io/package/19919/default_e86399d4348daca8e669da75e38679ad87fc07db.png
-  detection_source: test/Pdm/testdata/without_lockfile/pyproject.toml
+  detection_source: test/Pdm/testdata/basic/pyproject.toml
   last_updated_by: meghfossa
   last_updated_on: 2023-06-13 15:25:45.000000000 Z
 - name: requests
   description: Python HTTP for Humans
-  package_url: https://pypi.org/requests
+  package_url: https://pypi.org/project/requests
   version: 2.25.1
   license: Apache-2.0
   open_source: true
@@ -220,8 +326,8 @@ tools:
   category: Libraries
   sub_category: PyPI Packages
   image_url: https://img.stackshare.io/package/19826/default_d7c684bf2673f008a9f02ac93901229297a22d7e.png
-  detection_source_url: test/Pdm/testdata/basic/pyproject.toml
-  detection_source: test/Pdm/testdata/without_lockfile/pyproject.toml
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/test/Pdm/testdata/basic/pyproject.toml
+  detection_source: test/Pdm/testdata/basic/pyproject.toml
   last_updated_by: meghfossa
   last_updated_on: 2023-06-13 15:25:45.000000000 Z
   vulnerabilities:
