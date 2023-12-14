@@ -40,6 +40,12 @@ FOSSA CLI provides an install script that downloads the latest release from GitH
 ```bash
 curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash
 ```
+#### macOS with [brew](https://brew.sh/)
+
+```sh
+brew update # Fetch the newest version of Homebrew and all formulae
+brew install --cask fossa
+```
 
 #### Windows with Powershell
 
