@@ -17,9 +17,9 @@ build-type:         Simple
 extra-source-files:
   scripts/*.gradle
   scripts/*.jar
-  vendor-bins/themis-cli
   vendor-bins/index.gob.xz
   vendor-bins/lernie
+  vendor-bins/themis-cli
 
 -- Comment to trigger cache rebuild
 common lang
