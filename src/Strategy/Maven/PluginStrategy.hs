@@ -15,6 +15,7 @@ import Control.Effect.Diagnostics (
   (<||>),
  )
 import Control.Effect.Lift (Lift)
+import Control.Effect.Path (withSystemTempDir)
 import Control.Monad (when)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
@@ -31,7 +32,7 @@ import Effect.Exec (CandidateCommandEffs)
 import Effect.Grapher (Grapher, edge, evalGrapher)
 import Effect.Grapher qualified as Grapher
 import Effect.ReadFS (ReadFS)
-import Graphing (Graphing, shrinkRoots)
+import Graphing (Graphing)
 import Path (Abs, Dir, Path)
 import Strategy.Maven.Common (MavenDependency (..))
 import Strategy.Maven.Plugin (
@@ -74,14 +75,16 @@ analyzeLegacy' dir = analyze dir depGraphPluginLegacy
 runReactor ::
   ( CandidateCommandEffs sig m
   , Has ReadFS sig m
+  , Has (Lift IO) sig m
   ) =>
   Path Abs Dir ->
   DepGraphPlugin ->
   m ReactorOutput
 runReactor dir plugin =
   context "Running plugin to get submodule names" $
-    warnOnErr MayIncludeSubmodule (execPluginReactor dir plugin >> parseReactorOutput dir)
-      <||> pure (ReactorOutput [])
+    withSystemTempDir "fossa-temp" $ \tempdir -> do
+      warnOnErr MayIncludeSubmodule (execPluginReactor dir tempdir plugin >> parseReactorOutput tempdir)
+        <||> pure (ReactorOutput [])
 
 analyze ::
   ( CandidateCommandEffs sig m
@@ -140,12 +143,7 @@ instance ToDiagnostic MayIncludeSubmodule where
 -- tree and promote submodule1's dependency to be a root (direct) dependency.
 buildGraph :: ReactorOutput -> PluginOutput -> Graphing MavenDependency
 buildGraph reactorOutput PluginOutput{..} =
-  -- The root deps in the maven depgraph text graph output are either the
-  -- toplevel package or submodules in a multi-module project. We don't want to
-  -- consider those because they're the users' packages, so promote them to
-  -- direct when building the graph using `shrinkRoots`.
-
-  shrinkRoots . run . evalGrapher $ do
+  run . evalGrapher $ do
     let byNumeric :: Map Int Artifact
         byNumeric = indexBy artifactNumericId outArtifacts
 
@@ -177,7 +175,7 @@ buildGraph reactorOutput PluginOutput{..} =
                       : [("optional", ["true"]) | artifactOptional]
               }
           dependencyScopes = Set.fromList artifactScopes
-          mavenDep = MavenDependency dep dependencyScopes
+          mavenDep = MavenDependency dep dependencyScopes mempty
 
       when
         (artifactIsDirect || artifactArtifactId `Set.member` knownSubmodules)

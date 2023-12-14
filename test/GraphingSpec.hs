@@ -4,9 +4,13 @@ module GraphingSpec (
 
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Extra (splitGraph)
+import Data.Set (Set)
+import Data.Set qualified as Set
+import Data.Text (Text)
 import GraphUtil (expectDeps, expectDirect, expectEdges)
 import Graphing (
   Graphing,
+  color,
   deep,
   deeps,
   direct,
@@ -19,6 +23,7 @@ import Graphing (
   hasPredecessors,
   promoteToDirect,
   pruneUnreachable,
+  reachableSuccessorsWithCondition,
   shrink,
   shrinkRoots,
   shrinkSingle,
@@ -416,6 +421,71 @@ subGraphOfSpec = do
       expectDeps [5, 6, 7] graph2Sub5
       expectDirect [] graph2Sub5
 
+reachableSuccessorsWithConditionSpec :: Spec
+reachableSuccessorsWithConditionSpec = do
+  --   1 -> 2
+  --    \    \
+  --     3    \
+  --      \    4
+  --       6    \
+  --             5
+  let graph :: Graphing Int = Graphing.directs [1, 2] <> Graphing.edges [(1, 2), (1, 3), (2, 4), (3, 6), (4, 5)]
+  let condition :: Int -> Set Int -> Bool
+      condition x excluded = x `Set.notMember` excluded
+
+  describe "reachableSuccessorsWithCondition" $ do
+    it "should return the successors of 1 excluding 2 and its successors" $ do
+      let excludedVals = Set.fromList [2]
+      reachableSuccessorsWithCondition (edgesList graph) 1 condition excludedVals `shouldBe` Set.fromList [3, 6]
+
+    it "should return no successors" $ do
+      let excludedVals = Set.fromList [2, 3]
+      reachableSuccessorsWithCondition (edgesList graph) 1 condition excludedVals `shouldBe` Set.fromList []
+
+data SimpleDep = SimpleDep
+  { name :: Text
+  , colorTag :: Text
+  , colors :: Set Text
+  }
+  deriving (Eq, Ord, Show)
+
+colorSpec :: Spec
+colorSpec = do
+  --   d1 -> d2
+  --    \     \
+  --     d3    \
+  --           d4
+  let d1 = SimpleDep "dep1" "blue" mempty
+  let d2 = SimpleDep "dep2" "green" mempty
+  let d3 = SimpleDep "dep3" "red" mempty
+  let d4 = SimpleDep "dep4" "yellow" mempty
+  let graph :: Graphing SimpleDep = Graphing.directs [d1, d2] <> Graphing.edges [(d1, d2), (d1, d3), (d2, d4)]
+
+  let updateColors :: Set Text -> SimpleDep -> SimpleDep
+      updateColors newColor dep = dep{colors = newColor}
+
+  let extractColors :: SimpleDep -> Set Text
+      extractColors = colors
+
+  let extractColorTag :: SimpleDep -> Text
+      extractColorTag = colorTag
+
+  let depsToColor = Set.fromList ["blue", "green", "yellow"]
+
+  describe "color" $ do
+    it "should color d1, d2, and d4 with blue" $ do
+      --   d1(blue) -> d2(blue)
+      --    \           \
+      --     d3          \
+      --                d4(blue)
+      let coloredD1 = SimpleDep "dep1" "blue" $ Set.fromList ["blue"]
+      let coloredD2 = SimpleDep "dep2" "green" $ Set.fromList ["blue"]
+      let unColoredD3 = SimpleDep "dep3" "red" mempty
+      let coloredD4 = SimpleDep "dep4" "yellow" $ Set.fromList ["blue"]
+      let graph' :: Graphing SimpleDep = Graphing.directs [coloredD1, coloredD2] <> Graphing.edges [(coloredD1, coloredD2), (coloredD1, unColoredD3), (coloredD2, coloredD4)]
+
+      color graph extractColors updateColors d1 extractColorTag depsToColor `shouldBe` graph'
+
 spec :: Spec
 spec = do
   unfoldSpec
@@ -441,3 +511,7 @@ spec = do
   hasPredecessorsSpec
 
   subGraphOfSpec
+
+  reachableSuccessorsWithConditionSpec
+
+  colorSpec
