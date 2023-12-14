@@ -164,20 +164,15 @@ vsiTypesSpec = describe "VSI Types" $ do
 generateRulesSpec :: Spec
 generateRulesSpec = describe "generateRules" $ do
   it "Generates a rule correctly" $
-    generateRules expectedSingleInference
-      `shouldBe` singleRuleExpected
+    generateRules expectedSingleInference `shouldBe` singleRuleExpected
   it "Reduces rules to common prefixes" $
-    generateRules' commonPrefixInferences
-      `shouldBe` singleRuleExpected
+    generateRules' commonPrefixInferences `shouldBe` singleRuleExpected
   it "Reports multiple rules for a project" $
-    generateRules' multipleInferences
-      `shouldMatchList` multipleRulesExpected
+    generateRules' multipleInferences `shouldMatchList` multipleRulesExpected
   it "Reports distinct locators for nested projects" $
-    generateRules' nestedProjectInferences
-      `shouldMatchList` nestedProjectRulesExpected
+    generateRules' nestedProjectInferences `shouldMatchList` nestedProjectRulesExpected
   it "Reports root rules correctly" $
-    generateRules' rootRuleInferences
-      `shouldMatchList` rootRuleExpected
+    generateRules' rootRuleInferences `shouldMatchList` rootRuleExpected
   where
     generateRules' :: [(VsiFilePath, VsiInference)] -> [VsiRule]
     generateRules' = generateRules . VsiExportedInferencesBody . Map.fromList

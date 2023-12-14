@@ -77,12 +77,9 @@ instance ToJSON Locator where
 instance FromJSON Locator where
   parseJSON = withObject "Locator" $ \obj -> do
     Locator
-      <$> obj
-        .: "fetcher"
-      <*> obj
-        .: "package"
-      <*> obj
-        .: "revision"
+      <$> obj .: "fetcher"
+      <*> obj .: "package"
+      <*> obj .: "revision"
 
 parseLocator :: (ToText a) => a -> Either LocatorParseError Locator
 parseLocator = validateLocator . Srclib.parseLocator . toText
