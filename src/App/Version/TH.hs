@@ -108,7 +108,8 @@ validateSingleTag tag = do
 
 themisVersionQ :: Code Q Text
 themisVersionQ = do
-  -- qAddDependentFile is meant to signal that when this file changes we should rebuild, but it doesn't seem to actually do that
+  -- qAddDependentFile is meant to signal that when this file changes we should be rebuilt.
+  -- cabal also has to be notified in spectrometer.cabal's extra-source-files.
   ( do
       case parseRelFile "vendor-bins/themis-cli" of
         Just path' -> do

@@ -162,7 +162,13 @@ jobs:
       env:
         RUN_CMD: cabal build --project-file=${{ matrix.project-file }} all
       run: |
-        # TODO: I think this can removed, it's done in the cache key step
+        : # With dist-newstyle caches:
+        : # Cabal mainly knows to recompile based on changes to files.
+        : # Tagging in git doesn't reliably change a file in a fixed location that cabal/GHC can track to indicate that there's a new tag.
+        : # For our release process, we merge to master, which builds (and may store a dist-newstyle cache), then push a release tag.
+        : # During the tag build, cabal/GHC may not realize that they have to rebuild the Version.hs file because the tag is invisible to it.
+        : # This line adds a unique comment to our version source file to prompt cabal/GHC to rebuild Version.hs unconditionally.
+        echo "{- $RANDOM$RANDOM$RANDOM -}" >> src/App/Version.hs
         cabal update
         $RUN_CMD || $RUN_CMD
 
