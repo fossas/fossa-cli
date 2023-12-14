@@ -1,5 +1,5 @@
 name: Benchmarks
-on: [push]
+on: [workflow_dispatch]
 
 jobs:
   benchmarks:
