@@ -3,14 +3,20 @@ name:               spectrometer
 version:            0.1.0.0
 license:            MPL-2.0
 build-type:         Simple
+
+-- Trigger rebuilds when vendor-bins/* change because of:
+-- https://github.com/haskell/cabal/issues/4746.
+-- GHC itself behaves correctly. Cabal doesn't realize it needs to call GHC though.
+-- vendor-bins/* is invalid for globbing per Cabal's docs:
+-- https://cabal.readthedocs.io/en/3.10/cabal-package.html#pkg-field-extra-source-files
+-- NOTE: Cabal will only build-on-change for a file if the cached EmbeddedBinary files
+-- were originally built with some file of that name present.
+-- I think this has always been the case even without this change.
+-- Run `cabal clean` to force a rebuild if you first built a version of fossa CLI
+-- without binaries to embed.
 extra-source-files:
   scripts/*.gradle
   scripts/*.jar
-  -- Trigger rebuilds when these change because of:
-  -- https://github.com/haskell/cabal/issues/4746.
-  -- GHC itself behaves correctly, Cabal doesn't realize it needs to rebuild without these.
-  -- vendor-bins/* is invalid for globbing per Cabal's docs:
-  -- https://cabal.readthedocs.io/en/3.10/cabal-package.html#pkg-field-extra-source-files
   vendor-bins/themis-cli
   vendor-bins/index.gob.xz
   vendor-bins/lernie
