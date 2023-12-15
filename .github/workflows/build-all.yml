@@ -42,6 +42,7 @@ jobs:
     - uses: actions/checkout@v3
       with:
         lfs: true
+        fetch-depth: 2
 
     - name: Install MacOS binary dependencies
       if: ${{ contains(matrix.os, 'macos') }}
@@ -100,21 +101,20 @@ jobs:
     - name: Test Rust dependencies
       run: cargo nextest run --release
 
-    - name: Check git status
+    - name: Ensure git ownership check does not lead to compiler error
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+    - name: Check git status and collect information
       # https://github.com/actions/checkout/issues/760#issuecomment-1099519159
       run: |
-        git config --global --add safe.directory "$GITHUB_WORKSPACE"
         git status --porcelain
+        echo "parent_commit=$(git rev-parse HEAD^)" >> $GITHUB_ENV
 
     # Compute cache key and save to a temporary file.
     #
     # We compute the cache key based on the solved install plan instead of just
     # hashing the `.cabal` file, since there are many kinds of changes that will
     # cause `.cabal` to change (e.g. adding new source modules).
-    #
-    # For dist-newstyle, caches can be further differentiated by the most recent release.
-    # It isn't uncommon for us to go multiple releases with an unchanged cabal plan.
-    # This is meant to strike a balance between making a cache for every pushed commit, staying up to date, and being responsive on branches which are making updates to the plan.
     - name: Compute cache key
       id: compute-cache-key
       env:
@@ -127,15 +127,12 @@ jobs:
         cat /tmp/cabal-cache-key
 
         if [ "$RUNNER_OS" = "macOS" ]; then
-           alias sha256sum="shasum -a256"
+           function sha256sum { shasum -a256 }
         fi
 
         export CABAL_CACHE_KEY=$(sha256sum /tmp/cabal-cache-key | awk '{print $1}')
         echo "Cabal cache key: $CABAL_CACHE_KEY"
         echo "cabal-cache-key=$CABAL_CACHE_KEY" >> $GITHUB_OUTPUT
-        export MOST_RECENT_RELEASE=$(git describe --tags | cut -d '-' -f 1)
-        echo "Most recent release: $MOST_RECENT_RELEASE"
-        echo "most-recent-release=$MOST_RECENT_RELEASE" >> "$GITHUB_OUTPUT"
 
     # Build FOSSA CLI.
     - uses: actions/cache@v3
@@ -152,9 +149,9 @@ jobs:
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
-        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ steps.compute-cache-key.outputs.cabal-cache-key }}-${{ steps.compute-cache-key.outputs.most-recent-release }}
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ github.sha }}
         restore-keys: |
-          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ steps.compute-cache-key.outputs.cabal-cache-key }}
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ env.parent_commit }}
           ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-
           ${{ runner.os }}-${{ env.GHC_VERSION }}-
           ${{ runner.os }}-
