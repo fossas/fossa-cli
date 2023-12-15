@@ -17,8 +17,11 @@ jobs:
       with:
         lfs: true
 
-    - name: Ensures git ownership check does not lead to compile error (we run git during compile for version tagging, etc.)
-      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+    - name: Configure Git and Collect Config
+      run: |
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        echo "parent_commit=$(git rev-parse HEAD^)" >> $GITHUB_ENV
+
 
     # adduser cannot add users to group: https://unix.stackexchange.com/a/397733
     # so we edit /etc/group directly
@@ -80,7 +83,16 @@ jobs:
           ${{ runner.os }}-benchmarks-
           ${{ runner.os }}-
 
-    # TODO: Cache dist newstyle
+    - uses: actions/cache@v3
+      name: Cache dist-newstyle
+      with:
+        path: ${{ github.workspace }}/dist-newstyle
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ env.parent_commit }}
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-
+          ${{ runner.os }}-
 
     - name: Build Rust dependencies
       run: cargo build --release
