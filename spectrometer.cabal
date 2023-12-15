@@ -20,6 +20,10 @@ extra-source-files:
   vendor-bins/index.gob.xz
   vendor-bins/lernie
   vendor-bins/themis-cli
+  target/release/millhone
+  target/release/millhone.exe
+  target/release/berkeleydb
+  target/release/berkeleydb.exe
 
 common lang
   build-depends:      base >=4.15 && <5
