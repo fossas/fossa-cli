@@ -80,11 +80,12 @@ jobs:
         echo "Install plan:"
         cat /tmp/cabal-cache-key
         export CABAL_CACHE_KEY=$(sha256sum /tmp/cabal-cache-key | awk '{print $1}')
-        export MOST_RECENT_RELEASE=$(git describe --tags | cut -d '-' -f 1)
         echo "Cabal cache key: $CABAL_CACHE_KEY"
         echo "cabal-cache-key=$CABAL_CACHE_KEY" >> $GITHUB_OUTPUT
+
+        export MOST_RECENT_RELEASE=$(git describe --tags | cut -d '-' -f 1)
         echo "Most recent release: $MOST_RECENT_RELEASE"
-        echo "most-recent-release=$MOST_RECENT_RELEASE" >> "$GITHUB_OUTPUT"
+        echo "most-recent-release=$MOST_RECENT_RELEASE" >> $GITHUB_OUTPUT
 
     - uses: actions/cache@v3
       name: Cache cabal store
