@@ -62,5 +62,6 @@ fullVersionDescription = Text.concat items
 versionOrBranch :: Text
 versionOrBranch = maybe currentBranch ("v" <>) versionNumber
 
+-- | True if the found version is a valid semver tag.
 isReleaseVersion :: Bool
-isReleaseVersion = isJust versionNumber && currentBranch == "master"
+isReleaseVersion = isJust versionNumber
