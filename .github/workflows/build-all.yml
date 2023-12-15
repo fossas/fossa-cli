@@ -127,10 +127,12 @@ jobs:
         cat /tmp/cabal-cache-key
 
         if [ "$RUNNER_OS" = "macOS" ]; then
-           function sha256sum { shasum -a256 }
+           PLAN_SUM=$(shasum -a256 /tmp/cabal-cache-key)
+        else
+           PLAN_SUM=$(sha256sum /tmp/cabal-cache-key)
         fi
 
-        export CABAL_CACHE_KEY=$(sha256sum /tmp/cabal-cache-key | awk '{print $1}')
+        export CABAL_CACHE_KEY=$(echo $PLAN_SUM | awk '{print $1}')
         echo "Cabal cache key: $CABAL_CACHE_KEY"
         echo "cabal-cache-key=$CABAL_CACHE_KEY" >> $GITHUB_OUTPUT
 
