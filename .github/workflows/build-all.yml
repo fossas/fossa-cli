@@ -57,14 +57,6 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: '3.8.1.0'
 
-    - name: Print git info
-      run: |
-        git describe
-        git describe --tags
-        git status
-        git --porcelain
-        git describe --tags | awk 'BEGIN {FS="-";} {print $1;}'
-
     # Set up Rust.
     - uses: actions-rs/toolchain@v1
       with:
@@ -107,6 +99,12 @@ jobs:
     # Run tests in release mode to reduce the need for rebuilds.
     - name: Test Rust dependencies
       run: cargo nextest run --release
+
+    - name: Check git status
+      # https://github.com/actions/checkout/issues/760#issuecomment-1099519159
+      run: |
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        git status --porcelain
 
     # Compute cache key and save to a temporary file.
     #
@@ -171,12 +169,6 @@ jobs:
     - name: Build test data
       run: |
         make build-test-data
-
-    - name: Check git status
-      # https://github.com/actions/checkout/issues/760#issuecomment-1099519159
-      run: |
-        git config --global --add safe.directory "$GITHUB_WORKSPACE"
-        git status --porcelain
 
     - name: Build
       # Occasionally, we run out of memory on the build process.
