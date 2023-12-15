@@ -119,12 +119,19 @@ jobs:
     # This is meant to strike a balance between making a cache for every pushed commit, staying up to date, and being responsive on branches which are making updates to the plan.
     - name: Compute cache key
       id: compute-cache-key
+      env:
+        RUNNER_OS: ${{ runner.os }}
       run: |
         cabal --project-file=${{ matrix.project-file }} update
         cabal --project-file=${{ matrix.project-file }} build --dry-run
         cat dist-newstyle/cache/plan.json | jq '."install-plan"[]."id"' | sort > /tmp/cabal-cache-key
         echo "Install plan:"
         cat /tmp/cabal-cache-key
+
+        if [ "$RUNNER_OS" = "macOS" ]; then
+           alias sha256sum="shasum -a256"
+        fi
+
         export CABAL_CACHE_KEY=$(sha256sum /tmp/cabal-cache-key | awk '{print $1}')
         echo "Cabal cache key: $CABAL_CACHE_KEY"
         echo "cabal-cache-key=$CABAL_CACHE_KEY" >> $GITHUB_OUTPUT
