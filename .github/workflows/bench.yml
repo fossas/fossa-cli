@@ -17,6 +17,7 @@ jobs:
       with:
         lfs: true
 
+    # Adding the "git config ..." line ensures git doesn't fail during our build.
     - name: Configure Git and Collect Config
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"

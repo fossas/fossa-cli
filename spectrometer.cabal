@@ -21,7 +21,6 @@ extra-source-files:
   vendor-bins/lernie
   vendor-bins/themis-cli
 
--- Comment to trigger cache rebuild
 common lang
   build-depends:      base >=4.15 && <5
   default-language:   Haskell2010
