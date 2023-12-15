@@ -60,7 +60,7 @@ gitTagPointCommand commit =
     , cmdAllowErr = Always
     }
 
--- |Return the current tag iff it is a valid semver tag.
+-- | Return the current tag iff it is a valid semver tag.
 getCurrentTag :: Code Q (Maybe Text)
 getCurrentTag = joinCode $ do
   case $$(tGitInfoCwdTry) of
