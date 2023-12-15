@@ -1,10 +1,9 @@
 cabal-version:      3.0
 name:               spectrometer
-version:            0.1.0.1
+version:            0.1.0.0
 license:            MPL-2.0
 build-type:         Simple
 
--- Remove this comment.
 -- Trigger rebuilds when vendor-bins/* change because of:
 -- https://github.com/haskell/cabal/issues/4746.
 -- GHC itself behaves correctly. Cabal doesn't realize it needs to call GHC though.
