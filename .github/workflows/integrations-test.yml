@@ -100,7 +100,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ env.parent_commit }}
           ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-
-          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-
           ${{ runner.os }}-
 
     - name: Build Rust dependencies
