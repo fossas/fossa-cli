@@ -28,9 +28,9 @@ test: test-cargo test-cabal
 
 test-cabal:
 ifdef ARGS
-	cabal test unit-tests --test-show-details=streaming --test-option=--format=checks --test-option=--times --test-option=--color --test-option=--match --test-option="$(ARGS)"
+	cabal test unit-tests --test-show-details=streaming --test-option=--format=checks --test-option=--times --test-option=--color --test-option=--match --test-option="$(ARGS)" --test-options='+RTS -N -RTS'
 else
-	cabal test unit-tests --test-show-details=streaming --test-option=--format=checks --test-option=--times --test-option=--color
+	cabal test unit-tests --test-show-details=streaming --test-option=--format=checks --test-option=--times --test-option=--color --test-options='+RTS -N -RTS'
 endif
 
 test-cargo: build-cargo
