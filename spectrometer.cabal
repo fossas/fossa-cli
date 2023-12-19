@@ -513,6 +513,7 @@ test-suite unit-tests
   import:             deps
   type:               exitcode-stdio-1.0
   hs-source-dirs:     test
+  ghc-options:        -threaded
   main-is:            test.hs
 
   -- cabal-fmt: expand test
@@ -658,6 +659,7 @@ test-suite unit-tests
     Scala.SbtDependencyTreeJsonSpec
     Scala.SbtDependencyTreeParsingSpec
     Scala.SbtDependencyTreeSpec
+    SpecHook
     Sqlite.SqliteSpec
     Swift.PackageResolvedSpec
     Swift.PackageSwiftSpec
