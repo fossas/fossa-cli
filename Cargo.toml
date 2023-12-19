@@ -5,8 +5,8 @@ members = [
   "tools/diagnose",
 ]
 exclude = [
-  "integration-test/artifacts/rust/fd/fd-8.3.0",
-  "integration-test/artifacts/rust/bat/bat-0.18.3"
+  "integration-test/artifacts/rust/**",
+  "integration-test/artifacts/rust/**"
 ]
 
 resolver = "2"
