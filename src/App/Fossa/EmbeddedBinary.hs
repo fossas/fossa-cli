@@ -24,13 +24,12 @@ import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.ByteString (ByteString, writeFile)
 import Data.ByteString.Lazy qualified as BL
 import Data.FileEmbed.Extra (embedFileIfExists)
-import Data.UUID qualified as UUID (toString)
-import Data.UUID.V4 qualified as UUID (nextRandom)
 import Data.Foldable (traverse_)
 import Data.String.Conversion (toLazy, toString)
 import Data.Tagged (Tagged, applyTag, unTag)
 import Data.Text (Text)
-import Data.Time.Clock.POSIX (getPOSIXTime)
+import Data.UUID qualified as UUID (toString)
+import Data.UUID.V4 qualified as UUID (nextRandom)
 import Path (
   Abs,
   Dir,
