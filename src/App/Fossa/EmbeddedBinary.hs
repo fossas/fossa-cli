@@ -24,6 +24,8 @@ import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.ByteString (ByteString, writeFile)
 import Data.ByteString.Lazy qualified as BL
 import Data.FileEmbed.Extra (embedFileIfExists)
+import Data.UUID qualified as UUID (toString)
+import Data.UUID.V4 qualified as UUID (nextRandom)
 import Data.Foldable (traverse_)
 import Data.String.Conversion (toLazy, toString)
 import Data.Tagged (Tagged, applyTag, unTag)
@@ -189,7 +191,7 @@ extractDir = do
   -- Get some positive "random" number, in this case a timestamp
   -- at microsecond resolution.  Does not need to be exact, just
   -- unique enough.
-  ts <- show @Int . abs . floor . (* 1_000_000) <$> sendIO getPOSIXTime
+  ts <- sendIO $ UUID.toString <$> UUID.nextRandom -- show @Int . abs . floor . (* 1_000_000) <$> sendIO getPOSIXTime
   subDir <- sendIO $ parseRelDir ts
   pure (wd </> $(mkRelDir "fossa-vendor") </> subDir)
 
