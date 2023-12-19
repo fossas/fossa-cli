@@ -187,11 +187,11 @@ getArtifact target = sendIO $ do
 
   -- Generate a path to extract the artifact to which is unique between calls to getArtifact.
   --
-  -- If we fail to parse a uuid as a directory fragment just use a fixed directory name.
-  -- This makes us fall back to the original behavior where extraction directories
+  -- If it fails to parse a uuid as a directory fragment, just use a fixed directory name.
+  -- This makes it fall back to the original behavior where extraction directories
   -- shared between AnalysisTextFixtures could break during parallel execution.
   --
-  -- In a case where this happens there is likely a problem with the uuid library.
+  -- This generally shouldn't happen if the uuid library makes properly formatted uuid strings.
   uuid <- parseRelDir . UUID.toString <$> UUID.nextRandom
   let uuidPath = fromMaybe [reldir|uuid-parse-failed|] uuid
       archiveExtractionDir = analysisIntegrationCaseFixtureDir </> extractAt target </> uuidPath
