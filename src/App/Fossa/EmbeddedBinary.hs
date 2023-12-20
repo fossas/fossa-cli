@@ -28,7 +28,8 @@ import Data.Foldable (traverse_)
 import Data.String.Conversion (toLazy, toString)
 import Data.Tagged (Tagged, applyTag, unTag)
 import Data.Text (Text)
-import Data.Time.Clock.POSIX (getPOSIXTime)
+import Data.UUID qualified as UUID (toString)
+import Data.UUID.V4 qualified as UUID (nextRandom)
 import Path (
   Abs,
   Dir,
@@ -175,21 +176,18 @@ extractedPath bin = case bin of
   Lernie -> $(mkRelFile "lernie")
   Millhone -> $(mkRelFile "millhone")
 
--- | Extract to @$TMP/fossa-vendor/<timestamp>
+-- | Extract to @$TMP/fossa-vendor/<uuid>
 -- We used to extract everything to @$TMP/fossa-vendor@, but there's a subtle issue with that.
 -- Cleanup is just removing the directory where the file resides, which is fine unless there's
 -- more than one active extracted file.  Cleanup could potentially kill both while one is in use.
--- Extracting to another subdir means that the cleanup only cleans the timestamp subdir.
+-- Extracting to another subdir means that the cleanup only cleans the uuid subdir.
 -- The only downside is that we never cleanup the fossa-vendor directory, which is not an issue,
 -- since it should be empty by the time we finish cleanup.  The tempfile cleaner on the system
 -- should pick it up anyway.
 extractDir :: Has (Lift IO) sig m => m (Path Abs Dir)
 extractDir = do
   wd <- sendIO getTempDir
-  -- Get some positive "random" number, in this case a timestamp
-  -- at microsecond resolution.  Does not need to be exact, just
-  -- unique enough.
-  ts <- show @Int . abs . floor . (* 1_000_000) <$> sendIO getPOSIXTime
+  ts <- sendIO $ UUID.toString <$> UUID.nextRandom
   subDir <- sendIO $ parseRelDir ts
   pure (wd </> $(mkRelDir "fossa-vendor") </> subDir)
 

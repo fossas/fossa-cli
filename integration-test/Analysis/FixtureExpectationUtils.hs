@@ -54,10 +54,10 @@ withAnalysisOf ::
   AnalysisTestFixture a ->
   (([(DiscoveredProject a, DependencyResults)], Path Abs Dir) -> m b) ->
   m ()
-withAnalysisOf a runTest = do
-  extractedDir <- getArtifact (artifact a)
-  res <- performDiscoveryAndAnalyses extractedDir a
-  _ <- runTest (res, extractedDir </> (scopedDir . artifact $ a))
+withAnalysisOf testFixture runTest = do
+  extractedDir <- getArtifact (artifact testFixture)
+  res <- performDiscoveryAndAnalyses extractedDir testFixture
+  _ <- runTest (res, extractedDir </> (scopedDir . artifact $ testFixture))
   sendIO $ PIO.removeDirRecur extractedDir
 
 -- | Retrieves a dependency result from discovered project of a given type and path.

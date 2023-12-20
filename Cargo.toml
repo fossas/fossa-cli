@@ -4,9 +4,12 @@ members = [
   "extlib/millhone",
   "tools/diagnose",
 ]
+
+# This field is documented as accepting globs but apparently only prefix matches:
+# https://github.com/rust-lang/cargo/issues/11405
 exclude = [
-  "integration-test/artifacts/rust/fd/fd-8.3.0",
-  "integration-test/artifacts/rust/bat/bat-0.18.3"
+  "integration-test/artifacts/rust/bat/",
+  "integration-test/artifacts/rust/fd/"
 ]
 
 resolver = "2"
