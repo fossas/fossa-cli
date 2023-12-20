@@ -7,8 +7,10 @@ module Strategy.Bundler (
   BundlerProject (..),
 ) where
 
+import App.Fossa.Analyze.LicenseAnalyze (
+  LicenseAnalyzeProject (licenseAnalyzeProject),
+ )
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
-import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
@@ -100,8 +102,10 @@ findLicenses gemspecPath = do
   pure [LicenseResult gemSpecFp (License UnknownType <$> licenses)]
   where
     isLicenseKey Assignment{label = label} =
-      "license" `isSuffixOf` label
-        || "licenses" `isSuffixOf` label
+      "license"
+        `isSuffixOf` label
+        || "licenses"
+          `isSuffixOf` label
     gemSpecFp = toFilePath gemspecPath
 
 mkProject :: BundlerProject -> DiscoveredProject BundlerProject

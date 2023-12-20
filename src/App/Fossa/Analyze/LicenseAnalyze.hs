@@ -1,4 +1,4 @@
-module App.Pathfinder.Types (
+module App.Fossa.Analyze.LicenseAnalyze (
   LicenseAnalyzeProject (..),
 ) where
 
