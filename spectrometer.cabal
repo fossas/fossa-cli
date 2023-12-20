@@ -701,6 +701,7 @@ test-suite integration-tests
     Analysis.RustSpec
     Analysis.ScalaSpec
     Analysis.SwiftSpec
+    SpecHook
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.10.0.1
   build-depends:
