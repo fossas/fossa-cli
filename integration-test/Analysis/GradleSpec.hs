@@ -23,7 +23,7 @@ gradleEnv = NixEnv ["gradle_7"]
 springBoot :: AnalysisTestFixture (Gradle.GradleProject)
 springBoot =
   AnalysisTestFixture
-    "gradle-java"
+    "gradle-java-springboot"
     Gradle.discover
     gradleEnv
     Nothing
@@ -35,7 +35,7 @@ springBoot =
 gradleSettingsOnly :: AnalysisTestFixture (Gradle.GradleProject)
 gradleSettingsOnly =
   AnalysisTestFixture
-    "gradle-java"
+    "gradle-java-settings-only"
     Gradle.discover
     gradleEnv
     Nothing
