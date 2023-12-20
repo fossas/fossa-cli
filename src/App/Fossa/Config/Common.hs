@@ -302,10 +302,16 @@ collectRevisionData (BaseDir basedir) maybeConfig cacheStrategy cliOverride = do
   let override = collectRevisionOverride maybeConfig cliOverride
   case cacheStrategy of
     ReadOnly -> do
-      inferred <- inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir
+      maybeInferred <- inferProjectFromVCS basedir
+      inferred <- case maybeInferred of
+        Nothing -> inferProjectCached basedir <||> inferProjectDefault basedir
+        Just inferredFromVCS -> pure inferredFromVCS
       pure $ mergeOverride override inferred
     WriteOnly -> do
-      inferred <- inferProjectFromVCS basedir <||> inferProjectDefault basedir
+      maybeInferred <- inferProjectFromVCS basedir
+      inferred <- case maybeInferred of
+        Nothing -> inferProjectDefault basedir
+        Just inferredFromVCS -> pure inferredFromVCS
       let revision = mergeOverride override inferred
       saveRevision revision
       pure revision
