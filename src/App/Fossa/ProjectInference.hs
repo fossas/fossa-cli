@@ -31,7 +31,6 @@ import Data.Text.IO qualified as TIO
 import Data.Time.Clock.POSIX (getCurrentTime)
 import Data.Time.Format.ISO8601 (iso8601Show)
 import Effect.Exec
-import Effect.Logger
 import Effect.ReadFS
 import Path
 import Path.IO (getTempDir)
