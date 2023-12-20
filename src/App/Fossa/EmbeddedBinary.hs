@@ -202,6 +202,9 @@ makeExecutable path = do
 -- built binaries of the appropriate architecture.
 -- The below functions are expected to warn since the vendor-bins directory is typically populated in CI.
 -- If you wish to run these on your local system, populate these binaries via `vendor_download.sh`.
+--
+-- WARNING: If you add new binaries here, please also add them to extra-source-files in spectrometer.cabal.
+-- This makes sure that cabal tracks changes to them and will trigger a rebuild.
 embeddedBinaryThemis :: ByteString
 embeddedBinaryThemis = $(embedFileIfExists "vendor-bins/themis-cli")
 

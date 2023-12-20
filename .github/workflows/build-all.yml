@@ -9,6 +9,9 @@ jobs:
     name: ${{ matrix.os-name }}-build
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
+    env:
+      GHC_VERSION: '9.4.7'
+
 
     defaults:
       run:
@@ -39,6 +42,7 @@ jobs:
     - uses: actions/checkout@v3
       with:
         lfs: true
+        fetch-depth: 2
 
     - name: Install MacOS binary dependencies
       if: ${{ contains(matrix.os, 'macos') }}
@@ -97,15 +101,61 @@ jobs:
     - name: Test Rust dependencies
       run: cargo nextest run --release
 
+    - name: Ensure git ownership check does not lead to compiler error
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+    - name: Check git status and collect information
+      # https://github.com/actions/checkout/issues/760#issuecomment-1099519159
+      run: |
+        git status --porcelain
+        echo "parent_commit=$(git rev-parse HEAD^)" >> $GITHUB_ENV
+
+    # Compute cache key and save to a temporary file.
+    #
+    # We compute the cache key based on the solved install plan instead of just
+    # hashing the `.cabal` file, since there are many kinds of changes that will
+    # cause `.cabal` to change (e.g. adding new source modules).
+    - name: Compute cache key
+      id: compute-cache-key
+      env:
+        RUNNER_OS: ${{ runner.os }}
+      run: |
+        cabal --project-file=${{ matrix.project-file }} update
+        cabal --project-file=${{ matrix.project-file }} build --dry-run
+        cat dist-newstyle/cache/plan.json | jq '."install-plan"[]."id"' | sort > /tmp/cabal-cache-key
+        echo "Install plan:"
+        cat /tmp/cabal-cache-key
+
+        if [ "$RUNNER_OS" = "macOS" ]; then
+           PLAN_SUM=$(shasum -a256 /tmp/cabal-cache-key)
+        else
+           PLAN_SUM=$(sha256sum /tmp/cabal-cache-key)
+        fi
+
+        export CABAL_CACHE_KEY=$(echo $PLAN_SUM | awk '{print $1}')
+        echo "Cabal cache key: $CABAL_CACHE_KEY"
+        echo "cabal-cache-key=$CABAL_CACHE_KEY" >> $GITHUB_OUTPUT
+
     # Build FOSSA CLI.
     - uses: actions/cache@v3
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
-        key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('**/*.cabal', format('{0}', matrix.project-file)) }}
+        key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ steps.compute-cache-key.outputs.cabal-cache-key }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
           ${{ runner.os }}-${{ matrix.ghc }}-
+          ${{ runner.os }}-
+
+    - uses: actions/cache@v3
+      name: Cache dist-newstyle
+      with:
+        path: ${{ github.workspace }}/dist-newstyle
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ env.parent_commit }}
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-
           ${{ runner.os }}-
 
     - name: Update vendored binaries
@@ -119,12 +169,6 @@ jobs:
       run: |
         make build-test-data
 
-    - name: Check git status
-      # https://github.com/actions/checkout/issues/760#issuecomment-1099519159
-      run: |
-        git config --global --add safe.directory "$GITHUB_WORKSPACE"
-        git status --porcelain
-
     - name: Build
       # Occasionally, we run out of memory on the build process.
       # Since cabal uses incremental compilation, we can retry from where we left off
@@ -132,6 +176,13 @@ jobs:
       env:
         RUN_CMD: cabal build --project-file=${{ matrix.project-file }} all
       run: |
+        : # With dist-newstyle caches:
+        : # Cabal mainly knows to recompile based on changes to files.
+        : # Tagging in git doesn't reliably change a file in a fixed location that cabal/GHC can track to indicate that there's a new tag.
+        : # For our release process, we merge to master, which builds (and may store a dist-newstyle cache), then push a release tag.
+        : # During the tag build, cabal/GHC may not realize that they have to rebuild the Version.hs file because the tag is invisible to it.
+        : # This line adds a unique comment to our version source file to prompt cabal/GHC to rebuild Version.hs unconditionally.
+        echo "{- $RANDOM$RANDOM$RANDOM -}" >> src/App/Version.hs
         cabal update
         $RUN_CMD || $RUN_CMD
 

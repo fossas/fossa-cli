@@ -15,6 +15,7 @@ import Control.Effect.Diagnostics (
   (<||>),
  )
 import Control.Effect.Lift (Lift)
+import Control.Effect.Path (withSystemTempDir)
 import Control.Monad (when)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
@@ -74,14 +75,16 @@ analyzeLegacy' dir = analyze dir depGraphPluginLegacy
 runReactor ::
   ( CandidateCommandEffs sig m
   , Has ReadFS sig m
+  , Has (Lift IO) sig m
   ) =>
   Path Abs Dir ->
   DepGraphPlugin ->
   m ReactorOutput
 runReactor dir plugin =
   context "Running plugin to get submodule names" $
-    warnOnErr MayIncludeSubmodule (execPluginReactor dir plugin >> parseReactorOutput dir)
-      <||> pure (ReactorOutput [])
+    withSystemTempDir "fossa-temp" $ \tempdir -> do
+      warnOnErr MayIncludeSubmodule (execPluginReactor dir tempdir plugin >> parseReactorOutput tempdir)
+        <||> pure (ReactorOutput [])
 
 analyze ::
   ( CandidateCommandEffs sig m

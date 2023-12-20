@@ -70,45 +70,6 @@ jobs:
         run: |
           cabal-fmt --check spectrometer.cabal
 
-  cabal-install-check:
-    name: cabal-install-check
-    runs-on: ubuntu-latest
-    # Be sure to update the env var below
-    container: ghcr.io/fossas/haskell-dev-tools:9.4.7
-
-    env:
-      GHC_VERSION: '9.4.7'
-
-    steps:
-      - uses: actions/checkout@v3
-
-      # For some reason newer cabal or newer ghc doesn't prioritize cli options like -Wwarn over project file -Werror.
-      # Because -Werror is specified in the project file, we get errors due to missing vendor binaries.
-      # So edit the project file temporarily to not care about warnings.
-      # This is what -Wwarn is supposed to do below.
-      # We don't really lose anything here since it's run with -Werror in other workflows.
-      - name: Delete ghc-options -Werror
-        run: |
-          sed -i '/ghc-options: -Werror/d' cabal.project.ci.linux
-
-      # Run `cabal install`.
-      - uses: actions/cache@v3
-        name: Cache cabal store
-        with:
-          path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
-          key: ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-${{ hashFiles('**/*.cabal', 'cabal.project.ci.linux') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-
-            ${{ runner.os }}-${{ env.GHC_VERSION }}-
-            ${{ runner.os }}-
-
-      - name: Run `cabal install`
-        run: |
-          apk add xz-dev bzip2-dev bzip2-static
-          cabal update
-
-          cabal install --project=cabal.project.ci.linux --ghc-options="-Wwarn"
-
   schema-lint-check:
     name: "schema lint check"
     runs-on: ubuntu-latest

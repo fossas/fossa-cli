@@ -7,7 +7,7 @@ module Control.Carrier.Telemetry.Utils (
   -- for testing
 ) where
 
-import App.Version (isDirty, versionOrBranch)
+import App.Version (isReleaseVersion, versionOrBranch)
 import Control.Algebra (Has)
 import Control.Applicative ((<|>))
 import Control.Carrier.Lift (Lift, sendIO)
@@ -96,9 +96,9 @@ getCurrentCliVersion = versionOrBranch
 
 getCurrentCliEnvironment :: CliEnvironment
 getCurrentCliEnvironment =
-  if isDirty
-    then CliDevelopmentEnvironment
-    else CliProductionEnvironment
+  if isReleaseVersion
+    then CliProductionEnvironment
+    else CliDevelopmentEnvironment
 
 getSystemInfo :: IO SystemInfo
 getSystemInfo = do

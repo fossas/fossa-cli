@@ -25,6 +25,8 @@ let-style: inline
 # Docs: https://github.com/fourmolu/fourmolu#language-extensions-dependencies-and-fixities
 # If you have issues with operator formatting, usually you can find the right fixity in the haddocks.
 fixities:
-    - infixl 3 <|>
-    - infix 4 ==
-    - infixr 3 &&
+- infixr 0 $
+- infixl 3 <|>
+- infixr 3 &&
+- infix 4 ==
+- infixl 4 <$>, <*>
