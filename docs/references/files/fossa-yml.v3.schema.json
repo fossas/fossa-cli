@@ -380,6 +380,7 @@
             "$ref": "#/$defs/vendoredDependencies"
         },
         "revision": {
+            "type": "object",
             "items": {
                 "$ref": "#/$defs/revision"
             }
