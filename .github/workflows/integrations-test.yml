@@ -120,6 +120,8 @@ jobs:
         cabal update
         $RUN_CMD || $RUN_CMD
 
+    # This is set up to run integration tests in parallel.
+    # If that becomes a problem disable it by removing the "+RTS -N -RTS" test options.
     - name: Run all integration tests
       run: |
-        cabal test --project-file=cabal.project.ci.linux --test-show-details=direct --test-option=--times integration-tests
+        cabal test --project-file=cabal.project.ci.linux --test-show-details=direct --test-option=--times integration-tests --test-options="+RTS -N -RTS"
