@@ -97,15 +97,15 @@ testMain config =
             else case outputType of
               TestOutputPretty -> logError $ pretty issues
               TestOutputJson -> renderJson issues
-          fatalText $ issesFoundMsg diffRev n
+          fatalText $ issuesFoundMsg diffRev n
   where
     successMsg :: Maybe DiffRevision -> Text
     successMsg diffRevision = case diffRevision of
       Nothing -> "Test passed! 0 issues found"
       Just (DiffRevision rev) -> "Test passed! No new issues found compared to revision: " <> rev <> "."
 
-    issesFoundMsg :: Maybe DiffRevision -> Int -> Text
-    issesFoundMsg diffRevision n = case diffRevision of
+    issuesFoundMsg :: Maybe DiffRevision -> Int -> Text
+    issuesFoundMsg diffRevision n = case diffRevision of
       Nothing -> "The scan has revealed issues. Number of issues found: " <> showT n
       Just (DiffRevision rev) ->
         "The scan has revealed new issues compared to revision: "
