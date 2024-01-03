@@ -14,10 +14,10 @@ jobs:
     runs-on:
       group: "FOSSA CLI Runner"
     # Be sure to update the env below too
-    container: fossa/haskell-static-alpine:ghc-9.4.7
+    container: fossa/haskell-static-alpine:ghc-9.4.8
 
     env:
-      GHC_VERSION: '9.4.7'
+      GHC_VERSION: '9.4.8'
 
     steps:
     - uses: actions-rs/toolchain@v1

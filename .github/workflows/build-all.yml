@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     env:
-      GHC_VERSION: '9.4.7'
+      GHC_VERSION: '9.4.8'
 
 
     defaults:
@@ -23,19 +23,19 @@ jobs:
         include:
         - os: ubuntu-latest
           os-name: Linux
-          container: fossa/haskell-static-alpine:ghc-9.4.7
+          container: fossa/haskell-static-alpine:ghc-9.4.8
           project-file: cabal.project.ci.linux
-          ghc: '9.4.7'
+          ghc: '9.4.8'
 
         - os: macos-latest
           os-name: macOS
           project-file: cabal.project.ci.macos
-          ghc: '9.4.7'
+          ghc: '9.4.8'
 
         - os: windows-latest
           os-name: Windows
           project-file: cabal.project.ci.windows
-          ghc: '9.4.7'
+          ghc: '9.4.8'
 
     steps:
 
@@ -56,7 +56,7 @@ jobs:
       if: ${{ !contains(matrix.os, 'ubuntu') }}
       with:
         ghc-version: ${{ matrix.ghc }}
-        cabal-version: '3.8.1.0'
+        cabal-version: '3.10.2.0'
 
     # Set up Rust.
     - uses: actions-rs/toolchain@v1
