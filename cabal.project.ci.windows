@@ -5,7 +5,7 @@ executable-static: True
 -- The binaries made in CI without this were ~122 MB to ~116 MB with this option.
 -- Compressed, the differences is < 1 MB so I don't think holding off the upgrade for this is worthwhile.
 -- It may be worth looking into in the future to see if this can be turned back on though.
-split-sections: False
+split-sections: True
 tests: True
 optimization: 2
 jobs: $ncpus
