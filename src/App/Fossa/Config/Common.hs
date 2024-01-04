@@ -329,8 +329,8 @@ collectRevisionData (BaseDir basedir) maybeConfig cacheStrategy cliOverride = do
       case vcsInfo of
         Failure emittedWarns errGroup ->
           do
-            logDebug (renderFailure emittedWarns errGroup "Error inferring project revision from version control system")
-            logInfo "Unable to infer project revision from version control system. The project revision will be set to the current timestamp."
+            logDebug (renderFailure emittedWarns errGroup "Unable to infer project revision from VCS, using current timestamp as the revision.")
+            logInfo "Unable to infer project revision from VCS, using current timestamp as the revision."
             nextStep
         Success _ _ -> rethrow vcsInfo
 

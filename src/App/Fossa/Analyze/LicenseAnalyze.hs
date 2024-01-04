@@ -1,4 +1,11 @@
-module App.Pathfinder.Types (
+{-
+This module was formerly used in 'pathfinder'.
+'pathfinder' was an executable that looked for declared licenses in project manifest files.
+That's different than 'fossa analyze' which can examine project source-code and invoke build tools to find license info.
+
+This typeclass definition has been retained because a number of analyzers implement support for detecting declared licenses and this might be of use to the CLI in the future.
+-}
+module App.Fossa.Analyze.LicenseAnalyze (
   LicenseAnalyzeProject (..),
 ) where
 
