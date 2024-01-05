@@ -61,8 +61,8 @@ sbtDepTreeCmd =
   Command
     { cmdName = "sbt"
     , cmdArgs =
-        [ "--batch" -- ensure sbt does not enter repl mode!
-        , "--no-colors"
+        [ "-batch" -- ensure sbt does not enter repl mode!
+        , "-no-colors"
         , "dependencyTree"
         ]
     , cmdAllowErr = Never
