@@ -1,7 +1,8 @@
 repo_name: fossas/fossa-cli
-report_id: 800aaa878d15e4ff0ab6619b3e3529aa
+report_id: edea4e621a992834193ca019fb277295
+version: 0.1
 repo_type: Public
-timestamp: '2023-12-14T10:40:53+00:00'
+timestamp: '2024-01-05T08:43:31+00:00'
 requested_by: spatten
 provider: github
 branch: master
@@ -15,6 +16,7 @@ tools:
   category: Languages & Frameworks
   sub_category: Languages
   image_url: https://img.stackshare.io/service/1069/oCgm29k9.png
+  detection_source_url: https://github.com/fossas/fossa-cli
   detection_source: Repo Metadata
 - name: JavaScript
   description: Lightweight, interpreted, object-oriented language with first-class
@@ -25,6 +27,7 @@ tools:
   category: Languages & Frameworks
   sub_category: Languages
   image_url: https://img.stackshare.io/service/1209/javascript.jpeg
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/test/Cocoapods/testdata/Podfile
   detection_source: test/Cocoapods/testdata/Podfile
   last_updated_by: Zach
   last_updated_on: 2020-02-12 22:07:51.000000000 Z
@@ -37,6 +40,7 @@ tools:
   category: Languages & Frameworks
   sub_category: Languages
   image_url: https://img.stackshare.io/service/993/pUBY5pVj.png
+  detection_source_url: https://github.com/fossas/fossa-cli
   detection_source: Repo Metadata
 - name: Ruby
   description: A dynamic, interpreted, open source programming language with a focus
@@ -47,6 +51,7 @@ tools:
   category: Languages & Frameworks
   sub_category: Languages
   image_url: https://img.stackshare.io/service/989/ruby.png
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/test/Ruby/testdata/gemspecs/Gemfile
   detection_source: test/Ruby/testdata/gemspecs/Gemfile
   last_updated_by: Christopher Sasarak
   last_updated_on: 2022-03-07 16:00:08.000000000 Z
@@ -58,6 +63,7 @@ tools:
   category: Languages & Frameworks
   sub_category: Languages
   image_url: https://img.stackshare.io/service/1070/v7txhrjp9pdqrkdtxxp0.png
+  detection_source_url: https://github.com/fossas/fossa-cli
   detection_source: Repo Metadata
 - name: Swift
   description: 'An innovative new programming language for Cocoa and Cocoa Touch. '
@@ -68,6 +74,7 @@ tools:
   category: Languages & Frameworks
   sub_category: Languages
   image_url: https://img.stackshare.io/service/1009/tuHsaI2U.png
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/extlib/berkeleydb/Cargo.toml
   detection_source: extlib/berkeleydb/Cargo.toml
   last_updated_by: Jessica Black
   last_updated_on: 2022-09-07 16:01:05.000000000 Z
@@ -80,6 +87,7 @@ tools:
   category: Languages & Frameworks
   sub_category: Serialization Frameworks
   image_url: https://img.stackshare.io/service/11028/no-img-open-source.png
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/extlib/berkeleydb/Cargo.toml
   detection_source: extlib/berkeleydb/Cargo.toml
   last_updated_by: Jessica Black
   last_updated_on: 2022-09-07 16:01:05.000000000 Z
@@ -91,6 +99,7 @@ tools:
   category: Data Stores
   sub_category: Database Tools
   image_url: https://img.stackshare.io/service/109221/default_b888cdf5617d936aa6aacf130911906955508639.png
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/bench/benchdata/filepaths.txt
   detection_source: bench/benchdata/filepaths.txt
 - name: CircleCI
   description: Automate your development process quickly, safely, and at scale
@@ -100,6 +109,7 @@ tools:
   category: Build, Test, Deploy
   sub_category: Continuous Integration
   image_url: https://img.stackshare.io/service/190/CvqrSSFs_400x400.jpg
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/.circleci/config.yml
   detection_source: ".circleci/config.yml"
   last_updated_by: meghfossa
   last_updated_on: 2021-11-17 01:53:39.000000000 Z
@@ -111,6 +121,7 @@ tools:
   category: Build, Test, Deploy
   sub_category: Version Control System
   image_url: https://img.stackshare.io/service/1046/git.png
+  detection_source_url: https://github.com/fossas/fossa-cli
   detection_source: Repo Metadata
 - name: GitHub Actions
   description: Automate your workflow from idea to production
@@ -120,6 +131,7 @@ tools:
   category: Build, Test, Deploy
   sub_category: Continuous Integration
   image_url: https://img.stackshare.io/service/11563/actions.png
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/.github/workflows/badges.yml
   detection_source: ".github/workflows/badges.yml"
   last_updated_by: Leo Zhang
   last_updated_on: 2023-05-13 06:23:53.000000000 Z
@@ -132,6 +144,7 @@ tools:
   category: Build, Test, Deploy
   sub_category: Java Build Tools
   image_url: https://img.stackshare.io/service/975/gradlephant-social-black-bg.png
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/scripts/jsondeps.gradle
   detection_source: scripts/jsondeps.gradle
   last_updated_by: Christopher Sasarak
   last_updated_on: 2023-03-27 16:24:07.000000000 Z
@@ -144,6 +157,7 @@ tools:
   category: Build, Test, Deploy
   sub_category: Package Managers
   image_url: https://img.stackshare.io/service/4348/ET9J1uY-_400x400.png
+  detection_source_url: https://github.com/fossas/fossa-cli
   detection_source: Repo Metadata
 - name: PyPI
   description: A repository of software for the Python programming language
@@ -153,6 +167,7 @@ tools:
   category: Build, Test, Deploy
   sub_category: Hosted Package Repository
   image_url: https://img.stackshare.io/service/12572/-RIWgodF_400x400.jpg
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/test/Pdm/testdata/basic/pyproject.toml
   detection_source: test/Pdm/testdata/basic/pyproject.toml
   last_updated_by: meghfossa
   last_updated_on: 2023-06-13 15:25:45.000000000 Z
@@ -164,6 +179,7 @@ tools:
   category: Build, Test, Deploy
   sub_category: Package Managers
   image_url: https://img.stackshare.io/service/12795/5jL6-BA5_400x400.jpeg
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/extlib/berkeleydb/Cargo.toml
   detection_source: extlib/berkeleydb/Cargo.toml
   last_updated_by: Jessica Black
   last_updated_on: 2022-09-07 16:01:05.000000000 Z
@@ -175,6 +191,7 @@ tools:
   category: Build, Test, Deploy
   sub_category: Front End Package Manager
   image_url: https://img.stackshare.io/service/5848/44mC-kJ3.jpg
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/test/Yarn/V1/testdata/yarn.lock
   detection_source: test/Yarn/V1/testdata/yarn.lock
   last_updated_by: Zach
   last_updated_on: 2020-11-19 01:25:22.000000000 Z
@@ -186,6 +203,7 @@ tools:
   category: Build, Test, Deploy
   sub_category: Front End Package Manager
   image_url: https://img.stackshare.io/service/1120/lejvzrnlpb308aftn31u.png
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/test/Cocoapods/testdata/Podfile
   detection_source: test/Cocoapods/testdata/Podfile
   last_updated_by: Zach
   last_updated_on: 2020-02-12 22:07:51.000000000 Z
@@ -197,6 +215,7 @@ tools:
   category: Libraries
   sub_category: CocoaPods Packages
   image_url: https://img.stackshare.io/service/2426/e1cbdef9d4b11484049a033886578e54_400x400.png
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/test/Cocoapods/testdata/Podfile.lock
   detection_source: test/Cocoapods/testdata/Podfile.lock
   last_updated_by: Zach
   last_updated_on: 2020-02-12 22:07:51.000000000 Z
@@ -208,6 +227,7 @@ tools:
   category: Communications
   sub_category: Large Language Model Tools
   image_url: https://img.stackshare.io/service/48790/default_5b6c6b73f1ff3775c85d2a1ba954cb87e30cbf13.jpg
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/bench/benchdata/filepaths.txt
   detection_source: bench/benchdata/filepaths.txt
 - name: PowerShell
   description: A task automation and configuration management framework
@@ -217,6 +237,7 @@ tools:
   category: Languages & Frameworks
   sub_category: Languages
   image_url: https://img.stackshare.io/service/3681/powershell-logo.png
+  detection_source_url: https://github.com/fossas/fossa-cli
   detection_source: Repo Metadata
 - name: Shell
   description: A shell is a text-based terminal, used for manipulating programs and
@@ -227,6 +248,7 @@ tools:
   category: Languages & Frameworks
   sub_category: Languages
   image_url: https://img.stackshare.io/service/4631/default_c2062d40130562bdc836c13dbca02d318205a962.png
+  detection_source_url: https://github.com/fossas/fossa-cli
   detection_source: Repo Metadata
 - name: Quick/Nimble
   description: A Matcher Framework for Swift and Objective-C
@@ -289,6 +311,7 @@ tools:
   category: Build, Test, Deploy
   sub_category: Package Managers
   image_url: https://img.stackshare.io/package/carthage/image.png
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/test/Carthage/testdata/testproject/Carthage/Checkouts/Nimble/Cartfile.private
   detection_source: test/Carthage/testdata/testproject/Carthage/Checkouts/Nimble/Cartfile.private
   last_updated_by: Connor James
   last_updated_on: 2020-02-04 18:12:41.000000000 Z
@@ -301,6 +324,7 @@ tools:
   category: Libraries
   sub_category: PyPI Packages
   image_url: https://img.stackshare.io/package/19920/default_c8be5290cb8d8a8b578535a2c6475d1057ff4ea4.png
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/test/Pdm/testdata/basic/pyproject.toml
   detection_source: test/Pdm/testdata/basic/pyproject.toml
   last_updated_by: meghfossa
   last_updated_on: 2023-06-13 15:25:45.000000000 Z
@@ -313,6 +337,7 @@ tools:
   category: Libraries
   sub_category: PyPI Packages
   image_url: https://img.stackshare.io/package/19919/default_e86399d4348daca8e669da75e38679ad87fc07db.png
+  detection_source_url: https://github.com/fossas/fossa-cli/blob/master/test/Pdm/testdata/basic/pyproject.toml
   detection_source: test/Pdm/testdata/basic/pyproject.toml
   last_updated_by: meghfossa
   last_updated_on: 2023-06-13 15:25:45.000000000 Z
