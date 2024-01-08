@@ -247,7 +247,7 @@ renderEmittedWarn shouldRenderTraceback (IgnoredErrGroup ectx es) = renderedCtx 
       case ectx of
         [] -> emptyDoc
         _ ->
-          (vsep (map (\ctx -> renderErrCtx ctx <> "The end of ctx " <> line) ectx))
+          (vsep (map (\ctx -> renderErrCtx ctx <> line) ectx))
 
     renderedErrors = subsection "Warning" (map (`renderErrWithStack` shouldRenderTraceback) (NE.toList es))
 renderEmittedWarn _ (StandaloneWarn (SomeWarn warn)) = renderDiagnostic warn
