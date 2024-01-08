@@ -30,6 +30,7 @@ module Diag.Result (
   -- * Rendering
   renderFailure,
   renderSuccess,
+  renderFailureWithoutWarnings,
 ) where
 
 import Data.List.NonEmpty (NonEmpty)
@@ -179,7 +180,21 @@ renderFailure ws (ErrGroup _ ectx es) headerDoc = header headerDoc <> renderedCt
         [] -> emptyDoc
         _ ->
           section "Possibly-related warnings" $
-            subsection "Warning" (map renderEmittedWarn ws)
+            unannotatedSubsection (map renderEmittedWarn ws)
+
+renderFailureWithoutWarnings :: ErrGroup -> Doc AnsiStyle -> Doc AnsiStyle
+renderFailureWithoutWarnings (ErrGroup _ ectx es) headerDoc = header headerDoc <> renderedCtx <> renderedErrs
+  where
+    renderedCtx :: Doc AnsiStyle
+    renderedCtx =
+      case ectx of
+        [] -> emptyDoc
+        _ -> section "Details" (vsep (map (\ctx -> renderErrCtx ctx <> line) ectx))
+
+    renderedErrs :: Doc AnsiStyle
+    renderedErrs =
+      section "Relevant errors" $
+        subsection "Error" (map renderErrWithStack (NE.toList es))
 
 -- | renderSuccess turns a list of warnings from a Success into a message
 -- suitable for logging
@@ -195,7 +210,7 @@ renderSuccess :: [EmittedWarn] -> Doc AnsiStyle -> Maybe (Doc AnsiStyle)
 renderSuccess ws headerDoc =
   case notIgnoredErrs of
     [] -> Nothing
-    ws' -> Just $ header headerDoc <> subsection "Warning" (map renderEmittedWarn ws')
+    ws' -> Just $ header headerDoc <> unannotatedSubsection (map renderEmittedWarn ws')
   where
     notIgnoredErrs :: [EmittedWarn]
     notIgnoredErrs = filter (not . isIgnoredErrGroup) ws
@@ -210,15 +225,10 @@ renderErrCtx :: ErrCtx -> Doc AnsiStyle
 renderErrCtx (ErrCtx ctx) = renderDiagnostic ctx
 
 renderErrWithStack :: ErrWithStack -> Doc AnsiStyle
-renderErrWithStack (ErrWithStack (Stack stack) (SomeErr err)) =
+renderErrWithStack (ErrWithStack _ (SomeErr err)) =
   renderDiagnostic err
     <> line
     <> line
-    <> annotate (color Cyan) "Traceback:"
-    <> line
-    <> case stack of
-      [] -> indent 2 "(none)"
-      _ -> indent 2 (vsep (map (pretty . ("- " <>)) stack))
 
 renderEmittedWarn :: EmittedWarn -> Doc AnsiStyle
 renderEmittedWarn (IgnoredErrGroup ectx es) = renderedCtx <> renderedErrors
@@ -227,12 +237,9 @@ renderEmittedWarn (IgnoredErrGroup ectx es) = renderedCtx <> renderedErrors
       case ectx of
         [] -> emptyDoc
         _ ->
-          (vsep (map (\ctx -> renderErrCtx ctx <> line) ectx))
+          (vsep (map (\ctx -> renderErrCtx ctx <> "The end of ctx " <> line) ectx))
 
-    renderedErrors =
-      section
-        "Relevant errors"
-        $ subsection "Error" (map renderErrWithStack (NE.toList es))
+    renderedErrors = subsection "Warning" (map renderErrWithStack (NE.toList es))
 renderEmittedWarn (StandaloneWarn (SomeWarn warn)) = renderDiagnostic warn
 renderEmittedWarn (WarnOnErrGroup ws ectx es) = renderedWarnings <> renderedCtx <> renderedErrors
   where
@@ -246,10 +253,7 @@ renderEmittedWarn (WarnOnErrGroup ws ectx es) = renderedWarnings <> renderedCtx 
             "Details"
             (vsep (map (\ctx -> renderErrCtx ctx <> line) ectx))
 
-    renderedErrors =
-      section
-        "Relevant errors"
-        $ subsection "Error" (map renderErrWithStack (NE.toList es))
+    renderedErrors = subsection "Warning" (map renderErrWithStack (NE.toList es))
 
 renderSomeWarn :: SomeWarn -> Doc AnsiStyle
 renderSomeWarn (SomeWarn w) = renderDiagnostic w
@@ -274,3 +278,6 @@ section name content =
 
 subsection :: Doc AnsiStyle -> [Doc AnsiStyle] -> Doc AnsiStyle
 subsection name = vsep . map (\single -> annotate (color Yellow) name <> line <> line <> indent 2 single <> line)
+
+unannotatedSubsection :: [Doc AnsiStyle] -> Doc AnsiStyle
+unannotatedSubsection = vsep . map (\single -> indent 2 single <> line)

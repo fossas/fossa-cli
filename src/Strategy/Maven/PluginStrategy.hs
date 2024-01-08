@@ -7,6 +7,7 @@ module Strategy.Maven.PluginStrategy (
 ) where
 
 import Control.Algebra (Has, run)
+import Control.Carrier.Diagnostics (fatal)
 import Control.Effect.Diagnostics (
   ToDiagnostic (renderDiagnostic),
   context,
@@ -28,6 +29,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
+import Diag.Common (MissingEdges (MissingEdges))
 import Effect.Exec (CandidateCommandEffs)
 import Effect.Grapher (Grapher, edge, evalGrapher)
 import Effect.Grapher qualified as Grapher
@@ -61,7 +63,8 @@ analyze' ::
   ) =>
   Path Abs Dir ->
   m (Graphing MavenDependency, GraphBreadth)
-analyze' dir = analyze dir depGraphPlugin
+-- analyze' dir = analyze dir depGraphPlugin
+analyze' dir = fatal MissingEdges
 
 analyzeLegacy' ::
   ( CandidateCommandEffs sig m

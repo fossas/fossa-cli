@@ -29,7 +29,7 @@ import Control.Monad.Trans
 import Data.Foldable (traverse_)
 import Diag.Monad (ResultT)
 import Diag.Monad qualified as ResultT
-import Diag.Result (Result (Failure, Success), renderFailure, renderSuccess)
+import Diag.Result (Result (Failure, Success), renderFailure, renderFailureWithoutWarnings, renderSuccess)
 import Diag.Result qualified as Result
 import Effect.Logger
 import System.Exit (exitFailure, exitSuccess)
@@ -46,9 +46,8 @@ logDiagnostic diag = do
   result <- runDiagnosticsIO diag
   trackResult result
   case result of
-    Failure ws eg -> logError (renderFailure ws eg "An issue occurred") >> pure Nothing
-    Success ws a -> do
-      traverse_ logWarn (renderSuccess ws "A task succeeded with warnings")
+    Failure _ eg -> logError (renderFailureWithoutWarnings eg "An issue occurred") >> pure Nothing
+    Success _ a -> do
       pure (Just a)
 
 -- | Run a void Diagnostic effect into a logger, using the default error/warning renderers.
@@ -125,12 +124,8 @@ errorBoundaryIO act = errorBoundary $ act `safeCatch` (\(e :: SomeException) -> 
 -- - On success, the associated warnings are logged with the provided
 --   @sevOnSuccess@ severity
 withResult :: Has Logger sig m => Severity -> Severity -> Result a -> (a -> m ()) -> m ()
-withResult sevOnErr _ (Failure ws eg) _ = Effect.Logger.log sevOnErr (renderFailure ws eg "An issue occurred")
-withResult _ sevOnSuccess (Success ws res) f = do
-  traverse_
-    (Effect.Logger.log sevOnSuccess)
-    (renderSuccess ws "A task succeeded with warnings")
-  f res
+withResult sevOnErr _ (Failure _ eg) _ = Effect.Logger.log sevOnErr (renderFailureWithoutWarnings eg "An issue occurred")
+withResult _ _ (Success _ res) f = f res
 
 -- | Log all encountered errors and warnings associated with 'Result a'
 --

@@ -29,6 +29,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
+import Diag.Common (MissingEdges (..))
 import Effect.Exec (AllowErr (..), CandidateCommandEffs, Command (..), exec, mkAnalysisCommand)
 import Effect.Grapher (direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser)
@@ -104,6 +105,7 @@ analyze ::
   Path Abs Dir ->
   m (Graphing MavenDependency, GraphBreadth)
 analyze dir = do
+  fatal MissingEdges
   -- Construct the Maven command invocation.
   --
   -- First, we need to determine whether there exists a `settings.xml` that we
