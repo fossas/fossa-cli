@@ -178,6 +178,7 @@ loadConfig = resolveLocalConfigFile . optConfig . commons
 mergeOpts ::
   ( Has (Lift IO) sig m
   , Has ReadFS sig m
+  , Has Logger sig m
   , Has Diagnostics sig m
   , Has Exec sig m
   ) =>

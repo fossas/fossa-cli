@@ -26,6 +26,7 @@ let-style: inline
 # If you have issues with operator formatting, usually you can find the right fixity in the haddocks.
 fixities:
 - infixr 0 $
+- infixr 2 ||
 - infixl 3 <|>
 - infixr 3 &&
 - infix 4 ==
