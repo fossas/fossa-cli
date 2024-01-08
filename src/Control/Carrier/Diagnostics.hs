@@ -41,13 +41,17 @@ runDiagnostics :: DiagnosticsC m a -> m (Result a)
 runDiagnostics = ResultT.runResultT . runDiagnosticsC
 
 -- | Run a Diagnostic effect into a logger, using the default error/warning renderers.
+-- Warnings and errors are logged with SevDebug as well.
 logDiagnostic :: (Has (Lift IO) sig m, Has Logger sig m, Has Stack sig m, Has Telemetry sig m) => DiagnosticsC m a -> m (Maybe a)
 logDiagnostic diag = do
   result <- runDiagnosticsIO diag
   trackResult result
   case result of
-    Failure _ eg -> logError (renderFailureWithoutWarnings eg "An issue occurred") >> pure Nothing
-    Success _ a -> do
+    Failure ws eg -> do
+      logDebug (renderFailure ws eg "An issue occurred")
+      logError (renderFailureWithoutWarnings eg "An issue occurred") >> pure Nothing
+    Success ws a -> do
+      traverse_ logDebug (renderSuccess ws "A task succeeded with warnings")
       pure (Just a)
 
 -- | Run a void Diagnostic effect into a logger, using the default error/warning renderers.
@@ -117,21 +121,21 @@ errorBoundaryIO :: (Has (Lift IO) sig m, Has Diagnostics sig m) => m a -> m (Res
 errorBoundaryIO act = errorBoundary $ act `safeCatch` (\(e :: SomeException) -> fatal e)
 
 -- | Use the result of a Diagnostics computation, logging any encountered errors
--- and warnings
+-- and warnings. Warnings and errors are logged with SevDebug as well.
 --
 -- - On failure, the failure is logged with the provided @sevOnErr@ severity
---
--- - On success, the associated warnings are logged with the provided
---   @sevOnSuccess@ severity
 withResult :: Has Logger sig m => Severity -> Severity -> Result a -> (a -> m ()) -> m ()
-withResult sevOnErr _ (Failure _ eg) _ = Effect.Logger.log sevOnErr (renderFailureWithoutWarnings eg "An issue occurred")
-withResult _ _ (Success _ res) f = f res
+withResult sevOnErr _ (Failure ws eg) _ = do
+  logDebug (renderFailure ws eg "An issue occurred")
+  Effect.Logger.log sevOnErr (renderFailureWithoutWarnings eg "An issue occurred")
+withResult _ _ (Success ws res) f = do
+  traverse_
+    logDebug
+    (renderSuccess ws "A task succeeded with warnings")
+  f res
 
 -- | Log all encountered errors and warnings associated with 'Result a'
 --
 -- - On failure, the failure is logged with the provided @sevOnErr@ severity
---
--- - On success, the associated warnings are logged with the provided
---   @sevOnSuccess@ severity
 flushLogs :: Has Logger sig m => Severity -> Severity -> Result a -> m ()
 flushLogs s1 s2 res = withResult s1 s2 res (void . pure)
