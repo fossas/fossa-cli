@@ -1,6 +1,9 @@
 # FOSSA CLI Changelog
 
 ## v3.8.29
+- Removes warnings and tracebacks to stderr [#1358](https://github.com/fossas/fossa-cli/pull/1358)
+
+## v3.8.29
 - Prevents showing SCM warnings in fossa analyze, test, and report [#1354](https://github.com/fossas/fossa-cli/pull/1354)
 - Pathfinder: Pathfinder has been deprecated and removed. ([#1350](https://github.com/fossas/fossa-cli/pull/1350))
 
