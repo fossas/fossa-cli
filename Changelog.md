@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## v3.8.29
+## v3.8.30
 - Removes warnings and tracebacks to stderr [#1358](https://github.com/fossas/fossa-cli/pull/1358)
 
 ## v3.8.29
