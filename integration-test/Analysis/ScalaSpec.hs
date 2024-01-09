@@ -14,7 +14,7 @@ import Analysis.FixtureUtils (
  )
 import Path (reldir)
 import Strategy.Scala qualified as Scala
-import Test.Hspec (Spec, focus)
+import Test.Hspec (Spec)
 import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
 
 scalaEnv :: FixtureEnvironment
