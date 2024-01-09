@@ -24,6 +24,7 @@ oldScalaEnv :: FixtureEnvironment
 oldScalaEnv =
   NixEnv
     [ "scala_2_12"
+    , "sbt"
     , "jdk"
     , -- Need jdk 8, it is in this archive.
       "-I"
