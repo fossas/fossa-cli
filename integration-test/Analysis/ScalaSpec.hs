@@ -28,7 +28,7 @@ oldScalaEnv =
     , "jdk"
     , -- Need jdk 8, it is in this archive.
       "-I"
-    , "nixpkgs=https://github.com/NixOS/nixpkgs/archive/e296e89d75ab8aa1d0eed1c3688883a4f7937515.tar.gz"
+    , "nixpkgs=https://github.com/NixOS/nixpkgs/archive/824421b1796332ad1bcb35bc7855da832c43305f.tar.gz"
     ]
 
 scalaExampleProject :: AnalysisTestFixture (Scala.ScalaProject)
