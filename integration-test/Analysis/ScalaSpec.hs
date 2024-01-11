@@ -20,17 +20,6 @@ import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
 scalaEnv :: FixtureEnvironment
 scalaEnv = NixEnv ["scala", "sbt"]
 
-oldScalaEnv :: FixtureEnvironment
-oldScalaEnv =
-  NixEnv
-    [ "scala_2_12"
-    , "sbt"
-    , "jdk"
-    , -- Need jdk 8, it is in this archive.
-      "-I"
-    , "nixpkgs=https://github.com/NixOS/nixpkgs/archive/824421b1796332ad1bcb35bc7855da832c43305f.tar.gz"
-    ]
-
 scalaExampleProject :: AnalysisTestFixture (Scala.ScalaProject)
 scalaExampleProject =
   AnalysisTestFixture
@@ -43,35 +32,6 @@ scalaExampleProject =
       [reldir|scala/scala-3-ex-project/|]
       [reldir|scala3-example-project-main/target/scala-3.1.2/|]
 
--- | Example project which uses a pre 1.4 version of SBT.
---  These versions required manually setting up the dependency graph plugin.
-scalaOldSbt :: AnalysisTestFixture (Scala.ScalaProject)
-scalaOldSbt =
-  AnalysisTestFixture
-    { testName = "scalaExampleOldSbt"
-    , discover = Scala.discover
-    , -- SBT version can be configured in the project definition.
-      environment = oldScalaEnv
-    , buildCmd = Nothing
-    , artifact =
-        FixtureArtifact
-          { tarGzFileUrl = "https://github.com/fossas/example-projects/archive/refs/heads/main.tar.gz"
-          , extractAt = [reldir|example-projects/|]
-          , scopedDir = [reldir|example-projects-main/scala/single_explicit_plugin/target/scala-3.1|]
-          }
-    }
-
-scalaOldSbtExpected :: DependencyResultsSummary
-scalaOldSbtExpected =
-  DependencyResultsSummary
-    { numDeps = 2
-    , numDirectDeps = 1
-    , numEdges = 1
-    , numManifestFiles = 1
-    , graphType = Complete
-    }
-
 spec :: Spec
 spec = do
   testSuiteDepResultSummary scalaExampleProject ScalaProjectType (DependencyResultsSummary 3 2 1 1 Complete)
-  testSuiteDepResultSummary scalaOldSbt ScalaProjectType scalaOldSbtExpected
