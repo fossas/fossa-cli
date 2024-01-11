@@ -14,15 +14,16 @@ module Strategy.Gradle.Common (
 
 import Data.Aeson (FromJSON)
 import Data.Maybe (mapMaybe)
+import Data.String (IsString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (DepEnvironment (..))
 import Strategy.Android.Util (isDefaultAndroidDevConfig, isDefaultAndroidTestConfig)
 
-newtype ConfigName = ConfigName {unConfigName :: Text} deriving (Eq, Ord, Show, FromJSON)
+newtype ConfigName = ConfigName {unConfigName :: Text} deriving (Eq, Ord, Show, FromJSON, IsString)
 newtype GradleLabel = Env DepEnvironment deriving (Eq, Ord, Show)
-newtype PackageName = PackageName {unPackageName :: Text} deriving (Eq, Ord, Show, FromJSON)
-newtype ProjectName = ProjectName {unProjectName :: Text} deriving (Eq, Ord, Show, FromJSON)
+newtype PackageName = PackageName {unPackageName :: Text} deriving (Eq, Ord, Show, FromJSON, IsString)
+newtype ProjectName = ProjectName {unProjectName :: Text} deriving (Eq, Ord, Show, FromJSON, IsString)
 
 packagePathsWithJson :: [Text] -> [(PackageName, Text)]
 packagePathsWithJson = map (\line -> let (x, y) = Text.breakOn "_{" line in (PackageName x, Text.drop 1 y))

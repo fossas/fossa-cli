@@ -4,20 +4,22 @@ module Gradle.ResolutionApiSpec (
 
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes
-import GraphUtil (expectDeps, expectDirect, expectEdges)
+import GraphUtil (expectDep, expectDeps, expectDirect, expectEdges)
 import Graphing (Graphing, empty)
 import Strategy.Gradle.Common (
-  ConfigName (ConfigName),
-  ProjectName (ProjectName),
+  ConfigName (..),
+  ProjectName (..),
  )
 import Strategy.Gradle.ResolutionApi (
-  ResolvedComponent (ResolvedComponent),
+  ResolvedComponent (..),
   ResolvedConfiguration (..),
   ResolvedDependency (..),
   ResolvedProject (..),
   buildGraph,
+  parseResolutionApiJsonDeps,
  )
 import Test.Hspec (Spec, describe, it, shouldBe)
 
@@ -184,3 +186,18 @@ spec = do
         [ (projectFiveCustomEnv, packageFiveCustomEnv)
         ]
         graph
+
+    it "TEST TEST TEST" $ do
+      exampleInputSingle <- toText <$> readFile "/home/leo/tmp/zd-7543/yubico-search.txt"
+      let parsed = parseResolutionApiJsonDeps exampleInputSingle
+      let graph = buildGraph parsed (Set.fromList ["compileOnly", "nativeLibsInputZips", "runtimeClasspath", "runtimeOnly"])
+      let expected =
+            Dependency
+              { dependencyType = MavenType
+              , dependencyName = "com.yubico:yubihsm"
+              , dependencyVersion = Just (CEq "2.3.0.0")
+              , dependencyLocations = []
+              , dependencyEnvironments = Set.singleton $ EnvOther "nativeLibsInputZips"
+              , dependencyTags = Map.empty
+              }
+      expectDep expected graph

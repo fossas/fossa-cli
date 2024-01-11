@@ -124,9 +124,10 @@ buildGraph projects onlyConfigs = run . withLabeling toDependency $ mapM_ addCon
     -- Ref: https://docs.gradle.org/current/userguide/java_library_plugin.html#sec:java_library_configurations_graph
     toGradleLabel :: ConfigName -> GradleLabel
     toGradleLabel conf =
-      if not $ Set.null onlyConfigs
-        then Env $ EnvOther (unConfigName conf) -- We only have specified configs, so we mark them all as Other.
-        else configNameToLabel (unConfigName conf) -- We have no specified configs, so we have to guess the correct Env.
+      if Set.null onlyConfigs
+        then configNameToLabel (unConfigName conf) -- We have no specified configs, so we have to guess the correct Env.
+        else Env $ EnvOther (unConfigName conf) -- We only have specified configs, so we mark them all as Other.
+
     toDependency :: ResolvedDependency -> Set.Set GradleLabel -> Dependency
     toDependency dep = foldr applyLabel $ fromResolvedDep dep
 

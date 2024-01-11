@@ -262,21 +262,24 @@ analyze ::
   Path Abs Dir ->
   m (Graphing Dependency)
 analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
-  let initScriptFilepath = fromAbsDir tmpDir FilePath.</> "jsondeps.gradle"
-  context "Writing gradle script" $ sendIO (BS.writeFile initScriptFilepath initScript)
+  -- let initScriptFilepath = fromAbsDir tmpDir FilePath.</> "jsondeps.gradle"
+  -- context "Writing gradle script" $ sendIO (BS.writeFile initScriptFilepath initScript)
 
-  let cmd :: Text -> Command
-      cmd = case foundTargets of
-        FoundTargets targets -> gradleJsonDepsCmdTargets initScriptFilepath (toSet targets)
-        ProjectWithoutTargets -> gradleJsonDepsCmd initScriptFilepath
+  -- let cmd :: Text -> Command
+  --     cmd = case foundTargets of
+  --       FoundTargets targets -> gradleJsonDepsCmdTargets initScriptFilepath (toSet targets)
+  --       ProjectWithoutTargets -> gradleJsonDepsCmd initScriptFilepath
 
-  stdout <- context "running gradle script" $ errCtx FailedToRunGradleAnalysis $ runGradle dir cmd
+  -- stdout <- context "running gradle script" $ errCtx FailedToRunGradleAnalysis $ runGradle dir cmd
 
-  onlyConfigurations <- do
-    configs <- asks allowedGradleConfigs
-    pure $ maybe Set.empty (Set.map ConfigName) configs
+  -- onlyConfigurations <- do
+  --   configs <- asks allowedGradleConfigs
+  --   pure $ maybe Set.empty (Set.map ConfigName) configs
 
-  let text = decodeUtf8 $ BL.toStrict stdout
+  let onlyConfigurations = Set.fromList ["compileOnly", "nativeLibsInputZips", "runtimeClasspath", "runtimeOnly"]
+
+  -- let text = decodeUtf8 $ BL.toStrict stdout
+  text <- fmap toText $ sendIO $ readFile "/home/leo/tmp/zd-7543/yubico-search.txt"
   let resolvedProjects = ResolutionApi.parseResolutionApiJsonDeps text
   let graphFromResolutionApi = ResolutionApi.buildGraph resolvedProjects (onlyConfigurations)
 
