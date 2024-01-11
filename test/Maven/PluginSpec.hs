@@ -6,10 +6,14 @@ import Data.Text (Text)
 import Data.Tree (Tree (..))
 import Strategy.Maven.Plugin (Artifact (..), Edge (..), PluginOutput (..), textArtifactToPluginOutput)
 import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
-import Test.Effect (expectationFailure', it', shouldBe', shouldContain', shouldMatchList')
-import Test.Hspec (Spec, describe)
+import Test.Effect (expectationFailure', it', shouldBe', shouldContain', shouldMatchList', shouldSatisfy')
+import Test.Hspec (Spec, describe, shouldSatisfy)
 import Text.Megaparsec (parseMaybe)
 import Text.RawString.QQ (r)
+import Control.Effect.Lift (sendIO)
+import Data.String.Conversion (toText)
+import Effect.ReadFS (readContentsParser)
+import Path (parseAbsFile)
 
 spec :: Spec
 spec = do
@@ -167,6 +171,12 @@ textArtifactConversionSpec =
           PluginOutput{outArtifacts = resArts} <- textArtifactToPluginOutput tree'
           resArts `shouldContain'` [kafkaClientCompile]
           resArts `shouldContain'` [kafkaClientTest]
+
+    it' "TEST TEST TEST" $ do
+      input <- sendIO $ parseAbsFile "/home/leo/tmp/zd-7531/dependency-graph.txt"
+      parsed <- readContentsParser parseTextArtifact input
+      output <- textArtifactToPluginOutput parsed
+      output `shouldSatisfy'` (const True)
 
 simpleArtifact :: Artifact
 simpleArtifact =

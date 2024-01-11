@@ -25,13 +25,18 @@ import Strategy.Maven.Plugin (
   Edge (Edge, edgeFrom, edgeTo),
   PluginOutput (..),
   ReactorArtifact (..),
-  ReactorOutput (..),
+  ReactorOutput (..), textArtifactToPluginOutput,
  )
 import Strategy.Maven.PluginStrategy (buildGraph)
 
 import Graphing (shrinkRoots)
 import Strategy.Maven.Common (MavenDependency (..))
-import Test.Hspec (Spec, describe, it)
+import Test.Hspec (Spec, describe, it, shouldBe)
+import Path (parseAbsFile)
+import Effect.ReadFS (readContentsParser)
+import Strategy.Maven.PluginTree (parseTextArtifact)
+import Test.Effect (it', shouldBe')
+import Control.Effect.Lift (sendIO)
 
 packageOne :: MavenDependency
 packageOne = do
@@ -276,6 +281,14 @@ mavenCrossDependentSubModules =
 spec :: Spec
 spec = do
   describe "buildGraph" $ do
+    it' "TEST TEST TEST" $ do
+      input <- sendIO $ parseAbsFile "/home/leo/tmp/zd-7531/dependency-graph.txt"
+      parsed <- readContentsParser parseTextArtifact input
+      output <- textArtifactToPluginOutput parsed
+      -- TODO: Need user's ReactorOutput here
+      let graph = shrinkRoots $ buildGraph (ReactorOutput []) output
+      sendIO $ expectDeps [] graph
+
     it "Should produce expected output, without including submodules in test comparison" $ do
       let graph = shrinkRoots $ buildGraph (ReactorOutput []) mavenOutput
 
