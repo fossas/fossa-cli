@@ -278,7 +278,9 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
 
   let text = decodeUtf8 $ BL.toStrict stdout
   let resolvedProjects = ResolutionApi.parseResolutionApiJsonDeps text
+  logDebug $ "Resolved projects: " <> pretty (show resolvedProjects)
   let graphFromResolutionApi = ResolutionApi.buildGraph resolvedProjects (onlyConfigurations)
+  logDebug $ "Graph: " <> pretty (show graphFromResolutionApi)
 
   -- Log debug messages as seen in gradle script
   traverse_ (logDebug . pretty) (getDebugMessages text)
