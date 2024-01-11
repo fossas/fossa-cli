@@ -357,7 +357,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   logDebug $ "Unfiltered project scans: " <> pretty (show projectScans)
 
   let filteredProjects = mapMaybe toProjectResult projectScans
-  logDebug $ "Filtered project scans: " <> pretty (show projectScans)
+  logDebug $ "Filtered project scans: " <> pretty (show filteredProjects)
 
   maybeEndpointAppVersion <- case destination of
     UploadScan apiOpts _ -> runFossaApiClient apiOpts $ do
@@ -394,7 +394,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Just firstParty, Nothing) -> Just firstParty
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
   let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits
-  logDebug $ "Source unit result: " <> pretty (show outputResult)
 
   -- If we find nothing but keyword search, we exit with an error, but explain that the error may be ignorable.
   -- We do not want to succeed, because nothing gets uploaded to the API for keyword searches, so `fossa test` will fail.
