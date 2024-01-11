@@ -30,13 +30,12 @@ import DepTypes (
   VerConstraint (CEq),
  )
 import Effect.Exec (
-  AllowErr (Never),
   Command (..),
   Exec,
   ExecErr (CommandParseError),
  )
 import Graphing (Graphing, shrinkRoots, subGraphOf, unfold)
-import Strategy.Scala.Common (SbtArtifact (SbtArtifact, artifactId, groupId, version), removeLogPrefixes)
+import Strategy.Scala.Common (SbtArtifact (SbtArtifact, artifactId, groupId, version), mkSbtCommand, removeLogPrefixes)
 import Text.Megaparsec (
   MonadParsec (eof, takeWhileP, try),
   Parsec,
@@ -57,16 +56,7 @@ import Text.Megaparsec.Char.Lexer qualified as Lexer
 -- This only works with sbt v1.4.0 greater, or with sbt which has DependencyTreePlugin.
 -- Ref: https://www.scala-sbt.org/1.x/docs/sbt-1.4-Release-Notes.html#sbt-dependency-graph+is+in-sourced
 sbtDepTreeCmd :: Command
-sbtDepTreeCmd =
-  Command
-    { cmdName = "sbt"
-    , cmdArgs =
-        [ "--batch" -- ensure sbt does not enter repl mode!
-        , "--no-colors"
-        , "dependencyTree"
-        ]
-    , cmdAllowErr = Never
-    }
+sbtDepTreeCmd = mkSbtCommand "dependencyTree"
 
 data SbtDep = SbtDep
   { artifact :: SbtArtifact
