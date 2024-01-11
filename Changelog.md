@@ -1,6 +1,8 @@
 # FOSSA CLI Changelog
 
 ## v3.8.30
+
+- Fix an issue with long-option syntax for older versions of `sbt` ([#1356](https://github.com/fossas/fossa-cli/pull/1356))
 - Debug: add more logging for debugging missing dependencies. ([#1360](https://github.com/fossas/fossa-cli/pull/1360))
 
 ## v3.8.29
