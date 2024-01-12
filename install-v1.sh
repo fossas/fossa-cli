@@ -51,13 +51,12 @@ execute() {
   srcdir="${tmpdir}"
   (cd "${tmpdir}" && untar "${TARBALL}")
   install -d -m 775 "${BINDIR}" 2> /dev/null || install -d "${BINDIR}"
-  for binexe in "fossa" ; do
-    if [ "$OS" = "windows" ]; then
-      binexe="${binexe}.exe"
-    fi
-    install "${srcdir}/${binexe}" "${BINDIR}/" 2> /dev/null || sudo install "${srcdir}/${binexe}" "${BINDIR}/"
-    log_info "installed ${BINDIR}/${binexe}"
-  done
+  binexe="fossa"
+  if [ "$OS" = "windows" ]; then
+    binexe="${binexe}.exe"
+  fi
+  install "${srcdir}/${binexe}" "${BINDIR}/" 2> /dev/null || sudo install "${srcdir}/${binexe}" "${BINDIR}/"
+  log_info "installed ${BINDIR}/${binexe}"
 }
 is_supported_platform() {
   platform=$1
@@ -133,9 +132,6 @@ is_command() {
 echoerr() {
   echo "$@" 1>&2
 }
-log_prefix() {
-  echo "$0"
-}
 _logp=6
 log_set_priority() {
   _logp="$1"
@@ -195,7 +191,7 @@ uname_arch() {
     armv6*) arch="armv6" ;;
     armv7*) arch="armv7" ;;
   esac
-  echo ${arch}
+  echo "${arch}"
 }
 uname_os_check() {
   os=$(uname_os)
@@ -359,14 +355,14 @@ print_deprecation_warning() {
   log_crit "-------------------"
   log_crit ""
   log_crit "You are installing FOSSA CLI v1, which is no longer in active"
-	log_crit "development. FOSSA will not address new defects found in CLI v1."  
+	log_crit "development. FOSSA will not address new defects found in CLI v1."
   log_crit ""
   log_crit "Please upgrade to the latest FOSSA CLI."
   log_crit ""
   log_crit "Please upgrade to FOSSA CLI v3 by using install-latest script"
-  log_crit "-------------------------------------------------------------" 
+  log_crit "-------------------------------------------------------------"
   log_crit "    curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash"
-  log_crit "" 
+  log_crit ""
   log_crit "Migration guide for FOSSA CLI v3"
   log_crit "--------------------------------"
   log_crit "    https://github.com/fossas/fossa-cli/blob/master/docs/differences-from-v1.md#how-to-upgrade-to-fossa-3x"
@@ -376,7 +372,6 @@ print_deprecation_warning() {
 PROJECT_NAME="fossa-cli"
 OWNER=fossas
 REPO="fossa-cli"
-BINARY=fossa
 FORMAT=tar.gz
 OS=$(uname_os)
 ARCH=$(uname_arch)
