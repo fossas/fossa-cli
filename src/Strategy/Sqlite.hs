@@ -7,7 +7,7 @@ module Strategy.Sqlite (
   discover,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProject'))
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProjectStaticOnly))
 import Container.OsRelease (OsInfo (..))
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, warn)
@@ -82,7 +82,7 @@ mkProject db =
 
 instance AnalyzeProject SqliteDB where
   analyzeProject _ = analyze
-  analyzeProject' _ = analyze
+  analyzeProjectStaticOnly _ = analyze
 
 data SqliteDBEntry = SqliteDBEntry
   { pkgName :: Text

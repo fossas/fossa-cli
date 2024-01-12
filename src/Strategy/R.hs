@@ -4,7 +4,7 @@ module Strategy.R (
   mkProject,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProject'))
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProjectStaticOnly))
 import Control.Effect.Diagnostics (Diagnostics, errCtx, fatalText, recover, warnOnErr)
 import Control.Effect.Reader (Reader)
 import Control.Monad (void)
@@ -53,7 +53,7 @@ instance ToJSON RProject
 
 instance AnalyzeProject RProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps
+  analyzeProjectStaticOnly _ = getDeps
 
 discover ::
   ( Has ReadFS sig m

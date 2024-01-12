@@ -14,7 +14,7 @@ module App.Fossa.Config.Analyze (
   JsonOutput (..),
   NoDiscoveryExclusion (..),
   ScanDestination (..),
-  AnalysisTacticTypes(..),
+  AnalysisTacticTypes (..),
   AnalyzeConfig (..),
   UnpackArchives (..),
   VendoredDependencyOptions (..),

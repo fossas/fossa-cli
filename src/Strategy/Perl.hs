@@ -7,7 +7,7 @@ module Strategy.Perl (
   buildGraph,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Reader (Reader)
@@ -68,7 +68,7 @@ data PerlProject = PerlProject
 instance ToJSON PerlProject
 instance AnalyzeProject PerlProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps
+  analyzeProjectStaticOnly _ = getDeps
 
 mkProject :: PerlProject -> DiscoveredProject PerlProject
 mkProject project =

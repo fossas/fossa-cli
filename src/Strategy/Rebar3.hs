@@ -7,7 +7,7 @@ module Strategy.Rebar3 (
   mkProject,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
@@ -48,7 +48,7 @@ instance ToJSON RebarProject
 
 instance AnalyzeProject RebarProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = const $ fatalText "Cannot analyze Rebar3 project statically"
+  analyzeProjectStaticOnly _ = const $ fatalText "Cannot analyze Rebar3 project statically"
 
 mkProject :: RebarProject -> DiscoveredProject RebarProject
 mkProject project =
