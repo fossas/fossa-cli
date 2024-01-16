@@ -2,7 +2,7 @@
 
 module Cargo.CargoTomlSpec (spec) where
 
-import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
+import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Data.String.Conversion (toText)
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, toFilePath, (</>))
 import Path.IO (getCurrentDir)

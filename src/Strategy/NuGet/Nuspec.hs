@@ -12,8 +12,8 @@ module Strategy.NuGet.Nuspec (
   NuspecLicense (..),
 ) where
 
+import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
-import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Effect.Reader (Reader)

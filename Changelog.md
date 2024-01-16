@@ -1,5 +1,14 @@
 # FOSSA CLI Changelog
 
+## v3.8.30
+
+- Fix an issue with long-option syntax for older versions of `sbt` ([#1356](https://github.com/fossas/fossa-cli/pull/1356))
+- Debug: add more logging for debugging missing dependencies. ([#1360](https://github.com/fossas/fossa-cli/pull/1360))
+
+## v3.8.29
+- Prevents showing SCM warnings in fossa analyze, test, and report [#1354](https://github.com/fossas/fossa-cli/pull/1354)
+- Pathfinder: Pathfinder has been deprecated and removed. ([#1350](https://github.com/fossas/fossa-cli/pull/1350))
+
 ## v3.8.28
 - VSI: no longer reports paths inside of extracted archives with the `!_fossa.virtual_!` literal [#1345](https://github.com/fossas/fossa-cli/pull/1345)
 

@@ -11,8 +11,8 @@ module Strategy.Node (
 
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
+import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProject'))
-import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
