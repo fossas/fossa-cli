@@ -69,6 +69,12 @@ instance Has Stack sig m => Algebra (Diag :+: sig) (DiagnosticsC m) where
       ResultT.warnOnErrT (Result.SomeWarn w) $ runDiagnosticsC $ hdl (act <$ ctx)
     L (ErrCtx c act) ->
       ResultT.errCtxT (Result.ErrCtx c) $ runDiagnosticsC $ hdl (act <$ ctx)
+    L (ErrHelp h act) ->
+      ResultT.errHelpT (Result.ErrHelp h) $ runDiagnosticsC $ hdl (act <$ ctx)
+    L (ErrSupport s act) ->
+      ResultT.errSupportT (Result.ErrSupport s) $ runDiagnosticsC $ hdl (act <$ ctx)
+    L (ErrDoc d act) ->
+      ResultT.errDocT (Result.ErrDoc d) $ runDiagnosticsC $ hdl (act <$ ctx)
     L (Fatal diag) -> do
       stack <- lift getStack
       ResultT.fatalT (Result.Stack stack) (Result.SomeErr diag)

@@ -360,8 +360,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           forkTask $ do
             res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (runAnalyzers filters) basedir ancestryDirect
             Diag.withResult SevError SevWarn res (const (pure ()))
+  logDebug $ "Unfiltered project scans: " <> pretty (show projectScans)
 
   let filteredProjects = mapMaybe toProjectResult projectScans
+  logDebug $ "Filtered project scans: " <> pretty (show filteredProjects)
 
   maybeEndpointAppVersion <- case destination of
     UploadScan apiOpts _ -> runFossaApiClient apiOpts $ do
@@ -384,6 +386,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         $ traverse (enrichPathDependencies includeAll vendoredDepsOptions revision) filteredProjects
     (True, _) -> pure $ map enrichPathDependencies' filteredProjects
     (False, _) -> traverse (withPathDependencyNudge includeAll) filteredProjects
+  logDebug $ "Filtered projects with path dependencies: " <> pretty (show filteredProjects')
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult $ Config.filterSet cfg
