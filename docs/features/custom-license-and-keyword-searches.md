@@ -133,10 +133,10 @@ This will match "Proprietary License", "proprietary license", "proprietary Licen
 
 ### Ignoring case
 
-You can ignore case by using the case-insensitive [flag](./custom-license-and-keyword-search-regular-expression-syntax.md#character-classes#groupings-and-flags), `i`. This is done by adding `(i?)` to your regular expression. Everything after `(?i)` will be matched case-insenitively.
+You can ignore case by using the case-insensitive [flag](./custom-license-and-keyword-search-regular-expression-syntax.md#character-classes#groupings-and-flags), `i`. This is done by prepending `(?i)` to your regular expression. Everything after `(?i)` will be matched case-insenitively.
 
 ```
-(i?)custom license
+(?i)custom license
 ```
 
 This will match "Custom License", "CUSTOM LICENSE", "custom license" or "CusTOm LiCenSe".
@@ -248,7 +248,3 @@ You can also set the `ignoreOrgWideCustomLicenseScanConfigs` flag to `true` in y
 version: 3
 ignoreOrgWideCustomLicenseScanConfigs: true
 ```
-
-
-
-
