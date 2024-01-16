@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.8.31
+
+- Options: Add a `--static-only-analysis` option. ([#1362](https://github.com/fossas/fossa-cli/pull/1362))
+
 ## v3.8.30
 
 - Fix an issue with long-option syntax for older versions of `sbt` ([#1356](https://github.com/fossas/fossa-cli/pull/1356))
