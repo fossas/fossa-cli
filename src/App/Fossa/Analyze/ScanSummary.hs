@@ -83,6 +83,7 @@ import Srclib.Types (
   sourceUnitOriginPaths,
  )
 import Types (DepType (ArchiveType), DiscoveredProjectType, projectTypeToText)
+import App.Docs (staticAndDynamicStrategies)
 
 data ScanCount = ScanCount
   { numProjects :: Int
@@ -123,7 +124,7 @@ staticOnlyAnalysisMessage =
   vcat
     [ "Performed static-only analysis!!!"
     , "Results may be different in comparison to an analysis using build tools."
-    , "See https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/README.md#static-and-dynamic-strategies for more information."
+    , "See " <> pretty staticAndDynamicStrategies <> " for more information."
     ]
 
 -- | Renders Analysis Scan Summary with `ServInfo` severity.
