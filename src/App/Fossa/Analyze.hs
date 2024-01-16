@@ -135,14 +135,6 @@ debugBundlePath = "fossa.debug.json.gz"
 analyzeSubCommand :: SubCommand AnalyzeCliOpts AnalyzeConfig
 analyzeSubCommand = Config.mkSubCommand dispatch
 
-staticOnlyAnalysisMessage :: Doc a
-staticOnlyAnalysisMessage =
-  vsep
-    [ "Performing static-only analysis!!!"
-    , "Results may be different in comparison to an analysis using build tools."
-    , "See https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/README.md#static-and-dynamic-strategies for more information."
-    ]
-
 dispatch ::
   ( Has Diag.Diagnostics sig m
   , Has Exec sig m
@@ -374,9 +366,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let filteredProjects = mapMaybe toProjectResult projectScans
   logDebug $ "Filtered project scans: " <> pretty (show filteredProjects)
 
-  when (allowedTactics == StaticOnly) $ do
-    logInfo staticOnlyAnalysisMessage
-
   maybeEndpointAppVersion <- case destination of
     UploadScan apiOpts _ -> runFossaApiClient apiOpts $ do
       -- Using 'recovery' as API corresponding to 'getEndpointVersion',
@@ -401,7 +390,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   logDebug $ "Filtered projects with path dependencies: " <> pretty (show filteredProjects')
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
-  renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult $ Config.filterSet cfg
+  renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   let licenseSourceUnits =

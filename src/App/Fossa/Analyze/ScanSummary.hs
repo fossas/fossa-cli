@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -14,6 +15,8 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (dpiProjectPath, dpiProjectType),
   DiscoveredProjectScan (..),
  )
+import App.Fossa.Config.Analyze (AnalysisTacticTypes (StaticOnly))
+import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Lernie.Types (LernieMatch (..), LernieMatchData (..), LernieResults (..))
 import App.Version (fullVersionDescription)
 import Control.Carrier.Lift
@@ -28,7 +31,6 @@ import Data.String.Conversion (showText, toText)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Diag.Result (EmittedWarn (IgnoredErrGroup), Result (Failure, Success), renderFailure, renderSuccess)
-import Discovery.Filters (AllFilters)
 import Effect.Logger (
   AnsiStyle,
   Logger,
@@ -50,12 +52,15 @@ import Path (
 import Path.IO
 import Prettyprinter (
   Doc,
+  align,
   annotate,
   defaultLayoutOptions,
   indent,
   layoutPretty,
+  line,
   plural,
   unAnnotate,
+  vcat,
   viaShow,
   vsep,
  )
@@ -113,6 +118,14 @@ instance Pretty ScanCount where
       , pretty numWarnings <> " analysis " <> plural "warning" "warnings" numWarnings
       ]
 
+staticOnlyAnalysisMessage :: Doc a
+staticOnlyAnalysisMessage =
+  vcat
+    [ "Performed static-only analysis!!!"
+    , "Results may be different in comparison to an analysis using build tools."
+    , "See https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/README.md#static-and-dynamic-strategies for more information."
+    ]
+
 -- | Renders Analysis Scan Summary with `ServInfo` severity.
 --
 -- It renders summary of all scanned projects (including skipped projects due to filters),
@@ -131,14 +144,14 @@ instance Pretty ScanCount where
 -- * __poetry__ project in path: succeeded
 -- * __fpm__ project in path: skipped
 -- * __setuptools__ project in path: skipped
-renderScanSummary :: (Has Diag.Diagnostics sig m, Has Logger sig m, Has (Lift IO) sig m) => Severity -> (Maybe Text) -> AnalysisScanResult -> AllFilters -> m ()
-renderScanSummary severity maybeEndpointVersion analysisResults filters = do
+renderScanSummary :: (Has Diag.Diagnostics sig m, Has Logger sig m, Has (Lift IO) sig m) => Severity -> (Maybe Text) -> AnalysisScanResult -> Config.AnalyzeConfig -> m ()
+renderScanSummary severity maybeEndpointVersion analysisResults cfg = do
   let endpointVersion = fromMaybe "N/A" maybeEndpointVersion
 
-  case summarize endpointVersion analysisResults of
+  case summarize cfg endpointVersion analysisResults of
     Nothing -> pure ()
     Just summary -> do
-      let someFilters = isMempty filters
+      let someFilters = isMempty cfg.filterSet
       logInfoVsep summary
       when someFilters $ do
         logInfoVsep $
@@ -151,12 +164,12 @@ renderScanSummary severity maybeEndpointVersion analysisResults filters = do
       when (severity /= SevDebug) $ do
         logInfo "You can pass `--debug` option to eagerly show all warning and failure messages."
 
-      summaryWithWarnErrorsTmpFile <- dumpResultLogsToTempFile endpointVersion analysisResults
+      summaryWithWarnErrorsTmpFile <- dumpResultLogsToTempFile cfg endpointVersion analysisResults
       logInfo . pretty $ "You can also view analysis summary with warning and error messages at: " <> show summaryWithWarnErrorsTmpFile
       logInfo "------------"
 
-summarize :: Text -> AnalysisScanResult -> Maybe ([Doc AnsiStyle])
-summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps lernie) =
+summarize :: Config.AnalyzeConfig -> Text -> AnalysisScanResult -> Maybe ([Doc AnsiStyle])
+summarize cfg endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps lernie) =
   if (numProjects totalScanCount <= 0)
     then Nothing
     else
@@ -166,7 +179,9 @@ summarize endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicL
         , "------------"
         , pretty fullVersionDescription
         , pretty $ "fossa endpoint server version: " <> endpointVersion
-        , ""
+        , if (cfg.allowedTacticTypes == StaticOnly)
+            then align $ line <> staticOnlyAnalysisMessage <> line
+            else ""
         , pretty totalScanCount
         , ""
         ]
@@ -352,8 +367,8 @@ countWarnings ws =
     isIgnoredErrGroup IgnoredErrGroup{} = True
     isIgnoredErrGroup _ = False
 
-dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => Text -> AnalysisScanResult -> m (Path Abs File)
-dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults) = do
+dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => Config.AnalyzeConfig -> Text -> AnalysisScanResult -> m (Path Abs File)
+dumpResultLogsToTempFile cfg endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults) = do
   let doc =
         renderStrict
           . layoutPretty defaultLayoutOptions
@@ -374,7 +389,7 @@ dumpResultLogsToTempFile endpointVersion (AnalysisScanResult projects vsi binary
   pure (tmpDir </> scanSummaryFileName)
   where
     scanSummary :: [Doc AnsiStyle]
-    scanSummary = maybeToList (vsep <$> summarize endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults))
+    scanSummary = maybeToList (vsep <$> summarize cfg endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults))
 
     renderSourceUnit :: Doc AnsiStyle -> Result (Maybe a) -> Maybe (Doc AnsiStyle)
     renderSourceUnit header (Failure ws eg) = Just $ renderFailure ws eg $ vsep $ summarizeSrcUnit header Nothing (Failure ws eg)
