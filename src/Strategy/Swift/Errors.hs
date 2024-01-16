@@ -8,8 +8,9 @@ module Strategy.Swift.Errors (
 ) where
 
 import App.Docs (platformDocUrl)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
+import Diag.Diagnostic (DiagnosticInfo (..), ToDiagnostic, renderDiagnostic)
 import Path
 import Prettyprinter (Pretty (pretty), indent, viaShow, vsep)
 
@@ -25,17 +26,8 @@ xcodeCoordinatePkgVersion = "https://developer.apple.com/documentation/swift_pac
 newtype MissingPackageResolvedFile = MissingPackageResolvedFile (Path Abs File)
 
 instance ToDiagnostic MissingPackageResolvedFile where
-  renderDiagnostic (MissingPackageResolvedFile path) =
-    vsep
-      [ "We could not perform Package.resolved analysis for: " <> viaShow path
-      , ""
-      , indent 2 $
-          vsep
-            [ "Ensure valid Package.resolved exists, and is readable by user."
-            ]
-      , ""
-      , "Refer to:"
-      , indent 2 $ pretty $ "- " <> swiftPackageResolvedRef
-      , indent 2 $ pretty $ "- " <> xcodeCoordinatePkgVersion
-      , indent 2 $ pretty $ "- " <> swiftFossaDocUrl
-      ]
+  renderDiagnostic (MissingPackageResolvedFile path) = do
+    let ctx = "We could not perform Package.resolved analysis for: " <> toText (show path)
+        help = "Ensure valid Package.resolved exists, and is readable by user"
+        documentationReferences = [swiftPackageResolvedRef, xcodeCoordinatePkgVersion, swiftFossaDocUrl]
+    DiagnosticInfo Nothing Nothing (Just documentationReferences) Nothing (Just help) (Just ctx) Nothing

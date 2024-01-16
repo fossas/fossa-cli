@@ -24,6 +24,7 @@ import Data.Maybe (listToMaybe, mapMaybe)
 import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Diag.Diagnostic qualified as DI
 import Discovery.Archive (extractZip, withArchive)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), findFileNamed, walk')
 import Effect.Logger (Logger, logDebug, pretty)
@@ -69,11 +70,12 @@ resolveJar root file = do
 
 newtype FailedToResolveJar = FailedToResolveJar (Path Abs File)
 instance ToDiagnostic FailedToResolveJar where
-  renderDiagnostic (FailedToResolveJar path) = "Could not infer jar metadata (license, jar name, and version) from " <> viaShow path
+  renderDiagnostic (FailedToResolveJar path) = DI.DiagnosticInfo (Just $ "Could not infer jar metadata (license, jar name, and version) from " <> toText (show path)) Nothing Nothing Nothing Nothing Nothing Nothing
 
 newtype FailedToResolveJarCtx = FailedToResolveJarCtx (Path Abs File)
 instance ToDiagnostic FailedToResolveJarCtx where
-  renderDiagnostic (FailedToResolveJarCtx path) = "Ensure " <> viaShow path <> " is a valid jar or aar file."
+  renderDiagnostic :: FailedToResolveJarCtx -> DI.DiagnosticInfo
+  renderDiagnostic (FailedToResolveJarCtx path) = DI.DiagnosticInfo Nothing Nothing Nothing Nothing (Just $ "Ensure " <> toText (show path) <> " is a valid jar or aar file.") Nothing Nothing
 
 tacticMetaInf :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> m JarMetadata
 tacticMetaInf archive = context ("Parse " <> toText metaInfPath) $ do

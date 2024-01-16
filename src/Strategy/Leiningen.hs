@@ -46,6 +46,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TL
 import Data.Vector qualified as V
+import Diag.Diagnostic qualified as DI
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -164,7 +165,9 @@ analyze file = do
 
 data FailedToRetrieveLeinDependencies = FailedToRetrieveLeinDependencies
 instance ToDiagnostic FailedToRetrieveLeinDependencies where
-  renderDiagnostic _ = "We could not successfully retrieve dependencies information using lein deps subcommand."
+  renderDiagnostic _ = do
+    let ctx = "Could not successfully retrieve dependencies information using lein deps subcommand"
+    DI.DiagnosticInfo Nothing Nothing Nothing Nothing Nothing (Just ctx) Nothing
 
 -- node type for our LabeledGrapher
 data ClojureNode = ClojureNode

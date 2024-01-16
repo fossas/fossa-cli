@@ -125,7 +125,8 @@ errorBoundaryIO act = errorBoundary $ act `safeCatch` (\(e :: SomeException) -> 
 -- - On success, the associated warnings are logged with the provided
 --   @sevOnSuccess@ severity
 withResult :: Has Logger sig m => Severity -> Severity -> Result a -> (a -> m ()) -> m ()
-withResult sevOnErr _ (Failure ws eg) _ = Effect.Logger.log sevOnErr (renderFailure ws eg "An issue occurred")
+withResult sevOnErr _ (Failure ws eg) _ = do
+  Effect.Logger.log sevOnErr (renderFailure ws eg "An issue occurred")
 withResult _ sevOnSuccess (Success ws res) f = do
   traverse_
     (Effect.Logger.log sevOnSuccess)

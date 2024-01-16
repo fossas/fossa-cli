@@ -31,6 +31,7 @@ import Data.Text qualified as Text
 import Data.Text.IO qualified as TIO
 import Data.Time.Clock.POSIX (getCurrentTime)
 import Data.Time.Format.ISO8601 (iso8601Show)
+import Diag.Diagnostic qualified as D
 import Effect.Exec
 import Effect.Logger
 import Effect.ReadFS
@@ -240,13 +241,27 @@ data InferenceError
 
 instance ToDiagnostic InferenceError where
   renderDiagnostic = \case
-    InvalidRemote -> "Missing 'origin' git remote"
-    GitConfigParse err -> "An error occurred when parsing the git config: " <> pretty err
-    MissingGitConfig -> "Missing .git/config file"
-    MissingGitHead -> "Missing .git/HEAD file"
-    InvalidBranchName branch -> "Invalid branch name: " <> pretty branch
-    MissingBranch branch -> "Missing ref file for current branch: " <> pretty branch
-    MissingGitDir -> "Could not find .git directory in the current or any parent directory"
+    InvalidRemote -> do
+      let header = "Missing 'origin' git remote"
+      D.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+    GitConfigParse err -> do
+      let header = "An error occurred when parsing the git config: " <> err
+      D.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+    MissingGitConfig -> do
+      let header = "Missing .git/config file"
+      D.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+    MissingGitHead -> do
+      let header = "Missing .git/HEAD file"
+      D.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+    InvalidBranchName branch -> do
+      let header = "Invalid branch name: " <> branch
+      D.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+    MissingBranch branch -> do
+      let header = "Missing ref file for current branch: " <> branch
+      D.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+    MissingGitDir -> do
+      let header = "Could not find .git directory in the current or any parent directory"
+      D.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
 
 data InferredProject = InferredProject
   { inferredName :: Text

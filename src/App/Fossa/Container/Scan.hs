@@ -35,6 +35,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Extra (breakOnEndAndRemove)
 import Diag.Diagnostic qualified as Diag (
+  DiagnosticInfo (..),
   ToDiagnostic (renderDiagnostic),
  )
 import Discovery.Filters (AllFilters (..))
@@ -43,7 +44,6 @@ import Effect.Logger (
   Logger,
   Pretty (pretty),
   logInfo,
-  vsep,
  )
 import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir)
 import Path (Abs, File, Path, SomeBase (Abs, Rel), parseSomeFile, (</>))
@@ -191,11 +191,10 @@ parseDockerArchiveSource path = do
 newtype DockerEngineImageNotPresentLocally = DockerEngineImageNotPresentLocally Text
 
 instance ToDiagnostic DockerEngineImageNotPresentLocally where
-  renderDiagnostic (DockerEngineImageNotPresentLocally tag) =
-    vsep
-      [ pretty $ "Could not find: " <> (toString tag) <> " in local repository."
-      , pretty $ "Perform: docker pull " <> (toString tag) <> ", prior to running fossa."
-      ]
+  renderDiagnostic (DockerEngineImageNotPresentLocally tag) = do
+    let ctx = "Could not find: " <> tag <> " in local repository"
+        help = "Perform: docker pull " <> tag <> ", prior to running fossa."
+    Diag.DiagnosticInfo Nothing Nothing Nothing Nothing (Just help) (Just ctx) Nothing
 
 parsePodmanSource ::
   ( Has (Lift IO) sig m

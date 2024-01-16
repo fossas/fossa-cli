@@ -30,6 +30,7 @@ import Data.Time (
   parseTimeM,
  )
 import Data.Time.Format.ISO8601 (iso8601Show)
+import Diag.Diagnostic (DiagnosticInfo (..))
 import Effect.Exec (
   AllowErr (Never),
   Command (..),
@@ -87,4 +88,6 @@ fetchGitContributors basedir = do
 
 data FailedToPerformGitLog = FailedToPerformGitLog
 instance ToDiagnostic FailedToPerformGitLog where
-  renderDiagnostic _ = "Could not retrieve git logs for contributor counting."
+  renderDiagnostic _ = do
+    let ctx = "Could not retrieve git logs for contributor counting."
+    DiagnosticInfo Nothing Nothing Nothing Nothing Nothing (Just ctx) Nothing

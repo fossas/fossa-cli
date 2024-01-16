@@ -35,7 +35,7 @@ import Data.String.Conversion (ToString, ToText, toText)
 import Data.Text (Text, isPrefixOf)
 import Data.Text qualified as Text
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
-import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
+import Diag.Diagnostic (DiagnosticInfo (..), ToDiagnostic, renderDiagnostic)
 import Effect.Logger (Pretty (pretty), viaShow)
 import GHC.Generics (Generic)
 import Srclib.Converter (depTypeToFetcher, fetcherToDepType)
@@ -95,8 +95,9 @@ instance ToText LocatorParseError where
     "Revision is required on locator: " <> Srclib.renderLocator locator
 
 instance ToDiagnostic LocatorParseError where
-  renderDiagnostic (RevisionRequired locator) =
-    "Revision is required on locator: " <> viaShow locator
+  renderDiagnostic (RevisionRequired locator) = do
+    let header = toText $ "Revision is required on locator: " <> show locator
+    DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
 
 -- | VSI locally resolves the dependencies of some VSI dependencies using the FOSSA API.
 -- In the case where a user doesn't have access to view a project that is a dependency of their project,
@@ -131,11 +132,11 @@ newtype ToDependencyError = UnsupportedLocator Locator
   deriving (Eq, Ord, Show)
 
 instance ToDiagnostic ToDependencyError where
-  renderDiagnostic (UnsupportedLocator locator) =
-    "Unsupported locator: Cannot convert fetcher "
-      <> pretty (locatorFetcher locator)
-      <> " to known dependency type. Locator: "
-      <> viaShow locator
+  renderDiagnostic (UnsupportedLocator locator) = do
+    let header = "Unsupported locator"
+        content = "Cannot convert fetcher " <> (locatorFetcher locator) <> " to known dependency type"
+        ctx = toText $ "Locator: " <> show locator
+    DiagnosticInfo (Just header) (Just content) Nothing Nothing Nothing (Just ctx) Nothing
 
 validateLocator :: Srclib.Locator -> Either LocatorParseError Locator
 validateLocator loc = Locator (Srclib.locatorFetcher loc) (Srclib.locatorProject loc) <$> validateRevision loc

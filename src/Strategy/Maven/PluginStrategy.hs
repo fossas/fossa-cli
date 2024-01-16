@@ -28,6 +28,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
+import Diag.Diagnostic qualified as DI
 import Effect.Exec (CandidateCommandEffs)
 import Effect.Grapher (Grapher, edge, evalGrapher)
 import Effect.Grapher qualified as Grapher
@@ -107,16 +108,21 @@ analyze dir plugin = do
 
 data MvnPluginInstallFailed = MvnPluginInstallFailed
 instance ToDiagnostic MvnPluginInstallFailed where
-  renderDiagnostic (MvnPluginInstallFailed) = "Failed to install maven plugin for analysis."
+  renderDiagnostic (MvnPluginInstallFailed) = do
+    let ctx = "Failed to install maven plugin for analysis"
+    DI.DiagnosticInfo Nothing Nothing Nothing Nothing Nothing (Just ctx) Nothing
 
 data MvnPluginExecFailed = MvnPluginExecFailed
 instance ToDiagnostic MvnPluginExecFailed where
-  renderDiagnostic (MvnPluginExecFailed) = "Failed to execute maven plugin for analysis."
+  renderDiagnostic (MvnPluginExecFailed) = do
+    let ctx = "Failed to execute maven plugin for analysis"
+    DI.DiagnosticInfo Nothing Nothing Nothing Nothing Nothing (Just ctx) Nothing
 
 data MayIncludeSubmodule = MayIncludeSubmodule
 instance ToDiagnostic MayIncludeSubmodule where
-  renderDiagnostic MayIncludeSubmodule =
-    "Failed to run reactor, submodules may be included in the output graph."
+  renderDiagnostic MayIncludeSubmodule = do
+    let header = "Failed to run reactor, submodules may be included in the output graph."
+    DI.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
 
 -- | The graphs returned by the depgraph plugin look like this:
 --

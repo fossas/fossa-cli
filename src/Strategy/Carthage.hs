@@ -37,6 +37,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
+import Diag.Diagnostic qualified as DI
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -183,16 +184,16 @@ analyze topPath = evalGrapher $ do
 
 newtype MissingCarthageDeepDep = MissingCarthageDeepDep ResolvedEntry
 instance ToDiagnostic MissingCarthageDeepDep where
-  renderDiagnostic (MissingCarthageDeepDep entry) = pretty $ "Failed to find transitive dependencies for: " <> (resolvedName entry)
+  renderDiagnostic (MissingCarthageDeepDep entry) = do
+    let header = "Failed to find transitive dependencies for: " <> (resolvedName entry)
+    DI.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
 
 newtype MissingResolvedFile = MissingResolvedFile (Path Abs File)
 instance ToDiagnostic MissingResolvedFile where
-  renderDiagnostic (MissingResolvedFile path) =
-    vsep
-      [ "We could not find or parse resolved file in: " <> (viaShow path)
-      , ""
-      , "Ensure your carthage project is built prior to running fossa."
-      ]
+  renderDiagnostic (MissingResolvedFile path) = do
+    let ctx = "Could not find or parse resolved file in: " <> toText (show path)
+        help = "Ensure your carthage project is built prior to running fossa"
+    DI.DiagnosticInfo Nothing Nothing Nothing Nothing (Just help) (Just ctx) Nothing
 
 entryToCheckoutName :: ResolvedEntry -> Text
 entryToCheckoutName entry =

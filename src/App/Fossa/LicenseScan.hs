@@ -22,6 +22,7 @@ import App.Fossa.VendoredDependency (
   dedupVendoredDeps,
  )
 import App.Types (BaseDir (BaseDir), FullFileUploads (FullFileUploads))
+import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.StickyLogger (
   Has,
   StickyLogger,
@@ -31,30 +32,37 @@ import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, fromMaybe)
 import Control.Effect.Lift (Lift)
 import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
 import Data.Aeson qualified as Aeson
+import Data.Error (SourceLocation, getSourceLocation)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.String.Conversion (decodeUtf8)
-import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
+import Diag.Diagnostic (DiagnosticInfo (..), ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, Severity (SevInfo), logStdout)
+import Effect.Logger (Logger, Severity (SevInfo), logStdout, renderIt)
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path)
 import Prettyprinter (vsep)
 import Srclib.Types (LicenseSourceUnit)
 import Types (LicenseScanPathFilters)
 
-data MissingFossaDepsFile = MissingFossaDepsFile
-data NoVendoredDeps = NoVendoredDeps
+newtype MissingFossaDepsFile = MissingFossaDepsFile SourceLocation
+newtype NoVendoredDeps = NoVendoredDeps SourceLocation
 
 instance ToDiagnostic MissingFossaDepsFile where
-  renderDiagnostic _ =
-    vsep
-      [ "'fossa license-scan fossa-deps' requires pointing to a directory with a fossa-deps file."
-      , "The file can have one of the extensions: .yaml .yml .json"
-      ]
+  renderDiagnostic (MissingFossaDepsFile srcLoc) = do
+    let header = "Missing fossa-deps file"
+        content =
+          renderIt $
+            vsep
+              [ "'fossa license-scan fossa-deps' requires pointing to a directory with a fossa-deps file."
+              , "The file can have one of the extensions: .yaml .yml .json"
+              ]
+    DiagnosticInfo (Just header) (Just content) Nothing Nothing Nothing Nothing (Just srcLoc)
 
 instance ToDiagnostic NoVendoredDeps where
-  renderDiagnostic _ = "The 'vendored-dependencies' section of the fossa deps file is empty or missing."
+  renderDiagnostic (NoVendoredDeps srcLoc) = do
+    let header = "The 'vendored-dependencies' section of the fossa deps file is empty or missing."
+    DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing (Just srcLoc)
 
 newtype UploadUnits = UploadUnits (NonEmpty LicenseSourceUnit)
 
@@ -87,10 +95,11 @@ outputVendoredDeps ::
   BaseDir ->
   m ()
 outputVendoredDeps (BaseDir dir) = runStickyLogger SevInfo $ do
+  Diag.fatal (NoVendoredDeps getSourceLocation)
   config <- resolveConfigFile dir Nothing
-  manualDepsFile <- fromMaybe MissingFossaDepsFile =<< findFossaDepsFile dir
+  manualDepsFile <- fromMaybe (MissingFossaDepsFile getSourceLocation) =<< findFossaDepsFile dir
   manualDeps <- readFoundDeps manualDepsFile
-  vendoredDeps <- fromMaybe NoVendoredDeps $ NE.nonEmpty $ vendoredDependencies manualDeps
+  vendoredDeps <- fromMaybe (NoVendoredDeps getSourceLocation) $ NE.nonEmpty $ vendoredDependencies manualDeps
   let licenseScanPathFilters = config >>= configVendoredDependencies >>= configLicenseScanPathFilters
   resultMap <- UploadUnits <$> runLicenseScan dir licenseScanPathFilters vendoredDeps
   logStdout . decodeUtf8 $ Aeson.encode resultMap

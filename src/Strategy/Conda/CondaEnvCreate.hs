@@ -110,9 +110,9 @@ parseCondaEnvDep =
   CondaEnvDep
     <$> parseChannel
     <*> takeWhile1P (Just "platform") (/= ':')
-    <* chunk "::"
+      <* chunk "::"
     <*> takeWhile1P (Just "package name") (/= '=')
-    <* chunk "=="
+      <* chunk "=="
     <*> takeWhile1P (Just "version") (/= '=')
   where
     -- Parse '<str>/'.

@@ -13,9 +13,11 @@ import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Set (fromList, member)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes (DepType (GitType, SwiftType), Dependency (..))
 import Diag.Common (MissingDeepDeps (MissingDeepDeps))
+import Diag.Diagnostic qualified as DI
 import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsParser)
 import Graphing (Graphing, deeps, directs, promoteToDirect)
 import Path
@@ -100,7 +102,9 @@ buildGraph projFile maybeResolvedContent =
 
 newtype FailedToParseProjFile = FailedToParseProjFile (Path Abs File)
 instance ToDiagnostic FailedToParseProjFile where
-  renderDiagnostic (FailedToParseProjFile path) = "Could not parse project.pbxproj file " <> viaShow path
+  renderDiagnostic (FailedToParseProjFile path) = do
+    let ctx = "Could not parse project.pbxproj file: " <> toText (show path)
+    DI.DiagnosticInfo Nothing Nothing Nothing Nothing Nothing (Just ctx) Nothing
 
 -- | Checks if XCode Project File has at-least one swift dependency.
 -- It does by counting instances of `XCRemoteSwiftPackageReference` in the project file.

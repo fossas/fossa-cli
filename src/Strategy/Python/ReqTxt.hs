@@ -6,12 +6,13 @@ module Strategy.Python.ReqTxt (
 import Control.Effect.Diagnostics
 import Control.Monad (void)
 import Data.Foldable (asum)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
+import Diag.Diagnostic qualified as DI
 import Effect.ReadFS
 import Graphing (Graphing)
 import Path
-import Prettyprinter (Pretty (pretty), vsep)
 import Strategy.Python.Pip (PythonPackage)
 import Strategy.Python.Util
 import Text.Megaparsec
@@ -25,14 +26,10 @@ analyze' packages file = do
 
 newtype ReqsTxtFailed = ReqsTxtFailed (Path Abs File)
 instance ToDiagnostic ReqsTxtFailed where
-  renderDiagnostic (ReqsTxtFailed path) =
-    vsep
-      [ pretty $ "Failed to parse: " <> show path
-      , ""
-      , "We occasionally find files we think are python requirements.txt files but"
-      , "aren't. If this file isn't a python requirements.txt file, this error can"
-      , "be safely ignored."
-      ]
+  renderDiagnostic (ReqsTxtFailed path) = do
+    let ctx = "Failed to parse: " <> toText (show path)
+    let help = "Ignore this error if this file isn't a python requirements.txt file."
+    DI.DiagnosticInfo Nothing Nothing Nothing Nothing (Just help) (Just ctx) Nothing
 
 type Parser = Parsec Void Text
 

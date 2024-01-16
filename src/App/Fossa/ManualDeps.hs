@@ -49,6 +49,7 @@ import Data.Aeson (
  )
 import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers, neText)
 import Data.Aeson.Types (Object, Parser, prependFailure)
+import Data.Error (SourceLocation)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -429,24 +430,24 @@ instance FromJSON ReferencedDependency where
                   <$> (obj `neText` "name")
                   <*> pure depType
                   <*> (unTextLike <$$> obj .:? "version")
-                  <* forbidNonRefDepFields obj
-                  <* forbidLinuxFields depType obj
-                  <* forbidEpoch depType obj
+                    <* forbidNonRefDepFields obj
+                    <* forbidLinuxFields depType obj
+                    <* forbidEpoch depType obj
               )
 
       parseApkOrDebDependency :: Object -> DepType -> Parser ReferencedDependency
       parseApkOrDebDependency obj depType =
         LinuxApkDebDep
           <$> parseLinuxDependency obj depType
-          <* forbidNonRefDepFields obj
-          <* forbidEpoch depType obj
+            <* forbidNonRefDepFields obj
+            <* forbidEpoch depType obj
 
       parseRpmDependency :: Object -> DepType -> Parser ReferencedDependency
       parseRpmDependency obj depType =
         LinuxRpmDep
           <$> parseLinuxDependency obj depType
           <*> (unTextLike <$$> obj .:? "epoch")
-          <* forbidNonRefDepFields obj
+            <* forbidNonRefDepFields obj
 
       parseLinuxDependency :: Object -> DepType -> Parser LinuxReferenceDependency
       parseLinuxDependency obj depType =
@@ -513,7 +514,7 @@ instance FromJSON CustomDependency where
       <*> (obj `neText` "license")
       <*> obj
         .:? "metadata"
-      <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
+        <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
 
 instance FromJSON RemoteDependency where
   parseJSON = withObject "RemoteDependency" $ \obj -> do
@@ -523,7 +524,7 @@ instance FromJSON RemoteDependency where
       <*> (obj `neText` "url")
       <*> obj
         .:? "metadata"
-      <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
+        <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
 
 validateRemoteDep :: (Has Diagnostics sig m) => RemoteDependency -> Organization -> m RemoteDependency
 validateRemoteDep r org =
@@ -549,10 +550,10 @@ validateRemoteDep r org =
     maxUrlRevLength :: Int
     maxUrlRevLength = maxLocatorLength - Text.length requiredChars
 
-newtype RemoteDepLengthIsGtThanAllowed = RemoteDepLengthIsGtThanAllowed (RemoteDependency, Int)
+newtype RemoteDepLengthIsGtThanAllowed = RemoteDepLengthIsGtThanAllowed SourceLocation (RemoteDependency, Int)
 
 instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
-  renderDiagnostic (RemoteDepLengthIsGtThanAllowed (r, maxLen)) =
+  renderDiagnostic (RemoteDepLengthIsGtThanAllowed srcLoc (r, maxLen)) = do
     vsep
       [ "You provided remote-dependency: "
       , ""
@@ -579,7 +580,7 @@ instance FromJSON DependencyMetadata where
         .:? "description"
       <*> obj
         .:? "homepage"
-      <* forbidMembers "metadata" ["url"] obj
+        <* forbidMembers "metadata" ["url"] obj
 
 -- Parse supported dependency types into their respective type or return Nothing.
 depTypeFromText :: Text -> Maybe DepType

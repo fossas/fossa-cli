@@ -12,7 +12,7 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import Diag.Diagnostic (ToDiagnostic (..))
+import Diag.Diagnostic (DiagnosticInfo (..), ToDiagnostic (..))
 import Effect.Exec (
   AllowErr (Never),
   Command (..),
@@ -48,10 +48,9 @@ data PythonPackage = PythonPackage
 data PipListCommandFailed = PipListCommandFailed
 
 instance ToDiagnostic PipListCommandFailed where
-  renderDiagnostic PipListCommandFailed =
-    vsep
-      [ "Failed to run pip command"
-      ]
+  renderDiagnostic PipListCommandFailed = do
+    let header = "Failed to run pip command"
+    DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
 
 pythonPip :: [Text] -> Command
 pythonPip args =

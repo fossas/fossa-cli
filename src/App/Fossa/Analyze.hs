@@ -92,12 +92,14 @@ import Control.Monad (join, unless, void, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
+import Data.Error (SourceLocation, createBlock, createBody, getSourceLocation)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
+import Diag.Diagnostic as DI
 import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
@@ -106,14 +108,16 @@ import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
   Severity (..),
+  logDebug,
   logInfo,
   logStdout,
+  renderIt,
  )
 import Effect.ReadFS (ReadFS)
+import Errata qualified as E
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
-  Doc,
   Pretty (pretty),
   annotate,
   viaShow,
@@ -256,7 +260,10 @@ analyze ::
   m Aeson.Value
 analyze cfg = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
-
+  logDebug "highihi"
+  -- sendIO execute
+  logInfo "After --------"
+  Diag.fatal $ ErrOnlyKeywordSearchResultsFound getSourceLocation
   let maybeApiOpts = case destination of
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
@@ -391,14 +398,46 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
   let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits
 
+  -- logInfo "This is the pErrors &&&&&&&&&&"
+  -- let pErrors =
+  --       prettyErrors @String
+  --         emptySource
+  --         [ E.Errata
+  --             (Just "Relevant Errors")
+  --             [ Block
+  --                 fancyRedStyle
+  --                 ("src/App/Fossa/Analyze.hs", 1, 10)
+  --                 (Just "\x1b[31mError: No Analysis Targets Found")
+  --                 []
+  --                 (Just ("\n\x1b[36mHint:\x1b[0m Make sure your project is supported. \n\x1b[35mDocumentation: \x1b[0m" <> userGuideUrl))
+  --             , Block
+  --                 fancyRedStyle
+  --                 ("src/App/Fossa/Analyze.hs", 1, 10)
+  --                 (Just "Block Header 2")
+  --                 []
+  --                 (Just "block body 2")
+  --             ]
+  --             (Just "\x1b[36mThis si the Errata Body")
+  --         , E.Errata
+  --             (Just "Errata Header 2")
+  --             [ Block
+  --                 fancyRedStyle
+  --                 ("src/App/Fossa/Analyze.hs", 1, 10)
+  --                 (Just "Block Header 3")
+  --                 []
+  --                 (Just "Block Body 3")
+  --             ]
+  --             (Just ("\x1b[36mHint:\x1b[0m Make sure your project is supported. \n\x1b[35mDocumentation: \x1b[0m" <> userGuideUrl))
+  --         ]
+  -- logInfo (pretty pErrors)
   -- If we find nothing but keyword search, we exit with an error, but explain that the error may be ignorable.
   -- We do not want to succeed, because nothing gets uploaded to the API for keyword searches, so `fossa test` will fail.
   -- So the solution is to still fail, but give a hopefully useful explanation that the error can be ignored if all you were expecting is keyword search results.
   case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
-    (False, NoneDiscovered) -> Diag.fatal ErrNoProjectsDiscovered
-    (True, NoneDiscovered) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
-    (False, FilteredAll) -> Diag.fatal ErrFilteredAllProjects
-    (True, FilteredAll) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
+    (False, NoneDiscovered) -> Diag.fatal $ ErrNoProjectsDiscovered getSourceLocation
+    (True, NoneDiscovered) -> Diag.fatal $ ErrOnlyKeywordSearchResultsFound getSourceLocation
+    (False, FilteredAll) -> Diag.fatal $ ErrFilteredAllProjects getSourceLocation
+    (True, FilteredAll) -> Diag.fatal $ ErrOnlyKeywordSearchResultsFound getSourceLocation
     (_, CountedScanUnits scanUnits) -> doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits
   pure outputResult
   where
@@ -411,6 +450,20 @@ analyze cfg = Diag.context "fossa-analyze" $ do
             $ do
               locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits
               doAssertRevisionBinaries iatAssertion locator
+
+-- toErrata :: AnalyzeError -> E.Errata
+-- toErrata analyzeError =
+--   errataSimple
+--     (Just "An error occured!")
+--     ( blockSimple
+--         basicStyle
+--         basicPointer
+--         sampleFilePath
+--         (Just "error: No analysis targets found in directory.")
+--         (1, 3, 0, Just "this one")
+--         (Just "Make sure your project is supported. See the user guide for details:")
+--     )
+--     Nothing
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
 toProjectResult (SkippedDueToProvidedFilter _) = Nothing
@@ -489,38 +542,46 @@ doAnalyzeDynamicLinkedBinary root (DynamicLinkInspect (Just target)) = analyzeDy
 doAnalyzeDynamicLinkedBinary _ _ = pure Nothing
 
 data AnalyzeError
-  = ErrNoProjectsDiscovered
-  | ErrFilteredAllProjects
-  | ErrOnlyKeywordSearchResultsFound
+  = ErrNoProjectsDiscovered (SourceLocation)
+  | ErrFilteredAllProjects (SourceLocation)
+  | ErrOnlyKeywordSearchResultsFound (SourceLocation)
+
+-- instance Error.toErrata AnalyzeError where
 
 instance Diag.ToDiagnostic AnalyzeError where
-  renderDiagnostic :: AnalyzeError -> Doc ann
-  renderDiagnostic ErrNoProjectsDiscovered =
-    vsep
-      [ "No analysis targets found in directory."
-      , ""
-      , "Make sure your project is supported. See the user guide for details:"
-      , "    " <> pretty userGuideUrl
-      , ""
-      ]
-  renderDiagnostic (ErrFilteredAllProjects) =
-    vsep
-      [ "Filtered out all projects. This may be occurring because: "
-      , ""
-      , " * No manual or vendor dependencies were provided with `fossa-deps` file."
-      , " * Exclusion filters were used, filtering out discovered projects. "
-      , " * Discovered projects resided in following ignored path by default:"
-      , vsep $ map (\i -> pretty $ "    * " <> toText i) ignoredPaths
-      , ""
-      , "See the user guide for details:"
-      , "    " <> pretty userGuideUrl
-      , ""
-      ]
-  renderDiagnostic (ErrOnlyKeywordSearchResultsFound) =
-    vsep
-      [ "Matches to your keyword searches were found, but no other analysis targets were found."
-      , "This error can be safely ignored if you are only expecting keyword search results."
-      ]
+  renderDiagnostic :: AnalyzeError -> DiagnosticInfo
+  renderDiagnostic (ErrNoProjectsDiscovered srcLoc) = do
+    let header = "No analysis targets found in directory"
+        documentationReferences = [userGuideUrl]
+        help = "Make sure your project is supported"
+    DiagnosticInfo (Just header) Nothing (Just documentationReferences) Nothing (Just help) Nothing (Just srcLoc)
+  renderDiagnostic (ErrFilteredAllProjects srcLoc) = do
+    let header = "Filtered out all projects"
+        content =
+          renderIt $
+            vsep
+              [ "This may be occurring because: "
+              , ""
+              , " * No manual or vendor dependencies were provided with `fossa-deps` file."
+              , " * Exclusion filters were used, filtering out discovered projects. "
+              , " * Discovered projects resided in following ignored path by default:"
+              , vsep $ map (\i -> pretty $ "    * " <> toText i) ignoredPaths
+              , ""
+              ]
+        body = createBody (Just content) (Just userGuideUrl) Nothing Nothing Nothing
+        block = createBlock srcLoc Nothing Nothing
+    E.Errata (Just header) [block] (Just body)
+  renderDiagnostic (ErrOnlyKeywordSearchResultsFound srcLoc) = do
+    let header = "Only keyword search results found"
+        content =
+          renderIt $
+            vsep
+              [ "Matches to your keyword searches were found, but no other analysis targets were found."
+              , "This error can be safely ignored if you are only expecting keyword search results."
+              ]
+        body = createBody (Just content) Nothing Nothing Nothing Nothing
+        block = createBlock srcLoc Nothing Nothing
+    E.Errata (Just header) [block] (Just body)
 
 buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Aeson.Value
 buildResult includeAll srcUnits projects licenseSourceUnits =

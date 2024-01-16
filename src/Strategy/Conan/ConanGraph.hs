@@ -39,7 +39,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
+import Diag.Diagnostic (DiagnosticInfo (..), ToDiagnostic (renderDiagnostic))
 import Effect.Exec (
   AllowErr (Never),
   Command (..),
@@ -309,12 +309,7 @@ analyzeFromConanGraph dir = do
 
 data ConanV2IsRequired = ConanV2IsRequired
 instance ToDiagnostic ConanV2IsRequired where
-  renderDiagnostic (ConanV2IsRequired) =
-    vsep
-      [ "Conan analysis requires conan v2.0.0 or greater"
-      , ""
-      , indent 2 $
-          vsep
-            [ "Ensure you are using conan v2. You can check this by running, conan --version"
-            ]
-      ]
+  renderDiagnostic (ConanV2IsRequired) = do
+    let ctx = "Conan analysis requires conan v2.0.0 or greater"
+        help = "Ensure you are using conan v2 by running, conan --version"
+    DiagnosticInfo Nothing Nothing Nothing Nothing (Just help) (Just ctx) Nothing

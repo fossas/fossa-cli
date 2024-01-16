@@ -28,8 +28,10 @@ import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic),
 import Control.Effect.Lift (Has, Lift)
 import Control.Timeout (Duration (Seconds))
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
+import Data.Error (SourceLocation, getSourceLocation)
 import Data.List (intercalate)
 import Data.String.Conversion (ToText, toText)
+import Diag.Diagnostic qualified as DI
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (..))
 import Effect.ReadFS (ReadFS)
@@ -202,26 +204,26 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
     <*> pure cliReportType
     <*> revision
 
-data NoFormatProvided = NoFormatProvided
+newtype NoFormatProvided = NoFormatProvided SourceLocation
 instance ToDiagnostic NoFormatProvided where
-  renderDiagnostic NoFormatProvided =
-    pretty $
-      "Provide a format option via '--format' to render this report. Supported formats: "
-        <> (toText reportOutputFormatList)
+  renderDiagnostic :: NoFormatProvided -> DI.DiagnosticInfo
+  renderDiagnostic (NoFormatProvided srcLoc) = do
+    let header = "No format provided"
+        helpMsg = "Provide a format option via '--format' to render this report. Supported formats: " <> (toText reportOutputFormatList)
+    DI.DiagnosticInfo (Just header) Nothing Nothing Nothing (Just helpMsg) Nothing (Just srcLoc)
 
-newtype InvalidReportFormat = InvalidReportFormat String
+data InvalidReportFormat = InvalidReportFormat SourceLocation String
 instance ToDiagnostic InvalidReportFormat where
-  renderDiagnostic (InvalidReportFormat fmt) =
-    pretty $
-      "Report format "
-        <> toText fmt
-        <> " is not supported. Supported formats: "
-        <> (toText reportOutputFormatList)
+  renderDiagnostic (InvalidReportFormat srcLoc fmt) = do
+    let header = "Invalid report format"
+        ctxMsg = "Report format " <> toText fmt <> " is not supported"
+        helpMsg = "Provide a supported format. Supported formats: " <> (toText reportOutputFormatList)
+    DI.DiagnosticInfo (Just header) Nothing Nothing Nothing (Just helpMsg) (Just ctxMsg) (Just srcLoc)
 
 validateOutputFormat :: Has Diagnostics sig m => Bool -> Maybe String -> m ReportOutputFormat
 validateOutputFormat True _ = pure ReportJson
-validateOutputFormat False Nothing = fatal NoFormatProvided
-validateOutputFormat False (Just format) = fromMaybe (InvalidReportFormat format) $ parseReportOutputFormat format
+validateOutputFormat False Nothing = fatal $ NoFormatProvided getSourceLocation
+validateOutputFormat False (Just format) = fromMaybe (InvalidReportFormat getSourceLocation format) $ parseReportOutputFormat format
 
 data ReportConfig = ReportConfig
   { apiOpts :: ApiOpts
