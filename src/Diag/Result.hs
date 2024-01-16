@@ -23,6 +23,9 @@ module Diag.Result (
   SomeErr (..),
   SomeWarn (..),
   ErrCtx (..),
+  ErrHelp (..),
+  ErrSupport (..),
+  ErrDoc (..),
 
   -- * Helpers
   resultToMaybe,
@@ -74,18 +77,18 @@ data Result a = Failure [EmittedWarn] ErrGroup | Success [EmittedWarn] a
 --   contains no warnings
 data EmittedWarn
   = StandaloneWarn SomeWarn
-  | WarnOnErrGroup (NonEmpty SomeWarn) [ErrCtx] (NonEmpty ErrWithStack)
-  | IgnoredErrGroup [ErrCtx] (NonEmpty ErrWithStack)
+  | WarnOnErrGroup (NonEmpty SomeWarn) [ErrCtx] [ErrHelp] [ErrSupport] [ErrDoc] (NonEmpty ErrWithStack)
+  | IgnoredErrGroup [ErrCtx] [ErrHelp] [ErrSupport] [ErrDoc] (NonEmpty ErrWithStack)
   deriving (Show)
 
 -- | An error, or group of errors, that occurred during a computation that led
 -- to a Failure. An ErrGroup can have warnings and error context attached.
-data ErrGroup = ErrGroup [SomeWarn] [ErrCtx] (NonEmpty ErrWithStack)
+data ErrGroup = ErrGroup [SomeWarn] [ErrCtx] [ErrHelp] [ErrSupport] [ErrDoc] (NonEmpty ErrWithStack)
   deriving (Show)
 
 instance Semigroup ErrGroup where
   (<>) :: ErrGroup -> ErrGroup -> ErrGroup
-  ErrGroup sws ectx nee <> ErrGroup sws' ectx' nee' = ErrGroup (sws <> sws') (ectx <> ectx') (nee <> nee')
+  ErrGroup sws ectx ehlp esup edoc nee <> ErrGroup sws' ectx' ehlp' esup' edoc' nee' = ErrGroup (sws <> sws') (ectx <> ectx') (ehlp <> ehlp') (esup <> esup') (edoc <> edoc') (nee <> nee')
 
 -- | An error with an associated stacktrace
 data ErrWithStack = ErrWithStack Stack SomeErr
@@ -141,6 +144,27 @@ data ErrCtx where
 instance Show ErrCtx where
   showsPrec p (ErrCtx c) = showParen (p > 10) $ showString "ErrCtx " . diagToShowS c
 
+-- | Some error help type. Right now, this just requries a ToDiagnostics instance for the type.
+data ErrHelp where
+  ErrHelp :: ToDiagnostic diag => diag -> ErrHelp
+
+instance Show ErrHelp where
+  showsPrec p (ErrHelp h) = showParen (p > 10) $ showString "ErrHelp " . diagToShowS h
+
+-- | Some error support type. Right now, this just requries a ToDiagnostics instance for the type.
+data ErrSupport where
+  ErrSupport :: ToDiagnostic diag => diag -> ErrSupport
+
+instance Show ErrSupport where
+  showsPrec p (ErrSupport s) = showParen (p > 10) $ showString "ErrSupport " . diagToShowS s
+
+-- | Some error doc type. Right now, this just requries a ToDiagnostics instance for the type.
+data ErrDoc where
+  ErrDoc :: ToDiagnostic diag => diag -> ErrDoc
+
+instance Show ErrDoc where
+  showsPrec p (ErrDoc d) = showParen (p > 10) $ showString "ErrDoc " . diagToShowS d
+
 diagToShowS :: ToDiagnostic diag => diag -> ShowS
 diagToShowS = showWrapped '"' . showLitString . show . renderDiagnostic
   where
@@ -160,13 +184,31 @@ resultToMaybe (Failure _ _) = Nothing
 --
 -- renderFailure displays all types of emitted warnings.
 renderFailure :: [EmittedWarn] -> ErrGroup -> Doc AnsiStyle -> Doc AnsiStyle
-renderFailure ws (ErrGroup _ ectx es) headerDoc = header headerDoc <> renderedCtx <> renderedErrs <> renderedPossibleErrs
+renderFailure ws (ErrGroup _ ectx ehlp esup edoc es) headerDoc = header headerDoc <> renderedCtx <> renderedHelp <> renderedSupport <> renderedDoc <> renderedErrs <> renderedPossibleErrs
   where
     renderedCtx :: Doc AnsiStyle
     renderedCtx =
       case ectx of
         [] -> emptyDoc
         _ -> section "Details" (vsep (map (\ctx -> renderErrCtx ctx <> line) ectx))
+
+    renderedHelp :: Doc AnsiStyle
+    renderedHelp =
+      case ehlp of
+        [] -> emptyDoc
+        _ -> section "Help" (vsep (map (\hlp -> renderErrHelp hlp <> line) ehlp))
+
+    renderedSupport :: Doc AnsiStyle
+    renderedSupport =
+      case esup of
+        [] -> emptyDoc
+        _ -> section "Support" (vsep (map (\s -> renderErrSupport s <> line) esup))
+
+    renderedDoc :: Doc AnsiStyle
+    renderedDoc =
+      case edoc of
+        [] -> emptyDoc
+        _ -> section "Documentation" (vsep (map (\d -> renderErrDoc d <> line) edoc))
 
     renderedErrs :: Doc AnsiStyle
     renderedErrs =
@@ -209,6 +251,15 @@ renderSuccess ws headerDoc =
 renderErrCtx :: ErrCtx -> Doc AnsiStyle
 renderErrCtx (ErrCtx ctx) = renderDiagnostic ctx
 
+renderErrHelp :: ErrHelp -> Doc AnsiStyle
+renderErrHelp (ErrHelp hlp) = renderDiagnostic hlp
+
+renderErrSupport :: ErrSupport -> Doc AnsiStyle
+renderErrSupport (ErrSupport supp) = renderDiagnostic supp
+
+renderErrDoc :: ErrDoc -> Doc AnsiStyle
+renderErrDoc (ErrDoc doc) = renderDiagnostic doc
+
 renderErrWithStack :: ErrWithStack -> Doc AnsiStyle
 renderErrWithStack (ErrWithStack (Stack stack) (SomeErr err)) =
   renderDiagnostic err
@@ -221,7 +272,7 @@ renderErrWithStack (ErrWithStack (Stack stack) (SomeErr err)) =
       _ -> indent 2 (vsep (map (pretty . ("- " <>)) stack))
 
 renderEmittedWarn :: EmittedWarn -> Doc AnsiStyle
-renderEmittedWarn (IgnoredErrGroup ectx es) = renderedCtx <> renderedErrors
+renderEmittedWarn (IgnoredErrGroup ectx ehlp esup edoc es) = renderedCtx <> renderedErrors
   where
     renderedCtx =
       case ectx of
@@ -234,7 +285,7 @@ renderEmittedWarn (IgnoredErrGroup ectx es) = renderedCtx <> renderedErrors
         "Relevant errors"
         $ subsection "Error" (map renderErrWithStack (NE.toList es))
 renderEmittedWarn (StandaloneWarn (SomeWarn warn)) = renderDiagnostic warn
-renderEmittedWarn (WarnOnErrGroup ws ectx es) = renderedWarnings <> renderedCtx <> renderedErrors
+renderEmittedWarn (WarnOnErrGroup ws ectx ehlp esup edoc es) = renderedWarnings <> renderedCtx <> renderedErrors
   where
     renderedWarnings = vsep (map (\w -> renderSomeWarn w <> line) (NE.toList ws)) <> line
 
