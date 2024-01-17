@@ -12,27 +12,18 @@ import Data.String.Conversion (ConvertUtf8 (decodeUtf8), toString)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TextLazy
 import Effect.Exec (
-  AllowErr (Never),
   Command (..),
   Exec,
   Has,
   execThrow,
  )
 import Path (Abs, Dir, File, Path, mkRelFile, parent, parseAbsFile, (</>))
+import Strategy.Scala.Common (mkSbtCommand)
 
 -- | Returns list of plugins used by sbt.
 -- Ref: https://www.scala-sbt.org/1.x/docs/Plugins.html
 getPlugins :: Command
-getPlugins =
-  Command
-    { cmdName = "sbt"
-    , cmdArgs =
-        [ "--no-colors" -- to disable ANSI escape codes
-        , "--batch" -- to disable interactivity
-        , "plugins"
-        ]
-    , cmdAllowErr = Never
-    }
+getPlugins = mkSbtCommand "plugins"
 
 -- | Returns list of plugins used by sbt.
 hasDependencyPlugins :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Bool, Bool)
@@ -54,17 +45,19 @@ hasDependencyPlugins projectDir = do
 --  ./tree.json
 --  ./tree.html
 --  ./tree.data.js
+--
+-- This command is documented as being invoked with capital "HTML" but older versions of sbt output an error like:
+--
+-- [error] Not a valid command: dependencyBrowseTreeHTML
+-- [error] Not a valid project ID: dependencyBrowseTreeHTML
+-- [error] Expected ':'
+-- [error] Not a valid key: dependencyBrowseTreeHTML (similar: dependencyBrowseTreeHtml, dependencyBrowseTree, dependencyBrowseTreeTarget)
+-- [error] dependencyBrowseTreeHTML
+--
+-- This command is only used when the plugin is installed explicitly, i.e. sbt < 1.4.
+-- Newer versions of sbt will use the built-in dependency graph plugin.
 mkDependencyBrowseTreeHTMLCmd :: Command
-mkDependencyBrowseTreeHTMLCmd =
-  Command
-    { cmdName = "sbt"
-    , cmdArgs =
-        [ "--no-colors" -- to disable ANSI escape codes
-        , "--batch" -- to disable interactivity
-        , "dependencyBrowseTreeHTML"
-        ]
-    , cmdAllowErr = Never
-    }
+mkDependencyBrowseTreeHTMLCmd = mkSbtCommand "dependencyBrowseTreeHtml"
 
 genTreeJson :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Path Abs File]
 genTreeJson projectDir = do

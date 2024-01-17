@@ -1,6 +1,6 @@
 # Binary Discovery
 
-FOSSA supports the ability to flag all binary dependencies discovered in your project source tree as unlicensed dependencies via an opt-in flag.
+FOSSA supports the ability to flag all binary dependencies discovered in your project source tree as unlicensed dependencies via an opt-in flag (`--experimental-enable-binary-discovery`).
 
 The core idea behind this feature is that some organizations wish to validate all potential sources of intellectual property rights,
 and binaries are potential sources of intellectual property rights data for which we typically cannot automatically discover licensing information.
