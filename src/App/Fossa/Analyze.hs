@@ -92,7 +92,7 @@ import Control.Monad (join, unless, void, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
-import Data.Error (SourceLocation, createBlock, createBody, getSourceLocation)
+import Data.Error (SourceLocation, createBlock, getSourceLocation)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.List.NonEmpty qualified as NE
@@ -116,7 +116,6 @@ import Effect.Logger (
  )
 import Effect.ReadFS (ReadFS)
 import Errata (errataSimple)
-import Errata qualified as E
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (

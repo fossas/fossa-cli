@@ -19,7 +19,7 @@ module Diag.Monad (
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Class (MonadTrans, lift)
 import Data.List.NonEmpty qualified as NE
-import Diag.Result (EmittedWarn (..), ErrCtx (..), ErrDoc, ErrGroup (..), ErrHelp, ErrSupport, ErrWithStack (..), Result (..), SomeErr (..), SomeWarn (..), Stack (..))
+import Diag.Result (EmittedWarn (..), ErrCtx (..), ErrDoc (..), ErrGroup (..), ErrHelp (..), ErrSupport, ErrWithStack (..), Result (..), SomeErr (..), SomeWarn (..), Stack (..))
 
 -- | A monad transformer that adds error-/warning-reporting capabilities to
 -- other monads
