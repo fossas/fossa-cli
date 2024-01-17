@@ -17,12 +17,12 @@ import Data.Set qualified as Set
 import Data.String.Conversion (ToString (toString), toText)
 import Data.Text (Text)
 import Data.Void (Void)
-import Diag.Diagnostic qualified as D
 import Discovery.Filters (AllFilters)
 import Discovery.Walk (WalkStep (WalkContinue), walkWithFilters')
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
 import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (ReadFS)
+import Errata (Errata (..))
 import Path (Abs, Dir, File, Path, parent, parseAbsFile)
 import Path.Extra (SomeResolvedPath (..))
 import Text.Megaparsec (Parsec, between, empty, eof, many, optional, takeWhile1P, try, (<|>))
@@ -77,7 +77,7 @@ newtype SkippingDynamicDep = SkippingDynamicDep (Path Abs File)
 instance ToDiagnostic SkippingDynamicDep where
   renderDiagnostic (SkippingDynamicDep target) = do
     let header = "Skipping dynamic analysis for target: " <> toText (show target)
-    D.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+    Errata (Just header) [] Nothing
 
 lddCommand :: Path Abs File -> Command
 lddCommand binaryPath =

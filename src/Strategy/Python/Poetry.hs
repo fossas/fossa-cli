@@ -10,7 +10,7 @@ module Strategy.Python.Poetry (
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
 import Control.Algebra (Has)
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics (Diagnostics, context, errCtx, fatalText, recover, warnOnErr)
+import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, errHelp, fatalText, recover, warnOnErr)
 import Control.Effect.Reader (Reader)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
@@ -37,7 +37,8 @@ import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, File, Path)
 import Strategy.Python.Errors (
-  MissingPoetryLockFile (MissingPoetryLockFile),
+  MissingPoetryLockFile (..),
+  commitPoetryLockToVCS,
  )
 import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, pyProjectDeps, toCanonicalName, toMap)
 import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), poetryLockCodec)
@@ -165,7 +166,9 @@ analyze PoetryProject{pyProjectToml, poetryLock} = do
         . recover
         . warnOnErr MissingDeepDeps
         . warnOnErr MissingEdges
-        . errCtx (MissingPoetryLockFile (pyProjectTomlPath pyProjectToml))
+        . errCtx (MissingPoetryLockFileCtx (pyProjectTomlPath pyProjectToml))
+        . errHelp MissingPoetryLockFileHelp
+        . errDoc commitPoetryLockToVCS
         $ fatalText "poetry.lock file was not discovered"
       graph <- context "Building dependency graph from only pyproject.toml" $ pure $ Graphing.fromList $ pyProjectDeps pyproject
       pure $

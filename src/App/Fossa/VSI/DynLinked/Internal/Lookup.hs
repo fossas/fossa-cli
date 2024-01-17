@@ -18,8 +18,8 @@ import Control.Monad (join)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toText)
-import Diag.Diagnostic qualified as DI
 import Effect.Exec (Exec)
+import Errata (Errata (..))
 import Path (Abs, Dir, File, Path)
 
 -- | Resolve the provided file paths, which represent dynamic dependencies of a binary, into a set of @DynamicDependency@.
@@ -61,4 +61,4 @@ newtype MissingLinuxMetadata = MissingLinuxMetadata (Path Abs File)
 instance ToDiagnostic MissingLinuxMetadata where
   renderDiagnostic (MissingLinuxMetadata path) = do
     let header = "Could not determine owning system package for file: " <> (toText . show $ path)
-    DI.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+    Errata (Just header) [] Nothing

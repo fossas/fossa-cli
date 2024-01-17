@@ -35,7 +35,6 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Extra (breakOnEndAndRemove)
 import Diag.Diagnostic qualified as Diag (
-  DiagnosticInfo (..),
   ToDiagnostic (renderDiagnostic),
  )
 import Discovery.Filters (AllFilters (..))
@@ -46,6 +45,7 @@ import Effect.Logger (
   logInfo,
  )
 import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir)
+import Errata (Errata (..))
 import Path (Abs, File, Path, SomeBase (Abs, Rel), parseSomeFile, (</>))
 import Text.Megaparsec (errorBundlePretty, parse)
 
@@ -192,9 +192,8 @@ newtype DockerEngineImageNotPresentLocally = DockerEngineImageNotPresentLocally 
 
 instance ToDiagnostic DockerEngineImageNotPresentLocally where
   renderDiagnostic (DockerEngineImageNotPresentLocally tag) = do
-    let ctx = "Could not find: " <> tag <> " in local repository"
-        help = "Perform: docker pull " <> tag <> ", prior to running fossa."
-    Diag.DiagnosticInfo Nothing Nothing Nothing Nothing (Just help) (Just ctx) Nothing
+    let header = "Could not find: " <> tag <> " in local repository. Perform: docker pull " <> tag <> ", prior to running fossa."
+    Errata (Just header) [] Nothing
 
 parsePodmanSource ::
   ( Has (Lift IO) sig m
@@ -214,5 +213,7 @@ parseRegistrySource ::
   Text ->
   m ContainerImageSource
 parseRegistrySource defaultArch tag = case parse (parseImageUrl defaultArch) "" tag of
-  Left err -> fatal $ errorBundlePretty err
+  Left err -> do
+    let structuredError = "\n" <> errorBundlePretty err
+    fatal structuredError
   Right registrySource -> pure $ Registry registrySource

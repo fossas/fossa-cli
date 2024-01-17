@@ -65,10 +65,10 @@ import Effect.Grapher (
   withLabeling,
  )
 import Effect.ReadFS (ReadFS, readContentsToml)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing, stripRoot)
 import Path (Abs, Dir, File, Path, parent, parseRelFile, toFilePath, (</>))
-import Prettyprinter (Pretty (pretty))
 import Toml (TomlCodec, dioptional, diwrap, (.=))
 import Toml qualified
 import Types (
@@ -331,11 +331,15 @@ analyze (CargoProject manifestDir manifestFile) = do
 
 newtype FailedToGenLockFile = FailedToGenLockFile (Path Abs File)
 instance ToDiagnostic FailedToGenLockFile where
-  renderDiagnostic (FailedToGenLockFile path) = pretty $ "Could not generate lock file for cargo manifest: " <> (show path)
+  renderDiagnostic (FailedToGenLockFile path) = do
+    let header = "Could not generate lock file for cargo manifest: " <> toText path
+    Errata (Just header) [] Nothing
 
 newtype FailedToRetrieveCargoMetadata = FailedToRetrieveCargoMetadata (Path Abs File)
 instance ToDiagnostic FailedToRetrieveCargoMetadata where
-  renderDiagnostic (FailedToRetrieveCargoMetadata path) = pretty $ "Could not retrieve machine readable cargo metadata for: " <> (show path)
+  renderDiagnostic (FailedToRetrieveCargoMetadata path) = do
+    let header = "Could not retrieve machine readable cargo metadata for: " <> toText path
+    Errata (Just header) [] Nothing
 
 toDependency :: PackageId -> Set CargoLabel -> Dependency
 toDependency pkg =

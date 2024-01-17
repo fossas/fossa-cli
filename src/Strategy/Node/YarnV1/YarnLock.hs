@@ -6,7 +6,7 @@ module Strategy.Node.YarnV1.YarnLock (
   mangleParseErr,
 ) where
 
-import Control.Effect.Diagnostics (Diagnostics, Has, context, tagError, warn)
+import Control.Effect.Diagnostics (Diagnostics, Has, ToDiagnostic, context, renderDiagnostic, tagError, warn)
 import Control.Monad (when)
 import Data.Foldable (for_, traverse_)
 import Data.List.NonEmpty qualified as NE
@@ -33,13 +33,8 @@ import Effect.Grapher (
   label,
   withLabeling,
  )
-import Effect.Logger (
-  AnsiStyle,
-  Doc,
-  hsep,
-  pretty,
- )
 import Effect.ReadFS (ReadFS, ReadFSErr (FileParseError), readContentsText)
+import Errata (Errata (..))
 import Graphing (Graphing)
 import Path (Abs, File, Path)
 import Strategy.Node.PackageJson (Development, FlatDeps (..), NodePackage (..), Production)
@@ -153,19 +148,16 @@ logMaybePackage key something = do
     -- partially succeed anyway, so we just log a warning for now.
     -- If a valid case is discovered, it's likely a bug elsewhere (perhaps
     -- in the 'yarn-lock' package), and should be fixed.
-    Nothing -> warn $ missingResolvedVersionErrorMsg key
+    Nothing -> warn $ MissingResolvedVersion key
     _ -> pure ()
   pure something
 
-missingResolvedVersionErrorMsg :: YL.PackageKey -> Doc AnsiStyle
-missingResolvedVersionErrorMsg key =
-  hsep
-    [ "Yarn graph error: could not resolve"
-    , pretty $ extractFullName key
-    , "in the yarn lockfile."
-    , "It may not be present in the list of dependencies,"
-    , "or it may have an unresolved or incorrect version."
-    ]
+newtype MissingResolvedVersion = MissingResolvedVersion YL.PackageKey
+instance ToDiagnostic MissingResolvedVersion where
+  renderDiagnostic (MissingResolvedVersion key) = do
+    let header = "Yarn graph error: could not resolve " <> extractFullName key <> " in the yarn lockfile."
+        body = "It may not be present in the list of dependencies, or it may have an unresolved or incorrect version."
+    Errata (Just header) [] (Just body)
 
 pairToPackage :: YL.PackageKey -> YL.Package -> YarnV1Package
 pairToPackage key pkg = YarnV1Package (extractFullName key) (YL.version pkg)

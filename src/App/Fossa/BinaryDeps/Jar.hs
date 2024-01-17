@@ -24,15 +24,14 @@ import Data.Maybe (listToMaybe, mapMaybe)
 import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Diag.Diagnostic qualified as DI
 import Discovery.Archive (extractZip, withArchive)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), findFileNamed, walk')
 import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (ReadFS, readContentsText, readContentsXML)
+import Errata (Errata (..))
 import GHC.Base ((<|>))
 import Path (Abs, Dir, File, Path, filename, mkRelDir, mkRelFile, (</>))
 import Path.Extra (renderRelative, tryMakeRelative)
-import Prettyprinter (viaShow)
 import Srclib.Types (SourceUserDefDep (..))
 import Strategy.Maven.Pom.PomFile (
   MavenCoordinate (..),
@@ -70,12 +69,15 @@ resolveJar root file = do
 
 newtype FailedToResolveJar = FailedToResolveJar (Path Abs File)
 instance ToDiagnostic FailedToResolveJar where
-  renderDiagnostic (FailedToResolveJar path) = DI.DiagnosticInfo (Just $ "Could not infer jar metadata (license, jar name, and version) from " <> toText (show path)) Nothing Nothing Nothing Nothing Nothing Nothing
+  renderDiagnostic (FailedToResolveJar path) = do
+    let header = "Could not infer jar metadata (license, jar name, and version) from " <> toText path
+    Errata (Just header) [] Nothing
 
 newtype FailedToResolveJarCtx = FailedToResolveJarCtx (Path Abs File)
 instance ToDiagnostic FailedToResolveJarCtx where
-  renderDiagnostic :: FailedToResolveJarCtx -> DI.DiagnosticInfo
-  renderDiagnostic (FailedToResolveJarCtx path) = DI.DiagnosticInfo Nothing Nothing Nothing Nothing (Just $ "Ensure " <> toText (show path) <> " is a valid jar or aar file.") Nothing Nothing
+  renderDiagnostic (FailedToResolveJarCtx path) = do
+    let header = "Ensure " <> toText path <> " is a valid jar or aar file"
+    Errata (Just header) [] Nothing
 
 tacticMetaInf :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> m JarMetadata
 tacticMetaInf archive = context ("Parse " <> toText metaInfPath) $ do

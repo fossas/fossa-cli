@@ -13,15 +13,8 @@ module Strategy.Scala (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
-import Control.Effect.Diagnostics (
-  Diagnostics,
-  errCtx,
-  fatalText,
-  fromMaybeText,
-  recover,
-  warnOnErr,
-  (<||>),
- )
+import Control.Carrier.Diagnostics (errDoc)
+import Control.Effect.Diagnostics (Diagnostics, errCtx, errHelp, fatalText, fromMaybeText, recover, warnOnErr, (<||>))
 import Control.Effect.Reader (Reader)
 import Control.Effect.Stack (context)
 import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
@@ -64,7 +57,7 @@ import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures, cl
 import Strategy.Maven.Pom.PomFile (RawPom (rawPomArtifact, rawPomGroup, rawPomVersion))
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
 import Strategy.Scala.Common (mkSbtCommand)
-import Strategy.Scala.Errors (FailedToListProjects (FailedToListProjects), MaybeWithoutDependencyTreeTask (MaybeWithoutDependencyTreeTask), MissingFullDependencyPlugin (MissingFullDependencyPlugin))
+import Strategy.Scala.Errors (FailedToListProjects (FailedToListProjects), MaybeWithoutDependencyTreeTask (..), MissingFullDependencyPlugin (..), sbtDepsGraphPluginUrl, scalaFossaDocUrl)
 import Strategy.Scala.Plugin (genTreeJson, hasDependencyPlugins)
 import Strategy.Scala.SbtDependencyTree (SbtArtifact (SbtArtifact), analyze, sbtDepTreeCmd)
 import Strategy.Scala.SbtDependencyTreeJson qualified as TreeJson
@@ -176,8 +169,11 @@ findProjects = walkWithFilters' $ \dir _ files -> do
           depTreeStdOut <-
             recover $
               context ("inferring dependencies") $
-                errCtx (MaybeWithoutDependencyTreeTask) $
-                  execThrow dir sbtDepTreeCmd
+                errCtx MaybeWithoutDependencyTreeTaskCtx $
+                  errHelp MaybeWithoutDependencyTreeTaskHelp $
+                    errDoc sbtDepsGraphPluginUrl $
+                      errDoc scalaFossaDocUrl $
+                        execThrow dir sbtDepTreeCmd
 
           case (length projects > 1, depTreeStdOut) of
             -- not emitting warning or error, to avoid duplication from
@@ -198,7 +194,12 @@ analyzeWithPoms (ScalaProject _ _ closure) = context "Analyzing sbt dependencies
 
 analyzeWithDepTreeJson :: (Has ReadFS sig m, Has Diagnostics sig m) => ScalaProject -> m DependencyResults
 analyzeWithDepTreeJson (ScalaProject _ treeJson closure) = context "Analyzing sbt dependencies using dependencyBrowseTreeHTML" $ do
-  treeJson' <- errCtx MissingFullDependencyPlugin $ fromMaybeText "Could not retrieve output from sbt dependencyBrowseTreeHTML" treeJson
+  treeJson' <-
+    errCtx MissingFullDependencyPluginCtx $
+      errHelp MissingFullDependencyPluginHelp $
+        errDoc sbtDepsGraphPluginUrl $
+          errDoc scalaFossaDocUrl $
+            fromMaybeText "Could not retrieve output from sbt dependencyBrowseTreeHTML" treeJson
   projectGraph <- TreeJson.analyze treeJson'
   pure $
     DependencyResults

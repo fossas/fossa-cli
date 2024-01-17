@@ -3,11 +3,15 @@ module Container.Errors (
   EndpointDoesNotSupportNativeContainerScan (..),
 ) where
 
+import App.Support (supportUrl)
 import Codec.Archive.Tar qualified as Tar
 import Control.Exception (Exception)
+import Data.Error (SourceLocation, createBlock)
 import Data.List.NonEmpty (NonEmpty)
+import Data.String.Conversion (toText)
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
-import Effect.Logger (pretty)
+import Effect.Logger (pretty, renderIt)
+import Errata (Errata (..), errataSimple)
 import Prettyprinter (vsep)
 
 -- | Errors that can be encountered when parsing a container image.
@@ -35,20 +39,23 @@ instance Show ContainerImgParsingError where
 instance Exception ContainerImgParsingError
 
 instance ToDiagnostic ContainerImgParsingError where
-  renderDiagnostic = pretty . show
+  renderDiagnostic e = Errata (Just (toText $ show e)) [] Nothing
 
 instance ToDiagnostic (NonEmpty ContainerImgParsingError) where
-  renderDiagnostic = pretty . show
+  renderDiagnostic e = Errata (Just (toText $ show e)) [] Nothing
 
-data EndpointDoesNotSupportNativeContainerScan = EndpointDoesNotSupportNativeContainerScan
+newtype EndpointDoesNotSupportNativeContainerScan = EndpointDoesNotSupportNativeContainerScan SourceLocation
 instance ToDiagnostic EndpointDoesNotSupportNativeContainerScan where
-  renderDiagnostic (EndpointDoesNotSupportNativeContainerScan) =
-    vsep
-      [ "Provided endpoint does not support native container scans."
-      , ""
-      , "Container scanning with new scanner is not supported for your FOSSA endpoint."
-      , ""
-      , "Upgrade your FOSSA instance to v4.0.37 or downgrade your FOSSA CLI to 3.4.x"
-      , ""
-      , "Please contact FOSSA support for more assistance."
-      ]
+  renderDiagnostic (EndpointDoesNotSupportNativeContainerScan srcLoc) = do
+    let header = "Provided endpoint does not support native container scans"
+        body =
+          renderIt $
+            vsep
+              [ "Container scanning with new scanner is not supported for your FOSSA endpoint."
+              , ""
+              , "Upgrade your FOSSA instance to v4.0.37 or downgrade your FOSSA CLI to 3.4.x"
+              , ""
+              , "Please contact FOSSA support at " <> pretty supportUrl <> " for more assistance."
+              ]
+        block = createBlock srcLoc Nothing Nothing
+    errataSimple (Just header) block (Just body)

@@ -32,14 +32,15 @@ import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, fromMaybe)
 import Control.Effect.Lift (Lift)
 import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
 import Data.Aeson qualified as Aeson
-import Data.Error (SourceLocation, getSourceLocation)
+import Data.Error (SourceLocation, createBlock, getSourceLocation)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.String.Conversion (decodeUtf8)
-import Diag.Diagnostic (DiagnosticInfo (..), ToDiagnostic (renderDiagnostic))
+import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (SevInfo), logStdout, renderIt)
 import Effect.ReadFS (ReadFS)
+import Errata (errataSimple)
 import Path (Abs, Dir, Path)
 import Prettyprinter (vsep)
 import Srclib.Types (LicenseSourceUnit)
@@ -51,18 +52,20 @@ newtype NoVendoredDeps = NoVendoredDeps SourceLocation
 instance ToDiagnostic MissingFossaDepsFile where
   renderDiagnostic (MissingFossaDepsFile srcLoc) = do
     let header = "Missing fossa-deps file"
-        content =
+        body =
           renderIt $
             vsep
               [ "'fossa license-scan fossa-deps' requires pointing to a directory with a fossa-deps file."
               , "The file can have one of the extensions: .yaml .yml .json"
               ]
-    DiagnosticInfo (Just header) (Just content) Nothing Nothing Nothing Nothing (Just srcLoc)
+        block = createBlock srcLoc Nothing Nothing
+    errataSimple (Just header) block (Just body)
 
 instance ToDiagnostic NoVendoredDeps where
   renderDiagnostic (NoVendoredDeps srcLoc) = do
     let header = "The 'vendored-dependencies' section of the fossa deps file is empty or missing."
-    DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing (Just srcLoc)
+        block = createBlock srcLoc Nothing Nothing
+    errataSimple (Just header) block Nothing
 
 newtype UploadUnits = UploadUnits (NonEmpty LicenseSourceUnit)
 

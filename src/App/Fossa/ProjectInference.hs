@@ -31,10 +31,9 @@ import Data.Text qualified as Text
 import Data.Text.IO qualified as TIO
 import Data.Time.Clock.POSIX (getCurrentTime)
 import Data.Time.Format.ISO8601 (iso8601Show)
-import Diag.Diagnostic qualified as D
 import Effect.Exec
-import Effect.Logger
 import Effect.ReadFS
+import Errata (Errata (..))
 import Path
 import Path.IO (getTempDir)
 import System.FilePath.Posix qualified as FP
@@ -243,25 +242,25 @@ instance ToDiagnostic InferenceError where
   renderDiagnostic = \case
     InvalidRemote -> do
       let header = "Missing 'origin' git remote"
-      D.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+      Errata (Just header) [] Nothing
     GitConfigParse err -> do
       let header = "An error occurred when parsing the git config: " <> err
-      D.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+      Errata (Just header) [] Nothing
     MissingGitConfig -> do
       let header = "Missing .git/config file"
-      D.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+      Errata (Just header) [] Nothing
     MissingGitHead -> do
       let header = "Missing .git/HEAD file"
-      D.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+      Errata (Just header) [] Nothing
     InvalidBranchName branch -> do
       let header = "Invalid branch name: " <> branch
-      D.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+      Errata (Just header) [] Nothing
     MissingBranch branch -> do
       let header = "Missing ref file for current branch: " <> branch
-      D.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+      Errata (Just header) [] Nothing
     MissingGitDir -> do
       let header = "Could not find .git directory in the current or any parent directory"
-      D.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+      Errata (Just header) [] Nothing
 
 data InferredProject = InferredProject
   { inferredName :: Text

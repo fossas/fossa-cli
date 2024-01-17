@@ -11,12 +11,12 @@ import App.Fossa.VendoredDependency (VendoredDependency (..), VendoredDependency
 import App.Types (FullFileUploads (..))
 import Control.Algebra (Has)
 import Control.Carrier.Lift (Lift)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, fatal)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, errHelp, errSupport, fatal)
 import Control.Effect.FossaApiClient (FossaApiClient)
 import Control.Effect.StickyLogger (StickyLogger)
 import Control.Monad (unless)
 import Data.Either (partitionEithers)
-import Data.Error (SourceLocation, getSourceLocation)
+import Data.Error (SourceLocation, createBlock, getSourceLocation)
 import Data.List (find)
 import Data.List.NonEmpty (NonEmpty, nonEmpty, toList)
 import Data.List.NonEmpty qualified as NE
@@ -27,10 +27,11 @@ import Data.String.Conversion (toText)
 import Data.Text (Text, intercalate)
 import Data.Text.Extra (splitOnceOn)
 import DepTypes (DepType (ArchiveType, ConanType), Dependency (..), VerConstraint (CEq))
-import Diag.Diagnostic (DiagnosticInfo (..), ToDiagnostic (renderDiagnostic))
+import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, indent, pretty, renderIt, vsep)
 import Effect.ReadFS (ReadFS)
+import Errata (errataSimple)
 import Graphing (Graphing, gmap, vertexList)
 import Path (Abs, Dir, Path)
 import Srclib.Converter (fetcherToDepType, toLocator, verConstraintToRevision)
@@ -63,7 +64,7 @@ conanToArchives rootPath fullfileUploads g =
   -- need to do any work!
   case (null unableToTransformConanDep, transformedVendorDep) of
     (True, Nothing) -> pure g
-    (False, _) -> fatal $ FailedToTransformConanDependency getSourceLocation unableToTransformConanDep
+    (False, _) -> errHelp ("Ensure location is provided for conan dependency" :: Text) $ fatal $ FailedToTransformConanDependency getSourceLocation unableToTransformConanDep
     (True, Just depsAndVendorDeps) -> do
       let vendorDeps = NE.map snd depsAndVendorDeps
 
@@ -88,14 +89,15 @@ conanToArchives rootPath fullfileUploads g =
                 toList archiveLocators
 
       unless (null failed) $
-        fatal $
-          FailedToTransformLocators getSourceLocation failed
+        errSupport enrichSupportMessage $
+          fatal $
+            FailedToTransformLocators getSourceLocation failed
 
       -- 3. We replace all conan dependencies with archive dependencies from
       -- original graph. If we are unable to find twin of archive dep
       -- (e.g. sourcing conan dep), we fail fatally!
       case fromList <$> archiveToConanDep archiveDeps of
-        Left lonelyArchiveDeps -> fatal $ UnableToFindTwinOfArchiveDep getSourceLocation lonelyArchiveDeps
+        Left lonelyArchiveDeps -> errSupport enrichSupportMessage $ fatal $ UnableToFindTwinOfArchiveDep getSourceLocation lonelyArchiveDeps
         Right registry -> pure $ gmap (\graphDep -> Map.findWithDefault graphDep graphDep registry) g
   where
     allDeps :: [Dependency]
@@ -199,16 +201,19 @@ findArchiveTwin archiveDeps conanDep = case find
 unOrg :: Text -> Text
 unOrg t = snd $ splitOnceOn "/" t
 
+enrichSupportMessage :: Text
+enrichSupportMessage = "This is likely a defect, please contact FOSSA support at: https://support.fossa.com/"
+
 data FailedToTransformConanDependency = FailedToTransformConanDependency SourceLocation [Dependency]
 instance ToDiagnostic FailedToTransformConanDependency where
   renderDiagnostic (FailedToTransformConanDependency srcLoc deps) = do
     let header = "Could not transform analyzed conan dependency to vendored dependency"
-        content =
+        body =
           renderIt $
             vsep
               [indent 2 $ vsep $ map (pretty . renderDep) deps]
-        help = "Ensure location is provided for conan dependency"
-    DiagnosticInfo (Just header) (Just content) Nothing Nothing (Just help) Nothing (Just srcLoc)
+        block = createBlock srcLoc Nothing Nothing
+    errataSimple (Just header) block (Just body)
     where
       renderDep :: Dependency -> Text
       renderDep d =
@@ -220,22 +225,22 @@ data FailedToTransformLocators = FailedToTransformLocators SourceLocation [Locat
 instance ToDiagnostic FailedToTransformLocators where
   renderDiagnostic (FailedToTransformLocators srcLoc locs) = do
     let header = "Could not transform vendored dependency to archive dependency"
-        content =
+        body =
           renderIt $
             vsep
               [vsep $ map (pretty . toText) locs]
-        support = "This is likely a defect, please contact FOSSA support at: https://support.fossa.com/"
-    DiagnosticInfo (Just header) (Just content) Nothing (Just support) Nothing Nothing (Just srcLoc)
+        block = createBlock srcLoc Nothing Nothing
+    errataSimple (Just header) block (Just body)
 
 data UnableToFindTwinOfArchiveDep = UnableToFindTwinOfArchiveDep SourceLocation LonelyDeps
 instance ToDiagnostic UnableToFindTwinOfArchiveDep where
   renderDiagnostic (UnableToFindTwinOfArchiveDep srcLoc (LonelyDeps deps)) = do
     let header = "Could not identify conan dependency"
-        content =
+        body =
           renderIt $
             vsep
               [ "We could not identify conan dependency for following dependencies:"
               , indent 2 $ vsep $ map (pretty . toText . toLocator) deps
               ]
-        support = "This is likely a defect, please contact FOSSA support at: https://support.fossa.com/"
-    DiagnosticInfo (Just header) (Just content) Nothing (Just support) Nothing Nothing (Just srcLoc)
+        block = createBlock srcLoc Nothing Nothing
+    errataSimple (Just header) block (Just body)

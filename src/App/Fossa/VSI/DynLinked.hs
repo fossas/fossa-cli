@@ -10,11 +10,11 @@ import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, errCtx, f
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader)
 import Data.String.Conversion (toText)
-import Diag.Diagnostic qualified as DI
 import Discovery.Filters (AllFilters)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
+import Errata (Errata (..))
 import Path (Abs, Dir, Path)
 import Path.Extra (SomePath, resolveAbsolute)
 import Srclib.Types (SourceUnit (..))
@@ -49,16 +49,16 @@ newtype SkippingDynamicDep = SkippingDynamicDep (SomePath)
 instance ToDiagnostic SkippingDynamicDep where
   renderDiagnostic (SkippingDynamicDep path) = do
     let header = "Skipping dynamic analysis for target: " <> toText (show path)
-    DI.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+    Errata (Just header) [] Nothing
 
 data NotSupportedDistro = NotSupportedDistro
 instance ToDiagnostic NotSupportedDistro where
   renderDiagnostic (NotSupportedDistro) = do
-    let ctx = "Fossa is executing in an environment that is not supported for dynamic link detection. Redhat and Debian based linux is currently supported."
-    DI.DiagnosticInfo Nothing Nothing Nothing Nothing Nothing (Just ctx) Nothing
+    let header = "Fossa is executing in an environment that is not supported for dynamic link detection. Redhat and Debian based linux is currently supported."
+    Errata (Just header) [] Nothing
 
 data NoDependenciesFound = NoDependenciesFound
 instance ToDiagnostic NoDependenciesFound where
   renderDiagnostic (NoDependenciesFound) = do
-    let ctx = "no dynamic dependencies found in target executable"
-    DI.DiagnosticInfo Nothing Nothing Nothing Nothing Nothing (Just ctx) Nothing
+    let header = "No dynamic dependencies found in target executable"
+    Errata (Just header) [] Nothing

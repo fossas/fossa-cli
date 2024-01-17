@@ -25,13 +25,15 @@ import Container.Docker.SourceParser (
  )
 import Control.Effect.Diagnostics (ToDiagnostic, renderDiagnostic)
 import Data.Aeson (FromJSON (parseJSON), withObject, withText, (.:))
+import Data.Error (SourceLocation, createBlock)
 import Data.List.NonEmpty ((<|))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Effect.Logger (vsep)
-import Prettyprinter (indent, line, pretty)
+import Effect.Logger (renderIt, vsep)
+import Errata (errataSimple)
+import Prettyprinter (indent, line)
 
 supportedManifestKinds :: [Text]
 supportedManifestKinds =
@@ -176,17 +178,22 @@ mkLayerTarFileName (OciManifestLayer (RepoDigest digest) _) = removeDigestAlgori
 removeDigestAlgorithm :: Text -> Text
 removeDigestAlgorithm = snd . Text.breakOnEnd ":"
 
-data NotSupportedManifestFmt = NotSupportedManifestFmt Text RegistryImageSource
+data NotSupportedManifestFmt
+  = NotSupportedManifestFmt SourceLocation Text RegistryImageSource
 
 instance ToDiagnostic NotSupportedManifestFmt where
-  renderDiagnostic (NotSupportedManifestFmt fmt imgSrc) =
-    vsep
-      [ pretty $ "Manifest format is not supported: " <> fmt
-      , line <> "Workaround:" <> line
-      , indent 2 $
-          vsep
-            [ "Export the image:"
-            , line
-            , suggestDockerExport imgSrc
-            ]
-      ]
+  renderDiagnostic (NotSupportedManifestFmt srcLoc fmt imgSrc) = do
+    let header = "Manifest format is not supported: " <> fmt
+        body =
+          renderIt $
+            vsep
+              [ "Workaround:" <> line
+              , indent 2 $
+                  vsep
+                    [ "Export the image:"
+                    , line
+                    , suggestDockerExport imgSrc
+                    ]
+              ]
+        block = createBlock srcLoc Nothing Nothing
+    errataSimple (Just header) block (Just body)

@@ -30,7 +30,6 @@ import Data.Time (
   parseTimeM,
  )
 import Data.Time.Format.ISO8601 (iso8601Show)
-import Diag.Diagnostic (DiagnosticInfo (..))
 import Effect.Exec (
   AllowErr (Never),
   Command (..),
@@ -38,6 +37,7 @@ import Effect.Exec (
   Has,
   execThrow,
  )
+import Errata (Errata (..))
 import Fossa.API.Types (Contributors (..))
 import Path (Abs, Dir, Path)
 
@@ -89,5 +89,5 @@ fetchGitContributors basedir = do
 data FailedToPerformGitLog = FailedToPerformGitLog
 instance ToDiagnostic FailedToPerformGitLog where
   renderDiagnostic _ = do
-    let ctx = "Could not retrieve git logs for contributor counting."
-    DiagnosticInfo Nothing Nothing Nothing Nothing Nothing (Just ctx) Nothing
+    let header = "Could not retrieve git logs for contributor counting."
+    Errata (Just header) [] Nothing

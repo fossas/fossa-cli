@@ -20,6 +20,7 @@ import Control.Effect.Diagnostics (
   Has,
   context,
   errCtx,
+  errHelp,
   recover,
   run,
   warnOnErr,
@@ -69,7 +70,7 @@ import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, parent)
-import Strategy.Python.Errors (PipenvCmdFailed (PipenvCmdFailed))
+import Strategy.Python.Errors (PipenvCmdFailed (..))
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
@@ -101,7 +102,8 @@ getDeps project = context "Pipenv" $ do
       $ recover
         . warnOnErr MissingDeepDeps
         . warnOnErr MissingEdges
-        . errCtx (PipenvCmdFailed pipenvGraphCmd)
+        . errCtx (PipenvCmdFailedCtx pipenvGraphCmd)
+        . errHelp PipenvCmdFailedHelp
       $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
 
   graph <- context "Building dependency graph" $ pure (buildGraph lock maybeDeps)

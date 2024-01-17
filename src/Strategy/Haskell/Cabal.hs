@@ -64,6 +64,7 @@ import Effect.Grapher (
   withMapping,
  )
 import Effect.ReadFS (ReadFS, readContentsJson)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified as G
@@ -248,4 +249,6 @@ analyze project = do
 
 data FailedToGenCabalPlan = FailedToGenCabalPlan
 instance ToDiagnostic FailedToGenCabalPlan where
-  renderDiagnostic _ = "We could not dry run cabal build for dependency analysis."
+  renderDiagnostic _ = do
+    let header = "Could not dry run cabal build for dependency analysis"
+    Errata (Just header) [] Nothing

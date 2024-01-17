@@ -12,7 +12,7 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import Diag.Diagnostic (DiagnosticInfo (..), ToDiagnostic (..))
+import Diag.Diagnostic (ToDiagnostic (..))
 import Effect.Exec (
   AllowErr (Never),
   Command (..),
@@ -22,6 +22,7 @@ import Effect.Exec (
   execParser,
  )
 import Effect.Logger (vsep)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)
 import Text.Megaparsec
@@ -50,7 +51,7 @@ data PipListCommandFailed = PipListCommandFailed
 instance ToDiagnostic PipListCommandFailed where
   renderDiagnostic PipListCommandFailed = do
     let header = "Failed to run pip command"
-    DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+    Errata (Just header) [] Nothing
 
 pythonPip :: [Text] -> Command
 pythonPip args =

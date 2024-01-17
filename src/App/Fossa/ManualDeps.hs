@@ -34,7 +34,7 @@ import App.Fossa.VendoredDependency (
 import App.Types (FullFileUploads (..))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Debug (Debug)
-import Control.Effect.Diagnostics (Diagnostics, context, fatal, fatalText)
+import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errHelp, fatal, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Has, Lift)
 import Control.Effect.StickyLogger (StickyLogger)
@@ -49,7 +49,7 @@ import Data.Aeson (
  )
 import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers, neText)
 import Data.Aeson.Types (Object, Parser, prependFailure)
-import Data.Error (SourceLocation)
+import Data.Error (SourceLocation, createBlock, getSourceLocation)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -60,8 +60,9 @@ import Data.Text qualified as Text
 import DepTypes (DepType (..))
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, indent, pretty, vsep)
+import Effect.Logger (Logger, indent, pretty, renderIt, vsep)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
+import Errata (Errata (..), errataSimple)
 import Fossa.API.Types (ApiOpts, Organization (..))
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Path.Extra (tryMakeRelative)
@@ -529,7 +530,7 @@ instance FromJSON RemoteDependency where
 validateRemoteDep :: (Has Diagnostics sig m) => RemoteDependency -> Organization -> m RemoteDependency
 validateRemoteDep r org =
   if locatorLen > maxLocatorLength
-    then fatal $ RemoteDepLengthIsGtThanAllowed (r, maxUrlRevLength)
+    then errCtx (RemoteDepLengthIsGtThanAllowedCtx r) $ errHelp (RemoteDepLengthIsGtThanAllowedHelp maxUrlRevLength) $ fatal $ RemoteDepLengthIsGtThanAllowedMessage getSourceLocation
     else pure r
   where
     orgId :: Text
@@ -550,27 +551,34 @@ validateRemoteDep r org =
     maxUrlRevLength :: Int
     maxUrlRevLength = maxLocatorLength - Text.length requiredChars
 
-newtype RemoteDepLengthIsGtThanAllowed = RemoteDepLengthIsGtThanAllowed SourceLocation (RemoteDependency, Int)
+data RemoteDepLengthIsGtThanAllowed
+  = RemoteDepLengthIsGtThanAllowedMessage SourceLocation
+  | RemoteDepLengthIsGtThanAllowedCtx RemoteDependency
+  | RemoteDepLengthIsGtThanAllowedHelp Int
 
 instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
-  renderDiagnostic (RemoteDepLengthIsGtThanAllowed srcLoc (r, maxLen)) = do
-    vsep
-      [ "You provided remote-dependency: "
-      , ""
-      , indent 2 . pretty $ "Name: " <> remoteName r
-      , indent 2 . pretty $ "Url: " <> remoteUrl r
-      , indent 2 . pretty $ "Version: " <> remoteVersion r
-      , ""
-      , pretty $
-          "The combined length of url and version is: "
-            <> show urlRevLength
-            <> ". It must be below: "
-            <> show maxLen
-            <> "."
-      ]
+  renderDiagnostic (RemoteDepLengthIsGtThanAllowedMessage srcLoc) = do
+    let header = "remote-dependency length is exceeds limit"
+        block = createBlock srcLoc Nothing Nothing
+    errataSimple (Just header) block Nothing
+  renderDiagnostic (RemoteDepLengthIsGtThanAllowedCtx r) = do
+    let header =
+          renderIt $
+            vsep
+              [ pretty $ "The combined length of url and version is: " <> show urlRevLength
+              , ""
+              , indent 2 "You provided remote-dependency: "
+              , indent 4 . pretty $ "Name: " <> remoteName r
+              , indent 4 . pretty $ "Url: " <> remoteUrl r
+              , indent 4 . pretty $ "Version: " <> remoteVersion r
+              ]
+    Errata (Just header) [] Nothing
     where
       urlRevLength :: Int
       urlRevLength = Text.length $ Text.intercalate "" [remoteUrl r, remoteVersion r]
+  renderDiagnostic (RemoteDepLengthIsGtThanAllowedHelp maxLen) = do
+    let header = "Ensure that the combined length is below: " <> toText maxLen
+    Errata (Just header) [] Nothing
 
 -- Dependency "metadata" section for both Remote and Custom Dependencies
 instance FromJSON DependencyMetadata where

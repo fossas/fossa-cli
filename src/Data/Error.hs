@@ -3,25 +3,22 @@
 
 module Data.Error (
     SourceLocation (..),
+    DiagnosticStyle (..),
     getSourceLocation,
-    buildErrorMessage,
-    buildHelpMessage,
-    buildDocumentationMessage,
-    buildContextMessage,
     createBlock,
     createBody,
     createError,
-    renderErrors,
+    renderErrataStack,
+    applyDiagnosticStyle,
 ) where
 
-import Algebra.Graph.Export (render)
 import Data.Maybe (fromMaybe)
+import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
 import Data.Text.Lazy qualified as TL
-import Errata (Block (..), Pointer (..), blockSimple, errataSimple, prettyErrors)
+import Errata (Block (..), Errata (..), prettyErrors)
 import Errata.Source (Source (emptySource))
-import Errata.Styles (basicPointer, basicStyle, fancyRedPointer, fancyRedStyle, fancyStyle)
-import Errata.Types (Errata (..))
+import Errata.Styles (fancyStyle)
 import GHC.Generics (Generic)
 import GHC.Stack (CallStack, SrcLoc (..), getCallStack)
 
@@ -55,57 +52,49 @@ createBlock SourceLocation{..} maybeHeader =
 createBody :: Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text -> Text
 createBody maybeContent maybeDocumentation maybeSupport maybeHelp maybeContext = do
     let content = fromMaybe "" maybeContent
-        documentation = maybe "" buildDocumentationMessage maybeDocumentation
-        support = maybe "" buildSupportMessage maybeSupport
-        help = maybe "" buildHelpMessage maybeHelp
-        context = maybe "" buildContextMessage maybeContext
+        documentation = maybe "" (buildMessageWithDiagnosticStyle DocumentationStyle) maybeDocumentation
+        support = maybe "" (buildMessageWithDiagnosticStyle SupportStyle) maybeSupport
+        help = maybe "" (buildMessageWithDiagnosticStyle HelpStyle) maybeHelp
+        context = maybe "" (buildMessageWithDiagnosticStyle ContextStyle) maybeContext
 
     content <> documentation <> support <> help <> context
 
--- red ANSI escape code
-errorColor :: Text
-errorColor = "\x1b[31m"
+data DiagnosticStyle
+    = ErrorStyle
+    | WarningStyle
+    | DocumentationStyle
+    | SupportStyle
+    | HelpStyle
+    | ContextStyle
 
--- yellow ANSI escape code
-warningColor :: Text
-warningColor = "\x1b[33m"
-
--- blue ANSI escape code
-supportColor :: Text
-supportColor = "\x1b[34m"
-
--- magenta ANSI escape code
-documentationColor :: Text
-documentationColor = "\x1b[35m"
-
--- cyan ANSI escape code
-helpColor :: Text
-helpColor = "\x1b[36m"
-
--- green ANSI escape code
-contextColor :: Text
-contextColor = "\x1b[32m"
+instance ToText DiagnosticStyle where
+    toText = \case
+        -- red ANSI escape code
+        ErrorStyle -> "\x1b[31m" <> "Error:" <> resetColor <> " "
+        -- yellow ANSI escape code
+        WarningStyle -> "\x1b[33m" <> "Warn:" <> resetColor <> " "
+        -- blue ANSI escape code
+        SupportStyle -> "\x1b[34m" <> "Support:" <> resetColor <> " "
+        -- magenta ANSI escape code
+        DocumentationStyle -> "\x1b[35m" <> "Documentation:" <> resetColor <> " "
+        -- cyan ANSI escape code
+        HelpStyle -> "\x1b[36m" <> "Help:" <> resetColor <> " "
+        -- green ANSI escape code
+        ContextStyle -> "\x1b[32m" <> "Context:" <> resetColor <> " "
 
 -- ANSI escape code to reset foreground text color
 resetColor :: Text
 resetColor = "\x1b[39m"
 
-buildErrorMessage :: Text -> Text
-buildErrorMessage msg = errorColor <> "Error:" <> resetColor <> " " <> msg
+applyDiagnosticStyle :: DiagnosticStyle -> Errata -> Errata
+applyDiagnosticStyle style Errata{..} = case errataHeader of
+    Just header -> Errata (Just $ toText style <> header) errataBlocks errataBody
+    _ -> Errata errataHeader errataBlocks errataBody
 
-buildSupportMessage :: Text -> Text
-buildSupportMessage msg = supportColor <> "Support:" <> resetColor <> " " <> msg <> "\n"
+buildMessageWithDiagnosticStyle :: DiagnosticStyle -> Text -> Text
+buildMessageWithDiagnosticStyle style msg = toText style <> msg <> "\n"
 
-buildDocumentationMessage :: Text -> Text
-buildDocumentationMessage msg = documentationColor <> "Documentation:" <> resetColor <> " " <> msg <> "\n"
-
-buildHelpMessage :: Text -> Text
-buildHelpMessage msg = helpColor <> "Help:" <> resetColor <> " " <> msg <> "\n"
-
-buildContextMessage :: Text -> Text
-buildContextMessage msg = contextColor <> "Context:" <> resetColor <> " " <> msg
-
-renderErrors :: [Errata] -> TL.Text
-renderErrors =
+renderErrataStack :: [Errata] -> TL.Text
+renderErrataStack =
     prettyErrors @String
         emptySource

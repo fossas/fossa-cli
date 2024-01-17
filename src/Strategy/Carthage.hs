@@ -18,6 +18,7 @@ import Control.Effect.Diagnostics (
   ToDiagnostic (..),
   context,
   errCtx,
+  errHelp,
   recover,
   warnOnErr,
  )
@@ -37,7 +38,6 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Diag.Diagnostic qualified as DI
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -47,6 +47,7 @@ import Discovery.Walk (
  )
 import Effect.Grapher (Grapher, direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, readContentsParser)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing qualified as G
 import Path (
@@ -60,7 +61,6 @@ import Path (
   parseRelDir,
   (</>),
  )
-import Prettyprinter (pretty, viaShow, vsep)
 import Text.Megaparsec (
   MonadParsec (eof),
   Parsec,
@@ -178,7 +178,8 @@ analyze topPath = evalGrapher $ do
           deeper <-
             recover
               . warnOnErr (MissingCarthageDeepDep entry)
-              . errCtx (MissingResolvedFile $ checkoutPath </> $(mkRelFile "Cartfile.resolved"))
+              . errCtx (MissingResolvedFileCtx $ checkoutPath </> $(mkRelFile "Cartfile.resolved"))
+              . errHelp MissingResolvedFileHelp
               $ analyzeSingle (checkoutPath </> $(mkRelFile "Cartfile.resolved"))
           traverse_ (traverse_ (edge entry)) deeper
 
@@ -186,14 +187,18 @@ newtype MissingCarthageDeepDep = MissingCarthageDeepDep ResolvedEntry
 instance ToDiagnostic MissingCarthageDeepDep where
   renderDiagnostic (MissingCarthageDeepDep entry) = do
     let header = "Failed to find transitive dependencies for: " <> (resolvedName entry)
-    DI.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+    Errata (Just header) [] Nothing
 
-newtype MissingResolvedFile = MissingResolvedFile (Path Abs File)
+data MissingResolvedFile
+  = MissingResolvedFileCtx (Path Abs File)
+  | MissingResolvedFileHelp
 instance ToDiagnostic MissingResolvedFile where
-  renderDiagnostic (MissingResolvedFile path) = do
-    let ctx = "Could not find or parse resolved file in: " <> toText (show path)
-        help = "Ensure your carthage project is built prior to running fossa"
-    DI.DiagnosticInfo Nothing Nothing Nothing Nothing (Just help) (Just ctx) Nothing
+  renderDiagnostic (MissingResolvedFileCtx path) = do
+    let header = "Could not find or parse resolved file in: " <> toText (show path)
+    Errata (Just header) [] Nothing
+  renderDiagnostic MissingResolvedFileHelp = do
+    let header = "Ensure your carthage project is built prior to running fossa"
+    Errata (Just header) [] Nothing
 
 entryToCheckoutName :: ResolvedEntry -> Text
 entryToCheckoutName entry =

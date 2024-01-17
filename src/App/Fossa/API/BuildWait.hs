@@ -28,7 +28,9 @@ import Control.Effect.FossaApiClient (
 import Control.Effect.StickyLogger (StickyLogger, logSticky')
 import Control.Monad (void, when)
 import Control.Timeout (Cancel, checkForCancel, delay)
+import Data.Error (SourceLocation, createBlock, getSourceLocation)
 import Effect.Logger (Logger, viaShow)
+import Errata (errataSimple)
 import Fossa.API.Types (
   ApiOpts (apiOptsPollDelay),
   Build (buildTask),
@@ -43,14 +45,20 @@ import Fossa.API.Types (
 
 data WaitError
   = -- | We encountered the FAILED status on a build
-    BuildFailed
+    BuildFailed SourceLocation
   | -- | We ran out of time locally, and aborted
-    LocalTimeout
+    LocalTimeout SourceLocation
   deriving (Eq, Ord, Show)
 
 instance ToDiagnostic WaitError where
-  renderDiagnostic BuildFailed = "The build failed. Check the FOSSA webapp for more details."
-  renderDiagnostic LocalTimeout = "Build/Issue scan was not completed on the FOSSA server, and the --timeout duration has expired."
+  renderDiagnostic (BuildFailed srcLoc) = do
+    let header = "The build failed. Check the FOSSA webapp for more details"
+        block = createBlock srcLoc Nothing Nothing
+    errataSimple (Just header) block Nothing
+  renderDiagnostic (LocalTimeout srcLoc) = do
+    let header = "Build/Issue scan was not completed on the FOSSA server, and the --timeout duration has expired"
+        block = createBlock srcLoc Nothing Nothing
+    errataSimple (Just header) block Nothing
 
 -- | Wait for either a normal build completion or a monorepo scan completion.
 -- Try to detect the correct method, use provided fallback
@@ -107,7 +115,7 @@ waitForBuild revision cancelFlag = do
 
   case buildTaskStatus (buildTask build) of
     StatusSucceeded -> pure ()
-    StatusFailed -> fatal BuildFailed
+    StatusFailed -> fatal $ BuildFailed getSourceLocation
     otherStatus -> do
       logSticky' $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
       pauseForRetry
@@ -121,7 +129,7 @@ checkForTimeout ::
   ) =>
   Cancel ->
   m ()
-checkForTimeout = checkForCancel LocalTimeout
+checkForTimeout = checkForCancel $ LocalTimeout getSourceLocation
 
 pauseForRetry ::
   ( Has (Lift IO) sig m

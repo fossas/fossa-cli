@@ -1,5 +1,6 @@
 module Strategy.Swift.Errors (
   MissingPackageResolvedFile (..),
+  MissingPackageResolvedFileHelp (..),
 
   -- * docs
   swiftFossaDocUrl,
@@ -10,9 +11,9 @@ module Strategy.Swift.Errors (
 import App.Docs (platformDocUrl)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Diag.Diagnostic (DiagnosticInfo (..), ToDiagnostic, renderDiagnostic)
+import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
+import Errata (Errata (..))
 import Path
-import Prettyprinter (Pretty (pretty), indent, viaShow, vsep)
 
 swiftFossaDocUrl :: Text
 swiftFossaDocUrl = platformDocUrl "ios/swift.md"
@@ -24,10 +25,15 @@ xcodeCoordinatePkgVersion :: Text
 xcodeCoordinatePkgVersion = "https://developer.apple.com/documentation/swift_packages/adding_package_dependencies_to_your_app"
 
 newtype MissingPackageResolvedFile = MissingPackageResolvedFile (Path Abs File)
+data MissingPackageResolvedFileHelp = MissingPackageResolvedFileHelp
 
 instance ToDiagnostic MissingPackageResolvedFile where
+  renderDiagnostic :: MissingPackageResolvedFile -> Errata
   renderDiagnostic (MissingPackageResolvedFile path) = do
-    let ctx = "We could not perform Package.resolved analysis for: " <> toText (show path)
-        help = "Ensure valid Package.resolved exists, and is readable by user"
-        documentationReferences = [swiftPackageResolvedRef, xcodeCoordinatePkgVersion, swiftFossaDocUrl]
-    DiagnosticInfo Nothing Nothing (Just documentationReferences) Nothing (Just help) (Just ctx) Nothing
+    let header = "We could not perform Package.resolved analysis for: " <> toText (show path)
+    Errata (Just header) [] Nothing
+
+instance ToDiagnostic MissingPackageResolvedFileHelp where
+  renderDiagnostic MissingPackageResolvedFileHelp = do
+    let header = "Ensure valid Package.resolved exists, and is readable by user"
+    Errata (Just header) [] Nothing

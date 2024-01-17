@@ -10,7 +10,7 @@ module Strategy.Conan.ConanGraph (
   toDependency,
 ) where
 
-import Control.Effect.Diagnostics (Diagnostics, errCtx, run)
+import Control.Effect.Diagnostics (Diagnostics, errCtx, errHelp, run)
 import Data.Aeson (
   FromJSON (parseJSON),
   Key,
@@ -39,7 +39,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Diag.Diagnostic (DiagnosticInfo (..), ToDiagnostic (renderDiagnostic))
+import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (
   AllowErr (Never),
   Command (..),
@@ -48,6 +48,7 @@ import Effect.Exec (
   execJson,
  )
 import Effect.Grapher (Grapher, deep, direct, edge, evalGrapher)
+import Errata (Errata (..))
 import Graphing (Graphing)
 import Network.HTTP.Types (renderQueryText)
 import Path (Abs, Dir, Path)
@@ -302,14 +303,18 @@ analyzeFromConanGraph dir = do
   -- would ensure source code is always retrieved. Also, the
   -- equivalent command of "conan info ." in conan v1
   -- does not provide used settings for the dependency.
-  errCtx ConanV2IsRequired $ guardConanVersion2Gt dir
+  errCtx ConanV2IsRequiredCtx $ errHelp ConanV2IsRequiredHelp $ guardConanVersion2Gt dir
 
   conanGraph <- execJson dir $ conanV2GraphCmd []
   pure $ buildGraph conanGraph
 
-data ConanV2IsRequired = ConanV2IsRequired
+data ConanV2IsRequired
+  = ConanV2IsRequiredCtx
+  | ConanV2IsRequiredHelp
 instance ToDiagnostic ConanV2IsRequired where
-  renderDiagnostic (ConanV2IsRequired) = do
-    let ctx = "Conan analysis requires conan v2.0.0 or greater"
-        help = "Ensure you are using conan v2 by running, conan --version"
-    DiagnosticInfo Nothing Nothing Nothing Nothing (Just help) (Just ctx) Nothing
+  renderDiagnostic ConanV2IsRequiredCtx = do
+    let header = "Conan analysis requires conan v2.0.0 or greater"
+    Errata (Just header) [] Nothing
+  renderDiagnostic ConanV2IsRequiredHelp = do
+    let header = "Ensure you are using conan v2 by running, conan --version"
+    Errata (Just header) [] Nothing

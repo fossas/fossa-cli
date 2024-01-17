@@ -53,6 +53,7 @@ import Effect.ReadFS (
   readContentsText,
   readContentsXML,
  )
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing, unfold)
 import Parse.XML (FromXML (..), attr, child, children)
@@ -336,6 +337,12 @@ data ManifestGitConfigError
 
 instance ToDiagnostic ManifestGitConfigError where
   renderDiagnostic = \case
-    InvalidRemote remote -> "An invalid remote was encountered when parsing manifest files: " <> pretty remote
-    GitConfigParse err -> "An error occurred when parsing a git config: " <> pretty err
-    MissingGitConfig path -> "A git config was missing: " <> pretty path
+    InvalidRemote remote -> do
+      let header = "An invalid remote was encountered when parsing manifest files: " <> remote
+      Errata (Just header) [] Nothing
+    GitConfigParse err -> do
+      let header = "An error occurred when parsing a git config: " <> err
+      Errata (Just header) [] Nothing
+    MissingGitConfig path -> do
+      let header = "A git config was missing: " <> path
+      Errata (Just header) [] Nothing

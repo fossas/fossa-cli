@@ -7,12 +7,15 @@ module Control.Carrier.ContainerRegistryApi.Errors (
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), withObject, withText, (.:))
-import Data.String.Conversion (toString)
+import Data.Error (renderErrataStack)
+import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic (..), renderDiagnostic)
+import Effect.Logger (renderIt)
+import Errata (Errata (..))
 import Network.HTTP.Types (Status (statusCode))
 import Network.URI (URI)
-import Prettyprinter (indent, line, pretty, vsep)
+import Prettyprinter (indent, pretty, vsep)
 
 -- | OCI Registry Error Body.
 -- Refer to: https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes
@@ -70,39 +73,44 @@ instance FromJSON ContainerRegistryApiError where
     ContainerRegistryApiError <$> o .: "code" <*> o .: "message"
 
 instance ToDiagnostic (URI, ContainerRegistryApiErrorBody) where
-  renderDiagnostic (uri, ContainerRegistryApiErrorBody errs) =
-    vsep
-      [ pretty $ "Caught API error from: " <> show uri
-      , line
-      , "API errors:"
-      , line
-      , indent 4 $ vsep $ map renderDiagnostic errs
-      ]
+  renderDiagnostic (uri, ContainerRegistryApiErrorBody errs) = do
+    let header = "Caught API error from: " <> toText (show uri)
+        apiErrs = pretty $ renderErrataStack (map renderDiagnostic errs)
+        body =
+          renderIt $
+            vsep
+              [ "API errors:"
+              , indent 4 apiErrs
+              ]
+    Errata (Just header) [] (Just body)
 
 instance ToDiagnostic ContainerRegistryApiError where
-  renderDiagnostic (ContainerRegistryApiError errKind msg) =
-    vsep
-      [ pretty $ "Error code: " <> (show errKind)
-      , pretty $ "Error message: " <> msg
-      ]
+  renderDiagnostic (ContainerRegistryApiError errKind msg) = do
+    let header =
+          renderIt $
+            vsep
+              [ pretty $ "Error code: " <> (show errKind)
+              , pretty $ "Error message: " <> msg
+              ]
+    Errata (Just header) [] Nothing
 
 -- * Other Errors
 
 data UnknownApiError = UnknownApiError URI Status
 
 instance ToDiagnostic UnknownApiError where
-  renderDiagnostic (UnknownApiError uri status) =
-    vsep
-      [ "Caught unexpected error from: "
-      , indent 4 $ pretty $ "(" <> show (statusCode status) <> ") " <> show uri
-      ]
+  renderDiagnostic (UnknownApiError uri status) = do
+    let header =
+          renderIt $
+            vsep
+              [ "Caught unexpected error from:" <> pretty ("(" <> show (statusCode status) <> ") " <> show uri)
+              ]
+    Errata (Just header) [] Nothing
 
 newtype FailedToParseAuthChallenge = FailedToParseAuthChallenge Text
 
 instance ToDiagnostic FailedToParseAuthChallenge where
-  renderDiagnostic (FailedToParseAuthChallenge err) =
-    vsep
-      [ "Failed to parse authorization challenge: "
-      , line
-      , indent 4 $ pretty err
-      ]
+  renderDiagnostic (FailedToParseAuthChallenge err) = do
+    let header = "Failed to parse authorization challenge"
+        body = err
+    Errata (Just header) [] (Just body)

@@ -28,6 +28,7 @@ import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
+  ToDiagnostic,
   context,
   fatal,
   fatalText,
@@ -42,12 +43,14 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
+import Data.Error (createBody, renderErrataStack)
 import Data.Foldable (asum)
 import Data.Functor (($>))
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text, strip, toLower)
+import Diag.Diagnostic (ToDiagnostic (..))
 import Effect.Logger (
   AnsiStyle,
   Doc,
@@ -59,6 +62,7 @@ import Effect.Logger (
   vsep,
  )
 import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir, readContentsYaml)
+import Errata (Errata (..))
 import Path (
   Abs,
   Dir,
@@ -126,7 +130,7 @@ resolveConfigFile base path = do
           if version >= 3
             then pure $ Just configFile
             else -- Invalid config found without --config flag: warn and ignore file.
-              logWarn (warnMsgForOlderConfig @AnsiStyle version) $> Nothing
+              logWarn (pretty $ renderErrataStack [renderDiagnostic $ OlderConfigError version]) $> Nothing
         Nothing -> pure Nothing
     SpecifiedConfigLocation realpath -> do
       exists <- doesFileExist realpath
@@ -139,17 +143,15 @@ resolveConfigFile base path = do
           if version >= 3
             then pure $ Just configFile
             else -- Invalid config with --config specified: fail with message.
-              fatal $ warnMsgForOlderConfig @AnsiStyle version
+              fatal $ OlderConfigError version
 
-warnMsgForOlderConfig :: Int -> Doc ann
-warnMsgForOlderConfig foundVersion =
-  vsep
-    [ ""
-    , "Incompatible [.fossa.yml] found! Expecting `version: 3`; found `version: " <> pretty foundVersion <> "`"
-    , "Documentation for the new config file format can be found here:"
-    , "    " <> pretty fossaYmlDocUrl
-    , ""
-    ]
+newtype OlderConfigError = OlderConfigError Int
+instance ToDiagnostic OlderConfigError where
+  renderDiagnostic (OlderConfigError foundVersion) = do
+    let header = "Incompatible [.fossa.yml] found"
+        ctx = "Expecting `version: 3`; found `version: " <> toText foundVersion <> "`"
+        body = createBody Nothing (Just fossaYmlDocUrl) Nothing Nothing (Just ctx)
+    Errata (Just header) [] (Just body)
 
 resolveLocation :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> Maybe FilePath -> m ConfigLocation
 resolveLocation base Nothing = pure $ DefaultConfigLocation base

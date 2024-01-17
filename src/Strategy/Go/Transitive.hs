@@ -50,6 +50,7 @@ import Effect.Exec (
   renderCommand,
  )
 import Effect.Grapher (edge, label)
+import Errata (Errata (..))
 import Path (Abs, Dir, Path)
 import Prettyprinter (pretty)
 import Strategy.Go.Types (
@@ -173,11 +174,9 @@ fillInTransitive dir = context "Getting deep dependencies" $ do
 
 data GoListCmdFailed = GoListCmdFailed
 instance ToDiagnostic GoListCmdFailed where
-  renderDiagnostic _ =
-    pretty $
-      "We could not perform `"
-        <> renderCommand goListCmd
-        <> "` successfully to infer deep dependencies."
+  renderDiagnostic _ = do
+    let header = "We could not perform `" <> renderCommand goListCmd <> "` successfully to infer deep dependencies."
+    Errata (Just header) [] Nothing
 
 -- HACK(fossas/team-analysis#514) `go list -json all` emits golang dependencies
 -- at the _package_ level; e.g., `github.com/example/foo/some/package`. The

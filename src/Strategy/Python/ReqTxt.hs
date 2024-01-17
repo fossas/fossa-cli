@@ -9,8 +9,8 @@ import Data.Foldable (asum)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
-import Diag.Diagnostic qualified as DI
 import Effect.ReadFS
+import Errata (Errata (..))
 import Graphing (Graphing)
 import Path
 import Strategy.Python.Pip (PythonPackage)
@@ -21,15 +21,19 @@ import Types
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe [PythonPackage] -> Path Abs File -> m (Graphing Dependency)
 analyze' packages file = do
-  reqs <- errCtx (ReqsTxtFailed file) $ readContentsParser requirementsTxtParser file
+  reqs <- errCtx (ReqsTxtFailedCtx file) $ errHelp ReqsTxtFailedHelp $ readContentsParser requirementsTxtParser file
   context "Building dependency graph" $ pure (buildGraph packages reqs)
 
-newtype ReqsTxtFailed = ReqsTxtFailed (Path Abs File)
+data ReqsTxtFailed
+  = ReqsTxtFailedCtx (Path Abs File)
+  | ReqsTxtFailedHelp
 instance ToDiagnostic ReqsTxtFailed where
-  renderDiagnostic (ReqsTxtFailed path) = do
-    let ctx = "Failed to parse: " <> toText (show path)
-    let help = "Ignore this error if this file isn't a python requirements.txt file."
-    DI.DiagnosticInfo Nothing Nothing Nothing Nothing (Just help) (Just ctx) Nothing
+  renderDiagnostic (ReqsTxtFailedCtx path) = do
+    let header = "Failed to parse: " <> toText (show path)
+    Errata (Just header) [] Nothing
+  renderDiagnostic ReqsTxtFailedHelp = do
+    let header = "Ignore this error if this file isn't a python requirements.txt file."
+    Errata (Just header) [] Nothing
 
 type Parser = Parsec Void Text
 

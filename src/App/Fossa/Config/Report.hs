@@ -24,17 +24,17 @@ import App.Fossa.Config.ConfigFile (ConfigFile, resolveLocalConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), fatal, fromMaybe)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), errHelp, fatal, fromMaybe)
 import Control.Effect.Lift (Has, Lift)
 import Control.Timeout (Duration (Seconds))
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
-import Data.Error (SourceLocation, getSourceLocation)
+import Data.Error (SourceLocation, createBlock, getSourceLocation)
 import Data.List (intercalate)
 import Data.String.Conversion (ToText, toText)
-import Diag.Diagnostic qualified as DI
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (..))
 import Effect.ReadFS (ReadFS)
+import Errata (Errata (..), errataSimple)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
 import Options.Applicative (
@@ -52,7 +52,7 @@ import Options.Applicative (
   strOption,
   switch,
  )
-import Prettyprinter (Doc, comma, hardline, pretty, punctuate, softline, viaShow)
+import Prettyprinter (Doc, comma, hardline, punctuate, softline, viaShow)
 import Prettyprinter.Render.Terminal (AnsiStyle)
 
 data ReportType = Attribution deriving (Eq, Ord, Enum, Bounded, Generic)
@@ -206,24 +206,28 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
 
 newtype NoFormatProvided = NoFormatProvided SourceLocation
 instance ToDiagnostic NoFormatProvided where
-  renderDiagnostic :: NoFormatProvided -> DI.DiagnosticInfo
   renderDiagnostic (NoFormatProvided srcLoc) = do
     let header = "No format provided"
-        helpMsg = "Provide a format option via '--format' to render this report. Supported formats: " <> (toText reportOutputFormatList)
-    DI.DiagnosticInfo (Just header) Nothing Nothing Nothing (Just helpMsg) Nothing (Just srcLoc)
+        block = createBlock srcLoc Nothing Nothing
+    errataSimple (Just header) block Nothing
 
 data InvalidReportFormat = InvalidReportFormat SourceLocation String
 instance ToDiagnostic InvalidReportFormat where
   renderDiagnostic (InvalidReportFormat srcLoc fmt) = do
-    let header = "Invalid report format"
-        ctxMsg = "Report format " <> toText fmt <> " is not supported"
-        helpMsg = "Provide a supported format. Supported formats: " <> (toText reportOutputFormatList)
-    DI.DiagnosticInfo (Just header) Nothing Nothing Nothing (Just helpMsg) (Just ctxMsg) (Just srcLoc)
+    let header = "Report format: " <> toText fmt <> " is not supported"
+        block = createBlock srcLoc Nothing Nothing
+    errataSimple (Just header) block Nothing
+
+data ReportErrorHelp = ReportErrorHelp
+instance ToDiagnostic ReportErrorHelp where
+  renderDiagnostic ReportErrorHelp = do
+    let header = "Provide a supported format via '--format'. Supported formats: " <> (toText reportOutputFormatList)
+    Errata (Just header) [] Nothing
 
 validateOutputFormat :: Has Diagnostics sig m => Bool -> Maybe String -> m ReportOutputFormat
 validateOutputFormat True _ = pure ReportJson
-validateOutputFormat False Nothing = fatal $ NoFormatProvided getSourceLocation
-validateOutputFormat False (Just format) = fromMaybe (InvalidReportFormat getSourceLocation format) $ parseReportOutputFormat format
+validateOutputFormat False Nothing = errHelp ReportErrorHelp $ fatal $ NoFormatProvided getSourceLocation
+validateOutputFormat False (Just format) = errHelp ReportErrorHelp $ fromMaybe (InvalidReportFormat getSourceLocation format) $ parseReportOutputFormat format
 
 data ReportConfig = ReportConfig
   { apiOpts :: ApiOpts

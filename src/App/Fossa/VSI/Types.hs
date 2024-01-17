@@ -35,8 +35,8 @@ import Data.String.Conversion (ToString, ToText, toText)
 import Data.Text (Text, isPrefixOf)
 import Data.Text qualified as Text
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
-import Diag.Diagnostic (DiagnosticInfo (..), ToDiagnostic, renderDiagnostic)
-import Effect.Logger (Pretty (pretty), viaShow)
+import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Srclib.Converter (depTypeToFetcher, fetcherToDepType)
 import Srclib.Types qualified as Srclib
@@ -97,7 +97,7 @@ instance ToText LocatorParseError where
 instance ToDiagnostic LocatorParseError where
   renderDiagnostic (RevisionRequired locator) = do
     let header = toText $ "Revision is required on locator: " <> show locator
-    DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+    Errata (Just header) [] Nothing
 
 -- | VSI locally resolves the dependencies of some VSI dependencies using the FOSSA API.
 -- In the case where a user doesn't have access to view a project that is a dependency of their project,
@@ -133,10 +133,8 @@ newtype ToDependencyError = UnsupportedLocator Locator
 
 instance ToDiagnostic ToDependencyError where
   renderDiagnostic (UnsupportedLocator locator) = do
-    let header = "Unsupported locator"
-        content = "Cannot convert fetcher " <> (locatorFetcher locator) <> " to known dependency type"
-        ctx = toText $ "Locator: " <> show locator
-    DiagnosticInfo (Just header) (Just content) Nothing Nothing Nothing (Just ctx) Nothing
+    let header = "Cannot convert fetcher " <> (locatorFetcher locator) <> " to known dependency type" <> "Locator: " <> toText (show locator)
+    Errata (Just header) [] Nothing
 
 validateLocator :: Srclib.Locator -> Either LocatorParseError Locator
 validateLocator loc = Locator (Srclib.locatorFetcher loc) (Srclib.locatorProject loc) <$> validateRevision loc

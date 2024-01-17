@@ -48,6 +48,7 @@ import DepTypes (
 import Diag.Diagnostic qualified as DI
 import Effect.Exec (AllowErr (Always), Command (..), Exec, execJson)
 import Effect.ReadFS (Has, ReadFS, readContentsJson)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (
   Graphing,
@@ -216,10 +217,10 @@ data MissingEdgesBetweenDirectDeps = MissingEdgesBetweenDirectDeps
 instance ToDiagnostic MissingEdgesBetweenDirectDeps where
   renderDiagnostic _ = do
     let header = "Could not infer edges between direct dependencies"
-    DI.DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+    Errata (Just header) [] Nothing
 
 data CmdNimbleDumpFailed = CmdNimbleDumpFailed
 instance ToDiagnostic CmdNimbleDumpFailed where
   renderDiagnostic _ = do
-    let ctx = "Could not retrieve nimble packages metadata using nimble's dump subcommand."
-    DI.DiagnosticInfo Nothing Nothing Nothing Nothing Nothing (Just ctx) Nothing
+    let header = "Could not retrieve nimble packages metadata using nimble's dump subcommand."
+    Errata (Just header) [] Nothing

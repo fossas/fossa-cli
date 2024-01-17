@@ -46,6 +46,7 @@ import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Pretty (pretty), Severity (SevDebug, SevInfo), logWarn, vsep)
 import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
+import Errata (Errata (..))
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
 import Options.Applicative (
@@ -82,12 +83,10 @@ testOutputFormatList = intercalate ", " $ map show allFormats
 
 newtype InvalidReportFormat = InvalidReportFormat String
 instance ToDiagnostic InvalidReportFormat where
-  renderDiagnostic (InvalidReportFormat fmt) =
-    pretty $
-      "Fossa test format "
-        <> toText fmt
-        <> " is not supported. Supported formats: "
-        <> (toText testOutputFormatList)
+  renderDiagnostic (InvalidReportFormat fmt) = do
+    let header = "Fossa test format: " <> toText fmt <> " is not supported"
+        body = "Supported formats: " <> toText testOutputFormatList
+    Errata (Just header) [] (Just body)
 
 validateOutputFormat :: Has Diagnostics sig m => Bool -> Maybe String -> m TestOutputFormat
 validateOutputFormat True _ = pure TestOutputJson

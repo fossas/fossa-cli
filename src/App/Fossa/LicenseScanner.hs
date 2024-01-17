@@ -43,6 +43,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
 import Data.Either.Combinators (rightToMaybe)
+import Data.Error (SourceLocation, createBlock, getSourceLocation)
 import Data.HashMap.Strict qualified as HM
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -61,6 +62,7 @@ import Effect.ReadFS (
   ReadFS,
   resolvePath',
  )
+import Errata (errataSimple)
 import Fossa.API.Types (
   Archive (Archive, archiveName),
   ArchiveComponents (..),
@@ -79,20 +81,38 @@ import Srclib.Types (
 import Types (LicenseScanPathFilters (licenseScanPathFilterFileExclude))
 
 data LicenseScanErr
-  = NoSuccessfulScans
-  | NoLicenseResults (Path Abs Dir)
-  | EmptyDirectory (Path Abs Dir)
-  | EmptyOrCorruptedArchive (Path Abs File)
-  | UnsupportedArchive (Path Abs File)
+  = NoSuccessfulScans SourceLocation
+  | NoLicenseResults SourceLocation (Path Abs Dir)
+  | EmptyDirectory SourceLocation (Path Abs Dir)
+  | EmptyOrCorruptedArchive SourceLocation (Path Abs File)
+  | UnsupportedArchive SourceLocation (Path Abs File)
 
 instance ToDiagnostic LicenseScanErr where
-  renderDiagnostic NoSuccessfulScans = "No native license scans were successful"
-  renderDiagnostic (NoLicenseResults path) = "No license results found after scanning directory: " <> pretty (toText path)
-  renderDiagnostic (EmptyDirectory path) = "vendored-dependencies path has no files and cannot be scanned: " <> pretty (toString path)
-  renderDiagnostic (EmptyOrCorruptedArchive path) = "vendored-dependencies archive is malformed or contains no files: " <> pretty (toString path)
-  renderDiagnostic (UnsupportedArchive path) = case fileExtension path of
-    Just ext -> "fossa-cli does not support archives of type " <> squotes (pretty ext) <> ": " <> pretty (toString path)
-    Nothing -> "fossa-cli does not support archives without file extensions: " <> pretty (toString path)
+  renderDiagnostic (NoSuccessfulScans srcLoc) = do
+    let header = "No native license scans were successful"
+        block = createBlock srcLoc Nothing Nothing
+    errataSimple (Just header) block Nothing
+  renderDiagnostic (NoLicenseResults srcLoc path) = do
+    let header = "No license results found after scanning directory: " <> toText path
+        block = createBlock srcLoc Nothing Nothing
+    errataSimple (Just header) block Nothing
+  renderDiagnostic (EmptyDirectory srcLoc path) = do
+    let header = "vendored-dependencies path has no files and cannot be scanned: " <> toText path
+        block = createBlock srcLoc Nothing Nothing
+    errataSimple (Just header) block Nothing
+  renderDiagnostic (EmptyOrCorruptedArchive srcLoc path) = do
+    let header = "vendored-dependencies archive is malformed or contains no files: " <> toText path
+        block = createBlock srcLoc Nothing Nothing
+    errataSimple (Just header) block Nothing
+  renderDiagnostic (UnsupportedArchive srcLoc path) = case fileExtension path of
+    Just ext -> do
+      let header = "fossa-cli does not support archives of type " <> "`" <> toText ext <> "`" <> ": " <> toText path
+          block = createBlock srcLoc Nothing Nothing
+      errataSimple (Just header) block Nothing
+    Nothing -> do
+      let header = "fossa-cli does not support archives without file extensions: " <> toText path
+          block = createBlock srcLoc Nothing Nothing
+      errataSimple (Just header) block Nothing
 
 newtype ScannableArchive = ScannableArchive {scanFile :: Path Abs File} deriving (Eq, Ord, Show)
 
@@ -249,9 +269,9 @@ scanArchive baseDir licenseScanPathFilters fullFileUploads file = runFinally $ d
   logSticky $ "scanning archive at " <> toText (scanFile file)
   result <- withArchive' (scanFile file) (scanDirectory (Just file) pathPrefix licenseScanPathFilters fullFileUploads)
   case result of
-    Left _ -> fatal . UnsupportedArchive $ scanFile file
+    Left _ -> fatal . UnsupportedArchive getSourceLocation $ scanFile file
     Right r -> case r of
-      Nothing -> fatal . EmptyOrCorruptedArchive $ scanFile file
+      Nothing -> fatal . EmptyOrCorruptedArchive getSourceLocation $ scanFile file
       Just units -> pure units
   where
     pathPrefix :: Text
@@ -273,7 +293,7 @@ scanDirectory origin pathPrefix licenseScanPathFilters fullFileUploads path = do
   hasFiles <- hasAnyFiles path
   if hasFiles
     then scanNonEmptyDirectory pathPrefix licenseScanPathFilters fullFileUploads path
-    else maybe (fatal $ EmptyDirectory path) (fatal . EmptyOrCorruptedArchive . scanFile) origin
+    else maybe (fatal $ EmptyDirectory getSourceLocation path) (fatal . EmptyOrCorruptedArchive getSourceLocation . scanFile) origin
 
 hasAnyFiles ::
   ( Has Diagnostics sig m
@@ -306,7 +326,7 @@ scanNonEmptyDirectory ::
 scanNonEmptyDirectory pathPrefix licenseScanPathFilters fullFileUploads cliScanDir = do
   themisScanResult <- runLicenseScanOnDir pathPrefix licenseScanPathFilters fullFileUploads cliScanDir
   case NE.nonEmpty themisScanResult of
-    Nothing -> fatal $ NoLicenseResults cliScanDir
+    Nothing -> fatal $ NoLicenseResults getSourceLocation cliScanDir
     Just results -> pure results
 
 uploadVendoredDep ::
@@ -371,7 +391,7 @@ licenseScanSourceUnit vendoredDependencyScanMode licenseScanPathFilters fullFile
 
   -- We need to include both scanned and skipped archives in this list so that they all get included in the build in FOSSA
   let skippedArchives = map forceVendoredToArchive $ skippableDeps skippable
-  archives <- fromMaybe NoSuccessfulScans $ NE.nonEmpty $ (catMaybes maybeScannedArchives) <> skippedArchives
+  archives <- fromMaybe (NoSuccessfulScans getSourceLocation) $ NE.nonEmpty $ (catMaybes maybeScannedArchives) <> skippedArchives
 
   -- finalizeLicenseScan takes archives without Organization information. This orgID is appended when creating the build on the backend.
   -- We don't care about the response here because if the build has already been queued, we get a 401 response.

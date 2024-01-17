@@ -11,8 +11,8 @@ import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Diag.Diagnostic qualified as DI
 import Effect.Logger (renderIt)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Options.Applicative (Parser, argument, help, metavar, str)
 import Prettyprinter (pretty, vsep)
@@ -64,11 +64,11 @@ newtype NotSupportedHostScheme = NotSupportedHostScheme Text
 instance ToDiagnostic NotSupportedHostScheme where
   renderDiagnostic (NotSupportedHostScheme provided) = do
     let header = "Host scheme not supported"
-        content =
+        body =
           renderIt $
             vsep
               [ "Only unix domain sockets are supported for DOCKER_HOST value."
               , pretty $ "fossa will use: " <> "unix://" <> defaultDockerHost <> " instead, to connect with docker engine api (if needed)."
+              , "Provided 'DOCKER_HOST' via environment variable: " <> pretty provided
               ]
-        ctx = "Provided 'DOCKER_HOST' via environment variable: " <> provided
-    DI.DiagnosticInfo (Just header) (Just content) Nothing Nothing Nothing (Just ctx) Nothing
+    Errata (Just header) [] (Just body)

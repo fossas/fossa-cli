@@ -50,8 +50,8 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import Diag.Diagnostic (DiagnosticInfo (..))
 import Effect.Logger (pretty)
+import Errata (Errata (..))
 import Strategy.AlpineLinux.Types (AlpinePackage (..))
 import Text.Megaparsec (
   MonadParsec (eof, takeWhileP),
@@ -76,13 +76,13 @@ data PackageError
 instance ToDiagnostic PackageError where
   renderDiagnostic MissingPackageName = do
     let header = "Could not identify alpine package name"
-    DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+    Errata (Just header) [] Nothing
   renderDiagnostic (MissingPackageArchitecture name) = do
     let header = "Could not identify architecture associated with " <> name
-    DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+    Errata (Just header) [] Nothing
   renderDiagnostic (MissingPackageVersion name) = do
     let header = "Could not identify version associated with " <> name
-    DiagnosticInfo (Just header) Nothing Nothing Nothing Nothing Nothing Nothing
+    Errata (Just header) [] Nothing
 
 type Parser = Parsec Void Text
 

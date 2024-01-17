@@ -46,7 +46,6 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TL
 import Data.Vector qualified as V
-import Diag.Diagnostic qualified as DI
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -70,6 +69,7 @@ import Effect.Grapher (
   withLabeling,
  )
 import Effect.ReadFS (ReadFS)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, parent)
@@ -166,8 +166,8 @@ analyze file = do
 data FailedToRetrieveLeinDependencies = FailedToRetrieveLeinDependencies
 instance ToDiagnostic FailedToRetrieveLeinDependencies where
   renderDiagnostic _ = do
-    let ctx = "Could not successfully retrieve dependencies information using lein deps subcommand"
-    DI.DiagnosticInfo Nothing Nothing Nothing Nothing Nothing (Just ctx) Nothing
+    let header = "Could not successfully retrieve dependencies information using lein deps subcommand"
+    Errata (Just header) [] Nothing
 
 -- node type for our LabeledGrapher
 data ClojureNode = ClojureNode
