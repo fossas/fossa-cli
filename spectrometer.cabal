@@ -228,6 +228,7 @@ library
     App.Fossa.ManualDeps
     App.Fossa.PathDependency
     App.Fossa.ProjectInference
+    App.Fossa.Reachability
     App.Fossa.Report
     App.Fossa.Report.Attribution
     App.Fossa.RunThemis

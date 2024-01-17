@@ -1,0 +1,17 @@
+[package]
+name = "reachability"
+version = "0.0.1"
+edition = "2021"
+
+[features]
+default = []
+
+[dependencies]
+tikv-jemallocator = { version = "0.5.4", optional = true }
+clap = { version = "4.0.0", features = ["derive"] }
+simple_logger = { version = "4.3.3", features = ["stderr", "colors"], default-features = false }
+log = "0.4.17"
+snippets = { git = "https://github.com/fossas/lib-snippets", version = "0.2.0", features = ["lang-java-11"] }
+stable-eyre = "0.2.2"
+serde = { version = "1.0.144", features = ["derive"] }
+serde_json = "1.0.85"

@@ -8,6 +8,7 @@ import App.Fossa.DumpBinaries qualified as Dump
 import App.Fossa.Init (initCommand)
 import App.Fossa.LicenseScan qualified as LicenseScan (licenseScanSubCommand)
 import App.Fossa.ListTargets qualified as ListTargets
+import App.Fossa.Reachability qualified as Reachability
 import App.Fossa.Report qualified as Report
 import App.Fossa.Snippets qualified as Snippets
 import App.Fossa.Subcommand (GetCommonOpts, GetSeverity, SubCommand (..), runSubCommand)
@@ -75,6 +76,7 @@ subcommands = public <|> private
           , experimentalLicenseScanCommand
           , decodeSubCommand Dump.dumpSubCommand
           , decodeSubCommand LicenseScan.licenseScanSubCommand
+          , decodeSubCommand Reachability.reachabilitySubCommand
           ]
     public =
       hsubparser $

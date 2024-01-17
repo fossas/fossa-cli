@@ -170,7 +170,7 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
- "simple_logger",
+ "simple_logger 2.3.0",
  "stable-eyre",
  "tikv-jemallocator",
  "typed-builder 0.10.0",
@@ -205,6 +205,17 @@ checksum = "4e2e4afe60d7dd600fdd3de8d0f08c2b7ec039712e3b6137ff98b7004e82de4f"
 dependencies = [
  "alloc-no-stdlib",
  "alloc-stdlib",
+]
+
+[[package]]
+name = "bstr"
+version = "1.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c48f0051a4b4c5e0b6d365cd04af53aeaa209e3cc15ec2cdb69e73cc87fbd0dc"
+dependencies = [
+ "memchr",
+ "regex-automata",
+ "serde",
 ]
 
 [[package]]
@@ -354,11 +365,10 @@ checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
 name = "colored"
-version = "2.0.4"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2674ec482fbc38012cf31e6c42ba0177b431a0cb6f15fe40efa5aab1bda516f6"
+checksum = "cbf2150cce219b664a8a70df7a1f933836724b503f8a413af9365b4dcc4d90b8"
 dependencies = [
- "is-terminal",
  "lazy_static",
  "windows-sys",
 ]
@@ -480,6 +490,17 @@ checksum = "1bfb12502f3fc46cca1bb51ac28df9d618d813cdc3d2f25b9fe775a34af26bb3"
 dependencies = [
  "generic-array",
  "typenum",
+]
+
+[[package]]
+name = "delegate"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ee5df75c70b95bd3aacc8e2fd098797692fb1d54121019c4de481e42f04c8a1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -824,9 +845,9 @@ checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
 name = "memchr"
-version = "2.6.4"
+version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f665ee40bc4a3c5590afb1e9677db74a508659dfd71e126420da8274909a0167"
+checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
 
 [[package]]
 name = "memoffset"
@@ -879,7 +900,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "snippets",
+ "snippets 0.1.3",
  "srclib",
  "stable-eyre",
  "strum 0.25.0",
@@ -904,6 +925,12 @@ checksum = "e7810e0be55b428ada41041c41f32c9f1a42817901b4ccf45fa3d4b6561e74c7"
 dependencies = [
  "adler",
 ]
+
+[[package]]
+name = "nonempty"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "995defdca0a589acfdd1bd2e8e3b896b4d4f7675a31fd14c32611440c7f608e6"
 
 [[package]]
 name = "nu-ansi-term"
@@ -1115,6 +1142,20 @@ checksum = "5ce3fb6ad83f861aac485e76e1985cd109d9a3713802152be56c3b1f0e0658ed"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
+]
+
+[[package]]
+name = "reachability"
+version = "0.0.1"
+dependencies = [
+ "clap 4.4.7",
+ "log",
+ "serde",
+ "serde_json",
+ "simple_logger 4.3.3",
+ "snippets 0.2.0",
+ "stable-eyre",
+ "tikv-jemallocator",
 ]
 
 [[package]]
@@ -1401,6 +1442,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "simple_logger"
+version = "4.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e7e46c8c90251d47d08b28b8a419ffb4aede0f87c2eea95e17d1d5bacbf3ef1"
+dependencies = [
+ "colored",
+ "log",
+ "windows-sys",
+]
+
+[[package]]
 name = "smallvec"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1428,6 +1480,35 @@ dependencies = [
  "tree-sitter",
  "tree-sitter-c",
  "tree-sitter-cpp",
+ "tree-sitter-traversal",
+ "typed-builder 0.15.2",
+]
+
+[[package]]
+name = "snippets"
+version = "0.2.0"
+source = "git+https://github.com/fossas/lib-snippets#fda3a846c78a1f1a9a4fa6d9e1eefbf2fbf2a229"
+dependencies = [
+ "base64 0.21.5",
+ "bstr",
+ "colored",
+ "delegate",
+ "derivative",
+ "derive_more",
+ "fallible-iterator",
+ "flagset",
+ "getset",
+ "itertools 0.11.0",
+ "lazy-regex",
+ "nonempty",
+ "once_cell",
+ "sha2",
+ "strum 0.25.0",
+ "tap",
+ "thiserror",
+ "tracing",
+ "tree-sitter",
+ "tree-sitter-java",
  "tree-sitter-traversal",
  "typed-builder 0.15.2",
 ]
@@ -1739,6 +1820,16 @@ name = "tree-sitter-cpp"
 version = "0.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b4b625f46a7370544b9cf0545532c26712ae49bfc02eb09825db358b9f79e1"
+dependencies = [
+ "cc",
+ "tree-sitter",
+]
+
+[[package]]
+name = "tree-sitter-java"
+version = "0.20.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2adc5696bf5abf761081d7457d2bb82d0e3b28964f4214f63fd7e720ef462653"
 dependencies = [
  "cc",
  "tree-sitter",

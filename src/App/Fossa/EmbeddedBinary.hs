@@ -10,6 +10,7 @@ module App.Fossa.EmbeddedBinary (
   toPath,
   withThemisAndIndex,
   withBerkeleyBinary,
+  withReachabilityBinary,
   withLernieBinary,
   withMillhoneBinary,
   allBins,
@@ -59,6 +60,7 @@ data PackagedBinary
   | BerkeleyDB
   | Lernie
   | Millhone
+  | Reachability
   deriving (Show, Eq, Enum, Bounded)
 
 allBins :: [PackagedBinary]
@@ -106,6 +108,13 @@ extractThemisFiles = do
   _ <- sendIO $ ensureDir $ parent $ toPath decompressedThemisIndex
   _ <- sendIO $ BL.writeFile (toString $ toPath decompressedThemisIndex) (Lzma.decompress $ toLazy embeddedBinaryThemisIndex)
   pure $ ThemisBins themisActual $ applyTag @ThemisIndex decompressedThemisIndex
+
+withReachabilityBinary ::
+  ( Has (Lift IO) sig m
+  ) =>
+  (BinaryPaths -> m c) ->
+  m c
+withReachabilityBinary = withEmbeddedBinary Reachability
 
 withBerkeleyBinary ::
   ( Has (Lift IO) sig m
@@ -159,6 +168,7 @@ writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
   Themis -> embeddedBinaryThemis
   ThemisIndex -> embeddedBinaryThemisIndex
   BerkeleyDB -> embeddedBinaryBerkeleyDB
+  Reachability -> embeddedBinaryReachability
   Lernie -> embeddedBinaryLernie
   Millhone -> embeddedBinaryMillhone
 
@@ -175,6 +185,7 @@ extractedPath bin = case bin of
   BerkeleyDB -> $(mkRelFile "berkeleydb-plugin")
   Lernie -> $(mkRelFile "lernie")
   Millhone -> $(mkRelFile "millhone")
+  Reachability -> $(mkRelFile "reachability")
 
 -- | Extract to @$TMP/fossa-vendor/<uuid>
 -- We used to extract everything to @$TMP/fossa-vendor@, but there's a subtle issue with that.
@@ -231,4 +242,13 @@ embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb.exe")
 #else
 embeddedBinaryBerkeleyDB :: ByteString
 embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb")
+#endif
+
+-- To build this, run `make build` or `cargo build --release`.
+#ifdef mingw32_HOST_OS
+embeddedBinaryReachability :: ByteString
+embeddedBinaryReachability = $(embedFileIfExists "target/release/reachability.exe")
+#else
+embeddedBinaryReachability :: ByteString
+embeddedBinaryReachability = $(embedFileIfExists "target/release/reachability")
 #endif

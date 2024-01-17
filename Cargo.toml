@@ -2,6 +2,7 @@
 members = [
   "extlib/berkeleydb",
   "extlib/millhone",
+  "extlib/reachability",
   "tools/diagnose",
 ]
 
