@@ -6,6 +6,7 @@ module App.Fossa.Analyze.ScanSummary (
   renderScanSummary,
 ) where
 
+import App.Docs (staticAndDynamicStrategies)
 import App.Fossa.Analyze.Project (
   ProjectResult (projectResultPath),
   projectResultType,
@@ -83,7 +84,6 @@ import Srclib.Types (
   sourceUnitOriginPaths,
  )
 import Types (DepType (ArchiveType), DiscoveredProjectType, projectTypeToText)
-import App.Docs (staticAndDynamicStrategies)
 
 data ScanCount = ScanCount
   { numProjects :: Int
