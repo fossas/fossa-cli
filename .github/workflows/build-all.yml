@@ -387,7 +387,7 @@ jobs:
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/fossa.exe
         zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/diagnose.exe
         zip -j release/millhone_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/millhone.exe
-        zip -j release/reachability_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/reachability.exe
+        zip -j release/reachability_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip Windows-binaries/reachability.exe
 
     - name: Create checksums
       # We have to run from within the release dir so that "release" isn't prepended to the relative path of the zip file.
