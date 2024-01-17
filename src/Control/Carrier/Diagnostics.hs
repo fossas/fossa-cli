@@ -27,6 +27,7 @@ import Control.Exception.Extra (safeCatch)
 import Control.Monad (void)
 import Control.Monad.Trans
 import Data.Foldable (traverse_)
+import Data.Functor (($>))
 import Diag.Monad (ResultT)
 import Diag.Monad qualified as ResultT
 import Diag.Result (Result (Failure, Success), renderFailure, renderFailureWithoutWarnings, renderSuccess)
@@ -49,7 +50,7 @@ logDiagnostic diag = do
   case result of
     Failure ws eg -> do
       logDebug (renderFailure ws eg "An issue occurred")
-      logError (renderFailureWithoutWarnings eg "An issue occurred") >> pure Nothing
+      logError (renderFailureWithoutWarnings eg "An issue occurred") $> Nothing
     Success ws a -> do
       traverse_ logDebug (renderSuccess ws "A task succeeded with warnings")
       pure (Just a)
