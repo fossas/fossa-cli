@@ -72,9 +72,21 @@ findProjects osInfo = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "Packages" files of
     Nothing -> pure ([], WalkContinue)
     Just file -> do
-      if (Text.isInfixOf "var/lib/rpm/" $ toText . toFilePath $ file)
+      if isSupportedPath file
         then pure ([BerkeleyDatabase dir file osInfo], WalkContinue)
         else pure ([], WalkContinue)
+  where
+    -- The standard location for this is '/var/lib/rpm/',
+    -- but some distros in some versions symlink this elsewhere.
+    --
+    -- For maximal compatibility while still being reasonably confident that this is the 'Packages.db'
+    -- for the system RPM install, this function just checks whether the file is a child of any directory that
+    -- contains the word 'rpm'.
+    --
+    -- We may want to consider making walk work with symlinks (so that we are confident we're using the right file)
+    -- or unconditionally trying any 'Packages.db' named file.
+    isSupportedPath :: Path Abs File -> Bool
+    isSupportedPath = Text.isInfixOf "rpm" . toText . toFilePath
 
 mkProject :: BerkeleyDatabase -> DiscoveredProject BerkeleyDatabase
 mkProject project =
