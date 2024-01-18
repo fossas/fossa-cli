@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.8.31
+
+- Container scanning: `BerkeleyDB` and `Sqlite` strategies now support RPM databases in non-standard locations ([#1365](https://github.com/fossas/fossa-cli/pull/1365)).
+
 ## v3.8.30
 
 - Fix an issue with long-option syntax for older versions of `sbt` ([#1356](https://github.com/fossas/fossa-cli/pull/1356))
