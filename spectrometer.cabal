@@ -489,6 +489,7 @@ library
     Text.URI.Builder
     Type.Operator
     Types
+    Style
 
   hs-source-dirs:  src
 

@@ -24,7 +24,7 @@ import App.Fossa.Config.Container.Common (
   imageTextArg,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars)
-import App.Fossa.Config.Test (TestOutputFormat (TestOutputJson, TestOutputPretty), defaultOutputFmt, testOutputFormatList, validateOutputFormat)
+import App.Fossa.Config.Test (TestOutputFormat (TestOutputJson, TestOutputPretty), defaultOutputFmt, testFormatHelp, validateOutputFormat)
 import App.Types (OverrideProject (OverrideProject))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Monad (when)
@@ -41,22 +41,23 @@ import Options.Applicative (
   auto,
   command,
   flag,
-  help,
   info,
   internal,
   long,
   option,
   optional,
-  progDesc,
+  progDescDoc,
   strOption,
  )
+import Options.Applicative.Builder (helpDoc)
+import Style (applyFossaStyle, formatStringToDoc)
 
 subcommand :: (ContainerTestOptions -> a) -> Mod CommandFields a
 subcommand f =
   command
     "test"
     ( info (f <$> cliParser) $
-        progDesc "Check for issues from FOSSA and exit non-zero when issues are found"
+        progDescDoc (formatStringToDoc "Check for issues from FOSSA and exit non-zero when issues are found")
     )
 
 data ContainerTestConfig = ContainerTestConfig
@@ -85,9 +86,9 @@ cliParser :: Parser ContainerTestOptions
 cliParser =
   ContainerTestOptions
     <$> commonOpts
-    <*> optional (option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)"))
-    <*> flag TestOutputPretty TestOutputJson (long "json" <> help "Output issues as json" <> internal)
-    <*> optional (strOption (long "format" <> help ("Output the report in the specified format. Currently available formats: (" <> testOutputFormatList <> ")")))
+    <*> optional (option auto (applyFossaStyle <> long "timeout" <> helpDoc (formatStringToDoc "Duration to wait for build completion (in seconds)")))
+    <*> flag TestOutputPretty TestOutputJson (applyFossaStyle <> long "json" <> helpDoc (formatStringToDoc "Output issues as JSON") <> internal)
+    <*> optional (strOption (applyFossaStyle <> long "format" <> helpDoc testFormatHelp))
     <*> imageTextArg
 
 mergeOpts ::

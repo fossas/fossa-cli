@@ -32,10 +32,13 @@ import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (strip, toLower)
-import Effect.Logger (Has, Logger, Severity (SevDebug, SevInfo))
+import Effect.Logger (Has, Logger, Severity (SevDebug, SevInfo), vsep)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Options.Applicative (InfoMod, Parser, ReadM, eitherReader, help, long, option, optional, progDesc)
+import Options.Applicative (InfoMod, Parser, ReadM, eitherReader, helpDoc, long, option, optional, progDescDoc)
+import Prettyprinter (Doc)
+import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green))
+import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, formatStringToDoc)
 
 data ListTargetOutputFormat
   = Legacy
@@ -68,7 +71,7 @@ loadConfig ::
 loadConfig = resolveLocalConfigFile . optConfig . commons
 
 listTargetsInfo :: InfoMod a
-listTargetsInfo = progDesc "List available analysis-targets in a directory (projects and sub-projects)"
+listTargetsInfo = progDescDoc $ formatStringToDoc "List available analysis-targets in a directory (projects and sub-projects)"
 
 parser :: Parser ListTargetsCliOpts
 parser =
@@ -78,10 +81,20 @@ parser =
     <*> optional
       ( option
           parseListTargetOutput
-          ( long "format"
-              <> help "output format to use: legacy, ndjson, text (default: legacy)"
+          ( applyFossaStyle
+              <> long "format"
+              <> helpDoc listTargetsFormatHelp
           )
       )
+  where
+    listTargetsFormatHelp :: Maybe (Doc AnsiStyle)
+    listTargetsFormatHelp =
+      Just $
+        formatDoc $
+          vsep
+            [ boldItalicized "Formats: " <> coloredBoldItalicized Green "legacy" <> boldItalicized "|" <> coloredBoldItalicized Green "ndjson" <> boldItalicized "|" <> coloredBoldItalicized Green "text"
+            , boldItalicized "Default: " <> coloredBoldItalicized Green "legacy"
+            ]
 
 mergeOpts ::
   ( Has Diagnostics sig m

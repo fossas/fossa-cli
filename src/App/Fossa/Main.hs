@@ -18,46 +18,32 @@ import Control.Concurrent.CGroup (initRTSThreads)
 import Control.Monad (join)
 import Data.Aeson (ToJSON)
 import Data.String.Conversion (toString)
-import Options.Applicative (
-  CommandFields,
-  InfoMod,
-  Mod,
-  Parser,
-  ParserPrefs,
-  command,
-  customExecParser,
-  footer,
-  fullDesc,
-  header,
-  help,
-  helpShowGlobals,
-  helper,
-  hsubparser,
-  info,
-  infoOption,
-  internal,
-  long,
-  prefs,
-  progDesc,
-  short,
-  showHelpOnEmpty,
-  showHelpOnError,
-  subparser,
-  subparserInline,
-  (<**>),
-  (<|>),
- )
+import Options.Applicative (CommandFields, InfoMod, Mod, Parser, ParserPrefs, columns, command, customExecParser, footer, fullDesc, header, helpIndent, helpShowGlobals, info, infoOption, internal, long, prefs, progDescDoc, short, showHelpOnEmpty, showHelpOnError, subparser, subparserInline, (<**>), (<|>))
+import Options.Applicative.Builder (helpDoc)
+import Options.Applicative.Extra (helperWith)
+import Style (applyFossaStyle, formatStringToDoc)
 
 appMain :: IO ()
 appMain = do
   initRTSThreads
-  join $ customExecParser mainPrefs $ info (subcommands <**> helper <**> versionOpt) progData
+  join $ customExecParser mainPrefs $ info (subcommands <**> helperOpt <**> versionOpt) progData
 
 versionOpt :: Parser (a -> a)
 versionOpt =
   infoOption (toString fullVersionDescription) $
     mconcat
-      [long "version", short 'V', help "show version information and exit"]
+      [applyFossaStyle, long "version", short 'V', helpDoc $ formatStringToDoc "Show version information and exit"]
+
+helperOpt :: Parser (a -> a)
+helperOpt =
+  helperWith
+    ( mconcat
+        [ applyFossaStyle
+        , long "help"
+        , short 'h'
+        , helpDoc $ formatStringToDoc "Show this help text"
+        ]
+    )
 
 progData :: InfoMod (IO ())
 progData =
@@ -77,7 +63,7 @@ subcommands = public <|> private
           , decodeSubCommand LicenseScan.licenseScanSubCommand
           ]
     public =
-      hsubparser $
+      subparser $
         mconcat
           [ decodeSubCommand Analyze.analyzeSubCommand
           , decodeSubCommand Test.testSubCommand
@@ -90,7 +76,7 @@ subcommands = public <|> private
           ]
 
 experimentalLicenseScanCommand :: Mod CommandFields (IO ())
-experimentalLicenseScanCommand = command "experimental-license-scan" (info runInit $ progDesc "The 'experimental-license-scan' command has been deprecated and renamed to 'license-scan'")
+experimentalLicenseScanCommand = command "experimental-license-scan" (info runInit $ progDescDoc $ formatStringToDoc "The 'experimental-license-scan' command has been deprecated and renamed to 'license-scan'")
   where
     runInit :: Parser (IO ())
     runInit = pure $ putStrLn "The 'experimental-license-scan' has been deprecated and renamed to 'license-scan'. Please use the 'license-scan' command instead."
@@ -105,5 +91,7 @@ mainPrefs =
       [ showHelpOnEmpty
       , showHelpOnError
       , subparserInline
+      , columns 150
       , helpShowGlobals
+      , helpIndent 1 -- allows the help message to appear on new line
       ]

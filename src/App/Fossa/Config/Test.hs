@@ -13,6 +13,7 @@ module App.Fossa.Config.Test (
   testOutputFormatList,
   defaultOutputFmt,
   parseFossaTestOutputFormat,
+  testFormatHelp,
 ) where
 
 import App.Fossa.Config.Common (
@@ -53,14 +54,17 @@ import Options.Applicative (
   Parser,
   auto,
   flag,
-  help,
+  helpDoc,
   internal,
   long,
   option,
   optional,
-  progDesc,
+  progDescDoc,
   strOption,
  )
+import Prettyprinter (Doc, punctuate, viaShow)
+import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green))
+import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, formatStringToDoc)
 
 data TestOutputFormat
   = TestOutputPretty
@@ -76,9 +80,21 @@ defaultOutputFmt = TestOutputPretty
 
 testOutputFormatList :: String
 testOutputFormatList = intercalate ", " $ map show allFormats
-  where
-    allFormats :: [TestOutputFormat]
-    allFormats = enumFromTo minBound maxBound
+
+allFormats :: [TestOutputFormat]
+allFormats = enumFromTo minBound maxBound
+
+styledOutputFormats :: Doc AnsiStyle
+styledOutputFormats = mconcat (punctuate (boldItalicized "|") (map (coloredBoldItalicized Green . viaShow) allFormats))
+
+testFormatHelp :: Maybe (Doc AnsiStyle)
+testFormatHelp =
+  Just $
+    formatDoc $
+      vsep
+        [ "Output the report in the specified format"
+        , boldItalicized "Formats: " <> styledOutputFormats
+        ]
 
 newtype InvalidReportFormat = InvalidReportFormat String
 instance ToDiagnostic InvalidReportFormat where
@@ -137,7 +153,7 @@ instance ToJSON TestConfig where
   toEncoding = genericToEncoding defaultOptions
 
 testInfo :: InfoMod a
-testInfo = progDesc "Check for issues from FOSSA and exit non-zero when issues are found"
+testInfo = progDescDoc $ formatStringToDoc "Check for issues from FOSSA and exit non-zero when issues are found"
 
 mkSubCommand :: (TestConfig -> EffStack ()) -> SubCommand TestCliOpts TestConfig
 mkSubCommand = SubCommand "test" testInfo parser loadConfig mergeOpts
@@ -146,11 +162,20 @@ parser :: Parser TestCliOpts
 parser =
   TestCliOpts
     <$> commonOpts
-    <*> optional (option auto (long "timeout" <> help "Duration to wait for build completion in seconds (Defaults to 1 hour)"))
-    <*> flag defaultOutputFmt TestOutputJson (long "json" <> help "Output issues as json" <> internal)
-    <*> optional (strOption (long "format" <> help ("Output the report in the specified format. Currently available formats: (" <> testOutputFormatList <> ")")))
+    <*> optional (option auto (applyFossaStyle <> long "timeout" <> helpDoc timeoutHelp))
+    <*> flag defaultOutputFmt TestOutputJson (applyFossaStyle <> long "json" <> helpDoc (formatStringToDoc "Output issues as JSON") <> internal)
+    <*> optional (strOption (applyFossaStyle <> long "format" <> helpDoc testFormatHelp))
     <*> baseDirArg
-    <*> optional (strOption (long "diff" <> help "Checks for new issues of the revision, that does not exist in provided diff revision."))
+    <*> optional (strOption (applyFossaStyle <> long "diff" <> helpDoc (formatStringToDoc "Checks for new issues of the revision that does not exist in provided diff revision")))
+  where
+    timeoutHelp :: Maybe (Doc AnsiStyle)
+    timeoutHelp =
+      Just $
+        formatDoc $
+          vsep
+            [ "Duration to wait for build completion in seconds"
+            , boldItalicized "Default: " <> "1 hour"
+            ]
 
 loadConfig ::
   ( Has (Lift IO) sig m

@@ -31,7 +31,7 @@ import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.List (intercalate)
 import Data.String.Conversion (ToText, toText)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, Severity (..))
+import Effect.Logger (Logger, Severity (..), vsep)
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
@@ -40,7 +40,6 @@ import Options.Applicative (
   Parser,
   argument,
   auto,
-  help,
   long,
   maybeReader,
   metavar,
@@ -50,8 +49,10 @@ import Options.Applicative (
   strOption,
   switch,
  )
-import Prettyprinter (Doc, comma, hardline, pretty, punctuate, softline, viaShow)
-import Prettyprinter.Render.Terminal (AnsiStyle)
+import Options.Applicative.Builder (helpDoc)
+import Prettyprinter (Doc, comma, hardline, pretty, punctuate, viaShow)
+import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green, Red))
+import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, formatStringToDoc)
 
 data ReportType = Attribution deriving (Eq, Ord, Enum, Bounded, Generic)
 
@@ -101,31 +102,32 @@ instance Show ReportOutputFormat where
   show ReportHTML = "html"
   show ReportCSV = "csv"
 
+allFormats :: [ReportOutputFormat]
+allFormats = enumFromTo minBound maxBound
+
 reportOutputFormatList :: String
 reportOutputFormatList = intercalate ", " $ map show allFormats
-  where
-    allFormats :: [ReportOutputFormat]
-    allFormats = enumFromTo minBound maxBound
+
+styledReportOutputFormats :: Doc AnsiStyle
+styledReportOutputFormats = mconcat (punctuate (boldItalicized "|") (map (coloredBoldItalicized Green . viaShow) allFormats))
 
 instance ToJSON ReportOutputFormat where
   toEncoding = genericToEncoding defaultOptions
 
-reportInfo :: InfoMod a
-reportInfo = progDescDoc (Just desc)
-  where
-    allReports :: [ReportType]
-    allReports = enumFromTo minBound maxBound
+allReports :: [ReportType]
+allReports = enumFromTo minBound maxBound
 
+reportInfo :: InfoMod a
+reportInfo = progDescDoc (Just $ formatDoc desc)
+  where
     desc :: Doc AnsiStyle
     desc =
-      "Access various reports from FOSSA and print to stdout."
-        <> softline
-        <> "Currently available reports: ("
+      "Access various reports from FOSSA and print to stdout"
+        <> hardline
+        <> "Currently available reports: "
         <> mconcat (punctuate comma (map viaShow allReports))
-        <> ")"
         <> hardline
-        <> "Examples: "
-        <> hardline
+        <> "Example: "
         <> "fossa report --format html attribution"
 
 mkSubCommand :: (ReportConfig -> EffStack ()) -> SubCommand ReportCliOptions ReportConfig
@@ -135,14 +137,32 @@ parser :: Parser ReportCliOptions
 parser =
   ReportCliOptions
     <$> commonOpts
-    <*> switch (long "json" <> help "Output the report in JSON format. Equivalent to '--format json', and overrides --format. Deprecated: prefer --format")
-    <*> optional (strOption (long "format" <> help ("Output the report in the specified format. Currently available formats: (" <> reportOutputFormatList <> ")")))
-    <*> optional (option auto (long "timeout" <> help "Duration to wait for build completion (in seconds)"))
+    <*> switch (applyFossaStyle <> long "json" <> helpDoc jsonHelp)
+    <*> optional (strOption (applyFossaStyle <> long "format" <> helpDoc formatHelp))
+    <*> optional (option auto (applyFossaStyle <> long "timeout" <> helpDoc (formatStringToDoc "Duration to wait for build completion (in seconds)")))
     <*> reportTypeArg
     <*> baseDirArg
+  where
+    jsonHelp :: Maybe (Doc AnsiStyle)
+    jsonHelp =
+      Just $
+        formatDoc $
+          vsep
+            [ "Output the report in JSON format. Equivalent to " <> coloredBoldItalicized Green "--format json" <> " and overrides " <> coloredBoldItalicized Green "--format"
+            , coloredBoldItalicized Red "Deprecated: " <> "prefer " <> coloredBoldItalicized Green "--format"
+            ]
+
+    formatHelp :: Maybe (Doc AnsiStyle)
+    formatHelp =
+      Just $
+        formatDoc $
+          vsep
+            [ "Output the report in the specified format"
+            , boldItalicized "Formats: " <> styledReportOutputFormats
+            ]
 
 reportTypeArg :: Parser ReportType
-reportTypeArg = argument (maybeReader parseType) (metavar "REPORT" <> help "The report type to fetch from the server.")
+reportTypeArg = argument (maybeReader parseType) (applyFossaStyle <> metavar "REPORT" <> helpDoc (formatStringToDoc "The report type to fetch from the server"))
   where
     parseType :: String -> Maybe ReportType
     parseType = \case

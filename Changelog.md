@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- Add color and update formatting in cli help commands
+
 ## v3.8.30
 
 - Fix an issue with long-option syntax for older versions of `sbt` ([#1356](https://github.com/fossas/fossa-cli/pull/1356))
