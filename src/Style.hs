@@ -1,12 +1,4 @@
-module Style (
-    coloredText,
-    formatStringToDoc,
-    formatDoc,
-    applyFossaStyle,
-    boldItalicized,
-    coloredBoldItalicized,
-    coloredBoldItalicizedString,
-) where
+module Style (coloredText, formatStringToDoc, formatDoc, applyFossaStyle, boldItalicized, coloredBoldItalicized, coloredBoldItalicizedString) where
 
 import Data.String.Conversion (toString)
 import Effect.Logger (newlineTrailing, vsep)
