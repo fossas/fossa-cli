@@ -124,7 +124,7 @@ See the linked documentation above for details.
 Languages supported by FOSSA CLI can have multiple strategies for detecting dependencies, one primary strategy that yields ideal results and zero or more fallback strategies. Within this list of strategies, we have the concept of _static_ and _dynamic_ strategies. Static strategies parse files to find a dependency graph (example: parse a `package-lock.json` file). Dynamic strategies are required when analyzing package managers that do not offer complete lockfiles, such as Gradle or Go. Dynamic strategies require a working build environment to operate in.
 
 Running the tool with all possible strategies enabled is recommended, but if you need to limit FOSSA CLI to only use static strategies the CLI offers the `--static-only-analysis` flag.
-This flag prevents the FOSSA CLI from using any third party tools, such as `npm`, `pip`, maven plugins, etc.
+This flag prevents FOSSA CLI from using any third party tools, such as `npm`, `pip`, maven plugins, etc.
 With this option enabled, strategies that don't offer a way to analyze statically will fail with an error.
 
 It is important to note that neither type of strategy has an inherent benefit when detecting dependencies. If a supported language has only a static or only a dynamic strategy, this does not mean it is less supported than a language that has both.
