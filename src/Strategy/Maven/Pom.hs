@@ -22,6 +22,7 @@ import Effect.Grapher
 import Graphing (Graphing)
 import Path
 import Path.IO qualified as Path
+import Strategy.Maven.Common (MavenDependency (..))
 import Strategy.Maven.Pom.Closure
 import Strategy.Maven.Pom.PomFile
 import Types
@@ -32,7 +33,7 @@ data MavenStrategyOpts = MavenStrategyOpts
   }
   deriving (Eq, Ord, Show)
 
-analyze' :: MavenProjectClosure -> Graphing Dependency
+analyze' :: MavenProjectClosure -> Graphing MavenDependency
 analyze' = buildProjectGraph
 
 getLicenses :: MavenProjectClosure -> [LicenseResult]
@@ -64,19 +65,28 @@ data MavenLabel
   | MavenLabelOptional Text
   deriving (Eq, Ord, Show)
 
-toDependency :: MavenPackage -> Set MavenLabel -> Dependency
-toDependency (MavenPackage group artifact version) = foldr applyLabel start
+toDependency :: MavenPackage -> Set MavenLabel -> MavenDependency
+toDependency (MavenPackage group artifact version) = foldr applyLabelToMavenDep start
   where
-    start :: Dependency
-    start =
-      Dependency
-        { dependencyType = MavenType
-        , dependencyName = group <> ":" <> artifact
-        , dependencyVersion = CEq <$> version
-        , dependencyLocations = []
-        , dependencyEnvironments = mempty
-        , dependencyTags = Map.empty
-        }
+    start :: MavenDependency
+    start = do
+      let dep =
+            Dependency
+              { dependencyType = MavenType
+              , dependencyName = group <> ":" <> artifact
+              , dependencyVersion = CEq <$> version
+              , dependencyLocations = []
+              , dependencyEnvironments = mempty
+              , dependencyTags = Map.empty
+              }
+      MavenDependency dep (Set.fromList []) mempty
+
+    applyLabelToMavenDep :: MavenLabel -> MavenDependency -> MavenDependency
+    applyLabelToMavenDep lbl mavenDep = do
+      case lbl of
+        MavenLabelScope scope ->
+          mavenDep{dependency = applyLabel lbl $ dependency mavenDep, dependencyScopes = Set.insert scope $ dependencyScopes mavenDep}
+        _ -> mavenDep{dependency = applyLabel lbl $ dependency mavenDep}
 
     applyLabel :: MavenLabel -> Dependency -> Dependency
     applyLabel lbl dep = case lbl of
@@ -90,8 +100,7 @@ toDependency (MavenPackage group artifact version) = foldr applyLabel start
     addTag :: Text -> Text -> Dependency -> Dependency
     addTag key value dep = dep{dependencyTags = Map.insertWith (++) key [value] (dependencyTags dep)}
 
--- TODO: set top-level direct deps as direct instead of the project?
-buildProjectGraph :: MavenProjectClosure -> Graphing Dependency
+buildProjectGraph :: MavenProjectClosure -> Graphing MavenDependency
 buildProjectGraph closure = run . withLabeling toDependency $ do
   direct (coordToPackage (closureRootCoord closure))
   go (closureRootCoord closure) (closureRootPom closure)
@@ -118,7 +127,6 @@ buildProjectGraph closure = run . withLabeling toDependency $ do
         addDep :: Has MavenGrapher sig m => (Group, Artifact) -> MvnDepBody -> m ()
         addDep (group, artifact) body = do
           let depPackage = buildMavenPackage completePom group artifact body
-
           edge (coordToPackage coord) depPackage
           traverse_ (label depPackage . MavenLabelScope) (depScope body)
           traverse_ (label depPackage . MavenLabelOptional) (depOptional body)

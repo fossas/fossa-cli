@@ -8,14 +8,14 @@ import Control.Carrier.Diagnostics (DiagnosticsC)
 import Control.Carrier.Reader (ReaderC)
 import Control.Carrier.Stack (StackC)
 import Control.Carrier.Telemetry (TelemetryC)
-import Discovery.Filters (AllFilters)
+import Discovery.Filters (AllFilters, MavenScopeFilters)
 import Effect.Exec (ExecIOC)
 import Effect.Logger (LoggerC)
 import Effect.ReadFS (ReadFSIOC)
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Type.Operator (type ($))
 
-type SomeMonad = TelemetryC $ ReaderC OverrideDynamicAnalysisBinary $ ReaderC ExperimentalAnalyzeConfig $ ReaderC AllFilters $ DebugC $ DiagnosticsC $ LoggerC $ ExecIOC $ ReadFSIOC $ StackC IO
+type SomeMonad = TelemetryC $ ReaderC OverrideDynamicAnalysisBinary $ ReaderC ExperimentalAnalyzeConfig $ ReaderC MavenScopeFilters $ ReaderC AllFilters $ DebugC $ DiagnosticsC $ LoggerC $ ExecIOC $ ReadFSIOC $ StackC IO
 
 spec :: Spec
 spec =

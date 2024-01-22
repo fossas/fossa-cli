@@ -119,11 +119,13 @@ See the linked documentation above for details.
 - [cocoapods](platforms/ios/cocoapods.md)
 - [swiftPM](platforms/ios/swift.md)
 
-## Strategies by type
+## Static and Dynamic Strategies
 
 Languages supported by FOSSA CLI can have multiple strategies for detecting dependencies, one primary strategy that yields ideal results and zero or more fallback strategies. Within this list of strategies, we have the concept of _static_ and _dynamic_ strategies. Static strategies parse files to find a dependency graph (example: parse a `package-lock.json` file). Dynamic strategies are required when analyzing package managers that do not offer complete lockfiles, such as Gradle or Go. Dynamic strategies require a working build environment to operate in.
 
 It is important to note that neither type of strategy has an inherent benefit when detecting dependencies. If a supported language has only a static or only a dynamic strategy, this does not mean it is less supported than a language that
+
+### Strategies by type
 
 > If the FOSSA CLI is forced to utilize a fallback strategy, meaning it did not detect ideal results, a warning is emitted in the scan summary after running `fossa analyze`.
 
@@ -154,7 +156,7 @@ It is important to note that neither type of strategy has an inherent benefit wh
 | [Python (Pipenv)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/pipenv.md)                        | ✅         | ✅         | ❌                    | Dynamic          |
 | [Python (Poetry)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/poetry.md)                        | ❌         | ✅         | ❌                    | Static           |
 | [Python (Pdm)](./languages/python/pdm.md)                                                                                                       | ❌         | ✅         | ❌                    | Static           |
-| [Python (setup.py/requirements.txt)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/setuptools.md) | ❌         | ✅         | ❌                    | Static           |
+| [Python (setup.py/requirements.txt)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/setuptools.md) | ✅         | ✅         | ❌                    | Dynamic          |
 | [R (renv)](./languages/r/renv.md)                                                                                                               | ❌         | ✅         | ❌                    | Static           |
 | [Ruby (bundler)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/ruby/ruby.md)                             | ✅         | ✅         | ❌                    | Static           |
 | [Rust (cargo)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/rust/rust.md)                               | ✅         | ❌         | ❌                    | Dynamic          |

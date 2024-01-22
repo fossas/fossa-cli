@@ -91,5 +91,5 @@ spec = do
         Left r -> do
           T.expectationFailure $ "failed to parse: error:" ++ errorBundlePretty r
         Right res -> do
-          let result = buildGraph res
+          let result = buildGraph Nothing res
           expectDeps [depOne, depTwo, depThree, depFour] result

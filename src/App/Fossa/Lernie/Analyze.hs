@@ -2,6 +2,8 @@
 
 module App.Fossa.Lernie.Analyze (
   analyzeWithLernie,
+  -- Exported for use in hubble
+  analyzeWithLernieMain,
   -- Exported for testing
   analyzeWithLernieWithOrgInfo,
   singletonLernieMessage,
@@ -25,6 +27,7 @@ import App.Fossa.Lernie.Types (
   LernieWarning (..),
   OrgWideCustomLicenseConfigPolicy (..),
  )
+import App.Types (FullFileUploads (..))
 import Control.Carrier.Debug (Debug)
 import Control.Carrier.Diagnostics (Diagnostics, fatal, warn)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
@@ -32,11 +35,12 @@ import Control.Carrier.Telemetry.Types
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Has, Lift)
 import Control.Effect.Telemetry (Telemetry, trackUsage)
-import Control.Monad (unless)
+import Control.Monad (join, unless)
 import Data.Aeson (decode)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Foldable (fold, traverse_)
+import Data.HashMap.Internal.Strict (HashMap)
 import Data.HashMap.Strict qualified as H
 import Data.HashMap.Strict qualified as HashMap
 import Data.Hashable (Hashable)
@@ -71,8 +75,8 @@ analyzeWithLernie ::
   m (Maybe LernieResults)
 analyzeWithLernie rootDir maybeApiOpts grepOptions = do
   case (maybeApiOpts, orgWideCustomLicenseScanConfigPolicy grepOptions) of
-    (_, Ignore) -> analyzeWithLernieMain rootDir grepOptions
-    (Nothing, Use) -> analyzeWithLernieMain rootDir grepOptions
+    (_, Ignore) -> analyzeWithLernieMain rootDir grepOptions (FullFileUploads False)
+    (Nothing, Use) -> analyzeWithLernieMain rootDir grepOptions (FullFileUploads False)
     (Just apiOpts, Use) -> runFossaApiClient apiOpts $ analyzeWithLernieWithOrgInfo rootDir grepOptions
 
 analyzeWithLernieWithOrgInfo ::
@@ -88,7 +92,8 @@ analyzeWithLernieWithOrgInfo ::
   m (Maybe LernieResults)
 analyzeWithLernieWithOrgInfo rootDir grepOptions = do
   orgWideCustomLicenses <- orgCustomLicenseScanConfigs <$> getOrganization
-  analyzeWithLernieMain rootDir grepOptions{customLicenseSearch = nub $ orgWideCustomLicenses <> customLicenseSearch grepOptions}
+  fullFiles <- orgRequiresFullFileUploads <$> getOrganization
+  analyzeWithLernieMain rootDir grepOptions{customLicenseSearch = nub $ orgWideCustomLicenses <> customLicenseSearch grepOptions} $ FullFileUploads fullFiles
 
 analyzeWithLernieMain ::
   ( Has Diagnostics sig m
@@ -99,9 +104,10 @@ analyzeWithLernieMain ::
   ) =>
   Path Abs Dir ->
   GrepOptions ->
+  FullFileUploads ->
   m (Maybe LernieResults)
-analyzeWithLernieMain rootDir grepOptions = do
-  let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions
+analyzeWithLernieMain rootDir grepOptions fullFiles = do
+  let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions fullFiles
   case maybeLernieConfig of
     Just lernieConfig -> do
       unless (null $ customLicenseSearch grepOptions) $ trackUsage CustomLicenseSearchUsage
@@ -111,11 +117,11 @@ analyzeWithLernieMain rootDir grepOptions = do
       pure $ Just lernieResults
     Nothing -> pure Nothing
 
-grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Maybe LernieConfig
-grepOptionsToLernieConfig rootDir grepOptions =
+grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> FullFileUploads -> Maybe LernieConfig
+grepOptionsToLernieConfig rootDir grepOptions fullFiles =
   case (customLicenseSearches <> keywordSearches) of
     [] -> Nothing
-    res -> Just $ LernieConfig rootDir res
+    res -> Just $ LernieConfig rootDir res $ unFullFileUploads fullFiles
   where
     customLicenseSearches = map (grepEntryToLernieRegex CustomLicense) (customLicenseSearch grepOptions)
     keywordSearches = map (grepEntryToLernieRegex KeywordSearch) (keywordSearch grepOptions)
@@ -199,7 +205,7 @@ filterLernieMessages matches scanType =
   where
     byScanType :: LernieMatchData -> Bool
     byScanType m = scanType == lernieMatchDataScanType m
-    lernieMatchesFilteredToScanType = map (\lm -> LernieMatch (lernieMatchPath lm) (filter byScanType $ lernieMatchMatches lm)) matches
+    lernieMatchesFilteredToScanType = map (\lm -> LernieMatch (lernieMatchPath lm) (filter byScanType $ lernieMatchMatches lm) (lernieMatchContents lm)) matches
     lernieMatchesWithoutEmpties = filter (not . null . lernieMatchMatches) lernieMatchesFilteredToScanType
 
 -- Convert a list of lernie matches into a LicenseSourceUnit
@@ -232,7 +238,8 @@ lernieMatchToSourceUnit matches rootDir =
 licenseUnitsFromLernieMatches :: [LernieMatch] -> [LicenseUnit]
 licenseUnitsFromLernieMatches matches = do
   let allLicenseUnitMatchData = concatMap lernieMatchToLicenseUnitMatchData matches
-  let allLicenseUnitData = map createLicenseUnitDataSingles allLicenseUnitMatchData
+  let fileContents = HashMap.fromList $ map getContentsFromLernieMatch matches
+  let allLicenseUnitData = map (createLicenseUnitDataSingles fileContents) allLicenseUnitMatchData
   -- collectedLicenseUnitData has one LicenseUnitData per (path, title) pair, each one containing
   -- all of the LicenseUnitMatchData for that (path, title) pair
   let collectedLicenseUnitData = HashMap.fromListWith (<>) allLicenseUnitData
@@ -241,6 +248,9 @@ licenseUnitsFromLernieMatches matches = do
   let allLicenseUnits = map createLicenseUnitSingles $ HashMap.toList collectedLicenseUnitData
   let licenseUnitsByTitle = map (\((_, title), lu) -> (title, lu)) allLicenseUnits
   H.elems $ HashMap.fromListWith (<>) licenseUnitsByTitle
+
+getContentsFromLernieMatch :: LernieMatch -> (CustomLicensePath, Maybe Text)
+getContentsFromLernieMatch LernieMatch{..} = (CustomLicensePath lernieMatchPath, lernieMatchContents)
 
 -- Create a list with keys of (path, title) and a value of a single LicenseUnitMatchData
 lernieMatchToLicenseUnitMatchData :: LernieMatch -> [((CustomLicensePath, CustomLicenseTitle), LicenseUnitMatchData)]
@@ -263,8 +273,8 @@ createLicenseUnitMatchData path LernieMatchData{..} =
         , licenseUnitDataEndLine = lernieMatchDataEndLine
         }
 
-createLicenseUnitDataSingles :: ((CustomLicensePath, CustomLicenseTitle), LicenseUnitMatchData) -> ((CustomLicensePath, CustomLicenseTitle), LicenseUnitData)
-createLicenseUnitDataSingles ((path, title), licenseUnitMatchData) =
+createLicenseUnitDataSingles :: HashMap CustomLicensePath (Maybe Text) -> ((CustomLicensePath, CustomLicenseTitle), LicenseUnitMatchData) -> ((CustomLicensePath, CustomLicenseTitle), LicenseUnitData)
+createLicenseUnitDataSingles contents ((path, title), licenseUnitMatchData) =
   ((path, title), newLicenseUnitData)
   where
     newLicenseUnitData =
@@ -274,7 +284,7 @@ createLicenseUnitDataSingles ((path, title), licenseUnitMatchData) =
         , licenseUnitDataThemisVersion = ""
         , licenseUnitDataMatchData = Just $ NE.singleton licenseUnitMatchData
         , licenseUnitDataCopyrights = Nothing
-        , licenseUnitDataContents = Nothing
+        , licenseUnitDataContents = join $ HashMap.lookup path contents
         }
 
 createLicenseUnitSingles :: ((CustomLicensePath, CustomLicenseTitle), LicenseUnitData) -> ((CustomLicensePath, CustomLicenseTitle), LicenseUnit)

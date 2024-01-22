@@ -1,16 +1,50 @@
 # FOSSA CLI Changelog
 
-## Unreleased
-- archive: considers 0-byte tar file to be valid tar file. ([#1311](https://github.com/fossas/fossa-cli/pull/1311)) 
-- Cocoapods: Allow Podfile.lock without EXTERNAL SOURCES field ([#1279](https://github.com/fossas/fossa-cli/pull/1279))
+## v3.8.31
 
+- Container scanning: `BerkeleyDB` and `Sqlite` strategies now support RPM databases in non-standard locations ([#1365](https://github.com/fossas/fossa-cli/pull/1365)).
+- Updates the license scanner to the latest version ([#1366](https://github.com/fossas/fossa-cli/pull/1366)).
+  This update addresses several issues with the license scanner, primarily related to incorrect classification of GPL and AGPL licenses.
+
+## v3.8.30
+
+- Fix an issue with long-option syntax for older versions of `sbt` ([#1356](https://github.com/fossas/fossa-cli/pull/1356))
+- Debug: add more logging for debugging missing dependencies. ([#1360](https://github.com/fossas/fossa-cli/pull/1360))
+
+## v3.8.29
+- Prevents showing SCM warnings in fossa analyze, test, and report [#1354](https://github.com/fossas/fossa-cli/pull/1354)
+- Pathfinder: Pathfinder has been deprecated and removed. ([#1350](https://github.com/fossas/fossa-cli/pull/1350))
+
+## v3.8.28
+- VSI: no longer reports paths inside of extracted archives with the `!_fossa.virtual_!` literal [#1345](https://github.com/fossas/fossa-cli/pull/1345)
+
+## v3.8.27
+- Maven: Fix a bug that broke maven analysis if the build directory was in a non-standard location ([#1343](https://github.com/fossas/fossa-cli/pull/1343))
+
+## v3.8.26
+- Maven: add support for maven submodule filtering [#1339](https://github.com/fossas/fossa-cli/pull/1339)
+
+## v3.8.25
+- Maven: add support for maven scope filtering ([#1331](https://github.com/fossas/fossa-cli/pull/1331))
+- `fossa init`: adds new `fossa init` command which creates `.fossa.yml.example`, and `fossa-deps.yml.example` file. ([#1323](https://github.com/fossas/fossa-cli/pull/1323))
+
+## v3.8.24
+
+- Python: use `pip` to determine transitive dependencies for setuptool projects that contain a req*.txt or setup.py file. ([#1334](https://github.com/fossas/fossa-cli/pull/1334))
+- Container Scanning: warn and exclude rpm packages that are missing attributes. ([#1335](https://github.com/fossas/fossa-cli/pull/1335))
+
+## v3.8.23
+- Custom License Scans: Support full-file uploads for custom license scans ([#1333](https://github.com/fossas/fossa-cli/pull/1333))
 
 ## v3.8.22
-
-- `fossa-deps`: `--fossa-deps-file` to specify custom fossa-deps file ([#1303](https://github.com/fossas/fossa-cli/pull/1303))
+- path: adds path dependency scanning functionality. ([#1327](https://github.com/fossas/fossa-cli/pull/1327))
+- `pnpm`: Supports `6.0` version of `pnpm-lockfile.yaml` ([#1320])(https://github.com/fossas/fossa-cli/pull/1320)
+- Maven: Fixes defect, where `fossa-cli` was sometimes ignoring dependency, if the dependency with multiple scopes was part of the project. ([#1322](https://github.com/fossas/fossa-cli/pull/1322))
 
 ## v3.8.21
-
+- archive: considers 0-byte tar file to be valid tar file. ([#1311](https://github.com/fossas/fossa-cli/pull/1311))
+- Cocoapods: Allow Podfile.lock without EXTERNAL SOURCES field ([#1279](https://github.com/fossas/fossa-cli/pull/1279))
+- `fossa-deps`: `--fossa-deps-file` to specify custom fossa-deps file ([#1303](https://github.com/fossas/fossa-cli/pull/1303))
 - install-latest.sh: Fixed a bug where install-latest.sh would result in a broken binary when run on some versions of macOS ([#1317](https://github.com/fossas/fossa-cli/pull/1317))
 
 ## v3.8.20

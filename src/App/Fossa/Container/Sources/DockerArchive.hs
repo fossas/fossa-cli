@@ -61,7 +61,7 @@ import Data.Maybe (listToMaybe, mapMaybe)
 import Data.String.Conversion (ToString (toString))
 import Data.Text (Text)
 import Data.Text.Extra (breakOnEndAndRemove, showT)
-import Discovery.Filters (AllFilters, isDefaultNonProductionPath)
+import Discovery.Filters (AllFilters, MavenScopeFilters (..), isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec)
 import Effect.Logger (
@@ -163,6 +163,7 @@ analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball = do
           (projectResults, ()) <-
             runTarballReadFSIO layerFs tarball
               . runReader noExperimental
+              . runReader noMavenScopeFilters
               . Diag.context "discovery/analysis tasks"
               . runOutput @DiscoveredProjectScan
               . runStickyLogger SevInfo
@@ -174,11 +175,14 @@ analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball = do
           pure projectResults
       )
   where
+    noMavenScopeFilters :: MavenScopeFilters
+    noMavenScopeFilters = MavenScopeIncludeFilters mempty
     noExperimental :: ExperimentalAnalyzeConfig
     noExperimental =
       ExperimentalAnalyzeConfig
         Nothing
         GoModulesBasedTactic -- Discovery is the same for both module and package centric analysis.
+        False -- Discovery has no consequence from path dependency analysis config
     toSourceUnit :: [DiscoveredProjectScan] -> [SourceUnit]
     toSourceUnit =
       map (Srclib.projectToSourceUnit False)
@@ -212,6 +216,7 @@ runDependencyAnalysis ::
   , Has ReadFS sig m
   , Has (Output DiscoveredProjectScan) sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader MavenScopeFilters) sig m
   , Has (Reader AllFilters) sig m
   , Has Stack sig m
   , Has Telemetry sig m
@@ -321,7 +326,9 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
       ( ExperimentalAnalyzeConfig
           Nothing
           GoModulesBasedTactic -- Targets aren't different between package/module centric analysis for Go.
+          False -- Targets are not impacted by path dependencies.
       )
+    . runReader (MavenScopeIncludeFilters mempty)
     . runReader (mempty :: AllFilters)
     $ run
   where

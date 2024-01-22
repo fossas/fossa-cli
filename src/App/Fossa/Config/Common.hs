@@ -26,6 +26,7 @@ module App.Fossa.Config.Common (
   collectApiOpts,
   collectTelemetrySink,
   collectConfigFileFilters,
+  collectConfigMavenScopeFilters,
 
   -- * Configuration Types
   ScanDestination (..),
@@ -39,6 +40,7 @@ module App.Fossa.Config.Common (
 import App.Fossa.Config.ConfigFile (
   ConfigFile (
     configApiKey,
+    configMavenScope,
     configPaths,
     configProject,
     configRevision,
@@ -52,10 +54,12 @@ import App.Fossa.Config.ConfigFile (
   ConfigTargets (targetsExclude, targetsOnly),
   ConfigTelemetry (telemetryScope),
   ConfigTelemetryScope (..),
+  MavenScopeConfig (..),
   mergeFileCmdMetadata,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.ProjectInference (
+  InferredProject,
   inferProjectCached,
   inferProjectDefault,
   inferProjectFromVCS,
@@ -78,9 +82,11 @@ import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   errCtx,
+  errorBoundary,
   fatalText,
   fromMaybeText,
   recover,
+  rethrow,
   (<||>),
  )
 import Control.Effect.Lift (Lift, sendIO)
@@ -92,8 +98,10 @@ import Data.Maybe (fromMaybe)
 import Data.String (IsString)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text, null, strip, toLower)
-import Discovery.Filters (AllFilters (AllFilters), comboExclude, comboInclude, targetFilterParser)
+import Diag.Result (Result (Failure, Success), renderFailure)
+import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (..), comboExclude, comboInclude, setExclude, setInclude, targetFilterParser)
 import Effect.Exec (Exec)
+import Effect.Logger (Logger, logDebug, logInfo)
 import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
 import GHC.Generics (Generic)
@@ -287,6 +295,7 @@ collectRevisionOverride maybeConfig OverrideProject{..} = override
 collectRevisionData ::
   ( Has Diagnostics sig m
   , Has Exec sig m
+  , Has Logger sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
@@ -299,17 +308,36 @@ collectRevisionData (BaseDir basedir) maybeConfig cacheStrategy cliOverride = do
   let override = collectRevisionOverride maybeConfig cliOverride
   case cacheStrategy of
     ReadOnly -> do
-      inferred <- inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir
+      inferred <- inferVCSInfo $ inferProjectCached basedir <||> inferProjectDefault basedir
       pure $ mergeOverride override inferred
     WriteOnly -> do
-      inferred <- inferProjectFromVCS basedir <||> inferProjectDefault basedir
+      inferred <- inferVCSInfo $ inferProjectDefault basedir
       let revision = mergeOverride override inferred
       saveRevision revision
       pure revision
+  where
+    inferVCSInfo ::
+      ( Has Diagnostics sig m
+      , Has Logger sig m
+      , Has ReadFS sig m
+      , Has Exec sig m
+      ) =>
+      m InferredProject ->
+      m InferredProject
+    inferVCSInfo nextStep = do
+      vcsInfo <- errorBoundary $ inferProjectFromVCS basedir
+      case vcsInfo of
+        Failure emittedWarns errGroup ->
+          do
+            logDebug (renderFailure emittedWarns errGroup "Unable to infer project revision from VCS")
+            logInfo "Unable to infer project revision from VCS, using current timestamp as the revision."
+            nextStep
+        Success _ _ -> rethrow vcsInfo
 
 collectRevisionData' ::
   ( Has Diagnostics sig m
   , Has Exec sig m
+  , Has Logger sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
@@ -399,3 +427,12 @@ collectConfigFileFilters configFile = do
       excludeP = pullFromFile pathsExclude configPaths
 
   AllFilters (comboInclude onlyT onlyP) (comboExclude excludeT excludeP)
+
+collectConfigMavenScopeFilters :: ConfigFile -> MavenScopeFilters
+collectConfigMavenScopeFilters configFile = do
+  let maybeMavenScopeConfigs = configMavenScope configFile
+  case maybeMavenScopeConfigs of
+    Nothing -> MavenScopeIncludeFilters mempty
+    Just mavenScopeConfig -> case mavenScopeConfig of
+      MavenScopeOnlyConfig filters -> MavenScopeIncludeFilters $ setInclude filters
+      MavenScopeExcludeConfig filters -> MavenScopeExcludeFilters $ setExclude filters

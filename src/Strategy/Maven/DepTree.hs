@@ -17,6 +17,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception.Extra (safeTry)
 import Data.Char (isSpace)
 import Data.Foldable (for_)
+import Data.Maybe (maybeToList)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -31,9 +32,10 @@ import DepTypes (
 import Effect.Exec (AllowErr (..), CandidateCommandEffs, Command (..), exec, mkAnalysisCommand)
 import Effect.Grapher (direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsParser)
-import Graphing (Graphing, gmap, shrinkRoots)
+import Graphing (Graphing, gmap)
 import Path (Abs, Dir, File, Path, Rel, fromAbsFile, parseRelFile, (</>))
 import Path.IO (getTempDir, removeFile)
+import Strategy.Maven.Common (MavenDependency (..))
 import Strategy.Maven.Plugin (mavenCmdCandidates)
 import System.Random (randomIO)
 import Text.Megaparsec (
@@ -100,7 +102,7 @@ analyze ::
   , CandidateCommandEffs sig m
   ) =>
   Path Abs Dir ->
-  m (Graphing Dependency, GraphBreadth)
+  m (Graphing MavenDependency, GraphBreadth)
 analyze dir = do
   -- Construct the Maven command invocation.
   --
@@ -125,6 +127,7 @@ analyze dir = do
   graphs <-
     execAndParse (if settingsExists then Just settingsPath else Nothing) tmp
       `finally` sendIO (safeTry @SomeException (removeFile tmp))
+
   pure (buildGraph graphs, Complete)
   where
     -- Note that we do both of these in a single action so that the `finally`
@@ -141,22 +144,23 @@ analyze dir = do
       Just f' -> pure f'
       Nothing -> fatal $ toText $ "invalid file name: " <> f
 
-buildGraph :: [DotGraph] -> Graphing Dependency
-buildGraph = withoutProjectAsDep . gmap toDependency . foldMap toGraph
-  where
-    withoutProjectAsDep = shrinkRoots
+buildGraph :: [DotGraph] -> Graphing MavenDependency
+buildGraph = gmap toDependency . foldMap toGraph
 
-toDependency :: PackageId -> Dependency
-toDependency PackageId{groupName, artifactName, artifactVersion, buildTag} =
-  Dependency
-    { dependencyType = MavenType
-    , dependencyName = groupName <> ":" <> artifactName
-    , dependencyVersion = Just $ CEq artifactVersion
-    , dependencyLocations = []
-    , -- TODO: cleanup logic, no need to use list
-      dependencyEnvironments = Set.fromList $ maybe [EnvProduction] ((: []) . toBuildTag) buildTag
-    , dependencyTags = mempty
-    }
+toDependency :: PackageId -> MavenDependency
+toDependency PackageId{groupName, artifactName, artifactVersion, buildTag} = do
+  let dep =
+        Dependency
+          { dependencyType = MavenType
+          , dependencyName = groupName <> ":" <> artifactName
+          , dependencyVersion = Just $ CEq artifactVersion
+          , dependencyLocations = []
+          , -- TODO: cleanup logic, no need to use list
+            dependencyEnvironments = Set.fromList $ maybe [EnvProduction] ((: []) . toBuildTag) buildTag
+          , dependencyTags = mempty
+          }
+      dependencyScopes = Set.fromList $ maybeToList buildTag
+  MavenDependency dep dependencyScopes mempty
 
 toGraph :: DotGraph -> Graphing PackageId
 toGraph DotGraph{rootNode, edgeList} = run . evalGrapher $ do

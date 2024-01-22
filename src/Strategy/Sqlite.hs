@@ -67,9 +67,21 @@ findProjects osInfo = walkWithFilters' $ \dir _ files -> do
   case findFirstMatchingFile ["Packages.sqlite", "rpmdb.sqlite"] files of
     Nothing -> pure ([], WalkContinue)
     Just file -> do
-      if (Text.isInfixOf "var/lib/rpm/" $ toText . toFilePath $ file)
+      if isSupportedPath file
         then pure ([SqliteDB{dbDir = dir, dbFile = file, osInfo = osInfo}], WalkContinue)
         else pure ([], WalkContinue)
+  where
+    -- The standard location for this is '/var/lib/rpm/',
+    -- but some distros in some versions symlink this elsewhere.
+    --
+    -- For maximal compatibility while still being reasonably confident that this is the package database
+    -- for the system RPM install, this function just checks whether the file is a child of any directory that
+    -- contains the word 'rpm'.
+    --
+    -- We may want to consider making walk work with symlinks (so that we are confident we're using the right file)
+    -- or unconditionally trying any matching named file.
+    isSupportedPath :: Path Abs File -> Bool
+    isSupportedPath = Text.isInfixOf "rpm" . toText . toFilePath
 
 mkProject :: SqliteDB -> DiscoveredProject SqliteDB
 mkProject db =

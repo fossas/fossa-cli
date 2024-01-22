@@ -40,7 +40,6 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.Exec (
-  AllowErr (Never),
   Command (..),
   Exec,
   Has,
@@ -49,6 +48,7 @@ import Effect.Exec (
 import Effect.Logger (Logger, logDebug, viaShow)
 import Effect.ReadFS (ReadFS, readContentsXML)
 import GHC.Generics (Generic)
+import Graphing (gmap)
 import Path (
   Abs,
   Dir,
@@ -58,10 +58,12 @@ import Path (
   parseAbsFile,
   toFilePath,
  )
+import Strategy.Maven.Common (mavenDependencyToDependency)
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures, closurePath)
 import Strategy.Maven.Pom.PomFile (RawPom (rawPomArtifact, rawPomGroup, rawPomVersion))
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
+import Strategy.Scala.Common (mkSbtCommand)
 import Strategy.Scala.Errors (FailedToListProjects (FailedToListProjects), MaybeWithoutDependencyTreeTask (MaybeWithoutDependencyTreeTask), MissingFullDependencyPlugin (MissingFullDependencyPlugin))
 import Strategy.Scala.Plugin (genTreeJson, hasDependencyPlugins)
 import Strategy.Scala.SbtDependencyTree (SbtArtifact (SbtArtifact), analyze, sbtDepTreeCmd)
@@ -189,7 +191,7 @@ analyzeWithPoms :: (Has Diagnostics sig m) => ScalaProject -> m DependencyResult
 analyzeWithPoms (ScalaProject _ _ closure) = context "Analyzing sbt dependencies with generated pom" $ do
   pure $
     DependencyResults
-      { dependencyGraph = Pom.analyze' closure
+      { dependencyGraph = gmap mavenDependencyToDependency $ Pom.analyze' closure
       , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = [closurePath closure]
       }
@@ -228,14 +230,7 @@ analyzeWithSbtDepTree (ScalaProject maybeDepTree _ closure) = context "Analyzing
       pure $ SbtArtifact groupId artifactId version
 
 makePomCmd :: Command
-makePomCmd =
-  Command
-    { cmdName = "sbt"
-    , -- --no-colors to disable ANSI escape codes
-      -- --batch to disable interactivity. normally, if an `sbt` command fails, it'll drop into repl mode: --batch will disable the repl.
-      cmdArgs = ["--no-colors", "--batch", "makePom"]
-    , cmdAllowErr = Never
-    }
+makePomCmd = mkSbtCommand "makePom"
 
 genPoms :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
 genPoms projectDir = do

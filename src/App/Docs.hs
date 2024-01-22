@@ -1,11 +1,13 @@
 module App.Docs (
   userGuideUrl,
   newIssueUrl,
+  fossaDepsDocUrl,
   fossaYmlDocUrl,
   strategyLangDocUrl,
   platformDocUrl,
   fossaSslCertDocsUrl,
   fossaContainerScannerUrl,
+  pathDependencyDocsUrl,
 ) where
 
 import App.Version (versionOrBranch)
@@ -23,6 +25,9 @@ userGuideUrl = guidePathOf versionOrBranch "/docs/README.md"
 fossaYmlDocUrl :: Text
 fossaYmlDocUrl = guidePathOf versionOrBranch "/docs/references/files/fossa-yml.md"
 
+fossaDepsDocUrl :: Text
+fossaDepsDocUrl = guidePathOf versionOrBranch "/docs/references/files/fossa-deps.md"
+
 newIssueUrl :: Text
 newIssueUrl = sourceCodeUrl <> "/issues/new"
 
@@ -37,3 +42,6 @@ fossaSslCertDocsUrl = guidePathOf versionOrBranch "/docs/walkthroughs/ssl-cert.m
 
 fossaContainerScannerUrl :: Text
 fossaContainerScannerUrl = guidePathOf versionOrBranch "/docs/references/subcommands/container/scanner.md"
+
+pathDependencyDocsUrl :: Text
+pathDependencyDocsUrl = guidePathOf versionOrBranch "/docs/references/experimental/path-dependency.md"

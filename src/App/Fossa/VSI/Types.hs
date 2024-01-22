@@ -187,7 +187,10 @@ instance FromJSON VsiExportedInferencesBody where
   parseJSON = withObject "VsiExportedInferencesBody" $ \obj -> do
     inferences <- (obj .:? "InferencesByFilePath") .!= KeyMap.empty
     parsedVals <- traverse parseJSON inferences
-    pure . VsiExportedInferencesBody . Map.mapKeys VsiFilePath . KeyMap.toMapText $ parsedVals
+    pure . VsiExportedInferencesBody . Map.mapKeys (VsiFilePath . stripFossaVirtual) . KeyMap.toMapText $ parsedVals
+
+stripFossaVirtual :: Text -> Text
+stripFossaVirtual = Text.replace "!_fossa.virtual_!" ""
 
 data VsiRule = VsiRule
   { vsiRulePath :: VsiRulePath

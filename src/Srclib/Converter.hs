@@ -7,6 +7,7 @@ module Srclib.Converter (
   fetcherToDepType,
   verConstraintToRevision,
   toLocator,
+  shouldPublishDep,
 ) where
 
 import Prelude
@@ -115,7 +116,7 @@ isSupportedType Dependency{dependencyType} =
   dependencyType /= SubprojectType
     && dependencyType /= GooglesourceType
     && dependencyType /= ConanType
-    && dependencyType /= PathType
+    && dependencyType /= UnresolvedPathType
 
 toLocator :: Dependency -> Locator
 toLocator dep =
@@ -170,6 +171,7 @@ depTypeToFetcher = \case
   UserType -> "user"
   PubType -> "pub"
   SwiftType -> "swift"
+  UnresolvedPathType -> "upath"
   PathType -> "path"
 
 -- | GooglesourceType and SubprojectType are not supported with this function, since they're ambiguous.
@@ -200,4 +202,5 @@ fetcherToDepType fetcher | depTypeToFetcher RPMType == fetcher = Just RPMType
 fetcherToDepType fetcher | depTypeToFetcher URLType == fetcher = Just URLType
 fetcherToDepType fetcher | depTypeToFetcher UserType == fetcher = Just UserType
 fetcherToDepType fetcher | depTypeToFetcher PubType == fetcher = Just PubType
+fetcherToDepType fetcher | depTypeToFetcher PathType == fetcher = Just PathType
 fetcherToDepType _ = Nothing

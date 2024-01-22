@@ -5,27 +5,33 @@ module Strategy.Maven (
   getDeps,
 ) where
 
+import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
-import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift)
-import Control.Effect.Reader (Reader)
+import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
+import Data.Set (Set)
+import Data.Set qualified as Set
+import Data.Set.NonEmpty (nonEmpty, toSet)
+import Data.Text hiding (group, map)
+import DepTypes (Dependency)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
-import Discovery.Filters (AllFilters)
+import Discovery.Filters (AllFilters, MavenScopeFilters)
 import Discovery.Simple (simpleDiscover)
 import Effect.Exec (CandidateCommandEffs)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Graphing (Graphing)
+import Graphing (Graphing, gmap, shrinkRoots)
 import Path (Abs, Dir, Path, parent)
+import Strategy.Maven.Common (MavenDependency (..), filterMavenDependencyByScope, filterMavenSubmodules, mavenDependencyToDependency)
 import Strategy.Maven.DepTree qualified as DepTreeCmd
 import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
-import Strategy.Maven.Pom.Closure (MavenProjectClosure)
+import Strategy.Maven.Pom.Closure (MavenProjectClosure (..))
 import Strategy.Maven.Pom.Closure qualified as PomClosure
-import Types (Dependency, DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), GraphBreadth (..))
+import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), FoundTargets (..), GraphBreadth (..))
 
 discover ::
   ( Has (Lift IO) sig m
@@ -35,7 +41,8 @@ discover ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject MavenProject]
-discover = simpleDiscover findProjects mkProject MavenProjectType
+discover = do
+  simpleDiscover findProjects mkProject MavenProjectType
   where
     findProjects dir = map MavenProject <$> PomClosure.findProjects dir
 
@@ -44,9 +51,12 @@ mkProject (MavenProject closure) =
   DiscoveredProject
     { projectType = MavenProjectType
     , projectPath = parent $ PomClosure.closurePath closure
-    , projectBuildTargets = mempty
+    , projectBuildTargets = buildTargets
     , projectData = MavenProject closure
     }
+  where
+    buildTargets :: FoundTargets
+    buildTargets = maybe ProjectWithoutTargets FoundTargets $ nonEmpty (Set.map BuildTarget $ PomClosure.closureSubmodules closure)
 
 newtype MavenProject = MavenProject {unMavenProject :: PomClosure.MavenProjectClosure}
   deriving (Eq, Ord, Show, Generic)
@@ -54,8 +64,8 @@ newtype MavenProject = MavenProject {unMavenProject :: PomClosure.MavenProjectCl
 instance ToJSON MavenProject
 
 instance AnalyzeProject MavenProject where
-  analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps'
+  analyzeProject = getDeps
+  analyzeProject' = getDeps'
 
 instance LicenseAnalyzeProject MavenProject where
   licenseAnalyzeProject = pure . Pom.getLicenses . unMavenProject
@@ -64,11 +74,14 @@ getDeps ::
   ( Has (Lift IO) sig m
   , Has ReadFS sig m
   , CandidateCommandEffs sig m
+  , Has (Reader MavenScopeFilters) sig m
   ) =>
+  FoundTargets ->
   MavenProject ->
   m DependencyResults
-getDeps (MavenProject closure) = do
-  (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis closure <||> getStaticAnalysis closure
+getDeps foundTargets (MavenProject closure) = do
+  let submoduleTargets = submoduleTargetSet foundTargets
+  (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis submoduleTargets closure <||> getStaticAnalysis submoduleTargets closure
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -79,11 +92,15 @@ getDeps (MavenProject closure) = do
 getDeps' ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has (Reader MavenScopeFilters) sig m
   ) =>
+  FoundTargets ->
   MavenProject ->
   m DependencyResults
-getDeps' (MavenProject closure) = do
-  (graph, graphBreadth) <- context "Maven" $ getStaticAnalysis closure
+getDeps' foundTargets (MavenProject closure) = do
+  let submoduleTargets = submoduleTargetSet foundTargets
+  (graph, graphBreadth) <- context "Maven" $ getStaticAnalysis submoduleTargets closure
+
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -95,14 +112,26 @@ getDepsDynamicAnalysis ::
   ( Has (Lift IO) sig m
   , Has ReadFS sig m
   , CandidateCommandEffs sig m
+  , Has (Reader MavenScopeFilters) sig m
   ) =>
+  Set Text ->
   MavenProjectClosure ->
   m (Graphing Dependency, GraphBreadth)
-getDepsDynamicAnalysis closure =
-  context "Dynamic Analysis"
-    $ warnOnErr MissingEdges
-      . warnOnErr MissingDeepDeps
-    $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
+getDepsDynamicAnalysis submoduleTargets closure = do
+  let allSubmodules = PomClosure.closureSubmodules closure
+  (graph, graphBreadth) <-
+    context "Dynamic Analysis"
+      $ warnOnErr MissingEdges
+        . warnOnErr MissingDeepDeps
+      $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
+  filteredGraph <- applyMavenFilters submoduleTargets allSubmodules graph
+  pure (withoutProjectAsDep filteredGraph, graphBreadth)
+  where
+    -- shrinkRoots is applied on all dynamic strategies.
+    -- The root deps are either the toplevel package or submodules in a multi-module project.
+    --  We don't want to consider those because they're the users' packages.
+    --  Promote them to direct when building the graph using `shrinkRoots`.
+    withoutProjectAsDep = shrinkRoots
 
 getDepsPlugin ::
   ( CandidateCommandEffs sig m
@@ -110,7 +139,7 @@ getDepsPlugin ::
   , Has ReadFS sig m
   ) =>
   MavenProjectClosure ->
-  m (Graphing Dependency, GraphBreadth)
+  m (Graphing MavenDependency, GraphBreadth)
 getDepsPlugin closure = context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
 
 getDepsPluginLegacy ::
@@ -119,7 +148,7 @@ getDepsPluginLegacy ::
   , Has ReadFS sig m
   ) =>
   MavenProjectClosure ->
-  m (Graphing Dependency, GraphBreadth)
+  m (Graphing MavenDependency, GraphBreadth)
 getDepsPluginLegacy closure = context "Legacy Plugin analysis" (Plugin.analyzeLegacy' . parent $ PomClosure.closurePath closure)
 
 getDepsTreeCmd ::
@@ -128,8 +157,8 @@ getDepsTreeCmd ::
   , CandidateCommandEffs sig m
   ) =>
   MavenProjectClosure ->
-  m (Graphing Dependency, GraphBreadth)
-getDepsTreeCmd closure =
+  m (Graphing MavenDependency, GraphBreadth)
+getDepsTreeCmd closure = do
   context "Dynamic analysis" $
     DepTreeCmd.analyze . parent $
       PomClosure.closurePath closure
@@ -137,7 +166,26 @@ getDepsTreeCmd closure =
 getStaticAnalysis ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
+  , Has (Reader MavenScopeFilters) sig m
   ) =>
+  Set Text ->
   MavenProjectClosure ->
   m (Graphing Dependency, GraphBreadth)
-getStaticAnalysis closure = context "Static analysis" $ pure (Pom.analyze' closure, Partial)
+getStaticAnalysis submoduleTargets closure = do
+  let allSubmodules = PomClosure.closureSubmodules closure
+  (graph, graphBreadth) <- context "Static analysis" $ pure (Pom.analyze' closure, Partial)
+  filteredGraph <- applyMavenFilters submoduleTargets allSubmodules graph
+  pure (filteredGraph, graphBreadth)
+
+applyMavenFilters :: Has (Reader MavenScopeFilters) sig m => Set Text -> Set Text -> Graphing MavenDependency -> m (Graphing Dependency)
+applyMavenFilters targetSet submoduleSet graph = do
+  mavenScopeFilters <- ask @(MavenScopeFilters)
+  let filteredSubmoduleGraph = filterMavenSubmodules targetSet submoduleSet graph
+      filteredSubmoduleScopeGraph = filterMavenDependencyByScope mavenScopeFilters filteredSubmoduleGraph
+
+  pure $ gmap mavenDependencyToDependency filteredSubmoduleScopeGraph
+
+submoduleTargetSet :: FoundTargets -> Set Text
+submoduleTargetSet foundTargets = case foundTargets of
+  FoundTargets targets -> Set.map unBuildTarget (toSet targets)
+  _ -> Set.empty

@@ -1,5 +1,5 @@
 name: Benchmarks
-on: [push]
+on: [workflow_dispatch]
 
 jobs:
   benchmarks:
@@ -17,8 +17,12 @@ jobs:
       with:
         lfs: true
 
-    - name: Ensures git ownership check does not lead to compile error (we run git during compile for version tagging, etc.)
-      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+    # Adding the "git config ..." line ensures git doesn't fail during our build.
+    - name: Configure Git and Collect Config
+      run: |
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        echo "parent_commit=$(git rev-parse HEAD^)" >> $GITHUB_ENV
+
 
     # adduser cannot add users to group: https://unix.stackexchange.com/a/397733
     # so we edit /etc/group directly
@@ -49,15 +53,46 @@ jobs:
         cargo -V || echo "no cargo"
 
     - uses: Swatinem/rust-cache@v2
-    
+
+    # Compute cache key and save to a temporary file.
+    #
+    # We compute the cache key based on the solved install plan instead of just
+    # hashing the `.cabal` file, since there are many kinds of changes that will
+    # cause `.cabal` to change (e.g. adding new source modules).
+    - name: Compute cache key
+      id: compute-cache-key
+      run: |
+        cabal --project-file=cabal.project.ci.linux update
+        cabal --project-file=cabal.project.ci.linux build --dry-run
+        cat dist-newstyle/cache/plan.json | jq '."install-plan"[]."id"' | sort > /tmp/cabal-cache-key
+        echo "Install plan:"
+        cat /tmp/cabal-cache-key
+        export CABAL_CACHE_KEY=$(sha256sum /tmp/cabal-cache-key | awk '{print $1}')
+        echo "Cabal cache key: $CABAL_CACHE_KEY"
+        echo "cabal-cache-key=$CABAL_CACHE_KEY" >> $GITHUB_OUTPUT
+
+    # Benchmarks builds at a different optimization level than everything else.
+    # I think this means it needs its own cache, it can't rely on the others.
+    # Otherwise, the benchmarks need to be built at the same optimization level.
     - uses: actions/cache@v3
       name: Cache cabal store
       with:
-        path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.cabal/store' }}
-        key: ${{ runner.os }}-benchmarks-cabal-cache-${{ hashFiles('**/*.cabal', 'cabal.project.ci.linux') }}
+        path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
+        key: ${{ runner.os }}-benchmarks-cabal-cache-${{ steps.compute-cache-key.outputs.cabal-cache-key }}
         restore-keys: |
           ${{ runner.os }}-benchmarks-cabal-cache-
           ${{ runner.os }}-benchmarks-
+          ${{ runner.os }}-
+
+    - uses: actions/cache@v3
+      name: Cache dist-newstyle
+      with:
+        path: ${{ github.workspace }}/dist-newstyle
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ env.parent_commit }}
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-
           ${{ runner.os }}-
 
     - name: Build Rust dependencies
@@ -74,7 +109,6 @@ jobs:
       env:
         RUN_CMD: cabal build benchmarks
       run: |
-        cabal update
         $RUN_CMD || $RUN_CMD
 
     - name: Bench

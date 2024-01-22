@@ -51,7 +51,7 @@ else
   # add_config "build-users-group ="
   sudo mkdir -p /etc/nix
   sudo chmod 0755 /etc/nix
-  sudo cp $workdir/nix.conf /etc/nix/nix.conf
+  sudo cp "$workdir"/nix.conf /etc/nix/nix.conf
 fi
 
 if [[ $INPUT_INSTALL_OPTIONS != "" ]]; then

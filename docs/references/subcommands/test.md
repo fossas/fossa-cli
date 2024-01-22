@@ -6,7 +6,7 @@ The test command checks whether the most-recent scan of your FOSSA project raise
 - If there are issues, it prints them to stdout and fails with an exit code of 1
 - If there are no issues, it prints nothing and succeeds with an exit code of 0
 
-`fossa test` supports the [Common FOSSA Project Flags](#common-fossa-project-flags) supported by all commands
+`fossa test` supports the [Common FOSSA Project Flags](./analyze.md#common-fossa-project-flags) supported by all commands
 
 ### Specifying a timeout
 

@@ -1,0 +1,115 @@
+# # fossa-deps file for fossa-cli
+# # ------------------------------
+# # With the fossa-deps file, you can **manually** include
+# # dependencies, stub dependencies that cannot be **automatically**
+# # discovered with the `fossa analyze` command.
+# #
+# # Dependencies denoted in this file will be automatically
+# # included with dependencies discovered from the `fossa analyze` command.
+# # Any dependencies originating from `fossa-deps` will be shown as a direct
+# # dependency in FOSSA.
+# #
+# # To learn more:
+# # - https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-deps.md
+# #
+# # If you need assistance or would like to file a defect, contact support at:
+# # - https://support.fossa.com/
+# #
+# # -----
+#
+# # referenced-dependencies
+# # --
+# # Denotes listing of dependencies, which are to be analyzed in 
+# # conjunction with the analysis. This is used for packages that 
+# # originate from a known package manager.
+# #
+# # Possible dependency type include:
+# #   - `bower` - Bower dependencies that are typically found at bower.io.
+# #   - `cargo` - Rust dependencies that are typically found at crates.io.
+# #   - `carthage` - Dependencies as specified by the Carthage package manager.
+# #   - `composer` - Dependencies specified by the PHP package manager Composer, which are located on Packagist.
+# #   - `cpan` - Dependencies located on the CPAN package manager.
+# #   - `cran` - Dependencies located on the CRAN like repository.
+# #   - `gem` - Dependencies which can be found at RubyGems.org.
+# #   - `git` - Github projects (which appear as dependencies in many package managers). Specified as the full GitHub repository https://github.com/fossas/fossa-cli.
+# #   - `go` - Go specific dependency. Many Go dependencies are located on Github, but there are some which look like the following go.mongodb.org/mongo-driver that have custom Go URLs.
+# #   - `hackage` - Haskell dependencies found at Hackage.
+# #   - `hex` - Erlang and Elixir dependencies that are found at Hex.pm.
+# #   - `maven` - Maven dependencies that can be found at many different sources. Specified as name: javax.xml.bind:jaxb-api where the convention is groupId:artifactId.
+# #   - `npm` - Javascript dependencies found at npmjs.com.
+# #   - `nuget` - .NET dependencies found at NuGet.org.
+# #   - `paket` - .NET dependencies found at fsprojects.github.io/Paket/.
+# #   - `pub` - Dart dependencies found at pub.dev.
+# #   - `pypi` - Python dependencies that are typically found at Pypi.org.
+# #   - `swift` - Swift dependencies using the Swift Package Manager.
+# #   - `cocoapods` - Swift and Objective-C dependencies found at Cocoapods.org.
+# #   - `apk` - Alpine packages.
+# #   - `deb` - Debian packages.
+# #   - `rpm-generic` - Rpm packages.
+# #
+# # Learn more: https://github.com/fossas/fossa-cli/blob/master/docs/features/manual-dependencies.md#referenced-dependencies
+# #
+# referenced-dependencies:
+# - type: npm         # Type of dependency. (Required)
+#   name: colors      # Name of the dependency. It should be the same name as listed in dependencies registry. (Required)
+#   version: 1.4.0    # Revision of the dependency. If left unspecified, the latest version discovered from the registry will be used. (Optional)
+#
+# # Note: If the dependency type is apk, deb, or rpm-generic, field of os, arch, and osVersion are required.
+# # --
+# - type: deb               # Type of dependency. (Required)
+#   name: bash              # Name of the dependency. (Required)
+#   version: 5.1-6ubuntu1   # Revision of the dependency. (Optional)
+#   arch: amd64             # Arch associated with package. (Required)
+#   os: ubuntu              # OS (Required). Supported OS include: alpine, centos, debian, rehat, ubuntu, oraclelinux, busybox, seles, fedora.
+#   osVersion: 22.04        # Version of the OS. (Required)
+#
+#
+# # custom-dependencies
+# # --
+# # Denotes listing of dependencies, which can't be automatically discovered 
+# # or identified but are to be stubbed and included in the analysis. This is used 
+# # to add a unique dependency to your dependency graph 
+# # and the metadata you wish to associate with it.
+# #
+# # Learn more: https://github.com/fossas/fossa-cli/blob/master/docs/features/manual-dependencies.md#custom-dependencies
+# # 
+# custom-dependencies:
+# - name: foo-wrapper                                     # Name of the dependency. (Required)
+#   version: 1.2.3                                        # Revision of the dependency. (Required)
+#   license: MIT                                          # LICENSE of the dependency (Required). LICENSE should be SPDX identifier of the license. Refer to: https://spdx.org/licenses/
+#   metadata:                                             # Metadata of the dependency. (Optional)
+#     description: Provides foo and a helpful interfaces. # Description of the dependency, this will be shown in FOSSA UI, and generated reports. (Optional)
+#     homepage: https://www.foowrapper.com/about          # Homepage of the dependency, this will be shown in FOSSA UI, and generated reports. (Optional)
+#
+#
+#
+# # remote-dependencies
+# # --
+# # Denotes listing of dependencies, whose source code is to be downloaded 
+# # from provided URL, and analyzed for license scanning in FOSSA backend. The following archive types 
+# # are supported: *.zip, *.tar, *.tar.gz, *.tar.bz2, *.tar.xz.
+# #
+# # Learn more: https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-deps.md#remote-dependencies
+# #
+# remote-dependencies:
+# - name: jquery                                                        # Name of the dependency. (Required)
+#   version: 3.6.0                                                      # Revision of the dependency. (Required)
+#   url: https://github.com/jquery/jquery/archive/refs/tags/3.6.0.zip   # URL of archived source code. (Required)
+#   metadata:                                                           # Metadata of the dependency (Optional)
+#     description: jquery                                               # Description of the dependency, this will be shown in FOSSA UI, and generated reports. (Optional)
+#     homepage: https://jquery.com                                      # Homepage of the dependency, this will be shown in FOSSA UI, and generated reports. (Optional)
+#
+#
+#
+# # vendored-dependencies
+# # --
+# # Denotes listing of files or directories, which are to be 
+# # either, license scanned by fossa-cli, or and uploaded to FOSSA backend for
+# # license scanning.
+# #
+# # Learn more: https://github.com/fossas/fossa-cli/blob/master/docs/features/vendored-dependencies.md
+# #
+# vendored-dependencies:
+# - name: Django                    # Name of the dependency (Required)
+#   path: vendor/Django-3.4.16.zip  # Local path to a archive file, or a directory (Required)
+#   version: 3.4.16                 # Revision of the dependency. If not specified, the md5 hash of the file path will be used.

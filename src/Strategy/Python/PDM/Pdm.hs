@@ -9,7 +9,7 @@ import Data.Set qualified as Set
 import Data.Text (Text, isPrefixOf)
 import DepTypes (
   DepEnvironment (..),
-  DepType (PathType, PipType, URLType),
+  DepType (PipType, URLType, UnresolvedPathType),
   Dependency (..),
   VerConstraint,
  )
@@ -137,7 +137,7 @@ reqDepType :: Req -> DepType
 reqDepType (NameReq{}) = PipType
 reqDepType (UrlReq _ _ url _) =
   if "file://" `isPrefixOf` URI.render url
-    then PathType
+    then UnresolvedPathType
     else URLType
 
 reqDepVersion :: Req -> Maybe VerConstraint

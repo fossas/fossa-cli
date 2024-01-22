@@ -74,6 +74,7 @@ defaultConfigFile =
     , configTargets = Nothing
     , configPaths = Nothing
     , configExperimental = Nothing
+    , configMavenScope = Nothing
     , configVendoredDependencies = Nothing
     , configTelemetry = Nothing
     , configCustomLicenseSearch = Nothing

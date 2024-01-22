@@ -27,6 +27,8 @@ import Path.IO qualified as PIO
 import Strategy.Maven.Pom.PomFile
 import Strategy.Maven.Pom.Resolver
 
+import Data.Text (Text)
+
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects basedir = do
   pomFiles <- context "Finding pom files" $ findPomFiles basedir
@@ -47,17 +49,24 @@ buildProjectClosures basedir global = closures
     closures = map (\(path, (coord, pom)) -> toClosure path coord pom) (Map.toList projectRoots)
 
     toClosure :: Path Abs File -> MavenCoordinate -> Pom -> MavenProjectClosure
-    toClosure path coord pom = MavenProjectClosure basedir path coord pom reachableGraph reachablePomMap
+    toClosure path coord pom = MavenProjectClosure basedir path coord pom reachableGraph reachablePomMap closureSubmodules
       where
         reachableGraph = AM.induce (`Set.member` reachablePoms) $ globalGraph global
         reachablePomMap = Map.filterWithKey (\k _ -> Set.member k reachablePoms) $ globalPoms global
         reachablePoms = bidirectionalReachable coord (globalGraph global)
+        closureSubmodules = submodulesFromCoordinate reachablePomMap
 
     projectRoots :: Map (Path Abs File) (MavenCoordinate, Pom)
     projectRoots = determineProjectRoots basedir global graphRoots
 
     graphRoots :: [MavenCoordinate]
     graphRoots = sourceVertices (globalGraph global)
+
+    submodulesFromCoordinate :: Map MavenCoordinate a -> Set Text
+    submodulesFromCoordinate = Set.fromList . map extractSubmoduleFromCoordinate . Map.keys
+
+    extractSubmoduleFromCoordinate :: MavenCoordinate -> Text
+    extractSubmoduleFromCoordinate (MavenCoordinate group artifact _) = group <> ":" <> artifact
 
 -- Find reachable nodes both below (children, grandchildren, ...) and above (parents, grandparents) the node
 bidirectionalReachable :: Ord a => a -> AM.AdjacencyMap a -> Set.Set a
@@ -100,13 +109,15 @@ determineProjectRoots rootDir closure = go . Set.fromList
 
 data MavenProjectClosure = MavenProjectClosure
   { closureAnalysisRoot :: Path Abs Dir
-  -- ^ the root of global fossa-analyze analysis; needed for pathfinder license scan
+  -- ^ the root of global fossa-analyze analysis; needed for declared license scan
   , closurePath :: Path Abs File
   -- ^ path of the pom file used as the root of this project closure
   , closureRootCoord :: MavenCoordinate
   , closureRootPom :: Pom
   , closureGraph :: AM.AdjacencyMap MavenCoordinate
   , closurePoms :: Map MavenCoordinate (Path Abs File, Pom)
+  , closureSubmodules :: Set Text
+  -- ^ all of the submodules in the maven project ; used for submodule filtering
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -119,4 +130,5 @@ instance ToJSON MavenProjectClosure where
       , "closureRootPom" .= closureRootPom
       , "closureGraph" .= AM.adjacencyMap closureGraph
       , "closurePoms" .= closurePoms
+      , "closureSubmodules" .= closureSubmodules
       ]

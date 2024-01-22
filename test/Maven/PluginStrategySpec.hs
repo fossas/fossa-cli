@@ -28,51 +28,62 @@ import Strategy.Maven.Plugin (
   ReactorOutput (..),
  )
 import Strategy.Maven.PluginStrategy (buildGraph)
+
+import Graphing (shrinkRoots)
+import Strategy.Maven.Common (MavenDependency (..))
 import Test.Hspec (Spec, describe, it)
 
-packageOne :: Dependency
-packageOne =
-  Dependency
-    { dependencyType = MavenType
-    , dependencyName = "mygroup:packageOne"
-    , dependencyVersion = Just (CEq "1.0.0")
-    , dependencyLocations = []
-    , dependencyEnvironments = Set.fromList [EnvProduction, EnvTesting]
-    , dependencyTags = Map.fromList [("scopes", ["compile", "test"])]
-    }
+packageOne :: MavenDependency
+packageOne = do
+  let dep =
+        Dependency
+          { dependencyType = MavenType
+          , dependencyName = "mygroup:packageOne"
+          , dependencyVersion = Just (CEq "1.0.0")
+          , dependencyLocations = []
+          , dependencyEnvironments = Set.fromList [EnvProduction, EnvTesting]
+          , dependencyTags = Map.fromList [("scopes", ["compile", "test"])]
+          }
+  MavenDependency dep (Set.fromList ["compile", "test"]) mempty
 
-packageTwo :: Dependency
-packageTwo =
-  Dependency
-    { dependencyType = MavenType
-    , dependencyName = "mygroup:packageTwo"
-    , dependencyVersion = Just (CEq "2.0.0")
-    , dependencyLocations = []
-    , dependencyEnvironments = Set.singleton EnvProduction
-    , dependencyTags = Map.fromList [("scopes", ["compile"]), ("optional", ["true"])]
-    }
+packageTwo :: MavenDependency
+packageTwo = do
+  let dep =
+        Dependency
+          { dependencyType = MavenType
+          , dependencyName = "mygroup:packageTwo"
+          , dependencyVersion = Just (CEq "2.0.0")
+          , dependencyLocations = []
+          , dependencyEnvironments = Set.singleton EnvProduction
+          , dependencyTags = Map.fromList [("scopes", ["compile"]), ("optional", ["true"])]
+          }
+  MavenDependency dep (Set.fromList ["compile"]) mempty
 
-packageFour :: Dependency
-packageFour =
-  Dependency
-    { dependencyType = MavenType
-    , dependencyName = "mygroup2:packageFour"
-    , dependencyVersion = Just (CEq "4.0.0")
-    , dependencyLocations = []
-    , dependencyEnvironments = Set.singleton EnvProduction
-    , dependencyTags = Map.fromList [("scopes", ["compile"])]
-    }
+packageFour :: MavenDependency
+packageFour = do
+  let dep =
+        Dependency
+          { dependencyType = MavenType
+          , dependencyName = "mygroup2:packageFour"
+          , dependencyVersion = Just (CEq "4.0.0")
+          , dependencyLocations = []
+          , dependencyEnvironments = Set.singleton EnvProduction
+          , dependencyTags = Map.fromList [("scopes", ["compile"])]
+          }
+  MavenDependency dep (Set.fromList ["compile"]) mempty
 
-packageMultiScope :: Dependency
-packageMultiScope =
-  Dependency
-    { dependencyType = MavenType
-    , dependencyName = "multiscope:apple"
-    , dependencyVersion = Just (CEq "1.0.0")
-    , dependencyLocations = mempty
-    , dependencyEnvironments = Set.fromList [EnvProduction, EnvTesting, EnvOther "other"]
-    , dependencyTags = Map.singleton "scopes" ["compile", "test", "other"]
-    }
+packageMultiScope :: MavenDependency
+packageMultiScope = do
+  let dep =
+        Dependency
+          { dependencyType = MavenType
+          , dependencyName = "multiscope:apple"
+          , dependencyVersion = Just (CEq "1.0.0")
+          , dependencyLocations = mempty
+          , dependencyEnvironments = Set.fromList [EnvProduction, EnvTesting, EnvOther "other"]
+          , dependencyTags = Map.singleton "scopes" ["compile", "test", "other"]
+          }
+  MavenDependency dep (Set.fromList ["compile", "test", "other"]) mempty
 
 mavenOutput :: PluginOutput
 mavenOutput =
@@ -265,30 +276,30 @@ mavenCrossDependentSubModules =
 spec :: Spec
 spec = do
   describe "buildGraph" $ do
-    it "should produce expected output" $ do
-      let graph = buildGraph (ReactorOutput []) mavenOutput
+    it "Should produce expected output, without including submodules in test comparison" $ do
+      let graph = shrinkRoots $ buildGraph (ReactorOutput []) mavenOutput
 
       expectDeps [packageOne, packageTwo] graph
       expectDirect [] graph
       expectEdges [(packageOne, packageTwo)] graph
 
     it "Should promote children of root dep(s) to direct" $ do
-      let graph = buildGraph (ReactorOutput []) mavenOutputWithDirects
+      let graph = shrinkRoots $ buildGraph (ReactorOutput []) mavenOutputWithDirects
       expectDeps [packageTwo] graph
       expectDirect [packageTwo] graph
       expectEdges [] graph
 
     it "Should promote children of root dep(s) to direct in multimodule projects" $ do
-      let graph = buildGraph (ReactorOutput []) mavenMultimoduleOutputWithDirects
+      let graph = shrinkRoots $ buildGraph (ReactorOutput []) mavenMultimoduleOutputWithDirects
       expectDeps [packageTwo, packageFour] graph
       expectDirect [packageTwo, packageFour] graph
       expectEdges [] graph
 
-    it "Should parse all scopes" $ do
-      let graph = buildGraph (ReactorOutput []) mavenMultiScopeOutput
+    it "Should parse all scopes, without including submodules in test comparison" $ do
+      let graph = shrinkRoots $ buildGraph (ReactorOutput []) mavenMultiScopeOutput
       expectDeps [packageMultiScope] graph
 
-    let graph = buildGraph (ReactorOutput [ReactorArtifact "packageThree"]) mavenCrossDependentSubModules
+    let graph = shrinkRoots $ buildGraph (ReactorOutput [ReactorArtifact "packageThree"]) mavenCrossDependentSubModules
     it "Should mark top-level graph artifacts and known submodules as direct, then shrinkRoots" $ do
       expectDirect [packageTwo, packageFour] graph
 

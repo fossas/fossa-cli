@@ -2,7 +2,6 @@
 ![FOSSA](https://raw.githubusercontent.com/fossas/fossa-cli/master/docs/assets/header.png)
 
 # FOSSA CLI
-
 <!-- markdown-link-check-disable -->
 <!-- NOTE: If you change the format of the "FOSSA Downloads" badge, make sure to also update the CI action at `./github/workflows/badges.yml` that updates the download count. -->
 [![FOSSA Downloads](https://img.shields.io/badge/downloads-5.8M-brightgreen)](https://github.com/fossas/fossa-cli/releases)
@@ -10,7 +9,7 @@
 [![Dependency scan](https://img.shields.io/github/actions/workflow/status/fossas/fossa-cli/dependency-scan.yml?label=dependency%20scan)](https://github.com/fossas/fossa-cli/actions/workflows/dependency-scan.yml)
 [![FOSSA Security Status](https://app.fossa.com/api/projects/custom%2B1%2Fgithub.com%2Ffossas%2Ffossa-cli.svg?type=shield&issueType=security)](https://app.fossa.com/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli?ref=badge_shield)
 
-[![FOSSA License Status](https://app.fossa.com/api/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli.svg?type=large)](https://app.fossa.com/projects/custom%2B1%2Fgit%40github.com%3Afossas%2Ffossa-cli?ref=badge_large)
+[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B1%2Fgithub.com%2Ffossas%2Ffossa-cli.svg?type=large&issueType=license)](https://app.fossa.com/projects/custom%2B1%2Fgithub.com%2Ffossas%2Ffossa-cli?ref=badge_large&issueType=license)
 <!-- markdown-link-check-enable-->
 
 `fossa-cli` is a zero-configuration polyglot dependency analysis tool. You can point fossa CLI at any codebase or build, and it will automatically detect dependencies being used by your project.
@@ -130,7 +129,7 @@ Once an analysis has been uploaded, you can view your results in the FOSSA web a
 
 Now that your analysis is complete, there are a couple things you might want to do after an initial integration:
 
-- **Double-check your results.** Some analysis methods may produce partial or unexpected results depending on what information was available when you ran the analysis. If something seems wrong, [our debugging guide](./docs/walkthroughs/debugging-your-integration.md) can help you diagnose and debug your integration.
+- **Double-check your results.** Some analysis methods may produce partial or unexpected results depending on what information was available when you ran the analysis. If something seems wrong, [our debugging guide](./docs/references/debugging/README.md) can help you diagnose and debug your integration.
 
 - **Scan for issues and generate a compliance report.** Once your analysis is ready, we'll automatically queue an issue scan and report the results in the web application. Once an issue scan is complete, you can also [generate a report](https://docs.fossa.com/docs/running-a-scan) from the web application.
 
@@ -142,7 +141,7 @@ For most users, the FOSSA CLI will work out-of-the-box without any configuration
 
 Users who need advanced customization or features should see the [User Manual](./docs/README.md). Some common topics of interest include:
 
-- [Debugging your integration](./docs/walkthroughs/debugging-your-integration.md)
+- [Debugging your integration](./docs/references/debugging/README.md)
 - [Specifying vendored dependencies](docs/features/vendored-dependencies.md)
 - [Adding manual dependencies](docs/features/manual-dependencies.md)
 - [Supported languages](docs/references/strategies/README.md)

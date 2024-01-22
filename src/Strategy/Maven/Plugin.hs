@@ -31,6 +31,7 @@ import Data.ByteString qualified as BS
 import Data.FileEmbed.Extra (embedFile')
 import Data.Foldable (Foldable (fold), foldl')
 import Data.Functor (void)
+import Data.List (nub)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -63,7 +64,6 @@ import Path (
   Path,
   Rel,
   fromAbsDir,
-  mkRelDir,
   mkRelFile,
   (</>),
  )
@@ -129,10 +129,10 @@ execPluginAggregate dir plugin = do
   cmd <- mavenPluginDependenciesCmd dir plugin
   execPlugin (const cmd) dir plugin
 
-execPluginReactor :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
-execPluginReactor dir plugin = do
-  cmd <- mavenPluginReactorCmd dir plugin
-  execPlugin (const cmd) dir plugin
+execPluginReactor :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginReactor projectdir outputdir plugin = do
+  cmd <- mavenPluginReactorCmd projectdir outputdir plugin
+  execPlugin (const cmd) projectdir plugin
 
 outputFile :: Path Rel File
 outputFile = $(mkRelFile "target/dependency-graph.txt")
@@ -145,17 +145,17 @@ reactorOutputFilename :: Path Rel File
 reactorOutputFilename = $(mkRelFile "fossa-reactor-graph.json")
 
 parseReactorOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => (Path Abs Dir) -> m ReactorOutput
-parseReactorOutput dir = readContentsJson $ dir </> $(mkRelDir "target/") </> reactorOutputFilename
+parseReactorOutput dir = readContentsJson $ dir </> reactorOutputFilename
 
 textArtifactToPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m PluginOutput
 textArtifactToPluginOutput
   ta = buildPluginOutput ta
     where
-      artifactNames :: [Text]
-      artifactNames = foldl' (\a c -> (artifactText c : a)) mempty ta
+      artifacts :: [TextArtifact]
+      artifacts = nub $ foldl' (flip (:)) mempty ta
 
-      namesToIds :: Map Text Int
-      namesToIds = Map.fromList . (\ns -> zip ns [0 ..]) $ artifactNames
+      artifactToIds :: Map TextArtifact Int
+      artifactToIds = Map.fromList . (\ns -> zip ns [0 ..]) $ artifacts
 
       textArtifactToArtifact :: Int -> TextArtifact -> Artifact
       textArtifactToArtifact numericId TextArtifact{..} =
@@ -169,12 +169,12 @@ textArtifactToPluginOutput
           , artifactIsDirect = isDirect
           }
 
-      lookupArtifactByName :: Has Diagnostics sig m => Text -> m (Maybe Int)
-      lookupArtifactByName aText = do
-        let res = Map.lookup aText namesToIds
+      lookupArtifact :: Has Diagnostics sig m => TextArtifact -> m (Maybe Int)
+      lookupArtifact artifactToLook = do
+        let res = Map.lookup artifactToLook artifactToIds
         when (isNothing res) $
           warn $
-            "Could not find artifact with name " <> aText
+            "Could not find artifact: " <> show artifactToLook
         pure res
 
       buildEdges :: Has Diagnostics sig m => Int -> [Tree TextArtifact] -> m [Edge]
@@ -182,12 +182,12 @@ textArtifactToPluginOutput
         catMaybes
           <$> for
             (map rootLabel children)
-            (\c -> fmap (Edge parentId) <$> lookupArtifactByName (artifactText c))
+            (fmap (fmap $ Edge parentId) . lookupArtifact)
 
       buildPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m PluginOutput
       buildPluginOutput
-        (Node t@(TextArtifact{artifactText = aText}) aChildren) = do
-          maybeId <- lookupArtifactByName aText
+        (Node t aChildren) = do
+          maybeId <- lookupArtifact t
           childInfo@PluginOutput
             { outArtifacts = cArtifacts
             , outEdges = cEdges
@@ -195,7 +195,7 @@ textArtifactToPluginOutput
             fold <$> traverse buildPluginOutput aChildren
           case maybeId of
             Nothing -> do
-              warn ("Could not find id for artifact " <> aText)
+              warn ("Could not find id for artifact: " <> show t)
               pure childInfo
             Just numericId -> do
               let artifact = textArtifactToArtifact numericId t
@@ -265,8 +265,10 @@ mavenPluginDependenciesCmd workdir plugin = do
 
 -- | The reactor command is documented
 --  [here.](https://ferstl.github.io/depgraph-maven-plugin/reactor-mojo.html)
-mavenPluginReactorCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m Command
-mavenPluginReactorCmd workdir plugin = do
+--  We set outputDirectory explicitly so that the file is written to a known spot even if the pom file
+--  overrides the build directory (See FDN-82 for more details)
+mavenPluginReactorCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m Command
+mavenPluginReactorCmd workdir outputdir plugin = do
   candidates <- mavenCmdCandidates workdir
   mkAnalysisCommand candidates workdir args Never
   where
@@ -274,6 +276,7 @@ mavenPluginReactorCmd workdir plugin = do
       [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":reactor"
       , "-DgraphFormat=json"
       , "-DoutputFileName=" <> toText reactorOutputFilename
+      , "-DoutputDirectory=" <> toText outputdir
       ]
 
 newtype ReactorArtifact = ReactorArtifact

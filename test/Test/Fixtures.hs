@@ -57,9 +57,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text.Extra (showT)
-import Discovery.Filters (
-  AllFilters,
- )
+import Discovery.Filters (AllFilters, MavenScopeFilters (MavenScopeIncludeFilters))
 import Effect.Logger (Severity (..))
 import Fossa.API.Types (Archive (..))
 import Fossa.API.Types qualified as API
@@ -78,7 +76,7 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False True []
+organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True []
 
 project :: API.Project
 project =
@@ -389,6 +387,7 @@ experimentalConfig =
   ExperimentalAnalyzeConfig
     { allowedGradleConfigs = Nothing
     , useV3GoResolver = GoModulesBasedTactic
+    , resolvePathDependencies = False
     }
 
 vendoredDepsOptions :: VendoredDependencyOptions
@@ -411,6 +410,9 @@ grepOptions =
 customFossaDepsFile :: Maybe FilePath
 customFossaDepsFile = Nothing
 
+mavenScopeFilterSet :: MavenScopeFilters
+mavenScopeFilterSet = MavenScopeIncludeFilters mempty
+
 #ifdef mingw32_HOST_OS
 absDir :: Path Abs Dir
 absDir = $(mkAbsDir "C:/")
@@ -428,6 +430,7 @@ standardAnalyzeConfig =
     , ANZ.projectRevision = projectRevision
     , ANZ.vsiOptions = vsiOptions
     , ANZ.filterSet = filterSet
+    , ANZ.mavenScopeFilterSet = mavenScopeFilterSet
     , ANZ.experimental = experimentalConfig
     , ANZ.vendoredDeps = vendoredDepsOptions
     , ANZ.unpackArchives = toFlag UnpackArchives False

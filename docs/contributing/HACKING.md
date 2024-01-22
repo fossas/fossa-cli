@@ -31,7 +31,7 @@ Ok, the quickstart worked for you, but why, and how?
 
 > `ghcup install ghc 9.4`
 
-When you install `ghcup`, `ghc` and `cabal-install` are installed automatically as part of the initial installation (see [Tools](#Tools) for descriptions of `ghc` and `cabal-install`).
+When you install `ghcup`, `ghc` and `cabal-install` are installed automatically as part of the initial installation (see [Tools](#tools) for descriptions of `ghc` and `cabal-install`).
 The `ghc` version that is automatically installed may not be the correct version we use (though it may work just fine).  So we install the correct version with `ghcup install ghc 9.4`.
 Currently, the best place to check the correct version is our CI build files (try `.github/workflows/build.yml`).
 
@@ -68,20 +68,21 @@ There is no supported way for Non-FOSSA users to obtain these binaries, though w
 
 Run the unit tests by running `cabal test unit-tests` in the base directory.
 
-Integration tests require you first build test data by running `make build-test-data`.  Then you can run them with `cabal test integration-tests`.  Note that integration tests can take quite a while to run and do not have progress output.
+Integration tests require you first build test data by running `make build-test-data`.  Then you can run them with `cabal test integration-tests`.  Integration tests also require `nix`. See ["Installing Nix"](#installing-nix) below for installation instructions. Note that integration tests can take quite a while to run and do not have progress output.
 
 Both test suites will be run when you execute `cabal test`.
 
 ## Tools
 
 | name                                   | description                                                                                                  |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+|----------------------------------------|--------------------------------------------------------------------------------------------------------------|
 | [ghcup][ghcup]                         | Used to manage installed versions of ghc and cabal-install                                                   |
 | ghc                                    | The haskell compiler (installed via ghcup)                                                                   |
 | cabal-install                          | The package manager we use (installed via ghcup). Accessed via `cabal` on most setups.                       |
 | [haskell-language-server][hls] ("HLS") | LSP server for haskell projects                                                                              |
 | [hlint][hlint]                         | A linting + hints tool for haskell code. It provides really useful suggestions.  `hlint` is bundled with HLS |
 | [fourmolu][fourmolu]                   | A haskell source code formatter. `fourmolu` is bundled with HLS                                              |
+| [nix](#installing-nix)                 | Used by integration tests                                                                                    |
 
 ### Installing haskell-language-server
 
@@ -130,10 +131,18 @@ run `make fmt-ci`, which will mount your project into the container used for che
 run `make fmt` within the container.  This allows you to run the formater locally without having to startup an editor
 or having to install the formatter yourself.  This also makes sure you're using the same version as CI.
 
+## Installing `nix`
+
+Our integration tests use `nix` in order to set up dependencies. For example, we run our Maven integration tests in an environment where `mvn` and `jdk11` are installed.
+
+If you do not have `nix` installed, then any shell commands that are attempted during the integration test will fail, even if the binaries are installed locally. This has the effect of making the integration tests fall back to static analysis, which will probably give you different results than you were expecting.
+
+You can tell if you have `nix` installed by trying to run `nix-shell` at the command line. If you need to install it, then consult the [`nix` installation instructions](https://nixos.org/download#nix-install-macos).
+
 ## Docs
 
 | name               | description                                                                    |
-| ------------------ | ------------------------------------------------------------------------------ |
+|--------------------|--------------------------------------------------------------------------------|
 | [hoogle][hoogle]   | Search for type signatures or symbols                                          |
 | [hackage][hackage] | Package repository; can be used to browse individual package docs ("haddocks") |
 
@@ -146,7 +155,7 @@ On linux, you can use [zeal](https://zealdocs.org/).  (Currently there is an iss
 ### Cabal cheatsheet
 
 | command                              | description                                                                |
-| ------------------------------------ | -------------------------------------------------------------------------- |
+|--------------------------------------|----------------------------------------------------------------------------|
 | `cabal repl`                         | opens the ghci repl on the project                                         |
 | `cabal build`                        | build fossa-cli                                                            |
 | `cabal test`                         | build + run tests                                                          |
@@ -157,7 +166,7 @@ On linux, you can use [zeal](https://zealdocs.org/).  (Currently there is an iss
 Use `cabal repl` to open ghci.
 
 | command                    | description                                                  |
-| -------------------------- | ------------------------------------------------------------ |
+|----------------------------|--------------------------------------------------------------|
 | `:r`/`:reload`             | reload the project                                           |
 | `:t`/`:type <symbol>`      | query the type of a symbol                                   |
 | `:i`/`:info <symbol>`      | query info about a symbol -- docs, where it was defined, etc |

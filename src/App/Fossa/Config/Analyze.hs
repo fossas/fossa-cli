@@ -34,6 +34,7 @@ import App.Fossa.Config.Common (
   collectApiOpts,
   collectBaseDir,
   collectConfigFileFilters,
+  collectConfigMavenScopeFilters,
   collectRevisionData',
   commonOpts,
   metadataOpts,
@@ -82,7 +83,7 @@ import Data.String.Conversion (
   ToText (toText),
  )
 import Data.Text (Text)
-import Discovery.Filters (AllFilters (AllFilters), comboExclude, comboInclude)
+import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (MavenScopeIncludeFilters), comboExclude, comboInclude)
 import Effect.Exec (
   Exec,
  )
@@ -202,6 +203,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeSkipVSIGraphResolution :: [VSI.Locator]
   , analyzeBaseDir :: FilePath
   , analyzeDynamicGoAnalysisType :: GoDynamicTactic
+  , analyzePathDependencies :: Bool
   , analyzeForceFirstPartyScans :: Flag ForceFirstPartyScans
   , analyzeForceNoFirstPartyScans :: Flag ForceNoFirstPartyScans
   , analyzeIgnoreOrgWideCustomLicenseScanConfigs :: Flag IgnoreOrgWideCustomLicenseScanConfigs
@@ -225,6 +227,7 @@ data AnalyzeConfig = AnalyzeConfig
   , projectRevision :: ProjectRevision
   , vsiOptions :: VSIModeOptions
   , filterSet :: AllFilters
+  , mavenScopeFilterSet :: MavenScopeFilters
   , experimental :: ExperimentalAnalyzeConfig
   , vendoredDeps :: VendoredDependencyOptions
   , unpackArchives :: Flag UnpackArchives
@@ -244,6 +247,7 @@ instance ToJSON AnalyzeConfig where
 data ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
   { allowedGradleConfigs :: Maybe (Set Text)
   , useV3GoResolver :: GoDynamicTactic
+  , resolvePathDependencies :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -282,6 +286,7 @@ cliParser =
     <*> many skipVSIGraphResolutionOpt
     <*> baseDirArg
     <*> experimentalUseV3GoResolver
+    <*> experimentalAnalyzePathDependencies
     <*> flagOpt ForceFirstPartyScans (long "experimental-force-first-party-scans" <> help "Force first party scans")
     <*> flagOpt ForceNoFirstPartyScans (long "experimental-block-first-party-scans" <> help "Block first party scans. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans.")
     <*> flagOpt IgnoreOrgWideCustomLicenseScanConfigs (long "ignore-org-wide-custom-license-scan-configs" <> help "Ignore custom-license scan configurations for your organization. These configurations are defined in the \"Integrations\" section of the Admin settings in the FOSSA web app")
@@ -307,6 +312,14 @@ experimentalUseV3GoResolver =
       <> help
         ( coloredText Red "DEPRECATED: This is now default and will be removed in the future."
             <> " For Go: generate a graph of module deps based on package deps. This will be the default in the future."
+        )
+
+experimentalAnalyzePathDependencies :: Parser Bool
+experimentalAnalyzePathDependencies =
+  switch $
+    long "experimental-analyze-path-dependencies"
+      <> help
+        ( "License scan dependencies sourced from file system, as indicated in manifest files. This will be enabled by default in the future."
         )
 
 vendoredDependencyModeOpt :: Parser ArchiveUploadType
@@ -405,6 +418,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
           OverrideProject (optProjectName commons) (optProjectRevision commons) (analyzeBranch)
       modeOpts = collectModeOptions cliOpts
       filters = collectFilters maybeConfig cliOpts
+      mavenScopeFilters = collectMavenScopeFilters maybeConfig
       experimentalCfgs = collectExperimental maybeConfig cliOpts
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
       dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
@@ -425,6 +439,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> revisionData
     <*> modeOpts
     <*> filters
+    <*> mavenScopeFilters
     <*> pure experimentalCfgs
     <*> vendoredDepsOptions
     <*> pure analyzeUnpackArchives
@@ -435,6 +450,14 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure firstPartyScansFlag
     <*> pure grepOptions
     <*> pure customFossaDepsFile
+
+collectMavenScopeFilters ::
+  ( Has Diagnostics sig m
+  ) =>
+  Maybe ConfigFile ->
+  m MavenScopeFilters
+collectMavenScopeFilters maybeConfig =
+  pure $ maybe (MavenScopeIncludeFilters mempty) collectConfigMavenScopeFilters maybeConfig
 
 collectFilters ::
   ( Has Diagnostics sig m
@@ -461,13 +484,14 @@ collectCLIFilters AnalyzeCliOpts{..} =
     (comboExclude analyzeExcludeTargets analyzeExcludePaths)
 
 collectExperimental :: Maybe ConfigFile -> AnalyzeCliOpts -> ExperimentalAnalyzeConfig
-collectExperimental maybeCfg AnalyzeCliOpts{analyzeDynamicGoAnalysisType = goDynamicAnalysisType} =
+collectExperimental maybeCfg AnalyzeCliOpts{analyzeDynamicGoAnalysisType = goDynamicAnalysisType, analyzePathDependencies = shouldAnalyzePathDependencies} =
   ExperimentalAnalyzeConfig
     ( fmap
         gradleConfigsOnly
         (maybeCfg >>= configExperimental >>= gradle)
     )
     goDynamicAnalysisType
+    shouldAnalyzePathDependencies
 
 collectVendoredDeps ::
   ( Has Diagnostics sig m

@@ -6,48 +6,92 @@ module Strategy.Python.SetupPy (
 
 import Control.Effect.Diagnostics
 import Control.Monad (void)
+import Data.Functor.Identity (Identity)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Void (Void)
 import Effect.ReadFS
 import Graphing (Graphing)
 import Path
+import Strategy.Python.Pip (PythonPackage (..))
 import Strategy.Python.Util
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 import Types
 
-analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> Maybe (Path Abs File) -> m (Graphing Dependency)
-analyze' file setupCfg = do
-  reqs <- readContentsParser installRequiresParser file
-  reqsFromCfg <- maybe (pure []) (readContentsParser installRequiresParserSetupCfg) setupCfg
-
-  context "Building dependency graph" $ pure (buildGraph $ reqs ++ reqsFromCfg)
+analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe [PythonPackage] -> Path Abs File -> Maybe (Path Abs File) -> m (Graphing Dependency)
+analyze' packages setupPy setupCfg = do
+  (pyReqs, pyPackageName) <- readContentsParser installRequiresParser setupPy
+  (cfgReqs, cfgPackageName) <- maybe (pure ([], Nothing)) (readContentsParser installRequiresParserSetupCfg) setupCfg
+  context "Building dependency graph" $ pure $ buildGraphSetupFile packages pyPackageName pyReqs cfgPackageName cfgReqs
 
 type Parser = Parsec Void Text
 
-installRequiresParser :: Parser [Req]
+data Param
+  = Name
+  | Requires
+  deriving (Eq, Ord, Show)
+
+installRequiresParser :: Parser ([Req], Maybe Text)
 installRequiresParser = do
-  maybePrefix <- optional (try prefix)
-  -- When we find `install_requires`, try to parse requirement strings
-  case maybePrefix of
-    Nothing -> pure []
-    Just _ -> entries <* end
+  maybeParam <- optional . try $ prefix (name <|> installRequires)
+  case maybeParam of
+    Nothing -> do
+      pure ([], Nothing)
+    Just Requires -> do
+      requires <- entriesParser
+      n <- findName
+      pure (requires, n)
+    Just Name -> do
+      n <- optional nameParser
+      reqs <- findRequires
+      pure (reqs, n)
   where
-    prefix :: Parser Text
-    prefix = skipManyTill anySingle (symbol "install_requires") *> symbol "=" *> (symbol' "[")
+    findName :: Parser (Maybe Text)
+    findName = do
+      maybeName <- optional . try $ prefix name
+      case maybeName of
+        Just _ -> Just <$> nameParser
+        Nothing -> pure Nothing
 
-    entries :: Parser [Req]
-    entries = entriesParser `sepEndBy` (symbol' ",")
+    findRequires :: Parser [Req]
+    findRequires = do
+      maybeRequires <- optional . try $ prefix installRequires
+      case maybeRequires of
+        Nothing -> pure []
+        Just _ -> entriesParser
 
-    entriesParser :: Parser Req
-    entriesParser = lexeme (requireSurroundedBy "\"" <|> requireSurroundedBy "\'")
+    nameParser :: Parser Text
+    nameParser =
+      toText
+        <$> lexeme
+          ( ( between (symbol' "\"") (symbol "\"") packageName
+                <|> (between (symbol "\'") (symbol "\'") packageName)
+            )
+          )
 
-    requireSurroundedBy :: Text -> Parser Req
-    requireSurroundedBy quote = between (symbol quote) (symbol quote) requirementParser
+    installRequires :: Parser Param
+    installRequires = do
+      void $ (symbol "install_requires") *> symbol "=" *> (symbol' "[")
+      pure Requires
 
-    end :: Parser Text
-    end = symbol "]"
+    name :: Parser Param
+    name = do
+      void $ (symbol "name") *> symbol "="
+      pure Name
+
+    prefix :: Parser Param -> Parser Param
+    prefix = skipManyTill anySingle
+
+    entriesParser :: Parser [Req]
+    entriesParser = entries `sepEndBy` (symbol' ",") <* symbol "]"
+      where
+        entries :: Parser Req
+        entries = lexeme (requireSurroundedBy "\"" <|> requireSurroundedBy "\'")
+
+        requireSurroundedBy :: Text -> Parser Req
+        requireSurroundedBy quote = between (symbol quote) (symbol quote) requirementParser
 
     ignoreBackslash :: Parser ()
     ignoreBackslash = void $ symbol "\\"
@@ -60,6 +104,17 @@ installRequiresParser = do
 
     symbol' :: Text -> Parser Text
     symbol' = lexeme . symbol
+
+-- Parses a python package name using regex ^([A-Z0-9]|[A-Z0-9][A-Z0-9._-]*[A-Z0-9])$
+packageName :: ParsecT Void Text Identity [Char]
+packageName = (:) <$> alphaNumChar <*> (concat <$> many nameEnd)
+  where
+    nameEnd :: ParsecT Void Text Identity [Char]
+    nameEnd =
+      pure <$> alphaNumChar <|> do
+        special <- many (satisfy (\x -> x == '.' || x == '_' || x == '-'))
+        lod <- alphaNumChar
+        pure (special ++ [lod])
 
 -- | Parses install requirements listed in setup.cfg
 -- Setup.cfg has install_requires attribute in [options] block
@@ -76,18 +131,26 @@ installRequiresParser = do
 -- >
 -- >
 -- Docs: https://setuptools.pypa.io/en/latest/userguide/declarative_config.html
-installRequiresParserSetupCfg :: Parser [Req]
+installRequiresParserSetupCfg :: Parser ([Req], Maybe Text)
 installRequiresParserSetupCfg = do
-  maybePrefix <- optional (try prefix)
-  case maybePrefix of
-    Nothing -> pure []
-    Just _ -> parseReqs
+  maybeParameter <- optional . try $ prefix (lookAhead installRequiresHeader <|> name)
+  case maybeParameter of
+    Nothing -> pure ([], Nothing)
+    Just Requires -> do
+      req <- parseReqs
+      n <- findName
+      pure (req, n)
+    Just Name -> do
+      n <- nameParser
+      req <- findRequires
+      pure (req, Just n)
   where
-    prefix :: Parser Text
-    prefix = skipManyTill anySingle $ lookAhead parseHeader
+    prefix :: Parser Param -> Parser Param
+    prefix = skipManyTill anySingle
 
-    parseHeader :: Parser Text
-    parseHeader = lexeme $ symbol "install_requires" <* chunk "="
+    installRequiresHeader = do
+      void $ lexeme $ symbol "install_requires" <* chunk "="
+      pure Requires
 
     lineComment :: Parser ()
     lineComment = L.skipLineComment "#"
@@ -108,8 +171,30 @@ installRequiresParserSetupCfg = do
     parseReqs = L.nonIndented scn (L.indentBlock scn p)
       where
         p = do
-          void parseHeader
+          void installRequiresHeader
           pure $ L.IndentMany Nothing pure parseReq
 
     parseReq :: Parser Req
     parseReq = lexeme requirementParser <?> "requirement"
+
+    findName :: Parser (Maybe Text)
+    findName = do
+      maybeName <- optional . try $ prefix name
+      case maybeName of
+        Just _ -> Just <$> nameParser
+        Nothing -> pure Nothing
+
+    findRequires :: Parser [Req]
+    findRequires = do
+      maybeRequires <- optional . try $ prefix $ lookAhead installRequiresHeader
+      case maybeRequires of
+        Nothing -> pure []
+        Just _ -> parseReqs
+
+    nameParser :: Parser Text
+    nameParser = toText <$> lexeme packageName <?> "name"
+
+    name :: Parser Param
+    name = do
+      void $ (symbol "name") *> symbol "="
+      pure Name
