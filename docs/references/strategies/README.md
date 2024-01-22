@@ -126,7 +126,6 @@ Languages supported by FOSSA CLI can have multiple strategies for detecting depe
 Running the tool with all possible strategies enabled is recommended, but if you need to limit FOSSA CLI's run to only use static strategies the CLI offers the `--static-only-analysis` flag. 
 This flag prevents the FOSSA CLI from using any third party tools, such as `npm`, `pip`, maven plugins, etc.
 With this option enabled, strategies that don't offer a way to analyze statically will fail with an error.
-FOSSA CLI may still use FOSSA-developed tools that ship with the CLI binary, however.
 
 It is important to note that neither type of strategy has an inherent benefit when detecting dependencies. If a supported language has only a static or only a dynamic strategy, this does not mean it is less supported than a language that has both.
 
