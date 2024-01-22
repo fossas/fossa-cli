@@ -13,6 +13,7 @@ import App.Fossa.Snippets qualified as Snippets
 import App.Fossa.Subcommand (GetCommonOpts, GetSeverity, SubCommand (..), runSubCommand)
 import App.Fossa.Test qualified as Test
 import App.Fossa.VSI.IAT.AssertUserDefinedBinaries qualified as LinkBins
+import App.Support (supportUrl)
 import App.Version (fullVersionDescription)
 import Control.Concurrent.CGroup (initRTSThreads)
 import Control.Monad (join)
@@ -73,6 +74,7 @@ subcommands = public <|> private
           , decodeSubCommand LinkBins.linkBinsSubCommand
           , decodeSubCommand Snippets.snippetsSubCommand
           , initCommand
+          , feedbackCommand
           ]
 
 experimentalLicenseScanCommand :: Mod CommandFields (IO ())
@@ -80,6 +82,15 @@ experimentalLicenseScanCommand = command "experimental-license-scan" (info runIn
   where
     runInit :: Parser (IO ())
     runInit = pure $ putStrLn "The 'experimental-license-scan' has been deprecated and renamed to 'license-scan'. Please use the 'license-scan' command instead."
+
+feedbackCommand :: Mod CommandFields (IO ())
+feedbackCommand = command "feedback" (info feedbackPrompt $ progDescDoc $ formatStringToDoc "Provide feedback on your fossa-cli experience, submit feature requests, and report bugs/issues")
+  where
+    feedbackPrompt :: Parser (IO ())
+    feedbackPrompt = pure $ do
+      putStrLn "At FOSSA, we are committed to delivering an exceptional user experience and are continously working towards improving our product."
+      putStrLn "Your feedback is crucial in shaping our ongoing efforts to innovate and provide an even better user experience!"
+      putStrLn ("\n * Submit feature requests and report bugs/issues at: " <> toString supportUrl)
 
 decodeSubCommand :: (GetSeverity a, GetCommonOpts a, Show b, ToJSON b) => SubCommand a b -> Mod CommandFields (IO ())
 decodeSubCommand cmd@SubCommand{..} = command commandName $ info (runSubCommand cmd) commandInfo

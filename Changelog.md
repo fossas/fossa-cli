@@ -2,6 +2,7 @@
 
 ## Unreleased
 - Add color and update formatting in cli help commands ([#1367](https://github.com/fossas/fossa-cli/pull/1367))
+- `fossa feedback`: Allow users to provide feedback on their cli experience 
 
 ## v3.8.30
 
