@@ -122,9 +122,9 @@ instance Pretty ScanCount where
 staticOnlyAnalysisMessage :: Doc a
 staticOnlyAnalysisMessage =
   vcat
-    [ "Performed static-only analysis!!!"
+    [ "FOSSA CLI was constrained to static-only analysis."
     , "Results may be different in comparison to an analysis using build tools."
-    , "See " <> pretty staticAndDynamicStrategies <> " for more information."
+    , "More information: " <> pretty staticAndDynamicStrategies
     ]
 
 -- | Renders Analysis Scan Summary with `ServInfo` severity.
