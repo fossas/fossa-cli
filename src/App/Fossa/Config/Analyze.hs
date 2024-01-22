@@ -301,7 +301,7 @@ cliParser =
     <*> flagOpt ForceNoFirstPartyScans (long "experimental-block-first-party-scans" <> help "Block first party scans. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans.")
     <*> flagOpt IgnoreOrgWideCustomLicenseScanConfigs (long "ignore-org-wide-custom-license-scan-configs" <> help "Ignore custom-license scan configurations for your organization. These configurations are defined in the \"Integrations\" section of the Admin settings in the FOSSA web app")
     <*> optional (strOption (long "fossa-deps-file" <> help "Path to fossa-deps file including filename (default: fossa-deps.{yaml|yml|json})"))
-    <*> flagOpt StaticOnlyTactics (long "static-only-analysis" <> help "Do not use dynamic tools for discovering dependencies.")
+    <*> flagOpt StaticOnlyTactics (long "static-only-analysis" <> help "Only analyze the project using static strategies.")
 
 data GoDynamicTactic
   = GoModulesBasedTactic

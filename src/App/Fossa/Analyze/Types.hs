@@ -113,20 +113,10 @@ data DiscoveredProjectIdentifier = DiscoveredProjectIdentifier
   }
   deriving (Eq, Ord, Show)
 
-{-# WARNING analyzeProject' "analyzeProject' has been renamed to analyzeProjectStaticOnly. Please use that name for all future implementations." #-}
 class AnalyzeProject a where
   -- | Analyze a project with any tactic including dynamic ones.
   analyzeProject :: AnalyzeTaskEffs sig m => FoundTargets -> a -> m DependencyResults
 
   -- | Analyze a project with only static tactics.
-  -- Static here generally means not using any external utilities.
-  -- An exception is berkeleydb which calls a program embedded in the CLI.
+  -- See docs/references/strategies/README.md#static-and-dynamic-strategies for information on the difference.
   analyzeProjectStaticOnly :: AnalyzeStaticTaskEffs sig m => FoundTargets -> a -> m DependencyResults
-  -- This is required to satisfy the MINIMAL pragma below and for compatibility with existing consumers of AnalyzeProject.
-  -- Please don't use this default implementation for any new code.
-  analyzeProjectStaticOnly = analyzeProject'
-
-  analyzeProject' :: (AnalyzeStaticTaskEffs sig m) => FoundTargets -> a -> m DependencyResults
-  analyzeProject' = analyzeProjectStaticOnly
-
-  {-# MINIMAL analyzeProject, analyzeProject' | analyzeProject, analyzeProjectStaticOnly #-}
