@@ -1,5 +1,12 @@
 # FOSSA CLI Changelog
 
+## v3.8.31
+
+Updates the license scanner to the latest version.
+
+This update addresses several issues with the license scanner,
+primarily related to incorrect classification of GPL and AGPL licenses.
+
 ## v3.8.30
 
 - Fix an issue with long-option syntax for older versions of `sbt` ([#1356](https://github.com/fossas/fossa-cli/pull/1356))
