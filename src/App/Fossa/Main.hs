@@ -90,7 +90,9 @@ feedbackCommand = command "feedback" (info feedbackPrompt $ progDescDoc $ format
     feedbackPrompt = pure $ do
       putStrLn "At FOSSA, we are committed to delivering an exceptional user experience and are continously working towards improving our product."
       putStrLn "Your feedback is crucial in shaping our ongoing efforts to innovate and provide an even better user experience!"
-      putStrLn ("\n * Submit feature requests and report bugs/issues at: " <> toString supportUrl)
+      putStrLn ("\n * Report bugs and issues at: " <> toString supportUrl)
+      putStrLn ("\n * Submit feature requests to: support@fossa.com")
+      putStrLn ("\n * Provide feedback on overall cli experience at: https://docs.google.com/forms/d/e/1FAIpQLSdfz4KX_j6lpCF0zICQaUd-Rjn_Vj-IelCSmqOii__fqyYVmg/viewform")
 
 decodeSubCommand :: (GetSeverity a, GetCommonOpts a, Show b, ToJSON b) => SubCommand a b -> Mod CommandFields (IO ())
 decodeSubCommand cmd@SubCommand{..} = command commandName $ info (runSubCommand cmd) commandInfo
