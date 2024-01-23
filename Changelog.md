@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.8.32
+
+- Options: Add a `--static-only-analysis` option. ([#1362](https://github.com/fossas/fossa-cli/pull/1362))
+
 ## v3.8.31
 
 - Container scanning: `BerkeleyDB` and `Sqlite` strategies now support RPM databases in non-standard locations ([#1365](https://github.com/fossas/fossa-cli/pull/1365)).

@@ -11,7 +11,7 @@ module Strategy.RPM (
   Dependencies (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
@@ -88,7 +88,7 @@ instance ToJSON RpmProject
 
 instance AnalyzeProject RpmProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps
+  analyzeProjectStaticOnly _ = getDeps
 
 mkProject :: RpmProject -> DiscoveredProject RpmProject
 mkProject project =
