@@ -25,6 +25,8 @@ dependencies. This will fail unless `pipenv install` has been run in that direct
 
 ## Limitations
 
+- Our pipenv strategy currently reports all dependencies as direct. rather than differentiating between direct and transitive.
+
 - Pipfile.lock does not report edges, if `pipenv graph --json-tree` fails, we will
 not be able to detect the edges between dependencies.
 
