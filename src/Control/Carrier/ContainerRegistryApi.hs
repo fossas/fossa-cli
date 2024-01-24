@@ -54,7 +54,7 @@ import Control.Carrier.Reader (ReaderC, ask, runReader)
 import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Carrier.StickyLogger (runStickyLogger)
 import Control.Carrier.TaskPool (withTaskPool)
-import Control.Concurrent (getNumCapabilities)
+import Control.Concurrent (getNumCapabilities, myThreadId)
 import Control.Concurrent.STM (newEmptyTMVarIO)
 import Control.Effect.ContainerRegistryApi (
   ContainerRegistryApiF (ExportImage, GetImageManifest),
@@ -102,6 +102,7 @@ import Network.HTTP.Conduit qualified as HTTPConduit
 import Network.HTTP.Types.Header (ResponseHeaders)
 import Path (Abs, Dir, File, Path, filename, mkRelFile, toFilePath, (</>))
 import Path.Internal (Path (..))
+import Text.Pretty.Simple (pShow)
 
 -- | A carrier to run Registry API functions in the IO monad
 type ContainerRegistryApiC m = SimpleC ContainerRegistryApiF (ReaderC RegistryCtx m)
@@ -250,7 +251,8 @@ exportBlob ::
   Path Abs Dir ->
   (RepoDigest, Bool, Text) ->
   m (Path Abs File)
-exportBlob manager imgSrc dir (digest, isGzip, targetFilename) = do
+exportBlob manager imgSrc dir (digest, isGzip, targetFilename) =
+  sendIO myThreadId >>= \i -> context ("Thread id: " <> (toText . show $ i)) $ do
   ctx <- ask
   let sinkTarget :: Path Abs File
       sinkTarget = dir </> Path (toString targetFilename)

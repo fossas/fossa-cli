@@ -29,7 +29,8 @@ import Control.Carrier.ContainerRegistryApi.Errors (
 import Control.Effect.Diagnostics (Diagnostics, fatal, fatalText, fromMaybeText)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Reader (Reader, ask)
-import Data.Aeson (FromJSON (parseJSON), decode', eitherDecode, withObject, (.:))
+import Control.Monad (void)
+import Data.Aeson (FromJSON (parseJSON), decode', eitherDecode, withObject, (.:), (.:?))
 import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -37,7 +38,8 @@ import Data.String.Conversion (ConvertUtf8 (decodeUtf8), encodeUtf8, toString, t
 import Data.Text (Text, isInfixOf)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import Effect.Logger (Logger)
+import Debug.Trace (trace)
+import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Network.HTTP.Client (
   Manager,
   Request (host, method, shouldStripHeaderOnRedirect),
@@ -63,6 +65,7 @@ import Text.Megaparsec (
   (<|>),
  )
 import Text.Megaparsec.Char (alphaNumChar, char)
+import Text.Pretty.Simple (pPrint, pShow, pShowNoColor)
 
 type Parser = Parsec Void Text
 
@@ -101,7 +104,7 @@ applyAuthToken (Just (BearerAuthToken token)) r =
 stripAuthHeaderOnRedirect :: Request -> Request
 stripAuthHeaderOnRedirect r =
   if ((isAwsECR || isAzure) && method r == methodGet)
-    then r{shouldStripHeaderOnRedirect = (== hAuthorization)}
+    then trace "stripped" $ r{shouldStripHeaderOnRedirect = (== hAuthorization)}
     else r
   where
     isAwsECR :: Bool
@@ -149,8 +152,12 @@ getAuthToken ::
   Maybe AuthToken ->
   -- | Existing Token (if any)
   m (Maybe AuthToken)
-getAuthToken cred reqAttempt manager accepts token = do
-  let request' = applyContentType accepts (applyAuthForExistingToken $ reqAttempt{method = "HEAD"})
+getAuthToken cred reqAttempt manager accepts tokenDeleteMe = do
+  currentCtx <- ask
+  token <- getToken currentCtx
+  logDebug $ "Initial token: " <> pretty (pShowNoColor token)
+  let request' = applyContentType accepts (applyAuthToken token $ reqAttempt{method = "HEAD"})
+  logDebug . pretty . show $ request'
   response <- logHttp request' manager
 
   case (decode' $ responseBody response, statusCode . responseStatus $ response) of
@@ -186,9 +193,6 @@ getAuthToken cred reqAttempt manager accepts token = do
     -- -
     (Just (apiErrors :: ContainerRegistryApiErrorBody), _) -> fatal (originalReqUri response, apiErrors)
     (Nothing, _) -> fatal $ UnknownApiError (originalReqUri response) $ responseStatus response
-  where
-    applyAuthForExistingToken :: Request -> Request
-    applyAuthForExistingToken = applyAuthToken token
 
 -- | Retrieves Token from Authorization Server.
 --
@@ -222,9 +226,12 @@ getTokenFromAuthChallenge cred (BearerAuthChallenge (RegistryBearerChallenge url
         Just (user, pass) -> applyBasicAuth (encodeUtf8 user) (encodeUtf8 pass) req
 
   response <- fromResponse =<< logHttp req' manager
+  logDebug $ "Raw auth server response: " <> (pretty (pShowNoColor response))
   case eitherDecode $ responseBody response of
     Left err -> fatal . FailedToParseAuthChallenge $ toText err
-    Right tokenResponse -> pure $ BearerAuthToken $ unToken tokenResponse
+    Right tokenResponse -> do
+      logDebug $ "Token expires in: " <> pretty (expiresIn tokenResponse)
+      pure $ BearerAuthToken $ unToken tokenResponse
   where
     -- \| Authorization Server Endpoint.
     authTokenEndpoint :: Has (Lift IO) sig m => m (Request)
@@ -246,12 +253,18 @@ data RegistryBearerChallenge = RegistryBearerChallenge
   }
   deriving (Show, Eq, Ord)
 
-newtype AuthChallengeResponse = AuthChallengeResponse {unToken :: Text} deriving (Eq, Show, Ord)
+data AuthChallengeResponse = AuthChallengeResponse
+  { unToken :: Text
+  , expiresIn :: Maybe Text
+  }
+  deriving (Eq, Show, Ord)
+
 instance FromJSON AuthChallengeResponse where
   parseJSON = withObject "AuthChallengeResponse" $ \o ->
     ( AuthChallengeResponse <$> o .: "token"
         <|> AuthChallengeResponse <$> o .: "access_token"
     )
+      <*> o .:? "expires_in"
 
 -- | Parses Authorization Header.
 --

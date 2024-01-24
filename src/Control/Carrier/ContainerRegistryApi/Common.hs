@@ -16,14 +16,19 @@ import Control.Carrier.ContainerRegistryApi.Errors (
   ContainerRegistryApiErrorBody,
   UnknownApiError (UnknownApiError),
  )
-import Control.Concurrent.STM (STM, TMVar, atomically, putTMVar, tryReadTMVar)
+import Control.Concurrent.STM (STM, TMVar, atomically, readTMVar, retry, tryReadTMVar, tryTakeTMVar, writeTMVar)
+import Control.Concurrent.STM.TMVar (putTMVar)
 import Control.Effect.Diagnostics (Diagnostics, fatal)
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Monad (when)
 import Data.Aeson (decode')
 import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.List (find)
 import Data.String.Conversion (ConvertUtf8 (encodeUtf8), decodeUtf8)
 import Data.Text (Text)
+import Data.UUID qualified as UUID (toText)
+import Data.UUID.V4 qualified as UUID (nextRandom)
+import Debug.Trace (traceM, traceShowM)
 import Effect.Logger (AnsiStyle, Doc, Logger, Pretty (pretty), logDebug)
 import Network.HTTP.Client (
   Manager,
@@ -40,9 +45,14 @@ import Network.URI (URI)
 -- | Makes request, and logs request uri and responses with debug severity.
 logHttp :: (Has (Lift IO) sig m, Has Logger sig m) => Request -> Manager -> m (Response ByteStringLazy.ByteString)
 logHttp req manager = do
-  logDebug summarizeRequest
+  reqId <- UUID.toText <$> sendIO UUID.nextRandom
+
+  let prefixReqId :: Doc a -> Doc a
+      prefixReqId doc = pretty ("[" <> reqId <> "]") <> doc
+
+  logDebug $ prefixReqId summarizeRequest
   resp <- sendIO $ httpLbs req manager
-  logDebug . summarizeResponse $ resp
+  logDebug . prefixReqId . summarizeResponse $ resp
   pure resp
   where
     summarizeRequest :: Doc AnsiStyle
