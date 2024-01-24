@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.8.33
+- Removes warnings and tracebacks to stderr [#1358](https://github.com/fossas/fossa-cli/pull/1358)
+
 ## v3.8.32
 
 - Options: Add a `--static-only-analysis` option. ([#1362](https://github.com/fossas/fossa-cli/pull/1362))
@@ -11,7 +14,6 @@
   This update addresses several issues with the license scanner, primarily related to incorrect classification of GPL and AGPL licenses.
 
 ## v3.8.30
-
 - Fix an issue with long-option syntax for older versions of `sbt` ([#1356](https://github.com/fossas/fossa-cli/pull/1356))
 - Debug: add more logging for debugging missing dependencies. ([#1360](https://github.com/fossas/fossa-cli/pull/1360))
 
