@@ -11,7 +11,7 @@ import App.Fossa.Analyze.Debug (diagToDebug)
 import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc))
 import App.Fossa.Analyze.Project (mkResult)
 import App.Fossa.Analyze.Types (
-  AnalyzeProject (analyzeProject'),
+  AnalyzeProject (analyzeProjectStaticOnly),
   AnalyzeStaticTaskEffs,
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
@@ -241,7 +241,7 @@ runDependencyAnalysis basedir filters project@DiscoveredProject{..} = do
       let ctxMessage = "Project Analysis: " <> showT projectType
       graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $
         Diag.context ctxMessage $ do
-          analyzeProject' targets projectData
+          analyzeProjectStaticOnly targets projectData
       Diag.flushLogs SevError SevDebug graphResult
       output $ Scanned dpi (mkResult basedir project Nothing <$> graphResult)
 

@@ -21,7 +21,7 @@ import Strategy.Python.Poetry.PyProject (PyProject (..), PyProjectMetadata (..),
 import Strategy.Python.Util (Req (..), toConstraint)
 import Text.URI qualified as URI
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.Maybe (isNothing)
@@ -64,7 +64,7 @@ instance ToJSON PdmProject
 
 instance AnalyzeProject PdmProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps
+  analyzeProjectStaticOnly _ = getDeps
 
 mkProject :: PdmProject -> DiscoveredProject PdmProject
 mkProject project =

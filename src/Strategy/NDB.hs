@@ -4,7 +4,7 @@ module Strategy.NDB (
   mkProject,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (..), analyzeProject')
+import App.Fossa.Analyze.Types (AnalyzeProject (..))
 import Container.OsRelease (OsInfo (..))
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Reader (Reader)
@@ -45,7 +45,7 @@ instance ToJSON NdbLocation
 
 instance AnalyzeProject NdbLocation where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps
+  analyzeProjectStaticOnly _ = getDeps
 
 discover ::
   ( Has ReadFS sig m
@@ -73,11 +73,16 @@ findProjects osInfo = walkWithFilters' $ \dir _ files -> do
         then pure ([NdbLocation dir file osInfo], WalkContinue)
         else pure ([], WalkContinue)
   where
-    -- The standard location for this is '/var/lib/rpm/', but some distros in some versions (e.g. openSUSE) symlink this elsewhere
+    -- The standard location for this is '/var/lib/rpm/',
+    -- but some distros in some versions (e.g. openSUSE) symlink this elsewhere
     -- (the example seen for openSUSE is 'usr/lib/sysimage/rpm/').
-    -- For maximal compatibility while still being reasonably confident that this is the 'Packages.db' for the system RPM install,
-    -- this function just checks whether the file is a child of any directory containing the word 'rpm'.
-    -- We may want to consider making walk work with symlinks or unconditionally trying any 'Packages.db' named file.
+    --
+    -- For maximal compatibility while still being reasonably confident that this is the package database
+    -- for the system RPM install, this function just checks whether the file is a child of any directory that
+    -- contains the word 'rpm'.
+    --
+    -- We may want to consider making walk work with symlinks (so that we are confident we're using the right file)
+    -- or unconditionally trying any matching named file.
     isSupportedPath :: Path Abs File -> Bool
     isSupportedPath = Text.isInfixOf "rpm" . toText . toFilePath
 
