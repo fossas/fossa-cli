@@ -7,7 +7,7 @@ module Strategy.Python.Poetry (
   PoetryProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Algebra (Has)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, fatalText, recover, warnOnErr)
@@ -63,7 +63,7 @@ instance ToJSON PoetryProject
 
 instance AnalyzeProject PoetryProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps
+  analyzeProjectStaticOnly _ = getDeps
 
 discover ::
   ( Has ReadFS sig m

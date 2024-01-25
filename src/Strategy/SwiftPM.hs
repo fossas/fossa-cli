@@ -125,7 +125,7 @@ mkProject project =
 
 instance AnalyzeProject SwiftProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps
+  analyzeProjectStaticOnly _ = getDeps
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SwiftProject -> m DependencyResults
 getDeps project = do
