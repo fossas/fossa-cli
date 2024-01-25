@@ -57,7 +57,7 @@ import Options.Applicative (
   switch,
  )
 import Options.Applicative.Builder (helpDoc, progDescDoc)
-import Style (applyFossaStyle, formatStringToDoc)
+import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
 
 data NoUpload = NoUpload
 data JsonOutput = JsonOutput deriving (Generic)
@@ -111,9 +111,9 @@ cliParser =
       ( applyFossaStyle
           <> long "output"
           <> short 'o'
-          <> helpDoc (formatStringToDoc "Output results to stdout instead of uploading to FOSSA")
+          <> stringToHelpDoc "Output results to stdout instead of uploading to FOSSA"
       )
-    <*> flagOpt JsonOutput (applyFossaStyle <> long "json" <> helpDoc (formatStringToDoc "Output project metadata as JSON to the console. This is useful for communicating with the FOSSA API."))
+    <*> flagOpt JsonOutput (applyFossaStyle <> long "json" <> stringToHelpDoc "Output project metadata as JSON to the console. This is useful for communicating with the FOSSA API.")
     <*> optional
       ( strOption
           ( applyFossaStyle
@@ -124,8 +124,8 @@ cliParser =
       )
     <*> metadataOpts
     <*> imageTextArg
-    <*> switch (applyFossaStyle <> long "experimental-scanner" <> helpDoc (formatStringToDoc "Uses experimental fossa native container scanner") <> hidden)
-    <*> switch (applyFossaStyle <> long "only-system-deps" <> helpDoc (formatStringToDoc "Only analyzes system dependencies (e.g. apk, dep, rpm)"))
+    <*> switch (applyFossaStyle <> long "experimental-scanner" <> stringToHelpDoc "Uses experimental fossa native container scanner" <> hidden)
+    <*> switch (applyFossaStyle <> long "only-system-deps" <> stringToHelpDoc "Only analyzes system dependencies (e.g. apk, dep, rpm)")
 
 mergeOpts ::
   (Has Diagnostics sig m) =>

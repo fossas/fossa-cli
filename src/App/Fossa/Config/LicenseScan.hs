@@ -82,8 +82,7 @@ cliParser = public <|> private
         )
     fossaDepsDesc :: Maybe (Doc AnsiStyle)
     fossaDepsDesc =
-      Just $
-        formatDoc $
-          vsep
-            [ "Like " <> coloredBoldItalicized Green "fossa analyze --output" <> " but only for native scanning of vendored-dependencies"
-            ]
+      Just . formatDoc $
+        vsep
+          [ "Like " <> coloredBoldItalicized Green "fossa analyze --output" <> " but only for native scanning of vendored-dependencies"
+          ]

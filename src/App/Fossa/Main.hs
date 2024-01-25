@@ -18,10 +18,36 @@ import Control.Concurrent.CGroup (initRTSThreads)
 import Control.Monad (join)
 import Data.Aeson (ToJSON)
 import Data.String.Conversion (toString)
-import Options.Applicative (CommandFields, InfoMod, Mod, Parser, ParserPrefs, columns, command, customExecParser, footer, fullDesc, header, helpIndent, helpShowGlobals, info, infoOption, internal, long, prefs, progDescDoc, short, showHelpOnEmpty, showHelpOnError, subparser, subparserInline, (<**>), (<|>))
-import Options.Applicative.Builder (helpDoc)
+import Options.Applicative (
+  CommandFields,
+  InfoMod,
+  Mod,
+  Parser,
+  ParserPrefs,
+  columns,
+  command,
+  customExecParser,
+  footer,
+  fullDesc,
+  header,
+  helpIndent,
+  helpShowGlobals,
+  info,
+  infoOption,
+  internal,
+  long,
+  prefs,
+  progDescDoc,
+  short,
+  showHelpOnEmpty,
+  showHelpOnError,
+  subparser,
+  subparserInline,
+  (<**>),
+  (<|>),
+ )
 import Options.Applicative.Extra (helperWith)
-import Style (applyFossaStyle, formatStringToDoc)
+import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
 
 appMain :: IO ()
 appMain = do
@@ -32,7 +58,7 @@ versionOpt :: Parser (a -> a)
 versionOpt =
   infoOption (toString fullVersionDescription) $
     mconcat
-      [applyFossaStyle, long "version", short 'V', helpDoc $ formatStringToDoc "Show version information and exit"]
+      [applyFossaStyle, long "version", short 'V', stringToHelpDoc "Show version information and exit"]
 
 helperOpt :: Parser (a -> a)
 helperOpt =
@@ -41,7 +67,7 @@ helperOpt =
         [ applyFossaStyle
         , long "help"
         , short 'h'
-        , helpDoc $ formatStringToDoc "Show this help text"
+        , stringToHelpDoc "Show this help text"
         ]
     )
 

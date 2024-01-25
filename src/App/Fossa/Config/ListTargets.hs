@@ -89,12 +89,11 @@ parser =
   where
     listTargetsFormatHelp :: Maybe (Doc AnsiStyle)
     listTargetsFormatHelp =
-      Just $
-        formatDoc $
-          vsep
-            [ boldItalicized "Formats: " <> coloredBoldItalicized Green "legacy" <> boldItalicized "|" <> coloredBoldItalicized Green "ndjson" <> boldItalicized "|" <> coloredBoldItalicized Green "text"
-            , boldItalicized "Default: " <> coloredBoldItalicized Green "legacy"
-            ]
+      Just . formatDoc $
+        vsep
+          [ boldItalicized "Formats: " <> coloredBoldItalicized Green "legacy" <> boldItalicized "|" <> coloredBoldItalicized Green "ndjson" <> boldItalicized "|" <> coloredBoldItalicized Green "text"
+          , boldItalicized "Default: " <> coloredBoldItalicized Green "legacy"
+          ]
 
 mergeOpts ::
   ( Has Diagnostics sig m

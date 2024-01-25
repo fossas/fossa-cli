@@ -15,7 +15,7 @@ import GHC.Generics (Generic)
 import Options.Applicative (Parser, argument, metavar, str)
 import Options.Applicative.Builder (helpDoc)
 import Prettyprinter (pretty, vsep)
-import Style (applyFossaStyle, formatStringToDoc)
+import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
 import System.Info (arch)
 
 newtype ImageText = ImageText
@@ -27,7 +27,7 @@ instance ToJSON ImageText where
   toEncoding = genericToEncoding defaultOptions
 
 imageTextArg :: Parser ImageText
-imageTextArg = ImageText <$> argument str (applyFossaStyle <> metavar "IMAGE" <> helpDoc (formatStringToDoc "The image to scan"))
+imageTextArg = ImageText <$> argument str (applyFossaStyle <> metavar "IMAGE" <> stringToHelpDoc "The image to scan")
 
 -- | Get current runtime arch, We use this to find suitable image,
 -- if multi-platform image is discovered. This is similar to
