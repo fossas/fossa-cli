@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use writeTMVar" #-}
+{-# HLINT ignore "Use tryReadTMVar" #-}
 module Control.Carrier.Threaded (
   fork,
   kill,
