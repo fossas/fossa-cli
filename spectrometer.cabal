@@ -485,6 +485,7 @@ library
     Strategy.Swift.Xcode.Pbxproj
     Strategy.Swift.Xcode.PbxprojParser
     Strategy.SwiftPM
+    Style 
     System.Args
     Text.URI.Builder
     Type.Operator
