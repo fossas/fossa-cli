@@ -19,7 +19,7 @@ import Control.Carrier.ContainerRegistryApi.Common (
   getToken,
   logHttp,
   originalReqUri,
-  updateToken,
+  safeReplaceToken,
  )
 import Control.Carrier.ContainerRegistryApi.Errors (
   ContainerRegistryApiErrorBody,
@@ -29,7 +29,7 @@ import Control.Carrier.ContainerRegistryApi.Errors (
 import Control.Effect.Diagnostics (Diagnostics, fatal, fatalText, fromMaybeText)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Reader (Reader, ask)
-import Control.Monad (void)
+import Control.Monad (unless)
 import Data.Aeson (FromJSON (parseJSON), decode', eitherDecode, withObject, (.:), (.:?))
 import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.Map (Map)
@@ -65,7 +65,7 @@ import Text.Megaparsec (
   (<|>),
  )
 import Text.Megaparsec.Char (alphaNumChar, char)
-import Text.Pretty.Simple (pPrint, pShow, pShowNoColor)
+import Text.Pretty.Simple (pShowNoColor)
 
 type Parser = Parsec Void Text
 
@@ -82,9 +82,8 @@ mkRequest ::
   Request -> -- Request to make
   m (Response ByteStringLazy.ByteString)
 mkRequest manager registryCred accepts req = do
-  token <- getToken =<< ask
-  token' <- getAuthToken registryCred req manager accepts token
-  logHttp (applyContentType accepts $ applyAuthToken token' req) manager
+  token <- getAuthToken registryCred req manager accepts =<< ask
+  logHttp (applyContentType accepts $ applyAuthToken token req) manager
 
 applyContentType :: Maybe [Text] -> Request -> Request
 applyContentType c r = case c of
@@ -113,7 +112,7 @@ stripAuthHeaderOnRedirect r =
     isAzure :: Bool
     isAzure = "azurecr.io" `isInfixOf` decodeUtf8 (host r)
 
--- | Generates Auth Token For Request.
+-- | Get an auth token for a given resource if necessary and update the RegistryCtx.
 --
 -- Refer to:
 --
@@ -139,7 +138,6 @@ getAuthToken ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has Logger sig m
-  , Has (Reader RegistryCtx) sig m
   ) =>
   Maybe (Text, Text) ->
   -- | Username and Password to user when retrieving authorization token
@@ -149,12 +147,11 @@ getAuthToken ::
   -- | Manager to use for requests
   Maybe [Text] ->
   -- | Content-Types for Accept Header
-  Maybe AuthToken ->
-  -- | Existing Token (if any)
+  RegistryCtx ->
+  -- | The registry context to retrieve/update tokens in.
   m (Maybe AuthToken)
-getAuthToken cred reqAttempt manager accepts tokenDeleteMe = do
-  currentCtx <- ask
-  token <- getToken currentCtx
+getAuthToken cred reqAttempt manager accepts registryCtx = do
+  token <- getToken registryCtx
   logDebug $ "Initial token: " <> pretty (pShowNoColor token)
   let request' = applyContentType accepts (applyAuthToken token $ reqAttempt{method = "HEAD"})
   logDebug . pretty . show $ request'
@@ -165,7 +162,26 @@ getAuthToken cred reqAttempt manager accepts tokenDeleteMe = do
     -- meaning that our token is valid, or we do not require authorization token.
     (Nothing, 200) -> pure token
     (_, 401) -> do
-      case parse parseAuthChallenge "" <$> getHeaderValue hWWWAuthenticate (responseHeaders response) of
+      didReplace <- safeReplaceToken registryCtx (respondToChallenge response)
+      unless didReplace $ logDebug "Token is already being updated. Waiting..."
+      getToken registryCtx
+
+    -- -
+    -- Other Errors
+    -- -
+    (Just (apiErrors :: ContainerRegistryApiErrorBody), _) -> fatal (originalReqUri response, apiErrors)
+    (Nothing, _) -> fatal $ UnknownApiError (originalReqUri response) $ responseStatus response
+  where
+    respondToChallenge ::
+      ( Has (Lift IO) sig m
+      , Has Logger sig m
+      , Has Diagnostics sig m
+      ) =>
+      Response a ->
+      m AuthToken
+    respondToChallenge response = do
+      let rawChallenge = getHeaderValue hWWWAuthenticate (responseHeaders response)
+      case parse parseAuthChallenge "" <$> rawChallenge of
         -- -
         -- Did not receive valid auth challenge
         -- -
@@ -183,16 +199,8 @@ getAuthToken cred reqAttempt manager accepts tokenDeleteMe = do
         -- registry context.
         -- -
         Just (Right authChallenge) -> do
-          token' <- getTokenFromAuthChallenge cred authChallenge manager
-          ctx <- ask
-          updateToken ctx token'
-          pure (Just token')
-
-    -- -
-    -- Other Errors
-    -- -
-    (Just (apiErrors :: ContainerRegistryApiErrorBody), _) -> fatal (originalReqUri response, apiErrors)
-    (Nothing, _) -> fatal $ UnknownApiError (originalReqUri response) $ responseStatus response
+          logDebug $ "Got auth challenge: " <> (pretty . pShowNoColor $ authChallenge)
+          getTokenFromAuthChallenge cred authChallenge manager
 
 -- | Retrieves Token from Authorization Server.
 --
