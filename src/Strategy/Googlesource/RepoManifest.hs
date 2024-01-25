@@ -15,7 +15,7 @@ module Strategy.Googlesource.RepoManifest (
   ValidatedProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Applicative (optional, (<|>))
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -110,7 +110,7 @@ mkProject project =
 
 instance AnalyzeProject RepoManifestProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps
+  analyzeProjectStaticOnly _ = getDeps
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RepoManifestProject -> m DependencyResults
 getDeps = analyze' . repoManifestXml

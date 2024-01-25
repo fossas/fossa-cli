@@ -14,12 +14,14 @@ module App.Fossa.Config.Analyze (
   JsonOutput (..),
   NoDiscoveryExclusion (..),
   ScanDestination (..),
+  AnalysisTacticTypes (..),
   AnalyzeConfig (..),
   UnpackArchives (..),
   VendoredDependencyOptions (..),
   VSIAnalysis (..),
   VSIModeOptions (..),
   GoDynamicTactic (..),
+  StaticOnlyTactics (..),
   mkSubCommand,
   loadConfig,
   cliParser,
@@ -123,6 +125,7 @@ data ForceVendoredDependencyRescans = ForceVendoredDependencyRescans deriving (G
 data ForceFirstPartyScans = ForceFirstPartyScans deriving (Generic)
 data ForceNoFirstPartyScans = ForceNoFirstPartyScans deriving (Generic)
 data IgnoreOrgWideCustomLicenseScanConfigs = IgnoreOrgWideCustomLicenseScanConfigs deriving (Generic)
+data StaticOnlyTactics = StaticOnlyTactics deriving (Generic)
 
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
 data IncludeAll = IncludeAll deriving (Generic)
@@ -208,6 +211,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeForceNoFirstPartyScans :: Flag ForceNoFirstPartyScans
   , analyzeIgnoreOrgWideCustomLicenseScanConfigs :: Flag IgnoreOrgWideCustomLicenseScanConfigs
   , analyzeCustomFossaDepsFile :: Maybe FilePath
+  , analyzeStaticOnlyTactics :: Flag StaticOnlyTactics
   }
   deriving (Eq, Ord, Show)
 
@@ -219,6 +223,11 @@ instance GetCommonOpts AnalyzeCliOpts where
 
 instance GetSeverity AnalyzeCliOpts where
   getSeverity AnalyzeCliOpts{commons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo
+
+data AnalysisTacticTypes = StaticOnly | Any deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON AnalysisTacticTypes where
+  toEncoding = genericToEncoding defaultOptions
 
 data AnalyzeConfig = AnalyzeConfig
   { baseDir :: BaseDir
@@ -238,6 +247,7 @@ data AnalyzeConfig = AnalyzeConfig
   , firstPartyScansFlag :: FirstPartyScansFlag
   , grepOptions :: GrepOptions
   , customFossaDepsFile :: Maybe FilePath
+  , allowedTacticTypes :: AnalysisTacticTypes
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -291,6 +301,7 @@ cliParser =
     <*> flagOpt ForceNoFirstPartyScans (long "experimental-block-first-party-scans" <> help "Block first party scans. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans.")
     <*> flagOpt IgnoreOrgWideCustomLicenseScanConfigs (long "ignore-org-wide-custom-license-scan-configs" <> help "Ignore custom-license scan configurations for your organization. These configurations are defined in the \"Integrations\" section of the Admin settings in the FOSSA web app")
     <*> optional (strOption (long "fossa-deps-file" <> help "Path to fossa-deps file including filename (default: fossa-deps.{yaml|yml|json})"))
+    <*> flagOpt StaticOnlyTactics (long "static-only-analysis" <> help "Only analyze the project using static strategies.")
 
 data GoDynamicTactic
   = GoModulesBasedTactic
@@ -424,6 +435,10 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
       grepOptions = collectGrepOptions maybeConfig cliOpts
       customFossaDepsFile = analyzeCustomFossaDepsFile
+      allowedTacticType =
+        if fromFlag StaticOnlyTactics analyzeStaticOnlyTactics
+          then StaticOnly
+          else Any
 
   firstPartyScansFlag <-
     case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
@@ -450,6 +465,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure firstPartyScansFlag
     <*> pure grepOptions
     <*> pure customFossaDepsFile
+    <*> pure allowedTacticType
 
 collectMavenScopeFilters ::
   ( Has Diagnostics sig m

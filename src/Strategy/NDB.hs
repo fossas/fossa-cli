@@ -4,7 +4,7 @@ module Strategy.NDB (
   mkProject,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (..), analyzeProject')
+import App.Fossa.Analyze.Types (AnalyzeProject (..))
 import Container.OsRelease (OsInfo (..))
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Reader (Reader)
@@ -45,7 +45,7 @@ instance ToJSON NdbLocation
 
 instance AnalyzeProject NdbLocation where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps
+  analyzeProjectStaticOnly _ = getDeps
 
 discover ::
   ( Has ReadFS sig m
