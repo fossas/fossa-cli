@@ -29,11 +29,12 @@ import Control.Carrier.ContainerRegistryApi.Errors (
 import Control.Effect.Diagnostics (Diagnostics, fatal, fatalText, fromMaybeText)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Reader (Reader, ask)
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import Data.Aeson (FromJSON (parseJSON), decode', eitherDecode, withObject, (.:), (.:?))
 import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (isJust)
 import Data.String.Conversion (ConvertUtf8 (decodeUtf8), encodeUtf8, toString, toText)
 import Data.Text (Text, isInfixOf)
 import Data.Text qualified as Text
@@ -152,7 +153,6 @@ getAuthToken ::
   m (Maybe AuthToken)
 getAuthToken cred reqAttempt manager accepts registryCtx = do
   token <- getToken registryCtx
-  logDebug $ "Initial token: " <> pretty (pShowNoColor token)
   let request' = applyContentType accepts (applyAuthToken token $ reqAttempt{method = "HEAD"})
   logDebug . pretty . show $ request'
   response <- logHttp request' manager
@@ -238,7 +238,10 @@ getTokenFromAuthChallenge cred (BearerAuthChallenge (RegistryBearerChallenge url
   case eitherDecode $ responseBody response of
     Left err -> fatal . FailedToParseAuthChallenge $ toText err
     Right tokenResponse -> do
-      logDebug $ "Token expires in: " <> pretty (expiresIn tokenResponse)
+      let expiry = expiresIn tokenResponse
+      when (isJust expiry) $
+        logDebug $
+          "Token expires in: " <> pretty (expiresIn tokenResponse)
       pure $ BearerAuthToken $ unToken tokenResponse
   where
     -- \| Authorization Server Endpoint.
@@ -263,7 +266,7 @@ data RegistryBearerChallenge = RegistryBearerChallenge
 
 data AuthChallengeResponse = AuthChallengeResponse
   { unToken :: Text
-  , expiresIn :: Maybe Text
+  , expiresIn :: Maybe Int
   }
   deriving (Eq, Show, Ord)
 
