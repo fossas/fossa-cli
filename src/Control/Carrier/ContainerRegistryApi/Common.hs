@@ -17,7 +17,7 @@ import Control.Carrier.ContainerRegistryApi.Errors (
   ContainerRegistryApiErrorBody,
   UnknownApiError (UnknownApiError),
  )
-import Control.Concurrent.STM (STM, TMVar, atomically, retry, tryReadTMVar, writeTMVar, tryTakeTMVar)
+import Control.Concurrent.STM (STM, TMVar, atomically, retry, tryReadTMVar, writeTMVar)
 import Control.Effect.Diagnostics (Diagnostics, fatal)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Aeson (decode')
@@ -39,7 +39,6 @@ import Network.HTTP.Client (
 import Network.HTTP.Types (ResponseHeaders, hAccept, hContentType, ok200, status400, status404)
 import Network.HTTP.Types.Header (HeaderName)
 import Network.URI (URI)
-import Control.Monad (void)
 
 -- | Makes request, and logs request uri and responses with debug severity.
 logHttp :: (Has (Lift IO) sig m, Has Logger sig m) => Request -> Manager -> m (Response ByteStringLazy.ByteString)

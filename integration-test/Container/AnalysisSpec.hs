@@ -15,10 +15,10 @@ import Container.Types (
 import Data.Flag (toFlag')
 import Diag.Result (Result (..))
 import Effect.Logger (Severity (SevInfo))
-import Test.Hspec (Spec, aroundAll, describe, focus, it, shouldBe, shouldSatisfy)
+import Test.Hspec (Spec, aroundAll, describe, it, shouldBe, shouldSatisfy)
 
 spec :: Spec
-spec = focus $ describe "Container Scanning" registrySourceAnalysis
+spec = describe "Container Scanning" registrySourceAnalysis
 
 registrySourceCfg :: ContainerAnalyzeConfig
 registrySourceCfg =
