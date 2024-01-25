@@ -11,12 +11,14 @@ import App.Fossa.Analyze.Debug (collectDebugBundle)
 import App.Fossa.Config.Common (
   ScanDestination (OutputStdout, UploadScan),
  )
+import App.Fossa.Config.Container (ContainerTestConfig (apiOpts))
 import App.Fossa.Config.Container.Analyze (
   ContainerAnalyzeConfig (..),
   JsonOutput (JsonOutput),
  )
 import App.Fossa.Config.Container.Analyze qualified as Config
 import App.Fossa.Container.Scan (extractRevision, scanImage)
+import App.Fossa.PreflightChecks (preflightChecks)
 import App.Types (
   ProjectMetadata,
   ProjectRevision (..),
@@ -100,6 +102,11 @@ analyze ::
   ContainerAnalyzeConfig ->
   m Aeson.Value
 analyze cfg = do
+  -- preflight check
+  _ <- case scanDestination cfg of
+    OutputStdout -> pure ()
+    UploadScan apiOpts _ -> runFossaApiClient apiOpts preflightChecks
+
   scannedImage <- scanImage (filterSet cfg) (onlySystemDeps cfg) (imageLocator cfg) (dockerHost cfg) (arch cfg)
   let revision = extractRevision (revisionOverride cfg) scannedImage
 

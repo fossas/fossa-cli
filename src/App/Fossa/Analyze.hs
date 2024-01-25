@@ -48,11 +48,13 @@ import App.Fossa.Config.Analyze (
   UnpackArchives (UnpackArchives),
  )
 import App.Fossa.Config.Analyze qualified as Config
+import App.Fossa.Config.Container (ContainerTestConfig (apiOpts))
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
+import App.Fossa.PreflightChecks (preflightChecks)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
@@ -94,7 +96,7 @@ import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Flag (Flag, fromFlag)
-import Data.Foldable (traverse_)
+import Data.Foldable (for_, traverse_)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
@@ -282,6 +284,19 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       shouldAnalyzePathDependencies = resolvePathDependencies $ Config.experimental cfg
       allowedTactics = Config.allowedTacticTypes cfg
 
+  manualSrcUnits <-
+    Diag.errorBoundaryIO . diagToDebug $
+      if filterIsVSIOnly filters
+        then do
+          logInfo "Running in VSI only mode, skipping manual source units"
+          pure Nothing
+        else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
+
+  -- preflight check
+  _ <- case destination of
+    OutputStdout -> pure ()
+    UploadScan apiOpts _ -> runFossaApiClient apiOpts preflightChecks
+
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
   vsiResults <- Diag.errorBoundaryIO . diagToDebug $
@@ -304,13 +319,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         if (fromFlag BinaryDiscovery $ Config.binaryDiscoveryEnabled $ Config.vsiOptions cfg)
           then analyzeDiscoverBinaries basedir filters
           else pure Nothing
-  manualSrcUnits <-
-    Diag.errorBoundaryIO . diagToDebug $
-      if filterIsVSIOnly filters
-        then do
-          logInfo "Running in VSI only mode, skipping manual source units"
-          pure Nothing
-        else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
