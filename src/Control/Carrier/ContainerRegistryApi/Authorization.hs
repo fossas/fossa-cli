@@ -39,7 +39,6 @@ import Data.String.Conversion (ConvertUtf8 (decodeUtf8), encodeUtf8, toString, t
 import Data.Text (Text, isInfixOf)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import Debug.Trace (trace)
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Network.HTTP.Client (
   Manager,
@@ -66,7 +65,6 @@ import Text.Megaparsec (
   (<|>),
  )
 import Text.Megaparsec.Char (alphaNumChar, char)
-import Text.Pretty.Simple (pShowNoColor)
 
 type Parser = Parsec Void Text
 
@@ -104,7 +102,7 @@ applyAuthToken (Just (BearerAuthToken token)) r =
 stripAuthHeaderOnRedirect :: Request -> Request
 stripAuthHeaderOnRedirect r =
   if ((isAwsECR || isAzure) && method r == methodGet)
-    then trace "stripped" $ r{shouldStripHeaderOnRedirect = (== hAuthorization)}
+    then r{shouldStripHeaderOnRedirect = (== hAuthorization)}
     else r
   where
     isAwsECR :: Bool
@@ -154,7 +152,6 @@ getAuthToken ::
 getAuthToken cred reqAttempt manager accepts registryCtx = do
   token <- getToken registryCtx
   let request' = applyContentType accepts (applyAuthToken token $ reqAttempt{method = "HEAD"})
-  logDebug . pretty . show $ request'
   response <- logHttp request' manager
 
   case (decode' $ responseBody response, statusCode . responseStatus $ response) of
@@ -199,7 +196,7 @@ getAuthToken cred reqAttempt manager accepts registryCtx = do
         -- registry context.
         -- -
         Just (Right authChallenge) -> do
-          logDebug $ "Got auth challenge: " <> (pretty . pShowNoColor $ authChallenge)
+          logDebug $ "Got auth challenge: " <> (pretty . show $ authChallenge)
           getTokenFromAuthChallenge cred authChallenge manager
 
 -- | Retrieves Token from Authorization Server.
@@ -234,14 +231,13 @@ getTokenFromAuthChallenge cred (BearerAuthChallenge (RegistryBearerChallenge url
         Just (user, pass) -> applyBasicAuth (encodeUtf8 user) (encodeUtf8 pass) req
 
   response <- fromResponse =<< logHttp req' manager
-  logDebug $ "Raw auth server response: " <> (pretty (pShowNoColor response))
   case eitherDecode $ responseBody response of
     Left err -> fatal . FailedToParseAuthChallenge $ toText err
     Right tokenResponse -> do
       let expiry = expiresIn tokenResponse
       when (isJust expiry) $
         logDebug $
-          "Token expires in: " <> pretty (expiresIn tokenResponse)
+          "Token expires in: " <> pretty expiry
       pure $ BearerAuthToken $ unToken tokenResponse
   where
     -- \| Authorization Server Endpoint.

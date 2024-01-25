@@ -25,8 +25,6 @@ import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.List (find)
 import Data.String.Conversion (ConvertUtf8 (encodeUtf8), decodeUtf8)
 import Data.Text (Text)
-import Data.UUID qualified as UUID (toText)
-import Data.UUID.V4 qualified as UUID (nextRandom)
 import Effect.Logger (AnsiStyle, Doc, Logger, Pretty (pretty), logDebug)
 import Network.HTTP.Client (
   Manager,
@@ -43,14 +41,9 @@ import Network.URI (URI)
 -- | Makes request, and logs request uri and responses with debug severity.
 logHttp :: (Has (Lift IO) sig m, Has Logger sig m) => Request -> Manager -> m (Response ByteStringLazy.ByteString)
 logHttp req manager = do
-  reqId <- UUID.toText <$> sendIO UUID.nextRandom
-
-  let prefixReqId :: Doc a -> Doc a
-      prefixReqId doc = pretty ("[" <> reqId <> "]") <> doc
-
-  logDebug $ prefixReqId summarizeRequest
+  logDebug summarizeRequest
   resp <- sendIO $ httpLbs req manager
-  logDebug . prefixReqId . summarizeResponse $ resp
+  logDebug $ summarizeResponse resp
   pure resp
   where
     summarizeRequest :: Doc AnsiStyle

@@ -1,6 +1,6 @@
 module Container.FixtureUtils (
-    ContainerAnalysisC,
-    runContainerEffs,
+  ContainerAnalysisC,
+  runContainerEffs,
 ) where
 
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
@@ -14,19 +14,19 @@ import Effect.ReadFS (ReadFSIOC, runReadFSIO)
 import Type.Operator (type ($))
 
 type ContainerAnalysisC m =
-    ExecIOC
-        $ ReadFSIOC
-        $ LoggerC
-        $ DiagnosticsC
-        $ StackC
-        $ IgnoreTelemetryC m
+  ExecIOC
+    $ ReadFSIOC
+    $ LoggerC
+    $ DiagnosticsC
+    $ StackC
+    $ IgnoreTelemetryC m
 
 runContainerEffs :: ContainerAnalysisC IO a -> IO (Result a)
 runContainerEffs f =
-    f
-        & runExecIO
-        & runReadFSIO
-        & withDefaultLogger SevWarn
-        & runDiagnostics
-        & runStack
-        & withoutTelemetry
+  f
+    & runExecIO
+    & runReadFSIO
+    & withDefaultLogger SevWarn
+    & runDiagnostics
+    & runStack
+    & withoutTelemetry

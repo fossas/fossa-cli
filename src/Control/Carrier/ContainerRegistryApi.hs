@@ -82,8 +82,8 @@ import Data.String.Conversion (
   toText,
  )
 import Data.Text (Text)
-import Data.UUID qualified as UUID
-import Data.UUID.V4 qualified as UUID
+import Data.UUID qualified as UUID (toText)
+import Data.UUID.V4 qualified as UUID (nextRandom)
 import Effect.Logger (
   Logger,
   Pretty (pretty),
