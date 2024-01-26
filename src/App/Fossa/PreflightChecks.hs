@@ -4,7 +4,7 @@ module App.Fossa.PreflightChecks (
   preflightChecks,
 ) where
 
-import App.Docs (mainReadMeUrl)
+import App.Docs (apiKeyUrl)
 import Control.Carrier.Diagnostics (Diagnostics, errCtx)
 import Control.Carrier.Stack (context)
 import Control.Effect.Diagnostics (ToDiagnostic, fatalOnIOException)
@@ -40,5 +40,5 @@ instance ToDiagnostic InvalidApiKeyErr where
   renderDiagnostic InvalidApiKeyErr =
     vsep
       [ "Ensure that you are using a valid FOSSA_API_KEY."
-      , "Refer to " <> pretty mainReadMeUrl <> " for guidance on how to generate and retrieve your API key."
+      , "Refer to " <> pretty apiKeyUrl <> " for guidance on how to generate and retrieve your API key."
       ]
