@@ -19,8 +19,7 @@ import Control.Concurrent.CGroup (initRTSThreads)
 import Control.Monad (join)
 import Data.Aeson (ToJSON)
 import Data.String.Conversion (toString)
-import Data.Text.Prettyprint.Doc.Render.Terminal (putDoc)
-import Effect.Logger (indent, newlinePreceding, newlineTrailing, pretty, vsep)
+import Effect.Logger (indent, newlinePreceding, newlineTrailing, pretty, putDoc, vsep)
 import Options.Applicative (
   CommandFields,
   InfoMod,
@@ -50,7 +49,7 @@ import Options.Applicative (
   (<|>),
  )
 import Options.Applicative.Extra (helperWith)
-import Style (applyFossaStyle, formatDoc, formatStringToDoc, stringToHelpDoc)
+import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
 
 appMain :: IO ()
 appMain = do
