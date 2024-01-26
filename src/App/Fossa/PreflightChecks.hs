@@ -13,8 +13,15 @@ import Control.Effect.Lift
 import Data.Text.IO qualified as TIO
 import Diag.Diagnostic (ToDiagnostic (..))
 import Effect.Logger (pretty, vsep)
-import Path.IO (getTempDir, removeFile)
-import Path.Posix
+import Path (
+  File,
+  Path,
+  Rel,
+  fromAbsFile,
+  mkRelFile,
+  (</>),
+ )
+import Path.IO
 
 preflightChecks ::
   ( Has Diagnostics sig m
