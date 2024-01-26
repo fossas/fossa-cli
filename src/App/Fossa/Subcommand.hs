@@ -6,6 +6,7 @@ module App.Fossa.Subcommand (
   GetSeverity (..),
   GetCommonOpts (..),
   SubCommand (..),
+  updateCommandName,
 ) where
 
 import App.Fossa.Config.Common (CommonOpts, collectTelemetrySink)
@@ -49,6 +50,9 @@ class GetSeverity a where
 class GetCommonOpts a where
   getCommonOpts :: a -> Maybe CommonOpts
   getCommonOpts = const Nothing
+
+updateCommandName :: SubCommand cli cfg -> String -> SubCommand cli cfg
+updateCommandName subCmd newName = subCmd{commandName = newName}
 
 runSubCommand :: forall cli cfg. (GetCommonOpts cli, GetSeverity cli, Show cfg, ToJSON cfg) => SubCommand cli cfg -> Parser (IO ())
 runSubCommand SubCommand{..} = uncurry (runEffs) . mergeAndRun <$> parser
