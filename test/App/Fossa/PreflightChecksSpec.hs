@@ -1,4 +1,6 @@
-module App.Fossa.PreflightChecksSpec (spec) where
+module App.Fossa.PreflightChecksSpec (
+  spec,
+) where
 
 import App.Fossa.PreflightChecks (preflightChecks)
 import Control.Algebra (Has)
