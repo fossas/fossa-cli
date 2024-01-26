@@ -53,7 +53,6 @@ testMain ::
   TestConfig ->
   m ()
 testMain config = do
-  -- preflight check
   _ <- ignoreDebug $ runFossaApiClient (Config.apiOpts config) preflightChecks
 
   runStickyLogger SevInfo

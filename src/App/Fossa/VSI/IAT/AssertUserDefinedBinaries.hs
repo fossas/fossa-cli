@@ -34,7 +34,6 @@ assertUserDefinedBinaries ::
   LinkUserBinsConfig ->
   m ()
 assertUserDefinedBinaries LinkUserBinsConfig{..} = do
-  -- preflight check
   _ <- ignoreDebug $ runFossaApiClient apiOpts preflightChecks
 
   logInfo "Fingerprinting directory contents"

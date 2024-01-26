@@ -102,7 +102,6 @@ analyze ::
   ContainerAnalyzeConfig ->
   m Aeson.Value
 analyze cfg = do
-  -- preflight check
   _ <- case scanDestination cfg of
     OutputStdout -> pure ()
     UploadScan apiOpts _ -> runFossaApiClient apiOpts preflightChecks

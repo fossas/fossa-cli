@@ -533,6 +533,7 @@ test-suite unit-tests
     App.Fossa.LicenseScannerSpec
     App.Fossa.ManualDepsSpec
     App.Fossa.PathDependencySpec
+    App.Fossa.PreflightChecksSpec
     App.Fossa.ProjectInferenceSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.ReportSpec

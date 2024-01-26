@@ -54,7 +54,6 @@ report config@ReportConfig{..} = do
     * Above includes errors, types, and scaffolding
   -}
 
-  -- preflight check
   _ <- ignoreDebug $ runFossaApiClient apiOpts preflightChecks
 
   runStickyLogger SevInfo

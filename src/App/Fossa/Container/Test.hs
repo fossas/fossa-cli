@@ -57,7 +57,6 @@ test ::
   ContainerTestConfig ->
   m ()
 test ContainerTestConfig{..} = do
-  -- preflight check
   _ <- ignoreDebug $ runFossaApiClient apiOpts preflightChecks
 
   runStickyLogger SevInfo

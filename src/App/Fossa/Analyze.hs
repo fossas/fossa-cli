@@ -48,7 +48,6 @@ import App.Fossa.Config.Analyze (
   UnpackArchives (UnpackArchives),
  )
 import App.Fossa.Config.Analyze qualified as Config
-import App.Fossa.Config.Container (ContainerTestConfig (apiOpts))
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
@@ -96,7 +95,7 @@ import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Flag (Flag, fromFlag)
-import Data.Foldable (for_, traverse_)
+import Data.Foldable (traverse_)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
@@ -292,7 +291,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
 
-  -- preflight check
   _ <- case destination of
     OutputStdout -> pure ()
     UploadScan apiOpts _ -> runFossaApiClient apiOpts preflightChecks
