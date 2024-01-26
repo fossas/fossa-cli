@@ -11,7 +11,6 @@ import App.Fossa.Analyze.Debug (collectDebugBundle)
 import App.Fossa.Config.Common (
   ScanDestination (OutputStdout, UploadScan),
  )
-import App.Fossa.Config.Container (ContainerTestConfig (apiOpts))
 import App.Fossa.Config.Container.Analyze (
   ContainerAnalyzeConfig (..),
   JsonOutput (JsonOutput),
