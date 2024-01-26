@@ -21,7 +21,7 @@ import Data.ByteString qualified as BS
 import Data.FileEmbed.Extra (embedFileIfExists)
 import Effect.Logger (Logger, Severity (SevInfo), logInfo, pretty, withDefaultLogger)
 import Effect.ReadFS (ReadFS, getCurrentDir, runReadFSIO)
-import Options.Applicative (CommandFields, Mod, Parser, info, progDesc)
+import Options.Applicative (CommandFields, Mod, Parser, info, progDescDoc)
 import Options.Applicative.Builder (command)
 import Path (
   Abs,
@@ -33,9 +33,10 @@ import Path (
   toFilePath,
   (</>),
  )
+import Style (formatStringToDoc)
 
 initCommand :: Mod CommandFields (IO ())
-initCommand = command "init" (info run $ progDesc "Creates .fossa.yml.example and fossa-deps.yml.example file")
+initCommand = command "init" (info run $ progDescDoc $ formatStringToDoc "Creates .fossa.yml.example and fossa-deps.yml.example file")
   where
     run :: Parser (IO ())
     run = pure $ withTelemetry . runStack . withDefaultLogger SevInfo . logWithExit_ . runReadFSIO $ runInit

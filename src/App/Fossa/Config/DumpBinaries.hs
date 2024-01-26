@@ -11,11 +11,12 @@ import Control.Effect.Lift (Has, Lift)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Options.Applicative (InfoMod, progDesc)
+import Options.Applicative (InfoMod, progDescDoc)
 import Path (Abs, Dir, Path)
+import Style (formatStringToDoc)
 
 dumpInfo :: InfoMod a
-dumpInfo = progDesc "Output all embedded binaries to specified path"
+dumpInfo = progDescDoc $ formatStringToDoc "Output all embedded binaries to specified path"
 
 mkSubCommand :: (DumpBinsConfig -> EffStack ()) -> SubCommand DumpBinsOpts DumpBinsConfig
 mkSubCommand = SubCommand "dump-binaries" dumpInfo cliParser noLoadConfig mergeOpts

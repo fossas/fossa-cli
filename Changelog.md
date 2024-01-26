@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.8.34
+- Add color and update formatting in cli help commands ([#1367](https://github.com/fossas/fossa-cli/pull/1367))
+
 ## v3.8.33
 - Removes warnings and tracebacks to stderr [#1358](https://github.com/fossas/fossa-cli/pull/1358)
 
