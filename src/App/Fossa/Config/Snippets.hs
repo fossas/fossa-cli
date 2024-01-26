@@ -30,7 +30,7 @@ import GHC.Generics (Generic)
 import Options.Applicative (InfoMod, Parser, command, eitherReader, helpDoc, info, long, many, metavar, option, optional, progDescDoc, short, strOption, subparser, switch, (<|>))
 import Path (Abs, Dir, Path)
 import Path.IO qualified as Path
-import Style (applyFossaStyle, formatStringToDoc)
+import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
 import Text.URI (URI)
 
 data SnippetsCommand
@@ -84,27 +84,27 @@ cliParser = analyze <|> commit
     analyzeOpts =
       CommandAnalyze
         <$> baseDirArg
-        <*> switch (applyFossaStyle <> long "debug" <> helpDoc (formatStringToDoc "Enable debug logging"))
+        <*> switch (applyFossaStyle <> long "debug" <> stringToHelpDoc "Enable debug logging")
         <*> optional (uriOption (applyFossaStyle <> long "endpoint" <> short 'e' <> metavar "URL" <> helpDoc endpointHelp))
         <*> optional (strOption (applyFossaStyle <> long fossaApiKeyCmdText <> helpDoc fossaApiKeyHelp))
-        <*> strOption (applyFossaStyle <> long "output" <> short 'o' <> helpDoc (formatStringToDoc "The directory to which matches are output"))
-        <*> switch (applyFossaStyle <> long "overwrite-output" <> helpDoc (formatStringToDoc "If specified, overwrites the output directory if it exists"))
-        <*> many (option (eitherReader parseTarget) (applyFossaStyle <> long "target" <> helpDoc (formatStringToDoc ("Analyze this combination of targets")) <> metavar "TARGET"))
-        <*> many (option (eitherReader parseKind) (applyFossaStyle <> long "kind" <> helpDoc (formatStringToDoc "Analyze this combination of kinds") <> metavar "KIND"))
-        <*> many (option (eitherReader parseTransform) (applyFossaStyle <> long "transform" <> helpDoc (formatStringToDoc "Analyze this combination of transforms") <> metavar "TRANSFORM"))
+        <*> strOption (applyFossaStyle <> long "output" <> short 'o' <> stringToHelpDoc "The directory to which matches are output")
+        <*> switch (applyFossaStyle <> long "overwrite-output" <> stringToHelpDoc "If specified, overwrites the output directory if it exists")
+        <*> many (option (eitherReader parseTarget) (applyFossaStyle <> long "target" <> stringToHelpDoc "Analyze this combination of targets" <> metavar "TARGET"))
+        <*> many (option (eitherReader parseKind) (applyFossaStyle <> long "kind" <> stringToHelpDoc "Analyze this combination of kinds" <> metavar "KIND"))
+        <*> many (option (eitherReader parseTransform) (applyFossaStyle <> long "transform" <> stringToHelpDoc "Analyze this combination of transforms" <> metavar "TRANSFORM"))
     commit = subparser . command "commit" $ info commitOpts snippetsCommitInfo
     commitOpts =
       CommandCommit
         <$> baseDirArg
-        <*> switch (applyFossaStyle <> long "debug" <> helpDoc (formatStringToDoc "Enable debug logging"))
+        <*> switch (applyFossaStyle <> long "debug" <> stringToHelpDoc "Enable debug logging")
         <*> optional (uriOption (applyFossaStyle <> long "endpoint" <> short 'e' <> metavar "URL" <> helpDoc endpointHelp))
         <*> optional (strOption (applyFossaStyle <> long fossaApiKeyCmdText <> helpDoc fossaApiKeyHelp))
-        <*> strOption (applyFossaStyle <> long "analyze-output" <> helpDoc (formatStringToDoc "The directory to which 'analyze' matches were saved"))
-        <*> switch (applyFossaStyle <> long "overwrite-fossa-deps" <> helpDoc (formatStringToDoc "If specified, overwrites the 'fossa-deps' file if it exists"))
-        <*> optional (option (eitherReader parseCommitOutputFormat) (applyFossaStyle <> long "format" <> helpDoc (formatStringToDoc ("The output format for the generated `fossa-deps` file")) <> metavar "FORMAT"))
-        <*> many (option (eitherReader parseTarget) (applyFossaStyle <> long "target" <> helpDoc (formatStringToDoc "Commit this combination of targets") <> metavar "TARGET"))
-        <*> many (option (eitherReader parseKind) (applyFossaStyle <> long "kind" <> helpDoc (formatStringToDoc "Commit this combination of kinds") <> metavar "KIND"))
-        <*> many (option (eitherReader parseTransform) (applyFossaStyle <> long "transform" <> helpDoc (formatStringToDoc "Commit this combination of transforms") <> metavar "TRANSFORM"))
+        <*> strOption (applyFossaStyle <> long "analyze-output" <> stringToHelpDoc "The directory to which 'analyze' matches were saved")
+        <*> switch (applyFossaStyle <> long "overwrite-fossa-deps" <> stringToHelpDoc "If specified, overwrites the 'fossa-deps' file if it exists")
+        <*> optional (option (eitherReader parseCommitOutputFormat) (applyFossaStyle <> long "format" <> stringToHelpDoc "The output format for the generated `fossa-deps` file" <> metavar "FORMAT"))
+        <*> many (option (eitherReader parseTarget) (applyFossaStyle <> long "target" <> stringToHelpDoc "Commit this combination of targets" <> metavar "TARGET"))
+        <*> many (option (eitherReader parseKind) (applyFossaStyle <> long "kind" <> stringToHelpDoc "Commit this combination of kinds" <> metavar "KIND"))
+        <*> many (option (eitherReader parseTransform) (applyFossaStyle <> long "transform" <> stringToHelpDoc "Commit this combination of transforms" <> metavar "TRANSFORM"))
 
 mergeOpts ::
   ( Has Diagnostics sig m

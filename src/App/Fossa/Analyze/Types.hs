@@ -114,8 +114,9 @@ data DiscoveredProjectIdentifier = DiscoveredProjectIdentifier
   deriving (Eq, Ord, Show)
 
 class AnalyzeProject a where
-  -- | Analyze a project with any tactic.
+  -- | Analyze a project with any tactic including dynamic ones.
   analyzeProject :: AnalyzeTaskEffs sig m => FoundTargets -> a -> m DependencyResults
 
   -- | Analyze a project with only static tactics.
-  analyzeProject' :: AnalyzeStaticTaskEffs sig m => FoundTargets -> a -> m DependencyResults
+  -- See docs/references/strategies/README.md#static-and-dynamic-strategies for information on the difference.
+  analyzeProjectStaticOnly :: AnalyzeStaticTaskEffs sig m => FoundTargets -> a -> m DependencyResults

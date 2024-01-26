@@ -1,7 +1,7 @@
 -- | Pub, the Dart dependency manager.
 module Strategy.Pub (discover) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, errCtx, fatalText, recover, warnOnErr, (<||>))
 import Control.Effect.Reader (Reader)
 import Control.Monad (void)
@@ -52,7 +52,7 @@ instance ToJSON PubProject
 
 instance AnalyzeProject PubProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps'
+  analyzeProjectStaticOnly _ = getDeps'
 
 mkProject :: PubProject -> DiscoveredProject PubProject
 mkProject project =

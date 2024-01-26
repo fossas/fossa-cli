@@ -64,7 +64,7 @@ import Options.Applicative (
  )
 import Prettyprinter (Doc, punctuate, viaShow)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green))
-import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, formatStringToDoc)
+import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, formatStringToDoc, stringToHelpDoc, styledDivider)
 
 data TestOutputFormat
   = TestOutputPretty
@@ -85,16 +85,18 @@ allFormats :: [TestOutputFormat]
 allFormats = enumFromTo minBound maxBound
 
 styledOutputFormats :: Doc AnsiStyle
-styledOutputFormats = mconcat (punctuate (boldItalicized "|") (map (coloredBoldItalicized Green . viaShow) allFormats))
+styledOutputFormats = mconcat $ punctuate styledDivider coloredAllFormats
+  where
+    coloredAllFormats :: [Doc AnsiStyle]
+    coloredAllFormats = map (coloredBoldItalicized Green . viaShow) allFormats
 
 testFormatHelp :: Maybe (Doc AnsiStyle)
 testFormatHelp =
-  Just $
-    formatDoc $
-      vsep
-        [ "Output the report in the specified format"
-        , boldItalicized "Formats: " <> styledOutputFormats
-        ]
+  Just . formatDoc $
+    vsep
+      [ "Output the report in the specified format"
+      , boldItalicized "Formats: " <> styledOutputFormats
+      ]
 
 newtype InvalidReportFormat = InvalidReportFormat String
 instance ToDiagnostic InvalidReportFormat where
@@ -163,19 +165,18 @@ parser =
   TestCliOpts
     <$> commonOpts
     <*> optional (option auto (applyFossaStyle <> long "timeout" <> helpDoc timeoutHelp))
-    <*> flag defaultOutputFmt TestOutputJson (applyFossaStyle <> long "json" <> helpDoc (formatStringToDoc "Output issues as JSON") <> internal)
+    <*> flag defaultOutputFmt TestOutputJson (applyFossaStyle <> long "json" <> stringToHelpDoc "Output issues as JSON" <> internal)
     <*> optional (strOption (applyFossaStyle <> long "format" <> helpDoc testFormatHelp))
     <*> baseDirArg
-    <*> optional (strOption (applyFossaStyle <> long "diff" <> helpDoc (formatStringToDoc "Checks for new issues of the revision that does not exist in provided diff revision")))
+    <*> optional (strOption (applyFossaStyle <> long "diff" <> stringToHelpDoc "Checks for new issues of the revision that does not exist in provided diff revision"))
   where
     timeoutHelp :: Maybe (Doc AnsiStyle)
     timeoutHelp =
-      Just $
-        formatDoc $
-          vsep
-            [ "Duration to wait for build completion in seconds"
-            , boldItalicized "Default: " <> "1 hour"
-            ]
+      Just . formatDoc $
+        vsep
+          [ "Duration to wait for build completion in seconds"
+          , boldItalicized "Default: " <> "3600 (1 hour)"
+          ]
 
 loadConfig ::
   ( Has (Lift IO) sig m

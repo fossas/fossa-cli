@@ -50,14 +50,15 @@ import Options.Applicative (
   strOption,
  )
 import Options.Applicative.Builder (helpDoc)
-import Style (applyFossaStyle, formatStringToDoc)
+import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
 
 subcommand :: (ContainerTestOptions -> a) -> Mod CommandFields a
 subcommand f =
   command
     "test"
     ( info (f <$> cliParser) $
-        progDescDoc (formatStringToDoc "Check for issues from FOSSA and exit non-zero when issues are found")
+        progDescDoc $
+          formatStringToDoc "Check for issues from FOSSA and exit non-zero when issues are found"
     )
 
 data ContainerTestConfig = ContainerTestConfig
@@ -86,8 +87,8 @@ cliParser :: Parser ContainerTestOptions
 cliParser =
   ContainerTestOptions
     <$> commonOpts
-    <*> optional (option auto (applyFossaStyle <> long "timeout" <> helpDoc (formatStringToDoc "Duration to wait for build completion (in seconds)")))
-    <*> flag TestOutputPretty TestOutputJson (applyFossaStyle <> long "json" <> helpDoc (formatStringToDoc "Output issues as JSON") <> internal)
+    <*> optional (option auto (applyFossaStyle <> long "timeout" <> stringToHelpDoc "Duration to wait for build completion (in seconds)"))
+    <*> flag TestOutputPretty TestOutputJson (applyFossaStyle <> long "json" <> stringToHelpDoc "Output issues as JSON" <> internal)
     <*> optional (strOption (applyFossaStyle <> long "format" <> helpDoc testFormatHelp))
     <*> imageTextArg
 

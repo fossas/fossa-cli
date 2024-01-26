@@ -1,8 +1,23 @@
 # FOSSA CLI Changelog
 
-## Unreleased
-- Add color and update formatting in cli help commands ([#1367](https://github.com/fossas/fossa-cli/pull/1367))
+## v3.8.35
 - `fossa feedback`: Allow users to provide feedback on their cli experience ([#1368](https://github.com/fossas/fossa-cli/pull/1368))
+
+## v3.8.34
+- Add color and update formatting in cli help commands ([#1367](https://github.com/fossas/fossa-cli/pull/1367))
+
+## v3.8.33
+- Removes warnings and tracebacks to stderr [#1358](https://github.com/fossas/fossa-cli/pull/1358)
+
+## v3.8.32
+
+- Options: Add a `--static-only-analysis` option. ([#1362](https://github.com/fossas/fossa-cli/pull/1362))
+
+## v3.8.31
+
+- Container scanning: `BerkeleyDB` and `Sqlite` strategies now support RPM databases in non-standard locations ([#1365](https://github.com/fossas/fossa-cli/pull/1365)).
+- Updates the license scanner to the latest version ([#1366](https://github.com/fossas/fossa-cli/pull/1366)).
+  This update addresses several issues with the license scanner, primarily related to incorrect classification of GPL and AGPL licenses.
 
 ## v3.8.30
 

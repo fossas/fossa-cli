@@ -19,10 +19,38 @@ import Control.Concurrent.CGroup (initRTSThreads)
 import Control.Monad (join)
 import Data.Aeson (ToJSON)
 import Data.String.Conversion (toString)
-import Options.Applicative (CommandFields, InfoMod, Mod, Parser, ParserPrefs, columns, command, customExecParser, footer, fullDesc, header, helpIndent, helpShowGlobals, info, infoOption, internal, long, prefs, progDescDoc, short, showHelpOnEmpty, showHelpOnError, subparser, subparserInline, (<**>), (<|>))
-import Options.Applicative.Builder (helpDoc)
+import Data.Text.Prettyprint.Doc.Render.Terminal (putDoc)
+import Effect.Logger (indent, newlinePreceding, newlineTrailing, pretty, vsep)
+import Options.Applicative (
+  CommandFields,
+  InfoMod,
+  Mod,
+  Parser,
+  ParserPrefs,
+  columns,
+  command,
+  customExecParser,
+  footer,
+  fullDesc,
+  header,
+  helpIndent,
+  helpShowGlobals,
+  info,
+  infoOption,
+  internal,
+  long,
+  prefs,
+  progDescDoc,
+  short,
+  showHelpOnEmpty,
+  showHelpOnError,
+  subparser,
+  subparserInline,
+  (<**>),
+  (<|>),
+ )
 import Options.Applicative.Extra (helperWith)
-import Style (applyFossaStyle, formatStringToDoc)
+import Style (applyFossaStyle, formatDoc, formatStringToDoc, stringToHelpDoc)
 
 appMain :: IO ()
 appMain = do
@@ -33,7 +61,7 @@ versionOpt :: Parser (a -> a)
 versionOpt =
   infoOption (toString fullVersionDescription) $
     mconcat
-      [applyFossaStyle, long "version", short 'V', helpDoc $ formatStringToDoc "Show version information and exit"]
+      [applyFossaStyle, long "version", short 'V', stringToHelpDoc "Show version information and exit"]
 
 helperOpt :: Parser (a -> a)
 helperOpt =
@@ -42,7 +70,7 @@ helperOpt =
         [ applyFossaStyle
         , long "help"
         , short 'h'
-        , helpDoc $ formatStringToDoc "Show this help text"
+        , stringToHelpDoc "Show this help text"
         ]
     )
 
@@ -87,12 +115,26 @@ feedbackCommand :: Mod CommandFields (IO ())
 feedbackCommand = command "feedback" (info feedbackPrompt $ progDescDoc $ formatStringToDoc "Provide feedback on your fossa-cli experience, submit feature requests, and report bugs/issues")
   where
     feedbackPrompt :: Parser (IO ())
-    feedbackPrompt = pure $ do
-      putStrLn "At FOSSA, we are committed to delivering an exceptional user experience and are continously working towards improving our product."
-      putStrLn "Your feedback is crucial in shaping our ongoing efforts to innovate and provide an even better user experience!"
-      putStrLn ("\n * Report bugs and issues at: " <> toString supportUrl)
-      putStrLn ("\n * Submit feature requests to: support@fossa.com")
-      putStrLn ("\n * Provide feedback on overall cli experience at: https://docs.google.com/forms/d/e/1FAIpQLSdfz4KX_j6lpCF0zICQaUd-Rjn_Vj-IelCSmqOii__fqyYVmg/viewform")
+    feedbackPrompt =
+      pure $
+        putDoc $
+          vsep
+            [ newlinePreceding "At FOSSA, we are committed to delivering an exceptional user experience and are continously working towards improving our product."
+            , "Your feedback is crucial in shaping our ongoing efforts to innovate and provide an even better user experience!"
+            , ""
+            , "* Report bugs and issues at:"
+            , newlineTrailing . newlinePreceding $ indent 4 $ pretty supportUrl
+            , "* Submit feature requests to:"
+            , newlineTrailing . newlinePreceding $ indent 4 "support@fossa.com"
+            , "* Provide feedback on overall cli experience at:"
+            , newlineTrailing . newlineTrailing . newlinePreceding $ indent 4 "https://docs.google.com/forms/d/e/1FAIpQLSdfz4KX_j6lpCF0zICQaUd-Rjn_Vj-IelCSmqOii__fqyYVmg/viewform"
+            ]
+
+-- putStrLn "At FOSSA, we are committed to delivering an exceptional user experience and are continously working towards improving our product."
+-- putStrLn "Your feedback is crucial in shaping our ongoing efforts to innovate and provide an even better user experience!"
+-- putStrLn ("\n * Report bugs and issues at: " <> toString supportUrl)
+-- putStrLn ("\n * Submit feature requests to: support@fossa.com")
+-- putStrLn ("\n * Provide feedback on overall cli experience at: https://docs.google.com/forms/d/e/1FAIpQLSdfz4KX_j6lpCF0zICQaUd-Rjn_Vj-IelCSmqOii__fqyYVmg/viewform")
 
 decodeSubCommand :: (GetSeverity a, GetCommonOpts a, Show b, ToJSON b) => SubCommand a b -> Mod CommandFields (IO ())
 decodeSubCommand cmd@SubCommand{..} = command commandName $ info (runSubCommand cmd) commandInfo

@@ -49,7 +49,7 @@ import Options.Applicative (
  )
 import Prettyprinter (Doc, vsep)
 import Prettyprinter.Render.Terminal (AnsiStyle)
-import Style (applyFossaStyle, boldItalicized, formatDoc, formatStringToDoc)
+import Style (applyFossaStyle, boldItalicized, formatDoc, formatStringToDoc, stringToHelpDoc)
 
 cmdName :: String
 cmdName = "experimental-link-user-defined-dependency-binary"
@@ -121,18 +121,17 @@ cliParser =
     assertUserDefinedBinariesMeta :: Parser UserDefinedAssertionMeta
     assertUserDefinedBinariesMeta =
       UserDefinedAssertionMeta
-        <$> (strOption (applyFossaStyle <> long "name" <> helpDoc (formatStringToDoc "The name to display for the dependency")))
-        <*> (strOption (applyFossaStyle <> long "version" <> helpDoc (formatStringToDoc "The version to display for the dependency")))
-        <*> (strOption (applyFossaStyle <> long "license" <> helpDoc (formatStringToDoc "The license identifier to use for the dependency")))
-        <*> optional (strOption (applyFossaStyle <> long "description" <> helpDoc (formatStringToDoc "The description to use for the dependency")))
-        <*> optional (strOption (applyFossaStyle <> long "homepage" <> helpDoc (formatStringToDoc "The URL to the homepage for the dependency")))
+        <$> (strOption (applyFossaStyle <> long "name" <> stringToHelpDoc "The name to display for the dependency"))
+        <*> (strOption (applyFossaStyle <> long "version" <> stringToHelpDoc "The version to display for the dependency"))
+        <*> (strOption (applyFossaStyle <> long "license" <> stringToHelpDoc "The license identifier to use for the dependency"))
+        <*> optional (strOption (applyFossaStyle <> long "description" <> stringToHelpDoc "The description to use for the dependency"))
+        <*> optional (strOption (applyFossaStyle <> long "homepage" <> stringToHelpDoc "The URL to the homepage for the dependency"))
     assertUserDefinedBinariesDir :: Parser String
     assertUserDefinedBinariesDir = argument str (applyFossaStyle <> metavar "DIR" <> helpDoc dirHelp <> value ".")
     dirHelp :: Maybe (Doc AnsiStyle)
     dirHelp =
-      Just $
-        formatDoc $
-          vsep
-            [ "The directory containing one or more binaries to assert to the provided values"
-            , boldItalicized "Default: " <> "Current directory"
-            ]
+      Just . formatDoc $
+        vsep
+          [ "The directory containing one or more binaries to assert to the provided values"
+          , boldItalicized "Default: " <> "Current directory"
+          ]

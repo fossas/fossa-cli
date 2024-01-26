@@ -54,7 +54,8 @@ subcommand f =
   command
     "list-targets"
     ( info (f <$> listTargetParser) $
-        progDescDoc (formatStringToDoc "Lists target with container image")
+        progDescDoc $
+          formatStringToDoc "Lists target with container image"
     )
 
 listTargetParser :: Parser ContainerListTargetsOptions

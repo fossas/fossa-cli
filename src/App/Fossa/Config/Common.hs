@@ -135,7 +135,7 @@ import Path.Extra (SomePath (..))
 import Path.IO (resolveDir', resolveFile')
 import Prettyprinter (Doc)
 import Prettyprinter.Render.Terminal (Color (Green))
-import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, formatStringToDoc)
+import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, stringToHelpDoc)
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI, mkURI)
 import Types (TargetFilter)
@@ -164,12 +164,12 @@ metadataOpts :: Parser ProjectMetadata
 metadataOpts =
   ProjectMetadata
     <$> optional (strOption (applyFossaStyle <> long "title" <> short 't' <> helpDoc titleHelp))
-    <*> optional (strOption (applyFossaStyle <> long "project-url" <> short 'P' <> helpDoc (formatStringToDoc "This repository's home page")))
-    <*> optional (strOption (applyFossaStyle <> long "jira-project-key" <> short 'j' <> helpDoc (formatStringToDoc "This repository's JIRA project key")))
-    <*> optional (strOption (applyFossaStyle <> long "link" <> short 'L' <> helpDoc (formatStringToDoc "A link to attach to the current build")))
-    <*> optional (strOption (applyFossaStyle <> long "team" <> short 'T' <> helpDoc (formatStringToDoc "This repository's team inside your organization")))
+    <*> optional (strOption (applyFossaStyle <> long "project-url" <> short 'P' <> stringToHelpDoc "This repository's home page"))
+    <*> optional (strOption (applyFossaStyle <> long "jira-project-key" <> short 'j' <> stringToHelpDoc "This repository's JIRA project key"))
+    <*> optional (strOption (applyFossaStyle <> long "link" <> short 'L' <> stringToHelpDoc "A link to attach to the current build"))
+    <*> optional (strOption (applyFossaStyle <> long "team" <> short 'T' <> stringToHelpDoc "This repository's team inside your organization"))
     <*> parsePolicyOptions
-    <*> many (strOption (applyFossaStyle <> long "project-label" <> helpDoc (formatStringToDoc "Assign up to 5 labels to the project")))
+    <*> many (strOption (applyFossaStyle <> long "project-label" <> stringToHelpDoc "Assign up to 5 labels to the project"))
     <*> optional releaseGroupMetadataOpts
   where
     policy :: Parser Policy
@@ -187,33 +187,30 @@ metadataOpts =
     parsePolicyOptions = optional (policy <|> policyId) -- For Parsers '<|>' tries every alternative and fails if they all succeed.
     titleHelp :: Maybe (Doc AnsiStyle)
     titleHelp =
-      Just $
-        formatDoc $
-          vsep
-            [ "The title of the FOSSA project"
-            , boldItalicized "Default: " <> "The project name"
-            ]
+      Just . formatDoc $
+        vsep
+          [ "The title of the FOSSA project"
+          , boldItalicized "Default: " <> "The project name"
+          ]
 
     policyHelp :: Maybe (Doc AnsiStyle)
     policyHelp =
-      Just $
-        formatDoc $
-          vsep
-            [ "The name of the policy to assign to this project in FOSSA. Mutually excludes " <> coloredBoldItalicized Green "--policy-id" <> "."
-            ]
+      Just . formatDoc $
+        vsep
+          [ "The name of the policy to assign to this project in FOSSA. Mutually excludes " <> coloredBoldItalicized Green "--policy-id" <> "."
+          ]
     policyIdHelp :: Maybe (Doc AnsiStyle)
     policyIdHelp =
-      Just $
-        formatDoc $
-          vsep
-            [ "The id of the policy to assign to this project in FOSSA. Mutually excludes " <> coloredBoldItalicized Green "--policy" <> "."
-            ]
+      Just . formatDoc $
+        vsep
+          [ "The id of the policy to assign to this project in FOSSA. Mutually excludes " <> coloredBoldItalicized Green "--policy" <> "."
+          ]
 
 releaseGroupMetadataOpts :: Parser ReleaseGroupMetadata
 releaseGroupMetadataOpts =
   ReleaseGroupMetadata
-    <$> strOption (applyFossaStyle <> long "release-group-name" <> helpDoc (formatStringToDoc "The name of the release group to add this project to"))
-    <*> strOption (applyFossaStyle <> long "release-group-release" <> helpDoc (formatStringToDoc "The release of the release group to add this project to"))
+    <$> strOption (applyFossaStyle <> long "release-group-name" <> stringToHelpDoc "The name of the release group to add this project to")
+    <*> strOption (applyFossaStyle <> long "release-group-release" <> stringToHelpDoc "The release of the release group to add this project to")
 
 pathOpt :: String -> Either String (Path Rel Dir)
 pathOpt = first show . parseRelDir
@@ -225,12 +222,11 @@ baseDirArg :: Parser String
 baseDirArg = argument str (applyFossaStyle <> metavar "DIR" <> helpDoc baseDirDoc <> value ".")
   where
     baseDirDoc =
-      Just $
-        formatDoc $
-          vsep
-            [ "Set the base directory for scanning"
-            , boldItalicized "Default: " <> "Current directory"
-            ]
+      Just . formatDoc $
+        vsep
+          [ "Set the base directory for scanning"
+          , boldItalicized "Default: " <> "Current directory"
+          ]
 
 collectBaseDir ::
   ( Has Diagnostics sig m
@@ -448,7 +444,7 @@ fossaApiKeyCmdText = "fossa-api-key"
 commonOpts :: Parser CommonOpts
 commonOpts =
   CommonOpts
-    <$> switch (applyFossaStyle <> long "debug" <> helpDoc (formatStringToDoc "Enable debug logging, and write detailed debug information to `fossa.debug.json`"))
+    <$> switch (applyFossaStyle <> long "debug" <> stringToHelpDoc "Enable debug logging, and write detailed debug information to `fossa.debug.json`")
     <*> optional (uriOption (applyFossaStyle <> long "endpoint" <> short 'e' <> metavar "URL" <> helpDoc endpointHelp))
     <*> optional (strOption (applyFossaStyle <> long "project" <> short 'p' <> helpDoc projectHelp))
     <*> optional (strOption (applyFossaStyle <> long "revision" <> short 'r' <> helpDoc revisionHelp))
@@ -458,55 +454,49 @@ commonOpts =
   where
     projectHelp :: Maybe (Doc AnsiStyle)
     projectHelp =
-      Just $
-        formatDoc $
-          vsep
-            [ "This repository's URL or VCS endpoint"
-            , boldItalicized "Default: " <> "VCS remote 'origin'"
-            ]
+      Just . formatDoc $
+        vsep
+          [ "This repository's URL or VCS endpoint"
+          , boldItalicized "Default: " <> "VCS remote 'origin'"
+          ]
     revisionHelp :: Maybe (Doc AnsiStyle)
     revisionHelp =
-      Just $
-        formatDoc $
-          vsep
-            [ "This repository's current revision hash"
-            , boldItalicized "Default: " <> "VCS hash HEAD"
-            ]
+      Just . formatDoc $
+        vsep
+          [ "This repository's current revision hash"
+          , boldItalicized "Default: " <> "VCS hash HEAD"
+          ]
     configHelp :: Maybe (Doc AnsiStyle)
     configHelp =
-      Just $
-        formatDoc $
-          vsep
-            [ "Path to configuration file including filename"
-            , boldItalicized "Default: " <> ".fossa.yml"
-            ]
+      Just . formatDoc $
+        vsep
+          [ "Path to configuration file including filename"
+          , boldItalicized "Default: " <> ".fossa.yml"
+          ]
     telemtryScopeHelp :: Maybe (Doc AnsiStyle)
     telemtryScopeHelp =
-      Just $
-        formatDoc $
-          vsep
-            [ "Scope of telemetry to use"
-            , boldItalicized "Options: " <> coloredBoldItalicized Green "full" <> boldItalicized "|" <> coloredBoldItalicized Green "off"
-            , boldItalicized "Default: " <> coloredBoldItalicized Green "full"
-            ]
+      Just . formatDoc $
+        vsep
+          [ "Scope of telemetry to use"
+          , boldItalicized "Options: " <> coloredBoldItalicized Green "full" <> boldItalicized "|" <> coloredBoldItalicized Green "off"
+          , boldItalicized "Default: " <> coloredBoldItalicized Green "full"
+          ]
 
 endpointHelp :: Maybe (Doc AnsiStyle)
 endpointHelp =
-  Just $
-    formatDoc $
-      vsep
-        [ "The FOSSA API server base URL"
-        , boldItalicized "Default: " <> "https://app.fossa.com"
-        ]
+  Just . formatDoc $
+    vsep
+      [ "The FOSSA API server base URL"
+      , boldItalicized "Default: " <> "https://app.fossa.com"
+      ]
 
 fossaApiKeyHelp :: Maybe (Doc AnsiStyle)
 fossaApiKeyHelp =
-  Just $
-    formatDoc $
-      vsep
-        [ "The FOSSA API server authentication key"
-        , boldItalicized "Default: " <> "FOSSA_API_KEY from env"
-        ]
+  Just . formatDoc $
+    vsep
+      [ "The FOSSA API server authentication key"
+      , boldItalicized "Default: " <> "FOSSA_API_KEY from env"
+      ]
 
 collectConfigFileFilters :: ConfigFile -> AllFilters
 collectConfigFileFilters configFile = do

@@ -52,7 +52,7 @@ import Options.Applicative (
 import Options.Applicative.Builder (helpDoc)
 import Prettyprinter (Doc, comma, hardline, pretty, punctuate, viaShow)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green, Red))
-import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, formatStringToDoc)
+import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, stringToHelpDoc, styledDivider)
 
 data ReportType = Attribution deriving (Eq, Ord, Enum, Bounded, Generic)
 
@@ -109,7 +109,10 @@ reportOutputFormatList :: String
 reportOutputFormatList = intercalate ", " $ map show allFormats
 
 styledReportOutputFormats :: Doc AnsiStyle
-styledReportOutputFormats = mconcat (punctuate (boldItalicized "|") (map (coloredBoldItalicized Green . viaShow) allFormats))
+styledReportOutputFormats = mconcat $ punctuate styledDivider coloredAllFormats
+  where
+    coloredAllFormats :: [Doc AnsiStyle]
+    coloredAllFormats = map (coloredBoldItalicized Green . viaShow) allFormats
 
 instance ToJSON ReportOutputFormat where
   toEncoding = genericToEncoding defaultOptions
@@ -139,30 +142,28 @@ parser =
     <$> commonOpts
     <*> switch (applyFossaStyle <> long "json" <> helpDoc jsonHelp)
     <*> optional (strOption (applyFossaStyle <> long "format" <> helpDoc formatHelp))
-    <*> optional (option auto (applyFossaStyle <> long "timeout" <> helpDoc (formatStringToDoc "Duration to wait for build completion (in seconds)")))
+    <*> optional (option auto (applyFossaStyle <> long "timeout" <> stringToHelpDoc "Duration to wait for build completion (in seconds)"))
     <*> reportTypeArg
     <*> baseDirArg
   where
     jsonHelp :: Maybe (Doc AnsiStyle)
     jsonHelp =
-      Just $
-        formatDoc $
-          vsep
-            [ "Output the report in JSON format. Equivalent to " <> coloredBoldItalicized Green "--format json" <> " and overrides " <> coloredBoldItalicized Green "--format"
-            , coloredBoldItalicized Red "Deprecated: " <> "prefer " <> coloredBoldItalicized Green "--format"
-            ]
+      Just . formatDoc $
+        vsep
+          [ "Output the report in JSON format. Equivalent to " <> coloredBoldItalicized Green "--format json" <> " and overrides " <> coloredBoldItalicized Green "--format"
+          , coloredBoldItalicized Red "Deprecated: " <> "prefer " <> coloredBoldItalicized Green "--format"
+          ]
 
     formatHelp :: Maybe (Doc AnsiStyle)
     formatHelp =
-      Just $
-        formatDoc $
-          vsep
-            [ "Output the report in the specified format"
-            , boldItalicized "Formats: " <> styledReportOutputFormats
-            ]
+      Just . formatDoc $
+        vsep
+          [ "Output the report in the specified format"
+          , boldItalicized "Formats: " <> styledReportOutputFormats
+          ]
 
 reportTypeArg :: Parser ReportType
-reportTypeArg = argument (maybeReader parseType) (applyFossaStyle <> metavar "REPORT" <> helpDoc (formatStringToDoc "The report type to fetch from the server"))
+reportTypeArg = argument (maybeReader parseType) (applyFossaStyle <> metavar "REPORT" <> stringToHelpDoc "The report type to fetch from the server")
   where
     parseType :: String -> Maybe ReportType
     parseType = \case
