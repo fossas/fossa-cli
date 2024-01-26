@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.8.35
+
+- Container Scans: Bugfix for some registry scans that fail with an STM error. [#1370](https://github.com/fossas/fossa-cli/pull/1370)
+
 ## v3.8.34
 - Add color and update formatting in cli help commands ([#1367](https://github.com/fossas/fossa-cli/pull/1367))
 
