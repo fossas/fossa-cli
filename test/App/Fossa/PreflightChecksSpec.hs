@@ -21,10 +21,10 @@ expectOrganization = GetOrganization `returnsOnce` Fixtures.organization
 
 spec :: Spec
 spec = do
-  describe "preflight checks" 
-    $ do
-      it' "should pass all checks" 
-        $ do
+  describe "preflight checks" $ 
+    do
+      it' "should pass all checks" $ 
+        do
           expectOrganization
           res <- ignoreDebug preflightChecks
           res `shouldBe'` ()
