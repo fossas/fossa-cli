@@ -13,9 +13,8 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Options.Applicative (Parser, argument, metavar, str)
-import Options.Applicative.Builder (helpDoc)
 import Prettyprinter (pretty, vsep)
-import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
+import Style (applyFossaStyle, stringToHelpDoc)
 import System.Info (arch)
 
 newtype ImageText = ImageText

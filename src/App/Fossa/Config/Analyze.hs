@@ -114,7 +114,7 @@ import Path (Abs, Dir, Path, Rel)
 import Path.Extra (SomePath)
 import Prettyprinter (Doc, annotate, indent)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green, Red), color)
-import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, formatStringToDoc, stringToHelpDoc)
+import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, stringToHelpDoc)
 import Types (ArchiveUploadType (..), LicenseScanPathFilters (..), TargetFilter)
 
 -- CLI flags, for use with 'Data.Flag'
