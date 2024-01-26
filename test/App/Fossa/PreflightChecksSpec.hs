@@ -1,6 +1,4 @@
-module App.Fossa.PreflightChecksSpec (
-  spec,
-) where
+module App.Fossa.PreflightChecksSpec (spec) where
 
 import App.Fossa.PreflightChecks (preflightChecks)
 import Control.Algebra (Has)
@@ -21,7 +19,7 @@ expectOrganization = GetOrganization `returnsOnce` Fixtures.organization
 
 spec :: Spec
 spec = do
-  describe "preflight checks" $ do 
+  describe "preflight checks" $ do
     it' "should pass all checks" $ do
       expectOrganization
       res <- ignoreDebug preflightChecks

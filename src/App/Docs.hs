@@ -9,7 +9,7 @@ module App.Docs (
   fossaContainerScannerUrl,
   pathDependencyDocsUrl,
   staticAndDynamicStrategies,
-  mainReadMeUrl,
+  apiKeyUrl,
 ) where
 
 import App.Version (versionOrBranch)
@@ -51,5 +51,5 @@ pathDependencyDocsUrl = guidePathOf versionOrBranch "/docs/references/experiment
 staticAndDynamicStrategies :: Text
 staticAndDynamicStrategies = guidePathOf versionOrBranch "/docs/references/strategies/README.md#static-and-dynamic-strategies"
 
-mainReadMeUrl :: Text
-mainReadMeUrl = guidePathOf versionOrBranch "/README.md#generating-an-api-key"
+apiKeyUrl :: Text
+apiKeyUrl = guidePathOf versionOrBranch "/README.md#generating-an-api-key"
