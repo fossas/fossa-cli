@@ -26,6 +26,7 @@ module Fossa.API.Types (
   PathDependencyUpload (..),
   UploadedPathDependencyLocator (..),
   SignedURL (..),
+  SignedURLWithKey (..),
   UploadResponse (..),
   PathDependencyUploadReq (..),
   PathDependencyFinalizeReq (..),
@@ -116,9 +117,19 @@ newtype SignedURL = SignedURL
   }
   deriving (Eq, Ord, Show)
 
+data SignedURLWithKey = SignedURLWithKey
+  { surlwkSignedURL :: Text
+  , surlwkKey :: Text
+  }
+  deriving (Eq, Ord, Show)
+
 instance FromJSON SignedURL where
   parseJSON = withObject "SignedUrl" $ \obj ->
     SignedURL <$> obj .: "signedUrl"
+
+instance FromJSON SignedURLWithKey where
+  parseJSON = withObject "SignedUrl" $ \obj ->
+    SignedURLWithKey <$> obj .: "signedUrl" <*> obj .: "key"
 
 data ArchiveComponents = ArchiveComponents
   { archives :: [Archive]
