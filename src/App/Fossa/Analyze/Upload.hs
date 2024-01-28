@@ -8,6 +8,8 @@ module App.Fossa.Analyze.Upload (
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
+import App.Fossa.Reachability.Types (SourceUnitReachability)
+import App.Fossa.Reachability.Upload (upload)
 import App.Types (
   BaseDir (BaseDir),
   FullFileUploads (FullFileUploads),
@@ -15,6 +17,7 @@ import App.Types (
   ProjectRevision (..),
  )
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
+import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
@@ -91,14 +94,16 @@ uploadSuccessfulAnalysis ::
   , Has (Lift IO) sig m
   , Has FossaApiClient sig m
   , Has Git sig m
+  , Has Debug sig m
   ) =>
   BaseDir ->
   ProjectMetadata ->
   Flag JsonOutput ->
   ProjectRevision ->
   ScanUnits ->
+  [SourceUnitReachability] ->
   m Locator
-uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits =
+uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachability =
   context "Uploading analysis" $ do
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
@@ -107,6 +112,7 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
     logInfo ("Using branch: `" <> pretty branchText <> "`")
 
     dieOnMonorepoUpload revision
+    void $ upload revision metadata reachability
 
     uploadResult <- case scanUnits of
       SourceUnitOnly units -> uploadAnalysis revision metadata units

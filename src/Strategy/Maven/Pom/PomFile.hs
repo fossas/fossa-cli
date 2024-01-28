@@ -4,6 +4,7 @@ module Strategy.Maven.Pom.PomFile
 -- TODO: sort
   (
   Pom (..),
+  PomBuild (..),
   RawDependency (..),
   RawParent (..),
   RawPom (..),
@@ -35,7 +36,11 @@ validatePom raw = do
       dependencyManagement = rawDepsToDeps (rawPomDependencyManagement raw)
       dependencies = rawDepsToDeps (rawPomDependencies raw)
       licenses = rawPomLicenses raw
-  pure (Pom coord parentCoord properties dependencyManagement dependencies licenses)
+
+      groupOfBuild = coordGroup coord
+      artifactOfBuild = coordArtifact coord
+      build = Map.singleton (groupOfBuild, artifactOfBuild) (rawPomBuild raw)
+  pure (Pom coord parentCoord properties dependencyManagement dependencies licenses build)
 
 rawDepsToDeps :: [RawDependency] -> Map (Group, Artifact) MvnDepBody
 rawDepsToDeps = Map.fromList . map (\dep -> (depToKey dep, depToBody dep))
@@ -84,6 +89,7 @@ data Pom = Pom
   , pomDependencyManagement :: Map (Group, Artifact) MvnDepBody
   , pomDependencies :: Map (Group, Artifact) MvnDepBody
   , pomLicenses :: [PomLicense]
+  , pomBuilds :: Map (Group, Artifact) (Maybe PomBuild)
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -125,6 +131,7 @@ instance Semigroup Pom where
       , pomDependencyManagement = Map.unionWith (<>) (pomDependencyManagement childPom) (pomDependencyManagement parentPom)
       , pomDependencies = Map.unionWith (<>) (pomDependencies childPom) (pomDependencies parentPom)
       , pomLicenses = pomLicenses childPom
+      , pomBuilds = Map.union (pomBuilds childPom) (pomBuilds parentPom)
       }
 
 instance Semigroup MvnDepBody where
@@ -148,6 +155,7 @@ data RawPom = RawPom
   , rawPomName :: Maybe Text
   , rawPomProperties :: Map Text Text
   , rawPomModules :: [Text]
+  , rawPomBuild :: Maybe PomBuild
   , rawPomDependencyManagement :: [RawDependency]
   , rawPomDependencies :: [RawDependency]
   , rawPomLicenses :: [PomLicense]
@@ -180,6 +188,17 @@ data PomLicense = PomLicense
 
 instance ToJSON PomLicense
 
+-- | Ref: https://maven.apache.org/pom.html#build
+data PomBuild = PomBuild
+  { -- This is the name of the bundled project when it is finally built
+    -- (sans the file extension, for example: my-project-1.0.jar)
+    pomBuildFinalName :: Maybe Text
+  , -- This is the directory where the build will dump its files
+    pomBuildOutputDirectory :: Maybe Text
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON PomBuild
 instance FromXML RawPom where
   parseElement el =
     RawPom
@@ -192,6 +211,7 @@ instance FromXML RawPom where
         `defaultsTo` Map.empty
       <*> optional (child "modules" el >>= children "module")
         `defaultsTo` []
+      <*> optional (child "build" el)
       <*> optional (child "dependencyManagement" el >>= children "dependency")
         `defaultsTo` []
       <*> optional (child "dependencies" el >>= children "dependency")
@@ -226,3 +246,13 @@ instance FromXML PomLicense where
     PomLicense
       <$> optional (child "name" el)
       <*> optional (child "url" el)
+
+instance FromXML PomBuild where
+  parseElement el =
+    PomBuild
+      <$> optional (child "finalName" el)
+      <*> ( optional
+              ( child "outputDirectory" el
+                  <|> child "directory" el
+              )
+          )

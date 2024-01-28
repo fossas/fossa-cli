@@ -10,6 +10,7 @@ module Control.Carrier.Debug (
   recording,
   ignoring,
   Scope (..),
+  ScopeEvent (..),
   module X,
 ) where
 

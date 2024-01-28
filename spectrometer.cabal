@@ -229,6 +229,10 @@ library
     App.Fossa.PathDependency
     App.Fossa.PreflightChecks
     App.Fossa.ProjectInference
+    App.Fossa.Reachability.Jar
+    App.Fossa.Reachability.Maven
+    App.Fossa.Reachability.Types
+    App.Fossa.Reachability.Upload
     App.Fossa.Report
     App.Fossa.Report.Attribution
     App.Fossa.RunThemis
@@ -643,6 +647,9 @@ test-suite unit-tests
     Python.SetupPySpec
     R.DescriptionSpec
     R.RenvSpec
+    Reachability.JarSpec
+    Reachability.MavenSpec
+    Reachability.UploadSpec
     ResultUtil
     RPM.SpecFileSpec
     Ruby.BundleShowSpec

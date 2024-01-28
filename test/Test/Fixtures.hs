@@ -37,6 +37,8 @@ module Test.Fixtures (
   issuesDiffAvailable,
   standardAnalyzeConfig,
   vsiSourceUnit,
+  sourceUnitBuildMaven,
+  sourceUnitReachabilityNoAnalysis,
 ) where
 
 import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
@@ -44,6 +46,7 @@ import App.Fossa.Config.Analyze qualified as ANZ
 import App.Fossa.Config.Analyze qualified as VSI
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
 import App.Fossa.Lernie.Types (GrepOptions (..), OrgWideCustomLicenseConfigPolicy (..))
+import App.Fossa.Reachability.Types (CallGraphAnalysis (NoCallGraphAnalysis), SourceUnitReachability (..))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency (..))
 import App.Types (OverrideDynamicAnalysisBinary (..))
@@ -145,6 +148,37 @@ sourceUnits = NE.fromList [unit]
         , sourceUnitOriginPaths = []
         , additionalData = Nothing
         }
+
+sourceUnitBuildMaven :: SourceUnitBuild
+sourceUnitBuildMaven =
+  SourceUnitBuild
+    "default"
+    True
+    [ ipAddr
+    , spotBugs
+    ]
+    [ SourceUnitDependency logger []
+    , SourceUnitDependency ipAddr []
+    , SourceUnitDependency
+        spotBugs
+        [ logger
+        ]
+    ]
+  where
+    ipAddr :: Locator
+    ipAddr = mkLocator "com.github.seancfoley:ipaddress" "5.4.0"
+
+    spotBugs :: Locator
+    spotBugs = mkLocator "com.github.spotbugs:spotbugs-annotations" "4.8.3"
+
+    logger :: Locator
+    logger = mkLocator "org.apache.logging.log4j:log4j-core" "2.22.1"
+
+    mkLocator :: Text -> Text -> Locator
+    mkLocator name version = Locator "mvn" name (Just version)
+
+sourceUnitReachabilityNoAnalysis :: SourceUnitReachability
+sourceUnitReachabilityNoAnalysis = SourceUnitReachability "type" "manifest" "name" [] [] NoCallGraphAnalysis
 
 vsiSourceUnit :: SourceUnit
 vsiSourceUnit =
