@@ -1,17 +1,16 @@
 # Reachability
 
-<!-- 
-## What is reachability?
+### What is Reachability?
+Reachability Analysis is a security offering designed to enhance FOSSA's security analysis by providing context on vulnerable packages. It alleviates the constraints of traditional CVE assessments through the static analysis of application and dependency code, confirming the presence of vulnerable call paths. This allows pinpointing the 3-10% of exploitable vulnerabilities amid the multitude of non-exploitable ones.
 
+### Limitations
+Reachability currently supports all Maven projects dynamically analyzed by fossa-cli. The target jar of the project must exist, prior to the analysis.
 
+### Maven Analysis
 
-## Limitations
+For Maven projects, `fossa-cli` performs an analysis to infer dependencies. If `fossa-cli` identifies a complete dependency graph, which must include both direct and transitive dependencies, it attempts to infer the built JAR file for reachability analysis. It looks for `./target/{artifact}-{version}.jar` from the POM directory. If the POM file provides `build.directory` or `build.finalName` attributes, they are used instead of the default target jar path. For this reason, perform `fossa analyze` after the project of interest is built, and target artifact exists in the directory.
 
-Reachabiility currently support maven package manager, and jar builds.
-
--->
-
-## How do I debug reachability from fossa-cli?
+### How do I debug reachability from `fossa-cli`?
 
 ```bash
 fossa analyze --debug
