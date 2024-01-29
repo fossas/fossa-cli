@@ -27,12 +27,10 @@ import Control.Effect.FossaApiClient (
   FossaApiClientF (..),
  )
 import Data.ByteString.Lazy (ByteString)
-import Data.ByteString.Lazy qualified as LB
 import Data.List.NonEmpty qualified as NE
 import Data.Set qualified as Set
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
-import Data.Text.Encoding qualified as TL
 import Diag.Result (Result (Success))
 import Graphing (empty)
 import Path (
@@ -55,7 +53,6 @@ import Test.Fixtures qualified as Fixture
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Test.MockApi (MockApi, alwaysReturns, returnsOnce)
-import Text.RawString.QQ (r)
 import Types (DiscoveredProjectType (..), GraphBreadth (..))
 
 spec :: Spec
