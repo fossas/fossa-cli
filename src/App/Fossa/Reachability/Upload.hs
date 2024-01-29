@@ -57,9 +57,9 @@ analyzeForReachability ::
   m [SourceUnitReachability]
 analyzeForReachability analysisResult = context "reachability" $ do
   let analyzerResult = analyzersScanResult analysisResult
-  res <- catMaybes <$> (traverse callGraphOf analyzerResult)
-  debugMetadata reachabilityRawJson res
-  pure res
+  units <- catMaybes <$> (traverse callGraphOf analyzerResult)
+  debugMetadata reachabilityRawJson units
+  pure units
 
 upload ::
   ( Has FossaApiClient sig m
@@ -70,9 +70,9 @@ upload ::
   [SourceUnitReachability] ->
   m ()
 upload revision metadata units = do
-  uploadedUnits <- traverse uploadReachability units
-  debugMetadata reachabilityEndpointJson uploadedUnits
-  uploadBuildForReachability revision metadata uploadedUnits
+  units' <- traverse uploadReachability units
+  debugMetadata reachabilityEndpointJson units'
+  uploadBuildForReachability revision metadata units'
 
 uploadReachability ::
   ( Has FossaApiClient sig m
@@ -83,15 +83,15 @@ uploadReachability unit = case callGraphAnalysis unit of
   NoCallGraphAnalysis -> pure unit
   JarAnalysis [] -> pure unit
   JarAnalysis someJars -> do
-    updatedJars <- traverse uploadParsedJar someJars
+    updatedJars <- traverse uploadJarAnalysis someJars
     pure $ unit{callGraphAnalysis = JarAnalysis updatedJars}
 
-uploadParsedJar ::
+uploadJarAnalysis ::
   ( Has FossaApiClient sig m
   ) =>
   ParsedJar ->
   m ParsedJar
-uploadParsedJar jar = case parsedJarContent jar of
+uploadJarAnalysis jar = case parsedJarContent jar of
   ContentStoreKey _ -> pure jar
   ContentRaw bs -> do
     key <- uploadContentForReachability bs
@@ -120,9 +120,9 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
           , callGraphAnalysis = NoCallGraphAnalysis
           }
   case (projectResultGraphBreadth projectResult, dpiProjectType dpi) of
-    -- if we do not have complete graph, e.g. missing transitive dependencies
+    -- if we do not have complete graph, i.e.. missing transitive dependencies
     -- it is impossible to perform reachability, as we may not have all symbols
-    -- used in the application to perform analysis on!
+    -- used in the application to perform accurate analysis
     (Partial, _) -> do
       logInfo . pretty $ "we do not support reachability analysis, with partial dependencies graph (skipping: " <> displayId <> ")"
       pure Nothing
@@ -130,9 +130,9 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
       logDebug . pretty $ "trying to infer build jars from maven project: " <> show (projectResultPath projectResult)
       analysis <- mavenJarCallGraph (projectResultPath projectResult)
       pure . Just $ unit{callGraphAnalysis = analysis}
-    -- Exclude units for package manager/language we cannot support!
+    -- Exclude units for package manager/language we cannot support yet!
     _ -> do
-      logInfo . pretty $ "we do not support reachability analysis for: " <> displayId <> ". (skipping)"
+      logInfo . pretty $ "we do not support reachability analysis for: " <> displayId <> " yet. (skipping)"
       pure Nothing
 -- Not possible to perform reachability analysis for projects
 -- which were not scanned (skipped due to filter), as we do not

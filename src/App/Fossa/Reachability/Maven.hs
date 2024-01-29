@@ -3,7 +3,7 @@ module App.Fossa.Reachability.Maven (
 
   -- * for testing,
   isValidJar,
-  getJarByBuild,
+  getJarsByBuild,
 )
 where
 
@@ -40,20 +40,20 @@ mavenJarCallGraph ::
   Path Abs Dir ->
   m CallGraphAnalysis
 mavenJarCallGraph dir = do
-  jars <- getJarByBuild dir
+  jars <- getJarsByBuild dir
   logDebug . pretty $ "found jars: " ++ show jars
 
   parsedJars <- traverse callGraphFromJar jars
   pure $ JarAnalysis (catMaybes parsedJars)
 
-getJarByBuild ::
+getJarsByBuild ::
   ( Has Logger sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
   ) =>
   Path Abs Dir ->
   m [Path Abs File]
-getJarByBuild dir = do
+getJarsByBuild dir = do
   mvnProjectClosures <- findProjects dir
   let pomPathsAndPom = concatMap (Map.elems . closurePoms) mvnProjectClosures
 
