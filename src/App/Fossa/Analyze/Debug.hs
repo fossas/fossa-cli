@@ -221,6 +221,8 @@ collectSystemInfo = do
       processors
       systemMemory
 
+-- IMPROVE: We need a better way to persist arbitary debug metadata at root level of bundle. 
+-- Performing action, and doing subsequent lookup is not ideal. 
 lookUpReachabilityRawScope :: Scope -> Maybe Aeson.Value
 lookUpReachabilityRawScope = lookupScope reachabilityRawJson
 
