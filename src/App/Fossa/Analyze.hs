@@ -415,7 +415,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     (False, FilteredAll) -> Diag.errDoc userGuideUrl $ Diag.fatal $ ErrFilteredAllProjects getSourceLocation
     (True, FilteredAll) -> Diag.fatal $ ErrOnlyKeywordSearchResultsFound getSourceLocation
     (_, CountedScanUnits scanUnits) -> doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits
-  Diag.errHelp ("Another help message" :: Text) $ Diag.errHelp ("Make sure your project is supported" :: Text) $ Diag.errDoc userGuideUrl $ Diag.fatal $ ErrNoProjectsDiscovered getSourceLocation
+
   pure outputResult
   where
     doUpload result iatAssertion destination basedir jsonOutput revision scanUnits =
@@ -508,8 +508,6 @@ data AnalyzeError
   = ErrNoProjectsDiscovered (SourceLocation)
   | ErrFilteredAllProjects (SourceLocation)
   | ErrOnlyKeywordSearchResultsFound (SourceLocation)
-
--- instance Error.toErrata AnalyzeError where
 
 instance Diag.ToDiagnostic AnalyzeError where
   renderDiagnostic (ErrNoProjectsDiscovered srcLoc) = do

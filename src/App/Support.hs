@@ -114,14 +114,6 @@ reportTransientErrorMsg = "This error is often transient, so trying again in a f
 requestReportIfPersists :: Doc ann
 requestReportIfPersists = "If this issue persists, please contact FOSSA support at " <> pretty supportUrl
 
-withRequestReportIfPersists :: Doc ann -> Doc ann
-withRequestReportIfPersists msg =
-  vsep
-    [ msg
-    , ""
-    , requestReportIfPersists
-    ]
-
 withDebugBundle :: Doc ann -> Doc ann
 withDebugBundle msg =
   vsep

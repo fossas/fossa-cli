@@ -61,7 +61,7 @@ module Effect.ReadFS (
   module X,
 ) where
 
-import App.Support (reportDefectWithFileMsg, supportUrl)
+import App.Support (supportUrl)
 import Control.Algebra as X
 import Control.Carrier.Simple (
   Simple,
@@ -111,7 +111,7 @@ import Path (
  )
 import Path.Extra (SomePath (..))
 import Path.IO qualified as PIO
-import Prettyprinter (indent, line, pretty, vsep)
+import Prettyprinter (indent, pretty, vsep)
 import System.Directory qualified as Directory
 import System.FilePath qualified as FP
 import System.IO (IOMode (ReadMode), withFile)

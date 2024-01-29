@@ -11,6 +11,7 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Errata (Errata (..))
 
+-- | A class of diagnostic types that can be rendered in a user-friendly way
 class ToDiagnostic a where
   renderDiagnostic :: a -> Errata
 
@@ -22,25 +23,6 @@ instance ToDiagnostic String where
 
 instance ToDiagnostic SomeException where
   renderDiagnostic (SomeException exc) = Errata (Just $ "An exception occurred:" <> toText (show exc)) [] Nothing
-
--- | A class of diagnostic types that can be rendered in a user-friendly way
--- class ToDiagnostic a where
---   renderDiagnostic :: a -> Doc AnsiStyle
-
--- instance ToDiagnostic (Doc AnsiStyle) where
---   renderDiagnostic = id
-
--- instance ToDiagnostic Text where
---   renderDiagnostic = pretty
-
--- instance ToDiagnostic String where
---   renderDiagnostic = pretty
-
--- instance ToDiagnostic Errata where
---   renderDiagnostic err = pretty $ renderErrors [err]
-
--- instance ToDiagnostic SomeException where
---   renderDiagnostic (SomeException exc) = "An exception occurred: " <> pretty (show exc)
 
 -- | An error with a ToDiagnostic instance and an associated stack trace
 data SomeDiagnostic where

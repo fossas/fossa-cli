@@ -350,8 +350,5 @@ section name content =
     <> indent 2 content
     <> line
 
-subsection :: Doc AnsiStyle -> [Doc AnsiStyle] -> Doc AnsiStyle
-subsection name = vsep . map (\single -> annotate (color Yellow) name <> line <> line <> indent 2 single <> line)
-
 unannotatedSubsection :: [Doc AnsiStyle] -> Doc AnsiStyle
 unannotatedSubsection = vsep . map (indent 2)

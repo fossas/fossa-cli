@@ -140,9 +140,7 @@ getDepsPlugin ::
   ) =>
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
-getDepsPlugin closure = fatal MissingDeepDeps
-
--- context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
+getDepsPlugin closure = context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
 
 getDepsPluginLegacy ::
   ( CandidateCommandEffs sig m
@@ -160,11 +158,10 @@ getDepsTreeCmd ::
   ) =>
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
-getDepsTreeCmd closure = fatal MissingEdges
-
--- context "Dynamic analysis" $
---   DepTreeCmd.analyze . parent $
---     PomClosure.closurePath closure
+getDepsTreeCmd closure =
+  context "Dynamic analysis" $
+    DepTreeCmd.analyze . parent $
+      PomClosure.closurePath closure
 
 getStaticAnalysis ::
   ( Has (Lift IO) sig m
