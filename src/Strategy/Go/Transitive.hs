@@ -52,7 +52,6 @@ import Effect.Exec (
 import Effect.Grapher (edge, label)
 import Errata (Errata (..))
 import Path (Abs, Dir, Path)
-import Prettyprinter (pretty)
 import Strategy.Go.Types (
   GolangGrapher,
   GolangPackage,

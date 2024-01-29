@@ -8,7 +8,7 @@ module Strategy.Maven (
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, context, fatal, warnOnErr, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)

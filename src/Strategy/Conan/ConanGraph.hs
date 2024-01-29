@@ -52,7 +52,6 @@ import Errata (Errata (..))
 import Graphing (Graphing)
 import Network.HTTP.Types (renderQueryText)
 import Path (Abs, Dir, Path)
-import Prettyprinter (indent, vsep)
 import Strategy.Conan.Version (guardConanVersion2Gt)
 
 -- | Represents `conan install . -f json`.

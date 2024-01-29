@@ -69,7 +69,6 @@ import Path (
   parseRelFile,
   (</>),
  )
-import Prettyprinter (pretty)
 import Text.GitConfig.Parser (Section (..), parseConfig)
 import Text.Megaparsec (errorBundlePretty)
 import Text.URI (URI, mkURI, relativeTo, render)

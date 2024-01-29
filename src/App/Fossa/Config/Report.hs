@@ -52,7 +52,7 @@ import Options.Applicative (
   switch,
  )
 import Options.Applicative.Builder (helpDoc)
-import Prettyprinter (Doc, comma, hardline, pretty, punctuate, viaShow)
+import Prettyprinter (Doc, comma, hardline, punctuate, viaShow)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green, Red))
 import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, stringToHelpDoc, styledDivider)
 
