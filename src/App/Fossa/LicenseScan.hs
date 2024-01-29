@@ -22,7 +22,6 @@ import App.Fossa.VendoredDependency (
   dedupVendoredDeps,
  )
 import App.Types (BaseDir (BaseDir), FullFileUploads (FullFileUploads))
-import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.StickyLogger (
   Has,
   StickyLogger,
