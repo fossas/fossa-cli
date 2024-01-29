@@ -58,12 +58,6 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: '3.8.1.0'
 
-    # Set up Java.
-    - uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '21'
-
     # Set up Rust.
     - uses: actions-rs/toolchain@v1
       with:
@@ -89,7 +83,6 @@ jobs:
         ghcup --version || echo "no ghcup"
         rustc -V || echo "no rustc"
         cargo -V || echo "no cargo"
-        java --version || echo "no java"
 
     # Linux builds are run in Alpine, which builds them statically;
     # using jemalloc reduces the performance impact of this
