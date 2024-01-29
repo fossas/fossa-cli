@@ -58,7 +58,7 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
-import Fossa.API.Types (Organization (orgRequiresFullFileUploads), Project (projectIsMonorepo), UploadResponse (..))
+import Fossa.API.Types (Organization (orgRequiresFullFileUploads, orgSupportsReachability), Project (projectIsMonorepo), UploadResponse (..))
 import Path (Abs, Dir, Path)
 import Srclib.Types (
   FullSourceUnit,
@@ -112,17 +112,19 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
     logInfo ("Using branch: `" <> pretty branchText <> "`")
 
     dieOnMonorepoUpload revision
-    void $ upload revision metadata reachabilityUnits
+    org <- getOrganization
+
+    when (orgSupportsReachability org) $
+      void $
+        upload revision metadata reachabilityUnits
 
     uploadResult <- case scanUnits of
       SourceUnitOnly units -> uploadAnalysis revision metadata units
       LicenseSourceUnitOnly licenseSourceUnit -> do
-        org <- getOrganization
         let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
         let mergedUnits = mergeSourceAndLicenseUnits [] licenseSourceUnit
         runStickyLogger SevInfo $ uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads
       SourceAndLicenseUnits sourceUnits licenseSourceUnit -> do
-        org <- getOrganization
         let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
         let mergedUnits = mergeSourceAndLicenseUnits (NE.toList sourceUnits) licenseSourceUnit
         runStickyLogger SevInfo $ uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads
