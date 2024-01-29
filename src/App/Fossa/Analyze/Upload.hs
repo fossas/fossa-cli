@@ -103,7 +103,7 @@ uploadSuccessfulAnalysis ::
   ScanUnits ->
   [SourceUnitReachability] ->
   m Locator
-uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachability =
+uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits =
   context "Uploading analysis" $ do
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
@@ -112,7 +112,7 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
     logInfo ("Using branch: `" <> pretty branchText <> "`")
 
     dieOnMonorepoUpload revision
-    void $ upload revision metadata reachability
+    void $ upload revision metadata reachabilityUnits
 
     uploadResult <- case scanUnits of
       SourceUnitOnly units -> uploadAnalysis revision metadata units

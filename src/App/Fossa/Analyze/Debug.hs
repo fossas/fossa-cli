@@ -252,7 +252,7 @@ data DebugBundle cfg = DebugBundle
   }
   deriving (Show, Generic)
 
-instance (ToJSON cfg) => ToJSON (DebugBundle cfg) where
+instance ToJSON cfg => ToJSON (DebugBundle cfg) where
   toEncoding = genericToEncoding defaultOptions
 
 data SystemInfo = SystemInfo

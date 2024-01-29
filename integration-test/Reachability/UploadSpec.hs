@@ -72,23 +72,27 @@ spec = describe "Reachability" $ do
       , java21
       ]
       $ \env -> do
-        it "should compute in java 8" $ do
+        it ("should compute in java: " <> show env) $ do
+          let expected = Just (sampleJarParsed jarFile)
           res <- run env $ callGraphFromJar jarFile
-          withResult res $ \_ res' -> res' `shouldBe` Just (sampleJarParsed jarFile)
+
+          withResult res $ \_ res' -> res' `shouldBe` expected
 
   describe "callGraphOf" $ do
     projDir <- (</> sampleMavenProjectDir) <$> runIO PIO.getCurrentDir
     jarFile <- (</> sampleMavenProjectJar) <$> runIO PIO.getCurrentDir
 
     it "should retrieve call graph" $ do
+      let expected = Just (mavenCompleteScanUnit projDir jarFile)
       resp <- run java8 $ callGraphOf (mavenCompleteScan projDir)
-      withResult resp $ \_ res -> res `shouldBe` Just (mavenCompleteScanUnit projDir jarFile)
+      withResult resp $ \_ res -> res `shouldBe` expected
 
   describe "analyzeForReachability" $ do
     projDir <- (</> sampleMavenProjectDir) <$> runIO PIO.getCurrentDir
     jarFile <- (</> sampleMavenProjectJar) <$> runIO PIO.getCurrentDir
 
     it "should return analyzed reachability unit" $ do
+      let expected = [mavenCompleteScanUnit projDir jarFile]
       let analysisResult =
             AnalysisScanResult
               [mavenCompleteScan projDir]
@@ -99,7 +103,7 @@ spec = describe "Reachability" $ do
               successNothing
 
       analyzed <- run java8 $ analyzeForReachability analysisResult
-      withResult analyzed $ \_ analyzed' -> analyzed' `shouldBe` [mavenCompleteScanUnit projDir jarFile]
+      withResult analyzed $ \_ analyzed' -> analyzed' `shouldBe` expected
 
 sampleMavenProjectDir :: Path Rel Dir
 sampleMavenProjectDir = $(mkRelDir "test/Reachability/testdata/maven-default/")

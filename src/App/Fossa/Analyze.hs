@@ -398,7 +398,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   logDebug $ "Filtered projects with path dependencies: " <> pretty (show filteredProjects')
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
-  reachabilityResults <- analyzeForReachability analysisResult
+  reachabilityUnits <- analyzeForReachability analysisResult
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
@@ -421,14 +421,14 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityResults
   pure outputResult
   where
-    doUpload result iatAssertion destination basedir jsonOutput revision scanUnits reachability =
+    doUpload result iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits =
       case destination of
         OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
         UploadScan apiOpts metadata ->
           Diag.context "upload-results"
             . runFossaApiClient apiOpts
             $ do
-              locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachability
+              locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits
               doAssertRevisionBinaries iatAssertion locator
 
     emptyScanUnits :: ScanUnits

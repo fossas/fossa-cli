@@ -3,7 +3,7 @@
 
 module Reachability.MavenSpec (spec) where
 
-import App.Fossa.Reachability.Maven (getJarByBuild, isValidJar)
+import App.Fossa.Reachability.Maven (getJarsByBuild, isValidJar)
 import Control.Effect.Lift (sendIO)
 import Path (Abs, Dir, File, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO qualified as PIO
@@ -28,19 +28,21 @@ spec = describe "Maven" $ do
       result <- isValidJar jarFile
       result `shouldBe'` False
 
-  describe "getJarByBuild" $ do
+  describe "getJarsByBuild" $ do
     it' "should get jar from defaults" $ do
       p <- sendIO defaultMavenProject
       jar <- sendIO defaultMavenProjectJar
-      result <- getJarByBuild p
+      result <- getJarsByBuild p
       result `shouldBe'` [jar]
 
     it' "should get jar with modified name and modified directory" $ do
       p <- sendIO mavenProjectWithCustomName
       jar <- sendIO mavenProjectWithCustomDistJar
-      result <- getJarByBuild p
+      result <- getJarsByBuild p
       result `shouldBe'` [jar]
 
+-- | Jar is produced from following projects:
+-- https://github.com/fossas/example-projects/tree/main/reachability/java/vulnerable-function-used
 sampleJar :: IO (Path Abs File)
 sampleJar = do
   cwd <- PIO.getCurrentDir
@@ -49,6 +51,7 @@ sampleJar = do
 sampleTestJar :: IO (Path Abs File)
 sampleTestJar = do
   cwd <- PIO.getCurrentDir
+  -- Jar has same content as @sampleJar@
   pure (cwd </> $(mkRelFile "test/Reachability/testdata/sample-test.jar"))
 
 missingJar :: IO (Path Abs File)
@@ -64,6 +67,7 @@ defaultMavenProject = do
 defaultMavenProjectJar :: IO (Path Abs File)
 defaultMavenProjectJar = do
   cwd <- PIO.getCurrentDir
+  -- Jar has same content as @sampleJar@
   pure (cwd </> $(mkRelFile "test/Reachability/testdata/maven-default/target/project-1.0.0.jar"))
 
 mavenProjectWithCustomName :: IO (Path Abs Dir)
@@ -74,4 +78,5 @@ mavenProjectWithCustomName = do
 mavenProjectWithCustomDistJar :: IO (Path Abs File)
 mavenProjectWithCustomDistJar = do
   cwd <- PIO.getCurrentDir
+  -- Jar has same content as @sampleJar@
   pure (cwd </> $(mkRelFile "test/Reachability/testdata/maven-build-config/dist/custom-jar-name.jar"))

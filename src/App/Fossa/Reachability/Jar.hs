@@ -27,8 +27,9 @@ import System.FilePath qualified as FP
 newtype CallGraphJarParser = CallGraphJarParser {jar :: BS.ByteString}
   deriving (Eq, Ord, Show)
 
-parserJar :: CallGraphJarParser
-parserJar = CallGraphJarParser{jar = $(embedFile' "scripts/parser.jar")}
+-- This jar is from: https://github.com/fossas/jar-callgraph/pull/1
+execJar :: CallGraphJarParser
+execJar = CallGraphJarParser{jar = $(embedFile' "scripts/jar-callgraph-1.0.0.jar")}
 
 withUnpackedPlugin ::
   ( Has (Lift IO) sig m
@@ -43,7 +44,7 @@ withUnpackedPlugin plugin act =
     go
   where
     go tmpDir = do
-      let pluginJarFilepath = fromAbsDir tmpDir FP.</> "callgraph.jar"
+      let pluginJarFilepath = fromAbsDir tmpDir FP.</> "jar-callgraph.jar"
       sendIO (BS.writeFile pluginJarFilepath $ jar plugin)
       act pluginJarFilepath
 
@@ -58,7 +59,7 @@ callGraphFromJar ::
   Path Abs File ->
   m (Maybe ParsedJar)
 callGraphFromJar jar = recover . warnOnErr (FailedToParseJar jar) $
-  withUnpackedPlugin parserJar $ \filepath -> do
+  withUnpackedPlugin execJar $ \filepath -> do
     content <- execThrow (parent jar) (jarPraseCmd filepath jar)
     pure . ParsedJar jar . ContentRaw $ content
 
@@ -67,4 +68,4 @@ newtype FailedToParseJar = FailedToParseJar (Path Abs File)
 instance ToDiagnostic FailedToParseJar where
   renderDiagnostic :: FailedToParseJar -> Doc ann
   renderDiagnostic (FailedToParseJar jar) =
-    pretty $ "Could not parse jar, so skipping: " <> show jar
+    pretty $ "Could not read from jar, so skipping: " <> show jar
