@@ -72,14 +72,6 @@ expectUploadFirstPartyDataToS3 = do
   let mergedUnits = mergeSourceAndLicenseUnits Fixtures.sourceUnits Fixtures.firstLicenseSourceUnit
   UploadFirstPartyScanResult Fixtures.signedUrl mergedUnits `returnsOnceForAnyRequest` ()
 
-expectReachabilityBuildUpload :: (Has MockApi sig m) => m ()
-expectReachabilityBuildUpload =
-  UploadBuildForReachability
-    Fixtures.projectRevision
-    Fixtures.projectMetadata
-    mempty
-    `returnsOnce` ()
-
 expectedMergedFullSourceUnits :: NE.NonEmpty FullSourceUnit
 expectedMergedFullSourceUnits = NE.fromList [fullSourceUnit, fullLicenseUnit]
   where
@@ -112,6 +104,20 @@ expectedMergedFullSourceUnits = NE.fromList [fullSourceUnit, fullLicenseUnit]
         , fullSourceUnitInfo = Just LicenseUnitInfo{licenseUnitInfoDescription = Nothing}
         }
 
+expectGetSuccessWithReachability :: Has MockApi sig m => m ()
+expectGetSuccessWithReachability = do
+  GetProject Fixtures.projectRevision `alwaysReturns` Fixtures.project
+  GetOrganization `alwaysReturns` Fixtures.organization{orgSupportsReachability = True}
+  GetApiOpts `alwaysReturns` Fixtures.apiOpts
+
+expectReachabilityBuildUpload :: (Has MockApi sig m) => m ()
+expectReachabilityBuildUpload =
+  UploadBuildForReachability
+    Fixtures.projectRevision
+    Fixtures.projectMetadata
+    mempty
+    `returnsOnce` ()
+
 uploadSuccessfulAnalysisSpec :: Spec
 uploadSuccessfulAnalysisSpec = do
   describe
@@ -122,7 +128,6 @@ uploadSuccessfulAnalysisSpec = do
         . withGit mockGit
         $ do
           expectGetSuccess
-          expectReachabilityBuildUpload
           expectAnalysisUploadSuccess
           expectContributorUploadSuccess
           locator <-
@@ -140,11 +145,9 @@ uploadSuccessfulAnalysisSpec = do
       it' "renders JSON output when requested"
         . withGit mockGit
         $ do
-          expectReachabilityBuildUpload
           expectAnalysisUploadSuccess
           expectContributorUploadSuccess
           expectGetSuccess
-
           locator <-
             uploadSuccessfulAnalysis
               baseDir
@@ -154,6 +157,23 @@ uploadSuccessfulAnalysisSpec = do
               (SourceUnitOnly Fixtures.sourceUnits)
               mempty
           locator `shouldBe'` expectedLocator
+      it' "performs reachability upload, if organization supports reachability"
+        . withGit mockGit
+        $ do
+          expectGetSuccessWithReachability
+          expectAnalysisUploadSuccess
+          expectContributorUploadSuccess
+          expectReachabilityBuildUpload
+          locator <-
+            uploadSuccessfulAnalysis
+              baseDir
+              Fixtures.projectMetadata
+              (toFlag (JsonOutput) False)
+              Fixtures.projectRevision
+              (SourceUnitOnly Fixtures.sourceUnits)
+              mempty
+          locator `shouldBe'` expectedLocator
+
       it' "aborts when uploading to a monorepo"
         . expectFatal'
         . withGit mockGit
@@ -170,7 +190,6 @@ uploadSuccessfulAnalysisSpec = do
         . withGit mockGit
         $ do
           GetProject Fixtures.projectRevision `fails` "Mocked failure fetching project"
-          expectReachabilityBuildUpload
           expectAnalysisUploadSuccess
           expectContributorUploadSuccess
           GetOrganization `alwaysReturns` Fixtures.organization
@@ -189,7 +208,6 @@ uploadSuccessfulAnalysisSpec = do
         . withGit (\_ -> fatalText "Mocked failure of fetching contributors from git")
         $ do
           expectGetSuccess
-          expectReachabilityBuildUpload
           expectAnalysisUploadSuccess
           locator <-
             uploadSuccessfulAnalysis
@@ -204,7 +222,6 @@ uploadSuccessfulAnalysisSpec = do
         . withGit mockGit
         $ do
           UploadContributors expectedLocator Fixtures.contributors `fails` "Mocked failure uploading contributors"
-          expectReachabilityBuildUpload
           expectAnalysisUploadSuccess
           expectGetSuccess
           locator <-
@@ -220,7 +237,6 @@ uploadSuccessfulAnalysisSpec = do
         . withGit mockGit
         $ do
           expectGetSuccess
-          expectReachabilityBuildUpload
           expectGetFirstPartySignedUrl PackageRevision{packageName = "testProjectName", packageVersion = "testRevision"}
           expectUploadFirstPartyDataToS3
           expectFirstPartyAnalysisUploadSuccess $ FullFileUploads False
@@ -239,7 +255,6 @@ uploadSuccessfulAnalysisSpec = do
         . withGit mockGit
         $ do
           expectGetSuccess
-          expectReachabilityBuildUpload
           expectGetFirstPartySignedUrl PackageRevision{packageName = "testProjectName", packageVersion = "testRevision"}
           expectUploadFirstPartyDataToS3
           expectFirstPartyAnalysisUploadSuccess $ FullFileUploads False
@@ -260,7 +275,6 @@ uploadSuccessfulAnalysisSpec = do
           expectGetProject
           expectGetOrganizationWithFullFileUploads
           expectGetApiOpts
-          expectReachabilityBuildUpload
           expectGetFirstPartySignedUrl PackageRevision{packageName = "testProjectName", packageVersion = "testRevision"}
           expectUploadFirstPartyDataToS3
           expectFirstPartyAnalysisUploadSuccess $ FullFileUploads True

@@ -491,6 +491,7 @@ data Organization = Organization
   , orgSupportsPathDependencyScans :: Bool
   , orgSupportsFirstPartyScans :: Bool
   , orgCustomLicenseScanConfigs :: [GrepEntry]
+  , orgSupportsReachability :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -510,6 +511,7 @@ blankOrganization =
     , orgSupportsPathDependencyScans = False
     , orgSupportsFirstPartyScans = True
     , orgCustomLicenseScanConfigs = []
+    , orgSupportsReachability = False
     }
 
 instance FromJSON Organization where
@@ -553,6 +555,9 @@ instance FromJSON Organization where
       <*> obj
         .:? "customLicenseScanConfigs"
         .!= []
+      <*> obj
+        .:? "orgSupportsReachability"
+        .!= False
 
 data Project = Project
   { projectId :: Text
