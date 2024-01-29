@@ -49,7 +49,6 @@ import Errata (Errata (..), errataSimple)
 import GHC.Generics (Generic)
 import Graphing qualified
 import Path (Abs, Dir, Path)
-import Prettyprinter (pretty)
 import Strategy.Go.Gomod (PackageVersion, parsePackageVersion)
 import Strategy.Go.Gomod qualified as Gomod
 import Strategy.Go.Transitive (decodeMany)

@@ -27,8 +27,9 @@ import Options.Applicative (
   Parser,
   command,
   info,
-  progDesc,
+  progDescDoc,
  )
+import Style (formatStringToDoc)
 
 newtype ContainerListTargetsOptions = ContainerListTargetsOptions
   { imageLocator :: ImageText
@@ -53,7 +54,8 @@ subcommand f =
   command
     "list-targets"
     ( info (f <$> listTargetParser) $
-        progDesc "Lists target with container image"
+        progDescDoc $
+          formatStringToDoc "Lists target with container image"
     )
 
 listTargetParser :: Parser ContainerListTargetsOptions

@@ -75,7 +75,7 @@ instance FromJSON ContainerRegistryApiError where
 instance ToDiagnostic (URI, ContainerRegistryApiErrorBody) where
   renderDiagnostic (uri, ContainerRegistryApiErrorBody errs) = do
     let header = "Caught API error from: " <> toText (show uri)
-        apiErrs = pretty $ renderErrataStack (map renderDiagnostic errs)
+        apiErrs = renderErrataStack $ map renderDiagnostic errs
         body =
           renderIt $
             vsep

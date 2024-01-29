@@ -202,14 +202,6 @@ renderCmdFailure CmdFailure{..} =
           body = createBody (Just content) Nothing (Just $ renderIt reportDefectMsg) Nothing Nothing
       Errata (Just header) [] (Just body)
   where
-    -- vsep
-    --   [ "Command execution failed: "
-    --   , ""
-    --   , indent 4 details
-    --   , ""
-    --   , reportDefectMsg
-    --   ]
-
     -- Infer if the stderr is caused by not having executable in path.
     -- There is no easy way to check for @EBADF@ within process exception,
     -- with the library we use and effort required.

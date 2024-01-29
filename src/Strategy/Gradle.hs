@@ -18,7 +18,7 @@ module Strategy.Gradle (
   GradleProject,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (allowedGradleConfigs))
 import App.Support (reportDefectWithDebugBundle)
 import Control.Algebra (Has)
@@ -173,7 +173,7 @@ instance ToJSON GradleProject
 
 instance AnalyzeProject GradleProject where
   analyzeProject = getDeps
-  analyzeProject' _ = const $ fatalText "Cannot analyze Gradle target statically"
+  analyzeProjectStaticOnly _ = const $ fatalText "Cannot analyze Gradle target statically"
 
 gradleProjectsCmd :: Text -> Command
 gradleProjectsCmd baseCmd =

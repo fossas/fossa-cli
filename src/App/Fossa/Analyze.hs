@@ -35,6 +35,7 @@ import App.Fossa.Analyze.Types (
 import App.Fossa.Analyze.Upload (mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.Config.Analyze (
+  AnalysisTacticTypes (..),
   AnalyzeCliOpts,
   AnalyzeConfig (..),
   BinaryDiscovery (BinaryDiscovery),
@@ -194,10 +195,11 @@ runDependencyAnalysis ::
   AllFilters ->
   -- | An optional path prefix to prepend to paths of discovered manifestFiles
   Maybe FileAncestry ->
+  AnalysisTacticTypes ->
   -- | The project to analyze
   DiscoveredProject proj ->
   m ()
-runDependencyAnalysis basedir filters pathPrefix project@DiscoveredProject{..} = do
+runDependencyAnalysis basedir filters pathPrefix allowedTactics project@DiscoveredProject{..} = do
   let dpi = DiscoveredProjectIdentifier projectPath projectType
   let hasNonProductionPath = isDefaultNonProductionPath basedir projectPath
 
@@ -213,7 +215,10 @@ runDependencyAnalysis basedir filters pathPrefix project@DiscoveredProject{..} =
       let ctxMessage = "Project Analysis: " <> showT projectType
       graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context ctxMessage $ do
         debugMetadata "DiscoveredProject" project
-        trackTimeSpent (showT projectType) $ analyzeProject targets projectData
+        let analyzeFn = case allowedTactics of
+              StaticOnly -> analyzeProjectStaticOnly
+              Any -> analyzeProject
+        trackTimeSpent (showT projectType) $ analyzeFn targets projectData
       Diag.flushLogs SevError SevDebug graphResult
       trackResult graphResult
       output $ Scanned dpi (mkResult basedir project pathPrefix <$> graphResult)
@@ -234,18 +239,19 @@ runAnalyzers ::
   , Has TaskPool sig m
   , Has AtomicCounter sig m
   ) =>
+  AnalysisTacticTypes ->
   AllFilters ->
   Path Abs Dir ->
   Maybe FileAncestry ->
   m ()
-runAnalyzers filters basedir pathPrefix = do
+runAnalyzers allowedTactics filters basedir pathPrefix = do
   if filterIsVSIOnly filters
     then do
       logInfo "Running in VSI only mode, skipping other analyzers"
       pure ()
     else traverse_ single discoverFuncs
   where
-    single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters pathPrefix)
+    single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters pathPrefix allowedTactics)
 
 analyze ::
   ( Has Debug sig m
@@ -261,7 +267,7 @@ analyze ::
   m Aeson.Value
 analyze cfg = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
-  Diag.errHelp ("Make sure your project is supported" :: Text) $ Diag.errDoc userGuideUrl $ Diag.errSupport ("fjslfjs" :: Text) $ Diag.errCtx ("Testing context" :: Text) $ Diag.fatal $ ErrNoProjectsDiscovered getSourceLocation
+
   let maybeApiOpts = case destination of
         OutputStdout -> Nothing
         UploadScan opts _ -> Just opts
@@ -278,6 +284,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       grepOptions = Config.grepOptions cfg
       customFossaDepsFile = Config.customFossaDepsFile cfg
       shouldAnalyzePathDependencies = resolvePathDependencies $ Config.experimental cfg
+      allowedTactics = Config.allowedTacticTypes cfg
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
@@ -353,10 +360,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       . runReader discoveryFilters
       . runReader (Config.overrideDynamicAnalysis cfg)
       $ do
-        runAnalyzers filters basedir Nothing
+        runAnalyzers allowedTactics filters basedir Nothing
         when (fromFlag UnpackArchives $ Config.unpackArchives cfg) $
           forkTask $ do
-            res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (runAnalyzers filters) basedir ancestryDirect
+            res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (runAnalyzers allowedTactics filters) basedir ancestryDirect
             Diag.withResult SevError SevWarn res (const (pure ()))
   logDebug $ "Unfiltered project scans: " <> pretty (show projectScans)
 
@@ -387,7 +394,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   logDebug $ "Filtered projects with path dependencies: " <> pretty (show filteredProjects')
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
-  renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult $ Config.filterSet cfg
+  renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   let licenseSourceUnits =
@@ -408,6 +415,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     (False, FilteredAll) -> Diag.errDoc userGuideUrl $ Diag.fatal $ ErrFilteredAllProjects getSourceLocation
     (True, FilteredAll) -> Diag.fatal $ ErrOnlyKeywordSearchResultsFound getSourceLocation
     (_, CountedScanUnits scanUnits) -> doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits
+  Diag.errHelp ("Another help message" :: Text) $ Diag.errHelp ("Make sure your project is supported" :: Text) $ Diag.errDoc userGuideUrl $ Diag.fatal $ ErrNoProjectsDiscovered getSourceLocation
   pure outputResult
   where
     doUpload result iatAssertion destination basedir jsonOutput revision scanUnits =

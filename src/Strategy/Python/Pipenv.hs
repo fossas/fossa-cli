@@ -14,7 +14,7 @@ module Strategy.Python.Pipenv (
   buildGraph,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -148,7 +148,7 @@ instance ToJSON PipenvProject
 
 instance AnalyzeProject PipenvProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps'
+  analyzeProjectStaticOnly _ = getDeps'
 
 pipenvGraphCmd :: Command
 pipenvGraphCmd =

@@ -33,15 +33,16 @@ module Diag.Result (
   -- * Rendering
   renderFailure,
   renderSuccess,
+  renderFailureWithoutWarnings,
 ) where
 
-import Data.Error (DiagnosticStyle (..), applyDiagnosticStyle, renderErrataStack)
+import Data.Error (DiagnosticStyle (..), applyDiagnosticStyle, combineErrataHeaders, renderErrataStack)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
+import Effect.Logger (newlinePreceding, newlineTrailing)
 import Errata (Errata)
-import Errata.Types (Errata (..))
 import GHC.Show (showLitString)
 import Prettyprinter
 import Prettyprinter.Render.Terminal
@@ -99,6 +100,10 @@ data ErrWithStack = ErrWithStack Stack SomeErr
 
 -- | A stacktrace
 newtype Stack = Stack [Text]
+  deriving (Show)
+
+-- | Dictates whether or not we want to show traceback
+data TracebackStyle = None | Default
   deriving (Show)
 
 instance Functor Result where
@@ -187,25 +192,24 @@ resultToMaybe (Failure _ _) = Nothing
 --
 -- renderFailure displays all types of emitted warnings.
 renderFailure :: [EmittedWarn] -> ErrGroup -> Doc AnsiStyle -> Doc AnsiStyle
-renderFailure ws (ErrGroup _ ectx ehlp esup edoc es) headerDoc = header headerDoc <> renderedCtx <> renderedHelp <> renderedSupport <> renderedDoc <> renderedErrs <> renderedPossibleErrs
+renderFailure ws (ErrGroup _ ectx ehlp esup edoc es) headerDoc = do
+  let errDetails = combineErrDetails edoc esup ehlp ectx
+      renderedErrsWithAnnotation = section "Relevant Errors" $ unannotatedSubsection $ renderErrs es errDetails Default ErrorStyle
+  header headerDoc <> renderedErrsWithAnnotation <> renderedPossibleErrs
   where
-    renderedCtx = renderErrCtxStack ectx
-    renderedHelp = renderErrHelpStack ehlp
-    renderedSupport = renderErrSupportStack esup
-    renderedDoc = renderErrDocStack edoc
-
-    renderedErrs :: Doc AnsiStyle
-    renderedErrs =
-      section "Relevant errors" $
-        subsection "Error" (map renderErrWithStack (NE.toList es))
-
     renderedPossibleErrs :: Doc AnsiStyle
     renderedPossibleErrs =
       case ws of
         [] -> emptyDoc
         _ ->
-          section "Possibly-related warnings" $
-            subsection "Warning" (map renderEmittedWarn ws)
+          section "Possibly Related Warnings" $
+            unannotatedSubsection (map (renderEmittedWarn Default) ws)
+
+renderFailureWithoutWarnings :: ErrGroup -> Doc AnsiStyle -> Doc AnsiStyle
+renderFailureWithoutWarnings (ErrGroup _ ectx ehlp esup edoc es) headerDoc = do
+  let errDetails = combineErrDetails edoc esup ehlp ectx
+      renderedErrs = section "Relevant Errors" $ unannotatedSubsection $ renderErrs es errDetails None ErrorStyle
+  header headerDoc <> renderedErrs
 
 -- | renderSuccess turns a list of warnings from a Success into a message
 -- suitable for logging
@@ -221,7 +225,7 @@ renderSuccess :: [EmittedWarn] -> Doc AnsiStyle -> Maybe (Doc AnsiStyle)
 renderSuccess ws headerDoc =
   case notIgnoredErrs of
     [] -> Nothing
-    ws' -> Just $ header headerDoc <> subsection "Warning" (map renderEmittedWarn ws')
+    ws' -> Just $ header headerDoc <> unannotatedSubsection (map (renderEmittedWarn Default) ws')
   where
     notIgnoredErrs :: [EmittedWarn]
     notIgnoredErrs = filter (not . isIgnoredErrGroup) ws
@@ -230,12 +234,12 @@ renderSuccess ws headerDoc =
     isIgnoredErrGroup IgnoredErrGroup{} = True
     isIgnoredErrGroup _ = False
 
----------- Renering individual Result components: ErrCtx, EmittedWarn, SomeWarn, ErrWithStack
+---------- Rendering a collection of Result components: [ErrCtx], [ErrHelp], [ErrSupport], [ErrDoc], NonEmpty ErrWithStack
 
 renderErrCtxStack :: [ErrCtx] -> Doc AnsiStyle
 renderErrCtxStack eCtxStack = case eCtxStack of
   [] -> emptyDoc
-  _ -> pretty $ renderErrataStack (map ((applyDiagnosticStyle ContextStyle) . renderErrCtx) eCtxStack)
+  _ -> renderErrataStack [combineErrataHeaders (map ((applyDiagnosticStyle ContextStyle) . renderErrCtx) eCtxStack)]
   where
     renderErrCtx :: ErrCtx -> Errata
     renderErrCtx (ErrCtx c) = renderDiagnostic c
@@ -243,7 +247,7 @@ renderErrCtxStack eCtxStack = case eCtxStack of
 renderErrHelpStack :: [ErrHelp] -> Doc AnsiStyle
 renderErrHelpStack eHelpStack = case eHelpStack of
   [] -> emptyDoc
-  _ -> pretty $ renderErrataStack (map ((applyDiagnosticStyle HelpStyle) . renderErrHelp) eHelpStack)
+  _ -> newlineTrailing $ renderErrataStack [combineErrataHeaders (map ((applyDiagnosticStyle HelpStyle) . renderErrHelp) eHelpStack)]
   where
     renderErrHelp :: ErrHelp -> Errata
     renderErrHelp (ErrHelp h) = renderDiagnostic h
@@ -251,7 +255,7 @@ renderErrHelpStack eHelpStack = case eHelpStack of
 renderErrSupportStack :: [ErrSupport] -> Doc AnsiStyle
 renderErrSupportStack eSuppStack = case eSuppStack of
   [] -> emptyDoc
-  _ -> pretty $ renderErrataStack (map ((applyDiagnosticStyle SupportStyle) . renderErrSupport) eSuppStack)
+  _ -> newlineTrailing $ renderErrataStack [combineErrataHeaders (map ((applyDiagnosticStyle SupportStyle) . renderErrSupport) eSuppStack)]
   where
     renderErrSupport :: ErrSupport -> Errata
     renderErrSupport (ErrSupport s) = renderDiagnostic s
@@ -259,7 +263,7 @@ renderErrSupportStack eSuppStack = case eSuppStack of
 renderErrDocStack :: [ErrDoc] -> Doc AnsiStyle
 renderErrDocStack eDocStack = case eDocStack of
   [] -> emptyDoc
-  _ -> pretty $ renderErrataStack ((map ((applyDiagnosticStyle DocumentationStyle) . renderErrDoc) eDocStack))
+  _ -> newlineTrailing $ renderErrataStack [combineErrataHeaders $ map ((applyDiagnosticStyle DocumentationStyle) . renderErrDoc) eDocStack]
   where
     renderErrDoc :: ErrDoc -> Errata
     renderErrDoc (ErrDoc d) = renderDiagnostic d
@@ -267,42 +271,65 @@ renderErrDocStack eDocStack = case eDocStack of
 combineErrDetails :: [ErrDoc] -> [ErrSupport] -> [ErrHelp] -> [ErrCtx] -> Doc AnsiStyle
 combineErrDetails edoc esupp ehelp ectx = renderErrDocStack edoc <> renderErrSupportStack esupp <> renderErrHelpStack ehelp <> renderErrCtxStack ectx
 
-renderErrWithStack :: ErrWithStack -> Doc AnsiStyle
-renderErrWithStack (ErrWithStack (Stack stack) (SomeErr err)) =
-  pretty (renderErrataStack [applyDiagnosticStyle ErrorStyle $ renderDiagnostic err])
-    <> line
-    <> line
-    <> annotate (color Cyan) "Traceback:"
-    <> line
-    <> case stack of
-      [] -> indent 2 "(none)"
-      _ -> indent 2 (vsep (map (pretty . ("- " <>)) stack))
-
-renderEmittedWarn :: EmittedWarn -> Doc AnsiStyle
-renderEmittedWarn (IgnoredErrGroup ectx ehlp esup edoc es) = errDetails <> renderedErrors
+-- renderErrs args:
+--  * NonEmpty ErrWithStack which has the same type as [ErrWithStack]
+--      ErrWithStack is an error and its associated traceback stack.
+--  * DocAnsiStyle
+--      This will be the rendered errDetails that have been gathered from [ErrDoc], [ErrSupport], [ErrHelp], and [ErrCtx].
+--  * TracebackStyle
+--      Used to determine whether we want to show traceback messages. Currently, tracebacks are only shown in --debug mode.
+--  * DiagnosticStyle
+--      Used to determine what type of DiagnosticStyle we want to display. In the context of this function it will either be WarningStyle or ErrorStyle.
+--      renderErrs is used by ErrGroup and EmittedWarn. The EmittedWarn type can contain errors that have been recovered and converted into a warning through our warnOnErr effect
+--      DiagnosticStyle allows us to tag these 'errors' accordingly (Warn or Error) depending on our entry point
+--
+-- renderErrs workflow:
+--  * render our errors and their tracebacks as [ (Doc AnsiStyle, Doc AnsiStyle) ]
+--  * add our errDetails to the first error in the list
+--  * iterate through our list and combine the rendered err and rendered traceback
+renderErrs :: NonEmpty ErrWithStack -> Doc AnsiStyle -> TracebackStyle -> DiagnosticStyle -> [Doc AnsiStyle]
+renderErrs es errDetails tracebackStyle diagStyle = do
+  let errsWithTraceback = map (\x -> renderErrWithStack x tracebackStyle diagStyle) (NE.toList es)
+      errsWithTracebackAndErrDetails = applyToTopOfStack addErrDetails errsWithTraceback
+  map (uncurry (<>)) errsWithTracebackAndErrDetails
   where
-    errDetails = combineErrDetails edoc esup ehlp ectx
-    renderedErrors =
-      section
-        "Relevant errors"
-        $ subsection "Error" (map renderErrWithStack (NE.toList es))
-renderEmittedWarn (StandaloneWarn warn) = pretty $ renderErrataStack [renderSomeWarn warn]
-renderEmittedWarn (WarnOnErrGroup ws ectx ehlp esup edoc es) = renderedWarnings <> renderedCtx <> renderedErrors
-  where
-    renderedWarnings = pretty $ renderErrataStack (map ((applyDiagnosticStyle WarningStyle) . renderSomeWarn) (NE.toList ws))
+    applyToTopOfStack :: (a -> a) -> [a] -> [a]
+    applyToTopOfStack _ [] = []
+    applyToTopOfStack f (x : xs) = f x : xs
 
-    renderedCtx =
-      case ectx of
-        [] -> emptyDoc
-        _ ->
-          section
-            "Details"
-            $ combineErrDetails edoc esup ehlp ectx
+    addErrDetails :: (Doc AnsiStyle, Doc AnsiStyle) -> (Doc AnsiStyle, Doc AnsiStyle)
+    addErrDetails (err, traceback) = (err <> newlinePreceding errDetails, traceback)
 
-    renderedErrors =
-      section
-        "Relevant errors"
-        $ subsection "Error" (map renderErrWithStack (NE.toList es))
+---------- Rendering individual Result components: ErrCtx, EmittedWarn, SomeWarn, ErrWithStack
+
+-- renderErrWithStack returns a tuple, where the first element in the tuple is the renderedErr, and the second element in the tuple is the err's rendered traceback
+-- Returning this as a tuple to give us more control on how we want to construct our error messages
+-- See `renderErrs` for full error message construction
+renderErrWithStack :: ErrWithStack -> TracebackStyle -> DiagnosticStyle -> (Doc AnsiStyle, Doc AnsiStyle)
+renderErrWithStack (ErrWithStack (Stack stack) (SomeErr err)) tracebackStyle diagStyle = do
+  let traceback = case tracebackStyle of
+        Default ->
+          annotate (color Cyan) "Traceback:"
+            <> line
+            <> case stack of
+              [] -> indent 2 "(none)"
+              _ -> indent 2 (vsep (map (pretty . ("- " <>)) stack))
+        None -> ""
+
+      singleErr = renderErrataStack [applyDiagnosticStyle diagStyle $ renderDiagnostic err]
+
+  (singleErr, traceback)
+
+renderEmittedWarn :: TracebackStyle -> EmittedWarn -> Doc AnsiStyle
+renderEmittedWarn tracebackStyle (IgnoredErrGroup ectx ehlp esup edoc es) = do
+  let errDetails = combineErrDetails edoc esup ehlp ectx
+  unannotatedSubsection $ renderErrs es errDetails tracebackStyle WarningStyle
+renderEmittedWarn _ (StandaloneWarn warn) = renderErrataStack [renderSomeWarn warn]
+renderEmittedWarn tracebackStyle (WarnOnErrGroup ws ectx ehlp esup edoc es) = do
+  let errDetails = combineErrDetails edoc esup ehlp ectx
+      renderedErrors = unannotatedSubsection $ renderErrs es errDetails tracebackStyle WarningStyle
+      renderedWarnings = renderErrataStack (map renderSomeWarn (NE.toList ws))
+  newlineTrailing renderedWarnings <> newlinePreceding renderedErrors
 
 renderSomeWarn :: SomeWarn -> Errata
 renderSomeWarn (SomeWarn w) = applyDiagnosticStyle WarningStyle $ renderDiagnostic w
@@ -311,15 +338,13 @@ renderSomeWarn (SomeWarn w) = applyDiagnosticStyle WarningStyle $ renderDiagnost
 
 header :: Doc AnsiStyle -> Doc AnsiStyle
 header name =
-  annotate (color Yellow) "----------"
-    <> line
-    <> annotate (color Yellow) name
+  annotate (color Yellow) name
     <> line
     <> line
 
 section :: Doc AnsiStyle -> Doc AnsiStyle -> Doc AnsiStyle
 section name content =
-  annotate (color Yellow) (">>> " <> name)
+  annotate (color Yellow) ("*** " <> name <> " ***")
     <> line
     <> line
     <> indent 2 content
@@ -327,3 +352,6 @@ section name content =
 
 subsection :: Doc AnsiStyle -> [Doc AnsiStyle] -> Doc AnsiStyle
 subsection name = vsep . map (\single -> annotate (color Yellow) name <> line <> line <> indent 2 single <> line)
+
+unannotatedSubsection :: [Doc AnsiStyle] -> Doc AnsiStyle
+unannotatedSubsection = vsep . map (indent 2)

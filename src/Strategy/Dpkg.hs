@@ -4,7 +4,7 @@ module Strategy.Dpkg (
   mkProject,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProject'))
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProjectStaticOnly))
 import Container.OsRelease (OsInfo)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Reader (Reader)
@@ -39,7 +39,7 @@ instance ToJSON DpkgDatabase
 
 instance AnalyzeProject DpkgDatabase where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps
+  analyzeProjectStaticOnly _ = getDeps
 
 discover ::
   ( Has ReadFS sig m

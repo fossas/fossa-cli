@@ -12,7 +12,7 @@ module Strategy.Scala (
   ScalaProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Carrier.Diagnostics (errDoc)
 import Control.Effect.Diagnostics (Diagnostics, errCtx, errHelp, fatalText, fromMaybeText, recover, warnOnErr, (<||>))
 import Control.Effect.Reader (Reader)
@@ -116,7 +116,7 @@ instance ToJSON ScalaProject where
 
 instance AnalyzeProject ScalaProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = const $ fatalText "Cannot analyze scala project statically"
+  analyzeProjectStaticOnly _ = const $ fatalText "Cannot analyze scala project statically"
 
 mkProject :: ScalaProject -> DiscoveredProject ScalaProject
 mkProject (ScalaProject sbtBuildDir sbtTreeJson closure) =

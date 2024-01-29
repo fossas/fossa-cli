@@ -6,9 +6,9 @@ module Strategy.Maven (
 ) where
 
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, context, fatal, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
@@ -65,7 +65,7 @@ instance ToJSON MavenProject
 
 instance AnalyzeProject MavenProject where
   analyzeProject = getDeps
-  analyzeProject' = getDeps'
+  analyzeProjectStaticOnly = getDeps'
 
 instance LicenseAnalyzeProject MavenProject where
   licenseAnalyzeProject = pure . Pom.getLicenses . unMavenProject
@@ -140,7 +140,9 @@ getDepsPlugin ::
   ) =>
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
-getDepsPlugin closure = context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
+getDepsPlugin closure = fatal MissingDeepDeps
+
+-- context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
 
 getDepsPluginLegacy ::
   ( CandidateCommandEffs sig m
@@ -158,10 +160,11 @@ getDepsTreeCmd ::
   ) =>
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
-getDepsTreeCmd closure = do
-  context "Dynamic analysis" $
-    DepTreeCmd.analyze . parent $
-      PomClosure.closurePath closure
+getDepsTreeCmd closure = fatal MissingEdges
+
+-- context "Dynamic analysis" $
+--   DepTreeCmd.analyze . parent $
+--     PomClosure.closurePath closure
 
 getStaticAnalysis ::
   ( Has (Lift IO) sig m

@@ -16,7 +16,7 @@ module Strategy.Cargo (
 import App.Fossa.Analyze.LicenseAnalyze (
   LicenseAnalyzeProject (licenseAnalyzeProject),
  )
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -216,7 +216,7 @@ instance ToJSON CargoProject
 
 instance AnalyzeProject CargoProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = const $ fatalText "Cannot analyze Cargo project statically."
+  analyzeProjectStaticOnly _ = const $ fatalText "Cannot analyze Cargo project statically."
 
 data CargoPackage = CargoPackage
   { license :: Maybe Text.Text

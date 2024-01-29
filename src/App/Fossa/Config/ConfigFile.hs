@@ -130,7 +130,7 @@ resolveConfigFile base path = do
           if version >= 3
             then pure $ Just configFile
             else -- Invalid config found without --config flag: warn and ignore file.
-              logWarn (pretty $ renderErrataStack [renderDiagnostic $ OlderConfigError version]) $> Nothing
+              logWarn (renderErrataStack [renderDiagnostic $ OlderConfigError version]) $> Nothing
         Nothing -> pure Nothing
     SpecifiedConfigLocation realpath -> do
       exists <- doesFileExist realpath

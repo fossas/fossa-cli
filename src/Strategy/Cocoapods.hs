@@ -7,7 +7,7 @@ module Strategy.Cocoapods (
 ) where
 
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject, analyzeProject')
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Applicative ((<|>))
 import Control.Carrier.Diagnostics (errHelp)
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, warnOnErr, (<||>))
@@ -79,7 +79,7 @@ instance ToJSON CocoapodsProject
 
 instance AnalyzeProject CocoapodsProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps'
+  analyzeProjectStaticOnly _ = getDeps'
 
 instance LicenseAnalyzeProject CocoapodsProject where
   licenseAnalyzeProject = traverse readLicense . cocoapodsSpecFiles

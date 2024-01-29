@@ -20,7 +20,7 @@ module Strategy.Leiningen (
   LeiningenProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -139,7 +139,7 @@ instance ToJSON LeiningenProject
 
 instance AnalyzeProject LeiningenProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = const $ fatalText "Cannot analyze Leiningen project statically"
+  analyzeProjectStaticOnly _ = const $ fatalText "Cannot analyze Leiningen project statically"
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze file = do

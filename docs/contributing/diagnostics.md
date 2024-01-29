@@ -59,7 +59,7 @@ This use-case surfaces another pair of unusual constraints:
 > **Warnings emitted this way are only shown to the user iff the total action
 > succeeds**
 
-### Error context
+### Error (Context, Support, Help, Documentation)
 
 Low-level errors (http request errors, file read errors, command execution
 errors) are not useful to users attempting to fix analysis issues.
@@ -69,24 +69,41 @@ code, we'd like the ability to annotate these low-level errors with
 user-friendly information about troubleshooting, documentation, and other
 pertinent context.
 
-> **Error context can be attached to any action**
+#### Error context 
 
-Further, we'd like error contextualization to be _scoped_.
+Used to provide a description of the operation being performed when an error occurred.
+
+#### Error support
+
+Used to prompt the user to report a problem to FOSSA support. Additionally, this may also provide users details on what to include in their report depending on the error that it is attached to. 
+
+#### Error documentation
+
+Used to provide a documentation reference useful for resolving an error.
+
+#### Error help
+
+Used to provide help text to an error. This is meant to be readable by users of the application; ideally help text is relatively terse and only displayed when you're pretty sure what the user can do to fix the problem. 
+
+
+> **Error (Context, Support, Help, Documentation) can be attached to any action**
+
+Further, we'd like these error types to be _scoped_.
 
 Consider the maven analyzer example above:
 
 1. For a fatal, uncaught error thrown within the maven analyzer, we may want to
-   add general "Here's documentation for maven analysis" context
+   add general "Here's documentation for maven analysis"
 2. When the maven command sub-action fails, we may want to add specific "Here's
-   documentation and troubleshooting steps for the maven command" context
+   documentation and troubleshooting steps for the maven command"
 
 In the existing analyzer where (2) is immediately caught, we only want the
-command-specific context attached to the error.
+command-specific (context, support, help, documentation) attached to the error.
 
 In a world where a failure of (2) causes the whole maven analysis to fail, we
-want to see both pieces of context from (1) and (2).
+want to see both pieces of (context, support, help, documentation) from (1) and (2).
 
-> **An uncaught failure inherits any error context it encounters as the uncaught
+> **An uncaught failure inherits any error (context, support, help, documentation) it encounters as the uncaught
 > failure propagates "upward"**
 
 ### Stack traces
@@ -152,15 +169,86 @@ instance ToDiagnostic CmdFailureTroubleshooting
 
 When the provided action fails, this operation attaches context to the error.
 
-This context will be displayed prominently above the error, and is intended for
-the purpose of providing a user-friendly description, links to documentation,
-troubleshooting information, etc.
+errCtx is used to provide a description of the operation being performed when an error ocurred. 
 
 When the provided action succeeds, `errCtx` is a no-op:
 
 ```hs
 errCtx _something (pure ()) === pure ()
 errCtx _something (recover foo) === recover foo
+```
+
+#### Adding error support to an action
+
+```hs
+errSupport :: (ToDiagnostic supp, Has Diagnostics sig m) => supp -> m a -> m a
+
+example = do
+  val <- errSupport CmdFailureSupport runSomeCommand
+  ...
+
+data CmdFailureSupport
+instance ToDiagnostic CmdFailureSupport
+```
+
+When the provided action fails, this operation attaches support details to the error.
+
+errSupport is intended to provide users information about how to contact support for a given error, as well as 
+any additional information that the support team might need from the user. 
+
+When the provided action succeeds, `errSupport` is a no-op:
+
+```hs
+errSupport _something (pure ()) === pure ()
+errSupport _something (recover foo) === recover foo
+```
+
+#### Adding error documentation to an action
+
+```hs
+errDoc :: (ToDiagnostic doc, Has Diagnostics sig m) => doc -> m a -> m a
+
+example = do
+  val <- errDoc CmdFailureDoc runSomeCommand
+  ...
+
+data CmdFailureDoc
+instance ToDiagnostic CmdFailureDoc
+```
+
+When the provided action fails, this operation attaches documentation references to an error.
+
+errDoc is intended to provide users with a documentation refernence that is useful for resolving an error. 
+
+When the provided action succeeds, `errDoc` is a no-op:
+
+```hs
+errDoc _something (pure ()) === pure ()
+errDoc _something (recover foo) === recover foo
+```
+
+#### Adding error help to an action
+
+```hs
+errHelp :: (ToDiagnostic hlp, Has Diagnostics sig m) => hlp -> m a -> m a
+
+example = do
+  val <- errHelp CmdFailureHelp runSomeCommand
+  ...
+
+data CmdFailureHelp
+instance ToDiagnostic CmdFailureHelp
+```
+
+When the provided action fails, this operation attaches help text to an error.
+
+errHelp is intended to provide users with actionable steps to fix the problem. Ideally, the help text is relatively terse and only used when you are pretty sure what the user can do to fix the problem. 
+
+When the provided action succeeds, `errHelp` is a no-op:
+
+```hs
+errHelp _something (pure ()) === pure ()
+errHelp _something (recover foo) === recover foo
 ```
 
 #### Recovering from an error
@@ -265,13 +353,15 @@ mvnStaticAnalysis project =
     $ MvnPom.analyze project
 ```
 
-### Optional analysis actions with warnings and error context
+### Optional analysis actions with warnings and error (context, documentation, support, help)
 
 ```hs
 pipenvAnalyzer project = context "Pipenv" $ do
   direct <-
     context "Parsing Pipfile.lock for direct deps"
       . errCtx (PipenvLockParseFailed (projPipfile project))
+      . errHelp PipenvLockParseFailedHelp
+      . errSupport PipenvLockParseFailedSupport
       $ PipfileLock.analyze (projPipfile project)
 
   deep <-
@@ -280,6 +370,7 @@ pipenvAnalyzer project = context "Pipenv" $ do
       . warnOnErr MissingDeps
       . warnOnErr MissingEdges
       . errCtx (PipenvCmdFailed (projDir project))
+      . errDoc PipenvCmdFailedDoc
       $ runPipenvCmd ...
 
   pure (buildGraph direct deep)
@@ -295,4 +386,132 @@ data PipenvCmdFailed = PipenvCmdFailed (Path Abs Dir)
 
 instance ToDiagnostic PipenvCmdFailed where
   renderDiagnostic (PipenvCmdFailed dir) = "..."
+
+--- Concrete error documentation types
+
+data PipenvCmdFailedDoc = PipenvCmdFailedDoc
+
+instance ToDiagnostic PipenvCmdFailedDoc where 
+  renderDiagnostic PipenvCmdFailedDoc = "..."
+
+--- Concrete error support types
+
+data PipenvLockParseFailedSupport = PipenvLockParseFailedSupport
+
+instance ToDiagnostic PipenvLockParseFailedSupport where 
+  renderDiagnostic PipenvLockParseFailedSupport = "..."
+
+--- Concrete error help types
+
+data PipenvLockParseFailedHelp = PipenvLockParseFailedHelp
+
+instance ToDiagnostic PipenvLockParseFailedHelp where 
+  renderDiagnostic PipenvLockParseFailedHelp = "..."
+```
+
+## Rendering toDiagnostic
+
+Rendering toDiagnostic involves constructing an Errata object. 
+
+### Errata
+
+The Errata module is used for creating pretty and customized error messages. 
+
+```hs
+# https://hackage.haskell.org/package/errata-0.4.0.2/docs/Errata.html
+
+data Errata = Errata 
+  {
+    errataHeader :: Maybe Header -- The message that appears above all the blocks
+    errataBlocks :: [Block]   -- Blocks in the source code to display
+    errataBody :: Maybe Body  -- The message that appears below all blocks 
+  }
+
+data Block = Block 
+  {
+    blockStyle :: Style -- The style of the block
+    blockLocation :: (FilePath, Line, Column) -- The filepath, line, and column of the block
+    blockHeader :: Maybe Header -- The header message for the block. This will appear below the location and above the source lines. 
+    blockPointers :: [Pointer] -- The blocks pointers. Used to 'point out' parts of the source code
+    blockBody :: Maybe Body -- The body message for the block. This will appear below the source liens
+  }
+```
+
+### Rendering for Error (Context, Support, Help, Documentation), 
+
+These error types are used to annotate errors with user-friendly information about troubleshooting, documentation, and other pertinent context. The contents of these error types will be combined and attached to the first error in our error stack. 
+
+When constructing a concrete error (context, support, help, documentation) type. Store the contents in the errataHeader so that we can extract the contents of all received Error (Context, Support, Help, Documentation) downstream and display them to users in a digestable format. 
+
+```hs
+pipenvAnalyzer project = context "Pipenv" $ do
+  deep <-
+      context "Running pipenv to get deep deps"
+        . errDoc PipenvCmdFailedDoc
+        $ runPipenvCmd ...
+
+--- Concrete error documentation types
+data PipenvCmdFailedDoc = PipenvCmdFailedDoc
+
+instance ToDiagnostic PipenvCmdFailedDoc where 
+  renderDiagnostic PipenvCmdFailedDoc = do
+    let header = "doc/refernce/example"
+    Errata (Just header) [] Nothing
+```
+
+On failure, the errata object from PipenvCmdFailedDoc will be rendered as:
+`Documentation: doc/reference/example`
+
+### Rendering errors general use case
+
+Errata allows you construct errors that are customizable to your preference. It allows you to display source code and add pointers with various styles to your blocks. Currently, `errataBlocks` are used only in cases where we encounter fatal errors that cause the code to exit. More specifically, the `blockLocation` field is used to provide tracebacks of where errors occurred in our source code. 
+
+
+Here is an example of how you might want to construct error type 
+
+```hs
+-- * Referenced from: src/Data/Error.hs 
+
+-- SourceLocation captures the file path, line, and col at a given call site
+-- SourceLocation will be used in conjuction with our errors
+data SourceLocation = SourceLocation
+  { filePath :: FilePath
+  , line :: Int
+  , col :: Int
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+-- getSourceLocation returns SourceLocation with the filePath, line, col of the call site
+getSourceLocation :: (?callStack :: CallStack) => SourceLocation
+getSourceLocation = case getCallStack ?callStack of
+  (_, loc) : _ -> SourceLocation (srcLocFile loc) (srcLocStartLine loc) (srcLocStartCol loc)
+  _ -> SourceLocation "Unknown" 0 0
+
+-- wrapper to create an Errata block
+createBlock :: SourceLocation -> Maybe Text -> Maybe Text -> Block
+createBlock SourceLocation{..} maybeHeader =
+  Block
+    fancyStyle
+    (filePath, line, col)
+    maybeHeader
+    []
+
+
+-- concrete error type
+data SampleError = SampleError Text SourceLocation
+
+instance toDiagnostic SampleError where 
+  renderDiagnostic (SampleError errDetails srcLoc) = do 
+    let header = "Failed to peform action"
+        block = createBlock srcLoc Nothing Nothing 
+    
+    Errata (Just header) [block] (Just errDetails)
+
+exampleFunc = do 
+  x <- someAction
+
+  if x == Nothing 
+    then fatal $ SampleError "error details" getSourceLocation
+    else ...
+
 ```
