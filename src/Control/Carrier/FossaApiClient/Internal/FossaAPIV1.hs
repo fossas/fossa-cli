@@ -595,12 +595,12 @@ uploadNativeContainerScan apiOpts ProjectRevision{..} metadata scan = fossaReq $
             "locator"
               =: locator
               <> "cliVersion"
-              =: cliVersion
+                =: cliVersion
               <> "managedBuild"
-              =: True
+                =: True
               <> maybe mempty ("branch" =:) projectBranch
               <> "scanType"
-              =: ("native" :: Text)
+                =: ("native" :: Text)
               <> mkMetadataOpts metadata projectName
       resp <- req POST (containerUploadUrl baseUrl) (ReqBodyJson scan) jsonResponse (baseOpts <> opts)
       pure $ responseBody resp
@@ -641,9 +641,9 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
         "locator"
           =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "cliVersion"
-          =: cliVersion
+            =: cliVersion
           <> "managedBuild"
-          =: True
+            =: True
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
@@ -664,11 +664,11 @@ uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata fullFi
         "locator"
           =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "cliVersion"
-          =: cliVersion
+            =: cliVersion
           <> "managedBuild"
-          =: True
+            =: True
           <> "cliLicenseScanType"
-          =: (fullFileUploadsToCliLicenseScanType fullFileUploads)
+            =: (fullFileUploadsToCliLicenseScanType fullFileUploads)
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
@@ -1121,11 +1121,11 @@ getAttributionJson apiOpts ProjectRevision{..} = fossaReq $ do
       opts =
         baseOpts
           <> "includeDeepDependencies"
-          =: True
+            =: True
           <> "includeHashAndVersionData"
-          =: True
+            =: True
           <> "dependencyInfoOptions[]"
-          =: packageDownloadUrl
+            =: packageDownloadUrl
   orgId <- organizationId <$> getOrganization apiOpts
   response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision)) ReportJson) NoReqBody jsonResponse opts
   pure (responseBody response)

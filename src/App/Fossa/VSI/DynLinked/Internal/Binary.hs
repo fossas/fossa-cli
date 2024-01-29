@@ -124,7 +124,7 @@ lddParseLocalDependencies =
           <|> try lddConsumeLinker
           <|> try lddParseDependency
       )
-      <* eof
+    <* eof
 
 lddParseDependency :: Parser (Maybe LocalDependency)
 lddParseDependency = Just <$> (LocalDependency <$> (linePrefix *> ident) <* symbol "=>" <*> path <* printedHex)
