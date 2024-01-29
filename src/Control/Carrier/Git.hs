@@ -91,4 +91,3 @@ instance ToDiagnostic FailedToPerformGitLog where
   renderDiagnostic _ = do
     let header = "Could not retrieve git logs for contributor counting."
     Errata (Just header) [] Nothing
-    
