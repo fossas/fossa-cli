@@ -75,7 +75,6 @@ import Codec.Compression.GZip qualified as GZIP
 import Container.Errors (EndpointDoesNotSupportNativeContainerScan (EndpointDoesNotSupportNativeContainerScan))
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Algebra, Has, type (:+:))
-import Control.Carrier.Diagnostics (errHelp)
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
 import Control.Effect.Debug (Debug, debugLog)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fatalText, fromMaybeText)
@@ -98,7 +97,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as C
 import Data.ByteString.Lazy (ByteString)
 import Data.Data (Proxy (Proxy))
-import Data.Error (DiagnosticStyle (..), SourceLocation, applyDiagnosticStyle, createBlock, createBody, getSourceLocation)
+import Data.Error (SourceLocation, createBlock, createBody, getSourceLocation)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
