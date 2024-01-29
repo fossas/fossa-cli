@@ -98,7 +98,6 @@ outputVendoredDeps ::
   BaseDir ->
   m ()
 outputVendoredDeps (BaseDir dir) = runStickyLogger SevInfo $ do
-  Diag.fatal (NoVendoredDeps getSourceLocation)
   config <- resolveConfigFile dir Nothing
   manualDepsFile <- fromMaybe (MissingFossaDepsFile getSourceLocation) =<< findFossaDepsFile dir
   manualDeps <- readFoundDeps manualDepsFile
