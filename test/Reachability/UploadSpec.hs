@@ -78,7 +78,7 @@ dependenciesOfSpec = describe "dependenciesOf" $
     expected `shouldBe` seen
 
 callGraphOfSpec :: Spec
-callGraphOfSpec = describe "c,allGraphOf" $ do
+callGraphOfSpec = describe "callGraphOf" $ do
   it' "should not return reachability unit if project was skipped" $ do
     dir <- (</> sampleMavenProjectDir) <$> PIO.getCurrentDir
     res <- callGraphOf (skippedProject dir)
@@ -99,32 +99,21 @@ callGraphOfSpec = describe "c,allGraphOf" $ do
     res <- callGraphOf (poetryCompleteScan dir)
     res `shouldBe'` Nothing
 
-  it' "should return reachability unit for mvn project" $ do
-    dir <- (</> sampleMavenProjectDir) <$> PIO.getCurrentDir
-    file <- (</> sampleJar) <$> PIO.getCurrentDir
-    res <- callGraphOf (mavenCompleteScan dir)
-
-    let unit = mkReachabilityUnit dir [mkParsedJarRaw file sampleJarContent']
-    res `shouldBe'` Just unit
-
 analyzeForReachabilitySpec :: Spec
 analyzeForReachabilitySpec =
   describe "analyzeForReachability" $
     it' "should return analyzed reachability unit" $ do
       dir <- (</> sampleMavenProjectDir) <$> PIO.getCurrentDir
-      file <- (</> sampleJar) <$> PIO.getCurrentDir
-      let unit = mkReachabilityUnit dir [mkParsedJarRaw file sampleJarContent']
       let analysisResult =
             mkAnalysisResult
               [ skippedProject dir
               , skippedProjectByDefaultFilter dir
               , mavenPartialScan dir
               , poetryCompleteScan dir
-              , mavenCompleteScan dir
               ]
 
       analyzed <- analyzeForReachability analysisResult
-      analyzed `shouldBe'` [unit]
+      analyzed `shouldBe'` []
 
 uploadSpec :: Spec
 uploadSpec = describe "dependenciesOf" $ do
@@ -133,10 +122,10 @@ uploadSpec = describe "dependenciesOf" $ do
     file <- (</> sampleJar) <$> PIO.getCurrentDir
 
     let someContentKey = "someKey"
-    let unit = mkReachabilityUnit dir [mkParsedJarRaw file sampleJarContent']
+    let unit = mkReachabilityUnit dir [mkParsedJarRaw file Fixtures.sampleJarParsedContent']
 
     expectGetApiOpts
-    expectReachabilityContentUpload sampleJarContent' someContentKey
+    expectReachabilityContentUpload Fixtures.sampleJarParsedContent' someContentKey
 
     let expectedUnit = mkReachabilityUnit dir [mkParsedJarS3 file someContentKey]
     expectReachabilityBuildUpload [expectedUnit]
@@ -165,9 +154,6 @@ skippedProjectByDefaultFilter dir =
 mavenPartialScan :: Path Abs Dir -> DiscoveredProjectScan
 mavenPartialScan dir = mkDiscoveredProjectScan MavenProjectType dir Partial
 
-mavenCompleteScan :: Path Abs Dir -> DiscoveredProjectScan
-mavenCompleteScan dir = mkDiscoveredProjectScan MavenProjectType dir Complete
-
 poetryCompleteScan :: Path Abs Dir -> DiscoveredProjectScan
 poetryCompleteScan dir = mkDiscoveredProjectScan PoetryProjectType dir Complete
 
@@ -189,27 +175,6 @@ mkAnalysisResult dps =
     (Success [] Nothing)
     (Success [] Nothing)
     (Success [] Nothing)
-
-sampleJarContent :: Text
-sampleJarContent =
-  [r|C:vuln.project.sample.App java.lang.Object
-C:vuln.project.sample.App java.net.URI
-C:vuln.project.sample.App java.lang.System
-C:vuln.project.sample.App vuln.project.sample.App
-C:vuln.project.sample.App java.io.PrintStream
-C:vuln.project.sample.App org.dom4j.io.SAXReader
-C:vuln.project.sample.App java.lang.Exception
-C:vuln.project.sample.App org.dom4j.DocumentException
-M:vuln.project.sample.App:<init>() (O)java.lang.Object:<init>()
-M:vuln.project.sample.App:main(java.lang.String[]) (O)java.net.URI:<init>(java.lang.String)
-M:vuln.project.sample.App:main(java.lang.String[]) (M)java.net.URI:toURL()
-M:vuln.project.sample.App:main(java.lang.String[]) (S)vuln.project.sample.App:parse(java.net.URL)
-M:vuln.project.sample.App:main(java.lang.String[]) (M)java.io.PrintStream:println(java.lang.Object)
-M:vuln.project.sample.App:parse(java.net.URL) (O)org.dom4j.io.SAXReader:<init>()
-M:vuln.project.sample.App:parse(java.net.URL) (M)org.dom4j.io.SAXReader:read(java.net.URL)|]
-
-sampleJarContent' :: ByteString
-sampleJarContent' = LB.fromStrict . TL.encodeUtf8 $ sampleJarContent
 
 mkParsedJarRaw :: Path Abs File -> ByteString -> ParsedJar
 mkParsedJarRaw file bs =

@@ -39,6 +39,7 @@ module Test.Fixtures (
   vsiSourceUnit,
   sourceUnitBuildMaven,
   sourceUnitReachabilityNoAnalysis,
+  sampleJarParsedContent',
 ) where
 
 import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
@@ -54,11 +55,13 @@ import App.Types qualified as App
 import Control.Effect.FossaApiClient qualified as App
 import Control.Monad.RWS qualified as Set
 import Control.Timeout (Duration (MilliSeconds))
+import Data.ByteString.Lazy qualified as LB
 import Data.Flag (toFlag)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
+import Data.Text.Encoding qualified as TL
 import Data.Text.Extra (showT)
 import Discovery.Filters (AllFilters, MavenScopeFilters (MavenScopeIncludeFilters))
 import Effect.Logger (Severity (..))
@@ -67,6 +70,7 @@ import Fossa.API.Types qualified as API
 import Path (Abs, Dir, Path, mkAbsDir, mkRelDir, parseAbsDir, (</>))
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
 import System.Directory (getTemporaryDirectory)
+import Text.RawString.QQ (r)
 import Text.URI.QQ (uri)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
 
@@ -477,3 +481,24 @@ standardAnalyzeConfig =
     , ANZ.customFossaDepsFile = customFossaDepsFile
     , ANZ.allowedTacticTypes = Any
     }
+
+sampleJarParsedContent :: Text
+sampleJarParsedContent =
+  [r|C:vuln.project.sample.App java.lang.Object
+C:vuln.project.sample.App java.net.URI
+C:vuln.project.sample.App java.lang.System
+C:vuln.project.sample.App vuln.project.sample.App
+C:vuln.project.sample.App java.io.PrintStream
+C:vuln.project.sample.App org.dom4j.io.SAXReader
+C:vuln.project.sample.App java.lang.Exception
+C:vuln.project.sample.App org.dom4j.DocumentException
+M:vuln.project.sample.App:<init>() (O)java.lang.Object:<init>()
+M:vuln.project.sample.App:main(java.lang.String[]) (O)java.net.URI:<init>(java.lang.String)
+M:vuln.project.sample.App:main(java.lang.String[]) (M)java.net.URI:toURL()
+M:vuln.project.sample.App:main(java.lang.String[]) (S)vuln.project.sample.App:parse(java.net.URL)
+M:vuln.project.sample.App:main(java.lang.String[]) (M)java.io.PrintStream:println(java.lang.Object)
+M:vuln.project.sample.App:parse(java.net.URL) (O)org.dom4j.io.SAXReader:<init>()
+M:vuln.project.sample.App:parse(java.net.URL) (M)org.dom4j.io.SAXReader:read(java.net.URL)|]
+
+sampleJarParsedContent' :: LB.ByteString
+sampleJarParsedContent' = LB.fromStrict . TL.encodeUtf8 $ sampleJarParsedContent
