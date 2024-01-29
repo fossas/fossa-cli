@@ -52,14 +52,10 @@ import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text, strip, toLower)
 import Diag.Diagnostic (ToDiagnostic (..))
 import Effect.Logger (
-  AnsiStyle,
-  Doc,
   Logger,
-  Pretty (pretty),
   logDebug,
   logWarn,
   viaShow,
-  vsep,
  )
 import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir, readContentsYaml)
 import Errata (Errata (..))

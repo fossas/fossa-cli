@@ -21,7 +21,6 @@ import Effect.Exec (
   execJson,
   execParser,
  )
-import Effect.Logger (vsep)
 import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)

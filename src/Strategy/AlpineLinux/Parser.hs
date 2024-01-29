@@ -50,7 +50,6 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import Effect.Logger (pretty)
 import Errata (Errata (..))
 import Strategy.AlpineLinux.Types (AlpinePackage (..))
 import Text.Megaparsec (

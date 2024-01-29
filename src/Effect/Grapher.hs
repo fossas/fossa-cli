@@ -49,7 +49,6 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Errata (Errata (..))
 import Graphing qualified as G
-import Prettyprinter (pretty)
 
 data SGrapher ty k where
   Direct :: ty -> SGrapher ty ()

@@ -45,7 +45,6 @@ import DepTypes (
   Dependency (Dependency),
   VerConstraint (CEq),
  )
-import Diag.Diagnostic qualified as DI
 import Effect.Exec (AllowErr (Always), Command (..), Exec, execJson)
 import Effect.ReadFS (Has, ReadFS, readContentsJson)
 import Errata (Errata (..))
