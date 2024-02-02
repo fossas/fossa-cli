@@ -4,12 +4,12 @@
 module Analysis.ScalaSpec (spec) where
 
 import Analysis.FixtureExpectationUtils (
-  DependencyResultsSummary (DependencyResultsSummary),
+  DependencyResultsSummary (..),
   testSuiteDepResultSummary,
  )
 import Analysis.FixtureUtils (
-  AnalysisTestFixture (AnalysisTestFixture),
-  FixtureArtifact (FixtureArtifact),
+  AnalysisTestFixture (..),
+  FixtureArtifact (..),
   FixtureEnvironment (NixEnv),
  )
 import Path (reldir)

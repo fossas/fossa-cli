@@ -11,8 +11,8 @@ module Strategy.Node (
 
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProject'))
-import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
+import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProjectStaticOnly))
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -155,7 +155,7 @@ mkProject project = do
 
 instance AnalyzeProject NodeProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps
+  analyzeProjectStaticOnly _ = getDeps
 
 -- Since we don't natively support workspaces, we don't attempt to preserve them from this point on.
 -- In the future, if you're adding generalized workspace support, start here.

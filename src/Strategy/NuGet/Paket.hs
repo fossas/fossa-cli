@@ -10,7 +10,7 @@ module Strategy.NuGet.Paket (
   Remote (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -90,7 +90,7 @@ instance ToJSON PaketProject
 
 instance AnalyzeProject PaketProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps
+  analyzeProjectStaticOnly _ = getDeps
 
 mkProject :: PaketProject -> DiscoveredProject PaketProject
 mkProject project =

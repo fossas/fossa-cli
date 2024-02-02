@@ -6,7 +6,7 @@ module Strategy.Gomodules (
   GomodulesProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (useV3GoResolver), GoDynamicTactic (..))
 import Control.Carrier.Diagnostics (warn)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText, recover, (<||>))
@@ -59,7 +59,7 @@ instance ToJSON GomodulesProject
 
 instance AnalyzeProject GomodulesProject where
   analyzeProject _ proj = asks useV3GoResolver >>= getDeps proj
-  analyzeProject' _ = const $ fatalText "Cannot analyze GoModule project statically"
+  analyzeProjectStaticOnly _ = const $ fatalText "Cannot analyze GoModule project statically"
 
 mkProject :: GomodulesProject -> DiscoveredProject GomodulesProject
 mkProject project =

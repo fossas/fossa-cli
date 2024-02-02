@@ -35,6 +35,10 @@ module App.Fossa.Config.Common (
   defaultTimeoutDuration,
   collectRevisionData',
   fossaApiKeyCmdText,
+
+  -- * Global Parser Help Message
+  endpointHelp,
+  fossaApiKeyHelp,
 ) where
 
 import App.Fossa.Config.ConfigFile (
@@ -59,6 +63,7 @@ import App.Fossa.Config.ConfigFile (
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.ProjectInference (
+  InferredProject,
   inferProjectCached,
   inferProjectDefault,
   inferProjectFromVCS,
@@ -81,9 +86,11 @@ import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   errCtx,
+  errorBoundary,
   fatalText,
   fromMaybeText,
   recover,
+  rethrow,
   (<||>),
  )
 import Control.Effect.Lift (Lift, sendIO)
@@ -95,8 +102,10 @@ import Data.Maybe (fromMaybe)
 import Data.String (IsString)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text, null, strip, toLower)
+import Diag.Result (Result (Failure, Success), renderFailure)
 import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (..), comboExclude, comboInclude, setExclude, setInclude, targetFilterParser)
 import Effect.Exec (Exec)
+import Effect.Logger (Logger, logDebug, logInfo, vsep)
 import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
 import GHC.Generics (Generic)
@@ -107,7 +116,6 @@ import Options.Applicative (
   argument,
   auto,
   eitherReader,
-  help,
   long,
   metavar,
   option,
@@ -120,9 +128,14 @@ import Options.Applicative (
   value,
   (<|>),
  )
+import Options.Applicative.Builder (helpDoc)
+import Options.Applicative.Help (AnsiStyle)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (..), parseRelDir)
 import Path.Extra (SomePath (..))
 import Path.IO (resolveDir', resolveFile')
+import Prettyprinter (Doc)
+import Prettyprinter.Render.Terminal (Color (Green))
+import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, stringToHelpDoc)
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI, mkURI)
 import Types (TargetFilter)
@@ -150,34 +163,54 @@ readMWithError errMsg = auto <|> readerError errMsg
 metadataOpts :: Parser ProjectMetadata
 metadataOpts =
   ProjectMetadata
-    <$> optional (strOption (long "title" <> short 't' <> help "the title of the FOSSA project. (default: the project name)"))
-    <*> optional (strOption (long "project-url" <> short 'P' <> help "this repository's home page"))
-    <*> optional (strOption (long "jira-project-key" <> short 'j' <> help "this repository's JIRA project key"))
-    <*> optional (strOption (long "link" <> short 'L' <> help "a link to attach to the current build"))
-    <*> optional (strOption (long "team" <> short 'T' <> help "this repository's team inside your organization"))
+    <$> optional (strOption (applyFossaStyle <> long "title" <> short 't' <> helpDoc titleHelp))
+    <*> optional (strOption (applyFossaStyle <> long "project-url" <> short 'P' <> stringToHelpDoc "This repository's home page"))
+    <*> optional (strOption (applyFossaStyle <> long "jira-project-key" <> short 'j' <> stringToHelpDoc "This repository's JIRA project key"))
+    <*> optional (strOption (applyFossaStyle <> long "link" <> short 'L' <> stringToHelpDoc "A link to attach to the current build"))
+    <*> optional (strOption (applyFossaStyle <> long "team" <> short 'T' <> stringToHelpDoc "This repository's team inside your organization"))
     <*> parsePolicyOptions
-    <*> many (strOption (long "project-label" <> help "assign up to 5 labels to the project"))
+    <*> many (strOption (applyFossaStyle <> long "project-label" <> stringToHelpDoc "Assign up to 5 labels to the project"))
     <*> optional releaseGroupMetadataOpts
   where
     policy :: Parser Policy
-    policy = PolicyName <$> (strOption (long "policy" <> help "The name of the policy to assign to this project in FOSSA. Mutually excludes --policy-id."))
+    policy = PolicyName <$> (strOption (applyFossaStyle <> long "policy" <> helpDoc policyHelp))
 
     policyId :: Parser Policy
     policyId =
       PolicyId
         <$> ( option
                 (readMWithError "failed to parse --policy-id, expecting int")
-                (long "policy-id" <> help "The id of the policy to assign to this project in FOSSA. Mutually excludes --policy.")
+                (applyFossaStyle <> long "policy-id" <> helpDoc policyIdHelp)
             )
 
     parsePolicyOptions :: Parser (Maybe Policy)
     parsePolicyOptions = optional (policy <|> policyId) -- For Parsers '<|>' tries every alternative and fails if they all succeed.
+    titleHelp :: Maybe (Doc AnsiStyle)
+    titleHelp =
+      Just . formatDoc $
+        vsep
+          [ "The title of the FOSSA project"
+          , boldItalicized "Default: " <> "The project name"
+          ]
+
+    policyHelp :: Maybe (Doc AnsiStyle)
+    policyHelp =
+      Just . formatDoc $
+        vsep
+          [ "The name of the policy to assign to this project in FOSSA. Mutually excludes " <> coloredBoldItalicized Green "--policy-id" <> "."
+          ]
+    policyIdHelp :: Maybe (Doc AnsiStyle)
+    policyIdHelp =
+      Just . formatDoc $
+        vsep
+          [ "The id of the policy to assign to this project in FOSSA. Mutually excludes " <> coloredBoldItalicized Green "--policy" <> "."
+          ]
 
 releaseGroupMetadataOpts :: Parser ReleaseGroupMetadata
 releaseGroupMetadataOpts =
   ReleaseGroupMetadata
-    <$> strOption (long "release-group-name" <> help "the name of the release group to add this project to")
-    <*> strOption (long "release-group-release" <> help "the release of the release group to add this project to")
+    <$> strOption (applyFossaStyle <> long "release-group-name" <> stringToHelpDoc "The name of the release group to add this project to")
+    <*> strOption (applyFossaStyle <> long "release-group-release" <> stringToHelpDoc "The release of the release group to add this project to")
 
 pathOpt :: String -> Either String (Path Rel Dir)
 pathOpt = first show . parseRelDir
@@ -186,7 +219,14 @@ targetOpt :: String -> Either String TargetFilter
 targetOpt = first errorBundlePretty . runParser targetFilterParser "(Command-line arguments)" . toText
 
 baseDirArg :: Parser String
-baseDirArg = argument str (metavar "DIR" <> help "Set the base directory for scanning (default: current directory)" <> value ".")
+baseDirArg = argument str (applyFossaStyle <> metavar "DIR" <> helpDoc baseDirDoc <> value ".")
+  where
+    baseDirDoc =
+      Just . formatDoc $
+        vsep
+          [ "Set the base directory for scanning"
+          , boldItalicized "Default: " <> "Current directory"
+          ]
 
 collectBaseDir ::
   ( Has Diagnostics sig m
@@ -290,6 +330,7 @@ collectRevisionOverride maybeConfig OverrideProject{..} = override
 collectRevisionData ::
   ( Has Diagnostics sig m
   , Has Exec sig m
+  , Has Logger sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
@@ -302,17 +343,36 @@ collectRevisionData (BaseDir basedir) maybeConfig cacheStrategy cliOverride = do
   let override = collectRevisionOverride maybeConfig cliOverride
   case cacheStrategy of
     ReadOnly -> do
-      inferred <- inferProjectFromVCS basedir <||> inferProjectCached basedir <||> inferProjectDefault basedir
+      inferred <- inferVCSInfo $ inferProjectCached basedir <||> inferProjectDefault basedir
       pure $ mergeOverride override inferred
     WriteOnly -> do
-      inferred <- inferProjectFromVCS basedir <||> inferProjectDefault basedir
+      inferred <- inferVCSInfo $ inferProjectDefault basedir
       let revision = mergeOverride override inferred
       saveRevision revision
       pure revision
+  where
+    inferVCSInfo ::
+      ( Has Diagnostics sig m
+      , Has Logger sig m
+      , Has ReadFS sig m
+      , Has Exec sig m
+      ) =>
+      m InferredProject ->
+      m InferredProject
+    inferVCSInfo nextStep = do
+      vcsInfo <- errorBoundary $ inferProjectFromVCS basedir
+      case vcsInfo of
+        Failure emittedWarns errGroup ->
+          do
+            logDebug (renderFailure emittedWarns errGroup "Unable to infer project revision from VCS")
+            logInfo "Unable to infer project revision from VCS, using current timestamp as the revision."
+            nextStep
+        Success _ _ -> rethrow vcsInfo
 
 collectRevisionData' ::
   ( Has Diagnostics sig m
   , Has Exec sig m
+  , Has Logger sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
@@ -384,13 +444,59 @@ fossaApiKeyCmdText = "fossa-api-key"
 commonOpts :: Parser CommonOpts
 commonOpts =
   CommonOpts
-    <$> switch (long "debug" <> help "Enable debug logging, and write detailed debug information to `fossa.debug.json`")
-    <*> optional (uriOption (long "endpoint" <> short 'e' <> metavar "URL" <> help "The FOSSA API server base URL (default: https://app.fossa.com)"))
-    <*> optional (strOption (long "project" <> short 'p' <> help "this repository's URL or VCS endpoint (default: VCS remote 'origin')"))
-    <*> optional (strOption (long "revision" <> short 'r' <> help "this repository's current revision hash (default: VCS hash HEAD)"))
-    <*> optional (strOption (long fossaApiKeyCmdText <> help "the FOSSA API server authentication key (default: FOSSA_API_KEY from env)"))
-    <*> optional (strOption (long "config" <> short 'c' <> help "Path to configuration file including filename (default: .fossa.yml)"))
-    <*> optional (option parseTelemetryScope (long "with-telemetry-scope" <> help "Scope of telemetry to use, the options are 'full' or 'off'. (default: 'full')"))
+    <$> switch (applyFossaStyle <> long "debug" <> stringToHelpDoc "Enable debug logging, and write detailed debug information to `fossa.debug.json`")
+    <*> optional (uriOption (applyFossaStyle <> long "endpoint" <> short 'e' <> metavar "URL" <> helpDoc endpointHelp))
+    <*> optional (strOption (applyFossaStyle <> long "project" <> short 'p' <> helpDoc projectHelp))
+    <*> optional (strOption (applyFossaStyle <> long "revision" <> short 'r' <> helpDoc revisionHelp))
+    <*> optional (strOption (applyFossaStyle <> long fossaApiKeyCmdText <> helpDoc fossaApiKeyHelp))
+    <*> optional (strOption (applyFossaStyle <> long "config" <> short 'c' <> helpDoc configHelp))
+    <*> optional (option parseTelemetryScope (applyFossaStyle <> long "with-telemetry-scope" <> helpDoc telemtryScopeHelp))
+  where
+    projectHelp :: Maybe (Doc AnsiStyle)
+    projectHelp =
+      Just . formatDoc $
+        vsep
+          [ "This repository's URL or VCS endpoint"
+          , boldItalicized "Default: " <> "VCS remote 'origin'"
+          ]
+    revisionHelp :: Maybe (Doc AnsiStyle)
+    revisionHelp =
+      Just . formatDoc $
+        vsep
+          [ "This repository's current revision hash"
+          , boldItalicized "Default: " <> "VCS hash HEAD"
+          ]
+    configHelp :: Maybe (Doc AnsiStyle)
+    configHelp =
+      Just . formatDoc $
+        vsep
+          [ "Path to configuration file including filename"
+          , boldItalicized "Default: " <> ".fossa.yml"
+          ]
+    telemtryScopeHelp :: Maybe (Doc AnsiStyle)
+    telemtryScopeHelp =
+      Just . formatDoc $
+        vsep
+          [ "Scope of telemetry to use"
+          , boldItalicized "Options: " <> coloredBoldItalicized Green "full" <> boldItalicized "|" <> coloredBoldItalicized Green "off"
+          , boldItalicized "Default: " <> coloredBoldItalicized Green "full"
+          ]
+
+endpointHelp :: Maybe (Doc AnsiStyle)
+endpointHelp =
+  Just . formatDoc $
+    vsep
+      [ "The FOSSA API server base URL"
+      , boldItalicized "Default: " <> "https://app.fossa.com"
+      ]
+
+fossaApiKeyHelp :: Maybe (Doc AnsiStyle)
+fossaApiKeyHelp =
+  Just . formatDoc $
+    vsep
+      [ "The FOSSA API server authentication key"
+      , boldItalicized "Default: " <> "FOSSA_API_KEY from env"
+      ]
 
 collectConfigFileFilters :: ConfigFile -> AllFilters
 collectConfigFileFilters configFile = do

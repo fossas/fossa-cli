@@ -38,21 +38,24 @@ import Options.Applicative (
   InfoMod,
   Parser,
   argument,
-  help,
+  helpDoc,
   long,
   metavar,
   optional,
-  progDesc,
+  progDescDoc,
   str,
   strOption,
   value,
  )
+import Prettyprinter (Doc, vsep)
+import Prettyprinter.Render.Terminal (AnsiStyle)
+import Style (applyFossaStyle, boldItalicized, formatDoc, formatStringToDoc, stringToHelpDoc)
 
 cmdName :: String
 cmdName = "experimental-link-user-defined-dependency-binary"
 
 linkInfo :: InfoMod a
-linkInfo = progDesc "Link one or more binary fingerprints as a user-defined dependency"
+linkInfo = progDescDoc $ formatStringToDoc "Link one or more binary fingerprints as a user-defined dependency"
 
 mkSubCommand :: (LinkUserBinsConfig -> EffStack ()) -> SubCommand LinkUserBinsOpts LinkUserBinsConfig
 mkSubCommand = SubCommand cmdName linkInfo cliParser loadConfig mergeOpts
@@ -118,10 +121,17 @@ cliParser =
     assertUserDefinedBinariesMeta :: Parser UserDefinedAssertionMeta
     assertUserDefinedBinariesMeta =
       UserDefinedAssertionMeta
-        <$> (strOption (long "name" <> help "The name to display for the dependency"))
-        <*> (strOption (long "version" <> help "The version to display for the dependency"))
-        <*> (strOption (long "license" <> help "The license identifier to use for the dependency"))
-        <*> optional (strOption (long "description" <> help "The description to use for the dependency"))
-        <*> optional (strOption (long "homepage" <> help "The URL to the homepage for the dependency"))
+        <$> (strOption (applyFossaStyle <> long "name" <> stringToHelpDoc "The name to display for the dependency"))
+        <*> (strOption (applyFossaStyle <> long "version" <> stringToHelpDoc "The version to display for the dependency"))
+        <*> (strOption (applyFossaStyle <> long "license" <> stringToHelpDoc "The license identifier to use for the dependency"))
+        <*> optional (strOption (applyFossaStyle <> long "description" <> stringToHelpDoc "The description to use for the dependency"))
+        <*> optional (strOption (applyFossaStyle <> long "homepage" <> stringToHelpDoc "The URL to the homepage for the dependency"))
     assertUserDefinedBinariesDir :: Parser String
-    assertUserDefinedBinariesDir = argument str (metavar "DIR" <> help "The directory containing one or more binaries to assert to the provided values (default: current directory)" <> value ".")
+    assertUserDefinedBinariesDir = argument str (applyFossaStyle <> metavar "DIR" <> helpDoc dirHelp <> value ".")
+    dirHelp :: Maybe (Doc AnsiStyle)
+    dirHelp =
+      Just . formatDoc $
+        vsep
+          [ "The directory containing one or more binaries to assert to the provided values"
+          , boldItalicized "Default: " <> "Current directory"
+          ]

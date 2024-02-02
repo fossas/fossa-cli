@@ -2,7 +2,7 @@
 
 module Composer.ComposerJsonSpec (spec) where
 
-import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
+import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Control.Effect.Diagnostics qualified as Diagnostics
 import Path (
   Abs,
