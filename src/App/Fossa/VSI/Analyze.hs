@@ -25,7 +25,6 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Stack (Stack)
 import Control.Effect.StickyLogger (StickyLogger, logSticky, logSticky')
 import Control.Effect.TaskPool (TaskPool, forkTask)
-import Control.Monad (when)
 import Data.Aeson (encode)
 import Data.Foldable (traverse_)
 import Data.Map qualified as Map
@@ -78,15 +77,11 @@ runVsiAnalysis dir projectRevision filters = context "VSI" $ do
   logInfo "Waiting for cloud analysis"
   context "Wait for cloud analysis" $ waitForAnalysis scanID
 
-  rules <- context "Download analysis results" $ do
+  context "Download analysis results" $ do
     inferences <- getVsiInferences scanID
     let rules = generateRules inferences
     logDebug . pretty $ "Generated Rules: " <> (decodeUtf8 @Text . encode $ rules)
     pure rules
-
-  when (null rules) $ fatalText "No dependencies discovered with VSI"
-
-  pure rules
 
 uploadBufferSize :: Int
 uploadBufferSize = 1000
