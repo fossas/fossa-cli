@@ -1,0 +1,69 @@
+{
+  "graphName" : "G",
+  "artifacts" : [ {
+    "id" : "bike.cobi:cobi-bhu",
+    "numericId" : 1,
+    "artifactId" : "cobi-bhu"
+  }, {
+    "id" : "bike.cobi:jacoco",
+    "numericId" : 2,
+    "artifactId" : "jacoco"
+  }, {
+    "id" : "bike.cobi:cobi-neural-network-dl4j",
+    "numericId" : 3,
+    "artifactId" : "cobi-neural-network-dl4j"
+  }, {
+    "id" : "bike.cobi:cobi-web",
+    "numericId" : 4,
+    "artifactId" : "cobi-web"
+  }, {
+    "id" : "bike.cobi:cobi-core",
+    "numericId" : 5,
+    "artifactId" : "cobi-core"
+  }, {
+    "id" : "bike.cobi:cobi-neural-network-base",
+    "numericId" : 6,
+    "artifactId" : "cobi-neural-network-base"
+  }, {
+    "id" : "bike.cobi:cobi-project",
+    "numericId" : 7,
+    "artifactId" : "cobi-project"
+  } ],
+  "dependencies" : [ {
+    "from" : "bike.cobi:cobi-bhu",
+    "to" : "bike.cobi:jacoco",
+    "numericFrom" : 0,
+    "numericTo" : 1,
+    "resolution" : "PARENT"
+  }, {
+    "from" : "bike.cobi:cobi-neural-network-dl4j",
+    "to" : "bike.cobi:cobi-web",
+    "numericFrom" : 2,
+    "numericTo" : 3,
+    "resolution" : "PARENT"
+  }, {
+    "from" : "bike.cobi:cobi-core",
+    "to" : "bike.cobi:cobi-bhu",
+    "numericFrom" : 4,
+    "numericTo" : 0,
+    "resolution" : "PARENT"
+  }, {
+    "from" : "bike.cobi:cobi-neural-network-base",
+    "to" : "bike.cobi:cobi-core",
+    "numericFrom" : 5,
+    "numericTo" : 4,
+    "resolution" : "PARENT"
+  }, {
+    "from" : "bike.cobi:cobi-neural-network-base",
+    "to" : "bike.cobi:cobi-neural-network-dl4j",
+    "numericFrom" : 5,
+    "numericTo" : 2,
+    "resolution" : "PARENT"
+  }, {
+    "from" : "bike.cobi:cobi-project",
+    "to" : "bike.cobi:cobi-neural-network-base",
+    "numericFrom" : 6,
+    "numericTo" : 5,
+    "resolution" : "PARENT"
+  } ]
+}
