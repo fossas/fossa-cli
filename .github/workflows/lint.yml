@@ -6,7 +6,7 @@ jobs:
   linter-check:
     name: linter-check
     runs-on: ubuntu-latest
-    container: ghcr.io/fossas/haskell-dev-tools:9.4.7
+    container: ghcr.io/fossas/haskell-dev-tools:9.4.8
 
     steps:
       - uses: actions-rs/toolchain@v1
@@ -41,7 +41,7 @@ jobs:
   format-check:
     name: formatter-check
     runs-on: ubuntu-latest
-    container: ghcr.io/fossas/haskell-dev-tools:9.4.7
+    container: ghcr.io/fossas/haskell-dev-tools:9.4.8
 
     steps:
       - uses: actions-rs/toolchain@v1
@@ -60,7 +60,7 @@ jobs:
   cabal-format-check:
     name: cabal-format-check
     runs-on: ubuntu-latest
-    container: ghcr.io/fossas/haskell-dev-tools:9.4.7
+    container: ghcr.io/fossas/haskell-dev-tools:9.4.8
 
     steps:
       - uses: actions/checkout@v2
