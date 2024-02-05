@@ -111,7 +111,7 @@ experimentalLicenseScanCommand = command "experimental-license-scan" (info runIn
     runInit = pure $ putStrLn "The 'experimental-license-scan' has been deprecated and renamed to 'license-scan'. Please use the 'license-scan' command instead."
 
 feedbackCommand :: Mod CommandFields (IO ())
-feedbackCommand = command "feedback" (info feedbackPrompt $ progDescDoc $ formatStringToDoc "Provide feedback on your FOSSA CLI experience, submit feature requests, and report bugs/issues")
+feedbackCommand = command "experimental-feedback" (info feedbackPrompt $ progDescDoc $ formatStringToDoc "Provide feedback on your FOSSA CLI experience, submit feature requests, and report bugs/issues")
   where
     feedbackPrompt :: Parser (IO ())
     feedbackPrompt =
