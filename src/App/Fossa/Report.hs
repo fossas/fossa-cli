@@ -11,7 +11,7 @@ import App.Fossa.API.BuildWait (
   waitForScanCompletion,
  )
 import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), ReportOutputFormat (ReportJson), mkSubCommand)
-import App.Fossa.PreflightChecks (preflightChecks)
+import App.Fossa.PreflightChecks (guardWithPreflightChecks)
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (ProjectRevision (..))
 import Control.Carrier.Debug (ignoreDebug)
@@ -20,7 +20,7 @@ import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient (FossaApiClient, getAttribution)
 import Control.Effect.Lift (Has, Lift)
-import Control.Monad (when)
+import Control.Monad (void, when)
 import Control.Timeout (timeout')
 import Data.String.Conversion (toText)
 import Data.Text.Extra (showT)
@@ -54,7 +54,7 @@ report config@ReportConfig{..} = do
     * Above includes errors, types, and scaffolding
   -}
 
-  _ <- ignoreDebug $ runFossaApiClient apiOpts preflightChecks
+  void $ guardWithPreflightChecks apiOpts
 
   runStickyLogger SevInfo
     . ignoreDebug

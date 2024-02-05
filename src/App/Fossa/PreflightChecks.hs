@@ -2,17 +2,22 @@
 
 module App.Fossa.PreflightChecks (
   preflightChecks,
+  guardWithPreflightChecks,
 ) where
 
 import App.Docs (apiKeyUrl)
+import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Diagnostics (Diagnostics, errCtx)
+import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.Stack (context)
 import Control.Effect.Diagnostics (ToDiagnostic, fatalOnIOException)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
-import Control.Effect.Lift
+import Control.Effect.Lift (Has, Lift, sendIO)
+import Control.Monad (void)
 import Data.Text.IO qualified as TIO
 import Diag.Diagnostic (ToDiagnostic (..))
 import Effect.Logger (pretty, vsep)
+import Fossa.API.Types (ApiOpts)
 import Path (
   File,
   Path,
@@ -21,7 +26,15 @@ import Path (
   mkRelFile,
   (</>),
  )
-import Path.IO
+import Path.IO (getTempDir, removeFile)
+
+guardWithPreflightChecks ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  ) =>
+  ApiOpts ->
+  m ()
+guardWithPreflightChecks apiOpts = ignoreDebug $ runFossaApiClient apiOpts preflightChecks
 
 preflightChecks ::
   ( Has Diagnostics sig m
@@ -36,8 +49,7 @@ preflightChecks = context "preflight-checks" $ do
   sendIO $ removeFile (tmpDir </> preflightCheckFileName)
 
   -- Check for valid API Key and if user can connect to fossa app
-  _ <- errCtx InvalidApiKeyErr getOrganization
-  pure ()
+  void $ errCtx InvalidApiKeyErr getOrganization
 
 preflightCheckFileName :: Path Rel File
 preflightCheckFileName = $(mkRelFile "preflight-check.txt")
