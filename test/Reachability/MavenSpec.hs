@@ -12,7 +12,7 @@ import Test.Hspec (Spec, describe)
 
 spec :: Spec
 spec = describe "Maven" $ do
-  describe "getJarPathFromPom" $ do
+  describe "isValidJar" $ do
     it' "should return False when jar does not exist" $ do
       jarFile <- sendIO missingJar
       result <- isValidJar jarFile

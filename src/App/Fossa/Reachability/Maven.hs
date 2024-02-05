@@ -1,11 +1,8 @@
 module App.Fossa.Reachability.Maven (
   mavenJarCallGraph,
-
-  -- * for testing,
   isValidJar,
   getJarsByBuild,
-)
-where
+) where
 
 import App.Fossa.Reachability.Jar (callGraphFromJar)
 import App.Fossa.Reachability.Types (CallGraphAnalysis (..))
@@ -58,7 +55,7 @@ getJarsByBuild dir = do
   let pomPathsAndPom = concatMap (Map.elems . closurePoms) mvnProjectClosures
 
   candidateJars <- catMaybes <$> traverse getJarPathFromPom pomPathsAndPom
-  logDebug . pretty $ ("found candidate jars: ") <> toText (pShow candidateJars)
+  logDebug . pretty $ ("Found candidate jars: ") <> toText (pShow candidateJars)
   filterM isValidJar candidateJars
 
 -- Gets the candidate Jar File from pom.xml's build configs, or using defaults

@@ -2,8 +2,7 @@
 
 module App.Fossa.Reachability.Jar (
   callGraphFromJar,
-)
-where
+) where
 
 import App.Fossa.Reachability.Types (ContentRef (ContentRaw), ParsedJar (..))
 import Control.Effect.Diagnostics (
