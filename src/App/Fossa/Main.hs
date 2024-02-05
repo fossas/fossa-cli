@@ -111,7 +111,7 @@ experimentalLicenseScanCommand = command "experimental-license-scan" (info runIn
     runInit = pure $ putStrLn "The 'experimental-license-scan' has been deprecated and renamed to 'license-scan'. Please use the 'license-scan' command instead."
 
 feedbackCommand :: Mod CommandFields (IO ())
-feedbackCommand = command "feedback" (info feedbackPrompt $ progDescDoc $ formatStringToDoc "Provide feedback on your fossa-cli experience, submit feature requests, and report bugs/issues")
+feedbackCommand = command "feedback" (info feedbackPrompt $ progDescDoc $ formatStringToDoc "Provide feedback on your FOSSA CLI experience, submit feature requests, and report bugs/issues")
   where
     feedbackPrompt :: Parser (IO ())
     feedbackPrompt =
@@ -126,14 +126,8 @@ feedbackCommand = command "feedback" (info feedbackPrompt $ progDescDoc $ format
             , "* Submit feature requests to:"
             , newlineTrailing . newlinePreceding $ indent 4 "support@fossa.com"
             , "* Provide feedback on overall cli experience at:"
-            , newlineTrailing . newlineTrailing . newlinePreceding $ indent 4 "https://docs.google.com/forms/d/e/1FAIpQLSdfz4KX_j6lpCF0zICQaUd-Rjn_Vj-IelCSmqOii__fqyYVmg/viewform"
+            , newlineTrailing . newlineTrailing . newlinePreceding $ indent 4 "https://go.fossa.com/cli-feedback"
             ]
-
--- putStrLn "At FOSSA, we are committed to delivering an exceptional user experience and are continously working towards improving our product."
--- putStrLn "Your feedback is crucial in shaping our ongoing efforts to innovate and provide an even better user experience!"
--- putStrLn ("\n * Report bugs and issues at: " <> toString supportUrl)
--- putStrLn ("\n * Submit feature requests to: support@fossa.com")
--- putStrLn ("\n * Provide feedback on overall cli experience at: https://docs.google.com/forms/d/e/1FAIpQLSdfz4KX_j6lpCF0zICQaUd-Rjn_Vj-IelCSmqOii__fqyYVmg/viewform")
 
 decodeSubCommand :: (GetSeverity a, GetCommonOpts a, Show b, ToJSON b) => SubCommand a b -> Mod CommandFields (IO ())
 decodeSubCommand cmd@SubCommand{..} = command commandName $ info (runSubCommand cmd) commandInfo
