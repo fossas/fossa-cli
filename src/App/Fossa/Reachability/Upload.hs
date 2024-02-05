@@ -3,12 +3,9 @@ module App.Fossa.Reachability.Upload (
   reachabilityRawJson,
   reachabilityEndpointJson,
   upload,
-
-  -- * for testing
   dependenciesOf,
   callGraphOf,
-)
-where
+) where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.Analyze.Types (
@@ -124,15 +121,15 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
     -- it is impossible to perform reachability, as we may not have all symbols
     -- used in the application to perform accurate analysis
     (Partial, _) -> do
-      logInfo . pretty $ "we do not support reachability analysis, with partial dependencies graph (skipping: " <> displayId <> ")"
+      logInfo . pretty $ "We do not support reachability analysis, with partial dependencies graph (skipping: " <> displayId <> ")"
       pure Nothing
     (Complete, MavenProjectType) -> context "maven" $ do
-      logDebug . pretty $ "trying to infer build jars from maven project: " <> show (projectResultPath projectResult)
+      logDebug . pretty $ "Trying to infer build jars from maven project: " <> show (projectResultPath projectResult)
       analysis <- mavenJarCallGraph (projectResultPath projectResult)
       pure . Just $ unit{callGraphAnalysis = analysis}
     -- Exclude units for package manager/language we cannot support yet!
     _ -> do
-      logInfo . pretty $ "we do not support reachability analysis for: " <> displayId <> " yet. (skipping)"
+      logInfo . pretty $ "We do not support reachability analysis for: " <> displayId <> " yet. (skipping)"
       pure Nothing
 -- Not possible to perform reachability analysis for projects
 -- which were not scanned (skipped due to filter), as we do not
@@ -148,7 +145,7 @@ allLocators :: SourceUnitBuild -> [Locator]
 allLocators unit =
   nub $
     buildImports unit
-      ++ concatMap (\ud -> sourceDepLocator ud : sourceDepImports ud) (buildDependencies unit)
+      ++ concatMap (\ud -> sourceDepLocator ud : sourceDepImports ud) $ buildDependencies unit
 
 reachabilityRawJson :: Text
 reachabilityRawJson = "reachability.raw.json"

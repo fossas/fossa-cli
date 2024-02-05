@@ -3,8 +3,7 @@ module App.Fossa.Reachability.Types (
   SourceUnitReachability (..),
   ParsedJar (..),
   ContentRef (..),
-)
-where
+) where
 
 import Data.Aeson (ToJSON (..), Value, object, (.=))
 import Data.ByteString.Lazy (ByteString)

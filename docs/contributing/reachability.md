@@ -1,7 +1,7 @@
 # Reachability
 
 ### What is Reachability?
-Reachability Analysis is a security offering designed to enhance FOSSA's security analysis by providing context on vulnerable packages. It alleviates the constraints of traditional CVE assessments through the static analysis of application and dependency code, confirming the presence of vulnerable call paths. This allows pinpointing the 3-10% of exploitable vulnerabilities amid the multitude of non-exploitable ones.
+Reachability Analysis is a security offering designed to enhance FOSSA's security analysis by providing context on vulnerable packages. It alleviates the constraints of traditional CVE assessments through the static analysis of application and dependency code, confirming the presence of vulnerable call paths. 
 
 ### Limitations
 Reachability currently supports all Maven projects dynamically analyzed by fossa-cli. The target jar of the project must exist, prior to the analysis.
@@ -92,11 +92,11 @@ explainReachability('rawReachabilityJob.json')
 We upload call graph of (caller, and callee) relationships, in which
 caller and callee are fully qualified symbol name. 
 
-You can inspect the data by running, 
+You can inspect the data by running:
 
 ```bash
 ; fossa analyze --output --debug # --output to not communicate with endpoint
-; gunzip fossa.debug.json.gz     # extract debug bundle produced
+; gunzip fossa.debug.json.gz     # extract produced debug bundle
 
 # content in .bundleReachabilityRaw is uploaded
 # to endpoint for reachability analysis.
