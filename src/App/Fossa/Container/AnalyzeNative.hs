@@ -17,6 +17,7 @@ import App.Fossa.Config.Container.Analyze (
  )
 import App.Fossa.Config.Container.Analyze qualified as Config
 import App.Fossa.Container.Scan (extractRevision, scanImage)
+import App.Fossa.PreflightChecks (preflightChecks)
 import App.Types (
   ProjectMetadata,
   ProjectRevision (..),
@@ -100,6 +101,10 @@ analyze ::
   ContainerAnalyzeConfig ->
   m ContainerScan
 analyze cfg = do
+  _ <- case scanDestination cfg of
+    OutputStdout -> pure ()
+    UploadScan apiOpts _ -> runFossaApiClient apiOpts preflightChecks
+
   scannedImage <- scanImage (filterSet cfg) (onlySystemDeps cfg) (imageLocator cfg) (dockerHost cfg) (arch cfg)
   let revision = extractRevision (revisionOverride cfg) scannedImage
 
