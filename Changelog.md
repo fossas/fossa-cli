@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.8.36
+- Add preflight checks to validate API key, connection to FOSSA app, and ability to write to temp directory in relevant commands
+
 ## v3.8.35
 - Running `fossa analyze --detect-vendored` no longer fails if there are no detected vendored dependencies ([#1373](https://github.com/fossas/fossa-cli/pull/1373)).
 
