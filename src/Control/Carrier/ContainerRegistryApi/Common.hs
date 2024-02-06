@@ -132,14 +132,16 @@ updateToken token newVal = do
 safeReplaceToken :: Has (Lift IO) sig m => RegistryCtx -> m AuthToken -> m Bool
 safeReplaceToken ctx getNewToken = do
   let tokVar = registryAccessToken ctx
+
   (shouldUpdate, exceptionCleanupAction) <- sendSTM $ do
     m <- tryReadTMVar (registryAccessToken ctx)
+
     case m of
       Just Updating -> pure (False, pure ())
       -- Existing or new token, should replace.
-      -- Change the value to `Updating` to indicate what we're doing.
-      Just tok -> pure (True, writeTMVar tokVar tok)
-      Nothing -> writeTMVar tokVar Updating >> pure (True, void $ tryTakeTMVar tokVar)
+      t -> do
+        writeTMVar tokVar Updating -- Signal to other threads there's an update in progress
+        pure (True, maybe (void $ tryTakeTMVar tokVar) (writeTMVar tokVar) t)
 
   if shouldUpdate
     then do
