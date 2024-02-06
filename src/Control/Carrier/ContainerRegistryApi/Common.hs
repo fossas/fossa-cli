@@ -141,7 +141,12 @@ safeReplaceToken ctx getNewToken = do
   if shouldUpdate
     then do
       newToken <- getNewToken
-      updateToken ctx newToken
+            -- Get a new token.
+      -- If there's some new exception, clean up by putting the old token back.
+      -- This gives other threads the opportunity to try to fetch a new token and exit gracefully.
+      let cleanup :: (Has (Lift IO) sig m) => m ()
+          cleanup = traverse_ (updateToken ctx) originalToken
+      updateToken ctx newToken `onError` cleanup
       pure True
     else pure False
 
