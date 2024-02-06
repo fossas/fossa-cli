@@ -5,8 +5,8 @@ module Strategy.Maven (
   getDeps,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
-import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
+import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift)
@@ -65,7 +65,7 @@ instance ToJSON MavenProject
 
 instance AnalyzeProject MavenProject where
   analyzeProject = getDeps
-  analyzeProject' = getDeps'
+  analyzeProjectStaticOnly = getDeps'
 
 instance LicenseAnalyzeProject MavenProject where
   licenseAnalyzeProject = pure . Pom.getLicenses . unMavenProject

@@ -33,12 +33,13 @@ import GHC.Generics (Generic)
 import Options.Applicative (
   InfoMod,
   Parser,
-  hsubparser,
-  progDesc,
+  progDescDoc,
+  subparser,
  )
+import Style (formatStringToDoc)
 
 containerCmdInfo :: InfoMod a
-containerCmdInfo = progDesc "Run in container-scanning mode"
+containerCmdInfo = progDescDoc $ formatStringToDoc "Run in container-scanning mode"
 
 mkSubCommand :: (ContainerScanConfig -> EffStack ()) -> SubCommand ContainerCommand ContainerScanConfig
 mkSubCommand = SubCommand "container" containerCmdInfo parser loadConfig mergeOpts
@@ -106,4 +107,4 @@ instance GetCommonOpts ContainerCommand where
 parser :: Parser ContainerCommand
 parser = public
   where
-    public = hsubparser $ Analyze.subcommand ContainerAnalyze <> Test.subcommand ContainerTest <> ListTargets.subcommand ContainerListTargets
+    public = subparser $ Analyze.subcommand ContainerAnalyze <> Test.subcommand ContainerTest <> ListTargets.subcommand ContainerListTargets

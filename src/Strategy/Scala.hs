@@ -12,7 +12,7 @@ module Strategy.Scala (
   ScalaProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
   errCtx,
@@ -40,7 +40,6 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.Exec (
-  AllowErr (Never),
   Command (..),
   Exec,
   Has,
@@ -64,6 +63,7 @@ import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures, closurePath)
 import Strategy.Maven.Pom.PomFile (RawPom (rawPomArtifact, rawPomGroup, rawPomVersion))
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
+import Strategy.Scala.Common (mkSbtCommand)
 import Strategy.Scala.Errors (FailedToListProjects (FailedToListProjects), MaybeWithoutDependencyTreeTask (MaybeWithoutDependencyTreeTask), MissingFullDependencyPlugin (MissingFullDependencyPlugin))
 import Strategy.Scala.Plugin (genTreeJson, hasDependencyPlugins)
 import Strategy.Scala.SbtDependencyTree (SbtArtifact (SbtArtifact), analyze, sbtDepTreeCmd)
@@ -123,7 +123,7 @@ instance ToJSON ScalaProject where
 
 instance AnalyzeProject ScalaProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = const $ fatalText "Cannot analyze scala project statically"
+  analyzeProjectStaticOnly _ = const $ fatalText "Cannot analyze scala project statically"
 
 mkProject :: ScalaProject -> DiscoveredProject ScalaProject
 mkProject (ScalaProject sbtBuildDir sbtTreeJson closure) =
@@ -230,14 +230,7 @@ analyzeWithSbtDepTree (ScalaProject maybeDepTree _ closure) = context "Analyzing
       pure $ SbtArtifact groupId artifactId version
 
 makePomCmd :: Command
-makePomCmd =
-  Command
-    { cmdName = "sbt"
-    , -- --no-colors to disable ANSI escape codes
-      -- --batch to disable interactivity. normally, if an `sbt` command fails, it'll drop into repl mode: --batch will disable the repl.
-      cmdArgs = ["--no-colors", "--batch", "makePom"]
-    , cmdAllowErr = Never
-    }
+makePomCmd = mkSbtCommand "makePom"
 
 genPoms :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
 genPoms projectDir = do

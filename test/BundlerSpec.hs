@@ -2,7 +2,7 @@
 
 module BundlerSpec (spec) where
 
-import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
+import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Path (Abs, Dir, File, Path, Rel, mkRelDir, mkRelFile, toFilePath, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Bundler (BundlerProject (..), discover, findLicenses)

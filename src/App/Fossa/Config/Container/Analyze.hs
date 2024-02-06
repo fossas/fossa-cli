@@ -10,6 +10,7 @@ module App.Fossa.Config.Container.Analyze (
   subcommand,
 ) where
 
+import App.Fossa.Config.Analyze (branchHelp)
 import App.Fossa.Config.Common (
   CommonOpts (CommonOpts, optDebug, optProjectName, optProjectRevision),
   ScanDestination (..),
@@ -47,16 +48,16 @@ import Options.Applicative (
   Mod,
   Parser,
   command,
-  help,
   hidden,
   info,
   long,
   optional,
-  progDesc,
   short,
   strOption,
   switch,
  )
+import Options.Applicative.Builder (helpDoc, progDescDoc)
+import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
 
 data NoUpload = NoUpload
 data JsonOutput = JsonOutput deriving (Generic)
@@ -98,7 +99,7 @@ subcommand f =
   command
     "analyze"
     ( info (f <$> cliParser) $
-        progDesc "Scan an image for vulnerabilities"
+        progDescDoc (formatStringToDoc "Scan an image for vulnerabilities")
     )
 
 cliParser :: Parser ContainerAnalyzeOptions
@@ -107,22 +108,24 @@ cliParser =
     <$> commonOpts
     <*> flagOpt
       NoUpload
-      ( long "output"
+      ( applyFossaStyle
+          <> long "output"
           <> short 'o'
-          <> help "Output results to stdout instead of uploading to fossa"
+          <> stringToHelpDoc "Output results to stdout instead of uploading to FOSSA"
       )
-    <*> flagOpt JsonOutput (long "json" <> help "Output project metadata as json to the console. Useful for communicating with the FOSSA API")
+    <*> flagOpt JsonOutput (applyFossaStyle <> long "json" <> stringToHelpDoc "Output project metadata as JSON to the console. This is useful for communicating with the FOSSA API.")
     <*> optional
       ( strOption
-          ( long "branch"
+          ( applyFossaStyle
+              <> long "branch"
               <> short 'b'
-              <> help "this repository's current branch (default: current VCS branch)"
+              <> helpDoc branchHelp
           )
       )
     <*> metadataOpts
     <*> imageTextArg
-    <*> switch (long "experimental-scanner" <> help "Uses experimental fossa native container scanner." <> hidden)
-    <*> switch (long "only-system-deps" <> help "Only analyzes system dependencies (e.g. apk, dep, rpm).")
+    <*> switch (applyFossaStyle <> long "experimental-scanner" <> stringToHelpDoc "Uses experimental fossa native container scanner" <> hidden)
+    <*> switch (applyFossaStyle <> long "only-system-deps" <> stringToHelpDoc "Only analyzes system dependencies (e.g. apk, dep, rpm)")
 
 mergeOpts ::
   (Has Diagnostics sig m) =>

@@ -5,7 +5,7 @@ module Node.PackageJsonSpec (
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
-import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
+import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Data.Aeson (decode, encode)
 import Data.Foldable (for_)
 import Data.Glob (toGlob)

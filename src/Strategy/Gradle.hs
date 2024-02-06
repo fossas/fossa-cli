@@ -18,7 +18,7 @@ module Strategy.Gradle (
   GradleProject,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (allowedGradleConfigs))
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (
@@ -169,7 +169,7 @@ instance ToJSON GradleProject
 
 instance AnalyzeProject GradleProject where
   analyzeProject = getDeps
-  analyzeProject' _ = const $ fatalText "Cannot analyze Gradle target statically"
+  analyzeProjectStaticOnly _ = const $ fatalText "Cannot analyze Gradle target statically"
 
 gradleProjectsCmd :: Text -> Command
 gradleProjectsCmd baseCmd =
@@ -278,7 +278,9 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
 
   let text = decodeUtf8 $ BL.toStrict stdout
   let resolvedProjects = ResolutionApi.parseResolutionApiJsonDeps text
+  logDebug $ "Resolved projects: " <> pretty (show resolvedProjects)
   let graphFromResolutionApi = ResolutionApi.buildGraph resolvedProjects (onlyConfigurations)
+  logDebug $ "Graph: " <> pretty (show graphFromResolutionApi)
 
   -- Log debug messages as seen in gradle script
   traverse_ (logDebug . pretty) (getDebugMessages text)

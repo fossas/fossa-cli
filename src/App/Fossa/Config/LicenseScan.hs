@@ -10,6 +10,7 @@ import App.Types (BaseDir)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
+import Effect.Logger (vsep)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Options.Applicative (
@@ -17,15 +18,17 @@ import Options.Applicative (
   InfoMod,
   Parser,
   command,
-  hsubparser,
   info,
   internal,
-  progDesc,
+  progDescDoc,
   subparser,
  )
+import Prettyprinter (Doc)
+import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green))
+import Style (coloredBoldItalicized, formatDoc, formatStringToDoc)
 
 licenseScanInfo :: InfoMod a
-licenseScanInfo = progDesc "Utilities for native license-scanning"
+licenseScanInfo = progDescDoc $ formatStringToDoc "Utilities for native license-scanning"
 
 mkSubCommand :: (LicenseScanConfig -> EffStack ()) -> SubCommand LicenseScanCommand LicenseScanConfig
 mkSubCommand = SubCommand "license-scan" licenseScanInfo cliParser noLoadConfig mergeOpts
@@ -62,17 +65,24 @@ mergeOpts _ _ (FossaDeps path) = VendoredDepsOutput <$> collectBaseDir path
 cliParser :: Parser LicenseScanCommand
 cliParser = public <|> private
   where
-    public = hsubparser fossaDepsCommand
+    public = subparser fossaDepsCommand
     private = subparser $ internal <> directScanCommand
     fossaDepsCommand =
       command
         "fossa-deps"
         ( info (FossaDeps <$> baseDirArg) $
-            progDesc "Like `fossa analyze --output`, but only for native scanning of vendored-dependencies."
+            progDescDoc fossaDepsDesc
         )
     directScanCommand =
       command
         "direct"
         ( info (DirectScan <$> baseDirArg) $
-            progDesc "Run a license scan directly on the provided path."
+            progDescDoc $
+              formatStringToDoc "Run a license scan directly on the provided path"
         )
+    fossaDepsDesc :: Maybe (Doc AnsiStyle)
+    fossaDepsDesc =
+      Just . formatDoc $
+        vsep
+          [ "Like " <> coloredBoldItalicized Green "fossa analyze --output" <> " but only for native scanning of vendored-dependencies"
+          ]
