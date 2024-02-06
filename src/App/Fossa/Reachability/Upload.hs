@@ -145,7 +145,7 @@ allLocators :: SourceUnitBuild -> [Locator]
 allLocators unit =
   nub $
     buildImports unit
-      ++ concatMap (\ud -> sourceDepLocator ud : sourceDepImports ud) $ buildDependencies unit
+      ++ concatMap (\ud -> sourceDepLocator ud : sourceDepImports ud) (buildDependencies unit)
 
 reachabilityRawJson :: Text
 reachabilityRawJson = "reachability.raw.json"
