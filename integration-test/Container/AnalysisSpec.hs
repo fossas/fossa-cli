@@ -25,7 +25,7 @@ registrySourceCfg =
   ContainerAnalyzeConfig
     { scanDestination = OutputStdout
     , revisionOverride = OverrideProject Nothing Nothing Nothing
-    , imageLocator = ImageText "public.ecr.aws/docker/library/alpine:3.19"
+    , imageLocator = ImageText "public.ecr.aws/docker/library/alpine:3.19.1"
     , jsonOutput = toFlag' False
     , usesExperimentalScanner = True
     , dockerHost = ""
@@ -49,7 +49,7 @@ registrySourceAnalysis = do
       it "Has the correct OS" $
         \res -> res.imageData.imageOs `shouldBe` "alpine"
       it "Has the correct OS release version" $
-        \res -> res.imageData.imageOsRelease `shouldBe` "3.19.0"
+        \res -> res.imageData.imageOsRelease `shouldBe` "3.19.1"
       it "Has the expected image tag" $
         \res -> res.imageTag `shouldBe` "public.ecr.aws/docker/library/alpine"
       it "Has at least one layer" $
