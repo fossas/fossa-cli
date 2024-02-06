@@ -76,7 +76,7 @@ helperOpt =
 progData :: InfoMod (IO ())
 progData =
   fullDesc
-    <> header "fossa-cli - Flexible, performant dependency analysis"
+    <> header "FOSSA CLI - Flexible, performant dependency analysis"
     <> footer "Subcommands have additional options, run 'fossa COMMAND -h' for more details"
 
 subcommands :: Parser (IO ())
@@ -123,8 +123,9 @@ feedbackCommand = command "experimental-feedback" (info feedbackPrompt $ progDes
             , ""
             , "* Report bugs and issues at:"
             , newlineTrailing . newlinePreceding $ indent 4 $ pretty supportUrl
-            , "* Submit feature requests to:"
-            , newlineTrailing . newlinePreceding $ indent 4 "support@fossa.com"
+            , "* Submit feature requests:"
+            , newlineTrailing . newlinePreceding $ indent 4 "Business / Enterprise customers: Contact your CSM / CSE representative"
+            , newlineTrailing $ indent 4 "General: support@fossa.com"
             , "* Provide feedback on overall cli experience at:"
             , newlineTrailing . newlineTrailing . newlinePreceding $ indent 4 "https://go.fossa.com/cli-feedback"
             ]
