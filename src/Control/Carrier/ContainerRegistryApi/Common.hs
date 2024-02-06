@@ -17,11 +17,13 @@ import Control.Carrier.ContainerRegistryApi.Errors (
   ContainerRegistryApiErrorBody,
   UnknownApiError (UnknownApiError),
  )
-import Control.Concurrent.STM (STM, TMVar, atomically, retry, tryReadTMVar, writeTMVar)
+import Control.Concurrent.STM (STM, TMVar, atomically, retry, tryReadTMVar, tryTakeTMVar, writeTMVar)
 import Control.Effect.Diagnostics (Diagnostics, fatal)
+import Control.Effect.Exception (onException)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Aeson (decode')
 import Data.ByteString.Lazy qualified as ByteStringLazy
+import Data.Functor (void)
 import Data.List (find)
 import Data.String.Conversion (ConvertUtf8 (encodeUtf8), decodeUtf8)
 import Data.Text (Text)
@@ -130,23 +132,22 @@ updateToken token newVal = do
 safeReplaceToken :: Has (Lift IO) sig m => RegistryCtx -> m AuthToken -> m Bool
 safeReplaceToken ctx getNewToken = do
   let tokVar = registryAccessToken ctx
-  shouldUpdate <- sendSTM $ do
+  (shouldUpdate, exceptionCleanupAction) <- sendSTM $ do
     m <- tryReadTMVar (registryAccessToken ctx)
     case m of
-      Just Updating -> pure False
+      Just Updating -> pure (False, pure ())
       -- Existing or new token, should replace.
       -- Change the value to `Updating` to indicate what we're doing.
-      _ -> writeTMVar tokVar Updating >> pure True
+      Just tok -> pure (True, writeTMVar tokVar tok)
+      Nothing -> writeTMVar tokVar Updating >> pure (True, void $ tryTakeTMVar tokVar)
 
   if shouldUpdate
     then do
       newToken <- getNewToken
-            -- Get a new token.
+      -- Get a new token.
       -- If there's some new exception, clean up by putting the old token back.
       -- This gives other threads the opportunity to try to fetch a new token and exit gracefully.
-      let cleanup :: (Has (Lift IO) sig m) => m ()
-          cleanup = traverse_ (updateToken ctx) originalToken
-      updateToken ctx newToken `onError` cleanup
+      updateToken ctx newToken `onException` (sendSTM exceptionCleanupAction)
       pure True
     else pure False
 
