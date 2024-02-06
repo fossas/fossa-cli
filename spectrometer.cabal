@@ -227,6 +227,7 @@ library
     App.Fossa.Main
     App.Fossa.ManualDeps
     App.Fossa.PathDependency
+    App.Fossa.PreflightChecks
     App.Fossa.ProjectInference
     App.Fossa.Report
     App.Fossa.Report.Attribution
@@ -532,6 +533,7 @@ test-suite unit-tests
     App.Fossa.LicenseScannerSpec
     App.Fossa.ManualDepsSpec
     App.Fossa.PathDependencySpec
+    App.Fossa.PreflightChecksSpec
     App.Fossa.ProjectInferenceSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.ReportSpec

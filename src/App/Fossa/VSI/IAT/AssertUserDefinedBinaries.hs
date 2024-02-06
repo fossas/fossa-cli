@@ -9,6 +9,7 @@ import App.Fossa.Config.LinkUserBinaries (
   LinkUserBinsOpts,
   mkSubCommand,
  )
+import App.Fossa.PreflightChecks (guardWithPreflightChecks)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.Fingerprint (fingerprintContentsRaw)
 import App.Types (BaseDir (..))
@@ -18,6 +19,7 @@ import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient qualified as API
 import Control.Effect.Lift (Lift)
+import Control.Monad (void)
 import Effect.Logger (Logger, logInfo)
 import Effect.ReadFS (ReadFS)
 
@@ -33,6 +35,8 @@ assertUserDefinedBinaries ::
   LinkUserBinsConfig ->
   m ()
 assertUserDefinedBinaries LinkUserBinsConfig{..} = do
+  void $ guardWithPreflightChecks apiOpts
+
   logInfo "Fingerprinting directory contents"
   fingerprints <- fingerprintContentsRaw $ unBaseDir baseDir
 
