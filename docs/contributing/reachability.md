@@ -8,7 +8,7 @@ Reachability currently supports all Maven projects dynamically analyzed by fossa
 
 ### Maven Analysis
 
-For Maven projects, FOSSA CLI performs an analysis to infer dependencies. If FOSSA CLI identifies a complete dependency graph, which must include both direct and transitive dependencies, it attempts to infer the built JAR file for reachability analysis. It looks for `./target/{artifact}-{version}.jar` from the POM directory. If the POM file provides `build.directory` or `build.finalName` attributes, they are used instead of the default target jar path. For this reason, perform `fossa analyze` after the project of interest is built (g.g. `mvn package`), and target artifact exists in the directory.
+For Maven projects, FOSSA CLI performs an analysis to infer dependencies. If FOSSA CLI identifies a complete dependency graph, which may include both direct and transitive dependencies, it attempts to infer the built JAR file for reachability analysis. It looks for `./target/{artifact}-{version}.jar` from the POM directory. If the POM file provides `build.directory` or `build.finalName` attributes, they are used instead of the default target jar path. For this reason, perform `fossa analyze` after the project of interest is built (g.g. `mvn package`), and target artifact exists in the directory.
 
 ### How do I debug reachability from `fossa-cli`?
 
