@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.8.36
+- `fossa feedback`: Allow users to provide feedback on their cli experience ([#1368](https://github.com/fossas/fossa-cli/pull/1368))
+- Add preflight checks to validate API key, connection to FOSSA app, and ability to write to temp directory in relevant commands
+
 ## v3.8.35
 - Running `fossa analyze --detect-vendored` no longer fails if there are no detected vendored dependencies ([#1373](https://github.com/fossas/fossa-cli/pull/1373)).
 
@@ -20,6 +24,7 @@
   This update addresses several issues with the license scanner, primarily related to incorrect classification of GPL and AGPL licenses.
 
 ## v3.8.30
+
 - Fix an issue with long-option syntax for older versions of `sbt` ([#1356](https://github.com/fossas/fossa-cli/pull/1356))
 - Debug: add more logging for debugging missing dependencies. ([#1360](https://github.com/fossas/fossa-cli/pull/1360))
 
