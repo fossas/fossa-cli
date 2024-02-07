@@ -32,7 +32,7 @@ data CallGraphAnalysis
 
 instance ToJSON CallGraphAnalysis where
   toJSON :: CallGraphAnalysis -> Value
-  toJSON (NoCallGraphAnalysis ) =
+  toJSON (NoCallGraphAnalysis) =
     object
       [ "kind" .= ("NoCallGraphAnalysis" :: String)
       ]
