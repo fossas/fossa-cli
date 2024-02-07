@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## 3.8.36
+## 3.8.37
 
 - Container Scans: Bugfix for some registry scans that fail with an STM error. ([#1370](https://github.com/fossas/fossa-cli/pull/1370))
 
