@@ -19,7 +19,7 @@ cat fossa.debug.json | jq '.bundleReachabilityRaw'
 [
   {
     "callGraphAnalysis": {
-      "contents": [
+      "value": [
         {
           "parsedJarContent": {
             "kind": "ContentRaw",
@@ -28,7 +28,7 @@ cat fossa.debug.json | jq '.bundleReachabilityRaw'
           "parsedJarPath": "/Users/dev/example/example-projects/maven/example-maven-project/target/example-artifact-1.1.jar"
         }
       ],
-      "tag": "JarAnalysis"
+      "kind": "JarAnalysis"
     },
     "srcUnitDependencies": [
       "mvn+com.fasterxml.jackson.core:jackson-databind$2.13.0",

@@ -30,7 +30,17 @@ data CallGraphAnalysis
   | JarAnalysis [ParsedJar]
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON CallGraphAnalysis
+instance ToJSON CallGraphAnalysis where
+  toJSON :: CallGraphAnalysis -> Value
+  toJSON (NoCallGraphAnalysis ) =
+    object
+      [ "kind" .= ("NoCallGraphAnalysis" :: String)
+      ]
+  toJSON (JarAnalysis entries) =
+    object
+      [ "kind" .= ("JarAnalysis" :: String)
+      , "value" .= entries
+      ]
 
 data ContentRef
   = ContentRaw ByteString
