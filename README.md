@@ -47,7 +47,7 @@ brew update # Fetch the newest version of Homebrew and all formulae
 brew install --cask fossa
 ```
 <!-- https://github.com/Homebrew/homebrew-cask/blob/master/.github/workflows/autobump.yml#L11 -->
-> The `fossa-cli` version in the brew cask is updated to the latest version every 3 hours.
+> The `FOSSA CLI` version in the brew cask is updated to the latest version every 3 hours.
 
 #### Windows with Powershell
 
