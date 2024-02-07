@@ -92,7 +92,9 @@ collectBinaryInfo = do
     toCmdText (BinInfoCommand (cmd, arg)) = cmd <> " " <> arg
 
     toWhichCmd :: BinInfoCommand -> BinInfoCommand
-    toWhichCmd (BinInfoCommand (cmd, _)) = BinInfoCommand ("which", cmd)
+    toWhichCmd (BinInfoCommand (cmd, _)) = if Info.os == "mingw32" 
+      then BinInfoCommand ("where", cmd) -- windows uses where command
+      else BinInfoCommand ("which", cmd)
 
     whichBinaryCommands :: [BinInfoCommand]
     whichBinaryCommands = map toWhichCmd binaryVersionCommands
