@@ -32,7 +32,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Analyze.Upload (mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
+import App.Fossa.Analyze.Upload (ScanUnits (SourceUnitOnly), mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.Config.Analyze (
   AnalysisTacticTypes (..),
@@ -411,15 +411,15 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   -- If we find nothing but keyword search, we exit with an error, but explain that the error may be ignorable.
   -- We do not want to succeed, because nothing gets uploaded to the API for keyword searches, so `fossa test` will fail.
   -- So the solution is to still fail, but give a hopefully useful explanation that the error can be ignored if all you were expecting is keyword search results.
-
-  -- In the case that we don't find any analysis targets, we only want to emit a warning.
-  void . recover . Diag.warnOnErr ErrNoProjectsDiscovered $
-    case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
-      (False, NoneDiscovered) -> Diag.fatal ErrNoProjectsDiscovered
-      (True, NoneDiscovered) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
-      (False, FilteredAll) -> Diag.fatal ErrFilteredAllProjects
-      (True, FilteredAll) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
-      (_, CountedScanUnits scanUnits) -> doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits
+  -- In the case that we don't find any analysis targets, we want to emit a warning and upload empty source units.
+  case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
+    (False, NoneDiscovered) -> do
+      Diag.warn ErrNoProjectsDiscovered
+      doUpload outputResult iatAssertion destination basedir jsonOutput revision $ SourceUnitOnly []
+    (True, NoneDiscovered) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
+    (False, FilteredAll) -> Diag.fatal ErrFilteredAllProjects
+    (True, FilteredAll) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
+    (_, CountedScanUnits scanUnits) -> doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits
   pure outputResult
   where
     doUpload result iatAssertion destination basedir jsonOutput revision scanUnits =

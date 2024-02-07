@@ -68,9 +68,9 @@ import Srclib.Types (
  )
 
 data ScanUnits
-  = SourceUnitOnly (NE.NonEmpty SourceUnit)
+  = SourceUnitOnly [SourceUnit]
   | LicenseSourceUnitOnly LicenseSourceUnit
-  | SourceAndLicenseUnits (NE.NonEmpty SourceUnit) LicenseSourceUnit
+  | SourceAndLicenseUnits [SourceUnit] LicenseSourceUnit
   deriving (Show)
 
 -- units come from standard `fossa analyze`.
@@ -118,7 +118,7 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
       SourceAndLicenseUnits sourceUnits licenseSourceUnit -> do
         org <- getOrganization
         let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
-        let mergedUnits = mergeSourceAndLicenseUnits (NE.toList sourceUnits) licenseSourceUnit
+        let mergedUnits = mergeSourceAndLicenseUnits sourceUnits licenseSourceUnit
         runStickyLogger SevInfo $ uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads
     let locator = uploadLocator uploadResult
     buildUrl <- getFossaBuildUrl revision locator
