@@ -33,7 +33,7 @@ checkForEmptyUpload includeAll discovered filtered additionalUnits firstPartySca
       (_, _, Nothing) -> CountedScanUnits . SourceUnitOnly $ discoveredUnits
     else -- If we have a additional source units, then there's always something to upload.
     case licensesMaybeFound of
-      Nothing -> CountedScanUnits . SourceUnitOnly $ (additionalUnits ++ discoveredUnits)
+      Nothing -> CountedScanUnits . SourceUnitOnly $ additionalUnits ++ discoveredUnits
       Just licenseSourceUnit -> CountedScanUnits $ SourceAndLicenseUnits (additionalUnits ++ discoveredUnits) licenseSourceUnit
   where
     discoveredLen = length discovered
