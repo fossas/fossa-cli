@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.8.37
+- Emits a warning instead of error when no analysis targets are found ([#1375](https://github.com/fossas/fossa-cli/pull/1375))
+
 ## v3.8.36
 - `fossa feedback`: Allow users to provide feedback on their cli experience ([#1368](https://github.com/fossas/fossa-cli/pull/1368))
 - Add preflight checks to validate API key, connection to FOSSA app, and ability to write to temp directory in relevant commands
