@@ -411,12 +411,15 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   -- If we find nothing but keyword search, we exit with an error, but explain that the error may be ignorable.
   -- We do not want to succeed, because nothing gets uploaded to the API for keyword searches, so `fossa test` will fail.
   -- So the solution is to still fail, but give a hopefully useful explanation that the error can be ignored if all you were expecting is keyword search results.
-  case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
-    (False, NoneDiscovered) -> Diag.fatal ErrNoProjectsDiscovered
-    (True, NoneDiscovered) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
-    (False, FilteredAll) -> Diag.fatal ErrFilteredAllProjects
-    (True, FilteredAll) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
-    (_, CountedScanUnits scanUnits) -> doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits
+
+  -- In the case that we don't find any analysis targets, we only want to emit a warning.
+  void . recover . Diag.warnOnErr ErrNoProjectsDiscovered $
+    case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
+      (False, NoneDiscovered) -> Diag.fatal ErrNoProjectsDiscovered
+      (True, NoneDiscovered) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
+      (False, FilteredAll) -> Diag.fatal ErrFilteredAllProjects
+      (True, FilteredAll) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
+      (_, CountedScanUnits scanUnits) -> doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits
   pure outputResult
   where
     doUpload result iatAssertion destination basedir jsonOutput revision scanUnits =
