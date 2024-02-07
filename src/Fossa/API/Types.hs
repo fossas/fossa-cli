@@ -556,7 +556,7 @@ instance FromJSON Organization where
         .:? "customLicenseScanConfigs"
         .!= []
       <*> obj
-        .:? "orgSupportsReachability"
+        .:? "supportsReachability"
         .!= False
 
 data Project = Project

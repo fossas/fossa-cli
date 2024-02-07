@@ -1534,11 +1534,11 @@ uploadReachabilityBuild signedUrl content = fossaReq $ do
     Left (httpUrl, httpOptions) -> uploadReq httpUrl httpOptions
     Right (httpsUrl, httpsOptions) -> uploadReq httpsUrl httpsOptions
   where
-    gZipped :: BS.ByteString
-    gZipped = toStrict $ GZIP.compress $ encode content
+    encoded :: BS.ByteString
+    encoded = toStrict $ encode content
 
     uploadReq :: (MonadHttp m) => Url scheme -> Option scheme -> m LbsResponse
-    uploadReq url options = reqCb PUT url (ReqBodyBs gZipped) lbsResponse options (pure . requestEncoder)
+    uploadReq url options = reqCb PUT url (ReqBodyBs encoded) lbsResponse options (pure . requestEncoder)
 
 uploadReachabilityContent ::
   ( Has (Lift IO) sig m
