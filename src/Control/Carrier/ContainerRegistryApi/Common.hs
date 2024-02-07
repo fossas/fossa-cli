@@ -145,11 +145,10 @@ safeReplaceToken ctx getNewToken = do
 
   if shouldUpdate
     then do
-      newToken <- getNewToken
-      -- Get a new token.
       -- If there's some new exception, clean up by putting the old token back.
       -- This gives other threads the opportunity to try to fetch a new token and exit gracefully.
-      updateToken ctx newToken `onException` (sendSTM exceptionCleanupAction)
+      newToken <- getNewToken `onException` (sendSTM exceptionCleanupAction)
+      updateToken ctx newToken
       pure True
     else pure False
 
