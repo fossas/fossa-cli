@@ -8,7 +8,7 @@ Reachability currently supports all Maven projects dynamically analyzed by fossa
 
 ### Maven Analysis
 
-For Maven projects, `fossa-cli` performs an analysis to infer dependencies. If `fossa-cli` identifies a complete dependency graph, which must include both direct and transitive dependencies, it attempts to infer the built JAR file for reachability analysis. It looks for `./target/{artifact}-{version}.jar` from the POM directory. If the POM file provides `build.directory` or `build.finalName` attributes, they are used instead of the default target jar path. For this reason, perform `fossa analyze` after the project of interest is built (g.g. `mvn package`), and target artifact exists in the directory.
+For Maven projects, FOSSA CLI performs an analysis to infer dependencies. If FOSSA CLI identifies a complete dependency graph, which must include both direct and transitive dependencies, it attempts to infer the built JAR file for reachability analysis. It looks for `./target/{artifact}-{version}.jar` from the POM directory. If the POM file provides `build.directory` or `build.finalName` attributes, they are used instead of the default target jar path. For this reason, perform `fossa analyze` after the project of interest is built (g.g. `mvn package`), and target artifact exists in the directory.
 
 ### How do I debug reachability from `fossa-cli`?
 
@@ -90,7 +90,26 @@ explainReachability('rawReachabilityJob.json')
 1. What data from my codebase is uploaded to endpoint?
 
 We upload call graph of (caller, and callee) relationships, in which
-caller and callee are fully qualified symbol name. 
+caller and callee are fully qualified symbol name. We do not upload source code.
+
+Here is example of caller, callee relationship that is uploaded to endpoint.
+
+```txt
+M:com.example.app.utils.ContextReader:<init>() (O)java.lang.Object:<init>()
+M:com.example.app.utils.ContextReader:parseWithCtx(java.net.URL) (O)java.io.File:<init>(java.lang.String)
+M:com.example.app.utils.ContextReader:parseWithCtx(java.net.URL) (S)com.google.common.io.Files:toString(java.io.File,java.nio.charset.Charset)
+M:com.example.app.utils.ContextReader:parseWithCtx(java.net.URL) (O)org.dom4j.jaxb.JAXBReader:<init>(java.lang.String)
+M:com.example.app.utils.ContextReader:parseWithCtx(java.net.URL) (M)org.dom4j.jaxb.JAXBReader:read(java.net.URL)
+M:com.example.app.App:<init>() (O)java.lang.Object:<init>()
+M:com.example.app.App:main(java.lang.String[]) (O)java.net.URI:<init>(java.lang.String)
+M:com.example.app.App:main(java.lang.String[]) (M)java.net.URI:toURL()
+M:com.example.app.App:main(java.lang.String[]) (S)com.example.app.App:parse(java.net.URL)
+M:com.example.app.App:main(java.lang.String[]) (M)java.io.PrintStream:println(java.lang.Object)
+M:com.example.app.App:main(java.lang.String[]) (S)com.example.app.utils.ContextReader:parseWithCtx(java.net.URL)
+M:com.example.app.App:main(java.lang.String[]) (M)java.io.PrintStream:println(java.lang.Object)
+M:com.example.app.App:parse(java.net.URL) (O)org.dom4j.io.SAXReader:<init>()
+M:com.example.app.App:parse(java.net.URL) (M)org.dom4j.io.SAXReader:read(java.net.URL)
+```
 
 You can inspect the data by running:
 

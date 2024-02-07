@@ -121,7 +121,7 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
     -- it is impossible to perform reachability, as we may not have all symbols
     -- used in the application to perform accurate analysis
     (Partial, _) -> do
-      logInfo . pretty $ "We do not support reachability analysis, with partial dependencies graph (skipping: " <> displayId <> ")"
+      logInfo . pretty $ "FOSSA CLI does not support reachability analysis, with partial dependencies graph (skipping: " <> displayId <> ")"
       pure Nothing
     (Complete, MavenProjectType) -> context "maven" $ do
       logDebug . pretty $ "Trying to infer build jars from maven project: " <> show (projectResultPath projectResult)
@@ -129,7 +129,7 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
       pure . Just $ unit{callGraphAnalysis = analysis}
     -- Exclude units for package manager/language we cannot support yet!
     _ -> do
-      logInfo . pretty $ "We do not support reachability analysis for: " <> displayId <> " yet. (skipping)"
+      logInfo . pretty $ "FOSSA CLI does not support reachability analysis for: " <> displayId <> " yet. (skipping)"
       pure Nothing
 -- Not possible to perform reachability analysis for projects
 -- which were not scanned (skipped due to filter), as we do not
