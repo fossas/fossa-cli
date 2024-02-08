@@ -96,6 +96,7 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
+import Data.Functor (($>))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
@@ -410,18 +411,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   scanUnits <-
     case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
-      (False, NoneDiscovered) -> do
-        Diag.warn ErrNoProjectsDiscovered
-        pure emptyScanUnits
-      (True, NoneDiscovered) -> do
-        Diag.warn ErrOnlyKeywordSearchResultsFound
-        pure emptyScanUnits
-      (False, FilteredAll) -> do
-        Diag.warn ErrFilteredAllProjects
-        pure emptyScanUnits
-      (True, FilteredAll) -> do
-        Diag.warn ErrOnlyKeywordSearchResultsFound
-        pure emptyScanUnits
+      (False, NoneDiscovered) -> Diag.warn ErrNoProjectsDiscovered $> emptyScanUnits
+      (True, NoneDiscovered) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
+      (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
+      (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
       (_, CountedScanUnits scanUnits) -> pure scanUnits
   doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits
   pure outputResult
