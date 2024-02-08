@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## v3.8.37
+## v3.9.0
 - Emits a warning instead of an error when no analysis targets are found ([#1375](https://github.com/fossas/fossa-cli/pull/1375))
 
 ## v3.8.36
