@@ -41,6 +41,22 @@
 - suggest: {lhs: "(Data.Set.size x) == 0" , rhs: "Data.Set.null x"}
 - suggest: {lhs: "(Data.Set.size x) /= 0" , rhs: "not $ Data.Set.null x"}
 
+- group:
+    name: stm
+    enabled: true
+    rules:
+    - hint: {lhs: Control.Concurrent.STM.takeTMVar, rhs: Control.Concurrent.STM.tryTakeTMVar, note: "Blocks if the TMVar is empty. Be sure this is correct behavior."}
+    - hint: {lhs: Control.Concurrent.STM.putTMVar, rhs: Control.Concurrent.STM.writeTMVar, note: "Blocks if the TMVar is empty. Be sure this is correct behavior."}
+    - hint: {lhs: Control.Concurrent.STM.readTMVar, rhs: Control.Concurrent.STM.tryReadTMVar, note: "Blocks if the TMVar is empty. Be sure this is correct behavior."}
+    - hint: {lhs: Control.Concurrent.STM.TQueue.readTQueue, rhs: Control.Concurrent.STM.TQueue.tryReadTQueue, note: "Retries and blocks if the TBQueue is empty. Be sure this is correct behavior."}
+    - hint: {lhs: Control.Concurrent.STM.TQueue.peekTQueue, rhs: Control.Concurrent.STM.TQueue.tryPeekTQueue, note: "Retries and blocks if the TBQueue is empty. Be sure this is correct behavior."}
+    - hint: {lhs: Control.Concurrent.STM.TBQueue.readTBQueue, rhs: Control.Concurrent.STM.TBQueue.tryReadTBQueue, note: "Retries and blocks if the TBQueue is empty. Be sure this is correct behavior."}
+    - hint: {lhs: Control.Concurrent.STM.TBQueue.peekTBQueue, rhs: Control.Concurrent.STM.TBQueue.tryPeekTBQueue, note: "Retries and blocks if the TBQueue is empty. Be sure this is correct behavior."}
+    - hint: {lhs: Control.Concurrent.STM.TBQueue.unGetTBQueue, rhs: Control.Concurrent.STM.TBQueue.unGetTBQueue, note: "Retries and blocks if the TBQueue is full. Be sure this is correct behavior."}
+    - hint: {lhs: Control.Concurrent.STM.TBMQueue.readTBMQueue, rhs: Control.Concurrent.STM.TBMQueue.tryReadTBMQueue, note: "Retries and blocks if the TBMQueue is empty and open. Be sure this is correct behavior."}
+    - hint: {lhs: Control.Concurrent.STM.TBMQueue.peekTBMQueue, rhs: Control.Concurrent.STM.TBMQueue.tryPeekTBMQueue, note: "Retries and blocks if the TBMQueue is empty. Be sure this is correct behavior."}
+    - hint: {lhs: Control.Concurrent.STM.TBMQueue.writeTBMQueue, rhs: Control.Concurrent.STM.TBMQueue.tryWriteTBMQueue, note: "Retries and blocks if the TBMQueue is full. Be sure this is correct behavior."}
+
 # Forbidden items, only allowed in compile-time code, or test code (however, it should be avoided in tests as much as possible).
 - functions:
   - {name: error, within: [Data.String.Conversion, Control.Effect.Replay]}

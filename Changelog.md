@@ -1,8 +1,13 @@
 # FOSSA CLI Changelog
 
+## 3.8.37
+
+- Container Scans: Bugfix for some registry scans that fail with an STM error. ([#1370](https://github.com/fossas/fossa-cli/pull/1370))
+
 ## v3.8.36
 - `fossa feedback`: Allow users to provide feedback on their cli experience ([#1368](https://github.com/fossas/fossa-cli/pull/1368))
 - Add preflight checks to validate API key, connection to FOSSA app, and ability to write to temp directory in relevant commands
+
 
 ## v3.8.35
 - Running `fossa analyze --detect-vendored` no longer fails if there are no detected vendored dependencies ([#1373](https://github.com/fossas/fossa-cli/pull/1373)).
