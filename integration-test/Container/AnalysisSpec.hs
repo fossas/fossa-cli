@@ -1,0 +1,56 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+
+module Container.AnalysisSpec (spec) where
+
+import App.Fossa.Config.Common (ScanDestination (OutputStdout))
+import App.Fossa.Config.Container.Analyze (ContainerAnalyzeConfig (..))
+import App.Fossa.Config.Container.Common (ImageText (ImageText))
+import App.Fossa.Container.AnalyzeNative (analyzeExperimental)
+import App.Types (OverrideProject (OverrideProject))
+import Container.FixtureUtils (runContainerEffs)
+import Container.Types (
+  ContainerScan (imageData, imageTag),
+  ContainerScanImage (imageLayers, imageOs, imageOsRelease),
+ )
+import Data.Flag (toFlag')
+import Diag.Result (Result (..))
+import Effect.Logger (Severity (SevInfo))
+import Test.Hspec (Spec, aroundAll, describe, it, shouldBe, shouldSatisfy)
+
+spec :: Spec
+spec = describe "Container Scanning" registrySourceAnalysis
+
+registrySourceCfg :: ContainerAnalyzeConfig
+registrySourceCfg =
+  ContainerAnalyzeConfig
+    { scanDestination = OutputStdout
+    , revisionOverride = OverrideProject Nothing Nothing Nothing
+    , imageLocator = ImageText "public.ecr.aws/docker/library/alpine:3.19.1"
+    , jsonOutput = toFlag' False
+    , usesExperimentalScanner = True
+    , dockerHost = ""
+    , arch = "amd64"
+    , severity = SevInfo
+    , onlySystemDeps = False
+    , filterSet = mempty
+    }
+
+runAnalyze :: ContainerAnalyzeConfig -> (ContainerScan -> IO ()) -> IO ()
+runAnalyze analyzeCfg action = do
+  res <- runContainerEffs (analyzeExperimental analyzeCfg)
+  case res of
+    Failure _ errGroup -> fail . show $ errGroup
+    Success _ a -> action a
+
+registrySourceAnalysis :: Spec
+registrySourceAnalysis = do
+  aroundAll (runAnalyze registrySourceCfg) $ do
+    describe "Container analysis from registry source" $ do
+      it "Has the correct OS" $
+        \res -> res.imageData.imageOs `shouldBe` "alpine"
+      it "Has the correct OS release version" $
+        \res -> res.imageData.imageOsRelease `shouldBe` "3.19.1"
+      it "Has the expected image tag" $
+        \res -> res.imageTag `shouldBe` "public.ecr.aws/docker/library/alpine"
+      it "Has at least one layer" $
+        \res -> res.imageData.imageLayers `shouldSatisfy` (not . null)
