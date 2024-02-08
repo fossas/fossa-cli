@@ -130,7 +130,7 @@ lddParseDependency = Just <$> (LocalDependency <$> (linePrefix *> ident) <* symb
 -- | Parses "not found" case for dependency
 --
 -- > libprotobuf.so.22 => not found
--- 
+--
 -- We want to ignore these, so we do not fatally fail in parsing.
 lddParseDependencyNotFound :: Parser (Maybe LocalDependency)
 lddParseDependencyNotFound = do
