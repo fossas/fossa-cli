@@ -1,7 +1,7 @@
 # FOSSA CLI Changelog
 
 ## 3.8.38
-- `dynamic-deps`: Safely ignores scenarios in ldd output parsing where we run into not found error. ([]()) 
+- `--detect-dynamic`: Safely ignores scenarios in ldd output parsing where we run into not found error. ([#1376](https://github.com/fossas/fossa-cli/pull/1376)) 
 
 ## 3.8.37
 
