@@ -53,12 +53,14 @@ import App.Fossa.Config.ConfigFile (
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
   OrgWideCustomLicenseConfigPolicy (..),
+  ReachabilityConfigFile,
   VendoredDependencyConfigs (..),
   mergeFileCmdMetadata,
   resolveConfigFile,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.Lernie.Types (GrepEntry (..), GrepOptions (..))
+import App.Fossa.Reachability.Types (ReachabilityConfig)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (
@@ -246,6 +248,7 @@ data AnalyzeConfig = AnalyzeConfig
   , grepOptions :: GrepOptions
   , customFossaDepsFile :: Maybe FilePath
   , allowedTacticTypes :: AnalysisTacticTypes
+  , analyzeReachabilityConfig :: ReachabilityConfig
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -481,6 +484,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
         if fromFlag StaticOnlyTactics analyzeStaticOnlyTactics
           then StaticOnly
           else Any
+      reachabilityConfig = collectReachabilityOptions maybeConfig
 
   firstPartyScansFlag <-
     case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
@@ -508,6 +512,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure grepOptions
     <*> pure customFossaDepsFile
     <*> pure allowedTacticType
+    <*> pure reachabilityConfig
 
 collectMavenScopeFilters ::
   ( Has Diagnostics sig m
@@ -589,6 +594,10 @@ collectGrepOptions maybeCfg AnalyzeCliOpts{..} =
         orgWideCustomLicenseConfigPolicyFromConfig = configOrgWideCustomLicenseConfigPolicy cfg
   where
     orgWideCustomLicenseScanConfigPolicyFromFlag = if (fromFlag IgnoreOrgWideCustomLicenseScanConfigs analyzeIgnoreOrgWideCustomLicenseScanConfigs) then Ignore else Use
+
+collectReachabilityOptions :: Maybe ConfigFile -> ReachabilityConfig
+collectReachabilityOptions (Just ConfigFile{configReachability = (Just conf)}) = conf
+collectReachabilityOptions _ = mempty
 
 configGrepToGrep :: ConfigGrepEntry -> GrepEntry
 configGrepToGrep configGrep = GrepEntry (configGrepMatchCriteria configGrep) (configGrepName configGrep)

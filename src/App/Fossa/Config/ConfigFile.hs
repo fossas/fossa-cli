@@ -17,6 +17,7 @@ module App.Fossa.Config.ConfigFile (
   ExperimentalGradleConfigs (..),
   VendoredDependencyConfigs (..),
   MavenScopeConfig (..),
+  ReachabilityConfigFile (..),
   mergeFileCmdMetadata,
   resolveLocalConfigFile,
 ) where
@@ -37,6 +38,7 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Lift (Lift)
 import Data.Aeson (
   FromJSON (parseJSON),
+  ToJSON,
   withObject,
   withText,
   (.!=),
@@ -46,6 +48,8 @@ import Data.Aeson (
 import Data.Error (createBody, renderErrataStack)
 import Data.Foldable (asum)
 import Data.Functor (($>))
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (ToString (toString), ToText (toText))
@@ -196,6 +200,7 @@ data ConfigFile = ConfigFile
   , configTelemetry :: Maybe ConfigTelemetry
   , configCustomLicenseSearch :: Maybe [ConfigGrepEntry]
   , configKeywordSearch :: Maybe [ConfigGrepEntry]
+  , configReachability :: Maybe ReachabilityConfigFile
   , configOrgWideCustomLicenseConfigPolicy :: OrgWideCustomLicenseConfigPolicy
   , configConfigFilePath :: Path Abs File
   }
@@ -275,6 +280,7 @@ instance FromJSON (Path Abs File -> ConfigFile) where
       <*> obj .:? "vendoredDependencies"
       <*> obj .:? "telemetry"
       <*> obj .:? "customLicenseSearch"
+      <*> obj .:? "reachability"
       <*> obj .:? "experimentalKeywordSearch"
       <*> parseIgnoreOrgWideCustomLicenseScanConfigs obj
     where
@@ -365,3 +371,41 @@ instance FromJSON VendoredDependencyConfigs where
       <$> (obj .:? "forceRescans" .!= False)
       <*> (obj .:? "scanMethod")
       <*> (obj .:? "licenseScanPathFilters")
+
+-- | Configuration for reachability analysis.
+newtype ReachabilityConfigFile = ReachabilityConfig
+  { configReachabilityJvmOutputs :: Map String [String]
+  -- ^ Reachability on JVM projects relies on analyzing the binary JAR files
+  -- emitted by the build process. FOSSA CLI tries to identify these from project metadata,
+  -- but this may not work for all projects.
+  --
+  -- The intention of this config is to allow users to specify their own locations
+  -- in these situations.
+  --
+  -- The key is the project path (found via @fossa list-targets@)
+  -- and the value is the list of JAR files built by that project.
+  --
+  -- Example:
+  --
+  -- > ; fossa list-targets
+  -- > Found project: maven@./
+  -- > Found target: maven@./:com.example.app:example-artifact
+  --
+  -- The config map should look like this when associating JARs to the project at @./@:
+  --
+  -- > {
+  -- >   "./": [
+  -- >     "some/other/example-artifact.jar",
+  -- >     "yet/another/example-artifact.jar",
+  -- >   ]
+  -- > }
+  --
+  -- In particular, note that the @target@ entry is ignored.
+  -- This config is only concerned with targets.
+  }
+  deriving (Eq, Ord, Show, Monoid, Semigroup, ToJSON)
+
+instance FromJSON ReachabilityConfigFile where
+  parseJSON = withObject "ReachabilityConfig" $ \obj ->
+    ReachabilityConfig
+      <$> (obj .:? "jvmOutputs" .!= Map.empty)

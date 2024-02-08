@@ -1,12 +1,13 @@
 module App.Fossa.Reachability.Maven (
   mavenJarCallGraph,
+  mavenJarCallGraph',
   getJarsByBuild,
 ) where
 
 import App.Fossa.Reachability.Jar (callGraphFromJar, isValidJar)
 import App.Fossa.Reachability.Types (CallGraphAnalysis (..))
 import Control.Carrier.Lift (Lift)
-import Control.Effect.Diagnostics (Diagnostics, fromEither, recover)
+import Control.Effect.Diagnostics (Diagnostics, context, fromEither, recover)
 import Control.Monad (join)
 import Control.Monad.List (filterM)
 import Data.Map qualified as Map
@@ -25,6 +26,8 @@ import Strategy.Maven.Pom.PomFile (
  )
 import Text.Pretty.Simple (pShow)
 
+-- | Discovers the JAR files associated with the project at the provided path,
+-- then returns the parsed results of analyzing these JARs.
 mavenJarCallGraph ::
   ( Has Logger sig m
   , Has ReadFS sig m
@@ -34,10 +37,21 @@ mavenJarCallGraph ::
   ) =>
   Path Abs Dir ->
   m CallGraphAnalysis
-mavenJarCallGraph dir = do
+mavenJarCallGraph dir = context ("build call graph for " <> toText dir) $ do
   jars <- getJarsByBuild dir
   logDebug . pretty $ "found jars: " ++ show jars
+  mavenJarCallGraph' jars
 
+-- | Like @mavenJarCallGraph@, but used when the list of JARs to parse is already available.
+mavenJarCallGraph' ::
+  ( Has Logger sig m
+  , Has Diagnostics sig m
+  , Has Exec sig m
+  , Has (Lift IO) sig m
+  ) =>
+  [Path Abs File] ->
+  m CallGraphAnalysis
+mavenJarCallGraph' jars = context ("build call graph from " <> toText (show jars)) $ do
   parsedJars <- traverse callGraphFromJar jars
   pure $ JarAnalysis (catMaybes parsedJars)
 
