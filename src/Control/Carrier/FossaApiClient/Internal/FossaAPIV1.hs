@@ -638,7 +638,7 @@ uploadAnalysis ::
   ApiOpts ->
   ProjectRevision ->
   ProjectMetadata ->
-  NE.NonEmpty SourceUnit ->
+  [SourceUnit] ->
   m UploadResponse
 uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
@@ -653,7 +653,7 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
-  resp <- req POST (uploadUrl baseUrl) (ReqBodyJson $ NE.toList sourceUnits) jsonResponse (baseOpts <> opts)
+  resp <- req POST (uploadUrl baseUrl) (ReqBodyJson sourceUnits) jsonResponse (baseOpts <> opts)
   pure (responseBody resp)
 
 uploadAnalysisWithFirstPartyLicenses ::

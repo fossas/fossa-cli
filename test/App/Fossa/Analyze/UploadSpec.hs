@@ -69,7 +69,7 @@ expectGetFirstPartySignedUrl packageRevision = GetSignedFirstPartyScanUrl packag
 
 expectUploadFirstPartyDataToS3 :: Has MockApi sig m => m ()
 expectUploadFirstPartyDataToS3 = do
-  let mergedUnits = mergeSourceAndLicenseUnits (NE.toList Fixtures.sourceUnits) Fixtures.firstLicenseSourceUnit
+  let mergedUnits = mergeSourceAndLicenseUnits Fixtures.sourceUnits Fixtures.firstLicenseSourceUnit
   UploadFirstPartyScanResult Fixtures.signedUrl mergedUnits `returnsOnceForAnyRequest` ()
 
 expectedMergedFullSourceUnits :: NE.NonEmpty FullSourceUnit
@@ -255,7 +255,7 @@ mergeSourceAndLicenseUnitsSpec =
     "mergeSourceAndLicenseUnits"
     $ do
       it' "merges source and license units" $ do
-        let mergedUnits = mergeSourceAndLicenseUnits (NE.toList Fixtures.sourceUnits) Fixtures.firstLicenseSourceUnit
+        let mergedUnits = mergeSourceAndLicenseUnits Fixtures.sourceUnits Fixtures.firstLicenseSourceUnit
         mergedUnits `shouldBe'` expectedMergedFullSourceUnits
 
 spec :: Spec
