@@ -106,9 +106,9 @@ The listed Err types are used to provide contextual details about a given error.
 In order to attach these err details to an error, we need extract their contents,
 which is currently stored in the Header field of the Errata object.
 This function takes a list of Errata objects, extracts the contents from the header of each Errata,
-and joins them together with a new line seperator.
+and joins them together with a new line separator.
 
-We are choosing not to use the `renderErrataStack` function because it will display the errors with an extra new line seperator
+We are choosing not to use the `renderErrataStack` function because it will display the errors with an extra new line separator
 between each Errata object.
   e.g.
     Help: Message 1
