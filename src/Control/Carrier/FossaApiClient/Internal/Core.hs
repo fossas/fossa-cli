@@ -94,7 +94,7 @@ uploadAnalysis ::
   ) =>
   ProjectRevision ->
   ProjectMetadata ->
-  NE.NonEmpty SourceUnit ->
+  [SourceUnit] ->
   m UploadResponse
 uploadAnalysis revision metadata units = do
   apiOpts <- ask
