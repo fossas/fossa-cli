@@ -1,10 +1,9 @@
 module App.Fossa.Reachability.Maven (
   mavenJarCallGraph,
-  isValidJar,
   getJarsByBuild,
 ) where
 
-import App.Fossa.Reachability.Jar (callGraphFromJar)
+import App.Fossa.Reachability.Jar (callGraphFromJar, isValidJar)
 import App.Fossa.Reachability.Types (CallGraphAnalysis (..))
 import Control.Carrier.Lift (Lift)
 import Control.Effect.Diagnostics (Diagnostics, fromEither, recover)
@@ -13,18 +12,17 @@ import Control.Monad.List (filterM)
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.String.Conversion (ToText (toText))
-import Data.Text (Text, isSuffixOf, replace)
+import Data.Text (Text, replace)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, logDebug, pretty)
-import Effect.ReadFS (Has, ReadFS, doesFileExist, resolveDir', resolveFile)
-import Path (Abs, Dir, File, Path, fileExtension, parent, toFilePath)
+import Effect.ReadFS (Has, ReadFS, resolveDir', resolveFile)
+import Path (Abs, Dir, File, Path, parent)
 import Strategy.Maven.Pom.Closure (MavenProjectClosure (..), findProjects)
 import Strategy.Maven.Pom.PomFile (
   MavenCoordinate (coordArtifact, coordGroup, coordVersion),
   Pom (pomBuilds, pomCoord),
   PomBuild (PomBuild),
  )
-import System.FilePath (takeFileName)
 import Text.Pretty.Simple (pShow)
 
 mavenJarCallGraph ::
@@ -103,16 +101,6 @@ pomBuildToJar (PomBuild Nothing Nothing) jarName = resolveJar defaultJarDir jarN
 pomBuildToJar (PomBuild (Just name) (Just dir)) _ = resolveJar dir name
 pomBuildToJar (PomBuild (Just name) _) _ = resolveJar defaultJarDir name
 pomBuildToJar (PomBuild _ (Just dir)) jarName = resolveJar dir jarName
-
--- True if jar exist, and is not likely test jar, otherwise False
-isValidJar :: (Has ReadFS sig m) => Path Abs File -> m Bool
-isValidJar file = do
-  exists <- doesFileExist file
-  pure $
-    exists
-      && fileExtension file == Just ".jar"
-      -- In maven builds, test jars have -test suffix by convention
-      && not (isSuffixOf "-test.jar" $ toText . takeFileName . toFilePath $ file)
 
 -- Resolves jar path by inferring from directory, and filename of jar
 resolveJar :: (Has ReadFS sig m, Has Diagnostics sig m) => Text -> Text -> Path Abs Dir -> m (Path Abs File)

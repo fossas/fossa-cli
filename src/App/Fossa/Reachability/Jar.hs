@@ -2,6 +2,7 @@
 
 module App.Fossa.Reachability.Jar (
   callGraphFromJar,
+  isValidJar,
 ) where
 
 import App.Fossa.Reachability.Types (ContentRef (ContentRaw), ParsedJar (..))
@@ -17,10 +18,13 @@ import Control.Effect.Lift (sendIO)
 import Data.ByteString qualified as BS
 import Data.FileEmbed.Extra (embedFile')
 import Data.String.Conversion (toText)
+import Data.Text (isSuffixOf)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, Has, execThrow)
 import Effect.Logger (Doc, pretty)
-import Path (Abs, File, Path, fromAbsDir, parent, toFilePath)
+import Effect.ReadFS (ReadFS, doesFileExist)
+import Path (Abs, File, Path, fileExtension, fromAbsDir, parent, toFilePath)
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
+import System.FilePath (takeFileName)
 import System.FilePath qualified as FP
 
 newtype CallGraphJarParser = CallGraphJarParser {jar :: BS.ByteString}
@@ -68,3 +72,13 @@ instance ToDiagnostic FailedToParseJar where
   renderDiagnostic :: FailedToParseJar -> Doc ann
   renderDiagnostic (FailedToParseJar jar) =
     pretty $ "Could not read from jar, so skipping: " <> show jar
+
+-- True if jar exist, and is not likely test jar, otherwise False
+isValidJar :: (Has ReadFS sig m) => Path Abs File -> m Bool
+isValidJar file = do
+  exists <- doesFileExist file
+  pure $
+    exists
+      && fileExtension file == Just ".jar"
+      -- In maven and java ecosystem, test jars have -test suffix by convention
+      && not (isSuffixOf "-test.jar" $ toText . takeFileName . toFilePath $ file)

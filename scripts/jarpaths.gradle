@@ -1,0 +1,29 @@
+// Simple Jar filepath retriever script
+// ---
+// - ./gradlew -I jarpaths.gradle jarPaths
+// - ./gradlew -I jarpaths.gradle :jarPaths
+allprojects {
+    tasks.register("jarPaths") {
+        // specifies actions to be performed when the task is executed.
+        // Ref: https://docs.gradle.org/current/dsl/org.gradle.api.Task.html#org.gradle.api.Task:doLast(groovy.lang.Closure)
+        doLast {            
+            // Ref: https://docs.gradle.org/current/dsl/org.gradle.api.Project.html
+            println "debug: project is ${project}"
+
+            // Ref: https://docs.gradle.org/current/dsl/org.gradle.api.plugins.PluginManager.html#org.gradle.api.plugins.PluginManager:hasPlugin(java.lang.String)
+            def hasJavaPlugin = project.plugins.hasPlugin('java')            
+            println "debug: hasJavaPlugin is ${hasJavaPlugin}"
+
+            if (hasJavaPlugin) {
+                // Ref: https://docs.gradle.org/current/javadoc/org/gradle/api/tasks/TaskContainer.html
+                def runTask = tasks.findByName('jar')
+                println "debug: runTask is ${runTask}"
+
+                if (runTask) {
+                    // Ref: https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Jar.html
+                    println "JARFILE::${runTask.archiveFile.get().asFile}"
+                }
+            }
+        }
+    }
+}

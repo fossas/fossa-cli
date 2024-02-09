@@ -13,6 +13,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectScan (..),
   dpiProjectType,
  )
+import App.Fossa.Reachability.Gradle (gradleJarCallGraph)
 import App.Fossa.Reachability.Maven (mavenJarCallGraph)
 import App.Fossa.Reachability.Types (
   CallGraphAnalysis (..),
@@ -127,6 +128,11 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
       logDebug . pretty $ "Trying to infer build jars from maven project: " <> show (projectResultPath projectResult)
       analysis <- mavenJarCallGraph (projectResultPath projectResult)
       pure . Just $ unit{callGraphAnalysis = analysis}
+    (Complete, GradleProjectType) -> context "gradle" $ do
+      logDebug . pretty $ "Trying to infer build jars from gradle project: " <> show (projectResultPath projectResult)
+      analysis <- gradleJarCallGraph (projectResultPath projectResult)
+      pure . Just $ unit{callGraphAnalysis = analysis}
+
     -- Exclude units for package manager/language we cannot support yet!
     _ -> do
       logInfo . pretty $ "FOSSA CLI does not support reachability analysis for: " <> displayId <> " yet. (skipping)"
