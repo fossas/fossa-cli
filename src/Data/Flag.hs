@@ -4,6 +4,7 @@ module Data.Flag (
   fromFlag,
   toFlag,
   flagOpt,
+  toFlag',
 ) where
 
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
@@ -22,6 +23,10 @@ fromFlag _ = getFlag
 
 toFlag :: a -> Bool -> Flag a
 toFlag _ = Flag
+
+-- | 'toFlag', but use type inference to fill in Flag's type variable.
+toFlag' :: forall a. Bool -> Flag a
+toFlag' = Flag @a
 
 -- | optparse-applicative helper
 flagOpt :: a -> Mod FlagFields Bool -> Parser (Flag a)

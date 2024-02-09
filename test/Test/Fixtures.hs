@@ -132,8 +132,8 @@ packageRevision =
     , App.packageVersion = "1.0"
     }
 
-sourceUnits :: NE.NonEmpty SourceUnit
-sourceUnits = NE.fromList [unit]
+sourceUnits :: [SourceUnit]
+sourceUnits = [unit]
   where
     unit =
       SourceUnit

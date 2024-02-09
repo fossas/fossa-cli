@@ -324,7 +324,7 @@ renderEmittedWarn :: TracebackStyle -> EmittedWarn -> Doc AnsiStyle
 renderEmittedWarn tracebackStyle (IgnoredErrGroup ectx ehlp esup edoc es) = do
   let errDetails = combineErrDetails edoc esup ehlp ectx
   unannotatedSubsection $ renderErrs es errDetails tracebackStyle WarningStyle
-renderEmittedWarn _ (StandaloneWarn warn) = renderErrataStack [renderSomeWarn warn]
+renderEmittedWarn _ (StandaloneWarn warn) = newlineTrailing . newlineTrailing $ renderErrataStack [renderSomeWarn warn]
 renderEmittedWarn tracebackStyle (WarnOnErrGroup ws ectx ehlp esup edoc es) = do
   let errDetails = combineErrDetails edoc esup ehlp ectx
       renderedErrors = unannotatedSubsection $ renderErrs es errDetails tracebackStyle WarningStyle

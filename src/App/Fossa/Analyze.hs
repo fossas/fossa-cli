@@ -32,7 +32,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Analyze.Upload (mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
+import App.Fossa.Analyze.Upload (ScanUnits (SourceUnitOnly), mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.Config.Analyze (
   AnalysisTacticTypes (..),
@@ -94,13 +94,13 @@ import Control.Monad (join, unless, void, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
-import Data.Error (SourceLocation, createEmptyBlock, getSourceLocation)
+import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
+import Data.Functor (($>))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
-import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Diag.Diagnostic as DI
 import Diag.Result (resultToMaybe)
@@ -117,7 +117,7 @@ import Effect.Logger (
   renderIt,
  )
 import Effect.ReadFS (ReadFS)
-import Errata (Errata, errataSimple)
+import Errata (Errata (..))
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
@@ -412,15 +412,14 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
   let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits
 
-  -- If we find nothing but keyword search, we exit with an error, but explain that the error may be ignorable.
-  -- We do not want to succeed, because nothing gets uploaded to the API for keyword searches, so `fossa test` will fail.
-  -- So the solution is to still fail, but give a hopefully useful explanation that the error can be ignored if all you were expecting is keyword search results.
-  case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
-    (False, NoneDiscovered) -> Diag.errHelp ("Make sure your project is supported" :: Text) $ Diag.errDoc userGuideUrl $ Diag.fatal $ ErrNoProjectsDiscovered getSourceLocation
-    (True, NoneDiscovered) -> Diag.fatal $ ErrOnlyKeywordSearchResultsFound getSourceLocation
-    (False, FilteredAll) -> Diag.errDoc userGuideUrl $ Diag.fatal $ ErrFilteredAllProjects getSourceLocation
-    (True, FilteredAll) -> Diag.fatal $ ErrOnlyKeywordSearchResultsFound getSourceLocation
-    (_, CountedScanUnits scanUnits) -> doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits
+  scanUnits <-
+    case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
+      (False, NoneDiscovered) -> Diag.warn ErrNoProjectsDiscovered $> emptyScanUnits
+      (True, NoneDiscovered) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
+      (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
+      (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
+      (_, CountedScanUnits scanUnits) -> pure scanUnits
+  doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits
 
   pure outputResult
   where
@@ -433,6 +432,9 @@ analyze cfg = Diag.context "fossa-analyze" $ do
             $ do
               locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits
               doAssertRevisionBinaries iatAssertion locator
+
+    emptyScanUnits :: ScanUnits
+    emptyScanUnits = SourceUnitOnly []
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
 toProjectResult (SkippedDueToProvidedFilter _) = Nothing
@@ -511,16 +513,18 @@ doAnalyzeDynamicLinkedBinary root (DynamicLinkInspect (Just target)) = analyzeDy
 doAnalyzeDynamicLinkedBinary _ _ = pure Nothing
 
 data AnalyzeError
-  = ErrNoProjectsDiscovered (SourceLocation)
-  | ErrFilteredAllProjects (SourceLocation)
-  | ErrOnlyKeywordSearchResultsFound (SourceLocation)
+  = ErrNoProjectsDiscovered
+  | ErrFilteredAllProjects
+  | ErrOnlyKeywordSearchResultsFound
 
 instance Diag.ToDiagnostic AnalyzeError where
   renderDiagnostic :: AnalyzeError -> Errata
-  renderDiagnostic (ErrNoProjectsDiscovered srcLoc) =
-    errataSimple (Just "No analysis targets found in directory") (createEmptyBlock srcLoc) Nothing
-  renderDiagnostic (ErrFilteredAllProjects srcLoc) = do
-    let body =
+  renderDiagnostic ErrNoProjectsDiscovered = do
+    let help = "Refer to the provided documentation to ensure your project is supported"
+    let body = createBody Nothing (Just userGuideUrl) Nothing (Just help) Nothing
+    Errata (Just "No analysis targets found in directory") [] (Just body)
+  renderDiagnostic ErrFilteredAllProjects = do
+    let content =
           renderIt $
             vsep
               [ "This may be occurring because: "
@@ -531,15 +535,16 @@ instance Diag.ToDiagnostic AnalyzeError where
               , vsep $ map (\i -> pretty $ "    * " <> toText i) ignoredPaths
               , ""
               ]
-    errataSimple (Just "Filtered out all projects") (createEmptyBlock srcLoc) (Just body)
-  renderDiagnostic (ErrOnlyKeywordSearchResultsFound srcLoc) = do
+        body = createBody (Just content) (Just userGuideUrl) Nothing Nothing Nothing
+    Errata (Just "Filtered out all projects") [] (Just body)
+  renderDiagnostic ErrOnlyKeywordSearchResultsFound = do
     let body =
           renderIt $
             vsep
               [ "Matches to your keyword searches were found, but no other analysis targets were found."
               , "This error can be safely ignored if you are only expecting keyword search results."
               ]
-    errataSimple (Just "Only keyword search results found") (createEmptyBlock srcLoc) (Just body)
+    Errata (Just "Only keyword search results found") [] (Just body)
 
 buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Aeson.Value
 buildResult includeAll srcUnits projects licenseSourceUnits =

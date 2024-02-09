@@ -60,13 +60,12 @@ createEmptyBlock SourceLocation{..} =
 
 createBody :: Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text -> Text
 createBody maybeContent maybeDocumentation maybeSupport maybeHelp maybeContext = do
-  let content = fromMaybe "" maybeContent
-      documentation = maybe "" (buildMessageWithDiagnosticStyle DocumentationStyle) maybeDocumentation
-      support = maybe "" (buildMessageWithDiagnosticStyle SupportStyle) maybeSupport
-      help = maybe "" (buildMessageWithDiagnosticStyle HelpStyle) maybeHelp
-      context = maybe "" (buildMessageWithDiagnosticStyle ContextStyle) maybeContext
-
-  content <> documentation <> support <> help <> context
+  -- Continuously append the contents of the last result so buildMessageWithDiagnostic doesn't add an extra line break
+  let bodyWithContent = fromMaybe "" maybeContent
+      bodyWithDocumentation = bodyWithContent <> maybe "" (buildMessageWithDiagnosticStyle DocumentationStyle bodyWithContent) maybeDocumentation
+      bodyWithSupport = bodyWithDocumentation <> maybe "" (buildMessageWithDiagnosticStyle SupportStyle bodyWithDocumentation) maybeSupport
+      bodyWithHelp = bodyWithSupport <> maybe "" (buildMessageWithDiagnosticStyle HelpStyle bodyWithSupport) maybeHelp
+  bodyWithHelp <> maybe "" (buildMessageWithDiagnosticStyle ContextStyle bodyWithHelp) maybeContext
 
 data DiagnosticStyle
   = ErrorStyle
@@ -90,8 +89,10 @@ applyDiagnosticStyle style Errata{..} = case errataHeader of
   Just header -> Errata (Just $ toText style <> header) errataBlocks errataBody
   _ -> Errata errataHeader errataBlocks errataBody
 
-buildMessageWithDiagnosticStyle :: DiagnosticStyle -> Text -> Text
-buildMessageWithDiagnosticStyle style msg = "\n" <> toText style <> msg
+buildMessageWithDiagnosticStyle :: DiagnosticStyle -> Text -> Text -> Text
+buildMessageWithDiagnosticStyle style preceedingMsg msg = case preceedingMsg of
+  "" -> toText style <> msg
+  _ -> "\n" <> toText style <> msg
 
 renderErrataStack :: [Errata] -> Doc AnsiStyle
 renderErrataStack =
