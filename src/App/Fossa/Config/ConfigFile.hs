@@ -373,8 +373,8 @@ instance FromJSON VendoredDependencyConfigs where
       <*> (obj .:? "licenseScanPathFilters")
 
 -- | Configuration for reachability analysis.
-newtype ReachabilityConfigFile = ReachabilityConfig
-  { configReachabilityJvmOutputs :: Map String [String]
+newtype ReachabilityConfigFile = ReachabilityConfigFile
+  { configFileReachabilityJvmOutputs :: Map String [String]
   -- ^ Reachability on JVM projects relies on analyzing the binary JAR files
   -- emitted by the build process. FOSSA CLI tries to identify these from project metadata,
   -- but this may not work for all projects.
@@ -407,5 +407,5 @@ newtype ReachabilityConfigFile = ReachabilityConfig
 
 instance FromJSON ReachabilityConfigFile where
   parseJSON = withObject "ReachabilityConfig" $ \obj ->
-    ReachabilityConfig
+    ReachabilityConfigFile
       <$> (obj .:? "jvmOutputs" .!= Map.empty)

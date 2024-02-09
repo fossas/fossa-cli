@@ -1,6 +1,6 @@
 module App.Fossa.Reachability.Maven (
   mavenJarCallGraph,
-  mavenJarCallGraph',
+  jarCallGraph,
   getJarsByBuild,
 ) where
 
@@ -40,10 +40,11 @@ mavenJarCallGraph ::
 mavenJarCallGraph dir = context ("build call graph for " <> toText dir) $ do
   jars <- getJarsByBuild dir
   logDebug . pretty $ "found jars: " ++ show jars
-  mavenJarCallGraph' jars
+  jarCallGraph jars
 
--- | Like @mavenJarCallGraph@, but used when the list of JARs to parse is already available.
-mavenJarCallGraph' ::
+-- | Like @mavenJarCallGraph@, but used when the list of JARs to parse is already available
+-- and works for any Java project.
+jarCallGraph ::
   ( Has Logger sig m
   , Has Diagnostics sig m
   , Has Exec sig m
@@ -51,7 +52,7 @@ mavenJarCallGraph' ::
   ) =>
   [Path Abs File] ->
   m CallGraphAnalysis
-mavenJarCallGraph' jars = context ("build call graph from " <> toText (show jars)) $ do
+jarCallGraph jars = context ("build call graph from " <> toText (show jars)) $ do
   parsedJars <- traverse callGraphFromJar jars
   pure $ JarAnalysis (catMaybes parsedJars)
 
@@ -62,7 +63,7 @@ getJarsByBuild ::
   ) =>
   Path Abs Dir ->
   m [Path Abs File]
-getJarsByBuild dir = do
+getJarsByBuild dir = context ("find jars from build for project at '" <> toText dir <> "'") $ do
   mvnProjectClosures <- findProjects dir
   let pomPathsAndPom = concatMap (Map.elems . closurePoms) mvnProjectClosures
 

@@ -14,11 +14,12 @@ import App.Fossa.Analyze.Types (
   dpiProjectType,
  )
 import App.Fossa.Reachability.Gradle (gradleJarCallGraph)
-import App.Fossa.Reachability.Maven (mavenJarCallGraph)
+import App.Fossa.Reachability.Maven (jarCallGraph, mavenJarCallGraph)
 import App.Fossa.Reachability.Types (
   CallGraphAnalysis (..),
   ContentRef (..),
   ParsedJar (..),
+  ReachabilityConfig (..),
   SourceUnitReachability (..),
   reachabilityEndpointJson,
   reachabilityRawJson,
@@ -30,7 +31,9 @@ import Control.Effect.Debug (Debug, debugMetadata)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.FossaApiClient (FossaApiClient, uploadBuildForReachability, uploadContentForReachability)
 import Control.Effect.Lift (Lift)
+import Control.Effect.Reader (Reader, ask)
 import Data.List (nub)
+import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
 import Diag.Result (Result (..))
 import Effect.Exec (Exec)
@@ -52,6 +55,7 @@ analyzeForReachability ::
   , Has Exec sig m
   , Has (Lift IO) sig m
   , Has Debug sig m
+  , Has (Reader ReachabilityConfig) sig m
   ) =>
   [DiscoveredProjectScan] ->
   m [SourceUnitReachabilityAttempt]
@@ -103,10 +107,12 @@ callGraphOf ::
   , Has Exec sig m
   , Has (Lift IO) sig m
   , Has Debug sig m
+  , Has (Reader ReachabilityConfig) sig m
   ) =>
   DiscoveredProjectScan ->
   m SourceUnitReachabilityAttempt
 callGraphOf (Scanned dpi (Success _ projectResult)) = do
+  let projectPath = projectResultPath projectResult
   let srcUnit = projectToSourceUnit False projectResult
   let dependencies = dependenciesOf srcUnit
   let displayId = sourceUnitType srcUnit <> "@" <> sourceUnitManifest srcUnit
@@ -119,6 +125,9 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
           , srcUnitDependencies = dependencies
           , callGraphAnalysis = NoCallGraphAnalysis
           }
+  (reachabilityConfig :: ReachabilityConfig) <- ask
+  let reachabilityJarsByProject = configReachabilityJvmOutputs reachabilityConfig
+
   case (projectResultGraphBreadth projectResult, dpiProjectType dpi) of
     -- if we do not have complete graph, i.e.. missing transitive dependencies
     -- it is impossible to perform reachability, as we may not have all symbols
@@ -127,14 +136,24 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
       logInfo . pretty $ "FOSSA CLI does not support reachability analysis, with partial dependencies graph (skipping: " <> displayId <> ")"
       pure . SourceUnitReachabilitySkippedPartialGraph $ dpi
     (Complete, MavenProjectType) -> context "maven" $ do
-      logDebug . pretty $ "Trying to infer build jars from maven project: " <> show (projectResultPath projectResult)
-      analysis <- Diag.errorBoundaryIO . diagToDebug $ mavenJarCallGraph (projectResultPath projectResult)
+      analysis <- Diag.errorBoundaryIO . diagToDebug $ case Map.lookup projectPath reachabilityJarsByProject of
+        Just jars -> do
+          logDebug . pretty $ "Using user-specified jars for maven project: " <> show projectPath
+          jarCallGraph jars
+        Nothing -> do
+          logDebug . pretty $ "Trying to infer build jars from maven project: " <> show (projectResultPath projectResult)
+          mavenJarCallGraph (projectResultPath projectResult)
       case analysis of
         Success wg r -> pure $ SourceUnitReachabilityFound dpi (Success wg $ unit{callGraphAnalysis = r})
         Failure wg eg -> pure $ SourceUnitReachabilityFound dpi (Failure wg eg)
     (Complete, GradleProjectType) -> context "gradle" $ do
-      logDebug . pretty $ "Trying to infer build jars from gradle project: " <> show (projectResultPath projectResult)
-      analysis <- Diag.errorBoundaryIO . diagToDebug $ gradleJarCallGraph (projectResultPath projectResult)
+      analysis <- Diag.errorBoundaryIO . diagToDebug $ case Map.lookup projectPath reachabilityJarsByProject of
+        Just jars -> do
+          logDebug . pretty $ "Using user-specified jars for gradle project: " <> show projectPath
+          jarCallGraph jars
+        Nothing -> do
+          logDebug . pretty $ "Trying to infer build jars from gradle project: " <> show (projectResultPath projectResult)
+          gradleJarCallGraph (projectResultPath projectResult)
       case analysis of
         Success wg r -> pure $ SourceUnitReachabilityFound dpi (Success wg $ unit{callGraphAnalysis = r})
         Failure wg eg -> pure $ SourceUnitReachabilityFound dpi (Failure wg eg)
