@@ -14,7 +14,8 @@ import App.Fossa.Analyze.Types (
   dpiProjectType,
  )
 import App.Fossa.Reachability.Gradle (gradleJarCallGraph)
-import App.Fossa.Reachability.Maven (jarCallGraph, mavenJarCallGraph)
+import App.Fossa.Reachability.Jar (callGraphFromJars)
+import App.Fossa.Reachability.Maven (mavenJarCallGraph)
 import App.Fossa.Reachability.Types (
   CallGraphAnalysis (..),
   ContentRef (..),
@@ -139,7 +140,7 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
       analysis <- Diag.errorBoundaryIO . diagToDebug $ case Map.lookup projectPath reachabilityJarsByProject of
         Just jars -> do
           logDebug . pretty $ "Using user-specified jars for maven project: " <> show projectPath
-          jarCallGraph jars
+          callGraphFromJars jars
         Nothing -> do
           logDebug . pretty $ "Trying to infer build jars from maven project: " <> show (projectResultPath projectResult)
           mavenJarCallGraph (projectResultPath projectResult)
@@ -150,7 +151,7 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
       analysis <- Diag.errorBoundaryIO . diagToDebug $ case Map.lookup projectPath reachabilityJarsByProject of
         Just jars -> do
           logDebug . pretty $ "Using user-specified jars for gradle project: " <> show projectPath
-          jarCallGraph jars
+          callGraphFromJars jars
         Nothing -> do
           logDebug . pretty $ "Trying to infer build jars from gradle project: " <> show (projectResultPath projectResult)
           gradleJarCallGraph (projectResultPath projectResult)

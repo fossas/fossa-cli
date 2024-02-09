@@ -1,10 +1,9 @@
 module App.Fossa.Reachability.Maven (
   mavenJarCallGraph,
-  jarCallGraph,
   getJarsByBuild,
 ) where
 
-import App.Fossa.Reachability.Jar (callGraphFromJar, isValidJar)
+import App.Fossa.Reachability.Jar (callGraphFromJars, isValidJar)
 import App.Fossa.Reachability.Types (CallGraphAnalysis (..))
 import Control.Carrier.Lift (Lift)
 import Control.Effect.Diagnostics (Diagnostics, context, fromEither, recover)
@@ -40,21 +39,7 @@ mavenJarCallGraph ::
 mavenJarCallGraph dir = context ("build call graph for " <> toText dir) $ do
   jars <- getJarsByBuild dir
   logDebug . pretty $ "found jars: " ++ show jars
-  jarCallGraph jars
-
--- | Like @mavenJarCallGraph@, but used when the list of JARs to parse is already available
--- and works for any Java project.
-jarCallGraph ::
-  ( Has Logger sig m
-  , Has Diagnostics sig m
-  , Has Exec sig m
-  , Has (Lift IO) sig m
-  ) =>
-  [Path Abs File] ->
-  m CallGraphAnalysis
-jarCallGraph jars = context ("build call graph from " <> toText (show jars)) $ do
-  parsedJars <- traverse callGraphFromJar jars
-  pure $ JarAnalysis (catMaybes parsedJars)
+  callGraphFromJars jars
 
 getJarsByBuild ::
   ( Has Logger sig m
