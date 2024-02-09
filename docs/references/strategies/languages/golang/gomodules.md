@@ -251,12 +251,15 @@ Generally, for a declaration in `go.mod` like:
 You can search for its imports using a command like:
 
 ```sh
-$ find <project_directory> -name \*.go -exec grep -Hn "github.com/prometheus/client_golang" {} \;
+$ find <project_directory> -name \*.go -not -path '*vendor*' -exec grep -Hn "github.com/prometheus/client_golang" {} \;
 ```
 If `find`/`grep` are not available on your system, you can install a tool like [ripgrep](https://github.com/BurntSushi/ripgrep?tab=readme-ov-file#ripgrep-rg) to perform the same operation:
 ```sh
-rg 'github.com/prometheus/client_golang' -F -l
+rg 'github.com/prometheus/client_golang' --glob=\!\*vendor\* -F -l
 ```
 
 If the import only appears in source files that end in `_test.go`, it is a test-only dependency.
 You can read more about how tests are defined in Go [here](https://go.dev/doc/tutorial/add-a-test).
+
+The above process will make vendored test-only dependencies seem like regular dependencies.
+Doing the above search should be considered a heuristic, not definitive proof that a package is test-only or not.
