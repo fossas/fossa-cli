@@ -240,7 +240,7 @@ this command should synchronize the `go.mod` file with the actual state of the p
 
 Sometimes the above procedure may uncover a dependency that is not reported by FOSSA but that is also not removed by `go mod tidy`.
 The other reason that a dependency may appear in `go.mod` but not in FOSSA is that it is a test dependency.
-`go.mod` itself does not label dependencies as being used only in tests, but FOSSA's Go module strategy can identify these and will exclude them.
+`go.mod` itself does not label dependencies as being used only in tests, but FOSSA's Go module strategy identifies and excludes test-only dependencies.
 To verify that a direct dependency is not a test-only dependency, we recommend searching the project source code for where a package from the module is imported.
 Generally, for a declaration in `go.mod` like:
 
@@ -254,5 +254,5 @@ You can search for its imports using a command like:
 $ find <project_directory> -name \*.go -exec grep -Hn "github.com/prometheus/client_golang" {} \;
 ```
 
-Then verify that it appears in at least one Go source file _not_ ending in `_test.go`.
+If the import only appears in source files that end in `_test.go`, it is a test-only dependency.
 You can read more about how tests are defined in Go [here](https://go.dev/doc/tutorial/add-a-test).
