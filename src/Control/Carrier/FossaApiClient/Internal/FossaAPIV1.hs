@@ -97,7 +97,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as C
 import Data.ByteString.Lazy (ByteString)
 import Data.Data (Proxy (Proxy))
-import Data.Error (SourceLocation, createBlock, createBody, getSourceLocation)
+import Data.Error (SourceLocation, createBody, createEmptyBlock, getSourceLocation)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -316,6 +316,7 @@ data FossaError
   deriving (Show)
 
 instance ToDiagnostic FossaError where
+  renderDiagnostic :: FossaError -> Errata
   renderDiagnostic = \case
     InternalException exception -> do
       let header = "A socket-level error occurred when accessing the FOSSA API"
@@ -334,9 +335,9 @@ instance ToDiagnostic FossaError where
       let header = "An error occurred when deserializing a response from the FOSSA API:" <> toText err
       Errata (Just header) [] Nothing
     BackendPublicFacingError pfe -> do
-      let header = "The FOSSA endpoint reported an error: " <> fpeMessage pfe
+      let header = fpeMessage pfe
           content = "Error UUID from API: " <> fpeUuid pfe
-          support = (renderIt reportDefectMsg) <> "Please include the error UUID in your request."
+          support = (renderIt reportDefectMsg) <> ". Please include the error UUID in your request."
           body = createBody (Just content) Nothing (Just support) Nothing Nothing
       Errata (Just header) [] (Just body)
     InvalidUrlError url reason -> do
@@ -594,12 +595,12 @@ uploadNativeContainerScan apiOpts ProjectRevision{..} metadata scan = fossaReq $
             "locator"
               =: locator
               <> "cliVersion"
-                =: cliVersion
+              =: cliVersion
               <> "managedBuild"
-                =: True
+              =: True
               <> maybe mempty ("branch" =:) projectBranch
               <> "scanType"
-                =: ("native" :: Text)
+              =: ("native" :: Text)
               <> mkMetadataOpts metadata projectName
       resp <- req POST (containerUploadUrl baseUrl) (ReqBodyJson scan) jsonResponse (baseOpts <> opts)
       pure $ responseBody resp
@@ -640,9 +641,9 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
         "locator"
           =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "cliVersion"
-            =: cliVersion
+          =: cliVersion
           <> "managedBuild"
-            =: True
+          =: True
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
@@ -663,11 +664,11 @@ uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata fullFi
         "locator"
           =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "cliVersion"
-            =: cliVersion
+          =: cliVersion
           <> "managedBuild"
-            =: True
+          =: True
           <> "cliLicenseScanType"
-            =: (fullFileUploadsToCliLicenseScanType fullFileUploads)
+          =: (fullFileUploadsToCliLicenseScanType fullFileUploads)
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
@@ -1084,11 +1085,9 @@ getIssues apiOpts ProjectRevision{..} diffRevision = fossaReq $ do
 newtype EndpointDoesNotSupportIssueDiffing = EndpointDoesNotSupportIssueDiffing SourceLocation
 
 instance ToDiagnostic EndpointDoesNotSupportIssueDiffing where
-  renderDiagnostic (EndpointDoesNotSupportIssueDiffing srcLoc) = do
-    let header = "Provided endpoint does not support issue diffing"
-        block = createBlock srcLoc Nothing Nothing
-        body = "If this instance of FOSSA is on-premise, it likely needs to be updated"
-    errataSimple (Just header) block (Just body)
+  renderDiagnostic :: EndpointDoesNotSupportIssueDiffing -> Errata
+  renderDiagnostic (EndpointDoesNotSupportIssueDiffing srcLoc) =
+    errataSimple (Just "Provided endpoint does not support issue diffing") (createEmptyBlock srcLoc) (Just "If this instance of FOSSA is on-premise, it likely needs to be updated")
 
 ---------------
 
@@ -1120,11 +1119,11 @@ getAttributionJson apiOpts ProjectRevision{..} = fossaReq $ do
       opts =
         baseOpts
           <> "includeDeepDependencies"
-            =: True
+          =: True
           <> "includeHashAndVersionData"
-            =: True
+          =: True
           <> "dependencyInfoOptions[]"
-            =: packageDownloadUrl
+          =: packageDownloadUrl
   orgId <- organizationId <$> getOrganization apiOpts
   response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision)) ReportJson) NoReqBody jsonResponse opts
   pure (responseBody response)

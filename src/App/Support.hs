@@ -64,7 +64,7 @@ requestDebugBundle :: Doc ann
 requestDebugBundle =
   vsep
     [ "In your bug report, please include FOSSA's debug bundle file: fossa.debug.json.gz."
-    , "You can generate debug bundle by using `--debug` flag, for example: fossa analyze --debug"
+    , "You can generate debug bundle by using `--debug` flag, for example: `fossa analyze --debug`"
     ]
 
 -- | For networking errors, explain that networking errors are often transient or caused by local configuration.

@@ -16,7 +16,7 @@ import Control.Effect.FossaApiClient (FossaApiClient)
 import Control.Effect.StickyLogger (StickyLogger)
 import Control.Monad (unless)
 import Data.Either (partitionEithers)
-import Data.Error (SourceLocation, createBlock, getSourceLocation)
+import Data.Error (SourceLocation, createEmptyBlock, getSourceLocation)
 import Data.List (find)
 import Data.List.NonEmpty (NonEmpty, nonEmpty, toList)
 import Data.List.NonEmpty qualified as NE
@@ -31,7 +31,7 @@ import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, indent, pretty, renderIt, vsep)
 import Effect.ReadFS (ReadFS)
-import Errata (errataSimple)
+import Errata (Errata, errataSimple)
 import Graphing (Graphing, gmap, vertexList)
 import Path (Abs, Dir, Path)
 import Srclib.Converter (fetcherToDepType, toLocator, verConstraintToRevision)
@@ -206,14 +206,13 @@ enrichSupportMessage = "This is likely a defect, please contact FOSSA support at
 
 data FailedToTransformConanDependency = FailedToTransformConanDependency SourceLocation [Dependency]
 instance ToDiagnostic FailedToTransformConanDependency where
+  renderDiagnostic :: FailedToTransformConanDependency -> Errata
   renderDiagnostic (FailedToTransformConanDependency srcLoc deps) = do
-    let header = "Could not transform analyzed conan dependency to vendored dependency"
-        body =
+    let body =
           renderIt $
             vsep
               [indent 2 $ vsep $ map (pretty . renderDep) deps]
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block (Just body)
+    errataSimple (Just "Could not transform analyzed conan dependency to vendored dependency") (createEmptyBlock srcLoc) (Just body)
     where
       renderDep :: Dependency -> Text
       renderDep d =
@@ -223,24 +222,22 @@ instance ToDiagnostic FailedToTransformConanDependency where
 
 data FailedToTransformLocators = FailedToTransformLocators SourceLocation [Locator]
 instance ToDiagnostic FailedToTransformLocators where
+  renderDiagnostic :: FailedToTransformLocators -> Errata
   renderDiagnostic (FailedToTransformLocators srcLoc locs) = do
-    let header = "Could not transform vendored dependency to archive dependency"
-        body =
+    let body =
           renderIt $
             vsep
               [vsep $ map (pretty . toText) locs]
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block (Just body)
+    errataSimple (Just "Could not transform vendored dependency to archive dependency") (createEmptyBlock srcLoc) (Just body)
 
 data UnableToFindTwinOfArchiveDep = UnableToFindTwinOfArchiveDep SourceLocation LonelyDeps
 instance ToDiagnostic UnableToFindTwinOfArchiveDep where
+  renderDiagnostic :: UnableToFindTwinOfArchiveDep -> Errata
   renderDiagnostic (UnableToFindTwinOfArchiveDep srcLoc (LonelyDeps deps)) = do
-    let header = "Could not identify conan dependency"
-        body =
+    let body =
           renderIt $
             vsep
               [ "We could not identify conan dependency for following dependencies:"
               , indent 2 $ vsep $ map (pretty . toText . toLocator) deps
               ]
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block (Just body)
+    errataSimple (Just "Could not identify conan dependency") (createEmptyBlock srcLoc) (Just body)

@@ -49,7 +49,7 @@ import Data.Aeson (
  )
 import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers, neText)
 import Data.Aeson.Types (Object, Parser, prependFailure)
-import Data.Error (SourceLocation, createBlock, getSourceLocation)
+import Data.Error (SourceLocation, createEmptyBlock, createErrataWithHeaderOnly, getSourceLocation)
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -431,24 +431,24 @@ instance FromJSON ReferencedDependency where
                   <$> (obj `neText` "name")
                   <*> pure depType
                   <*> (unTextLike <$$> obj .:? "version")
-                  <* forbidNonRefDepFields obj
-                  <* forbidLinuxFields depType obj
-                  <* forbidEpoch depType obj
+                    <* forbidNonRefDepFields obj
+                    <* forbidLinuxFields depType obj
+                    <* forbidEpoch depType obj
               )
 
       parseApkOrDebDependency :: Object -> DepType -> Parser ReferencedDependency
       parseApkOrDebDependency obj depType =
         LinuxApkDebDep
           <$> parseLinuxDependency obj depType
-          <* forbidNonRefDepFields obj
-          <* forbidEpoch depType obj
+            <* forbidNonRefDepFields obj
+            <* forbidEpoch depType obj
 
       parseRpmDependency :: Object -> DepType -> Parser ReferencedDependency
       parseRpmDependency obj depType =
         LinuxRpmDep
           <$> parseLinuxDependency obj depType
           <*> (unTextLike <$$> obj .:? "epoch")
-          <* forbidNonRefDepFields obj
+            <* forbidNonRefDepFields obj
 
       parseLinuxDependency :: Object -> DepType -> Parser LinuxReferenceDependency
       parseLinuxDependency obj depType =
@@ -515,7 +515,7 @@ instance FromJSON CustomDependency where
       <*> (obj `neText` "license")
       <*> obj
         .:? "metadata"
-      <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
+        <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
 
 instance FromJSON RemoteDependency where
   parseJSON = withObject "RemoteDependency" $ \obj -> do
@@ -525,7 +525,7 @@ instance FromJSON RemoteDependency where
       <*> (obj `neText` "url")
       <*> obj
         .:? "metadata"
-      <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
+        <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
 
 validateRemoteDep :: (Has Diagnostics sig m) => RemoteDependency -> Organization -> m RemoteDependency
 validateRemoteDep r org =
@@ -557,10 +557,9 @@ data RemoteDepLengthIsGtThanAllowed
   | RemoteDepLengthIsGtThanAllowedHelp Int
 
 instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
-  renderDiagnostic (RemoteDepLengthIsGtThanAllowedMessage srcLoc) = do
-    let header = "remote-dependency length is exceeds limit"
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block Nothing
+  renderDiagnostic :: RemoteDepLengthIsGtThanAllowed -> Errata
+  renderDiagnostic (RemoteDepLengthIsGtThanAllowedMessage srcLoc) =
+    errataSimple (Just "Remote-dependency length is exceeds limit") (createEmptyBlock srcLoc) Nothing
   renderDiagnostic (RemoteDepLengthIsGtThanAllowedCtx r) = do
     let header =
           renderIt $
@@ -572,13 +571,12 @@ instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
               , indent 4 . pretty $ "Url: " <> remoteUrl r
               , indent 4 . pretty $ "Version: " <> remoteVersion r
               ]
-    Errata (Just header) [] Nothing
+    createErrataWithHeaderOnly header
     where
       urlRevLength :: Int
       urlRevLength = Text.length $ Text.intercalate "" [remoteUrl r, remoteVersion r]
-  renderDiagnostic (RemoteDepLengthIsGtThanAllowedHelp maxLen) = do
-    let header = "Ensure that the combined length is below: " <> toText maxLen
-    Errata (Just header) [] Nothing
+  renderDiagnostic (RemoteDepLengthIsGtThanAllowedHelp maxLen) =
+    createErrataWithHeaderOnly $ "Ensure that the combined length is below: " <> toText maxLen
 
 -- Dependency "metadata" section for both Remote and Custom Dependencies
 instance FromJSON DependencyMetadata where
@@ -588,7 +586,7 @@ instance FromJSON DependencyMetadata where
         .:? "description"
       <*> obj
         .:? "homepage"
-      <* forbidMembers "metadata" ["url"] obj
+        <* forbidMembers "metadata" ["url"] obj
 
 -- Parse supported dependency types into their respective type or return Nothing.
 depTypeFromText :: Text -> Maybe DepType

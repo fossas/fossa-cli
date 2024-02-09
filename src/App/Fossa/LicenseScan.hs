@@ -31,7 +31,7 @@ import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, fromMaybe)
 import Control.Effect.Lift (Lift)
 import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
 import Data.Aeson qualified as Aeson
-import Data.Error (SourceLocation, createBlock, getSourceLocation)
+import Data.Error (SourceLocation, createEmptyBlock, getSourceLocation)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.String.Conversion (decodeUtf8)
@@ -40,6 +40,7 @@ import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (SevInfo), logStdout, renderIt)
 import Effect.ReadFS (ReadFS)
 import Errata (errataSimple)
+import Errata.Types (Errata)
 import Path (Abs, Dir, Path)
 import Prettyprinter (vsep)
 import Srclib.Types (LicenseSourceUnit)
@@ -49,22 +50,20 @@ newtype MissingFossaDepsFile = MissingFossaDepsFile SourceLocation
 newtype NoVendoredDeps = NoVendoredDeps SourceLocation
 
 instance ToDiagnostic MissingFossaDepsFile where
+  renderDiagnostic :: MissingFossaDepsFile -> Errata
   renderDiagnostic (MissingFossaDepsFile srcLoc) = do
-    let header = "Missing fossa-deps file"
-        body =
+    let body =
           renderIt $
             vsep
               [ "'fossa license-scan fossa-deps' requires pointing to a directory with a fossa-deps file."
               , "The file can have one of the extensions: .yaml .yml .json"
               ]
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block (Just body)
+    errataSimple (Just "Missing fossa-deps file") (createEmptyBlock srcLoc) (Just body)
 
 instance ToDiagnostic NoVendoredDeps where
-  renderDiagnostic (NoVendoredDeps srcLoc) = do
-    let header = "The 'vendored-dependencies' section of the fossa deps file is empty or missing."
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block Nothing
+  renderDiagnostic :: NoVendoredDeps -> Errata
+  renderDiagnostic (NoVendoredDeps srcLoc) =
+    errataSimple (Just "The 'vendored-dependencies' section of the fossa deps file is empty or missing") (createEmptyBlock srcLoc) Nothing
 
 newtype UploadUnits = UploadUnits (NonEmpty LicenseSourceUnit)
 

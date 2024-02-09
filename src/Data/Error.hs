@@ -5,9 +5,9 @@ module Data.Error (
   SourceLocation (..),
   DiagnosticStyle (..),
   getSourceLocation,
-  createBlock,
+  createEmptyBlock,
   createBody,
-  createError,
+  createErrataWithHeaderOnly,
   renderErrataStack,
   applyDiagnosticStyle,
   combineErrataHeaders,
@@ -31,7 +31,7 @@ import Prettyprinter.Render.Terminal (
  )
 
 -- SourceLocation captures the file path, line, and col at a given call site
--- SourceLocation will be used in conjuction with our errors
+-- SourceLocation will be used in conjunction with our errors
 data SourceLocation = SourceLocation
   { filePath :: FilePath
   , line :: Int
@@ -45,21 +45,22 @@ getSourceLocation = case getCallStack ?callStack of
   (_, loc) : _ -> SourceLocation (srcLocFile loc) (srcLocStartLine loc) (srcLocStartCol loc)
   _ -> SourceLocation "Unknown" 0 0
 
-createError :: Maybe Text -> [Block] -> Maybe Text -> Errata
-createError = Errata
+createErrataWithHeaderOnly :: Text -> Errata
+createErrataWithHeaderOnly header = Errata (Just header) [] Nothing
 
 -- wrapper to create an Errata block
-createBlock :: SourceLocation -> Maybe Text -> Maybe Text -> Block
-createBlock SourceLocation{..} maybeHeader =
+createEmptyBlock :: SourceLocation -> Block
+createEmptyBlock SourceLocation{..} =
   Block
     fancyStyle
     (filePath, line, col)
-    maybeHeader
+    Nothing
     []
+    Nothing
 
 createBody :: Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text -> Text
 createBody maybeContent maybeDocumentation maybeSupport maybeHelp maybeContext = do
-  let content = fromMaybe "" maybeContent <> "\n"
+  let content = fromMaybe "" maybeContent
       documentation = maybe "" (buildMessageWithDiagnosticStyle DocumentationStyle) maybeDocumentation
       support = maybe "" (buildMessageWithDiagnosticStyle SupportStyle) maybeSupport
       help = maybe "" (buildMessageWithDiagnosticStyle HelpStyle) maybeHelp
@@ -90,7 +91,7 @@ applyDiagnosticStyle style Errata{..} = case errataHeader of
   _ -> Errata errataHeader errataBlocks errataBody
 
 buildMessageWithDiagnosticStyle :: DiagnosticStyle -> Text -> Text
-buildMessageWithDiagnosticStyle style msg = toText style <> msg <> "\n"
+buildMessageWithDiagnosticStyle style msg = "\n" <> toText style <> msg
 
 renderErrataStack :: [Errata] -> Doc AnsiStyle
 renderErrataStack =
@@ -104,7 +105,7 @@ The listed Err types are used to provide contextual details about a given error.
 In order to attach these err details to an error, we need extract their contents,
 which is currently stored in the Header field of the Errata object.
 This function takes a list of Errata objects, extracts the contents from the header of each Errata,
-and joins them together with a new line sperator.
+and joins them together with a new line seperator.
 
 We are choosing not to use the `renderErrataStack` function because it will display the errors with an extra new line seperator
 between each Errata object.

@@ -42,7 +42,7 @@ instance ToDiagnostic MissingFullDependencyPlugin where
     let header = "Could not perform dynamic sbt analysis via `sbt dependencyBrowseTreeHTML`"
     Errata (Just header) [] Nothing
   renderDiagnostic MissingFullDependencyPluginHelp = do
-    let header = "Ensure you can run `sbt dependencyBrowseTreeHTML`. Install the sbt plugin if you are not able to run the aforementationed command."
+    let header = "Ensure you can run `sbt dependencyBrowseTreeHTML`. Install the sbt plugin if you are not able to run the command."
     Errata (Just header) [] Nothing
 
 newtype FailedToListProjects = FailedToListProjects (Path Abs Dir)

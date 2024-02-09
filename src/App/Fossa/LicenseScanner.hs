@@ -43,7 +43,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.StickyLogger (StickyLogger, logSticky)
 import Data.Either.Combinators (rightToMaybe)
-import Data.Error (SourceLocation, createBlock, getSourceLocation)
+import Data.Error (SourceLocation, createEmptyBlock, getSourceLocation)
 import Data.HashMap.Strict qualified as HM
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -62,7 +62,7 @@ import Effect.ReadFS (
   ReadFS,
   resolvePath',
  )
-import Errata (errataSimple)
+import Errata (Errata, errataSimple)
 import Fossa.API.Types (
   Archive (Archive, archiveName),
   ArchiveComponents (..),
@@ -88,31 +88,18 @@ data LicenseScanErr
   | UnsupportedArchive SourceLocation (Path Abs File)
 
 instance ToDiagnostic LicenseScanErr where
-  renderDiagnostic (NoSuccessfulScans srcLoc) = do
-    let header = "No native license scans were successful"
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block Nothing
-  renderDiagnostic (NoLicenseResults srcLoc path) = do
-    let header = "No license results found after scanning directory: " <> toText path
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block Nothing
-  renderDiagnostic (EmptyDirectory srcLoc path) = do
-    let header = "vendored-dependencies path has no files and cannot be scanned: " <> toText path
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block Nothing
-  renderDiagnostic (EmptyOrCorruptedArchive srcLoc path) = do
-    let header = "vendored-dependencies archive is malformed or contains no files: " <> toText path
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block Nothing
+  renderDiagnostic :: LicenseScanErr -> Errata
+  renderDiagnostic (NoSuccessfulScans srcLoc) =
+    errataSimple (Just "No native license scans were successful") (createEmptyBlock srcLoc) Nothing
+  renderDiagnostic (NoLicenseResults srcLoc path) =
+    errataSimple (Just $ "No license results found after scanning directory: " <> toText path) (createEmptyBlock srcLoc) Nothing
+  renderDiagnostic (EmptyDirectory srcLoc path) =
+    errataSimple (Just $ "vendored-dependencies path has no files and cannot be scanned: " <> toText path) (createEmptyBlock srcLoc) Nothing
+  renderDiagnostic (EmptyOrCorruptedArchive srcLoc path) =
+    errataSimple (Just $ "vendored-dependencies archive is malformed or contains no files: " <> toText path) (createEmptyBlock srcLoc) Nothing
   renderDiagnostic (UnsupportedArchive srcLoc path) = case fileExtension path of
-    Just ext -> do
-      let header = "fossa-cli does not support archives of type " <> "`" <> toText ext <> "`" <> ": " <> toText path
-          block = createBlock srcLoc Nothing Nothing
-      errataSimple (Just header) block Nothing
-    Nothing -> do
-      let header = "fossa-cli does not support archives without file extensions: " <> toText path
-          block = createBlock srcLoc Nothing Nothing
-      errataSimple (Just header) block Nothing
+    Just ext -> errataSimple (Just $ "FOSSA CLI does not support archives of type " <> "`" <> toText ext <> "`" <> ": " <> toText path) (createEmptyBlock srcLoc) Nothing
+    Nothing -> errataSimple (Just $ "FOSSA CLI does not support archives without file extensions: " <> toText path) (createEmptyBlock srcLoc) Nothing
 
 newtype ScannableArchive = ScannableArchive {scanFile :: Path Abs File} deriving (Eq, Ord, Show)
 

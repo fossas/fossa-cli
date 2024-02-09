@@ -94,7 +94,7 @@ import Control.Monad (join, unless, void, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
-import Data.Error (SourceLocation, createBlock, getSourceLocation)
+import Data.Error (SourceLocation, createEmptyBlock, getSourceLocation)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.List.NonEmpty qualified as NE
@@ -117,7 +117,7 @@ import Effect.Logger (
   renderIt,
  )
 import Effect.ReadFS (ReadFS)
-import Errata (errataSimple)
+import Errata (Errata, errataSimple)
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
@@ -516,13 +516,11 @@ data AnalyzeError
   | ErrOnlyKeywordSearchResultsFound (SourceLocation)
 
 instance Diag.ToDiagnostic AnalyzeError where
-  renderDiagnostic (ErrNoProjectsDiscovered srcLoc) = do
-    let header = "No analysis targets found in directory"
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block Nothing
+  renderDiagnostic :: AnalyzeError -> Errata
+  renderDiagnostic (ErrNoProjectsDiscovered srcLoc) =
+    errataSimple (Just "No analysis targets found in directory") (createEmptyBlock srcLoc) Nothing
   renderDiagnostic (ErrFilteredAllProjects srcLoc) = do
-    let header = "Filtered out all projects"
-        body =
+    let body =
           renderIt $
             vsep
               [ "This may be occurring because: "
@@ -533,18 +531,15 @@ instance Diag.ToDiagnostic AnalyzeError where
               , vsep $ map (\i -> pretty $ "    * " <> toText i) ignoredPaths
               , ""
               ]
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block (Just body)
+    errataSimple (Just "Filtered out all projects") (createEmptyBlock srcLoc) (Just body)
   renderDiagnostic (ErrOnlyKeywordSearchResultsFound srcLoc) = do
-    let header = "Only keyword search results found"
-        body =
+    let body =
           renderIt $
             vsep
               [ "Matches to your keyword searches were found, but no other analysis targets were found."
               , "This error can be safely ignored if you are only expecting keyword search results."
               ]
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block (Just body)
+    errataSimple (Just "Only keyword search results found") (createEmptyBlock srcLoc) (Just body)
 
 buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Aeson.Value
 buildResult includeAll srcUnits projects licenseSourceUnits =

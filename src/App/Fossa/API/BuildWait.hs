@@ -28,9 +28,10 @@ import Control.Effect.FossaApiClient (
 import Control.Effect.StickyLogger (StickyLogger, logSticky')
 import Control.Monad (void, when)
 import Control.Timeout (Cancel, checkForCancel, delay)
-import Data.Error (SourceLocation, createBlock, getSourceLocation)
+import Data.Error (SourceLocation, createEmptyBlock, getSourceLocation)
 import Effect.Logger (Logger, viaShow)
 import Errata (errataSimple)
+import Errata.Types (Errata)
 import Fossa.API.Types (
   ApiOpts (apiOptsPollDelay),
   Build (buildTask),
@@ -51,14 +52,11 @@ data WaitError
   deriving (Eq, Ord, Show)
 
 instance ToDiagnostic WaitError where
-  renderDiagnostic (BuildFailed srcLoc) = do
-    let header = "The build failed. Check the FOSSA webapp for more details"
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block Nothing
-  renderDiagnostic (LocalTimeout srcLoc) = do
-    let header = "Build/Issue scan was not completed on the FOSSA server, and the --timeout duration has expired"
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block Nothing
+  renderDiagnostic :: WaitError -> Errata
+  renderDiagnostic (BuildFailed srcLoc) =
+    errataSimple (Just "The build failed. Check the FOSSA webapp for more details") (createEmptyBlock srcLoc) Nothing
+  renderDiagnostic (LocalTimeout srcLoc) =
+    errataSimple (Just "Build/Issue scan was not completed on the FOSSA server, and the --timeout duration has expired") (createEmptyBlock srcLoc) Nothing
 
 -- | Wait for either a normal build completion or a monorepo scan completion.
 -- Try to detect the correct method, use provided fallback

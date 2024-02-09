@@ -6,7 +6,7 @@ module Container.Errors (
 import App.Support (supportUrl)
 import Codec.Archive.Tar qualified as Tar
 import Control.Exception (Exception)
-import Data.Error (SourceLocation, createBlock)
+import Data.Error (SourceLocation, createEmptyBlock, createErrataWithHeaderOnly)
 import Data.List.NonEmpty (NonEmpty)
 import Data.String.Conversion (toText)
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
@@ -39,16 +39,18 @@ instance Show ContainerImgParsingError where
 instance Exception ContainerImgParsingError
 
 instance ToDiagnostic ContainerImgParsingError where
-  renderDiagnostic e = Errata (Just (toText $ show e)) [] Nothing
+  renderDiagnostic :: ContainerImgParsingError -> Errata
+  renderDiagnostic e = createErrataWithHeaderOnly . toText $ show e
 
 instance ToDiagnostic (NonEmpty ContainerImgParsingError) where
-  renderDiagnostic e = Errata (Just (toText $ show e)) [] Nothing
+  renderDiagnostic :: NonEmpty ContainerImgParsingError -> Errata
+  renderDiagnostic e = createErrataWithHeaderOnly . toText $ show e
 
 newtype EndpointDoesNotSupportNativeContainerScan = EndpointDoesNotSupportNativeContainerScan SourceLocation
 instance ToDiagnostic EndpointDoesNotSupportNativeContainerScan where
+  renderDiagnostic :: EndpointDoesNotSupportNativeContainerScan -> Errata
   renderDiagnostic (EndpointDoesNotSupportNativeContainerScan srcLoc) = do
-    let header = "Provided endpoint does not support native container scans"
-        body =
+    let body =
           renderIt $
             vsep
               [ "Container scanning with new scanner is not supported for your FOSSA endpoint."
@@ -57,5 +59,4 @@ instance ToDiagnostic EndpointDoesNotSupportNativeContainerScan where
               , ""
               , "Please contact FOSSA support at " <> pretty supportUrl <> " for more assistance."
               ]
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block (Just body)
+    errataSimple (Just "Provided endpoint does not support native container scans") (createEmptyBlock srcLoc) (Just body)

@@ -23,7 +23,7 @@ import Control.Monad (unless, void, when, (>=>))
 import Data.Aeson (FromJSON (parseJSON), Value, withObject, (.!=), (.:), (.:?))
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.Aeson.Types (formatError)
-import Data.Error (SourceLocation, createBlock, getSourceLocation)
+import Data.Error (SourceLocation, createEmptyBlock, getSourceLocation)
 import Data.Foldable (traverse_)
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
@@ -265,19 +265,17 @@ data MissingModuleErr = MissingModuleErr SourceLocation ImportPath
   deriving (Eq, Show)
 
 instance ToDiagnostic MissingModuleErr where
-  renderDiagnostic (MissingModuleErr srcLoc (ImportPath i)) = do
-    let header = "Could not find module for: " <> i
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block Nothing
+  renderDiagnostic :: MissingModuleErr -> Errata
+  renderDiagnostic (MissingModuleErr srcLoc (ImportPath i)) =
+    errataSimple (Just $ "Could not find module for: " <> i) (createEmptyBlock srcLoc) Nothing
 
 data MissingMainModuleErr = MissingMainModuleErr SourceLocation (Path Abs Dir)
   deriving (Eq, Show)
 
 instance ToDiagnostic MissingMainModuleErr where
-  renderDiagnostic (MissingMainModuleErr srcLoc path) = do
-    let header = "No main module for project: " <> toText path
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block Nothing
+  renderDiagnostic :: MissingMainModuleErr -> Errata
+  renderDiagnostic (MissingMainModuleErr srcLoc path) =
+    errataSimple (Just $ "No main module for project: " <> toText path) (createEmptyBlock srcLoc) Nothing
 
 -- | A module is a path dep if its import path starts with './' or '../'.
 -- Checking for ./ or ../ is the documented way of detecting path deps.

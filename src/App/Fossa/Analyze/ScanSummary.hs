@@ -368,7 +368,7 @@ countWarnings ws =
     isIgnoredErrGroup IgnoredErrGroup{} = True
     isIgnoredErrGroup _ = False
 
-dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => Config.AnalyzeConfig -> Text -> AnalysisScanResult -> m (Path Abs File)
+dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => Config.AnalyzeConfig -> Data.Text.Text -> AnalysisScanResult -> m (Path Abs File)
 dumpResultLogsToTempFile cfg endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults) = do
   let doc =
         renderStrict

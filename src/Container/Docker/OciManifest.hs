@@ -25,7 +25,7 @@ import Container.Docker.SourceParser (
  )
 import Control.Effect.Diagnostics (ToDiagnostic, renderDiagnostic)
 import Data.Aeson (FromJSON (parseJSON), withObject, withText, (.:))
-import Data.Error (SourceLocation, createBlock)
+import Data.Error (SourceLocation, createEmptyBlock)
 import Data.List.NonEmpty ((<|))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.String.Conversion (toString)
@@ -33,6 +33,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Effect.Logger (renderIt, vsep)
 import Errata (errataSimple)
+import Errata.Types (Errata)
 import Prettyprinter (indent, line)
 
 supportedManifestKinds :: [Text]
@@ -182,9 +183,9 @@ data NotSupportedManifestFmt
   = NotSupportedManifestFmt SourceLocation Text RegistryImageSource
 
 instance ToDiagnostic NotSupportedManifestFmt where
+  renderDiagnostic :: NotSupportedManifestFmt -> Errata
   renderDiagnostic (NotSupportedManifestFmt srcLoc fmt imgSrc) = do
-    let header = "Manifest format is not supported: " <> fmt
-        body =
+    let body =
           renderIt $
             vsep
               [ "Workaround:" <> line
@@ -195,5 +196,4 @@ instance ToDiagnostic NotSupportedManifestFmt where
                     , suggestDockerExport imgSrc
                     ]
               ]
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block (Just body)
+    errataSimple (Just $ "Manifest format is not supported: " <> fmt) (createEmptyBlock srcLoc) (Just body)

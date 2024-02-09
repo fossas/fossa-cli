@@ -28,7 +28,7 @@ import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic),
 import Control.Effect.Lift (Has, Lift)
 import Control.Timeout (Duration (Seconds))
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
-import Data.Error (SourceLocation, createBlock, getSourceLocation)
+import Data.Error (SourceLocation, createEmptyBlock, getSourceLocation)
 import Data.List (intercalate)
 import Data.String.Conversion (ToText, toText)
 import Effect.Exec (Exec)
@@ -227,20 +227,20 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
 
 newtype NoFormatProvided = NoFormatProvided SourceLocation
 instance ToDiagnostic NoFormatProvided where
-  renderDiagnostic (NoFormatProvided srcLoc) = do
-    let header = "No format provided"
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block Nothing
+  renderDiagnostic :: NoFormatProvided -> Errata
+  renderDiagnostic (NoFormatProvided srcLoc) =
+    errataSimple (Just "No format provided") (createEmptyBlock srcLoc) Nothing
 
 data InvalidReportFormat = InvalidReportFormat SourceLocation String
 instance ToDiagnostic InvalidReportFormat where
+  renderDiagnostic :: InvalidReportFormat -> Errata
   renderDiagnostic (InvalidReportFormat srcLoc fmt) = do
     let header = "Report format: " <> toText fmt <> " is not supported"
-        block = createBlock srcLoc Nothing Nothing
-    errataSimple (Just header) block Nothing
+    errataSimple (Just header) (createEmptyBlock srcLoc) Nothing
 
 data ReportErrorHelp = ReportErrorHelp
 instance ToDiagnostic ReportErrorHelp where
+  renderDiagnostic :: ReportErrorHelp -> Errata
   renderDiagnostic ReportErrorHelp = do
     let header = "Provide a supported format via '--format'. Supported formats: " <> (toText reportOutputFormatList)
     Errata (Just header) [] Nothing

@@ -7,16 +7,17 @@ module App.Fossa.PreflightChecks (
 
 import App.Docs (apiKeyUrl)
 import Control.Carrier.Debug (ignoreDebug)
-import Control.Carrier.Diagnostics (Diagnostics, errCtx)
+import Control.Carrier.Diagnostics (Diagnostics, errDoc, errHelp)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.Stack (context)
 import Control.Effect.Diagnostics (ToDiagnostic, fatalOnIOException)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Monad (void)
+import Data.Error (createErrataWithHeaderOnly)
 import Data.Text.IO qualified as TIO
 import Diag.Diagnostic (ToDiagnostic (..))
-import Effect.Logger (pretty, vsep)
+import Errata (Errata)
 import Fossa.API.Types (ApiOpts)
 import Path (
   File,
@@ -49,15 +50,13 @@ preflightChecks = context "preflight-checks" $ do
   sendIO $ removeFile (tmpDir </> preflightCheckFileName)
 
   -- Check for valid API Key and if user can connect to fossa app
-  void $ errCtx InvalidApiKeyErr getOrganization
+  void $ errHelp InvalidApiKeyErr $ errDoc apiKeyUrl getOrganization
 
 preflightCheckFileName :: Path Rel File
 preflightCheckFileName = $(mkRelFile "preflight-check.txt")
 
 data InvalidApiKeyErr = InvalidApiKeyErr
 instance ToDiagnostic InvalidApiKeyErr where
+  renderDiagnostic :: InvalidApiKeyErr -> Errata
   renderDiagnostic InvalidApiKeyErr =
-    vsep
-      [ "Ensure that you are using a valid FOSSA_API_KEY."
-      , "Refer to " <> pretty apiKeyUrl <> " for guidance on how to generate and retrieve your API key."
-      ]
+    createErrataWithHeaderOnly "Ensure that you are using a valid FOSSA_API_KEY. Refer to the provided documentation for guidance on how to generate and retrieve your API key."

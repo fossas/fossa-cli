@@ -192,7 +192,7 @@ renderCmdFailure :: CmdFailure -> Errata
 renderCmdFailure CmdFailure{..} =
   if isCmdNotAvailable
     then do
-      let header = "Could not find executable: `" <> cmdName cmdFailureCmd
+      let header = "Could not find executable: `" <> cmdName cmdFailureCmd <> "`"
           help = "Please ensure `" <> cmdName cmdFailureCmd <> "` exists in PATH prior to running fossa"
           body = createBody Nothing Nothing (Just $ renderIt reportDefectMsg) (Just help) Nothing
       Errata (Just header) [] (Just body)
@@ -279,6 +279,7 @@ renderCmdFailure CmdFailure{..} =
             ]
 
 instance ToDiagnostic ExecErr where
+  renderDiagnostic :: ExecErr -> Errata
   renderDiagnostic = \case
     ExecEnvNotSupported env -> do
       let header = "Exec is not supported in: " <> env
@@ -437,9 +438,10 @@ selectBestCmd workdir CandidateAnalysisCommands{..} = selectBestCmd' (NE.toList 
 
 data CandidateCommandFailed = CandidateCommandFailed {failedCommand :: Text, failedArgs :: [Text]}
 instance ToDiagnostic CandidateCommandFailed where
+  renderDiagnostic :: CandidateCommandFailed -> Errata
   renderDiagnostic CandidateCommandFailed{..} = do
-    let header = "Command: " <> failedCommand <> " not suitable"
-        body = "Running with args: " <> mconcat failedArgs <> " resulted in a non-zero exit code"
+    let header = "Command: " <> "`" <> failedCommand <> "` not suitable"
+        body = "Running with args: " <> "`" <> mconcat failedArgs <> "` resulted in a non-zero exit code"
     Errata (Just header) [] (Just body)
 
 argFromPath :: Path a b -> Text

@@ -488,24 +488,22 @@ getSourceLocation = case getCallStack ?callStack of
   _ -> SourceLocation "Unknown" 0 0
 
 -- wrapper to create an Errata block
-createBlock :: SourceLocation -> Maybe Text -> Maybe Text -> Block
-createBlock SourceLocation{..} maybeHeader =
+createEmptyBlock :: SourceLocation -> Block
+createEmptyBlock SourceLocation{..} =
   Block
     fancyStyle
     (filePath, line, col)
-    maybeHeader
+    Nothing
     []
+    Nothing
 
 
 -- concrete error type
 data SampleError = SampleError Text SourceLocation
 
 instance toDiagnostic SampleError where 
-  renderDiagnostic (SampleError errDetails srcLoc) = do 
-    let header = "Failed to peform action"
-        block = createBlock srcLoc Nothing Nothing 
-    
-    Errata (Just header) [block] (Just errDetails)
+  renderDiagnostic (SampleError errDetails srcLoc) = 
+    Errata (Just $ "Failed to peform action") (createEmptyBlock srcLoc) (Just errDetails)
 
 exampleFunc = do 
   x <- someAction

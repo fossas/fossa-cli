@@ -298,7 +298,7 @@ renderErrs es errDetails tracebackStyle diagStyle = do
     applyToTopOfStack f (x : xs) = f x : xs
 
     addErrDetails :: (Doc AnsiStyle, Doc AnsiStyle) -> (Doc AnsiStyle, Doc AnsiStyle)
-    addErrDetails (err, traceback) = (err <> newlinePreceding errDetails, traceback)
+    addErrDetails (err, traceback) = (err <> (newlinePreceding . newlineTrailing $ errDetails), traceback)
 
 ---------- Rendering individual Result components: ErrCtx, EmittedWarn, SomeWarn, ErrWithStack
 
