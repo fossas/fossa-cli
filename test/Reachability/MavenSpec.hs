@@ -3,7 +3,7 @@
 
 module Reachability.MavenSpec (spec) where
 
-import App.Fossa.Reachability.Maven (getJarsByBuild, isValidJar)
+import App.Fossa.Reachability.Maven (getJarsByBuild)
 import Control.Effect.Lift (sendIO)
 import Path (Abs, Dir, File, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO qualified as PIO
@@ -12,22 +12,6 @@ import Test.Hspec (Spec, describe)
 
 spec :: Spec
 spec = describe "Maven" $ do
-  describe "isValidJar" $ do
-    it' "should return False when jar does not exist" $ do
-      jarFile <- sendIO missingJar
-      result <- isValidJar jarFile
-      result `shouldBe'` False
-
-    it' "should return True when jar exists" $ do
-      jarFile <- sendIO sampleJar
-      result <- isValidJar jarFile
-      result `shouldBe'` True
-
-    it' "should return False when jar exists, but is test jar" $ do
-      jarFile <- sendIO sampleTestJar
-      result <- isValidJar jarFile
-      result `shouldBe'` False
-
   describe "getJarsByBuild" $ do
     it' "should get jar from defaults" $ do
       p <- sendIO defaultMavenProject
@@ -40,24 +24,6 @@ spec = describe "Maven" $ do
       jar <- sendIO mavenProjectWithCustomDistJar
       result <- getJarsByBuild p
       result `shouldBe'` [jar]
-
--- | Jar is produced from following projects:
--- https://github.com/fossas/example-projects/tree/main/reachability/java/vulnerable-function-used
-sampleJar :: IO (Path Abs File)
-sampleJar = do
-  cwd <- PIO.getCurrentDir
-  pure (cwd </> $(mkRelFile "test/Reachability/testdata/sample.jar"))
-
-sampleTestJar :: IO (Path Abs File)
-sampleTestJar = do
-  cwd <- PIO.getCurrentDir
-  -- Jar has same content as @sampleJar@
-  pure (cwd </> $(mkRelFile "test/Reachability/testdata/sample-test.jar"))
-
-missingJar :: IO (Path Abs File)
-missingJar = do
-  cwd <- PIO.getCurrentDir
-  pure (cwd </> $(mkRelFile "test/Reachability/testdata/missing.jar"))
 
 defaultMavenProject :: IO (Path Abs Dir)
 defaultMavenProject = do

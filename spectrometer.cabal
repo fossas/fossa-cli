@@ -229,6 +229,7 @@ library
     App.Fossa.PathDependency
     App.Fossa.PreflightChecks
     App.Fossa.ProjectInference
+    App.Fossa.Reachability.Gradle
     App.Fossa.Reachability.Jar
     App.Fossa.Reachability.Maven
     App.Fossa.Reachability.Types
@@ -647,6 +648,7 @@ test-suite unit-tests
     Python.SetupPySpec
     R.DescriptionSpec
     R.RenvSpec
+    Reachability.GradleSpec
     Reachability.JarSpec
     Reachability.MavenSpec
     Reachability.UploadSpec

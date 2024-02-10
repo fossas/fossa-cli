@@ -4,11 +4,22 @@
 Reachability Analysis is a security offering designed to enhance FOSSA's security analysis by providing context on vulnerable packages. It alleviates the constraints of traditional CVE assessments through the static analysis of application and dependency code, confirming the presence of vulnerable call paths. 
 
 ### Limitations
-Reachability currently supports all Maven projects dynamically analyzed by fossa-cli. The target jar of the project must exist, prior to the analysis.
+- Reachability currently supports all Maven and Gradle projects dynamically analyzed by fossa-cli. 
+- The target jar of the project must exist, prior to the analysis. If the jar artifact is not present, or FOSSA CLI fails to
+associate this jar with project, FOSSA CLI will not perform reachability analysis.
+- Reachability requires that `java` is present in PATH, and `java` version must be greater than `1.8` (jdk8+).
+
+For example, 
+- if you are using maven, you should run `mvn package` to ensure jar artifact exists, prior to running `fossa analyze`
+- if you are using gradle, you should run `gradlew build` to ensure jar artifact exists, prior to running `fossa analyze`
 
 ### Maven Analysis
 
 For Maven projects, FOSSA CLI performs an analysis to infer dependencies. If FOSSA CLI identifies a complete dependency graph, which may include both direct and transitive dependencies, it attempts to infer the built JAR file for reachability analysis. It looks for `./target/{artifact}-{version}.jar` from the POM directory. If the POM file provides `build.directory` or `build.finalName` attributes, they are used instead of the default target jar path. For this reason, perform `fossa analyze` after the project of interest is built (g.g. `mvn package`), and target artifact exists in the directory.
+
+### Gradle Analysis
+
+For Gradle projects, FOSSA CLI invokes `./gradlew -I jsonpaths.gradle jsonPaths`. Where [jsonpaths.gradle](./../../scripts/jarpaths.gradle) is gradle script, which uses `java` plugin, and `jar` task associated with gradle to infer path of the built jar file. If neither of those are present, FOSSA CLI won't be able to identify jar artifacts for analysis.
 
 ### How do I debug reachability from `fossa-cli`?
 

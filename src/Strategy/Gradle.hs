@@ -16,6 +16,7 @@
 module Strategy.Gradle (
   discover,
   GradleProject,
+  runGradle,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)

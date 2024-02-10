@@ -102,7 +102,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
-import Diag.Result (resultToMaybe)
+import Diag.Result (Result (..), resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
@@ -398,7 +398,11 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   logDebug $ "Filtered projects with path dependencies: " <> pretty (show filteredProjects')
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
-  reachabilityUnits <- analyzeForReachability analysisResult
+  reachabilityUnitsResult <- Diag.errorBoundaryIO . diagToDebug $ analyzeForReachability analysisResult
+  reachabilityUnits <- case reachabilityUnitsResult of
+    Diag.Result.Failure _ _ -> pure []
+    Diag.Result.Success _ units -> pure units
+
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
