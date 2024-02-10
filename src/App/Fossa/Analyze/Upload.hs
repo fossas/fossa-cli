@@ -38,7 +38,7 @@ import Control.Effect.FossaApiClient (
  )
 import Control.Effect.Git (Git, fetchGitContributors)
 import Control.Effect.Lift (Lift)
-import Control.Monad (when)
+import Control.Monad (unless, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.Flag (Flag, fromFlag)
@@ -53,12 +53,13 @@ import Effect.Logger (
   Logger,
   Pretty (pretty),
   Severity (SevInfo),
+  logDebug,
   logError,
   logInfo,
   logStdout,
   viaShow,
  )
-import Fossa.API.Types (Organization (orgRequiresFullFileUploads, orgSupportsReachability), Project (projectIsMonorepo), UploadResponse (..))
+import Fossa.API.Types (Organization (orgRequiresFullFileUploads, orgSupportsReachability, organizationId), Project (projectIsMonorepo), UploadResponse (..))
 import Path (Abs, Dir, Path)
 import Srclib.Types (
   FullSourceUnit,
@@ -105,18 +106,21 @@ uploadSuccessfulAnalysis ::
   m Locator
 uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits =
   context "Uploading analysis" $ do
+    dieOnMonorepoUpload revision
+    org <- getOrganization
+
+    if (orgSupportsReachability org)
+      then void $ upload revision metadata reachabilityUnits
+      else
+        unless (null reachabilityUnits) $
+          logDebug . pretty $
+            "Organization: (" <> show (organizationId org) <> ") does not support reachability! skipping reachability analysis upload!"
+
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
     logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
     let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
     logInfo ("Using branch: `" <> pretty branchText <> "`")
-
-    dieOnMonorepoUpload revision
-    org <- getOrganization
-
-    when (orgSupportsReachability org) $
-      void $
-        upload revision metadata reachabilityUnits
 
     uploadResult <- case scanUnits of
       SourceUnitOnly units -> uploadAnalysis revision metadata units
