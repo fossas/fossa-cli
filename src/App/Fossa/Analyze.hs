@@ -101,7 +101,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
-import Diag.Result (resultToMaybe, Result (..))
+import Diag.Result (Result (..), resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
