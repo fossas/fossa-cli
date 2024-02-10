@@ -130,7 +130,7 @@ uploadSpec = describe "dependenciesOf" $ do
     upload Fixtures.projectRevision Fixtures.projectMetadata [unit]
 
 sourceUnit :: SourceUnit
-sourceUnit = (NE.head Fixture.sourceUnits){sourceUnitBuild = Just Fixture.sourceUnitBuildMaven}
+sourceUnit = (head Fixture.sourceUnits){sourceUnitBuild = Just Fixture.sourceUnitBuildMaven}
 
 sampleMavenProjectDir :: Path Rel Dir
 sampleMavenProjectDir = $(mkRelDir "test/Reachability/testdata/maven-default/")
