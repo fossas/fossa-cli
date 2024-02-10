@@ -27,7 +27,6 @@ import Control.Effect.FossaApiClient (
   FossaApiClientF (..),
  )
 import Data.ByteString.Lazy (ByteString)
-import Data.List.NonEmpty qualified as NE
 import Data.Set qualified as Set
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text)
