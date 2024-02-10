@@ -422,7 +422,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
       (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
       (_, CountedScanUnits scanUnits) -> pure scanUnits
-  doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityResults
+  doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits
   pure outputResult
   where
     doUpload result iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits =
