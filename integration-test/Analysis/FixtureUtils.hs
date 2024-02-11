@@ -10,12 +10,14 @@ module Analysis.FixtureUtils (
   TestC,
   performDiscoveryAndAnalyses,
   getArtifact,
+  testRunnerWithLogger,
+  withResult,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic))
 import App.Types (OverrideDynamicAnalysisBinary)
-import Control.Carrier.Debug (ignoreDebug)
+import Control.Carrier.Debug (IgnoreDebugC, ignoreDebug)
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
 import Control.Carrier.Lift (Lift, sendIO)
@@ -109,6 +111,7 @@ data FixtureArtifact = FixtureArtifact
 type TestC m =
   ExecIOC
     $ ReadFSIOC
+    $ IgnoreDebugC
     $ DiagnosticsC
     $ LoggerC
     $ ReaderC OverrideDynamicAnalysisBinary
@@ -124,6 +127,7 @@ testRunnerWithLogger f env =
   f
     & runExecIOWithinEnv env
     & runReadFSIO
+    & ignoreDebug
     & runDiagnostics
     & withDefaultLogger SevWarn
     & runReader (mempty :: OverrideDynamicAnalysisBinary)
