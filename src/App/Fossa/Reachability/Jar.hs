@@ -71,7 +71,7 @@ newtype FailedToParseJar = FailedToParseJar (Path Abs File)
 
 instance ToDiagnostic FailedToParseJar where
   renderDiagnostic :: FailedToParseJar -> Errata
-  renderDiagnostic (FailedToParseJar jar) = 
+  renderDiagnostic (FailedToParseJar jar) =
     createErrataWithHeaderOnly $ "Could not read from jar, so skipping: " <> toText (show jar)
 
 -- True if jar exist, and is not likely test jar, otherwise False
