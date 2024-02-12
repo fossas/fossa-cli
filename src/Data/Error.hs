@@ -1,4 +1,3 @@
-{-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Data.Error (
@@ -22,7 +21,7 @@ import Errata.Source (Source (emptySource))
 import Errata.Styles (fancyStyle)
 import Errata.Types (Header)
 import GHC.Generics (Generic)
-import GHC.Stack (CallStack, SrcLoc (..), getCallStack)
+import GHC.Stack (HasCallStack, SrcLoc (..), callStack, getCallStack)
 import Prettyprinter (Doc, annotate, pretty)
 import Prettyprinter.Render.Terminal (
   AnsiStyle,
@@ -40,8 +39,8 @@ data SourceLocation = SourceLocation
   deriving (Eq, Ord, Show, Generic)
 
 -- getSourceLocation returns SourceLocation with the filePath, line, col of the call site
-getSourceLocation :: (?callStack :: CallStack) => SourceLocation
-getSourceLocation = case getCallStack ?callStack of
+getSourceLocation :: HasCallStack => SourceLocation
+getSourceLocation = case getCallStack callStack of
   (_, loc) : _ -> SourceLocation (srcLocFile loc) (srcLocStartLine loc) (srcLocStartCol loc)
   _ -> SourceLocation "Unknown" 0 0
 

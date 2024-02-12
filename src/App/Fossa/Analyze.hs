@@ -54,6 +54,7 @@ import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
 import App.Fossa.PreflightChecks (preflightChecks)
+import App.Fossa.Reachability.Upload (analyzeForReachability)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
@@ -103,7 +104,7 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Diag.Diagnostic as DI
-import Diag.Result (resultToMaybe)
+import Diag.Result (Result (..), resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
@@ -400,6 +401,11 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   logDebug $ "Filtered projects with path dependencies: " <> pretty (show filteredProjects')
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
+  reachabilityUnitsResult <- Diag.errorBoundaryIO . diagToDebug $ analyzeForReachability analysisResult
+  reachabilityUnits <- case reachabilityUnitsResult of
+    Diag.Result.Failure _ _ -> pure []
+    Diag.Result.Success _ units -> pure units
+
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
@@ -419,18 +425,18 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
       (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
       (_, CountedScanUnits scanUnits) -> pure scanUnits
-  doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits
+  doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits
 
   pure outputResult
   where
-    doUpload result iatAssertion destination basedir jsonOutput revision scanUnits =
+    doUpload result iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits =
       case destination of
         OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
         UploadScan apiOpts metadata ->
           Diag.context "upload-results"
             . runFossaApiClient apiOpts
             $ do
-              locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits
+              locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits
               doAssertRevisionBinaries iatAssertion locator
 
     emptyScanUnits :: ScanUnits

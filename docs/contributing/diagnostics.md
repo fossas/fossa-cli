@@ -482,7 +482,7 @@ data SourceLocation = SourceLocation
   deriving (Eq, Ord, Show, Generic)
 
 -- getSourceLocation returns SourceLocation with the filePath, line, col of the call site
-getSourceLocation :: (?callStack :: CallStack) => SourceLocation
+getSourceLocation :: HasCallStack => SourceLocation
 getSourceLocation = case getCallStack ?callStack of
   (_, loc) : _ -> SourceLocation (srcLocFile loc) (srcLocStartLine loc) (srcLocStartCol loc)
   _ -> SourceLocation "Unknown" 0 0
@@ -509,7 +509,7 @@ exampleFunc = do
   x <- someAction
 
   if x == Nothing 
-    then fatal $ SampleError "error details" getSourceLocation
+    then fatal $ SampleError "error details" $ getSourceLocation callStack
     else ...
 
 ```

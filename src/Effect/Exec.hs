@@ -11,6 +11,7 @@ module Effect.Exec (
   ExecF (..),
   ExecErr (..),
   exec,
+  execInCwd,
   execEffectful,
   execThrow,
   Command (..),
@@ -295,6 +296,12 @@ instance ToDiagnostic ExecErr where
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
 exec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure Stdout)
 exec dir cmd = sendSimple (Exec (Abs dir) cmd Nothing)
+
+-- | A variant of 'exec' that runs the command in the current directory
+execInCwd :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Command -> m (Either CmdFailure Stdout)
+execInCwd cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
+  dir <- getCurrentDir
+  exec dir cmd
 
 -- | Execute a command with stdin and return its @(exitcode, stdout, stderr)@
 exec' :: Has Exec sig m => Path Abs Dir -> Command -> Text -> m (Either CmdFailure Stdout)
