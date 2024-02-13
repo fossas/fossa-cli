@@ -10,7 +10,6 @@ Reachability Analysis is a security offering designed to enhance FOSSA's securit
 - The target jar of the project must exist, prior to the analysis. If the jar artifact is not present, or FOSSA CLI fails to
 associate this jar with project, FOSSA CLI will not perform reachability analysis.
 - Reachability requires that `java` is present in PATH, and `java` version must be greater than `1.8` (jdk8+).
-- Reachability requires that `jar` artifact 
 
 For example, 
 - if you are using maven, you should run `mvn package` to ensure jar artifact exists, prior to running `fossa analyze`

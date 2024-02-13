@@ -59,6 +59,7 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
   - [Analyzing Specific Submodules](./walkthroughs/analysis-target-configuration.md#target-filtering-for-submodules)
 - [Dynamic Strategy Command Selection](./features/strategy-command-selection.md)
 - [`fossa analyze` Reference](./references/subcommands/analyze.md)
+- [Reachability](./features/reachability.md)
 
 #### Manually Specifying Dependencies
 
