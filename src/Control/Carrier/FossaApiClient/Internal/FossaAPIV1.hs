@@ -40,6 +40,8 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getUploadURLForPathDependency,
   finalizePathDependencyScan,
   alreadyAnalyzedPathRevision,
+  getTokenType,
+  getSubscription,
 ) where
 
 import App.Docs (fossaSslCertDocsUrl)
@@ -130,6 +132,8 @@ import Fossa.API.Types (
   PathDependencyUpload,
   PathDependencyUploadReq (..),
   Project,
+  TokenType (..),
+  Subscription (..),
   RevisionDependencyCache,
   SignedURL (signedURL),
   UploadResponse,
@@ -601,12 +605,12 @@ uploadNativeContainerScan apiOpts ProjectRevision{..} metadata scan = fossaReq $
             "locator"
               =: locator
               <> "cliVersion"
-                =: cliVersion
+              =: cliVersion
               <> "managedBuild"
-                =: True
+              =: True
               <> maybe mempty ("branch" =:) projectBranch
               <> "scanType"
-                =: ("native" :: Text)
+              =: ("native" :: Text)
               <> mkMetadataOpts metadata projectName
       resp <- req POST (containerUploadUrl baseUrl) (ReqBodyJson scan) jsonResponse (baseOpts <> opts)
       pure $ responseBody resp
@@ -647,9 +651,9 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
         "locator"
           =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "cliVersion"
-            =: cliVersion
+          =: cliVersion
           <> "managedBuild"
-            =: True
+          =: True
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
@@ -670,11 +674,11 @@ uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata fullFi
         "locator"
           =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "cliVersion"
-            =: cliVersion
+          =: cliVersion
           <> "managedBuild"
-            =: True
+          =: True
           <> "cliLicenseScanType"
-            =: (fullFileUploadsToCliLicenseScanType fullFileUploads)
+          =: (fullFileUploadsToCliLicenseScanType fullFileUploads)
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
@@ -1128,11 +1132,11 @@ getAttributionJson apiOpts ProjectRevision{..} = fossaReq $ do
       opts =
         baseOpts
           <> "includeDeepDependencies"
-            =: True
+          =: True
           <> "includeHashAndVersionData"
-            =: True
+          =: True
           <> "dependencyInfoOptions[]"
-            =: packageDownloadUrl
+          =: packageDownloadUrl
   orgId <- organizationId <$> getOrganization apiOpts
   response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision)) ReportJson) NoReqBody jsonResponse opts
   pure (responseBody response)
@@ -1164,6 +1168,22 @@ getOrganization apiOpts = fossaReq $ do
   responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse baseOpts
 
 ----------
+
+tokenTypeEndpoint :: Url scheme -> Url scheme
+tokenTypeEndpoint baseurl = baseurl /: "api" /: "cli" /: "token_type"
+
+getTokenType :: (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) => ApiOpts -> m TokenType
+getTokenType apiOpts = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  responseBody <$> req GET (tokenTypeEndpoint baseUrl) NoReqBody jsonResponse baseOpts
+
+subscriptionEndpoint :: Url scheme -> Url scheme
+subscriptionEndpoint baseurl = baseurl /: "api" /: "cli" /: "subscription"
+
+getSubscription :: (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) => ApiOpts -> m Subscription
+getSubscription apiOpts = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  responseBody <$> req GET (subscriptionEndpoint baseUrl) NoReqBody jsonResponse baseOpts
 
 contributorsEndpoint :: Url scheme -> Url scheme
 contributorsEndpoint baseurl = baseurl /: "api" /: "contributors"

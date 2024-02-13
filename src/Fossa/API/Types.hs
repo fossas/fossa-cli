@@ -31,6 +31,8 @@ module Fossa.API.Types (
   PathDependencyFinalizeReq (..),
   AnalyzedPathDependenciesResp (..),
   AnalyzedPathDependency (..),
+  TokenType (..),
+  Subscription (..),
   useApiOpts,
   defaultApiPollDelay,
   blankOrganization,
@@ -480,6 +482,7 @@ data Organization = Organization
   , orgSupportsPathDependencyScans :: Bool
   , orgSupportsFirstPartyScans :: Bool
   , orgCustomLicenseScanConfigs :: [GrepEntry]
+  , orgSupportsPreflightChecks :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -499,6 +502,7 @@ blankOrganization =
     , orgSupportsPathDependencyScans = False
     , orgSupportsFirstPartyScans = True
     , orgCustomLicenseScanConfigs = []
+    , orgSupportsPreflightChecks = False
     }
 
 instance FromJSON Organization where
@@ -542,6 +546,29 @@ instance FromJSON Organization where
       <*> obj
         .:? "customLicenseScanConfigs"
         .!= []
+      <*> obj
+        .:? "supportsPreflightChecks"
+        .!= False
+
+data TokenType
+  = Push
+  | FullAccess
+  deriving (Eq, Ord, Show)
+
+instance FromJSON TokenType where
+  parseJSON = withText "TokenType" $ \txt -> case txt of 
+    "Push" -> pure Push
+    _ -> pure FullAccess
+
+data Subscription 
+  = Free
+  | Premium
+  deriving (Eq, Ord, Show)
+
+instance FromJSON Subscription where
+  parseJSON = withText "Subscription" $ \txt -> case txt of 
+    "Free" -> pure Free
+    _ -> pure Premium
 
 data Project = Project
   { projectId :: Text

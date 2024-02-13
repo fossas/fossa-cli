@@ -37,6 +37,8 @@ module Control.Effect.FossaApiClient (
   uploadLicenseScanResult,
   uploadFirstPartyScanResult,
   getAnalyzedPathRevisions,
+  getTokenType,
+  getSubscription,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
@@ -69,6 +71,8 @@ import Fossa.API.Types (
   Project,
   RevisionDependencyCache,
   SignedURL,
+  Subscription,
+  TokenType,
   UploadResponse,
  )
 import Path (File, Path, Rel)
@@ -105,6 +109,8 @@ data FossaApiClientF a where
   GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetPathDependencyScanUrl :: PackageRevision -> ProjectRevision -> FullFileUploads -> FossaApiClientF PathDependencyUpload
   GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
+  GetSubscription :: FossaApiClientF Subscription
+  GetTokenType :: FossaApiClientF TokenType
   GetVsiInferences :: VSI.ScanID -> FossaApiClientF VSI.VsiExportedInferencesBody
   GetVsiScanAnalysisStatus :: VSI.ScanID -> FossaApiClientF VSI.AnalysisStatus
   QueueArchiveBuild :: Archive -> FossaApiClientF (Maybe C8.ByteString)
@@ -245,3 +251,9 @@ getVsiInferences = sendSimple . GetVsiInferences
 
 getEndpointVersion :: Has FossaApiClient sig m => m Text
 getEndpointVersion = sendSimple GetEndpointVersion
+
+getTokenType :: Has FossaApiClient sig m => m TokenType
+getTokenType = sendSimple GetTokenType
+
+getSubscription :: Has FossaApiClient sig m => m Subscription
+getSubscription  = sendSimple GetSubscription

@@ -16,6 +16,8 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   uploadNativeContainerScan,
   uploadContributors,
   getEndpointVersion,
+  getTokenType,
+  getSubscription
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
@@ -42,6 +44,8 @@ import Fossa.API.Types (
   Issues,
   Organization,
   Project,
+  TokenType,
+  Subscription,
   RevisionDependencyCache,
   SignedURL,
   UploadResponse,
@@ -61,6 +65,28 @@ getOrganization = do
   -- TODO: This is a wrapper around FossaAPIV1 for now until more uses are
   -- migrated.
   API.getOrganization apiOpts
+
+getTokenType ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  m TokenType
+getTokenType = do
+  apiOpts <- ask
+  API.getTokenType apiOpts
+
+getSubscription ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  m Subscription
+getSubscription = do
+  apiOpts <- ask
+  API.getSubscription apiOpts
 
 getProject ::
   ( Has (Lift IO) sig m
