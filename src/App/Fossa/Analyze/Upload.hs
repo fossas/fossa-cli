@@ -38,7 +38,7 @@ import Control.Effect.FossaApiClient (
  )
 import Control.Effect.Git (Git, fetchGitContributors)
 import Control.Effect.Lift (Lift)
-import Control.Monad (unless, when)
+import Control.Monad (when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.Flag (Flag, fromFlag)
