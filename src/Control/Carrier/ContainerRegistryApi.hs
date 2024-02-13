@@ -46,7 +46,6 @@ import Control.Carrier.ContainerRegistryApi.Common (
   RegistryCtx (RegistryCtx),
   fromResponse,
   getContentType,
-  getToken,
  )
 
 import Control.Carrier.Finally (runFinally)
@@ -54,7 +53,7 @@ import Control.Carrier.Reader (ReaderC, ask, runReader)
 import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Carrier.StickyLogger (runStickyLogger)
 import Control.Carrier.TaskPool (withTaskPool)
-import Control.Concurrent (getNumCapabilities)
+import Control.Concurrent (getNumCapabilities, myThreadId)
 import Control.Concurrent.STM (newEmptyTMVarIO)
 import Control.Effect.ContainerRegistryApi (
   ContainerRegistryApiF (ExportImage, GetImageManifest),
@@ -75,13 +74,16 @@ import Data.Aeson (eitherDecode, encode)
 import Data.ByteString (ByteString, writeFile)
 import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.Conduit.Zlib (ungzip)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isNothing)
 import Data.String.Conversion (
   LazyStrict (toStrict),
+  showText,
   toString,
   toText,
  )
 import Data.Text (Text)
+import Data.UUID qualified as UUID (toText)
+import Data.UUID.V4 qualified as UUID (nextRandom)
 import Effect.Logger (
   Logger,
   Pretty (pretty),
@@ -251,31 +253,41 @@ exportBlob ::
   (RepoDigest, Bool, Text) ->
   m (Path Abs File)
 exportBlob manager imgSrc dir (digest, isGzip, targetFilename) = do
-  ctx <- ask
-  let sinkTarget :: Path Abs File
-      sinkTarget = dir </> Path (toString targetFilename)
+  exportJobId <- sendIO UUID.nextRandom
+  threadId <- sendIO myThreadId
+  let exportDesc = "Export job ID: " <> UUID.toText exportJobId <> ", Export thread ID: " <> showText threadId
+  context exportDesc $ do
+    let sinkTarget :: Path Abs File
+        sinkTarget = dir </> Path (toString targetFilename)
 
-  let imgSrc' = imgSrc{registryContainerRepositoryReference = RepoReferenceDigest digest}
+    let imgSrc' = imgSrc{registryContainerRepositoryReference = RepoReferenceDigest digest}
 
-  -- Prepare request with necessary authorization
-  req <- blobEndpoint imgSrc'
-  token <- getAuthToken (registryCred imgSrc) req manager Nothing =<< getToken ctx
-  let req' = applyAuthToken token req
+    -- Prepare request with necessary authorization
+    req <- blobEndpoint imgSrc'
+    -- The current RegistryCtx is shared amongst multiple threads exporting blobs.
+    -- This could potentially be a problem if layers in a manifest file need different tokens to fetch.
+    -- I think the only way this *might* be possible is through redirects when fetching blobs.
+    -- I think the registry fetcher would still make progress in that case, but would just make more token reqs than necessary.
+    token <- getAuthToken (registryCred imgSrc) req manager Nothing =<< ask
+    -- This message generally means that auth is not required.
+    -- It may also indicate a bug in how we update/share tokens between threads.
+    when (isNothing token) $ logDebug "Got Nothing as a token."
+    let req' = applyAuthToken token req
 
-  -- Download image artifact
-  sendIO . runResourceT $ do
-    response <- HTTPConduit.http req' manager
-    runConduit $
-      HTTPConduit.responseBody response
-        .| (if isGzip then ungzip else idC)
-        .| sinkFile (toString sinkTarget)
+    -- Download image artifact
+    sendIO . runResourceT $ do
+      response <- HTTPConduit.http req' manager
+      runConduit $
+        HTTPConduit.responseBody response
+          .| (if isGzip then ungzip else idC)
+          .| sinkFile (toString sinkTarget)
 
-  logInfo . pretty $
-    if isGzip
-      then "Gzip extracted & downloaded: " <> targetFilename
-      else "Downloaded: " <> targetFilename
+    logInfo . pretty $
+      if isGzip
+        then "Gzip extracted & downloaded: " <> targetFilename
+        else "Downloaded: " <> targetFilename
 
-  pure sinkTarget
+    pure sinkTarget
 
 -- | Identity Conduit
 idC :: (PrimMonad m) => ConduitT ByteString ByteString m ()

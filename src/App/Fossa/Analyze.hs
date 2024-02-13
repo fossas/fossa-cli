@@ -32,7 +32,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Analyze.Upload (mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
+import App.Fossa.Analyze.Upload (ScanUnits (SourceUnitOnly), mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.Config.Analyze (
   AnalysisTacticTypes (..),
@@ -53,7 +53,8 @@ import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
-import App.Fossa.PreflightChecks (preflightChecks)
+import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
+import App.Fossa.Reachability.Upload (analyzeForReachability)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
@@ -96,11 +97,12 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
+import Data.Functor (($>))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
-import Diag.Result (resultToMaybe)
+import Diag.Result (Result (..), resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
@@ -293,7 +295,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   _ <- case destination of
     OutputStdout -> pure ()
-    UploadScan apiOpts _ -> runFossaApiClient apiOpts preflightChecks
+    UploadScan apiOpts _ -> runFossaApiClient apiOpts $ preflightChecks AnalyzeChecks
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
@@ -396,6 +398,11 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   logDebug $ "Filtered projects with path dependencies: " <> pretty (show filteredProjects')
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
+  reachabilityUnitsResult <- Diag.errorBoundaryIO . diagToDebug $ analyzeForReachability analysisResult
+  reachabilityUnits <- case reachabilityUnitsResult of
+    Diag.Result.Failure _ _ -> pure []
+    Diag.Result.Success _ units -> pure units
+
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
@@ -408,26 +415,28 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
   let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits
 
-  -- If we find nothing but keyword search, we exit with an error, but explain that the error may be ignorable.
-  -- We do not want to succeed, because nothing gets uploaded to the API for keyword searches, so `fossa test` will fail.
-  -- So the solution is to still fail, but give a hopefully useful explanation that the error can be ignored if all you were expecting is keyword search results.
-  case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
-    (False, NoneDiscovered) -> Diag.fatal ErrNoProjectsDiscovered
-    (True, NoneDiscovered) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
-    (False, FilteredAll) -> Diag.fatal ErrFilteredAllProjects
-    (True, FilteredAll) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
-    (_, CountedScanUnits scanUnits) -> doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits
+  scanUnits <-
+    case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
+      (False, NoneDiscovered) -> Diag.warn ErrNoProjectsDiscovered $> emptyScanUnits
+      (True, NoneDiscovered) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
+      (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
+      (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
+      (_, CountedScanUnits scanUnits) -> pure scanUnits
+  doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits
   pure outputResult
   where
-    doUpload result iatAssertion destination basedir jsonOutput revision scanUnits =
+    doUpload result iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits =
       case destination of
         OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
         UploadScan apiOpts metadata ->
           Diag.context "upload-results"
             . runFossaApiClient apiOpts
             $ do
-              locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits
+              locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits
               doAssertRevisionBinaries iatAssertion locator
+
+    emptyScanUnits :: ScanUnits
+    emptyScanUnits = SourceUnitOnly []
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
 toProjectResult (SkippedDueToProvidedFilter _) = Nothing

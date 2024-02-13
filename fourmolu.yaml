@@ -31,3 +31,4 @@ fixities:
 - infixr 3 &&
 - infix 4 ==
 - infixl 4 <$>, <*>
+- infixr 6 <>

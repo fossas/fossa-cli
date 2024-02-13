@@ -10,7 +10,7 @@ import Test.Hspec
 spec :: Spec
 spec = do
   describe "interpolateProperties" $ do
-    let pom = Pom (MavenCoordinate "MYGROUP" "MYARTIFACT" "MYVERSION") Nothing Map.empty Map.empty Map.empty []
+    let pom = Pom (MavenCoordinate "MYGROUP" "MYARTIFACT" "MYVERSION") Nothing Map.empty Map.empty Map.empty [] Map.empty
     it "should work for built-in properties" $ do
       interpolateProperties pom "${project.groupId}" `shouldBe` "MYGROUP"
       interpolateProperties pom "${project.artifactId}" `shouldBe` "MYARTIFACT"
@@ -35,7 +35,7 @@ spec = do
       interpolateProperties pom' "${project.groupId}" `shouldBe` "\\project.groupId"
 
   describe "buildMavenPackage" $ do
-    let pom = Pom (MavenCoordinate "MYGROUP" "MYARTIFACT" "MYVERSION") Nothing Map.empty Map.empty Map.empty []
+    let pom = Pom (MavenCoordinate "MYGROUP" "MYARTIFACT" "MYVERSION") Nothing Map.empty Map.empty Map.empty [] Map.empty
     it "should interpolate properties in groupId/artifactId/version" $ do
       let result =
             buildMavenPackage

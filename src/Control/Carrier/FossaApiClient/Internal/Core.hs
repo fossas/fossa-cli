@@ -17,7 +17,9 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   uploadContributors,
   getEndpointVersion,
   getTokenType,
-  getSubscription
+  getSubscription,
+  uploadReachabilityContent,
+  uploadReachabilityBuild,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
@@ -32,6 +34,8 @@ import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient (PackageRevision (..))
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
+import Control.Monad (void)
+import Data.Aeson (ToJSON)
 import Data.ByteString.Char8 qualified as C8
 import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty qualified as NE
@@ -44,10 +48,10 @@ import Fossa.API.Types (
   Issues,
   Organization,
   Project,
-  TokenType,
-  Subscription,
   RevisionDependencyCache,
   SignedURL,
+  Subscription,
+  TokenType,
   UploadResponse,
  )
 import Srclib.Types (Locator, SourceUnit, renderLocator)
@@ -120,7 +124,7 @@ uploadAnalysis ::
   ) =>
   ProjectRevision ->
   ProjectMetadata ->
-  NE.NonEmpty SourceUnit ->
+  [SourceUnit] ->
   m UploadResponse
 uploadAnalysis revision metadata units = do
   apiOpts <- ask
@@ -261,3 +265,32 @@ getEndpointVersion ::
 getEndpointVersion = do
   apiOpts <- ask
   API.getEndpointVersion apiOpts
+
+uploadReachabilityContent ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  ByteString ->
+  m Text
+uploadReachabilityContent content = do
+  apiOpts <- ask
+  signedUrl <- API.getReachabilityContentSignedUrl apiOpts mempty
+  API.uploadReachabilityContent signedUrl content
+
+uploadReachabilityBuild ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  , ToJSON a
+  ) =>
+  ProjectRevision ->
+  ProjectMetadata ->
+  a ->
+  m ()
+uploadReachabilityBuild pr metadata content = do
+  apiOpts <- ask
+  signedUrl <- API.getReachabilityBuildSignedUrl apiOpts pr metadata
+  void $ API.uploadReachabilityBuild signedUrl content

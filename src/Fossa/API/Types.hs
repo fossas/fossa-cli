@@ -26,6 +26,7 @@ module Fossa.API.Types (
   PathDependencyUpload (..),
   UploadedPathDependencyLocator (..),
   SignedURL (..),
+  SignedURLWithKey (..),
   UploadResponse (..),
   PathDependencyUploadReq (..),
   PathDependencyFinalizeReq (..),
@@ -118,9 +119,19 @@ newtype SignedURL = SignedURL
   }
   deriving (Eq, Ord, Show)
 
+data SignedURLWithKey = SignedURLWithKey
+  { surlwkSignedURL :: Text
+  , surlwkKey :: Text
+  }
+  deriving (Eq, Ord, Show)
+
 instance FromJSON SignedURL where
   parseJSON = withObject "SignedUrl" $ \obj ->
     SignedURL <$> obj .: "signedUrl"
+
+instance FromJSON SignedURLWithKey where
+  parseJSON = withObject "SignedUrl" $ \obj ->
+    SignedURLWithKey <$> obj .: "signedUrl" <*> obj .: "key"
 
 data ArchiveComponents = ArchiveComponents
   { archives :: [Archive]
@@ -482,6 +493,7 @@ data Organization = Organization
   , orgSupportsPathDependencyScans :: Bool
   , orgSupportsFirstPartyScans :: Bool
   , orgCustomLicenseScanConfigs :: [GrepEntry]
+  , orgSupportsReachability :: Bool
   , orgSupportsPreflightChecks :: Bool
   }
   deriving (Eq, Ord, Show)
@@ -502,6 +514,7 @@ blankOrganization =
     , orgSupportsPathDependencyScans = False
     , orgSupportsFirstPartyScans = True
     , orgCustomLicenseScanConfigs = []
+    , orgSupportsReachability = False
     , orgSupportsPreflightChecks = False
     }
 
@@ -547,6 +560,9 @@ instance FromJSON Organization where
         .:? "customLicenseScanConfigs"
         .!= []
       <*> obj
+        .:? "supportsReachability"
+        .!= False
+      <*> obj
         .:? "supportsPreflightChecks"
         .!= False
 
@@ -556,17 +572,17 @@ data TokenType
   deriving (Eq, Ord, Show)
 
 instance FromJSON TokenType where
-  parseJSON = withText "TokenType" $ \txt -> case txt of 
+  parseJSON = withText "TokenType" $ \txt -> case txt of
     "Push" -> pure Push
     _ -> pure FullAccess
 
-data Subscription 
+data Subscription
   = Free
   | Premium
   deriving (Eq, Ord, Show)
 
 instance FromJSON Subscription where
-  parseJSON = withText "Subscription" $ \txt -> case txt of 
+  parseJSON = withText "Subscription" $ \txt -> case txt of
     "Free" -> pure Free
     _ -> pure Premium
 

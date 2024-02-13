@@ -42,6 +42,12 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   alreadyAnalyzedPathRevision,
   getTokenType,
   getSubscription,
+
+  -- * Reachability
+  getReachabilityContentSignedUrl,
+  getReachabilityBuildSignedUrl,
+  uploadReachabilityContent,
+  uploadReachabilityBuild,
 ) where
 
 import App.Docs (fossaSslCertDocsUrl)
@@ -83,6 +89,7 @@ import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fata
 import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception (Exception (displayException), SomeException)
+import Control.Monad (void)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson (
   FromJSON (parseJSON),
@@ -132,10 +139,11 @@ import Fossa.API.Types (
   PathDependencyUpload,
   PathDependencyUploadReq (..),
   Project,
-  TokenType (..),
-  Subscription (..),
   RevisionDependencyCache,
   SignedURL (signedURL),
+  SignedURLWithKey (surlwkKey, surlwkSignedURL),
+  Subscription (..),
+  TokenType (..),
   UploadResponse,
   useApiOpts,
  )
@@ -605,12 +613,12 @@ uploadNativeContainerScan apiOpts ProjectRevision{..} metadata scan = fossaReq $
             "locator"
               =: locator
               <> "cliVersion"
-              =: cliVersion
+                =: cliVersion
               <> "managedBuild"
-              =: True
+                =: True
               <> maybe mempty ("branch" =:) projectBranch
               <> "scanType"
-              =: ("native" :: Text)
+                =: ("native" :: Text)
               <> mkMetadataOpts metadata projectName
       resp <- req POST (containerUploadUrl baseUrl) (ReqBodyJson scan) jsonResponse (baseOpts <> opts)
       pure $ responseBody resp
@@ -642,7 +650,7 @@ uploadAnalysis ::
   ApiOpts ->
   ProjectRevision ->
   ProjectMetadata ->
-  NE.NonEmpty SourceUnit ->
+  [SourceUnit] ->
   m UploadResponse
 uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
@@ -651,13 +659,13 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
         "locator"
           =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "cliVersion"
-          =: cliVersion
+            =: cliVersion
           <> "managedBuild"
-          =: True
+            =: True
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
-  resp <- req POST (uploadUrl baseUrl) (ReqBodyJson $ NE.toList sourceUnits) jsonResponse (baseOpts <> opts)
+  resp <- req POST (uploadUrl baseUrl) (ReqBodyJson sourceUnits) jsonResponse (baseOpts <> opts)
   pure (responseBody resp)
 
 uploadAnalysisWithFirstPartyLicenses ::
@@ -674,11 +682,11 @@ uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata fullFi
         "locator"
           =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "cliVersion"
-          =: cliVersion
+            =: cliVersion
           <> "managedBuild"
-          =: True
+            =: True
           <> "cliLicenseScanType"
-          =: (fullFileUploadsToCliLicenseScanType fullFileUploads)
+            =: (fullFileUploadsToCliLicenseScanType fullFileUploads)
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
@@ -1132,11 +1140,11 @@ getAttributionJson apiOpts ProjectRevision{..} = fossaReq $ do
       opts =
         baseOpts
           <> "includeDeepDependencies"
-          =: True
+            =: True
           <> "includeHashAndVersionData"
-          =: True
+            =: True
           <> "dependencyInfoOptions[]"
-          =: packageDownloadUrl
+            =: packageDownloadUrl
   orgId <- organizationId <$> getOrganization apiOpts
   response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision)) ReportJson) NoReqBody jsonResponse opts
   pure (responseBody response)
@@ -1484,3 +1492,99 @@ alreadyAnalyzedPathRevision apiOpts ProjectRevision{..} = fossaReq $ do
     context ("Retrieving already analyzed path dependencies") $
       req GET url NoReqBody jsonResponse baseOpts
   pure (responseBody response)
+
+-- Reachability --
+
+signedReachabilityContentURLEndpoint :: Url 'Https -> Url 'Https
+signedReachabilityContentURLEndpoint baseUrl = baseUrl /: "api" /: "cli" /: "reachability" /: "content" /: "upload"
+
+signedReachabilityBuildURLEndpoint :: Url 'Https -> Url 'Https
+signedReachabilityBuildURLEndpoint baseUrl = baseUrl /: "api" /: "cli" /: "reachability" /: "build" /: "upload"
+
+getReachabilityContentSignedUrl ::
+  ( Has (Lift IO) sig m
+  , Has Debug sig m
+  , Has Diagnostics sig m
+  ) =>
+  ApiOpts ->
+  Map Text Text ->
+  m SignedURLWithKey
+getReachabilityContentSignedUrl apiOpts metadata = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  response <-
+    context ("Retrieving a signed S3 URL for reachability content upload") $
+      req POST (signedReachabilityContentURLEndpoint baseUrl) (ReqBodyJson metadata) jsonResponse baseOpts
+  pure (responseBody response)
+
+getReachabilityBuildSignedUrl ::
+  ( Has (Lift IO) sig m
+  , Has Debug sig m
+  , Has Diagnostics sig m
+  ) =>
+  ApiOpts ->
+  ProjectRevision ->
+  ProjectMetadata ->
+  m SignedURL
+getReachabilityBuildSignedUrl apiOpts ProjectRevision{..} metadata = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  let opts =
+        "locator"
+          =: renderLocator (Locator "custom" projectName (Just projectRevision))
+          <> mkMetadataOpts metadata projectName
+  response <-
+    context ("Retrieving a signed S3 URL for reachability build upload") $
+      req POST (signedReachabilityBuildURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
+  pure (responseBody response)
+
+uploadReachabilityBuild ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , ToJSON a
+  ) =>
+  SignedURL ->
+  a ->
+  m LbsResponse
+uploadReachabilityBuild signedUrl content = fossaReq $ do
+  let uploadURL = URI.mkURI $ signedURL signedUrl
+
+  uri <- fromMaybeText ("Invalid URL: " <> signedURL signedUrl) uploadURL
+  validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
+
+  context ("Uploading reachability build result to " <> signedURL signedUrl) $ case validatedURI of
+    Left (httpUrl, httpOptions) -> uploadReq httpUrl httpOptions
+    Right (httpsUrl, httpsOptions) -> uploadReq httpsUrl httpsOptions
+  where
+    encoded :: BS.ByteString
+    encoded = toStrict $ encode content
+
+    uploadReq :: (MonadHttp m) => Url scheme -> Option scheme -> m LbsResponse
+    uploadReq url options = reqCb PUT url (ReqBodyBs encoded) lbsResponse options (pure . requestEncoder)
+
+uploadReachabilityContent ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  ) =>
+  SignedURLWithKey ->
+  ByteString ->
+  m (Text)
+uploadReachabilityContent signedUrl bs = fossaReq $ do
+  let uploadURL = URI.mkURI $ surlwkSignedURL signedUrl
+
+  uri <- fromMaybeText ("Invalid URL: " <> surlwkSignedURL signedUrl) uploadURL
+  validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
+
+  void $ context ("Uploading reachability parsed content to " <> surlwkSignedURL signedUrl) $ case validatedURI of
+    Left (httpUrl, httpOptions) -> uploadReq httpUrl httpOptions
+    Right (httpsUrl, httpsOptions) -> uploadReq httpsUrl httpsOptions
+
+  pure $ surlwkKey signedUrl
+  where
+    uploadReq :: (MonadHttp m) => Url scheme -> Option scheme -> m LbsResponse
+    uploadReq url options =
+      reqCb
+        PUT
+        url
+        (Req.ReqBodyLbs bs)
+        lbsResponse
+        options
+        (pure . requestEncoder)

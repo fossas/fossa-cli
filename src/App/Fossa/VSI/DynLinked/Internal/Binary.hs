@@ -120,11 +120,22 @@ lddParseLocalDependencies =
       ( try lddConsumeSyscallLib
           <|> try lddConsumeLinker
           <|> try lddParseDependency
+          <|> try lddParseDependencyNotFound
       )
     <* eof
 
 lddParseDependency :: Parser (Maybe LocalDependency)
 lddParseDependency = Just <$> (LocalDependency <$> (linePrefix *> ident) <* symbol "=>" <*> path <* printedHex)
+
+-- | Parses "not found" case for dependency
+--
+-- > libprotobuf.so.22 => not found
+--
+-- We want to ignore these, so we do not fatally fail in parsing.
+lddParseDependencyNotFound :: Parser (Maybe LocalDependency)
+lddParseDependencyNotFound = do
+  void $ linePrefix <* ident <* symbol "=>" <* symbol "not found"
+  pure Nothing
 
 -- | The userspace library for system calls appears as the following in @ldd@ output:
 --

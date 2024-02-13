@@ -15,7 +15,7 @@ import App.Fossa.Config.Test (
   TestOutputFormat (TestOutputJson, TestOutputPretty),
  )
 import App.Fossa.Config.Test qualified as Config
-import App.Fossa.PreflightChecks (preflightChecks)
+import App.Fossa.PreflightChecks (PreflightCommandChecks (TestChecks), preflightChecks)
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (
   ProjectRevision (projectName, projectRevision),
@@ -53,7 +53,7 @@ testMain ::
   TestConfig ->
   m ()
 testMain config = do
-  _ <- ignoreDebug $ runFossaApiClient (Config.apiOpts config) preflightChecks
+  _ <- ignoreDebug $ runFossaApiClient (Config.apiOpts config) $ preflightChecks TestChecks
 
   runStickyLogger SevInfo
     . ignoreDebug -- Ignore the debug effect because we don't generate a bundle.

@@ -63,6 +63,9 @@ runFossaApiClient apiOpts =
           UploadLicenseScanResult signedUrl licenseSourceUnit -> LicenseScanning.uploadLicenseScanResult signedUrl licenseSourceUnit
           UploadFirstPartyScanResult signedUrl fullSourceUnits -> LicenseScanning.uploadFirstPartyScanResult signedUrl fullSourceUnits
           GetAnalyzedPathRevisions projectRevision -> LicenseScanning.alreadyAnalyzedPathRevision projectRevision
-          GetTokenType -> Core.getTokenType 
-          GetSubscription -> Core.getSubscription  
+          -- Reachability
+          UploadContentForReachability content -> Core.uploadReachabilityContent content
+          UploadBuildForReachability rev metadata content -> Core.uploadReachabilityBuild rev metadata content
+          GetTokenType -> Core.getTokenType
+          GetSubscription -> Core.getSubscription
       )

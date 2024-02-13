@@ -1,21 +1,24 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.PreflightChecks (
+  PreflightCommandChecks (..),
   preflightChecks,
+  guardWithPreflightChecks,
 ) where
 
 import App.Docs (apiKeyUrl)
-import Control.Carrier.Diagnostics (Diagnostics, errCtx, fatalText)
+import Control.Carrier.Debug (ignoreDebug)
+import Control.Carrier.Diagnostics (Diagnostics, errCtx)
+import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.Stack (context)
-import Control.Effect.Diagnostics (ToDiagnostic, fatal, fatalOnIOException)
-import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, getTokenType, getSubscription)
-import Control.Effect.Lift
-import Control.Monad (when)
-import Data.Text (Text)
+import Control.Effect.Diagnostics (ToDiagnostic, fatalOnIOException, fatalText)
+import Control.Effect.FossaApiClient (FossaApiClient, FossaApiClientF (AssertUserDefinedBinaries), getOrganization, getSubscription, getTokenType)
+import Control.Effect.Lift (Has, Lift, sendIO)
+import Control.Monad (void)
 import Data.Text.IO qualified as TIO
 import Diag.Diagnostic (ToDiagnostic (..))
-import Effect.Logger (Logger, logDebug, pretty, vsep)
-import Fossa.API.Types (TokenType (..), Subscription (..))
+import Effect.Logger (pretty, vsep)
+import Fossa.API.Types (ApiOpts, Subscription (..), TokenType (..))
 import Path (
   File,
   Path,
@@ -24,28 +27,54 @@ import Path (
   mkRelFile,
   (</>),
  )
-import Path.IO
+import Path.IO (getTempDir, removeFile)
+
+data PreflightCommandChecks = AnalyzeChecks | TestChecks | ReportChecks | ConatinerAnalzyeChecks | ContainerTestChecks | AssertUserDefinedBinariesChecks
+
+guardWithPreflightChecks ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  ) =>
+  ApiOpts ->
+  PreflightCommandChecks ->
+  m ()
+guardWithPreflightChecks apiOpts cmd = ignoreDebug $ runFossaApiClient apiOpts $ preflightChecks cmd
 
 preflightChecks ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has FossaApiClient sig m
-  , Has Logger sig m
   ) =>
+  PreflightCommandChecks ->
   m ()
-preflightChecks = context "preflight-checks" $ do
-  logDebug "**************** %%%%%%%%%%%%% In Preflight Checks "
+preflightChecks cmd = context "preflight-checks" $ do
   -- Check for writing to temp dir
   tmpDir <- sendIO getTempDir
   fatalOnIOException "Failed to write to temp directory" . sendIO $ TIO.writeFile (fromAbsFile $ tmpDir </> preflightCheckFileName) "Writing to temp dir"
   sendIO $ removeFile (tmpDir </> preflightCheckFileName)
 
   -- Check for valid API Key and if user can connect to fossa app
-  -- _ <- errCtx InvalidApiKeyErr getOrganization
+  tokenType <- errCtx InvalidApiKeyErr getTokenType
+  subscription <- getSubscription
 
-  -- pushTokenRes <- pushTokenCheck
-  -- logDebug $ "Push Token Response ------------ " <> pretty (show pushTokenRes)
-  -- when (isPushToken pushTokenRes) $ fatalText "You are using a push-only token when you need a full-access token"
+  void $ case cmd of
+    TestChecks -> do
+      fullAccessTokenCheck tokenType
+    _ -> do
+      fullAccessTokenCheck tokenType
+      premiumSubscriptionCheck subscription
+
+  void $ errCtx InvalidApiKeyErr getOrganization
+
+fullAccessTokenCheck :: Has Diagnostics sig m => TokenType -> m ()
+fullAccessTokenCheck token = case token of
+  Push -> fatalText "You are using a push-only token when you need a full-access token"
+  _ -> pure ()
+
+premiumSubscriptionCheck :: Has Diagnostics sig m => Subscription -> m ()
+premiumSubscriptionCheck subscription = case subscription of
+  Free -> fatalText "You have free subscription when you need premium subscription"
+  _ -> pure ()
 
 preflightCheckFileName :: Path Rel File
 preflightCheckFileName = $(mkRelFile "preflight-check.txt")
