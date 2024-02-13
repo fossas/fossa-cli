@@ -21,6 +21,7 @@ import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdge
 import Discovery.Filters (AllFilters, MavenScopeFilters)
 import Discovery.Simple (simpleDiscover)
 import Effect.Exec (CandidateCommandEffs)
+import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing, gmap, shrinkRoots)
@@ -75,6 +76,7 @@ getDeps ::
   , Has ReadFS sig m
   , CandidateCommandEffs sig m
   , Has (Reader MavenScopeFilters) sig m
+  , Has Logger sig m
   ) =>
   FoundTargets ->
   MavenProject ->
@@ -93,6 +95,7 @@ getDeps' ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has (Reader MavenScopeFilters) sig m
+  , Has Logger sig m
   ) =>
   FoundTargets ->
   MavenProject ->
@@ -113,6 +116,7 @@ getDepsDynamicAnalysis ::
   , Has ReadFS sig m
   , CandidateCommandEffs sig m
   , Has (Reader MavenScopeFilters) sig m
+  , Has Logger sig m
   ) =>
   Set Text ->
   MavenProjectClosure ->
@@ -124,7 +128,11 @@ getDepsDynamicAnalysis submoduleTargets closure = do
       $ warnOnErr MissingEdges
         . warnOnErr MissingDeepDeps
       $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
+  -- logDebug "THis is the graph in getDepsDynamicAnalysis ++++++++++ "
+  -- logDebug $ pretty (show (graph))
   filteredGraph <- applyMavenFilters submoduleTargets allSubmodules graph
+  -- logDebug "THis is the filtered graph in getDepsDynamicAnalysis ()()()()())())())"
+  -- logDebug $ pretty (show (filteredGraph))
   pure (withoutProjectAsDep filteredGraph, graphBreadth)
   where
     -- shrinkRoots is applied on all dynamic strategies.
@@ -137,6 +145,7 @@ getDepsPlugin ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
+  , Has Logger sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
@@ -146,6 +155,7 @@ getDepsPluginLegacy ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
+  , Has Logger sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
@@ -155,6 +165,7 @@ getDepsTreeCmd ::
   ( Has (Lift IO) sig m
   , Has ReadFS sig m
   , CandidateCommandEffs sig m
+  , Has Logger sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
@@ -167,6 +178,7 @@ getStaticAnalysis ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has (Reader MavenScopeFilters) sig m
+  , Has Logger sig m
   ) =>
   Set Text ->
   MavenProjectClosure ->
@@ -177,11 +189,24 @@ getStaticAnalysis submoduleTargets closure = do
   filteredGraph <- applyMavenFilters submoduleTargets allSubmodules graph
   pure (filteredGraph, graphBreadth)
 
-applyMavenFilters :: Has (Reader MavenScopeFilters) sig m => Set Text -> Set Text -> Graphing MavenDependency -> m (Graphing Dependency)
+applyMavenFilters ::
+  ( Has (Reader MavenScopeFilters) sig m
+  , Has Logger sig m
+  ) =>
+  Set Text ->
+  Set Text ->
+  Graphing MavenDependency ->
+  m (Graphing Dependency)
 applyMavenFilters targetSet submoduleSet graph = do
   mavenScopeFilters <- ask @(MavenScopeFilters)
-  let filteredSubmoduleGraph = filterMavenSubmodules targetSet submoduleSet graph
-      filteredSubmoduleScopeGraph = filterMavenDependencyByScope mavenScopeFilters filteredSubmoduleGraph
+
+  let filteredSubmoduleScopeGraph = filterMavenDependencyByScope mavenScopeFilters graph
+  logDebug "THis is the filtered graph after removing scopes in applyMavenFilters %%%%%%%%%%%%%%%%%"
+  logDebug $ pretty (show (filteredSubmoduleScopeGraph))
+
+  filteredSubmoduleGraph <- filterMavenSubmodules targetSet submoduleSet filteredSubmoduleScopeGraph
+  logDebug "THis is the filtered graph after removing submodules in applyMavenFilters ()()()()())())())"
+  logDebug $ pretty (show (filteredSubmoduleGraph))
 
   pure $ gmap mavenDependencyToDependency filteredSubmoduleScopeGraph
 

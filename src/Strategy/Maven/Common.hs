@@ -12,10 +12,13 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import DepTypes (Dependency (..))
 
+import Control.Algebra (Has)
 import Discovery.Filters (FilterSet (scopes), MavenScopeFilters (..))
 
+import Effect.Logger (Logger, logDebug, pretty)
 import Graphing (Graphing, color, edgesList, reachableSuccessorsWithCondition, vertexList)
 import Graphing qualified
+import Text.Pretty.Simple (pShow)
 
 data MavenDependency = MavenDependency
   { dependency :: Dependency
@@ -28,10 +31,15 @@ data MavenDependency = MavenDependency
 mavenDependencyToDependency :: MavenDependency -> Dependency
 mavenDependencyToDependency MavenDependency{..} = dependency
 
-filterMavenSubmodules :: Set Text -> Set Text -> Graphing MavenDependency -> Graphing MavenDependency
+filterMavenSubmodules :: (Has Logger sig m) => Set Text -> Set Text -> Graphing MavenDependency -> m (Graphing MavenDependency)
 filterMavenSubmodules includedSubmoduleSet completeSubmoduleSet graph = do
   let submoduleNodes = Set.fromList $ filter (\dep -> depNameFromMavenDependency dep `Set.member` completeSubmoduleSet) $ vertexList graph
-  Graphing.filter isMavenDependencyIncluded $ coloredGraph submoduleNodes graph
+  logDebug $ "This is the complete submodule set _______________" <> pretty (pShow (completeSubmoduleSet))
+  logDebug $ "This is the include submodule set *************" <> pretty (pShow (includedSubmoduleSet))
+  logDebug $ "This is the include submodule nodes *************" <> pretty (pShow (submoduleNodes))
+  logDebug "THis is the graph ++++++++++ "
+  logDebug $ pretty (show (graph))
+  pure . Graphing.filter isMavenDependencyIncluded $ coloredGraph submoduleNodes graph
   where
     isMavenDependencyIncluded :: MavenDependency -> Bool
     isMavenDependencyIncluded MavenDependency{..} = not $ null $ dependencySubmodules `Set.intersection` includedSubmoduleSet
