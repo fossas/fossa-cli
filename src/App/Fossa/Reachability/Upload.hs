@@ -1,16 +1,16 @@
 module App.Fossa.Reachability.Upload (
   analyzeForReachability,
-  reachabilityRawJson,
-  reachabilityEndpointJson,
   upload,
   dependenciesOf,
   callGraphOf,
+  onlyFoundUnits,
 ) where
 
+import App.Fossa.Analyze.Debug (diagToDebug)
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.Analyze.Types (
-  AnalysisScanResult (..),
   DiscoveredProjectScan (..),
+  SourceUnitReachabilityAttempt (..),
   dpiProjectType,
  )
 import App.Fossa.Reachability.Gradle (gradleJarCallGraph)
@@ -20,16 +20,18 @@ import App.Fossa.Reachability.Types (
   ContentRef (..),
   ParsedJar (..),
   SourceUnitReachability (..),
+  reachabilityEndpointJson,
+  reachabilityRawJson,
  )
 import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Algebra (Has)
+import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Debug (Debug, debugMetadata)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.FossaApiClient (FossaApiClient, uploadBuildForReachability, uploadContentForReachability)
 import Control.Effect.Lift (Lift)
 import Data.List (nub)
-import Data.Maybe (catMaybes)
-import Data.Text (Text)
+import Data.Maybe (mapMaybe)
 import Diag.Result (Result (..))
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, logDebug, logInfo, pretty)
@@ -51,12 +53,11 @@ analyzeForReachability ::
   , Has (Lift IO) sig m
   , Has Debug sig m
   ) =>
-  AnalysisScanResult ->
-  m [SourceUnitReachability]
-analyzeForReachability analysisResult = context "reachability" $ do
-  let analyzerResult = analyzersScanResult analysisResult
-  units <- catMaybes <$> (traverse callGraphOf analyzerResult)
-  debugMetadata reachabilityRawJson units
+  [DiscoveredProjectScan] ->
+  m [SourceUnitReachabilityAttempt]
+analyzeForReachability analyzerResult = context "reachability" $ do
+  units <- (traverse callGraphOf analyzerResult)
+  debugMetadata reachabilityRawJson (onlyFoundUnits units)
   pure units
 
 upload ::
@@ -101,9 +102,10 @@ callGraphOf ::
   , Has Diagnostics sig m
   , Has Exec sig m
   , Has (Lift IO) sig m
+  , Has Debug sig m
   ) =>
   DiscoveredProjectScan ->
-  m (Maybe SourceUnitReachability)
+  m SourceUnitReachabilityAttempt
 callGraphOf (Scanned dpi (Success _ projectResult)) = do
   let srcUnit = projectToSourceUnit False projectResult
   let dependencies = dependenciesOf srcUnit
@@ -123,24 +125,29 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
     -- used in the application to perform accurate analysis
     (Partial, _) -> do
       logInfo . pretty $ "FOSSA CLI does not support reachability analysis, with partial dependencies graph (skipping: " <> displayId <> ")"
-      pure Nothing
+      pure . SourceUnitReachabilitySkippedPartialGraph $ dpi
     (Complete, MavenProjectType) -> context "maven" $ do
       logDebug . pretty $ "Trying to infer build jars from maven project: " <> show (projectResultPath projectResult)
-      analysis <- mavenJarCallGraph (projectResultPath projectResult)
-      pure . Just $ unit{callGraphAnalysis = analysis}
+      analysis <- Diag.errorBoundaryIO . diagToDebug $ mavenJarCallGraph (projectResultPath projectResult)
+      case analysis of
+        Success wg r -> pure $ SourceUnitReachabilityFound dpi (Success wg $ unit{callGraphAnalysis = r})
+        Failure wg eg -> pure $ SourceUnitReachabilityFound dpi (Failure wg eg)
     (Complete, GradleProjectType) -> context "gradle" $ do
       logDebug . pretty $ "Trying to infer build jars from gradle project: " <> show (projectResultPath projectResult)
-      analysis <- gradleJarCallGraph (projectResultPath projectResult)
-      pure . Just $ unit{callGraphAnalysis = analysis}
-
+      analysis <- Diag.errorBoundaryIO . diagToDebug $ gradleJarCallGraph (projectResultPath projectResult)
+      case analysis of
+        Success wg r -> pure $ SourceUnitReachabilityFound dpi (Success wg $ unit{callGraphAnalysis = r})
+        Failure wg eg -> pure $ SourceUnitReachabilityFound dpi (Failure wg eg)
     -- Exclude units for package manager/language we cannot support yet!
     _ -> do
       logInfo . pretty $ "FOSSA CLI does not support reachability analysis for: " <> displayId <> " yet. (skipping)"
-      pure Nothing
+      pure . SourceUnitReachabilitySkippedNotSupported $ dpi
 -- Not possible to perform reachability analysis for projects
 -- which were not scanned (skipped due to filter), as we do not
 -- complete dependency graph for them
-callGraphOf _ = pure Nothing
+callGraphOf (SkippedDueToProvidedFilter dpi) = pure . SourceUnitReachabilitySkippedMissingDependencyAnalysis $ dpi
+callGraphOf (SkippedDueToDefaultProductionFilter dpi) = pure . SourceUnitReachabilitySkippedMissingDependencyAnalysis $ dpi
+callGraphOf (Scanned dpi (Failure _ _)) = pure . SourceUnitReachabilitySkippedMissingDependencyAnalysis $ dpi
 
 -- | Unique locators from SourceUnit
 dependenciesOf :: SourceUnit -> [Locator]
@@ -153,8 +160,9 @@ allLocators unit =
     buildImports unit
       ++ concatMap (\ud -> sourceDepLocator ud : sourceDepImports ud) (buildDependencies unit)
 
-reachabilityRawJson :: Text
-reachabilityRawJson = "reachability.raw.json"
+onlyFoundUnits :: [SourceUnitReachabilityAttempt] -> [SourceUnitReachability]
+onlyFoundUnits = mapMaybe toFoundUnits
 
-reachabilityEndpointJson :: Text
-reachabilityEndpointJson = "reachability.endpoint.json"
+toFoundUnits :: SourceUnitReachabilityAttempt -> Maybe SourceUnitReachability
+toFoundUnits (SourceUnitReachabilityFound _ (Success _ src)) = Just src
+toFoundUnits _ = Nothing
