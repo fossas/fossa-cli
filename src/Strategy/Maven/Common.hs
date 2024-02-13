@@ -34,11 +34,11 @@ mavenDependencyToDependency MavenDependency{..} = dependency
 filterMavenSubmodules :: (Has Logger sig m) => Set Text -> Set Text -> Graphing MavenDependency -> m (Graphing MavenDependency)
 filterMavenSubmodules includedSubmoduleSet completeSubmoduleSet graph = do
   let submoduleNodes = Set.fromList $ filter (\dep -> depNameFromMavenDependency dep `Set.member` completeSubmoduleSet) $ vertexList graph
-  logDebug $ "This is the complete submodule set _______________" <> pretty (pShow (completeSubmoduleSet))
-  logDebug $ "This is the include submodule set *************" <> pretty (pShow (includedSubmoduleSet))
+  -- logDebug $ "This is the complete submodule set _______________" <> pretty (pShow (completeSubmoduleSet))
+  -- logDebug $ "This is the include submodule set *************" <> pretty (pShow (includedSubmoduleSet))
   logDebug $ "This is the include submodule nodes *************" <> pretty (pShow (submoduleNodes))
-  logDebug "THis is the graph ++++++++++ "
-  logDebug $ pretty (show (graph))
+  -- logDebug "THis is the graph ++++++++++ "
+  -- logDebug $ pretty (show (graph))
   pure . Graphing.filter isMavenDependencyIncluded $ coloredGraph submoduleNodes graph
   where
     isMavenDependencyIncluded :: MavenDependency -> Bool

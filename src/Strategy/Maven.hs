@@ -32,6 +32,7 @@ import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure (..))
 import Strategy.Maven.Pom.Closure qualified as PomClosure
+import Text.Pretty.Simple (pShow)
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), FoundTargets (..), GraphBreadth (..))
 
 discover ::
@@ -133,13 +134,15 @@ getDepsDynamicAnalysis submoduleTargets closure = do
   filteredGraph <- applyMavenFilters submoduleTargets allSubmodules graph
   -- logDebug "THis is the filtered graph in getDepsDynamicAnalysis ()()()()())())())"
   -- logDebug $ pretty (show (filteredGraph))
-  pure (withoutProjectAsDep filteredGraph, graphBreadth)
+  -- pure (withoutProjectAsDep filteredGraph, graphBreadth)
+  pure (filteredGraph, graphBreadth)
   where
-    -- shrinkRoots is applied on all dynamic strategies.
-    -- The root deps are either the toplevel package or submodules in a multi-module project.
-    --  We don't want to consider those because they're the users' packages.
-    --  Promote them to direct when building the graph using `shrinkRoots`.
-    withoutProjectAsDep = shrinkRoots
+
+-- shrinkRoots is applied on all dynamic strategies.
+-- The root deps are either the toplevel package or submodules in a multi-module project.
+--  We don't want to consider those because they're the users' packages.
+--  Promote them to direct when building the graph using `shrinkRoots`.
+-- withoutProjectAsDep = shrinkRoots
 
 getDepsPlugin ::
   ( CandidateCommandEffs sig m
@@ -199,16 +202,18 @@ applyMavenFilters ::
   m (Graphing Dependency)
 applyMavenFilters targetSet submoduleSet graph = do
   mavenScopeFilters <- ask @(MavenScopeFilters)
-
+  logDebug $ "This is the maven filters *************" <> pretty (pShow (mavenScopeFilters))
+  logDebug $ "This is the submodule set _______________" <> pretty (pShow (submoduleSet))
+  logDebug $ "This is the target set *************" <> pretty (pShow (targetSet))
   let filteredSubmoduleScopeGraph = filterMavenDependencyByScope mavenScopeFilters graph
-  logDebug "THis is the filtered graph after removing scopes in applyMavenFilters %%%%%%%%%%%%%%%%%"
-  logDebug $ pretty (show (filteredSubmoduleScopeGraph))
+  -- logDebug "THis is the filtered graph after removing scopes in applyMavenFilters %%%%%%%%%%%%%%%%%"
+  -- logDebug $ pretty (show (filteredSubmoduleScopeGraph))
 
-  filteredSubmoduleGraph <- filterMavenSubmodules targetSet submoduleSet filteredSubmoduleScopeGraph
-  logDebug "THis is the filtered graph after removing submodules in applyMavenFilters ()()()()())())())"
-  logDebug $ pretty (show (filteredSubmoduleGraph))
+  filteredSubmoduleGraph <- filterMavenSubmodules targetSet submoduleSet graph
+  -- logDebug "THis is the filtered graph after removing submodules in applyMavenFilters ()()()()())())())"
+  -- logDebug $ pretty (show (filteredSubmoduleGraph))
 
-  pure $ gmap mavenDependencyToDependency filteredSubmoduleScopeGraph
+  pure $ gmap mavenDependencyToDependency filteredSubmoduleGraph
 
 submoduleTargetSet :: FoundTargets -> Set Text
 submoduleTargetSet foundTargets = case foundTargets of
