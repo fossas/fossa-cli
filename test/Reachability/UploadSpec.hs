@@ -24,6 +24,7 @@ import App.Fossa.Reachability.Upload (
   analyzeForReachability,
   callGraphOf,
   dependenciesOf,
+  onlyFoundUnits,
   upload,
  )
 import Control.Algebra (Has)
@@ -115,7 +116,7 @@ analyzeForReachabilitySpec =
           , fst $ mavenPartialScan dir
           , fst $ poetryCompleteScan dir
           ]
-      analyzed `shouldBe'` []
+      (onlyFoundUnits analyzed) `shouldBe'` []
 
 uploadSpec :: Spec
 uploadSpec = describe "dependenciesOf" $ do
@@ -149,6 +150,7 @@ skippedProject dir =
   , dpi
   )
   where
+    dpi :: DiscoveredProjectIdentifier
     dpi = DiscoveredProjectIdentifier dir MavenProjectType
 
 skippedProjectByDefaultFilter :: Path Abs Dir -> (DiscoveredProjectScan, DiscoveredProjectIdentifier)
