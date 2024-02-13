@@ -37,6 +37,7 @@ import Control.Monad (void, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
+import Data.Error (getSourceLocation)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
@@ -136,7 +137,7 @@ uploadScan revision projectMeta jsonOutput containerScan =
   do
     supportsNativeScan <- orgSupportsNativeContainerScan <$> getOrganization
     if not supportsNativeScan
-      then fatal EndpointDoesNotSupportNativeContainerScan
+      then fatal (EndpointDoesNotSupportNativeContainerScan getSourceLocation)
       else do
         resp <- uploadNativeContainerScan revision projectMeta containerScan
         let locator = uploadLocator resp

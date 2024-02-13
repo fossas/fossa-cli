@@ -13,11 +13,13 @@ import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProjectStaticOnly))
+import Control.Carrier.Diagnostics (errDoc)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   context,
   errCtx,
+  errHelp,
   fatalText,
   fromEitherShow,
   fromMaybe,
@@ -70,7 +72,7 @@ import Path (
   toFilePath,
   (</>),
  )
-import Strategy.Node.Errors (CyclicPackageJson (CyclicPackageJson), MissingNodeLockFile (MissingNodeLockFile))
+import Strategy.Node.Errors (CyclicPackageJson (CyclicPackageJson), MissingNodeLockFile (..), fossaNodeDocUrl, npmLockFileDocUrl, yarnLockfileDocUrl, yarnV2LockfileDocUrl)
 import Strategy.Node.Npm.PackageLock qualified as PackageLock
 import Strategy.Node.Npm.PackageLockV3 qualified as PackageLockV3
 import Strategy.Node.PackageJson (
@@ -190,7 +192,12 @@ analyzeNpm wsGraph = do
     . recover
     . warnOnErr MissingEdges
     . warnOnErr MissingDeepDeps
-    . errCtx (MissingNodeLockFile)
+    . errCtx MissingNodeLockFileCtx
+    . errHelp MissingNodeLockFileHelp
+    . errDoc fossaNodeDocUrl
+    . errDoc npmLockFileDocUrl
+    . errDoc yarnLockfileDocUrl
+    . errDoc yarnV2LockfileDocUrl
     $ fatalText "Lock files - yarn.lock or package-lock.json were not discovered."
 
   graph <- PackageJson.analyze $ Map.elems $ jsonLookup wsGraph

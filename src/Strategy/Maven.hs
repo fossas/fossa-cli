@@ -158,7 +158,7 @@ getDepsTreeCmd ::
   ) =>
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
-getDepsTreeCmd closure = do
+getDepsTreeCmd closure =
   context "Dynamic analysis" $
     DepTreeCmd.analyze . parent $
       PomClosure.closurePath closure

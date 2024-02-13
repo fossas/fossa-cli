@@ -6,20 +6,19 @@ module Strategy.Cocoapods.Errors (
 import App.Docs (platformDocUrl)
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic (..))
-import Prettyprinter (Pretty (pretty), indent, vsep)
+import Errata (Errata (..))
 
 refPodDocUrl :: Text
 refPodDocUrl = platformDocUrl "ios/cocoapods.md"
 
-data MissingPodLockFile = MissingPodLockFile
+data MissingPodLockFile
+  = MissingPodLockFileCtx
+  | MissingPodLockFileHelp
 
 instance ToDiagnostic MissingPodLockFile where
-  renderDiagnostic (MissingPodLockFile) =
-    vsep
-      [ "We could not perform analysis using Podfile.lock."
-      , ""
-      , "Ensure a valid Podfile.lock file exists prior to using fossa-cli."
-      , ""
-      , "Refer to:"
-      , indent 2 $ pretty $ "- " <> refPodDocUrl
-      ]
+  renderDiagnostic MissingPodLockFileCtx = do
+    let header = "Could not perform analysis using Podfile.lock"
+    Errata (Just header) [] Nothing
+  renderDiagnostic MissingPodLockFileHelp = do
+    let header = "Ensure a valid Podfile.lock file exists prior to using fossa-cli"
+    Errata (Just header) [] Nothing

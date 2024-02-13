@@ -47,8 +47,8 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Errata (Errata (..))
 import Graphing qualified as G
-import Prettyprinter (pretty)
 
 data SGrapher ty k where
   Direct :: ty -> SGrapher ty ()
@@ -224,4 +224,6 @@ newtype MappingError
   deriving (Eq, Ord, Show)
 
 instance ToDiagnostic MappingError where
-  renderDiagnostic (MissingKey key) = "Missing associated value for key: " <> pretty key
+  renderDiagnostic (MissingKey key) = do
+    let header = "Missing associated value for key: " <> key
+    Errata (Just header) [] Nothing

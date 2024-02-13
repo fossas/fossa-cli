@@ -9,10 +9,11 @@ module Strategy.Scala.Errors (
 ) where
 
 import App.Docs (strategyLangDocUrl)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
+import Errata (Errata (..))
 import Path (Abs, Dir, Path)
-import Prettyprinter (Pretty (pretty), indent, viaShow, vsep)
 
 scalaFossaDocUrl :: Text
 scalaFossaDocUrl = strategyLangDocUrl "scala/sbt.md"
@@ -20,45 +21,34 @@ scalaFossaDocUrl = strategyLangDocUrl "scala/sbt.md"
 sbtDepsGraphPluginUrl :: Text
 sbtDepsGraphPluginUrl = "https://github.com/sbt/sbt-dependency-graph"
 
-data MaybeWithoutDependencyTreeTask = MaybeWithoutDependencyTreeTask
+data MaybeWithoutDependencyTreeTask
+  = MaybeWithoutDependencyTreeTaskCtx
+  | MaybeWithoutDependencyTreeTaskHelp
 
 instance ToDiagnostic MaybeWithoutDependencyTreeTask where
-  renderDiagnostic (MaybeWithoutDependencyTreeTask) =
-    vsep
-      [ "We could not perform dynamic sbt analysis via sbt dependencyTree"
-      , indent 2 $
-          vsep
-            [ "Ensure you can run sbt dependencyTree. If you are using older version than sbt v1.4.0 (e.g. v1.3.13)"
-            , "please install following plugin prior to running fossa:"
-            , indent 2 $ pretty sbtDepsGraphPluginUrl
-            , ""
-            ]
-      , ""
-      , "Refer to:"
-      , indent 2 $ pretty $ "- " <> scalaFossaDocUrl
-      ]
+  renderDiagnostic MaybeWithoutDependencyTreeTaskCtx = do
+    let header = "Could not perform dynamic sbt analysis via sbt dependencyTree"
+    Errata (Just header) [] Nothing
+  renderDiagnostic MaybeWithoutDependencyTreeTaskHelp = do
+    let header = "Ensure you can run sbt dependencyTree. Install the sbt plugin if you are using a version older than sbt v1.4.0 (e.g. v1.3.13)"
+    Errata (Just header) [] Nothing
 
-data MissingFullDependencyPlugin = MissingFullDependencyPlugin
+data MissingFullDependencyPlugin
+  = MissingFullDependencyPluginCtx
+  | MissingFullDependencyPluginHelp
 
 instance ToDiagnostic MissingFullDependencyPlugin where
-  renderDiagnostic (MissingFullDependencyPlugin) =
-    vsep
-      [ "We could not perform dynamic sbt analysis via `sbt dependencyBrowseTreeHTML`"
-      , indent 2 $
-          vsep
-            [ "Ensure you can run `sbt dependencyBrowseTreeHTML`."
-            , ""
-            , "If you are not able run the aforementioned command,"
-            , "you need to install following sbt plugin for your project, prior to using FOSSA CLI:"
-            , indent 2 $ pretty sbtDepsGraphPluginUrl
-            ]
-      , ""
-      , "Refer to:"
-      , indent 2 $ pretty $ "- " <> scalaFossaDocUrl
-      ]
+  renderDiagnostic MissingFullDependencyPluginCtx = do
+    let header = "Could not perform dynamic sbt analysis via `sbt dependencyBrowseTreeHTML`"
+    Errata (Just header) [] Nothing
+  renderDiagnostic MissingFullDependencyPluginHelp = do
+    let header = "Ensure you can run `sbt dependencyBrowseTreeHTML`. Install the sbt plugin if you are not able to run the command."
+    Errata (Just header) [] Nothing
 
 newtype FailedToListProjects = FailedToListProjects (Path Abs Dir)
   deriving (Eq, Ord, Show)
 
 instance ToDiagnostic FailedToListProjects where
-  renderDiagnostic (FailedToListProjects dir) = "Failed to discover and analyze sbt projects, for sbt build manifest at:" <> viaShow dir
+  renderDiagnostic (FailedToListProjects dir) = do
+    let header = "Failed to discover and analyze sbt projects, for sbt build manifest at: " <> toText dir
+    Errata (Just header) [] Nothing
