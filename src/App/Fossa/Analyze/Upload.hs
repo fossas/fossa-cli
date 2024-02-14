@@ -6,6 +6,7 @@ module App.Fossa.Analyze.Upload (
   ScanUnits (..),
 ) where
 
+import App.Docs (vulnReachabilityProductDocsUrl)
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
 import App.Fossa.Reachability.Types (SourceUnitReachability)
@@ -38,7 +39,7 @@ import Control.Effect.FossaApiClient (
  )
 import Control.Effect.Git (Git, fetchGitContributors)
 import Control.Effect.Lift (Lift)
-import Control.Monad (unless, when)
+import Control.Monad (when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.Flag (Flag, fromFlag)
@@ -53,7 +54,6 @@ import Effect.Logger (
   Logger,
   Pretty (pretty),
   Severity (SevInfo),
-  logDebug,
   logError,
   logInfo,
   logStdout,
@@ -111,10 +111,9 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
 
     if (orgSupportsReachability org)
       then void $ upload revision metadata reachabilityUnits
-      else
-        unless (null reachabilityUnits) $
-          logDebug . pretty $
-            "Organization: (" <> show (organizationId org) <> ") does not support reachability! skipping reachability analysis upload!"
+      else do
+        logInfo . pretty $ "Organization: (" <> show (organizationId org) <> ") does not support reachability. Skipping reachability analysis upload."
+        logInfo . pretty $ "For reachability, refer to: " <> vulnReachabilityProductDocsUrl
 
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
