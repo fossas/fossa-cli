@@ -7,12 +7,16 @@ module Strategy.Bundler (
   BundlerProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
-import App.Pathfinder.Types (LicenseAnalyzeProject (licenseAnalyzeProject))
+import App.Fossa.Analyze.LicenseAnalyze (
+  LicenseAnalyzeProject (licenseAnalyzeProject),
+ )
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
   errCtx,
+  errDoc,
+  errHelp,
   warnOnErr,
   (<||>),
  )
@@ -37,6 +41,8 @@ import Path (Abs, Dir, File, Path, toFilePath)
 import Strategy.Ruby.BundleShow qualified as BundleShow
 import Strategy.Ruby.Errors (
   BundlerMissingLockFile (..),
+  bundlerLockFileRationaleUrl,
+  rubyFossaDocUrl,
  )
 import Strategy.Ruby.GemfileLock qualified as GemfileLock
 import Strategy.Ruby.Parse (Assignment (Assignment, label, value), gemspecLicenseValuesP, readAssignments)
@@ -85,7 +91,7 @@ instance ToJSON BundlerProject
 
 instance AnalyzeProject BundlerProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = analyzeGemfileLock
+  analyzeProjectStaticOnly _ = analyzeGemfileLock
 
 instance LicenseAnalyzeProject BundlerProject where
   licenseAnalyzeProject = fmap mconcat . traverse findLicenses . bundlerGemSpec
@@ -130,7 +136,10 @@ analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => BundlerProjec
 analyzeGemfileLock project =
   warnOnErr AllDirectDeps
     . warnOnErr MissingEdges
-    . errCtx (BundlerMissingLockFile $ bundlerGemfile project)
+    . errCtx (BundlerMissingLockFileCtx $ bundlerGemfile project)
+    . errHelp BundlerMissingLockFileHelp
+    . errDoc bundlerLockFileRationaleUrl
+    . errDoc rubyFossaDocUrl
     $ do
       lockFile <- context "Retrieve Gemfile.lock" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project))
       graph <- context "Gemfile.lock analysis" . GemfileLock.analyze' $ lockFile

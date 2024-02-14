@@ -10,12 +10,14 @@ module Analysis.FixtureUtils (
   TestC,
   performDiscoveryAndAnalyses,
   getArtifact,
+  testRunnerWithLogger,
+  withResult,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic))
 import App.Types (OverrideDynamicAnalysisBinary)
-import Control.Carrier.Debug (ignoreDebug)
+import Control.Carrier.Debug (IgnoreDebugC, ignoreDebug)
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
 import Control.Carrier.Lift (Lift, sendIO)
@@ -29,10 +31,13 @@ import Control.Carrier.Telemetry (
 import Data.Conduit (runConduitRes, (.|))
 import Data.Conduit.Binary qualified as CB
 import Data.Function ((&))
+import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Traversable (for)
+import Data.UUID qualified as UUID (toString)
+import Data.UUID.V4 qualified as UUID (nextRandom)
 import Diag.Result (EmittedWarn, Result (Failure, Success), renderFailure)
 import Discovery.Archive (selectUnarchiver)
 import Discovery.Filters (AllFilters, MavenScopeFilters (..))
@@ -63,6 +68,7 @@ import Path (
   File,
   Path,
   Rel,
+  parseRelDir,
   reldir,
   toFilePath,
   (</>),
@@ -105,6 +111,7 @@ data FixtureArtifact = FixtureArtifact
 type TestC m =
   ExecIOC
     $ ReadFSIOC
+    $ IgnoreDebugC
     $ DiagnosticsC
     $ LoggerC
     $ ReaderC OverrideDynamicAnalysisBinary
@@ -120,6 +127,7 @@ testRunnerWithLogger f env =
   f
     & runExecIOWithinEnv env
     & runReadFSIO
+    & ignoreDebug
     & runDiagnostics
     & withDefaultLogger SevWarn
     & runReader (mempty :: OverrideDynamicAnalysisBinary)
@@ -180,7 +188,17 @@ getArtifact :: Has (Lift IO) sig m => FixtureArtifact -> m (Path Abs Dir)
 getArtifact target = sendIO $ do
   -- Ensure parent directory for fixture exists
   PIO.ensureDir analysisIntegrationCaseFixtureDir
-  let archiveExtractionDir = analysisIntegrationCaseFixtureDir </> extractAt target
+
+  -- Generate a path to extract the artifact to which is unique between calls to getArtifact.
+  --
+  -- If it fails to parse a uuid as a directory fragment, just use a fixed directory name.
+  -- This makes it fall back to the original behavior where extraction directories
+  -- shared between AnalysisTextFixtures could break during parallel execution.
+  --
+  -- This generally shouldn't happen if the uuid library makes properly formatted uuid strings.
+  uuid <- parseRelDir . UUID.toString <$> UUID.nextRandom
+  let uuidPath = fromMaybe [reldir|uuid-parse-failed|] uuid
+      archiveExtractionDir = analysisIntegrationCaseFixtureDir </> extractAt target </> uuidPath
 
   PIO.ensureDir archiveExtractionDir
   resolvedUrl <- useHttpsURI <$> mkURI artifactUrl

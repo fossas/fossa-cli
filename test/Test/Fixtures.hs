@@ -37,13 +37,17 @@ module Test.Fixtures (
   issuesDiffAvailable,
   standardAnalyzeConfig,
   vsiSourceUnit,
+  sourceUnitBuildMaven,
+  sourceUnitReachabilityNoAnalysis,
+  sampleJarParsedContent',
 ) where
 
-import App.Fossa.Config.Analyze (AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
+import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
 import App.Fossa.Config.Analyze qualified as ANZ
 import App.Fossa.Config.Analyze qualified as VSI
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
 import App.Fossa.Lernie.Types (GrepOptions (..), OrgWideCustomLicenseConfigPolicy (..))
+import App.Fossa.Reachability.Types (CallGraphAnalysis (NoCallGraphAnalysis), SourceUnitReachability (..))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency (..))
 import App.Types (OverrideDynamicAnalysisBinary (..))
@@ -51,11 +55,13 @@ import App.Types qualified as App
 import Control.Effect.FossaApiClient qualified as App
 import Control.Monad.RWS qualified as Set
 import Control.Timeout (Duration (MilliSeconds))
+import Data.ByteString.Lazy qualified as LB
 import Data.Flag (toFlag)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
+import Data.Text.Encoding qualified as TL
 import Data.Text.Extra (showT)
 import Discovery.Filters (AllFilters, MavenScopeFilters (MavenScopeIncludeFilters))
 import Effect.Logger (Severity (..))
@@ -64,6 +70,7 @@ import Fossa.API.Types qualified as API
 import Path (Abs, Dir, Path, mkAbsDir, mkRelDir, parseAbsDir, (</>))
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
 import System.Directory (getTemporaryDirectory)
+import Text.RawString.QQ (r)
 import Text.URI.QQ (uri)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
 
@@ -76,7 +83,7 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True []
+organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False
 
 project :: API.Project
 project =
@@ -132,8 +139,8 @@ packageRevision =
     , App.packageVersion = "1.0"
     }
 
-sourceUnits :: NE.NonEmpty SourceUnit
-sourceUnits = NE.fromList [unit]
+sourceUnits :: [SourceUnit]
+sourceUnits = [unit]
   where
     unit =
       SourceUnit
@@ -145,6 +152,37 @@ sourceUnits = NE.fromList [unit]
         , sourceUnitOriginPaths = []
         , additionalData = Nothing
         }
+
+sourceUnitBuildMaven :: SourceUnitBuild
+sourceUnitBuildMaven =
+  SourceUnitBuild
+    "default"
+    True
+    [ ipAddr
+    , spotBugs
+    ]
+    [ SourceUnitDependency logger []
+    , SourceUnitDependency ipAddr []
+    , SourceUnitDependency
+        spotBugs
+        [ logger
+        ]
+    ]
+  where
+    ipAddr :: Locator
+    ipAddr = mkLocator "com.github.seancfoley:ipaddress" "5.4.0"
+
+    spotBugs :: Locator
+    spotBugs = mkLocator "com.github.spotbugs:spotbugs-annotations" "4.8.3"
+
+    logger :: Locator
+    logger = mkLocator "org.apache.logging.log4j:log4j-core" "2.22.1"
+
+    mkLocator :: Text -> Text -> Locator
+    mkLocator name version = Locator "mvn" name (Just version)
+
+sourceUnitReachabilityNoAnalysis :: SourceUnitReachability
+sourceUnitReachabilityNoAnalysis = SourceUnitReachability "type" "manifest" "name" [] [] NoCallGraphAnalysis
 
 vsiSourceUnit :: SourceUnit
 vsiSourceUnit =
@@ -441,4 +479,26 @@ standardAnalyzeConfig =
     , ANZ.firstPartyScansFlag = App.FirstPartyScansUseDefault
     , ANZ.grepOptions = grepOptions
     , ANZ.customFossaDepsFile = customFossaDepsFile
+    , ANZ.allowedTacticTypes = Any
     }
+
+sampleJarParsedContent :: Text
+sampleJarParsedContent =
+  [r|C:vuln.project.sample.App java.lang.Object
+C:vuln.project.sample.App java.net.URI
+C:vuln.project.sample.App java.lang.System
+C:vuln.project.sample.App vuln.project.sample.App
+C:vuln.project.sample.App java.io.PrintStream
+C:vuln.project.sample.App org.dom4j.io.SAXReader
+C:vuln.project.sample.App java.lang.Exception
+C:vuln.project.sample.App org.dom4j.DocumentException
+M:vuln.project.sample.App:<init>() (O)java.lang.Object:<init>()
+M:vuln.project.sample.App:main(java.lang.String[]) (O)java.net.URI:<init>(java.lang.String)
+M:vuln.project.sample.App:main(java.lang.String[]) (M)java.net.URI:toURL()
+M:vuln.project.sample.App:main(java.lang.String[]) (S)vuln.project.sample.App:parse(java.net.URL)
+M:vuln.project.sample.App:main(java.lang.String[]) (M)java.io.PrintStream:println(java.lang.Object)
+M:vuln.project.sample.App:parse(java.net.URL) (O)org.dom4j.io.SAXReader:<init>()
+M:vuln.project.sample.App:parse(java.net.URL) (M)org.dom4j.io.SAXReader:read(java.net.URL)|]
+
+sampleJarParsedContent' :: LB.ByteString
+sampleJarParsedContent' = LB.fromStrict . TL.encodeUtf8 $ sampleJarParsedContent

@@ -4,7 +4,8 @@ module Strategy.R (
   mkProject,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProject'))
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProjectStaticOnly))
+import Control.Carrier.Diagnostics (errDoc, errHelp)
 import Control.Effect.Diagnostics (Diagnostics, errCtx, fatalText, recover, warnOnErr)
 import Control.Effect.Reader (Reader)
 import Control.Monad (void)
@@ -27,6 +28,8 @@ import Strategy.R.Errors (
   MissingDescriptionFile (..),
   MissingRenvLockFile (..),
   VersionConstraintsIgnored (..),
+  rEnvLockFileDocUrl,
+  rEnvLockFileGenerateDocUrl,
  )
 import Strategy.R.Renv (
   analyzeDescription,
@@ -53,7 +56,7 @@ instance ToJSON RProject
 
 instance AnalyzeProject RProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps
+  analyzeProjectStaticOnly _ = getDeps
 
 discover ::
   ( Has ReadFS sig m
@@ -130,7 +133,10 @@ getDeps (DescriptionOnly _ (RDescriptionFile descriptionFile)) = do
     . warnOnErr MissingEdges
     . warnOnErr MissingDeepDeps
     . warnOnErr VersionConstraintsIgnored
-    . errCtx MissingRenvLockFile
+    . errCtx MissingRenvLockFileCtx
+    . errHelp MissingRenvLockFileHelp
+    . errDoc rEnvLockFileDocUrl
+    . errDoc rEnvLockFileGenerateDocUrl
     $ fatalText "renv.lock file is missing."
 
   (graph, graphBreadth) <- analyzeDescription descriptionFile

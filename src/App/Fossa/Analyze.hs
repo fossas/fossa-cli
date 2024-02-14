@@ -32,9 +32,10 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Analyze.Upload (mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
+import App.Fossa.Analyze.Upload (ScanUnits (SourceUnitOnly), mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.Config.Analyze (
+  AnalysisTacticTypes (..),
   AnalyzeCliOpts,
   AnalyzeConfig (..),
   BinaryDiscovery (BinaryDiscovery),
@@ -52,6 +53,8 @@ import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
+import App.Fossa.PreflightChecks (preflightChecks)
+import App.Fossa.Reachability.Upload (analyzeForReachability)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
@@ -92,13 +95,16 @@ import Control.Monad (join, unless, void, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
+import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
+import Data.Functor (($>))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
-import Diag.Result (resultToMaybe)
+import Diag.Diagnostic as DI
+import Diag.Result (Result (..), resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
@@ -106,14 +112,16 @@ import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
   Severity (..),
+  logDebug,
   logInfo,
   logStdout,
+  renderIt,
  )
 import Effect.ReadFS (ReadFS)
+import Errata (Errata (..))
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
-  Doc,
   Pretty (pretty),
   annotate,
   viaShow,
@@ -189,10 +197,11 @@ runDependencyAnalysis ::
   AllFilters ->
   -- | An optional path prefix to prepend to paths of discovered manifestFiles
   Maybe FileAncestry ->
+  AnalysisTacticTypes ->
   -- | The project to analyze
   DiscoveredProject proj ->
   m ()
-runDependencyAnalysis basedir filters pathPrefix project@DiscoveredProject{..} = do
+runDependencyAnalysis basedir filters pathPrefix allowedTactics project@DiscoveredProject{..} = do
   let dpi = DiscoveredProjectIdentifier projectPath projectType
   let hasNonProductionPath = isDefaultNonProductionPath basedir projectPath
 
@@ -208,7 +217,10 @@ runDependencyAnalysis basedir filters pathPrefix project@DiscoveredProject{..} =
       let ctxMessage = "Project Analysis: " <> showT projectType
       graphResult <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack . Diag.context ctxMessage $ do
         debugMetadata "DiscoveredProject" project
-        trackTimeSpent (showT projectType) $ analyzeProject targets projectData
+        let analyzeFn = case allowedTactics of
+              StaticOnly -> analyzeProjectStaticOnly
+              Any -> analyzeProject
+        trackTimeSpent (showT projectType) $ analyzeFn targets projectData
       Diag.flushLogs SevError SevDebug graphResult
       trackResult graphResult
       output $ Scanned dpi (mkResult basedir project pathPrefix <$> graphResult)
@@ -229,18 +241,19 @@ runAnalyzers ::
   , Has TaskPool sig m
   , Has AtomicCounter sig m
   ) =>
+  AnalysisTacticTypes ->
   AllFilters ->
   Path Abs Dir ->
   Maybe FileAncestry ->
   m ()
-runAnalyzers filters basedir pathPrefix = do
+runAnalyzers allowedTactics filters basedir pathPrefix = do
   if filterIsVSIOnly filters
     then do
       logInfo "Running in VSI only mode, skipping other analyzers"
       pure ()
     else traverse_ single discoverFuncs
   where
-    single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters pathPrefix)
+    single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters pathPrefix allowedTactics)
 
 analyze ::
   ( Has Debug sig m
@@ -273,6 +286,19 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       grepOptions = Config.grepOptions cfg
       customFossaDepsFile = Config.customFossaDepsFile cfg
       shouldAnalyzePathDependencies = resolvePathDependencies $ Config.experimental cfg
+      allowedTactics = Config.allowedTacticTypes cfg
+
+  manualSrcUnits <-
+    Diag.errorBoundaryIO . diagToDebug $
+      if filterIsVSIOnly filters
+        then do
+          logInfo "Running in VSI only mode, skipping manual source units"
+          pure Nothing
+        else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
+
+  _ <- case destination of
+    OutputStdout -> pure ()
+    UploadScan apiOpts _ -> runFossaApiClient apiOpts preflightChecks
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
@@ -296,13 +322,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         if (fromFlag BinaryDiscovery $ Config.binaryDiscoveryEnabled $ Config.vsiOptions cfg)
           then analyzeDiscoverBinaries basedir filters
           else pure Nothing
-  manualSrcUnits <-
-    Diag.errorBoundaryIO . diagToDebug $
-      if filterIsVSIOnly filters
-        then do
-          logInfo "Running in VSI only mode, skipping manual source units"
-          pure Nothing
-        else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
@@ -348,13 +367,15 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       . runReader discoveryFilters
       . runReader (Config.overrideDynamicAnalysis cfg)
       $ do
-        runAnalyzers filters basedir Nothing
+        runAnalyzers allowedTactics filters basedir Nothing
         when (fromFlag UnpackArchives $ Config.unpackArchives cfg) $
           forkTask $ do
-            res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (runAnalyzers filters) basedir ancestryDirect
+            res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (runAnalyzers allowedTactics filters) basedir ancestryDirect
             Diag.withResult SevError SevWarn res (const (pure ()))
+  logDebug $ "Unfiltered project scans: " <> pretty (show projectScans)
 
   let filteredProjects = mapMaybe toProjectResult projectScans
+  logDebug $ "Filtered project scans: " <> pretty (show filteredProjects)
 
   maybeEndpointAppVersion <- case destination of
     UploadScan apiOpts _ -> runFossaApiClient apiOpts $ do
@@ -377,9 +398,15 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         $ traverse (enrichPathDependencies includeAll vendoredDepsOptions revision) filteredProjects
     (True, _) -> pure $ map enrichPathDependencies' filteredProjects
     (False, _) -> traverse (withPathDependencyNudge includeAll) filteredProjects
+  logDebug $ "Filtered projects with path dependencies: " <> pretty (show filteredProjects')
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
-  renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult $ Config.filterSet cfg
+  reachabilityUnitsResult <- Diag.errorBoundaryIO . diagToDebug $ analyzeForReachability analysisResult
+  reachabilityUnits <- case reachabilityUnitsResult of
+    Diag.Result.Failure _ _ -> pure []
+    Diag.Result.Success _ units -> pure units
+
+  renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   let licenseSourceUnits =
@@ -391,26 +418,29 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
   let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits
 
-  -- If we find nothing but keyword search, we exit with an error, but explain that the error may be ignorable.
-  -- We do not want to succeed, because nothing gets uploaded to the API for keyword searches, so `fossa test` will fail.
-  -- So the solution is to still fail, but give a hopefully useful explanation that the error can be ignored if all you were expecting is keyword search results.
-  case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
-    (False, NoneDiscovered) -> Diag.fatal ErrNoProjectsDiscovered
-    (True, NoneDiscovered) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
-    (False, FilteredAll) -> Diag.fatal ErrFilteredAllProjects
-    (True, FilteredAll) -> Diag.fatal ErrOnlyKeywordSearchResultsFound
-    (_, CountedScanUnits scanUnits) -> doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits
+  scanUnits <-
+    case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
+      (False, NoneDiscovered) -> Diag.warn ErrNoProjectsDiscovered $> emptyScanUnits
+      (True, NoneDiscovered) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
+      (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
+      (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
+      (_, CountedScanUnits scanUnits) -> pure scanUnits
+  doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits
+
   pure outputResult
   where
-    doUpload result iatAssertion destination basedir jsonOutput revision scanUnits =
+    doUpload result iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits =
       case destination of
         OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
         UploadScan apiOpts metadata ->
           Diag.context "upload-results"
             . runFossaApiClient apiOpts
             $ do
-              locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits
+              locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits
               doAssertRevisionBinaries iatAssertion locator
+
+    emptyScanUnits :: ScanUnits
+    emptyScanUnits = SourceUnitOnly []
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
 toProjectResult (SkippedDueToProvidedFilter _) = Nothing
@@ -494,33 +524,33 @@ data AnalyzeError
   | ErrOnlyKeywordSearchResultsFound
 
 instance Diag.ToDiagnostic AnalyzeError where
-  renderDiagnostic :: AnalyzeError -> Doc ann
-  renderDiagnostic ErrNoProjectsDiscovered =
-    vsep
-      [ "No analysis targets found in directory."
-      , ""
-      , "Make sure your project is supported. See the user guide for details:"
-      , "    " <> pretty userGuideUrl
-      , ""
-      ]
-  renderDiagnostic (ErrFilteredAllProjects) =
-    vsep
-      [ "Filtered out all projects. This may be occurring because: "
-      , ""
-      , " * No manual or vendor dependencies were provided with `fossa-deps` file."
-      , " * Exclusion filters were used, filtering out discovered projects. "
-      , " * Discovered projects resided in following ignored path by default:"
-      , vsep $ map (\i -> pretty $ "    * " <> toText i) ignoredPaths
-      , ""
-      , "See the user guide for details:"
-      , "    " <> pretty userGuideUrl
-      , ""
-      ]
-  renderDiagnostic (ErrOnlyKeywordSearchResultsFound) =
-    vsep
-      [ "Matches to your keyword searches were found, but no other analysis targets were found."
-      , "This error can be safely ignored if you are only expecting keyword search results."
-      ]
+  renderDiagnostic :: AnalyzeError -> Errata
+  renderDiagnostic ErrNoProjectsDiscovered = do
+    let help = "Refer to the provided documentation to ensure your project is supported"
+    let body = createBody Nothing (Just userGuideUrl) Nothing (Just help) Nothing
+    Errata (Just "No analysis targets found in directory") [] (Just body)
+  renderDiagnostic ErrFilteredAllProjects = do
+    let content =
+          renderIt $
+            vsep
+              [ "This may be occurring because: "
+              , ""
+              , " * No manual or vendor dependencies were provided with `fossa-deps` file."
+              , " * Exclusion filters were used, filtering out discovered projects. "
+              , " * Discovered projects resided in following ignored path by default:"
+              , vsep $ map (\i -> pretty $ "    * " <> toText i) ignoredPaths
+              , ""
+              ]
+        body = createBody (Just content) (Just userGuideUrl) Nothing Nothing Nothing
+    Errata (Just "Filtered out all projects") [] (Just body)
+  renderDiagnostic ErrOnlyKeywordSearchResultsFound = do
+    let body =
+          renderIt $
+            vsep
+              [ "Matches to your keyword searches were found, but no other analysis targets were found."
+              , "This error can be safely ignored if you are only expecting keyword search results."
+              ]
+    Errata (Just "Only keyword search results found") [] (Just body)
 
 buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Aeson.Value
 buildResult includeAll srcUnits projects licenseSourceUnits =

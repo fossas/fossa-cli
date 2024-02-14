@@ -15,6 +15,7 @@ import App.Fossa.Config.Test (
   TestOutputFormat (TestOutputJson, TestOutputPretty),
  )
 import App.Fossa.Config.Test qualified as Config
+import App.Fossa.PreflightChecks (preflightChecks)
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (
   ProjectRevision (projectName, projectRevision),
@@ -51,7 +52,9 @@ testMain ::
   ) =>
   TestConfig ->
   m ()
-testMain config =
+testMain config = do
+  _ <- ignoreDebug $ runFossaApiClient (Config.apiOpts config) preflightChecks
+
   runStickyLogger SevInfo
     . ignoreDebug -- Ignore the debug effect because we don't generate a bundle.
     . runFossaApiClient (Config.apiOpts config)
@@ -97,15 +100,15 @@ testMain config =
             else case outputType of
               TestOutputPretty -> logError $ pretty issues
               TestOutputJson -> renderJson issues
-          fatalText $ issesFoundMsg diffRev n
+          fatalText $ issuesFoundMsg diffRev n
   where
     successMsg :: Maybe DiffRevision -> Text
     successMsg diffRevision = case diffRevision of
       Nothing -> "Test passed! 0 issues found"
       Just (DiffRevision rev) -> "Test passed! No new issues found compared to revision: " <> rev <> "."
 
-    issesFoundMsg :: Maybe DiffRevision -> Int -> Text
-    issesFoundMsg diffRevision n = case diffRevision of
+    issuesFoundMsg :: Maybe DiffRevision -> Int -> Text
+    issuesFoundMsg diffRevision n = case diffRevision of
       Nothing -> "The scan has revealed issues. Number of issues found: " <> showT n
       Just (DiffRevision rev) ->
         "The scan has revealed new issues compared to revision: "

@@ -6,10 +6,11 @@ module Strategy.Cocoapods (
   CocoapodsProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject, analyzeProject, analyzeProject')
-import App.Pathfinder.Types (LicenseAnalyzeProject, licenseAnalyzeProject)
+import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics (Diagnostics, context, errCtx, warnOnErr, (<||>))
+import Control.Carrier.Diagnostics (errHelp)
+import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, warnOnErr, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
@@ -31,7 +32,7 @@ import Effect.Logger (Logger)
 import Effect.ReadFS (Has, ReadFS, readContentsParser)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, toFilePath)
-import Strategy.Cocoapods.Errors (MissingPodLockFile (MissingPodLockFile))
+import Strategy.Cocoapods.Errors (MissingPodLockFile (..), refPodDocUrl)
 import Strategy.Cocoapods.Podfile qualified as Podfile
 import Strategy.Cocoapods.PodfileLock qualified as PodfileLock
 import Strategy.Ruby.Parse (Assignment (label, value), PodSpecAssignmentValue (PodspecDict, PodspecStr), Symbol (Symbol), findBySymbol, podspecAssignmentValuesP, readAssignments)
@@ -78,7 +79,7 @@ instance ToJSON CocoapodsProject
 
 instance AnalyzeProject CocoapodsProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps'
+  analyzeProjectStaticOnly _ = getDeps'
 
 instance LicenseAnalyzeProject CocoapodsProject where
   licenseAnalyzeProject = traverse readLicense . cocoapodsSpecFiles
@@ -116,7 +117,9 @@ getDeps project =
       "Podfile.lock analysis"
       ( warnOnErr MissingEdges
           . warnOnErr MissingDeepDeps
-          . errCtx MissingPodLockFile
+          . errCtx MissingPodLockFileCtx
+          . errHelp MissingPodLockFileHelp
+          . errDoc refPodDocUrl
           $ (analyzePodfileLock project)
       )
       <||> context "Podfile analysis" (analyzePodfile project)
@@ -128,7 +131,9 @@ getDeps' project =
       "Podfile.lock analysis"
       ( warnOnErr MissingEdges
           . warnOnErr MissingDeepDeps
-          . errCtx MissingPodLockFile
+          . errCtx MissingPodLockFileCtx
+          . errHelp MissingPodLockFileHelp
+          . errDoc refPodDocUrl
           $ (analyzePodfileLockStatically project)
       )
       <||> context "Podfile analysis" (analyzePodfile project)

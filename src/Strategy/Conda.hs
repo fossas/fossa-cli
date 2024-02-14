@@ -4,7 +4,7 @@ module Strategy.Conda (
   discover,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -58,7 +58,7 @@ instance ToJSON CondaProject
 
 instance AnalyzeProject CondaProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = const $ fatalText "Cannot analyze Conda project statically."
+  analyzeProjectStaticOnly _ = const $ fatalText "Cannot analyze Conda project statically."
 
 mkProject :: CondaProject -> DiscoveredProject CondaProject
 mkProject project =

@@ -69,7 +69,7 @@ expectGetFirstPartySignedUrl packageRevision = GetSignedFirstPartyScanUrl packag
 
 expectUploadFirstPartyDataToS3 :: Has MockApi sig m => m ()
 expectUploadFirstPartyDataToS3 = do
-  let mergedUnits = mergeSourceAndLicenseUnits (NE.toList Fixtures.sourceUnits) Fixtures.firstLicenseSourceUnit
+  let mergedUnits = mergeSourceAndLicenseUnits Fixtures.sourceUnits Fixtures.firstLicenseSourceUnit
   UploadFirstPartyScanResult Fixtures.signedUrl mergedUnits `returnsOnceForAnyRequest` ()
 
 expectedMergedFullSourceUnits :: NE.NonEmpty FullSourceUnit
@@ -104,6 +104,20 @@ expectedMergedFullSourceUnits = NE.fromList [fullSourceUnit, fullLicenseUnit]
         , fullSourceUnitInfo = Just LicenseUnitInfo{licenseUnitInfoDescription = Nothing}
         }
 
+expectGetSuccessWithReachability :: Has MockApi sig m => m ()
+expectGetSuccessWithReachability = do
+  GetProject Fixtures.projectRevision `alwaysReturns` Fixtures.project
+  GetOrganization `alwaysReturns` Fixtures.organization{orgSupportsReachability = True}
+  GetApiOpts `alwaysReturns` Fixtures.apiOpts
+
+expectReachabilityBuildUpload :: (Has MockApi sig m) => m ()
+expectReachabilityBuildUpload =
+  UploadBuildForReachability
+    Fixtures.projectRevision
+    Fixtures.projectMetadata
+    mempty
+    `returnsOnce` ()
+
 uploadSuccessfulAnalysisSpec :: Spec
 uploadSuccessfulAnalysisSpec = do
   describe
@@ -123,6 +137,7 @@ uploadSuccessfulAnalysisSpec = do
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
               (SourceUnitOnly Fixtures.sourceUnits)
+              mempty
           locator `shouldBe'` expectedLocator
       -- Currently our StdOut logging just writes directly to StdOut, so this is
       -- just checking it doesn't fail.  In the future we should extract that so
@@ -140,7 +155,25 @@ uploadSuccessfulAnalysisSpec = do
               (toFlag (JsonOutput) True)
               Fixtures.projectRevision
               (SourceUnitOnly Fixtures.sourceUnits)
+              mempty
           locator `shouldBe'` expectedLocator
+      it' "performs reachability upload, if organization supports reachability"
+        . withGit mockGit
+        $ do
+          expectGetSuccessWithReachability
+          expectAnalysisUploadSuccess
+          expectContributorUploadSuccess
+          expectReachabilityBuildUpload
+          locator <-
+            uploadSuccessfulAnalysis
+              baseDir
+              Fixtures.projectMetadata
+              (toFlag (JsonOutput) False)
+              Fixtures.projectRevision
+              (SourceUnitOnly Fixtures.sourceUnits)
+              mempty
+          locator `shouldBe'` expectedLocator
+
       it' "aborts when uploading to a monorepo"
         . expectFatal'
         . withGit mockGit
@@ -152,6 +185,7 @@ uploadSuccessfulAnalysisSpec = do
             (toFlag (JsonOutput) False)
             Fixtures.projectRevision
             (SourceUnitOnly Fixtures.sourceUnits)
+            mempty
       it' "continues if fetching the project fails"
         . withGit mockGit
         $ do
@@ -168,6 +202,7 @@ uploadSuccessfulAnalysisSpec = do
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
               (SourceUnitOnly Fixtures.sourceUnits)
+              mempty
           locator `shouldBe'` expectedLocator
       it' "continues if fetching contributors fails"
         . withGit (\_ -> fatalText "Mocked failure of fetching contributors from git")
@@ -181,6 +216,7 @@ uploadSuccessfulAnalysisSpec = do
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
               (SourceUnitOnly Fixtures.sourceUnits)
+              mempty
           locator `shouldBe'` expectedLocator
       it' "continues if uploading contributors fails"
         . withGit mockGit
@@ -195,6 +231,7 @@ uploadSuccessfulAnalysisSpec = do
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
               (SourceUnitOnly Fixtures.sourceUnits)
+              mempty
           locator `shouldBe'` expectedLocator
       it' "uploads to S3 and to /api/builds/custom_with_first_party_licenses if there are licenses"
         . withGit mockGit
@@ -211,6 +248,7 @@ uploadSuccessfulAnalysisSpec = do
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
               (SourceAndLicenseUnits Fixtures.sourceUnits Fixtures.firstLicenseSourceUnit)
+              mempty
           locator `shouldBe'` expectedLocator
 
       it' "uploads to S3 and to /api/builds/custom_with_first_party_licenses if there are licenses and no targets were found"
@@ -228,6 +266,7 @@ uploadSuccessfulAnalysisSpec = do
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
               (LicenseSourceUnitOnly Fixtures.firstLicenseSourceUnit)
+              mempty
           locator `shouldBe'` expectedLocator
 
       it' "uploads to S3 and to /api/builds/custom_with_first_party_licenses if there are licenses and full file uploads is set on the org"
@@ -247,6 +286,7 @@ uploadSuccessfulAnalysisSpec = do
               (toFlag (JsonOutput) False)
               Fixtures.projectRevision
               (SourceAndLicenseUnits Fixtures.sourceUnits Fixtures.firstLicenseSourceUnit)
+              mempty
           locator `shouldBe'` expectedLocator
 
 mergeSourceAndLicenseUnitsSpec :: Spec
@@ -255,7 +295,7 @@ mergeSourceAndLicenseUnitsSpec =
     "mergeSourceAndLicenseUnits"
     $ do
       it' "merges source and license units" $ do
-        let mergedUnits = mergeSourceAndLicenseUnits (NE.toList Fixtures.sourceUnits) Fixtures.firstLicenseSourceUnit
+        let mergedUnits = mergeSourceAndLicenseUnits Fixtures.sourceUnits Fixtures.firstLicenseSourceUnit
         mergedUnits `shouldBe'` expectedMergedFullSourceUnits
 
 spec :: Spec

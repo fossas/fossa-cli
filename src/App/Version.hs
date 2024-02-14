@@ -3,22 +3,25 @@
 module App.Version (
   versionNumber,
   fullVersionDescription,
-  isDirty,
   currentBranch,
   versionOrBranch,
+  isReleaseVersion,
 ) where
 
 import App.Version.TH (getCurrentTag)
+import Data.Maybe (isJust)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Version (showVersion)
-import GitHash (GitInfo, giBranch, giDirty, giHash, tGitInfoCwdTry)
+import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import System.Info (compilerName, compilerVersion)
 
 versionNumber :: Maybe Text
 versionNumber = $$(getCurrentTag)
 
+-- Avoid using giDirty in GitInfo.
+-- The build process in CI dirties the worktree in order to ensure that the versions in this module are up to date.
 info :: Either String GitInfo
 info = $$(tGitInfoCwdTry)
 
@@ -31,9 +34,6 @@ currentCommit = toText $ either (const "unknown") giHash info
 shortCommit :: Text
 shortCommit = Text.take 12 currentCommit
 
-isDirty :: Bool
-isDirty = either (const False) giDirty info
-
 compilerId :: Text
 compilerId = name <> "-" <> version
   where
@@ -44,19 +44,16 @@ fullVersionDescription :: Text
 fullVersionDescription = Text.concat items
   where
     version :: Text
-    version =
-      if isDirty
-        then branch
-        else maybe branch ("version " <>) versionNumber
+    version = maybe branch ("version " <>) versionNumber
     branch = "branch " <> currentBranch
-    dirty = if isDirty then " (dirty)" else ""
+    buildType = if isReleaseVersion then "" else " (development build) "
     items :: [Text]
     items =
       [ "fossa-cli "
       , version
       , " (revision "
       , shortCommit
-      , dirty
+      , buildType
       , " compiled with "
       , compilerId
       , ")"
@@ -64,3 +61,7 @@ fullVersionDescription = Text.concat items
 
 versionOrBranch :: Text
 versionOrBranch = maybe currentBranch ("v" <>) versionNumber
+
+-- | True if the found version is a valid semver tag.
+isReleaseVersion :: Bool
+isReleaseVersion = isJust versionNumber

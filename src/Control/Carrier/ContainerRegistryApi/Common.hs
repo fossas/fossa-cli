@@ -9,6 +9,7 @@ module Control.Carrier.ContainerRegistryApi.Common (
   AuthToken (..),
   getToken,
   updateToken,
+  safeReplaceToken,
 ) where
 
 import Control.Algebra (Has)
@@ -16,11 +17,13 @@ import Control.Carrier.ContainerRegistryApi.Errors (
   ContainerRegistryApiErrorBody,
   UnknownApiError (UnknownApiError),
  )
-import Control.Concurrent.STM (STM, TMVar, atomically, putTMVar, tryReadTMVar)
+import Control.Concurrent.STM (STM, TMVar, atomically, retry, tryReadTMVar, tryTakeTMVar, writeTMVar)
 import Control.Effect.Diagnostics (Diagnostics, fatal)
+import Control.Effect.Exception (onException)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Aeson (decode')
 import Data.ByteString.Lazy qualified as ByteStringLazy
+import Data.Functor (void)
 import Data.List (find)
 import Data.String.Conversion (ConvertUtf8 (encodeUtf8), decodeUtf8)
 import Data.Text (Text)
@@ -42,7 +45,7 @@ logHttp :: (Has (Lift IO) sig m, Has Logger sig m) => Request -> Manager -> m (R
 logHttp req manager = do
   logDebug summarizeRequest
   resp <- sendIO $ httpLbs req manager
-  logDebug . summarizeResponse $ resp
+  logDebug $ summarizeResponse resp
   pure resp
   where
     summarizeRequest :: Doc AnsiStyle
@@ -96,18 +99,58 @@ data AuthToken
   | BasicAuthToken Text Text
   deriving (Show, Eq, Ord)
 
+data RegistryHandle
+  = -- | Another thread is working on fetching a new token.
+    Updating
+  | -- | This Token is ready to be used.
+    Ready AuthToken
+
 -- | Wrapper for context - e.g. access token etc.
 newtype RegistryCtx = RegistryCtx
-  { registryAccessToken :: TMVar AuthToken
-  }
+  {registryAccessToken :: TMVar RegistryHandle}
 
 -- | Gets access token from registry context.
+-- If there isn't one, returns 'Nothing'.
+-- If the token is in the process of being updated, then wait for it.
 getToken :: (Has (Lift IO) sig m) => RegistryCtx -> m (Maybe AuthToken)
-getToken = sendSTM . tryReadTMVar . registryAccessToken
+getToken ctx = sendSTM $ do
+  m <- tryReadTMVar . registryAccessToken $ ctx
+  case m of
+    -- If something else is replacing the token, wait until a change and try again.
+    Just Updating -> retry
+    Nothing -> pure Nothing
+    Just (Ready tok) -> pure . Just $ tok
 
 -- | Updates access token from registry context.
 updateToken :: Has (Lift IO) sig m => RegistryCtx -> AuthToken -> m ()
-updateToken token newVal = sendSTM $ putTMVar (registryAccessToken token) newVal
+updateToken token newVal = do
+  sendSTM $ writeTMVar (registryAccessToken token) (Ready newVal)
+
+-- | Try to replace the token in ctx after retrieving it using the given action.
+-- If another thread is trying to replace the token, then do nothing.
+-- Returns True when successfully written, or False otherwise.
+safeReplaceToken :: Has (Lift IO) sig m => RegistryCtx -> m AuthToken -> m Bool
+safeReplaceToken ctx getNewToken = do
+  let tokVar = registryAccessToken ctx
+
+  (shouldUpdate, exceptionCleanupAction) <- sendSTM $ do
+    m <- tryReadTMVar (registryAccessToken ctx)
+
+    case m of
+      Just Updating -> pure (False, pure ())
+      -- Existing or new token, should replace.
+      t -> do
+        writeTMVar tokVar Updating -- Signal to other threads there's an update in progress
+        pure (True, maybe (void $ tryTakeTMVar tokVar) (writeTMVar tokVar) t)
+
+  if shouldUpdate
+    then do
+      -- If there's some new exception, clean up by putting the old token back.
+      -- This gives other threads the opportunity to try to fetch a new token and exit gracefully.
+      newToken <- getNewToken `onException` (sendSTM exceptionCleanupAction)
+      updateToken ctx newToken
+      pure True
+    else pure False
 
 sendSTM :: Has (Lift IO) sig m => STM a -> m a
 sendSTM = sendIO . atomically

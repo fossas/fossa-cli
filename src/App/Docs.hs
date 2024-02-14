@@ -8,6 +8,8 @@ module App.Docs (
   fossaSslCertDocsUrl,
   fossaContainerScannerUrl,
   pathDependencyDocsUrl,
+  staticAndDynamicStrategies,
+  apiKeyUrl,
 ) where
 
 import App.Version (versionOrBranch)
@@ -45,3 +47,9 @@ fossaContainerScannerUrl = guidePathOf versionOrBranch "/docs/references/subcomm
 
 pathDependencyDocsUrl :: Text
 pathDependencyDocsUrl = guidePathOf versionOrBranch "/docs/references/experimental/path-dependency.md"
+
+staticAndDynamicStrategies :: Text
+staticAndDynamicStrategies = guidePathOf versionOrBranch "/docs/references/strategies/README.md#static-and-dynamic-strategies"
+
+apiKeyUrl :: Text
+apiKeyUrl = guidePathOf versionOrBranch "/README.md#generating-an-api-key"

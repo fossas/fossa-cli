@@ -15,7 +15,7 @@ module Strategy.Googlesource.RepoManifest (
   ValidatedProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Applicative (optional, (<|>))
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -53,6 +53,7 @@ import Effect.ReadFS (
   readContentsText,
   readContentsXML,
  )
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing, unfold)
 import Parse.XML (FromXML (..), attr, child, children)
@@ -68,7 +69,6 @@ import Path (
   parseRelFile,
   (</>),
  )
-import Prettyprinter (pretty)
 import Text.GitConfig.Parser (Section (..), parseConfig)
 import Text.Megaparsec (errorBundlePretty)
 import Text.URI (URI, mkURI, relativeTo, render)
@@ -110,7 +110,7 @@ mkProject project =
 
 instance AnalyzeProject RepoManifestProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps
+  analyzeProjectStaticOnly _ = getDeps
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => RepoManifestProject -> m DependencyResults
 getDeps = analyze' . repoManifestXml
@@ -336,6 +336,12 @@ data ManifestGitConfigError
 
 instance ToDiagnostic ManifestGitConfigError where
   renderDiagnostic = \case
-    InvalidRemote remote -> "An invalid remote was encountered when parsing manifest files: " <> pretty remote
-    GitConfigParse err -> "An error occurred when parsing a git config: " <> pretty err
-    MissingGitConfig path -> "A git config was missing: " <> pretty path
+    InvalidRemote remote -> do
+      let header = "An invalid remote was encountered when parsing manifest files: " <> remote
+      Errata (Just header) [] Nothing
+    GitConfigParse err -> do
+      let header = "An error occurred when parsing a git config: " <> err
+      Errata (Just header) [] Nothing
+    MissingGitConfig path -> do
+      let header = "A git config was missing: " <> path
+      Errata (Just header) [] Nothing

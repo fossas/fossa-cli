@@ -27,9 +27,10 @@ import Control.Exception.Extra (safeCatch)
 import Control.Monad (void)
 import Control.Monad.Trans
 import Data.Foldable (traverse_)
+import Data.Functor (($>))
 import Diag.Monad (ResultT)
 import Diag.Monad qualified as ResultT
-import Diag.Result (Result (Failure, Success), renderFailure, renderSuccess)
+import Diag.Result (Result (Failure, Success), renderFailure, renderFailureWithoutWarnings, renderSuccess)
 import Diag.Result qualified as Result
 import Effect.Logger
 import System.Exit (exitFailure, exitSuccess)
@@ -41,14 +42,17 @@ runDiagnostics :: DiagnosticsC m a -> m (Result a)
 runDiagnostics = ResultT.runResultT . runDiagnosticsC
 
 -- | Run a Diagnostic effect into a logger, using the default error/warning renderers.
+-- Warnings and errors are logged with SevDebug as well.
 logDiagnostic :: (Has (Lift IO) sig m, Has Logger sig m, Has Stack sig m, Has Telemetry sig m) => DiagnosticsC m a -> m (Maybe a)
 logDiagnostic diag = do
   result <- runDiagnosticsIO diag
   trackResult result
   case result of
-    Failure ws eg -> logError (renderFailure ws eg "An issue occurred") >> pure Nothing
+    Failure ws eg -> do
+      logDebug (renderFailure ws eg "An issue occurred")
+      logError (renderFailureWithoutWarnings eg "An issue occurred") $> Nothing
     Success ws a -> do
-      traverse_ logWarn (renderSuccess ws "A task succeeded with warnings")
+      traverse_ logDebug (renderSuccess ws "A task succeeded with warnings")
       pure (Just a)
 
 -- | Run a void Diagnostic effect into a logger, using the default error/warning renderers.
@@ -69,6 +73,12 @@ instance Has Stack sig m => Algebra (Diag :+: sig) (DiagnosticsC m) where
       ResultT.warnOnErrT (Result.SomeWarn w) $ runDiagnosticsC $ hdl (act <$ ctx)
     L (ErrCtx c act) ->
       ResultT.errCtxT (Result.ErrCtx c) $ runDiagnosticsC $ hdl (act <$ ctx)
+    L (ErrHelp h act) ->
+      ResultT.errHelpT (Result.ErrHelp h) $ runDiagnosticsC $ hdl (act <$ ctx)
+    L (ErrSupport s act) ->
+      ResultT.errSupportT (Result.ErrSupport s) $ runDiagnosticsC $ hdl (act <$ ctx)
+    L (ErrDoc d act) ->
+      ResultT.errDocT (Result.ErrDoc d) $ runDiagnosticsC $ hdl (act <$ ctx)
     L (Fatal diag) -> do
       stack <- lift getStack
       ResultT.fatalT (Result.Stack stack) (Result.SomeErr diag)
@@ -118,25 +128,21 @@ errorBoundaryIO :: (Has (Lift IO) sig m, Has Diagnostics sig m) => m a -> m (Res
 errorBoundaryIO act = errorBoundary $ act `safeCatch` (\(e :: SomeException) -> fatal e)
 
 -- | Use the result of a Diagnostics computation, logging any encountered errors
--- and warnings
+-- and warnings. Warnings and errors are logged with SevDebug as well.
 --
 -- - On failure, the failure is logged with the provided @sevOnErr@ severity
---
--- - On success, the associated warnings are logged with the provided
---   @sevOnSuccess@ severity
 withResult :: Has Logger sig m => Severity -> Severity -> Result a -> (a -> m ()) -> m ()
-withResult sevOnErr _ (Failure ws eg) _ = Effect.Logger.log sevOnErr (renderFailure ws eg "An issue occurred")
-withResult _ sevOnSuccess (Success ws res) f = do
+withResult sevOnErr _ (Failure ws eg) _ = do
+  logDebug (renderFailure ws eg "An issue occurred")
+  Effect.Logger.log sevOnErr (renderFailureWithoutWarnings eg "An issue occurred")
+withResult _ _ (Success ws res) f = do
   traverse_
-    (Effect.Logger.log sevOnSuccess)
+    logDebug
     (renderSuccess ws "A task succeeded with warnings")
   f res
 
 -- | Log all encountered errors and warnings associated with 'Result a'
 --
 -- - On failure, the failure is logged with the provided @sevOnErr@ severity
---
--- - On success, the associated warnings are logged with the provided
---   @sevOnSuccess@ severity
 flushLogs :: Has Logger sig m => Severity -> Severity -> Result a -> m ()
 flushLogs s1 s2 res = withResult s1 s2 res (void . pure)

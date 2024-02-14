@@ -11,9 +11,12 @@ import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Effect.Logger (renderIt)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
-import Options.Applicative (Parser, argument, help, metavar, str)
+import Options.Applicative (Parser, argument, metavar, str)
 import Prettyprinter (pretty, vsep)
+import Style (applyFossaStyle, stringToHelpDoc)
 import System.Info (arch)
 
 newtype ImageText = ImageText
@@ -25,7 +28,7 @@ instance ToJSON ImageText where
   toEncoding = genericToEncoding defaultOptions
 
 imageTextArg :: Parser ImageText
-imageTextArg = ImageText <$> argument str (metavar "IMAGE" <> help "The image to scan")
+imageTextArg = ImageText <$> argument str (applyFossaStyle <> metavar "IMAGE" <> stringToHelpDoc "The image to scan")
 
 -- | Get current runtime arch, We use this to find suitable image,
 -- if multi-platform image is discovered. This is similar to
@@ -60,10 +63,13 @@ defaultDockerHost = "/var/run/docker.sock"
 newtype NotSupportedHostScheme = NotSupportedHostScheme Text
 
 instance ToDiagnostic NotSupportedHostScheme where
-  renderDiagnostic (NotSupportedHostScheme provided) =
-    vsep
-      [ "Only unix domain sockets are supported for DOCKER_HOST value."
-      , pretty $ "Provided 'DOCKER_HOST' via environment variable: " <> provided
-      , ""
-      , pretty $ "fossa will use: " <> "unix://" <> defaultDockerHost <> " instead, to connect with docker engine api (if needed)."
-      ]
+  renderDiagnostic (NotSupportedHostScheme provided) = do
+    let header = "Host scheme not supported"
+        body =
+          renderIt $
+            vsep
+              [ "Only unix domain sockets are supported for DOCKER_HOST value."
+              , pretty $ "fossa will use: " <> "unix://" <> defaultDockerHost <> " instead, to connect with docker engine api (if needed)."
+              , "Provided 'DOCKER_HOST' via environment variable: " <> pretty provided
+              ]
+    Errata (Just header) [] (Just body)

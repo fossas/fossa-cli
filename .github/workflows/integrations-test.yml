@@ -28,6 +28,7 @@ jobs:
     - uses: actions/checkout@v3
       with:
         lfs: true
+        fetch-depth: 2
 
     - name: Ensures git ownership check does not lead to compile error (we run git during compile for version tagging, etc.)
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -61,14 +62,44 @@ jobs:
         cargo -V || echo "no cargo"
 
     - uses: Swatinem/rust-cache@v2
-    
+
+    # Compute cache key and save to a temporary file.
+    #
+    # We compute the cache key based on the solved install plan instead of just
+    # hashing the `.cabal` file, since there are many kinds of changes that will
+    # cause `.cabal` to change (e.g. adding new source modules).
+    - name: Compute cache key
+      id: compute-cache-key
+      run: |
+        cabal --project-file=cabal.project.ci.linux update
+        cabal --project-file=cabal.project.ci.linux build --dry-run
+        cat dist-newstyle/cache/plan.json | jq '."install-plan"[]."id"' | sort > /tmp/cabal-cache-key
+        echo "Install plan:"
+        cat /tmp/cabal-cache-key
+        export CABAL_CACHE_KEY=$(sha256sum /tmp/cabal-cache-key | awk '{print $1}')
+        echo "Cabal cache key: $CABAL_CACHE_KEY"
+        echo "cabal-cache-key=$CABAL_CACHE_KEY" >> $GITHUB_OUTPUT
+
+        echo "parent_commit=$(git rev-parse HEAD^)" >> $GITHUB_ENV
+
     - uses: actions/cache@v3
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
-        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-${{ hashFiles('**/*.cabal', 'cabal.project.ci.linux') }}
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-${{ steps.compute-cache-key.outputs.cabal-cache-key }}
         restore-keys: |
           ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-
+          ${{ runner.os }}-
+
+    - uses: actions/cache@v3
+      name: Cache dist-newstyle
+      with:
+        path: ${{ github.workspace }}/dist-newstyle
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ env.parent_commit }}
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-
           ${{ runner.os }}-${{ env.GHC_VERSION }}-
           ${{ runner.os }}-
 
@@ -89,6 +120,8 @@ jobs:
         cabal update
         $RUN_CMD || $RUN_CMD
 
+    # This is set up to run integration tests in parallel.
+    # If that becomes a problem disable it by removing the "+RTS -N -RTS" test options.
     - name: Run all integration tests
       run: |
-        cabal test --project-file=cabal.project.ci.linux --test-show-details=direct --test-option=--times integration-tests
+        cabal test --project-file=cabal.project.ci.linux --test-show-details=direct --test-option=--times integration-tests --test-options="+RTS -N -RTS"

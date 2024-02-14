@@ -16,15 +16,19 @@
 module Strategy.Gradle (
   discover,
   GradleProject,
+  runGradle,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (allowedGradleConfigs))
+import App.Support (reportDefectWithDebugBundle)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
   errCtx,
+  errHelp,
+  errSupport,
   fatalText,
   recover,
   warnOnErr,
@@ -54,7 +58,7 @@ import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (WalkStep (..), fileName, findFileInAncestor, walkWithFilters')
 import Effect.Exec (AllowErr (..), Command (..), Exec, execThrow)
-import Effect.Logger (Logger, Pretty (pretty), logDebug)
+import Effect.Logger (Logger, Pretty (pretty), logDebug, renderIt)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
@@ -63,7 +67,7 @@ import Strategy.Gradle.Common (
   ConfigName (..),
   getDebugMessages,
  )
-import Strategy.Gradle.Errors (FailedToListProjects (FailedToListProjects), FailedToRunGradleAnalysis (FailedToRunGradleAnalysis), GradleWrapperFailed (GradleWrapperFailed))
+import Strategy.Gradle.Errors (FailedGradleHelp (FailedGradleHelp), FailedToListProjects (FailedToListProjects), FailedToRunGradleAnalysis (FailedToRunGradleAnalysis), GradleWrapperFailed (GradleWrapperFailed))
 import Strategy.Gradle.ResolutionApi qualified as ResolutionApi
 import System.FilePath qualified as FilePath
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (GradleProjectType), FoundTargets (..), GraphBreadth (..))
@@ -134,6 +138,7 @@ findProjects = walkWithFilters' $ \dir _ files -> do
       projectsStdout <-
         recover
           . warnOnErr (FailedToListProjects dir)
+          . errHelp FailedGradleHelp
           . context ("Listing gradle projects at '" <> toText dir <> "'")
           $ runGradle dir gradleProjectsCmd
 
@@ -169,7 +174,7 @@ instance ToJSON GradleProject
 
 instance AnalyzeProject GradleProject where
   analyzeProject = getDeps
-  analyzeProject' _ = const $ fatalText "Cannot analyze Gradle target statically"
+  analyzeProjectStaticOnly _ = const $ fatalText "Cannot analyze Gradle target statically"
 
 gradleProjectsCmd :: Text -> Command
 gradleProjectsCmd baseCmd =
@@ -270,7 +275,7 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
         FoundTargets targets -> gradleJsonDepsCmdTargets initScriptFilepath (toSet targets)
         ProjectWithoutTargets -> gradleJsonDepsCmd initScriptFilepath
 
-  stdout <- context "running gradle script" $ errCtx FailedToRunGradleAnalysis $ runGradle dir cmd
+  stdout <- context "running gradle script" $ errCtx FailedToRunGradleAnalysis $ errHelp FailedGradleHelp $ errSupport (renderIt reportDefectWithDebugBundle) $ runGradle dir cmd
 
   onlyConfigurations <- do
     configs <- asks allowedGradleConfigs
@@ -278,7 +283,9 @@ analyze foundTargets dir = withSystemTempDir "fossa-gradle" $ \tmpDir -> do
 
   let text = decodeUtf8 $ BL.toStrict stdout
   let resolvedProjects = ResolutionApi.parseResolutionApiJsonDeps text
+  logDebug $ "Resolved projects: " <> pretty (show resolvedProjects)
   let graphFromResolutionApi = ResolutionApi.buildGraph resolvedProjects (onlyConfigurations)
+  logDebug $ "Graph: " <> pretty (show graphFromResolutionApi)
 
   -- Log debug messages as seen in gradle script
   traverse_ (logDebug . pretty) (getDebugMessages text)

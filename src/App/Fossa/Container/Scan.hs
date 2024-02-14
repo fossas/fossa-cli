@@ -43,9 +43,9 @@ import Effect.Logger (
   Logger,
   Pretty (pretty),
   logInfo,
-  vsep,
  )
 import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir)
+import Errata (Errata (..))
 import Path (Abs, File, Path, SomeBase (Abs, Rel), parseSomeFile, (</>))
 import Text.Megaparsec (errorBundlePretty, parse)
 
@@ -191,11 +191,9 @@ parseDockerArchiveSource path = do
 newtype DockerEngineImageNotPresentLocally = DockerEngineImageNotPresentLocally Text
 
 instance ToDiagnostic DockerEngineImageNotPresentLocally where
-  renderDiagnostic (DockerEngineImageNotPresentLocally tag) =
-    vsep
-      [ pretty $ "Could not find: " <> (toString tag) <> " in local repository."
-      , pretty $ "Perform: docker pull " <> (toString tag) <> ", prior to running fossa."
-      ]
+  renderDiagnostic (DockerEngineImageNotPresentLocally tag) = do
+    let header = "Could not find: " <> tag <> " in local repository. Perform: docker pull " <> tag <> ", prior to running fossa."
+    Errata (Just header) [] Nothing
 
 parsePodmanSource ::
   ( Has (Lift IO) sig m
@@ -215,5 +213,7 @@ parseRegistrySource ::
   Text ->
   m ContainerImageSource
 parseRegistrySource defaultArch tag = case parse (parseImageUrl defaultArch) "" tag of
-  Left err -> fatal $ errorBundlePretty err
+  Left err -> do
+    let structuredError = "\n" <> errorBundlePretty err
+    fatal structuredError
   Right registrySource -> pure $ Registry registrySource

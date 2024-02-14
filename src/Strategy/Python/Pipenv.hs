@@ -14,12 +14,13 @@ module Strategy.Python.Pipenv (
   buildGraph,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   context,
   errCtx,
+  errHelp,
   recover,
   run,
   warnOnErr,
@@ -69,7 +70,7 @@ import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, parent)
-import Strategy.Python.Errors (PipenvCmdFailed (PipenvCmdFailed))
+import Strategy.Python.Errors (PipenvCmdFailed (..))
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
@@ -101,7 +102,8 @@ getDeps project = context "Pipenv" $ do
       $ recover
         . warnOnErr MissingDeepDeps
         . warnOnErr MissingEdges
-        . errCtx (PipenvCmdFailed pipenvGraphCmd)
+        . errCtx (PipenvCmdFailedCtx pipenvGraphCmd)
+        . errHelp PipenvCmdFailedHelp
       $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
 
   graph <- context "Building dependency graph" $ pure (buildGraph lock maybeDeps)
@@ -146,7 +148,7 @@ instance ToJSON PipenvProject
 
 instance AnalyzeProject PipenvProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps'
+  analyzeProjectStaticOnly _ = getDeps'
 
 pipenvGraphCmd :: Command
 pipenvGraphCmd =

@@ -1,7 +1,8 @@
 -- | Pub, the Dart dependency manager.
 module Strategy.Pub (discover) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import Control.Carrier.Diagnostics (errDoc, errHelp)
 import Control.Effect.Diagnostics (Diagnostics, errCtx, fatalText, recover, warnOnErr, (<||>))
 import Control.Effect.Reader (Reader)
 import Control.Monad (void)
@@ -18,7 +19,7 @@ import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
-import Strategy.Dart.Errors (PubspecLimitation (..))
+import Strategy.Dart.Errors (PubspecLimitation (..), refPubDocUrl)
 import Strategy.Dart.PubDeps (analyzeDepsCmd)
 import Strategy.Dart.PubSpec (analyzePubSpecFile)
 import Strategy.Dart.PubSpecLock (analyzePubLockFile)
@@ -52,7 +53,7 @@ instance ToJSON PubProject
 
 instance AnalyzeProject PubProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = getDeps'
+  analyzeProjectStaticOnly _ = getDeps'
 
 mkProject :: PubProject -> DiscoveredProject PubProject
 mkProject project =
@@ -71,7 +72,9 @@ getDeps project = do
       void . recover
         $ warnOnErr MissingDeepDeps
           . warnOnErr MissingEdges
-        $ errCtx PubspecLimitation (fatalText "Missing pubspec.lock file")
+        $ errCtx PubspecLimitationCtx
+        $ errHelp PubspecLimitationHelp
+        $ errDoc refPubDocUrl (fatalText "Missing pubspec.lock file")
       analyzePubSpecFile $ pubSpec project
   pure $
     DependencyResults
@@ -88,7 +91,9 @@ getDeps' project = do
       void . recover
         $ warnOnErr MissingDeepDeps
           . warnOnErr MissingEdges
-        $ errCtx PubspecLimitation (fatalText "Missing pubspec.lock file")
+        $ errCtx PubspecLimitationCtx
+        $ errHelp PubspecLimitationHelp
+        $ errDoc refPubDocUrl (fatalText "Missing pubspec.lock file")
       analyzePubSpecFile $ pubSpec project
   pure $
     DependencyResults

@@ -109,7 +109,7 @@ determineProjectRoots rootDir closure = go . Set.fromList
 
 data MavenProjectClosure = MavenProjectClosure
   { closureAnalysisRoot :: Path Abs Dir
-  -- ^ the root of global fossa-analyze analysis; needed for pathfinder license scan
+  -- ^ the root of global fossa-analyze analysis; needed for declared license scan
   , closurePath :: Path Abs File
   -- ^ path of the pom file used as the root of this project closure
   , closureRootCoord :: MavenCoordinate

@@ -20,7 +20,7 @@ module Strategy.Leiningen (
   LeiningenProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -69,6 +69,7 @@ import Effect.Grapher (
   withLabeling,
  )
 import Effect.ReadFS (ReadFS)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, parent)
@@ -138,7 +139,7 @@ instance ToJSON LeiningenProject
 
 instance AnalyzeProject LeiningenProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = const $ fatalText "Cannot analyze Leiningen project statically"
+  analyzeProjectStaticOnly _ = const $ fatalText "Cannot analyze Leiningen project statically"
 
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze file = do
@@ -164,7 +165,9 @@ analyze file = do
 
 data FailedToRetrieveLeinDependencies = FailedToRetrieveLeinDependencies
 instance ToDiagnostic FailedToRetrieveLeinDependencies where
-  renderDiagnostic _ = "We could not successfully retrieve dependencies information using lein deps subcommand."
+  renderDiagnostic _ = do
+    let header = "Could not successfully retrieve dependencies information using lein deps subcommand"
+    Errata (Just header) [] Nothing
 
 -- node type for our LabeledGrapher
 data ClojureNode = ClojureNode

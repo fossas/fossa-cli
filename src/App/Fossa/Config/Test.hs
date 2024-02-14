@@ -13,6 +13,7 @@ module App.Fossa.Config.Test (
   testOutputFormatList,
   defaultOutputFmt,
   parseFossaTestOutputFormat,
+  testFormatHelp,
 ) where
 
 import App.Fossa.Config.Common (
@@ -44,8 +45,9 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, Pretty (pretty), Severity (SevDebug, SevInfo), logWarn, vsep)
+import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn, vsep)
 import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
+import Errata (Errata (..))
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
 import Options.Applicative (
@@ -53,14 +55,17 @@ import Options.Applicative (
   Parser,
   auto,
   flag,
-  help,
+  helpDoc,
   internal,
   long,
   option,
   optional,
-  progDesc,
+  progDescDoc,
   strOption,
  )
+import Prettyprinter (Doc, punctuate, viaShow)
+import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green))
+import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, formatStringToDoc, stringToHelpDoc, styledDivider)
 
 data TestOutputFormat
   = TestOutputPretty
@@ -76,18 +81,30 @@ defaultOutputFmt = TestOutputPretty
 
 testOutputFormatList :: String
 testOutputFormatList = intercalate ", " $ map show allFormats
+
+allFormats :: [TestOutputFormat]
+allFormats = enumFromTo minBound maxBound
+
+styledOutputFormats :: Doc AnsiStyle
+styledOutputFormats = mconcat $ punctuate styledDivider coloredAllFormats
   where
-    allFormats :: [TestOutputFormat]
-    allFormats = enumFromTo minBound maxBound
+    coloredAllFormats :: [Doc AnsiStyle]
+    coloredAllFormats = map (coloredBoldItalicized Green . viaShow) allFormats
+
+testFormatHelp :: Maybe (Doc AnsiStyle)
+testFormatHelp =
+  Just . formatDoc $
+    vsep
+      [ "Output the report in the specified format"
+      , boldItalicized "Formats: " <> styledOutputFormats
+      ]
 
 newtype InvalidReportFormat = InvalidReportFormat String
 instance ToDiagnostic InvalidReportFormat where
-  renderDiagnostic (InvalidReportFormat fmt) =
-    pretty $
-      "Fossa test format "
-        <> toText fmt
-        <> " is not supported. Supported formats: "
-        <> (toText testOutputFormatList)
+  renderDiagnostic (InvalidReportFormat fmt) = do
+    let header = "Fossa test format: " <> toText fmt <> " is not supported"
+        body = "Supported formats: " <> toText testOutputFormatList
+    Errata (Just header) [] (Just body)
 
 validateOutputFormat :: Has Diagnostics sig m => Bool -> Maybe String -> m TestOutputFormat
 validateOutputFormat True _ = pure TestOutputJson
@@ -137,7 +154,7 @@ instance ToJSON TestConfig where
   toEncoding = genericToEncoding defaultOptions
 
 testInfo :: InfoMod a
-testInfo = progDesc "Check for issues from FOSSA and exit non-zero when issues are found"
+testInfo = progDescDoc $ formatStringToDoc "Check for issues from FOSSA and exit non-zero when issues are found"
 
 mkSubCommand :: (TestConfig -> EffStack ()) -> SubCommand TestCliOpts TestConfig
 mkSubCommand = SubCommand "test" testInfo parser loadConfig mergeOpts
@@ -146,11 +163,19 @@ parser :: Parser TestCliOpts
 parser =
   TestCliOpts
     <$> commonOpts
-    <*> optional (option auto (long "timeout" <> help "Duration to wait for build completion in seconds (Defaults to 1 hour)"))
-    <*> flag defaultOutputFmt TestOutputJson (long "json" <> help "Output issues as json" <> internal)
-    <*> optional (strOption (long "format" <> help ("Output the report in the specified format. Currently available formats: (" <> testOutputFormatList <> ")")))
+    <*> optional (option auto (applyFossaStyle <> long "timeout" <> helpDoc timeoutHelp))
+    <*> flag defaultOutputFmt TestOutputJson (applyFossaStyle <> long "json" <> stringToHelpDoc "Output issues as JSON" <> internal)
+    <*> optional (strOption (applyFossaStyle <> long "format" <> helpDoc testFormatHelp))
     <*> baseDirArg
-    <*> optional (strOption (long "diff" <> help "Checks for new issues of the revision, that does not exist in provided diff revision."))
+    <*> optional (strOption (applyFossaStyle <> long "diff" <> stringToHelpDoc "Checks for new issues of the revision that does not exist in provided diff revision"))
+  where
+    timeoutHelp :: Maybe (Doc AnsiStyle)
+    timeoutHelp =
+      Just . formatDoc $
+        vsep
+          [ "Duration to wait for build completion in seconds"
+          , boldItalicized "Default: " <> "3600 (1 hour)"
+          ]
 
 loadConfig ::
   ( Has (Lift IO) sig m

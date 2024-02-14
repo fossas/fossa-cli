@@ -22,6 +22,7 @@ import Discovery.Walk (WalkStep (WalkContinue), walkWithFilters')
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
 import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (ReadFS)
+import Errata (Errata (..))
 import Path (Abs, Dir, File, Path, parent, parseAbsFile)
 import Path.Extra (SomeResolvedPath (..))
 import Text.Megaparsec (Parsec, between, empty, eof, many, optional, takeWhile1P, try, (<|>))
@@ -74,7 +75,9 @@ dynamicLinkedDependenciesSingle file = context ("Inspect " <> toText (show file)
 
 newtype SkippingDynamicDep = SkippingDynamicDep (Path Abs File)
 instance ToDiagnostic SkippingDynamicDep where
-  renderDiagnostic (SkippingDynamicDep target) = pretty $ "Skipping dynamic analysis for target: " <> show target
+  renderDiagnostic (SkippingDynamicDep target) = do
+    let header = "Skipping dynamic analysis for target: " <> toText (show target)
+    Errata (Just header) [] Nothing
 
 lddCommand :: Path Abs File -> Command
 lddCommand binaryPath =
@@ -120,11 +123,22 @@ lddParseLocalDependencies =
       ( try lddConsumeSyscallLib
           <|> try lddConsumeLinker
           <|> try lddParseDependency
+          <|> try lddParseDependencyNotFound
       )
     <* eof
 
 lddParseDependency :: Parser (Maybe LocalDependency)
 lddParseDependency = Just <$> (LocalDependency <$> (linePrefix *> ident) <* symbol "=>" <*> path <* printedHex)
+
+-- | Parses "not found" case for dependency
+--
+-- > libprotobuf.so.22 => not found
+--
+-- We want to ignore these, so we do not fatally fail in parsing.
+lddParseDependencyNotFound :: Parser (Maybe LocalDependency)
+lddParseDependencyNotFound = do
+  void $ linePrefix <* ident <* symbol "=>" <* symbol "not found"
+  pure Nothing
 
 -- | The userspace library for system calls appears as the following in @ldd@ output:
 --

@@ -47,6 +47,7 @@ import DepTypes (
  )
 import Effect.Exec (AllowErr (Always), Command (..), Exec, execJson)
 import Effect.ReadFS (Has, ReadFS, readContentsJson)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (
   Graphing,
@@ -213,8 +214,12 @@ analyze' _ lockFile = do
 
 data MissingEdgesBetweenDirectDeps = MissingEdgesBetweenDirectDeps
 instance ToDiagnostic MissingEdgesBetweenDirectDeps where
-  renderDiagnostic _ = "Could not infer edges between direct dependencies."
+  renderDiagnostic _ = do
+    let header = "Could not infer edges between direct dependencies"
+    Errata (Just header) [] Nothing
 
 data CmdNimbleDumpFailed = CmdNimbleDumpFailed
 instance ToDiagnostic CmdNimbleDumpFailed where
-  renderDiagnostic _ = "We could not retrieve nimble packages metadata using nimble's dump subcommand."
+  renderDiagnostic _ = do
+    let header = "Could not retrieve nimble packages metadata using nimble's dump subcommand."
+    Errata (Just header) [] Nothing

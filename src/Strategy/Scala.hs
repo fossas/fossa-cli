@@ -12,16 +12,9 @@ module Strategy.Scala (
   ScalaProject (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
-import Control.Effect.Diagnostics (
-  Diagnostics,
-  errCtx,
-  fatalText,
-  fromMaybeText,
-  recover,
-  warnOnErr,
-  (<||>),
- )
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import Control.Carrier.Diagnostics (errDoc)
+import Control.Effect.Diagnostics (Diagnostics, errCtx, errHelp, fatalText, fromMaybeText, recover, warnOnErr, (<||>))
 import Control.Effect.Reader (Reader)
 import Control.Effect.Stack (context)
 import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
@@ -40,7 +33,6 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.Exec (
-  AllowErr (Never),
   Command (..),
   Exec,
   Has,
@@ -64,7 +56,8 @@ import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures, closurePath)
 import Strategy.Maven.Pom.PomFile (RawPom (rawPomArtifact, rawPomGroup, rawPomVersion))
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
-import Strategy.Scala.Errors (FailedToListProjects (FailedToListProjects), MaybeWithoutDependencyTreeTask (MaybeWithoutDependencyTreeTask), MissingFullDependencyPlugin (MissingFullDependencyPlugin))
+import Strategy.Scala.Common (mkSbtCommand)
+import Strategy.Scala.Errors (FailedToListProjects (FailedToListProjects), MaybeWithoutDependencyTreeTask (..), MissingFullDependencyPlugin (..), sbtDepsGraphPluginUrl, scalaFossaDocUrl)
 import Strategy.Scala.Plugin (genTreeJson, hasDependencyPlugins)
 import Strategy.Scala.SbtDependencyTree (SbtArtifact (SbtArtifact), analyze, sbtDepTreeCmd)
 import Strategy.Scala.SbtDependencyTreeJson qualified as TreeJson
@@ -123,7 +116,7 @@ instance ToJSON ScalaProject where
 
 instance AnalyzeProject ScalaProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = const $ fatalText "Cannot analyze scala project statically"
+  analyzeProjectStaticOnly _ = const $ fatalText "Cannot analyze scala project statically"
 
 mkProject :: ScalaProject -> DiscoveredProject ScalaProject
 mkProject (ScalaProject sbtBuildDir sbtTreeJson closure) =
@@ -176,8 +169,11 @@ findProjects = walkWithFilters' $ \dir _ files -> do
           depTreeStdOut <-
             recover $
               context ("inferring dependencies") $
-                errCtx (MaybeWithoutDependencyTreeTask) $
-                  execThrow dir sbtDepTreeCmd
+                errCtx MaybeWithoutDependencyTreeTaskCtx $
+                  errHelp MaybeWithoutDependencyTreeTaskHelp $
+                    errDoc sbtDepsGraphPluginUrl $
+                      errDoc scalaFossaDocUrl $
+                        execThrow dir sbtDepTreeCmd
 
           case (length projects > 1, depTreeStdOut) of
             -- not emitting warning or error, to avoid duplication from
@@ -198,7 +194,12 @@ analyzeWithPoms (ScalaProject _ _ closure) = context "Analyzing sbt dependencies
 
 analyzeWithDepTreeJson :: (Has ReadFS sig m, Has Diagnostics sig m) => ScalaProject -> m DependencyResults
 analyzeWithDepTreeJson (ScalaProject _ treeJson closure) = context "Analyzing sbt dependencies using dependencyBrowseTreeHTML" $ do
-  treeJson' <- errCtx MissingFullDependencyPlugin $ fromMaybeText "Could not retrieve output from sbt dependencyBrowseTreeHTML" treeJson
+  treeJson' <-
+    errCtx MissingFullDependencyPluginCtx $
+      errHelp MissingFullDependencyPluginHelp $
+        errDoc sbtDepsGraphPluginUrl $
+          errDoc scalaFossaDocUrl $
+            fromMaybeText "Could not retrieve output from sbt dependencyBrowseTreeHTML" treeJson
   projectGraph <- TreeJson.analyze treeJson'
   pure $
     DependencyResults
@@ -230,14 +231,7 @@ analyzeWithSbtDepTree (ScalaProject maybeDepTree _ closure) = context "Analyzing
       pure $ SbtArtifact groupId artifactId version
 
 makePomCmd :: Command
-makePomCmd =
-  Command
-    { cmdName = "sbt"
-    , -- --no-colors to disable ANSI escape codes
-      -- --batch to disable interactivity. normally, if an `sbt` command fails, it'll drop into repl mode: --batch will disable the repl.
-      cmdArgs = ["--no-colors", "--batch", "makePom"]
-    , cmdAllowErr = Never
-    }
+makePomCmd = mkSbtCommand "makePom"
 
 genPoms :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
 genPoms projectDir = do

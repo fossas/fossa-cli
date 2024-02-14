@@ -22,6 +22,7 @@ module Test.Effect (
 
 import Control.Carrier.ContainerRegistryApi (runContainerRegistryApi)
 import Control.Carrier.ContainerRegistryApi.Common (RegistryCtx)
+import Control.Carrier.Debug (IgnoreDebugC, ignoreDebug)
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
 import Control.Carrier.Reader (ReaderC, runReader)
@@ -77,6 +78,7 @@ type EffectStack =
     $ ExecIOC
     $ ReadFSIOC
     $ FossaApiClientMockC
+    $ IgnoreDebugC
     $ DiagnosticsC
     $ MockApiC
     $ IgnoreLoggerC
@@ -101,7 +103,19 @@ runTestEffects' :: EffectStack () -> Spec
 runTestEffects' = runIO . runTestEffects
 
 runTestEffects :: EffectStack () -> IO ()
-runTestEffects = runStack . ignoreStickyLogger . ignoreLogger . runMockApi . handleDiag . runApiWithMock . runReadFSIO . runExecIO . runReader mempty . runContainerRegistryApi . runFinally
+runTestEffects =
+  runStack
+    . ignoreStickyLogger
+    . ignoreLogger
+    . runMockApi
+    . handleDiag
+    . ignoreDebug
+    . runApiWithMock
+    . runReadFSIO
+    . runExecIO
+    . runReader mempty
+    . runContainerRegistryApi
+    . runFinally
 
 handleDiag :: (Has (Lift IO) sig m) => DiagnosticsC m () -> m ()
 handleDiag diag =
@@ -149,7 +163,7 @@ shouldMatchList' a b = sendIO $ shouldMatchList a b
 shouldBeSupersetOf' :: (Has (Lift IO) sig m, Show a, Ord a) => [a] -> [a] -> m ()
 shouldBeSupersetOf' list sublist = sendIO $ shouldSatisfy (fromList list) $ isSubsetOf (fromList sublist)
 
-expectFailure' :: Has (Lift IO) sig m => Result a -> m ()
+expectFailure' :: (Has (Lift IO) sig m) => Result a -> m ()
 expectFailure' res = sendIO $ expectFailure res
 
 -- | Succeeds if the action fails and fails otherwise.

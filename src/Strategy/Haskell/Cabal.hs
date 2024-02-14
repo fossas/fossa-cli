@@ -14,7 +14,7 @@ module Strategy.Haskell.Cabal (
   buildGraph,
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject'), analyzeProject)
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -64,6 +64,7 @@ import Effect.Grapher (
   withMapping,
  )
 import Effect.ReadFS (ReadFS, readContentsJson)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified as G
@@ -199,7 +200,7 @@ instance ToJSON CabalProject
 
 instance AnalyzeProject CabalProject where
   analyzeProject _ = getDeps
-  analyzeProject' _ = const $ fatalText "Cannot analyze cabal project statically"
+  analyzeProjectStaticOnly _ = const $ fatalText "Cannot analyze cabal project statically"
 
 doGraph :: Has (MappedGrapher PlanId InstallPlan) sig m => InstallPlan -> m ()
 doGraph plan = do
@@ -248,4 +249,6 @@ analyze project = do
 
 data FailedToGenCabalPlan = FailedToGenCabalPlan
 instance ToDiagnostic FailedToGenCabalPlan where
-  renderDiagnostic _ = "We could not dry run cabal build for dependency analysis."
+  renderDiagnostic _ = do
+    let header = "Could not dry run cabal build for dependency analysis"
+    Errata (Just header) [] Nothing
