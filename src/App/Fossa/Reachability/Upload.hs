@@ -56,7 +56,7 @@ analyzeForReachability ::
   [DiscoveredProjectScan] ->
   m [SourceUnitReachabilityAttempt]
 analyzeForReachability analyzerResult = context "reachability" $ do
-  units <- (traverse callGraphOf analyzerResult)
+  units <- traverse callGraphOf analyzerResult
   debugMetadata reachabilityRawJson (onlyFoundUnits units)
   pure units
 
