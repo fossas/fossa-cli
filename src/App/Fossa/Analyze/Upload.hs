@@ -111,7 +111,7 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
 
     if (orgSupportsReachability org)
       then void $ upload revision metadata reachabilityUnits
-      else logDebug . pretty $ "Organization: (" <> show (organizationId org) <> ") does not support reachability! skipping reachability analysis upload!"
+      else logDebug . pretty $ "Organization: (" <> show (organizationId org) <> ") does not support reachability. Skipping reachability analysis upload."
 
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
