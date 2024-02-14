@@ -140,6 +140,7 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
         Failure wg eg -> pure $ SourceUnitReachabilityFound dpi (Failure wg eg)
     -- Exclude units for package manager/language we cannot support yet!
     _ -> do
+      -- Update docs: ./docs/features/vuln_reachability.md
       logInfo . pretty $ "FOSSA CLI does not support reachability analysis for: " <> displayId <> " yet. (skipping)"
       pure . SourceUnitReachabilitySkippedNotSupported $ dpi
 -- Not possible to perform reachability analysis for projects
