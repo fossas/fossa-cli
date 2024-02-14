@@ -74,6 +74,7 @@ import Data.Aeson (eitherDecode, encode)
 import Data.ByteString (ByteString, writeFile)
 import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.Conduit.Zlib (ungzip)
+import Data.Error (getSourceLocation)
 import Data.Maybe (fromMaybe, isNothing)
 import Data.String.Conversion (
   LazyStrict (toStrict),
@@ -211,6 +212,7 @@ getImageManifest src = context "Getting Image Manifest" $ do
         else
           fatal $
             NotSupportedManifestFmt
+              getSourceLocation
               (fromMaybe "<Unknown-Content-Type>" $ getContentType . responseHeaders $ resp)
               src
 

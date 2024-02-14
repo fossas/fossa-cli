@@ -6,20 +6,19 @@ module Strategy.Dart.Errors (
 import App.Docs (strategyLangDocUrl)
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic (..))
-import Prettyprinter (Pretty (pretty), indent, vsep)
+import Errata (Errata (..))
 
 refPubDocUrl :: Text
 refPubDocUrl = strategyLangDocUrl "dart/dart.md"
 
-data PubspecLimitation = PubspecLimitation
+data PubspecLimitation
+  = PubspecLimitationCtx
+  | PubspecLimitationHelp
 
 instance ToDiagnostic PubspecLimitation where
-  renderDiagnostic (PubspecLimitation) =
-    vsep
-      [ "Could not perform analysis using lockfile."
-      , ""
-      , "Build your project and ensure pubspec.lock file exists and is readable prior to using fossa-cli."
-      , ""
-      , "Refer to:"
-      , indent 2 $ pretty $ "- " <> refPubDocUrl
-      ]
+  renderDiagnostic PubspecLimitationCtx = do
+    let header = "Could not perform analysis using lockfile"
+    Errata (Just header) [] Nothing
+  renderDiagnostic PubspecLimitationHelp = do
+    let header = "Build your project and ensure pubspec.lock file exists and is readable prior to using fossa-cli"
+    Errata (Just header) [] Nothing

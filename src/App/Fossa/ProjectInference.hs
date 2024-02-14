@@ -32,8 +32,8 @@ import Data.Text.IO qualified as TIO
 import Data.Time.Clock.POSIX (getCurrentTime)
 import Data.Time.Format.ISO8601 (iso8601Show)
 import Effect.Exec
-import Effect.Logger
 import Effect.ReadFS
+import Errata (Errata (..))
 import Path
 import Path.IO (getTempDir)
 import System.FilePath.Posix qualified as FP
@@ -240,13 +240,27 @@ data InferenceError
 
 instance ToDiagnostic InferenceError where
   renderDiagnostic = \case
-    InvalidRemote -> "Missing 'origin' git remote"
-    GitConfigParse err -> "An error occurred when parsing the git config: " <> pretty err
-    MissingGitConfig -> "Missing .git/config file"
-    MissingGitHead -> "Missing .git/HEAD file"
-    InvalidBranchName branch -> "Invalid branch name: " <> pretty branch
-    MissingBranch branch -> "Missing ref file for current branch: " <> pretty branch
-    MissingGitDir -> "Could not find .git directory in the current or any parent directory"
+    InvalidRemote -> do
+      let header = "Missing 'origin' git remote"
+      Errata (Just header) [] Nothing
+    GitConfigParse err -> do
+      let header = "An error occurred when parsing the git config: " <> err
+      Errata (Just header) [] Nothing
+    MissingGitConfig -> do
+      let header = "Missing .git/config file"
+      Errata (Just header) [] Nothing
+    MissingGitHead -> do
+      let header = "Missing .git/HEAD file"
+      Errata (Just header) [] Nothing
+    InvalidBranchName branch -> do
+      let header = "Invalid branch name: " <> branch
+      Errata (Just header) [] Nothing
+    MissingBranch branch -> do
+      let header = "Missing ref file for current branch: " <> branch
+      Errata (Just header) [] Nothing
+    MissingGitDir -> do
+      let header = "Could not find .git directory in the current or any parent directory"
+      Errata (Just header) [] Nothing
 
 data InferredProject = InferredProject
   { inferredName :: Text

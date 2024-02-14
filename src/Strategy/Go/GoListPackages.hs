@@ -23,6 +23,7 @@ import Control.Monad (unless, void, when, (>=>))
 import Data.Aeson (FromJSON (parseJSON), Value, withObject, (.!=), (.:), (.:?))
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.Aeson.Types (formatError)
+import Data.Error (SourceLocation, createEmptyBlock, getSourceLocation)
 import Data.Foldable (traverse_)
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
@@ -44,10 +45,10 @@ import DepTypes (
  )
 import Effect.Exec (AllowErr (Never), Command (Command, cmdAllowErr, cmdArgs, cmdName), Exec, ExecErr (CommandParseError), execThrow, renderCommand)
 import Effect.Grapher (Grapher, LabeledGrapherC, Labels, deep, direct, edge, label, runLabeledGrapher)
+import Errata (Errata (..), errataSimple)
 import GHC.Generics (Generic)
 import Graphing qualified
 import Path (Abs, Dir, Path)
-import Prettyprinter (pretty)
 import Strategy.Go.Gomod (PackageVersion, parsePackageVersion)
 import Strategy.Go.Gomod qualified as Gomod
 import Strategy.Go.Transitive (decodeMany)
@@ -68,12 +69,14 @@ newtype GoListPackageError = GoListPackageError Value
   deriving (Eq, Ord, Show, FromJSON)
 
 instance ToDiagnostic GoListPackageError where
-  renderDiagnostic (GoListPackageError v) =
-    pretty @Text $
-      "'go list -json -deps all' reported a package error: \n"
-        <> (decodeUtf8 . encodePretty $ v)
-        <> "\nThis may affect analysis results for this package, but often FOSSA can still analyze it."
-        <> "\nVerify the analysis results for the affected package on fossa.com."
+  renderDiagnostic (GoListPackageError v) = do
+    let header = "'go list -json -deps all' reported a package error"
+        body =
+          "package error: \n"
+            <> (decodeUtf8 . encodePretty $ v)
+            <> "\nThis may affect analysis results for this package, but often FOSSA can still analyze it."
+            <> "\nVerify the analysis results for the affected package on fossa.com."
+    Errata (Just header) [] (Just body)
 
 data GoPackage = GoPackage
   { importPath :: ImportPath
@@ -183,7 +186,7 @@ buildGraph goModDir rawPackages = do
   where
     (mainPackages, stdLibImportPaths, pkgsNoStdLibImports) = foldl' go ([], HashSet.empty, HashMap.empty) rawPackages
 
-    getMainPackages = if null mainPackages then fatal (MissingMainModuleErr goModDir) else pure mainPackages
+    getMainPackages = if null mainPackages then fatal (MissingMainModuleErr getSourceLocation goModDir) else pure mainPackages
 
     go :: ([GoPackage], HashSet.HashSet ImportPath, HashMap.HashMap ImportPath GoPackage) -> GoPackage -> ([GoPackage], HashSet.HashSet ImportPath, HashMap.HashMap ImportPath GoPackage)
     go (maybeMains, stdLibPaths, otherPackages) gPkg@GoPackage{standard, importPath, moduleInfo}
@@ -229,13 +232,13 @@ buildGraph goModDir rawPackages = do
     maybeEdge d = maybe (pure ()) (edge d)
 
     lookupPackage :: Has Diagnostics sig m => ImportPath -> m GoPackage
-    lookupPackage impPath = Diagnostics.fromMaybe (MissingModuleErr impPath) $ HashMap.lookup impPath pkgsNoStdLibImports
+    lookupPackage impPath = Diagnostics.fromMaybe (MissingModuleErr getSourceLocation impPath) $ HashMap.lookup impPath pkgsNoStdLibImports
 
     getModuleInfo :: Has Diagnostics sig m => GoPackage -> m GoModule
     getModuleInfo pkg@GoPackage{importPath} =
       case getFinalModuleInfo pkg of
         Just m -> pure m
-        Nothing -> fatal $ MissingModuleErr importPath
+        Nothing -> fatal $ MissingModuleErr getSourceLocation importPath
 
     -- \|Convert a graph of 'GoPackage's with associated labels to a graph of 'Dependency's.
     pkgGraphToDepGraph :: Has Diagnostics sig m => Graphing.Graphing GoPackage -> Labels GoPackage DepEnvironment -> m (Graphing.Graphing Dependency)
@@ -258,17 +261,21 @@ buildGraph goModDir rawPackages = do
 
       Graphing.gtraverse pkgToDep graph'
 
-newtype MissingModuleErr = MissingModuleErr ImportPath
+data MissingModuleErr = MissingModuleErr SourceLocation ImportPath
   deriving (Eq, Show)
 
 instance ToDiagnostic MissingModuleErr where
-  renderDiagnostic (MissingModuleErr (ImportPath i)) = pretty $ "Could not find module for " <> i
+  renderDiagnostic :: MissingModuleErr -> Errata
+  renderDiagnostic (MissingModuleErr srcLoc (ImportPath i)) =
+    errataSimple (Just $ "Could not find module for: " <> i) (createEmptyBlock srcLoc) Nothing
 
-newtype MissingMainModuleErr = MissingMainModuleErr (Path Abs Dir)
+data MissingMainModuleErr = MissingMainModuleErr SourceLocation (Path Abs Dir)
   deriving (Eq, Show)
 
 instance ToDiagnostic MissingMainModuleErr where
-  renderDiagnostic (MissingMainModuleErr path) = pretty @Text $ "No main module for project " <> toText path
+  renderDiagnostic :: MissingMainModuleErr -> Errata
+  renderDiagnostic (MissingMainModuleErr srcLoc path) =
+    errataSimple (Just $ "No main module for project: " <> toText path) (createEmptyBlock srcLoc) Nothing
 
 -- | A module is a path dep if its import path starts with './' or '../'.
 -- Checking for ./ or ../ is the documented way of detecting path deps.

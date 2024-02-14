@@ -32,6 +32,7 @@ import Effect.Exec (CandidateCommandEffs)
 import Effect.Grapher (Grapher, edge, evalGrapher)
 import Effect.Grapher qualified as Grapher
 import Effect.ReadFS (ReadFS)
+import Errata (Errata (..))
 import Graphing (Graphing)
 import Path (Abs, Dir, Path)
 import Strategy.Maven.Common (MavenDependency (..))
@@ -107,16 +108,21 @@ analyze dir plugin = do
 
 data MvnPluginInstallFailed = MvnPluginInstallFailed
 instance ToDiagnostic MvnPluginInstallFailed where
-  renderDiagnostic (MvnPluginInstallFailed) = "Failed to install maven plugin for analysis."
+  renderDiagnostic (MvnPluginInstallFailed) = do
+    let header = "Failed to install maven plugin for analysis"
+    Errata (Just header) [] Nothing
 
 data MvnPluginExecFailed = MvnPluginExecFailed
 instance ToDiagnostic MvnPluginExecFailed where
-  renderDiagnostic (MvnPluginExecFailed) = "Failed to execute maven plugin for analysis."
+  renderDiagnostic (MvnPluginExecFailed) = do
+    let header = "Failed to execute maven plugin for analysis"
+    Errata (Just header) [] Nothing
 
 data MayIncludeSubmodule = MayIncludeSubmodule
 instance ToDiagnostic MayIncludeSubmodule where
-  renderDiagnostic MayIncludeSubmodule =
-    "Failed to run reactor, submodules may be included in the output graph."
+  renderDiagnostic MayIncludeSubmodule = do
+    let header = "Failed to run reactor, submodules may be included in the output graph."
+    Errata (Just header) [] Nothing
 
 -- | The graphs returned by the depgraph plugin look like this:
 --

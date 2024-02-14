@@ -11,11 +11,12 @@ import App.Fossa.VendoredDependency (VendoredDependency (..), VendoredDependency
 import App.Types (FullFileUploads (..))
 import Control.Algebra (Has)
 import Control.Carrier.Lift (Lift)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, fatal)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, errHelp, errSupport, fatal)
 import Control.Effect.FossaApiClient (FossaApiClient)
 import Control.Effect.StickyLogger (StickyLogger)
 import Control.Monad (unless)
 import Data.Either (partitionEithers)
+import Data.Error (SourceLocation, createEmptyBlock, getSourceLocation)
 import Data.List (find)
 import Data.List.NonEmpty (NonEmpty, nonEmpty, toList)
 import Data.List.NonEmpty qualified as NE
@@ -28,8 +29,9 @@ import Data.Text.Extra (splitOnceOn)
 import DepTypes (DepType (ArchiveType, ConanType), Dependency (..), VerConstraint (CEq))
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, indent, pretty, vsep)
+import Effect.Logger (Logger, indent, pretty, renderIt, vsep)
 import Effect.ReadFS (ReadFS)
+import Errata (Errata, errataSimple)
 import Graphing (Graphing, gmap, vertexList)
 import Path (Abs, Dir, Path)
 import Srclib.Converter (fetcherToDepType, toLocator, verConstraintToRevision)
@@ -62,7 +64,7 @@ conanToArchives rootPath fullfileUploads g =
   -- need to do any work!
   case (null unableToTransformConanDep, transformedVendorDep) of
     (True, Nothing) -> pure g
-    (False, _) -> fatal $ FailedToTransformConanDependency unableToTransformConanDep
+    (False, _) -> errHelp ("Ensure location is provided for conan dependency" :: Text) $ fatal $ FailedToTransformConanDependency getSourceLocation unableToTransformConanDep
     (True, Just depsAndVendorDeps) -> do
       let vendorDeps = NE.map snd depsAndVendorDeps
 
@@ -87,14 +89,15 @@ conanToArchives rootPath fullfileUploads g =
                 toList archiveLocators
 
       unless (null failed) $
-        fatal $
-          FailedToTransformLocators failed
+        errSupport enrichSupportMessage $
+          fatal $
+            FailedToTransformLocators getSourceLocation failed
 
       -- 3. We replace all conan dependencies with archive dependencies from
       -- original graph. If we are unable to find twin of archive dep
       -- (e.g. sourcing conan dep), we fail fatally!
       case fromList <$> archiveToConanDep archiveDeps of
-        Left lonelyArchiveDeps -> fatal $ UnableToFindTwinOfArchiveDep lonelyArchiveDeps
+        Left lonelyArchiveDeps -> errSupport enrichSupportMessage $ fatal $ UnableToFindTwinOfArchiveDep getSourceLocation lonelyArchiveDeps
         Right registry -> pure $ gmap (\graphDep -> Map.findWithDefault graphDep graphDep registry) g
   where
     allDeps :: [Dependency]
@@ -198,16 +201,18 @@ findArchiveTwin archiveDeps conanDep = case find
 unOrg :: Text -> Text
 unOrg t = snd $ splitOnceOn "/" t
 
-newtype FailedToTransformConanDependency = FailedToTransformConanDependency [Dependency]
+enrichSupportMessage :: Text
+enrichSupportMessage = "This is likely a defect, please contact FOSSA support at: https://support.fossa.com/"
+
+data FailedToTransformConanDependency = FailedToTransformConanDependency SourceLocation [Dependency]
 instance ToDiagnostic FailedToTransformConanDependency where
-  renderDiagnostic (FailedToTransformConanDependency deps) =
-    vsep
-      [ "We could not transform analyzed conan dependency to vendored dependency."
-      , ""
-      , indent 2 $ vsep $ map (pretty . renderDep) deps
-      , ""
-      , "Ensure location is provided for conan dependency."
-      ]
+  renderDiagnostic :: FailedToTransformConanDependency -> Errata
+  renderDiagnostic (FailedToTransformConanDependency srcLoc deps) = do
+    let body =
+          renderIt $
+            vsep
+              [indent 2 $ vsep $ map (pretty . renderDep) deps]
+    errataSimple (Just "Could not transform analyzed conan dependency to vendored dependency") (createEmptyBlock srcLoc) (Just body)
     where
       renderDep :: Dependency -> Text
       renderDep d =
@@ -215,24 +220,24 @@ instance ToDiagnostic FailedToTransformConanDependency where
           <> " at: "
           <> intercalate "," (dependencyLocations d)
 
-newtype FailedToTransformLocators = FailedToTransformLocators [Locator]
+data FailedToTransformLocators = FailedToTransformLocators SourceLocation [Locator]
 instance ToDiagnostic FailedToTransformLocators where
-  renderDiagnostic (FailedToTransformLocators locs) =
-    vsep
-      [ "We could not transform vendored dependency to archive dependency."
-      , ""
-      , indent 2 $ vsep $ map (pretty . toText) locs
-      , ""
-      , "This is likely a defect, please contact FOSSA support!"
-      ]
+  renderDiagnostic :: FailedToTransformLocators -> Errata
+  renderDiagnostic (FailedToTransformLocators srcLoc locs) = do
+    let body =
+          renderIt $
+            vsep
+              [vsep $ map (pretty . toText) locs]
+    errataSimple (Just "Could not transform vendored dependency to archive dependency") (createEmptyBlock srcLoc) (Just body)
 
-newtype UnableToFindTwinOfArchiveDep = UnableToFindTwinOfArchiveDep LonelyDeps
+data UnableToFindTwinOfArchiveDep = UnableToFindTwinOfArchiveDep SourceLocation LonelyDeps
 instance ToDiagnostic UnableToFindTwinOfArchiveDep where
-  renderDiagnostic (UnableToFindTwinOfArchiveDep (LonelyDeps deps)) =
-    vsep
-      [ "We could not identify conan dependency for following dependencies:"
-      , ""
-      , indent 2 $ vsep $ map (pretty . toText . toLocator) deps
-      , ""
-      , "This is likely a defect, please contact FOSSA support!"
-      ]
+  renderDiagnostic :: UnableToFindTwinOfArchiveDep -> Errata
+  renderDiagnostic (UnableToFindTwinOfArchiveDep srcLoc (LonelyDeps deps)) = do
+    let body =
+          renderIt $
+            vsep
+              [ "We could not identify conan dependency for following dependencies:"
+              , indent 2 $ vsep $ map (pretty . toText . toLocator) deps
+              ]
+    errataSimple (Just "Could not identify conan dependency") (createEmptyBlock srcLoc) (Just body)

@@ -30,6 +30,7 @@ import Data.Functor.Extra ((<$$>))
 import Data.List (sort)
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
 import Data.Monoid.Extra (isMempty)
+import Data.String.AnsiEscapeCodes.Strip.Text (stripAnsiEscapeCodes)
 import Data.String.Conversion (showText, toText)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
@@ -403,7 +404,8 @@ countWarnings ws =
 dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => Config.AnalyzeConfig -> Text -> AnalysisScanResult -> m (Path Abs File)
 dumpResultLogsToTempFile cfg endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults reachabilityAttempts) = do
   let doc =
-        renderStrict
+        stripAnsiEscapeCodes
+          . renderStrict
           . layoutPretty defaultLayoutOptions
           . unAnnotate
           . mconcat
