@@ -106,6 +106,23 @@ spec = describe "Reachability" $ do
       analyzed <- runConf java8 mempty $ analyzeForReachability [dps]
       withResult analyzed $ \_ analyzed' -> (onlyFoundUnits analyzed') `shouldBe` expected
 
+  describe "user provided jar" $ do
+    projDir <- (</> sampleMavenProjectMissingOutputJarDir) <$> runIO PIO.getCurrentDir
+    jarFile <- (</> sampleMavenProjectJar) <$> runIO PIO.getCurrentDir
+
+    it "should fail to analyze reachability when jar is missing" $ do
+      let (_, dps) = mavenCompleteScan projDir
+      let expected = [mavenEmptyScanUnit projDir]
+      analyzed <- runConf java8 mempty $ analyzeForReachability [dps]
+      withResult analyzed $ \_ analyzed' -> (onlyFoundUnits analyzed') `shouldBe` expected
+
+    it "should succeed analyzing the project when a missing jar is manually specified" $ do
+      let conf = ReachabilityConfig $ Map.fromList [(projDir, [jarFile])]
+      let (_, dps) = mavenCompleteScan projDir
+      let expected = [mavenCompleteScanUnit projDir jarFile]
+      analyzed <- runConf java8 conf $ analyzeForReachability [dps]
+      withResult analyzed $ \_ analyzed' -> (onlyFoundUnits analyzed') `shouldBe` expected
+
 sampleMavenProjectDir :: Path Rel Dir
 sampleMavenProjectDir = $(mkRelDir "test/Reachability/testdata/maven-default/")
 
@@ -126,6 +143,9 @@ mavenCompleteScanUnit projDir jarFile =
         jarFile
         (ContentRaw sampleJarParsedContent')
     ]
+
+mavenEmptyScanUnit :: Path Abs Dir -> SourceUnitReachability
+mavenEmptyScanUnit projDir = mkReachabilityUnit projDir []
 
 mkDiscoveredProjectScan :: DiscoveredProjectType -> Path Abs Dir -> GraphBreadth -> (DiscoveredProjectIdentifier, DiscoveredProjectScan)
 mkDiscoveredProjectScan projectType dir breadth =
