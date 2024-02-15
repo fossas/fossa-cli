@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.9.5
+- Maven: Fix hanging maven analysis [#1381](https://github.com/fossas/fossa-cli/pull/1381)
+
 ## v3.9.4
 - Reachability: Includes reachability analysis in scan summary [#1379](https://github.com/fossas/fossa-cli/pull/1379)
 
