@@ -396,26 +396,45 @@ subGraphOf n (Graphing gr) =
     keepPredicate Root = True
     keepPredicate (Node ty) = Set.member (Node ty) reachableNodes
 
--- | Adds color to all nodesToColor, with the color being 'a's extractedProperty
---
--- data SimpleDep = SimpleDep{ name :: Text, colorTag :: Text, colors :: Set Text}
---
--- updateColors :: Set Text -> SimpleDep -> SimpleDep
--- updateColors newColor dep = dep{colors = newColor}
+-- | Coloring a graph allows you to attach arbitrary context to nodes.
+--   For example, we can attach `color` to graph nodes like this:
 
--- extractColors :: SimpleDep -> Set Text
--- extractColors = colors
-
--- extractColorTag :: SimpleDep -> Text
--- extractColorTag = colorTag
-
--- Example
+--   Given a graph of type:
 --
---  d1("d1", "blue" mempty) -> d2("d2", "green" mempty) -> d3("d3", "red" mempty)
+-- >    data SimpleDep = SimpleDep
+-- >      { name :: Text
+-- >      , colorTag :: Text
+-- >      , colors :: Set Text
+-- >      }
 --
--- color gr extractColors updateColors d1 extractColorTag nodesToColor= Set.fromList["blue", "green", "red"] =
+--   Where the graph is structured as:  d1 -> d2 -> d3
 --
--- d1("d1", "blue" Set("blue")) -> d2("d2", "green" Set("blue")) -> d3("d3", "red" Set("blue"))
+-- >    d1 = SimpleDep              d2 = SimpleDep                 d3 = SimpleDep
+-- >      { name : "d1"               { name : "d2"                   { name : "d3"
+-- >      , colorTag : "blue"         , colorTag : "green"            , colorTag : "red"
+-- >      , colors : mempty           , colors : mempty               , colors : mempty
+-- >      }                           }                               }
+--
+-- > extractColorTag :: SimpleDep -> Text
+-- > extractColorTag = colorTag
+--
+-- > extractColors :: SimpleDep -> Set Text
+-- > extractColors = colors
+--
+-- > updateColors :: Set Text -> SimpleDep -> SimpleDep
+-- > updateColors newColor dep = dep{colors = newColor
+--
+-- > color gr extractColors updateColors d1 extractColorTag nodesToColor = Set.fromList["green", "red"]
+--
+--   d2 and d3 after computation:
+-- >    d2 = SimpleDep                 d3 = SimpleDep
+-- >      { name : "d2"                   { name : "d3"
+-- >      , colorTag : "green"            , colorTag : "red"
+-- >      , colors : Set("blue")          , colors : Set("blue")
+-- >      }                               }
+--
+--   In the context Maven submodule filtering (Maven/Common.hs), `color` is used to attach submodule information to nodes.
+--   This is later used to determine which nodes to filter based on the provided submodule filters.
 color :: forall a b. (Ord a, Ord b) => Graphing a -> (a -> Set.Set b) -> (Set.Set b -> a -> a) -> a -> (a -> b) -> Set.Set b -> Graphing a
 color graph extractSet update origin extractProperty nodesToColor = gmap applyColor graph
   where
@@ -425,20 +444,24 @@ color graph extractSet update origin extractProperty nodesToColor = gmap applyCo
           coloredNodeSet = if (extractProperty node) `Set.member` nodesToColor then nodeSet `Set.union` Set.fromList [extractProperty origin] else nodeSet
       update coloredNodeSet node
 
--- | Gets all successors originating from 'a' on condition (excluding a)
+-- | Retrieve a node's children so long as it satisfies a specific condition.
+--   The list of reachable nodes excludes the origin.
 --
--- Example
+--   Given the graph:
 --
---   1 -> 2
---    \    \
---     3    \
---      \    4
---       6    \
---             5
+-- >    1 -> 2
+-- >     \     \
+-- >      3     \
+-- >       \      4
+-- >         6     \
+-- >                5
 --
--- reachableSuccessorsWithCondition [(1, 2), (1, 3), (2, 4), (3, 6), (4, 5)]  1  (\x -> x `Set.notMember conditionalSet) conditionalSet= Set.fromList [2] =
+--   Here is an example to retrieve all reachable of nodes from 1, where the reachable nodes are not 2:
 --
--- Set (3, 6)
+-- >  reachableSuccessorsWithCondition [(1, 2), (1, 3), (2, 4), (3, 6), (4, 5)]  1  (\x -> x `Set.notMember conditionalSet) conditionalSet= Set.fromList [2]
+-- >  Returns: Set (3, 6)
+--
+--   In the context of Maven submodule filtering (Maven/Common.hs), `reachableSuccessorsWithCondition` returns a submodule's dependencies given that the dependency is not a submodule.
 reachableSuccessorsWithCondition :: forall a. (Ord a) => [(a, a)] -> a -> (a -> Set.Set a -> Bool) -> Set.Set a -> Set.Set a -> Set.Set a
 reachableSuccessorsWithCondition edgeList' origin f conditionalSet visitedSet =
   let visitedSet' = Set.insert origin visitedSet

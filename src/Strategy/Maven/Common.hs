@@ -11,7 +11,9 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import DepTypes (Dependency (..))
+
 import Discovery.Filters (FilterSet (scopes), MavenScopeFilters (..))
+
 import Graphing (Graphing, color, edgesList, reachableSuccessorsWithCondition, vertexList)
 import Graphing qualified
 
@@ -26,6 +28,15 @@ data MavenDependency = MavenDependency
 mavenDependencyToDependency :: MavenDependency -> Dependency
 mavenDependencyToDependency MavenDependency{..} = dependency
 
+-- | Filter all submodules (including their dependencies) that are not in `includedSubmoduleSet`.
+--
+--   We use `reachableSuccessorsWithCondition` to retrieve a submodule's dependencies so long as
+--   the dependency is not a submodule itself. This is important in the case that a dependency belongs to multiple submodules
+--   and submodules have dependencies to other submodules. Now, we can confidently determine if a dependency should be filtered
+--   because we know if it is a direct dependency to any given submodule and not brought in by a submodule dependency that can be potentially filtered.
+--
+--   `color` is used to attach information about which submodules a dependency belongs to and will be used to
+--    determine if a dependency should be filtered by comparing it to `includedSubmoduleSet`.
 filterMavenSubmodules :: Set Text -> Set Text -> Graphing MavenDependency -> Graphing MavenDependency
 filterMavenSubmodules includedSubmoduleSet completeSubmoduleSet graph = do
   let submoduleNodes = Set.fromList $ filter (\dep -> depNameFromMavenDependency dep `Set.member` completeSubmoduleSet) $ vertexList graph
