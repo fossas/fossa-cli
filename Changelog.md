@@ -1,42 +1,45 @@
 # FOSSA CLI Changelog
 
+## v3.9.5
+- Reachability: Users may now provide custom locations for the JAR files emitted by projects and used for reachability analysis ([#1382](https://github.com/fossas/fossa-cli/pull/1382)).
+
 ## v3.9.4
-- Reachability: Includes reachability analysis in scan summary [#1379](https://github.com/fossas/fossa-cli/pull/1379)
+- Reachability: Includes reachability analysis in scan summary ([#1379](https://github.com/fossas/fossa-cli/pull/1379)).
 
 ## v3.9.3
-- Update error structure [#1364](https://github.com/fossas/fossa-cli/pull/1364)
+- Update error structure ([#1364](https://github.com/fossas/fossa-cli/pull/1364)).
 
 ## v3.9.2
-- Maven: Adds reachability analysis [#1372](https://github.com/fossas/fossa-cli/pull/1377)
-- Gradle: Adds reachability analysis [#1377](https://github.com/fossas/fossa-cli/pull/1377)
+- Maven: Adds reachability analysis ([#1372](https://github.com/fossas/fossa-cli/pull/1377)).
+- Gradle: Adds reachability analysis ([#1377](https://github.com/fossas/fossa-cli/pull/1377)).
 
 ## v3.9.1
-- `--detect-dynamic`: Safely ignores scenarios in ldd output parsing where we run into not found error. ([#1376](https://github.com/fossas/fossa-cli/pull/1376)) 
+- `--detect-dynamic`: Safely ignores scenarios in ldd output parsing where we run into not found error ([#1376](https://github.com/fossas/fossa-cli/pull/1376)).
 
 ## v3.9.0
-- Emits a warning instead of an error when no analysis targets are found ([#1375](https://github.com/fossas/fossa-cli/pull/1375))
+- Emits a warning instead of an error when no analysis targets are found ([#1375](https://github.com/fossas/fossa-cli/pull/1375)).
 
 ## 3.8.37
 
-- Container Scans: Bugfix for some registry scans that fail with an STM error. ([#1370](https://github.com/fossas/fossa-cli/pull/1370))
+- Container Scans: Bugfix for some registry scans that fail with an STM error. ([#1370](https://github.com/fossas/fossa-cli/pull/1370)).
 
 ## v3.8.36
-- `fossa feedback`: Allow users to provide feedback on their cli experience ([#1368](https://github.com/fossas/fossa-cli/pull/1368))
-- Add preflight checks to validate API key, connection to FOSSA app, and ability to write to temp directory in relevant commands
+- `fossa feedback`: Allow users to provide feedback on their cli experience ([#1368](https://github.com/fossas/fossa-cli/pull/1368)).
+- Add preflight checks to validate API key, connection to FOSSA app, and ability to write to temp directory in relevant commands.
 
 
 ## v3.8.35
 - Running `fossa analyze --detect-vendored` no longer fails if there are no detected vendored dependencies ([#1373](https://github.com/fossas/fossa-cli/pull/1373)).
 
 ## v3.8.34
-- Add color and update formatting in cli help commands ([#1367](https://github.com/fossas/fossa-cli/pull/1367))
+- Add color and update formatting in cli help commands ([#1367](https://github.com/fossas/fossa-cli/pull/1367)).
 
 ## v3.8.33
-- Removes warnings and tracebacks to stderr [#1358](https://github.com/fossas/fossa-cli/pull/1358)
+- Removes warnings and tracebacks to stderr ([#1358](https://github.com/fossas/fossa-cli/pull/1358)).
 
 ## v3.8.32
 
-- Options: Add a `--static-only-analysis` option. ([#1362](https://github.com/fossas/fossa-cli/pull/1362))
+- Options: Add a `--static-only-analysis` option ([#1362](https://github.com/fossas/fossa-cli/pull/1362)).
 
 ## v3.8.31
 
@@ -46,33 +49,33 @@
 
 ## v3.8.30
 
-- Fix an issue with long-option syntax for older versions of `sbt` ([#1356](https://github.com/fossas/fossa-cli/pull/1356))
-- Debug: add more logging for debugging missing dependencies. ([#1360](https://github.com/fossas/fossa-cli/pull/1360))
+- Fix an issue with long-option syntax for older versions of `sbt` ([#1356](https://github.com/fossas/fossa-cli/pull/1356)).
+- Debug: add more logging for debugging missing dependencies ([#1360](https://github.com/fossas/fossa-cli/pull/1360)).
 
 ## v3.8.29
-- Prevents showing SCM warnings in fossa analyze, test, and report [#1354](https://github.com/fossas/fossa-cli/pull/1354)
-- Pathfinder: Pathfinder has been deprecated and removed. ([#1350](https://github.com/fossas/fossa-cli/pull/1350))
+- Prevents showing SCM warnings in fossa analyze, test, and report ([#1354](https://github.com/fossas/fossa-cli/pull/1354)).
+- Pathfinder: Pathfinder has been deprecated and removed ([#1350](https://github.com/fossas/fossa-cli/pull/1350)).
 
 ## v3.8.28
-- VSI: no longer reports paths inside of extracted archives with the `!_fossa.virtual_!` literal [#1345](https://github.com/fossas/fossa-cli/pull/1345)
+- VSI: no longer reports paths inside of extracted archives with the `!_fossa.virtual_!` literal ([#1345](https://github.com/fossas/fossa-cli/pull/1345)).
 
 ## v3.8.27
-- Maven: Fix a bug that broke maven analysis if the build directory was in a non-standard location ([#1343](https://github.com/fossas/fossa-cli/pull/1343))
+- Maven: Fix a bug that broke maven analysis if the build directory was in a non-standard location ([#1343](https://github.com/fossas/fossa-cli/pull/1343)).
 
 ## v3.8.26
-- Maven: add support for maven submodule filtering [#1339](https://github.com/fossas/fossa-cli/pull/1339)
+- Maven: add support for maven submodule filtering ([#1339](https://github.com/fossas/fossa-cli/pull/1339)).
 
 ## v3.8.25
-- Maven: add support for maven scope filtering ([#1331](https://github.com/fossas/fossa-cli/pull/1331))
-- `fossa init`: adds new `fossa init` command which creates `.fossa.yml.example`, and `fossa-deps.yml.example` file. ([#1323](https://github.com/fossas/fossa-cli/pull/1323))
+- Maven: add support for maven scope filtering ([#1331](https://github.com/fossas/fossa-cli/pull/1331)).
+- `fossa init`: adds new `fossa init` command which creates `.fossa.yml.example`, and `fossa-deps.yml.example` file. ([#1323](https://github.com/fossas/fossa-cli/pull/1323)).
 
 ## v3.8.24
 
-- Python: use `pip` to determine transitive dependencies for setuptool projects that contain a req*.txt or setup.py file. ([#1334](https://github.com/fossas/fossa-cli/pull/1334))
-- Container Scanning: warn and exclude rpm packages that are missing attributes. ([#1335](https://github.com/fossas/fossa-cli/pull/1335))
+- Python: use `pip` to determine transitive dependencies for setuptool projects that contain a req*.txt or setup.py file. ([#1334](https://github.com/fossas/fossa-cli/pull/1334)).
+- Container Scanning: warn and exclude rpm packages that are missing attributes ([#1335](https://github.com/fossas/fossa-cli/pull/1335)).
 
 ## v3.8.23
-- Custom License Scans: Support full-file uploads for custom license scans ([#1333](https://github.com/fossas/fossa-cli/pull/1333))
+- Custom License Scans: Support full-file uploads for custom license scans ([#1333](https://github.com/fossas/fossa-cli/pull/1333)).
 
 ## v3.8.22
 - path: adds path dependency scanning functionality. ([#1327](https://github.com/fossas/fossa-cli/pull/1327))
