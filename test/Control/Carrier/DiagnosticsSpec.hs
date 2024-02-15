@@ -6,7 +6,8 @@ import Control.Carrier.Telemetry (withoutTelemetry)
 import Control.Effect.Diagnostics (ToDiagnostic (..), fatal)
 import Data.Text (Text)
 import Effect.Exec (ExitCode (..))
-import Effect.Logger (ignoreLogger, logInfo, pretty)
+import Effect.Logger (ignoreLogger, logInfo)
+import Errata (Errata (..))
 import Test.Hspec (Spec, describe, it, shouldThrow)
 
 spec :: Spec
@@ -23,4 +24,4 @@ newtype TestError = TestError Text
   deriving (Eq, Ord, Show)
 
 instance ToDiagnostic TestError where
-  renderDiagnostic (TestError e) = pretty e
+  renderDiagnostic (TestError e) = Errata (Just e) [] Nothing

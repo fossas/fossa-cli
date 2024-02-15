@@ -1,10 +1,12 @@
 # Reachability
 
 ### What is Reachability?
+
 Reachability Analysis is a security offering designed to enhance FOSSA's security analysis by providing context on vulnerable packages. It alleviates the constraints of traditional CVE assessments through the static analysis of application and dependency code, confirming the presence of vulnerable call paths. 
 
 ### Limitations
-- Reachability currently supports all Maven and Gradle projects dynamically analyzed by fossa-cli. 
+
+- Reachability currently supports all Maven and Gradle projects dynamically analyzed by FOSSA CLI. 
 - The target jar of the project must exist, prior to the analysis. If the jar artifact is not present, or FOSSA CLI fails to
 associate this jar with project, FOSSA CLI will not perform reachability analysis.
 - Reachability requires that `java` is present in PATH, and `java` version must be greater than `1.8` (jdk8+).
@@ -73,6 +75,11 @@ cat fossa.debug.json | jq '.bundleReachabilityEndpoint'
 }
 ```
 
+FOSSA CLI uses [jar-callgraph-1.0.0.jar](../../scripts/jar-callgraph-1.0.0.jar) to infer call path edges. 
+FOSSA CLI uses `java -jar jar-callgraph-1.0.0.jar ./path/to/your/build.jar` command to record edges from
+the your target jar. If you are running into issues with reachability, please confirm that you can execute
+`java -jar jar-callgraph-1.0.0.jar ./path/to/your/build.jar` on your environment.
+
 <!-- 
 ## How do I debug reachability from endpoint?
 
@@ -80,20 +87,26 @@ cat fossa.debug.json | jq '.bundleReachabilityEndpoint'
 # get what we sent to endpoint
 cat fossa.debug.json | jq '.bundleReachabilityEndpoint' > rawReachabilityJob.json
 
-# run job in explain mode
-yarn repl
-explainReachability('rawReachabilityJob.json')
-
-# [1] I was provided 'rawReachabilityJob.json'
-# [2] I'm parsing file: 'rawReachabilityJob.json'
-# [3] I found [X] reachability units
-# [4] Working on [0] reachability unit
-# -- 
-# {
-#   ....  
-# }
+# run job in dry mode
+>> yarn repl
+>> performReachabilityInDryMode('rawReachabilityJob.json', 'orgId', 'userRevisionId')
 #
+# [Info] ....
+# [Info] ....
+
+# This will upsert 'rawReachabilityJob.json' to S3, and perform
+# analysis without persisting anything to database. This command is ('orgId', 'userRevisionId')
+# agnostic, meaning that you can run 'rawReachabilityJob.json' for any permutation of ('orgId', 'userRevisionId').
+
+# For example, for any customer's 'rawReachabilityJob.json' (retrieved via debug bundle), you
+# can `performReachabilityInDryMode(...)` in your local environment, for your orgId, and userRevisionId.
+#
+# Since this does not persist any data in cache, nor in exports table - it has no consequences to
+# orgId, and userRevisionId.
+
 ```
+Likewise, you can also inspect analysis done in datadog, by looking at logs associated with the build id. FOSSA
+performs reachability analysis as part of provided build (all variants of provided builds).
 -->
 
 ## F.A.Q. 
@@ -132,3 +145,33 @@ You can inspect the data by running:
 # to endpoint for reachability analysis.
 ; cat fossa.debug.json | jq '.bundleReachabilityRaw'
 ```
+
+2. How do I know if reachability is supported by my organization?
+
+FOSSA requires that `reachability` is enabled for your organization. If `reachability` is not enabled,
+for your organization, you will see following message in output when `fossa analyze` is performed without
+`--output or -o` mode.
+
+```text
+Organization: (your orgId) does not support reachability! skipping reachability analysis upload!
+```
+
+To enable, `reachability` please contact your FOSSA account manager, or [FOSSA support](https://support.fossa.com).
+
+
+3. How do I know if my project was analyzed for reachability by FOSSA CLI?
+
+FOSSA CLI will include scan summary for reachability analysis, as part of `fossa analyze` output.
+
+```text
+Reachability analysis
+  ** maven project in "/Users/dev/code/example-projects/reachability/maven/vuln-function-used/": succeeded
+```
+
+| Summary                          | Meaning                                                                      |
+|----------------------------------|------------------------------------------------------------------------------|
+| succeeded                        | Reachability analysis was successful                                         |
+| skipped (partial graph)          | Project has partial dependency graph (e.g. missing transitive dependencies)  |
+| skipped (not supported)          | Project is not supported for reachability analysis                           |
+| skipped (no dependency analysis) | Project's dependencies were not analyzed, so reachability cannot be computed |
+

@@ -3,6 +3,8 @@ module App.Fossa.Reachability.Types (
   SourceUnitReachability (..),
   ParsedJar (..),
   ContentRef (..),
+  reachabilityRawJson,
+  reachabilityEndpointJson,
 ) where
 
 import Data.Aeson (ToJSON (..), Value, object, (.=))
@@ -70,3 +72,9 @@ data ParsedJar = ParsedJar
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON ParsedJar
+
+reachabilityRawJson :: Text
+reachabilityRawJson = "reachability.raw.json"
+
+reachabilityEndpointJson :: Text
+reachabilityEndpointJson = "reachability.endpoint.json"

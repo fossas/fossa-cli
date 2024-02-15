@@ -8,20 +8,25 @@ module Strategy.Swift.Xcode.Pbxproj (
   swiftPackageReferencesOf,
 ) where
 
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, errCtx, fatalText, recover, warnOnErr)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), context, errCtx, errDoc, errHelp, fatalText, recover, warnOnErr)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Set (fromList, member)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes (DepType (GitType, SwiftType), Dependency (..))
 import Diag.Common (MissingDeepDeps (MissingDeepDeps))
 import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsParser)
+import Errata (Errata (..))
 import Graphing (Graphing, deeps, directs, promoteToDirect)
 import Path
-import Prettyprinter
 import Strategy.Swift.Errors (
-  MissingPackageResolvedFile (MissingPackageResolvedFile),
+  MissingPackageResolvedFile (..),
+  MissingPackageResolvedFileHelp (..),
+  swiftFossaDocUrl,
+  swiftPackageResolvedRef,
+  xcodeCoordinatePkgVersion,
  )
 import Strategy.Swift.PackageResolved (SwiftPackageResolvedFile, resolvedDependenciesOf)
 import Strategy.Swift.PackageSwift (
@@ -100,7 +105,9 @@ buildGraph projFile maybeResolvedContent =
 
 newtype FailedToParseProjFile = FailedToParseProjFile (Path Abs File)
 instance ToDiagnostic FailedToParseProjFile where
-  renderDiagnostic (FailedToParseProjFile path) = "Could not parse project.pbxproj file " <> viaShow path
+  renderDiagnostic (FailedToParseProjFile path) = do
+    let header = "Could not parse project.pbxproj file: " <> toText (show path)
+    Errata (Just header) [] Nothing
 
 -- | Checks if XCode Project File has at-least one swift dependency.
 -- It does by counting instances of `XCRemoteSwiftPackageReference` in the project file.
@@ -121,6 +128,10 @@ analyzeXcodeProjForSwiftPkg xcodeProjFile resolvedFile = do
         recover
           . warnOnErr MissingDeepDeps
           . errCtx (MissingPackageResolvedFile xcodeProjFile)
+          . errHelp MissingPackageResolvedFileHelp
+          . errDoc swiftFossaDocUrl
+          . errDoc swiftPackageResolvedRef
+          . errDoc xcodeCoordinatePkgVersion
           $ fatalText "Package.resolved file was not discovered"
     Just packageResolved ->
       context "Identifying dependencies in Package.resolved" $

@@ -7,24 +7,22 @@ module Diag.Diagnostic (
 
 import Control.Exception (SomeException (SomeException))
 import Data.Aeson (ToJSON, object, toJSON, (.=))
+import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Effect.Logger
+import Errata (Errata (..))
 
 -- | A class of diagnostic types that can be rendered in a user-friendly way
 class ToDiagnostic a where
-  renderDiagnostic :: a -> Doc AnsiStyle
-
-instance ToDiagnostic (Doc AnsiStyle) where
-  renderDiagnostic = id
+  renderDiagnostic :: a -> Errata
 
 instance ToDiagnostic Text where
-  renderDiagnostic = pretty
+  renderDiagnostic t = Errata (Just t) [] Nothing
 
 instance ToDiagnostic String where
-  renderDiagnostic = pretty
+  renderDiagnostic s = Errata (Just $ toText s) [] Nothing
 
 instance ToDiagnostic SomeException where
-  renderDiagnostic (SomeException exc) = "An exception occurred: " <> pretty (show exc)
+  renderDiagnostic (SomeException exc) = Errata (Just $ "An exception occurred:" <> toText (show exc)) [] Nothing
 
 -- | An error with a ToDiagnostic instance and an associated stack trace
 data SomeDiagnostic where

@@ -4,7 +4,11 @@
 module Reachability.UploadSpec (spec) where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
-import App.Fossa.Analyze.Types (AnalysisScanResult (..), DiscoveredProjectIdentifier (..), DiscoveredProjectScan (..))
+import App.Fossa.Analyze.Types (
+  DiscoveredProjectIdentifier (..),
+  DiscoveredProjectScan (..),
+  SourceUnitReachabilityAttempt (..),
+ )
 import App.Fossa.Reachability.Types (
   CallGraphAnalysis (JarAnalysis),
   ContentRef (ContentRaw, ContentStoreKey),
@@ -20,6 +24,7 @@ import App.Fossa.Reachability.Upload (
   analyzeForReachability,
   callGraphOf,
   dependenciesOf,
+  onlyFoundUnits,
   upload,
  )
 import Control.Algebra (Has)
@@ -75,41 +80,43 @@ dependenciesOfSpec = describe "dependenciesOf" $
 
 callGraphOfSpec :: Spec
 callGraphOfSpec = describe "callGraphOf" $ do
-  it' "should not return reachability unit if project was skipped" $ do
+  it' "should return SkippedMissingDependencyAnalysis if project was skipped" $ do
     dir <- (</> sampleMavenProjectDir) <$> PIO.getCurrentDir
-    res <- callGraphOf (skippedProject dir)
-    res `shouldBe'` Nothing
+    let (dps, dpi) = skippedProject dir
+    res <- callGraphOf dps
+    res `shouldBe'` (SourceUnitReachabilitySkippedMissingDependencyAnalysis dpi)
 
-  it' "should not return reachability unit if project was skipped due to default filtering" $ do
+  it' "should return SkippedMissingDependencyAnalysis if project was skipped due to default filtering" $ do
     dir <- (</> sampleMavenProjectDir) <$> PIO.getCurrentDir
-    res <- callGraphOf (skippedProjectByDefaultFilter dir)
-    res `shouldBe'` Nothing
+    let (dps, dpi) = skippedProjectByDefaultFilter dir
+    res <- callGraphOf dps
+    res `shouldBe'` (SourceUnitReachabilitySkippedMissingDependencyAnalysis dpi)
 
-  it' "should not return reachability unit if graph depth is partial" $ do
+  it' "should return SkippedPartialGraph if graph depth is partial" $ do
     dir <- (</> sampleMavenProjectDir) <$> PIO.getCurrentDir
-    res <- callGraphOf (mavenPartialScan dir)
-    res `shouldBe'` Nothing
+    let (dps, dpi) = (mavenPartialScan dir)
+    res <- callGraphOf dps
+    res `shouldBe'` SourceUnitReachabilitySkippedPartialGraph dpi
 
-  it' "should not reachability unit for non-mvn project" $ do
+  it' "should return SkippedNotSupported for non-mvn or gradle project" $ do
     dir <- (</> sampleMavenProjectDir) <$> PIO.getCurrentDir
-    res <- callGraphOf (poetryCompleteScan dir)
-    res `shouldBe'` Nothing
+    let (dps, dpi) = (poetryCompleteScan dir)
+    res <- callGraphOf dps
+    res `shouldBe'` (SourceUnitReachabilitySkippedNotSupported dpi)
 
 analyzeForReachabilitySpec :: Spec
 analyzeForReachabilitySpec =
   describe "analyzeForReachability" $
     it' "should return analyzed reachability unit" $ do
       dir <- (</> sampleMavenProjectDir) <$> PIO.getCurrentDir
-      let analysisResult =
-            mkAnalysisResult
-              [ skippedProject dir
-              , skippedProjectByDefaultFilter dir
-              , mavenPartialScan dir
-              , poetryCompleteScan dir
-              ]
-
-      analyzed <- analyzeForReachability analysisResult
-      analyzed `shouldBe'` []
+      analyzed <-
+        analyzeForReachability
+          [ fst $ skippedProject dir
+          , fst $ skippedProjectByDefaultFilter dir
+          , fst $ mavenPartialScan dir
+          , fst $ poetryCompleteScan dir
+          ]
+      (onlyFoundUnits analyzed) `shouldBe'` []
 
 uploadSpec :: Spec
 uploadSpec = describe "dependenciesOf" $ do
@@ -137,40 +144,43 @@ sampleMavenProjectDir = $(mkRelDir "test/Reachability/testdata/maven-default/")
 sampleJar :: Path Rel File
 sampleJar = $(mkRelFile "test/Reachability/testdata/maven-default/target/project-1.0.0.jar")
 
-skippedProject :: Path Abs Dir -> DiscoveredProjectScan
+skippedProject :: Path Abs Dir -> (DiscoveredProjectScan, DiscoveredProjectIdentifier)
 skippedProject dir =
-  SkippedDueToProvidedFilter
-    (DiscoveredProjectIdentifier dir MavenProjectType)
+  ( SkippedDueToProvidedFilter dpi
+  , dpi
+  )
+  where
+    dpi :: DiscoveredProjectIdentifier
+    dpi = DiscoveredProjectIdentifier dir MavenProjectType
 
-skippedProjectByDefaultFilter :: Path Abs Dir -> DiscoveredProjectScan
+skippedProjectByDefaultFilter :: Path Abs Dir -> (DiscoveredProjectScan, DiscoveredProjectIdentifier)
 skippedProjectByDefaultFilter dir =
-  SkippedDueToDefaultProductionFilter
-    (DiscoveredProjectIdentifier dir MavenProjectType)
+  ( SkippedDueToDefaultProductionFilter dpi
+  , dpi
+  )
+  where
+    dpi :: DiscoveredProjectIdentifier
+    dpi = DiscoveredProjectIdentifier dir MavenProjectType
 
-mavenPartialScan :: Path Abs Dir -> DiscoveredProjectScan
+mavenPartialScan :: Path Abs Dir -> (DiscoveredProjectScan, DiscoveredProjectIdentifier)
 mavenPartialScan dir = mkDiscoveredProjectScan MavenProjectType dir Partial
 
-poetryCompleteScan :: Path Abs Dir -> DiscoveredProjectScan
+poetryCompleteScan :: Path Abs Dir -> (DiscoveredProjectScan, DiscoveredProjectIdentifier)
 poetryCompleteScan dir = mkDiscoveredProjectScan PoetryProjectType dir Complete
 
-mkDiscoveredProjectScan :: DiscoveredProjectType -> Path Abs Dir -> GraphBreadth -> DiscoveredProjectScan
+mkDiscoveredProjectScan :: DiscoveredProjectType -> Path Abs Dir -> GraphBreadth -> (DiscoveredProjectScan, DiscoveredProjectIdentifier)
 mkDiscoveredProjectScan projectType dir breadth =
-  Scanned
-    (DiscoveredProjectIdentifier dir projectType)
-    ( Success
-        []
-        (ProjectResult projectType dir empty breadth mempty)
-    )
-
-mkAnalysisResult :: [DiscoveredProjectScan] -> AnalysisScanResult
-mkAnalysisResult dps =
-  AnalysisScanResult
-    dps
-    (Success [] Nothing)
-    (Success [] Nothing)
-    (Success [] Nothing)
-    (Success [] Nothing)
-    (Success [] Nothing)
+  ( Scanned
+      dpi
+      ( Success
+          []
+          (ProjectResult projectType dir empty breadth mempty)
+      )
+  , dpi
+  )
+  where
+    dpi :: DiscoveredProjectIdentifier
+    dpi = DiscoveredProjectIdentifier dir projectType
 
 mkParsedJarRaw :: Path Abs File -> ByteString -> ParsedJar
 mkParsedJarRaw file bs =

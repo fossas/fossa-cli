@@ -10,6 +10,7 @@ module App.Docs (
   pathDependencyDocsUrl,
   staticAndDynamicStrategies,
   apiKeyUrl,
+  vulnReachabilityProductDocsUrl,
 ) where
 
 import App.Version (versionOrBranch)
@@ -53,3 +54,6 @@ staticAndDynamicStrategies = guidePathOf versionOrBranch "/docs/references/strat
 
 apiKeyUrl :: Text
 apiKeyUrl = guidePathOf versionOrBranch "/README.md#generating-an-api-key"
+
+vulnReachabilityProductDocsUrl :: Text
+vulnReachabilityProductDocsUrl = "https://docs.fossa.com/docs/reachability"

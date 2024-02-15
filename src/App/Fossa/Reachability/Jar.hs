@@ -16,12 +16,13 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Exception (Lift, bracket)
 import Control.Effect.Lift (sendIO)
 import Data.ByteString qualified as BS
+import Data.Error (createErrataWithHeaderOnly)
 import Data.FileEmbed.Extra (embedFile')
 import Data.String.Conversion (toText)
 import Data.Text (isSuffixOf)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, Has, execThrow)
-import Effect.Logger (Doc, pretty)
 import Effect.ReadFS (ReadFS, doesFileExist)
+import Errata (Errata)
 import Path (Abs, File, Path, fileExtension, fromAbsDir, parent, toFilePath)
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
 import System.FilePath (takeFileName)
@@ -69,9 +70,9 @@ callGraphFromJar jar = recover . warnOnErr (FailedToParseJar jar) $
 newtype FailedToParseJar = FailedToParseJar (Path Abs File)
 
 instance ToDiagnostic FailedToParseJar where
-  renderDiagnostic :: FailedToParseJar -> Doc ann
+  renderDiagnostic :: FailedToParseJar -> Errata
   renderDiagnostic (FailedToParseJar jar) =
-    pretty $ "Could not read from jar, so skipping: " <> show jar
+    createErrataWithHeaderOnly $ "Could not read from jar, so skipping: " <> toText (show jar)
 
 -- True if jar exist, and is not likely test jar, otherwise False
 isValidJar :: (Has ReadFS sig m) => Path Abs File -> m Bool
