@@ -21,7 +21,6 @@ import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdge
 import Discovery.Filters (AllFilters, MavenScopeFilters, mavenScopeFilterSet)
 import Discovery.Simple (simpleDiscover)
 import Effect.Exec (CandidateCommandEffs)
-import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing, gmap, shrinkRoots)
@@ -76,7 +75,6 @@ getDeps ::
   , Has ReadFS sig m
   , CandidateCommandEffs sig m
   , Has (Reader MavenScopeFilters) sig m
-  , Has Logger sig m
   ) =>
   FoundTargets ->
   MavenProject ->
@@ -115,7 +113,6 @@ getDepsDynamicAnalysis ::
   , Has ReadFS sig m
   , CandidateCommandEffs sig m
   , Has (Reader MavenScopeFilters) sig m
-  , Has Logger sig m
   ) =>
   Set Text ->
   MavenProjectClosure ->
@@ -140,7 +137,6 @@ getDepsPlugin ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
-  , Has Logger sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
@@ -150,7 +146,6 @@ getDepsPluginLegacy ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
-  , Has Logger sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)

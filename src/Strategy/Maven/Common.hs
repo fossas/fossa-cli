@@ -26,7 +26,7 @@ data MavenDependency = MavenDependency
 mavenDependencyToDependency :: MavenDependency -> Dependency
 mavenDependencyToDependency MavenDependency{..} = dependency
 
--- | Filter all submodules (including their dependencies) that are not in includedSubmoduleSet
+-- | Filter all submodules (including their dependencies) that are not in `includedSubmoduleSet`
 --
 --   Given a MavenDependency graph with structure:
 --
@@ -39,7 +39,7 @@ mavenDependencyToDependency MavenDependency{..} = dependency
 -- >   d1 has edges to d2 & d3
 -- >   d2 has edges to d3 & d4
 --
---   Where d1, d2, d3, and d4 are instaniated as:
+--   Where d1, d2, d3, and d4 are instantiated as:
 --
 -- >    d1 = MavenDependency
 -- >       { dependency : Dependency {dependencyName: "exec"}
@@ -61,13 +61,15 @@ mavenDependencyToDependency MavenDependency{..} = dependency
 -- >       , dependencySubmoduls : mempty
 -- >       }
 --
+-- >    completeSubmoduleSet = Set ("exec", "lib")
+--
 --   In this example, the filter function works as follows:
 --      1. Retrieve the submodule nodes from the graph in the form of a list. In this case, it would be: [d1, d2]
---         This is done by checking if the MavenDependency's dependencyName is is the includedSubmoduleSet.
+--         This is done by checking if the MavenDependency's dependencyName is is the `includedSubmoduleSet`.
 --
 --      2. Obtain the submodule's reachable nodes by calling `reachableSuccessorsWithCondition`.
 --         The condition that we pass to this function is `notSubmodule`, which ensures that we do not retrieve
---         children nodes that submodules. This happens when submodules have dependencies to other submodules.
+--         children nodes that submodules.
 --
 --      3. Update `dependencySubmodules` for the current submodule and all of its reachable nodes.
 --         The `dependencyName` of the current submodule will be added to this set.
@@ -78,20 +80,19 @@ mavenDependencyToDependency MavenDependency{..} = dependency
 --         in `includedSubmoduleSet`. If the check passes, we include the node in our final graph.
 --
 --  NOTE: If we do not check if a child is a submodule when calling `reachableSuccessorsWithCondition`,
---        it can lead to including dependencies that should not have been excluded in the final graph!
+--        it can lead to including dependencies that should have been excluded in the final graph!
 --
 --        Consider the following:
 -- >          includedSubmoduleSet = Set ("exec")
--- >          completeSubmoduleSet = Set ("exec", "lib")
 --
 --        If we did not check if a child was submodule, then d2's `dependencySubmodules` would be:
 --
 -- >          Set ("exec" , "lib")
 --
---        This means that nothing would be filtered and the graph remains the same.
+--        This means that nothing would be filtered as d1 can reach every node in the graph.
 --        Instead, the final graph should consist of d1 and d3.
 --        d2 and d4 are filtered because d2 is not in `includedSubmoduleSet`.
---        d3 remains because d1 should be included and it has a direct edge to d3.
+--        d3 remains because d1 has a direct edge to d3.
 filterMavenSubmodules :: Set Text -> Set Text -> Graphing MavenDependency -> Graphing MavenDependency
 filterMavenSubmodules includedSubmoduleSet completeSubmoduleSet graph = do
   let submoduleNodes = Set.fromList $ filter (\dep -> depNameFromMavenDependency dep `Set.member` completeSubmoduleSet) $ vertexList graph
