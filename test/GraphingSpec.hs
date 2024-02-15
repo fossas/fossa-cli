@@ -431,9 +431,9 @@ reachableSuccessorsWithConditionSpec = do
   --             5
   let graph :: Graphing Int = Graphing.directs [1, 2] <> Graphing.edges [(1, 2), (1, 3), (2, 4), (3, 6), (4, 5)]
 
-  --   1 -> 2 -- 3
+  --   1 -> 2 -> 3
   --        |    |
-  --        5 -- 4
+  --        5 <- 4
   let cyclicGraph :: Graphing Int = Graphing.directs [1] <> Graphing.edges [(1, 2), (2, 3), (3, 4), (4, 5), (5, 2)]
 
   let condition :: Int -> Set Int -> Bool
