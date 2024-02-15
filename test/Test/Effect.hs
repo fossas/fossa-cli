@@ -20,9 +20,6 @@ module Test.Effect (
   handleDiag,
 ) where
 
-import App.Fossa.Reachability.Types (
-  ReachabilityConfig (..),
- )
 import Control.Carrier.ContainerRegistryApi (runContainerRegistryApi)
 import Control.Carrier.ContainerRegistryApi.Common (RegistryCtx)
 import Control.Carrier.Debug (IgnoreDebugC, ignoreDebug)
@@ -78,7 +75,6 @@ type EffectStack =
     $ SimpleC ContainerRegistryApiF
     $ ReaderC RegistryCtx
     $ ReaderC AllFilters
-    $ ReaderC ReachabilityConfig
     $ ExecIOC
     $ ReadFSIOC
     $ FossaApiClientMockC
@@ -117,7 +113,6 @@ runTestEffects =
     . runApiWithMock
     . runReadFSIO
     . runExecIO
-    . runReader mempty
     . runReader mempty
     . runContainerRegistryApi
     . runFinally
