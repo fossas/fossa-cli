@@ -31,7 +31,7 @@ import DepTypes (
 import Effect.Exec (CandidateCommandEffs)
 import Effect.Grapher (Grapher, edge, evalGrapher)
 import Effect.Grapher qualified as Grapher
-import Effect.Logger (Logger, Pretty (pretty), logDebug)
+import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import Graphing (Graphing)
 import Path (Abs, Dir, Path)
@@ -53,7 +53,6 @@ import Strategy.Maven.Plugin (
   reactorArtifacts,
   withUnpackedPlugin,
  )
-import Text.Pretty.Simple (pShow)
 import Types (GraphBreadth (..))
 
 analyze' ::
@@ -94,7 +93,6 @@ analyze ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
-  , Has Logger sig m
   ) =>
   Path Abs Dir ->
   DepGraphPlugin ->
@@ -107,12 +105,7 @@ analyze dir plugin = do
       errCtx MvnPluginExecFailed $
         execPluginAggregate dir plugin
     pluginOutput <- parsePluginOutput dir
-    logDebug $ "Reactor  _______________" <> pretty (pShow (reactorOutput))
-    logDebug $ "pluginOutput **************" <> pretty (pShow (pluginOutput))
-    context "Building dependency graph" $ buildGraph reactorOutput pluginOutput
-  -- logDebug "After builigs the graph >>>>>>>"
-  -- logDebug "THis is the graph ++++++++++ "
-  -- logDebug $ pretty (show (graph))
+    context "Building dependency graph" $ pure (buildGraph reactorOutput pluginOutput)
   pure (graph, Complete)
 
 data MvnPluginInstallFailed = MvnPluginInstallFailed
@@ -151,18 +144,15 @@ instance ToDiagnostic MayIncludeSubmodule where
 -- The multimodule case shows how one submodule can depend on another. In this
 -- case we want to remove the reference to submodule1 in submodule2's dependency
 -- tree and promote submodule1's dependency to be a root (direct) dependency.
-buildGraph :: Has Logger sig m => ReactorOutput -> PluginOutput -> m (Graphing MavenDependency)
+buildGraph :: ReactorOutput -> PluginOutput -> Graphing MavenDependency
 buildGraph reactorOutput PluginOutput{..} = do
-  x <- evalGrapher $ do
+  run . evalGrapher $ do
     let byNumeric :: Map Int Artifact
         byNumeric = indexBy artifactNumericId outArtifacts
 
     depsByNumeric <- traverse toDependency byNumeric
-    -- logDebug $ "Known submodules *********** " <> pretty (pShow (knownSubmodules))
-    logDebug $ "This is deps by Numeric +++++++++ " <> pretty (pShow (depsByNumeric))
+
     traverse_ (visitEdge depsByNumeric) outEdges
-  logDebug "After the traverse"
-  pure x
   where
     knownSubmodules :: Set.Set Text
     knownSubmodules = Set.fromList . map reactorArtifactName . reactorArtifacts $ reactorOutput
@@ -173,16 +163,7 @@ buildGraph reactorOutput PluginOutput{..} = do
       "test" -> EnvTesting
       other -> EnvOther other
 
-    -- d' :: (Map Int Artifact) -> Map Int MavenDependency
-    -- d' a = do
-    --   join traverse toDependency a
-
-    toDependency ::
-      ( Has (Grapher MavenDependency) sig m
-      , Has Logger sig m
-      ) =>
-      Artifact ->
-      m MavenDependency
+    toDependency :: (Has (Grapher MavenDependency) sig m) => Artifact -> m MavenDependency
     toDependency Artifact{..} = do
       let dep =
             Dependency
@@ -198,16 +179,13 @@ buildGraph reactorOutput PluginOutput{..} = do
               }
           dependencyScopes = Set.fromList artifactScopes
           mavenDep = MavenDependency dep dependencyScopes mempty
-      -- logDebug $ "Dependency _______________" <> pretty (pShow (dep))
       when
         (artifactIsDirect || artifactArtifactId `Set.member` knownSubmodules)
         (Grapher.direct mavenDep)
       pure mavenDep
 
     visitEdge ::
-      ( Has (Grapher MavenDependency) sig m
-      , Has Logger sig m
-      ) =>
+      (Has (Grapher MavenDependency) sig m) =>
       Map Int MavenDependency ->
       Edge ->
       m ()
@@ -216,66 +194,7 @@ buildGraph reactorOutput PluginOutput{..} = do
             parentRef <- Map.lookup edgeFrom refsByNumeric
             childRef <- Map.lookup edgeTo refsByNumeric
             Just (parentRef, childRef)
-      -- logDebug $ "In visit Edge, here are the refs" <> pretty (pShow (refs))
       traverse_ (uncurry edge) refs
 
     indexBy :: Ord k => (v -> k) -> [v] -> Map k v
     indexBy f = Map.fromList . map (\v -> (f v, v))
-
--- test :: Has Logger sig m => ReactorOutput -> PluginOutput -> m ()
--- test reactorOutput PluginOutput{..} = do
---   let abc = m
---   logDebug $ "Maven Project Closure"
---   pure ()
---   where
---     m :: Graphing MavenDependency
---     m = run . evalGrapher $ do
---         let byNumeric :: Map Int Artifact
---             byNumeric = indexBy artifactNumericId outArtifacts
-
---         depsByNumeric <- traverse toDependency byNumeric
---         logDebug $ "Maven Project Closure"
---         traverse_ (visitEdge depsByNumeric) outEdges
-
---     knownSubmodules :: Set.Set Text
---     knownSubmodules = Set.fromList . map reactorArtifactName . reactorArtifacts $ reactorOutput
-
---     toBuildTag :: Text -> DepEnvironment
---     toBuildTag = \case
---       "compile" -> EnvProduction
---       "test" -> EnvTesting
---       other -> EnvOther other
-
---     toDependency :: Has (Grapher MavenDependency) sig m => Artifact -> m MavenDependency
---     toDependency Artifact{..} = do
---       let dep =
---             Dependency
---               { dependencyType = MavenType
---               , dependencyName = artifactGroupId <> ":" <> artifactArtifactId
---               , dependencyVersion = Just (CEq artifactVersion)
---               , dependencyLocations = []
---               , dependencyEnvironments = Set.fromList $ toBuildTag <$> artifactScopes
---               , dependencyTags =
---                   Map.fromList $
---                     ("scopes", artifactScopes)
---                       : [("optional", ["true"]) | artifactOptional]
---               }
---           dependencyScopes = Set.fromList artifactScopes
---           mavenDep = MavenDependency dep dependencyScopes mempty
-
---       when
---         (artifactIsDirect || artifactArtifactId `Set.member` knownSubmodules)
---         (Grapher.direct mavenDep)
---       pure mavenDep
-
---     visitEdge :: Has (Grapher MavenDependency) sig m => Map Int MavenDependency -> Edge -> m ()
---     visitEdge refsByNumeric Edge{..} = do
---       let refs = do
---             parentRef <- Map.lookup edgeFrom refsByNumeric
---             childRef <- Map.lookup edgeTo refsByNumeric
---             Just (parentRef, childRef)
-
---       traverse_ (uncurry edge) refs
-
---     indexBy :: Ord k => (v -> k) -> [v] -> Map k v
---     indexBy f = Map.fromList . map (\v -> (f v, v))
