@@ -480,6 +480,7 @@ standardAnalyzeConfig =
     , ANZ.grepOptions = grepOptions
     , ANZ.customFossaDepsFile = customFossaDepsFile
     , ANZ.allowedTacticTypes = Any
+    , ANZ.reachabilityConfig = mempty
     }
 
 sampleJarParsedContent :: Text
