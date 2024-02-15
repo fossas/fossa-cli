@@ -17,7 +17,8 @@ import Control.Timeout (
  )
 import Control.Timeout.Internal (Cancel (Cancel))
 import Data.Functor (void)
-import Prettyprinter (pretty)
+import Data.String.Conversion (toText)
+import Errata (Errata (..))
 import Test.Effect (expectFailure', it')
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 
@@ -28,7 +29,7 @@ shortDuration = MilliSeconds 200
 data CancelSet = CancelSet deriving (Eq, Ord, Show)
 
 instance ToDiagnostic CancelSet where
-  renderDiagnostic = pretty . show
+  renderDiagnostic c = Errata (Just $ toText (show c)) [] Nothing
 
 spec :: Spec
 spec = do

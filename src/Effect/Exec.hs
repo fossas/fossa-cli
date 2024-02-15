@@ -11,6 +11,7 @@ module Effect.Exec (
   ExecF (..),
   ExecErr (..),
   exec,
+  execInCwd,
   execEffectful,
   execThrow,
   Command (..),
@@ -68,6 +69,7 @@ import Data.Aeson (
  )
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as BL
+import Data.Error (createBody)
 import Data.Foldable (traverse_)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -78,8 +80,9 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes (DepType (..))
-import Effect.Logger (Logger, logInfo)
+import Effect.Logger (Logger, logInfo, renderIt)
 import Effect.ReadFS (ReadFS, getCurrentDir)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path, SomeBase (..), fromAbsDir, toFilePath)
 import Path.IO (AnyPath (makeAbsolute))
@@ -186,24 +189,19 @@ data ExecErr
   | ExecEnvNotSupported Text
   deriving (Eq, Ord, Show, Generic)
 
-renderCmdFailure :: CmdFailure -> Doc AnsiStyle
+renderCmdFailure :: CmdFailure -> Errata
 renderCmdFailure CmdFailure{..} =
   if isCmdNotAvailable
-    then
-      vsep
-        [ pretty $ "Could not find executable: `" <> cmdName cmdFailureCmd <> "`."
-        , pretty $ "Please ensure `" <> cmdName cmdFailureCmd <> "` exists in PATH prior to running fossa."
-        , ""
-        , reportDefectMsg
-        ]
-    else
-      vsep
-        [ "Command execution failed: "
-        , ""
-        , indent 4 details
-        , ""
-        , reportDefectMsg
-        ]
+    then do
+      let header = "Could not find executable: `" <> cmdName cmdFailureCmd <> "`"
+          help = "Please ensure `" <> cmdName cmdFailureCmd <> "` exists in PATH prior to running fossa"
+          body = createBody Nothing Nothing (Just $ renderIt reportDefectMsg) (Just help) Nothing
+      Errata (Just header) [] (Just body)
+    else do
+      let header = "Command execution failed"
+          content = renderIt $ vsep [indent 2 details]
+          body = createBody (Just content) Nothing (Just $ renderIt reportDefectMsg) Nothing Nothing
+      Errata (Just header) [] (Just body)
   where
     -- Infer if the stderr is caused by not having executable in path.
     -- There is no easy way to check for @EBADF@ within process exception,
@@ -282,21 +280,28 @@ renderCmdFailure CmdFailure{..} =
             ]
 
 instance ToDiagnostic ExecErr where
+  renderDiagnostic :: ExecErr -> Errata
   renderDiagnostic = \case
-    ExecEnvNotSupported env -> pretty $ "Exec is not supported in: " <> env
+    ExecEnvNotSupported env -> do
+      let header = "Exec is not supported in: " <> env
+      Errata (Just header) [] Nothing
     CommandFailed err -> renderCmdFailure err
-    CommandParseError cmd err ->
-      vsep
-        [ "Failed to parse command output. command: " <> viaShow cmd <> "."
-        , ""
-        , indent 4 (pretty err)
-        , ""
-        , reportDefectMsg
-        ]
+    CommandParseError cmd err -> do
+      let header = "Failed to parse command output"
+          content = renderIt $ vsep [indent 2 (pretty err)]
+          ctx = "Command: " <> toText (show cmd)
+          body = createBody (Just content) Nothing (Just $ renderIt reportDefectMsg) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
 
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
 exec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure Stdout)
 exec dir cmd = sendSimple (Exec (Abs dir) cmd Nothing)
+
+-- | A variant of 'exec' that runs the command in the current directory
+execInCwd :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Command -> m (Either CmdFailure Stdout)
+execInCwd cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
+  dir <- getCurrentDir
+  exec dir cmd
 
 -- | Execute a command with stdin and return its @(exitcode, stdout, stderr)@
 exec' :: Has Exec sig m => Path Abs Dir -> Command -> Text -> m (Either CmdFailure Stdout)
@@ -440,13 +445,11 @@ selectBestCmd workdir CandidateAnalysisCommands{..} = selectBestCmd' (NE.toList 
 
 data CandidateCommandFailed = CandidateCommandFailed {failedCommand :: Text, failedArgs :: [Text]}
 instance ToDiagnostic CandidateCommandFailed where
-  renderDiagnostic CandidateCommandFailed{..} =
-    pretty $
-      "Command "
-        <> show failedCommand
-        <> " not suitable: running with args "
-        <> show failedArgs
-        <> " resulted in a non-zero exit code"
+  renderDiagnostic :: CandidateCommandFailed -> Errata
+  renderDiagnostic CandidateCommandFailed{..} = do
+    let header = "Command: " <> "`" <> failedCommand <> "` not suitable"
+        body = "Running with args: " <> "`" <> mconcat failedArgs <> "` resulted in a non-zero exit code"
+    Errata (Just header) [] (Just body)
 
 argFromPath :: Path a b -> Text
 argFromPath = toText . toFilePath

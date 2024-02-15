@@ -54,6 +54,7 @@ import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
 import App.Fossa.PreflightChecks (preflightChecks)
+import App.Fossa.Reachability.Upload (analyzeForReachability, onlyFoundUnits)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
@@ -94,6 +95,7 @@ import Control.Monad (join, unless, void, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
+import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
@@ -101,6 +103,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
+import Diag.Diagnostic as DI
 import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
@@ -112,12 +115,13 @@ import Effect.Logger (
   logDebug,
   logInfo,
   logStdout,
+  renderIt,
  )
 import Effect.ReadFS (ReadFS)
+import Errata (Errata (..))
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
-  Doc,
   Pretty (pretty),
   annotate,
   viaShow,
@@ -396,7 +400,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     (False, _) -> traverse (withPathDependencyNudge includeAll) filteredProjects
   logDebug $ "Filtered projects with path dependencies: " <> pretty (show filteredProjects')
 
-  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults
+  reachabilityUnitsResult <- analyzeForReachability projectScans
+  let reachabilityUnits = onlyFoundUnits reachabilityUnitsResult
+
+  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
@@ -416,17 +423,18 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
       (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
       (_, CountedScanUnits scanUnits) -> pure scanUnits
-  doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits
+  doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits
+
   pure outputResult
   where
-    doUpload result iatAssertion destination basedir jsonOutput revision scanUnits =
+    doUpload result iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits =
       case destination of
         OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
         UploadScan apiOpts metadata ->
           Diag.context "upload-results"
             . runFossaApiClient apiOpts
             $ do
-              locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits
+              locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits
               doAssertRevisionBinaries iatAssertion locator
 
     emptyScanUnits :: ScanUnits
@@ -514,33 +522,33 @@ data AnalyzeError
   | ErrOnlyKeywordSearchResultsFound
 
 instance Diag.ToDiagnostic AnalyzeError where
-  renderDiagnostic :: AnalyzeError -> Doc ann
-  renderDiagnostic ErrNoProjectsDiscovered =
-    vsep
-      [ "No analysis targets found in directory."
-      , ""
-      , "Make sure your project is supported. See the user guide for details:"
-      , "    " <> pretty userGuideUrl
-      , ""
-      ]
-  renderDiagnostic (ErrFilteredAllProjects) =
-    vsep
-      [ "Filtered out all projects. This may be occurring because: "
-      , ""
-      , " * No manual or vendor dependencies were provided with `fossa-deps` file."
-      , " * Exclusion filters were used, filtering out discovered projects. "
-      , " * Discovered projects resided in following ignored path by default:"
-      , vsep $ map (\i -> pretty $ "    * " <> toText i) ignoredPaths
-      , ""
-      , "See the user guide for details:"
-      , "    " <> pretty userGuideUrl
-      , ""
-      ]
-  renderDiagnostic (ErrOnlyKeywordSearchResultsFound) =
-    vsep
-      [ "Matches to your keyword searches were found, but no other analysis targets were found."
-      , "This error can be safely ignored if you are only expecting keyword search results."
-      ]
+  renderDiagnostic :: AnalyzeError -> Errata
+  renderDiagnostic ErrNoProjectsDiscovered = do
+    let help = "Refer to the provided documentation to ensure your project is supported"
+    let body = createBody Nothing (Just userGuideUrl) Nothing (Just help) Nothing
+    Errata (Just "No analysis targets found in directory") [] (Just body)
+  renderDiagnostic ErrFilteredAllProjects = do
+    let content =
+          renderIt $
+            vsep
+              [ "This may be occurring because: "
+              , ""
+              , " * No manual or vendor dependencies were provided with `fossa-deps` file."
+              , " * Exclusion filters were used, filtering out discovered projects. "
+              , " * Discovered projects resided in following ignored path by default:"
+              , vsep $ map (\i -> pretty $ "    * " <> toText i) ignoredPaths
+              , ""
+              ]
+        body = createBody (Just content) (Just userGuideUrl) Nothing Nothing Nothing
+    Errata (Just "Filtered out all projects") [] (Just body)
+  renderDiagnostic ErrOnlyKeywordSearchResultsFound = do
+    let body =
+          renderIt $
+            vsep
+              [ "Matches to your keyword searches were found, but no other analysis targets were found."
+              , "This error can be safely ignored if you are only expecting keyword search results."
+              ]
+    Errata (Just "Only keyword search results found") [] (Just body)
 
 buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Aeson.Value
 buildResult includeAll srcUnits projects licenseSourceUnits =

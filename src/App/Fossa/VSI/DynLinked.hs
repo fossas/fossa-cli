@@ -12,8 +12,9 @@ import Control.Effect.Reader (Reader)
 import Data.String.Conversion (toText)
 import Discovery.Filters (AllFilters)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, pretty)
+import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
+import Errata (Errata (..))
 import Path (Abs, Dir, Path)
 import Path.Extra (SomePath, resolveAbsolute)
 import Srclib.Types (SourceUnit (..))
@@ -46,12 +47,18 @@ analyzeDynamicLinkedDeps root (target) = context "Analyze dynamic deps" . recove
 
 newtype SkippingDynamicDep = SkippingDynamicDep (SomePath)
 instance ToDiagnostic SkippingDynamicDep where
-  renderDiagnostic (SkippingDynamicDep path) = pretty $ "Skipping dynamic analysis for target: " <> show path
+  renderDiagnostic (SkippingDynamicDep path) = do
+    let header = "Skipping dynamic analysis for target: " <> toText (show path)
+    Errata (Just header) [] Nothing
 
 data NotSupportedDistro = NotSupportedDistro
 instance ToDiagnostic NotSupportedDistro where
-  renderDiagnostic (NotSupportedDistro) = "fossa is executing in an environment that is not supported for dynamic link detection. Redhat and Debian based linux is currently supported."
+  renderDiagnostic (NotSupportedDistro) = do
+    let header = "Fossa is executing in an environment that is not supported for dynamic link detection. Redhat and Debian based linux is currently supported."
+    Errata (Just header) [] Nothing
 
 data NoDependenciesFound = NoDependenciesFound
 instance ToDiagnostic NoDependenciesFound where
-  renderDiagnostic (NoDependenciesFound) = "no dynamic dependencies found in target executable"
+  renderDiagnostic (NoDependenciesFound) = do
+    let header = "No dynamic dependencies found in target executable"
+    Errata (Just header) [] Nothing

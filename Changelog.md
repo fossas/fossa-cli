@@ -1,5 +1,15 @@
 # FOSSA CLI Changelog
 
+## v3.9.4
+- Reachability: Includes reachability analysis in scan summary [#1379](https://github.com/fossas/fossa-cli/pull/1379)
+
+## v3.9.3
+- Update error structure [#1364](https://github.com/fossas/fossa-cli/pull/1364)
+
+## v3.9.2
+- Maven: Adds reachability analysis [#1372](https://github.com/fossas/fossa-cli/pull/1377)
+- Gradle: Adds reachability analysis [#1377](https://github.com/fossas/fossa-cli/pull/1377)
+
 ## v3.9.1
 - `--detect-dynamic`: Safely ignores scenarios in ldd output parsing where we run into not found error. ([#1376](https://github.com/fossas/fossa-cli/pull/1376)) 
 

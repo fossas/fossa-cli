@@ -6,8 +6,11 @@ module App.Fossa.Analyze.Upload (
   ScanUnits (..),
 ) where
 
+import App.Docs (vulnReachabilityProductDocsUrl)
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
+import App.Fossa.Reachability.Types (SourceUnitReachability)
+import App.Fossa.Reachability.Upload (upload)
 import App.Types (
   BaseDir (BaseDir),
   FullFileUploads (FullFileUploads),
@@ -15,6 +18,7 @@ import App.Types (
   ProjectRevision (..),
  )
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
+import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
@@ -55,7 +59,7 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
-import Fossa.API.Types (Organization (orgRequiresFullFileUploads), Project (projectIsMonorepo), UploadResponse (..))
+import Fossa.API.Types (Organization (orgRequiresFullFileUploads, orgSupportsReachability, organizationId), Project (projectIsMonorepo), UploadResponse (..))
 import Path (Abs, Dir, Path)
 import Srclib.Types (
   FullSourceUnit,
@@ -91,32 +95,39 @@ uploadSuccessfulAnalysis ::
   , Has (Lift IO) sig m
   , Has FossaApiClient sig m
   , Has Git sig m
+  , Has Debug sig m
   ) =>
   BaseDir ->
   ProjectMetadata ->
   Flag JsonOutput ->
   ProjectRevision ->
   ScanUnits ->
+  [SourceUnitReachability] ->
   m Locator
-uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits =
+uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits =
   context "Uploading analysis" $ do
+    dieOnMonorepoUpload revision
+    org <- getOrganization
+
+    if (orgSupportsReachability org)
+      then void $ upload revision metadata reachabilityUnits
+      else do
+        logInfo . pretty $ "Organization: (" <> show (organizationId org) <> ") does not support reachability. Skipping reachability analysis upload."
+        logInfo . pretty $ "For reachability, refer to: " <> vulnReachabilityProductDocsUrl
+
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
     logInfo ("Using revision: `" <> pretty (projectRevision revision) <> "`")
     let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
     logInfo ("Using branch: `" <> pretty branchText <> "`")
 
-    dieOnMonorepoUpload revision
-
     uploadResult <- case scanUnits of
       SourceUnitOnly units -> uploadAnalysis revision metadata units
       LicenseSourceUnitOnly licenseSourceUnit -> do
-        org <- getOrganization
         let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
         let mergedUnits = mergeSourceAndLicenseUnits [] licenseSourceUnit
         runStickyLogger SevInfo $ uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads
       SourceAndLicenseUnits sourceUnits licenseSourceUnit -> do
-        org <- getOrganization
         let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
         let mergedUnits = mergeSourceAndLicenseUnits sourceUnits licenseSourceUnit
         runStickyLogger SevInfo $ uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads

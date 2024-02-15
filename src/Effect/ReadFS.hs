@@ -61,7 +61,7 @@ module Effect.ReadFS (
   module X,
 ) where
 
-import App.Support (reportDefectWithFileMsg)
+import App.Support (supportUrl)
 import Control.Algebra as X
 import Control.Carrier.Simple (
   Simple,
@@ -73,6 +73,7 @@ import Control.Effect.Diagnostics (
   Diagnostics,
   ToDiagnostic (..),
   context,
+  errSupport,
   fatal,
   fromEither,
  )
@@ -93,6 +94,8 @@ import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Data.Void (Void)
 import Data.Yaml (decodeEither', prettyPrintParseException)
+import Effect.Logger (renderIt)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Parse.XML (FromXML, parseXML, xmlErrorPretty)
 import Path (
@@ -108,7 +111,7 @@ import Path (
  )
 import Path.Extra (SomePath (..))
 import Path.IO qualified as PIO
-import Prettyprinter (indent, line, pretty, vsep)
+import Prettyprinter (indent, pretty, vsep)
 import System.Directory qualified as Directory
 import System.FilePath qualified as FP
 import System.IO (IOMode (ReadMode), withFile)
@@ -176,37 +179,55 @@ deriving instance Ord (ReadFSF a)
 
 instance ToDiagnostic ReadFSErr where
   renderDiagnostic = \case
-    FileReadError path err -> "Error reading file " <> pretty path <> ":" <> line <> indent 4 (pretty err)
-    FileParseError path err ->
-      vsep
-        [ "Error parsing file: " <> pretty path <> "."
-        , ""
-        , indent 4 (pretty err)
-        , ""
-        , reportDefectWithFileMsg path
-        ]
-    ResolveError base rel err ->
-      "Error resolving a relative file:"
-        <> line
-        <> indent
-          4
-          ( vsep
-              [ "base: " <> pretty base
-              , "relative: " <> pretty rel
-              , "error: " <> pretty err
-              ]
-          )
-    ListDirError dir err -> "Error listing directory contents at " <> pretty dir <> ":" <> line <> indent 2 (pretty err)
-    NotDirOrFile path -> "Path was not a dir or file, unknown type: " <> pretty path
-    UndeterminableFileType path ->
-      vsep
-        [ "Path is both a file and a directory, which should be impossible: " <> pretty path
-        , "Please report this as a bug, and include the following info if possible:"
-        , "- Operating system"
-        , "- File system"
-        , "- Output of 'fossa --version'"
-        ]
-    CurrentDirError err -> "Error resolving the current directory: " <> pretty err
+    FileReadError path err -> do
+      let header = "reading file: " <> toText path
+          body = renderIt $ vsep [indent 2 (pretty err)]
+      Errata (Just header) [] (Just body)
+    FileParseError path err -> do
+      let header = "parsing file: " <> toText path
+          body = renderIt $ vsep [indent 2 (pretty err)]
+      Errata (Just header) [] (Just body)
+    ResolveError base rel err -> do
+      let header = "resolving a relative file"
+          body =
+            renderIt $
+              indent
+                2
+                ( vsep
+                    [ "base: " <> pretty base
+                    , "relative: " <> pretty rel
+                    , "error: " <> pretty err
+                    ]
+                )
+      Errata (Just header) [] (Just body)
+    ListDirError dir err -> do
+      let header = "listing directory contents at: " <> toText dir
+          body = renderIt $ vsep [indent 2 (pretty err)]
+      Errata (Just header) [] (Just body)
+    NotDirOrFile path -> do
+      let header = "Path was not a dir or file, unknown type: " <> toText path
+      Errata (Just header) [] Nothing
+    UndeterminableFileType path -> do
+      let header = "Path is both a file and a directory, which should be impossible: " <> toText path
+          body =
+            renderIt $
+              vsep
+                [ "Please report this as a bug to " <> pretty supportUrl <> ", and include the following info if possible:"
+                , indent 2 $
+                    vsep
+                      [ "- Operating system"
+                      , "- File system"
+                      , "- Output of 'fossa --version'"
+                      ]
+                ]
+      Errata (Just header) [] (Just body)
+    CurrentDirError err -> do
+      let header = "resolving the current directory "
+          body = renderIt $ vsep [indent 2 (pretty err)]
+      Errata (Just header) [] (Just body)
+
+fileParseErrorSupportMsg :: Path Abs File -> Text
+fileParseErrorSupportMsg file = "If you believe this to be a defect, please report a bug to FOSSA support at " <> supportUrl <> ", with a copy of: " <> toText file
 
 -- | Read file contents into a strict 'ByteString'
 readContentsBS' :: Has ReadFS sig m => Path Abs File -> m (Either ReadFSErr ByteString)
@@ -325,7 +346,7 @@ readContentsParser :: forall a sig m. (Has ReadFS sig m, Has Diagnostics sig m) 
 readContentsParser parser file = context ("Parsing file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsText file
   case runParser parser (toString file) contents of
-    Left err -> fatal $ FileParseError (toString file) (toText (errorBundlePretty err))
+    Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (toText (errorBundlePretty err))
     Right a -> pure a
 
 -- | Read from a file as a byte string, parsing its contents
@@ -333,7 +354,7 @@ readContentsParserBS :: forall a sig m. (Has ReadFS sig m, Has Diagnostics sig m
 readContentsParserBS parser file = context ("Parsing file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsBS file
   case runParser parser (toString file) contents of
-    Left err -> fatal $ FileParseError (toString file) (toText (errorBundlePretty err))
+    Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (toText (errorBundlePretty err))
     Right a -> pure a
 
 -- | Read JSON from a file
@@ -341,14 +362,14 @@ readContentsJson :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Pat
 readContentsJson file = context ("Parsing JSON file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsBS file
   case eitherDecodeStrict contents of
-    Left err -> fatal $ FileParseError (toString file) (toText err)
+    Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (toText err)
     Right a -> pure a
 
 readContentsToml :: (Has ReadFS sig m, Has Diagnostics sig m) => Toml.TomlCodec a -> Path Abs File -> m a
 readContentsToml codec file = context ("Parsing TOML file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsText file
   case Toml.decode codec contents of
-    Left err -> fatal $ FileParseError (toString file) (Toml.prettyTomlDecodeErrors err)
+    Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (Toml.prettyTomlDecodeErrors err)
     Right a -> pure a
 
 -- | Read YAML from a file
@@ -356,7 +377,7 @@ readContentsYaml :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Pat
 readContentsYaml file = context ("Parsing YAML file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsBS file
   case decodeEither' contents of
-    Left err -> fatal $ FileParseError (toString file) (toText $ prettyPrintParseException err)
+    Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (toText $ prettyPrintParseException err)
     Right a -> pure a
 
 -- | Read XML from a file
@@ -364,7 +385,7 @@ readContentsXML :: (FromXML a, Has ReadFS sig m, Has Diagnostics sig m) => Path 
 readContentsXML file = context ("Parsing XML file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsText file
   case parseXML contents of
-    Left err -> fatal $ FileParseError (toString file) (xmlErrorPretty err)
+    Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (xmlErrorPretty err)
     Right a -> pure a
 
 type ReadFSIOC = SimpleC ReadFSF

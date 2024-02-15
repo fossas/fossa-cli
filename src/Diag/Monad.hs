@@ -10,13 +10,16 @@ module Diag.Monad (
   rethrowT,
   warnOnErrT,
   errCtxT,
+  errHelpT,
+  errSupportT,
+  errDocT,
   (<||>),
 ) where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Class (MonadTrans, lift)
 import Data.List.NonEmpty qualified as NE
-import Diag.Result (EmittedWarn (..), ErrCtx (..), ErrGroup (..), ErrWithStack (..), Result (..), SomeErr (..), SomeWarn (..), Stack (..))
+import Diag.Result (EmittedWarn (..), ErrCtx (..), ErrDoc (..), ErrGroup (..), ErrHelp (..), ErrSupport, ErrWithStack (..), Result (..), SomeErr (..), SomeWarn (..), Stack (..))
 
 -- | A monad transformer that adds error-/warning-reporting capabilities to
 -- other monads
@@ -110,6 +113,24 @@ errCtxT :: Functor m => ErrCtx -> ResultT m a -> ResultT m a
 errCtxT c = ResultT . fmap (errCtxR c) . runResultT
 {-# INLINE errCtxT #-}
 
+-- | Attach error help to the ErrGroup of a possibly-failing computation.
+-- No-op on Success
+errHelpT :: Functor m => ErrHelp -> ResultT m a -> ResultT m a
+errHelpT h = ResultT . fmap (errHelpR h) . runResultT
+{-# INLINE errHelpT #-}
+
+-- | Attach error support to the ErrGroup of a possibly-failing computation.
+-- No-op on Success
+errSupportT :: Functor m => ErrSupport -> ResultT m a -> ResultT m a
+errSupportT s = ResultT . fmap (errSupportR s) . runResultT
+{-# INLINE errSupportT #-}
+
+-- | Attach error doc to the ErrGroup of a possibly-failing computation.
+-- No-op on Success
+errDocT :: Functor m => ErrDoc -> ResultT m a -> ResultT m a
+errDocT d = ResultT . fmap (errDocR d) . runResultT
+{-# INLINE errDocT #-}
+
 -- | Try both actions, returning the value of the first to succeed.
 --
 -- Similar to the Applicative instance, this accumulates errors from encountered
@@ -137,7 +158,7 @@ ResultT ma <||> ResultT ma' = ResultT $ do
 
 -- | Fail with the given stacktrace and error
 fatalR :: Stack -> SomeErr -> Result a
-fatalR stack e = Failure [] (ErrGroup [] [] (ErrWithStack stack e NE.:| []))
+fatalR stack e = Failure [] (ErrGroup [] [] [] [] [] (ErrWithStack stack e NE.:| []))
 {-# INLINE fatalR #-}
 
 -- | Emit a standalone warning
@@ -155,16 +176,37 @@ recoverR (Success ws a) = Success ws (Just a)
 -- | Attach a warning to the ErrGroup of a possibly-failing computation. No-op
 -- on Success
 warnOnErrR :: SomeWarn -> Result a -> Result a
-warnOnErrR w (Failure ws (ErrGroup sws ectx es)) = Failure ws (ErrGroup (w : sws) ectx es)
+warnOnErrR w (Failure ws (ErrGroup sws ectx ehlp esup edoc es)) = Failure ws (ErrGroup (w : sws) ectx ehlp esup edoc es)
 warnOnErrR _ (Success ws a) = Success ws a
 {-# INLINE warnOnErrR #-}
 
 -- | Attach error context to the ErrGroup of a possibly-failing computation.
 -- No-op on Success
 errCtxR :: ErrCtx -> Result a -> Result a
-errCtxR c (Failure ws (ErrGroup sws ectx es)) = Failure ws (ErrGroup sws (c : ectx) es)
+errCtxR c (Failure ws (ErrGroup sws ectx ehlp esup edoc es)) = Failure ws (ErrGroup sws (c : ectx) ehlp esup edoc es)
 errCtxR _ (Success ws a) = Success ws a
 {-# INLINE errCtxR #-}
+
+-- | Attach error help to the ErrGroup of a possibly-failing computation.
+-- No-op on Success
+errHelpR :: ErrHelp -> Result a -> Result a
+errHelpR h (Failure ws (ErrGroup sws ectx ehlp esup edoc es)) = Failure ws (ErrGroup sws ectx (h : ehlp) esup edoc es)
+errHelpR _ (Success ws a) = Success ws a
+{-# INLINE errHelpR #-}
+
+-- | Attach error support to the ErrGroup of a possibly-failing computation.
+-- No-op on Success
+errSupportR :: ErrSupport -> Result a -> Result a
+errSupportR s (Failure ws (ErrGroup sws ectx ehlp esup edoc es)) = Failure ws (ErrGroup sws ectx ehlp (s : esup) edoc es)
+errSupportR _ (Success ws a) = Success ws a
+{-# INLINE errSupportR #-}
+
+-- | Attach error context to the ErrGroup of a possibly-failing computation.
+-- No-op on Success
+errDocR :: ErrDoc -> Result a -> Result a
+errDocR d (Failure ws (ErrGroup sws ectx ehlp esup edoc es)) = Failure ws (ErrGroup sws ectx ehlp esup (d : edoc) es)
+errDocR _ (Success ws a) = Success ws a
+{-# INLINE errDocR #-}
 
 -- | Convert an ErrGroup into an EmittedWarn, for the purpose of emitting a
 -- warning when recovering from a Failure
@@ -172,8 +214,8 @@ errCtxR _ (Success ws a) = Success ws a
 -- When the ErrGroup contains no warnings, this produces 'IgnoredErrGroup'.
 -- Otherwise, this produces 'WarnOnErrGroup'
 errGroupToWarning :: ErrGroup -> EmittedWarn
-errGroupToWarning (ErrGroup sws ectx es) =
+errGroupToWarning (ErrGroup sws ectx ehlp esup edoc es) =
   case NE.nonEmpty sws of
-    Nothing -> IgnoredErrGroup ectx es
-    Just sws' -> WarnOnErrGroup sws' ectx es
+    Nothing -> IgnoredErrGroup ectx ehlp esup edoc es
+    Just sws' -> WarnOnErrGroup sws' ectx ehlp esup edoc es
 {-# INLINE errGroupToWarning #-}

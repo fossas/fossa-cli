@@ -37,10 +37,13 @@ module Control.Effect.FossaApiClient (
   uploadLicenseScanResult,
   uploadFirstPartyScanResult,
   getAnalyzedPathRevisions,
+  uploadContentForReachability,
+  uploadBuildForReachability,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Config.Test (DiffRevision)
+import App.Fossa.Reachability.Types (SourceUnitReachability)
 import App.Fossa.VSI.Fingerprint (Fingerprint, Raw)
 import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
@@ -132,6 +135,8 @@ data FossaApiClientF a where
     FossaApiClientF ()
   UploadLicenseScanResult :: SignedURL -> LicenseSourceUnit -> FossaApiClientF ()
   UploadFirstPartyScanResult :: SignedURL -> NE.NonEmpty FullSourceUnit -> FossaApiClientF ()
+  UploadContentForReachability :: ByteString -> FossaApiClientF (Text)
+  UploadBuildForReachability :: ProjectRevision -> ProjectMetadata -> [SourceUnitReachability] -> FossaApiClientF ()
 
 deriving instance Show (FossaApiClientF a)
 
@@ -245,3 +250,9 @@ getVsiInferences = sendSimple . GetVsiInferences
 
 getEndpointVersion :: Has FossaApiClient sig m => m Text
 getEndpointVersion = sendSimple GetEndpointVersion
+
+uploadContentForReachability :: Has FossaApiClient sig m => ByteString -> m Text
+uploadContentForReachability = sendSimple . UploadContentForReachability
+
+uploadBuildForReachability :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> [SourceUnitReachability] -> m ()
+uploadBuildForReachability rev revMetadata units = sendSimple $ UploadBuildForReachability rev revMetadata units

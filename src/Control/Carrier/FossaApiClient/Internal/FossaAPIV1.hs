@@ -40,6 +40,12 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getUploadURLForPathDependency,
   finalizePathDependencyScan,
   alreadyAnalyzedPathRevision,
+
+  -- * Reachability
+  getReachabilityContentSignedUrl,
+  getReachabilityBuildSignedUrl,
+  uploadReachabilityContent,
+  uploadReachabilityBuild,
 ) where
 
 import App.Docs (fossaSslCertDocsUrl)
@@ -60,7 +66,7 @@ import App.Support (
   reportFossaBugErrorMsg,
   reportNetworkErrorMsg,
   reportTransientErrorMsg,
-  requestReportIfPersists,
+  requestReportIfPersistsWithDebugBundle,
  )
 import App.Types (
   FullFileUploads (FullFileUploads),
@@ -81,6 +87,7 @@ import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fata
 import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception (Exception (displayException), SomeException)
+import Control.Monad (void)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson (
   FromJSON (parseJSON),
@@ -97,6 +104,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as C
 import Data.ByteString.Lazy (ByteString)
 import Data.Data (Proxy (Proxy))
+import Data.Error (SourceLocation, createBody, createEmptyBlock, getSourceLocation)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -113,9 +121,11 @@ import Effect.Logger (
   indent,
   newlinePreceding,
   newlineTrailing,
+  renderIt,
   vsep,
   (<+>),
  )
+import Errata (Errata (..), errataSimple)
 import Fossa.API.Types (
   AnalyzedPathDependenciesResp,
   ApiOpts,
@@ -132,6 +142,7 @@ import Fossa.API.Types (
   Project,
   RevisionDependencyCache,
   SignedURL (signedURL),
+  SignedURLWithKey (surlwkKey, surlwkSignedURL),
   UploadResponse,
   useApiOpts,
  )
@@ -172,7 +183,6 @@ import Network.HTTP.Types (statusCode)
 import Network.HTTP.Types qualified as HTTP
 import Parse.XML (FromXML (..), child, parseXML, xmlErrorPretty)
 import Path (File, Path, Rel, toFilePath)
-import Prettyprinter (viaShow)
 import Srclib.Types (
   FullSourceUnit,
   LicenseSourceUnit,
@@ -314,270 +324,262 @@ data FossaError
   deriving (Show)
 
 instance ToDiagnostic FossaError where
+  renderDiagnostic :: FossaError -> Errata
   renderDiagnostic = \case
-    InternalException exception ->
-      vsep
-        [ "A socket-level error occurred when accessing the FOSSA API:"
-        , ""
-        , indent 4 $ pretty . displayException $ exception
-        , ""
-        , "These errors are usually related to TLS issues or the host being unreachable."
-        , "For troubleshooting steps with TLS issues, please refer to:"
-        , indent 4 $ pretty ("- " <> fossaSslCertDocsUrl)
-        , ""
-        , reportDefectMsg
-        ]
-    JsonDeserializeError err -> "An error occurred when deserializing a response from the FOSSA API:" <+> pretty err
-    BackendPublicFacingError pfe ->
-      vsep
-        [ "The FOSSA endpoint reported an error:"
-        , ""
-        , indent 4 $ pretty . fpeMessage $ pfe
-        , ""
-        , "Error UUID from API:"
-        , ""
-        , indent 4 $ pretty . fpeUuid $ pfe
-        , ""
-        , reportDefectMsg
-        , "Please include the error UUID in your request."
-        ]
-    InvalidUrlError url reason ->
-      vsep
-        [ "The URL provided is invalid."
-        , ""
-        , indent 4 $ "Provided:" <+> pretty url
-        , indent 6 $ "Reason:" <+> pretty reason
-        , ""
-        , reportDefectMsg
-        ]
+    InternalException exception -> do
+      let header = "A socket-level error occurred when accessing the FOSSA API"
+          content =
+            renderIt $
+              vsep
+                [ indent 2 $ pretty . displayException $ exception
+                , ""
+                , "These errors are usually related to TLS issues or the host being unreachable."
+                ]
+          help = "For troubleshooting steps with TLS issues, please refer to the provided documentation"
+          support = renderIt reportDefectMsg
+          body = createBody (Just content) (Just fossaSslCertDocsUrl) (Just support) (Just help) Nothing
+      Errata (Just header) [] (Just body)
+    JsonDeserializeError err -> do
+      let header = "An error occurred when deserializing a response from the FOSSA API:" <> toText err
+      Errata (Just header) [] Nothing
+    BackendPublicFacingError pfe -> do
+      let header = fpeMessage pfe
+          content = "Error UUID from API: " <> fpeUuid pfe
+          support = (renderIt reportDefectMsg) <> ". Please include the error UUID in your request."
+          body = createBody (Just content) Nothing (Just support) Nothing Nothing
+      Errata (Just header) [] (Just body)
+    InvalidUrlError url reason -> do
+      let header = "The URL provided is invalid"
+          content = "Reason: " <> toText reason
+          ctx = "Provided: " <> toText url
+          body = createBody (Just content) Nothing (Just $ renderIt reportDefectMsg) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
     StatusCodeError ereq eres ->
       case statusCode $ responseStatus eres of
-        403 ->
-          vsep
-            [ "The endpoint returned status code 403."
-            , ""
-            , "Typically, this status code indicates an authentication problem with the API."
-            , "However, FOSSA reports invalid API keys using a different mechanism;"
-            , "this likely means that some other service on your network intercepted the request"
-            , "and reported this status code. This might be a proxy or some other network appliance."
-            , ""
-            , indent 4 $ "Request:" <+> renderRequest ereq
-            , indent 4 $ "Response:" <+> renderResponse eres
-            , ""
-            , reportNetworkErrorMsg
-            ]
-        other ->
-          vsep
-            [ "The FOSSA endpoint returned an unexpected status code: " <> viaShow other
-            , ""
-            , "While HTTP responses typically come from the FOSSA API,"
-            , "it's also possible that some other device on the network sent this response."
-            , ""
-            , "For a list of HTTP status codes and what they typically mean, see:"
-            , "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status."
-            , ""
-            , indent 4 $ "Request:" <+> renderRequest ereq
-            , indent 4 $ "Response:" <+> renderResponse eres
-            , ""
-            , reportTransientErrorMsg
-            ]
-    TooManyRedirectsError txns ->
-      newlineTrailing
-        "Too many redirects were encountered when communicating with the FOSSA endpoint."
-        <> "Network request log:"
-        <> vsep (fmap (\(ereq, eres) -> indent 4 $ renderRequestResponse ereq eres) txns)
-        <> newlinePreceding reportNetworkErrorMsg
-    OverlongHeadersError ereq ->
-      vsep
-        [ "The HTTP headers provided by the server were too long."
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , ""
-        , reportNetworkErrorMsg
-        ]
-    ResponseTimeoutError ereq ->
-      vsep
-        [ "A connection to the FOSSA endpoint was established, but the service took too long to respond."
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , ""
-        , reportNetworkErrorMsg
-        ]
-    ConnectionTimeoutError ereq ->
-      vsep
-        [ "The request to the FOSSA endpoint took too long to send."
-        , ""
-        , "This typically means that the CLI is being asked to send too much data"
-        , "with the current network speed (for example, uploading large archives),"
-        , "although this can also be a transient error caused by congested"
-        , "networking conditions between the CLI and the FOSSA API."
-        , ""
-        , "To reduce the likelihood of this error, ensure that only data you really"
-        , "need FOSSA to scan is being uploaded."
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , ""
-        , requestReportIfPersists
-        ]
-    ConnectionFailureError ereq err ->
-      vsep
-        [ "Connecting to the FOSSA endpoint failed:"
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , indent 4 "Error:" <+> pretty (displayException err)
-        , ""
-        , reportNetworkErrorMsg
-        ]
-    InvalidStatusLineError ereq status ->
-      vsep
-        [ "The FOSSA endpoint returned a status that could not be parsed:"
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , indent 4 "Status:" <+> pretty status
-        , ""
-        , reportFossaBugErrorMsg $ fossaEnvironment ereq
-        ]
-    InvalidResponseHeaderError ereq header ->
-      vsep
-        [ "The FOSSA endpoint returned a header which could not be parsed:"
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , indent 4 "Header:" <+> pretty header
-        , ""
-        , reportFossaBugErrorMsg $ fossaEnvironment ereq
-        ]
-    InvalidRequestHeaderError ereq header ->
-      vsep
-        [ "The FOSSA CLI provided a header which was not HTTP compliant:"
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , indent 4 "Header:" <+> pretty header
-        , ""
-        , reportCliBugErrorMsg
-        ]
-    ProxyConnectError ereq host port status ->
-      vsep
-        [ "The proxy specified for FOSSA to use returned an unexpected status code."
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , indent 4 "Proxy:"
-        , indent 6 "Server:" <+> pretty host <+> ":" <> pretty port
-        , indent 6 "Status:" <+> pretty (HTTP.statusCode status)
-        , ""
-        , reportNetworkErrorMsg
-        ]
-    NoResponseDataError ereq ->
-      vsep
-        [ "The connection to the FOSSA endpoint was closed without a response."
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , ""
-        , reportFossaBugErrorMsg $ fossaEnvironment ereq
-        ]
-    TlsNotSupportedError ereq ->
-      if fossaEnvironment ereq == FossaEnvironmentCloud
-        then
-          vsep
-            [ "The FOSSA endpoint reported that it does not support TLS connections."
-            , "This request is connecting to FOSSA's cloud environment, which only supports TLS connections."
-            , ""
-            , indent 4 "Request:" <+> renderRequest ereq
-            , ""
-            , reportNetworkErrorMsg
-            ]
-        else
-          vsep
-            [ "The FOSSA endpoint reported that it does not support TLS connections."
-            , "This request is not connecting to FOSSA's cloud environment, so this is up to the FOSSA administrators in your organization."
-            , ""
-            , indent 4 "Request:" <+> renderRequest ereq
-            , ""
-            , "Try again with an `http://` URL."
-            , "The FOSSA endpoint URL may be specified in `.fossa.yml` or with the `-e` or `--endpoint` arguments."
-            , ""
-            , reportDefectWithDebugBundle
-            ]
-    WrongRequestBodyStreamSizeError ereq expect got ->
-      vsep
-        [ "The FOSSA CLI did not provide a request body with the correct length."
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , indent 6 "Expected size (bytes):" <+> pretty (show expect)
-        , indent 6 "Provided size (bytes):" <+> pretty (show got)
-        , ""
-        , reportCliBugErrorMsg
-        ]
-    ResponseBodyTooShortError ereq expect got ->
-      vsep
-        [ "The FOSSA endpoint provided a response body that was too short."
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , indent 6 "Expected size (bytes):" <+> pretty (show expect)
-        , indent 6 "Provided size (bytes):" <+> pretty (show got)
-        , ""
-        , reportFossaBugErrorMsg $ fossaEnvironment ereq
-        ]
-    InvalidChunkHeadersError ereq ->
-      vsep
-        [ "The FOSSA endpoint provided a chunked response but it had invalid headers."
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , ""
-        , reportFossaBugErrorMsg $ fossaEnvironment ereq
-        ]
-    IncompleteHeadersError ereq ->
-      vsep
-        [ "The FOSSA endpoint returned an incomplete set of headers."
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , ""
-        , reportFossaBugErrorMsg $ fossaEnvironment ereq
-        ]
-    InvalidDestinationHostError ereq ->
-      vsep
-        [ "The host provided as the FOSSA CLI endpoint is invalid."
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , ""
-        , reportDefectMsg
-        ]
-    HttpZlibError ereq msg ->
-      vsep
-        [ "The FOSSA endpoint provided a response body that was unable to decompress."
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , indent 6 "Decompression error:" <+> pretty msg
-        , ""
-        , reportNetworkErrorMsg
-        ]
-    InvalidProxyEnvironmentVariableError ereq var val ->
-      vsep
-        [ "A provided environment variable used to configure the proxy connection is invalid."
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , indent 4 "Environment variable:"
-        , indent 6 "Name:" <+> pretty var
-        , indent 6 "Value:" <+> pretty val
-        , ""
-        , reportDefectMsg
-        ]
-    ConnectionClosedError ereq ->
-      vsep
-        [ "FOSSA CLI attempted to reuse a connection that was closed."
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , ""
-        , reportCliBugErrorMsg
-        ]
-    InvalidProxySettingsError ereq msg ->
-      vsep
-        [ "The proxy settings provided were not valid."
-        , ""
-        , indent 4 "Request:" <+> renderRequest ereq
-        , indent 4 "Proxy settings:" <+> pretty msg
-        , ""
-        , reportDefectMsg
-        ]
+        403 -> do
+          let header = "The endpoint returned status code 403"
+              content =
+                renderIt $
+                  vsep
+                    [ newlineTrailing "Response:" <+> renderResponse eres
+                    , "Typically, this status code indicates an authentication problem with the API."
+                    , "However, FOSSA reports invalid API keys using a different mechanism;"
+                    , "this likely means that some other service on your network intercepted the request"
+                    , "and reported this status code. This might be a proxy or some other network appliance."
+                    , ""
+                    , reportNetworkErrorMsg
+                    ]
+              ctx = "Provided request: " <> renderIt (renderRequest ereq)
+              body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+          Errata (Just header) [] (Just body)
+        other -> do
+          let header = "The FOSSA endpoint returned an unexpected status code: " <> toText other
+              content =
+                renderIt $
+                  vsep
+                    [ newlineTrailing "Response:" <+> renderResponse eres
+                    , "While HTTP responses typically come from the FOSSA API, it's also possible that some other device on the network sent this response."
+                    , reportTransientErrorMsg
+                    ]
+              help = "HTTP status codes - https://developer.mozilla.org/en-US/docs/Web/HTTP/Status"
+              ctx = "Request: " <> renderIt (renderRequest ereq)
+              body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) (Just help) (Just ctx)
+          Errata (Just header) [] (Just body)
+    TooManyRedirectsError txns -> do
+      let header = "Too many redirects were encountered when communicating with the FOSSA endpoint"
+          content =
+            renderIt $
+              vsep
+                [ "Network request log:"
+                , vsep (fmap (\(ereq, eres) -> indent 2 $ renderRequestResponse ereq eres) txns)
+                , newlinePreceding reportNetworkErrorMsg
+                ]
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing Nothing
+      Errata (Just header) [] (Just body)
+    OverlongHeadersError ereq -> do
+      let header = "The HTTP headers provided by the server were too long"
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          body = createBody Nothing Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
+    ResponseTimeoutError ereq -> do
+      let header = "A connection to the FOSSA endpoint was established, but the service took too long to respond"
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          body = createBody Nothing Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
+    ConnectionTimeoutError ereq -> do
+      let header = "The request to the FOSSA endpoint took too long to send"
+          content =
+            renderIt $
+              vsep
+                [ "This typically means that the CLI is being asked to send too much data"
+                , "with the current network speed (for example, uploading large archives),"
+                , "although this can also be a transient error caused by congested"
+                , "networking conditions between the CLI and the FOSSA API."
+                ]
+          help = "To reduce the likelihood of this error, ensure that only data you really need FOSSA to scan is being uploaded"
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) (Just help) (Just ctx)
+      Errata (Just header) [] (Just body)
+    ConnectionFailureError ereq err -> do
+      let header = "Connecting to the FOSSA endpoint failed"
+          content =
+            renderIt $
+              vsep
+                [ "Error:" <+> pretty (displayException err)
+                , newlinePreceding reportNetworkErrorMsg
+                ]
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
+    InvalidStatusLineError ereq status -> do
+      let header = "The FOSSA endpoint returned a status that could not be parsed"
+          content =
+            renderIt $
+              vsep
+                [ "Status:" <+> pretty status
+                , newlinePreceding $ reportFossaBugErrorMsg $ fossaEnvironment ereq
+                ]
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
+    InvalidResponseHeaderError ereq header -> do
+      let errHeader = "The FOSSA endpoint returned a header which could not be parsed"
+          content =
+            renderIt $
+              vsep
+                [ "Header:" <+> pretty header
+                , newlinePreceding $ reportFossaBugErrorMsg $ fossaEnvironment ereq
+                ]
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+      Errata (Just errHeader) [] (Just body)
+    InvalidRequestHeaderError ereq header -> do
+      let errHeader = "The FOSSA CLI provided a header which was not HTTP compliant"
+          content =
+            renderIt $
+              vsep
+                [ "Header:" <+> pretty header
+                , reportCliBugErrorMsg
+                ]
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+      Errata (Just errHeader) [] (Just body)
+    ProxyConnectError ereq host port status -> do
+      let header = "The FOSSA CLI provided a header which was not HTTP compliant"
+          content =
+            renderIt $
+              vsep
+                [ "Proxy:"
+                , indent 2 "Server:" <+> pretty host <+> ":" <> pretty port
+                , indent 2 "Status:" <+> pretty (HTTP.statusCode status)
+                , newlinePreceding reportNetworkErrorMsg
+                ]
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
+    NoResponseDataError ereq -> do
+      let header = "he connection to the FOSSA endpoint was closed without a response"
+          content = renderIt $ reportFossaBugErrorMsg $ fossaEnvironment ereq
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
+    TlsNotSupportedError ereq -> do
+      let header = "The FOSSA endpoint reported that it does not support TLS connections"
+          ctx = renderIt $ renderRequest ereq
+          (content, support, maybeHelp) =
+            if fossaEnvironment ereq == FossaEnvironmentCloud
+              then
+                ( renderIt $
+                    vsep
+                      [ "This request is connecting to FOSSA's cloud environment, which only supports TLS connections."
+                      , newlinePreceding reportNetworkErrorMsg
+                      ]
+                , renderIt requestReportIfPersistsWithDebugBundle
+                , Nothing
+                )
+              else
+                ( renderIt $ vsep ["This request is not connecting to FOSSA's cloud environment, so this is up to the FOSSA administrators in your organization."]
+                , renderIt reportDefectWithDebugBundle
+                , Just "Try again with an `http://` URL. The FOSSA endpoint URL may be specified in `.fossa.yml` or with the `-e` or `--endpoint` arguments"
+                )
+          body = createBody (Just content) Nothing (Just support) maybeHelp (Just ctx)
+      Errata (Just header) [] (Just body)
+    WrongRequestBodyStreamSizeError ereq expect got -> do
+      let header = "The FOSSA CLI did not provide a request body with the correct length"
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          content =
+            renderIt $
+              vsep
+                [ "Expected size (bytes):" <+> pretty (show expect)
+                , "Actual size (bytes):" <+> pretty (show got)
+                , newlinePreceding reportCliBugErrorMsg
+                ]
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
+    ResponseBodyTooShortError ereq expect got -> do
+      let header = "The FOSSA CLI did not provide a request body with the correct length"
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          content =
+            renderIt $
+              vsep
+                [ "Expected size (bytes):" <+> pretty (show expect)
+                , "Actual size (bytes):" <+> pretty (show got)
+                , newlinePreceding $ reportFossaBugErrorMsg $ fossaEnvironment ereq
+                ]
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
+    InvalidChunkHeadersError ereq -> do
+      let header = "The FOSSA endpoint provided a chunked response but it had invalid headers"
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          content = renderIt $ reportFossaBugErrorMsg $ fossaEnvironment ereq
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
+    IncompleteHeadersError ereq -> do
+      let header = "The FOSSA endpoint returned an incomplete set of headers"
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          content = renderIt $ reportFossaBugErrorMsg $ fossaEnvironment ereq
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
+    InvalidDestinationHostError ereq -> do
+      let header = "The host provided as the FOSSA CLI endpoint is invalid"
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          body = createBody Nothing Nothing (Just $ renderIt reportDefectMsg) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
+    HttpZlibError ereq msg -> do
+      let header = "The FOSSA endpoint provided a response body that was unable to decompress"
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          content =
+            renderIt $
+              vsep
+                [ "Decompression error:" <+> pretty msg
+                , newlinePreceding reportNetworkErrorMsg
+                ]
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
+    InvalidProxyEnvironmentVariableError ereq var val -> do
+      let header = "A provided environment variable used to configure the proxy connection is invalid"
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          content =
+            renderIt $
+              vsep
+                [ indent 2 "Environment variable:"
+                , indent 4 "Name:" <+> pretty var
+                , indent 4 "Value:" <+> pretty val
+                ]
+          body = createBody (Just content) Nothing (Just $ renderIt reportDefectMsg) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
+    ConnectionClosedError ereq -> do
+      let header = "FOSSA CLI attempted to reuse a connection that was closed"
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          content = renderIt reportCliBugErrorMsg
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
+    InvalidProxySettingsError ereq msg -> do
+      let header = "The proxy settings provided were not valid"
+          ctx = "Request: " <> renderIt (renderRequest ereq)
+          content = "Proxy settings:" <> msg
+          body = createBody (Just content) Nothing (Just $ renderIt reportDefectMsg) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
 
 containerUploadUrl :: Url scheme -> Url scheme
 containerUploadUrl baseurl = baseurl /: "api" /: "container" /: "upload"
@@ -593,7 +595,7 @@ uploadNativeContainerScan apiOpts ProjectRevision{..} metadata scan = fossaReq $
   supportsNativeScan <- orgSupportsNativeContainerScan <$> getOrganization apiOpts
   -- Sanity Check!
   if not supportsNativeScan
-    then fatal EndpointDoesNotSupportNativeContainerScan
+    then fatal (EndpointDoesNotSupportNativeContainerScan getSourceLocation)
     else do
       (baseUrl, baseOpts) <- useApiOpts apiOpts
       let locator = renderLocator $ Locator "custom" projectName (Just projectRevision)
@@ -1075,7 +1077,7 @@ getIssues apiOpts ProjectRevision{..} diffRevision = fossaReq $ do
 
   opts <- case (diffRevision, orgSupportsIssueDiffs org) of
     (Just (DiffRevision diffRev), True) -> pure (baseOpts <> "diffRevision" =: diffRev)
-    (Just _, False) -> fatal EndpointDoesNotSupportIssueDiffing
+    (Just _, False) -> fatal $ EndpointDoesNotSupportIssueDiffing getSourceLocation
     (Nothing, _) -> pure baseOpts
 
   response <-
@@ -1088,15 +1090,12 @@ getIssues apiOpts ProjectRevision{..} diffRevision = fossaReq $ do
 
   pure (responseBody response)
 
-data EndpointDoesNotSupportIssueDiffing = EndpointDoesNotSupportIssueDiffing
+newtype EndpointDoesNotSupportIssueDiffing = EndpointDoesNotSupportIssueDiffing SourceLocation
 
 instance ToDiagnostic EndpointDoesNotSupportIssueDiffing where
-  renderDiagnostic (EndpointDoesNotSupportIssueDiffing) =
-    vsep
-      [ "Provided endpoint does not support issue diffing."
-      , ""
-      , "If this instance of FOSSA is on-premise, it likely needs to be updated."
-      ]
+  renderDiagnostic :: EndpointDoesNotSupportIssueDiffing -> Errata
+  renderDiagnostic (EndpointDoesNotSupportIssueDiffing srcLoc) =
+    errataSimple (Just "Provided endpoint does not support issue diffing") (createEmptyBlock srcLoc) (Just "If this instance of FOSSA is on-premise, it likely needs to be updated")
 
 ---------------
 
@@ -1464,3 +1463,99 @@ alreadyAnalyzedPathRevision apiOpts ProjectRevision{..} = fossaReq $ do
     context ("Retrieving already analyzed path dependencies") $
       req GET url NoReqBody jsonResponse baseOpts
   pure (responseBody response)
+
+-- Reachability --
+
+signedReachabilityContentURLEndpoint :: Url 'Https -> Url 'Https
+signedReachabilityContentURLEndpoint baseUrl = baseUrl /: "api" /: "cli" /: "reachability" /: "content" /: "upload"
+
+signedReachabilityBuildURLEndpoint :: Url 'Https -> Url 'Https
+signedReachabilityBuildURLEndpoint baseUrl = baseUrl /: "api" /: "cli" /: "reachability" /: "build" /: "upload"
+
+getReachabilityContentSignedUrl ::
+  ( Has (Lift IO) sig m
+  , Has Debug sig m
+  , Has Diagnostics sig m
+  ) =>
+  ApiOpts ->
+  Map Text Text ->
+  m SignedURLWithKey
+getReachabilityContentSignedUrl apiOpts metadata = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  response <-
+    context ("Retrieving a signed S3 URL for reachability content upload") $
+      req POST (signedReachabilityContentURLEndpoint baseUrl) (ReqBodyJson metadata) jsonResponse baseOpts
+  pure (responseBody response)
+
+getReachabilityBuildSignedUrl ::
+  ( Has (Lift IO) sig m
+  , Has Debug sig m
+  , Has Diagnostics sig m
+  ) =>
+  ApiOpts ->
+  ProjectRevision ->
+  ProjectMetadata ->
+  m SignedURL
+getReachabilityBuildSignedUrl apiOpts ProjectRevision{..} metadata = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  let opts =
+        "locator"
+          =: renderLocator (Locator "custom" projectName (Just projectRevision))
+          <> mkMetadataOpts metadata projectName
+  response <-
+    context ("Retrieving a signed S3 URL for reachability build upload") $
+      req POST (signedReachabilityBuildURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
+  pure (responseBody response)
+
+uploadReachabilityBuild ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , ToJSON a
+  ) =>
+  SignedURL ->
+  a ->
+  m LbsResponse
+uploadReachabilityBuild signedUrl content = fossaReq $ do
+  let uploadURL = URI.mkURI $ signedURL signedUrl
+
+  uri <- fromMaybeText ("Invalid URL: " <> signedURL signedUrl) uploadURL
+  validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
+
+  context ("Uploading reachability build result to " <> signedURL signedUrl) $ case validatedURI of
+    Left (httpUrl, httpOptions) -> uploadReq httpUrl httpOptions
+    Right (httpsUrl, httpsOptions) -> uploadReq httpsUrl httpsOptions
+  where
+    encoded :: BS.ByteString
+    encoded = toStrict $ encode content
+
+    uploadReq :: (MonadHttp m) => Url scheme -> Option scheme -> m LbsResponse
+    uploadReq url options = reqCb PUT url (ReqBodyBs encoded) lbsResponse options (pure . requestEncoder)
+
+uploadReachabilityContent ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  ) =>
+  SignedURLWithKey ->
+  ByteString ->
+  m (Text)
+uploadReachabilityContent signedUrl bs = fossaReq $ do
+  let uploadURL = URI.mkURI $ surlwkSignedURL signedUrl
+
+  uri <- fromMaybeText ("Invalid URL: " <> surlwkSignedURL signedUrl) uploadURL
+  validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
+
+  void $ context ("Uploading reachability parsed content to " <> surlwkSignedURL signedUrl) $ case validatedURI of
+    Left (httpUrl, httpOptions) -> uploadReq httpUrl httpOptions
+    Right (httpsUrl, httpsOptions) -> uploadReq httpsUrl httpsOptions
+
+  pure $ surlwkKey signedUrl
+  where
+    uploadReq :: (MonadHttp m) => Url scheme -> Option scheme -> m LbsResponse
+    uploadReq url options =
+      reqCb
+        PUT
+        url
+        (Req.ReqBodyLbs bs)
+        lbsResponse
+        options
+        (pure . requestEncoder)
