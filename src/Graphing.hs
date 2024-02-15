@@ -396,7 +396,7 @@ subGraphOf n (Graphing gr) =
     keepPredicate Root = True
     keepPredicate (Node ty) = Set.member (Node ty) reachableNodes
 
--- | Coloring a graph allows you to attach arbitrary context to nodes.
+-- | Coloring a graph allows you to attach arbitrary context to nodes
 color :: forall a b. (Ord a, Ord b) => Graphing a -> (a -> Set.Set b) -> (Set.Set b -> a -> a) -> a -> (a -> b) -> Set.Set b -> Graphing a
 color graph extractSet update origin extractProperty nodesToColor = gmap applyColor graph
   where
@@ -406,7 +406,7 @@ color graph extractSet update origin extractProperty nodesToColor = gmap applyCo
           coloredNodeSet = if (extractProperty node) `Set.member` nodesToColor then nodeSet `Set.union` Set.fromList [extractProperty origin] else nodeSet
       update coloredNodeSet node
 
--- | Gets all successors originating from 'a' (excluding a) that satisfy a condition..
+-- | Gets all successors originating from 'a' (excluding a) that satisfy a condition
 --
 --   Given the graph:
 --
