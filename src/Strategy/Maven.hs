@@ -177,14 +177,7 @@ getStaticAnalysis submoduleTargets closure = do
   filteredGraph <- applyMavenFilters submoduleTargets allSubmodules graph
   pure (filteredGraph, graphBreadth)
 
-applyMavenFilters ::
-  ( Has Diagnostics sig m
-  , Has (Reader MavenScopeFilters) sig m
-  ) =>
-  Set Text ->
-  Set Text ->
-  Graphing MavenDependency ->
-  m (Graphing Dependency)
+applyMavenFilters :: (Has Diagnostics sig m, Has (Reader MavenScopeFilters) sig m) => Set Text -> Set Text -> Graphing MavenDependency -> m (Graphing Dependency)
 applyMavenFilters targetSet submoduleSet graph = do
   mavenScopeFilters <- ask @(MavenScopeFilters)
   filteredSubmoduleGraph <-
