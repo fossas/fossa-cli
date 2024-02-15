@@ -26,6 +26,7 @@ module Discovery.Filters (
   FilterSet (..),
   setInclude,
   setExclude,
+  mavenScopeFilterSet,
 ) where
 
 import Control.Effect.Reader (Has, Reader, ask)
@@ -122,6 +123,10 @@ instance Semigroup (FilterCombination a) where
 
 instance Monoid (FilterCombination a) where
   mempty = FilterCombination mempty mempty
+
+mavenScopeFilterSet :: MavenScopeFilters -> Set Text
+mavenScopeFilterSet (MavenScopeIncludeFilters filterSet) = scopes filterSet
+mavenScopeFilterSet (MavenScopeExcludeFilters filterSet) = scopes filterSet
 
 withMultiToolFilter :: Has (Reader AllFilters) sig m => [DiscoveredProjectType] -> m [a] -> m [a]
 withMultiToolFilter tools act = do

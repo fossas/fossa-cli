@@ -1,7 +1,10 @@
 # FOSSA CLI Changelog
 
-## v3.9.5
+## v3.9.6
 - Reachability: Users may now provide custom locations for the JAR files emitted by projects and used for reachability analysis ([#1382](https://github.com/fossas/fossa-cli/pull/1382)).
+
+## v3.9.5
+- Maven: Fix hanging maven analysis ([#1381](https://github.com/fossas/fossa-cli/pull/1381)).
 
 ## v3.9.4
 - Reachability: Includes reachability analysis in scan summary ([#1379](https://github.com/fossas/fossa-cli/pull/1379)).
