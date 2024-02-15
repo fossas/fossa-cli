@@ -396,60 +396,26 @@ subGraphOf n (Graphing gr) =
     keepPredicate Root = True
     keepPredicate (Node ty) = Set.member (Node ty) reachableNodes
 
--- | Traverse a graph and add the orgin's extracted property (color) to a set defined in the a node's data type.
---   The set that will be updated will be determined by extractSet.
---   The color will be added to all nodes specified in nodeToColor.
---   Refer to Maven/Common.hs for an example of usage.
+-- | Adds color to all nodesToColor, with the color being 'a's extractedProperty
 --
---   Given a graph of type:
+-- data SimpleDep = SimpleDep{ name :: Text, colorTag :: Text, colors :: Set Text}
 --
--- >    data SimpleDep = SimpleDep
--- >      { name :: Text
--- >      , colorTag :: Text
--- >      , colors :: Set Text
--- >      }
+-- updateColors :: Set Text -> SimpleDep -> SimpleDep
+-- updateColors newColor dep = dep{colors = newColor}
+
+-- extractColors :: SimpleDep -> Set Text
+-- extractColors = colors
+
+-- extractColorTag :: SimpleDep -> Text
+-- extractColorTag = colorTag
+
+-- Example
 --
---   Where the graph is structured as:  d1 -> d2 -> d3
+--  d1("d1", "blue" mempty) -> d2("d2", "green" mempty) -> d3("d3", "red" mempty)
 --
--- >    d1 = SimpleDep              d2 = SimpleDep                 d3 = SimpleDep
--- >      { name : "d1"               { name : "d2"                   { name : "d3"
--- >      , colorTag : "blue"         , colorTag : "green"            , colorTag : "red"
--- >      , colors : mempty           , colors : mempty               , colors : mempty
--- >      }                           }                               }
+-- color gr extractColors updateColors d1 extractColorTag nodesToColor= Set.fromList["blue", "green", "red"] =
 --
---   In the case that we want to add d1's `colorTag` value ("blue") to d2 & d3 `colors` set. The function works as follows:
---
---   1. Traverse the graph and check if the current node's `colorTag` is in: Set("green", "red").
---      To perform this check, we have a function to extract the `colorTag` property from our SimpleDep data type. It is defined as:
---
--- >        extractColorTag :: SimpleDep -> Text
--- >        extractColorTag = colorTag
---
---      In this scenario:
--- >        nodesToColor = Set ("green", "red")
--- >        extractProperty = extractColorTag
---
---   2. Add d1's `colorTag` to d2 & d3 `colors` set
---      To update the `colors` set, we first need need a function to extract the `colors` set from our SimpleDep data type: It is defined as:
---
--- >        extractColors :: SimpleDep -> Set Text
--- >        extractColors = colors
---
---      Then, we update the set using function:
---
--- >        updateColors :: Set Text -> SimpleDep -> SimpleDep
--- >        updateColors newColor dep = dep{colors = newColor
---
---      In this scenario:
--- >        update = updateColors
--- >        extractSet = extractColors
---
---   d2 and d3 after computation:
--- >    d2 = SimpleDep                 d3 = SimpleDep
--- >      { name : "d2"                   { name : "d3"
--- >      , colorTag : "green"            , colorTag : "red"
--- >      , colors : Set("blue")          , colors : Set("blue")
--- >      }                               }
+-- d1("d1", "blue" Set("blue")) -> d2("d2", "green" Set("blue")) -> d3("d3", "red" Set("blue"))
 color :: forall a b. (Ord a, Ord b) => Graphing a -> (a -> Set.Set b) -> (Set.Set b -> a -> a) -> a -> (a -> b) -> Set.Set b -> Graphing a
 color graph extractSet update origin extractProperty nodesToColor = gmap applyColor graph
   where
@@ -459,31 +425,20 @@ color graph extractSet update origin extractProperty nodesToColor = gmap applyCo
           coloredNodeSet = if (extractProperty node) `Set.member` nodesToColor then nodeSet `Set.union` Set.fromList [extractProperty origin] else nodeSet
       update coloredNodeSet node
 
--- | Retrieve all reachable nodes from a given origin on a condition. The list of reachable nodes excludes the origin.
---   Refer to Maven/Common.hs for an example of usage.
+-- | Gets all successors originating from 'a' on condition (excluding a)
 --
---   Given the graph:
+-- Example
 --
--- >    1 -> 2
--- >     \     \
--- >      3     \
--- >       \      4
--- >         6     \
--- >                5
+--   1 -> 2
+--    \    \
+--     3    \
+--      \    4
+--       6    \
+--             5
 --
---   In the case that we want to retrieve all reachable of nodes from 1, where the reachable nodes are not 2.
---   We can our parameters as:
+-- reachableSuccessorsWithCondition [(1, 2), (1, 3), (2, 4), (3, 6), (4, 5)]  1  (\x -> x `Set.notMember conditionalSet) conditionalSet= Set.fromList [2] =
 --
--- >    edgeList' = [(1, 2), (1, 3), (2, 4), (3, 6), (4, 5)]
--- >    conditionalSet= Set.fromList [2]
--- >    f = (\x -> x `Set.notMember conditionalSet)
---
---   The following example returns result:
---
--- >    Set (3, 6)
---
---   1 has an edge to 2 & 3. However, since 2 is in the `conditionalSet`, we only traverse through 3's path.
---   This means that 2, 4, 5 will be excluded from the result.
+-- Set (3, 6)
 reachableSuccessorsWithCondition :: forall a. (Ord a) => [(a, a)] -> a -> (a -> Set.Set a -> Bool) -> Set.Set a -> Set.Set a -> Set.Set a
 reachableSuccessorsWithCondition edgeList' origin f conditionalSet visitedSet =
   let visitedSet' = Set.insert origin visitedSet
