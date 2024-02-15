@@ -10,7 +10,7 @@ module Analysis.FixtureUtils (
   TestC,
   performDiscoveryAndAnalyses,
   getArtifact,
-  testRunnerWithLogger,
+  testRunner,
   withResult,
 ) where
 
@@ -122,8 +122,8 @@ type TestC m =
     $ StackC
     $ IgnoreTelemetryC m
 
-testRunnerWithLogger :: TestC IO a -> FixtureEnvironment -> IO (Result a)
-testRunnerWithLogger f env =
+testRunner :: TestC IO a -> FixtureEnvironment -> IO (Result a)
+testRunner f env =
   f
     & runExecIOWithinEnv env
     & runReadFSIO
@@ -160,10 +160,10 @@ performDiscoveryAndAnalyses targetDir AnalysisTestFixture{..} = do
   _ <- sendIO $ runCmd environment buildCmd
 
   -- Perform discovery
-  discoveryResult <- sendIO $ testRunnerWithLogger (discover targetDir) environment
+  discoveryResult <- sendIO $ testRunner (discover targetDir) environment
   withResult discoveryResult $ \_ dps ->
     for dps $ \dp -> do
-      analysisResult <- sendIO $ testRunnerWithLogger (ignoreDebug $ analyzeProject (projectBuildTargets dp) (projectData dp)) environment
+      analysisResult <- sendIO $ testRunner (ignoreDebug $ analyzeProject (projectBuildTargets dp) (projectData dp)) environment
       withResult analysisResult $ \_ dr -> pure (dp, dr)
   where
     runCmd :: FixtureEnvironment -> Maybe (Command) -> IO ()

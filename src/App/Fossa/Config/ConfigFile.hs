@@ -280,8 +280,8 @@ instance FromJSON (Path Abs File -> ConfigFile) where
       <*> obj .:? "vendoredDependencies"
       <*> obj .:? "telemetry"
       <*> obj .:? "customLicenseSearch"
-      <*> obj .:? "reachability"
       <*> obj .:? "experimentalKeywordSearch"
+      <*> obj .:? "reachability"
       <*> parseIgnoreOrgWideCustomLicenseScanConfigs obj
     where
       parseIgnoreOrgWideCustomLicenseScanConfigs obj = do

@@ -128,7 +128,6 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
           }
   (reachabilityConfig :: ReachabilityConfig) <- ask
   let reachabilityJarsByProject = configReachabilityJvmOutputs reachabilityConfig
-
   case (projectResultGraphBreadth projectResult, dpiProjectType dpi) of
     -- if we do not have complete graph, i.e.. missing transitive dependencies
     -- it is impossible to perform reachability, as we may not have all symbols
@@ -140,6 +139,7 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
       analysis <- Diag.errorBoundaryIO . diagToDebug $ case Map.lookup projectPath reachabilityJarsByProject of
         Just jars -> do
           logDebug . pretty $ "Using user-specified jars for maven project: " <> show projectPath
+          logDebug . pretty $ "  " <> show jars
           callGraphFromJars jars
         Nothing -> do
           logDebug . pretty $ "Trying to infer build jars from maven project: " <> show (projectResultPath projectResult)
@@ -151,6 +151,7 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
       analysis <- Diag.errorBoundaryIO . diagToDebug $ case Map.lookup projectPath reachabilityJarsByProject of
         Just jars -> do
           logDebug . pretty $ "Using user-specified jars for gradle project: " <> show projectPath
+          logDebug . pretty $ "  " <> show jars
           callGraphFromJars jars
         Nothing -> do
           logDebug . pretty $ "Trying to infer build jars from gradle project: " <> show (projectResultPath projectResult)

@@ -397,6 +397,23 @@
                 "$ref": "#/$defs/grepDefinition"
             }
         },
+        "reachability": {
+          "type": "object",
+          "description": "Controls the Reachability computation functionality",
+          "properties": {
+            "jvmOutputs": {
+              "type": "object",
+              "description": "Manually specify the list of JAR files output by each discovered Maven or Gradle project",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "description": "The path to a JAR file output by the project"
+                }
+              }
+            }
+          }
+        },
         "ignoreOrgWideCustomLicenseScanConfigs": {
             "type": "boolean",
             "default": false,
