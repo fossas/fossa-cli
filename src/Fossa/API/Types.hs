@@ -61,7 +61,6 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
-import Data.Aeson.Types (Parser)
 import Data.Coerce (coerce)
 import Data.Function (on)
 import Data.List (sort, sortBy)

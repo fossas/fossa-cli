@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.9.6
+- Add preflight permission checks to validate token type, subscription type, project permissions, and release group permissions [#1383](https://github.com/fossas/fossa-cli/pull/1383)
+
 ## v3.9.5
 - Maven: Fix hanging maven analysis [#1381](https://github.com/fossas/fossa-cli/pull/1381)
 
