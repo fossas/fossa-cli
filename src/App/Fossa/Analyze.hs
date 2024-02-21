@@ -115,6 +115,7 @@ import Effect.Logger (
   logStdout,
  )
 import Effect.ReadFS (ReadFS)
+import Fossa.API.Types (IssuesSummary (revision))
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
@@ -295,7 +296,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   _ <- case destination of
     OutputStdout -> pure ()
-    UploadScan apiOpts _ -> runFossaApiClient apiOpts $ preflightChecks AnalyzeChecks
+    UploadScan apiOpts metadata -> runFossaApiClient apiOpts $ preflightChecks $ AnalyzeChecks revision metadata
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).

@@ -33,7 +33,12 @@ module Fossa.API.Types (
   AnalyzedPathDependenciesResp (..),
   AnalyzedPathDependency (..),
   TokenType (..),
+  TokenTypeResponse (..),
   Subscription (..),
+  SubscriptionResponse (..),
+  CustomBuildUploadPermissions (..),
+  ProjectPermissionStatus (..),
+  ReleaseGroupPermissionStatus (..),
   useApiOpts,
   defaultApiPollDelay,
   blankOrganization,
@@ -56,6 +61,7 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
+import Data.Aeson.Types (Parser)
 import Data.Coerce (coerce)
 import Data.Function (on)
 import Data.List (sort, sortBy)
@@ -571,10 +577,28 @@ data TokenType
   | FullAccess
   deriving (Eq, Ord, Show)
 
+newtype TokenTypeResponse = TokenTypeResponse {tokenType :: TokenType}
+  deriving (Eq, Ord, Show)
+
+instance FromJSON TokenTypeResponse where
+  parseJSON = withObject "TokenTypeResponse" $ \obj ->
+    TokenTypeResponse
+      <$> obj
+        .: "tokenType"
+
 instance FromJSON TokenType where
-  parseJSON = withText "TokenType" $ \txt -> case txt of
+  parseJSON = withText "TokenType" $ \case
     "Push" -> pure Push
     _ -> pure FullAccess
+
+newtype SubscriptionResponse = SubscriptionResponse {subscription :: Subscription}
+  deriving (Eq, Ord, Show)
+
+instance FromJSON SubscriptionResponse where
+  parseJSON = withObject "SubscriptionResponse" $ \obj ->
+    SubscriptionResponse
+      <$> obj
+        .: "subscription"
 
 data Subscription
   = Free
@@ -582,9 +606,43 @@ data Subscription
   deriving (Eq, Ord, Show)
 
 instance FromJSON Subscription where
-  parseJSON = withText "Subscription" $ \txt -> case txt of
+  parseJSON = withText "Subscription" $ \case
     "Free" -> pure Free
     _ -> pure Premium
+
+data CustomBuildUploadPermissions = CustomBuildUploadPermissions
+  { projectPermissionStatus :: ProjectPermissionStatus
+  , maybeReleaseGroupPermissionStatus :: Maybe ReleaseGroupPermissionStatus
+  }
+  deriving (Eq, Ord, Show)
+
+data ProjectPermissionStatus = ValidProjectPermission | InvalidEditProjectPermission | InvalidCreateProjectPermission | InvalidCreateTeamProjectPermission | InvalidCreateProjectOnlyToTeamPermission
+  deriving (Eq, Ord, Show)
+
+data ReleaseGroupPermissionStatus = ValidReleaseGroupPermission | InvalidEditReleaseGroupPermission | InvalidCreateTeamProjectsForReleaseGroupPermission
+  deriving (Eq, Ord, Show)
+
+instance FromJSON CustomBuildUploadPermissions where
+  parseJSON = withObject "CustomBuildUploadPermissions" $ \obj ->
+    CustomBuildUploadPermissions
+      <$> obj .: "projectPermissionStatus"
+      <*> obj .:? "releaseGroupPermissionStatus"
+
+instance FromJSON ProjectPermissionStatus where
+  parseJSON = withText "ProjectPermissionStatus" $ \case
+    "ValidProjectPermission" -> pure ValidProjectPermission
+    "InvalidEditProjectPermission" -> pure InvalidEditProjectPermission
+    "InvalidCreateProjectPermission" -> pure InvalidCreateProjectPermission
+    "InvalidCreateTeamProjectPermission" -> pure InvalidCreateTeamProjectPermission
+    "InvalidCreateProjectOnlyToTeamPermission" -> pure InvalidCreateProjectOnlyToTeamPermission
+    _ -> fail "Invalid ProjectPermissionStatus"
+
+instance FromJSON ReleaseGroupPermissionStatus where
+  parseJSON = withText "FailedPermissionType" $ \case
+    "ValidReleaseGroupPermission" -> pure ValidReleaseGroupPermission
+    "InvalidEditReleaseGroupPermission " -> pure InvalidEditReleaseGroupPermission
+    "InvalidCreateTeamProjectsForReleaseGroupPermission" -> pure InvalidCreateTeamProjectsForReleaseGroupPermission
+    _ -> fail "Invalid ReleaseGroupPermissionStatus"
 
 data Project = Project
   { projectId :: Text

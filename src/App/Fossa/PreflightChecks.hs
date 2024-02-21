@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.PreflightChecks (
@@ -7,18 +8,19 @@ module App.Fossa.PreflightChecks (
 ) where
 
 import App.Docs (apiKeyUrl)
+import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Diagnostics (Diagnostics, errCtx)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.Stack (context)
 import Control.Effect.Diagnostics (ToDiagnostic, fatalOnIOException, fatalText)
-import Control.Effect.FossaApiClient (FossaApiClient, FossaApiClientF (AssertUserDefinedBinaries), getOrganization, getSubscription, getTokenType)
+import Control.Effect.FossaApiClient (FossaApiClient, getCustomBuildPermissions, getOrganization, getSubscription, getTokenType)
 import Control.Effect.Lift (Has, Lift, sendIO)
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Data.Text.IO qualified as TIO
 import Diag.Diagnostic (ToDiagnostic (..))
-import Effect.Logger (pretty, vsep)
-import Fossa.API.Types (ApiOpts, Subscription (..), TokenType (..))
+import Effect.Logger (Logger, logDebug, pretty, vsep)
+import Fossa.API.Types (ApiOpts, CustomBuildUploadPermissions (..), Organization (orgSupportsPreflightChecks), ProjectPermissionStatus (..), ReleaseGroupPermissionStatus (..), Subscription (..), SubscriptionResponse (..), TokenType (..), TokenTypeResponse (..))
 import Path (
   File,
   Path,
@@ -28,12 +30,20 @@ import Path (
   (</>),
  )
 import Path.IO (getTempDir, removeFile)
+import Text.Pretty.Simple (pShow)
 
-data PreflightCommandChecks = AnalyzeChecks | TestChecks | ReportChecks | ConatinerAnalzyeChecks | ContainerTestChecks | AssertUserDefinedBinariesChecks
+data PreflightCommandChecks
+  = AnalyzeChecks ProjectRevision ProjectMetadata
+  | TestChecks
+  | ReportChecks
+  | ConatinerAnalzyeChecks
+  | ContainerTestChecks
+  | AssertUserDefinedBinariesChecks
 
 guardWithPreflightChecks ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
+  , Has Logger sig m
   ) =>
   ApiOpts ->
   PreflightCommandChecks ->
@@ -44,6 +54,7 @@ preflightChecks ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has FossaApiClient sig m
+  , Has Logger sig m
   ) =>
   PreflightCommandChecks ->
   m ()
@@ -54,25 +65,50 @@ preflightChecks cmd = context "preflight-checks" $ do
   sendIO $ removeFile (tmpDir </> preflightCheckFileName)
 
   -- Check for valid API Key and if user can connect to fossa app
-  tokenType <- errCtx InvalidApiKeyErr getTokenType
-  subscription <- getSubscription
 
-  void $ case cmd of
-    TestChecks -> do
-      fullAccessTokenCheck tokenType
-    _ -> do
-      fullAccessTokenCheck tokenType
-      premiumSubscriptionCheck subscription
+  org <- errCtx InvalidApiKeyErr getOrganization
+
+  when (orgSupportsPreflightChecks org) $
+    void $
+      case cmd of
+        TestChecks -> do
+          tokenType <- getTokenType
+          fullAccessTokenCheck tokenType
+        AnalyzeChecks rev metadata -> do
+          customBuildPermissions <- getCustomBuildPermissions rev metadata
+          logDebug $ "This is the permission data" <> pretty (pShow (customBuildPermissions))
+          uploadBuildPermissionsCheck customBuildPermissions
+        _ -> do
+          tokenType <- getTokenType
+          subscription <- getSubscription
+          fullAccessTokenCheck tokenType
+          premiumSubscriptionCheck subscription
 
   void $ errCtx InvalidApiKeyErr getOrganization
 
-fullAccessTokenCheck :: Has Diagnostics sig m => TokenType -> m ()
-fullAccessTokenCheck token = case token of
+uploadBuildPermissionsCheck :: Has Diagnostics sig m => CustomBuildUploadPermissions -> m ()
+uploadBuildPermissionsCheck CustomBuildUploadPermissions{..} =
+  case maybeReleaseGroupPermissionStatus of
+    Just releaseGroupPermissionStatus ->
+      case releaseGroupPermissionStatus of
+        ValidReleaseGroupPermission -> pure ()
+        InvalidEditReleaseGroupPermission -> fatalText "You do not have permission to edit this release group"
+        InvalidCreateTeamProjectsForReleaseGroupPermission -> fatalText "You do not have permission to add projects to all teams which include this release group"
+    Nothing ->
+      case projectPermissionStatus of
+        ValidProjectPermission -> pure ()
+        InvalidEditProjectPermission -> fatalText "You do not have permission to edit this project"
+        InvalidCreateProjectPermission -> fatalText "You do not have permission to create project"
+        InvalidCreateTeamProjectPermission -> fatalText "You do not have permission to a project for the specified team"
+        InvalidCreateProjectOnlyToTeamPermission -> fatalText "You permissions create projects but only for a specified team"
+
+fullAccessTokenCheck :: Has Diagnostics sig m => TokenTypeResponse -> m ()
+fullAccessTokenCheck TokenTypeResponse{..} = case tokenType of
   Push -> fatalText "You are using a push-only token when you need a full-access token"
   _ -> pure ()
 
-premiumSubscriptionCheck :: Has Diagnostics sig m => Subscription -> m ()
-premiumSubscriptionCheck subscription = case subscription of
+premiumSubscriptionCheck :: Has Diagnostics sig m => SubscriptionResponse -> m ()
+premiumSubscriptionCheck SubscriptionResponse{..} = case subscription of
   Free -> fatalText "You have free subscription when you need premium subscription"
   _ -> pure ()
 

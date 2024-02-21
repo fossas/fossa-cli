@@ -20,6 +20,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   getSubscription,
   uploadReachabilityContent,
   uploadReachabilityBuild,
+  getCustomBuildPermissions,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
@@ -45,13 +46,16 @@ import Fossa.API.Types (
   Archive,
   Build,
   Contributors,
+  -- CustomBuildUploadPermissions,
+
+  CustomBuildUploadPermissions,
   Issues,
   Organization,
   Project,
   RevisionDependencyCache,
   SignedURL,
-  Subscription,
-  TokenType,
+  SubscriptionResponse,
+  TokenTypeResponse,
   UploadResponse,
  )
 import Srclib.Types (Locator, SourceUnit, renderLocator)
@@ -76,7 +80,7 @@ getTokenType ::
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  m TokenType
+  m TokenTypeResponse
 getTokenType = do
   apiOpts <- ask
   API.getTokenType apiOpts
@@ -87,10 +91,23 @@ getSubscription ::
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  m Subscription
+  m SubscriptionResponse
 getSubscription = do
   apiOpts <- ask
   API.getSubscription apiOpts
+
+getCustomBuildPermissions ::
+  ( Has (Lift IO) sig m
+  , Has (Reader ApiOpts) sig m
+  , Has Debug sig m
+  , Has Diagnostics sig m
+  ) =>
+  ProjectRevision ->
+  ProjectMetadata ->
+  m CustomBuildUploadPermissions
+getCustomBuildPermissions revision metadata = do
+  apiOpts <- ask
+  API.getCustomBuildUploadPermissions apiOpts revision metadata
 
 getProject ::
   ( Has (Lift IO) sig m
