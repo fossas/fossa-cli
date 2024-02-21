@@ -69,6 +69,7 @@ import Effect.Grapher (
   withLabeling,
  )
 import Effect.ReadFS (ReadFS)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, parent)
@@ -164,7 +165,9 @@ analyze file = do
 
 data FailedToRetrieveLeinDependencies = FailedToRetrieveLeinDependencies
 instance ToDiagnostic FailedToRetrieveLeinDependencies where
-  renderDiagnostic _ = "We could not successfully retrieve dependencies information using lein deps subcommand."
+  renderDiagnostic _ = do
+    let header = "Could not successfully retrieve dependencies information using lein deps subcommand"
+    Errata (Just header) [] Nothing
 
 -- node type for our LabeledGrapher
 data ClojureNode = ClojureNode

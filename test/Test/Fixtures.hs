@@ -44,6 +44,13 @@ module Test.Fixtures (
   premiumSubscription,
   pushToken,
   fullAccessToken,
+  validCustomUploadPermissions,
+  invalidCreateTeamProjectsForReleaseGroupPermission,
+  invalidEditReleaseGroupPermission,
+  invalidCreateProjectOnlyToTeamPermission,
+  invalidCreateTeamProjectPermission,
+  invalidEditProjectPermission,
+  invalidCreateProjectPermission,
 ) where
 
 import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
@@ -87,19 +94,40 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False False
+organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True
 
-freeSubscription :: API.Subscription
-freeSubscription = API.Free
+freeSubscription :: API.SubscriptionResponse
+freeSubscription = API.SubscriptionResponse API.Free
 
-premiumSubscription :: API.Subscription
-premiumSubscription = API.Premium
+premiumSubscription :: API.SubscriptionResponse
+premiumSubscription = API.SubscriptionResponse API.Premium
 
-pushToken :: API.TokenType
-pushToken = API.Push
+pushToken :: API.TokenTypeResponse
+pushToken = API.TokenTypeResponse API.Push
 
-fullAccessToken :: API.TokenType
-fullAccessToken = API.FullAccess
+fullAccessToken :: API.TokenTypeResponse
+fullAccessToken = API.TokenTypeResponse API.FullAccess
+
+invalidCreateProjectPermission :: API.CustomBuildUploadPermissions
+invalidCreateProjectPermission = API.CustomBuildUploadPermissions API.InvalidCreateProjectPermission Nothing
+
+invalidEditProjectPermission :: API.CustomBuildUploadPermissions
+invalidEditProjectPermission = API.CustomBuildUploadPermissions API.InvalidEditProjectPermission Nothing
+
+invalidCreateTeamProjectPermission :: API.CustomBuildUploadPermissions
+invalidCreateTeamProjectPermission = API.CustomBuildUploadPermissions API.InvalidCreateTeamProjectPermission Nothing
+
+invalidCreateProjectOnlyToTeamPermission :: API.CustomBuildUploadPermissions
+invalidCreateProjectOnlyToTeamPermission = API.CustomBuildUploadPermissions API.InvalidCreateProjectOnlyToTeamPermission Nothing
+
+invalidEditReleaseGroupPermission :: API.CustomBuildUploadPermissions
+invalidEditReleaseGroupPermission = API.CustomBuildUploadPermissions API.ValidProjectPermission $ Just API.InvalidEditReleaseGroupPermission
+
+invalidCreateTeamProjectsForReleaseGroupPermission :: API.CustomBuildUploadPermissions
+invalidCreateTeamProjectsForReleaseGroupPermission = API.CustomBuildUploadPermissions API.ValidProjectPermission $ Just API.InvalidCreateTeamProjectsForReleaseGroupPermission
+
+validCustomUploadPermissions :: API.CustomBuildUploadPermissions
+validCustomUploadPermissions = API.CustomBuildUploadPermissions API.ValidProjectPermission $ Just API.ValidReleaseGroupPermission
 
 project :: API.Project
 project =

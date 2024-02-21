@@ -17,7 +17,7 @@ import App.Fossa.Config.Container.Analyze (
  )
 import App.Fossa.Config.Container.Analyze qualified as Config
 import App.Fossa.Container.Scan (extractRevision, scanImage)
-import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks, ConatinerAnalzyeChecks), preflightChecks)
+import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
 import App.Types (
   ProjectMetadata,
   ProjectRevision (..),
@@ -37,6 +37,7 @@ import Control.Monad (void, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
+import Data.Error (getSourceLocation)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
@@ -101,12 +102,12 @@ analyze ::
   ContainerAnalyzeConfig ->
   m ContainerScan
 analyze cfg = do
-  _ <- case scanDestination cfg of
-    OutputStdout -> pure ()
-    UploadScan apiOpts _ -> runFossaApiClient apiOpts $ preflightChecks ConatinerAnalzyeChecks
-
   scannedImage <- scanImage (filterSet cfg) (onlySystemDeps cfg) (imageLocator cfg) (dockerHost cfg) (arch cfg)
   let revision = extractRevision (revisionOverride cfg) scannedImage
+
+  _ <- case scanDestination cfg of
+    OutputStdout -> pure ()
+    UploadScan apiOpts projectMetadata -> runFossaApiClient apiOpts $ preflightChecks $ AnalyzeChecks revision projectMetadata
 
   logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
   logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
@@ -136,7 +137,7 @@ uploadScan revision projectMeta jsonOutput containerScan =
   do
     supportsNativeScan <- orgSupportsNativeContainerScan <$> getOrganization
     if not supportsNativeScan
-      then fatal EndpointDoesNotSupportNativeContainerScan
+      then fatal (EndpointDoesNotSupportNativeContainerScan getSourceLocation)
       else do
         resp <- uploadNativeContainerScan revision projectMeta containerScan
         let locator = uploadLocator resp

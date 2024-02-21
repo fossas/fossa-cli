@@ -22,6 +22,7 @@ import Discovery.Walk (WalkStep (WalkContinue), walkWithFilters')
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execParser)
 import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (ReadFS)
+import Errata (Errata (..))
 import Path (Abs, Dir, File, Path, parent, parseAbsFile)
 import Path.Extra (SomeResolvedPath (..))
 import Text.Megaparsec (Parsec, between, empty, eof, many, optional, takeWhile1P, try, (<|>))
@@ -74,7 +75,9 @@ dynamicLinkedDependenciesSingle file = context ("Inspect " <> toText (show file)
 
 newtype SkippingDynamicDep = SkippingDynamicDep (Path Abs File)
 instance ToDiagnostic SkippingDynamicDep where
-  renderDiagnostic (SkippingDynamicDep target) = pretty $ "Skipping dynamic analysis for target: " <> show target
+  renderDiagnostic (SkippingDynamicDep target) = do
+    let header = "Skipping dynamic analysis for target: " <> toText (show target)
+    Errata (Just header) [] Nothing
 
 lddCommand :: Path Abs File -> Command
 lddCommand binaryPath =

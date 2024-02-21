@@ -15,6 +15,9 @@ module Control.Effect.Diagnostics (
   fatal,
   recover,
   errCtx,
+  errHelp,
+  errSupport,
+  errDoc,
   errorBoundary,
   rethrow,
   warn,
@@ -80,6 +83,9 @@ data Diag m k where
   Fatal :: ToDiagnostic diag => diag -> Diag m a
   Recover :: m a -> Diag m (Maybe a)
   ErrCtx :: ToDiagnostic ctx => ctx -> m a -> Diag m a
+  ErrHelp :: ToDiagnostic hlp => hlp -> m a -> Diag m a
+  ErrSupport :: ToDiagnostic supp => supp -> m a -> Diag m a
+  ErrDoc :: ToDiagnostic doc => doc -> m a -> Diag m a
   ErrorBoundary :: m a -> Diag m (Result a)
   Rethrow :: Result a -> Diag m a
   Warn :: ToDiagnostic warn => warn -> Diag m ()
@@ -98,6 +104,21 @@ recover = send . Recover
 -- context
 errCtx :: (ToDiagnostic ctx, Has Diagnostics sig m) => ctx -> m a -> m a
 errCtx ctx m = send (ErrCtx ctx m)
+
+-- | When the provided action fails, annotate its error with the provided
+-- help
+errHelp :: (ToDiagnostic hlp, Has Diagnostics sig m) => hlp -> m a -> m a
+errHelp hlp m = send (ErrHelp hlp m)
+
+-- | When the provided action fails, annotate its error with the provided
+-- support
+errSupport :: (ToDiagnostic supp, Has Diagnostics sig m) => supp -> m a -> m a
+errSupport supp m = send (ErrSupport supp m)
+
+-- | When the provided action fails, annotate its error with the provided
+-- doc
+errDoc :: (ToDiagnostic doc, Has Diagnostics sig m) => doc -> m a -> m a
+errDoc doc m = send (ErrDoc doc m)
 
 -- | Nearly identical to @runDiagnostics@, run an action, returning its
 -- underlying 'Result'. Most often, you'll want to use 'recover' instead.

@@ -18,7 +18,7 @@ import Data.Set.NonEmpty (nonEmpty, toSet)
 import Data.Text hiding (group, map)
 import DepTypes (Dependency)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
-import Discovery.Filters (AllFilters, MavenScopeFilters)
+import Discovery.Filters (AllFilters, MavenScopeFilters, mavenScopeFilterSet)
 import Discovery.Simple (simpleDiscover)
 import Effect.Exec (CandidateCommandEffs)
 import Effect.ReadFS (ReadFS)
@@ -129,8 +129,8 @@ getDepsDynamicAnalysis submoduleTargets closure = do
   where
     -- shrinkRoots is applied on all dynamic strategies.
     -- The root deps are either the toplevel package or submodules in a multi-module project.
-    --  We don't want to consider those because they're the users' packages.
-    --  Promote them to direct when building the graph using `shrinkRoots`.
+    -- We don't want to consider those because they're the users' packages.
+    -- Promote them to direct when building the graph using `shrinkRoots`.
     withoutProjectAsDep = shrinkRoots
 
 getDepsPlugin ::
@@ -158,7 +158,7 @@ getDepsTreeCmd ::
   ) =>
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
-getDepsTreeCmd closure = do
+getDepsTreeCmd closure =
   context "Dynamic analysis" $
     DepTreeCmd.analyze . parent $
       PomClosure.closurePath closure
@@ -177,12 +177,17 @@ getStaticAnalysis submoduleTargets closure = do
   filteredGraph <- applyMavenFilters submoduleTargets allSubmodules graph
   pure (filteredGraph, graphBreadth)
 
-applyMavenFilters :: Has (Reader MavenScopeFilters) sig m => Set Text -> Set Text -> Graphing MavenDependency -> m (Graphing Dependency)
+applyMavenFilters :: (Has Diagnostics sig m, Has (Reader MavenScopeFilters) sig m) => Set Text -> Set Text -> Graphing MavenDependency -> m (Graphing Dependency)
 applyMavenFilters targetSet submoduleSet graph = do
   mavenScopeFilters <- ask @(MavenScopeFilters)
-  let filteredSubmoduleGraph = filterMavenSubmodules targetSet submoduleSet graph
-      filteredSubmoduleScopeGraph = filterMavenDependencyByScope mavenScopeFilters filteredSubmoduleGraph
-
+  filteredSubmoduleGraph <-
+    if targetSet == submoduleSet
+      then pure graph
+      else context "Filter maven submodules" $ pure (filterMavenSubmodules targetSet submoduleSet graph)
+  filteredSubmoduleScopeGraph <-
+    if Set.null $ mavenScopeFilterSet mavenScopeFilters
+      then pure filteredSubmoduleGraph
+      else context "Filter maven scopes" $ pure (filterMavenDependencyByScope mavenScopeFilters filteredSubmoduleGraph)
   pure $ gmap mavenDependencyToDependency filteredSubmoduleScopeGraph
 
 submoduleTargetSet :: FoundTargets -> Set Text

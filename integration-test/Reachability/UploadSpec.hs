@@ -6,9 +6,9 @@ module Reachability.UploadSpec (spec) where
 import Analysis.FixtureUtils (FixtureEnvironment (..), TestC, testRunnerWithLogger, withResult)
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.Analyze.Types (
-  AnalysisScanResult (..),
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
+  SourceUnitReachabilityAttempt (..),
  )
 import App.Fossa.Reachability.Jar (callGraphFromJar)
 import App.Fossa.Reachability.Types (
@@ -20,6 +20,7 @@ import App.Fossa.Reachability.Types (
 import App.Fossa.Reachability.Upload (
   analyzeForReachability,
   callGraphOf,
+  onlyFoundUnits,
  )
 import Data.ByteString.Lazy qualified as LB
 import Data.Foldable (for_)
@@ -83,8 +84,9 @@ spec = describe "Reachability" $ do
     jarFile <- (</> sampleMavenProjectJar) <$> runIO PIO.getCurrentDir
 
     it "should retrieve call graph" $ do
-      let expected = Just (mavenCompleteScanUnit projDir jarFile)
-      resp <- run java8 $ callGraphOf (mavenCompleteScan projDir)
+      let (dpi, dps) = mavenCompleteScan projDir
+      let expected = SourceUnitReachabilityFound dpi (Success [] (mavenCompleteScanUnit projDir jarFile))
+      resp <- run java8 $ callGraphOf dps
       withResult resp $ \_ res -> res `shouldBe` expected
 
   describe "analyzeForReachability" $ do
@@ -92,18 +94,10 @@ spec = describe "Reachability" $ do
     jarFile <- (</> sampleMavenProjectJar) <$> runIO PIO.getCurrentDir
 
     it "should return analyzed reachability unit" $ do
+      let (_, dps) = mavenCompleteScan projDir
       let expected = [mavenCompleteScanUnit projDir jarFile]
-      let analysisResult =
-            AnalysisScanResult
-              [mavenCompleteScan projDir]
-              successNothing
-              successNothing
-              successNothing
-              successNothing
-              successNothing
-
-      analyzed <- run java8 $ analyzeForReachability analysisResult
-      withResult analyzed $ \_ analyzed' -> analyzed' `shouldBe` expected
+      analyzed <- run java8 $ analyzeForReachability [dps]
+      withResult analyzed $ \_ analyzed' -> (onlyFoundUnits analyzed') `shouldBe` expected
 
 sampleMavenProjectDir :: Path Rel Dir
 sampleMavenProjectDir = $(mkRelDir "test/Reachability/testdata/maven-default/")
@@ -111,7 +105,7 @@ sampleMavenProjectDir = $(mkRelDir "test/Reachability/testdata/maven-default/")
 sampleMavenProjectJar :: Path Rel File
 sampleMavenProjectJar = $(mkRelFile "test/Reachability/testdata/maven-default/target/project-1.0.0.jar")
 
-mavenCompleteScan :: Path Abs Dir -> DiscoveredProjectScan
+mavenCompleteScan :: Path Abs Dir -> (DiscoveredProjectIdentifier, DiscoveredProjectScan)
 mavenCompleteScan dir = mkDiscoveredProjectScan MavenProjectType dir Complete
 
 mavenCompleteScanUnit :: Path Abs Dir -> Path Abs File -> SourceUnitReachability
@@ -123,22 +117,24 @@ mavenCompleteScanUnit projDir jarFile =
         (ContentRaw sampleJarParsedContent')
     ]
 
-mkDiscoveredProjectScan :: DiscoveredProjectType -> Path Abs Dir -> GraphBreadth -> DiscoveredProjectScan
+mkDiscoveredProjectScan :: DiscoveredProjectType -> Path Abs Dir -> GraphBreadth -> (DiscoveredProjectIdentifier, DiscoveredProjectScan)
 mkDiscoveredProjectScan projectType dir breadth =
-  Scanned
-    (DiscoveredProjectIdentifier dir projectType)
-    ( Success
-        []
-        (ProjectResult projectType dir empty breadth mempty)
-    )
+  ( dpi
+  , Scanned
+      dpi
+      ( Success
+          []
+          (ProjectResult projectType dir empty breadth mempty)
+      )
+  )
+  where
+    dpi :: DiscoveredProjectIdentifier
+    dpi = DiscoveredProjectIdentifier dir projectType
 
 sampleJarFile :: IO (Path Abs File)
 sampleJarFile = do
   cwd <- PIO.getCurrentDir
   pure (cwd </> $(mkRelFile "test/Reachability/testdata/sample.jar"))
-
-successNothing :: Result (Maybe a)
-successNothing = Success [] Nothing
 
 mkReachabilityUnit :: Path Abs Dir -> [ParsedJar] -> SourceUnitReachability
 mkReachabilityUnit dir jars =

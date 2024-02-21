@@ -11,24 +11,26 @@ import Test.Hspec.Core.Spec (describe)
 import Test.MockApi (
   MockApi,
   alwaysReturns,
-  fails,
   returnsOnce,
  )
 
 expectPushToken :: Has MockApi sig m => m ()
-expectPushToken = GetTokenType `returnsOnce` Fixtures.pushToken
+expectPushToken = GetTokenType `alwaysReturns` Fixtures.pushToken
 
 expectFullAccessToken :: Has MockApi sig m => m ()
-expectFullAccessToken = GetTokenType `returnsOnce` Fixtures.fullAccessToken
+expectFullAccessToken = GetTokenType `alwaysReturns` Fixtures.fullAccessToken
 
 expectFreeSubscription :: Has MockApi sig m => m ()
-expectFreeSubscription = GetSubscription `returnsOnce` Fixtures.freeSubscription
+expectFreeSubscription = GetSubscription `alwaysReturns` Fixtures.freeSubscription
 
 expectPremiumSubscription :: Has MockApi sig m => m ()
-expectPremiumSubscription = GetSubscription `returnsOnce` Fixtures.premiumSubscription
+expectPremiumSubscription = GetSubscription `alwaysReturns` Fixtures.premiumSubscription
 
 expectOrganization :: Has MockApi sig m => m ()
 expectOrganization = GetOrganization `alwaysReturns` Fixtures.organization
+
+analyzeChecks :: PreflightCommandChecks
+analyzeChecks = AnalyzeChecks Fixtures.projectRevision Fixtures.projectMetadata
 
 spec :: Spec
 spec = do
@@ -48,7 +50,7 @@ spec = do
       expectOrganization
       expectPremiumSubscription
       expectFullAccessToken
-      res <- ignoreDebug $ preflightChecks ReportChecks
+      res <- preflightChecks ReportChecks
       res `shouldBe'` ()
     it' "should fail full access token check for report command" $ do
       expectOrganization
@@ -60,7 +62,32 @@ spec = do
       expectFreeSubscription
       expectFullAccessToken
       expectFatal' $ ignoreDebug $ preflightChecks ReportChecks
-
--- it' "should fail full access check for test command" . expectFatal' $ do
---   GetOrganization `fails` "Invalid API Token"
---   ignoreDebug preflightChecks ReportChecks
+    it' "should pass all custom upload permission checks for analyze command" $ do
+      expectOrganization
+      (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.validCustomUploadPermissions
+      res <- ignoreDebug $ preflightChecks analyzeChecks
+      res `shouldBe'` ()
+    it' "should fail edit project check for analyze command" $ do
+      expectOrganization
+      (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.invalidEditProjectPermission
+      expectFatal' $ ignoreDebug $ preflightChecks analyzeChecks
+    it' "should fail create project check for analyze command" $ do
+      expectOrganization
+      (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.invalidCreateProjectPermission
+      expectFatal' $ ignoreDebug $ preflightChecks analyzeChecks
+    it' "should fail create team project check for analyze command" $ do
+      expectOrganization
+      (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.invalidCreateTeamProjectPermission
+      expectFatal' $ ignoreDebug $ preflightChecks analyzeChecks
+    it' "should fail create project only for team check for analyze command" $ do
+      expectOrganization
+      (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.invalidCreateProjectOnlyToTeamPermission
+      expectFatal' $ ignoreDebug $ preflightChecks analyzeChecks
+    it' "should fail edit release group check for analyze command" $ do
+      expectOrganization
+      (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.invalidEditReleaseGroupPermission
+      expectFatal' $ ignoreDebug $ preflightChecks analyzeChecks
+    it' "should fail create team projects for release group check for analyze command" $ do
+      expectOrganization
+      (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.invalidCreateTeamProjectsForReleaseGroupPermission
+      expectFatal' $ ignoreDebug $ preflightChecks analyzeChecks

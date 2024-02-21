@@ -60,6 +60,9 @@ instance ConvertUtf8 TL.Text BL.ByteString where
 class ToText a where
   toText :: a -> Text.Text
 
+instance ToText Int where
+  toText = Text.pack . show
+
 instance ToText Char where
   toText = Text.singleton
 

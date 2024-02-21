@@ -9,7 +9,7 @@ as providing some info about our CI setup.
 
 ## Style Guide
 
-Our [Style Guide](STYLE-GUIDE.md) las out stylistic and idiomatic standards for all contributions.
+Our [Style Guide](STYLE-GUIDE.md) contains our stylistic and idiomatic standards for all contributions.
 We are in the process of fully aligning to that guide, but any new contributions should follow the style guide.
 
 ## Parsing and best practices
@@ -40,6 +40,11 @@ We also have a [mocking framework specifically for API effects](api-mocking.md).
 To allow the user to prevent us from including certain sets of results in an analysis, as well as trying to avoid the
 work involved, we allow users to filter at both the discovery level and analysis level.
 [More details can be in the filtering document](filtering.md).
+
+## Errors and Warnings
+
+Error handling and warnings are done through our [diagnostics effect](diagnostics.md).
+In order to render errors and warnings through the diagnostic, refer to our [rendering guidelines](diagnostics.md#rendering-todiagnostic).
 
 ## Releases
 

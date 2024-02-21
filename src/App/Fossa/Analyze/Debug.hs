@@ -25,7 +25,7 @@ module App.Fossa.Analyze.Debug (
 where
 
 import App.Fossa.EmbeddedBinary (themisVersion)
-import App.Fossa.Reachability.Upload (reachabilityEndpointJson, reachabilityRawJson)
+import App.Fossa.Reachability.Types (reachabilityEndpointJson, reachabilityRawJson)
 import App.Version (fullVersionDescription)
 import Control.Applicative (asum)
 import Control.Carrier.Debug (

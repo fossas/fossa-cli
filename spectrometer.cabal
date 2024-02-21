@@ -103,6 +103,7 @@ common deps
     , direct-sqlite                ^>=2.3.27
     , directory                    ^>=1.3.6.1
     , either                       ^>=5.0.2
+    , errata                       ^>=0.4.0.2
     , file-embed                   ^>=0.0.15
     , filepath                     ^>=1.4.2.1
     , filepattern                  ^>=0.1.2
@@ -138,6 +139,7 @@ common deps
     , semver                       ^>=0.4.0.1
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
+    , strip-ansi-escape            ^>=0.1
     , tar                          ^>=0.7.0.0
     , template-haskell
     , text                         ^>=2.0.0
@@ -331,6 +333,7 @@ library
     Control.Timeout.Internal
     Data.Aeson.Extra
     Data.Conduit.Extra
+    Data.Error
     Data.FileEmbed.Extra
     Data.FileTree.IndexFileTree
     Data.Flag

@@ -396,26 +396,8 @@ subGraphOf n (Graphing gr) =
     keepPredicate Root = True
     keepPredicate (Node ty) = Set.member (Node ty) reachableNodes
 
--- | Adds color to all nodesToColor, with the color being 'a's extractedProperty
---
--- data SimpleDep = SimpleDep{ name :: Text, colorTag :: Text, colors :: Set Text}
---
--- updateColors :: Set Text -> SimpleDep -> SimpleDep
--- updateColors newColor dep = dep{colors = newColor}
-
--- extractColors :: SimpleDep -> Set Text
--- extractColors = colors
-
--- extractColorTag :: SimpleDep -> Text
--- extractColorTag = colorTag
-
--- Example
---
---  d1("d1", "blue" mempty) -> d2("d2", "green" mempty) -> d3("d3", "red" mempty)
---
--- color gr extractColors updateColors d1 extractColorTag nodesToColor= Set.fromList["blue", "green", "red"] =
---
--- d1("d1", "blue" Set("blue")) -> d2("d2", "green" Set("blue")) -> d3("d3", "red" Set("blue"))
+-- | Coloring a graph allows you to attach arbitrary context to nodes.
+--   Coloring should be used when the attached context is only relevant inside the graph.
 color :: forall a b. (Ord a, Ord b) => Graphing a -> (a -> Set.Set b) -> (Set.Set b -> a -> a) -> a -> (a -> b) -> Set.Set b -> Graphing a
 color graph extractSet update origin extractProperty nodesToColor = gmap applyColor graph
   where
@@ -425,22 +407,24 @@ color graph extractSet update origin extractProperty nodesToColor = gmap applyCo
           coloredNodeSet = if (extractProperty node) `Set.member` nodesToColor then nodeSet `Set.union` Set.fromList [extractProperty origin] else nodeSet
       update coloredNodeSet node
 
--- | Gets all successors originating from 'a' on condition (excluding a)
+-- | Gets all successors originating from 'a' (excluding a) that satisfy a condition
 --
--- Example
+--   Given the graph:
 --
---   1 -> 2
---    \    \
---     3    \
---      \    4
---       6    \
---             5
+-- >    1 -> 2
+-- >     \     \
+-- >      3     \
+-- >       \      4
+-- >         6     \
+-- >                5
 --
--- reachableSuccessorsWithCondition [(1, 2), (1, 3), (2, 4), (3, 6), (4, 5)]  1  (\x -> x `Set.notMember conditionalSet) conditionalSet= Set.fromList [2] =
+--   Here is an example to retrieve all reachable of nodes from 1, where the reachable nodes are not 2:
 --
--- Set (3, 6)
-reachableSuccessorsWithCondition :: forall a. (Ord a) => [(a, a)] -> a -> (a -> Set.Set a -> Bool) -> Set.Set a -> Set.Set a
-reachableSuccessorsWithCondition edgeList' origin f conditionalSet =
-  let directDependencies = [child | (parent, child) <- edgeList', parent == origin && f child conditionalSet]
-      transitiveDependencies = Set.unions $ map (\node -> reachableSuccessorsWithCondition edgeList' node f conditionalSet) directDependencies
+-- >  reachableSuccessorsWithCondition [(1, 2), (1, 3), (2, 4), (3, 6), (4, 5)]  1  (\x -> x `Set.notMember conditionalSet) conditionalSet= Set.fromList [2]
+-- >  Returns: Set (3, 6)
+reachableSuccessorsWithCondition :: forall a. (Ord a) => [(a, a)] -> a -> (a -> Set.Set a -> Bool) -> Set.Set a -> Set.Set a -> Set.Set a
+reachableSuccessorsWithCondition edgeList' origin f conditionalSet visitedSet =
+  let visitedSet' = Set.insert origin visitedSet
+      directDependencies = [child | (parent, child) <- edgeList', parent == origin && f child conditionalSet && child `Set.notMember` visitedSet']
+      transitiveDependencies = Set.unions $ map (\node -> reachableSuccessorsWithCondition edgeList' node f conditionalSet visitedSet') directDependencies
    in Set.fromList directDependencies `Set.union` transitiveDependencies

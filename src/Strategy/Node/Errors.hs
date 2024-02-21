@@ -10,7 +10,9 @@ module Strategy.Node.Errors (
 import App.Docs (strategyLangDocUrl)
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
-import Prettyprinter (Pretty (pretty), indent, vsep)
+import Effect.Logger (renderIt)
+import Errata (Errata (..))
+import Prettyprinter (indent, vsep)
 
 yarnLockfileDocUrl :: Text
 yarnLockfileDocUrl = "https://classic.yarnpkg.com/lang/en/docs/yarn-lock/"
@@ -26,27 +28,23 @@ fossaNodeDocUrl = strategyLangDocUrl "nodejs/nodejs.md"
 
 data CyclicPackageJson = CyclicPackageJson
 instance ToDiagnostic CyclicPackageJson where
-  renderDiagnostic (CyclicPackageJson) = "We detected cyclic references between package.json files in the workspace."
+  renderDiagnostic (CyclicPackageJson) = do
+    let header = "Detected cyclic references between package.json files in the workspace"
+    Errata (Just header) [] Nothing
 
-data MissingNodeLockFile = MissingNodeLockFile
+data MissingNodeLockFile
+  = MissingNodeLockFileCtx
+  | MissingNodeLockFileHelp
 instance ToDiagnostic MissingNodeLockFile where
-  renderDiagnostic (MissingNodeLockFile) =
-    vsep
-      [ "We could not perform lockfile analysis for your nodejs project."
-      , ""
-      , indent 2 $
-          vsep
-            [ "Ensure valid lockfile exist and is readable prior to running fossa."
-            , indent 2 "For yarn package manager, you can perform: `yarn install` to install dependencies and generate lockfile."
-            , indent 2 "For node package manager, you can perform: `npm install` to install dependencies and generate lockfile."
-            ]
-      , ""
-      , "Refer to:"
-      , indent 2 $
-          vsep
-            [ pretty $ "- " <> fossaNodeDocUrl
-            , pretty $ "- " <> npmLockFileDocUrl
-            , pretty $ "- " <> yarnLockfileDocUrl
-            , pretty $ "- " <> yarnV2LockfileDocUrl
-            ]
-      ]
+  renderDiagnostic MissingNodeLockFileCtx = do
+    let header = "Could not perform lockfile analysis for your nodejs project"
+    Errata (Just header) [] Nothing
+  renderDiagnostic MissingNodeLockFileHelp = do
+    let header =
+          renderIt $
+            vsep
+              [ "Ensure valid lockfile exist and is readable prior to running fossa."
+              , indent 2 "For yarn package manager, you can perform: `yarn install` to install dependencies and generate lockfile."
+              , indent 2 "For node package manager, you can perform: `npm install` to install dependencies and generate lockfile."
+              ]
+    Errata (Just header) [] Nothing

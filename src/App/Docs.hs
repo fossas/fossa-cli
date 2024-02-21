@@ -10,6 +10,10 @@ module App.Docs (
   pathDependencyDocsUrl,
   staticAndDynamicStrategies,
   apiKeyUrl,
+  vulnReachabilityProductDocsUrl,
+  rolesDocsUrl,
+  fossaConfigDocsUrl,
+  apiTokenDocsUrl,
 ) where
 
 import App.Version (versionOrBranch)
@@ -53,3 +57,15 @@ staticAndDynamicStrategies = guidePathOf versionOrBranch "/docs/references/strat
 
 apiKeyUrl :: Text
 apiKeyUrl = guidePathOf versionOrBranch "/README.md#generating-an-api-key"
+
+vulnReachabilityProductDocsUrl :: Text
+vulnReachabilityProductDocsUrl = "https://docs.fossa.com/docs/reachability"
+
+rolesDocsUrl :: Text
+rolesDocsUrl = "https://docs.fossa.com/docs/role-based-access-control"
+
+fossaConfigDocsUrl :: Text
+fossaConfigDocsUrl = "/docs/references/files/fossa-yml.md"
+
+apiTokenDocsUrl :: Text
+apiTokenDocsUrl = "https://docs.fossa.com/docs/api-reference"

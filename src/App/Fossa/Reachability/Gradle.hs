@@ -7,12 +7,13 @@ import App.Fossa.Reachability.Types (CallGraphAnalysis (..))
 import App.Support (reportDefectWithDebugBundle)
 import Control.Carrier.Lift (Lift)
 import Control.Carrier.Reader (Reader, runReader)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, errCtx, renderDiagnostic)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, errCtx, errHelp, errSupport, renderDiagnostic)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Monad.List (filterM)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
+import Data.Error (createErrataWithHeaderOnly)
 import Data.FileEmbed.Extra (embedFile')
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Set (Set, toList)
@@ -21,8 +22,9 @@ import Data.String.Conversion (ToString (..), ToText (toText), decodeUtf8)
 import Data.Text qualified as Text
 import Discovery.Filters (AllFilters)
 import Effect.Exec (AllowErr (..), Command (..), Exec)
-import Effect.Logger (Logger, logDebug, pretty)
+import Effect.Logger (Logger, logDebug, pretty, renderIt)
 import Effect.ReadFS (Has, ReadFS)
+import Errata (Errata)
 import Path (Abs, Dir, File, Path, fromAbsDir, parseAbsFile)
 import Prettyprinter (indent, vsep)
 import Strategy.Gradle (GradleProject, discover, runGradle)
@@ -80,7 +82,12 @@ getJarsByBuildOfaProject (DiscoveredProject _ path foundTargets _) = withSystemT
         FoundTargets targets -> gradleJarCmdTargets jarScriptFilepath (toSet targets)
         ProjectWithoutTargets -> gradleJarCmd jarScriptFilepath
 
-  stdout <- context "running gradle script" $ errCtx FailedToRunGradleReachabilityAnalysis $ runGradle path cmd
+  stdout <-
+    context "running gradle script"
+      . errCtx (FailedToRunGradleReachabilityAnalysisCtx path)
+      . errHelp FailedToRunGradleReachabilityAnalysisHelp
+      . errSupport (renderIt reportDefectWithDebugBundle)
+      $ runGradle path cmd
   jarPathsFromScriptOutput stdout
 
 jarPathsFromScriptOutput :: (Has Logger sig m, Has ReadFS sig m) => BL.ByteString -> m [Path Abs File]
@@ -129,17 +136,22 @@ gradleJarCmd initScriptFilepath baseCmd =
     , cmdAllowErr = Never
     }
 
-data FailedToRunGradleReachabilityAnalysis = FailedToRunGradleReachabilityAnalysis deriving (Eq, Ord, Show)
+data FailedToRunGradleReachabilityAnalysis
+  = FailedToRunGradleReachabilityAnalysisCtx (Path Abs Dir)
+  | FailedToRunGradleReachabilityAnalysisHelp
+  deriving (Eq, Ord, Show)
 instance ToDiagnostic FailedToRunGradleReachabilityAnalysis where
-  renderDiagnostic (FailedToRunGradleReachabilityAnalysis) =
-    vsep
-      [ "Failed to perform gradle analysis."
-      , ""
-      , "Ensure your gradle project can be built successfully:"
-      , ""
-      , indent 2 "gradlew build"
-      , indent 2 "gradlew.bat build"
-      , indent 2 "gradle build"
-      , ""
-      , reportDefectWithDebugBundle
-      ]
+  renderDiagnostic :: FailedToRunGradleReachabilityAnalysis -> Errata
+  renderDiagnostic (FailedToRunGradleReachabilityAnalysisCtx path) =
+    createErrataWithHeaderOnly $ "Failed to perform gradle analysis for " <> toText path
+  renderDiagnostic FailedToRunGradleReachabilityAnalysisHelp = do
+    let help =
+          renderIt $
+            vsep
+              [ "Ensure your gradle project can be built successfully:"
+              , ""
+              , indent 2 "gradlew build"
+              , indent 2 "gradlew.bat build"
+              , indent 2 "gradle build"
+              ]
+    createErrataWithHeaderOnly help

@@ -430,17 +430,23 @@ reachableSuccessorsWithConditionSpec = do
   --       6    \
   --             5
   let graph :: Graphing Int = Graphing.directs [1, 2] <> Graphing.edges [(1, 2), (1, 3), (2, 4), (3, 6), (4, 5)]
-  let condition :: Int -> Set Int -> Bool
-      condition x excluded = x `Set.notMember` excluded
+
+  --   1 -> 2 -> 3
+  --        |    |
+  --        5 <- 4
+  let cyclicGraph :: Graphing Int = Graphing.directs [1] <> Graphing.edges [(1, 2), (2, 3), (3, 4), (4, 5), (5, 2)]
 
   describe "reachableSuccessorsWithCondition" $ do
     it "should return the successors of 1 excluding 2 and its successors" $ do
       let excludedVals = Set.fromList [2]
-      reachableSuccessorsWithCondition (edgesList graph) 1 condition excludedVals `shouldBe` Set.fromList [3, 6]
+      reachableSuccessorsWithCondition (edgesList graph) 1 Set.notMember excludedVals Set.empty `shouldBe` Set.fromList [3, 6]
 
     it "should return no successors" $ do
       let excludedVals = Set.fromList [2, 3]
-      reachableSuccessorsWithCondition (edgesList graph) 1 condition excludedVals `shouldBe` Set.fromList []
+      reachableSuccessorsWithCondition (edgesList graph) 1 Set.notMember excludedVals Set.empty `shouldBe` Set.empty
+
+    it "should return successors of 1 when the graph is cyclic" $ do
+      reachableSuccessorsWithCondition (edgesList cyclicGraph) 1 Set.notMember Set.empty Set.empty `shouldBe` Set.fromList [2, 3, 4, 5]
 
 data SimpleDep = SimpleDep
   { name :: Text

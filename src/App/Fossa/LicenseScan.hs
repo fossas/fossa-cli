@@ -31,30 +31,39 @@ import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, fromMaybe)
 import Control.Effect.Lift (Lift)
 import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
 import Data.Aeson qualified as Aeson
+import Data.Error (SourceLocation, createEmptyBlock, getSourceLocation)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.String.Conversion (decodeUtf8)
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, Severity (SevInfo), logStdout)
+import Effect.Logger (Logger, Severity (SevInfo), logStdout, renderIt)
 import Effect.ReadFS (ReadFS)
+import Errata (errataSimple)
+import Errata.Types (Errata)
 import Path (Abs, Dir, Path)
 import Prettyprinter (vsep)
 import Srclib.Types (LicenseSourceUnit)
 import Types (LicenseScanPathFilters)
 
-data MissingFossaDepsFile = MissingFossaDepsFile
-data NoVendoredDeps = NoVendoredDeps
+newtype MissingFossaDepsFile = MissingFossaDepsFile SourceLocation
+newtype NoVendoredDeps = NoVendoredDeps SourceLocation
 
 instance ToDiagnostic MissingFossaDepsFile where
-  renderDiagnostic _ =
-    vsep
-      [ "'fossa license-scan fossa-deps' requires pointing to a directory with a fossa-deps file."
-      , "The file can have one of the extensions: .yaml .yml .json"
-      ]
+  renderDiagnostic :: MissingFossaDepsFile -> Errata
+  renderDiagnostic (MissingFossaDepsFile srcLoc) = do
+    let body =
+          renderIt $
+            vsep
+              [ "'fossa license-scan fossa-deps' requires pointing to a directory with a fossa-deps file."
+              , "The file can have one of the extensions: .yaml .yml .json"
+              ]
+    errataSimple (Just "Missing fossa-deps file") (createEmptyBlock srcLoc) (Just body)
 
 instance ToDiagnostic NoVendoredDeps where
-  renderDiagnostic _ = "The 'vendored-dependencies' section of the fossa deps file is empty or missing."
+  renderDiagnostic :: NoVendoredDeps -> Errata
+  renderDiagnostic (NoVendoredDeps srcLoc) =
+    errataSimple (Just "The 'vendored-dependencies' section of the fossa deps file is empty or missing") (createEmptyBlock srcLoc) Nothing
 
 newtype UploadUnits = UploadUnits (NonEmpty LicenseSourceUnit)
 
@@ -88,9 +97,9 @@ outputVendoredDeps ::
   m ()
 outputVendoredDeps (BaseDir dir) = runStickyLogger SevInfo $ do
   config <- resolveConfigFile dir Nothing
-  manualDepsFile <- fromMaybe MissingFossaDepsFile =<< findFossaDepsFile dir
+  manualDepsFile <- fromMaybe (MissingFossaDepsFile getSourceLocation) =<< findFossaDepsFile dir
   manualDeps <- readFoundDeps manualDepsFile
-  vendoredDeps <- fromMaybe NoVendoredDeps $ NE.nonEmpty $ vendoredDependencies manualDeps
+  vendoredDeps <- fromMaybe (NoVendoredDeps getSourceLocation) $ NE.nonEmpty $ vendoredDependencies manualDeps
   let licenseScanPathFilters = config >>= configVendoredDependencies >>= configLicenseScanPathFilters
   resultMap <- UploadUnits <$> runLicenseScan dir licenseScanPathFilters vendoredDeps
   logStdout . decodeUtf8 $ Aeson.encode resultMap

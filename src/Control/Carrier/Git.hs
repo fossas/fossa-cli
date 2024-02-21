@@ -37,6 +37,7 @@ import Effect.Exec (
   Has,
   execThrow,
  )
+import Errata (Errata (..))
 import Fossa.API.Types (Contributors (..))
 import Path (Abs, Dir, Path)
 
@@ -87,4 +88,6 @@ fetchGitContributors basedir = do
 
 data FailedToPerformGitLog = FailedToPerformGitLog
 instance ToDiagnostic FailedToPerformGitLog where
-  renderDiagnostic _ = "Could not retrieve git logs for contributor counting."
+  renderDiagnostic _ = do
+    let header = "Could not retrieve git logs for contributor counting."
+    Errata (Just header) [] Nothing
