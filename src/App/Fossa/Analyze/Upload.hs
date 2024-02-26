@@ -56,11 +56,9 @@ import Effect.Logger (
   Logger,
   Pretty (pretty),
   Severity (SevInfo),
-  logDebug,
   logError,
   logInfo,
   logStdout,
-  logWarn,
   viaShow,
  )
 import Fossa.API.Types (Organization (orgRequiresFullFileUploads, orgSupportsReachability, organizationId), Project (projectIsMonorepo), UploadResponse (..))
@@ -74,7 +72,6 @@ import Srclib.Types (
   renderLocator,
   sourceUnitToFullSourceUnit,
  )
-import Text.Pretty.Simple (pShow)
 
 data ScanUnits
   = SourceUnitOnly [SourceUnit]
