@@ -65,7 +65,7 @@ rolesDocsUrl :: Text
 rolesDocsUrl = "https://docs.fossa.com/docs/role-based-access-control"
 
 fossaConfigDocsUrl :: Text
-fossaConfigDocsUrl = "/docs/references/files/fossa-yml.md"
+fossaConfigDocsUrl = guidePathOf versionOrBranch "/docs/references/files/fossa-yml.md"
 
 apiTokenDocsUrl :: Text
 apiTokenDocsUrl = "https://docs.fossa.com/docs/api-reference"

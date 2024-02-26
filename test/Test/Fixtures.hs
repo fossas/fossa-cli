@@ -51,6 +51,7 @@ module Test.Fixtures (
   invalidCreateTeamProjectPermission,
   invalidEditProjectPermission,
   invalidCreateProjectPermission,
+  organizationWithPreflightChecks,
 ) where
 
 import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
@@ -94,7 +95,10 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True
+organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False False
+
+organizationWithPreflightChecks :: API.Organization
+organizationWithPreflightChecks = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True
 
 freeSubscription :: API.SubscriptionResponse
 freeSubscription = API.SubscriptionResponse API.Free

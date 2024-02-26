@@ -29,6 +29,9 @@ expectPremiumSubscription = GetSubscription `alwaysReturns` Fixtures.premiumSubs
 expectOrganization :: Has MockApi sig m => m ()
 expectOrganization = GetOrganization `alwaysReturns` Fixtures.organization
 
+expectOrganizationWithPreflightChecks :: Has MockApi sig m => m ()
+expectOrganizationWithPreflightChecks = GetOrganization `alwaysReturns` Fixtures.organizationWithPreflightChecks
+
 analyzeChecks :: PreflightCommandChecks
 analyzeChecks = AnalyzeChecks Fixtures.projectRevision Fixtures.projectMetadata
 
@@ -38,56 +41,60 @@ spec = do
     it' "should pass all checks for test command" $ do
       expectFreeSubscription
       expectFullAccessToken
-      expectOrganization
+      expectOrganizationWithPreflightChecks
       res <- ignoreDebug $ preflightChecks TestChecks
       res `shouldBe'` ()
     it' "should fail full access token check for test command" $ do
-      expectOrganization
+      expectOrganizationWithPreflightChecks
       expectFreeSubscription
       expectPushToken
       expectFatal' $ ignoreDebug $ preflightChecks TestChecks
     it' "should pass all check for report command" $ do
-      expectOrganization
+      expectOrganizationWithPreflightChecks
       expectPremiumSubscription
       expectFullAccessToken
       res <- preflightChecks ReportChecks
       res `shouldBe'` ()
     it' "should fail full access token check for report command" $ do
-      expectOrganization
+      expectOrganizationWithPreflightChecks
       expectPremiumSubscription
       expectPushToken
       expectFatal' $ ignoreDebug $ preflightChecks ReportChecks
     it' "should fail premium subscription check for report command" $ do
-      expectOrganization
+      expectOrganizationWithPreflightChecks
       expectFreeSubscription
       expectFullAccessToken
       expectFatal' $ ignoreDebug $ preflightChecks ReportChecks
     it' "should pass all custom upload permission checks for analyze command" $ do
-      expectOrganization
+      expectOrganizationWithPreflightChecks
       (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.validCustomUploadPermissions
       res <- ignoreDebug $ preflightChecks analyzeChecks
       res `shouldBe'` ()
-    it' "should fail edit project check for analyze command" $ do
+    it' "should pass all checks while skipping permission checks for analyze command" $ do
       expectOrganization
+      res <- ignoreDebug $ preflightChecks analyzeChecks
+      res `shouldBe'` ()
+    it' "should fail edit project check for analyze command" $ do
+      expectOrganizationWithPreflightChecks
       (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.invalidEditProjectPermission
       expectFatal' $ ignoreDebug $ preflightChecks analyzeChecks
     it' "should fail create project check for analyze command" $ do
-      expectOrganization
+      expectOrganizationWithPreflightChecks
       (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.invalidCreateProjectPermission
       expectFatal' $ ignoreDebug $ preflightChecks analyzeChecks
     it' "should fail create team project check for analyze command" $ do
-      expectOrganization
+      expectOrganizationWithPreflightChecks
       (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.invalidCreateTeamProjectPermission
       expectFatal' $ ignoreDebug $ preflightChecks analyzeChecks
     it' "should fail create project only for team check for analyze command" $ do
-      expectOrganization
+      expectOrganizationWithPreflightChecks
       (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.invalidCreateProjectOnlyToTeamPermission
       expectFatal' $ ignoreDebug $ preflightChecks analyzeChecks
     it' "should fail edit release group check for analyze command" $ do
-      expectOrganization
+      expectOrganizationWithPreflightChecks
       (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.invalidEditReleaseGroupPermission
       expectFatal' $ ignoreDebug $ preflightChecks analyzeChecks
     it' "should fail create team projects for release group check for analyze command" $ do
-      expectOrganization
+      expectOrganizationWithPreflightChecks
       (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.invalidCreateTeamProjectsForReleaseGroupPermission
       expectFatal' $ ignoreDebug $ preflightChecks analyzeChecks
