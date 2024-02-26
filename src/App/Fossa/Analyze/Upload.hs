@@ -3,6 +3,7 @@
 module App.Fossa.Analyze.Upload (
   mergeSourceAndLicenseUnits,
   uploadSuccessfulAnalysis,
+  checkUploadResponseForWarnings,
   ScanUnits (..),
 ) where
 
@@ -25,6 +26,7 @@ import Control.Effect.Diagnostics (
   fatalText,
   fromMaybeText,
   recover,
+  warn,
  )
 import Control.Effect.FossaApiClient (
   FossaApiClient,
@@ -54,9 +56,11 @@ import Effect.Logger (
   Logger,
   Pretty (pretty),
   Severity (SevInfo),
+  logDebug,
   logError,
   logInfo,
   logStdout,
+  logWarn,
   viaShow,
  )
 import Fossa.API.Types (Organization (orgRequiresFullFileUploads, orgSupportsReachability, organizationId), Project (projectIsMonorepo), UploadResponse (..))
@@ -70,6 +74,7 @@ import Srclib.Types (
   renderLocator,
   sourceUnitToFullSourceUnit,
  )
+import Text.Pretty.Simple (pShow)
 
 data ScanUnits
   = SourceUnitOnly [SourceUnit]
@@ -131,6 +136,9 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
         let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
         let mergedUnits = mergeSourceAndLicenseUnits sourceUnits licenseSourceUnit
         runStickyLogger SevInfo $ uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads
+
+    checkUploadResponseForWarnings uploadResult
+
     let locator = uploadLocator uploadResult
     buildUrl <- getFossaBuildUrl revision locator
     traverse_
@@ -211,3 +219,24 @@ buildProjectSummary project locator projectUrl = do
       , "url" .= projectUrl
       , "id" .= renderLocator locator
       ]
+
+checkUploadResponseForWarnings ::
+  ( Has Diagnostics sig m
+  , Has Logger sig m
+  ) =>
+  UploadResponse ->
+  m ()
+checkUploadResponseForWarnings res = do
+  let maybeUploadWarnings = uploadWarnings res
+  maybe (pure ()) logUploadWarnings maybeUploadWarnings
+
+logUploadWarnings ::
+  ( Has Diagnostics sig m
+  , Has Logger sig m
+  ) =>
+  [Text] ->
+  m ()
+logUploadWarnings [] = pure ()
+logUploadWarnings (x : xs) = do
+  warn x
+  logUploadWarnings xs
