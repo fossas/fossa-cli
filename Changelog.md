@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.9.6
+- Add debug logs for build warnings in `analyze` commands [#1386](https://github.com/fossas/fossa-cli/pull/1386)
+
 ## v3.9.5
 - Maven: Fix hanging maven analysis [#1381](https://github.com/fossas/fossa-cli/pull/1381)
 
