@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+
 module App.Fossa.API.BuildWait (
   waitForScanCompletion,
   waitForIssues,
@@ -6,7 +8,7 @@ module App.Fossa.API.BuildWait (
 ) where
 
 import App.Fossa.Config.Test (DiffRevision)
-import App.Types (ProjectRevision)
+import App.Types (ProjectRevision, projectRevision)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -25,10 +27,11 @@ import Control.Effect.FossaApiClient (
   getProject,
   getRevisionDependencyCacheStatus,
  )
-import Control.Effect.StickyLogger (StickyLogger, logSticky')
+import Control.Effect.StickyLogger (StickyLogger, logSticky, logSticky')
 import Control.Monad (void, when)
 import Control.Timeout (Cancel, checkForCancel, delay)
 import Data.Error (SourceLocation, createEmptyBlock, getSourceLocation)
+import Data.String.Conversion (showText)
 import Effect.Logger (Logger, viaShow)
 import Errata (errataSimple)
 import Errata.Types (Errata)
@@ -115,7 +118,7 @@ waitForBuild revision cancelFlag = do
     StatusSucceeded -> pure ()
     StatusFailed -> fatal $ BuildFailed getSourceLocation
     otherStatus -> do
-      logSticky' $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
+      logSticky $ "[ Waiting for build completion (revision " <> revision.projectRevision <> ")... last status: " <> showText otherStatus <> " ]"
       pauseForRetry
       waitForBuild revision cancelFlag
 
