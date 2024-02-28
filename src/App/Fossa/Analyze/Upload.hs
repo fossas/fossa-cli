@@ -3,7 +3,7 @@
 module App.Fossa.Analyze.Upload (
   mergeSourceAndLicenseUnits,
   uploadSuccessfulAnalysis,
-  checkUploadResponseForWarnings,
+  emitBuildWarnings,
   ScanUnits (..),
 ) where
 
@@ -134,7 +134,7 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
         let mergedUnits = mergeSourceAndLicenseUnits sourceUnits licenseSourceUnit
         runStickyLogger SevInfo $ uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads
 
-    checkUploadResponseForWarnings uploadResult
+    emitBuildWarnings uploadResult
 
     let locator = uploadLocator uploadResult
     buildUrl <- getFossaBuildUrl revision locator
@@ -217,23 +217,6 @@ buildProjectSummary project locator projectUrl = do
       , "id" .= renderLocator locator
       ]
 
-checkUploadResponseForWarnings ::
-  ( Has Diagnostics sig m
-  , Has Logger sig m
-  ) =>
-  UploadResponse ->
-  m ()
-checkUploadResponseForWarnings res = do
-  let maybeUploadWarnings = uploadWarnings res
-  maybe (pure ()) logUploadWarnings maybeUploadWarnings
-
-logUploadWarnings ::
-  ( Has Diagnostics sig m
-  , Has Logger sig m
-  ) =>
-  [Text] ->
-  m ()
-logUploadWarnings [] = pure ()
-logUploadWarnings (x : xs) = do
-  warn x
-  logUploadWarnings xs
+emitBuildWarnings :: Has Diagnostics sig m => UploadResponse -> m ()
+emitBuildWarnings res = do
+  context "Emit build warnings" $ traverse_ (traverse_ warn) $ uploadWarnings res
