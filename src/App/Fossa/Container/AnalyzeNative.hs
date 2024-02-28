@@ -8,6 +8,7 @@ module App.Fossa.Container.AnalyzeNative (
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.Debug (collectDebugBundle)
+import App.Fossa.Analyze.Upload (emitBuildWarnings)
 import App.Fossa.Config.Common (
   ScanDestination (OutputStdout, UploadScan),
  )
@@ -17,6 +18,7 @@ import App.Fossa.Config.Container.Analyze (
  )
 import App.Fossa.Config.Container.Analyze qualified as Config
 import App.Fossa.Container.Scan (extractRevision, scanImage)
+import App.Fossa.PreflightChecks (preflightChecks)
 import App.Types (
   ProjectMetadata,
   ProjectRevision (..),
@@ -36,6 +38,7 @@ import Control.Monad (void, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
+import Data.Error (getSourceLocation)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
@@ -79,8 +82,8 @@ analyzeExperimental ::
   , Has Telemetry sig m
   ) =>
   ContainerAnalyzeConfig ->
-  m Aeson.Value
-analyzeExperimental cfg =
+  m ContainerScan
+analyzeExperimental cfg = do
   case Config.severity cfg of
     SevDebug -> do
       (scope, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
@@ -98,8 +101,12 @@ analyze ::
   , Has Debug sig m
   ) =>
   ContainerAnalyzeConfig ->
-  m Aeson.Value
+  m ContainerScan
 analyze cfg = do
+  _ <- case scanDestination cfg of
+    OutputStdout -> pure ()
+    UploadScan apiOpts _ -> runFossaApiClient apiOpts preflightChecks
+
   scannedImage <- scanImage (filterSet cfg) (onlySystemDeps cfg) (imageLocator cfg) (dockerHost cfg) (arch cfg)
   let revision = extractRevision (revisionOverride cfg) scannedImage
 
@@ -114,7 +121,7 @@ analyze cfg = do
     UploadScan apiOpts projectMeta ->
       void $ runFossaApiClient apiOpts $ uploadScan revision projectMeta (jsonOutput cfg) scannedImage
 
-  pure $ Aeson.toJSON scannedImage
+  pure scannedImage
 
 uploadScan ::
   ( Has Diagnostics sig m
@@ -131,9 +138,10 @@ uploadScan revision projectMeta jsonOutput containerScan =
   do
     supportsNativeScan <- orgSupportsNativeContainerScan <$> getOrganization
     if not supportsNativeScan
-      then fatal EndpointDoesNotSupportNativeContainerScan
+      then fatal (EndpointDoesNotSupportNativeContainerScan getSourceLocation)
       else do
         resp <- uploadNativeContainerScan revision projectMeta containerScan
+        emitBuildWarnings resp
         let locator = uploadLocator resp
         buildUrl <- getFossaBuildUrl revision locator
 

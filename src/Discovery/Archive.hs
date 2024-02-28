@@ -33,7 +33,9 @@ import Data.List (isSuffixOf)
 import Data.String.Conversion (toText)
 import Discovery.Archive.RPM (extractRpm)
 import Discovery.Walk (WalkStep (WalkContinue), fileName, walk)
+import Effect.Logger (renderIt)
 import Effect.ReadFS (ReadFS)
+import Errata (Errata (..))
 import Path (
   Abs,
   Dir,
@@ -57,12 +59,15 @@ unpackFailurePath :: ArchiveUnpackFailure -> Path Abs File
 unpackFailurePath (ArchiveUnpackFailure path _) = path
 
 instance ToDiagnostic ArchiveUnpackFailure where
-  renderDiagnostic (ArchiveUnpackFailure file exc) =
-    vsep
-      [ "An error occurred while attempting to unpack an archive."
-      , hsep ["Archive path:", pretty $ toText file]
-      , hsep ["Error text:", viaShow exc]
-      ]
+  renderDiagnostic (ArchiveUnpackFailure file exc) = do
+    let header = "An error occurred while attempting to unpack an archive"
+        body =
+          renderIt $
+            vsep
+              [ hsep ["Archive path:", pretty $ toText file]
+              , hsep ["Error text:", viaShow exc]
+              ]
+    Errata (Just header) [] (Just body)
 
 -- | Converts a relative file path into a relative directory, where the passed in file path is suffixed by the archive suffix literal.
 -- In other words, this:

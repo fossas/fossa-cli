@@ -194,6 +194,11 @@ jobs:
       run: |
         cargo run --bin diagnose -- walk --trace-spans none --trace-level info
 
+    # Test cabal-install
+    - name: Test Cabal Install (Linux)
+      if: ${{ contains(matrix.os, 'linux') }}
+      run: cabal install --overwrite-policy=always --project=${{ matrix.project-file }} --ghc-options="-Wwarn"
+
     # Save artifacts.
     - name: Find and move binaries (Windows)
       if: ${{ contains(matrix.os, 'windows') }}

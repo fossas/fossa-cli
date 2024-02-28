@@ -7,11 +7,13 @@ module App.Fossa.Analyze.Types (
   AnalyzeExperimentalPreferences (..),
   DiscoveredProjectScan (..),
   DiscoveredProjectIdentifier (..),
+  SourceUnitReachabilityAttempt (..),
 ) where
 
 import App.Fossa.Analyze.Project (ProjectResult)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
 import App.Fossa.Lernie.Types (LernieResults)
+import App.Fossa.Reachability.Types (SourceUnitReachability (..))
 import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Effect.Lift (Lift)
@@ -78,7 +80,22 @@ data AnalysisScanResult = AnalysisScanResult
   , fossaDepsScanResult :: Result (Maybe SourceUnit)
   , dynamicLinkingResult :: Result (Maybe SourceUnit)
   , lernieResult :: Result (Maybe LernieResults)
+  , reachabilityResult :: [SourceUnitReachabilityAttempt]
   }
+
+data SourceUnitReachabilityAttempt
+  = SourceUnitReachabilityFound DiscoveredProjectIdentifier (Result SourceUnitReachability)
+  | SourceUnitReachabilitySkippedPartialGraph DiscoveredProjectIdentifier
+  | SourceUnitReachabilitySkippedNotSupported DiscoveredProjectIdentifier
+  | SourceUnitReachabilitySkippedMissingDependencyAnalysis DiscoveredProjectIdentifier
+  deriving (Show)
+
+instance Eq SourceUnitReachabilityAttempt where
+  (SourceUnitReachabilityFound a (Success _ resA)) == (SourceUnitReachabilityFound b (Success _ resB)) = (a == b) && (resA == resB)
+  (SourceUnitReachabilitySkippedPartialGraph a) == (SourceUnitReachabilitySkippedPartialGraph b) = compare a b == EQ
+  (SourceUnitReachabilitySkippedNotSupported a) == (SourceUnitReachabilitySkippedNotSupported b) = compare a b == EQ
+  (SourceUnitReachabilitySkippedMissingDependencyAnalysis a) == (SourceUnitReachabilitySkippedMissingDependencyAnalysis b) = compare a b == EQ
+  _ == _ = False
 
 data DiscoveredProjectScan
   = SkippedDueToProvidedFilter DiscoveredProjectIdentifier

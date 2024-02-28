@@ -15,12 +15,14 @@ import App.Fossa.Config.Container (
  )
 import App.Fossa.Config.Container qualified as Config
 import App.Fossa.Container.Scan (scanImageNoAnalysis)
+import App.Fossa.PreflightChecks (guardWithPreflightChecks)
 import App.Types (OverrideProject (OverrideProject, overrideBranch, overrideName, overrideRevision), ProjectRevision (..))
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift, sendIO)
+import Control.Monad (void)
 import Control.Timeout (timeout')
 import Data.Aeson qualified as Aeson
 import Data.Maybe (fromMaybe)
@@ -55,7 +57,9 @@ test ::
   ) =>
   ContainerTestConfig ->
   m ()
-test ContainerTestConfig{..} =
+test ContainerTestConfig{..} = do
+  void $ guardWithPreflightChecks apiOpts
+
   runStickyLogger SevInfo
     . ignoreDebug -- Ignore the debug effect because we don't generate a bundle.
     . runFossaApiClient apiOpts

@@ -9,6 +9,8 @@ module App.Docs (
   fossaContainerScannerUrl,
   pathDependencyDocsUrl,
   staticAndDynamicStrategies,
+  apiKeyUrl,
+  vulnReachabilityProductDocsUrl,
 ) where
 
 import App.Version (versionOrBranch)
@@ -49,3 +51,9 @@ pathDependencyDocsUrl = guidePathOf versionOrBranch "/docs/references/experiment
 
 staticAndDynamicStrategies :: Text
 staticAndDynamicStrategies = guidePathOf versionOrBranch "/docs/references/strategies/README.md#static-and-dynamic-strategies"
+
+apiKeyUrl :: Text
+apiKeyUrl = guidePathOf versionOrBranch "/README.md#generating-an-api-key"
+
+vulnReachabilityProductDocsUrl :: Text
+vulnReachabilityProductDocsUrl = "https://docs.fossa.com/docs/reachability"

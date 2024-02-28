@@ -37,6 +37,7 @@ spec = do
     Hspec.it "should parse output with a single line" $ do
       singleLine `shouldParseOutputInto` catMaybes [singleLineExpected]
       singleLineMoreSpaces `shouldParseOutputInto` catMaybes [singleLineExpected]
+      singleLineNotFound `shouldParseOutputInto` []
 
     Hspec.it "should parse output with multiple lines" $ do
       multipleLine `shouldParseOutputInto` multipleLineExpected
@@ -64,6 +65,9 @@ shouldParseOutputInto = parseMatch Binary.lddParseLocalDependencies
 
 singleLine :: Text
 singleLine = "libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbea9a88000)"
+
+singleLineNotFound :: Text
+singleLineNotFound = "        libprotobuf.so.22 => not found"
 
 singleLineMoreSpaces :: Text
 singleLineMoreSpaces = "    libc.so.6   =>    /lib/x86_64-linux-gnu/libc.so.6    (0x00007fbea9a88000)    "

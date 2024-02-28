@@ -26,6 +26,7 @@ module Fossa.API.Types (
   PathDependencyUpload (..),
   UploadedPathDependencyLocator (..),
   SignedURL (..),
+  SignedURLWithKey (..),
   UploadResponse (..),
   PathDependencyUploadReq (..),
   PathDependencyFinalizeReq (..),
@@ -116,9 +117,19 @@ newtype SignedURL = SignedURL
   }
   deriving (Eq, Ord, Show)
 
+data SignedURLWithKey = SignedURLWithKey
+  { surlwkSignedURL :: Text
+  , surlwkKey :: Text
+  }
+  deriving (Eq, Ord, Show)
+
 instance FromJSON SignedURL where
   parseJSON = withObject "SignedUrl" $ \obj ->
     SignedURL <$> obj .: "signedUrl"
+
+instance FromJSON SignedURLWithKey where
+  parseJSON = withObject "SignedUrl" $ \obj ->
+    SignedURLWithKey <$> obj .: "signedUrl" <*> obj .: "key"
 
 data ArchiveComponents = ArchiveComponents
   { archives :: [Archive]
@@ -480,6 +491,7 @@ data Organization = Organization
   , orgSupportsPathDependencyScans :: Bool
   , orgSupportsFirstPartyScans :: Bool
   , orgCustomLicenseScanConfigs :: [GrepEntry]
+  , orgSupportsReachability :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -499,6 +511,7 @@ blankOrganization =
     , orgSupportsPathDependencyScans = False
     , orgSupportsFirstPartyScans = True
     , orgCustomLicenseScanConfigs = []
+    , orgSupportsReachability = False
     }
 
 instance FromJSON Organization where
@@ -542,6 +555,9 @@ instance FromJSON Organization where
       <*> obj
         .:? "customLicenseScanConfigs"
         .!= []
+      <*> obj
+        .:? "supportsReachability"
+        .!= False
 
 data Project = Project
   { projectId :: Text
@@ -563,6 +579,7 @@ instance FromJSON Project where
 data UploadResponse = UploadResponse
   { uploadLocator :: Locator
   , uploadError :: Maybe Text
+  , uploadWarnings :: Maybe [Text]
   }
   deriving (Eq, Ord, Show)
 
@@ -571,6 +588,7 @@ instance FromJSON UploadResponse where
     UploadResponse . parseLocator
       <$> (obj .: "locator")
       <*> obj .:? "error"
+      <*> obj .:? "warnings"
 
 data RevisionDependencyCacheStatus
   = Ready

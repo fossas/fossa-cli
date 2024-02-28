@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+
 module App.Fossa.API.BuildWait (
   waitForScanCompletion,
   waitForIssues,
@@ -6,7 +8,7 @@ module App.Fossa.API.BuildWait (
 ) where
 
 import App.Fossa.Config.Test (DiffRevision)
-import App.Types (ProjectRevision)
+import App.Types (ProjectRevision, projectRevision)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -25,10 +27,14 @@ import Control.Effect.FossaApiClient (
   getProject,
   getRevisionDependencyCacheStatus,
  )
-import Control.Effect.StickyLogger (StickyLogger, logSticky')
+import Control.Effect.StickyLogger (StickyLogger, logSticky, logSticky')
 import Control.Monad (void, when)
 import Control.Timeout (Cancel, checkForCancel, delay)
+import Data.Error (SourceLocation, createEmptyBlock, getSourceLocation)
+import Data.String.Conversion (showText)
 import Effect.Logger (Logger, viaShow)
+import Errata (errataSimple)
+import Errata.Types (Errata)
 import Fossa.API.Types (
   ApiOpts (apiOptsPollDelay),
   Build (buildTask),
@@ -43,14 +49,17 @@ import Fossa.API.Types (
 
 data WaitError
   = -- | We encountered the FAILED status on a build
-    BuildFailed
+    BuildFailed SourceLocation
   | -- | We ran out of time locally, and aborted
-    LocalTimeout
+    LocalTimeout SourceLocation
   deriving (Eq, Ord, Show)
 
 instance ToDiagnostic WaitError where
-  renderDiagnostic BuildFailed = "The build failed. Check the FOSSA webapp for more details."
-  renderDiagnostic LocalTimeout = "Build/Issue scan was not completed on the FOSSA server, and the --timeout duration has expired."
+  renderDiagnostic :: WaitError -> Errata
+  renderDiagnostic (BuildFailed srcLoc) =
+    errataSimple (Just "The build failed. Check the FOSSA webapp for more details") (createEmptyBlock srcLoc) Nothing
+  renderDiagnostic (LocalTimeout srcLoc) =
+    errataSimple (Just "Build/Issue scan was not completed on the FOSSA server, and the --timeout duration has expired") (createEmptyBlock srcLoc) Nothing
 
 -- | Wait for either a normal build completion or a monorepo scan completion.
 -- Try to detect the correct method, use provided fallback
@@ -107,9 +116,9 @@ waitForBuild revision cancelFlag = do
 
   case buildTaskStatus (buildTask build) of
     StatusSucceeded -> pure ()
-    StatusFailed -> fatal BuildFailed
+    StatusFailed -> fatal $ BuildFailed getSourceLocation
     otherStatus -> do
-      logSticky' $ "[ Waiting for build completion... last status: " <> viaShow otherStatus <> " ]"
+      logSticky $ "[ Waiting for build completion (revision " <> revision.projectRevision <> ")... last status: " <> showText otherStatus <> " ]"
       pauseForRetry
       waitForBuild revision cancelFlag
 
@@ -121,7 +130,7 @@ checkForTimeout ::
   ) =>
   Cancel ->
   m ()
-checkForTimeout = checkForCancel LocalTimeout
+checkForTimeout = checkForCancel $ LocalTimeout getSourceLocation
 
 pauseForRetry ::
   ( Has (Lift IO) sig m

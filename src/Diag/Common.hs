@@ -5,18 +5,22 @@ module Diag.Common (
 ) where
 
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
+import Errata (Errata (..))
 
 data MissingDeepDeps = MissingDeepDeps
 instance ToDiagnostic MissingDeepDeps where
-  renderDiagnostic (MissingDeepDeps) =
-    "Could not analyze deep dependencies."
+  renderDiagnostic (MissingDeepDeps) = do
+    let header = "Could not analyze deep dependencies."
+    Errata (Just header) [] Nothing
 
 data MissingEdges = MissingEdges
 instance ToDiagnostic MissingEdges where
-  renderDiagnostic (MissingEdges) =
-    "Could not analyze edges between dependencies."
+  renderDiagnostic (MissingEdges) = do
+    let header = "Could not analyze edges between dependencies."
+    Errata (Just header) [] Nothing
 
 data AllDirectDeps = AllDirectDeps
 instance ToDiagnostic AllDirectDeps where
-  renderDiagnostic (AllDirectDeps) =
-    "Could not differentiate between direct and deep dependencies, all dependencies will be reported as direct."
+  renderDiagnostic (AllDirectDeps) = do
+    let header = "Could not differentiate between direct and deep dependencies, all dependencies will be reported as direct."
+    Errata (Just header) [] Nothing

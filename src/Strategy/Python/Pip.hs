@@ -21,7 +21,7 @@ import Effect.Exec (
   execJson,
   execParser,
  )
-import Effect.Logger (vsep)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)
 import Text.Megaparsec
@@ -48,10 +48,9 @@ data PythonPackage = PythonPackage
 data PipListCommandFailed = PipListCommandFailed
 
 instance ToDiagnostic PipListCommandFailed where
-  renderDiagnostic PipListCommandFailed =
-    vsep
-      [ "Failed to run pip command"
-      ]
+  renderDiagnostic PipListCommandFailed = do
+    let header = "Failed to run pip command"
+    Errata (Just header) [] Nothing
 
 pythonPip :: [Text] -> Command
 pythonPip args =

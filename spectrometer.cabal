@@ -103,6 +103,7 @@ common deps
     , direct-sqlite                ^>=2.3.27
     , directory                    ^>=1.3.6.1
     , either                       ^>=5.0.2
+    , errata                       ^>=0.4.0.2
     , file-embed                   ^>=0.0.15
     , filepath                     ^>=1.4.2.1
     , filepattern                  ^>=0.1.2
@@ -138,6 +139,7 @@ common deps
     , semver                       ^>=0.4.0.1
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
+    , strip-ansi-escape            ^>=0.1
     , tar                          ^>=0.7.0.0
     , template-haskell
     , text                         ^>=2.0.0
@@ -227,7 +229,13 @@ library
     App.Fossa.Main
     App.Fossa.ManualDeps
     App.Fossa.PathDependency
+    App.Fossa.PreflightChecks
     App.Fossa.ProjectInference
+    App.Fossa.Reachability.Gradle
+    App.Fossa.Reachability.Jar
+    App.Fossa.Reachability.Maven
+    App.Fossa.Reachability.Types
+    App.Fossa.Reachability.Upload
     App.Fossa.Report
     App.Fossa.Report.Attribution
     App.Fossa.RunThemis
@@ -325,6 +333,7 @@ library
     Control.Timeout.Internal
     Data.Aeson.Extra
     Data.Conduit.Extra
+    Data.Error
     Data.FileEmbed.Extra
     Data.FileTree.IndexFileTree
     Data.Flag
@@ -532,6 +541,7 @@ test-suite unit-tests
     App.Fossa.LicenseScannerSpec
     App.Fossa.ManualDepsSpec
     App.Fossa.PathDependencySpec
+    App.Fossa.PreflightChecksSpec
     App.Fossa.ProjectInferenceSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.ReportSpec
@@ -641,6 +651,10 @@ test-suite unit-tests
     Python.SetupPySpec
     R.DescriptionSpec
     R.RenvSpec
+    Reachability.GradleSpec
+    Reachability.JarSpec
+    Reachability.MavenSpec
+    Reachability.UploadSpec
     ResultUtil
     RPM.SpecFileSpec
     Ruby.BundleShowSpec
@@ -702,6 +716,9 @@ test-suite integration-tests
     Analysis.RustSpec
     Analysis.ScalaSpec
     Analysis.SwiftSpec
+    Container.AnalysisSpec
+    Container.FixtureUtils
+    Reachability.UploadSpec
     SpecHook
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.10.0.1

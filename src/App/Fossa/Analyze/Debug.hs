@@ -1,5 +1,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use unwords" #-}
 
 module App.Fossa.Analyze.Debug (
   collectDebugBundle,
@@ -18,16 +21,20 @@ module App.Fossa.Analyze.Debug (
 
   -- * Debug all effects
   debugEverything,
-) where
+)
+where
 
 import App.Fossa.EmbeddedBinary (themisVersion)
+import App.Fossa.Reachability.Types (reachabilityEndpointJson, reachabilityRawJson)
 import App.Version (fullVersionDescription)
+import Control.Applicative (asum)
 import Control.Carrier.Debug (
   Algebra (..),
   Debug,
   DebugC,
   Has,
-  Scope,
+  Scope (..),
+  ScopeEvent (..),
   debugError,
   debugLog,
   debugScope,
@@ -47,12 +54,13 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Aeson qualified as Aeson
 import Data.Bifunctor (bimap)
+import Data.ByteString.Lazy qualified as BL
 import Data.Map qualified as Map
-import Data.String.Conversion (toText)
+import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text, toLower)
 import Data.Word (Word64)
 import Diag.Result (Result (..))
-import Effect.Exec (Exec, ExecF (..))
+import Effect.Exec (AllowErr (..), CmdFailure (..), Command (..), Exec, ExecF (..), execInCwd)
 import Effect.Logger (Logger, LoggerF (..))
 import Effect.ReadFS (ReadFS, ReadFSF (..))
 import GHC.Conc qualified as Conc
@@ -62,7 +70,54 @@ import System.Args (getCommandArgs)
 import System.Environment (getEnvironment)
 import System.Info qualified as Info
 
-collectEnvVariables :: Has (Lift IO) sig m => m (Map.Map Text Text)
+newtype BinInfoCommand
+  = BinInfoCommand
+      (Text, Text)
+  deriving (Eq, Ord)
+
+collectBinaryInfo :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => m (Map.Map Text (Either CmdFailure Text))
+collectBinaryInfo = do
+  binVersions <- traverse execBinCmd binaryVersionCommands
+  whichBin <- traverse execBinCmd whichBinaryCommands
+  pure $ Map.fromList $ binVersions ++ whichBin
+  where
+    execBinCmd :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => BinInfoCommand -> m (Text, Either CmdFailure Text)
+    execBinCmd cmd = (toCmdText cmd,) . bsToStr <$> execInCwd (mkCommand cmd)
+
+    bsToStr :: Either CmdFailure BL.ByteString -> Either CmdFailure Text
+    bsToStr (Right bs) = Right $ decodeUtf8 bs
+    bsToStr (Left cf) = Left cf
+
+    toCmdText :: BinInfoCommand -> Text
+    toCmdText (BinInfoCommand (cmd, arg)) = cmd <> " " <> arg
+
+    toWhichCmd :: BinInfoCommand -> BinInfoCommand
+    toWhichCmd (BinInfoCommand (cmd, _)) =
+      if Info.os == "mingw32"
+        then BinInfoCommand ("where", cmd) -- windows uses where command
+        else BinInfoCommand ("which", cmd)
+
+    whichBinaryCommands :: [BinInfoCommand]
+    whichBinaryCommands = map toWhichCmd binaryVersionCommands
+
+    binaryVersionCommands :: [BinInfoCommand]
+    binaryVersionCommands =
+      [ BinInfoCommand ("java", "--version")
+      , BinInfoCommand ("java", "-version") -- for any version before java 8
+      , BinInfoCommand ("mvn", "--version")
+      , BinInfoCommand ("cargo", "--version")
+      , BinInfoCommand ("go", "version")
+      , BinInfoCommand ("python3", "--version")
+      , BinInfoCommand ("python", "--version")
+      , BinInfoCommand ("dotnet", "--version")
+      , BinInfoCommand ("bundler", "--version")
+      , BinInfoCommand ("sbt", "--version")
+      ]
+
+    mkCommand :: BinInfoCommand -> Command
+    mkCommand (BinInfoCommand (cmd, args)) = Command cmd [args] Always
+
+collectEnvVariables :: (Has (Lift IO) sig m) => m (Map.Map Text Text)
 collectEnvVariables =
   (Map.filterWithKey onlyEnvOfInterest <$> Map.fromList)
     . map (bimap toText toText)
@@ -102,6 +157,9 @@ collectEnvVariables =
         , "GOTMPDIR"
         , "GOVCS"
         , "GOWORK"
+        , -- Java
+          -- Ref: https://docs.oracle.com/javase/10/troubleshoot/environment-variables-and-system-properties.htm#JSTGD586
+          "JAVA_HOME"
         ]
 
 collectDebugBundle ::
@@ -120,6 +178,7 @@ collectDebugBundle cfg act = do
   sysInfo <- sendIO collectSystemInfo
   args <- sendIO getCommandArgs
   envVars <- collectEnvVariables
+  binVersions <- collectBinaryInfo
 
   let output :: Aeson.Value = case res of
         Failure _ _ -> "scan was not successful, no output"
@@ -135,6 +194,9 @@ collectDebugBundle cfg act = do
           , bundleEnvVariables = envVars
           , bundleOutput = output
           , bundleScope = scope
+          , bundleBinaryVersions = binVersions
+          , bundleReachabilityRaw = lookUpReachabilityRawScope scope
+          , bundleReachabilityEndpoint = lookUpReachabilityEndpointScope scope
           , bundleJournals =
               BundleJournals
                 { bundleJournalReadFS = readFSJournal
@@ -162,6 +224,23 @@ collectSystemInfo = do
       processors
       systemMemory
 
+-- IMPROVE: We need a better way to persist arbitary debug metadata at root level of bundle.
+-- Performing action, and doing subsequent lookup is not ideal.
+lookUpReachabilityRawScope :: Scope -> Maybe Aeson.Value
+lookUpReachabilityRawScope = lookupScope reachabilityRawJson
+
+lookUpReachabilityEndpointScope :: Scope -> Maybe Aeson.Value
+lookUpReachabilityEndpointScope = lookupScope reachabilityEndpointJson
+
+lookupScope :: Text -> Scope -> Maybe Aeson.Value
+lookupScope key scope = case (Map.lookup key $ scopeMetadata scope) of
+  Just v -> Just v
+  Nothing -> asum $ map lookupScopeEvent (scopeEvents scope)
+  where
+    lookupScopeEvent :: ScopeEvent -> Maybe Aeson.Value
+    lookupScopeEvent (EventScope _ s) = lookupScope key s
+    lookupScopeEvent _ = Nothing
+
 data DebugBundle cfg = DebugBundle
   { bundleSystem :: SystemInfo
   , bundleCLIVersion :: Text
@@ -169,9 +248,12 @@ data DebugBundle cfg = DebugBundle
   , bundleArgs :: [Text]
   , bundleConfig :: cfg
   , bundleEnvVariables :: Map.Map Text Text
+  , bundleBinaryVersions :: Map.Map Text (Either CmdFailure Text)
   , bundleOutput :: Aeson.Value
   , bundleScope :: Scope
   , bundleJournals :: BundleJournals
+  , bundleReachabilityRaw :: Maybe Aeson.Value
+  , bundleReachabilityEndpoint :: Maybe Aeson.Value
   }
   deriving (Show, Generic)
 
