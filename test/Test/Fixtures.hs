@@ -106,6 +106,7 @@ uploadResponse =
   API.UploadResponse
     { API.uploadLocator = locator
     , API.uploadError = Nothing
+    , API.uploadWarnings = Nothing
     }
 
 projectMetadata :: App.ProjectMetadata

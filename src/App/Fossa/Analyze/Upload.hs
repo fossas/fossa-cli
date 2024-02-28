@@ -3,6 +3,7 @@
 module App.Fossa.Analyze.Upload (
   mergeSourceAndLicenseUnits,
   uploadSuccessfulAnalysis,
+  emitBuildWarnings,
   ScanUnits (..),
 ) where
 
@@ -25,6 +26,7 @@ import Control.Effect.Diagnostics (
   fatalText,
   fromMaybeText,
   recover,
+  warn,
  )
 import Control.Effect.FossaApiClient (
   FossaApiClient,
@@ -131,6 +133,9 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
         let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
         let mergedUnits = mergeSourceAndLicenseUnits sourceUnits licenseSourceUnit
         runStickyLogger SevInfo $ uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads
+
+    emitBuildWarnings uploadResult
+
     let locator = uploadLocator uploadResult
     buildUrl <- getFossaBuildUrl revision locator
     traverse_
@@ -211,3 +216,7 @@ buildProjectSummary project locator projectUrl = do
       , "url" .= projectUrl
       , "id" .= renderLocator locator
       ]
+
+emitBuildWarnings :: Has Diagnostics sig m => UploadResponse -> m ()
+emitBuildWarnings res = do
+  context "Emit build warnings" $ traverse_ (traverse_ warn) $ uploadWarnings res
