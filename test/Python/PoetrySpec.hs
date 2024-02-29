@@ -26,7 +26,7 @@ candidatePyProject :: PyProject
 candidatePyProject =
   PyProject
     (Just $ PyProjectBuildSystem "poetry.core.masonry.api")
-    (Just $ PyProjectPoetry Nothing Nothing Nothing (Map.fromList ([("flow_pipes", PoetryTextVersion "^1.21")])) Map.empty)
+    (Just $ PyProjectPoetry Nothing Nothing Nothing (Map.fromList ([("flow_pipes", PoetryTextVersion "^1.21")])) Map.empty Map.empty)
     Nothing
     Nothing
 
