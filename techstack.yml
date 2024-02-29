@@ -2,7 +2,7 @@ repo_name: fossas/fossa-cli
 report_id: edea4e621a992834193ca019fb277295
 version: 0.1
 repo_type: Public
-timestamp: '2024-01-05T08:43:31+00:00'
+timestamp: '2024-02-29T18:45:45+00:00'
 requested_by: spatten
 provider: github
 branch: master
@@ -66,7 +66,7 @@ tools:
   detection_source_url: https://github.com/fossas/fossa-cli
   detection_source: Repo Metadata
 - name: Swift
-  description: 'An innovative new programming language for Cocoa and Cocoa Touch. '
+  description: An innovative new programming language for Cocoa and Cocoa Touch.
   website_url: https://developer.apple.com/swift/
   license: Apache-2.0
   open_source: true
@@ -149,7 +149,7 @@ tools:
   last_updated_by: Christopher Sasarak
   last_updated_on: 2023-03-27 16:24:07.000000000 Z
 - name: Nix
-  description: 'A package manager for Linux and other Unix systems '
+  description: A package manager for Linux and other Unix systems
   website_url: http://nixos.org/nix
   license: LGPL-2.1
   open_source: true
