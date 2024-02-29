@@ -204,6 +204,7 @@ library
     App.Fossa.Config.LicenseScan
     App.Fossa.Config.LinkUserBinaries
     App.Fossa.Config.ListTargets
+    App.Fossa.Config.ReleaseGroup
     App.Fossa.Config.Report
     App.Fossa.Config.Snippets
     App.Fossa.Config.Test
@@ -236,6 +237,7 @@ library
     App.Fossa.Reachability.Maven
     App.Fossa.Reachability.Types
     App.Fossa.Reachability.Upload
+    App.Fossa.ReleaseGroup.Create
     App.Fossa.Report
     App.Fossa.Report.Attribution
     App.Fossa.RunThemis
