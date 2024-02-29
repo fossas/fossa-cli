@@ -38,7 +38,6 @@ module Control.Effect.FossaApiClient (
   uploadFirstPartyScanResult,
   getAnalyzedPathRevisions,
   getTokenType,
-  getSubscription,
   uploadContentForReachability,
   uploadBuildForReachability,
   getCustomBuildPermissions,
@@ -76,7 +75,6 @@ import Fossa.API.Types (
   Project,
   RevisionDependencyCache,
   SignedURL,
-  SubscriptionResponse,
   TokenTypeResponse,
   UploadResponse,
  )
@@ -118,7 +116,6 @@ data FossaApiClientF a where
   GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetPathDependencyScanUrl :: PackageRevision -> ProjectRevision -> FullFileUploads -> FossaApiClientF PathDependencyUpload
   GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
-  GetSubscription :: FossaApiClientF SubscriptionResponse
   GetTokenType :: FossaApiClientF TokenTypeResponse
   GetVsiInferences :: VSI.ScanID -> FossaApiClientF VSI.VsiExportedInferencesBody
   GetVsiScanAnalysisStatus :: VSI.ScanID -> FossaApiClientF VSI.AnalysisStatus
@@ -265,9 +262,6 @@ getEndpointVersion = sendSimple GetEndpointVersion
 
 getTokenType :: Has FossaApiClient sig m => m TokenTypeResponse
 getTokenType = sendSimple GetTokenType
-
-getSubscription :: Has FossaApiClient sig m => m SubscriptionResponse
-getSubscription = sendSimple GetSubscription
 
 getCustomBuildPermissions :: Has FossaApiClient sig m => ProjectRevision -> ProjectMetadata -> m CustomBuildUploadPermissions
 getCustomBuildPermissions revision metadata = sendSimple $ GetCustomBuildPermissons revision metadata

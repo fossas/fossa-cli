@@ -35,7 +35,6 @@ module Fossa.API.Types (
   TokenType (..),
   TokenTypeResponse (..),
   Subscription (..),
-  SubscriptionResponse (..),
   CustomBuildUploadPermissions (..),
   ProjectPermissionStatus (..),
   ReleaseGroupPermissionStatus (..),
@@ -500,6 +499,7 @@ data Organization = Organization
   , orgCustomLicenseScanConfigs :: [GrepEntry]
   , orgSupportsReachability :: Bool
   , orgSupportsPreflightChecks :: Bool
+  , orgSubscription :: Subscription
   }
   deriving (Eq, Ord, Show)
 
@@ -521,6 +521,7 @@ blankOrganization =
     , orgCustomLicenseScanConfigs = []
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = False
+    , orgSubscription = Free
     }
 
 instance FromJSON Organization where
@@ -570,6 +571,9 @@ instance FromJSON Organization where
       <*> obj
         .:? "supportsPreflightChecks"
         .!= False
+      <*> obj
+        .:? "subscription"
+        .!= Free
 
 data TokenType
   = Push
@@ -590,15 +594,6 @@ instance FromJSON TokenType where
     "Push" -> pure Push
     _ -> pure FullAccess
 
-newtype SubscriptionResponse = SubscriptionResponse {subscription :: Subscription}
-  deriving (Eq, Ord, Show)
-
-instance FromJSON SubscriptionResponse where
-  parseJSON = withObject "SubscriptionResponse" $ \obj ->
-    SubscriptionResponse
-      <$> obj
-        .: "subscription"
-
 data Subscription
   = Free
   | Premium
@@ -606,8 +601,8 @@ data Subscription
 
 instance FromJSON Subscription where
   parseJSON = withText "Subscription" $ \case
-    "Free" -> pure Free
-    _ -> pure Premium
+    "Premium" -> pure Premium
+    _ -> pure Free
 
 data CustomBuildUploadPermissions = CustomBuildUploadPermissions
   { projectPermissionStatus :: ProjectPermissionStatus

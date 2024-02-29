@@ -15,7 +15,7 @@ import Control.Carrier.Diagnostics (Diagnostics, errCtx, errDoc, errHelp)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.Stack (context)
 import Control.Effect.Diagnostics (ToDiagnostic, errSupport, fatal, fatalOnIOException)
-import Control.Effect.FossaApiClient (FossaApiClient, getCustomBuildPermissions, getOrganization, getSubscription, getTokenType)
+import Control.Effect.FossaApiClient (FossaApiClient, getCustomBuildPermissions, getOrganization, getTokenType)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Monad (void, when)
 import Data.Error (createErrataWithHeaderOnly)
@@ -24,7 +24,7 @@ import Data.Text.IO qualified as TIO
 import Diag.Diagnostic (ToDiagnostic (..))
 import Effect.Logger (renderIt)
 import Errata (Errata (..))
-import Fossa.API.Types (ApiOpts, CustomBuildUploadPermissions (..), Organization (orgSupportsPreflightChecks), ProjectPermissionStatus (..), ReleaseGroupPermissionStatus (..), Subscription (..), SubscriptionResponse (..), TokenType (..), TokenTypeResponse (..))
+import Fossa.API.Types (ApiOpts, CustomBuildUploadPermissions (..), Organization (..), ProjectPermissionStatus (..), ReleaseGroupPermissionStatus (..), Subscription (..), TokenType (..), TokenTypeResponse (..))
 import Path (
   File,
   Path,
@@ -78,9 +78,8 @@ preflightChecks cmd = context "preflight-checks" $ do
             uploadBuildPermissionsCheck customBuildPermissions
           ReportChecks -> do
             tokenType <- getTokenType
-            subscription <- getSubscription
             fullAccessTokenCheck tokenType
-            premiumSubscriptionCheck subscription
+            premiumSubscriptionCheck org
           _ -> pure ()
 
 uploadBuildPermissionsCheck :: Has Diagnostics sig m => CustomBuildUploadPermissions -> m ()
@@ -129,8 +128,8 @@ fullAccessTokenCheck TokenTypeResponse{..} = case tokenType of
       $ fatal TokenTypeErr
   _ -> pure ()
 
-premiumSubscriptionCheck :: Has Diagnostics sig m => SubscriptionResponse -> m ()
-premiumSubscriptionCheck SubscriptionResponse{..} = case subscription of
+premiumSubscriptionCheck :: Has Diagnostics sig m => Organization -> m ()
+premiumSubscriptionCheck Organization{..} = case orgSubscription of
   Free ->
     errHelp ("To proceed, please upgrade your subscription" :: Text)
       . errCtx ("You currently have a free subscription" :: Text)

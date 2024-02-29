@@ -67,6 +67,5 @@ runFossaApiClient apiOpts =
           UploadContentForReachability content -> Core.uploadReachabilityContent content
           UploadBuildForReachability rev metadata content -> Core.uploadReachabilityBuild rev metadata content
           GetTokenType -> Core.getTokenType
-          GetSubscription -> Core.getSubscription
           GetCustomBuildPermissons rev metadata -> Core.getCustomBuildPermissions rev metadata
       )

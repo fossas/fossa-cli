@@ -20,11 +20,8 @@ expectPushToken = GetTokenType `alwaysReturns` Fixtures.pushToken
 expectFullAccessToken :: Has MockApi sig m => m ()
 expectFullAccessToken = GetTokenType `alwaysReturns` Fixtures.fullAccessToken
 
-expectFreeSubscription :: Has MockApi sig m => m ()
-expectFreeSubscription = GetSubscription `alwaysReturns` Fixtures.freeSubscription
-
-expectPremiumSubscription :: Has MockApi sig m => m ()
-expectPremiumSubscription = GetSubscription `alwaysReturns` Fixtures.premiumSubscription
+expectOrganizationWithPremiumSubscription :: Has MockApi sig m => m ()
+expectOrganizationWithPremiumSubscription = GetOrganization `alwaysReturns` Fixtures.organizationWithPremiumSubscription
 
 expectOrganization :: Has MockApi sig m => m ()
 expectOrganization = GetOrganization `alwaysReturns` Fixtures.organization
@@ -39,30 +36,25 @@ spec :: Spec
 spec = do
   describe "preflight checks" $ do
     it' "should pass all checks for test command" $ do
-      expectFreeSubscription
       expectFullAccessToken
       expectOrganizationWithPreflightChecks
       res <- ignoreDebug $ preflightChecks TestChecks
       res `shouldBe'` ()
     it' "should fail full access token check for test command" $ do
       expectOrganizationWithPreflightChecks
-      expectFreeSubscription
       expectPushToken
       expectFatal' $ ignoreDebug $ preflightChecks TestChecks
     it' "should pass all check for report command" $ do
-      expectOrganizationWithPreflightChecks
-      expectPremiumSubscription
+      expectOrganizationWithPremiumSubscription
       expectFullAccessToken
       res <- preflightChecks ReportChecks
       res `shouldBe'` ()
     it' "should fail full access token check for report command" $ do
-      expectOrganizationWithPreflightChecks
-      expectPremiumSubscription
+      expectOrganizationWithPremiumSubscription
       expectPushToken
       expectFatal' $ ignoreDebug $ preflightChecks ReportChecks
     it' "should fail premium subscription check for report command" $ do
       expectOrganizationWithPreflightChecks
-      expectFreeSubscription
       expectFullAccessToken
       expectFatal' $ ignoreDebug $ preflightChecks ReportChecks
     it' "should pass all custom upload permission checks for analyze command" $ do

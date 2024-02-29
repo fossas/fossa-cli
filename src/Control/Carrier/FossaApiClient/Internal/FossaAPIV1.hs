@@ -41,7 +41,6 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   finalizePathDependencyScan,
   alreadyAnalyzedPathRevision,
   getTokenType,
-  getSubscription,
   getCustomBuildUploadPermissions,
 
   -- * Reachability
@@ -147,7 +146,6 @@ import Fossa.API.Types (
   RevisionDependencyCache,
   SignedURL (signedURL),
   SignedURLWithKey (surlwkKey, surlwkSignedURL),
-  SubscriptionResponse,
   TokenTypeResponse,
   UploadResponse,
   useApiOpts,
@@ -1202,14 +1200,6 @@ getTokenType :: (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
 getTokenType apiOpts = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   responseBody <$> req GET (tokenTypeEndpoint baseUrl) NoReqBody jsonResponse baseOpts
-
-subscriptionEndpoint :: Url scheme -> Url scheme
-subscriptionEndpoint baseurl = baseurl /: "api" /: "cli" /: "subscription"
-
-getSubscription :: (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) => ApiOpts -> m SubscriptionResponse
-getSubscription apiOpts = fossaReq $ do
-  (baseUrl, baseOpts) <- useApiOpts apiOpts
-  responseBody <$> req GET (subscriptionEndpoint baseUrl) NoReqBody jsonResponse baseOpts
 
 contributorsEndpoint :: Url scheme -> Url scheme
 contributorsEndpoint baseurl = baseurl /: "api" /: "contributors"

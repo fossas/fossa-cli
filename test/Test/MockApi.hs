@@ -235,7 +235,6 @@ matchExpectation a@(GetAnalyzedPathRevisions{}) (ApiExpectation _ requestExpecta
 matchExpectation a@(UploadContentForReachability{}) (ApiExpectation _ requestExpectation b@(UploadContentForReachability{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadBuildForReachability{}) (ApiExpectation _ requestExpectation b@(UploadBuildForReachability{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetTokenType{}) (ApiExpectation _ requestExpectation b@(GetTokenType{}) resp) = checkResult requestExpectation a b resp
-matchExpectation a@(GetSubscription{}) (ApiExpectation _ requestExpectation b@(GetSubscription{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetCustomBuildPermissons{}) (ApiExpectation _ requestExpectation b@(GetCustomBuildPermissons{}) resp) = checkResult requestExpectation a b resp
 matchExpectation _ _ = Nothing
 
