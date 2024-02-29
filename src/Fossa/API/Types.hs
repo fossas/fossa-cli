@@ -658,6 +658,7 @@ instance FromJSON Project where
 data UploadResponse = UploadResponse
   { uploadLocator :: Locator
   , uploadError :: Maybe Text
+  , uploadWarnings :: Maybe [Text]
   }
   deriving (Eq, Ord, Show)
 
@@ -666,6 +667,7 @@ instance FromJSON UploadResponse where
     UploadResponse
       <$> (parseLocator <$> obj .: "locator")
       <*> obj .:? "error"
+      <*> obj .:? "warnings"
 
 data RevisionDependencyCacheStatus
   = Ready
