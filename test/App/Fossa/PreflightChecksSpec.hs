@@ -36,14 +36,9 @@ spec :: Spec
 spec = do
   describe "preflight checks" $ do
     it' "should pass all checks for test command" $ do
-      expectFullAccessToken
       expectOrganizationWithPreflightChecks
       res <- ignoreDebug $ preflightChecks TestChecks
       res `shouldBe'` ()
-    it' "should fail full access token check for test command" $ do
-      expectOrganizationWithPreflightChecks
-      expectPushToken
-      expectFatal' $ ignoreDebug $ preflightChecks TestChecks
     it' "should pass all check for report command" $ do
       expectOrganizationWithPremiumSubscription
       expectFullAccessToken
