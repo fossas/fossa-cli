@@ -37,8 +37,10 @@ module Control.Effect.FossaApiClient (
   uploadLicenseScanResult,
   uploadFirstPartyScanResult,
   getAnalyzedPathRevisions,
+  getTokenType,
   uploadContentForReachability,
   uploadBuildForReachability,
+  getCustomBuildPermissions,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
@@ -66,12 +68,14 @@ import Fossa.API.Types (
   ArchiveComponents,
   Build,
   Contributors,
+  CustomBuildUploadPermissions,
   Issues,
   Organization,
   PathDependencyUpload,
   Project,
   RevisionDependencyCache,
   SignedURL,
+  TokenTypeResponse,
   UploadResponse,
  )
 import Path (File, Path, Rel)
@@ -96,6 +100,10 @@ data FossaApiClientF a where
   FinalizeLicenseScanForPathDependency :: [Locator] -> Bool -> FossaApiClientF ()
   GetApiOpts :: FossaApiClientF ApiOpts
   GetAttribution :: ProjectRevision -> ReportOutputFormat -> FossaApiClientF Text
+  GetCustomBuildPermissons ::
+    ProjectRevision ->
+    ProjectMetadata ->
+    FossaApiClientF CustomBuildUploadPermissions
   GetIssues :: ProjectRevision -> Maybe DiffRevision -> FossaApiClientF Issues
   GetEndpointVersion :: FossaApiClientF Text
   GetRevisionDependencyCacheStatus :: ProjectRevision -> FossaApiClientF RevisionDependencyCache
@@ -108,6 +116,7 @@ data FossaApiClientF a where
   GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetPathDependencyScanUrl :: PackageRevision -> ProjectRevision -> FullFileUploads -> FossaApiClientF PathDependencyUpload
   GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
+  GetTokenType :: FossaApiClientF TokenTypeResponse
   GetVsiInferences :: VSI.ScanID -> FossaApiClientF VSI.VsiExportedInferencesBody
   GetVsiScanAnalysisStatus :: VSI.ScanID -> FossaApiClientF VSI.AnalysisStatus
   QueueArchiveBuild :: Archive -> FossaApiClientF (Maybe C8.ByteString)
@@ -250,6 +259,12 @@ getVsiInferences = sendSimple . GetVsiInferences
 
 getEndpointVersion :: Has FossaApiClient sig m => m Text
 getEndpointVersion = sendSimple GetEndpointVersion
+
+getTokenType :: Has FossaApiClient sig m => m TokenTypeResponse
+getTokenType = sendSimple GetTokenType
+
+getCustomBuildPermissions :: Has FossaApiClient sig m => ProjectRevision -> ProjectMetadata -> m CustomBuildUploadPermissions
+getCustomBuildPermissions revision metadata = sendSimple $ GetCustomBuildPermissons revision metadata
 
 uploadContentForReachability :: Has FossaApiClient sig m => ByteString -> m Text
 uploadContentForReachability = sendSimple . UploadContentForReachability

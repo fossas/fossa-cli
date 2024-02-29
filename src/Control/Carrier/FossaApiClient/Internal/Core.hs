@@ -16,8 +16,10 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   uploadNativeContainerScan,
   uploadContributors,
   getEndpointVersion,
+  getTokenType,
   uploadReachabilityContent,
   uploadReachabilityBuild,
+  getCustomBuildPermissions,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
@@ -43,11 +45,13 @@ import Fossa.API.Types (
   Archive,
   Build,
   Contributors,
+  CustomBuildUploadPermissions,
   Issues,
   Organization,
   Project,
   RevisionDependencyCache,
   SignedURL,
+  TokenTypeResponse,
   UploadResponse,
  )
 import Srclib.Types (Locator, SourceUnit, renderLocator)
@@ -65,6 +69,30 @@ getOrganization = do
   -- TODO: This is a wrapper around FossaAPIV1 for now until more uses are
   -- migrated.
   API.getOrganization apiOpts
+
+getTokenType ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  m TokenTypeResponse
+getTokenType = do
+  apiOpts <- ask
+  API.getTokenType apiOpts
+
+getCustomBuildPermissions ::
+  ( Has (Lift IO) sig m
+  , Has (Reader ApiOpts) sig m
+  , Has Debug sig m
+  , Has Diagnostics sig m
+  ) =>
+  ProjectRevision ->
+  ProjectMetadata ->
+  m CustomBuildUploadPermissions
+getCustomBuildPermissions revision metadata = do
+  apiOpts <- ask
+  API.getCustomBuildUploadPermissions apiOpts revision metadata
 
 getProject ::
   ( Has (Lift IO) sig m

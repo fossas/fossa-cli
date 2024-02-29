@@ -40,6 +40,8 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getUploadURLForPathDependency,
   finalizePathDependencyScan,
   alreadyAnalyzedPathRevision,
+  getTokenType,
+  getCustomBuildUploadPermissions,
 
   -- * Reachability
   getReachabilityContentSignedUrl,
@@ -133,6 +135,7 @@ import Fossa.API.Types (
   ArchiveComponents (ArchiveComponents),
   Build,
   Contributors,
+  CustomBuildUploadPermissions,
   Issues,
   OrgId,
   Organization (Organization, orgRequiresFullFileUploads, orgSupportsIssueDiffs, orgSupportsNativeContainerScan, organizationId),
@@ -143,6 +146,7 @@ import Fossa.API.Types (
   RevisionDependencyCache,
   SignedURL (signedURL),
   SignedURLWithKey (surlwkKey, surlwkSignedURL),
+  TokenTypeResponse,
   UploadResponse,
   useApiOpts,
  )
@@ -658,6 +662,31 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
   resp <- req POST (uploadUrl baseUrl) (ReqBodyJson sourceUnits) jsonResponse (baseOpts <> opts)
   pure (responseBody resp)
 
+customUploadPermissionUrl :: Url scheme -> Url scheme
+customUploadPermissionUrl baseurl = baseurl /: "api" /: "cli" /: "custom_build_permissions"
+
+getCustomBuildUploadPermissions ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m, Has Debug sig m) =>
+  ApiOpts ->
+  ProjectRevision ->
+  ProjectMetadata ->
+  m CustomBuildUploadPermissions
+getCustomBuildUploadPermissions apiOpts ProjectRevision{..} metadata = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts =
+        "locator"
+          =: renderLocator (Locator "custom" projectName (Just projectRevision))
+          <> "cliVersion"
+            =: cliVersion
+          <> "managedBuild"
+            =: True
+          <> mkMetadataOpts metadata projectName
+          -- Don't include branch if it doesn't exist, core may not handle empty string properly.
+          <> maybe mempty ("branch" =:) projectBranch
+  resp <- req GET (customUploadPermissionUrl baseUrl) (NoReqBody) jsonResponse (baseOpts <> opts)
+  pure (responseBody resp)
+
 uploadAnalysisWithFirstPartyLicenses ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
@@ -1163,6 +1192,14 @@ getOrganization apiOpts = fossaReq $ do
   responseBody <$> req GET (organizationEndpoint baseUrl) NoReqBody jsonResponse baseOpts
 
 ----------
+
+tokenTypeEndpoint :: Url scheme -> Url scheme
+tokenTypeEndpoint baseurl = baseurl /: "api" /: "cli" /: "token_type"
+
+getTokenType :: (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) => ApiOpts -> m TokenTypeResponse
+getTokenType apiOpts = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  responseBody <$> req GET (tokenTypeEndpoint baseUrl) NoReqBody jsonResponse baseOpts
 
 contributorsEndpoint :: Url scheme -> Url scheme
 contributorsEndpoint baseurl = baseurl /: "api" /: "contributors"
