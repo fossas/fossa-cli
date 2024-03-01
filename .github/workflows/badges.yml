@@ -8,6 +8,8 @@ jobs:
   downloads:
     name: update-downloads-badge
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v2
       - name: Update badge
