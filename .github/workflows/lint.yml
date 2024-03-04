@@ -9,11 +9,7 @@ jobs:
     container: ghcr.io/fossas/haskell-dev-tools:9.4.7
 
     steps:
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          components: clippy, rustfmt
+      - uses: dtolnay/rust-toolchain@stable
 
       - uses: actions/checkout@v4
 
@@ -44,11 +40,7 @@ jobs:
     container: ghcr.io/fossas/haskell-dev-tools:9.4.7
 
     steps:
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          components: clippy, rustfmt
+      - uses: dtolnay/rust-toolchain@stable
 
       - uses: actions/checkout@v4
 

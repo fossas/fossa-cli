@@ -59,10 +59,8 @@ jobs:
         cabal-version: '3.8.1.0'
 
     # Set up Rust.
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
+    # This action installs the 'minimal' profile.
+    - uses: dtolnay/rust-toolchain@stable
 
     - name: Install additional Rust tooling
       uses: taiki-e/install-action@v2
