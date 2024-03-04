@@ -285,10 +285,10 @@ jobs:
         case $GITHUB_REF in
           refs/tags/v*)
             # This strips the 'v' prefix from the tag.
-            echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/v/}
+            echo "{VERSION}=${GITHUB_REF/refs\/tags\/v/}"
             ;;
           *)
-            echo ::set-output name=VERSION::${GITHUB_SHA}
+            echo "{VERSION}=${GITHUB_SHA}"
             ;;
         esac
 
