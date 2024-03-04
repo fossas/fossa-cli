@@ -67,11 +67,6 @@ jobs:
       with:
         tool: nextest
 
-    - uses: actions-rs/install@v0.1
-      with:
-        crate: cargo-nextest
-        version: latest
-
     - uses: Swatinem/rust-cache@v2
 
     - name: Debugging information
