@@ -10,6 +10,8 @@ jobs:
 
     steps:
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: "clippy,rustfmt"
 
       - uses: actions/checkout@v4
 
@@ -41,6 +43,8 @@ jobs:
 
     steps:
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: "clippy,rustfmt"
 
       - uses: actions/checkout@v4
 
