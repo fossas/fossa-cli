@@ -61,6 +61,8 @@ jobs:
     # Set up Rust.
     # This action installs the 'minimal' profile.
     - uses: dtolnay/rust-toolchain@stable
+      with:
+        components: "clippy,rustfmt"
 
     - name: Install additional Rust tooling
       uses: taiki-e/install-action@v2
