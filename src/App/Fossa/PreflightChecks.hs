@@ -70,9 +70,6 @@ preflightChecks cmd = context "preflight-checks" $ do
     void $
       errSupport (renderIt reportDefectMsg) $
         case cmd of
-          TestChecks -> do
-            tokenType <- getTokenType
-            fullAccessTokenCheck tokenType
           AnalyzeChecks rev metadata -> do
             customBuildPermissions <- getCustomBuildPermissions rev metadata
             uploadBuildPermissionsCheck customBuildPermissions
