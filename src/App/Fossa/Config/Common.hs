@@ -39,6 +39,7 @@ module App.Fossa.Config.Common (
   -- * Global Parser Help Message
   endpointHelp,
   fossaApiKeyHelp,
+  configHelp,
 ) where
 
 import App.Fossa.Config.ConfigFile (
@@ -172,6 +173,14 @@ metadataOpts =
     <*> many (strOption (applyFossaStyle <> long "project-label" <> stringToHelpDoc "Assign up to 5 labels to the project"))
     <*> optional releaseGroupMetadataOpts
   where
+    titleHelp :: Maybe (Doc AnsiStyle)
+    titleHelp =
+      Just . formatDoc $
+        vsep
+          [ "The title of the FOSSA project"
+          , boldItalicized "Default: " <> "The project name"
+          ]
+
     policy :: Parser Policy
     policy = PolicyName <$> (strOption (applyFossaStyle <> long "policy" <> helpDoc policyHelp))
 
@@ -185,14 +194,6 @@ metadataOpts =
 
     parsePolicyOptions :: Parser (Maybe Policy)
     parsePolicyOptions = optional (policy <|> policyId) -- For Parsers '<|>' tries every alternative and fails if they all succeed.
-    titleHelp :: Maybe (Doc AnsiStyle)
-    titleHelp =
-      Just . formatDoc $
-        vsep
-          [ "The title of the FOSSA project"
-          , boldItalicized "Default: " <> "The project name"
-          ]
-
     policyHelp :: Maybe (Doc AnsiStyle)
     policyHelp =
       Just . formatDoc $
@@ -466,13 +467,7 @@ commonOpts =
           [ "This repository's current revision hash"
           , boldItalicized "Default: " <> "VCS hash HEAD"
           ]
-    configHelp :: Maybe (Doc AnsiStyle)
-    configHelp =
-      Just . formatDoc $
-        vsep
-          [ "Path to configuration file including filename"
-          , boldItalicized "Default: " <> ".fossa.yml"
-          ]
+
     telemtryScopeHelp :: Maybe (Doc AnsiStyle)
     telemtryScopeHelp =
       Just . formatDoc $
@@ -481,6 +476,14 @@ commonOpts =
           , boldItalicized "Options: " <> coloredBoldItalicized Green "full" <> boldItalicized "|" <> coloredBoldItalicized Green "off"
           , boldItalicized "Default: " <> coloredBoldItalicized Green "full"
           ]
+
+configHelp :: Maybe (Doc AnsiStyle)
+configHelp =
+  Just . formatDoc $
+    vsep
+      [ "Path to configuration file including filename"
+      , boldItalicized "Default: " <> ".fossa.yml"
+      ]
 
 endpointHelp :: Maybe (Doc AnsiStyle)
 endpointHelp =

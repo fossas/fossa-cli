@@ -865,3 +865,13 @@ instance FromJSON AnalyzedPathDependency where
       <$> obj .: "path"
       <*> obj .: "id"
       <*> obj .: "version"
+
+data CreateReleaseGroupResponse = CreateReleaseGroupResponse
+  { releaseGroupId :: Int
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON CreateReleaseGroupResponse where
+  parseJSON = withObject "CreateReleaseGroupResponse" $ \obj ->
+    CreateReleaseGroupResponse
+      <$> obj .: "releaseGroupId"

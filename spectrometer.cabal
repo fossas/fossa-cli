@@ -237,6 +237,7 @@ library
     App.Fossa.Reachability.Maven
     App.Fossa.Reachability.Types
     App.Fossa.Reachability.Upload
+    App.Fossa.ReleaseGroup
     App.Fossa.ReleaseGroup.Create
     App.Fossa.Report
     App.Fossa.Report.Attribution
