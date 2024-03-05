@@ -11,7 +11,7 @@ import App.Fossa.API.BuildWait (
   waitForScanCompletion,
  )
 import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), ReportOutputFormat (ReportJson), mkSubCommand)
-import App.Fossa.PreflightChecks (guardWithPreflightChecks)
+import App.Fossa.PreflightChecks (PreflightCommandChecks (ReportChecks), guardWithPreflightChecks)
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (ProjectRevision (..))
 import Control.Carrier.Debug (ignoreDebug)
@@ -54,7 +54,7 @@ report config@ReportConfig{..} = do
     * Above includes errors, types, and scaffolding
   -}
 
-  void $ guardWithPreflightChecks apiOpts
+  void $ guardWithPreflightChecks apiOpts ReportChecks
 
   runStickyLogger SevInfo
     . ignoreDebug

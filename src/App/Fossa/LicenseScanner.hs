@@ -333,7 +333,7 @@ uploadVendoredDep baseDir VendoredDependency{..} licenseSourceUnit = do
 
   signedURL <- getSignedLicenseScanUrl $ PackageRevision{packageVersion = depVersion, packageName = vendoredName}
 
-  logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
+  logSticky $ "Uploading license results for '" <> vendoredName <> "' to secure S3 bucket"
   uploadLicenseScanResult signedURL licenseSourceUnit
 
   pure $ Just $ Archive vendoredName depVersion
