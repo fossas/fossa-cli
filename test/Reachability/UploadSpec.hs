@@ -13,6 +13,7 @@ import App.Fossa.Reachability.Types (
   CallGraphAnalysis (JarAnalysis),
   ContentRef (ContentRaw, ContentStoreKey),
   ParsedJar (..),
+  ReachabilityConfig,
   SourceUnitReachability (
     callGraphAnalysis,
     srcUnitManifest,
@@ -28,6 +29,7 @@ import App.Fossa.Reachability.Upload (
   upload,
  )
 import Control.Algebra (Has)
+import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Effect.FossaApiClient (
   FossaApiClientF (..),
  )
@@ -78,30 +80,33 @@ dependenciesOfSpec = describe "dependenciesOf" $
             ]
     expected `shouldBe` seen
 
+run :: ReaderC ReachabilityConfig m a -> m a
+run = runReader (mempty :: ReachabilityConfig)
+
 callGraphOfSpec :: Spec
 callGraphOfSpec = describe "callGraphOf" $ do
   it' "should return SkippedMissingDependencyAnalysis if project was skipped" $ do
     dir <- (</> sampleMavenProjectDir) <$> PIO.getCurrentDir
     let (dps, dpi) = skippedProject dir
-    res <- callGraphOf dps
+    res <- run $ callGraphOf dps
     res `shouldBe'` (SourceUnitReachabilitySkippedMissingDependencyAnalysis dpi)
 
   it' "should return SkippedMissingDependencyAnalysis if project was skipped due to default filtering" $ do
     dir <- (</> sampleMavenProjectDir) <$> PIO.getCurrentDir
     let (dps, dpi) = skippedProjectByDefaultFilter dir
-    res <- callGraphOf dps
+    res <- run $ callGraphOf dps
     res `shouldBe'` (SourceUnitReachabilitySkippedMissingDependencyAnalysis dpi)
 
   it' "should return SkippedPartialGraph if graph depth is partial" $ do
     dir <- (</> sampleMavenProjectDir) <$> PIO.getCurrentDir
     let (dps, dpi) = (mavenPartialScan dir)
-    res <- callGraphOf dps
+    res <- run $ callGraphOf dps
     res `shouldBe'` SourceUnitReachabilitySkippedPartialGraph dpi
 
   it' "should return SkippedNotSupported for non-mvn or gradle project" $ do
     dir <- (</> sampleMavenProjectDir) <$> PIO.getCurrentDir
     let (dps, dpi) = (poetryCompleteScan dir)
-    res <- callGraphOf dps
+    res <- run $ callGraphOf dps
     res `shouldBe'` (SourceUnitReachabilitySkippedNotSupported dpi)
 
 analyzeForReachabilitySpec :: Spec
@@ -110,12 +115,13 @@ analyzeForReachabilitySpec =
     it' "should return analyzed reachability unit" $ do
       dir <- (</> sampleMavenProjectDir) <$> PIO.getCurrentDir
       analyzed <-
-        analyzeForReachability
-          [ fst $ skippedProject dir
-          , fst $ skippedProjectByDefaultFilter dir
-          , fst $ mavenPartialScan dir
-          , fst $ poetryCompleteScan dir
-          ]
+        run $
+          analyzeForReachability
+            [ fst $ skippedProject dir
+            , fst $ skippedProjectByDefaultFilter dir
+            , fst $ mavenPartialScan dir
+            , fst $ poetryCompleteScan dir
+            ]
       (onlyFoundUnits analyzed) `shouldBe'` []
 
 uploadSpec :: Spec
