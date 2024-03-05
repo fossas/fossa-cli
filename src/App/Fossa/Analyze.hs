@@ -53,7 +53,7 @@ import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
-import App.Fossa.PreflightChecks (preflightChecks)
+import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
 import App.Fossa.Reachability.Upload (analyzeForReachability, onlyFoundUnits)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
@@ -298,7 +298,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   _ <- case destination of
     OutputStdout -> pure ()
-    UploadScan apiOpts _ -> runFossaApiClient apiOpts preflightChecks
+    UploadScan apiOpts metadata -> runFossaApiClient apiOpts $ preflightChecks $ AnalyzeChecks revision metadata
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).

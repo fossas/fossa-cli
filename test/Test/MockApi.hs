@@ -234,6 +234,8 @@ matchExpectation a@(FinalizeLicenseScanForPathDependency{}) (ApiExpectation _ re
 matchExpectation a@(GetAnalyzedPathRevisions{}) (ApiExpectation _ requestExpectation b@(GetAnalyzedPathRevisions{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadContentForReachability{}) (ApiExpectation _ requestExpectation b@(UploadContentForReachability{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadBuildForReachability{}) (ApiExpectation _ requestExpectation b@(UploadBuildForReachability{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetTokenType{}) (ApiExpectation _ requestExpectation b@(GetTokenType{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetCustomBuildPermissons{}) (ApiExpectation _ requestExpectation b@(GetCustomBuildPermissons{}) resp) = checkResult requestExpectation a b resp
 matchExpectation _ _ = Nothing
 
 -- | Handles a request in the context of the mock API.

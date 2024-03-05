@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.9.7
+- Add preflight permission checks to validate token type, subscription type, project permissions, and release group permissions [#1383](https://github.com/fossas/fossa-cli/pull/1383)
+
 ## v3.9.6
 - Add debug logs for build warnings in `analyze` commands [#1386](https://github.com/fossas/fossa-cli/pull/1386)
 
