@@ -2,7 +2,7 @@
 
 module App.Fossa.Reachability.Gradle (gradleJarCallGraph, jarFileSignifier, jarPathsFromScriptOutput) where
 
-import App.Fossa.Reachability.Jar (callGraphFromJar, isValidJar)
+import App.Fossa.Reachability.Jar (callGraphFromJars, isValidJar)
 import App.Fossa.Reachability.Types (CallGraphAnalysis (..))
 import App.Support (reportDefectWithDebugBundle)
 import Control.Carrier.Lift (Lift)
@@ -15,7 +15,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Error (createErrataWithHeaderOnly)
 import Data.FileEmbed.Extra (embedFile')
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (fromMaybe)
 import Data.Set (Set, toList)
 import Data.Set.NonEmpty (toSet)
 import Data.String.Conversion (ToString (..), ToText (toText), decodeUtf8)
@@ -43,8 +43,7 @@ gradleJarCallGraph ::
   m CallGraphAnalysis
 gradleJarCallGraph dir = do
   jars <- runReader (mempty :: AllFilters) $ getJarsByBuild dir
-  parsedJars <- traverse callGraphFromJar jars
-  pure $ JarAnalysis (catMaybes parsedJars)
+  callGraphFromJars jars
 
 getJarsByBuild ::
   ( Has (Lift IO) sig m

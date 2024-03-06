@@ -45,6 +45,7 @@ import App.Fossa.Config.Common (
   targetOpt,
   validateDir,
   validateExists,
+  validateFile,
  )
 import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
@@ -53,12 +54,14 @@ import App.Fossa.Config.ConfigFile (
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
   OrgWideCustomLicenseConfigPolicy (..),
+  ReachabilityConfigFile (..),
   VendoredDependencyConfigs (..),
   mergeFileCmdMetadata,
   resolveConfigFile,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.Lernie.Types (GrepEntry (..), GrepOptions (..))
+import App.Fossa.Reachability.Types (ReachabilityConfig (..))
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (
@@ -72,12 +75,16 @@ import App.Types (
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
+  context,
   fatalText,
+  recover,
  )
 import Control.Effect.Lift (Lift)
 import Control.Monad (when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Flag (Flag, flagOpt, fromFlag)
+import Data.Map qualified as Map
+import Data.Maybe (catMaybes)
 import Data.Monoid.Extra (isMempty)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -110,7 +117,7 @@ import Options.Applicative (
   switch,
   (<|>),
  )
-import Path (Abs, Dir, Path, Rel)
+import Path (Abs, Dir, File, Path, Rel)
 import Path.Extra (SomePath)
 import Prettyprinter (Doc, annotate, indent)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green, Red), color)
@@ -246,6 +253,7 @@ data AnalyzeConfig = AnalyzeConfig
   , grepOptions :: GrepOptions
   , customFossaDepsFile :: Maybe FilePath
   , allowedTacticTypes :: AnalysisTacticTypes
+  , reachabilityConfig :: ReachabilityConfig
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -481,6 +489,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
         if fromFlag StaticOnlyTactics analyzeStaticOnlyTactics
           then StaticOnly
           else Any
+      reachabilityConfig = collectReachabilityOptions maybeConfig
 
   firstPartyScansFlag <-
     case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
@@ -508,6 +517,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure grepOptions
     <*> pure customFossaDepsFile
     <*> pure allowedTacticType
+    <*> resolveReachabilityOptions reachabilityConfig
 
 collectMavenScopeFilters ::
   ( Has Diagnostics sig m
@@ -627,3 +637,36 @@ collectModeOptions AnalyzeCliOpts{..} = do
       , dynamicLinkingTarget = DynamicLinkInspect resolvedDynamicLinkTarget
       , binaryDiscoveryEnabled = analyzeBinaryDiscoveryMode
       }
+
+collectReachabilityOptions :: Maybe ConfigFile -> ReachabilityConfigFile
+collectReachabilityOptions (Just ConfigFile{configReachability = (Just conf)}) = conf
+collectReachabilityOptions _ = mempty
+
+resolveReachabilityOptions ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has ReadFS sig m
+  ) =>
+  ReachabilityConfigFile ->
+  m ReachabilityConfig
+resolveReachabilityOptions cf =
+  ReachabilityConfig
+    . Map.fromList
+    . catMaybes
+    <$> traverse resolveProjectAndJars outputs
+  where
+    outputs :: [(String, [String])]
+    outputs = Map.toList $ configFileReachabilityJvmOutputs cf
+
+    resolveProjectAndJars :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has ReadFS sig m) => (String, [String]) -> m (Maybe (Path Abs Dir, [Path Abs File]))
+    resolveProjectAndJars (projectPath, jarPaths) =
+      context ("resolve provided jars for package at '" <> toText projectPath <> "'") $
+        resolveProject projectPath >>= \case
+          Just projectPath' -> Just . (projectPath',) . catMaybes <$> traverse resolveJar jarPaths
+          Nothing -> pure Nothing
+
+    resolveJar :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has ReadFS sig m) => String -> m (Maybe (Path Abs File))
+    resolveJar jarPath = context ("resolve provided jar path '" <> toText jarPath <> "'") . recover $ validateFile jarPath
+
+    resolveProject :: (Has Diagnostics sig m, Has (Lift IO) sig m, Has ReadFS sig m) => String -> m (Maybe (Path Abs Dir))
+    resolveProject projectPath = context "resolve provided project path" . recover $ validateDir projectPath

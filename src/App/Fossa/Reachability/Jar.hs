@@ -2,13 +2,15 @@
 
 module App.Fossa.Reachability.Jar (
   callGraphFromJar,
+  callGraphFromJars,
   isValidJar,
 ) where
 
-import App.Fossa.Reachability.Types (ContentRef (ContentRaw), ParsedJar (..))
+import App.Fossa.Reachability.Types (CallGraphAnalysis (..), ContentRef (ContentRaw), ParsedJar (..))
 import Control.Effect.Diagnostics (
   Diagnostics,
   ToDiagnostic,
+  context,
   recover,
   renderDiagnostic,
   warnOnErr,
@@ -18,9 +20,11 @@ import Control.Effect.Lift (sendIO)
 import Data.ByteString qualified as BS
 import Data.Error (createErrataWithHeaderOnly)
 import Data.FileEmbed.Extra (embedFile')
+import Data.Maybe (catMaybes)
 import Data.String.Conversion (toText)
 import Data.Text (isSuffixOf)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, Has, execThrow)
+import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, doesFileExist)
 import Errata (Errata)
 import Path (Abs, File, Path, fileExtension, fromAbsDir, parent, toFilePath)
@@ -73,6 +77,20 @@ instance ToDiagnostic FailedToParseJar where
   renderDiagnostic :: FailedToParseJar -> Errata
   renderDiagnostic (FailedToParseJar jar) =
     createErrataWithHeaderOnly $ "Could not read from jar, so skipping: " <> toText (show jar)
+
+-- | Like @mavenJarCallGraph@, but used when the list of JARs to parse is already available
+-- and works for any Java project.
+callGraphFromJars ::
+  ( Has Logger sig m
+  , Has Diagnostics sig m
+  , Has Exec sig m
+  , Has (Lift IO) sig m
+  ) =>
+  [Path Abs File] ->
+  m CallGraphAnalysis
+callGraphFromJars jars = context ("build call graph from " <> toText (show jars)) $ do
+  parsedJars <- traverse callGraphFromJar jars
+  pure $ JarAnalysis (catMaybes parsedJars)
 
 -- True if jar exist, and is not likely test jar, otherwise False
 isValidJar :: (Has ReadFS sig m) => Path Abs File -> m Bool

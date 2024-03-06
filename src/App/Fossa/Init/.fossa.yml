@@ -31,10 +31,10 @@ version: 3
 #   #   - Git: From .git/config file or project's remote "origin" URL.
 #   #   - SVN: From "Repository Root" obtained using 'svn info'.
 #   #   - No VCS: Name of the project's directory.
-#   # 
+#   #
 #   # NOTE:
-#   #   A project's ID cannot be modified after a project is created. If you change the ID, 
-#   #   you will be interacting with a different project. If the new ID does not exist, 
+#   #   A project's ID cannot be modified after a project is created. If you change the ID,
+#   #   you will be interacting with a different project. If the new ID does not exist,
 #   #   a new project will be created for it.
 #   id: github.com/fossas/fossa-cli
 #
@@ -115,12 +115,12 @@ version: 3
 # vendoredDependencies:
 #   # If true, forces a re-scan of all vendored dependencies on every run. Default: false
 #   forceRescans: false
-# 
+#
 #   # Determines whether vendored dependencies are scanned using "Archive Upload" or "CLI License Scan" method.
 #   # Possible values: ArchiveUpload, CLILicenseScan.
 #   # The default is usually "CLILicenseScan", but your organization may have opted to default to "ArchiveUpload".
 #   scanMethod: CLILicenseScan
-# 
+#
 #   # License Scan Path Filters Configuration
 #   # Path filtering to omit some files or directories from license scanning.
 #   # See documentation for details: https://github.com/fossas/fossa-cli/blob/master/docs/features/vendored-dependencies.md#path-filtering
@@ -137,15 +137,15 @@ version: 3
 # # See documentation for details: https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-yml.md#analysis-target-configuration
 # # See walkthough for example usage: https://github.com/fossas/fossa-cli/blob/master/docs/walkthroughs/analysis-target-configuration.md
 # targets:
-#   # The list of only targets that should be scanned. When used alongside paths.only, 
+#   # The list of only targets that should be scanned. When used alongside paths.only,
 #   # the intersection of the two lists is taken to find targets for scanning.
 #   only:
 #     - type: maven
 #       path: foo/bar
 #
-#   # The list of exclude targets which should be excluded from scanning. 
-#   # The targets listed in the exclude section will override the targets listed in the only 
-#   # sections. This feature is used most effectively to remove specific targets from a directory. 
+#   # The list of exclude targets which should be excluded from scanning.
+#   # The targets listed in the exclude section will override the targets listed in the only
+#   # sections. This feature is used most effectively to remove specific targets from a directory.
 #   exclude:
 #     - type: bundler
 #       path: prod/docker
@@ -157,14 +157,14 @@ version: 3
 # # See walkthough for example usage: https://github.com/fossas/fossa-cli/blob/master/docs/walkthroughs/analysis-target-configuration.md
 # paths:
 #   # The list of paths to only allow scanning within.
-#   # This section is most commonly used when you would like to restrict scanning 
+#   # This section is most commonly used when you would like to restrict scanning
 #   # to a certain list of directories from the root of your project.
 #   only:
 #     - ./production
 #
 #   # The list of paths to exclude from scanning in your directory.
-#   # This section is intended to be used as the inverse to paths.only. 
-#   # If you have a certain directory such as development you wish to exclude, 
+#   # This section is intended to be used as the inverse to paths.only.
+#   # If you have a certain directory such as development you wish to exclude,
 #   # paths.exclude enables you to do this.
 #   exclude:
 #     - ./vendor/django/test
@@ -177,7 +177,7 @@ version: 3
 #   scope: full
 #
 #
-# # FOSSA offers the ability to search your codebase using regular expressions 
+# # FOSSA offers the ability to search your codebase using regular expressions
 # # and to report matches. 'customLicenseSearch' can be used to search codebase
 # # with regular expression to mark custom licenses, with project.
 # # See documentation for details: https://github.com/fossas/fossa-cli/blob/master/docs/features/custom-license-and-keyword-searches.md#custom-license-and-keyword-searches
@@ -195,3 +195,21 @@ version: 3
 # experimentalKeywordSearch:
 #  - matchCriteria: abc123
 #    name: Password
+#
+# # Configures the Reachability feature, if it is used.
+# # See documentation for details: https://github.com/fossas/fossa-cli/blob/master/docs/features/vuln_reachability.md
+# reachability:
+#   # If needed, add a map here in the shape of:
+#   # ```
+#   # '{project path}':
+#   #  - '{output jar path}'
+#   #  - '{output jar path}'
+#   # ```
+#   # This allows you to, for projects analyzed for reachability information (indicated by the key),
+#   # specify the paths to the JAR files built by that project (indicated by the value).
+#   #
+#   # These JAR files are needed to enable analyzing the built result for vulnerability information.
+#   jvmOutputs:
+#     '{project path}':
+#      - '{output jar path}'
+#      - '{output jar path}'

@@ -3,10 +3,10 @@ module App.Fossa.Reachability.Maven (
   getJarsByBuild,
 ) where
 
-import App.Fossa.Reachability.Jar (callGraphFromJar, isValidJar)
+import App.Fossa.Reachability.Jar (callGraphFromJars, isValidJar)
 import App.Fossa.Reachability.Types (CallGraphAnalysis (..))
 import Control.Carrier.Lift (Lift)
-import Control.Effect.Diagnostics (Diagnostics, fromEither, recover)
+import Control.Effect.Diagnostics (Diagnostics, context, fromEither, recover)
 import Control.Monad (join)
 import Control.Monad.List (filterM)
 import Data.Map qualified as Map
@@ -25,6 +25,8 @@ import Strategy.Maven.Pom.PomFile (
  )
 import Text.Pretty.Simple (pShow)
 
+-- | Discovers the JAR files associated with the project at the provided path,
+-- then returns the parsed results of analyzing these JARs.
 mavenJarCallGraph ::
   ( Has Logger sig m
   , Has ReadFS sig m
@@ -34,12 +36,10 @@ mavenJarCallGraph ::
   ) =>
   Path Abs Dir ->
   m CallGraphAnalysis
-mavenJarCallGraph dir = do
+mavenJarCallGraph dir = context ("build call graph for " <> toText dir) $ do
   jars <- getJarsByBuild dir
   logDebug . pretty $ "found jars: " ++ show jars
-
-  parsedJars <- traverse callGraphFromJar jars
-  pure $ JarAnalysis (catMaybes parsedJars)
+  callGraphFromJars jars
 
 getJarsByBuild ::
   ( Has Logger sig m
@@ -48,7 +48,7 @@ getJarsByBuild ::
   ) =>
   Path Abs Dir ->
   m [Path Abs File]
-getJarsByBuild dir = do
+getJarsByBuild dir = context ("find jars from build for project at '" <> toText dir <> "'") $ do
   mvnProjectClosures <- findProjects dir
   let pomPathsAndPom = concatMap (Map.elems . closurePoms) mvnProjectClosures
 
