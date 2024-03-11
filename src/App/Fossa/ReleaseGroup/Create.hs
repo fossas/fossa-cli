@@ -11,9 +11,8 @@ import Control.Effect.FossaApiClient (FossaApiClient, createReleaseGroup, getOrg
 import Control.Effect.Lift (Lift)
 import Control.Monad (when)
 import Data.String.Conversion (ToText (..))
-import Effect.Logger (Logger, Pretty (pretty), logDebug, logInfo, logStdout)
+import Effect.Logger (Logger, logInfo, logStdout)
 import Fossa.API.Types (CreateReleaseGroupResponse (..), Organization (orgSupportsReleaseGroups))
-import Text.Pretty.Simple (pShow)
 
 createMain ::
   ( Has Diagnostics sig m
@@ -26,7 +25,6 @@ createMain ::
 createMain CreateConfig{..} = do
   logInfo "Running FOSSA release-group create"
   org <- getOrganization
-  logDebug $ "The org ---- " <> pretty (pShow (org))
   when (orgSupportsReleaseGroups org) $ do
     res <- createReleaseGroup releaseGroupRevision
     logStdout $ "Created release group with id: " <> toText (releaseGroupId res)
