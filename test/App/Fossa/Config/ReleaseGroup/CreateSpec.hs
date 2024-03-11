@@ -98,6 +98,7 @@ configFile path =
     , configTelemetry = Nothing
     , configCustomLicenseSearch = Nothing
     , configKeywordSearch = Nothing
+    , configReachability = Nothing
     , configOrgWideCustomLicenseConfigPolicy = Use
     , configConfigFilePath = path
     }
