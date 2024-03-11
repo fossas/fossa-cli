@@ -117,6 +117,7 @@ import Options.Applicative (
   argument,
   auto,
   eitherReader,
+  hidden,
   long,
   metavar,
   option,
@@ -134,8 +135,8 @@ import Options.Applicative.Help (AnsiStyle)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (..), parseRelDir)
 import Path.Extra (SomePath (..))
 import Path.IO (resolveDir', resolveFile')
-import Prettyprinter (Doc)
-import Prettyprinter.Render.Terminal (Color (Green))
+import Prettyprinter (Doc, annotate)
+import Prettyprinter.Render.Terminal (Color (Green, Red), color)
 import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, stringToHelpDoc)
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI, mkURI)
@@ -210,8 +211,23 @@ metadataOpts =
 releaseGroupMetadataOpts :: Parser ReleaseGroupMetadata
 releaseGroupMetadataOpts =
   ReleaseGroupMetadata
-    <$> strOption (applyFossaStyle <> long "release-group-name" <> stringToHelpDoc "The name of the release group to add this project to")
-    <*> strOption (applyFossaStyle <> long "release-group-release" <> stringToHelpDoc "The release of the release group to add this project to")
+    <$> strOption (applyFossaStyle <> long "release-group-name" <> helpDoc releaseGroupHelp <> hidden)
+    <*> strOption (applyFossaStyle <> long "release-group-release" <> helpDoc releaseGroupReleaseHelp <> hidden)
+  where
+    releaseGroupHelp :: Maybe (Doc AnsiStyle)
+    releaseGroupHelp =
+      Just . formatDoc $
+        vsep
+          [ annotate (color Red) "DEPRECATED: This flag has been deprecated. Refer to `fossa release-group add-projects` to add projects to a release group."
+          , "The name of the release group to add this project to"
+          ]
+    releaseGroupReleaseHelp :: Maybe (Doc AnsiStyle)
+    releaseGroupReleaseHelp =
+      Just . formatDoc $
+        vsep
+          [ annotate (color Red) "DEPRECATED: This flag has been deprecated. Refer to `fossa release-group add-projects` to add projects to a release group."
+          , "The release of the release group to add this project to"
+          ]
 
 pathOpt :: String -> Either String (Path Rel Dir)
 pathOpt = first show . parseRelDir

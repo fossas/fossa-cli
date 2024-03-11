@@ -41,6 +41,10 @@ module Control.Effect.FossaApiClient (
   uploadContentForReachability,
   uploadBuildForReachability,
   getCustomBuildPermissions,
+  createReleaseGroup,
+  deleteReleaseGroup,
+  deleteReleaseGroupRelease,
+  addReleaseGroupProjects,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
@@ -51,7 +55,7 @@ import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency)
-import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision)
+import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision, ReleaseGroupReleaseRevision, ReleaseGroupRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
@@ -62,12 +66,14 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Text (Text)
 import Fossa.API.Types (
+  AddReleaseGroupProjectsResponse,
   AnalyzedPathDependency,
   ApiOpts,
   Archive,
   ArchiveComponents,
   Build,
   Contributors,
+  CreateReleaseGroupResponse,
   CustomBuildUploadPermissions,
   Issues,
   Organization,
@@ -95,6 +101,10 @@ data FossaApiClientF a where
   AssertRevisionBinaries :: Locator -> [Fingerprint Raw] -> FossaApiClientF ()
   AssertUserDefinedBinaries :: IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> FossaApiClientF ()
   CompleteVsiScan :: VSI.ScanID -> FossaApiClientF ()
+  AddReleaseGroupProjects :: Text -> ReleaseGroupReleaseRevision -> FossaApiClientF AddReleaseGroupProjectsResponse
+  CreateReleaseGroup :: ReleaseGroupRevision -> FossaApiClientF CreateReleaseGroupResponse
+  DeleteReleaseGroup :: Text -> FossaApiClientF ()
+  DeleteReleaseGroupRelease :: Text -> Text -> FossaApiClientF ()
   CreateVsiScan :: ProjectRevision -> FossaApiClientF VSI.ScanID
   FinalizeLicenseScan :: ArchiveComponents -> FossaApiClientF ()
   FinalizeLicenseScanForPathDependency :: [Locator] -> Bool -> FossaApiClientF ()
@@ -271,3 +281,15 @@ uploadContentForReachability = sendSimple . UploadContentForReachability
 
 uploadBuildForReachability :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> [SourceUnitReachability] -> m ()
 uploadBuildForReachability rev revMetadata units = sendSimple $ UploadBuildForReachability rev revMetadata units
+
+createReleaseGroup :: Has FossaApiClient sig m => ReleaseGroupRevision -> m CreateReleaseGroupResponse
+createReleaseGroup rev = sendSimple $ CreateReleaseGroup rev
+
+deleteReleaseGroup :: Has FossaApiClient sig m => Text -> m ()
+deleteReleaseGroup title = sendSimple $ DeleteReleaseGroup title
+
+deleteReleaseGroupRelease :: Has FossaApiClient sig m => Text -> Text -> m ()
+deleteReleaseGroupRelease title release = sendSimple $ DeleteReleaseGroupRelease title release
+
+addReleaseGroupProjects :: Has FossaApiClient sig m => Text -> ReleaseGroupReleaseRevision -> m AddReleaseGroupProjectsResponse
+addReleaseGroupProjects title releaseRev = sendSimple $ AddReleaseGroupProjects title releaseRev

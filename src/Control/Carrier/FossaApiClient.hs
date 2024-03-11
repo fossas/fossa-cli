@@ -68,4 +68,8 @@ runFossaApiClient apiOpts =
           UploadBuildForReachability rev metadata content -> Core.uploadReachabilityBuild rev metadata content
           GetTokenType -> Core.getTokenType
           GetCustomBuildPermissons rev metadata -> Core.getCustomBuildPermissions rev metadata
+          AddReleaseGroupProjects title releaseRev -> Core.addReleaseGroupProjects title releaseRev
+          CreateReleaseGroup rev -> Core.createReleaseGroup rev
+          DeleteReleaseGroup title -> Core.deleteReleaseGroup title
+          DeleteReleaseGroupRelease title release -> Core.deleteReleaseGroupRelease title release
       )

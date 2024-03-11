@@ -351,6 +351,64 @@
                     "description": "The name of the keyword or custom license found by the regular expression defined in matchCriteria"
                 }
             }
+        },
+        "releaseGroup": {
+            "type": "object",
+            "description": "The releaseGroup field allows you to configure settings for the release group you are interacting with through the FOSSA API.",
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The title of the release group which can be seen in the FOSSA dashboard."
+                },
+                "release": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The release associated with the release group."
+                },
+                "releaseGroupProjects": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "projectId": {
+                                "type": "string",
+                                "description": "The project ID defines a unique ID that the FOSSA API will use to reference this project. The project ID can be found in the UI on the project settings page listed as the `Project Locator` underneath the `Project Title` setting.\n\nBy default, it will use git remote origin url as project id if it's git repository. If it does not recognize version control system (vcs), project directory's name will be used."
+                            },
+                            "projectRevision": {
+                                "type": "string",
+                                "description": "The revision associated with a project. Project revisions can be found in the UI on the project activity page. Refer to `Revision ID` to retrieve the specific revision you want to use for the project."
+                            },
+                            "projectBranch": {
+                                "type": "string",
+                                "description": "The branch associated with the project."
+                            }
+                        },
+                        "required": [
+                            "projectId",
+                            "projectRevision",
+                            "projectBranch"
+                        ]
+                    }
+                },
+                "licensePolicy": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The name of the license policy associated with the release group."
+                },
+                "securityPolicy": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The name of the security policy associated with the release group."
+                },
+                "teams": {
+                    "type": "array",
+                    "description": "A list of team names that are associated with the release group.",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
         }
     },
     "type": "object",
@@ -372,6 +430,9 @@
         },
         "project": {
             "$ref": "#/$defs/project"
+        },
+        "releaseGroup": {
+            "$ref": "#/$defs/releaseGroup"
         },
         "telemetry": {
             "$ref": "#/$defs/telemetry"

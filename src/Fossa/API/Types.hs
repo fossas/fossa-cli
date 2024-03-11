@@ -38,13 +38,16 @@ module Fossa.API.Types (
   CustomBuildUploadPermissions (..),
   ProjectPermissionStatus (..),
   ReleaseGroupPermissionStatus (..),
+  CreateReleaseGroupResponse (..),
+  AddReleaseGroupProjectsResponse (..),
+  AddReleaseGroupProjectsReq (..),
   useApiOpts,
   defaultApiPollDelay,
   blankOrganization,
 ) where
 
 import App.Fossa.Lernie.Types (GrepEntry)
-import App.Types (FullFileUploads (..), fullFileUploadsToCliLicenseScanType)
+import App.Types (FullFileUploads (..), ReleaseGroupReleaseRevision, fullFileUploadsToCliLicenseScanType)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, fatalText)
 import Control.Timeout (Duration (Seconds))
@@ -500,6 +503,7 @@ data Organization = Organization
   , orgSupportsReachability :: Bool
   , orgSupportsPreflightChecks :: Bool
   , orgSubscription :: Subscription
+  , orgSupportsReleaseGroups :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -522,6 +526,7 @@ blankOrganization =
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = False
     , orgSubscription = Free
+    , orgSupportsReleaseGroups = False
     }
 
 instance FromJSON Organization where
@@ -574,6 +579,9 @@ instance FromJSON Organization where
       <*> obj
         .:? "subscription"
         .!= Free
+      <*> obj
+        .:? "supportsReleaseGroups"
+        .!= False
 
 data TokenType
   = Push
@@ -945,7 +953,7 @@ instance FromJSON AnalyzedPathDependency where
       <*> obj .: "id"
       <*> obj .: "version"
 
-data CreateReleaseGroupResponse = CreateReleaseGroupResponse
+newtype CreateReleaseGroupResponse = CreateReleaseGroupResponse
   { releaseGroupId :: Int
   }
   deriving (Eq, Ord, Show)
@@ -954,3 +962,26 @@ instance FromJSON CreateReleaseGroupResponse where
   parseJSON = withObject "CreateReleaseGroupResponse" $ \obj ->
     CreateReleaseGroupResponse
       <$> obj .: "releaseGroupId"
+
+data AddReleaseGroupProjectsReq = AddReleaseGroupProjectsReq
+  { releaseTitle :: Text
+  , releaseRevision :: ReleaseGroupReleaseRevision
+  }
+  deriving (Eq, Ord, Show)
+
+instance ToJSON AddReleaseGroupProjectsReq where
+  toJSON AddReleaseGroupProjectsReq{..} =
+    object
+      [ "title" .= releaseTitle
+      , "release" .= releaseRevision
+      ]
+
+newtype AddReleaseGroupProjectsResponse = AddReleaseGroupProjectsResponse
+  { releaseGroupReleaseId :: Int
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON AddReleaseGroupProjectsResponse where
+  parseJSON = withObject "AddReleaseGroupProjectsResponse" $ \obj ->
+    AddReleaseGroupProjectsResponse
+      <$> obj .: "releaseGroupReleaseId"

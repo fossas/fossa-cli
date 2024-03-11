@@ -18,6 +18,20 @@ project:
     - project-label
     - label-2
 
+releaseGroup:
+  title: test-title
+  release: test-release
+  releaseGroupProjects:
+    - projectId: "custom+1/git@github.com/fossa-cli"
+      projectRevision: "12345"
+      projectBranch: main
+  licensePolicy: test-license-policy
+  securityPolicy: test-security-policy
+  teams: 
+    - team-1
+    - team-2
+
+
 revision:
   commit: "12345"
   branch: master

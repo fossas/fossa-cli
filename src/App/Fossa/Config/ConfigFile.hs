@@ -17,6 +17,8 @@ module App.Fossa.Config.ConfigFile (
   ExperimentalGradleConfigs (..),
   VendoredDependencyConfigs (..),
   MavenScopeConfig (..),
+  ConfigReleaseGroup (..),
+  ConfigReleaseGroupProject (..),
   mergeFileCmdMetadata,
   resolveLocalConfigFile,
 ) where
@@ -179,13 +181,14 @@ mergeFileCmdMetadata meta cfgFile =
         , projectTeam = projectTeam meta <|> (configProject cfgFile >>= configTeam)
         , projectPolicy = policy
         , projectLabel = projectLabel meta <|> (maybe [] configLabel (configProject cfgFile))
-        , projectReleaseGroup = projectReleaseGroup meta <|> (configProject cfgFile >>= configReleaseGroup)
+        , projectReleaseGroup = projectReleaseGroup meta <|> (configProject cfgFile >>= configProjectReleaseGroup)
         }
 
 data ConfigFile = ConfigFile
   { configVersion :: Int
   , configServer :: Maybe Text
   , configApiKey :: Maybe Text
+  , configReleaseGroup :: Maybe ConfigReleaseGroup
   , configProject :: Maybe ConfigProject
   , configRevision :: Maybe ConfigRevision
   , configTargets :: Maybe ConfigTargets
@@ -210,8 +213,28 @@ data ConfigProject = ConfigProject
   , configUrl :: Maybe Text
   , configPolicy :: Maybe Policy
   , configLabel :: [Text]
-  , configReleaseGroup :: Maybe ReleaseGroupMetadata
+  , configProjectReleaseGroup :: Maybe ReleaseGroupMetadata
   , configPolicyId :: Maybe Int
+  }
+  deriving (Eq, Ord, Show)
+
+-- TODO: Update the policy fields to be a Policy object to accept either id or name.
+--       We default to selecting the first policy that matches the policy name in
+--       CORE due to the fact that policy names are not unique.
+data ConfigReleaseGroup = ConfigReleaseGroup
+  { configReleaseGroupTitle :: Maybe Text
+  , configReleaseGroupRelease :: Maybe Text
+  , configReleaseGroupProjects :: Maybe [ConfigReleaseGroupProject]
+  , configReleaseGroupLicensePolicy :: Maybe Text
+  , configReleaseGroupSecurityPolicy :: Maybe Text
+  , configReleaseGroupTeams :: Maybe [Text]
+  }
+  deriving (Eq, Ord, Show)
+
+data ConfigReleaseGroupProject = ConfigReleaseGroupProject
+  { configReleaseGroupProjectId :: Text
+  , configReleaseGroupProjectRevision :: Text
+  , configReleaseGroupProjectBranch :: Text
   }
   deriving (Eq, Ord, Show)
 
@@ -266,6 +289,7 @@ instance FromJSON (Path Abs File -> ConfigFile) where
       <$> obj .: "version"
       <*> obj .:? "server"
       <*> obj .:? "apiKey"
+      <*> obj .:? "releaseGroup"
       <*> obj .:? "project"
       <*> obj .:? "revision"
       <*> obj .:? "targets"
@@ -365,3 +389,20 @@ instance FromJSON VendoredDependencyConfigs where
       <$> (obj .:? "forceRescans" .!= False)
       <*> (obj .:? "scanMethod")
       <*> (obj .:? "licenseScanPathFilters")
+
+instance FromJSON ConfigReleaseGroup where
+  parseJSON = withObject "ConfigReleaseGroup" $ \obj ->
+    ConfigReleaseGroup
+      <$> obj .:? "title"
+      <*> obj .:? "release"
+      <*> obj .:? "releaseGroupProjects"
+      <*> obj .:? "licensePolicy"
+      <*> obj .:? "securityPolicy"
+      <*> obj .:? "teams"
+
+instance FromJSON ConfigReleaseGroupProject where
+  parseJSON = withObject "ConfigReleaseGroupProject" $ \obj ->
+    ConfigReleaseGroupProject
+      <$> (obj .: "projectId")
+      <*> (obj .: "projectRevision")
+      <*> (obj .: "projectBranch")

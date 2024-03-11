@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Types (
   BaseDir (..),
   NinjaGraphCLIOptions (..),
@@ -9,10 +11,14 @@ module App.Types (
   Policy (..),
   FullFileUploads (..),
   FirstPartyScansFlag (..),
+  ReleaseGroupRevision (..),
+  ReleaseGroupProjectRevision (..),
+  ReleaseGroupReleaseRevision (..),
   fullFileUploadsToCliLicenseScanType,
 ) where
 
-import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, withObject, (.:))
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, object, withObject, (.:), (.=))
+import Data.Aeson.Types (toJSON)
 import Data.Map (Map)
 import Data.Text (Text)
 import DepTypes (DepType)
@@ -82,6 +88,53 @@ data ProjectRevision = ProjectRevision
 
 instance ToJSON ProjectRevision where
   toEncoding = genericToEncoding defaultOptions
+
+data ReleaseGroupRevision = ReleaseGroupRevision
+  { releaseGroupTitle :: Text
+  , releaseGroupReleaseRevision :: ReleaseGroupReleaseRevision
+  , releaseGroupLicensePolicy :: Maybe Text
+  , releaseGroupSecurityPolicy :: Maybe Text
+  , releaseGroupTeams :: Maybe [Text]
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ReleaseGroupRevision where
+  toJSON ReleaseGroupRevision{..} =
+    object
+      [ "title" .= releaseGroupTitle
+      , "release" .= releaseGroupReleaseRevision
+      , "licensePolicy" .= releaseGroupLicensePolicy
+      , "securityPolicy" .= releaseGroupSecurityPolicy
+      , "teams" .= releaseGroupTeams
+      ]
+
+data ReleaseGroupReleaseRevision = ReleaseGroupReleaseRevision
+  { releaseTitle :: Text
+  , releaseProjects :: [ReleaseGroupProjectRevision]
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ReleaseGroupReleaseRevision where
+  toJSON ReleaseGroupReleaseRevision{..} =
+    object
+      [ "title" .= releaseTitle
+      , "projects" .= releaseProjects
+      ]
+
+data ReleaseGroupProjectRevision = ReleaseGroupProjectRevision
+  { releaseGroupProjectId :: Text
+  , releaseGroupProjectRevision :: Text
+  , releaseGroupProjectBranch :: Text
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ReleaseGroupProjectRevision where
+  toJSON ReleaseGroupProjectRevision{..} =
+    object
+      [ "projectId" .= releaseGroupProjectId
+      , "projectRevision" .= releaseGroupProjectRevision
+      , "projectBranch" .= releaseGroupProjectBranch
+      ]
 
 data NinjaGraphCLIOptions = NinjaGraphCLIOptions
   { ninjaBaseDir :: FilePath

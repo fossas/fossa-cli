@@ -321,6 +321,7 @@ data LicenseUnitMatchData = LicenseUnitMatchData
   deriving (Eq, Ord, Show)
 
 instance ToJSON LicenseUnitMatchData where
+  toJSON :: LicenseUnitMatchData -> Value
   toJSON LicenseUnitMatchData{..} =
     object
       [ "match_string" .= licenseUnitMatchDataMatchString

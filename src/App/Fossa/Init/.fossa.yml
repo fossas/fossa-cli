@@ -93,6 +93,44 @@ version: 3
 #     - test-project
 #
 #
+# # Configures settings for the release group you are interacting with through the FOSSA API.
+# releaseGroup:
+#   # The title of release group.
+#   title: release-group-title
+#
+#   # The release associated with the release group.
+#   release: release-group-release
+#
+#   # The projects associated with the release group's release 
+#   # NOTE:
+#   #   `projectId` , `projectRevision`, and `projectBranch` must all be specified when providing a releaseGroupProject.
+#   releaseGroupProjects:
+#     # The project ID defines a unique ID that the FOSSA API will use to reference this project.
+#     # The project ID can be found in the UI on the project settings page listed as the `Project Locator` underneath the `Project Title` setting.
+#     #
+#     # NOTE
+#     #  The full `Project Locator` value must be provided. For example, if the `Project Locator` value of `custom+1/foo` is provided in the FOSSA UI, use `custom+1/foo`.
+#     - projectId: custom+123/git@github.com/fossas/fossa-cli
+#
+#     # The revision associated with a project. Project revisions can be found in the UI on the project activity page.
+#     # Refer to `Revision ID` to retrieve the specific revision you want to use for the project.
+#       projectRevision:  12345
+#
+#     # The branch associated with the project
+#       projectBranch: master 
+#
+#   # Name of the license policy in your FOSSA organization to associate with this release group.
+#   licensePolicy: license-policy-name
+#
+#   # Name of the security policy in your FOSSA organization to associate with this release group.
+#   securityPolicy: security-policy-name
+#
+#   # A list of team names that are associated with the release group.
+#   teams:
+#     - team1
+#     - team2
+#
+#
 # # Revision associated with project scan.
 # revision:
 #   # Used to identify a specific scan for a project.

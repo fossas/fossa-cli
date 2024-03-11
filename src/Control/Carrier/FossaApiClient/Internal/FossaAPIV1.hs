@@ -48,6 +48,12 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getReachabilityBuildSignedUrl,
   uploadReachabilityContent,
   uploadReachabilityBuild,
+
+  -- * Release Group
+  addReleaseGroupProjects,
+  createReleaseGroup,
+  deleteReleaseGroup,
+  deleteReleaseGroupRelease,
 ) where
 
 import App.Docs (fossaSslCertDocsUrl)
@@ -76,6 +82,8 @@ import App.Types (
   ProjectMetadata (..),
   ProjectRevision (..),
   ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
+  ReleaseGroupReleaseRevision,
+  ReleaseGroupRevision,
   fullFileUploadsToCliLicenseScanType,
  )
 import App.Version (versionNumber)
@@ -129,12 +137,15 @@ import Effect.Logger (
  )
 import Errata (Errata (..), errataSimple)
 import Fossa.API.Types (
+  AddReleaseGroupProjectsReq (..),
+  AddReleaseGroupProjectsResponse,
   AnalyzedPathDependenciesResp,
   ApiOpts,
   Archive,
   ArchiveComponents (ArchiveComponents),
   Build,
   Contributors,
+  CreateReleaseGroupResponse,
   CustomBuildUploadPermissions,
   Issues,
   OrgId,
@@ -154,6 +165,7 @@ import Network.HTTP.Client (responseStatus)
 import Network.HTTP.Client qualified as C
 import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Req (
+  DELETE (DELETE),
   GET (GET),
   HttpBody (..),
   HttpException (..),
@@ -1596,3 +1608,71 @@ uploadReachabilityContent signedUrl bs = fossaReq $ do
         lbsResponse
         options
         (pure . requestEncoder)
+
+releaseGroupURLEndpoint :: Url 'Https -> Url 'Https
+releaseGroupURLEndpoint baseUrl = baseUrl /: "api" /: "cli" /: "release_group"
+
+createReleaseGroup ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  ) =>
+  ApiOpts ->
+  ReleaseGroupRevision ->
+  m CreateReleaseGroupResponse
+createReleaseGroup apiOpts rev = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  resp <- req POST (releaseGroupURLEndpoint baseUrl) (ReqBodyJson rev) jsonResponse baseOpts
+  pure (responseBody resp)
+
+deleteReleaseGroup ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  ) =>
+  ApiOpts ->
+  Text ->
+  m ()
+deleteReleaseGroup apiOpts title = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  let opts = "title" =: title
+  void $ req DELETE (releaseGroupURLEndpoint baseUrl) NoReqBody ignoreResponse (baseOpts <> opts)
+
+deleteReleaseGroupReleaseURLEndpoint :: Url 'Https -> Url 'Https
+deleteReleaseGroupReleaseURLEndpoint baseUrl = baseUrl /: "api" /: "cli" /: "release_group_release"
+
+deleteReleaseGroupRelease ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  ) =>
+  ApiOpts ->
+  Text ->
+  Text ->
+  m ()
+deleteReleaseGroupRelease apiOpts title release = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  let opts =
+        "title"
+          =: title
+          <> "release"
+            =: release
+  void $ req DELETE (deleteReleaseGroupReleaseURLEndpoint baseUrl) NoReqBody ignoreResponse (baseOpts <> opts)
+
+addReleaseGroupProjectsURLEndpoint :: Url 'Https -> Url 'Https
+addReleaseGroupProjectsURLEndpoint baseUrl = baseUrl /: "api" /: "cli" /: "release_group_release" /: "projects"
+
+addReleaseGroupProjects ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  ) =>
+  ApiOpts ->
+  Text ->
+  ReleaseGroupReleaseRevision ->
+  m AddReleaseGroupProjectsResponse
+addReleaseGroupProjects apiOpts title releaseRev = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  let body = AddReleaseGroupProjectsReq title releaseRev
+  resp <- req POST (addReleaseGroupProjectsURLEndpoint baseUrl) (ReqBodyJson body) jsonResponse baseOpts
+  pure (responseBody resp)

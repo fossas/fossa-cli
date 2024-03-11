@@ -69,6 +69,7 @@ defaultConfigFile =
     { configVersion = 3
     , configServer = Nothing
     , configApiKey = Just mockApiKeyRaw
+    , configReleaseGroup = Nothing
     , configProject = Nothing
     , configRevision = Nothing
     , configTargets = Nothing

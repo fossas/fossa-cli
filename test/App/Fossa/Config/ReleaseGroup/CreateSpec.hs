@@ -1,0 +1,190 @@
+{-# LANGUAGE TemplateHaskell #-}
+
+module App.Fossa.Config.ReleaseGroup.CreateSpec (spec, expectedReleaseGroupRevisionFromConfig, expectedReleaseGroupReleaseRevisionFromConfig) where
+
+import App.Fossa.Config.ConfigFile (ConfigFile (..))
+import App.Fossa.Config.EnvironmentVars (EnvVars (..))
+import App.Fossa.Config.ReleaseGroup.Common (ReleaseGroupCommonOpts (..), ReleaseGroupProjectOpts (..))
+import App.Fossa.Config.ReleaseGroup.Create (CreateConfig (..), CreateOpts (..), mergeOpts)
+import App.Fossa.Config.Utils (fixtureDir)
+import App.Fossa.Configuration.ConfigurationSpec (expectedReleaseGroup)
+import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
+import App.Types (ReleaseGroupProjectRevision (..), ReleaseGroupReleaseRevision (..), ReleaseGroupRevision (..))
+import Path (Abs, File, Path, mkRelFile, (</>))
+import Path.IO (getCurrentDir)
+import Test.Effect (expectFatal', it', shouldBe')
+import Test.Hspec (Spec, describe)
+import Test.Hspec.Core.Spec (runIO)
+
+createOpts :: CreateOpts
+createOpts =
+  CreateOpts
+    { releaseGroupCommon = commonOpts
+    , configOpts = Nothing
+    , titleOpts = Just "title-opts"
+    , releaseOpts = Just "release-opts"
+    , projectsOpts = Just [projectOpts]
+    , licensePolicyOpts = Just "license-policy-opts"
+    , securityPolicyOpts = Just "security-policy-opts"
+    , teamsOpts = Just ["team1-opts", "team2-opts"]
+    }
+
+emptyReleaseCreateOpts :: CreateOpts
+emptyReleaseCreateOpts =
+  CreateOpts
+    { releaseGroupCommon = commonOpts
+    , configOpts = Nothing
+    , titleOpts = Just "title-opts"
+    , releaseOpts = Nothing
+    , projectsOpts = Nothing
+    , licensePolicyOpts = Nothing
+    , securityPolicyOpts = Nothing
+    , teamsOpts = Nothing
+    }
+
+emptyProjectsCreateOpts :: CreateOpts
+emptyProjectsCreateOpts =
+  CreateOpts
+    { releaseGroupCommon = commonOpts
+    , configOpts = Nothing
+    , titleOpts = Just "title-opts"
+    , releaseOpts = Just "release-opts"
+    , projectsOpts = Nothing
+    , licensePolicyOpts = Nothing
+    , securityPolicyOpts = Nothing
+    , teamsOpts = Nothing
+    }
+
+emptyProjectsListCreateOpts :: CreateOpts
+emptyProjectsListCreateOpts =
+  CreateOpts
+    { releaseGroupCommon = commonOpts
+    , configOpts = Nothing
+    , titleOpts = Just "title-opts"
+    , releaseOpts = Just "release-opts"
+    , projectsOpts = Just []
+    , licensePolicyOpts = Nothing
+    , securityPolicyOpts = Nothing
+    , teamsOpts = Nothing
+    }
+
+emptyCreateOpts :: CreateOpts
+emptyCreateOpts =
+  CreateOpts
+    { releaseGroupCommon = commonOpts
+    , configOpts = Nothing
+    , titleOpts = Nothing
+    , releaseOpts = Nothing
+    , projectsOpts = Nothing
+    , licensePolicyOpts = Nothing
+    , securityPolicyOpts = Nothing
+    , teamsOpts = Nothing
+    }
+
+configFile :: Path Abs File -> ConfigFile
+configFile path =
+  ConfigFile
+    { configVersion = 3
+    , configServer = Nothing
+    , configApiKey = Nothing
+    , configReleaseGroup = Just expectedReleaseGroup
+    , configProject = Nothing
+    , configRevision = Nothing
+    , configTargets = Nothing
+    , configPaths = Nothing
+    , configExperimental = Nothing
+    , configMavenScope = Nothing
+    , configVendoredDependencies = Nothing
+    , configTelemetry = Nothing
+    , configCustomLicenseSearch = Nothing
+    , configKeywordSearch = Nothing
+    , configOrgWideCustomLicenseConfigPolicy = Use
+    , configConfigFilePath = path
+    }
+
+projectOpts :: ReleaseGroupProjectOpts
+projectOpts =
+  ReleaseGroupProjectOpts
+    { projectIdOpts = "project-id-opts"
+    , projectRevisionOpts = "project-revision-opts"
+    , projectBranchOpts = "project-branch-opts"
+    }
+
+commonOpts :: ReleaseGroupCommonOpts
+commonOpts =
+  ReleaseGroupCommonOpts
+    { debug = False
+    , baseUrl = Nothing
+    , apiKey = Just "123"
+    }
+
+expectedReleaseGroupRevisionFromOpts :: ReleaseGroupRevision
+expectedReleaseGroupRevisionFromOpts =
+  ReleaseGroupRevision
+    { releaseGroupTitle = "title-opts"
+    , releaseGroupReleaseRevision = expectedReleaseGroupReleaseRevisionFromOpts
+    , releaseGroupLicensePolicy = Just "license-policy-opts"
+    , releaseGroupSecurityPolicy = Just "security-policy-opts"
+    , releaseGroupTeams = Just ["team1-opts", "team2-opts"]
+    }
+
+expectedReleaseGroupReleaseRevisionFromOpts :: ReleaseGroupReleaseRevision
+expectedReleaseGroupReleaseRevisionFromOpts =
+  ReleaseGroupReleaseRevision
+    { releaseTitle = "release-opts"
+    , releaseProjects = [expectedReleaseGroupProjectRevisionFromOpts]
+    }
+
+expectedReleaseGroupProjectRevisionFromOpts :: ReleaseGroupProjectRevision
+expectedReleaseGroupProjectRevisionFromOpts =
+  ReleaseGroupProjectRevision
+    { releaseGroupProjectId = "project-id-opts"
+    , releaseGroupProjectRevision = "project-id-opts$project-revision-opts"
+    , releaseGroupProjectBranch = "project-branch-opts"
+    }
+
+expectedReleaseGroupRevisionFromConfig :: ReleaseGroupRevision
+expectedReleaseGroupRevisionFromConfig =
+  ReleaseGroupRevision
+    { releaseGroupTitle = "test-title"
+    , releaseGroupReleaseRevision = expectedReleaseGroupReleaseRevisionFromConfig
+    , releaseGroupLicensePolicy = Just "test-license-policy"
+    , releaseGroupSecurityPolicy = Just "test-security-policy"
+    , releaseGroupTeams = Just ["team-1", "team-2"]
+    }
+
+expectedReleaseGroupReleaseRevisionFromConfig :: ReleaseGroupReleaseRevision
+expectedReleaseGroupReleaseRevisionFromConfig =
+  ReleaseGroupReleaseRevision
+    { releaseTitle = "test-release"
+    , releaseProjects = [expectedReleaseGroupProjectRevisionFromConfig]
+    }
+
+expectedReleaseGroupProjectRevisionFromConfig :: ReleaseGroupProjectRevision
+expectedReleaseGroupProjectRevisionFromConfig =
+  ReleaseGroupProjectRevision
+    { releaseGroupProjectId = "custom+1/git@github.com/fossa-cli"
+    , releaseGroupProjectRevision = "custom+1/git@github.com/fossa-cli$12345"
+    , releaseGroupProjectBranch = "main"
+    }
+
+spec :: Spec
+spec = do
+  currDir <- runIO getCurrentDir
+  let scanDir = currDir </> fixtureDir
+      absFilePath = scanDir </> $(mkRelFile ".fossa.yml")
+  describe "mergeOpts" $ do
+    it' "should use values from create opts when both create opts and config values are present" $ do
+      createConfig <- mergeOpts (Just $ configFile absFilePath) (EnvVars Nothing False False Nothing Nothing mempty) createOpts
+      shouldBe' expectedReleaseGroupRevisionFromOpts $ releaseGroupRevision createConfig
+    it' "should use values from config when both create opts values are empty" $ do
+      createConfig <- mergeOpts (Just $ configFile absFilePath) (EnvVars Nothing False False Nothing Nothing mempty) emptyCreateOpts
+      shouldBe' expectedReleaseGroupRevisionFromConfig $ releaseGroupRevision createConfig
+    it' "should fail when no title is provided" $ do
+      expectFatal' $ mergeOpts Nothing (EnvVars Nothing False False Nothing Nothing mempty) emptyCreateOpts
+    it' "should fail when no release is provided" $ do
+      expectFatal' $ mergeOpts Nothing (EnvVars Nothing False False Nothing Nothing mempty) emptyReleaseCreateOpts
+    it' "should fail when no projects are provided" $ do
+      expectFatal' $ mergeOpts Nothing (EnvVars Nothing False False Nothing Nothing mempty) emptyProjectsCreateOpts
+    it' "should fail when an empty project list is provided" $ do
+      expectFatal' $ mergeOpts Nothing (EnvVars Nothing False False Nothing Nothing mempty) emptyProjectsListCreateOpts

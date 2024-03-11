@@ -20,12 +20,16 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   uploadReachabilityContent,
   uploadReachabilityBuild,
   getCustomBuildPermissions,
+  addReleaseGroupProjects,
+  createReleaseGroup,
+  deleteReleaseGroup,
+  deleteReleaseGroupRelease,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Config.Test (DiffRevision)
 import App.Fossa.VendoredDependency (VendoredDependency (..))
-import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision (..))
+import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision (..), ReleaseGroupReleaseRevision, ReleaseGroupRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
@@ -41,10 +45,12 @@ import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Fossa.API.Types (
+  AddReleaseGroupProjectsResponse,
   ApiOpts,
   Archive,
   Build,
   Contributors,
+  CreateReleaseGroupResponse,
   CustomBuildUploadPermissions,
   Issues,
   Organization,
@@ -296,3 +302,53 @@ uploadReachabilityBuild pr metadata content = do
   apiOpts <- ask
   signedUrl <- API.getReachabilityBuildSignedUrl apiOpts pr metadata
   void $ API.uploadReachabilityBuild signedUrl content
+
+createReleaseGroup ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  ReleaseGroupRevision ->
+  m CreateReleaseGroupResponse
+createReleaseGroup rev = do
+  apiOpts <- ask
+  API.createReleaseGroup apiOpts rev
+
+deleteReleaseGroup ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Text ->
+  m ()
+deleteReleaseGroup title = do
+  apiOpts <- ask
+  API.deleteReleaseGroup apiOpts title
+
+deleteReleaseGroupRelease ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Text ->
+  Text ->
+  m ()
+deleteReleaseGroupRelease title release = do
+  apiOpts <- ask
+  API.deleteReleaseGroupRelease apiOpts title release
+
+addReleaseGroupProjects ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Text ->
+  ReleaseGroupReleaseRevision ->
+  m AddReleaseGroupProjectsResponse
+addReleaseGroupProjects title releaseRev = do
+  apiOpts <- ask
+  API.addReleaseGroupProjects apiOpts title releaseRev

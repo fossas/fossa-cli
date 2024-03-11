@@ -1,23 +1,32 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.ReleaseGroup.Create (
-  createReleaseGroup,
+  createMain,
 ) where
 
-import App.Fossa.Config.ReleaseGroup (CreateConfig)
+import App.Fossa.Config.ReleaseGroup.Create (CreateConfig (..))
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.FossaApiClient (FossaApiClient, createReleaseGroup, getOrganization)
 import Control.Effect.Lift (Lift)
-import Effect.Exec (Exec)
-import Effect.Logger (Logger, logDebug, pretty)
+import Control.Monad (when)
+import Data.String.Conversion (ToText (..))
+import Effect.Logger (Logger, Pretty (pretty), logDebug, logInfo, logStdout)
+import Fossa.API.Types (CreateReleaseGroupResponse (..), Organization (orgSupportsReleaseGroups))
 import Text.Pretty.Simple (pShow)
 
-createReleaseGroup ::
-  ( Has (Lift IO) sig m
-  , Has Exec sig m
-  , Has Diagnostics sig m
+createMain ::
+  ( Has Diagnostics sig m
   , Has Logger sig m
+  , Has (Lift IO) sig m
+  , Has FossaApiClient sig m
   ) =>
   CreateConfig ->
   m ()
-createReleaseGroup config = do
-  logDebug $ "THis is the config of the create command -------- " <> pretty (pShow (config))
-  pure ()
+createMain CreateConfig{..} = do
+  logInfo "Running FOSSA release-group create"
+  org <- getOrganization
+  logDebug $ "The org ---- " <> pretty (pShow (org))
+  when (orgSupportsReleaseGroups org) $ do
+    res <- createReleaseGroup releaseGroupRevision
+    logStdout $ "Created release group with id: " <> toText (releaseGroupId res)
