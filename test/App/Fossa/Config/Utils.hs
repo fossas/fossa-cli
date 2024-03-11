@@ -44,6 +44,7 @@ configFile path =
     , configOrgWideCustomLicenseConfigPolicy = Use
     , configConfigFilePath = path
     , configMavenScope = Nothing
+    , configReachability = Nothing
     }
 
 fixtureDir :: Path Rel Dir

@@ -3,17 +3,30 @@ module App.Fossa.Reachability.Types (
   SourceUnitReachability (..),
   ParsedJar (..),
   ContentRef (..),
+  ReachabilityConfig (..),
   reachabilityRawJson,
   reachabilityEndpointJson,
 ) where
 
 import Data.Aeson (ToJSON (..), Value, object, (.=))
 import Data.ByteString.Lazy (ByteString)
+import Data.Map (Map)
 import Data.String.Conversion (ConvertUtf8 (decodeUtf8))
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Path (Abs, File, Path)
+import Path (Abs, Dir, File, Path)
 import Srclib.Types (Locator, OriginPath)
+
+-- | Reachability on JVM projects relies on analyzing the binary JAR files
+-- emitted by the build process. FOSSA CLI tries to identify these from project metadata,
+-- but this may not work for all projects.
+--
+-- This config allows users to specify custom locations for the JAR file(s)
+-- built from projects in their scan.
+newtype ReachabilityConfig = ReachabilityConfig
+  { configReachabilityJvmOutputs :: Map (Path Abs Dir) [Path Abs File]
+  }
+  deriving (Eq, Ord, Show, Monoid, Semigroup, ToJSON)
 
 data SourceUnitReachability = SourceUnitReachability
   { srcUnitType :: Text

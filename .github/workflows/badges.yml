@@ -8,8 +8,10 @@ jobs:
   downloads:
     name: update-downloads-badge
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Update badge
         run: |
           CLI_DOWNLOADS=$(gh api /repos/fossas/fossa-cli/releases --paginate --cache 1h | jq '.[] | .assets | .[] | .download_count' | jq --slurp 'add')

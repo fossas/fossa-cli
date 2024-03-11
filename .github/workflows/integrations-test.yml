@@ -20,12 +20,9 @@ jobs:
       GHC_VERSION: '9.4.7'
 
     steps:
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
+    - uses: dtolnay/rust-toolchain@stable
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         lfs: true
         fetch-depth: 2
@@ -82,7 +79,7 @@ jobs:
 
         echo "parent_commit=$(git rev-parse HEAD^)" >> $GITHUB_ENV
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
@@ -92,7 +89,7 @@ jobs:
           ${{ runner.os }}-${{ env.GHC_VERSION }}-
           ${{ runner.os }}-
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle

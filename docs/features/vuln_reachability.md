@@ -2,16 +2,16 @@
 
 ### What is Reachability?
 
-Reachability Analysis is a security offering designed to enhance FOSSA's security analysis by providing context on vulnerable packages. It alleviates the constraints of traditional CVE assessments through the static analysis of application and dependency code, confirming the presence of vulnerable call paths. 
+Reachability Analysis is a security offering designed to enhance FOSSA's security analysis by providing context on vulnerable packages. It alleviates the constraints of traditional CVE assessments through the static analysis of application and dependency code, confirming the presence of vulnerable call paths.
 
 ### Limitations
 
-- Reachability currently supports all Maven and Gradle projects dynamically analyzed by FOSSA CLI. 
+- Reachability currently supports all Maven and Gradle projects dynamically analyzed by FOSSA CLI.
 - The target jar of the project must exist, prior to the analysis. If the jar artifact is not present, or FOSSA CLI fails to
 associate this jar with project, FOSSA CLI will not perform reachability analysis.
 - Reachability requires that `java` is present in PATH, and `java` version must be greater than `1.8` (jdk8+).
 
-For example, 
+For example,
 - if you are using maven, you should run `mvn package` to ensure jar artifact exists, prior to running `fossa analyze`
 - if you are using gradle, you should run `gradlew build` to ensure jar artifact exists, prior to running `fossa analyze`
 
@@ -22,6 +22,50 @@ For Maven projects, FOSSA CLI performs an analysis to infer dependencies. If FOS
 ### Gradle Analysis
 
 For Gradle projects, FOSSA CLI invokes `./gradlew -I jsonpaths.gradle jsonPaths`. Where [jsonpaths.gradle](./../../scripts/jarpaths.gradle) is gradle script, which uses `java` plugin, and `jar` task associated with gradle to infer path of the built jar file. If neither of those are present, FOSSA CLI won't be able to identify jar artifacts for analysis.
+
+### Custom JAR locations
+
+For both Gradle and Maven, it is possible to choose different locations for output JAR files, or to move them before FOSSA CLI runs.
+For these cases, you can configure the locations directly.
+
+First, run `fossa list-targets` inside your project. For example:
+```sh
+❯ fossa list-targets
+Found project: gradle@./
+Found target: gradle@./::app
+```
+
+This output specifies that a Gradle project was found at the root of the current directory (at `./`).
+Note for which project(s) you wish to provide the paths to the built JAR files, we'll need these later.
+
+Now, create a `.fossa.yml` file if one does not already exist ([more information here](../references/files/fossa-yml.md)).
+Add the following keys to it:
+```yml
+reachability:
+  jvmOutputs:
+```
+
+Inside the `jvmOutputs` object, create a map that describes, for each project path (noted down earlier) the paths to the JAR files that the project output.
+
+For example, let's say that the Gradle project at the root of my scan directory (at `./`) produces a JAR file named `app.jar`, and that I configured Gradle such that when it builds the project that `app.jar` file is also written to the root of my scan directory (so its path is `./app.jar`, relative to the scan root).
+My config file would look like this:
+
+```yml
+reachability:
+  jvmOutputs:
+    './':
+    - './app.jar'
+```
+
+You can also provide the absolute paths to make this more clear, if desired. For example, if my project was at `~/projects/example-project` and I wanted to use absolute paths in the config file, the file would look like this:
+```yml
+reachability:
+  jvmOutputs:
+    '/Users/me/projects/example-project':
+    - '/Users/me/projects/example-project/app.jar'
+```
+
+With this configuration, when FOSSA CLI analyzes a Maven or Gradle project at the specified path (in this case `/Users/me/projects/example-project`) instead of attempting to query the build tool for the location of the built JAR files it will instead use the values provided for that path (in this case `/Users/me/projects/example-project/app.jar`).
 
 ### How do I debug reachability from `fossa-cli`?
 
@@ -75,12 +119,12 @@ cat fossa.debug.json | jq '.bundleReachabilityEndpoint'
 }
 ```
 
-FOSSA CLI uses [jar-callgraph-1.0.0.jar](../../scripts/jar-callgraph-1.0.0.jar) to infer call path edges. 
+FOSSA CLI uses [jar-callgraph-1.0.0.jar](../../scripts/jar-callgraph-1.0.0.jar) to infer call path edges.
 FOSSA CLI uses `java -jar jar-callgraph-1.0.0.jar ./path/to/your/build.jar` command to record edges from
 the your target jar. If you are running into issues with reachability, please confirm that you can execute
 `java -jar jar-callgraph-1.0.0.jar ./path/to/your/build.jar` on your environment.
 
-<!-- 
+<!--
 ## How do I debug reachability from endpoint?
 
 ```bash
@@ -109,7 +153,7 @@ Likewise, you can also inspect analysis done in datadog, by looking at logs asso
 performs reachability analysis as part of provided build (all variants of provided builds).
 -->
 
-## F.A.Q. 
+## F.A.Q.
 
 1. What data from my codebase is uploaded to endpoint?
 
@@ -174,4 +218,3 @@ Reachability analysis
 | skipped (partial graph)          | Project has partial dependency graph (e.g. missing transitive dependencies)  |
 | skipped (not supported)          | Project is not supported for reachability analysis                           |
 | skipped (no dependency analysis) | Project's dependencies were not analyzed, so reachability cannot be computed |
-

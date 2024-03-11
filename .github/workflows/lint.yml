@@ -9,13 +9,11 @@ jobs:
     container: ghcr.io/fossas/haskell-dev-tools:9.4.7
 
     steps:
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          components: clippy, rustfmt
+          components: "clippy,rustfmt"
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Run hlint
         run: |
@@ -26,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Check Markdown links
         uses: gaurav-nelson/github-action-markdown-link-check@v1
@@ -44,13 +42,11 @@ jobs:
     container: ghcr.io/fossas/haskell-dev-tools:9.4.7
 
     steps:
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          components: clippy, rustfmt
+          components: "clippy,rustfmt"
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       # Run the formatter
       - name: run fourmolu
@@ -63,7 +59,7 @@ jobs:
     container: ghcr.io/fossas/haskell-dev-tools:9.4.7
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       # Run the formatter
       - name: "run cabal-fmt"
@@ -74,7 +70,7 @@ jobs:
     name: "schema lint check"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: json-syntax-check
         uses: limitusus/json-syntax-check@v1
         with:
@@ -84,7 +80,7 @@ jobs:
     name: "Check for correct spelling of FOSSA"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: "Check for incorrect FOSSA wording"
         run: |
           ! grep 'Fossa ' **/*.md
@@ -93,7 +89,7 @@ jobs:
     name: "Lint bash scripts"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: run shellcheck
         uses: sudo-bot/action-shellcheck@latest
         with:
