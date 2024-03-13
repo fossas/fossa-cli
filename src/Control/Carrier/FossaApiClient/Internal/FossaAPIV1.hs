@@ -42,6 +42,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   alreadyAnalyzedPathRevision,
   getTokenType,
   getCustomBuildUploadPermissions,
+  editProject,
 
   -- * Reachability
   getReachabilityContentSignedUrl,
@@ -74,6 +75,7 @@ import App.Types (
   FullFileUploads (FullFileUploads),
   Policy (..),
   ProjectMetadata (..),
+  ProjectMetadataRevision (..),
   ProjectRevision (..),
   ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
   fullFileUploadsToCliLicenseScanType,
@@ -143,6 +145,7 @@ import Fossa.API.Types (
   PathDependencyUpload,
   PathDependencyUploadReq (..),
   Project,
+  ProjectResponse,
   RevisionDependencyCache,
   SignedURL (signedURL),
   SignedURLWithKey (surlwkKey, surlwkSignedURL),
@@ -1596,3 +1599,44 @@ uploadReachabilityContent signedUrl bs = fossaReq $ do
         lbsResponse
         options
         (pure . requestEncoder)
+
+editProjectURLEndpoint :: Url 'Https -> Url 'Https
+editProjectURLEndpoint baseUrl = baseUrl /: "api" /: "cli" /: "project"
+
+editProject ::
+  (Has (Lift IO) sig m, Has Diagnostics sig m, Has Debug sig m) =>
+  ApiOpts ->
+  Text ->
+  ProjectMetadataRevision ->
+  m ProjectResponse
+editProject apiOpts projectId ProjectMetadataRevision{..} = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  let opts =
+        "projectId"
+          =: projectId
+          <> mkProjectOpts
+
+  res <- req PUT (editProjectURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
+  pure (responseBody res)
+  where
+    mkProjectOpts :: Option scheme
+    mkProjectOpts = mconcat totalOptions
+
+    maybeOptions :: [Maybe (Option scheme)]
+    maybeOptions =
+      [ ("projectTitle" =:) <$> projectTitleRevision
+      , ("projectURL" =:) <$> projectUrlRevision
+      , ("projectJiraKey" =:) <$> projectJiraKeyRevision
+      , ("projectLink" =:) <$> projectLinkRevision
+      , ("projectTeam" =:) <$> projectTeamRevision
+      , policyOpt <$> projectPolicyRevision
+      ]
+
+    policyOpt (PolicyName n) = ("projectPolicy" =: n)
+    policyOpt (PolicyId i) = ("projectPolicyId" =: i)
+
+    labelOptions :: [Option scheme]
+    labelOptions = map ("projectLabels[]" =:) projectLabelRevision
+
+    totalOptions :: [Option scheme]
+    totalOptions = catMaybes maybeOptions ++ labelOptions

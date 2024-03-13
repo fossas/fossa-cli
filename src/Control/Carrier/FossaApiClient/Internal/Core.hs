@@ -20,12 +20,13 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   uploadReachabilityContent,
   uploadReachabilityBuild,
   getCustomBuildPermissions,
+  editProject,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Config.Test (DiffRevision)
 import App.Fossa.VendoredDependency (VendoredDependency (..))
-import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision (..))
+import App.Types (FullFileUploads, ProjectMetadata, ProjectMetadataRevision, ProjectRevision (..))
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
@@ -49,6 +50,7 @@ import Fossa.API.Types (
   Issues,
   Organization,
   Project,
+  ProjectResponse,
   RevisionDependencyCache,
   SignedURL,
   TokenTypeResponse,
@@ -296,3 +298,16 @@ uploadReachabilityBuild pr metadata content = do
   apiOpts <- ask
   signedUrl <- API.getReachabilityBuildSignedUrl apiOpts pr metadata
   void $ API.uploadReachabilityBuild signedUrl content
+
+editProject ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Text ->
+  ProjectMetadataRevision ->
+  m ProjectResponse
+editProject projectId rev = do
+  apiOpts <- ask
+  API.editProject apiOpts projectId rev

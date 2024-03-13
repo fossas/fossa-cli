@@ -10,12 +10,14 @@ module App.Fossa.Config.Common (
   targetOpt,
   baseDirArg,
   metadataOpts,
+  parsePolicyOptions,
 
   -- * CLI Validators
   validateDir,
   validateFile,
   validateExists,
   validateApiKey,
+  validateApiKeyGeneric,
 
   -- * CLI Collectors
   collectBaseDir,
@@ -39,6 +41,8 @@ module App.Fossa.Config.Common (
   -- * Global Parser Help Message
   endpointHelp,
   fossaApiKeyHelp,
+  configHelp,
+  titleHelp,
 ) where
 
 import App.Fossa.Config.ConfigFile (
@@ -171,40 +175,41 @@ metadataOpts =
     <*> parsePolicyOptions
     <*> many (strOption (applyFossaStyle <> long "project-label" <> stringToHelpDoc "Assign up to 5 labels to the project"))
     <*> optional releaseGroupMetadataOpts
-  where
-    policy :: Parser Policy
-    policy = PolicyName <$> (strOption (applyFossaStyle <> long "policy" <> helpDoc policyHelp))
 
-    policyId :: Parser Policy
-    policyId =
-      PolicyId
-        <$> ( option
-                (readMWithError "failed to parse --policy-id, expecting int")
-                (applyFossaStyle <> long "policy-id" <> helpDoc policyIdHelp)
-            )
+policy :: Parser Policy
+policy = PolicyName <$> (strOption (applyFossaStyle <> long "policy" <> helpDoc policyHelp))
 
-    parsePolicyOptions :: Parser (Maybe Policy)
-    parsePolicyOptions = optional (policy <|> policyId) -- For Parsers '<|>' tries every alternative and fails if they all succeed.
-    titleHelp :: Maybe (Doc AnsiStyle)
-    titleHelp =
-      Just . formatDoc $
-        vsep
-          [ "The title of the FOSSA project"
-          , boldItalicized "Default: " <> "The project name"
-          ]
+policyId :: Parser Policy
+policyId =
+  PolicyId
+    <$> ( option
+            (readMWithError "failed to parse --policy-id, expecting int")
+            (applyFossaStyle <> long "policy-id" <> helpDoc policyIdHelp)
+        )
 
-    policyHelp :: Maybe (Doc AnsiStyle)
-    policyHelp =
-      Just . formatDoc $
-        vsep
-          [ "The name of the policy to assign to this project in FOSSA. Mutually excludes " <> coloredBoldItalicized Green "--policy-id" <> "."
-          ]
-    policyIdHelp :: Maybe (Doc AnsiStyle)
-    policyIdHelp =
-      Just . formatDoc $
-        vsep
-          [ "The id of the policy to assign to this project in FOSSA. Mutually excludes " <> coloredBoldItalicized Green "--policy" <> "."
-          ]
+parsePolicyOptions :: Parser (Maybe Policy)
+parsePolicyOptions = optional (policy <|> policyId) -- For Parsers '<|>' tries every alternative and fails if they all succeed.
+
+titleHelp :: Maybe (Doc AnsiStyle)
+titleHelp =
+  Just . formatDoc $
+    vsep
+      [ "The title of the FOSSA project"
+      , boldItalicized "Default: " <> "The project name"
+      ]
+
+policyHelp :: Maybe (Doc AnsiStyle)
+policyHelp =
+  Just . formatDoc $
+    vsep
+      [ "The name of the policy to assign to this project in FOSSA. Mutually excludes " <> coloredBoldItalicized Green "--policy-id" <> "."
+      ]
+policyIdHelp :: Maybe (Doc AnsiStyle)
+policyIdHelp =
+  Just . formatDoc $
+    vsep
+      [ "The id of the policy to assign to this project in FOSSA. Mutually excludes " <> coloredBoldItalicized Green "--policy" <> "."
+      ]
 
 releaseGroupMetadataOpts :: Parser ReleaseGroupMetadata
 releaseGroupMetadataOpts =
@@ -301,6 +306,27 @@ validateApiKey maybeConfigFile EnvVars{envApiKey} CommonOpts{optAPIKey} = do
       optAPIKey
         <|> (maybeConfigFile >>= configApiKey)
         <|> envApiKey
+  if Data.Text.null . strip $ textkey
+    then fatalText "A FOSSA API key was specified, but it is an empty string"
+    else pure $ ApiKey textkey
+
+validateApiKeyGeneric ::
+  ( Has Diagnostics sig m
+  ) =>
+  Maybe ConfigFile ->
+  Maybe Text ->
+  Maybe Text ->
+  m ApiKey
+validateApiKeyGeneric maybeConfigFile maybeEnvApiKey maybeOptAPIKey = do
+  textkey <-
+    fromMaybeText "A FOSSA API key is required to run this command" $
+      -- API key significance is strictly defined:
+      -- 1. Cmd-line option (rarely used, not encouraged)
+      -- 2. Config file (maybe used)
+      -- 3. Environment Variable (most common)
+      maybeOptAPIKey
+        <|> (maybeConfigFile >>= configApiKey)
+        <|> maybeEnvApiKey
   if Data.Text.null . strip $ textkey
     then fatalText "A FOSSA API key was specified, but it is an empty string"
     else pure $ ApiKey textkey
@@ -466,13 +492,7 @@ commonOpts =
           [ "This repository's current revision hash"
           , boldItalicized "Default: " <> "VCS hash HEAD"
           ]
-    configHelp :: Maybe (Doc AnsiStyle)
-    configHelp =
-      Just . formatDoc $
-        vsep
-          [ "Path to configuration file including filename"
-          , boldItalicized "Default: " <> ".fossa.yml"
-          ]
+
     telemtryScopeHelp :: Maybe (Doc AnsiStyle)
     telemtryScopeHelp =
       Just . formatDoc $
@@ -481,6 +501,14 @@ commonOpts =
           , boldItalicized "Options: " <> coloredBoldItalicized Green "full" <> boldItalicized "|" <> coloredBoldItalicized Green "off"
           , boldItalicized "Default: " <> coloredBoldItalicized Green "full"
           ]
+
+configHelp :: Maybe (Doc AnsiStyle)
+configHelp =
+  Just . formatDoc $
+    vsep
+      [ "Path to configuration file including filename"
+      , boldItalicized "Default: " <> ".fossa.yml"
+      ]
 
 endpointHelp :: Maybe (Doc AnsiStyle)
 endpointHelp =

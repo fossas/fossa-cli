@@ -41,6 +41,7 @@ module Control.Effect.FossaApiClient (
   uploadContentForReachability,
   uploadBuildForReachability,
   getCustomBuildPermissions,
+  editProject,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
@@ -51,7 +52,7 @@ import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency)
-import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision)
+import App.Types (FullFileUploads, ProjectMetadata, ProjectMetadataRevision, ProjectRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
@@ -73,6 +74,7 @@ import Fossa.API.Types (
   Organization,
   PathDependencyUpload,
   Project,
+  ProjectResponse,
   RevisionDependencyCache,
   SignedURL,
   TokenTypeResponse,
@@ -96,6 +98,7 @@ data FossaApiClientF a where
   AssertUserDefinedBinaries :: IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> FossaApiClientF ()
   CompleteVsiScan :: VSI.ScanID -> FossaApiClientF ()
   CreateVsiScan :: ProjectRevision -> FossaApiClientF VSI.ScanID
+  EditProject :: Text -> ProjectMetadataRevision -> FossaApiClientF ProjectResponse
   FinalizeLicenseScan :: ArchiveComponents -> FossaApiClientF ()
   FinalizeLicenseScanForPathDependency :: [Locator] -> Bool -> FossaApiClientF ()
   GetApiOpts :: FossaApiClientF ApiOpts
@@ -271,3 +274,6 @@ uploadContentForReachability = sendSimple . UploadContentForReachability
 
 uploadBuildForReachability :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> [SourceUnitReachability] -> m ()
 uploadBuildForReachability rev revMetadata units = sendSimple $ UploadBuildForReachability rev revMetadata units
+
+editProject :: Has FossaApiClient sig m => Text -> ProjectMetadataRevision -> m ProjectResponse
+editProject projectId rev = sendSimple $ EditProject projectId rev

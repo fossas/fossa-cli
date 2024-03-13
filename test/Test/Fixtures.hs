@@ -51,6 +51,7 @@ module Test.Fixtures (
   invalidEditProjectPermission,
   invalidCreateProjectPermission,
   organizationWithPreflightChecks,
+  projectResponse,
 ) where
 
 import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
@@ -94,13 +95,13 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False False API.Free
+organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False False API.Free False
 
 organizationWithPreflightChecks :: API.Organization
-organizationWithPreflightChecks = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Free
+organizationWithPreflightChecks = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Free False
 
 organizationWithPremiumSubscription :: API.Organization
-organizationWithPremiumSubscription = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Premium
+organizationWithPremiumSubscription = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Premium False
 
 pushToken :: API.TokenTypeResponse
 pushToken = API.TokenTypeResponse API.Push
@@ -128,6 +129,9 @@ invalidCreateTeamProjectsForReleaseGroupPermission = API.CustomBuildUploadPermis
 
 validCustomUploadPermissions :: API.CustomBuildUploadPermissions
 validCustomUploadPermissions = API.CustomBuildUploadPermissions API.ValidProjectPermission $ Just API.ValidReleaseGroupPermission
+
+projectResponse :: API.ProjectResponse
+projectResponse = API.ProjectResponse Nothing
 
 project :: API.Project
 project =
