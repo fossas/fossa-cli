@@ -15,7 +15,7 @@ import App.Fossa.Config.Container (
  )
 import App.Fossa.Config.Container qualified as Config
 import App.Fossa.Container.Scan (scanImageNoAnalysis)
-import App.Fossa.PreflightChecks (guardWithPreflightChecks)
+import App.Fossa.PreflightChecks (PreflightCommandChecks (TestChecks), guardWithPreflightChecks)
 import App.Types (OverrideProject (OverrideProject, overrideBranch, overrideName, overrideRevision), ProjectRevision (..))
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
@@ -58,7 +58,7 @@ test ::
   ContainerTestConfig ->
   m ()
 test ContainerTestConfig{..} = do
-  void $ guardWithPreflightChecks apiOpts
+  void $ guardWithPreflightChecks apiOpts TestChecks
 
   runStickyLogger SevInfo
     . ignoreDebug -- Ignore the debug effect because we don't generate a bundle.

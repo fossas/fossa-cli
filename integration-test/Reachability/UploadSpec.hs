@@ -3,7 +3,7 @@
 
 module Reachability.UploadSpec (spec) where
 
-import Analysis.FixtureUtils (FixtureEnvironment (..), TestC, testRunnerWithLogger, withResult)
+import Analysis.FixtureUtils (FixtureEnvironment (..), TestC, testRunner, withResult)
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
@@ -15,6 +15,7 @@ import App.Fossa.Reachability.Types (
   CallGraphAnalysis (..),
   ContentRef (..),
   ParsedJar (..),
+  ReachabilityConfig (..),
   SourceUnitReachability (..),
  )
 import App.Fossa.Reachability.Upload (
@@ -22,8 +23,10 @@ import App.Fossa.Reachability.Upload (
   callGraphOf,
   onlyFoundUnits,
  )
+import Control.Carrier.Reader (ReaderC, runReader)
 import Data.ByteString.Lazy qualified as LB
 import Data.Foldable (for_)
+import Data.Map qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text.Encoding qualified as TL
@@ -42,6 +45,7 @@ import Path (
 import Path.IO qualified as PIO
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Text.RawString.QQ (r)
+import Type.Operator (type ($))
 import Types (
   DiscoveredProjectType (MavenProjectType),
   GraphBreadth (..),
@@ -60,7 +64,10 @@ java21 :: FixtureEnvironment
 java21 = NixEnv ["jdk21"]
 
 run :: FixtureEnvironment -> TestC IO a -> IO (Result a)
-run env act = testRunnerWithLogger act env
+run env act = testRunner act env
+
+runConf :: FixtureEnvironment -> ReachabilityConfig -> (ReaderC ReachabilityConfig $ TestC IO) a -> IO (Result a)
+runConf env conf act = testRunner (runReader conf act) env
 
 spec :: Spec
 spec = describe "Reachability" $ do
@@ -86,7 +93,7 @@ spec = describe "Reachability" $ do
     it "should retrieve call graph" $ do
       let (dpi, dps) = mavenCompleteScan projDir
       let expected = SourceUnitReachabilityFound dpi (Success [] (mavenCompleteScanUnit projDir jarFile))
-      resp <- run java8 $ callGraphOf dps
+      resp <- runConf java8 mempty $ callGraphOf dps
       withResult resp $ \_ res -> res `shouldBe` expected
 
   describe "analyzeForReachability" $ do
@@ -96,11 +103,31 @@ spec = describe "Reachability" $ do
     it "should return analyzed reachability unit" $ do
       let (_, dps) = mavenCompleteScan projDir
       let expected = [mavenCompleteScanUnit projDir jarFile]
-      analyzed <- run java8 $ analyzeForReachability [dps]
+      analyzed <- runConf java8 mempty $ analyzeForReachability [dps]
+      withResult analyzed $ \_ analyzed' -> (onlyFoundUnits analyzed') `shouldBe` expected
+
+  describe "user provided jar" $ do
+    projDir <- (</> sampleMavenProjectMissingOutputJarDir) <$> runIO PIO.getCurrentDir
+    jarFile <- (</> sampleMavenProjectJar) <$> runIO PIO.getCurrentDir
+
+    it "should fail to analyze reachability when jar is missing" $ do
+      let (_, dps) = mavenCompleteScan projDir
+      let expected = [mavenEmptyScanUnit projDir]
+      analyzed <- runConf java8 mempty $ analyzeForReachability [dps]
+      withResult analyzed $ \_ analyzed' -> (onlyFoundUnits analyzed') `shouldBe` expected
+
+    it "should succeed analyzing the project when a missing jar is manually specified" $ do
+      let conf = ReachabilityConfig $ Map.fromList [(projDir, [jarFile])]
+      let (_, dps) = mavenCompleteScan projDir
+      let expected = [mavenCompleteScanUnit projDir jarFile]
+      analyzed <- runConf java8 conf $ analyzeForReachability [dps]
       withResult analyzed $ \_ analyzed' -> (onlyFoundUnits analyzed') `shouldBe` expected
 
 sampleMavenProjectDir :: Path Rel Dir
 sampleMavenProjectDir = $(mkRelDir "test/Reachability/testdata/maven-default/")
+
+sampleMavenProjectMissingOutputJarDir :: Path Rel Dir
+sampleMavenProjectMissingOutputJarDir = $(mkRelDir "test/Reachability/testdata/maven-default-missing-jar/")
 
 sampleMavenProjectJar :: Path Rel File
 sampleMavenProjectJar = $(mkRelFile "test/Reachability/testdata/maven-default/target/project-1.0.0.jar")
@@ -116,6 +143,9 @@ mavenCompleteScanUnit projDir jarFile =
         jarFile
         (ContentRaw sampleJarParsedContent')
     ]
+
+mavenEmptyScanUnit :: Path Abs Dir -> SourceUnitReachability
+mavenEmptyScanUnit projDir = mkReachabilityUnit projDir []
 
 mkDiscoveredProjectScan :: DiscoveredProjectType -> Path Abs Dir -> GraphBreadth -> (DiscoveredProjectIdentifier, DiscoveredProjectScan)
 mkDiscoveredProjectScan projectType dir breadth =

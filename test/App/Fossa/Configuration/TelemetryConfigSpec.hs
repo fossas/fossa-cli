@@ -81,6 +81,7 @@ defaultConfigFile =
     , configKeywordSearch = Nothing
     , configOrgWideCustomLicenseConfigPolicy = Use
     , configConfigFilePath = configPath
+    , configReachability = Nothing
     }
 
 mockApiKeyRaw :: Text

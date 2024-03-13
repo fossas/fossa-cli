@@ -40,6 +40,7 @@ expectedConfigFile path =
     , configKeywordSearch = Just expectedKeywordSearch
     , configOrgWideCustomLicenseConfigPolicy = Use
     , configConfigFilePath = path
+    , configReachability = Nothing
     }
 
 expectedConfigProject :: ConfigProject

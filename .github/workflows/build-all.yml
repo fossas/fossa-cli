@@ -39,7 +39,7 @@ jobs:
 
     steps:
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         lfs: true
         fetch-depth: 2
@@ -59,20 +59,13 @@ jobs:
         cabal-version: '3.10.2.0'
 
     # Set up Rust.
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
+    # This action installs the 'minimal' profile.
+    - uses: dtolnay/rust-toolchain@stable
 
     - name: Install additional Rust tooling
       uses: taiki-e/install-action@v2
       with:
         tool: nextest
-
-    - uses: actions-rs/install@v0.1
-      with:
-        crate: cargo-nextest
-        version: latest
 
     - uses: Swatinem/rust-cache@v2
 
@@ -137,7 +130,7 @@ jobs:
         echo "cabal-cache-key=$CABAL_CACHE_KEY" >> $GITHUB_OUTPUT
 
     # Build FOSSA CLI.
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
@@ -147,7 +140,7 @@ jobs:
           ${{ runner.os }}-${{ matrix.ghc }}-
           ${{ runner.os }}-
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
@@ -263,7 +256,7 @@ jobs:
            exit 1
         fi
 
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: ${{ runner.os }}-binaries
         path: release
@@ -277,7 +270,7 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v4
 
     - name: Get version
       id: get-version
@@ -285,10 +278,10 @@ jobs:
         case $GITHUB_REF in
           refs/tags/v*)
             # This strips the 'v' prefix from the tag.
-            echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/v/}
+            echo "{VERSION}=${GITHUB_REF/refs\/tags\/v/}"
             ;;
           *)
-            echo ::set-output name=VERSION::${GITHUB_SHA}
+            echo "{VERSION}=${GITHUB_SHA}"
             ;;
         esac
 
@@ -398,7 +391,7 @@ jobs:
     # need to run for tagged release versions.
     - name: Upload release archives
       if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: release-archives
         path: release
