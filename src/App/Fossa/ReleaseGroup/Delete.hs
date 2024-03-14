@@ -5,11 +5,11 @@ module App.Fossa.ReleaseGroup.Delete (
 ) where
 
 import App.Fossa.Config.ReleaseGroup.Delete (DeleteConfig (..))
+import App.Fossa.ReleaseGroup.Create (emitFossaVersionError)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient (FossaApiClient, deleteReleaseGroup, getOrganization)
 import Control.Effect.Lift (Lift)
-import Control.Monad (when)
 import Effect.Logger (Logger, logInfo, logStdout)
 import Fossa.API.Types (Organization (..))
 
@@ -24,6 +24,8 @@ deleteMain ::
 deleteMain DeleteConfig{..} = do
   logInfo "Running FOSSA release-group delete"
   org <- getOrganization
-  when (orgSupportsReleaseGroups org) $ do
-    deleteReleaseGroup releaseTitle
-    logStdout $ "Release group release " <> "`" <> releaseTitle <> "`" <> " has been deleted"
+  if orgSupportsReleaseGroups org
+    then do
+      deleteReleaseGroup releaseTitle
+      logStdout $ "Release group release " <> "`" <> releaseTitle <> "`" <> " has been deleted"
+    else emitFossaVersionError

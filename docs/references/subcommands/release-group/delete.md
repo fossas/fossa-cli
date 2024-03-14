@@ -13,5 +13,5 @@ Argument              | Required | Description
 ## Usage
 
 ```bash
-fossa release-group delete -t example-title
+fossa release-group delete --title example-title
 ```

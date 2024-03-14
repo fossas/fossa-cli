@@ -2,15 +2,16 @@
 
 module App.Fossa.ReleaseGroup.Create (
   createMain,
+  emitFossaVersionError,
 ) where
 
 import App.Fossa.Config.ReleaseGroup.Create (CreateConfig (..))
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, errHelp, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, createReleaseGroup, getOrganization)
 import Control.Effect.Lift (Lift)
-import Control.Monad (when)
 import Data.String.Conversion (ToText (..))
+import Data.Text (Text)
 import Effect.Logger (Logger, logInfo, logStdout)
 import Fossa.API.Types (CreateReleaseGroupResponse (..), Organization (orgSupportsReleaseGroups))
 
@@ -25,6 +26,11 @@ createMain ::
 createMain CreateConfig{..} = do
   logInfo "Running FOSSA release-group create"
   org <- getOrganization
-  when (orgSupportsReleaseGroups org) $ do
-    res <- createReleaseGroup releaseGroupRevision
-    logStdout $ "Created release group with id: " <> toText (releaseGroupId res)
+  if orgSupportsReleaseGroups org
+    then do
+      res <- createReleaseGroup releaseGroupRevision
+      logStdout $ "Created release group with id: " <> toText (releaseGroupId res)
+    else emitFossaVersionError
+
+emitFossaVersionError :: Has Diagnostics sig m => m ()
+emitFossaVersionError = errHelp ("Upgrade your FOSSA version" :: Text) $ fatalText "The current version of FOSSA you are using does not support release groups"

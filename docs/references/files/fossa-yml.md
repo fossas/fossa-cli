@@ -188,9 +188,7 @@ The projects associated with the release group's release.
 >NOTE: `projectId` , `projectRevision`, and `projectBranch` must all be specified when providing a releaseGroupProject.
 
 #### `releaseGroup.releaseGroupProjects.projectId:`
-"The project ID defines a unique ID that the FOSSA API will use to reference this project. The project ID can be found in the UI on the project settings page listed as the `Project Locator` underneath the `Project Title` setting."
-
->Note: When specifying `releaseGroup.releaseGroupProjects.projectId`, the full `Project Locator` value must be provided. For example, if the "Project Locator" value of `custom+1/foo` is provided in the FOSSA UI, use `custom+1/foo`. This implementation differs from `project.id`. 
+The project ID defines a unique ID that the FOSSA API will use to reference this project. The project ID can be found in the UI on the project settings page listed as the `Project Locator` underneath the `Project Title` setting. For example, if the "Project Locator" value of `custom+1/foo` is provided in the FOSSA UI, use `custom+1/foo` for the `project.id`.
 
 #### `releaseGroup.releaseGroupProjects.projectRevision:`
 The revision associated with a project. Project revisions can be found in the UI on the project activity page. Refer to `Revision ID` to retrieve the specific revision you want to use for the project.

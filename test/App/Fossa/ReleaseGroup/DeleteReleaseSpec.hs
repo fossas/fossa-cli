@@ -30,11 +30,10 @@ expectDeleteReleaseGroupReleaseToFail = fails (DeleteReleaseGroupRelease "title"
 spec :: Spec
 spec = do
   describe "Delete Release Group Release" $ do
-    it' "should skip release group release deletion" $ do
+    it' "should fail when org does not support release groups" $ do
       let org = Fixtures.organization
       GetOrganization `alwaysReturns` org
-      res <- ignoreDebug $ deleteReleaseMain deleteReleaseConfig
-      res `shouldBe'` ()
+      expectFatal' $ ignoreDebug $ deleteReleaseMain deleteReleaseConfig
 
     it' "should delete release group release" $ do
       let org = Fixtures.organization{orgSupportsReleaseGroups = True}

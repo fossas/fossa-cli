@@ -40,6 +40,7 @@ module App.Fossa.Config.Common (
   endpointHelp,
   fossaApiKeyHelp,
   configHelp,
+  deprecateReleaseGroupMetadata,
 ) where
 
 import App.Fossa.Config.ConfigFile (
@@ -76,7 +77,7 @@ import App.Types (
   BaseDir (BaseDir),
   OverrideProject (..),
   Policy (..),
-  ProjectMetadata (ProjectMetadata),
+  ProjectMetadata (..),
   ProjectRevision,
   ReleaseGroupMetadata (ReleaseGroupMetadata),
  )
@@ -92,6 +93,7 @@ import Control.Effect.Diagnostics (
   fromMaybeText,
   recover,
   rethrow,
+  warn,
   (<||>),
  )
 import Control.Effect.Lift (Lift, sendIO)
@@ -106,7 +108,7 @@ import Data.Text (Text, null, strip, toLower)
 import Diag.Result (Result (Failure, Success), renderFailure)
 import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (..), comboExclude, comboInclude, setExclude, setInclude, targetFilterParser)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, logDebug, logInfo, vsep)
+import Effect.Logger (Logger, logDebug, logInfo, renderIt, vsep)
 import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
 import GHC.Generics (Generic)
@@ -118,6 +120,7 @@ import Options.Applicative (
   auto,
   eitherReader,
   hidden,
+  internal,
   long,
   metavar,
   option,
@@ -211,23 +214,25 @@ metadataOpts =
 releaseGroupMetadataOpts :: Parser ReleaseGroupMetadata
 releaseGroupMetadataOpts =
   ReleaseGroupMetadata
-    <$> strOption (applyFossaStyle <> long "release-group-name" <> helpDoc releaseGroupHelp <> hidden)
-    <*> strOption (applyFossaStyle <> long "release-group-release" <> helpDoc releaseGroupReleaseHelp <> hidden)
+    <$> strOption (applyFossaStyle <> long "release-group-name" <> stringToHelpDoc "The name of the release group to add this project to" <> internal)
+    <*> strOption (applyFossaStyle <> long "release-group-release" <> stringToHelpDoc "The release of the release group to add this project to" <> internal)
+
+deprecateReleaseGroupMetadata :: Has Diagnostics sig m => ProjectMetadata -> m ProjectMetadata
+deprecateReleaseGroupMetadata projectMetadata = do
+  case (projectReleaseGroup projectMetadata) of
+    Nothing -> pure projectMetadata
+    Just _ -> do
+      warn deprecationMessage
+      pure $ removeReleaseGroupMetadata projectMetadata
   where
-    releaseGroupHelp :: Maybe (Doc AnsiStyle)
-    releaseGroupHelp =
-      Just . formatDoc $
+    removeReleaseGroupMetadata :: ProjectMetadata -> ProjectMetadata
+    removeReleaseGroupMetadata project = project{projectReleaseGroup = Nothing}
+
+    deprecationMessage :: Text
+    deprecationMessage =
+      renderIt $
         vsep
-          [ annotate (color Red) "DEPRECATED: This flag has been deprecated. Refer to `fossa release-group add-projects` to add projects to a release group."
-          , "The name of the release group to add this project to"
-          ]
-    releaseGroupReleaseHelp :: Maybe (Doc AnsiStyle)
-    releaseGroupReleaseHelp =
-      Just . formatDoc $
-        vsep
-          [ annotate (color Red) "DEPRECATED: This flag has been deprecated. Refer to `fossa release-group add-projects` to add projects to a release group."
-          , "The release of the release group to add this project to"
-          ]
+          [annotate (color Red) "Release group options for this command have been deprecated. Refer to `fossa release-group` subcommands to interact with FOSSA release groups."]
 
 pathOpt :: String -> Either String (Path Rel Dir)
 pathOpt = first show . parseRelDir
