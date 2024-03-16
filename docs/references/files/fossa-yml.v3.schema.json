@@ -371,9 +371,9 @@
                     "items": {
                         "type": "object",
                         "properties": {
-                            "projectId": {
+                            "projectLocator": {
                                 "type": "string",
-                                "description": "The project ID defines a unique ID that the FOSSA API will use to reference this project. The project ID can be found in the UI on the project settings page listed as the `Project Locator` underneath the `Project Title` setting.\n\nBy default, it will use git remote origin url as project id if it's git repository. If it does not recognize version control system (vcs), project directory's name will be used."
+                                "description": "The project locator defines a unique ID that the FOSSA API will use to reference this project. The project ID can be found in the UI on the project settings page listed as the `Project Locator` underneath the `Project Title` setting.\n\nBy default, it will use git remote origin url as project id if it's git repository. If it does not recognize version control system (vcs), project directory's name will be used."
                             },
                             "projectRevision": {
                                 "type": "string",

@@ -192,7 +192,7 @@ The projects associated with the release group's release.
 
 >NOTE: `projectId` , `projectRevision`, and `projectBranch` must all be specified when providing a releaseGroupProject.
 
-#### `releaseGroup.releaseGroupProjects.projectId:`
+#### `releaseGroup.releaseGroupProjects.projectLocator:`
 The project locator defines a unique ID that the FOSSA API will use to reference this project. The project locator can be found in the UI on the project `Settings` page listed as the `Project Locator` underneath the `Project Title` setting.
 
 <img src="../images/project-locator-example.png">
