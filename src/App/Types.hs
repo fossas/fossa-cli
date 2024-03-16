@@ -94,6 +94,7 @@ data ReleaseGroupRevision = ReleaseGroupRevision
   , releaseGroupReleaseRevision :: ReleaseGroupReleaseRevision
   , releaseGroupLicensePolicy :: Maybe Text
   , releaseGroupSecurityPolicy :: Maybe Text
+  , releaseGroupQualityPolicy :: Maybe Text
   , releaseGroupTeams :: Maybe [Text]
   }
   deriving (Eq, Ord, Show, Generic)
@@ -122,7 +123,7 @@ instance ToJSON ReleaseGroupReleaseRevision where
       ]
 
 data ReleaseGroupProjectRevision = ReleaseGroupProjectRevision
-  { releaseGroupProjectId :: Text
+  { releaseGroupProjectLocator :: Text
   , releaseGroupProjectRevision :: Text
   , releaseGroupProjectBranch :: Text
   }
@@ -131,7 +132,7 @@ data ReleaseGroupProjectRevision = ReleaseGroupProjectRevision
 instance ToJSON ReleaseGroupProjectRevision where
   toJSON ReleaseGroupProjectRevision{..} =
     object
-      [ "projectId" .= releaseGroupProjectId
+      [ "projectLocator" .= releaseGroupProjectLocator
       , "projectRevision" .= releaseGroupProjectRevision
       , "projectBranch" .= releaseGroupProjectBranch
       ]

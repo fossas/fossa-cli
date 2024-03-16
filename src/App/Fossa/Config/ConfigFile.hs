@@ -232,6 +232,7 @@ data ConfigReleaseGroup = ConfigReleaseGroup
   , configReleaseGroupProjects :: Maybe [ConfigReleaseGroupProject]
   , configReleaseGroupLicensePolicy :: Maybe Text
   , configReleaseGroupSecurityPolicy :: Maybe Text
+  , configReleaseGroupQualityPolicy :: Maybe Text
   , configReleaseGroupTeams :: Maybe [Text]
   }
   deriving (Eq, Ord, Show)
@@ -442,11 +443,12 @@ instance FromJSON ConfigReleaseGroup where
       <*> obj .:? "releaseGroupProjects"
       <*> obj .:? "licensePolicy"
       <*> obj .:? "securityPolicy"
+      <*> obj .:? "qualityPolicy"
       <*> obj .:? "teams"
 
 instance FromJSON ConfigReleaseGroupProject where
   parseJSON = withObject "ConfigReleaseGroupProject" $ \obj ->
     ConfigReleaseGroupProject
-      <$> (obj .: "projectId")
+      <$> (obj .: "projectLocator")
       <*> (obj .: "projectRevision")
       <*> (obj .: "projectBranch")

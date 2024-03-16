@@ -1674,5 +1674,5 @@ addReleaseGroupProjects ::
 addReleaseGroupProjects apiOpts title releaseRev = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   let body = AddReleaseGroupProjectsReq title releaseRev
-  resp <- req POST (addReleaseGroupProjectsURLEndpoint baseUrl) (ReqBodyJson body) jsonResponse baseOpts
+  resp <- req PUT (addReleaseGroupProjectsURLEndpoint baseUrl) (ReqBodyJson body) jsonResponse baseOpts
   pure (responseBody resp)

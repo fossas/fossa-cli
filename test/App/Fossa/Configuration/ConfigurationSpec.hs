@@ -53,6 +53,7 @@ expectedReleaseGroup =
     , configReleaseGroupProjects = Just [expectedReleaseGroupProject]
     , configReleaseGroupLicensePolicy = Just "test-license-policy"
     , configReleaseGroupSecurityPolicy = Just "test-security-policy"
+    , configReleaseGroupQualityPolicy = Just "test-quality-policy"
     , configReleaseGroupTeams = Just ["team-1", "team-2"]
     }
 

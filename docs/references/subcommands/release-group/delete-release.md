@@ -1,6 +1,6 @@
 ## `fossa release-group delete-release`
 
-This subcommand allows you to delete a FOSSA release group.
+`fossa release-group delete-release` allows you to delete a FOSSA release group.
 
 ## Options
 

@@ -38,6 +38,7 @@ releaseGroup:
       projectBranch: master
   licensePolicy: license-policy-name
   securityPolicy: security-policy-name
+  qualityPolicy: quality-policy-name
   teams:
     - team1
     - team2
@@ -177,8 +178,12 @@ The releaseGroup field allows you to configure settings for the release group yo
 #### `releaseGroup.title:`
 The title of the release group which can be seen in the FOSSA dashboard.
 
+<img src="../images/release-group-title-example.png">
+
 #### `releaseGroup.release:`
 The release associated with the release group.
+
+<img src="../images/release-example.png">
 
 #### `releaseGroup.releaseGroupProjects:`
 The projects associated with the release group's release. 
@@ -188,10 +193,14 @@ The projects associated with the release group's release.
 >NOTE: `projectId` , `projectRevision`, and `projectBranch` must all be specified when providing a releaseGroupProject.
 
 #### `releaseGroup.releaseGroupProjects.projectId:`
-The project ID defines a unique ID that the FOSSA API will use to reference this project. The project ID can be found in the UI on the project settings page listed as the `Project Locator` underneath the `Project Title` setting. For example, if the "Project Locator" value of `custom+1/foo` is provided in the FOSSA UI, use `custom+1/foo` for the `project.id`.
+The project locator defines a unique ID that the FOSSA API will use to reference this project. The project locator can be found in the UI on the project `Settings` page listed as the `Project Locator` underneath the `Project Title` setting.
+
+<img src="../images/project-locator-example.png">
 
 #### `releaseGroup.releaseGroupProjects.projectRevision:`
-The revision associated with a project. Project revisions can be found in the UI on the project activity page. Refer to `Revision ID` to retrieve the specific revision you want to use for the project.
+The revision associated with a project. Project revisions can be found in the UI on the project `Activity` page. Refer to `Revision ID` to retrieve the specific revision you want to use for the project.
+
+<img src="../images/project-revision-example.png">
 
 #### `releaseGroup.releaseGroupProjects.projectBranch:`
 The branch associated with the project.
@@ -201,6 +210,9 @@ The name of the license policy associated with the release group.
 
 #### `releaseGroup.securityPolicy:`
 The name of the security policy associated with the release group.
+
+#### `releaseGroup.securityPolicy:`
+The name of the quality policy associated with the release group.
 
 #### `releaseGroup.teams:`
 A list of team names that are associated with the release group.

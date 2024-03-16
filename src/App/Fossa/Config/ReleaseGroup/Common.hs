@@ -32,7 +32,7 @@ data ReleaseGroupCommonOpts = ReleaseGroupCommonOpts
   deriving (Eq, Ord, Show)
 
 data ReleaseGroupProjectOpts = ReleaseGroupProjectOpts
-  { projectIdOpts :: Text
+  { projectLocatorOpts :: Text
   , projectRevisionOpts :: Text
   , projectBranchOpts :: Text
   }
@@ -44,7 +44,7 @@ instance ToJSON ReleaseGroupProjectOpts where
 releaseGroupCommonOpts :: Parser ReleaseGroupCommonOpts
 releaseGroupCommonOpts =
   ReleaseGroupCommonOpts
-    <$> switch (applyFossaStyle <> long "debug" <> stringToHelpDoc "Enable debug logging, and write detailed debug information to `fossa.debug.json`")
+    <$> switch (applyFossaStyle <> long "debug" <> stringToHelpDoc "Enable debug logging")
     <*> optional (uriOption (applyFossaStyle <> long "endpoint" <> short 'e' <> metavar "URL" <> helpDoc endpointHelp))
     <*> optional (strOption (applyFossaStyle <> long fossaApiKeyCmdText <> helpDoc fossaApiKeyHelp))
 
@@ -59,7 +59,7 @@ validateApiKey :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> Rele
 validateApiKey maybeConfigFile EnvVars{envApiKey} ReleaseGroupCommonOpts{apiKey} = do
   textkey <-
     fromMaybeText "A FOSSA API key is required to run this command" $
-      -- API key significance is strictly defined:
+      -- API key precedence is strictly defined:
       -- 1. Cmd-line option (rarely used, not encouraged)
       -- 2. Config file (maybe used)
       -- 3. Environment Variable (most common)
@@ -80,27 +80,27 @@ collectApiOpts maybeconfig envvars commons = do
 
 mergeReleaseGroupTitle :: (Has Diagnostics sig m) => Maybe Text -> Maybe Text -> m Text
 mergeReleaseGroupTitle maybeTitleOpts maybeTileConfig = case (maybeTitleOpts, maybeTileConfig) of
-  (Just titleOpts, _) -> pure titleOpts
-  (Nothing, Just titleConfig) -> pure titleConfig
-  _ -> fatalText "You must specify a title to create a release group"
+  (Just titleOpts, _) | not (Data.Text.null titleOpts) -> pure titleOpts
+  (Nothing, Just titleConfig) | not (Data.Text.null titleConfig) -> pure titleConfig
+  _ -> fatalText "You must specify a release group title"
 
 mergeReleaseGroupRelease :: (Has Diagnostics sig m) => Maybe Text -> Maybe Text -> m Text
 mergeReleaseGroupRelease maybeReleaseOpts maybeReleaseConfig = case (maybeReleaseOpts, maybeReleaseConfig) of
-  (Just releaseOpts, _) -> pure releaseOpts
-  (Nothing, Just releaseConfig) -> pure releaseConfig
-  _ -> fatalText "You must specify a title to create a release group"
+  (Just releaseOpts, _) | not (Data.Text.null releaseOpts) -> pure releaseOpts
+  (Nothing, Just releaseConfig) | not (Data.Text.null releaseConfig) -> pure releaseConfig
+  _ -> fatalText "You must specify a release title"
 
 mergeReleaseGroupProjectRevision :: (Has Diagnostics sig m) => Maybe [ReleaseGroupProjectOpts] -> Maybe [ConfigReleaseGroupProject] -> m [ReleaseGroupProjectRevision]
 mergeReleaseGroupProjectRevision maybeProjectsFromOpts maybeProjectsFromConfig = case (maybeProjectsFromOpts, maybeProjectsFromConfig) of
   (Just projectsOpts, _) -> pure $ map convertProjectOpts projectsOpts
   (Nothing, Just projectsConfig) -> pure $ map convertProjectConfig projectsConfig
-  (Nothing, Nothing) -> fatalText "You must specify at least one project to add to your release group"
+  (Nothing, Nothing) -> fatalText "You must specify at least one project to add to your release group release"
 
 convertProjectOpts :: ReleaseGroupProjectOpts -> ReleaseGroupProjectRevision
-convertProjectOpts (ReleaseGroupProjectOpts projectId revision branch) = ReleaseGroupProjectRevision projectId (normalizeProjectRevision projectId revision) branch
+convertProjectOpts (ReleaseGroupProjectOpts projectLocator revision branch) = ReleaseGroupProjectRevision projectLocator (normalizeProjectRevision projectLocator revision) branch
 
 convertProjectConfig :: ConfigReleaseGroupProject -> ReleaseGroupProjectRevision
-convertProjectConfig (ConfigReleaseGroupProject projectId revision branch) = ReleaseGroupProjectRevision projectId (normalizeProjectRevision projectId revision) branch
+convertProjectConfig (ConfigReleaseGroupProject projectLocator revision branch) = ReleaseGroupProjectRevision projectLocator (normalizeProjectRevision projectLocator revision) branch
 
 normalizeProjectRevision :: Text -> Text -> Text
-normalizeProjectRevision projectId revisionId = projectId <> "$" <> revisionId
+normalizeProjectRevision projectLocator revisionId = projectLocator <> "$" <> revisionId

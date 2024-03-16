@@ -26,6 +26,7 @@ createOpts =
     , projectsOpts = Just [projectOpts]
     , licensePolicyOpts = Just "license-policy-opts"
     , securityPolicyOpts = Just "security-policy-opts"
+    , qualityPolicyOpts = Just "quality-policy-opts"
     , teamsOpts = Just ["team1-opts", "team2-opts"]
     }
 
@@ -39,6 +40,7 @@ emptyReleaseCreateOpts =
     , projectsOpts = Nothing
     , licensePolicyOpts = Nothing
     , securityPolicyOpts = Nothing
+    , qualityPolicyOpts = Nothing
     , teamsOpts = Nothing
     }
 
@@ -52,6 +54,7 @@ emptyProjectsCreateOpts =
     , projectsOpts = Nothing
     , licensePolicyOpts = Nothing
     , securityPolicyOpts = Nothing
+    , qualityPolicyOpts = Nothing
     , teamsOpts = Nothing
     }
 
@@ -65,6 +68,7 @@ emptyProjectsListCreateOpts =
     , projectsOpts = Just []
     , licensePolicyOpts = Nothing
     , securityPolicyOpts = Nothing
+    , qualityPolicyOpts = Nothing
     , teamsOpts = Nothing
     }
 
@@ -78,6 +82,7 @@ emptyCreateOpts =
     , projectsOpts = Nothing
     , licensePolicyOpts = Nothing
     , securityPolicyOpts = Nothing
+    , qualityPolicyOpts = Nothing
     , teamsOpts = Nothing
     }
 
@@ -106,7 +111,7 @@ configFile path =
 projectOpts :: ReleaseGroupProjectOpts
 projectOpts =
   ReleaseGroupProjectOpts
-    { projectIdOpts = "project-id-opts"
+    { projectLocatorOpts = "project-locator-opts"
     , projectRevisionOpts = "project-revision-opts"
     , projectBranchOpts = "project-branch-opts"
     }
@@ -126,6 +131,7 @@ expectedReleaseGroupRevisionFromOpts =
     , releaseGroupReleaseRevision = expectedReleaseGroupReleaseRevisionFromOpts
     , releaseGroupLicensePolicy = Just "license-policy-opts"
     , releaseGroupSecurityPolicy = Just "security-policy-opts"
+    , releaseGroupQualityPolicy = Just "quality-policy-opts"
     , releaseGroupTeams = Just ["team1-opts", "team2-opts"]
     }
 
@@ -139,8 +145,8 @@ expectedReleaseGroupReleaseRevisionFromOpts =
 expectedReleaseGroupProjectRevisionFromOpts :: ReleaseGroupProjectRevision
 expectedReleaseGroupProjectRevisionFromOpts =
   ReleaseGroupProjectRevision
-    { releaseGroupProjectId = "project-id-opts"
-    , releaseGroupProjectRevision = "project-id-opts$project-revision-opts"
+    { releaseGroupProjectLocator = "project-locator-opts"
+    , releaseGroupProjectRevision = "project-locator-opts$project-revision-opts"
     , releaseGroupProjectBranch = "project-branch-opts"
     }
 
@@ -151,6 +157,7 @@ expectedReleaseGroupRevisionFromConfig =
     , releaseGroupReleaseRevision = expectedReleaseGroupReleaseRevisionFromConfig
     , releaseGroupLicensePolicy = Just "test-license-policy"
     , releaseGroupSecurityPolicy = Just "test-security-policy"
+    , releaseGroupQualityPolicy = Just "test-quality-policy"
     , releaseGroupTeams = Just ["team-1", "team-2"]
     }
 
@@ -164,7 +171,7 @@ expectedReleaseGroupReleaseRevisionFromConfig =
 expectedReleaseGroupProjectRevisionFromConfig :: ReleaseGroupProjectRevision
 expectedReleaseGroupProjectRevisionFromConfig =
   ReleaseGroupProjectRevision
-    { releaseGroupProjectId = "custom+1/git@github.com/fossa-cli"
+    { releaseGroupProjectLocator = "custom+1/git@github.com/fossa-cli"
     , releaseGroupProjectRevision = "custom+1/git@github.com/fossa-cli$12345"
     , releaseGroupProjectBranch = "main"
     }

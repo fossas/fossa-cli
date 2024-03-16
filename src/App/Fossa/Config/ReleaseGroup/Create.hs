@@ -59,6 +59,7 @@ data CreateOpts = CreateOpts
   , projectsOpts :: Maybe [ReleaseGroupProjectOpts]
   , licensePolicyOpts :: Maybe Text
   , securityPolicyOpts :: Maybe Text
+  , qualityPolicyOpts :: Maybe Text
   , teamsOpts :: Maybe [Text]
   }
   deriving (Eq, Ord, Show, Generic)
@@ -72,7 +73,8 @@ cliParser =
     <*> optional (strOption (applyFossaStyle <> long "release" <> short 'r' <> stringToHelpDoc "The release of the FOSSA release group"))
     <*> optional (many (releaseGroupProjectOpts))
     <*> optional (strOption (applyFossaStyle <> long "license-policy" <> short 'l' <> stringToHelpDoc "The name of the license compliance policy you want to assign to the FOSSA release group"))
-    <*> optional (strOption (applyFossaStyle <> long "security-policy" <> short 's' <> stringToHelpDoc "The name of the vulnerability management policy you want to assign to the FOSSA release group"))
+    <*> optional (strOption (applyFossaStyle <> long "security-policy" <> short 's' <> stringToHelpDoc "The name of the security policy you want to assign to the FOSSA release group"))
+    <*> optional (strOption (applyFossaStyle <> long "quality-policy" <> short 'q' <> stringToHelpDoc "The name of the quality policy you want to assign to the FOSSA release group"))
     <*> optional (many (strOption (applyFossaStyle <> long "team" <> short 'T' <> stringToHelpDoc "The team you want to assign to the FOSSA release group")))
 
 mergeOpts ::
@@ -91,6 +93,7 @@ collectReleaseGroupRevision :: (Has Diagnostics sig m) => Maybe ConfigFile -> Cr
 collectReleaseGroupRevision maybeConfig CreateOpts{..} = do
   let licensePolicy = licensePolicyOpts <|> (maybeConfig >>= configReleaseGroup >>= configReleaseGroupLicensePolicy)
       securityPolicy = securityPolicyOpts <|> (maybeConfig >>= configReleaseGroup >>= configReleaseGroupSecurityPolicy)
+      qualityPolicy = securityPolicyOpts <|> (maybeConfig >>= configReleaseGroup >>= configReleaseGroupQualityPolicy)
       -- NOTE: teamsOpts and projectsOpts default to Just [] when it is not set through CLI flags.
       --       Convert these to Nothing so we can try to extract from the config file.
       teams = case teamsOpts of
@@ -108,4 +111,4 @@ collectReleaseGroupRevision maybeConfig CreateOpts{..} = do
 
   let releaseRevision = ReleaseGroupReleaseRevision releaseTitle projects
 
-  pure $ ReleaseGroupRevision title releaseRevision licensePolicy securityPolicy teams
+  pure $ ReleaseGroupRevision title releaseRevision licensePolicy securityPolicy qualityPolicy teams

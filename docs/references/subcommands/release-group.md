@@ -2,7 +2,7 @@
 
 This `fossa release-group` subcommand allows users to interact with FOSSA release groups.
 
-It is made up of the following subcommands:
+It has the following subcommands:
 
 - [`fossa release-group add-projects`](./release-group/add-projects.md)
 - [`fossa release-group create`](./release-group//create.md)
@@ -60,3 +60,27 @@ fossa release-group delete-release --title example-title --release example-relea
 1. Why are `fossa.yml` configurations disabled for `fossa release-group delete` and `fossa release-group delete-release`?
 
 This is done intentionally so that lingering configurations in `fossa.yml` are not extracted and used to mistakenly delete release groups or release group releases.
+
+2. Where can I find my release groups? 
+
+Release groups can be found in the UI on the `Release Groups` page.
+
+<img src="../images/release-group-title-example.png">
+
+3. Where can I find my release group releases?
+
+Releases can be found in the UI on the `Releases` page for your given release group.
+
+<img src="../images/release-example.png">
+
+4. Where can I find my project locator?
+
+The project locator defines a unique ID that the FOSSA API will use to reference a project. The project locator can be found in the UI on the project `Settings` page listed as the `Project Locator` underneath the `Project Title` setting.
+
+<img src="../images/project-locator-example.png">
+
+5. Where can I find my project revision ID?
+
+Project revisions can be found in the UI on the project `Activity` page. Refer to `Revision ID` to retrieve the specific revision you want to use for the project.
+
+<img src="../images/project-revision-example.png">

@@ -401,6 +401,11 @@
                     "minLength": 1,
                     "description": "The name of the security policy associated with the release group."
                 },
+                "qualityPolicy": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The name of the quality policy associated with the release group."
+                },
                 "teams": {
                     "type": "array",
                     "description": "A list of team names that are associated with the release group.",

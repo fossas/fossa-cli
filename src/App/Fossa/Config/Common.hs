@@ -119,7 +119,6 @@ import Options.Applicative (
   argument,
   auto,
   eitherReader,
-  hidden,
   internal,
   long,
   metavar,
@@ -316,7 +315,7 @@ validateApiKey ::
 validateApiKey maybeConfigFile EnvVars{envApiKey} CommonOpts{optAPIKey} = do
   textkey <-
     fromMaybeText "A FOSSA API key is required to run this command" $
-      -- API key significance is strictly defined:
+      -- API key precedence is strictly defined:
       -- 1. Cmd-line option (rarely used, not encouraged)
       -- 2. Config file (maybe used)
       -- 3. Environment Variable (most common)
