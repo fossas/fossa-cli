@@ -30,10 +30,10 @@ releaseGroup:
   title: release-group-title
   release: release-group-release
   releaseGroupProjects:
-    - projectId: custom+123/git@github.com/fossas/fossa-cli
+    - projectLocator: custom+123/git@github.com/fossas/fossa-cli
       projectRevision: "12345"
       projectBranch: master 
-    - projectId: custom+123/git@github.com/example
+    - projectLocator: custom+123/git@github.com/example
       projectRevision: "67890"
       projectBranch: master
   licensePolicy: license-policy-name

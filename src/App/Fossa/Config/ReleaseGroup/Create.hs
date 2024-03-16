@@ -93,7 +93,7 @@ collectReleaseGroupRevision :: (Has Diagnostics sig m) => Maybe ConfigFile -> Cr
 collectReleaseGroupRevision maybeConfig CreateOpts{..} = do
   let licensePolicy = licensePolicyOpts <|> (maybeConfig >>= configReleaseGroup >>= configReleaseGroupLicensePolicy)
       securityPolicy = securityPolicyOpts <|> (maybeConfig >>= configReleaseGroup >>= configReleaseGroupSecurityPolicy)
-      qualityPolicy = securityPolicyOpts <|> (maybeConfig >>= configReleaseGroup >>= configReleaseGroupQualityPolicy)
+      qualityPolicy = qualityPolicyOpts <|> (maybeConfig >>= configReleaseGroup >>= configReleaseGroupQualityPolicy)
       -- NOTE: teamsOpts and projectsOpts default to Just [] when it is not set through CLI flags.
       --       Convert these to Nothing so we can try to extract from the config file.
       teams = case teamsOpts of

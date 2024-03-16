@@ -27,6 +27,7 @@ releaseGroup:
       projectBranch: main
   licensePolicy: test-license-policy
   securityPolicy: test-security-policy
+  qualityPolicy: test-quality-policy
   teams: 
     - team-1
     - team-2

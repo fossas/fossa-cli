@@ -39,19 +39,19 @@ spec :: Spec
 spec = do
   describe "Create Release Group" $ do
     it' "should fail when org does not support release groups" $ do
-      let org = Fixtures.organization
+      let org = Fixtures.organization{orgSupportsReleaseGroups = False}
       GetOrganization `alwaysReturns` org
       expectFatal' $ ignoreDebug $ createMain createConfig
 
     it' "should create release group" $ do
-      let org = Fixtures.organization{orgSupportsReleaseGroups = True}
+      let org = Fixtures.organization
       GetOrganization `alwaysReturns` org
       expectCreateReleaseGroupSuccess
       res <- ignoreDebug $ createMain createConfig
       res `shouldBe'` ()
 
     it' "should fail to create release group" $ do
-      let org = Fixtures.organization{orgSupportsReleaseGroups = True}
+      let org = Fixtures.organization
       GetOrganization `alwaysReturns` org
       expectCreateReleaseGroupToFail
       expectFatal' $ ignoreDebug $ createMain createConfig
