@@ -178,12 +178,12 @@ The releaseGroup field allows you to configure settings for the release group yo
 #### `releaseGroup.title:`
 The title of the release group which can be seen in the FOSSA dashboard.
 
-<img src="../images/release-group-title-example.png">
+<img src="../../assets//release-group-title-example.png">
 
 #### `releaseGroup.release:`
 The release associated with the release group.
 
-<img src="../images/release-example.png">
+<img src="../../assets//release-example.png">
 
 #### `releaseGroup.releaseGroupProjects:`
 The projects associated with the release group's release. 
@@ -193,14 +193,14 @@ The projects associated with the release group's release.
 >NOTE: `projectId` , `projectRevision`, and `projectBranch` must all be specified when providing a releaseGroupProject.
 
 #### `releaseGroup.releaseGroupProjects.projectLocator:`
-The project locator defines a unique ID that the FOSSA API will use to reference this project. The project locator can be found in the UI on the project `Settings` page listed as the `Project Locator` underneath the `Project Title` setting.
+The project locator defines a unique ID that the FOSSA API will use to reference this project within FOSSA. The project locator can be found in the UI on the project `Settings` page listed as the `Project Locator` underneath the `Project Title` setting.
 
-<img src="../images/project-locator-example.png">
+<img src="../../assets/project-locator-example.png">
 
 #### `releaseGroup.releaseGroupProjects.projectRevision:`
 The revision associated with a project. Project revisions can be found in the UI on the project `Activity` page. Refer to `Revision ID` to retrieve the specific revision you want to use for the project.
 
-<img src="../images/project-revision-example.png">
+<img src="../../assets//project-revision-example.png">
 
 #### `releaseGroup.releaseGroupProjects.projectBranch:`
 The branch associated with the project.

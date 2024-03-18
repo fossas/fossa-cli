@@ -106,7 +106,7 @@ version: 3
 #   # NOTE:
 #   #   `projectLocator` , `projectRevision`, and `projectBranch` must all be specified when providing a releaseGroupProject.
 #   releaseGroupProjects:
-#     # The project locator defines a unique ID that the FOSSA API will use to reference this project.
+#     # The project locator defines a unique ID that the FOSSA API will use to reference this project within FOSSA.
 #     # The project locator can be found in the UI on the project `Settings` page listed as the `Project Locator` underneath the `Project Title` setting.
 #     - projectId: custom+123/git@github.com/fossas/fossa-cli
 #

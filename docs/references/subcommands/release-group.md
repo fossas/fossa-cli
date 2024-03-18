@@ -65,22 +65,22 @@ This is done intentionally so that lingering configurations in `fossa.yml` are n
 
 Release groups can be found in the UI on the `Release Groups` page.
 
-<img src="../images/release-group-title-example.png">
+<img src="../../assets//release-group-title-example.png">
 
 3. Where can I find my release group releases?
 
 Releases can be found in the UI on the `Releases` page for your given release group.
 
-<img src="../images/release-example.png">
+<img src="../../assets//release-example.png">
 
 4. Where can I find my project locator?
 
 The project locator defines a unique ID that the FOSSA API will use to reference a project. The project locator can be found in the UI on the project `Settings` page listed as the `Project Locator` underneath the `Project Title` setting.
 
-<img src="../images/project-locator-example.png">
+<img src="../../assets//project-locator-example.png">
 
 5. Where can I find my project revision ID?
 
 Project revisions can be found in the UI on the project `Activity` page. Refer to `Revision ID` to retrieve the specific revision you want to use for the project.
 
-<img src="../images/project-revision-example.png">
+<img src="../../assets//project-revision-example.png">

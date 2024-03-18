@@ -51,7 +51,7 @@ releaseGroupCommonOpts =
 releaseGroupProjectOpts :: Parser ReleaseGroupProjectOpts
 releaseGroupProjectOpts =
   ReleaseGroupProjectOpts
-    <$> strOption (applyFossaStyle <> long "project-id" <> stringToHelpDoc "The id of the FOSSA project you want to add to the FOSSA release group")
+    <$> strOption (applyFossaStyle <> long "project-locator" <> stringToHelpDoc "The project Locator defines a unique ID that the FOSSA API will use to reference this project within FOSSA")
     <*> strOption (applyFossaStyle <> long "project-revision" <> stringToHelpDoc "The revision of the FOSSA project")
     <*> strOption (applyFossaStyle <> long "project-branch" <> stringToHelpDoc "The branch of the FOSSA project")
 
