@@ -385,7 +385,7 @@
                             }
                         },
                         "required": [
-                            "projectId",
+                            "projectLocator",
                             "projectRevision",
                             "projectBranch"
                         ]

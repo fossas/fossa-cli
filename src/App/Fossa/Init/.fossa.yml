@@ -108,7 +108,7 @@ version: 3
 #   releaseGroupProjects:
 #     # The project locator defines a unique ID that the FOSSA API will use to reference this project within FOSSA.
 #     # The project locator can be found in the UI on the project `Settings` page listed as the `Project Locator` underneath the `Project Title` setting.
-#     - projectId: custom+123/git@github.com/fossas/fossa-cli
+#     - projectLocator: custom+123/git@github.com/fossas/fossa-cli
 #
 #     # The revision associated with a project. Project revisions can be found in the UI on the project `Activity` page.
 #     # Refer to `Revision ID` to retrieve the specific revision you want to use for the project.
