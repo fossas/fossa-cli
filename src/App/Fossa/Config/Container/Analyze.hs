@@ -19,6 +19,7 @@ import App.Fossa.Config.Common (
   collectConfigFileFilters,
   collectRevisionOverride,
   commonOpts,
+  deprecateConfigurableProjectMetadata,
   metadataOpts,
  )
 import App.Fossa.Config.ConfigFile
@@ -172,7 +173,8 @@ collectScanDestination maybeCfgFile envvars ContainerAnalyzeOptions{..} =
     else do
       apiOpts <- collectApiOpts maybeCfgFile envvars analyzeCommons
       metaMerged <- collectAPIMetadata maybeCfgFile containerMetadata
-      pure $ UploadScan apiOpts metaMerged
+      metaMergedWithoutProjectConfigurations <- deprecateConfigurableProjectMetadata metaMerged
+      pure $ UploadScan apiOpts metaMergedWithoutProjectConfigurations
 
 collectFilters :: Maybe ConfigFile -> AllFilters
 collectFilters maybeConfig = do

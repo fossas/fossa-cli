@@ -308,6 +308,6 @@ editProject ::
   Text ->
   ProjectMetadataRevision ->
   m ProjectResponse
-editProject projectId rev = do
+editProject projectLocator rev = do
   apiOpts <- ask
-  API.editProject apiOpts projectId rev
+  API.editProject apiOpts projectLocator rev

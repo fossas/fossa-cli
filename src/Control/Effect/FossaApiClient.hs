@@ -276,4 +276,4 @@ uploadBuildForReachability :: (Has FossaApiClient sig m) => ProjectRevision -> P
 uploadBuildForReachability rev revMetadata units = sendSimple $ UploadBuildForReachability rev revMetadata units
 
 editProject :: Has FossaApiClient sig m => Text -> ProjectMetadataRevision -> m ProjectResponse
-editProject projectId rev = sendSimple $ EditProject projectId rev
+editProject projectLocator rev = sendSimple $ EditProject projectLocator rev

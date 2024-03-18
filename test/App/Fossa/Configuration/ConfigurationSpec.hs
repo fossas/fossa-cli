@@ -46,7 +46,8 @@ expectedConfigFile path =
 expectedConfigProject :: ConfigProject
 expectedConfigProject =
   ConfigProject
-    { configProjID = Just "github.com/fossa-cli"
+    { configProjLocator = Just "custom+1/github.com/fossa-cli"
+    , configProjID = Just "github.com/fossa-cli"
     , configName = Just "fossa-cli"
     , configLink = Just "fossa.com"
     , configTeam = Just "fossa-team"

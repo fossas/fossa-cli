@@ -24,7 +24,6 @@ projectMain ::
   ) =>
   ProjectConfig ->
   m ()
-projectMain subcommandConfig = do
+projectMain (EditCfg config) = do
   logInfo "Running FOSSA project"
-  case subcommandConfig of
-    EditCfg config -> context "Add projects to release group" $ ignoreDebug $ runFossaApiClient (Edit.apiOpts config) $ editMain config
+  context "Add projects to release group" $ ignoreDebug $ runFossaApiClient (Edit.apiOpts config) $ editMain config

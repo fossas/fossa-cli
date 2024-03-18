@@ -12,6 +12,7 @@ server: https://app.fossa.com
 apiKey: a1b2c3
 
 project:
+  locator: custom+1/github.com/fossas/fossa-cli
   id: github.com/fossas/fossa-cli
   name: fossa-cli
   team: cli-team
@@ -105,15 +106,24 @@ The project fields allow you to configure settings for the project you are inter
 
 > Note: `name`, `team`, `policy`, `link`, and `jiraProjectKey` can only be set when creating a project (running `fossa analyze` for the first time).  Otherwise, they will be silently ignored (we would like to make this a visible warning in the future).
 
+#### `project.locator:`
+The project Locator defines a unique ID that the FOSSA API will use to reference this project within FOSSA. The project locator can be found in the UI on the project `Settings` page listed as the `Project Locator` underneath the `Project Title` setting.
+
+<img src="../../assets/project-locator-example.png">
+
 #### `project.id:`
-The project ID defines a unique ID that the FOSSA API will use to reference this project. The project ID can be found in the UI on the project settings page listed as the "Project Locator" underneath the "Project Title" setting. For example, if the "Project Locator" value of `custom+1/foo` is provided in the FOSSA UI, use `foo` for the `project.id`.
+The project ID defines a unique ID that the FOSSA API will use to reference this project within your organization. The project ID is a specific portion of the project locator and can be found in the UI on the project `Settings` page listed as the "Project Locator" underneath the "Project Title" setting. For example, if the "Project Locator" value of `custom+1/foo` is provided in the FOSSA UI, use `foo` for the `project.id`.
 
 Default:
-- Git: The CLI will look for a `.git/config` file and set the ID to the project's remote "origin" url.
-- SVN: The CLI will run `svn info` and use the "Repository Root".
-- No VCS (Version control system): The ID will be set to the name of the project's directory.
+  - Git: From .git/config file or project's remote "origin" URL.
+  - SVN: From "Repository Root" obtained using 'svn info'.
 
-> Note: A project's ID cannot be modified after a project is created. If you change the ID, you will be interacting with a different project. If the new ID does not exist, a new project will be created for it.
+>NOTE:
+    A project's ID cannot be modified after a project is created. If you change the ID,
+    you will be interacting with a different project. If the new ID does not exist, 
+    a new project will be created for it.
+
+<img src="../../assets/project-id-example.png">
 
 #### `project.name:`
 The name field sets the projects visible name in the FOSSA dashboard. By default, this will be set to the project's ID.

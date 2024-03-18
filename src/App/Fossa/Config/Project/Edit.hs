@@ -16,6 +16,7 @@ import App.Types (Policy (..), ProjectMetadataRevision (..))
 import Control.Effect.Diagnostics (Diagnostics, Has, fatalText)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding, toEncoding)
 import Data.Text (Text)
+import Data.Text qualified
 import Fossa.API.Types (ApiOpts (..), defaultApiPollDelay)
 import GHC.Generics (Generic)
 import Options.Applicative (
@@ -47,7 +48,7 @@ subcommand f = command "edit" $ info (f <$> cliParser) projectEditInfo
 
 data EditConfig = EditConfig
   { apiOpts :: ApiOpts
-  , projectId :: Text
+  , projectLocator :: Text
   , projectMetadataRevision :: ProjectMetadataRevision
   }
   deriving (Eq, Ord, Show, Generic)
@@ -60,7 +61,7 @@ data EditOpts = EditOpts
   , baseUrlOpts :: Maybe URI
   , apiKeyOpts :: Maybe Text
   , configOpts :: Maybe FilePath
-  , projectIdOpts :: Maybe Text
+  , projectLocatorOpts :: Maybe Text
   , projectMetadataRevisionOpts :: ProjectMetadataRevision
   }
   deriving (Eq, Ord, Show, Generic)
@@ -68,11 +69,11 @@ data EditOpts = EditOpts
 cliParser :: Parser EditOpts
 cliParser =
   EditOpts
-    <$> switch (applyFossaStyle <> long "debug" <> stringToHelpDoc "Enable debug logging, and write detailed debug information to `fossa.debug.json`")
+    <$> switch (applyFossaStyle <> long "debug" <> stringToHelpDoc "Enable debug logging")
     <*> optional (uriOption (applyFossaStyle <> long "endpoint" <> short 'e' <> metavar "URL" <> helpDoc endpointHelp))
     <*> optional (strOption (applyFossaStyle <> long fossaApiKeyCmdText <> helpDoc fossaApiKeyHelp))
     <*> optional (strOption (applyFossaStyle <> long "config" <> short 'c' <> helpDoc configHelp))
-    <*> optional (strOption (applyFossaStyle <> long "project-id" <> stringToHelpDoc "The ID of the project."))
+    <*> optional (strOption (applyFossaStyle <> long "project-locator" <> stringToHelpDoc "The project locator defines a unique ID that the FOSSA API will use to reference this project within FOSSA."))
     <*> projectOpts
 
 projectOpts :: Parser ProjectMetadataRevision
@@ -94,12 +95,12 @@ mergeOpts ::
   EditOpts ->
   m EditConfig
 mergeOpts maybeConfig envVars cliOpts@EditOpts{..} = do
-  let maybeProjectId = maybe (projectIdOpts) (mergeProjectId projectIdOpts) maybeConfig
+  let maybeProjectLocator = maybe (projectLocatorOpts) (mergeProjectLocator projectLocatorOpts) maybeConfig
   apiOpts <- collectApiOpts maybeConfig envVars cliOpts
   projectMetadataRevision <- maybe (pure projectMetadataRevisionOpts) (mergeProjectMetadata projectMetadataRevisionOpts) maybeConfig
-  case maybeProjectId of
-    Nothing -> fatalText "A projectId needs to be specified to edit a FOSSA project"
-    Just projectId' -> pure $ EditConfig apiOpts projectId' projectMetadataRevision
+  case maybeProjectLocator of
+    Just projectLocator' | not (Data.Text.null projectLocator') -> pure $ EditConfig apiOpts projectLocator' projectMetadataRevision
+    _ -> fatalText "A project locator needs to be specified to edit a FOSSA project"
 
 collectApiOpts :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> EditOpts -> m ApiOpts
 collectApiOpts maybeConfig envVars EditOpts{..} = do
@@ -108,8 +109,8 @@ collectApiOpts maybeConfig envVars EditOpts{..} = do
       baseuri = baseUrlOpts <|> configUri
   pure $ ApiOpts baseuri apikey defaultApiPollDelay
 
-mergeProjectId :: Maybe Text -> ConfigFile -> Maybe Text
-mergeProjectId maybeProjectId config = maybeProjectId <> (configProject config >>= configProjID)
+mergeProjectLocator :: Maybe Text -> ConfigFile -> Maybe Text
+mergeProjectLocator maybeProjectLocator config = maybeProjectLocator <> (configProject config >>= configProjLocator)
 
 mergeProjectMetadata :: Has Diagnostics sig m => ProjectMetadataRevision -> ConfigFile -> m ProjectMetadataRevision
 mergeProjectMetadata ProjectMetadataRevision{..} config =

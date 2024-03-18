@@ -40,6 +40,7 @@ import App.Fossa.Config.Common (
   collectConfigMavenScopeFilters,
   collectRevisionData',
   commonOpts,
+  deprecateConfigurableProjectMetadata,
   metadataOpts,
   pathOpt,
   targetOpt,
@@ -616,8 +617,9 @@ collectScanDestination maybeCfgFile envvars AnalyzeCliOpts{..} =
     else do
       apiOpts <- collectApiOpts maybeCfgFile envvars commons
       metaMerged <- maybe (pure analyzeMetadata) (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
+      metaMergedWithoutProjectConfigurations <- deprecateConfigurableProjectMetadata metaMerged
       when (length (projectLabel metaMerged) > 5) $ fatalText "Projects are only allowed to have 5 associated project labels"
-      pure $ UploadScan apiOpts metaMerged
+      pure $ UploadScan apiOpts metaMergedWithoutProjectConfigurations
 
 collectModeOptions ::
   ( Has Diagnostics sig m

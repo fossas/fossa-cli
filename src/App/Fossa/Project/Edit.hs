@@ -7,11 +7,11 @@ module App.Fossa.Project.Edit (
 import App.Fossa.Config.Project.Edit (EditConfig (..))
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (context)
-import Control.Effect.Diagnostics (Diagnostics, warn)
+import Control.Effect.Diagnostics (Diagnostics, errHelp, fatalText, warn)
 import Control.Effect.FossaApiClient (FossaApiClient, editProject, getOrganization)
 import Control.Effect.Lift (Lift)
-import Control.Monad (when)
 import Data.Foldable (traverse_)
+import Data.Text (Text)
 import Effect.Logger (Logger, logInfo, logStdout)
 import Fossa.API.Types (Organization (..), ProjectResponse (..))
 
@@ -26,10 +26,12 @@ editMain ::
 editMain EditConfig{..} = do
   logInfo "Running FOSSA project edit"
   org <- getOrganization
-  when (orgSupportsProjects org) $ do
-    res <- editProject projectId projectMetadataRevision
-    emitProjectWarnings res
-    logStdout $ "Project " <> "`" <> projectId <> "` has been updated."
+  if (orgSupportsProjects org)
+    then do
+      res <- editProject projectLocator projectMetadataRevision
+      emitProjectWarnings res
+      logStdout $ "Project " <> "`" <> projectLocator <> "` has been updated."
+    else errHelp ("Upgrade your FOSSA version" :: Text) $ fatalText "The current version of FOSSA you are using does not support release groups"
 
 emitProjectWarnings :: Has Diagnostics sig m => ProjectResponse -> m ()
 emitProjectWarnings res = do

@@ -1609,11 +1609,11 @@ editProject ::
   Text ->
   ProjectMetadataRevision ->
   m ProjectResponse
-editProject apiOpts projectId ProjectMetadataRevision{..} = fossaReq $ do
+editProject apiOpts projectLocator ProjectMetadataRevision{..} = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   let opts =
-        "projectId"
-          =: projectId
+        "projectLocator"
+          =: projectLocator
           <> mkProjectOpts
 
   res <- req PUT (editProjectURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)

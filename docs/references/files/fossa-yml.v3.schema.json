@@ -7,10 +7,15 @@
             "type": "object",
             "description": "The project fields allow you to configure settings for the project you are interacting with through the FOSSA API.",
             "properties": {
+                "locator": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The project Locator defines a unique ID that the FOSSA API will use to reference this project within FOSSA. The project locator can be found in the UI on the project `Settings` page listed as the `Project Locator` underneath the `Project Title` setting."
+                },
                 "id": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The project ID defines a unique ID that the FOSSA API will use to reference this project. The project ID can be found in the UI on the project settings page listed as the `Project Locator` underneath the `Project Title` setting.\n\nBy default, it will use git remote origin url as project id if it's git repository. If it does not recognize version control system (vcs), project directory's name will be used."
+                    "description": "The project ID defines a unique ID that the FOSSA API will use to reference this project within your organization. The project ID is a specific portion of the project locator and can be found in the UI on the project `Settings` page listed as the `Project Locator` underneath the `Project Title` setting.\n\nBy default, it will use git remote origin url as project id if it's git repository. If it does not recognize version control system (vcs), project directory's name will be used."
                 },
                 "name": {
                     "type": "string",
@@ -398,21 +403,21 @@
             }
         },
         "reachability": {
-          "type": "object",
-          "description": "Controls the Reachability computation functionality",
-          "properties": {
-            "jvmOutputs": {
-              "type": "object",
-              "description": "Manually specify the list of JAR files output by each discovered Maven or Gradle project",
-              "additionalProperties": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "description": "The path to a JAR file output by the project"
+            "type": "object",
+            "description": "Controls the Reachability computation functionality",
+            "properties": {
+                "jvmOutputs": {
+                    "type": "object",
+                    "description": "Manually specify the list of JAR files output by each discovered Maven or Gradle project",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "description": "The path to a JAR file output by the project"
+                        }
+                    }
                 }
-              }
             }
-          }
         },
         "ignoreOrgWideCustomLicenseScanConfigs": {
             "type": "boolean",

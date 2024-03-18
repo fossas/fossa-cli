@@ -95,7 +95,7 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False False API.Free False
+organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False False API.Free True
 
 organizationWithPreflightChecks :: API.Organization
 organizationWithPreflightChecks = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Free False

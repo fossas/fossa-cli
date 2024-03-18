@@ -27,7 +27,7 @@ editConfig :: EditConfig
 editConfig =
   EditConfig
     { apiOpts = apiOpts'
-    , projectId = "id"
+    , projectLocator = "locator"
     , projectMetadataRevision = projectMetadataRevision'
     }
 
@@ -44,29 +44,28 @@ projectMetadataRevision' =
     }
 
 expectEditProjectSuccess :: Has MockApi sig m => m ()
-expectEditProjectSuccess = EditProject "id" projectMetadataRevision' `alwaysReturns` Fixtures.projectResponse
+expectEditProjectSuccess = EditProject "locator" projectMetadataRevision' `alwaysReturns` Fixtures.projectResponse
 
 expectEditProjectFail :: Has MockApi sig m => m ()
-expectEditProjectFail = fails (EditProject "id" projectMetadataRevision') "fails"
+expectEditProjectFail = fails (EditProject "locator" projectMetadataRevision') "fails"
 
 spec :: Spec
 spec = do
   describe "Edit Project" $ do
-    it' "should skip edit project" $ do
-      let org = Fixtures.organization
+    it' "should fail when org does not support projects" $ do
+      let org = Fixtures.organization{orgSupportsProjects = False}
       GetOrganization `alwaysReturns` org
-      res <- ignoreDebug $ editMain editConfig
-      res `shouldBe'` ()
+      expectFatal' $ ignoreDebug $ editMain editConfig
 
     it' "should edit project" $ do
-      let org = Fixtures.organization{orgSupportsProjects = True}
+      let org = Fixtures.organization
       GetOrganization `alwaysReturns` org
       expectEditProjectSuccess
       res <- ignoreDebug $ editMain editConfig
       res `shouldBe'` ()
 
     it' "should fail to edit project" $ do
-      let org = Fixtures.organization{orgSupportsProjects = True}
+      let org = Fixtures.organization
       GetOrganization `alwaysReturns` org
       expectEditProjectFail
       expectFatal' $ ignoreDebug $ editMain editConfig

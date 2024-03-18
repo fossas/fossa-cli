@@ -36,8 +36,7 @@ instance ToJSON ProjectConfig where
 
 instance GetSeverity ProjectCommand where
   getSeverity :: ProjectCommand -> Severity
-  getSeverity = \case
-    Edit (EditOpts{debug}) -> if debug then SevDebug else SevInfo
+  getSeverity (Edit (EditOpts{debug})) = if debug then SevDebug else SevInfo
 
 projectMergeOpts ::
   ( Has Diagnostics sig m
@@ -46,8 +45,7 @@ projectMergeOpts ::
   EnvVars ->
   ProjectCommand ->
   m ProjectConfig
-projectMergeOpts cfg envvars = \case
-  Edit opts -> EditCfg <$> Edit.mergeOpts cfg envvars opts
+projectMergeOpts cfg envvars (Edit opts) = EditCfg <$> Edit.mergeOpts cfg envvars opts
 
 loadConfig ::
   ( Has Diagnostics sig m
@@ -57,8 +55,7 @@ loadConfig ::
   ) =>
   ProjectCommand ->
   m (Maybe ConfigFile)
-loadConfig = \case
-  Edit opts -> resolveLocalConfigFile $ Edit.configOpts opts
+loadConfig (Edit opts) = resolveLocalConfigFile $ Edit.configOpts opts
 
 projectCliParser :: Parser ProjectCommand
 projectCliParser =
