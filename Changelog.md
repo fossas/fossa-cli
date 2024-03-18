@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.9.9
+- `fossa project`: Adds commands to interact with FOSSA projects (`fossa project edit`) [#1394](https://github.com/fossas/fossa-cli/pull/1395).
+
 ## v3.9.8
 - Reachability: Users may now provide custom locations for the JAR files emitted by projects and used for reachability analysis ([#1382](https://github.com/fossas/fossa-cli/pull/1382)).
 

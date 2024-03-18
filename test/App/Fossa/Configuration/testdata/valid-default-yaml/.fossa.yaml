@@ -4,6 +4,7 @@ server: https://app.fossa.com
 apiKey: "123"
 
 project:
+  locator: custom+1/github.com/fossa-cli
   id: github.com/fossa-cli
   name: fossa-cli
   team: fossa-team

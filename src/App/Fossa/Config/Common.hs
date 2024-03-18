@@ -10,12 +10,14 @@ module App.Fossa.Config.Common (
   targetOpt,
   baseDirArg,
   metadataOpts,
+  parsePolicyOptions,
 
   -- * CLI Validators
   validateDir,
   validateFile,
   validateExists,
   validateApiKey,
+  validateApiKeyGeneric,
 
   -- * CLI Collectors
   collectBaseDir,
@@ -39,6 +41,10 @@ module App.Fossa.Config.Common (
   -- * Global Parser Help Message
   endpointHelp,
   fossaApiKeyHelp,
+  configHelp,
+  titleHelp,
+  -- Deprecation
+  deprecateConfigurableProjectMetadata,
 ) where
 
 import App.Fossa.Config.ConfigFile (
@@ -75,7 +81,7 @@ import App.Types (
   BaseDir (BaseDir),
   OverrideProject (..),
   Policy (..),
-  ProjectMetadata (ProjectMetadata),
+  ProjectMetadata (..),
   ProjectRevision,
   ReleaseGroupMetadata (ReleaseGroupMetadata),
  )
@@ -91,21 +97,23 @@ import Control.Effect.Diagnostics (
   fromMaybeText,
   recover,
   rethrow,
+  warn,
   (<||>),
  )
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Monad (when)
 import Control.Timeout (Duration (Minutes))
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Bifunctor (Bifunctor (first))
 import Data.Functor.Extra ((<$$>))
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.String (IsString)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text, null, strip, toLower)
 import Diag.Result (Result (Failure, Success), renderFailure)
 import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (..), comboExclude, comboInclude, setExclude, setInclude, targetFilterParser)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, logDebug, logInfo, vsep)
+import Effect.Logger (Logger, logDebug, logInfo, renderIt, vsep)
 import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
 import GHC.Generics (Generic)
@@ -133,8 +141,8 @@ import Options.Applicative.Help (AnsiStyle)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (..), parseRelDir)
 import Path.Extra (SomePath (..))
 import Path.IO (resolveDir', resolveFile')
-import Prettyprinter (Doc)
-import Prettyprinter.Render.Terminal (Color (Green))
+import Prettyprinter (Doc, annotate)
+import Prettyprinter.Render.Terminal (Color (Green, Red), color)
 import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, stringToHelpDoc)
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI, mkURI)
@@ -171,40 +179,64 @@ metadataOpts =
     <*> parsePolicyOptions
     <*> many (strOption (applyFossaStyle <> long "project-label" <> stringToHelpDoc "Assign up to 5 labels to the project"))
     <*> optional releaseGroupMetadataOpts
+
+deprecateConfigurableProjectMetadata :: Has Diagnostics sig m => ProjectMetadata -> m ProjectMetadata
+deprecateConfigurableProjectMetadata ProjectMetadata{..} = do
+  when
+    ( isJust projectTitle
+        || isJust projectUrl
+        || isJust projectJiraKey
+        || isJust projectLink
+        || isJust projectPolicy
+        || isJust projectTeam
+        || not (Prelude.null projectLabel)
+    )
+    $ warn deprecationMessage
+
+  pure $ ProjectMetadata Nothing Nothing Nothing Nothing projectTeam Nothing [] projectReleaseGroup
   where
-    policy :: Parser Policy
-    policy = PolicyName <$> (strOption (applyFossaStyle <> long "policy" <> helpDoc policyHelp))
-
-    policyId :: Parser Policy
-    policyId =
-      PolicyId
-        <$> ( option
-                (readMWithError "failed to parse --policy-id, expecting int")
-                (applyFossaStyle <> long "policy-id" <> helpDoc policyIdHelp)
-            )
-
-    parsePolicyOptions :: Parser (Maybe Policy)
-    parsePolicyOptions = optional (policy <|> policyId) -- For Parsers '<|>' tries every alternative and fails if they all succeed.
-    titleHelp :: Maybe (Doc AnsiStyle)
-    titleHelp =
-      Just . formatDoc $
+    deprecationMessage :: Text
+    deprecationMessage =
+      renderIt $
         vsep
-          [ "The title of the FOSSA project"
-          , boldItalicized "Default: " <> "The project name"
+          [ annotate (color Red) "Project options (--title, --project-url, --jira-project-key, --link, --policy, and --project-label) have been deprecated for this command."
+          , "Refer to `fossa project` subcommands to interact with FOSSA projects."
           ]
 
-    policyHelp :: Maybe (Doc AnsiStyle)
-    policyHelp =
-      Just . formatDoc $
-        vsep
-          [ "The name of the policy to assign to this project in FOSSA. Mutually excludes " <> coloredBoldItalicized Green "--policy-id" <> "."
-          ]
-    policyIdHelp :: Maybe (Doc AnsiStyle)
-    policyIdHelp =
-      Just . formatDoc $
-        vsep
-          [ "The id of the policy to assign to this project in FOSSA. Mutually excludes " <> coloredBoldItalicized Green "--policy" <> "."
-          ]
+policy :: Parser Policy
+policy = PolicyName <$> (strOption (applyFossaStyle <> long "policy" <> helpDoc policyHelp))
+
+policyId :: Parser Policy
+policyId =
+  PolicyId
+    <$> ( option
+            (readMWithError "failed to parse --policy-id, expecting int")
+            (applyFossaStyle <> long "policy-id" <> helpDoc policyIdHelp)
+        )
+
+parsePolicyOptions :: Parser (Maybe Policy)
+parsePolicyOptions = optional (policy <|> policyId) -- For Parsers '<|>' tries every alternative and fails if they all succeed.
+
+titleHelp :: Maybe (Doc AnsiStyle)
+titleHelp =
+  Just . formatDoc $
+    vsep
+      [ "The title of the FOSSA project"
+      , boldItalicized "Default: " <> "The project name"
+      ]
+
+policyHelp :: Maybe (Doc AnsiStyle)
+policyHelp =
+  Just . formatDoc $
+    vsep
+      [ "The name of the policy to assign to this project in FOSSA. Mutually excludes " <> coloredBoldItalicized Green "--policy-id" <> "."
+      ]
+policyIdHelp :: Maybe (Doc AnsiStyle)
+policyIdHelp =
+  Just . formatDoc $
+    vsep
+      [ "The id of the policy to assign to this project in FOSSA. Mutually excludes " <> coloredBoldItalicized Green "--policy" <> "."
+      ]
 
 releaseGroupMetadataOpts :: Parser ReleaseGroupMetadata
 releaseGroupMetadataOpts =
@@ -294,13 +326,34 @@ validateApiKey ::
 validateApiKey maybeConfigFile EnvVars{envApiKey} CommonOpts{optAPIKey} = do
   textkey <-
     fromMaybeText "A FOSSA API key is required to run this command" $
-      -- API key significance is strictly defined:
+      -- API key precedence is strictly defined:
       -- 1. Cmd-line option (rarely used, not encouraged)
       -- 2. Config file (maybe used)
       -- 3. Environment Variable (most common)
       optAPIKey
         <|> (maybeConfigFile >>= configApiKey)
         <|> envApiKey
+  if Data.Text.null . strip $ textkey
+    then fatalText "A FOSSA API key was specified, but it is an empty string"
+    else pure $ ApiKey textkey
+
+validateApiKeyGeneric ::
+  ( Has Diagnostics sig m
+  ) =>
+  Maybe ConfigFile ->
+  Maybe Text ->
+  Maybe Text ->
+  m ApiKey
+validateApiKeyGeneric maybeConfigFile maybeEnvApiKey maybeOptAPIKey = do
+  textkey <-
+    fromMaybeText "A FOSSA API key is required to run this command" $
+      -- API key precedence is strictly defined:
+      -- 1. Cmd-line option (rarely used, not encouraged)
+      -- 2. Config file (maybe used)
+      -- 3. Environment Variable (most common)
+      maybeOptAPIKey
+        <|> (maybeConfigFile >>= configApiKey)
+        <|> maybeEnvApiKey
   if Data.Text.null . strip $ textkey
     then fatalText "A FOSSA API key was specified, but it is an empty string"
     else pure $ ApiKey textkey
@@ -466,13 +519,7 @@ commonOpts =
           [ "This repository's current revision hash"
           , boldItalicized "Default: " <> "VCS hash HEAD"
           ]
-    configHelp :: Maybe (Doc AnsiStyle)
-    configHelp =
-      Just . formatDoc $
-        vsep
-          [ "Path to configuration file including filename"
-          , boldItalicized "Default: " <> ".fossa.yml"
-          ]
+
     telemtryScopeHelp :: Maybe (Doc AnsiStyle)
     telemtryScopeHelp =
       Just . formatDoc $
@@ -481,6 +528,14 @@ commonOpts =
           , boldItalicized "Options: " <> coloredBoldItalicized Green "full" <> boldItalicized "|" <> coloredBoldItalicized Green "off"
           , boldItalicized "Default: " <> coloredBoldItalicized Green "full"
           ]
+
+configHelp :: Maybe (Doc AnsiStyle)
+configHelp =
+  Just . formatDoc $
+    vsep
+      [ "Path to configuration file including filename"
+      , boldItalicized "Default: " <> ".fossa.yml"
+      ]
 
 endpointHelp :: Maybe (Doc AnsiStyle)
 endpointHelp =

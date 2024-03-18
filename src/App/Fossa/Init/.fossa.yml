@@ -26,7 +26,12 @@ version: 3
 #
 # # Configures settings for the project you are interacting with through the FOSSA API.
 # project:
-#   # Defines a unique ID that the FOSSA API will use to reference this project.
+#   # The project Locator defines a unique ID that the FOSSA API will use to reference this project within FOSSA. 
+#   # The project locator can be found in the UI on the project `Settings` page listed as the "Project Locator" underneath the "Project Title" setting..
+#   locator: custom+1/github.com/fossas/fossa-cli
+#   #
+#   # Defines a unique ID that the FOSSA API will use to reference this project within your organization.
+#   # The project ID is a specific portion of the project locator.
 #   # Default:
 #   #   - Git: From .git/config file or project's remote "origin" URL.
 #   #   - SVN: From "Repository Root" obtained using 'svn info'.

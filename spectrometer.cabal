@@ -204,6 +204,8 @@ library
     App.Fossa.Config.LicenseScan
     App.Fossa.Config.LinkUserBinaries
     App.Fossa.Config.ListTargets
+    App.Fossa.Config.Project
+    App.Fossa.Config.Project.Edit
     App.Fossa.Config.Report
     App.Fossa.Config.Snippets
     App.Fossa.Config.Test
@@ -230,6 +232,8 @@ library
     App.Fossa.ManualDeps
     App.Fossa.PathDependency
     App.Fossa.PreflightChecks
+    App.Fossa.Project
+    App.Fossa.Project.Edit
     App.Fossa.ProjectInference
     App.Fossa.Reachability.Gradle
     App.Fossa.Reachability.Jar
@@ -542,6 +546,7 @@ test-suite unit-tests
     App.Fossa.ManualDepsSpec
     App.Fossa.PathDependencySpec
     App.Fossa.PreflightChecksSpec
+    App.Fossa.Project.EditSpec
     App.Fossa.ProjectInferenceSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.ReportSpec

@@ -38,6 +38,7 @@ module Fossa.API.Types (
   CustomBuildUploadPermissions (..),
   ProjectPermissionStatus (..),
   ReleaseGroupPermissionStatus (..),
+  ProjectResponse (..),
   useApiOpts,
   defaultApiPollDelay,
   blankOrganization,
@@ -500,6 +501,7 @@ data Organization = Organization
   , orgSupportsReachability :: Bool
   , orgSupportsPreflightChecks :: Bool
   , orgSubscription :: Subscription
+  , orgSupportsProjects :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -522,6 +524,7 @@ blankOrganization =
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = False
     , orgSubscription = Free
+    , orgSupportsProjects = False
     }
 
 instance FromJSON Organization where
@@ -574,6 +577,9 @@ instance FromJSON Organization where
       <*> obj
         .:? "subscription"
         .!= Free
+      <*> obj
+        .:? "supportsProjects"
+        .!= False
 
 data TokenType
   = Push
@@ -689,6 +695,16 @@ instance FromJSON RevisionDependencyCacheStatus where
     "WAITING" -> pure Waiting
     "READY" -> pure Ready
     other -> pure $ UnknownDependencyCacheStatus other
+
+newtype ProjectResponse = ProjectResponse
+  { projectWarnings :: Maybe [Text]
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ProjectResponse where
+  parseJSON = withObject "ProjectResponse" $ \obj ->
+    ProjectResponse
+      <$> obj .:? "warnings"
 
 ---------------
 
