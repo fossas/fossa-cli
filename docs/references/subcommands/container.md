@@ -88,6 +88,7 @@ Specifically, `fossa-cli` by default, skips any targets, found within the follow
 - `doc/`
 - `docs/`
 - `test/`
+- `tests/`
 - `example/`
 - `examples/`
 - `vendor/`
