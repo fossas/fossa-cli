@@ -98,10 +98,10 @@ skips any targets, found within the following directories:
 - `Carthage/`
 - `Checkouts/`
 
-To disable default filters, provide `--without-default-filters` flag when performing `fossa container analyze` command. Currently,
+To disable default filters, provide `--without-default-filters` flag when performing `fossa analyze` command. Currently,
 it is not possible to disable only a subset of default filters. If you would like to only apply a subset of default filters, you can
-use `--without-default-filters` in conjunction with [exclusion filters](./../files/fossa-yml.md#analysis-target-configuration). Refer to [exclusion filters walkthough](../../walkthroughs/analysis-target-configuration.md) for example.
-
+use `--without-default-filters` in conjunction with [exclusion filters](./../files/fossa-yml.md#analysis-target-configuration). Refer to
+[exclusion filters walkthough](../../walkthroughs/analysis-target-configuration.md) for example on how to apply path and target exclusion filters.
 
 ### F.A.Q.
 

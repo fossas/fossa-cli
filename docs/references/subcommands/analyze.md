@@ -164,17 +164,15 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 - (a) Target is excluded via [fossa configuration file](https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-yml.md#analysis-target-configuration) (this filtering is referred to as "exclusion filters").
 - (b) Target is excluded via [default path filters](./analyze.md#what-are-the-default-path-filters) (this filtering was previously referred to as "production path filtering").
 
-
-As `fossa-cli` relies on manifest and lock files provided in the project's directory, we
-intentionally skip `node_modules/` and such directories. If `fossa-cli` discovers and
-analyzes project found in `node_modules/`: `fossa-cli` will not be able to infer
-the dependency's scope (development or production) and may double count dependencies.
-
 #### What are the default filters?
 
 Default filters are filters which `fossa-cli` applies by default. These filters,
-provide sensible non-production target exclusion. Specifically, `fossa-cli` by default,
-skips any targets, found within the following directories:
+provide sensible non-production target exclusion. As `fossa-cli` relies on manifest and lock files provided in the project's directory, 
+default filters, intentionally skip `node_modules/` and such directories. If `fossa-cli` discovers and
+analyzes project found in `node_modules/`: `fossa-cli` will not be able to infer
+the dependency's scope (development or production) and may double count dependencies.
+
+Specifically, `fossa-cli` by default, skips any targets, found within the following directories:
 
 - `dist-newstyle`
 - `doc/`
@@ -196,7 +194,8 @@ skips any targets, found within the following directories:
 
 To disable default filters, provide `--without-default-filters` flag when performing `fossa analyze` command. Currently,
 it is not possible to disable only a subset of default filters. If you would like to only apply a subset of default filters, you can
-use `--without-default-filters` in conjunction with [exclusion filters](./../files/fossa-yml.md#analysis-target-configuration). Refer to [exclusion filters walkthough](../../walkthroughs/analysis-target-configuration.md) for example.
+use `--without-default-filters` in conjunction with [exclusion filters](./../files/fossa-yml.md#analysis-target-configuration). Refer to
+[exclusion filters walkthough](../../walkthroughs/analysis-target-configuration.md) for example on how to apply path and target exclusion filters.
 
 #### Can `fossa-cli` detect licensed/copyright content downloaded at runtime by dependencies?
 
