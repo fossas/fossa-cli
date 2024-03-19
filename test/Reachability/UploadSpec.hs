@@ -161,7 +161,7 @@ skippedProject dir =
 
 skippedProjectByDefaultFilter :: Path Abs Dir -> (DiscoveredProjectScan, DiscoveredProjectIdentifier)
 skippedProjectByDefaultFilter dir =
-  ( SkippedDueToDefaultProductionFilter dpi
+  ( SkippedDueToDefaultFilter dpi
   , dpi
   )
   where

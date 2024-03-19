@@ -235,7 +235,7 @@ runDependencyAnalysis basedir filters project@DiscoveredProject{..} = do
       output $ SkippedDueToProvidedFilter dpi
     (Just _, True) -> do
       logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> " (default non-production path filtering)"
-      output $ SkippedDueToDefaultProductionFilter dpi
+      output $ SkippedDueToDefaultFilter dpi
     (Just targets, False) -> do
       logInfo $ "Analyzing " <> pretty projectType <> " project at " <> pretty (toFilePath projectPath)
       let ctxMessage = "Project Analysis: " <> showT projectType

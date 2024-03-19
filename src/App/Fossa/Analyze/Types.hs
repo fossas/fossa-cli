@@ -99,7 +99,7 @@ instance Eq SourceUnitReachabilityAttempt where
 
 data DiscoveredProjectScan
   = SkippedDueToProvidedFilter DiscoveredProjectIdentifier
-  | SkippedDueToDefaultProductionFilter DiscoveredProjectIdentifier
+  | SkippedDueToDefaultFilter DiscoveredProjectIdentifier
   | Scanned DiscoveredProjectIdentifier (Result ProjectResult)
   deriving (Show)
 
@@ -111,10 +111,10 @@ instance Eq DiscoveredProjectScan where
 
 orderByScanStatusAndType :: DiscoveredProjectScan -> DiscoveredProjectScan -> Ordering
 orderByScanStatusAndType (SkippedDueToProvidedFilter lhs) (SkippedDueToProvidedFilter rhs) = compare lhs rhs
-orderByScanStatusAndType (SkippedDueToProvidedFilter lhs) (SkippedDueToDefaultProductionFilter rhs) = compare lhs rhs
-orderByScanStatusAndType (SkippedDueToDefaultProductionFilter lhs) (SkippedDueToProvidedFilter rhs) = compare lhs rhs
-orderByScanStatusAndType (SkippedDueToDefaultProductionFilter lhs) (SkippedDueToDefaultProductionFilter rhs) = compare lhs rhs
-orderByScanStatusAndType (SkippedDueToDefaultProductionFilter _) (Scanned _ _) = GT
+orderByScanStatusAndType (SkippedDueToProvidedFilter lhs) (SkippedDueToDefaultFilter rhs) = compare lhs rhs
+orderByScanStatusAndType (SkippedDueToDefaultFilter lhs) (SkippedDueToProvidedFilter rhs) = compare lhs rhs
+orderByScanStatusAndType (SkippedDueToDefaultFilter lhs) (SkippedDueToDefaultFilter rhs) = compare lhs rhs
+orderByScanStatusAndType (SkippedDueToDefaultFilter _) (Scanned _ _) = GT
 orderByScanStatusAndType (SkippedDueToProvidedFilter _) (Scanned _ _) = GT
 orderByScanStatusAndType (Scanned lhs (Success lhsEw _)) (Scanned rhs (Success rhsEw _)) =
   case compare (length rhsEw) (length lhsEw) of

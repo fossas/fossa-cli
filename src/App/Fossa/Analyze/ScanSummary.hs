@@ -108,7 +108,7 @@ getScanCount = foldl' countOf (ScanCount 0 0 0 0 0)
   where
     countOf :: ScanCount -> DiscoveredProjectScan -> ScanCount
     countOf tsc (SkippedDueToProvidedFilter _) = tsc{numProjects = numProjects tsc + 1, numSkipped = numSkipped tsc + 1}
-    countOf tsc (SkippedDueToDefaultProductionFilter _) = tsc{numProjects = numProjects tsc + 1, numSkipped = numSkipped tsc + 1}
+    countOf tsc (SkippedDueToDefaultFilter _) = tsc{numProjects = numProjects tsc + 1, numSkipped = numSkipped tsc + 1}
     countOf tsc (Scanned _ (Failure _ _)) = tsc{numProjects = numProjects tsc + 1, numFailed = numFailed tsc + 1}
     countOf tsc (Scanned _ (Success wg _)) = tsc{numProjects = numProjects tsc + 1, numSucceeded = numSucceeded tsc + 1, numWarnings = numWarnings tsc + countWarnings wg}
 
@@ -310,7 +310,7 @@ summarizeProjectScan :: DiscoveredProjectScan -> Doc AnsiStyle
 summarizeProjectScan (Scanned dpi (Failure _ _)) = failColorCoded $ renderDiscoveredProjectIdentifier dpi <> renderFailed
 summarizeProjectScan (Scanned _ (Success wg pr)) = successColorCoded wg $ renderProjectResult pr <> renderSucceeded wg
 summarizeProjectScan (SkippedDueToProvidedFilter dpi) = renderDiscoveredProjectIdentifier dpi <> skippedDueFilter
-summarizeProjectScan (SkippedDueToDefaultProductionFilter dpi) = renderDiscoveredProjectIdentifier dpi <> skippedDueNonProductionPathFiltering
+summarizeProjectScan (SkippedDueToDefaultFilter dpi) = renderDiscoveredProjectIdentifier dpi <> skippedDueDefaultFilter
 
 summarizeReachability ::
   Doc AnsiStyle ->
@@ -361,8 +361,8 @@ failColorCoded = annotate $ color Red
 skippedDueFilter :: Doc AnsiStyle
 skippedDueFilter = ": skipped (exclusion filters)"
 
-skippedDueNonProductionPathFiltering :: Doc AnsiStyle
-skippedDueNonProductionPathFiltering = ": skipped (non-production path filtering)"
+skippedDueDefaultFilter :: Doc AnsiStyle
+skippedDueDefaultFilter = ": skipped (default filters)"
 
 skippedReachabilityDueToPartialGraph :: Doc AnsiStyle
 skippedReachabilityDueToPartialGraph = ": skipped (partial graph)"

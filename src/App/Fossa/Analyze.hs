@@ -46,6 +46,7 @@ import App.Fossa.Config.Analyze (
   NoDiscoveryExclusion (NoDiscoveryExclusion),
   ScanDestination (..),
   UnpackArchives (UnpackArchives),
+  WithoutDefaultFilters (..),
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
@@ -195,15 +196,19 @@ runDependencyAnalysis ::
   Path Abs Dir ->
   -- | Filters
   AllFilters ->
+  Flag WithoutDefaultFilters ->
   -- | An optional path prefix to prepend to paths of discovered manifestFiles
   Maybe FileAncestry ->
   AnalysisTacticTypes ->
   -- | The project to analyze
   DiscoveredProject proj ->
   m ()
-runDependencyAnalysis basedir filters pathPrefix allowedTactics project@DiscoveredProject{..} = do
+runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTactics project@DiscoveredProject{..} = do
   let dpi = DiscoveredProjectIdentifier projectPath projectType
-  let hasNonProductionPath = isDefaultNonProductionPath basedir projectPath
+  let hasNonProductionPath =
+        if fromFlag Config.WithoutDefaultFilters $ withoutDefaultFilters
+          then False
+          else isDefaultNonProductionPath basedir projectPath
 
   case (applyFiltersToProject basedir filters project, hasNonProductionPath) of
     (Nothing, _) -> do
@@ -211,7 +216,7 @@ runDependencyAnalysis basedir filters pathPrefix allowedTactics project@Discover
       output $ SkippedDueToProvidedFilter dpi
     (Just _, True) -> do
       logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> " (default non-production path filtering)"
-      output $ SkippedDueToDefaultProductionFilter dpi
+      output $ SkippedDueToDefaultFilter dpi
     (Just targets, False) -> do
       logInfo $ "Analyzing " <> pretty projectType <> " project at " <> pretty (toFilePath projectPath)
       let ctxMessage = "Project Analysis: " <> showT projectType
@@ -243,17 +248,18 @@ runAnalyzers ::
   ) =>
   AnalysisTacticTypes ->
   AllFilters ->
+  Flag WithoutDefaultFilters ->
   Path Abs Dir ->
   Maybe FileAncestry ->
   m ()
-runAnalyzers allowedTactics filters basedir pathPrefix = do
+runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = do
   if filterIsVSIOnly filters
     then do
       logInfo "Running in VSI only mode, skipping other analyzers"
       pure ()
     else traverse_ single discoverFuncs
   where
-    single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters pathPrefix allowedTactics)
+    single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTactics)
 
 analyze ::
   ( Has Debug sig m
@@ -287,6 +293,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       customFossaDepsFile = Config.customFossaDepsFile cfg
       shouldAnalyzePathDependencies = resolvePathDependencies $ Config.experimental cfg
       allowedTactics = Config.allowedTacticTypes cfg
+      withoutDefaultFilters = Config.withoutDefaultFilters cfg
 
   manualSrcUnits <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -367,10 +374,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       . runReader discoveryFilters
       . runReader (Config.overrideDynamicAnalysis cfg)
       $ do
-        runAnalyzers allowedTactics filters basedir Nothing
+        runAnalyzers allowedTactics filters withoutDefaultFilters basedir Nothing
         when (fromFlag UnpackArchives $ Config.unpackArchives cfg) $
           forkTask $ do
-            res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (runAnalyzers allowedTactics filters) basedir ancestryDirect
+            res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (runAnalyzers allowedTactics filters withoutDefaultFilters) basedir ancestryDirect
             Diag.withResult SevError SevWarn res (const (pure ()))
   logDebug $ "Unfiltered project scans: " <> pretty (show projectScans)
 
@@ -442,7 +449,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
 toProjectResult (SkippedDueToProvidedFilter _) = Nothing
-toProjectResult (SkippedDueToDefaultProductionFilter _) = Nothing
+toProjectResult (SkippedDueToDefaultFilter _) = Nothing
 toProjectResult (Scanned _ res) = resultToMaybe res
 
 analyzeVSI ::
