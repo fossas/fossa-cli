@@ -15,6 +15,7 @@ module App.Docs (
   fossaConfigDocsUrl,
   apiTokenDocsUrl,
   fossaAnalyzeDefaultFilterDocUrl,
+  fossaContainerAnalyzeDefaultFilterDocUrl,
 ) where
 
 import App.Version (versionOrBranch)
@@ -73,3 +74,6 @@ apiTokenDocsUrl = "https://docs.fossa.com/docs/api-reference"
 
 fossaAnalyzeDefaultFilterDocUrl :: Text
 fossaAnalyzeDefaultFilterDocUrl = guidePathOf versionOrBranch "/docs/references/subcommands/analyze.md#what-are-the-default-path-filters"
+
+fossaContainerAnalyzeDefaultFilterDocUrl :: Text
+fossaContainerAnalyzeDefaultFilterDocUrl = guidePathOf versionOrBranch "/docs/references/subcommands/container.md#ignore-default-filters"

@@ -206,16 +206,15 @@ runDependencyAnalysis ::
 runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTactics project@DiscoveredProject{..} = do
   let dpi = DiscoveredProjectIdentifier projectPath projectType
   let hasNonProductionPath =
-        if fromFlag Config.WithoutDefaultFilters $ withoutDefaultFilters
-          then False
-          else isDefaultNonProductionPath basedir projectPath
+        not (fromFlag Config.WithoutDefaultFilters withoutDefaultFilters)
+          && isDefaultNonProductionPath basedir projectPath
 
   case (applyFiltersToProject basedir filters project, hasNonProductionPath) of
     (Nothing, _) -> do
       logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> ": no filters matched"
       output $ SkippedDueToProvidedFilter dpi
     (Just _, True) -> do
-      logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> " (default non-production path filtering)"
+      logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> " (default filtering)"
       output $ SkippedDueToDefaultFilter dpi
     (Just targets, False) -> do
       logInfo $ "Analyzing " <> pretty projectType <> " project at " <> pretty (toFilePath projectPath)

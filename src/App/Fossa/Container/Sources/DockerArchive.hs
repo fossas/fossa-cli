@@ -16,7 +16,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic), WithoutDefaultFilters (..))
 import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Docker.Manifest (getImageDigest, getRepoTags)
@@ -56,6 +56,7 @@ import Control.Effect.Telemetry (Telemetry)
 import Control.Monad (void, when)
 import Data.ByteString.Lazy qualified as BS
 import Data.FileTree.IndexFileTree (SomeFileTree, fixedVfsRoot)
+import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Maybe (listToMaybe, mapMaybe)
 import Data.String.Conversion (ToString (toString))
@@ -92,9 +93,10 @@ analyzeFromDockerArchive ::
   ) =>
   Bool ->
   AllFilters ->
+  Flag WithoutDefaultFilters ->
   Path Abs File ->
   m ContainerScan
-analyzeFromDockerArchive systemDepsOnly filters tarball = do
+analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = do
   capabilities <- sendIO getNumCapabilities
   containerTarball <- sendIO . BS.readFile $ toString tarball
   image <- fromEither $ parse containerTarball
@@ -113,7 +115,7 @@ analyzeFromDockerArchive systemDepsOnly filters tarball = do
       runTarballReadFSIO baseFs tarball getOsInfo
   baseUnits <-
     context "Analyzing From Base Layer" $
-      analyzeLayer systemDepsOnly filters capabilities osInfo baseFs tarball
+      analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo baseFs tarball
 
   let mkScan :: [ContainerScanImageLayer] -> ContainerScan
       mkScan layers =
@@ -133,7 +135,7 @@ analyzeFromDockerArchive systemDepsOnly filters tarball = do
       fs <- context "Building squashed FS from other layers" . mkFsFromChangeset $ otherLayersSquashed image
       otherUnits <-
         context "Analyzing from Other Layers" $
-          analyzeLayer systemDepsOnly filters capabilities osInfo fs tarball
+          analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo fs tarball
       pure $
         mkScan
           [ ContainerScanImageLayer baseDigest baseUnits
@@ -151,12 +153,13 @@ analyzeLayer ::
   ) =>
   Bool ->
   AllFilters ->
+  Flag WithoutDefaultFilters ->
   Int ->
   OsInfo ->
   SomeFileTree TarEntryOffset ->
   Path Abs File ->
   m [SourceUnit]
-analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball = do
+analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo layerFs tarball = do
   toSourceUnit
     <$> (runReader filters)
       ( do
@@ -171,7 +174,7 @@ analyzeLayer systemDepsOnly filters capabilities osInfo layerFs tarball = do
               . withTaskPool capabilities updateProgress
               . runAtomicCounter
               $ do
-                runAnalyzers systemDepsOnly osInfo filters
+                runAnalyzers systemDepsOnly osInfo filters withoutDefaultFilters
           pure projectResults
       )
   where
@@ -197,13 +200,14 @@ runAnalyzers ::
   Bool ->
   OsInfo ->
   AllFilters ->
+  Flag WithoutDefaultFilters ->
   m ()
-runAnalyzers systemDepsOnly osInfo filters = do
+runAnalyzers systemDepsOnly osInfo filters withoutDefaultFilters = do
   traverse_
     single
     $ layerAnalyzers osInfo systemDepsOnly
   where
-    single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters)
+    single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters withoutDefaultFilters)
     basedir = Path $ toString fixedVfsRoot
 
 runDependencyAnalysis ::
@@ -223,18 +227,20 @@ runDependencyAnalysis ::
   ) =>
   Path Abs Dir ->
   AllFilters ->
+  Flag WithoutDefaultFilters ->
   DiscoveredProject proj ->
   m ()
-runDependencyAnalysis basedir filters project@DiscoveredProject{..} = do
+runDependencyAnalysis basedir filters withoutDefaultFilters project@DiscoveredProject{..} = do
   let dpi = DiscoveredProjectIdentifier projectPath projectType
-  let hasNonProductionPath = isDefaultNonProductionPath basedir projectPath
+  let hasNonProductionPath =
+        not (fromFlag WithoutDefaultFilters withoutDefaultFilters) && isDefaultNonProductionPath basedir projectPath
 
   case (applyFiltersToProject basedir filters project, hasNonProductionPath) of
     (Nothing, _) -> do
       logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> ": no filters matched"
       output $ SkippedDueToProvidedFilter dpi
     (Just _, True) -> do
-      logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> " (default non-production path filtering)"
+      logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> " (default filtering)"
       output $ SkippedDueToDefaultFilter dpi
     (Just targets, False) -> do
       logInfo $ "Analyzing " <> pretty projectType <> " project at " <> pretty (toFilePath projectPath)

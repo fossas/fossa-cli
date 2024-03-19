@@ -164,7 +164,6 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 - (a) Target is excluded via [fossa configuration file](https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-yml.md#analysis-target-configuration) (this filtering is referred to as "exclusion filters").
 - (b) Target is excluded via [default path filters](./analyze.md#what-are-the-default-path-filters) (this filtering was previously referred to as "production path filtering").
 
-`fossa-cli` skips any target per (b), if the target is found within the [default path filters](./analyze.md#what-are-the-default-path-filters) directory.
 
 As `fossa-cli` relies on manifest and lock files provided in the project's directory, we
 intentionally skip `node_modules/` and such directories. If `fossa-cli` discovers and

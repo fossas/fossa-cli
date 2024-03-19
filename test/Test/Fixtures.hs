@@ -84,6 +84,7 @@ import System.Directory (getTemporaryDirectory)
 import Text.RawString.QQ (r)
 import Text.URI.QQ (uri)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
+import App.Fossa.Config.Analyze (WithoutDefaultFilters(..))
 
 apiOpts :: API.ApiOpts
 apiOpts =
@@ -526,6 +527,7 @@ standardAnalyzeConfig =
     , ANZ.customFossaDepsFile = customFossaDepsFile
     , ANZ.allowedTacticTypes = Any
     , ANZ.reachabilityConfig = mempty
+    , ANZ.withoutDefaultFilters = toFlag WithoutDefaultFilters False
     }
 
 sampleJarParsedContent :: Text

@@ -28,6 +28,7 @@ module App.Fossa.Config.Analyze (
   cliParser,
   mergeOpts,
   branchHelp,
+  withoutDefaultFilterParser,
 ) where
 
 import App.Docs (fossaAnalyzeDefaultFilterDocUrl)
@@ -133,7 +134,6 @@ data ForceFirstPartyScans = ForceFirstPartyScans deriving (Generic)
 data ForceNoFirstPartyScans = ForceNoFirstPartyScans deriving (Generic)
 data IgnoreOrgWideCustomLicenseScanConfigs = IgnoreOrgWideCustomLicenseScanConfigs deriving (Generic)
 data StaticOnlyTactics = StaticOnlyTactics deriving (Generic)
-data WithoutDefaultFilters = WithoutDefaultFilters deriving (Generic)
 
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
 data IncludeAll = IncludeAll deriving (Generic)
@@ -141,9 +141,13 @@ data JsonOutput = JsonOutput deriving (Generic)
 data NoDiscoveryExclusion = NoDiscoveryExclusion deriving (Generic)
 data UnpackArchives = UnpackArchives deriving (Generic)
 data VSIAnalysis = VSIAnalysis deriving (Generic)
+data WithoutDefaultFilters = WithoutDefaultFilters deriving (Generic)
 
 newtype IATAssertion = IATAssertion {unIATAssertion :: Maybe (Path Abs Dir)} deriving (Eq, Ord, Show, Generic)
 newtype DynamicLinkInspect = DynamicLinkInspect {unDynamicLinkInspect :: Maybe SomePath} deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON WithoutDefaultFilters where
+  toEncoding = genericToEncoding defaultOptions
 
 instance ToJSON BinaryDiscovery where
   toEncoding = genericToEncoding defaultOptions
@@ -164,9 +168,6 @@ instance ToJSON VSIAnalysis where
   toEncoding = genericToEncoding defaultOptions
 
 instance ToJSON IATAssertion where
-  toEncoding = genericToEncoding defaultOptions
-
-instance ToJSON WithoutDefaultFilters where
   toEncoding = genericToEncoding defaultOptions
 
 instance ToJSON DynamicLinkInspect where
@@ -330,7 +331,7 @@ cliParser =
     <*> flagOpt IgnoreOrgWideCustomLicenseScanConfigs (applyFossaStyle <> long "ignore-org-wide-custom-license-scan-configs" <> stringToHelpDoc "Ignore custom-license scan configurations for your organization. These configurations are defined in the `Integrations` section of the Admin settings in the FOSSA web app")
     <*> optional (strOption (applyFossaStyle <> long "fossa-deps-file" <> helpDoc fossaDepsFileHelp <> metavar "FILEPATH"))
     <*> flagOpt StaticOnlyTactics (applyFossaStyle <> long "static-only-analysis" <> stringToHelpDoc "Only analyze the project using static strategies.")
-    <*> withoutDefaultFilterParser
+    <*> withoutDefaultFilterParser fossaAnalyzeDefaultFilterDocUrl
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
     fossaDepsFileHelp =
@@ -355,15 +356,15 @@ data GoDynamicTactic
 instance ToJSON GoDynamicTactic where
   toEncoding = genericToEncoding defaultOptions
 
-withoutDefaultFilterParser :: Parser (Flag WithoutDefaultFilters)
-withoutDefaultFilterParser = flagOpt WithoutDefaultFilters (applyFossaStyle <> long "without-default-filters" <> helpDoc helpMsg)
+withoutDefaultFilterParser :: Text -> Parser (Flag WithoutDefaultFilters)
+withoutDefaultFilterParser docsUrl = flagOpt WithoutDefaultFilters (applyFossaStyle <> long "without-default-filters" <> helpDoc helpMsg)
   where
     helpMsg :: Maybe (Doc AnsiStyle)
     helpMsg =
       Just . formatDoc $
         vsep
           [ "Ignores default filters."
-          , boldItalicized "Docs: " <> pretty fossaAnalyzeDefaultFilterDocUrl
+          , boldItalicized "Docs: " <> pretty docsUrl
           ]
 
 experimentalUseV3GoResolver :: Parser GoDynamicTactic
