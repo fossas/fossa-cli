@@ -19,6 +19,7 @@ import Control.Carrier.Telemetry (IgnoreTelemetryC, withoutTelemetry)
 import Control.Effect.DockerEngineApi (
   DockerEngineApiF (GetImageSize, IsDockerEngineAccessible),
  )
+import Data.Flag (toFlag')
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -56,7 +57,6 @@ import Types (
   DiscoveredProjectType (SetuptoolsProjectType),
   TargetFilter (TypeDirTarget, TypeTarget),
  )
-import Data.Flag (toFlag')
 
 spec :: Spec
 spec = do

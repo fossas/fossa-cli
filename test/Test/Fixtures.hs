@@ -53,7 +53,7 @@ module Test.Fixtures (
   organizationWithPreflightChecks,
 ) where
 
-import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
+import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..), WithoutDefaultFilters (..))
 import App.Fossa.Config.Analyze qualified as ANZ
 import App.Fossa.Config.Analyze qualified as VSI
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
@@ -84,7 +84,6 @@ import System.Directory (getTemporaryDirectory)
 import Text.RawString.QQ (r)
 import Text.URI.QQ (uri)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
-import App.Fossa.Config.Analyze (WithoutDefaultFilters(..))
 
 apiOpts :: API.ApiOpts
 apiOpts =
