@@ -38,7 +38,7 @@ The paths and targets filtering options allow you to specify the exact targets w
 | `--exclude-path`                 | Exclude these paths from scannig. See [paths.exclude](../files/fossa-yml.md#paths.exclude) in the fossa.yml spec.        |
 | `--include-unused-deps`          | Include all deps found, instead of filtering non-production deps.  Ignored by VSI.                                       |
 | `--debug-no-discovery-exclusion` | Ignore these filters during discovery phase.  This flag is for debugging only and may be removed without warning.        |
-| `--without-default-path-filters` | Ignore default path filters. See [default path filters](./analyze.md#what-are-the-default-path-filters)                  |
+| `--without-default-filters`      | Ignore default path filters. See [default path filters](./analyze.md#what-are-the-default-path-filters)                  |
 
 
 ### Printing results without uploading to FOSSA
