@@ -6,7 +6,7 @@ module App.Fossa.Analyze.ScanSummary (
   renderScanSummary,
 ) where
 
-import App.Docs (staticAndDynamicStrategies)
+import App.Docs (fossaAnalyzeDefaultFilterDocUrl, staticAndDynamicStrategies)
 import App.Fossa.Analyze.Project (
   ProjectResult (projectResultPath),
   projectResultType,
@@ -24,7 +24,8 @@ import App.Fossa.Reachability.Types (SourceUnitReachability (..))
 import App.Version (fullVersionDescription)
 import Control.Carrier.Lift
 import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
-import Control.Monad (join, when)
+import Control.Monad (join)
+import Data.Flag (fromFlag)
 import Data.Foldable (foldl', traverse_)
 import Data.Functor.Extra ((<$$>))
 import Data.List (sort)
@@ -59,7 +60,6 @@ import Prettyprinter (
   align,
   annotate,
   defaultLayoutOptions,
-  indent,
   layoutPretty,
   line,
   plural,
@@ -151,26 +151,46 @@ staticOnlyAnalysisMessage =
 renderScanSummary :: (Has Diag.Diagnostics sig m, Has Logger sig m, Has (Lift IO) sig m) => Severity -> (Maybe Text) -> AnalysisScanResult -> Config.AnalyzeConfig -> m ()
 renderScanSummary severity maybeEndpointVersion analysisResults cfg = do
   let endpointVersion = fromMaybe "N/A" maybeEndpointVersion
+  let hasDefaultFilters = (not $ fromFlag Config.WithoutDefaultFilters $ Config.withoutDefaultFilters cfg)
 
   case summarize cfg endpointVersion analysisResults of
     Nothing -> pure ()
     Just summary -> do
       let someFilters = isMempty cfg.filterSet
       logInfoVsep summary
-      when someFilters $ do
-        logInfoVsep $
-          map
-            (indent 2)
-            [ "Some projects may not appear in the summary if they were filtered during discovery."
-            , "You can run `fossa list-targets` to see all discoverable projects."
-            ]
-      logInfo ""
-      when (severity /= SevDebug) $ do
-        logInfo "You can pass `--debug` option to eagerly show all warning and failure messages."
+      logInfo "Notes"
+      logInfo "-----"
+      logInfoVsep $ renderNotes someFilters hasDefaultFilters (severity /= SevDebug)
 
       summaryWithWarnErrorsTmpFile <- dumpResultLogsToTempFile cfg endpointVersion analysisResults
       logInfo . pretty $ "You can also view analysis summary with warning and error messages at: " <> show summaryWithWarnErrorsTmpFile
       logInfo "------------"
+
+renderNotes :: Bool -> Bool -> Bool -> [Doc AnsiStyle]
+renderNotes hasUserProvidedFilers hasDefaultFilters isNotDebugMode =
+  (if hasUserProvidedFilers then renderUserProvidedSkippedTargetHelp else [])
+    <> (if hasDefaultFilters then renderDefaultSkippedTargetHelp else [])
+    <> (if isNotDebugMode then renderDebugOptionsHelp else [])
+
+renderDebugOptionsHelp :: [Doc AnsiStyle]
+renderDebugOptionsHelp =
+  [ "* You can pass `--debug` option to eagerly show all warning and failure messages."
+  , ""
+  ]
+
+renderUserProvidedSkippedTargetHelp :: [Doc AnsiStyle]
+renderUserProvidedSkippedTargetHelp =
+  [ "* Some projects may not appear in the summary if they were filtered during discovery."
+  , "You can run `fossa list-targets` to see all discoverable projects."
+  , ""
+  ]
+
+renderDefaultSkippedTargetHelp :: [Doc AnsiStyle]
+renderDefaultSkippedTargetHelp =
+  [ "* Some projects analysis may be skipped, due to default filters."
+  , "Learn more: " <> pretty fossaAnalyzeDefaultFilterDocUrl
+  , ""
+  ]
 
 summarize :: Config.AnalyzeConfig -> Text -> AnalysisScanResult -> Maybe ([Doc AnsiStyle])
 summarize cfg endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps lernie reachabilityAttempts) =
