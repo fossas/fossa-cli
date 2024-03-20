@@ -172,7 +172,7 @@ default filters, intentionally skip `node_modules/` and such directories. If `fo
 analyzes project found in `node_modules/`: `fossa-cli` will not be able to infer
 the dependency's scope (development or production) and may double count dependencies.
 
-Specifically, `fossa-cli` by default, skips any targets, found within the following directories:
+Specifically, `fossa-cli` by default skips any targets found within the following directories:
 
 - `dist-newstyle`
 - `doc/`
