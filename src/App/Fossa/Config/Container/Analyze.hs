@@ -10,7 +10,8 @@ module App.Fossa.Config.Container.Analyze (
   subcommand,
 ) where
 
-import App.Fossa.Config.Analyze (branchHelp)
+import App.Docs (fossaContainerAnalyzeDefaultFilterDocUrl)
+import App.Fossa.Config.Analyze (WithoutDefaultFilters, branchHelp, withoutDefaultFilterParser)
 import App.Fossa.Config.Common (
   CommonOpts (CommonOpts, optDebug, optProjectName, optProjectRevision),
   ScanDestination (..),
@@ -74,6 +75,7 @@ data ContainerAnalyzeConfig = ContainerAnalyzeConfig
   , severity :: Severity
   , onlySystemDeps :: Bool
   , filterSet :: AllFilters
+  , withoutDefaultFilters :: Flag WithoutDefaultFilters
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -89,6 +91,7 @@ data ContainerAnalyzeOptions = ContainerAnalyzeOptions
   , containerAnalyzeImage :: ImageText
   , containerExperimentalScanner :: Bool
   , containerExperimentalOnlySysDependencies :: Bool
+  , containerWithoutDefaultFilters :: Flag WithoutDefaultFilters
   }
 
 instance GetSeverity ContainerAnalyzeOptions where
@@ -126,6 +129,7 @@ cliParser =
     <*> imageTextArg
     <*> switch (applyFossaStyle <> long "experimental-scanner" <> stringToHelpDoc "Uses experimental fossa native container scanner" <> hidden)
     <*> switch (applyFossaStyle <> long "only-system-deps" <> stringToHelpDoc "Only analyzes system dependencies (e.g. apk, dep, rpm)")
+    <*> withoutDefaultFilterParser fossaContainerAnalyzeDefaultFilterDocUrl
 
 mergeOpts ::
   (Has Diagnostics sig m) =>
@@ -141,6 +145,7 @@ mergeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
       arch = collectArch
       onlySystemDeps = containerExperimentalOnlySysDependencies
       scanFilters = collectFilters cfgfile
+      withoutDefaultFilters = containerWithoutDefaultFilters
 
       revOverride =
         collectRevisionOverride cfgfile $
@@ -159,6 +164,7 @@ mergeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
     <*> pure severity
     <*> pure onlySystemDeps
     <*> pure scanFilters
+    <*> pure withoutDefaultFilters
 
 collectScanDestination ::
   (Has Diagnostics sig m) =>

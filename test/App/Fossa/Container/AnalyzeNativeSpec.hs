@@ -19,6 +19,7 @@ import Control.Carrier.Telemetry (IgnoreTelemetryC, withoutTelemetry)
 import Control.Effect.DockerEngineApi (
   DockerEngineApiF (GetImageSize, IsDockerEngineAccessible),
  )
+import Data.Flag (toFlag')
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -84,27 +85,31 @@ spec = do
     let imageArchive = currDir </> appDepsImage
 
     it' "should not analyze application dependencies when only-system-dependencies are requested" $ do
-      containerScan <- analyzeFromDockerArchive True mempty imageArchive
+      containerScan <- analyzeFromDockerArchive True mempty (toFlag' False) imageArchive
       buildImportsOf containerScan `shouldNotContain'` [numpy, scipy, black]
 
     it' "should analyze application dependencies" $ do
-      containerScan <- analyzeFromDockerArchive False mempty imageArchive
+      containerScan <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchive
       buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, scipy, black]
       buildImportsOf containerScan `shouldNotContain'` [networkX]
 
     it' "should apply tool exclusion filter" $ do
-      containerScan <- analyzeFromDockerArchive False (excludeTool SetuptoolsProjectType) imageArchive
+      containerScan <- analyzeFromDockerArchive False (excludeTool SetuptoolsProjectType) (toFlag' False) imageArchive
       buildImportsOf containerScan `shouldNotContain'` [numpy, scipy, black]
 
     it' "should apply project exclusion filter" $ do
       let appAPath = $(mkRelDir "app/services/b/")
-      containerScan <- analyzeFromDockerArchive False (excludeProject SetuptoolsProjectType appAPath) imageArchive
+      containerScan <- analyzeFromDockerArchive False (excludeProject SetuptoolsProjectType appAPath) (toFlag' False) imageArchive
       buildImportsOf containerScan `shouldNotContain'` [scipy]
       buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, black]
 
+    it' "should analyze all targets, if default filter is disabled" $ do
+      containerScan <- analyzeFromDockerArchive False mempty (toFlag' True) imageArchive
+      buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, scipy, black, networkX]
+
     it' "should apply path exclusion filter" $ do
       let appAPath = $(mkRelDir "app/services/b/internal/")
-      containerScan <- analyzeFromDockerArchive False (excludePath appAPath) imageArchive
+      containerScan <- analyzeFromDockerArchive False (excludePath appAPath) (toFlag' False) imageArchive
       buildImportsOf containerScan `shouldNotContain'` [black]
       buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, scipy]
 

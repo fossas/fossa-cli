@@ -33,6 +33,7 @@ registrySourceCfg =
     , severity = SevInfo
     , onlySystemDeps = False
     , filterSet = mempty
+    , withoutDefaultFilters = toFlag' False
     }
 
 runAnalyze :: ContainerAnalyzeConfig -> (ContainerScan -> IO ()) -> IO ()

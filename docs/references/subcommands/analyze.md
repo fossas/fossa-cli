@@ -14,7 +14,7 @@ For supported command-line flags, use `fossa analyze --help`
 In addition to the [usual FOSSA project flags](#common-fossa-project-flags) supported by all commands, the analyze command supports the following FOSSA-project-related flags:
 
 | Name                                  | Short | Description                                                                         |
-|---------------------------------------|-------|-------------------------------------------------------------------------------------|
+| ------------------------------------- | ----- | ----------------------------------------------------------------------------------- |
 | `--title 'some title'`                | `-t`  | Set the title of the FOSSA project                                                  |
 | `--branch 'some branch'`              | `-b`  | Override the detected FOSSA project branch                                          |
 | `--project-url 'https://example.com'` | `-P`  | Add a URL to the FOSSA project                                                      |
@@ -31,13 +31,15 @@ In addition to the [usual FOSSA project flags](#common-fossa-project-flags) supp
 The paths and targets filtering options allow you to specify the exact targets which be should be scanned.
 
 | Name                             | Description                                                                                                              |
-|----------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `--only-target`                  | Only scan these targets. See [targets.only](../files/fossa-yml.md#targets.only) in the fossa.yml spec.                   |
 | `--exclude-target`               | Exclude these targets from scanning. See [targets.exclude](../files/fossa-yml.md#targets.exclude) in the fossa.yml spec. |
 | `--only-path`                    | Only scan these paths. See [paths.only](../files/fossa-yml.md#paths.only) in the fossa.yml spec.                         |
 | `--exclude-path`                 | Exclude these paths from scannig. See [paths.exclude](../files/fossa-yml.md#paths.exclude) in the fossa.yml spec.        |
 | `--include-unused-deps`          | Include all deps found, instead of filtering non-production deps.  Ignored by VSI.                                       |
 | `--debug-no-discovery-exclusion` | Ignore these filters during discovery phase.  This flag is for debugging only and may be removed without warning.        |
+| `--without-default-filters`      | Ignore default path filters. See [default path filters](./analyze.md#what-are-the-default-path-filters)                  |
+
 
 ### Printing results without uploading to FOSSA
 
@@ -73,7 +75,7 @@ fossa analyze --fossa-deps-file /path/to/file
 The Vendored Dependencies feature allows you to scan for licenses directly in your code. For more information, please see the [Vendored Dependencies documentation](../../features/vendored-dependencies.md).
 
 | Name                                      | Description                                                                                                                                                                           |
-|-------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--force-vendored-dependency-scan-method` | Force the vendored dependency scan method. The options are 'CLILicenseScan' or 'ArchiveUpload'. 'CLILicenseScan' is usually the default unless your organization has overridden this. |
 | `--force-vendored-dependency-rescans`     | Force vendored dependencies to be rescanned even if the revision has been previously analyzed by FOSSA. This currently only works for CLI-side license scans.                         |
 
@@ -118,11 +120,11 @@ We support the following archive formats:
 
 In addition to the [standard flags](#specifying-fossa-project-details), the analyze command supports the following additional strategy flags:
 
-| Name                                                             | Description                                                                                                                                                              |
-|------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Name                                                                              | Description                                                                                                                                                              |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | [`--detect-vendored`](./analyze/detect-vendored.md)                               | Enable the vendored source identification engine. For more information, see the [C and C++ overview](../strategies/languages/c-cpp/c-cpp.md).                            |
 | [`--detect-dynamic './some-binary`](./analyze/detect-dynamic.md)                  | Analyze the binary at the provided path for dynamically linked dependencies. For more information, see the [C and C++ overview](../strategies/languages/c-cpp/c-cpp.md). |
-| [`--static-only-analysis`](../strategies/README.md#static-and-dynamic-strategies) | Do not use third-party tools when analyzing projects.
+| [`--static-only-analysis`](../strategies/README.md#static-and-dynamic-strategies) | Do not use third-party tools when analyzing projects.                                                                                                                    |
 
 
 ### Experimental Options
@@ -132,7 +134,7 @@ _Important: For support and other general information, refer to the [experimenta
 In addition to the [standard flags](#specifying-fossa-project-details), the analyze command supports the following experimental flags:
 
 | Name                                                                                     | Description                                                                                                                                                                                    |
-|------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`--experimental-enable-binary-discovery`](../experimental/binary-discovery/README.md)   | Enable reporting binary files as unlicensed dependencies. For more information, see the [binary discovery overview](../experimental/binary-discovery/README.md).                               |
 | [`--experimental-link-project-binary './some-dir'`](../experimental/msb/README.md)       | Link the provided binary files to the project being analyzed. For more information, see the [multi stage builds overview](../experimental/msb/README.md).                                      |
 | [`--experimental-skip-vsi-graph 'custom+1/some$locator'`](../experimental/msb/README.md) | Skip resolving the dependencies of the given project that was previously linked via `--experimental-link-project-binary`.                                                                      |
@@ -143,7 +145,7 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 
 ### F.A.Q.
 
-1. Why is the `fossa-cli` skipping my project?
+#### Why is the `fossa-cli` skipping my project?
 
 `fossa-cli` may sometimes report a project of interest was skipped from the analysis. For example,
 
@@ -153,21 +155,30 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 [ INFO] 3 projects scanned;  2 skipped,  1 succeeded,  0 failed,  1 analysis warning
 [ INFO]
 [ INFO] * setuptools project in "sandbox/": succeeded with 1 warning
-[ INFO] * setuptools project in "sandbox/example/": skipped (production path filtering)
+[ INFO] * setuptools project in "sandbox/example/": skipped (default path filters)
 [ INFO] * setuptools project in "sandbox/external/": skipped (exclusion filters)
 ```
 
 `fossa-cli` skips analysis, if and only if
 
 - (a) Target is excluded via [fossa configuration file](https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-yml.md#analysis-target-configuration) (this filtering is referred to as "exclusion filters").
-- (b) Target is skipped because the `fossa-cli` does not consider the target to be a production target (this filtering is referred to as "production path filtering").
+- (b) Target is excluded via [default path filters](./analyze.md#what-are-the-default-path-filters) (this filtering was previously referred to as "production path filtering").
 
-`fossa-cli` skips any target per (b), if the target is found within the following directories:
+#### What are the default filters?
+
+Default filters are filters which `fossa-cli` applies by default. These filters,
+provide sensible non-production target exclusion. As `fossa-cli` relies on manifest and lock files provided in the project's directory, 
+default filters, intentionally skip `node_modules/` and such directories. If `fossa-cli` discovers and
+analyzes project found in `node_modules/`: `fossa-cli` will not be able to infer
+the dependency's scope (development or production) and may double count dependencies.
+
+Specifically, `fossa-cli` by default skips any targets found within the following directories:
 
 - `dist-newstyle`
 - `doc/`
 - `docs/`
 - `test/`
+- `tests/`
 - `example/`
 - `examples/`
 - `vendor/`
@@ -182,12 +193,12 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 - `Carthage/`
 - `Checkouts/`
 
-As `fossa-cli` relies on manifest and lock files provided in the project's directory, we
-intentionally skip `node_modules/` and such directories. If `fossa-cli` discovers and
-analyzes project found in `node_modules/`: `fossa-cli` will not be able to infer
-the dependency's scope (development or production) and may double count dependencies.
+To disable default filters, provide `--without-default-filters` flag when performing `fossa analyze` command. Currently,
+it is not possible to disable only a subset of default filters. If you would like to only apply a subset of default filters, you can
+use `--without-default-filters` in conjunction with [exclusion filters](./../files/fossa-yml.md#analysis-target-configuration). Refer to
+[exclusion filters walkthough](../../walkthroughs/analysis-target-configuration.md) for example on how to apply path and target exclusion filters.
 
-2. Can `fossa-cli` detect licensed/copyright content downloaded at runtime by dependencies?
+#### Can `fossa-cli` detect licensed/copyright content downloaded at runtime by dependencies?
 
 Unfortunately, as of yet, `fossa-cli` cannot discover or analyze any licensed or copyrighted
 content retrieved at runtime by dependencies when it is not referenced in manifest or lock files.
@@ -217,7 +228,7 @@ custom-dependencies:
 
 If you need more assistance, please contact [FOSSA support](https://support.fossa.com).
 
-3. How do I ensure `fossa analyze` does not exit fatally when no targets are discovered?
+#### How do I ensure `fossa analyze` does not exit fatally when no targets are discovered?
 
 In some scenarios, you may want to configure the `fossa analyze` and `fossa test` CI workflow on an empty repository or directory with 0 targets. Unfortunately, `fossa-cli` does not have a configuration yet, which will allow for successful analysis (exit code of 0) when 0 targets are discovered.
 
@@ -232,7 +243,7 @@ touch reqs.txt && fossa analyze && rm reqs.txt && fossa test
 All `fossa` commands support the following FOSSA-project-related flags:
 
 | Name                               | Short | Description                                                                                                                              |
-|------------------------------------|-------|------------------------------------------------------------------------------------------------------------------------------------------|
+| ---------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `--project 'some project'`         | `-p`  | Override the detected project name                                                                                                       |
 | `--revision 'some revision'`       | `-r`  | -Override the detected project revision                                                                                                  |
 | `--fossa-api-key 'my-api-key'`     |       | An alternative to using the `FOSSA_API_KEY` environment variable to specify a FOSSA API key                                              |
