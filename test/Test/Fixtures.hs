@@ -59,7 +59,7 @@ module Test.Fixtures (
   team,
 ) where
 
-import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
+import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..), WithoutDefaultFilters (..))
 import App.Fossa.Config.Analyze qualified as ANZ
 import App.Fossa.Config.Analyze qualified as VSI
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
@@ -574,6 +574,7 @@ standardAnalyzeConfig =
     , ANZ.customFossaDepsFile = customFossaDepsFile
     , ANZ.allowedTacticTypes = Any
     , ANZ.reachabilityConfig = mempty
+    , ANZ.withoutDefaultFilters = toFlag WithoutDefaultFilters False
     }
 
 sampleJarParsedContent :: Text

@@ -168,7 +168,7 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
 -- which were not scanned (skipped due to filter), as we do not
 -- complete dependency graph for them
 callGraphOf (SkippedDueToProvidedFilter dpi) = pure . SourceUnitReachabilitySkippedMissingDependencyAnalysis $ dpi
-callGraphOf (SkippedDueToDefaultProductionFilter dpi) = pure . SourceUnitReachabilitySkippedMissingDependencyAnalysis $ dpi
+callGraphOf (SkippedDueToDefaultFilter dpi) = pure . SourceUnitReachabilitySkippedMissingDependencyAnalysis $ dpi
 callGraphOf (Scanned dpi (Failure _ _)) = pure . SourceUnitReachabilitySkippedMissingDependencyAnalysis $ dpi
 
 -- | Unique locators from SourceUnit

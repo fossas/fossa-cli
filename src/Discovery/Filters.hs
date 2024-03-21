@@ -211,6 +211,7 @@ ignoredPaths =
   , "doc/"
   , "docs/"
   , "test/"
+  , "tests/"
   , "example/"
   , "examples/"
   , "vendor/"

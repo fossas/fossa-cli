@@ -104,7 +104,7 @@ analyze ::
   ContainerAnalyzeConfig ->
   m ContainerScan
 analyze cfg = do
-  scannedImage <- scanImage (filterSet cfg) (onlySystemDeps cfg) (imageLocator cfg) (dockerHost cfg) (arch cfg)
+  scannedImage <- scanImage (filterSet cfg) (withoutDefaultFilters cfg) (onlySystemDeps cfg) (imageLocator cfg) (dockerHost cfg) (arch cfg)
   let revision = extractRevision (revisionOverride cfg) scannedImage
 
   _ <- case scanDestination cfg of

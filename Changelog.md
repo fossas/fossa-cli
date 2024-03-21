@@ -1,7 +1,10 @@
 # FOSSA CLI Changelog
 
-## v3.9.9
+## v3.9.11
 - `fossa release-group`: Adds commands to interact with FOSSA release-groups (`fossa release-group add-projects`, `fossa release-group create`, `fossa release-group delete`, `fossa release-group delete-release`) [#1394](https://github.com/fossas/fossa-cli/pull/1394).
+
+## v3.9.10
+- `--without-default-filters`: Users can now disable default path filters ([#1396](https://github.com/fossas/fossa-cli/pull/1396/files)).
 
 ## v3.9.8
 - Reachability: Users may now provide custom locations for the JAR files emitted by projects and used for reachability analysis ([#1382](https://github.com/fossas/fossa-cli/pull/1382)).
