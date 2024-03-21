@@ -87,8 +87,6 @@ data FossaApiClientF a where
   AssertRevisionBinaries :: Locator -> [Fingerprint Raw] -> FossaApiClientF ()
   AssertUserDefinedBinaries :: IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> FossaApiClientF ()
   CompleteVsiScan :: VSI.ScanID -> FossaApiClientF ()
-  -- AddReleaseGroupProjects :: Text -> ReleaseGroupReleaseRevision -> FossaApiClientF AddReleaseGroupProjectsResponse
-  -- CreateReleaseGroup :: ReleaseGroupRevision -> FossaApiClientF CreateReleaseGroupResponse
   CreateVsiScan :: ProjectRevision -> FossaApiClientF VSI.ScanID
   FinalizeLicenseScan :: ArchiveComponents -> FossaApiClientF ()
   FinalizeLicenseScanForPathDependency :: [Locator] -> Bool -> FossaApiClientF ()
