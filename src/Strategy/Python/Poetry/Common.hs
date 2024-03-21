@@ -35,6 +35,7 @@ import Strategy.Python.Poetry.PyProject (
   PyProjectPoetryGitDependency (..),
   PyProjectPoetryPathDependency (..),
   PyProjectPoetryUrlDependency (..),
+  allPoetryDevDeps,
   toDependencyVersion,
  )
 
@@ -63,7 +64,7 @@ logIgnoredDeps pyproject poetryLock = for_ notSupportedDepsMsgs (logDebug . pret
     notSupportedPyProjectDevDeps =
       Map.keys $
         Map.filter (not . supportedPyProjectDep) $
-          maybe Map.empty devDependencies (pyprojectPoetry pyproject)
+          maybe Map.empty allPoetryDevDeps (pyprojectPoetry pyproject)
 
     notSupportedPyProjectDeps :: [Text]
     notSupportedPyProjectDeps =
@@ -83,7 +84,9 @@ pyProjectDeps project = filter notNamedPython $ map snd allDeps
     notNamedPython = (/= "python") . dependencyName
 
     supportedDevDeps :: Map Text PoetryDependency
-    supportedDevDeps = Map.filter supportedPyProjectDep $ maybe Map.empty devDependencies (pyprojectPoetry project)
+    supportedDevDeps =
+      Map.filter supportedPyProjectDep $
+        maybe Map.empty allPoetryDevDeps (pyprojectPoetry project)
 
     supportedProdDeps :: Map Text PoetryDependency
     supportedProdDeps = Map.filter supportedPyProjectDep $ maybe Map.empty dependencies (pyprojectPoetry project)

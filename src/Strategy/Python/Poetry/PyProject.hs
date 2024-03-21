@@ -13,6 +13,7 @@ module Strategy.Python.Poetry.PyProject (
   -- * for testing only
   parseConstraintExpr,
   toDependencyVersion,
+  allPoetryDevDeps,
 ) where
 
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
@@ -114,8 +115,12 @@ data PyProjectPoetry = PyProjectPoetry
   , description :: Maybe Text
   , dependencies :: Map Text PoetryDependency
   , devDependencies :: Map Text PoetryDependency
+  , groupDevDependencies :: Map Text PoetryDependency
   }
   deriving (Show, Eq, Ord)
+
+allPoetryDevDeps :: PyProjectPoetry -> Map Text PoetryDependency
+allPoetryDevDeps PyProjectPoetry{devDependencies, groupDevDependencies} = devDependencies <> groupDevDependencies
 
 data PoetryDependency
   = PoetryTextVersion Text
@@ -133,6 +138,7 @@ pyProjectPoetryCodec =
     <*> Toml.dioptional (Toml.text "description") .= description
     <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "dependencies" .= dependencies
     <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "dev-dependencies" .= devDependencies
+    <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "group.dev.dependencies" .= groupDevDependencies
 
 pyProjectPoetryDependencyCodec :: Toml.Key -> TomlCodec PoetryDependency
 pyProjectPoetryDependencyCodec key =

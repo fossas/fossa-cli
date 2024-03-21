@@ -100,6 +100,7 @@ expectedPyProject =
             , devDependencies =
                 Map.fromList
                   [("pytest", PoetryTextVersion "*")]
+            , groupDevDependencies = Map.empty -- TODO: Fill in for real.
             }
     }
 
