@@ -19,15 +19,15 @@ project:
     - label-2
     
 releaseGroup:
-  title: test-title
-  release: test-release
+  title: example-title
+  release: example-release-title
   releaseGroupProjects:
     - projectLocator: "custom+1/git@github.com/fossa-cli"
       projectRevision: "12345"
       projectBranch: main
-  licensePolicy: test-license-policy
-  securityPolicy: test-security-policy
-  qualityPolicy: test-quality-policy
+  licensePolicy: example-license-policy
+  securityPolicy: example-security-policy
+  qualityPolicy: example-quality-policy
   teams: 
     - team-1
     - team-2

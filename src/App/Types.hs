@@ -132,9 +132,9 @@ data ReleaseGroupProjectRevision = ReleaseGroupProjectRevision
 instance ToJSON ReleaseGroupProjectRevision where
   toJSON ReleaseGroupProjectRevision{..} =
     object
-      [ "projectLocator" .= releaseGroupProjectLocator
-      , "projectRevision" .= releaseGroupProjectRevision
-      , "projectBranch" .= releaseGroupProjectBranch
+      [ "projectId" .= releaseGroupProjectLocator
+      , "revisionId" .= releaseGroupProjectRevision
+      , "branch" .= releaseGroupProjectBranch
       ]
 
 data NinjaGraphCLIOptions = NinjaGraphCLIOptions

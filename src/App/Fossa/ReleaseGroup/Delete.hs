@@ -5,13 +5,13 @@ module App.Fossa.ReleaseGroup.Delete (
 ) where
 
 import App.Fossa.Config.ReleaseGroup.Delete (DeleteConfig (..))
-import App.Fossa.ReleaseGroup.Create (emitFossaVersionError)
+import App.Fossa.ReleaseGroup.Common (retrieveReleaseGroupId)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics)
-import Control.Effect.FossaApiClient (FossaApiClient, deleteReleaseGroup, getOrganization)
+import Control.Effect.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.FossaApiClient (FossaApiClient, deleteReleaseGroup, getReleaseGroups)
 import Control.Effect.Lift (Lift)
+import Data.String.Conversion (toText)
 import Effect.Logger (Logger, logInfo, logStdout)
-import Fossa.API.Types (Organization (..))
 
 deleteMain ::
   ( Has Diagnostics sig m
@@ -23,9 +23,11 @@ deleteMain ::
   m ()
 deleteMain DeleteConfig{..} = do
   logInfo "Running FOSSA release-group delete"
-  org <- getOrganization
-  if orgSupportsReleaseGroups org
-    then do
-      deleteReleaseGroup releaseTitle
-      logStdout $ "Release group release " <> "`" <> releaseTitle <> "`" <> " has been deleted"
-    else emitFossaVersionError
+
+  releaseGroups <- getReleaseGroups
+  maybeReleaseGroupId <- retrieveReleaseGroupId releaseGroupTitle releaseGroups
+  case maybeReleaseGroupId of
+    Nothing -> fatalText $ "Release group `" <> releaseGroupTitle <> "` not found"
+    Just releaseGroupId -> do
+      deleteReleaseGroup $ toText releaseGroupId
+      logStdout $ "Release group " <> "`" <> releaseGroupTitle <> "`" <> " has been deleted"

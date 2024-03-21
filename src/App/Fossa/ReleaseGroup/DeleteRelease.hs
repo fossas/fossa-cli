@@ -5,13 +5,15 @@ module App.Fossa.ReleaseGroup.DeleteRelease (
 ) where
 
 import App.Fossa.Config.ReleaseGroup.DeleteRelease (DeleteReleaseConfig (..))
-import App.Fossa.ReleaseGroup.Create (emitFossaVersionError)
+import App.Fossa.ReleaseGroup.Common (retrieveReleaseGroupId, retrieveReleaseGroupRelease)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics)
-import Control.Effect.FossaApiClient (FossaApiClient, deleteReleaseGroupRelease, getOrganization)
+import Control.Effect.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.FossaApiClient (FossaApiClient, deleteReleaseGroupRelease, getReleaseGroupReleases, getReleaseGroups)
 import Control.Effect.Lift (Lift)
+import Control.Monad (when)
+import Data.String.Conversion (ToText (..))
 import Effect.Logger (Logger, logInfo, logStdout)
-import Fossa.API.Types (Organization (..))
+import Fossa.API.Types (ReleaseGroupRelease (..))
 
 deleteReleaseMain ::
   ( Has Diagnostics sig m
@@ -23,9 +25,19 @@ deleteReleaseMain ::
   m ()
 deleteReleaseMain DeleteReleaseConfig{..} = do
   logInfo "Running FOSSA release-group delete-release"
-  org <- getOrganization
-  if orgSupportsReleaseGroups org
-    then do
-      deleteReleaseGroupRelease releaseGroupTitle releaseGroupRelease
-      logStdout $ "Release group release " <> "`" <> releaseGroupRelease <> "`" <> " has been deleted"
-    else emitFossaVersionError
+
+  releaseGroups <- getReleaseGroups
+  maybeReleaseGroupId <- retrieveReleaseGroupId releaseGroupTitle releaseGroups
+  case maybeReleaseGroupId of
+    Nothing -> fatalText $ "Release group `" <> releaseGroupTitle <> "` not found"
+    Just releaseGroupId -> do
+      let releaseGroupIdText = toText releaseGroupId
+
+      releases <- getReleaseGroupReleases releaseGroupIdText
+      when (length releases <= 1) $ fatalText "You are not permitted to delete a release when there is only have one release in your release group"
+
+      release <- retrieveReleaseGroupRelease releaseGroupReleaseTitle releases
+      let releaseId = releaseGroupReleaseId release
+      deleteReleaseGroupRelease releaseGroupIdText $ toText releaseId
+
+      logStdout $ "Release " <> "`" <> releaseGroupReleaseTitle <> "`" <> " has been deleted"

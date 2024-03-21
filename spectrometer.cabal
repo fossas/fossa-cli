@@ -244,6 +244,7 @@ library
     App.Fossa.Reachability.Upload
     App.Fossa.ReleaseGroup
     App.Fossa.ReleaseGroup.AddProjects
+    App.Fossa.ReleaseGroup.Common
     App.Fossa.ReleaseGroup.Create
     App.Fossa.ReleaseGroup.Delete
     App.Fossa.ReleaseGroup.DeleteRelease
@@ -556,6 +557,7 @@ test-suite unit-tests
     App.Fossa.PreflightChecksSpec
     App.Fossa.ProjectInferenceSpec
     App.Fossa.ReleaseGroup.AddProjectsSpec
+    App.Fossa.ReleaseGroup.CommonSpec
     App.Fossa.ReleaseGroup.CreateSpec
     App.Fossa.ReleaseGroup.DeleteReleaseSpec
     App.Fossa.ReleaseGroup.DeleteSpec

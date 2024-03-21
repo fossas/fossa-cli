@@ -38,7 +38,7 @@ subcommand f = command "delete" $ info (f <$> cliParser) deleteInfo
 
 data DeleteConfig = DeleteConfig
   { apiOpts :: ApiOpts
-  , releaseTitle :: Text
+  , releaseGroupTitle :: Text
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -47,7 +47,7 @@ instance ToJSON DeleteConfig where
 
 data DeleteOpts = DeleteOpts
   { releaseGroupCommon :: ReleaseGroupCommonOpts
-  , releaseTitleOpts :: Text
+  , releaseGroupTitleOpts :: Text
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -66,4 +66,4 @@ mergeOpts ::
   m DeleteConfig
 mergeOpts maybeConfig envVars DeleteOpts{..} = do
   apiOpts <- collectApiOpts maybeConfig envVars releaseGroupCommon
-  pure $ DeleteConfig apiOpts releaseTitleOpts
+  pure $ DeleteConfig apiOpts releaseGroupTitleOpts

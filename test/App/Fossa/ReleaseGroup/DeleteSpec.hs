@@ -6,41 +6,35 @@ import App.Fossa.ReleaseGroup.Delete (deleteMain)
 import Control.Algebra (Has)
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
-import Fossa.API.Types (Organization (..))
+import Fossa.API.Types (ReleaseGroup (releaseGroupTitle))
 import Test.Effect (expectFatal', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe)
-import Test.MockApi (MockApi, alwaysReturns, fails)
+import Test.MockApi (MockApi, alwaysReturns, fails, returnsOnce)
 
 deleteConfig :: DeleteConfig
-deleteConfig =
-  DeleteConfig
-    { apiOpts = apiOpts'
-    , releaseTitle = "title"
-    }
+deleteConfig = DeleteConfig apiOpts' "example-title"
+
 expectDeleteReleaseGroupSuccess :: Has MockApi sig m => m ()
-expectDeleteReleaseGroupSuccess = DeleteReleaseGroup "title" `alwaysReturns` ()
+expectDeleteReleaseGroupSuccess = DeleteReleaseGroup "1" `alwaysReturns` ()
 
 expectDeleteReleaseGroupToFail :: Has MockApi sig m => m ()
-expectDeleteReleaseGroupToFail = fails (DeleteReleaseGroup "title") "fails"
+expectDeleteReleaseGroupToFail = fails (DeleteReleaseGroup "1") "fails"
 
 spec :: Spec
 spec = do
   describe "Delete Release Group" $ do
-    it' "should fail when org does not support release groups" $ do
-      let org = Fixtures.organization{orgSupportsReleaseGroups = False}
-      GetOrganization `alwaysReturns` org
+    it' "should fail when the release group to delete does not exist when deleting a release group" $ do
+      GetReleaseGroups `returnsOnce` [Fixtures.releaseGroup{Fossa.API.Types.releaseGroupTitle = "example-title-2"}]
+      expectFatal' $ ignoreDebug $ deleteMain deleteConfig
+
+    it' "should fail to delete release group" $ do
+      GetReleaseGroups `returnsOnce` [Fixtures.releaseGroup]
+      expectDeleteReleaseGroupToFail
       expectFatal' $ ignoreDebug $ deleteMain deleteConfig
 
     it' "should delete release group" $ do
-      let org = Fixtures.organization
-      GetOrganization `alwaysReturns` org
+      GetReleaseGroups `returnsOnce` [Fixtures.releaseGroup]
       expectDeleteReleaseGroupSuccess
       res <- ignoreDebug $ deleteMain deleteConfig
       res `shouldBe'` ()
-
-    it' "should fail to delete release group" $ do
-      let org = Fixtures.organization
-      GetOrganization `alwaysReturns` org
-      expectDeleteReleaseGroupToFail
-      expectFatal' $ ignoreDebug $ deleteMain deleteConfig

@@ -153,18 +153,18 @@ expectedReleaseGroupProjectRevisionFromOpts =
 expectedReleaseGroupRevisionFromConfig :: ReleaseGroupRevision
 expectedReleaseGroupRevisionFromConfig =
   ReleaseGroupRevision
-    { releaseGroupTitle = "test-title"
+    { releaseGroupTitle = "example-title"
     , releaseGroupReleaseRevision = expectedReleaseGroupReleaseRevisionFromConfig
-    , releaseGroupLicensePolicy = Just "test-license-policy"
-    , releaseGroupSecurityPolicy = Just "test-security-policy"
-    , releaseGroupQualityPolicy = Just "test-quality-policy"
+    , releaseGroupLicensePolicy = Just "example-license-policy"
+    , releaseGroupSecurityPolicy = Just "example-security-policy"
+    , releaseGroupQualityPolicy = Just "example-quality-policy"
     , releaseGroupTeams = Just ["team-1", "team-2"]
     }
 
 expectedReleaseGroupReleaseRevisionFromConfig :: ReleaseGroupReleaseRevision
 expectedReleaseGroupReleaseRevisionFromConfig =
   ReleaseGroupReleaseRevision
-    { releaseTitle = "test-release"
+    { releaseTitle = "example-release-title"
     , releaseProjects = [expectedReleaseGroupProjectRevisionFromConfig]
     }
 

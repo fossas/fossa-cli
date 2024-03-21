@@ -20,16 +20,20 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   uploadReachabilityContent,
   uploadReachabilityBuild,
   getCustomBuildPermissions,
-  addReleaseGroupProjects,
-  createReleaseGroup,
+  getPolicies,
+  getTeams,
   deleteReleaseGroup,
   deleteReleaseGroupRelease,
+  createReleaseGroup,
+  getReleaseGroups,
+  getReleaseGroupReleases,
+  updateReleaseGroupRelease,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Config.Test (DiffRevision)
 import App.Fossa.VendoredDependency (VendoredDependency (..))
-import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision (..), ReleaseGroupReleaseRevision, ReleaseGroupRevision)
+import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision (..))
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
@@ -44,22 +48,7 @@ import Data.ByteString.Char8 qualified as C8
 import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
-import Fossa.API.Types (
-  AddReleaseGroupProjectsResponse,
-  ApiOpts,
-  Archive,
-  Build,
-  Contributors,
-  CreateReleaseGroupResponse,
-  CustomBuildUploadPermissions,
-  Issues,
-  Organization,
-  Project,
-  RevisionDependencyCache,
-  SignedURL,
-  TokenTypeResponse,
-  UploadResponse,
- )
+import Fossa.API.Types (ApiOpts, Archive, Build, Contributors, CreateReleaseGroupRequest, CreateReleaseGroupResponse, CustomBuildUploadPermissions, Issues, Organization, Policy, Project, ReleaseGroup, ReleaseGroupRelease, RevisionDependencyCache, SignedURL, Team, TokenTypeResponse, UpdateReleaseRequest, UploadResponse)
 import Srclib.Types (Locator, SourceUnit, renderLocator)
 
 -- Fetches an organization from the API
@@ -309,11 +298,33 @@ createReleaseGroup ::
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  ReleaseGroupRevision ->
+  CreateReleaseGroupRequest ->
   m CreateReleaseGroupResponse
 createReleaseGroup rev = do
   apiOpts <- ask
   API.createReleaseGroup apiOpts rev
+
+getPolicies ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  m [Policy]
+getPolicies = do
+  apiOpts <- ask
+  API.getPolicies apiOpts
+
+getTeams ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  m [Team]
+getTeams = do
+  apiOpts <- ask
+  API.getTeams apiOpts
 
 deleteReleaseGroup ::
   ( Has (Lift IO) sig m
@@ -323,9 +334,9 @@ deleteReleaseGroup ::
   ) =>
   Text ->
   m ()
-deleteReleaseGroup title = do
+deleteReleaseGroup releaseGroupId = do
   apiOpts <- ask
-  API.deleteReleaseGroup apiOpts title
+  API.deleteReleaseGroup apiOpts releaseGroupId
 
 deleteReleaseGroupRelease ::
   ( Has (Lift IO) sig m
@@ -336,19 +347,43 @@ deleteReleaseGroupRelease ::
   Text ->
   Text ->
   m ()
-deleteReleaseGroupRelease title release = do
+deleteReleaseGroupRelease releaseGroupId releaseId = do
   apiOpts <- ask
-  API.deleteReleaseGroupRelease apiOpts title release
+  API.deleteReleaseGroupRelease apiOpts releaseGroupId releaseId
 
-addReleaseGroupProjects ::
+updateReleaseGroupRelease ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   Text ->
-  ReleaseGroupReleaseRevision ->
-  m AddReleaseGroupProjectsResponse
-addReleaseGroupProjects title releaseRev = do
+  Text ->
+  UpdateReleaseRequest ->
+  m ReleaseGroupRelease
+updateReleaseGroupRelease releaseGroupId releaseId updateReq = do
   apiOpts <- ask
-  API.addReleaseGroupProjects apiOpts title releaseRev
+  API.updateReleaseGroupRelease apiOpts releaseGroupId releaseId updateReq
+
+getReleaseGroups ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  m [ReleaseGroup]
+getReleaseGroups = do
+  apiOpts <- ask
+  API.getReleaseGroups apiOpts
+
+getReleaseGroupReleases ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Text ->
+  m [ReleaseGroupRelease]
+getReleaseGroupReleases releaseGroupId = do
+  apiOpts <- ask
+  API.getReleaseGroupReleases apiOpts releaseGroupId

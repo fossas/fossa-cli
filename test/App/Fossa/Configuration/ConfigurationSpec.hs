@@ -48,12 +48,12 @@ expectedConfigFile path =
 expectedReleaseGroup :: ConfigReleaseGroup
 expectedReleaseGroup =
   ConfigReleaseGroup
-    { configReleaseGroupTitle = Just "test-title"
-    , configReleaseGroupRelease = Just "test-release"
+    { configReleaseGroupTitle = Just "example-title"
+    , configReleaseGroupRelease = Just "example-release-title"
     , configReleaseGroupProjects = Just [expectedReleaseGroupProject]
-    , configReleaseGroupLicensePolicy = Just "test-license-policy"
-    , configReleaseGroupSecurityPolicy = Just "test-security-policy"
-    , configReleaseGroupQualityPolicy = Just "test-quality-policy"
+    , configReleaseGroupLicensePolicy = Just "example-license-policy"
+    , configReleaseGroupSecurityPolicy = Just "example-security-policy"
+    , configReleaseGroupQualityPolicy = Just "example-quality-policy"
     , configReleaseGroupTeams = Just ["team-1", "team-2"]
     }
 
