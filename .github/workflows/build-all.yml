@@ -307,7 +307,7 @@ jobs:
 
     - name: Install Cosign
       if: ${{ github.ref_type == 'tag' }}
-      uses: sigstore/cosign-installer@v3.1.1
+      uses: sigstore/cosign-installer@v3.4.0
 
     - name: Sign Release (Linux)
       if: ${{ github.ref_type == 'tag' }}
