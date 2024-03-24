@@ -4,6 +4,7 @@ module App.Fossa.Container.Sources.Registry (
   revisionFromRegistry,
 ) where
 
+import App.Fossa.Config.Analyze (WithoutDefaultFilters)
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
 import Container.Docker.Credentials (useCredentialFromConfig)
 import Container.Docker.SourceParser (RegistryImageSource (RegistryImageSource), defaultRegistry)
@@ -15,6 +16,7 @@ import Control.Effect.Debug (Debug, Has)
 import Control.Effect.Diagnostics (Diagnostics, recover)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.Telemetry (Telemetry)
+import Data.Flag (Flag)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -76,12 +78,13 @@ analyzeFromRegistry ::
   ) =>
   Bool ->
   AllFilters ->
+  Flag WithoutDefaultFilters ->
   RegistryImageSource ->
   m ContainerScan
-analyzeFromRegistry systemDepsOnly filters img =
+analyzeFromRegistry systemDepsOnly filters withoutDefaultFilters img =
   runFromRegistry
     img
-    $ analyzeFromDockerArchive systemDepsOnly filters
+    $ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
 
 listTargetsFromRegistry ::
   ( Has Diagnostics sig m

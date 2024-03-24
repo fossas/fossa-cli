@@ -10,6 +10,7 @@ module App.Fossa.Container.Scan (
   ContainerImageSource (..),
 ) where
 
+import App.Fossa.Config.Analyze (WithoutDefaultFilters)
 import App.Fossa.Config.Container.Common (ImageText (unImageText))
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, revisionFromDockerArchive)
 import App.Fossa.Container.Sources.DockerEngine (analyzeFromDockerEngine, revisionFromDockerEngine)
@@ -25,6 +26,7 @@ import Control.Effect.DockerEngineApi (DockerEngineApi, getDockerImageSize, isDo
 import Control.Effect.Lift (Has, Lift)
 import Control.Effect.Telemetry (Telemetry)
 import Control.Monad (unless)
+import Data.Flag (Flag)
 import Data.Functor (($>))
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.String.Conversion (
@@ -79,26 +81,27 @@ scanImage ::
   , Has Debug sig m
   ) =>
   AllFilters ->
+  Flag WithoutDefaultFilters ->
   Bool ->
   ImageText ->
   Text ->
   Text ->
   m ContainerScan
-scanImage filters systemDepsOnly imgText dockerHost imageArch = do
+scanImage filters withoutDefaultFilters systemDepsOnly imgText dockerHost imageArch = do
   parsedSource <- runDockerEngineApi dockerHost $ parseContainerImageSource (unImageText imgText) imageArch
   case parsedSource of
     DockerArchive tarball ->
       context "Analyzing via docker archive" $
-        analyzeFromDockerArchive systemDepsOnly filters tarball
+        analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball
     DockerEngine imgTag ->
       context "Analyzing via Docker engine API" $
-        analyzeFromDockerEngine systemDepsOnly filters dockerHost imgTag
+        analyzeFromDockerEngine systemDepsOnly filters withoutDefaultFilters dockerHost imgTag
     Podman img ->
       context "Analyzing via podman" $
-        analyzeFromPodman systemDepsOnly filters img
+        analyzeFromPodman systemDepsOnly filters withoutDefaultFilters img
     Registry registrySrc ->
       context "Analyzing via registry" $
-        analyzeFromRegistry systemDepsOnly filters registrySrc
+        analyzeFromRegistry systemDepsOnly filters withoutDefaultFilters registrySrc
 
 scanImageNoAnalysis ::
   ( Has Diagnostics sig m

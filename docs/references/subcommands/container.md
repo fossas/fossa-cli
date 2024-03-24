@@ -74,6 +74,40 @@ The `--output` flag outputs dependency graph information to the terminal rather 
 fossa container analyze redis:alpine --output
 ```
 
+## Ignore default filters
+
+Default filters are filters which `fossa-cli` applies by default. These filters,
+provide sensible non-production target exclusion. As `fossa-cli` relies on manifest and lock files provided in the project's directory, 
+default filters, intentionally skip `node_modules/` and such directories. If `fossa-cli` discovers and
+analyzes project found in `node_modules/`: `fossa-cli` will not be able to infer
+the dependency's scope (development or production) and may double count dependencies.
+
+Specifically, `fossa-cli` by default skips any targets found within the following directories:
+
+- `dist-newstyle`
+- `doc/`
+- `docs/`
+- `test/`
+- `tests/`
+- `example/`
+- `examples/`
+- `vendor/`
+- `node_modules/`
+- `.srclib-cache/`
+- `spec/`
+- `Godeps/`
+- `.git/`
+- `bower_components/`
+- `third_party/`
+- `third-party/`
+- `Carthage/`
+- `Checkouts/`
+
+To disable default filters, provide `--without-default-filters` flag when performing `fossa container analyze`. Currently,
+it is not possible to disable only a subset of default filters. If you would like to only apply a subset of default filters, you can
+use `--without-default-filters` in conjunction with [exclusion filters](./../files/fossa-yml.md#analysis-target-configuration). Refer to
+[exclusion filters walkthough](../../walkthroughs/analysis-target-configuration.md) for example on how to apply path and target exclusion filters.
+
 ### F.A.Q.
 
 1. How can I only scan system dependencies?

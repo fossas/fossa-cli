@@ -6,6 +6,7 @@ module App.Fossa.Container.Sources.DockerEngine (
   revisionFromDockerEngine,
 ) where
 
+import App.Fossa.Config.Analyze (WithoutDefaultFilters)
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
 import Container.Types (ContainerScan)
 import Control.Carrier.DockerEngineApi (runDockerEngineApi)
@@ -15,6 +16,7 @@ import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.DockerEngineApi (getDockerImage)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.Telemetry (Telemetry)
+import Data.Flag (Flag)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Discovery.Filters (AllFilters)
@@ -54,14 +56,15 @@ analyzeFromDockerEngine ::
   ) =>
   Bool ->
   AllFilters ->
+  Flag WithoutDefaultFilters ->
   Text ->
   Text ->
   m ContainerScan
-analyzeFromDockerEngine systemDepsOnly filters engineHost imgTag =
+analyzeFromDockerEngine systemDepsOnly filters withoutDefaultFilters engineHost imgTag =
   runFromDockerEngine
     engineHost
     imgTag
-    $ analyzeFromDockerArchive systemDepsOnly filters
+    $ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
 
 listTargetsFromDockerEngine ::
   ( Has Diagnostics sig m
