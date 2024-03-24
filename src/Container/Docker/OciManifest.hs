@@ -72,8 +72,8 @@ data OciManifestLayer = OciManifestLayer
 
 instance FromJSON OciManifestLayer where
   parseJSON = withObject "LayerEntry" $ \o ->
-    OciManifestLayer
-      <$> (RepoDigest <$> o .: "digest")
+    OciManifestLayer . RepoDigest
+      <$> (o .: "digest")
       <*> o .: "mediaType"
 
 data LayerKind

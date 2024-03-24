@@ -90,7 +90,7 @@ pipShowParser = many (try parseMetadata <|> try parseSection)
     parseMetadata = do
       name <- parseField "Name"
       version <- parseField "Version"
-      requires <- filter (/= "") <$> (Text.splitOn ", " <$> parseField "Requires")
+      requires <- filter (/= "") . Text.splitOn ", " <$> (parseField "Requires")
       pure $ PackageMetadata name version requires
 
     parseField :: Text -> Parser Text
