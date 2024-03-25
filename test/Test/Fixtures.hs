@@ -100,13 +100,13 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False False API.Free True
+organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False False API.Free
 
 organizationWithPreflightChecks :: API.Organization
-organizationWithPreflightChecks = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Free False
+organizationWithPreflightChecks = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Free
 
 organizationWithPremiumSubscription :: API.Organization
-organizationWithPremiumSubscription = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Premium False
+organizationWithPremiumSubscription = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Premium
 
 pushToken :: API.TokenTypeResponse
 pushToken = API.TokenTypeResponse API.Push

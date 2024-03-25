@@ -510,7 +510,6 @@ data Organization = Organization
   , orgSupportsReachability :: Bool
   , orgSupportsPreflightChecks :: Bool
   , orgSubscription :: Subscription
-  , orgSupportsReleaseGroups :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -533,7 +532,6 @@ blankOrganization =
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = False
     , orgSubscription = Free
-    , orgSupportsReleaseGroups = False
     }
 
 instance FromJSON Organization where
@@ -586,9 +584,6 @@ instance FromJSON Organization where
       <*> obj
         .:? "subscription"
         .!= Free
-      <*> obj
-        .:? "supportsReleaseGroups"
-        .!= False
 
 data TokenType
   = Push
@@ -1063,7 +1058,7 @@ data UpdateReleaseProjectRequest = UpdateReleaseProjectRequest
   , updateReleaseProjectRevisionId :: Text
   , updateReleaseProjectBranch :: Text
   , -- Existence of this field signifies to core that the project exists and the release project just needs to be updated.
-    -- If this field is empty it means that we are adding a new project to the release/
+    -- If this field is empty it means that we are adding a new project to the release.
     maybeReleaseGroupId :: Maybe Int
   }
   deriving (Eq, Ord, Show)

@@ -61,7 +61,7 @@ constructUpdateRequest targetRelease releaseRevision = do
     -- `maybeReleaseGroupId` in UpdateReleaseProjectRequest is used by CORE to identify if the project is a new project or if it needs an update.
     -- If the value Nothing then it means that it is a new project, otherwise it is an existing project that will be updated.
     -- TODO: An update means that the project will be queued for scanning. With the current logic, even if the revisionId and branch remain the same,
-    --       we are still re-scanning the project. We can introduce a stricter filtering mechanism to only update the project if the revisionId / branch differ from the existing values
+    --       we are still re-scanning the project. We can introduce a stricter filtering mechanism to only update the project if the revisionId / branch differ from the existing values.
     constructUpdateProjectRequest :: Set.Set Text -> ReleaseGroupProjectRevision -> UpdateReleaseProjectRequest
     constructUpdateProjectRequest locatorSet ReleaseGroupProjectRevision{..} = do
       let maybeReleaseGroupId = if Set.member releaseGroupProjectLocator locatorSet then Just (releaseGroupReleaseId targetRelease) else Nothing

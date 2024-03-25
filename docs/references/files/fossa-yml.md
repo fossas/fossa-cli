@@ -211,7 +211,7 @@ The name of the license policy associated with the release group.
 #### `releaseGroup.securityPolicy:`
 The name of the security policy associated with the release group.
 
-#### `releaseGroup.securityPolicy:`
+#### `releaseGroup.qualityPolicy:`
 The name of the quality policy associated with the release group.
 
 #### `releaseGroup.teams:`

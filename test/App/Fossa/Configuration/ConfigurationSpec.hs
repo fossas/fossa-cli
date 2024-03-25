@@ -6,7 +6,20 @@ module App.Fossa.Configuration.ConfigurationSpec (
   expectedReleaseGroup,
 ) where
 
-import App.Fossa.Config.ConfigFile (ConfigFile (..), ConfigGrepEntry (..), ConfigProject (..), ConfigReleaseGroup (..), ConfigReleaseGroupProject (..), ConfigRevision (..), ConfigTargets (..), ExperimentalConfigs (..), ExperimentalGradleConfigs (ExperimentalGradleConfigs), MavenScopeConfig (..), VendoredDependencyConfigs (..), resolveConfigFile)
+import App.Fossa.Config.ConfigFile (
+  ConfigFile (..),
+  ConfigGrepEntry (..),
+  ConfigProject (..),
+  ConfigReleaseGroup (..),
+  ConfigReleaseGroupProject (..),
+  ConfigRevision (..),
+  ConfigTargets (..),
+  ExperimentalConfigs (..),
+  ExperimentalGradleConfigs (ExperimentalGradleConfigs),
+  MavenScopeConfig (..),
+  VendoredDependencyConfigs (..),
+  resolveConfigFile,
+ )
 import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
 import App.Types (Policy (PolicyName), ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag

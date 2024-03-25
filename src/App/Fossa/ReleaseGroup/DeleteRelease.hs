@@ -34,7 +34,7 @@ deleteReleaseMain DeleteReleaseConfig{..} = do
       let releaseGroupIdText = toText releaseGroupId
 
       releases <- getReleaseGroupReleases releaseGroupIdText
-      when (length releases <= 1) $ fatalText "You are not permitted to delete a release when there is only have one release in your release group"
+      when (length releases <= 1) $ fatalText "You are not permitted to delete a release when there is only one release in your release group"
 
       release <- retrieveReleaseGroupRelease releaseGroupReleaseTitle releases
       let releaseId = releaseGroupReleaseId release

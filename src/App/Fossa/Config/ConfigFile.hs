@@ -223,9 +223,6 @@ data ConfigProject = ConfigProject
   }
   deriving (Eq, Ord, Show)
 
--- TODO: Update the policy fields to be a Policy object to accept either id or name.
---       We default to selecting the first policy that matches the policy name in
---       CORE due to the fact that policy names are not unique.
 data ConfigReleaseGroup = ConfigReleaseGroup
   { configReleaseGroupTitle :: Maybe Text
   , configReleaseGroupRelease :: Maybe Text

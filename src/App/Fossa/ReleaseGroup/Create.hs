@@ -34,8 +34,8 @@ createMain CreateConfig{..} = do
 
   releaseGroups <- getReleaseGroups
   maybeReleaseGroupId <- retrieveReleaseGroupId (releaseGroupTitle releaseGroupRevision) releaseGroups
-  -- Having release groups with the same name is a current functionality. However, we want to refrain from this on the
-  -- CLI as it will make it harder to determine which release groups users want to modify in our other release group commands.
+  -- Having release groups with the same name is a current functionality. However, we want to refrain from creating release groups with the same
+  -- name on the CLI as it will make it harder to determine which release groups users want to modify in our other release group commands.
   when (isJust maybeReleaseGroupId) $
     fatalText $
       "Release Group `" <> releaseGroupTitle releaseGroupRevision <> "` already exists"

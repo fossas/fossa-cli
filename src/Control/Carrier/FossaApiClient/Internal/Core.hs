@@ -48,7 +48,27 @@ import Data.ByteString.Char8 qualified as C8
 import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
-import Fossa.API.Types (ApiOpts, Archive, Build, Contributors, CreateReleaseGroupRequest, CreateReleaseGroupResponse, CustomBuildUploadPermissions, Issues, Organization, Policy, Project, ReleaseGroup, ReleaseGroupRelease, RevisionDependencyCache, SignedURL, Team, TokenTypeResponse, UpdateReleaseRequest, UploadResponse)
+import Fossa.API.Types (
+  ApiOpts,
+  Archive,
+  Build,
+  Contributors,
+  CreateReleaseGroupRequest,
+  CreateReleaseGroupResponse,
+  CustomBuildUploadPermissions,
+  Issues,
+  Organization,
+  Policy,
+  Project,
+  ReleaseGroup,
+  ReleaseGroupRelease,
+  RevisionDependencyCache,
+  SignedURL,
+  Team,
+  TokenTypeResponse,
+  UpdateReleaseRequest,
+  UploadResponse,
+ )
 import Srclib.Types (Locator, SourceUnit, renderLocator)
 
 -- Fetches an organization from the API
