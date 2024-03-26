@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.9.11
+- `--detect-dynamic`: Fix deb tatic parsing ([#1401](https://github.com/fossas/fossa-cli/pull/1401)).
+
 ## v3.9.10
 - `--without-default-filters`: Users can now disable default path filters ([#1396](https://github.com/fossas/fossa-cli/pull/1396/files)).
 
