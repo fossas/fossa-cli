@@ -10,7 +10,6 @@ import App.Fossa.Config.ReleaseGroup.Create (CreateConfig (..))
 import App.Fossa.ReleaseGroup.Common (retrieveReleaseGroupId)
 import App.Types (ReleaseGroupRevision (..))
 import Control.Algebra (Has)
-import Control.Carrier.StickyLogger (runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics, context, errHelp, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, createReleaseGroup, getPolicies, getReleaseGroups, getTeams)
 import Control.Effect.Lift (Lift)
@@ -19,7 +18,7 @@ import Data.Map qualified as Map
 import Data.Maybe (isJust, mapMaybe)
 import Data.String.Conversion (ToText (..))
 import Data.Text (Text, intercalate)
-import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logInfo, logStdout)
+import Effect.Logger (Logger, logInfo, logStdout)
 import Fossa.API.Types (CreateReleaseGroupRequest (..), CreateReleaseGroupResponse (..), Policy (..), PolicyType (..), Team (..))
 
 createMain ::

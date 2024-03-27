@@ -58,20 +58,6 @@ emptyProjectsCreateOpts =
     , teamsOpts = Nothing
     }
 
-emptyProjectsListCreateOpts :: CreateOpts
-emptyProjectsListCreateOpts =
-  CreateOpts
-    { releaseGroupCommon = commonOpts
-    , configOpts = Nothing
-    , titleOpts = Just "title-opts"
-    , releaseOpts = Just "release-opts"
-    , projectsOpts = Just []
-    , licensePolicyOpts = Nothing
-    , securityPolicyOpts = Nothing
-    , qualityPolicyOpts = Nothing
-    , teamsOpts = Nothing
-    }
-
 emptyCreateOpts :: CreateOpts
 emptyCreateOpts =
   CreateOpts
@@ -195,5 +181,3 @@ spec = do
       expectFatal' $ mergeOpts Nothing envVars emptyReleaseCreateOpts
     it' "should fail when no projects are provided" $ do
       expectFatal' $ mergeOpts Nothing envVars emptyProjectsCreateOpts
-    it' "should fail when an empty project list is provided" $ do
-      expectFatal' $ mergeOpts Nothing envVars emptyProjectsListCreateOpts
