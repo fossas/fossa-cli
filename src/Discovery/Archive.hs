@@ -110,8 +110,14 @@ selectUnarchiver :: Has (Lift IO) sig m => String -> Maybe (Path Abs Dir -> Path
 selectUnarchiver file
   | ".tar" `isSuffixOf` file = Just extractTar
   | ".tar.gz" `isSuffixOf` file = Just extractTarGz
+  | ".tgz" `isSuffixOf` file = Just extractTarGz
+  | ".taz" `isSuffixOf` file = Just extractTarGz
   | ".tar.xz" `isSuffixOf` file = Just extractTarXz
+  | ".txz" `isSuffixOf` file = Just extractTarXz
   | ".tar.bz2" `isSuffixOf` file = Just extractTarBz2
+  | ".tbz" `isSuffixOf` file = Just extractTarBz2
+  | ".tbz2" `isSuffixOf` file = Just extractTarBz2
+  | ".tz2" `isSuffixOf` file = Just extractTarBz2
   | ".zip" `isSuffixOf` file = Just extractZip
   | ".jar" `isSuffixOf` file = Just extractZip
   | ".rpm" `isSuffixOf` file = Just extractRpm
