@@ -106,6 +106,7 @@ We support the following archive formats:
 - `.zip`
 - `.tar`
 - `.tar.gz`
+- `.tgz`
 - `.tar.xz`
 - `.tar.bz2`
 - `.jar`
