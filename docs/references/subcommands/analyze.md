@@ -111,6 +111,7 @@ We support the following archive formats:
 - `.tar.xz`
 - `.txz`
 - `.tar.bz2`
+- `.tbz`
 - `.tbz2`
 - `.tz2`
 - `.jar`

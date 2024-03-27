@@ -1,7 +1,7 @@
 # FOSSA CLI Changelog
 
 ## v3.9.10
-- Support unarchiving `tgz`, `txz`, `tbz2`, and `tz2` files for `--unpack-archives` ([#1402](https://github.com/fossas/fossa-cli/pull/1402/files))
+- Support unarchiving `tgz`, `taz`, `txz`, `tbz`, `tbz2`, and `tz2` files for `--unpack-archives` ([#1402](https://github.com/fossas/fossa-cli/pull/1402/files))
 - `--without-default-filters`: Users can now disable default path filters ([#1396](https://github.com/fossas/fossa-cli/pull/1396/files)).
 
 ## v3.9.8
