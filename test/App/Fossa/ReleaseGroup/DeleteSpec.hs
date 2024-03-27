@@ -16,10 +16,10 @@ deleteConfig :: DeleteConfig
 deleteConfig = DeleteConfig apiOpts' "example-title"
 
 expectDeleteReleaseGroupSuccess :: Has MockApi sig m => m ()
-expectDeleteReleaseGroupSuccess = DeleteReleaseGroup "1" `alwaysReturns` ()
+expectDeleteReleaseGroupSuccess = DeleteReleaseGroup 1 `alwaysReturns` ()
 
 expectDeleteReleaseGroupToFail :: Has MockApi sig m => m ()
-expectDeleteReleaseGroupToFail = fails (DeleteReleaseGroup "1") "fails"
+expectDeleteReleaseGroupToFail = fails (DeleteReleaseGroup 1) "fails"
 
 spec :: Spec
 spec = do

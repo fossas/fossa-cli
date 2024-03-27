@@ -206,13 +206,13 @@ The revision associated with a project. Project revisions can be found in the UI
 The branch associated with the project.
 
 #### `releaseGroup.licensePolicy:`
-The name of the license policy associated with the release group.
+The name of the license policy associated with the release group. Refer to the [documentation](https://docs.fossa.com/docs/configuring-a-licensing-policy) for addition details on license policies.
 
 #### `releaseGroup.securityPolicy:`
-The name of the security policy associated with the release group.
+The name of the security policy associated with the release group. Refer to the [documentation](https://docs.fossa.com/docs/configuring-a-security-policy) for addition details on security policies.
 
 #### `releaseGroup.qualityPolicy:`
-The name of the quality policy associated with the release group.
+The name of the quality policy associated with the release group. Refer to the [documentation](https://docs.fossa.com/docs/configuring-quality-policies-copy) for addition details on quality policies.
 
 #### `releaseGroup.teams:`
 A list of team names that are associated with the release group.

@@ -140,12 +140,12 @@ data FossaApiClientF a where
   UploadFirstPartyScanResult :: SignedURL -> NE.NonEmpty FullSourceUnit -> FossaApiClientF ()
   UploadContentForReachability :: ByteString -> FossaApiClientF (Text)
   UploadBuildForReachability :: ProjectRevision -> ProjectMetadata -> [SourceUnitReachability] -> FossaApiClientF ()
-  DeleteReleaseGroup :: Text -> FossaApiClientF ()
-  DeleteReleaseGroupRelease :: Text -> Text -> FossaApiClientF ()
+  DeleteReleaseGroup :: Int -> FossaApiClientF ()
+  DeleteReleaseGroupRelease :: Int -> Int -> FossaApiClientF ()
   CreateReleaseGroup :: CreateReleaseGroupRequest -> FossaApiClientF CreateReleaseGroupResponse
-  UpdateReleaseGroupRelease :: Text -> Text -> UpdateReleaseRequest -> FossaApiClientF ReleaseGroupRelease
+  UpdateReleaseGroupRelease :: Int -> Int -> UpdateReleaseRequest -> FossaApiClientF ReleaseGroupRelease
   GetReleaseGroups :: FossaApiClientF [ReleaseGroup]
-  GetReleaseGroupReleases :: Text -> FossaApiClientF [ReleaseGroupRelease]
+  GetReleaseGroupReleases :: Int -> FossaApiClientF [ReleaseGroupRelease]
 
 deriving instance Show (FossaApiClientF a)
 
@@ -278,13 +278,13 @@ getPolicies = sendSimple GetPolicies
 getTeams :: Has FossaApiClient sig m => m [Team]
 getTeams = sendSimple GetTeams
 
-deleteReleaseGroup :: Has FossaApiClient sig m => Text -> m ()
+deleteReleaseGroup :: Has FossaApiClient sig m => Int -> m ()
 deleteReleaseGroup releaseGroupId = sendSimple $ DeleteReleaseGroup releaseGroupId
 
-deleteReleaseGroupRelease :: Has FossaApiClient sig m => Text -> Text -> m ()
+deleteReleaseGroupRelease :: Has FossaApiClient sig m => Int -> Int -> m ()
 deleteReleaseGroupRelease releaseGroupId releaseId = sendSimple $ DeleteReleaseGroupRelease releaseGroupId releaseId
 
-updateReleaseGroupRelease :: Has FossaApiClient sig m => Text -> Text -> UpdateReleaseRequest -> m ReleaseGroupRelease
+updateReleaseGroupRelease :: Has FossaApiClient sig m => Int -> Int -> UpdateReleaseRequest -> m ReleaseGroupRelease
 updateReleaseGroupRelease releaseGroupId releaseId updateReq = sendSimple $ UpdateReleaseGroupRelease releaseGroupId releaseId updateReq
 
 createReleaseGroup :: Has FossaApiClient sig m => CreateReleaseGroupRequest -> m CreateReleaseGroupResponse
@@ -293,5 +293,5 @@ createReleaseGroup req = sendSimple $ CreateReleaseGroup req
 getReleaseGroups :: Has FossaApiClient sig m => m [ReleaseGroup]
 getReleaseGroups = sendSimple GetReleaseGroups
 
-getReleaseGroupReleases :: Has FossaApiClient sig m => Text -> m [ReleaseGroupRelease]
+getReleaseGroupReleases :: Has FossaApiClient sig m => Int -> m [ReleaseGroupRelease]
 getReleaseGroupReleases releaseGroupId = sendSimple $ GetReleaseGroupReleases releaseGroupId

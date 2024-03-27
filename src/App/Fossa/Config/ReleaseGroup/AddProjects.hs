@@ -30,6 +30,7 @@ import Options.Applicative (
   many,
   optional,
   short,
+  some,
   strOption,
  )
 import Options.Applicative.Builder (progDescDoc)
@@ -67,7 +68,7 @@ cliParser =
     <*> optional (strOption (applyFossaStyle <> long "config" <> short 'c' <> helpDoc configHelp))
     <*> optional (strOption (applyFossaStyle <> long "title" <> short 't' <> stringToHelpDoc "The title of the FOSSA release group"))
     <*> optional (strOption (applyFossaStyle <> long "release" <> short 'r' <> stringToHelpDoc "The release of the FOSSA release group"))
-    <*> optional (many (releaseGroupProjectOpts))
+    <*> optional (some (releaseGroupProjectOpts))
 
 mergeOpts ::
   ( Has Diagnostics sig m
@@ -84,14 +85,7 @@ mergeOpts maybeConfig envVars cliOpts@AddProjectsOpts{..} = do
 
 collectReleaseGroupReleaseRevision :: (Has Diagnostics sig m) => Maybe ConfigFile -> AddProjectsOpts -> m ReleaseGroupReleaseRevision
 collectReleaseGroupReleaseRevision maybeConfig AddProjectsOpts{..} = do
-  -- NOTE: projectsOpts default to Just [] when it is not set through CLI flags.
-  --       Convert these to Nothing so we can try to extract from the config file.
-  let projectsOpts' = case projectsOpts of
-        Nothing -> Nothing
-        Just [] -> Nothing
-        Just projects -> Just projects
-
   releaseTitle <- mergeReleaseGroupRelease releaseOpts (maybeConfig >>= configReleaseGroup >>= configReleaseGroupRelease)
-  projects <- mergeReleaseGroupProjectRevision projectsOpts' (maybeConfig >>= configReleaseGroup >>= configReleaseGroupProjects)
+  projects <- mergeReleaseGroupProjectRevision projectsOpts (maybeConfig >>= configReleaseGroup >>= configReleaseGroupProjects)
 
   pure $ ReleaseGroupReleaseRevision releaseTitle projects

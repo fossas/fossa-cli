@@ -11,7 +11,6 @@ import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, deleteReleaseGroupRelease, getReleaseGroupReleases, getReleaseGroups)
 import Control.Effect.Lift (Lift)
 import Control.Monad (when)
-import Data.String.Conversion (ToText (..))
 import Effect.Logger (Logger, logInfo, logStdout)
 import Fossa.API.Types (ReleaseGroupRelease (..))
 
@@ -31,13 +30,11 @@ deleteReleaseMain DeleteReleaseConfig{..} = do
   case maybeReleaseGroupId of
     Nothing -> fatalText $ "Release group `" <> releaseGroupTitle <> "` not found"
     Just releaseGroupId -> do
-      let releaseGroupIdText = toText releaseGroupId
-
-      releases <- getReleaseGroupReleases releaseGroupIdText
+      releases <- getReleaseGroupReleases releaseGroupId
       when (length releases <= 1) $ fatalText "You are not permitted to delete a release when there is only one release in your release group"
 
       release <- retrieveReleaseGroupRelease releaseGroupReleaseTitle releases
       let releaseId = releaseGroupReleaseId release
-      deleteReleaseGroupRelease releaseGroupIdText $ toText releaseId
+      deleteReleaseGroupRelease releaseGroupId releaseId
 
-      logStdout $ "Release " <> "`" <> releaseGroupReleaseTitle <> "`" <> " has been deleted"
+      logStdout $ "Release " <> "`" <> releaseGroupReleaseTitle <> "`" <> " has been deleted" <> "\n"

@@ -31,7 +31,7 @@ updateReleaseRequest = do
           { updateReleaseProjectLocator = "custom+1/git@github.com/fossa-cli"
           , updateReleaseProjectRevisionId = "custom+1/git@github.com/fossa-cli$12345"
           , updateReleaseProjectBranch = "main"
-          , maybeReleaseGroupId = Nothing
+          , targetReleaseGroupId = Nothing
           }
   UpdateReleaseRequest
     { updatedReleaseTitle = "example-release-title"
@@ -49,10 +49,10 @@ expectedRelease = do
   Fixtures.release{Types.releaseGroupReleaseProjects = [project]}
 
 expectReleaseGroupAddProjectsSuccess :: Has MockApi sig m => m ()
-expectReleaseGroupAddProjectsSuccess = (UpdateReleaseGroupRelease "1" "2" updateReleaseRequest) `alwaysReturns` expectedRelease
+expectReleaseGroupAddProjectsSuccess = (UpdateReleaseGroupRelease 1 2 updateReleaseRequest) `alwaysReturns` expectedRelease
 
 expectReleaseGroupAddProjectsToFail :: Has MockApi sig m => m ()
-expectReleaseGroupAddProjectsToFail = fails (UpdateReleaseGroupRelease "1" "2" updateReleaseRequest) "fails"
+expectReleaseGroupAddProjectsToFail = fails (UpdateReleaseGroupRelease 1 2 updateReleaseRequest) "fails"
 
 spec :: Spec
 spec = do
@@ -65,13 +65,13 @@ spec = do
 
     it' "should fail to update the release" $ do
       GetReleaseGroups `returnsOnce` [Fixtures.releaseGroup]
-      GetReleaseGroupReleases "1" `returnsOnce` [Fixtures.release]
+      GetReleaseGroupReleases 1 `returnsOnce` [Fixtures.release]
       expectReleaseGroupAddProjectsToFail
       expectFatal' $ ignoreDebug $ addProjectsMain addProjectsConfig
 
     it' "should successfully to update the release" $ do
       GetReleaseGroups `returnsOnce` [Fixtures.releaseGroup]
-      GetReleaseGroupReleases "1" `returnsOnce` [Fixtures.release]
+      GetReleaseGroupReleases 1 `returnsOnce` [Fixtures.release]
       expectReleaseGroupAddProjectsSuccess
       res <- ignoreDebug $ addProjectsMain addProjectsConfig
       res `shouldBe'` ()

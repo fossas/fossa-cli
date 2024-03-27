@@ -10,7 +10,6 @@ import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, deleteReleaseGroup, getReleaseGroups)
 import Control.Effect.Lift (Lift)
-import Data.String.Conversion (toText)
 import Effect.Logger (Logger, logInfo, logStdout)
 
 deleteMain ::
@@ -29,5 +28,5 @@ deleteMain DeleteConfig{..} = do
   case maybeReleaseGroupId of
     Nothing -> fatalText $ "Release group `" <> releaseGroupTitle <> "` not found"
     Just releaseGroupId -> do
-      deleteReleaseGroup $ toText releaseGroupId
-      logStdout $ "Release group " <> "`" <> releaseGroupTitle <> "`" <> " has been deleted"
+      deleteReleaseGroup releaseGroupId
+      logStdout $ "Release group " <> "`" <> releaseGroupTitle <> "`" <> " has been deleted" <> "\n"

@@ -23,10 +23,10 @@ deleteReleaseConfig =
     }
 
 expectDeleteReleaseGroupReleaseSuccess :: Has MockApi sig m => m ()
-expectDeleteReleaseGroupReleaseSuccess = DeleteReleaseGroupRelease "1" "2" `alwaysReturns` ()
+expectDeleteReleaseGroupReleaseSuccess = DeleteReleaseGroupRelease 1 2 `alwaysReturns` ()
 
 expectDeleteReleaseGroupReleaseToFail :: Has MockApi sig m => m ()
-expectDeleteReleaseGroupReleaseToFail = fails (DeleteReleaseGroupRelease "1" "2") "fails"
+expectDeleteReleaseGroupReleaseToFail = fails (DeleteReleaseGroupRelease 1 2) "fails"
 
 spec :: Spec
 spec = do
@@ -37,18 +37,18 @@ spec = do
 
     it' "should fail when there is only one release" $ do
       GetReleaseGroups `returnsOnce` [Fixtures.releaseGroup]
-      GetReleaseGroupReleases "1" `returnsOnce` [Fixtures.release]
+      GetReleaseGroupReleases 1 `returnsOnce` [Fixtures.release]
       expectFatal' $ ignoreDebug $ deleteReleaseMain deleteReleaseConfig
 
     it' "should fail to delete release group release" $ do
       GetReleaseGroups `returnsOnce` [Fixtures.releaseGroup]
-      GetReleaseGroupReleases "1" `returnsOnce` [Fixtures.release, Fixtures.release{Types.releaseGroupReleaseTitle = "example-release-title-2"}]
+      GetReleaseGroupReleases 1 `returnsOnce` [Fixtures.release, Fixtures.release{Types.releaseGroupReleaseTitle = "example-release-title-2"}]
       expectDeleteReleaseGroupReleaseToFail
       expectFatal' $ ignoreDebug $ deleteReleaseMain deleteReleaseConfig
 
     it' "should delete release group release" $ do
       GetReleaseGroups `returnsOnce` [Fixtures.releaseGroup]
-      GetReleaseGroupReleases "1" `returnsOnce` [Fixtures.release, Fixtures.release{Types.releaseGroupReleaseTitle = "example-release-title-2"}]
+      GetReleaseGroupReleases 1 `returnsOnce` [Fixtures.release, Fixtures.release{Types.releaseGroupReleaseTitle = "example-release-title-2"}]
       expectDeleteReleaseGroupReleaseSuccess
       res <- ignoreDebug $ deleteReleaseMain deleteReleaseConfig
       res `shouldBe'` ()

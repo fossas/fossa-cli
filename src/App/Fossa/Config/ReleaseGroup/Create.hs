@@ -27,9 +27,9 @@ import Options.Applicative (
   helpDoc,
   info,
   long,
-  many,
   optional,
   short,
+  some,
   strOption,
   (<|>),
  )
@@ -71,12 +71,13 @@ cliParser =
     <*> optional (strOption (applyFossaStyle <> long "config" <> short 'c' <> helpDoc configHelp))
     <*> optional (strOption (applyFossaStyle <> long "title" <> short 't' <> stringToHelpDoc "The title of the FOSSA release group"))
     <*> optional (strOption (applyFossaStyle <> long "release" <> short 'r' <> stringToHelpDoc "The release of the FOSSA release group"))
-    <*> optional (many (releaseGroupProjectOpts))
+    <*> optional (some (releaseGroupProjectOpts))
     <*> optional (strOption (applyFossaStyle <> long "license-policy" <> short 'l' <> stringToHelpDoc "The name of the license compliance policy you want to assign to the FOSSA release group"))
     <*> optional (strOption (applyFossaStyle <> long "security-policy" <> short 's' <> stringToHelpDoc "The name of the security policy you want to assign to the FOSSA release group"))
     <*> optional (strOption (applyFossaStyle <> long "quality-policy" <> short 'q' <> stringToHelpDoc "The name of the quality policy you want to assign to the FOSSA release group"))
-    <*> optional (many (strOption (applyFossaStyle <> long "team" <> short 'T' <> stringToHelpDoc "The team you want to assign to the FOSSA release group")))
+    <*> optional (some (strOption (applyFossaStyle <> long "team" <> short 'T' <> stringToHelpDoc "The team you want to assign to the FOSSA release group")))
 
+-- <*> optional (some (strOption (applyFossaStyle <> long "team" <> short 'T' <> stringToHelpDoc "The team you want to assign to the FOSSA release group")))
 mergeOpts ::
   ( Has Diagnostics sig m
   ) =>
@@ -91,24 +92,26 @@ mergeOpts maybeConfig envVars cliOpts@CreateOpts{..} = do
 
 collectReleaseGroupRevision :: (Has Diagnostics sig m) => Maybe ConfigFile -> CreateOpts -> m ReleaseGroupRevision
 collectReleaseGroupRevision maybeConfig CreateOpts{..} = do
-  let licensePolicy = licensePolicyOpts <|> (maybeConfig >>= configReleaseGroup >>= configReleaseGroupLicensePolicy)
-      securityPolicy = securityPolicyOpts <|> (maybeConfig >>= configReleaseGroup >>= configReleaseGroupSecurityPolicy)
-      qualityPolicy = qualityPolicyOpts <|> (maybeConfig >>= configReleaseGroup >>= configReleaseGroupQualityPolicy)
-      -- NOTE: teamsOpts and projectsOpts default to Just [] when it is not set through CLI flags.
-      --       Convert these to Nothing so we can try to extract from the config file.
-      teams = case teamsOpts of
-        Nothing -> (maybeConfig >>= configReleaseGroup >>= configReleaseGroupTeams)
-        Just [] -> (maybeConfig >>= configReleaseGroup >>= configReleaseGroupTeams)
-        Just teamsOpts' -> Just teamsOpts'
-      projectsOpts' = case projectsOpts of
-        Nothing -> Nothing
-        Just [] -> Nothing
-        Just projects -> Just projects
+  let releaseGroupCfg = maybeConfig >>= configReleaseGroup
+      releaseGroupCfgValue getValue = releaseGroupCfg >>= getValue
 
-  title <- mergeReleaseGroupTitle titleOpts (maybeConfig >>= configReleaseGroup >>= configReleaseGroupTitle)
-  releaseTitle <- mergeReleaseGroupRelease releaseOpts (maybeConfig >>= configReleaseGroup >>= configReleaseGroupRelease)
-  projects <- mergeReleaseGroupProjectRevision projectsOpts' (maybeConfig >>= configReleaseGroup >>= configReleaseGroupProjects)
+      licensePolicy = licensePolicyOpts <|> releaseGroupCfgValue configReleaseGroupLicensePolicy
+      securityPolicy = securityPolicyOpts <|> releaseGroupCfgValue configReleaseGroupSecurityPolicy
+      qualityPolicy = qualityPolicyOpts <|> releaseGroupCfgValue configReleaseGroupQualityPolicy
+      teams = teamsOpts <|> releaseGroupCfgValue configReleaseGroupTeams
+
+  title <- mergeReleaseGroupTitle titleOpts $ releaseGroupCfgValue configReleaseGroupTitle
+  releaseTitle <- mergeReleaseGroupRelease releaseOpts $ releaseGroupCfgValue configReleaseGroupRelease
+  projects <- mergeReleaseGroupProjectRevision projectsOpts $ releaseGroupCfgValue configReleaseGroupProjects
 
   let releaseRevision = ReleaseGroupReleaseRevision releaseTitle projects
 
-  pure $ ReleaseGroupRevision title releaseRevision licensePolicy securityPolicy qualityPolicy teams
+  pure $
+    ReleaseGroupRevision
+      { releaseGroupTitle = title
+      , releaseGroupReleaseRevision = releaseRevision
+      , releaseGroupLicensePolicy = licensePolicy
+      , releaseGroupSecurityPolicy = securityPolicy
+      , releaseGroupQualityPolicy = qualityPolicy
+      , releaseGroupTeams = teams
+      }

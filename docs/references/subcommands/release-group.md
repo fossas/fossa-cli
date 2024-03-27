@@ -57,13 +57,13 @@ fossa release-group delete-release --title example-title --release example-relea
 
 ### F.A.Q.
 
-1. Why are `fossa.yml` configurations disabled for `fossa release-group delete` and `fossa release-group delete-release`?
+1. Why are `.fossa.yml` configurations disabled for `fossa release-group delete` and `fossa release-group delete-release`?
 
-This is done intentionally so that lingering configurations in `fossa.yml` are not extracted and used to mistakenly delete release groups or release group releases.
+This is done intentionally so that lingering configurations in `.fossa.yml` are not extracted and used to mistakenly delete release groups or release group releases.
 
 2. Where can I find my release groups? 
 
-Release groups can be found in the UI on the `Release Groups` page.
+[Release groups](https://app.fossa.com/release-groups) can be found in the UI on the `Release Groups` page.
 
 <img src="../../assets//release-group-title-example.png">
 

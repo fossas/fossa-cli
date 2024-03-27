@@ -181,18 +181,19 @@ spec = do
   currDir <- runIO getCurrentDir
   let scanDir = currDir </> fixtureDir
       absFilePath = scanDir </> $(mkRelFile ".fossa.yml")
+      envVars = EnvVars Nothing False False Nothing Nothing mempty
   describe "mergeOpts" $ do
     it' "should use values from create opts when both create opts and config values are present" $ do
-      createConfig <- mergeOpts (Just $ configFile absFilePath) (EnvVars Nothing False False Nothing Nothing mempty) createOpts
+      createConfig <- mergeOpts (Just $ configFile absFilePath) envVars createOpts
       shouldBe' expectedReleaseGroupRevisionFromOpts $ releaseGroupRevision createConfig
-    it' "should use values from config when both create opts values are empty" $ do
-      createConfig <- mergeOpts (Just $ configFile absFilePath) (EnvVars Nothing False False Nothing Nothing mempty) emptyCreateOpts
+    it' "should use values from config when create opts values are empty" $ do
+      createConfig <- mergeOpts (Just $ configFile absFilePath) envVars emptyCreateOpts
       shouldBe' expectedReleaseGroupRevisionFromConfig $ releaseGroupRevision createConfig
     it' "should fail when no title is provided" $ do
-      expectFatal' $ mergeOpts Nothing (EnvVars Nothing False False Nothing Nothing mempty) emptyCreateOpts
+      expectFatal' $ mergeOpts Nothing envVars emptyCreateOpts
     it' "should fail when no release is provided" $ do
-      expectFatal' $ mergeOpts Nothing (EnvVars Nothing False False Nothing Nothing mempty) emptyReleaseCreateOpts
+      expectFatal' $ mergeOpts Nothing envVars emptyReleaseCreateOpts
     it' "should fail when no projects are provided" $ do
-      expectFatal' $ mergeOpts Nothing (EnvVars Nothing False False Nothing Nothing mempty) emptyProjectsCreateOpts
+      expectFatal' $ mergeOpts Nothing envVars emptyProjectsCreateOpts
     it' "should fail when an empty project list is provided" $ do
-      expectFatal' $ mergeOpts Nothing (EnvVars Nothing False False Nothing Nothing mempty) emptyProjectsListCreateOpts
+      expectFatal' $ mergeOpts Nothing envVars emptyProjectsListCreateOpts

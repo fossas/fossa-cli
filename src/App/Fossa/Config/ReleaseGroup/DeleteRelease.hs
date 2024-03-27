@@ -56,6 +56,8 @@ cliParser :: Parser DeleteReleaseOpts
 cliParser =
   DeleteReleaseOpts
     <$> releaseGroupCommonOpts
+    -- .fossa.yml configurations are disabled for release group delete commands so that lingering configurations are
+    -- not extracted and used to mistakenly delete release groups or release group releases.
     <*> strOption (applyFossaStyle <> long "title" <> short 't' <> stringToHelpDoc "The title of the FOSSA release group")
     <*> strOption (applyFossaStyle <> long "release" <> short 'r' <> stringToHelpDoc "The release of the FOSSA release group")
 

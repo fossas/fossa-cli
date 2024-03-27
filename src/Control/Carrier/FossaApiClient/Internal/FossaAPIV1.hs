@@ -1631,7 +1631,9 @@ getPolicies ::
   m [Fossa.API.Types.Policy]
 getPolicies apiOpts = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  resp <- req GET (policiesURLEndpoint baseUrl) NoReqBody jsonResponse baseOpts
+  resp <-
+    context "Retrieving policies" $
+      req GET (policiesURLEndpoint baseUrl) NoReqBody jsonResponse baseOpts
   pure (responseBody resp)
 
 teamsURLEndpoint :: Url 'Https -> Url 'Https
@@ -1646,7 +1648,9 @@ getTeams ::
   m [Fossa.API.Types.Team]
 getTeams apiOpts = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  resp <- req GET (teamsURLEndpoint baseUrl) NoReqBody jsonResponse baseOpts
+  resp <-
+    context "Retrieving teams" $
+      req GET (teamsURLEndpoint baseUrl) NoReqBody jsonResponse baseOpts
   pure (responseBody resp)
 
 deleteReleaseGroupURLEndpoint :: Url 'Https -> Text -> Url 'Https
@@ -1658,11 +1662,13 @@ deleteReleaseGroup ::
   , Has Debug sig m
   ) =>
   ApiOpts ->
-  Text ->
+  Int ->
   m ()
 deleteReleaseGroup apiOpts releaseGroupId = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  void $ req DELETE (deleteReleaseGroupURLEndpoint baseUrl releaseGroupId) NoReqBody ignoreResponse baseOpts
+  void $
+    context "Deleting release group" $
+      req DELETE (deleteReleaseGroupURLEndpoint baseUrl $ toText releaseGroupId) NoReqBody ignoreResponse baseOpts
 
 releaseGroupReleaseURLEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
 releaseGroupReleaseURLEndpoint baseUrl releaseGroupId releaseId = baseUrl /: "api" /: "project_group" /: releaseGroupId /: "release" /: releaseId
@@ -1673,12 +1679,14 @@ deleteReleaseGroupRelease ::
   , Has Debug sig m
   ) =>
   ApiOpts ->
-  Text ->
-  Text ->
+  Int ->
+  Int ->
   m ()
 deleteReleaseGroupRelease apiOpts releaseGroupId releaseId = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  void $ req DELETE (releaseGroupReleaseURLEndpoint baseUrl releaseGroupId releaseId) NoReqBody ignoreResponse baseOpts
+  void $
+    context "Deleting release group release" $
+      req DELETE (releaseGroupReleaseURLEndpoint baseUrl (toText releaseGroupId) $ toText releaseId) NoReqBody ignoreResponse baseOpts
 
 releaseGroupURLEndpoint :: Url 'Https -> Url 'Https
 releaseGroupURLEndpoint baseUrl = baseUrl /: "api" /: "project_group"
@@ -1693,7 +1701,9 @@ createReleaseGroup ::
   m CreateReleaseGroupResponse
 createReleaseGroup apiOpts rev = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  resp <- req POST (releaseGroupURLEndpoint baseUrl) (ReqBodyJson rev) jsonResponse baseOpts
+  resp <-
+    context "Creating release group" $
+      req POST (releaseGroupURLEndpoint baseUrl) (ReqBodyJson rev) jsonResponse baseOpts
   pure (responseBody resp)
 
 getReleaseGroups ::
@@ -1705,7 +1715,9 @@ getReleaseGroups ::
   m [ReleaseGroup]
 getReleaseGroups apiOpts = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  resp <- req GET (releaseGroupURLEndpoint baseUrl) NoReqBody jsonResponse baseOpts
+  resp <-
+    context "Retrieving release groups" $
+      req GET (releaseGroupURLEndpoint baseUrl) NoReqBody jsonResponse baseOpts
   pure (responseBody resp)
 
 getReleaseGroupReleasesURLEndpoint :: Url 'Https -> Text -> Url 'Https
@@ -1717,11 +1729,13 @@ getReleaseGroupReleases ::
   , Has Debug sig m
   ) =>
   ApiOpts ->
-  Text ->
+  Int ->
   m [ReleaseGroupRelease]
 getReleaseGroupReleases apiOpts releaseGroupId = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  resp <- req GET (getReleaseGroupReleasesURLEndpoint baseUrl releaseGroupId) NoReqBody jsonResponse baseOpts
+  resp <-
+    context "Retrieving release group releases" $
+      req GET (getReleaseGroupReleasesURLEndpoint baseUrl $ toText releaseGroupId) NoReqBody jsonResponse baseOpts
   pure (responseBody resp)
 
 updateReleaseGroupRelease ::
@@ -1730,11 +1744,13 @@ updateReleaseGroupRelease ::
   , Has Debug sig m
   ) =>
   ApiOpts ->
-  Text ->
-  Text ->
+  Int ->
+  Int ->
   UpdateReleaseRequest ->
   m ReleaseGroupRelease
 updateReleaseGroupRelease apiOpts releaseGroupId releaseId updateReq = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
-  resp <- req PUT (releaseGroupReleaseURLEndpoint baseUrl releaseGroupId releaseId) (ReqBodyJson updateReq) jsonResponse baseOpts
+  resp <-
+    context "Updating release group release" $
+      req PUT (releaseGroupReleaseURLEndpoint baseUrl (toText releaseGroupId) $ toText releaseId) (ReqBodyJson updateReq) jsonResponse baseOpts
   pure (responseBody resp)

@@ -352,7 +352,7 @@ deleteReleaseGroup ::
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  Text ->
+  Int ->
   m ()
 deleteReleaseGroup releaseGroupId = do
   apiOpts <- ask
@@ -364,8 +364,8 @@ deleteReleaseGroupRelease ::
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  Text ->
-  Text ->
+  Int ->
+  Int ->
   m ()
 deleteReleaseGroupRelease releaseGroupId releaseId = do
   apiOpts <- ask
@@ -377,8 +377,8 @@ updateReleaseGroupRelease ::
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  Text ->
-  Text ->
+  Int ->
+  Int ->
   UpdateReleaseRequest ->
   m ReleaseGroupRelease
 updateReleaseGroupRelease releaseGroupId releaseId updateReq = do
@@ -402,7 +402,7 @@ getReleaseGroupReleases ::
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  Text ->
+  Int ->
   m [ReleaseGroupRelease]
 getReleaseGroupReleases releaseGroupId = do
   apiOpts <- ask

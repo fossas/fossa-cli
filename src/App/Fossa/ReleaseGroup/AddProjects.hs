@@ -9,7 +9,7 @@ import App.Fossa.Config.ReleaseGroup.AddProjects (AddProjectsConfig (..))
 import App.Fossa.ReleaseGroup.Common (retrieveReleaseGroupId, retrieveReleaseGroupRelease)
 import App.Types (ReleaseGroupProjectRevision (..), ReleaseGroupReleaseRevision (..))
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.Diagnostics (Diagnostics, context, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, getReleaseGroupReleases, getReleaseGroups, updateReleaseGroupRelease)
 import Control.Effect.Lift (Lift)
 import Data.Set qualified as Set
@@ -31,32 +31,35 @@ addProjectsMain AddProjectsConfig{..} = do
   logInfo "Running FOSSA release-group add-projects"
 
   releaseGroups <- getReleaseGroups
-  maybeReleaseGroupId <- retrieveReleaseGroupId title releaseGroups
+  maybeReleaseGroupId <- context "Retrieving release group ID" $ retrieveReleaseGroupId title releaseGroups
   case maybeReleaseGroupId of
     Nothing -> fatalText $ "Release group `" <> title <> "` not found"
     Just releaseGroupId -> do
-      let releaseGroupIdText = toText releaseGroupId
-
-      releases <- getReleaseGroupReleases releaseGroupIdText
-      release <- retrieveReleaseGroupRelease (releaseTitle releaseGroupReleaseRevision) releases
+      releases <- getReleaseGroupReleases releaseGroupId
+      release <- context "Retrieving release group release" $ retrieveReleaseGroupRelease (releaseTitle releaseGroupReleaseRevision) releases
       let releaseId = releaseGroupReleaseId release
-      logDebug $ "The releases : " <> pretty (pShow (releases))
 
       let updateReleaseRequest = constructUpdateRequest release releaseGroupReleaseRevision
-      res <- updateReleaseGroupRelease releaseGroupIdText (toText releaseId) updateReleaseRequest
-      logStdout $ "Projects were added to release group release id: " <> toText (releaseGroupReleaseId res)
-      logDebug $ "Projects added to release: " <> pretty (pShow (releaseGroupReleaseProjects res))
+      res <- updateReleaseGroupRelease releaseGroupId releaseId updateReleaseRequest
+      logStdout $ "Projects were added to release group release id: " <> toText (releaseGroupReleaseId res) <> "\n"
+      logStdout $ "View the updated release at: " <> updatedReleaseLink releaseGroupId (releaseGroupReleaseId res) <> "\n"
+      logDebug $ "Projects added to release: " <> pretty (pShow $ releaseGroupReleaseProjects res)
+  where
+    updatedReleaseLink :: Int -> Int -> Text
+    updatedReleaseLink releaseGroupId releaseId = "https://app.fossa.com/projects/group/" <> toText releaseGroupId <> "/releases/" <> toText releaseId
 
 constructUpdateRequest :: ReleaseGroupRelease -> ReleaseGroupReleaseRevision -> UpdateReleaseRequest
-constructUpdateRequest targetRelease releaseRevision = do
-  let currentProjectLocators = projectLocatorSet targetRelease
-      projectsReq = map (constructUpdateProjectRequest currentProjectLocators) $ releaseProjects releaseRevision
-
-  UpdateReleaseRequest (releaseTitle releaseRevision) projectsReq
+constructUpdateRequest targetRelease releaseRevision = UpdateReleaseRequest (releaseTitle releaseRevision) projectsReq
   where
+    projectsReq :: [UpdateReleaseProjectRequest]
+    projectsReq = map (constructUpdateProjectRequest currentProjectLocators) $ releaseProjects releaseRevision
+
+    currentProjectLocators :: Set.Set Text
+    currentProjectLocators = projectLocatorSet targetRelease
+
     -- Given the release you want to modify, construct a set of the current projects in the release
     projectLocatorSet :: ReleaseGroupRelease -> Set.Set Text
-    projectLocatorSet ReleaseGroupRelease{..} = Set.fromList $ map releaseProjectLocator releaseGroupReleaseProjects
+    projectLocatorSet ReleaseGroupRelease{releaseGroupReleaseProjects} = Set.fromList $ map releaseProjectLocator releaseGroupReleaseProjects
 
     -- `maybeReleaseGroupId` in UpdateReleaseProjectRequest is used by CORE to identify if the project is a new project or if it needs an update.
     -- If the value Nothing then it means that it is a new project, otherwise it is an existing project that will be updated.

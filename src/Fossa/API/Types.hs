@@ -1059,7 +1059,7 @@ data UpdateReleaseProjectRequest = UpdateReleaseProjectRequest
   , updateReleaseProjectBranch :: Text
   , -- Existence of this field signifies to core that the project exists and the release project just needs to be updated.
     -- If this field is empty it means that we are adding a new project to the release.
-    maybeReleaseGroupId :: Maybe Int
+    targetReleaseGroupId :: Maybe Int
   }
   deriving (Eq, Ord, Show)
 
@@ -1069,7 +1069,7 @@ instance ToJSON UpdateReleaseProjectRequest where
       [ "projectId" .= updateReleaseProjectLocator
       , "revisionId" .= updateReleaseProjectRevisionId
       , "branch" .= updateReleaseProjectBranch
-      , "projectGroupReleaseId" .= maybe Null toJSON maybeReleaseGroupId
+      , "projectGroupReleaseId" .= maybe Null toJSON targetReleaseGroupId
       ]
 
 data CreateReleaseGroupRequest = CreateReleaseGroupRequest
