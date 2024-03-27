@@ -27,7 +27,6 @@ import Options.Applicative (
   helpDoc,
   info,
   long,
-  many,
   optional,
   short,
   some,
