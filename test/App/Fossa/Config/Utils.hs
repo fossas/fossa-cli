@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.Fossa.Config.Utils (parseArgString, itShouldLoadFromTheConfiguredBaseDir, itShouldFailWhenLabelsExceedFive) where
+module App.Fossa.Config.Utils (parseArgString, itShouldLoadFromTheConfiguredBaseDir, itShouldFailWhenLabelsExceedFive, fixtureDir) where
 
 import App.Fossa.Config.Analyze (AnalyzeCliOpts, mergeOpts)
 import App.Fossa.Config.ConfigFile (ConfigFile (..), OrgWideCustomLicenseConfigPolicy (..))
@@ -31,6 +31,7 @@ configFile path =
     { configVersion = 42
     , configServer = Nothing
     , configApiKey = Nothing
+    , configReleaseGroup = Nothing
     , configProject = Nothing
     , configRevision = Nothing
     , configTargets = Nothing

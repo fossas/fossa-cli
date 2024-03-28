@@ -204,6 +204,12 @@ library
     App.Fossa.Config.LicenseScan
     App.Fossa.Config.LinkUserBinaries
     App.Fossa.Config.ListTargets
+    App.Fossa.Config.ReleaseGroup
+    App.Fossa.Config.ReleaseGroup.AddProjects
+    App.Fossa.Config.ReleaseGroup.Common
+    App.Fossa.Config.ReleaseGroup.Create
+    App.Fossa.Config.ReleaseGroup.Delete
+    App.Fossa.Config.ReleaseGroup.DeleteRelease
     App.Fossa.Config.Report
     App.Fossa.Config.Snippets
     App.Fossa.Config.Test
@@ -236,6 +242,12 @@ library
     App.Fossa.Reachability.Maven
     App.Fossa.Reachability.Types
     App.Fossa.Reachability.Upload
+    App.Fossa.ReleaseGroup
+    App.Fossa.ReleaseGroup.AddProjects
+    App.Fossa.ReleaseGroup.Common
+    App.Fossa.ReleaseGroup.Create
+    App.Fossa.ReleaseGroup.Delete
+    App.Fossa.ReleaseGroup.DeleteRelease
     App.Fossa.Report
     App.Fossa.Report.Attribution
     App.Fossa.RunThemis
@@ -529,6 +541,7 @@ test-suite unit-tests
     App.Fossa.ArchiveUploaderSpec
     App.Fossa.BinaryDeps.JarSpec
     App.Fossa.Config.AnalyzeSpec
+    App.Fossa.Config.ReleaseGroup.CreateSpec
     App.Fossa.Config.TestSpec
     App.Fossa.Config.Utils
     App.Fossa.Configuration.ConfigurationSpec
@@ -543,6 +556,11 @@ test-suite unit-tests
     App.Fossa.PathDependencySpec
     App.Fossa.PreflightChecksSpec
     App.Fossa.ProjectInferenceSpec
+    App.Fossa.ReleaseGroup.AddProjectsSpec
+    App.Fossa.ReleaseGroup.CommonSpec
+    App.Fossa.ReleaseGroup.CreateSpec
+    App.Fossa.ReleaseGroup.DeleteReleaseSpec
+    App.Fossa.ReleaseGroup.DeleteSpec
     App.Fossa.Report.AttributionSpec
     App.Fossa.ReportSpec
     App.Fossa.RunThemisSpec

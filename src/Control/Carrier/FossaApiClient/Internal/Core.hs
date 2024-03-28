@@ -20,6 +20,14 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   uploadReachabilityContent,
   uploadReachabilityBuild,
   getCustomBuildPermissions,
+  getPolicies,
+  getTeams,
+  deleteReleaseGroup,
+  deleteReleaseGroupRelease,
+  createReleaseGroup,
+  getReleaseGroups,
+  getReleaseGroupReleases,
+  updateReleaseGroupRelease,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
@@ -45,13 +53,20 @@ import Fossa.API.Types (
   Archive,
   Build,
   Contributors,
+  CreateReleaseGroupRequest,
+  CreateReleaseGroupResponse,
   CustomBuildUploadPermissions,
   Issues,
   Organization,
+  Policy,
   Project,
+  ReleaseGroup,
+  ReleaseGroupRelease,
   RevisionDependencyCache,
   SignedURL,
+  Team,
   TokenTypeResponse,
+  UpdateReleaseRequest,
   UploadResponse,
  )
 import Srclib.Types (Locator, SourceUnit, renderLocator)
@@ -296,3 +311,99 @@ uploadReachabilityBuild pr metadata content = do
   apiOpts <- ask
   signedUrl <- API.getReachabilityBuildSignedUrl apiOpts pr metadata
   void $ API.uploadReachabilityBuild signedUrl content
+
+createReleaseGroup ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  CreateReleaseGroupRequest ->
+  m CreateReleaseGroupResponse
+createReleaseGroup rev = do
+  apiOpts <- ask
+  API.createReleaseGroup apiOpts rev
+
+getPolicies ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  m [Policy]
+getPolicies = do
+  apiOpts <- ask
+  API.getPolicies apiOpts
+
+getTeams ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  m [Team]
+getTeams = do
+  apiOpts <- ask
+  API.getTeams apiOpts
+
+deleteReleaseGroup ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Int ->
+  m ()
+deleteReleaseGroup releaseGroupId = do
+  apiOpts <- ask
+  API.deleteReleaseGroup apiOpts releaseGroupId
+
+deleteReleaseGroupRelease ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Int ->
+  Int ->
+  m ()
+deleteReleaseGroupRelease releaseGroupId releaseId = do
+  apiOpts <- ask
+  API.deleteReleaseGroupRelease apiOpts releaseGroupId releaseId
+
+updateReleaseGroupRelease ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Int ->
+  Int ->
+  UpdateReleaseRequest ->
+  m ReleaseGroupRelease
+updateReleaseGroupRelease releaseGroupId releaseId updateReq = do
+  apiOpts <- ask
+  API.updateReleaseGroupRelease apiOpts releaseGroupId releaseId updateReq
+
+getReleaseGroups ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  m [ReleaseGroup]
+getReleaseGroups = do
+  apiOpts <- ask
+  API.getReleaseGroups apiOpts
+
+getReleaseGroupReleases ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Int ->
+  m [ReleaseGroupRelease]
+getReleaseGroupReleases releaseGroupId = do
+  apiOpts <- ask
+  API.getReleaseGroupReleases apiOpts releaseGroupId

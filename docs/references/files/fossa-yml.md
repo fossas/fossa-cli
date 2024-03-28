@@ -26,6 +26,24 @@ project:
     - project-label-1
     - test-project
 
+releaseGroup:
+  title: release-group-title
+  release: release-group-release
+  releaseGroupProjects:
+    - projectLocator: custom+123/git@github.com/fossas/fossa-cli
+      projectRevision: "12345"
+      projectBranch: master 
+    - projectLocator: custom+123/git@github.com/example
+      projectRevision: "67890"
+      projectBranch: master
+  licensePolicy: license-policy-name
+  securityPolicy: security-policy-name
+  qualityPolicy: quality-policy-name
+  teams:
+    - team1
+    - team2
+
+
 revision:
   commit: "12345"
   branch: master
@@ -149,6 +167,55 @@ If you choose to associate a project with a release group, you **must** supply b
 The `labels` field allows you to add labels to projects so that you can classify certain projects how you would like. This adds a more flexible way to query for projects in the FOSSA UI as opposed to assigning a project to a team.
 
 Up to 5 labels are allowed to be associated with a project at a time. Labels will be applied in order up to the limit of 5 labels and then ignored.
+
+### `releaseGroup:`
+The releaseGroup field allows you to configure settings for the release group you are interacting with through the FOSSA API.
+
+>NOTE: releaseGroup configurations are only allowed for `fossa release-group create` and `fossa release-group add-project`. This is done so that release groups are not mistakenly deleted.
+
+>NOTE: release-group command line options will always take precedence over configurations set in `fossa.yml`. 
+
+#### `releaseGroup.title:`
+The title of the release group which can be seen in the FOSSA dashboard.
+
+<img src="../../assets//release-group-title-example.png">
+
+#### `releaseGroup.release:`
+The release associated with the release group.
+
+<img src="../../assets//release-example.png">
+
+#### `releaseGroup.releaseGroupProjects:`
+The projects associated with the release group's release. 
+
+>NOTE: At least one project must be specified upon creating a release group.
+
+>NOTE: `projectLocator` , `projectRevision`, and `projectBranch` must all be specified when providing a releaseGroupProject.
+
+#### `releaseGroup.releaseGroupProjects.projectLocator:`
+The project locator defines a unique ID that the FOSSA API will use to reference this project within FOSSA. The project locator can be found in the UI on the project `Settings` page listed as the `Project Locator` underneath the `Project Title` setting.
+
+<img src="../../assets/project-locator-example.png">
+
+#### `releaseGroup.releaseGroupProjects.projectRevision:`
+The revision associated with a project. Project revisions can be found in the UI on the project `Activity` page. Refer to `Revision ID` to retrieve the specific revision you want to use for the project.
+
+<img src="../../assets//project-revision-example.png">
+
+#### `releaseGroup.releaseGroupProjects.projectBranch:`
+The branch associated with the project.
+
+#### `releaseGroup.licensePolicy:`
+The name of the license policy associated with the release group. Refer to the [documentation](https://docs.fossa.com/docs/configuring-a-licensing-policy) for addition details on license policies.
+
+#### `releaseGroup.securityPolicy:`
+The name of the security policy associated with the release group. Refer to the [documentation](https://docs.fossa.com/docs/configuring-a-security-policy) for addition details on security policies.
+
+#### `releaseGroup.qualityPolicy:`
+The name of the quality policy associated with the release group. Refer to the [documentation](https://docs.fossa.com/docs/configuring-quality-policies-copy) for addition details on quality policies.
+
+#### `releaseGroup.teams:`
+A list of team names that are associated with the release group.
 
 ### `revision:`
 The revision fields are used to help FOSSA differentiate between one upload for a project and another, just as GitHub uses commit hashes and branch names.

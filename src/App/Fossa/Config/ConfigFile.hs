@@ -18,6 +18,8 @@ module App.Fossa.Config.ConfigFile (
   VendoredDependencyConfigs (..),
   MavenScopeConfig (..),
   ReachabilityConfigFile (..),
+  ConfigReleaseGroup (..),
+  ConfigReleaseGroupProject (..),
   mergeFileCmdMetadata,
   resolveLocalConfigFile,
 ) where
@@ -183,13 +185,14 @@ mergeFileCmdMetadata meta cfgFile =
         , projectTeam = projectTeam meta <|> (configProject cfgFile >>= configTeam)
         , projectPolicy = policy
         , projectLabel = projectLabel meta <|> (maybe [] configLabel (configProject cfgFile))
-        , projectReleaseGroup = projectReleaseGroup meta <|> (configProject cfgFile >>= configReleaseGroup)
+        , projectReleaseGroup = projectReleaseGroup meta <|> (configProject cfgFile >>= configProjectReleaseGroup)
         }
 
 data ConfigFile = ConfigFile
   { configVersion :: Int
   , configServer :: Maybe Text
   , configApiKey :: Maybe Text
+  , configReleaseGroup :: Maybe ConfigReleaseGroup
   , configProject :: Maybe ConfigProject
   , configRevision :: Maybe ConfigRevision
   , configTargets :: Maybe ConfigTargets
@@ -215,8 +218,26 @@ data ConfigProject = ConfigProject
   , configUrl :: Maybe Text
   , configPolicy :: Maybe Policy
   , configLabel :: [Text]
-  , configReleaseGroup :: Maybe ReleaseGroupMetadata
+  , configProjectReleaseGroup :: Maybe ReleaseGroupMetadata
   , configPolicyId :: Maybe Int
+  }
+  deriving (Eq, Ord, Show)
+
+data ConfigReleaseGroup = ConfigReleaseGroup
+  { configReleaseGroupTitle :: Maybe Text
+  , configReleaseGroupRelease :: Maybe Text
+  , configReleaseGroupProjects :: Maybe [ConfigReleaseGroupProject]
+  , configReleaseGroupLicensePolicy :: Maybe Text
+  , configReleaseGroupSecurityPolicy :: Maybe Text
+  , configReleaseGroupQualityPolicy :: Maybe Text
+  , configReleaseGroupTeams :: Maybe [Text]
+  }
+  deriving (Eq, Ord, Show)
+
+data ConfigReleaseGroupProject = ConfigReleaseGroupProject
+  { configReleaseGroupProjectId :: Text
+  , configReleaseGroupProjectRevision :: Text
+  , configReleaseGroupProjectBranch :: Text
   }
   deriving (Eq, Ord, Show)
 
@@ -271,6 +292,7 @@ instance FromJSON (Path Abs File -> ConfigFile) where
       <$> obj .: "version"
       <*> obj .:? "server"
       <*> obj .:? "apiKey"
+      <*> obj .:? "releaseGroup"
       <*> obj .:? "project"
       <*> obj .:? "revision"
       <*> obj .:? "targets"
@@ -409,3 +431,21 @@ instance FromJSON ReachabilityConfigFile where
   parseJSON = withObject "ReachabilityConfig" $ \obj ->
     ReachabilityConfigFile
       <$> (obj .:? "jvmOutputs" .!= Map.empty)
+
+instance FromJSON ConfigReleaseGroup where
+  parseJSON = withObject "ConfigReleaseGroup" $ \obj ->
+    ConfigReleaseGroup
+      <$> obj .:? "title"
+      <*> obj .:? "release"
+      <*> obj .:? "releaseGroupProjects"
+      <*> obj .:? "licensePolicy"
+      <*> obj .:? "securityPolicy"
+      <*> obj .:? "qualityPolicy"
+      <*> obj .:? "teams"
+
+instance FromJSON ConfigReleaseGroupProject where
+  parseJSON = withObject "ConfigReleaseGroupProject" $ \obj ->
+    ConfigReleaseGroupProject
+      <$> (obj .: "projectLocator")
+      <*> (obj .: "projectRevision")
+      <*> (obj .: "projectBranch")
