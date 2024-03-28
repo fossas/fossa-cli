@@ -35,7 +35,7 @@ debTactic root file | runningLinux = do
     Nothing -> pure Nothing
     Just name -> do
       meta <- context ("Parse metadata for package " <> toText (show name) <> ", which owns file " <> toText (show file)) $ packageMeta root name
-      pure (DynamicDependency file . Just . ResolvedLinuxPackage LinuxPackageManagerRPM <$> meta)
+      pure (DynamicDependency file . Just . ResolvedLinuxPackage LinuxPackageManagerDEB <$> meta)
 debTactic _ _ = pure Nothing
 
 packageForFile :: (Has Diagnostics sig m, Has Exec sig m) => Path Abs Dir -> Path Abs File -> m (Maybe Text)
