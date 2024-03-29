@@ -1,11 +1,9 @@
 # FOSSA CLI Changelog
 
-## v3.9.11
-- `fossa release-group`: Adds commands to interact with FOSSA release-groups (`fossa release-group add-projects`, `fossa release-group create`, `fossa release-group delete`, `fossa release-group delete-release`) [#1399](https://github.com/fossas/fossa-cli/pull/1399).
-
 ## v3.9.10
 - Support unarchiving `tgz`, `taz`, `txz`, `tbz`, `tbz2`, and `tz2` files for `--unpack-archives` ([#1402](https://github.com/fossas/fossa-cli/pull/1402/files))
 - `fossa test`: improves diagnostic message ([#1403](https://github.com/fossas/fossa-cli/pull/1403/files))
+- `fossa release-group`: Adds commands to interact with FOSSA release-groups (`fossa release-group add-projects`, `fossa release-group create`, `fossa release-group delete`, `fossa release-group delete-release`) [#1399](https://github.com/fossas/fossa-cli/pull/1399).
 
 ## v3.9.9
 - `--without-default-filters`: Users can now disable default path filters ([#1396](https://github.com/fossas/fossa-cli/pull/1396/files)).
