@@ -837,8 +837,8 @@ renderedIssues issues = rendered
         issuePolicyConflictMessage :: Text
         issuePolicyConflictMessage =
           "Denied by policy "
-            <> fromMaybe ("(unknown policy, issueId: " <> intToText issueId <> ") ") issueLicense
-            <> "on"
+            <> fromMaybe ("(unknown policy, issueId: " <> intToText issueId <> ")") issueLicense
+            <> " on "
             <> nameRevision
 
         issueLink :: Maybe Text
