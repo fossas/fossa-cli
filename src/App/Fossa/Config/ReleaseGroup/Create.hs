@@ -8,10 +8,10 @@ module App.Fossa.Config.ReleaseGroup.Create (
   subcommand,
 ) where
 
-import App.Fossa.Config.Common (configHelp)
+import App.Fossa.Config.Common (configFileOpt, configHelp)
 import App.Fossa.Config.ConfigFile (ConfigFile, ConfigReleaseGroup (..), configReleaseGroup)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
-import App.Fossa.Config.ReleaseGroup.Common (ReleaseGroupCommonOpts (..), ReleaseGroupProjectOpts (..), collectApiOpts, mergeReleaseGroupProjectRevision, mergeReleaseGroupRelease, mergeReleaseGroupTitle, releaseGroupCommonOpts, releaseGroupProjectOpts)
+import App.Fossa.Config.ReleaseGroup.Common (ReleaseGroupCommonOpts (..), ReleaseGroupProjectOpts (..), collectApiOpts, extractReleaseGroupConfigValue, mergeReleaseGroupProjectRevision, mergeReleaseGroupRelease, mergeReleaseGroupTitle, releaseGroupCommonOpts, releaseGroupProjectOpts)
 import App.Types (ReleaseGroupReleaseRevision (..), ReleaseGroupRevision (..))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding, toEncoding)
@@ -68,7 +68,7 @@ cliParser :: Parser CreateOpts
 cliParser =
   CreateOpts
     <$> releaseGroupCommonOpts
-    <*> optional (strOption (applyFossaStyle <> long "config" <> short 'c' <> helpDoc configHelp))
+    <*> configFileOpt
     <*> optional (strOption (applyFossaStyle <> long "title" <> short 't' <> stringToHelpDoc "The title of the FOSSA release group"))
     <*> optional (strOption (applyFossaStyle <> long "release" <> short 'r' <> stringToHelpDoc "The release of the FOSSA release group"))
     <*> optional (some (releaseGroupProjectOpts))
@@ -92,17 +92,14 @@ mergeOpts maybeConfig envVars cliOpts@CreateOpts{..} = do
 
 collectReleaseGroupRevision :: (Has Diagnostics sig m) => Maybe ConfigFile -> CreateOpts -> m ReleaseGroupRevision
 collectReleaseGroupRevision maybeConfig CreateOpts{..} = do
-  let releaseGroupCfg = maybeConfig >>= configReleaseGroup
-      releaseGroupCfgValue getValue = releaseGroupCfg >>= getValue
+  let licensePolicy = licensePolicyOpts <|> extractReleaseGroupConfigValue maybeConfig configReleaseGroupLicensePolicy
+      securityPolicy = securityPolicyOpts <|> extractReleaseGroupConfigValue maybeConfig configReleaseGroupSecurityPolicy
+      qualityPolicy = qualityPolicyOpts <|> extractReleaseGroupConfigValue maybeConfig configReleaseGroupQualityPolicy
+      teams = teamsOpts <|> extractReleaseGroupConfigValue maybeConfig configReleaseGroupTeams
 
-      licensePolicy = licensePolicyOpts <|> releaseGroupCfgValue configReleaseGroupLicensePolicy
-      securityPolicy = securityPolicyOpts <|> releaseGroupCfgValue configReleaseGroupSecurityPolicy
-      qualityPolicy = qualityPolicyOpts <|> releaseGroupCfgValue configReleaseGroupQualityPolicy
-      teams = teamsOpts <|> releaseGroupCfgValue configReleaseGroupTeams
-
-  title <- mergeReleaseGroupTitle titleOpts $ releaseGroupCfgValue configReleaseGroupTitle
-  releaseTitle <- mergeReleaseGroupRelease releaseOpts $ releaseGroupCfgValue configReleaseGroupRelease
-  projects <- mergeReleaseGroupProjectRevision projectsOpts $ releaseGroupCfgValue configReleaseGroupProjects
+  title <- mergeReleaseGroupTitle titleOpts $ extractReleaseGroupConfigValue maybeConfig configReleaseGroupTitle
+  releaseTitle <- mergeReleaseGroupRelease releaseOpts $ extractReleaseGroupConfigValue maybeConfig configReleaseGroupRelease
+  projects <- mergeReleaseGroupProjectRevision projectsOpts $ extractReleaseGroupConfigValue maybeConfig configReleaseGroupProjects
 
   let releaseRevision = ReleaseGroupReleaseRevision releaseTitle projects
 

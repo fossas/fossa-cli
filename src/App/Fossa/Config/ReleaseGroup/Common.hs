@@ -7,10 +7,11 @@ module App.Fossa.Config.ReleaseGroup.Common (
   mergeReleaseGroupTitle,
   mergeReleaseGroupRelease,
   mergeReleaseGroupProjectRevision,
+  extractReleaseGroupConfigValue,
 ) where
 
-import App.Fossa.Config.Common (endpointHelp, fossaApiKeyCmdText, fossaApiKeyHelp)
-import App.Fossa.Config.ConfigFile (ConfigFile (configApiKey, configServer), ConfigReleaseGroupProject (..))
+import App.Fossa.Config.Common (apiKeyOpt, endpointHelp, endpointOpt, fossaApiKeyCmdText, fossaApiKeyHelp)
+import App.Fossa.Config.ConfigFile (ConfigFile (configApiKey, configReleaseGroup, configServer), ConfigReleaseGroup, ConfigReleaseGroupProject (..))
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.OptionExtensions (uriOption)
 import App.Types (ReleaseGroupProjectRevision (..))
@@ -45,8 +46,8 @@ releaseGroupCommonOpts :: Parser ReleaseGroupCommonOpts
 releaseGroupCommonOpts =
   ReleaseGroupCommonOpts
     <$> switch (applyFossaStyle <> long "debug" <> stringToHelpDoc "Enable debug logging")
-    <*> optional (uriOption (applyFossaStyle <> long "endpoint" <> short 'e' <> metavar "URL" <> helpDoc endpointHelp))
-    <*> optional (strOption (applyFossaStyle <> long fossaApiKeyCmdText <> helpDoc fossaApiKeyHelp))
+    <*> endpointOpt
+    <*> apiKeyOpt
 
 releaseGroupProjectOpts :: Parser ReleaseGroupProjectOpts
 releaseGroupProjectOpts =
@@ -70,6 +71,11 @@ validateApiKey maybeConfigFile EnvVars{envApiKey} ReleaseGroupCommonOpts{apiKey}
   if Data.Text.null . strip $ textkey
     then fatalText "A FOSSA API key was specified, but it is an empty string"
     else pure $ ApiKey textkey
+
+extractReleaseGroupConfigValue :: Maybe ConfigFile -> (ConfigReleaseGroup -> Maybe a) -> Maybe a
+extractReleaseGroupConfigValue maybeConfig getValue = do
+  let releaseGroupCfg = maybeConfig >>= configReleaseGroup
+  releaseGroupCfg >>= getValue
 
 collectApiOpts :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> ReleaseGroupCommonOpts -> m ApiOpts
 collectApiOpts maybeconfig envvars commons = do

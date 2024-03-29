@@ -15,7 +15,7 @@ retrieveReleaseGroupId title releaseGroups = do
     [] -> pure Nothing
     [releaseGroup] -> pure . Just $ releaseGroupId releaseGroup
     (_ : _ : _) ->
-      errHelp ("Navigate to the FOSSA web UI to rename your release groups so that they are unqiue" :: Text)
+      errHelp ("Navigate to the FOSSA web UI to rename your release groups so that they are unique." :: Text)
         . fatalText
         $ "Multiple instances of release groups with title `" <> title <> "` found. Unable to determine which release group to modify."
 
@@ -26,6 +26,6 @@ retrieveReleaseGroupRelease releaseTitle releases = do
     [] -> fatalText $ "Release `" <> releaseTitle <> "` not found"
     [release] -> pure release
     (_ : _ : _) ->
-      errHelp ("Navigate to the FOSSA web UI to rename your release group releases so that they are unqiue" :: Text)
+      errHelp ("Navigate to the FOSSA web UI to rename your release group releases so that they are unique." :: Text)
         . fatalText
         $ "Multiple instances of releases with title `" <> releaseTitle <> "` found. Unable to determine which release to modify."

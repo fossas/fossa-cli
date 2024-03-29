@@ -25,6 +25,8 @@ Refer to [fossa configuration](../../files/fossa-yml.md) to set up your `.fossa.
 
 > NOTE: CLI options take precedence over the configurations in `.fossa.yml`.
 
+> NOTE: Project ID values will not work if provided to `releaseGroupProjects.projectLocator`. For more details on the differences between project ID and project locator refer to [documentation](../../files/fossa-yml.md#what-is-the-difference-between-project-id-and-project-locator).
+
 ## Example
 
 ```bash

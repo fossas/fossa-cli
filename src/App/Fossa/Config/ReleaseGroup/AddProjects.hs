@@ -8,10 +8,10 @@ module App.Fossa.Config.ReleaseGroup.AddProjects (
   mergeOpts,
 ) where
 
-import App.Fossa.Config.Common (configHelp)
+import App.Fossa.Config.Common (configFileOpt, configHelp)
 import App.Fossa.Config.ConfigFile (ConfigFile, configReleaseGroup, configReleaseGroupProjects, configReleaseGroupRelease, configReleaseGroupTitle)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
-import App.Fossa.Config.ReleaseGroup.Common (ReleaseGroupCommonOpts (..), ReleaseGroupProjectOpts (..), collectApiOpts, mergeReleaseGroupProjectRevision, mergeReleaseGroupRelease, mergeReleaseGroupTitle, releaseGroupCommonOpts, releaseGroupProjectOpts)
+import App.Fossa.Config.ReleaseGroup.Common (ReleaseGroupCommonOpts (..), ReleaseGroupProjectOpts (..), collectApiOpts, extractReleaseGroupConfigValue, mergeReleaseGroupProjectRevision, mergeReleaseGroupRelease, mergeReleaseGroupTitle, releaseGroupCommonOpts, releaseGroupProjectOpts)
 import App.Types (ReleaseGroupReleaseRevision (..))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding, toEncoding)
@@ -64,7 +64,7 @@ cliParser :: Parser AddProjectsOpts
 cliParser =
   AddProjectsOpts
     <$> releaseGroupCommonOpts
-    <*> optional (strOption (applyFossaStyle <> long "config" <> short 'c' <> helpDoc configHelp))
+    <*> configFileOpt
     <*> optional (strOption (applyFossaStyle <> long "title" <> short 't' <> stringToHelpDoc "The title of the FOSSA release group"))
     <*> optional (strOption (applyFossaStyle <> long "release" <> short 'r' <> stringToHelpDoc "The release of the FOSSA release group"))
     <*> optional (some (releaseGroupProjectOpts))
@@ -78,7 +78,7 @@ mergeOpts ::
   m AddProjectsConfig
 mergeOpts maybeConfig envVars cliOpts@AddProjectsOpts{..} = do
   apiOpts <- collectApiOpts maybeConfig envVars releaseGroupCommon
-  title <- mergeReleaseGroupTitle titleOpts (maybeConfig >>= configReleaseGroup >>= configReleaseGroupTitle)
+  title <- mergeReleaseGroupTitle titleOpts $ extractReleaseGroupConfigValue maybeConfig configReleaseGroupTitle
   releaseGroupReleaseRevision <- collectReleaseGroupReleaseRevision maybeConfig cliOpts
   pure $ AddProjectsConfig apiOpts title releaseGroupReleaseRevision
 

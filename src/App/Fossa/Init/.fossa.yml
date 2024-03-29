@@ -26,7 +26,7 @@ version: 3
 #
 # # Configures settings for the project you are interacting with through the FOSSA API.
 # project:
-#   # Defines a unique ID that the FOSSA API will use to reference this project.
+#   # Defines an ID that is used to reference a project within your FOSSA organization. The project ID is a specific portion of a project locator.
 #   # Default:
 #   #   - Git: From .git/config file or project's remote "origin" URL.
 #   #   - SVN: From "Repository Root" obtained using 'svn info'.

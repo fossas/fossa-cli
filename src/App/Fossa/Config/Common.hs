@@ -10,6 +10,9 @@ module App.Fossa.Config.Common (
   targetOpt,
   baseDirArg,
   metadataOpts,
+  configFileOpt,
+  endpointOpt,
+  apiKeyOpt,
 
   -- * CLI Validators
   validateDir,
@@ -466,11 +469,11 @@ commonOpts :: Parser CommonOpts
 commonOpts =
   CommonOpts
     <$> switch (applyFossaStyle <> long "debug" <> stringToHelpDoc "Enable debug logging, and write detailed debug information to `fossa.debug.json`")
-    <*> optional (uriOption (applyFossaStyle <> long "endpoint" <> short 'e' <> metavar "URL" <> helpDoc endpointHelp))
+    <*> endpointOpt
     <*> optional (strOption (applyFossaStyle <> long "project" <> short 'p' <> helpDoc projectHelp))
     <*> optional (strOption (applyFossaStyle <> long "revision" <> short 'r' <> helpDoc revisionHelp))
-    <*> optional (strOption (applyFossaStyle <> long fossaApiKeyCmdText <> helpDoc fossaApiKeyHelp))
-    <*> optional (strOption (applyFossaStyle <> long "config" <> short 'c' <> helpDoc configHelp))
+    <*> apiKeyOpt
+    <*> configFileOpt
     <*> optional (option parseTelemetryScope (applyFossaStyle <> long "with-telemetry-scope" <> helpDoc telemtryScopeHelp))
   where
     projectHelp :: Maybe (Doc AnsiStyle)
@@ -496,6 +499,15 @@ commonOpts =
           , boldItalicized "Options: " <> coloredBoldItalicized Green "full" <> boldItalicized "|" <> coloredBoldItalicized Green "off"
           , boldItalicized "Default: " <> coloredBoldItalicized Green "full"
           ]
+
+apiKeyOpt :: Parser (Maybe Text)
+apiKeyOpt = optional (strOption (applyFossaStyle <> long fossaApiKeyCmdText <> helpDoc fossaApiKeyHelp))
+
+endpointOpt :: Parser (Maybe URI)
+endpointOpt = optional (uriOption (applyFossaStyle <> long "endpoint" <> short 'e' <> metavar "URL" <> helpDoc endpointHelp))
+
+configFileOpt :: Parser (Maybe FilePath)
+configFileOpt = optional (strOption (applyFossaStyle <> long "config" <> short 'c' <> helpDoc configHelp))
 
 configHelp :: Maybe (Doc AnsiStyle)
 configHelp =
