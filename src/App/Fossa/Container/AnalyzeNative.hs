@@ -11,6 +11,7 @@ import App.Fossa.Analyze.Debug (collectDebugBundle)
 import App.Fossa.Analyze.Upload (emitBuildWarnings)
 import App.Fossa.Config.Common (
   ScanDestination (OutputStdout, UploadScan),
+  deprecateReleaseGroupMetadata,
  )
 import App.Fossa.Config.Container.Analyze (
   ContainerAnalyzeConfig (..),
@@ -140,7 +141,8 @@ uploadScan revision projectMeta jsonOutput containerScan =
     if not supportsNativeScan
       then fatal (EndpointDoesNotSupportNativeContainerScan getSourceLocation)
       else do
-        resp <- uploadNativeContainerScan revision projectMeta containerScan
+        projectMetadataWithoutReleaseGroup <- deprecateReleaseGroupMetadata projectMeta
+        resp <- uploadNativeContainerScan revision projectMetadataWithoutReleaseGroup containerScan
         emitBuildWarnings resp
         let locator = uploadLocator resp
         buildUrl <- getFossaBuildUrl revision locator

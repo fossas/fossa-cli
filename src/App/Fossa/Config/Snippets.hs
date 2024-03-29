@@ -13,9 +13,8 @@ module App.Fossa.Config.Snippets (
   labelForTransform,
 ) where
 
-import App.Fossa.Config.Common (baseDirArg, collectBaseDir, endpointHelp, fossaApiKeyCmdText, fossaApiKeyHelp)
+import App.Fossa.Config.Common (apiKeyOpt, baseDirArg, collectBaseDir, endpointOpt)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts, GetSeverity (..), SubCommand (..))
-import App.OptionExtensions (uriOption)
 import App.Types (BaseDir)
 import Control.Carrier.Lift (sendIO)
 import Control.Effect.Diagnostics (Diagnostics, Has)
@@ -27,7 +26,7 @@ import Data.Text (Text)
 import Effect.Logger (Severity (..))
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Options.Applicative (InfoMod, Parser, command, eitherReader, helpDoc, info, long, many, metavar, option, optional, progDescDoc, short, strOption, subparser, switch, (<|>))
+import Options.Applicative (InfoMod, Parser, command, eitherReader, info, long, many, metavar, option, optional, progDescDoc, short, strOption, subparser, switch, (<|>))
 import Path (Abs, Dir, Path)
 import Path.IO qualified as Path
 import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
@@ -85,8 +84,8 @@ cliParser = analyze <|> commit
       CommandAnalyze
         <$> baseDirArg
         <*> switch (applyFossaStyle <> long "debug" <> stringToHelpDoc "Enable debug logging")
-        <*> optional (uriOption (applyFossaStyle <> long "endpoint" <> short 'e' <> metavar "URL" <> helpDoc endpointHelp))
-        <*> optional (strOption (applyFossaStyle <> long fossaApiKeyCmdText <> helpDoc fossaApiKeyHelp))
+        <*> endpointOpt
+        <*> apiKeyOpt
         <*> strOption (applyFossaStyle <> long "output" <> short 'o' <> stringToHelpDoc "The directory to which matches are output")
         <*> switch (applyFossaStyle <> long "overwrite-output" <> stringToHelpDoc "If specified, overwrites the output directory if it exists")
         <*> many (option (eitherReader parseTarget) (applyFossaStyle <> long "target" <> stringToHelpDoc "Analyze this combination of targets" <> metavar "TARGET"))
@@ -97,8 +96,8 @@ cliParser = analyze <|> commit
       CommandCommit
         <$> baseDirArg
         <*> switch (applyFossaStyle <> long "debug" <> stringToHelpDoc "Enable debug logging")
-        <*> optional (uriOption (applyFossaStyle <> long "endpoint" <> short 'e' <> metavar "URL" <> helpDoc endpointHelp))
-        <*> optional (strOption (applyFossaStyle <> long fossaApiKeyCmdText <> helpDoc fossaApiKeyHelp))
+        <*> endpointOpt
+        <*> apiKeyOpt
         <*> strOption (applyFossaStyle <> long "analyze-output" <> stringToHelpDoc "The directory to which 'analyze' matches were saved")
         <*> switch (applyFossaStyle <> long "overwrite-fossa-deps" <> stringToHelpDoc "If specified, overwrites the 'fossa-deps' file if it exists")
         <*> optional (option (eitherReader parseCommitOutputFormat) (applyFossaStyle <> long "format" <> stringToHelpDoc "The output format for the generated `fossa-deps` file" <> metavar "FORMAT"))
