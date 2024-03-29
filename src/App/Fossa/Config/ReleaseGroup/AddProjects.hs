@@ -8,7 +8,7 @@ module App.Fossa.Config.ReleaseGroup.AddProjects (
   mergeOpts,
 ) where
 
-import App.Fossa.Config.Common (configFileOpt, configHelp)
+import App.Fossa.Config.Common (configFileOpt)
 import App.Fossa.Config.ConfigFile (ConfigFile, configReleaseGroup, configReleaseGroupProjects, configReleaseGroupRelease, configReleaseGroupTitle)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Config.ReleaseGroup.Common (ReleaseGroupCommonOpts (..), ReleaseGroupProjectOpts (..), collectApiOpts, extractReleaseGroupConfigValue, mergeReleaseGroupProjectRevision, mergeReleaseGroupRelease, mergeReleaseGroupTitle, releaseGroupCommonOpts, releaseGroupProjectOpts)
@@ -24,7 +24,6 @@ import Options.Applicative (
   Mod,
   Parser,
   command,
-  helpDoc,
   info,
   long,
   optional,

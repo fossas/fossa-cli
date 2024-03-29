@@ -10,10 +10,9 @@ module App.Fossa.Config.ReleaseGroup.Common (
   extractReleaseGroupConfigValue,
 ) where
 
-import App.Fossa.Config.Common (apiKeyOpt, endpointHelp, endpointOpt, fossaApiKeyCmdText, fossaApiKeyHelp)
+import App.Fossa.Config.Common (apiKeyOpt, endpointOpt)
 import App.Fossa.Config.ConfigFile (ConfigFile (configApiKey, configReleaseGroup, configServer), ConfigReleaseGroup, ConfigReleaseGroupProject (..))
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
-import App.OptionExtensions (uriOption)
 import App.Types (ReleaseGroupProjectRevision (..))
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, fatalText, fromMaybeText)
@@ -21,7 +20,7 @@ import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Text (Text, null, strip)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
 import GHC.Generics (Generic)
-import Options.Applicative (Parser, helpDoc, long, metavar, optional, short, strOption, switch, (<|>))
+import Options.Applicative (Parser, long, strOption, switch, (<|>))
 import Style (applyFossaStyle, stringToHelpDoc)
 import Text.URI (URI, mkURI)
 

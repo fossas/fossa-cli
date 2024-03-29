@@ -8,8 +8,8 @@ module App.Fossa.Config.ReleaseGroup.Create (
   subcommand,
 ) where
 
-import App.Fossa.Config.Common (configFileOpt, configHelp)
-import App.Fossa.Config.ConfigFile (ConfigFile, ConfigReleaseGroup (..), configReleaseGroup)
+import App.Fossa.Config.Common (configFileOpt)
+import App.Fossa.Config.ConfigFile (ConfigFile, ConfigReleaseGroup (..))
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Config.ReleaseGroup.Common (ReleaseGroupCommonOpts (..), ReleaseGroupProjectOpts (..), collectApiOpts, extractReleaseGroupConfigValue, mergeReleaseGroupProjectRevision, mergeReleaseGroupRelease, mergeReleaseGroupTitle, releaseGroupCommonOpts, releaseGroupProjectOpts)
 import App.Types (ReleaseGroupReleaseRevision (..), ReleaseGroupRevision (..))
@@ -24,7 +24,6 @@ import Options.Applicative (
   Mod,
   Parser,
   command,
-  helpDoc,
   info,
   long,
   optional,

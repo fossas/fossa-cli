@@ -13,9 +13,8 @@ module App.Fossa.Config.Snippets (
   labelForTransform,
 ) where
 
-import App.Fossa.Config.Common (apiKeyOpt, baseDirArg, collectBaseDir, endpointHelp, endpointOpt, fossaApiKeyCmdText, fossaApiKeyHelp)
+import App.Fossa.Config.Common (apiKeyOpt, baseDirArg, collectBaseDir, endpointOpt)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts, GetSeverity (..), SubCommand (..))
-import App.OptionExtensions (uriOption)
 import App.Types (BaseDir)
 import Control.Carrier.Lift (sendIO)
 import Control.Effect.Diagnostics (Diagnostics, Has)
@@ -27,7 +26,7 @@ import Data.Text (Text)
 import Effect.Logger (Severity (..))
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Options.Applicative (InfoMod, Parser, command, eitherReader, helpDoc, info, long, many, metavar, option, optional, progDescDoc, short, strOption, subparser, switch, (<|>))
+import Options.Applicative (InfoMod, Parser, command, eitherReader, info, long, many, metavar, option, optional, progDescDoc, short, strOption, subparser, switch, (<|>))
 import Path (Abs, Dir, Path)
 import Path.IO qualified as Path
 import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
