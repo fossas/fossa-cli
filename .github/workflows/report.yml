@@ -6,14 +6,16 @@ jobs:
   add-attributions-to-release:
     name: add-attributions-to-release ${{ github.event.release.tag_name }}
     runs-on: ubuntu-latest
+
+    # release changes require contents write
     permissions:
-      contents: write # release changes require contents write
+      contents: write 
 
     steps:
       - uses: actions/checkout@v4
       - name: Install fossa-cli
         run: |
-          curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash
+          ./install-latest.sh -d
 
       # since this is only invoked after the release is published,
       # we can safely presume that fossa has ran dependency scan on the commit
@@ -22,8 +24,8 @@ jobs:
       # docs: https://cli.github.com/manual/gh_release_upload
       - name: Persist attributions to release
         run: |
-          fossa --format cyclonedx-json attribution > attributions.json
-          gh release upload ${{ github.event.release.tag_name }} attributions.json --clobber
+          fossa --format cyclonedx-json attribution > attribution.bom.json
+          gh release upload ${{ github.event.release.tag_name }} attribution.bom.json
         env:
           FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
