@@ -24,8 +24,8 @@ jobs:
       # docs: https://cli.github.com/manual/gh_release_upload
       - name: Persist attributions to release
         run: |
-          fossa --format cyclonedx-json attribution > attribution.bom.json
-          gh release upload ${{ github.event.release.tag_name }} attribution.bom.json
+          fossa report --format cyclonedx-json attribution > fossa-cli-attribution.bom.json
+          gh release upload ${{ github.event.release.tag_name }} fossa-cli-attribution.bom.json
         env:
           FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
