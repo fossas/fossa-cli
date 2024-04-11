@@ -46,7 +46,7 @@ dependencyThree =
 gitSection :: Section
 gitSection =
   GitSection
-    "temp"
+    "url-for-dep-one"
     (Just "12345")
     (Just "branch")
     [ Spec
