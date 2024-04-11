@@ -91,9 +91,9 @@ toDependency pkg = foldr applyLabel start
         }
 
     applyLabel :: GemfileLabel -> Dependency -> Dependency
-    applyLabel (GemfileVersion ver) dep = dep{dependencyVersion = (dependencyVersion dep) <|> (Just $ CEq ver)}
+    applyLabel (GemfileVersion ver) dep = dep{dependencyVersion = (dependencyVersion dep) <|> Just (CEq ver)}
     applyLabel (GitRemote repo maybeRevision) dep =
-      dep{dependencyType = GitType, dependencyName = repo, dependencyVersion = maybe Nothing (\revision -> Just (CEq revision)) maybeRevision, dependencyLocations = maybe repo (\revision -> repo <> "@" <> revision) maybeRevision : dependencyLocations dep}
+      dep{dependencyType = GitType, dependencyName = repo, dependencyVersion = (Just . CEq) =<< maybeRevision, dependencyLocations = maybe repo (\revision -> repo <> "@" <> revision) maybeRevision : dependencyLocations dep}
     applyLabel (OtherRemote loc) dep =
       dep{dependencyLocations = loc : dependencyLocations dep}
 
