@@ -8,15 +8,15 @@ module Strategy.Ruby.GemfileLock (
   Section (..),
 ) where
 
-import Control.Effect.Diagnostics (context, Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, context)
 import Data.Char qualified as C
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe ()
 import Data.Set (Set)
 import Data.String.Conversion (toString)
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Void (Void)
 import DepTypes
