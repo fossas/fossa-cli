@@ -13,7 +13,7 @@ import Text.Megaparsec
 dependencyOne :: Dependency
 dependencyOne =
   Dependency
-    { dependencyType = GemType
+    { dependencyType = GitType
     , dependencyName = "dep-one"
     , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = ["temp@12345"]

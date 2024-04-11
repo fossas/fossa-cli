@@ -8,7 +8,7 @@ module Strategy.Ruby.GemfileLock (
   Section (..),
 ) where
 
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (context, Diagnostics)
 import Data.Char qualified as C
 import Data.Foldable (traverse_)
 import Data.Functor (void)
@@ -16,6 +16,7 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.String.Conversion (toString)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Void (Void)
 import DepTypes
@@ -89,9 +90,9 @@ toDependency pkg = foldr applyLabel start
         }
 
     applyLabel :: GemfileLabel -> Dependency -> Dependency
-    applyLabel (GemfileVersion ver) dep = dep{dependencyVersion = Just (CEq ver)}
+    applyLabel (GemfileVersion ver) dep = dep{dependencyVersion = (dependencyVersion dep) <|> (Just $ CEq ver)}
     applyLabel (GitRemote repo maybeRevision) dep =
-      dep{dependencyLocations = maybe repo (\revision -> repo <> "@" <> revision) maybeRevision : dependencyLocations dep}
+      dep{dependencyType = GitType, dependencyName = repo, dependencyVersion = maybe Nothing (\revision -> Just (CEq revision)) maybeRevision, dependencyLocations = maybe repo (\revision -> repo <> "@" <> revision) maybeRevision : dependencyLocations dep}
     applyLabel (OtherRemote loc) dep =
       dep{dependencyLocations = loc : dependencyLocations dep}
 
