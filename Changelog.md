@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.9.11
+- Support GIT dependencies in Bundler projects ([#1403](https://github.com/fossas/fossa-cli/pull/1403/files))
+
 ## v3.9.10
 - Support unarchiving `tgz`, `taz`, `txz`, `tbz`, `tbz2`, and `tz2` files for `--unpack-archives` ([#1402](https://github.com/fossas/fossa-cli/pull/1402/files))
 - `fossa test`: improves diagnostic message ([#1403](https://github.com/fossas/fossa-cli/pull/1403/files))
