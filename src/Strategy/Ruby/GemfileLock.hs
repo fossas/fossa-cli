@@ -14,10 +14,11 @@ import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe ()
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.String.Conversion (toString)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes
 import Effect.Grapher
@@ -258,8 +259,12 @@ dependenciesSectionParser = L.nonIndented scn $
     _ <- chunk "DEPENDENCIES"
     pure $ L.IndentMany Nothing (pure . DependencySection) findDependency
 
+-- The "!" suffix check checks for a Bundler convention that uses !'s to signify a dep is from another remote.
+-- We already check to se if the dep is part of another remote, so we can remove it.
+-- https://groups.google.com/g/ruby-bundler/c/QxlNGzK3rEY
+-- One supporting repository example: https://github.com/percy/example-rails/tree/master
 findDependency :: Parser DirectDep
 findDependency = do
   dep <- findDep
   _ <- ignored
-  pure $ DirectDep dep
+  pure $ DirectDep $ fromMaybe dep $ Text.stripSuffix "!" dep

@@ -20,6 +20,7 @@ parse a lockfile or run the `bundle` cli to determine dependencies.
  
 The lockfile strategy attempts to parse Bundler's `Gemfile.lock` lockfile. This file is created by bundler itself after a build is completed and can be distributed in order to maintain reproducible builds. It contains the following information about a Ruby project:
 - The location for each dependency. These locations are each separate sections and the ones of note are `GIT`, `PATH`, and `GEM` which provide their remote in the `remote: <location>` line.
+  - `GIT` and `GEM` type dependencies are supported. `PATH` and any others are not and will show up as `GEM` type dependencies.
 - Each dependencies required dependencies. These required dependencies are listed in the remote sections directly following each dependency from that remote.
 - All direct dependencies, listed in the `DEPENDENCIES` section.
 - Platforms that this ruby project is compatible with, listed in the `PLATFORMS` sections.
