@@ -7,6 +7,7 @@ module App.Fossa.Container.Sources.Podman (
   revisionFromPodman,
 ) where
 
+import App.Fossa.Config.Analyze (WithoutDefaultFilters)
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
 import Container.Types (ContainerScan)
 import Control.Carrier.Lift (Lift)
@@ -15,6 +16,7 @@ import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.Telemetry (Telemetry)
 import Control.Monad (void)
+import Data.Flag (Flag)
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
 import Discovery.Filters (AllFilters)
@@ -75,9 +77,10 @@ analyzeFromPodman ::
   ) =>
   Bool ->
   AllFilters ->
+  Flag WithoutDefaultFilters ->
   Text ->
   m ContainerScan
-analyzeFromPodman systemDepsOnly filters img = runFromPodman img $ analyzeFromDockerArchive systemDepsOnly filters
+analyzeFromPodman systemDepsOnly filters withoutDefaultFilters img = runFromPodman img $ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
 
 listTargetsFromPodman ::
   ( Has Diagnostics sig m

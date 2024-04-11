@@ -11,6 +11,9 @@ module App.Fossa.Config.Common (
   baseDirArg,
   metadataOpts,
   parsePolicyOptions,
+  configFileOpt,
+  endpointOpt,
+  apiKeyOpt,
 
   -- * CLI Validators
   validateDir,
@@ -45,6 +48,8 @@ module App.Fossa.Config.Common (
   titleHelp,
   -- Deprecation
   deprecateConfigurableProjectMetadata,
+  configHelp,
+  deprecateReleaseGroupMetadata,
 ) where
 
 import App.Fossa.Config.ConfigFile (
@@ -124,6 +129,7 @@ import Options.Applicative (
   argument,
   auto,
   eitherReader,
+  internal,
   long,
   metavar,
   option,
@@ -195,16 +201,16 @@ deprecateConfigurableProjectMetadata ProjectMetadata{..} = do
 
   pure $ ProjectMetadata Nothing Nothing Nothing Nothing projectTeam Nothing [] projectReleaseGroup
   where
-    deprecationMessage :: Text
-    deprecationMessage =
-      renderIt $
+    titleHelp :: Maybe (Doc AnsiStyle)
+    titleHelp =
+      Just . formatDoc $
         vsep
-          [ annotate (color Red) "Project options (--title, --project-url, --jira-project-key, --link, --policy, and --project-label) have been deprecated for this command."
-          , "Refer to `fossa project` subcommands to interact with FOSSA projects."
+          [ "The title of the FOSSA project"
+          , boldItalicized "Default: " <> "The project name"
           ]
 
-policy :: Parser Policy
-policy = PolicyName <$> (strOption (applyFossaStyle <> long "policy" <> helpDoc policyHelp))
+    policy :: Parser Policy
+    policy = PolicyName <$> (strOption (applyFossaStyle <> long "policy" <> helpDoc policyHelp))
 
 policyId :: Parser Policy
 policyId =
@@ -241,8 +247,25 @@ policyIdHelp =
 releaseGroupMetadataOpts :: Parser ReleaseGroupMetadata
 releaseGroupMetadataOpts =
   ReleaseGroupMetadata
-    <$> strOption (applyFossaStyle <> long "release-group-name" <> stringToHelpDoc "The name of the release group to add this project to")
-    <*> strOption (applyFossaStyle <> long "release-group-release" <> stringToHelpDoc "The release of the release group to add this project to")
+    <$> strOption (applyFossaStyle <> long "release-group-name" <> stringToHelpDoc "The name of the release group to add this project to" <> internal)
+    <*> strOption (applyFossaStyle <> long "release-group-release" <> stringToHelpDoc "The release of the release group to add this project to" <> internal)
+
+deprecateReleaseGroupMetadata :: Has Diagnostics sig m => ProjectMetadata -> m ProjectMetadata
+deprecateReleaseGroupMetadata projectMetadata = do
+  case (projectReleaseGroup projectMetadata) of
+    Nothing -> pure projectMetadata
+    Just _ -> do
+      warn deprecationMessage
+      pure $ removeReleaseGroupMetadata projectMetadata
+  where
+    removeReleaseGroupMetadata :: ProjectMetadata -> ProjectMetadata
+    removeReleaseGroupMetadata project = project{projectReleaseGroup = Nothing}
+
+    deprecationMessage :: Text
+    deprecationMessage =
+      renderIt $
+        vsep
+          [annotate (color Red) "Release group options for this command have been deprecated. Refer to `fossa release-group` subcommands to interact with FOSSA release groups."]
 
 pathOpt :: String -> Either String (Path Rel Dir)
 pathOpt = first show . parseRelDir
@@ -498,11 +521,11 @@ commonOpts :: Parser CommonOpts
 commonOpts =
   CommonOpts
     <$> switch (applyFossaStyle <> long "debug" <> stringToHelpDoc "Enable debug logging, and write detailed debug information to `fossa.debug.json`")
-    <*> optional (uriOption (applyFossaStyle <> long "endpoint" <> short 'e' <> metavar "URL" <> helpDoc endpointHelp))
+    <*> endpointOpt
     <*> optional (strOption (applyFossaStyle <> long "project" <> short 'p' <> helpDoc projectHelp))
     <*> optional (strOption (applyFossaStyle <> long "revision" <> short 'r' <> helpDoc revisionHelp))
-    <*> optional (strOption (applyFossaStyle <> long fossaApiKeyCmdText <> helpDoc fossaApiKeyHelp))
-    <*> optional (strOption (applyFossaStyle <> long "config" <> short 'c' <> helpDoc configHelp))
+    <*> apiKeyOpt
+    <*> configFileOpt
     <*> optional (option parseTelemetryScope (applyFossaStyle <> long "with-telemetry-scope" <> helpDoc telemtryScopeHelp))
   where
     projectHelp :: Maybe (Doc AnsiStyle)
@@ -528,6 +551,15 @@ commonOpts =
           , boldItalicized "Options: " <> coloredBoldItalicized Green "full" <> boldItalicized "|" <> coloredBoldItalicized Green "off"
           , boldItalicized "Default: " <> coloredBoldItalicized Green "full"
           ]
+
+apiKeyOpt :: Parser (Maybe Text)
+apiKeyOpt = optional (strOption (applyFossaStyle <> long fossaApiKeyCmdText <> helpDoc fossaApiKeyHelp))
+
+endpointOpt :: Parser (Maybe URI)
+endpointOpt = optional (uriOption (applyFossaStyle <> long "endpoint" <> short 'e' <> metavar "URL" <> helpDoc endpointHelp))
+
+configFileOpt :: Parser (Maybe FilePath)
+configFileOpt = optional (strOption (applyFossaStyle <> long "config" <> short 'c' <> helpDoc configHelp))
 
 configHelp :: Maybe (Doc AnsiStyle)
 configHelp =

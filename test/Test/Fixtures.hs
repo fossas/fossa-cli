@@ -52,9 +52,15 @@ module Test.Fixtures (
   invalidCreateProjectPermission,
   organizationWithPreflightChecks,
   projectResponse,
+  createReleaseGroupResponse,
+  releaseGroup,
+  release,
+  releaseProject,
+  policy,
+  team,
 ) where
 
-import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..))
+import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..), WithoutDefaultFilters (..))
 import App.Fossa.Config.Analyze qualified as ANZ
 import App.Fossa.Config.Analyze qualified as VSI
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
@@ -77,7 +83,7 @@ import Data.Text.Encoding qualified as TL
 import Data.Text.Extra (showT)
 import Discovery.Filters (AllFilters, MavenScopeFilters (MavenScopeIncludeFilters))
 import Effect.Logger (Severity (..))
-import Fossa.API.Types (Archive (..))
+import Fossa.API.Types (Archive (..), PolicyType (..))
 import Fossa.API.Types qualified as API
 import Path (Abs, Dir, Path, mkAbsDir, mkRelDir, parseAbsDir, (</>))
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
@@ -132,6 +138,51 @@ validCustomUploadPermissions = API.CustomBuildUploadPermissions API.ValidProject
 
 projectResponse :: API.ProjectResponse
 projectResponse = API.ProjectResponse Nothing
+
+projectResponse :: API.ProjectResponse
+projectResponse = API.ProjectResponse Nothing
+
+createReleaseGroupResponse :: API.CreateReleaseGroupResponse
+createReleaseGroupResponse = API.CreateReleaseGroupResponse 1
+
+releaseGroup :: API.ReleaseGroup
+releaseGroup =
+  API.ReleaseGroup
+    { API.releaseGroupId = 1
+    , API.releaseGroupTitle = "example-title"
+    , API.releaseGroupReleases = [release]
+    }
+
+release :: API.ReleaseGroupRelease
+release =
+  API.ReleaseGroupRelease
+    { API.releaseGroupReleaseId = 2
+    , API.releaseGroupReleaseTitle = "example-release-title"
+    , API.releaseGroupReleaseProjects = [releaseProject]
+    }
+
+releaseProject :: API.ReleaseProject
+releaseProject =
+  API.ReleaseProject
+    { API.releaseProjectLocator = "custom+1/example"
+    , API.releaseProjectRevisionId = "custom+1/example$123"
+    , API.releaseProjectBranch = "main"
+    }
+
+policy :: API.Policy
+policy =
+  API.Policy
+    { API.policyId = 7
+    , API.policyTitle = "example-policy"
+    , API.policyType = LICENSING
+    }
+
+team :: API.Team
+team =
+  API.Team
+    { API.teamId = 10
+    , API.teamName = "example-team"
+    }
 
 project :: API.Project
 project =
@@ -530,6 +581,7 @@ standardAnalyzeConfig =
     , ANZ.customFossaDepsFile = customFossaDepsFile
     , ANZ.allowedTacticTypes = Any
     , ANZ.reachabilityConfig = mempty
+    , ANZ.withoutDefaultFilters = toFlag WithoutDefaultFilters False
     }
 
 sampleJarParsedContent :: Text

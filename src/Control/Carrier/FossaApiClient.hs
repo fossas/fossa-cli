@@ -44,7 +44,9 @@ runFossaApiClient apiOpts =
           GetLatestBuild rev -> Core.getLatestBuild rev
           GetRevisionDependencyCacheStatus rev -> Core.getRevisionDependencyCacheStatus rev
           GetOrganization -> Core.getOrganization
+          GetPolicies -> Core.getPolicies
           GetProject rev -> Core.getProject rev
+          GetTeams -> Core.getTeams
           GetAnalyzedRevisions vdeps -> Core.getAnalyzedRevisions vdeps
           GetSignedFirstPartyScanUrl rev -> LicenseScanning.getSignedFirstPartyScanUrl rev
           GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev
@@ -69,4 +71,11 @@ runFossaApiClient apiOpts =
           GetTokenType -> Core.getTokenType
           GetCustomBuildPermissons rev metadata -> Core.getCustomBuildPermissions rev metadata
           EditProject projectLocator rev -> Core.editProject projectLocator rev
+          -- Release Group
+          DeleteReleaseGroup releaseGroupId -> Core.deleteReleaseGroup releaseGroupId
+          DeleteReleaseGroupRelease releaseGroupId releaseId -> Core.deleteReleaseGroupRelease releaseGroupId releaseId
+          UpdateReleaseGroupRelease releaseGroupId releaseId updateReq -> Core.updateReleaseGroupRelease releaseGroupId releaseId updateReq
+          GetReleaseGroups -> Core.getReleaseGroups
+          GetReleaseGroupReleases releaseGroupId -> Core.getReleaseGroupReleases releaseGroupId
+          CreateReleaseGroup req -> Core.createReleaseGroup req
       )

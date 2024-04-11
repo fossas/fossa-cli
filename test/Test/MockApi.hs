@@ -237,6 +237,14 @@ matchExpectation a@(UploadBuildForReachability{}) (ApiExpectation _ requestExpec
 matchExpectation a@(GetTokenType{}) (ApiExpectation _ requestExpectation b@(GetTokenType{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetCustomBuildPermissons{}) (ApiExpectation _ requestExpectation b@(GetCustomBuildPermissons{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(EditProject{}) (ApiExpectation _ requestExpectation b@(EditProject{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(DeleteReleaseGroup{}) (ApiExpectation _ requestExpectation b@(DeleteReleaseGroup{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(DeleteReleaseGroupRelease{}) (ApiExpectation _ requestExpectation b@(DeleteReleaseGroupRelease{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(UpdateReleaseGroupRelease{}) (ApiExpectation _ requestExpectation b@(UpdateReleaseGroupRelease{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(CreateReleaseGroup{}) (ApiExpectation _ requestExpectation b@(CreateReleaseGroup{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetReleaseGroups{}) (ApiExpectation _ requestExpectation b@(GetReleaseGroups{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetReleaseGroupReleases{}) (ApiExpectation _ requestExpectation b@(GetReleaseGroupReleases{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetPolicies{}) (ApiExpectation _ requestExpectation b@(GetPolicies{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetTeams{}) (ApiExpectation _ requestExpectation b@(GetTeams{}) resp) = checkResult requestExpectation a b resp
 matchExpectation _ _ = Nothing
 
 -- | Handles a request in the context of the mock API.

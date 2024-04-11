@@ -272,16 +272,18 @@ jobs:
     steps:
     - uses: actions/download-artifact@v4
 
+    # Sets VERSION from git's tag or sha.
+    # refer to: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#example-of-setting-an-output-parameter
     - name: Get version
       id: get-version
       run: |
         case $GITHUB_REF in
           refs/tags/v*)
             # This strips the 'v' prefix from the tag.
-            echo "{VERSION}=${GITHUB_REF/refs\/tags\/v/}"
+            echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> "$GITHUB_OUTPUT"
             ;;
           *)
-            echo "{VERSION}=${GITHUB_SHA}"
+            echo "VERSION=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
             ;;
         esac
 
@@ -305,7 +307,7 @@ jobs:
 
     - name: Install Cosign
       if: ${{ github.ref_type == 'tag' }}
-      uses: sigstore/cosign-installer@v3.1.1
+      uses: sigstore/cosign-installer@v3.4.0
 
     - name: Sign Release (Linux)
       if: ${{ github.ref_type == 'tag' }}

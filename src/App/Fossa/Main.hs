@@ -9,6 +9,7 @@ import App.Fossa.Init (initCommand)
 import App.Fossa.LicenseScan qualified as LicenseScan (licenseScanSubCommand)
 import App.Fossa.ListTargets qualified as ListTargets
 import App.Fossa.Project qualified as Project
+import App.Fossa.ReleaseGroup qualified as ReleaseGroup
 import App.Fossa.Report qualified as Report
 import App.Fossa.Snippets qualified as Snippets
 import App.Fossa.Subcommand (GetCommonOpts, GetSeverity, SubCommand (..), runSubCommand)
@@ -104,6 +105,7 @@ subcommands = public <|> private
           , initCommand
           , feedbackCommand
           , decodeSubCommand Project.projectSubCommand
+          , decodeSubCommand ReleaseGroup.releaseGroupSubCommand
           ]
 
 experimentalLicenseScanCommand :: Mod CommandFields (IO ())

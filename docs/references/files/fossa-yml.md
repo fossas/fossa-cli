@@ -27,6 +27,24 @@ project:
     - project-label-1
     - test-project
 
+releaseGroup:
+  title: release-group-title
+  release: release-group-release
+  releaseGroupProjects:
+    - projectLocator: custom+123/git@github.com/fossas/fossa-cli
+      projectRevision: "12345"
+      projectBranch: master 
+    - projectLocator: custom+123/git@github.com/example
+      projectRevision: "67890"
+      projectBranch: master
+  licensePolicy: license-policy-name
+  securityPolicy: security-policy-name
+  qualityPolicy: quality-policy-name
+  teams:
+    - team1
+    - team2
+
+
 revision:
   commit: "12345"
   branch: master
@@ -112,7 +130,7 @@ The project Locator defines a unique ID that the FOSSA API will use to reference
 <img src="../../assets/project-locator-example.png">
 
 #### `project.id:`
-The project ID defines a unique ID that the FOSSA API will use to reference this project within your organization. The project ID is a specific portion of the project locator and can be found in the UI on the project `Settings` page listed as the "Project Locator" underneath the "Project Title" setting. For example, if the "Project Locator" value of `custom+1/foo` is provided in the FOSSA UI, use `foo` for the `project.id`.
+The project ID defines an ID that is used to reference a project within your FOSSA organization. The project ID is a specific portion of the project locator and can be found in the UI on the project `Settings` page listed as the "Project Locator" underneath the "Project Title" setting. For example, if the "Project Locator" value of `custom+1/foo` is provided in the FOSSA UI, use `foo` for the `project.id`.
 
 Default:
   - Git: From .git/config file or project's remote "origin" URL.
@@ -159,6 +177,55 @@ If you choose to associate a project with a release group, you **must** supply b
 The `labels` field allows you to add labels to projects so that you can classify certain projects how you would like. This adds a more flexible way to query for projects in the FOSSA UI as opposed to assigning a project to a team.
 
 Up to 5 labels are allowed to be associated with a project at a time. Labels will be applied in order up to the limit of 5 labels and then ignored.
+
+### `releaseGroup:`
+The releaseGroup field allows you to configure settings for the release group you are interacting with through the FOSSA API.
+
+>NOTE: releaseGroup configurations are only allowed for `fossa release-group create` and `fossa release-group add-project`. This is done so that release groups are not mistakenly deleted.
+
+>NOTE: release-group command line options will always take precedence over configurations set in `fossa.yml`. 
+
+#### `releaseGroup.title:`
+The title of the release group which can be seen in the FOSSA dashboard.
+
+<img src="../../assets/release-group-title-example.png">
+
+#### `releaseGroup.release:`
+The release associated with the release group.
+
+<img src="../../assets//release-example.png">
+
+#### `releaseGroup.releaseGroupProjects:`
+The projects associated with the release group's release. 
+
+>NOTE: At least one project must be specified upon creating a release group.
+
+>NOTE: `projectLocator` , `projectRevision`, and `projectBranch` must all be specified when providing a releaseGroupProject.
+
+#### `releaseGroup.releaseGroupProjects.projectLocator:`
+The project locator defines a unique ID that the FOSSA API will use to reference this project within FOSSA. The project locator can be found in the UI on the project `Settings` page listed as the `Project Locator` underneath the `Project Title` setting.
+
+<img src="../../assets/project-locator-example.png">
+
+#### `releaseGroup.releaseGroupProjects.projectRevision:`
+The revision associated with a project. Project revisions can be found in the UI on the project `Activity` page. Refer to `Revision ID` to retrieve the specific revision you want to use for the project.
+
+<img src="../../assets//project-revision-example.png">
+
+#### `releaseGroup.releaseGroupProjects.projectBranch:`
+The branch associated with the project.
+
+#### `releaseGroup.licensePolicy:`
+The name of the license policy associated with the release group. Refer to the [documentation](https://docs.fossa.com/docs/configuring-a-licensing-policy) for addition details on license policies.
+
+#### `releaseGroup.securityPolicy:`
+The name of the security policy associated with the release group. Refer to the [documentation](https://docs.fossa.com/docs/configuring-a-security-policy) for addition details on security policies.
+
+#### `releaseGroup.qualityPolicy:`
+The name of the quality policy associated with the release group. Refer to the [documentation](https://docs.fossa.com/docs/configuring-quality-policies-copy) for addition details on quality policies.
+
+#### `releaseGroup.teams:`
+A list of team names that are associated with the release group.
 
 ### `revision:`
 The revision fields are used to help FOSSA differentiate between one upload for a project and another, just as GitHub uses commit hashes and branch names.
@@ -349,3 +416,26 @@ maven:
 ### Why are some configuration settings (name, team, policy, etc.) ignored by the FOSSA API after a project has already been created?
 
 The purpose of allowing a user to set `policy`, `team`, and other settings in the configuration file is to make it easy for users to share configuration files within their teams when creating many different projects. If these configuration settings were allowed to modify a project every time they were set on the CLI they could disrupt anyone managing the project in the FOSSA UI. Example: I change a project from Team A to Team B in the FOSSA UI. The project is then scanned nightly in a CI environment and my UI team change is reverted. This behavior would be very difficult for someone managing the project only in the FOSSA UI to diagnose and fix.
+
+### What is the difference between project ID and project locator?
+
+In the CLI, project ID refers to a specific portion of a project locator. When running `fossa analyze` on a project for the first time, if project ID is not directly configured, it will default to:
+
+- Git: The CLI will look for a `.git/config` file and set the ID to the project's remote "origin" url.
+- SVN: The CLI will run `svn info` and use the "Repository Root".
+- No VCS (Version control system): The ID will be set to the name of the project's directory.
+
+<img src="../../assets/project-id-example.png">
+
+
+After project ID is set, the CLI will use that value to construct a project locator on first time analysis. A project locator is a unique ID that the FOSSA API will use to reference a project across FOSSA.
+
+> NOTE: Projects uploaded through the CLI will have `custom` embedded into the project locator. 
+
+<img src="../../assets/project-locator-example.png">
+
+### When do I use project ID vs project locator?
+
+Project ID should be used when referencing projects uploaded via the CLI. In most cases, providing just a project ID is sufficient. However, when referencing projects uploaded through avenues outside the CLI (Quick Import, Archive Upload, etc), providing just a project ID fails. This is due to the nature of FOSSA's project naming conventions as project locators are constructed differently depending on how a project was uploaded. There is no way to tell at runtime which project a user is referencing when only given a project ID (i.e. Is this a project uploaded via the CLI or Archive Upload?).
+
+In `fossa release-group` project locator is used to reference projects that will be added to your release group's release. By using project locator, all FOSSA project upload flows are covered and the CLI is able to determine the specific project a user is trying to add to a release. 
