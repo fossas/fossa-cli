@@ -38,13 +38,23 @@ module Fossa.API.Types (
   CustomBuildUploadPermissions (..),
   ProjectPermissionStatus (..),
   ReleaseGroupPermissionStatus (..),
+  Policy (..),
+  Team (..),
+  PolicyType (..),
+  ReleaseGroup (..),
+  ReleaseGroupRelease (..),
+  ReleaseProject (..),
+  UpdateReleaseProjectRequest (..),
+  UpdateReleaseRequest (..),
+  CreateReleaseGroupRequest (..),
+  CreateReleaseGroupResponse (..),
   useApiOpts,
   defaultApiPollDelay,
   blankOrganization,
 ) where
 
 import App.Fossa.Lernie.Types (GrepEntry)
-import App.Types (FullFileUploads (..), fullFileUploadsToCliLicenseScanType)
+import App.Types (FullFileUploads (..), ReleaseGroupReleaseRevision, fullFileUploadsToCliLicenseScanType)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, fatalText)
 import Control.Timeout (Duration (Seconds))
@@ -52,7 +62,7 @@ import Data.Aeson (
   FromJSON (parseJSON),
   KeyValue ((.=)),
   ToJSON (toJSON),
-  Value (String),
+  Value (Null, String),
   object,
   withObject,
   withText,
@@ -827,8 +837,8 @@ renderedIssues issues = rendered
         issuePolicyConflictMessage :: Text
         issuePolicyConflictMessage =
           "Denied by policy "
-            <> fromMaybe ("(unknown policy, issueId: " <> intToText issueId <> ") ") issueLicense
-            <> "on"
+            <> fromMaybe ("(unknown policy, issueId: " <> intToText issueId <> ")") issueLicense
+            <> " on "
             <> nameRevision
 
         issueLink :: Maybe Text
@@ -944,3 +954,149 @@ instance FromJSON AnalyzedPathDependency where
       <$> obj .: "path"
       <*> obj .: "id"
       <*> obj .: "version"
+
+--- Policies
+data Policy = Policy
+  { policyId :: Int
+  , policyTitle :: Text
+  , policyType :: PolicyType
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON Policy where
+  parseJSON = withObject "Policy" $ \obj ->
+    Policy
+      <$> obj .: "id"
+      <*> obj .: "title"
+      <*> obj .: "type"
+
+instance FromJSON PolicyType where
+  parseJSON = withText "PolicyType" $ \case
+    "LICENSING" -> pure LICENSING
+    "SECURITY" -> pure SECURITY
+    "QUALITY" -> pure QUALITY
+    other -> pure $ PolicyUnknown other
+
+data PolicyType
+  = LICENSING
+  | SECURITY
+  | QUALITY
+  | PolicyUnknown Text
+  deriving (Eq, Ord, Show)
+
+-- Teams
+data Team = Team
+  { teamId :: Int
+  , teamName :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON Team where
+  parseJSON = withObject "Team" $ \obj ->
+    Team
+      <$> obj .: "id"
+      <*> obj .: "name"
+
+-- ReleaseGroup
+data ReleaseGroup = ReleaseGroup
+  { releaseGroupId :: Int
+  , releaseGroupTitle :: Text
+  , releaseGroupReleases :: [ReleaseGroupRelease]
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ReleaseGroup where
+  parseJSON = withObject "ReleaseGroup" $ \obj ->
+    ReleaseGroup
+      <$> obj .: "id"
+      <*> obj .: "title"
+      <*> obj .: "releases"
+
+data ReleaseGroupRelease = ReleaseGroupRelease
+  { releaseGroupReleaseId :: Int
+  , releaseGroupReleaseTitle :: Text
+  , releaseGroupReleaseProjects :: [ReleaseProject]
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ReleaseGroupRelease where
+  parseJSON = withObject "ReleaseGroupRelease" $ \obj ->
+    ReleaseGroupRelease
+      <$> obj .: "id"
+      <*> obj .: "title"
+      <*> obj .: "projects"
+
+data ReleaseProject = ReleaseProject
+  { releaseProjectLocator :: Text
+  , releaseProjectRevisionId :: Text
+  , releaseProjectBranch :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ReleaseProject where
+  parseJSON = withObject "ReleaseProject" $ \obj ->
+    ReleaseProject
+      <$> obj .: "projectId"
+      <*> obj .: "revisionId"
+      <*> obj .: "branch"
+
+data UpdateReleaseRequest = UpdateReleaseRequest
+  { updatedReleaseTitle :: Text
+  , updatedProjects :: [UpdateReleaseProjectRequest]
+  }
+  deriving (Eq, Ord, Show)
+
+instance ToJSON UpdateReleaseRequest where
+  toJSON UpdateReleaseRequest{..} =
+    object
+      [ "title" .= updatedReleaseTitle
+      , "projects" .= updatedProjects
+      ]
+
+data UpdateReleaseProjectRequest = UpdateReleaseProjectRequest
+  { updateReleaseProjectLocator :: Text
+  , updateReleaseProjectRevisionId :: Text
+  , updateReleaseProjectBranch :: Text
+  , -- Existence of this field signifies to core that the project exists and the release project just needs to be updated.
+    -- If this field is empty it means that we are adding a new project to the release.
+    targetReleaseGroupId :: Maybe Int
+  }
+  deriving (Eq, Ord, Show)
+
+instance ToJSON UpdateReleaseProjectRequest where
+  toJSON UpdateReleaseProjectRequest{..} =
+    object
+      [ "projectId" .= updateReleaseProjectLocator
+      , "revisionId" .= updateReleaseProjectRevisionId
+      , "branch" .= updateReleaseProjectBranch
+      , "projectGroupReleaseId" .= maybe Null toJSON targetReleaseGroupId
+      ]
+
+data CreateReleaseGroupRequest = CreateReleaseGroupRequest
+  { title :: Text
+  , release :: ReleaseGroupReleaseRevision
+  , maybeLicensePolicyId :: Maybe Int
+  , maybeSecurityPolicyId :: Maybe Int
+  , maybeQualityPolicyId :: Maybe Int
+  , maybeTeamIds :: Maybe [Int]
+  }
+  deriving (Eq, Ord, Show)
+
+instance ToJSON CreateReleaseGroupRequest where
+  toJSON CreateReleaseGroupRequest{..} =
+    object
+      [ "title" .= title
+      , "release" .= release
+      , "licensingPolicyId" .= maybe Null toJSON maybeLicensePolicyId
+      , "securityPolicyId" .= maybe Null toJSON maybeSecurityPolicyId
+      , "qualityPolicyId" .= maybe Null toJSON maybeQualityPolicyId
+      , "teams" .= maybe Null toJSON maybeTeamIds
+      ]
+
+newtype CreateReleaseGroupResponse = CreateReleaseGroupResponse {groupId :: Int}
+  deriving (Eq, Ord, Show)
+
+instance FromJSON CreateReleaseGroupResponse where
+  parseJSON = withObject "CreateReleaseGroupResponse" $ \obj ->
+    CreateReleaseGroupResponse
+      <$> obj .: "id"

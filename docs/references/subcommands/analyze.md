@@ -106,8 +106,14 @@ We support the following archive formats:
 - `.zip`
 - `.tar`
 - `.tar.gz`
+- `.taz`
+- `.tgz`
 - `.tar.xz`
+- `.txz`
 - `.tar.bz2`
+- `.tbz`
+- `.tbz2`
+- `.tz2`
 - `.jar`
 - `.aar`
 - `.rpm`, with...
