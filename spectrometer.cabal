@@ -560,8 +560,8 @@ test-suite unit-tests
     App.Fossa.ProjectInferenceSpec
     App.Fossa.ReleaseGroup.AddProjectsSpec
     App.Fossa.ReleaseGroup.CommonSpec
-    App.Fossa.ReleaseGroup.CreateSpec
     App.Fossa.ReleaseGroup.CreateReleaseSpec
+    App.Fossa.ReleaseGroup.CreateSpec
     App.Fossa.ReleaseGroup.DeleteReleaseSpec
     App.Fossa.ReleaseGroup.DeleteSpec
     App.Fossa.Report.AttributionSpec
