@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.9.12
+- `fossa release-group`: Add command to create a FOSSA release group release (`fossa release-group create-release`) [#1409](https://github.com/fossas/fossa-cli/pull/1409).
+
 ## v3.9.11
 - Licensing: Add new rules for unity licenses. Add the Redis Source Available License.
 
