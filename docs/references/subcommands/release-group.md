@@ -5,7 +5,8 @@ This `fossa release-group` subcommand allows users to interact with FOSSA releas
 It has the following subcommands:
 
 - [`fossa release-group add-projects`](./release-group/add-projects.md)
-- [`fossa release-group create`](./release-group//create.md)
+- [`fossa release-group create`](./release-group/create.md)
+- [`fossa release-group create-release`](./release-group/create-release.md)
 - [`fossa release-group delete`](./release-group/delete.md)
 - [`fossa release-group delete-release`](./release-group/delete-release.md)
 
@@ -33,6 +34,18 @@ Example:
 
 ```bash
 fossa release-group create --title example-title --release example-release-title --project-locator custom+1/git@github.com/example --project-revision 12345 --project-branch main
+```
+
+### `fossa release-group create-release`
+
+Create a release within a FOSSA release group
+
+>NOTE: The combination of `--project-locator` , `--project-revision`, and `--project-branch` are required to identify the project that will be added to the release group. Ensure that you have supplied all arguments for each project that you wish to add.
+
+Example:
+
+```bash
+fossa release-group create-release --title example-title --release example-release-title --project-locator custom+1/git@github.com/example --project-revision 12345 --project-branch main
 ```
 
 ### `fossa release-group delete`

@@ -56,6 +56,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getReleaseGroupReleases,
   updateReleaseGroupRelease,
   createReleaseGroup,
+  createReleaseGroupRelease,
 
   -- * Policy
   getPolicies,
@@ -90,6 +91,7 @@ import App.Types (
   ProjectMetadata (..),
   ProjectRevision (..),
   ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
+  ReleaseGroupReleaseRevision,
   fullFileUploadsToCliLicenseScanType,
  )
 import App.Version (versionNumber)
@@ -1670,8 +1672,8 @@ deleteReleaseGroup apiOpts releaseGroupId = fossaReq $ do
     context "Deleting release group" $
       req DELETE (deleteReleaseGroupURLEndpoint baseUrl $ toText releaseGroupId) NoReqBody ignoreResponse baseOpts
 
-releaseGroupReleaseURLEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
-releaseGroupReleaseURLEndpoint baseUrl releaseGroupId releaseId = baseUrl /: "api" /: "project_group" /: releaseGroupId /: "release" /: releaseId
+specifiedReleaseGroupReleaseURLEndpoint :: Url 'Https -> Text -> Text -> Url 'Https
+specifiedReleaseGroupReleaseURLEndpoint baseUrl releaseGroupId releaseId = baseUrl /: "api" /: "project_group" /: releaseGroupId /: "release" /: releaseId
 
 deleteReleaseGroupRelease ::
   ( Has (Lift IO) sig m
@@ -1686,7 +1688,24 @@ deleteReleaseGroupRelease apiOpts releaseGroupId releaseId = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   void $
     context "Deleting release group release" $
-      req DELETE (releaseGroupReleaseURLEndpoint baseUrl (toText releaseGroupId) $ toText releaseId) NoReqBody ignoreResponse baseOpts
+      req DELETE (specifiedReleaseGroupReleaseURLEndpoint baseUrl (toText releaseGroupId) $ toText releaseId) NoReqBody ignoreResponse baseOpts
+
+updateReleaseGroupRelease ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  ) =>
+  ApiOpts ->
+  Int ->
+  Int ->
+  UpdateReleaseRequest ->
+  m ReleaseGroupRelease
+updateReleaseGroupRelease apiOpts releaseGroupId releaseId updateReq = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  resp <-
+    context "Updating release group release" $
+      req PUT (specifiedReleaseGroupReleaseURLEndpoint baseUrl (toText releaseGroupId) $ toText releaseId) (ReqBodyJson updateReq) jsonResponse baseOpts
+  pure (responseBody resp)
 
 releaseGroupURLEndpoint :: Url 'Https -> Url 'Https
 releaseGroupURLEndpoint baseUrl = baseUrl /: "api" /: "project_group"
@@ -1699,11 +1718,11 @@ createReleaseGroup ::
   ApiOpts ->
   CreateReleaseGroupRequest ->
   m CreateReleaseGroupResponse
-createReleaseGroup apiOpts rev = fossaReq $ do
+createReleaseGroup apiOpts createReleaseGroupReq = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   resp <-
     context "Creating release group" $
-      req POST (releaseGroupURLEndpoint baseUrl) (ReqBodyJson rev) jsonResponse baseOpts
+      req POST (releaseGroupURLEndpoint baseUrl) (ReqBodyJson createReleaseGroupReq) jsonResponse baseOpts
   pure (responseBody resp)
 
 getReleaseGroups ::
@@ -1720,8 +1739,8 @@ getReleaseGroups apiOpts = fossaReq $ do
       req GET (releaseGroupURLEndpoint baseUrl) NoReqBody jsonResponse baseOpts
   pure (responseBody resp)
 
-getReleaseGroupReleasesURLEndpoint :: Url 'Https -> Text -> Url 'Https
-getReleaseGroupReleasesURLEndpoint baseUrl releaseGroupId = baseUrl /: "api" /: "project_group" /: releaseGroupId /: "release"
+releaseGroupReleaseURLEndpoint :: Url 'Https -> Text -> Url 'Https
+releaseGroupReleaseURLEndpoint baseUrl releaseGroupId = baseUrl /: "api" /: "project_group" /: releaseGroupId /: "release"
 
 getReleaseGroupReleases ::
   ( Has (Lift IO) sig m
@@ -1735,22 +1754,21 @@ getReleaseGroupReleases apiOpts releaseGroupId = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   resp <-
     context "Retrieving release group releases" $
-      req GET (getReleaseGroupReleasesURLEndpoint baseUrl $ toText releaseGroupId) NoReqBody jsonResponse baseOpts
+      req GET (releaseGroupReleaseURLEndpoint baseUrl $ toText releaseGroupId) NoReqBody jsonResponse baseOpts
   pure (responseBody resp)
 
-updateReleaseGroupRelease ::
+createReleaseGroupRelease ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has Debug sig m
   ) =>
   ApiOpts ->
   Int ->
-  Int ->
-  UpdateReleaseRequest ->
+  ReleaseGroupReleaseRevision ->
   m ReleaseGroupRelease
-updateReleaseGroupRelease apiOpts releaseGroupId releaseId updateReq = fossaReq $ do
+createReleaseGroupRelease apiOpts releaseGroupId createReleaseReq = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   resp <-
-    context "Updating release group release" $
-      req PUT (releaseGroupReleaseURLEndpoint baseUrl (toText releaseGroupId) $ toText releaseId) (ReqBodyJson updateReq) jsonResponse baseOpts
+    context "Creating release group release" $
+      req POST (releaseGroupReleaseURLEndpoint baseUrl $ toText releaseGroupId) (ReqBodyJson createReleaseReq) jsonResponse baseOpts
   pure (responseBody resp)

@@ -77,4 +77,5 @@ runFossaApiClient apiOpts =
           GetReleaseGroups -> Core.getReleaseGroups
           GetReleaseGroupReleases releaseGroupId -> Core.getReleaseGroupReleases releaseGroupId
           CreateReleaseGroup req -> Core.createReleaseGroup req
+          CreateReleaseGroupRelease releaseGroupId req -> Core.createReleaseGroupRelease releaseGroupId req
       )

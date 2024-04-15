@@ -10,7 +10,7 @@ module App.Fossa.Config.ReleaseGroup.Delete (
 
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
-import App.Fossa.Config.ReleaseGroup.Common (ReleaseGroupCommonOpts (..), collectApiOpts, releaseGroupCommonOpts)
+import App.Fossa.Config.ReleaseGroup.Common qualified as Common
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding, toEncoding)
 import Data.Text (Text)
@@ -23,12 +23,9 @@ import Options.Applicative (
   Parser,
   command,
   info,
-  long,
-  short,
-  strOption,
  )
 import Options.Applicative.Builder (progDescDoc)
-import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
+import Style (formatStringToDoc)
 
 deleteInfo :: InfoMod a
 deleteInfo = progDescDoc $ formatStringToDoc "Delete FOSSA release groups"
@@ -46,7 +43,7 @@ instance ToJSON DeleteConfig where
   toEncoding = genericToEncoding defaultOptions
 
 data DeleteOpts = DeleteOpts
-  { releaseGroupCommon :: ReleaseGroupCommonOpts
+  { releaseGroupCommon :: Common.ReleaseGroupCommonOpts
   , releaseGroupTitleOpts :: Text
   }
   deriving (Eq, Ord, Show, Generic)
@@ -54,10 +51,10 @@ data DeleteOpts = DeleteOpts
 cliParser :: Parser DeleteOpts
 cliParser =
   DeleteOpts
-    <$> releaseGroupCommonOpts
+    <$> Common.releaseGroupCommonOpts
     -- .fossa.yml configurations are disabled for release group delete commands so that lingering configurations are
     -- not extracted and used to mistakenly delete release groups or release group releases.
-    <*> strOption (applyFossaStyle <> long "title" <> short 't' <> stringToHelpDoc "The title of the FOSSA release group")
+    <*> Common.releaseGroupTitleOpts
 
 mergeOpts ::
   ( Has Diagnostics sig m
@@ -66,4 +63,4 @@ mergeOpts ::
   EnvVars ->
   DeleteOpts ->
   m DeleteConfig
-mergeOpts maybeConfig envVars DeleteOpts{..} = DeleteConfig <$> (collectApiOpts maybeConfig envVars releaseGroupCommon) <*> pure releaseGroupTitleOpts
+mergeOpts maybeConfig envVars DeleteOpts{..} = DeleteConfig <$> (Common.collectApiOpts maybeConfig envVars releaseGroupCommon) <*> pure releaseGroupTitleOpts
