@@ -666,8 +666,8 @@ data UploadResponse = UploadResponse
 
 instance FromJSON UploadResponse where
   parseJSON = withObject "UploadResponse" $ \obj ->
-    UploadResponse
-      <$> (parseLocator <$> obj .: "locator")
+    UploadResponse . parseLocator
+      <$> (obj .: "locator")
       <*> obj .:? "error"
       <*> obj .:? "warnings"
 
