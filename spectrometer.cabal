@@ -174,7 +174,6 @@ library
     Algebra.Graph.AdjacencyMap.Extra
     App.Docs
     App.Fossa.Analyze
-    App.Fossa.ApiUtils
     App.Fossa.Analyze.Debug
     App.Fossa.Analyze.Discover
     App.Fossa.Analyze.Filter
@@ -189,6 +188,7 @@ library
     App.Fossa.Analyze.Upload
     App.Fossa.API.BuildLink
     App.Fossa.API.BuildWait
+    App.Fossa.ApiUtils
     App.Fossa.ArchiveUploader
     App.Fossa.BinaryDeps
     App.Fossa.BinaryDeps.Jar
@@ -381,8 +381,8 @@ library
     Effect.Grapher
     Effect.Logger
     Effect.ReadFS
-    Fossa.API.Types
     Fossa.API.CoreTypes
+    Fossa.API.Types
     Graphing
     Graphing.Debug
     Graphing.Hydrate
@@ -542,9 +542,9 @@ test-suite unit-tests
     App.DocsSpec
     App.Fossa.Analyze.UploadSpec
     App.Fossa.AnalyzeSpec
-    App.Fossa.ApiUtilsSpec
     App.Fossa.API.BuildLinkSpec
     App.Fossa.API.BuildWaitSpec
+    App.Fossa.ApiUtilsSpec
     App.Fossa.ArchiveUploaderSpec
     App.Fossa.BinaryDeps.JarSpec
     App.Fossa.Config.AnalyzeSpec
