@@ -22,10 +22,12 @@
                     "minLength": 1,
                     "description": "The name field sets the projects visible name in the FOSSA dashboard. By default, this will be set to the project's ID."
                 },
-                "team": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "The name of the team in your FOSSA organization to associate this project with."
+                "teams": {
+                    "type": "array",
+                    "description": "A list of team names in your FOSSA organization to associate this project with.",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "policy": {
                     "type": "string",

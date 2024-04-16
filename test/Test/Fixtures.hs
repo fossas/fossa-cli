@@ -51,7 +51,6 @@ module Test.Fixtures (
   invalidEditProjectPermission,
   invalidCreateProjectPermission,
   organizationWithPreflightChecks,
-  projectResponse,
   createReleaseGroupResponse,
   releaseGroup,
   release,
@@ -83,7 +82,8 @@ import Data.Text.Encoding qualified as TL
 import Data.Text.Extra (showT)
 import Discovery.Filters (AllFilters, MavenScopeFilters (MavenScopeIncludeFilters))
 import Effect.Logger (Severity (..))
-import Fossa.API.Types (Archive (..), PolicyType (..))
+import Fossa.API.CoreTypes qualified as CoreAPI
+import Fossa.API.Types (Archive (..))
 import Fossa.API.Types qualified as API
 import Path (Abs, Dir, Path, mkAbsDir, mkRelDir, parseAbsDir, (</>))
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
@@ -101,13 +101,13 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False False API.Free True
+organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False False API.Free
 
 organizationWithPreflightChecks :: API.Organization
-organizationWithPreflightChecks = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Free False
+organizationWithPreflightChecks = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Free
 
 organizationWithPremiumSubscription :: API.Organization
-organizationWithPremiumSubscription = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Premium False
+organizationWithPremiumSubscription = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Premium
 
 pushToken :: API.TokenTypeResponse
 pushToken = API.TokenTypeResponse API.Push
@@ -136,52 +136,46 @@ invalidCreateTeamProjectsForReleaseGroupPermission = API.CustomBuildUploadPermis
 validCustomUploadPermissions :: API.CustomBuildUploadPermissions
 validCustomUploadPermissions = API.CustomBuildUploadPermissions API.ValidProjectPermission $ Just API.ValidReleaseGroupPermission
 
-projectResponse :: API.ProjectResponse
-projectResponse = API.ProjectResponse Nothing
+createReleaseGroupResponse :: CoreAPI.CreateReleaseGroupResponse
+createReleaseGroupResponse = CoreAPI.CreateReleaseGroupResponse 1
 
-projectResponse :: API.ProjectResponse
-projectResponse = API.ProjectResponse Nothing
-
-createReleaseGroupResponse :: API.CreateReleaseGroupResponse
-createReleaseGroupResponse = API.CreateReleaseGroupResponse 1
-
-releaseGroup :: API.ReleaseGroup
+releaseGroup :: CoreAPI.ReleaseGroup
 releaseGroup =
-  API.ReleaseGroup
-    { API.releaseGroupId = 1
-    , API.releaseGroupTitle = "example-title"
-    , API.releaseGroupReleases = [release]
+  CoreAPI.ReleaseGroup
+    { CoreAPI.releaseGroupId = 1
+    , CoreAPI.releaseGroupTitle = "example-title"
+    , CoreAPI.releaseGroupReleases = [release]
     }
 
-release :: API.ReleaseGroupRelease
+release :: CoreAPI.ReleaseGroupRelease
 release =
-  API.ReleaseGroupRelease
-    { API.releaseGroupReleaseId = 2
-    , API.releaseGroupReleaseTitle = "example-release-title"
-    , API.releaseGroupReleaseProjects = [releaseProject]
+  CoreAPI.ReleaseGroupRelease
+    { CoreAPI.releaseGroupReleaseId = 2
+    , CoreAPI.releaseGroupReleaseTitle = "example-release-title"
+    , CoreAPI.releaseGroupReleaseProjects = [releaseProject]
     }
 
-releaseProject :: API.ReleaseProject
+releaseProject :: CoreAPI.ReleaseProject
 releaseProject =
-  API.ReleaseProject
-    { API.releaseProjectLocator = "custom+1/example"
-    , API.releaseProjectRevisionId = "custom+1/example$123"
-    , API.releaseProjectBranch = "main"
+  CoreAPI.ReleaseProject
+    { CoreAPI.releaseProjectLocator = "custom+1/example"
+    , CoreAPI.releaseProjectRevisionId = "custom+1/example$123"
+    , CoreAPI.releaseProjectBranch = "main"
     }
 
-policy :: API.Policy
+policy :: CoreAPI.Policy
 policy =
-  API.Policy
-    { API.policyId = 7
-    , API.policyTitle = "example-policy"
-    , API.policyType = LICENSING
+  CoreAPI.Policy
+    { CoreAPI.policyId = 7
+    , CoreAPI.policyTitle = "example-policy"
+    , CoreAPI.policyType = CoreAPI.LICENSING
     }
 
-team :: API.Team
+team :: CoreAPI.Team
 team =
-  API.Team
-    { API.teamId = 10
-    , API.teamName = "example-team"
+  CoreAPI.Team
+    { CoreAPI.teamId = 10
+    , CoreAPI.teamName = "example-team"
     }
 
 project :: API.Project

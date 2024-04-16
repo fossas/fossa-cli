@@ -10,9 +10,10 @@ import Control.Algebra (Has)
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Diagnostics (context)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
+import Control.Carrier.StickyLogger (runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
-import Effect.Logger (Logger, logInfo)
+import Effect.Logger (Logger, Severity (SevInfo), logInfo)
 
 projectSubCommand :: SubCommand ProjectCommand ProjectConfig
 projectSubCommand = mkSubCommand projectMain
@@ -26,4 +27,4 @@ projectMain ::
   m ()
 projectMain (EditCfg config) = do
   logInfo "Running FOSSA project"
-  context "Add projects to release group" $ ignoreDebug $ runFossaApiClient (Edit.apiOpts config) $ editMain config
+  context "Add projects to release group" . runStickyLogger SevInfo . ignoreDebug . runFossaApiClient (Edit.apiOpts config) $ editMain config

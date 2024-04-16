@@ -11,7 +11,6 @@ module App.Types (
   Policy (..),
   FullFileUploads (..),
   FirstPartyScansFlag (..),
-  ProjectMetadataRevision (..),
   ReleaseGroupRevision (..),
   ReleaseGroupProjectRevision (..),
   ReleaseGroupReleaseRevision (..),
@@ -61,20 +60,6 @@ data ProjectMetadata = ProjectMetadata
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON ProjectMetadata where
-  toEncoding = genericToEncoding defaultOptions
-
-data ProjectMetadataRevision = ProjectMetadataRevision
-  { projectTitleRevision :: Maybe Text
-  , projectUrlRevision :: Maybe Text
-  , projectJiraKeyRevision :: Maybe Text
-  , projectLinkRevision :: Maybe Text
-  , projectTeamRevision :: Maybe Text
-  , projectPolicyRevision :: Maybe Policy
-  , projectLabelRevision :: [Text]
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToJSON ProjectMetadataRevision where
   toEncoding = genericToEncoding defaultOptions
 
 data ReleaseGroupMetadata = ReleaseGroupMetadata

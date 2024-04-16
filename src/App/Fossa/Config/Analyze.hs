@@ -43,7 +43,6 @@ import App.Fossa.Config.Common (
   collectConfigMavenScopeFilters,
   collectRevisionData',
   commonOpts,
-  deprecateConfigurableProjectMetadata,
   deprecateReleaseGroupMetadata,
   metadataOpts,
   pathOpt,

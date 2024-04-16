@@ -47,8 +47,6 @@ module App.Fossa.Config.Common (
   configHelp,
   titleHelp,
   -- Deprecation
-  deprecateConfigurableProjectMetadata,
-  configHelp,
   deprecateReleaseGroupMetadata,
 ) where
 
@@ -106,12 +104,11 @@ import Control.Effect.Diagnostics (
   (<||>),
  )
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Monad (when)
 import Control.Timeout (Duration (Minutes))
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Bifunctor (Bifunctor (first))
 import Data.Functor.Extra ((<$$>))
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe)
 import Data.String (IsString)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text, null, strip, toLower)
@@ -186,31 +183,16 @@ metadataOpts =
     <*> many (strOption (applyFossaStyle <> long "project-label" <> stringToHelpDoc "Assign up to 5 labels to the project"))
     <*> optional releaseGroupMetadataOpts
 
-deprecateConfigurableProjectMetadata :: Has Diagnostics sig m => ProjectMetadata -> m ProjectMetadata
-deprecateConfigurableProjectMetadata ProjectMetadata{..} = do
-  when
-    ( isJust projectTitle
-        || isJust projectUrl
-        || isJust projectJiraKey
-        || isJust projectLink
-        || isJust projectPolicy
-        || isJust projectTeam
-        || not (Prelude.null projectLabel)
-    )
-    $ warn deprecationMessage
+titleHelp :: Maybe (Doc AnsiStyle)
+titleHelp =
+  Just . formatDoc $
+    vsep
+      [ "The title of the FOSSA project"
+      , boldItalicized "Default: " <> "The project name"
+      ]
 
-  pure $ ProjectMetadata Nothing Nothing Nothing Nothing projectTeam Nothing [] projectReleaseGroup
-  where
-    titleHelp :: Maybe (Doc AnsiStyle)
-    titleHelp =
-      Just . formatDoc $
-        vsep
-          [ "The title of the FOSSA project"
-          , boldItalicized "Default: " <> "The project name"
-          ]
-
-    policy :: Parser Policy
-    policy = PolicyName <$> (strOption (applyFossaStyle <> long "policy" <> helpDoc policyHelp))
+policy :: Parser Policy
+policy = PolicyName <$> (strOption (applyFossaStyle <> long "policy" <> helpDoc policyHelp))
 
 policyId :: Parser Policy
 policyId =
@@ -222,14 +204,6 @@ policyId =
 
 parsePolicyOptions :: Parser (Maybe Policy)
 parsePolicyOptions = optional (policy <|> policyId) -- For Parsers '<|>' tries every alternative and fails if they all succeed.
-
-titleHelp :: Maybe (Doc AnsiStyle)
-titleHelp =
-  Just . formatDoc $
-    vsep
-      [ "The title of the FOSSA project"
-      , boldItalicized "Default: " <> "The project name"
-      ]
 
 policyHelp :: Maybe (Doc AnsiStyle)
 policyHelp =

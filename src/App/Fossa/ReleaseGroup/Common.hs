@@ -6,7 +6,7 @@ module App.Fossa.ReleaseGroup.Common (
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, errHelp, fatalText)
 import Data.Text (Text)
-import Fossa.API.Types (ReleaseGroup (..), ReleaseGroupRelease (..))
+import Fossa.API.CoreTypes (ReleaseGroup (..), ReleaseGroupRelease (..))
 
 retrieveReleaseGroupId :: Has Diagnostics sig m => Text -> [ReleaseGroup] -> m (Maybe Int)
 retrieveReleaseGroupId title releaseGroups = do

@@ -2,10 +2,9 @@
 
 module App.Fossa.ReleaseGroup.Create (
   createMain,
-  retrievePolicyId,
-  retrieveTeamIds,
 ) where
 
+import App.Fossa.ApiUtils (retrievePolicyId, retrieveTeamIdsWithMaybe)
 import App.Fossa.Config.ReleaseGroup.Create (CreateConfig (..))
 import App.Fossa.ReleaseGroup.Common (retrieveReleaseGroupId)
 import App.Types (ReleaseGroupRevision (..))
@@ -14,12 +13,11 @@ import Control.Effect.Diagnostics (Diagnostics, context, errHelp, fatalText)
 import Control.Effect.FossaApiClient (FossaApiClient, createReleaseGroup, getPolicies, getReleaseGroups, getTeams)
 import Control.Effect.Lift (Lift)
 import Control.Monad (when)
-import Data.Map qualified as Map
-import Data.Maybe (isJust, mapMaybe)
+import Data.Maybe (isJust)
 import Data.String.Conversion (ToText (..))
-import Data.Text (Text, intercalate)
+import Data.Text (Text)
 import Effect.Logger (Logger, logInfo, logStdout)
-import Fossa.API.Types (CreateReleaseGroupRequest (..), CreateReleaseGroupResponse (..), Policy (..), PolicyType (..), Team (..))
+import Fossa.API.CoreTypes (CreateReleaseGroupRequest (..), CreateReleaseGroupResponse (..), PolicyType (..))
 
 createMain ::
   ( Has Diagnostics sig m
@@ -47,7 +45,7 @@ createMain CreateConfig{..} = do
   maybeLicensePolicyId <- context "Retrieving license policy ID" $ retrievePolicyId (releaseGroupLicensePolicy releaseGroupRevision) LICENSING policies
   maybeSecurityPolicyId <- context "Retrieving security policy ID" $ retrievePolicyId (releaseGroupSecurityPolicy releaseGroupRevision) SECURITY policies
   maybeQualityPolicyId <- context "Retrieving quality policy ID" $ retrievePolicyId (releaseGroupQualityPolicy releaseGroupRevision) QUALITY policies
-  maybeTeamIds <- context "Retrieving team IDs" $ retrieveTeamIds (releaseGroupTeams releaseGroupRevision) teams
+  maybeTeamIds <- context "Retrieving team IDs" $ retrieveTeamIdsWithMaybe (releaseGroupTeams releaseGroupRevision) teams
 
   let req = CreateReleaseGroupRequest (releaseGroupTitle releaseGroupRevision) (releaseGroupReleaseRevision releaseGroupRevision) maybeLicensePolicyId maybeSecurityPolicyId maybeQualityPolicyId maybeTeamIds
   res <- createReleaseGroup req
@@ -56,29 +54,3 @@ createMain CreateConfig{..} = do
   where
     createdReleaseGroupLink :: Int -> Text
     createdReleaseGroupLink releaseGroupId = "https://app.fossa.com/projects/group/" <> toText releaseGroupId
-
-retrievePolicyId :: Has Diagnostics sig m => Maybe Text -> PolicyType -> [Policy] -> m (Maybe Int)
-retrievePolicyId maybeTitle targetType policies = case maybeTitle of
-  Nothing -> pure Nothing
-  Just targetTitle -> do
-    let filteredPolicies = filter (\p -> policyTitle p == targetTitle && (policyType p == targetType)) policies
-    case filteredPolicies of
-      [] -> fatalText $ "Policy `" <> targetTitle <> "` not found"
-      [policy] -> pure . Just $ policyId policy
-      (_ : _ : _) ->
-        errHelp ("Navigate to the FOSSA web UI to rename your policies so that they are unqiue" :: Text)
-          . fatalText
-          $ "Multiple policies with title `" <> targetTitle <> "` found. Unable to determine which policy to use."
-
-retrieveTeamIds :: Has Diagnostics sig m => Maybe [Text] -> [Team] -> m (Maybe [Int])
-retrieveTeamIds maybeTeamNames teams = case maybeTeamNames of
-  Nothing -> pure Nothing
-  Just teamNames -> do
-    let teamMap = Map.fromList $ map (\team -> (teamName team, teamId team)) teams
-        validTeamIds = mapMaybe (`Map.lookup` teamMap) teamNames
-
-    if length teamNames == length validTeamIds
-      then pure . Just $ validTeamIds
-      else do
-        let missingTeamNames = filter (`Map.notMember` teamMap) teamNames
-        fatalText $ "Teams " <> intercalate "," missingTeamNames <> "not found"

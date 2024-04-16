@@ -15,7 +15,7 @@ Edits a FOSSA project's settings and configurations.
 Example:
 
 ```bash
-fossa project edit --project-locator custom+1/example --title example-title --project-url github.com/fossas/fossa-cli --jira-project-key example-jira-key --link fossa.com --team ExampleTeam --policy example-policy --project-label example-label-1 --project-label example-label-2 
+fossa project edit --project-locator custom+1/example --title example-title --project-url github.com/fossas/fossa-cli --jira-project-key example-jira-key --link fossa.com --team example-team-1 --team example-team-2 --policy example-policy --project-label example-label-1 --project-label example-label-2 
 ```
 
 ### F.A.Q.

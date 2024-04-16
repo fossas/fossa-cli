@@ -15,7 +15,8 @@ project:
   locator: custom+1/github.com/fossas/fossa-cli
   id: github.com/fossas/fossa-cli
   name: fossa-cli
-  team: cli-team
+  teams: 
+    - cli-team
   policy: custom-cli-policy
   link: fossa.com
   url: github.com/fossas/fossa-cli
@@ -135,6 +136,7 @@ The project ID defines an ID that is used to reference a project within your FOS
 Default:
   - Git: From .git/config file or project's remote "origin" URL.
   - SVN: From "Repository Root" obtained using 'svn info'.
+  - No VCS: Name of the project's directory.
 
 >NOTE:
     A project's ID cannot be modified after a project is created. If you change the ID,
@@ -146,8 +148,11 @@ Default:
 #### `project.name:`
 The name field sets the projects visible name in the FOSSA dashboard. By default, this will be set to the project's ID.
 
-#### `project.team:`
-The name of the team in your FOSSA organization to associate this project with.
+#### `project.teams:`
+The name of the teams in your FOSSA organization to associate this project with.
+
+>NOTE:
+  Currently, commands such as `fossa analyze` and `fossa container analyze` will only use the first team in the list. Use [fossa project edit](../subcommands/project/edit.md) to associate a project to all teams in the list.
 
 #### `project.policy:`
 The name of the policy in your FOSSA organization to associate this project with.

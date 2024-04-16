@@ -44,14 +44,16 @@ version: 3
 #   #
 #   # NOTE:
 #   #   Can only be set when creating a project (running fossa analyze for the first time),
-#   #   Otherwise, they will be silently ignored.
+#   #   Otherwise, they will be silently ignored. Use fossa project edit to modify this field for existing projects.
 #   name: fossa-cli
 #
-#   # Name of the team in your FOSSA organization to associate with this project.
+#   # Name of the teams in your FOSSA organization to associate with this project.
 #   # NOTE:
 #   #   Can only be set when creating a project (running fossa analyze for the first time),
-#   #   Otherwise, they will be silently ignored.
-#   team: cli-team
+#   #   Otherwise, they will be silently ignored. Use fossa project edit to modify this field for existing projects.
+#   team:
+#     - example-team-1
+#     - example-team-2
 #
 #   # Name of the policy in your FOSSA organization to associate with this project.
 #   # NOTE:
@@ -62,7 +64,7 @@ version: 3
 #   # An external link that will appear in the FOSSA UI for this specific project.
 #   # NOTE:
 #   #   Can only be set when creating a project (running fossa analyze for the first time),
-#   #   Otherwise, they will be silently ignored.
+#   #   Otherwise, they will be silently ignored. Use fossa project edit to modify this field for existing projects.
 #   link: fossa.com
 #
 #   # The URL of your project that will appear in FOSSA.
@@ -74,7 +76,7 @@ version: 3
 #   #
 #   # NOTE:
 #   #   Can only be set when creating a project (running fossa analyze for the first time),
-#   #   Otherwise, they will be silently ignored.
+#   #   Otherwise, they will be silently ignored. Use fossa project edit to modify this field for existing projects.
 #   jiraProjectKey: jira-key
 #
 #   # The 'name' and 'release' of the release group's release to add your project to in the FOSSA dashboard.

@@ -236,7 +236,6 @@ matchExpectation a@(UploadContentForReachability{}) (ApiExpectation _ requestExp
 matchExpectation a@(UploadBuildForReachability{}) (ApiExpectation _ requestExpectation b@(UploadBuildForReachability{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetTokenType{}) (ApiExpectation _ requestExpectation b@(GetTokenType{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetCustomBuildPermissons{}) (ApiExpectation _ requestExpectation b@(GetCustomBuildPermissons{}) resp) = checkResult requestExpectation a b resp
-matchExpectation a@(EditProject{}) (ApiExpectation _ requestExpectation b@(EditProject{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(DeleteReleaseGroup{}) (ApiExpectation _ requestExpectation b@(DeleteReleaseGroup{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(DeleteReleaseGroupRelease{}) (ApiExpectation _ requestExpectation b@(DeleteReleaseGroupRelease{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UpdateReleaseGroupRelease{}) (ApiExpectation _ requestExpectation b@(UpdateReleaseGroupRelease{}) resp) = checkResult requestExpectation a b resp
@@ -245,6 +244,11 @@ matchExpectation a@(GetReleaseGroups{}) (ApiExpectation _ requestExpectation b@(
 matchExpectation a@(GetReleaseGroupReleases{}) (ApiExpectation _ requestExpectation b@(GetReleaseGroupReleases{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetPolicies{}) (ApiExpectation _ requestExpectation b@(GetPolicies{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetTeams{}) (ApiExpectation _ requestExpectation b@(GetTeams{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetProjectV2{}) (ApiExpectation _ requestExpectation b@(GetProjectV2{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(UpdateProject{}) (ApiExpectation _ requestExpectation b@(UpdateProject{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(UpdateRevision{}) (ApiExpectation _ requestExpectation b@(UpdateRevision{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetOrgLabels{}) (ApiExpectation _ requestExpectation b@(GetOrgLabels{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(AddTeamProjects{}) (ApiExpectation _ requestExpectation b@(AddTeamProjects{}) resp) = checkResult requestExpectation a b resp
 matchExpectation _ _ = Nothing
 
 -- | Handles a request in the context of the mock API.

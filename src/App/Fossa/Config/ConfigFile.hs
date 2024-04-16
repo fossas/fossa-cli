@@ -52,6 +52,7 @@ import Data.Foldable (asum)
 import Data.Functor (($>))
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (listToMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (ToString (toString), ToText (toText))
@@ -182,11 +183,18 @@ mergeFileCmdMetadata meta cfgFile =
         , projectUrl = projectUrl meta <|> (configProject cfgFile >>= configUrl)
         , projectJiraKey = projectJiraKey meta <|> (configProject cfgFile >>= configJiraKey)
         , projectLink = projectLink meta <|> (configProject cfgFile >>= configLink)
-        , projectTeam = projectTeam meta <|> (configProject cfgFile >>= configTeam)
+        , -- The config file now allows allows the `project` field to accept a list of teams.
+          -- `fossa project edit` uses the list of teams to add a project to all teams.
+          -- All other command flows that use the ProjectMetadata type (e.g. `fossa analyze`) does not account for the change so just take the first team in the list if it exists.
+          projectTeam = projectTeam meta <|> extractFirstTeamFromConfig (configProject cfgFile >>= configTeams)
         , projectPolicy = policy
         , projectLabel = projectLabel meta <|> (maybe [] configLabel (configProject cfgFile))
         , projectReleaseGroup = projectReleaseGroup meta <|> (configProject cfgFile >>= configProjectReleaseGroup)
         }
+
+    extractFirstTeamFromConfig :: Maybe [Text] -> Maybe Text
+    extractFirstTeamFromConfig Nothing = Nothing
+    extractFirstTeamFromConfig (Just teams) = listToMaybe teams
 
 data ConfigFile = ConfigFile
   { configVersion :: Int
@@ -214,7 +222,7 @@ data ConfigProject = ConfigProject
   , configProjID :: Maybe Text
   , configName :: Maybe Text
   , configLink :: Maybe Text
-  , configTeam :: Maybe Text
+  , configTeams :: Maybe [Text]
   , configJiraKey :: Maybe Text
   , configUrl :: Maybe Text
   , configPolicy :: Maybe Policy
@@ -318,7 +326,7 @@ instance FromJSON ConfigProject where
       <*> obj .:? "id"
       <*> obj .:? "name"
       <*> obj .:? "link"
-      <*> obj .:? "team"
+      <*> obj .:? "teams"
       <*> obj .:? "jiraProjectKey"
       <*> obj .:? "url"
       <*> parsePolicy obj
