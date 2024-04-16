@@ -24,12 +24,14 @@ import Data.Aeson (
   FromJSON (parseJSON),
   JSONPath,
   Value (Array),
-  json,
   withObject,
   (.:),
   (.:?),
  )
-import Data.Aeson.Parser (eitherDecodeWith)
+-- This is from the attoparsec-aeson package.
+-- Aeson no longer uses this parser internally.
+-- We should find some way to not use attoparsec-aeson in the future if possible. 
+import Data.Aeson.Parser (eitherDecodeWith, json)
 import Data.Aeson.Types (formatError, iparse)
 import Data.Attoparsec.ByteString qualified as A
 import Data.ByteString.Lazy qualified as BL
