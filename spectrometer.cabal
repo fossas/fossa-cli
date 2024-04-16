@@ -83,7 +83,7 @@ common deps
     , aeson                        ^>=2.1.2.0
     , aeson-pretty                 ^>=0.8.9
     , algebraic-graphs             ^>=0.7
-    , ansi-terminal                ^>=1.0
+    , ansi-terminal                ^>=1.1
     , async                        ^>=2.2.2
     , attoparsec                   ^>=0.14.1
     , base64-bytestring            ^>=1.2.1.0
