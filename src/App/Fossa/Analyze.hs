@@ -16,7 +16,7 @@ import App.Docs (userGuideUrl)
 import App.Fossa.Analyze.Debug (collectDebugBundle, diagToDebug)
 import App.Fossa.Analyze.Discover (
   DiscoverFunc (..),
-  discoverFuncs,
+  getDiscoveryFuncs,
  )
 import App.Fossa.Analyze.Filter (
   CountedResult (..),
@@ -259,6 +259,7 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
     else traverse_ single discoverFuncs
   where
     single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTactics)
+    discoverFuncs = getDiscoveryFuncs
 
 analyze ::
   ( Has Debug sig m

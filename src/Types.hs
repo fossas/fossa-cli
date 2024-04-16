@@ -110,6 +110,7 @@ data DiscoveredProjectType
   | SwiftProjectType
   | VsiProjectType
   | YarnProjectType
+  | ParsableExecutableProjectType
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 projectTypeToText :: DiscoveredProjectType -> Text
@@ -160,6 +161,7 @@ projectTypeToText = \case
   SwiftProjectType -> "swift"
   VsiProjectType -> "vsi"
   YarnProjectType -> "yarn"
+  ParsableExecutableProjectType -> "parsable-executable"
 
 instance ToJSON DiscoveredProjectType where
   toJSON = toJSON . toText

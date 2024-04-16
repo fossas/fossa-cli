@@ -24,6 +24,7 @@ extra-source-files:
   vendor-bins/index.gob.xz
   vendor-bins/lernie
   vendor-bins/themis-cli
+  vendor-bins/execsnooper
 
 common lang
   build-depends:      base >=4.15 && <5
@@ -392,6 +393,7 @@ library
     Strategy.ApkDatabase
     Strategy.BerkeleyDB
     Strategy.BerkeleyDB.Internal
+    Strategy.Binary
     Strategy.Bundler
     Strategy.Cargo
     Strategy.Carthage
