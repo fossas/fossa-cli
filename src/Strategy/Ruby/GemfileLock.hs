@@ -91,7 +91,7 @@ toDependency pkg = foldr applyLabel start
         }
 
     applyLabel :: GemfileLabel -> Dependency -> Dependency
-    applyLabel (GemfileVersion ver) dep = dep{dependencyVersion = (dependencyVersion dep) <|> Just (CEq ver)}
+    applyLabel (GemfileVersion ver) dep = dep{dependencyVersion = dependencyVersion dep <|> (Just . CEq) ver}
     applyLabel (GitRemote repo maybeRevision) dep =
       dep{dependencyType = GitType, dependencyName = repo, dependencyVersion = (Just . CEq) =<< maybeRevision, dependencyLocations = maybe repo (\revision -> repo <> "@" <> revision) maybeRevision : dependencyLocations dep}
     applyLabel (OtherRemote loc) dep =
@@ -259,8 +259,8 @@ dependenciesSectionParser = L.nonIndented scn $
     _ <- chunk "DEPENDENCIES"
     pure $ L.IndentMany Nothing (pure . DependencySection) findDependency
 
--- The "!" suffix check checks for a Bundler convention that uses !'s to signify a dep is from another remote.
--- We already check to se if the dep is part of another remote, so we can remove it.
+-- Check for the Bundler convention that uses !'s to signify if a dep is from remote.
+-- We already check to see if the dep is part of another remote, so we can remove it.
 -- https://groups.google.com/g/ruby-bundler/c/QxlNGzK3rEY
 -- One supporting repository example: https://github.com/percy/example-rails/tree/master
 findDependency :: Parser DirectDep
