@@ -3,9 +3,23 @@
 
 module App.Fossa.Configuration.ConfigurationSpec (
   spec,
+  expectedReleaseGroup,
 ) where
 
-import App.Fossa.Config.ConfigFile (ConfigFile (..), ConfigGrepEntry (..), ConfigProject (..), ConfigRevision (..), ConfigTargets (..), ExperimentalConfigs (..), ExperimentalGradleConfigs (ExperimentalGradleConfigs), MavenScopeConfig (..), VendoredDependencyConfigs (..), resolveConfigFile)
+import App.Fossa.Config.ConfigFile (
+  ConfigFile (..),
+  ConfigGrepEntry (..),
+  ConfigProject (..),
+  ConfigReleaseGroup (..),
+  ConfigReleaseGroupProject (..),
+  ConfigRevision (..),
+  ConfigTargets (..),
+  ExperimentalConfigs (..),
+  ExperimentalGradleConfigs (ExperimentalGradleConfigs),
+  MavenScopeConfig (..),
+  VendoredDependencyConfigs (..),
+  resolveConfigFile,
+ )
 import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
 import App.Types (Policy (PolicyName), ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
@@ -29,6 +43,7 @@ expectedConfigFile path =
     , configServer = Just "https://app.fossa.com"
     , configApiKey = Just "123"
     , configProject = Just expectedConfigProject
+    , configReleaseGroup = Just expectedReleaseGroup
     , configRevision = Just expectedConfigRevision
     , configTargets = Just expectedConfigTargets
     , configPaths = Nothing
@@ -43,6 +58,26 @@ expectedConfigFile path =
     , configReachability = Nothing
     }
 
+expectedReleaseGroup :: ConfigReleaseGroup
+expectedReleaseGroup =
+  ConfigReleaseGroup
+    { configReleaseGroupTitle = Just "example-title"
+    , configReleaseGroupRelease = Just "example-release-title"
+    , configReleaseGroupProjects = Just [expectedReleaseGroupProject]
+    , configReleaseGroupLicensePolicy = Just "example-license-policy"
+    , configReleaseGroupSecurityPolicy = Just "example-security-policy"
+    , configReleaseGroupQualityPolicy = Just "example-quality-policy"
+    , configReleaseGroupTeams = Just ["team-1", "team-2"]
+    }
+
+expectedReleaseGroupProject :: ConfigReleaseGroupProject
+expectedReleaseGroupProject =
+  ConfigReleaseGroupProject
+    { configReleaseGroupProjectId = "custom+1/git@github.com/fossa-cli"
+    , configReleaseGroupProjectRevision = "12345"
+    , configReleaseGroupProjectBranch = "main"
+    }
+
 expectedConfigProject :: ConfigProject
 expectedConfigProject =
   ConfigProject
@@ -54,7 +89,7 @@ expectedConfigProject =
     , configUrl = Just "fossa.com"
     , configPolicy = Just (PolicyName "license-policy")
     , configLabel = ["project-label", "label-2"]
-    , configReleaseGroup = Just expectedReleaseGroup
+    , configProjectReleaseGroup = Just expectedReleaseGroupMetadata
     , configPolicyId = Nothing
     }
 
@@ -65,8 +100,8 @@ expectedConfigRevision =
     , configBranch = Just "master"
     }
 
-expectedReleaseGroup :: ReleaseGroupMetadata
-expectedReleaseGroup =
+expectedReleaseGroupMetadata :: ReleaseGroupMetadata
+expectedReleaseGroupMetadata =
   ReleaseGroupMetadata
     { releaseGroupName = "test-release"
     , releaseGroupRelease = "123"

@@ -10,6 +10,9 @@ module App.Fossa.Config.Common (
   targetOpt,
   baseDirArg,
   metadataOpts,
+  configFileOpt,
+  endpointOpt,
+  apiKeyOpt,
 
   -- * CLI Validators
   validateDir,
@@ -39,6 +42,8 @@ module App.Fossa.Config.Common (
   -- * Global Parser Help Message
   endpointHelp,
   fossaApiKeyHelp,
+  configHelp,
+  deprecateReleaseGroupMetadata,
 ) where
 
 import App.Fossa.Config.ConfigFile (
@@ -75,7 +80,7 @@ import App.Types (
   BaseDir (BaseDir),
   OverrideProject (..),
   Policy (..),
-  ProjectMetadata (ProjectMetadata),
+  ProjectMetadata (..),
   ProjectRevision,
   ReleaseGroupMetadata (ReleaseGroupMetadata),
  )
@@ -91,6 +96,7 @@ import Control.Effect.Diagnostics (
   fromMaybeText,
   recover,
   rethrow,
+  warn,
   (<||>),
  )
 import Control.Effect.Lift (Lift, sendIO)
@@ -105,7 +111,7 @@ import Data.Text (Text, null, strip, toLower)
 import Diag.Result (Result (Failure, Success), renderFailure)
 import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (..), comboExclude, comboInclude, setExclude, setInclude, targetFilterParser)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, logDebug, logInfo, vsep)
+import Effect.Logger (Logger, logDebug, logInfo, renderIt, vsep)
 import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
 import GHC.Generics (Generic)
@@ -116,6 +122,7 @@ import Options.Applicative (
   argument,
   auto,
   eitherReader,
+  internal,
   long,
   metavar,
   option,
@@ -133,8 +140,8 @@ import Options.Applicative.Help (AnsiStyle)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (..), parseRelDir)
 import Path.Extra (SomePath (..))
 import Path.IO (resolveDir', resolveFile')
-import Prettyprinter (Doc)
-import Prettyprinter.Render.Terminal (Color (Green))
+import Prettyprinter (Doc, annotate)
+import Prettyprinter.Render.Terminal (Color (Green, Red), color)
 import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, stringToHelpDoc)
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI, mkURI)
@@ -172,6 +179,14 @@ metadataOpts =
     <*> many (strOption (applyFossaStyle <> long "project-label" <> stringToHelpDoc "Assign up to 5 labels to the project"))
     <*> optional releaseGroupMetadataOpts
   where
+    titleHelp :: Maybe (Doc AnsiStyle)
+    titleHelp =
+      Just . formatDoc $
+        vsep
+          [ "The title of the FOSSA project"
+          , boldItalicized "Default: " <> "The project name"
+          ]
+
     policy :: Parser Policy
     policy = PolicyName <$> (strOption (applyFossaStyle <> long "policy" <> helpDoc policyHelp))
 
@@ -185,14 +200,6 @@ metadataOpts =
 
     parsePolicyOptions :: Parser (Maybe Policy)
     parsePolicyOptions = optional (policy <|> policyId) -- For Parsers '<|>' tries every alternative and fails if they all succeed.
-    titleHelp :: Maybe (Doc AnsiStyle)
-    titleHelp =
-      Just . formatDoc $
-        vsep
-          [ "The title of the FOSSA project"
-          , boldItalicized "Default: " <> "The project name"
-          ]
-
     policyHelp :: Maybe (Doc AnsiStyle)
     policyHelp =
       Just . formatDoc $
@@ -209,8 +216,25 @@ metadataOpts =
 releaseGroupMetadataOpts :: Parser ReleaseGroupMetadata
 releaseGroupMetadataOpts =
   ReleaseGroupMetadata
-    <$> strOption (applyFossaStyle <> long "release-group-name" <> stringToHelpDoc "The name of the release group to add this project to")
-    <*> strOption (applyFossaStyle <> long "release-group-release" <> stringToHelpDoc "The release of the release group to add this project to")
+    <$> strOption (applyFossaStyle <> long "release-group-name" <> stringToHelpDoc "The name of the release group to add this project to" <> internal)
+    <*> strOption (applyFossaStyle <> long "release-group-release" <> stringToHelpDoc "The release of the release group to add this project to" <> internal)
+
+deprecateReleaseGroupMetadata :: Has Diagnostics sig m => ProjectMetadata -> m ProjectMetadata
+deprecateReleaseGroupMetadata projectMetadata = do
+  case (projectReleaseGroup projectMetadata) of
+    Nothing -> pure projectMetadata
+    Just _ -> do
+      warn deprecationMessage
+      pure $ removeReleaseGroupMetadata projectMetadata
+  where
+    removeReleaseGroupMetadata :: ProjectMetadata -> ProjectMetadata
+    removeReleaseGroupMetadata project = project{projectReleaseGroup = Nothing}
+
+    deprecationMessage :: Text
+    deprecationMessage =
+      renderIt $
+        vsep
+          [annotate (color Red) "Release group options for this command have been deprecated. Refer to `fossa release-group` subcommands to interact with FOSSA release groups."]
 
 pathOpt :: String -> Either String (Path Rel Dir)
 pathOpt = first show . parseRelDir
@@ -294,7 +318,7 @@ validateApiKey ::
 validateApiKey maybeConfigFile EnvVars{envApiKey} CommonOpts{optAPIKey} = do
   textkey <-
     fromMaybeText "A FOSSA API key is required to run this command" $
-      -- API key significance is strictly defined:
+      -- API key precedence is strictly defined:
       -- 1. Cmd-line option (rarely used, not encouraged)
       -- 2. Config file (maybe used)
       -- 3. Environment Variable (most common)
@@ -445,11 +469,11 @@ commonOpts :: Parser CommonOpts
 commonOpts =
   CommonOpts
     <$> switch (applyFossaStyle <> long "debug" <> stringToHelpDoc "Enable debug logging, and write detailed debug information to `fossa.debug.json`")
-    <*> optional (uriOption (applyFossaStyle <> long "endpoint" <> short 'e' <> metavar "URL" <> helpDoc endpointHelp))
+    <*> endpointOpt
     <*> optional (strOption (applyFossaStyle <> long "project" <> short 'p' <> helpDoc projectHelp))
     <*> optional (strOption (applyFossaStyle <> long "revision" <> short 'r' <> helpDoc revisionHelp))
-    <*> optional (strOption (applyFossaStyle <> long fossaApiKeyCmdText <> helpDoc fossaApiKeyHelp))
-    <*> optional (strOption (applyFossaStyle <> long "config" <> short 'c' <> helpDoc configHelp))
+    <*> apiKeyOpt
+    <*> configFileOpt
     <*> optional (option parseTelemetryScope (applyFossaStyle <> long "with-telemetry-scope" <> helpDoc telemtryScopeHelp))
   where
     projectHelp :: Maybe (Doc AnsiStyle)
@@ -466,13 +490,7 @@ commonOpts =
           [ "This repository's current revision hash"
           , boldItalicized "Default: " <> "VCS hash HEAD"
           ]
-    configHelp :: Maybe (Doc AnsiStyle)
-    configHelp =
-      Just . formatDoc $
-        vsep
-          [ "Path to configuration file including filename"
-          , boldItalicized "Default: " <> ".fossa.yml"
-          ]
+
     telemtryScopeHelp :: Maybe (Doc AnsiStyle)
     telemtryScopeHelp =
       Just . formatDoc $
@@ -481,6 +499,23 @@ commonOpts =
           , boldItalicized "Options: " <> coloredBoldItalicized Green "full" <> boldItalicized "|" <> coloredBoldItalicized Green "off"
           , boldItalicized "Default: " <> coloredBoldItalicized Green "full"
           ]
+
+apiKeyOpt :: Parser (Maybe Text)
+apiKeyOpt = optional (strOption (applyFossaStyle <> long fossaApiKeyCmdText <> helpDoc fossaApiKeyHelp))
+
+endpointOpt :: Parser (Maybe URI)
+endpointOpt = optional (uriOption (applyFossaStyle <> long "endpoint" <> short 'e' <> metavar "URL" <> helpDoc endpointHelp))
+
+configFileOpt :: Parser (Maybe FilePath)
+configFileOpt = optional (strOption (applyFossaStyle <> long "config" <> short 'c' <> helpDoc configHelp))
+
+configHelp :: Maybe (Doc AnsiStyle)
+configHelp =
+  Just . formatDoc $
+    vsep
+      [ "Path to configuration file including filename"
+      , boldItalicized "Default: " <> ".fossa.yml"
+      ]
 
 endpointHelp :: Maybe (Doc AnsiStyle)
 endpointHelp =

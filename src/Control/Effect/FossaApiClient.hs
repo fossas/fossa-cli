@@ -41,6 +41,14 @@ module Control.Effect.FossaApiClient (
   uploadContentForReachability,
   uploadBuildForReachability,
   getCustomBuildPermissions,
+  getPolicies,
+  getTeams,
+  deleteReleaseGroup,
+  deleteReleaseGroupRelease,
+  createReleaseGroup,
+  getReleaseGroups,
+  getReleaseGroupReleases,
+  updateReleaseGroupRelease,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
@@ -61,23 +69,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Text (Text)
-import Fossa.API.Types (
-  AnalyzedPathDependency,
-  ApiOpts,
-  Archive,
-  ArchiveComponents,
-  Build,
-  Contributors,
-  CustomBuildUploadPermissions,
-  Issues,
-  Organization,
-  PathDependencyUpload,
-  Project,
-  RevisionDependencyCache,
-  SignedURL,
-  TokenTypeResponse,
-  UploadResponse,
- )
+import Fossa.API.Types (AnalyzedPathDependency, ApiOpts, Archive, ArchiveComponents, Build, Contributors, CreateReleaseGroupRequest, CreateReleaseGroupResponse, CustomBuildUploadPermissions, Issues, Organization, PathDependencyUpload, Policy, Project, ReleaseGroup, ReleaseGroupRelease, RevisionDependencyCache, SignedURL, Team, TokenTypeResponse, UpdateReleaseRequest, UploadResponse)
 import Path (File, Path, Rel)
 import Srclib.Types (FullSourceUnit, LicenseSourceUnit, Locator, SourceUnit)
 
@@ -109,7 +101,9 @@ data FossaApiClientF a where
   GetRevisionDependencyCacheStatus :: ProjectRevision -> FossaApiClientF RevisionDependencyCache
   GetLatestBuild :: ProjectRevision -> FossaApiClientF Build
   GetOrganization :: FossaApiClientF Organization
+  GetPolicies :: FossaApiClientF [Policy]
   GetProject :: ProjectRevision -> FossaApiClientF Project
+  GetTeams :: FossaApiClientF [Team]
   GetAnalyzedRevisions :: NonEmpty VendoredDependency -> FossaApiClientF [Text]
   GetAnalyzedPathRevisions :: ProjectRevision -> FossaApiClientF [AnalyzedPathDependency]
   GetSignedFirstPartyScanUrl :: PackageRevision -> FossaApiClientF SignedURL
@@ -146,6 +140,12 @@ data FossaApiClientF a where
   UploadFirstPartyScanResult :: SignedURL -> NE.NonEmpty FullSourceUnit -> FossaApiClientF ()
   UploadContentForReachability :: ByteString -> FossaApiClientF (Text)
   UploadBuildForReachability :: ProjectRevision -> ProjectMetadata -> [SourceUnitReachability] -> FossaApiClientF ()
+  DeleteReleaseGroup :: Int -> FossaApiClientF ()
+  DeleteReleaseGroupRelease :: Int -> Int -> FossaApiClientF ()
+  CreateReleaseGroup :: CreateReleaseGroupRequest -> FossaApiClientF CreateReleaseGroupResponse
+  UpdateReleaseGroupRelease :: Int -> Int -> UpdateReleaseRequest -> FossaApiClientF ReleaseGroupRelease
+  GetReleaseGroups :: FossaApiClientF [ReleaseGroup]
+  GetReleaseGroupReleases :: Int -> FossaApiClientF [ReleaseGroupRelease]
 
 deriving instance Show (FossaApiClientF a)
 
@@ -271,3 +271,27 @@ uploadContentForReachability = sendSimple . UploadContentForReachability
 
 uploadBuildForReachability :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> [SourceUnitReachability] -> m ()
 uploadBuildForReachability rev revMetadata units = sendSimple $ UploadBuildForReachability rev revMetadata units
+
+getPolicies :: Has FossaApiClient sig m => m [Policy]
+getPolicies = sendSimple GetPolicies
+
+getTeams :: Has FossaApiClient sig m => m [Team]
+getTeams = sendSimple GetTeams
+
+deleteReleaseGroup :: Has FossaApiClient sig m => Int -> m ()
+deleteReleaseGroup releaseGroupId = sendSimple $ DeleteReleaseGroup releaseGroupId
+
+deleteReleaseGroupRelease :: Has FossaApiClient sig m => Int -> Int -> m ()
+deleteReleaseGroupRelease releaseGroupId releaseId = sendSimple $ DeleteReleaseGroupRelease releaseGroupId releaseId
+
+updateReleaseGroupRelease :: Has FossaApiClient sig m => Int -> Int -> UpdateReleaseRequest -> m ReleaseGroupRelease
+updateReleaseGroupRelease releaseGroupId releaseId updateReq = sendSimple $ UpdateReleaseGroupRelease releaseGroupId releaseId updateReq
+
+createReleaseGroup :: Has FossaApiClient sig m => CreateReleaseGroupRequest -> m CreateReleaseGroupResponse
+createReleaseGroup req = sendSimple $ CreateReleaseGroup req
+
+getReleaseGroups :: Has FossaApiClient sig m => m [ReleaseGroup]
+getReleaseGroups = sendSimple GetReleaseGroups
+
+getReleaseGroupReleases :: Has FossaApiClient sig m => Int -> m [ReleaseGroupRelease]
+getReleaseGroupReleases releaseGroupId = sendSimple $ GetReleaseGroupReleases releaseGroupId
