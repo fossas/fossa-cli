@@ -1,10 +1,10 @@
 # FOSSA CLI Changelog
 
-## v3.9.11
-- Licensing: Add new rules for unity licenses. Add the Redis Source Available License.
+## v3.9.12
+- `--detect-dynamic`: Fix deb tatic parsing ([#1401](https://github.com/fossas/fossa-cli/pull/1401)).
 
 ## v3.9.11
-- `--detect-dynamic`: Fix deb tatic parsing ([#1401](https://github.com/fossas/fossa-cli/pull/1401)).
+- Licensing: Add new rules for unity licenses. Add the Redis Source Available License.
 
 ## v3.9.10
 - Support unarchiving `tgz`, `taz`, `txz`, `tbz`, `tbz2`, and `tz2` files for `--unpack-archives` ([#1402](https://github.com/fossas/fossa-cli/pull/1402/files))
