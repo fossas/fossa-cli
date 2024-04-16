@@ -6,66 +6,7 @@ jobs: $ncpus
 
 packages: .
 
+import: ./cabal.project.common
+
 package spectrometer
   ghc-options: -Werror
-
-allow-newer:
-  -- git-config needs to relax its upper bound on megaparsec. PR submitted;
-  -- no action from maintainer yet
-  --
-  -- we can remove this if/when 0.1.3 is released on hackage
-  , git-config:megaparsec
-
-  -- codec-rpm needs a bump to its attoparsec bound. latest upload to hackage
-  -- was in 2018, so we may have to fork when breakage occurs
-  , codec-rpm:attoparsec
-
--- the semver package only exposes lens-style accessors for its Version type;
--- normal accessors are in an un-exposed Internal module. on master, the
--- Internal module is exposed, but a new release hasn't been cut to hackage yet
---
--- we can remove this if/when 0.4.0.2 is released on hackage
-source-repository-package
-  type: git
-  location: https://github.com/fossas/semver.git
-  tag: 7bc42dd298e0d98e119486ceab4f74042d46b004
-
--- cpio-conduit-0.7.2 on hackage has an incompatibility with newer versions of
--- base16-bytestring. we submitted a PR to fix this, and the PR was merged, but
--- a new release was never cut to hackage
--- We can remove this if/when 0.7.3 is released on hackage
-source-repository-package
-  type: git
-  location: https://github.com/da-x/cpio-conduit
-  tag: 30d92919e82c5033fffac7b34288f5a7fd28e9be
-
--- Current implementation of yarn-lock throws runtime error, as described by patches:
--- (a) https://github.com/Profpatsch/yarn2nix/pull/73
--- (b) https://github.com/Profpatsch/yarn2nix/pull/72
--- TODO: Remove once, both PRs are merged.
-source-repository-package
-  type: git
-  location: https://github.com/fossas/yarn2nix
-  tag: 7d9f505b35750e54bf9d73e5a996df4a1c5ab117
-  subdir: yarn-lock
-
--- Current hackage distribution does not support SSL_CERT_FILE, and SSL_CERT_DIR
--- environment variable. Modified source code below, supports aforementioned environment variables.
-source-repository-package
-  type: git
-  location: https://github.com/fossas/hs-certificate
-  tag: d93afd2dc78c2f6910766fabc2f5e4452bcae2f2
-  subdir: x509-system
-
-source-repository-package
-  type: git
-  location: https://github.com/fossas/tar
-  tag: 5f833d3a6840edb436f6083bf6e7159cd7649490
-
--- This can be removed once https://github.com/weldr/codec-rpm/pull/40 merges and is available on hackage.
-source-repository-package
-  type: git
-  location: https://github.com/fossas/codec-rpm.git
-  tag: 0f7431423d47fdf36945e4ff31fbee76005b7e68
-
-index-state: hackage.haskell.org 2024-02-21T10:56:14Z
