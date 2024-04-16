@@ -134,9 +134,9 @@ The project Locator defines a unique ID that the FOSSA API will use to reference
 The project ID defines an ID that is used to reference a project within your FOSSA organization. The project ID is a specific portion of the project locator and can be found in the UI on the project `Settings` page listed as the "Project Locator" underneath the "Project Title" setting. For example, if the "Project Locator" value of `custom+1/foo` is provided in the FOSSA UI, use `foo` for the `project.id`.
 
 Default:
-  - Git: From .git/config file or project's remote "origin" URL.
-  - SVN: From "Repository Root" obtained using 'svn info'.
-  - No VCS: Name of the project's directory.
+- Git: The CLI will look for a `.git/config` file and set the ID to the project's remote "origin" url.
+- SVN: The CLI will run `svn info` and use the "Repository Root".
+- No VCS (Version control system): The ID will be set to the name of the project's directory.
 
 >NOTE:
     A project's ID cannot be modified after a project is created. If you change the ID,
