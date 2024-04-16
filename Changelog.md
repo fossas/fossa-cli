@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.9.12
+- `--detect-dynamic`: Fix deb tatic parsing ([#1401](https://github.com/fossas/fossa-cli/pull/1401)).
+
 ## v3.9.11
 - Licensing: Add new rules for unity licenses. Add the Redis Source Available License.
 
