@@ -18,7 +18,7 @@ import Control.Effect.Diagnostics (Diagnostics, Has, fatalText)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding, toEncoding)
 import Data.Text (Text)
 import Data.Text qualified
-import Data.Text.Prettyprint.Doc (Doc, vsep)
+import Effect.Logger (vsep)
 import Fossa.API.Types (ApiOpts (..), defaultApiPollDelay)
 import GHC.Generics (Generic)
 import Options.Applicative (
@@ -40,6 +40,7 @@ import Options.Applicative (
  )
 import Options.Applicative.Builder (progDescDoc)
 import Options.Applicative.Help (AnsiStyle)
+import Prettyprinter (Doc)
 import Style (applyFossaStyle, boldItalicized, formatDoc, formatStringToDoc, stringToHelpDoc)
 import Text.URI (URI, mkURI)
 

@@ -29,6 +29,7 @@ All of the previously mentioned CLI options can be provided through a `.fossa.ym
 
 ## Example
 
+### Project locator example
 Given a project with project locator: `custom+1/example`, the following command:
 
 - Sets the project's title to `example-title`
@@ -51,7 +52,36 @@ fossa project edit --config /path/to/config
 
 ```yaml
 project:
-  id: custom+1/example
+  locator: custom+1/example
+  name: example-title
+  teams: 
+    - example-team-1
+    - example-team-2
+  policy: example-policy
+  link: fossa.com
+  url: github.com/fossas/fossa-cli
+  jiraProjectKey: example-jira-key
+  labels:
+    - example-label-1
+    - example-label-2
+```
+
+### Project ID example
+Achieve the same result as defined above (for projects created through the CLI) using project ID:
+
+```bash
+fossa project edit --project-id example --title example-title --project-url github.com/fossas/fossa-cli --jira-project-key example-jira-key --link fossa.com --team example-team --team example-team-2 --policy example-policy --project-label example-label-1 --project-label example-label-2 
+``` 
+
+Similarly, you can you achieve the same result by running the following command with the given `.fossa.yml` configuration: 
+
+```bash
+fossa project edit --config /path/to/config
+``` 
+
+```yaml
+project:
+  id: example
   name: example-title
   teams: 
     - example-team-1
