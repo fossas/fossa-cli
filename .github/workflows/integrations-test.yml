@@ -32,14 +32,14 @@ jobs:
 
     # adduser cannot add users to group: https://unix.stackexchange.com/a/397733
     # so we edit /etc/group directly
-    # - name: Create nixbuild users/group
-    #   run: |
-    #     addgroup nixbld
-    #     adduser -D nixbld-1
-    #     adduser -D nixbld-2
-    #     adduser -D nixbld-3
-    #     sed 's/nixbld:x:\([[:digit:]]*\):$/nixbld:x:\1:nixbld-1,nixbld-2,nixbld-3/' /etc/group > group-changed
-    #     mv group-changed /etc/group
+    - name: Create nixbuild users/group
+      run: |
+        addgroup nixbld
+        adduser -D nixbld-1
+        adduser -D nixbld-2
+        adduser -D nixbld-3
+        sed 's/nixbld:x:\([[:digit:]]*\):$/nixbld:x:\1:nixbld-1,nixbld-2,nixbld-3/' /etc/group > group-changed
+        mv group-changed /etc/group
 
     # - name: run our custom nix install script
     #   run : ./.github/scripts/install-nix.sh
@@ -53,6 +53,7 @@ jobs:
     - uses: cachix/install-nix-action@v25
       with:
         nix_path: nixpkgs=channel:nixos-unstable
+        extra_nix_config: "build-users-group = nixbld"
 
     - name: Debugging information
       run: |
