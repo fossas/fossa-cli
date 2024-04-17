@@ -47,7 +47,7 @@ jobs:
       env:
         INPUT_NIX_PATH: "nixpkgs=channel:nixos-unstable"
         INPUT_EXTRA_NIX_CONFIG: "build-users-group = nixbld"
-        INPUT_INSTALL_URL: ""
+        INPUT_INSTALL_URL: "https://releases.nixos.org/nix/nix-2.20.5/install"
         INPUT_INSTALL_OPTIONS: ""
 
     - name: Debugging information
