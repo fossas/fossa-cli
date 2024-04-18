@@ -1,8 +1,8 @@
 # FOSSA CLI Changelog
 
-## Unreleased
-
-- Reports: Increase the timeout when hitting the report generation API endpoint
+## v3.9.13
+- Support GIT dependencies in Bundler projects ([#1403](https://github.com/fossas/fossa-cli/pull/1403/files))
+- Reports: Increase the timeout when hitting the report generation API endpoint ([#1412](https://github.com/fossas/fossa-cli/pull/1412)).
 
 ## v3.9.12
 - `--detect-dynamic`: Fix deb tatic parsing ([#1401](https://github.com/fossas/fossa-cli/pull/1401)).

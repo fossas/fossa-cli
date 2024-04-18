@@ -24,4 +24,4 @@ rails =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary rails BundlerProjectType (DependencyResultsSummary 210 70 293 1 Complete)
+  testSuiteDepResultSummary rails BundlerProjectType (DependencyResultsSummary 206 70 293 1 Complete)
