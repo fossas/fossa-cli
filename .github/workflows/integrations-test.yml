@@ -41,14 +41,10 @@ jobs:
         sed 's/nixbld:x:\([[:digit:]]*\):$/nixbld:x:\1:nixbld-1,nixbld-2,nixbld-3/' /etc/group > group-changed
         mv group-changed /etc/group
 
-    - name: run our custom nix install script
-      run : ./.github/scripts/install-nix.sh
-      shell: bash
-      env:
-        INPUT_NIX_PATH: "nixpkgs=channel:nixos-unstable"
-        INPUT_EXTRA_NIX_CONFIG: "build-users-group = nixbld"
-        INPUT_INSTALL_URL: ""
-        INPUT_INSTALL_OPTIONS: ""
+    - uses: cachix/install-nix-action@v25
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+        extra_nix_config: "build-users-group = nixbld"
 
     - name: Debugging information
       run: |
