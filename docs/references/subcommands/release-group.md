@@ -12,40 +12,36 @@ It has the following subcommands:
 
 See the pages linked above for more details.
 
+>NOTE: For all subcommands that allow adding projects to releases, the combination of `--project-locator` , `--project-revision`, and `--project-branch` are required to identify the project that will be added to the release group. Multiple occurrences of these arguements are accepted and are grouped together based on their order. For example, `fossa release-group [create, create-release, add-projects] --title example-release-group --release example-release --project-locator custom+1/example --project-locator custom+1/example2 --project-revision 1234 --project-revision 5678 --project-branch main --project-branch main ` has project groupings of (project locator: custom+1/example, project revision: 1234, project branch: main) and (project locator: custom+1/example2, project revision: 5678, project branch: main).
+
 ### `fossa release-group add-projects`
 
 Add FOSSA projects to a FOSSA release group
 
->NOTE: The combination of `--project-locator` , `--project-revision`, and `--project-branch` are required to identify the project that will be added to the release group. Ensure that you have supplied all arguments for each project that you wish to add.
-
 Example:
 
 ```bash
-fossa release-group add-projects --title example-title --release example-release-title --project-locator custom+1/git@github.com/example --project-revision 12345 --project-branch main
+fossa release-group add-projects --title example-release-group --release example-release --project-locator custom+1/example --project-revision 1234 --project-branch main --project-locator custom+1/example2 --project-revision 5678 --project-branch main 
 ```
 
 ### `fossa release-group create`
 
 Create a FOSSA release group
 
->NOTE: The combination of `--project-locator` , `--project-revision`, and `--project-branch` are required to identify the project that will be added to the release group. Ensure that you have supplied all arguments for each project that you wish to add.
-
 Example:
 
 ```bash
-fossa release-group create --title example-title --release example-release-title --project-locator custom+1/git@github.com/example --project-revision 12345 --project-branch main
+fossa release-group create --title example-release-group --release example-release --project-locator custom+1/example --project-revision 1234 --project-branch main --project-locator custom+1/example2 --project-revision 5678 --project-branch main --license-policy example-license-policy --security-policy example-security-policy --quality-policy example-quality-policy --team ExampleTeam --team ExampleTeam2
 ```
 
 ### `fossa release-group create-release`
 
 Create a release within a FOSSA release group
 
->NOTE: The combination of `--project-locator` , `--project-revision`, and `--project-branch` are required to identify the project that will be added to the release group. Ensure that you have supplied all arguments for each project that you wish to add.
-
 Example:
 
 ```bash
-fossa release-group create-release --title example-title --release example-release-title --project-locator custom+1/git@github.com/example --project-revision 12345 --project-branch main
+fossa release-group create-release --title example-release-group --release example-release --project-locator custom+1/example --project-revision 1234 --project-branch main --project-locator custom+1/example2 --project-revision 5678 --project-branch main 
 ```
 
 ### `fossa release-group delete`
