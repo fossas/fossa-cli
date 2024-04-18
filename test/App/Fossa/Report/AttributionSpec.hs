@@ -17,8 +17,8 @@ defaultRange = Range.linear 0 50
 
 genLicense :: Gen License
 genLicense =
-  License
-    <$> (LicenseName <$> arbitraryText)
+  License . LicenseName
+    <$> arbitraryText
     <*> Gen.maybe (LicenseContents <$> arbitraryText)
 
 genProject :: Gen Project

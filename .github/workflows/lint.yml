@@ -6,7 +6,7 @@ jobs:
   linter-check:
     name: linter-check
     runs-on: ubuntu-latest
-    container: ghcr.io/fossas/haskell-dev-tools:9.4.7
+    container: ghcr.io/fossas/haskell-dev-tools:9.4.8
 
     steps:
       - uses: dtolnay/rust-toolchain@stable
@@ -39,7 +39,7 @@ jobs:
   format-check:
     name: formatter-check
     runs-on: ubuntu-latest
-    container: ghcr.io/fossas/haskell-dev-tools:9.4.7
+    container: ghcr.io/fossas/haskell-dev-tools:9.4.8
 
     steps:
       - uses: dtolnay/rust-toolchain@stable
@@ -56,7 +56,7 @@ jobs:
   cabal-format-check:
     name: cabal-format-check
     runs-on: ubuntu-latest
-    container: ghcr.io/fossas/haskell-dev-tools:9.4.7
+    container: ghcr.io/fossas/haskell-dev-tools:9.4.8
 
     steps:
       - uses: actions/checkout@v4
@@ -94,4 +94,4 @@ jobs:
         uses: sudo-bot/action-shellcheck@latest
         with:
             # https://github.com/koalaman/shellcheck#how-to-use
-            cli-args: "*.sh ./.github/scripts/*.sh"
+            cli-args: "*.sh"

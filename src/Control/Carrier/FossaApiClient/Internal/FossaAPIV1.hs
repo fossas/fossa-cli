@@ -1185,6 +1185,8 @@ getAttributionJson apiOpts ProjectRevision{..} = fossaReq $ do
             =: True
           <> "dependencyInfoOptions[]"
             =: packageDownloadUrl
+          -- Large reports can take over a minute to generate, so increase the timeout to 10 minutes
+          <> responseTimeoutSeconds 600
   orgId <- organizationId <$> getOrganization apiOpts
   response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision)) ReportJson) NoReqBody jsonResponse opts
   pure (responseBody response)
@@ -1199,7 +1201,9 @@ getAttribution apiOpts revision ReportJson = fossaReq $ do
   jsonValue <- getAttributionJson apiOpts revision
   pure . decodeUtf8 $ Aeson.encode jsonValue
 getAttribution apiOpts ProjectRevision{..} format = fossaReq $ do
-  (baseUrl, opts) <- useApiOpts apiOpts
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  -- Large reports can take over a minute to generate, so increase the timeout to 10 minutes
+  let opts = baseOpts <> responseTimeoutSeconds 600
 
   orgId <- organizationId <$> getOrganization apiOpts
   response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision)) format) NoReqBody bsResponse opts

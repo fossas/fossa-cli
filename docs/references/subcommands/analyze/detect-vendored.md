@@ -23,6 +23,18 @@ By default, VSI ignores the following directory:
 
 ### FAQ
 
+#### Is there a limit to the number of scanned files?
+
+This feature does not have a concrete limit, however at this time FOSSA considers projects that have more than 35,000 files "unsupported".
+That being said, they may work.
+
+> [!NOTE]
+> Files are counted recursively, meaning that every archive contained in your project is unpacked and its contents are scanned,
+> and each of those interior files count when talking about the 35,000 file supported limit.
+
+If you find that this is a significant issue in your usage of this feature, we'd love to hear more about your use case.
+Please consider dropping us a message through the [FOSSA Support page](https://support.fossa.com)!
+
 #### Is my source code sent to FOSSA's servers?
 
 VSI fingerprints your first party source code but does not send it to the server. Currently this is implemented with two SHA-256 hashes:

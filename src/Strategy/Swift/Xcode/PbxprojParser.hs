@@ -118,7 +118,7 @@ parseAsciiValue :: Parser AsciiValue
 parseAsciiValue = try parseAsciiDict <|> try parseAsciiList <|> parseAsciiText
 
 parseAsciiDict :: Parser AsciiValue
-parseAsciiDict = ADict <$> (Map.fromList <$> lexeme (betweenCurlyBrackets $ sepEndBy (try parseAsciiKeyValue) (symbol ";")))
+parseAsciiDict = ADict . Map.fromList <$> (lexeme (betweenCurlyBrackets $ sepEndBy (try parseAsciiKeyValue) (symbol ";")))
 
 parseAsciiKeyValue :: Parser (Text, AsciiValue)
 parseAsciiKeyValue = do
