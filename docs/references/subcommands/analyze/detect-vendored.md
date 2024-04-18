@@ -32,8 +32,8 @@ That being said, they may work.
 > Files are counted recursively, meaning that every archive contained in your project is unpacked and its contents are scanned,
 > and each of those interior files count when talking about the 35,000 file supported limit.
 
-If you find that this is a significant issue in your usage of this feature, we'd love to hear more about your use case-
-we're always on the lookout for how we can improve this functionality!
+If you find that this is a significant issue in your usage of this feature, we'd love to hear more about your use case.
+Please consider dropping us a message through the [FOSSA Support page](https://support.fossa.com)!
 
 #### Is my source code sent to FOSSA's servers?
 
