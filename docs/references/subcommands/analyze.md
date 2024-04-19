@@ -152,6 +152,13 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 
 ### F.A.Q.
 
+#### How do I add a project to a release group when it is analyzed?
+
+To add the project you're analyzing to a [release group](https://docs.fossa.com/docs/release-groups), use
+`fossa analyze --release-group-name 'MY_RG' --release-group-release 'MY_RELEASE_VERSION'`
+
+Note that the `MY_RG` release group must already exist, as well as `MY_RELEASE_VERSION` within it. You may use the `release-group` [subcommand](https://github.com/fossas/fossa-cli/blob/master/docs/references/subcommands/release-group.md) in advance to create these or do so [within the FOSSA UI](https://docs.fossa.com/docs/release-groups).
+
 #### Why is the `fossa-cli` skipping my project?
 
 `fossa-cli` may sometimes report a project of interest was skipped from the analysis. For example,
