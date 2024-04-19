@@ -24,7 +24,8 @@ In addition to the [usual FOSSA project flags](#common-fossa-project-flags) supp
 | `--policy 'some policy'`              |       | Assign a specific FOSSA policy to this project. Mutually excludes `--policy-id`.    |
 | `--policy-id 'some policy id'`        |       | Assign a specific FOSSA policy to this project by id. Mutually excludes `--policy`. |
 | `--project-label`                     |       | assign up to 5 labels to the project                                                |
-| `--release-group-name`                |       | the name of the release group to add this project to                                |
+| `--release-group-name 'MY_RG'`        |       | add the project to this release group (also requires `--release-group-release`)     |
+| `--release-group-release 'MY_RELEASE'`|       | add the project to this release version within the release group                    |
 
 ### Filtering Paths and Targets
 
@@ -150,6 +151,13 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 
 
 ### F.A.Q.
+
+#### How do I add a project to a release group when it is analyzed?
+
+To add the project you're analyzing to a [release group](https://docs.fossa.com/docs/release-groups), use
+`fossa analyze --release-group-name 'MY_RG' --release-group-release 'MY_RELEASE_VERSION'`
+
+Note that the `MY_RG` release group must already exist, as well as `MY_RELEASE_VERSION` within it. You may use the `release-group` [subcommand](https://github.com/fossas/fossa-cli/blob/master/docs/references/subcommands/release-group.md) in advance to create these or do so [within the FOSSA UI](https://docs.fossa.com/docs/release-groups).
 
 #### Why is the `fossa-cli` skipping my project?
 
