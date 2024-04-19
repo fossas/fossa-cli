@@ -42,6 +42,7 @@ import Data.Maybe (catMaybes, isJust)
 import Data.Set (Set)
 import Data.String.Conversion (toText)
 import Data.Text qualified as Text
+import Data.Text.Extra qualified as Text
 import Diag.Diagnostic (renderDiagnostic)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
@@ -383,8 +384,26 @@ buildGraph meta = stripRoot $
     traverse_ direct $ metadataWorkspaceMembers meta
     traverse_ addEdge $ resolvedNodes $ metadataResolve meta
 
+-- prior to Cargo 1.77.0, package IDs looked like this:
+-- adler 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)
+-- For 1.77.0 and later, they look like this:
+-- registry+https://github.com/rust-lang/crates.io-index#adler@1.0.2
+-- or
+-- path+file:///Users/scott/projects/health-data/health_data#0.1.0
 parsePkgId :: Text.Text -> Parser PackageId
 parsePkgId t =
   case Text.splitOn " " t of
     [a, b, c] -> pure $ PackageId a b c
-    _ -> fail "malformed Package ID"
+    [registryId] -> do
+      case Text.splitOnceOn "+" registryId of
+        ("registry", mUri) -> do
+          let (uri, fragment) = Text.splitOnceOn "#" mUri
+          case Text.splitOn "@" fragment of
+            [package, version] -> pure $ PackageId package version ("registry+" <> uri)
+            _ -> fail $ "malformed Package ID: unable to extract package@version from registry URI " <> show t
+        ("path", mUri) -> do
+          let (uri, version) = Text.splitOnceOn "#" mUri
+          let (_, packageName) = Text.splitOnceOnEnd "/" uri
+          pure $ PackageId packageName version ("path+" <> uri)
+        _ -> fail $ "malformed Package ID: unable to find 'registry+' or 'path+' at beginning of " <> show t
+    _ -> fail $ "malformed Package ID: unable to find either old or new package ID style in " <> show t
