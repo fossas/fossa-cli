@@ -25,7 +25,7 @@ In addition to the [usual FOSSA project flags](#common-fossa-project-flags) supp
 | `--policy-id 'some policy id'`        |       | Assign a specific FOSSA policy to this project by id. Mutually excludes `--policy`. |
 | `--project-label`                     |       | assign up to 5 labels to the project                                                |
 | `--release-group-name 'MY_RG'`        |       | add the project to this release group (also requires `--release-group-release`)     |
-| `--release-group-release 'MY_RELEASE` |       | add the project to this release version within the release group                    |
+| `--release-group-release 'MY_RELEASE'`|       | add the project to this release version within the release group                    |
 
 ### Filtering Paths and Targets
 
