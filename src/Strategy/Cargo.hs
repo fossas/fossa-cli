@@ -385,19 +385,30 @@ buildGraph meta = stripRoot $
     traverse_ addEdge $ resolvedNodes $ metadataResolve meta
 
 -- prior to Cargo 1.77.0, package IDs looked like this:
+-- package version (source URL)
 -- adler 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)
+--
 -- For 1.77.0 and later, they look like this:
+-- registry source URL with a fragment of package@version
 -- registry+https://github.com/rust-lang/crates.io-index#adler@1.0.2
 -- or
--- path+file:///Users/scott/projects/health-data/health_data#0.1.0
--- or
+-- path source URL with a fragment of package@version
 -- path+file:///Users/scott/projects/health-data/health_data#package_name@0.1.0
+-- or
+-- path source URL with a fragment of version
+-- In this case we grab the last entry in the path to use for the package name
+-- path+file:///Users/scott/projects/health-data/health_data#0.1.0
 parsePkgId :: Text.Text -> Parser PackageId
 parsePkgId t =
   case Text.splitOn " " t of
+    -- packageID for cargo < 1.77.0
+    -- package version (source url)
+    -- adler 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)
     [a, b, c] -> pure $ PackageId a b c
     [registryId] -> do
       case Text.splitOnceOn "+" registryId of
+        -- registry with a fragment of package@version
+        -- registry+https://github.com/rust-lang/crates.io-index#adler@1.0.2
         ("registry", mUri) -> do
           let (uri, fragment) = Text.splitOnceOn "#" mUri
           case Text.splitOn "@" fragment of
@@ -406,7 +417,12 @@ parsePkgId t =
         ("path", mUri) -> do
           let (uri, version) = Text.splitOnceOn "#" mUri
           case Text.splitOn "@" version of
+            -- path with a fragment of package@version
+            -- path+file:///Users/scott/projects/health-data/health_data#package_name@0.1.0
             [package, v] -> pure $ PackageId package v ("(path+" <> uri <> ")")
+            -- path with a fragment of version
+            -- We'll grab the last entry from the path to use for the package name
+            -- path+file:///Users/scott/projects/health-data/health_data#0.1.0
             [v] -> do
               let (_, packageName) = Text.splitOnceOnEnd "/" uri
               pure $ PackageId packageName v ("(path+" <> uri <> ")")
