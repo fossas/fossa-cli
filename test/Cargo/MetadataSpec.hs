@@ -72,3 +72,10 @@ spec = do
       expectDeps [ansiTermDep, clapDep] graph
       expectEdges [(clapDep, ansiTermDep)] graph
       expectDirect [clapDep] graph
+
+  Test.describe "cargo metadata parser, >= 1.77.0" $ do
+    metaBytes <- Test.runIO $ BL.readFile "test/Cargo/testdata/expected-metadata-1.77.2.json"
+    Test.it "should properly construct a resolution tree" $
+      case eitherDecode metaBytes of
+        Left err -> Test.expectationFailure $ "failed to parse: " ++ err
+        Right result -> result `Test.shouldBe` expectedMetadata

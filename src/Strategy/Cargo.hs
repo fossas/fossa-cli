@@ -390,6 +390,8 @@ buildGraph meta = stripRoot $
 -- registry+https://github.com/rust-lang/crates.io-index#adler@1.0.2
 -- or
 -- path+file:///Users/scott/projects/health-data/health_data#0.1.0
+-- or
+-- path+file:///Users/scott/projects/health-data/health_data#package_name@0.1.0
 parsePkgId :: Text.Text -> Parser PackageId
 parsePkgId t =
   case Text.splitOn " " t of
@@ -399,11 +401,15 @@ parsePkgId t =
         ("registry", mUri) -> do
           let (uri, fragment) = Text.splitOnceOn "#" mUri
           case Text.splitOn "@" fragment of
-            [package, version] -> pure $ PackageId package version ("registry+" <> uri)
+            [package, version] -> pure $ PackageId package version ("(registry+" <> uri <> ")")
             _ -> fail $ "malformed Package ID: unable to extract package@version from registry URI " <> show t
         ("path", mUri) -> do
           let (uri, version) = Text.splitOnceOn "#" mUri
-          let (_, packageName) = Text.splitOnceOnEnd "/" uri
-          pure $ PackageId packageName version ("path+" <> uri)
+          case Text.splitOn "@" version of
+            [package, v] -> pure $ PackageId package v ("(path+" <> uri <> ")")
+            [v] -> do
+              let (_, packageName) = Text.splitOnceOnEnd "/" uri
+              pure $ PackageId packageName v ("(path+" <> uri <> ")")
+            _ -> fail $ "malformed Package ID: unable to extract package@version from path URI " <> show t
         _ -> fail $ "malformed Package ID: unable to find 'registry+' or 'path+' at beginning of " <> show t
     _ -> fail $ "malformed Package ID: unable to find either old or new package ID style in " <> show t

@@ -1,0 +1,60 @@
+{
+  "packages": [ ],
+  "workspace_members": [
+    "path+file:///path/to/jfmt.rs#jfmt@1.0.0"
+  ],
+  "workspace_default_members": [
+    "path+file:///path/to/jfmt.rs#jfmt@1.0.0"
+  ],
+  "resolve": {
+    "nodes": [
+      {
+        "id": "registry+https://github.com/rust-lang/crates.io-index#ansi_term@0.11.0",
+        "dependencies": [
+          "registry+https://github.com/rust-lang/crates.io-index#winapi@0.3.6"
+        ],
+        "deps": [],
+        "features": []
+      },
+      {
+        "id": "registry+https://github.com/rust-lang/crates.io-index#clap@2.33.0",
+        "deps": [
+          {
+            "name": "ansi_term",
+            "pkg": "registry+https://github.com/rust-lang/crates.io-index#ansi_term@0.11.0",
+            "dep_kinds": [
+              {
+                "kind": null,
+                "target": "cfg(not(windows))"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "path+file:///path/to/jfmt.rs#jfmt@1.0.0",
+        "dependencies": [
+          "registry+https://github.com/rust-lang/crates.io-index#clap@2.33.0"
+        ],
+        "deps": [
+          {
+            "name": "clap",
+            "pkg": "registry+https://github.com/rust-lang/crates.io-index#clap@2.33.0",
+            "dep_kinds": [
+              {
+                "kind": null,
+                "target": null
+              }
+            ]
+          }
+        ],
+        "features": []
+      }
+    ],
+    "root": "path+file:///path/to/jfmt.rs#jfmt@1.0.0"
+  },
+  "target_directory": "/Users/scott/code/rust/jfmt.rs/target",
+  "version": 1,
+  "workspace_root": "/Users/scott/code/rust/jfmt.rs",
+  "metadata": null
+}
