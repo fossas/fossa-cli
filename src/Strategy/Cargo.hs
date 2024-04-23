@@ -17,6 +17,7 @@ import App.Fossa.Analyze.LicenseAnalyze (
   LicenseAnalyzeProject (licenseAnalyzeProject),
  )
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -30,7 +31,6 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Reader (Reader)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
-  Parser,
   ToJSON,
   withObject,
   (.:),
@@ -38,11 +38,11 @@ import Data.Aeson.Types (
  )
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, isJust)
+import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Set (Set)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (toText, toString)
+import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Text.Extra qualified as Text
 import Diag.Diagnostic (renderDiagnostic)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
@@ -70,6 +70,15 @@ import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing, stripRoot)
 import Path (Abs, Dir, File, Path, parent, parseRelFile, toFilePath, (</>))
+import Text.Megaparsec
+    ( Parsec,
+      optional,
+      takeRest,
+      try,
+      errorBundlePretty,
+      takeWhile1P,
+      parse, token, choice )
+import Text.Megaparsec.Char (space, string, char)
 import Toml (TomlCodec, dioptional, diwrap, (.=))
 import Toml qualified
 import Types (
@@ -86,6 +95,9 @@ import Types (
   VerConstraint (CEq),
   insertEnvironment,
  )
+import Data.Bifunctor (first)
+import Data.Void (Void)
+import Data.Functor (void)
 
 newtype CargoLabel
   = CargoDepKind DepEnvironment
@@ -384,10 +396,105 @@ buildGraph meta = stripRoot $
     traverse_ direct $ metadataWorkspaceMembers meta
     traverse_ addEdge $ resolvedNodes $ metadataResolve meta
 
+-- | Custom Parsec type alias
+type PkgSpecParser a = Parsec Void Text a
+
+-- | Parser for pre cargo v1.77.0 package ids.
+oldPkgIdParser :: Text -> Either Text PackageId
+oldPkgIdParser t =
+  case Text.splitOn " " t of
+    [a, b, c] -> Right $ PackageId a b c
+    _ -> Left $ "malformed Package ID: " <> t
+
+type PkgName = Text
+type PkgVersion = Text
+
+parsePkgSpec :: PkgSpecParser (PkgName, PkgVersion)
+parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec)
+  where
+    eatSpaces m = space *> m <* space
+
+    simplePkgSpec :: PkgSpecParser (PkgName, PkgVersion)
+    simplePkgSpec = do
+      name <- takeWhile1P (Just "Package name") (`notElem` ['@', ':'])
+      version <- optional (choice [char '@', char ':'] *> semver)
+      pure (name, fromMaybe "*" version)
+
+    longSpec :: PkgSpecParser (PkgName, PkgVersion)
+    longSpec = do initUrl <- takeWhile1P (Just "Initial URL") (/= ':')
+                  nameVersion <- optional $ do remainingUrl <- takeWhile1P (Just "Remaining URL") (/= '#')
+                                               void $ char '#'
+                                               try simplePkgSpec <|> ((initUrl <> remainingUrl,) <$> semver)
+                  pure $ fromMaybe (initUrl, "*") nameVersion
+
+      -- do
+      -- proto <- takeWhile1P (Just "Protocol") (/= ':')
+      -- string "//"
+      -- urlRest <- takeWhile1P (Just "Rest of URL") (/= '#')
+      -- let url = proto <> "://" <> urlRest
+      -- (name, version) <- simplePkgSpec
+
+      -- In cases where there is no semver, any version is represented with "*"
+--      nameVersion
+
+    -- url = do proto <- takeWhile1P (Just "Protocol") (`notElem` ':')
+    --          string "//"
+    --          rest <- 
+
+    -- In the grammar, a semver always appears at the end so don't bother parsing internally.
+    semver = takeRest
+
+-- -- A semver always appears at the end of a packagespec
+-- semver :: Parser Text
+-- semver = versionDigits
+--     >> optOrEmpty
+--       ( string "."
+--           >> versionDigits
+--           >> optOrEmpty
+--             ( string "."
+--                 >> versionDigits
+--                 >> optOrEmpty (string "-" >> takeWhileP (Just "Prerelease spec") (/= "+"))
+--                 >> optOrEmpty (string "+" >> takeRest)
+--             )
+--       )
+
+-- case Text.splitOn " " t of
+--   -- packageID for cargo < 1.77.0
+--   -- package version (source url)
+--   -- adler 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)
+--   [a, b, c] -> pure $ PackageId a b c
+--   [registryId] -> do
+--     case Text.splitOnceOn "+" registryId of
+--       -- registry with a fragment of package@version
+--       -- registry+https://github.com/rust-lang/crates.io-index#adler@1.0.2
+--       ("registry", mUri) -> do
+--         let (uri, fragment) = Text.splitOnceOn "#" mUri
+--         case Text.splitOn "@" fragment of
+--           [package, version] -> pure $ PackageId package version ("(registry+" <> uri <> ")")
+--           _ -> fail $ "malformed Package ID: unable to extract package@version from registry URI " <> show t
+--       ("path", mUri) -> do
+--         let (uri, version) = Text.splitOnceOn "#" mUri
+--         case Text.splitOn "@" version of
+--           -- path with a fragment of package@version
+--           -- path+file:///Users/scott/projects/health-data/health_data#package_name@0.1.0
+--           [package, v] -> pure $ PackageId package v ("(path+" <> uri <> ")")
+--           -- path with a fragment of version
+--           -- We'll grab the last entry from the path to use for the package name
+--           -- path+file:///Users/scott/projects/health-data/health_data#0.1.0
+--           [v] -> do
+--             let (_, packageName) = Text.splitOnceOnEnd "/" uri
+--             pure $ PackageId packageName v ("(path+" <> uri <> ")")
+--           _ -> fail $ "malformed Package ID: unable to extract package@version from path URI " <> show t
+--       _ -> fail $ "malformed Package ID: unable to find 'registry+' or 'path+' at beginning of " <> show t
+--   _ -> fail $ "malformed Package ID: unable to find either old or new package ID style in " <> show t
 -- prior to Cargo 1.77.0, package IDs looked like this:
 -- package version (source URL)
 -- adler 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)
 --
+
+newtype PkgSpecParseError = PkgSpecParseError String
+  deriving (Eq, Ord, Show)
+
 -- For 1.77.0 and later, they look like this:
 -- registry source URL with a fragment of package@version
 -- registry+https://github.com/rust-lang/crates.io-index#adler@1.0.2
@@ -398,34 +505,15 @@ buildGraph meta = stripRoot $
 -- path source URL with a fragment of version
 -- In this case we grab the last entry in the path to use for the package name
 -- path+file:///Users/scott/projects/health-data/health_data#0.1.0
-parsePkgId :: Text.Text -> Parser PackageId
-parsePkgId t =
-  case Text.splitOn " " t of
-    -- packageID for cargo < 1.77.0
-    -- package version (source url)
-    -- adler 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)
-    [a, b, c] -> pure $ PackageId a b c
-    [registryId] -> do
-      case Text.splitOnceOn "+" registryId of
-        -- registry with a fragment of package@version
-        -- registry+https://github.com/rust-lang/crates.io-index#adler@1.0.2
-        ("registry", mUri) -> do
-          let (uri, fragment) = Text.splitOnceOn "#" mUri
-          case Text.splitOn "@" fragment of
-            [package, version] -> pure $ PackageId package version ("(registry+" <> uri <> ")")
-            _ -> fail $ "malformed Package ID: unable to extract package@version from registry URI " <> show t
-        ("path", mUri) -> do
-          let (uri, version) = Text.splitOnceOn "#" mUri
-          case Text.splitOn "@" version of
-            -- path with a fragment of package@version
-            -- path+file:///Users/scott/projects/health-data/health_data#package_name@0.1.0
-            [package, v] -> pure $ PackageId package v ("(path+" <> uri <> ")")
-            -- path with a fragment of version
-            -- We'll grab the last entry from the path to use for the package name
-            -- path+file:///Users/scott/projects/health-data/health_data#0.1.0
-            [v] -> do
-              let (_, packageName) = Text.splitOnceOnEnd "/" uri
-              pure $ PackageId packageName v ("(path+" <> uri <> ")")
-            _ -> fail $ "malformed Package ID: unable to extract package@version from path URI " <> show t
-        _ -> fail $ "malformed Package ID: unable to find 'registry+' or 'path+' at beginning of " <> show t
-    _ -> fail $ "malformed Package ID: unable to find either old or new package ID style in " <> show t
+--
+-- Package Spec: https://doc.rust-lang.org/cargo/reference/pkgid-spec.html
+parsePkgId :: MonadFail m => Text.Text -> m PackageId
+parsePkgId t = either fail pure $ oldPkgIdParser' t <|> parseNewSpec
+  where
+    oldPkgIdParser' = first toString . oldPkgIdParser
+
+    parseNewSpec :: Either String PackageId
+    parseNewSpec =  do
+      (name, version) <- first errorBundlePretty . parse parsePkgSpec "Cargo Package Spec" $ t
+      pure $ PackageId name version t
+
