@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+
 module Strategy.Cargo (
   discover,
   CargoMetadata (..),
@@ -36,13 +38,16 @@ import Data.Aeson.Types (
   (.:),
   (.:?),
  )
+import Data.Bifunctor (bimap, first)
 import Data.Foldable (for_, traverse_)
+import Data.Functor (void)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Set (Set)
-import Data.String.Conversion (toText, toString)
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Void (Void)
 import Diag.Diagnostic (renderDiagnostic)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
@@ -70,15 +75,17 @@ import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing, stripRoot)
 import Path (Abs, Dir, File, Path, parent, parseRelFile, toFilePath, (</>))
-import Text.Megaparsec
-    ( Parsec,
-      optional,
-      takeRest,
-      try,
-      errorBundlePretty,
-      takeWhile1P,
-      parse, token, choice )
-import Text.Megaparsec.Char (space, string, char)
+import Text.Megaparsec (
+  Parsec,
+  choice,
+  errorBundlePretty,
+  optional,
+  parse,
+  takeRest,
+  takeWhile1P,
+  try,
+ )
+import Text.Megaparsec.Char (char, space)
 import Toml (TomlCodec, dioptional, diwrap, (.=))
 import Toml qualified
 import Types (
@@ -95,9 +102,6 @@ import Types (
   VerConstraint (CEq),
   insertEnvironment,
  )
-import Data.Bifunctor (first)
-import Data.Void (Void)
-import Data.Functor (void)
 
 newtype CargoLabel
   = CargoDepKind DepEnvironment
@@ -409,8 +413,8 @@ oldPkgIdParser t =
 type PkgName = Text
 type PkgVersion = Text
 
-parsePkgSpec :: PkgSpecParser (PkgName, PkgVersion)
-parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec)
+parsePkgSpec :: PkgSpecParser PackageId
+parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
   where
     eatSpaces m = space *> m <* space
 
@@ -420,26 +424,45 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec)
       version <- optional (choice [char '@', char ':'] *> semver)
       pure (name, fromMaybe "*" version)
 
-    longSpec :: PkgSpecParser (PkgName, PkgVersion)
-    longSpec = do initUrl <- takeWhile1P (Just "Initial URL") (/= ':')
-                  nameVersion <- optional $ do remainingUrl <- takeWhile1P (Just "Remaining URL") (/= '#')
-                                               void $ char '#'
-                                               try simplePkgSpec <|> ((initUrl <> remainingUrl,) <$> semver)
-                  pure $ fromMaybe (initUrl, "*") nameVersion
+    simplePkgSpec' =
+      simplePkgSpec >>= \(name, version) ->
+        pure
+          PackageId
+            { pkgIdName = name
+            , pkgIdVersion = version
+            , pkgIdSource = ""
+            }
 
-      -- do
-      -- proto <- takeWhile1P (Just "Protocol") (/= ':')
-      -- string "//"
-      -- urlRest <- takeWhile1P (Just "Rest of URL") (/= '#')
-      -- let url = proto <> "://" <> urlRest
-      -- (name, version) <- simplePkgSpec
+    longSpec :: PkgSpecParser PackageId
+    longSpec = do
+      sourceInit <- takeWhile1P (Just "Initial URL") (/= ':')
+      remainingUrl <- takeWhile1P (Just "Remaining URL") (/= '#')
+      nameVersion <- optional $ do
+        void $ char '#'
+        try simplePkgSpec <|> ((sourceInit <> remainingUrl,) <$> semver)
+      let pkgSource = sourceInit <> remainingUrl
+      let (name, version) = fromMaybe (pkgSource, "*") nameVersion
+      let pkgId =
+            PackageId
+              { pkgIdName = name
+              , pkgIdVersion = version
+              , pkgIdSource = pkgSource
+              }
+      pure pkgId
 
-      -- In cases where there is no semver, any version is represented with "*"
---      nameVersion
+    -- do
+    -- proto <- takeWhile1P (Just "Protocol") (/= ':')
+    -- string "//"
+    -- urlRest <- takeWhile1P (Just "Rest of URL") (/= '#')
+    -- let url = proto <> "://" <> urlRest
+    -- (name, version) <- simplePkgSpec
+
+    -- In cases where there is no semver, any version is represented with "*"
+    --      nameVersion
 
     -- url = do proto <- takeWhile1P (Just "Protocol") (`notElem` ':')
     --          string "//"
-    --          rest <- 
+    --          rest <-
 
     -- In the grammar, a semver always appears at the end so don't bother parsing internally.
     semver = takeRest
@@ -492,9 +515,6 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec)
 -- adler 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)
 --
 
-newtype PkgSpecParseError = PkgSpecParseError String
-  deriving (Eq, Ord, Show)
-
 -- For 1.77.0 and later, they look like this:
 -- registry source URL with a fragment of package@version
 -- registry+https://github.com/rust-lang/crates.io-index#adler@1.0.2
@@ -513,7 +533,7 @@ parsePkgId t = either fail pure $ oldPkgIdParser' t <|> parseNewSpec
     oldPkgIdParser' = first toString . oldPkgIdParser
 
     parseNewSpec :: Either String PackageId
-    parseNewSpec =  do
-      (name, version) <- first errorBundlePretty . parse parsePkgSpec "Cargo Package Spec" $ t
-      pure $ PackageId name version t
-
+    parseNewSpec =
+      bimap errorBundlePretty (\p -> p{pkgIdSource = "(" <> p.pkgIdSource <> ")"})
+        . parse parsePkgSpec "Cargo Package Spec"
+        $ t
