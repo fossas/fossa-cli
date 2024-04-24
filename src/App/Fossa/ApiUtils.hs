@@ -40,7 +40,7 @@ retrieveTeamIds teamNames teams = do
     then pure validTeamIds
     else do
       let missingTeamNames = filter (`Map.notMember` teamMap) teamNames
-      fatalText $ "Teams " <> intercalate "," missingTeamNames <> "not found"
+      fatalText $ "Teams " <> intercalate "," missingTeamNames <> " not found"
 
 retrieveLabelIds :: Has Diagnostics sig m => [Text] -> Labels -> m ([Int], Maybe [Text])
 retrieveLabelIds projectLabels (Labels orgLabels) = do
