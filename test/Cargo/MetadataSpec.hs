@@ -14,8 +14,8 @@ import Graphing
 import Strategy.Cargo
 import Test.Hspec qualified as Test
 
-expectedMetadata :: CargoMetadata
-expectedMetadata = CargoMetadata [] [jfmtId] $ Resolve expectedResolveNodes
+expectedMetadataPre1_77 :: CargoMetadata
+expectedMetadataPre1_77 = CargoMetadata [] [jfmtId] $ Resolve expectedResolveNodes
 
 expectedResolveNodes :: [ResolveNode]
 expectedResolveNodes = [ansiTermNode, clapNode, jfmtNode]
@@ -63,22 +63,41 @@ spec = do
     Test.it "should properly construct a resolution tree" $
       case eitherDecode metaBytes of
         Left err -> Test.expectationFailure $ "failed to parse: " ++ err
-        Right result -> result `Test.shouldBe` expectedMetadata
+        Right result -> result `Test.shouldBe` expectedMetadataPre1_77
 
   Test.describe "cargo metadata graph" $ do
-    let graph = pruneUnreachable $ buildGraph expectedMetadata
+    let graph = pruneUnreachable $ buildGraph expectedMetadataPre1_77
 
     Test.it "should build the correct graph" $ do
       expectDeps [ansiTermDep, clapDep] graph
       expectEdges [(clapDep, ansiTermDep)] graph
       expectDirect [clapDep] graph
 
-  Test.fdescribe "cargo metadata parser, >= 1.77.0" $ do
+  post1_77MetadataParseSpec
+
+ansiTermIdNoVersion :: PackageId
+ansiTermIdNoVersion = mkPkgId "ansi_term" "*"
+
+ansiTermNodeNoVersion :: ResolveNode
+ansiTermNodeNoVersion = ResolveNode ansiTermIdNoVersion []
+
+fooPathDepId :: PackageId
+fooPathDepId = PackageId "file:///path/to/my/project/foo" "*" "(file:///path/to/my/project/foo)"
+
+fooPathNode :: ResolveNode
+fooPathNode = ResolveNode fooPathDepId []
+
+expectedResolveNodesPost1_77 :: [ResolveNode]
+expectedResolveNodesPost1_77 = [ansiTermNodeNoVersion, fooPathNode, clapNode, jfmtNode]
+
+expectedMetadataPost1_77 :: CargoMetadata
+expectedMetadataPost1_77 = CargoMetadata [] [jfmtId] $ Resolve expectedResolveNodesPost1_77
+
+post1_77MetadataParseSpec :: Test.Spec
+post1_77MetadataParseSpec =
+  Test.describe "cargo metadata parser, >= 1.77.0" $ do
     metaBytes <- Test.runIO $ BL.readFile "test/Cargo/testdata/expected-metadata-1.77.2.json"
     Test.it "should properly construct a resolution tree" $
       case eitherDecode metaBytes of
         Left err -> Test.expectationFailure $ "failed to parse: " ++ err
-        Right result -> result `Test.shouldBe` expectedMetadata
-
--- Missing cases:
--- Spec with name but no version at the end of URL.
+        Right result -> result `Test.shouldBe` expectedMetadataPost1_77

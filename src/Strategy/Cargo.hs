@@ -418,14 +418,14 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
   where
     eatSpaces m = space *> m <* space
 
-    simplePkgSpec :: PkgSpecParser (PkgName, PkgVersion)
-    simplePkgSpec = do
+    pkgName :: PkgSpecParser (PkgName, PkgVersion)
+    pkgName = do
       name <- takeWhile1P (Just "Package name") (`notElem` ['@', ':'])
       version <- optional (choice [char '@', char ':'] *> semver)
       pure (name, fromMaybe "*" version)
 
     simplePkgSpec' =
-      simplePkgSpec >>= \(name, version) ->
+      pkgName >>= \(name, version) ->
         pure
           PackageId
             { pkgIdName = name
@@ -436,11 +436,13 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
     longSpec :: PkgSpecParser PackageId
     longSpec = do
       sourceInit <- takeWhile1P (Just "Initial URL") (/= ':')
-      remainingUrl <- takeWhile1P (Just "Remaining URL") (/= '#')
+      sourceRemaining <- takeWhile1P (Just "Remaining URL") (/= '#')
+      let pkgSource = sourceInit <> sourceRemaining
       nameVersion <- optional $ do
         void $ char '#'
-        try simplePkgSpec <|> ((sourceInit <> remainingUrl,) <$> semver)
-      let pkgSource = sourceInit <> remainingUrl
+        try pkgName <|> ((pkgSource,) <$> takeRest)
+      -- If there isn't a pkgname/version, then just use "*" as in a path dep.
+      -- There may be better things to use in the metadata, but they aren't known at this level.
       let (name, version) = fromMaybe (pkgSource, "*") nameVersion
       let pkgId =
             PackageId
@@ -450,71 +452,13 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
               }
       pure pkgId
 
-    -- do
-    -- proto <- takeWhile1P (Just "Protocol") (/= ':')
-    -- string "//"
-    -- urlRest <- takeWhile1P (Just "Rest of URL") (/= '#')
-    -- let url = proto <> "://" <> urlRest
-    -- (name, version) <- simplePkgSpec
-
-    -- In cases where there is no semver, any version is represented with "*"
-    --      nameVersion
-
-    -- url = do proto <- takeWhile1P (Just "Protocol") (`notElem` ':')
-    --          string "//"
-    --          rest <-
-
     -- In the grammar, a semver always appears at the end so don't bother parsing internally.
     semver = takeRest
 
--- -- A semver always appears at the end of a packagespec
--- semver :: Parser Text
--- semver = versionDigits
---     >> optOrEmpty
---       ( string "."
---           >> versionDigits
---           >> optOrEmpty
---             ( string "."
---                 >> versionDigits
---                 >> optOrEmpty (string "-" >> takeWhileP (Just "Prerelease spec") (/= "+"))
---                 >> optOrEmpty (string "+" >> takeRest)
---             )
---       )
-
--- case Text.splitOn " " t of
---   -- packageID for cargo < 1.77.0
---   -- package version (source url)
---   -- adler 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)
---   [a, b, c] -> pure $ PackageId a b c
---   [registryId] -> do
---     case Text.splitOnceOn "+" registryId of
---       -- registry with a fragment of package@version
---       -- registry+https://github.com/rust-lang/crates.io-index#adler@1.0.2
---       ("registry", mUri) -> do
---         let (uri, fragment) = Text.splitOnceOn "#" mUri
---         case Text.splitOn "@" fragment of
---           [package, version] -> pure $ PackageId package version ("(registry+" <> uri <> ")")
---           _ -> fail $ "malformed Package ID: unable to extract package@version from registry URI " <> show t
---       ("path", mUri) -> do
---         let (uri, version) = Text.splitOnceOn "#" mUri
---         case Text.splitOn "@" version of
---           -- path with a fragment of package@version
---           -- path+file:///Users/scott/projects/health-data/health_data#package_name@0.1.0
---           [package, v] -> pure $ PackageId package v ("(path+" <> uri <> ")")
---           -- path with a fragment of version
---           -- We'll grab the last entry from the path to use for the package name
---           -- path+file:///Users/scott/projects/health-data/health_data#0.1.0
---           [v] -> do
---             let (_, packageName) = Text.splitOnceOnEnd "/" uri
---             pure $ PackageId packageName v ("(path+" <> uri <> ")")
---           _ -> fail $ "malformed Package ID: unable to extract package@version from path URI " <> show t
---       _ -> fail $ "malformed Package ID: unable to find 'registry+' or 'path+' at beginning of " <> show t
---   _ -> fail $ "malformed Package ID: unable to find either old or new package ID style in " <> show t
--- prior to Cargo 1.77.0, package IDs looked like this:
+-- Prior to Cargo 1.77.0, package IDs looked like this:
 -- package version (source URL)
 -- adler 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)
 --
-
 -- For 1.77.0 and later, they look like this:
 -- registry source URL with a fragment of package@version
 -- registry+https://github.com/rust-lang/crates.io-index#adler@1.0.2

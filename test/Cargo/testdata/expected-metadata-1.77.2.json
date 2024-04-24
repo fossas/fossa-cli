@@ -9,7 +9,7 @@
   "resolve": {
     "nodes": [
       {
-        "id": "registry+https://github.com/rust-lang/crates.io-index#ansi_term@0.11.0",
+        "id": "registry+https://github.com/rust-lang/crates.io-index#ansi_term",
         "dependencies": [
           "registry+https://github.com/rust-lang/crates.io-index#winapi@0.3.6"
         ],
@@ -17,7 +17,13 @@
         "features": []
       },
       {
-        "id": "registry+https://github.com/rust-lang/crates.io-index#clap@2.33.0",
+        "id": "file:///path/to/my/project/foo",
+        "dependencies": [],
+        "deps": [],
+        "features": []
+      },
+      {
+        "id": "registry+https://github.com/rust-lang/crates.io-index#clap:2.33.0",
         "deps": [
           {
             "name": "ansi_term",
