@@ -10,11 +10,11 @@ import App.Types (Policy (..))
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (context, errHelp)
 import Control.Carrier.StickyLogger (logSticky)
-import Control.Effect.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.Diagnostics (Diagnostics, fatalText, warn)
 import Control.Effect.FossaApiClient (FossaApiClient, addTeamProjects, getOrgLabels, getOrganization, getPolicies, getProjectV2, getTeams, updateProject, updateRevision)
 import Control.Effect.Lift (Lift)
 import Control.Effect.StickyLogger (StickyLogger)
-import Control.Monad (void, when)
+import Control.Monad (void)
 import Data.Foldable (traverse_)
 import Data.Maybe (isJust)
 import Data.String.Conversion (toText)
@@ -44,11 +44,15 @@ editMain EditConfig{..} = do
 
   project <- getProjectV2 projectLocator
 
-  attemptToUpdateProjectMetadata projectLocator (projectDefaultBranch project) $ projectIssueTrackerIds project
+  maybeWarnings <- attemptToUpdateProjectMetadata projectLocator (projectDefaultBranch project) $ projectIssueTrackerIds project
   attemptToAddProjectToTeams projectLocator teams
   attemptToUpdateRevisionMetadata projectLocator (projectLatestRevision project)
 
-  logStdout $ "Project " <> "`" <> projectLocator <> "` has been updated." <> "\n"
+  case maybeWarnings of
+    Nothing -> logStdout $ "Project " <> "`" <> projectLocator <> "` has been updated successfully." <> "\n"
+    Just projectUpdateWarnings -> do
+      logStdout $ "Project " <> "`" <> projectLocator <> "` has been updated with warnings. Run the command with `--debug` to view the warnings." <> "\n"
+      traverse_ warn projectUpdateWarnings
   where
     constructProjectLocatorFromProjectId :: Organization -> Text -> Text
     constructProjectLocatorFromProjectId org projId = "custom+" <> toText (show $ organizationId org) <> "/" <> projId
@@ -62,42 +66,47 @@ editMain EditConfig{..} = do
       Text ->
       Maybe Text ->
       Maybe [Text] ->
-      m ()
+      m (Maybe [Text])
     attemptToUpdateProjectMetadata projectLocator maybeDefaultBranch currentIssueTrackerIds = do
       --   Ensure that at least one project metadata field is being updated, otherwise the endpoint will throw an error
-      when (or [isJust projectTitle, isJust projectUrl, isJust projectJiraKey, isJust projectLabels, isJust projectPolicy]) $ do
-        logSticky "Updating project metadata"
-        maybePolicyId <- case projectPolicy of
-          Nothing -> pure Nothing
-          Just policy -> case policy of
-            PolicyId policyId -> pure $ Just policyId
-            PolicyName policyName -> do
-              policies <- getPolicies
-              context "Retrieving license policy ID" $ retrievePolicyId (Just policyName) LICENSING policies
+      if (or [isJust projectTitle, isJust projectUrl, isJust projectJiraKey, isJust projectLabels, isJust projectPolicy])
+        then do
+          logSticky "Updating project metadata"
+          maybePolicyId <- case projectPolicy of
+            Nothing -> pure Nothing
+            Just policy -> case policy of
+              PolicyId policyId -> pure $ Just policyId
+              PolicyName policyName -> do
+                policies <- getPolicies
+                context "Retrieving license policy ID" $ retrievePolicyId (Just policyName) LICENSING policies
 
-        orgLabels <- getOrgLabels
-        maybeLabelIds <- case projectLabels of
-          Nothing -> pure Nothing
-          Just labels -> context "Retrieving label Ids" $ Just <$> retrieveLabelIds (labels) orgLabels
+          orgLabels <- getOrgLabels
+          (maybeLabelIds, maybeLabelWarnings) <- case projectLabels of
+            Nothing -> pure (Nothing, Nothing)
+            Just labels -> do
+              (labelIds, maybeLabelWarnings) <- context "Retrieving label Ids" $ retrieveLabelIds (labels) orgLabels
+              pure (Just labelIds, maybeLabelWarnings)
 
-        -- Updating the project's issue tracker ids is an all or nothing transaction.
-        -- Add the specified jira key to the current list of issue tracker ids if it isn't already present.
-        -- If it is present in the list, use the project's existing issue tracker ids to ensure nothing is overwritten.
-        let udpatedIssueTrackerIds = case projectJiraKey of
-              Nothing -> Nothing
-              Just jiraKey -> Just . updateIssueTrackerIds jiraKey =<< currentIssueTrackerIds
-        let req =
-              UpdateProjectRequest
-                { updateProjectTitle = projectTitle
-                , updateProjectUrl = projectUrl
-                , updateProjectIssueTrackerIds = udpatedIssueTrackerIds
-                , updateProjectLabelIds = maybeLabelIds
-                , updateProjectPolicyId = maybePolicyId
-                , -- This field needs to be set, otherwise the default branch will be removed
-                  updateProjectDefaultBranch = maybeDefaultBranch
-                }
-        res <- updateProject projectLocator req
-        logDebug $ "Updated project: " <> pretty (pShow res)
+          -- Updating the project's issue tracker ids is an all or nothing transaction.
+          -- Add the specified jira key to the current list of issue tracker ids if it isn't already present.
+          -- If it is present in the list, use the project's existing issue tracker ids to ensure nothing is overwritten.
+          let udpatedIssueTrackerIds = case projectJiraKey of
+                Nothing -> Nothing
+                Just jiraKey -> Just . updateIssueTrackerIds jiraKey =<< currentIssueTrackerIds
+          let req =
+                UpdateProjectRequest
+                  { updateProjectTitle = projectTitle
+                  , updateProjectUrl = projectUrl
+                  , updateProjectIssueTrackerIds = udpatedIssueTrackerIds
+                  , updateProjectLabelIds = maybeLabelIds
+                  , updateProjectPolicyId = maybePolicyId
+                  , -- This field needs to be set, otherwise the default branch will be removed
+                    updateProjectDefaultBranch = maybeDefaultBranch
+                  }
+          res <- updateProject projectLocator req
+          logDebug $ "Updated project: " <> pretty (pShow res)
+          pure maybeLabelWarnings
+        else pure Nothing
 
     updateIssueTrackerIds :: Text -> [Text] -> [Text]
     updateIssueTrackerIds jiraKey currentIssueTrackerIds =

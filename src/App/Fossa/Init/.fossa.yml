@@ -47,11 +47,15 @@ version: 3
 #   #   Otherwise, they will be silently ignored. Use fossa project edit to modify this field for existing projects.
 #   name: fossa-cli
 #
-#   # Name of the teams in your FOSSA organization to associate with this project.
+#   # Name of the team in your FOSSA organization to associate with this project.
 #   # NOTE:
 #   #   Can only be set when creating a project (running fossa analyze for the first time),
 #   #   Otherwise, they will be silently ignored. Use fossa project edit to modify this field for existing projects.
-#   team:
+#   team: example-team
+#
+#   # Name of the teams in your FOSSA organization to associate with this project.
+#   # Currently, this field is only supported through fossa project edit.
+#   teams:
 #     - example-team-1
 #     - example-team-2
 #

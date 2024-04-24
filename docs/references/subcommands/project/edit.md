@@ -6,6 +6,7 @@
 
 Argument                     | Required | Description
 -----------------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------
+`--config` / `-c`            | No       | The to your path to your `.fossa.yml`.
 `--project-locator`          | Yes      | The project Locator defines a unique ID that the FOSSA API will use to reference this project within FOSSA. The project locator can be found in the UI on the project `Settings` page listed as the "Project Locator" underneath the "Project Title" setting.
 `--project-id`               | Yes      | The project ID defines an ID that is used to reference a project within your FOSSA organization. The project ID is a specific portion of the project locator and can be found in the UI on the project `Settings` page listed as the "Project Locator" underneath the "Project Title" setting. For example, if the "Project Locator" value of `custom+1/foo` is provided in the FOSSA UI, use `foo`. Project ID defaults to the .git/config file or project's remote "origin" URL (Git), "Repository Root" obtained using 'svn info' (SVN), or the name of the project's directory (No VCS), if project ID wasn't explicityly set during project creation.
 `--title` / `-t`             | No       | The title of the FOSSA project.
@@ -19,13 +20,29 @@ Argument                     | Required | Description
 
 > NOTE: Either project ID OR project locator needs to be set. Project ID takes precedence over project locator. For more details on the differences between project ID and project locator refer to [documentation](../../files/fossa-yml.md#what-is-the-difference-between-project-id-and-project-locator).
 
->NOTE: When updating project labels through `fossa project edit`, the transaction is all or nothing. This means that the project labels specified through this command will overwrite the existing labels that are associated with the project. Be sure to include all the labels that you want to be associated with the project, even if some labels are already currently set. 
-
 ## .fossa.yml Configuration
 
 All of the previously mentioned CLI options can be provided through a `.fossa.yml`. Refer to [fossa configuration](../../files/fossa-yml.md) to set up your `.fossa.yml`.
 
-> NOTE: CLI options take precedence over the configurations in `.fossa.yml`.
+> NOTE: CLI options take precedence over the configurations in `.fossa.yml`. 
+
+## `fossa project edit` usage and guidance
+
+### Updating a project's labels 
+
+When updating project labels through `fossa project edit`, the transaction is all or nothing. This means that the project labels specified through this command will overwrite the existing labels that are associated with the project. Be sure to include all the labels that you want to be associated with the project, even if some labels are already currently set. 
+
+### Updating the teams associated with a project
+
+Currently, `fossa project edit` only supports adding a project to the teams that are specified through the command. There will be support to remove a project from the provided teams in the future. 
+
+Providing teams for `fossa project edit` takes the following precdence:
+
+1. CLI options - Adds the project to teams (1 or many)
+2. `project.teams` in `.fossa.yml` - Adds the project to teams (1 or many)
+3. `project.team` in `.fossa.yml` - Adds the project to a team 
+
+There is support for `project.team` due to backwards compatability as `project.teams` is a newly added field in `.fossa.yml`. 
 
 ## Example
 

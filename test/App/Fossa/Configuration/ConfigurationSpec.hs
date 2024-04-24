@@ -85,6 +85,7 @@ expectedConfigProject =
     , configProjID = Just "github.com/fossa-cli"
     , configName = Just "fossa-cli"
     , configLink = Just "fossa.com"
+    , configTeam = Just "fossa-team"
     , configTeams = Just ["fossa-team"]
     , configJiraKey = Just "key"
     , configUrl = Just "fossa.com"

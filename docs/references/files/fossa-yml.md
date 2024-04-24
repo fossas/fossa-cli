@@ -15,8 +15,10 @@ project:
   locator: custom+1/github.com/fossas/fossa-cli
   id: github.com/fossas/fossa-cli
   name: fossa-cli
+  team: cli-team
   teams: 
-    - cli-team
+    - cli-team-1
+    - cli-team-2
   policy: custom-cli-policy
   link: fossa.com
   url: github.com/fossas/fossa-cli
@@ -148,11 +150,14 @@ Default:
 #### `project.name:`
 The name field sets the projects visible name in the FOSSA dashboard. By default, this will be set to the project's ID.
 
+#### `project.team:`
+The name of the team in your FOSSA organization to associate this project with.
+
 #### `project.teams:`
 The name of the teams in your FOSSA organization to associate this project with.
 
 >NOTE:
-  Currently, commands such as `fossa analyze` and `fossa container analyze` will only use the first team in the list. Use [fossa project edit](../subcommands/project/edit.md) to associate a project to all teams in the list.
+  Currently, ONLY `fossa project edit` utilizes this field. Use [fossa project edit](../subcommands/project/edit.md) to add a project to all teams in the list.
 
 #### `project.policy:`
 The name of the policy in your FOSSA organization to associate this project with.

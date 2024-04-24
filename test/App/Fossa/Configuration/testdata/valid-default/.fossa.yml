@@ -7,6 +7,7 @@ project:
   locator: custom+1/github.com/fossa-cli
   id: github.com/fossa-cli
   name: fossa-cli
+  team: fossa-team
   teams: 
     - fossa-team
   policy: license-policy

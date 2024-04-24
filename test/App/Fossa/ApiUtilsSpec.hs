@@ -72,10 +72,13 @@ retrieveLabelIdsSpec = do
     let label2 = Label 2 "example-label-2"
     let labels = Labels [label1, label2]
 
-    it' "should return empty list when no label names exists Labels" $ do
+    it' "should return empty list and label warnings when no label names exists Labels" $ do
       res <- retrieveLabelIds ["non-existent-label", "non-existent-label-2"] labels
-      res `shouldBe'` []
+      let warning1 = "Label `non-existent-label` does not exist\nNavigate to `Organization Settings` in the FOSSA web UI to create new labels:  https://app.fossa.com/account/settings/organization"
+          warning2 = "Label `non-existent-label-2` does not exist\nNavigate to `Organization Settings` in the FOSSA web UI to create new labels:  https://app.fossa.com/account/settings/organization"
+          expectedWarnings = Just [warning1, warning2]
+      res `shouldBe'` ([], expectedWarnings)
 
     it' "should return all labels" $ do
       res <- retrieveLabelIds ["example-label", "example-label-2"] labels
-      res `shouldBe'` [2, 1]
+      res `shouldBe'` ([2, 1], Nothing)

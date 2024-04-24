@@ -162,8 +162,10 @@ mergeOpts maybeConfig envVars cliOpts@EditOpts{..} = do
         , projectPolicy = maybePolicy
         , projectLink = projectLinkOpts <|> extractProjectConfigVal maybeConfig configLink
         , projectLabels = projectLabelsOpts <|> labelConfigToMaybe configProjectLabels
-        , -- Teams to add project to
-          teams = teamsOpts <|> extractProjectConfigVal maybeConfig configTeams
+        , -- Teams to add project to.
+          -- Precdence for teams is CLI input, `project.teams` field from config, then `project.team` field from config.
+          -- Account for `project.team` for backwards compatability.
+          teams = teamsOpts <|> extractProjectConfigVal maybeConfig configTeams <|> ((: []) <$> extractProjectConfigVal maybeConfig configTeam)
         }
 
     labelConfigToMaybe :: [Text] -> Maybe [Text]

@@ -6,7 +6,7 @@ module App.Fossa.ApiUtils (
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, errHelp, fatalText, warn)
+import Control.Effect.Diagnostics (Diagnostics, errHelp, fatalText)
 import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Text (Text, intercalate)
@@ -42,22 +42,25 @@ retrieveTeamIds teamNames teams = do
       let missingTeamNames = filter (`Map.notMember` teamMap) teamNames
       fatalText $ "Teams " <> intercalate "," missingTeamNames <> "not found"
 
-retrieveLabelIds :: Has Diagnostics sig m => [Text] -> Labels -> m [Int]
+retrieveLabelIds :: Has Diagnostics sig m => [Text] -> Labels -> m ([Int], Maybe [Text])
 retrieveLabelIds projectLabels (Labels orgLabels) = do
   let orgLabelMap = Map.fromList $ map (\label -> (labelName label, labelId label)) orgLabels
   go orgLabelMap projectLabels []
   where
-    go :: Has Diagnostics sig m => Map.Map Text Int -> [Text] -> [Int] -> m [Int]
-    go _ [] acc = pure acc
+    go :: Has Diagnostics sig m => Map.Map Text Int -> [Text] -> [Int] -> m ([Int], Maybe [Text])
+    go _ [] acc = pure (acc, Nothing)
     go labelMap (x : xs) acc = do
       case Map.lookup x labelMap of
         Just labelId' -> go labelMap xs (labelId' : acc)
         Nothing -> do
-          warn $
-            renderIt $
-              vsep
-                [ "Label `" <> pretty x <> "` does not exist"
-                , "Navigate to `Organization Settings` in the FOSSA web UI to create new labels:  https://app.fossa.com/account/settings/organization"
-                ]
-
-          go labelMap xs acc
+          (labelIds, maybeWarnings) <- go labelMap xs acc
+          let warning =
+                renderIt $
+                  vsep
+                    [ "Label `" <> pretty x <> "` does not exist"
+                    , "Navigate to `Organization Settings` in the FOSSA web UI to create new labels:  https://app.fossa.com/account/settings/organization"
+                    ]
+          let updatedWarnings = case maybeWarnings of
+                Just warnings -> Just (warning : warnings)
+                Nothing -> Just [warning]
+          pure (labelIds, updatedWarnings)
