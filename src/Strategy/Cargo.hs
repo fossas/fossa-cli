@@ -41,6 +41,7 @@ import Data.Aeson.Types (
 import Data.Bifunctor (bimap, first)
 import Data.Foldable (for_, traverse_)
 import Data.Functor (void)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Set (Set)
@@ -79,13 +80,14 @@ import Text.Megaparsec (
   Parsec,
   choice,
   errorBundlePretty,
+  lookAhead,
   optional,
   parse,
   takeRest,
   takeWhile1P,
   try,
  )
-import Text.Megaparsec.Char (char, space)
+import Text.Megaparsec.Char (char, digitChar, space)
 import Toml (TomlCodec, dioptional, diwrap, (.=))
 import Toml qualified
 import Types (
@@ -447,15 +449,27 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
       -- Parse: ://github.com/rust-lang/crates.io-index
       sourceRemaining <- takeWhile1P (Just "Remaining URL") (/= '#')
       let pkgSource = sourceInit <> sourceRemaining
+
+      -- In cases where we can't find a real name, use text after the last slash as a name.
+      -- Or as a very last resort the entire package source path.
+      -- Cases of this are generally path dependencies.
+      let fallbackName =
+            maybe pkgSource NonEmpty.last
+              . NonEmpty.nonEmpty
+              . filter (/= "")
+              . Text.split (== '/')
+              $ sourceRemaining
+
       -- Parse (Optional): #adler@1.0.2
       nameVersion <- optional $ do
         void $ char '#'
-        -- If pkgName doesn't parse, use pkgSource as the name and interpret the rest as semver.
-        try pkgName <|> ((pkgSource,) <$> semver)
+        -- If there's only a version after '#', use pkgSource as the name.
+        ((fallbackName,) <$> semver)
+          <|> pkgName
 
-      -- If there's nothing in `nameVersion`, use the `pkgSource` as a name.
-      -- There may be better things to use in the metadata, but they aren't known at this level.
-      let (name, version) = fromMaybe (pkgSource, "*") nameVersion
+      -- There may be context around this package id in the metadata that could supply a name.
+      -- But that information isn't known at this level so fall back.
+      let (name, version) = fromMaybe (fallbackName, "*") nameVersion
       let pkgId =
             PackageId
               { pkgIdName = name
@@ -464,8 +478,9 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
               }
       pure pkgId
 
-    -- In the grammar, a semver always appears at the end of a string, so don't bother parsing internally.
-    semver = takeRest
+    -- In the grammar, a semver always appears at the end of a string and is the only
+    -- non-terminal that starts with a digit, so don't bother parsing internally.
+    semver = try (lookAhead digitChar) *> takeRest
 
 -- Prior to Cargo 1.77.0, package IDs looked like this:
 -- package version (source URL)

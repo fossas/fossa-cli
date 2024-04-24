@@ -82,13 +82,19 @@ ansiTermNodeNoVersion :: ResolveNode
 ansiTermNodeNoVersion = ResolveNode ansiTermIdNoVersion []
 
 fooPathDepId :: PackageId
-fooPathDepId = PackageId "file:///path/to/my/project/foo" "*" "(file:///path/to/my/project/foo)"
+fooPathDepId = PackageId "foo" "*" "(file:///path/to/my/project/foo)"
 
 fooPathNode :: ResolveNode
 fooPathNode = ResolveNode fooPathDepId []
 
+barPathDepId :: PackageId
+barPathDepId = PackageId "bar" "2.0.0" "(file:///path/to/my/project/bar)"
+
+barPathNode :: ResolveNode
+barPathNode = ResolveNode barPathDepId []
+
 expectedResolveNodesPost1_77 :: [ResolveNode]
-expectedResolveNodesPost1_77 = [ansiTermNodeNoVersion, fooPathNode, clapNode, jfmtNode]
+expectedResolveNodesPost1_77 = [ansiTermNodeNoVersion, fooPathNode, barPathNode, clapNode, jfmtNode]
 
 expectedMetadataPost1_77 :: CargoMetadata
 expectedMetadataPost1_77 = CargoMetadata [] [jfmtId] $ Resolve expectedResolveNodesPost1_77

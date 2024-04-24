@@ -23,6 +23,12 @@
         "features": []
       },
       {
+        "id": "file:///path/to/my/project/bar#2.0.0",
+        "dependencies": [],
+        "deps": [],
+        "features": []
+      },
+      {
         "id": "registry+https://github.com/rust-lang/crates.io-index#clap:2.33.0",
         "deps": [
           {
