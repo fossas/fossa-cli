@@ -418,10 +418,15 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
   where
     eatSpaces m = space *> m <* space
 
+    -- In the following imagine we're working with this fragment:
+    -- adler@1.0.2
     pkgName :: PkgSpecParser (PkgName, PkgVersion)
     pkgName = do
+      -- Parse: adler
       name <- takeWhile1P (Just "Package name") (`notElem` ['@', ':'])
+      -- Parse: @1.0.2
       version <- optional (choice [char '@', char ':'] *> semver)
+      -- It's possible to specify a name with no version, use "*" in this case.
       pure (name, fromMaybe "*" version)
 
     simplePkgSpec' =
@@ -433,15 +438,22 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
             , pkgIdSource = ""
             }
 
+    -- In the following imagine we are working with this spec:
+    -- registry+https://github.com/rust-lang/crates.io-index#adler@1.0.2
     longSpec :: PkgSpecParser PackageId
     longSpec = do
+      -- Parse: registry+https
       sourceInit <- takeWhile1P (Just "Initial URL") (/= ':')
+      -- Parse: ://github.com/rust-lang/crates.io-index
       sourceRemaining <- takeWhile1P (Just "Remaining URL") (/= '#')
       let pkgSource = sourceInit <> sourceRemaining
+      -- Parse (Optional): #adler@1.0.2
       nameVersion <- optional $ do
         void $ char '#'
-        try pkgName <|> ((pkgSource,) <$> takeRest)
-      -- If there isn't a pkgname/version, then just use "*" as in a path dep.
+        -- If pkgName doesn't parse, use pkgSource as the name and interpret the rest as semver.
+        try pkgName <|> ((pkgSource,) <$> semver)
+
+      -- If there's nothing in `nameVersion`, use the `pkgSource` as a name.
       -- There may be better things to use in the metadata, but they aren't known at this level.
       let (name, version) = fromMaybe (pkgSource, "*") nameVersion
       let pkgId =
@@ -452,7 +464,7 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
               }
       pure pkgId
 
-    -- In the grammar, a semver always appears at the end so don't bother parsing internally.
+    -- In the grammar, a semver always appears at the end of a string, so don't bother parsing internally.
     semver = takeRest
 
 -- Prior to Cargo 1.77.0, package IDs looked like this:
