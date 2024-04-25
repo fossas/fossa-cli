@@ -4,7 +4,6 @@ module Container.TarballReadFSSpec (
   spec,
 ) where
 
-import Codec.Archive.Tar (EntryContent (..))
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Tar.Entry qualified as TarEntry
 import Codec.Archive.Tar.Index (TarEntryOffset)
@@ -34,6 +33,7 @@ import Test.Hspec (
   runIO,
  )
 import Type.Operator (type ($))
+import Codec.Archive.Tar.Entry (GenEntryContent(NormalFile))
 
 spec :: Spec
 spec = do
@@ -137,7 +137,7 @@ mkTree = foldr (\(p, ref) tree -> insert (toSomePath p) ref tree) empty
 readTree :: Path Abs File -> IO (SomeFileTree TarEntryOffset)
 readTree file = do
   content <- ByteStringLazy.readFile $ toFilePath file
-  case mkEntries $ Tar.read' content of
+  case mkEntries $ Tar.read content of
     Left err -> throw . userError $ "read tar at " <> toString file <> ": " <> show err
     Right entries -> pure $ mkTreeFromEntries empty entries
   where

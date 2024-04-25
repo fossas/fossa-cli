@@ -15,7 +15,7 @@ import App.Fossa.LicenseScanner (scanDirectory)
 import App.Fossa.VendoredDependency (hashBs, hashFile)
 import App.Types (FullFileUploads (..), ProjectRevision)
 import Codec.Archive.Tar qualified as Tar
-import Codec.Archive.Tar.Entry (Entry (..))
+import Codec.Archive.Tar.Entry (GenEntry (entryOwnership, entryTime))
 import Codec.Archive.Tar.Entry qualified as Tar
 import Control.Carrier.StickyLogger (logSticky)
 import Control.Effect.Diagnostics (

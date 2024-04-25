@@ -12,12 +12,8 @@ module Container.Tarball (
   filePathOf,
 ) where
 
-import Codec.Archive.Tar (
-  Entry (entryContent),
-  EntryContent (HardLink, NormalFile, SymbolicLink),
- )
 import Codec.Archive.Tar qualified as Tar
-import Codec.Archive.Tar.Entry (Entry (entryTarPath), TarPath, entryPath, fromTarPathToPosixPath)
+import Codec.Archive.Tar.Entry (TarPath, entryPath, fromTarPathToPosixPath, GenEntryContent (NormalFile, SymbolicLink, HardLink), GenEntry (entryContent, entryTarPath))
 import Codec.Archive.Tar.Entry qualified as TarEntry
 import Codec.Archive.Tar.Index (TarEntryOffset, nextEntryOffset)
 import Container.Docker.ImageJson (ImageJson, decodeImageJson, getLayerIds)
@@ -60,7 +56,7 @@ data TarEntries = TarEntries
 
 -- | Parses Container Image from Tarball Byte string.
 parse :: ByteStringLazy.ByteString -> Either (NLE.NonEmpty ContainerImgParsingError) ContainerImageRaw
-parse content = case mkEntries $ Tar.read' content of
+parse content = case mkEntries $ Tar.read content of
   Left err -> Left $ NLE.singleton err
   Right te -> do
     -- Exported docker image must have
@@ -142,7 +138,7 @@ mkLayer (TarEntries entries tarOffset) (layerId, layerTarball) =
     EmptyL -> Left $ TarMissingLayerTar layerTarball
     (layerTarballEntry :< _) -> case entryContent $ fst layerTarballEntry of
       (NormalFile c _) -> do
-        let rawEntries = Tar.read' c
+        let rawEntries = Tar.read c
         case mkLayerFromOffset layerId (snd layerTarballEntry) rawEntries of
           Left err -> Left err
           Right layer -> Right layer

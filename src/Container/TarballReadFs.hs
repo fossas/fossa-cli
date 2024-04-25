@@ -4,20 +4,19 @@ module Container.TarballReadFs (
   runTarballReadFSIO,
 ) where
 
-import Codec.Archive.Tar (
-  Entry (entryContent),
-  EntryContent (
-    BlockDevice,
-    CharacterDevice,
-    Directory,
-    HardLink,
-    NamedPipe,
-    NormalFile,
-    OtherEntryType,
-    SymbolicLink
-  ),
- )
-import Codec.Archive.Tar.Entry (LinkTarget, entryTarPath, fromLinkTargetToPosixPath)
+import Codec.Archive.Tar.Entry
+    ( LinkTarget,
+      entryTarPath,
+      fromLinkTargetToPosixPath,
+      GenEntryContent(NormalFile
+                     , Directory
+                     , NamedPipe
+                     , BlockDevice
+                     , CharacterDevice
+                     , OtherEntryType
+                     , SymbolicLink
+                     , HardLink),
+      entryContent )
 import Codec.Archive.Tar.Index (TarEntryOffset, hReadEntry)
 import Container.Tarball (filePathOf)
 import Control.Carrier.Simple (interpret)
@@ -85,6 +84,7 @@ import Control.Effect.Record (Redacted (..))
 import Data.Either.Combinators (mapRight)
 import Path.Internal (Path (Path))
 import System.IO (Handle, IOMode (ReadMode), withFile)
+import Codec.Archive.Tar (Entry)
 
 maxHopsOf20 :: Int
 maxHopsOf20 = 20

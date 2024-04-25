@@ -3,7 +3,7 @@ module Container.TarballSpec (
 ) where
 
 import Codec.Archive.Tar qualified as Tar
-import Codec.Archive.Tar.Entry (Entry (entryTarPath), fromTarPathToPosixPath)
+import Codec.Archive.Tar.Entry (GenEntry (entryTarPath), fromTarPathToPosixPath)
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Docker.ImageJson (ImageJson (ImageJson), ImageJsonRootFs (ImageJsonRootFs))
 import Container.Docker.Manifest (ManifestJson (..), ManifestJsonImageEntry (..))
