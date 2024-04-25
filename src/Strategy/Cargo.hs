@@ -420,8 +420,7 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
   where
     eatSpaces m = space *> m <* space
 
-    -- In the following imagine we're working with this fragment:
-    -- adler@1.0.2
+    -- Given the fragment: adler@1.0.2
     pkgName :: PkgSpecParser (PkgName, PkgVersion)
     pkgName = do
       -- Parse: adler
@@ -440,8 +439,7 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
             , pkgIdSource = ""
             }
 
-    -- In the following imagine we are working with this spec:
-    -- registry+https://github.com/rust-lang/crates.io-index#adler@1.0.2
+    -- Given the spec: registry+https://github.com/rust-lang/crates.io-index#adler@1.0.2
     longSpec :: PkgSpecParser PackageId
     longSpec = do
       -- Parse: registry+https
