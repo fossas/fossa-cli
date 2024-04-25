@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.9.14
+- Update cargo strategy to parse new `cargo metadata` format for cargo >= 1.77.0 ([#1416](https://github.com/fossas/fossa-cli/pull/1416)).
+
 ## v3.9.13
 - Support GIT dependencies in Bundler projects ([#1403](https://github.com/fossas/fossa-cli/pull/1403/files))
 - Reports: Increase the timeout when hitting the report generation API endpoint ([#1412](https://github.com/fossas/fossa-cli/pull/1412)).
