@@ -94,4 +94,4 @@ jobs:
         uses: sudo-bot/action-shellcheck@latest
         with:
             # https://github.com/koalaman/shellcheck#how-to-use
-            cli-args: "*.sh ./.github/scripts/*.sh"
+            cli-args: "*.sh"

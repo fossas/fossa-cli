@@ -198,6 +198,7 @@ jobs:
       run: |
         mkdir release
         find . -type f -path '*/fossa/fossa.exe' -exec cp {} release \;
+        ./release/fossa.exe --version
         cp target/release/diagnose.exe release
         cp target/release/millhone.exe release
 
@@ -206,6 +207,7 @@ jobs:
       run: |
         mkdir release
         find . -type f -path '*/fossa/fossa' -exec cp {} release \;
+        ./release/fossa --version
         cp target/release/diagnose release
         cp target/release/millhone release
 

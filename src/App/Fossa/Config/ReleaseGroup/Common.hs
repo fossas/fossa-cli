@@ -8,6 +8,8 @@ module App.Fossa.Config.ReleaseGroup.Common (
   mergeReleaseGroupRelease,
   mergeReleaseGroupProjectRevision,
   extractReleaseGroupConfigValue,
+  releaseGroupTitleOpts,
+  releaseGroupReleaseTitleOpts,
 ) where
 
 import App.Fossa.Config.Common (apiKeyOpt, endpointOpt)
@@ -20,7 +22,7 @@ import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Text (Text, null, strip)
 import Fossa.API.Types (ApiKey (ApiKey), ApiOpts (ApiOpts), defaultApiPollDelay)
 import GHC.Generics (Generic)
-import Options.Applicative (Parser, long, strOption, switch, (<|>))
+import Options.Applicative (Parser, long, short, strOption, switch, (<|>))
 import Style (applyFossaStyle, stringToHelpDoc)
 import Text.URI (URI, mkURI)
 
@@ -54,6 +56,12 @@ releaseGroupProjectOpts =
     <$> strOption (applyFossaStyle <> long "project-locator" <> stringToHelpDoc "The project Locator defines a unique ID that the FOSSA API will use to reference this project within FOSSA")
     <*> strOption (applyFossaStyle <> long "project-revision" <> stringToHelpDoc "The revision of the FOSSA project")
     <*> strOption (applyFossaStyle <> long "project-branch" <> stringToHelpDoc "The branch of the FOSSA project")
+
+releaseGroupTitleOpts :: Parser Text
+releaseGroupTitleOpts = strOption (applyFossaStyle <> long "title" <> short 't' <> stringToHelpDoc "The title of the FOSSA release group")
+
+releaseGroupReleaseTitleOpts :: Parser Text
+releaseGroupReleaseTitleOpts = strOption (applyFossaStyle <> long "release" <> short 'r' <> stringToHelpDoc "The release of the FOSSA release group")
 
 validateApiKey :: (Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> ReleaseGroupCommonOpts -> m ApiKey
 validateApiKey maybeConfigFile EnvVars{envApiKey} ReleaseGroupCommonOpts{apiKey} = do

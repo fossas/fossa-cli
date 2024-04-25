@@ -11,7 +11,7 @@ module App.Fossa.Config.ReleaseGroup.Create (
 import App.Fossa.Config.Common (configFileOpt)
 import App.Fossa.Config.ConfigFile (ConfigFile, ConfigReleaseGroup (..))
 import App.Fossa.Config.EnvironmentVars (EnvVars)
-import App.Fossa.Config.ReleaseGroup.Common (ReleaseGroupCommonOpts (..), ReleaseGroupProjectOpts (..), collectApiOpts, extractReleaseGroupConfigValue, mergeReleaseGroupProjectRevision, mergeReleaseGroupRelease, mergeReleaseGroupTitle, releaseGroupCommonOpts, releaseGroupProjectOpts)
+import App.Fossa.Config.ReleaseGroup.Common (ReleaseGroupCommonOpts (..), ReleaseGroupProjectOpts (..), collectApiOpts, extractReleaseGroupConfigValue, mergeReleaseGroupProjectRevision, mergeReleaseGroupRelease, mergeReleaseGroupTitle, releaseGroupCommonOpts, releaseGroupProjectOpts, releaseGroupReleaseTitleOpts, releaseGroupTitleOpts)
 import App.Types (ReleaseGroupReleaseRevision (..), ReleaseGroupRevision (..))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding, toEncoding)
@@ -68,15 +68,14 @@ cliParser =
   CreateOpts
     <$> releaseGroupCommonOpts
     <*> configFileOpt
-    <*> optional (strOption (applyFossaStyle <> long "title" <> short 't' <> stringToHelpDoc "The title of the FOSSA release group"))
-    <*> optional (strOption (applyFossaStyle <> long "release" <> short 'r' <> stringToHelpDoc "The release of the FOSSA release group"))
+    <*> optional releaseGroupTitleOpts
+    <*> optional releaseGroupReleaseTitleOpts
     <*> optional (some (releaseGroupProjectOpts))
     <*> optional (strOption (applyFossaStyle <> long "license-policy" <> short 'l' <> stringToHelpDoc "The name of the license compliance policy you want to assign to the FOSSA release group"))
     <*> optional (strOption (applyFossaStyle <> long "security-policy" <> short 's' <> stringToHelpDoc "The name of the security policy you want to assign to the FOSSA release group"))
     <*> optional (strOption (applyFossaStyle <> long "quality-policy" <> short 'q' <> stringToHelpDoc "The name of the quality policy you want to assign to the FOSSA release group"))
     <*> optional (some (strOption (applyFossaStyle <> long "team" <> short 'T' <> stringToHelpDoc "The team you want to assign to the FOSSA release group")))
 
--- <*> optional (some (strOption (applyFossaStyle <> long "team" <> short 'T' <> stringToHelpDoc "The team you want to assign to the FOSSA release group")))
 mergeOpts ::
   ( Has Diagnostics sig m
   ) =>

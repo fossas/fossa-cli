@@ -240,6 +240,7 @@ matchExpectation a@(DeleteReleaseGroup{}) (ApiExpectation _ requestExpectation b
 matchExpectation a@(DeleteReleaseGroupRelease{}) (ApiExpectation _ requestExpectation b@(DeleteReleaseGroupRelease{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UpdateReleaseGroupRelease{}) (ApiExpectation _ requestExpectation b@(UpdateReleaseGroupRelease{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(CreateReleaseGroup{}) (ApiExpectation _ requestExpectation b@(CreateReleaseGroup{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(CreateReleaseGroupRelease{}) (ApiExpectation _ requestExpectation b@(CreateReleaseGroupRelease{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetReleaseGroups{}) (ApiExpectation _ requestExpectation b@(GetReleaseGroups{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetReleaseGroupReleases{}) (ApiExpectation _ requestExpectation b@(GetReleaseGroupReleases{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetPolicies{}) (ApiExpectation _ requestExpectation b@(GetPolicies{}) resp) = checkResult requestExpectation a b resp

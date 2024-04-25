@@ -1,6 +1,6 @@
-## `fossa release-group add-projects`
+## `fossa release-group create-release`
 
-`fossa release-group add-projects` allows you to add FOSSA projects to a FOSSA release group.
+`fossa release-group create-release` allows you to create a FOSSA release group release.
 
 ## Options
 
@@ -26,10 +26,9 @@ Refer to [fossa configuration](../../files/fossa-yml.md) to set up your `.fossa.
 ## Example
 
 ```bash
-fossa release-group add-projects --title example-release-group --release example-release --project-locator custom+1/example --project-revision 1234 --project-branch main --project-locator custom+1/example2 --project-revision 5678 --project-branch main 
+fossa release-group create-release --title example-release-group --release example-release --project-locator custom+1/example --project-revision 1234 --project-branch main --project-locator custom+1/example2 --project-revision 5678 --project-branch main 
 ``` 
-
->NOTE: `--project-locator` , `--project-revision`, and `--project-branch` must all be specified when providing a releaseGroupProject. Multiple occurrences of these arguements are accepted and are grouped together based on their order. For example, `fossa release-group add-projects --title example-release-group --release example-release --project-locator custom+1/example --project-revision 1234 --project-branch main --project-locator custom+1/example2 --project-revision 5678 --project-branch main` has project groupings of (project locator: custom+1/example, project revision: 1234, project branch: main) and (project locator: custom+1/example2, project revision: 5678, project branch: main).
+>NOTE: `--project-locator` , `--project-revision`, and `--project-branch` must all be specified when providing a releaseGroupProject. Multiple occurrences of these arguements are accepted and are grouped together based on their order. For example, `fossa release-group create-release --title example-release-group --release example-release --project-locator custom+1/example --project-revision 1234 --project-branch main --project-locator custom+1/example2 --project-revision 5678 --project-branch main` has project groupings of (project locator: custom+1/example, project revision: 1234, project branch: main) and (project locator: custom+1/example2, project revision: 5678, project branch: main).
 
 Similarly, you can you achieve the same result by running the following command with the given `.fossa.yml` configuration:
 
@@ -47,5 +46,5 @@ releaseGroup:
 ```
 
 ```bash
-fossa release-group add-projects -c path/to/config
+fossa release-group create-release -c path/to/config
 ``` 

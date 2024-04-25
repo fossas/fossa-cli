@@ -47,6 +47,7 @@ module Control.Effect.FossaApiClient (
   deleteReleaseGroup,
   deleteReleaseGroupRelease,
   createReleaseGroup,
+  createReleaseGroupRelease,
   getReleaseGroups,
   getReleaseGroupReleases,
   updateReleaseGroupRelease,
@@ -64,7 +65,7 @@ import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency)
-import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision)
+import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision, ReleaseGroupReleaseRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
@@ -168,6 +169,7 @@ data FossaApiClientF a where
   DeleteReleaseGroup :: Int -> FossaApiClientF ()
   DeleteReleaseGroupRelease :: Int -> Int -> FossaApiClientF ()
   CreateReleaseGroup :: CoreTypes.CreateReleaseGroupRequest -> FossaApiClientF CoreTypes.CreateReleaseGroupResponse
+  CreateReleaseGroupRelease :: Int -> ReleaseGroupReleaseRevision -> FossaApiClientF ReleaseGroupRelease
   UpdateReleaseGroupRelease :: Int -> Int -> CoreTypes.UpdateReleaseRequest -> FossaApiClientF CoreTypes.ReleaseGroupRelease
   GetReleaseGroups :: FossaApiClientF [CoreTypes.ReleaseGroup]
   GetReleaseGroupReleases :: Int -> FossaApiClientF [CoreTypes.ReleaseGroupRelease]
@@ -321,6 +323,12 @@ updateReleaseGroupRelease releaseGroupId releaseId updateReq = sendSimple $ Upda
 
 createReleaseGroup :: Has FossaApiClient sig m => CoreTypes.CreateReleaseGroupRequest -> m CoreTypes.CreateReleaseGroupResponse
 createReleaseGroup req = sendSimple $ CreateReleaseGroup req
+
+createReleaseGroupRelease :: Has FossaApiClient sig m => Int -> ReleaseGroupReleaseRevision -> m ReleaseGroupRelease
+createReleaseGroupRelease releaseGroupId req = sendSimple $ CreateReleaseGroupRelease releaseGroupId req
+
+createReleaseGroupRelease :: Has FossaApiClient sig m => Int -> ReleaseGroupReleaseRevision -> m ReleaseGroupRelease
+createReleaseGroupRelease releaseGroupId req = sendSimple $ CreateReleaseGroupRelease releaseGroupId req
 
 getReleaseGroups :: Has FossaApiClient sig m => m [CoreTypes.ReleaseGroup]
 getReleaseGroups = sendSimple GetReleaseGroups

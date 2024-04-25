@@ -1,5 +1,5 @@
 GIT
-  remote: temp
+  remote: url-for-dep-one
   revision: 12345
   branch: branch
   specs:
@@ -18,7 +18,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  dep-one (~> 0.8.13)
+  dep-one! (~> 0.8.13)
   dep-two (>= 4.2.1, < 5.0.0)
 
 BUNDLED WITH

@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+
 module Strategy.Cargo (
   discover,
   CargoMetadata (..),
@@ -17,6 +19,7 @@ import App.Fossa.Analyze.LicenseAnalyze (
   LicenseAnalyzeProject (licenseAnalyzeProject),
  )
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -30,18 +33,22 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Reader (Reader)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
-  Parser,
   ToJSON,
   withObject,
   (.:),
   (.:?),
  )
+import Data.Bifunctor (bimap, first)
 import Data.Foldable (for_, traverse_)
+import Data.Functor (void)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, isJust)
+import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Set (Set)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (toString, toText)
+import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Void (Void)
 import Diag.Diagnostic (renderDiagnostic)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
@@ -69,6 +76,18 @@ import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing, stripRoot)
 import Path (Abs, Dir, File, Path, parent, parseRelFile, toFilePath, (</>))
+import Text.Megaparsec (
+  Parsec,
+  choice,
+  errorBundlePretty,
+  lookAhead,
+  optional,
+  parse,
+  takeRest,
+  takeWhile1P,
+  try,
+ )
+import Text.Megaparsec.Char (char, digitChar, space)
 import Toml (TomlCodec, dioptional, diwrap, (.=))
 import Toml qualified
 import Types (
@@ -383,8 +402,104 @@ buildGraph meta = stripRoot $
     traverse_ direct $ metadataWorkspaceMembers meta
     traverse_ addEdge $ resolvedNodes $ metadataResolve meta
 
-parsePkgId :: Text.Text -> Parser PackageId
-parsePkgId t =
+-- | Custom Parsec type alias
+type PkgSpecParser a = Parsec Void Text a
+
+-- | Parser for pre cargo v1.77.0 package ids.
+oldPkgIdParser :: Text -> Either Text PackageId
+oldPkgIdParser t =
   case Text.splitOn " " t of
-    [a, b, c] -> pure $ PackageId a b c
-    _ -> fail "malformed Package ID"
+    [a, b, c] -> Right $ PackageId a b c
+    _ -> Left $ "malformed Package ID: " <> t
+
+type PkgName = Text
+type PkgVersion = Text
+
+parsePkgSpec :: PkgSpecParser PackageId
+parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
+  where
+    eatSpaces m = space *> m <* space
+
+    -- Given the fragment: adler@1.0.2
+    pkgName :: PkgSpecParser (PkgName, PkgVersion)
+    pkgName = do
+      -- Parse: adler
+      name <- takeWhile1P (Just "Package name") (`notElem` ['@', ':'])
+      -- Parse: @1.0.2
+      version <- optional (choice [char '@', char ':'] *> semver)
+      -- It's possible to specify a name with no version, use "*" in this case.
+      pure (name, fromMaybe "*" version)
+
+    simplePkgSpec' =
+      pkgName >>= \(name, version) ->
+        pure
+          PackageId
+            { pkgIdName = name
+            , pkgIdVersion = version
+            , pkgIdSource = ""
+            }
+
+    -- Given the spec: registry+https://github.com/rust-lang/crates.io-index#adler@1.0.2
+    longSpec :: PkgSpecParser PackageId
+    longSpec = do
+      -- Parse: registry+https
+      sourceInit <- takeWhile1P (Just "Initial URL") (/= ':')
+      -- Parse: ://github.com/rust-lang/crates.io-index
+      sourceRemaining <- takeWhile1P (Just "Remaining URL") (/= '#')
+      let pkgSource = sourceInit <> sourceRemaining
+
+      -- In cases where we can't find a real name, use text after the last slash as a name.
+      -- e.g. file:///path/to/my/project/bar#2.0.0 has the name 'bar'
+      -- Cases of this are generally path dependencies.
+      let fallbackName =
+            maybe pkgSource NonEmpty.last
+              . NonEmpty.nonEmpty
+              . filter (/= "")
+              . Text.split (== '/')
+              $ sourceRemaining
+
+      -- Parse (Optional): #adler@1.0.2
+      nameVersion <- optional $ do
+        void $ char '#'
+        -- If there's only a version after '#', use the fallback as the name.
+        ((fallbackName,) <$> semver)
+          <|> pkgName
+
+      let (name, version) = fromMaybe (fallbackName, "*") nameVersion
+      pure $
+        PackageId
+          { pkgIdName = name
+          , pkgIdVersion = version
+          , pkgIdSource = pkgSource
+          }
+
+    -- In the grammar, a semver always appears at the end of a string and is the only
+    -- non-terminal that starts with a digit, so don't bother parsing internally.
+    semver = try (lookAhead digitChar) *> takeRest
+
+-- Prior to Cargo 1.77.0, package IDs looked like this:
+-- package version (source URL)
+-- adler 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)
+--
+-- For 1.77.0 and later, they look like this:
+-- registry source URL with a fragment of package@version
+-- registry+https://github.com/rust-lang/crates.io-index#adler@1.0.2
+-- or
+-- path source URL with a fragment of package@version
+-- path+file:///Users/scott/projects/health-data/health_data#package_name@0.1.0
+-- or
+-- path source URL with a fragment of version
+-- In this case we grab the last entry in the path to use for the package name
+-- path+file:///Users/scott/projects/health-data/health_data#0.1.0
+--
+-- Package Spec: https://doc.rust-lang.org/cargo/reference/pkgid-spec.html
+parsePkgId :: MonadFail m => Text.Text -> m PackageId
+parsePkgId t = either fail pure $ oldPkgIdParser' t <|> parseNewSpec
+  where
+    oldPkgIdParser' = first toString . oldPkgIdParser
+
+    parseNewSpec :: Either String PackageId
+    parseNewSpec =
+      bimap errorBundlePretty (\p -> p{pkgIdSource = "(" <> p.pkgIdSource <> ")"})
+        . parse parsePkgSpec "Cargo Package Spec"
+        $ t

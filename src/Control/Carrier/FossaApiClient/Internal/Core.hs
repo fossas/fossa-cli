@@ -25,6 +25,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   deleteReleaseGroup,
   deleteReleaseGroupRelease,
   createReleaseGroup,
+  createReleaseGroupRelease,
   getReleaseGroups,
   getReleaseGroupReleases,
   updateReleaseGroupRelease,
@@ -38,7 +39,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Config.Test (DiffRevision)
 import App.Fossa.VendoredDependency (VendoredDependency (..))
-import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision (..))
+import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision (..), ReleaseGroupReleaseRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
@@ -323,7 +324,7 @@ createReleaseGroup ::
   m CoreTypes.CreateReleaseGroupResponse
 createReleaseGroup rev = do
   apiOpts <- ask
-  API.createReleaseGroup apiOpts rev
+  API.createReleaseGroupRelease apiOpts releaseGroupId req
 
 getPolicies ::
   ( Has (Lift IO) sig m

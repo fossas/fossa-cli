@@ -13,10 +13,10 @@ import Text.Megaparsec
 dependencyOne :: Dependency
 dependencyOne =
   Dependency
-    { dependencyType = GemType
-    , dependencyName = "dep-one"
-    , dependencyVersion = Just (CEq "1.0.0")
-    , dependencyLocations = ["temp@12345"]
+    { dependencyType = GitType
+    , dependencyName = "url-for-dep-one"
+    , dependencyVersion = Just (CEq "12345")
+    , dependencyLocations = ["url-for-dep-one@12345"]
     , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
     }
@@ -46,7 +46,7 @@ dependencyThree =
 gitSection :: Section
 gitSection =
   GitSection
-    "temp"
+    "url-for-dep-one"
     (Just "12345")
     (Just "branch")
     [ Spec

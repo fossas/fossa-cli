@@ -8,15 +8,17 @@ module Strategy.Ruby.GemfileLock (
   Section (..),
 ) where
 
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics (Diagnostics, context)
 import Data.Char qualified as C
 import Data.Foldable (traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.String.Conversion (toString)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes
 import Effect.Grapher
@@ -89,9 +91,9 @@ toDependency pkg = foldr applyLabel start
         }
 
     applyLabel :: GemfileLabel -> Dependency -> Dependency
-    applyLabel (GemfileVersion ver) dep = dep{dependencyVersion = Just (CEq ver)}
+    applyLabel (GemfileVersion ver) dep = dep{dependencyVersion = dependencyVersion dep <|> (Just . CEq) ver}
     applyLabel (GitRemote repo maybeRevision) dep =
-      dep{dependencyLocations = maybe repo (\revision -> repo <> "@" <> revision) maybeRevision : dependencyLocations dep}
+      dep{dependencyType = GitType, dependencyName = repo, dependencyVersion = (Just . CEq) =<< maybeRevision, dependencyLocations = maybe repo (\revision -> repo <> "@" <> revision) maybeRevision : dependencyLocations dep}
     applyLabel (OtherRemote loc) dep =
       dep{dependencyLocations = loc : dependencyLocations dep}
 
@@ -257,8 +259,12 @@ dependenciesSectionParser = L.nonIndented scn $
     _ <- chunk "DEPENDENCIES"
     pure $ L.IndentMany Nothing (pure . DependencySection) findDependency
 
+-- Check for the Bundler convention that uses !'s to signify if a dep is from remote.
+-- We already check to see if the dep is part of another remote, so we can remove it.
+-- https://groups.google.com/g/ruby-bundler/c/QxlNGzK3rEY
+-- One supporting repository example: https://github.com/percy/example-rails/tree/master
 findDependency :: Parser DirectDep
 findDependency = do
   dep <- findDep
   _ <- ignored
-  pure $ DirectDep dep
+  pure $ DirectDep $ fromMaybe dep $ Text.stripSuffix "!" dep

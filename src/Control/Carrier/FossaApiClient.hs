@@ -85,4 +85,5 @@ runFossaApiClient apiOpts =
           UpdateRevision revisionLocator req -> Core.updateRevision revisionLocator req
           -- Labels
           GetOrgLabels -> Core.getOrgLabels
+          CreateReleaseGroupRelease releaseGroupId req -> Core.createReleaseGroupRelease releaseGroupId req
       )
