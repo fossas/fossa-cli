@@ -76,8 +76,10 @@ common lang
 
 -- TODO: Switch `semver` back to `versions` since https://github.com/fosskers/versions/issues/47 is fixed. This package maintainer seems much more responsive. Contrast https://github.com/brendanhay/semver/issues/12.
 -- codec-rpm is installed via cabal.project, so this number is an expected future version.
--- Upgrade text and mtl after codec-rpm conflict is fixed, probably as part of 9.4 upgrade.
--- Upgrade zip after text is upgraded
+-- TODO: Upgrade text and mtl after codec-rpm conflict is fixed, probably as part of 9.4 upgrade.
+-- TODO: Upgrade zip after text is upgraded.
+-- TODO: TLS isn't used directly but is pinned here while customers upgrade their servers to support TLS 1.2 with EMS or TLS 1.3.
+-- They've been warned about future support breaking. Upgrade to tls-2.* after 10/25/2024.
 common deps
   build-depends:
     , aeson                        ^>=2.2
