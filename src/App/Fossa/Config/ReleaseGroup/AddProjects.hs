@@ -11,7 +11,7 @@ module App.Fossa.Config.ReleaseGroup.AddProjects (
 import App.Fossa.Config.Common (configFileOpt)
 import App.Fossa.Config.ConfigFile (ConfigFile, configReleaseGroup, configReleaseGroupProjects, configReleaseGroupRelease, configReleaseGroupTitle)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
-import App.Fossa.Config.ReleaseGroup.Common (ReleaseGroupCommonOpts (..), ReleaseGroupProjectOpts (..), collectApiOpts, extractReleaseGroupConfigValue, mergeReleaseGroupProjectRevision, mergeReleaseGroupRelease, mergeReleaseGroupTitle, releaseGroupCommonOpts, releaseGroupProjectOpts)
+import App.Fossa.Config.ReleaseGroup.Common (ReleaseGroupCommonOpts (..), ReleaseGroupProjectOpts (..), collectApiOpts, extractReleaseGroupConfigValue, mergeReleaseGroupProjectRevision, mergeReleaseGroupRelease, mergeReleaseGroupTitle, releaseGroupCommonOpts, releaseGroupProjectOpts, releaseGroupReleaseTitleOpts, releaseGroupTitleOpts)
 import App.Types (ReleaseGroupReleaseRevision (..))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding, toEncoding)
@@ -25,14 +25,11 @@ import Options.Applicative (
   Parser,
   command,
   info,
-  long,
   optional,
-  short,
   some,
-  strOption,
  )
 import Options.Applicative.Builder (progDescDoc)
-import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
+import Style (formatStringToDoc)
 
 releaseGroupAddProjectsInfo :: InfoMod a
 releaseGroupAddProjectsInfo = progDescDoc $ formatStringToDoc "Add FOSSA projects a FOSSA release group"
@@ -64,8 +61,8 @@ cliParser =
   AddProjectsOpts
     <$> releaseGroupCommonOpts
     <*> configFileOpt
-    <*> optional (strOption (applyFossaStyle <> long "title" <> short 't' <> stringToHelpDoc "The title of the FOSSA release group"))
-    <*> optional (strOption (applyFossaStyle <> long "release" <> short 'r' <> stringToHelpDoc "The release of the FOSSA release group"))
+    <*> optional releaseGroupTitleOpts
+    <*> optional releaseGroupReleaseTitleOpts
     <*> optional (some (releaseGroupProjectOpts))
 
 mergeOpts ::

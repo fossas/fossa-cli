@@ -209,6 +209,7 @@ library
     App.Fossa.Config.ReleaseGroup.AddProjects
     App.Fossa.Config.ReleaseGroup.Common
     App.Fossa.Config.ReleaseGroup.Create
+    App.Fossa.Config.ReleaseGroup.CreateRelease
     App.Fossa.Config.ReleaseGroup.Delete
     App.Fossa.Config.ReleaseGroup.DeleteRelease
     App.Fossa.Config.Report
@@ -247,6 +248,7 @@ library
     App.Fossa.ReleaseGroup.AddProjects
     App.Fossa.ReleaseGroup.Common
     App.Fossa.ReleaseGroup.Create
+    App.Fossa.ReleaseGroup.CreateRelease
     App.Fossa.ReleaseGroup.Delete
     App.Fossa.ReleaseGroup.DeleteRelease
     App.Fossa.Report
@@ -559,6 +561,7 @@ test-suite unit-tests
     App.Fossa.ProjectInferenceSpec
     App.Fossa.ReleaseGroup.AddProjectsSpec
     App.Fossa.ReleaseGroup.CommonSpec
+    App.Fossa.ReleaseGroup.CreateReleaseSpec
     App.Fossa.ReleaseGroup.CreateSpec
     App.Fossa.ReleaseGroup.DeleteReleaseSpec
     App.Fossa.ReleaseGroup.DeleteSpec

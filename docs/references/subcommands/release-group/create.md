@@ -30,8 +30,10 @@ Refer to [fossa configuration](../../files/fossa-yml.md) to set up your `.fossa.
 ## Example
 
 ```bash
-fossa release-group create --title example-release-group --release example-release --project-locator custom+1/example --project-revision 1234 --project-branch main --license-policy example-license-policy --security-policy example-security-policy --quality-policy example-quality-policy --team ExampleTeam --team ExampleTeam2
+fossa release-group create --title example-release-group --release example-release --project-locator custom+1/example --project-revision 1234 --project-branch main --project-locator custom+1/example2 --project-revision 5678 --project-branch main --license-policy example-license-policy --security-policy example-security-policy --quality-policy example-quality-policy --team ExampleTeam --team ExampleTeam2
 ``` 
+
+>NOTE: `--project-locator` , `--project-revision`, and `--project-branch` must all be specified when providing a releaseGroupProject. Multiple occurrences of these arguements are accepted and are grouped together based on their order. For example, `fossa release-group create --title example-release-group --release example-release --project-locator custom+1/example --project-revision 1234 --project-branch main --project-locator custom+1/example2 --project-revision 5678  --project-branch main` has project groupings of (project locator: custom+1/example, project revision: 1234, project branch: main) and (project locator: custom+1/example2, project revision: 5678, project branch: main).
 
 Similarly, you can you achieve the same result by running the following command with the given `.fossa.yml` configuration:
 
@@ -41,8 +43,11 @@ releaseGroup:
   release: example-release
   releaseGroupProjects:
     - projectLocator: custom+1/example
-    - projectRevision: 1234
-    - projectBranch: main 
+      projectRevision: 1234
+      projectBranch: main 
+    - projectLocator: custom+1/example2
+      projectRevision: 5678
+      projectBranch: main
   licensePolicy: example-license-policy
   securityPolicy: example-security-policy
   qualityPolicy: example-quality-policy
