@@ -1728,8 +1728,8 @@ updateReleaseGroupRelease ::
   ApiOpts ->
   Int ->
   Int ->
-  UpdateReleaseRequest ->
-  m ReleaseGroupRelease
+  CoreTypes.UpdateReleaseRequest ->
+  m CoreTypes.ReleaseGroupRelease
 updateReleaseGroupRelease apiOpts releaseGroupId releaseId updateReq = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   resp <-
@@ -1746,9 +1746,9 @@ createReleaseGroup ::
   , Has Debug sig m
   ) =>
   ApiOpts ->
-  CreateReleaseGroupRequest ->
-  m CreateReleaseGroupResponse
-createReleaseGroup apiOpts rev = fossaReq $ do
+  CoreTypes.CreateReleaseGroupRequest ->
+  m CoreTypes.CreateReleaseGroupResponse
+createReleaseGroup apiOpts createReleaseGroupReq = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   resp <-
     context "Creating release group" $
@@ -1794,10 +1794,9 @@ createReleaseGroupRelease ::
   ) =>
   ApiOpts ->
   Int ->
-  Int ->
-  UpdateReleaseRequest ->
-  m ReleaseGroupRelease
-updateReleaseGroupRelease apiOpts releaseGroupId releaseId updateReq = fossaReq $ do
+  ReleaseGroupReleaseRevision ->
+  m CoreTypes.ReleaseGroupRelease
+createReleaseGroupRelease apiOpts releaseGroupId createReleaseReq = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   resp <-
     context "Creating release group release" $

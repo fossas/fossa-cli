@@ -322,7 +322,20 @@ createReleaseGroup ::
   ) =>
   CoreTypes.CreateReleaseGroupRequest ->
   m CoreTypes.CreateReleaseGroupResponse
-createReleaseGroup rev = do
+createReleaseGroup req = do
+  apiOpts <- ask
+  API.createReleaseGroup apiOpts req
+
+createReleaseGroupRelease ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Int ->
+  ReleaseGroupReleaseRevision ->
+  m CoreTypes.ReleaseGroupRelease
+createReleaseGroupRelease releaseGroupId req = do
   apiOpts <- ask
   API.createReleaseGroupRelease apiOpts releaseGroupId req
 

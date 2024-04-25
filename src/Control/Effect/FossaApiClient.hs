@@ -169,7 +169,7 @@ data FossaApiClientF a where
   DeleteReleaseGroup :: Int -> FossaApiClientF ()
   DeleteReleaseGroupRelease :: Int -> Int -> FossaApiClientF ()
   CreateReleaseGroup :: CoreTypes.CreateReleaseGroupRequest -> FossaApiClientF CoreTypes.CreateReleaseGroupResponse
-  CreateReleaseGroupRelease :: Int -> ReleaseGroupReleaseRevision -> FossaApiClientF ReleaseGroupRelease
+  CreateReleaseGroupRelease :: Int -> ReleaseGroupReleaseRevision -> FossaApiClientF CoreTypes.ReleaseGroupRelease
   UpdateReleaseGroupRelease :: Int -> Int -> CoreTypes.UpdateReleaseRequest -> FossaApiClientF CoreTypes.ReleaseGroupRelease
   GetReleaseGroups :: FossaApiClientF [CoreTypes.ReleaseGroup]
   GetReleaseGroupReleases :: Int -> FossaApiClientF [CoreTypes.ReleaseGroupRelease]
@@ -324,10 +324,7 @@ updateReleaseGroupRelease releaseGroupId releaseId updateReq = sendSimple $ Upda
 createReleaseGroup :: Has FossaApiClient sig m => CoreTypes.CreateReleaseGroupRequest -> m CoreTypes.CreateReleaseGroupResponse
 createReleaseGroup req = sendSimple $ CreateReleaseGroup req
 
-createReleaseGroupRelease :: Has FossaApiClient sig m => Int -> ReleaseGroupReleaseRevision -> m ReleaseGroupRelease
-createReleaseGroupRelease releaseGroupId req = sendSimple $ CreateReleaseGroupRelease releaseGroupId req
-
-createReleaseGroupRelease :: Has FossaApiClient sig m => Int -> ReleaseGroupReleaseRevision -> m ReleaseGroupRelease
+createReleaseGroupRelease :: Has FossaApiClient sig m => Int -> ReleaseGroupReleaseRevision -> m CoreTypes.ReleaseGroupRelease
 createReleaseGroupRelease releaseGroupId req = sendSimple $ CreateReleaseGroupRelease releaseGroupId req
 
 getReleaseGroups :: Has FossaApiClient sig m => m [CoreTypes.ReleaseGroup]
