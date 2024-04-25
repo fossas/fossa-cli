@@ -449,7 +449,7 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
       let pkgSource = sourceInit <> sourceRemaining
 
       -- In cases where we can't find a real name, use text after the last slash as a name.
-      -- Or as a very last resort the entire package source path.
+      -- e.g. file:///path/to/my/project/bar#2.0.0 has the name 'bar'
       -- Cases of this are generally path dependencies.
       let fallbackName =
             maybe pkgSource NonEmpty.last
@@ -461,20 +461,17 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
       -- Parse (Optional): #adler@1.0.2
       nameVersion <- optional $ do
         void $ char '#'
-        -- If there's only a version after '#', use pkgSource as the name.
+        -- If there's only a version after '#', use the fallback as the name.
         ((fallbackName,) <$> semver)
           <|> pkgName
 
-      -- There may be context around this package id in the metadata that could supply a name.
-      -- But that information isn't known at this level so fall back.
       let (name, version) = fromMaybe (fallbackName, "*") nameVersion
-      let pkgId =
-            PackageId
-              { pkgIdName = name
-              , pkgIdVersion = version
-              , pkgIdSource = pkgSource
-              }
-      pure pkgId
+      pure $
+        PackageId
+          { pkgIdName = name
+          , pkgIdVersion = version
+          , pkgIdSource = pkgSource
+          }
 
     -- In the grammar, a semver always appears at the end of a string and is the only
     -- non-terminal that starts with a digit, so don't bother parsing internally.
