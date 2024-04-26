@@ -134,6 +134,7 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 - [`fossa snippets`](./references/subcommands/snippets.md): Analyze snippets of a project and check if they exist in other open source projects FOSSA knows about.
 - [`fossa test`](./references/subcommands/test.md): View the results of the most recent scan of a project.
 - [`fossa release-group`](./references/subcommands/release-group.md): Interact with FOSSA release groups.
+- [`fossa project`](./references/subcommands/project.md): Interact with FOSSA projects.
 
 #### Configuration
 

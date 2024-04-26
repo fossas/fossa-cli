@@ -12,7 +12,7 @@ import Control.Effect.FossaApiClient (FossaApiClient, deleteReleaseGroupRelease,
 import Control.Effect.Lift (Lift)
 import Control.Monad (when)
 import Effect.Logger (Logger, logInfo, logStdout)
-import Fossa.API.Types (ReleaseGroupRelease (..))
+import Fossa.API.CoreTypes (ReleaseGroupRelease (..))
 
 deleteReleaseMain ::
   ( Has Diagnostics sig m

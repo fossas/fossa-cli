@@ -82,7 +82,8 @@ import Data.Text.Encoding qualified as TL
 import Data.Text.Extra (showT)
 import Discovery.Filters (AllFilters, MavenScopeFilters (MavenScopeIncludeFilters))
 import Effect.Logger (Severity (..))
-import Fossa.API.Types (Archive (..), PolicyType (..))
+import Fossa.API.CoreTypes qualified as CoreAPI
+import Fossa.API.Types (Archive (..))
 import Fossa.API.Types qualified as API
 import Path (Abs, Dir, Path, mkAbsDir, mkRelDir, parseAbsDir, (</>))
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
@@ -135,46 +136,46 @@ invalidCreateTeamProjectsForReleaseGroupPermission = API.CustomBuildUploadPermis
 validCustomUploadPermissions :: API.CustomBuildUploadPermissions
 validCustomUploadPermissions = API.CustomBuildUploadPermissions API.ValidProjectPermission $ Just API.ValidReleaseGroupPermission
 
-createReleaseGroupResponse :: API.CreateReleaseGroupResponse
-createReleaseGroupResponse = API.CreateReleaseGroupResponse 1
+createReleaseGroupResponse :: CoreAPI.CreateReleaseGroupResponse
+createReleaseGroupResponse = CoreAPI.CreateReleaseGroupResponse 1
 
-releaseGroup :: API.ReleaseGroup
+releaseGroup :: CoreAPI.ReleaseGroup
 releaseGroup =
-  API.ReleaseGroup
-    { API.releaseGroupId = 1
-    , API.releaseGroupTitle = "example-title"
-    , API.releaseGroupReleases = [release]
+  CoreAPI.ReleaseGroup
+    { CoreAPI.releaseGroupId = 1
+    , CoreAPI.releaseGroupTitle = "example-title"
+    , CoreAPI.releaseGroupReleases = [release]
     }
 
-release :: API.ReleaseGroupRelease
+release :: CoreAPI.ReleaseGroupRelease
 release =
-  API.ReleaseGroupRelease
-    { API.releaseGroupReleaseId = 2
-    , API.releaseGroupReleaseTitle = "example-release-title"
-    , API.releaseGroupReleaseProjects = [releaseProject]
+  CoreAPI.ReleaseGroupRelease
+    { CoreAPI.releaseGroupReleaseId = 2
+    , CoreAPI.releaseGroupReleaseTitle = "example-release-title"
+    , CoreAPI.releaseGroupReleaseProjects = [releaseProject]
     }
 
-releaseProject :: API.ReleaseProject
+releaseProject :: CoreAPI.ReleaseProject
 releaseProject =
-  API.ReleaseProject
-    { API.releaseProjectLocator = "custom+1/example"
-    , API.releaseProjectRevisionId = "custom+1/example$123"
-    , API.releaseProjectBranch = "main"
+  CoreAPI.ReleaseProject
+    { CoreAPI.releaseProjectLocator = "custom+1/example"
+    , CoreAPI.releaseProjectRevisionId = "custom+1/example$123"
+    , CoreAPI.releaseProjectBranch = "main"
     }
 
-policy :: API.Policy
+policy :: CoreAPI.Policy
 policy =
-  API.Policy
-    { API.policyId = 7
-    , API.policyTitle = "example-policy"
-    , API.policyType = LICENSING
+  CoreAPI.Policy
+    { CoreAPI.policyId = 7
+    , CoreAPI.policyTitle = "example-policy"
+    , CoreAPI.policyType = CoreAPI.LICENSING
     }
 
-team :: API.Team
+team :: CoreAPI.Team
 team =
-  API.Team
-    { API.teamId = 10
-    , API.teamName = "example-team"
+  CoreAPI.Team
+    { CoreAPI.teamId = 10
+    , CoreAPI.teamName = "example-team"
     }
 
 project :: API.Project

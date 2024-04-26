@@ -245,6 +245,11 @@ matchExpectation a@(GetReleaseGroups{}) (ApiExpectation _ requestExpectation b@(
 matchExpectation a@(GetReleaseGroupReleases{}) (ApiExpectation _ requestExpectation b@(GetReleaseGroupReleases{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetPolicies{}) (ApiExpectation _ requestExpectation b@(GetPolicies{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetTeams{}) (ApiExpectation _ requestExpectation b@(GetTeams{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetProjectV2{}) (ApiExpectation _ requestExpectation b@(GetProjectV2{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(UpdateProject{}) (ApiExpectation _ requestExpectation b@(UpdateProject{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(UpdateRevision{}) (ApiExpectation _ requestExpectation b@(UpdateRevision{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(GetOrgLabels{}) (ApiExpectation _ requestExpectation b@(GetOrgLabels{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(AddTeamProjects{}) (ApiExpectation _ requestExpectation b@(AddTeamProjects{}) resp) = checkResult requestExpectation a b resp
 matchExpectation _ _ = Nothing
 
 -- | Handles a request in the context of the mock API.

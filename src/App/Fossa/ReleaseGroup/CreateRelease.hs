@@ -13,7 +13,7 @@ import Control.Effect.Lift (Lift)
 import Data.String.Conversion (ToText (..))
 import Data.Text (Text)
 import Effect.Logger (Logger, logInfo, logStdout)
-import Fossa.API.Types (ReleaseGroupRelease (..))
+import Fossa.API.CoreTypes (ReleaseGroupRelease (..))
 
 createReleaseMain ::
   ( Has Diagnostics sig m

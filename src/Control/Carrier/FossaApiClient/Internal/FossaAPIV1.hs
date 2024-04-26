@@ -63,6 +63,17 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
 
   -- * Team
   getTeams,
+  addTeamProjects,
+
+  -- * Project
+  updateProject,
+  getProjectV2,
+
+  -- * Revision
+  updateRevision,
+
+  -- * Label
+  getOrgLabels,
 ) where
 
 import App.Docs (fossaSslCertDocsUrl)
@@ -151,8 +162,6 @@ import Fossa.API.Types (
   ArchiveComponents (ArchiveComponents),
   Build,
   Contributors,
-  CreateReleaseGroupRequest,
-  CreateReleaseGroupResponse,
   CustomBuildUploadPermissions,
   Issues,
   OrgId,
@@ -160,19 +169,16 @@ import Fossa.API.Types (
   PathDependencyFinalizeReq (..),
   PathDependencyUpload,
   PathDependencyUploadReq (..),
-  Policy (..),
   Project,
-  ReleaseGroup,
-  ReleaseGroupRelease,
   RevisionDependencyCache,
   SignedURL (signedURL),
   SignedURLWithKey (surlwkKey, surlwkSignedURL),
-  Team,
   TokenTypeResponse,
-  UpdateReleaseRequest,
   UploadResponse,
   useApiOpts,
  )
+
+import Fossa.API.CoreTypes qualified as CoreTypes
 import Network.HTTP.Client (responseStatus)
 import Network.HTTP.Client qualified as C
 import Network.HTTP.Client qualified as HTTP
@@ -185,6 +191,7 @@ import Network.HTTP.Req (
   MonadHttp (..),
   NoReqBody (NoReqBody),
   Option,
+  PATCH (PATCH),
   POST (POST),
   PUT (PUT),
   ReqBodyBs (ReqBodyBs),
@@ -1634,7 +1641,7 @@ getPolicies ::
   , Has Debug sig m
   ) =>
   ApiOpts ->
-  m [Fossa.API.Types.Policy]
+  m [CoreTypes.Policy]
 getPolicies apiOpts = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   resp <-
@@ -1651,12 +1658,31 @@ getTeams ::
   , Has Debug sig m
   ) =>
   ApiOpts ->
-  m [Fossa.API.Types.Team]
+  m [CoreTypes.Team]
 getTeams apiOpts = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   resp <-
     context "Retrieving teams" $
       req GET (teamsURLEndpoint baseUrl) NoReqBody jsonResponse baseOpts
+  pure (responseBody resp)
+
+addTeamProjectsURLEndpoint :: Url 'Https -> Text -> Url 'Https
+addTeamProjectsURLEndpoint baseUrl teamId = baseUrl /: "api" /: "teams" /: teamId /: "projects"
+
+addTeamProjects ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  ) =>
+  ApiOpts ->
+  Int ->
+  CoreTypes.AddTeamProjectsRequest ->
+  m CoreTypes.AddTeamProjectsResponse
+addTeamProjects apiOpts teamId addProjectsReq = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  resp <-
+    context "Adding projects to team" $
+      req PUT (addTeamProjectsURLEndpoint baseUrl $ toText teamId) (ReqBodyJson addProjectsReq) jsonResponse baseOpts
   pure (responseBody resp)
 
 deleteReleaseGroupURLEndpoint :: Url 'Https -> Text -> Url 'Https
@@ -1702,8 +1728,8 @@ updateReleaseGroupRelease ::
   ApiOpts ->
   Int ->
   Int ->
-  UpdateReleaseRequest ->
-  m ReleaseGroupRelease
+  CoreTypes.UpdateReleaseRequest ->
+  m CoreTypes.ReleaseGroupRelease
 updateReleaseGroupRelease apiOpts releaseGroupId releaseId updateReq = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   resp <-
@@ -1720,8 +1746,8 @@ createReleaseGroup ::
   , Has Debug sig m
   ) =>
   ApiOpts ->
-  CreateReleaseGroupRequest ->
-  m CreateReleaseGroupResponse
+  CoreTypes.CreateReleaseGroupRequest ->
+  m CoreTypes.CreateReleaseGroupResponse
 createReleaseGroup apiOpts createReleaseGroupReq = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   resp <-
@@ -1735,7 +1761,7 @@ getReleaseGroups ::
   , Has Debug sig m
   ) =>
   ApiOpts ->
-  m [ReleaseGroup]
+  m [CoreTypes.ReleaseGroup]
 getReleaseGroups apiOpts = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   resp <-
@@ -1753,7 +1779,7 @@ getReleaseGroupReleases ::
   ) =>
   ApiOpts ->
   Int ->
-  m [ReleaseGroupRelease]
+  m [CoreTypes.ReleaseGroupRelease]
 getReleaseGroupReleases apiOpts releaseGroupId = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   resp <-
@@ -1769,10 +1795,84 @@ createReleaseGroupRelease ::
   ApiOpts ->
   Int ->
   ReleaseGroupReleaseRevision ->
-  m ReleaseGroupRelease
+  m CoreTypes.ReleaseGroupRelease
 createReleaseGroupRelease apiOpts releaseGroupId createReleaseReq = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   resp <-
     context "Creating release group release" $
       req POST (releaseGroupReleaseURLEndpoint baseUrl $ toText releaseGroupId) (ReqBodyJson createReleaseReq) jsonResponse baseOpts
+  pure (responseBody resp)
+
+updateProjectURLEndpoint :: Url 'Https -> Text -> Url 'Https
+updateProjectURLEndpoint baseUrl locator = baseUrl /: "api" /: "projects" /: locator
+
+updateProject ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  ) =>
+  ApiOpts ->
+  Text ->
+  CoreTypes.UpdateProjectRequest ->
+  m CoreTypes.Project
+updateProject apiOpts locator updateReq = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  resp <-
+    context "Updating project" $
+      req PUT (updateProjectURLEndpoint baseUrl locator) (ReqBodyJsonCompat updateReq) jsonResponse baseOpts
+  pure (responseBody resp)
+
+updateRevisionURLEndpoint :: Url 'Https -> Text -> Url 'Https
+updateRevisionURLEndpoint baseUrl revisionLocator = baseUrl /: "api" /: "revisions" /: revisionLocator
+
+updateRevision ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  ) =>
+  ApiOpts ->
+  Text ->
+  CoreTypes.UpdateRevisionRequest ->
+  m CoreTypes.Revision
+updateRevision apiOpts revisionLocator updateReq = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  resp <-
+    context "Updating revision" $
+      req PATCH (updateRevisionURLEndpoint baseUrl revisionLocator) (ReqBodyJson updateReq) jsonResponse baseOpts
+  pure (responseBody resp)
+
+-- Get project using Core's main endpoint
+getProjectV2URLEndpoint :: Url 'Https -> Text -> Url 'Https
+getProjectV2URLEndpoint baseUrl locator = baseUrl /: "api" /: "projects" /: locator
+
+getProjectV2 ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  ) =>
+  ApiOpts ->
+  Text ->
+  m CoreTypes.Project
+getProjectV2 apiOpts locator = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  resp <-
+    context "Get project" $
+      req GET (getProjectV2URLEndpoint baseUrl locator) NoReqBody jsonResponse baseOpts
+  pure (responseBody resp)
+
+getOrgLabelsURLEndpoint :: Url 'Https -> Url 'Https
+getOrgLabelsURLEndpoint baseUrl = baseUrl /: "api" /: "organizations" /: "labels"
+
+getOrgLabels ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  ) =>
+  ApiOpts ->
+  m CoreTypes.Labels
+getOrgLabels apiOpts = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  resp <-
+    context "Retrieving organization labels" $
+      req GET (getOrgLabelsURLEndpoint baseUrl) NoReqBody jsonResponse baseOpts
   pure (responseBody resp)

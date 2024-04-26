@@ -189,6 +189,7 @@ library
     App.Fossa.Analyze.Upload
     App.Fossa.API.BuildLink
     App.Fossa.API.BuildWait
+    App.Fossa.ApiUtils
     App.Fossa.ArchiveUploader
     App.Fossa.BinaryDeps
     App.Fossa.BinaryDeps.Jar
@@ -205,6 +206,8 @@ library
     App.Fossa.Config.LicenseScan
     App.Fossa.Config.LinkUserBinaries
     App.Fossa.Config.ListTargets
+    App.Fossa.Config.Project
+    App.Fossa.Config.Project.Edit
     App.Fossa.Config.ReleaseGroup
     App.Fossa.Config.ReleaseGroup.AddProjects
     App.Fossa.Config.ReleaseGroup.Common
@@ -238,6 +241,8 @@ library
     App.Fossa.ManualDeps
     App.Fossa.PathDependency
     App.Fossa.PreflightChecks
+    App.Fossa.Project
+    App.Fossa.Project.Edit
     App.Fossa.ProjectInference
     App.Fossa.Reachability.Gradle
     App.Fossa.Reachability.Jar
@@ -379,6 +384,7 @@ library
     Effect.Grapher
     Effect.Logger
     Effect.ReadFS
+    Fossa.API.CoreTypes
     Fossa.API.Types
     Graphing
     Graphing.Debug
@@ -541,6 +547,7 @@ test-suite unit-tests
     App.Fossa.AnalyzeSpec
     App.Fossa.API.BuildLinkSpec
     App.Fossa.API.BuildWaitSpec
+    App.Fossa.ApiUtilsSpec
     App.Fossa.ArchiveUploaderSpec
     App.Fossa.BinaryDeps.JarSpec
     App.Fossa.Config.AnalyzeSpec
@@ -558,6 +565,7 @@ test-suite unit-tests
     App.Fossa.ManualDepsSpec
     App.Fossa.PathDependencySpec
     App.Fossa.PreflightChecksSpec
+    App.Fossa.Project.EditSpec
     App.Fossa.ProjectInferenceSpec
     App.Fossa.ReleaseGroup.AddProjectsSpec
     App.Fossa.ReleaseGroup.CommonSpec
