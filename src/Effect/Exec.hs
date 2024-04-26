@@ -31,6 +31,9 @@ module Effect.Exec (
   CandidateAnalysisCommands (..),
   mkAnalysisCommand,
   mkSingleCandidateAnalysisCommand,
+  ExecStdin(..),
+  execCurrentDirStdinBsThrow,
+  execStdinBsThrow,
 ) where
 
 import App.Support (reportDefectMsg)
@@ -53,7 +56,7 @@ import Control.Effect.Diagnostics (
   warnOnErr,
  )
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Record (RecordableValue (..))
+import Control.Effect.Record (RecordableValue (..), Redacted)
 import Control.Effect.Record.TH (deriveRecordable)
 import Control.Effect.Replay (ReplayableValue (..))
 import Control.Effect.Replay.TH (deriveReplayable)
@@ -93,10 +96,12 @@ import System.Process.Typed (
   proc,
   readProcess,
   setStdin,
-  setWorkingDir,
+  setWorkingDir, byteStringInput,
  )
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
+import Control.Applicative (some, (<|>))
+import Data.ByteString.Lazy (ByteString)
 
 data Command = Command
   { cmdName :: Text
@@ -163,14 +168,33 @@ instance FromJSON AllowErr
 instance ReplayableValue AllowErr
 
 type Stdout = BL.ByteString
-
 type Stderr = BL.ByteString
+
+data ExecStdin = ExecStdinText Text 
+  | ExecStdinByteString ByteString
+  deriving (Show, Generic, Eq, Ord)
+
+instance ToJSON ExecStdin where
+  toJSON (ExecStdinText txt) =
+    object
+      [ "ExecStdinText" .= txt
+      ]
+  toJSON (ExecStdinByteString _) =
+    object
+      [ "ExecStdinByteString" .= ("redacted" :: Text)
+      ]
+
+instance FromJSON ExecStdin where
+  parseJSON = withObject "ExecStdin" $ \obj -> ExecStdinText <$> obj .: "ExecStdinText"
+
+instance RecordableValue ExecStdin
+instance ReplayableValue ExecStdin
 
 data ExecF a where
   -- | Exec runs a command and returns either:
   -- - stdout when the command succeeds
   -- - a description of the command failure
-  Exec :: SomeBase Dir -> Command -> Maybe Text -> ExecF (Either CmdFailure Stdout)
+  Exec :: SomeBase Dir -> Command -> Maybe ExecStdin -> ExecF (Either CmdFailure Stdout)
 
 type Exec = Simple ExecF
 
@@ -305,7 +329,10 @@ execInCwd cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
 
 -- | Execute a command with stdin and return its @(exitcode, stdout, stderr)@
 exec' :: Has Exec sig m => Path Abs Dir -> Command -> Text -> m (Either CmdFailure Stdout)
-exec' dir cmd stdin = sendSimple (Exec (Abs dir) cmd (Just stdin))
+exec' dir cmd stdin = sendSimple (Exec (Abs dir) cmd (Just $ ExecStdinText stdin))
+
+execBs' :: Has Exec sig m => Path Abs Dir -> Command -> ByteString -> m (Either CmdFailure Stdout)
+execBs' dir cmd stdin = sendSimple (Exec (Abs dir) cmd (Just $ ExecStdinByteString stdin))
 
 type Parser = Parsec Void Text
 
@@ -376,6 +403,23 @@ execCurrentDirStdinThrow :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics s
 execCurrentDirStdinThrow cmd stdin = do
   dir <- getCurrentDir
   result <- exec' dir cmd stdin
+  case result of
+    Left failure -> fatal (CommandFailed failure)
+    Right stdout -> pure stdout
+
+-- | A variant of 'execThrow' that runs the command in the directory and accepts stdin in bytestring
+execStdinBsThrow :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Command -> Path Abs Dir -> ByteString -> m BL.ByteString
+execStdinBsThrow cmd dir stdin = do
+  result <- execBs' dir cmd stdin
+  case result of
+    Left failure -> fatal (CommandFailed failure)
+    Right stdout -> pure stdout
+
+-- | A variant of 'execThrow' that runs the command in the current directory and accepts stdin in bytestring
+execCurrentDirStdinBsThrow :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Command -> ByteString -> m BL.ByteString
+execCurrentDirStdinBsThrow cmd stdin = do
+  dir <- getCurrentDir
+  result <- execBs' dir cmd stdin
   case result of
     Left failure -> fatal (CommandFailed failure)
     Right stdout -> pure stdout
@@ -482,8 +526,10 @@ runExecIO = interpret $ \case
 
     let process = setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs')
     processResult <- try . readProcess $ case stdin of
-      Just stdin' -> setStdin (fromString . toString $ stdin') process
       Nothing -> process
+      Just (ExecStdinText stdin') -> setStdin (fromString . toString $ stdin') process
+      Just (ExecStdinByteString stdinbs') -> setStdin (byteStringInput stdinbs') process
+
 
     -- apply business logic for considering whether exitcode + stderr constitutes a "failure"
     let mangleResult :: (ExitCode, Stdout, Stderr) -> Either CmdFailure Stdout

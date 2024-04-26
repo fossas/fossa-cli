@@ -52,6 +52,8 @@ import Strategy.R qualified as R
 import Strategy.RPM qualified as RPM
 import Strategy.Sqlite qualified as Sqlite
 import Strategy.SwiftPM qualified as SwiftPM
+import Strategy.Binary qualified as Binary
+
 import Types (
   BuildTarget (unBuildTarget),
   DiscoveredProject (projectBuildTargets, projectPath, projectType),
@@ -101,6 +103,7 @@ managedDepsDiscoveryF =
   , DiscoverFunc RepoManifest.discover
   , DiscoverFunc Setuptools.discover
   , DiscoverFunc SwiftPM.discover
+  , DiscoverFunc Binary.discover
   --
   -- Following can be performed only with dynamic analysis.
   -- So we don not do any discovery for them (to avoid error noise)

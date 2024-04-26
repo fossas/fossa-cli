@@ -1,5 +1,6 @@
 module App.Fossa.Analyze.Discover (
   discoverFuncs,
+  getDiscoveryFuncs,
   DiscoverFunc (..),
 ) where
 
@@ -45,6 +46,10 @@ import Strategy.Rebar3 qualified as Rebar3
 import Strategy.Scala qualified as Scala
 import Strategy.SwiftPM qualified as SwiftPM
 import Types (DiscoveredProject)
+import Strategy.Binary qualified as Binary
+
+getDiscoveryFuncs :: DiscoverTaskEffs sig m => [DiscoverFunc m]
+getDiscoveryFuncs = discoverFuncs
 
 discoverFuncs :: DiscoverTaskEffs sig m => [DiscoverFunc m]
 discoverFuncs =
@@ -84,6 +89,7 @@ discoverFuncs =
   , DiscoverFunc Setuptools.discover
   , DiscoverFunc Stack.discover
   , DiscoverFunc SwiftPM.discover
+  , DiscoverFunc Binary.discover
   ]
 
 -- DiscoverFunc is a workaround for the lack of impredicative types.

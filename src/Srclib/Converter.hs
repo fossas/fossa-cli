@@ -173,6 +173,7 @@ depTypeToFetcher = \case
   SwiftType -> "swift"
   UnresolvedPathType -> "upath"
   PathType -> "path"
+  UnknownBinaryType -> "unresolved-binary"
 
 -- | GooglesourceType and SubprojectType are not supported with this function, since they're ambiguous.
 fetcherToDepType :: Text -> Maybe DepType
@@ -203,4 +204,5 @@ fetcherToDepType fetcher | depTypeToFetcher URLType == fetcher = Just URLType
 fetcherToDepType fetcher | depTypeToFetcher UserType == fetcher = Just UserType
 fetcherToDepType fetcher | depTypeToFetcher PubType == fetcher = Just PubType
 fetcherToDepType fetcher | depTypeToFetcher PathType == fetcher = Just PathType
+fetcherToDepType fetcher | depTypeToFetcher UnknownBinaryType == fetcher = Just UnknownBinaryType
 fetcherToDepType _ = Nothing

@@ -12,6 +12,7 @@ module App.Fossa.EmbeddedBinary (
   withBerkeleyBinary,
   withLernieBinary,
   withMillhoneBinary,
+  withExecSnooperBinary,
   allBins,
   dumpEmbeddedBinary,
   themisVersion,
@@ -59,6 +60,7 @@ data PackagedBinary
   | BerkeleyDB
   | Lernie
   | Millhone
+  | ExecSnooper
   deriving (Show, Eq, Enum, Bounded)
 
 allBins :: [PackagedBinary]
@@ -128,6 +130,13 @@ withMillhoneBinary ::
   m c
 withMillhoneBinary = withEmbeddedBinary Millhone
 
+withExecSnooperBinary ::
+  ( Has (Lift IO) sig m
+  ) =>
+  (BinaryPaths -> m c) ->
+  m c
+withExecSnooperBinary = withEmbeddedBinary ExecSnooper
+
 withEmbeddedBinary ::
   ( Has (Lift IO) sig m
   ) =>
@@ -161,6 +170,7 @@ writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
   BerkeleyDB -> embeddedBinaryBerkeleyDB
   Lernie -> embeddedBinaryLernie
   Millhone -> embeddedBinaryMillhone
+  ExecSnooper -> embeddedBinaryExecSnooper
 
 writeExecutable :: Path Abs File -> ByteString -> IO ()
 writeExecutable path content = do
@@ -175,6 +185,7 @@ extractedPath bin = case bin of
   BerkeleyDB -> $(mkRelFile "berkeleydb-plugin")
   Lernie -> $(mkRelFile "lernie")
   Millhone -> $(mkRelFile "millhone")
+  ExecSnooper -> $(mkRelFile "execsnooper")
 
 -- | Extract to @$TMP/fossa-vendor/<uuid>
 -- We used to extract everything to @$TMP/fossa-vendor@, but there's a subtle issue with that.
@@ -214,6 +225,9 @@ themisVersion = $$(themisVersionQ)
 
 embeddedBinaryLernie :: ByteString
 embeddedBinaryLernie = $(embedFileIfExists "vendor-bins/lernie")
+
+embeddedBinaryExecSnooper :: ByteString
+embeddedBinaryExecSnooper = $(embedFileIfExists "vendor-bins/execsnooper")
 
 -- To build this, run `make build` or `cargo build --release`.
 #ifdef mingw32_HOST_OS

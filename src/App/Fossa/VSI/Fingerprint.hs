@@ -10,6 +10,7 @@ module App.Fossa.VSI.Fingerprint (
   Raw,
   CommentStripped,
   Combined (..),
+  fingerprintRawBs,
 ) where
 
 import Conduit (ConduitT, await, filterC, linesUnboundedAsciiC, mapC, runConduitRes, sourceFile, yield, (.|))
@@ -67,6 +68,13 @@ instance ToJSON Combined where
 encodeFingerprint :: Digest SHA256 -> Fingerprint t
 encodeFingerprint = Fingerprint . toText . show
 
+-- | Hashes the bytestring.
+hashBs :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => ByteString -> m (Digest hash)
+hashBs fp =
+  context "as binary" $
+    (fatalOnIOException "hash bs") . sendIO . runConduitRes $
+      yield fp .| sinkHash
+
 -- | Hashes the whole contents of the given file in constant memory.
 hashBinaryFile :: (Has (Lift IO) sig m, Has Diagnostics sig m, HashAlgorithm hash) => FilePath -> m (Digest hash)
 hashBinaryFile fp =
@@ -90,6 +98,13 @@ hashTextFile file =
         .| stripCrLines -- Normalize CRLF -> LF
         .| mapC (<> "\n") -- Always append a newline here
         .| sinkHash -- Hash the result
+
+fingerprintRawBs :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => ByteString -> m (Fingerprint Raw)
+fingerprintRawBs bs = context "raw" doFingerprint
+  where
+    doFingerprint = do
+      fp <- hashBs bs
+      pure $ encodeFingerprint fp
 
 fingerprintRaw :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m (Fingerprint Raw)
 fingerprintRaw file = context "raw" $ contentIsBinary file >>= doFingerprint
