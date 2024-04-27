@@ -3,7 +3,7 @@ module App.Fossa.ReleaseGroup.CommonSpec (
 ) where
 
 import App.Fossa.ReleaseGroup.Common (retrieveReleaseGroupId, retrieveReleaseGroupRelease)
-import Fossa.API.Types (ReleaseGroupRelease (..))
+import Fossa.API.CoreTypes (ReleaseGroupRelease (..))
 import Test.Effect (expectFatal', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe)

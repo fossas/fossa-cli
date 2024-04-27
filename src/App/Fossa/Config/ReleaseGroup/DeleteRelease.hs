@@ -9,7 +9,7 @@ module App.Fossa.Config.ReleaseGroup.DeleteRelease (
 
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
-import App.Fossa.Config.ReleaseGroup.Common (ReleaseGroupCommonOpts (..), collectApiOpts, releaseGroupCommonOpts)
+import App.Fossa.Config.ReleaseGroup.Common qualified as Common
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding, toEncoding)
 import Data.Text (Text)
@@ -22,12 +22,9 @@ import Options.Applicative (
   Parser,
   command,
   info,
-  long,
-  short,
-  strOption,
  )
 import Options.Applicative.Builder (progDescDoc)
-import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
+import Style (formatStringToDoc)
 
 deleteReleaseInfo :: InfoMod a
 deleteReleaseInfo = progDescDoc $ formatStringToDoc "Delete a FOSSA release group release"
@@ -46,7 +43,7 @@ instance ToJSON DeleteReleaseConfig where
   toEncoding = genericToEncoding defaultOptions
 
 data DeleteReleaseOpts = DeleteReleaseOpts
-  { releaseGroupCommon :: ReleaseGroupCommonOpts
+  { releaseGroupCommon :: Common.ReleaseGroupCommonOpts
   , releaseGroupTitleOpts :: Text
   , releaseGroupReleaseTitleOpts :: Text
   }
@@ -55,11 +52,11 @@ data DeleteReleaseOpts = DeleteReleaseOpts
 cliParser :: Parser DeleteReleaseOpts
 cliParser =
   DeleteReleaseOpts
-    <$> releaseGroupCommonOpts
+    <$> Common.releaseGroupCommonOpts
     -- .fossa.yml configurations are disabled for release group delete commands so that lingering configurations are
     -- not extracted and used to mistakenly delete release groups or release group releases.
-    <*> strOption (applyFossaStyle <> long "title" <> short 't' <> stringToHelpDoc "The title of the FOSSA release group")
-    <*> strOption (applyFossaStyle <> long "release" <> short 'r' <> stringToHelpDoc "The release of the FOSSA release group")
+    <*> Common.releaseGroupTitleOpts
+    <*> Common.releaseGroupReleaseTitleOpts
 
 mergeOpts ::
   ( Has Diagnostics sig m
@@ -69,5 +66,5 @@ mergeOpts ::
   DeleteReleaseOpts ->
   m DeleteReleaseConfig
 mergeOpts maybeConfig envVars DeleteReleaseOpts{..} = do
-  apiOpts <- collectApiOpts maybeConfig envVars releaseGroupCommon
+  apiOpts <- Common.collectApiOpts maybeConfig envVars releaseGroupCommon
   pure $ DeleteReleaseConfig apiOpts releaseGroupTitleOpts releaseGroupReleaseTitleOpts

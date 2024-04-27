@@ -192,6 +192,7 @@ library
     App.Fossa.Analyze.Upload
     App.Fossa.API.BuildLink
     App.Fossa.API.BuildWait
+    App.Fossa.ApiUtils
     App.Fossa.ArchiveUploader
     App.Fossa.BinaryDeps
     App.Fossa.BinaryDeps.Jar
@@ -208,10 +209,13 @@ library
     App.Fossa.Config.LicenseScan
     App.Fossa.Config.LinkUserBinaries
     App.Fossa.Config.ListTargets
+    App.Fossa.Config.Project
+    App.Fossa.Config.Project.Edit
     App.Fossa.Config.ReleaseGroup
     App.Fossa.Config.ReleaseGroup.AddProjects
     App.Fossa.Config.ReleaseGroup.Common
     App.Fossa.Config.ReleaseGroup.Create
+    App.Fossa.Config.ReleaseGroup.CreateRelease
     App.Fossa.Config.ReleaseGroup.Delete
     App.Fossa.Config.ReleaseGroup.DeleteRelease
     App.Fossa.Config.Report
@@ -240,6 +244,8 @@ library
     App.Fossa.ManualDeps
     App.Fossa.PathDependency
     App.Fossa.PreflightChecks
+    App.Fossa.Project
+    App.Fossa.Project.Edit
     App.Fossa.ProjectInference
     App.Fossa.Reachability.Gradle
     App.Fossa.Reachability.Jar
@@ -250,6 +256,7 @@ library
     App.Fossa.ReleaseGroup.AddProjects
     App.Fossa.ReleaseGroup.Common
     App.Fossa.ReleaseGroup.Create
+    App.Fossa.ReleaseGroup.CreateRelease
     App.Fossa.ReleaseGroup.Delete
     App.Fossa.ReleaseGroup.DeleteRelease
     App.Fossa.Report
@@ -380,6 +387,7 @@ library
     Effect.Grapher
     Effect.Logger
     Effect.ReadFS
+    Fossa.API.CoreTypes
     Fossa.API.Types
     Graphing
     Graphing.Debug
@@ -542,6 +550,7 @@ test-suite unit-tests
     App.Fossa.AnalyzeSpec
     App.Fossa.API.BuildLinkSpec
     App.Fossa.API.BuildWaitSpec
+    App.Fossa.ApiUtilsSpec
     App.Fossa.ArchiveUploaderSpec
     App.Fossa.BinaryDeps.JarSpec
     App.Fossa.Config.AnalyzeSpec
@@ -559,9 +568,11 @@ test-suite unit-tests
     App.Fossa.ManualDepsSpec
     App.Fossa.PathDependencySpec
     App.Fossa.PreflightChecksSpec
+    App.Fossa.Project.EditSpec
     App.Fossa.ProjectInferenceSpec
     App.Fossa.ReleaseGroup.AddProjectsSpec
     App.Fossa.ReleaseGroup.CommonSpec
+    App.Fossa.ReleaseGroup.CreateReleaseSpec
     App.Fossa.ReleaseGroup.CreateSpec
     App.Fossa.ReleaseGroup.DeleteReleaseSpec
     App.Fossa.ReleaseGroup.DeleteSpec

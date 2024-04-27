@@ -25,15 +25,21 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   deleteReleaseGroup,
   deleteReleaseGroupRelease,
   createReleaseGroup,
+  createReleaseGroupRelease,
   getReleaseGroups,
   getReleaseGroupReleases,
   updateReleaseGroupRelease,
+  getProjectV2,
+  updateProject,
+  addTeamProjects,
+  updateRevision,
+  getOrgLabels,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Config.Test (DiffRevision)
 import App.Fossa.VendoredDependency (VendoredDependency (..))
-import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision (..))
+import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision (..), ReleaseGroupReleaseRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
@@ -53,22 +59,18 @@ import Fossa.API.Types (
   Archive,
   Build,
   Contributors,
-  CreateReleaseGroupRequest,
-  CreateReleaseGroupResponse,
   CustomBuildUploadPermissions,
   Issues,
   Organization,
-  Policy,
   Project,
-  ReleaseGroup,
-  ReleaseGroupRelease,
   RevisionDependencyCache,
   SignedURL,
-  Team,
   TokenTypeResponse,
-  UpdateReleaseRequest,
   UploadResponse,
  )
+
+import Fossa.API.CoreTypes qualified as CoreTypes
+
 import Srclib.Types (Locator, SourceUnit, renderLocator)
 
 -- Fetches an organization from the API
@@ -318,11 +320,24 @@ createReleaseGroup ::
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  CreateReleaseGroupRequest ->
-  m CreateReleaseGroupResponse
-createReleaseGroup rev = do
+  CoreTypes.CreateReleaseGroupRequest ->
+  m CoreTypes.CreateReleaseGroupResponse
+createReleaseGroup req = do
   apiOpts <- ask
-  API.createReleaseGroup apiOpts rev
+  API.createReleaseGroup apiOpts req
+
+createReleaseGroupRelease ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Int ->
+  ReleaseGroupReleaseRevision ->
+  m CoreTypes.ReleaseGroupRelease
+createReleaseGroupRelease releaseGroupId req = do
+  apiOpts <- ask
+  API.createReleaseGroupRelease apiOpts releaseGroupId req
 
 getPolicies ::
   ( Has (Lift IO) sig m
@@ -330,7 +345,7 @@ getPolicies ::
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  m [Policy]
+  m [CoreTypes.Policy]
 getPolicies = do
   apiOpts <- ask
   API.getPolicies apiOpts
@@ -341,10 +356,23 @@ getTeams ::
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  m [Team]
+  m [CoreTypes.Team]
 getTeams = do
   apiOpts <- ask
   API.getTeams apiOpts
+
+addTeamProjects ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Int ->
+  CoreTypes.AddTeamProjectsRequest ->
+  m CoreTypes.AddTeamProjectsResponse
+addTeamProjects teamId req = do
+  apiOpts <- ask
+  API.addTeamProjects apiOpts teamId req
 
 deleteReleaseGroup ::
   ( Has (Lift IO) sig m
@@ -379,8 +407,8 @@ updateReleaseGroupRelease ::
   ) =>
   Int ->
   Int ->
-  UpdateReleaseRequest ->
-  m ReleaseGroupRelease
+  CoreTypes.UpdateReleaseRequest ->
+  m CoreTypes.ReleaseGroupRelease
 updateReleaseGroupRelease releaseGroupId releaseId updateReq = do
   apiOpts <- ask
   API.updateReleaseGroupRelease apiOpts releaseGroupId releaseId updateReq
@@ -391,7 +419,7 @@ getReleaseGroups ::
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  m [ReleaseGroup]
+  m [CoreTypes.ReleaseGroup]
 getReleaseGroups = do
   apiOpts <- ask
   API.getReleaseGroups apiOpts
@@ -403,7 +431,56 @@ getReleaseGroupReleases ::
   , Has (Reader ApiOpts) sig m
   ) =>
   Int ->
-  m [ReleaseGroupRelease]
+  m [CoreTypes.ReleaseGroupRelease]
 getReleaseGroupReleases releaseGroupId = do
   apiOpts <- ask
   API.getReleaseGroupReleases apiOpts releaseGroupId
+
+getProjectV2 ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Text ->
+  m CoreTypes.Project
+getProjectV2 locator = do
+  apiOpts <- ask
+  API.getProjectV2 apiOpts locator
+
+updateProject ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Text ->
+  CoreTypes.UpdateProjectRequest ->
+  m CoreTypes.Project
+updateProject locator req = do
+  apiOpts <- ask
+  API.updateProject apiOpts locator req
+
+updateRevision ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Text ->
+  CoreTypes.UpdateRevisionRequest ->
+  m CoreTypes.Revision
+updateRevision revisionLocator req = do
+  apiOpts <- ask
+  API.updateRevision apiOpts revisionLocator req
+
+getOrgLabels ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  m CoreTypes.Labels
+getOrgLabels = do
+  apiOpts <- ask
+  API.getOrgLabels apiOpts

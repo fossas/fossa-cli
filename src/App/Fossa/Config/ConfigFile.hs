@@ -210,10 +210,12 @@ data ConfigFile = ConfigFile
   deriving (Eq, Ord, Show)
 
 data ConfigProject = ConfigProject
-  { configProjID :: Maybe Text
+  { configProjLocator :: Maybe Text
+  , configProjID :: Maybe Text
   , configName :: Maybe Text
   , configLink :: Maybe Text
   , configTeam :: Maybe Text
+  , configTeams :: Maybe [Text]
   , configJiraKey :: Maybe Text
   , configUrl :: Maybe Text
   , configPolicy :: Maybe Policy
@@ -313,10 +315,12 @@ instance FromJSON (Path Abs File -> ConfigFile) where
 instance FromJSON ConfigProject where
   parseJSON = withObject "ConfigProject" $ \obj ->
     ConfigProject
-      <$> obj .:? "id"
+      <$> obj .:? "locator"
+      <*> obj .:? "id"
       <*> obj .:? "name"
       <*> obj .:? "link"
       <*> obj .:? "team"
+      <*> obj .:? "teams"
       <*> obj .:? "jiraProjectKey"
       <*> obj .:? "url"
       <*> parsePolicy obj
