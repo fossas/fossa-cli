@@ -35,7 +35,7 @@ import Strategy.Python.Poetry.PyProject (
   PyProjectPoetryGitDependency (..),
   PyProjectPoetryPathDependency (..),
   PyProjectPoetryUrlDependency (..),
-  allPoetryDevDeps,
+  allPoetryNonProductionDeps,
   toDependencyVersion,
  )
 
@@ -64,7 +64,7 @@ logIgnoredDeps pyproject poetryLock = for_ notSupportedDepsMsgs (logDebug . pret
     notSupportedPyProjectDevDeps =
       Map.keys $
         Map.filter (not . supportedPyProjectDep) $
-          maybe Map.empty allPoetryDevDeps (pyprojectPoetry pyproject)
+          allPoetryNonProductionDeps pyproject
 
     notSupportedPyProjectDeps :: [Text]
     notSupportedPyProjectDeps =
@@ -84,9 +84,12 @@ pyProjectDeps project = filter notNamedPython $ map snd allDeps
     notNamedPython = (/= "python") . dependencyName
 
     supportedDevDeps :: Map Text PoetryDependency
-    supportedDevDeps =
-      Map.filter supportedPyProjectDep $
-        maybe Map.empty allPoetryDevDeps (pyprojectPoetry project)
+    supportedDevDeps = Map.filter supportedPyProjectDep devDeps
+      where
+        devDeps = Map.unions [devDep]
+        devDep = maybe Map.empty devDependencies (pyprojectPoetry project)
+        -- devGroupDep = maybe Map.empty groupDevDependencies (pyprojectPoetry project)
+        -- devTestDep = maybe Map.empty groupTestDependencies (pyprojectPoetry project)
 
     supportedProdDeps :: Map Text PoetryDependency
     supportedProdDeps = Map.filter supportedPyProjectDep $ maybe Map.empty dependencies (pyprojectPoetry project)
@@ -157,11 +160,26 @@ toCanonicalName :: Text -> Text
 toCanonicalName t = toLower $ replace "_" "-" (replace "." "-" t)
 
 -- | Maps poetry lock package to map of package name and associated dependency.
-toMap :: [PoetryLockPackage] -> Map.Map PackageName Dependency
-toMap pkgs = Map.fromList $ (\x -> (canonicalPkgName x, toDependency x)) <$> (filter supportedPoetryLockDep pkgs)
+toMap :: [PackageName] -> [PackageName] -> [PoetryLockPackage] -> Map.Map PackageName Dependency
+toMap prodPkgs devPkgs pkgs = Map.fromList $ (\x -> (canonicalPkgName x, toDependency x)) <$> (filter supportedPoetryLockDep pkgs)
   where
     canonicalPkgName :: PoetryLockPackage -> PackageName
     canonicalPkgName pkg = PackageName $ toCanonicalName $ unPackageName $ poetryLockPackageName pkg
+
+    canonicalPkgName' :: PackageName -> PackageName
+    canonicalPkgName' = PackageName . toCanonicalName . unPackageName
+
+    canonicalProdPkgNames :: [PackageName]
+    canonicalProdPkgNames = map canonicalPkgName' prodPkgs
+
+    canonicalDevPkgNames :: [PackageName]
+    canonicalDevPkgNames = map canonicalPkgName' devPkgs
+
+    isProductionDirectDep :: PoetryLockPackage -> Bool
+    isProductionDirectDep pkg = canonicalPkgName pkg `elem` canonicalProdPkgNames
+
+    isDevelopmentDirectDep :: PoetryLockPackage -> Bool
+    isDevelopmentDirectDep pkg = canonicalPkgName pkg `elem` canonicalDevPkgNames
 
     toDependency :: PoetryLockPackage -> Dependency
     toDependency pkg =
@@ -170,7 +188,7 @@ toMap pkgs = Map.fromList $ (\x -> (canonicalPkgName x, toDependency x)) <$> (fi
         , dependencyName = toDepName pkg
         , dependencyVersion = toDepVersion pkg
         , dependencyLocations = toDepLocs pkg
-        , dependencyEnvironments = Set.singleton $ toDepEnvironment pkg
+        , dependencyEnvironments = toDepEnvironment pkg
         , dependencyTags = Map.empty
         }
 
@@ -203,16 +221,22 @@ toMap pkgs = Map.fromList $ (\x -> (canonicalPkgName x, toDependency x)) <$> (fi
           ref <- poetryLockPackageSourceReference lockPkgSrc
           if poetryLockPackageSourceType lockPkgSrc /= "legacy" then Just ref else Nothing
 
-    toDepEnvironment :: PoetryLockPackage -> DepEnvironment
+    toDepEnvironment :: PoetryLockPackage -> Set.Set DepEnvironment
     toDepEnvironment pkg = case poetryLockPackageCategory pkg of
+      -- If category is provided, use category to infer if dependency's environment
       Just category -> case category of
-        "dev" -> EnvDevelopment
-        "main" -> EnvProduction
-        "test" -> EnvTesting
-        other -> EnvOther other
-      Nothing -> defaultDepEnvironment
-
-    defaultDepEnvironment :: DepEnvironment
-    -- Poetry made this field optional. When not present, it defaults to `main`, which maps to `EnvProduction`.
-    -- https://github.com/python-poetry/poetry/pull/7637
-    defaultDepEnvironment = EnvProduction
+        "dev" -> Set.singleton EnvDevelopment
+        "main" -> Set.singleton EnvProduction
+        "test" -> Set.singleton EnvTesting
+        other -> Set.singleton $ EnvOther other
+      -- If category is not provided, lockfile is likely greater than __. 
+      -- In this case, if the package name exists in the dependencies
+      -- list, mark as production dependency, otherwise, mark it as development dependency
+      -- -
+      -- Refer to:
+      -- * https://github.com/python-poetry/poetry/pull/7637
+      Nothing ->
+        case (isProductionDirectDep pkg, isDevelopmentDirectDep pkg) of
+          (True, _) -> Set.singleton EnvProduction
+          (_, True) -> Set.singleton EnvDevelopment
+          _ -> mempty

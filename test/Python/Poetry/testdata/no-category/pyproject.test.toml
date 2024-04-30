@@ -1,0 +1,8 @@
+[group.dev.dependencies]
+a = "1.0.0"
+
+[group.docs]
+optional = false
+
+[group.docs.dependencies]
+b = "1.0.0"

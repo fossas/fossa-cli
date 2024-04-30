@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use newtype instead of data" #-}
 module Strategy.Python.Poetry.PyProject (
   PyProject (..),
   PyProjectMetadata (..),
@@ -9,17 +11,18 @@ module Strategy.Python.Poetry.PyProject (
   PyProjectPoetryGitDependency (..),
   PyProjectPoetryUrlDependency (..),
   PyProjectPoetryDetailedVersionDependency (..),
+  allPoetryProductionDeps,
 
   -- * for testing only
   parseConstraintExpr,
   toDependencyVersion,
-  allPoetryDevDeps,
+  allPoetryNonProductionDeps,
 ) where
 
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Foldable (asum)
 import Data.Functor (void)
-import Data.Map (Map)
+import Data.Map (Map, keys)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -53,6 +56,11 @@ import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 import Toml (TomlCodec, (.=))
 import Toml qualified
+import qualified Data.Text.IO as TIO
+import Text.Pretty.Simple (pShow, pPrint)
+import Debug.Trace (trace)
+import Data.Toml.Extra (tableMap')
+import Toml.Codec (mkAnyValueBiMap)
 
 type Parser = Parsec Void Text
 
@@ -115,12 +123,27 @@ data PyProjectPoetry = PyProjectPoetry
   , description :: Maybe Text
   , dependencies :: Map Text PoetryDependency
   , devDependencies :: Map Text PoetryDependency
+  -- , groupDevDependencies :: [PyProjectGroup]
   , groupDevDependencies :: Map Text PoetryDependency
   }
   deriving (Show, Eq, Ord)
 
-allPoetryDevDeps :: PyProjectPoetry -> Map Text PoetryDependency
-allPoetryDevDeps PyProjectPoetry{devDependencies, groupDevDependencies} = devDependencies <> groupDevDependencies
+allPoetryProductionDeps :: PyProject -> Map Text PoetryDependency
+allPoetryProductionDeps project = case pyprojectPoetry project of
+  Just (PyProjectPoetry{dependencies}) -> dependencies
+  _ -> mempty
+
+allPoetryNonProductionDeps :: PyProject -> Map Text PoetryDependency
+allPoetryNonProductionDeps project = case pyprojectPoetry project of
+  _ -> mempty
+  -- Just (PyProjectPoetry{devDependencies, groupDevDependencies, groupTestDependencies}) -> 
+  --   devDependencies <> groupDevDependencies <> groupTestDependencies
+  -- _ -> mempty 
+
+data PoetryDependencyGroup = PoetryDependencyGroup {
+  poetryDependencyGroupOptional :: Maybe Bool
+  -- , poetryDependencyGroupDependencies :: Map Text PoetryDependency
+} deriving (Show, Eq, Ord)
 
 data PoetryDependency
   = PoetryTextVersion Text
@@ -138,7 +161,12 @@ pyProjectPoetryCodec =
     <*> Toml.dioptional (Toml.text "description") .= description
     <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "dependencies" .= dependencies
     <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "dev-dependencies" .= devDependencies
-    <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "group.dev.dependencies" .= groupDevDependencies
+    <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "group.dev.dependencies" .= devDependencies
+    -- <*> Toml.arrayOf pyProjectGroupCodec "group" .= groupDevDependencies
+
+data PyProjectGroup = PyProjectGroup {
+  pyProjectGroupName :: Text
+} deriving (Show, Eq, Ord)
 
 pyProjectPoetryDependencyCodec :: Toml.Key -> TomlCodec PoetryDependency
 pyProjectPoetryDependencyCodec key =
@@ -299,3 +327,18 @@ parseConstraintExpr = makeExprParser parseVerConstraint operatorTable
       where
         binary :: Text -> (VerConstraint -> VerConstraint -> VerConstraint) -> Operator Parser VerConstraint
         binary name f = InfixL (f <$ symbol name)
+
+-- rgbCodec :: TomlCodec (Map Text SomeThing)
+-- rgbCodec = trace ("rgbCodec ") $ tableMap' Toml._KeyText rgbCodec' "group.dev"
+
+-- rgbCodec' :: Toml.Key -> TomlCodec SomeThing
+-- rgbCodec' key = trace ("calling rgbCodec' with x = " ++ show key) $ SomeThing <$> Toml.tableMap Toml._KeyText (\k -> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "dependencies") key .= something
+
+rgbCodec :: TomlCodec (Map Text (Map Text PoetryDependency))
+rgbCodec = tableMap' Toml._KeyText (Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec) ""
+
+debugIO :: IO ()
+debugIO = do
+  content <- TIO.readFile "test/Python/Poetry/testdata/no-category/pyproject.test.toml"
+  pPrint $ Toml.parse content
+  pPrint $ Toml.decode rgbCodec content
