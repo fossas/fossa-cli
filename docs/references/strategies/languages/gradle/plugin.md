@@ -9,7 +9,7 @@
 
 This tactic runs a [Gradle init script](https://docs.gradle.org/current/userguide/init_scripts.html) to output the dependencies in each Gradle subproject. Mechanically, this tactic:
 
-1. Unpacks an [init script] to a temporary directory. Elsewhere in this document, we refer to this as "the plugin".
+1. Unpacks an [init script](https://github.com/fossas/fossa-cli/blob/master/scripts/jsondeps.gradle) to a temporary directory. Elsewhere in this document, we refer to this as "the plugin".
 2. Invokes the plugin with `gradle jsonDeps -Ipath/to/init.gradle`.
 3. Parses the JSON output of the plugin.
 
@@ -24,7 +24,7 @@ The plugin works by iterating through configurations, getting resolution result 
 
 If the plugin doesn't appear to be working correctly, you can perform the following steps to run it directly:
 
-1. [Download it from this repository.][init script]
+1. [Download it from this repository](https://github.com/fossas/fossa-cli/blob/master/scripts/jsondeps.gradle).
 2. Run the command `gradle -I$PATH_TO_SCRIPT jsonDeps`, where `$PATH_TO_SCRIPT` is the location to which the plugin was downloaded.
 
 For example, with the plugin downloaded to `/tmp/jsondeps.gradle`, you should run (from within your project's working directory):
@@ -62,19 +62,16 @@ Initialization script 'jsondeps.gradle' line: 190
 Configuration cache problems found in this build.
 ```
 
-This is a Gradle specific issue with the "[configuration cache]" feature.
-When the document you're reading was written, the Gradle documentation had this to say about this feature:
+This is a Gradle specific issue with the "configuration cache" feature in relation to the plugin FOSSA uses.
+When the document you're reading was written, the Gradle documentation had this to say about the Gradle configuration cache:
 
-> This feature [Gradle's configuration cache] is currently not enabled by default. This feature has the following limitations:
+> This feature is currently not enabled by default. This feature has the following limitations:
 >
 > - The configuration cache does not support all core Gradle plugins and features. Full support is a work in progress.
 > - Your build and the plugins you depend on might require changes to fulfil the requirements.
 > - IDE imports and syncs do not yet use the configuration cache.
 
-Specific resolution steps depend on your project and Gradle version, but a possible resolution is to set `org.gradle.unsafe.configuration-cache-problems=warn` in your `gradle.properties`. This modifies configuration cache problems such that they become warnings instead of errors.
-
 > [!TIP]
-> You can read more about the [Gradle configuration cache here][configuration cache].
+> You can read more about the [Gradle configuration cache here](https://docs.gradle.org/current/userguide/configuration_cache.html).
 
-[init script](https://github.com/fossas/fossa-cli/blob/master/scripts/jsondeps.gradle)
-[configuration cache](https://docs.gradle.org/current/userguide/configuration_cache.html)
+Specific resolution steps depend on your project and Gradle version, but a possible resolution is to set `org.gradle.unsafe.configuration-cache-problems=warn` in your `gradle.properties`. This modifies configuration cache problems such that they become warnings instead of errors.
