@@ -179,17 +179,18 @@ toCanonicalName t = toLower $ replace "_" "-" (replace "." "-" t)
 toMap :: [PackageName] -> [PoetryLockPackage] -> Map.Map PackageName Dependency
 toMap prodPkgs pkgs = Map.fromList $ (\x -> (canonicalPkgName x, toDependency x)) <$> (filter supportedPoetryLockDep pkgs)
   where
-    canonicalPkgName :: PoetryLockPackage -> PackageName
-    canonicalPkgName pkg = PackageName $ toCanonicalName $ unPackageName $ poetryLockPackageName pkg
+     
+    canonicalPkgName :: PackageName -> PackageName
+    canonicalPkgName = PackageName . toCanonicalName . unPackageName
+    
+    lockCanonicalPackageName :: PoetryLockPackage -> PackageName
+    lockCanonicalPackageName = canonicalPkgName . poetryLockPackageName
 
-    canonicalPkgName' :: PackageName -> PackageName
-    canonicalPkgName' = PackageName . toCanonicalName . unPackageName
-
-    canonicalProdPkgNames :: [PackageName]
-    canonicalProdPkgNames = map canonicalPkgName' prodPkgs
+    canonicalProdPkgNames :: Set [PackageName]
+    canonicalProdPkgNames = Set.fromList . map canonicalPkgName $ prodPkgs
 
     isProductionDirectDep :: PoetryLockPackage -> Bool
-    isProductionDirectDep pkg = canonicalPkgName pkg `elem` canonicalProdPkgNames
+    isProductionDirectDep pkg = canonicalPkgName pkg `Set.member` canonicalProdPkgNames
 
     toDependency :: PoetryLockPackage -> Dependency
     toDependency pkg =
