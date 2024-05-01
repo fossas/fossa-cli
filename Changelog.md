@@ -1,7 +1,10 @@
 # FOSSA CLI Changelog
 
+## v3.9.15
+- Poetry: Adds partial support for dependency groups. ([#1420](https://github.com/fossas/fossa-cli/pull/1420)). 
+
 ## v3.9.14
-- Update cargo strategy to parse new `cargo metadata` format for cargo >= 1.77.0 ([#1416](https://github.com/fossas/fossa-cli/pull/1416)).
+- Cargo: Update cargo strategy to parse new `cargo metadata` format for cargo >= 1.77.0 ([#1416](https://github.com/fossas/fossa-cli/pull/1416)).
 - `fossa release-group`: Add command to create a FOSSA release group release (`fossa release-group create-release`) [#1409](https://github.com/fossas/fossa-cli/pull/1409).
 - `fossa project`: Adds commands to interact with FOSSA projects (`fossa project edit`) [#1394](https://github.com/fossas/fossa-cli/pull/1395).
 
