@@ -21,7 +21,6 @@ import Strategy.Python.Poetry (
   PyProjectTomlFile (PyProjectTomlFile),
   analyze,
   graphFromPyProjectAndLockFile,
-  setGraphDirectsFromPyproject,
  )
 import Strategy.Python.Poetry.PoetryLock (
   PackageName (..),
@@ -89,11 +88,10 @@ spec :: Spec
 spec = do
   poetryV1_5OrGtSpec
 
-  describe "setGraphDirectsFromPyproject" $
-    it "should should promote direct dependencies and create valid graph" $
-      (setGraphDirectsFromPyproject (graphFromPyProjectAndLockFile candidatePyProject candidatePoetryLock) candidatePyProject) `shouldBe` expectedGraph
+  describe "graphFromPyProjectAndLockFile" $ do
+    it "should produce expected graph" $ do
+      graphFromPyProjectAndLockFile candidatePyProject candidatePoetryLock `shouldBe` expectedGraph
 
-  describe "graphFromLockFile" $ do
     describe "when package has no transitive dependencies" $ do
       it "should produce graph with no edges" $ do
         let poetryLock =

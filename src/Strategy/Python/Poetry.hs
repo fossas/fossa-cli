@@ -5,7 +5,6 @@ module Strategy.Python.Poetry (
   findProjects,
   analyze,
   graphFromPyProjectAndLockFile,
-  setGraphDirectsFromPyproject,
   PoetryProject (..),
   PyProjectTomlFile (..),
   PoetryLockFile (..),
@@ -184,23 +183,6 @@ analyze PoetryProject{pyProjectToml, poetryLock} = do
           , dependencyGraphBreadth = Partial
           , dependencyManifestFiles = [pyProjectTomlPath pyProjectToml]
           }
-
--- | Use a `pyproject.toml` to set the direct dependencies of a graph created from `poetry.lock`.
-setGraphDirectsFromPyproject :: Graphing Dependency -> PyProject -> Graphing Dependency
-setGraphDirectsFromPyproject graph pyproject = graph'
-  where
-    graph' :: Graphing Dependency
-    graph' = hydrateDepEnvs $ Graphing.promoteToDirect isDirect graph
-
-    directDeps :: [Dependency]
-    directDeps = pyProjectDeps pyproject
-
-    -- Dependencies in `poetry.lock` are direct if they're specified in `pyproject.toml`.
-    -- `pyproject.toml` may use non canonical naming, when naming dependencies.
-    isDirect :: Dependency -> Bool
-    isDirect dep = case pyprojectPoetry pyproject of
-      Nothing -> False
-      Just _ -> any (\n -> toCanonicalName (dependencyName n) == toCanonicalName (dependencyName dep)) directDeps
 
 -- | Using a Poetry lockfile, build the graph of packages.
 -- The resulting graph contains edges, but does not distinguish between direct and deep dependencies,
