@@ -1,6 +1,7 @@
 module Python.Poetry.PyProjectSpec (
   spec,
-) where
+)
+where
 
 import Data.Map qualified as Map
 import Data.Text (Text)
@@ -19,18 +20,7 @@ import DepTypes (
     COr
   ),
  )
-import Strategy.Python.Poetry.PyProject (
-  PoetryDependency (..),
-  PyProject (..),
-  PyProjectBuildSystem (..),
-  PyProjectPoetry (..),
-  PyProjectPoetryDetailedVersionDependency (..),
-  PyProjectPoetryGitDependency (..),
-  PyProjectPoetryPathDependency (..),
-  PyProjectPoetryUrlDependency (..),
-  parseConstraintExpr,
-  pyProjectCodec,
- )
+import Strategy.Python.Poetry.PyProject (PoetryDependency (..), PyProject (..), PyProjectBuildSystem (..), PyProjectPoetry (..), PyProjectPoetryDetailedVersionDependency (..), PyProjectPoetryGitDependency (..), PyProjectPoetryPathDependency (..), PyProjectPoetryUrlDependency (..), parseConstraintExpr, pyProjectCodec)
 import Test.Hspec (
   Expectation,
   Spec,
@@ -100,11 +90,14 @@ expectedPyProject3 =
                   , ("rich", PoetryTextVersion "*")
                   ]
             , devDependencies = Map.empty
-            , groupDevDependencies = Map.fromList
+            , groupDevDependencies =
+                Map.fromList
                   [ ("click", PoetryTextVersion "*")
                   ]
-            , groupTestDependencies = Map.fromList
+            , groupTestDependencies =
+                Map.fromList
                   [ ("pytest", PoetryTextVersion "^6.0.0")
+                  , ("pytest-mock", PoetryTextVersion "*")
                   ]
             }
     }

@@ -84,12 +84,28 @@ pyProjectDeps project = filter notNamedPython $ map snd allDeps
     notNamedPython = (/= "python") . dependencyName
 
     supportedDevDeps :: Map Text PoetryDependency
-    supportedDevDeps = Map.filter supportedPyProjectDep devDeps
-      where
-        devDeps = Map.unions [devDep]
-        devDep = maybe Map.empty devDependencies (pyprojectPoetry project)
-        -- devGroupDep = maybe Map.empty groupDevDependencies (pyprojectPoetry project)
-        -- devTestDep = maybe Map.empty groupTestDependencies (pyprojectPoetry project)
+    supportedDevDeps = Map.filter supportedPyProjectDep $ Map.unions [olderPoetryDevDeps, groupDeps]
+
+    -- These are dependencies coming from dev-dependencies table
+    -- which is pre 1.2.x style, understood by Poetry 1.0–1.2
+    olderPoetryDevDeps :: Map Text PoetryDependency
+    olderPoetryDevDeps = case pyprojectPoetry project of
+      Just (PyProjectPoetry{devDependencies}) -> devDependencies
+      _ -> mempty
+
+    -- These are 'group' dependencies. All group dependencies are optional.
+    -- Due to current toml parsing library limitation (specifically implicit table parsing support)
+    -- We only support dev, and test group. We may miss other development dependencies in our findings
+    -- if they are not named under 'dev' or 'test' group. This is not ideal, but is good partial solution
+    -- as optional deps are not included in the final analysis by default.
+    --
+    -- Refs:
+    -- \* https://github.com/kowainik/tomland/issues/336
+    -- \* https://python-poetry.org/docs/managing-dependencies#dependency-groups
+    groupDeps :: Map Text PoetryDependency
+    groupDeps = case pyprojectPoetry project of
+      Just (PyProjectPoetry{groupDevDependencies, groupTestDependencies}) -> Map.unions [groupDevDependencies, groupTestDependencies]
+      _ -> mempty
 
     supportedProdDeps :: Map Text PoetryDependency
     supportedProdDeps = Map.filter supportedPyProjectDep $ maybe Map.empty dependencies (pyprojectPoetry project)
@@ -160,8 +176,8 @@ toCanonicalName :: Text -> Text
 toCanonicalName t = toLower $ replace "_" "-" (replace "." "-" t)
 
 -- | Maps poetry lock package to map of package name and associated dependency.
-toMap :: [PackageName] -> [PackageName] -> [PoetryLockPackage] -> Map.Map PackageName Dependency
-toMap prodPkgs devPkgs pkgs = Map.fromList $ (\x -> (canonicalPkgName x, toDependency x)) <$> (filter supportedPoetryLockDep pkgs)
+toMap :: [PackageName] -> [PoetryLockPackage] -> Map.Map PackageName Dependency
+toMap prodPkgs pkgs = Map.fromList $ (\x -> (canonicalPkgName x, toDependency x)) <$> (filter supportedPoetryLockDep pkgs)
   where
     canonicalPkgName :: PoetryLockPackage -> PackageName
     canonicalPkgName pkg = PackageName $ toCanonicalName $ unPackageName $ poetryLockPackageName pkg
@@ -172,14 +188,8 @@ toMap prodPkgs devPkgs pkgs = Map.fromList $ (\x -> (canonicalPkgName x, toDepen
     canonicalProdPkgNames :: [PackageName]
     canonicalProdPkgNames = map canonicalPkgName' prodPkgs
 
-    canonicalDevPkgNames :: [PackageName]
-    canonicalDevPkgNames = map canonicalPkgName' devPkgs
-
     isProductionDirectDep :: PoetryLockPackage -> Bool
     isProductionDirectDep pkg = canonicalPkgName pkg `elem` canonicalProdPkgNames
-
-    isDevelopmentDirectDep :: PoetryLockPackage -> Bool
-    isDevelopmentDirectDep pkg = canonicalPkgName pkg `elem` canonicalDevPkgNames
 
     toDependency :: PoetryLockPackage -> Dependency
     toDependency pkg =
@@ -229,14 +239,11 @@ toMap prodPkgs devPkgs pkgs = Map.fromList $ (\x -> (canonicalPkgName x, toDepen
         "main" -> Set.singleton EnvProduction
         "test" -> Set.singleton EnvTesting
         other -> Set.singleton $ EnvOther other
-      -- If category is not provided, lockfile is likely greater than __. 
+      -- If category is not provided, lockfile is likely greater than __.
       -- In this case, if the package name exists in the dependencies
       -- list, mark as production dependency, otherwise, mark it as development dependency
       -- -
       -- Refer to:
-      -- * https://github.com/python-poetry/poetry/pull/7637
+      -- \* https://github.com/python-poetry/poetry/pull/7637
       Nothing ->
-        case (isProductionDirectDep pkg, isDevelopmentDirectDep pkg) of
-          (True, _) -> Set.singleton EnvProduction
-          (_, True) -> Set.singleton EnvDevelopment
-          _ -> mempty
+        (if isProductionDirectDep pkg then Set.singleton EnvProduction else mempty)

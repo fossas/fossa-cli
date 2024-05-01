@@ -153,6 +153,7 @@ common deps
     , unliftio-core                ^>=0.2.0.1
     , unordered-containers         ^>=0.2.10
     , uuid                         ^>=1.3.15
+    , validation-selective         >=0.1.0     && <0.3
     , vector                       ^>=0.13.0.0
     , versions                     ^>=6.0.0
     , word8                        ^>=0.1.3
@@ -161,7 +162,7 @@ common deps
     , yarn-lock                    ^>=0.6.5
     , zip                          ^>=2.0.0
     , zlib                         ^>=0.6.2.1
-    , validation-selective         >= 0.1.0 && < 0.3
+
   if !os(windows)
     -- included with GHC, consider upgrading this as part of a ghc upgrade
     build-depends: unix ^>=2.7.2.2
@@ -259,7 +260,6 @@ library
     App.Fossa.Report
     App.Fossa.Report.Attribution
     App.Fossa.RunThemis
-    Data.Toml.Extra
     App.Fossa.Snippets
     App.Fossa.Snippets.Analyze
     App.Fossa.Snippets.Commit

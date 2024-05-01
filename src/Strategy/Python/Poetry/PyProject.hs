@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Use newtype instead of data" #-}
 module Strategy.Python.Poetry.PyProject (
   PyProject (..),
   PyProjectMetadata (..),
@@ -17,13 +15,12 @@ module Strategy.Python.Poetry.PyProject (
   parseConstraintExpr,
   toDependencyVersion,
   allPoetryNonProductionDeps,
-  debugIO
 ) where
 
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Foldable (asum)
 import Data.Functor (void)
-import Data.Map (Map, keys)
+import Data.Map (Map, unions)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -57,12 +54,6 @@ import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 import Toml (TomlCodec, (.=))
 import Toml qualified
-import qualified Data.Text.IO as TIO
-import Text.Pretty.Simple (pShow, pPrint)
-import Debug.Trace (trace, traceShow)
-import Data.Toml.Extra (tableMap')
-import Toml.Codec (mkAnyValueBiMap, genericCodec)
-import GHC.Generics (Generic)
 
 type Parser = Parsec Void Text
 
@@ -124,9 +115,17 @@ data PyProjectPoetry = PyProjectPoetry
   , version :: Maybe Text
   , description :: Maybe Text
   , dependencies :: Map Text PoetryDependency
-  , devDependencies :: Map Text PoetryDependency
-  , groups :: Map Text PyProjectGroup
-  -- , groupDevDependencies :: Map Text PoetryDependency
+  , -- For Poetry pre-1.2.x style, understood by Poetry 1.0–1.2
+    devDependencies :: Map Text PoetryDependency
+  , -- Since v1.2.0 of poetry, dependency groups are recommanded way to
+    -- provide development, test, and other optional dependencies.
+    -- refer to: https://python-poetry.org/docs/managing-dependencies#dependency-groups
+    --
+    -- Due to current toml-parsing limitations, we explicitly specify dev, and
+    -- test group only. Note that any dependencies from these groups are excluded
+    -- by default. refer to: https://github.com/kowainik/tomland/issues/336
+    groupDevDependencies :: Map Text PoetryDependency
+  , groupTestDependencies :: Map Text PoetryDependency
   }
   deriving (Show, Eq, Ord)
 
@@ -136,11 +135,17 @@ allPoetryProductionDeps project = case pyprojectPoetry project of
   _ -> mempty
 
 allPoetryNonProductionDeps :: PyProject -> Map Text PoetryDependency
-allPoetryNonProductionDeps project = case pyprojectPoetry project of
-  _ -> mempty
-  -- Just (PyProjectPoetry{devDependencies, groupDevDependencies, groupTestDependencies}) -> 
-  --   devDependencies <> groupDevDependencies <> groupTestDependencies
-  -- _ -> mempty 
+allPoetryNonProductionDeps project = unions [olderPoetryDevDeps, optionalDeps]
+  where
+    optionalDeps :: Map Text PoetryDependency
+    optionalDeps = case pyprojectPoetry project of
+      Just (PyProjectPoetry{groupDevDependencies, groupTestDependencies}) -> unions [groupDevDependencies, groupTestDependencies]
+      _ -> mempty
+
+    olderPoetryDevDeps :: Map Text PoetryDependency
+    olderPoetryDevDeps = case pyprojectPoetry project of
+      Just (PyProjectPoetry{devDependencies}) -> devDependencies
+      _ -> mempty
 
 data PoetryDependency
   = PoetryTextVersion Text
@@ -158,22 +163,8 @@ pyProjectPoetryCodec =
     <*> Toml.dioptional (Toml.text "description") .= description
     <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "dependencies" .= dependencies
     <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "dev-dependencies" .= devDependencies
-    -- <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "group.dev.dependencies" .= devDependencies
-    -- <*> Toml.arrayOf pyProjectGroupCodec "group" .= groupDevDependencies
-    <*> Toml.tableMap Toml._KeyText pyProjectGroupCodec "group" .= groups
-
-data PyProjectGroup = PyProjectGroup {
-  groupOptional :: Bool
-  , groupDependencies :: Map Text PoetryDependency
-} deriving (Show, Eq, Ord)
-
-pyProjectGroupCodec :: Toml.Key -> TomlCodec PyProjectGroup
-pyProjectGroupCodec key = Toml.table groupTableCodec key
- where groupTableCodec :: Toml.TomlCodec PyProjectGroup
-       groupTableCodec = PyProjectGroup
-                         <$> (Toml.bool "optional" .= groupOptional
-                             <|> pure False)
-                         <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "dependencies" .= groupDependencies
+    <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "group.dev.dependencies" .= groupDevDependencies
+    <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "group.test.dependencies" .= groupTestDependencies
 
 pyProjectPoetryDependencyCodec :: Toml.Key -> TomlCodec PoetryDependency
 pyProjectPoetryDependencyCodec key =
@@ -334,19 +325,3 @@ parseConstraintExpr = makeExprParser parseVerConstraint operatorTable
       where
         binary :: Text -> (VerConstraint -> VerConstraint -> VerConstraint) -> Operator Parser VerConstraint
         binary name f = InfixL (f <$ symbol name)
-
--- rgbCodec :: TomlCodec (Map Text SomeThing)
--- rgbCodec = trace ("rgbCodec ") $ tableMap' Toml._KeyText rgbCodec' "group.dev"
-
--- rgbCodec' :: Toml.Key -> TomlCodec SomeThing
--- rgbCodec' key = trace ("calling rgbCodec' with x = " ++ show key) $ SomeThing <$> Toml.tableMap Toml._KeyText (\k -> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "dependencies") key .= something
-
-rgbCodec :: TomlCodec (Map Text (Map Text PoetryDependency))
-rgbCodec = tableMap' Toml._KeyText (Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec) ""
-
-debugIO :: IO ()
-debugIO = do
-  content <- TIO.readFile "test/Python/Poetry/testdata/no-category/pyproject.test.toml"
-  pPrint $ Toml.parse content
-  -- pPrint $ Toml.decode rgbCodec content
-  pPrint $ Toml.decode pyProjectPoetryCodec content
