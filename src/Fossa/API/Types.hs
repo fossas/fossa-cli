@@ -225,7 +225,7 @@ data Issues = Issues
 
 data IssuesSummary = IssuesSummary
   { revision :: IssueSummaryRevision
-  , targets :: Maybe [IssueSummaryTarget]
+  , targets :: [IssueSummaryTarget]
   }
   deriving (Eq, Ord, Show)
 
@@ -356,7 +356,8 @@ instance FromJSON IssuesSummary where
       <$> obj
         .: "revision"
       <*> obj
-        .: "targets"
+        .:? "targets"
+        .!= []
 
 instance ToJSON IssuesSummary where
   toJSON IssuesSummary{..} =
@@ -739,14 +740,12 @@ renderedIssues issues = rendered
           , line
           ]
 
-    renderRevisionTargets :: Maybe [IssueSummaryTarget] -> Doc ann
-    renderRevisionTargets issueRevisionTargets = case issueRevisionTargets of
-      Nothing -> mempty
-      Just [] -> mempty
-      Just targets ->
-        vsep $
-          ["Project Targets:"]
-            <> map (\target -> "- " <> renderedTarget target) (sort targets)
+    renderRevisionTargets :: [IssueSummaryTarget] -> Doc ann
+    renderRevisionTargets [] = mempty
+    renderRevisionTargets targets =
+      vsep $
+        ["Project Targets:"]
+          <> map (\target -> "- " <> renderedTarget target) (sort targets)
 
     renderProjectVisibility :: Maybe Bool -> Doc ann
     renderProjectVisibility Nothing = "unknown"
