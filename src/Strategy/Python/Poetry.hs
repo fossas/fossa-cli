@@ -46,7 +46,7 @@ import Strategy.Python.Errors (
   MissingPoetryLockFile (..),
   commitPoetryLockToVCS,
  )
-import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, pyProjectDeps, toCanonicalName, toMap)
+import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, makePackageToLockDependencyMap, pyProjectDeps, toCanonicalName)
 import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), PoetryMetadata (poetryMetadataLockVersion), poetryLockCodec)
 import Strategy.Python.Poetry.PyProject (PyProject (..), allPoetryProductionDeps, pyProjectCodec)
 import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (PoetryProjectType), GraphBreadth (..))
@@ -247,7 +247,7 @@ graphFromPyProjectAndLockFile pyProject poetryLock = graph
     canonicalPkgName name = PackageName . toCanonicalName $ unPackageName name
 
     mapOfDependency :: Map PackageName Dependency
-    mapOfDependency = toMap prodPkgNames pkgs
+    mapOfDependency = makePackageToLockDependencyMap prodPkgNames pkgs
 
     prodPkgNames :: [PackageName]
     prodPkgNames = PackageName <$> Map.keys (allPoetryProductionDeps pyProject)

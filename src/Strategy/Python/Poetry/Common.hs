@@ -1,6 +1,6 @@
 module Strategy.Python.Poetry.Common (
   getPoetryBuildBackend,
-  toMap,
+  makePackageToLockDependencyMap,
   pyProjectDeps,
   logIgnoredDeps,
   toCanonicalName,
@@ -176,21 +176,20 @@ toCanonicalName :: Text -> Text
 toCanonicalName t = toLower $ replace "_" "-" (replace "." "-" t)
 
 -- | Maps poetry lock package to map of package name and associated dependency.
-toMap :: [PackageName] -> [PoetryLockPackage] -> Map.Map PackageName Dependency
-toMap prodPkgs pkgs = Map.fromList $ (\x -> (canonicalPkgName x, toDependency x)) <$> (filter supportedPoetryLockDep pkgs)
+makePackageToLockDependencyMap :: [PackageName] -> [PoetryLockPackage] -> Map.Map PackageName Dependency
+makePackageToLockDependencyMap prodPkgs pkgs = Map.fromList $ (\x -> (lockCanonicalPackageName x, toDependency x)) <$> (filter supportedPoetryLockDep pkgs)
   where
-     
     canonicalPkgName :: PackageName -> PackageName
     canonicalPkgName = PackageName . toCanonicalName . unPackageName
-    
+
     lockCanonicalPackageName :: PoetryLockPackage -> PackageName
     lockCanonicalPackageName = canonicalPkgName . poetryLockPackageName
 
-    canonicalProdPkgNames :: Set [PackageName]
-    canonicalProdPkgNames = Set.fromList . map canonicalPkgName $ prodPkgs
+    canonicalProdPkgNames :: Set.Set PackageName
+    canonicalProdPkgNames = Set.fromList $ map canonicalPkgName prodPkgs
 
     isProductionDirectDep :: PoetryLockPackage -> Bool
-    isProductionDirectDep pkg = canonicalPkgName pkg `Set.member` canonicalProdPkgNames
+    isProductionDirectDep pkg = lockCanonicalPackageName pkg `Set.member` canonicalProdPkgNames
 
     toDependency :: PoetryLockPackage -> Dependency
     toDependency pkg =
@@ -199,7 +198,7 @@ toMap prodPkgs pkgs = Map.fromList $ (\x -> (canonicalPkgName x, toDependency x)
         , dependencyName = toDepName pkg
         , dependencyVersion = toDepVersion pkg
         , dependencyLocations = toDepLocs pkg
-        , dependencyEnvironments = toDepEnvironment pkg
+        , dependencyEnvironments = pkgEnvironments pkg
         , dependencyTags = Map.empty
         }
 
@@ -232,8 +231,8 @@ toMap prodPkgs pkgs = Map.fromList $ (\x -> (canonicalPkgName x, toDependency x)
           ref <- poetryLockPackageSourceReference lockPkgSrc
           if poetryLockPackageSourceType lockPkgSrc /= "legacy" then Just ref else Nothing
 
-    toDepEnvironment :: PoetryLockPackage -> Set.Set DepEnvironment
-    toDepEnvironment pkg = case poetryLockPackageCategory pkg of
+    pkgEnvironments :: PoetryLockPackage -> Set.Set DepEnvironment
+    pkgEnvironments pkg = case poetryLockPackageCategory pkg of
       -- If category is provided, use category to infer if dependency's environment
       Just category -> case category of
         "dev" -> Set.singleton EnvDevelopment
