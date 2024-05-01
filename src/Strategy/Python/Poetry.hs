@@ -206,13 +206,7 @@ graphFromPyProjectAndLockFile pyProject poetryLock = graph
     labelOptionalDepsIfPoetryGt1_5 g = if isLockLt1_5 then g else Graphing.gmap markEmptyEnvAsOptionalDep g
 
     isLockLt1_5 :: Bool
-    isLockLt1_5 =
-      "0" `Text.isPrefixOf` lockVersion
-        || "1.0" `Text.isPrefixOf` lockVersion
-        || "1.1" `Text.isPrefixOf` lockVersion
-        || "1.2" `Text.isPrefixOf` lockVersion
-        || "1.3" `Text.isPrefixOf` lockVersion
-        || "1.4" `Text.isPrefixOf` lockVersion
+    isLockLt1_5 = any (`Text.isPrefixOf` lockVersion) ["0", "1.0", "1.1", "1.2", "1.3", "1.4"]
 
     lockVersion :: Text
     lockVersion = poetryMetadataLockVersion . poetryLockMetadata $ poetryLock
