@@ -1,7 +1,13 @@
 # FOSSA CLI Changelog
 
-## v3.9.15
+## v3.9.16
 - Poetry: Adds partial support for dependency groups. ([#1420](https://github.com/fossas/fossa-cli/pull/1420)). 
+
+## v3.9.15
+- Change TLS to a version that takes advantage of but does not require 1.2 with EMS.
+  This will be reverted in six months.
+  On-prem users should upgrade their servers to support either TLS 1.2 with EMS or TLS 1.3.
+  SAAS customers are unaffected. ([#1418](https://github.com/fossas/fossa-cli/pull/1418)).
 
 ## v3.9.14
 - Cargo: Update cargo strategy to parse new `cargo metadata` format for cargo >= 1.77.0 ([#1416](https://github.com/fossas/fossa-cli/pull/1416)).
