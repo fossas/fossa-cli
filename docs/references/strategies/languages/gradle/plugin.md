@@ -63,15 +63,11 @@ Configuration cache problems found in this build.
 ```
 
 This is a Gradle specific issue with the "configuration cache" feature in relation to the plugin FOSSA uses.
-When the document you're reading was written, the Gradle documentation had this to say about the Gradle configuration cache:
+The Gradle configuration cache is enabled by setting `org.gradle.unsafe.configuration-cache=true` in your `gradle.properties`.
 
-> This feature is currently not enabled by default. This feature has the following limitations:
->
-> - The configuration cache does not support all core Gradle plugins and features. Full support is a work in progress.
-> - Your build and the plugins you depend on might require changes to fulfil the requirements.
-> - IDE imports and syncs do not yet use the configuration cache.
+According to the Gradle documentation, the Gradle configuration cache is not compatible with all "Gradle plugins and features"; the plugin used by FOSSA CLI appears to be one of them.
 
 > [!TIP]
 > You can read more about the [Gradle configuration cache here](https://docs.gradle.org/current/userguide/configuration_cache.html).
 
-Specific resolution steps depend on your project and Gradle version, but a possible resolution is to set `org.gradle.unsafe.configuration-cache-problems=warn` in your `gradle.properties`. This modifies configuration cache problems such that they become warnings instead of errors.
+Specific resolution steps depend on your project and Gradle version, but a possible resolution is to set `org.gradle.unsafe.configuration-cache-problems=warn` in your `gradle.properties`. This modifies configuration cache problems such that they become warnings instead of errors, and stop preventing the project from building when FOSSA CLI attempts to analyze it.
