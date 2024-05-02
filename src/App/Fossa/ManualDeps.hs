@@ -32,7 +32,6 @@ import App.Fossa.VendoredDependency (
   forceVendoredToArchive,
   vendoredDependencyScanModeToDependencyRebuild,
  )
-import App.Types (FileUpload (..))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errHelp, fatal, fatalText)
