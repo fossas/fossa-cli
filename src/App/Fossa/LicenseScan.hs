@@ -21,7 +21,7 @@ import App.Fossa.VendoredDependency (
   VendoredDependency,
   dedupVendoredDeps,
  )
-import App.Types (BaseDir (BaseDir), FullFileUploads (FullFileUploads))
+import App.Types (BaseDir (BaseDir), FileUpload (FileUploadMatchData))
 import Control.Carrier.StickyLogger (
   Has,
   StickyLogger,
@@ -104,8 +104,7 @@ outputVendoredDeps (BaseDir dir) = runStickyLogger SevInfo $ do
   resultMap <- UploadUnits <$> runLicenseScan dir licenseScanPathFilters vendoredDeps
   logStdout . decodeUtf8 $ Aeson.encode resultMap
 
--- runLicenseScan does not require an API key, so we can't get the FullFileUploads param from the organization,
--- so we just default FullFileUploads to False.
+-- runLicenseScan does not require an API key, so we can't query the organization; default to uploading match data only.
 runLicenseScan ::
   ( Has Diagnostics sig m
   , Has ReadFS sig m
@@ -117,4 +116,4 @@ runLicenseScan ::
   Maybe LicenseScanPathFilters ->
   NonEmpty VendoredDependency ->
   m (NonEmpty LicenseSourceUnit)
-runLicenseScan basedir licenseScanPathFilters vdeps = dedupVendoredDeps vdeps >>= traverse (scanVendoredDep basedir licenseScanPathFilters $ FullFileUploads False)
+runLicenseScan basedir licenseScanPathFilters vdeps = dedupVendoredDeps vdeps >>= traverse (scanVendoredDep basedir licenseScanPathFilters FileUploadMatchData)

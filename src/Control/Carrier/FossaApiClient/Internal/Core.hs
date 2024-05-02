@@ -39,7 +39,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Config.Test (DiffRevision)
 import App.Fossa.VendoredDependency (VendoredDependency (..))
-import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision (..), ReleaseGroupReleaseRevision)
+import App.Types (FileUpload, ProjectMetadata, ProjectRevision (..), ReleaseGroupReleaseRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
@@ -50,13 +50,12 @@ import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
-import Data.ByteString.Char8 qualified as C8
 import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Fossa.API.Types (
   ApiOpts,
-  Archive,
+  ArchiveComponents,
   Build,
   Contributors,
   CustomBuildUploadPermissions,
@@ -157,11 +156,11 @@ uploadAnalysisWithFirstPartyLicenses ::
   ) =>
   ProjectRevision ->
   ProjectMetadata ->
-  FullFileUploads ->
+  FileUpload ->
   m UploadResponse
-uploadAnalysisWithFirstPartyLicenses revision metadata fullFileUploads = do
+uploadAnalysisWithFirstPartyLicenses revision metadata upload = do
   apiOpts <- ask
-  API.uploadAnalysisWithFirstPartyLicenses apiOpts revision metadata fullFileUploads
+  API.uploadAnalysisWithFirstPartyLicenses apiOpts revision metadata upload
 
 uploadNativeContainerScan ::
   ( Has (Lift IO) sig m
@@ -258,8 +257,8 @@ queueArchiveBuild ::
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  Archive ->
-  m (Maybe C8.ByteString)
+  ArchiveComponents ->
+  m ()
 queueArchiveBuild archive = do
   apiOpts <- ask
   API.archiveBuildUpload apiOpts archive

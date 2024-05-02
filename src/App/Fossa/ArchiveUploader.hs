@@ -11,6 +11,7 @@ import App.Fossa.VendoredDependency (
   dedupVendoredDeps,
   hashFile,
  )
+import App.Types (DependencyRebuild, FileUpload)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.StickyLogger (StickyLogger, logSticky)
 import Control.Effect.Diagnostics (context)
@@ -76,10 +77,12 @@ archiveUploadSourceUnit ::
   , Has Logger sig m
   , Has FossaApiClient sig m
   ) =>
+  FileUpload ->
+  DependencyRebuild ->
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
   m (NonEmpty Locator)
-archiveUploadSourceUnit baseDir vendoredDeps = do
+archiveUploadSourceUnit upload rebuild baseDir vendoredDeps = do
   uniqDeps <- dedupVendoredDeps vendoredDeps
 
   -- At this point, we have a good list of deps, so go for it.
@@ -89,8 +92,7 @@ archiveUploadSourceUnit baseDir vendoredDeps = do
   -- orgID is appended when creating the build on the backend.  We don't care
   -- about the response here because if the build has already been queued, we
   -- get a 401 response.
-  res <- traverse queueArchiveBuild (NonEmpty.toList archives)
-  logDebug $ pretty $ show res
+  _ <- queueArchiveBuild $ ArchiveComponents (NonEmpty.toList archives) rebuild upload
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API
   -- automatically prefixes the locator when queuing the build but not when

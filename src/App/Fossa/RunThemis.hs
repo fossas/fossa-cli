@@ -14,7 +14,7 @@ import App.Fossa.EmbeddedBinary (
   ThemisIndex,
   toPath,
  )
-import App.Types (FullFileUploads (unFullFileUploads))
+import App.Types (FileUpload (..))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.ByteString.Lazy qualified as BL
 import Data.String.Conversion (toText)
@@ -56,10 +56,14 @@ generateThemisArgs taggedThemisIndex pathPrefix flags =
     <> flags
     <> ["."]
 
-themisFlags :: Maybe LicenseScanPathFilters -> FullFileUploads -> [Text]
-themisFlags Nothing fullFileUploads = if unFullFileUploads fullFileUploads then ["--srclib-with-full-files"] else ["--srclib-with-matches"]
-themisFlags (Just filters) fullFileUploads =
-  let defaultFilter = if unFullFileUploads fullFileUploads then ["--srclib-with-full-files"] else ["--srclib-with-matches"]
+themisFlags :: Maybe LicenseScanPathFilters -> FileUpload -> [Text]
+themisFlags Nothing upload = themisContentFlag upload
+themisFlags (Just filters) upload =
+  let defaultFilter = themisContentFlag upload
       onlyFilters = concatMap (\only -> ["--only-paths", unGlobFilter only]) $ licenseScanPathFiltersOnly filters
       exceptFilters = concatMap (\exclude -> ["--exclude-paths", unGlobFilter exclude]) $ licenseScanPathFiltersExclude filters
    in defaultFilter ++ onlyFilters ++ exceptFilters
+
+themisContentFlag :: FileUpload -> [Text]
+themisContentFlag FileUploadMatchData = ["--srclib-with-matches"]
+themisContentFlag FileUploadFullContent = ["--srclib-with-full-files"]

@@ -4,11 +4,11 @@ module App.Fossa.LicenseScannerSpec (spec) where
 
 import App.Fossa.LicenseScanner (combineLicenseUnits, licenseScanSourceUnit)
 import App.Fossa.VendoredDependency (VendoredDependencyScanMode (..))
-import App.Types (FullFileUploads (..))
+import App.Types (DependencyRebuild (..), FileUpload (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (..))
 import Data.List.NonEmpty qualified as NE
-import Fossa.API.Types (Archive, ArchiveComponents (ArchiveComponents, archives, forceRebuild, fullFiles), Organization (orgRequiresFullFileUploads))
+import Fossa.API.Types (Archive, ArchiveComponents (..), Organization (orgRequiresFullFileUploads))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
 import Srclib.Types (
@@ -100,7 +100,7 @@ spec = do
       expectGetOrganization
       expectEverythingScannedAlready
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing (FullFileUploads False) scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing FileUploadMatchData scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should scan all if Core does not know about the revisions" $ do
@@ -112,7 +112,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing (FullFileUploads False) scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing FileUploadMatchData scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should scan all if the revisions are still being scanned" $ do
@@ -124,7 +124,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing (FullFileUploads False) scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing FileUploadMatchData scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should scan one if one revision is still being scanned" $ do
@@ -134,7 +134,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "first-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.firstLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing (FullFileUploads False) scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing FileUploadMatchData scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should always scan all if vendor dependency skipping is not supported" $ do
@@ -145,7 +145,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScan Fixtures.archives
-      locators <- licenseScanSourceUnit SkippingNotSupported Nothing (FullFileUploads False) scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkippingNotSupported Nothing FileUploadMatchData scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should always scan all if the --force-vendor-dependency-rescans flag is used" $ do
@@ -156,7 +156,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScanWithForceRebuild Fixtures.archives
-      locators <- licenseScanSourceUnit SkippingDisabledViaFlag Nothing (FullFileUploads False) scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkippingDisabledViaFlag Nothing FileUploadMatchData scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
     it' "should upload with the fullFiles flag if the org requires full files" $ do
@@ -168,7 +168,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadLicenseScanResult Fixtures.secondLicenseSourceUnit
       expectFinalizeScanWithFullFiles Fixtures.archives
-      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing (FullFileUploads True) scanDir Fixtures.vendoredDeps
+      locators <- licenseScanSourceUnit SkipPreviouslyScanned Nothing FileUploadFullContent scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
 expectGetApiOpts :: Has MockApi sig m => m ()
@@ -210,12 +210,12 @@ expectUploadLicenseScanResult licenseUnit =
 
 expectFinalizeScan :: Has MockApi sig m => [Archive] -> m ()
 expectFinalizeScan as =
-  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = False, fullFiles = (FullFileUploads False)}) `returnsOnce` ()
+  FinalizeLicenseScan (ArchiveComponents as DependencyRebuildReuseCache FileUploadMatchData) `returnsOnce` ()
 
 expectFinalizeScanWithForceRebuild :: Has MockApi sig m => [Archive] -> m ()
 expectFinalizeScanWithForceRebuild as =
-  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = True, fullFiles = (FullFileUploads False)}) `returnsOnce` ()
+  FinalizeLicenseScan (ArchiveComponents as DependencyRebuildInvalidateCache FileUploadMatchData) `returnsOnce` ()
 
 expectFinalizeScanWithFullFiles :: Has MockApi sig m => [Archive] -> m ()
 expectFinalizeScanWithFullFiles as =
-  (FinalizeLicenseScan ArchiveComponents{archives = as, forceRebuild = False, fullFiles = (FullFileUploads True)}) `returnsOnce` ()
+  FinalizeLicenseScan (ArchiveComponents as DependencyRebuildReuseCache FileUploadFullContent) `returnsOnce` ()

@@ -65,11 +65,10 @@ import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency)
-import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision, ReleaseGroupReleaseRevision)
+import App.Types (FileUpload, ProjectMetadata, ProjectRevision, ReleaseGroupReleaseRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
-import Data.ByteString.Char8 qualified as C8
 import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -78,7 +77,6 @@ import Data.Text (Text)
 import Fossa.API.Types (
   AnalyzedPathDependency,
   ApiOpts,
-  Archive,
   ArchiveComponents,
   Build,
   Contributors,
@@ -134,12 +132,12 @@ data FossaApiClientF a where
   GetAnalyzedPathRevisions :: ProjectRevision -> FossaApiClientF [AnalyzedPathDependency]
   GetSignedFirstPartyScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
-  GetPathDependencyScanUrl :: PackageRevision -> ProjectRevision -> FullFileUploads -> FossaApiClientF PathDependencyUpload
+  GetPathDependencyScanUrl :: PackageRevision -> ProjectRevision -> FileUpload -> FossaApiClientF PathDependencyUpload
   GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetTokenType :: FossaApiClientF TokenTypeResponse
   GetVsiInferences :: VSI.ScanID -> FossaApiClientF VSI.VsiExportedInferencesBody
   GetVsiScanAnalysisStatus :: VSI.ScanID -> FossaApiClientF VSI.AnalysisStatus
-  QueueArchiveBuild :: Archive -> FossaApiClientF (Maybe C8.ByteString)
+  QueueArchiveBuild :: ArchiveComponents -> FossaApiClientF ()
   ResolveProjectDependencies :: VSI.Locator -> FossaApiClientF [VSI.Locator]
   ResolveUserDefinedBinary :: IAT.UserDep -> FossaApiClientF IAT.UserDefinedAssertionMeta
   UploadAnalysis ::
@@ -150,7 +148,7 @@ data FossaApiClientF a where
   UploadAnalysisWithFirstPartyLicenses ::
     ProjectRevision ->
     ProjectMetadata ->
-    FullFileUploads ->
+    FileUpload ->
     FossaApiClientF UploadResponse
   UploadArchive :: SignedURL -> FilePath -> FossaApiClientF ByteString
   UploadNativeContainerScan ::
@@ -202,8 +200,8 @@ uploadAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetada
 uploadAnalysis revision metadata units = sendSimple (UploadAnalysis revision metadata units)
 
 -- | Uploads the results of a first-party analysis and associates it to a project
-uploadAnalysisWithFirstPartyLicenses :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> FullFileUploads -> m UploadResponse
-uploadAnalysisWithFirstPartyLicenses revision metadata fullFileUploads = sendSimple (UploadAnalysisWithFirstPartyLicenses revision metadata fullFileUploads)
+uploadAnalysisWithFirstPartyLicenses :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> FileUpload -> m UploadResponse
+uploadAnalysisWithFirstPartyLicenses revision metadata upload = sendSimple (UploadAnalysisWithFirstPartyLicenses revision metadata upload)
 
 -- | Uploads results of container analysis performed by native scanner to a project
 uploadNativeContainerScan :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NativeContainer.ContainerScan -> m UploadResponse
@@ -231,7 +229,7 @@ getSignedUploadUrl = sendSimple . GetSignedUploadUrl
 uploadArchive :: Has FossaApiClient sig m => SignedURL -> FilePath -> m ByteString
 uploadArchive dest path = sendSimple (UploadArchive dest path)
 
-queueArchiveBuild :: Has FossaApiClient sig m => Archive -> m (Maybe C8.ByteString)
+queueArchiveBuild :: Has FossaApiClient sig m => ArchiveComponents -> m ()
 queueArchiveBuild = sendSimple . QueueArchiveBuild
 
 assertRevisionBinaries :: Has FossaApiClient sig m => Locator -> [Fingerprint Raw] -> m ()
@@ -252,8 +250,8 @@ getSignedFirstPartyScanUrl = sendSimple . GetSignedFirstPartyScanUrl
 getSignedLicenseScanUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
 getSignedLicenseScanUrl = sendSimple . GetSignedLicenseScanUrl
 
-uploadPathDependencyScan :: Has FossaApiClient sig m => PackageRevision -> ProjectRevision -> FullFileUploads -> m PathDependencyUpload
-uploadPathDependencyScan pkgRev projectRevision fullFileUpload = sendSimple $ GetPathDependencyScanUrl pkgRev projectRevision fullFileUpload
+uploadPathDependencyScan :: Has FossaApiClient sig m => PackageRevision -> ProjectRevision -> FileUpload -> m PathDependencyUpload
+uploadPathDependencyScan pkgRev projectRevision upload = sendSimple $ GetPathDependencyScanUrl pkgRev projectRevision upload
 
 finalizeLicenseScan :: Has FossaApiClient sig m => ArchiveComponents -> m ()
 finalizeLicenseScan = sendSimple . FinalizeLicenseScan

@@ -8,7 +8,7 @@ module Strategy.Conan.Enrich (
 
 import App.Fossa.LicenseScanner (licenseScanSourceUnit)
 import App.Fossa.VendoredDependency (VendoredDependency (..), VendoredDependencyScanMode (SkippingNotSupported))
-import App.Types (FullFileUploads (..))
+import App.Types (FileUpload (..))
 import Control.Algebra (Has)
 import Control.Carrier.Lift (Lift)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, errHelp, errSupport, fatal)
@@ -56,10 +56,10 @@ conanToArchives ::
   , Has FossaApiClient sig m
   ) =>
   Path Abs Dir -> -- directory of the project's manifest
-  FullFileUploads ->
+  FileUpload ->
   Graphing Dependency -> -- graph whose conan dependency to make archives
   m (Graphing Dependency) -- graph with archive dependencies
-conanToArchives rootPath fullfileUploads g =
+conanToArchives rootPath upload g =
   -- If we do not have any conan dependencies, we do not
   -- need to do any work!
   case (null unableToTransformConanDep, transformedVendorDep) of
@@ -77,7 +77,7 @@ conanToArchives rootPath fullfileUploads g =
           -- manifest are rarely updated with changes in practice
           SkippingNotSupported
           Nothing -- Ignore path filters
-          fullfileUploads
+          upload
           rootPath
           vendorDeps
 
