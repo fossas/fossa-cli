@@ -725,7 +725,7 @@ uploadAnalysisWithFirstPartyLicenses ::
   ProjectMetadata ->
   FileUpload ->
   m UploadResponse
-uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata fullFileUploads = fossaReq $ do
+uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata upload = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts =
@@ -736,7 +736,7 @@ uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata fullFi
           <> "managedBuild"
             =: True
           <> "cliLicenseScanType"
-            =: (toText fullFileUploads)
+            =: toText upload
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
@@ -1511,10 +1511,10 @@ getUploadURLForPathDependency ::
   ProjectRevision ->
   FileUpload ->
   m PathDependencyUpload
-getUploadURLForPathDependency apiOpts path version ProjectRevision{..} fullFileUpload = fossaReq $ do
+getUploadURLForPathDependency apiOpts path version ProjectRevision{..} upload = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   let projectLocator = Locator "custom" projectName (Just projectRevision)
-  let req' = PathDependencyUploadReq path version projectLocator fullFileUpload
+  let req' = PathDependencyUploadReq path version projectLocator upload
   response <-
     context ("Retrieving a signed S3 URL for license scan results of " <> path) $
       req POST (signedLicenseScanPathDependencyURLEndpoint baseUrl) (ReqBodyJson req') jsonResponse baseOpts

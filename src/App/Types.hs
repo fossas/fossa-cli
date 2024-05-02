@@ -177,7 +177,8 @@ data FileUpload
   deriving (Eq, Ord, Show, Generic)
 
 instance ToText FileUpload where
-  toText = showText
+  toText FileUploadMatchData = "match_data"
+  toText FileUploadFullContent = "full_files"
 
 instance ToJSON FileUpload where
   toJSON FileUploadMatchData = "match_data"
