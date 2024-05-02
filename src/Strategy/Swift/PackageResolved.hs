@@ -85,19 +85,12 @@ parserForVersion version = fromMaybe (NE.head allParsers) findVersion
     -- Rather than paying the cost of sorting at runtime, the parent function assumes the "default" parser is the first in the list.
     -- Ensure when adding new parsers that the new parser is added in the appropriate place based on this.
     allParsers :: NonEmpty PackageResolvedParser
-    allParsers = PackageResolvedParser 2 parseV2 :| [PackageResolvedParser 1 parseV1]
+    allParsers = PackageResolvedParser 3 parseV3 :| [PackageResolvedParser 2 parseV2, PackageResolvedParser 1 parseV1]
 
-parseV1 :: Integer -> Object -> Parser SwiftPackageResolvedFile
-parseV1 version obj = SwiftPackageResolvedFile version <$> ((obj .: "object" |> "pins") >>= traverse (withObject "Package.resolved v1 pin" parseV1Pin))
-
-parseV1Pin :: Object -> Parser SwiftResolvedPackage
-parseV1Pin obj =
-  SwiftResolvedPackage
-    <$> obj .: "package"
-    <*> obj .: "repositoryURL"
-    <*> (obj .:? "state" |?> "branch")
-    <*> (obj .:? "state" |?> "revision")
-    <*> (obj .:? "state" |?> "version")
+-- | From the Swift Package Manager source code, the pins did not change in v3:
+-- https://github.com/apple/swift-package-manager/blob/9aa348e8eecc44fb6f93e1ef46e6dbd29947f4e7/Sources/PackageGraph/PinsStore.swift#L470
+parseV3 :: Integer -> Object -> Parser SwiftPackageResolvedFile
+parseV3 = parseV2
 
 parseV2 :: Integer -> Object -> Parser SwiftPackageResolvedFile
 parseV2 version obj = SwiftPackageResolvedFile version <$> ((obj .: "pins") >>= traverse (withObject "Package.resolved v2 pin" parseV2Pin))
@@ -108,6 +101,18 @@ parseV2Pin obj =
     <$> obj .: "identity"
     <*> obj .: "location"
     <*> pure Nothing
+    <*> (obj .:? "state" |?> "revision")
+    <*> (obj .:? "state" |?> "version")
+
+parseV1 :: Integer -> Object -> Parser SwiftPackageResolvedFile
+parseV1 version obj = SwiftPackageResolvedFile version <$> ((obj .: "object" |> "pins") >>= traverse (withObject "Package.resolved v1 pin" parseV1Pin))
+
+parseV1Pin :: Object -> Parser SwiftResolvedPackage
+parseV1Pin obj =
+  SwiftResolvedPackage
+    <$> obj .: "package"
+    <*> obj .: "repositoryURL"
+    <*> (obj .:? "state" |?> "branch")
     <*> (obj .:? "state" |?> "revision")
     <*> (obj .:? "state" |?> "version")
 
