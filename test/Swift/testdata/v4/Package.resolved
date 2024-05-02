@@ -12,5 +12,5 @@
       "extra": "some extra field that didn't exist in v3"
     }
   ],
-  "version" : 3
+  "version" : 4
 }
