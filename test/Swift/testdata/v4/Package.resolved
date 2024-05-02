@@ -1,0 +1,16 @@
+{
+  "originHash" : "fbfc6b659421b42ead4ad2cfb780bcd9992922da94fe0df8024fd7086598dc08",
+  "pins" : [
+    {
+      "identity" : "vonage-client-sdk-video",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/opentok/vonage-client-sdk-video.git",
+      "state" : {
+        "revision" : "e4b1af1808067f0c0a66fa85aaf99915b542a579",
+        "version" : "2.27.2"
+      },
+      "extra": "some extra field that didn't exist in v3"
+    }
+  ],
+  "version" : 3
+}
