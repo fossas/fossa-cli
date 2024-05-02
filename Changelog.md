@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.9.16
+- Resolves an issue where `vendored-dependencies` were rescanned locally, but not in the FOSSA service,
+  when `forceRescans` was set to `true` ([#1423](https://github.com/fossas/fossa-cli/pull/1423)).
+
 ## v3.9.15
 - Change TLS to a version that takes advantage of but does not require 1.2 with EMS.
   This will be reverted in six months.
