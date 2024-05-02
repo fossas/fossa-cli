@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## v3.9.16
+- Adds support for SwiftPM v3 files ([#1424](https://github.com/fossas/fossa-cli/pull/1424)).
+  Future SwiftPM file formats will be accepted automatically if they remain backwards compatible with the current parser.
+
 ## v3.9.15
 - Change TLS to a version that takes advantage of but does not require 1.2 with EMS.
   This will be reverted in six months.
