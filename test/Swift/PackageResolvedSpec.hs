@@ -69,6 +69,21 @@ expectedV2ResolvedContent =
         ]
     }
 
+expectedV3ResolvedContent :: SwiftPackageResolvedFile
+expectedV3ResolvedContent =
+  SwiftPackageResolvedFile
+    { version = 3
+    , pinnedPackages =
+        [ SwiftResolvedPackage
+            { package = "vonage-client-sdk-video"
+            , repositoryURL = "https://github.com/opentok/vonage-client-sdk-video.git"
+            , repositoryBranch = Nothing
+            , repositoryRevision = Just "e4b1af1808067f0c0a66fa85aaf99915b542a579"
+            , repositoryVersion = Just "2.27.2"
+            }
+        ]
+    }
+
 spec :: Spec
 spec = do
   describe "parse Package.resolved file" $ do
@@ -78,3 +93,6 @@ spec = do
     it "should parse v2 content correctly" $ do
       resolvedFile <- decodeFileStrict' "test/Swift/testdata/v2/Package.resolved"
       resolvedFile `shouldBe` Just expectedV2ResolvedContent
+    it "should parse v3 content correctly" $ do
+      resolvedFile <- decodeFileStrict' "test/Swift/testdata/v3/Package.resolved"
+      resolvedFile `shouldBe` Just expectedV3ResolvedContent
