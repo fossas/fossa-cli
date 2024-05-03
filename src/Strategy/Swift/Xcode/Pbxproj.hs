@@ -17,7 +17,7 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes (DepType (GitType, SwiftType), Dependency (..))
 import Diag.Common (MissingDeepDeps (MissingDeepDeps))
-import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsParser)
+import Effect.ReadFS (Has, ReadFS, readContentsParser)
 import Errata (Errata (..))
 import Graphing (Graphing, deeps, directs, promoteToDirect)
 import Path
@@ -28,7 +28,7 @@ import Strategy.Swift.Errors (
   swiftPackageResolvedRef,
   xcodeCoordinatePkgVersion,
  )
-import Strategy.Swift.PackageResolved (SwiftPackageResolvedFile, resolvedDependenciesOf)
+import Strategy.Swift.PackageResolved (SwiftPackageResolvedFile, parsePackageResolved, resolvedDependenciesOf)
 import Strategy.Swift.PackageSwift (
   SwiftPackageGitDepRequirement (..),
   isGitRefConstraint,
@@ -119,7 +119,7 @@ hasSomeSwiftDeps projFile = do
 analyzeXcodeProjForSwiftPkg :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> Maybe (Path Abs File) -> m (Graphing.Graphing Dependency)
 analyzeXcodeProjForSwiftPkg xcodeProjFile resolvedFile = do
   xCodeProjContent <-
-    context "Identifying swift package references in xcode project file" $
+    context "Identify swift package references in xcode project file" $
       readContentsParser parsePbxProj xcodeProjFile
 
   packageResolvedContent <- case resolvedFile of
@@ -133,8 +133,8 @@ analyzeXcodeProjForSwiftPkg xcodeProjFile resolvedFile = do
           . errDoc swiftPackageResolvedRef
           . errDoc xcodeCoordinatePkgVersion
           $ fatalText "Package.resolved file was not discovered"
-    Just packageResolved ->
-      context "Identifying dependencies in Package.resolved" $
-        readContentsJson packageResolved
+    Just file ->
+      context "Identify dependencies in Package.resolved" $
+        Just <$> parsePackageResolved file
 
-  context "Building dependency graph" $ pure $ buildGraph xCodeProjContent packageResolvedContent
+  context "Build dependency graph" $ pure $ buildGraph xCodeProjContent packageResolvedContent
