@@ -9,16 +9,18 @@ module Strategy.Python.Poetry.PyProject (
   PyProjectPoetryGitDependency (..),
   PyProjectPoetryUrlDependency (..),
   PyProjectPoetryDetailedVersionDependency (..),
+  allPoetryProductionDeps,
 
   -- * for testing only
   parseConstraintExpr,
   toDependencyVersion,
+  allPoetryNonProductionDeps,
 ) where
 
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Foldable (asum)
 import Data.Functor (void)
-import Data.Map (Map)
+import Data.Map (Map, unions)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -113,9 +115,37 @@ data PyProjectPoetry = PyProjectPoetry
   , version :: Maybe Text
   , description :: Maybe Text
   , dependencies :: Map Text PoetryDependency
-  , devDependencies :: Map Text PoetryDependency
+  , -- For Poetry pre-1.2.x style, understood by Poetry 1.0–1.2
+    devDependencies :: Map Text PoetryDependency
+  , -- Since v1.2.0 of poetry, dependency groups are recommanded way to
+    -- provide development, test, and other optional dependencies.
+    -- refer to: https://python-poetry.org/docs/managing-dependencies#dependency-groups
+    --
+    -- Due to current toml-parsing limitations, we explicitly specify dev, and
+    -- test group only. Note that any dependencies from these groups are excluded
+    -- by default. refer to: https://github.com/kowainik/tomland/issues/336
+    groupDevDependencies :: Map Text PoetryDependency
+  , groupTestDependencies :: Map Text PoetryDependency
   }
   deriving (Show, Eq, Ord)
+
+allPoetryProductionDeps :: PyProject -> Map Text PoetryDependency
+allPoetryProductionDeps project = case pyprojectPoetry project of
+  Just (PyProjectPoetry{dependencies}) -> dependencies
+  _ -> mempty
+
+allPoetryNonProductionDeps :: PyProject -> Map Text PoetryDependency
+allPoetryNonProductionDeps project = unions [olderPoetryDevDeps, optionalDeps]
+  where
+    optionalDeps :: Map Text PoetryDependency
+    optionalDeps = case pyprojectPoetry project of
+      Just (PyProjectPoetry{groupDevDependencies, groupTestDependencies}) -> unions [groupDevDependencies, groupTestDependencies]
+      _ -> mempty
+
+    olderPoetryDevDeps :: Map Text PoetryDependency
+    olderPoetryDevDeps = case pyprojectPoetry project of
+      Just (PyProjectPoetry{devDependencies}) -> devDependencies
+      _ -> mempty
 
 data PoetryDependency
   = PoetryTextVersion Text
@@ -133,6 +163,8 @@ pyProjectPoetryCodec =
     <*> Toml.dioptional (Toml.text "description") .= description
     <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "dependencies" .= dependencies
     <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "dev-dependencies" .= devDependencies
+    <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "group.dev.dependencies" .= groupDevDependencies
+    <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "group.test.dependencies" .= groupTestDependencies
 
 pyProjectPoetryDependencyCodec :: Toml.Key -> TomlCodec PoetryDependency
 pyProjectPoetryDependencyCodec key =

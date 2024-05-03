@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.9.17
+- Poetry: Adds partial support for dependency groups. ([#1420](https://github.com/fossas/fossa-cli/pull/1420)). 
+
 ## v3.9.16
 - Treat `targets` field in the issue summary loaded from Core as optional during `fossa test` and `fossa report` ([#1422](https://github.com/fossas/fossa-cli/pull/1422)).
 - Resolves an issue where `vendored-dependencies` were rescanned locally, but not in the FOSSA service,
@@ -15,7 +18,7 @@
   SAAS customers are unaffected. ([#1418](https://github.com/fossas/fossa-cli/pull/1418)).
 
 ## v3.9.14
-- Update cargo strategy to parse new `cargo metadata` format for cargo >= 1.77.0 ([#1416](https://github.com/fossas/fossa-cli/pull/1416)).
+- Cargo: Update cargo strategy to parse new `cargo metadata` format for cargo >= 1.77.0 ([#1416](https://github.com/fossas/fossa-cli/pull/1416)).
 - `fossa release-group`: Add command to create a FOSSA release group release (`fossa release-group create-release`) [#1409](https://github.com/fossas/fossa-cli/pull/1409).
 - `fossa project`: Adds commands to interact with FOSSA projects (`fossa project edit`) [#1394](https://github.com/fossas/fossa-cli/pull/1395).
 
