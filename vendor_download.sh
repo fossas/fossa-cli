@@ -37,7 +37,7 @@ case "$(uname -s)" in
   Darwin)
     case "$(uname -m)" in
       arm64)
-        ASSET_POSTFIX="darwin-aarch64"
+        ASSET_POSTFIX="darwin-arm64"
         LERNIE_ASSET_POSTFIX="aarch64-macos"
         THEMIS_ASSET_POSTFIX="darwin-arm64"
         ;;
