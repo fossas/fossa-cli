@@ -39,8 +39,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadArchive
       expectUploadArchive
-      expectQueueArchiveBuild Fixtures.firstArchive
-      expectQueueArchiveBuild Fixtures.secondArchive
+      expectQueueArchiveBuilds [Fixtures.firstArchive, Fixtures.secondArchive]
       locators <- archiveUploadSourceUnit FileUploadMatchData DependencyRebuildReuseCache scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
@@ -51,6 +50,10 @@ expectUploadArchive = do
 expectQueueArchiveBuild :: Has MockApi sig m => Archive -> m ()
 expectQueueArchiveBuild archive =
   QueueArchiveBuild (ArchiveComponents [archive] DependencyRebuildReuseCache FileUploadMatchData) `returnsOnce` ()
+
+expectQueueArchiveBuilds :: Has MockApi sig m => [Archive] -> m ()
+expectQueueArchiveBuilds archives =
+  QueueArchiveBuild (ArchiveComponents archives DependencyRebuildReuseCache FileUploadMatchData) `returnsOnce` ()
 
 expectGetSignedUrl :: Has MockApi sig m => PackageRevision -> m ()
 expectGetSignedUrl packageRevision = GetSignedUploadUrl packageRevision `alwaysReturns` Fixtures.signedUrl
