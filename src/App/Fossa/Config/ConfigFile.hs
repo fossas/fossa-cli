@@ -17,6 +17,7 @@ module App.Fossa.Config.ConfigFile (
   ExperimentalGradleConfigs (..),
   VendoredDependencyConfigs (..),
   MavenScopeConfig (..),
+  MavenScopePredicate (..),
   ReachabilityConfigFile (..),
   ConfigReleaseGroup (..),
   ConfigReleaseGroupProject (..),
@@ -41,12 +42,14 @@ import Control.Effect.Lift (Lift)
 import Data.Aeson (
   FromJSON (parseJSON),
   ToJSON,
+  Value (..),
   withObject,
   withText,
   (.!=),
   (.:),
   (.:?),
  )
+import Data.Aeson.Types (typeMismatch)
 import Data.Error (createBody, renderErrataStack)
 import Data.Foldable (asum)
 import Data.Functor (($>))
@@ -56,6 +59,8 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text, strip, toLower)
+import Data.Vector (Vector)
+import Data.Vector qualified as Vector
 import Diag.Diagnostic (ToDiagnostic (..))
 import Effect.Logger (
   Logger,
@@ -285,7 +290,14 @@ newtype ExperimentalGradleConfigs = ExperimentalGradleConfigs
   {gradleConfigsOnly :: Set Text}
   deriving (Eq, Ord, Show)
 
-data MavenScopeConfig = MavenScopeOnlyConfig (Set Text) | MavenScopeExcludeConfig (Set Text)
+data MavenScopeConfig
+  = MavenScopeOnlyConfig (Set MavenScopePredicate)
+  | MavenScopeExcludeConfig (Set MavenScopePredicate)
+  deriving (Eq, Ord, Show)
+
+data MavenScopePredicate
+  = MavenScopePredicateSingle Text
+  | MavenScopePredicateCombined (Set Text)
   deriving (Eq, Ord, Show)
 
 instance FromJSON (Path Abs File -> ConfigFile) where
@@ -365,6 +377,13 @@ instance FromJSON MavenScopeConfig where
   parseJSON = withObject "MavenScopeConfig" $ \obj ->
     MavenScopeOnlyConfig . Set.fromList <$> (obj .: "scope-only" .!= [])
       <|> MavenScopeExcludeConfig . Set.fromList <$> (obj .:? "scope-exclude" .!= [])
+
+instance FromJSON MavenScopePredicate where
+  parseJSON (String scope) = pure . MavenScopePredicateSingle $ scope
+  parseJSON (Array scopes) = do
+    scopes' :: Vector Text <- traverse parseJSON scopes
+    pure . MavenScopePredicateCombined . Set.fromList . Vector.toList $ scopes'
+  parseJSON invalid = typeMismatch "MavenScopePredicate" invalid
 
 instance FromJSON ConfigTelemetry where
   parseJSON = withObject "ConfigTelemetry" $ \obj ->

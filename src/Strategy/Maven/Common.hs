@@ -12,8 +12,10 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import DepTypes (Dependency (..))
 
-import Discovery.Filters (FilterSet (scopes), MavenScopeFilters (..))
+import Discovery.Filters (MavenScopeFilterPredicate (..), MavenScopeFilters (..))
 
+import Data.List qualified as List
+import Data.Maybe (isJust, isNothing)
 import Graphing (Graphing, color, edgesList, reachableSuccessorsWithCondition, vertexList)
 import Graphing qualified
 
@@ -136,20 +138,15 @@ filterMavenSubmodules includedSubmoduleSet completeSubmoduleSet graph = do
       foldr (\submodule acc -> color acc dependencySubmodules updateDependencySubmodules submodule depNameFromMavenDependency (reachableNodesFromSubmodule $ depNameFromMavenDependency submodule)) g submodules
 
 filterMavenDependencyByScope :: MavenScopeFilters -> Graphing MavenDependency -> Graphing MavenDependency
-filterMavenDependencyByScope scopeFilters = Graphing.shrink isMavenDependencyIncluded
+filterMavenDependencyByScope scopeFilters = Graphing.shrink $ mavenDependencyShouldBeIncluded scopeFilters
   where
-    isMavenDependencyIncluded :: MavenDependency -> Bool
-    isMavenDependencyIncluded MavenDependency{..} = case scopeFilters of
-      MavenScopeIncludeFilters includeSet -> do
-        let includeScopes = scopes includeSet
-        case (Set.null dependencyScopes, Set.null includeScopes) of
-          (False, False) -> dependencyScopes `Set.isSubsetOf` includeScopes
-          (False, True) -> True
-          (True, False) -> False
-          (True, True) -> True
-      MavenScopeExcludeFilters excludeSet -> do
-        let excludeScopes = scopes excludeSet
-        case (Set.null dependencyScopes, Set.null excludeScopes) of
-          (False, False) -> dependencyScopes `Set.disjoint` excludeScopes
-          (False, True) -> True
-          (True, _) -> True
+    mavenDependencyShouldBeIncluded :: MavenScopeFilters -> MavenDependency -> Bool
+    mavenDependencyShouldBeIncluded (MavenScopeIncludeFilters filters) _ | filters == mempty = True
+    mavenDependencyShouldBeIncluded (MavenScopeExcludeFilters filters) _ | filters == mempty = True
+    mavenDependencyShouldBeIncluded (MavenScopeIncludeFilters filters) dep = isJust . List.find (mavenScopeFilterPredicateMatches dep) $ Set.toList filters
+    mavenDependencyShouldBeIncluded (MavenScopeExcludeFilters filters) dep = isNothing . List.find (mavenScopeFilterPredicateMatches dep) $ Set.toList filters
+
+    mavenScopeFilterPredicateMatches :: MavenDependency -> MavenScopeFilterPredicate -> Bool
+    mavenScopeFilterPredicateMatches MavenDependency{dependencyScopes} _ | dependencyScopes == mempty = True
+    mavenScopeFilterPredicateMatches MavenDependency{dependencyScopes} (MavenScopeFilterPredicateSingle scopePredicate) = Set.member scopePredicate dependencyScopes
+    mavenScopeFilterPredicateMatches MavenDependency{dependencyScopes} (MavenScopeFilterPredicateCombined scopePredicates) = Set.isSubsetOf scopePredicates dependencyScopes

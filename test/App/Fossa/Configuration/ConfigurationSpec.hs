@@ -17,6 +17,7 @@ import App.Fossa.Config.ConfigFile (
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (ExperimentalGradleConfigs),
   MavenScopeConfig (..),
+  MavenScopePredicate (MavenScopePredicateSingle),
   VendoredDependencyConfigs (..),
   resolveConfigFile,
  )
@@ -124,7 +125,7 @@ expectedExperimentalConfig =
 
 expectedMavenScopeConfig :: MavenScopeConfig
 expectedMavenScopeConfig =
-  MavenScopeOnlyConfig (Set.fromList ["compile", "runtime"])
+  MavenScopeOnlyConfig (Set.fromList [MavenScopePredicateSingle "compile", MavenScopePredicateSingle "runtime"])
 
 expectedVendoredDependencies :: VendoredDependencyConfigs
 expectedVendoredDependencies =

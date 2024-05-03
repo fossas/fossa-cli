@@ -68,6 +68,7 @@ import App.Fossa.Config.ConfigFile (
   ConfigTelemetry (telemetryScope),
   ConfigTelemetryScope (..),
   MavenScopeConfig (..),
+  MavenScopePredicate (..),
   mergeFileCmdMetadata,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
@@ -109,11 +110,13 @@ import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Bifunctor (Bifunctor (first))
 import Data.Functor.Extra ((<$$>))
 import Data.Maybe (fromMaybe)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.String (IsString)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text, null, strip, toLower)
 import Diag.Result (Result (Failure, Success), renderFailure)
-import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (..), comboExclude, comboInclude, setExclude, setInclude, targetFilterParser)
+import Discovery.Filters (AllFilters (..), MavenScopeFilterPredicate (..), MavenScopeFilters (..), comboExclude, comboInclude, targetFilterParser)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, logDebug, logInfo, renderIt, vsep)
 import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
@@ -576,5 +579,12 @@ collectConfigMavenScopeFilters configFile = do
   case maybeMavenScopeConfigs of
     Nothing -> MavenScopeIncludeFilters mempty
     Just mavenScopeConfig -> case mavenScopeConfig of
-      MavenScopeOnlyConfig filters -> MavenScopeIncludeFilters $ setInclude filters
-      MavenScopeExcludeConfig filters -> MavenScopeExcludeFilters $ setExclude filters
+      MavenScopeOnlyConfig filters -> MavenScopeIncludeFilters $ translatePredicates filters
+      MavenScopeExcludeConfig filters -> MavenScopeExcludeFilters $ translatePredicates filters
+  where
+    translatePredicates :: Set MavenScopePredicate -> Set MavenScopeFilterPredicate
+    translatePredicates preds = Set.fromList . fmap translatePredicate $ Set.toList preds
+
+    translatePredicate :: MavenScopePredicate -> MavenScopeFilterPredicate
+    translatePredicate (MavenScopePredicateSingle a) = MavenScopeFilterPredicateSingle a
+    translatePredicate (MavenScopePredicateCombined a) = MavenScopeFilterPredicateCombined a

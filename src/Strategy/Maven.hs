@@ -18,7 +18,7 @@ import Data.Set.NonEmpty (nonEmpty, toSet)
 import Data.Text hiding (group, map)
 import DepTypes (Dependency)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
-import Discovery.Filters (AllFilters, MavenScopeFilters, mavenScopeFilterSet)
+import Discovery.Filters (AllFilters, MavenScopeFilters)
 import Discovery.Simple (simpleDiscover)
 import Effect.Exec (CandidateCommandEffs)
 import Effect.ReadFS (ReadFS)
@@ -184,10 +184,7 @@ applyMavenFilters targetSet submoduleSet graph = do
     if targetSet == submoduleSet
       then pure graph
       else context "Filter maven submodules" $ pure (filterMavenSubmodules targetSet submoduleSet graph)
-  filteredSubmoduleScopeGraph <-
-    if Set.null $ mavenScopeFilterSet mavenScopeFilters
-      then pure filteredSubmoduleGraph
-      else context "Filter maven scopes" $ pure (filterMavenDependencyByScope mavenScopeFilters filteredSubmoduleGraph)
+  filteredSubmoduleScopeGraph <- context "Filter maven scopes" . pure $ filterMavenDependencyByScope mavenScopeFilters filteredSubmoduleGraph
   pure $ gmap mavenDependencyToDependency filteredSubmoduleScopeGraph
 
 submoduleTargetSet :: FoundTargets -> Set Text

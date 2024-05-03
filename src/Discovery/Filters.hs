@@ -8,6 +8,7 @@ module Discovery.Filters (
   FilterCombination,
   FilterMatch (..),
   FilterResult (..),
+  MavenScopeFilterPredicate (..),
   apply,
   filterIsVSIOnly,
   comboInclude,
@@ -23,10 +24,6 @@ module Discovery.Filters (
   ignoredPaths,
   isDefaultNonProductionPath,
   MavenScopeFilters (..),
-  FilterSet (..),
-  setInclude,
-  setExclude,
-  mavenScopeFilterSet,
 ) where
 
 import Control.Effect.Reader (Has, Reader, ask)
@@ -92,27 +89,47 @@ data FilterCombination a = FilterCombination
 instance ToJSON (FilterCombination a) where
   toEncoding = genericToEncoding defaultOptions
 
-data MavenScopeFilters = MavenScopeIncludeFilters (FilterSet Include) | MavenScopeExcludeFilters (FilterSet Exclude)
+-- | Describes a sum of products to be used for filtering.
+--
+-- /To make this example clearer, it uses the filters as written in the @.fossa.yml@ file below./
+-- /Translating from that structure to this type is performed elsewhere in the program but is straightforward./
+--
+-- Given the set of filters:
+--
+-- > scope-exclude:       # overall: excludes all with 'foo OR (provided AND test)'
+-- >   - foo              # excludes all with 'foo'
+-- >   - [provided, test] # excludes all with 'provided AND test'
+--
+-- The rules are applied as follows:
+--
+-- > Dependency ["foo"]                     # excluded, because "foo" matches the first rule.
+-- > Dependency ["foo", "test"]             # excluded, because "foo" matches the first rule.
+-- > Dependency ["provided", "test", "foo"] # excluded, because the dependency matches both parts of the second rule.
+-- > Dependency ["provided"]                # not excluded: doesn't have "test", which is required for the second rule.
+--
+-- Similarly, with this set of filters:
+--
+-- > scope-only:          # overall: includes all with 'foo OR (provided AND test)'
+-- >   - foo              # includes all with 'foo'
+-- >   - [provided, test] # includes all with 'provided AND test'
+--
+-- The rules are applied as follows:
+--
+-- > Dependency ["foo"]                     # included, because "foo" matches the first rule.
+-- > Dependency ["foo", "test"]             # included, because "foo" matches the first rule.
+-- > Dependency ["provided", "test", "foo"] # included, because the dependency matches both parts of the second rule.
+-- > Dependency ["provided"]                # not included: doesn't have "test", which is required for the second rule.
+data MavenScopeFilters
+  = MavenScopeIncludeFilters (Set MavenScopeFilterPredicate)
+  | MavenScopeExcludeFilters (Set MavenScopeFilterPredicate)
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON MavenScopeFilters where
-  toEncoding = genericToEncoding defaultOptions
-
-newtype FilterSet a = FilterSet
-  {scopes :: Set Text}
+data MavenScopeFilterPredicate
+  = MavenScopeFilterPredicateSingle Text
+  | MavenScopeFilterPredicateCombined (Set Text)
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON (FilterSet a) where
-  toEncoding = genericToEncoding defaultOptions
-
-instance Semigroup (FilterSet a) where
-  (FilterSet a1) <> (FilterSet a2) = FilterSet (a1 <> a2)
-
-instance Monoid (FilterSet a) where
-  mempty = FilterSet mempty
-
-type role FilterSet nominal
-type role FilterCombination nominal
+instance ToJSON MavenScopeFilterPredicate
 
 data Include
 
@@ -123,10 +140,6 @@ instance Semigroup (FilterCombination a) where
 
 instance Monoid (FilterCombination a) where
   mempty = FilterCombination mempty mempty
-
-mavenScopeFilterSet :: MavenScopeFilters -> Set Text
-mavenScopeFilterSet (MavenScopeIncludeFilters filterSet) = scopes filterSet
-mavenScopeFilterSet (MavenScopeExcludeFilters filterSet) = scopes filterSet
 
 withMultiToolFilter :: Has (Reader AllFilters) sig m => [DiscoveredProjectType] -> m [a] -> m [a]
 withMultiToolFilter tools act = do
@@ -233,12 +246,6 @@ comboInclude = FilterCombination
 
 comboExclude :: [TargetFilter] -> [Path Rel Dir] -> FilterCombination Exclude
 comboExclude = FilterCombination
-
-setInclude :: (Set Text) -> FilterSet Include
-setInclude = FilterSet
-
-setExclude :: (Set Text) -> FilterSet Exclude
-setExclude = FilterSet
 
 combinedTargets :: FilterCombination a -> [TargetFilter]
 combinedTargets = _combinedTargets
