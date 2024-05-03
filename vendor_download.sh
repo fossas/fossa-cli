@@ -36,14 +36,15 @@ LERNIE_ASSET_POSTFIX=""
 case "$(uname -s)" in
   Darwin)
     ASSET_POSTFIX="darwin"
-    THEMIS_ASSET_POSTFIX="darwin-amd64"
     case "$(uname -m)" in
       arm64)
         LERNIE_ASSET_POSTFIX="aarch64-macos"
+        THEMIS_ASSET_POSTFIX="darwin-arm64"
         ;;
 
       *)
         LERNIE_ASSET_POSTFIX="x86_64-macos"
+        THEMIS_ASSET_POSTFIX="darwin-amd64"
         ;;
     esac
     ;;
