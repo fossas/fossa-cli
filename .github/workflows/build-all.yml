@@ -36,8 +36,9 @@ jobs:
           os-name: Windows
           project-file: cabal.project.ci.windows
           ghc: '9.4.8'
+
         - os: macos-latest
-          os-name: macOS-aarch64
+          os-name: macOS-arm64
           project-file: cabal.project.ci.macos
           ghc: '9.4.8'
 
@@ -375,10 +376,10 @@ jobs:
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-intel-binaries/fossa
         zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-intel-binaries/diagnose
         zip -j release/millhone_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-intel-binaries/millhone
-        chmod +x macOS-aarch64-binaries/*
-        zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_aarch64.zip macOS-intel-binaries/fossa
-        zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_darwin_aarch64.zip macOS-intel-binaries/diagnose
-        zip -j release/millhone_${{ steps.get-version.outputs.VERSION }}_darwin_aarch64.zip macOS-intel-binaries/millhone
+        chmod +x macOS-arm64-binaries/*
+        zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip macOS-intel-binaries/fossa
+        zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip macOS-intel-binaries/diagnose
+        zip -j release/millhone_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip macOS-intel-binaries/millhone
 
         chmod +x Windows-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/fossa.exe
@@ -392,7 +393,7 @@ jobs:
         sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip.sha256"
         sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz" > "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz.sha256"
         sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip.sha256"
-        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_aarch64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_aarch64.zip.sha256"
+        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip.sha256"
         sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip.sha256"
 
         echo "Sanity-checking the checksums."
