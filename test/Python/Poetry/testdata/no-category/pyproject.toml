@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "test_name"
+version = "test_version"
+description = "test_description"
+authors = ["dev <dev@fossa.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+rich = "*"
+
+[tool.poetry.group.dev.dependencies]
+click = "*"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^6.0.0"
+pytest-mock = "*"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

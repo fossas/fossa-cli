@@ -7,7 +7,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), VerConstraint (..))
-import Strategy.Python.Poetry.Common (getPoetryBuildBackend, pyProjectDeps, supportedPoetryLockDep, supportedPyProjectDep, toCanonicalName, toMap)
+import Strategy.Python.Poetry.Common (getPoetryBuildBackend, makePackageToLockDependencyMap, pyProjectDeps, supportedPoetryLockDep, supportedPyProjectDep, toCanonicalName)
 import Strategy.Python.Poetry.PoetryLock (
   ObjectVersion (..),
   PackageName (..),
@@ -100,6 +100,8 @@ expectedPyProject =
             , devDependencies =
                 Map.fromList
                   [("pytest", PoetryTextVersion "*")]
+            , groupDevDependencies = Map.empty
+            , groupTestDependencies = Map.empty
             }
     }
 
@@ -178,9 +180,10 @@ spec = do
         getPoetryBuildBackend <$> Toml.decode pyProjectCodec emptyContents
           `shouldBe` Right Nothing
 
-  describe "toMap" $ do
+  describe "makePackageToLockDependencyMap" $ do
     it "should map poetry lock package to dependency" $
-      toMap
+      makePackageToLockDependencyMap
+        mempty
         [ PoetryLockPackage
             { poetryLockPackageName = PackageName "pkgOne"
             , poetryLockPackageVersion = "1.21.0"
@@ -212,7 +215,8 @@ spec = do
 
     describe "when poetry lock dependency is from git source" $
       it "should replace poetry lock package name to git url" $
-        toMap
+        makePackageToLockDependencyMap
+          mempty
           [ PoetryLockPackage
               { poetryLockPackageName = PackageName "pkgWithGitSource"
               , poetryLockPackageVersion = "5.22.0.post0"
@@ -239,7 +243,8 @@ spec = do
 
     describe "when poetry lock dependency is from url source" $
       it "should replace poetry lock package name to url" $
-        toMap
+        makePackageToLockDependencyMap
+          mempty
           [ PoetryLockPackage
               { poetryLockPackageName = PackageName "pkgSourcedFromUrl"
               , poetryLockPackageVersion = "3.92.1"
@@ -266,7 +271,8 @@ spec = do
 
     describe "when poetry lock dependency is from file source" $
       it "should replace poetry lock package name to filepath" $
-        toMap
+        makePackageToLockDependencyMap
+          mempty
           [ PoetryLockPackage
               { poetryLockPackageName = PackageName "pkgSourcedFromFile"
               , poetryLockPackageVersion = "1.21.0"
@@ -281,7 +287,8 @@ spec = do
 
     describe "when poetry lock dependency is from secondary sources" $
       it "should include url into dependency location" $
-        toMap
+        makePackageToLockDependencyMap
+          mempty
           [ PoetryLockPackage
               { poetryLockPackageName = PackageName "myprivatepkg"
               , poetryLockPackageVersion = "0.0.1"
