@@ -37,7 +37,6 @@ import Path (
   Path,
   Rel,
   fromAbsFile,
-  mkRelDir,
   mkRelFile,
   parent,
   parseRelDir,
@@ -107,33 +106,16 @@ extractThemisFiles = do
   _ <- sendIO $ BL.writeFile (toString $ toPath decompressedThemisIndex) (Lzma.decompress $ toLazy embeddedBinaryThemisIndex)
   pure $ ThemisBins themisActual $ applyTag @ThemisIndex decompressedThemisIndex
 
-withBerkeleyBinary ::
-  ( Has (Lift IO) sig m
-  ) =>
-  (BinaryPaths -> m c) ->
-  m c
+withBerkeleyBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
 withBerkeleyBinary = withEmbeddedBinary BerkeleyDB
 
-withLernieBinary ::
-  ( Has (Lift IO) sig m
-  ) =>
-  (BinaryPaths -> m c) ->
-  m c
+withLernieBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
 withLernieBinary = withEmbeddedBinary Lernie
 
-withMillhoneBinary ::
-  ( Has (Lift IO) sig m
-  ) =>
-  (BinaryPaths -> m c) ->
-  m c
+withMillhoneBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
 withMillhoneBinary = withEmbeddedBinary Millhone
 
-withEmbeddedBinary ::
-  ( Has (Lift IO) sig m
-  ) =>
-  PackagedBinary ->
-  (BinaryPaths -> m c) ->
-  m c
+withEmbeddedBinary :: (Has (Lift IO) sig m) => PackagedBinary -> (BinaryPaths -> m c) -> m c
 withEmbeddedBinary bin = bracket (extractEmbeddedBinary bin) cleanupExtractedBinaries
 
 cleanupExtractedBinaries :: (Has (Lift IO) sig m) => BinaryPaths -> m ()
@@ -176,20 +158,22 @@ extractedPath bin = case bin of
   Lernie -> $(mkRelFile "lernie")
   Millhone -> $(mkRelFile "millhone")
 
--- | Extract to @$TMP/fossa-vendor/<uuid>
--- We used to extract everything to @$TMP/fossa-vendor@, but there's a subtle issue with that.
--- Cleanup is just removing the directory where the file resides, which is fine unless there's
--- more than one active extracted file.  Cleanup could potentially kill both while one is in use.
--- Extracting to another subdir means that the cleanup only cleans the uuid subdir.
--- The only downside is that we never cleanup the fossa-vendor directory, which is not an issue,
--- since it should be empty by the time we finish cleanup.  The tempfile cleaner on the system
--- should pick it up anyway.
+-- | Extract to @$TMP/fossa-vendor-<uuid>/
+--
+-- This function used to extract everything to @$TMP/fossa-vendor@, but there's a subtle issue with that:
+-- cleanup just removes the directory where the file resides, which is fine unless there's
+-- more than one active extracted file; in which case cleanup would clobber files in use by another function.
+--
+-- Extracting to another subdir named with the UUID would mean that the cleanup only cleans the UUID subdir,
+-- and also doesn't fully isolate functions.
+--
+-- Instead, this function just appends the UUID to the directory so that subsequent calls are fully isolated.
 extractDir :: Has (Lift IO) sig m => m (Path Abs Dir)
 extractDir = do
   wd <- sendIO getTempDir
   ts <- sendIO $ UUID.toString <$> UUID.nextRandom
-  subDir <- sendIO $ parseRelDir ts
-  pure (wd </> $(mkRelDir "fossa-vendor") </> subDir)
+  subDir <- sendIO . parseRelDir $ "fossa-vendor-" <> ts
+  pure $ wd </> subDir
 
 makeExecutable :: Path Abs File -> IO ()
 makeExecutable path = do
