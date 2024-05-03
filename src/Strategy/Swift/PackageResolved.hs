@@ -51,7 +51,6 @@ data SwiftResolvedPackage = SwiftResolvedPackage
   }
   deriving (Show, Eq, Ord)
 
--- | If you update this, make sure to update warnAssumedVersion with the new assumed version.
 instance FromJSON SwiftPackageResolvedFile where
   parseJSON = withObject "Package.resolved content" $ \obj -> do
     version :: Integer <- obj .: "version"
