@@ -1,9 +1,7 @@
 # FOSSA CLI Changelog
 
-## Unreleased
-
-- Treat `targets` field in the issue summary loaded from Core as optional ([#1422](https://github.com/fossas/fossa-cli/pull/1422)).
 ## v3.9.16
+- Treat `targets` field in the issue summary loaded from Core as optional ([#1422](https://github.com/fossas/fossa-cli/pull/1422)).
 - Updates parallel embedded binary extractions to be more properly isolated ([#1425](https://github.com/fossas/fossa-cli/pull/1425)).
 
 ## v3.9.15
