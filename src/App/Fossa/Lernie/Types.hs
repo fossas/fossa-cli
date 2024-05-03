@@ -66,10 +66,8 @@ instance ToJSON GrepEntry where
 instance FromJSON GrepEntry where
   parseJSON = withObject "GrepEntry" $ \obj ->
     GrepEntry
-      <$> obj
-        .: "matchCriteria"
-      <*> obj
-        .: "name"
+      <$> obj .: "matchCriteria"
+      <*> obj .: "name"
 
 data LernieConfig = LernieConfig
   { rootDir :: Path Abs Dir

@@ -513,8 +513,7 @@ instance FromJSON CustomDependency where
       <$> (obj `neText` "name")
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "license")
-      <*> obj
-        .:? "metadata"
+      <*> obj .:? "metadata"
       <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
 
 instance FromJSON RemoteDependency where
@@ -523,8 +522,7 @@ instance FromJSON RemoteDependency where
       <$> (obj `neText` "name")
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "url")
-      <*> obj
-        .:? "metadata"
+      <*> obj .:? "metadata"
       <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
 
 validateRemoteDep :: (Has Diagnostics sig m) => RemoteDependency -> Organization -> m RemoteDependency
@@ -582,10 +580,8 @@ instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
 instance FromJSON DependencyMetadata where
   parseJSON = withObject "metadata" $ \obj ->
     DependencyMetadata
-      <$> obj
-        .:? "description"
-      <*> obj
-        .:? "homepage"
+      <$> obj .:? "description"
+      <*> obj .:? "homepage"
       <* forbidMembers "metadata" ["url"] obj
 
 -- Parse supported dependency types into their respective type or return Nothing.

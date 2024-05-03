@@ -240,10 +240,8 @@ data FossaPublicFacingError = FossaPublicFacingError
 instance FromJSON FossaPublicFacingError where
   parseJSON = withObject "FossaPublicFacingError" $ \v ->
     FossaPublicFacingError
-      <$> v
-        .: "message"
-      <*> v
-        .: "uuid"
+      <$> v .: "message"
+      <*> v .: "uuid"
 
 newtype FossaReq m a = FossaReq {unFossaReq :: m a}
   deriving (Functor, Applicative, Monad, Algebra sig)
