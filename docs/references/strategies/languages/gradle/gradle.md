@@ -4,35 +4,8 @@
 
 Gradle users generally specify their builds using a `build.gradle`/`settings.gradle` file (written in Groovy) or a `build.gradle.kts`/`settings.gradle.kts` file (written in Kotlin). These builds are specified as programs that must be dynamically evaluated. Examples of many different kinds of `gradle` projects are distributed on Gradle's website or for older versions of Gradle in the "complete" release archive in the `examples/` directory.
 
-|           |                                                                           |
-| --------- | ------------------------------------------------------------------------- |
-| :warning: | This strategy requires dynamic analysis, which requires a CI integration. |
-
-<!-- omit in toc -->
-## Table of contents
-
-- [Gradle](#gradle)
-  - [Concepts](#concepts)
-    - [Subprojects and configurations](#subprojects-and-configurations)
-      - [Subprojects](#subprojects)
-      - [Configurations](#configurations)
-      - [Relationship to analysis targets](#relationship-to-analysis-targets)
-    - [Gradle wrappers](#gradle-wrappers)
-  - [Running Gradle](#running-gradle)
-  - [Discovery](#discovery)
-  - [Tactics](#tactics)
-    - [Tactic selection](#tactic-selection)
-    - [Gradle build plugin](#gradle-build-plugin)
-    - [Parsing `gradle :dependencies`](#parsing-gradle-dependencies)
-  - [Debugging an integration](#debugging-an-integration)
-    - [Determining whether Gradle targets are detected](#determining-whether-gradle-targets-are-detected)
-    - [Manually checking Gradle dependency results](#manually-checking-gradle-dependency-results)
-    - [Debugging the "Gradle build plugin" tactic](#debugging-the-gradle-build-plugin-tactic)
-  - [Manually specifying Gradle dependencies](#manually-specifying-gradle-dependencies)
-  - [Configurations For Development and Testing](#configurations-for-development-and-testing)
-  - [Android Gradle Configurations For Development and Testing](#android-gradle-configurations-for-development-and-testing)
-  - [Only analyzing specific sub project](#only-analyzing-specific-sub-project)
-  - [(Experimental) Only Selecting Set of Configurations For Analysis](#experimental-only-selecting-set-of-configurations-for-analysis)
+> [!WARNING]
+> This strategy requires dynamic analysis, which requires a CI integration.
 
 ## Concepts
 
@@ -96,58 +69,35 @@ If there are no subprojects, an analysis target is created that analyzes the roo
 
 ## Tactics
 
-### Tactic selection
-
 This strategy selects tactics by trying them in preference order and uses the results of the first tactic to succeed.
+Click the tactic in the table below for more information and debugging steps specific to that tactic.
 
-The order of tactics for this strategy is:
+| Tactic              | Direct Deps        | Transitive Deps    | Edges              | Container Scanning |
+|---------------------|--------------------|--------------------|--------------------|--------------------|
+| [Plugin](plugin.md) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |
 
-1. Gradle build plugin
-2. Parsing `gradle :dependencies` (not yet implemented)
+## Debugging
 
-### Gradle build plugin
+> [!TIP]
+> These debugging steps are for Gradle generally, independent of tactic;
+> make sure to check the [tactic-specific documentation](#tactics) for the specific tactic your project uses.
 
-|                    |                                                           |
-| ------------------ | --------------------------------------------------------- |
-| :heavy_check_mark: | This tactic reports dependencies for all subprojects.     |
-| :heavy_check_mark: | This tactic provides a graph for subproject dependencies. |
-| :warning:          | This tactic requires dynamic analysis.                    |
+### Determine whether Gradle targets are detected
 
-This tactic runs a Gradle [init script](https://docs.gradle.org/current/userguide/init_scripts.html) to output the dependencies in each Gradle subproject. Mechanically, this tactic:
+To determine whether the CLI is properly detecting your Gradle project, run `fossa list-targets`.
+The output of this command is a list of analysis targets, in the format `type@path`.
 
-1. Unpacks our init script to a temporary directory.
-2. Invokes the init script with `gradle jsonDeps -Ipath/to/init.gradle`.
-3. Parses the JSON output of the init script.
-
-This init script is implemented [here](https://github.com/fossas/fossa-cli/blob/master/scripts/jsondeps.gradle) and bundled into the CLI during compilation.
-
-The script works by iterating through configurations, getting resolution result for the configuration, and then serializing those dependencies into JSON. Please note that we currently only support analysis for builds using gradle v3.3 or greater.
-
-> Gradle analysis is not supported in Container Scanning.
-
-### Parsing `gradle :dependencies`
-
-|           |                                        |
-| --------- | -------------------------------------- |
-| :x:       | This tactic is not yet implemented.    |
-| :warning: | This tactic requires dynamic analysis. |
-
-This not-yet-implemented tactic will execute `gradle $SUBPROJECT:dependencies` for each analysis target, and parse the tool's output.
-
-## Debugging an integration
-
-### Determining whether Gradle targets are detected
-
-To determine whether the CLI is properly detecting your Gradle project, run `fossa list-targets`. The output of this command is a list of analysis targets, in the format `type@path`.
-
-<!-- TODO: is there a guide for `fossa list-targets` I can reference here? -->
+> [!NOTE]
+> For more information on `fossa list-targets`, [reference the guide here](../../../subcommands/list-targets.md).
 
 For each of your Gradle subprojects, you should see a `gradle@PATH_TO_ROOT_PROJECT:SUBPROJECT` target in the list of analysis targets.
 
 If you _don't_ see this, one of two things is likely happening:
 
-1. Your Gradle project does not have a `build.gradle` file. This is an unsupported configuration.
-2. `gradle projects` is failing to execute. Make sure that a Gradle wrapper is accessible (see [Running Gradle](#running-gradle)), and make sure `gradle projects` runs successfully.
+1. Your Gradle project does not have a `build.gradle` file.
+   This is an unsupported configuration.
+2. `gradle projects` is failing to execute.
+   Make sure that a Gradle wrapper is accessible (see [Running Gradle](#running-gradle)), and make sure `gradle projects` runs successfully.
 
 ### Manually checking Gradle dependency results
 
@@ -159,152 +109,41 @@ If your CLI run uploads versions that differ from the output of `gradle $SUBPROJ
 
 If you'd like to make a bug report about incorrect dependencies, make sure to include the list of incorrect dependencies, as well as the commands you ran to obtain that list.
 
-### Debugging the "Gradle build plugin" tactic
+## Walkthroughs
 
-The Gradle build plugin is a Gradle [init script](https://docs.gradle.org/current/userguide/init_scripts.html) implemented [here](../../../../../scripts/jsondeps.gradle).
+### Only analyzing specific sub project
 
-If this tactic doesn't appear to be working (e.g. is giving you incorrect dependencies or is missing dependencies), you can run the init script directly using:
+If you have gradle project which has one or more subprojects, you may only want to analyze a specific set of subprojects in some cases.
+In `fossa-cli`, this can be achieved by using [exclusion filtering](./../../../files/fossa-yml.md) according to the below steps.
 
-```
-gradle -I$PATH_TO_SCRIPT jsonDeps
-```
-
-For example, with the script extracted to `/tmp/jsondeps.gradle`, you should run (from within the Gradle build script's working directory):
-
-```
-gradle -I/tmp/jsondeps.gradle jsonDeps
-```
-
-Providing this output with a bug report will help us debug issues with the analysis.
-
-## Manually specifying Gradle dependencies
-
-If the CLI doesn't natively integrate with your build tool (e.g. if you have a homegrown tool), and your build tool uses Gradle dependencies, you can still manually add Gradle dependencies to an uploaded build. This feature is generally known as [manual dependencies](../../../../features/manual-dependencies.md)
-
-Gradle in particular actually uploads _Maven_ dependencies, since most Gradle builds use Gradle's Maven interoperability to get dependencies from Maven repositories.
-
-An example configuration file looks like:
-
-```yaml
-# fossa-deps.yml
-referenced-dependencies:
-- type: maven
-  name: javax.xml.bind:jaxb-api
-  version: 1.0.0
-```
-
-Notice that the `name` field follows Maven conventions: `groupId:artifactId`.
-
-For more details, see the [manual dependencies](../../../../features/manual-dependencies.md) documentation.
-
-## Configurations For Development and Testing
-
-We classify any dependencies originating from the following configurations as a development dependency:
-
-```
-- compileOnly
-```
-
-We classify any dependencies originating from the following configurations as a test dependency:
-
-```
-- testImplementation
-- testCompileOnly
-- testRuntimeOnly
-- testCompileClasspath
-- testRuntimeClasspath
-```
-
-Note, by default we exclude test and development dependencies from the analysis.
-
-## Android Gradle Configurations For Development and Testing
-
-We classify following configurations, and any dependencies originating from it as a test environment dependency:
-```
-Any dependencies with following prefixes:
-- androidTest
-- debugAndroidTest
-- releaseUnitTest
-- debugUnitTest
-
-And any configuration named:
-- androidJacocoAnt
-- testApiDependenciesMetadata
-- testCompileOnlyDependenciesMetadata
-- testDebugApiDependenciesMetadata
-- testDebugCompileOnlyDependenciesMetadata
-- testDebugImplementationDependenciesMetadata
-- testDebugIntransitiveDependenciesMetadata
-- testDebugRuntimeOnlyDependenciesMetadata
-- testImplementationDependenciesMetadata
-- testIntransitiveDependenciesMetadata
-- testReleaseApiDependenciesMetadata
-- testReleaseCompileOnlyDependenciesMetadata
-- testReleaseImplementationDependenciesMetadata
-- testReleaseIntransitiveDependenciesMetadata
-- testReleaseRuntimeOnlyDependenciesMetadata
-- testRuntimeOnlyDependenciesMetadata
-```
-
-We classify following configurations, and dependencies originating from it as a development (or debug) environment dependency:
-```
-- lintChecks
-- lintClassPath
-- lintPublish
-- debugApiDependenciesMetadata
-- debugCompileClasspath
-- debugCompileOnly
-- debugCompileOnlyDependenciesMetadata
-- debugImplementationDependenciesMetadata
-- debugIntransitiveDependenciesMetadata
-- debugReverseMetadataValues
-- debugRuntimeClasspath
-- debugRuntimeOnlyDependenciesMetadata
-- compileOnlyDependenciesMetadata
-- releaseCompileOnly
-- releaseCompileOnlyDependenciesMetadata
-- debugWearBundling
-- debugAnnotationProcessorClasspath
-- releaseAnnotationProcessorClasspath
-- androidJdkImage
-- kotlinCompilerClasspath
-- kotlinCompilerPluginClasspathDebug
-- kotlinCompilerPluginClasspathDebugAndroidTest
-- kotlinCompilerPluginClasspathDebugUnitTest
-- kotlinCompilerPluginClasspathReleaseUnitTest
-- kotlinCompilerPluginClasspathRelease
-- kotlinKlibCommonizerClasspath
-- kotlinNativeCompilerPluginClasspath
-```
-
-## Only analyzing specific sub project
-
-If you have gradle project which has one or more subprojects, you may
-only want to analyze a specific set of subprojects in some cases.
-
-
-In `fossa-cli`, this can be achieved by using [exclusion filtering](./../../../files/fossa-yml.md).
-
-1) Run `fossa list-targets`, to identify project directory and identifier of subprojects.
+First, run `fossa list-targets` to identify the project directory and identifiers of subprojects:
 ```bash
-[ INFO] Found project: gradle@./
-[ INFO] Found target: gradle@./::app
+[ INFO] Found project: gradle@./             # <- The root project. './' means "the project is at the root of the analysis directory".
+[ INFO] Found target: gradle@./::app         # <- Submodule of the root project.
 [ INFO] Found target: gradle@./::list
 [ INFO] Found target: gradle@./::utilities
 ```
 
-Note that, targets are denoted in following format `type@path:target`. For 
-example `gradle@./::utilities`:
+> [!NOTE]
+> Targets are denoted in following format: `type@path:target`.
+> For example `gradle@./::utilities` means "a gradle project at the scan root, with the target ':utilities'.
+> As another example, `gradle@./subdir/` means "a gradle project inside 'subdir', without a target (meaning it is a root project).
+>
+> For more information on `fossa list-targets`, refer to [the reference here](../../../subcommands/list-targets.md).
 
-Note: gradle attaches leading colons to submodules, so the utilities submodule here is referenced by ":utilities"
-```
-gradle  @           ./      :         :utilities
------- ---          ---    ---        -----------
-Type   Path         Path   Target      Target
-       separator           separator
-```
+> [!IMPORTANT]
+> Gradle attaches leading colons to submodules, and as referenced in the note above FOSSA also uses a colon to separate "path" and "target".
+> This means that the target identifier `gradle@./::utilities` breaks down to the below sections:
+> ```
+> gradle  @           ./      :         :utilities
+> ------ ---          ---    ---        -----------
+> Type   Path         Path   Target      Target
+>        separator           separator
+> ```
+>
+> Since Gradle prepends a colon, this means that the `:utilities` target corresponds to the "utilities" submodule of the main project.
 
-2) Now to analyze only `utilities`, use a `.fossa.yml` file in the project root.
+Now to analyze only `utilities`, use a `.fossa.yml` file in the project root.
 
 ```yaml
 # filename: .fossa.yml
@@ -337,12 +176,37 @@ targets:
       target: ':utilities'
 ```
 
+### Manually specifying Gradle dependencies
 
-1) Running `fossa analyze` will only analyze `list` submodule.
+> [!NOTE]
+> The FOSSA Gradle integration internally refers to Gradle dependencies as _Maven_ dependencies;
+> this is because the Gradle build tool is used to integrate dependencies from Maven code hosts (such as Maven Central).
+>
+> Most of the time this isn't very relevant for end users, but it is definitely relevant when manually specifying dependencies.
 
-## (Experimental) Only Selecting Set of Configurations For Analysis
+If FOSSA CLI doesn't natively integrate with your build tool, and your build tool uses Gradle dependencies, you can still manually add Gradle dependencies to an uploaded build. This feature is generally known as [manual dependencies](../../../../features/manual-dependencies.md)
 
-You can use [configuration file](../../../files/fossa-yml.md) to provide set of configurations to filter the analysis for. Any configurations not listed will be excluded from analysis. This feature is experimental and may be changed or removed at any time, without warning.
+An example configuration file looks like:
+
+```yaml
+# fossa-deps.yml
+referenced-dependencies:
+- type: maven                    # <- Note that this is not "gradle", as referenced in the note above.
+  name: javax.xml.bind:jaxb-api  # <- Note that this uses the Maven convention of 'groupId:artifactId'.
+  version: 1.0.0
+```
+
+For more details, see the [manual dependencies](../../../../features/manual-dependencies.md) documentation.
+
+
+### (Experimental) Only Selecting Set of Configurations For Analysis
+
+You can use [configuration file](../../../files/fossa-yml.md) to provide set of configurations to filter the analysis for.
+Any configurations not listed will be excluded from analysis.
+
+> [!IMPORTANT]
+> This feature is experimental and may be changed or removed at any time, without warning.
+> For more information on experimental features see the [experimental features reference](../../../experimental/README.md).
 
 ```yaml
 version: 3
@@ -352,4 +216,90 @@ experimental:
     configurations-only:
       - example-1-config-to-include
       - example-2-config-to-include
+```
+
+
+## Reference
+
+### Development and Test Configurations
+
+> [!NOTE]
+> By default FOSSA CLI excludes test and development dependencies from analysis.
+
+FOSSA classifies any dependencies originating from the following configurations as development dependencies:
+```
+- compileOnly
+```
+
+FOSSA classifies any dependencies originating from the following configurations as test dependencies:
+```
+- testImplementation
+- testCompileOnly
+- testRuntimeOnly
+- testCompileClasspath
+- testRuntimeClasspath
+```
+
+### Development and Test Configurations in Android projects
+
+> [!NOTE]
+> By default FOSSA CLI excludes test and development dependencies from analysis.
+
+FOSSA classifies the following configurations as development dependencies:
+```
+- lintChecks
+- lintClassPath
+- lintPublish
+- debugApiDependenciesMetadata
+- debugCompileClasspath
+- debugCompileOnly
+- debugCompileOnlyDependenciesMetadata
+- debugImplementationDependenciesMetadata
+- debugIntransitiveDependenciesMetadata
+- debugReverseMetadataValues
+- debugRuntimeClasspath
+- debugRuntimeOnlyDependenciesMetadata
+- compileOnlyDependenciesMetadata
+- releaseCompileOnly
+- releaseCompileOnlyDependenciesMetadata
+- debugWearBundling
+- debugAnnotationProcessorClasspath
+- releaseAnnotationProcessorClasspath
+- androidJdkImage
+- kotlinCompilerClasspath
+- kotlinCompilerPluginClasspathDebug
+- kotlinCompilerPluginClasspathDebugAndroidTest
+- kotlinCompilerPluginClasspathDebugUnitTest
+- kotlinCompilerPluginClasspathReleaseUnitTest
+- kotlinCompilerPluginClasspathRelease
+- kotlinKlibCommonizerClasspath
+- kotlinNativeCompilerPluginClasspath
+```
+
+FOSSA classifies the following configurations as test dependencies:
+```
+- androidJacocoAnt
+- testApiDependenciesMetadata
+- testCompileOnlyDependenciesMetadata
+- testDebugApiDependenciesMetadata
+- testDebugCompileOnlyDependenciesMetadata
+- testDebugImplementationDependenciesMetadata
+- testDebugIntransitiveDependenciesMetadata
+- testDebugRuntimeOnlyDependenciesMetadata
+- testImplementationDependenciesMetadata
+- testIntransitiveDependenciesMetadata
+- testReleaseApiDependenciesMetadata
+- testReleaseCompileOnlyDependenciesMetadata
+- testReleaseImplementationDependenciesMetadata
+- testReleaseIntransitiveDependenciesMetadata
+- testReleaseRuntimeOnlyDependenciesMetadata
+- testRuntimeOnlyDependenciesMetadata
+```
+
+Additionally, FOSSA classifies any dependencies with any of the following values prefixing the dependency name as test dependencies:
+```
+- androidTest
+- debugAndroidTest
+- releaseUnitTest
+- debugUnitTest
 ```
