@@ -94,8 +94,7 @@ data CondaEnvDep = CondaEnvDep
 instance FromJSON CondaEnvCreateOut where
   parseJSON = withObject "CondaEnvOutput" $ \obj ->
     CondaEnvCreateOut
-      <$> obj
-        .: "dependencies"
+      <$> obj .: "dependencies"
 
 type Parser = Parsec Void Text
 

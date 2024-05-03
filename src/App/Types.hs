@@ -74,10 +74,8 @@ instance ToJSON ReleaseGroupMetadata where
 instance FromJSON ReleaseGroupMetadata where
   parseJSON = withObject "ReleaseGroupMetadata" $ \obj ->
     ReleaseGroupMetadata
-      <$> obj
-        .: "name"
-      <*> obj
-        .: "release"
+      <$> obj .: "name"
+      <*> obj .: "release"
 
 data ProjectRevision = ProjectRevision
   { projectName :: Text

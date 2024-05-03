@@ -1,6 +1,7 @@
 # FOSSA CLI Changelog
 
 ## v3.9.16
+- Treat `targets` field in the issue summary loaded from Core as optional during `fossa test` and `fossa report` ([#1422](https://github.com/fossas/fossa-cli/pull/1422)).
 - Adds support for SwiftPM v3 files ([#1424](https://github.com/fossas/fossa-cli/pull/1424)).
   Future SwiftPM file formats will be accepted automatically if they remain backwards compatible with the current parser.
 - Updates parallel embedded binary extractions to be more properly isolated ([#1425](https://github.com/fossas/fossa-cli/pull/1425)).
