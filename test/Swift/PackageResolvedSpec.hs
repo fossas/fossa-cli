@@ -69,12 +69,55 @@ expectedV2ResolvedContent =
         ]
     }
 
+expectedV3ResolvedContent :: SwiftPackageResolvedFile
+expectedV3ResolvedContent =
+  SwiftPackageResolvedFile
+    { version = 3
+    , pinnedPackages =
+        [ SwiftResolvedPackage
+            { package = "vonage-client-sdk-video"
+            , repositoryURL = "https://github.com/opentok/vonage-client-sdk-video.git"
+            , repositoryBranch = Nothing
+            , repositoryRevision = Just "e4b1af1808067f0c0a66fa85aaf99915b542a579"
+            , repositoryVersion = Just "2.27.2"
+            }
+        ]
+    }
+
+-- | Not a true v4; we'll need to rename this test in the future.
+-- The point here is just to test "a version that is not explicitly supported but still parses".
+expectedHypotheticalV4ResolvedContent :: SwiftPackageResolvedFile
+expectedHypotheticalV4ResolvedContent =
+  SwiftPackageResolvedFile
+    { version = 4
+    , pinnedPackages =
+        [ SwiftResolvedPackage
+            { package = "vonage-client-sdk-video"
+            , repositoryURL = "https://github.com/opentok/vonage-client-sdk-video.git"
+            , repositoryBranch = Nothing
+            , repositoryRevision = Just "e4b1af1808067f0c0a66fa85aaf99915b542a579"
+            , repositoryVersion = Just "2.27.2"
+            }
+        ]
+    }
+
 spec :: Spec
 spec = do
   describe "parse Package.resolved file" $ do
     it "should parse v1 content correctly" $ do
       resolvedFile <- decodeFileStrict' "test/Swift/testdata/v1/Package.resolved"
       resolvedFile `shouldBe` Just expectedV1ResolvedContent
+
     it "should parse v2 content correctly" $ do
       resolvedFile <- decodeFileStrict' "test/Swift/testdata/v2/Package.resolved"
       resolvedFile `shouldBe` Just expectedV2ResolvedContent
+
+    it "should parse v3 content correctly" $ do
+      resolvedFile <- decodeFileStrict' "test/Swift/testdata/v3/Package.resolved"
+      resolvedFile `shouldBe` Just expectedV3ResolvedContent
+
+    -- Not a true v4; we'll need to rename this test in the future.
+    -- The point here is just to test "a version that is not explicitly supported but still parses".
+    it "should parse hypothetical v4 content correctly" $ do
+      resolvedFile <- decodeFileStrict' "test/Swift/testdata/v4/Package.resolved"
+      resolvedFile `shouldBe` Just expectedHypotheticalV4ResolvedContent
