@@ -98,7 +98,7 @@ import App.Support (
  )
 import App.Types (
   DependencyRebuild,
-  FileUpload,
+  FileUpload (FileUploadFullContent),
   Policy (..),
   ProjectMetadata (..),
   ProjectRevision (..),
@@ -929,28 +929,25 @@ archiveBuildURL baseUrl = baseUrl /: "api" /: "components" /: "build"
 archiveBuildUpload ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
-  ArchiveComponents ->
+  [Archive] ->
+  DependencyRebuild ->
   m ()
-archiveBuildUpload apiOpts ArchiveComponents{..} =
-  context "request build for archives"
-    . context ("rebuild: " <> toText archiveComponentsRebuild <> "; upload: " <> toText archiveComponentsUpload)
-    $ do
-      -- The API route expects an array of archives, but doesn't properly handle multiple archives.
-      -- Given that, each archive's build is requested one by one.
-      traverse_ (archiveBuildUpload' apiOpts archiveComponentsRebuild archiveComponentsUpload) archiveComponentsArchives
+archiveBuildUpload apiOpts archives rebuild = context "request build for archives" . context ("rebuild: " <> toText rebuild) $ do
+  -- The API route expects an array of archives, but doesn't properly handle multiple archives.
+  -- Given that, each archive's build is requested one by one.
+  traverse_ (archiveBuildUpload' apiOpts rebuild) archives
 
 archiveBuildUpload' ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   DependencyRebuild ->
-  FileUpload ->
   Archive ->
   m (Maybe ())
-archiveBuildUpload' apiOpts rebuild style archive = context ("archive: '" <> toText archive) . runEmpty . fossaReqAllow401 $ do
+archiveBuildUpload' apiOpts rebuild archive = context ("archive: '" <> toText archive) . runEmpty . fossaReqAllow401 $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts = "dependency" =: True <> "rawLicenseScan" =: True
-  let archiveProjects = ArchiveComponents [archive] rebuild style
+  let archiveProjects = ArchiveComponents [archive] rebuild FileUploadFullContent
 
   -- The response appears to either be "Created" for new builds, or an error message for existing builds.
   -- Making the actual return value of "Created" essentially worthless.

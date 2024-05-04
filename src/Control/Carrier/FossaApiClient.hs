@@ -55,7 +55,7 @@ runFossaApiClient apiOpts =
           GetPathDependencyScanUrl rev projectRevision uploadKind -> LicenseScanning.uploadPathDependencyScanResult rev projectRevision uploadKind
           GetVsiInferences scanId -> VSI.getVsiInferences scanId
           GetVsiScanAnalysisStatus scanId -> VSI.getVsiScanAnalysisStatus scanId
-          QueueArchiveBuild archive -> Core.queueArchiveBuild archive
+          QueueArchiveBuild archives rebuild -> Core.queueArchiveBuild archives rebuild
           ResolveProjectDependencies locator -> VSI.resolveProjectDependencies locator
           ResolveUserDefinedBinary deps -> VSI.resolveUserDefinedBinary deps
           UploadAnalysis rev metadata units -> Core.uploadAnalysis rev metadata units

@@ -39,7 +39,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Config.Test (DiffRevision)
 import App.Fossa.VendoredDependency (VendoredDependency (..))
-import App.Types (FileUpload, ProjectMetadata, ProjectRevision (..), ReleaseGroupReleaseRevision)
+import App.Types (DependencyRebuild, FileUpload, ProjectMetadata, ProjectRevision (..), ReleaseGroupReleaseRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
@@ -55,7 +55,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Fossa.API.Types (
   ApiOpts,
-  ArchiveComponents,
+  Archive,
   Build,
   Contributors,
   CustomBuildUploadPermissions,
@@ -257,11 +257,12 @@ queueArchiveBuild ::
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  ArchiveComponents ->
+  [Archive] ->
+  DependencyRebuild ->
   m ()
-queueArchiveBuild archive = do
+queueArchiveBuild archives rebuild = do
   apiOpts <- ask
-  API.archiveBuildUpload apiOpts archive
+  API.archiveBuildUpload apiOpts archives rebuild
 
 uploadArchive ::
   ( Has (Lift IO) sig m

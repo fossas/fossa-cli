@@ -229,7 +229,7 @@ scanAndUpload root vdeps vendoredDepsOptions = do
   let uploadKind = orgFileUpload org
   let pathFilters = licenseScanPathFilters vendoredDepsOptions
   let scanner = case archiveOrCLI of
-        ArchiveUpload -> archiveUploadSourceUnit uploadKind $ vendoredDependencyScanModeToDependencyRebuild mode
+        ArchiveUpload -> archiveUploadSourceUnit $ vendoredDependencyScanModeToDependencyRebuild mode
         CLILicenseScan -> licenseScanSourceUnit mode pathFilters uploadKind
 
   when (archiveOrCLI == ArchiveUpload && isJust pathFilters) $
