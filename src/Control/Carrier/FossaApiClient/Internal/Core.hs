@@ -158,9 +158,9 @@ uploadAnalysisWithFirstPartyLicenses ::
   ProjectMetadata ->
   FileUpload ->
   m UploadResponse
-uploadAnalysisWithFirstPartyLicenses revision metadata upload = do
+uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind = do
   apiOpts <- ask
-  API.uploadAnalysisWithFirstPartyLicenses apiOpts revision metadata upload
+  API.uploadAnalysisWithFirstPartyLicenses apiOpts revision metadata uploadKind
 
 uploadNativeContainerScan ::
   ( Has (Lift IO) sig m

@@ -92,10 +92,10 @@ analyzeWithLernieWithOrgInfo ::
   m (Maybe LernieResults)
 analyzeWithLernieWithOrgInfo rootDir grepOptions = do
   orgWideCustomLicenses <- orgCustomLicenseScanConfigs <$> getOrganization
-  upload <- orgFileUpload <$> getOrganization
+  uploadKind <- orgFileUpload <$> getOrganization
 
   let options = grepOptions{customLicenseSearch = nub $ orgWideCustomLicenses <> customLicenseSearch grepOptions}
-  analyzeWithLernieMain rootDir options upload
+  analyzeWithLernieMain rootDir options uploadKind
 
 analyzeWithLernieMain ::
   ( Has Diagnostics sig m
@@ -108,8 +108,8 @@ analyzeWithLernieMain ::
   GrepOptions ->
   FileUpload ->
   m (Maybe LernieResults)
-analyzeWithLernieMain rootDir grepOptions upload = do
-  let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions upload
+analyzeWithLernieMain rootDir grepOptions uploadKind = do
+  let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions uploadKind
   case maybeLernieConfig of
     Just lernieConfig -> do
       unless (null $ customLicenseSearch grepOptions) $ trackUsage CustomLicenseSearchUsage
@@ -120,10 +120,10 @@ analyzeWithLernieMain rootDir grepOptions upload = do
     Nothing -> pure Nothing
 
 grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> FileUpload -> Maybe LernieConfig
-grepOptionsToLernieConfig rootDir grepOptions upload =
+grepOptionsToLernieConfig rootDir grepOptions uploadKind =
   case (customLicenseSearches <> keywordSearches) of
     [] -> Nothing
-    res -> Just . LernieConfig rootDir res $ case upload of
+    res -> Just . LernieConfig rootDir res $ case uploadKind of
       FileUploadMatchData -> False
       FileUploadFullContent -> True
   where

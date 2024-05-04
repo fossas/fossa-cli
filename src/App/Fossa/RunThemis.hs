@@ -57,9 +57,9 @@ generateThemisArgs taggedThemisIndex pathPrefix flags =
     <> ["."]
 
 themisFlags :: Maybe LicenseScanPathFilters -> FileUpload -> [Text]
-themisFlags Nothing upload = themisContentFlag upload
-themisFlags (Just filters) upload =
-  let defaultFilter = themisContentFlag upload
+themisFlags Nothing uploadKind = themisContentFlag uploadKind
+themisFlags (Just filters) uploadKind =
+  let defaultFilter = themisContentFlag uploadKind
       onlyFilters = concatMap (\only -> ["--only-paths", unGlobFilter only]) $ licenseScanPathFiltersOnly filters
       exceptFilters = concatMap (\exclude -> ["--exclude-paths", unGlobFilter exclude]) $ licenseScanPathFiltersExclude filters
    in defaultFilter ++ onlyFilters ++ exceptFilters

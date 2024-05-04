@@ -723,7 +723,7 @@ uploadAnalysisWithFirstPartyLicenses ::
   ProjectMetadata ->
   FileUpload ->
   m UploadResponse
-uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata upload = fossaReq $ do
+uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata uploadKind = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts =
@@ -734,7 +734,7 @@ uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata upload
           <> "managedBuild"
             =: True
           <> "cliLicenseScanType"
-            =: toText upload
+            =: toText uploadKind
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch

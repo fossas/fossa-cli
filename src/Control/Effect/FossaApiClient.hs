@@ -201,7 +201,7 @@ uploadAnalysis revision metadata units = sendSimple (UploadAnalysis revision met
 
 -- | Uploads the results of a first-party analysis and associates it to a project
 uploadAnalysisWithFirstPartyLicenses :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> FileUpload -> m UploadResponse
-uploadAnalysisWithFirstPartyLicenses revision metadata upload = sendSimple (UploadAnalysisWithFirstPartyLicenses revision metadata upload)
+uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind = sendSimple (UploadAnalysisWithFirstPartyLicenses revision metadata uploadKind)
 
 -- | Uploads results of container analysis performed by native scanner to a project
 uploadNativeContainerScan :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NativeContainer.ContainerScan -> m UploadResponse
@@ -251,7 +251,7 @@ getSignedLicenseScanUrl :: Has FossaApiClient sig m => PackageRevision -> m Sign
 getSignedLicenseScanUrl = sendSimple . GetSignedLicenseScanUrl
 
 uploadPathDependencyScan :: Has FossaApiClient sig m => PackageRevision -> ProjectRevision -> FileUpload -> m PathDependencyUpload
-uploadPathDependencyScan pkgRev projectRevision upload = sendSimple $ GetPathDependencyScanUrl pkgRev projectRevision upload
+uploadPathDependencyScan pkgRev projectRevision uploadKind = sendSimple $ GetPathDependencyScanUrl pkgRev projectRevision uploadKind
 
 finalizeLicenseScan :: Has FossaApiClient sig m => ArchiveComponents -> m ()
 finalizeLicenseScan = sendSimple . FinalizeLicenseScan

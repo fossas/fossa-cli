@@ -82,7 +82,7 @@ archiveUploadSourceUnit ::
   Path Abs Dir ->
   NonEmpty VendoredDependency ->
   m (NonEmpty Locator)
-archiveUploadSourceUnit upload rebuild baseDir vendoredDeps = do
+archiveUploadSourceUnit uploadKind rebuild baseDir vendoredDeps = do
   uniqDeps <- dedupVendoredDeps vendoredDeps
 
   -- At this point, we have a good list of deps, so go for it.
@@ -92,7 +92,7 @@ archiveUploadSourceUnit upload rebuild baseDir vendoredDeps = do
   -- orgID is appended when creating the build on the backend.  We don't care
   -- about the response here because if the build has already been queued, we
   -- get a 401 response.
-  _ <- queueArchiveBuild $ ArchiveComponents (NonEmpty.toList archives) rebuild upload
+  _ <- queueArchiveBuild $ ArchiveComponents (NonEmpty.toList archives) rebuild uploadKind
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API
   -- automatically prefixes the locator when queuing the build but not when

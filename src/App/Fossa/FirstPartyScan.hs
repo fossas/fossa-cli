@@ -100,12 +100,12 @@ firstPartyScanMain base cfg org = do
   runFirstPartyScans <- shouldRunFirstPartyScans cfg org
   manualDeps <- findAndReadFossaDepsFile base
   let vdep = VendoredDependency "first-party" "." Nothing
-      upload = orgFileUpload org
+      uploadKind = orgFileUpload org
   pathFilters <- mergePathFilters base manualDeps (licenseScanPathFilters $ vendoredDeps cfg)
   case runFirstPartyScans of
     (True) -> do
       _ <- logDebug "Running a first-party license scan on the code in this repository. Licenses found in this repository will show up as 'Directly in code' in the FOSSA UI"
-      Just <$> scanVendoredDep base pathFilters upload vdep
+      Just <$> scanVendoredDep base pathFilters uploadKind vdep
     (False) -> pure Nothing
 
 -- mergePathFilters takes the existing filters from the config and merges them with filters constructed by looking at the vendored dependencies

@@ -59,7 +59,7 @@ conanToArchives ::
   FileUpload ->
   Graphing Dependency -> -- graph whose conan dependency to make archives
   m (Graphing Dependency) -- graph with archive dependencies
-conanToArchives rootPath upload g =
+conanToArchives rootPath uploadKind g =
   -- If we do not have any conan dependencies, we do not
   -- need to do any work!
   case (null unableToTransformConanDep, transformedVendorDep) of
@@ -77,7 +77,7 @@ conanToArchives rootPath upload g =
           -- manifest are rarely updated with changes in practice
           SkippingNotSupported
           Nothing -- Ignore path filters
-          upload
+          uploadKind
           rootPath
           vendorDeps
 

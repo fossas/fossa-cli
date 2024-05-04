@@ -52,14 +52,14 @@ runFossaApiClient apiOpts =
           GetSignedFirstPartyScanUrl rev -> LicenseScanning.getSignedFirstPartyScanUrl rev
           GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev
           GetSignedUploadUrl rev -> Core.getSignedUploadUrl rev
-          GetPathDependencyScanUrl rev projectRevision upload -> LicenseScanning.uploadPathDependencyScanResult rev projectRevision upload
+          GetPathDependencyScanUrl rev projectRevision uploadKind -> LicenseScanning.uploadPathDependencyScanResult rev projectRevision uploadKind
           GetVsiInferences scanId -> VSI.getVsiInferences scanId
           GetVsiScanAnalysisStatus scanId -> VSI.getVsiScanAnalysisStatus scanId
           QueueArchiveBuild archive -> Core.queueArchiveBuild archive
           ResolveProjectDependencies locator -> VSI.resolveProjectDependencies locator
           ResolveUserDefinedBinary deps -> VSI.resolveUserDefinedBinary deps
           UploadAnalysis rev metadata units -> Core.uploadAnalysis rev metadata units
-          UploadAnalysisWithFirstPartyLicenses rev metadata upload -> Core.uploadAnalysisWithFirstPartyLicenses rev metadata upload
+          UploadAnalysisWithFirstPartyLicenses rev metadata uploadKind -> Core.uploadAnalysisWithFirstPartyLicenses rev metadata uploadKind
           UploadArchive url path -> Core.uploadArchive url path
           UploadNativeContainerScan revision metadata scan -> Core.uploadNativeContainerScan revision metadata scan
           UploadContributors locator contributors -> Core.uploadContributors locator contributors

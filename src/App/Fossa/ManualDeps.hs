@@ -226,11 +226,11 @@ scanAndUpload ::
 scanAndUpload root vdeps vendoredDepsOptions = do
   org <- getOrganization
   (archiveOrCLI, mode) <- getScanCfg org vendoredDepsOptions
-  let upload = orgFileUpload org
+  let uploadKind = orgFileUpload org
   let pathFilters = licenseScanPathFilters vendoredDepsOptions
   let scanner = case archiveOrCLI of
-        ArchiveUpload -> archiveUploadSourceUnit upload $ vendoredDependencyScanModeToDependencyRebuild mode
-        CLILicenseScan -> licenseScanSourceUnit mode pathFilters upload
+        ArchiveUpload -> archiveUploadSourceUnit uploadKind $ vendoredDependencyScanModeToDependencyRebuild mode
+        CLILicenseScan -> licenseScanSourceUnit mode pathFilters uploadKind
 
   when (archiveOrCLI == ArchiveUpload && isJust pathFilters) $
     fatalText "You have provided path filters in the vendoredDependencies.licenseScanPathFilters section of your .fossa.yml file. Path filters are not allowed when doing archive uploads."

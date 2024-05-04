@@ -61,8 +61,8 @@ expectContributorUploadSuccess =
   UploadContributors expectedLocator Fixtures.contributors `alwaysReturns` ()
 
 expectFirstPartyAnalysisUploadSuccess :: FileUpload -> Has MockApi sig m => m ()
-expectFirstPartyAnalysisUploadSuccess upload = do
-  UploadAnalysisWithFirstPartyLicenses Fixtures.projectRevision Fixtures.projectMetadata upload `alwaysReturns` Fixtures.uploadResponse
+expectFirstPartyAnalysisUploadSuccess uploadKind = do
+  UploadAnalysisWithFirstPartyLicenses Fixtures.projectRevision Fixtures.projectMetadata uploadKind `alwaysReturns` Fixtures.uploadResponse
 
 expectGetFirstPartySignedUrl :: Has MockApi sig m => PackageRevision -> m ()
 expectGetFirstPartySignedUrl packageRevision = GetSignedFirstPartyScanUrl packageRevision `alwaysReturns` Fixtures.signedUrl

@@ -133,7 +133,7 @@ resolvePaths ::
   Graphing Dependency ->
   m (Graphing Dependency)
 resolvePaths leaveUnfiltered options projectRevision org baseDir graph = do
-  let upload = orgFileUpload org
+  let uploadKind = orgFileUpload org
   let maybePathDeps = NE.nonEmpty $ filter (isValidPathDep leaveUnfiltered) $ vertexList graph
   case maybePathDeps of
     -- If there are no resolvable path dependencies
@@ -156,7 +156,7 @@ resolvePaths leaveUnfiltered options projectRevision org baseDir graph = do
       let alreadyScannedDeps = map (transformResolved alreadyAnalyzed) alreadyAnalyzedMeta
 
       -- 4. We scan and upload dependencies, and retrieve transformed dependencies!
-      scannedDeps <- traverse (scanAndUpload Nothing upload projectRevision) notAnalyzedMeta
+      scannedDeps <- traverse (scanAndUpload Nothing uploadKind projectRevision) notAnalyzedMeta
 
       -- 5. Kickoff job to finalize the build process for path dependencies
       let resolvedLoc = resolvedLocators scannedDeps
@@ -202,7 +202,7 @@ scanAndUpload ::
   ProjectRevision ->
   (Dependency, SomeResolvedPath, Text) ->
   m (Dependency, Maybe Dependency)
-scanAndUpload pathFilters upload projectRevision (rawDep, resolvedPath, version) = context "Path Dependency" $ do
+scanAndUpload pathFilters uploadKind projectRevision (rawDep, resolvedPath, version) = context "Path Dependency" $ do
   maybeLicenseUnits <- recover scan
   case maybeLicenseUnits of
     Nothing -> pure (rawDep, Nothing)
@@ -214,13 +214,13 @@ scanAndUpload pathFilters upload projectRevision (rawDep, resolvedPath, version)
     scan = do
       logSticky $ "License Scanning '" <> rawPath <> "' at '" <> toText resolvedPath <> "'"
       licenseUnits <- case resolvedPath of
-        ResolvedDir dir -> scanDirectory Nothing mempty pathFilters upload dir
+        ResolvedDir dir -> scanDirectory Nothing mempty pathFilters uploadKind dir
         ResolvedFile _ -> fatalText $ "path dependency for single file is not supported: " <> rawPath
       pure $ LicenseSourceUnit rawPath CliLicenseScanned licenseUnits
 
     doUpload licSrcUnit = do
       logSticky $ "Uploading '" <> rawPath <> "' to secure S3 bucket"
-      resp <- uploadPathDependencyScan (PackageRevision rawPath version) projectRevision upload
+      resp <- uploadPathDependencyScan (PackageRevision rawPath version) projectRevision uploadKind
 
       let signedURL = pdSignedURL resp
       let name' = updlName . pdLocator $ resp
