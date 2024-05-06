@@ -13,7 +13,7 @@ import App.Fossa.Analyze.Project (ProjectResult (projectResultGraph, projectResu
 import App.Fossa.Config.Analyze (IncludeAll (..), VendoredDependencyOptions, forceRescans)
 import App.Fossa.LicenseScanner (scanDirectory)
 import App.Fossa.VendoredDependency (hashBs, hashFile)
-import App.Types (FullFileUploads (..), ProjectRevision)
+import App.Types (FileUpload (..), ProjectRevision)
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Tar.Entry (Entry (..))
 import Codec.Archive.Tar.Entry qualified as Tar
@@ -55,7 +55,7 @@ import Effect.ReadFS (
   resolveDir',
   resolveFile',
  )
-import Fossa.API.Types (AnalyzedPathDependency (adpId, adpVersion, apdPath), Organization (..), PathDependencyUpload (..), UploadedPathDependencyLocator (..))
+import Fossa.API.Types (AnalyzedPathDependency (adpId, adpVersion, apdPath), Organization (..), PathDependencyUpload (..), UploadedPathDependencyLocator (..), orgFileUpload)
 import Graphing (Graphing, gmap, vertexList)
 import Path (Abs, Dir, Path, dirname, parent, toFilePath)
 import Path.Extra (SomeResolvedPath (ResolvedDir, ResolvedFile))
@@ -133,7 +133,7 @@ resolvePaths ::
   Graphing Dependency ->
   m (Graphing Dependency)
 resolvePaths leaveUnfiltered options projectRevision org baseDir graph = do
-  let fullFile = FullFileUploads $ orgRequiresFullFileUploads org
+  let uploadKind = orgFileUpload org
   let maybePathDeps = NE.nonEmpty $ filter (isValidPathDep leaveUnfiltered) $ vertexList graph
   case maybePathDeps of
     -- If there are no resolvable path dependencies
@@ -156,7 +156,7 @@ resolvePaths leaveUnfiltered options projectRevision org baseDir graph = do
       let alreadyScannedDeps = map (transformResolved alreadyAnalyzed) alreadyAnalyzedMeta
 
       -- 4. We scan and upload dependencies, and retrieve transformed dependencies!
-      scannedDeps <- traverse (scanAndUpload Nothing fullFile projectRevision) notAnalyzedMeta
+      scannedDeps <- traverse (scanAndUpload Nothing uploadKind projectRevision) notAnalyzedMeta
 
       -- 5. Kickoff job to finalize the build process for path dependencies
       let resolvedLoc = resolvedLocators scannedDeps
@@ -198,15 +198,15 @@ scanAndUpload ::
   , Has FossaApiClient sig m
   ) =>
   Maybe LicenseScanPathFilters ->
-  FullFileUploads ->
+  FileUpload ->
   ProjectRevision ->
   (Dependency, SomeResolvedPath, Text) ->
   m (Dependency, Maybe Dependency)
-scanAndUpload pathFilters fullFileUpload projectRevision (rawDep, resolvedPath, version) = context "Path Dependency" $ do
+scanAndUpload pathFilters uploadKind projectRevision (rawDep, resolvedPath, version) = context "Path Dependency" $ do
   maybeLicenseUnits <- recover scan
   case maybeLicenseUnits of
     Nothing -> pure (rawDep, Nothing)
-    Just licenseUnits -> (rawDep,) <$> upload licenseUnits
+    Just licenseUnits -> (rawDep,) <$> doUpload licenseUnits
   where
     rawPath :: Text
     rawPath = dependencyName rawDep
@@ -214,13 +214,13 @@ scanAndUpload pathFilters fullFileUpload projectRevision (rawDep, resolvedPath, 
     scan = do
       logSticky $ "License Scanning '" <> rawPath <> "' at '" <> toText resolvedPath <> "'"
       licenseUnits <- case resolvedPath of
-        ResolvedDir dir -> scanDirectory Nothing mempty pathFilters fullFileUpload dir
+        ResolvedDir dir -> scanDirectory Nothing mempty pathFilters uploadKind dir
         ResolvedFile _ -> fatalText $ "path dependency for single file is not supported: " <> rawPath
       pure $ LicenseSourceUnit rawPath CliLicenseScanned licenseUnits
 
-    upload licSrcUnit = do
+    doUpload licSrcUnit = do
       logSticky $ "Uploading '" <> rawPath <> "' to secure S3 bucket"
-      resp <- uploadPathDependencyScan (PackageRevision rawPath version) projectRevision fullFileUpload
+      resp <- uploadPathDependencyScan (PackageRevision rawPath version) projectRevision uploadKind
 
       let signedURL = pdSignedURL resp
       let name' = updlName . pdLocator $ resp

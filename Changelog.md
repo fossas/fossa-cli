@@ -1,7 +1,11 @@
 # FOSSA CLI Changelog
 
+## v3.9.18
+- Resolves an issue where `vendored-dependencies` were rescanned locally, but not in the FOSSA service,
+  when `forceRescans` was set to `true` ([#1423](https://github.com/fossas/fossa-cli/pull/1423)).
+
 ## v3.9.17
-- Poetry: Adds partial support for dependency groups. ([#1420](https://github.com/fossas/fossa-cli/pull/1420)). 
+- Poetry: Adds partial support for dependency groups. ([#1420](https://github.com/fossas/fossa-cli/pull/1420)).
 
 ## v3.9.16
 - Treat `targets` field in the issue summary loaded from Core as optional during `fossa test` and `fossa report` ([#1422](https://github.com/fossas/fossa-cli/pull/1422)).

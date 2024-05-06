@@ -9,17 +9,18 @@ module App.Types (
   ProjectRevision (..),
   OverrideDynamicAnalysisBinary (..),
   Policy (..),
-  FullFileUploads (..),
+  DependencyRebuild (..),
+  FileUpload (..),
   FirstPartyScansFlag (..),
   ReleaseGroupRevision (..),
   ReleaseGroupProjectRevision (..),
   ReleaseGroupReleaseRevision (..),
-  fullFileUploadsToCliLicenseScanType,
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, object, withObject, (.:), (.=))
 import Data.Aeson.Types (toJSON)
 import Data.Map (Map)
+import Data.String.Conversion (ToText (..), showText)
 import Data.Text (Text)
 import DepTypes (DepType)
 import GHC.Generics (Generic)
@@ -156,10 +157,30 @@ instance Semigroup OverrideDynamicAnalysisBinary where
 instance Monoid OverrideDynamicAnalysisBinary where
   mempty = OverrideDynamicAnalysisBinary mempty
 
-newtype FullFileUploads = FullFileUploads {unFullFileUploads :: Bool} deriving (Eq, Ord, Show, Generic)
-fullFileUploadsToCliLicenseScanType :: FullFileUploads -> Text
-fullFileUploadsToCliLicenseScanType (FullFileUploads True) = "full_files"
-fullFileUploadsToCliLicenseScanType (FullFileUploads False) = "match_data"
+data DependencyRebuild
+  = DependencyRebuildReuseCache
+  | DependencyRebuildInvalidateCache
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToText DependencyRebuild where
+  toText = showText
+
+instance ToJSON DependencyRebuild where
+  toJSON DependencyRebuildReuseCache = "reuse_cache"
+  toJSON DependencyRebuildInvalidateCache = "invalidate_cache"
+
+data FileUpload
+  = FileUploadMatchData
+  | FileUploadFullContent
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToText FileUpload where
+  toText FileUploadMatchData = "match_data"
+  toText FileUploadFullContent = "full_files"
+
+instance ToJSON FileUpload where
+  toJSON FileUploadMatchData = "match_data"
+  toJSON FileUploadFullContent = "full_files"
 
 data FirstPartyScansFlag = FirstPartyScansOnFromFlag | FirstPartyScansOffFromFlag | FirstPartyScansUseDefault
   deriving (Eq, Ord, Show, Generic)
