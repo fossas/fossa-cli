@@ -41,10 +41,11 @@ module Fossa.API.Types (
   useApiOpts,
   defaultApiPollDelay,
   blankOrganization,
+  orgFileUpload,
 ) where
 
 import App.Fossa.Lernie.Types (GrepEntry)
-import App.Types (FullFileUploads (..), fullFileUploadsToCliLicenseScanType)
+import App.Types (DependencyRebuild (..), FileUpload (..))
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, fatalText)
 import Control.Timeout (Duration (Seconds))
@@ -140,18 +141,21 @@ instance FromJSON SignedURLWithKey where
     SignedURLWithKey <$> obj .: "signedUrl" <*> obj .: "key"
 
 data ArchiveComponents = ArchiveComponents
-  { archives :: [Archive]
-  , forceRebuild :: Bool
-  , fullFiles :: FullFileUploads
+  { archiveComponentsArchives :: [Archive]
+  , archiveComponentsRebuild :: DependencyRebuild
+  , archiveComponentsUpload :: FileUpload
   }
   deriving (Eq, Ord, Show)
 
 instance ToJSON ArchiveComponents where
   toJSON ArchiveComponents{..} =
     object
-      [ "archives" .= archives
-      , "forceRebuild" .= forceRebuild
-      , "fullFiles" .= unFullFileUploads fullFiles
+      [ "archives" .= archiveComponentsArchives
+      , "fullFiles" .= archiveComponentsUpload
+      , -- Don't use the ToJSON instance of DependencyRebuild since this endpoint has a different expectation.
+        "forceRebuild" .= case archiveComponentsRebuild of
+          DependencyRebuildReuseCache -> False
+          DependencyRebuildInvalidateCache -> True
       ]
 
 data Archive = Archive
@@ -159,6 +163,9 @@ data Archive = Archive
   , archiveVersion :: Text
   }
   deriving (Eq, Ord, Show)
+
+instance ToText Archive where
+  toText Archive{..} = archiveName <> "@" <> archiveVersion
 
 instance ToJSON Archive where
   toJSON Archive{..} =
@@ -478,6 +485,10 @@ data Organization = Organization
   , orgSubscription :: Subscription
   }
   deriving (Eq, Ord, Show)
+
+orgFileUpload :: Organization -> FileUpload
+orgFileUpload Organization{orgRequiresFullFileUploads = True} = FileUploadFullContent
+orgFileUpload Organization{orgRequiresFullFileUploads = False} = FileUploadMatchData
 
 blankOrganization :: Organization
 blankOrganization =
@@ -814,7 +825,7 @@ data PathDependencyUploadReq = PathDependencyUploadReq
   { path :: Text
   , version :: Text
   , projectLocator :: Locator
-  , scanType :: FullFileUploads
+  , scanType :: FileUpload
   }
 
 instance ToJSON PathDependencyUploadReq where
@@ -823,7 +834,7 @@ instance ToJSON PathDependencyUploadReq where
       [ "path" .= path
       , "version" .= version
       , "projectLocator" .= projectLocator
-      , "scanType" .= fullFileUploadsToCliLicenseScanType scanType
+      , "scanType" .= scanType
       ]
 
 data PathDependencyFinalizeReq = PathDependencyFinalizeReq

@@ -8,7 +8,7 @@ module App.Fossa.LernieSpec (
 
 import App.Fossa.Lernie.Analyze (analyzeWithLernie, analyzeWithLernieWithOrgInfo, grepOptionsToLernieConfig, lernieMessagesToLernieResults, singletonLernieMessage)
 import App.Fossa.Lernie.Types (GrepEntry (..), GrepOptions (..), LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieScanType (..), LernieWarning (..), OrgWideCustomLicenseConfigPolicy (..))
-import App.Types (FullFileUploads (..))
+import App.Types (FileUpload (..))
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Telemetry (withoutTelemetry)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
@@ -306,7 +306,7 @@ spec = do
 
   describe "grepOptionsToLernieConfig" $ do
     it "should create a lernie config" $ do
-      grepOptionsToLernieConfig absDir grepOptions (FullFileUploads False) `shouldBe` Just expectedLernieConfig
+      grepOptionsToLernieConfig absDir grepOptions FileUploadMatchData `shouldBe` Just expectedLernieConfig
 
   describe "analyzeWithLernie" $ do
     currDir <- runIO getCurrentDir

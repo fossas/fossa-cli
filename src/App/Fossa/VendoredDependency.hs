@@ -11,11 +11,13 @@ module App.Fossa.VendoredDependency (
   hashBs,
   dedupVendoredDeps,
   skippedDepsDebugLog,
+  vendoredDependencyScanModeToDependencyRebuild,
   SkippableDeps (..),
   NeedScanningDeps (..),
   SkippedDepsLogMsg (..),
 ) where
 
+import App.Types (DependencyRebuild (..))
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
 import Control.Algebra (Has)
@@ -84,6 +86,10 @@ data VendoredDependencyScanMode
   | SkippingNotSupported
   | SkippingDisabledViaFlag
   deriving (Eq, Ord, Show)
+
+vendoredDependencyScanModeToDependencyRebuild :: VendoredDependencyScanMode -> DependencyRebuild
+vendoredDependencyScanModeToDependencyRebuild SkippingDisabledViaFlag = DependencyRebuildInvalidateCache
+vendoredDependencyScanModeToDependencyRebuild _ = DependencyRebuildReuseCache
 
 newtype NeedScanningDeps = NeedScanningDeps {needScanningDeps :: [VendoredDependency]}
   deriving (Eq, Ord, Show)

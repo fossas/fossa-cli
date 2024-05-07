@@ -97,13 +97,13 @@ import App.Support (
   requestReportIfPersistsWithDebugBundle,
  )
 import App.Types (
-  FullFileUploads (FullFileUploads),
+  DependencyRebuild,
+  FileUpload (FileUploadFullContent),
   Policy (..),
   ProjectMetadata (..),
   ProjectRevision (..),
   ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
   ReleaseGroupReleaseRevision,
-  fullFileUploadsToCliLicenseScanType,
  )
 import App.Version (versionNumber)
 import Codec.Compression.GZip qualified as GZIP
@@ -130,7 +130,6 @@ import Data.Aeson (
  )
 import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
-import Data.ByteString.Char8 qualified as C
 import Data.ByteString.Lazy (ByteString)
 import Data.Data (Proxy (Proxy))
 import Data.Error (SourceLocation, createBody, createEmptyBlock, getSourceLocation)
@@ -159,7 +158,7 @@ import Fossa.API.Types (
   AnalyzedPathDependenciesResp,
   ApiOpts,
   Archive,
-  ArchiveComponents (ArchiveComponents),
+  ArchiveComponents (..),
   Build,
   Contributors,
   CustomBuildUploadPermissions,
@@ -178,6 +177,7 @@ import Fossa.API.Types (
   useApiOpts,
  )
 
+import Data.Foldable (traverse_)
 import Fossa.API.CoreTypes qualified as CoreTypes
 import Network.HTTP.Client (responseStatus)
 import Network.HTTP.Client qualified as C
@@ -721,9 +721,9 @@ uploadAnalysisWithFirstPartyLicenses ::
   ApiOpts ->
   ProjectRevision ->
   ProjectMetadata ->
-  FullFileUploads ->
+  FileUpload ->
   m UploadResponse
-uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata fullFileUploads = fossaReq $ do
+uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata uploadKind = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts =
@@ -734,7 +734,7 @@ uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata fullFi
           <> "managedBuild"
             =: True
           <> "cliLicenseScanType"
-            =: (fullFileUploadsToCliLicenseScanType fullFileUploads)
+            =: toText uploadKind
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
@@ -929,23 +929,30 @@ archiveBuildURL baseUrl = baseUrl /: "api" /: "components" /: "build"
 archiveBuildUpload ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
-  Archive ->
-  m (Maybe C.ByteString)
-archiveBuildUpload apiOpts archive = runEmpty $
-  fossaReqAllow401 $ do
-    (baseUrl, baseOpts) <- useApiOpts apiOpts
+  [Archive] ->
+  DependencyRebuild ->
+  m ()
+archiveBuildUpload apiOpts archives rebuild = context "request build for archives" . context ("rebuild: " <> toText rebuild) $ do
+  -- The API route expects an array of archives, but doesn't properly handle multiple archives.
+  -- Given that, each archive's build is requested one by one.
+  traverse_ (archiveBuildUpload' apiOpts rebuild) archives
 
-    let opts = "dependency" =: True <> "rawLicenseScan" =: True
-    -- The API route expects an array of archives, but doesn't properly handle multiple archives so we upload
-    -- an array of a single archive.
-    -- forceRebuild and fullFiles are ignored by this endpoint. They are only used by the licenseScanFinalize endpoint.
-    let archiveProjects = ArchiveComponents [archive] False $ FullFileUploads False
-    -- The response appears to either be "Created" for new builds, or an error message for existing builds.
-    -- Making the actual return value of "Created" essentially worthless.
-    resp <-
-      context "Queuing a build for all archive uploads" $
-        req POST (archiveBuildURL baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
-    pure (responseBody resp)
+archiveBuildUpload' ::
+  (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  DependencyRebuild ->
+  Archive ->
+  m (Maybe ())
+archiveBuildUpload' apiOpts rebuild archive = context ("archive: '" <> toText archive) . runEmpty . fossaReqAllow401 $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+
+  let opts = "dependency" =: True <> "rawLicenseScan" =: True
+  let archiveProjects = ArchiveComponents [archive] rebuild FileUploadFullContent
+
+  -- The response appears to either be "Created" for new builds, or an error message for existing builds.
+  -- Making the actual return value of "Created" essentially worthless.
+  _ <- context "queue build" $ req POST (archiveBuildURL baseUrl) (ReqBodyJson archiveProjects) bsResponse (baseOpts <> opts)
+  pure ()
 
 ---------- license-scan build queueing. This Endpoint ensures that after a license-scan is uploaded, it is scanned.
 
@@ -956,8 +963,17 @@ licenseScanFinalize ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   ArchiveComponents ->
+  m ()
+licenseScanFinalize apiOpts archiveProjects = do
+  _ <- licenseScanFinalize' apiOpts archiveProjects
+  pure ()
+
+licenseScanFinalize' ::
+  (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  ArchiveComponents ->
   m (Maybe ())
-licenseScanFinalize apiOpts archiveProjects = runEmpty $
+licenseScanFinalize' apiOpts archiveProjects = runEmpty $
   fossaReqAllow401 $ do
     (baseUrl, baseOpts) <- useApiOpts apiOpts
 
@@ -1488,12 +1504,12 @@ getUploadURLForPathDependency ::
   Text ->
   Text ->
   ProjectRevision ->
-  FullFileUploads ->
+  FileUpload ->
   m PathDependencyUpload
-getUploadURLForPathDependency apiOpts path version ProjectRevision{..} fullFileUpload = fossaReq $ do
+getUploadURLForPathDependency apiOpts path version ProjectRevision{..} upload = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   let projectLocator = Locator "custom" projectName (Just projectRevision)
-  let req' = PathDependencyUploadReq path version projectLocator fullFileUpload
+  let req' = PathDependencyUploadReq path version projectLocator upload
   response <-
     context ("Retrieving a signed S3 URL for license scan results of " <> path) $
       req POST (signedLicenseScanPathDependencyURLEndpoint baseUrl) (ReqBodyJson req') jsonResponse baseOpts

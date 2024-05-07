@@ -11,7 +11,7 @@ module Control.Carrier.FossaApiClient.Internal.LicenseScanning (
   alreadyAnalyzedPathRevision,
 ) where
 
-import App.Types (FullFileUploads, ProjectRevision)
+import App.Types (FileUpload, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
 import Control.Effect.Debug (Debug)
@@ -88,7 +88,7 @@ uploadPathDependencyScanResult ::
   ) =>
   PackageRevision ->
   ProjectRevision ->
-  FullFileUploads ->
+  FileUpload ->
   m PathDependencyUpload
 uploadPathDependencyScanResult PackageRevision{..} projectRevision fullFileUpload = do
   apiOpts <- ask
