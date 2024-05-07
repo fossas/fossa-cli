@@ -14,7 +14,7 @@ import App.Fossa.Reachability.Types (SourceUnitReachability)
 import App.Fossa.Reachability.Upload (upload)
 import App.Types (
   BaseDir (BaseDir),
-  FullFileUploads (FullFileUploads),
+  FileUpload,
   ProjectMetadata,
   ProjectRevision (..),
  )
@@ -61,7 +61,7 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
-import Fossa.API.Types (Organization (orgRequiresFullFileUploads, orgSupportsReachability, organizationId), Project (projectIsMonorepo), UploadResponse (..))
+import Fossa.API.Types (Organization (orgSupportsReachability, organizationId), Project (projectIsMonorepo), UploadResponse (..), orgFileUpload)
 import Path (Abs, Dir, Path)
 import Srclib.Types (
   FullSourceUnit,
@@ -126,13 +126,11 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
     uploadResult <- case scanUnits of
       SourceUnitOnly units -> uploadAnalysis revision metadata units
       LicenseSourceUnitOnly licenseSourceUnit -> do
-        let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
         let mergedUnits = mergeSourceAndLicenseUnits [] licenseSourceUnit
-        runStickyLogger SevInfo $ uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads
+        runStickyLogger SevInfo . uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits $ orgFileUpload org
       SourceAndLicenseUnits sourceUnits licenseSourceUnit -> do
-        let fullFileUploads = FullFileUploads $ orgRequiresFullFileUploads org
         let mergedUnits = mergeSourceAndLicenseUnits sourceUnits licenseSourceUnit
-        runStickyLogger SevInfo $ uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads
+        runStickyLogger SevInfo . uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits $ orgFileUpload org
 
     emitBuildWarnings uploadResult
 
@@ -167,11 +165,11 @@ uploadAnalysisWithFirstPartyLicensesToS3AndCore ::
   ProjectRevision ->
   ProjectMetadata ->
   NE.NonEmpty FullSourceUnit ->
-  FullFileUploads ->
+  FileUpload ->
   m UploadResponse
-uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits fullFileUploads = do
+uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits uploadKind = do
   _ <- uploadAnalysisWithFirstPartyLicensesToS3 revision mergedUnits
-  uploadAnalysisWithFirstPartyLicenses revision metadata fullFileUploads
+  uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind
 
 uploadAnalysisWithFirstPartyLicensesToS3 ::
   ( Has Diagnostics sig m

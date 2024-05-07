@@ -6,7 +6,7 @@ where
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.Config.Analyze (IncludeAll (..), VendoredDependencyOptions (VendoredDependencyOptions))
 import App.Fossa.PathDependency
-import App.Types (FullFileUploads (FullFileUploads))
+import App.Types (FileUpload (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (PackageRevision))
 import Data.Flag (toFlag)
@@ -278,7 +278,7 @@ expectPathDependencyFullFile =
   ( GetPathDependencyScanUrl
       (PackageRevision fixtureDir fixtureDirHash)
       (Fixtures.projectRevision)
-      (FullFileUploads True)
+      FileUploadFullContent
   )
     `returnsOnce` PathDependencyUpload (Fixtures.signedUrl) (UploadedPathDependencyLocator "1" fixtureDirHash)
 
@@ -287,7 +287,7 @@ expectPathDependencyMatchData =
   ( GetPathDependencyScanUrl
       (PackageRevision fixtureDir fixtureDirHash)
       (Fixtures.projectRevision)
-      (FullFileUploads False)
+      FileUploadMatchData
   )
     `returnsOnce` PathDependencyUpload (Fixtures.signedUrl) (UploadedPathDependencyLocator "1" fixtureDirHash)
 
