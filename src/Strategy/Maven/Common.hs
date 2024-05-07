@@ -143,7 +143,7 @@ filterMavenDependencyByScope scopeFilters = Graphing.shrink $ mavenDependencySho
     mavenDependencyShouldBeIncluded :: MavenScopeFilters -> MavenDependency -> Bool
     mavenDependencyShouldBeIncluded (MavenScopeOnlyFilters filters) MavenDependency{dependencyScopes} | Set.null dependencyScopes = Set.null filters
     mavenDependencyShouldBeIncluded (MavenScopeExcludeFilters _) MavenDependency{dependencyScopes} | Set.null dependencyScopes = True
-    mavenDependencyShouldBeIncluded (MavenScopeOnlyFilters predicates) MavenDependency{dependencyScopes} = Set.isSubsetOf predicates dependencyScopes
+    mavenDependencyShouldBeIncluded (MavenScopeOnlyFilters predicates) MavenDependency{dependencyScopes} = Set.isSubsetOf dependencyScopes predicates
     mavenDependencyShouldBeIncluded (MavenScopeExcludeFilters predicates) dep = isNothing . List.find (mavenScopeFilterPredicateMatches dep) $ Set.toList predicates
 
     mavenScopeFilterPredicateMatches :: MavenDependency -> MavenScopeFilterPredicate -> Bool
