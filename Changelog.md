@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## v3.9.19
+- Adds the ability to more granularly control excluded Maven scopes ([#1427](https://github.com/fossas/fossa-cli/pull/1427)).
+
 ## v3.9.18
 - Resolves an issue where `vendored-dependencies` were rescanned locally, but not in the FOSSA service,
   when `forceRescans` was set to `true` ([#1423](https://github.com/fossas/fossa-cli/pull/1423)).
