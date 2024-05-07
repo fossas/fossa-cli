@@ -548,11 +548,24 @@
                     }
                 },
                 "scope-exclude": {
+                  "type": "array",
+                  "description": "A dependency is excluded if it matches any of these filters.",
+                  "items": {
                     "type": "array",
-                    "description": "The list of scopes to exclude from scanning in your maven project.",
                     "items": {
-                        "type": "string"
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "description": "A dependency is excluded if it has this scope."
+                        },
+                        {
+                          "type": "array",
+                          "description": "A dependency is excluded if it has at least all the scopes in this array.",
+                          "items": { "type": "string" }
+                        }
+                      ]
                     }
+                  }
                 }
             },
             "oneOf": [
