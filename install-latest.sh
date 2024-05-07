@@ -393,9 +393,10 @@ get_binary_name() {
   name=${PROJECT_NAME}_${VERSION}_${OS}_${ARCH}
   case ${PLATFORM} in
     darwin/arm64)
-      log_info "Platform ${PLATFORM} (m1 silicon) detected, using compatible darwin/amd64 binary instead."
-      name=${PROJECT_NAME}_${VERSION}_${OS}_amd64
-      ;;
+      if version_less_than "$VERSION" "3.9.19"; then
+        log_info "Platform ${PLATFORM} (m1 silicon) detected and requested version < 3.9.19, using compatible darwin/amd64 binary instead."
+        name=${PROJECT_NAME}_${VERSION}_${OS}_amd64
+      fi ;;
   esac
   echo "$name"
 }
