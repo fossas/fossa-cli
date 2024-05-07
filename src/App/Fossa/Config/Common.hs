@@ -577,9 +577,9 @@ collectConfigMavenScopeFilters :: ConfigFile -> MavenScopeFilters
 collectConfigMavenScopeFilters configFile = do
   let maybeMavenScopeConfigs = configMavenScope configFile
   case maybeMavenScopeConfigs of
-    Nothing -> MavenScopeIncludeFilters mempty
+    Nothing -> MavenScopeOnlyFilters mempty
     Just mavenScopeConfig -> case mavenScopeConfig of
-      MavenScopeOnlyConfig filters -> MavenScopeIncludeFilters $ translatePredicates filters
+      MavenScopeOnlyConfig filters -> MavenScopeOnlyFilters filters
       MavenScopeExcludeConfig filters -> MavenScopeExcludeFilters $ translatePredicates filters
   where
     translatePredicates :: Set MavenScopePredicate -> Set MavenScopeFilterPredicate

@@ -291,7 +291,7 @@ newtype ExperimentalGradleConfigs = ExperimentalGradleConfigs
   deriving (Eq, Ord, Show)
 
 data MavenScopeConfig
-  = MavenScopeOnlyConfig (Set MavenScopePredicate)
+  = MavenScopeOnlyConfig (Set Text)
   | MavenScopeExcludeConfig (Set MavenScopePredicate)
   deriving (Eq, Ord, Show)
 

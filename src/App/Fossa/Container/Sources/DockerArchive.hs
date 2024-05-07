@@ -179,7 +179,7 @@ analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo la
       )
   where
     noMavenScopeFilters :: MavenScopeFilters
-    noMavenScopeFilters = MavenScopeIncludeFilters mempty
+    noMavenScopeFilters = MavenScopeOnlyFilters mempty
     noExperimental :: ExperimentalAnalyzeConfig
     noExperimental =
       ExperimentalAnalyzeConfig
@@ -334,7 +334,7 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
           GoModulesBasedTactic -- Targets aren't different between package/module centric analysis for Go.
           False -- Targets are not impacted by path dependencies.
       )
-    . runReader (MavenScopeIncludeFilters mempty)
+    . runReader (MavenScopeOnlyFilters mempty)
     . runReader (mempty :: AllFilters)
     $ run
   where

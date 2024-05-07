@@ -7,7 +7,7 @@ import DepTypes (DepType (MavenType), Dependency (..), VerConstraint (CEq))
 
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
-import Discovery.Filters (MavenScopeFilterPredicate (..), MavenScopeFilters (MavenScopeExcludeFilters, MavenScopeIncludeFilters))
+import Discovery.Filters (MavenScopeFilterPredicate (..), MavenScopeFilters (MavenScopeExcludeFilters, MavenScopeOnlyFilters))
 import GraphUtil
 import Graphing qualified
 import Strategy.Maven.Common (MavenDependency (..), filterMavenDependencyByScope, filterMavenSubmodules)
@@ -46,7 +46,7 @@ scopeFilters = do
       let compileDep = createDepFromScopes ["compile"]
       let testDep = createDepFromScopes ["test"]
       let graph = Graphing.directs [compileDep, testDep] <> Graphing.edges [(compileDep, testDep)]
-      let graph' = filterMavenDependencyByScope (MavenScopeIncludeFilters mempty) graph
+      let graph' = filterMavenDependencyByScope (MavenScopeOnlyFilters mempty) graph
 
       expectDirect [compileDep, testDep] graph'
       expectDeps [compileDep, testDep] graph'
@@ -55,7 +55,7 @@ scopeFilters = do
     it "should not filter from empty dep scope and empty include set" $ do
       let dep = createDepFromScopes []
       let graph = Graphing.directs [dep]
-      let graph' = filterMavenDependencyByScope (MavenScopeIncludeFilters mempty) graph
+      let graph' = filterMavenDependencyByScope (MavenScopeOnlyFilters mempty) graph
 
       expectDirect [dep] graph'
       expectDeps [dep] graph'
@@ -66,9 +66,9 @@ scopeFilters = do
       -- After filtering with includeSet = Set("compile")
       -- empty
       let dep = createDepFromScopes []
-      let includeSet = Set.fromList [MavenScopeFilterPredicateSingle "compile"]
+      let includeSet = Set.fromList ["compile"]
       let graph = Graphing.directs [dep]
-      let graph' = filterMavenDependencyByScope (MavenScopeIncludeFilters includeSet) graph
+      let graph' = filterMavenDependencyByScope (MavenScopeOnlyFilters includeSet) graph
 
       expectDirect [] graph'
       expectDeps [] graph'
@@ -81,8 +81,8 @@ scopeFilters = do
     let compileDep = createDepFromScopes ["compile"]
     let providedDep = createDepFromScopes ["provided"]
     let graph = Graphing.directs [compileDep] <> Graphing.edges [(compileDep, providedDep)]
-    let includeSet = Set.fromList [MavenScopeFilterPredicateSingle "provided"]
-    let graph' = filterMavenDependencyByScope (MavenScopeIncludeFilters includeSet) graph
+    let includeSet = Set.fromList ["provided"]
+    let graph' = filterMavenDependencyByScope (MavenScopeOnlyFilters includeSet) graph
 
     expectDirect [providedDep] graph'
     expectDeps [providedDep] graph'
@@ -94,8 +94,8 @@ scopeFilters = do
     -- empty
     let compileProvidedDep = createDepFromScopes ["compile", "provided"]
     let graph = Graphing.directs [compileProvidedDep]
-    let includeSet = Set.fromList [MavenScopeFilterPredicateSingle "compile"]
-    let graph' = filterMavenDependencyByScope (MavenScopeIncludeFilters includeSet) graph
+    let includeSet = Set.fromList ["compile"]
+    let graph' = filterMavenDependencyByScope (MavenScopeOnlyFilters includeSet) graph
 
     expectDirect [] graph'
     expectDeps [] graph'
@@ -189,12 +189,29 @@ scopeFilters = do
     expectDeps [compileDep, runtimeDep] graph'
     expectEdges [(compileDep, runtimeDep)] graph'
 
-  it "should filter deps with multi-scope when the dep matches all scopes in the predicate" $ do
-    undefined -- Implement before merging
-  it "should not filter deps with multi-scope when the dep matches some scopes in the predicate" $ do
-    undefined -- Implement before merging
-  it "should filter deps with single scope when the dep matches some scopes in the predicate" $ do
-    undefined -- Implement before merging
+  it "should filter deps with multi-scope only when the dep matches all scopes in the predicate" $ do
+    let compileDep = createDepFromScopes ["compile"]
+    let providedDep = createDepFromScopes ["provided"]
+    let providedTestDep = createDepFromScopes ["provided", "test"]
+    let graph = Graphing.directs [compileDep, providedTestDep] <> Graphing.edges [(compileDep, providedDep)]
+    let excludeSet = Set.fromList [MavenScopeFilterPredicateCombined $ Set.fromList ["provided", "test"]]
+    let graph' = filterMavenDependencyByScope (MavenScopeExcludeFilters excludeSet) graph
+
+    expectDirect [compileDep] graph'
+    expectDeps [compileDep, providedDep] graph'
+    expectEdges [(compileDep, providedDep)] graph'
+
+  it "should filter deps with multi-scope and single-scope predicates" $ do
+    let compileDep = createDepFromScopes ["compile"]
+    let providedDep = createDepFromScopes ["provided"]
+    let providedTestDep = createDepFromScopes ["provided", "test"]
+    let graph = Graphing.directs [compileDep, providedTestDep] <> Graphing.edges [(compileDep, providedDep)]
+    let excludeSet = Set.fromList [MavenScopeFilterPredicateCombined $ Set.fromList ["provided", "test"], MavenScopeFilterPredicateSingle "compile"]
+    let graph' = filterMavenDependencyByScope (MavenScopeExcludeFilters excludeSet) graph
+
+    expectDirect [providedDep] graph'
+    expectDeps [providedDep] graph'
+    expectEdges [] graph'
 
 submoduleDep1 :: MavenDependency
 submoduleDep1 = createDepFromName "com.fossa:submodule1" []

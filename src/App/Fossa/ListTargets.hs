@@ -82,7 +82,7 @@ listTargetsMain ListTargetsConfig{..} = do
     . runAtomicCounter
     . runReader experimental
     -- `fossa list-targets` does not support maven scope filters.
-    . runReader (MavenScopeIncludeFilters mempty)
+    . runReader (MavenScopeOnlyFilters mempty)
     -- The current version of `fossa list-targets` does not support filters.
     -- TODO: support both discovery and post-discovery filtering.
     . runReader (mempty :: AllFilters)

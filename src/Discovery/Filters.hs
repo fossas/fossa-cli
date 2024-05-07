@@ -107,22 +107,24 @@ instance ToJSON (FilterCombination a) where
 -- > Dependency ["provided", "test", "foo"] # excluded, because the dependency matches both parts of the second rule.
 -- > Dependency ["provided"]                # not excluded: doesn't have "test", which is required for the second rule.
 --
--- Similarly, with this set of filters:
+-- "Only" filters are different, and are always "AND" relationships; with this set of filters:
 --
--- > scope-only:          # overall: includes all with 'foo OR (provided AND test)'
--- >   - foo              # includes all with 'foo'
--- >   - [provided, test] # includes all with 'provided AND test'
+-- > scope-only:   # includes all with 'provided AND test'
+-- >   - provided
+-- >   - test
 --
 -- The rules are applied as follows:
 --
--- > Dependency ["foo"]                     # included, because "foo" matches the first rule.
--- > Dependency ["foo", "test"]             # included, because "foo" matches the first rule.
--- > Dependency ["provided", "test", "foo"] # included, because the dependency matches both parts of the second rule.
--- > Dependency ["provided"]                # not included: doesn't have "test", which is required for the second rule.
+-- > Dependency ["provided", "test"]        # included, because it has both rules.
+-- > Dependency ["provided", "test", "foo"] # included, because it has both rules.
+-- > Dependency ["test"]                    # not included: doesn't have "provided".
+-- > Dependency ["provided"]                # not included: doesn't have "test".
 data MavenScopeFilters
-  = MavenScopeIncludeFilters (Set MavenScopeFilterPredicate)
+  = MavenScopeOnlyFilters (Set Text)
   | MavenScopeExcludeFilters (Set MavenScopeFilterPredicate)
   deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON MavenScopeFilters
 
 data MavenScopeFilterPredicate
   = MavenScopeFilterPredicateSingle Text

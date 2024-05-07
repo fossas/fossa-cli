@@ -15,7 +15,7 @@ import DepTypes (Dependency (..))
 import Discovery.Filters (MavenScopeFilterPredicate (..), MavenScopeFilters (..))
 
 import Data.List qualified as List
-import Data.Maybe (isJust, isNothing)
+import Data.Maybe (isNothing)
 import Graphing (Graphing, color, edgesList, reachableSuccessorsWithCondition, vertexList)
 import Graphing qualified
 
@@ -141,12 +141,12 @@ filterMavenDependencyByScope :: MavenScopeFilters -> Graphing MavenDependency ->
 filterMavenDependencyByScope scopeFilters = Graphing.shrink $ mavenDependencyShouldBeIncluded scopeFilters
   where
     mavenDependencyShouldBeIncluded :: MavenScopeFilters -> MavenDependency -> Bool
-    mavenDependencyShouldBeIncluded (MavenScopeIncludeFilters filters) _ | filters == mempty = True
+    mavenDependencyShouldBeIncluded (MavenScopeOnlyFilters filters) _ | filters == mempty = True
     mavenDependencyShouldBeIncluded (MavenScopeExcludeFilters filters) _ | filters == mempty = True
-    mavenDependencyShouldBeIncluded (MavenScopeIncludeFilters filters) dep = isJust . List.find (mavenScopeFilterPredicateMatches dep) $ Set.toList filters
-    mavenDependencyShouldBeIncluded (MavenScopeExcludeFilters filters) dep = isNothing . List.find (mavenScopeFilterPredicateMatches dep) $ Set.toList filters
+    mavenDependencyShouldBeIncluded (MavenScopeOnlyFilters predicates) MavenDependency{dependencyScopes} = Set.isSubsetOf predicates dependencyScopes
+    mavenDependencyShouldBeIncluded (MavenScopeExcludeFilters predicates) dep = isNothing . List.find (mavenScopeFilterPredicateMatches dep) $ Set.toList predicates
 
     mavenScopeFilterPredicateMatches :: MavenDependency -> MavenScopeFilterPredicate -> Bool
     mavenScopeFilterPredicateMatches MavenDependency{dependencyScopes} _ | dependencyScopes == mempty = True
-    mavenScopeFilterPredicateMatches MavenDependency{dependencyScopes} (MavenScopeFilterPredicateSingle scopePredicate) = Set.member scopePredicate dependencyScopes
-    mavenScopeFilterPredicateMatches MavenDependency{dependencyScopes} (MavenScopeFilterPredicateCombined scopePredicates) = Set.isSubsetOf scopePredicates dependencyScopes
+    mavenScopeFilterPredicateMatches MavenDependency{dependencyScopes} (MavenScopeFilterPredicateSingle predicates) = Set.member predicates dependencyScopes
+    mavenScopeFilterPredicateMatches MavenDependency{dependencyScopes} (MavenScopeFilterPredicateCombined predicates) = Set.isSubsetOf predicates dependencyScopes
