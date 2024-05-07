@@ -61,6 +61,7 @@ jobs:
   test-macos-arm:
     runs-on: "macos-latest"
     steps:
+      - uses: actions/checkout@v4
       - name: install latest script can install a specific version
         shell: bash
         run: |
