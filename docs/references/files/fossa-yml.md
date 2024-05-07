@@ -16,7 +16,7 @@ project:
   id: github.com/fossas/fossa-cli
   name: fossa-cli
   team: cli-team
-  teams: 
+  teams:
     - cli-team-1
     - cli-team-2
   policy: custom-cli-policy
@@ -36,7 +36,7 @@ releaseGroup:
   releaseGroupProjects:
     - projectLocator: custom+123/git@github.com/fossas/fossa-cli
       projectRevision: "12345"
-      projectBranch: master 
+      projectBranch: master
     - projectLocator: custom+123/git@github.com/example
       projectRevision: "67890"
       projectBranch: master
@@ -142,7 +142,7 @@ Default:
 
 >NOTE:
     A project's ID cannot be modified after a project is created. If you change the ID,
-    you will be interacting with a different project. If the new ID does not exist, 
+    you will be interacting with a different project. If the new ID does not exist,
     a new project will be created for it.
 
 <img src="../../assets/project-id-example.png">
@@ -193,7 +193,7 @@ The releaseGroup field allows you to configure settings for the release group yo
 
 >NOTE: releaseGroup configurations are only allowed for `fossa release-group create` and `fossa release-group add-project`. This is done so that release groups are not mistakenly deleted.
 
->NOTE: release-group command line options will always take precedence over configurations set in `fossa.yml`. 
+>NOTE: release-group command line options will always take precedence over configurations set in `fossa.yml`.
 
 #### `releaseGroup.title:`
 The title of the release group which can be seen in the FOSSA dashboard.
@@ -206,7 +206,7 @@ The release associated with the release group.
 <img src="../../assets//release-example.png">
 
 #### `releaseGroup.releaseGroupProjects:`
-The projects associated with the release group's release. 
+The projects associated with the release group's release.
 
 >NOTE: At least one project must be specified upon creating a release group.
 
@@ -396,29 +396,68 @@ You can provide maven dependency scopes that you would like to filter. You can f
 
 #### scope-only:
 
-The list of `only` scopes that should by scanned. 
+The list of `only` scopes that should by scanned.
 
-When a dependency is multi-scope (i.e. [compile, runtime]) ALL of the scopes must be conatined in `scope-only` for the dependency to be included in the scan results. 
+When a dependency is multi-scope (i.e. `[compile, runtime]`) ALL of the scopes must be contained in `scope-only` for the dependency to be included in the scan results.
+
+```yaml
+version: 3
+
+maven:
+  scope-only: # Only reports dependencies that are both 'compile' and 'runtime' scoped.
+    - compile
+    - runtime
+```
+
+For example, using the above setting:
+```
+Dependency { name: "A", scopes: [ "compile" ]}                    <- not reported, since it doesn't have both scopes.
+Dependency { name: "B", scopes: [ "compile", "runtime" ]}         <- reported, since it has both scopes.
+Dependency { name: "C", scopes: [ "compile", "runtime", "test" ]} <- reported, since it has both scopes.
+```
+
 
 #### scope-exclude:
 
 The list of `exclude` scopes that you would like to exclude from scanning.
 
-When a dependency is multi-scope (i.e. [compile, runtime]), if ANY of the scopes are contained in `scope-exclude` it will be excluded from the scan results.
+When a dependency is multi-scope (i.e. `[compile, runtime]`), by default if ANY of the scopes are contained in `scope-exclude` it will be excluded from the scan results:
 
 
 ```yaml
 version: 3
 
 maven:
-  scope-only:
-    - compile
-    - runtime
-## OR
-  scope-exclude:
+  scope-exclude: # Excludes dependencies that contain any of 'provided', 'system', or 'test' scopes.
     - provided
     - system
     - test
+```
+
+For example, using the above setting:
+```
+Dependency { name: "A", scopes: [ "compile" ]}           <- reported, because it doesn't match any excluded scope.
+Dependency { name: "B", scopes: [ "test" ]}              <- not reported, because the scope "test" is excluded.
+Dependency { name: "C", scopes: [ "compile", "system" ]} <- not reported, because the scope "system" is excluded.
+```
+
+For more control, the items provided to `scope-exclude` can be arrays; when this is done it only filters the dependency if ALL of the scopes in that item are contained in the dependency.
+
+```yaml
+version: 3
+
+maven:
+  scope-exclude: # Excludes dependencies that contain the 'system' scope, or if they include both 'provided' and 'test' scopes.
+    - [provided, test]
+    - system
+```
+
+For example, using the above setting:
+```
+Dependency { name: "A", scopes: [ "compile" ]}                     <- reported, because it doesn't have any excluded scope.
+Dependency { name: "B", scopes: [ "test" ]}                        <- reported, because it doesn't have "provided" scope.
+Dependency { name: "C", scopes: [ "provided", "test", "compile" ]} <- not reported, because it has both "test" and "provided" scopes.
+Dependency { name: "B", scopes: [ "system" ]}                      <- not reported, because it has the "system" scope.
 ```
 
 ## FAQ
@@ -440,7 +479,7 @@ In the CLI, project ID refers to a specific portion of a project locator. When r
 
 After project ID is set, the CLI will use that value to construct a project locator on first time analysis. A project locator is a unique ID that the FOSSA API will use to reference a project across FOSSA.
 
-> NOTE: Projects uploaded through the CLI will have `custom` embedded into the project locator. 
+> NOTE: Projects uploaded through the CLI will have `custom` embedded into the project locator.
 
 <img src="../../assets/project-locator-example.png">
 
@@ -448,4 +487,4 @@ After project ID is set, the CLI will use that value to construct a project loca
 
 Project ID should be used when referencing projects uploaded via the CLI. In most cases, providing just a project ID is sufficient. However, when referencing projects uploaded through avenues outside the CLI (Quick Import, Archive Upload, etc), providing just a project ID fails. This is due to the nature of FOSSA's project naming conventions as project locators are constructed differently depending on how a project was uploaded. There is no way to tell at runtime which project a user is referencing when only given a project ID (i.e. Is this a project uploaded via the CLI or Archive Upload?).
 
-In `fossa release-group` project locator is used to reference projects that will be added to your release group's release. By using project locator, all FOSSA project upload flows are covered and the CLI is able to determine the specific project a user is trying to add to a release. 
+In `fossa release-group` project locator is used to reference projects that will be added to your release group's release. By using project locator, all FOSSA project upload flows are covered and the CLI is able to determine the specific project a user is trying to add to a release.
