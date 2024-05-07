@@ -2,9 +2,13 @@ module Strategy.Python.Poetry (
   discover,
 
   -- * for testing only
-  graphFromLockFile,
-  setGraphDirectsFromPyproject,
+  findProjects,
+  analyze,
+  graphFromPyProjectAndLockFile,
   PoetryProject (..),
+  PyProjectTomlFile (..),
+  PoetryLockFile (..),
+  ProjectDir (..),
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -17,8 +21,10 @@ import Data.Aeson (ToJSON)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
+import Data.Set qualified as Set
 import Data.Text (Text)
-import DepTypes (DepType (..), Dependency (..))
+import Data.Text qualified as Text
+import DepTypes (DepEnvironment (EnvDevelopment), DepType (..), Dependency (..), hydrateDepEnvs)
 import Diag.Common (
   MissingDeepDeps (MissingDeepDeps),
   MissingEdges (MissingEdges),
@@ -40,9 +46,9 @@ import Strategy.Python.Errors (
   MissingPoetryLockFile (..),
   commitPoetryLockToVCS,
  )
-import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, pyProjectDeps, toCanonicalName, toMap)
-import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), poetryLockCodec)
-import Strategy.Python.Poetry.PyProject (PyProject (..), pyProjectCodec)
+import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, makePackageToLockDependencyMap, pyProjectDeps, toCanonicalName)
+import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), PoetryMetadata (poetryMetadataLockVersion), poetryLockCodec)
+import Strategy.Python.Poetry.PyProject (PyProject (..), allPoetryProductionDeps, pyProjectCodec)
 import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (PoetryProjectType), GraphBreadth (..))
 
 newtype PyProjectTomlFile = PyProjectTomlFile {pyProjectTomlPath :: Path Abs File} deriving (Eq, Ord, Show, Generic)
@@ -154,7 +160,7 @@ analyze PoetryProject{pyProjectToml, poetryLock} = do
     Just lockPath -> do
       poetryLockProject <- readContentsToml poetryLockCodec (poetryLockPath lockPath)
       _ <- logIgnoredDeps pyproject (Just poetryLockProject)
-      graph <- context "Building dependency graph from pyproject.toml and poetry.lock" $ pure $ setGraphDirectsFromPyproject (graphFromLockFile poetryLockProject) pyproject
+      graph <- context "Building dependency graph from pyproject.toml and poetry.lock" . pure $ graphFromPyProjectAndLockFile pyproject poetryLockProject
       pure $
         DependencyResults
           { dependencyGraph = graph
@@ -170,7 +176,7 @@ analyze PoetryProject{pyProjectToml, poetryLock} = do
         . errHelp MissingPoetryLockFileHelp
         . errDoc commitPoetryLockToVCS
         $ fatalText "poetry.lock file was not discovered"
-      graph <- context "Building dependency graph from only pyproject.toml" $ pure $ Graphing.fromList $ pyProjectDeps pyproject
+      graph <- context "Building dependency graph from only pyproject.toml" . pure $ Graphing.fromList $ pyProjectDeps pyproject
       pure $
         DependencyResults
           { dependencyGraph = graph
@@ -178,23 +184,47 @@ analyze PoetryProject{pyProjectToml, poetryLock} = do
           , dependencyManifestFiles = [pyProjectTomlPath pyProjectToml]
           }
 
--- | Use a `pyproject.toml` to set the direct dependencies of a graph created from `poetry.lock`.
-setGraphDirectsFromPyproject :: Graphing Dependency -> PyProject -> Graphing Dependency
-setGraphDirectsFromPyproject graph pyproject = Graphing.promoteToDirect isDirect graph
-  where
-    -- Dependencies in `poetry.lock` are direct if they're specified in `pyproject.toml`.
-    -- `pyproject.toml` may use non canonical naming, when naming dependencies.
-    isDirect :: Dependency -> Bool
-    isDirect dep = case pyprojectPoetry pyproject of
-      Nothing -> False
-      Just _ -> any (\n -> toCanonicalName (dependencyName n) == toCanonicalName (dependencyName dep)) $ pyProjectDeps pyproject
-
 -- | Using a Poetry lockfile, build the graph of packages.
 -- The resulting graph contains edges, but does not distinguish between direct and deep dependencies,
 -- since `poetry.lock` does not indicate which dependencies are direct.
-graphFromLockFile :: PoetryLock -> Graphing Dependency
-graphFromLockFile poetryLock = Graphing.gmap pkgNameToDependency (edges <> Graphing.deeps pkgsNoDeps)
+graphFromPyProjectAndLockFile :: PyProject -> PoetryLock -> Graphing Dependency
+graphFromPyProjectAndLockFile pyProject poetryLock = graph
   where
+    -- Since Poetry lockfile v1.5 and gt, does not include category marker
+    -- it is not possible to know if the dependency is 'production' or 'development'.
+    -- strictly from lockfile itself. We hydrate "environment" from direct deps. If the
+    -- dependency has no environment, we mark it as dev environment. We know that all production
+    -- dependencies will be hydrated and will have some envionment.
+    graph :: Graphing Dependency
+    graph =
+      labelOptionalDepsIfPoetryGt1_5 $
+        hydrateDepEnvs $
+          Graphing.promoteToDirect isDirect $
+            Graphing.gmap pkgNameToDependency (edges <> Graphing.deeps pkgsNoDeps)
+
+    labelOptionalDepsIfPoetryGt1_5 :: Graphing Dependency -> Graphing Dependency
+    labelOptionalDepsIfPoetryGt1_5 g = if isLockLt1_5 then g else Graphing.gmap markEmptyEnvAsOptionalDep g
+
+    isLockLt1_5 :: Bool
+    isLockLt1_5 = any (`Text.isPrefixOf` lockVersion) ["0", "1.0", "1.1", "1.2", "1.3", "1.4"]
+
+    lockVersion :: Text
+    lockVersion = poetryMetadataLockVersion . poetryLockMetadata $ poetryLock
+
+    markEmptyEnvAsOptionalDep :: Dependency -> Dependency
+    markEmptyEnvAsOptionalDep d =
+      if null $ dependencyEnvironments d
+        then d{dependencyEnvironments = Set.singleton EnvDevelopment}
+        else d
+
+    directDeps :: [Dependency]
+    directDeps = pyProjectDeps pyProject
+
+    isDirect :: Dependency -> Bool
+    isDirect dep = case pyprojectPoetry pyProject of
+      Nothing -> False
+      Just _ -> any (\n -> toCanonicalName (dependencyName n) == toCanonicalName (dependencyName dep)) directDeps
+
     pkgs :: [PoetryLockPackage]
     pkgs = poetryLockPackages poetryLock
 
@@ -217,7 +247,10 @@ graphFromLockFile poetryLock = Graphing.gmap pkgNameToDependency (edges <> Graph
     canonicalPkgName name = PackageName . toCanonicalName $ unPackageName name
 
     mapOfDependency :: Map PackageName Dependency
-    mapOfDependency = toMap pkgs
+    mapOfDependency = makePackageToLockDependencyMap prodPkgNames pkgs
+
+    prodPkgNames :: [PackageName]
+    prodPkgNames = PackageName <$> Map.keys (allPoetryProductionDeps pyProject)
 
     -- Pip packages are [case insensitive](https://www.python.org/dev/peps/pep-0508/#id21), but poetry.lock may use
     -- non-canonical name for reference. Try to lookup with provided name, otherwise fallback to canonical naming.

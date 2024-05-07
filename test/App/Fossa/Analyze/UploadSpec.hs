@@ -4,7 +4,7 @@ module App.Fossa.Analyze.UploadSpec (spec) where
 
 import App.Fossa.Analyze.Upload (ScanUnits (..), mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
-import App.Types (FullFileUploads (FullFileUploads))
+import App.Types (FileUpload (..))
 import Control.Algebra (Has)
 import Control.Carrier.Git (GitC)
 import Control.Carrier.Simple (interpret)
@@ -60,9 +60,9 @@ expectContributorUploadSuccess :: Has MockApi sig m => m ()
 expectContributorUploadSuccess =
   UploadContributors expectedLocator Fixtures.contributors `alwaysReturns` ()
 
-expectFirstPartyAnalysisUploadSuccess :: FullFileUploads -> Has MockApi sig m => m ()
-expectFirstPartyAnalysisUploadSuccess fullFileUploads = do
-  UploadAnalysisWithFirstPartyLicenses Fixtures.projectRevision Fixtures.projectMetadata fullFileUploads `alwaysReturns` Fixtures.uploadResponse
+expectFirstPartyAnalysisUploadSuccess :: FileUpload -> Has MockApi sig m => m ()
+expectFirstPartyAnalysisUploadSuccess uploadKind = do
+  UploadAnalysisWithFirstPartyLicenses Fixtures.projectRevision Fixtures.projectMetadata uploadKind `alwaysReturns` Fixtures.uploadResponse
 
 expectGetFirstPartySignedUrl :: Has MockApi sig m => PackageRevision -> m ()
 expectGetFirstPartySignedUrl packageRevision = GetSignedFirstPartyScanUrl packageRevision `alwaysReturns` Fixtures.signedUrl
@@ -239,7 +239,7 @@ uploadSuccessfulAnalysisSpec = do
           expectGetSuccess
           expectGetFirstPartySignedUrl PackageRevision{packageName = "testProjectName", packageVersion = "testRevision"}
           expectUploadFirstPartyDataToS3
-          expectFirstPartyAnalysisUploadSuccess $ FullFileUploads False
+          expectFirstPartyAnalysisUploadSuccess FileUploadMatchData
           expectContributorUploadSuccess
           locator <-
             uploadSuccessfulAnalysis
@@ -257,7 +257,7 @@ uploadSuccessfulAnalysisSpec = do
           expectGetSuccess
           expectGetFirstPartySignedUrl PackageRevision{packageName = "testProjectName", packageVersion = "testRevision"}
           expectUploadFirstPartyDataToS3
-          expectFirstPartyAnalysisUploadSuccess $ FullFileUploads False
+          expectFirstPartyAnalysisUploadSuccess FileUploadMatchData
           expectContributorUploadSuccess
           locator <-
             uploadSuccessfulAnalysis
@@ -277,7 +277,7 @@ uploadSuccessfulAnalysisSpec = do
           expectGetApiOpts
           expectGetFirstPartySignedUrl PackageRevision{packageName = "testProjectName", packageVersion = "testRevision"}
           expectUploadFirstPartyDataToS3
-          expectFirstPartyAnalysisUploadSuccess $ FullFileUploads True
+          expectFirstPartyAnalysisUploadSuccess FileUploadFullContent
           expectContributorUploadSuccess
           locator <-
             uploadSuccessfulAnalysis

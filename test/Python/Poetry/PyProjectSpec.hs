@@ -1,6 +1,7 @@
 module Python.Poetry.PyProjectSpec (
   spec,
-) where
+)
+where
 
 import Data.Map qualified as Map
 import Data.Text (Text)
@@ -19,18 +20,7 @@ import DepTypes (
     COr
   ),
  )
-import Strategy.Python.Poetry.PyProject (
-  PoetryDependency (..),
-  PyProject (..),
-  PyProjectBuildSystem (..),
-  PyProjectPoetry (..),
-  PyProjectPoetryDetailedVersionDependency (..),
-  PyProjectPoetryGitDependency (..),
-  PyProjectPoetryPathDependency (..),
-  PyProjectPoetryUrlDependency (..),
-  parseConstraintExpr,
-  pyProjectCodec,
- )
+import Strategy.Python.Poetry.PyProject (PoetryDependency (..), PyProject (..), PyProjectBuildSystem (..), PyProjectPoetry (..), PyProjectPoetryDetailedVersionDependency (..), PyProjectPoetryGitDependency (..), PyProjectPoetryPathDependency (..), PyProjectPoetryUrlDependency (..), parseConstraintExpr, pyProjectCodec)
 import Test.Hspec (
   Expectation,
   Spec,
@@ -77,17 +67,51 @@ expectedPyProject =
             , devDependencies =
                 Map.fromList
                   [("pytest", PoetryTextVersion "*")]
+            , groupDevDependencies = Map.empty
+            , groupTestDependencies = Map.empty
+            }
+    }
+
+expectedPyProject3 :: PyProject
+expectedPyProject3 =
+  PyProject
+    { pyprojectBuildSystem = Just $ PyProjectBuildSystem{buildBackend = "poetry.core.masonry.api"}
+    , pyprojectProject = Nothing
+    , pyprojectPdmDevDependencies = Just mempty
+    , pyprojectPoetry =
+        Just $
+          PyProjectPoetry
+            { name = Just "test_name"
+            , version = Just "test_version"
+            , description = Just "test_description"
+            , dependencies =
+                Map.fromList
+                  [ ("python", PoetryTextVersion "^3.12")
+                  , ("rich", PoetryTextVersion "*")
+                  ]
+            , devDependencies = Map.empty
+            , groupDevDependencies =
+                Map.fromList
+                  [ ("click", PoetryTextVersion "*")
+                  ]
+            , groupTestDependencies =
+                Map.fromList
+                  [ ("pytest", PoetryTextVersion "^6.0.0")
+                  , ("pytest-mock", PoetryTextVersion "*")
+                  ]
             }
     }
 
 spec :: Spec
 spec = do
   nominalContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pyproject1.toml")
+  groupDevContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/no-category/pyproject.toml")
 
   describe "pyProjectCodec" $
     describe "when provided with all possible types of dependency sources" $
-      it "should parse pyrproject file with all source types" $
+      it "should parse pyrproject file with all source types" $ do
         Toml.decode pyProjectCodec nominalContents `shouldBe` Right expectedPyProject
+        Toml.decode pyProjectCodec groupDevContents `shouldBe` Right expectedPyProject3
 
   describe "parseConstraintExpr" $ do
     it "should parse equality constraint" $ do
