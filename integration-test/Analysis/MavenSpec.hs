@@ -1,4 +1,4 @@
-o{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE QuasiQuotes #-}
 
 module Analysis.MavenSpec (spec) where
