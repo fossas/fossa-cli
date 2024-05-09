@@ -27,6 +27,7 @@ jobs:
           project-file: cabal.project.ci.linux
           ghc: '9.4.8'
 
+        # macos-latest pointed at macos-12 this before it was changed to ARM.
         - os: macos-12
           os-name: macOS-intel
           project-file: cabal.project.ci.macos

@@ -1,7 +1,7 @@
 # FOSSA CLI Changelog
 
-## Unreleased
-- Release a Mac arm64 binary.
+## v3.9.19
+- Release a Mac arm64 binary. ([#1426](https://github.com/fossas/fossa-cli/pull/1426))
 
 ## v3.9.18
 - Resolves an issue where `vendored-dependencies` were rescanned locally, but not in the FOSSA service,
