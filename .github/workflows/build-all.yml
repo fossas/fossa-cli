@@ -378,9 +378,9 @@ jobs:
         zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-intel-binaries/diagnose
         zip -j release/millhone_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-intel-binaries/millhone
         chmod +x macOS-arm64-binaries/*
-        zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip macOS-intel-binaries/fossa
-        zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip macOS-intel-binaries/diagnose
-        zip -j release/millhone_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip macOS-intel-binaries/millhone
+        zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip macOS-arm64-binaries/fossa
+        zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip macOS-arm64-binaries/diagnose
+        zip -j release/millhone_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip macOS-arm64-binaries/millhone
 
         chmod +x Windows-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/fossa.exe
