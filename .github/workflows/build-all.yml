@@ -247,10 +247,14 @@ jobs:
         security import $CERTIFICATE_PATH -P "$MACOS_BUILD_CERT_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         security list-keychain -d user -s $KEYCHAIN_PATH
 
+        # On Apple Silicon there doesn't seem to be a default liblzma, and the one installed via homebrew is rejected.
+        # This entitlement line will relax that check.
+        echo "<key>com.apple.security.cs.disable-library-validation</key>\n<true/>" >> hardened_runtime_entitlements.plist
+
         chmod +x release/*
         # '--options runtime' enables the hardened runtime: https://developer.apple.com/documentation/security/hardened_runtime
         # The hardened runtime is required for notarization.
-        codesign --options runtime -s 'FOSSA, Inc.' release/fossa
+        codesign --options runtime --entitlements hardened_runtime_entitlements.plist -s 'FOSSA, Inc.' release/fossa
         codesign --options runtime -s 'FOSSA, Inc.' release/diagnose
         codesign --options runtime -s 'FOSSA, Inc.' release/millhone
 
