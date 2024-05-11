@@ -53,7 +53,7 @@ jobs:
     - name: Install MacOS binary dependencies
       if: ${{ contains(matrix.os, 'macos') }}
       run: |
-        brew install jq
+        brew install jq xz
 
     # Set up Haskell.
     - uses: haskell-actions/setup@v2
@@ -249,12 +249,13 @@ jobs:
 
         # On Apple Silicon there doesn't seem to be a default liblzma, and the one installed via homebrew is rejected.
         # This entitlement line will relax that check.
-        echo "<key>com.apple.security.cs.disable-library-validation</key>\n<true/>" >> hardened_runtime_entitlements.plist
+        # echo "<key>com.apple.security.cs.disable-library-validation</key>\n<true/>" >> hardened_runtime_entitlements.plist
+        # --entitlements hardened_runtime_entitlements.plist
 
         chmod +x release/*
         # '--options runtime' enables the hardened runtime: https://developer.apple.com/documentation/security/hardened_runtime
         # The hardened runtime is required for notarization.
-        codesign --options runtime --entitlements hardened_runtime_entitlements.plist -s 'FOSSA, Inc.' release/fossa
+        codesign --options runtime -s 'FOSSA, Inc.' release/fossa
         codesign --options runtime -s 'FOSSA, Inc.' release/diagnose
         codesign --options runtime -s 'FOSSA, Inc.' release/millhone
 
