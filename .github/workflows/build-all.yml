@@ -255,7 +255,7 @@ jobs:
         chmod +x release/*
         # '--options runtime' enables the hardened runtime: https://developer.apple.com/documentation/security/hardened_runtime
         # The hardened runtime is required for notarization.
-        codesign --options runtime -s --entitlements entitlements.plist 'FOSSA, Inc.' release/fossa
+        codesign --entitlements entitlements.plist --options runtime -s 'FOSSA, Inc.' release/fossa
         codesign --options runtime -s 'FOSSA, Inc.' release/diagnose
         codesign --options runtime -s 'FOSSA, Inc.' release/millhone
 
