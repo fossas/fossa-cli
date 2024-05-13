@@ -231,6 +231,7 @@ jobs:
         APPLE_NOTARIZATION_DEV_PASS: ${{ secrets.APPLE_NOTARIZATION_DEV_PASS }}
         APPLE_NOTARIZATION_DEV_ID: ${{ secrets.APPLE_NOTARIZATION_DEV_ID }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        OS_NAME: ${{ matrix.os-name }}
       run: |
         # create variables
         CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
@@ -248,15 +249,18 @@ jobs:
         security import $CERTIFICATE_PATH -P "$MACOS_BUILD_CERT_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         security list-keychain -d user -s $KEYCHAIN_PATH
 
-        # On Apple Silicon there doesn't seem to be a default liblzma, and the one installed via homebrew is rejected.
-        # This entitlement line will relax that check.
-        # echo "" >> hardened_runtime_entitlements.plist
-        # 
 
         chmod +x release/*
         # '--options runtime' enables the hardened runtime: https://developer.apple.com/documentation/security/hardened_runtime
+        # On Apple Silicon there doesn't seem to be a default liblzma, and the one installed via homebrew is rejected.
+        # The entitlement line will relax that check.
         # The hardened runtime is required for notarization.
-        codesign --entitlements entitlements.plist --options runtime -s 'FOSSA, Inc.' release/fossa
+        if [ "$OS_NAME" -eq "macOS-arm64" ] ; then
+          codesign --entitlements .github/entitlements.plist --options runtime -s 'FOSSA, Inc.' release/fossa
+        else
+          # Intel does not need the entitlement to run liblzma, which is included in the base system.
+          codesign --options runtime -s 'FOSSA, Inc.' release/fossa
+        fi
         codesign --options runtime -s 'FOSSA, Inc.' release/diagnose
         codesign --options runtime -s 'FOSSA, Inc.' release/millhone
 
