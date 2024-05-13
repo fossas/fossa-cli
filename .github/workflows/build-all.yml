@@ -255,7 +255,7 @@ jobs:
         # On Apple Silicon there doesn't seem to be a default liblzma, and the one installed via homebrew is rejected.
         # The entitlement line will relax that check.
         # The hardened runtime is required for notarization.
-        if [ "$OS_NAME" -eq "macOS-arm64" ] ; then
+        if [ "$OS_NAME" = "macOS-arm64" ] ; then
           codesign --entitlements .github/entitlements.plist --options runtime -s 'FOSSA, Inc.' release/fossa
         else
           # Intel does not need the entitlement to run liblzma, which is included in the base system.
