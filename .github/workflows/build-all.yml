@@ -222,7 +222,8 @@ jobs:
         strip release/*
 
     - name: Sign and Notarize Binaries (Mac OS)
-      if: ${{ contains(matrix.os, 'macos') # && startsWith(github.ref, 'refs/tags/v') }}
+      # && startsWith(github.ref, 'refs/tags/v') }}
+      if: ${{ contains(matrix.os, 'macos') }}
       env:
         MACOS_BUILD_CERT_BASE64: ${{ secrets.MACOS_BUILD_CERT_BASE64 }}
         MACOS_BUILD_CERT_P12_PASSWORD: ${{ secrets.MACOS_BUILD_CERT_P12_PASSWORD }}
