@@ -219,6 +219,10 @@ library
     App.Fossa.Config.ReleaseGroup.Delete
     App.Fossa.Config.ReleaseGroup.DeleteRelease
     App.Fossa.Config.Report
+    App.Fossa.Config.SBOM
+    App.Fossa.Config.SBOM.Analyze
+    App.Fossa.Config.SBOM.Common
+    App.Fossa.Config.SBOM.Test
     App.Fossa.Config.Snippets
     App.Fossa.Config.Test
     App.Fossa.Container
