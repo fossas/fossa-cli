@@ -1,6 +1,6 @@
 module App.Fossa.Config.SBOM.Common (
-  ImageText (..),
-  imageTextArg,
+  SBOMFile (..),
+  sbomFileArg,
 ) where
 
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
@@ -9,13 +9,13 @@ import GHC.Generics (Generic)
 import Options.Applicative (Parser, argument, metavar, str)
 import Style (applyFossaStyle, stringToHelpDoc)
 
-newtype ImageText = ImageText
-  { unImageText :: Text
+newtype SBOMFile = SBOMFile
+  { unSBOMFile :: Text
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON ImageText where
+instance ToJSON SBOMFile where
   toEncoding = genericToEncoding defaultOptions
 
-imageTextArg :: Parser ImageText
-imageTextArg = ImageText <$> argument str (applyFossaStyle <> metavar "IMAGE" <> stringToHelpDoc "The image to scan")
+sbomFileArg :: Parser SBOMFile
+sbomFileArg = SBOMFile <$> argument str (applyFossaStyle <> metavar "SBOM" <> stringToHelpDoc "The SBOM file to scan")

@@ -1,6 +1,6 @@
 module App.Fossa.Config.SBOM (
   mkSubCommand,
-  ImageText (..),
+  SBOMFile (..),
   TestOutputFormat (..),
   SBOMCommand,
   SBOMScanConfig (..),
@@ -18,7 +18,7 @@ import App.Fossa.Config.ConfigFile (
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Config.SBOM.Analyze (SBOMAnalyzeConfig, SBOMAnalyzeOptions (..))
 import App.Fossa.Config.SBOM.Analyze qualified as Analyze
-import App.Fossa.Config.SBOM.Common (ImageText (..))
+import App.Fossa.Config.SBOM.Common (SBOMFile (..))
 import App.Fossa.Config.SBOM.Test (SBOMTestConfig, SBOMTestOptions (..), TestOutputFormat (..))
 import App.Fossa.Config.SBOM.Test qualified as Test
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))

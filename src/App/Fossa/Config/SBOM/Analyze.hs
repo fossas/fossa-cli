@@ -21,7 +21,7 @@ import App.Fossa.Config.Common (
  )
 import App.Fossa.Config.ConfigFile
 import App.Fossa.Config.EnvironmentVars (EnvVars)
-import App.Fossa.Config.SBOM.Common (ImageText, imageTextArg)
+import App.Fossa.Config.SBOM.Common (SBOMFile, sbomFileArg)
 import App.Fossa.Subcommand (GetSeverity, getSeverity)
 import App.Types (
   ProjectMetadata,
@@ -52,7 +52,7 @@ data JsonOutput = JsonOutput deriving (Generic)
 
 data SBOMAnalyzeConfig = SBOMAnalyzeConfig
   { scanDestination :: App.Fossa.Config.Common.ScanDestination
-  , imageLocator :: ImageText
+  , sbomLocator :: SBOMFile
   , severity :: Severity
   }
   deriving (Eq, Ord, Show, Generic)
@@ -64,7 +64,7 @@ data SBOMAnalyzeOptions = SBOMAnalyzeOptions
   { analyzeCommons :: App.Fossa.Config.Common.CommonOpts
   , containerBranch :: Maybe Text
   , containerMetadata :: ProjectMetadata
-  , containerAnalyzeImage :: ImageText
+  , containerAnalyzeFile :: SBOMFile
   }
 
 instance GetSeverity SBOMAnalyzeOptions where
@@ -75,7 +75,7 @@ subcommand f =
   command
     "analyze"
     ( info (f <$> cliParser) $
-        progDescDoc (formatStringToDoc "Scan an image for vulnerabilities")
+        progDescDoc (formatStringToDoc "Scan an SBOM file")
     )
 
 cliParser :: Parser SBOMAnalyzeOptions
@@ -91,7 +91,7 @@ cliParser =
           )
       )
     <*> App.Fossa.Config.Common.metadataOpts
-    <*> imageTextArg
+    <*> sbomFileArg
 
 mergeOpts ::
   (Has Diagnostics sig m) =>
@@ -102,11 +102,11 @@ mergeOpts ::
 mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
   let scanDest = collectScanDestination cfgfile envvars cliOpts
       severity = getSeverity cliOpts
-      imageLoc = containerAnalyzeImage
+      fileLoc = containerAnalyzeFile
 
   SBOMAnalyzeConfig
     <$> scanDest
-    <*> pure imageLoc
+    <*> pure fileLoc
     <*> pure severity
 
 collectScanDestination ::

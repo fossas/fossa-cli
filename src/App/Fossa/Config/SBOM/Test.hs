@@ -19,8 +19,8 @@ import App.Fossa.Config.Common (
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Config.SBOM.Common (
-  ImageText,
-  imageTextArg,
+  SBOMFile,
+  sbomFileArg,
  )
 import App.Fossa.Config.Test (TestOutputFormat (TestOutputJson, TestOutputPretty), testFormatHelp, validateOutputFormat)
 import App.Types (OverrideProject (OverrideProject))
@@ -58,7 +58,7 @@ data SBOMTestConfig = SBOMTestConfig
   { apiOpts :: ApiOpts
   , timeoutDuration :: Duration
   , outputFormat :: TestOutputFormat
-  , testImageLocator :: ImageText
+  , testSBOMFile :: SBOMFile
   , testRevisionOverride :: OverrideProject
   }
   deriving (Eq, Ord, Show, Generic)
@@ -70,7 +70,7 @@ data SBOMTestOptions = SBOMTestOptions
   { testCommons :: CommonOpts
   , containerTestTimeout :: Maybe Int
   , containerTestOutputFmt :: Maybe String
-  , containerTestImage :: ImageText
+  , containerTestFile :: SBOMFile
   }
 
 cliParser :: Parser SBOMTestOptions
@@ -79,7 +79,7 @@ cliParser =
     <$> commonOpts
     <*> optional (option auto (applyFossaStyle <> long "timeout" <> stringToHelpDoc "Duration to wait for build completion (in seconds)"))
     <*> optional (strOption (applyFossaStyle <> long "format" <> helpDoc testFormatHelp))
-    <*> imageTextArg
+    <*> sbomFileArg
 
 mergeOpts ::
   (Has Diagnostics sig m) =>
@@ -105,5 +105,5 @@ mergeOpts cfgfile envvars SBOMTestOptions{..} = do
     <$> apiopts
     <*> pure timeout
     <*> pure testOutputFormat
-    <*> pure containerTestImage
+    <*> pure containerTestFile
     <*> pure revOverride
