@@ -20,6 +20,7 @@ import App.Fossa.PreflightChecks (PreflightCommandChecks (TestChecks), preflight
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (
   ProjectRevision (projectName, projectRevision),
+  projectBranch,
  )
 import Control.Algebra (Has)
 import Control.Carrier.Debug (ignoreDebug)
@@ -30,7 +31,7 @@ import Control.Effect.Lift (Lift)
 import Control.Timeout (timeout')
 import Data.Aeson qualified as Aeson
 import Data.String.Conversion (decodeUtf8)
-import Data.Text (Text)
+import Data.Text (Text, replace)
 import Data.Text.Extra (showT)
 import Effect.Logger (
   Logger,
@@ -41,7 +42,7 @@ import Effect.Logger (
   pretty,
   vsep,
  )
-import Fossa.API.Types (Issues (..))
+import Fossa.API.Types (Issue, Issues (..), issueDashURL)
 
 testSubCommand :: SubCommand TestCliOpts TestConfig
 testSubCommand = Config.mkSubCommand testMain
@@ -84,14 +85,19 @@ testMain config = do
       logSticky ""
       logInfo ""
 
+      let updatedIssues =
+            case (projectBranch revision) of
+              Nothing -> issues
+              Just branch -> updateIssuesDashURL branch issues
+
       case issuesCount issues of
         0 -> do
           logInfo . pretty $ successMsg diffRev
           case outputType of
             TestOutputPretty -> pure ()
-            TestOutputJson -> renderJson issues
+            TestOutputJson -> renderJson updatedIssues
         n -> do
-          if null (issuesIssues issues)
+          if null (issuesIssues updatedIssues)
             then
               logError $
                 vsep
@@ -99,8 +105,8 @@ testMain config = do
                   , "Check the webapp for issue details, or rerun this command with a full-access API key."
                   ]
             else case outputType of
-              TestOutputPretty -> logError $ pretty issues
-              TestOutputJson -> renderJson issues
+              TestOutputPretty -> logError $ pretty updatedIssues
+              TestOutputJson -> renderJson updatedIssues
           fatalText $ issuesFoundMsg diffRev n
   where
     successMsg :: Maybe DiffRevision -> Text
@@ -119,3 +125,15 @@ testMain config = do
 
     renderJson :: (Has (Lift IO) sig m, Has Logger sig m) => Issues -> m ()
     renderJson = logStdout . decodeUtf8 . Aeson.encode
+
+    -- `issueDashURL` will have the branch set to `master` for all issues. The url will contain: `/refs/branch/master`
+    -- Update `issueDashURL` for all issues with the current revision's branch.
+    updateIssuesDashURL :: Text -> Issues -> Issues
+    updateIssuesDashURL projectBranch issues = issues{issuesIssues = map (updateIssueDashURL projectBranch) (issuesIssues issues)}
+
+    updateIssueDashURL :: Text -> Issue -> Issue
+    updateIssueDashURL projectBranch issue = issue{issueDashURL = updatedURL}
+      where
+        oldSegment = "/master/"
+        newSegment = "/" <> projectBranch <> "/"
+        updatedURL = replace oldSegment newSegment <$> issueDashURL issue
