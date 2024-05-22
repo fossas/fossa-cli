@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- Updated the license to CPAL, an OSI-approved license similar to MPL.
+
 ## v3.9.18
 - Resolves an issue where `vendored-dependencies` were rescanned locally, but not in the FOSSA service,
   when `forceRescans` was set to `true` ([#1423](https://github.com/fossas/fossa-cli/pull/1423)).
