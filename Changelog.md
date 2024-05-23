@@ -1,7 +1,8 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.9.19
 - Updated the license to CPAL, an OSI-approved license similar to MPL ([#1431](https://github.com/fossas/fossa-cli/pull/1431)).
+- `fossa test`: Update `issueDashURL` to contain correct branch [#1433](https://github.com/fossas/fossa-cli/pull/1433).
 
 ## v3.9.18
 - Resolves an issue where `vendored-dependencies` were rescanned locally, but not in the FOSSA service,
