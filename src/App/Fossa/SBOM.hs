@@ -2,7 +2,6 @@ module App.Fossa.SBOM (
   sbomSubCommand,
 ) where
 
-import App.Docs (fossaSBOMScannerUrl)
 import App.Fossa.Config.SBOM (
   SBOMAnalyzeConfig (..),
   SBOMCommand,

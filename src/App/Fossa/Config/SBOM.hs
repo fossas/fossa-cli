@@ -44,6 +44,7 @@ mkSubCommand = SubCommand "sbom" sbomCmdInfo parser loadConfig mergeOpts
 
 mergeOpts ::
   ( Has Diagnostics sig m
+  , Has ReadFS sig m
   ) =>
   Maybe ConfigFile ->
   EnvVars ->

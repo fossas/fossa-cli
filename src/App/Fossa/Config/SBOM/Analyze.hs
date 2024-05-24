@@ -24,6 +24,7 @@ import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Config.SBOM.Common (SBOMFile, sbomFileArg)
 import App.Fossa.Subcommand (GetSeverity, getSeverity)
 import App.Types (
+  BaseDir (BaseDir),
   ProjectMetadata,
  )
 import Control.Effect.Diagnostics (Diagnostics, Has)
@@ -31,6 +32,7 @@ import Data.Aeson (ToJSON, defaultOptions, genericToEncoding)
 import Data.Aeson.Types (ToJSON (toEncoding))
 import Data.Text (Text)
 import Effect.Logger (Severity (SevDebug, SevInfo))
+import Effect.ReadFS (ReadFS, getCurrentDir)
 import GHC.Generics (Generic)
 import Options.Applicative (
   CommandFields,
@@ -51,8 +53,9 @@ data NoUpload = NoUpload
 data JsonOutput = JsonOutput deriving (Generic)
 
 data SBOMAnalyzeConfig = SBOMAnalyzeConfig
-  { scanDestination :: App.Fossa.Config.Common.ScanDestination
-  , sbomLocator :: SBOMFile
+  { sbomBaseDir :: BaseDir
+  , sbomScanDestination :: App.Fossa.Config.Common.ScanDestination
+  , sbomPath :: SBOMFile
   , severity :: Severity
   }
   deriving (Eq, Ord, Show, Generic)
@@ -64,7 +67,7 @@ data SBOMAnalyzeOptions = SBOMAnalyzeOptions
   { analyzeCommons :: App.Fossa.Config.Common.CommonOpts
   , containerBranch :: Maybe Text
   , containerMetadata :: ProjectMetadata
-  , containerAnalyzeFile :: SBOMFile
+  , sbomFile :: SBOMFile
   }
 
 instance GetSeverity SBOMAnalyzeOptions where
@@ -94,18 +97,20 @@ cliParser =
     <*> sbomFileArg
 
 mergeOpts ::
-  (Has Diagnostics sig m) =>
+  ( Has Diagnostics sig m
+  , Has ReadFS sig m
+  ) =>
   Maybe ConfigFile ->
   EnvVars ->
   SBOMAnalyzeOptions ->
   m SBOMAnalyzeConfig
 mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
+  baseDir <- getCurrentDir
   let scanDest = collectScanDestination cfgfile envvars cliOpts
       severity = getSeverity cliOpts
-      fileLoc = containerAnalyzeFile
+      fileLoc = sbomFile
 
-  SBOMAnalyzeConfig
-    <$> scanDest
+  (SBOMAnalyzeConfig (BaseDir baseDir) <$> scanDest)
     <*> pure fileLoc
     <*> pure severity
 
