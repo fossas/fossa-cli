@@ -12,6 +12,9 @@ import App.Fossa.SBOM.Analyze qualified as Analyze
 import App.Fossa.SBOM.Test qualified as Test
 import App.Fossa.Subcommand (SubCommand)
 import App.Support (supportUrl)
+import Control.Carrier.Debug (Debug, ignoreDebug)
+import Control.Carrier.FossaApiClient (runFossaApiClient)
+import Control.Carrier.StickyLogger (StickyLogger)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -22,10 +25,6 @@ import Control.Monad (void)
 import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
-  Pretty (pretty),
-  indent,
-  logWarn,
-  vsep,
  )
 import Effect.ReadFS (ReadFS)
 
@@ -38,10 +37,9 @@ dispatch ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
-  , Has Telemetry sig m
   ) =>
   SBOMScanConfig ->
   m ()
 dispatch = \case
-  AnalyzeCfg cfg -> Analyze.analyze cfg
+  AnalyzeCfg cfg -> void $ ignoreDebug $ Analyze.analyze cfg
   TestCfg cfg -> Test.test cfg

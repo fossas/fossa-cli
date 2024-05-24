@@ -4,13 +4,16 @@ module App.Fossa.SBOM.Analyze (
   analyze,
 ) where
 
+import App.Fossa.Config.Analyze (ScanDestination (..))
 import App.Fossa.Config.SBOM
 import App.Fossa.VendoredDependency (
   compressFile,
  )
 import App.Types (BaseDir (unBaseDir), DependencyRebuild)
+import Control.Carrier.Debug (Debug)
 import Control.Carrier.Diagnostics qualified as Diag
-import Control.Carrier.StickyLogger (StickyLogger, logSticky)
+import Control.Carrier.FossaApiClient (runFossaApiClient)
+import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (context)
 import Control.Effect.FossaApiClient (FossaApiClient, PackageRevision (PackageRevision), getOrganization, getSignedUploadUrl, queueArchiveBuild, uploadArchive)
 import Control.Effect.Lift
@@ -61,11 +64,22 @@ uploadSBOM conf tmpDir = context "compressing and uploading SBOM" $ do
 
   pure $ SBOM vendoredName depVersion
 
--- archiveUploadSourceUnit receives a list of vendored dependencies, a root path, and API settings.
--- Using this information, it uploads each vendored dependency and queues a build for the dependency.
---
--- Note: this function intentionally does not accept a @FileUpload@ type, because it /always/ uploads full files.
+-- analyze receives a path to an SBOM file, a root path, and API settings.
+-- Using this information, it uploads the SBOM and queues a build for it.
 analyze ::
+  ( Has Diag.Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has Debug sig m
+  ) =>
+  SBOMAnalyzeConfig ->
+  m ()
+analyze config =
+  case sbomScanDestination config of
+    OutputStdout -> pure ()
+    UploadScan apiOpts _metadata -> (runFossaApiClient apiOpts) . (runStickyLogger $ severity config) $ analyzeInternal config
+
+analyzeInternal ::
   ( Has Diag.Diagnostics sig m
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
@@ -73,8 +87,8 @@ analyze ::
   , Has FossaApiClient sig m
   ) =>
   SBOMAnalyzeConfig ->
-  m Locator
-analyze config = do
+  m ()
+analyzeInternal config = do
   -- At this point, we have a good list of deps, so go for it.
   sbom <- withSystemTempDir "fossa-temp" (uploadSBOM config)
 
@@ -95,4 +109,6 @@ analyze config = do
       updateSBOMName updateText s = s{sbomName = updateText <> "/" <> sbomName s}
       sbomWithOrganization = updateSBOMName (toText $ show orgId) sbom
 
-  pure $ Locator "sbom" (sbomName sbomWithOrganization) (Just $ sbomVersion sbom)
+  let locator = Locator "sbom" (sbomName sbomWithOrganization) (Just $ sbomVersion sbom)
+  logSticky $ "uploaded to " <> toText locator
+  pure ()
