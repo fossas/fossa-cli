@@ -266,6 +266,9 @@ library
     App.Fossa.Report
     App.Fossa.Report.Attribution
     App.Fossa.RunThemis
+    App.Fossa.SBOM
+    App.Fossa.SBOM.Analyze
+    App.Fossa.SBOM.Test
     App.Fossa.Snippets
     App.Fossa.Snippets.Analyze
     App.Fossa.Snippets.Commit
