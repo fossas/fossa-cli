@@ -11,6 +11,7 @@ import App.Fossa.ListTargets qualified as ListTargets
 import App.Fossa.Project qualified as Project
 import App.Fossa.ReleaseGroup qualified as ReleaseGroup
 import App.Fossa.Report qualified as Report
+import App.Fossa.SBOM qualified as SBOM
 import App.Fossa.Snippets qualified as Snippets
 import App.Fossa.Subcommand (GetCommonOpts, GetSeverity, SubCommand (..), runSubCommand)
 import App.Fossa.Test qualified as Test
@@ -102,6 +103,7 @@ subcommands = public <|> private
           , decodeSubCommand ListTargets.listSubCommand
           , decodeSubCommand LinkBins.linkBinsSubCommand
           , decodeSubCommand Snippets.snippetsSubCommand
+          , decodeSubCommand SBOM.sbomSubCommand
           , initCommand
           , feedbackCommand
           , decodeSubCommand Project.projectSubCommand

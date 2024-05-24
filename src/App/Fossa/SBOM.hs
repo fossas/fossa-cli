@@ -41,5 +41,7 @@ dispatch ::
   SBOMScanConfig ->
   m ()
 dispatch = \case
+  -- TODO: deal with logging properly
+  -- TODO: Add telemetry
   AnalyzeCfg cfg -> void $ ignoreDebug $ Analyze.analyze cfg
   TestCfg cfg -> Test.test cfg
