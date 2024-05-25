@@ -245,11 +245,12 @@ getSignedUploadUrl ::
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
+  Text ->
   PackageRevision ->
   m SignedURL
-getSignedUploadUrl PackageRevision{..} = do
+getSignedUploadUrl fileType PackageRevision{..} = do
   apiOpts <- ask
-  API.getSignedURL apiOpts packageVersion packageName
+  API.getSignedURL apiOpts fileType packageVersion packageName
 
 queueArchiveBuild ::
   ( Has (Lift IO) sig m

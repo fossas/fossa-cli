@@ -56,7 +56,7 @@ uploadSBOM conf tmpDir = context "compressing and uploading SBOM" $ do
   --   Nothing -> sendIO $ hashFile compressedFile
   --   Just version -> pure version
 
-  signedURL <- getSignedUploadUrl $ PackageRevision vendoredName depVersion
+  signedURL <- getSignedUploadUrl "sbom" $ PackageRevision vendoredName depVersion
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
   res <- uploadArchive signedURL compressedFile

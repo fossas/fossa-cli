@@ -994,11 +994,12 @@ getSignedURL ::
   ApiOpts ->
   Text ->
   Text ->
+  Text ->
   m SignedURL
-getSignedURL apiOpts revision packageName = fossaReq $ do
+getSignedURL apiOpts fileType revision packageName = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = "packageSpec" =: packageName <> "revision" =: revision
+  let opts = "packageSpec" =: packageName <> "revision" =: revision <> "fileType" =: fileType
 
   response <-
     context ("Retrieving a signed S3 URL for " <> packageName) $
