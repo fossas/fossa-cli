@@ -27,7 +27,7 @@ import Data.Aeson (FromJSON (parseJSON), withObject, (.:?))
 import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers, neText)
 import Data.ByteString.Lazy qualified as BS
 import Data.Functor.Extra ((<$$>))
-import Data.List (intercalate)
+import Data.List (intercalate, stripPrefix)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.List.NonEmpty qualified as NonEmpty
@@ -60,7 +60,7 @@ instance FromJSON VendoredDependency where
         <$> (obj `neText` "name")
         <*> (obj `neText` "path")
         <*> (unTextLike <$$> obj .:? "version")
-        <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
+          <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
 
     case vendoredVersion vendorDep of
       Nothing -> pure vendorDep
@@ -170,7 +170,11 @@ compressFile outputDir directory fileToTar = do
   -- We are adding the suffix to avoid errors when we compress to a path that already exists
   -- This is most likely to happen if `fileToTar` is "."
   suffix <- nextRandom
-  let finalFilename = fileToTar ++ show suffix
+
+  -- removing the leading slash makes this work with absolute paths too
+  let rmLeadingSlash :: String -> String
+      rmLeadingSlash t = fromMaybe t $ stripPrefix "/" t
+  let finalFilename = rmLeadingSlash (fileToTar ++ show suffix)
   let finalFile = toString outputDir </> safeSeparators finalFilename
   entries <- Tar.pack (toString directory) [fileToTar]
   BS.writeFile finalFile $ GZip.compress $ Tar.write entries
