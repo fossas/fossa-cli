@@ -39,7 +39,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Config.Test (DiffRevision)
 import App.Fossa.VendoredDependency (VendoredDependency (..))
-import App.Types (DependencyRebuild, FileUpload, ProjectMetadata, ProjectRevision (..), ReleaseGroupReleaseRevision)
+import App.Types (ComponentUploadFileType, DependencyRebuild, FileUpload, ProjectMetadata, ProjectRevision (..), ReleaseGroupReleaseRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
@@ -245,7 +245,7 @@ getSignedUploadUrl ::
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
-  Text ->
+  ComponentUploadFileType ->
   PackageRevision ->
   m SignedURL
 getSignedUploadUrl fileType PackageRevision{..} = do

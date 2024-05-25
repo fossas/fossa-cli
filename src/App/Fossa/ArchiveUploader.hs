@@ -11,7 +11,7 @@ import App.Fossa.VendoredDependency (
   dedupVendoredDeps,
   hashFile,
  )
-import App.Types (DependencyRebuild)
+import App.Types (ComponentUploadFileType (..), DependencyRebuild)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.StickyLogger (StickyLogger, logSticky)
 import Control.Effect.Diagnostics (context)
@@ -60,7 +60,7 @@ compressAndUpload arcDir tmpDir VendoredDependency{..} = context "compressing an
     Nothing -> sendIO $ hashFile compressedFile
     Just version -> pure version
 
-  signedURL <- getSignedUploadUrl "archive" $ PackageRevision vendoredName depVersion
+  signedURL <- getSignedUploadUrl ArchiveUpload $ PackageRevision vendoredName depVersion
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
   res <- uploadArchive signedURL compressedFile

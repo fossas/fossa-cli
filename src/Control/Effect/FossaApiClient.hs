@@ -65,7 +65,7 @@ import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency)
-import App.Types (DependencyRebuild, FileUpload, ProjectMetadata, ProjectRevision, ReleaseGroupReleaseRevision)
+import App.Types (ComponentUploadFileType, DependencyRebuild, FileUpload, ProjectMetadata, ProjectRevision, ReleaseGroupReleaseRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
@@ -134,7 +134,7 @@ data FossaApiClientF a where
   GetSignedFirstPartyScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetPathDependencyScanUrl :: PackageRevision -> ProjectRevision -> FileUpload -> FossaApiClientF PathDependencyUpload
-  GetSignedUploadUrl :: Text -> PackageRevision -> FossaApiClientF SignedURL
+  GetSignedUploadUrl :: ComponentUploadFileType -> PackageRevision -> FossaApiClientF SignedURL
   GetTokenType :: FossaApiClientF TokenTypeResponse
   GetVsiInferences :: VSI.ScanID -> FossaApiClientF VSI.VsiExportedInferencesBody
   GetVsiScanAnalysisStatus :: VSI.ScanID -> FossaApiClientF VSI.AnalysisStatus
@@ -224,7 +224,7 @@ getIssues projectRevision diffRevision = sendSimple $ GetIssues projectRevision 
 getAttribution :: Has FossaApiClient sig m => ProjectRevision -> ReportOutputFormat -> m Text
 getAttribution revision format = sendSimple $ GetAttribution revision format
 
-getSignedUploadUrl :: Has FossaApiClient sig m => Text -> PackageRevision -> m SignedURL
+getSignedUploadUrl :: Has FossaApiClient sig m => ComponentUploadFileType -> PackageRevision -> m SignedURL
 getSignedUploadUrl fileType packageSpec = sendSimple $ GetSignedUploadUrl fileType packageSpec
 
 uploadArchive :: Has FossaApiClient sig m => SignedURL -> FilePath -> m ByteString

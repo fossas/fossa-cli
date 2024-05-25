@@ -9,7 +9,7 @@ import App.Fossa.Config.SBOM
 import App.Fossa.VendoredDependency (
   compressFile,
  )
-import App.Types (BaseDir (unBaseDir), DependencyRebuild)
+import App.Types (BaseDir (unBaseDir), ComponentUploadFileType (..), DependencyRebuild)
 import Control.Carrier.Debug (Debug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.FossaApiClient (runFossaApiClient)
@@ -49,14 +49,14 @@ uploadSBOM conf tmpDir = context "compressing and uploading SBOM" $ do
   logSticky $ "Compressing '" <> (toText sbomPath) <> "'"
   compressedFile <- sendIO $ compressFile tmpDir baseDir (toString sbomPath)
 
-  let depVersion = "1.2.3"
+  let depVersion = "1.2.4"
   let vendoredName = "someSbom"
   -- TODO: The version from the UI is a timestamp. Should we keep that or use the hash?
   -- depVersion <- case vendoredVersion of
   --   Nothing -> sendIO $ hashFile compressedFile
   --   Just version -> pure version
 
-  signedURL <- getSignedUploadUrl "sbom" $ PackageRevision vendoredName depVersion
+  signedURL <- getSignedUploadUrl SBOMUpload $ PackageRevision vendoredName depVersion
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
   res <- uploadArchive signedURL compressedFile

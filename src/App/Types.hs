@@ -15,6 +15,7 @@ module App.Types (
   ReleaseGroupRevision (..),
   ReleaseGroupProjectRevision (..),
   ReleaseGroupReleaseRevision (..),
+  ComponentUploadFileType (..),
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, object, withObject, (.:), (.=))
@@ -87,6 +88,13 @@ data ProjectRevision = ProjectRevision
 
 instance ToJSON ProjectRevision where
   toEncoding = genericToEncoding defaultOptions
+
+data ComponentUploadFileType = ArchiveUpload | SBOMUpload
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToText ComponentUploadFileType where
+  toText ArchiveUpload = "archive"
+  toText SBOMUpload = "sbom"
 
 data ReleaseGroupRevision = ReleaseGroupRevision
   { releaseGroupTitle :: Text

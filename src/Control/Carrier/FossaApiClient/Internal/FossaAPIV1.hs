@@ -97,6 +97,7 @@ import App.Support (
   requestReportIfPersistsWithDebugBundle,
  )
 import App.Types (
+  ComponentUploadFileType,
   DependencyRebuild,
   FileUpload (FileUploadFullContent),
   Policy (..),
@@ -992,14 +993,14 @@ signedURLEndpoint baseUrl = baseUrl /: "api" /: "components" /: "signed_url"
 getSignedURL ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
-  Text ->
+  ComponentUploadFileType ->
   Text ->
   Text ->
   m SignedURL
 getSignedURL apiOpts fileType revision packageName = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = "packageSpec" =: packageName <> "revision" =: revision <> "fileType" =: fileType
+  let opts = "packageSpec" =: packageName <> "revision" =: revision <> "fileType" =: toText fileType
 
   response <-
     context ("Retrieving a signed S3 URL for " <> packageName) $
