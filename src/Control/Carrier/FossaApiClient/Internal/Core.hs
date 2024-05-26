@@ -260,10 +260,11 @@ queueArchiveBuild ::
   ) =>
   [Archive] ->
   DependencyRebuild ->
+  ComponentUploadFileType ->
   m ()
-queueArchiveBuild archives rebuild = do
+queueArchiveBuild archives rebuild fileType = do
   apiOpts <- ask
-  API.archiveBuildUpload apiOpts archives rebuild
+  API.archiveBuildUpload apiOpts archives rebuild fileType
 
 uploadArchive ::
   ( Has (Lift IO) sig m

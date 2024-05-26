@@ -932,22 +932,24 @@ archiveBuildUpload ::
   ApiOpts ->
   [Archive] ->
   DependencyRebuild ->
+  ComponentUploadFileType ->
   m ()
-archiveBuildUpload apiOpts archives rebuild = context "request build for archives" . context ("rebuild: " <> toText rebuild) $ do
+archiveBuildUpload apiOpts archives rebuild fileType = context "request build for archives" . context ("rebuild: " <> toText rebuild) $ do
   -- The API route expects an array of archives, but doesn't properly handle multiple archives.
   -- Given that, each archive's build is requested one by one.
-  traverse_ (archiveBuildUpload' apiOpts rebuild) archives
+  traverse_ (archiveBuildUpload' apiOpts rebuild fileType) archives
 
 archiveBuildUpload' ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   DependencyRebuild ->
+  ComponentUploadFileType ->
   Archive ->
   m (Maybe ())
-archiveBuildUpload' apiOpts rebuild archive = context ("archive: '" <> toText archive) . runEmpty . fossaReqAllow401 $ do
+archiveBuildUpload' apiOpts rebuild fileType archive = context ("archive: '" <> toText archive) . runEmpty . fossaReqAllow401 $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = "dependency" =: True <> "rawLicenseScan" =: True
+  let opts = "dependency" =: True <> "rawLicenseScan" =: True <> "fileType" =: toText fileType
   let archiveProjects = ArchiveComponents [archive] rebuild FileUploadFullContent
 
   -- The response appears to either be "Created" for new builds, or an error message for existing builds.

@@ -9,7 +9,7 @@ import App.Fossa.Config.SBOM
 import App.Fossa.VendoredDependency (
   compressFile,
  )
-import App.Types (BaseDir (unBaseDir), ComponentUploadFileType (..), DependencyRebuild)
+import App.Types (BaseDir (unBaseDir), ComponentUploadFileType (..), DependencyRebuild (..))
 import Control.Carrier.Debug (Debug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.FossaApiClient (runFossaApiClient)
@@ -97,8 +97,10 @@ analyzeInternal config = do
   -- about the response here because if the build has already been queued, we
   -- get a 401 response.
 
-  -- TODO
-  -- _ <- queueSBOMBuild sbom rebuild
+  -- TODO: Add rebuild to config options
+  let rebuild = DependencyRebuildReuseCache -- TODO
+  let archive = Archive (sbomName sbom) (sbomVersion sbom)
+  _ <- queueArchiveBuild [archive] rebuild SBOMUpload
 
   -- The organizationID is needed to prefix each locator name. The FOSSA API
   -- automatically prefixes the locator when queuing the build but not when
