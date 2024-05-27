@@ -18,4 +18,4 @@ instance ToJSON SBOMFile where
   toEncoding = genericToEncoding defaultOptions
 
 sbomFileArg :: Parser SBOMFile
-sbomFileArg = SBOMFile <$> argument str (applyFossaStyle <> metavar "SBOM" <> stringToHelpDoc "The SBOM file to scan")
+sbomFileArg = SBOMFile <$> argument str (applyFossaStyle <> metavar "SBOM" <> stringToHelpDoc "Path to the SBOM file to scan")
