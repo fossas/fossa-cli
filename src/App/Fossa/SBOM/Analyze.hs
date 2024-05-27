@@ -2,10 +2,11 @@ module App.Fossa.SBOM.Analyze (
   analyze,
 ) where
 
+import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.SBOM
 import App.Fossa.Config.SBOM.Analyze (SBOMScanDestination (..))
 import App.Fossa.ProjectInference (InferredProject (..), inferProjectDefaultFromFile)
-import App.Types (ComponentUploadFileType (..), OverrideProject (..))
+import App.Types (ComponentUploadFileType (..), OverrideProject (..), ProjectRevision (ProjectRevision))
 import Control.Carrier.Debug (Debug)
 import Control.Carrier.Diagnostics (Diagnostics, fromEitherShow)
 import Control.Carrier.Diagnostics qualified as Diag
@@ -14,10 +15,11 @@ import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (context)
 import Control.Effect.FossaApiClient (FossaApiClient, PackageRevision (PackageRevision), getOrganization, getSignedUploadUrl, queueSBOMBuild, uploadArchive)
 import Control.Effect.Lift
+import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion
 import Data.Text (Text)
-import Effect.Logger (Logger, logDebug)
+import Effect.Logger (Logger, logDebug, logInfo)
 import Fossa.API.Types
 import Path (parseSomeFile)
 import Path.Posix (SomeBase (..))
@@ -108,4 +110,15 @@ analyzeInternal config = do
 
   let locator = Locator "sbom" (sbomName sbomWithOrganization) (Just $ sbomVersion sbom)
   logSticky $ "uploaded to " <> toText locator
-  pure ()
+  let revision = ProjectRevision (sbomName sbomWithOrganization) (sbomVersion sbom) Nothing
+  buildUrl <- getFossaBuildUrl revision locator
+
+  traverse_
+    logInfo
+    [ "============================================================"
+    , ""
+    , "    View FOSSA Report:"
+    , "    " <> pretty buildUrl
+    , ""
+    , "============================================================"
+    ]
