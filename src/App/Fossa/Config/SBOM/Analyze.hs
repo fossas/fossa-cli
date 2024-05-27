@@ -5,6 +5,7 @@ module App.Fossa.Config.SBOM.Analyze (
   JsonOutput (..),
   SBOMAnalyzeConfig (..),
   SBOMAnalyzeOptions (..),
+  SBOMScanDestination (..),
   cliParser,
   mergeOpts,
   subcommand,
@@ -12,12 +13,9 @@ module App.Fossa.Config.SBOM.Analyze (
 
 import App.Fossa.Config.Common (
   CommonOpts (..),
-  ScanDestination (..),
-  collectAPIMetadata,
   collectApiOpts,
   collectRevisionOverride,
   commonOpts,
-  metadataOpts,
  )
 import App.Fossa.Config.ConfigFile
 import App.Fossa.Config.EnvironmentVars (EnvVars)
@@ -27,25 +25,34 @@ import App.Types (
   BaseDir (BaseDir),
   DependencyRebuild (..),
   OverrideProject (OverrideProject),
-  ProjectMetadata,
  )
+import Control.Applicative (optional)
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding)
 import Data.Aeson.Types (ToJSON (toEncoding))
 import Data.Flag (Flag, flagOpt, fromFlag)
+import Data.Text (Text)
 import Effect.Logger (Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS, getCurrentDir)
+import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
-import Options.Applicative (CommandFields, Mod, Parser, command, info, long)
-import Options.Applicative.Builder (progDescDoc)
+import Options.Applicative (CommandFields, Mod, Parser, command, info, long, short)
+import Options.Applicative.Builder (progDescDoc, strOption)
 import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
 
 data NoUpload = NoUpload
 data JsonOutput = JsonOutput deriving (Generic)
+data SBOMScanDestination
+  = SBOMUploadScan ApiOpts
+  | SBOMOutputStdout
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON SBOMScanDestination where
+  toEncoding = genericToEncoding defaultOptions
 
 data SBOMAnalyzeConfig = SBOMAnalyzeConfig
   { sbomBaseDir :: BaseDir
-  , sbomScanDestination :: App.Fossa.Config.Common.ScanDestination
+  , sbomScanDestination :: SBOMScanDestination
   , revisionOverride :: OverrideProject
   , sbomPath :: SBOMFile
   , severity :: Severity
@@ -58,7 +65,7 @@ instance ToJSON SBOMAnalyzeConfig where
 
 data SBOMAnalyzeOptions = SBOMAnalyzeOptions
   { analyzeCommons :: App.Fossa.Config.Common.CommonOpts
-  , containerMetadata :: ProjectMetadata
+  , teams :: Maybe Text
   , forceRescan :: Flag ForceRescan
   , sbomFile :: SBOMFile
   }
@@ -80,7 +87,7 @@ cliParser :: Parser SBOMAnalyzeOptions
 cliParser =
   SBOMAnalyzeOptions
     <$> App.Fossa.Config.Common.commonOpts
-    <*> App.Fossa.Config.Common.metadataOpts
+    <*> optional (strOption (applyFossaStyle <> long "team" <> short 'T' <> stringToHelpDoc "This SBOM's team inside your organization"))
     <*> flagOpt ForceRescan (applyFossaStyle <> long "force-rescan" <> stringToHelpDoc "Force sbom file to be rescanned even if the revision has been previously analyzed by FOSSA.")
     <*> sbomFileArg
 
@@ -117,8 +124,7 @@ collectScanDestination ::
   Maybe ConfigFile ->
   EnvVars ->
   SBOMAnalyzeOptions ->
-  m App.Fossa.Config.Common.ScanDestination
+  m SBOMScanDestination
 collectScanDestination maybeCfgFile envvars SBOMAnalyzeOptions{..} = do
   apiOpts <- App.Fossa.Config.Common.collectApiOpts maybeCfgFile envvars analyzeCommons
-  metaMerged <- App.Fossa.Config.Common.collectAPIMetadata maybeCfgFile containerMetadata
-  pure $ App.Fossa.Config.Common.UploadScan apiOpts metaMerged
+  pure $ SBOMUploadScan apiOpts

@@ -2,8 +2,8 @@ module App.Fossa.SBOM.Analyze (
   analyze,
 ) where
 
-import App.Fossa.Config.Analyze (ScanDestination (..))
 import App.Fossa.Config.SBOM
+import App.Fossa.Config.SBOM.Analyze (SBOMScanDestination (..))
 import App.Fossa.ProjectInference (InferredProject (..), inferProjectDefaultFromFile)
 import App.Types (ComponentUploadFileType (..), OverrideProject (..))
 import Control.Carrier.Debug (Debug)
@@ -74,8 +74,8 @@ analyze ::
   m ()
 analyze config =
   case sbomScanDestination config of
-    OutputStdout -> pure ()
-    UploadScan apiOpts _metadata -> (runFossaApiClient apiOpts) . runStickyLogger (severity config) $ analyzeInternal config
+    SBOMOutputStdout -> pure ()
+    SBOMUploadScan apiOpts -> (runFossaApiClient apiOpts) . runStickyLogger (severity config) $ analyzeInternal config
 
 analyzeInternal ::
   ( Has Diag.Diagnostics sig m
