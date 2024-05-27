@@ -27,7 +27,7 @@ import Data.Aeson (FromJSON (parseJSON), withObject, (.:?))
 import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers, neText)
 import Data.ByteString.Lazy qualified as BS
 import Data.Functor.Extra ((<$$>))
-import Data.List (intercalate, stripPrefix)
+import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.List.NonEmpty qualified as NonEmpty
@@ -170,11 +170,7 @@ compressFile outputDir directory fileToTar = do
   -- We are adding the suffix to avoid errors when we compress to a path that already exists
   -- This is most likely to happen if `fileToTar` is "."
   suffix <- nextRandom
-
-  -- removing the leading slash makes this work with absolute paths too
-  let rmLeadingSlash :: String -> String
-      rmLeadingSlash t = fromMaybe t $ stripPrefix "/" t
-  let finalFilename = rmLeadingSlash (fileToTar ++ show suffix)
+  let finalFilename = fileToTar ++ show suffix
   let finalFile = toString outputDir </> safeSeparators finalFilename
   entries <- Tar.pack (toString directory) [fileToTar]
   BS.writeFile finalFile $ GZip.compress $ Tar.write entries
