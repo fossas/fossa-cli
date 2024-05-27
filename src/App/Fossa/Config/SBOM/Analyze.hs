@@ -25,24 +25,20 @@ import App.Fossa.Config.SBOM.Common (SBOMFile, sbomFileArg)
 import App.Fossa.Subcommand (GetSeverity, getSeverity)
 import App.Types (
   BaseDir (BaseDir),
+  DependencyRebuild (..),
   OverrideProject (OverrideProject),
   ProjectMetadata,
  )
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding)
 import Data.Aeson.Types (ToJSON (toEncoding))
+import Data.Flag (Flag, flagOpt, fromFlag)
 import Effect.Logger (Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS, getCurrentDir)
 import GHC.Generics (Generic)
-import Options.Applicative (
-  CommandFields,
-  Mod,
-  Parser,
-  command,
-  info,
- )
+import Options.Applicative (CommandFields, Mod, Parser, command, info, long)
 import Options.Applicative.Builder (progDescDoc)
-import Style (formatStringToDoc)
+import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
 
 data NoUpload = NoUpload
 data JsonOutput = JsonOutput deriving (Generic)
@@ -53,6 +49,7 @@ data SBOMAnalyzeConfig = SBOMAnalyzeConfig
   , revisionOverride :: OverrideProject
   , sbomPath :: SBOMFile
   , severity :: Severity
+  , sbomRebuild :: DependencyRebuild
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -62,6 +59,7 @@ instance ToJSON SBOMAnalyzeConfig where
 data SBOMAnalyzeOptions = SBOMAnalyzeOptions
   { analyzeCommons :: App.Fossa.Config.Common.CommonOpts
   , containerMetadata :: ProjectMetadata
+  , forceRescan :: Flag ForceRescan
   , sbomFile :: SBOMFile
   }
 
@@ -76,11 +74,14 @@ subcommand f =
         progDescDoc (formatStringToDoc "Scan an SBOM file")
     )
 
+data ForceRescan = ForceRescan deriving (Generic)
+
 cliParser :: Parser SBOMAnalyzeOptions
 cliParser =
   SBOMAnalyzeOptions
     <$> App.Fossa.Config.Common.commonOpts
     <*> App.Fossa.Config.Common.metadataOpts
+    <*> flagOpt ForceRescan (applyFossaStyle <> long "force-rescan" <> stringToHelpDoc "Force sbom file to be rescanned even if the revision has been previously analyzed by FOSSA.")
     <*> sbomFileArg
 
 mergeOpts ::
@@ -103,10 +104,13 @@ mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
             (optProjectName analyzeCommons)
             (optProjectRevision analyzeCommons)
             (Nothing)
+
+      forceRescans = if fromFlag ForceRescan forceRescan then DependencyRebuildInvalidateCache else DependencyRebuildReuseCache
   (SBOMAnalyzeConfig (BaseDir baseDir) <$> scanDest)
     <*> pure revOverride
     <*> pure fileLoc
     <*> pure severity
+    <*> pure forceRescans
 
 collectScanDestination ::
   (Has Diagnostics sig m) =>
