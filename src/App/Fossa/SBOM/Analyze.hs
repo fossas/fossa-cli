@@ -4,17 +4,23 @@ module App.Fossa.SBOM.Analyze (
 
 import App.Fossa.Config.Analyze (ScanDestination (..))
 import App.Fossa.Config.SBOM
-import App.Types (ComponentUploadFileType (..), DependencyRebuild (..))
+import App.Fossa.ProjectInference (InferredProject (..), inferProjectDefaultFromFile)
+import App.Types (ComponentUploadFileType (..), DependencyRebuild (..), OverrideProject (..))
 import Control.Carrier.Debug (Debug)
+import Control.Carrier.Diagnostics (Diagnostics, fromEitherShow)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
+import Control.Effect.Diagnostics (context)
 import Control.Effect.FossaApiClient (FossaApiClient, PackageRevision (PackageRevision), getOrganization, getSignedUploadUrl, queueSBOMBuild, uploadArchive)
 import Control.Effect.Lift
+import Data.Maybe (fromMaybe)
 import Data.String.Conversion
 import Data.Text (Text)
 import Effect.Logger (Logger, logDebug)
 import Fossa.API.Types
+import Path (parseSomeFile)
+import Path.Posix (SomeBase (..))
 import Prettyprinter (Pretty (pretty))
 import Srclib.Types (Locator (..))
 
@@ -28,15 +34,21 @@ uploadSBOM ::
   ( Has StickyLogger sig m
   , Has FossaApiClient sig m
   , Has Logger sig m
+  , Has (Lift IO) sig m
+  , Has Diagnostics sig m
   ) =>
   SBOMAnalyzeConfig ->
   m SBOM
 uploadSBOM conf = do
   -- let sbomFile = sbomPath conf
   let path = unSBOMFile $ sbomPath conf
+  parsedPath <- context "Parsing `sbom` path" $ fromEitherShow $ parseSomeFile (toString path)
+  inferred <- case parsedPath of
+    Abs f -> inferProjectDefaultFromFile f
+    Rel f -> inferProjectDefaultFromFile f
 
-  let depVersion = "1.2.6"
-  let vendoredName = "someSbom5"
+  let depVersion = fromMaybe (inferredRevision inferred) $ overrideRevision (revisionOverride conf)
+  let vendoredName = fromMaybe (inferredName inferred) $ overrideName (revisionOverride conf)
   -- TODO: The version from the UI is a timestamp. Should we keep that or use the hash?
   -- depVersion <- case vendoredVersion of
   --   Nothing -> sendIO $ hashFile compressedFile
@@ -70,6 +82,7 @@ analyzeInternal ::
   , Has StickyLogger sig m
   , Has Logger sig m
   , Has FossaApiClient sig m
+  , Has (Lift IO) sig m
   ) =>
   SBOMAnalyzeConfig ->
   m ()

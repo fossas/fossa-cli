@@ -6,6 +6,7 @@ module App.Fossa.ProjectInference (
   inferProjectFromVCS,
   inferProjectCached,
   inferProjectDefault,
+  inferProjectDefaultFromFile,
   saveRevision,
   mergeOverride,
   readCachedRevision,
@@ -67,6 +68,17 @@ inferProjectCached dir = do
 inferProjectDefault :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path b Dir -> m InferredProject
 inferProjectDefault dir = context "Inferring project from directory name / timestamp" . sendIO $ do
   let name = FP.dropTrailingPathSeparator (fromRelDir (dirname dir))
+  time <- iso8601Show <$> getCurrentTime
+
+  let stamp = Text.takeWhile (/= '.') $ toText time -- trim milliseconds off, format is yyyy-mm-ddThh:mm:ss[.sss]
+  pure (InferredProject (toText name) (stamp <> "Z") Nothing)
+
+-- | Infer a default project name from a filename, and a default
+-- revision from the current time. Writes `.fossa.revision` to the system
+-- temp directory for use by `fossa test`
+inferProjectDefaultFromFile :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path b File -> m InferredProject
+inferProjectDefaultFromFile file = context "Inferring project from directory name / timestamp" . sendIO $ do
+  let name = FP.dropTrailingPathSeparator (fromRelFile (filename file))
   time <- iso8601Show <$> getCurrentTime
 
   let stamp = Text.takeWhile (/= '.') $ toText time -- trim milliseconds off, format is yyyy-mm-ddThh:mm:ss[.sss]

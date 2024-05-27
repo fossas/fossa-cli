@@ -10,12 +10,12 @@ module App.Fossa.Config.SBOM.Analyze (
   subcommand,
 ) where
 
-import App.Fossa.Config.Analyze (branchHelp)
 import App.Fossa.Config.Common (
-  CommonOpts (CommonOpts, optDebug),
+  CommonOpts (..),
   ScanDestination (..),
   collectAPIMetadata,
   collectApiOpts,
+  collectRevisionOverride,
   commonOpts,
   metadataOpts,
  )
@@ -25,12 +25,12 @@ import App.Fossa.Config.SBOM.Common (SBOMFile, sbomFileArg)
 import App.Fossa.Subcommand (GetSeverity, getSeverity)
 import App.Types (
   BaseDir (BaseDir),
+  OverrideProject (OverrideProject),
   ProjectMetadata,
  )
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding)
 import Data.Aeson.Types (ToJSON (toEncoding))
-import Data.Text (Text)
 import Effect.Logger (Severity (SevDebug, SevInfo))
 import Effect.ReadFS (ReadFS, getCurrentDir)
 import GHC.Generics (Generic)
@@ -39,15 +39,10 @@ import Options.Applicative (
   Mod,
   Parser,
   command,
-  helpDoc,
   info,
-  long,
-  optional,
-  short,
-  strOption,
  )
 import Options.Applicative.Builder (progDescDoc)
-import Style (applyFossaStyle, formatStringToDoc)
+import Style (formatStringToDoc)
 
 data NoUpload = NoUpload
 data JsonOutput = JsonOutput deriving (Generic)
@@ -55,6 +50,7 @@ data JsonOutput = JsonOutput deriving (Generic)
 data SBOMAnalyzeConfig = SBOMAnalyzeConfig
   { sbomBaseDir :: BaseDir
   , sbomScanDestination :: App.Fossa.Config.Common.ScanDestination
+  , revisionOverride :: OverrideProject
   , sbomPath :: SBOMFile
   , severity :: Severity
   }
@@ -65,7 +61,6 @@ instance ToJSON SBOMAnalyzeConfig where
 
 data SBOMAnalyzeOptions = SBOMAnalyzeOptions
   { analyzeCommons :: App.Fossa.Config.Common.CommonOpts
-  , containerBranch :: Maybe Text
   , containerMetadata :: ProjectMetadata
   , sbomFile :: SBOMFile
   }
@@ -85,14 +80,6 @@ cliParser :: Parser SBOMAnalyzeOptions
 cliParser =
   SBOMAnalyzeOptions
     <$> App.Fossa.Config.Common.commonOpts
-    <*> optional
-      ( strOption
-          ( applyFossaStyle
-              <> long "branch"
-              <> short 'b'
-              <> helpDoc branchHelp
-          )
-      )
     <*> App.Fossa.Config.Common.metadataOpts
     <*> sbomFileArg
 
@@ -110,7 +97,14 @@ mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
       severity = getSeverity cliOpts
       fileLoc = sbomFile
 
+      revOverride =
+        collectRevisionOverride cfgfile $
+          OverrideProject
+            (optProjectName analyzeCommons)
+            (optProjectRevision analyzeCommons)
+            (Nothing)
   (SBOMAnalyzeConfig (BaseDir baseDir) <$> scanDest)
+    <*> pure revOverride
     <*> pure fileLoc
     <*> pure severity
 
