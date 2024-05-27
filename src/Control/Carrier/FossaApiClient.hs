@@ -56,7 +56,7 @@ runFossaApiClient apiOpts =
           GetVsiInferences scanId -> VSI.getVsiInferences scanId
           GetVsiScanAnalysisStatus scanId -> VSI.getVsiScanAnalysisStatus scanId
           QueueArchiveBuild archives rebuild -> Core.queueArchiveBuild archives rebuild
-          QueueSBOMBuild archive rebuild -> Core.queueSBOMBuild archive rebuild
+          QueueSBOMBuild archive team rebuild -> Core.queueSBOMBuild archive team rebuild
           ResolveProjectDependencies locator -> VSI.resolveProjectDependencies locator
           ResolveUserDefinedBinary deps -> VSI.resolveUserDefinedBinary deps
           UploadAnalysis rev metadata units -> Core.uploadAnalysis rev metadata units

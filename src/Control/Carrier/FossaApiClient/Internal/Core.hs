@@ -273,11 +273,12 @@ queueSBOMBuild ::
   , Has (Reader ApiOpts) sig m
   ) =>
   Archive ->
+  Maybe Text ->
   DependencyRebuild ->
   m ()
-queueSBOMBuild archive rebuild = do
+queueSBOMBuild archive team rebuild = do
   apiOpts <- ask
-  API.sbomBuildUpload apiOpts archive rebuild
+  API.sbomBuildUpload apiOpts archive team rebuild
 
 uploadArchive ::
   ( Has (Lift IO) sig m

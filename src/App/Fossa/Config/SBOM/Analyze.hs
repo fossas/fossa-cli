@@ -57,6 +57,7 @@ data SBOMAnalyzeConfig = SBOMAnalyzeConfig
   , sbomPath :: SBOMFile
   , severity :: Severity
   , sbomRebuild :: DependencyRebuild
+  , sbomTeam :: Maybe Text
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -65,7 +66,7 @@ instance ToJSON SBOMAnalyzeConfig where
 
 data SBOMAnalyzeOptions = SBOMAnalyzeOptions
   { analyzeCommons :: App.Fossa.Config.Common.CommonOpts
-  , teams :: Maybe Text
+  , team :: Maybe Text
   , forceRescan :: Flag ForceRescan
   , sbomFile :: SBOMFile
   }
@@ -118,6 +119,7 @@ mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
     <*> pure fileLoc
     <*> pure severity
     <*> pure forceRescans
+    <*> pure team
 
 collectScanDestination ::
   (Has Diagnostics sig m) =>

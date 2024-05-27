@@ -934,6 +934,7 @@ data BuildOptions = BuildOptions
   , fileType :: ComponentUploadFileType
   , rebuild :: DependencyRebuild
   , isRawLicenseScan :: Bool
+  , team :: Maybe Text
   }
 
 archiveBuildUpload ::
@@ -945,19 +946,20 @@ archiveBuildUpload ::
 archiveBuildUpload apiOpts archives rebuild = context "request build for archives" . context ("rebuild: " <> toText rebuild) $ do
   -- The API route expects an array of archives, but doesn't properly handle multiple archives.
   -- Given that, each archive's build is requested one by one.
-  let options = BuildOptions True ArchiveUpload rebuild True
+  let options = BuildOptions True ArchiveUpload rebuild True Nothing
   traverse_ (archiveBuildUpload' apiOpts options) archives
 
 sbomBuildUpload ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   Archive ->
+  Maybe Text ->
   DependencyRebuild ->
   m ()
-sbomBuildUpload apiOpts archive rebuild = context "request build for sbom" . context ("rebuild: " <> toText rebuild) $ do
+sbomBuildUpload apiOpts archive team rebuild = context "request build for sbom" . context ("rebuild: " <> toText rebuild) $ do
   -- The API route expects an array of archives, but doesn't properly handle multiple archives.
   -- So just pass in the single archive to archiveBuildUpload'
-  let options = BuildOptions False SBOMUpload rebuild False
+  let options = BuildOptions False SBOMUpload rebuild False team
   void $ archiveBuildUpload' apiOpts options archive
 
 archiveBuildUpload' ::
@@ -969,7 +971,10 @@ archiveBuildUpload' ::
 archiveBuildUpload' apiOpts options archive = context ("archive: '" <> toText archive) . runEmpty . fossaReqAllow401 $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = "dependency" =: (isDependency options) <> "rawLicenseScan" =: (isRawLicenseScan options) <> "fileType" =: toText (fileType options)
+  let someOpts = "dependency" =: (isDependency options) <> "rawLicenseScan" =: (isRawLicenseScan options) <> "fileType" =: toText (fileType options)
+  let opts = case (team options) of
+        Nothing -> someOpts
+        Just t -> someOpts <> "team" =: t
   let archiveProjects = ArchiveComponents [archive] (rebuild options) FileUploadFullContent
 
   -- The response appears to either be "Created" for new builds, or an error message for existing builds.

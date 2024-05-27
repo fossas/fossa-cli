@@ -140,7 +140,7 @@ data FossaApiClientF a where
   GetVsiInferences :: VSI.ScanID -> FossaApiClientF VSI.VsiExportedInferencesBody
   GetVsiScanAnalysisStatus :: VSI.ScanID -> FossaApiClientF VSI.AnalysisStatus
   QueueArchiveBuild :: [Archive] -> DependencyRebuild -> FossaApiClientF ()
-  QueueSBOMBuild :: Archive -> DependencyRebuild -> FossaApiClientF ()
+  QueueSBOMBuild :: Archive -> Maybe Text -> DependencyRebuild -> FossaApiClientF ()
   ResolveProjectDependencies :: VSI.Locator -> FossaApiClientF [VSI.Locator]
   ResolveUserDefinedBinary :: IAT.UserDep -> FossaApiClientF IAT.UserDefinedAssertionMeta
   UploadAnalysis ::
@@ -235,8 +235,8 @@ uploadArchive dest path = sendSimple (UploadArchive dest path)
 queueArchiveBuild :: Has FossaApiClient sig m => [Archive] -> DependencyRebuild -> m ()
 queueArchiveBuild archives rebuild = sendSimple (QueueArchiveBuild archives rebuild)
 
-queueSBOMBuild :: Has FossaApiClient sig m => Archive -> DependencyRebuild -> m ()
-queueSBOMBuild archive rebuild = sendSimple (QueueSBOMBuild archive rebuild)
+queueSBOMBuild :: Has FossaApiClient sig m => Archive -> Maybe Text -> DependencyRebuild -> m ()
+queueSBOMBuild archive team rebuild = sendSimple (QueueSBOMBuild archive team rebuild)
 
 assertRevisionBinaries :: Has FossaApiClient sig m => Locator -> [Fingerprint Raw] -> m ()
 assertRevisionBinaries locator fprints = sendSimple (AssertRevisionBinaries locator fprints)

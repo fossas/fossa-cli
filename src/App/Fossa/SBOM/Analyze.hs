@@ -96,7 +96,7 @@ analyzeInternal config = do
   -- get a 401 response.
 
   let archive = Archive (sbomName sbom) (sbomVersion sbom)
-  _ <- queueSBOMBuild archive (sbomRebuild config)
+  _ <- queueSBOMBuild archive (sbomTeam config) (sbomRebuild config)
   -- The organizationID is needed to prefix each locator name. The FOSSA API
   -- automatically prefixes the locator when queuing the build but not when
   -- reading from a source unit.
