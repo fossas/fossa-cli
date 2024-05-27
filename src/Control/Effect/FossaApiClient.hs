@@ -28,6 +28,7 @@ module Control.Effect.FossaApiClient (
   getVsiInferences,
   getVsiScanAnalysisStatus,
   queueArchiveBuild,
+  queueSBOMBuild,
   resolveProjectDependencies,
   resolveUserDefinedBinary,
   uploadAnalysis,
@@ -138,7 +139,8 @@ data FossaApiClientF a where
   GetTokenType :: FossaApiClientF TokenTypeResponse
   GetVsiInferences :: VSI.ScanID -> FossaApiClientF VSI.VsiExportedInferencesBody
   GetVsiScanAnalysisStatus :: VSI.ScanID -> FossaApiClientF VSI.AnalysisStatus
-  QueueArchiveBuild :: [Archive] -> DependencyRebuild -> ComponentUploadFileType -> FossaApiClientF ()
+  QueueArchiveBuild :: [Archive] -> DependencyRebuild -> FossaApiClientF ()
+  QueueSBOMBuild :: Archive -> DependencyRebuild -> FossaApiClientF ()
   ResolveProjectDependencies :: VSI.Locator -> FossaApiClientF [VSI.Locator]
   ResolveUserDefinedBinary :: IAT.UserDep -> FossaApiClientF IAT.UserDefinedAssertionMeta
   UploadAnalysis ::
@@ -230,8 +232,11 @@ getSignedUploadUrl fileType packageSpec = sendSimple $ GetSignedUploadUrl fileTy
 uploadArchive :: Has FossaApiClient sig m => SignedURL -> FilePath -> m ByteString
 uploadArchive dest path = sendSimple (UploadArchive dest path)
 
-queueArchiveBuild :: Has FossaApiClient sig m => [Archive] -> DependencyRebuild -> ComponentUploadFileType -> m ()
-queueArchiveBuild archives rebuild fileType = sendSimple (QueueArchiveBuild archives rebuild fileType)
+queueArchiveBuild :: Has FossaApiClient sig m => [Archive] -> DependencyRebuild -> m ()
+queueArchiveBuild archives rebuild = sendSimple (QueueArchiveBuild archives rebuild)
+
+queueSBOMBuild :: Has FossaApiClient sig m => Archive -> DependencyRebuild -> m ()
+queueSBOMBuild archive rebuild = sendSimple (QueueSBOMBuild archive rebuild)
 
 assertRevisionBinaries :: Has FossaApiClient sig m => Locator -> [Fingerprint Raw] -> m ()
 assertRevisionBinaries locator fprints = sendSimple (AssertRevisionBinaries locator fprints)

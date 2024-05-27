@@ -10,6 +10,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   getRevisionDependencyCacheStatus,
   getSignedUploadUrl,
   queueArchiveBuild,
+  queueSBOMBuild,
   uploadAnalysis,
   uploadAnalysisWithFirstPartyLicenses,
   uploadArchive,
@@ -39,7 +40,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Config.Test (DiffRevision)
 import App.Fossa.VendoredDependency (VendoredDependency (..))
-import App.Types (ComponentUploadFileType, DependencyRebuild, FileUpload, ProjectMetadata, ProjectRevision (..), ReleaseGroupReleaseRevision)
+import App.Types (ComponentUploadFileType (..), DependencyRebuild, FileUpload, ProjectMetadata, ProjectRevision (..), ReleaseGroupReleaseRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
@@ -260,11 +261,23 @@ queueArchiveBuild ::
   ) =>
   [Archive] ->
   DependencyRebuild ->
-  ComponentUploadFileType ->
   m ()
-queueArchiveBuild archives rebuild fileType = do
+queueArchiveBuild archives rebuild = do
   apiOpts <- ask
-  API.archiveBuildUpload apiOpts archives rebuild fileType
+  API.archiveBuildUpload apiOpts archives rebuild
+
+queueSBOMBuild ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Archive ->
+  DependencyRebuild ->
+  m ()
+queueSBOMBuild archive rebuild = do
+  apiOpts <- ask
+  API.sbomBuildUpload apiOpts archive rebuild
 
 uploadArchive ::
   ( Has (Lift IO) sig m

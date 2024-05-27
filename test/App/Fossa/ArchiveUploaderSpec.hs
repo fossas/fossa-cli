@@ -49,11 +49,11 @@ expectUploadArchive = do
 
 expectQueueArchiveBuild :: Has MockApi sig m => Archive -> m ()
 expectQueueArchiveBuild archive =
-  QueueArchiveBuild [archive] DependencyRebuildReuseCache ArchiveUpload `returnsOnce` ()
+  QueueArchiveBuild [archive] DependencyRebuildReuseCache `returnsOnce` ()
 
 expectQueueArchiveBuilds :: Has MockApi sig m => [Archive] -> m ()
 expectQueueArchiveBuilds archives =
-  QueueArchiveBuild archives DependencyRebuildReuseCache ArchiveUpload `returnsOnce` ()
+  QueueArchiveBuild archives DependencyRebuildReuseCache `returnsOnce` ()
 
 expectGetSignedUrl :: Has MockApi sig m => PackageRevision -> m ()
 expectGetSignedUrl packageRevision = GetSignedUploadUrl ArchiveUpload packageRevision `alwaysReturns` Fixtures.signedUrl

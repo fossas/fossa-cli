@@ -93,8 +93,7 @@ archiveUploadSourceUnit rebuild baseDir vendoredDeps = do
   -- orgID is appended when creating the build on the backend.  We don't care
   -- about the response here because if the build has already been queued, we
   -- get a 401 response.
-  _ <- queueArchiveBuild (NonEmpty.toList archives) rebuild ArchiveUpload
-
+  _ <- queueArchiveBuild (NonEmpty.toList archives) rebuild
   -- The organizationID is needed to prefix each locator name. The FOSSA API
   -- automatically prefixes the locator when queuing the build but not when
   -- reading from a source unit.

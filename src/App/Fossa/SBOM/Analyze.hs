@@ -1,28 +1,20 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module App.Fossa.SBOM.Analyze (
   analyze,
 ) where
 
 import App.Fossa.Config.Analyze (ScanDestination (..))
 import App.Fossa.Config.SBOM
-import App.Fossa.VendoredDependency (
-  compressFile,
- )
-import App.Types (BaseDir (unBaseDir), ComponentUploadFileType (..), DependencyRebuild (..))
+import App.Types (ComponentUploadFileType (..), DependencyRebuild (..))
 import Control.Carrier.Debug (Debug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
-import Control.Effect.Diagnostics (context)
-import Control.Effect.FossaApiClient (FossaApiClient, PackageRevision (PackageRevision), getOrganization, getSignedUploadUrl, queueArchiveBuild, uploadArchive)
+import Control.Effect.FossaApiClient (FossaApiClient, PackageRevision (PackageRevision), getOrganization, getSignedUploadUrl, queueSBOMBuild, uploadArchive)
 import Control.Effect.Lift
-import Control.Effect.Path (withSystemTempDir)
 import Data.String.Conversion
 import Data.Text (Text)
 import Effect.Logger (Logger, logDebug)
 import Fossa.API.Types
-import Path hiding ((</>))
 import Prettyprinter (Pretty (pretty))
 import Srclib.Types (Locator (..))
 
@@ -43,8 +35,8 @@ uploadSBOM conf = do
   -- let sbomFile = sbomPath conf
   let path = unSBOMFile $ sbomPath conf
 
-  let depVersion = "1.2.5"
-  let vendoredName = "someSbom"
+  let depVersion = "1.2.6"
+  let vendoredName = "someSbom5"
   -- TODO: The version from the UI is a timestamp. Should we keep that or use the hash?
   -- depVersion <- case vendoredVersion of
   --   Nothing -> sendIO $ hashFile compressedFile
@@ -93,8 +85,7 @@ analyzeInternal config = do
   -- TODO: Add rebuild to config options
   let rebuild = DependencyRebuildReuseCache -- TODO
   let archive = Archive (sbomName sbom) (sbomVersion sbom)
-  _ <- queueArchiveBuild [archive] rebuild SBOMUpload
-
+  _ <- queueSBOMBuild archive rebuild
   -- The organizationID is needed to prefix each locator name. The FOSSA API
   -- automatically prefixes the locator when queuing the build but not when
   -- reading from a source unit.

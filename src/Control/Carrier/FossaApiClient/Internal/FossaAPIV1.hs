@@ -23,6 +23,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getProject,
   archiveUpload,
   archiveBuildUpload,
+  sbomBuildUpload,
   assertUserDefinedBinaries,
   assertRevisionBinaries,
   licenseScanFinalize,
@@ -97,7 +98,7 @@ import App.Support (
   requestReportIfPersistsWithDebugBundle,
  )
 import App.Types (
-  ComponentUploadFileType,
+  ComponentUploadFileType (..),
   DependencyRebuild,
   FileUpload (FileUploadFullContent),
   Policy (..),
@@ -922,35 +923,54 @@ getRevisionDependencyCacheStatus apiOpts ProjectRevision{..} = fossaReq $ do
   response <- req GET (dependencyCacheReadyEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
 
----------- Archive build queueing. This Endpoint ensures that after an archive is uploaded, it is scanned.
+---------- Archive and SBOM build queueing. This Endpoint ensures that after an archive or SBOM is uploaded, it is scanned.
 
 archiveBuildURL :: Url 'Https -> Url 'Https
 archiveBuildURL baseUrl = baseUrl /: "api" /: "components" /: "build"
+
+-- options for archiveBuildUpload and sbomBuildUpload
+data BuildOptions = BuildOptions
+  { isDependency :: Bool
+  , fileType :: ComponentUploadFileType
+  , rebuild :: DependencyRebuild
+  , isRawLicenseScan :: Bool
+  }
 
 archiveBuildUpload ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   [Archive] ->
   DependencyRebuild ->
-  ComponentUploadFileType ->
   m ()
-archiveBuildUpload apiOpts archives rebuild fileType = context "request build for archives" . context ("rebuild: " <> toText rebuild) $ do
+archiveBuildUpload apiOpts archives rebuild = context "request build for archives" . context ("rebuild: " <> toText rebuild) $ do
   -- The API route expects an array of archives, but doesn't properly handle multiple archives.
   -- Given that, each archive's build is requested one by one.
-  traverse_ (archiveBuildUpload' apiOpts rebuild fileType) archives
+  let options = BuildOptions True ArchiveUpload rebuild True
+  traverse_ (archiveBuildUpload' apiOpts options) archives
+
+sbomBuildUpload ::
+  (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  Archive ->
+  DependencyRebuild ->
+  m ()
+sbomBuildUpload apiOpts archive rebuild = context "request build for sbom" . context ("rebuild: " <> toText rebuild) $ do
+  -- The API route expects an array of archives, but doesn't properly handle multiple archives.
+  -- So just pass in the single archive to archiveBuildUpload'
+  let options = BuildOptions False SBOMUpload rebuild False
+  void $ archiveBuildUpload' apiOpts options archive
 
 archiveBuildUpload' ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
-  DependencyRebuild ->
-  ComponentUploadFileType ->
+  BuildOptions ->
   Archive ->
   m (Maybe ())
-archiveBuildUpload' apiOpts rebuild fileType archive = context ("archive: '" <> toText archive) . runEmpty . fossaReqAllow401 $ do
+archiveBuildUpload' apiOpts options archive = context ("archive: '" <> toText archive) . runEmpty . fossaReqAllow401 $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = "dependency" =: True <> "rawLicenseScan" =: True <> "fileType" =: toText fileType
-  let archiveProjects = ArchiveComponents [archive] rebuild FileUploadFullContent
+  let opts = "dependency" =: (isDependency options) <> "rawLicenseScan" =: (isRawLicenseScan options) <> "fileType" =: toText (fileType options)
+  let archiveProjects = ArchiveComponents [archive] (rebuild options) FileUploadFullContent
 
   -- The response appears to either be "Created" for new builds, or an error message for existing builds.
   -- Making the actual return value of "Created" essentially worthless.
