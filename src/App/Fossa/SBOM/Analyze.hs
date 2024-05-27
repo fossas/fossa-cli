@@ -33,23 +33,17 @@ data SBOM = SBOM
   deriving (Eq, Ord, Show)
 
 uploadSBOM ::
-  ( Has Diag.Diagnostics sig m
-  , Has (Lift IO) sig m
-  , Has StickyLogger sig m
-  , Has Logger sig m
+  ( Has StickyLogger sig m
   , Has FossaApiClient sig m
+  , Has Logger sig m
   ) =>
   SBOMAnalyzeConfig ->
-  Path Abs Dir ->
   m SBOM
-uploadSBOM conf tmpDir = context "compressing and uploading SBOM" $ do
-  let sbomFile = sbomPath conf
-  let baseDir = unBaseDir $ sbomBaseDir conf
-  let sbomPath = unSBOMFile sbomFile
-  logSticky $ "Compressing '" <> (toText sbomPath) <> "'"
-  compressedFile <- sendIO $ compressFile tmpDir baseDir (toString sbomPath)
+uploadSBOM conf = do
+  -- let sbomFile = sbomPath conf
+  let path = unSBOMFile $ sbomPath conf
 
-  let depVersion = "1.2.4"
+  let depVersion = "1.2.5"
   let vendoredName = "someSbom"
   -- TODO: The version from the UI is a timestamp. Should we keep that or use the hash?
   -- depVersion <- case vendoredVersion of
@@ -59,7 +53,7 @@ uploadSBOM conf tmpDir = context "compressing and uploading SBOM" $ do
   signedURL <- getSignedUploadUrl SBOMUpload $ PackageRevision vendoredName depVersion
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
-  res <- uploadArchive signedURL compressedFile
+  res <- uploadArchive signedURL $ toString path
   logDebug $ pretty $ show res
 
   pure $ SBOM vendoredName depVersion
@@ -77,11 +71,10 @@ analyze ::
 analyze config =
   case sbomScanDestination config of
     OutputStdout -> pure ()
-    UploadScan apiOpts _metadata -> (runFossaApiClient apiOpts) . (runStickyLogger $ severity config) $ analyzeInternal config
+    UploadScan apiOpts _metadata -> (runFossaApiClient apiOpts) . runStickyLogger (severity config) $ analyzeInternal config
 
 analyzeInternal ::
   ( Has Diag.Diagnostics sig m
-  , Has (Lift IO) sig m
   , Has StickyLogger sig m
   , Has Logger sig m
   , Has FossaApiClient sig m
@@ -90,7 +83,7 @@ analyzeInternal ::
   m ()
 analyzeInternal config = do
   -- At this point, we have a good list of deps, so go for it.
-  sbom <- withSystemTempDir "fossa-temp" (uploadSBOM config)
+  sbom <- uploadSBOM config
 
   -- queueArchiveBuild takes archives without Organization information. This
   -- orgID is appended when creating the build on the backend.  We don't care
