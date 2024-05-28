@@ -77,7 +77,7 @@ inferProjectDefault dir = context "Inferring project from directory name / times
 -- revision from the current time. Writes `.fossa.revision` to the system
 -- temp directory for use by `fossa test`
 inferProjectDefaultFromFile :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path b File -> m InferredProject
-inferProjectDefaultFromFile file = context "Inferring project from directory name / timestamp" . sendIO $ do
+inferProjectDefaultFromFile file = context "Inferring project from filename / timestamp" . sendIO $ do
   let name = FP.dropTrailingPathSeparator (fromRelFile (filename file))
   time <- iso8601Show <$> getCurrentTime
 

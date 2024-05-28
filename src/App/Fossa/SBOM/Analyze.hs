@@ -58,9 +58,9 @@ getProjectRevision conf = do
     Abs f -> inferProjectDefaultFromFile f
     Rel f -> inferProjectDefaultFromFile f
 
-  let depVersion = fromMaybe (inferredRevision inferred) $ overrideRevision (revisionOverride conf)
-  let vendoredName = fromMaybe (inferredName inferred) $ overrideName (revisionOverride conf)
-  pure $ ProjectRevision vendoredName depVersion Nothing
+  let name = fromMaybe (inferredName inferred) $ overrideName (revisionOverride conf)
+  let version = fromMaybe (inferredRevision inferred) $ overrideRevision (revisionOverride conf)
+  pure $ ProjectRevision name version Nothing
 
 -- analyze receives a path to an SBOM file, a root path, and API settings.
 -- Using this information, it uploads the SBOM and queues a build for it.
