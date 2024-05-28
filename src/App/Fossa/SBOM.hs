@@ -46,7 +46,6 @@ dispatch ::
   SBOMScanConfig ->
   m ()
 dispatch = \case
-  -- TODO: Add telemetry
   AnalyzeCfg cfg -> do
     case Config.severity cfg of
       SevDebug -> do
