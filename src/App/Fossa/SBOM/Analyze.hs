@@ -61,22 +61,19 @@ analyzeInternal ::
   SBOMAnalyzeConfig ->
   m ()
 analyzeInternal config = do
-  -- First, upload the SBOM to S3
   let revision = sbomRevision config
   _ <- uploadSBOM config
-  -- Second, trigger a build
+
   let archive = Archive (projectName revision) (projectRevision revision)
   _ <- queueSBOMBuild archive (sbomTeam config) (sbomRebuild config)
 
-  -- The organizationID is needed to prefix each locator name. The FOSSA API
-  -- automatically prefixes the locator when queuing the build but not when
-  -- reading from a source unit.
+  -- The locator used in the URL has the organization ID on it, so we
+  -- need to generate that locator before displaying it
   orgId <- organizationId <$> getOrganization
   let updateRevisionName :: Text -> ProjectRevision -> ProjectRevision
       updateRevisionName updateText r = r{projectName = updateText <> "/" <> projectName r}
       revisionWithOrganization = updateRevisionName (toText $ show orgId) revision
-
-  let locator = Locator "sbom" (projectName revisionWithOrganization) (Just $ projectRevision revision)
+      locator = Locator "sbom" (projectName revisionWithOrganization) (Just $ projectRevision revision)
   logSticky $ "uploaded to " <> toText locator
   buildUrl <- getFossaBuildUrl revisionWithOrganization locator
 
