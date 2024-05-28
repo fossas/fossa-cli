@@ -13,9 +13,10 @@ import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
+  ToDiagnostic (renderDiagnostic),
   context,
-  fromMaybeText,
  )
+import Control.Effect.Diagnostics qualified as Diag (fromMaybe)
 import Data.Foldable (find)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -55,6 +56,17 @@ import Strategy.Node.YarnV2.Resolvers (
   resolveLocatorToPackage,
  )
 
+data YarnLockError
+  = NoPackageForDescriptor Descriptor
+  | DescriptorParse NodePackage
+  deriving (Eq, Ord, Show)
+
+instance ToDiagnostic YarnLockError where
+  renderDiagnostic err =
+    case err of
+      (NoPackageForDescriptor d) -> renderDiagnostic $ "Couldn't find package for descriptor: " <> toText (show d)
+      (DescriptorParse nodePkg) -> renderDiagnostic $ "Failed to parse package descriptor: " <> showT nodePkg
+
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> FlatDeps -> m (Graphing Dependency)
 analyze file flatdeps = context "Lockfile V2 analysis" $ do
   lockfile <- context "Reading lockfile" $ readContentsYaml @YarnLockfile file
@@ -76,7 +88,7 @@ resolveFlatDeps lockfile FlatDeps{..} = FlatPackages <$> converter @Production d
 resolveSingle :: Has Diagnostics sig m => YarnLockfile -> NodePackage -> m Package
 resolveSingle (YarnLockfile lockfileMap) nodePkg = do
   descriptor <-
-    fromMaybeText ("Failed to parse package descriptor: " <> showT nodePkg) $
+    Diag.fromMaybe (DescriptorParse nodePkg) $
       tryParseDescriptor nodePkg
   loc <- lookupPackage descriptor $ remap lockfileMap
   resolveLocatorToPackage $ descResolution loc
@@ -128,7 +140,7 @@ stitchLockfile (YarnLockfile lockfile) = graph
 -- descriptor key for a package in the lockfile
 lookupPackage :: Has Diagnostics sig m => Descriptor -> Map Descriptor PackageDescription -> m PackageDescription
 lookupPackage desc mapping =
-  fromMaybeText ("Couldn't find package for descriptor: " <> toText (show desc)) $
+  Diag.fromMaybe (NoPackageForDescriptor desc) $
     Map.lookup desc mapping <|> Map.lookup (desc{descriptorRange = "npm:" <> descriptorRange desc}) mapping <|> lookupAnyNpm desc mapping
   where
     -- find any package with a descriptor with matching scope/name, and an @npm:@ prefix prefix
