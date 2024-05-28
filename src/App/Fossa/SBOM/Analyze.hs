@@ -6,24 +6,18 @@ import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.SBOM
 import App.Fossa.Config.SBOM.Analyze (SBOMScanDestination (..))
 import App.Fossa.PreflightChecks (PreflightCommandChecks (..), preflightChecks)
-import App.Fossa.ProjectInference (InferredProject (..), inferProjectDefaultFromFile)
-import App.Types (ComponentUploadFileType (..), OverrideProject (..), ProjectMetadata (..), ProjectRevision (..))
+import App.Types (ComponentUploadFileType (..), ProjectMetadata (..), ProjectRevision (..))
 import Control.Carrier.Debug (Debug)
-import Control.Carrier.Diagnostics (fromEitherShow)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
-import Control.Effect.Diagnostics (context)
 import Control.Effect.FossaApiClient (FossaApiClient, PackageRevision (PackageRevision), getOrganization, getSignedUploadUrl, queueSBOMBuild, uploadArchive)
 import Control.Effect.Lift
 import Data.Foldable (traverse_)
-import Data.Maybe (fromMaybe)
 import Data.String.Conversion
 import Data.Text (Text)
 import Effect.Logger (Logger, logDebug, logInfo)
 import Fossa.API.Types
-import Path (parseSomeFile)
-import Path.Posix (SomeBase (..))
 import Prettyprinter (Pretty (pretty))
 import Srclib.Types (Locator (..))
 
@@ -33,9 +27,9 @@ uploadSBOM ::
   , Has Logger sig m
   ) =>
   SBOMAnalyzeConfig ->
-  ProjectRevision ->
   m ()
-uploadSBOM conf revision = do
+uploadSBOM conf = do
+  let revision = sbomRevision conf
   signedURL <- getSignedUploadUrl SBOMUpload $ PackageRevision (projectName revision) (projectRevision revision)
   let path = unSBOMFile $ sbomPath conf
 
@@ -44,23 +38,6 @@ uploadSBOM conf revision = do
   logDebug $ pretty $ show res
 
   pure ()
-
-getProjectRevision ::
-  ( Has Diag.Diagnostics sig m
-  , Has (Lift IO) sig m
-  ) =>
-  SBOMAnalyzeConfig ->
-  m ProjectRevision
-getProjectRevision conf = do
-  let path = unSBOMFile $ sbomPath conf
-  parsedPath <- context "Parsing `sbom` path" $ fromEitherShow $ parseSomeFile (toString path)
-  inferred <- case parsedPath of
-    Abs f -> inferProjectDefaultFromFile f
-    Rel f -> inferProjectDefaultFromFile f
-
-  let name = fromMaybe (inferredName inferred) $ overrideName (revisionOverride conf)
-  let version = fromMaybe (inferredRevision inferred) $ overrideRevision (revisionOverride conf)
-  pure $ ProjectRevision name version Nothing
 
 -- analyze receives a path to an SBOM file, a root path, and API settings.
 -- Using this information, it uploads the SBOM and queues a build for it.
@@ -74,14 +51,12 @@ analyze ::
   m ()
 analyze config = do
   let emptyMetadata = ProjectMetadata Nothing Nothing Nothing Nothing Nothing Nothing [] Nothing
-  revision <- getProjectRevision config
   _ <- case sbomScanDestination config of
     SBOMOutputStdout -> pure ()
-    SBOMUploadScan apiOpts -> runFossaApiClient apiOpts $ preflightChecks $ AnalyzeChecks revision emptyMetadata
+    SBOMUploadScan apiOpts -> runFossaApiClient apiOpts $ preflightChecks $ AnalyzeChecks (sbomRevision config) emptyMetadata
   case sbomScanDestination config of
     SBOMOutputStdout -> pure ()
-    SBOMUploadScan apiOpts -> (runFossaApiClient apiOpts) . runStickyLogger (severity config) $ analyzeInternal config revision
-
+    SBOMUploadScan apiOpts -> (runFossaApiClient apiOpts) . runStickyLogger (severity config) $ analyzeInternal config
 analyzeInternal ::
   ( Has Diag.Diagnostics sig m
   , Has StickyLogger sig m
@@ -89,12 +64,11 @@ analyzeInternal ::
   , Has FossaApiClient sig m
   ) =>
   SBOMAnalyzeConfig ->
-  ProjectRevision ->
   m ()
-analyzeInternal config revision = do
+analyzeInternal config = do
   -- First, upload the SBOM to S3
-  _ <- uploadSBOM config revision
-
+  let revision = sbomRevision config
+  _ <- uploadSBOM config
   -- Second, trigger a build
   let archive = Archive (projectName revision) (projectRevision revision)
   _ <- queueSBOMBuild archive (sbomTeam config) (sbomRebuild config)

@@ -19,15 +19,17 @@ import App.Fossa.Config.Common (
  )
 import App.Fossa.Config.ConfigFile
 import App.Fossa.Config.EnvironmentVars (EnvVars)
-import App.Fossa.Config.SBOM.Common (SBOMFile, sbomFileArg)
+import App.Fossa.Config.SBOM.Common (SBOMFile, getProjectRevision, sbomFileArg)
 import App.Fossa.Subcommand (GetSeverity, getSeverity)
 import App.Types (
   BaseDir (BaseDir),
   DependencyRebuild (..),
   OverrideProject (OverrideProject),
+  ProjectRevision,
  )
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics (Diagnostics, Has)
+import Control.Effect.Lift (Lift)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding)
 import Data.Aeson.Types (ToJSON (toEncoding))
 import Data.Flag (Flag, flagOpt, fromFlag)
@@ -58,6 +60,7 @@ data SBOMAnalyzeConfig = SBOMAnalyzeConfig
   , severity :: Severity
   , sbomRebuild :: DependencyRebuild
   , sbomTeam :: Maybe Text
+  , sbomRevision :: ProjectRevision
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -95,6 +98,7 @@ cliParser =
 mergeOpts ::
   ( Has Diagnostics sig m
   , Has ReadFS sig m
+  , Has (Lift IO) sig m
   ) =>
   Maybe ConfigFile ->
   EnvVars ->
@@ -114,6 +118,7 @@ mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
             (Nothing)
 
       forceRescans = if fromFlag ForceRescan forceRescan then DependencyRebuildInvalidateCache else DependencyRebuildReuseCache
+  revision <- getProjectRevision fileLoc revOverride
   SBOMAnalyzeConfig
     (BaseDir baseDir)
     <$> scanDest
@@ -122,6 +127,7 @@ mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
     <*> pure severity
     <*> pure forceRescans
     <*> pure team
+    <*> pure revision
 
 collectScanDestination ::
   (Has Diagnostics sig m) =>

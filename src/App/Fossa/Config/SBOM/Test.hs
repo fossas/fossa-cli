@@ -22,24 +22,20 @@ import App.Fossa.Config.Common (
  )
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
-import App.Fossa.Config.SBOM.Common (SBOMFile (unSBOMFile), sbomFileArg)
+import App.Fossa.Config.SBOM.Common (SBOMFile, getProjectRevision, sbomFileArg)
 import App.Fossa.Config.Test (DiffRevision (DiffRevision), TestConfig (TestConfig), TestOutputFormat (..))
-import App.Fossa.ProjectInference (InferredProject (inferredName, inferredRevision), inferProjectDefaultFromFile)
 import App.Fossa.Subcommand (GetCommonOpts (getCommonOpts), GetSeverity (getSeverity))
-import App.Types (BaseDir (BaseDir), IssueLocatorType (..), OverrideProject (..), ProjectRevision (..))
-import Control.Carrier.Diagnostics (context)
+import App.Types (BaseDir (BaseDir), IssueLocatorType (..), OverrideProject (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   ToDiagnostic,
-  fromEitherShow,
  )
 import Control.Effect.Lift (Lift)
 import Control.Timeout (Duration (..))
 import Data.List (intercalate)
-import Data.Maybe (fromMaybe)
-import Data.String.Conversion (ToString (toString), toText)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Effect.Logger (Severity (SevDebug, SevInfo), vsep)
@@ -56,8 +52,6 @@ import Options.Applicative (
   strOption,
  )
 import Options.Applicative.Builder (CommandFields, Mod, command, info)
-import Path (SomeBase (..))
-import Path.Posix (parseSomeFile)
 import Prettyprinter (Doc, punctuate, viaShow)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green))
 import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, formatStringToDoc, stringToHelpDoc, styledDivider)
@@ -106,7 +100,7 @@ data SBOMTestCliOpts = SBOMTestCliOpts
   , testTimeout :: Maybe Int
   , testOutputFmt :: Maybe String
   , testDiffRevision :: Maybe Text
-  , sbomFile :: SBOMFile
+  , sbomFile :: App.Fossa.Config.SBOM.Common.SBOMFile
   }
   deriving (Eq, Ord, Show)
 
@@ -131,7 +125,7 @@ parser =
     <*> optional (option auto (applyFossaStyle <> long "timeout" <> helpDoc timeoutHelp))
     <*> optional (strOption (applyFossaStyle <> long "format" <> helpDoc testFormatHelp))
     <*> optional (strOption (applyFossaStyle <> long "diff" <> stringToHelpDoc "Checks for new issues of the revision that does not exist in provided diff revision"))
-    <*> sbomFileArg
+    <*> App.Fossa.Config.SBOM.Common.sbomFileArg
   where
     timeoutHelp :: Maybe (Doc AnsiStyle)
     timeoutHelp =
@@ -163,15 +157,7 @@ mergeOpts maybeConfig envvars SBOMTestCliOpts{..} = do
             (optProjectRevision testCommons)
             (Nothing)
 
-  let path = unSBOMFile sbomFile
-  parsedPath <- context "Parsing `sbom` path" $ fromEitherShow $ parseSomeFile (toString path)
-  inferred <- case parsedPath of
-    Abs f -> inferProjectDefaultFromFile f
-    Rel f -> inferProjectDefaultFromFile f
-
-  let depVersion = fromMaybe (inferredRevision inferred) (overrideRevision revOverride)
-  let vendoredName = fromMaybe (inferredName inferred) (overrideName revOverride)
-  let revision = ProjectRevision vendoredName depVersion Nothing
+  revision <- App.Fossa.Config.SBOM.Common.getProjectRevision sbomFile revOverride
   testOutputFormat <- validateOutputFormat testOutputFmt
 
   TestConfig
