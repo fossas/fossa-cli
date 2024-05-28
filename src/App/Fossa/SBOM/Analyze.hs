@@ -76,10 +76,10 @@ uploadSBOM ::
   ) =>
   SBOMAnalyzeConfig ->
   m ()
-uploadSBOM conf = do
-  let revision = sbomRevision conf
+uploadSBOM config = do
+  let revision = sbomRevision config
   signedURL <- getSignedUploadUrl SBOMUpload $ PackageRevision (projectName revision) (projectRevision revision)
-  let path = unSBOMFile $ sbomPath conf
+  let path = unSBOMFile $ sbomPath config
 
   logSticky $ "Uploading '" <> (projectName revision) <> "' to secure S3 bucket"
   res <- uploadArchive signedURL $ toString path
