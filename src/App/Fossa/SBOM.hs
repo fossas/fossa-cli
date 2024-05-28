@@ -9,8 +9,8 @@ import App.Fossa.Config.SBOM (
  )
 import App.Fossa.Config.SBOM qualified as Config
 import App.Fossa.SBOM.Analyze qualified as Analyze
-import App.Fossa.SBOM.Test qualified as Test
 import App.Fossa.Subcommand (SubCommand)
+import App.Fossa.Test (testMain)
 import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
@@ -52,4 +52,4 @@ dispatch = \case
         sendIO . BL.writeFile debugBundlePath . GZip.compress $ Aeson.encode scope
         Diag.rethrow res
       _ -> ignoreDebug $ Analyze.analyze cfg
-  TestCfg cfg -> Test.test cfg
+  TestCfg cfg -> testMain cfg
