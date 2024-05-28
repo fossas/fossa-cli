@@ -39,9 +39,9 @@ runFossaApiClient apiOpts =
           FinalizeLicenseScanForPathDependency locators forceRebuild -> LicenseScanning.finalizePathDependencyScan locators forceRebuild
           GetApiOpts -> pure apiOpts
           GetAttribution rev format -> Core.getAttribution rev format
-          GetIssues rev diffRev -> Core.getIssues rev diffRev
+          GetIssues rev diffRev locatorType -> Core.getIssues rev diffRev locatorType
           GetEndpointVersion -> Core.getEndpointVersion
-          GetLatestBuild rev -> Core.getLatestBuild rev
+          GetLatestBuild rev locatorType -> Core.getLatestBuild rev locatorType
           GetRevisionDependencyCacheStatus rev -> Core.getRevisionDependencyCacheStatus rev
           GetOrganization -> Core.getOrganization
           GetPolicies -> Core.getPolicies

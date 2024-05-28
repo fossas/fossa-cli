@@ -12,7 +12,7 @@ import App.Fossa.API.BuildWait (
 import App.Fossa.Config.Test (
   DiffRevision (..),
   TestCliOpts,
-  TestConfig (diffRevision),
+  TestConfig (diffRevision, locatorType),
   TestOutputFormat (TestOutputJson, TestOutputPretty),
  )
 import App.Fossa.Config.Test qualified as Config
@@ -64,6 +64,7 @@ testMain config = do
       let revision = Config.projectRevision config
           outputType = Config.outputFormat config
           diffRev = diffRevision config
+          locType = locatorType config
 
       logInfo ""
       logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
@@ -74,13 +75,13 @@ testMain config = do
         Just (DiffRevision rev) -> do
           logInfo ("diffing against revision: `" <> pretty rev <> "`")
           logSticky $ "[ Checking build completion for " <> rev <> "... ]"
-          waitForScanCompletion revision{projectRevision = rev} cancelFlag
+          waitForScanCompletion revision{projectRevision = rev} locType cancelFlag
 
       logSticky $ "[ Checking build completion for " <> revision.projectRevision <> "... ]"
-      waitForScanCompletion revision cancelFlag
+      waitForScanCompletion revision locType cancelFlag
 
       logSticky "[ Waiting for issue scan completion... ]"
-      issues <- waitForIssues revision diffRev cancelFlag
+      issues <- waitForIssues revision diffRev locType cancelFlag
       logSticky ""
       logInfo ""
 

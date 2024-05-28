@@ -13,7 +13,7 @@ import App.Fossa.API.BuildWait (
 import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), ReportOutputFormat (ReportJson), mkSubCommand)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (ReportChecks), guardWithPreflightChecks)
 import App.Fossa.Subcommand (SubCommand)
-import App.Types (ProjectRevision (..))
+import App.Types (IssueLocatorType (..), ProjectRevision (..))
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
@@ -81,7 +81,7 @@ fetchReport ReportConfig{..} =
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForScanCompletion revision cancelToken
+      waitForScanCompletion revision IssueLocatorCustom cancelToken
       logSticky "[ Waiting for scan completion... ]"
 
       waitForReportReadiness revision cancelToken

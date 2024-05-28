@@ -16,7 +16,7 @@ import App.Fossa.Config.Container (
 import App.Fossa.Config.Container qualified as Config
 import App.Fossa.Container.Scan (scanImageNoAnalysis)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (TestChecks), guardWithPreflightChecks)
-import App.Types (OverrideProject (OverrideProject, overrideBranch, overrideName, overrideRevision), ProjectRevision (..))
+import App.Types (IssueLocatorType (..), OverrideProject (OverrideProject, overrideBranch, overrideName, overrideRevision), ProjectRevision (..))
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
@@ -72,10 +72,10 @@ test ContainerTestConfig{..} = do
       logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
 
       logSticky "[ Waiting for build completion ]"
-      waitForBuild revision cancelToken
+      waitForBuild revision IssueLocatorCustom cancelToken
 
       logSticky "[ Waiting for issue scan completion ]"
-      issues <- waitForIssues revision Nothing cancelToken
+      issues <- waitForIssues revision Nothing IssueLocatorCustom cancelToken
       logSticky ""
 
       case issuesCount issues of

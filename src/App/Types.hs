@@ -7,6 +7,7 @@ module App.Types (
   ProjectMetadata (..),
   ReleaseGroupMetadata (..),
   ProjectRevision (..),
+  IssueLocatorType (..),
   OverrideDynamicAnalysisBinary (..),
   Policy (..),
   DependencyRebuild (..),
@@ -85,6 +86,17 @@ data ProjectRevision = ProjectRevision
   , projectBranch :: Maybe Text
   }
   deriving (Eq, Ord, Show, Generic)
+
+data IssueLocatorType = IssueLocatorCustom | IssueLocatorSBOM
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToText IssueLocatorType where
+  toText IssueLocatorCustom = "custom"
+  toText IssueLocatorSBOM = "sbom"
+
+instance ToJSON IssueLocatorType where
+  toEncoding IssueLocatorCustom = "custom"
+  toEncoding IssueLocatorSBOM = "sbom"
 
 instance ToJSON ProjectRevision where
   toEncoding = genericToEncoding defaultOptions

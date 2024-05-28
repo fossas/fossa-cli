@@ -101,6 +101,7 @@ import App.Types (
   ComponentUploadFileType (..),
   DependencyRebuild,
   FileUpload (FileUploadFullContent),
+  IssueLocatorType,
   Policy (..),
   ProjectMetadata (..),
   ProjectRevision (..),
@@ -898,13 +899,14 @@ getLatestBuild ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   ProjectRevision ->
+  IssueLocatorType ->
   m Build
-getLatestBuild apiOpts ProjectRevision{..} = fossaReq $ do
+getLatestBuild apiOpts ProjectRevision{..} locatorType = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   orgId <- organizationId <$> getOrganization apiOpts
 
-  response <- req GET (buildsEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
+  response <- req GET (buildsEndpoint baseUrl orgId (Locator (toText locatorType) projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
 
 ----
@@ -1173,8 +1175,9 @@ getIssues ::
   ApiOpts ->
   ProjectRevision ->
   Maybe DiffRevision ->
+  IssueLocatorType ->
   m Issues
-getIssues apiOpts ProjectRevision{..} diffRevision = fossaReq $ do
+getIssues apiOpts ProjectRevision{..} diffRevision locatorType = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   org <- getOrganization apiOpts
 
@@ -1186,7 +1189,7 @@ getIssues apiOpts ProjectRevision{..} diffRevision = fossaReq $ do
   response <-
     req
       GET
-      (issuesEndpoint baseUrl (organizationId org) (Locator "custom" projectName (Just projectRevision)))
+      (issuesEndpoint baseUrl (organizationId org) (Locator (toText locatorType) projectName (Just projectRevision)))
       NoReqBody
       jsonResponse
       opts
