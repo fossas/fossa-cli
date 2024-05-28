@@ -5,10 +5,11 @@ module App.Fossa.SBOM.Analyze (
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.SBOM
 import App.Fossa.Config.SBOM.Analyze (SBOMScanDestination (..))
+import App.Fossa.PreflightChecks (PreflightCommandChecks (..), preflightChecks)
 import App.Fossa.ProjectInference (InferredProject (..), inferProjectDefaultFromFile)
-import App.Types (ComponentUploadFileType (..), OverrideProject (..), ProjectRevision (ProjectRevision))
+import App.Types (ComponentUploadFileType (..), OverrideProject (..), ProjectMetadata (..), ProjectRevision (..))
 import Control.Carrier.Debug (Debug)
-import Control.Carrier.Diagnostics (Diagnostics, fromEitherShow)
+import Control.Carrier.Diagnostics (fromEitherShow)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
@@ -26,23 +27,31 @@ import Path.Posix (SomeBase (..))
 import Prettyprinter (Pretty (pretty))
 import Srclib.Types (Locator (..))
 
-data SBOM = SBOM
-  { sbomName :: Text
-  , sbomVersion :: Text
-  }
-  deriving (Eq, Ord, Show)
-
 uploadSBOM ::
   ( Has StickyLogger sig m
   , Has FossaApiClient sig m
   , Has Logger sig m
-  , Has (Lift IO) sig m
-  , Has Diagnostics sig m
   ) =>
   SBOMAnalyzeConfig ->
-  m SBOM
-uploadSBOM conf = do
-  -- let sbomFile = sbomPath conf
+  ProjectRevision ->
+  m ()
+uploadSBOM conf revision = do
+  signedURL <- getSignedUploadUrl SBOMUpload $ PackageRevision (projectName revision) (projectRevision revision)
+  let path = unSBOMFile $ sbomPath conf
+
+  logSticky $ "Uploading '" <> (projectName revision) <> "' to secure S3 bucket"
+  res <- uploadArchive signedURL $ toString path
+  logDebug $ pretty $ show res
+
+  pure ()
+
+getProjectRevision ::
+  ( Has Diag.Diagnostics sig m
+  , Has (Lift IO) sig m
+  ) =>
+  SBOMAnalyzeConfig ->
+  m ProjectRevision
+getProjectRevision conf = do
   let path = unSBOMFile $ sbomPath conf
   parsedPath <- context "Parsing `sbom` path" $ fromEitherShow $ parseSomeFile (toString path)
   inferred <- case parsedPath of
@@ -51,18 +60,7 @@ uploadSBOM conf = do
 
   let depVersion = fromMaybe (inferredRevision inferred) $ overrideRevision (revisionOverride conf)
   let vendoredName = fromMaybe (inferredName inferred) $ overrideName (revisionOverride conf)
-  -- TODO: The version from the UI is a timestamp. Should we keep that or use the hash?
-  -- depVersion <- case vendoredVersion of
-  --   Nothing -> sendIO $ hashFile compressedFile
-  --   Just version -> pure version
-
-  signedURL <- getSignedUploadUrl SBOMUpload $ PackageRevision vendoredName depVersion
-
-  logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
-  res <- uploadArchive signedURL $ toString path
-  logDebug $ pretty $ show res
-
-  pure $ SBOM vendoredName depVersion
+  pure $ ProjectRevision vendoredName depVersion Nothing
 
 -- analyze receives a path to an SBOM file, a root path, and API settings.
 -- Using this information, it uploads the SBOM and queues a build for it.
@@ -74,44 +72,44 @@ analyze ::
   ) =>
   SBOMAnalyzeConfig ->
   m ()
-analyze config =
+analyze config = do
+  let emptyMetadata = ProjectMetadata Nothing Nothing Nothing Nothing Nothing Nothing [] Nothing
+  revision <- getProjectRevision config
+  _ <- case sbomScanDestination config of
+    SBOMOutputStdout -> pure ()
+    SBOMUploadScan apiOpts -> runFossaApiClient apiOpts $ preflightChecks $ AnalyzeChecks revision emptyMetadata
   case sbomScanDestination config of
     SBOMOutputStdout -> pure ()
-    SBOMUploadScan apiOpts -> (runFossaApiClient apiOpts) . runStickyLogger (severity config) $ analyzeInternal config
+    SBOMUploadScan apiOpts -> (runFossaApiClient apiOpts) . runStickyLogger (severity config) $ analyzeInternal config revision
 
 analyzeInternal ::
   ( Has Diag.Diagnostics sig m
   , Has StickyLogger sig m
   , Has Logger sig m
   , Has FossaApiClient sig m
-  , Has (Lift IO) sig m
   ) =>
   SBOMAnalyzeConfig ->
+  ProjectRevision ->
   m ()
-analyzeInternal config = do
-  -- At this point, we have a good list of deps, so go for it.
-  sbom <- uploadSBOM config
+analyzeInternal config revision = do
+  -- First, upload the SBOM to S3
+  _ <- uploadSBOM config revision
 
-  -- queueArchiveBuild takes archives without Organization information. This
-  -- orgID is appended when creating the build on the backend.  We don't care
-  -- about the response here because if the build has already been queued, we
-  -- get a 401 response.
-
-  let archive = Archive (sbomName sbom) (sbomVersion sbom)
+  -- Second, trigger a build
+  let archive = Archive (projectName revision) (projectRevision revision)
   _ <- queueSBOMBuild archive (sbomTeam config) (sbomRebuild config)
+
   -- The organizationID is needed to prefix each locator name. The FOSSA API
   -- automatically prefixes the locator when queuing the build but not when
   -- reading from a source unit.
   orgId <- organizationId <$> getOrganization
+  let updateRevisionName :: Text -> ProjectRevision -> ProjectRevision
+      updateRevisionName updateText r = r{projectName = updateText <> "/" <> projectName r}
+      revisionWithOrganization = updateRevisionName (toText $ show orgId) revision
 
-  let updateSBOMName :: Text -> SBOM -> SBOM
-      updateSBOMName updateText s = s{sbomName = updateText <> "/" <> sbomName s}
-      sbomWithOrganization = updateSBOMName (toText $ show orgId) sbom
-
-  let locator = Locator "sbom" (sbomName sbomWithOrganization) (Just $ sbomVersion sbom)
+  let locator = Locator "sbom" (projectName revisionWithOrganization) (Just $ projectRevision revision)
   logSticky $ "uploaded to " <> toText locator
-  let revision = ProjectRevision (sbomName sbomWithOrganization) (sbomVersion sbom) Nothing
-  buildUrl <- getFossaBuildUrl revision locator
+  buildUrl <- getFossaBuildUrl revisionWithOrganization locator
 
   traverse_
     logInfo
