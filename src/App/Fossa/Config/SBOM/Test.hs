@@ -2,10 +2,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Config.SBOM.Test (
-  mkSubCommand,
   subcommand,
   parser,
-  loadConfig,
   validateOutputFormat,
   testOutputFormatList,
   defaultOutputFmt,
@@ -16,38 +14,38 @@ module App.Fossa.Config.SBOM.Test (
 ) where
 
 import App.Fossa.Config.Common (
-  CacheAction (ReadOnly),
   CommonOpts (..),
-  baseDirArg,
   collectApiOpts,
-  collectBaseDir,
-  collectRevisionData',
+  collectRevisionOverride,
   commonOpts,
   defaultTimeoutDuration,
  )
-import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
+import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
+import App.Fossa.Config.SBOM.Common (SBOMFile (unSBOMFile), sbomFileArg)
 import App.Fossa.Config.Test (DiffRevision (DiffRevision), TestConfig (TestConfig), TestOutputFormat (..))
-import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
-import App.Types (IssueLocatorType (..), OverrideProject (OverrideProject))
+import App.Fossa.ProjectInference (InferredProject (inferredName, inferredRevision), inferProjectDefaultFromFile)
+import App.Fossa.Subcommand (GetCommonOpts (getCommonOpts), GetSeverity (getSeverity))
+import App.Types (BaseDir (BaseDir), IssueLocatorType (..), OverrideProject (..), ProjectRevision (..))
+import Control.Carrier.Diagnostics (context)
+import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   ToDiagnostic,
-  fromMaybe,
+  fromEitherShow,
  )
 import Control.Effect.Lift (Lift)
 import Control.Timeout (Duration (..))
 import Data.List (intercalate)
-import Data.String.Conversion (toText)
+import Data.Maybe (fromMaybe)
+import Data.String.Conversion (ToString (toString), toText)
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
-import Effect.Exec (Exec)
-import Effect.Logger (Logger, Severity (SevDebug, SevInfo), vsep)
-import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
+import Effect.Logger (Severity (SevDebug, SevInfo), vsep)
+import Effect.ReadFS (ReadFS, getCurrentDir)
 import Errata (Errata (..))
 import Options.Applicative (
-  InfoMod,
   Parser,
   auto,
   helpDoc,
@@ -58,6 +56,8 @@ import Options.Applicative (
   strOption,
  )
 import Options.Applicative.Builder (CommandFields, Mod, command, info)
+import Path (SomeBase (..))
+import Path.Posix (parseSomeFile)
 import Prettyprinter (Doc, punctuate, viaShow)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green))
 import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, formatStringToDoc, stringToHelpDoc, styledDivider)
@@ -94,7 +94,7 @@ instance ToDiagnostic InvalidReportFormat where
 
 validateOutputFormat :: Has Diagnostics sig m => Maybe String -> m TestOutputFormat
 validateOutputFormat Nothing = pure defaultOutputFmt
-validateOutputFormat (Just format) = fromMaybe (InvalidReportFormat format) $ parseFossaTestOutputFormat format
+validateOutputFormat (Just format) = Diag.fromMaybe (InvalidReportFormat format) $ parseFossaTestOutputFormat format
 
 parseFossaTestOutputFormat :: String -> Maybe TestOutputFormat
 parseFossaTestOutputFormat "json" = Just TestOutputJson
@@ -105,8 +105,8 @@ data SBOMTestCliOpts = SBOMTestCliOpts
   { testCommons :: CommonOpts
   , testTimeout :: Maybe Int
   , testOutputFmt :: Maybe String
-  , testBaseDir :: FilePath
   , testDiffRevision :: Maybe Text
+  , sbomFile :: SBOMFile
   }
   deriving (Eq, Ord, Show)
 
@@ -124,20 +124,14 @@ subcommand f =
 instance GetCommonOpts SBOMTestCliOpts where
   getCommonOpts SBOMTestCliOpts{testCommons} = Just testCommons
 
-testInfo :: InfoMod a
-testInfo = progDescDoc $ formatStringToDoc "Check for issues from FOSSA and exit non-zero when issues are found"
-
-mkSubCommand :: (TestConfig -> EffStack ()) -> SubCommand SBOMTestCliOpts TestConfig
-mkSubCommand = SubCommand "test" testInfo parser loadConfig mergeOpts
-
 parser :: Parser SBOMTestCliOpts
 parser =
   SBOMTestCliOpts
     <$> commonOpts
     <*> optional (option auto (applyFossaStyle <> long "timeout" <> helpDoc timeoutHelp))
     <*> optional (strOption (applyFossaStyle <> long "format" <> helpDoc testFormatHelp))
-    <*> baseDirArg
     <*> optional (strOption (applyFossaStyle <> long "diff" <> stringToHelpDoc "Checks for new issues of the revision that does not exist in provided diff revision"))
+    <*> sbomFileArg
   where
     timeoutHelp :: Maybe (Doc AnsiStyle)
     timeoutHelp =
@@ -147,45 +141,44 @@ parser =
           , boldItalicized "Default: " <> "3600 (1 hour)"
           ]
 
-loadConfig ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has ReadFS sig m
-  , Has Logger sig m
-  ) =>
-  SBOMTestCliOpts ->
-  m (Maybe ConfigFile)
-loadConfig SBOMTestCliOpts{testCommons = CommonOpts{optConfig}, testBaseDir} = do
-  cwd <- getCurrentDir
-  configBaseDir <- resolveDir cwd (toText testBaseDir)
-  resolveConfigFile configBaseDir optConfig
-
 mergeOpts ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has ReadFS sig m
-  , Has Logger sig m
   ) =>
   Maybe ConfigFile ->
   EnvVars ->
   SBOMTestCliOpts ->
   m TestConfig
 mergeOpts maybeConfig envvars SBOMTestCliOpts{..} = do
-  let baseDir = collectBaseDir testBaseDir
-      apiOpts = collectApiOpts maybeConfig envvars testCommons
+  baseDir <- getCurrentDir
+  let apiOpts = collectApiOpts maybeConfig envvars testCommons
       timeout = maybe defaultTimeoutDuration Seconds testTimeout
-      revision =
-        collectRevisionData' baseDir maybeConfig ReadOnly $
-          OverrideProject (optProjectName testCommons) (optProjectRevision testCommons) Nothing
       diffRevision = DiffRevision <$> testDiffRevision
 
+      revOverride =
+        collectRevisionOverride maybeConfig $
+          OverrideProject
+            (optProjectName testCommons)
+            (optProjectRevision testCommons)
+            (Nothing)
+
+  let path = unSBOMFile sbomFile
+  parsedPath <- context "Parsing `sbom` path" $ fromEitherShow $ parseSomeFile (toString path)
+  inferred <- case parsedPath of
+    Abs f -> inferProjectDefaultFromFile f
+    Rel f -> inferProjectDefaultFromFile f
+
+  let depVersion = fromMaybe (inferredRevision inferred) (overrideRevision revOverride)
+  let vendoredName = fromMaybe (inferredName inferred) (overrideName revOverride)
+  let revision = ProjectRevision vendoredName depVersion Nothing
   testOutputFormat <- validateOutputFormat testOutputFmt
 
   TestConfig
-    <$> baseDir
-    <*> apiOpts
+    (BaseDir baseDir)
+    <$> apiOpts
     <*> pure timeout
     <*> pure testOutputFormat
-    <*> revision
+    <*> pure revision
     <*> pure diffRevision
     <*> pure IssueLocatorSBOM

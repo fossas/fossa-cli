@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 
 module App.Fossa.Test (
+  testMain,
   testSubCommand,
   TestConfig,
 ) where

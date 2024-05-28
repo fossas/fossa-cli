@@ -114,7 +114,9 @@ mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
             (Nothing)
 
       forceRescans = if fromFlag ForceRescan forceRescan then DependencyRebuildInvalidateCache else DependencyRebuildReuseCache
-  (SBOMAnalyzeConfig (BaseDir baseDir) <$> scanDest)
+  SBOMAnalyzeConfig
+    (BaseDir baseDir)
+    <$> scanDest
     <*> pure revOverride
     <*> pure fileLoc
     <*> pure severity

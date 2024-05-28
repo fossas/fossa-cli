@@ -1,93 +1,22 @@
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.SBOM.Test (
   test,
 ) where
 
-import App.Fossa.API.BuildWait (
-  waitForBuild,
-  waitForIssues,
- )
-import App.Fossa.Config.SBOM (
-  SBOMTestConfig (SBOMTestConfig, timeoutDuration),
-  TestOutputFormat (TestOutputJson, TestOutputPretty),
- )
-import App.Fossa.Config.SBOM qualified as Config
-import App.Fossa.Container.Scan (scanImageNoAnalysis)
-import App.Fossa.PreflightChecks (PreflightCommandChecks (TestChecks), guardWithPreflightChecks)
-import App.Types (OverrideProject (OverrideProject, overrideBranch, overrideName, overrideRevision), ProjectRevision (..))
-import Control.Carrier.Debug (ignoreDebug)
-import Control.Carrier.FossaApiClient (runFossaApiClient)
-import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
+import App.Fossa.Config.Test (TestConfig (..))
+import App.Fossa.Test (testMain)
 import Control.Effect.Diagnostics (Diagnostics)
-import Control.Effect.Lift (Has, Lift, sendIO)
-import Control.Monad (void)
-import Control.Timeout (timeout')
-import Data.Aeson qualified as Aeson
-import Data.Maybe (fromMaybe)
-import Data.String.Conversion (decodeUtf8)
-import Data.Text (Text)
-import Effect.Exec (Exec)
+import Control.Effect.Lift (Has, Lift)
 import Effect.Logger (
   Logger,
-  Pretty (pretty),
-  Severity (SevInfo),
-  logError,
-  logInfo,
-  logStdout,
  )
-import Effect.ReadFS (ReadFS)
-import Fossa.API.Types (Issues (..))
-import System.Exit (exitFailure)
-
-extractRevision :: OverrideProject -> Text -> Text -> ProjectRevision
-extractRevision OverrideProject{..} imageTag imageDigest =
-  ProjectRevision
-    (fromMaybe imageTag overrideName)
-    (fromMaybe imageDigest overrideRevision)
-    overrideBranch
 
 test ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
   ) =>
-  SBOMTestConfig ->
+  TestConfig ->
   m ()
-test SBOMTestConfig{..} = do
-  void $ guardWithPreflightChecks apiOpts TestChecks
-
-  runStickyLogger SevInfo
-    . ignoreDebug -- Ignore the debug effect because we don't generate a bundle.
-    . runFossaApiClient apiOpts
-    . timeout' timeoutDuration
-    $ \cancelToken -> do
-      logInfo "Test passed! 0 issues found"
-
--- TODO: Run the test
--- (imageTag, imageDigest) <- scanImageNoAnalysis testImageLocator testDockerHost testArch
--- let revision = extractRevision testRevisionOverride imageTag imageDigest
-
--- logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
--- logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
-
--- logSticky "[ Waiting for build completion ]"
--- waitForBuild revision cancelToken
-
--- logSticky "[ Waiting for issue scan completion ]"
--- issues <- waitForIssues revision Nothing cancelToken
--- logSticky ""
-
--- case issuesCount issues of
---   0 -> logInfo "Test passed! 0 issues found"
---   n -> do
---     logError $ "Test failed. Number of issues found: " <> pretty n
---     if null (issuesIssues issues)
---       then logError "Check webapp for more details, or use a full-access API key (currently using a push-only API key)"
---       else case outputFormat of
---         TestOutputPretty -> logError $ pretty issues
---         TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
---     sendIO exitFailure
+test = testMain
