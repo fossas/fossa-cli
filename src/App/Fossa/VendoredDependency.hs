@@ -60,7 +60,7 @@ instance FromJSON VendoredDependency where
         <$> (obj `neText` "name")
         <*> (obj `neText` "path")
         <*> (unTextLike <$$> obj .:? "version")
-          <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
+        <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
 
     case vendoredVersion vendorDep of
       Nothing -> pure vendorDep
