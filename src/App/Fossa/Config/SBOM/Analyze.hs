@@ -12,6 +12,7 @@ module App.Fossa.Config.SBOM.Analyze (
 ) where
 
 import App.Fossa.Config.Common (
+  CacheAction (..),
   CommonOpts (..),
   collectApiOpts,
   collectRevisionOverride,
@@ -55,7 +56,6 @@ instance ToJSON SBOMScanDestination where
 data SBOMAnalyzeConfig = SBOMAnalyzeConfig
   { sbomBaseDir :: BaseDir
   , sbomScanDestination :: SBOMScanDestination
-  , revisionOverride :: OverrideProject
   , sbomPath :: SBOMFile
   , severity :: Severity
   , sbomRebuild :: DependencyRebuild
@@ -118,11 +118,10 @@ mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
             (Nothing)
 
       forceRescans = if fromFlag ForceRescan forceRescan then DependencyRebuildInvalidateCache else DependencyRebuildReuseCache
-  revision <- getProjectRevision fileLoc revOverride
+  revision <- getProjectRevision fileLoc revOverride WriteOnly
   SBOMAnalyzeConfig
     (BaseDir baseDir)
     <$> scanDest
-    <*> pure revOverride
     <*> pure fileLoc
     <*> pure severity
     <*> pure forceRescans

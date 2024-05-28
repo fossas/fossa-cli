@@ -14,6 +14,7 @@ module App.Fossa.Config.SBOM.Test (
 ) where
 
 import App.Fossa.Config.Common (
+  CacheAction (..),
   CommonOpts (..),
   collectApiOpts,
   collectRevisionOverride,
@@ -157,7 +158,7 @@ mergeOpts maybeConfig envvars SBOMTestCliOpts{..} = do
             (optProjectRevision testCommons)
             (Nothing)
 
-  revision <- App.Fossa.Config.SBOM.Common.getProjectRevision sbomFile revOverride
+  revision <- App.Fossa.Config.SBOM.Common.getProjectRevision sbomFile revOverride ReadOnly
   testOutputFormat <- validateOutputFormat testOutputFmt
 
   TestConfig
