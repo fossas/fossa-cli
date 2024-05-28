@@ -10,7 +10,7 @@ module App.Fossa.Config.SBOM.Test (
   parseFossaTestOutputFormat,
   testFormatHelp,
   mergeOpts,
-  SBOMTestCliOpts (..),
+  SBOMTestOptions (..),
 ) where
 
 import App.Fossa.Config.Common (
@@ -96,7 +96,7 @@ parseFossaTestOutputFormat "json" = Just TestOutputJson
 parseFossaTestOutputFormat "text-pretty" = Just TestOutputPretty
 parseFossaTestOutputFormat _ = Nothing
 
-data SBOMTestCliOpts = SBOMTestCliOpts
+data SBOMTestOptions = SBOMTestOptions
   { testCommons :: CommonOpts
   , testTimeout :: Maybe Int
   , testOutputFmt :: Maybe String
@@ -105,10 +105,10 @@ data SBOMTestCliOpts = SBOMTestCliOpts
   }
   deriving (Eq, Ord, Show)
 
-instance GetSeverity SBOMTestCliOpts where
-  getSeverity SBOMTestCliOpts{testCommons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo
+instance GetSeverity SBOMTestOptions where
+  getSeverity SBOMTestOptions{testCommons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo
 
-subcommand :: (SBOMTestCliOpts -> a) -> Mod CommandFields a
+subcommand :: (SBOMTestOptions -> a) -> Mod CommandFields a
 subcommand f =
   command
     "test"
@@ -116,12 +116,12 @@ subcommand f =
         progDescDoc (formatStringToDoc "Scan an SBOM file")
     )
 
-instance GetCommonOpts SBOMTestCliOpts where
-  getCommonOpts SBOMTestCliOpts{testCommons} = Just testCommons
+instance GetCommonOpts SBOMTestOptions where
+  getCommonOpts SBOMTestOptions{testCommons} = Just testCommons
 
-parser :: Parser SBOMTestCliOpts
+parser :: Parser SBOMTestOptions
 parser =
-  SBOMTestCliOpts
+  SBOMTestOptions
     <$> commonOpts
     <*> optional (option auto (applyFossaStyle <> long "timeout" <> helpDoc timeoutHelp))
     <*> optional (strOption (applyFossaStyle <> long "format" <> helpDoc testFormatHelp))
@@ -143,9 +143,9 @@ mergeOpts ::
   ) =>
   Maybe ConfigFile ->
   EnvVars ->
-  SBOMTestCliOpts ->
+  SBOMTestOptions ->
   m TestConfig
-mergeOpts maybeConfig envvars SBOMTestCliOpts{..} = do
+mergeOpts maybeConfig envvars SBOMTestOptions{..} = do
   baseDir <- getCurrentDir
   let apiOpts = collectApiOpts maybeConfig envvars testCommons
       timeout = maybe defaultTimeoutDuration Seconds testTimeout

@@ -17,7 +17,7 @@ import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Config.SBOM.Analyze (SBOMAnalyzeConfig, SBOMAnalyzeOptions (..))
 import App.Fossa.Config.SBOM.Analyze qualified as Analyze
 import App.Fossa.Config.SBOM.Common (SBOMFile (..))
-import App.Fossa.Config.SBOM.Test (SBOMTestCliOpts (..))
+import App.Fossa.Config.SBOM.Test (SBOMTestOptions (..))
 import App.Fossa.Config.SBOM.Test qualified as Test
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Fossa.Test (TestConfig)
@@ -73,7 +73,7 @@ getCfgFilePath = \case
 
 data SBOMCommand
   = SBOMAnalyze SBOMAnalyzeOptions
-  | SBOMTest SBOMTestCliOpts
+  | SBOMTest SBOMTestOptions
 
 data SBOMScanConfig
   = AnalyzeCfg SBOMAnalyzeConfig
@@ -86,14 +86,14 @@ instance ToJSON SBOMScanConfig where
 instance GetSeverity SBOMCommand where
   getSeverity = \case
     SBOMAnalyze (SBOMAnalyzeOptions{analyzeCommons = CommonOpts{optDebug}}) -> fromBool optDebug
-    SBOMTest (SBOMTestCliOpts{testCommons = CommonOpts{optDebug}}) -> fromBool optDebug
+    SBOMTest (SBOMTestOptions{testCommons = CommonOpts{optDebug}}) -> fromBool optDebug
     where
       fromBool b = if b then SevDebug else SevInfo
 
 instance GetCommonOpts SBOMCommand where
   getCommonOpts = \case
     SBOMAnalyze (SBOMAnalyzeOptions{analyzeCommons}) -> Just analyzeCommons
-    SBOMTest (SBOMTestCliOpts{testCommons}) -> Just testCommons
+    SBOMTest (SBOMTestOptions{testCommons}) -> Just testCommons
 
 parser :: Parser SBOMCommand
 parser = public
