@@ -19,6 +19,7 @@ import Control.Effect.Diagnostics (
   Has,
  )
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Telemetry (Telemetry)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Effect.Exec (Exec)
@@ -40,6 +41,7 @@ dispatch ::
   , Has Logger sig m
   , Has ReadFS sig m
   , Has Exec sig m
+  , Has Telemetry sig m
   ) =>
   SBOMScanConfig ->
   m ()

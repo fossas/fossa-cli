@@ -10,8 +10,10 @@ import Control.Carrier.Debug (Debug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
+import Control.Carrier.Telemetry.Types (CountableCliFeature (SBOMAnalyzeUsage))
 import Control.Effect.FossaApiClient (FossaApiClient, PackageRevision (PackageRevision), getOrganization, getSignedUploadUrl, queueSBOMBuild, uploadArchive)
 import Control.Effect.Lift
+import Control.Effect.Telemetry (Telemetry, trackUsage)
 import Data.Foldable (traverse_)
 import Data.String.Conversion
 import Data.Text (Text)
@@ -25,12 +27,14 @@ analyze ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has Debug sig m
+  , Has Telemetry sig m
   ) =>
   SBOMAnalyzeConfig ->
   m ()
 analyze config = do
   let emptyMetadata = ProjectMetadata Nothing Nothing Nothing Nothing Nothing Nothing [] Nothing
   let apiOpts = sbomApiOpts config
+  trackUsage SBOMAnalyzeUsage
   runFossaApiClient apiOpts . preflightChecks $ AnalyzeChecks (sbomRevision config) emptyMetadata
   runFossaApiClient apiOpts . runStickyLogger (severity config) $ analyzeInternal config
 
