@@ -585,6 +585,7 @@ test-suite unit-tests
     App.Fossa.Report.AttributionSpec
     App.Fossa.ReportSpec
     App.Fossa.RunThemisSpec
+    App.Fossa.SBOMAnalyzeSpec
     App.Fossa.VendoredDependencySpec
     App.Fossa.VSI.DynLinked.Internal.BinarySpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.DEBSpec
