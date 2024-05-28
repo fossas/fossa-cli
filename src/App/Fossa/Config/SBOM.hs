@@ -1,11 +1,9 @@
 module App.Fossa.Config.SBOM (
   mkSubCommand,
   SBOMFile (..),
-  TestOutputFormat (..),
   SBOMCommand,
   SBOMScanConfig (..),
   SBOMAnalyzeConfig (..),
-  SBOMTestConfig (..),
 ) where
 
 import App.Fossa.Config.Common (
@@ -19,9 +17,10 @@ import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Config.SBOM.Analyze (SBOMAnalyzeConfig, SBOMAnalyzeOptions (..))
 import App.Fossa.Config.SBOM.Analyze qualified as Analyze
 import App.Fossa.Config.SBOM.Common (SBOMFile (..))
-import App.Fossa.Config.SBOM.Test (SBOMTestConfig, SBOMTestOptions (..), TestOutputFormat (..))
+import App.Fossa.Config.SBOM.Test (SBOMTestCliOpts (..))
 import App.Fossa.Config.SBOM.Test qualified as Test
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
+import App.Fossa.Test (TestConfig)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
@@ -73,11 +72,11 @@ getCfgFilePath = \case
 
 data SBOMCommand
   = SBOMAnalyze SBOMAnalyzeOptions
-  | SBOMTest SBOMTestOptions
+  | SBOMTest SBOMTestCliOpts
 
 data SBOMScanConfig
   = AnalyzeCfg SBOMAnalyzeConfig
-  | TestCfg SBOMTestConfig
+  | TestCfg TestConfig
   deriving (Show, Generic)
 
 instance ToJSON SBOMScanConfig where
@@ -86,14 +85,14 @@ instance ToJSON SBOMScanConfig where
 instance GetSeverity SBOMCommand where
   getSeverity = \case
     SBOMAnalyze (SBOMAnalyzeOptions{analyzeCommons = CommonOpts{optDebug}}) -> fromBool optDebug
-    SBOMTest (SBOMTestOptions{testCommons = CommonOpts{optDebug}}) -> fromBool optDebug
+    SBOMTest (SBOMTestCliOpts{testCommons = CommonOpts{optDebug}}) -> fromBool optDebug
     where
       fromBool b = if b then SevDebug else SevInfo
 
 instance GetCommonOpts SBOMCommand where
   getCommonOpts = \case
     SBOMAnalyze (SBOMAnalyzeOptions{analyzeCommons}) -> Just analyzeCommons
-    SBOMTest (SBOMTestOptions{testCommons}) -> Just testCommons
+    SBOMTest (SBOMTestCliOpts{testCommons}) -> Just testCommons
 
 parser :: Parser SBOMCommand
 parser = public

@@ -3,6 +3,7 @@
 
 module App.Fossa.Test (
   testSubCommand,
+  TestConfig,
 ) where
 
 import App.Fossa.API.BuildWait (
