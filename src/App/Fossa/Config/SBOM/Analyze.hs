@@ -55,7 +55,7 @@ instance ToJSON SBOMScanDestination where
 
 data SBOMAnalyzeConfig = SBOMAnalyzeConfig
   { sbomBaseDir :: BaseDir
-  , sbomScanDestination :: SBOMScanDestination
+  , sbomApiOpts :: ApiOpts
   , sbomPath :: SBOMFile
   , severity :: Severity
   , sbomRebuild :: DependencyRebuild
@@ -106,7 +106,7 @@ mergeOpts ::
   m SBOMAnalyzeConfig
 mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
   baseDir <- getCurrentDir
-  let scanDest = collectScanDestination cfgfile envvars cliOpts
+  let apiOpts = App.Fossa.Config.Common.collectApiOpts cfgfile envvars analyzeCommons
       severity = getSeverity cliOpts
       fileLoc = sbomFile
 
@@ -121,19 +121,9 @@ mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
   revision <- getProjectRevision fileLoc revOverride WriteOnly
   SBOMAnalyzeConfig
     (BaseDir baseDir)
-    <$> scanDest
+    <$> apiOpts
     <*> pure fileLoc
     <*> pure severity
     <*> pure forceRescans
     <*> pure team
     <*> pure revision
-
-collectScanDestination ::
-  (Has Diagnostics sig m) =>
-  Maybe ConfigFile ->
-  EnvVars ->
-  SBOMAnalyzeOptions ->
-  m SBOMScanDestination
-collectScanDestination maybeCfgFile envvars SBOMAnalyzeOptions{..} = do
-  apiOpts <- App.Fossa.Config.Common.collectApiOpts maybeCfgFile envvars analyzeCommons
-  pure $ SBOMUploadScan apiOpts

@@ -4,7 +4,6 @@ module App.Fossa.SBOM.Analyze (
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.SBOM
-import App.Fossa.Config.SBOM.Analyze (SBOMScanDestination (..))
 import App.Fossa.PreflightChecks (PreflightCommandChecks (..), preflightChecks)
 import App.Types (ComponentUploadFileType (..), ProjectMetadata (..), ProjectRevision (..))
 import Control.Carrier.Debug (Debug)
@@ -39,8 +38,6 @@ uploadSBOM conf = do
 
   pure ()
 
--- analyze receives a path to an SBOM file, a root path, and API settings.
--- Using this information, it uploads the SBOM and queues a build for it.
 analyze ::
   ( Has Diag.Diagnostics sig m
   , Has (Lift IO) sig m
@@ -51,12 +48,10 @@ analyze ::
   m ()
 analyze config = do
   let emptyMetadata = ProjectMetadata Nothing Nothing Nothing Nothing Nothing Nothing [] Nothing
-  _ <- case sbomScanDestination config of
-    SBOMOutputStdout -> pure ()
-    SBOMUploadScan apiOpts -> runFossaApiClient apiOpts $ preflightChecks $ AnalyzeChecks (sbomRevision config) emptyMetadata
-  case sbomScanDestination config of
-    SBOMOutputStdout -> pure ()
-    SBOMUploadScan apiOpts -> (runFossaApiClient apiOpts) . runStickyLogger (severity config) $ analyzeInternal config
+  let apiOpts = sbomApiOpts config
+  runFossaApiClient apiOpts . preflightChecks $ AnalyzeChecks (sbomRevision config) emptyMetadata
+  runFossaApiClient apiOpts . runStickyLogger (severity config) $ analyzeInternal config
+
 analyzeInternal ::
   ( Has Diag.Diagnostics sig m
   , Has StickyLogger sig m
