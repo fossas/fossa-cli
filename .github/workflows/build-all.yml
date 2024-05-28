@@ -19,7 +19,7 @@ jobs:
 
     strategy:
       matrix:
-        os: ['windows-latest', 'ubuntu-latest', 'macos-12']
+        os: ['windows-latest', 'ubuntu-latest', 'macos-12', 'macos-latest']
         include:
         - os: ubuntu-latest
           os-name: Linux
@@ -27,14 +27,20 @@ jobs:
           project-file: cabal.project.ci.linux
           ghc: '9.4.8'
 
+        # macos-latest pointed at macos-12 this before it was changed to ARM.
         - os: macos-12
-          os-name: macOS
+          os-name: macOS-intel
           project-file: cabal.project.ci.macos
           ghc: '9.4.8'
 
         - os: windows-latest
           os-name: Windows
           project-file: cabal.project.ci.windows
+          ghc: '9.4.8'
+
+        - os: macos-latest
+          os-name: macOS-arm64
+          project-file: cabal.project.ci.macos
           ghc: '9.4.8'
 
     steps:
@@ -134,22 +140,22 @@ jobs:
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
-        key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-${{ steps.compute-cache-key.outputs.cabal-cache-key }}
+        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-${{ steps.compute-cache-key.outputs.cabal-cache-key }}
         restore-keys: |
-          ${{ runner.os }}-${{ matrix.ghc }}-cabal-cache-
-          ${{ runner.os }}-${{ matrix.ghc }}-
-          ${{ runner.os }}-
+          ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-
+          ${{ matrix.os-name }}-${{ matrix.ghc }}-
+          ${{ matrix.os-name }}-
 
     - uses: actions/cache@v4
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
-        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ github.sha }}
+        key: ${{ matrix.os-name }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ github.sha }}
         restore-keys: |
-          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ env.parent_commit }}
-          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-
-          ${{ runner.os }}-${{ env.GHC_VERSION }}-
-          ${{ runner.os }}-
+          ${{ matrix.os-name }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ env.parent_commit }}
+          ${{ matrix.os-name }}-${{ env.GHC_VERSION }}-dist-newstyle-
+          ${{ matrix.os-name }}-${{ env.GHC_VERSION }}-
+          ${{ matrix.os-name }}-
 
     - name: Update vendored binaries
       run: |
@@ -224,6 +230,7 @@ jobs:
         APPLE_NOTARIZATION_DEV_PASS: ${{ secrets.APPLE_NOTARIZATION_DEV_PASS }}
         APPLE_NOTARIZATION_DEV_ID: ${{ secrets.APPLE_NOTARIZATION_DEV_ID }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        OS_NAME: ${{ matrix.os-name }}
       run: |
         # create variables
         CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
@@ -241,10 +248,18 @@ jobs:
         security import $CERTIFICATE_PATH -P "$MACOS_BUILD_CERT_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         security list-keychain -d user -s $KEYCHAIN_PATH
 
+
         chmod +x release/*
         # '--options runtime' enables the hardened runtime: https://developer.apple.com/documentation/security/hardened_runtime
+        # On Apple Silicon there doesn't seem to be a default liblzma, and the one installed via homebrew is rejected.
+        # The entitlement line will relax that check.
         # The hardened runtime is required for notarization.
-        codesign --options runtime -s 'FOSSA, Inc.' release/fossa
+        if [ "$OS_NAME" = "macOS-arm64" ] ; then
+          codesign --entitlements .github/entitlements.plist --options runtime -s 'FOSSA, Inc.' release/fossa
+        else
+          # Intel does not need the entitlement to run liblzma, which is included in the base system.
+          codesign --options runtime -s 'FOSSA, Inc.' release/fossa
+        fi
         codesign --options runtime -s 'FOSSA, Inc.' release/diagnose
         codesign --options runtime -s 'FOSSA, Inc.' release/millhone
 
@@ -260,7 +275,7 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: ${{ runner.os }}-binaries
+        name: ${{ matrix.os-name }}-binaries
         path: release
 
   create-release:
@@ -367,10 +382,14 @@ jobs:
         gzip "$LINUX_DIAGNOSE_TAR_PATH"
         gzip "$LINUX_MILLHONE_TAR_PATH"
 
-        chmod +x macOS-binaries/*
-        zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/fossa
-        zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/diagnose
-        zip -j release/millhone_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-binaries/millhone
+        chmod +x macOS-intel-binaries/*
+        zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-intel-binaries/fossa
+        zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-intel-binaries/diagnose
+        zip -j release/millhone_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-intel-binaries/millhone
+        chmod +x macOS-arm64-binaries/*
+        zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip macOS-arm64-binaries/fossa
+        zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip macOS-arm64-binaries/diagnose
+        zip -j release/millhone_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip macOS-arm64-binaries/millhone
 
         chmod +x Windows-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/fossa.exe
@@ -384,6 +403,7 @@ jobs:
         sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip.sha256"
         sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz" > "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz.sha256"
         sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip.sha256"
+        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip.sha256"
         sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip.sha256"
 
         echo "Sanity-checking the checksums."
