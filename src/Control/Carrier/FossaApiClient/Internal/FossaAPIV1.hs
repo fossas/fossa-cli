@@ -98,7 +98,7 @@ import App.Support (
  )
 import App.Types (
   DependencyRebuild,
-  FileUpload (FileUploadMatchData),
+  FileUpload (FileUploadFullContent),
   Policy (..),
   ProjectMetadata (..),
   ProjectRevision (..),
@@ -947,7 +947,7 @@ archiveBuildUpload' apiOpts rebuild archive = context ("archive: '" <> toText ar
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts = "dependency" =: True <> "rawLicenseScan" =: True
-  let archiveProjects = ArchiveComponents [archive] rebuild FileUploadMatchData
+  let archiveProjects = ArchiveComponents [archive] rebuild FileUploadFullContent
 
   -- The response appears to either be "Created" for new builds, or an error message for existing builds.
   -- Making the actual return value of "Created" essentially worthless.
