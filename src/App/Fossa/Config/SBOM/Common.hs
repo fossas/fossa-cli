@@ -35,6 +35,12 @@ instance ToJSON SBOMFile where
 sbomFileArg :: Parser SBOMFile
 sbomFileArg = SBOMFile <$> argument str (applyFossaStyle <> metavar "SBOM" <> stringToHelpDoc "Path to the SBOM file to scan")
 
+-- get the project name and revision.
+-- The project name will be from the --project flag, falling back to the filename of the SBOM File
+-- The revision will be from the --revision flag. If that does not exist, then we either get it by reading from the cache
+-- or by the current timestamp.
+-- This differs from the behaviour of `fossa analyze`, as `fossa analyze` also attempts to get a revision from a VCS.
+-- We don't do that here, as the SBOM file is, not a directory, so is less tied to a VCS.
 getProjectRevision ::
   ( Has Diag.Diagnostics sig m
   , Has (Lift IO) sig m

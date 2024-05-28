@@ -20,24 +20,6 @@ import Fossa.API.Types
 import Prettyprinter (Pretty (pretty))
 import Srclib.Types (Locator (..))
 
-uploadSBOM ::
-  ( Has StickyLogger sig m
-  , Has FossaApiClient sig m
-  , Has Logger sig m
-  ) =>
-  SBOMAnalyzeConfig ->
-  m ()
-uploadSBOM conf = do
-  let revision = sbomRevision conf
-  signedURL <- getSignedUploadUrl SBOMUpload $ PackageRevision (projectName revision) (projectRevision revision)
-  let path = unSBOMFile $ sbomPath conf
-
-  logSticky $ "Uploading '" <> (projectName revision) <> "' to secure S3 bucket"
-  res <- uploadArchive signedURL $ toString path
-  logDebug $ pretty $ show res
-
-  pure ()
-
 analyze ::
   ( Has Diag.Diagnostics sig m
   , Has (Lift IO) sig m
@@ -86,3 +68,21 @@ analyzeInternal config = do
     , ""
     , "============================================================"
     ]
+
+uploadSBOM ::
+  ( Has StickyLogger sig m
+  , Has FossaApiClient sig m
+  , Has Logger sig m
+  ) =>
+  SBOMAnalyzeConfig ->
+  m ()
+uploadSBOM conf = do
+  let revision = sbomRevision conf
+  signedURL <- getSignedUploadUrl SBOMUpload $ PackageRevision (projectName revision) (projectRevision revision)
+  let path = unSBOMFile $ sbomPath conf
+
+  logSticky $ "Uploading '" <> (projectName revision) <> "' to secure S3 bucket"
+  res <- uploadArchive signedURL $ toString path
+  logDebug $ pretty $ show res
+
+  pure ()

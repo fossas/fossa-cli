@@ -62,9 +62,7 @@ inferProjectCached dir = do
   rev <- readCachedRevision
   pure project{inferredRevision = rev}
 
--- | Infer a default project name from the directory, and a default
--- revision from the current time. Writes `.fossa.revision` to the system
--- temp directory for use by `fossa test`
+-- | Infer a default project name from the directory, and a default revision from the current time.
 inferProjectDefault :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path b Dir -> m InferredProject
 inferProjectDefault dir = context "Inferring project from directory name / timestamp" . sendIO $ do
   let name = FP.dropTrailingPathSeparator (fromRelDir (dirname dir))
@@ -73,9 +71,7 @@ inferProjectDefault dir = context "Inferring project from directory name / times
   let stamp = Text.takeWhile (/= '.') $ toText time -- trim milliseconds off, format is yyyy-mm-ddThh:mm:ss[.sss]
   pure (InferredProject (toText name) (stamp <> "Z") Nothing)
 
--- | Infer a default project name from a filename, and a default
--- revision from the current time. Writes `.fossa.revision` to the system
--- temp directory for use by `fossa test`
+-- | Infer a default project name from a filename, and a default revision from the current time.
 inferProjectDefaultFromFile :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path b File -> m InferredProject
 inferProjectDefaultFromFile file = context "Inferring project from filename / timestamp" . sendIO $ do
   let name = FP.dropTrailingPathSeparator (fromRelFile (filename file))
