@@ -1,6 +1,7 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## v3.9.19
+- Release a Mac arm64 binary. ([#1426](https://github.com/fossas/fossa-cli/pull/1426))
 - Updated the license to CPAL, an OSI-approved license similar to MPL ([#1431](https://github.com/fossas/fossa-cli/pull/1431)).
 
 ## v3.9.18
