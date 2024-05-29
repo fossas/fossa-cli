@@ -35,7 +35,7 @@ The `sbom test` command checks whether the most-recent scan of your FOSSA projec
 
 `fossa sbom test` supports the [Common FOSSA Project Flags](./analyze.md#common-fossa-project-flags) supported by all commands.
 
-`fossa sbom test` also supports the [flags supported by `fossa test`](docs/references/subcommands/test.md).
+`fossa sbom test` also supports the [flags supported by `fossa test`](./test.md).
 
 ## Common FOSSA Project Flags
 
