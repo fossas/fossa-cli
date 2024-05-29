@@ -23,9 +23,11 @@ import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad (unless)
 import Data.ByteString.Lazy qualified as BL
+import Data.Char (toLower)
 import Data.Foldable (find)
 import Data.HashMap.Strict qualified as HM
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.List (elemIndex)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -72,13 +74,20 @@ inferProjectDefault dir = context "Inferring project from directory name / times
   pure (InferredProject (toText name) (stamp <> "Z") Nothing)
 
 -- | Infer a default project name from a filename, and a default revision from the current time.
-inferProjectDefaultFromFile :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path b File -> m InferredProject
-inferProjectDefaultFromFile file = context "Inferring project from filename / timestamp" . sendIO $ do
+--   If any extensions are passed in, then those extensions will be removed when creating the project name
+inferProjectDefaultFromFile :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path b File -> [String] -> m InferredProject
+inferProjectDefaultFromFile file extensions = context "Inferring project from filename / timestamp" . sendIO $ do
   let name = FP.dropTrailingPathSeparator (fromRelFile (filename file))
+  let ext = map toLower $ FP.takeExtension (name)
+  let nameWithoutExt =
+        if (ext /= "") && isJust (elemIndex ext extensions)
+          then FP.dropExtension name
+          else name
+
   time <- iso8601Show <$> getCurrentTime
 
   let stamp = Text.takeWhile (/= '.') $ toText time -- trim milliseconds off, format is yyyy-mm-ddThh:mm:ss[.sss]
-  pure (InferredProject (toText name) (stamp <> "Z") Nothing)
+  pure (InferredProject (toText nameWithoutExt) (stamp <> "Z") Nothing)
 
 svnCommand :: Command
 svnCommand =

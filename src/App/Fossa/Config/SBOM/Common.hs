@@ -53,9 +53,10 @@ getProjectRevision ::
 getProjectRevision sbomPath override cacheStrategy = do
   let path = unSBOMFile $ sbomPath
   parsedPath <- context "Parsing `sbom` path" $ fromEitherShow $ parseSomeFile (toString path)
+  let extensions = [".json", ".xml"]
   inferred <- case parsedPath of
-    Abs f -> inferProjectDefaultFromFile f
-    Rel f -> inferProjectDefaultFromFile f
+    Abs f -> inferProjectDefaultFromFile f extensions
+    Rel f -> inferProjectDefaultFromFile f extensions
 
   inferredVersion <- case cacheStrategy of
     ReadOnly -> do

@@ -8,13 +8,13 @@ FOSSA supports SPDX (JSON only) and CycloneDX (XML and JSON) SBOM files. For mor
 
 ## `fossa sbom analyze <path to sbom file>`
 
-`fossa sbom analyze <path to sbom file>` will upload the SBOM file to FOSSA and Analyze it. The result will be a project with a name of the SBOM file and a revision of the current timestamp. For example, if you run this command:
+`fossa sbom analyze <path to sbom file>` will upload the SBOM file to FOSSA and Analyze it. The name of the project will be the name of the SBOM file with extensions of ".xml" or ".json" removed. The revision will be derived from the current time. For example, if you run this command:
 
 ```
 fossa sbom analyze /path/to/sampleCycloneDX.json
 ```
 
-Then the project will be named "sampleCycloneDX.json" and the revision will be a timestamp based on the current time.
+Then the project will be named "sampleCycloneDX" and the revision will be a timestamp based on the current time.
 
 You can override the project name and revision using the `--project` and `--revision` flags, described below in [Common FOSSA Project Flags](#common-fossa-project-flags).
 
