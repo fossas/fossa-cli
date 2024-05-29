@@ -141,7 +141,7 @@ expectGetOrganization :: Has MockApi sig m => m ()
 expectGetOrganization = GetOrganization `alwaysReturns` Fixtures.organization
 
 expectGetProject :: Has MockApi sig m => m ()
-expectGetProject = (GetProject Fixtures.projectRevision) `alwaysReturns` Fixtures.project
+expectGetProject = (GetProject Fixtures.projectRevision IssueLocatorCustom) `alwaysReturns` Fixtures.project
 
 expectGetLatestBuild :: Has MockApi sig m => BuildStatus -> m ()
 expectGetLatestBuild status =

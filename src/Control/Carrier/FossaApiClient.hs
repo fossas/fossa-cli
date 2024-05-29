@@ -45,7 +45,7 @@ runFossaApiClient apiOpts =
           GetRevisionDependencyCacheStatus rev -> Core.getRevisionDependencyCacheStatus rev
           GetOrganization -> Core.getOrganization
           GetPolicies -> Core.getPolicies
-          GetProject rev -> Core.getProject rev
+          GetProject rev locatorType -> Core.getProject rev locatorType
           GetTeams -> Core.getTeams
           AddTeamProjects teamId req -> Core.addTeamProjects teamId req
           GetAnalyzedRevisions vdeps -> Core.getAnalyzedRevisions vdeps

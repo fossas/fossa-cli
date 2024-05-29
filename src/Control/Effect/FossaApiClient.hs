@@ -128,7 +128,7 @@ data FossaApiClientF a where
   GetLatestBuild :: ProjectRevision -> IssueLocatorType -> FossaApiClientF Build
   GetOrganization :: FossaApiClientF Organization
   GetPolicies :: FossaApiClientF [CoreTypes.Policy]
-  GetProject :: ProjectRevision -> FossaApiClientF Project
+  GetProject :: ProjectRevision -> IssueLocatorType -> FossaApiClientF Project
   GetTeams :: FossaApiClientF [CoreTypes.Team]
   GetAnalyzedRevisions :: NonEmpty VendoredDependency -> FossaApiClientF [Text]
   GetAnalyzedPathRevisions :: ProjectRevision -> FossaApiClientF [AnalyzedPathDependency]
@@ -190,8 +190,8 @@ getOrganization :: (Has FossaApiClient sig m) => m Organization
 getOrganization = sendSimple GetOrganization
 
 -- | Fetches the project associated with a revision
-getProject :: (Has FossaApiClient sig m) => ProjectRevision -> m Project
-getProject = sendSimple . GetProject
+getProject :: (Has FossaApiClient sig m) => ProjectRevision -> IssueLocatorType -> m Project
+getProject revision locatorType = sendSimple $ GetProject revision locatorType
 
 -- | Returns the API options currently in scope.
 -- The API options contain a lot of information required to build URLs.

@@ -118,10 +118,11 @@ getProject ::
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->
+  IssueLocatorType ->
   m Project
-getProject revision = do
+getProject revision locatorType = do
   apiOpts <- ask
-  API.getProject apiOpts revision
+  API.getProject apiOpts revision locatorType
 
 getAnalyzedRevisions ::
   ( Has (Lift IO) sig m

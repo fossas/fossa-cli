@@ -75,18 +75,18 @@ parseReportOutputSpec =
 
 expectBuildSuccess :: (Has MockApi sig m) => m ()
 expectBuildSuccess = do
-  (GetProject Fixtures.projectRevision) `returnsOnce` Fixtures.project
+  (GetProject Fixtures.projectRevision IssueLocatorCustom) `returnsOnce` Fixtures.project
   (GetLatestBuild Fixtures.projectRevision IssueLocatorCustom) `returnsOnce` Fixtures.successfulBuild
 
 expectBuildPending :: (Has MockApi sig m) => m ()
 expectBuildPending = do
   GetApiOpts `alwaysReturns` Fixtures.apiOpts -- It needs to fetch the poll delay
-  (GetProject Fixtures.projectRevision) `returnsOnce` Fixtures.project
+  (GetProject Fixtures.projectRevision IssueLocatorCustom) `returnsOnce` Fixtures.project
   (GetLatestBuild Fixtures.projectRevision IssueLocatorCustom) `alwaysReturns` Fixtures.pendingBuild
 
 expectBuildError :: (Has MockApi sig m) => m ()
 expectBuildError = do
-  (GetProject Fixtures.projectRevision) `returnsOnce` Fixtures.project
+  (GetProject Fixtures.projectRevision IssueLocatorCustom) `returnsOnce` Fixtures.project
   (GetLatestBuild Fixtures.projectRevision IssueLocatorCustom) `fails` "Mock failure: GetLatestBuild"
 
 expectFetchIssuesSuccess :: (Has MockApi sig m) => m ()

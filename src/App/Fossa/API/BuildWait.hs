@@ -76,7 +76,7 @@ waitForScanCompletion ::
   m ()
 waitForScanCompletion revision locatorType cancelFlag = do
   -- Route is new, this may fail on on-prem if they haven't updated
-  project <- recover $ getProject revision
+  project <- recover $ getProject revision locatorType
   if maybe False projectIsMonorepo project
     then fatalText "The project you are attempting to test is a monorepo project. Monorepo projects are no longer supported by FOSSA."
     else waitForBuild revision locatorType cancelFlag

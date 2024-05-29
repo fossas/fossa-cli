@@ -862,13 +862,14 @@ getProject ::
   ) =>
   ApiOpts ->
   ProjectRevision ->
+  IssueLocatorType ->
   m Project
-getProject apiopts ProjectRevision{..} = fossaReq $ do
+getProject apiopts ProjectRevision{..} locatorType = fossaReq $ do
   (baseurl, baseopts) <- useApiOpts apiopts
 
   orgid <- organizationId <$> getOrganization apiopts
 
-  let endpoint = projectEndpoint baseurl orgid $ Locator "custom" projectName Nothing
+  let endpoint = projectEndpoint baseurl orgid $ Locator (toText locatorType) projectName Nothing
 
   responseBody <$> req GET endpoint NoReqBody jsonResponse baseopts
 
