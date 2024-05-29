@@ -1,6 +1,9 @@
 # FOSSA CLI Changelog
 
-## 3.9.20 
+## Unreleased
+- Add support for analyzing SBOM files ([#1435](https://github.com/fossas/fossa-cli/pull/1435))
+
+## 3.9.20
 - Fixes file matches for license scans ([#1434](https://github.com/fossas/fossa-cli/pull/1434)).
 
 ## v3.9.19
