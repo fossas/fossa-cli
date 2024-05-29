@@ -51,7 +51,7 @@ getProjectRevision ::
   CacheAction ->
   m ProjectRevision
 getProjectRevision sbomPath override cacheStrategy = do
-  let path = unSBOMFile $ sbomPath
+  let path = unSBOMFile sbomPath
   parsedPath <- context "Parsing `sbom` path" $ fromEitherShow $ parseSomeFile (toString path)
   let extensions = [".json", ".xml"]
   inferred <- case parsedPath of

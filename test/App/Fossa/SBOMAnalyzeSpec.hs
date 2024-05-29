@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module App.Fossa.SBOMAnalyzeSpec (spec) where
 
 import App.Fossa.Config.SBOM.Analyze (SBOMAnalyzeConfig (..))
