@@ -20,8 +20,7 @@ import Data.Text (Text)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Options.Applicative (Parser, argument, metavar, str)
-import Path (parseSomeFile)
-import Path.Posix (SomeBase (..))
+import Path (SomeBase (..), parseSomeFile)
 import Style (applyFossaStyle, stringToHelpDoc)
 
 newtype SBOMFile = SBOMFile
