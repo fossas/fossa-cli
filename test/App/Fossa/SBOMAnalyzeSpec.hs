@@ -1,8 +1,10 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module App.Fossa.SBOMAnalyzeSpec (spec) where
 
 import App.Fossa.Config.SBOM.Analyze (SBOMAnalyzeConfig (..))
 import App.Fossa.Config.SBOM.Common (SBOMFile (..))
-import App.Fossa.SBOM.Analyze (analyze)
+import App.Fossa.SBOM.Analyze (analyzeInternal)
 import App.Types (BaseDir (..), ComponentUploadFileType (..), DependencyRebuild (DependencyRebuildReuseCache), ProjectRevision (ProjectRevision))
 import Control.Algebra (Has)
 import Control.Carrier.Debug (ignoreDebug)
@@ -21,17 +23,17 @@ spec = do
   describe "SBOM Analyze" $ do
     currDir <- runIO getCurrentDir
     it' "should upload a file" $ do
-      let revision = ProjectRevision "somesbom" "1.2.3" Nothing
       let archive = Archive "somesbom" "1.2.3"
+      let revision = ProjectRevision "somesbom" "1.2.3" Nothing
       let config = SBOMAnalyzeConfig (BaseDir currDir) Fixtures.apiOpts (SBOMFile "test/App/Fossa/SBOM/testdata/sampleCycloneDX.json") SevInfo DependencyRebuildReuseCache Nothing revision
 
+      GetApiOpts `alwaysReturns` Fixtures.apiOpts
+      expectOrganization
       expectGetSignedUrl PackageRevision{packageName = "somesbom", packageVersion = "1.2.3"}
       expectUploadArchive
       expectQueueSBOMBuild archive
-      expectOrganization
 
-      _ <- ignoreDebug . withoutTelemetry . runMockApi $ analyze config
-      pure ()
+      ignoreDebug . withoutTelemetry . runMockApi $ analyzeInternal config
 
 expectOrganization :: Has MockApi sig m => m ()
 expectOrganization = GetOrganization `alwaysReturns` Fixtures.organization

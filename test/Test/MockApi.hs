@@ -220,6 +220,7 @@ matchExpectation a@(GetSignedLicenseScanUrl{}) (ApiExpectation _ requestExpectat
 matchExpectation a@(GetSignedFirstPartyScanUrl{}) (ApiExpectation _ requestExpectation b@(GetSignedFirstPartyScanUrl{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(GetSignedUploadUrl{}) (ApiExpectation _ requestExpectation b@(GetSignedUploadUrl{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(QueueArchiveBuild{}) (ApiExpectation _ requestExpectation b@(QueueArchiveBuild{}) resp) = checkResult requestExpectation a b resp
+matchExpectation a@(QueueSBOMBuild{}) (ApiExpectation _ requestExpectation b@(QueueSBOMBuild{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(ResolveProjectDependencies{}) (ApiExpectation _ requestExpectation b@(ResolveProjectDependencies{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(ResolveUserDefinedBinary{}) (ApiExpectation _ requestExpectation b@(ResolveUserDefinedBinary{}) resp) = checkResult requestExpectation a b resp
 matchExpectation a@(UploadAnalysis{}) (ApiExpectation _ requestExpectation b@(UploadAnalysis{}) resp) = checkResult requestExpectation a b resp

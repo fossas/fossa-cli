@@ -1,5 +1,6 @@
 module App.Fossa.SBOM.Analyze (
   analyze,
+  analyzeInternal,
 ) where
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
