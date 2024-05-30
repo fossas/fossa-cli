@@ -64,7 +64,7 @@ compressAndUpload arcDir tmpDir VendoredDependency{..} = context "compressing an
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
   res <- uploadArchive signedURL compressedFile
-  logDebug $ pretty $ show res
+  logDebug . pretty $ (decodeUtf8 @Text res)
 
   pure $ Archive vendoredName depVersion
 

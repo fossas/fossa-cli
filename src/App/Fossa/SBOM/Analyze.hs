@@ -17,7 +17,7 @@ import Control.Effect.Lift
 import Control.Effect.Telemetry (Telemetry, trackUsage)
 import Control.Monad (void)
 import Data.Foldable (traverse_)
-import Data.String.Conversion
+import Data.String.Conversion (ConvertUtf8 (..), toString, toText)
 import Data.Text (Text)
 import Effect.Logger (Logger, logDebug, logInfo)
 import Fossa.API.Types
@@ -89,6 +89,6 @@ uploadSBOM config = do
 
   logSticky $ "Uploading '" <> (projectName revision) <> "' to secure S3 bucket"
   res <- uploadArchive signedURL $ toString path
-  logDebug $ pretty $ show res
+  logDebug . pretty $ (decodeUtf8 @Text res)
 
   pure ()
