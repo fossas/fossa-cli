@@ -151,7 +151,9 @@ instance ToJSON ArchiveComponents where
   toJSON ArchiveComponents{..} =
     object
       [ "archives" .= archiveComponentsArchives
-      , "fullFiles" .= archiveComponentsUpload
+      , "fullFiles" .= case archiveComponentsUpload of
+          FileUploadFullContent -> True
+          FileUploadMatchData -> False
       , -- Don't use the ToJSON instance of DependencyRebuild since this endpoint has a different expectation.
         "forceRebuild" .= case archiveComponentsRebuild of
           DependencyRebuildReuseCache -> False
