@@ -106,8 +106,7 @@ mergeOpts ::
   m SBOMAnalyzeConfig
 mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
   baseDir <- getCurrentDir
-  let apiOpts = App.Fossa.Config.Common.collectApiOpts cfgfile envvars analyzeCommons
-      severity = getSeverity cliOpts
+  let severity = getSeverity cliOpts
       fileLoc = sbomFile
 
       revOverride =
@@ -118,12 +117,14 @@ mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
             (Nothing)
 
       forceRescans = if fromFlag ForceRescan forceRescan then DependencyRebuildInvalidateCache else DependencyRebuildReuseCache
+  apiOpts <- App.Fossa.Config.Common.collectApiOpts cfgfile envvars analyzeCommons
   revision <- getProjectRevision fileLoc revOverride WriteOnly
-  SBOMAnalyzeConfig
-    (BaseDir baseDir)
-    <$> apiOpts
-    <*> pure fileLoc
-    <*> pure severity
-    <*> pure forceRescans
-    <*> pure team
-    <*> pure revision
+  pure $
+    SBOMAnalyzeConfig
+      (BaseDir baseDir)
+      apiOpts
+      fileLoc
+      severity
+      forceRescans
+      team
+      revision

@@ -62,9 +62,7 @@ loadConfig ::
   ) =>
   SBOMCommand ->
   m (Maybe ConfigFile)
-loadConfig = \case
-  -- Only parse config file if we're running analyze or test
-  cmd -> resolveLocalConfigFile $ getCfgFilePath cmd
+loadConfig = resolveLocalConfigFile . getCfgFilePath
 
 getCfgFilePath :: SBOMCommand -> Maybe FilePath
 getCfgFilePath = \case
@@ -96,6 +94,4 @@ instance GetCommonOpts SBOMCommand where
     SBOMTest (SBOMTestOptions{testCommons}) -> Just testCommons
 
 parser :: Parser SBOMCommand
-parser = public
-  where
-    public = subparser $ Analyze.subcommand SBOMAnalyze <> Test.subcommand SBOMTest
+parser = subparser $ Analyze.subcommand SBOMAnalyze <> Test.subcommand SBOMTest
