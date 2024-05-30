@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.9.21
 - Add support for analyzing SBOM files ([#1435](https://github.com/fossas/fossa-cli/pull/1435))
 
 ## 3.9.20
