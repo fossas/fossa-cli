@@ -15,11 +15,13 @@ import Control.Effect.Diagnostics (
   Has,
   ToDiagnostic (renderDiagnostic),
   context,
+  warn,
  )
 import Control.Effect.Diagnostics qualified as Diag (fromMaybe)
 import Data.Foldable (find)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toText)
@@ -41,6 +43,7 @@ import Path (Abs, File, Path)
 import Strategy.Node.PackageJson (
   Development,
   FlatDeps (..),
+  Manifest,
   NodePackage (..),
   Production,
  )
@@ -56,16 +59,24 @@ import Strategy.Node.YarnV2.Resolvers (
   resolveLocatorToPackage,
  )
 
+newtype NoPackageForDescriptor = NoPackageForDescriptor Descriptor
+  deriving (Eq, Ord, Show)
+
+instance ToDiagnostic NoPackageForDescriptor where
+  renderDiagnostic (NoPackageForDescriptor d) =
+    renderDiagnostic $ "Couldn't find package for descriptor: " <> toText (show d)
+
 data YarnLockError
-  = NoPackageForDescriptor Descriptor
-  | DescriptorParse NodePackage
+  = DescriptorParse NodePackage
+  | NoPackagesFound [Manifest]
   deriving (Eq, Ord, Show)
 
 instance ToDiagnostic YarnLockError where
   renderDiagnostic err =
     case err of
-      (NoPackageForDescriptor d) -> renderDiagnostic $ "Couldn't find package for descriptor: " <> toText (show d)
       (DescriptorParse nodePkg) -> renderDiagnostic $ "Failed to parse package descriptor: " <> showT nodePkg
+      (NoPackagesFound manifests) ->
+        renderDiagnostic $ "No resolvable deps found in package.json(s): " <> Text.intercalate "," (map toText manifests)
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> FlatDeps -> m (Graphing Dependency)
 analyze file flatdeps = context "Lockfile V2 analysis" $ do

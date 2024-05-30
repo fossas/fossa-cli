@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
@@ -42,6 +43,7 @@ import Data.Glob (Glob)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
+import Data.String.Conversion (ToText)
 import Data.Tagged (Tagged)
 import Data.Text (Text)
 import DepTypes (
@@ -187,7 +189,9 @@ instance ToJSON PackageJson where
       , "peerDependencies" .= packagePeerDeps
       ]
 
-newtype Manifest = Manifest {unManifest :: Path Abs File} deriving (Eq, Show, Ord, Generic, ToJSONKey, ToJSON)
+newtype Manifest = Manifest {unManifest :: Path Abs File}
+  deriving (Eq, Show, Ord, Generic, ToJSONKey, ToJSON)
+  deriving (ToText) via (Path Abs File)
 
 data PkgJsonGraph = PkgJsonGraph
   { jsonGraph :: AM.AdjacencyMap Manifest
