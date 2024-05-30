@@ -77,8 +77,8 @@ inferProjectDefault dir = context "Inferring project from directory name / times
 --   If any extensions are passed in, then those extensions will be removed when creating the project name
 inferProjectDefaultFromFile :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path b File -> [String] -> m InferredProject
 inferProjectDefaultFromFile file extensions = context "Inferring project from filename / timestamp" . sendIO $ do
-  let name = FP.dropTrailingPathSeparator (fromRelFile (filename file))
-  let ext = map toLower $ FP.takeExtension (name)
+  let name = FP.dropTrailingPathSeparator . fromRelFile . filename $ file
+  let ext = map toLower . FP.takeExtension $ name
   let nameWithoutExt =
         if (ext /= "") && isJust (elemIndex ext extensions)
           then FP.dropExtension name
