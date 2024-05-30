@@ -33,7 +33,7 @@ The `sbom test` command checks whether the most-recent scan of your FOSSA projec
 - If there are issues, it prints them to stdout and fails with an exit code of 1
 - If there are no issues, it prints nothing and succeeds with an exit code of 0
 
-`fossa sbom test` supports the [Common FOSSA Project Flags](./analyze.md#common-fossa-project-flags) supported by all commands.
+`fossa sbom test` supports the [Common FOSSA Project Flags](./analyze.md#common-fossa-project-flags).
 
 `fossa sbom test` also supports the [flags supported by `fossa test`](./test.md).
 
