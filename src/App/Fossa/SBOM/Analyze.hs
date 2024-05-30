@@ -49,7 +49,7 @@ analyzeInternal ::
   m ()
 analyzeInternal config = do
   let revision = sbomRevision config
-  _ <- uploadSBOM config
+  void $ uploadSBOM config
 
   let archive = Archive (projectName revision) (projectRevision revision)
   _ <- queueSBOMBuild archive (sbomTeam config) (sbomRebuild config)
