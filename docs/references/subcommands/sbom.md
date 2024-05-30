@@ -39,7 +39,7 @@ The `sbom test` command checks whether the most-recent scan of your FOSSA projec
 
 ## Common FOSSA Project Flags
 
-All `fossa` commands support the following FOSSA-project-related flags:
+`fossa sbom` commands support the following FOSSA-project-related flags:
 
 | Name                               | Short | Description                                                                                                                                            |
 | ---------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
