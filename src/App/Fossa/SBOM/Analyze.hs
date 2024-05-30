@@ -15,6 +15,7 @@ import Control.Carrier.Telemetry.Types (CountableCliFeature (SBOMAnalyzeUsage))
 import Control.Effect.FossaApiClient (FossaApiClient, PackageRevision (PackageRevision), getOrganization, getSignedUploadUrl, queueSBOMBuild, uploadArchive)
 import Control.Effect.Lift
 import Control.Effect.Telemetry (Telemetry, trackUsage)
+import Control.Monad (void)
 import Data.Foldable (traverse_)
 import Data.String.Conversion
 import Data.Text (Text)
