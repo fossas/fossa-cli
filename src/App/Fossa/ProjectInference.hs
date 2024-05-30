@@ -80,7 +80,7 @@ inferProjectDefaultFromFile file extensions = context "Inferring project from fi
   let name = FP.dropTrailingPathSeparator . fromRelFile . filename $ file
   let ext = map toLower . FP.takeExtension $ name
   let nameWithoutExt =
-        if (ext /= "") && isJust (elemIndex ext extensions)
+        if ext `elem` extensions
           then FP.dropExtension name
           else name
 
