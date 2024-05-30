@@ -121,10 +121,11 @@ mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
   revision <- getProjectRevision fileLoc revOverride WriteOnly
   pure $
     SBOMAnalyzeConfig
-      (BaseDir baseDir)
-      apiOpts
-      fileLoc
-      severity
-      forceRescans
-      team
-      revision
+      { sbomBaseDir = (BaseDir baseDir)
+      , sbomApiOpts = apiOpts
+      , sbomPath = fileLoc
+      , severity = severity
+      , sbomRebuild = forceRescans
+      , sbomTeam = team
+      , sbomRevision = revision
+      }

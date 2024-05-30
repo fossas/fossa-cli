@@ -24,7 +24,7 @@ import App.Fossa.Config.Common (
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Config.SBOM.Common (SBOMFile, getProjectRevision, sbomFileArg)
-import App.Fossa.Config.Test (DiffRevision (DiffRevision), TestConfig (TestConfig), TestOutputFormat (..))
+import App.Fossa.Config.Test (DiffRevision (DiffRevision), TestConfig (..), TestOutputFormat (..))
 import App.Fossa.Subcommand (GetCommonOpts (getCommonOpts), GetSeverity (getSeverity))
 import App.Types (BaseDir (BaseDir), IssueLocatorType (..), OverrideProject (..))
 import Control.Carrier.Diagnostics qualified as Diag
@@ -147,8 +147,7 @@ mergeOpts ::
   m TestConfig
 mergeOpts maybeConfig envvars SBOMTestOptions{..} = do
   baseDir <- getCurrentDir
-  let apiOpts = collectApiOpts maybeConfig envvars testCommons
-      timeout = maybe defaultTimeoutDuration Seconds testTimeout
+  let timeout = maybe defaultTimeoutDuration Seconds testTimeout
       diffRevision = DiffRevision <$> testDiffRevision
 
       revOverride =
@@ -160,12 +159,15 @@ mergeOpts maybeConfig envvars SBOMTestOptions{..} = do
 
   revision <- App.Fossa.Config.SBOM.Common.getProjectRevision sbomFile revOverride ReadOnly
   testOutputFormat <- validateOutputFormat testOutputFmt
+  apiOpts <- collectApiOpts maybeConfig envvars testCommons
 
-  TestConfig
-    (BaseDir baseDir)
-    <$> apiOpts
-    <*> pure timeout
-    <*> pure testOutputFormat
-    <*> pure revision
-    <*> pure diffRevision
-    <*> pure IssueLocatorSBOM
+  pure $
+    TestConfig
+      { baseDir = (BaseDir baseDir)
+      , apiOpts = apiOpts
+      , timeout = timeout
+      , outputFormat = testOutputFormat
+      , projectRevision = revision
+      , diffRevision = diffRevision
+      , locatorType = IssueLocatorSBOM
+      }
