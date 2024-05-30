@@ -36,7 +36,7 @@ import Options.Applicative (
 import Style (formatStringToDoc)
 
 sbomCmdInfo :: InfoMod a
-sbomCmdInfo = progDescDoc $ formatStringToDoc "Run in sbom-scanning mode"
+sbomCmdInfo = progDescDoc $ formatStringToDoc "Run an SBOM analysis or test"
 
 mkSubCommand :: (SBOMScanConfig -> EffStack ()) -> SubCommand SBOMCommand SBOMScanConfig
 mkSubCommand = SubCommand "sbom" sbomCmdInfo parser loadConfig mergeOpts
