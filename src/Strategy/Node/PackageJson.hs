@@ -43,7 +43,7 @@ import Data.Glob (Glob)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
-import Data.String.Conversion (ToText)
+import Data.String.Conversion (ToText (toText))
 import Data.Tagged (Tagged)
 import Data.Text (Text)
 import DepTypes (
@@ -232,3 +232,7 @@ data NodePackage = NodePackage
   , pkgConstraint :: Text
   }
   deriving (Eq, Ord, Show)
+
+instance ToText NodePackage where
+  toText NodePackage{pkgName, pkgConstraint} =
+    pkgName <> "@" <> pkgConstraint

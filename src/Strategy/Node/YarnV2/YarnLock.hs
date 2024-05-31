@@ -15,9 +15,10 @@ import Control.Effect.Diagnostics (
   Has,
   ToDiagnostic (renderDiagnostic),
   context,
-  warn,
+  warnLeft,
  )
 import Control.Effect.Diagnostics qualified as Diag (fromMaybe)
+import Data.Either.Combinators (maybeToRight)
 import Data.Foldable (find)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -89,20 +90,25 @@ analyze file flatdeps = context "Lockfile V2 analysis" $ do
 resolveFlatDeps :: Has Diagnostics sig m => YarnLockfile -> FlatDeps -> m FlatPackages
 resolveFlatDeps lockfile FlatDeps{..} = FlatPackages <$> converter @Production directDeps <*> converter @Development devDeps
   where
+    resolvePackages :: Has Diagnostics sig m => [NodePackage] -> m [Package]
+    resolvePackages = fmap catMaybes . traverse (resolveSingle lockfile)
+
     converter ::
       forall tag sig m.
       Has Diagnostics sig m =>
       Tagged tag (Set NodePackage) ->
       m (Tagged tag (Set Package))
-    converter = fmap (applyTag . Set.fromList) . traverse (resolveSingle lockfile) . Set.toList . unTag
+    converter = fmap (applyTag . Set.fromList) . resolvePackages . Set.toList . unTag
 
-resolveSingle :: Has Diagnostics sig m => YarnLockfile -> NodePackage -> m Package
-resolveSingle (YarnLockfile lockfileMap) nodePkg = do
-  descriptor <-
-    Diag.fromMaybe (DescriptorParse nodePkg) $
-      tryParseDescriptor nodePkg
-  loc <- lookupPackage descriptor $ remap lockfileMap
-  resolveLocatorToPackage $ descResolution loc
+resolveSingle :: Has Diagnostics sig m => YarnLockfile -> NodePackage -> m (Maybe Package)
+resolveSingle (YarnLockfile lockfileMap) nodePkg =
+  do
+    descriptor <-
+      Diag.fromMaybe (DescriptorParse nodePkg) $
+        tryParseDescriptor nodePkg
+    let lookupRes = lookupPackage descriptor $ remap lockfileMap
+    res <- context ("Resolve " <> toText nodePkg) $ warnLeft lookupRes
+    traverse (resolveLocatorToPackage . descResolution) res
 
 remap :: Ord k => Map [k] a -> Map k a
 remap = Map.fromList . concatMap (\(ks, v) -> map (,v) ks) . Map.toList
@@ -111,15 +117,19 @@ remap = Map.fromList . concatMap (\(ks, v) -> map (,v) ks) . Map.toList
 --
 -- This ensures that all dependency relationships are valid
 stitchLockfile :: Has Diagnostics sig m => YarnLockfile -> m (AM.AdjacencyMap Locator)
-stitchLockfile (YarnLockfile lockfile) = graph
+stitchLockfile (YarnLockfile lockfile) = context ("Stitching Lockfile") $
+  do graph
   where
     -- remapping @Map [Descriptor] PackageDescription@ to @Map Descriptor PackageDescription@
     remapped :: Map Descriptor PackageDescription
     remapped = remap lockfile
 
+    lookupPackage' :: Has Diagnostics sig m => Descriptor -> m (Maybe PackageDescription)
+    lookupPackage' pkg = warnLeft $ lookupPackage pkg remapped
+
     -- look up all of a package's dependencies as locators in the lockfile
     lookupPackageDeps :: Has Diagnostics sig m => PackageDescription -> m [Locator]
-    lookupPackageDeps = fmap (map descResolution) . traverse (`lookupPackage` remapped) . descDependencies
+    lookupPackageDeps = fmap (map descResolution . catMaybes) . traverse lookupPackage' . descDependencies
 
     -- build the edges (adjacency list) between a package and its dependencies
     packageToEdges :: Has Diagnostics sig m => PackageDescription -> m [(Locator, Locator)]
@@ -149,9 +159,9 @@ stitchLockfile (YarnLockfile lockfile) = graph
 -- npm dependencies. For example, given dependencies on @package: ^1.0.0@
 -- and @package: ^2.0.0@, only @package@npm:^2.0.0@ will appear as a
 -- descriptor key for a package in the lockfile
-lookupPackage :: Has Diagnostics sig m => Descriptor -> Map Descriptor PackageDescription -> m PackageDescription
+lookupPackage :: Descriptor -> Map Descriptor PackageDescription -> Either NoPackageForDescriptor PackageDescription
 lookupPackage desc mapping =
-  Diag.fromMaybe (NoPackageForDescriptor desc) $
+  maybeToRight (NoPackageForDescriptor desc) $
     Map.lookup desc mapping <|> Map.lookup (desc{descriptorRange = "npm:" <> descriptorRange desc}) mapping <|> lookupAnyNpm desc mapping
   where
     -- find any package with a descriptor with matching scope/name, and an @npm:@ prefix prefix
