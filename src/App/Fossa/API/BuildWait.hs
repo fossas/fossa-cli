@@ -8,7 +8,7 @@ module App.Fossa.API.BuildWait (
 ) where
 
 import App.Fossa.Config.Test (DiffRevision)
-import App.Types (IssueLocatorType (..), ProjectRevision, projectRevision)
+import App.Types (LocatorType (..), ProjectRevision, projectRevision)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -71,7 +71,7 @@ waitForScanCompletion ::
   , Has (Lift IO) sig m
   ) =>
   ProjectRevision ->
-  IssueLocatorType ->
+  LocatorType ->
   Cancel ->
   m ()
 waitForScanCompletion revision locatorType cancelFlag = do
@@ -89,7 +89,7 @@ waitForIssues ::
   ) =>
   ProjectRevision ->
   Maybe DiffRevision ->
-  IssueLocatorType ->
+  LocatorType ->
   Cancel ->
   m Issues
 waitForIssues revision diffRevision locatorType cancelFlag = do
@@ -110,7 +110,7 @@ waitForBuild ::
   , Has (Lift IO) sig m
   ) =>
   ProjectRevision ->
-  IssueLocatorType ->
+  LocatorType ->
   Cancel ->
   m ()
 waitForBuild revision locatorType cancelFlag = do
@@ -155,7 +155,7 @@ waitForReportReadiness ::
   Cancel ->
   m ()
 waitForReportReadiness revision cancelFlag = do
-  void $ waitForIssues revision Nothing IssueLocatorCustom cancelFlag
+  void $ waitForIssues revision Nothing LocatorTypeCustom cancelFlag
 
   supportsDepCacheReadinessPolling <- orgSupportsDependenciesCachePolling <$> getOrganization
   when supportsDepCacheReadinessPolling $

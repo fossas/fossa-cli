@@ -2,7 +2,7 @@ module App.Fossa.ReportSpec (spec) where
 
 import App.Fossa.Config.Report (ReportConfig (..), ReportOutputFormat (ReportJson), ReportType (..), parseReportOutputFormat)
 import App.Fossa.Report (fetchReport)
-import App.Types (IssueLocatorType (..))
+import App.Types (LocatorType (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Control.Timeout (Duration (MilliSeconds))
@@ -75,32 +75,32 @@ parseReportOutputSpec =
 
 expectBuildSuccess :: (Has MockApi sig m) => m ()
 expectBuildSuccess = do
-  (GetProject Fixtures.projectRevision IssueLocatorCustom) `returnsOnce` Fixtures.project
-  (GetLatestBuild Fixtures.projectRevision IssueLocatorCustom) `returnsOnce` Fixtures.successfulBuild
+  (GetProject Fixtures.projectRevision LocatorTypeCustom) `returnsOnce` Fixtures.project
+  (GetLatestBuild Fixtures.projectRevision LocatorTypeCustom) `returnsOnce` Fixtures.successfulBuild
 
 expectBuildPending :: (Has MockApi sig m) => m ()
 expectBuildPending = do
   GetApiOpts `alwaysReturns` Fixtures.apiOpts -- It needs to fetch the poll delay
-  (GetProject Fixtures.projectRevision IssueLocatorCustom) `returnsOnce` Fixtures.project
-  (GetLatestBuild Fixtures.projectRevision IssueLocatorCustom) `alwaysReturns` Fixtures.pendingBuild
+  (GetProject Fixtures.projectRevision LocatorTypeCustom) `returnsOnce` Fixtures.project
+  (GetLatestBuild Fixtures.projectRevision LocatorTypeCustom) `alwaysReturns` Fixtures.pendingBuild
 
 expectBuildError :: (Has MockApi sig m) => m ()
 expectBuildError = do
-  (GetProject Fixtures.projectRevision IssueLocatorCustom) `returnsOnce` Fixtures.project
-  (GetLatestBuild Fixtures.projectRevision IssueLocatorCustom) `fails` "Mock failure: GetLatestBuild"
+  (GetProject Fixtures.projectRevision LocatorTypeCustom) `returnsOnce` Fixtures.project
+  (GetLatestBuild Fixtures.projectRevision LocatorTypeCustom) `fails` "Mock failure: GetLatestBuild"
 
 expectFetchIssuesSuccess :: (Has MockApi sig m) => m ()
 expectFetchIssuesSuccess =
-  (GetIssues Fixtures.projectRevision Nothing IssueLocatorCustom) `returnsOnce` Fixtures.issuesAvailable
+  (GetIssues Fixtures.projectRevision Nothing LocatorTypeCustom) `returnsOnce` Fixtures.issuesAvailable
 
 expectFetchIssuesPending :: (Has MockApi sig m) => m ()
 expectFetchIssuesPending = do
   GetApiOpts `alwaysReturns` Fixtures.apiOpts -- It needs to fetch the poll delay
-  (GetIssues Fixtures.projectRevision Nothing IssueLocatorCustom) `alwaysReturns` Fixtures.issuesPending
+  (GetIssues Fixtures.projectRevision Nothing LocatorTypeCustom) `alwaysReturns` Fixtures.issuesPending
 
 expectFetchIssuesError :: (Has MockApi sig m) => m ()
 expectFetchIssuesError =
-  (GetIssues Fixtures.projectRevision Nothing IssueLocatorCustom) `fails` "Mock failure: GetIssues"
+  (GetIssues Fixtures.projectRevision Nothing LocatorTypeCustom) `fails` "Mock failure: GetIssues"
 
 expectFetchReportSuccess :: (Has MockApi sig m) => m ()
 expectFetchReportSuccess =

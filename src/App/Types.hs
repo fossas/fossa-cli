@@ -7,7 +7,7 @@ module App.Types (
   ProjectMetadata (..),
   ReleaseGroupMetadata (..),
   ProjectRevision (..),
-  IssueLocatorType (..),
+  LocatorType (..),
   OverrideDynamicAnalysisBinary (..),
   Policy (..),
   DependencyRebuild (..),
@@ -17,6 +17,7 @@ module App.Types (
   ReleaseGroupProjectRevision (..),
   ReleaseGroupReleaseRevision (..),
   ComponentUploadFileType (..),
+  uploadFileTypeToFetcherName,
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, object, withObject, (.:), (.=))
@@ -87,16 +88,16 @@ data ProjectRevision = ProjectRevision
   }
   deriving (Eq, Ord, Show, Generic)
 
-data IssueLocatorType = IssueLocatorCustom | IssueLocatorSBOM
+data LocatorType = LocatorTypeCustom | LocatorTypeSBOM
   deriving (Eq, Ord, Show, Generic)
 
-instance ToText IssueLocatorType where
-  toText IssueLocatorCustom = "custom"
-  toText IssueLocatorSBOM = "sbom"
+instance ToText LocatorType where
+  toText LocatorTypeCustom = "custom"
+  toText LocatorTypeSBOM = "sbom"
 
-instance ToJSON IssueLocatorType where
-  toEncoding IssueLocatorCustom = "custom"
-  toEncoding IssueLocatorSBOM = "sbom"
+instance ToJSON LocatorType where
+  toEncoding LocatorTypeCustom = "custom"
+  toEncoding LocatorTypeSBOM = "sbom"
 
 instance ToJSON ProjectRevision where
   toEncoding = genericToEncoding defaultOptions
@@ -104,9 +105,9 @@ instance ToJSON ProjectRevision where
 data ComponentUploadFileType = ArchiveUpload | SBOMUpload
   deriving (Eq, Ord, Show, Generic)
 
-instance ToText ComponentUploadFileType where
-  toText ArchiveUpload = "archive"
-  toText SBOMUpload = "sbom"
+uploadFileTypeToFetcherName :: ComponentUploadFileType -> Text
+uploadFileTypeToFetcherName ArchiveUpload = "archive"
+uploadFileTypeToFetcherName SBOMUpload = "sbom"
 
 data ReleaseGroupRevision = ReleaseGroupRevision
   { releaseGroupTitle :: Text

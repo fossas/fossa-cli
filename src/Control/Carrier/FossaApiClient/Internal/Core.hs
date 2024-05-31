@@ -40,7 +40,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Config.Test (DiffRevision)
 import App.Fossa.VendoredDependency (VendoredDependency (..))
-import App.Types (ComponentUploadFileType (..), DependencyRebuild, FileUpload, IssueLocatorType, ProjectMetadata, ProjectRevision (..), ReleaseGroupReleaseRevision)
+import App.Types (ComponentUploadFileType (..), DependencyRebuild, FileUpload, LocatorType, ProjectMetadata, ProjectRevision (..), ReleaseGroupReleaseRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
@@ -118,7 +118,7 @@ getProject ::
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->
-  IssueLocatorType ->
+  LocatorType ->
   m Project
 getProject revision locatorType = do
   apiOpts <- ask
@@ -198,7 +198,7 @@ getLatestBuild ::
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->
-  IssueLocatorType ->
+  LocatorType ->
   m Build
 getLatestBuild rev locatorType = do
   apiOpts <- ask
@@ -212,7 +212,7 @@ getIssues ::
   ) =>
   ProjectRevision ->
   Maybe DiffRevision ->
-  IssueLocatorType ->
+  LocatorType ->
   m Issues
 getIssues rev diffRevision locatorType = do
   apiOpts <- ask

@@ -26,7 +26,7 @@ import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Config.SBOM.Common (SBOMFile, getProjectRevision, sbomFileArg)
 import App.Fossa.Config.Test (DiffRevision (DiffRevision), TestConfig (..), TestOutputFormat (..))
 import App.Fossa.Subcommand (GetCommonOpts (getCommonOpts), GetSeverity (getSeverity))
-import App.Types (BaseDir (BaseDir), IssueLocatorType (..), OverrideProject (..))
+import App.Types (BaseDir (BaseDir), LocatorType (..), OverrideProject (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -169,5 +169,5 @@ mergeOpts maybeConfig envvars SBOMTestOptions{..} = do
       , outputFormat = testOutputFormat
       , projectRevision = revision
       , diffRevision = diffRevision
-      , locatorType = IssueLocatorSBOM
+      , locatorType = LocatorTypeSBOM
       }

@@ -66,7 +66,7 @@ import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency)
-import App.Types (ComponentUploadFileType, DependencyRebuild, FileUpload, IssueLocatorType, ProjectMetadata, ProjectRevision, ReleaseGroupReleaseRevision)
+import App.Types (ComponentUploadFileType, DependencyRebuild, FileUpload, LocatorType, ProjectMetadata, ProjectRevision, ReleaseGroupReleaseRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
@@ -122,13 +122,13 @@ data FossaApiClientF a where
     ProjectRevision ->
     ProjectMetadata ->
     FossaApiClientF CustomBuildUploadPermissions
-  GetIssues :: ProjectRevision -> Maybe DiffRevision -> IssueLocatorType -> FossaApiClientF Issues
+  GetIssues :: ProjectRevision -> Maybe DiffRevision -> LocatorType -> FossaApiClientF Issues
   GetEndpointVersion :: FossaApiClientF Text
   GetRevisionDependencyCacheStatus :: ProjectRevision -> FossaApiClientF RevisionDependencyCache
-  GetLatestBuild :: ProjectRevision -> IssueLocatorType -> FossaApiClientF Build
+  GetLatestBuild :: ProjectRevision -> LocatorType -> FossaApiClientF Build
   GetOrganization :: FossaApiClientF Organization
   GetPolicies :: FossaApiClientF [CoreTypes.Policy]
-  GetProject :: ProjectRevision -> IssueLocatorType -> FossaApiClientF Project
+  GetProject :: ProjectRevision -> LocatorType -> FossaApiClientF Project
   GetTeams :: FossaApiClientF [CoreTypes.Team]
   GetAnalyzedRevisions :: NonEmpty VendoredDependency -> FossaApiClientF [Text]
   GetAnalyzedPathRevisions :: ProjectRevision -> FossaApiClientF [AnalyzedPathDependency]
@@ -190,7 +190,7 @@ getOrganization :: (Has FossaApiClient sig m) => m Organization
 getOrganization = sendSimple GetOrganization
 
 -- | Fetches the project associated with a revision
-getProject :: (Has FossaApiClient sig m) => ProjectRevision -> IssueLocatorType -> m Project
+getProject :: (Has FossaApiClient sig m) => ProjectRevision -> LocatorType -> m Project
 getProject revision locatorType = sendSimple $ GetProject revision locatorType
 
 -- | Returns the API options currently in scope.
@@ -214,13 +214,13 @@ uploadNativeContainerScan revision metadata scan = sendSimple (UploadNativeConta
 uploadContributors :: (Has FossaApiClient sig m) => Locator -> Contributors -> m ()
 uploadContributors locator contributors = sendSimple $ UploadContributors locator contributors
 
-getLatestBuild :: (Has FossaApiClient sig m) => ProjectRevision -> IssueLocatorType -> m Build
+getLatestBuild :: (Has FossaApiClient sig m) => ProjectRevision -> LocatorType -> m Build
 getLatestBuild rev locatorType = sendSimple $ GetLatestBuild rev locatorType
 
 getRevisionDependencyCacheStatus :: (Has FossaApiClient sig m) => ProjectRevision -> m RevisionDependencyCache
 getRevisionDependencyCacheStatus = sendSimple . GetRevisionDependencyCacheStatus
 
-getIssues :: (Has FossaApiClient sig m) => ProjectRevision -> Maybe DiffRevision -> IssueLocatorType -> m Issues
+getIssues :: (Has FossaApiClient sig m) => ProjectRevision -> Maybe DiffRevision -> LocatorType -> m Issues
 getIssues projectRevision diffRevision locatorType = sendSimple $ GetIssues projectRevision diffRevision locatorType
 
 getAttribution :: Has FossaApiClient sig m => ProjectRevision -> ReportOutputFormat -> m Text

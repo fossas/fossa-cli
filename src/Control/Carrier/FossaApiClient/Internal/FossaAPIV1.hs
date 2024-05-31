@@ -101,12 +101,13 @@ import App.Types (
   ComponentUploadFileType (..),
   DependencyRebuild,
   FileUpload (FileUploadFullContent),
-  IssueLocatorType,
+  LocatorType,
   Policy (..),
   ProjectMetadata (..),
   ProjectRevision (..),
   ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
   ReleaseGroupReleaseRevision,
+  uploadFileTypeToFetcherName,
  )
 import App.Version (versionNumber)
 import Codec.Compression.GZip qualified as GZIP
@@ -862,7 +863,7 @@ getProject ::
   ) =>
   ApiOpts ->
   ProjectRevision ->
-  IssueLocatorType ->
+  LocatorType ->
   m Project
 getProject apiopts ProjectRevision{..} locatorType = fossaReq $ do
   (baseurl, baseopts) <- useApiOpts apiopts
@@ -900,7 +901,7 @@ getLatestBuild ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   ProjectRevision ->
-  IssueLocatorType ->
+  LocatorType ->
   m Build
 getLatestBuild apiOpts ProjectRevision{..} locatorType = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
@@ -974,7 +975,7 @@ archiveBuildUpload' ::
 archiveBuildUpload' apiOpts options archive = context ("archive: '" <> toText archive) . runEmpty . fossaReqAllow401 $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let someOpts = "dependency" =: (isDependency options) <> "rawLicenseScan" =: (isRawLicenseScan options) <> "fileType" =: toText (fileType options)
+  let someOpts = "dependency" =: (isDependency options) <> "rawLicenseScan" =: (isRawLicenseScan options) <> "fileType" =: uploadFileTypeToFetcherName (fileType options)
   let opts = case (team options) of
         Nothing -> someOpts
         Just t -> someOpts <> "team" =: t
@@ -1030,7 +1031,7 @@ getSignedURL ::
 getSignedURL apiOpts fileType revision packageName = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = "packageSpec" =: packageName <> "revision" =: revision <> "fileType" =: toText fileType
+  let opts = "packageSpec" =: packageName <> "revision" =: revision <> "fileType" =: uploadFileTypeToFetcherName fileType
 
   response <-
     context ("Retrieving a signed S3 URL for " <> packageName) $
@@ -1176,7 +1177,7 @@ getIssues ::
   ApiOpts ->
   ProjectRevision ->
   Maybe DiffRevision ->
-  IssueLocatorType ->
+  LocatorType ->
   m Issues
 getIssues apiOpts ProjectRevision{..} diffRevision locatorType = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
