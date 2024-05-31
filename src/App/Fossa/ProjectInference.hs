@@ -26,8 +26,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Char (toLower)
 import Data.Foldable (find)
 import Data.HashMap.Strict qualified as HM
-import Data.List (elemIndex)
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
