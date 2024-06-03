@@ -7,6 +7,7 @@ module App.Types (
   ProjectMetadata (..),
   ReleaseGroupMetadata (..),
   ProjectRevision (..),
+  LocatorType (..),
   OverrideDynamicAnalysisBinary (..),
   Policy (..),
   DependencyRebuild (..),
@@ -15,6 +16,8 @@ module App.Types (
   ReleaseGroupRevision (..),
   ReleaseGroupProjectRevision (..),
   ReleaseGroupReleaseRevision (..),
+  ComponentUploadFileType (..),
+  uploadFileTypeToFetcherName,
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, object, withObject, (.:), (.=))
@@ -85,8 +88,26 @@ data ProjectRevision = ProjectRevision
   }
   deriving (Eq, Ord, Show, Generic)
 
+data LocatorType = LocatorTypeCustom | LocatorTypeSBOM
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToText LocatorType where
+  toText LocatorTypeCustom = "custom"
+  toText LocatorTypeSBOM = "sbom"
+
+instance ToJSON LocatorType where
+  toEncoding LocatorTypeCustom = "custom"
+  toEncoding LocatorTypeSBOM = "sbom"
+
 instance ToJSON ProjectRevision where
   toEncoding = genericToEncoding defaultOptions
+
+data ComponentUploadFileType = ArchiveUpload | SBOMUpload
+  deriving (Eq, Ord, Show, Generic)
+
+uploadFileTypeToFetcherName :: ComponentUploadFileType -> Text
+uploadFileTypeToFetcherName ArchiveUpload = "archive"
+uploadFileTypeToFetcherName SBOMUpload = "sbom"
 
 data ReleaseGroupRevision = ReleaseGroupRevision
   { releaseGroupTitle :: Text

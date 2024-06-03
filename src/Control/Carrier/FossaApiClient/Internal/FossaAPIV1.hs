@@ -23,6 +23,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getProject,
   archiveUpload,
   archiveBuildUpload,
+  sbomBuildUpload,
   assertUserDefinedBinaries,
   assertRevisionBinaries,
   licenseScanFinalize,
@@ -97,13 +98,16 @@ import App.Support (
   requestReportIfPersistsWithDebugBundle,
  )
 import App.Types (
+  ComponentUploadFileType (..),
   DependencyRebuild,
   FileUpload (FileUploadFullContent),
+  LocatorType,
   Policy (..),
   ProjectMetadata (..),
   ProjectRevision (..),
   ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
   ReleaseGroupReleaseRevision,
+  uploadFileTypeToFetcherName,
  )
 import App.Version (versionNumber)
 import Codec.Compression.GZip qualified as GZIP
@@ -859,13 +863,14 @@ getProject ::
   ) =>
   ApiOpts ->
   ProjectRevision ->
+  LocatorType ->
   m Project
-getProject apiopts ProjectRevision{..} = fossaReq $ do
+getProject apiopts ProjectRevision{..} locatorType = fossaReq $ do
   (baseurl, baseopts) <- useApiOpts apiopts
 
   orgid <- organizationId <$> getOrganization apiopts
 
-  let endpoint = projectEndpoint baseurl orgid $ Locator "custom" projectName Nothing
+  let endpoint = projectEndpoint baseurl orgid $ Locator (toText locatorType) projectName Nothing
 
   responseBody <$> req GET endpoint NoReqBody jsonResponse baseopts
 
@@ -896,13 +901,14 @@ getLatestBuild ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
   ProjectRevision ->
+  LocatorType ->
   m Build
-getLatestBuild apiOpts ProjectRevision{..} = fossaReq $ do
+getLatestBuild apiOpts ProjectRevision{..} locatorType = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   orgId <- organizationId <$> getOrganization apiOpts
 
-  response <- req GET (buildsEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
+  response <- req GET (buildsEndpoint baseUrl orgId (Locator (toText locatorType) projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
 
 ----
@@ -921,10 +927,19 @@ getRevisionDependencyCacheStatus apiOpts ProjectRevision{..} = fossaReq $ do
   response <- req GET (dependencyCacheReadyEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
 
----------- Archive build queueing. This Endpoint ensures that after an archive is uploaded, it is scanned.
+---------- Archive and SBOM build queueing. This Endpoint ensures that after an archive or SBOM is uploaded, it is scanned.
 
 archiveBuildURL :: Url 'Https -> Url 'Https
 archiveBuildURL baseUrl = baseUrl /: "api" /: "components" /: "build"
+
+-- options for archiveBuildUpload and sbomBuildUpload
+data BuildOptions = BuildOptions
+  { isDependency :: Bool
+  , fileType :: ComponentUploadFileType
+  , rebuild :: DependencyRebuild
+  , isRawLicenseScan :: Bool
+  , team :: Maybe Text
+  }
 
 archiveBuildUpload ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
@@ -935,19 +950,36 @@ archiveBuildUpload ::
 archiveBuildUpload apiOpts archives rebuild = context "request build for archives" . context ("rebuild: " <> toText rebuild) $ do
   -- The API route expects an array of archives, but doesn't properly handle multiple archives.
   -- Given that, each archive's build is requested one by one.
-  traverse_ (archiveBuildUpload' apiOpts rebuild) archives
+  let options = BuildOptions True ArchiveUpload rebuild True Nothing
+  traverse_ (archiveBuildUpload' apiOpts options) archives
+
+sbomBuildUpload ::
+  (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
+  ApiOpts ->
+  Archive ->
+  Maybe Text ->
+  DependencyRebuild ->
+  m ()
+sbomBuildUpload apiOpts archive team rebuild = context "request build for sbom" . context ("rebuild: " <> toText rebuild) $ do
+  -- The API route expects an array of archives, but doesn't properly handle multiple archives.
+  -- So just pass in the single archive to archiveBuildUpload'
+  let options = BuildOptions False SBOMUpload rebuild False team
+  void $ archiveBuildUpload' apiOpts options archive
 
 archiveBuildUpload' ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
-  DependencyRebuild ->
+  BuildOptions ->
   Archive ->
   m (Maybe ())
-archiveBuildUpload' apiOpts rebuild archive = context ("archive: '" <> toText archive) . runEmpty . fossaReqAllow401 $ do
+archiveBuildUpload' apiOpts options archive = context ("archive: '" <> toText archive) . runEmpty . fossaReqAllow401 $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = "dependency" =: True <> "rawLicenseScan" =: True
-  let archiveProjects = ArchiveComponents [archive] rebuild FileUploadFullContent
+  let someOpts = "dependency" =: (isDependency options) <> "rawLicenseScan" =: (isRawLicenseScan options) <> "fileType" =: uploadFileTypeToFetcherName (fileType options)
+  let opts = case (team options) of
+        Nothing -> someOpts
+        Just t -> someOpts <> "team" =: t
+  let archiveProjects = ArchiveComponents [archive] (rebuild options) FileUploadFullContent
 
   -- The response appears to either be "Created" for new builds, or an error message for existing builds.
   -- Making the actual return value of "Created" essentially worthless.
@@ -992,13 +1024,14 @@ signedURLEndpoint baseUrl = baseUrl /: "api" /: "components" /: "signed_url"
 getSignedURL ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
   ApiOpts ->
+  ComponentUploadFileType ->
   Text ->
   Text ->
   m SignedURL
-getSignedURL apiOpts revision packageName = fossaReq $ do
+getSignedURL apiOpts fileType revision packageName = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
-  let opts = "packageSpec" =: packageName <> "revision" =: revision
+  let opts = "packageSpec" =: packageName <> "revision" =: revision <> "fileType" =: uploadFileTypeToFetcherName fileType
 
   response <-
     context ("Retrieving a signed S3 URL for " <> packageName) $
@@ -1144,8 +1177,9 @@ getIssues ::
   ApiOpts ->
   ProjectRevision ->
   Maybe DiffRevision ->
+  LocatorType ->
   m Issues
-getIssues apiOpts ProjectRevision{..} diffRevision = fossaReq $ do
+getIssues apiOpts ProjectRevision{..} diffRevision locatorType = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   org <- getOrganization apiOpts
 
@@ -1157,7 +1191,7 @@ getIssues apiOpts ProjectRevision{..} diffRevision = fossaReq $ do
   response <-
     req
       GET
-      (issuesEndpoint baseUrl (organizationId org) (Locator "custom" projectName (Just projectRevision)))
+      (issuesEndpoint baseUrl (organizationId org) (Locator (toText locatorType) projectName (Just projectRevision)))
       NoReqBody
       jsonResponse
       opts

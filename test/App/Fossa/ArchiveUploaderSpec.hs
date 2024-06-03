@@ -3,7 +3,7 @@
 module App.Fossa.ArchiveUploaderSpec (spec) where
 
 import App.Fossa.ArchiveUploader (archiveUploadSourceUnit)
-import App.Types (DependencyRebuild (..))
+import App.Types (ComponentUploadFileType (..), DependencyRebuild (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (..))
 import Data.List.NonEmpty qualified as NE
@@ -56,4 +56,4 @@ expectQueueArchiveBuilds archives =
   QueueArchiveBuild archives DependencyRebuildReuseCache `returnsOnce` ()
 
 expectGetSignedUrl :: Has MockApi sig m => PackageRevision -> m ()
-expectGetSignedUrl packageRevision = GetSignedUploadUrl packageRevision `alwaysReturns` Fixtures.signedUrl
+expectGetSignedUrl packageRevision = GetSignedUploadUrl ArchiveUpload packageRevision `alwaysReturns` Fixtures.signedUrl

@@ -107,6 +107,12 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 - [Limitations & Workarounds](./references/subcommands/container/scanner.md#limitations--workarounds)
 - [Scanning Images using Podman (Experimental)](./references/subcommands/container/podman.md)
 
+#### Analyzing SBOM Files
+
+- [Overview](./references/subcommands/sbom.md)
+- [`sbom analyze`](./references/subcommands/sbom.md#fossa-sbom-analyze-path-to-sbom-file)
+- [`sbom test`](./references/subcommands/sbom.md#fossa-sbom-test-path-to-sbom-file)
+
 #### Experimental Features
 
 - [Overview and Support Policy](./references/experimental/README.md)

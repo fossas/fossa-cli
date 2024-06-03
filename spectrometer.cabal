@@ -219,6 +219,10 @@ library
     App.Fossa.Config.ReleaseGroup.Delete
     App.Fossa.Config.ReleaseGroup.DeleteRelease
     App.Fossa.Config.Report
+    App.Fossa.Config.SBOM
+    App.Fossa.Config.SBOM.Analyze
+    App.Fossa.Config.SBOM.Common
+    App.Fossa.Config.SBOM.Test
     App.Fossa.Config.Snippets
     App.Fossa.Config.Test
     App.Fossa.Container
@@ -262,6 +266,8 @@ library
     App.Fossa.Report
     App.Fossa.Report.Attribution
     App.Fossa.RunThemis
+    App.Fossa.SBOM
+    App.Fossa.SBOM.Analyze
     App.Fossa.Snippets
     App.Fossa.Snippets.Analyze
     App.Fossa.Snippets.Commit
@@ -579,6 +585,7 @@ test-suite unit-tests
     App.Fossa.Report.AttributionSpec
     App.Fossa.ReportSpec
     App.Fossa.RunThemisSpec
+    App.Fossa.SBOMAnalyzeSpec
     App.Fossa.VendoredDependencySpec
     App.Fossa.VSI.DynLinked.Internal.BinarySpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.DEBSpec

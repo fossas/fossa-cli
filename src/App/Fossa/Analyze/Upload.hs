@@ -15,6 +15,7 @@ import App.Fossa.Reachability.Upload (upload)
 import App.Types (
   BaseDir (BaseDir),
   FileUpload,
+  LocatorType (..),
   ProjectMetadata,
   ProjectRevision (..),
  )
@@ -186,7 +187,7 @@ uploadAnalysisWithFirstPartyLicensesToS3 revision mergedUnits = do
 
 dieOnMonorepoUpload :: (Has Diagnostics sig m, Has FossaApiClient sig m) => ProjectRevision -> m ()
 dieOnMonorepoUpload revision = do
-  project <- recover $ getProject revision
+  project <- recover $ getProject revision LocatorTypeCustom
   when (maybe False projectIsMonorepo project) $
     fatalText "This project already exists as a monorepo project. Monorepo projects are no longer supported; please create a new project instead."
 

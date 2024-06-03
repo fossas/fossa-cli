@@ -10,6 +10,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   getRevisionDependencyCacheStatus,
   getSignedUploadUrl,
   queueArchiveBuild,
+  queueSBOMBuild,
   uploadAnalysis,
   uploadAnalysisWithFirstPartyLicenses,
   uploadArchive,
@@ -39,7 +40,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
 import App.Fossa.Config.Report (ReportOutputFormat)
 import App.Fossa.Config.Test (DiffRevision)
 import App.Fossa.VendoredDependency (VendoredDependency (..))
-import App.Types (DependencyRebuild, FileUpload, ProjectMetadata, ProjectRevision (..), ReleaseGroupReleaseRevision)
+import App.Types (ComponentUploadFileType (..), DependencyRebuild, FileUpload, LocatorType, ProjectMetadata, ProjectRevision (..), ReleaseGroupReleaseRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
@@ -117,10 +118,11 @@ getProject ::
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->
+  LocatorType ->
   m Project
-getProject revision = do
+getProject revision locatorType = do
   apiOpts <- ask
-  API.getProject apiOpts revision
+  API.getProject apiOpts revision locatorType
 
 getAnalyzedRevisions ::
   ( Has (Lift IO) sig m
@@ -196,10 +198,11 @@ getLatestBuild ::
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->
+  LocatorType ->
   m Build
-getLatestBuild rev = do
+getLatestBuild rev locatorType = do
   apiOpts <- ask
-  API.getLatestBuild apiOpts rev
+  API.getLatestBuild apiOpts rev locatorType
 
 getIssues ::
   ( Has (Lift IO) sig m
@@ -209,10 +212,11 @@ getIssues ::
   ) =>
   ProjectRevision ->
   Maybe DiffRevision ->
+  LocatorType ->
   m Issues
-getIssues rev diffRevision = do
+getIssues rev diffRevision locatorType = do
   apiOpts <- ask
-  API.getIssues apiOpts rev diffRevision
+  API.getIssues apiOpts rev diffRevision locatorType
 
 getAttribution ::
   ( Has (Lift IO) sig m
@@ -245,11 +249,12 @@ getSignedUploadUrl ::
   , Has Debug sig m
   , Has (Reader ApiOpts) sig m
   ) =>
+  ComponentUploadFileType ->
   PackageRevision ->
   m SignedURL
-getSignedUploadUrl PackageRevision{..} = do
+getSignedUploadUrl fileType PackageRevision{..} = do
   apiOpts <- ask
-  API.getSignedURL apiOpts packageVersion packageName
+  API.getSignedURL apiOpts fileType packageVersion packageName
 
 queueArchiveBuild ::
   ( Has (Lift IO) sig m
@@ -263,6 +268,20 @@ queueArchiveBuild ::
 queueArchiveBuild archives rebuild = do
   apiOpts <- ask
   API.archiveBuildUpload apiOpts archives rebuild
+
+queueSBOMBuild ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  , Has Debug sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Archive ->
+  Maybe Text ->
+  DependencyRebuild ->
+  m ()
+queueSBOMBuild archive team rebuild = do
+  apiOpts <- ask
+  API.sbomBuildUpload apiOpts archive team rebuild
 
 uploadArchive ::
   ( Has (Lift IO) sig m

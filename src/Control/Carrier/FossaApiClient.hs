@@ -39,23 +39,24 @@ runFossaApiClient apiOpts =
           FinalizeLicenseScanForPathDependency locators forceRebuild -> LicenseScanning.finalizePathDependencyScan locators forceRebuild
           GetApiOpts -> pure apiOpts
           GetAttribution rev format -> Core.getAttribution rev format
-          GetIssues rev diffRev -> Core.getIssues rev diffRev
+          GetIssues rev diffRev locatorType -> Core.getIssues rev diffRev locatorType
           GetEndpointVersion -> Core.getEndpointVersion
-          GetLatestBuild rev -> Core.getLatestBuild rev
+          GetLatestBuild rev locatorType -> Core.getLatestBuild rev locatorType
           GetRevisionDependencyCacheStatus rev -> Core.getRevisionDependencyCacheStatus rev
           GetOrganization -> Core.getOrganization
           GetPolicies -> Core.getPolicies
-          GetProject rev -> Core.getProject rev
+          GetProject rev locatorType -> Core.getProject rev locatorType
           GetTeams -> Core.getTeams
           AddTeamProjects teamId req -> Core.addTeamProjects teamId req
           GetAnalyzedRevisions vdeps -> Core.getAnalyzedRevisions vdeps
           GetSignedFirstPartyScanUrl rev -> LicenseScanning.getSignedFirstPartyScanUrl rev
           GetSignedLicenseScanUrl rev -> LicenseScanning.getSignedLicenseScanUrl rev
-          GetSignedUploadUrl rev -> Core.getSignedUploadUrl rev
+          GetSignedUploadUrl fileType rev -> Core.getSignedUploadUrl fileType rev
           GetPathDependencyScanUrl rev projectRevision uploadKind -> LicenseScanning.uploadPathDependencyScanResult rev projectRevision uploadKind
           GetVsiInferences scanId -> VSI.getVsiInferences scanId
           GetVsiScanAnalysisStatus scanId -> VSI.getVsiScanAnalysisStatus scanId
           QueueArchiveBuild archives rebuild -> Core.queueArchiveBuild archives rebuild
+          QueueSBOMBuild archive team rebuild -> Core.queueSBOMBuild archive team rebuild
           ResolveProjectDependencies locator -> VSI.resolveProjectDependencies locator
           ResolveUserDefinedBinary deps -> VSI.resolveUserDefinedBinary deps
           UploadAnalysis rev metadata units -> Core.uploadAnalysis rev metadata units

@@ -29,7 +29,7 @@ import App.Fossa.Config.Common (
 import App.Fossa.Config.ConfigFile (ConfigFile, resolveConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
-import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
+import App.Types (BaseDir, LocatorType (..), OverrideProject (OverrideProject), ProjectRevision)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -147,6 +147,7 @@ data TestConfig = TestConfig
   , outputFormat :: TestOutputFormat
   , projectRevision :: ProjectRevision
   , diffRevision :: Maybe DiffRevision
+  , locatorType :: LocatorType
   }
   deriving (Show, Generic)
 
@@ -236,3 +237,4 @@ mergeOpts maybeConfig envvars TestCliOpts{..} = do
     <*> pure testOutputFormat
     <*> revision
     <*> pure diffRevision
+    <*> pure LocatorTypeCustom

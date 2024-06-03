@@ -11,7 +11,7 @@ import App.Fossa.VendoredDependency (
   dedupVendoredDeps,
   hashFile,
  )
-import App.Types (DependencyRebuild)
+import App.Types (ComponentUploadFileType (..), DependencyRebuild)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.StickyLogger (StickyLogger, logSticky)
 import Control.Effect.Diagnostics (context)
@@ -60,11 +60,11 @@ compressAndUpload arcDir tmpDir VendoredDependency{..} = context "compressing an
     Nothing -> sendIO $ hashFile compressedFile
     Just version -> pure version
 
-  signedURL <- getSignedUploadUrl $ PackageRevision vendoredName depVersion
+  signedURL <- getSignedUploadUrl ArchiveUpload $ PackageRevision vendoredName depVersion
 
   logSticky $ "Uploading '" <> vendoredName <> "' to secure S3 bucket"
   res <- uploadArchive signedURL compressedFile
-  logDebug $ pretty $ show res
+  logDebug . pretty $ (decodeUtf8 @Text res)
 
   pure $ Archive vendoredName depVersion
 
@@ -94,7 +94,6 @@ archiveUploadSourceUnit rebuild baseDir vendoredDeps = do
   -- about the response here because if the build has already been queued, we
   -- get a 401 response.
   _ <- queueArchiveBuild (NonEmpty.toList archives) rebuild
-
   -- The organizationID is needed to prefix each locator name. The FOSSA API
   -- automatically prefixes the locator when queuing the build but not when
   -- reading from a source unit.
