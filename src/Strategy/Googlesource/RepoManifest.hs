@@ -28,6 +28,7 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Reader (Reader)
 import Control.Monad (unless)
 import Data.Aeson (ToJSON)
+import Data.Either.Combinators (maybeToRight)
 import Data.Foldable (find)
 import Data.HashMap.Strict qualified as HM
 import Data.Map.Strict qualified as Map
@@ -141,10 +142,6 @@ fixRelativeRemotes manifest rootDir = do
   fixedRemotes <- traverse (fixRemote rootDir) remotes
   pure $ manifest{manifestRemotes = fixedRemotes}
 
-maybeToEither :: e -> Maybe a -> Either e a
-maybeToEither e Nothing = Left e
-maybeToEither _ (Just a) = Right a
-
 fixRemote :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> ManifestRemote -> m ManifestRemote
 fixRemote rootDir remote = do
   let configFile = rootDir </> $(mkRelFile "manifests.git/config")
@@ -157,11 +154,11 @@ fixRemote rootDir remote = do
 
   let fixedUri :: Either Text URI
       fixedUri = do
-        (Section _ properties) <- maybeToEither "No section found" $ find isOrigin config
-        remoteUrl <- maybeToEither "url lookup failed in git remote" (HM.lookup "url" properties)
-        rUrl <- maybeToEither "mkURI failed on rUrl" $ mkURI remoteUrl
-        fUrl <- maybeToEither "mkURI failed on remote fetch URL" $ mkURI $ remoteFetch remote
-        maybeToEither
+        (Section _ properties) <- maybeToRight "No section found" $ find isOrigin config
+        remoteUrl <- maybeToRight "url lookup failed in git remote" (HM.lookup "url" properties)
+        rUrl <- maybeToRight "mkURI failed on rUrl" $ mkURI remoteUrl
+        fUrl <- maybeToRight "mkURI failed on remote fetch URL" $ mkURI $ remoteFetch remote
+        maybeToRight
           ("relativeTo failed for URLs remoteUrl = " <> remoteUrl <> " and remoteFetch remote = " <> remoteFetch remote)
           (fUrl `relativeTo` rUrl)
 

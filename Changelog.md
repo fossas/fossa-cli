@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.9.21
+- Yarn: Don't fail analysis if a dependency cannot be found. ([1436](https://github.com/fossas/fossa-cli/pull/1436))
+
 ## 3.9.20 
 - Fixes file matches for license scans ([#1434](https://github.com/fossas/fossa-cli/pull/1434)).
 

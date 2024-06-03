@@ -67,7 +67,7 @@ data Package
 
 -- | Search for a resolver that supports the Locator, and turn it into a Package
 resolveLocatorToPackage :: Has Diagnostics sig m => Locator -> m Package
-resolveLocatorToPackage locator = context ("Resolving locator " <> showT locator) $ do
+resolveLocatorToPackage locator = context ("Resolving " <> showT locator) $ do
   resolver <-
     fromMaybe @Text "Unsupported locator (no resolver found)" $
       find (`resolverSupportsLocator` locator) allResolvers
