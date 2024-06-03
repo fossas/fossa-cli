@@ -3,8 +3,9 @@
 ## 3.9.21
 - Add support for analyzing SBOM files ([#1435](https://github.com/fossas/fossa-cli/pull/1435))
 - License Scanning: Add the Llama-3-community license (No PR)
+- Yarn: Don't fail analysis if a dependency cannot be found. ([1436](https://github.com/fossas/fossa-cli/pull/1436))
 
-## 3.9.20
+## 3.9.20 
 - Fixes file matches for license scans ([#1434](https://github.com/fossas/fossa-cli/pull/1434)).
 
 ## v3.9.19
