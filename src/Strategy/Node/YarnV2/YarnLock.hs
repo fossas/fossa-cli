@@ -107,7 +107,7 @@ resolveSingle (YarnLockfile lockfileMap) nodePkg =
       Diag.fromMaybe (DescriptorParse nodePkg) $
         tryParseDescriptor nodePkg
     let lookupRes = lookupPackage descriptor $ remap lockfileMap
-    res <- context ("Resolve " <> toText nodePkg) $ warnLeft lookupRes
+    res <- warnLeft lookupRes
     traverse (resolveLocatorToPackage . descResolution) res
 
 remap :: Ord k => Map [k] a -> Map k a
