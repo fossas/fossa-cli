@@ -64,7 +64,7 @@ logHttp req manager = do
     errResponseBody :: Response ByteStringLazy.ByteString -> String
     errResponseBody r =
       if (responseStatus r == status400 || responseStatus r == status404)
-        then " Content: " <> show (responseBody r)
+        then " Content: " <> decodeUtf8 (responseBody r)
         else ""
 
 -- | Throws Diagnostics Error for Api Errors, and unexpected responses.
