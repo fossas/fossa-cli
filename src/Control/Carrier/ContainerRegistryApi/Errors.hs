@@ -7,8 +7,10 @@ module Control.Carrier.ContainerRegistryApi.Errors (
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), withObject, withText, (.:))
+import Data.ByteString (ByteString)
+import Data.ByteString.Lazy qualified as BL
 import Data.Error (renderErrataStack)
-import Data.String.Conversion (ToText (toText), toString)
+import Data.String.Conversion (ConvertUtf8 (decodeUtf8), ToText (toText), toString)
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic (..), renderDiagnostic)
 import Effect.Logger (renderIt)
@@ -96,14 +98,14 @@ instance ToDiagnostic ContainerRegistryApiError where
 
 -- * Other Errors
 
-data UnknownApiError = UnknownApiError URI Status
+data UnknownApiError = UnknownApiError URI Status BL.ByteString
 
 instance ToDiagnostic UnknownApiError where
-  renderDiagnostic (UnknownApiError uri status) = do
+  renderDiagnostic (UnknownApiError uri status body) = do
     let header =
           renderIt $
             vsep
-              [ "Caught unexpected error from:" <> pretty ("(" <> show (statusCode status) <> ") " <> show uri)
+              [ "Caught unexpected error from:" <> pretty ("(" <> show (statusCode status) <> ") " <> show uri <> "\nbody: " <> decodeUtf8 body)
               ]
     Errata (Just header) [] Nothing
 

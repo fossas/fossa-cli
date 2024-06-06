@@ -75,7 +75,7 @@ fromResponse resp =
     else do
       case decode' (responseBody resp) of
         Just (registryApiErr :: ContainerRegistryApiErrorBody) -> fatal (originalReqUri resp, registryApiErr)
-        Nothing -> fatal $ UnknownApiError (originalReqUri resp) (responseStatus resp)
+        Nothing -> fatal $ UnknownApiError (originalReqUri resp) (responseStatus resp) (responseBody resp)
 
 -- | Gets original request uri from response.
 originalReqUri :: Response a -> URI
