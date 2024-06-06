@@ -7,7 +7,6 @@ module Control.Carrier.ContainerRegistryApi.Errors (
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), withObject, withText, (.:))
-import Data.ByteString (ByteString)
 import Data.ByteString.Lazy qualified as BL
 import Data.Error (renderErrataStack)
 import Data.String.Conversion (ConvertUtf8 (decodeUtf8), ToText (toText), toString)
