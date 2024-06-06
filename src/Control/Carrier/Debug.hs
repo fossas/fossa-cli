@@ -30,7 +30,7 @@ import Data.Bifunctor (first)
 import Data.Fixed (Fixed (MkFixed), Nano)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import Data.Time.Clock.System (SystemTime (MkSystemTime), getSystemTime)
+import Data.Time.Clock.System (SystemTime (MkSystemTime), getSystemTime, systemToUTCTime)
 
 newtype DebugC m a = DebugC {runDebugC :: OutputC ScopeEvent (AtomicStateC (Map.Map Text Value) m) a}
   deriving (Functor, Applicative, Monad, MonadIO)
@@ -45,6 +45,7 @@ data Scope = Scope
   { scopeTiming :: Duration
   , scopeEvents :: [ScopeEvent]
   , scopeMetadata :: Map.Map Text Value
+  , scopeStartTime :: SystemTime
   }
   deriving (Show)
 
@@ -54,6 +55,7 @@ instance ToJSON Scope where
 scopePairs :: Scope -> [Pair]
 scopePairs Scope{..} =
   [ "duration" .= show (unDuration scopeTiming)
+  , "startTime" .= show (systemToUTCTime scopeStartTime)
   ]
     ++ whenNonEmpty "events" scopeEvents
     ++ map (first Key.fromText) (Map.toList scopeMetadata)
@@ -100,7 +102,7 @@ runDebug act = do
   (metadata, (evs, res)) <- runAtomicState Map.empty . runOutput @ScopeEvent $ runDebugC act
   after <- sendIO getSystemTime
   let duration = timeBetween before after
-  pure (Scope duration evs metadata, res)
+  pure (Scope duration evs metadata before, res)
 
 instance (Has (Lift IO) sig m, Has Diagnostics sig m) => Algebra (Debug :+: sig) (DebugC m) where
   alg hdl sig ctx = DebugC $
