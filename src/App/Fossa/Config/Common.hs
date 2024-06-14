@@ -336,32 +336,6 @@ validateApiKey maybeConfigFile EnvVars{envApiKey} CommonOpts{optAPIKey} = do
   textkey <-
     fromMaybeText "A FOSSA API key is required to run this command" $
       -- API key precedence is strictly defined:
-      -- API key precedence is strictly defined:
-      -- API key precedence is strictly defined:
-      -- API key precedence is strictly defined:
-      -- 1. Cmd-line option (rarely used, not encouraged)
-      -- 1. Cmd-line option (rarely used, not encouraged)
-      -- 1. Cmd-line option (rarely used, not encouraged)
-      -- 1. Cmd-line option (rarely used, not encouraged)
-      -- 2. Config file (maybe used)
-      -- 2. Config file (maybe used)
-      -- 2. Config file (maybe used)
-      -- 2. Config file (maybe used)
-      -- 3. Environment Variable (most common)
-      -- 3. Environment Variable (most common)
-      -- 3. Environment Variable (most common)
-      -- 3. Environment Variable (most common)
-
-      -- API key precedence is strictly defined:
-      -- API key precedence is strictly defined:
-      -- 1. Cmd-line option (rarely used, not encouraged)
-      -- 1. Cmd-line option (rarely used, not encouraged)
-      -- 2. Config file (maybe used)
-      -- 2. Config file (maybe used)
-      -- 3. Environment Variable (most common)
-      -- 3. Environment Variable (most common)
-
-      -- API key precedence is strictly defined:
       -- 1. Cmd-line option (rarely used, not encouraged)
       -- 2. Config file (maybe used)
       -- 3. Environment Variable (most common)
@@ -382,32 +356,6 @@ validateApiKeyGeneric ::
 validateApiKeyGeneric maybeConfigFile maybeEnvApiKey maybeOptAPIKey = do
   textkey <-
     fromMaybeText "A FOSSA API key is required to run this command" $
-      -- API key precedence is strictly defined:
-      -- API key precedence is strictly defined:
-      -- API key precedence is strictly defined:
-      -- API key precedence is strictly defined:
-      -- 1. Cmd-line option (rarely used, not encouraged)
-      -- 1. Cmd-line option (rarely used, not encouraged)
-      -- 1. Cmd-line option (rarely used, not encouraged)
-      -- 1. Cmd-line option (rarely used, not encouraged)
-      -- 2. Config file (maybe used)
-      -- 2. Config file (maybe used)
-      -- 2. Config file (maybe used)
-      -- 2. Config file (maybe used)
-      -- 3. Environment Variable (most common)
-      -- 3. Environment Variable (most common)
-      -- 3. Environment Variable (most common)
-      -- 3. Environment Variable (most common)
-
-      -- API key precedence is strictly defined:
-      -- API key precedence is strictly defined:
-      -- 1. Cmd-line option (rarely used, not encouraged)
-      -- 1. Cmd-line option (rarely used, not encouraged)
-      -- 2. Config file (maybe used)
-      -- 2. Config file (maybe used)
-      -- 3. Environment Variable (most common)
-      -- 3. Environment Variable (most common)
-
       -- API key precedence is strictly defined:
       -- 1. Cmd-line option (rarely used, not encouraged)
       -- 2. Config file (maybe used)
