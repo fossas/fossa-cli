@@ -44,7 +44,6 @@ import Effect.Logger (
   hsep,
   logInfo,
  )
-import Fossa.API.Types (Organization (Organization, orgSupportsReachability))
 import Path (
   Abs,
   Dir,
@@ -149,12 +148,12 @@ staticOnlyAnalysisMessage =
 -- * __poetry__ project in path: succeeded
 -- * __fpm__ project in path: skipped
 -- * __setuptools__ project in path: skipped
-renderScanSummary :: (Has Diag.Diagnostics sig m, Has Logger sig m, Has (Lift IO) sig m) => Severity -> (Maybe Text) -> AnalysisScanResult -> Config.AnalyzeConfig -> Maybe Organization -> m ()
-renderScanSummary severity maybeEndpointVersion analysisResults cfg orgInfo = do
+renderScanSummary :: (Has Diag.Diagnostics sig m, Has Logger sig m, Has (Lift IO) sig m) => Severity -> (Maybe Text) -> AnalysisScanResult -> Config.AnalyzeConfig -> m ()
+renderScanSummary severity maybeEndpointVersion analysisResults cfg = do
   let endpointVersion = fromMaybe "N/A" maybeEndpointVersion
   let hasDefaultFilters = (not $ fromFlag Config.WithoutDefaultFilters $ Config.withoutDefaultFilters cfg)
 
-  case summarize cfg orgInfo endpointVersion analysisResults of
+  case summarize cfg endpointVersion analysisResults of
     Nothing -> pure ()
     Just summary -> do
       let someFilters = isMempty cfg.filterSet
@@ -163,7 +162,7 @@ renderScanSummary severity maybeEndpointVersion analysisResults cfg orgInfo = do
       logInfo "-----"
       logInfoVsep $ renderNotes someFilters hasDefaultFilters (severity /= SevDebug)
 
-      summaryWithWarnErrorsTmpFile <- dumpResultLogsToTempFile cfg orgInfo endpointVersion analysisResults
+      summaryWithWarnErrorsTmpFile <- dumpResultLogsToTempFile cfg endpointVersion analysisResults
       logInfo . pretty $ "You can also view analysis summary with warning and error messages at: " <> show summaryWithWarnErrorsTmpFile
       logInfo "------------"
 
@@ -193,8 +192,8 @@ renderDefaultSkippedTargetHelp =
   , ""
   ]
 
-summarize :: Config.AnalyzeConfig -> Maybe Organization -> Text -> AnalysisScanResult -> Maybe ([Doc AnsiStyle])
-summarize cfg orgInfo endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps lernie reachabilityAttempts) =
+summarize :: Config.AnalyzeConfig -> Text -> AnalysisScanResult -> Maybe ([Doc AnsiStyle])
+summarize cfg endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps lernie reachabilityAttempts) =
   if (numProjects totalScanCount <= 0)
     then Nothing
     else
@@ -221,9 +220,11 @@ summarize cfg orgInfo endpointVersion (AnalysisScanResult dps vsi binary manualD
           <> reachabilitySummary
           <> [""]
   where
-    reachabilitySummary = case orgInfo of
-      (Just Organization{orgSupportsReachability = False}) -> []
-      _ -> summarizeReachability "Reachability analysis" reachabilityAttempts
+    reachabilitySummary =
+      if null reachabilityAttempts
+        then
+          []
+        else summarizeReachability "Reachability analysis" reachabilityAttempts
     vsiResults = summarizeSrcUnit "vsi analysis" (Just (join . map vsiSourceUnits)) vsi
     projects = sort dps
     totalScanCount =
@@ -425,8 +426,8 @@ countWarnings ws =
     isIgnoredErrGroup IgnoredErrGroup{} = True
     isIgnoredErrGroup _ = False
 
-dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => Config.AnalyzeConfig -> Maybe Organization -> Text -> AnalysisScanResult -> m (Path Abs File)
-dumpResultLogsToTempFile cfg orgInfo endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults reachabilityAttempts) = do
+dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => Config.AnalyzeConfig -> Text -> AnalysisScanResult -> m (Path Abs File)
+dumpResultLogsToTempFile cfg endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults reachabilityAttempts) = do
   let doc =
         stripAnsiEscapeCodes
           . renderStrict
@@ -449,7 +450,7 @@ dumpResultLogsToTempFile cfg orgInfo endpointVersion (AnalysisScanResult project
   pure (tmpDir </> scanSummaryFileName)
   where
     scanSummary :: [Doc AnsiStyle]
-    scanSummary = maybeToList (vsep <$> summarize cfg orgInfo endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults reachabilityAttempts))
+    scanSummary = maybeToList (vsep <$> summarize cfg endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults reachabilityAttempts))
 
     renderSourceUnit :: Doc AnsiStyle -> Result (Maybe a) -> Maybe (Doc AnsiStyle)
     renderSourceUnit header (Failure ws eg) = Just $ renderFailure ws eg $ vsep $ summarizeSrcUnit header Nothing (Failure ws eg)
