@@ -302,9 +302,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
 
-  _ <- case destination of
-    OutputStdout -> pure ()
-    UploadScan apiOpts metadata -> runFossaApiClient apiOpts $ preflightChecks $ AnalyzeChecks revision metadata
+  orgInfo <- case destination of
+    OutputStdout -> pure Nothing
+    UploadScan apiOpts metadata ->
+      fmap Just . runFossaApiClient apiOpts . preflightChecks $ AnalyzeChecks revision metadata
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
@@ -410,7 +411,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let reachabilityUnits = onlyFoundUnits reachabilityUnitsResult
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
-  renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg
+  renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg orgInfo
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   let licenseSourceUnits =

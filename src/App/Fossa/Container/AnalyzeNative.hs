@@ -109,7 +109,11 @@ analyze cfg = do
 
   _ <- case scanDestination cfg of
     OutputStdout -> pure ()
-    UploadScan apiOpts projectMetadata -> runFossaApiClient apiOpts $ preflightChecks $ AnalyzeChecks revision projectMetadata
+    UploadScan apiOpts projectMetadata ->
+      void
+        . runFossaApiClient apiOpts
+        . preflightChecks
+        $ AnalyzeChecks revision projectMetadata
 
   logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
   logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")

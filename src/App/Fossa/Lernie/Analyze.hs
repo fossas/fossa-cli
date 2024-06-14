@@ -91,8 +91,9 @@ analyzeWithLernieWithOrgInfo ::
   GrepOptions ->
   m (Maybe LernieResults)
 analyzeWithLernieWithOrgInfo rootDir grepOptions = do
-  orgWideCustomLicenses <- orgCustomLicenseScanConfigs <$> getOrganization
-  uploadKind <- orgFileUpload <$> getOrganization
+  org <- getOrganization
+  let orgWideCustomLicenses = orgCustomLicenseScanConfigs org
+      uploadKind = orgFileUpload org
 
   let options = grepOptions{customLicenseSearch = nub $ orgWideCustomLicenses <> customLicenseSearch grepOptions}
   analyzeWithLernieMain rootDir options uploadKind
