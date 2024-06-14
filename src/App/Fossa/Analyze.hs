@@ -120,6 +120,7 @@ import Effect.Logger (
  )
 import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
+import Fossa.API.Types (Organization (Organization, orgSupportsReachability))
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
@@ -407,7 +408,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     (False, _) -> traverse (withPathDependencyNudge includeAll) filteredProjects
   logDebug $ "Filtered projects with path dependencies: " <> pretty (show filteredProjects')
 
-  reachabilityUnitsResult <- Diag.context "reachability analysis" . runReader (Config.reachabilityConfig cfg) $ analyzeForReachability projectScans
+  reachabilityUnitsResult <-
+    case orgInfo of
+      (Just (Organization{orgSupportsReachability = False})) -> pure []
+      _ -> Diag.context "reachability analysis" . runReader (Config.reachabilityConfig cfg) $ analyzeForReachability projectScans
   let reachabilityUnits = onlyFoundUnits reachabilityUnitsResult
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
