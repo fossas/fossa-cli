@@ -47,7 +47,7 @@ module App.Fossa.Config.Common (
   configHelp,
   titleHelp,
   -- Deprecation
-  deprecateReleaseGroupMetadata,
+  applyReleaseGroupDeprecationWarning,
 ) where
 
 import App.Fossa.Config.ConfigFile (
@@ -126,7 +126,6 @@ import Options.Applicative (
   argument,
   auto,
   eitherReader,
-  internal,
   long,
   metavar,
   option,
@@ -144,7 +143,7 @@ import Options.Applicative.Help (AnsiStyle)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (..), parseRelDir)
 import Path.Extra (SomePath (..))
 import Path.IO (resolveDir', resolveFile')
-import Prettyprinter (Doc, annotate)
+import Prettyprinter (Doc, Pretty (pretty), annotate)
 import Prettyprinter.Render.Terminal (Color (Green, Red), color)
 import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, stringToHelpDoc)
 import Text.Megaparsec (errorBundlePretty, runParser)
@@ -221,25 +220,38 @@ policyIdHelp =
 releaseGroupMetadataOpts :: Parser ReleaseGroupMetadata
 releaseGroupMetadataOpts =
   ReleaseGroupMetadata
-    <$> strOption (applyFossaStyle <> long "release-group-name" <> stringToHelpDoc "The name of the release group to add this project to" <> internal)
-    <*> strOption (applyFossaStyle <> long "release-group-release" <> stringToHelpDoc "The release of the release group to add this project to" <> internal)
+    <$> strOption (applyFossaStyle <> long "release-group-name" <> helpDoc releaseGroupNameHelp)
+    <*> strOption (applyFossaStyle <> long "release-group-release" <> helpDoc releaseGroupReleaseHelp)
 
-deprecateReleaseGroupMetadata :: Has Diagnostics sig m => ProjectMetadata -> m ProjectMetadata
-deprecateReleaseGroupMetadata projectMetadata = do
+releaseGroupNameHelp :: Maybe (Doc AnsiStyle)
+releaseGroupNameHelp =
+  Just . formatDoc $
+    vsep
+      [ "The name of the release group to add this project to"
+      , boldItalicized "Note: " <> pretty releaseGroupDeprecationMessage
+      ]
+
+releaseGroupReleaseHelp :: Maybe (Doc AnsiStyle)
+releaseGroupReleaseHelp =
+  Just . formatDoc $
+    vsep
+      [ "The release of the release group to add this project to"
+      , boldItalicized "Note: " <> pretty releaseGroupDeprecationMessage
+      ]
+
+applyReleaseGroupDeprecationWarning :: Has Diagnostics sig m => ProjectMetadata -> m ()
+applyReleaseGroupDeprecationWarning projectMetadata = do
   case (projectReleaseGroup projectMetadata) of
-    Nothing -> pure projectMetadata
+    Nothing -> pure ()
     Just _ -> do
-      warn deprecationMessage
-      pure $ removeReleaseGroupMetadata projectMetadata
-  where
-    removeReleaseGroupMetadata :: ProjectMetadata -> ProjectMetadata
-    removeReleaseGroupMetadata project = project{projectReleaseGroup = Nothing}
+      warn releaseGroupDeprecationMessage
+      pure ()
 
-    deprecationMessage :: Text
-    deprecationMessage =
-      renderIt $
-        vsep
-          [annotate (color Red) "Release group options for this command have been deprecated. Refer to `fossa release-group` subcommands to interact with FOSSA release groups."]
+releaseGroupDeprecationMessage :: Text
+releaseGroupDeprecationMessage =
+  renderIt $
+    vsep
+      [annotate (color Red) "Release group options for this command will soon be deprecated. Refer to `fossa release-group` subcommands to interact with FOSSA release groups."]
 
 pathOpt :: String -> Either String (Path Rel Dir)
 pathOpt = first show . parseRelDir
@@ -324,6 +336,32 @@ validateApiKey maybeConfigFile EnvVars{envApiKey} CommonOpts{optAPIKey} = do
   textkey <-
     fromMaybeText "A FOSSA API key is required to run this command" $
       -- API key precedence is strictly defined:
+      -- API key precedence is strictly defined:
+      -- API key precedence is strictly defined:
+      -- API key precedence is strictly defined:
+      -- 1. Cmd-line option (rarely used, not encouraged)
+      -- 1. Cmd-line option (rarely used, not encouraged)
+      -- 1. Cmd-line option (rarely used, not encouraged)
+      -- 1. Cmd-line option (rarely used, not encouraged)
+      -- 2. Config file (maybe used)
+      -- 2. Config file (maybe used)
+      -- 2. Config file (maybe used)
+      -- 2. Config file (maybe used)
+      -- 3. Environment Variable (most common)
+      -- 3. Environment Variable (most common)
+      -- 3. Environment Variable (most common)
+      -- 3. Environment Variable (most common)
+
+      -- API key precedence is strictly defined:
+      -- API key precedence is strictly defined:
+      -- 1. Cmd-line option (rarely used, not encouraged)
+      -- 1. Cmd-line option (rarely used, not encouraged)
+      -- 2. Config file (maybe used)
+      -- 2. Config file (maybe used)
+      -- 3. Environment Variable (most common)
+      -- 3. Environment Variable (most common)
+
+      -- API key precedence is strictly defined:
       -- 1. Cmd-line option (rarely used, not encouraged)
       -- 2. Config file (maybe used)
       -- 3. Environment Variable (most common)
@@ -344,6 +382,32 @@ validateApiKeyGeneric ::
 validateApiKeyGeneric maybeConfigFile maybeEnvApiKey maybeOptAPIKey = do
   textkey <-
     fromMaybeText "A FOSSA API key is required to run this command" $
+      -- API key precedence is strictly defined:
+      -- API key precedence is strictly defined:
+      -- API key precedence is strictly defined:
+      -- API key precedence is strictly defined:
+      -- 1. Cmd-line option (rarely used, not encouraged)
+      -- 1. Cmd-line option (rarely used, not encouraged)
+      -- 1. Cmd-line option (rarely used, not encouraged)
+      -- 1. Cmd-line option (rarely used, not encouraged)
+      -- 2. Config file (maybe used)
+      -- 2. Config file (maybe used)
+      -- 2. Config file (maybe used)
+      -- 2. Config file (maybe used)
+      -- 3. Environment Variable (most common)
+      -- 3. Environment Variable (most common)
+      -- 3. Environment Variable (most common)
+      -- 3. Environment Variable (most common)
+
+      -- API key precedence is strictly defined:
+      -- API key precedence is strictly defined:
+      -- 1. Cmd-line option (rarely used, not encouraged)
+      -- 1. Cmd-line option (rarely used, not encouraged)
+      -- 2. Config file (maybe used)
+      -- 2. Config file (maybe used)
+      -- 3. Environment Variable (most common)
+      -- 3. Environment Variable (most common)
+
       -- API key precedence is strictly defined:
       -- 1. Cmd-line option (rarely used, not encouraged)
       -- 2. Config file (maybe used)
