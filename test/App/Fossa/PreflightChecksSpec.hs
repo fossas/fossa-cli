@@ -38,12 +38,12 @@ spec = do
     it' "should pass all checks for test command" $ do
       expectOrganizationWithPreflightChecks
       res <- ignoreDebug $ preflightChecks TestChecks
-      res `shouldBe'` ()
+      res `shouldBe'` Fixtures.organizationWithPreflightChecks
     it' "should pass all check for report command" $ do
       expectOrganizationWithPremiumSubscription
       expectFullAccessToken
       res <- preflightChecks ReportChecks
-      res `shouldBe'` ()
+      res `shouldBe'` Fixtures.organizationWithPreflightChecks
     it' "should fail full access token check for report command" $ do
       expectOrganizationWithPremiumSubscription
       expectPushToken
@@ -56,11 +56,11 @@ spec = do
       expectOrganizationWithPreflightChecks
       (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.validCustomUploadPermissions
       res <- ignoreDebug $ preflightChecks analyzeChecks
-      res `shouldBe'` ()
+      res `shouldBe'` Fixtures.organizationWithPreflightChecks
     it' "should pass all checks while skipping permission checks for analyze command" $ do
       expectOrganization
       res <- ignoreDebug $ preflightChecks analyzeChecks
-      res `shouldBe'` ()
+      res `shouldBe'` Fixtures.organizationWithPreflightChecks
     it' "should fail edit project check for analyze command" $ do
       expectOrganizationWithPreflightChecks
       (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.invalidEditProjectPermission
