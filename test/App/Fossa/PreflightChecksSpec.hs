@@ -4,6 +4,10 @@ import App.Fossa.PreflightChecks (PreflightCommandChecks (..), preflightChecks)
 import Control.Algebra (Has)
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
+import Fossa.API.Types (
+  Organization (orgSubscription, orgSupportsPreflightChecks),
+  Subscription (Premium),
+ )
 import Test.Effect (expectFatal', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec)
@@ -40,10 +44,11 @@ spec = do
       res <- ignoreDebug $ preflightChecks TestChecks
       res `shouldBe'` Fixtures.organizationWithPreflightChecks
     it' "should pass all check for report command" $ do
+      let expected = Fixtures.organizationWithPreflightChecks{orgSubscription = Premium}
       expectOrganizationWithPremiumSubscription
       expectFullAccessToken
       res <- preflightChecks ReportChecks
-      res `shouldBe'` Fixtures.organizationWithPreflightChecks
+      res `shouldBe'` expected
     it' "should fail full access token check for report command" $ do
       expectOrganizationWithPremiumSubscription
       expectPushToken
@@ -58,9 +63,10 @@ spec = do
       res <- ignoreDebug $ preflightChecks analyzeChecks
       res `shouldBe'` Fixtures.organizationWithPreflightChecks
     it' "should pass all checks while skipping permission checks for analyze command" $ do
+      let expected = Fixtures.organizationWithPreflightChecks{orgSupportsPreflightChecks = False}
       expectOrganization
       res <- ignoreDebug $ preflightChecks analyzeChecks
-      res `shouldBe'` Fixtures.organizationWithPreflightChecks
+      res `shouldBe'` expected
     it' "should fail edit project check for analyze command" $ do
       expectOrganizationWithPreflightChecks
       (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.invalidEditProjectPermission
