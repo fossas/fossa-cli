@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.9.22
+- Fixes release group flags for `fossa analyze` and `fossa container analyze`  ([#1439](https://github.com/fossas/fossa-cli/pull/1439))
+
 ## 3.9.21
 - Add support for analyzing SBOM files ([#1435](https://github.com/fossas/fossa-cli/pull/1435))
 - License Scanning: Add the Llama-3-community license (No PR)
