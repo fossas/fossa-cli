@@ -41,7 +41,7 @@ data PreflightCommandChecks
   | ReportChecks
   | AssertUserDefinedBinariesChecks
 
--- | Returns the Organization used to decide pass or fail for the checks.
+-- | Returns the Organization fetched as part of the checks.
 guardWithPreflightChecks ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -51,7 +51,7 @@ guardWithPreflightChecks ::
   m Organization
 guardWithPreflightChecks apiOpts cmd = ignoreDebug $ runFossaApiClient apiOpts $ preflightChecks cmd
 
--- | Returns the Organization used to decide pass or fail for the checks.
+-- | Returns the Organization fetched as part of the checks.
 preflightChecks ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
