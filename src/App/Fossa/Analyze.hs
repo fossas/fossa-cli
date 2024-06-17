@@ -120,6 +120,7 @@ import Effect.Logger (
  )
 import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
+import Fossa.API.Types (Organization (Organization, orgSupportsReachability))
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
@@ -302,9 +303,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
 
-  _ <- case destination of
-    OutputStdout -> pure ()
-    UploadScan apiOpts metadata -> runFossaApiClient apiOpts $ preflightChecks $ AnalyzeChecks revision metadata
+  orgInfo <- case destination of
+    OutputStdout -> pure Nothing
+    UploadScan apiOpts metadata ->
+      fmap Just . runFossaApiClient apiOpts . preflightChecks $ AnalyzeChecks revision metadata
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
@@ -406,7 +408,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     (False, _) -> traverse (withPathDependencyNudge includeAll) filteredProjects
   logDebug $ "Filtered projects with path dependencies: " <> pretty (show filteredProjects')
 
-  reachabilityUnitsResult <- Diag.context "reachability analysis" . runReader (Config.reachabilityConfig cfg) $ analyzeForReachability projectScans
+  reachabilityUnitsResult <-
+    case orgInfo of
+      (Just (Organization{orgSupportsReachability = False})) -> pure []
+      _ -> Diag.context "reachability analysis" . runReader (Config.reachabilityConfig cfg) $ analyzeForReachability projectScans
   let reachabilityUnits = onlyFoundUnits reachabilityUnitsResult
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult

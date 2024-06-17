@@ -41,22 +41,24 @@ data PreflightCommandChecks
   | ReportChecks
   | AssertUserDefinedBinariesChecks
 
+-- | Returns the Organization fetched as part of the checks.
 guardWithPreflightChecks ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   ) =>
   ApiOpts ->
   PreflightCommandChecks ->
-  m ()
+  m Organization
 guardWithPreflightChecks apiOpts cmd = ignoreDebug $ runFossaApiClient apiOpts $ preflightChecks cmd
 
+-- | Returns the Organization fetched as part of the checks.
 preflightChecks ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has FossaApiClient sig m
   ) =>
   PreflightCommandChecks ->
-  m ()
+  m Organization
 preflightChecks cmd = context "preflight-checks" $ do
   -- Check for writing to temp dir
   tmpDir <- sendIO getTempDir
@@ -78,6 +80,7 @@ preflightChecks cmd = context "preflight-checks" $ do
             fullAccessTokenCheck tokenType
             premiumSubscriptionCheck org
           _ -> pure ()
+  pure org
 
 uploadBuildPermissionsCheck :: Has Diagnostics sig m => CustomBuildUploadPermissions -> m ()
 uploadBuildPermissionsCheck CustomBuildUploadPermissions{..} =

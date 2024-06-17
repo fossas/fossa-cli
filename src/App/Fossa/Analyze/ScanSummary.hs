@@ -217,9 +217,14 @@ summarize cfg endpointVersion (AnalysisScanResult dps vsi binary manualDeps dyna
           <> summarizeSrcUnit "fossa-deps file analysis" (Just getManualVendorDepsIdentifier) manualDeps
           <> summarizeSrcUnit "Keyword Search" (Just getLernieIdentifier) (lernieResultsKeywordSearches <$$> lernie)
           <> summarizeSrcUnit "Custom-License Search" (Just getLernieIdentifier) (lernieResultsCustomLicenses <$$> lernie)
-          <> summarizeReachability "Reachability analysis" reachabilityAttempts
+          <> reachabilitySummary
           <> [""]
   where
+    reachabilitySummary =
+      if null reachabilityAttempts
+        then
+          []
+        else summarizeReachability "Reachability analysis" reachabilityAttempts
     vsiResults = summarizeSrcUnit "vsi analysis" (Just (join . map vsiSourceUnits)) vsi
     projects = sort dps
     totalScanCount =

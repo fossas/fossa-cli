@@ -37,7 +37,7 @@ analyze config = do
   let emptyMetadata = ProjectMetadata Nothing Nothing Nothing Nothing Nothing Nothing [] Nothing
   let apiOpts = sbomApiOpts config
   trackUsage SBOMAnalyzeUsage
-  runFossaApiClient apiOpts . preflightChecks $ AnalyzeChecks (sbomRevision config) emptyMetadata
+  void . runFossaApiClient apiOpts . preflightChecks $ AnalyzeChecks (sbomRevision config) emptyMetadata
   runFossaApiClient apiOpts . runStickyLogger (severity config) $ analyzeInternal config
 
 analyzeInternal ::
