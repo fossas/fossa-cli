@@ -3,7 +3,7 @@
 
 version: 2
 cli:
-  server: https://app.fossa.com
+  server: https://analysis.fossa.com
   fetcher: custom
   project: https://github.com/fossas/fossa-cli
 analyze:

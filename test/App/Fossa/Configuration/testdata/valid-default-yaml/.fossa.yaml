@@ -1,6 +1,6 @@
 version: 3
 
-server: https://app.fossa.com
+server: https://analysis.fossa.com
 apiKey: "123"
 
 project:
@@ -8,7 +8,7 @@ project:
   id: github.com/fossa-cli
   name: fossa-cli
   team: fossa-team
-  teams: 
+  teams:
     - fossa-team
   policy: license-policy
   link: fossa.com
@@ -20,7 +20,7 @@ project:
   labels:
     - project-label
     - label-2
-    
+
 releaseGroup:
   title: example-title
   release: example-release-title
@@ -31,7 +31,7 @@ releaseGroup:
   licensePolicy: example-license-policy
   securityPolicy: example-security-policy
   qualityPolicy: example-quality-policy
-  teams: 
+  teams:
     - team-1
     - team-2
 

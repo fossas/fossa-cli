@@ -14,8 +14,8 @@ version: 3
 
 # # Sets the endpoint that the CLI will send requests to.
 # # Modify only if your FOSSA account lives on a different server than app.fossa.com.
-# # Default: https://app.fossa.com
-# server: https://app.fossa.com
+# # Default: https://analysis.fossa.com
+# server: https://analysis.fossa.com
 #
 #
 # # Sets the FOSSA API key required for accessing the FOSSA API and uploading/retrieving project data.
@@ -108,7 +108,7 @@ version: 3
 #   # The release associated with the release group.
 #   release: release-group-release
 #
-#   # The projects associated with the release group's release 
+#   # The projects associated with the release group's release
 #   # NOTE:
 #   #   `projectLocator` , `projectRevision`, and `projectBranch` must all be specified when providing a releaseGroupProject.
 #   releaseGroupProjects:
@@ -121,7 +121,7 @@ version: 3
 #       projectRevision:  12345
 #
 #     # The branch associated with the project
-#       projectBranch: master 
+#       projectBranch: master
 #
 #   # Name of the license policy in your FOSSA organization to associate with this release group.
 #   # See documentation for details: https://docs.fossa.com/docs/configuring-a-licensing-policy
