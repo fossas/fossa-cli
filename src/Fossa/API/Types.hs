@@ -817,7 +817,7 @@ useApiOpts opts = case useURI serverURI of
   Just (Left (url, options)) -> pure (Unsafe.unsafeCoerce url, coerce options <> authHeader (apiOptsApiKey opts))
   Just (Right (url, options)) -> pure (url, options <> authHeader (apiOptsApiKey opts))
   where
-    serverURI = fromMaybe [uri|https://app.fossa.com|] (apiOptsUri opts)
+    serverURI = fromMaybe [uri|https://platform.fossa.com|] (apiOptsUri opts)
 
 authHeader :: ApiKey -> Option 'Https
 authHeader key = header "Authorization" (encodeUtf8 ("Bearer " <> unApiKey key))

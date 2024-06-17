@@ -40,7 +40,7 @@ expectedConfigFile :: Path Abs File -> ConfigFile
 expectedConfigFile path =
   ConfigFile
     { configVersion = 3
-    , configServer = Just "https://app.fossa.com"
+    , configServer = Just "https://platform.fossa.com"
     , configApiKey = Just "123"
     , configProject = Just expectedConfigProject
     , configReleaseGroup = Just expectedReleaseGroup

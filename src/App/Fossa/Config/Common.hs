@@ -560,7 +560,7 @@ endpointHelp =
   Just . formatDoc $
     vsep
       [ "The FOSSA API server base URL"
-      , boldItalicized "Default: " <> "https://app.fossa.com"
+      , boldItalicized "Default: " <> "https://platform.fossa.com"
       ]
 
 fossaApiKeyHelp :: Maybe (Doc AnsiStyle)
