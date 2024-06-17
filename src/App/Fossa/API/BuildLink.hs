@@ -51,8 +51,7 @@ getFossaBuildUrl revision locator = do
 
 getBuildURLWithOrg :: Has Diagnostics sig m => Maybe Organization -> ProjectRevision -> ApiOpts -> Locator -> m Text
 getBuildURLWithOrg maybeOrg revision apiOpts locator = do
-  let apiURI = if (apiOptsUri apiOpts == Just ([uri|https://analysis.fossa.com|])) then Just ([uri|https://app.fossa.com|]) else (apiOptsUri apiOpts)
-  let baseURI = fromMaybe [uri|https://app.fossa.com|] apiURI
+  let baseURI = fromMaybe [uri|https://app.fossa.com|] (apiOptsUri apiOpts)
       projectPath = fossaProjectUrlPath locator revision
 
   (path, query) <- case maybeOrg of

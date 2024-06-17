@@ -44,7 +44,7 @@ spec = do
         let locator = Locator "fetcher123" "project123" $ Just "revision123"
             org = Just $ Organization (OrgId 1) True False True CLILicenseScan True True True False False False False [] False False API.Free
             revision = ProjectRevision "" "not this revision" $ Just "master123"
-        actual <- getBuildURLWithOrg org revision Fixtures.apiOpts locator
+        actual <- getBuildURLWithOrg org revision Fixtures.apiOptsWithDefaultEndpoint locator
 
         actual `shouldBe'` simpleSamlPath
 
@@ -52,7 +52,7 @@ spec = do
         let locator = Locator "fetcher@123/abc" "git@github.com/user/repo" $ Just "revision@123/abc"
             org = Just $ Organization (OrgId 103) True False True CLILicenseScan True True True False False False False [] False False API.Free
             revision = ProjectRevision "not this project name" "not this revision" $ Just "weird--branch"
-        actual <- getBuildURLWithOrg org revision Fixtures.apiOpts locator
+        actual <- getBuildURLWithOrg org revision Fixtures.apiOptsWithDefaultEndpoint locator
 
         actual `shouldBe'` gitSamlPath
 
@@ -60,7 +60,7 @@ spec = do
         let locator = Locator "a" "b" $ Just "c"
             org = Just $ Organization (OrgId 33) True False True CLILicenseScan True True True False False False False [] False False API.Free
             revision = ProjectRevision "" "not this revision" $ Just "master"
-        actual <- getBuildURLWithOrg org revision Fixtures.apiOpts locator
+        actual <- getBuildURLWithOrg org revision Fixtures.apiOptsWithDefaultEndpoint locator
 
         actual `shouldBe'` fullSamlURL
 
@@ -68,13 +68,13 @@ spec = do
       it' "should render simple links" $ do
         let locator = Locator "haskell" "89/spectrometer" $ Just "revision123"
             revision = ProjectRevision "" "not this revision" $ Just "master"
-        actual <- getBuildURLWithOrg Nothing revision Fixtures.apiOpts locator
+        actual <- getBuildURLWithOrg Nothing revision Fixtures.apiOptsWithDefaultEndpoint locator
 
         actual `shouldBe'` simpleStandardURL
 
     describe "Fossa URL Builder" $
       it' "should render from API info" $ do
-        GetApiOpts `returnsOnce` Fixtures.apiOpts
+        GetApiOpts `returnsOnce` Fixtures.apiOptsWithDefaultEndpoint
         GetOrganization `returnsOnce` Organization (OrgId 1) True False True CLILicenseScan True True True False False False False [] False False API.Free
         let locator = Locator "fetcher123" "project123" $ Just "revision123"
             revision = ProjectRevision "" "not this revision" $ Just "master123"

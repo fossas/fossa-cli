@@ -4,6 +4,7 @@
 
 module Test.Fixtures (
   apiOpts,
+  apiOptsWithDefaultEndpoint,
   baseDir,
   build,
   contributors,
@@ -96,6 +97,14 @@ apiOpts :: API.ApiOpts
 apiOpts =
   API.ApiOpts
     { API.apiOptsUri = (Just [uri|https://analysis.fossa.com/|])
+    , API.apiOptsApiKey = API.ApiKey "testApiKey"
+    , API.apiOptsPollDelay = MilliSeconds 100
+    }
+
+apiOptsWithDefaultEndpoint :: API.ApiOpts
+apiOptsWithDefaultEndpoint =
+  API.ApiOpts
+    { API.apiOptsUri = Nothing
     , API.apiOptsApiKey = API.ApiKey "testApiKey"
     , API.apiOptsPollDelay = MilliSeconds 100
     }
