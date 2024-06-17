@@ -17,6 +17,7 @@ import Control.Effect.FossaApiClient (
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text.Extra (showT)
+import Debug.Trace (traceM)
 import Fossa.API.Types (ApiOpts (..), Organization (..))
 import Srclib.Types (Locator (..))
 import Text.URI qualified as URI
@@ -45,11 +46,13 @@ getFossaBuildUrl :: (Has Diagnostics sig m, Has FossaApiClient sig m) => Project
 getFossaBuildUrl revision locator = do
   maybeOrg <- recover getOrganization
   apiOpts <- getApiOpts
+  traceM $ "apiOpts: " <> show apiOpts
   getBuildURLWithOrg maybeOrg revision apiOpts locator
 
 getBuildURLWithOrg :: Has Diagnostics sig m => Maybe Organization -> ProjectRevision -> ApiOpts -> Locator -> m Text
 getBuildURLWithOrg maybeOrg revision apiOpts locator = do
-  let baseURI = fromMaybe [uri|https://app.fossa.com|] (apiOptsUri apiOpts)
+  let apiURI = if (apiOptsUri apiOpts == Just ([uri|https://analysis.fossa.com|])) then Just ([uri|https://app.fossa.com|]) else (apiOptsUri apiOpts)
+  let baseURI = fromMaybe [uri|https://app.fossa.com|] apiURI
       projectPath = fossaProjectUrlPath locator revision
 
   (path, query) <- case maybeOrg of
