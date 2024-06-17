@@ -56,7 +56,7 @@ useApiOpts opts = case useURI serverURI of
   Just (Right (url, options)) -> Just (url, options <> authHeader opts)
   where
     serverURI :: URI
-    serverURI = fromMaybe [uri|https://platform.fossa.com|] (Fossa.API.Types.apiOptsUri opts)
+    serverURI = fromMaybe [uri|https://analysis.fossa.com|] (Fossa.API.Types.apiOptsUri opts)
 
     authHeader :: Fossa.API.Types.ApiOpts -> Option 'Https
     authHeader (Fossa.API.Types.ApiOpts _ (Fossa.API.Types.ApiKey key) _) = header "Authorization" $ encodeUtf8 $ "Bearer " <> key

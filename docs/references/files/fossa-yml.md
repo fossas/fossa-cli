@@ -8,7 +8,7 @@ The following example is a configuration file with all available fields filled d
 ```yaml
 version: 3
 
-server: https://platform.fossa.com
+server: https://analysis.fossa.com
 apiKey: a1b2c3
 
 project:
@@ -97,7 +97,7 @@ Specifies the version of configuration file. Versions 1 and 2 were used by CLI v
 ### `server:`
 Sets the endpoint that the CLI will send requests to. This field should only be modified if your FOSSA account lives on a different server than app.fossa.com. This is most commonly needed with on-premise instances of FOSSA.
 
-Default: `https://platform.fossa.com`
+Default: `https://analysis.fossa.com`
 
 ### `apiKey:`
 Sets the [FOSSA API key](https://docs.fossa.com/docs/api-reference#api-tokens) that is required for accessing the FOSSA API and uploading data (e.g. `fossa analyze`) or retrieving information (e.g. `fossa test`) about a project.

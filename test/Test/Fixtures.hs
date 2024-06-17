@@ -95,7 +95,7 @@ import Types (ArchiveUploadType (..), GraphBreadth (..))
 apiOpts :: API.ApiOpts
 apiOpts =
   API.ApiOpts
-    { API.apiOptsUri = (Just [uri|https://platform.fossa.com/|])
+    { API.apiOptsUri = (Just [uri|https://analysis.fossa.com/|])
     , API.apiOptsApiKey = API.ApiKey "testApiKey"
     , API.apiOptsPollDelay = MilliSeconds 100
     }
