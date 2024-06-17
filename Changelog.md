@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Reachability: For organizations that don't have reachability turned on suppress messages about it. ([#1440](https://github.com/fossas/fossa-cli/pull/1440))
+
 ## 3.9.22
 - Fixes release group flags for `fossa analyze` and `fossa container analyze`  ([#1439](https://github.com/fossas/fossa-cli/pull/1439))
 
