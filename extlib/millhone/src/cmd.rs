@@ -20,6 +20,7 @@ use typed_builder::TypedBuilder;
 use walkdir::DirEntry;
 
 pub mod analyze;
+pub mod analyze_jars;
 pub mod commit;
 pub mod ingest;
 pub mod ping;

@@ -89,6 +89,9 @@ enum Commands {
 
     /// Commit matches discovered during analyze into a fossa-deps file.
     Commit(cmd::commit::Subcommand),
+
+    /// Find and fingerprint JAR files.
+    AnalyzeJars(cmd::analyze_jars::Subcommand),
 }
 
 fn main() -> stable_eyre::Result<()> {
@@ -131,6 +134,7 @@ fn main() -> stable_eyre::Result<()> {
         Commands::Ingest(opts) => cmd::ingest::main(&app.direct_endpoint, opts),
         Commands::Analyze(opts) => cmd::analyze::main(&app.direct_endpoint, opts),
         Commands::Commit(opts) => cmd::commit::main(opts),
+        Commands::AnalyzeJars(opts) => cmd::analyze_jars::main(opts),
     }
 }
 
