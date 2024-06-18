@@ -72,7 +72,7 @@ spec = do
 
         actual `shouldBe'` simpleStandardURL
 
-    describe "Fossa URL Builder" $
+    describe "Fossa URL Builder" $ do
       it' "should render from API info" $ do
         GetApiOpts `returnsOnce` Fixtures.apiOptsWithDefaultEndpoint
         GetOrganization `returnsOnce` Organization (OrgId 1) True False True CLILicenseScan True True True False False False False [] False False API.Free
@@ -81,3 +81,13 @@ spec = do
         actual <- getFossaBuildUrl revision locator
 
         actual `shouldBe'` simpleSamlPath
+
+      it' "should use the overridden endpoint if it is provided" $ do
+        GetApiOpts `returnsOnce` Fixtures.apiOpts
+        GetOrganization `returnsOnce` Organization (OrgId 1) True False True CLILicenseScan True True True False False False False [] False False API.Free
+        let locator = Locator "fetcher123" "project123" $ Just "revision123"
+            revision = ProjectRevision "" "not this revision" $ Just "master123"
+        actual <- getFossaBuildUrl revision locator
+        let expectedUrl = "https://analysis.fossa.com/account/saml/1?next=/projects/fetcher123%252bproject123/refs/branch/master123/revision123"
+
+        actual `shouldBe'` expectedUrl
