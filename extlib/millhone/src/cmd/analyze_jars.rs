@@ -1,12 +1,168 @@
-use clap::Parser;
-use getset::Getters;
-use stable_eyre::eyre::{Report, Result};
+use std::{collections::HashSet, fs::File, io::Read, path::PathBuf};
 
+use clap::Parser;
+use fingerprint::Combined;
+use getset::Getters;
+use serde::{Deserialize, Serialize};
+use stable_eyre::{eyre::Context, Report};
+use tar::{Archive, Entry};
+use thiserror::Error;
+use tracing::{debug, info, info_span};
+use typed_builder::TypedBuilder;
+
+/// Tar errors are just [`std::io::Error`].
+/// This macro is a bit cleaner to wrap them and adds a little context.
+macro_rules! wrap_tar_err {
+    ($tar_operation_str:expr, $operation:expr) => {
+        $operation.map_err(|e| Error::TarError($tar_operation_str.to_string(), e))
+    };
+}
+
+// Technically there is also a `--direct-endpoint` global arg.
+// It's not relevant here though.
 #[derive(Debug, Parser, Getters)]
 #[getset(get = "pub")]
 #[clap(version)]
-pub struct Subcommand {}
+pub struct Subcommand {
+    /// The tar file image to search and fingerprint JARs in.
+    image_tar_file: PathBuf,
+}
 
-pub fn main(opts: Subcommand) -> Result<()> {
-    todo!()
+#[derive(Debug, PartialEq, Eq, Serialize)]
+struct DiscoveredJar {
+    path: PathBuf,
+    fingerprint: Combined,
+}
+
+#[derive(Debug, PartialEq, Eq, Deserialize)]
+struct OciManifest {
+    #[serde(rename = "Layers")]
+    layers: Vec<PathBuf>,
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, TypedBuilder)]
+struct JarAnalysis {
+    // A vector of the Jars discovered during an analysis.
+    discovered_jars: Vec<DiscoveredJar>,
+}
+
+#[derive(Debug, Error)]
+pub enum Error {
+    /// Encountered when we can't open the requisite file.
+    #[error("Open file {0}")]
+    OpenFile(std::io::Error),
+
+    #[error("Tar operation '{0}': {1}")]
+    TarError(String, std::io::Error),
+}
+
+#[tracing::instrument]
+pub fn main(opts: Subcommand) -> Result<(), Report> {
+    let tar_filename = opts.image_tar_file();
+    let jar_analysis = JarAnalysis {
+        discovered_jars: jars_in_container(opts.image_tar_file())
+            .with_context(|| format!("Analyze Jar Archive {:?}", tar_filename))?,
+    };
+
+    serde_json::to_writer(std::io::stdout(), &jar_analysis).context("Serialize Results")
+}
+
+/// Extracts the container (saved via `docker save`) and finds JAR files inside any layer.
+/// For each one found, fingerprints it and reports all those fingerprints along with their
+/// layer and path.
+#[tracing::instrument]
+fn jars_in_container(image_path: &PathBuf) -> Result<Vec<DiscoveredJar>, Error> {
+    // Visit each layer and fingerprint the JARs within.
+    info!("inspecting container");
+    // May have to make two copies of this Archive, idk if it can be iterated twice.
+    let layers = list_container_layers(&image_path)?;
+    let mut discoveries = Vec::new();
+
+    let mut image_archive = unpack(image_path)?;
+    for entry in wrap_tar_err!("Iterate entries", image_archive.entries())? {
+        let entry = wrap_tar_err!("Read entry", entry)?;
+        let path = wrap_tar_err!("Read path", entry.path())?;
+        if !layers.contains(path.as_ref()) {
+            debug!(?path, "skipped: not a layer file");
+            continue;
+        }
+
+        let layer = path.to_path_buf();
+        let layer_discoveries = jars_in_layer(layer, entry)?;
+        discoveries.extend(layer_discoveries);
+    }
+
+    Ok(discoveries)
+}
+
+/// Open and unpack a file and put it into a tar.
+/// This is done repeatedly because `entries()` can only be read once from an Archive.
+#[tracing::instrument]
+fn unpack(path: &PathBuf) -> Result<Archive<File>, Error> {
+    let file = File::open(path).map_err(Error::OpenFile)?;
+    Ok(tar::Archive::new(file))
+}
+
+#[tracing::instrument(skip(entry))]
+fn jars_in_layer(layer: PathBuf, entry: Entry<'_, impl Read>) -> Result<Vec<DiscoveredJar>, Error> {
+    let mut discoveries = Vec::new();
+
+    let mut entry_archive = tar::Archive::new(entry);
+    for entry in wrap_tar_err!("list entries in layer", entry_archive.entries())? {
+        let entry = wrap_tar_err!("read entry", entry)?;
+        let path = wrap_tar_err!("read path", entry.path())?;
+        if !path.to_string_lossy().ends_with(".jar") {
+            debug!(?path, "skipped: not a jar file");
+            continue;
+        }
+
+        let path = path.to_path_buf();
+        info_span!("jar", ?path).in_scope(|| {
+            debug!("fingerprinting");
+            let entry = buffer(entry);
+            discoveries.push(DiscoveredJar {
+                fingerprint: Combined::from_buffer(entry).expect("fingerprint"),
+                path,
+            });
+        });
+    }
+
+    Ok(discoveries)
+}
+
+#[tracing::instrument]
+fn list_container_layers(path: &PathBuf) -> Result<HashSet<PathBuf>, Error> {
+    let mut layers = HashSet::new();
+
+    // This archive is not shared because we must iterate over all the tar entries.
+    // This loop doesn't.
+    // https://docs.rs/tar/latest/tar/struct.Archive.html#method.entries
+    let mut container = unpack(path)?;
+    for entry in container.entries().expect("list entries") {
+        let entry = entry.expect("read entry");
+        let path = entry.path().expect("read path");
+        if !path.ends_with("manifest.json") {
+            debug!(?path, "skipped: not a manifest file");
+            continue;
+        }
+
+        info!(?path, "extracting manifests for image");
+        let manifests: Vec<OciManifest> = serde_json::from_reader(entry).expect("read manifest");
+        for manifest in manifests {
+            layers.extend(manifest.layers);
+        }
+
+        // There's only one manifest file.
+        break;
+    }
+
+    Ok(layers)
+}
+
+#[track_caller]
+#[tracing::instrument(skip(reader))]
+fn buffer(mut reader: impl Read) -> Vec<u8> {
+    let mut buf = Vec::new();
+    reader.read_to_end(&mut buf).expect("buffer bytes");
+    buf
 }
