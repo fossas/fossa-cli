@@ -4,12 +4,14 @@
 #![deny(unsafe_code)]
 #![warn(rust_2018_idioms)]
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use millhone::url::BaseUrl;
 use stable_eyre::eyre::Context;
 use tap::Pipe;
 use traceconf::{Colors, Format, Level};
-use tracing_subscriber::{filter::filter_fn, prelude::*};
+use tracing_subscriber::{
+    filter::filter_fn, fmt::writer::BoxMakeWriter, layer::SubscriberExt, prelude::*,
+};
 
 mod cmd;
 
@@ -20,6 +22,21 @@ mod cmd;
 #[cfg(feature = "jemalloc")]
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
+#[derive(PartialEq, Clone, Debug, ValueEnum)]
+enum TracingOutput {
+    Stderr,
+    Stdout,
+}
+
+impl TracingOutput {
+    fn make_writer(&self) -> BoxMakeWriter {
+        match self {
+            TracingOutput::Stderr => BoxMakeWriter::new(std::io::stderr),
+            TracingOutput::Stdout => BoxMakeWriter::new(std::io::stdout),
+        }
+    }
+}
 
 /// Millhone is the CLI for FOSSA's snippet scanning.
 #[derive(Debug, Parser)]
@@ -36,6 +53,10 @@ struct Application {
     /// The coloring mode to use for log and span traces.
     #[clap(long, default_value_t = Colors::default())]
     log_colors: Colors,
+
+    /// Set where to log traces to.
+    #[clap(long, default_value = "stdout")]
+    log_to: TracingOutput,
 
     /// The URL for the Millhone service.
     ///
@@ -104,7 +125,7 @@ fn main() -> stable_eyre::Result<()> {
                 tracing_subscriber::fmt::layer()
                     .json()
                     .with_ansi(app.colors_enabled())
-                    .with_writer(std::io::stdout)
+                    .with_writer(app.log_to.make_writer())
                     .with_span_events(tracing_subscriber::fmt::format::FmtSpan::ACTIVE)
                     .with_filter(app.level_filter())
                     .with_filter(self_sourced_events(app.log_level)),
@@ -115,7 +136,7 @@ fn main() -> stable_eyre::Result<()> {
             .with(
                 tracing_subscriber::fmt::layer()
                     .with_ansi(app.colors_enabled())
-                    .with_writer(std::io::stdout)
+                    .with_writer(app.log_to.make_writer())
                     .with_file(false)
                     .with_line_number(false)
                     .without_time()

@@ -14,12 +14,10 @@ use typed_builder::TypedBuilder;
 /// This macro is a bit cleaner to wrap them and adds a little context.
 macro_rules! wrap_tar_err {
     ($tar_operation_str:expr, $operation:expr) => {
-        $operation.map_err(|e| Error::TarError($tar_operation_str.to_string(), e))
+        $operation.map_err(|e| Error::ReadTar($tar_operation_str.to_string(), e))
     };
 }
 
-// Technically there is also a `--direct-endpoint` global arg.
-// It's not relevant here though.
 #[derive(Debug, Parser, Getters)]
 #[getset(get = "pub")]
 #[clap(version)]
@@ -54,7 +52,7 @@ pub enum Error {
 
     /// Encountered when an archive operation fails.
     #[error("Tar operation '{0}': {1}")]
-    TarError(String, std::io::Error),
+    ReadTar(String, std::io::Error),
 
     /// Encountered when a manifest file is found but cannot be parsed.
     #[error("Parsing manifest file {0} {1}")]
@@ -86,7 +84,7 @@ fn jars_in_container(image_path: &PathBuf) -> Result<Vec<DiscoveredJar>, Error> 
     // Visit each layer and fingerprint the JARs within.
     info!("inspecting container");
     // May have to make two copies of this Archive, idk if it can be iterated twice.
-    let layers = list_container_layers(&image_path)?;
+    let layers = list_container_layers(image_path)?;
     let mut discoveries = Vec::new();
 
     let mut image_archive = unpack(image_path)?;
@@ -200,6 +198,6 @@ fn buffer(mut reader: impl Read) -> Result<Vec<u8>, Error> {
     let mut buf = Vec::new();
     reader
         .read_to_end(&mut buf)
-        .map_err(|e| Error::ReadBuffer(e))?;
+        .map_err(Error::ReadBuffer)?;
     Ok(buf)
 }
