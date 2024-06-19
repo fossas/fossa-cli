@@ -1,4 +1,9 @@
-use std::{collections::HashSet, fs::File, io::Read, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    fs::File,
+    io::Read,
+    path::PathBuf,
+};
 
 use clap::Parser;
 use fingerprint::Combined;
@@ -26,7 +31,7 @@ pub struct Subcommand {
     image_tar_file: PathBuf,
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Clone)]
 struct DiscoveredJar {
     path: PathBuf,
     fingerprint: Combined,
@@ -41,7 +46,7 @@ struct OciManifest {
 #[derive(Debug, PartialEq, Eq, Serialize, TypedBuilder)]
 struct JarAnalysis {
     // A vector of the Jars discovered during an analysis.
-    discovered_jars: Vec<DiscoveredJar>,
+    discovered_jars: HashMap<PathBuf, Vec<DiscoveredJar>>,
 }
 
 #[derive(Debug, Error)]
@@ -80,12 +85,12 @@ pub fn main(opts: Subcommand) -> Result<(), Report> {
 /// For each one found, fingerprints it and reports all those fingerprints along with their
 /// layer and path.
 #[tracing::instrument]
-fn jars_in_container(image_path: &PathBuf) -> Result<Vec<DiscoveredJar>, Error> {
+fn jars_in_container(image_path: &PathBuf) -> Result<HashMap<PathBuf, Vec<DiscoveredJar>>, Error> {
     // Visit each layer and fingerprint the JARs within.
     info!("inspecting container");
     // May have to make two copies of this Archive, idk if it can be iterated twice.
     let layers = list_container_layers(image_path)?;
-    let mut discoveries = Vec::new();
+    let mut discoveries = HashMap::new();
 
     let mut image_archive = unpack(image_path)?;
     for entry in wrap_tar_err!("Iterate entries", image_archive.entries())? {
@@ -97,8 +102,9 @@ fn jars_in_container(image_path: &PathBuf) -> Result<Vec<DiscoveredJar>, Error> 
         }
 
         let layer = path.to_path_buf();
-        let layer_discoveries = jars_in_layer(layer, entry)?;
-        discoveries.extend(layer_discoveries);
+        // Layers should have a form like blob
+        let layer_discoveries = jars_in_layer(entry)?;
+        discoveries.insert(layer, layer_discoveries);
     }
 
     Ok(discoveries)
@@ -113,7 +119,7 @@ fn unpack(path: &PathBuf) -> Result<Archive<File>, Error> {
 }
 
 #[tracing::instrument(skip(entry))]
-fn jars_in_layer(layer: PathBuf, entry: Entry<'_, impl Read>) -> Result<Vec<DiscoveredJar>, Error> {
+fn jars_in_layer(entry: Entry<'_, impl Read>) -> Result<Vec<DiscoveredJar>, Error> {
     let mut discoveries = Vec::new();
 
     let mut entry_archive = tar::Archive::new(entry);
@@ -151,9 +157,6 @@ fn jars_in_layer(layer: PathBuf, entry: Entry<'_, impl Read>) -> Result<Vec<Disc
 fn list_container_layers(layer_path: &PathBuf) -> Result<HashSet<PathBuf>, Error> {
     let mut layers = HashSet::new();
 
-    // This archive is not shared because we must iterate over all the tar entries.
-    // This loop doesn't.
-    // https://docs.rs/tar/latest/tar/struct.Archive.html#method.entries
     let mut container = unpack(layer_path)?;
     for entry in wrap_tar_err!("list entries", container.entries())? {
         let entry = match entry {
@@ -196,8 +199,6 @@ fn list_container_layers(layer_path: &PathBuf) -> Result<HashSet<PathBuf>, Error
 #[tracing::instrument(skip(reader))]
 fn buffer(mut reader: impl Read) -> Result<Vec<u8>, Error> {
     let mut buf = Vec::new();
-    reader
-        .read_to_end(&mut buf)
-        .map_err(Error::ReadBuffer)?;
+    reader.read_to_end(&mut buf).map_err(Error::ReadBuffer)?;
     Ok(buf)
 }
