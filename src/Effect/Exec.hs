@@ -14,8 +14,10 @@ module Effect.Exec (
   execInCwd,
   execEffectful,
   execThrow,
+  execReturningStderr,
   Command (..),
   CmdFailure (..),
+  CmdSuccess (..),
   AllowErr (..),
   execParser,
   execJson,
@@ -67,7 +69,7 @@ import Data.Aeson (
   withObject,
   (.:),
  )
-import Data.Bifunctor (first)
+import Data.Bifunctor (first, second)
 import Data.ByteString.Lazy qualified as BL
 import Data.Error (createBody)
 import Data.Foldable (traverse_)
@@ -164,11 +166,35 @@ type Stdout = BL.ByteString
 
 type Stderr = BL.ByteString
 
+-- | Even when a command executes successfully there may be output on stderr that is interesting.
+-- This structure captures both output streams.
+data CmdSuccess = CmdSuccess
+  { cmdSuccessStdout :: Stdout
+  , cmdSuccessStderr :: Stderr
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance FromJSON CmdSuccess where
+  parseJSON = withObject "CmdSuccess" $ \o ->
+    CmdSuccess
+      <$> (o .: "stdOut" >>= fromRecordedValue)
+      <*> (o .: "stdErr" >>= fromRecordedValue)
+
+instance ToJSON CmdSuccess where
+  toJSON CmdSuccess{cmdSuccessStdout, cmdSuccessStderr} =
+    object
+      [ "stdOut" .= toRecordedValue cmdSuccessStdout
+      , "stdErr" .= toRecordedValue cmdSuccessStderr
+      ]
+
+instance RecordableValue CmdSuccess
+instance ReplayableValue CmdSuccess
+
 data ExecF a where
   -- | Exec runs a command and returns either:
   -- - stdout when the command succeeds
   -- - a description of the command failure
-  Exec :: SomeBase Dir -> Command -> Maybe Text -> ExecF (Either CmdFailure Stdout)
+  Exec :: SomeBase Dir -> Command -> Maybe Text -> ExecF (Either CmdFailure CmdSuccess)
 
 type Exec = Simple ExecF
 
@@ -186,6 +212,9 @@ data ExecErr
     CommandParseError Command Text
   | ExecEnvNotSupported Text
   deriving (Eq, Ord, Show, Generic)
+
+instance ToDiagnostic CmdFailure where
+  renderDiagnostic = renderCmdFailure
 
 renderCmdFailure :: CmdFailure -> Errata
 renderCmdFailure CmdFailure{..} =
@@ -283,7 +312,7 @@ instance ToDiagnostic ExecErr where
     ExecEnvNotSupported env -> do
       let header = "Exec is not supported in: " <> env
       Errata (Just header) [] Nothing
-    CommandFailed err -> renderCmdFailure err
+    CommandFailed err -> toDiagnostic err
     CommandParseError cmd err -> do
       let header = "Failed to parse command output"
           content = renderIt $ vsep [indent 2 (pretty err)]
@@ -291,9 +320,13 @@ instance ToDiagnostic ExecErr where
           body = createBody (Just content) Nothing (Just $ renderIt reportDefectMsg) Nothing (Just ctx)
       Errata (Just header) [] (Just body)
 
+-- | Version of @exec@ which also returns the contents of stderr on command success.
+execReturningStderr :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure CmdSuccess)
+execReturningStderr dir cmd = sendSimple (Exec (Abs dir) cmd Nothing)
+
 -- | Execute a command and return its @(exitcode, stdout, stderr)@
 exec :: Has Exec sig m => Path Abs Dir -> Command -> m (Either CmdFailure Stdout)
-exec dir cmd = sendSimple (Exec (Abs dir) cmd Nothing)
+exec dir cmd = second cmdSuccessStdout <$> execReturningStderr dir cmd
 
 -- | A variant of 'exec' that runs the command in the current directory
 execInCwd :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Command -> m (Either CmdFailure Stdout)
@@ -303,7 +336,7 @@ execInCwd cmd = context ("Running command '" <> cmdName cmd <> "'") $ do
 
 -- | Execute a command with stdin and return its @(exitcode, stdout, stderr)@
 exec' :: Has Exec sig m => Path Abs Dir -> Command -> Text -> m (Either CmdFailure Stdout)
-exec' dir cmd stdin = sendSimple (Exec (Abs dir) cmd (Just stdin))
+exec' dir cmd stdin = second cmdSuccessStdout <$> sendSimple (Exec (Abs dir) cmd (Just stdin))
 
 type Parser = Parsec Void Text
 
@@ -484,18 +517,23 @@ runExecIO = interpret $ \case
       Nothing -> process
 
     -- apply business logic for considering whether exitcode + stderr constitutes a "failure"
-    let mangleResult :: (ExitCode, Stdout, Stderr) -> Either CmdFailure Stdout
+    let mangleResult :: (ExitCode, Stdout, Stderr) -> Either CmdFailure CmdSuccess
         mangleResult (exitcode, stdout, stderr) =
-          case (exitcode, cmdAllowErr cmd) of
-            (ExitSuccess, _) -> Right stdout
-            (_, Never) -> Left $ mkFailure exitcode stdout stderr
-            (_, NonEmptyStdout) ->
-              if BL.null stdout
-                then Left $ mkFailure exitcode stdout stderr
-                else Right stdout
-            (_, Always) -> Right stdout
+          let success =
+                CmdSuccess
+                  { cmdSuccessStdout = stdout
+                  , cmdSuccessStderr = stderr
+                  }
+           in case (exitcode, cmdAllowErr cmd) of
+                (ExitSuccess, _) -> Right success
+                (_, Never) -> Left $ mkFailure exitcode stdout stderr
+                (_, NonEmptyStdout) ->
+                  if BL.null stdout
+                    then Left $ mkFailure exitcode stdout stderr
+                    else Right success
+                (_, Always) -> Right success
 
-    let result :: Either CmdFailure Stdout
+    let result :: Either CmdFailure CmdSuccess
         result = first ioExceptionToCmdFailure processResult >>= mangleResult
 
     pure result
