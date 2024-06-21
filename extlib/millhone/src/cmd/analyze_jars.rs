@@ -9,7 +9,7 @@ use clap::Parser;
 use fingerprint::Combined;
 use getset::Getters;
 use serde::{Deserialize, Serialize};
-use stable_eyre::{eyre::Context, Report, Result};
+use stable_eyre::{eyre::Context, Result};
 use tar::{Archive, Entry};
 use tracing::{debug, info, info_span, warn};
 use typed_builder::TypedBuilder;
@@ -25,7 +25,7 @@ pub struct Subcommand {
 #[derive(Debug, PartialEq, Eq, Serialize, Clone)]
 struct DiscoveredJar {
     path: PathBuf,
-    fingerprint: Combined,
+    fingerprints: Combined,
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
@@ -110,7 +110,7 @@ fn jars_in_layer(entry: Entry<'_, impl Read>) -> Result<Vec<DiscoveredJar>> {
             let entry = buffer(entry).context("Read jar file")?;
 
             match Combined::from_buffer(entry) {
-                Ok(fingerprint) => discoveries.push(DiscoveredJar { fingerprint, path }),
+                Ok(fingerprints) => discoveries.push(DiscoveredJar { fingerprints, path }),
                 Err(e) => warn!("failed to fingerprint: {e:?}"),
             }
 
