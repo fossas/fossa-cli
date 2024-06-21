@@ -78,7 +78,8 @@ pub fn main(opts: Subcommand) -> Result<(), Report> {
             .with_context(|| format!("Analyze Jar Archive {:?}", tar_filename))?,
     };
 
-    serde_json::to_writer(std::io::stdout(), &jar_analysis).context("Serialize Results")
+    let mut stdout = BufWriter::new(std::io::stdout());
+    serde_json::to_writer(&mut stdout, &jar_analysis).context("Serialize Results")
 }
 
 /// Extracts the container (saved via `docker save`) and finds JAR files inside any layer.
@@ -92,10 +93,10 @@ fn jars_in_container(image_path: &PathBuf) -> Result<HashMap<PathBuf, Vec<Discov
     let layers = list_container_layers(image_path)?;
     let mut discoveries = HashMap::new();
 
-    let mut image_archive = unpack(image_path)?;
-    for entry in wrap_tar_err!("Iterate entries", image_archive.entries())? {
-        let entry = wrap_tar_err!("Read entry", entry)?;
-        let path = wrap_tar_err!("Read path", entry.path())?;
+    let mut image = unpack(image_path)?;
+    for entry in image.entries().context("iterate entries")? {
+        let entry = entry.context("read entry")?;
+        let path = entry.path().context("read path")?;
         if !layers.contains(path.as_ref()) {
             debug!(?path, "skipped: not a layer file");
             continue;
@@ -103,7 +104,8 @@ fn jars_in_container(image_path: &PathBuf) -> Result<HashMap<PathBuf, Vec<Discov
 
         let layer = path.to_path_buf();
         // Layers should have a form like blob
-        let layer_discoveries = jars_in_layer(entry)?;
+        let layer_discoveries = jars_in_layer(entry)
+            .with_context(|| format!("read layer '{layer}'"))?;
         discoveries.insert(layer, layer_discoveries);
     }
 
@@ -132,22 +134,15 @@ fn jars_in_layer(entry: Entry<'_, impl Read>) -> Result<Vec<DiscoveredJar>, Erro
         }
 
         let path = path.to_path_buf();
-        let res = info_span!("jar", ?path).in_scope(|| {
+        info_span!("jar", ?path).in_scope(|| {
             debug!("fingerprinting");
             let entry = buffer(entry)?;
 
             match Combined::from_buffer(entry) {
-                Ok(fingerprint) => {
-                    discoveries.push(DiscoveredJar { fingerprint, path });
-                    Ok(())
-                }
-                Err(e) => Err(Error::GenerateFingerprint(e)),
+                Ok(fingerprint) => discoveries.push(DiscoveredJar { fingerprint, path })
+                Err(e) => warn!("failed to fingerprint: {e:?}"),
             }
         });
-
-        if let Err(e) = res {
-            warn!("Fingerprinting: {:?}", e);
-        }
     }
 
     Ok(discoveries)
@@ -162,7 +157,7 @@ fn list_container_layers(layer_path: &PathBuf) -> Result<HashSet<PathBuf>, Error
         let entry = match entry {
             Ok(entry) => entry,
             Err(e) => {
-                warn!("Reading entry {:?}", e);
+                warn!("failed to read entry: {e:?}");
                 continue;
             }
         };
@@ -195,7 +190,6 @@ fn list_container_layers(layer_path: &PathBuf) -> Result<HashSet<PathBuf>, Error
     Ok(layers)
 }
 
-#[track_caller]
 #[tracing::instrument(skip(reader))]
 fn buffer(mut reader: impl Read) -> Result<Vec<u8>, Error> {
     let mut buf = Vec::new();
