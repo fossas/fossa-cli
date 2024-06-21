@@ -18,7 +18,7 @@ import App.Fossa.Analyze.Types (
  )
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic), WithoutDefaultFilters (..))
 import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
-import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withMillhoneBinary)
+import App.Fossa.Container.Sources.JarAnalysis (analyzeJar)
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Docker.Manifest (getImageDigest, getRepoTags)
 import Container.OsRelease (OsInfo (nameId, version), getOsInfo)
@@ -54,19 +54,18 @@ import Control.Effect.Reader (Reader)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.TaskPool (TaskPool)
 import Control.Effect.Telemetry (Telemetry)
-import Control.Monad (unless, void, when)
-import Data.ByteString.Lazy qualified as BL
+import Control.Monad (void, when)
 import Data.ByteString.Lazy qualified as BS
 import Data.FileTree.IndexFileTree (SomeFileTree, fixedVfsRoot)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Maybe (listToMaybe, mapMaybe)
-import Data.String.Conversion (ToString (toString), decodeUtf8, toText)
+import Data.String.Conversion (ToString (toString))
 import Data.Text (Text)
 import Data.Text.Extra (breakOnEndAndRemove, showT)
 import Discovery.Filters (AllFilters, MavenScopeFilters (..), isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
-import Effect.Exec (AllowErr (Never), CmdSuccess (..), Command (..), Exec, execReturningStderr)
+import Effect.Exec (Exec)
 import Effect.Logger (
   Has,
   Logger,
@@ -74,12 +73,11 @@ import Effect.Logger (
   Severity (..),
   logDebug,
   logInfo,
-  logStdout,
   logWarn,
   viaShow,
  )
 import Effect.ReadFS (ReadFS)
-import Path (Abs, Dir, File, Path, parent, toFilePath)
+import Path (Abs, Dir, File, Path, toFilePath)
 import Path.Internal (Path (Path))
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (SourceUnit)
@@ -103,7 +101,8 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
   capabilities <- sendIO getNumCapabilities
   containerTarball <- sendIO . BS.readFile $ toString tarball
 
-  jarResults <- analyzeJars tarball
+  -- Should catch fatal stuff here, if there's a fatal error we want to do regular analysis.
+  jarResults <- analyzeJar tarball
 
   image <- fromEither $ parse containerTarball
 
@@ -148,36 +147,6 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
           , ContainerScanImageLayer squashedDigest otherUnits
           ]
     else pure $ mkScan [ContainerScanImageLayer baseDigest baseUnits]
-
--- | Generate a command to run millhone's jar analyze code given a millhone binary and tar file path.
-millhoneJarAnalyzeCmd :: BinaryPaths -> Path Abs File -> Command
-millhoneJarAnalyzeCmd cmdPath imageTarFile =
-  Command
-    { cmdName = toText . toPath $ cmdPath
-    , cmdArgs =
-        [ "--log-to"
-        , "stderr"
-        , "analyze-jars"
-        , toText imageTarFile
-        ]
-    , cmdAllowErr = Never
-    }
-
-analyzeJars :: (Has Logger sig m, Has Exec sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m ()
-analyzeJars imagePath = withMillhoneBinary $ \binaryPaths ->
-  context ("Searching for JARs in " <> toText imagePath) $ do
-    result <- execReturningStderr (parent imagePath) (millhoneJarAnalyzeCmd binaryPaths imagePath)
-    jarOutput <- context "Run millhone (analyze jars)" $
-      case result of
-        Left e -> Diag.fatal e
-        Right CmdSuccess{cmdSuccessStdout, cmdSuccessStderr} -> do
-          unless (BL.null cmdSuccessStderr) $
-            context "Millhone jar analyze traces" $
-              logDebug . pretty . decodeUtf8 @Text $
-                cmdSuccessStderr
-          pure . decodeUtf8 @Text $ cmdSuccessStdout
-
-    logStdout jarOutput
 
 analyzeLayer ::
   ( Has Diagnostics sig m
