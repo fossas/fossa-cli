@@ -312,7 +312,7 @@ instance ToDiagnostic ExecErr where
     ExecEnvNotSupported env -> do
       let header = "Exec is not supported in: " <> env
       Errata (Just header) [] Nothing
-    CommandFailed err -> toDiagnostic err
+    CommandFailed err -> renderDiagnostic err
     CommandParseError cmd err -> do
       let header = "Failed to parse command output"
           content = renderIt $ vsep [indent 2 (pretty err)]
