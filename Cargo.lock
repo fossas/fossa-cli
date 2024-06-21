@@ -713,8 +713,8 @@ dependencies = [
 
 [[package]]
 name = "fingerprint"
-version = "2.1.0"
-source = "git+https://github.com/fossas/lib-fingerprint.git?tag=v2.1.0#7377867e8683ee02ba736741a724e2953c63a41b"
+version = "3.0.0"
+source = "git+https://github.com/fossas/lib-fingerprint.git?tag=v3.0.0#d7b85cb8ff6436bae3aa5bb77bb564be583ac9b0"
 dependencies = [
  "alphanumeric-sort",
  "getset",
