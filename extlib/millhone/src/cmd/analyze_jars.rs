@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     fs::File,
-    io::Read,
+    io::{BufWriter, Read},
     path::PathBuf,
 };
 
@@ -9,25 +9,16 @@ use clap::Parser;
 use fingerprint::Combined;
 use getset::Getters;
 use serde::{Deserialize, Serialize};
-use stable_eyre::{eyre::Context, Report};
+use stable_eyre::{eyre::Context, Report, Result};
 use tar::{Archive, Entry};
-use thiserror::Error;
 use tracing::{debug, info, info_span, warn};
 use typed_builder::TypedBuilder;
-
-/// Tar errors are just [`std::io::Error`].
-/// This macro is a bit cleaner to wrap them and adds a little context.
-macro_rules! wrap_tar_err {
-    ($tar_operation_str:expr, $operation:expr) => {
-        $operation.map_err(|e| Error::ReadTar($tar_operation_str.to_string(), e))
-    };
-}
 
 #[derive(Debug, Parser, Getters)]
 #[getset(get = "pub")]
 #[clap(version)]
 pub struct Subcommand {
-    /// The tar file image to search and fingerprint JARs in.
+    /// The tar file image to search and fingerprint jars in.
     image_tar_file: PathBuf,
 }
 
@@ -45,33 +36,12 @@ struct OciManifest {
 
 #[derive(Debug, PartialEq, Eq, Serialize, TypedBuilder)]
 struct JarAnalysis {
-    // A vector of the Jars discovered during an analysis.
+    /// Jars and fingerprints associated with each layer in a jar file.
     discovered_jars: HashMap<PathBuf, Vec<DiscoveredJar>>,
 }
 
-#[derive(Debug, Error)]
-pub enum Error {
-    /// Encountered when we can't open the requisite file.
-    #[error("Open file {0}")]
-    OpenFile(std::io::Error),
-
-    /// Encountered when an archive operation fails.
-    #[error("Tar operation '{0}': {1}")]
-    ReadTar(String, std::io::Error),
-
-    /// Encountered when a manifest file is found but cannot be parsed.
-    #[error("Parsing manifest file {0} {1}")]
-    ParseManifest(PathBuf, serde_json::Error),
-
-    #[error("Reading buffer {0}")]
-    ReadBuffer(std::io::Error),
-
-    #[error("Generating fingerprint {0}")]
-    GenerateFingerprint(fingerprint::Error),
-}
-
 #[tracing::instrument]
-pub fn main(opts: Subcommand) -> Result<(), Report> {
+pub fn main(opts: Subcommand) -> Result<()> {
     let tar_filename = opts.image_tar_file();
     let jar_analysis = JarAnalysis {
         discovered_jars: jars_in_container(opts.image_tar_file())
@@ -86,7 +56,7 @@ pub fn main(opts: Subcommand) -> Result<(), Report> {
 /// For each one found, fingerprints it and reports all those fingerprints along with their
 /// layer and path.
 #[tracing::instrument]
-fn jars_in_container(image_path: &PathBuf) -> Result<HashMap<PathBuf, Vec<DiscoveredJar>>, Error> {
+fn jars_in_container(image_path: &PathBuf) -> Result<HashMap<PathBuf, Vec<DiscoveredJar>>> {
     // Visit each layer and fingerprint the JARs within.
     info!("inspecting container");
     // May have to make two copies of this Archive, idk if it can be iterated twice.
@@ -104,8 +74,8 @@ fn jars_in_container(image_path: &PathBuf) -> Result<HashMap<PathBuf, Vec<Discov
 
         let layer = path.to_path_buf();
         // Layers should have a form like blob
-        let layer_discoveries = jars_in_layer(entry)
-            .with_context(|| format!("read layer '{layer}'"))?;
+        let layer_discoveries =
+            jars_in_layer(entry).with_context(|| format!("read layer '{layer:?}'"))?;
         discoveries.insert(layer, layer_discoveries);
     }
 
@@ -115,45 +85,48 @@ fn jars_in_container(image_path: &PathBuf) -> Result<HashMap<PathBuf, Vec<Discov
 /// Open and unpack a file and put it into a tar.
 /// This is done repeatedly because `entries()` can only be read once from an Archive.
 #[tracing::instrument]
-fn unpack(path: &PathBuf) -> Result<Archive<File>, Error> {
-    let file = File::open(path).map_err(Error::OpenFile)?;
+fn unpack(path: &PathBuf) -> Result<Archive<File>> {
+    let file = File::open(path).context("open tar file")?;
     Ok(tar::Archive::new(file))
 }
 
 #[tracing::instrument(skip(entry))]
-fn jars_in_layer(entry: Entry<'_, impl Read>) -> Result<Vec<DiscoveredJar>, Error> {
+fn jars_in_layer(entry: Entry<'_, impl Read>) -> Result<Vec<DiscoveredJar>> {
     let mut discoveries = Vec::new();
 
     let mut entry_archive = tar::Archive::new(entry);
-    for entry in wrap_tar_err!("list entries in layer", entry_archive.entries())? {
-        let entry = wrap_tar_err!("read entry", entry)?;
-        let path = wrap_tar_err!("read path", entry.path())?;
+    for entry in entry_archive.entries().context("list entries in layer")? {
+        let entry = entry.context("read entry")?;
+        let path = entry.path().context("read path")?;
         if !path.to_string_lossy().ends_with(".jar") {
             debug!(?path, "skipped: not a jar file");
             continue;
         }
 
         let path = path.to_path_buf();
-        info_span!("jar", ?path).in_scope(|| {
+
+        info_span!("jar", ?path).in_scope(|| -> Result<()> {
             debug!("fingerprinting");
-            let entry = buffer(entry)?;
+            let entry = buffer(entry).context("Read jar file")?;
 
             match Combined::from_buffer(entry) {
-                Ok(fingerprint) => discoveries.push(DiscoveredJar { fingerprint, path })
+                Ok(fingerprint) => discoveries.push(DiscoveredJar { fingerprint, path }),
                 Err(e) => warn!("failed to fingerprint: {e:?}"),
             }
-        });
+
+            Ok(())
+        })?;
     }
 
     Ok(discoveries)
 }
 
 #[tracing::instrument]
-fn list_container_layers(layer_path: &PathBuf) -> Result<HashSet<PathBuf>, Error> {
+fn list_container_layers(layer_path: &PathBuf) -> Result<HashSet<PathBuf>> {
     let mut layers = HashSet::new();
 
     let mut container = unpack(layer_path)?;
-    for entry in wrap_tar_err!("list entries", container.entries())? {
+    for entry in container.entries().context("list entries")? {
         let entry = match entry {
             Ok(entry) => entry,
             Err(e) => {
@@ -177,7 +150,7 @@ fn list_container_layers(layer_path: &PathBuf) -> Result<HashSet<PathBuf>, Error
 
         info!(?path, "extracting manifests for image");
         let manifests: Vec<OciManifest> = serde_json::from_reader(entry)
-            .map_err(|e| Error::ParseManifest(layer_path.to_owned(), e))?;
+            .with_context(|| format!("parse manifest: {layer_path:?}"))?;
 
         for manifest in manifests {
             layers.extend(manifest.layers);
@@ -191,8 +164,8 @@ fn list_container_layers(layer_path: &PathBuf) -> Result<HashSet<PathBuf>, Error
 }
 
 #[tracing::instrument(skip(reader))]
-fn buffer(mut reader: impl Read) -> Result<Vec<u8>, Error> {
+fn buffer(mut reader: impl Read) -> Result<Vec<u8>> {
     let mut buf = Vec::new();
-    reader.read_to_end(&mut buf).map_err(Error::ReadBuffer)?;
+    reader.read_to_end(&mut buf).context("Read buffer")?;
     Ok(buf)
 }
