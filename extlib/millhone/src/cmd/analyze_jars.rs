@@ -22,10 +22,23 @@ pub struct Subcommand {
     image_tar_file: PathBuf,
 }
 
+const JAR_OBSERVATION: &str = "v1.discover.binary.jar";
+
 #[derive(Debug, PartialEq, Eq, Serialize, Clone)]
 struct DiscoveredJar {
+    kind: &'static str,
     path: PathBuf,
     fingerprints: Combined,
+}
+
+impl DiscoveredJar {
+    fn new(path: PathBuf, fingerprints: Combined) -> Self {
+        DiscoveredJar {
+            kind: JAR_OBSERVATION,
+            path,
+            fingerprints,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
@@ -110,7 +123,7 @@ fn jars_in_layer(entry: Entry<'_, impl Read>) -> Result<Vec<DiscoveredJar>> {
             let entry = buffer(entry).context("Read jar file")?;
 
             match Combined::from_buffer(entry) {
-                Ok(fingerprints) => discoveries.push(DiscoveredJar { fingerprints, path }),
+                Ok(fingerprints) => discoveries.push(DiscoveredJar::new(path, fingerprints)),
                 Err(e) => warn!("failed to fingerprint: {e:?}"),
             }
 
