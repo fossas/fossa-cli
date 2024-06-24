@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.9.23
 
 - Reachability: For organizations that don't have reachability turned on suppress messages about it. ([#1440](https://github.com/fossas/fossa-cli/pull/1440))
 
