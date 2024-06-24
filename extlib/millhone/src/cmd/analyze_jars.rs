@@ -47,10 +47,14 @@ struct OciManifest {
     layers: Vec<PathBuf>,
 }
 
+/// The path in the manifest file corresponding to a layer.
+#[derive(Debug, PartialEq, Eq, Serialize, Hash)]
+struct LayerPath(PathBuf);
+
 #[derive(Debug, PartialEq, Eq, Serialize, TypedBuilder)]
 struct JarAnalysis {
     /// Jars and fingerprints associated with each layer in a jar file.
-    discovered_jars: HashMap<PathBuf, Vec<DiscoveredJar>>,
+    discovered_jars: HashMap<LayerPath, Vec<DiscoveredJar>>,
 }
 
 #[tracing::instrument]
@@ -69,7 +73,7 @@ pub fn main(opts: Subcommand) -> Result<()> {
 /// For each one found, fingerprints it and reports all those fingerprints along with their
 /// layer and path.
 #[tracing::instrument]
-fn jars_in_container(image_path: &PathBuf) -> Result<HashMap<PathBuf, Vec<DiscoveredJar>>> {
+fn jars_in_container(image_path: &PathBuf) -> Result<HashMap<LayerPath, Vec<DiscoveredJar>>> {
     // Visit each layer and fingerprint the JARs within.
     info!("inspecting container");
     // May have to make two copies of this Archive, idk if it can be iterated twice.
@@ -89,7 +93,7 @@ fn jars_in_container(image_path: &PathBuf) -> Result<HashMap<PathBuf, Vec<Discov
         // Layers should have a form like blob
         let layer_discoveries =
             jars_in_layer(entry).with_context(|| format!("read layer '{layer:?}'"))?;
-        discoveries.insert(layer, layer_discoveries);
+        discoveries.insert(LayerPath(layer), layer_discoveries);
     }
 
     Ok(discoveries)
