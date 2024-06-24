@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module App.Fossa.Container.Sources.DockerArchive (
   analyzeFromDockerArchive,
@@ -18,7 +18,7 @@ import App.Fossa.Analyze.Types (
  )
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic), WithoutDefaultFilters (..))
 import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
-import App.Fossa.Container.Sources.JarAnalysis (analyzeJar)
+import App.Fossa.Container.Sources.JarAnalysis (analyzeContainerJars)
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Docker.Manifest (getImageDigest, getRepoTags)
 import Container.OsRelease (OsInfo (nameId, version), getOsInfo)
@@ -27,7 +27,7 @@ import Container.TarballReadFs (runTarballReadFSIO)
 import Container.Types (
   ContainerImageRaw (..),
   ContainerLayer (layerDigest),
-  ContainerScan (ContainerScan),
+  ContainerScan (..),
   ContainerScanImage (ContainerScanImage),
   ContainerScanImageLayer (ContainerScanImageLayer),
   baseLayer,
@@ -47,7 +47,7 @@ import Control.Carrier.TaskPool (withTaskPool)
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.AtomicCounter (AtomicCounter)
 import Control.Effect.Debug (Debug)
-import Control.Effect.Diagnostics (Diagnostics, context, fromEither, fromMaybeText)
+import Control.Effect.Diagnostics (Diagnostics, context, fromEither, fromMaybeText, recover)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Output (Output)
 import Control.Effect.Reader (Reader)
@@ -55,6 +55,7 @@ import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.TaskPool (TaskPool)
 import Control.Effect.Telemetry (Telemetry)
 import Control.Monad (void, when)
+import Data.BuildOutput (Observation (JarsInContainer))
 import Data.ByteString.Lazy qualified as BS
 import Data.FileTree.IndexFileTree (SomeFileTree, fixedVfsRoot)
 import Data.Flag (Flag, fromFlag)
@@ -101,8 +102,7 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
   capabilities <- sendIO getNumCapabilities
   containerTarball <- sendIO . BS.readFile $ toString tarball
 
-  -- Should catch fatal stuff here, if there's a fatal error we want to do regular analysis.
-  jarResults <- analyzeJar tarball
+  jarObservations <- maybe [] (map JarsInContainer) <$> recover (analyzeContainerJars tarball)
 
   image <- fromEither $ parse containerTarball
 
@@ -125,13 +125,16 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
   let mkScan :: [ContainerScanImageLayer] -> ContainerScan
       mkScan layers =
         ContainerScan
-          ( ContainerScanImage
-              (nameId osInfo)
-              (version osInfo)
-              layers
-          )
-          imageDigest
-          imageTag
+          { imageData =
+              ( ContainerScanImage
+                  (nameId osInfo)
+                  (version osInfo)
+                  layers
+              )
+          , imageDigest
+          , imageTag
+          , jarObservations
+          }
 
   if hasOtherLayers image
     then do
@@ -235,7 +238,7 @@ runDependencyAnalysis ::
   Flag WithoutDefaultFilters ->
   DiscoveredProject proj ->
   m ()
-runDependencyAnalysis basedir filters withoutDefaultFilters project@DiscoveredProject{..} = do
+runDependencyAnalysis basedir filters withoutDefaultFilters project@DiscoveredProject{projectType, projectPath, projectData} = do
   let dpi = DiscoveredProjectIdentifier projectPath projectType
   let hasNonProductionPath =
         not (fromFlag WithoutDefaultFilters withoutDefaultFilters) && isDefaultNonProductionPath basedir projectPath

@@ -229,10 +229,10 @@ library
     App.Fossa.Container.AnalyzeNative
     App.Fossa.Container.ListTargets
     App.Fossa.Container.Scan
-    App.Fossa.Container.Sources.JarAnalysis
     App.Fossa.Container.Sources.Discovery
     App.Fossa.Container.Sources.DockerArchive
     App.Fossa.Container.Sources.DockerEngine
+    App.Fossa.Container.Sources.JarAnalysis
     App.Fossa.Container.Sources.Podman
     App.Fossa.Container.Sources.Registry
     App.Fossa.Container.Test
@@ -372,6 +372,7 @@ library
     Data.List.Extra
     Data.Maybe.Extra
     Data.Monoid.Extra
+    Data.BuildOutput
     Data.Rpm.DbHeaderBlob
     Data.Rpm.DbHeaderBlob.Internal
     Data.Set.NonEmpty

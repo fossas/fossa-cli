@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module Container.Types (
   -- * Raw Image
@@ -25,6 +25,7 @@ import Container.Docker.Manifest (ManifestJson)
 import Control.DeepSeq (NFData)
 import Data.Aeson (object)
 import Data.Aeson.Types (ToJSON, toJSON, (.=))
+import Data.BuildOutput (Observation)
 import Data.Foldable (foldl')
 import Data.List.NonEmpty as NonEmpty (NonEmpty, head, tail)
 import Data.Sequence (Seq)
@@ -77,6 +78,7 @@ data ContainerScan = ContainerScan
   { imageData :: ContainerScanImage
   , imageDigest :: Text
   , imageTag :: Text
+  , jarObservations :: [Observation]
   }
   deriving (Show, Eq, Ord)
 
@@ -91,7 +93,7 @@ data ContainerScanImage = ContainerScanImage
   deriving (Show, Eq, Ord)
 
 instance ToJSON ContainerScanImage where
-  toJSON ContainerScanImage{..} =
+  toJSON ContainerScanImage{imageOs, imageOsRelease, imageLayers} =
     object
       [ "os" .= imageOs
       , "osRelease" .= imageOsRelease
@@ -105,7 +107,7 @@ data ContainerScanImageLayer = ContainerScanImageLayer
   deriving (Show, Eq, Ord)
 
 instance ToJSON ContainerScanImageLayer where
-  toJSON ContainerScanImageLayer{..} =
+  toJSON ContainerScanImageLayer{layerId, srcUnits} =
     object
       [ "layerId" .= layerId
       , "srcUnits" .= srcUnits
