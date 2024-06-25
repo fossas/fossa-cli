@@ -28,7 +28,6 @@ import Container.Types (
   ContainerImageRaw (ContainerImageRaw),
   ContainerLayer (..),
   LayerPath,
-  layerId,
   mkLayerPath,
  )
 import Control.Algebra (Has)

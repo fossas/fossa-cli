@@ -16,6 +16,10 @@ module Container.Types (
   ContainerScanImage (..),
   ContainerScanImageLayer (..),
 
+  -- * Jar Analysis Related Types
+  JarObservation (..),
+  DiscoveredJars (..),
+
   -- * helpers
   baseLayer,
   otherLayersSquashed,
@@ -25,17 +29,17 @@ module Container.Types (
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Docker.Manifest (ManifestJson)
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, FromJSONKey, object)
+import Data.Aeson (FromJSON, FromJSONKey, Value, object, parseJSON, withObject, (.:))
 import Data.Aeson.Types (ToJSON, toJSON, (.=))
 import Data.Foldable (foldl')
 import Data.List.NonEmpty as NonEmpty (NonEmpty, head, tail)
+import Data.Map qualified as Map
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Srclib.Types (SourceUnit)
-import Data.BuildOutput (Observation)
 
 data ContainerImageRaw = ContainerImageRaw
   { layers :: NonEmpty.NonEmpty ContainerLayer
@@ -49,15 +53,6 @@ baseLayer img = NonEmpty.head $ layers img
 
 hasOtherLayers :: ContainerImageRaw -> Bool
 hasOtherLayers = not . null . NonEmpty.tail . layers
-
--- | The Path within a container archive to the archive containing that a layer.
-newtype LayerPath = LayerPath Text
-  deriving (Eq, Ord, Show)
-  deriving (FromJSONKey, FromJSON) via Text
-  deriving newtype (NFData, ToText)
-
-mkLayerPath :: ToText t => t -> LayerPath
-mkLayerPath = LayerPath . toText
 
 data ContainerLayer = ContainerLayer
   { layerChangeSets :: Seq ContainerFSChangeSet
@@ -98,7 +93,6 @@ data ContainerScan = ContainerScan
   { imageData :: ContainerScanImage
   , imageDigest :: Text
   , imageTag :: Text
-  , jarObservations :: [Observation]
   }
   deriving (Show, Eq, Ord)
 
@@ -123,12 +117,39 @@ instance ToJSON ContainerScanImage where
 data ContainerScanImageLayer = ContainerScanImageLayer
   { layerId :: Text
   , srcUnits :: [SourceUnit]
+  , observations :: [JarObservation]
   }
   deriving (Show, Eq, Ord)
 
 instance ToJSON ContainerScanImageLayer where
-  toJSON ContainerScanImageLayer{layerId, srcUnits} =
+  toJSON ContainerScanImageLayer{layerId, srcUnits, observations} =
     object
       [ "layerId" .= layerId
       , "srcUnits" .= srcUnits
+      , "observations" .= observations
       ]
+
+-- | The Path within a container archive to the archive containing that a layer.
+newtype LayerPath = LayerPath Text
+  deriving (Eq, Ord, Show)
+  deriving (FromJSONKey, FromJSON) via Text
+  deriving newtype (NFData, ToText)
+
+mkLayerPath :: ToText t => t -> LayerPath
+mkLayerPath = LayerPath . toText
+
+-- The CLI doesn't look at these values, so don't bother parsing them to anything specific.
+-- This lets millhone modify individual observations more-or-less freely.
+newtype JarObservation = JarObservation
+  {inner :: Value}
+  deriving (Eq, Ord, Show, Generic)
+  deriving (ToJSON, FromJSON) via Value
+
+-- | Output parse type for millhone.
+newtype DiscoveredJars = DiscoveredJars
+  { discoveredJars :: Map.Map LayerPath [JarObservation]
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON DiscoveredJars where
+  parseJSON = withObject "JarInput" $ \o -> DiscoveredJars <$> o .: "discovered_jars"

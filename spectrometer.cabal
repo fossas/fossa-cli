@@ -372,7 +372,6 @@ library
     Data.List.Extra
     Data.Maybe.Extra
     Data.Monoid.Extra
-    Data.BuildOutput
     Data.Rpm.DbHeaderBlob
     Data.Rpm.DbHeaderBlob.Internal
     Data.Set.NonEmpty

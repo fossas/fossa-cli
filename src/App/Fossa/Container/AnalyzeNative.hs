@@ -109,6 +109,7 @@ analyze cfg = do
 
   _ <- case scanDestination cfg of
     OutputStdout -> pure ()
+    -- TODO: refactor the upload into this code and share the organization.
     UploadScan apiOpts projectMetadata ->
       void
         . runFossaApiClient apiOpts

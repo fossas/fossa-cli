@@ -26,11 +26,12 @@ import Container.Tarball (mkFsFromChangeset, parse)
 import Container.TarballReadFs (runTarballReadFSIO)
 import Container.Types (
   ContainerImageRaw (..),
-  ContainerLayer (layerDigest),
+  ContainerLayer (..),
   ContainerScan (..),
   ContainerScanImage (ContainerScanImage),
   ContainerScanImageLayer (ContainerScanImageLayer),
   baseLayer,
+  discoveredJars,
   hasOtherLayers,
   otherLayersSquashed,
  )
@@ -54,14 +55,14 @@ import Control.Effect.Reader (Reader)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.TaskPool (TaskPool)
 import Control.Effect.Telemetry (Telemetry)
-import Control.Monad (void, when)
-import Data.BuildOutput (Observation (JarsInContainer))
+import Control.Monad (join, void, when)
 import Data.ByteString.Lazy qualified as BS
 import Data.FileTree.IndexFileTree (SomeFileTree, fixedVfsRoot)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
-import Data.Maybe (listToMaybe, mapMaybe)
-import Data.String.Conversion (ToString (toString))
+import Data.Map qualified as Map
+import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
+import Data.String.Conversion (ToString (toString), showText)
 import Data.Text (Text)
 import Data.Text.Extra (breakOnEndAndRemove, showT)
 import Discovery.Filters (AllFilters, MavenScopeFilters (..), isDefaultNonProductionPath)
@@ -74,6 +75,7 @@ import Effect.Logger (
   Severity (..),
   logDebug,
   logInfo,
+  logStdout,
   logWarn,
   viaShow,
  )
@@ -102,7 +104,7 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
   capabilities <- sendIO getNumCapabilities
   containerTarball <- sendIO . BS.readFile $ toString tarball
 
-  jarObservations <- maybe [] (map JarsInContainer) <$> recover (analyzeContainerJars tarball)
+  observations <- recover (analyzeContainerJars tarball)
 
   image <- fromEither $ parse containerTarball
 
@@ -114,7 +116,8 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
   -- Analyze Base Layer
   logInfo "Analyzing Base Layer"
   baseFs <- context "Building base layer FS" $ mkFsFromChangeset $ baseLayer image
-  let baseDigest = layerDigest . baseLayer $ image
+  let imageBaseLayer = baseLayer image
+      baseDigest = layerDigest imageBaseLayer
   osInfo <-
     context "Retrieving OS Information" $
       runTarballReadFSIO baseFs tarball getOsInfo
@@ -133,8 +136,15 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
               )
           , imageDigest
           , imageTag
-          , jarObservations
           }
+
+  let (baseObservations, otherObservations) = fromMaybe ([], []) $ do
+        path <- layerPath imageBaseLayer
+        observations' <- observations
+        let (baseObservations', otherObservations') = Map.partitionWithKey (\k _ -> k == path) (discoveredJars observations')
+        Just (join $ Map.elems baseObservations', join $ Map.elems otherObservations')
+
+  let baseScanImageLayer = ContainerScanImageLayer baseDigest baseUnits baseObservations
 
   if hasOtherLayers image
     then do
@@ -144,12 +154,15 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
       otherUnits <-
         context "Analyzing from Other Layers" $
           analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo fs tarball
-      pure $
-        mkScan
-          [ ContainerScanImageLayer baseDigest baseUnits
-          , ContainerScanImageLayer squashedDigest otherUnits
-          ]
-    else pure $ mkScan [ContainerScanImageLayer baseDigest baseUnits]
+
+      let scan =
+            mkScan
+              [ baseScanImageLayer
+              , ContainerScanImageLayer squashedDigest otherUnits otherObservations
+              ]
+      logStdout . showText $ scan
+      pure scan
+    else pure $ mkScan [baseScanImageLayer]
 
 analyzeLayer ::
   ( Has Diagnostics sig m
