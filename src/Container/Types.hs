@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Container.Types (
@@ -8,6 +8,8 @@ module Container.Types (
   ContainerImageRaw (..),
   ContainerLayer (..),
   ContainerFSChangeSet (..),
+  LayerPath,
+  mkLayerPath,
 
   -- * Scanned Image
   ContainerScan (..),
@@ -23,16 +25,17 @@ module Container.Types (
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Docker.Manifest (ManifestJson)
 import Control.DeepSeq (NFData)
-import Data.Aeson (object)
+import Data.Aeson (FromJSON, FromJSONKey, object)
 import Data.Aeson.Types (ToJSON, toJSON, (.=))
-import Data.BuildOutput (Observation)
 import Data.Foldable (foldl')
 import Data.List.NonEmpty as NonEmpty (NonEmpty, head, tail)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
+import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Srclib.Types (SourceUnit)
+import Data.BuildOutput (Observation)
 
 data ContainerImageRaw = ContainerImageRaw
   { layers :: NonEmpty.NonEmpty ContainerLayer
@@ -47,10 +50,21 @@ baseLayer img = NonEmpty.head $ layers img
 hasOtherLayers :: ContainerImageRaw -> Bool
 hasOtherLayers = not . null . NonEmpty.tail . layers
 
+-- | The Path within a container archive to the archive containing that a layer.
+newtype LayerPath = LayerPath Text
+  deriving (Eq, Ord, Show)
+  deriving (FromJSONKey, FromJSON) via Text
+  deriving newtype (NFData, ToText)
+
+mkLayerPath :: ToText t => t -> LayerPath
+mkLayerPath = LayerPath . toText
+
 data ContainerLayer = ContainerLayer
   { layerChangeSets :: Seq ContainerFSChangeSet
   , lastOffset :: TarEntryOffset
   , layerDigest :: Text
+  , layerPath :: Maybe LayerPath
+  -- ^ When layers are squashed, a layer path may no longer be valid.
   }
   deriving (Show, Eq, Generic, NFData)
 
@@ -61,10 +75,16 @@ otherLayersSquashed containerImage = foldl' (<>) mempty restOfLayers
     restOfLayers = NonEmpty.tail (layers containerImage)
 
 instance Semigroup ContainerLayer where
-  ContainerLayer lhs _ _ <> ContainerLayer rhs offset digest = ContainerLayer (lhs <> rhs) offset digest
+  ContainerLayer lhs _ _ _ <> ContainerLayer rhs offset digest _ = ContainerLayer (lhs <> rhs) offset digest Nothing
 
 instance Monoid ContainerLayer where
-  mempty = ContainerLayer Seq.empty 0 mempty
+  mempty =
+    ContainerLayer
+      { layerChangeSets = Seq.empty
+      , lastOffset = 0
+      , layerDigest = mempty
+      , layerPath = Nothing
+      }
 
 -- | Record indicating a change fs event, with filepath and reference.
 data ContainerFSChangeSet

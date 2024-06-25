@@ -26,12 +26,10 @@ import Container.Errors (ContainerImgParsingError (..))
 import Container.Types (
   ContainerFSChangeSet (InsertOrUpdate, Whiteout),
   ContainerImageRaw (ContainerImageRaw),
-  ContainerLayer (
-    ContainerLayer,
-    lastOffset,
-    layerChangeSets,
-    layerDigest
-  ),
+  ContainerLayer (..),
+  LayerPath,
+  layerId,
+  mkLayerPath,
  )
 import Control.Algebra (Has)
 import Control.Monad (unless)
@@ -143,7 +141,7 @@ mkLayer (TarEntries entries tarOffset) (layerId, layerTarball) =
     (layerTarballEntry :< _) -> case entryContent $ fst layerTarballEntry of
       (NormalFile c _) -> do
         let rawEntries = Tar.read' c
-        case mkLayerFromOffset layerId (snd layerTarballEntry) rawEntries of
+        case mkLayerFromOffset layerId (mkLayerPath layerTarball) (snd layerTarballEntry) rawEntries of
           Left err -> Left err
           Right layer -> Right layer
 
@@ -164,10 +162,11 @@ mkLayer (TarEntries entries tarOffset) (layerId, layerTarball) =
 
 mkLayerFromOffset ::
   Text ->
+  LayerPath ->
   TarEntryOffset ->
   Tar.Entries Tar.FormatError ->
   Either ContainerImgParsingError ContainerLayer
-mkLayerFromOffset layerId imgOffset = build (ContainerLayer mempty 0 layerId)
+mkLayerFromOffset layerId layerPath imgOffset = build $ mempty{layerDigest = layerId}
   where
     build builder (Tar.Next e es) = build (addNextChangeSet imgOffset e builder) es
     build builder Tar.Done = Right builder
@@ -179,6 +178,7 @@ mkLayerFromOffset layerId imgOffset = build (ContainerLayer mempty 0 layerId)
         { layerChangeSets = updateChangeSet offset entry containerLayer
         , lastOffset = nextEntryOffset entry (lastOffset containerLayer)
         , layerDigest = layerId
+        , layerPath = Just layerPath
         }
 
     updateChangeSet :: TarEntryOffset -> Tar.Entry -> ContainerLayer -> Seq ContainerFSChangeSet
@@ -202,9 +202,9 @@ mkLayerFromOffset layerId imgOffset = build (ContainerLayer mempty 0 layerId)
         else InsertOrUpdate (filePathOf tarPath) offset
 
 mkFsFromChangeset :: (Has Logger sig m) => ContainerLayer -> m (SomeFileTree TarEntryOffset)
-mkFsFromChangeset (ContainerLayer changeSet _ layerDigest) = do
+mkFsFromChangeset ContainerLayer{layerChangeSets, layerDigest} = do
   logDebug $ "Building fs from layer " <> pretty layerDigest <> " changeset"
-  (emptyDirs, tree) <- foldlM (flip applyChangeSet) (Set.empty, empty) changeSet
+  (emptyDirs, tree) <- foldlM (flip applyChangeSet) (Set.empty, empty) layerChangeSets
 
   unless (null emptyDirs) $ do
     logWarn $
