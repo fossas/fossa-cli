@@ -62,7 +62,7 @@ import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
-import Data.String.Conversion (ToString (toString), showText)
+import Data.String.Conversion (ToString (toString))
 import Data.Text (Text)
 import Data.Text.Extra (breakOnEndAndRemove, showT)
 import Discovery.Filters (AllFilters, MavenScopeFilters (..), isDefaultNonProductionPath)
@@ -75,7 +75,6 @@ import Effect.Logger (
   Severity (..),
   logDebug,
   logInfo,
-  logStdout,
   logWarn,
   viaShow,
  )
