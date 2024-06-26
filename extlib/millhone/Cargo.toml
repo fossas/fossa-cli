@@ -36,7 +36,7 @@ rayon = "1.8.0"
 atty = "0.2.14"
 tracing-subscriber = { version = "0.3.17", features = ["json"] }
 lazy-regex = { version = "3.0.2", features = ["std", "regex"] }
-fingerprint = { git = "https://github.com/fossas/lib-fingerprint.git", tag = "v3.0.0", version = "3.0.0" }
+fingerprint = { git = "https://github.com/fossas/lib-fingerprint.git", tag = "v3.0.0", default-features = false, features = ["fp-content-serialize-base64"] }
 tar = "0.4.41"
 
 [dev-dependencies]
