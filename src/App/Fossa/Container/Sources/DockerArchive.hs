@@ -160,7 +160,6 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
               [ baseScanImageLayer
               , ContainerScanImageLayer squashedDigest otherUnits otherObservations
               ]
-      logStdout . showText $ scan
       pure scan
     else pure $ mkScan [baseScanImageLayer]
 
