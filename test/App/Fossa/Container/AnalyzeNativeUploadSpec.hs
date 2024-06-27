@@ -7,13 +7,12 @@ import Container.Types (ContainerScan (..), ContainerScanImage (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Data.Flag (Flag, toFlag)
-import Fossa.API.Types (OrgId (OrgId), Organization (..), Subscription (Premium), uploadLocator)
+import Fossa.API.Types (Organization (..), uploadLocator)
 import Srclib.Types (Locator)
 import Test.Effect (expectFatal', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe)
 import Test.MockApi (MockApi, alwaysReturns)
-import Types (ArchiveUploadType (CLILicenseScan))
 
 spec :: Spec
 spec = do
