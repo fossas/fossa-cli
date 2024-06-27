@@ -62,7 +62,7 @@ pub fn main(opts: Subcommand) -> Result<()> {
     let tar_filename = opts.image_tar_file();
     let jar_analysis = JarAnalysis {
         discovered_jars: jars_in_container(opts.image_tar_file())
-            .with_context(|| format!("Analyze Jar Archive {:?}", tar_filename))?,
+            .with_context(|| format!("analyze container: {:?}", tar_filename))?,
     };
 
     let mut stdout = BufWriter::new(std::io::stdout());
@@ -76,7 +76,6 @@ pub fn main(opts: Subcommand) -> Result<()> {
 fn jars_in_container(image_path: &PathBuf) -> Result<HashMap<LayerPath, Vec<DiscoveredJar>>> {
     // Visit each layer and fingerprint the JARs within.
     info!("inspecting container");
-    // May have to make two copies of this Archive, idk if it can be iterated twice.
     let layers = list_container_layers(image_path)?;
     let mut discoveries = HashMap::new();
 
@@ -124,7 +123,7 @@ fn jars_in_layer(entry: Entry<'_, impl Read>) -> Result<Vec<DiscoveredJar>> {
 
         info_span!("jar", ?path).in_scope(|| -> Result<()> {
             debug!("fingerprinting");
-            let entry = buffer(entry).context("Read jar file")?;
+            let entry = buffer(entry).context("read jar file")?;
 
             match Combined::from_buffer(entry) {
                 Ok(fingerprints) => discoveries.push(DiscoveredJar::new(path, fingerprints)),
@@ -155,7 +154,7 @@ fn list_container_layers(layer_path: &PathBuf) -> Result<HashSet<PathBuf>> {
         let path = match entry.path() {
             Ok(path) => path,
             Err(e) => {
-                warn!("Entry path {:?}", e);
+                warn!("Failed to read entry path: {e:?}");
                 continue;
             }
         };
