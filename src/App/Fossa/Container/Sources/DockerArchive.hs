@@ -104,8 +104,9 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
   containerTarball <- sendIO . BS.readFile $ toString tarball
 
   observations <- recover $
-                  do logInfo "Searching for JARs in container image."
-                     analyzeContainerJars tarball
+    do
+      logInfo "Searching for JARs in container image."
+      analyzeContainerJars tarball
 
   image <- fromEither $ parse containerTarball
 
