@@ -28,7 +28,7 @@ millhoneJarAnalyzeCmd cmdPath imageTarFile =
     , cmdArgs =
         [ "--log-to"
         , "stderr"
-        , "analyze-jars"
+        , "analyze-container"
         , toText imageTarFile
         ]
     , cmdAllowErr = Never
