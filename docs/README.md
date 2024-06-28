@@ -99,6 +99,7 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
   - [From Docker Engine](./references/subcommands/container/scanner.md#2-from-docker-engine)
   - [From Container Registries](./references/subcommands/container/scanner.md#3-from-registries)
 - [Supported Container Package Managers](./references/subcommands/container/scanner.md#supported-container-package-managers)
+  - [Container Jar File Analysis](./references/subcommands/container/scanner.md#container-jar-analysis)
 - [Viewing Detected Projects](./references/subcommands/container/scanner.md#view-detected-projects)
 - [Configuring Container Analysis Targets](./references/subcommands/container/scanner.md#utilize-analysis-target-configuration)
 - [Integrating Container Scanning in CI](./walkthroughs/container-scanning-generic-ci.md)

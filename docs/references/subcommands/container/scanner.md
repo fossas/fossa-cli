@@ -8,6 +8,7 @@
     - [2) From Docker Engine](#2-from-docker-engine)
     - [3) From registries](#3-from-registries)
   - [Container image analysis](#container-image-analysis)
+    - [Container Jar analysis](#container-jar-analysis)
     - [View detected projects](#view-detected-projects)
       - [Command output](#command-output)
     - [Utilize analysis target configuration](#utilize-analysis-target-configuration)
@@ -204,6 +205,14 @@ The new container scanner scans in two steps:
 1. The base layer.
 2. The rest of the layers, squashed. 
 
+### Container JAR analysis
+
+The container analyzer will try to find Java Archive (Jar) files inside each layer.
+It will then report them to FOSSA which will try to match the Jar files to the project they are a build artifact from.
+
+This process relies on there being a back-end that can perform that analysis.
+SaaS customers should have this functionality available but on-prem customers may need to contact FOSSA support to have it enabled.
+
 ### Supported Container Package Managers
 The following package managers are supported in container scanning:
 
@@ -225,6 +234,7 @@ The following package managers are supported in container scanning:
 | Nim (nimble)                         | :warning:          | [Nim](./../../strategies/languages/nim/nimble.md)                |
 | Dart (pub)                           | :warning:          | [Dart](./../../strategies/languages/dart/pub.md)                 |
 | Maven                                | :warning:          | [Maven](./../../strategies/languages/maven/maven.md)             |
+| Java Jar Files                       | :white_check_mark: | [Container Jar Analysis](#container-jar-analysis)               |
 | Golang (gomod)                       | :x:                | N/A                                                              |
 | Rust (cargo)                         | :x:                | N/A                                                              |
 | Haskell (cabal, stack)               | :x:                | N/A                                                              |
