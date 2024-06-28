@@ -48,7 +48,7 @@ import Control.Carrier.TaskPool (withTaskPool)
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.AtomicCounter (AtomicCounter)
 import Control.Effect.Debug (Debug)
-import Control.Effect.Diagnostics (Diagnostics, context, fromEither, fromMaybeText, recover)
+import Control.Effect.Diagnostics (Diagnostics, context, fromEither, fromMaybeText, warnThenRecover)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Output (Output)
 import Control.Effect.Reader (Reader)
@@ -56,12 +56,13 @@ import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.TaskPool (TaskPool)
 import Control.Effect.Telemetry (Telemetry)
 import Control.Monad (join, void, when)
+import Data.Bifunctor (bimap)
 import Data.ByteString.Lazy qualified as BS
 import Data.FileTree.IndexFileTree (SomeFileTree, fixedVfsRoot)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
+import Data.Maybe (listToMaybe, mapMaybe)
 import Data.String.Conversion (ToString (toString))
 import Data.Text (Text)
 import Data.Text.Extra (breakOnEndAndRemove, showT)
@@ -103,7 +104,7 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
   capabilities <- sendIO getNumCapabilities
   containerTarball <- sendIO . BS.readFile $ toString tarball
 
-  observations <- recover $
+  observations <- warnThenRecover @Text "Error Running JAR analyzer (millhone)" $
     do
       logInfo "Searching for JARs in container image."
       analyzeContainerJars tarball
@@ -140,11 +141,18 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
           , imageTag
           }
 
-  let (baseObservations, otherObservations) = fromMaybe ([], []) $ do
-        path <- layerPath imageBaseLayer
-        observations' <- observations
-        let (baseObservations', otherObservations') = Map.partitionWithKey (\k _ -> k == path) (discoveredJars observations')
-        Just (join $ Map.elems baseObservations', join $ Map.elems otherObservations')
+  (baseObservations, otherObservations) <-
+    case (observations, layerPath imageBaseLayer) of
+      (Just observations', baseLayerPath) ->
+        pure
+          . bimap (join . Map.elems) (join . Map.elems)
+          -- If a base layer does not exist not exist, jar observations will appear in "other" layers.
+          . Map.partitionWithKey (\layerPath _ -> Just layerPath == baseLayerPath)
+          $ (discoveredJars observations')
+      _ -> do
+        logInfo "Failed to run Jar analyzer."
+        logInfo "If you were expecting JAR analysis results, run with '--debug' for more info."
+        pure ([], [])
 
   let baseScanImageLayer = ContainerScanImageLayer baseDigest baseUnits baseObservations
 
