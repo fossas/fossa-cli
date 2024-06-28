@@ -34,7 +34,7 @@ millhoneJarAnalyzeCmd cmdPath imageTarFile =
     , cmdAllowErr = Never
     }
 
--- | Analyze a single Jar file for fingerprints using Millhone.
+-- | Analyze a container for Jar fingerprints using Millhone.
 analyzeContainerJars :: (Has Logger sig m, Has Exec sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m DiscoveredJars
 analyzeContainerJars imagePath = withMillhoneBinary $ \binaryPaths ->
   context ("Searching for JARs in " <> toText imagePath) $ do

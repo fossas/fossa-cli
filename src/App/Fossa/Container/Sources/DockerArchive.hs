@@ -103,7 +103,9 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
   capabilities <- sendIO getNumCapabilities
   containerTarball <- sendIO . BS.readFile $ toString tarball
 
-  observations <- recover (analyzeContainerJars tarball)
+  observations <- recover $
+                  do logInfo "Searching for JARs in container image."
+                     analyzeContainerJars tarball
 
   image <- fromEither $ parse containerTarball
 
