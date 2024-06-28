@@ -234,7 +234,7 @@ The following package managers are supported in container scanning:
 | Nim (nimble)                         | :warning:          | [Nim](./../../strategies/languages/nim/nimble.md)                |
 | Dart (pub)                           | :warning:          | [Dart](./../../strategies/languages/dart/pub.md)                 |
 | Maven                                | :warning:          | [Maven](./../../strategies/languages/maven/maven.md)             |
-| Java Jar Files                       | :white_check_mark: | [Container Jar Analysis](#container-jar-analysis)_               |
+| Java Jar Files                       | :white_check_mark: | [Container Jar Analysis](#container-jar-analysis)               |
 | Golang (gomod)                       | :x:                | N/A                                                              |
 | Rust (cargo)                         | :x:                | N/A                                                              |
 | Haskell (cabal, stack)               | :x:                | N/A                                                              |
