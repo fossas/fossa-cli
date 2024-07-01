@@ -24,9 +24,9 @@ pub struct Subcommand {
 
 const JAR_OBSERVATION: &str = "v1.discover.binary.jar";
 
-#[derive(Debug, PartialEq, Eq, Serialize, Clone)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Clone)]
 struct DiscoveredJar {
-    kind: &'static str,
+    kind: String,
     path: PathBuf,
     fingerprints: Combined,
 }
@@ -34,7 +34,7 @@ struct DiscoveredJar {
 impl DiscoveredJar {
     fn new(path: PathBuf, fingerprints: Combined) -> Self {
         DiscoveredJar {
-            kind: JAR_OBSERVATION,
+            kind: JAR_OBSERVATION.to_owned(),
             path,
             fingerprints,
         }
@@ -48,10 +48,10 @@ struct OciManifest {
 }
 
 /// The path in the manifest file corresponding to a layer.
-#[derive(Debug, PartialEq, Eq, Serialize, Hash)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
 struct LayerPath(PathBuf);
 
-#[derive(Debug, PartialEq, Eq, Serialize, TypedBuilder)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 struct JarAnalysis {
     /// Jars and fingerprints associated with each layer in a jar file.
     discovered_jars: HashMap<LayerPath, Vec<DiscoveredJar>>,
@@ -60,10 +60,8 @@ struct JarAnalysis {
 #[tracing::instrument]
 pub fn main(opts: Subcommand) -> Result<()> {
     let tar_filename = opts.image_tar_file();
-    let jar_analysis = JarAnalysis {
-        discovered_jars: jars_in_container(opts.image_tar_file())
-            .with_context(|| format!("analyze container: {:?}", tar_filename))?,
-    };
+    let jar_analysis = jars_in_container(opts.image_tar_file())
+        .with_context(|| format!("analyze container: {:?}", tar_filename))?;
 
     let mut stdout = BufWriter::new(std::io::stdout());
     serde_json::to_writer(&mut stdout, &jar_analysis).context("Serialize Results")
@@ -73,7 +71,7 @@ pub fn main(opts: Subcommand) -> Result<()> {
 /// For each one found, fingerprints it and reports all those fingerprints along with their
 /// layer and path.
 #[tracing::instrument]
-fn jars_in_container(image_path: &PathBuf) -> Result<HashMap<LayerPath, Vec<DiscoveredJar>>> {
+fn jars_in_container(image_path: &PathBuf) -> Result<JarAnalysis> {
     // Visit each layer and fingerprint the JARs within.
     info!("inspecting container");
     let layers = list_container_layers(image_path)?;
@@ -95,7 +93,9 @@ fn jars_in_container(image_path: &PathBuf) -> Result<HashMap<LayerPath, Vec<Disc
         discoveries.insert(LayerPath(layer), layer_discoveries);
     }
 
-    Ok(discoveries)
+    Ok(JarAnalysis {
+        discovered_jars: discoveries,
+    })
 }
 
 /// Open and unpack a file and put it into a tar.
@@ -184,4 +184,55 @@ fn buffer(mut reader: impl Read) -> Result<Vec<u8>> {
     let mut buf = Vec::new();
     reader.read_to_end(&mut buf).context("Read buffer")?;
     Ok(buf)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const MILLHONE_OUT: &str = r#"
+{
+  "discovered_jars": {
+    "blobs/sha256/61aed1a8baa251dee118b9ab203c1e420f0eda0a9b3f9322d67d235dd27a12ee": [
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "jackson-annotations-2.17.1.jar",
+        "fingerprints": {
+          "v1.raw.jar": "wjGJk8cvY4tpKcUC5r8YuO15Wfv+rVuyWANBYCUIeDs=",
+          "v1.class.jar": "t2Btr6rNrvzghM5Nud2uldRGVjw0/n5rK9j0xooQQyk=",
+          "sha_256": "/MrYLhMXLA5DhNtxV3IZybhjHAgg9LGNqqVwFvtmHHY=",
+          "v1.mavencentral.jar": "/KfvYZLJrQXQe8UNqZG/k3qErzo="
+        }
+      }
+    ],
+    "blobs/sha256/4d84019f77d1aa837a2cb4225bb79fc03a45ae5a247284dda07cfb9fb8077bd1": [
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "inner_directory/commons-email2-jakarta-2.0.0-M1.jar",
+        "fingerprints": {
+          "sha_256": "MuEcK3nOFuySTTg4HOJi3vvTpI9bYspfMHa9AK2merQ=",
+          "v1.mavencentral.jar": "6bzpyKql6Q+UxKQgm14pcP4wHGo=",
+          "v1.class.jar": "2wRGbMGyGRwEXqNm53h1YK8OO879kvzDxazmJXiAcfI=",
+          "v1.raw.jar": "QA4SAurtJeo+lx1Vqve5uQYnvDKLFx1NgsSuoWKi8pw="
+        }
+      }
+    ],
+    "blobs/sha256/cc2447e1835a40530975ab80bb1f872fbab0f2a0faecf2ab16fbbb89b3589438": []
+  }
+}
+"#;
+
+    fn expected_jar_analysis() -> JarAnalysis {
+        serde_json::from_str(MILLHONE_OUT).expect("Read expected millhone output.")
+    }
+
+    #[test]
+    fn it_finds_expected_output() {
+        let image_tar_file =
+            PathBuf::from("../../test/App/Fossa/Container/testdata/jar_test_container.tar");
+
+        let res = jars_in_container(&image_tar_file).expect("Read jars out of container image.");
+
+        assert_eq!(res, expected_jar_analysis());
+    }
 }
