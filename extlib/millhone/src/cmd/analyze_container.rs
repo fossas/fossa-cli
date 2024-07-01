@@ -188,6 +188,9 @@ fn buffer(mut reader: impl Read) -> Result<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
+    use serde_json::Value;
+    use tap::Pipe;
+
     use super::*;
 
     const MILLHONE_OUT: &str = r#"
@@ -222,17 +225,17 @@ mod tests {
 }
 "#;
 
-    fn expected_jar_analysis() -> JarAnalysis {
-        serde_json::from_str(MILLHONE_OUT).expect("Read expected millhone output.")
-    }
-
     #[test]
     fn it_finds_expected_output() {
         let image_tar_file =
             PathBuf::from("../../test/App/Fossa/Container/testdata/jar_test_container.tar");
 
-        let res = jars_in_container(&image_tar_file).expect("Read jars out of container image.");
+        let res = jars_in_container(&image_tar_file)
+            .expect("Read jars out of container image.")
+            .pipe(serde_json::to_value)
+            .expect("encode as json");
 
-        assert_eq!(res, expected_jar_analysis());
+        let expected: Value = serde_json::from_str(MILLHONE_OUT).expect("Parse expected json");
+        pretty_assertions::assert_eq!(expected, res);
     }
 }
