@@ -4,11 +4,20 @@ module Container.TarballReadFs (
   runTarballReadFSIO,
 ) where
 
-import Codec.Archive.Tar.Entry (
-  LinkTarget,
-  entryTarPath,
-  fromLinkTargetToPosixPath, Entry, GenEntryContent (..), GenEntry (entryContent),
+import Codec.Archive.Tar (
+  Entry (entryContent),
+  EntryContent (
+    BlockDevice,
+    CharacterDevice,
+    Directory,
+    HardLink,
+    NamedPipe,
+    NormalFile,
+    OtherEntryType,
+    SymbolicLink
+  ),
  )
+import Codec.Archive.Tar.Entry (LinkTarget, entryTarPath, fromLinkTargetToPosixPath)
 import Codec.Archive.Tar.Index (TarEntryOffset, hReadEntry)
 import Container.Tarball (filePathOf)
 import Control.Carrier.Simple (interpret)

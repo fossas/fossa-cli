@@ -15,6 +15,7 @@ import App.Fossa.LicenseScanner (scanDirectory)
 import App.Fossa.VendoredDependency (hashBs, hashFile)
 import App.Types (FileUpload (..), ProjectRevision)
 import Codec.Archive.Tar qualified as Tar
+import Codec.Archive.Tar.Entry (Entry (..))
 import Codec.Archive.Tar.Entry qualified as Tar
 import Control.Carrier.StickyLogger (logSticky)
 import Control.Effect.Diagnostics (
@@ -271,10 +272,10 @@ hashDir targetDir = do
   sendIO $ hashBs . Tar.write $ es'
   where
     setUnknownOwner :: Tar.Entry -> Tar.Entry
-    setUnknownOwner e = e{Tar.entryOwnership = Tar.Ownership "" "" 0 0}
+    setUnknownOwner e = e{entryOwnership = Tar.Ownership "" "" 0 0}
 
     setZeroTime :: Tar.Entry -> Tar.Entry
-    setZeroTime e = e{Tar.entryTime = 0}
+    setZeroTime e = e{entryTime = 0}
 
 absPathOf :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (SomeResolvedPath)
 absPathOf baseDir relativeOrAbsPath = do
