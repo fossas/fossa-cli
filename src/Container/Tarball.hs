@@ -47,6 +47,7 @@ import Data.Text qualified as Text
 import Effect.Logger (Logger, Pretty (pretty), logDebug, logWarn)
 import System.FilePath (hasTrailingPathSeparator)
 import System.FilePath.Posix (normalise)
+import Debug.Pretty.Simple
 
 -- | Container of list of tar entries with their offset for random content read.
 data TarEntries = TarEntries
@@ -88,8 +89,9 @@ parse content = case mkEntries $ Tar.read' content of
       Right imgJson -> Right imgJson
 
     getFileContent :: TarEntries -> FilePath -> Either ContainerImgParsingError ByteStringLazy.ByteString
-    getFileContent (TarEntries te _) filepath =
-      case viewl $ Seq.filter (\(t, _) -> entryPath t == filepath && isFile t) te of
+    getFileContent (TarEntries te _) filepath = do
+      pTraceShowM filepath
+      case viewl $ Seq.filter (\(t, _) -> pTraceShow (entryPath t) (entryPath t) == filepath && isFile t) te of
         EmptyL -> Left $ TarballFileNotFound filepath
         (manifestEntryOffset :< _) -> case entryContent $ fst manifestEntryOffset of
           (NormalFile c _) -> Right c

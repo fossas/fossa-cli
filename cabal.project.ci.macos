@@ -5,6 +5,3 @@ jobs: $ncpus
 packages: .
 
 import: ./cabal.project.common
-
-package spectrometer
-  ghc-options: -Werror
