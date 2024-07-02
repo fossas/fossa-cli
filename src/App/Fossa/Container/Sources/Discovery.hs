@@ -59,11 +59,12 @@ import Types (
   FoundTargets (FoundTargets, ProjectWithoutTargets),
  )
 
-layerAnalyzers :: AnalyzeStaticTaskEffs sig m => OsInfo -> Bool -> [DiscoverFunc m]
-layerAnalyzers os onlySystemDeps =
+layerAnalyzers :: AnalyzeStaticTaskEffs sig m => Maybe OsInfo -> Bool -> [DiscoverFunc m]
+layerAnalyzers os onlySystemDeps = do
+  let systemDeps = maybe [] osDepsAnalyzers os
   if onlySystemDeps
-    then osDepsAnalyzers os
-    else osDepsAnalyzers os ++ managedDepsDiscoveryF
+    then systemDeps
+    else systemDeps ++ managedDepsDiscoveryF
 
 osDepsAnalyzers :: AnalyzeStaticTaskEffs sig m => OsInfo -> [DiscoverFunc m]
 osDepsAnalyzers osInfo =

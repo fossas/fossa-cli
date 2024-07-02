@@ -40,6 +40,7 @@ import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Srclib.Types (SourceUnit)
+import Data.Maybe (fromMaybe)
 
 data ContainerImageRaw = ContainerImageRaw
   { layers :: NonEmpty.NonEmpty ContainerLayer
@@ -100,8 +101,8 @@ instance ToJSON ContainerScan where
   toJSON scan = object ["image" .= imageData scan]
 
 data ContainerScanImage = ContainerScanImage
-  { imageOs :: Text
-  , imageOsRelease :: Text
+  { imageOs :: Maybe Text
+  , imageOsRelease :: Maybe Text
   , imageLayers :: [ContainerScanImageLayer]
   }
   deriving (Show, Eq, Ord)
@@ -109,8 +110,8 @@ data ContainerScanImage = ContainerScanImage
 instance ToJSON ContainerScanImage where
   toJSON ContainerScanImage{imageOs, imageOsRelease, imageLayers} =
     object
-      [ "os" .= imageOs
-      , "osRelease" .= imageOsRelease
+      [ "os" .= fromMaybe "" imageOs
+      , "osRelease" .= fromMaybe "" imageOsRelease
       , "layers" .= imageLayers
       ]
 

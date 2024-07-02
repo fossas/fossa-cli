@@ -122,8 +122,9 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
   let imageBaseLayer = baseLayer image
       baseDigest = layerDigest imageBaseLayer
   osInfo <-
-    context "Retrieving OS Information" $
-      runTarballReadFSIO baseFs tarball getOsInfo
+    context "Retrieving OS Information"
+      . warnThenRecover @Text "Could not retrieve OS info"
+      $ runTarballReadFSIO baseFs tarball getOsInfo
   baseUnits <-
     context "Analyzing From Base Layer" $
       analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo baseFs tarball
@@ -133,8 +134,8 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
         ContainerScan
           { imageData =
               ( ContainerScanImage
-                  (nameId osInfo)
-                  (version osInfo)
+                  (nameId <$> osInfo)
+                  (version <$> osInfo)
                   layers
               )
           , imageDigest
@@ -185,7 +186,7 @@ analyzeLayer ::
   AllFilters ->
   Flag WithoutDefaultFilters ->
   Int ->
-  OsInfo ->
+  Maybe OsInfo ->
   SomeFileTree TarEntryOffset ->
   Path Abs File ->
   m [SourceUnit]
@@ -228,7 +229,7 @@ runAnalyzers ::
   , Has AtomicCounter sig m
   ) =>
   Bool ->
-  OsInfo ->
+  Maybe OsInfo ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   m ()
@@ -330,7 +331,10 @@ listTargetsFromDockerArchive tarball = do
 
   logInfo "Analyzing Base Layer"
   baseFs <- context "Building Base Layer FS" $ mkFsFromChangeset $ baseLayer image
-  osInfo <- context "Retrieving OS Information" $ runTarballReadFSIO baseFs tarball getOsInfo
+  osInfo <-
+    context "Retrieving OS Information"
+      . warnThenRecover @Text "Could not retrieve OS info"
+      $ runTarballReadFSIO baseFs tarball getOsInfo
   context "Analyzing From Base Layer" $ listTargetLayer capabilities osInfo baseFs tarball "Base Layer"
 
   when (hasOtherLayers image) $ do
@@ -346,7 +350,7 @@ listTargetLayer ::
   , Has Telemetry sig m
   ) =>
   Int ->
-  OsInfo ->
+  Maybe OsInfo ->
   SomeFileTree TarEntryOffset ->
   Path Abs File ->
   Text ->
