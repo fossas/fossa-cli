@@ -32,6 +32,7 @@ import Container.Types (
  )
 import Control.Algebra (Has)
 import Control.Monad (unless)
+import Data.Bifunctor (first)
 import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.Either (lefts, rights)
 import Data.FileTree.IndexFileTree (SomeFileTree, empty, insert, remove, resolveSymLinkRef, toSomePath)
@@ -45,10 +46,10 @@ import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text, intercalate)
 import Data.Text qualified as Text
 import Debug.Pretty.Simple
+import Debug.Trace (trace)
 import Effect.Logger (Logger, Pretty (pretty), logDebug, logWarn)
 import System.FilePath (hasTrailingPathSeparator)
 import System.FilePath.Posix (normalise)
-import Debug.Trace (trace)
 
 -- | Container of list of tar entries with their offset for random content read.
 data TarEntries = TarEntries
@@ -91,9 +92,10 @@ parse content = case mkEntries $ Tar.read' content of
 
     getFileContent :: TarEntries -> FilePath -> Either ContainerImgParsingError ByteStringLazy.ByteString
     getFileContent (TarEntries te _) filepath = do
+      tarFilePath <- first FilePathToTarPathConversion $ TarEntry.toTarPath False filepath
       pTraceM "Filepath: "
       pTraceShowM filepath
-      case viewl $ Seq.filter (\(t, _) -> trace (entryPath t) (entryPath t) == filepath && isFile t) te of
+      case viewl $ Seq.filter (\(t, _) -> trace (show $ entryTarPath t) (entryTarPath t) == tarFilePath && isFile t) te of
         EmptyL -> Left $ TarballFileNotFound filepath
         (manifestEntryOffset :< _) -> case entryContent $ fst manifestEntryOffset of
           (NormalFile c _) -> Right c
