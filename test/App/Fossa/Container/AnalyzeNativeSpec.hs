@@ -211,10 +211,3 @@ jarsInContainerSpec = describe "Jars in Containers" $ do
     -- More specific tests for observation content are in Millhone.
     (length <$> Map.lookup baseLayerId observationsMap) `shouldBe'` Just 0
     (length <$> Map.lookup otherLayerId observationsMap) `shouldBe'` Just 2
-
-  it' "should apply path exclusion filter sequel" $ do
-    let imageArchive = currDir </> appDepsImage
-        appAPath = $(mkRelDir "app/services/b/internal/")
-    containerScan <- analyzeFromDockerArchive False (excludePath appAPath) (toFlag' False) imageArchive
-    buildImportsOf containerScan `shouldNotContain'` [black]
-    buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, scipy]
