@@ -4,7 +4,6 @@ module Container.TarballReadFSSpec (
   spec,
 ) where
 
-import Codec.Archive.Tar (EntryContent (..))
 import Codec.Archive.Tar qualified as Tar
 import Codec.Archive.Tar.Entry qualified as TarEntry
 import Codec.Archive.Tar.Index (TarEntryOffset)
@@ -137,7 +136,7 @@ mkTree = foldr (\(p, ref) tree -> insert (toSomePath p) ref tree) empty
 readTree :: Path Abs File -> IO (SomeFileTree TarEntryOffset)
 readTree file = do
   content <- ByteStringLazy.readFile $ toFilePath file
-  case mkEntries $ Tar.read' content of
+  case mkEntries $ Tar.read content of
     Left err -> throw . userError $ "read tar at " <> toString file <> ": " <> show err
     Right entries -> pure $ mkTreeFromEntries empty entries
   where
@@ -145,7 +144,7 @@ readTree file = do
     mkTreeFromEntries tree (TarEntries entries baseOffset) = case Seq.viewl $ Seq.filter (isFile . fst) entries of
       EmptyL -> tree
       (entry, offset) :< rest -> case Tar.entryContent entry of
-        (NormalFile _ _) -> do
+        (TarEntry.NormalFile _ _) -> do
           let path = toText . normalizeSlash $ Tar.entryPath entry
           let tree' = insert (toSomePath path) (Just offset) tree
           mkTreeFromEntries tree' (TarEntries rest baseOffset)
@@ -156,7 +155,7 @@ readTree file = do
 
     -- True if tar entry is for a file with content, otherwise False.
     isFile :: Tar.Entry -> Bool
-    isFile (TarEntry.Entry _ (NormalFile _ _) _ _ _ _) = True
+    isFile (TarEntry.Entry _ (TarEntry.NormalFile _ _) _ _ _ _) = True
     isFile _ = False
 
     normalizeSlash :: FilePath -> FilePath

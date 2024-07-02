@@ -12,12 +12,8 @@ module Container.Tarball (
   filePathOf,
 ) where
 
-import Codec.Archive.Tar (
-  Entry (entryContent),
-  EntryContent (HardLink, NormalFile, SymbolicLink),
- )
 import Codec.Archive.Tar qualified as Tar
-import Codec.Archive.Tar.Entry (Entry (entryTarPath), TarPath, entryPath, fromTarPathToPosixPath)
+import Codec.Archive.Tar.Entry (GenEntryContent (HardLink, NormalFile, SymbolicLink), TarPath, entryContent)
 import Codec.Archive.Tar.Entry qualified as TarEntry
 import Codec.Archive.Tar.Index (TarEntryOffset, nextEntryOffset)
 import Container.Docker.ImageJson (ImageJson, decodeImageJson, getLayerIds)
@@ -57,7 +53,7 @@ data TarEntries = TarEntries
 
 -- | Parses Container Image from Tarball Byte string.
 parse :: ByteStringLazy.ByteString -> Either (NLE.NonEmpty ContainerImgParsingError) ContainerImageRaw
-parse content = case mkEntries $ Tar.read' content of
+parse content = case mkEntries $ Tar.read content of
   Left err -> Left $ NLE.singleton err
   Right te -> do
     -- Exported docker image must have
@@ -89,7 +85,7 @@ parse content = case mkEntries $ Tar.read' content of
 
     getFileContent :: TarEntries -> FilePath -> Either ContainerImgParsingError ByteStringLazy.ByteString
     getFileContent (TarEntries te _) filepath =
-      case viewl $ Seq.filter (\(t, _) -> entryPath t == filepath && isFile t) te of
+      case viewl $ Seq.filter (\(t, _) -> TarEntry.entryPath t == filepath && isFile t) te of
         EmptyL -> Left $ TarballFileNotFound filepath
         (manifestEntryOffset :< _) -> case entryContent $ fst manifestEntryOffset of
           (NormalFile c _) -> Right c
@@ -135,11 +131,11 @@ mkImage manifest imgJson entries layerTarballPaths =
 
 mkLayer :: TarEntries -> (Text, FilePath) -> Either ContainerImgParsingError ContainerLayer
 mkLayer (TarEntries entries tarOffset) (layerId, layerTarball) =
-  case viewl $ Seq.filter (\(t, _) -> (filePathOf . entryTarPath) t == layerTarball && (isFile t || isSymLink t)) entries of
+  case viewl $ Seq.filter (\(t, _) -> (filePathOf . TarEntry.entryTarPath) t == layerTarball && (isFile t || isSymLink t)) entries of
     EmptyL -> Left $ TarMissingLayerTar layerTarball
-    (layerTarballEntry :< _) -> case entryContent $ fst layerTarballEntry of
+    (layerTarballEntry :< _) -> case TarEntry.entryContent $ fst layerTarballEntry of
       (NormalFile c _) -> do
-        let rawEntries = Tar.read' c
+        let rawEntries = Tar.read c
         case mkLayerFromOffset layerId (mkLayerPath layerTarball) (snd layerTarballEntry) rawEntries of
           Left err -> Left err
           Right layer -> Right layer
@@ -182,9 +178,9 @@ mkLayerFromOffset layerId layerPath imgOffset = build $ mempty{layerDigest = lay
 
     updateChangeSet :: TarEntryOffset -> Tar.Entry -> ContainerLayer -> Seq ContainerFSChangeSet
     updateChangeSet offset entry containerLayer =
-      if isDoubleWhiteOut (filePathOf . entryTarPath $ entry)
+      if isDoubleWhiteOut (filePathOf . TarEntry.entryTarPath $ entry)
         || ( not (isFileOrLinkTarget entry)
-              && not (isWhiteOut $ filePathOf . entryTarPath $ entry)
+              && not (isWhiteOut $ filePathOf . TarEntry.entryTarPath $ entry)
            )
         then -- Do not capture Insert for non-files or non-symbolic links, as folders
         -- by themselves are not analysis relevant, and filepath information already contains
@@ -192,7 +188,7 @@ mkLayerFromOffset layerId layerPath imgOffset = build $ mempty{layerDigest = lay
           layerChangeSets containerLayer
         else
           (layerChangeSets containerLayer)
-            |> (mkChangeSet (entryTarPath entry) (offset + lastOffset containerLayer + 1))
+            |> (mkChangeSet (TarEntry.entryTarPath entry) (offset + lastOffset containerLayer + 1))
 
     mkChangeSet :: TarPath -> TarEntryOffset -> ContainerFSChangeSet
     mkChangeSet tarPath offset =
@@ -267,7 +263,7 @@ fileNameOf path = snd $ Text.breakOnEnd "/" path
 
 -- | Retrieves filepath from tar path.
 filePathOf :: TarPath -> FilePath
-filePathOf = normalise . fromTarPathToPosixPath
+filePathOf = normalise . TarEntry.fromTarPathToPosixPath
 
 -- | Removes whiteout prefix from the filepath. If no whiteout prefix is detected returns Nothing.
 --
