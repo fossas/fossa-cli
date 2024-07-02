@@ -24,9 +24,9 @@ pub struct Subcommand {
 
 const JAR_OBSERVATION: &str = "v1.discover.binary.jar";
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Clone)]
+#[derive(Debug, PartialEq, Eq, Serialize, Clone)]
 struct DiscoveredJar {
-    kind: String,
+    kind: &'static str,
     path: PathBuf,
     fingerprints: Combined,
 }
@@ -34,7 +34,7 @@ struct DiscoveredJar {
 impl DiscoveredJar {
     fn new(path: PathBuf, fingerprints: Combined) -> Self {
         DiscoveredJar {
-            kind: JAR_OBSERVATION.to_owned(),
+            kind: JAR_OBSERVATION,
             path,
             fingerprints,
         }
@@ -48,10 +48,10 @@ struct OciManifest {
 }
 
 /// The path in the manifest file corresponding to a layer.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
+#[derive(Debug, PartialEq, Eq, Serialize, Hash)]
 struct LayerPath(PathBuf);
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Debug, PartialEq, Eq, Serialize, TypedBuilder)]
 struct JarAnalysis {
     /// Jars and fingerprints associated with each layer in a jar file.
     discovered_jars: HashMap<LayerPath, Vec<DiscoveredJar>>,
