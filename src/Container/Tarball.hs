@@ -92,7 +92,7 @@ parse content = case mkEntries $ Tar.read' content of
     getFileContent (TarEntries te _) filepath = do
       -- Filepaths may be provided in POSIX format or Windows format.
       -- However, internally all tar paths must be POSIX.
-      -- This normalizes the passed in FilePath to match expectations.
+      -- This normalizes the passed in FilePath to match the tar library's expectations.
       tarFilePath <- first FilePathToTarPathConversion $ TarEntry.toTarPath False filepath
       case viewl $ Seq.filter (\(t, _) -> entryTarPath t == tarFilePath && isFile t) te of
         EmptyL -> Left $ TarballFileNotFound filepath
