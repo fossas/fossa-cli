@@ -44,10 +44,11 @@ import Data.Set qualified as Set
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text, intercalate)
 import Data.Text qualified as Text
+import Debug.Pretty.Simple
 import Effect.Logger (Logger, Pretty (pretty), logDebug, logWarn)
 import System.FilePath (hasTrailingPathSeparator)
 import System.FilePath.Posix (normalise)
-import Debug.Pretty.Simple
+import Debug.Trace (trace)
 
 -- | Container of list of tar entries with their offset for random content read.
 data TarEntries = TarEntries
@@ -70,7 +71,7 @@ parse content = case mkEntries $ Tar.read' content of
         -- layer and image hash
         case getImageJson (getImageJsonConfigFilePath manifest) te of
           Left err -> Left $ NLE.singleton err
-          Right imgJson -> mkImage manifest imgJson te (getLayerPaths manifest)
+          Right imgJson -> pTrace ("manifest path: " <> show imgJson) $ mkImage manifest imgJson te (getLayerPaths manifest)
   where
     getManifest :: TarEntries -> Either ContainerImgParsingError ManifestJson
     getManifest te = parseManifest =<< getFileContent te (toString manifestFilename)
@@ -90,8 +91,9 @@ parse content = case mkEntries $ Tar.read' content of
 
     getFileContent :: TarEntries -> FilePath -> Either ContainerImgParsingError ByteStringLazy.ByteString
     getFileContent (TarEntries te _) filepath = do
+      pTraceM "Filepath: "
       pTraceShowM filepath
-      case viewl $ Seq.filter (\(t, _) -> pTraceShow (entryPath t) (entryPath t) == filepath && isFile t) te of
+      case viewl $ Seq.filter (\(t, _) -> trace (entryPath t) (entryPath t) == filepath && isFile t) te of
         EmptyL -> Left $ TarballFileNotFound filepath
         (manifestEntryOffset :< _) -> case entryContent $ fst manifestEntryOffset of
           (NormalFile c _) -> Right c
