@@ -40,7 +40,7 @@ import Test.Effect (
   shouldMatchList',
   shouldNotContain',
  )
-import Test.Hspec (Spec, SpecWith, describe, fdescribe, it, runIO)
+import Test.Hspec (Spec, SpecWith, describe, it, runIO)
 import Test.MockDockerEngineApi (
   DockerEngineApiMockC,
   MockApi,
@@ -191,11 +191,11 @@ jarsInContainerImage :: Path Rel File
 jarsInContainerImage = $(mkRelFile "test/App/Fossa/Container/testdata/jar_test_container.tar")
 
 jarsInContainerSpec :: Spec
-jarsInContainerSpec = fdescribe "Jars in Containers" $ do
+jarsInContainerSpec = describe "Jars in Containers" $ do
   currDir <- runIO getCurrentDir
   let imageArchivePath = currDir </> jarsInContainerImage
-      baseLayerId = "sha256:cc2447e1835a40530975ab80bb1f872fbab0f2a0faecf2ab16fbbb89b3589438"
-      otherLayerId = "sha256:4d84019f77d1aa837a2cb4225bb79fc03a45ae5a247284dda07cfb9fb8077bd1"
+      baseLayerId = "sha256:9733ccc395133a067f01ee6e380003d80fe9f443673e0f992ae6a4a7860a872c"
+      otherLayerId = "sha256:5c079c30beb013e4b2f7729b6bdce6fba57941d28f20db985333fc1dd969f018"
 
   it' "Reads and merges the layers correctly" $ do
     ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchivePath

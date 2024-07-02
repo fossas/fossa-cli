@@ -193,37 +193,35 @@ mod tests {
 
     use super::*;
 
-    const MILLHONE_OUT: &str = r#"
-{
+    const MILLHONE_OUT: &str = r#"{
   "discovered_jars": {
+    "blobs/sha256/5c079c30beb013e4b2f7729b6bdce6fba57941d28f20db985333fc1dd969f018": [
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "inner_directory/commons-email2-jakarta-2.0.0-M1.jar",
+        "fingerprints": {
+          "v1.mavencentral.jar": "6bzpyKql6Q+UxKQgm14pcP4wHGo=",
+          "v1.raw.jar": "QA4SAurtJeo+lx1Vqve5uQYnvDKLFx1NgsSuoWKi8pw=",
+          "sha_256": "MuEcK3nOFuySTTg4HOJi3vvTpI9bYspfMHa9AK2merQ=",
+          "v1.class.jar": "2wRGbMGyGRwEXqNm53h1YK8OO879kvzDxazmJXiAcfI="
+        }
+      }
+    ],
+    "blobs/sha256/9733ccc395133a067f01ee6e380003d80fe9f443673e0f992ae6a4a7860a872c": [],
     "blobs/sha256/61aed1a8baa251dee118b9ab203c1e420f0eda0a9b3f9322d67d235dd27a12ee": [
       {
         "kind": "v1.discover.binary.jar",
         "path": "jackson-annotations-2.17.1.jar",
         "fingerprints": {
-          "v1.raw.jar": "wjGJk8cvY4tpKcUC5r8YuO15Wfv+rVuyWANBYCUIeDs=",
-          "v1.class.jar": "t2Btr6rNrvzghM5Nud2uldRGVjw0/n5rK9j0xooQQyk=",
+          "v1.mavencentral.jar": "/KfvYZLJrQXQe8UNqZG/k3qErzo=",
           "sha_256": "/MrYLhMXLA5DhNtxV3IZybhjHAgg9LGNqqVwFvtmHHY=",
-          "v1.mavencentral.jar": "/KfvYZLJrQXQe8UNqZG/k3qErzo="
+          "v1.class.jar": "t2Btr6rNrvzghM5Nud2uldRGVjw0/n5rK9j0xooQQyk=",
+          "v1.raw.jar": "wjGJk8cvY4tpKcUC5r8YuO15Wfv+rVuyWANBYCUIeDs="
         }
       }
-    ],
-    "blobs/sha256/4d84019f77d1aa837a2cb4225bb79fc03a45ae5a247284dda07cfb9fb8077bd1": [
-      {
-        "kind": "v1.discover.binary.jar",
-        "path": "inner_directory/commons-email2-jakarta-2.0.0-M1.jar",
-        "fingerprints": {
-          "sha_256": "MuEcK3nOFuySTTg4HOJi3vvTpI9bYspfMHa9AK2merQ=",
-          "v1.mavencentral.jar": "6bzpyKql6Q+UxKQgm14pcP4wHGo=",
-          "v1.class.jar": "2wRGbMGyGRwEXqNm53h1YK8OO879kvzDxazmJXiAcfI=",
-          "v1.raw.jar": "QA4SAurtJeo+lx1Vqve5uQYnvDKLFx1NgsSuoWKi8pw="
-        }
-      }
-    ],
-    "blobs/sha256/cc2447e1835a40530975ab80bb1f872fbab0f2a0faecf2ab16fbbb89b3589438": []
+    ]
   }
-}
-"#;
+}"#;
 
     #[test]
     fn it_finds_expected_output() {
