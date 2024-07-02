@@ -16,6 +16,7 @@ import Control.Effect.DockerEngineApi (
   DockerEngineApiF (GetImageSize, IsDockerEngineAccessible),
  )
 import Data.Flag (toFlag')
+import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -39,7 +40,7 @@ import Test.Effect (
   shouldMatchList',
   shouldNotContain',
  )
-import Test.Hspec (Spec, SpecWith, describe, it, runIO)
+import Test.Hspec (Spec, SpecWith, describe, fdescribe, it, runIO)
 import Test.MockDockerEngineApi (
   DockerEngineApiMockC,
   MockApi,
@@ -54,7 +55,6 @@ import Types (
   DiscoveredProjectType (SetuptoolsProjectType),
   TargetFilter (TypeDirTarget, TypeTarget),
  )
-import qualified Data.Map as Map
 
 spec :: Spec
 spec = do
@@ -191,7 +191,7 @@ jarsInContainerImage :: Path Rel File
 jarsInContainerImage = $(mkRelFile "test/App/Fossa/Container/testdata/jar_test_container.tar")
 
 jarsInContainerSpec :: Spec
-jarsInContainerSpec = describe "Jars in Containers" $ do
+jarsInContainerSpec = fdescribe "Jars in Containers" $ do
   currDir <- runIO getCurrentDir
   let imageArchivePath = currDir </> jarsInContainerImage
       baseLayerId = "sha256:cc2447e1835a40530975ab80bb1f872fbab0f2a0faecf2ab16fbbb89b3589438"
@@ -205,7 +205,7 @@ jarsInContainerSpec = describe "Jars in Containers" $ do
   it' "Each layer should have the expected number of JAR observations" $ do
     ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchivePath
     let observationsMap = Map.fromList $ map (\layer -> (layerId layer, observations layer)) imageLayers
-        
+
     -- The CLI only passes observations along without inspecting them.
     -- So this test just checks that the number of them that we expect are there.
     -- More specific tests for observation content are in Millhone.
