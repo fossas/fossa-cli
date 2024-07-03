@@ -47,6 +47,7 @@ module Control.Effect.Diagnostics (
   SomeDiagnostic (..),
   module Diagnostic,
   warnLeft,
+  warnThenRecover,
 ) where
 
 import Control.Algebra as X -- intentionally implicit
@@ -150,6 +151,10 @@ warnOnErr w m = send (WarnOnErr w m)
 infixl 3 <||>
 
 ---------- Helpers
+
+-- | Turn a fatal error into a warning then recover.
+warnThenRecover :: (ToDiagnostic w, Has Diagnostics sig m) => w -> m a -> m (Maybe a)
+warnThenRecover w = recover . warnOnErr w
 
 -- | Throw an untyped string error
 fatalText :: Has Diagnostics sig m => Text -> m a
