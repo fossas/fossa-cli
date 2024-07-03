@@ -13,7 +13,6 @@ import Control.Effect.Diagnostics (Diagnostics, context, fatalText, recover, (<|
 import Control.Effect.Reader (Reader, asks)
 import Control.Monad (when)
 import Data.Aeson (ToJSON)
-import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
@@ -23,12 +22,10 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.Exec (Exec, Has)
-import Effect.Logger (Logger, logInfo, redText)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path)
-import Prettyprinter (line, nest, pretty)
 import Strategy.Go.GoListPackages qualified as GoListPackages
 import Strategy.Go.Gomod qualified as Gomod
 import Strategy.Go.Gostd (GoStdlibDep, filterGoStdlibPackages, listGoStdlibPackages)
@@ -70,7 +67,7 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => GomodulesProject -> GoDynamicTactic -> m DependencyResults
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> GoDynamicTactic -> m DependencyResults
 getDeps project goDynamicTactic = do
   (graph, graphBreadth) <- context "Gomodules" $ dynamicAnalysis <||> staticAnalysis
   stdlib <- recover . context "Collect go standard library information" . listGoStdlibPackages $ gomodulesDir project
@@ -90,7 +87,7 @@ getDeps project goDynamicTactic = do
     staticAnalysis :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => m (Graphing Dependency, GraphBreadth)
     staticAnalysis = context "Static analysis" (Gomod.analyze' (gomodulesGomod project))
 
-    dynamicAnalysis :: (Has Exec sig m, Has Logger sig m, Has Diagnostics sig m) => m (Graphing Dependency, GraphBreadth)
+    dynamicAnalysis :: (Has Exec sig m, Has Diagnostics sig m) => m (Graphing Dependency, GraphBreadth)
     dynamicAnalysis =
       context "Dynamic analysis" $ do
         when (goDynamicTactic == GoPackagesBasedTactic) $
@@ -98,17 +95,4 @@ getDeps project goDynamicTactic = do
             "--experimental-use-v3-go-resolver is now deprecated because the v3 resolver is the default. \
             \This option will be removed in a future release and result in an error."
 
-        res <- context "analysis using go list (V3 Resolver)" (GoListPackages.analyze (gomodulesDir project))
-
-        logInfo $
-          redText "NOTE: "
-            <> nest
-              1
-              ( pretty (toText . gomodulesDir $ project)
-                  <> " analyzed using V3 Go Resolver."
-                  <> line
-                  <> "As of v3.8.5 we have changed our dynamic Go strategy. If you've analyzed this project before, results may have changed."
-                  <> line
-                  <> "See https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/golang/v3-go-resolver-transition-qa.md for more information."
-              )
-        pure res
+        context "analysis using go list (V3 Resolver)" (GoListPackages.analyze (gomodulesDir project))
