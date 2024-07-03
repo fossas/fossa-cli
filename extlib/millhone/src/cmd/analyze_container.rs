@@ -60,10 +60,8 @@ struct JarAnalysis {
 #[tracing::instrument]
 pub fn main(opts: Subcommand) -> Result<()> {
     let tar_filename = opts.image_tar_file();
-    let jar_analysis = JarAnalysis {
-        discovered_jars: jars_in_container(opts.image_tar_file())
-            .with_context(|| format!("analyze container: {:?}", tar_filename))?,
-    };
+    let jar_analysis = jars_in_container(opts.image_tar_file())
+        .with_context(|| format!("analyze container: {:?}", tar_filename))?;
 
     let mut stdout = BufWriter::new(std::io::stdout());
     serde_json::to_writer(&mut stdout, &jar_analysis).context("Serialize Results")
@@ -73,7 +71,7 @@ pub fn main(opts: Subcommand) -> Result<()> {
 /// For each one found, fingerprints it and reports all those fingerprints along with their
 /// layer and path.
 #[tracing::instrument]
-fn jars_in_container(image_path: &PathBuf) -> Result<HashMap<LayerPath, Vec<DiscoveredJar>>> {
+fn jars_in_container(image_path: &PathBuf) -> Result<JarAnalysis> {
     // Visit each layer and fingerprint the JARs within.
     info!("inspecting container");
     let layers = list_container_layers(image_path)?;
@@ -95,7 +93,9 @@ fn jars_in_container(image_path: &PathBuf) -> Result<HashMap<LayerPath, Vec<Disc
         discoveries.insert(LayerPath(layer), layer_discoveries);
     }
 
-    Ok(discoveries)
+    Ok(JarAnalysis {
+        discovered_jars: discoveries,
+    })
 }
 
 /// Open and unpack a file and put it into a tar.
@@ -184,4 +184,56 @@ fn buffer(mut reader: impl Read) -> Result<Vec<u8>> {
     let mut buf = Vec::new();
     reader.read_to_end(&mut buf).context("Read buffer")?;
     Ok(buf)
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::Value;
+    use tap::Pipe;
+
+    use super::*;
+
+    const MILLHONE_OUT: &str = r#"{
+  "discovered_jars": {
+    "blobs/sha256/5c079c30beb013e4b2f7729b6bdce6fba57941d28f20db985333fc1dd969f018": [
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "inner_directory/commons-email2-jakarta-2.0.0-M1.jar",
+        "fingerprints": {
+          "v1.mavencentral.jar": "6bzpyKql6Q+UxKQgm14pcP4wHGo=",
+          "v1.raw.jar": "QA4SAurtJeo+lx1Vqve5uQYnvDKLFx1NgsSuoWKi8pw=",
+          "sha_256": "MuEcK3nOFuySTTg4HOJi3vvTpI9bYspfMHa9AK2merQ=",
+          "v1.class.jar": "2wRGbMGyGRwEXqNm53h1YK8OO879kvzDxazmJXiAcfI="
+        }
+      }
+    ],
+    "blobs/sha256/9733ccc395133a067f01ee6e380003d80fe9f443673e0f992ae6a4a7860a872c": [],
+    "blobs/sha256/61aed1a8baa251dee118b9ab203c1e420f0eda0a9b3f9322d67d235dd27a12ee": [
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "jackson-annotations-2.17.1.jar",
+        "fingerprints": {
+          "v1.mavencentral.jar": "/KfvYZLJrQXQe8UNqZG/k3qErzo=",
+          "sha_256": "/MrYLhMXLA5DhNtxV3IZybhjHAgg9LGNqqVwFvtmHHY=",
+          "v1.class.jar": "t2Btr6rNrvzghM5Nud2uldRGVjw0/n5rK9j0xooQQyk=",
+          "v1.raw.jar": "wjGJk8cvY4tpKcUC5r8YuO15Wfv+rVuyWANBYCUIeDs="
+        }
+      }
+    ]
+  }
+}"#;
+
+    #[test]
+    fn it_finds_expected_output() {
+        let image_tar_file =
+            PathBuf::from("../../test/App/Fossa/Container/testdata/jar_test_container.tar");
+
+        let res = jars_in_container(&image_tar_file)
+            .expect("Read jars out of container image.")
+            .pipe(serde_json::to_value)
+            .expect("encode as json");
+
+        let expected: Value = serde_json::from_str(MILLHONE_OUT).expect("Parse expected json");
+        pretty_assertions::assert_eq!(expected, res);
+    }
 }

@@ -24,6 +24,7 @@ data ContainerImgParsingError
   | TarLayerNotAFile FilePath
   | TarballFileNotFound FilePath
   | ContainerNoLayersDiscovered
+  | FilePathToTarPathConversion String
   deriving (Eq)
 
 instance Show ContainerImgParsingError where
@@ -35,6 +36,7 @@ instance Show ContainerImgParsingError where
   show (TarLayerNotAFile path) = "TarLayerNotAFile: " <> show path
   show (TarballFileNotFound path) = "TarballFileNotFound: " <> show path
   show (ContainerNoLayersDiscovered) = "ContainerNoLayersDiscovered - could not analyze or detect any layer."
+  show (FilePathToTarPathConversion s) = "Could not parse a filepath into a TarPath: " <> s
 
 instance Exception ContainerImgParsingError
 
