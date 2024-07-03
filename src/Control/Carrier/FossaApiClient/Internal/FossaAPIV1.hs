@@ -43,6 +43,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   alreadyAnalyzedPathRevision,
   getTokenType,
   getCustomBuildUploadPermissions,
+  AnalysisService (..),
 
   -- * Reachability
   getReachabilityContentSignedUrl,
@@ -111,12 +112,11 @@ import App.Types (
  )
 import App.Version (versionNumber)
 import Codec.Compression.GZip qualified as GZIP
-import Container.Errors (EndpointDoesNotSupportNativeContainerScan (EndpointDoesNotSupportNativeContainerScan))
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Algebra, Has, type (:+:))
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
 import Control.Effect.Debug (Debug, debugLog)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, fatal, fatalText, fromMaybeText)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, errCtx, fatal, fatalText, fromMaybeText, warnOnErr, (<||>))
 import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception (Exception (displayException), SomeException)
@@ -168,7 +168,7 @@ import Fossa.API.Types (
   CustomBuildUploadPermissions,
   Issues,
   OrgId,
-  Organization (Organization, orgRequiresFullFileUploads, orgSupportsIssueDiffs, orgSupportsNativeContainerScan, organizationId),
+  Organization (Organization, orgRequiresFullFileUploads, orgSupportsIssueDiffs, organizationId),
   PathDependencyFinalizeReq (..),
   PathDependencyUpload,
   PathDependencyUploadReq (..),
@@ -282,6 +282,9 @@ instance ToJSON GetAnalyzedRevisionsBody where
       [ "locators" .= getAnalyzedRevisionsBodyLocators
       , "fullFileUploads" .= getAnalyzedRevisionsBodyFullFileUploads
       ]
+
+data AnalysisService = Core | Sparkle
+  deriving (Eq, Ord, Show)
 
 fossaReq :: FossaReq m a -> m a
 fossaReq = unFossaReq
@@ -618,8 +621,11 @@ instance ToDiagnostic FossaError where
           body = createBody (Just content) Nothing (Just $ renderIt reportDefectMsg) Nothing (Just ctx)
       Errata (Just header) [] (Just body)
 
-containerUploadUrl :: Url scheme -> Url scheme
-containerUploadUrl baseurl = baseurl /: "api" /: "container" /: "upload"
+containerUploadUrl :: AnalysisService -> Url scheme -> Url scheme
+containerUploadUrl service baseurl =
+  case service of
+    Core -> baseurl /: "api" /: "container" /: "upload"
+    Sparkle -> baseurl /: "api" /: "proxy" /: "analysis" /: "api" /: "container" /: "upload"
 
 uploadNativeContainerScan ::
   (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
@@ -628,27 +634,29 @@ uploadNativeContainerScan ::
   ProjectMetadata ->
   NativeContainer.ContainerScan ->
   m UploadResponse
-uploadNativeContainerScan apiOpts ProjectRevision{..} metadata scan = fossaReq $ do
-  supportsNativeScan <- orgSupportsNativeContainerScan <$> getOrganization apiOpts
-  -- Sanity Check!
-  if not supportsNativeScan
-    then fatal (EndpointDoesNotSupportNativeContainerScan getSourceLocation)
-    else do
-      (baseUrl, baseOpts) <- useApiOpts apiOpts
-      let locator = renderLocator $ Locator "custom" projectName (Just projectRevision)
-          opts =
-            "locator"
-              =: locator
-              <> "cliVersion"
-                =: cliVersion
-              <> "managedBuild"
-                =: True
-              <> maybe mempty ("branch" =:) projectBranch
-              <> "scanType"
-                =: ("native" :: Text)
-              <> mkMetadataOpts metadata projectName
-      resp <- req POST (containerUploadUrl baseUrl) (ReqBodyJson scan) jsonResponse (baseOpts <> opts)
-      pure $ responseBody resp
+uploadNativeContainerScan apiOpts ProjectRevision{..} metadata scan =
+  context "Upload Container Scan" . fossaReq $ do
+    (baseUrl, baseOpts) <- useApiOpts apiOpts
+    let locator = renderLocator $ Locator "custom" projectName (Just projectRevision)
+        opts =
+          "locator" =: locator
+            <> "cliVersion" =: cliVersion
+            <> "managedBuild" =: True
+            <> maybe mempty ("branch" =:) projectBranch
+            <> "scanType" =: ("native" :: Text)
+            <> mkMetadataOpts metadata projectName
+
+        uploadScan url containerScan = req POST url (ReqBodyJson containerScan) jsonResponse (baseOpts <> opts)
+        sparkleAnalysisUrl = containerUploadUrl Sparkle baseUrl
+
+    resp <-
+      ( warnOnErr @Text "Container scan upload to new analysis service failed, falling back to core analysis."
+          . errCtx ("Upload to new analysis service at " <> renderUrl sparkleAnalysisUrl)
+          $ uploadScan sparkleAnalysisUrl scan
+        )
+        <||> context "Upload to CORE analysis service" (uploadScan (containerUploadUrl Core baseUrl) scan)
+
+    pure $ responseBody resp
 
 -- | Replacement for @Data.HTTP.Req.req@ that additionally logs information about a request in a debug bundle.
 req ::

@@ -7,11 +7,7 @@ import App.Fossa.Container.Scan (
   parseDockerEngineSource,
  )
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive)
-import Container.Types (
-  ContainerScan (imageData),
-  ContainerScanImage (imageLayers),
-  srcUnits,
- )
+import Container.Types (ContainerScan (ContainerScan, imageData), ContainerScanImage (ContainerScanImage, imageLayers), layerId, observations, srcUnits)
 import Control.Carrier.Debug (IgnoreDebugC, ignoreDebug)
 import Control.Carrier.Diagnostics (DiagnosticsC, Has)
 import Control.Carrier.Stack (StackC, runStack)
@@ -20,6 +16,7 @@ import Control.Effect.DockerEngineApi (
   DockerEngineApiF (GetImageSize, IsDockerEngineAccessible),
  )
 import Data.Flag (toFlag')
+import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -40,6 +37,7 @@ import Test.Effect (
   handleDiag,
   shouldBe',
   shouldBeSupersetOf',
+  shouldMatchList',
   shouldNotContain',
  )
 import Test.Hspec (Spec, SpecWith, describe, it, runIO)
@@ -60,58 +58,64 @@ import Types (
 
 spec :: Spec
 spec = do
-  describe "parseDockerEngineSource" $ do
-    it' "should fail if docker engine is not accessible" $ do
-      expectDockerSdkNotAccessible
-      expectFatal' $ parseDockerEngineSource exampleImgWithTag
+  dockerEngineSpec
+  analyzeSpec
+  jarsInContainerSpec
 
-    it' "should fail if text lacks tag signifier " $ do
-      expectDockerSdkToBeAccessible
-      expectFatal' $ parseDockerEngineSource exampleImgWithoutTag
+dockerEngineSpec :: Spec
+dockerEngineSpec = describe "parseDockerEngineSource" $ do
+  it' "should fail if docker engine is not accessible" $ do
+    expectDockerSdkNotAccessible
+    expectFatal' $ parseDockerEngineSource exampleImgWithTag
 
-    it' "should fail if image's size cannot be retrieved" $ do
-      expectDockerSdkToBeAccessible
-      expectGetImageSizeToFail
-      expectFatal' $ parseDockerEngineSource exampleImgWithTag
+  it' "should fail if text lacks tag signifier " $ do
+    expectDockerSdkToBeAccessible
+    expectFatal' $ parseDockerEngineSource exampleImgWithoutTag
 
-    it' "should parse image source if image size can be inferred via docker api" $ do
-      expectDockerSdkToBeAccessible
-      expectGetImageSizeToSucceed
-      src <- parseDockerEngineSource exampleImgWithTag
-      src `shouldBe'` DockerEngine exampleImgWithTag
+  it' "should fail if image's size cannot be retrieved" $ do
+    expectDockerSdkToBeAccessible
+    expectGetImageSizeToFail
+    expectFatal' $ parseDockerEngineSource exampleImgWithTag
 
-  describe "analyze" $ do
-    currDir <- runIO getCurrentDir
-    let imageArchive = currDir </> appDepsImage
+  it' "should parse image source if image size can be inferred via docker api" $ do
+    expectDockerSdkToBeAccessible
+    expectGetImageSizeToSucceed
+    src <- parseDockerEngineSource exampleImgWithTag
+    src `shouldBe'` DockerEngine exampleImgWithTag
 
-    it' "should not analyze application dependencies when only-system-dependencies are requested" $ do
-      containerScan <- analyzeFromDockerArchive True mempty (toFlag' False) imageArchive
-      buildImportsOf containerScan `shouldNotContain'` [numpy, scipy, black]
+analyzeSpec :: Spec
+analyzeSpec = describe "analyze" $ do
+  currDir <- runIO getCurrentDir
+  let imageArchive = currDir </> appDepsImage
 
-    it' "should analyze application dependencies" $ do
-      containerScan <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchive
-      buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, scipy, black]
-      buildImportsOf containerScan `shouldNotContain'` [networkX]
+  it' "should not analyze application dependencies when only-system-dependencies are requested" $ do
+    containerScan <- analyzeFromDockerArchive True mempty (toFlag' False) imageArchive
+    buildImportsOf containerScan `shouldNotContain'` [numpy, scipy, black]
 
-    it' "should apply tool exclusion filter" $ do
-      containerScan <- analyzeFromDockerArchive False (excludeTool SetuptoolsProjectType) (toFlag' False) imageArchive
-      buildImportsOf containerScan `shouldNotContain'` [numpy, scipy, black]
+  it' "should analyze application dependencies" $ do
+    containerScan <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchive
+    buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, scipy, black]
+    buildImportsOf containerScan `shouldNotContain'` [networkX]
 
-    it' "should apply project exclusion filter" $ do
-      let appAPath = $(mkRelDir "app/services/b/")
-      containerScan <- analyzeFromDockerArchive False (excludeProject SetuptoolsProjectType appAPath) (toFlag' False) imageArchive
-      buildImportsOf containerScan `shouldNotContain'` [scipy]
-      buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, black]
+  it' "should apply tool exclusion filter" $ do
+    containerScan <- analyzeFromDockerArchive False (excludeTool SetuptoolsProjectType) (toFlag' False) imageArchive
+    buildImportsOf containerScan `shouldNotContain'` [numpy, scipy, black]
 
-    it' "should analyze all targets, if default filter is disabled" $ do
-      containerScan <- analyzeFromDockerArchive False mempty (toFlag' True) imageArchive
-      buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, scipy, black, networkX]
+  it' "should apply project exclusion filter" $ do
+    let appAPath = $(mkRelDir "app/services/b/")
+    containerScan <- analyzeFromDockerArchive False (excludeProject SetuptoolsProjectType appAPath) (toFlag' False) imageArchive
+    buildImportsOf containerScan `shouldNotContain'` [scipy]
+    buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, black]
 
-    it' "should apply path exclusion filter" $ do
-      let appAPath = $(mkRelDir "app/services/b/internal/")
-      containerScan <- analyzeFromDockerArchive False (excludePath appAPath) (toFlag' False) imageArchive
-      buildImportsOf containerScan `shouldNotContain'` [black]
-      buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, scipy]
+  it' "should analyze all targets, if default filter is disabled" $ do
+    containerScan <- analyzeFromDockerArchive False mempty (toFlag' True) imageArchive
+    buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, scipy, black, networkX]
+
+  it' "should apply path exclusion filter" $ do
+    let appAPath = $(mkRelDir "app/services/b/internal/")
+    containerScan <- analyzeFromDockerArchive False (excludePath appAPath) (toFlag' False) imageArchive
+    buildImportsOf containerScan `shouldNotContain'` [black]
+    buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, scipy]
 
 buildImportsOf :: ContainerScan -> [Locator]
 buildImportsOf scan =
@@ -182,3 +186,28 @@ excludeTool tool = AllFilters mempty $ comboExclude [TypeTarget $ toText tool] m
 
 excludeProject :: DiscoveredProjectType -> Path Rel Dir -> AllFilters
 excludeProject ty path = AllFilters mempty $ comboExclude [TypeDirTarget (toText ty) path] mempty
+
+jarsInContainerImage :: Path Rel File
+jarsInContainerImage = $(mkRelFile "test/App/Fossa/Container/testdata/jar_test_container.tar")
+
+jarsInContainerSpec :: Spec
+jarsInContainerSpec = describe "Jars in Containers" $ do
+  currDir <- runIO getCurrentDir
+  let imageArchivePath = currDir </> jarsInContainerImage
+      baseLayerId = "sha256:9733ccc395133a067f01ee6e380003d80fe9f443673e0f992ae6a4a7860a872c"
+      otherLayerId = "sha256:5c079c30beb013e4b2f7729b6bdce6fba57941d28f20db985333fc1dd969f018"
+
+  it' "Reads and merges the layers correctly" $ do
+    ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchivePath
+    let layerIds = map layerId imageLayers
+    layerIds
+      `shouldMatchList'` [baseLayerId, otherLayerId]
+  it' "Each layer should have the expected number of JAR observations" $ do
+    ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchivePath
+    let observationsMap = Map.fromList $ map (\layer -> (layerId layer, observations layer)) imageLayers
+
+    -- The CLI only passes observations along without inspecting them.
+    -- So this test just checks that the number of them that we expect are there.
+    -- More specific tests for observation content are in Millhone.
+    (length <$> Map.lookup baseLayerId observationsMap) `shouldBe'` Just 0
+    (length <$> Map.lookup otherLayerId observationsMap) `shouldBe'` Just 2
