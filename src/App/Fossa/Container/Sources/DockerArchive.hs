@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module App.Fossa.Container.Sources.DockerArchive (
   analyzeFromDockerArchive,
@@ -18,6 +18,7 @@ import App.Fossa.Analyze.Types (
  )
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic), WithoutDefaultFilters (..))
 import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
+import App.Fossa.Container.Sources.JarAnalysis (analyzeContainerJars)
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Docker.Manifest (getImageDigest, getRepoTags)
 import Container.OsRelease (OsInfo (nameId, version), getOsInfo)
@@ -25,11 +26,12 @@ import Container.Tarball (mkFsFromChangeset, parse)
 import Container.TarballReadFs (runTarballReadFSIO)
 import Container.Types (
   ContainerImageRaw (..),
-  ContainerLayer (layerDigest),
-  ContainerScan (ContainerScan),
+  ContainerLayer (..),
+  ContainerScan (..),
   ContainerScanImage (ContainerScanImage),
   ContainerScanImageLayer (ContainerScanImageLayer),
   baseLayer,
+  discoveredJars,
   hasOtherLayers,
   otherLayersSquashed,
  )
@@ -46,18 +48,20 @@ import Control.Carrier.TaskPool (withTaskPool)
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.AtomicCounter (AtomicCounter)
 import Control.Effect.Debug (Debug)
-import Control.Effect.Diagnostics (Diagnostics, context, fromEither, fromMaybeText)
+import Control.Effect.Diagnostics (Diagnostics, context, fromEither, fromMaybeText, warnThenRecover)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Output (Output)
 import Control.Effect.Reader (Reader)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.TaskPool (TaskPool)
 import Control.Effect.Telemetry (Telemetry)
-import Control.Monad (void, when)
+import Control.Monad (join, void, when)
+import Data.Bifunctor (bimap)
 import Data.ByteString.Lazy qualified as BS
 import Data.FileTree.IndexFileTree (SomeFileTree, fixedVfsRoot)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
+import Data.Map qualified as Map
 import Data.Maybe (listToMaybe, mapMaybe)
 import Data.String.Conversion (ToString (toString))
 import Data.Text (Text)
@@ -99,6 +103,12 @@ analyzeFromDockerArchive ::
 analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = do
   capabilities <- sendIO getNumCapabilities
   containerTarball <- sendIO . BS.readFile $ toString tarball
+
+  observations <- warnThenRecover @Text "Error Running JAR analyzer (millhone)" $
+    do
+      logInfo "Searching for JARs in container image."
+      analyzeContainerJars tarball
+
   image <- fromEither $ parse containerTarball
 
   -- get Image Digest and Tags
@@ -109,7 +119,8 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
   -- Analyze Base Layer
   logInfo "Analyzing Base Layer"
   baseFs <- context "Building base layer FS" $ mkFsFromChangeset $ baseLayer image
-  let baseDigest = layerDigest . baseLayer $ image
+  let imageBaseLayer = baseLayer image
+      baseDigest = layerDigest imageBaseLayer
   osInfo <-
     context "Retrieving OS Information" $
       runTarballReadFSIO baseFs tarball getOsInfo
@@ -120,13 +131,30 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
   let mkScan :: [ContainerScanImageLayer] -> ContainerScan
       mkScan layers =
         ContainerScan
-          ( ContainerScanImage
-              (nameId osInfo)
-              (version osInfo)
-              layers
-          )
-          imageDigest
-          imageTag
+          { imageData =
+              ( ContainerScanImage
+                  (nameId osInfo)
+                  (version osInfo)
+                  layers
+              )
+          , imageDigest
+          , imageTag
+          }
+
+  (baseObservations, otherObservations) <-
+    case (observations, layerPath imageBaseLayer) of
+      (Just observations', baseLayerPath) ->
+        pure
+          . bimap (join . Map.elems) (join . Map.elems)
+          -- If a base layer does not exist not exist, jar observations will appear in "other" layers.
+          . Map.partitionWithKey (\layerPath _ -> Just layerPath == baseLayerPath)
+          $ (discoveredJars observations')
+      _ -> do
+        logInfo "Failed to run Jar analyzer."
+        logInfo "If you were expecting JAR analysis results, run with '--debug' for more info."
+        pure ([], [])
+
+  let baseScanImageLayer = ContainerScanImageLayer baseDigest baseUnits baseObservations
 
   if hasOtherLayers image
     then do
@@ -136,12 +164,14 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
       otherUnits <-
         context "Analyzing from Other Layers" $
           analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo fs tarball
-      pure $
-        mkScan
-          [ ContainerScanImageLayer baseDigest baseUnits
-          , ContainerScanImageLayer squashedDigest otherUnits
-          ]
-    else pure $ mkScan [ContainerScanImageLayer baseDigest baseUnits]
+
+      let scan =
+            mkScan
+              [ baseScanImageLayer
+              , ContainerScanImageLayer squashedDigest otherUnits otherObservations
+              ]
+      pure scan
+    else pure $ mkScan [baseScanImageLayer]
 
 analyzeLayer ::
   ( Has Diagnostics sig m
@@ -230,7 +260,7 @@ runDependencyAnalysis ::
   Flag WithoutDefaultFilters ->
   DiscoveredProject proj ->
   m ()
-runDependencyAnalysis basedir filters withoutDefaultFilters project@DiscoveredProject{..} = do
+runDependencyAnalysis basedir filters withoutDefaultFilters project@DiscoveredProject{projectType, projectPath, projectData} = do
   let dpi = DiscoveredProjectIdentifier projectPath projectType
   let hasNonProductionPath =
         not (fromFlag WithoutDefaultFilters withoutDefaultFilters) && isDefaultNonProductionPath basedir projectPath
