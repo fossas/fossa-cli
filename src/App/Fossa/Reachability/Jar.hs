@@ -24,7 +24,6 @@ import Data.Maybe (catMaybes)
 import Data.String.Conversion (toText)
 import Data.Text (isSuffixOf)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, Has, execThrow)
-import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, doesFileExist)
 import Errata (Errata)
 import Path (Abs, File, Path, fileExtension, fromAbsDir, parent, toFilePath)
@@ -35,9 +34,9 @@ import System.FilePath qualified as FP
 newtype CallGraphJarParser = CallGraphJarParser {jar :: BS.ByteString}
   deriving (Eq, Ord, Show)
 
--- This jar is from: https://github.com/fossas/jar-callgraph/pull/1
+-- This jar is from: https://github.com/fossas/jar-callgraph/pull/52
 execJar :: CallGraphJarParser
-execJar = CallGraphJarParser{jar = $(embedFile' "scripts/jar-callgraph-1.0.0.jar")}
+execJar = CallGraphJarParser{jar = $(embedFile' "scripts/jar-callgraph-1.0.1.jar")}
 
 withUnpackedPlugin ::
   ( Has (Lift IO) sig m
