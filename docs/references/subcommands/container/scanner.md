@@ -213,6 +213,11 @@ It will then report them to FOSSA which will try to match the Jar files to the p
 This process relies on there being a back-end that can perform that analysis.
 SaaS customers should have this functionality available but on-prem customers may need to contact FOSSA support to have it enabled.
 
+### Distroless Containers
+
+Container images where FOSSA cannot detect an operating system are supported but in a more limited way than images where FOSSA can.
+These container images will not support reporting system deps (APK, DPKG, and RPM) but can support the other forms of analyses listed in the table below.
+
 ### Supported Container Package Managers
 The following package managers are supported in container scanning:
 

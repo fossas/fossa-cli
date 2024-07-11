@@ -36,7 +36,7 @@ import Test.Effect (
   shouldMatchList',
   shouldNotContain',
  )
-import Test.Hspec (Spec, SpecWith, describe, fdescribe, it, runIO)
+import Test.Hspec (Spec, SpecWith, describe, it, runIO)
 import Test.MockDockerEngineApi (
   DockerEngineApiMockC,
   MockApi,
@@ -184,7 +184,7 @@ jarsInContainerImage :: Path Rel File
 jarsInContainerImage = $(mkRelFile "test/App/Fossa/Container/testdata/jar_test_container.tar")
 
 jarsInContainerSpec :: Spec
-jarsInContainerSpec = fdescribe "Jars in Containers" $ do
+jarsInContainerSpec = describe "Jars in Containers" $ do
   currDir <- runIO getCurrentDir
   let imageArchivePath = currDir </> jarsInContainerImage
       baseLayerId = "sha256:61aed1a8baa251dee118b9ab203c1e420f0eda0a9b3f9322d67d235dd27a12ee"
