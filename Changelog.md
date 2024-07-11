@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.9.25
+
+- Update jar-callgraph version [#1447](https://github.com/fossas/fossa-cli/pull/1447)
+
 ## 3.9.24
 
 - Container Scanning: Attempt to find JAR files in container images and report them as dependencies. ([#1442](https://github.com/fossas/fossa-cli/pull/1442), [#1444](https://github.com/fossas/fossa-cli/pull/1444))
