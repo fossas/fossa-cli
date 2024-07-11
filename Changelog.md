@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Warnings: Remove warnings about native container scanning and Go packages analysis. ([#1446](https://github.com/fossas/fossa-cli/pull/1446))
+
 ## 3.9.25
 
 - Update jar-callgraph version [#1447](https://github.com/fossas/fossa-cli/pull/1447)
