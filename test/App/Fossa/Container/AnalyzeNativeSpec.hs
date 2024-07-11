@@ -191,11 +191,11 @@ jarsInContainerImage :: Path Rel File
 jarsInContainerImage = $(mkRelFile "test/App/Fossa/Container/testdata/jar_test_container.tar")
 
 jarsInContainerSpec :: Spec
-jarsInContainerSpec = fdescribe "Jars in Containers" $ do
+jarsInContainerSpec = describe "Jars in Containers" $ do
   currDir <- runIO getCurrentDir
   let imageArchivePath = currDir </> jarsInContainerImage
-      baseLayerId = "sha256:cc2447e1835a40530975ab80bb1f872fbab0f2a0faecf2ab16fbbb89b3589438"
-      otherLayerId = "sha256:4d84019f77d1aa837a2cb4225bb79fc03a45ae5a247284dda07cfb9fb8077bd1"
+      baseLayerId = "sha256:61aed1a8baa251dee118b9ab203c1e420f0eda0a9b3f9322d67d235dd27a12ee"
+      otherLayerId = "sha256:0e4613a3c620a37d93aca05039001fb5a6063c9d9cfb0935e3aa984025f31198"
 
   it' "Reads and merges the layers correctly" $ do
     ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchivePath
@@ -209,5 +209,5 @@ jarsInContainerSpec = fdescribe "Jars in Containers" $ do
     -- The CLI only passes observations along without inspecting them.
     -- So this test just checks that the number of them that we expect are there.
     -- More specific tests for observation content are in Millhone.
-    (length <$> Map.lookup baseLayerId observationsMap) `shouldBe'` Just 0
+    (length <$> Map.lookup baseLayerId observationsMap) `shouldBe'` Just 1
     (length <$> Map.lookup otherLayerId observationsMap) `shouldBe'` Just 2

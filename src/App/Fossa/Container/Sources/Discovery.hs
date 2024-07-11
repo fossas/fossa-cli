@@ -61,6 +61,9 @@ import Types (
 
 layerAnalyzers :: AnalyzeStaticTaskEffs sig m => Maybe OsInfo -> Bool -> [DiscoverFunc m]
 layerAnalyzers os onlySystemDeps = do
+  -- For true distroless container support the linux builds need to be able to produce a result without os info.
+  -- Not having OS info will mean we miss any system deps in the container.
+  -- It's still useful to allow this though because we can do jar in container analysis as well as regular project analysis.
   let systemDeps = maybe [] osDepsAnalyzers os
   if onlySystemDeps
     then systemDeps
