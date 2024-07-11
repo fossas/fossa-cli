@@ -217,9 +217,9 @@ jarsInContainerSpec = describe "Jars in Containers" $ do
             }
         expectedSrcUnit =
           SourceUnit
-            { sourceUnitName = "./"
+            { sourceUnitName = toText $(mkRelDir "./")
             , sourceUnitType = "npm"
-            , sourceUnitManifest = "./"
+            , sourceUnitManifest = toText $(mkRelDir "./")
             , sourceUnitBuild =
                 Just
                   SourceUnitBuild
