@@ -196,6 +196,31 @@ mod tests {
     const MILLHONE_OUT: &str = r#"
 {
   "discovered_jars": {
+    "blobs/sha256/61aed1a8baa251dee118b9ab203c1e420f0eda0a9b3f9322d67d235dd27a12ee": [
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "jackson-annotations-2.17.1.jar",
+        "fingerprints": {
+          "sha_256": "/MrYLhMXLA5DhNtxV3IZybhjHAgg9LGNqqVwFvtmHHY=",
+          "v1.mavencentral.jar": "/KfvYZLJrQXQe8UNqZG/k3qErzo=",
+          "v1.class.jar": "t2Btr6rNrvzghM5Nud2uldRGVjw0/n5rK9j0xooQQyk=",
+          "v1.raw.jar": "wjGJk8cvY4tpKcUC5r8YuO15Wfv+rVuyWANBYCUIeDs="
+        }
+      }
+    ],
+    "blobs/sha256/0e4613a3c620a37d93aca05039001fb5a6063c9d9cfb0935e3aa984025f31198": [
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "slf4j-ext-2.0.0.jar",
+        "fingerprints": {
+          "v1.mavencentral.jar": "WO8bdGURkfUQyqK6rJ4miP9caEU=",
+          "v1.class.jar": "PexFkKDUkwq7Do2Pt3HVPjMBRfqj/Zzp+nK5D6LfPF4=",
+          "sha_256": "bWERAhXZlaGR2AxgVJDRTAlbOtHqLIVOpmncfLIUKj0=",
+          "v1.raw.jar": "7CEXDIU3h2Vcj6lmy4gbuh4KsMVCNgUZTCj9VA4VoV8="
+        }
+      }
+    ],
+    "blobs/sha256/632e84390ad558f9db0524f5e38a0af3e79c623a46bdce8a5e6a1761041b9850": [],
     "blobs/sha256/054f94aa7ce72b59cd6abac5462f77f0645b2f1a7b17e55d8f847a6da58c90db": [
       {
         "kind": "v1.discover.binary.jar",
@@ -205,30 +230,6 @@ mod tests {
           "v1.raw.jar": "QA4SAurtJeo+lx1Vqve5uQYnvDKLFx1NgsSuoWKi8pw=",
           "sha_256": "MuEcK3nOFuySTTg4HOJi3vvTpI9bYspfMHa9AK2merQ=",
           "v1.mavencentral.jar": "6bzpyKql6Q+UxKQgm14pcP4wHGo="
-        }
-      }
-    ],
-    "blobs/sha256/0e4613a3c620a37d93aca05039001fb5a6063c9d9cfb0935e3aa984025f31198": [
-      {
-        "kind": "v1.discover.binary.jar",
-        "path": "slf4j-ext-2.0.0.jar",
-        "fingerprints": {
-          "v1.class.jar": "PexFkKDUkwq7Do2Pt3HVPjMBRfqj/Zzp+nK5D6LfPF4=",
-          "v1.mavencentral.jar": "WO8bdGURkfUQyqK6rJ4miP9caEU=",
-          "sha_256": "bWERAhXZlaGR2AxgVJDRTAlbOtHqLIVOpmncfLIUKj0=",
-          "v1.raw.jar": "7CEXDIU3h2Vcj6lmy4gbuh4KsMVCNgUZTCj9VA4VoV8="
-        }
-      }
-    ],
-    "blobs/sha256/61aed1a8baa251dee118b9ab203c1e420f0eda0a9b3f9322d67d235dd27a12ee": [
-      {
-        "kind": "v1.discover.binary.jar",
-        "path": "jackson-annotations-2.17.1.jar",
-        "fingerprints": {
-          "v1.mavencentral.jar": "/KfvYZLJrQXQe8UNqZG/k3qErzo=",
-          "sha_256": "/MrYLhMXLA5DhNtxV3IZybhjHAgg9LGNqqVwFvtmHHY=",
-          "v1.class.jar": "t2Btr6rNrvzghM5Nud2uldRGVjw0/n5rK9j0xooQQyk=",
-          "v1.raw.jar": "wjGJk8cvY4tpKcUC5r8YuO15Wfv+rVuyWANBYCUIeDs="
         }
       }
     ]
