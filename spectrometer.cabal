@@ -102,6 +102,8 @@ common deps
     , containers                   ^>=0.6.8
     , cpio-conduit                 ^>=0.7.0
     , crypton                      ^>=1.0.0
+    , crypton-connection           ^>=0.4.1
+    , data-default-class           ^>=0.1.2.0
     , deepseq                      ^>=1.4.8
     , direct-sqlite                ^>=2.3.27
     , directory                    ^>=1.3.6.1
@@ -117,6 +119,7 @@ common deps
     , hashable                     >=1.0.0.1
     , hedn                         ^>=0.3.0.1
     , http-client                  ^>=0.7.1
+    , http-client-tls              ^>=0.3.6
     , http-conduit                 ^>=2.3.0
     , http-types                   ^>=0.12.3
     , lzma                         ^>=0.0.1.0
