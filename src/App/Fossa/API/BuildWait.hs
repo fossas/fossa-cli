@@ -8,7 +8,7 @@ module App.Fossa.API.BuildWait (
 ) where
 
 import App.Fossa.Config.Test (DiffRevision)
-import App.Types (ProjectRevision, projectRevision)
+import App.Types (LocatorType (..), ProjectRevision, projectRevision)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -71,14 +71,15 @@ waitForScanCompletion ::
   , Has (Lift IO) sig m
   ) =>
   ProjectRevision ->
+  LocatorType ->
   Cancel ->
   m ()
-waitForScanCompletion revision cancelFlag = do
+waitForScanCompletion revision locatorType cancelFlag = do
   -- Route is new, this may fail on on-prem if they haven't updated
-  project <- recover $ getProject revision
+  project <- recover $ getProject revision locatorType
   if maybe False projectIsMonorepo project
     then fatalText "The project you are attempting to test is a monorepo project. Monorepo projects are no longer supported by FOSSA."
-    else waitForBuild revision cancelFlag
+    else waitForBuild revision locatorType cancelFlag
 
 waitForIssues ::
   ( Has Diagnostics sig m
@@ -88,15 +89,16 @@ waitForIssues ::
   ) =>
   ProjectRevision ->
   Maybe DiffRevision ->
+  LocatorType ->
   Cancel ->
   m Issues
-waitForIssues revision diffRevision cancelFlag = do
+waitForIssues revision diffRevision locatorType cancelFlag = do
   checkForTimeout cancelFlag
-  issues <- getIssues revision diffRevision
+  issues <- getIssues revision diffRevision locatorType
   case issuesStatus issues of
     "WAITING" -> do
       pauseForRetry
-      waitForIssues revision diffRevision cancelFlag
+      waitForIssues revision diffRevision locatorType cancelFlag
     _ -> pure issues
 
 -- | Wait for build completion
@@ -108,11 +110,12 @@ waitForBuild ::
   , Has (Lift IO) sig m
   ) =>
   ProjectRevision ->
+  LocatorType ->
   Cancel ->
   m ()
-waitForBuild revision cancelFlag = do
+waitForBuild revision locatorType cancelFlag = do
   checkForTimeout cancelFlag
-  build <- getLatestBuild revision
+  build <- getLatestBuild revision locatorType
 
   case buildTaskStatus (buildTask build) of
     StatusSucceeded -> pure ()
@@ -120,7 +123,7 @@ waitForBuild revision cancelFlag = do
     otherStatus -> do
       logSticky $ "[ Waiting for build completion (revision " <> revision.projectRevision <> ")... last status: " <> showText otherStatus <> " ]"
       pauseForRetry
-      waitForBuild revision cancelFlag
+      waitForBuild revision locatorType cancelFlag
 
 -- | Specialized version of 'checkForCancel' which represents
 -- a backend build/issue scan timeout.
@@ -152,7 +155,7 @@ waitForReportReadiness ::
   Cancel ->
   m ()
 waitForReportReadiness revision cancelFlag = do
-  void $ waitForIssues revision Nothing cancelFlag
+  void $ waitForIssues revision Nothing LocatorTypeCustom cancelFlag
 
   supportsDepCacheReadinessPolling <- orgSupportsDependenciesCachePolling <$> getOrganization
   when supportsDepCacheReadinessPolling $

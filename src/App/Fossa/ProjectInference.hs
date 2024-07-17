@@ -6,6 +6,7 @@ module App.Fossa.ProjectInference (
   inferProjectFromVCS,
   inferProjectCached,
   inferProjectDefault,
+  inferProjectDefaultFromFile,
   saveRevision,
   mergeOverride,
   readCachedRevision,
@@ -22,6 +23,7 @@ import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad (unless)
 import Data.ByteString.Lazy qualified as BL
+import Data.Char (toLower)
 import Data.Foldable (find)
 import Data.HashMap.Strict qualified as HM
 import Data.Maybe (fromMaybe, mapMaybe)
@@ -61,9 +63,7 @@ inferProjectCached dir = do
   rev <- readCachedRevision
   pure project{inferredRevision = rev}
 
--- | Infer a default project name from the directory, and a default
--- revision from the current time. Writes `.fossa.revision` to the system
--- temp directory for use by `fossa test`
+-- | Infer a default project name from the directory, and a default revision from the current time.
 inferProjectDefault :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path b Dir -> m InferredProject
 inferProjectDefault dir = context "Inferring project from directory name / timestamp" . sendIO $ do
   let name = FP.dropTrailingPathSeparator (fromRelDir (dirname dir))
@@ -71,6 +71,22 @@ inferProjectDefault dir = context "Inferring project from directory name / times
 
   let stamp = Text.takeWhile (/= '.') $ toText time -- trim milliseconds off, format is yyyy-mm-ddThh:mm:ss[.sss]
   pure (InferredProject (toText name) (stamp <> "Z") Nothing)
+
+-- | Infer a default project name from a filename, and a default revision from the current time.
+--   If any extensions are passed in, then those extensions will be removed when creating the project name
+inferProjectDefaultFromFile :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Path b File -> [String] -> m InferredProject
+inferProjectDefaultFromFile file extensions = context "Inferring project from filename / timestamp" . sendIO $ do
+  let name = FP.dropTrailingPathSeparator . fromRelFile . filename $ file
+  let ext = map toLower . FP.takeExtension $ name
+  let nameWithoutExt =
+        if ext `elem` extensions
+          then FP.dropExtension name
+          else name
+
+  time <- iso8601Show <$> getCurrentTime
+
+  let stamp = Text.takeWhile (/= '.') $ toText time -- trim milliseconds off, format is yyyy-mm-ddThh:mm:ss[.sss]
+  pure (InferredProject (toText nameWithoutExt) (stamp <> "Z") Nothing)
 
 svnCommand :: Command
 svnCommand =

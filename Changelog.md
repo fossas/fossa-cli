@@ -1,8 +1,59 @@
 # FOSSA CLI Changelog
 
+## 3.9.26
+
+- Reports: Add `includeCopyrightList` to JSON attribution report request. This will ensure that all copyrights are included in the JSON attribution report once the FOSSA API starts including them. All other formats of attribution reports will receive all copyrights without needing to add this query param. [#1450](https://github.com/fossas/fossa-cli/pull/1450)
+
+## 3.9.25
+
+- Update jar-callgraph version [#1447](https://github.com/fossas/fossa-cli/pull/1447)
+
+## 3.9.24
+
+- Container Scanning: Attempt to find JAR files in container images and report them as dependencies. ([#1442](https://github.com/fossas/fossa-cli/pull/1442), [#1444](https://github.com/fossas/fossa-cli/pull/1444))
+
+## 3.9.23
+
+- Reachability: For organizations that don't have reachability turned on suppress messages about it. ([#1440](https://github.com/fossas/fossa-cli/pull/1440))
+
+## 3.9.22
+- Fixes release group flags for `fossa analyze` and `fossa container analyze`  ([#1439](https://github.com/fossas/fossa-cli/pull/1439))
+
+## 3.9.21
+- Add support for analyzing SBOM files ([#1435](https://github.com/fossas/fossa-cli/pull/1435))
+- License Scanning: Add the Llama-3-community license (No PR)
+- Yarn: Don't fail analysis if a dependency cannot be found. ([1436](https://github.com/fossas/fossa-cli/pull/1436))
+
+## 3.9.20
+- Fixes file matches for license scans ([#1434](https://github.com/fossas/fossa-cli/pull/1434)).
+
+## v3.9.19
+- Release a Mac arm64 binary. ([#1426](https://github.com/fossas/fossa-cli/pull/1426))
+- Updated the license to CPAL, an OSI-approved license similar to MPL ([#1431](https://github.com/fossas/fossa-cli/pull/1431)).
+
+## v3.9.18
+- Resolves an issue where `vendored-dependencies` were rescanned locally, but not in the FOSSA service,
+  when `forceRescans` was set to `true` ([#1423](https://github.com/fossas/fossa-cli/pull/1423)).
+
+## v3.9.17
+- Poetry: Adds partial support for dependency groups. ([#1420](https://github.com/fossas/fossa-cli/pull/1420)).
+
+## v3.9.16
+- Treat `targets` field in the issue summary loaded from Core as optional during `fossa test` and `fossa report` ([#1422](https://github.com/fossas/fossa-cli/pull/1422)).
+- Adds support for SwiftPM v3 files ([#1424](https://github.com/fossas/fossa-cli/pull/1424)).
+  Future SwiftPM file formats will be accepted automatically if they remain backwards compatible with the current parser.
+- Updates parallel embedded binary extractions to be more properly isolated ([#1425](https://github.com/fossas/fossa-cli/pull/1425)).
+
+## v3.9.15
+- Change TLS to a version that takes advantage of but does not require 1.2 with EMS.
+  This will be reverted in six months.
+  On-prem users should upgrade their servers to support either TLS 1.2 with EMS or TLS 1.3.
+  SAAS customers are unaffected. ([#1418](https://github.com/fossas/fossa-cli/pull/1418)).
+
 ## v3.9.14
-- Update cargo strategy to parse new `cargo metadata` format for cargo >= 1.77.0 ([#1416](https://github.com/fossas/fossa-cli/pull/1416)).
+- Cargo: Update cargo strategy to parse new `cargo metadata` format for cargo >= 1.77.0 ([#1416](https://github.com/fossas/fossa-cli/pull/1416)).
 - `fossa release-group`: Add command to create a FOSSA release group release (`fossa release-group create-release`) [#1409](https://github.com/fossas/fossa-cli/pull/1409).
+- `fossa project`: Adds commands to interact with FOSSA projects (`fossa project edit`) [#1394](https://github.com/fossas/fossa-cli/pull/1395).
 
 ## v3.9.13
 - Support GIT dependencies in Bundler projects ([#1403](https://github.com/fossas/fossa-cli/pull/1403/files))

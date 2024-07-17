@@ -5,6 +5,7 @@ module Control.Effect.FossaApiClient (
   FossaApiClientF (..),
   FossaApiClient,
   addFilesToVsiScan,
+  addTeamProjects,
   assertRevisionBinaries,
   assertUserDefinedBinaries,
   completeVsiScan,
@@ -27,6 +28,7 @@ module Control.Effect.FossaApiClient (
   getVsiInferences,
   getVsiScanAnalysisStatus,
   queueArchiveBuild,
+  queueSBOMBuild,
   resolveProjectDependencies,
   resolveUserDefinedBinary,
   uploadAnalysis,
@@ -50,6 +52,10 @@ module Control.Effect.FossaApiClient (
   getReleaseGroups,
   getReleaseGroupReleases,
   updateReleaseGroupRelease,
+  getProjectV2,
+  updateProject,
+  updateRevision,
+  getOrgLabels,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
@@ -60,17 +66,35 @@ import App.Fossa.VSI.Fingerprint qualified as Fingerprint
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency)
-import App.Types (FullFileUploads, ProjectMetadata, ProjectRevision, ReleaseGroupReleaseRevision)
+import App.Types (ComponentUploadFileType, DependencyRebuild, FileUpload, LocatorType, ProjectMetadata, ProjectRevision, ReleaseGroupReleaseRevision)
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
-import Data.ByteString.Char8 qualified as C8
 import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Text (Text)
-import Fossa.API.Types (AnalyzedPathDependency, ApiOpts, Archive, ArchiveComponents, Build, Contributors, CreateReleaseGroupRequest, CreateReleaseGroupResponse, CustomBuildUploadPermissions, Issues, Organization, PathDependencyUpload, Policy, Project, ReleaseGroup, ReleaseGroupRelease, RevisionDependencyCache, SignedURL, Team, TokenTypeResponse, UpdateReleaseRequest, UploadResponse)
+import Fossa.API.Types (
+  AnalyzedPathDependency,
+  ApiOpts,
+  Archive,
+  ArchiveComponents,
+  Build,
+  Contributors,
+  CustomBuildUploadPermissions,
+  Issues,
+  Organization,
+  PathDependencyUpload,
+  Project,
+  RevisionDependencyCache,
+  SignedURL,
+  TokenTypeResponse,
+  UploadResponse,
+ )
+
+import Fossa.API.CoreTypes qualified as CoreTypes
+
 import Path (File, Path, Rel)
 import Srclib.Types (FullSourceUnit, LicenseSourceUnit, Locator, SourceUnit)
 
@@ -85,6 +109,7 @@ data PackageRevision = PackageRevision
 -- Note: If you add an entry here, please add a corresponding entry in @Test.MockApi.matchExpectation@.
 data FossaApiClientF a where
   AddFilesToVsiScan :: VSI.ScanID -> Map (Path Rel File) Fingerprint.Combined -> FossaApiClientF ()
+  AddTeamProjects :: Int -> CoreTypes.AddTeamProjectsRequest -> FossaApiClientF CoreTypes.AddTeamProjectsResponse
   AssertRevisionBinaries :: Locator -> [Fingerprint Raw] -> FossaApiClientF ()
   AssertUserDefinedBinaries :: IAT.UserDefinedAssertionMeta -> [Fingerprint Raw] -> FossaApiClientF ()
   CompleteVsiScan :: VSI.ScanID -> FossaApiClientF ()
@@ -97,24 +122,25 @@ data FossaApiClientF a where
     ProjectRevision ->
     ProjectMetadata ->
     FossaApiClientF CustomBuildUploadPermissions
-  GetIssues :: ProjectRevision -> Maybe DiffRevision -> FossaApiClientF Issues
+  GetIssues :: ProjectRevision -> Maybe DiffRevision -> LocatorType -> FossaApiClientF Issues
   GetEndpointVersion :: FossaApiClientF Text
   GetRevisionDependencyCacheStatus :: ProjectRevision -> FossaApiClientF RevisionDependencyCache
-  GetLatestBuild :: ProjectRevision -> FossaApiClientF Build
+  GetLatestBuild :: ProjectRevision -> LocatorType -> FossaApiClientF Build
   GetOrganization :: FossaApiClientF Organization
-  GetPolicies :: FossaApiClientF [Policy]
-  GetProject :: ProjectRevision -> FossaApiClientF Project
-  GetTeams :: FossaApiClientF [Team]
+  GetPolicies :: FossaApiClientF [CoreTypes.Policy]
+  GetProject :: ProjectRevision -> LocatorType -> FossaApiClientF Project
+  GetTeams :: FossaApiClientF [CoreTypes.Team]
   GetAnalyzedRevisions :: NonEmpty VendoredDependency -> FossaApiClientF [Text]
   GetAnalyzedPathRevisions :: ProjectRevision -> FossaApiClientF [AnalyzedPathDependency]
   GetSignedFirstPartyScanUrl :: PackageRevision -> FossaApiClientF SignedURL
   GetSignedLicenseScanUrl :: PackageRevision -> FossaApiClientF SignedURL
-  GetPathDependencyScanUrl :: PackageRevision -> ProjectRevision -> FullFileUploads -> FossaApiClientF PathDependencyUpload
-  GetSignedUploadUrl :: PackageRevision -> FossaApiClientF SignedURL
+  GetPathDependencyScanUrl :: PackageRevision -> ProjectRevision -> FileUpload -> FossaApiClientF PathDependencyUpload
+  GetSignedUploadUrl :: ComponentUploadFileType -> PackageRevision -> FossaApiClientF SignedURL
   GetTokenType :: FossaApiClientF TokenTypeResponse
   GetVsiInferences :: VSI.ScanID -> FossaApiClientF VSI.VsiExportedInferencesBody
   GetVsiScanAnalysisStatus :: VSI.ScanID -> FossaApiClientF VSI.AnalysisStatus
-  QueueArchiveBuild :: Archive -> FossaApiClientF (Maybe C8.ByteString)
+  QueueArchiveBuild :: [Archive] -> DependencyRebuild -> FossaApiClientF ()
+  QueueSBOMBuild :: Archive -> Maybe Text -> DependencyRebuild -> FossaApiClientF ()
   ResolveProjectDependencies :: VSI.Locator -> FossaApiClientF [VSI.Locator]
   ResolveUserDefinedBinary :: IAT.UserDep -> FossaApiClientF IAT.UserDefinedAssertionMeta
   UploadAnalysis ::
@@ -125,7 +151,7 @@ data FossaApiClientF a where
   UploadAnalysisWithFirstPartyLicenses ::
     ProjectRevision ->
     ProjectMetadata ->
-    FullFileUploads ->
+    FileUpload ->
     FossaApiClientF UploadResponse
   UploadArchive :: SignedURL -> FilePath -> FossaApiClientF ByteString
   UploadNativeContainerScan ::
@@ -143,11 +169,15 @@ data FossaApiClientF a where
   UploadBuildForReachability :: ProjectRevision -> ProjectMetadata -> [SourceUnitReachability] -> FossaApiClientF ()
   DeleteReleaseGroup :: Int -> FossaApiClientF ()
   DeleteReleaseGroupRelease :: Int -> Int -> FossaApiClientF ()
-  CreateReleaseGroup :: CreateReleaseGroupRequest -> FossaApiClientF CreateReleaseGroupResponse
-  CreateReleaseGroupRelease :: Int -> ReleaseGroupReleaseRevision -> FossaApiClientF ReleaseGroupRelease
-  UpdateReleaseGroupRelease :: Int -> Int -> UpdateReleaseRequest -> FossaApiClientF ReleaseGroupRelease
-  GetReleaseGroups :: FossaApiClientF [ReleaseGroup]
-  GetReleaseGroupReleases :: Int -> FossaApiClientF [ReleaseGroupRelease]
+  CreateReleaseGroup :: CoreTypes.CreateReleaseGroupRequest -> FossaApiClientF CoreTypes.CreateReleaseGroupResponse
+  CreateReleaseGroupRelease :: Int -> ReleaseGroupReleaseRevision -> FossaApiClientF CoreTypes.ReleaseGroupRelease
+  UpdateReleaseGroupRelease :: Int -> Int -> CoreTypes.UpdateReleaseRequest -> FossaApiClientF CoreTypes.ReleaseGroupRelease
+  GetReleaseGroups :: FossaApiClientF [CoreTypes.ReleaseGroup]
+  GetReleaseGroupReleases :: Int -> FossaApiClientF [CoreTypes.ReleaseGroupRelease]
+  GetProjectV2 :: Text -> FossaApiClientF CoreTypes.Project
+  UpdateProject :: Text -> CoreTypes.UpdateProjectRequest -> FossaApiClientF CoreTypes.Project
+  UpdateRevision :: Text -> CoreTypes.UpdateRevisionRequest -> FossaApiClientF CoreTypes.Revision
+  GetOrgLabels :: FossaApiClientF CoreTypes.Labels
 
 deriving instance Show (FossaApiClientF a)
 
@@ -160,8 +190,8 @@ getOrganization :: (Has FossaApiClient sig m) => m Organization
 getOrganization = sendSimple GetOrganization
 
 -- | Fetches the project associated with a revision
-getProject :: (Has FossaApiClient sig m) => ProjectRevision -> m Project
-getProject = sendSimple . GetProject
+getProject :: (Has FossaApiClient sig m) => ProjectRevision -> LocatorType -> m Project
+getProject revision locatorType = sendSimple $ GetProject revision locatorType
 
 -- | Returns the API options currently in scope.
 -- The API options contain a lot of information required to build URLs.
@@ -173,8 +203,8 @@ uploadAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetada
 uploadAnalysis revision metadata units = sendSimple (UploadAnalysis revision metadata units)
 
 -- | Uploads the results of a first-party analysis and associates it to a project
-uploadAnalysisWithFirstPartyLicenses :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> FullFileUploads -> m UploadResponse
-uploadAnalysisWithFirstPartyLicenses revision metadata fullFileUploads = sendSimple (UploadAnalysisWithFirstPartyLicenses revision metadata fullFileUploads)
+uploadAnalysisWithFirstPartyLicenses :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> FileUpload -> m UploadResponse
+uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind = sendSimple (UploadAnalysisWithFirstPartyLicenses revision metadata uploadKind)
 
 -- | Uploads results of container analysis performed by native scanner to a project
 uploadNativeContainerScan :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NativeContainer.ContainerScan -> m UploadResponse
@@ -184,26 +214,29 @@ uploadNativeContainerScan revision metadata scan = sendSimple (UploadNativeConta
 uploadContributors :: (Has FossaApiClient sig m) => Locator -> Contributors -> m ()
 uploadContributors locator contributors = sendSimple $ UploadContributors locator contributors
 
-getLatestBuild :: (Has FossaApiClient sig m) => ProjectRevision -> m Build
-getLatestBuild = sendSimple . GetLatestBuild
+getLatestBuild :: (Has FossaApiClient sig m) => ProjectRevision -> LocatorType -> m Build
+getLatestBuild rev locatorType = sendSimple $ GetLatestBuild rev locatorType
 
 getRevisionDependencyCacheStatus :: (Has FossaApiClient sig m) => ProjectRevision -> m RevisionDependencyCache
 getRevisionDependencyCacheStatus = sendSimple . GetRevisionDependencyCacheStatus
 
-getIssues :: (Has FossaApiClient sig m) => ProjectRevision -> Maybe DiffRevision -> m Issues
-getIssues projectRevision diffRevision = sendSimple $ GetIssues projectRevision diffRevision
+getIssues :: (Has FossaApiClient sig m) => ProjectRevision -> Maybe DiffRevision -> LocatorType -> m Issues
+getIssues projectRevision diffRevision locatorType = sendSimple $ GetIssues projectRevision diffRevision locatorType
 
 getAttribution :: Has FossaApiClient sig m => ProjectRevision -> ReportOutputFormat -> m Text
 getAttribution revision format = sendSimple $ GetAttribution revision format
 
-getSignedUploadUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
-getSignedUploadUrl = sendSimple . GetSignedUploadUrl
+getSignedUploadUrl :: Has FossaApiClient sig m => ComponentUploadFileType -> PackageRevision -> m SignedURL
+getSignedUploadUrl fileType packageSpec = sendSimple $ GetSignedUploadUrl fileType packageSpec
 
 uploadArchive :: Has FossaApiClient sig m => SignedURL -> FilePath -> m ByteString
 uploadArchive dest path = sendSimple (UploadArchive dest path)
 
-queueArchiveBuild :: Has FossaApiClient sig m => Archive -> m (Maybe C8.ByteString)
-queueArchiveBuild = sendSimple . QueueArchiveBuild
+queueArchiveBuild :: Has FossaApiClient sig m => [Archive] -> DependencyRebuild -> m ()
+queueArchiveBuild archives rebuild = sendSimple (QueueArchiveBuild archives rebuild)
+
+queueSBOMBuild :: Has FossaApiClient sig m => Archive -> Maybe Text -> DependencyRebuild -> m ()
+queueSBOMBuild archive team rebuild = sendSimple (QueueSBOMBuild archive team rebuild)
 
 assertRevisionBinaries :: Has FossaApiClient sig m => Locator -> [Fingerprint Raw] -> m ()
 assertRevisionBinaries locator fprints = sendSimple (AssertRevisionBinaries locator fprints)
@@ -223,8 +256,8 @@ getSignedFirstPartyScanUrl = sendSimple . GetSignedFirstPartyScanUrl
 getSignedLicenseScanUrl :: Has FossaApiClient sig m => PackageRevision -> m SignedURL
 getSignedLicenseScanUrl = sendSimple . GetSignedLicenseScanUrl
 
-uploadPathDependencyScan :: Has FossaApiClient sig m => PackageRevision -> ProjectRevision -> FullFileUploads -> m PathDependencyUpload
-uploadPathDependencyScan pkgRev projectRevision fullFileUpload = sendSimple $ GetPathDependencyScanUrl pkgRev projectRevision fullFileUpload
+uploadPathDependencyScan :: Has FossaApiClient sig m => PackageRevision -> ProjectRevision -> FileUpload -> m PathDependencyUpload
+uploadPathDependencyScan pkgRev projectRevision uploadKind = sendSimple $ GetPathDependencyScanUrl pkgRev projectRevision uploadKind
 
 finalizeLicenseScan :: Has FossaApiClient sig m => ArchiveComponents -> m ()
 finalizeLicenseScan = sendSimple . FinalizeLicenseScan
@@ -274,11 +307,14 @@ uploadContentForReachability = sendSimple . UploadContentForReachability
 uploadBuildForReachability :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> [SourceUnitReachability] -> m ()
 uploadBuildForReachability rev revMetadata units = sendSimple $ UploadBuildForReachability rev revMetadata units
 
-getPolicies :: Has FossaApiClient sig m => m [Policy]
+getPolicies :: Has FossaApiClient sig m => m [CoreTypes.Policy]
 getPolicies = sendSimple GetPolicies
 
-getTeams :: Has FossaApiClient sig m => m [Team]
+getTeams :: Has FossaApiClient sig m => m [CoreTypes.Team]
 getTeams = sendSimple GetTeams
+
+addTeamProjects :: Has FossaApiClient sig m => Int -> CoreTypes.AddTeamProjectsRequest -> m CoreTypes.AddTeamProjectsResponse
+addTeamProjects teamId req = sendSimple $ AddTeamProjects teamId req
 
 deleteReleaseGroup :: Has FossaApiClient sig m => Int -> m ()
 deleteReleaseGroup releaseGroupId = sendSimple $ DeleteReleaseGroup releaseGroupId
@@ -286,17 +322,29 @@ deleteReleaseGroup releaseGroupId = sendSimple $ DeleteReleaseGroup releaseGroup
 deleteReleaseGroupRelease :: Has FossaApiClient sig m => Int -> Int -> m ()
 deleteReleaseGroupRelease releaseGroupId releaseId = sendSimple $ DeleteReleaseGroupRelease releaseGroupId releaseId
 
-updateReleaseGroupRelease :: Has FossaApiClient sig m => Int -> Int -> UpdateReleaseRequest -> m ReleaseGroupRelease
+updateReleaseGroupRelease :: Has FossaApiClient sig m => Int -> Int -> CoreTypes.UpdateReleaseRequest -> m CoreTypes.ReleaseGroupRelease
 updateReleaseGroupRelease releaseGroupId releaseId updateReq = sendSimple $ UpdateReleaseGroupRelease releaseGroupId releaseId updateReq
 
-createReleaseGroup :: Has FossaApiClient sig m => CreateReleaseGroupRequest -> m CreateReleaseGroupResponse
+createReleaseGroup :: Has FossaApiClient sig m => CoreTypes.CreateReleaseGroupRequest -> m CoreTypes.CreateReleaseGroupResponse
 createReleaseGroup req = sendSimple $ CreateReleaseGroup req
 
-createReleaseGroupRelease :: Has FossaApiClient sig m => Int -> ReleaseGroupReleaseRevision -> m ReleaseGroupRelease
+createReleaseGroupRelease :: Has FossaApiClient sig m => Int -> ReleaseGroupReleaseRevision -> m CoreTypes.ReleaseGroupRelease
 createReleaseGroupRelease releaseGroupId req = sendSimple $ CreateReleaseGroupRelease releaseGroupId req
 
-getReleaseGroups :: Has FossaApiClient sig m => m [ReleaseGroup]
+getReleaseGroups :: Has FossaApiClient sig m => m [CoreTypes.ReleaseGroup]
 getReleaseGroups = sendSimple GetReleaseGroups
 
-getReleaseGroupReleases :: Has FossaApiClient sig m => Int -> m [ReleaseGroupRelease]
+getReleaseGroupReleases :: Has FossaApiClient sig m => Int -> m [CoreTypes.ReleaseGroupRelease]
 getReleaseGroupReleases releaseGroupId = sendSimple $ GetReleaseGroupReleases releaseGroupId
+
+getProjectV2 :: Has FossaApiClient sig m => Text -> m CoreTypes.Project
+getProjectV2 locator = sendSimple $ GetProjectV2 locator
+
+updateProject :: Has FossaApiClient sig m => Text -> CoreTypes.UpdateProjectRequest -> m CoreTypes.Project
+updateProject locator req = sendSimple $ UpdateProject locator req
+
+updateRevision :: Has FossaApiClient sig m => Text -> CoreTypes.UpdateRevisionRequest -> m CoreTypes.Revision
+updateRevision revisionLocator req = sendSimple $ UpdateRevision revisionLocator req
+
+getOrgLabels :: Has FossaApiClient sig m => m CoreTypes.Labels
+getOrgLabels = sendSimple GetOrgLabels

@@ -16,7 +16,7 @@ import Data.Set qualified as Set
 import Data.String.Conversion (ToText (..))
 import Data.Text (Text)
 import Effect.Logger (Logger, logDebug, logInfo, logStdout, pretty)
-import Fossa.API.Types (ReleaseGroupRelease (..), ReleaseProject (..), UpdateReleaseProjectRequest (..), UpdateReleaseRequest (..))
+import Fossa.API.CoreTypes (ReleaseGroupRelease (..), ReleaseProject (..), UpdateReleaseProjectRequest (..), UpdateReleaseRequest (..))
 import Text.Pretty.Simple (pShow)
 
 addProjectsMain ::

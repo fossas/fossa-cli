@@ -122,6 +122,10 @@ lint-cargo:
 	@cargo clippy -V
 	@cargo clippy
 
+# Build cargo deps needed b y the CLI and move them into place for cabal.
+build-embedded-rust-bins: target/release/berkeleydb target/release/millhone
+	cargo build --release --bin millhone --bin berkeleydb
+
 # Runs linter on only modified files
 # 
 # When running in docker, we have to tell git that the directory which doesn't belong to us is safe.

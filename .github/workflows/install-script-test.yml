@@ -6,7 +6,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-12]
     steps:
       - uses: actions/checkout@v4
 
@@ -54,6 +54,28 @@ jobs:
           brew install --cask fossa
           fossa --version
           brew uninstall fossa
+
+  # These are run separately from the Matrix above because:
+  # 1. There is no Mac ARM fossa v1.
+  # 2. Earlier versions of cli v3 did not have ARM releases.
+  test-macos-arm:
+    runs-on: "macos-latest"
+    steps:
+      - uses: actions/checkout@v4
+      - name: install latest script can install a specific version
+        shell: bash
+        run: |
+          # 3.9.19 is the first version with native Mac ARM builds.
+          ./install-latest.sh -b . v3.9.19
+          ./fossa --version | grep -q "3.9.19"
+          rm fossa
+
+      - name: install latest script performs installation
+        shell: bash
+        run: |
+          ./install-latest.sh -b .
+          ./fossa --version
+          rm fossa
 
   test-windows:
     runs-on: "windows-latest"

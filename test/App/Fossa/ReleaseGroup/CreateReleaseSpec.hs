@@ -9,7 +9,7 @@ import App.Fossa.ReleaseGroup.CreateSpec (apiOpts')
 import Control.Algebra (Has)
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
-import Fossa.API.Types qualified as Types
+import Fossa.API.CoreTypes qualified as Types
 import Test.Effect (expectFatal', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe)

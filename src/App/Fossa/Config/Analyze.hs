@@ -36,6 +36,7 @@ import App.Fossa.Config.Common (
   CacheAction (WriteOnly),
   CommonOpts (..),
   ScanDestination (..),
+  applyReleaseGroupDeprecationWarning,
   baseDirArg,
   collectApiOpts,
   collectBaseDir,
@@ -43,7 +44,6 @@ import App.Fossa.Config.Common (
   collectConfigMavenScopeFilters,
   collectRevisionData',
   commonOpts,
-  deprecateReleaseGroupMetadata,
   metadataOpts,
   pathOpt,
   targetOpt,
@@ -84,7 +84,7 @@ import Control.Effect.Diagnostics (
   recover,
  )
 import Control.Effect.Lift (Lift)
-import Control.Monad (when)
+import Control.Monad (void, when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Map qualified as Map
@@ -639,9 +639,9 @@ collectScanDestination maybeCfgFile envvars AnalyzeCliOpts{..} =
     else do
       apiOpts <- collectApiOpts maybeCfgFile envvars commons
       metaMerged <- maybe (pure analyzeMetadata) (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
-      projectMetadataWithoutReleaseGroup <- deprecateReleaseGroupMetadata metaMerged
+      void $ applyReleaseGroupDeprecationWarning metaMerged
       when (length (projectLabel metaMerged) > 5) $ fatalText "Projects are only allowed to have 5 associated project labels"
-      pure $ UploadScan apiOpts projectMetadataWithoutReleaseGroup
+      pure $ UploadScan apiOpts metaMerged
 
 collectModeOptions ::
   ( Has Diagnostics sig m

@@ -3,6 +3,7 @@
 module App.Fossa.ArchiveUploaderSpec (spec) where
 
 import App.Fossa.ArchiveUploader (archiveUploadSourceUnit)
+import App.Types (ComponentUploadFileType (..), DependencyRebuild (..))
 import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (..))
 import Data.List.NonEmpty qualified as NE
@@ -28,7 +29,7 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "first-archive-test", packageVersion = "0.0.1"}
       expectUploadArchive
       expectQueueArchiveBuild Fixtures.firstArchive
-      locators <- archiveUploadSourceUnit scanDir $ Fixtures.firstVendoredDep NE.:| []
+      locators <- archiveUploadSourceUnit DependencyRebuildReuseCache scanDir $ Fixtures.firstVendoredDep NE.:| []
       locators `shouldBe'` (Fixtures.firstLocator NE.:| [])
 
     it' "should do the archive upload workflow for multiple archives" $ do
@@ -38,9 +39,8 @@ spec = do
       expectGetSignedUrl PackageRevision{packageName = "second-archive-test", packageVersion = "0.0.1"}
       expectUploadArchive
       expectUploadArchive
-      expectQueueArchiveBuild Fixtures.firstArchive
-      expectQueueArchiveBuild Fixtures.secondArchive
-      locators <- archiveUploadSourceUnit scanDir Fixtures.vendoredDeps
+      expectQueueArchiveBuilds [Fixtures.firstArchive, Fixtures.secondArchive]
+      locators <- archiveUploadSourceUnit DependencyRebuildReuseCache scanDir Fixtures.vendoredDeps
       locators `shouldBe'` Fixtures.locators
 
 expectUploadArchive :: Has MockApi sig m => m ()
@@ -49,7 +49,11 @@ expectUploadArchive = do
 
 expectQueueArchiveBuild :: Has MockApi sig m => Archive -> m ()
 expectQueueArchiveBuild archive =
-  QueueArchiveBuild archive `returnsOnce` pure "success"
+  QueueArchiveBuild [archive] DependencyRebuildReuseCache `returnsOnce` ()
+
+expectQueueArchiveBuilds :: Has MockApi sig m => [Archive] -> m ()
+expectQueueArchiveBuilds archives =
+  QueueArchiveBuild archives DependencyRebuildReuseCache `returnsOnce` ()
 
 expectGetSignedUrl :: Has MockApi sig m => PackageRevision -> m ()
-expectGetSignedUrl packageRevision = GetSignedUploadUrl packageRevision `alwaysReturns` Fixtures.signedUrl
+expectGetSignedUrl packageRevision = GetSignedUploadUrl ArchiveUpload packageRevision `alwaysReturns` Fixtures.signedUrl

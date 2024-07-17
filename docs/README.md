@@ -99,6 +99,7 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
   - [From Docker Engine](./references/subcommands/container/scanner.md#2-from-docker-engine)
   - [From Container Registries](./references/subcommands/container/scanner.md#3-from-registries)
 - [Supported Container Package Managers](./references/subcommands/container/scanner.md#supported-container-package-managers)
+  - [Container Jar File Analysis](./references/subcommands/container/scanner.md#container-jar-analysis)
 - [Viewing Detected Projects](./references/subcommands/container/scanner.md#view-detected-projects)
 - [Configuring Container Analysis Targets](./references/subcommands/container/scanner.md#utilize-analysis-target-configuration)
 - [Integrating Container Scanning in CI](./walkthroughs/container-scanning-generic-ci.md)
@@ -106,6 +107,12 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 - [Debugging](./references/subcommands/container/scanner.md#debugging)
 - [Limitations & Workarounds](./references/subcommands/container/scanner.md#limitations--workarounds)
 - [Scanning Images using Podman (Experimental)](./references/subcommands/container/podman.md)
+
+#### Analyzing SBOM Files
+
+- [Overview](./references/subcommands/sbom.md)
+- [`sbom analyze`](./references/subcommands/sbom.md#fossa-sbom-analyze-path-to-sbom-file)
+- [`sbom test`](./references/subcommands/sbom.md#fossa-sbom-test-path-to-sbom-file)
 
 #### Experimental Features
 
@@ -134,6 +141,7 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 - [`fossa snippets`](./references/subcommands/snippets.md): Analyze snippets of a project and check if they exist in other open source projects FOSSA knows about.
 - [`fossa test`](./references/subcommands/test.md): View the results of the most recent scan of a project.
 - [`fossa release-group`](./references/subcommands/release-group.md): Interact with FOSSA release groups.
+- [`fossa project`](./references/subcommands/project.md): Interact with FOSSA projects.
 
 #### Configuration
 

@@ -12,9 +12,13 @@ server: https://app.fossa.com
 apiKey: a1b2c3
 
 project:
+  locator: custom+1/github.com/fossas/fossa-cli
   id: github.com/fossas/fossa-cli
   name: fossa-cli
   team: cli-team
+  teams: 
+    - cli-team-1
+    - cli-team-2
   policy: custom-cli-policy
   link: fossa.com
   url: github.com/fossas/fossa-cli
@@ -123,6 +127,11 @@ The project fields allow you to configure settings for the project you are inter
 
 > Note: `name`, `team`, `policy`, `link`, and `jiraProjectKey` can only be set when creating a project (running `fossa analyze` for the first time).  Otherwise, they will be silently ignored (we would like to make this a visible warning in the future).
 
+#### `project.locator:`
+The project Locator defines a unique ID that the FOSSA API will use to reference this project within FOSSA. The project locator can be found in the UI on the project `Settings` page listed as the `Project Locator` underneath the `Project Title` setting.
+
+<img src="../../assets/project-locator-example.png">
+
 #### `project.id:`
 The project ID defines an ID that is used to reference a project within your FOSSA organization. The project ID is a specific portion of the project locator and can be found in the UI on the project `Settings` page listed as the "Project Locator" underneath the "Project Title" setting. For example, if the "Project Locator" value of `custom+1/foo` is provided in the FOSSA UI, use `foo` for the `project.id`.
 
@@ -143,6 +152,12 @@ The name field sets the projects visible name in the FOSSA dashboard. By default
 
 #### `project.team:`
 The name of the team in your FOSSA organization to associate this project with.
+
+#### `project.teams:`
+The name of the teams in your FOSSA organization to associate this project with.
+
+>NOTE:
+  Currently, ONLY `fossa project edit` utilizes this field. Use [fossa project edit](../subcommands/project/edit.md) to add a project to all teams in the list.
 
 #### `project.policy:`
 The name of the policy in your FOSSA organization to associate this project with.

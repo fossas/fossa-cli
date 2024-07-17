@@ -76,8 +76,10 @@ common lang
 
 -- TODO: Switch `semver` back to `versions` since https://github.com/fosskers/versions/issues/47 is fixed. This package maintainer seems much more responsive. Contrast https://github.com/brendanhay/semver/issues/12.
 -- codec-rpm is installed via cabal.project, so this number is an expected future version.
--- Upgrade text and mtl after codec-rpm conflict is fixed, probably as part of 9.4 upgrade.
--- Upgrade zip after text is upgraded
+-- TODO: Upgrade text and mtl after codec-rpm conflict is fixed, probably as part of 9.4 upgrade.
+-- TODO: Upgrade zip after text is upgraded.
+-- TODO: TLS isn't used directly but is pinned here while customers upgrade their servers to support TLS 1.2 with EMS or TLS 1.3.
+-- They've been warned about future support breaking. Upgrade to tls-2.* after 10/25/2024.
 common deps
   build-depends:
     , aeson                        ^>=2.2
@@ -146,6 +148,7 @@ common deps
     , text                         ^>=2.0.0
     , th-lift-instances            ^>=0.1.17
     , time                         >=1.9       && <1.13
+    , tls                          >=1.9       && <2.0
     , tomland                      ^>=1.3.3.0
     , transformers
     , typed-process                ^>=0.2.6
@@ -189,6 +192,7 @@ library
     App.Fossa.Analyze.Upload
     App.Fossa.API.BuildLink
     App.Fossa.API.BuildWait
+    App.Fossa.ApiUtils
     App.Fossa.ArchiveUploader
     App.Fossa.BinaryDeps
     App.Fossa.BinaryDeps.Jar
@@ -205,6 +209,8 @@ library
     App.Fossa.Config.LicenseScan
     App.Fossa.Config.LinkUserBinaries
     App.Fossa.Config.ListTargets
+    App.Fossa.Config.Project
+    App.Fossa.Config.Project.Edit
     App.Fossa.Config.ReleaseGroup
     App.Fossa.Config.ReleaseGroup.AddProjects
     App.Fossa.Config.ReleaseGroup.Common
@@ -213,6 +219,10 @@ library
     App.Fossa.Config.ReleaseGroup.Delete
     App.Fossa.Config.ReleaseGroup.DeleteRelease
     App.Fossa.Config.Report
+    App.Fossa.Config.SBOM
+    App.Fossa.Config.SBOM.Analyze
+    App.Fossa.Config.SBOM.Common
+    App.Fossa.Config.SBOM.Test
     App.Fossa.Config.Snippets
     App.Fossa.Config.Test
     App.Fossa.Container
@@ -222,6 +232,7 @@ library
     App.Fossa.Container.Sources.Discovery
     App.Fossa.Container.Sources.DockerArchive
     App.Fossa.Container.Sources.DockerEngine
+    App.Fossa.Container.Sources.JarAnalysis
     App.Fossa.Container.Sources.Podman
     App.Fossa.Container.Sources.Registry
     App.Fossa.Container.Test
@@ -238,6 +249,8 @@ library
     App.Fossa.ManualDeps
     App.Fossa.PathDependency
     App.Fossa.PreflightChecks
+    App.Fossa.Project
+    App.Fossa.Project.Edit
     App.Fossa.ProjectInference
     App.Fossa.Reachability.Gradle
     App.Fossa.Reachability.Jar
@@ -254,6 +267,8 @@ library
     App.Fossa.Report
     App.Fossa.Report.Attribution
     App.Fossa.RunThemis
+    App.Fossa.SBOM
+    App.Fossa.SBOM.Analyze
     App.Fossa.Snippets
     App.Fossa.Snippets.Analyze
     App.Fossa.Snippets.Commit
@@ -379,6 +394,7 @@ library
     Effect.Grapher
     Effect.Logger
     Effect.ReadFS
+    Fossa.API.CoreTypes
     Fossa.API.Types
     Graphing
     Graphing.Debug
@@ -541,6 +557,7 @@ test-suite unit-tests
     App.Fossa.AnalyzeSpec
     App.Fossa.API.BuildLinkSpec
     App.Fossa.API.BuildWaitSpec
+    App.Fossa.ApiUtilsSpec
     App.Fossa.ArchiveUploaderSpec
     App.Fossa.BinaryDeps.JarSpec
     App.Fossa.Config.AnalyzeSpec
@@ -558,6 +575,7 @@ test-suite unit-tests
     App.Fossa.ManualDepsSpec
     App.Fossa.PathDependencySpec
     App.Fossa.PreflightChecksSpec
+    App.Fossa.Project.EditSpec
     App.Fossa.ProjectInferenceSpec
     App.Fossa.ReleaseGroup.AddProjectsSpec
     App.Fossa.ReleaseGroup.CommonSpec
@@ -568,6 +586,7 @@ test-suite unit-tests
     App.Fossa.Report.AttributionSpec
     App.Fossa.ReportSpec
     App.Fossa.RunThemisSpec
+    App.Fossa.SBOMAnalyzeSpec
     App.Fossa.VendoredDependencySpec
     App.Fossa.VSI.DynLinked.Internal.BinarySpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.DEBSpec

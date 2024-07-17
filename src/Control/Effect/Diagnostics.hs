@@ -46,6 +46,8 @@ module Control.Effect.Diagnostics (
   ToDiagnostic (..),
   SomeDiagnostic (..),
   module Diagnostic,
+  warnLeft,
+  warnThenRecover,
 ) where
 
 import Control.Algebra as X -- intentionally implicit
@@ -53,6 +55,7 @@ import Control.Effect.Lift (Lift)
 import Control.Effect.Stack (Stack, context)
 import Control.Exception (Exception, IOException, SomeException (..))
 import Control.Exception.Extra (safeCatch)
+import Data.Functor (($>))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
@@ -149,6 +152,10 @@ infixl 3 <||>
 
 ---------- Helpers
 
+-- | Turn a fatal error into a warning then recover.
+warnThenRecover :: (ToDiagnostic w, Has Diagnostics sig m) => w -> m a -> m (Maybe a)
+warnThenRecover w = recover . warnOnErr w
+
 -- | Throw an untyped string error
 fatalText :: Has Diagnostics sig m => Text -> m a
 fatalText = fatal
@@ -156,6 +163,11 @@ fatalText = fatal
 -- | Lift an Either result into the Diagnostics effect, given a ToDiagnostic instance for the error type
 fromEither :: (ToDiagnostic err, Has Diagnostics sig m) => Either err a -> m a
 fromEither = either fatal pure
+
+-- | Sometimes the only thing to do with the @Left@ part of an @Either a b@ is emit it as a warning.
+-- This function does that and eliminates the error value.
+warnLeft :: (ToDiagnostic warn, Has Diagnostics sig m) => Either warn a -> m (Maybe a)
+warnLeft = either (\e -> warn e $> Nothing) (pure . Just)
 
 -- | Lift an Either result into the Diagnostics effect, given a Show instance for the error type
 fromEitherShow :: (Show err, Has Diagnostics sig m) => Either err a -> m a

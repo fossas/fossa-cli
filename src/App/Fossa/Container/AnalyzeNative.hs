@@ -11,7 +11,7 @@ import App.Fossa.Analyze.Debug (collectDebugBundle)
 import App.Fossa.Analyze.Upload (emitBuildWarnings)
 import App.Fossa.Config.Common (
   ScanDestination (OutputStdout, UploadScan),
-  deprecateReleaseGroupMetadata,
+  applyReleaseGroupDeprecationWarning,
  )
 import App.Fossa.Config.Container.Analyze (
   ContainerAnalyzeConfig (..),
@@ -32,7 +32,7 @@ import Control.Carrier.Debug (Debug, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (Diagnostics, context, fatal, fromMaybeText)
-import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, uploadNativeContainerScan)
+import Control.Effect.FossaApiClient (FossaApiClient, uploadNativeContainerScan)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Telemetry (Telemetry)
 import Control.Monad (void, when)
@@ -106,21 +106,22 @@ analyze ::
 analyze cfg = do
   scannedImage <- scanImage (filterSet cfg) (withoutDefaultFilters cfg) (onlySystemDeps cfg) (imageLocator cfg) (dockerHost cfg) (arch cfg)
   let revision = extractRevision (revisionOverride cfg) scannedImage
+      logProjectInfo :: Has Logger sig m => m ()
+      logProjectInfo = do
+        logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
+        logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
 
-  _ <- case scanDestination cfg of
-    OutputStdout -> pure ()
-    UploadScan apiOpts projectMetadata -> runFossaApiClient apiOpts $ preflightChecks $ AnalyzeChecks revision projectMetadata
-
-  logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
-  logInfo ("Using project revision: `" <> pretty (projectRevision revision) <> "`")
-
-  let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
-  logInfo ("Using branch: `" <> pretty branchText <> "`")
+        let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
+        logInfo ("Using branch: `" <> pretty branchText <> "`")
 
   case scanDestination cfg of
-    OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode scannedImage
-    UploadScan apiOpts projectMeta ->
-      void $ runFossaApiClient apiOpts $ uploadScan revision projectMeta (jsonOutput cfg) scannedImage
+    OutputStdout -> do
+      logProjectInfo
+      logStdout . decodeUtf8 $ Aeson.encode scannedImage
+    UploadScan apiOpts projectMetadata -> runFossaApiClient apiOpts $ do
+      orgInfo <- preflightChecks $ AnalyzeChecks revision projectMetadata
+      logProjectInfo
+      void $ uploadScan orgInfo revision projectMetadata (jsonOutput cfg) scannedImage
 
   pure scannedImage
 
@@ -130,19 +131,20 @@ uploadScan ::
   , Has Logger sig m
   , Has (Lift IO) sig m
   ) =>
+  Organization ->
   ProjectRevision ->
   ProjectMetadata ->
   Flag JsonOutput ->
   ContainerScan ->
   m Locator
-uploadScan revision projectMeta jsonOutput containerScan =
+uploadScan orgInfo revision projectMeta jsonOutput containerScan =
   do
-    supportsNativeScan <- orgSupportsNativeContainerScan <$> getOrganization
+    let supportsNativeScan = orgSupportsNativeContainerScan orgInfo
     if not supportsNativeScan
       then fatal (EndpointDoesNotSupportNativeContainerScan getSourceLocation)
       else do
-        projectMetadataWithoutReleaseGroup <- deprecateReleaseGroupMetadata projectMeta
-        resp <- uploadNativeContainerScan revision projectMetadataWithoutReleaseGroup containerScan
+        void $ applyReleaseGroupDeprecationWarning projectMeta
+        resp <- uploadNativeContainerScan revision projectMeta containerScan
         emitBuildWarnings resp
         let locator = uploadLocator resp
         buildUrl <- getFossaBuildUrl revision locator

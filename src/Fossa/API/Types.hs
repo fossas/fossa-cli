@@ -38,23 +38,14 @@ module Fossa.API.Types (
   CustomBuildUploadPermissions (..),
   ProjectPermissionStatus (..),
   ReleaseGroupPermissionStatus (..),
-  Policy (..),
-  Team (..),
-  PolicyType (..),
-  ReleaseGroup (..),
-  ReleaseGroupRelease (..),
-  ReleaseProject (..),
-  UpdateReleaseProjectRequest (..),
-  UpdateReleaseRequest (..),
-  CreateReleaseGroupRequest (..),
-  CreateReleaseGroupResponse (..),
   useApiOpts,
   defaultApiPollDelay,
   blankOrganization,
+  orgFileUpload,
 ) where
 
 import App.Fossa.Lernie.Types (GrepEntry)
-import App.Types (FullFileUploads (..), ReleaseGroupReleaseRevision, fullFileUploadsToCliLicenseScanType)
+import App.Types (DependencyRebuild (..), FileUpload (..))
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, fatalText)
 import Control.Timeout (Duration (Seconds))
@@ -62,7 +53,7 @@ import Data.Aeson (
   FromJSON (parseJSON),
   KeyValue ((.=)),
   ToJSON (toJSON),
-  Value (Null, String),
+  Value (String),
   object,
   withObject,
   withText,
@@ -100,6 +91,8 @@ import Text.URI (URI, render)
 import Text.URI.QQ (uri)
 import Types (ArchiveUploadType (..))
 import Unsafe.Coerce qualified as Unsafe
+
+--- | Data types of CLI owned endpoints in Core
 
 newtype ApiKey = ApiKey {unApiKey :: Text}
   deriving (Eq, Ord)
@@ -148,18 +141,24 @@ instance FromJSON SignedURLWithKey where
     SignedURLWithKey <$> obj .: "signedUrl" <*> obj .: "key"
 
 data ArchiveComponents = ArchiveComponents
-  { archives :: [Archive]
-  , forceRebuild :: Bool
-  , fullFiles :: FullFileUploads
+  { archiveComponentsArchives :: [Archive]
+  , archiveComponentsRebuild :: DependencyRebuild
+  , archiveComponentsUpload :: FileUpload
   }
   deriving (Eq, Ord, Show)
 
 instance ToJSON ArchiveComponents where
   toJSON ArchiveComponents{..} =
     object
-      [ "archives" .= archives
-      , "forceRebuild" .= forceRebuild
-      , "fullFiles" .= unFullFileUploads fullFiles
+      [ "archives" .= archiveComponentsArchives
+      , "fullFiles" .= case archiveComponentsUpload of
+          FileUploadFullContent -> True
+          FileUploadMatchData -> False
+      , -- Don't use the ToJSON instance of DependencyRebuild since this endpoint has a different expectation.
+        "forceRebuild"
+          .= case archiveComponentsRebuild of
+            DependencyRebuildReuseCache -> False
+            DependencyRebuildInvalidateCache -> True
       ]
 
 data Archive = Archive
@@ -167,6 +166,9 @@ data Archive = Archive
   , archiveVersion :: Text
   }
   deriving (Eq, Ord, Show)
+
+instance ToText Archive where
+  toText Archive{..} = archiveName <> "@" <> archiveVersion
 
 instance ToJSON Archive where
   toJSON Archive{..} =
@@ -199,12 +201,9 @@ newtype BuildTask = BuildTask
 instance FromJSON Build where
   parseJSON = withObject "Build" $ \obj ->
     Build
-      <$> obj
-        .: "id"
-      <*> obj
-        .:? "error"
-      <*> obj
-        .: "task"
+      <$> obj .: "id"
+      <*> obj .:? "error"
+      <*> obj .: "task"
 
 instance FromJSON BuildTask where
   parseJSON = withObject "BuildTask" $ \obj ->
@@ -233,7 +232,7 @@ data Issues = Issues
 
 data IssuesSummary = IssuesSummary
   { revision :: IssueSummaryRevision
-  , targets :: Maybe [IssueSummaryTarget]
+  , targets :: [IssueSummaryTarget]
   }
   deriving (Eq, Ord, Show)
 
@@ -339,15 +338,10 @@ newtype IssueRule = IssueRule
 instance FromJSON Issues where
   parseJSON = withObject "Issues" $ \obj ->
     Issues
-      <$> obj
-        .: "count"
-      <*> obj
-        .:? "issues"
-        .!= []
-      <*> obj
-        .: "status"
-      <*> obj
-        .:? "summary"
+      <$> obj .: "count"
+      <*> obj .:? "issues" .!= []
+      <*> obj .: "status"
+      <*> obj .:? "summary"
 
 instance ToJSON Issues where
   toJSON Issues{..} =
@@ -361,10 +355,8 @@ instance ToJSON Issues where
 instance FromJSON IssuesSummary where
   parseJSON = withObject "IssuesSummary" $ \obj ->
     IssuesSummary
-      <$> obj
-        .: "revision"
-      <*> obj
-        .: "targets"
+      <$> obj .: "revision"
+      <*> obj .:? "targets" .!= []
 
 instance ToJSON IssuesSummary where
   toJSON IssuesSummary{..} =
@@ -376,12 +368,9 @@ instance ToJSON IssuesSummary where
 instance FromJSON IssueSummaryRevision where
   parseJSON = withObject "IssueSummaryRevision" $ \obj ->
     IssueSummaryRevision
-      <$> obj
-        .: "projectTitle"
-      <*> obj
-        .: "projectRevision"
-      <*> obj
-        .:? "isPublic"
+      <$> obj .: "projectTitle"
+      <*> obj .: "projectRevision"
+      <*> obj .:? "isPublic"
 
 instance ToJSON IssueSummaryRevision where
   toJSON IssueSummaryRevision{..} =
@@ -394,10 +383,8 @@ instance ToJSON IssueSummaryRevision where
 instance FromJSON IssueSummaryTarget where
   parseJSON = withObject "IssueSummaryTarget" $ \obj ->
     IssueSummaryTarget
-      <$> obj
-        .: "type"
-      <*> obj
-        .: "originPaths"
+      <$> obj .: "type"
+      <*> obj .: "originPaths"
 
 instance ToJSON IssueSummaryTarget where
   toJSON IssueSummaryTarget{..} =
@@ -409,27 +396,16 @@ instance ToJSON IssueSummaryTarget where
 instance FromJSON Issue where
   parseJSON = withObject "Issue" $ \obj ->
     Issue
-      <$> obj
-        .: "id"
-      <*> obj
-        .:? "priorityString"
-      <*> obj
-        .: "resolved"
-      <*> obj
-        .:? "revisionId"
-        .!= "unknown project"
-      <*> obj
-        .: "type"
-      <*> obj
-        .:? "rule"
-      <*> obj
-        .:? "license"
-      <*> obj
-        .:? "issueDashURL"
-      <*> obj
-        .:? "cve"
-      <*> obj
-        .:? "fixedIn"
+      <$> obj .: "id"
+      <*> obj .:? "priorityString"
+      <*> obj .: "resolved"
+      <*> obj .:? "revisionId" .!= "unknown project"
+      <*> obj .: "type"
+      <*> obj .:? "rule"
+      <*> obj .:? "license"
+      <*> obj .:? "issueDashURL"
+      <*> obj .:? "cve"
+      <*> obj .:? "fixedIn"
 
 instance ToJSON Issue where
   toJSON Issue{..} =
@@ -513,6 +489,10 @@ data Organization = Organization
   }
   deriving (Eq, Ord, Show)
 
+orgFileUpload :: Organization -> FileUpload
+orgFileUpload Organization{orgRequiresFullFileUploads = True} = FileUploadFullContent
+orgFileUpload Organization{orgRequiresFullFileUploads = False} = FileUploadMatchData
+
 blankOrganization :: Organization
 blankOrganization =
   Organization
@@ -537,53 +517,22 @@ blankOrganization =
 instance FromJSON Organization where
   parseJSON = withObject "Organization" $ \obj ->
     Organization
-      <$> obj
-        .: "organizationId"
-      <*> obj
-        .:? "usesSAML"
-        .!= False
-      <*> obj
-        .:? "supportsCliLicenseScanning"
-        .!= False
-      <*> obj
-        .:? "supportsAnalyzedRevisionsQuery"
-        .!= False
-      <*> obj
-        .:? "defaultVendoredDependencyScanType"
-        .!= CLILicenseScan
-      <*> obj
-        .:? "supportsIssueDiffs"
-        .!= False
-      <*> obj
-        .:? "supportsNativeContainerScans"
-        .!= False
-      <*> obj
-        .:? "supportsDependenciesCachePolling"
-        .!= False
-      <*> obj
-        .:? "requireFullFileUploads"
-        .!= False
-      <*> obj
-        .:? "defaultToFirstPartyScans"
-        .!= False
-      <*> obj
-        .:? "supportsPathDependency"
-        .!= False
-      <*> obj
-        .:? "supportsFirstPartyScans"
-        .!= False
-      <*> obj
-        .:? "customLicenseScanConfigs"
-        .!= []
-      <*> obj
-        .:? "supportsReachability"
-        .!= False
-      <*> obj
-        .:? "supportsPreflightChecks"
-        .!= False
-      <*> obj
-        .:? "subscription"
-        .!= Free
+      <$> obj .: "organizationId"
+      <*> obj .:? "usesSAML" .!= False
+      <*> obj .:? "supportsCliLicenseScanning" .!= False
+      <*> obj .:? "supportsAnalyzedRevisionsQuery" .!= False
+      <*> obj .:? "defaultVendoredDependencyScanType" .!= CLILicenseScan
+      <*> obj .:? "supportsIssueDiffs" .!= False
+      <*> obj .:? "supportsNativeContainerScans" .!= False
+      <*> obj .:? "supportsDependenciesCachePolling" .!= False
+      <*> obj .:? "requireFullFileUploads" .!= False
+      <*> obj .:? "defaultToFirstPartyScans" .!= False
+      <*> obj .:? "supportsPathDependency" .!= False
+      <*> obj .:? "supportsFirstPartyScans" .!= False
+      <*> obj .:? "customLicenseScanConfigs" .!= []
+      <*> obj .:? "supportsReachability" .!= False
+      <*> obj .:? "supportsPreflightChecks" .!= False
+      <*> obj .:? "subscription" .!= Free
 
 data TokenType
   = Push
@@ -596,8 +545,7 @@ newtype TokenTypeResponse = TokenTypeResponse {tokenType :: TokenType}
 instance FromJSON TokenTypeResponse where
   parseJSON = withObject "TokenTypeResponse" $ \obj ->
     TokenTypeResponse
-      <$> obj
-        .: "tokenType"
+      <$> obj .: "tokenType"
 
 instance FromJSON TokenType where
   parseJSON = withText "TokenType" $ \case
@@ -658,12 +606,9 @@ data Project = Project
 instance FromJSON Project where
   parseJSON = withObject "Project" $ \obj ->
     Project
-      <$> obj
-        .: "id"
-      <*> obj
-        .: "title"
-      <*> obj
-        .: "isMonorepo"
+      <$> obj .: "id"
+      <*> obj .: "title"
+      <*> obj .: "isMonorepo"
 
 data UploadResponse = UploadResponse
   { uploadLocator :: Locator
@@ -691,8 +636,7 @@ newtype RevisionDependencyCache = RevisionDependencyCache {status :: RevisionDep
 instance FromJSON RevisionDependencyCache where
   parseJSON = withObject "RevisionDependencyCache" $ \obj ->
     RevisionDependencyCache
-      <$> obj
-        .: "status"
+      <$> obj .: "status"
 
 instance FromJSON RevisionDependencyCacheStatus where
   parseJSON = withText "RevisionDependencyCacheStatus" $ \txt -> case Text.toUpper txt of
@@ -747,14 +691,12 @@ renderedIssues issues = rendered
           , line
           ]
 
-    renderRevisionTargets :: Maybe [IssueSummaryTarget] -> Doc ann
-    renderRevisionTargets issueRevisionTargets = case issueRevisionTargets of
-      Nothing -> mempty
-      Just [] -> mempty
-      Just targets ->
-        vsep $
-          ["Project Targets:"]
-            <> map (\target -> "- " <> renderedTarget target) (sort targets)
+    renderRevisionTargets :: [IssueSummaryTarget] -> Doc ann
+    renderRevisionTargets [] = mempty
+    renderRevisionTargets targets =
+      vsep $
+        ["Project Targets:"]
+          <> map (\target -> "- " <> renderedTarget target) (sort targets)
 
     renderProjectVisibility :: Maybe Bool -> Doc ann
     renderProjectVisibility Nothing = "unknown"
@@ -886,7 +828,7 @@ data PathDependencyUploadReq = PathDependencyUploadReq
   { path :: Text
   , version :: Text
   , projectLocator :: Locator
-  , scanType :: FullFileUploads
+  , scanType :: FileUpload
   }
 
 instance ToJSON PathDependencyUploadReq where
@@ -895,7 +837,7 @@ instance ToJSON PathDependencyUploadReq where
       [ "path" .= path
       , "version" .= version
       , "projectLocator" .= projectLocator
-      , "scanType" .= fullFileUploadsToCliLicenseScanType scanType
+      , "scanType" .= scanType
       ]
 
 data PathDependencyFinalizeReq = PathDependencyFinalizeReq
@@ -954,149 +896,3 @@ instance FromJSON AnalyzedPathDependency where
       <$> obj .: "path"
       <*> obj .: "id"
       <*> obj .: "version"
-
---- Policies
-data Policy = Policy
-  { policyId :: Int
-  , policyTitle :: Text
-  , policyType :: PolicyType
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON Policy where
-  parseJSON = withObject "Policy" $ \obj ->
-    Policy
-      <$> obj .: "id"
-      <*> obj .: "title"
-      <*> obj .: "type"
-
-instance FromJSON PolicyType where
-  parseJSON = withText "PolicyType" $ \case
-    "LICENSING" -> pure LICENSING
-    "SECURITY" -> pure SECURITY
-    "QUALITY" -> pure QUALITY
-    other -> pure $ PolicyUnknown other
-
-data PolicyType
-  = LICENSING
-  | SECURITY
-  | QUALITY
-  | PolicyUnknown Text
-  deriving (Eq, Ord, Show)
-
--- Teams
-data Team = Team
-  { teamId :: Int
-  , teamName :: Text
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON Team where
-  parseJSON = withObject "Team" $ \obj ->
-    Team
-      <$> obj .: "id"
-      <*> obj .: "name"
-
--- ReleaseGroup
-data ReleaseGroup = ReleaseGroup
-  { releaseGroupId :: Int
-  , releaseGroupTitle :: Text
-  , releaseGroupReleases :: [ReleaseGroupRelease]
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON ReleaseGroup where
-  parseJSON = withObject "ReleaseGroup" $ \obj ->
-    ReleaseGroup
-      <$> obj .: "id"
-      <*> obj .: "title"
-      <*> obj .: "releases"
-
-data ReleaseGroupRelease = ReleaseGroupRelease
-  { releaseGroupReleaseId :: Int
-  , releaseGroupReleaseTitle :: Text
-  , releaseGroupReleaseProjects :: [ReleaseProject]
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON ReleaseGroupRelease where
-  parseJSON = withObject "ReleaseGroupRelease" $ \obj ->
-    ReleaseGroupRelease
-      <$> obj .: "id"
-      <*> obj .: "title"
-      <*> obj .: "projects"
-
-data ReleaseProject = ReleaseProject
-  { releaseProjectLocator :: Text
-  , releaseProjectRevisionId :: Text
-  , releaseProjectBranch :: Text
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON ReleaseProject where
-  parseJSON = withObject "ReleaseProject" $ \obj ->
-    ReleaseProject
-      <$> obj .: "projectId"
-      <*> obj .: "revisionId"
-      <*> obj .: "branch"
-
-data UpdateReleaseRequest = UpdateReleaseRequest
-  { updatedReleaseTitle :: Text
-  , updatedProjects :: [UpdateReleaseProjectRequest]
-  }
-  deriving (Eq, Ord, Show)
-
-instance ToJSON UpdateReleaseRequest where
-  toJSON UpdateReleaseRequest{..} =
-    object
-      [ "title" .= updatedReleaseTitle
-      , "projects" .= updatedProjects
-      ]
-
-data UpdateReleaseProjectRequest = UpdateReleaseProjectRequest
-  { updateReleaseProjectLocator :: Text
-  , updateReleaseProjectRevisionId :: Text
-  , updateReleaseProjectBranch :: Text
-  , -- Existence of this field signifies to core that the project exists and the release project just needs to be updated.
-    -- If this field is empty it means that we are adding a new project to the release.
-    targetReleaseGroupId :: Maybe Int
-  }
-  deriving (Eq, Ord, Show)
-
-instance ToJSON UpdateReleaseProjectRequest where
-  toJSON UpdateReleaseProjectRequest{..} =
-    object
-      [ "projectId" .= updateReleaseProjectLocator
-      , "revisionId" .= updateReleaseProjectRevisionId
-      , "branch" .= updateReleaseProjectBranch
-      , "projectGroupReleaseId" .= maybe Null toJSON targetReleaseGroupId
-      ]
-
-data CreateReleaseGroupRequest = CreateReleaseGroupRequest
-  { title :: Text
-  , release :: ReleaseGroupReleaseRevision
-  , maybeLicensePolicyId :: Maybe Int
-  , maybeSecurityPolicyId :: Maybe Int
-  , maybeQualityPolicyId :: Maybe Int
-  , maybeTeamIds :: Maybe [Int]
-  }
-  deriving (Eq, Ord, Show)
-
-instance ToJSON CreateReleaseGroupRequest where
-  toJSON CreateReleaseGroupRequest{..} =
-    object
-      [ "title" .= title
-      , "release" .= release
-      , "licensingPolicyId" .= maybe Null toJSON maybeLicensePolicyId
-      , "securityPolicyId" .= maybe Null toJSON maybeSecurityPolicyId
-      , "qualityPolicyId" .= maybe Null toJSON maybeQualityPolicyId
-      , "teams" .= maybe Null toJSON maybeTeamIds
-      ]
-
-newtype CreateReleaseGroupResponse = CreateReleaseGroupResponse {groupId :: Int}
-  deriving (Eq, Ord, Show)
-
-instance FromJSON CreateReleaseGroupResponse where
-  parseJSON = withObject "CreateReleaseGroupResponse" $ \obj ->
-    CreateReleaseGroupResponse
-      <$> obj .: "id"

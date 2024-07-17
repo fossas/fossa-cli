@@ -7,19 +7,23 @@ module App.Types (
   ProjectMetadata (..),
   ReleaseGroupMetadata (..),
   ProjectRevision (..),
+  LocatorType (..),
   OverrideDynamicAnalysisBinary (..),
   Policy (..),
-  FullFileUploads (..),
+  DependencyRebuild (..),
+  FileUpload (..),
   FirstPartyScansFlag (..),
   ReleaseGroupRevision (..),
   ReleaseGroupProjectRevision (..),
   ReleaseGroupReleaseRevision (..),
-  fullFileUploadsToCliLicenseScanType,
+  ComponentUploadFileType (..),
+  uploadFileTypeToFetcherName,
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, object, withObject, (.:), (.=))
 import Data.Aeson.Types (toJSON)
 import Data.Map (Map)
+import Data.String.Conversion (ToText (..), showText)
 import Data.Text (Text)
 import DepTypes (DepType)
 import GHC.Generics (Generic)
@@ -74,10 +78,8 @@ instance ToJSON ReleaseGroupMetadata where
 instance FromJSON ReleaseGroupMetadata where
   parseJSON = withObject "ReleaseGroupMetadata" $ \obj ->
     ReleaseGroupMetadata
-      <$> obj
-        .: "name"
-      <*> obj
-        .: "release"
+      <$> obj .: "name"
+      <*> obj .: "release"
 
 data ProjectRevision = ProjectRevision
   { projectName :: Text
@@ -86,8 +88,26 @@ data ProjectRevision = ProjectRevision
   }
   deriving (Eq, Ord, Show, Generic)
 
+data LocatorType = LocatorTypeCustom | LocatorTypeSBOM
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToText LocatorType where
+  toText LocatorTypeCustom = "custom"
+  toText LocatorTypeSBOM = "sbom"
+
+instance ToJSON LocatorType where
+  toEncoding LocatorTypeCustom = "custom"
+  toEncoding LocatorTypeSBOM = "sbom"
+
 instance ToJSON ProjectRevision where
   toEncoding = genericToEncoding defaultOptions
+
+data ComponentUploadFileType = ArchiveUpload | SBOMUpload
+  deriving (Eq, Ord, Show, Generic)
+
+uploadFileTypeToFetcherName :: ComponentUploadFileType -> Text
+uploadFileTypeToFetcherName ArchiveUpload = "archive"
+uploadFileTypeToFetcherName SBOMUpload = "sbom"
 
 data ReleaseGroupRevision = ReleaseGroupRevision
   { releaseGroupTitle :: Text
@@ -158,10 +178,30 @@ instance Semigroup OverrideDynamicAnalysisBinary where
 instance Monoid OverrideDynamicAnalysisBinary where
   mempty = OverrideDynamicAnalysisBinary mempty
 
-newtype FullFileUploads = FullFileUploads {unFullFileUploads :: Bool} deriving (Eq, Ord, Show, Generic)
-fullFileUploadsToCliLicenseScanType :: FullFileUploads -> Text
-fullFileUploadsToCliLicenseScanType (FullFileUploads True) = "full_files"
-fullFileUploadsToCliLicenseScanType (FullFileUploads False) = "match_data"
+data DependencyRebuild
+  = DependencyRebuildReuseCache
+  | DependencyRebuildInvalidateCache
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToText DependencyRebuild where
+  toText = showText
+
+instance ToJSON DependencyRebuild where
+  toJSON DependencyRebuildReuseCache = "reuse_cache"
+  toJSON DependencyRebuildInvalidateCache = "invalidate_cache"
+
+data FileUpload
+  = FileUploadMatchData
+  | FileUploadFullContent
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToText FileUpload where
+  toText FileUploadMatchData = "match_data"
+  toText FileUploadFullContent = "full_files"
+
+instance ToJSON FileUpload where
+  toJSON FileUploadMatchData = "match_data"
+  toJSON FileUploadFullContent = "full_files"
 
 data FirstPartyScansFlag = FirstPartyScansOnFromFlag | FirstPartyScansOffFromFlag | FirstPartyScansUseDefault
   deriving (Eq, Ord, Show, Generic)
