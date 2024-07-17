@@ -36,7 +36,7 @@ import Data.Time.Format.ISO8601 (iso8601Show)
 import Effect.Exec
 import Effect.ReadFS
 import Errata (Errata (..))
-import Network.URI (URI (..), URIAuth (..), parseURI, uriToString, isURI)
+import Network.URI (URI (..), URIAuth (..), isURI, parseURI, uriToString)
 import Path
 import Path.IO (getTempDir)
 import System.FilePath.Posix qualified as FP

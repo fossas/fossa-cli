@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.9.27
+
+- Resolves an issue where git projects cloned with an url including a username were unable to found running `fossa analyze`. [#1451](https://github.com/fossas/fossa-cli/pull/1451)
+
 ## 3.9.26
 
 - Reports: Add `includeCopyrightList` to JSON attribution report request. This will ensure that all copyrights are included in the JSON attribution report once the FOSSA API starts including them. All other formats of attribution reports will receive all copyrights without needing to add this query param. [#1450](https://github.com/fossas/fossa-cli/pull/1450)
