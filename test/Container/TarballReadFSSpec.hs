@@ -5,6 +5,7 @@ module Container.TarballReadFSSpec (
 ) where
 
 import Codec.Archive.Tar qualified as Tar
+import Codec.Archive.Tar.Entry (GenEntryContent (NormalFile))
 import Codec.Archive.Tar.Entry qualified as TarEntry
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Tarball (TarEntries (..), mkEntries)
@@ -33,7 +34,6 @@ import Test.Hspec (
   runIO,
  )
 import Type.Operator (type ($))
-import Codec.Archive.Tar.Entry (GenEntryContent(NormalFile))
 
 spec :: Spec
 spec = do

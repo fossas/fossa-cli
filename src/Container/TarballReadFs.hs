@@ -4,19 +4,22 @@ module Container.TarballReadFs (
   runTarballReadFSIO,
 ) where
 
-import Codec.Archive.Tar.Entry
-    ( LinkTarget,
-      entryTarPath,
-      fromLinkTargetToPosixPath,
-      GenEntryContent(NormalFile
-                     , Directory
-                     , NamedPipe
-                     , BlockDevice
-                     , CharacterDevice
-                     , OtherEntryType
-                     , SymbolicLink
-                     , HardLink),
-      entryContent )
+import Codec.Archive.Tar.Entry (
+  GenEntryContent (
+    BlockDevice,
+    CharacterDevice,
+    Directory,
+    HardLink,
+    NamedPipe,
+    NormalFile,
+    OtherEntryType,
+    SymbolicLink
+  ),
+  LinkTarget,
+  entryContent,
+  entryTarPath,
+  fromLinkTargetToPosixPath,
+ )
 import Codec.Archive.Tar.Index (TarEntryOffset, hReadEntry)
 import Container.Tarball (filePathOf)
 import Control.Carrier.Simple (interpret)
@@ -80,11 +83,11 @@ import Path.Extra (SomePath (..))
 -- Path b t, since tarball paths are not representative of POSIX, or windows
 -- and such, parse__B_T is not useful.
 
+import Codec.Archive.Tar (Entry)
 import Control.Effect.Record (Redacted (..))
 import Data.Either.Combinators (mapRight)
 import Path.Internal (Path (Path))
 import System.IO (Handle, IOMode (ReadMode), withFile)
-import Codec.Archive.Tar (Entry)
 
 maxHopsOf20 :: Int
 maxHopsOf20 = 20
