@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.9.27
 
 - Tar: Move to upstream tar rather than a custom fork. ([#1452](https://github.com/fossas/fossa-cli/pull/1452))
 
