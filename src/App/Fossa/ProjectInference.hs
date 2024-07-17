@@ -206,15 +206,15 @@ parseGitProjectName dir = do
           case HM.lookup "url" properties of
             Just url ->
               pure $
-                if isURI (toString url) then stripAuthFromHttp url else url
+                if isURI (toString url) then stripAuthFromURL url else url
             Nothing -> fatal InvalidRemote
   where
     isOrigin :: Section -> Bool
     isOrigin (Section ["remote", "origin"] _) = True
     isOrigin _ = False
 
-    stripAuthFromHttp :: Text -> Text
-    stripAuthFromHttp url = case parseURI (toString url) of
+    stripAuthFromURL :: Text -> Text
+    stripAuthFromURL url = case parseURI (toString url) of
       Just uri -> case uriAuthority uri of
         Just auth -> toText $ uriToString id uri{uriAuthority = Just auth{uriUserInfo = ""}} ""
         Nothing -> url
