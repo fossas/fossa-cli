@@ -36,6 +36,7 @@ import Data.Time.Format.ISO8601 (iso8601Show)
 import Effect.Exec
 import Effect.ReadFS
 import Errata (Errata (..))
+import Network.URI (URI (..), URIAuth (..), parseURI, uriToString, isURI)
 import Path
 import Path.IO (getTempDir)
 import System.FilePath.Posix qualified as FP
@@ -203,12 +204,21 @@ parseGitProjectName dir = do
         Nothing -> fatal InvalidRemote
         Just (Section _ properties) ->
           case HM.lookup "url" properties of
-            Just url -> pure url
+            Just url ->
+              pure $
+                if isURI (toString url) then stripAuthFromHttp url else url
             Nothing -> fatal InvalidRemote
   where
     isOrigin :: Section -> Bool
     isOrigin (Section ["remote", "origin"] _) = True
     isOrigin _ = False
+
+    stripAuthFromHttp :: Text -> Text
+    stripAuthFromHttp url = case parseURI (toString url) of
+      Just uri -> case uriAuthority uri of
+        Just auth -> toText $ uriToString id uri{uriAuthority = Just auth{uriUserInfo = ""}} ""
+        Nothing -> url
+      Nothing -> url
 
 parseGitProjectRevision ::
   ( Has ReadFS sig m
