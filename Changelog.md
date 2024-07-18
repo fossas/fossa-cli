@@ -2,7 +2,7 @@
 
 ## 3.9.27
 
-- Tar: Move to upstream tar rather than a custom fork. ([#1452](https://github.com/fossas/fossa-cli/pull/1452))
+- Tar: Move to the upstream Haskell tar library. FOSSA CLI should now work more reliably when unpacking containers for analysis. ([#1452](https://github.com/fossas/fossa-cli/pull/1452))
 
 ## 3.9.26
 
