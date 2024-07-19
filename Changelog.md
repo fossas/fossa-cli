@@ -3,6 +3,7 @@
 ## 3.9.28
 
 - Container Scanning: Distroless containers will now return results for non-system dependencies. ([#1448](https://github.com/fossas/fossa-cli/pull/1448))
+- Warnings: Remove warnings about native container scanning and Go packages analysis. ([#1446](https://github.com/fossas/fossa-cli/pull/1446))
 
 ## 3.9.27
 
