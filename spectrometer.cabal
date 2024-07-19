@@ -143,7 +143,7 @@ common deps
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
     , strip-ansi-escape            ^>=0.1
-    , tar                          ^>=0.7.0.0
+    , tar                          ^>=0.6.2.0
     , template-haskell
     , text                         ^>=2.0.0
     , th-lift-instances            ^>=0.1.17

@@ -45,7 +45,7 @@ fixtureProjectMetadata :: ProjectMetadata
 fixtureProjectMetadata = ProjectMetadata Nothing Nothing Nothing Nothing Nothing Nothing ["label-1", "label-2"] Nothing
 
 fixtureContainerScan :: ContainerScan
-fixtureContainerScan = ContainerScan (ContainerScanImage "alpine" "3.1.4" []) "some-digest" "some-tag"
+fixtureContainerScan = ContainerScan (ContainerScanImage (Just "alpine") (Just "3.1.4") []) "some-digest" "some-tag"
 
 fixtureRevision :: ProjectRevision
 fixtureRevision = ProjectRevision "some-tag" "some-digest" $ Just "master"

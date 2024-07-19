@@ -1248,6 +1248,8 @@ getAttributionJson apiOpts ProjectRevision{..} = fossaReq $ do
             =: True
           <> "dependencyInfoOptions[]"
             =: packageDownloadUrl
+          <> "includeCopyrightList"
+            =: True
           -- Large reports can take over a minute to generate, so increase the timeout to 10 minutes
           <> responseTimeoutSeconds 600
   orgId <- organizationId <$> getOrganization apiOpts
