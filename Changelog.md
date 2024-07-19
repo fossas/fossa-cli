@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.9.28
+
+- Container Scanning: Distroless containers will now return results for non-system dependencies. ([#1448](https://github.com/fossas/fossa-cli/pull/1448))
+
 ## 3.9.27
 
 - Tar: Move to the upstream Haskell tar library. FOSSA CLI should now work more reliably when unpacking containers for analysis. ([#1452](https://github.com/fossas/fossa-cli/pull/1452))
