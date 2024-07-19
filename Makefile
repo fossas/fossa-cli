@@ -26,7 +26,7 @@ build-cargo:
 # 	make test ARGS="Node.PackageLockV3"
 test: test-cargo test-cabal
 
-test-cabal:
+test-cabal: build-cargo
 ifdef ARGS
 	cabal test unit-tests --test-show-details=streaming --test-option=--format=checks --test-option=--times --test-option=--color --test-option=--match --test-option="$(ARGS)"
 else

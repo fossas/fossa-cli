@@ -48,10 +48,10 @@ registrySourceAnalysis = do
   aroundAll (runAnalyze registrySourceCfg) $ do
     describe "Container analysis from registry source" $ do
       it "Has the correct OS" $
-        \res -> res.imageData.imageOs `shouldBe` "alpine"
+        \scan -> scan.imageData.imageOs `shouldBe` Just "alpine"
       it "Has the correct OS release version" $
-        \res -> res.imageData.imageOsRelease `shouldBe` "3.19.1"
+        \scan -> scan.imageData.imageOsRelease `shouldBe` Just "3.19.1"
       it "Has the expected image tag" $
-        \res -> res.imageTag `shouldBe` "public.ecr.aws/docker/library/alpine"
+        \scan -> scan.imageTag `shouldBe` "public.ecr.aws/docker/library/alpine"
       it "Has at least one layer" $
-        \res -> res.imageData.imageLayers `shouldSatisfy` (not . null)
+        \scan -> scan.imageData.imageLayers `shouldSatisfy` (not . null)

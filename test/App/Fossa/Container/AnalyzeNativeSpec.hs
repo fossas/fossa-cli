@@ -27,11 +27,7 @@ import Effect.ReadFS (ReadFSIOC, runReadFSIO)
 import Path (Dir, File, Rel, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Path.Internal (Path)
-import Srclib.Types (
-  Locator (Locator),
-  SourceUnit (sourceUnitBuild),
-  SourceUnitBuild (buildImports),
- )
+import Srclib.Types (Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), textToOriginPath)
 import Test.Effect (
   expectFatal',
   handleDiag,
@@ -51,10 +47,7 @@ import Test.MockDockerEngineApi (
   runMockApi,
  )
 import Type.Operator (type ($))
-import Types (
-  DiscoveredProjectType (SetuptoolsProjectType),
-  TargetFilter (TypeDirTarget, TypeTarget),
- )
+import Types (DiscoveredProjectType (SetuptoolsProjectType), GraphBreadth (..), TargetFilter (TypeDirTarget, TypeTarget))
 
 spec :: Spec
 spec = do
@@ -194,8 +187,8 @@ jarsInContainerSpec :: Spec
 jarsInContainerSpec = describe "Jars in Containers" $ do
   currDir <- runIO getCurrentDir
   let imageArchivePath = currDir </> jarsInContainerImage
-      baseLayerId = "sha256:9733ccc395133a067f01ee6e380003d80fe9f443673e0f992ae6a4a7860a872c"
-      otherLayerId = "sha256:5c079c30beb013e4b2f7729b6bdce6fba57941d28f20db985333fc1dd969f018"
+      baseLayerId = "sha256:61aed1a8baa251dee118b9ab203c1e420f0eda0a9b3f9322d67d235dd27a12ee"
+      otherLayerId = "sha256:632e84390ad558f9db0524f5e38a0af3e79c623a46bdce8a5e6a1761041b9850"
 
   it' "Reads and merges the layers correctly" $ do
     ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchivePath
@@ -209,5 +202,41 @@ jarsInContainerSpec = describe "Jars in Containers" $ do
     -- The CLI only passes observations along without inspecting them.
     -- So this test just checks that the number of them that we expect are there.
     -- More specific tests for observation content are in Millhone.
-    (length <$> Map.lookup baseLayerId observationsMap) `shouldBe'` Just 0
+    (length <$> Map.lookup baseLayerId observationsMap) `shouldBe'` Just 1
     (length <$> Map.lookup otherLayerId observationsMap) `shouldBe'` Just 2
+
+  it' "Discovers non-system/non-JIC dependencies" $ do
+    ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchivePath
+
+    let srcUnitsMap = Map.fromList $ map (\layer -> (layerId layer, srcUnits layer)) imageLayers
+        depLocator =
+          Locator
+            { locatorFetcher = "npm"
+            , locatorProject = "color-name"
+            , locatorRevision = Just "2.0.0"
+            }
+        expectedSrcUnit =
+          SourceUnit
+            { sourceUnitName = toText $(mkRelDir "./")
+            , sourceUnitType = "npm"
+            , sourceUnitManifest = toText $(mkRelDir "./")
+            , sourceUnitBuild =
+                Just
+                  SourceUnitBuild
+                    { buildArtifact = "default"
+                    , buildSucceeded = True
+                    , buildImports =
+                        [depLocator]
+                    , buildDependencies =
+                        [ SourceUnitDependency
+                            { sourceDepLocator = depLocator
+                            , sourceDepImports = []
+                            }
+                        ]
+                    }
+            , sourceUnitGraphBreadth = Complete
+            , sourceUnitOriginPaths = [textToOriginPath "package-lock.json"]
+            , additionalData = Nothing
+            }
+
+    Map.lookup otherLayerId srcUnitsMap `shouldBe'` Just [expectedSrcUnit]

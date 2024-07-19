@@ -100,8 +100,8 @@ instance ToJSON ContainerScan where
   toJSON scan = object ["image" .= imageData scan]
 
 data ContainerScanImage = ContainerScanImage
-  { imageOs :: Text
-  , imageOsRelease :: Text
+  { imageOs :: Maybe Text
+  , imageOsRelease :: Maybe Text
   , imageLayers :: [ContainerScanImageLayer]
   }
   deriving (Show, Eq, Ord)

@@ -1,6 +1,6 @@
-# FOSSA's new container scanner
+# FOSSA's container scanner
 
-- [FOSSA's new container scanner](#fossas-new-container-scanner)
+- [FOSSA's container scanner](#fossas-new-container-scanner)
   - [What's new in this scanner?](#whats-new-in-this-scanner)
 - [Documentation](#documentation)
   - [Container image source](#container-image-source)
@@ -9,6 +9,8 @@
     - [3) From registries](#3-from-registries)
   - [Container image analysis](#container-image-analysis)
     - [Container Jar analysis](#container-jar-analysis)
+    - [Distroless Containers](#distroless-containers)
+    - [Supported Container Package Managers](#supported-container-package-managers)
     - [View detected projects](#view-detected-projects)
       - [Command output](#command-output)
     - [Utilize analysis target configuration](#utilize-analysis-target-configuration)
@@ -19,20 +21,16 @@
     - [How do I exclude specific projects from container scanning?](#how-do-i-exclude-specific-projects-from-container-scanning)
   - [Limitations & Workarounds](#limitations--workarounds)
 
-## What's new in this scanner?
+## What's supported in FOSSA's container scanner?
 
-FOSSA's new container scanner adds support for compliance and vulnerability checks for application dependencies inside of containers.
+FOSSA's container scanner adds support for compliance and vulnerability checks for application dependencies inside of containers.
 The performance of analysis and support for container image sources is improved, and is more robust for future enhancement.
 
-FOSSA's new container scanner brings support for standard FOSSA CLI features into containers:
+FOSSA's container scanner brings support for standard FOSSA CLI features into containers:
 - Support for configuration via `.fossa.yml`.
 - Support for path filtering (exclusion and inclusion).
 
-Finally, FOSSA's new container scanner improves the user experience and reports more information to FOSSA servers,
-improving both the information available to users and the ability for FOSSA to debug questions or issues.
-For example, images scanned with the container scanner show the origin path for each dependency discovered inside the image, just like analysis of a local project.
-
-Like the legacy container scanner, the container scanner fully supports the detection of OS dependencies (`apk`, `deb`, etc).
+The container scanner fully supports the detection of OS dependencies (`apk`, `deb`, etc).
 
 Refer to following guides for integrating container scanning in your CI,
 
@@ -40,7 +38,7 @@ Refer to following guides for integrating container scanning in your CI,
 
 # Documentation
 
-FOSSA's new container scanner scans the base layer of the image, squashes all other layers, and scans those as well.
+FOSSA's container scanner scans the base layer of the image, squashes all other layers, and scans those as well.
 Scans report compliance and security issues for operating system dependencies and application dependencies.
 
 To scan a container image with `fossa-cli`, use the `container analyze` command:
@@ -201,7 +199,7 @@ All `GET` request from step 2 to step 5, will make `HEAD` call prior to confirm 
 
 ## Container image analysis
 
-The new container scanner scans in two steps:
+The container scanner scans in two steps:
 1. The base layer.
 2. The rest of the layers, squashed. 
 
@@ -212,6 +210,11 @@ It will then report them to FOSSA which will try to match the Jar files to the p
 
 This process relies on there being a back-end that can perform that analysis.
 SaaS customers should have this functionality available but on-prem customers may need to contact FOSSA support to have it enabled.
+
+### Distroless Containers
+
+Container images where FOSSA cannot detect an operating system are supported but in a more limited way than images where FOSSA can.
+These container images will not support reporting system deps (APK, DPKG, and RPM) but can support the other forms of analyses listed in the table below.
 
 ### Supported Container Package Managers
 The following package managers are supported in container scanning:
@@ -282,7 +285,7 @@ Example output:
 
 ### Utilize analysis target configuration
 
-The new container scanner supports configuring analysis targets via `.fossa.yml`, as with a standard `fossa analyze` command.
+The container scanner supports configuring analysis targets via `.fossa.yml`, as with a standard `fossa analyze` command.
 For more information on configuring analysis targets, see [analysis target configuration](../../files/fossa-yml.md#analysis-target-configuration).
 
 For example, the following `fossa.yml` excludes all `setuptools` targets:
@@ -359,7 +362,7 @@ fossa container analyze <IMAGE> -c .fossa.config.yaml --output
 
 ## Limitations & Workarounds
 
-`fossa-cli` using the container scanner does not support [v1 docker manifest format](https://docs.docker.com/registry/spec/manifest-v2-1/).
+`fossa-cli` does not support [v1 docker manifest format](https://docs.docker.com/registry/spec/manifest-v2-1/).
 This manifest format is officially deprecated, but is still found in some registries.
 
 The recommended workaround is to export the image to an archive, then analyze that:
