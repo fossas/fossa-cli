@@ -9,6 +9,8 @@
     - [3) From registries](#3-from-registries)
   - [Container image analysis](#container-image-analysis)
     - [Container Jar analysis](#container-jar-analysis)
+    - [Distroless Containers](#distroless-containers)
+    - [Supported Container Package Managers](#supported-container-package-managers)
     - [View detected projects](#view-detected-projects)
       - [Command output](#command-output)
     - [Utilize analysis target configuration](#utilize-analysis-target-configuration)
