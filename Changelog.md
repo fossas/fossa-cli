@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.9.29
+- Update jar-callgraph version to 1.0.2 [#1454](https://github.com/fossas/fossa-cli/pull/1454)
+
 ## 3.9.28
 
 - Container Scanning: Distroless containers will now return results for non-system dependencies. ([#1448](https://github.com/fossas/fossa-cli/pull/1448))
