@@ -14,10 +14,7 @@ module Control.Carrier.FossaApiClient.Internal.LicenseScanning (
 import App.Types (FileUpload, ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
-import Control.Effect.Debug (Debug)
-import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient (PackageRevision (..))
-import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Control.Monad (void)
 import Data.List.NonEmpty qualified as NE
@@ -25,9 +22,7 @@ import Fossa.API.Types (AnalyzedPathDependenciesResp (analyzedPathDeps), Analyze
 import Srclib.Types (FullSourceUnit, LicenseSourceUnit, Locator)
 
 getSignedFirstPartyScanUrl ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   PackageRevision ->
@@ -37,9 +32,7 @@ getSignedFirstPartyScanUrl PackageRevision{..} = do
   API.getSignedFirstPartyScanURL apiOpts packageVersion packageName
 
 getSignedLicenseScanUrl ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   PackageRevision ->
@@ -49,9 +42,7 @@ getSignedLicenseScanUrl PackageRevision{..} = do
   API.getSignedLicenseScanURL apiOpts packageVersion packageName
 
 finalizeLicenseScan ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   ArchiveComponents ->
@@ -61,9 +52,7 @@ finalizeLicenseScan components = do
   void $ API.licenseScanFinalize apiOpts components
 
 uploadLicenseScanResult ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  ) =>
+  (API.APIClientEffs sig m) =>
   SignedURL ->
   LicenseSourceUnit ->
   m ()
@@ -71,9 +60,7 @@ uploadLicenseScanResult signedUrl licenseSourceUnit = do
   void $ API.licenseScanResultUpload signedUrl licenseSourceUnit
 
 uploadFirstPartyScanResult ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  ) =>
+  (API.APIClientEffs sig m) =>
   SignedURL ->
   NE.NonEmpty FullSourceUnit ->
   m ()
@@ -81,9 +68,7 @@ uploadFirstPartyScanResult signedUrl fullSourceUnits = do
   void $ API.firstPartyScanResultUpload signedUrl fullSourceUnits
 
 uploadPathDependencyScanResult ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   PackageRevision ->
@@ -95,9 +80,7 @@ uploadPathDependencyScanResult PackageRevision{..} projectRevision fullFileUploa
   API.getUploadURLForPathDependency apiOpts packageName packageVersion projectRevision fullFileUpload
 
 finalizePathDependencyScan ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   [Locator] ->
@@ -108,9 +91,7 @@ finalizePathDependencyScan locators forceRebuild = do
   void $ API.finalizePathDependencyScan apiOpts locators forceRebuild
 
 alreadyAnalyzedPathRevision ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->

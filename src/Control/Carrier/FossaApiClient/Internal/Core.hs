@@ -44,10 +44,7 @@ import App.Types (ComponentUploadFileType (..), DependencyRebuild, FileUpload, L
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
-import Control.Effect.Debug (Debug)
-import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.FossaApiClient (PackageRevision (..))
-import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
@@ -75,9 +72,7 @@ import Srclib.Types (Locator, SourceUnit, renderLocator)
 
 -- Fetches an organization from the API
 getOrganization ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   m Organization
@@ -88,9 +83,7 @@ getOrganization = do
   API.getOrganization apiOpts
 
 getTokenType ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   m TokenTypeResponse
@@ -99,10 +92,8 @@ getTokenType = do
   API.getTokenType apiOpts
 
 getCustomBuildPermissions ::
-  ( Has (Lift IO) sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
-  , Has Debug sig m
-  , Has Diagnostics sig m
   ) =>
   ProjectRevision ->
   ProjectMetadata ->
@@ -112,9 +103,7 @@ getCustomBuildPermissions revision metadata = do
   API.getCustomBuildUploadPermissions apiOpts revision metadata
 
 getProject ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->
@@ -125,9 +114,7 @@ getProject revision locatorType = do
   API.getProject apiOpts revision locatorType
 
 getAnalyzedRevisions ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   NE.NonEmpty VendoredDependency ->
@@ -137,10 +124,8 @@ getAnalyzedRevisions vdeps = do
   API.getAnalyzedRevisions apiOpts vdeps
 
 uploadAnalysis ::
-  ( Has (Lift IO) sig m
-  , Has (Reader ApiOpts) sig m
-  , Has Debug sig m
-  , Has Diagnostics sig m
+  ( Has (Reader ApiOpts) sig m
+  , API.APIClientEffs sig m
   ) =>
   ProjectRevision ->
   ProjectMetadata ->
@@ -151,10 +136,8 @@ uploadAnalysis revision metadata units = do
   API.uploadAnalysis apiOpts revision metadata units
 
 uploadAnalysisWithFirstPartyLicenses ::
-  ( Has (Lift IO) sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
-  , Has Debug sig m
-  , Has Diagnostics sig m
   ) =>
   ProjectRevision ->
   ProjectMetadata ->
@@ -165,9 +148,7 @@ uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind = do
   API.uploadAnalysisWithFirstPartyLicenses apiOpts revision metadata uploadKind
 
 uploadNativeContainerScan ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->
@@ -179,9 +160,7 @@ uploadNativeContainerScan revision metadata scan = do
   API.uploadNativeContainerScan apiOpts revision metadata scan
 
 uploadContributors ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   Locator ->
@@ -192,9 +171,7 @@ uploadContributors locator contributors = do
   API.uploadContributors apiOpts (renderLocator locator) contributors
 
 getLatestBuild ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->
@@ -205,9 +182,7 @@ getLatestBuild rev locatorType = do
   API.getLatestBuild apiOpts rev locatorType
 
 getIssues ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->
@@ -219,9 +194,7 @@ getIssues rev diffRevision locatorType = do
   API.getIssues apiOpts rev diffRevision locatorType
 
 getAttribution ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->
@@ -232,9 +205,7 @@ getAttribution revision format = do
   API.getAttribution apiOpts revision format
 
 getRevisionDependencyCacheStatus ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->
@@ -244,9 +215,7 @@ getRevisionDependencyCacheStatus rev = do
   API.getRevisionDependencyCacheStatus apiOpts rev
 
 getSignedUploadUrl ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   ComponentUploadFileType ->
@@ -257,9 +226,7 @@ getSignedUploadUrl fileType PackageRevision{..} = do
   API.getSignedURL apiOpts fileType packageVersion packageName
 
 queueArchiveBuild ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   [Archive] ->
@@ -270,9 +237,7 @@ queueArchiveBuild archives rebuild = do
   API.archiveBuildUpload apiOpts archives rebuild
 
 queueSBOMBuild ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   Archive ->
@@ -284,9 +249,7 @@ queueSBOMBuild archive team rebuild = do
   API.sbomBuildUpload apiOpts archive team rebuild
 
 uploadArchive ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  ) =>
+  (API.APIClientEffs sig m) =>
   SignedURL ->
   FilePath ->
   m ByteString
@@ -294,9 +257,7 @@ uploadArchive =
   API.archiveUpload
 
 getEndpointVersion ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   m Text
@@ -305,9 +266,7 @@ getEndpointVersion = do
   API.getEndpointVersion apiOpts
 
 uploadReachabilityContent ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   ByteString ->
@@ -318,9 +277,7 @@ uploadReachabilityContent content = do
   API.uploadReachabilityContent signedUrl content
 
 uploadReachabilityBuild ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   , ToJSON a
   ) =>
@@ -334,9 +291,7 @@ uploadReachabilityBuild pr metadata content = do
   void $ API.uploadReachabilityBuild signedUrl content
 
 createReleaseGroup ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   CoreTypes.CreateReleaseGroupRequest ->
@@ -346,9 +301,7 @@ createReleaseGroup req = do
   API.createReleaseGroup apiOpts req
 
 createReleaseGroupRelease ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   Int ->
@@ -359,9 +312,7 @@ createReleaseGroupRelease releaseGroupId req = do
   API.createReleaseGroupRelease apiOpts releaseGroupId req
 
 getPolicies ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   m [CoreTypes.Policy]
@@ -370,9 +321,7 @@ getPolicies = do
   API.getPolicies apiOpts
 
 getTeams ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   m [CoreTypes.Team]
@@ -381,9 +330,7 @@ getTeams = do
   API.getTeams apiOpts
 
 addTeamProjects ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   Int ->
@@ -394,9 +341,7 @@ addTeamProjects teamId req = do
   API.addTeamProjects apiOpts teamId req
 
 deleteReleaseGroup ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   Int ->
@@ -406,9 +351,7 @@ deleteReleaseGroup releaseGroupId = do
   API.deleteReleaseGroup apiOpts releaseGroupId
 
 deleteReleaseGroupRelease ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   Int ->
@@ -419,9 +362,7 @@ deleteReleaseGroupRelease releaseGroupId releaseId = do
   API.deleteReleaseGroupRelease apiOpts releaseGroupId releaseId
 
 updateReleaseGroupRelease ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   Int ->
@@ -433,9 +374,7 @@ updateReleaseGroupRelease releaseGroupId releaseId updateReq = do
   API.updateReleaseGroupRelease apiOpts releaseGroupId releaseId updateReq
 
 getReleaseGroups ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   m [CoreTypes.ReleaseGroup]
@@ -444,9 +383,7 @@ getReleaseGroups = do
   API.getReleaseGroups apiOpts
 
 getReleaseGroupReleases ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   Int ->
@@ -456,9 +393,7 @@ getReleaseGroupReleases releaseGroupId = do
   API.getReleaseGroupReleases apiOpts releaseGroupId
 
 getProjectV2 ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   Text ->
@@ -468,9 +403,7 @@ getProjectV2 locator = do
   API.getProjectV2 apiOpts locator
 
 updateProject ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   Text ->
@@ -481,9 +414,7 @@ updateProject locator req = do
   API.updateProject apiOpts locator req
 
 updateRevision ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   Text ->
@@ -494,9 +425,7 @@ updateRevision revisionLocator req = do
   API.updateRevision apiOpts revisionLocator req
 
 getOrgLabels ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   m CoreTypes.Labels
