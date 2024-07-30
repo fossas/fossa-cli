@@ -7,7 +7,7 @@ import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.BinaryDeps.Jar (resolveJar)
 import App.Fossa.VSI.Fingerprint (Fingerprint, fingerprintRaw)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Lift (Lift)
 import Control.Monad (filterM)
 import Data.String.Conversion (toText)
@@ -44,7 +44,7 @@ analyzeBinaryDeps dir filters = do
 -- if we fallback to a plain "unknown binary" strategy its name is reported as the relative path between the provided @Path Abs Dir@ and the @Path Abs File@.
 -- If the path can't be made relative, the dependency name is the absolute path of the binary.
 analyzeSingleBinary :: (Has (Lift IO) sig m, Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m SourceUserDefDep
-analyzeSingleBinary = resolveBinary strategies
+analyzeSingleBinary root file = context ("Analyzing " <> toText file) $ resolveBinary strategies root file
 
 findBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => PathFilters -> Path Abs Dir -> m [Path Abs File]
 findBinaries filters = walk' $ \dir _ files -> do
