@@ -164,6 +164,8 @@ instance ToJSON ArchiveComponents where
 data Archive = Archive
   { archiveName :: Text
   , archiveVersion :: Text
+  , archiveDescription :: Maybe Text
+  , archiveHomePage :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -175,6 +177,8 @@ instance ToJSON Archive where
     object
       [ "packageSpec" .= archiveName
       , "revision" .= archiveVersion
+      , "description" .= archiveDescription
+      , "projectURL" .= archiveHomePage
       ]
 
 data BuildStatus

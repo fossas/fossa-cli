@@ -53,8 +53,8 @@ theWorks = ManualDependencies references customs vendors remotes locators
       , RemoteDependency "url-dep-two" "1.2.4" "www.url2.tar.gz" Nothing
       ]
     vendors =
-      [ VendoredDependency "vendored" "path" Nothing
-      , VendoredDependency "versioned" "path/to/dep" (Just "2.1.0")
+      [ VendoredDependency "vendored" "path" Nothing Nothing
+      , VendoredDependency "versioned" "path/to/dep" (Just "2.1.0") Nothing
       ]
     locators =
       [ Locator "fetcher-1" "one" Nothing
@@ -436,5 +436,5 @@ locatorDepWithEmptyDep :: Text
 locatorDepWithEmptyDep =
   [r|
 locator-dependencies:
-- 
+-
 |]

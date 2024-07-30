@@ -247,6 +247,7 @@ library
     App.Fossa.ListTargets
     App.Fossa.Main
     App.Fossa.ManualDeps
+    App.Fossa.ManualDepsTypes
     App.Fossa.PathDependency
     App.Fossa.PreflightChecks
     App.Fossa.Project

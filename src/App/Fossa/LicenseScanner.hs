@@ -25,7 +25,7 @@ import App.Fossa.VendoredDependency (
   forceVendoredToArchive,
   hashFile,
   skippedDepsDebugLog,
-  vendoredDependencyScanModeToDependencyRebuild,
+  vendoredDependencyScanModeToDependencyRebuild, getMetadata,
  )
 import App.Types (FileUpload)
 import Control.Carrier.Finally (Finally, runFinally)
@@ -327,7 +327,7 @@ uploadVendoredDep ::
   VendoredDependency ->
   LicenseSourceUnit ->
   m (Maybe Archive)
-uploadVendoredDep baseDir VendoredDependency{..} licenseSourceUnit = do
+uploadVendoredDep baseDir dep@VendoredDependency{..} licenseSourceUnit = do
   depVersion <- case vendoredVersion of
     Nothing -> sendIO $ withSystemTempDir "fossa-temp" (calculateVendoredHash baseDir vendoredPath)
     Just version -> pure version
@@ -337,7 +337,7 @@ uploadVendoredDep baseDir VendoredDependency{..} licenseSourceUnit = do
   logSticky $ "Uploading license results for '" <> vendoredName <> "' to secure S3 bucket"
   uploadLicenseScanResult signedURL licenseSourceUnit
 
-  pure $ Just $ Archive vendoredName depVersion
+  pure $ Just $ uncurry (Archive vendoredName depVersion) (getMetadata dep)
 
 -- | licenseScanSourceUnit receives a list of vendored dependencies, a root path, and API settings.
 -- Using this information, it license scans each vendored dependency, uploads the license scan results and then queues a build for the dependency.

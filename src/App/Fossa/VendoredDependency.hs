@@ -15,18 +15,18 @@ module App.Fossa.VendoredDependency (
   SkippableDeps (..),
   NeedScanningDeps (..),
   SkippedDepsLogMsg (..),
+  getMetadata,
 ) where
 
+
+import App.Fossa.ManualDepsTypes (VendoredDependency (..), DependencyMetadata (depDescription, depHomepage, DependencyMetadata))
 import App.Types (DependencyRebuild (..))
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics, fatalText)
 import Crypto.Hash (Digest, MD5, hashlazy)
-import Data.Aeson (FromJSON (parseJSON), withObject, (.:?))
-import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers, neText)
 import Data.ByteString.Lazy qualified as BS
-import Data.Functor.Extra ((<$$>))
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -37,7 +37,7 @@ import Data.String.Conversion (
   ToString (toString),
   ToText (toText),
  )
-import Data.Text (Text, isInfixOf)
+import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.UUID.V4 (nextRandom)
 import Fossa.API.Types (Archive (..))
@@ -45,41 +45,6 @@ import Path (Abs, Dir, Path)
 import Prettyprinter (Pretty (pretty), vsep)
 import Srclib.Types (Locator (..))
 import System.FilePath.Posix (splitDirectories, (</>))
-
-data VendoredDependency = VendoredDependency
-  { vendoredName :: Text
-  , vendoredPath :: Text
-  , vendoredVersion :: Maybe Text
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON VendoredDependency where
-  parseJSON = withObject "VendoredDependency" $ \obj -> do
-    vendorDep <-
-      VendoredDependency
-        <$> (obj `neText` "name")
-        <*> (obj `neText` "path")
-        <*> (unTextLike <$$> obj .:? "version")
-        <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
-
-    case vendoredVersion vendorDep of
-      Nothing -> pure vendorDep
-      Just version' -> do
-        let fcInVersion = filter (`isInfixOf` version') forbiddenChars
-        if null fcInVersion
-          then pure vendorDep
-          else
-            fail $
-              "field 'version' conatins forbidden character(s): "
-                <> show fcInVersion
-                <> "! Do not use anyof: "
-                <> show forbiddenChars
-    where
-      -- If following charcters are allowed in version
-      -- We end up with 403 error from S3. This is likely
-      -- due to encoding/escaping issue. Refer to backlog.
-      forbiddenChars :: [Text]
-      forbiddenChars = ["?", "#"]
 
 data VendoredDependencyScanMode
   = SkipPreviouslyScanned
@@ -151,7 +116,7 @@ duplicateFailureBundle names =
     <> "Please ensure that each vendored dependency entry has a unique name."
 
 forceVendoredToArchive :: VendoredDependency -> Archive
-forceVendoredToArchive dep = Archive (vendoredName dep) (fromMaybe "" $ vendoredVersion dep)
+forceVendoredToArchive dep = uncurry (Archive (vendoredName dep) (fromMaybe "" $ vendoredVersion dep)) (getMetadata dep)
 
 arcToLocator :: Archive -> Locator
 arcToLocator arc =
@@ -200,3 +165,8 @@ skippedDepsDebugLog needScanningDeps skippedDeps scanMode =
       case skippedDeps of
         SkippableDeps [] -> AllDepsNeedScanningMsg
         _ -> SomeDepsNeedScanningMsg skippedDeps
+
+getMetadata :: VendoredDependency -> (Maybe Text, Maybe Text)
+getMetadata dep = case vendoredMetadata dep of
+  Nothing -> (Nothing, Nothing)
+  Just DependencyMetadata{..} -> (depDescription, depHomepage)

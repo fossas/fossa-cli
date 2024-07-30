@@ -99,7 +99,7 @@ firstPartyScanMain ::
 firstPartyScanMain base cfg org = do
   runFirstPartyScans <- shouldRunFirstPartyScans cfg org
   manualDeps <- findAndReadFossaDepsFile base
-  let vdep = VendoredDependency "first-party" "." Nothing
+  let vdep = VendoredDependency "first-party" "." Nothing Nothing
       uploadKind = orgFileUpload org
   pathFilters <- mergePathFilters base manualDeps (licenseScanPathFilters $ vendoredDeps cfg)
   case runFirstPartyScans of

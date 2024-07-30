@@ -10,6 +10,7 @@ import App.Fossa.VendoredDependency (
   compressFile,
   dedupVendoredDeps,
   hashFile,
+  getMetadata,
  )
 import App.Types (ComponentUploadFileType (..), DependencyRebuild)
 import Control.Carrier.Diagnostics qualified as Diag
@@ -52,7 +53,7 @@ compressAndUpload ::
   Path Abs Dir ->
   VendoredDependency ->
   m Archive
-compressAndUpload arcDir tmpDir VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
+compressAndUpload arcDir tmpDir dep@VendoredDependency{..} = context "compressing and uploading vendored deps" $ do
   logSticky $ "Compressing '" <> vendoredName <> "' at '" <> vendoredPath <> "'"
   compressedFile <- sendIO $ compressFile tmpDir arcDir (toString vendoredPath)
 
@@ -66,7 +67,7 @@ compressAndUpload arcDir tmpDir VendoredDependency{..} = context "compressing an
   res <- uploadArchive signedURL compressedFile
   logDebug . pretty $ (decodeUtf8 @Text res)
 
-  pure $ Archive vendoredName depVersion
+  pure $ uncurry (Archive vendoredName depVersion) (getMetadata dep)
 
 -- archiveUploadSourceUnit receives a list of vendored dependencies, a root path, and API settings.
 -- Using this information, it uploads each vendored dependency and queues a build for the dependency.

@@ -21,7 +21,7 @@ spec = do
   describe "SBOM Analyze" $ do
     currDir <- runIO getCurrentDir
     it' "should upload a file" $ do
-      let archive = Archive "somesbom" "1.2.3"
+      let archive = Archive "somesbom" "1.2.3" Nothing Nothing
       let revision = ProjectRevision "somesbom" "1.2.3" Nothing
       let config = SBOMAnalyzeConfig (BaseDir currDir) Fixtures.apiOpts (SBOMFile "test/App/Fossa/SBOM/testdata/sampleCycloneDX.json") SevInfo DependencyRebuildReuseCache Nothing revision
 

@@ -132,7 +132,7 @@ conanDepToVendorDep :: Dependency -> Either Dependency (Dependency, VendoredDepe
 conanDepToVendorDep d =
   case listToMaybe $ dependencyLocations d of
     Nothing -> Left d
-    Just pathOfDep -> Right (d, VendoredDependency depName pathOfDep depVersion)
+    Just pathOfDep -> Right (d, VendoredDependency depName pathOfDep depVersion Nothing)
   where
     depName :: Text
     depName = dependencyName d
