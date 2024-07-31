@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Vendored Dependencies: add support for metadata (description, and homepage) for dependencies. ([#1455](https://github.com/fossas/fossa-cli/pull/1455))
+
 ## 3.9.28
 
 - Container Scanning: Distroless containers will now return results for non-system dependencies. ([#1448](https://github.com/fossas/fossa-cli/pull/1448))
